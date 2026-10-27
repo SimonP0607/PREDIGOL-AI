@@ -28,10 +28,13 @@ THE CHECKS (each with its figures; an unjudgeable one is ``None`` and makes the 
                         brief) and the shares with their first / pre / final pass ok; of the candidates (the selections that got a
                         review), the share with a model review
     final_t15           the final verdict before T-15 in >= 99 % of the final passes (the service objective of section 32)
-    verdict_equivalence for each optimisation, its evidence on file: ``batch`` has its probe (a failed probe leaves Batch off and the cost
-                        check judges what is left); ``native_schema`` and ``cache_layout`` changed no more verdicts than repeating the
-                        same call, over >= 200 stored packets - RECOMPUTED here from the letters stored in the evidence. A variant whose
-                        newest evidence says NO PASA fails the check (its switch is already off: it is corrected and measured again)
+    verdict_equivalence for each optimisation IN FORCE, its evidence on file (the owner's decision A of 27 Oct 2026, ~00:37 UTC): ``batch``
+                        has its probe; ``native_schema`` and ``cache_layout`` changed no more verdicts than repeating the same call, over
+                        >= 200 stored packets - RECOMPUTED here from the letters stored in the evidence. One in force whose newest evidence
+                        says NO PASA, or whose letters do not reproduce its assessment, fails the check (its switch is rolled back, corrected
+                        and measured again); one in force without enough evidence leaves it pending. One that is OFF - rejected by its own
+                        evidence, never measured, or rolled back - changes nothing the window measures: it is REPORTED (``not_in_force``),
+                        never judged, and it is judged the day it is switched on. No threshold moved: only which optimisations are judged
     cache_visible       reads of the cache on at least 6 of the 7 days and, in real time, >= 40 % of the cacheable input read (the
                         threshold of the alarm of section 28)
     batch_lost          0 results of a production batch lost (a finished or expired batch with an item neither resolved nor recorded),
@@ -458,15 +461,27 @@ def equivalence_of(conn: psycopg.Connection[Any], gate: str) -> dict[str, Any]:
     return base
 
 
+SWITCH_OF: dict[str, str] = {"batch": "FBI_AI_BATCH", "native_schema": "FBI_AI_NATIVE_SCHEMA",
+                             "cache_layout": "the shared layout (ia_gate revert cache_layout)"}
+"""What to roll back when the optimisation in force is the one that fails."""
+
+
 def check_equivalence(conn: psycopg.Connection[Any], settings: AiSettings) -> Check:
+    """The evidence of the optimisations that are IN FORCE (``gates.describe``: the switch on, or ``auto`` with its gate passing).
+
+    The owner's decision A (27 Oct 2026, ~00:37 UTC), taken when the first experiment left ``native_schema`` INSUFICIENTE and ``cache_layout``
+    NO PASA and both switches off: requiring favourable evidence of an optimisation that is not running could only be met by switching it on, and
+    one that is off changes no verdict the window measures. So only what is in force is judged - it needs its probe (``batch``) or no more
+    verdicts changed than repeating the call, over >= 200 packets, RECOMPUTED from the letters (the others); an optimisation that is off is
+    listed in ``not_in_force`` with the state of its evidence and never blocks. Thresholds, the 200 packets and the recomputation are as they were."""
     states = {g: equivalence_of(conn, g) for g in OPTIMISATIONS}
     described = gates.describe(conn, settings)
     on = {g: bool(described.get(g, {}).get("on")) for g in OPTIMISATIONS}
-    missing = [g for g, s in states.items() if s["state"] in ("missing", "insufficient")]
-    not_reproducible = [g for g, s in states.items() if s["state"] == "not_reproducible"]
-    # a variant whose newest evidence says NO PASA: its switch is already off (rolled back), and the criterion is not met
-    failed = [g for g, s in states.items() if s["state"] == "failed" and g != "batch"]
-    rolled_back = [g for g, s in states.items() if s["state"] == "failed"]
+    judged = [g for g in OPTIMISATIONS if on[g]]
+    off = [g for g in OPTIMISATIONS if not on[g]]
+    missing = [g for g in judged if states[g]["state"] in ("missing", "insufficient")]
+    not_reproducible = [g for g in judged if states[g]["state"] == "not_reproducible"]
+    failed = [g for g in judged if states[g]["state"] == "failed"]  # in force although its newest evidence says NO PASA (forced on by hand)
     ok: bool | None
     if not_reproducible or failed:
         ok = False
@@ -477,11 +492,17 @@ def check_equivalence(conn: psycopg.Connection[Any], settings: AiSettings) -> Ch
     model = None if (tm := settings.tier("analysis")) is None else tm.model
     covered = {g: (None if model is None or s["state"] == "missing" else model in (s.get("models") or [model]))
                for g, s in states.items()}
-    return Check("verdict_equivalence", "Cambio de veredicto con las optimizaciones ≤ el de repetir la misma llamada (≥ 200 paquetes)",
-                 ok, {"optimisations": states, "in_force": on, "rolled_back": rolled_back, "missing": missing,
-                      "failed": failed, "not_reproducible": not_reproducible, "minimum_inputs": MIN_EQUIVALENCE_INPUTS,
-                      "analysis_model": model, "analysis_model_covered": covered},
-                 revert="FBI_AI_NATIVE_SCHEMA / the shared layout")
+    note = ("no optimisation is in force: there is nothing to compare" if not judged
+            else f"judged: {', '.join(judged)}" + (f"; reported, not judged (off): {', '.join(off)}" if off else ""))
+    return Check("verdict_equivalence", "Cambio de veredicto con las optimizaciones en vigor ≤ el de repetir la misma llamada (≥ 200 paquetes)",
+                 ok, {"optimisations": states, "in_force": on, "judged": judged,
+                      "not_in_force": {g: states[g]["state"] for g in off},
+                      "rolled_back": [g for g in off if states[g]["state"] == "failed"],
+                      "unmeasured": [g for g in off if states[g]["state"] in ("missing", "insufficient")],
+                      "missing": missing, "failed": failed, "not_reproducible": not_reproducible,
+                      "minimum_inputs": MIN_EQUIVALENCE_INPUTS, "analysis_model": model, "analysis_model_covered": covered,
+                      "note": note},
+                 revert=" / ".join(SWITCH_OF[g] for g in (*failed, *not_reproducible)) or "FBI_AI_NATIVE_SCHEMA / the shared layout")
 
 
 def check_cache(conn: psycopg.Connection[Any], w: Window) -> Check:
@@ -588,7 +609,9 @@ def _waiting_for(c: Check) -> str:
     if c.id == "manual_actions":
         return "acciones 3, 5 y 7 del propietario (docs/owner/IA_ACCIONES_MANUALES.md)"
     if c.id == "verdict_equivalence":
-        return "pruebas del LAB: python -m scripts.ia_probe y python -m scripts.ia_equivalence (necesitan las acciones 3, 5 y 7)"
+        missing = ", ".join(c.detail.get("missing") or [])
+        return (f"pruebas del LAB de lo que está en vigor{f' ({missing})' if missing else ''}: python -m scripts.ia_probe y "
+                "python -m scripts.ia_equivalence (necesitan las acciones 3, 5 y 7)")
     return "no hay datos para juzgarlo"
 
 

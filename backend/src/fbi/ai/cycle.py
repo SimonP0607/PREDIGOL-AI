@@ -47,7 +47,7 @@ import structlog
 from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
-from fbi.ai import research
+from fbi.ai import entity_research, gates, research
 from fbi.ai.analysis import ValueOption, build_cards, store_analysis
 from fbi.ai.batch import BatchClient, BatchQueue, abandon_unsent, open_counts
 from fbi.ai.brief import Brief, make_brief
@@ -373,6 +373,10 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
     if only:
         fixtures = [f for f in fixtures if f[0] in set(only)]
     report.counts["fixtures"] = len(fixtures)
+    # what the research of an entity does in this cycle (``FBI_AI_RESEARCH_V2`` and its gate): nothing, runs beside v1 (shadow), or replaces it (on)
+    research_mode = gates.research_mode(conn, settings)
+    if research_mode != "off":
+        report.counts[f"research_v2_{research_mode}"] = 1
 
     # 1. evidence from the provider (free)
     for fid, kickoff in fixtures:
@@ -386,6 +390,8 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
                 conn.rollback()
                 report.status = "partial"
                 report.errors.append(f"evidence {fid}: {type(exc).__name__}")
+            if research_mode != "off":
+                _refresh_typed(conn, report, fid, at=at, replaces=research_mode == "on")
 
     # 2. the shortlist: the value gate at the current price, one per selection
     rows = load_candidates(conn, at=at, until=at + SHORTLIST_HORIZON, include_shadow=True)
@@ -437,7 +443,7 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
               {d.fixture.fixture_id for d in pres[:allow.web_pre]}
 
     # 4-5. packets, briefs, reviews, analyses - the paid ones first, by priority
-    builder = PacketBuilder(conn)
+    builder = PacketBuilder(conn, typed_evidence=research_mode == "on")  # shadow writes claims nobody reads
     with conn.cursor(row_factory=tuple_row) as tcur:
         tcur.execute(NEWEST_PACKETS_SQL, {"fixtures": [f[0] for f in fixtures]})
         newest = {int(r[0]): r[1] for r in tcur.fetchall()}
@@ -453,7 +459,7 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
                     _pass(conn, settings, report, due, by_fixture.get(fid, []), builder, at=at, ledger=ledger,
                           search=search, provider=provider, transport=transport, allow=allow, l3=l3,
                           web=fid in web, llm_ready=llm_ready, health=health, asks=asked.get(fid, []), queue=queue,
-                          held=held)
+                          held=held, research_mode=research_mode)
                 else:
                     _free(conn, settings, report, fid, kickoff, by_fixture.get(fid, []), builder, newest, at=at)
                 conn.commit()
@@ -571,12 +577,72 @@ def _free(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
     report.counts["analyses_new" if created else "analyses_same"] += 1
 
 
+def _refresh_typed(conn: psycopg.Connection[Any], report: CycleReport, fid: int, *, at: datetime, replaces: bool) -> None:
+    """The statuses of what research v2 knows for a match, decided again (new line-ups, time passing): free, no model, no search. It never
+    stops the cycle - beside v1 a failure is only noted."""
+    try:
+        entity_research.refresh_for(conn, fid, at=at)
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        _research_failed(report, fid, exc, replaces=replaces)
+
+
+def _research_failed(report: CycleReport, fid: int, exc: Exception, *, replaces: bool, counts: dict[str, int] | None = None) -> None:
+    """Research v2 failed for a match: counted and written down, never raised. Beside v1 (shadow) the cycle stays ``ok`` - the quantitative
+    pipeline and v1 did their work; instead of v1 (on) the match went without research, which is what ``partial`` says.
+
+    ``counts`` is the pass's own (a failure inside a pass): the pass row says v2 failed, so a comparison does not read «v2 found nothing»."""
+    text = f"{type(exc).__name__}: {exc}"[:200]
+    report.counts["v2_failed"] += 1
+    if counts is not None:
+        counts["v2_failed"] += 1
+    report.errors.append(f"research v2 {fid}: {text}")
+    if replaces:
+        report.status = "partial" if report.status == "ok" else report.status
+    log.warning("ai.research_v2.failed", fixture=fid, error=text)
+
+
+def _research_v2(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleReport, counts: dict[str, int], fid: int, *, at: datetime,
+                 ledger: UsageLedger, search: SearchFn | None, provider: tuple[LlmProvider, str] | None,
+                 transport: httpx.BaseTransport | None, levels: int | Sequence[int], replaces: bool) -> tuple[Decimal, bool]:
+    """The research of an entity for one pass (``fbi.ai.entity_research``) - returns what it cost and whether it ran. It fails open: an
+    exception is rolled back (what it paid is in the ledger, which has its own connection), counted and written down, and the pass goes on.
+
+    Beside v1 (``replaces`` False) its numbers are the ``v2_*`` counts and nothing else moves: not ``web_searches`` - the allowance of the day
+    counts v1's searches -, not a status of v1, not a packet. Instead of v1 (``replaces`` True) its searches, items and reasons ARE the pass's
+    web numbers, because the allowance of the day, the pass row and the reports read those."""
+    try:
+        got = entity_research.collect(conn, settings, fid, at=at, ledger=ledger, search=search, provider=provider, transport=transport, levels=levels)
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        _research_failed(report, fid, exc, replaces=replaces, counts=counts)
+        return Decimal(0), False
+    for key, n in got.counts().items():
+        counts[key] += n
+        report.counts[key] += n
+    if got.skipped:
+        reason = got.skipped.replace(" ", "_")
+        counts[f"v2_skipped_{reason}"] += 1
+        report.counts[f"v2_skipped_{reason}"] += 1
+    if replaces:
+        counts["web_searches"] += got.searches
+        counts["web_items"] += got.extracted
+        counts["web_new"] += got.created
+        report.counts["web_searches"] += got.searches
+        report.counts["web_items"] += got.extracted
+        if got.skipped:
+            report.counts[f"web_skipped_{got.skipped}"] += 1
+    return Decimal(str(got.cost_usd)), True
+
+
 def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleReport, due: Due, options: list[Ranked],
           builder: PacketBuilder, *, at: datetime, ledger: UsageLedger, search: SearchFn | None,
           provider: tuple[LlmProvider, str] | None, transport: httpx.BaseTransport | None, allow: Allowance,
           l3: set[tuple[int, str, str, Decimal]], web: bool, llm_ready: bool, health: dict[str, bool],
           asks: Sequence[research.Ask] = (), queue: BatchQueue | None = None,
-          held: list[tuple[Any, ...]] | None = None) -> None:
+          held: list[tuple[Any, ...]] | None = None, research_mode: str = "off") -> None:
     """One pass of one match of the day: web (when chosen), packet, L1 brief, L2/L3 reviews, cards, the pass row.
     A pass the provider failed (down, timing out) is not recorded: the next cycle tries it again.
 
@@ -587,12 +653,18 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
 
     ``asks`` is what the match's latest brief asked the server to look into (``fbi.ai.research``): a pass that reads the web reads it
     with the levels of the topics asked, when the match has no candidate to read it deeper for; a pass that does not, or has no
-    allowance or budget for it, says so in its counts (``research_unserved_<reason>``)."""
+    allowance or budget for it, says so in its counts (``research_unserved_<reason>``).
+
+    ``research_mode`` is what the research of an entity does (``fbi.ai.gates.research_mode``): ``off``, beside v1 (``shadow``: after v1's
+    research, in the same pass and with the same allowance, its claims written for the comparison and shown to nobody - its numbers are the
+    ``v2_*`` counts) or instead of it (``on``: v1's research does not run and v2's numbers are the pass's web numbers)."""
     fid, kind = due.fixture.fixture_id, due.pass_kind
     started = now()
     counts: dict[str, int] = defaultdict(int)
     cost = Decimal(0)
     report.counts[f"pass_{kind}"] += 1
+    if research_mode != "off":  # the pass says which research it ran under: the gate of research v2 reads the days from these rows
+        counts[f"research_v2_{research_mode}"] = 1
     llm_ready = llm_ready and not health["llm_down"]
     transient = False
     # Near the budget a match without any candidate loses its paid depth first (``Budget.marginal_allowed``): no
@@ -615,17 +687,25 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
     else:
         # the tiered search (sources-v2): up to three levels for a match with candidates, the levels of the topics asked for
         # (``fbi.ai.research``) or the first level for the others
-        got = collect_web(conn, settings, fid, at=at, ledger=ledger, search=search, provider=provider,
-                          transport=transport, levels=research.levels_for(asks, candidates=bool(options)))
-        counts["web_searches"] += got.searches
-        counts["web_items"] += got.extracted
-        counts["web_new"] += got.created
-        cost += Decimal(str(got.cost_usd))
-        report.counts["web_searches"] += got.searches
-        report.counts["web_items"] += got.extracted
-        if got.skipped:
-            report.counts[f"web_skipped_{got.skipped}"] += 1
-        conn.commit()
+        levels = research.levels_for(asks, candidates=bool(options))
+        if research_mode != "on":  # v1 decides what the packet knows (research v2 off, or beside it in shadow)
+            got = collect_web(conn, settings, fid, at=at, ledger=ledger, search=search, provider=provider,
+                              transport=transport, levels=levels)
+            counts["web_searches"] += got.searches
+            counts["web_items"] += got.extracted
+            counts["web_new"] += got.created
+            cost += Decimal(str(got.cost_usd))
+            report.counts["web_searches"] += got.searches
+            report.counts["web_items"] += got.extracted
+            if got.skipped:
+                report.counts[f"web_skipped_{got.skipped}"] += 1
+            conn.commit()
+        if research_mode != "off":
+            spent, ran = _research_v2(conn, settings, report, counts, fid, at=at, ledger=ledger, search=search, provider=provider,
+                                      transport=transport, levels=levels, replaces=research_mode == "on")
+            cost += spent
+            if not ran and research_mode == "on":
+                barrier = "research_failed"  # v1 did not run either: nobody read the web for this match
     if asks:
         counts["research_asked"] = len(asks)
         report.counts["research_asked"] += len(asks)

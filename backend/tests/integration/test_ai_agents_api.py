@@ -93,8 +93,13 @@ def test_the_overview_has_the_shape_the_page_reads(world: dict[str, Any]) -> Non
     assert set(o) == {"registry", "problems", "families", "decisions", "package", "queue", "audit", "settings"}
     assert o["problems"] == [] and o["settings"] == {"mode": "shadow", "package": True}
     built = {r["agent"]: r for r in o["registry"] if r["status"] == "built"}
-    assert {"brief", "reviewer", "extractor", "postmortem", "post_match_reviewer", "learning_analyst"} == set(built)
+    assert {"brief", "reviewer", "extractor", "postmortem", "post_match_reviewer", "learning_analyst", "claim_extractor"} == set(built)
     assert all(r["in_sync"] is True for r in built.values())
+    challenger = built["claim_extractor"]
+    assert (challenger["born_as"], challenger["baseline"], challenger["replaces"]) == ("CHALLENGER", False, "extractor"), (
+        "research v2's extractor is not the baseline: it runs beside the extractor of today and takes over only by a row the owner signs")
+    assert [r["agent"] for r in built.values() if r["baseline"] is True] == ["brief", "reviewer", "extractor", "postmortem", "post_match_reviewer",
+                                                                            "learning_analyst"]
     assert [f["family"] for f in o["families"]] == ["1X2", "DC", "AH", "OU", "BTTS", "CORNERS", "CARDS"]
     assert {f["engine"] for f in o["families"]} == {"llm"} and o["decisions"] == []
     p = o["package"]

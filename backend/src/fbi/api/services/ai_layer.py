@@ -18,6 +18,7 @@ from fbi.ai import costs as ai_costs
 from fbi.ai import shadow as ai_shadow
 from fbi.ai import user_budget
 from fbi.ai.config import AiSettings
+from fbi.ai.gates import typed_visible
 from fbi.ai.gating import enforcement
 from fbi.ai.text import shown as owner_text
 from fbi.ai.usage import budget
@@ -141,7 +142,7 @@ TODAY_SQL = """
 SELECT (SELECT count(*) FROM ai.match_packets WHERE built_at >= %(since)s) AS packets,
        (SELECT count(DISTINCT fixture_id) FROM ai.match_packets WHERE built_at >= %(since)s) AS matches,
        (SELECT count(*) FROM ai.match_analyses WHERE built_at >= %(since)s) AS analyses,
-       (SELECT count(*) FROM ai.evidence WHERE retrieved_at >= %(since)s) AS evidence,
+       (SELECT count(*) FROM ai.evidence WHERE retrieved_at >= %(since)s AND (subject_type IS NULL OR %(typed)s)) AS evidence,
        (SELECT count(*) FROM ai.pick_reviews WHERE engine = 'combined' AND reviewed_at >= %(since)s) AS reviews,
        (SELECT count(*) FROM ai.pick_reviews WHERE engine = 'llm' AND reviewed_at >= %(since)s) AS llm_reviews
 """
@@ -173,7 +174,7 @@ def overview(conn: Conn, *, at: datetime | None = None) -> Envelope[AiOverview]:
     settings = AiSettings.from_env()
     day = datetime.combine(at.astimezone(DAY_TZ).date(), time(0), tzinfo=DAY_TZ)
     enf = enforcement(conn, settings)
-    today = fetch_one(conn, TODAY_SQL, {"since": day}) or {}
+    today = fetch_one(conn, TODAY_SQL, {"since": day, "typed": typed_visible(conn, settings)}) or {}
     extra = ai_v2.overview_extra(conn, at=at, settings=settings)
     return ok(AiOverview(
         settings=settings.public(), budget=budget(conn, at=at, settings=settings).as_json(),
@@ -274,14 +275,14 @@ SELECT e.id, e.fixture_id, CASE WHEN f.id IS NULL THEN NULL ELSE th.name || ' - 
   LEFT JOIN core.teams th ON th.id = f.home_team_id LEFT JOIN core.teams ta ON ta.id = f.away_team_id
   LEFT JOIN core.teams t ON t.id = e.team_id
  WHERE (%(fixture)s::bigint IS NULL OR e.fixture_id = %(fixture)s) AND (%(status)s::text IS NULL OR e.status = %(status)s)
-   AND (%(fixture)s::bigint IS NOT NULL OR e.retrieved_at >= %(since)s)
+   AND (%(fixture)s::bigint IS NOT NULL OR e.retrieved_at >= %(since)s) AND (e.subject_type IS NULL OR %(typed)s)
  ORDER BY e.retrieved_at DESC, e.id DESC LIMIT %(limit)s
 """
 
 
 def evidence(conn: Conn, *, fixture_id: int | None, status: str | None, limit: int) -> Envelope[list[EvidenceRow]]:
     rows = fetch_all(conn, EVIDENCE_SQL, {"fixture": fixture_id, "status": status, "since": now() - timedelta(days=3),
-                                          "limit": limit})
+                                          "limit": limit, "typed": typed_visible(conn)})
     return listing([EvidenceRow.model_validate(r) for r in rows], empty_reason="no_evidence")
 
 
@@ -373,12 +374,12 @@ DASHBOARD_SQL = """
 SELECT (SELECT count(DISTINCT fixture_id) FROM ai.match_packets WHERE built_at >= %(since)s AND built_at < %(until)s)
            AS matches_analyzed,
        (SELECT count(*) FROM ai.match_packets WHERE built_at >= %(since)s AND built_at < %(until)s) AS packets,
-       (SELECT count(*) FROM ai.evidence WHERE retrieved_at >= %(since)s AND retrieved_at < %(until)s AND origin = 'web')
-           AS news,
+       (SELECT count(*) FROM ai.evidence WHERE retrieved_at >= %(since)s AND retrieved_at < %(until)s AND origin = 'web'
+          AND (subject_type IS NULL OR %(typed)s)) AS news,
        (SELECT count(*) FROM ai.evidence WHERE retrieved_at >= %(since)s AND retrieved_at < %(until)s
-          AND kind IN ('injury', 'suspension', 'doubtful')) AS injuries,
-       (SELECT count(*) FROM ai.evidence WHERE retrieved_at >= %(since)s AND retrieved_at < %(until)s AND kind = 'lineup')
-           AS lineups,
+          AND kind IN ('injury', 'suspension', 'doubtful') AND (subject_type IS NULL OR %(typed)s)) AS injuries,
+       (SELECT count(*) FROM ai.evidence WHERE retrieved_at >= %(since)s AND retrieved_at < %(until)s AND kind = 'lineup'
+          AND (subject_type IS NULL OR %(typed)s)) AS lineups,
        (SELECT count(*) FROM ai.match_packets p, jsonb_array_elements(p.content->'market'->'selections') s
          WHERE p.built_at >= %(since)s AND p.built_at < %(until)s AND abs((s->>'movement')::float) >= 0.03) AS market_moves,
        (SELECT count(*) FROM ai.pick_reviews WHERE engine = 'combined' AND reviewed_at >= %(since)s
@@ -450,7 +451,7 @@ def dashboard(conn: Conn, *, day: date | None = None) -> Envelope[EvolutionDashb
     d = day or now().astimezone(DAY_TZ).date()
     since = datetime.combine(d, time(0), tzinfo=DAY_TZ)
     until = since + timedelta(days=1)
-    counts = fetch_one(conn, DASHBOARD_SQL, {"since": since, "until": until}) or {}
+    counts = fetch_one(conn, DASHBOARD_SQL, {"since": since, "until": until, "typed": typed_visible(conn)}) or {}
     cost = Decimal(counts.pop("cost_usd", 0) or 0)
     v2 = ai_v2.day_counts(conn, day=d)
     v2.pop("cost", None)

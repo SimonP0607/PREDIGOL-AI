@@ -580,7 +580,7 @@ export interface IntelResearchCounts {
   asked: number;
   /** Requests it served (the web was read for them). */
   searched: number;
-  /** Requests it did not serve, by reason (no_allowance, near_budget, pass_budget, no_search_pass). */
+  /** Requests it did not serve, by reason (no_allowance, near_budget, pass_budget, no_search_pass, research_failed). */
   unserved: Record<string, number>;
   web_searches: number;
 }

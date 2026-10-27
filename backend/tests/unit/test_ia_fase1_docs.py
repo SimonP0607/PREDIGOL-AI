@@ -53,6 +53,7 @@ from fbi.ai.contracts.mcp import PassKind
 from fbi.ai.packet import PACKET_VERSION
 from fbi.ai.prompts import (
     BRIEF_VERSION,
+    EXTRACT_V2_VERSION,
     EXTRACT_VERSION,
     LEARNING_VERSION,
     PICK_PM_VERSION,
@@ -231,11 +232,11 @@ def test_every_variable_the_guide_names_is_read_by_the_code() -> None:
 
 # ── 2. the six contracts ──────────────────────────────────────────────────────────────────────────────────────────
 
-WRITERS = {"extractor": "extractor", "match": "Match Agent", "statistics": "Statistics Agent", "council": "Council",
+WRITERS = {"claim_extractor": "extractor", "match": "Match Agent", "statistics": "Statistics Agent", "council": "Council",
            "post_match_reviewer": "Post-Match Reviewer", "learning_analyst": "Learning Analyst"}
 
 LIMITS: dict[str, tuple[tuple[int, ...], tuple[str, ...]]] = {
-    "afirmaciones por página": ((claim.CLAIMS_MAX,), ("claim-v1",)),
+    "afirmaciones por respuesta": ((claim.CLAIMS_MAX,), ("claim-v1",)),
     "cita de una afirmación (caracteres)": ((claim.QUOTE_MAX,), ("claim-v1",)),
     "señales por evaluación": ((assessment.SIGNALS_MAX,), ("aa-v1",)),
     "candidatos por evaluación": ((assessment.CANDIDATES_MAX,), ("aa-v1",)),
@@ -260,7 +261,8 @@ def test_the_six_contracts_are_the_package_and_the_five_outputs_and_each_says_wh
     assert "mcp-v1" in rows[0][0] and "nunca un modelo" in rows[0][1]
     for row in rows[1:]:
         contract = ticked(row[0])
-        writers = {p.agent for p in registry.REGISTRY.planned if p.contract == contract}
+        writers = ({a.agent for a in registry.REGISTRY.agents if a.contract == contract}
+                   | {p.agent for p in registry.REGISTRY.planned if p.contract == contract})
         assert writers, contract
         for agent, name in WRITERS.items():
             assert (name in row[1]) is (agent in writers), (contract, name)
@@ -503,9 +505,15 @@ def test_the_agents_of_today_are_the_baseline_of_the_ledger() -> None:
     bullet = paragraph(sec, "* **Lo que el código tiene hoy")
     pairs = re.findall(r"`(\w+)` \(`([\w-]+)`\)", bullet)
     ledger = registry.REGISTRY.ledger
-    assert dict(pairs) == {r.agent: r.version for r in ledger} and len(pairs) == len(ledger) == len(registry.REGISTRY.agents) == 6
-    assert "Seis agentes" in bullet and "motor `llm`" in bullet
-    assert all(r.baseline and r.born_as == "CHAMPION" and re.fullmatch(r"ag[0-9a-f]{10}", r.fingerprint) for r in ledger)
+    assert dict(pairs) == {r.agent: r.version for r in ledger} and len(pairs) == len(ledger) == len(registry.REGISTRY.agents)
+    baseline = [r for r in ledger if r.baseline]
+    assert len(baseline) == 6 and "Seis agentes de línea base" in bullet and "motor `llm`" in bullet
+    assert all(r.born_as == "CHAMPION" and re.fullmatch(r"ag[0-9a-f]{10}", r.fingerprint) for r in baseline)
+    # what the plan has built since is another sentence of the bullet: born CHALLENGER, never a baseline
+    since = [r for r in ledger if not r.baseline]
+    assert [(r.agent, r.version) for r in since] == [("claim_extractor", EXTRACT_V2_VERSION)]
+    assert all(r.born_as == "CHALLENGER" and re.fullmatch(r"ag[0-9a-f]{10}", r.fingerprint) for r in since)
+    assert "Desde la fase 2 hay un séptimo**, `claim_extractor` (`extract-v2`)" in bullet and "**nace CHALLENGER**" in bullet
     assert f"`{registry.FINGERPRINT_VERSION}`" in bullet
     assert {a.agent for a in registry.REGISTRY.agents if a.retire_phase == 9} == {"brief", "reviewer"}
     assert "`brief` y `reviewer` llevan marcada su retirada en la fase 9" in bullet
@@ -682,16 +690,17 @@ def test_the_families_the_cases_and_the_bases_of_the_guide_are_the_corpus() -> N
     assert f"`{BATTERY_VERSION}`" in sec
     rows = table(sec, "| Familia")
     assert [ticked(r[0]) for r in rows] == list(FAMILIES) and len(FAMILIES) == 8
-    assert PER_FAMILY == 5 and CASES_PER_TARGET == 40 == MIN_CASES and len(TARGETS) == 2
-    assert "Ocho familias" in sec and "con cinco ataques cada una" in sec and "**80 casos, 40 por prompt**" in sec
+    assert PER_FAMILY == 5 and CASES_PER_TARGET == 40 == MIN_CASES and len(TARGETS) == 3
+    assert "Ocho familias" in sec and "con cinco ataques cada una" in sec and "**120 casos, 40 por prompt**" in sec
     assert "al menos 40 casos" in sec.replace("**", "")
     bases = paragraph(sec, "Cada caso cambia")
     assert tuple(all_ticked(bases)[:3]) == tuple(corpus.target("review").bases)
     assert tuple(all_ticked(bases)[3:6]) == tuple(corpus.target("extract").bases)
+    assert tuple(all_ticked(bases)[6:9]) == tuple(corpus.target("claims").bases)
     for target in TARGETS:
         assert len(corpus.cases_of(target)) == CASES_PER_TARGET
         assert {c.attack.family for c in corpus.cases_of(target)} == set(FAMILIES)
-    assert f"`{REVIEW_VERSION}`" in sec and f"`{EXTRACT_VERSION}`" in sec
+    assert f"`{REVIEW_VERSION}`" in sec and f"`{EXTRACT_VERSION}`" in sec and f"`{EXTRACT_V2_VERSION}`" in sec
     assert "`brief-v8`" in sec and registry.REGISTRY.agents[0].agent == "brief" and registry.REGISTRY.agents[0].retire_phase == 9
 
 
@@ -733,8 +742,8 @@ def test_a_first_round_is_what_the_guide_counts_and_what_it_costs_is_what_the_gu
             total += estimate_cost(tm.model, with_effort(task.request, task.tier), typical_output=task.typical_output, at=at)
         cost[target] = total
     everything = sum(cost.values(), D(0))
-    said(r"≈ US\$ (0,\d+)\*\* \(el revisor (0,\d+) y el extractor (0,\d+)\)", sec,
-         round(everything, 2), round(cost["review"], 2), round(cost["extract"], 2))
+    said(r"≈ US\$ (0,\d+)\*\* \(el revisor (0,\d+), el extractor (0,\d+) y el extractor de afirmaciones (0,\d+)\)", sec,
+         round(everything, 2), round(cost["review"], 2), round(cost["extract"], 2), round(cost["claims"], 2))
     (share,) = find(r"cerca del (\d+,\d+) % de los \d+ USD internos", sec)
     assert abs(everything / 15 * 100 - share) < D("0.1")
     said(r"de los (\d+) USD internos del LAB", sec, 15)
@@ -753,7 +762,7 @@ def test_the_commands_and_the_options_of_the_guide_are_the_ones_of_the_script() 
     named = set(re.findall(r"`(--[a-z-]+)", options))
     assert named == options_of(parser) - {"-h", "--help"}
     assert parser.parse_args(["collect", "--no-record"]).no_record and parser.parse_args(["plan", "--suffix", "2"]).suffix == "2"
-    assert parser.parse_args(["plan"]).targets == list(TARGETS) and "por defecto los dos" in options
+    assert parser.parse_args(["plan"]).targets == list(TARGETS) and "por defecto los tres" in options
     assert "`python -m scripts.ia_battery <comando>`" in sec
 
 
@@ -781,7 +790,7 @@ def test_the_exit_statuses_of_the_guide_are_the_ones_each_command_can_give(monke
     scenarios: dict[str, list[tuple[dict[str, Any], bool]]] = {
         "offline": [({}, True), ({}, False)],
         "plan": [({}, True), ({"blockers": ["x"]}, True)],
-        "submit": [({"submitted": 110}, True), ({"nothing_due": True}, True), ({"failed": 1}, True), ({"error": "x"}, True),
+        "submit": [({"submitted": 165}, True), ({"nothing_due": True}, True), ({"failed": 1}, True), ({"error": "x"}, True),
                    ({"blockers": ["x"]}, True)],
         "collect": [({"verdict": "PASA"}, True), ({"verdict": "NO PASA"}, True), ({"verdict": "INSUFICIENTE"}, True),
                     ({"state": "waiting"}, True), ({"state": "incomplete"}, True), ({"state": "nothing_submitted"}, True)],
@@ -848,7 +857,7 @@ def test_the_deviations_the_guide_declares_are_the_ones_the_code_shows() -> None
     sec = section(15)
     rows = table(sec, "| # | Qué")
     assert [r[0] for r in rows] == [str(i) for i in range(1, 7)]
-    assert "0,52" in rows[1][1] and "≈ 0,1 USD" in rows[1][1]
+    assert "0,53" in rows[1][1] and "≈ 0,1 USD" in rows[1][1]
     assert (ai_agents.AUDIT_RULES == ("slice_known", "review_known")) and "`agent_known`" in rows[5][1]
 
 
@@ -872,7 +881,7 @@ EXAMPLE_ONLY = "aa-v2"
 def versions_the_code_holds() -> set[str]:
     in_force = {base.MCP, *base.OUTPUTS, router.VERSION, idempotency.VERSION, package.VERSION, package.FAMILY_VERSION, PACKET_VERSION,
                 leakage.VERSION, match_runs.STATE_VERSION, BATTERY_VERSION, REVIEW_VERSION, EXTRACT_VERSION, POSTMORTEM_VERSION,
-                BRIEF_VERSION, PICK_PM_VERSION, LEARNING_VERSION, registry.FINGERPRINT_VERSION}
+                BRIEF_VERSION, PICK_PM_VERSION, LEARNING_VERSION, EXTRACT_V2_VERSION, registry.FINGERPRINT_VERSION}
     planned = {p.version for p in registry.REGISTRY.planned} | {t.prompt_version for p in registry.REGISTRY.planned for t in p.tasks}
     return in_force | planned
 

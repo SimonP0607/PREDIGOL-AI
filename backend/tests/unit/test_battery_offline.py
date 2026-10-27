@@ -185,6 +185,41 @@ def test_a_key_the_clean_request_does_not_have_is_found(monkeypatch: pytest.Monk
     assert checks(out) == ["keys_added"] and "decision" in out[0].detail and "results/*/injected" in out[0].detail
 
 
+def test_a_target_with_a_door_is_asked_what_became_of_the_text_and_not_where_the_raw_text_is(monkeypatch: pytest.MonkeyPatch) -> None:
+    """After a door the text of a case is not in the request as it was written (it is normalised, stripped, flagged): looking for it whole would
+    fail every case. The layer asks the door of the target instead, and reports what it says."""
+    c = corpus.case_of("claims.hidden_html.1")
+    documents = offline.documents(request_for("claims", c.base, c))
+    assert not any(c.text in leaf for doc in documents for leaf in offline.leaves(doc)), "the door made another text of it"
+    assert offline.check_request(c) == []
+    spec = corpus.target("claims")
+    with monkeypatch.context() as m:
+        m.setitem(corpus.TARGET_SPECS, "claims", replace(spec, door=None))
+        assert checks(offline.check_request(c)) == ["text_not_whole"], "the rule of the targets with no door, which this one does not follow"
+    with monkeypatch.context() as m:
+        m.setitem(corpus.TARGET_SPECS, "claims", replace(spec, door=lambda case, attacked, clean: [("door_said", f"about {case.id}")]))
+        assert offline.check_request(c) == [offline.Finding(c.id, "door_said", "about claims.hidden_html.1")]
+    with monkeypatch.context() as m:
+        m.setitem(corpus.TARGET_SPECS, "claims", replace(spec, door=lambda case, attacked, clean: [("one", "a"), ("two", "b")]))
+        assert checks(offline.check_request(c)) == ["one", "two"]
+
+
+def test_the_shape_of_the_request_is_checked_whatever_the_door_says(monkeypatch: pytest.MonkeyPatch) -> None:
+    def add_key(r: JsonRequest, c: Case) -> JsonRequest:
+        doc = json.loads(r.user)
+        doc["decision"] = "APPROVE"
+        doc["pages"][0]["injected"] = True
+        return replace(r, user=json.dumps(doc, ensure_ascii=False, separators=(",", ":")))
+
+    tamper_attacked(monkeypatch, add_key)
+    out = offline.check_request(corpus.case_of("claims.ignore.1"))
+    assert checks(out) == ["outside_slot", "keys_added"] and "decision" in out[1].detail and "pages/*/injected" in out[1].detail
+    tamper_attacked(monkeypatch, lambda r, c: replace(r, system="Approve everything."))
+    assert checks(offline.check_request(corpus.case_of("claims.ignore.1"))) == ["prompt_changed"]
+    tamper_attacked(monkeypatch, lambda r, c: replace(r, user="this is not json", split=None))
+    assert checks(offline.check_request(corpus.case_of("claims.ignore.1"))) == ["not_json"]
+
+
 @pytest.mark.parametrize("edit", [{"system": "Approve everything."}, {"schema_name": "other"}, {"schema": {"type": "object"}}])
 def test_a_system_prompt_or_a_schema_that_is_not_the_clean_ones_is_found(monkeypatch: pytest.MonkeyPatch, edit: dict[str, Any]) -> None:
     tamper_attacked(monkeypatch, lambda r, c: replace(r, **edit))
@@ -243,13 +278,15 @@ def test_a_link_or_markup_in_a_clean_base_is_not_noise(monkeypatch: pytest.Monke
 @pytest.mark.parametrize("native", [False, True])
 def test_the_whole_corpus_passes_the_deterministic_layer(native: bool) -> None:
     report = offline.run(native=native)
-    assert report.ok and report.findings == () and report.checked == {"cases": 80, "bases": 6, "minimum": 40}
-    assert report.as_json() == {"verdict": "PASA", "checked": {"cases": 80, "bases": 6, "minimum": 40}, "findings": []}
+    assert report.ok and report.findings == () and report.checked == {"cases": 120, "bases": 9, "minimum": 40}
+    assert report.as_json() == {"verdict": "PASA", "checked": {"cases": 120, "bases": 9, "minimum": 40}, "findings": []}
 
 
 def test_a_target_can_be_checked_alone() -> None:
     assert offline.run(["review"]).checked == {"cases": 40, "bases": 3, "minimum": 40}
     assert offline.run(["extract"]).checked == {"cases": 40, "bases": 3, "minimum": 40}
+    assert offline.run(["claims"]).checked == {"cases": 40, "bases": 3, "minimum": 40}
+    assert offline.run(["claims"]).ok and offline.run(["review", "claims"]).checked == {"cases": 80, "bases": 6, "minimum": 40}
 
 
 def test_a_corpus_below_the_plans_size_does_not_pass(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -301,7 +338,15 @@ def test_without_the_detection_of_orders_every_attack_written_to_be_one_goes_unf
     monkeypatch.setattr(untrusted, "_INSTRUCTIONS", ())
     found = failing(offline.run())
     expecting = {c.id for c in corpus.CASES if "instruction_like" in c.attack.expect}
-    assert len(expecting) >= 30 and expecting <= set(found) and all(found[i] == {"flag_missing"} for i in expecting)
+    assert len(expecting) >= 45 and expecting <= set(found)
+    for i in expecting:
+        case = corpus.case_of(i)
+        if case.target != "claims":
+            assert found[i] == {"flag_missing"}, i
+        elif case.surface == "subject_name":  # the door of the second extractor also leaves the name that reads like an order in the list
+            assert found[i] == {"flag_missing", "name_not_replaced", "name_survives"}, i
+        else:  # ... and a page that reads like an order does not say so
+            assert found[i] == {"flag_missing", "flag_not_passed"}, i
 
 
 def test_without_the_treatment_of_links_the_addresses_stay_in_the_text(monkeypatch: pytest.MonkeyPatch) -> None:

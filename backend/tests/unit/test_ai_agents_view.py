@@ -49,7 +49,10 @@ def test_a_built_agent_shows_the_version_in_force_and_that_the_code_is_the_one_r
         assert view.version == entry.version and view.fingerprint == entry.fingerprint
         assert re.fullmatch(r"ag[0-9a-f]{10}", view.fingerprint or "")
         assert view.in_sync is True, f"{spec.agent}: the fingerprint of the code that runs is the one the ledger holds"
-        assert view.baseline is True and view.born_as == "CHAMPION", "the agents that already ran are recorded as the baseline, born champion"
+        if entry.baseline:
+            assert view.baseline is True and view.born_as == "CHAMPION", "the agents that already ran are recorded as the baseline, born champion"
+        else:
+            assert view.baseline is False and view.born_as == "CHALLENGER", "an agent built later is born a challenger"
         assert view.registered_at == entry.registered_at
         assert view.history == [r.version for r in agents.REGISTRY.history(spec.agent)]
         assert view.purpose == spec.purpose and view.contract == spec.contract and view.reads == spec.reads

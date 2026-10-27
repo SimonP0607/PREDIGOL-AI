@@ -37,11 +37,12 @@ from fbi.api.contracts.ai_layer import (
     RunQueued,
     SourceRow,
 )
+from fbi.api.contracts.ai_research import ResearchOverview
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
 from fbi.api.security import Admin, App
-from fbi.api.services import ai_agents, ai_layer, ai_v2, daily_review, match_memory
+from fbi.api.services import ai_agents, ai_layer, ai_research, ai_v2, daily_review, match_memory
 from fbi.api.services.match_memory import MatchMemory, MemoryFilters
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
@@ -166,6 +167,15 @@ def get_research(conn: Db, day: Day = None) -> Envelope[list[ResearchRow]]:
     """INVESTIGACIONES: per match, the searches (when, cost, outcome) and the evidence with its source, link, dates,
     level, status, first and last seen."""
     return ai_v2.research(conn, day=day)
+
+
+@admin_router.get("/ai/research/entities", response_model=Envelope[ResearchOverview])
+def get_research_entities(conn: Db, days: Annotated[int, Query(ge=1, le=30)] = 7) -> Envelope[ResearchOverview]:
+    """INVESTIGACIÓN POR ENTIDAD Y TEMA (plan IA, phase 2): the mode of research v2 and the evidence behind it, how fresh the answer kept for each topic is
+    and how often it was reused instead of searched again, the answers kept entity by entity, the typed claims by class of source and by status, what
+    each day's passes needed, paid, borrowed and reused, the Exa spend of v1 and of v2, v1 against v2 over the window and the gate evaluated now.
+    Reading only: it searches nothing, calls no model and records no verdict."""
+    return ai_research.overview(conn, days=days)
 
 
 @admin_router.get("/ai/postmortems", response_model=Envelope[list[PickPostmortemRow]])

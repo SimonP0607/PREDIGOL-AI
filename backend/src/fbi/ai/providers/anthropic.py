@@ -38,6 +38,7 @@ from typing import Any, Literal
 
 import httpx
 
+from fbi.ai.providers import structured
 from fbi.ai.providers.base import (
     JsonRequest,
     LlmResult,
@@ -149,7 +150,8 @@ def _cache_control(ttl: Literal["5m", "1h"]) -> dict[str, str]:
 def build_body(model: str, request: JsonRequest, *, forced: bool, effort: str | None, native: bool, cache: bool = False,
                long_ttl: bool = True) -> dict[str, Any]:
     """The Messages API body of a request. The text sent is the request's: ``cache`` only MARKS blocks (so a cached call and
-    an uncached one read the same prompt), ``native`` moves the schema from a tool to ``output_config.format``."""
+    an uncached one read the same prompt), ``native`` moves the schema from a tool to ``output_config.format`` - in the form the API
+    accepts (``structured.accepted``; the original schema's constraints stay enforced by the validators of each answer)."""
     system = request.system if (forced or native) else request.system + ANSWER_THROUGH_TOOL.format(name=request.schema_name)
     body: dict[str, Any] = {"model": model, "max_tokens": request.max_tokens}
     body["system"] = ([{"type": "text", "text": system, "cache_control": _cache_control("1h" if long_ttl else "5m")}]
@@ -164,8 +166,8 @@ def build_body(model: str, request: JsonRequest, *, forced: bool, effort: str | 
     config: dict[str, Any] = {}
     if effort is not None:
         config["effort"] = effort
-    if native:
-        config["format"] = {"type": "json_schema", "schema": request.schema}
+    if native:  # the API takes a subset of JSON Schema: what it refuses moves into the descriptions (``structured``)
+        config["format"] = {"type": "json_schema", "schema": structured.accepted(request.schema)}
     else:
         body["tools"] = [{"name": request.schema_name, "description": "Submit the answer. Call exactly once.",
                           "input_schema": request.schema}]

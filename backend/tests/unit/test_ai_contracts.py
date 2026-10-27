@@ -10,7 +10,7 @@ import pytest
 from pydantic import ValidationError
 
 from fbi.ai import research
-from fbi.ai.contracts import ACCEPTS, CONTRACTS, MAX_RAW, parse, schema_of
+from fbi.ai.contracts import ACCEPTS, CONTRACTS, MAX_RAW, decode, parse, schema_of
 from fbi.ai.contracts import assessment as aa
 from fbi.ai.contracts import claim as cl
 from fbi.ai.contracts import council as cd
@@ -255,6 +255,21 @@ def test_an_answer_that_is_not_what_was_asked_is_a_problem_and_never_an_exceptio
     assert parse("aa-v1", "[" * 100_000).problems == ("not_json",)
     assert parse("aa-v1", b"\xff\xfe\x00").problems == ("not_json",)
     assert not parse("aa-v1", "{}").ok
+
+
+def test_the_first_door_of_parse_is_a_door_of_its_own_for_the_one_who_must_look_before_the_contract_does() -> None:
+    """``decode`` is what ``parse`` does first, with the same closed words: a reader that repairs what the contract cannot carry (the claims of
+    the extractor of the Research Service v2) goes through it, so that there is one way to say «this is not an answer»."""
+    assert decode({"a": 1}) == ({"a": 1}, ())
+    assert decode('{"a": 1}') == ({"a": 1}, ()) and decode(b'{"a": 1}') == ({"a": 1}, ())
+    assert decode("not json at all") == (None, ("not_json",)) and decode("") == (None, ("not_json",))
+    assert decode("[1, 2]") == (None, ("not_an_object",)) and decode("3") == (None, ("not_an_object",)) and decode("null") == (None, ("not_an_object",))
+    assert decode([1, 2]) == (None, ("not_an_object",)) and decode(None) == (None, ("not_an_object",)) and decode(7) == (None, ("not_an_object",))
+    assert decode("[" * 100_000) == (None, ("not_json",)) and decode(b"\xff\xfe\x00") == (None, ("not_json",))
+    edge = '{"a": 1}' + " " * (MAX_RAW - len('{"a": 1}'))
+    assert len(edge) == MAX_RAW and decode(edge) == ({"a": 1}, ()), "the longest answer that is read"
+    assert decode(edge + " ") == (None, ("too_long",)) and decode(("x" * (MAX_RAW + 1)).encode()) == (None, ("too_long",))
+    assert parse("aa-v1", edge).problems == ("wrong_contract",), "parse reads what decode lets through"
 
 
 def test_a_problem_names_where_and_what_kind_and_never_repeats_what_the_model_wrote() -> None:

@@ -20,6 +20,11 @@ name the ``models`` it was measured with; another model is not covered by it.
 The gate ``battery`` (phase 1) switches nothing: it is the evidence that the prompts which read text someone else wrote do not follow it
 (``fbi.ai.battery``), which Gate B of the plan needs green.
 
+The gate ``research_v2`` (phase 2) is the one switch that is not in ``SWITCH_ENV``: ``FBI_AI_RESEARCH_V2`` has three words, not two
+(``off`` | ``shadow`` | ``on``) and only the last one changes what a reviewer reads. ``shadow`` and ``off`` need no evidence;
+``on`` - research v2 REPLACES v1's and the packet shows what it wrote - needs the newest row of this gate to say it passed: the week in
+which both researches ran side by side, measured (``research_mode``).
+
 Nothing here reads a key and nothing changes a probability, a threshold or a pick."""
 
 from __future__ import annotations
@@ -34,9 +39,9 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from fbi.ai.config import SWITCH_ENV, AiSettings
+from fbi.ai.config import SWITCH_ENV, AiSettings, ResearchMode
 
-GATES = ("batch", "native_schema", "cache_layout", "gate_a", "battery")
+GATES = ("batch", "native_schema", "cache_layout", "gate_a", "battery", "research_v2")
 AUTO_WITHOUT_EVIDENCE: dict[str, bool] = {"cache": True, "brief_material": True, "budget_v3": True, "batch": False,
                                           "native_schema": False}
 """What ``auto`` means for each switch when no gate is needed (True) or one is (False)."""
@@ -108,6 +113,39 @@ def enabled(conn: psycopg.Connection[Any], settings: AiSettings, name: str, *, m
         return True
     gate = GATE_OF.get(name)
     return gate is not None and gate_state(conn, gate).covers(model)
+
+
+def research_mode(conn: psycopg.Connection[Any], settings: AiSettings) -> ResearchMode:
+    """What the research of an entity does now (``fbi.ai.entity_research``): the owner's word (``FBI_AI_RESEARCH_V2``), except that ``on`` - which
+    replaces v1's research and puts what v2 wrote in front of the reviewers - holds only while the NEWEST evidence of the ``research_v2`` gate says
+    it passed; without it, or after a failing re-run, ``on`` is ``shadow``. ``off`` and ``shadow`` change nothing a reviewer reads, so they need
+    no evidence."""
+    if settings.research_v2 == "on" and not gate_state(conn, "research_v2").passed:
+        return "shadow"
+    return settings.research_v2
+
+
+def typed_visible(conn: psycopg.Connection[Any], settings: AiSettings | None = None) -> bool:
+    """Whether the claims of research v2 (``ai.evidence.subject_type`` not NULL) are part of what the system reads and shows: only while research v2 is
+    ``on`` (``research_mode``). In ``shadow`` they are written for the comparison and nobody reads them - not the packet, not the daily set's context,
+    not the post-match review, not the panels: every reader of ``ai.evidence`` that is not research v2 itself asks this and filters on it. With the
+    owner's word ``off`` or ``shadow`` it costs no query."""
+    return research_mode(conn, settings or AiSettings.from_env()) == "on"
+
+
+def research_describe(conn: psycopg.Connection[Any], settings: AiSettings) -> dict[str, Any]:
+    """The research of an entity for the admin panel and the run reports: what the owner asked, what the cycle does and why. Names and states only."""
+    asked, doing = settings.research_v2, research_mode(conn, settings)
+    state = gate_state(conn, "research_v2")
+    if asked == "off":
+        why = "off: the cycle does not know research v2 (FBI_AI_RESEARCH_V2=off)"
+    elif asked == "shadow":
+        why = "shadow: it runs after v1's research and writes evidence no packet shows; v1 decides"
+    elif doing == "on":
+        why = "on: the research_v2 gate passed - v2 replaces v1's research and the packet shows what it wrote"
+    else:
+        why = "asked on, running as shadow: waiting for the research_v2 gate's evidence (or its newest run failed)"
+    return {"asked": asked, "mode": doing, "why": why, "gate": state.as_json()}
 
 
 def layout_shared(conn: psycopg.Connection[Any], settings: AiSettings, *, model: str | None = None) -> bool:

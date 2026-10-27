@@ -24,6 +24,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
+from fbi.ai.gates import typed_visible
 from fbi.intel import postmortem
 
 VERSION = "learn-report-v1"
@@ -96,8 +97,8 @@ def build_report(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> d
                     "WHERE s.day = %s AND s.source = 'evaluation' GROUP BY 1", (day,))
         v5 = [dict(r) for r in cur.fetchall()]
         cur.execute("SELECT origin, status, source_tier, count(*) AS n FROM ai.evidence e JOIN core.fixtures f "
-                    "ON f.id = e.fixture_id WHERE f.kickoff_at >= %s AND f.kickoff_at < %s GROUP BY 1, 2, 3 "
-                    "ORDER BY 4 DESC", (start, end))
+                    "ON f.id = e.fixture_id WHERE f.kickoff_at >= %s AND f.kickoff_at < %s "
+                    "AND (e.subject_type IS NULL OR %s) GROUP BY 1, 2, 3 ORDER BY 4 DESC", (start, end, typed_visible(conn)))
         evidence = [dict(r) for r in cur.fetchall()]
         cur.execute("SELECT purpose, tier, count(*) AS calls, sum(cost_usd)::float8 AS usd FROM ai.usage "
                     "WHERE at >= %s AND at < %s GROUP BY 1, 2 ORDER BY 4 DESC", (start, end))

@@ -119,8 +119,12 @@ def check_request(case: Case, *, native: bool = False) -> list[Finding]:
         return [Finding(case.id, "not_json", "the user message of the request is not JSON")]
     if len(docs) != len(base_docs):
         return [Finding(case.id, "layout", "the request has another layout than the clean one")]
-    if not any(case.text in leaf for doc in docs for leaf in leaves(doc)):
-        found.append(Finding(case.id, "text_not_whole", "the text is not found, whole, in one string of the request"))
+    door = target(case.target).door
+    if door is None:
+        if not any(case.text in leaf for doc in docs for leaf in leaves(doc)):
+            found.append(Finding(case.id, "text_not_whole", "the text is not found, whole, in one string of the request"))
+    else:
+        found += [Finding(case.id, check, detail) for check, detail in door(case, attacked, clean)]
     extra = sorted({"/".join(p) for d, b in zip(docs, base_docs, strict=True) for p in set(key_paths(d)) - set(key_paths(b))})
     if extra:
         found.append(Finding(case.id, "keys_added", f"the request has keys the clean one has not: {extra[:6]}"))

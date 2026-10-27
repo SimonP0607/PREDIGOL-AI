@@ -1458,5 +1458,308 @@
         "budget_skip": "No budget"
       }
     }
+  },
+  "topics": {
+    "intro": "How the AI researches by entity and topic (AI plan, phase 2): the answer the cache keeps for each team or match on each topic, how fresh it is, how often it was reused instead of searched again and the class of source of each claim. Beside that, the comparison with research v1 and the gate that decides whether v2 may replace it. Reading only: nothing here searches, calls a model, writes a claim or changes the switch.",
+    "attention": {
+      "title": "What to look at",
+      "none": "Nothing to attend to: no part of the page failed, research v2 neither failed nor was cut short and no page is flagged.",
+      "part_unavailable": "Parts of this page that could not be computed: {n}",
+      "v2_failed": "Passes in which research v2 failed: {n}",
+      "v2_cut": "Passes in which research v2 was cut short (budget or an outage of the search): {n}",
+      "not_running": "The switch is not off, but no pass of the window ran research v2",
+      "held_as_shadow": "“on” was asked for, but the gate has not passed: v2 keeps running in shadow, beside v1",
+      "claims_flagged": "Claims read from pages that sounded like an order to a model: {n}",
+      "pages_flagged": "Pages flagged because they looked like an instruction: {n}",
+      "unreadable": "Rows of the entity cache this code cannot read: {n}"
+    },
+    "switch": {
+      "title": "Research v2 switch",
+      "subtitle": "What the owner asked for (FBI_AI_RESEARCH_V2) and what the cycle does with it. “on” holds only if the newest evaluation of the gate passed; until then v2 runs in shadow beside v1 and only v1 decides.",
+      "asked": "Asked",
+      "mode": "In force",
+      "typed": "Typed claims",
+      "typedVisible": "The system reads them",
+      "typedHidden": "Hidden: only measured",
+      "gate": "Gate of v2",
+      "gateState": {
+        "never": "Never recorded",
+        "passed": "Passed on {date}",
+        "failed": "Did not pass on {date}"
+      },
+      "state": {
+        "off": "Off: v1 researches alone",
+        "shadow": "Shadow: v2 runs beside v1 and nobody reads its work",
+        "on": "In force: v2 replaces v1",
+        "held": "Asked “on” and held as shadow: the gate has not passed"
+      },
+      "history": {
+        "title": "Recorded verdicts of the gate",
+        "hint": "Every recorded evaluation of the gate “research_v2”. Rows are only ever added: the newest decides.",
+        "empty": "The gate was never recorded. It is evaluated and recorded with python -m scripts.ia_research_gate evaluate --record, and only with a PASA or NO PASA verdict.",
+        "passed": "Passed",
+        "failed": "Did not pass",
+        "col": {
+          "when": "When",
+          "verdict": "Verdict",
+          "by": "Recorded by",
+          "version": "Code version",
+          "hash": "Evidence fingerprint"
+        }
+      }
+    },
+    "gate": {
+      "title": "Gate of research v2",
+      "subtitle": "What decides whether v2 may replace v1: seven complete Bogotá days with v2 in shadow in every pass, and seven checks. Evaluating it writes nothing and never stands in for real evidence.",
+      "none": "This page has no evaluation of the gate to show.",
+      "evaluatedAt": "Evaluated on {at}",
+      "verdict": {
+        "pass": "PASSES",
+        "fail": "DOES NOT PASS",
+        "pending": "PENDING ON REAL TIME"
+      },
+      "window": {
+        "days": "Complete days with v2 in shadow",
+        "daysOf": "{n} of {total}",
+        "range": "Window evaluated",
+        "since": "First day of the run",
+        "eligible": "First day it can be evaluated",
+        "anchoredBy": "What sets the start"
+      },
+      "pendingTitle": "What is missing",
+      "col": {
+        "check": "Check",
+        "result": "Result",
+        "detail": "Detail",
+        "revert": "If it fails, roll back"
+      },
+      "check": {
+        "window": "Seven complete days with v2 in shadow",
+        "fewer_searches": "Fewer searches than v1",
+        "coverage": "Coverage of v1’s evidence (≥ 95 %)",
+        "coverage_players": "Coverage of who can play (≥ 95 %)",
+        "shadow_invisible": "In shadow nothing cites v2",
+        "evidence_known": "Nightly audit “evidence_known” with no violations",
+        "sample": "Enough matches and facts compared"
+      },
+      "mark": {
+        "yes": "Yes",
+        "no": "No",
+        "pending": "Pending"
+      },
+      "consequenceTitle": "Consequence",
+      "preview": {
+        "title": "What the days gone show",
+        "hint": "Not evidence of the gate: only the figures of the complete days it has run with v2 in shadow.",
+        "figure": {
+          "passes_compared": "Passes compared",
+          "searches_v1": "Searches of v1",
+          "searches_v2_alone": "Searches of v2 on its own",
+          "saved_pct": "Searches saved",
+          "reuse_pct": "Reuse",
+          "fixtures": "Matches with facts of v1",
+          "facts_v1": "Facts of v1",
+          "facts_v2": "Facts of v2",
+          "coverage_pct": "Coverage of v1",
+          "coverage_players_pct": "Coverage of who can play"
+        }
+      },
+      "recordNote": "This page only reads. The gate is evaluated and recorded from the server with python -m scripts.ia_research_gate evaluate --record, and only a PASA or NO PASA verdict is recorded; the figures that come before a PENDIENTE do not count."
+    },
+    "comparison": {
+      "title": "Research v1 against v2",
+      "subtitle": "The gate’s own arithmetic over the window of this page, pass by pass: v1 decides and v2 runs behind it without anybody reading its work. A reading of the days gone, not evidence.",
+      "range": "From {first} to {last}.",
+      "none": "No pass of the window ran research v2 beside v1: there is nothing to compare yet.",
+      "stat": {
+        "passes": "Passes compared",
+        "passesHint": "{n} in shadow · {failed} with a v2 failure · {cut} cut short",
+        "searchesV1": "Searches of v1",
+        "searchesV2": "Searches of v2 on its own",
+        "searchesV2Hint": "The ones it paid plus the ones the search cache answered: what it would have paid without v1 beside it",
+        "saved": "Searches saved",
+        "reuse": "Reuse",
+        "reuseHint": "Answers still fresh over everything v2 needed",
+        "coverage": "Coverage of v1",
+        "coverageHint": "{found} of {facts} facts of v1 were found by v2 too",
+        "players": "Coverage of who can play",
+        "playersHint": "Only the facts about players and coaches",
+        "perMatch": "Facts per match (v1 · v2)",
+        "perMatchHint": "Over {n} matches with facts of v1",
+        "exaV1": "Exa spend of v1",
+        "exaV2": "Exa spend of v2",
+        "exaSearches": "{n} searches",
+        "extractor": "Extractor calls",
+        "invalid": "Invalid extractor outputs",
+        "invalidHint": "Answers of the model that did not meet the claim-v1 contract"
+      },
+      "missed": {
+        "title": "Facts of v1 that v2 did not find",
+        "hint": "Match · side · who · class of source. Examples, not the complete list.",
+        "none": "v2 found every fact of v1 in the window, or v1 found none."
+      }
+    },
+    "freshness": {
+      "title": "Freshness by topic",
+      "subtitle": "The cache keeps a single answer per entity and topic, shared by every match and agent that needs it. How long it holds depends on how close the kick-off is.",
+      "topic": {
+        "availability": "Availability",
+        "confirmation": "Confirmation",
+        "preview": "Preview"
+      },
+      "col": {
+        "topic": "Topic",
+        "entity": "About",
+        "levels": "Levels",
+        "rule": "Validity (far / near)",
+        "entries": "Kept",
+        "fresh": "Fresh",
+        "expired": "Expired",
+        "reuses": "Reused",
+        "newest": "Newest",
+        "lastReuse": "Last reuse"
+      },
+      "window": "“Near” is the last {n} h before the nearest kick-off of the entity; “far” is everything before. The closer the kick-off, the sooner an answer expires.",
+      "empty": "The cache keeps no answer by entity yet: v2 has not searched anything.",
+      "unreadable": "Rows of the entity cache with a key this code does not read: {n}. They are counted, not interpreted."
+    },
+    "entity": {
+      "TEAM": "Team",
+      "PLAYER": "Player",
+      "COACH": "Coach",
+      "REFEREE": "Referee",
+      "MATCH": "Match",
+      "COMPETITION": "Competition"
+    },
+    "answers": {
+      "title": "Answers kept",
+      "subtitle": "The newest in the cache, with the claims they left in the last {days} days.",
+      "empty": "The cache keeps no answer by entity yet.",
+      "col": {
+        "entity": "Entity",
+        "topic": "Topic",
+        "level": "Level",
+        "results": "Results",
+        "standing": "Source of known standing",
+        "tiers": "Results by tier of source",
+        "fetched": "Searched",
+        "state": "State",
+        "reuses": "Reused",
+        "claims": "Claims"
+      },
+      "standing": {
+        "yes": "Yes",
+        "no": "No"
+      },
+      "tier": {
+        "official": "Official",
+        "competition": "Competition",
+        "club": "Club",
+        "provider": "Provider",
+        "journalist": "Journalist",
+        "media": "Media",
+        "aggregator": "Aggregator",
+        "social": "Social",
+        "unknown": "Unknown"
+      },
+      "fresh": {
+        "yes": "Fresh",
+        "no": "Expired"
+      },
+      "until": "until {at}",
+      "claimsFresh": "({n} current)"
+    },
+    "claims": {
+      "title": "Claims by class of source and state",
+      "subtitle": "What v2 wrote in the window as typed claims: who said it (the class of source), what it is about (the type) and the state it ended in.",
+      "empty": "v2 wrote no typed claim in the window.",
+      "stat": {
+        "total": "Claims",
+        "fresh": "Current",
+        "entity": "About an entity",
+        "entityHint": "A team or a player with no match: the next match of the team reads them too",
+        "match": "About a match",
+        "flagged": "From flagged pages",
+        "flaggedHint": "Read from a page that sounded like an order to a model: they count as an unknown source"
+      },
+      "status": {
+        "CONFIRMED": "Confirmed",
+        "PROBABLE": "Probable",
+        "RUMOR": "Rumours",
+        "CONTRADICTORY": "Contradictory",
+        "OUTDATED": "Outdated"
+      },
+      "byClass": "By class of source",
+      "byClassHint": "From the one that settles a fact (official, provider) to the one that settles none (social, unknown).",
+      "byType": "By type of claim",
+      "class": {
+        "OFFICIAL": "Official",
+        "PROVIDER": "Data provider",
+        "JOURNALIST": "Journalist",
+        "RELIABLE_MEDIA": "Reliable media",
+        "LOCAL_MEDIA": "Local media",
+        "AGGREGATOR": "Aggregator",
+        "SOCIAL": "Social",
+        "UNKNOWN": "Unknown"
+      },
+      "type": {
+        "OUT": "Out",
+        "DOUBT": "Doubt",
+        "AVAILABLE": "Available",
+        "STARTER": "Starter",
+        "SUSPENSION": "Suspension",
+        "COACH": "Coach",
+        "SCHEDULE": "Schedule",
+        "VENUE": "Venue",
+        "OTHER": "Other"
+      },
+      "col": {
+        "class": "Class of source",
+        "type": "Type",
+        "total": "Total",
+        "fresh": "Current"
+      },
+      "silent": "Classes of source with no claim at all in the window: {list}"
+    },
+    "days": {
+      "title": "Day by day of the cycle",
+      "subtitle": "By Bogotá day, what each pass of the cycle did: how many ran v2, how many searches were needed, how many were paid, how many the search cache answered and how many a fresh answer spared.",
+      "hint": "Searches of v1: v1’s own. Needed: what v2 needed because the answer of the entity was not fresh. Paid: what v2 paid. Shared: what the search cache already had paid by v1 or by an earlier pass (v2 would have paid for them on its own). Reused: entity answers still fresh, that is, searches that did not have to be asked for. Reuse = reused / (reused + needed).",
+      "total": "Total",
+      "known": "({n} known)",
+      "new": "({n} new)",
+      "col": {
+        "day": "Day",
+        "passes": "Passes",
+        "v2": "With v2",
+        "failed": "Failed",
+        "cut": "Cut short",
+        "searches": "Searches of v1",
+        "demand": "Needed",
+        "paid": "Paid",
+        "shared": "Shared",
+        "reused": "Reused",
+        "reuse": "Reuse",
+        "pages": "Pages",
+        "claims": "Claims",
+        "exaV1": "Exa v1",
+        "exaV2": "Exa v2"
+      }
+    },
+    "pages": {
+      "title": "Pages read",
+      "subtitle": "v2 remembers every page it read: if it already read it for the same subjects, it does not show it to the extractor again.",
+      "stat": {
+        "remembered": "Pages remembered",
+        "fresh": "Still current",
+        "reuses": "Reuses",
+        "read": "Read in the window",
+        "known": "Already known",
+        "unread": "Unread",
+        "unreadHint": "Beyond the six most reliable pages of each pass",
+        "flagged": "Flagged",
+        "flaggedHint": "They looked like an instruction to a model: their text is treated as untrusted"
+      }
+    }
   }
 }

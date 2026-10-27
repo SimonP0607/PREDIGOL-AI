@@ -11,6 +11,7 @@ from collections.abc import Callable
 from typing import Any
 
 from fbi.ai.pricing import approx_tokens
+from fbi.ai.providers import structured
 from fbi.ai.providers.anthropic import AnthropicBatches, BatchResult
 from fbi.ai.providers.base import JsonRequest, LlmResult, LlmUsage, ProviderError
 
@@ -54,7 +55,8 @@ class FakeBatches:
     ``in_progress`` and stays so until the test ends it (``end``), when each of its requests is answered by the script (the same
     kind of function ``FakeProvider`` has) or by the outcome the test scripted for its ``custom_id`` (``outcomes``: ``errored``,
     ``canceled``, ``expired``, ``refused``: a message without the answer, ``cut``: an answer that is not valid JSON for the
-    schema). It checks what the real API checks - the ``custom_id`` shape and its being unique in the batch - and it keeps what it
+    schema). It checks what the real API checks - the ``custom_id`` shape and its being unique in the batch, and that a structured-output ask carries a schema the
+    API takes (else that ask ends ``errored``, as the 210 of the equivalence experiment did) - and it keeps what it
     was asked (``created``, ``polls``) so a test can say exactly what was sent."""
 
     CUSTOM_ID = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
@@ -165,6 +167,8 @@ class FakeBatches:
         if canceling and outcome is None:
             return BatchResult(custom_id, "canceled")
         request = self._request(params)
+        if request.native_schema and structured.problems(request.schema):  # what the real API did on 26 Oct 2026: the batch is taken, the ask errors
+            return BatchResult(custom_id, "errored", error_type="invalid_request_error")
         data = self._script(request)
         text_in = request.system + request.user_text + json.dumps(request.schema)
         out_tokens = self._output_tokens if self._output_tokens is not None else approx_tokens(json.dumps(data))

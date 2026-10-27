@@ -1,6 +1,6 @@
 # Fase 0 del Plan Maestro IA · Eficiencia, coste y medición
 
-Fecha: 25 oct 2026. Estado: **código terminado en la rama `ia/p0`, sin desplegar** (el primer despliegue lleva la migración 0110 y necesita su ventana). Fuente: Plan Maestro IA (aprobado), fase 0 y secciones 19, 24, 26, 28, 29, 32 y 34.
+Fecha: 25 oct 2026, puesta al día el 27 oct 2026. Estado a 27 oct: **desplegada el 26 oct 2026 (paquete `ia-p01`, junto con la Fase 1, Alembic 0113) y en medición**: el Gate A necesita siete días completos reales y su primer día evaluable es el 3 nov 2026 (sección 15). Fuente: Plan Maestro IA (aprobado), fase 0 y secciones 19, 24, 26, 28, 29, 32 y 34.
 
 Este documento dice lo que hace el código y **lo vigila una prueba** (`tests/unit/test_ia_fase0_docs.py`): si una cifra de aquí y una constante del código dejan de coincidir, la prueba falla hasta que se corrija una de las dos. Lo que es tuyo (claves, topes de la Console) está en `IA_ACCIONES_MANUALES.md`; el punto de partida medido, en `IA_BASELINE_F0.md`.
 
@@ -184,6 +184,14 @@ La regla de cada gate está escrita antes de los datos (`lab.assess`, versión `
 
 El veredicto de cada variante es `PASA`, `NO PASA` o `INSUFICIENTE`. La evidencia guarda **las letras de cada entrada** (`A` aprobar, `D` degradar, `R` rechazar, `S` abstenerse, `-` inválida), de modo que cualquiera puede recalcular la decisión, y el Gate A lo hace. Una repetición que falla cierra un gate que una que pasó había abierto; cada intento es una fila de `ai.feature_gates`. Opciones de `ia_equivalence`: `--tier` (por defecto `analysis`: el gate nombra el modelo y otro no queda cubierto), `--inputs` (por defecto 210), `--since-days` (21), `--experiment`, `--no-record` y `--dsn`.
 
+**Primer experimento (LAB, 26 y 27 oct 2026).** Lo que salió, tal como lo escribió el libro:
+
+* **`batch`: pasó.** La sonda real de Batch dejó su fila a las 00:02 UTC del 27 oct y Batch quedó encendido en producción por `auto`.
+* **`cache_layout`: `NO PASA`.** Poner el bloque común del partido primero cambió el veredicto en 29 de las 208 entradas completas; repetir la misma llamada lo cambió en 5. Con el prompt de revisión de hoy ese orden no es equivalente, así que sigue apagado.
+* **`native_schema`: `INSUFICIENTE`, por un defecto mío y no del modelo.** El código mandaba el esquema de la revisión tal cual a las salidas estructuradas y la API rechazó las 210 peticiones (`invalid_request_error`): acepta un subconjunto de JSON Schema, sin `minimum`, `maximum`, `maxLength` ni `maxItems`, y ese esquema los usa. Ninguna de las 210 fue una respuesta del modelo y ninguna cuenta como veredicto. Está corregido (commit `f2f2e114`, `fbi.ai.providers.structured`): lo que se envía lleva esas restricciones escritas en las descripciones, el validador de cada respuesta sigue siendo el esquema original, y una prueba recorre los nueve esquemas que la plataforma pide a un modelo para que ninguno vuelva a salir rechazado. **No se vuelve a medir antes del Gate A**: una repetición que pase enciende el gate `native_schema` y movería el inicio de la ventana de siete días.
+
+Una cuenta honesta de lo que esto vale: con estos esquemas, el ahorro que cabe esperar de las salidas estructuradas es pequeño (estimación mía, sin medir), y el bloque común primero no se aplica al prompt de revisión actual. El ahorro que sostiene el coste es el de la caché de las instrucciones y el de Batch, y lo medirá el Gate A sobre los siete días reales.
+
 ## 10. El Gate A: cuándo termina la Fase 0
 
 «Un gate no se aprueba por esta frase»: el Gate A pasa solo con lo que el libro muestra sobre **7 días completos** del sistema real, con **una** sola configuración. Nada se simula y nada se da por pasado.
@@ -200,14 +208,14 @@ El veredicto de cada variante es `PASA`, `NO PASA` o `INSUFICIENTE`. La evidenci
 | `cost_heavy` | en un mes pesado (+25 %), producción sola de 185 USD como máximo; el LAB cede lo que pase de 190 | plan |
 | `coverage` | partidos informados, pasadas `first`, `pre` y `final` hechas y candidatos con revisión de modelo: cada uno como mucho 2 puntos por debajo de la línea base | plan («misma cobertura»); **los 2 puntos son míos** |
 | `final_t15` | el veredicto final antes de T-15 en el 99 % de las pasadas `final` o más | plan (sección 32) |
-| `verdict_equivalence` | cada optimización con su evidencia: `batch` su sonda; `native_schema` y `cache_layout` cambian como mucho tantos veredictos como repetir la llamada, con 200 paquetes o más, **recalculado** desde las letras guardadas | plan |
+| `verdict_equivalence` | cada optimización **en vigor** con su evidencia: `batch` su sonda; `native_schema` y `cache_layout` cambian como mucho tantos veredictos como repetir la llamada, con 200 paquetes o más, **recalculado** desde las letras guardadas; una apagada se informa y no se juzga | plan; **juzgar solo lo que está en vigor: decisión tuya (A), 27 oct 2026** |
 | `cache_visible` | lecturas de caché en 6 de los 7 días y, en tiempo real, el 40 % o más de lo cacheable leído | el 40 %: plan (alarma de la sección 28); **los 6 de 7 días: míos** |
 | `batch_lost` | 0 resultados de lote perdidos y como mucho el 1 % de peticiones caducadas | plan |
 | `manual_actions` | acciones 3, 5 y 7 hechas, comprobadas con datos | plan |
 
 * **Coste.** El coste unitario de la ventana (US$ por partido con mercado, con las ejecuciones del analista incluidas) por los partidos con mercado del mes: los reales de los días pasados y los del calendario para los que faltan. La referencia es la línea base de los 7 días del 18 al 24 oct 2026 (5,17 USD al día de Claude). Si solo falla `cost_joint`, la sombra se planifica con menos muestra, nunca por debajo de la que da 300 selecciones en 30 días.
 * **Cobertura.** Las dos partes se calculan con las mismas definiciones, la línea base sobre los 16 días del 9 al 24 oct 2026: de los partidos con mercado del plan **abierto** de cada día (las altas tardías no lo mueven), la parte informada (una pasada que terminó `ok` o `partial` con brief) y las partes con su pasada `first`, `pre` y `final` en `ok`; y, de los candidatos (las selecciones que recibieron una revisión), la parte con revisión de modelo.
-* **Equivalencia.** Un `batch` con la sonda fallida deja Batch apagado y el coste juzga lo que queda. Una variante cuya evidencia más nueva dice `NO PASA` hace fallar la comprobación (su interruptor ya está apagado: se corrige y se mide otra vez). Con menos de 200 entradas, o sin evidencia, la comprobación queda pendiente.
+* **Equivalencia.** Solo se juzga lo que está **en vigor**: decisión tuya, **A**, del 27 oct 2026 (≈ 00:37 UTC), tomada cuando el primer experimento dejó `native_schema` sin medir y `cache_layout` rechazado, con los dos interruptores apagados. Ningún umbral cambió: cambió qué optimizaciones se juzgan. Una optimización está en vigor si su interruptor está en `on`, o en `auto` con su gate pasando (el bloque común del partido, con la caché sin apagar y su gate pasando). Una en vigor cuya evidencia más nueva dice `NO PASA`, o cuyas letras no reproducen su veredicto, hace fallar la comprobación (se revierte ese interruptor, se corrige y se mide otra vez); sin evidencia, o con menos de 200 entradas, la comprobación queda pendiente. Una **apagada** (rechazada por su propia evidencia, nunca medida o revertida) no cambia nada de lo que mide la ventana: el informe la lista en `not_in_force` con el estado de su evidencia y sus cifras, no bloquea, y se juzga el día en que se encienda. Un `batch` con la sonda fallida deja Batch apagado y el coste juzga lo que queda; un `batch` forzado a `on` con la sonda fallida sí falla. Con nada en vigor no hay nada que comparar y la comprobación pasa. El límite: un interruptor que se enciende a mano y se apaga dentro de la ventana no deja huella en el libro (solo la dejan Batch y la caché), así que la comprobación juzga lo que está en vigor al evaluar, y la comprobación de la caché sigue pidiendo que los días la muestren.
 * **Batch.** Con Batch encendido y ni una petición en la ventana, falla; con Batch apagado y ninguna, pasa.
 * **Acciones manuales.** Se comprueban por **datos**: que el workspace del LAB respondió con su propia clave y que el servidor tiene la clave del LAB y los tres presupuestos (185, 15 y 35). Si no están hechas es `PENDIENTE` (es tuyo hacerlas), nunca un fallo del sistema.
 
@@ -292,8 +300,19 @@ Es aditiva y entra en una base viva (el worker sigue escribiendo el libro): las 
 
 ## 15. Lo que falta para cerrar la Fase 0
 
-1. **Desplegar** el paquete de la fase 0 (migración 0110, código y web) en la ventana de despliegue, con copia de seguridad y prueba de restauración justo antes de migrar. Lo hago yo cuando le toque a la IA en la cola de despliegues de los tres planes.
+1. **Desplegar** el paquete de la fase 0 (migración 0110, código y web), con copia de seguridad y prueba de restauración justo antes de migrar. **Hecho el 26 oct 2026** (entrega `ia-p01`, junto a la fase 1). Desde el 26 oct 2026 ya no hay ventanas de despliegue por orden tuya: cada pieza terminada se despliega al terminarse, y lo que protege al servidor no es una hora sino sus candados y comprobaciones (sección 16).
 2. **Acciones 3, 5 y 7** (el workspace `PREDIGOL-LAB`, la clave `worker-lab`, la clave y los tres presupuestos en el servidor). Son tuyas; el detalle está en `IA_ACCIONES_MANUALES.md`.
-3. **Las sondas y la prueba de equivalencia** (`ia_probe cache`, `schema`, `batch-submit`, `batch-collect`; `ia_equivalence submit`, `collect`). Las hago yo cuando existan las acciones 3, 5 y 7. Abren (o no) los gates `batch`, `native_schema` y `cache_layout`.
+3. **Las sondas y la prueba de equivalencia** (`ia_probe cache`, `schema`, `batch-submit`, `batch-collect`; `ia_equivalence submit`, `collect`). Las hago yo cuando existan las acciones 3, 5 y 7. Abren (o no) los gates `batch`, `native_schema` y `cache_layout`. **Hecho el 26 y 27 oct 2026** (resultados al final de la sección 9): `batch` pasó, `cache_layout` no, y `native_schema` queda por repetir tras el arreglo del esquema, después del Gate A. El Gate A solo juzga lo que está en vigor (sección 10).
 4. **Siete días completos** con la configuración estable. Es el reloj: no se acorta ni se simula.
-5. **`ia_gate evaluate --record`**. `PASA` cierra la Fase 0 y habilita las fases 1 y 2 en producción (la 1 avanza antes, en paralelo con la medición, porque no toca el comportamiento). `NO PASA` aplica lo que dice la sección 10.
+5. **`ia_gate evaluate --record`**. `PASA` cierra la Fase 0, permite encender la fase 2 en sombra (`FBI_AI_RESEARCH_V2=shadow`) y empezar la fase 3. La 1 avanzó antes, en paralelo con la medición, y el código de la 2 se despliega apagado, porque ni una ni otro añaden llamadas a un modelo ni cambian lo que ve nadie. `NO PASA` aplica lo que dice la sección 10.
+
+## 16. Cómo se despliega la IA: sin ventanas, con candados
+
+Por orden tuya (26 oct 2026) no hay ventana de despliegue ni hora límite: cada pieza terminada se despliega al terminarse. Lo que impide que un despliegue corte un trabajo del servidor no es el reloj sino lo que el servidor dice cuando el script lo mira. Los scripts de la entrega se niegan a mover nada, y esperan o paran según el caso, si:
+
+* otro despliegue, una copia de seguridad, un PITR, el mantenimiento diario o la prueba de restauración tienen su candado o su servicio en marcha;
+* alguno de esos trabajos pesados empieza en los próximos 40 minutos (un despliegue necesita unos 30);
+* hay una transacción de escritura larga abierta sobre las tablas que toca la entrega, o un trabajo largo del worker (el nocturno, el semanal, un relleno) tiene su candado;
+* el servidor no está en los commits exactos desde los que se construyó el paquete, o un fichero del paquete no cuadra con su suma.
+
+Antes de migrar hay siempre una copia de seguridad **con su prueba de restauración** (que el archivo exista no prueba nada), y la cadena para en el primer fallo y no deshace nada por sí sola. Si lo único que ocurre es que el servidor está ocupado, la cadena espera y sigue sola: hasta 180 minutos de espera, contados en minutos y no en horas del día. Después del despliegue vienen la salud, la prueba de humo, la verificación con datos reales y la firma de los picks y las decisiones del día, que debe ser idéntica antes y después.

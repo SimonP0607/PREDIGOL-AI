@@ -269,6 +269,53 @@ def queries_for(home: str, away: str, kickoff: datetime, country: str | None, co
     return [every[level] for level in levels_wanted(levels)]
 
 
+def search_key(query: str, bucket: str, level: int) -> str:
+    """The key of a search's answer in the cache (scope ``search``). Level 1 keeps the key it always had (its cached answers stay valid); a
+    level keeps its own whatever it is asked with. One function for the collector of a match and for the research of an entity
+    (``fbi.ai.entity_research``): a query both ask for is paid once."""
+    return hashlib.sha256((f"{query}|{bucket}" if level == 1 else f"{query}|{bucket}|L{level}").lower().encode()).hexdigest()[:40]
+
+
+TEAM_NEWS_ONE = {
+    "es": "{team} noticias lesionados convocados alineación {when}",
+    "pt": "{team} notícias lesionados desfalques escalação {when}",
+    "it": "{team} probabili formazioni infortunati squalificati {when}",
+    "fr": "{team} composition probable blessés suspendus {when}",
+    "de": "{team} voraussichtliche Aufstellung Verletzte Sperren {when}",
+    "nl": "{team} opstelling blessures schorsingen {when}",
+    "tr": "{team} muhtemel 11 sakat cezali {when}",
+    "en": "{team} team news injuries lineup {when}",
+}
+OFFICIAL_ONE = {
+    "es": "{team} {competition} comunicado oficial parte médico convocatoria {when}",
+    "pt": "{team} {competition} nota oficial departamento médico relacionados {when}",
+    "it": "{team} {competition} comunicato ufficiale convocati {when}",
+    "fr": "{team} {competition} communiqué officiel groupe convoqué {when}",
+    "de": "{team} {competition} offiziell Kader Pressekonferenz {when}",
+    "nl": "{team} {competition} officieel selectie persconferentie {when}",
+    "tr": "{team} {competition} resmi aciklama kadro {when}",
+    "en": "{team} {competition} official squad press conference {when}",
+}
+"""The same two searches of the tiered search asked about ONE team (research v2: the other team's answer is still fresh)."""
+
+
+def query_for_sides(level: int, sides: Sequence[str], *, home: str, away: str, kickoff: datetime, country: str | None,
+                    competition: str | None) -> str:
+    """The query of one level of the tiered search for the sides of the match whose answer is missing (research v2). Both sides - and
+    always the preview, which is about the match - ask the very query ``queries_for`` writes for the match, so an answer already cached for
+    it is the answer; one side asks about that team alone, in the competition's language."""
+    wanted = {s for s in sides if s in ("home", "away")}
+    if not wanted:
+        raise ValueError("a search is asked for at least one side of the match")
+    if level not in LEVELS:
+        raise ValueError(f"unknown level {level!r}")
+    if level == LEVELS[-1] or len(wanted) == 2:
+        return queries_for(home, away, kickoff, country, competition, levels=(level,))[0]
+    team = home if "home" in wanted else away
+    template = (TEAM_NEWS_ONE if level == 1 else OFFICIAL_ONE)[language_of(country)]
+    return template.format(team=team, competition=competition or "", when=f"{kickoff:%Y-%m-%d}").replace("  ", " ").strip()
+
+
 def record_source_results(conn: psycopg.Connection[Any], results: list[SearchResult], *, at: datetime,
                           cost: Any) -> None:
     """Per day and domain: how often a source came up and its share of what the search cost (``ai.source_stats``)."""
@@ -344,9 +391,7 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
     gathered: list[dict[str, Any]] = []
     for tried, (level, query) in enumerate(zip(wanted, queries, strict=True), start=1):
         out.levels_tried = tried
-        # level 1 keeps the key it always had (its cached answers stay valid); a level keeps its own whatever it is asked with
-        key = hashlib.sha256((f"{query}|{bucket}" if level == 1 else f"{query}|{bucket}|L{level}").lower()
-                             .encode()).hexdigest()[:40]
+        key = search_key(query, bucket, level)
         cached = cache.get(conn, "search", key, at=at)
         if cached is None:
             if exa_envelope and not exa_budget(conn, at=at, settings=settings).allowed:
