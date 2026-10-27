@@ -67,6 +67,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from fbi.ai import user_budget
 from fbi.ai.brief import descriptive_factor
 from fbi.ai.config import AiSettings
+from fbi.ai.gates import typed_visible
 from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.usage import UsageLedger, call_json
 from fbi.ai.views import validated_factors
@@ -367,8 +368,10 @@ SELECT e.id, e.content_hash, e.attributes->>'result_title' AS title,
                 WHERE t.evidence_id = e.id AND t.content_hash = e.content_hash AND t.lang = 'en' AND t.version = %(v)s)
          AS translated
   FROM ai.evidence e
- WHERE e.id = ANY(%(ids)s) AND e.origin = 'web'
+ WHERE e.id = ANY(%(ids)s) AND e.origin = 'web' AND (e.subject_type IS NULL OR %(typed)s)
 """
+"""The packet's items by id - and a claim of research v2 only while it is ``on`` (``fbi.ai.gates.typed_visible``): no packet cites one
+before, and the readers' narrative never writes from one in ``shadow``."""
 
 PACKET_SQL: Final = "SELECT content->'evidence' AS evidence, content->'factors' AS factors FROM ai.match_packets WHERE id = %s"
 
@@ -389,7 +392,7 @@ def news_of(conn: psycopg.Connection[Any], packet_id: int) -> tuple[tuple[NewsIt
     if not items:
         return (), validated
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(NEWS_SQL, {"ids": [int(e["id"]) for e in items], "v": VERSION})
+        cur.execute(NEWS_SQL, {"ids": [int(e["id"]) for e in items], "v": VERSION, "typed": typed_visible(conn)})
         known = {int(r["id"]): r for r in cur.fetchall()}
     out = []
     for e in items:
