@@ -68,6 +68,9 @@ NAMES_IT: dict[str, str] = {
     "api/services/ai_layer.py": "the Admin Console's AI pages: the dashboard of errors, the day's counts and the log of memory events (the card a "
                                 "user is shown, match_analysis, reaches none of it: held below)",
     "api/services/match_memory.py": "the Memory page: the matches PrediGol looked at, by team, league, coach, player and market",
+    "api/services/postmatch.py": "the Postpartido of a finished match (plan UX, B4): of each published pick's post-mortem only the outcome it "
+                                 "saw, the market's close and the facts it found (codes and figures) - never a verdict, a class, a price "
+                                 "or a sentence: held below",
     "scripts/postmortems.py": "the owner's command for the post-mortem: status, coverage, closes (the two closes a price is judged against) and "
                               "build (a dry run until --apply)",
     "scripts/memory.py": "the owner's command for the memory: status, coverage, rebuild (a dry run until --apply) and audit",
@@ -182,7 +185,8 @@ WRITERS: dict[str, set[str]] = {
 """File -> the only tables its SQL writes to. A post-mortem, a memory or a note is built FROM the facts of a match - fixtures, events, statistics,
 players, prices, picks, settlements - and never into them (``ai.source_stats`` is the day's tally of the sources the notes quote)."""
 
-READ_ONLY = ("api/services/intelligence.py", "api/services/ai_v2.py", "api/services/match_memory.py", "scripts/postmortems.py", "scripts/memory.py")
+READ_ONLY = ("api/services/intelligence.py", "api/services/ai_v2.py", "api/services/match_memory.py", "api/services/postmatch.py",
+             "scripts/postmortems.py", "scripts/memory.py")
 """The pages and commands that look at the post-mortem and the memory write nothing themselves: what a command builds, the builders write."""
 
 CYCLES: dict[str, dict[str, set[str]]] = {
@@ -502,6 +506,24 @@ def test_the_card_a_user_is_shown_reaches_none_of_it() -> None:
         assert any(WORDS.search(s) for s in reach(path, admin)), f"the walk must see through the constants: {admin}() does read them"
 
 
+JUDGED = re.compile(r"\b(?:verdict|loss_class|decision_quality|review_verdict|review_decision|clv|price_move|answers|evidence|close_odds|"
+                    r"odds|p_market|text|roles|review_id|decision_id)\b")
+"""What a post-mortem judges or keeps for the owner: its verdict, the class of a loss, the quality of the decision, what the review decided, the
+price against the close, its answers and evidence, its sentences."""
+
+
+def test_the_postpartido_takes_only_the_facts_a_reader_may_get() -> None:
+    """``GET /matches/{id}/postmatch`` (plan UX, B4) is the one route a reader calls that reads the post-mortem: of each published pick it selects
+    the outcome the post-mortem saw (to check it against the settlement), the market's close and the facts it found - and nothing it judges."""
+    path = SRC / "api" / "services" / "postmatch.py"
+    queries = [" ".join(q.split()) for q in reach(path, "postmatch") if WORDS.search(q)]
+    assert queries, "the walk must see the query of the post-mortem, or it proves nothing"
+    for q in queries:
+        selected = q.split("FROM")[0]
+        assert not JUDGED.search(selected), f"the Postpartido selects what a post-mortem judges: {selected}"
+        assert "pm.*" not in q and "SELECT *" not in q.upper(), q
+
+
 def test_the_routes_that_read_it_are_the_admin_console_and_one_card() -> None:
     """Every route of the three routers that serve the post-mortem, the memory and the notes is the Admin Console's (``/api/v1/admin``, which a
     user is refused on every route: test_auth_rbac) except the card of a match, which the previous test holds."""
@@ -517,3 +539,4 @@ def test_the_routes_that_read_it_are_the_admin_console_and_one_card() -> None:
         outside = [r for r in tagged[tag] if not r[1].startswith("/api/v1/admin/")]
         assert not outside, f"{tag}: routes outside the Admin Console: {outside}"
     assert tagged["predigol analysis"] == [("GET", "/api/v1/matches/{fixture_id}/analysis")], tagged["predigol analysis"]
+    assert tagged["postmatch"] == [("GET", "/api/v1/matches/{fixture_id}/postmatch")], tagged["postmatch"]

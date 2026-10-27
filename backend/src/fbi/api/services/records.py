@@ -344,6 +344,30 @@ SELECT u.*, """ + MATCH_COLS + """
 USER_PICKS_TOTAL_SQL = "SELECT count(*) AS n FROM picks.user_picks u" + USER_PICKS_FILTER
 
 
+USER_PICKS_OF_FIXTURE_SQL = """
+SELECT u.*, """ + MATCH_COLS + """
+  FROM picks.user_picks u
+""" + MATCH_JOINS.format(alias="u") + """
+ WHERE u.user_id = %(user)s AND u.fixture_id = %(fixture)s
+ ORDER BY u.saved_at, u.id
+"""
+"""What one reader saved on one match (plan UX, B4: the Postpartido says how each ended)."""
+
+
+def _user_picks_of(conn: Conn, rows: list[Row]) -> list[UserPick]:
+    trail = corrections(conn, {r["id"]: [("user_pick", str(r["id"]))] for r in rows})
+    return [UserPick(
+        id=r["id"], match=match_of(r), market_key=r["market_key"], selection=r["selection"], line=r["line"],
+        origin=r["origin"], pick_id=r["pick_id"], odds=r["odds"], bookmaker=r["bookmaker"], price_at=r["price_at"],
+        user_odds=r["user_odds"], saved_at=r["saved_at"], status=r["status"], profit_units=r["profit_units"],
+        settled_at=r["settled_at"], snapshot=r["snapshot"], corrections=trail.get(r["id"], [])) for r in rows]
+
+
+def user_picks_of_fixture(conn: Conn, *, user_id: int, fixture_id: int) -> list[UserPick]:
+    """Every pick one reader saved on one match, oldest first, with its result and corrections (the same as Mis picks shows)."""
+    return _user_picks_of(conn, fetch_all(conn, USER_PICKS_OF_FIXTURE_SQL, {"user": user_id, "fixture": fixture_id}))
+
+
 def user_picks(conn: Conn, *, user_id: int, status: str | None, limit: int,
                cursor: str | None = None) -> Envelope[list[UserPick]]:
     after_at, after_id = decode_cursor("p", cursor)
@@ -352,12 +376,7 @@ def user_picks(conn: Conn, *, user_id: int, status: str | None, limit: int,
     more = len(rows) > limit
     rows = rows[:limit]
     total = fetch_one(conn, USER_PICKS_TOTAL_SQL, {"user": user_id, "status": status})
-    trail = corrections(conn, {r["id"]: [("user_pick", str(r["id"]))] for r in rows})
-    out = [UserPick(
-        id=r["id"], match=match_of(r), market_key=r["market_key"], selection=r["selection"], line=r["line"],
-        origin=r["origin"], pick_id=r["pick_id"], odds=r["odds"], bookmaker=r["bookmaker"], price_at=r["price_at"],
-        user_odds=r["user_odds"], saved_at=r["saved_at"], status=r["status"], profit_units=r["profit_units"],
-        settled_at=r["settled_at"], snapshot=r["snapshot"], corrections=trail.get(r["id"], [])) for r in rows]
+    out = _user_picks_of(conn, rows)
     next_cursor = encode_cursor("p", rows[-1]["m_kickoff_at"], int(rows[-1]["id"])) if more else None
     n = int(total["n"]) if total else 0
     # An empty page past the last one is not an empty list (review of A1): it says so.
