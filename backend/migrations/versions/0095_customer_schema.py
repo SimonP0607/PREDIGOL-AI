@@ -30,12 +30,16 @@ retention job can remove a whole chain at once and never one link of it.
 
 Downgrade: drops the schema only while it holds no row. With real consents or tickets the code goes back and the
 tables stay (plan UX, section 44: dropping them would delete legal evidence).
+
+Chain: written on 0094 (UX A1); the IA plan's release (0110 to 0113) reached production first, so this migration hangs
+from 0113 and the UX chain 0095 to 0102 follows it unchanged - the same move 0110 made when A1 went first. Its revision
+number stays: production never ran it, and every UX test and guide names it.
 """
 
 from alembic import op
 
 revision = "0095"
-down_revision = "0094"
+down_revision = "0113"
 branch_labels = None
 depends_on = None
 
