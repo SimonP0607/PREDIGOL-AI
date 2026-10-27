@@ -60,5 +60,71 @@
     "others_other": "Hay {count} en otras ligas.",
     "seeAll_one": "Ver la de otras ligas",
     "seeAll_other": "Ver las {count} de otras ligas"
+  },
+  "status": {
+    "RECOMMENDED": "Recomendado",
+    "CAUTION": "Cautela",
+    "NOT_RECOMMENDED": "No recomendado",
+    "EVALUATION": "En evaluación",
+    "contextPending": "Revisión de contexto aún no aplicada",
+    "reason": {
+      "approved": "Pasa la regla de valor y la revisión de contexto lo confirma.",
+      "value": "Pasa la regla de valor a su cuota. La revisión de contexto de PrediGol Intelligence todavía no se aplica a los picks.",
+      "not_reviewed": "Pasa la regla de valor; la revisión de contexto todavía no se ha pronunciado sobre esta selección.",
+      "downgraded": "Pasa la regla de valor, pero la revisión de contexto encontró motivos para tomarlo con cautela.",
+      "rejected": "La revisión de contexto encontró motivos en contra: no se recomienda.",
+      "no_value_now": "Con la mejor cuota de ahora ya no paga más de lo que dice su probabilidad: no se recomienda.",
+      "evaluation": "Su modelo todavía no ha superado al mercado en su propia prueba: se mide, nunca se recomienda."
+    }
+  },
+  "withheld_one": "{count} más ya no se recomienda con la cuota de ahora: lo ves en su partido.",
+  "withheld_other": "{count} más ya no se recomiendan con la cuota de ahora: los ves en su partido.",
+  "why": {
+    "open": "¿Por qué este pick?",
+    "close": "Cerrar",
+    "title": "¿Por qué PrediGol eligió este pick?",
+    "subtitle": "Conclusión, contexto, mercado, riesgos y cómo se decide.",
+    "startedState": "El partido ya empezó: así estaba cuando se tomó.",
+    "day": "Pick del día n.º {rank}, elegido a las {time} a {odds}.",
+    "dayEvaluation": "En la selección de evaluación del día (n.º {rank}), elegida a las {time} a {odds}.",
+    "layers": {
+      "conclusion": "Conclusión",
+      "context": "Contexto y datos",
+      "market": "Mercado",
+      "risks": "Riesgos",
+      "how": "Cómo lo decidimos"
+    },
+    "conclusion": {
+      "text": "PrediGol espera «{selection}»: le da un {p} de probabilidad; el mercado, sin su margen, un {market}.",
+      "alone": "PrediGol espera «{selection}»: le da un {p} de probabilidad."
+    },
+    "context": {
+      "hidden": "La lectura del partido no está disponible ahora.",
+      "notYet": "PrediGol todavía no ha reunido el contexto de este partido.",
+      "none": "La lectura de este partido no destaca nada de su contexto.",
+      "narrative": "Redactado con IA y validado contra los datos de PrediGol."
+    },
+    "market": {
+      "publishedAt": "Se publicó a {odds} ({bookmaker}), el {when}.",
+      "published": "Se publicó a {odds}, el {when}.",
+      "nowAt": "Mejor cuota ahora: {odds} ({bookmaker}).",
+      "now": "Mejor cuota ahora: {odds}.",
+      "noPriceNow": "Ahora no hay una cuota reciente de varias casas.",
+      "valueNow": "Con la mejor cuota de ahora sigue pagando más de lo que dice su probabilidad.",
+      "noValueNow": "Con la mejor cuota de ahora ya no paga más de lo que dice su probabilidad.",
+      "started": "El partido ya empezó: no se vuelve a calcular con las cuotas de ahora."
+    },
+    "risks": {
+      "interval": "El modelo duda: la sitúa entre el {low} y el {high}.",
+      "review": "La revisión de contexto señala:"
+    },
+    "how": {
+      "dayPick": "Es el pick del día n.º {rank}: pasó todos estos pasos.",
+      "listPick": "Cumple la regla de valor con la mejor cuota de ahora. Los picks del día son los que, además, pasan todos estos pasos.",
+      "noValue": "Pasó la regla de valor cuando se tomó; con la mejor cuota de ahora ya no la pasa.",
+      "taken": "Cumplía la regla de valor cuando se tomó. Los picks del día son los que, además, pasan todos estos pasos.",
+      "evaluation": "Su modelo todavía no ha superado al mercado: no pasa el primer paso, así que nunca se recomienda.",
+      "more": "Cómo le va a PrediGol"
+    }
   }
 }

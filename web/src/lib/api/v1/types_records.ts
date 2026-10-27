@@ -4,7 +4,7 @@
  * Mirrors fbi.api.contracts.records.
  */
 import type { Dec, Iso, MatchPhase } from "./types";
-import type { CompetitionBadge, TeamBadge } from "./types_product";
+import type { CompetitionBadge, StatusReason, TeamBadge, UserStatus } from "./types_product";
 
 export type ResultStatus = "PENDING" | "WIN" | "LOSS" | "PUSH" | "VOID" | "HALF_WIN" | "HALF_LOSS";
 export type ParlayStatus =
@@ -109,6 +109,13 @@ export interface DailyItem {
   ai_latest?: AiLatest | null;
   /** Settled again after the provider corrected the match; oldest first. Empty: never. */
   corrections?: ResultCorrection[];
+  /**
+   * What a reader is shown (plan UX, B3), as the pick stood when it entered the set: its price then passed the value rule,
+   * and the AI review frozen with it counts only if it was applied then. EVALUATION for the evaluation set.
+   */
+  user_status: UserStatus;
+  status_reason: StatusReason;
+  context_pending: boolean;
 }
 
 export interface DailySet {

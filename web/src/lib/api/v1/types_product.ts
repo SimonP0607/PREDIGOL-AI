@@ -9,6 +9,24 @@ import type { LiveMatch } from "./types_center";
 export type ProductSource = "qualified" | "shadow_preview";
 export type PriceFreshness = "fresh" | "aging" | "stale" | "none";
 
+/**
+ * What a reader is shown of a pick (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied
+ * AI review downgrades it), NOT_RECOMMENDED (no value at its price, or the applied review rejects it - only on its match,
+ * never in a list) or EVALUATION (a shadow pick: the owner's preview only).
+ */
+export type UserStatus = "RECOMMENDED" | "CAUTION" | "NOT_RECOMMENDED" | "EVALUATION";
+/** Why a pick's state is the one it is. */
+export type StatusReason =
+  "approved" | "value" | "not_reviewed" | "downgraded" | "rejected" | "no_value_now" | "evaluation";
+
+/** The state a reader is shown, as every pick that has one carries it. */
+export interface PickState {
+  user_status: UserStatus;
+  status_reason: StatusReason;
+  /** RECOMMENDED by the value rule alone: «revisión de contexto aún no aplicada» is said beside it. */
+  context_pending: boolean;
+}
+
 export interface TeamBadge {
   id: number;
   name: string;
@@ -51,6 +69,9 @@ export interface PickCard {
   value_now: boolean;
   /** The gate it fails, as a code, when value_now is false. */
   value_reason: string | null;
+  user_status: UserStatus;
+  status_reason: StatusReason;
+  context_pending: boolean;
 }
 
 /**
@@ -112,6 +133,11 @@ export interface PicksBoard {
   markets: string[];
   window_hours: number;
   reason: string | null;
+  /**
+   * Published picks of the window the list does not show now (plan UX, B3): without value at the best price now, or
+   * rejected by the applied AI review - each stays on its match. 0 for one match and in the owner's preview.
+   */
+  withheld?: number;
   /** Pre-match picks whose match kicked off today (or every one of fixture_id), as taken. */
   started?: StartedPick[];
 }

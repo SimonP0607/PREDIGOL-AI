@@ -4,6 +4,7 @@
  * confirms, lowers, rejects or abstains, and only the owner's switch AND a passed shadow gate let it filter.
  */
 import type { Dec, Iso } from "./types";
+import type { StatusReason, UserStatus } from "./types_product";
 
 export type AiDecision = "APPROVE" | "DOWNGRADE" | "REJECT" | "ABSTAIN";
 export type CardVerdict = "recommended" | "caution" | "not_recommended" | "no_market";
@@ -50,12 +51,21 @@ export interface AnalysisCard {
   edge: Dec | null;
   ev: Dec | null;
   model: string | null;
+  /** A value card's pick: «¿Por qué este pick?» opens its explanation (plan UX, B3). */
+  pick_id?: number | null;
   qualified: boolean;
   verdict: CardVerdict;
   verdict_reason: string;
   ai: CardAi | null;
   /** The L1 brief's "why" and "what could go wrong" for this card (the owner's view, or enforced). */
   notes?: CardNotes | null;
+  /**
+   * What a reader is shown (plan UX, B3; the one table): a value card is its pick's state, an evaluated card NOT_RECOMMENDED
+   * and an unpriced market none (null: the card keeps its own «sin mercado»).
+   */
+  user_status?: UserStatus | null;
+  status_reason?: StatusReason | null;
+  context_pending?: boolean;
 }
 
 export type EscalationReason =

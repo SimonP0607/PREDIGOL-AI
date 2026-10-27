@@ -38,6 +38,9 @@ import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import type { TermKey } from "@/lib/glossary";
 import { ShadowBadge } from "@/product/shared/Bits";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
+import { UserStatusBadge } from "@/product/shared/UserStatusBadge";
+import { WhyPickButton } from "@/product/picks/WhyPick";
+import type { PickState } from "@/lib/api/v1/types_product";
 import { useParlayLeg } from "@/product/odds/useParlayLeg";
 import type { MatchCtx } from "./context";
 import {
@@ -352,6 +355,18 @@ export function AnalysisCardView({
   const id = useId();
   const sides = { home, away };
   const noMarket = card.kind === "no_market";
+  // The state a reader is shown (plan UX, B3) when the API says it; an older answer keeps the card's own verdict.
+  const state: PickState | null = card.user_status
+    ? {
+        user_status: card.user_status,
+        status_reason: card.status_reason ?? "value",
+        context_pending: card.context_pending ?? false,
+      }
+    : null;
+  const pending = state
+    ? state.context_pending && state.user_status === "RECOMMENDED"
+    : contextPending && card.verdict === "recommended";
+  const explained = card.kind === "value" && card.pick_id ? card.pick_id : null;
   // Why the verdict is what it is, when no review says it; the banner says it for an unpriced market.
   const verdictReason = noMarket
     ? ""
@@ -380,16 +395,21 @@ export function AnalysisCardView({
           ) : null}
         </div>
         <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
-          <span
-            className={cn(
-              "inline-flex items-center rounded-full border px-2.5 py-0.5 text-micro font-bold uppercase tracking-wider",
-              VERDICT_STYLE[card.verdict],
-            )}
-            data-testid="analysis-verdict"
-          >
-            {translateOr(`match.analysis.verdict.${card.verdict}`, card.verdict)}
-          </span>
-          {contextPending && card.verdict === "recommended" ? (
+          {state ? (
+            // Plan UX, B3: the state of the one table, in words and an icon (never colour alone).
+            <UserStatusBadge state={state} pendingNote={false} testId="analysis-verdict" />
+          ) : (
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full border px-2.5 py-0.5 text-micro font-bold uppercase tracking-wider",
+                VERDICT_STYLE[card.verdict],
+              )}
+              data-testid="analysis-verdict"
+            >
+              {translateOr(`match.analysis.verdict.${card.verdict}`, card.verdict)}
+            </span>
+          )}
+          {pending ? (
             <span
               className="text-caption text-subtle-foreground"
               data-testid="verdict-context-pending"
@@ -439,13 +459,14 @@ export function AnalysisCardView({
         {card.ai ? <ReviewLine ai={card.ai} /> : null}
       </section>
 
-      {updatedAt || match ? (
+      {updatedAt || match || explained ? (
         <footer className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border/70 pt-3">
           {updatedAt ? (
             <span className="text-caption text-subtle-foreground">
               {t("common.updated", { when: formatRelative(updatedAt) })}
             </span>
           ) : null}
+          {explained ? <WhyPickButton pickId={explained} testId="analysis-why-pick" /> : null}
           {match ? (
             <div className="w-full sm:ml-auto sm:w-auto">
               <ParlayButton card={card} match={match} sides={sides} describedBy={`${id}-title`} />

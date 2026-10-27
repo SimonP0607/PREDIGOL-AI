@@ -98,6 +98,7 @@ import type { MatchCalendar } from "./types_calendar";
 import type { MatchForecast } from "./types_forecast";
 import type { MatchKnowledge } from "./types_knowledge";
 import type { MatchReading } from "./types_reading";
+import type { PickExplanation } from "./types_explanation";
 import type { MatchNews, TodayNews } from "./types_news";
 import type { NoPick, Today } from "./types_today";
 import type {
@@ -507,6 +508,9 @@ export const v1 = {
     getJson<Envelope<PicksBoard>>("/picks", q as Params),
   /** Today's pre-match picks that already kicked off, unfiltered: the page filters them (REVIEW pt 14). */
   startedPicks: (q: Preview = {}) => getJson<Envelope<StartedPick[]>>("/picks/started", q),
+  /** «¿Por qué PrediGol eligió este pick?» (plan UX, B3): one published pick in five layers. 404: not a pick a reader sees. */
+  pickExplanation: (pickId: number, q: Preview = {}) =>
+    getJson<Envelope<PickExplanation>>(`/picks/${pickId}/explanation`, q),
   parlay: (kind: ParlayKind, q: Preview = {}) => getJson<Envelope<Parlay>>(`/parlays/${kind}`, q),
   /** The automatic parlay builder (REVIEW pt 15): nothing is stored - saving it is createParlay. */
   buildParlay: (q: BuilderQuery & Preview) =>

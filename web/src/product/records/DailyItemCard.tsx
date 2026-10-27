@@ -23,6 +23,9 @@ import { hasStarted } from "./model";
 import { pickableOfItem } from "./pickable";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { SelectablePrice } from "@/product/odds/SelectablePrice";
+import { UserStatusBadge } from "@/product/shared/UserStatusBadge";
+import { WhyPickButton } from "@/product/picks/WhyPick";
+import { track } from "@/lib/track";
 
 export function MatchScore({ home, away }: { home: number | null; away: number | null }) {
   if (home === null || away === null) return null;
@@ -75,6 +78,7 @@ export function DailyItemCard({
       <Link
         to="/matches/$fixtureId"
         params={{ fixtureId: String(m.fixture_id) }}
+        onClick={() => track("pick_opened", { pick_id: item.pick_id })}
         className="block flex-1 rounded-t-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         <div className="flex items-center justify-between gap-2 px-4 pt-3.5">
@@ -127,6 +131,8 @@ export function DailyItemCard({
               >
                 {label}
               </div>
+              {/* Plan UX, B3: its state when it entered the set, in words (the one table). */}
+              <UserStatusBadge state={item} className="mt-1.5" />
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               <OddsPill odds={item.odds} best={!settled} size={compact ? "md" : "lg"} />
@@ -178,6 +184,9 @@ export function DailyItemCard({
         </span>
       </div>
 
+      <div className="flex px-4 pb-3">
+        <WhyPickButton pickId={item.pick_id} />
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="text-caption text-subtle-foreground">{t("records.labels.result")}</span>

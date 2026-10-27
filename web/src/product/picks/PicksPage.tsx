@@ -337,6 +337,15 @@ function AllPicks({
   const board = query.data?.data;
   const shadow = board?.source === "shadow_preview";
   const picks = useMemo(() => board?.picks ?? [], [board]);
+  // Plan UX, B3: what the list does not show now - no value at the best price, or rejected by the applied review - is
+  // counted and stays on its match.
+  const withheld = board?.withheld ?? 0;
+  const withheldNote =
+    withheld > 0 ? (
+      <p className="text-caption text-muted-foreground" data-testid="picks-withheld">
+        {t("picks.withheld", { count: withheld })}
+      </p>
+    ) : null;
   const own = useMemo(
     () => (follow ? picks.filter((p) => reasonOf(p, follow) !== null) : picks),
     [picks, follow],
@@ -393,7 +402,13 @@ function AllPicks({
           compact
           icon={<ListFilter aria-hidden className="h-5 w-5" />}
           title={emptyReason(board?.reason ?? "no_qualified_picks")}
-          body={filtered ? undefined : t("picks.all.emptyBody")}
+          body={
+            withheld > 0
+              ? t("picks.withheld", { count: withheld })
+              : filtered
+                ? undefined
+                : t("picks.all.emptyBody")
+          }
           action={filtered ? reset : widen}
         />
       </Card>
@@ -447,6 +462,7 @@ function AllPicks({
             );
           })}
         </div>
+        {withheldNote}
         <Pager
           paged={paged}
           className="pt-1"

@@ -62,6 +62,16 @@ export const live = {
     queryFn: () => v1.startedPicks({ preview }),
     refetchInterval: MINUTE,
   }),
+  /**
+   * «¿Por qué este pick?» (plan UX, B3): asked for when the reader opens it (the sheet sets `enabled`); the same for every
+   * reader, kept a minute - its price now moves, its reasons do not.
+   */
+  pickExplanation: (pickId: number, preview: Preview) => ({
+    queryKey: ["v1", "pick-explanation", pickId, preview ?? "qualified"],
+    queryFn: () => v1.pickExplanation(pickId, { preview }),
+    staleTime: MINUTE,
+    retry: false,
+  }),
   parlay: (kind: ParlayKind, preview: Preview) => ({
     queryKey: ["v1", "parlay", kind, preview ?? "qualified"],
     queryFn: () => v1.parlay(kind, { preview }),

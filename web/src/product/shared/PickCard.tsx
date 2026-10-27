@@ -12,8 +12,11 @@ import type { PickCard as PickCardData } from "@/lib/api/v1/types_product";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { Hint } from "@/components/system/Hint";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
+import { track } from "@/lib/track";
+import { WhyPickButton } from "@/product/picks/WhyPick";
 import { EvBadge, Freshness, Kickoff, OddsPill, ProbCompare, ShadowBadge } from "./Bits";
 import { gateReason, marketName, selectionLabel } from "./markets";
+import { UserStatusBadge } from "./UserStatusBadge";
 
 export function PickCard({
   pick,
@@ -56,6 +59,7 @@ export function PickCard({
       <Link
         to="/matches/$fixtureId"
         params={{ fixtureId: String(pick.fixture_id) }}
+        onClick={() => track("pick_opened", { pick_id: pick.pick_id })}
         className="block flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         <div
@@ -115,6 +119,8 @@ export function PickCard({
               >
                 {label}
               </div>
+              {/* Plan UX, B3: the state a reader is shown, in words (the one table). */}
+              <UserStatusBadge state={pick} className="mt-1.5" />
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               <OddsPill odds={pick.best_odds} best={pick.value_now} size={compact ? "md" : "lg"} />
@@ -137,10 +143,7 @@ export function PickCard({
       {/* The figures with their help, beside the card's link and not inside it (plan UX, A1, defect F16): a tap, a
           hover or the keyboard opens each definition without opening the match. */}
       <div
-        className={cn(
-          "flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4",
-          compact ? "pb-3" : "pb-3.5",
-        )}
+        className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pb-2"
         data-testid="pick-card-figures"
       >
         <GlossaryTerm term="expectedValue" className="no-underline">
@@ -154,6 +157,9 @@ export function PickCard({
         <Hint text={t(`common.freshnessLevel.${pick.freshness}`)} className="ml-auto no-underline">
           <Freshness at={pick.price_at} level={pick.freshness} hint={false} />
         </Hint>
+      </div>
+      <div className={cn("flex px-4", compact ? "pb-3" : "pb-3.5")}>
+        <WhyPickButton pickId={pick.pick_id} />
       </div>
       {actions ? <div className="border-t border-border/70 px-4 py-2.5">{actions}</div> : null}
     </div>

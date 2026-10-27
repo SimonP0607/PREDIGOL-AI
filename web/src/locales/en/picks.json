@@ -60,5 +60,71 @@
     "others_other": "There are {count} in other leagues.",
     "seeAll_one": "See the one in other leagues",
     "seeAll_other": "See the {count} in other leagues"
+  },
+  "status": {
+    "RECOMMENDED": "Recommended",
+    "CAUTION": "Caution",
+    "NOT_RECOMMENDED": "Not recommended",
+    "EVALUATION": "Being evaluated",
+    "contextPending": "Context review not applied yet",
+    "reason": {
+      "approved": "It passes the value rule and the context review confirms it.",
+      "value": "It passes the value rule at its price. PrediGol Intelligence's context review does not apply to the picks yet.",
+      "not_reviewed": "It passes the value rule; the context review has not given a view on this selection yet.",
+      "downgraded": "It passes the value rule, but the context review found reasons for caution.",
+      "rejected": "The context review found reasons against it: it is not recommended.",
+      "no_value_now": "At the best price now it no longer pays more than its probability says: it is not recommended.",
+      "evaluation": "Its model has not beaten the market in its own test yet: it is measured, never recommended."
+    }
+  },
+  "withheld_one": "{count} more is no longer recommended at today's price: you can see it on its match.",
+  "withheld_other": "{count} more are no longer recommended at today's price: you can see them on their match.",
+  "why": {
+    "open": "Why this pick?",
+    "close": "Close",
+    "title": "Why did PrediGol choose this pick?",
+    "subtitle": "Conclusion, context, market, risks and how it is decided.",
+    "startedState": "The match has started: this is how it stood when it was taken.",
+    "day": "Pick of the day no. {rank}, chosen at {time} at {odds}.",
+    "dayEvaluation": "In the day's evaluation selection (no. {rank}), chosen at {time} at {odds}.",
+    "layers": {
+      "conclusion": "Conclusion",
+      "context": "Context and data",
+      "market": "Market",
+      "risks": "Risks",
+      "how": "How we decided"
+    },
+    "conclusion": {
+      "text": "PrediGol expects «{selection}»: it gives it a {p} probability; the market, without its margin, {market}.",
+      "alone": "PrediGol expects «{selection}»: it gives it a {p} probability."
+    },
+    "context": {
+      "hidden": "The match reading is not available right now.",
+      "notYet": "PrediGol has not gathered this match's context yet.",
+      "none": "This match's reading does not highlight anything about its context.",
+      "narrative": "Written with AI and checked against PrediGol's data."
+    },
+    "market": {
+      "publishedAt": "Published at {odds} ({bookmaker}), on {when}.",
+      "published": "Published at {odds}, on {when}.",
+      "nowAt": "Best price now: {odds} ({bookmaker}).",
+      "now": "Best price now: {odds}.",
+      "noPriceNow": "There is no recent price from several bookmakers right now.",
+      "valueNow": "At the best price now it still pays more than its probability says.",
+      "noValueNow": "At the best price now it no longer pays more than its probability says.",
+      "started": "The match has started: it is not recalculated with today's prices."
+    },
+    "risks": {
+      "interval": "The model has doubts: it puts it between {low} and {high}.",
+      "review": "The context review points out:"
+    },
+    "how": {
+      "dayPick": "It is pick of the day no. {rank}: it passed every one of these steps.",
+      "listPick": "It passes the value rule at the best price now. The picks of the day are the ones that also pass every one of these steps.",
+      "noValue": "It passed the value rule when it was taken; at the best price now it no longer does.",
+      "taken": "It passed the value rule when it was taken. The picks of the day are the ones that also pass every one of these steps.",
+      "evaluation": "Its model has not beaten the market yet: it does not pass the first step, so it is never recommended.",
+      "more": "How PrediGol is doing"
+    }
   }
 }

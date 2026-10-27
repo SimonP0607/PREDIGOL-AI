@@ -66,3 +66,41 @@ describe("a recommended card while the review of context is not applied", () => 
     }
   });
 });
+
+describe("the state of the one table (plan UX, B3), when the API says it", () => {
+  test("a card shows the state in words, and the pending line follows the state, not the verdict", () => {
+    setLocale("es");
+    const pending = render(
+      card({
+        user_status: "RECOMMENDED",
+        status_reason: "value",
+        context_pending: true,
+        pick_id: 41,
+      }),
+      false,
+    );
+    expect(pending).toContain('data-status="RECOMMENDED"');
+    expect(pending).toContain('data-testid="verdict-context-pending"');
+    const caution = render(
+      card({
+        verdict: "caution",
+        user_status: "CAUTION",
+        status_reason: "downgraded",
+        context_pending: false,
+      }),
+      true,
+    );
+    expect(caution).toContain("Cautela");
+    expect(caution).not.toContain("verdict-context-pending");
+  });
+
+  test("a value card with its pick answers «¿Por qué este pick?»; an unpriced market does not", () => {
+    setLocale("es");
+    expect(
+      render(card({ pick_id: 41, user_status: "RECOMMENDED", status_reason: "value" }), true),
+    ).toContain('data-testid="analysis-why-pick"');
+    expect(
+      render(card({ kind: "no_market", verdict: "no_market", pick_id: null }), true),
+    ).not.toContain("analysis-why-pick");
+  });
+});

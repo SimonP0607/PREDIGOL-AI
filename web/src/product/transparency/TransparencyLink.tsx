@@ -6,12 +6,7 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { t } from "@/lib/i18n";
-import { useAuth } from "@/lib/auth/AuthProvider";
-
-function useTransparencyOpen(): boolean {
-  const auth = useAuth();
-  return Boolean(auth.user?.transparency) || auth.showAdmin;
-}
+import { useTransparencyOpen } from "./useTransparencyOpen";
 
 export function TransparencyLink({ className }: { className?: string | undefined }) {
   const open = useTransparencyOpen();
