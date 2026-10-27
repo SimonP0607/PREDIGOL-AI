@@ -134,6 +134,8 @@ PUERTAS_B7
 
 ## 8. Despliegue
 
+- **Paquete `ux-b7`:** B6 y B7 juntos (una sola tanda de puertas y de e2e para los dos), sobre `ux-b5`, con las migraciones 0103
+  y 0104.
 - **Migración 0104:** BACKUP → RESTORE TEST → MIGRATION → VALIDATION → DEPLOY, con la copia restaurada y sus conteos antes de
   migrar.
 - **Nace sin poder ofrecerse:** sin `FBI_VAPID_PRIVATE_KEY` la API dice «no disponible», la web no muestra nada nuevo y el
