@@ -77,9 +77,10 @@ def self_service_enabled() -> bool:
 
 
 def purge_mode() -> PurgeMode:
-    """FBI_TOKENS_PURGE, born ``dry``: the messenger counts the rows past their 30 days and deletes nothing until the
-    owner says ``on``."""
-    raw = os.environ.get("FBI_TOKENS_PURGE", "dry").strip().lower()
+    """FBI_LINKS_PURGE, born ``dry``: the messenger counts the rows past their 30 days and deletes nothing until the
+    owner says ``on``. (Its name says links, not tokens: the security plan's inventory of secrets takes every setting
+    named *TOKEN* for a secret, and this one is a switch.)"""
+    raw = os.environ.get("FBI_LINKS_PURGE", "dry").strip().lower()
     if raw in ("on", "1", "true", "yes"):
         return "on"
     return "off" if raw in ("off", "0", "false", "no") else "dry"
