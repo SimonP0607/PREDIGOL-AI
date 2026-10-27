@@ -305,6 +305,29 @@
         "result_seen": "after seeing a result"
       },
       "nps": "NPS will be added once there are more than about 100 answers a quarter. The opinion improves the product and never enters the models."
+    },
+    "push": {
+      "title": "Notices on devices",
+      "on": "Available: readers can turn them on",
+      "off": "Not available: switch off (FBI_PUSH=0) or the VAPID key is missing (P12)",
+      "readers": "Readers receiving them",
+      "devices": "Live devices",
+      "gone": "Dropped by their service (7 days)",
+      "byBrowser": "By browser",
+      "week": "Notices of the last 7 days",
+      "none": "No notice in the last 7 days.",
+      "category": "Kind",
+      "sent": "Sent",
+      "dropped": "Dropped",
+      "categories": {
+        "result": "Results",
+        "lineup": "Line-ups",
+        "digest": "Summary of the day",
+        "reminder": "Reminders",
+        "account": "Account",
+        "test": "Tests"
+      },
+      "note": "Counts, never who. Notices sent are not a target: they show the noise. Dropped when the quiet hours outlived them, the daily ceiling, a category switched off or no device."
     }
   },
   "audit": {

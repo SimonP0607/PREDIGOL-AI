@@ -112,6 +112,17 @@ import type {
   SurveyState,
   UpdatesSeen,
 } from "./types_feedback";
+import type {
+  AlertMinutes,
+  MatchAlert,
+  PushCategories,
+  PushCategoriesIn,
+  PushDevice,
+  PushOverview,
+  PushState,
+  PushSubscribeIn,
+  PushUnsubscribeIn,
+} from "./types_push";
 import type { MatchReading } from "./types_reading";
 import type { PickExplanation } from "./types_explanation";
 import type { MatchNews, TodayNews } from "./types_news";
@@ -552,6 +563,24 @@ export const v1 = {
   myUpdatesSeen: () => getJson<UpdatesSeen>("/me/updates/seen"),
   markUpdatesSeen: (id: string) => postJson<UpdatesSeen>("/me/updates/seen", { id }),
 
+  // ── the readers' notices on their devices (plan UX, B7) ───────────────────
+  /** Whether notices can be offered (FBI_PUSH and PrediGol's key, P12), the key to subscribe with, devices, categories. */
+  myPush: () => getJson<PushState>("/me/push"),
+  /** A browser the reader allowed: 422 unknown_push_service or bad_key, 404 push_off. */
+  subscribePush: (body: PushSubscribeIn) => postJson<PushDevice>("/me/push/devices", body),
+  /** This browser (its address, in the body) or another of the list (its id) stops. */
+  unsubscribePush: (body: PushUnsubscribeIn) => postJson<void>("/me/push/devices/stop", body),
+  updatePushCategories: (body: PushCategoriesIn) =>
+    putJson<PushCategories>("/me/push/categories", body),
+  /** «Así se verán tus avisos», now: 409 no_device, 429 too_many_tests (3 a day). */
+  sendTestPush: () => postJson<{ id: number }>("/me/push/test", {}),
+  /** The bell of a match. */
+  myMatchAlert: (fixtureId: number) => getJson<MatchAlert>(`/me/match-alerts/${fixtureId}`),
+  /** 422 match_started, too_far (more than 7 days ahead) or too_many_alerts; 404 not_found or push_off. */
+  setMatchAlert: (fixtureId: number, minutes: AlertMinutes) =>
+    putJson<MatchAlert>(`/me/match-alerts/${fixtureId}`, { minutes_before: minutes }),
+  clearMatchAlert: (fixtureId: number) => deleteJson<void>(`/me/match-alerts/${fixtureId}`),
+
   // ── help and support (plan UX, A14) ───────────────────────────────────────
   /** Public: the WhatsApp number and the reply address, for whoever cannot sign in; nulls until the owner gives them. */
   supportContact: () => getJson<SupportContact>("/support/contact"),
@@ -972,6 +1001,8 @@ export const v1 = {
   productOverview: () => getJson<ProductOverview>("/admin/product"),
   /** The survey with its n, «¿Te sirvió?» per kind and the newest comments (never who wrote them) - plan UX, B6. */
   feedbackOverview: (days = 90) => getJson<FeedbackOverview>("/admin/product/feedback", { days }),
+  /** Live devices by browser and a week of notices by category - counts, never who (plan UX, B7). */
+  pushOverview: () => getJson<PushOverview>("/admin/product/push"),
   createUser: (body: AdminUserCreate) => postJson<Envelope<AdminUser>>("/admin/users", body),
   /** Invitations (plan UX, A7): whether they can be sent, sending one, sending it again. */
   selfServiceState: () => getJson<SelfServiceState>("/admin/users/self-service"),

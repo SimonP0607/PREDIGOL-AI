@@ -36,6 +36,9 @@
  *   feedback  the monthly survey (once in 30 days, never after an error, by keyboard, at 320 px), «¿Te sirvió?» saved with
  *             its context, Novedades and /admin/product (E2E_FEEDBACK=1, the QA stack with QA_PICK_STATES=1;
  *             E2E_DATABASE_URL for the readers' answers; E2E_FEEDBACK_OFF=1 against FBI_FEEDBACK=0)
+ *   notifications  the notices on the devices: the profile's block, the offer, the bell, the install guide and the test
+ *             notice to a stand-in push service (E2E_PUSH=1, the QA stack with QA_PUSH=1 QA_MESSENGER=1, one worker;
+ *             E2E_PUSH_OFF=1 against the stack without the VAPID key)
  *   a11y      axe-core on the sign-in page and the product, WCAG 2.2 A/AA (E2E_A11Y=1)
  *   screens   reference screenshots of the product at 320/360/390/412/430 px (E2E_SCREENS=1)
  * A full run loads a few hundred pages: the API's per-client limit must allow it
@@ -263,6 +266,20 @@ export default defineConfig({
           {
             name: "feedback",
             testMatch: /feedback\.spec\.ts/,
+            use: desktop,
+            dependencies: ["setup"],
+          },
+        ]
+      : []),
+    ...(process.env["E2E_PUSH"] || process.env["E2E_PUSH_OFF"]
+      ? [
+          // The notices on the readers' devices (plan UX, B7): the profile's block, the offer after a moment, the bell, the
+          // install guide, the test notice through the QA messenger to a stand-in push service (127.0.0.1:9996), the owner's
+          // card - with the browser's permission and subscription simulated. The QA stack with QA_PUSH=1 QA_MESSENGER=1 and
+          // E2E_DATABASE_URL, one worker; E2E_PUSH_OFF=1 against the stack without the VAPID key.
+          {
+            name: "notifications",
+            testMatch: /notifications\.spec\.ts/,
             use: desktop,
             dependencies: ["setup"],
           },

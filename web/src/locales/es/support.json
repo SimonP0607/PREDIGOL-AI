@@ -155,6 +155,14 @@
     "get_help": {
       "q": "Siento que el juego me está haciendo daño",
       "a": "Habla con alguien de confianza o con un profesional de la salud. En «Juego responsable» encontrarás las señales de alerta y las líneas de ayuda gratuitas de Colombia."
+    },
+    "push": {
+      "q": "¿Puedo recibir avisos en el teléfono?",
+      "a": "Sí: el resultado de lo que guardas, las alineaciones de tus equipos, un resumen al día, tu cuenta y los recordatorios que pidas con la campana de un partido. Actívalos en tu perfil, en «Notificaciones», o cuando PrediGol te lo ofrezca. Nunca llegan de 22:00 a 08:00 (salvo tus recordatorios), como máximo 3 al día, y los apagas en un toque."
+    },
+    "push_iphone": {
+      "q": "¿Por qué no me llegan los avisos en el iPhone?",
+      "a": "En iPhone y iPad los avisos llegan solo a PrediGol instalada en la pantalla de inicio (iOS 16.4 o posterior). En Safari, toca Compartir y luego «Agregar a Inicio», ábrela desde su icono y actívalos en tu perfil. Si los bloqueaste, permítelos en Ajustes → Notificaciones → PrediGol."
     }
   },
   "report": {

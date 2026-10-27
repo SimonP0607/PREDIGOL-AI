@@ -1,0 +1,110 @@
+{
+  "offer": {
+    "follow": {
+      "title": "Shall we tell you when {team}'s line-ups are out?",
+      "body": "As soon as they are confirmed - and the result of what you save, too."
+    },
+    "save": {
+      "title": "Shall we tell you when your pick is settled?",
+      "body": "As soon as the match ends, we'll tell you how it went."
+    },
+    "rules": "Never from {from} to {to}, at most {cap} a day, and you can turn them off in your profile at any time.",
+    "enable": "Turn on notices",
+    "later": "Not now",
+    "close": "Close",
+    "busy": "Turning on…",
+    "done": "Done: we'll notify you on this device.",
+    "denied": "You blocked PrediGol's notices in this browser. If you change your mind, allow them in its settings and turn them on in your profile, under «Notifications».",
+    "failed": "We couldn't turn notices on right now. You can try again from your profile, under «Notifications».",
+    "installTitle": "On an iPhone, notices reach the installed app",
+    "understood": "Got it"
+  },
+  "install": {
+    "iosWhy": "On an iPhone or iPad, notices only reach PrediGol installed on your home screen, not Safari:",
+    "iosIntro": "On an iPhone or iPad, PrediGol installs from Safari:",
+    "iosStep1": "In Safari, tap Share (the square with the arrow pointing up).",
+    "iosStep2": "Scroll down and choose «Add to Home Screen». If you see «Open as Web App», leave it on and tap «Add».",
+    "iosStep3Notices": "Open PrediGol from its icon and turn notices on in your profile, under «Notifications».",
+    "iosStep3": "Open it from its icon: full screen, with the same account.",
+    "iosVersion": "Notices need iOS 16.4 or later.",
+    "otherIntro": "Installed, PrediGol opens from its icon, full screen, and its notices arrive even when it is closed.",
+    "button": "Install PrediGol",
+    "accepted": "Installed: open it from its icon."
+  },
+  "bell": {
+    "add": "Notify me before kick-off",
+    "on": "Reminder set: {minutes}",
+    "title": "Notify me before kick-off",
+    "description": "{home} – {away}, {when}.",
+    "minutes": {
+      "15": "15 minutes before",
+      "30": "30 minutes before",
+      "60": "1 hour before"
+    },
+    "choose": "When should we notify you?",
+    "save": "Save reminder",
+    "saveEnable": "Turn on notices and save",
+    "remove": "Remove reminder",
+    "night": "This reminder arrives even at night: you asked for it.",
+    "elsewhere": "It will reach your devices that have notices turned on.",
+    "needsDevice": "To receive it, turn notices on on this device.",
+    "saved": "We'll notify you {minutes}.",
+    "removed": "Reminder removed.",
+    "following": "Following a team (the star) orders your Home; the bell reminds you of this match."
+  },
+  "profile": {
+    "title": "Notices on your devices",
+    "help": "The result of what you save, your teams' line-ups, one summary a day and your account. Never from {from} to {to} (except the reminders you set with a match's bell) and at most {cap} a day of results, line-ups and summaries.",
+    "thisDevice": "This device",
+    "status": {
+      "on": "Receives your notices.",
+      "off": "Doesn't receive notices.",
+      "denied": "You blocked PrediGol's notices in this browser. To receive them, allow them in its settings (on Android: Settings → Apps → Chrome → Notifications; on an iPhone: Settings → Notifications → PrediGol) and come back here.",
+      "unsupported": "This browser can't receive notices. Try Chrome, Edge or Firefox or, on an iPhone, PrediGol installed.",
+      "needs_install": "On an iPhone or iPad, notices reach PrediGol installed."
+    },
+    "enable": "Turn on on this device",
+    "disable": "Turn off on this device",
+    "categories": "What we notify you about",
+    "category": {
+      "result": "Result of what you save",
+      "lineup": "Your teams' line-ups",
+      "digest": "Summary of the day",
+      "account": "Your account"
+    },
+    "categoryHelp": {
+      "result": "Whether your pick or parlay won or lost, as soon as it is settled.",
+      "lineup": "When a match of your teams has confirmed line-ups.",
+      "digest": "Once a day, in the morning: today's matches of your teams and leagues.",
+      "account": "The day before your membership ends and when you sign in from a new device. What matters also arrives by e-mail."
+    },
+    "devices": "Your devices",
+    "noDevices": "You don't receive notices on any device yet.",
+    "device": "{browser} on {system}",
+    "installed": "installed app",
+    "lastOk": "last notice delivered {when}",
+    "never": "no notice delivered yet",
+    "here": "this device",
+    "remove": "Remove",
+    "removeLabel": "Stop sending notices to {device}",
+    "removed": "That device will no longer receive notices.",
+    "test": "Send a test notice",
+    "testSent": "Sent: it will reach your devices in a few seconds.",
+    "testHelp": "To check that they arrive. Up to 3 a day.",
+    "families": {
+      "chrome": "Chrome",
+      "firefox": "Firefox",
+      "safari": "Safari",
+      "edge": "Edge",
+      "other": "Browser"
+    },
+    "systems": {
+      "android": "Android",
+      "ios": "iPhone or iPad",
+      "windows": "Windows",
+      "macos": "Mac",
+      "linux": "Linux",
+      "other": "another system"
+    }
+  }
+}

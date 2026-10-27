@@ -1,8 +1,10 @@
 /**
- * The help centre's questions (plan UX, A14; section 32): 23 in ES and EN, grouped as the plan lists them - getting
+ * The help centre's questions (plan UX, A14; section 32): 25 in ES and EN, grouped as the plan lists them - getting
  * started, account and access, membership and payments, picks and parlays, my picks and settlement, notifications and
  * installing, privacy and data, responsible gambling. The words live in the catalogues (support.faq.<id>.q / .a);
- * some answers lead on to the page that does what they describe.
+ * some answers lead on to the page that does what they describe. Two answer for the notices on the devices (plan UX,
+ * B7) and are shown only while the owner made them available (FAQ_NEEDS_PUSH): never a question about something a
+ * reader cannot use.
  */
 import { t } from "@/lib/i18n";
 import { fold } from "@/lib/glossary";
@@ -13,7 +15,7 @@ export const FAQ_GROUPS = [
   { id: "membership", items: ["renew", "membership_ends", "trial"] },
   { id: "picks", items: ["what_pick", "own_selection", "parlay"] },
   { id: "settlement", items: ["when_settled", "void_half", "units"] },
-  { id: "notices", items: ["emails", "install"] },
+  { id: "notices", items: ["emails", "push", "push_iphone", "install"] },
   { id: "privacy", items: ["my_data", "delete_account", "report_context"] },
   { id: "responsible", items: ["should_bet", "get_help"] },
 ] as const;
@@ -34,11 +36,16 @@ export const FAQ_LINKS: Partial<Record<FaqId, { to: string; label: string }>> = 
   void_half: { to: "/help/glossary#term-halfWon", label: "glossary" },
   when_settled: { to: "/my-picks", label: "myPicks" },
   emails: { to: "/profile#notifications", label: "notifications" },
+  push: { to: "/profile#notifications", label: "notifications" },
+  push_iphone: { to: "/profile#notifications", label: "notifications" },
   my_data: { to: "/profile#privacy", label: "privacy" },
   delete_account: { to: "/profile#privacy", label: "privacy" },
   should_bet: { to: "/legal/responsible-gaming", label: "responsible" },
   get_help: { to: "/legal/responsible-gaming", label: "responsible" },
 };
+
+/** The questions about the notices on the devices: shown only while notices are available (GET /me/push). */
+export const FAQ_NEEDS_PUSH: ReadonlySet<FaqId> = new Set<FaqId>(["push", "push_iphone"]);
 
 export function faqQuestion(id: FaqId): string {
   return t(`support.faq.${id}.q`);

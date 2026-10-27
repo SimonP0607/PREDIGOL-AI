@@ -38,6 +38,17 @@ export const live = {
     queryFn: () => v1.myHelpfulVote(subject, subjectId),
     staleTime: 30 * MINUTE,
   }),
+  /**
+   * The reader's notices on their devices (plan UX, B7): whether they can be offered at all, the key to subscribe with,
+   * their devices and categories. Read again after any change of theirs.
+   */
+  push: { queryKey: ["me", "push"], queryFn: v1.myPush, staleTime: 5 * MINUTE },
+  /** The bell of one match. */
+  matchAlert: (fixtureId: number) => ({
+    queryKey: ["me", "match-alert", fixtureId],
+    queryFn: () => v1.myMatchAlert(fixtureId),
+    staleTime: 5 * MINUTE,
+  }),
   /** The newest entry of Novedades the reader has seen: «Más» marks a newer one. */
   updatesSeen: {
     queryKey: ["me", "updates", "seen"],

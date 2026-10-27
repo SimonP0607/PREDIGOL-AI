@@ -43,7 +43,10 @@ export function hadTrouble(): boolean {
   return memory.trouble || read(TROUBLE);
 }
 
-/** The survey came up (answered, closed or ignored): not again in this visit, whatever the server says. */
+/**
+ * The survey came up (answered, closed or ignored): not again in this visit, whatever the server says. The notices'
+ * offer (plan UX, B7) marks it too: one card asks the reader something in a visit, never two.
+ */
 export function markOffered(): void {
   memory.offered = true;
   write(OFFERED);

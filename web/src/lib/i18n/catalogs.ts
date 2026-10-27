@@ -34,6 +34,7 @@ import esLegal from "@/locales/es/legal.json";
 import esTransparency from "@/locales/es/transparency.json";
 import esOnboarding from "@/locales/es/onboarding.json";
 import esSupport from "@/locales/es/support.json";
+import esPush from "@/locales/es/push.json";
 import enAdmin from "@/locales/en/admin.json";
 import enAuth from "@/locales/en/auth.json";
 import enCommon from "@/locales/en/common.json";
@@ -65,6 +66,7 @@ import enLegal from "@/locales/en/legal.json";
 import enTransparency from "@/locales/en/transparency.json";
 import enOnboarding from "@/locales/en/onboarding.json";
 import enSupport from "@/locales/en/support.json";
+import enPush from "@/locales/en/push.json";
 
 export type Locale = "es" | "en";
 
@@ -105,6 +107,7 @@ export const CATALOGS: Record<Locale, Catalog> = {
     transparency: esTransparency,
     onboarding: esOnboarding,
     support: esSupport,
+    push: esPush,
   },
   en: {
     admin: enAdmin,
@@ -138,5 +141,6 @@ export const CATALOGS: Record<Locale, Catalog> = {
     transparency: enTransparency,
     onboarding: enOnboarding,
     support: enSupport,
+    push: enPush,
   },
 };

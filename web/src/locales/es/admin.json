@@ -305,6 +305,29 @@
         "result_seen": "tras ver un resultado"
       },
       "nps": "El NPS se añadirá cuando haya más de unas 100 respuestas por trimestre. La opinión mejora el producto y nunca entra en los modelos."
+    },
+    "push": {
+      "title": "Avisos en los dispositivos",
+      "on": "Disponibles: los lectores pueden activarlos",
+      "off": "No disponibles: interruptor apagado (FBI_PUSH=0) o falta la clave VAPID (P12)",
+      "readers": "Lectores que los reciben",
+      "devices": "Dispositivos activos",
+      "gone": "Dados de baja por su servicio (7 días)",
+      "byBrowser": "Por navegador",
+      "week": "Avisos de los últimos 7 días",
+      "none": "Ningún aviso en los últimos 7 días.",
+      "category": "Tipo",
+      "sent": "Enviados",
+      "dropped": "Descartados",
+      "categories": {
+        "result": "Resultados",
+        "lineup": "Alineaciones",
+        "digest": "Resumen del día",
+        "reminder": "Recordatorios",
+        "account": "Cuenta",
+        "test": "Pruebas"
+      },
+      "note": "Recuentos, nunca quién. Los avisos enviados no son un objetivo: sirven para ver el ruido. Descartados por horas silenciosas vencidas, el máximo diario, una categoría apagada o sin dispositivo."
     }
   },
   "audit": {

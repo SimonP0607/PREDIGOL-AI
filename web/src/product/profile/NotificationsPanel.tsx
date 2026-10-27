@@ -2,7 +2,7 @@
  * The reader's notifications, in their profile (plan UX, A5; F12): which e-mails PrediGol sends them, by category -
  * the account, its security, their privacy requests and the legal changes always; membership reminders and support
  * answers as they choose - and, when their address bounced or they marked a message as spam, why nothing arrives.
- * Push notifications join this block in B7.
+ * Below, the notices on their devices (plan UX, B7: PushSection), once the owner made them available.
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,6 +18,7 @@ import { track } from "@/lib/track";
 import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ErrorState, errorMessage } from "@/product/shared/States";
+import { PushSection } from "./PushSection";
 
 export const PREFERENCES_KEY = ["me", "notification-preferences"] as const;
 
@@ -170,11 +171,14 @@ export function NotificationsPanel() {
   if (q.isPending) return <Loader2 aria-hidden className="h-4 w-4 animate-spin" />;
   if (q.isError) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
   return (
-    <NotificationsView
-      prefs={q.data}
-      busy={busy}
-      failure={failure}
-      onToggle={(item) => void toggle(item)}
-    />
+    <div className="space-y-4">
+      <NotificationsView
+        prefs={q.data}
+        busy={busy}
+        failure={failure}
+        onToggle={(item) => void toggle(item)}
+      />
+      <PushSection />
+    </div>
   );
 }

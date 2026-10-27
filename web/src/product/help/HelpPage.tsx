@@ -1,10 +1,11 @@
 /**
- * Ayuda (/help, plan UX, A14; section 32): the reader finds the answer alone or writes to PrediGol. 23 questions in ES
+ * Ayuda (/help, plan UX, A14; section 32): the reader finds the answer alone or writes to PrediGol. 25 questions in ES
  * and EN by group with an accent-blind search (each one opens in place; /help#faq-renew opens that one), the reader's own
  * messages with their state, the glossary, the optional four-step tour (A13 started it from the glossary until this page
  * existed), «Juego responsable», «Privacidad y datos», and the contact: «Reportar un problema» and - once the owner has
  * given them - WhatsApp and an address. Reachable from the account menu (two taps from any screen), from every error and
- * with the membership ended or suspended (A8's limited paths).
+ * with the membership ended or suspended (A8's limited paths). The two about the notices on the devices (B7) only while
+ * the owner made notices available.
  */
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -26,12 +27,14 @@ import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { whatsappLink } from "@/product/membership/membership";
 import { Card, PageTitle } from "@/product/shared/States";
+import { usePush } from "@/product/push/usePush";
 import { useReportProblem } from "@/product/support/report";
 import { TourStart } from "@/product/tour/Tour";
 import {
   FAQ_GROUPS,
   FAQ_IDS,
   FAQ_LINKS,
+  FAQ_NEEDS_PUSH,
   faqAnchor,
   faqAnswer,
   faqMatches,
@@ -81,10 +84,16 @@ export function ReportButton({ className }: { className?: string }) {
 
 export function HelpPage() {
   const state = useQuery(live.support);
+  const push = usePush();
   const hash = useRouterState({ select: (s) => s.location.hash.replace(/^#/, "") });
   const [query, setQuery] = useState("");
   const searching = query.trim().length > 0;
-  const shown = useMemo(() => new Set(FAQ_IDS.filter((id) => faqMatches(id, query))), [query]);
+  const pushOn = push.available;
+  const shown = useMemo(
+    () =>
+      new Set(FAQ_IDS.filter((id) => (pushOn || !FAQ_NEEDS_PUSH.has(id)) && faqMatches(id, query))),
+    [query, pushOn],
+  );
   const groups = FAQ_GROUPS.map(
     (g) => [g.id, g.items.filter((id) => shown.has(id))] as const,
   ).filter(([, items]) => items.length > 0);

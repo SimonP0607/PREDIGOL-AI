@@ -12,8 +12,9 @@
  *
  * Installing (plan UX, A15, section 35): whether PrediGol runs as the installed app (isStandalone), which device's steps
  * «Instalar PrediGol» shows first (installPlatform, installOrder), and the once-per-device mark of the first opening
- * in installed mode that the product event pwa_installed counts (markInstalledOnce). The guided install with Android's
- * own prompt is B7's.
+ * in installed mode that the product event pwa_installed counts (markInstalledOnce). The guided install (plan UX, B7)
+ * keeps Android's own prompt for the moment the reader asks for it (captureInstallPrompt, promptInstall): Chrome's
+ * banner never comes up on opening.
  */
 export const SERVICE_WORKER_URL = "/sw.js";
 /** Fired on window when a new version is installed and waiting; detail: the waiting worker. */
@@ -157,6 +158,63 @@ export function markInstalledOnce(storage?: Pick<Storage, "getItem" | "setItem">
     return store.getItem(INSTALLED_KEY) !== null;
   } catch {
     return false;
+  }
+}
+
+interface InstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
+let installPrompt: InstallPromptEvent | null = null;
+const installListeners = new Set<() => void>();
+
+function installChanged(): void {
+  for (const listener of installListeners) listener();
+}
+
+/**
+ * Android's and the desktop's own install prompt (beforeinstallprompt), kept for the guided install of B7 - offered when
+ * the reader turns notices on, never on opening (section 35: «se ofrece en contexto, nunca al abrir»).
+ */
+export function captureInstallPrompt(
+  win: Pick<Window, "addEventListener"> | undefined = typeof window === "undefined"
+    ? undefined
+    : window,
+): void {
+  if (!win) return;
+  win.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    installPrompt = event as InstallPromptEvent;
+    installChanged();
+  });
+  win.addEventListener("appinstalled", () => {
+    installPrompt = null;
+    installChanged();
+  });
+}
+
+/** Whether this browser offered its own install prompt (Chrome or Edge, not installed yet). */
+export function canPromptInstall(): boolean {
+  return installPrompt !== null;
+}
+
+export function onInstallPromptChange(listener: () => void): () => void {
+  installListeners.add(listener);
+  return () => installListeners.delete(listener);
+}
+
+/** The browser's own install prompt, from the reader's tap: it can be shown once. */
+export async function promptInstall(): Promise<"accepted" | "dismissed" | "unavailable"> {
+  const event = installPrompt;
+  if (!event) return "unavailable";
+  installPrompt = null;
+  installChanged();
+  try {
+    await event.prompt();
+    return (await event.userChoice).outcome;
+  } catch {
+    return "unavailable";
   }
 }
 

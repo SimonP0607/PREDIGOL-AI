@@ -9,6 +9,7 @@ import { CompetitionTag, TeamLogo } from "@/components/football/Logos";
 import { Freshness, LiveMinute } from "@/product/shared/Bits";
 import { Card } from "@/product/shared/States";
 import { FollowStar } from "@/product/favorites/FollowStar";
+import { MatchBell } from "@/product/push/MatchBell";
 import { venueFacts, venuePlace } from "@/product/shared/venue";
 import type { MatchCtx } from "./context";
 import { tieView } from "./tie";
@@ -91,6 +92,15 @@ function Center({ ctx }: { ctx: MatchCtx }) {
             {t("match.header.startsIn", { when: formatRelative(m.kickoff_at) })}
           </StatePill>
         ) : null}
+        {/* Plan UX, B7: «avísame antes de que empiece» - the bell asks for a notice; the star only follows a team. */}
+        {tbd ? null : (
+          <MatchBell
+            fixtureId={m.id}
+            kickoffAt={m.kickoff_at}
+            home={m.home.name}
+            away={m.away.name}
+          />
+        )}
       </div>
     );
   }

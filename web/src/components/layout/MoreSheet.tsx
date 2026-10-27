@@ -1,7 +1,8 @@
 /**
  * «Más» (plan UX, A15, section 36): what does not fit in the five cells of the bar, one tap from any screen - Parlays,
  * Cuotas, Transparencia (once it is open to readers), Ayuda, Perfil, Glosario and Novedades, then «Instalar PrediGol» with the
- * basic steps for this device (section 35; the guided install with Android's own prompt is B7's) and «Cerrar sesión»,
+ * basic steps for this device (section 35) - and, where the browser offered its own install prompt, a button that shows
+ * it (B7) - and «Cerrar sesión»,
  * which revokes the session on the server as the account menu does. Novedades (B6) carries a dot while it holds an
  * entry the reader has not seen.
  *
@@ -11,10 +12,16 @@
  */
 import { useRef, useState, type RefObject } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, LogOut, Smartphone } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, LogOut, Smartphone } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { t } from "@/lib/i18n";
-import { installOrder, installPlatform, isStandalone, type InstallPlatform } from "@/lib/pwa";
+import {
+  installOrder,
+  installPlatform,
+  isStandalone,
+  promptInstall,
+  type InstallPlatform,
+} from "@/lib/pwa";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -29,6 +36,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useInstallPrompt } from "@/product/push/useInstallPrompt";
 import { currentMore, UPDATES_PATH, type MoreItem } from "./nav";
 import { useMoreItems } from "./useMoreItems";
 import { useUpdatesUnread } from "./useUpdatesUnread";
@@ -42,6 +50,7 @@ export function InstallSteps({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const canPrompt = useInstallPrompt();
   return (
     <div className="rounded-lg border border-border" data-testid="more-install">
       <button
@@ -71,6 +80,17 @@ export function InstallSteps({
           className="space-y-2 border-t border-border px-3 py-3 text-sm"
           data-testid="more-install-steps"
         >
+          {canPrompt ? (
+            <button
+              type="button"
+              onClick={() => void promptInstall()}
+              data-testid="install-prompt"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-primary/45 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Download aria-hidden className="h-4 w-4" />
+              {t("push.install.button")}
+            </button>
+          ) : null}
           {installOrder(platform).map((p, i) => (
             <p
               key={p}

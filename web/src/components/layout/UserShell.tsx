@@ -20,6 +20,7 @@ import { SlipButton, SlipSheet } from "@/product/records/SlipSheet";
 import { MembershipBanner } from "@/product/membership/MembershipBanner";
 import { TourCard } from "@/product/tour/Tour";
 import { FeedbackProvider } from "@/product/feedback/FeedbackProvider";
+import { PushProvider } from "@/product/push/PushProvider";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { BottomBar, TopNav } from "./Bars";
 import { AccountMenu, LanguageSwitch, PreviewBanner } from "./HeaderControls";
@@ -66,53 +67,57 @@ export function UserShell({ children }: { children: ReactNode }) {
     <DataSourcesProvider>
       <SlipProvider>
         <FeedbackProvider>
-          <div className="min-h-screen bg-background">
-            <PreviewBanner />
-            <ShadowPreviewStrip />
-            {/* Sideways on a phone the bar scrolls away with the page: 56 px of a 390 px screen is too much. */}
-            <header className="safe-top sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur short:static">
-              <div className="px-safe mx-auto flex h-14 max-w-6xl items-center gap-3 sm:gap-4">
-                {/* min-w-0: on a 320 px phone the brand gives way to the controls instead of pushing them off. */}
-                <Link to="/home" aria-label="PrediGol" className="tap-y relative min-w-0">
-                  <BrandLogo size={30} tagline={t("common.tagline")} />
-                </Link>
-                <TopNav pathname={pathname} items={items} unread={unread ? [UPDATES_PATH] : []} />
-                <div className="ml-auto flex items-center gap-2">
-                  <LanguageSwitch />
-                  <AccountMenu />
+          <PushProvider>
+            <div className="min-h-screen bg-background">
+              <PreviewBanner />
+              <ShadowPreviewStrip />
+              {/* Sideways on a phone the bar scrolls away with the page: 56 px of a 390 px screen is too much. */}
+              <header className="safe-top sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur short:static">
+                <div className="px-safe mx-auto flex h-14 max-w-6xl items-center gap-3 sm:gap-4">
+                  {/* min-w-0: on a 320 px phone the brand gives way to the controls instead of pushing them off. */}
+                  <Link to="/home" aria-label="PrediGol" className="tap-y relative min-w-0">
+                    <BrandLogo size={30} tagline={t("common.tagline")} />
+                  </Link>
+                  <TopNav pathname={pathname} items={items} unread={unread ? [UPDATES_PATH] : []} />
+                  <div className="ml-auto flex items-center gap-2">
+                    <LanguageSwitch />
+                    <AccountMenu />
+                  </div>
                 </div>
-              </div>
-            </header>
+              </header>
 
-            {/* The membership's notice (plan UX, A8): in the page's flow, never over the tab bar. */}
-            <MembershipBanner />
-            <main className="px-safe mx-auto w-full max-w-6xl pb-6 pt-5 lg:pb-12">{children}</main>
-            {/* The optional tour (plan UX, A13), when the reader started it: one card over the page's foot. */}
-            <TourCard />
+              {/* The membership's notice (plan UX, A8): in the page's flow, never over the tab bar. */}
+              <MembershipBanner />
+              <main className="px-safe mx-auto w-full max-w-6xl pb-6 pt-5 lg:pb-12">
+                {children}
+              </main>
+              {/* The optional tour (plan UX, A13), when the reader started it: one card over the page's foot. */}
+              <TourCard />
 
-            {/* The disclaimer (+18, no guarantee) on every screen; on a phone it also keeps the page's end clear of
+              {/* The disclaimer (+18, no guarantee) on every screen; on a phone it also keeps the page's end clear of
               the tab bar and the parlay button. */}
-            <footer className="px-safe mx-auto max-w-6xl pb-[calc(8rem+env(safe-area-inset-bottom))] text-center text-caption text-subtle-foreground short:pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-8">
-              <Disclaimer />
-            </footer>
+              <footer className="px-safe mx-auto max-w-6xl pb-[calc(8rem+env(safe-area-inset-bottom))] text-center text-caption text-subtle-foreground short:pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-8">
+                <Disclaimer />
+              </footer>
 
-            <BottomBar
-              pathname={pathname}
-              moreUnread={unread}
-              moreOpen={more}
-              onMore={() => {
-                setMoreUsed(true);
-                setMore(true);
-              }}
-              moreRef={moreButton}
-            />
-            {moreUsed ? (
-              <MoreSheet open={more} onOpenChange={setMore} returnFocus={moreButton} />
-            ) : null}
-            <SlipButton />
-            <SlipSheet />
-            <Toaster theme="dark" position="top-center" visibleToasts={phone ? 1 : 3} />
-          </div>
+              <BottomBar
+                pathname={pathname}
+                moreUnread={unread}
+                moreOpen={more}
+                onMore={() => {
+                  setMoreUsed(true);
+                  setMore(true);
+                }}
+                moreRef={moreButton}
+              />
+              {moreUsed ? (
+                <MoreSheet open={more} onOpenChange={setMore} returnFocus={moreButton} />
+              ) : null}
+              <SlipButton />
+              <SlipSheet />
+              <Toaster theme="dark" position="top-center" visibleToasts={phone ? 1 : 3} />
+            </div>
+          </PushProvider>
         </FeedbackProvider>
       </SlipProvider>
     </DataSourcesProvider>

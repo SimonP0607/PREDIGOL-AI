@@ -15,6 +15,7 @@ import { fmtInt } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { Card, ErrorState } from "@/product/shared/States";
 import { FeedbackCard } from "./FeedbackCard";
+import { PushCard } from "./PushCard";
 
 function Figure({ label, value, testId }: { label: string; value: string; testId?: string }) {
   return (
@@ -157,6 +158,8 @@ export function ProductPage() {
       </Card>
       {/* What readers think of PrediGol: the monthly survey, «¿Te sirvió?» and the comments (plan UX, B6). */}
       <FeedbackCard />
+      {/* The readers' notices on their devices: available or not, devices and a week of notices (plan UX, B7). */}
+      <PushCard />
     </div>
   );
 }

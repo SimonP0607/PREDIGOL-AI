@@ -27,6 +27,7 @@ import { AdminShell } from "@/components/layout/AdminShell";
 import { BrandMark } from "@/components/brand/Brand";
 import {
   applyUpdate,
+  captureInstallPrompt,
   isStandalone,
   markInstalledOnce,
   registerServiceWorker,
@@ -38,7 +39,8 @@ import { isLegalPath } from "@/product/legal/links";
 import { isAccountPath } from "@/product/auth/accountPaths";
 import { isLimitedPath } from "@/product/membership/membership";
 import { LimitedAccess } from "@/product/membership/LimitedAccess";
-import { noteLocation, startSession, track } from "@/lib/track";
+import { noteLocation, noteNoticeLanding, startSession, track } from "@/lib/track";
+import { eventCategory, withoutNoticeMark } from "@/lib/push";
 import { markTrouble } from "@/lib/feedback/session";
 import { TourProvider } from "@/product/tour/Tour";
 import { ReportProblemProvider } from "@/product/support/ReportProblem";
@@ -178,6 +180,7 @@ function RootComponent() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   useEffect(() => {
+    captureInstallPrompt();
     void registerServiceWorker();
     void startObservability();
   }, []);
@@ -344,6 +347,23 @@ function Gate() {
     // an iPhone, which never fires appinstalled.
     if (isStandalone() && markInstalledOnce()) track("pwa_installed");
   }, [measured, auth.locale]);
+  // Plan UX, B7: a notice tapped on the device opened this page (public/sw.js marks it ?notice=<category>) - counted
+  // once the reader is in (after signing in, if the session had ended), and then the mark leaves the address.
+  useEffect(() => {
+    if (!measured) return;
+    const params = new URLSearchParams(location.searchStr ?? "");
+    if (!params.has("notice")) return;
+    const category = eventCategory(params.get("notice"));
+    if (category) {
+      track("notification_opened", { category });
+      noteNoticeLanding();
+    }
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${window.location.pathname}${withoutNoticeMark(window.location.search)}${window.location.hash}`,
+    );
+  }, [measured, location.searchStr]);
 
   useEffect(() => {
     if (auth.status === "anonymous" && !onLogin && !onLegal && !onAccount) {
