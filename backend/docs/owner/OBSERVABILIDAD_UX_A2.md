@@ -183,5 +183,21 @@ Con eso, G12 queda en verde.
 - **Paquete `ux-a2`, reconstruido:** backend y web hijos de las publicaciones de la IA, sin migración, huella del
   código de modelos sin cambios (guardia en modo `stop`). Los commits de publicación están en su `RELEASE.json`; el
   paquete anterior, construido sobre A1, queda retirado.
-- **Despliegue:** en su ventana, con copia previa, su prueba de restauración, humo y verificación; el resultado se
-  añade aquí al terminar (como en la guía de A1).
+- **Despliegue: HECHO y verificado el 27-oct-2026, 04:28–04:41 UTC**, sin ventana: el dueño quitó las ventanas a las
+  ≈03:55 UTC («siempre ir desplegando todo lo que se termine»), así que el paquete se reempaquetó sin horario (mismas
+  publicaciones, sha256 `4454e054…ee206b332`) y salió en cuanto la copia estuvo comprobada. Carpeta del servidor
+  `/root/releases/20261027T0400Z-ux-a2`:
+  - comprobación previa (solo lectura): todas las líneas OK;
+  - copia `predigol-20261027T035500Z-ux-a2` (1.499.125.151 bytes, 508 s, revisión 0113) y **prueba de restauración
+    superada** (888 s, 04:18:51 UTC);
+  - `deploy_with_retries.sh` al primer intento: servidor en calma, paquetes comprobados, guardia de modelos `UNCHANGED`
+    (`mc9a7bec97ca`), copia previa del propio despliegue (`predigol-20261027T043219Z-pre-deploy-93aed12d9df9`), imágenes
+    construidas, API, worker y web recreados; `deploy: done` a las 04:41:25 UTC;
+  - **humo OK** (salud, entrada, HSTS, rutas cerradas sin sesión, sonda de R02, `<html lang>` en es y en)
+    y **verificación con todas las líneas OK**: *checkouts* `93aed12d9df9` / `9cfb88a22697`, revisión 0113, `pip freeze`
+    de API y worker igual a `constraints.txt`, huella de modelos sin cambios, los picks (4.131) y decisiones (773) del día
+    idénticos antes y después con el mismo corte (04:19:07 UTC) y 0 líneas de error en los registros de la API y la web;
+    la lectura `promotion_trace` posterior sale con 0;
+  - **desde Internet, `prod-smoke` 6 de 6** contra `https://predigolai.com`.
+  Producción corre **backend `93aed12d9df9` y web `9cfb88a22697`** sobre la **0113**. Sentry y el recorrido siguen
+  apagados hasta tu P1 (sección 6): te lo pido cuando no quede ninguna otra tarea tuya abierta.
