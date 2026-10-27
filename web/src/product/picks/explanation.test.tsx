@@ -26,7 +26,7 @@ import {
   marketLines,
   riskLines,
 } from "./explanation";
-import { PickExplanationView } from "./WhyPick";
+import { PickExplanationView, WhyPickButton } from "./WhyPick";
 
 function explanation(over: Partial<PickExplanation> = {}): PickExplanation {
   return {
@@ -299,6 +299,15 @@ describe("the explanation's sheet", () => {
       explanation({ day: { ...day, user_status: "RECOMMENDED", context_pending: true } }),
     );
     expect(same).not.toContain('data-testid="why-day-status"');
+  });
+
+  test("the button is the sheet's own trigger: it says it opens a dialog and asks nothing until it does", () => {
+    setLocale("es");
+    const html = renderToStaticMarkup(<WhyPickButton pickId={41} testId="why-pick" />);
+    expect(html).toMatch(/<button[^>]*aria-haspopup="dialog"/);
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('data-testid="why-pick"');
+    expect(html).not.toContain('data-testid="why-sheet"');
   });
 
   test("English", () => {

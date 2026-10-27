@@ -23,6 +23,7 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import { Disclaimer } from "@/components/system/Disclaimer";
 import { ProbCompare } from "@/product/shared/Bits";
@@ -61,41 +62,39 @@ export function WhyPickButton({
   const [open, setOpen] = useState(false);
   const [side, setSide] = useState<"bottom" | "right">("bottom");
   return (
-    <>
-      <button
-        type="button"
-        data-testid={testId}
-        onClick={() => {
-          setSide(fromBottom() ? "bottom" : "right");
-          setOpen(true);
-          track("pick_explanation_opened", { pick_id: pickId });
-        }}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        className={cn(
-          "tap-y relative inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border-strong px-3 text-xs font-semibold text-foreground transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          className,
-        )}
-      >
-        <CircleHelp aria-hidden className="h-3.5 w-3.5 shrink-0" />
-        {t("picks.why.open")}
-      </button>
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent
-          side={side}
-          closeLabel={t("picks.why.close")}
-          data-testid="why-sheet"
+    <Sheet open={open} onOpenChange={setOpen}>
+      {/* The sheet's own trigger: it opens it, says so (aria-haspopup, aria-expanded) and gets the focus back on close. */}
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          data-testid={testId}
+          onClick={() => {
+            setSide(fromBottom() ? "bottom" : "right");
+            track("pick_explanation_opened", { pick_id: pickId });
+          }}
           className={cn(
-            "overflow-y-auto",
-            side === "bottom"
-              ? "max-h-[92dvh] rounded-t-2xl px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5"
-              : "w-full px-5 py-5 sm:max-w-md",
+            "tap-y relative inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border-strong px-3 text-xs font-semibold text-foreground transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            className,
           )}
         >
-          {open ? <WhyPickContent pickId={pickId} /> : null}
-        </SheetContent>
-      </Sheet>
-    </>
+          <CircleHelp aria-hidden className="h-3.5 w-3.5 shrink-0" />
+          {t("picks.why.open")}
+        </button>
+      </SheetTrigger>
+      <SheetContent
+        side={side}
+        closeLabel={t("picks.why.close")}
+        data-testid="why-sheet"
+        className={cn(
+          "overflow-y-auto",
+          side === "bottom"
+            ? "max-h-[92dvh] rounded-t-2xl px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5"
+            : "w-full px-5 py-5 sm:max-w-md",
+        )}
+      >
+        {open ? <WhyPickContent pickId={pickId} /> : null}
+      </SheetContent>
+    </Sheet>
   );
 }
 
