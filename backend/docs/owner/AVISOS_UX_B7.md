@@ -137,9 +137,10 @@ PUERTAS_B7
 - **Migración 0104:** BACKUP → RESTORE TEST → MIGRATION → VALIDATION → DEPLOY, con la copia restaurada y sus conteos antes de
   migrar.
 - **Nace sin poder ofrecerse:** sin `FBI_VAPID_PRIVATE_KEY` la API dice «no disponible», la web no muestra nada nuevo y el
-  messenger no envía. La verificación tras desplegar lo comprueba en producción (`GET /me/push` → `available: false`).
-- **Vuelta atrás:** `FBI_PUSH=0` en `app.env` y recrear la API y el messenger (nada se envía y todo se oculta; lo guardado
-  se conserva); el código vuelve con el despliegue anterior y su `sw.js` (los navegadores lo actualizan solos).
+  messenger no envía. La verificación tras desplegar lo comprueba en producción, dentro de la API y del messenger
+  (`fbi.customer.push.available()` responde que no; de la clave no se lee ni se muestra nada).
+- **Vuelta atrás:** `FBI_PUSH=0` en `app.env` (con su copia fechada y, al final, `predigolctl config-baseline`) y recrear la API
+  y el messenger (nada se envía y todo se oculta; lo guardado se conserva); el código vuelve con el despliegue anterior y su `sw.js` (los navegadores lo actualizan solos).
 
 ## 9. Acción manual: P12, la clave VAPID
 
@@ -173,15 +174,22 @@ mostrarla.
    sudo shred -u /root/predigol-vapid.txt
    ```
 
-5. Dime «listo». Yo recreo la API y el messenger en un momento tranquilo del servidor (sin tocar el worker de
-   Intelligence) y compruebo por lectura que `GET /me/push` responde `available: true` con esa clave pública y que el
-   messenger no registra errores.
-6. **La prueba real (criterio de terminado de B7):** en tu teléfono —un Android con Chrome y un iPhone con PrediGol instalada
+5. Toma la referencia de la configuración, para que el aviso «la configuración cambió» del plan de seguridad no salte por
+   este cambio (es el último paso de cualquier cambio en un fichero de entorno):
+
+   ```
+   sudo predigolctl config-baseline
+   ```
+
+6. Dime «listo». Yo recreo la API y el messenger en un momento tranquilo del servidor (sin tocar el worker de
+   Intelligence) y compruebo por lectura, dentro de los dos contenedores, que los avisos están disponibles con esa clave
+   pública y que el messenger no registra errores.
+7. **La prueba real (criterio de terminado de B7):** en tu teléfono —un Android con Chrome y un iPhone con PrediGol instalada
    (iOS 16.4 o posterior)—, Perfil → Notificaciones → «Activar en este dispositivo» y «Enviar un aviso de prueba»: llega en
    segundos y al tocarlo abre tu perfil. Después, en los días siguientes, las cinco categorías: la campana de un partido (15
    minutos antes), un pick guardado que se liquida, las alineaciones de un equipo que sigues, el resumen de la mañana y la
    cuenta (entrar desde un navegador nuevo). Ninguno debe llegar entre las 22:00 y las 08:00 salvo el recordatorio, y
    ninguno dos veces. Con eso, la entrada de Novedades.
 
-Si algún día la clave se filtrara: se genera otra igual (pasos 1 a 5, quitando antes la línea vieja de `app.env`) y cada
+Si algún día la clave se filtrara: se genera otra igual (pasos 1 a 6, quitando antes la línea vieja de `app.env`) y cada
 navegador tiene que volver a activar los avisos.
