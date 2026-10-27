@@ -354,7 +354,26 @@ test.describe("FBI_FEEDBACK on", () => {
         await api.post("/api/v1/auth/login", { data: { email: fresh.email, password: PASSWORD } })
       ).status(),
     ).toBe(200);
-    const state = (await (await api.get("/api/v1/me/feedback/survey")).json()) as Survey;
+    // the consents first, as the gate asks of every new reader (plan UX, A4): until then /me answers 403
+    const who = (await (await api.get("/api/v1/auth/me")).json()) as { consents_due?: string[] };
+    if (who.consents_due?.length) {
+      const texts = (await (await api.get("/api/v1/me/consents?lang=es")).json()) as {
+        purposes: Array<{ kind: string; version: string }>;
+      };
+      const accepted = await api.post("/api/v1/me/consents", {
+        data: {
+          decisions: texts.purposes
+            .filter((p) => who.consents_due?.includes(p.kind))
+            .map((p) => ({ kind: p.kind, granted: true, version: p.version })),
+          locale: "es",
+          source: "gate",
+        },
+      });
+      expect(accepted.status(), "the new reader accepts the current texts").toBe(200);
+    }
+    const asked = await api.get("/api/v1/me/feedback/survey");
+    expect(asked.status(), "the survey's state").toBe(200);
+    const state = (await asked.json()) as Survey;
     const created = sql(
       `SELECT extract(epoch FROM created_at) FROM auth.users WHERE id = ${fresh.id}`,
     );

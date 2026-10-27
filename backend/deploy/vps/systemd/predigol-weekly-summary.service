@@ -1,0 +1,10 @@
+[Unit]
+Description=PrediGol: weekly summary of incidents (Monday)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/predigol/backend/deploy/vps/bin/weekly-summary.sh
+TimeoutStartSec=60
+Nice=10
