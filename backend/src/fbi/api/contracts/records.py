@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from fbi.api.contracts.common import Contract, MatchPhase
+from fbi.api.contracts.common import Contract, MatchPhase, StatusReason, UserStatus
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
 
 ResultStatus = Literal["PENDING", "WIN", "LOSS", "PUSH", "VOID", "HALF_WIN", "HALF_LOSS"]
@@ -111,6 +111,13 @@ class DailyItem(Contract):
     ai_latest: AiLatest | None = None
     corrections: list[ResultCorrection] = Field(default_factory=list, description=(
         "Settled again after the provider corrected the match; oldest first. Empty: never."))
+    user_status: UserStatus = Field(description=(
+        "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table), as the pick stood when it entered the "
+        "set: its price then passed the value rule, and the AI review frozen with it counts only if it was applied then. "
+        "EVALUATION for the evaluation set (the owner's preview)."))
+    status_reason: StatusReason
+    context_pending: bool = Field(description="RECOMMENDED by the value rule alone: «revisión de contexto aún no "
+                                              "aplicada» is said beside it.")
 
 
 class DailySet(Contract):

@@ -45,6 +45,7 @@ from fbi.api.errors import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.api.services import ai_v2
 from fbi.core.clock import now
+from fbi.picks import user_status
 from fbi.picks.daily import DAY_TZ
 
 ANALYSIS_SQL = """
@@ -80,13 +81,23 @@ def _notes_for(card: AnalysisCard, notes: list[dict[str, Any]]) -> CardNotes | N
     return None
 
 
+def with_state(card: AnalysisCard, *, applied: bool) -> AnalysisCard:
+    """The card with the state a reader is shown (plan UX, B3; ``fbi/picks/user_status.py``, the one table): from its kind, its pick's
+    qualification and - only while the AI's review is applied - the review's decision. An unpriced market has none."""
+    s = user_status.of_card(kind=card.kind, qualified=card.qualified, review=card.ai.decision if card.ai else None,
+                            applied=applied)
+    if s is None:
+        return card
+    return card.model_copy(update={"user_status": s.status, "status_reason": s.reason, "context_pending": s.context_pending})
+
+
 def match_analysis(conn: Conn, fixture_id: int, *, evaluation: bool) -> Envelope[MatchAnalysis | None]:
     settings = AiSettings.from_env()
     row = fetch_one(conn, ANALYSIS_SQL, {"fixture": fixture_id})
     if row is None:
         return unavailable(None, "no_analysis_yet", status=DataStatus.EMPTY)
     enf = enforcement(conn, settings)
-    cards = [AnalysisCard.model_validate(c) for c in (row["cards"] or [])]
+    cards = [with_state(AnalysisCard.model_validate(c), applied=enf.enforced) for c in (row["cards"] or [])]
     shown = cards if evaluation else [c for c in cards if c.kind == "no_market" or c.qualified]
     brief_row = fetch_one(conn, BRIEF_SQL, {"fixture": fixture_id})
     ai_visible = evaluation or enf.enforced

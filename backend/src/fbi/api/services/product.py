@@ -6,6 +6,10 @@ kicks off a pick is never re-priced again: it stays on the board as it was taken
 beside the match's state and its result. A user sees qualified picks
 only; ``include_shadow`` is the Admin Console's preview and is refused to anyone else
 by the router.
+
+Every card carries the state a reader is shown (plan UX, B3: ``fbi/picks/user_status.py``, the one table): a list of picks
+shows the RECOMMENDED and CAUTION ones, counts the rest (``withheld``) and leaves each on its match, whose own view
+(``fixture_id``) shows every pick with its state.
 """
 
 from __future__ import annotations
@@ -46,7 +50,8 @@ from fbi.api.contracts.records import ItemAi
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, section
 from fbi.api.repositories import Conn, Row
 from fbi.api.repositories import product as repo
-from fbi.api.services import center
+from fbi.api.services import center, pick_status
+from fbi.api.services.pick_status import Applied
 from fbi.api.services.records import ai_items
 from fbi.core import match_state
 from fbi.core.clock import now as clock_now
@@ -55,6 +60,7 @@ from fbi.parlays import correlation as corr
 from fbi.parlays.engine import Candidate, GateConfig, Leg, Reject
 from fbi.parlays.persist import RULE_VERSION as PARLAY_RULE
 from fbi.parlays.persist import leg_pool
+from fbi.picks import user_status
 from fbi.picks.daily import DAY_TZ, RISK, Ranked, load_candidates, passing, product_day
 from fbi.picks.daily import Source as DailySource
 
@@ -116,7 +122,7 @@ def freshness_of(price_at: datetime | None, moment: datetime, cfg: GateConfig) -
     return "stale"
 
 
-def card(r: Row, verdict: Leg | Reject, moment: datetime, cfg: GateConfig) -> PickCard:
+def card(r: Row, verdict: Leg | Reject, moment: datetime, cfg: GateConfig, *, applied: Applied) -> PickCard:
     c = candidate_of(r)
     p_market = c.p_market_fair
     if isinstance(verdict, Leg):
@@ -125,6 +131,8 @@ def card(r: Row, verdict: Leg | Reject, moment: datetime, cfg: GateConfig) -> Pi
         ev = engine.expected_value(c.p_model, c.p_push, c.price)[0].quantize(Q6, ROUND_HALF_UP)
     else:
         ev = None
+    state = applied.shown(pick_status=r["pick_status"], value=isinstance(verdict, Leg), fixture_id=c.fixture_id,
+                          market_key=c.market_key, selection=c.selection, line=c.line)
     return PickCard(
         pick_id=c.pick_id, fixture_id=c.fixture_id, kickoff_at=c.kickoff_at, competition=_competition(r),
         home=_home(r), away=_away(r), market_key=c.market_key, selection=c.selection, line=c.line,
@@ -134,11 +142,13 @@ def card(r: Row, verdict: Leg | Reject, moment: datetime, cfg: GateConfig) -> Pi
         edge=(c.p_model - p_market).quantize(Q6, ROUND_HALF_UP) if p_market is not None else None,
         ev=ev, freshness=freshness_of(c.price_at, moment, cfg), value_now=isinstance(verdict, Leg),
         value_reason=None if isinstance(verdict, Leg) else verdict.value,
+        user_status=state.status, status_reason=state.reason, context_pending=state.context_pending,
     )
 
 
-def cards(rows: Iterable[Row], moment: datetime, cfg: GateConfig) -> list[PickCard]:
-    """One card per selection: the pick with value now and the best EV, else the newest pick."""
+def cards(rows: Iterable[Row], moment: datetime, cfg: GateConfig, *, applied: Applied) -> list[PickCard]:
+    """One card per selection: the pick with value now and the best EV, else the newest pick - each with the state a reader
+    is shown (plan UX, B3), the downgraded ones after the rest."""
     groups: dict[tuple[int, str, str, Decimal], list[Row]] = defaultdict(list)
     for r in rows:
         groups[(int(r["fixture_id"]), r["market_key"], r["selection"], Decimal(r["line"]))].append(r)
@@ -152,10 +162,16 @@ def cards(rows: Iterable[Row], moment: datetime, cfg: GateConfig) -> list[PickCa
             chosen = (best_row, best_leg)
         else:
             chosen = max(judged, key=lambda rv: (rv[0]["pick_created_at"], rv[0]["pick_id"]))
-        out.append(card(chosen[0], chosen[1], moment, cfg))
-    out.sort(key=lambda p: (not p.value_now, -(p.ev if p.ev is not None else Decimal(-99)), p.kickoff_at,
-                            p.pick_id))
+        out.append(card(chosen[0], chosen[1], moment, cfg, applied=applied))
+    out.sort(key=lambda p: (not p.value_now, user_status.ORDER[p.user_status],
+                            -(p.ev if p.ev is not None else Decimal(-99)), p.kickoff_at, p.pick_id))
     return out
+
+
+def listed(all_cards: list[PickCard], *, include_shadow: bool) -> list[PickCard]:
+    """What a list of picks shows a reader (plan UX, B3): RECOMMENDED and CAUTION - a pick without value at the best price now,
+    or rejected by the applied AI review, stays on its match. The owner's preview shows every card, labelled."""
+    return all_cards if include_shadow else [p for p in all_cards if p.user_status in user_status.IN_LIST]
 
 
 def _top(all_cards: list[PickCard], moment: datetime) -> list[PickCard]:
@@ -208,8 +224,13 @@ def picks_board(conn: Conn, *, include_shadow: bool, competition_id: int | None,
             and (market is None or r["market_key"] == market)
             and (min_odds is None or (r["best_odds"] is not None and Decimal(r["best_odds"]) >= min_odds))
             and (max_odds is None or (r["best_odds"] is not None and Decimal(r["best_odds"]) <= max_odds))]
-    all_cards = cards(kept, moment, cfg)
-    top = _top(all_cards, moment)
+    applied = pick_status.applied_now(conn, (int(r["fixture_id"]) for r in kept), at=moment)
+    all_cards = cards(kept, moment, cfg, applied=applied)
+    # One match (its Picks tab) shows every pick with its state; a list shows what a reader may be recommended (plan UX, B3),
+    # and the Top 5 is always such a list.
+    recommendable = listed(all_cards, include_shadow=include_shadow)
+    shown = all_cards if fixture_id is not None else recommendable
+    top = _top(recommendable, moment)
     reason = None
     if not rows:
         reason = "no_shadow_picks" if include_shadow else "no_qualified_picks"
@@ -217,11 +238,11 @@ def picks_board(conn: Conn, *, include_shadow: bool, competition_id: int | None,
         reason = "no_picks_match_filters"
     elif not top:
         reason = "no_value_now"
-    board = PicksBoard(source=_source(include_shadow), top=top, picks=all_cards,
+    board = PicksBoard(source=_source(include_shadow), top=top, picks=shown,
                        competitions=sorted(competitions.values(), key=lambda c: c.name), markets=markets,
-                       window_hours=hours, reason=reason, started=started)
-    newest = max((p.price_at for p in all_cards if p.price_at), default=None)
-    return ok(board, count=len(all_cards), data_as_of=newest)
+                       window_hours=hours, reason=reason, withheld=len(all_cards) - len(shown), started=started)
+    newest = max((p.price_at for p in shown if p.price_at), default=None)
+    return ok(board, count=len(shown), data_as_of=newest)
 
 
 def started_board(conn: Conn, *, include_shadow: bool, at: datetime | None = None) -> Envelope[list[StartedPick]]:
@@ -420,7 +441,9 @@ def best_odds_board(conn: Conn, *, hours: int, market: str | None, include_shado
     if with_picks:
         pick_rows = repo.pick_candidates(conn, now=moment, until=moment + timedelta(hours=hours),
                                          since=moment - CONSENSUS_LOOKBACK, include_shadow=include_shadow)
-        value = [p for p in cards(pick_rows, moment, GateConfig(allow_unqualified=include_shadow)) if p.value_now]
+        applied = pick_status.applied_now(conn, (int(r["fixture_id"]) for r in pick_rows), at=moment)
+        value = [p for p in listed(cards(pick_rows, moment, GateConfig(allow_unqualified=include_shadow), applied=applied),
+                                   include_shadow=include_shadow) if p.value_now]
         if market:
             value = [p for p in value if p.market_key == market]
     board = BestOddsBoard(window_hours=hours, markets=list(markets), fixtures=fixtures, highlights=highlights[:12],
@@ -442,7 +465,8 @@ def home(conn: Conn, *, include_shadow: bool, at: datetime | None = None) -> Env
     cfg = GateConfig(allow_unqualified=include_shadow)
     rows = repo.pick_candidates(conn, now=moment, until=moment + HOME_WINDOW, since=moment - CONSENSUS_LOOKBACK,
                                 include_shadow=include_shadow)
-    top = _top(cards(rows, moment, cfg), moment)
+    applied = pick_status.applied_now(conn, (int(r["fixture_id"]) for r in rows), at=moment)
+    top = _top(listed(cards(rows, moment, cfg, applied=applied), include_shadow=include_shadow), moment)
     if top:
         top_section = section(top)
     elif rows:

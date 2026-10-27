@@ -11,6 +11,10 @@
   {
    "date": "2026-10-25",
    "reason": "A1 (F08): LiveMatch gains country_code, so the client names a live match's country in the reader's language"
+  },
+  {
+   "date": "2026-10-27",
+   "reason": "B3: each pick carries its visible state (user_status, status_reason, context_pending) from the one table in fbi/picks/user_status.py on /home, /picks, /odds/best and /daily; /picks counts in withheld the picks it keeps for their match page"
   }
  ],
  "routes": {
@@ -281,6 +285,11 @@
        ],
        "title": "Bookmaker"
       },
+      "context_pending": {
+       "description": "RECOMMENDED by the value rule alone: «revisión de contexto aún no aplicada» is said beside it.",
+       "title": "Context Pending",
+       "type": "boolean"
+      },
       "corrections": {
        "description": "Settled again after the provider corrected the match; oldest first. Empty: never.",
        "items": {
@@ -399,6 +408,30 @@
        ],
        "title": "Status",
        "type": "string"
+      },
+      "status_reason": {
+       "enum": [
+        "approved",
+        "value",
+        "not_reviewed",
+        "downgraded",
+        "rejected",
+        "no_value_now",
+        "evaluation"
+       ],
+       "title": "Status Reason",
+       "type": "string"
+      },
+      "user_status": {
+       "description": "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table), as the pick stood when it entered the set: its price then passed the value rule, and the AI review frozen with it counts only if it was applied then. EVALUATION for the evaluation set (the owner's preview).",
+       "enum": [
+        "RECOMMENDED",
+        "CAUTION",
+        "NOT_RECOMMENDED",
+        "EVALUATION"
+       ],
+       "title": "User Status",
+       "type": "string"
       }
      },
      "required": [
@@ -420,7 +453,10 @@
       "model",
       "status",
       "profit_units",
-      "settled_at"
+      "settled_at",
+      "user_status",
+      "status_reason",
+      "context_pending"
      ],
      "title": "DailyItem",
      "type": "object"
@@ -2509,6 +2545,11 @@
       "competition": {
        "$ref": "#/components/schemas/CompetitionBadge"
       },
+      "context_pending": {
+       "description": "RECOMMENDED by the value rule alone: «revisión de contexto aún no aplicada» is said beside it (the AI's review does not act on picks, or has no decision on this one).",
+       "title": "Context Pending",
+       "type": "boolean"
+      },
       "edge": {
        "anyOf": [
         {
@@ -2625,6 +2666,31 @@
        "title": "Status",
        "type": "string"
       },
+      "status_reason": {
+       "description": "Why, as a code: approved, value, not_reviewed, downgraded, rejected, no_value_now or evaluation.",
+       "enum": [
+        "approved",
+        "value",
+        "not_reviewed",
+        "downgraded",
+        "rejected",
+        "no_value_now",
+        "evaluation"
+       ],
+       "title": "Status Reason",
+       "type": "string"
+      },
+      "user_status": {
+       "description": "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it - only on its match, never in the list) or EVALUATION (a shadow pick: the owner's preview only).",
+       "enum": [
+        "RECOMMENDED",
+        "CAUTION",
+        "NOT_RECOMMENDED",
+        "EVALUATION"
+       ],
+       "title": "User Status",
+       "type": "string"
+      },
       "value_now": {
        "description": "Passes the value gate at this moment.",
        "title": "Value Now",
@@ -2665,7 +2731,10 @@
       "ev",
       "freshness",
       "value_now",
-      "value_reason"
+      "value_reason",
+      "user_status",
+      "status_reason",
+      "context_pending"
      ],
      "title": "PickCard",
      "type": "object"
@@ -7191,6 +7260,11 @@
       "competition": {
        "$ref": "#/components/schemas/CompetitionBadge"
       },
+      "context_pending": {
+       "description": "RECOMMENDED by the value rule alone: «revisión de contexto aún no aplicada» is said beside it (the AI's review does not act on picks, or has no decision on this one).",
+       "title": "Context Pending",
+       "type": "boolean"
+      },
       "edge": {
        "anyOf": [
         {
@@ -7307,6 +7381,31 @@
        "title": "Status",
        "type": "string"
       },
+      "status_reason": {
+       "description": "Why, as a code: approved, value, not_reviewed, downgraded, rejected, no_value_now or evaluation.",
+       "enum": [
+        "approved",
+        "value",
+        "not_reviewed",
+        "downgraded",
+        "rejected",
+        "no_value_now",
+        "evaluation"
+       ],
+       "title": "Status Reason",
+       "type": "string"
+      },
+      "user_status": {
+       "description": "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it - only on its match, never in the list) or EVALUATION (a shadow pick: the owner's preview only).",
+       "enum": [
+        "RECOMMENDED",
+        "CAUTION",
+        "NOT_RECOMMENDED",
+        "EVALUATION"
+       ],
+       "title": "User Status",
+       "type": "string"
+      },
       "value_now": {
        "description": "Passes the value gate at this moment.",
        "title": "Value Now",
@@ -7347,7 +7446,10 @@
       "ev",
       "freshness",
       "value_now",
-      "value_reason"
+      "value_reason",
+      "user_status",
+      "status_reason",
+      "context_pending"
      ],
      "title": "PickCard",
      "type": "object"
@@ -7727,6 +7829,11 @@
       "competition": {
        "$ref": "#/components/schemas/CompetitionBadge"
       },
+      "context_pending": {
+       "description": "RECOMMENDED by the value rule alone: «revisión de contexto aún no aplicada» is said beside it (the AI's review does not act on picks, or has no decision on this one).",
+       "title": "Context Pending",
+       "type": "boolean"
+      },
       "edge": {
        "anyOf": [
         {
@@ -7843,6 +7950,31 @@
        "title": "Status",
        "type": "string"
       },
+      "status_reason": {
+       "description": "Why, as a code: approved, value, not_reviewed, downgraded, rejected, no_value_now or evaluation.",
+       "enum": [
+        "approved",
+        "value",
+        "not_reviewed",
+        "downgraded",
+        "rejected",
+        "no_value_now",
+        "evaluation"
+       ],
+       "title": "Status Reason",
+       "type": "string"
+      },
+      "user_status": {
+       "description": "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it - only on its match, never in the list) or EVALUATION (a shadow pick: the owner's preview only).",
+       "enum": [
+        "RECOMMENDED",
+        "CAUTION",
+        "NOT_RECOMMENDED",
+        "EVALUATION"
+       ],
+       "title": "User Status",
+       "type": "string"
+      },
       "value_now": {
        "description": "Passes the value gate at this moment.",
        "title": "Value Now",
@@ -7883,7 +8015,10 @@
       "ev",
       "freshness",
       "value_now",
-      "value_reason"
+      "value_reason",
+      "user_status",
+      "status_reason",
+      "context_pending"
      ],
      "title": "PickCard",
      "type": "object"
@@ -7950,6 +8085,12 @@
       },
       "window_hours": {
        "title": "Window Hours",
+       "type": "integer"
+      },
+      "withheld": {
+       "default": 0,
+       "description": "Published picks of the window a reader is not shown in this list now (plan UX, B3): without value at the best price now, or rejected by the applied AI review - each stays on its match, with its state. Always 0 for one match (``fixture_id``) and in the owner's preview, which show every pick.",
+       "title": "Withheld",
        "type": "integer"
       }
      },

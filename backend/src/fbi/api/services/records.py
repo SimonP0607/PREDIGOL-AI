@@ -38,6 +38,7 @@ from fbi.api.envelope import DataStatus, Envelope, listing, ok, unavailable
 from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
 from fbi.core import match_state
 from fbi.core.clock import now as clock_now
+from fbi.picks import user_status
 from fbi.picks.daily import DAY_TZ, product_day
 from fbi.userdata import records as userdata
 
@@ -250,6 +251,14 @@ def _parlay(conn: Conn, kind: str, day: date, source: SetSource) -> ParlayRecord
         legs_pending=sum(1 for x in statuses if x == "PENDING"), corrections=trail.get(0, []))
 
 
+def item_state(r: Row, source: SetSource) -> user_status.Shown:
+    """A pick of the day's state as it stood when it entered the set (plan UX, B3): its price then passed the value rule, and the
+    AI review frozen with it (``inputs.ai``) counts only if it was applied then. The evaluation set is EVALUATION."""
+    frozen = (r.get("inputs") or {}).get("ai") or {}
+    return user_status.shown(published=source == "qualified", value=True, review=frozen.get("decision"),
+                             applied=bool(frozen.get("enforced")))
+
+
 @shared(30)
 def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datetime | None = None
                 ) -> Envelope[DailyBoard]:
@@ -263,13 +272,15 @@ def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datet
         ai = ai_items(conn, rows, reveal=include_shadow)
         latest = ai_latest(conn, rows, reveal=include_shadow)
         trail = corrections(conn, {r["rank"]: [("daily_item", f"{s['id']}/{r['rank']}")] for r in rows})
+        states = [item_state(r, source) for r in rows]
         items = [DailyItem(
             rank=r["rank"], pick_id=r["pick_id"], match=match_of(r, moment), market_key=r["market_key"],
             selection=r["selection"], line=r["line"], stage=r["stage"], selected_at=r["selected_at"], odds=r["odds"],
             bookmaker=r["bookmaker"], price_at=r["price_at"], p_model=r["p_model"], p_low=r["p_low"],
             p_market=r["p_market"], ev=r["ev"], model=r["model"], status=r["status"],
             profit_units=r["profit_units"], settled_at=r["settled_at"], ai=ai.get(i), ai_latest=latest.get(i),
-            corrections=trail.get(r["rank"], []))
+            corrections=trail.get(r["rank"], []), user_status=states[i].status, status_reason=states[i].reason,
+            context_pending=states[i].context_pending)
             for i, r in enumerate(rows)]
         daily_set = DailySet(id=s["id"], day=s["day"], timezone=s["timezone"], source=s["source"],
                              rule_version=s["rule_version"], status=s["status"], items=items)
