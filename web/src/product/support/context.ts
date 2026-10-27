@@ -11,8 +11,8 @@ const VERSION = (import.meta.env["VITE_APP_VERSION"] as string | undefined) ?? "
 const ROUTE = /^\/[A-Za-z0-9/_.$-]{0,199}$/;
 const REQUEST_ID = /^[A-Za-z0-9]{1,32}$/;
 const SHAPE_VERSION = /^[A-Za-z0-9._+-]{1,40}$/;
-/** The pages of the one-use links (plan UX, A7): only the page, never what follows it. */
-const LINK_PAGES = ["/activate", "/reset-password", "/unlock"] as const;
+/** The pages of the e-mails' links (plan UX, A7; B8's way out of the summary): only the page, never what follows it. */
+const LINK_PAGES = ["/activate", "/reset-password", "/unlock", "/unsubscribe"] as const;
 
 /** A phone below 640 px, a tablet below 1024 px, a computer from there (the product's own breakpoints). */
 export function deviceClass(width: number): SupportDevice {

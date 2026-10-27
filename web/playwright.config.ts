@@ -285,6 +285,20 @@ export default defineConfig({
           },
         ]
       : []),
+    ...(process.env["E2E_DIGEST"] || process.env["E2E_DIGEST_OFF"]
+      ? [
+          // Email opcional (plan UX, B8): the weekly summary's box in the profile, the summary through the QA messenger
+          // (E2E_MAIL_SINK) by its own sender with the one-click headers, and the leaving link's page - on readers the
+          // test makes, every decision checked in the QA database (E2E_DATABASE_URL). The QA stack with QA_DIGEST=1
+          // QA_MESSENGER=1; E2E_DIGEST_OFF=1 against the stack without QA_DIGEST: nothing offered, as in production.
+          {
+            name: "digest",
+            testMatch: /digest\.spec\.ts/,
+            use: desktop,
+            dependencies: ["setup"],
+          },
+        ]
+      : []),
     ...(process.env["E2E_A11Y"]
       ? [{ name: "a11y", testMatch: /a11y\.spec\.ts/, use: desktop, dependencies: ["setup"] }]
       : []),

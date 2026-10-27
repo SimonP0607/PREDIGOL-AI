@@ -6,6 +6,9 @@
  * the one the reader saw last.
  *
  * An entry tells what a reader can see today: a change still switched off for readers waits to be written here.
+ *
+ * The server keeps a copy with the titles (backend/src/fbi/customer/updates.json): the weekly summary by e-mail names the
+ * week's entries from it (plan UX, B8). An entry is added in both in the same change; a test checks they are the same.
  */
 
 export interface UpdateEntry {

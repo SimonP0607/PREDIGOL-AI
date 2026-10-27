@@ -2,9 +2,12 @@
 /**
  * Novedades (plan UX, B6; section 40), without a browser: every entry has an id the server accepts for «seen» (its date
  * and a slug), the newest first, its words in Spanish and English and a link only to a page that exists; «Más» marks it
- * while the newest entry is not the last one the reader saw; and an entry says it came from the readers only when it did.
+ * while the newest entry is not the last one the reader saw; an entry says it came from the readers only when it did;
+ * and the server's copy the weekly summary by e-mail names them from (B8) is this same list with the same titles.
  */
 import { afterAll, describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -74,6 +77,34 @@ describe("the entries", () => {
       ])
         expect(t(`support.updates.${key}`)).not.toContain("support.");
     }
+  });
+});
+
+describe("the server's copy (plan UX, B8: the weekly summary by e-mail names the week's Novedades)", () => {
+  test("is this list: the same entries in the same order, with the catalogues' titles in both languages", () => {
+    const file = join(
+      import.meta.dir,
+      "..",
+      "..",
+      "..",
+      "..",
+      "backend",
+      "src",
+      "fbi",
+      "customer",
+      "updates.json",
+    );
+    const backend = JSON.parse(readFileSync(file, "utf8")) as {
+      entries: { id: string; key: string; title: { es: string; en: string } }[];
+    };
+    expect(backend.entries.map((e) => [e.id, e.key])).toEqual(UPDATES.map((e) => [e.id, e.key]));
+    for (const lang of ["es", "en"] as const) {
+      setLocale(lang);
+      for (const e of backend.entries) {
+        expect([e.id, e.title[lang]]).toEqual([e.id, t(`support.updates.items.${e.key}.title`)]);
+      }
+    }
+    setLocale("es");
   });
 });
 

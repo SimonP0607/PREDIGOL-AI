@@ -323,7 +323,8 @@ function Gate() {
   const onAdmin = path === "/admin" || path.startsWith("/admin/");
   // The legal texts are public (plan UX, A4): anyone reads the terms before having an account.
   const onLegal = isLegalPath(path);
-  // Activating an invitation, recovering a password, unlocking (plan UX, A7): public, whatever the session.
+  // Activating an invitation, recovering a password, unlocking (plan UX, A7), leaving the weekly summary (B8): public,
+  // whatever the session.
   const onAccount = isAccountPath(path);
   // The account's welcome (plan UX, A13): once, after the consents - its own page, whatever the address asked for.
   const onWelcome = path === "/welcome";

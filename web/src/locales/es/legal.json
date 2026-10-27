@@ -56,7 +56,8 @@
     "source": {
       "gate": "al entrar",
       "profile": "desde el perfil",
-      "activation": "al activar la cuenta"
+      "activation": "al activar la cuenta",
+      "email": "desde un correo"
     },
     "exportTitle": "Descargar mis datos",
     "exportHelp": "Un archivo con todo lo que PrediGol guarda de ti: tu cuenta, tus sesiones y accesos, tus consentimientos, tus solicitudes y lo que guardaste. Hasta 3 veces al día.",
@@ -91,7 +92,9 @@
       "customer": "Tú",
       "owner": "PrediGol",
       "system": "PrediGol"
-    }
+    },
+    "optional": "Opcional: lo cambias en Notificaciones.",
+    "optionalLink": "Ir a Notificaciones"
   },
   "admin": {
     "title": "Solicitudes de privacidad",

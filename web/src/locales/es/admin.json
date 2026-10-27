@@ -224,7 +224,8 @@
       "privacy_request_answered": "Respuesta a una solicitud de privacidad",
       "legal_change": "Cambio de un texto legal",
       "support_ticket_received": "Acuse de un mensaje a soporte",
-      "support_ticket_answered": "Respuesta a un mensaje de soporte"
+      "support_ticket_answered": "Respuesta a un mensaje de soporte",
+      "weekly_digest": "Resumen semanal (comercial, con consentimiento)"
     }
   },
   "product": {

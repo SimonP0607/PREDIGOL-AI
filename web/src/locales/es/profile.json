@@ -95,7 +95,13 @@
       "bounced": "Tu correo rebota: no podemos entregarte mensajes. Revisa que la dirección de tu cuenta sea correcta y escríbenos si cambió.",
       "complained": "Marcaste un correo nuestro como spam: solo te enviamos lo imprescindible de tu cuenta, su seguridad, tus datos y los textos legales."
     },
-    "statusSince": "Desde el {date}"
+    "statusSince": "Desde el {date}",
+    "digest": {
+      "title": "Resumen semanal",
+      "help": "Llega una vez por semana, desde las 9:00 de tu zona horaria. Puedes darte de baja aquí o con un clic desde cualquier resumen.",
+      "since": "Lo pediste el {date}",
+      "left": "Te diste de baja el {date}"
+    }
   },
   "sessionUntil": "Abierta hasta el {date} como máximo",
   "sessionIdle": "Se cierra antes si pasas {idle} sin usarla; cada uso la renueva.",

@@ -116,7 +116,9 @@
     "validation_error": "Algún dato no es válido.",
     "weak_password": "La nueva contraseña no es suficientemente segura.",
     "wrong_password": "La contraseña actual no es correcta.",
-    "wrong_stage": "Ese paso ya no corresponde. Recarga la página."
+    "wrong_stage": "Ese paso ya no corresponde. Recarga la página.",
+    "invalid_link": "Este enlace no es válido.",
+    "not_offered": "El resumen semanal no está disponible ahora."
   },
   "problem": {
     "password_too_short": "Mínimo 15 caracteres, o 12 si usas la verificación en dos pasos.",

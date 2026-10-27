@@ -1,7 +1,8 @@
 /**
  * The reader's privacy, in their profile (plan UX, A4; Ley 1581 de 2012): what they accepted and when, withdrawing the
  * processing authorisation, a copy of everything PrediGol keeps about them, and their queries, claims and deletion
- * requests with the legal deadline in sight. Always reachable, even when the consent gate stops the product.
+ * requests with the legal deadline in sight. Always reachable, even when the consent gate stops the product. An optional
+ * purpose (the weekly summary by e-mail, plan UX B8) shows once the reader decided on it; its switch is in Notificaciones.
  */
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -20,6 +21,7 @@ import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ErrorState, errorMessage } from "@/product/shared/States";
 import { LEGAL_DOCUMENTS, dayOf, legalPath } from "@/product/legal/links";
+import { latestOf, shownPurposes } from "./consents";
 
 const INPUT =
   "mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none pointer-coarse:h-11";
@@ -31,11 +33,7 @@ function Subtitle({ children }: { children: React.ReactNode }) {
   return <h3 className="mb-2 mt-1 text-sm font-semibold">{children}</h3>;
 }
 
-function latestOf(history: readonly ConsentRecord[], kind: string): ConsentRecord | undefined {
-  return history.find((r) => r.kind === kind);
-}
-
-function ConsentRow({
+export function ConsentRow({
   purpose,
   latest,
   onDecide,
@@ -62,7 +60,17 @@ function ConsentRow({
             : t("legal.privacy.withdrawn", { date: formatDateTime(latest.at) })}
         {outdated ? <span className="block">{t("legal.privacy.outdated")}</span> : null}
       </p>
-      {purpose.withdrawable && latest?.granted ? (
+      {!purpose.required ? (
+        <p className="text-caption text-muted-foreground" data-testid="privacy-optional">
+          {t("legal.privacy.optional")}{" "}
+          <a
+            href="#notifications"
+            className="font-medium text-primary underline-offset-2 hover:underline"
+          >
+            {t("legal.privacy.optionalLink")}
+          </a>
+        </p>
+      ) : purpose.withdrawable && latest?.granted ? (
         confirming ? (
           <div className="space-y-2 rounded-md border border-negative/30 bg-negative-soft p-3">
             <p className="text-xs">{t("legal.privacy.withdrawConfirm")}</p>
@@ -97,7 +105,7 @@ function ConsentRow({
         )
       ) : null}
       {/* A reader who withdrew it can give it again here (with the gate on, the gate asks for it anyway). */}
-      {purpose.withdrawable && latest && !latest.granted ? (
+      {purpose.required && purpose.withdrawable && latest && !latest.granted ? (
         <button
           type="button"
           disabled={busy}
@@ -142,12 +150,12 @@ function ConsentsSection() {
 
   if (state.isPending) return <Loader2 aria-hidden className="h-4 w-4 animate-spin" />;
   if (state.isError) return <ErrorState error={state.error} onRetry={() => void state.refetch()} />;
-  const { purposes, history } = state.data;
+  const { history } = state.data;
   return (
     <div data-testid="privacy-consents">
       <Subtitle>{t("legal.privacy.consentsTitle")}</Subtitle>
       <ul className="divide-y divide-border/70">
-        {purposes.map((p) => (
+        {shownPurposes(state.data).map((p) => (
           <ConsentRow
             key={p.kind}
             purpose={p}

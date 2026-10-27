@@ -24,6 +24,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as TransparencyRouteImport } from './routes/transparency'
 import { Route as UnlockRouteImport } from './routes/unlock'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as UpdatesRouteImport } from './routes/updates'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -138,6 +139,11 @@ const TransparencyRoute = TransparencyRouteImport.update({
 const UnlockRoute = UnlockRouteImport.update({
   id: '/unlock',
   path: '/unlock',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UpdatesRoute = UpdatesRouteImport.update({
@@ -357,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/updates': typeof UpdatesRoute
   '/welcome': typeof WelcomeRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
@@ -413,6 +420,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/updates': typeof UpdatesRoute
   '/welcome': typeof WelcomeRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
@@ -471,6 +479,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/updates': typeof UpdatesRoute
   '/welcome': typeof WelcomeRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
@@ -530,6 +539,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/transparency'
     | '/unlock'
+    | '/unsubscribe'
     | '/updates'
     | '/welcome'
     | '/admin/ai-analyst'
@@ -586,6 +596,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/transparency'
     | '/unlock'
+    | '/unsubscribe'
     | '/updates'
     | '/welcome'
     | '/admin/ai-analyst'
@@ -643,6 +654,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/transparency'
     | '/unlock'
+    | '/unsubscribe'
     | '/updates'
     | '/welcome'
     | '/admin/ai-analyst'
@@ -701,6 +713,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   TransparencyRoute: typeof TransparencyRoute
   UnlockRoute: typeof UnlockRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   UpdatesRoute: typeof UpdatesRoute
   WelcomeRoute: typeof WelcomeRoute
   HelpGlossaryRoute: typeof HelpGlossaryRoute
@@ -816,6 +829,13 @@ declare module '@tanstack/react-router' {
       path: '/unlock'
       fullPath: '/unlock'
       preLoaderRoute: typeof UnlockRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/updates': {
@@ -1189,6 +1209,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   TransparencyRoute: TransparencyRoute,
   UnlockRoute: UnlockRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   UpdatesRoute: UpdatesRoute,
   WelcomeRoute: WelcomeRoute,
   HelpGlossaryRoute: HelpGlossaryRoute,

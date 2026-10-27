@@ -63,6 +63,7 @@ describe("the context of a ticket", () => {
     expect(routeOf("/reset-password/abc123")).toBe("/reset-password");
     expect(routeOf("/activate#token=x")).toBe("/activate");
     expect(routeOf("/unlock/zz")).toBe("/unlock");
+    expect(routeOf("/unsubscribe#t=1x20000xabc")).toBe("/unsubscribe");
     expect(routeOf("/legal/t%C3%A9rminos")).toBe("/legal/tC3A9rminos");
     expect(routeOf("matches")).toBeNull();
     expect(routeOf(`/${"a".repeat(300)}`)?.length).toBe(200);

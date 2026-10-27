@@ -2,7 +2,8 @@
  * The reader's notifications, in their profile (plan UX, A5; F12): which e-mails PrediGol sends them, by category -
  * the account, its security, their privacy requests and the legal changes always; membership reminders and support
  * answers as they choose - and, when their address bounced or they marked a message as spam, why nothing arrives.
- * Below, the notices on their devices (plan UX, B7: PushSection), once the owner made them available.
+ * Then the weekly summary by e-mail, asked for apart (plan UX, B8: DigestSection), while it can reach the reader; below,
+ * the notices on their devices (plan UX, B7: PushSection), once the owner made them available.
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,6 +19,7 @@ import { track } from "@/lib/track";
 import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ErrorState, errorMessage } from "@/product/shared/States";
+import { DigestSection } from "./DigestSection";
 import { PushSection } from "./PushSection";
 
 export const PREFERENCES_KEY = ["me", "notification-preferences"] as const;
@@ -178,6 +180,7 @@ export function NotificationsPanel() {
         failure={failure}
         onToggle={(item) => void toggle(item)}
       />
+      <DigestSection />
       <PushSection />
     </div>
   );

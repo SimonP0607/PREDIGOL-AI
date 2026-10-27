@@ -56,7 +56,8 @@
     "source": {
       "gate": "when signing in",
       "profile": "from the profile",
-      "activation": "when activating the account"
+      "activation": "when activating the account",
+      "email": "from an e-mail"
     },
     "exportTitle": "Download my data",
     "exportHelp": "A file with everything PrediGol keeps about you: your account, your sessions and sign-ins, your consents, your requests and what you saved. Up to 3 times a day.",
@@ -91,7 +92,9 @@
       "customer": "You",
       "owner": "PrediGol",
       "system": "PrediGol"
-    }
+    },
+    "optional": "Optional: you change it under Notifications.",
+    "optionalLink": "Go to Notifications"
   },
   "admin": {
     "title": "Privacy requests",

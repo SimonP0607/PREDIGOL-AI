@@ -116,7 +116,9 @@
     "validation_error": "Some of the data is not valid.",
     "weak_password": "The new password is not strong enough.",
     "wrong_password": "The current password is not right.",
-    "wrong_stage": "That step no longer applies. Reload the page."
+    "wrong_stage": "That step no longer applies. Reload the page.",
+    "invalid_link": "This link is not valid.",
+    "not_offered": "The weekly summary is not available right now."
   },
   "problem": {
     "password_too_short": "At least 15 characters, or 12 if you use two-step verification.",

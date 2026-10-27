@@ -95,7 +95,13 @@
       "bounced": "Your e-mail bounces: we cannot deliver messages to you. Check that your account's address is right and write to us if it changed.",
       "complained": "You marked one of our e-mails as spam: we only send you what is essential about your account, its security, your data and the legal texts."
     },
-    "statusSince": "Since {date}"
+    "statusSince": "Since {date}",
+    "digest": {
+      "title": "Weekly summary",
+      "help": "It arrives once a week, from 9:00 in your time zone. You can leave it here or in one click from any summary.",
+      "since": "You asked for it on {date}",
+      "left": "You left it on {date}"
+    }
   },
   "sessionUntil": "Open until {date} at most",
   "sessionIdle": "It closes sooner if you go {idle} without using it; every use renews it.",
