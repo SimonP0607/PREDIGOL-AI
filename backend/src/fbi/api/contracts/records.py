@@ -219,6 +219,12 @@ class UserPick(Contract):
     snapshot: dict[str, Any]
     corrections: list[ResultCorrection] = Field(default_factory=list, description=(
         "Settled again after the provider corrected the match; oldest first. Empty: never."))
+    p_close: Decimal | None = Field(default=None, description=(
+        "Once the match started: the de-vigged (Shin) consensus probability of the selection at the last capture before "
+        "kick-off - the closing reference (plan UX, B5; clv-v1). Null before kick-off or without a capture."))
+    line_value: Decimal | None = Field(default=None, description=(
+        "clv-v1 (fbi.market.closing_value): the price the reader counts - user_odds when they gave it, else odds - at "
+        "p_close, odds x p_close - 1, a share. Null without a price or a closing reference."))
 
 
 class LegInBody(BaseModel):
@@ -278,16 +284,24 @@ class UserParlay(Contract):
 
 
 class HistoryGroup(Contract):
+    """A group of records counted with the sample rule of Mis picks (plan UX, B5, section 30; «Cómo le va a PrediGol»'s): below
+    min_sample settled records only the counts - hit rate, units and ROI are null - and below `conclusive` the page says the
+    sample does not allow a conclusion yet."""
+
     total: int
     pending: int
     won: int
     lost: int
     push: int
     void: int
-    hit_rate: float | None
-    staked_units: Decimal
-    profit_units: Decimal
-    roi: float | None
+    hit_rate: float | None = Field(description="Won over won and lost; null below min_sample settled records.")
+    staked_units: Decimal = Field(description="Settled records with a stake - the n of the sample.")
+    profit_units: Decimal | None = Field(description="The profit at one unit per record; null below min_sample.")
+    roi: float | None = Field(description="Profit over the units staked; null below min_sample.")
+    margin: float | None = Field(default=None, description=(
+        "Plus or minus one standard error of the ROI, a share: 1 / sqrt(staked) (0.20 with 25, 0.10 with 100); null below "
+        "min_sample."))
+    conclusive: bool = Field(default=False, description="False below `conclusive` settled records (100).")
 
 
 class History(Contract):
@@ -297,3 +311,5 @@ class History(Contract):
     until: datetime
     evaluation_mode: bool
     groups: dict[str, HistoryGroup] = Field(description="predigol_picks, my_picks, predigol_parlays, my_parlays")
+    min_sample: int = Field(default=25, description="Settled records from which hit rate, units, ROI and margin are shown.")
+    conclusive: int = Field(default=100, description="Settled records from which the sample allows a conclusion.")

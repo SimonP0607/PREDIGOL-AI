@@ -36,8 +36,10 @@ from fbi.api.contracts.records import (
 )
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, unavailable
 from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
+from fbi.api.services import pick_filter, transparency
 from fbi.core import match_state
 from fbi.core.clock import now as clock_now
+from fbi.market import closing_value
 from fbi.picks import user_status
 from fbi.picks.daily import DAY_TZ, product_day
 from fbi.userdata import records as userdata
@@ -333,15 +335,18 @@ USER_PICKS_FILTER = """
 """
 
 USER_PICKS_SQL = """
-SELECT u.*, """ + MATCH_COLS + """
+SELECT u.*, pc.p_fair AS p_close, """ + MATCH_COLS + """
   FROM picks.user_picks u
-""" + MATCH_JOINS.format(alias="u") + USER_PICKS_FILTER + """
+""" + MATCH_JOINS.format(alias="u") + pick_filter.CLOSE_JOIN + USER_PICKS_FILTER + pick_filter.SQL + """
    AND (%(after_at)s::timestamptz IS NULL OR (f.kickoff_at, u.id) < (%(after_at)s::timestamptz, %(after_id)s::bigint))
  ORDER BY f.kickoff_at DESC, u.id DESC
  LIMIT %(limit)s
 """
+"""A page of a reader's saved picks under the filter of Mis picks (plan UX, B5: ``pick_filter``), with the closing reference
+of each started match (``clv-v1``)."""
 
-USER_PICKS_TOTAL_SQL = "SELECT count(*) AS n FROM picks.user_picks u" + USER_PICKS_FILTER
+USER_PICKS_TOTAL_SQL = ("SELECT count(*) AS n FROM picks.user_picks u" + pick_filter.JOINS + USER_PICKS_FILTER
+                        + pick_filter.SQL)
 
 
 USER_PICKS_OF_FIXTURE_SQL = """
@@ -354,13 +359,24 @@ SELECT u.*, """ + MATCH_COLS + """
 """What one reader saved on one match (plan UX, B4: the Postpartido says how each ended)."""
 
 
+def line_value(r: Row) -> Decimal | None:
+    """``clv-v1`` of the price the reader counts - their own when they gave one - against the closing reference of its match
+    (``p_close``, once the match started); null without either."""
+    price = r["user_odds"] if r["user_odds"] is not None else r["odds"]
+    p_close = r.get("p_close")
+    if price is None or p_close is None:
+        return None
+    return closing_value.clv(Decimal(price), Decimal(p_close)).quantize(Decimal("0.0001"))
+
+
 def _user_picks_of(conn: Conn, rows: list[Row]) -> list[UserPick]:
     trail = corrections(conn, {r["id"]: [("user_pick", str(r["id"]))] for r in rows})
     return [UserPick(
         id=r["id"], match=match_of(r), market_key=r["market_key"], selection=r["selection"], line=r["line"],
         origin=r["origin"], pick_id=r["pick_id"], odds=r["odds"], bookmaker=r["bookmaker"], price_at=r["price_at"],
         user_odds=r["user_odds"], saved_at=r["saved_at"], status=r["status"], profit_units=r["profit_units"],
-        settled_at=r["settled_at"], snapshot=r["snapshot"], corrections=trail.get(r["id"], [])) for r in rows]
+        settled_at=r["settled_at"], snapshot=r["snapshot"], corrections=trail.get(r["id"], []),
+        p_close=r.get("p_close"), line_value=line_value(r)) for r in rows]
 
 
 def user_picks_of_fixture(conn: Conn, *, user_id: int, fixture_id: int) -> list[UserPick]:
@@ -368,20 +384,28 @@ def user_picks_of_fixture(conn: Conn, *, user_id: int, fixture_id: int) -> list[
     return _user_picks_of(conn, fetch_all(conn, USER_PICKS_OF_FIXTURE_SQL, {"user": user_id, "fixture": fixture_id}))
 
 
-def user_picks(conn: Conn, *, user_id: int, status: str | None, limit: int,
-               cursor: str | None = None) -> Envelope[list[UserPick]]:
+def user_picks(conn: Conn, *, user_id: int, status: str | None, limit: int, cursor: str | None = None,
+               flt: pick_filter.PickFilter = pick_filter.NONE, tz: str = "UTC",
+               at: datetime | None = None) -> Envelope[list[UserPick]]:
+    """A page of the reader's saved picks, newest kick-off first, under the filter of Mis picks (plan UX, B5); ``meta.total``
+    counts every pick under it. ``tz``: the reader's time zone, the filter's days are cut in it."""
     after_at, after_id = decode_cursor("p", cursor)
-    rows = fetch_all(conn, USER_PICKS_SQL, {"user": user_id, "status": status, "limit": limit + 1,
-                                            "after_at": after_at, "after_id": after_id})
+    filtered = flt.params(tz)
+    rows = fetch_all(conn, USER_PICKS_SQL, {"user": user_id, "status": status, "limit": limit + 1, "after_at": after_at,
+                                            "after_id": after_id, "now": at or clock_now(), **filtered})
     more = len(rows) > limit
     rows = rows[:limit]
-    total = fetch_one(conn, USER_PICKS_TOTAL_SQL, {"user": user_id, "status": status})
+    total = fetch_one(conn, USER_PICKS_TOTAL_SQL, {"user": user_id, "status": status, **filtered})
     out = _user_picks_of(conn, rows)
     next_cursor = encode_cursor("p", rows[-1]["m_kickoff_at"], int(rows[-1]["id"])) if more else None
     n = int(total["n"]) if total else 0
     # An empty page past the last one is not an empty list (review of A1): it says so.
-    return listing(out, empty_reason="You have not saved a pick yet." if n == 0 else "No more picks after this one.",
-                   total=n, limit=limit, offset=0 if cursor is None else None, next_cursor=next_cursor)
+    if n == 0 and flt.active:
+        reason = "No saved pick matches this filter."
+    else:
+        reason = "You have not saved a pick yet." if n == 0 else "No more picks after this one."
+    return listing(out, empty_reason=reason, total=n, limit=limit, offset=0 if cursor is None else None,
+                   next_cursor=next_cursor)
 
 
 USER_PARLAYS_SQL = """
@@ -427,16 +451,28 @@ def user_parlays(conn: Conn, *, user_id: int, limit: int, cursor: str | None = N
                    total=n, limit=limit, offset=0 if cursor is None else None, next_cursor=next_cursor)
 
 
+def history_group(g: userdata.GroupStats) -> HistoryGroup:
+    """A group of the history with the sample rule (plan UX, B5, section 30; transparency's MIN_SAMPLE, CONCLUSIVE and margin):
+    the counts always; hit rate, units, ROI and its margin only from min_sample settled records."""
+    n = int(g.staked)
+    enough = n >= transparency.MIN_SAMPLE
+    margin = transparency.margin(n) if enough else None
+    return HistoryGroup(total=g.total, pending=g.pending, won=g.won, lost=g.lost, push=g.push, void=g.void,
+                        hit_rate=g.hit_rate if enough else None, staked_units=g.staked,
+                        profit_units=g.profit.quantize(Decimal("0.01")) if enough else None,
+                        roi=g.roi if enough else None, margin=float(margin) if margin is not None else None,
+                        conclusive=n >= transparency.CONCLUSIVE)
+
+
 def history(conn: Conn, *, user_id: int, period: userdata.Period, tz: str, include_shadow: bool,
             at: datetime | None = None) -> Envelope[History]:
     moment = at or clock_now()
     since, until = userdata.period_bounds(period, at=moment, tz=tz)
     groups = userdata.history(conn, user_id=user_id, period=period, tz=tz, at=moment,
                               include_evaluation=include_shadow)
-    body = History(period=period, timezone=tz, since=since, until=until, evaluation_mode=include_shadow, groups={
-        name: HistoryGroup(total=g.total, pending=g.pending, won=g.won, lost=g.lost, push=g.push, void=g.void,
-                           hit_rate=g.hit_rate, staked_units=g.staked, profit_units=g.profit.quantize(Decimal("0.01")),
-                           roi=g.roi) for name, g in groups.items()})
+    body = History(period=period, timezone=tz, since=since, until=until, evaluation_mode=include_shadow,
+                   groups={name: history_group(g) for name, g in groups.items()},
+                   min_sample=transparency.MIN_SAMPLE, conclusive=transparency.CONCLUSIVE)
     if sum(g.total for g in groups.values()) == 0:
         return unavailable(body, "nothing_in_period", status=DataStatus.EMPTY)
     return ok(body)

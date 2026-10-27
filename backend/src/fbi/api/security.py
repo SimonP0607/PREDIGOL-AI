@@ -146,9 +146,10 @@ def consent_required(conn: Db, principal: Annotated[Principal, Depends(current_p
         raise ApiError(403, "consent_required", "accept the current terms to continue")
 
 
-MEMBERSHIP_READS = frozenset({"/api/v1/me/picks", "/api/v1/me/parlays", "/api/v1/me/history"})
+MEMBERSHIP_READS = frozenset({"/api/v1/me/picks", "/api/v1/me/parlays", "/api/v1/me/history", "/api/v1/me/picks/summary",
+                              "/api/v1/me/picks/export", "/api/v1/me/parlays/export"})
 """What a limited account still reads of the product (plan UX, A8): its own saved picks and parlays and their history
-- to read, never to change."""
+- to read, never to change - and, from B5, their totals and their CSV files (reading one's own data is a right)."""
 
 
 def membership_required(request: Request, conn: Db, principal: Annotated[Principal, Depends(current_principal)],
