@@ -84,8 +84,13 @@ class UserUsageLedger(UsageLedger):
     def record(self, *, at: datetime, purpose: Purpose, tier: str, provider: str, model: str,
                usage: LlmUsage | None, cost: Decimal, status: str, prompt_version: str | None = None,
                fixture_id: int | None = None, latency_ms: int | None = None, error: str | None = None,
-               input_hash: str | None = None, request_id: str | None = None) -> int:
-        del purpose  # Intelligence's list of purposes; every call of this ledger is the readers' narrative
+               input_hash: str | None = None, request_id: str | None = None, workspace: str | None = None,
+               key_label: str | None = None, batch_id: int | None = None, custom_id: str | None = None,
+               run_id: int | None = None, agent: str | None = None) -> int:
+        # Intelligence's list of purposes, and what its ledger learned with the IA plan's Phase 0 (the names of the workspace
+        # and the key, a Batch's ids, an agent's run): call_json passes them to every ledger. Every call of this one is the
+        # readers' narrative - real time, the production workspace, no agent - and ai.user_usage keeps its own columns.
+        del purpose, workspace, key_label, batch_id, custom_id, run_id, agent
         u = usage or LlmUsage()
         with self._connect() as conn, conn.cursor(row_factory=tuple_row) as cur:
             cur.execute(

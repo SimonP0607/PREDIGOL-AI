@@ -356,6 +356,20 @@ def test_the_owner_hears_of_each_threshold_once_with_amounts_and_nothing_of_a_re
     assert user_budget.alert_drafts(b("5", monthly="0")) == [], "no budget, no notice"
 
 
+def test_the_readers_ledger_takes_every_argument_intelligences_ledger_is_given() -> None:
+    """call_json records every call through the ledger it is handed, with what Intelligence's ledger takes (the IA plan's Phase 0
+    added the workspace, the key, a Batch's ids and an agent's run): the readers' ledger must take all of it, or a narrative already
+    paid for would end in a TypeError and its spend would go unrecorded."""
+    import inspect
+
+    from fbi.ai.usage import UsageLedger
+
+    theirs = inspect.signature(UsageLedger.record).parameters
+    ours = inspect.signature(user_budget.UserUsageLedger.record).parameters
+    assert list(ours) == list(theirs)
+    assert all(ours[n].kind is theirs[n].kind and ours[n].default == theirs[n].default for n in theirs)
+
+
 def test_the_worker_runs_it_every_ten_minutes_only_while_the_switch_is_not_off() -> None:
     source = Path(scheduler.__file__).read_text(encoding="utf-8")
     tree = ast.parse(source)
