@@ -272,8 +272,8 @@ class AiView:
 
 
 def ai_view(conn: psycopg.Connection[Any], ranked: list[Ranked], *, at: datetime, day: bool = True) -> AiView:
-    """Read in a savepoint: without the AI tables (an older database) the set is built as before. ``day``: whether to
-    ask if today has been read whole (``day_ready``) - only the daily set's context stage needs it."""
+    """Read in a savepoint: without the AI tables or the columns of research v2 (an older database, or one gone back down the migrations) the
+    set is built as before. ``day``: whether to ask if today has been read whole (``day_ready``) - only the daily set's context stage needs it."""
     from fbi.ai.config import AiSettings
     from fbi.ai.gates import typed_visible
     from fbi.ai.gating import enforcement
@@ -288,7 +288,7 @@ def ai_view(conn: psycopg.Connection[Any], ranked: list[Ranked], *, at: datetime
             evidence = evidence_counts(conn, fixtures, at=at, typed=typed_visible(conn, settings))
             passed, searched = day_passes(conn, fixtures, at=at)
             ready = frozenset({product_day(at)}) if day and day_ready(conn, at=at) else frozenset()
-    except psycopg.errors.UndefinedTable:
+    except (psycopg.errors.UndefinedTable, psycopg.errors.UndefinedColumn):  # the evidence reads ``subject_type`` (0114)
         return AiView(mode=settings.mode)
     return AiView(reviews, enf.enforced, settings.mode, enf.reason, evidence, passed, searched, ready)
 

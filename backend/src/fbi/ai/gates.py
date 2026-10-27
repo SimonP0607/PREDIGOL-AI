@@ -25,6 +25,12 @@ The gate ``research_v2`` (phase 2) is the one switch that is not in ``SWITCH_ENV
 ``on`` - research v2 REPLACES v1's and the packet shows what it wrote - needs the newest row of this gate to say it passed: the week in
 which both researches ran side by side, measured (``research_mode``).
 
+The gate ``switches`` (review of phase 2, M5) is not a gate: nothing waits for it and nothing is decided by it. It is the LEDGER of the owner's
+words - the switches, the models, the envelopes - as the worker holds them (``record_switches``: a row only when they differ from the newest row).
+An environment variable changed by hand writes no gate row of its own, so Gate A could not tell which optimisation had been in force during its
+window; with this ledger a change of any word is a day the configuration changed, and what was in force is read from the ledger, not from the
+process that happens to evaluate (``fbi.ai.gate_a``).
+
 Nothing here reads a key and nothing changes a probability, a threshold or a pick."""
 
 from __future__ import annotations
@@ -33,15 +39,16 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 import psycopg
-from psycopg.rows import dict_row
+from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
-from fbi.ai.config import SWITCH_ENV, AiSettings, ResearchMode
+from fbi.ai.config import SWITCH_ENV, TIERS, AiSettings, ResearchMode
 
-GATES = ("batch", "native_schema", "cache_layout", "gate_a", "battery", "research_v2")
+GATES = ("batch", "native_schema", "cache_layout", "gate_a", "battery", "research_v2", "switches")
 AUTO_WITHOUT_EVIDENCE: dict[str, bool] = {"cache": True, "brief_material": True, "budget_v3": True, "batch": False,
                                           "native_schema": False}
 """What ``auto`` means for each switch when no gate is needed (True) or one is (False)."""
@@ -102,6 +109,65 @@ def record_gate(conn: psycopg.Connection[Any], *, gate: str, passed: bool, evide
     return int(row[0])
 
 
+SWITCHES = "switches"
+WORDS_KIND = "switch-words-v1"
+LEDGER_SQL = "SELECT id, at, evidence FROM ai.feature_gates WHERE gate = 'switches' ORDER BY at, id"
+NEWEST_WORDS_SQL = "SELECT id, evidence FROM ai.feature_gates WHERE gate = 'switches' ORDER BY at DESC, id DESC LIMIT 1"
+
+
+def _figure(value: Decimal) -> str:
+    """A budget as a word: 185, 185.0 and 185.00 are the same envelope."""
+    return format(value.normalize(), "f")
+
+
+def switch_words(settings: AiSettings) -> dict[str, Any]:
+    """The owner's words that decide what the layer does, exactly as the running process holds them: the mode, the five switches, the package
+    job, research v2, the model of each tier and the three monthly envelopes. Words, model names and figures - never a key, a URL or a label."""
+    return {
+        "mode": settings.mode,
+        "package": settings.package,
+        "research_v2": settings.research_v2,
+        "switches": {name: settings.switch(name) for name in sorted(SWITCH_ENV)},
+        "models": {tier: tm.model for tier in TIERS if (tm := settings.tiers.get(tier)) is not None},
+        "budgets_usd": {"production": _figure(settings.monthly_budget), "lab": _figure(settings.lab_monthly_budget),
+                        "exa": _figure(settings.exa_monthly_budget)},
+    }
+
+
+def words_diff(old: Any, new: Any, path: str = "") -> list[str]:
+    """What changed between two sets of words, one line per word: ``switches.batch: auto -> on``."""
+    if isinstance(old, dict) and isinstance(new, dict):
+        out: list[str] = []
+        for key in sorted(set(old) | set(new)):
+            out += words_diff(old.get(key), new.get(key), f"{path}.{key}" if path else str(key))
+        return out
+    return [] if old == new else [f"{path}: {old} -> {new}"]
+
+
+def switch_ledger(conn: psycopg.Connection[Any]) -> list[tuple[int, datetime, dict[str, Any]]]:
+    """Every row of the ledger of the owner's words, oldest first: (id, when, the words). A row that does not carry words is not read."""
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(LEDGER_SQL)
+        rows = cur.fetchall()
+    return [(int(i), at, dict(ev["words"])) for i, at, ev in rows if isinstance(ev, dict) and isinstance(ev.get("words"), dict)]
+
+
+def record_switches(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetime, code_version: str | None = None) -> int | None:
+    """Leave a trace of the words this process holds, when they are not the words of the newest row (the caller commits). The first row is the
+    baseline - what the worker held when it began to keep the ledger. Returns the row's id; None when nothing changed and nothing was written."""
+    words = switch_words(settings)
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(NEWEST_WORDS_SQL)
+        newest = cur.fetchone()
+    previous = None if newest is None or not isinstance(newest[1], dict) else newest[1].get("words")
+    if isinstance(previous, dict) and previous == words:
+        return None
+    evidence: dict[str, Any] = {"kind": WORDS_KIND, "words": words, "baseline": not isinstance(previous, dict),
+                                "changed": [] if not isinstance(previous, dict) else words_diff(previous, words),
+                                "note": "a ledger of words, not a gate: passed is always true and nothing waits for it"}
+    return record_gate(conn, gate=SWITCHES, passed=True, evidence=evidence, at=at, decided_by="script", code_version=code_version)
+
+
 def enabled(conn: psycopg.Connection[Any], settings: AiSettings, name: str, *, model: str | None = None) -> bool:
     """Whether an optimisation is in force now: the owner's switch, then (for ``auto``) its evidence. An unknown name is off."""
     if name not in SWITCH_ENV:
@@ -156,7 +222,7 @@ def layout_shared(conn: psycopg.Connection[Any], settings: AiSettings, *, model:
 
 def describe(conn: psycopg.Connection[Any], settings: AiSettings) -> dict[str, Any]:
     """What each optimisation is doing and why - for the admin panel and the run reports. Names and states only."""
-    states = {g: gate_state(conn, g) for g in GATES}
+    states = {g: gate_state(conn, g) for g in GATES if g != SWITCHES}  # the ledger of the owner's words is not a gate: nothing waits for it
     out: dict[str, Any] = {}
     for name in SWITCH_ENV:
         mode = settings.switch(name)

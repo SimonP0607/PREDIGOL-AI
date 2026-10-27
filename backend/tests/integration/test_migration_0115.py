@@ -30,6 +30,8 @@ from tests.integration.test_migration_0111 import _cfg, scratch_at
 pytestmark = pytest.mark.integration
 
 OLD_GATES = ("batch", "native_schema", "cache_layout", "gate_a", "battery")
+GATES_0115 = (*OLD_GATES, "research_v2")
+"""The gates the database knows at this revision; the ones of the head are held by the tests of the migration that came after (0116)."""
 NOON = datetime(2026, 10, 26, 12, 0, tzinfo=UTC)
 CONSTRAINT = "feature_gates_gate_check"
 
@@ -93,13 +95,14 @@ def test_0115_keeps_what_was_written_accepts_the_new_gate_and_moves_nothing_else
             assert evidence(c) == before, "every row written before is as it was: same ids, same content"
             assert [r[0] for r in before] == written
             new_def, validated = gate_check(c)
-            assert validated and gates_of(new_def) == [*OLD_GATES, "research_v2"] == list(gates.GATES) and " OR " not in new_def, new_def
+            assert validated and gates_of(new_def) == list(GATES_0115) and " OR " not in new_def, new_def
             assert other_rules(c) == rules, "no other constraint, no index and no trigger of the evidence moved"
             ok = gate_row(c, "research_v2", passed=False, evidence={"gate": "research-gate-v1", "verdict": "NO PASA"})
             assert c.execute("SELECT gate, passed, decided_by FROM ai.feature_gates WHERE id = %s", (ok,)).fetchone() == ("research_v2", False, "script")
-            for gate in gates.GATES:
+            for gate in GATES_0115:
                 gate_row(c, gate, at=NOON + timedelta(days=1))  # every gate is accepted, the old ones as before
-            for nonsense in ("research", "research_v1", "Research_v2", "research_v2 ", "", "gate_b", "RESEARCH_V2", "research-v2", "research_v3"):
+            for nonsense in ("research", "research_v1", "Research_v2", "research_v2 ", "", "gate_b", "RESEARCH_V2", "research-v2", "research_v3",
+                             "switches"):  # the word of the next revision is nonsense to this one
                 with refuses(c, psycopg.errors.CheckViolation, constraint=CONSTRAINT):
                     gate_row(c, nonsense)
             with refuses(c, psycopg.errors.CheckViolation):
@@ -113,12 +116,14 @@ def test_0115_keeps_what_was_written_accepts_the_new_gate_and_moves_nothing_else
             c.rollback()
 
 
-def test_0115_the_words_of_the_database_are_the_words_of_the_code() -> None:
-    """A gate added to ``gates.GATES`` without a migration, or the other way round, fails here instead of failing on the day the gate is
-    first recorded."""
+def test_0115_the_words_of_the_database_are_words_of_the_code() -> None:
+    """At this revision the database knows the gates of ``GATES_0115`` and the code knows every one of them (a gate removed from
+    ``gates.GATES`` without a migration fails here instead of failing on the day the gate is read). That the code knows no gate the database
+    does not is held, at the head, by the tests of the last migration of the vocabulary (0116)."""
     with scratch_at("0115") as dsn, psycopg.connect(dsn) as c:
-        assert gates_of(gate_check(c)[0]) == list(gates.GATES)
-        for gate in gates.GATES:
+        assert gates_of(gate_check(c)[0]) == list(GATES_0115)
+        assert set(GATES_0115) <= set(gates.GATES)
+        for gate in GATES_0115:
             gate_row(c, gate)
         c.rollback()
 

@@ -104,6 +104,7 @@ def read_doc(*parts: str) -> str:
 
 
 GUIDE = read_doc("owner", "IA_FASE2.md")
+PHASE_0 = read_doc("owner", "IA_FASE0.md")
 PHASE_1 = read_doc("owner", "IA_FASE1.md")
 ACTIONS = read_doc("owner", "IA_ACCIONES_MANUALES.md")
 BASELINE = read_doc("owner", "IA_BASELINE_F0.md")
@@ -112,6 +113,9 @@ COLLECTORS_SRC = (BACKEND / "src" / "fbi" / "ai" / "collectors.py").read_text(en
 ENTITY_SRC = (BACKEND / "src" / "fbi" / "ai" / "entity_research.py").read_text(encoding="utf-8")
 CONSOLE_SRC = (BACKEND / "src" / "fbi" / "api" / "services" / "ai_research.py").read_text(encoding="utf-8")
 LAYER_ROUTES = (BACKEND / "src" / "fbi" / "api" / "routers" / "ai_layer.py").read_text(encoding="utf-8")
+DAILY_SRC = (BACKEND / "src" / "fbi" / "picks" / "daily.py").read_text(encoding="utf-8")
+BASELINE_SQL = (BACKEND / "scripts" / "ia_baseline.sql").read_text(encoding="utf-8")
+REPLAY_SRC = (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")
 
 
 # ── reading the documents ─────────────────────────────────────────────────────────────────────────────────────────
@@ -1047,18 +1051,90 @@ def test_a_page_that_reads_like_an_order_is_a_source_nobody_classified() -> None
     assert decide(social, newer) == {1: "CONTRADICTORY", 2: "CONTRADICTORY"}, "an aggregator or better is exactly as far as the guide goes"
 
 
-def test_the_typed_claims_are_decided_among_themselves_over_the_last_21_days() -> None:
+def raw_row(ident: int, **over: Any) -> dict[str, Any]:
+    """A row of ``ai.evidence`` as the loading queries of the statuses give it back: a claim of the web about a player of the home side."""
+    base: dict[str, Any] = {
+        "id": ident, "fixture_id": FIXTURE, "team_id": 11, "provider_player_id": 501, "kind": "injury", "origin": "web", "source_tier": "media",
+        "source_domain": "marca.com", "published_at": NOW - DAY, "retrieved_at": NOW - timedelta(hours=2), "story_key": f"story-{ident}",
+        "status": "PROBABLE", "status_reason": "test", "attributes": {"assertion": "out", "player_name": "Ana Striker"}, "subject_type": "PLAYER"}
+    return base | over
+
+
+def test_the_typed_claims_are_decided_by_person_beside_what_the_match_says_over_the_last_21_days() -> None:
     para = paragraph(section(5), "Un rumor nunca llega")
     said(r"sobre los últimos (\d+) días", para, evidence.TYPED_WINDOW.days)
     assert evidence.TYPED_WINDOW > evidence.STALE_AFTER, "a report is marked old before it stops being looked at"
     assert "subject_type IS NULL" in evidence.LOAD_SQL and "subject_type IS NOT NULL" in evidence.TYPED_SQL
     assert "e.fixture_id IS NULL AND e.team_id = ANY(%(teams)s)" in evidence.TYPED_SQL, "what is known of a team is read by its next match"
-    assert "las que hablan de un equipo o de un jugador sin partido las lee también el siguiente partido del equipo" in para
+    assert "Las que hablan de un equipo o de un jugador sin partido las lee también el siguiente partido del equipo" in para
     conn = Script()
     evidence.refresh_typed_statuses(conn, FIXTURE, [11, 12], at=NOW, kickoff=KICKOFF, lineup_starters={})  # type: ignore[arg-type]
     sql, args = conn.asked[0]
     assert sql == evidence.TYPED_SQL and args == {"fixture": FIXTURE, "teams": [11, 12], "at": NOW, "since": NOW - evidence.TYPED_WINDOW}
-    assert "aparte de los elementos de v1 y del informe del proveedor" in para
+    assert "aparte de los elementos de v1" not in para, "the guide described the decision before the review of 27 Oct"
+
+
+def test_a_claim_with_no_match_and_one_for_this_match_about_the_same_man_are_one_subject_for_the_rules() -> None:
+    """Hallazgo H2 of the review: «por persona (equipo y jugador), no por partido»."""
+    para = paragraph(section(5), "Un rumor nunca llega")
+    assert "**por persona** (equipo y jugador), no por partido" in para and "lo que el modelo diga que es su `applies_to` no decide" in para
+    kw: dict[str, Any] = {"kickoff": KICKOFF, "at": NOW, "lineup_starters": {}, "absences_checked_at": None}
+    no_match = dataclasses.replace(report(1, "media", "marca.com", story="no-match", published=NOW - 2 * DAY), fixture_id=None)
+    this_match = report(2, "media", "as.com", assertion="available", story="this-match", published=NOW - DAY)
+
+    def statuses(rows: list[evidence.Row], **more: Any) -> dict[int, str]:
+        return {ident: status for ident, (status, _) in evidence.classify(rows, **kw, **more).items()}
+
+    assert statuses([no_match, this_match]) == {1: "PROBABLE", 2: "PROBABLE"}, "by match they never met"
+    assert statuses([no_match, this_match], across_scopes=True) == {1: "OUTDATED", 2: "PROBABLE"}, "by person the newer one outdates the older"
+    weaker = report(3, "aggregator", "transfermarkt.com", assertion="available", story="third", published=NOW - DAY)
+    assert statuses([no_match, weaker], across_scopes=True) == {1: "CONTRADICTORY", 3: "CONTRADICTORY"}, "or, one step apart, they contradict"
+    assert "se contradicen o se anulan como si fueran del mismo partido" in para
+
+
+def test_what_the_provider_and_v1_say_of_the_match_is_read_beside_the_typed_claims_and_never_written() -> None:
+    para = paragraph(section(5), "Un rumor nunca llega")
+    assert "**junto a** lo que dicen sobre quién juega el proveedor y v1 en ese partido, que se lee y nunca se escribe" in para
+    assert "nada de lo que hace v2 mueve un estado de v1" in para
+    assert "subject_type IS NULL" in evidence.CONTEXT_SQL, "what v1 and the provider wrote, and nothing that research v2 did"
+    web = raw_row(1, fixture_id=None, published_at=NOW - 2 * DAY)  # «he is out», tied to no match
+    provider = raw_row(9, origin="provider", source_tier="provider", source_domain="api-football.com", subject_type=None, story_key="provider")
+    conn = Script({evidence.TYPED_SQL: [web], evidence.CONTEXT_SQL: [provider]})
+    counts = evidence.refresh_typed_statuses(conn, FIXTURE, [11, 12], at=NOW, kickoff=KICKOFF, lineup_starters={})  # type: ignore[arg-type]
+    written = [params[3] for sql, params in conn.asked if sql.lstrip().startswith("UPDATE ai.evidence")]
+    assert written == [1] and counts == {"OUTDATED": 1}, "the provider's newer report outdates the claim of the web, and only the claim is written"
+    assert "un parte más nuevo del proveedor deja `OUTDATED` a una afirmación más vieja de la web" in para
+
+
+def test_a_later_confirmed_eleven_of_the_team_keeps_a_claim_with_no_match_disproved_for_every_match() -> None:
+    """Hallazgo H3 of the review."""
+    para = paragraph(section(5), "Un rumor nunca llega")
+    assert "Un once confirmado de su equipo, en cualquier partido, conocido después de leída la afirmación y con el jugador entre los titulares" in para
+    assert "deja `OUTDATED` para siempre a la afirmación sin partido que lo daba por ausente, sea cual sea el partido que se prepare" in para
+    kw: dict[str, Any] = {"kickoff": KICKOFF, "at": NOW, "lineup_starters": {}, "absences_checked_at": None, "across_scopes": True}
+    out = dataclasses.replace(report(1, "media", "marca.com"), fixture_id=None)  # read two hours before NOW
+    after = evidence.Lineup(11, frozenset({501}), NOW - timedelta(hours=1))
+    before = evidence.Lineup(11, frozenset({501}), NOW - timedelta(hours=3))
+    elsewhere = evidence.Lineup(12, frozenset({501}), NOW - timedelta(hours=1))
+    without = evidence.Lineup(11, frozenset({502}), NOW - timedelta(hours=1))
+    assert evidence.classify([out], lineups=[after], **kw)[1][0] == "OUTDATED"
+    for kept in (before, elsewhere, without):
+        assert evidence.classify([out], lineups=[kept], **kw)[1][0] == "PROBABLE", kept
+    assert evidence.classify([out], **kw)[1][0] == "PROBABLE"
+    assert "f.home_team_id = ANY(%(teams)s) OR f.away_team_id = ANY(%(teams)s)" in evidence.TEAM_LINEUPS_SQL, "the line-ups of any match of the team"
+
+
+def test_a_report_too_old_does_not_corroborate_and_two_addresses_of_one_outlet_are_one_outlet() -> None:
+    """Hallazgo M1 of the review."""
+    para = paragraph(section(5), "Un rumor nunca llega")
+    assert "(uno de hace más de 10 días no corrobora a uno de hoy)" in para and "`marca.com` y `amp.marca.com` son uno" in para
+    stale = report(1, "media", "marca.com", story="same", published=KICKOFF - evidence.STALE_AFTER - DAY)
+    today = report(2, "media", "as.com", story="same", published=NOW - DAY)
+    assert decide(stale, today) == {1: "OUTDATED", 2: "PROBABLE"}
+    first, second = report(1, "media", "marca.com", story="same"), report(2, "media", "amp.marca.com", story="same")
+    assert decide(first, second) == {1: "CONFIRMED", 2: "CONFIRMED"}, "without the registry two addresses are two outlets (what v1 always did)"
+    one = [dataclasses.replace(first, outlet="marca.com"), dataclasses.replace(second, outlet="marca.com")]
+    assert decide(*one) == {1: "PROBABLE", 2: "PROBABLE"}, "the outlet is the registered domain that vouches for the address"
 
 
 def test_the_class_of_a_source_is_the_one_the_guide_gives_and_changes_no_status() -> None:
@@ -1160,7 +1236,7 @@ def test_migration_0115_adds_the_gate_and_both_migrations_wait_at_most_ten_secon
     rows = table(section(6), "| Migración")
     m0115 = migration("0115")
     up, down = parts_of(migration_source("0115"))
-    assert (*m0115.GATES, gate_research.GATE) == gates.GATES, "the list of gates of the database is the list of the code"
+    assert (*m0115.GATES, gate_research.GATE, gates.SWITCHES) == gates.GATES, "0115's list plus the ledger of the owner's words (0116) is the list of the code"
     assert "'research_v2'" in up and rows[1][1] == "`research_v2` en la lista de gates de `ai.feature_gates`"
     assert not WRITES.search(up) and not WRITES.search(down)
     sec = section(6)
@@ -2036,13 +2112,137 @@ def test_the_findings_are_the_ones_the_code_shows() -> None:
     assert "No usa Batch" in by[12][2] and "la pasada necesita la respuesta del extractor" in by[12][2]
 
 
+# ── 11. the independent review ────────────────────────────────────────────────────────────
+
+REVIEW = ["H1", "H2", "H3", "H4", "M1", "M2", "M3", "M4", "M5", "L1", "L2", "L3", "L4"]
+"""The thirteen findings of the independent review of 27 Oct 2026, in the order the reviewer gave them."""
+
+
+def review() -> dict[str, list[str]]:
+    rows = table(section(11), "| Hallazgo")
+    assert [r[0].split(" ")[0] for r in rows] == REVIEW
+    return {r[0].split(" ")[0]: r for r in rows}
+
+
+def test_the_review_table_has_the_thirteen_findings_with_their_severity_and_each_one_says_what_became_of_it() -> None:
+    rows = review()
+    severity = Counter(re.search(r"\((alto|medio|bajo)\)", r[0]).group(1) for r in rows.values())  # type: ignore[union-attr]
+    assert severity == {"alto": 4, "medio": 5, "bajo": 4} and len(rows) == WORDS["trece"]
+    intro = paragraph(section(11), "**La revisión independiente (27 oct 2026).**")
+    assert "halló 4 hallazgos altos, 5 medios y 4 bajos" in intro and "los cuatro altos solo rigen con `on`" in intro
+    assert [rows[k][0].split(" ")[0] for k in REVIEW if "(alto)" in rows[k][0]] == ["H1", "H2", "H3", "H4"]
+    fate = {k: re.match(r"(\w+)(?: en (ia-p0\d))?", rows[k][2]).groups() for k in REVIEW}  # type: ignore[union-attr]
+    assert fate == {"H1": ("Corregido", "ia-p02"), "H2": ("Corregido", "ia-p02"), "H3": ("Corregido", "ia-p02"), "H4": ("Abierto", None),
+                    "M1": ("Corregido", "ia-p02"), "M2": ("Corregido", "ia-p02"), "M3": ("Declarado", None), "M4": ("Medido", None),
+                    "M5": ("Corregido", "ia-p03"), "L1": ("Corregido", "ia-p03"), "L2": ("Declaradas", None), "L3": ("Corregido", "ia-p03"),
+                    "L4": ("Declarado", None)}
+    assert "una revisión independiente, H1" not in GUIDE and "(revisión independiente, H1)" in section(3) and "(revisión independiente, M2)" in section(3)
+
+
+def test_the_four_high_findings_come_into_effect_only_with_on_and_h4_is_the_one_still_open() -> None:
+    rows = review()
+    assert rows["H4"][2].startswith("Abierto, y es condición para `on`."), "the table helper strips the bold"
+    assert "No cambia nada con `off` ni con `shadow`" in rows["H4"][2] and "`on` no se pone sin ello (sección 12)" in rows["H4"][2]
+    # while it is open, the readers of the decision choose the evidence of a match by the match: a claim of a team with no match is not seen
+    for name in ("decision", "match_review", "report"):
+        source = (BACKEND / "src" / "fbi" / "intel" / f"{name}.py").read_text(encoding="utf-8")
+        assert "fixture_id" in source and "e.fixture_id IS NULL" not in source and "fixture_id IS NULL AND" not in source, name
+        assert f"intel/{name}.py" in rows["H4"][1]
+    assert "e.fixture_id = ANY(%(fixtures)s)" in DAILY_SRC and "e.fixture_id IS NULL" not in DAILY_SRC and "los picks del día" in rows["H4"][1]
+    # what it would cost the decision is the context of the pick, and it only matters with on (nothing reads a typed claim in shadow)
+    assert "(e.subject_type IS NULL OR %(typed)s)" in DAILY_SRC
+    waiting = [r for r in table(section(12), "| Falta") if "hallazgo H4" in r[0]]
+    assert len(waiting) == 1 and waiting[0][1] == "yo" and "antes de `on`" in waiting[0][2] and "no cambia nada" in waiting[0][2]
+    assert "los cuatro lectores" in waiting[0][3] and len(re.findall(r"`intel/\w+\.py`", rows["H4"][1])) == 3, "the review names three files and the picks of the day: four readers"
+    on_row = next(r for r in table(section(12), "| Falta") if r[0] == "Pasar a `on`")
+    assert "con el hallazgo H4 cerrado" in on_row[2]
+
+
+def test_the_limits_the_review_names_are_the_limits_of_the_contract() -> None:
+    rows = review()
+    assert claim.QUOTE_MIN_CHARS == 10 and claim.QUOTE_MIN_WORDS == 2 and "(10 caracteres y 2 palabras)" in rows["H1"][2]
+    assert f"Una cita de {claim.QUOTE_MAX + 1} caracteres, o {claim.CLAIMS_MAX + 1} afirmaciones" in rows["M2"][1]
+    assert f"({claim.QUOTE_MAX} caracteres de cita, {claim.CLAIMS_MAX} afirmaciones, una fecha que sea fecha)" in rows["M2"][2]
+    assert "una subcadena de cinco caracteres" in rows["H1"][1] and claim.QUOTE_MIN_CHARS > 5, "the quote the old rule accepted would not pass today"
+    # the three rules of H1 are the ones the contract applies
+    quote = claim.Claim.model_fields["quote"]
+    assert quote is not None and "quote_without_subject" in inspect.getsource(claim) and "quote_too_short" in inspect.getsource(claim)
+
+
+def test_once_on_the_window_of_the_gate_cannot_be_completed_and_only_a_failing_row_takes_it_back_to_shadow(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hallazgo M3: «una vez en `on`, el gate ya no se vuelve a medir»."""
+    rows = review()
+    para = paragraph(section(7), "**Una vez en `on`, el gate ya no se vuelve a medir (hallazgo M3 de la revisión).**")
+    assert gate_research.ON_MARK == "research_v2_on" and gate_research.SHADOW_MARK == "research_v2_shadow"
+    assert "`research_v2_on`" in para and "`research_v2_on`" in rows["M3"][1] and "volver a `shadow` y reunir 7 días nuevos" in rows["M3"][2]
+    days = [date(2026, 11, 1) + timedelta(days=i) for i in range(gate_research.WINDOW_DAYS)]
+    at, through = datetime(2026, 11, 9, 12, tzinfo=UTC), days[-1]
+    replaced = Script({gate_research.DAYS_SQL: [(d, 5, 0, 5) for d in days]})
+    window = gate_research.window_of(replaced, at=at, through=through)  # type: ignore[arg-type]
+    assert not window.complete and window.stable_days == 0, "every pass ran with v2 instead of v1: no day counts"
+    assert "passes ran without research v2 in shadow" in window.anchored_by and "with research v2 instead of v1" in window.anchored_by
+    beside = Script({gate_research.DAYS_SQL: [(d, 5, 5, 0) for d in days]})
+    assert gate_research.window_of(beside, at=at, through=through).complete, "the same days in shadow do complete it"  # type: ignore[arg-type]
+
+    class State:
+        passed = True
+
+    monkeypatch.setattr(gates, "gate_state", lambda conn, gate: State())
+    asked_on = dataclasses.replace(AiSettings(), research_v2="on")
+    assert gates.research_mode(CONN, asked_on) == "on", "a PASA that is the newest row holds"
+    State.passed = False
+    assert gates.research_mode(CONN, asked_on) == "shadow", "a failing newest row takes on back to shadow by itself"
+    assert "solo un `NO PASA` registrado devuelve `on` a `shadow` por sí solo" in para
+
+
+def test_the_migration_lock_the_review_measured_is_the_one_the_migration_asks_for() -> None:
+    """Hallazgo M4: each migration is one transaction that waits at most ten seconds for its lock."""
+    para = paragraph(section(6), "**Cuánto bloquean.**")
+    for number in ("0114", "0115"):
+        assert "SET LOCAL lock_timeout = '10s'" in migration_source(number), number
+    assert "`lock_timeout` acota la espera para conseguirlo, no el tiempo que se lo tiene" in para
+    assert "NOT VALID" in para and "CONCURRENTLY" in para and "CONCURRENTLY" not in migration_source("0114")
+    assert "10.456 filas y 14 MB" in para and "4.375 filas y 5,2 MB" in para and "(hallazgo M4 de la revisión, sección 11)" in para
+    assert "Medido, sin cambio" in review()["M4"][2] and "46 a 48 ms" in review()["M4"][2] and "46 a 48 ms" in para
+
+
+def test_the_fixes_of_the_third_delivery_are_in_the_code_and_in_the_guide_that_names_them() -> None:
+    rows = review()
+    # M5: the ledger of the owner's words
+    assert gates.SWITCHES == "switches" and "(gate `switches`)" in rows["M5"][2] and "`IA_FASE0.md`, secciones 3 y 10" in rows["M5"][2]
+    for number in ("3", "10"):
+        text = re.search(rf"^## {number}\. .*?(?=^## \d+\. |\Z)", PHASE_0, flags=re.S | re.M)
+        assert text and "switches" in text.group(0), f"section {number} of the guide of phase 0 no longer speaks of the ledger"
+    # L1: a column that is not there is a table that is not there
+    caught = [{ast.unparse(e) for e in n.type.elts} for n in ast.walk(ast.parse(DAILY_SRC)) if isinstance(n, ast.ExceptHandler) and isinstance(n.type, ast.Tuple)]
+    assert {"psycopg.errors.UndefinedTable", "psycopg.errors.UndefinedColumn"} in caught, "the daily set gives way on a column that is not there, as on a table"
+    assert "Una columna que no existe se trata como una tabla que no existe" in rows["L1"][2]
+    # L3: the two queries that count evidence count v1's rows
+    for name in ("evidence_by_day", "evidence_per_fixture"):
+        block = BASELINE_SQL.split(f"\\echo ### {name}")[1].split("\\echo ###")[0]
+        assert "subject_type IS NULL" in block, name
+    assert "(por día y por partido) cuentan solo las filas de v1 (`subject_type IS NULL`)" in rows["L3"][2]
+
+
+def test_what_the_review_declared_and_did_not_fix_is_still_true_of_the_code() -> None:
+    rows = review()
+    # L2: every topic has the same freshness (24 hours, and 4 in the last 12) and the only trigger is the first pass
+    said(r"(\d+) horas y (\d+) en las últimas (\d+)", rows["L2"][1], hours(cache.EARLY_TTL), hours(cache.LATE_TTL), hours(cache.LATE_WINDOW))
+    assert "solo existe el disparador de la pasada previa" in rows["L2"][1] and "fewer_searches" in rows["L2"][2]
+    assert 'Check("fewer_searches"' in inspect.getsource(gate_research) and "puede no cumplirse, y entonces el gate dice `NO PASA`" in rows["L2"][2]
+    # L4: a replay builds the packets in the mode of today, and the statuses it reads are the ones of today
+    assert "typed_evidence=typed_visible(conn)" in REPLAY_SRC and "con el modo de hoy y los estados de hoy" in rows["L4"][1]
+    assert "no decide nada" in rows["L4"][2] and "Nothing is written" in REPLAY_SRC
+
+
 # ── 12. what is missing ───────────────────────────────────────────────────────────────────────────────────────────
 
 def test_what_is_missing_names_the_commands_the_words_and_the_waits_that_exist() -> None:
     sec = section(12)
     rows = table(sec, "| Falta")
     assert [r[0] for r in rows] == ["Que pase el gate A", "Desplegar la fase (0114 y 0115), apagada", "Poner `FBI_AI_RESEARCH_V2=shadow`",
-                                    "7 días completos con todas las pasadas en sombra", "La batería sobre `extract-v2`", "Pasar a `on`"]
+                                    "7 días completos con todas las pasadas en sombra", "La batería sobre `extract-v2`",
+                                    "Que las lecturas de la decisión vean las afirmaciones de equipo sin partido (hallazgo H4, sección 11)", "Pasar a `on`"]
     said(r"(\d+) días completos de medición de la fase 0", rows[0][2], gate_a.WINDOW_DAYS)
     assert "`ia_gate evaluate --record` con `PASA`" in rows[0][3] and (BACKEND / "scripts" / "ia_gate.py").is_file()
     assert "evaluate" in inspect.getsource(importlib.import_module("scripts.ia_gate")) and "--record" in inspect.getsource(importlib.import_module("scripts.ia_gate"))
@@ -2052,7 +2252,8 @@ def test_what_is_missing_names_the_commands_the_words_and_the_waits_that_exist()
     said(r"(\d+) días completos con todas las pasadas en sombra", rows[3][0], gate_research.WINDOW_DAYS)
     assert rows[3][3] == "`python -m scripts.ia_research_gate evaluate --record` con `PASA`" and "evaluate" in ia_research_gate.COMMANDS
     assert "`ia_battery submit` y `collect` con `PASA`" in rows[4][3] and {"submit", "collect"} <= set(ia_battery.COMMANDS)
-    assert "tu firma de `claim_extractor` en `intel.promotions` y, entonces, tu palabra en `FBI_AI_RESEARCH_V2`" in rows[5][3]
+    assert "los cuatro lectores usan el predicado del paquete cuando lo tipado es visible" in rows[5][3] and "compare el contexto y la puntuación" in rows[5][3]
+    assert "tu firma de `claim_extractor` en `intel.promotions` y, entonces, tu palabra en `FBI_AI_RESEARCH_V2`" in rows[6][3]
     assert "intel.promotions" in migration_source("0111")
     assert "gate B" in paragraph(sec, "**El gate.**") and "battery" in gates.GATES
     assert "Encender esta fase y empezar la 3 esperan al gate A" in sec and "Los 7 días de la fase 0 y los 7 de esta son tiempo real" in sec
@@ -2076,10 +2277,10 @@ def test_every_version_the_guide_names_is_a_version_of_the_code() -> None:
     assert {EXTRACT_V2_VERSION, base.CLAIM, cache.KEY_VERSION, BATTERY_VERSION, base.MCP} <= set(named), "the guide names each version of the phase"
 
 
-INTERNAL_REFERENCES = [5, 6, 5, 5, 3, 6, 2, 3, 8, 9, 3, 3, 5, 7, 7, 12, 10, 5]
+INTERNAL_REFERENCES = [5, 6, 5, 5, 3, 6, 2, 11, 11, 3, 8, 9, 3, 3, 5, 7, 7, 12, 10, 5, 5, 5, 12, 7, 6, 3, 11]
 """The sections of this guide that the guide itself points to, in the order it does."""
 TOPIC_OF_SECTION = {2: "interruptor", 3: "investigación", 5: "evidencias", 6: "migraciones", 7: "gate", 8: "consola", 9: "batería", 10: "cuesta",
-                    12: "falta"}
+                    11: "pruebas", 12: "falta"}
 
 
 def test_every_section_the_guide_points_to_is_there_and_is_about_what_the_reference_says() -> None:
@@ -2251,7 +2452,7 @@ def test_the_migrations_only_add_to_the_guard_and_to_the_list_of_gates_so_the_co
     assert columns(before) == list(m0114.CONTENT) and columns(now) == [*m0114.CONTENT, *m0114.NEW_CONTENT], "the guard holds what it held and five more"
     assert shape(before) == shape(now), "the rest of the guard - the deletion rule and the history of the statuses - is the one of 0072"
     # the list of gates: the new one is added and none of the old ones is taken away
-    assert set(m0115.GATES) < set(gates.GATES) and set(gates.GATES) - set(m0115.GATES) == {"research_v2"}
+    assert set(m0115.GATES) < set(gates.GATES) and set(gates.GATES) - set(m0115.GATES) == {"research_v2", gates.SWITCHES}
     assert set(m0114.OLD_SCOPES) < set(cache.SCOPES) and set(cache.SCOPES) - set(m0114.OLD_SCOPES) == {"entity"}
 
 
@@ -2329,11 +2530,12 @@ def test_the_tests_of_the_quality_paragraph_are_files_that_exist_and_say_what_th
 def test_what_is_missing_has_the_owner_and_the_moment_of_each_step_and_the_gate_is_the_one_of_the_previous_phase() -> None:
     sec = section(12)
     rows = table(sec, "| Falta")
-    assert [r[1] for r in rows] == ["el tiempo", "yo", "yo", "el tiempo", "tú y yo", "tú"]
+    assert [r[1] for r in rows] == ["el tiempo", "yo", "yo", "el tiempo", "tú y yo", "yo", "tú"]
     assert [r[2] for r in rows] == [
         "7 días completos de medición de la fase 0", "ya: no depende del gate A (plan, sección 35)",
         "cuando el gate A haya dado `PASA`, con una copia fechada de `app.env` y reinicio del worker", "desde que se encienda",
-        "cuando estén las acciones 5 y 7", "solo con el gate en `PASA`"]
+        "cuando estén las acciones 5 y 7", "antes de `on`; con `off` y con `shadow` no cambia nada",
+        "solo con el gate en `PASA` y con el hallazgo H4 cerrado"]
     assert rows[1][3].endswith("la comprobación de salud y el escaneo de seguridad del rango desplegado en 0")
     gate = paragraph(sec, "**El gate.**")
     assert gate.startswith("**El gate.** La fase 2 no tiene gate propio: su comprobación es la parte de investigación del **gate B** (la sombra funcional tras 14 días)")
@@ -2390,7 +2592,7 @@ def test_the_findings_say_the_same_in_the_cell_that_names_them_and_in_the_one_th
                     "el extractor: lo que lee y lo que se acepta", "la investigación por entidad", "el interruptor y el ciclo",
                     "ninguna otra lectura ve lo tipado", "el gate y su orden de línea de comandos", "la vista de la Consola, de la base al web",
                     "la batería sobre `extract-v2`"}
-    assert "La fase está **terminada en el código y se despliega apagada**" in section(12)
+    assert "La fase está **terminada en el código para `off` y para `shadow`, y se despliega apagada**; para `on` falta cerrar el hallazgo H4" in section(12)
 
 
 def test_each_piece_of_the_first_section_does_what_the_guide_says_in_the_place_it_names() -> None:

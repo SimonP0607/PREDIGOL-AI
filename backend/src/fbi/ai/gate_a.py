@@ -9,9 +9,11 @@ with the evidence's hash so the report can be reproduced from the database).
 THE WINDOW. The seven Bogotá days that ended yesterday, all after the ANCHOR: the day after the latest of (a) the first day the
 phase-0 code wrote the ledger (a row with a workspace), (b) the last change of an optimisation gate (``batch``, ``native_schema``,
 ``cache_layout``: a newer row that turns it on or off), (c) a change of configuration DECLARED by whoever deployed it (``changes``: a
-deploy that altered what the layer does leaves no row of its own; declaring it can only delay the gate). A day on which the
-configuration changed is not part of the measure. A switch turned off by hand leaves no trace of its own, so the days must also SHOW
-the optimisations in the ledger (the cache check).
+deploy that altered what the layer does leaves no row of its own; declaring it can only delay the gate), (d) a change of the owner's
+WORDS - a switch, the mode, research v2, a model, an envelope - that the worker recorded (``gates.record_switches``: an environment
+variable changed by hand now leaves its trace; the first row is the baseline and is not a change). A day on which the configuration
+changed is not part of the measure. A switch turned off by hand before the worker kept that ledger left no trace of its own, so the
+days must also SHOW the optimisations in the ledger (the cache check).
 
 THE CHECKS (each with its figures; an unjudgeable one is ``None`` and makes the verdict pending, never a pass):
 
@@ -34,7 +36,10 @@ THE CHECKS (each with its figures; an unjudgeable one is ``None`` and makes the 
                         says NO PASA, or whose letters do not reproduce its assessment, fails the check (its switch is rolled back, corrected
                         and measured again); one in force without enough evidence leaves it pending. One that is OFF - rejected by its own
                         evidence, never measured, or rolled back - changes nothing the window measures: it is REPORTED (``not_in_force``),
-                        never judged, and it is judged the day it is switched on. No threshold moved: only which optimisations are judged
+                        never judged, and it is judged the day it is switched on. No threshold moved: only which optimisations are judged.
+                        IN FORCE is what the ledger of the owner's words says the worker ran with in the window OR what the evaluating
+                        process holds now (review M5): switching an optimisation off in the environment right before the verdict does not
+                        take it out of the judgement, and the change itself is a day the configuration changed
     cache_visible       reads of the cache on at least 6 of the 7 days and, in real time, >= 40 % of the cacheable input read (the
                         threshold of the alarm of section 28)
     batch_lost          0 results of a production batch lost (a finished or expired batch with an item neither resolved nor recorded),
@@ -188,6 +193,19 @@ def flips(conn: psycopg.Connection[Any]) -> list[tuple[date, str]]:
     return out
 
 
+def switch_changes(conn: psycopg.Connection[Any]) -> list[tuple[date, str]]:
+    """The days the owner's words changed, from the ledger the worker keeps (``gates.record_switches``): every row after the first whose
+    words differ from the row before. The first row is the baseline - the words the worker held when it began to keep the ledger - and is
+    not a change."""
+    out: list[tuple[date, str]] = []
+    previous: dict[str, Any] | None = None
+    for _row, at, words in gates.switch_ledger(conn):
+        if previous is not None and words != previous:
+            out.append((local_day(at), f"the owner's words changed ({'; '.join(gates.words_diff(previous, words))[:160]})"))
+        previous = words
+    return out
+
+
 def window_of(conn: psycopg.Connection[Any], *, at: datetime, through: date | None = None,
               changes: Sequence[date] = ()) -> Window:
     today = local_day(at)
@@ -201,6 +219,7 @@ def window_of(conn: psycopg.Connection[Any], *, at: datetime, through: date | No
     deploy = None if row is None else row[0]
     events = [(deploy, "the phase-0 code's first ledger row")] if deploy is not None else []
     events += flips(conn)
+    events += switch_changes(conn)
     events += [(d, "a change of configuration declared by whoever deployed it") for d in changes]
     if deploy is None:
         return Window(first, last, None, None, 0, None)
@@ -466,8 +485,41 @@ SWITCH_OF: dict[str, str] = {"batch": "FBI_AI_BATCH", "native_schema": "FBI_AI_N
 """What to roll back when the optimisation in force is the one that fails."""
 
 
+def in_force_by_ledger(conn: psycopg.Connection[Any]) -> tuple[dict[str, bool] | None, dict[str, Any]]:
+    """Which optimisations the worker ran with, read from the newest row of the ledger of the owner's words and the newest evidence of each
+    gate - the same rule as ``gates.describe``, applied to the words the worker held and not to the ones of whoever evaluates. In a COMPLETE
+    window nothing changed inside it (a change of the words, of a gate or a declared one is a day the configuration changed, and the window
+    starts after the latest), so the newest row says what the whole window ran with. None when the worker has not written the ledger yet."""
+    rows = gates.switch_ledger(conn)
+    if not rows:
+        return None, {"rows": 0, "note": "the worker has not written the ledger of the owner's words yet: only this process's words are read"}
+    row, at, words = rows[-1]
+    mode = dict(words.get("switches") or {})
+    passed = {g: gates.gate_state(conn, g).passed for g in OPTIMISATIONS}
+
+    def running(switch: str, gate: str) -> bool:
+        return mode.get(switch) == "on" or (mode.get(switch, "auto") == "auto" and passed[gate])
+
+    on = {"batch": running("batch", "batch"), "native_schema": running("native_schema", "native_schema"),
+          "cache_layout": mode.get("cache", "auto") != "off" and passed["cache_layout"]}
+    return on, {"rows": len(rows), "first_at": rows[0][1].isoformat(), "newest_row": row, "newest_at": at.isoformat(), "words": words}
+
+
+def optimisations_in_force(conn: psycopg.Connection[Any], settings: AiSettings) -> dict[str, Any]:
+    """The optimisations to JUDGE: what the worker ran with according to its ledger, or what this process holds now (review M5). Taking only the
+    process that evaluates let a switch forced on during the window - against its own failing evidence - be put back to ``auto`` in the
+    environment right before ``--record`` and leave the judgement without it; the union takes nobody's word for the days that went."""
+    described = gates.describe(conn, settings)
+    now = {g: bool(described.get(g, {}).get("on")) for g in OPTIMISATIONS}
+    ledger, meta = in_force_by_ledger(conn)
+    on = {g: now[g] or bool(ledger and ledger[g]) for g in OPTIMISATIONS}
+    return {"on": on, "now": now, "ledger": ledger, "switch_ledger": meta,
+            "disagree": [g for g in OPTIMISATIONS if ledger is not None and ledger[g] != now[g]]}
+
+
 def check_equivalence(conn: psycopg.Connection[Any], settings: AiSettings) -> Check:
-    """The evidence of the optimisations that are IN FORCE (``gates.describe``: the switch on, or ``auto`` with its gate passing).
+    """The evidence of the optimisations that are IN FORCE (``optimisations_in_force``: the switch on, or ``auto`` with its gate passing, in
+    the words the worker ran with in the window or in the ones of this process).
 
     The owner's decision A (27 Oct 2026, ~00:37 UTC), taken when the first experiment left ``native_schema`` INSUFICIENTE and ``cache_layout``
     NO PASA and both switches off: requiring favourable evidence of an optimisation that is not running could only be met by switching it on, and
@@ -475,8 +527,8 @@ def check_equivalence(conn: psycopg.Connection[Any], settings: AiSettings) -> Ch
     verdicts changed than repeating the call, over >= 200 packets, RECOMPUTED from the letters (the others); an optimisation that is off is
     listed in ``not_in_force`` with the state of its evidence and never blocks. Thresholds, the 200 packets and the recomputation are as they were."""
     states = {g: equivalence_of(conn, g) for g in OPTIMISATIONS}
-    described = gates.describe(conn, settings)
-    on = {g: bool(described.get(g, {}).get("on")) for g in OPTIMISATIONS}
+    force = optimisations_in_force(conn, settings)
+    on: dict[str, bool] = force["on"]
     judged = [g for g in OPTIMISATIONS if on[g]]
     off = [g for g in OPTIMISATIONS if not on[g]]
     missing = [g for g in judged if states[g]["state"] in ("missing", "insufficient")]
@@ -494,8 +546,11 @@ def check_equivalence(conn: psycopg.Connection[Any], settings: AiSettings) -> Ch
                for g, s in states.items()}
     note = ("no optimisation is in force: there is nothing to compare" if not judged
             else f"judged: {', '.join(judged)}" + (f"; reported, not judged (off): {', '.join(off)}" if off else ""))
+    if force["disagree"]:
+        note += f"; the ledger of the worker's words and this process disagree on: {', '.join(force['disagree'])} (both are judged)"
     return Check("verdict_equivalence", "Cambio de veredicto con las optimizaciones en vigor ≤ el de repetir la misma llamada (≥ 200 paquetes)",
-                 ok, {"optimisations": states, "in_force": on, "judged": judged,
+                 ok, {"optimisations": states, "in_force": on, "in_force_now": force["now"], "in_force_by_ledger": force["ledger"],
+                      "switch_ledger": force["switch_ledger"], "ledger_and_process_disagree": force["disagree"], "judged": judged,
                       "not_in_force": {g: states[g]["state"] for g in off},
                       "rolled_back": [g for g in off if states[g]["state"] == "failed"],
                       "unmeasured": [g for g in off if states[g]["state"] in ("missing", "insufficient")],
@@ -538,7 +593,7 @@ def check_batch(conn: psycopg.Connection[Any], settings: AiSettings, w: Window, 
         if stuck or unrecorded:
             lost += n
     expired = by_item.get("expired", 0)
-    on = bool(gates.describe(conn, settings)["batch"]["on"])
+    on = bool(optimisations_in_force(conn, settings)["on"]["batch"])
     share = _rate(expired, total)
     detail: dict[str, Any] = {"batch_on": on, "requests": total, "by_status": dict(sorted(by_item.items())), "lost": lost,
                               "expired": expired, "expired_pct": _pct(share), "maximum_expired_pct": _pct(BATCH_EXPIRED_MAX)}
