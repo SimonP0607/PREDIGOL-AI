@@ -32,15 +32,15 @@ Downgrade: drops the schema only while it holds no row. With real consents or ti
 tables stay (plan UX, section 44: dropping them would delete legal evidence).
 
 Chain: written on 0094 (UX A1); the IA plan's releases reached production first - ia-p01 (0110 to 0113), ia-p02 (0114
-and 0115) and ia-p03 (0116) - so this migration hangs from 0116 and the UX chain 0095 to 0102 follows it unchanged - the
-same move 0110 made when A1 went first. Its revision number stays: production never ran it, and every UX test and guide
-names it.
+and 0115) and ia-p03 (0116) - and then the security plan's sec-s3 (0117, the incident register), so this migration hangs
+from 0117 and the UX chain 0095 to 0102 follows it unchanged - the same move 0110 made when A1 went first. Its revision
+number stays: production never ran it, and every UX test and guide names it.
 """
 
 from alembic import op
 
 revision = "0095"
-down_revision = "0116"
+down_revision = "0117"
 branch_labels = None
 depends_on = None
 

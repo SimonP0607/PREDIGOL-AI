@@ -46,13 +46,13 @@ las alternativas están en `docs/owner/INFRA_DECISION_2026-10-07.md`.
 | Contabo Cloud VPS 6, US Central, Ubuntu 24.04, **pago mensual** | todo PrediGol | $11,00/mes ($9,20 con 24 meses) |
 | Dominio | la dirección pública | ≈ $11/año |
 | Cloudflare Free | DNS, proxy, TLS, anti-bots y DDoS | $0 |
-| Cloudflare R2 (un bucket, dos tokens) | PITR, copias cifradas y RAW fuera del servidor | 10 GB gratis, luego $0,015/GB-mes |
+| Cloudflare R2 (un bucket, tres tokens: copias, PITR y lectura) | PITR, copias cifradas y RAW fuera del servidor | 10 GB gratis, luego $0,015/GB-mes |
 | Una clave `age` (la genera el dueño y guarda la privada) | cifrar las copias antes de salir | $0 |
 | Healthchecks.io, UptimeRobot, Sentry Developer, bot de Telegram | avisos | $0 |
 | API-Football Ultra | los datos | ya se renueva sola |
 
-`SECURITY_ACTION: rotación de API-Football recomendada posteriormente. No rotarla sin autorización.` Cómo se rota
-cada secreto: `docs/owner/SECRETS_AND_ROTATION.md`.
+`SECURITY_ACTION: la rotación de la clave de API-Football está en el plan de seguridad (paquete S1.d): se hace con el dueño presente, y no a mano.`
+Cómo se rota cada secreto: `docs/owner/SECRETS_AND_ROTATION.md`.
 
 ## 3. Instalación (≈ 1,5 horas)
 
@@ -111,8 +111,11 @@ cada secreto: `docs/owner/SECRETS_AND_ROTATION.md`.
 11. **Comprobar.** `predigolctl status` y `predigolctl health`; `https://DOMINIO/health` dice `"ok"`; la PWA se
     instala en Android y en iPhone (§10).
 12. **Avisos.** Healthchecks.io: un check por tarea (`HC_PING_*`). UptimeRobot vigila `https://DOMINIO/health` y
-    busca `"ok"`. Telegram con `FBI_TELEGRAM_BOT_TOKEN` y `FBI_TELEGRAM_CHAT_ID`. Sentry (errores de la API y del
-    worker, sin datos personales): el DSN de un proyecto en `FBI_SENTRY_DSN` de `app.env`.
+    busca `"ok"`. Telegram: el bot de avisos del servidor (`PREDIGOL_ALERT_BOT_TOKEN` y `PREDIGOL_ALERT_CHAT_ID` de
+    `predigol.env`, siempre los dos); si faltan, se usa el de la aplicación (`FBI_TELEGRAM_BOT_TOKEN` y
+    `FBI_TELEGRAM_CHAT_ID` de `app.env`). `predigolctl alert-test` comprueba que llega y dice qué bot lo envió. Sentry
+    (errores de la API y del worker, sin datos personales): el DSN de un proyecto en `FBI_SENTRY_DSN` de `app.env`.
+    Cómo se ensaya cada aviso, uno a uno y sin que el problema sea cierto: `docs/owner/SIMULACROS_AVISOS.md`.
 
 ## 3 bis. Sin dominio todavía (solo la IP)
 
@@ -171,6 +174,12 @@ devuelve el DNS. El servidor se vacía y se repite.
 | `predigolctl logs worker` | logs en vivo de un servicio |
 | `predigolctl backup` / `restore-test` | copia / prueba de restauración, ahora |
 | `predigolctl pitr status\|backup\|verify\|test` | el repositorio PITR |
+| `predigolctl secrets-export` | los secretos del servidor en un fichero cifrado con la clave pública del dueño; no imprime ningún valor |
+| `predigolctl alert-test` | un mensaje de prueba a tu Telegram, por el mismo camino que usan los avisos; dice qué bot lo envió y no imprime ningún token |
+| `predigolctl alert-drill --list\|KEY\|--all\|--healthchecks NAME\|--evidence` | un simulacro: el mensaje de un aviso (o de todos) a tu Telegram por el bot de verdad, sin que el problema sea cierto; lo lanza la sesión en la ventana y tú miras el teléfono (`docs/owner/SIMULACROS_AVISOS.md`) |
+| `predigolctl sentry-drill` | UN error inventado a Sentry, con los ajustes de la API, para ver llegar el aviso de «excepción nueva»; no imprime el DSN |
+| `predigolctl config-baseline [--status]` | toma la línea base del aviso «cambió la configuración» (solo huellas; imprime los nombres de los ficheros que mueve); `--status` no cambia nada |
+| `predigolctl incident list\|show\|note\|severity\|open\|close …` | el registro de incidentes: la causa, los usuarios afectados, el cierre (`docs/owner/GUIAS_RESPUESTA_INCIDENTES.md`) |
 | `predigolctl accounts list\|unlock\|mfa-reset\|revoke-sessions …` | cuentas, desde la terminal |
 | `predigolctl maint` | particiones por delante y retención de restos, con copia verificada |
 | `predigolctl psql` | consola de la base en solo lectura |
@@ -181,6 +190,9 @@ Temporizadores (`systemctl list-timers 'predigol*'`):
 | Tarea | Cuándo |
 |---|---|
 | monitor | cada 5 min |
+| avisos de seguridad (inicios de sesión, cuentas, 401 y 403 del panel) | cada 5 min |
+| copia del registro de incidentes a la base | cada 10 min |
+| resumen semanal de incidentes | lunes 13:11 UTC (08:11 en Bogotá) |
 | PITR: copia completa el domingo, diferencial el resto | 03:30 UTC |
 | copia `pg_dump` cifrada fuera | 04:15 UTC |
 | mantenimiento (particiones, retención) | 05:30 UTC |
@@ -191,12 +203,24 @@ Temporizadores (`systemctl list-timers 'predigol*'`):
 
 El monitor revisa:
 
-* contenedores, HTTPS, el latido del worker (lo reinicia como mucho una vez por hora) y la captura en vivo;
+* contenedores (también los que se reinician en bucle), HTTPS, el latido del worker (lo reinicia como mucho una vez por hora) y la captura en vivo;
 * disco (aviso al 85 %) y su previsión, memoria, swap, carga, *steal* de CPU, conexiones de la base;
 * el archivo de WAL, la edad de las copias, la verificación y la prueba del PITR;
-* la cuota de API-Football, ejecuciones atascadas o fallidas, errores 5xx, el certificado.
+* la cuota de API-Football, ejecuciones atascadas o fallidas, errores 5xx, el certificado;
+* que `/api/v1/auth/me` sin sesión conteste 401 y los resultados que llevan horas sin liquidarse;
+* que el Caddyfile, compose, los ficheros de entorno, la configuración de `sshd` y las unidades de systemd del kit sigan
+  como en su línea base (`state/config.sha256`, solo huellas). La toman solos `predigolctl deploy` y `rollback` al
+  terminar; a mano, como último paso de un cambio a mano, `predigolctl config-baseline` (con `--status` solo mira y
+  nombra los ficheros que difieren). Hasta que se toma la primera, ese aviso calla.
 
-Avisa solo cuando cambia el estado.
+Avisa solo cuando cambia el estado: UN mensaje al abrirse un problema (`[SEV1] clave: texto (INC-2026-014)`), un
+recordatorio cada hora mientras un SEV1 siga abierto y UN mensaje de «recuperado» al cerrarse. Los 502 de un despliegue o de
+una vuelta atrás no cuentan. Cada problema es un incidente del registro (`state/incidents.jsonl`, que el temporizador de 10
+minutos copia a `audit.incident_events`, para que viaje en las copias de la base). `security-alerts.sh` suma lo que sale de la
+auditoría de la aplicación y del registro de Caddy: picos de inicios de sesión fallidos, cuentas en espera, un administrador
+desde un dispositivo nuevo, cambios de rol o de contraseña de otra cuenta y picos de 401 y 403 en las rutas de administración.
+Un aviso que no puede evaluarse (la base no contesta) no cierra los que ya estaban abiertos. La lista completa y qué hacer
+ante cada uno: `docs/owner/GUIAS_RESPUESTA_INCIDENTES.md`.
 
 ## 6. Actualizar y volver atrás
 
@@ -229,11 +253,108 @@ la copia `pre-deploy`).
 | Capa | Qué | Retención |
 |---|---|---|
 | PITR (pgBackRest → R2) | WAL continuo (máx. 5 min de retraso) + completa semanal y diferencial diaria, cifrado AES-256 | 4 completas (≈ 4 semanas) |
-| Volcado diario | `pg_dump` leído entero, sha256, recuentos; fuera cifrado con `age` | servidor: 3 días + 2 semanas; R2: 14 días, 8 domingos, 12 primeros de mes |
+| Volcado diario | `pg_dump` leído entero, sha256, recuentos; fuera cifrado con `age` | servidor: 3 días + 2 semanas; R2: 14 días, 8 domingos, 12 primeros de mes (los caduca el cubo, no el servidor) |
 | RAW | `rclone copy --immutable`: solo añade, nunca modifica ni borra fuera | indefinida |
 
 Pruebas automáticas: el volcado se restaura cada lunes en un PostgreSQL sin red; el PITR se verifica cada miércoles y
 se restaura de verdad a un punto cada mes.
+
+### Copias fuera del servidor (R2)
+
+Un solo cubo (`predigol-backups`), con carpetas que se bloquean y caducan cada una a su manera. R2 no tiene el Object Lock
+de S3: tiene *bucket locks* por prefijo, que impiden borrar y sobrescribir hasta que vence el plazo, y reglas de caducidad
+que borran después. Las pone el dueño (quitarlas exige un token de administración que **no está en el servidor**).
+
+| Prefijo | Qué | Bloqueo | Caduca |
+|---|---|---|---|
+| `dumps/daily/` | todo volcado: el del temporizador y el previo a cada despliegue | 14 días | día 15 |
+| `dumps/weekly/` | el del temporizador de un domingo | 8 semanas | día 57 |
+| `dumps/monthly/` | el del temporizador del día 1 | 12 meses | día 396 |
+| `raw/` | el RAW, con su misma ruta (`api-football/AAAA/MM/DD/…`) | indefinido | nunca |
+| `audit/` | (fase S8) | 12 meses | día 396 |
+| `pitr/` | pgBackRest | **ninguno**: pgBackRest borra sus copias caducadas | lo hace él |
+| `_probe/` | pruebas de `r2-setup.sh` | ninguno | — |
+
+`bin/offsite-tiers.sh` decide los niveles de un volcado solo por su nombre. `backup.sh` cifra con la clave **pública**
+`age`, sube a cada nivel, comprueba el tamaño allí y solo entonces marca la copia como verificada
+(`offsite.verified_at` en su `.json`); **nunca borra nada fuera** (el candado lo rechazaría) y avisa si encuentra una copia
+mucho más vieja que su nivel (falta la regla de caducidad). El `.json` que viaja con el volcado lleva el sha256 del fichero
+cifrado: quien lo baja lo prueba antes de descifrar.
+
+En el servidor, un volcado cuya copia nunca se verificó se conserva aunque las reglas de rotación lo soltarían (puede ser el
+único), pero solo mientras ningún volcado **más nuevo** haya llegado al cubo y solo los `BACKUP_KEEP_UNVERIFIED` (6) más
+recientes: un cubo inalcanzable durante semanas no puede llenar el disco con volcados de 1,4 GB (el aviso salta a las 26 h).
+
+Puesta en marcha (una vez; el dueño ha creado antes el cubo, los dos tokens —«copias» y «PITR», ambos *Object Read & Write*
+solo sobre ese cubo—, los bloqueos y las reglas, y su par `age` en su portátil):
+
+1. `/root/r2.env` (600): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `AGE_RECIPIENT`
+   (y, para S2b, `R2_PITR_ACCESS_KEY_ID`, `R2_PITR_SECRET_ACCESS_KEY`). Nunca la clave privada: el script la rechaza.
+2. `bin/r2-setup.sh /root/r2.env --check-only`: configura rclone (fichero 600, sin claves en la línea de órdenes), prueba el
+   cubo y **prueba los candados**. Sin `--check-only`, además escribe `BACKUP_RCLONE_REMOTE=r2:<cubo>`,
+   `BACKUP_AGE_RECIPIENT` y `RAW_RCLONE_REMOTE=r2:<cubo>/raw` en `predigol.env` (copia `.before-r2-<fecha>`), hace un
+   volcado `r2-first` y descarga su hash.
+3. Primera pasada del RAW (unos 290 000 ficheros, 2,5 GB): `RAW_SYNC_TRANSFERS=16 predigolctl raw-sync --full`. Después
+   `raw-sync.sh` corre cada hora y solo mira las carpetas de **hoy y ayer** (UTC) de cada proveedor, porque el almacén
+   escribe `<proveedor>/AAAA/MM/DD/` por el día de la captura: así lo que cobra R2 por listar no crece con la edad del
+   almacén (rclone lista el destino una vez por carpeta, y el almacén gana ~12 000 ficheros al día). Una vez al día
+   (`RAW_SYNC_FULL_HOURS`, 24) hace una pasada **completa**, la red de seguridad para lo que aparezca en otro sitio (una
+   importación de un almacén antiguo). Una pasada que sigue en marcha cuando toca la siguiente no es un fallo: la
+   siguiente se salta. Deja `state/raw-sync.json` (cuándo, de qué tipo, cuándo fue la última completa, cuántos ficheros y
+   cuántos vacíos de los últimos 7 días); si una pasada falla, su registro queda en `state/raw-sync.last-failure.log`.
+4. `bin/r2-lock-check.sh [--tier daily|weekly|monthly|raw]`: sube un fichero de prueba a cada prefijo e intenta borrarlo y
+   sobrescribirlo; ambas cosas deben fallar. Corre solo cada domingo con el volcado semanal; `state/lock-check.json` lo lee
+   `healthcheck.sh` (un fallo es **problema**). Los ficheros de prueba se quedan hasta que vence su candado.
+5. En el portátil del dueño (la clave privada no sale de allí): `bin/r2-restore-drill.sh r2.env age.key [--tier weekly]`
+   baja el último volcado del nivel, prueba su hash, lo descifra, lo restaura en un PostgreSQL sin red y compara versión
+   y recuentos. Imprime y guarda en un JSON el tiempo de cada fase (descarga, descifrado, arranque, carga, restauración y
+   verificación): es el RTO medido. Con `--save-encrypted CARPETA` deja además allí el volcado **cifrado** y su manifiesto
+   (lo que se copia al disco externo para la copia mensual sin conexión); el volcado en claro no sale del contenedor. El
+   volcado entra en el contenedor como un flujo `tar` (`docker cp -`), no como un montaje de carpeta, así que sirve cualquier
+   `docker`, también el de Windows visto desde WSL, donde un montaje de una carpeta de WSL no llega al motor.
+
+`healthcheck.sh` vigila: el último volcado verificado fuera tiene menos de 26 h, el RAW se sincronizó hace menos de 3 h
+(aviso) o 12 h (problema), la última pasada completa del RAW tiene menos de 36 h (aviso) o 5 días (problema), no hay
+ficheros vacíos nuevos en el RAW y los candados se probaron hace menos de 10 días.
+
+### Copia de los secretos
+
+Sin `PITR_CIPHER_PASS` el repositorio PITR no se puede leer, y sin `FBI_AUTH_SECRET_KEY` los secretos TOTP de las cuentas no
+se pueden descifrar; ninguna de las dos está en otra copia. `predigolctl secrets-export` empaqueta `predigol.env`, `app.env` y
+la configuración de rclone en **un solo fichero**, cifrado con la clave **pública** `age` del dueño (`BACKUP_AGE_RECIPIENT`):
+
+```
+predigolctl secrets-export                  /root/secrets-<fecha>.tar.age (600)
+predigolctl secrets-export --out DIR        en otra carpeta
+```
+
+No imprime ningún valor ni su hash, y no escribe nunca una copia en claro en el disco (`tar` va directo a `age`). Dentro lleva
+un `MANIFEST.txt` con los **nombres** de los ajustes (cuáles tienen valor y cuáles están vacíos) y las rutas que tienen en el
+servidor. Sin la clave privada, que solo está en el portátil y en el gestor del dueño, el fichero es ruido: puede viajar,
+guardarse en el gestor como adjunto e ir a la copia sin conexión. Se copia al portátil, se guarda y **se borra del servidor**
+(lo que contiene ya está en claro en el servidor: dejarlo no protege nada). Se repite cada vez que se rota un secreto.
+Para abrirlo, en el portátil: `age -d -i clave.txt secrets-<fecha>.tar.age > secrets.tar` y `tar -xf secrets.tar`; los
+ficheros salen bajo `bundle/` con las rutas del servidor. Ninguna restauración exige teclear un valor.
+
+### Podar Docker
+
+Cada despliegue construye imágenes de ~1 GB y la caché de construcción crece. `bin/prune.sh` (`predigolctl prune
+[--dry-run]`; `deploy` lo ejecuta al terminar) conserva siempre las imágenes que usa algún contenedor, las de
+`state/versions.env`, las de los tres últimos despliegues —nuevas **y anteriores**: `predigolctl rollback` las necesita— y
+las tres más recientes de cada servicio (dos de PostgreSQL); quita el resto, las imágenes huérfanas de más de 24 h y la
+caché por encima de 4 GB. Nunca corre mientras un despliegue, una vuelta atrás o una importación tienen su cerrojo.
+
+Los **volúmenes** no se podan por regla. `bin/prune.sh --volumes NOMBRE[,NOMBRE] --confirm` borra solo los que se nombran, y
+solo si ninguno lo usa un contenedor, ninguno es del proyecto `predigol` y el último volcado tiene una copia verificada
+fuera de menos de 26 h. Antes se inspecciona cada uno y el dueño ve la lista: lo borrado no vuelve.
+
+Cada poda (también la de volúmenes; no la de `--dry-run`) deja constancia en `state/prune.json`:
+`{"at": "<UTC ISO>", "freed_bytes": N, "items": ["image predigol-web:abc", "volume xyz", ...]}`, más el detalle (imágenes y
+volúmenes quitados, porcentaje de disco antes y después). El informe de almacenamiento lo lee y la consola lo muestra como
+«Última limpieza». `freed_bytes` es lo que baja el disco usado (`df`) durante la poda: es aproximado, porque otros procesos
+escriben a la vez, y nunca es negativo. Un volumen que Docker no pudo quitar se dice en el registro, no entra en el fichero y
+la salida es 1. Si no se puede escribir el fichero, `prune.sh` lo dice, no deja ningún temporal y sale con 1 (lo limpiado
+sigue limpio; solo falta la constancia).
 
 **Si se pierde la base o el servidor:**
 
@@ -242,7 +363,7 @@ se restaura de verdad a un punto cada mes.
    `--time "2026-10-08 12:00:00+00"`.
    * Si hay una carpeta de datos, la aparta (`pgdata.before-recover-<fecha>`); nunca la borra.
    * Arranca la base en una línea temporal nueva, levanta el resto y hace una copia completa.
-3. RAW: `rclone copy REMOTO/raw /srv/predigol/raw` y `chown -R 1000:1000 /srv/predigol/raw`.
+3. RAW: `rclone copy r2:CUBO/raw /srv/predigol/raw --exclude '_lockcheck/**'` y `chown -R 1000:1000 /srv/predigol/raw`.
 4. `predigolctl health`.
 
 Sin PITR, el último volcado: se baja con rclone, se descifra con `age -d` en una máquina con la clave, y se usa
@@ -356,7 +477,16 @@ Resultados completos: `docs/owner/BETA_DEPLOY_REPORT_2026-10-07.md`.
 | `bin/install.sh` | prepara un Ubuntu 24.04 nuevo, una vez |
 | `bin/predigolctl` | el mando |
 | `bin/backup.sh`, `restore-test.sh`, `raw-sync.sh`, `pitr.sh` | copias, PITR y sus pruebas |
+| `bin/secrets-export.sh` | los secretos del servidor en un fichero cifrado solo para el dueño (§7) |
+| `bin/offsite-tiers.sh`, `r2-setup.sh`, `r2-lock-check.sh`, `r2-restore-drill.sh` | copias fuera: niveles, puesta en marcha, prueba de los candados y simulacro de restauración (en el portátil del dueño) |
+| `bin/prune.sh` | poda de imágenes y caché de Docker; volúmenes solo con nombre y confirmación |
 | `bin/healthcheck.sh`, `post-boot.sh` | monitor y comprobación tras arrancar |
+| `bin/alerts_lib.sh`, `alerts_checks.sh` | los avisos de S3: la máquina de estados (un mensaje por cambio, recordatorio de SEV1, «recuperado», registro de incidentes) y las comprobaciones que el monitor no tenía |
+| `bin/config-baseline.sh` | la línea base del aviso «cambió la configuración»: la toman el despliegue y la vuelta atrás; también `predigolctl config-baseline` |
+| `bin/security-alerts.sh`, `security_alerts_sql.sh` | avisos de seguridad que salen de la auditoría de la aplicación y del registro de Caddy; las consultas solo cuentan y listan ids, nunca correos ni direcciones |
+| `bin/weekly-summary.sh` | el resumen de los lunes: incidentes de 7 días por gravedad, el más largo, lo que sigue abierto |
+| `bin/incident.sh`, `incident-dump.sh` | el registro de incidentes: la pluma del dueño (`predigolctl incident`) y su copia a la base cada 10 minutos |
+| `bin/alert-test.sh`, `alert-drill.sh`, `../../scripts/sentry_drill.py` | probar el camino de los avisos: un mensaje de prueba, los simulacros de cada aviso y el error inventado a Sentry |
 | `bin/import.sh` | el corte, en el servidor |
 | `bin/bench.sh` | medir la máquina el día 1 |
 | `bin/loadtest.sh`, `loadtest.py` | la prueba de carga del ensayo |

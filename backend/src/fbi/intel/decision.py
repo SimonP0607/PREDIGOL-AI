@@ -51,6 +51,8 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds, local_day
+from fbi.ai.team_claims import team_claims
+from fbi.ai.team_claims import words as team_words
 from fbi.core.version import code_version
 from fbi.intel import score as scoring
 from fbi.intel import stake as staking
@@ -164,14 +166,16 @@ SELECT DISTINCT ON (r.fixture_id, r.market_key, r.selection, r.line, r.engine)
  ORDER BY r.fixture_id, r.market_key, r.selection, r.line, r.engine, r.reviewed_at DESC, r.id DESC
 """
 
-EVIDENCE_SQL = """
-SELECT e.fixture_id, e.origin, e.status, e.source_tier, count(*) AS n, array_agg(e.id ORDER BY e.id) AS ids
-  FROM ai.evidence e
- WHERE e.fixture_id = ANY(%(fixtures)s) AND e.retrieved_at <= %(at)s
+EVIDENCE_SQL = f"""
+SELECT f.id AS fixture_id, e.origin, e.status, e.source_tier, count(*) AS n, array_agg(e.id ORDER BY e.id) AS ids
+  FROM core.fixtures f
+  JOIN ai.evidence e ON (e.fixture_id = f.id OR {team_claims(home="f.home_team_id", away="f.away_team_id", at="%(at)s")})
+ WHERE f.id = ANY(%(fixtures)s) AND e.retrieved_at <= %(at)s
    AND (e.published_at IS NULL OR e.published_at <= %(at)s) AND (e.subject_type IS NULL OR %(typed)s)
  GROUP BY 1, 2, 3, 4
 """
-"""The claims of research v2 (``subject_type``) are part of a decision's context only when research v2 is ``on``."""
+"""The claims of research v2 (``subject_type``) are part of a decision's context only when research v2 is ``on`` - the ones about the match and the
+ones about its teams that belong to no match, as the packet shows them (``fbi.ai.team_claims``; finding H4 of the review of phase 2)."""
 
 PASSES_SQL = """
 SELECT p.fixture_id, bool_or(p.pass = 'first') AS first_done,
@@ -344,7 +348,7 @@ def read_world(conn: psycopg.Connection[Any], fixtures: list[int], *, at: dateti
             cur.execute(REVIEWS_SQL, {"fixtures": fixtures, "at": at})
             for r in cur.fetchall():
                 (reviews if r["engine"] == "combined" else rules)[_key(r)] = dict(r)
-            cur.execute(EVIDENCE_SQL, {"fixtures": fixtures, "at": at, "typed": typed_visible(conn)})
+            cur.execute(EVIDENCE_SQL, {"fixtures": fixtures, "at": at} | team_words(typed_visible(conn)))
             for r in cur.fetchall():
                 evidence[int(r["fixture_id"])].append(dict(r))
             cur.execute(PASSES_SQL, {"fixtures": fixtures, "at": at})

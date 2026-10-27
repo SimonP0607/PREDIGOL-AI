@@ -82,6 +82,8 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from fbi.ai.team_claims import team_claims
+from fbi.ai.team_claims import words as team_words
 from fbi.parlays.engine import Candidate, GateConfig, Leg, assess
 
 RULE_VERSION = "daily-set-v5"
@@ -328,9 +330,11 @@ def day_ready(conn: psycopg.Connection[Any], *, at: datetime) -> bool:
     return ready(local, opened=True, first_due=sum(1 for d in due_passes(conn, at=at) if d.pass_kind == "first"))
 
 
-EVIDENCE_SQL = """
-SELECT e.fixture_id, e.status, count(*) AS n FROM ai.evidence e
- WHERE e.fixture_id = ANY(%(fixtures)s) AND e.retrieved_at <= %(at)s AND (e.subject_type IS NULL OR %(typed)s) GROUP BY 1, 2
+EVIDENCE_SQL = f"""
+SELECT f.id AS fixture_id, e.status, count(*) AS n
+  FROM core.fixtures f
+  JOIN ai.evidence e ON (e.fixture_id = f.id OR {team_claims(home="f.home_team_id", away="f.away_team_id", at="%(at)s")})
+ WHERE f.id = ANY(%(fixtures)s) AND e.retrieved_at <= %(at)s AND (e.subject_type IS NULL OR %(typed)s) GROUP BY 1, 2
 """
 
 
@@ -338,12 +342,13 @@ def evidence_counts(conn: psycopg.Connection[Any], fixtures: list[int], *, at: d
     """The outside evidence about each match known at ``at``, by status (CONFIRMED, PROBABLE, RUMOR, CONTRADICTORY,
     OUTDATED - the server decides it, never a model: ``fbi.ai.evidence``). No row: no evidence at all. The claims of research v2
     (``typed``) count only when research v2 is ``on`` (``fbi.ai.gates.typed_visible``): beside v1 they are written for the comparison
-    and the set of the day does not know them."""
+    and the set of the day does not know them. Then they count the ones about the match and the ones about its teams that belong to no match,
+    as the packet shows them (``fbi.ai.team_claims``)."""
     if not fixtures:
         return {}
     out: dict[int, dict[str, int]] = {}
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(EVIDENCE_SQL, {"fixtures": fixtures, "at": at, "typed": typed})
+        cur.execute(EVIDENCE_SQL, {"fixtures": fixtures, "at": at} | team_words(typed))
         for r in cur.fetchall():
             out.setdefault(int(r["fixture_id"]), {})[str(r["status"])] = int(r["n"])
     return out

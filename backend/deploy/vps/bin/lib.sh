@@ -70,13 +70,27 @@ ops() {
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
 
-# A message to the owner's Telegram, when one is configured. Never fails the caller.
-notify() {
-  [[ -n "${FBI_TELEGRAM_BOT_TOKEN:-}" && -n "${FBI_TELEGRAM_CHAT_ID:-}" ]] || return 0
+# A message to the owner's Telegram. The host's alert bot (predigol.env: PREDIGOL_ALERT_BOT_TOKEN and PREDIGOL_ALERT_CHAT_ID, which no
+# container receives) comes first; the application's FBI_TELEGRAM_* (app.env) are the fallback.
+# notify_ok: 0 Telegram took the message | 1 it did not answer | 2 no channel is configured (the caller of alerts_lib.sh tries again on its next run).
+notify_ok() {
+  local token chat
+  if [[ -n "${PREDIGOL_ALERT_BOT_TOKEN:-}" && -n "${PREDIGOL_ALERT_CHAT_ID:-}" ]]; then token=$PREDIGOL_ALERT_BOT_TOKEN; chat=$PREDIGOL_ALERT_CHAT_ID
+  elif [[ -n "${FBI_TELEGRAM_BOT_TOKEN:-}" && -n "${FBI_TELEGRAM_CHAT_ID:-}" ]]; then token=$FBI_TELEGRAM_BOT_TOKEN; chat=$FBI_TELEGRAM_CHAT_ID  # a bot and a chat always travel as a pair
+  else return 2; fi
   # The token travels in curl's config on stdin, not on its command line (which `ps` shows to every user).
-  printf 'url = "https://api.telegram.org/bot%s/sendMessage"\n' "$FBI_TELEGRAM_BOT_TOKEN" |
-    curl -fsS -m 15 -o /dev/null -K - --data-urlencode "chat_id=${FBI_TELEGRAM_CHAT_ID}" \
-      --data-urlencode "text=PrediGol ($(hostname)): $*" || log "notify: Telegram did not answer"
+  printf 'url = "https://api.telegram.org/bot%s/sendMessage"\n' "$token" |
+    curl -fsS -m 15 -o /dev/null -K - --data-urlencode "chat_id=${chat}" \
+      --data-urlencode "text=PrediGol ($(hostname)): $*" || { log "notify: Telegram did not answer"; return 1; }
+}
+# As before: a message to the owner's Telegram when one is configured. Never fails the caller.
+notify() { notify_ok "$@" || true; }
+# Which bot notify_ok would use, for the scripts that tell the owner about it (alert-test.sh, alert-drill.sh): "server" (PREDIGOL_ALERT_* in predigol.env), "app"
+# (FBI_TELEGRAM_* in app.env) or nothing at all. The same two tests as notify_ok, in the same order; tests/vps_shell/test_notify.sh keeps the two in step.
+alert_channel() {
+  if [[ -n "${PREDIGOL_ALERT_BOT_TOKEN:-}" && -n "${PREDIGOL_ALERT_CHAT_ID:-}" ]]; then echo server
+  elif [[ -n "${FBI_TELEGRAM_BOT_TOKEN:-}" && -n "${FBI_TELEGRAM_CHAT_ID:-}" ]]; then echo app
+  fi
 }
 
 # Healthchecks.io: ping <url> [fail|start]. Empty url = not configured. Never fails the caller.
