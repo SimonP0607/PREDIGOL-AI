@@ -19,6 +19,10 @@
   {
    "date": "2026-10-27",
    "reason": "B3: /picks says none_recommended when every pick of the window stays on its match and some were rejected by the applied AI review (no_value_now only when none has value at the best price now)"
+  },
+  {
+   "date": "2026-10-27",
+   "reason": "UX B5 (Mis picks completo): GET /me/history says its sample - min_sample (25) and conclusive (100) on the history, and on each group the margin and whether it is conclusive; hit rate, units and ROI are null below the sample, as «Cómo le va a PrediGol» counts"
   }
  ],
  "routes": {
@@ -6543,6 +6547,12 @@
     },
     "History": {
      "properties": {
+      "conclusive": {
+       "default": 100,
+       "description": "Settled records from which the sample allows a conclusion.",
+       "title": "Conclusive",
+       "type": "integer"
+      },
       "evaluation_mode": {
        "title": "Evaluation Mode",
        "type": "boolean"
@@ -6554,6 +6564,12 @@
        "description": "predigol_picks, my_picks, predigol_parlays, my_parlays",
        "title": "Groups",
        "type": "object"
+      },
+      "min_sample": {
+       "default": 25,
+       "description": "Settled records from which hit rate, units, ROI and margin are shown.",
+       "title": "Min Sample",
+       "type": "integer"
       },
       "period": {
        "enum": [
@@ -6592,7 +6608,14 @@
      "type": "object"
     },
     "HistoryGroup": {
+     "description": "A group of records counted with the sample rule of Mis picks (plan UX, B5, section 30; «Cómo le va a PrediGol»'s): below\nmin_sample settled records only the counts - hit rate, units and ROI are null - and below `conclusive` the page says the\nsample does not allow a conclusion yet.",
      "properties": {
+      "conclusive": {
+       "default": false,
+       "description": "False below `conclusive` settled records (100).",
+       "title": "Conclusive",
+       "type": "boolean"
+      },
       "hit_rate": {
        "anyOf": [
         {
@@ -6602,19 +6625,40 @@
          "type": "null"
         }
        ],
+       "description": "Won over won and lost; null below min_sample settled records.",
        "title": "Hit Rate"
       },
       "lost": {
        "title": "Lost",
        "type": "integer"
       },
+      "margin": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Plus or minus one standard error of the ROI, a share: 1 / sqrt(staked) (0.20 with 25, 0.10 with 100); null below min_sample.",
+       "title": "Margin"
+      },
       "pending": {
        "title": "Pending",
        "type": "integer"
       },
       "profit_units": {
-       "title": "Profit Units",
-       "type": "string"
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The profit at one unit per record; null below min_sample.",
+       "title": "Profit Units"
       },
       "push": {
        "title": "Push",
@@ -6629,9 +6673,11 @@
          "type": "null"
         }
        ],
+       "description": "Profit over the units staked; null below min_sample.",
        "title": "Roi"
       },
       "staked_units": {
+       "description": "Settled records with a stake - the n of the sample.",
        "title": "Staked Units",
        "type": "string"
       },
