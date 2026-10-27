@@ -36,6 +36,7 @@ Este documento nombra los secretos y dice cómo se reponen; **nunca lleva un val
 | `FBI_APIFOOTBALL_KEY` | `app.env` | el worker (la API nunca llama al proveedor) | gasto de la cuota diaria del plan | «API-Football» |
 | `FBI_AUTH_SECRET_KEY` | `app.env` | la API | con una copia de la base, descifra los segundos factores y falsifica códigos de recuperación | «`FBI_AUTH_SECRET_KEY`» |
 | `FBI_SENTRY_DSN` | `app.env` | la API y el worker | mandar errores falsos y gastar la cuota de Sentry; no lee nada | «Sentry» |
+| `FBI_RESEND_API_KEY`, `FBI_RESEND_WEBHOOK_SECRET` | `app.env`, vacíos hasta que el dueño abre la cuenta de Resend (P2 y P3 del plan UX) | el messenger manda con la clave los correos a los lectores (la API solo mira que esté puesta); la API comprueba con el secreto la firma de los avisos de Resend | con la clave, correos en nombre del dominio de PrediGol y su cuota gastada; con el secreto, falsos avisos de rebote o de spam que dejan a lectores sin correo | «Resend (correo)» |
 | `FBI_AI_KEY_ANTHROPIC` (en la Console, `worker-prod`), `FBI_AI_KEY_ANTHROPIC_LAB` (`worker-lab`), `EXA_API_KEY` | `app.env` | el worker (la IA; la clave del LAB, solo las sondas y pruebas del LAB); la API solo mira que estén puestas | gasto a tu nombre en esos proveedores, acotado por el tope de cada workspace en la Console (190 y 20 USD) | «Claves de Anthropic y de Exa» |
 | `FBI_TELEGRAM_BOT_TOKEN`, `FBI_TELEGRAM_CHAT_ID` | `app.env`, vacíos a propósito | el notificador del producto, si se rellenan | nada, mientras estén vacíos | «Bot de avisos» |
 | `POSTGRES_ADMIN_PASSWORD` | `predigol.env` | solo el operador, dentro del contenedor de la base | control total de la base (no tiene puerto público) | «Contraseñas de la base» |
@@ -190,6 +191,14 @@ errores falsos y gastar la cuota. En Sentry → Settings → Projects → el pro
 a `app.env` (copia fechada antes), `predigolctl up` recrea la API y el worker (unos segundos de 502 en la API) y después se desactiva la
 clave antigua. Sentry no recibe cookies, cuerpos de petición, IP ni variables locales (`src/fbi/core/sentry.py`).
 
+**Resend (correo).** Si las líneas están vacías en `app.env`, no hay nada que rotar. La clave (`FBI_RESEND_API_KEY`) se crea en
+Resend → API Keys, con permiso solo de envío y solo para el dominio de PrediGol, y va a `app.env` sin que se vea en pantalla, con copia
+fechada antes; `predigolctl up` recrea la API y el messenger (unos segundos de 502 en la API); en Admin → Mensajes se comprueba que el
+siguiente correo sale, y después se borra la clave antigua en Resend. El secreto de los avisos (`FBI_RESEND_WEBHOOK_SECRET`) es el de
+firma del endpoint de PrediGol en Resend → Webhooks: se crea otro endpoint con la misma dirección y los mismos eventos, su secreto va a
+`app.env` igual, `predigolctl up`, y se borra el endpoint viejo; un aviso firmado con el secreto viejo se rechaza (la API responde 401 y
+Resend lo reintenta). El alta y la prueba real están en `docs/owner/EMAIL_MENSAJERIA_UX_A5.md`.
+
 **Claves de Anthropic y de Exa.** Si la línea está vacía en `app.env`, no hay nada que rotar. La clave nueva de Claude
 (`FBI_AI_KEY_ANTHROPIC`, `FBI_AI_KEY_ANTHROPIC_LAB`) se crea en la Console, dentro de su workspace (`worker-prod` en PREDIGOL,
 `worker-lab` en PREDIGOL-LAB), y se pone en `app.env` sin que se vea en pantalla (`IA_ACCIONES_MANUALES.md`, acciones 5 a 7), con copia
@@ -217,7 +226,7 @@ por actor: un usuario personal del dueño con `sudo`, `predigol-ops` sin permiso
 entonces, si se pierde o se filtra: se quita su pública de `/root/.ssh/authorized_keys` (desde la consola de Contabo si ya no entras) y se
 pone otra.
 
-**Cuentas de los proveedores.** Cloudflare, Contabo, Hostinger, GitHub, Healthchecks.io, Sentry, Telegram, API-Football, Anthropic y Exa:
+**Cuentas de los proveedores.** Cloudflare, Contabo, Hostinger, GitHub, Healthchecks.io, Sentry, Telegram, API-Football, Anthropic, Exa y Resend:
 contraseña única en el gestor, segundo paso activado con una aplicación autenticadora (no por SMS) y los códigos de recuperación en el
 gestor. Los tokens de API de esas cuentas (los de R2, el de GitHub) se revisan en la misma pasada que el resto del inventario.
 
@@ -230,7 +239,7 @@ Perfil → Seguridad, y el dueño las de cualquiera en Admin → Usuarios.
 |---|---|
 | Claves de Claude | una vez al año, al cambiar quién tiene acceso al servidor o ante una sospecha de filtración; la antigua se desactiva a las 48 h (de inmediato si hubo filtración) |
 | API-Football | la primera vez, con el paquete S1.d (el dueño regenera la clave en el panel); después, una vez al año o al renovar el plan |
-| Contraseñas de la base, tokens de R2, bot de avisos, URLs de Healthchecks.io, DSN de Sentry, clave de Exa | una vez al año, o al cambiar quién tiene acceso |
+| Contraseñas de la base, tokens de R2, bot de avisos, URLs de Healthchecks.io, DSN de Sentry, clave de Exa, clave y secreto de Resend | una vez al año, o al cambiar quién tiene acceso |
 | Clave `age` | cada 2 años |
 | `FBI_AUTH_SECRET_KEY`, `PITR_CIPHER_PASS` | solo si hay sospecha de filtración |
 | Revisión de este inventario | con cada fase nueva del plan de seguridad (S4 cambia las llaves SSH, S8 reparte `app.env` por servicio) y cada trimestre desde S15 |

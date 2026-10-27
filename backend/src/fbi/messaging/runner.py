@@ -5,7 +5,7 @@ One messenger per database (a PostgreSQL advisory lock on a connection of its ow
 organised in cycles of five minutes, each one row of the job ledger (``raw.ingestion_runs``, job
 ``messenger_cycle``): at the start of a cycle the owner's notices, the legal-change messages, the product
 analytics' daily aggregate and retention (A6: the purge only with FBI_EVENTS_PURGE=on) and the retention of the
-accounts' one-use links (A7: 30 days, deleted only with FBI_TOKENS_PURGE=on); then a tick every
+accounts' one-use links (A7: 30 days, deleted only with FBI_LINKS_PURGE=on); then a tick every
 15 seconds sends what is due (only while FBI_EMAIL_SEND is on and the provider is configured), with a heartbeat on
 the run. A cycle that dies is closed as stale by the worker's run watchdog (``fbi.ops.run_watchdog``: the
 messenger's job is registered there) and three failed cycles in a row are a ``job_failing`` notice. The container's

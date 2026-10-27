@@ -49,17 +49,18 @@ ningún correo nuevo. Se enciende después del correo de A5 (`FBI_EMAIL_SEND=1` 
 - Límites: 3 enlaces por hora y cuenta; 10 peticiones por hora y por cliente (un hash de la IP de vida corta, nunca la
   IP); 20 enlaces fallidos por cliente en 15 minutos.
 - Tablas: `auth.account_tokens`. Los enlaces usados o caducados se borran a los 30 días, pero la purga nace **en
-  ensayo** (`FBI_TOKENS_PURGE=dry`: solo cuenta). El recorrido sintético comprueba cada pocos minutos que la página de
+  ensayo** (`FBI_LINKS_PURGE=dry`: solo cuenta). El recorrido sintético comprueba cada pocos minutos que la página de
   activación responde.
 
 ## 4. Cómo se enciende (cuando decidas)
 
 1. Antes: A5 desplegada y el correo encendido con su prueba real (P2 y P3; `FBI_EMAIL_SEND=1`).
-2. Una línea en `/etc/predigol/app.env` (fichero de seguridad: copia fechada, candado de despliegue, ventana propia):
-   `FBI_SELF_SERVICE=1`; se recrean la API y el messenger.
+2. Una línea en `/etc/predigol/app.env` (fichero de seguridad: copia fechada y candado de despliegue):
+   `FBI_SELF_SERVICE=1`; se recrean la API y el messenger y, al final, `predigolctl config-baseline` (el último paso
+   del plan de seguridad tras cualquier cambio de un fichero env desde sec-s3).
 3. Comprobación: en la consola aparece «Invitar»; te invitas a una dirección tuya de prueba, activas desde el correo y
    pruebas «¿Olvidaste tu contraseña?». Cuando lleve un tiempo sin incidencias te pediré el visto bueno para
-   `FBI_TOKENS_PURGE=on`.
+   `FBI_LINKS_PURGE=on`.
 
 ## 5. Vuelta atrás
 
