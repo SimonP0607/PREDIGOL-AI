@@ -25,6 +25,8 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
 from fbi.ai.gates import typed_visible
+from fbi.ai.team_claims import team_claims
+from fbi.ai.team_claims import words as team_words
 from fbi.intel import postmortem
 
 VERSION = "learn-report-v1"
@@ -46,6 +48,18 @@ SELECT l.id, l.state, l.market_key, l.selection, l.context_status, l.score::floa
   LEFT JOIN LATERAL (SELECT x.verdict, x.causes FROM intel.postmortems x WHERE x.decision_id = l.id
                       ORDER BY x.id DESC LIMIT 1) pm ON true
 """
+
+
+EVIDENCE_SQL = f"""
+SELECT e.origin, e.status, e.source_tier, count(DISTINCT e.id) AS n
+  FROM core.fixtures f
+  JOIN ai.evidence e ON (e.fixture_id = f.id OR {team_claims(home="f.home_team_id", away="f.away_team_id", at="f.kickoff_at", set_aside=True)})
+ WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND (e.subject_type IS NULL OR %(typed)s)
+ GROUP BY 1, 2, 3 ORDER BY 4 DESC
+"""
+"""The outside evidence of the day's matches, by origin, status and tier. The claims of research v2 count only when research v2 is ``on``
+(``fbi.ai.gates.typed_visible``) - the ones about the match and the ones about its teams that belong to no match (``fbi.ai.team_claims``), each once,
+whatever status the server gave them (the report looks back, as the review does: ``set_aside``)."""
 
 
 def _mean(xs: list[float]) -> float | None:
@@ -96,9 +110,7 @@ def build_report(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> d
                     "FROM picks.daily_set_items i JOIN picks.daily_sets s ON s.id = i.set_id "
                     "WHERE s.day = %s AND s.source = 'evaluation' GROUP BY 1", (day,))
         v5 = [dict(r) for r in cur.fetchall()]
-        cur.execute("SELECT origin, status, source_tier, count(*) AS n FROM ai.evidence e JOIN core.fixtures f "
-                    "ON f.id = e.fixture_id WHERE f.kickoff_at >= %s AND f.kickoff_at < %s "
-                    "AND (e.subject_type IS NULL OR %s) GROUP BY 1, 2, 3 ORDER BY 4 DESC", (start, end, typed_visible(conn)))
+        cur.execute(EVIDENCE_SQL, {"start": start, "end": end} | team_words(typed_visible(conn)))
         evidence = [dict(r) for r in cur.fetchall()]
         cur.execute("SELECT purpose, tier, count(*) AS calls, sum(cost_usd)::float8 AS usd FROM ai.usage "
                     "WHERE at >= %s AND at < %s GROUP BY 1, 2 ORDER BY 4 DESC", (start, end))
