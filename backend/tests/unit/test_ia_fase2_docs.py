@@ -328,7 +328,7 @@ def test_the_pieces_of_the_guide_are_files_scripts_and_migrations_that_exist() -
         for name in names:
             assert exists(name), f"{name!r} (piece {row[0]!r}) is not in the repository"
     readers = next(r for r in rows if r[0] == "Lectores")
-    assert all_ticked(readers[2]) == ["ai/packet.py", "picks/daily.py", "intel/decision.py"] and "y otros siete (sección 5)" in readers[2]
+    assert all_ticked(readers[2]) == ["ai/packet.py", "picks/daily.py", "intel/decision.py"] and "y otros nueve (sección 5)" in readers[2]
     assert {r[0]: all_ticked(r[2]) for r in rows} == {
         "Caché por entidad y tema": ["ai/cache.py"],
         "Evidencias tipadas": ["ai/evidence.py", "0114"],
@@ -2521,7 +2521,7 @@ def test_the_tests_of_the_quality_paragraph_are_files_that_exist_and_say_what_th
                 if isinstance(n, ast.Import | ast.ImportFrom) for a in n.names}
     assert "sobre un mundo construido, sin red ni clave" in para
     assert not {"httpx", "requests", "urllib", "socket", "anthropic"} & imported and "FakeProvider" in source
-    # «un barrido de comportamiento de 12 lectores»: the readers of the table of the test
+    # «un barrido de comportamiento de 13 lectores»: the readers of the table of the test
     tree = ast.parse((BACKEND / "tests" / "integration" / "test_typed_evidence_readers.py").read_text(encoding="utf-8"))
     table_of_readers = next(n for n in ast.walk(tree) if isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.target.id == "READERS")
     assert isinstance(table_of_readers.value, ast.Dict)
@@ -2569,7 +2569,7 @@ def test_the_sentences_that_say_what_the_research_does_with_its_pages_and_its_mo
     readers = paragraph(section(5), "**Quién lee lo tipado.**")
     assert "la cuarta, la que evita guardar dos veces lo mismo, no encuentra nunca una afirmación de v2 para un elemento de v1" in readers
     assert "La batería sobre `extract-v2` pasó por lo mismo" in paragraph(section(11), "**Calidad de las pruebas.**")
-    assert "(un barrido de comportamiento de 12 lectores, la guarda estructural y sus predicados)" in section(11)
+    assert "(un barrido de comportamiento de 13 lectores, la guarda estructural y sus predicados)" in section(11)
     # the head of the guide says what happens when a figure and a constant stop agreeing
     assert "la prueba falla hasta que se corrija una de las dos" in GUIDE.split("\n## 1. ")[0]
     assert "| Tipo de afirmación | Se acepta sobre | Se guarda como |" in sec_4
