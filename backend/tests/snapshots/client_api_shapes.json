@@ -15,6 +15,10 @@
   {
    "date": "2026-10-27",
    "reason": "B3: each pick carries its visible state (user_status, status_reason, context_pending) from the one table in fbi/picks/user_status.py on /home, /picks, /odds/best and /daily; /picks counts in withheld the picks it keeps for their match page"
+  },
+  {
+   "date": "2026-10-27",
+   "reason": "B3: /picks says none_recommended when every pick of the window stays on its match and some were rejected by the applied AI review (no_value_now only when none has value at the best price now)"
   }
  ],
  "routes": {
@@ -8056,7 +8060,7 @@
          "type": "null"
         }
        ],
-       "description": "Why there is nothing to show, as a code.",
+       "description": "Why there is nothing to show, as a code: no_qualified_picks, no_shadow_picks, no_picks_match_filters, no_value_now or, when every pick of the window stays on its match and some were rejected by the applied AI review, none_recommended (plan UX, B3).",
        "title": "Reason"
       },
       "source": {

@@ -125,7 +125,10 @@ class PicksBoard(Contract):
     competitions: list[CompetitionBadge]
     markets: list[str]
     window_hours: int
-    reason: str | None = Field(description="Why there is nothing to show, as a code.")
+    reason: str | None = Field(description=(
+        "Why there is nothing to show, as a code: no_qualified_picks, no_shadow_picks, no_picks_match_filters, no_value_now "
+        "or, when every pick of the window stays on its match and some were rejected by the applied AI review, "
+        "none_recommended (plan UX, B3)."))
     withheld: int = Field(default=0, description=(
         "Published picks of the window a reader is not shown in this list now (plan UX, B3): without value at the best price "
         "now, or rejected by the applied AI review - each stays on its match, with its state. Always 0 for one match "

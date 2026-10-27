@@ -236,6 +236,10 @@ def picks_board(conn: Conn, *, include_shadow: bool, competition_id: int | None,
         reason = "no_shadow_picks" if include_shadow else "no_qualified_picks"
     elif not kept:
         reason = "no_picks_match_filters"
+    elif not shown:
+        # Every pick of the window stays on its match (plan UX, B3): say why truthfully - none has value at the best price now,
+        # or some were rejected by the applied review.
+        reason = "no_value_now" if all(c.status_reason == "no_value_now" for c in all_cards) else "none_recommended"
     elif not top:
         reason = "no_value_now"
     board = PicksBoard(source=_source(include_shadow), top=top, picks=shown,

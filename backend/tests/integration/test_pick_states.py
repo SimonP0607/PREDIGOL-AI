@@ -186,6 +186,21 @@ def test_with_the_review_applied_the_states_follow_it(world: World, monkeypatch:
     assert match["top"] == [] and match["withheld"] == 0, "its match shows it, with its state - never ranked"
 
 
+def test_a_list_that_keeps_every_pick_on_its_match_says_why_truthfully(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    only_e = data(client(world.db), "/api/v1/picks", max_odds="1.80")
+    assert (only_e["picks"], only_e["withheld"], only_e["reason"]) == ([], 1, "no_value_now")
+    world.enforce(monkeypatch)
+    for name in "ABD":
+        world.db.execute(
+            "INSERT INTO ai.pick_reviews (reviewed_at, fixture_id, pick_id, market_key, selection, line, engine, engine_version, "
+            "input_hash, decision, confidence, output, mode, status) VALUES (%s, %s, %s, '1X2', 'Home', 0, 'combined', "
+            "'rules-review-v1+none', 'b3-all', 'REJECT', 0.7, '{}', 'shadow', 'ok')",
+            (NOW - timedelta(minutes=20), world.fixtures[name], world.picks[name]))
+    board = data(client(world.db), "/api/v1/picks")
+    assert (board["picks"], board["top"], board["withheld"]) == ([], [], 5)
+    assert board["reason"] == "none_recommended", "rejected ones are not «without value at the price now»"
+
+
 def test_the_switch_alone_applies_nothing_without_a_passed_gate(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
     for gate in (None, "fail"):
         world.enforce(monkeypatch, gate=gate)
