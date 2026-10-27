@@ -6,6 +6,12 @@ sintético que cada 15 minutos hace lo que hace un lector. Rama `ux/a2` del mono
 de A1). Se despliega **después de A1 y de su verificación**, con los interruptores apagados: sin DSN no sale nada
 hacia Sentry y sin la cuenta sintética el recorrido no corre. Se encienden con tu acción P1 (sección 6).
 
+**Actualización del 27 de octubre:** el 26-oct a las 20:41 UTC la IA desplegó su lanzamiento `ia-p01` (backend
+`c40e101b9a15`, web `6a0790f190bd`, Alembic **0113**) encima de A1, así que A2 se empaqueta ahora sobre lo que corre:
+la rama **`ux/a2-ia`** es `ux/a2` con la fuente de la IA (`ia/rel-p01`, `40e311f0`) fusionada, sin conflictos. Nada de
+lo que hace A2 cambia; cambian la base, la vuelta atrás (sección 7) y las puertas, repetidas sobre el árbol fusionado
+(sección 8).
+
 ## 1. Lo que no cambia
 
 - **PrediGol Intelligence:** ni una línea en `models`, `features`, `predictions`, `backtesting` ni `domain`; huella
@@ -155,20 +161,27 @@ Con eso, G12 queda en verde.
 - Apagar Sentry: vaciar `FBI_SENTRY_DSN` y `FBI_SENTRY_WEB_DSN` y volver a crear la API y el worker. La web deja de
   cargar el SDK en cuanto la API dice que está apagado.
 - Parar el recorrido: vaciar `FBI_SYNTHETIC_EMAIL` y volver a crear el worker.
-- El código: `predigolctl rollback` a la versión de A1 (sin migraciones que deshacer).
+- El código: `predigolctl rollback` a la versión que corre hoy, la de la IA (`ia-p01`: backend `c40e101b9a15`, web
+  `6a0790f190bd`). A2 no tiene migración: la base se queda en la **0113** y no hay nada que deshacer.
 
 ## 8. Puertas y despliegue
 
-- **Puertas sobre el árbol final** (la rama `ux/a2` con la guía de A1 fusionada; esta guía no cambia código): ruff sin
-  avisos; mypy estricto (455 ficheros) y del árbol entero (1.080), sin errores; **pytest 5.231 pasadas**, 4 omitidas;
-  web: lint 0 errores (26 avisos de siempre), tipos, **715 pruebas**, build de producción; `bun audit` 0
-  vulnerabilidades en 458 paquetes (con la S1.b del plan de seguridad); Gitleaks sobre los commits de publicación 0.
-- **e2e completo sobre los árboles finales:** 116 pruebas, **111 pasadas**, 1 fallida y 4 omitidas (la PWA necesita el
-  build de producción), 22,6 minutos, base de QA en la `0094` como producción y Sentry encendido contra el sustituto
-  local. El fallo fue el servidor de QA bajo carga (el esqueleto aún ocupado a los 20 s, en una página que A2 no toca);
-  repetido solo: pasa.
-- **Paquete `ux-a2`:** backend y web sobre los de A1 que corren en producción (`ea157be10d24` / `3c4c9b1a4e0f`), sin
-  migración, huella del código de modelos sin cambios (guardia en modo `stop`). Los commits de publicación están en
-  su `RELEASE.json`.
+- **Base del paquete:** las publicaciones de la IA que corren desde el 26-oct a las 20:41 UTC
+  (`refs/release/backend-ia-p01` = `c40e101b9a15`, `refs/release/web-ia-p01` = `6a0790f190bd`). La rama `ux/a2-ia`
+  (`6f505c20`) es `ux/a2` con la fuente de la IA fusionada: base común `012209bf` (la fuente de A1), sin conflictos.
+- **Puertas sobre el árbol fusionado** (backend `dfe83d9d`, web `38fa5ff7`; esta guía no cambia código): ruff sin
+  avisos; mypy estricto (492 ficheros) y del árbol entero (1.185), sin errores; **pytest 7.188 pasadas**, 4 omitidas
+  (33,9 minutos); web: lint 0 errores (26 avisos de siempre), tipos, **809 pruebas**, build de producción; `bun audit`
+  0 vulnerabilidades en 458 paquetes (con la S1.b del plan de seguridad).
+- **e2e completo sobre los árboles fusionados:** 116 pruebas, **105 pasadas**, 7 fallidas y 4 omitidas (la PWA
+  necesita el build de producción), 18,9 minutos (27-oct 00:22–00:41 UTC), con Sentry encendido contra el sustituto
+  local y la base de QA `fbi_qa_a2ia`: una copia de la de A2 (`fbi_qa_a23`, en la 0094 como A1) con su copia y su
+  prueba de restauración, subida después a la **0113** con las migraciones de la IA, como producción. Los 7 fallos
+  fueron el servidor de QA bajo carga, todos en el proyecto `mobile` con dos trabajadores: dos veces la página de
+  Chromium se cayó al navegar y cinco veces el esqueleto seguía ocupado a los 20 s. **Repetidos con un solo
+  trabajador sobre el mismo árbol: 7 de 7 pasan** (3,9 minutos).
+- **Paquete `ux-a2`, reconstruido:** backend y web hijos de las publicaciones de la IA, sin migración, huella del
+  código de modelos sin cambios (guardia en modo `stop`). Los commits de publicación están en su `RELEASE.json`; el
+  paquete anterior, construido sobre A1, queda retirado.
 - **Despliegue:** en su ventana, con copia previa, su prueba de restauración, humo y verificación; el resultado se
   añade aquí al terminar (como en la guía de A1).
