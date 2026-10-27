@@ -26,6 +26,8 @@
  *   pwa       manifest, service worker and offline page (E2E_PWA=1, production build only)
  *   prod-smoke  read-only checks of a deployed site, no sign-in (E2E_PROD_SMOKE=1, E2E_BASE_URL=the site)
  * Two measurements run only when asked, and never fail on what they measure:
+ *   states    the visible state of a pick and «¿Por qué este pick?» on QA's example picks (E2E_PICK_STATES=1, the QA
+ *             stack with QA_PICK_STATES=1: seed_b3.py and the AI's review applied)
  *   a11y      axe-core on the sign-in page and the product, WCAG 2.2 A/AA (E2E_A11Y=1)
  *   screens   reference screenshots of the product at 320/360/390/412/430 px (E2E_SCREENS=1)
  * A full run loads a few hundred pages: the API's per-client limit must allow it
@@ -206,6 +208,19 @@ export default defineConfig({
           // Read-only checks of a deployed site (plan UX, A2): E2E_BASE_URL=https://predigolai.com E2E_PROD_SMOKE=1.
           // No sign-in, no account, nothing written.
           { name: "prod-smoke", testMatch: /prod-smoke\.spec\.ts/, use: desktop },
+        ]
+      : []),
+    ...(process.env["E2E_PICK_STATES"]
+      ? [
+          // The visible state of a pick and «¿Por qué este pick?» (plan UX, B3): QA's example picks in the four states
+          // (seed_b3.py on fbi_qa_b3s, the QA stack with QA_PICK_STATES=1 - the AI's review applied), at a desk and on a
+          // 320 px phone, on a reader account the test makes and deletes.
+          {
+            name: "states",
+            testMatch: /pickstates\.spec\.ts/,
+            use: desktop,
+            dependencies: ["setup"],
+          },
         ]
       : []),
     ...(process.env["E2E_A11Y"]
