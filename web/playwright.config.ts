@@ -28,6 +28,8 @@
  * Two measurements run only when asked, and never fail on what they measure:
  *   states    the visible state of a pick and «¿Por qué este pick?» on QA's example picks (E2E_PICK_STATES=1, the QA
  *             stack with QA_PICK_STATES=1: seed_b3.py and the AI's review applied)
+ *   postmatch the Postpartido of QA's finished match with its picks explained (E2E_POSTMATCH=1, the QA stack with
+ *             QA_POSTMATCH=1: seed_b4.py; E2E_DATABASE_URL for the reader's saved picks)
  *   a11y      axe-core on the sign-in page and the product, WCAG 2.2 A/AA (E2E_A11Y=1)
  *   screens   reference screenshots of the product at 320/360/390/412/430 px (E2E_SCREENS=1)
  * A full run loads a few hundred pages: the API's per-client limit must allow it
@@ -218,6 +220,18 @@ export default defineConfig({
           {
             name: "states",
             testMatch: /pickstates\.spec\.ts/,
+            use: desktop,
+            dependencies: ["setup"],
+          },
+        ]
+      : []),
+    ...(process.env["E2E_POSTMATCH"]
+      ? [
+          // Postpartido (plan UX, B4): QA's finished match with its published picks settled and explained (seed_b4.py on
+          // fbi_qa_b4p, the QA stack with QA_POSTMATCH=1) and a reader's saved picks written by the test (E2E_DATABASE_URL).
+          {
+            name: "postmatch",
+            testMatch: /postmatch\.spec\.ts/,
             use: desktop,
             dependencies: ["setup"],
           },
