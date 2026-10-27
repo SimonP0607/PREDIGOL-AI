@@ -1,0 +1,13 @@
+[Unit]
+Description=PrediGol: copies the incident register (state/incidents.jsonl) into the database (every 10 min)
+Requires=docker.service
+After=docker.service predigol.service
+
+[Service]
+Type=oneshot
+# bin/incident-dump.sh always exits 0 (a database that does not answer is a line in the log and, after a day, one SEV3 message); the file keeps every line.
+ExecStart=/opt/predigol/backend/deploy/vps/bin/incident-dump.sh
+TimeoutStartSec=150
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

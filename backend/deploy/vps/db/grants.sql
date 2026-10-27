@@ -44,6 +44,20 @@ $grants$;
 -- The migration ledger: read by both (the health check shows the revision), written only by the owner.
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.alembic_version FROM predigol_worker, predigol_api;
 
+-- The incident register (S3, bin/incident-dump.sh and bin/incident.sh): the owner role writes and reads it; the application never does. The loop above
+-- hands the API SELECT and the worker every privilege on every table of every schema, so for these objects it is taken back, after every migration.
+DO $incidents$
+BEGIN
+  IF to_regclass('audit.incident_events') IS NOT NULL THEN
+    REVOKE ALL ON audit.incident_events FROM predigol_api, predigol_worker;
+    REVOKE ALL ON SEQUENCE audit.incident_events_id_seq FROM predigol_api, predigol_worker;
+  END IF;
+  IF to_regclass('audit.incidents') IS NOT NULL THEN
+    REVOKE ALL ON audit.incidents FROM predigol_api, predigol_worker;
+  END IF;
+END
+$incidents$;
+
 -- The API's writes.
 GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO predigol_api;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO predigol_api;
