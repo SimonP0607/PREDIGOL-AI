@@ -28,8 +28,15 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 Locale = Literal["es", "en"]
 Category = Literal["account", "security", "membership", "support", "privacy", "legal"]
+OutboxCategory = Literal["account", "security", "membership", "support", "privacy", "legal", "marketing"]
 LOCALES: tuple[Locale, ...] = ("es", "en")
 CATEGORIES: tuple[Category, ...] = ("account", "security", "membership", "support", "privacy", "legal")
+"""The categories of the account's e-mails: what the reader's choices speak of (customer.preferences.email_off)."""
+COMMERCIAL: frozenset[OutboxCategory] = frozenset({"marketing"})
+"""Commercial e-mail (plan UX, B8): only with the consent ``marketing_email``, by its own sender, left in one click - never
+one of the account's categories (the consent is the reader's choice, not ``email_off``)."""
+OUTBOX_CATEGORIES: tuple[OutboxCategory, ...] = (*CATEGORIES, "marketing")
+"""What customer.messages_outbox.category accepts (migration 0105)."""
 
 MANDATORY: frozenset[Category] = frozenset({"account", "security", "privacy", "legal"})
 """Categories a reader cannot switch off: what their account, its security, their own privacy requests and a material
@@ -278,6 +285,65 @@ def _security_change(params: Mapping[str, str], locale: Locale, zone: str) -> di
             "moment": moment(params["when"], locale, zone)}
 
 
+def _count(params: Mapping[str, str], key: str) -> int:
+    raw = params[key]
+    if not raw.isdigit() or len(raw) > 5:
+        raise TemplateError(f"{key} is a count, not {raw!r}")
+    return int(raw)
+
+
+def _and(parts: list[str], locale: Locale) -> str:
+    if len(parts) < 2:
+        return "".join(parts)
+    return f"{', '.join(parts[:-1])} {'y' if locale == 'es' else 'and'} {parts[-1]}"
+
+
+def _weekly_digest(params: Mapping[str, str], locale: Locale, _zone: str) -> dict[str, str]:
+    """The weekly summary in words (plan UX, B8): how the reader's saved picks of the week ended - counts only: units and
+    rates need the sample of Mis picks (25 settled to show, 100 to conclude, B5), which a week rarely has -, their teams'
+    matches of the next seven days and the Novedades of the week, by their titles."""
+    from fbi.customer import updates
+
+    won, lost, void = (_count(params, k) for k in ("won", "lost", "void"))
+    ended = won + lost + void
+    words = {"es": (("ganado", "ganados"), ("perdido", "perdidos"), ("devuelto", "devueltos")),
+             "en": (("won", "won"), ("lost", "lost"), ("returned", "returned"))}[locale]
+    detail = _and([f"{n} {w[0] if n == 1 else w[1]}" for n, w in zip((won, lost, void), words, strict=True) if n], locale)
+    if locale == "es":
+        picks = ("Esta semana no terminó ninguno de los picks que guardaste." if ended == 0 else
+                 f"Esta semana terminó 1 de los picks que guardaste: {detail}." if ended == 1 else
+                 f"Esta semana terminaron {ended} de los picks que guardaste: {detail}.")
+    else:
+        picks = ("None of the picks you saved ended this week." if ended == 0 else
+                 f"1 of the picks you saved ended this week: {detail}." if ended == 1 else
+                 f"{ended} of the picks you saved ended this week: {detail}.")
+    follows = params["follows"]
+    if follows not in ("yes", "no"):
+        raise TemplateError(f"follows is yes or no, not {follows!r}")
+    matches = _count(params, "matches")
+    if follows == "no":
+        games = ("Aún no sigues ningún equipo: elígelos en tu perfil y aquí verás sus partidos." if locale == "es" else
+                 "You follow no team yet: choose them in your profile and their matches will show here.")
+    elif locale == "es":
+        games = ("Tus equipos no juegan en los próximos 7 días." if matches == 0 else
+                 "Tus equipos juegan 1 partido en los próximos 7 días." if matches == 1 else
+                 f"Tus equipos juegan {matches} partidos en los próximos 7 días.")
+    else:
+        games = ("Your teams do not play in the next 7 days." if matches == 0 else
+                 "Your teams play 1 match in the next 7 days." if matches == 1 else
+                 f"Your teams play {matches} matches in the next 7 days.")
+    ids = [] if params["news"] == "-" else params["news"].split(",")
+    titles: list[str] = []
+    for update_id in ids:
+        entry = updates.by_id(update_id)
+        if entry is None:
+            raise TemplateError(f"no Novedades entry {update_id!r}")
+        titles.append(f"«{entry.title(locale)}»" if locale == "es" else f"“{entry.title(locale)}”")
+    news = "" if not titles else (f"Nuevo en PrediGol: {'; '.join(titles)}." if locale == "es" else
+                                  f"New in PrediGol: {'; '.join(titles)}.")
+    return {"picks": picks, "games": games, "news": news}
+
+
 # ── the templates ─────────────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True, slots=True)
@@ -290,7 +356,7 @@ class Copy:
 @dataclass(frozen=True, slots=True)
 class Template:
     name: str
-    category: Category
+    category: OutboxCategory
     params: tuple[str, ...]
     """What the queue keeps for this template: exactly these keys, short strings."""
     path: str | None
@@ -486,6 +552,23 @@ TEMPLATES: dict[str, Template] = {t.name: t for t in (
         values=_security_change, sample=(("change", "password"), ("when", "2026-10-25T18:05:00+00:00")),
         stale_after=timedelta(hours=24),
     ),
+    # The weekly summary by e-mail (plan UX, B8): commercial, only with the reader's consent (marketing_email), by its own
+    # sender and with the one-click way out; counts only - no odd, no promise, no urgency.
+    Template(
+        "weekly_digest", "marketing", ("won", "lost", "void", "matches", "follows", "news"), "/my-picks",
+        es=Copy("Tu semana en PrediGol",
+                ("Hola, {name}.", "{picks}", "{games}", "{news}",
+                 "El detalle de tus picks, con su muestra, está en Mis picks."),
+                "Ver Mis picks"),
+        en=Copy("Your week on PrediGol",
+                ("Hello, {name}.", "{picks}", "{games}", "{news}",
+                 "The detail of your picks, with their sample, is in My picks."),
+                "See My picks"),
+        values=_weekly_digest,
+        sample=(("won", "2"), ("lost", "1"), ("void", "0"), ("matches", "3"), ("follows", "yes"),
+                ("news", "2026-10-27-tu-opinion")),
+        stale_after=timedelta(days=2),
+    ),
     # The membership (plan UX, A8): 7 days before the end (3 in a trial) and at the end - a service notice, no
     # countdown, no offer, no alarm colours; the reader can switch the category off in the profile.
     Template(
@@ -564,12 +647,23 @@ class Rendered:
     text: str
     html: str
     link: str | None
+    unsubscribe: str | None = None
+    """A commercial e-mail's page to leave it in one click (plan UX, B8), as its footer shows it."""
 
 
 def web_base() -> str:
     return os.environ.get("FBI_WEB_BASE_URL", "http://localhost:5173").rstrip("/")
 
 
+PREVIEW_UNSUBSCRIBE = "preview-unsubscribe-link-made-when-the-e-mail-leaves"
+"""What the console's preview shows in place of a commercial e-mail's leaving link: the preview never makes a real one."""
+COMMERCIAL_FOOTER: dict[Locale, tuple[str, str]] = {
+    "es": ("PrediGol · información y análisis de fútbol; no garantiza resultados (+18). Recibes este resumen porque lo "
+           "pediste en tu perfil.", "Darte de baja en un clic"),
+    "en": ("PrediGol · football information and analysis; it guarantees no result (18+). You get this summary because "
+           "you asked for it in your profile.", "Leave it in one click"),
+}
+"""The footer of commercial e-mail: why the reader gets it and the one-click way out (RFC 8058 adds the button too)."""
 FOOTER: dict[Locale, str] = {
     "es": ("PrediGol · información y análisis de fútbol; no garantiza resultados (+18). Recibes este correo por tu "
            "cuenta de PrediGol; puedes elegir qué avisos recibir en tu perfil."),
@@ -579,10 +673,12 @@ FOOTER: dict[Locale, str] = {
 
 
 def render(name: str, locale: Locale, params: Mapping[str, str], account: Mapping[str, str], *, zone: str = "UTC",
-           link: str | None = None, until: datetime | None = None) -> Rendered:
+           link: str | None = None, until: datetime | None = None, unsubscribe: str | None = None) -> Rendered:
     """The message as it leaves: ``params`` from the queue, ``account`` the reader's fields and ``zone`` their time
     zone at this moment. A template with a one-use link takes ``link`` and ``until`` from fbi.auth.tokens.arm; the
-    console's preview passes no link (it shows PREVIEW_LINK, never a real one)."""
+    console's preview passes no link (it shows PREVIEW_LINK, never a real one). A commercial e-mail (B8) takes the page
+    to leave it in one click (``unsubscribe``, made when it leaves; the preview shows PREVIEW_UNSUBSCRIBE). A paragraph
+    whose words came out empty (a summary without Novedades) is left out."""
     t = check_params(name, params)
     if locale not in LOCALES:
         raise TemplateError(f"no language {locale!r}")
@@ -600,25 +696,33 @@ def render(name: str, locale: Locale, params: Mapping[str, str], account: Mappin
         return PLACEHOLDER.sub(lambda m: html.escape(values[m.group(1)]) if escape else values[m.group(1)], s)
 
     link = f"{web_base()}{fill(t.path, False)}" if t.path else None
-    text_parts = [fill(p, False) for p in c.paragraphs]
+    kept = [p for p in c.paragraphs if fill(p, False).strip()]
+    text_parts = [fill(p, False) for p in kept]
     if link and c.button:
         text_parts.append(f"{fill(c.button, False)}: {link}")
-    text = "\n\n".join([*text_parts, "--", FOOTER[locale]]) + "\n"
+    commercial = t.category in COMMERCIAL
+    leave = (unsubscribe or PREVIEW_UNSUBSCRIBE) if commercial else None
+    footer_text = (f"{COMMERCIAL_FOOTER[locale][0]} {COMMERCIAL_FOOTER[locale][1]}: {leave}" if commercial
+                   else FOOTER[locale])
+    text = "\n\n".join([*text_parts, "--", footer_text]) + "\n"
     paragraphs = "".join(
-        f'<p style="margin:0 0 16px;font-size:16px;line-height:24px;">{fill(p, True)}</p>' for p in c.paragraphs)
+        f'<p style="margin:0 0 16px;font-size:16px;line-height:24px;">{fill(p, True)}</p>' for p in kept)
     button = (
         f'<p style="margin:24px 0;"><a href="{html.escape(link)}" style="display:inline-block;min-height:44px;'
         f'line-height:44px;padding:0 20px;border-radius:8px;background:#0f7a4a;color:#ffffff;font-size:16px;'
         f'font-weight:600;text-decoration:none;">{fill(c.button, True)}</a></p>'
     ) if link and c.button else ""
     subject = fill(c.subject, False)
+    footer_html = (
+        f'{html.escape(COMMERCIAL_FOOTER[locale][0])} <a href="{html.escape(leave or "")}" style="color:#555555;">'
+        f'{html.escape(COMMERCIAL_FOOTER[locale][1])}</a>' if commercial else html.escape(FOOTER[locale]))
     body = (
         f'<!doctype html><html lang="{locale}"><head><meta charset="utf-8">'
         f'<meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(subject)}</title>'
         f'</head><body style="margin:0;padding:0;background:#ffffff;color:#111111;'
         f'font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">'
         f'<div style="max-width:560px;margin:0 auto;padding:24px 16px;">{paragraphs}{button}'
-        f'<p style="margin:32px 0 0;font-size:13px;line-height:20px;color:#555555;">{html.escape(FOOTER[locale])}</p>'
+        f'<p style="margin:32px 0 0;font-size:13px;line-height:20px;color:#555555;">{footer_html}</p>'
         f'</div></body></html>'
     )
-    return Rendered(subject=subject, text=text, html=body, link=link)
+    return Rendered(subject=subject, text=text, html=body, link=link, unsubscribe=leave)

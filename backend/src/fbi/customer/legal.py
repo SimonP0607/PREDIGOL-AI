@@ -13,7 +13,8 @@ new version, and a consent stores the hash of exactly what the reader was shown.
 
 The four purposes a reader must accept are separate, unticked boxes: the terms, the processing of the data, the +18
 declaration (the terms' statements) and the reading of the risk notice (the responsible-gaming page's). The optional
-ones of later phases (commercial e-mail, B8) add a purpose here and a statement to their document.
+ones add a purpose here and a statement to their document: the commercial e-mail (B8, ``marketing_email``, on the
+processing policy).
 """
 
 from __future__ import annotations
@@ -59,6 +60,10 @@ PURPOSES: tuple[Purpose, ...] = (
     Purpose("privacy", "privacy", required=True, withdrawable=True),
     Purpose("age_18", "terms", required=True, withdrawable=False),
     Purpose("risk_notice", "responsible_gaming", required=True, withdrawable=False),
+    # Optional, never ticked beforehand: the weekly summary by e-mail (plan UX, B8). Offered only while the summary can
+    # really reach the reader (fbi.messaging.digest.offered); withdrawn at any moment, from the profile or in one click
+    # from any summary - and the gate never asks for it.
+    Purpose("marketing_email", "privacy", required=False, withdrawable=True),
 )
 REQUIRED: tuple[str, ...] = tuple(p.kind for p in PURPOSES if p.required)
 BY_KIND: dict[str, Purpose] = {p.kind: p for p in PURPOSES}

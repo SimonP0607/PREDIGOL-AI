@@ -18,6 +18,7 @@ from fbi.messaging.templates import (
     CATEGORIES,
     MANDATORY,
     OPTIONAL,
+    OUTBOX_CATEGORIES,
     TEMPLATES,
     TemplateError,
     check_params,
@@ -46,7 +47,7 @@ def test_every_template_says_the_same_in_both_languages() -> None:
         assert placeholders(t, "es") == placeholders(t, "en"), t.name
         assert bool(t.es.button) == bool(t.en.button), t.name
         assert len(t.es.paragraphs) == len(t.en.paragraphs), t.name
-        assert t.category in CATEGORIES
+        assert t.category in OUTBOX_CATEGORIES
         assert t.sample, f"{t.name} needs parameters that render (tests and the console's preview use them)"
 
 
@@ -67,7 +68,10 @@ def test_every_template_renders_with_its_sample(name: str, locale: str) -> None:
     assert "{" not in out.subject + out.text, "a placeholder was left unfilled"
     assert "Ana" in out.text
     assert out.html.startswith("<!doctype html>") and f'lang="{locale}"' in out.html
-    assert out.text.endswith("\n") and templates.FOOTER[locale] in out.text  # type: ignore[index]
+    # the account's footer, or - commercial e-mail, plan UX B8 - why the reader gets it and the one-click way out
+    footer = (templates.COMMERCIAL_FOOTER[locale][0] if TEMPLATES[name].category in templates.COMMERCIAL  # type: ignore[index]
+              else templates.FOOTER[locale])  # type: ignore[index]
+    assert out.text.endswith("\n") and footer in out.text
 
 
 def test_the_page_is_one_column_with_a_44px_button_and_nothing_external() -> None:

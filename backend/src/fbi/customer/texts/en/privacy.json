@@ -156,6 +156,7 @@
     }
   ],
   "statements": {
-    "privacy": "I authorise the processing of my data for the purposes of the Personal data processing policy: providing the service, protecting my account and improving the product with pseudonymous statistics."
+    "privacy": "I authorise the processing of my data for the purposes of the Personal data processing policy: providing the service, protecting my account and improving the product with pseudonymous statistics.",
+    "marketing_email": "I want to receive PrediGol's weekly summary by e-mail: my picks of the week and how they ended, my teams' matches and what is new. I can leave it in one click from any summary or in my profile."
   }
 }

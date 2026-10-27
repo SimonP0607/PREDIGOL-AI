@@ -75,8 +75,13 @@ def test_every_purpose_has_its_box_in_both_languages_and_the_database_takes_it()
             doc, sentence = legal.statement(purpose.kind, locale)
             assert doc.document == purpose.document
             assert 1 <= len(sentence.strip()) <= 500, "customer.consents.statement holds 1 to 500 characters"
+    # B8: the weekly summary by e-mail, optional and withdrawable, on the processing policy (its box, never ticked
+    # beforehand) - the gate never asks for it
+    marketing = legal.BY_KIND["marketing_email"]
+    assert (marketing.document, marketing.required, marketing.withdrawable) == ("privacy", False, True)
+    assert "marketing_email" not in legal.REQUIRED
     with pytest.raises(legal.LegalTextError):
-        legal.statement("marketing_email", "es")  # B8 adds it with its box
+        legal.statement("analytics", "es")  # reserved by the database, offered by no phase yet
 
 
 def test_the_texts_are_plain_text_with_every_placeholder_filled() -> None:

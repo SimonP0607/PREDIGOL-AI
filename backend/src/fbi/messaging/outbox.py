@@ -7,7 +7,9 @@
   and name read at that moment, their choices applied (an optional category they switched off, an address that
   bounced or complained), rendered, sent with an idempotency key, and the provider's answer recorded. Retries after
   1 min, 5 min, 30 min, 2 h and 12 h, then 'failed'; a daily cap under the provider's quota; the most urgent first
-  (security and account, then privacy, support, membership and the legal notices, which go to everyone at once).
+  (security and account, then privacy, support, membership and the legal notices, which go to everyone at once;
+  commercial e-mail last, plan UX B8: its own sender, the consent checked again and a one-click leaving link of its
+  own, RFC 8058).
 
 Nothing is sent while ``FBI_EMAIL_SEND`` is off: the messenger does not call ``dispatch`` and the queue waits.
 
@@ -32,12 +34,14 @@ from psycopg.types.json import Json
 from fbi.auth import crypto, tokens
 from fbi.messaging.provider import Outgoing, Provider, ProviderError
 from fbi.messaging.templates import (
+    COMMERCIAL,
     MANDATORY,
     OPTIONAL,
     TEMPLATES,
     TemplateError,
     check_params,
     render,
+    web_base,
 )
 
 log = structlog.get_logger(__name__)
@@ -48,7 +52,8 @@ MAX_ATTEMPTS = len(RETRY_DELAYS) + 1
 DEFAULT_DAILY_CAP = 90
 """Messages a day (UTC) the messenger hands to the provider: Resend Free allows 100, received e-mails included."""
 PRIORITY_SQL = ("CASE o.category WHEN 'security' THEN 0 WHEN 'account' THEN 0 WHEN 'privacy' THEN 1 "
-                "WHEN 'support' THEN 2 WHEN 'membership' THEN 3 ELSE 4 END")
+                "WHEN 'support' THEN 2 WHEN 'membership' THEN 3 WHEN 'marketing' THEN 5 ELSE 4 END")
+"""The most urgent first; commercial e-mail (plan UX, B8) last of all, after the legal notices."""
 
 
 def sending_enabled() -> bool:
@@ -192,6 +197,30 @@ def dispatch(conn: psycopg.Connection[Any], provider: Provider, *, at: datetime,
                 break
             if armed is None:
                 reason = "its link no longer works (used, replaced or the account changed)"
+        unsubscribe: str | None = None
+        extra: dict[str, str] = {}
+        commercial_sender: str | None = None
+        if reason is None and row["category"] in COMMERCIAL:
+            # Commercial e-mail (plan UX, B8): the switch, its own sender and the reader's consent, checked again now -
+            # a reader who left a minute ago gets nothing - and the one-click link made for this e-mail alone.
+            from fbi.messaging import digest
+            from fbi.messaging import unsubscribe as leaving
+
+            reason = digest.send_check(conn, int(row["user_id"]))
+            if reason is None:
+                try:
+                    token = leaving.make(int(row["user_id"]), at)
+                except crypto.KeyUnavailableError:
+                    _finish(conn, mid, "next_attempt_at = %s, last_error = %s",
+                            (at + timedelta(minutes=30), "the server's key is missing: no leaving link can be made"))
+                    report.deferred += 1
+                    report.stopped = report.last_error = "auth key unavailable"
+                    log.error("outbox.no_key", message_id=mid, template=row["template"])
+                    break
+                unsubscribe = f"{web_base()}/unsubscribe#t={token}"
+                extra = {"List-Unsubscribe": f"<{web_base()}/api/v1/email/unsubscribe?t={token}>",
+                         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
+                commercial_sender = digest.sender()
         if reason is not None:
             _finish(conn, mid, "status = 'suppressed', last_error = %s", (reason,))
             report.suppressed += 1
@@ -200,7 +229,8 @@ def dispatch(conn: psycopg.Connection[Any], provider: Provider, *, at: datetime,
         try:
             rendered = render(row["template"], row["locale"], dict(row["params"]),
                               {"name": str(row["display_name"] or "")}, zone=str(row["timezone"] or "UTC"),
-                              link=armed.link if armed else None, until=armed.expires_at if armed else None)
+                              link=armed.link if armed else None, until=armed.expires_at if armed else None,
+                              unsubscribe=unsubscribe)
         except ValueError as exc:  # TemplateError, or a legal text the register does not know
             # A bug, never the reader's: recorded, the owner is told (outbox_failing), the queue goes on.
             _finish(conn, mid, "status = 'failed', attempts = attempts + 1, last_error = %s",
@@ -211,7 +241,8 @@ def dispatch(conn: psycopg.Connection[Any], provider: Provider, *, at: datetime,
             continue
         message = Outgoing(to=str(row["email"]), subject=rendered.subject, text=rendered.text, html=rendered.html,
                            idempotency_key=idempotency_key(row["dedup_key"], row["created_at"]),
-                           tags={"category": row["category"], "template": row["template"]})
+                           tags={"category": row["category"], "template": row["template"]},
+                           sender=commercial_sender, headers=extra)
         try:
             provider_id = provider.send(message)
         except ProviderError as exc:

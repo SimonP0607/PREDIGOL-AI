@@ -1,0 +1,61 @@
+{
+  "_comment": "Novedades (plan UX, B6 and B8): the entries of web/src/product/updates/updates.ts with their titles as the web's catalogues say them (support.updates.items.<key>.title, ES and EN), newest first - what the weekly summary by e-mail names (fbi.messaging.digest). A test of the web checks that both say the same; an entry is added in both in the same change.",
+  "entries": [
+    {
+      "id": "2026-10-27-tu-opinion",
+      "key": "feedback",
+      "title": {
+        "es": "Tu opinión, una vez al mes",
+        "en": "Your opinion, once a month"
+      }
+    },
+    {
+      "id": "2026-10-27-mis-picks",
+      "key": "myPicks",
+      "title": {
+        "es": "Mis picks, completo",
+        "en": "My picks, complete"
+      }
+    },
+    {
+      "id": "2026-10-27-postpartido",
+      "key": "postmatch",
+      "title": {
+        "es": "Postpartido",
+        "en": "After the match"
+      }
+    },
+    {
+      "id": "2026-10-27-por-que-este-pick",
+      "key": "whyPick",
+      "title": {
+        "es": "¿Por qué este pick?",
+        "en": "Why this pick?"
+      }
+    },
+    {
+      "id": "2026-10-27-tu-futbol",
+      "key": "football",
+      "title": {
+        "es": "Tu fútbol primero",
+        "en": "Your football first"
+      }
+    },
+    {
+      "id": "2026-10-27-centro-de-partido",
+      "key": "matchCentre",
+      "title": {
+        "es": "Centro de partido y Análisis PrediGol",
+        "en": "Match centre and PrediGol Analysis"
+      }
+    },
+    {
+      "id": "2026-10-27-ayuda-y-app",
+      "key": "help",
+      "title": {
+        "es": "Ayuda, perfil y la app en tu teléfono",
+        "en": "Help, profile and the app on your phone"
+      }
+    }
+  ]
+}

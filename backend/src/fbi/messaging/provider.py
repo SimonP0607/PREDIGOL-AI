@@ -19,6 +19,10 @@ class Outgoing:
     idempotency_key: str
     tags: dict[str, str] = field(default_factory=dict)
     """Category and template - what the provider's dashboard groups by. Never the reader's data."""
+    sender: str | None = None
+    """Another sender than the account's (FBI_EMAIL_FROM): commercial e-mail leaves by its own (plan UX, B8)."""
+    headers: dict[str, str] = field(default_factory=dict)
+    """Extra headers: the one-click unsubscribe of commercial e-mail (RFC 8058) and nothing else."""
 
 
 class ProviderError(Exception):

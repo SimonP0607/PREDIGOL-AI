@@ -156,6 +156,7 @@
     }
   ],
   "statements": {
-    "privacy": "Autorizo el tratamiento de mis datos para las finalidades de la Política de tratamiento de datos personales: prestar el servicio, proteger mi cuenta y mejorar el producto con estadísticas seudónimas."
+    "privacy": "Autorizo el tratamiento de mis datos para las finalidades de la Política de tratamiento de datos personales: prestar el servicio, proteger mi cuenta y mejorar el producto con estadísticas seudónimas.",
+    "marketing_email": "Quiero recibir por correo el resumen semanal de PrediGol: mis picks de la semana y cómo terminaron, los partidos de mis equipos y las novedades. Puedo darme de baja en un clic desde cualquier resumen o en mi perfil."
   }
 }

@@ -39,6 +39,7 @@ from fbi.auth.service import Principal
 from fbi.customer import account as account_centre
 from fbi.customer import consents, legal, privacy
 from fbi.customer.db import CustomerError
+from fbi.messaging import digest
 
 public_router = APIRouter(prefix="/legal", tags=["legal"])
 router = APIRouter(prefix="/me", tags=["privacy"], dependencies=[Depends(same_site_only)])
@@ -80,8 +81,11 @@ def consent_state(conn: psycopg.Connection[Any], principal: Principal, locale: l
     owed = legal.due({k: (c.granted, c.version) for k, c in latest.items()})
     purposes: list[ConsentPurpose] = []
     for purpose in legal.PURPOSES:
-        doc, sentence = legal.statement(purpose.kind, locale)
         prev = latest.get(purpose.kind)
+        if purpose.kind == digest.PURPOSE and not digest.offered() and not (prev is not None and prev.granted):
+            # The weekly summary's box (plan UX, B8) only while the summary can reach the reader - or to leave it.
+            continue
+        doc, sentence = legal.statement(purpose.kind, locale)
         replaced = prev is not None and prev.granted and prev.version not in legal.valid_versions(purpose.document)
         purposes.append(ConsentPurpose(
             kind=purpose.kind,  # type: ignore[arg-type]
@@ -120,6 +124,10 @@ def decide(body: ConsentsIn, conn: Db, principal: App) -> ConsentState:
         row = conn.execute("SELECT 1 FROM auth.audit_events WHERE action = 'user.activated' AND target_user_id = %s "
                            "AND at > now() - interval '1 hour' LIMIT 1", (principal.user_id,)).fetchone()
         source = "activation" if row is not None else "gate"
+    if any(d.kind == digest.PURPOSE and d.granted for d in body.decisions) and not digest.offered():
+        # Asking for the weekly summary while it cannot reach anyone (FBI_DIGEST, the e-mail or its sender off) would
+        # be a box that promises nothing: refused. Leaving it is always possible.
+        raise ApiError(422, "not_offered", "the weekly summary by e-mail is not offered now")
     try:
         consents.record(principal.user_id, [consents.Decision(d.kind, d.granted, d.version) for d in body.decisions],
                         locale=body.locale, source=source)

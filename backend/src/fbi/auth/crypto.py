@@ -89,6 +89,15 @@ def account_token(token_id: int, nonce: bytes) -> str:
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
 
 
+def unsubscribe_mac(payload: str) -> str:
+    """The signature of a one-click unsubscribe link (plan UX, B8): an HMAC of the payload (the account and the day the
+    e-mail left) under its own subkey of FBI_AUTH_SECRET_KEY, as 22 URL-safe characters (132 bits). The link changes
+    nothing but the reader's consent to commercial e-mail, so it keeps no row and works for a year.
+    KeyUnavailableError without the key."""
+    digest = hmac.new(_subkey(b"unsubscribe"), payload.encode("ascii"), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")[:22]
+
+
 def new_key_b64() -> str:
     """A fresh FBI_AUTH_SECRET_KEY value (for install scripts)."""
     return base64.b64encode(os.urandom(32)).decode("ascii")

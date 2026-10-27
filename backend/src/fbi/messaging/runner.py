@@ -4,8 +4,9 @@ nothing else - no model, no decision, no data of PrediGol Intelligence (it runs 
 One messenger per database (a PostgreSQL advisory lock on a connection of its own; a second one waits). Work is
 organised in cycles of five minutes, each one row of the job ledger (``raw.ingestion_runs``, job
 ``messenger_cycle``): at the start of a cycle the owner's notices, the legal-change messages, the product
-analytics' daily aggregate and retention (A6: the purge only with FBI_EVENTS_PURGE=on) and the retention of the
-accounts' one-use links (A7: 30 days, deleted only with FBI_TOKENS_PURGE=on); then a tick every
+analytics' daily aggregate and retention (A6: the purge only with FBI_EVENTS_PURGE=on), the weekly summaries by e-mail
+(B8: only with FBI_DIGEST, the e-mail on and their own sender) and the retention of the accounts' one-use links (A7: 30
+days, deleted only with FBI_TOKENS_PURGE=on); then a tick every
 15 seconds sends what is due (only while FBI_EMAIL_SEND is on and the provider is configured), with a heartbeat on
 the run. A cycle that dies is closed as stale by the worker's run watchdog (``fbi.ops.run_watchdog``: the
 messenger's job is registered there) and three failed cycles in a row are a ``job_failing`` notice. The container's
@@ -35,7 +36,7 @@ from fbi.core.logging import error_summary
 from fbi.customer import events, feedback, membership
 from fbi.customer import push as push_rules
 from fbi.ingestion.ledger import RunCounters, RunLedger
-from fbi.messaging import notices, push_jobs
+from fbi.messaging import digest, notices, push_jobs
 from fbi.messaging.email import client_from_env
 from fbi.messaging.legal_change import enqueue_legal_changes
 from fbi.messaging.outbox import DispatchReport, dispatch, sending_enabled
@@ -98,6 +99,8 @@ class CycleTotals:
     push_dropped: int = 0
     push_gone: int = 0
     push_purge: push_rules.PurgeReport | None = None
+    digest: int = 0
+    """The weekly summaries queued this cycle (plan UX, B8)."""
     errors: list[str] = field(default_factory=list)
 
     def add(self, report: DispatchReport) -> None:
@@ -110,7 +113,8 @@ class CycleTotals:
     def counters(self, *, interrupted: bool) -> RunCounters:
         provider_calls = self.sent + self.retried + self.deferred
         c = RunCounters(api_calls=provider_calls + self.push_devices,
-                        rows_inserted=self.notices + self.legal + self.rollup + self.membership + self.push_queued,
+                        rows_inserted=(self.notices + self.legal + self.rollup + self.membership + self.push_queued
+                                       + self.digest),
                         rows_updated=self.sent + self.retried + self.failed + self.suppressed + self.deferred,
                         errors=list(self.errors))
         if interrupted:
@@ -131,7 +135,8 @@ class CycleTotals:
                                                                             or self.push_dropped or self.push_gone) else ""
         return (f"sending {'on' if sending else 'off'}{'' if provider or not sending else ' (no provider)'}; "
                 f"sent {self.sent}, retried {self.retried}, failed {self.failed}, suppressed {self.suppressed}, "
-                f"deferred {self.deferred}; notices {self.notices}, legal {self.legal}, membership {self.membership}; "
+                f"deferred {self.deferred}; notices {self.notices}, legal {self.legal}, membership {self.membership}, "
+                f"weekly summaries {self.digest}; "
                 f"activity rows {self.rollup}{purge}{push}")
 
 
@@ -169,6 +174,13 @@ def start_of_cycle(conn: psycopg.Connection[Any], totals: CycleTotals, *, sendin
         conn.rollback()
         totals.errors.append(f"membership: {error_summary(exc)}"[:300])
         log.error("messenger.membership_failed", error=error_summary(exc))
+    try:
+        # the weekly summary by e-mail (plan UX, B8): only with FBI_DIGEST, the e-mail on and its own sender
+        totals.digest += digest.queue(conn, at=now()).queued
+    except Exception as exc:
+        conn.rollback()
+        totals.errors.append(f"digest: {error_summary(exc)}"[:300])
+        log.error("messenger.digest_failed", error=error_summary(exc))
     try:
         totals.links_purge = tokens.purge(conn, at=now())
         conn.commit()

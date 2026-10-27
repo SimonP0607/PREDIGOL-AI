@@ -206,8 +206,9 @@ def create_app() -> FastAPI:
     #   admin   - /api/v1/admin/*, SUPER_ADMIN only
     # The provider's signed webhook (plan UX, A5) is public too: its signature is its authentication.
     # The way to reach PrediGol without signing in (plan UX, A14) is public too: data the owner publishes.
+    # The one-click leaving of the weekly summary (B8) is public too: its signed link is its authentication.
     for r in (system.router, auth.public_router, auth.session_router, account.router, customer.public_router,
-              messaging.webhook_router, support.public_router):
+              messaging.webhook_router, support.public_router, messaging.unsubscribe_router):
         app.include_router(r, prefix="/api/v1")
     # The browser's error reports (plan UX, A2): public - an error can happen before signing in - but same-site.
     app.include_router(monitoring.router, prefix="/api/v1", dependencies=[Depends(same_site_only)])

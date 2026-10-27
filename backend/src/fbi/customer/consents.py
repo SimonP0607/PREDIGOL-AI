@@ -28,7 +28,7 @@ from fbi.customer import legal
 from fbi.customer.db import CustomerError, write_connection
 
 GATE_ENV = "FBI_CONSENT_GATE"
-Source = Literal["gate", "profile", "activation"]
+Source = Literal["gate", "profile", "activation", "email"]
 LOCK_KEY = 0x434F4E53
 """``pg_advisory_xact_lock(LOCK_KEY, user_id)``: one reader's decisions are written one transaction at a time."""
 
@@ -171,3 +171,27 @@ def record(user_id: int, decisions: Sequence[Decision], *, locale: legal.Locale,
         rows = history(conn, user_id)
     forget(user_id)
     return rows
+
+
+def withdraw_if_granted(user_id: int, kind: str, *, locale: legal.Locale, source: Source) -> bool:
+    """Withdraws an optional purpose the reader has granted - in one transaction, under the reader's lock: True when it
+    changed something, False when the latest answer was not a grant (never given, or already withdrawn). The one-click
+    unsubscribe of commercial e-mail (plan UX, B8, source ``email``) uses it: a link never writes a decision the reader
+    did not take."""
+    purpose = legal.BY_KIND.get(kind)
+    if purpose is None or purpose.required or not purpose.withdrawable:
+        raise CustomerError(422, "not_withdrawable", f"{kind} is not an optional purpose")
+    forget(user_id)
+    with write_connection() as conn:
+        conn.execute("SELECT pg_advisory_xact_lock(%s, %s)", (LOCK_KEY, user_id))
+        prev = latest(conn, user_id).get(kind)
+        if prev is None or not prev.granted:
+            return False
+        doc, sentence = legal.statement(kind, locale)
+        conn.execute("""
+            INSERT INTO customer.consents (user_id, kind, granted, document, version, sha256, locale, statement,
+                                           source, replaces_id)
+            VALUES (%s, %s, false, %s, %s, %s, %s, %s, %s, %s)
+        """, (user_id, kind, doc.document, doc.version, doc.sha256, locale, sentence, source, prev.id))
+    forget(user_id)
+    return True

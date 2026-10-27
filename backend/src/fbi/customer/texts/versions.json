@@ -33,6 +33,20 @@
           "es": "c1f67f52a3727639fce45c41f4b7e8e74f0201601fdb0ae3abf1bdf9ddcc6add",
           "en": "d8e71a15c5185190a5e779319cf99bbb6261b4e142cdf9142428a39299056370"
         }
+      },
+      {
+        "version": "2026-10-27-draft2",
+        "date": "2026-10-27",
+        "draft": true,
+        "material": false,
+        "changes": {
+          "es": "Se añade la frase de la casilla opcional del resumen semanal por correo (plan UX, B8). No cambia ninguna finalidad ni lo que ya autorizaste: sigue siendo un borrador pendiente de la revisión del abogado (P5).",
+          "en": "Adds the sentence of the optional box of the weekly summary by e-mail (plan UX, B8). No purpose and nothing you already authorised changes: it is still a draft pending the lawyer's review (P5)."
+        },
+        "sha256": {
+          "es": "50d7d4fe87a8211f7e305aa146899e51adc517b0ba7d5d523f92d6b86cea1d8a",
+          "en": "0f5839bed94cd7c1d2d11593522f0f1300fb26bf93b62ed72697321758d7bb0e"
+        }
       }
     ]
   },

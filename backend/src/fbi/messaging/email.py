@@ -76,12 +76,14 @@ class ResendClient:
 
     def send(self, message: Outgoing) -> str:
         body: dict[str, object] = {
-            "from": self._sender, "to": [message.to], "subject": message.subject, "text": message.text,
-            "html": message.html,
+            "from": message.sender or self._sender, "to": [message.to], "subject": message.subject,
+            "text": message.text, "html": message.html,
             "tags": [{"name": k, "value": v} for k, v in sorted(message.tags.items())],
         }
         if self._reply_to:
             body["reply_to"] = self._reply_to
+        if message.headers:
+            body["headers"] = dict(message.headers)
         try:
             response = self._http.post("/emails", json=body,
                                        headers={"idempotency-key": message.idempotency_key[:256]})

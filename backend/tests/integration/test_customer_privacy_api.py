@@ -232,7 +232,8 @@ def test_a_decision_on_a_text_that_is_no_longer_current_is_refused(fresh: str) -
     assert r.status_code == 409 and r.json()["error"]["code"] == "legal_text_changed"
     r = c.post("/api/v1/me/consents", json={
         "decisions": [{"kind": "marketing_email", "granted": True, "version": "2026-10-25-draft1"}], "locale": "es"})
-    assert r.status_code == 422, "B8 offers that box, not A4"
+    assert r.status_code == 422 and r.json()["error"]["code"] == "not_offered", \
+        "B8's box, refused while the weekly summary cannot reach anyone (FBI_DIGEST off)"
     r = c.post("/api/v1/me/consents", json={"decisions": [], "locale": "es"})
     assert r.status_code == 422
 
