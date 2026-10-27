@@ -112,13 +112,13 @@ Cuando el partido termina, la página del partido abre en **Postpartido** (así 
   pintar a los 15 s, con dos trabajadores) y, repetidos solos con un trabajador, pasaron 4 de 4.
 - **Antes, sobre la rama de la fase:** `postmatch.spec.ts` 8 de 8; la puerta del backend halló dos pruebas de aislamiento que no
   conocían el Postpartido (su router y su lectura del conocimiento), corregidas en `d6b91c8d` con su razón.
-- **El paquete que se despliega es `ux-b5`** (A3 a A16 y B1 a B5, sobre `ia-p02` de la IA, que llegó antes): sus puertas y su
+- **El paquete que se despliega es `ux-b5`** (A3 a A16 y B1 a B5, sobre `ia-p03` de la IA, que llegó antes): sus puertas y su
   e2e completo se repiten sobre ese árbol final antes de desplegar (`MIS_PICKS_UX_B5.md` y `ESTADO_EJECUCION_UX.md`).
 
 ## 8. Despliegue
 
 Backend y web juntos (el contrato cruza los dos), sin migración. Va en el paquete `ux-b5` con todo lo terminado después de A2
-(A3 a A16 y B1 a B5), sobre `ia-p02`; el resultado del despliegue queda en `ESTADO_EJECUCION_UX.md`.
+(A3 a A16 y B1 a B5), sobre `ia-p03`; el resultado del despliegue queda en `ESTADO_EJECUCION_UX.md`.
 **Vuelta atrás:** `FBI_KNOWLEDGE_USERS=0` (oculta el Postpartido del cliente, sin desplegar) o las publicaciones anteriores.
 
 ## 9. Acción manual
