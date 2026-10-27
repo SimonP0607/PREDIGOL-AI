@@ -37,7 +37,7 @@ CLIENT_TABLES = re.compile(r"\b(?:auth\.[a-z_]+|customer\.[a-z_]+|picks\.user_[a
 
 USER_ROUTERS = ("system", "auth", "account", "product", "records", "football", "market", "center", "ai_layer",
                 "forecast", "match_calendar", "knowledge", "postmatch", "reading", "today", "news", "customer", "messaging",
-                "events", "membership", "transparency", "favorites", "support", "personal", "feedback")
+                "events", "membership", "transparency", "favorites", "support", "personal", "feedback", "push")
 """``fbi.api.routers`` modules mounted on the public and app tiers by ``create_app`` (every other router is ``/admin``)."""
 
 CALLS_OUT = ("fbi.ai.providers", "fbi.analyst.agent", "fbi.analyst.search", "anthropic", "openai", "httpx", "requests",
@@ -189,10 +189,14 @@ def test_the_messenger_reaches_no_model_and_no_decision() -> None:
 
 
 def test_the_api_never_loads_the_providers_client() -> None:
-    """The API queues and previews messages; only the messenger holds the provider's HTTP client."""
+    """The API queues and previews messages; only the messenger holds the provider's HTTP client - and the push
+    services' (plan UX, B7): the API subscribes devices and queues notices, the messenger sends them."""
     reach = closure(["fbi.api.app"])
     assert "fbi.messaging.outbox" in reach and "fbi.api.routers.messaging" in reach
     assert "fbi.messaging.email" not in reach and "fbi.messaging.runner" not in reach
+    assert "fbi.customer.push" in reach and "fbi.messaging.push" in reach, "the API's side of the notices"
+    assert "fbi.messaging.push_jobs" not in reach, "only the messenger calls a push service"
+    assert "httpx" not in raw_imports("fbi.messaging.push") and "httpx" not in raw_imports("fbi.customer.push")
 
 
 USER_AI_TABLES = re.compile(r"\bai\.(?:user_narratives|evidence_translations|user_usage)\b")

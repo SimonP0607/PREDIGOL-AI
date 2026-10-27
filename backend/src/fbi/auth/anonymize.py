@@ -21,6 +21,7 @@ from fbi.auth import passwords, store, tokens
 from fbi.auth.db import write_connection
 from fbi.auth.roles import Role
 from fbi.auth.service import AuthError, Principal, _lock_streak_of, normalize_email
+from fbi.customer import push
 
 log = structlog.get_logger("auth.anonymize")
 
@@ -63,6 +64,7 @@ def anonymise(actor: Principal, user_id: int, *, confirm: str, ip: str | None) -
         conn.execute("DELETE FROM customer.preferences WHERE user_id = %s", (user_id,))
         conn.execute("DELETE FROM customer.favorites WHERE user_id = %s", (user_id,))
         conn.execute("DELETE FROM customer.feedback WHERE user_id = %s", (user_id,))  # the survey and «¿Te sirvió?» (B6)
+        push.forget(conn, user_id)  # the devices, the bells and the notices (plan UX, B7)
         # Their support tickets still open (plan UX, A14): nobody is left to answer. The thread stays, as a privacy
         # request's does.
         tickets = conn.execute("UPDATE customer.support_tickets SET status = 'closed', closed_at = now() "

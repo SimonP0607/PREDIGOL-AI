@@ -9,7 +9,9 @@ accounts' one-use links (A7: 30 days, deleted only with FBI_TOKENS_PURGE=on); th
 15 seconds sends what is due (only while FBI_EMAIL_SEND is on and the provider is configured), with a heartbeat on
 the run. A cycle that dies is closed as stale by the worker's run watchdog (``fbi.ops.run_watchdog``: the
 messenger's job is registered there) and three failed cycles in a row are a ``job_failing`` notice. The container's
-health check reads ``ALIVE_FILE``, touched on every tick.
+health check reads ``ALIVE_FILE``, touched on every tick. The notices on the readers' devices (plan UX, B7) have their own
+jobs at the start of a cycle and their own dispatch on every tick (``fbi.messaging.push_jobs``), whatever the e-mail's
+switch says - while FBI_PUSH is on and PrediGol's VAPID key is set.
 """
 
 from __future__ import annotations
@@ -31,8 +33,9 @@ from fbi.auth import tokens
 from fbi.core.clock import now
 from fbi.core.logging import error_summary
 from fbi.customer import events, feedback, membership
+from fbi.customer import push as push_rules
 from fbi.ingestion.ledger import RunCounters, RunLedger
-from fbi.messaging import notices
+from fbi.messaging import notices, push_jobs
 from fbi.messaging.email import client_from_env
 from fbi.messaging.legal_change import enqueue_legal_changes
 from fbi.messaging.outbox import DispatchReport, dispatch, sending_enabled
@@ -88,6 +91,13 @@ class CycleTotals:
     """The readers' answers past their 24 months (plan UX, B6), under the analytics' purge switch."""
     membership: int = 0
     """The notices of a membership's end recorded this cycle (plan UX, A8)."""
+    push_queued: int = 0
+    """The notices on devices the jobs wrote this cycle (plan UX, B7)."""
+    push_sent: int = 0
+    push_devices: int = 0
+    push_dropped: int = 0
+    push_gone: int = 0
+    push_purge: push_rules.PurgeReport | None = None
     errors: list[str] = field(default_factory=list)
 
     def add(self, report: DispatchReport) -> None:
@@ -99,8 +109,8 @@ class CycleTotals:
 
     def counters(self, *, interrupted: bool) -> RunCounters:
         provider_calls = self.sent + self.retried + self.deferred
-        c = RunCounters(api_calls=provider_calls,
-                        rows_inserted=self.notices + self.legal + self.rollup + self.membership,
+        c = RunCounters(api_calls=provider_calls + self.push_devices,
+                        rows_inserted=self.notices + self.legal + self.rollup + self.membership + self.push_queued,
                         rows_updated=self.sent + self.retried + self.failed + self.suppressed + self.deferred,
                         errors=list(self.errors))
         if interrupted:
@@ -114,10 +124,15 @@ class CycleTotals:
             purge += f"; links purge {self.links_purge[0]}: {self.links_purge[1]}"
         if self.feedback_purge is not None:
             purge += f"; feedback purge {self.feedback_purge.mode}: {self.feedback_purge.rows}"
+        if self.push_purge is not None:
+            purge += f"; push purge {self.push_purge.mode}: {self.push_purge.notices} notices, {self.push_purge.devices} devices"
+        push = (f"; push queued {self.push_queued}, sent {self.push_sent} to {self.push_devices} devices, "
+                f"dropped {self.push_dropped}, gone {self.push_gone}") if (self.push_queued or self.push_sent
+                                                                            or self.push_dropped or self.push_gone) else ""
         return (f"sending {'on' if sending else 'off'}{'' if provider or not sending else ' (no provider)'}; "
                 f"sent {self.sent}, retried {self.retried}, failed {self.failed}, suppressed {self.suppressed}, "
                 f"deferred {self.deferred}; notices {self.notices}, legal {self.legal}, membership {self.membership}; "
-                f"activity rows {self.rollup}{purge}")
+                f"activity rows {self.rollup}{purge}{push}")
 
 
 def start_of_cycle(conn: psycopg.Connection[Any], totals: CycleTotals, *, sending: bool, provider: bool) -> None:
@@ -161,17 +176,38 @@ def start_of_cycle(conn: psycopg.Connection[Any], totals: CycleTotals, *, sendin
         conn.rollback()
         totals.errors.append(f"links: {error_summary(exc)}"[:300])
         log.error("messenger.links_purge_failed", error=error_summary(exc))
+    # the notices on devices (plan UX, B7): the jobs write what is owed; the ticks send it
+    jobs = push_jobs.collect(conn, at=now())
+    totals.push_queued += jobs.total
+    totals.errors.extend(jobs.errors)
+    try:
+        totals.push_purge = push_rules.purge(conn, at=now(), mode=events.purge_mode())
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        totals.errors.append(f"push purge: {error_summary(exc)}"[:300])
+        log.error("messenger.push_purge_failed", error=error_summary(exc))
 
 
 def tick(conn: psycopg.Connection[Any], provider: Provider | None, totals: CycleTotals) -> None:
-    if not sending_enabled() or provider is None:
-        return
+    if sending_enabled() and provider is not None:
+        try:
+            totals.add(dispatch(conn, provider, at=now()))
+        except Exception as exc:
+            conn.rollback()
+            totals.errors.append(f"dispatch: {error_summary(exc)}"[:300])
+            log.error("messenger.dispatch_failed", error=error_summary(exc))
+    # the notices on devices (plan UX, B7): their own channel, whatever the e-mail's switch says
     try:
-        totals.add(dispatch(conn, provider, at=now()))
+        pushed = push_jobs.dispatch(conn, at=now())
+        totals.push_sent += pushed.sent
+        totals.push_devices += pushed.devices
+        totals.push_dropped += sum(pushed.dropped.values())
+        totals.push_gone += pushed.gone
     except Exception as exc:
         conn.rollback()
-        totals.errors.append(f"dispatch: {error_summary(exc)}"[:300])
-        log.error("messenger.dispatch_failed", error=error_summary(exc))
+        totals.errors.append(f"push dispatch: {error_summary(exc)}"[:300])
+        log.error("messenger.push_dispatch_failed", error=error_summary(exc))
 
 
 def run_cycle(dsn: str, provider: Provider | None, stop: threading.Event, *, tick_s: float = TICK_S,

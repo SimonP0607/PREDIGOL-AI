@@ -12,7 +12,8 @@
 --                    The messenger (plan UX, A5) runs with this role: it also drafts the owner's notices
 --                    (audit.notifications), records its cycles in the job ledger (raw.ingestion_runs), keeps
 --                    the product analytics' daily aggregate and retention (A6), records the notices of a
---                    membership's end (A8) and keeps the readers' feedback's retention (B6).
+--                    membership's end (A8), keeps the readers' feedback's retention (B6) and writes and sends the
+--                    readers' notices on their devices (B7).
 --   predigol_rollback  (NOLOGIN, created by the operator: db/roles.sql) the automatic roll-back of an agent's promotion:
 --                    reads intel.promotions and inserts into it, nothing else anywhere. Which row it may insert is the
 --                    row policy of migration 0111, not this file: the worker reaches the role with SET ROLE.
@@ -96,6 +97,12 @@ BEGIN
     -- answered and changed; deleted when the account is anonymised (A7) and, once the owner switches the purge on, by the
     -- messenger past its 24 months
     'customer.feedback:INSERT, UPDATE, DELETE',
+    -- the readers' notices on their devices (fbi.customer.push and fbi.messaging.push_jobs, plan UX, B7): a browser allowed
+    -- and revoked (never edited otherwise), a match's bell rung, changed and taken away, the queue written and its fate
+    -- recorded; all deleted when the account is anonymised (A7) and, once the owner switches the purge on, by the messenger
+    -- (notices past 90 days, revoked browsers past 30)
+    'customer.push_subscriptions:INSERT, UPDATE, DELETE', 'customer.match_alerts:INSERT, UPDATE, DELETE',
+    'customer.push_notices:INSERT, UPDATE, DELETE',
     -- a user's own records (fbi.userdata)
     'picks.user_picks:INSERT, UPDATE, DELETE', 'picks.user_parlays:INSERT, UPDATE, DELETE',
     'picks.user_parlay_legs:INSERT, UPDATE, DELETE',

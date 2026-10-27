@@ -2,7 +2,8 @@
 a device it has not used before, a change of its credentials (plan UX, section 33).
 
 Each is a row of the queue (``fbi.messaging.outbox``), written in the caller's transaction, so the e-mail exists only
-if what it tells happened. Nothing is queued while FBI_SELF_SERVICE is off. A sign-in notice names the browser
+if what it tells happened. Nothing is queued while FBI_SELF_SERVICE is off - except a new sign-in's notice on the
+reader's devices (plan UX, B7: ``fbi.customer.push``), which needs only push. A sign-in notice names the browser
 family and the system from a closed list - never the IP, never the user agent (plan UX, section 19).
 """
 
@@ -16,6 +17,7 @@ from typing import Any, Literal
 import psycopg
 
 from fbi.auth import tokens
+from fbi.customer import push
 from fbi.messaging import outbox
 
 Change = Literal["password", "password_reset", "password_admin", "mfa_on", "mfa_off", "mfa_reset", "recovery_codes"]
@@ -79,9 +81,11 @@ def device_family(user_agent: str | None) -> tuple[str, str]:
 def notify_new_device(conn: psycopg.Connection[Any], user: dict[str, Any], *, session_id: str,
                       user_agent: str | None) -> bool:
     """A completed sign-in from a browser and system the account has not signed in with in 90 days: the account is
-    told (``new_sign_in``). Not its first sign-in ever (that one is the account's own activation or first visit),
-    not the synthetic journey's account. True when a notice was queued."""
-    if not tokens.self_service_enabled() or _robot(str(user["email"])):
+    told (``new_sign_in``) by e-mail while FBI_SELF_SERVICE is on, and on its devices when it receives notices (plan
+    UX, B7). Not its first sign-in ever (that one is the account's own activation or first visit), not the synthetic
+    journey's account. True when a notice was queued."""
+    email = tokens.self_service_enabled()
+    if not (email or push.available()) or _robot(str(user["email"])):
         return False
     family = device_family(user_agent)
     rows = conn.execute("""
@@ -92,10 +96,16 @@ def notify_new_device(conn: psycopg.Connection[Any], user: dict[str, Any], *, se
     if not rows or any(device_family(r[0]) == family for r in rows):
         return False
     browser, system = family
-    outbox.enqueue(conn, user_id=int(user["id"]), template="new_sign_in",
-                   params={"browser": browser, "system": system, "when": _now_iso()},
-                   dedup_key=f"new_sign_in:{session_id[:24]}")
-    return True
+    queued = False
+    if email:
+        outbox.enqueue(conn, user_id=int(user["id"]), template="new_sign_in",
+                       params={"browser": browser, "system": system, "when": _now_iso()},
+                       dedup_key=f"new_sign_in:{session_id[:24]}")
+        queued = True
+    if push.sign_in_notice(conn, user_id=int(user["id"]), language=user.get("language"), zone=user.get("timezone"),
+                           browser=browser, system=system, session_id=session_id, at=datetime.now(UTC)):
+        queued = True
+    return queued
 
 
 def notify_change(conn: psycopg.Connection[Any], user: dict[str, Any], change: Change) -> bool:

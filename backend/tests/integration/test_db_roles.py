@@ -163,6 +163,15 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "customer.feedback", "DELETE", True),
     ("predigol_worker", "customer.feedback", "SELECT", False),
     ("predigol_worker", "customer.feedback", "INSERT", False),
+    # the readers' notices on their devices (plan UX, B7): the API subscribes and revokes a browser, rings and silences a
+    # match's bell and queues the account's notices; the messenger (the API's role) writes the rest, sends them, records
+    # each one's fate and purges; the worker of PrediGol Intelligence reads none of it
+    *(("predigol_api", f"customer.{table}", privilege, True)
+      for table in ("push_subscriptions", "match_alerts", "push_notices")
+      for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE")),
+    *(("predigol_worker", f"customer.{table}", privilege, False)
+      for table in ("push_subscriptions", "match_alerts", "push_notices")
+      for privilege in ("SELECT", "INSERT", "UPDATE")),
     # an account's one-use links (plan UX, A7): the API issues and redeems them, the messenger arms them and purges
     # them (the API's role); the worker of PrediGol Intelligence sees none of them
     ("predigol_api", "auth.account_tokens", "SELECT", True),
@@ -235,6 +244,15 @@ def test_the_worker_sees_nothing_of_the_customers_data(granted: str) -> None:
                 conn.execute("SELECT 1 FROM customer.consents LIMIT 1")
         finally:
             conn.execute("RESET ROLE")
+
+
+def test_the_api_numbers_the_readers_devices_and_notices_and_the_worker_cannot(granted: str) -> None:
+    """Plan UX, B7: a browser allowed and a notice queued take their numbers from sequences of their own."""
+    with psycopg.connect(granted, autocommit=True) as conn:
+        for seq in ("customer.push_subscriptions_id_seq", "customer.push_notices_id_seq"):
+            assert conn.execute("SELECT has_sequence_privilege('predigol_api', %s, 'USAGE')", (seq,)).fetchone() == (True,)
+            assert conn.execute("SELECT has_sequence_privilege('predigol_worker', %s, 'USAGE')",
+                                (seq,)).fetchone() == (False,)
 
 
 def test_a_table_a_future_migration_adds_is_covered_by_the_default_privileges(granted: str) -> None:

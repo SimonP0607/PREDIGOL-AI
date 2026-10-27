@@ -399,7 +399,14 @@ def test_no_table_of_the_customer_schema_has_room_for_an_ip_a_card_a_token_or_an
                                        "product_events", "activity_daily",  # A6
                                        "payments", "membership_periods", "membership_events",  # A8
                                        "favorites",  # A13: leagues and teams only - never an amount or a bankroll
-                                       "feedback"}  # B6: a score, a comment without an address, where it was asked
+                                       "feedback",  # B6: a score, a comment without an address, where it was asked
+                                       # B7: a browser's push address and the two values the W3C Push API gives to
+                                       # encrypt a notice for it alone (p256dh, its public key; auth) - no credential:
+                                       # they open nothing of PrediGol or of the reader, a push service takes nothing
+                                       # sent to that address without PrediGol's own VAPID key, and they never leave
+                                       # the database (not in the export, the logs or Sentry); the browser's family
+                                       # and system as words, never its user agent. Then the bells and the queue.
+                                       "push_subscriptions", "match_alerts", "push_notices"}
     offending = [(t, c) for t, c in columns if any(c == f or c.startswith(f + "_") or c.endswith("_" + f)
                                                    for f in forbidden)]
     assert not offending, offending
