@@ -764,7 +764,7 @@
   },
   "picksTab": {
     "title": "Picks for this match",
-    "intro": "This match's selections that passed PrediGol's filters, the best value first.",
+    "intro": "The selections PrediGol published for this match, each with its state now; the best value first.",
     "takenTitle": "Pre-match picks",
     "outcome": "So far: {won} won · {lost} lost · {open} in play · {void} void",
     "postmortems": "AI post-mortem",

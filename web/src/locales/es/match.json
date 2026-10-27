@@ -764,7 +764,7 @@
   },
   "picksTab": {
     "title": "Picks para este partido",
-    "intro": "Las selecciones de este partido que pasaron los filtros de PrediGol, las de más valor primero.",
+    "intro": "Las selecciones que PrediGol publicó para este partido, cada una con su estado ahora; las de más valor primero.",
     "takenTitle": "Picks prepartido",
     "outcome": "Cómo van: {won} ganados · {lost} perdidos · {open} en juego · {void} nulos",
     "postmortems": "Post-mortem de la IA",

@@ -77,8 +77,8 @@
       "evaluation": "Its model has not beaten the market in its own test yet: it is measured, never recommended."
     }
   },
-  "withheld_one": "{count} more is no longer recommended at today's price: you can see it on its match.",
-  "withheld_other": "{count} more are no longer recommended at today's price: you can see them on their match.",
+  "withheld_one": "{count} more selection is not recommended now: you can see it on its match, with the reason.",
+  "withheld_other": "{count} more selections are not recommended now: you can see them on their matches, with the reason.",
   "why": {
     "open": "Why this pick?",
     "close": "Close",
