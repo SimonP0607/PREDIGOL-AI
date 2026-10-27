@@ -10,6 +10,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from fbi.api.contracts.common import Contract
 
 MessageCategory = Literal["account", "security", "membership", "support", "privacy", "legal"]
+"""The account's e-mails: what the reader's choices speak of."""
+OutboxCategory = Literal["account", "security", "membership", "support", "privacy", "legal", "marketing"]
+"""What the queue holds: the account's e-mails and commercial e-mail (plan UX, B8: the weekly summary, with consent)."""
 EmailStatus = Literal["ok", "bounced", "complained"]
 MessageStatus = Literal["queued", "sent", "failed", "bounced", "complained", "suppressed"]
 
@@ -35,7 +38,7 @@ class OutboxMessage(Contract):
     id: int
     user_id: int
     user_email: str
-    category: MessageCategory
+    category: OutboxCategory
     template: str
     locale: Literal["es", "en"]
     status: MessageStatus
@@ -60,3 +63,17 @@ class OutboxPreview(Contract):
     text: str
     html: str
     link: str | None = Field(description="Where the message's button leads.")
+
+
+class UnsubscribeIn(BaseModel):
+    """The page of PrediGol the weekly summary's link opens (plan UX, B8): the token from the address's fragment."""
+
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=26, max_length=60)
+
+
+class UnsubscribeResult(Contract):
+    """The one-click leaving of the weekly summary (plan UX, B8; RFC 8058)."""
+
+    left: bool = Field(description="True when this click withdrew the consent; false when the reader had already left "
+                                   "(the link still works, and changes nothing).")

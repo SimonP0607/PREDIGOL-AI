@@ -24,6 +24,7 @@ import type {
   MessageStatus,
   OutboxPreview,
   OutboxSummary,
+  UnsubscribeResult,
 } from "./types_messaging";
 import type { ProductOverview } from "./types_events";
 import type { AdminMembership, MyMembership, PaymentIn, PaymentRecorded } from "./types_membership";
@@ -518,6 +519,9 @@ export const v1 = {
   resetPassword: (body: ResetIn) => postJson<void>("/auth/password/reset", body),
   requestUnlock: (email: string) => postJson<Accepted>("/auth/unlock/request", { email }),
   unlock: (token: string) => postJson<void>("/auth/unlock", { token }),
+  /** The weekly summary's way out (plan UX, B8): public, the link's token in the body - never in a URL. */
+  leaveWeeklySummary: (token: string) =>
+    postJson<UnsubscribeResult>("/email/unsubscribe/link", { token }),
 
   // ── legal texts, consents and the reader's rights (plan UX, A4) ───────────
   /** Public: anyone may read the texts before having an account. */

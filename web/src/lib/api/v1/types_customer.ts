@@ -4,7 +4,11 @@
  */
 
 export type LegalDocumentName = "terms" | "privacy" | "responsible_gaming";
-export type ConsentKind = "terms" | "privacy" | "age_18" | "risk_notice";
+/**
+ * The four the gate asks for and the optional one of the weekly summary by e-mail (plan UX, B8): offered only while it
+ * can reach the reader, never ticked beforehand and never asked for by the gate.
+ */
+export type ConsentKind = "terms" | "privacy" | "age_18" | "risk_notice" | "marketing_email";
 export type PrivacyRequestKind = "privacy_query" | "privacy_claim" | "privacy_deletion";
 export type TicketStatus = "open" | "answered" | "closed";
 

@@ -1,10 +1,13 @@
 /**
- * The reader's notification preferences and the owner's view of the queue of messages (plan UX, A5).
- * Mirrors backend/src/fbi/api/contracts/messaging.py.
+ * The reader's notification preferences, the owner's view of the queue of messages (plan UX, A5) and the one-click
+ * leaving of the weekly summary (B8). Mirrors backend/src/fbi/api/contracts/messaging.py.
  */
 
+/** The account's e-mails: what the reader's choices speak of. */
 export type MessageCategory =
   "account" | "security" | "membership" | "support" | "privacy" | "legal";
+/** What the queue holds: the account's e-mails and commercial e-mail (plan UX, B8: the weekly summary, with consent). */
+export type OutboxCategory = MessageCategory | "marketing";
 export type EmailStatus = "ok" | "bounced" | "complained";
 export type MessageStatus = "queued" | "sent" | "failed" | "bounced" | "complained" | "suppressed";
 
@@ -30,7 +33,7 @@ export interface OutboxMessage {
   id: number;
   user_id: number;
   user_email: string;
-  category: MessageCategory;
+  category: OutboxCategory;
   template: string;
   locale: "es" | "en";
   status: MessageStatus;
@@ -61,4 +64,10 @@ export interface OutboxPreview {
   html: string;
   /** Where the message's button leads. */
   link: string | null;
+}
+
+/** The page the weekly summary's link opens (plan UX, B8). */
+export interface UnsubscribeResult {
+  /** True when this tap withdrew the consent; false when the reader had already left (nothing changed). */
+  left: boolean;
 }
