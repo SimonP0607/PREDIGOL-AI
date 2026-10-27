@@ -69,6 +69,8 @@ IMPORTS: dict[str, dict[str, str]] = {
     },
     "fbi.api.services.knowledge": {
         "api/routers/knowledge.py": "the route of the page",
+        "api/services/postmatch.py": "the Postpartido (plan UX, B4) is shown while the knowledge of a finished match is: the same switch "
+                                     "(users_may_see), and nothing else of the page",
     },
     "fbi.api.contracts.knowledge": {
         "api/routers/knowledge.py": "the route of the page: the model of its answer",
