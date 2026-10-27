@@ -23,7 +23,7 @@ from zoneinfo import ZoneInfo
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.customer import consents, events, membership, support, workdays
+from fbi.customer import consents, events, feedback, membership, support, workdays
 from fbi.customer.db import CustomerError, write_connection
 from fbi.messaging import outbox
 
@@ -263,6 +263,8 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
     member = membership.export_rows(conn, user_id)
     # Their questions to PrediGol, with the context attached and the answers (plan UX, A14).
     support_rows = support.export_rows(conn, user_id)
+    # What they told PrediGol: the monthly survey and «¿Te sirvió?» (plan UX, B6).
+    feedback_rows = feedback.export_rows(conn, user_id)
     document: dict[str, Any] = _iso({
         "format": EXPORT_FORMAT,
         "generated_at": now or datetime.now(UTC),
@@ -283,5 +285,6 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         "payments": member["payments"],
         "membership_events": member["membership_events"],
         "support_tickets": support_rows,
+        "feedback": feedback_rows,
     })
     return document

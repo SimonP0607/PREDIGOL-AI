@@ -1,7 +1,7 @@
 """Deleting an account as anonymisation (plan UX, A7 and section 23), on a reader's deletion request and only with the
 owner's confirmation - the account's address typed again in the console.
 
-What goes: the reader's preferences and favourites (A13), what they saved (picks and parlays), their sessions, their second factor and
+What goes: the reader's preferences and favourites (A13), their survey answers and «¿Te sirvió?» (B6), what they saved (picks and parlays), their sessions, their second factor and
 recovery codes, and every link of theirs that could still work. The account's row stays - its address masked
 (``deleted-<id>@deleted.invalid``, which the e-mail queue never sends to), its name replaced, a random password hash
 nobody knows, status ``deleted`` - and so does the address typed in the sign-in trail, masked the same way. What
@@ -62,6 +62,7 @@ def anonymise(actor: Principal, user_id: int, *, confirm: str, ip: str | None) -
         picks = conn.execute("DELETE FROM picks.user_picks WHERE user_id = %s", (user_id,)).rowcount
         conn.execute("DELETE FROM customer.preferences WHERE user_id = %s", (user_id,))
         conn.execute("DELETE FROM customer.favorites WHERE user_id = %s", (user_id,))
+        conn.execute("DELETE FROM customer.feedback WHERE user_id = %s", (user_id,))  # the survey and «¿Te sirvió?» (B6)
         # Their support tickets still open (plan UX, A14): nobody is left to answer. The thread stays, as a privacy
         # request's does.
         tickets = conn.execute("UPDATE customer.support_tickets SET status = 'closed', closed_at = now() "

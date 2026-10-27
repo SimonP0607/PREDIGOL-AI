@@ -90,8 +90,11 @@ def forget_sign_in_failures() -> None:
 
 def forget_memberships(conn: psycopg.Connection) -> None:
     """Before a test deletes accounts: their membership rows (plan UX, A8) - append-only tables whose keys to
-    auth.users refuse a delete - go first, under the documented maintenance switch. Nothing before the 0099."""
+    auth.users refuse a delete - go first, under the documented maintenance switch. Nothing before the 0099. The readers'
+    feedback (B6, from the 0103) goes too: its key to auth.users refuses a delete as well (an account is anonymised)."""
     with conn.transaction():
+        if conn.execute("SELECT to_regclass('customer.feedback')").fetchone() != (None,):
+            conn.execute("DELETE FROM customer.feedback")
         if conn.execute("SELECT to_regclass('customer.membership_events')").fetchone() == (None,):
             return
         conn.execute("SET LOCAL fbi.customer_maintenance = 'on'")

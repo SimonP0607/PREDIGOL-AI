@@ -28,6 +28,7 @@ from fbi.api.routers import (
     evolution,
     explorer,
     favorites,
+    feedback,
     football,
     forecast,
     intelligence,
@@ -212,14 +213,15 @@ def create_app() -> FastAPI:
     app_tier = [Depends(same_site_only), Depends(require_app), Depends(observe_principal)]
     # The account itself, its membership and the reader's rights (consents, export, privacy requests, notification
     # preferences) and their questions to PrediGol (A14): never behind the gates - a limited reader still sees why, how
-    # to renew, and reaches Ayuda.
-    for r in (auth.router, customer.router, messaging.router, membership.router, favorites.router, support.router):
+    # to renew, and reaches Ayuda. Novedades read (B6) is the reader's own state, like a dismissed hint.
+    for r in (auth.router, customer.router, messaging.router, membership.router, favorites.router, support.router,
+              feedback.updates_router):
         app.include_router(r, prefix="/api/v1", dependencies=app_tier)
     # The product's own analytics (A6), behind the consent gate only: a reader who has not accepted the processing is
     # not measured; a limited one is (what they open while limited is part of renewing). What the reader's own use orders
-    # and suggests (B2) reads what is measured: the same gate.
+    # and suggests (B2) reads what is measured: the same gate. The survey and «¿Te sirvió?» (B6) are measurement too.
     measured_tier = [*app_tier, Depends(consent_required)]
-    for r in (events.router, personal.router):
+    for r in (events.router, personal.router, feedback.router):
         app.include_router(r, prefix="/api/v1", dependencies=measured_tier)
     # The product, behind the consent gate (plan UX, A4; FBI_CONSENT_GATE, born off: fbi.customer.consents) and the
     # membership's (A8; FBI_MEMBERSHIP_ENFORCE, born off: fbi.customer.membership).
@@ -233,7 +235,7 @@ def create_app() -> FastAPI:
               center.admin_router, explorer.router, analyst.router, admin_users.router, truth.router,
               evolution.router, ai_layer.admin_router, intelligence.router, referees.router,
               monitoring.admin_router, customer.admin_router, messaging.admin_router, events.admin_router,
-              membership.admin_router, support.admin_router):
+              membership.admin_router, support.admin_router, feedback.admin_router):
         app.include_router(r, prefix="/api/v1/admin", dependencies=admin_tier)
     # The original unversioned health endpoint stays where monitors expect it.
     app.add_api_route("/health", system.get_health, methods=["GET"], include_in_schema=False)

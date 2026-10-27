@@ -154,6 +154,15 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "customer.favorites", "UPDATE", False),
     ("predigol_worker", "customer.favorites", "SELECT", False),
     ("predigol_worker", "customer.favorites", "INSERT", False),
+    # what readers think of PrediGol (plan UX, B6): the API records the survey and «¿Te sirvió?» (a vote changes: UPDATE),
+    # deletes them when the account is anonymised and, as the messenger, past their 24 months; the worker of PrediGol
+    # Intelligence never reads them (the opinion never enters the models)
+    ("predigol_api", "customer.feedback", "SELECT", True),
+    ("predigol_api", "customer.feedback", "INSERT", True),
+    ("predigol_api", "customer.feedback", "UPDATE", True),
+    ("predigol_api", "customer.feedback", "DELETE", True),
+    ("predigol_worker", "customer.feedback", "SELECT", False),
+    ("predigol_worker", "customer.feedback", "INSERT", False),
     # an account's one-use links (plan UX, A7): the API issues and redeems them, the messenger arms them and purges
     # them (the API's role); the worker of PrediGol Intelligence sees none of them
     ("predigol_api", "auth.account_tokens", "SELECT", True),

@@ -11,8 +11,8 @@
 --                    results: those are the worker's, append-only.
 --                    The messenger (plan UX, A5) runs with this role: it also drafts the owner's notices
 --                    (audit.notifications), records its cycles in the job ledger (raw.ingestion_runs), keeps
---                    the product analytics' daily aggregate and retention (A6) and records the notices of a
---                    membership's end (A8).
+--                    the product analytics' daily aggregate and retention (A6), records the notices of a
+--                    membership's end (A8) and keeps the readers' feedback's retention (B6).
 --   predigol_rollback  (NOLOGIN, created by the operator: db/roles.sql) the automatic roll-back of an agent's promotion:
 --                    reads intel.promotions and inserts into it, nothing else anywhere. Which row it may insert is the
 --                    row policy of migration 0111, not this file: the worker reaches the role with SET ROLE.
@@ -92,6 +92,10 @@ BEGIN
     -- a reader's favourite leagues and teams (fbi.customer.favorites, plan UX, A13): chosen or removed, never edited; deleted
     -- with the rest of what the reader keeps when the account is anonymised (A7)
     'customer.favorites:INSERT, DELETE',
+    -- what readers think of PrediGol (fbi.customer.feedback, plan UX, B6): the survey answered or closed, «¿Te sirvió?»
+    -- answered and changed; deleted when the account is anonymised (A7) and, once the owner switches the purge on, by the
+    -- messenger past its 24 months
+    'customer.feedback:INSERT, UPDATE, DELETE',
     -- a user's own records (fbi.userdata)
     'picks.user_picks:INSERT, UPDATE, DELETE', 'picks.user_parlays:INSERT, UPDATE, DELETE',
     'picks.user_parlay_legs:INSERT, UPDATE, DELETE',
