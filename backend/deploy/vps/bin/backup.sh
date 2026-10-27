@@ -38,7 +38,9 @@ counts() {
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 NAME="predigol-${STAMP}${LABEL}"
 PARTIAL="$DB_BACKUPS/$NAME.dump.partial"
-trap 'rm -f "$PARTIAL"; log "backup FAILED"; ping_hc "${HC_PING_BACKUP:-}" fail; notify "la copia diaria de la base FALLÓ ($NAME)"' ERR
+AGE_FILE="$DB_BACKUPS/$NAME.dump.age"
+# The encrypted copy is removed on failure too: it is as big as the dump and would otherwise stay until the next disk cleanup.
+trap 'rm -f "$PARTIAL" "$AGE_FILE" "$DB_BACKUPS/$NAME.json.up" "$DB_BACKUPS/$NAME.json.new"; log "backup FAILED"; ping_hc "${HC_PING_BACKUP:-}" fail; notify "la copia diaria de la base FALLÓ ($NAME)"' ERR
 
 ping_hc "${HC_PING_BACKUP:-}" start
 log "backup $NAME: counting, dumping"
@@ -60,51 +62,75 @@ cat > "$DB_BACKUPS/$NAME.json" <<JSON
 JSON
 log "backup $NAME: $bytes bytes in ${seconds}s, sha256 ${sha:0:16}, revision $revision"
 
-# Off the server, encrypted with the owner's age public key (the private key never touches this machine), then
-# CHECKED there (the object exists with the size just written) before anything local may be rotated out.
+# Off the server, encrypted with the owner's age public key (the private key never touches this machine), then CHECKED
+# there (each object exists with the size just written) before anything local may be rotated out.
+#
+# The bucket keeps three tiers, each under its own prefix with its own bucket lock and lifecycle rule (the owner sets
+# them in R2; README, "Copias fuera del servidor"):
+#   dumps/daily/    every dump - the timer's and each deploy's;
+#   dumps/weekly/   the timer's dump of a Sunday;
+#   dumps/monthly/  the timer's dump of the 1st of a month.            (bin/offsite-tiers.sh decides, from the name alone)
+# Nothing in this script ever deletes anything there: the lock would refuse it, and the lifecycle rule ages the copies
+# out by itself. The remote must be the bucket itself (r2:<bucket>): the locks are by prefix from the bucket's root.
 offsite=0
 if [[ -n "${BACKUP_RCLONE_REMOTE:-}" && -n "${BACKUP_AGE_RECIPIENT:-}" ]]; then
   offsite=1
-  age -r "$BACKUP_AGE_RECIPIENT" -o "$DB_BACKUPS/$NAME.dump.age" "$DB_BACKUPS/$NAME.dump"
-  age_bytes="$(stat -c %s "$DB_BACKUPS/$NAME.dump.age")"
-  rclone copy --immutable "$DB_BACKUPS/$NAME.dump.age" "$BACKUP_RCLONE_REMOTE/db/"
-  rclone copy --immutable "$DB_BACKUPS/$NAME.json" "$BACKUP_RCLONE_REMOTE/db/"
-  remote_bytes="$(rclone lsjson "$BACKUP_RCLONE_REMOTE/db/$NAME.dump.age" | jq -r '.[0].Size // -1')"
-  rm -f "$DB_BACKUPS/$NAME.dump.age"
-  if [[ "$remote_bytes" != "$age_bytes" ]]; then
-    log "off-server copy NOT verified ($remote_bytes bytes there, $age_bytes here)"; false
-  fi
-  jq --arg remote "$BACKUP_RCLONE_REMOTE/db/$NAME.dump.age" --argjson bytes "$age_bytes" --arg at "$(date -u +%FT%TZ)" \
-    '. + {offsite: {remote: $remote, bytes: $bytes, verified_at: $at}}' "$DB_BACKUPS/$NAME.json" > "$DB_BACKUPS/$NAME.json.new"
+  mapfile -t tiers < <("$KIT/bin/offsite-tiers.sh" "$NAME")
+  age -r "$BACKUP_AGE_RECIPIENT" -o "$AGE_FILE" "$DB_BACKUPS/$NAME.dump"
+  age_bytes="$(stat -c %s "$AGE_FILE")"
+  # The encrypted file's own hash goes into the manifest the bucket receives: whoever downloads the copy (the restore drill,
+  # r2-setup.sh) can prove it is bit for bit what was uploaded BEFORE decrypting it, which needs the private key.
+  age_sha="$(sha256sum "$AGE_FILE" | cut -d' ' -f1)"
+  tiers_json="$(printf '%s\n' "${tiers[@]}" | jq -R . | jq -sc .)"
+  jq --arg remote "$BACKUP_RCLONE_REMOTE/dumps/daily/$NAME.dump.age" --argjson bytes "$age_bytes" --arg sha "$age_sha" \
+    --argjson tiers "$tiers_json" '. + {offsite: {remote: $remote, bytes: $bytes, age_sha256: $sha, tiers: $tiers}}' \
+    "$DB_BACKUPS/$NAME.json" > "$DB_BACKUPS/$NAME.json.up"
+  for tier in "${tiers[@]}"; do
+    dest="$BACKUP_RCLONE_REMOTE/dumps/$tier"
+    rclone copyto --immutable --s3-chunk-size 32M --s3-upload-concurrency 4 "$AGE_FILE" "$dest/$NAME.dump.age"
+    remote_bytes="$(rclone lsjson "$dest/$NAME.dump.age" | jq -r '.[0].Size // -1')"
+    if [[ "$remote_bytes" != "$age_bytes" ]]; then
+      log "off-server copy NOT verified in $tier ($remote_bytes bytes there, $age_bytes here)"; false
+    fi
+    # The manifest travels with it: a restore on another machine compares its counts with these.
+    rclone copyto --immutable "$DB_BACKUPS/$NAME.json.up" "$dest/$NAME.json"
+    log "copied off the server to $dest/ (age-encrypted, $age_bytes bytes, checked)"
+  done
+  # Only now, with every tier in place and its size checked, is the copy "verified" - rotate-dumps.sh looks for this mark.
+  jq --arg at "$(date -u +%FT%TZ)" '.offsite.verified_at = $at' "$DB_BACKUPS/$NAME.json.up" > "$DB_BACKUPS/$NAME.json.new"
   mv "$DB_BACKUPS/$NAME.json.new" "$DB_BACKUPS/$NAME.json"
-  log "copied off the server to $BACKUP_RCLONE_REMOTE/db/ (age-encrypted, $age_bytes bytes, checked)"
+  rm -f "$AGE_FILE" "$DB_BACKUPS/$NAME.json.up"
 else
   log "NOTE: no off-server copy configured (BACKUP_RCLONE_REMOTE + BACKUP_AGE_RECIPIENT): this dump exists only here"
 fi
 
 # Rotation on this server (bin/rotate-dumps.sh): the newest BACKUP_KEEP_DAILY dumps, the newest of each of the last
 # BACKUP_KEEP_DAILY days and of each of the last BACKUP_KEEP_WEEKLY ISO weeks. With an off-server copy configured, a
-# dump whose copy was never checked is KEPT.
-rotated="$("$KIT/bin/rotate-dumps.sh" "$DB_BACKUPS" "${BACKUP_KEEP_DAILY:-3}" "${BACKUP_KEEP_WEEKLY:-2}" "$offsite")"
+# dump whose copy was never checked is KEPT - until a newer dump has been copied, and for the newest BACKUP_KEEP_UNVERIFIED
+# (6) only: it may be the only one, but the disk is not unlimited.
+rotated="$("$KIT/bin/rotate-dumps.sh" "$DB_BACKUPS" "${BACKUP_KEEP_DAILY:-3}" "${BACKUP_KEEP_WEEKLY:-2}" "$offsite" "${BACKUP_KEEP_UNVERIFIED:-6}")"
 while IFS= read -r line; do [[ -n "$line" ]] && log "$line"; done <<< "$rotated"
 
-# Retention off the server: daily copies for BACKUP_REMOTE_DAYS days, the Sunday ones for BACKUP_REMOTE_WEEKS
-# weeks, the first of each month for BACKUP_REMOTE_MONTHS months. Nothing else is ever deleted there.
+# Off the server there is no retention loop any more: the bucket's lifecycle rules age the copies out (daily 15 days,
+# weekly 57, monthly 396) and its locks forbid anything else. What this script CAN do is notice that a rule is missing:
+# a copy far past its tier's keep is a copy R2 would bill for, for ever. A warning only; the backup itself succeeded.
 if (( offsite )); then
-  now_s="$(date -u +%s)"
-  while read -r remote_name; do
-    stamp="${remote_name#predigol-}"; stamp="${stamp:0:8}"
-    [[ "$stamp" =~ ^[0-9]{8}$ ]] || continue
-    age_days=$(( (now_s - $(date -u -d "$stamp" +%s)) / 86400 ))
-    keep_it=0
-    (( age_days < ${BACKUP_REMOTE_DAYS:-14} )) && keep_it=1
-    [[ "$(date -u -d "$stamp" +%u)" == 7 ]] && (( age_days < 7 * ${BACKUP_REMOTE_WEEKS:-8} )) && keep_it=1
-    [[ "${stamp:6:2}" == 01 ]] && (( age_days < 31 * ${BACKUP_REMOTE_MONTHS:-12} )) && keep_it=1
-    if (( ! keep_it )); then
-      rclone deletefile "$BACKUP_RCLONE_REMOTE/db/$remote_name" && log "off-server retention: removed $remote_name"
-      rclone deletefile "$BACKUP_RCLONE_REMOTE/db/${remote_name%.dump.age}.json" 2> /dev/null || true
+  stale_check() {  # stale_check TIER DAYS
+    local n
+    n="$(rclone lsf --use-server-modtime --min-age "${2}d" --include 'predigol-*.dump.age' "$BACKUP_RCLONE_REMOTE/dumps/$1/" 2> /dev/null | wc -l || true)"
+    if (( n > 0 )); then
+      log "WARNING off-server: $n copy(ies) in dumps/$1/ older than ${2} days - is the lifecycle rule missing?"
+      notify "R2: hay $n copia(s) en dumps/$1/ de más de ${2} días; revisa la regla de caducidad del cubo"
     fi
-  done < <(rclone lsf "$BACKUP_RCLONE_REMOTE/db/" --include 'predigol-*.dump.age')
+  }
+  stale_check daily $(( ${BACKUP_REMOTE_DAYS:-14} + 4 ))
+  stale_check weekly $(( 7 * (${BACKUP_REMOTE_WEEKS:-8} + 1) + 4 ))
+  stale_check monthly $(( 31 * (${BACKUP_REMOTE_MONTHS:-12} + 1) + 4 ))
+  # Once a week, on the Sunday copy: the locks still refuse a delete and an overwrite (bin/r2-lock-check.sh). Its verdict
+  # lands in state/lock-check.json, which healthcheck.sh reads; a failing check never fails the backup.
+  if [[ -z "$LABEL" && " ${tiers[*]} " == *" weekly "* ]]; then
+    "$KIT/bin/r2-lock-check.sh" || { log "WARNING off-server: the bucket-lock check FAILED"; notify "R2: el candado del cubo NO impide borrar o sobrescribir; revisa bin/r2-lock-check.sh"; }
+  fi
 fi
 trap - ERR
 ping_hc "${HC_PING_BACKUP:-}"

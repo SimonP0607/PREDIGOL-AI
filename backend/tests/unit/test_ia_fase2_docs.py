@@ -55,6 +55,7 @@ from fbi.ai import (
     packet,
     prompts,
     research,
+    team_claims,
     untrusted,
     usage,
 )
@@ -76,6 +77,7 @@ from fbi.ai.battery import extractor as extractor_target
 from fbi.ai.calendar import day_start, local_day
 from fbi.ai.config import AiSettings, TierModel
 from fbi.ai.contracts import base, claim, mcp
+from fbi.ai.evidence import STALE_AFTER
 from fbi.ai.gate_a import Check
 from fbi.ai.prompts import EXTRACT_V2_VERSION
 from fbi.ai.usage import with_effort
@@ -85,6 +87,7 @@ from fbi.api.app import create_app
 from fbi.api.contracts.ai_research import ResearchDay, ResearchOverview, ResearchSwitch
 from fbi.api.envelope import DataStatus
 from fbi.api.services import ai_research
+from fbi.intel import score as pick_score
 
 BACKEND = Path(__file__).resolve().parents[2]
 MONOREPO = BACKEND.parent
@@ -2032,10 +2035,10 @@ PHASE_2_TESTS = {
     "tests/integration/test_cache_v2.py", "tests/integration/test_evidence_entity.py", "tests/integration/test_evidence_typed.py",
     "tests/integration/test_gate_research.py", "tests/integration/test_ia_research_gate_script.py", "tests/integration/test_migration_0114.py",
     "tests/integration/test_migration_0115.py", "tests/integration/test_research_mode.py", "tests/integration/test_research_v2_cycle.py",
-    "tests/integration/test_typed_evidence_readers.py",
+    "tests/integration/test_team_claims_readers.py", "tests/integration/test_typed_evidence_readers.py",
     "tests/unit/test_ai_research_switch.py", "tests/unit/test_ai_research_view.py", "tests/unit/test_battery_claims.py",
     "tests/unit/test_cache_keys_v2.py", "tests/unit/test_extract_v2.py", "tests/unit/test_gate_research_pure.py",
-    "tests/unit/test_research_v2_queries.py", "tests/unit/test_typed_evidence_guard.py",
+    "tests/unit/test_research_v2_queries.py", "tests/unit/test_team_claims.py", "tests/unit/test_typed_evidence_guard.py",
 }
 """The test files of the phase, as the guide lists them (the older ``test_research_v2.py`` files are the «research v2» of the forecasts of F10,
 which the guide says is another thing)."""
@@ -2044,7 +2047,7 @@ which the guide says is another thing)."""
 def test_every_test_the_guide_names_exists() -> None:
     sec = section(11)
     first, second = table(sec, "| Prueba que pide el plan"), table(sec, "| Qué | Dónde")
-    assert len(first) == 5 and "El plan pide cinco pruebas para esta fase" in sec and len(second) == 10
+    assert len(first) == 5 and "El plan pide cinco pruebas para esta fase" in sec and len(second) == 11
     every_name_exists([*first, *second])
     listed = {token for row in [*first, *second] for token in all_ticked(row[1]) if token.endswith((".py", ".tsx", ".ts"))}
     assert "tests/unit/test_ia_fase2_docs.py" not in listed and Path(__file__).name in sec, "this test is named once, in the sentence that says what it does"
@@ -2134,30 +2137,57 @@ def test_the_review_table_has_the_thirteen_findings_with_their_severity_and_each
     assert "halló 4 hallazgos altos, 5 medios y 4 bajos" in intro and "los cuatro altos solo rigen con `on`" in intro
     assert [rows[k][0].split(" ")[0] for k in REVIEW if "(alto)" in rows[k][0]] == ["H1", "H2", "H3", "H4"]
     fate = {k: re.match(r"(\w+)(?: en (ia-p0\d))?", rows[k][2]).groups() for k in REVIEW}  # type: ignore[union-attr]
-    assert fate == {"H1": ("Corregido", "ia-p02"), "H2": ("Corregido", "ia-p02"), "H3": ("Corregido", "ia-p02"), "H4": ("Abierto", None),
+    assert fate == {"H1": ("Corregido", "ia-p02"), "H2": ("Corregido", "ia-p02"), "H3": ("Corregido", "ia-p02"), "H4": ("Corregido", "ia-p04"),
                     "M1": ("Corregido", "ia-p02"), "M2": ("Corregido", "ia-p02"), "M3": ("Declarado", None), "M4": ("Medido", None),
                     "M5": ("Corregido", "ia-p03"), "L1": ("Corregido", "ia-p03"), "L2": ("Declaradas", None), "L3": ("Corregido", "ia-p03"),
                     "L4": ("Declarado", None)}
     assert "una revisión independiente, H1" not in GUIDE and "(revisión independiente, H1)" in section(3) and "(revisión independiente, M2)" in section(3)
 
 
-def test_the_four_high_findings_come_into_effect_only_with_on_and_h4_is_the_one_still_open() -> None:
+def test_the_four_high_findings_come_into_effect_only_with_on_and_h4_is_closed_by_the_term_the_four_readers_share() -> None:
     rows = review()
-    assert rows["H4"][2].startswith("Abierto, y es condición para `on`."), "the table helper strips the bold"
-    assert "No cambia nada con `off` ni con `shadow`" in rows["H4"][2] and "`on` no se pone sin ello (sección 12)" in rows["H4"][2]
-    # while it is open, the readers of the decision choose the evidence of a match by the match: a claim of a team with no match is not seen
+    cell = rows["H4"][2]
+    assert cell.startswith("Corregido en ia-p04. No cambia nada con `off` ni con `shadow`: cada lector pregunta primero si lo tipado es visible."), (
+        "the table helper strips the bold")
+    # the finding as the reviewer found it: three files of the intel package and the picks of the day, four readers that choose evidence by match
+    for name in ("decision", "match_review", "report"):
+        assert f"intel/{name}.py" in rows["H4"][1]
+    assert "los picks del día" in rows["H4"][1] and len(re.findall(r"`intel/\w+\.py`", rows["H4"][1])) == 3
+    # the closing: ONE definition of what a match sees of its teams, which the four use (fbi.ai.team_claims), and the packet's freshness
+    assert "`fbi.ai.team_claims`" in cell and callable(team_claims.team_claims) and callable(team_claims.words)
+    said(r"dentro de `STALE_AFTER` \((\d+) días\)", cell, STALE_AFTER.days)
+    said(r"si cae dentro de esos (\d+) días", cell, STALE_AFTER.days)
     for name in ("decision", "match_review", "report"):
         source = (BACKEND / "src" / "fbi" / "intel" / f"{name}.py").read_text(encoding="utf-8")
-        assert "fixture_id" in source and "e.fixture_id IS NULL" not in source and "fixture_id IS NULL AND" not in source, name
-        assert f"intel/{name}.py" in rows["H4"][1]
-    assert "e.fixture_id = ANY(%(fixtures)s)" in DAILY_SRC and "e.fixture_id IS NULL" not in DAILY_SRC and "los picks del día" in rows["H4"][1]
-    # what it would cost the decision is the context of the pick, and it only matters with on (nothing reads a typed claim in shadow)
-    assert "(e.subject_type IS NULL OR %(typed)s)" in DAILY_SRC
-    waiting = [r for r in table(section(12), "| Falta") if "hallazgo H4" in r[0]]
-    assert len(waiting) == 1 and waiting[0][1] == "yo" and "antes de `on`" in waiting[0][2] and "no cambia nada" in waiting[0][2]
-    assert "los cuatro lectores" in waiting[0][3] and len(re.findall(r"`intel/\w+\.py`", rows["H4"][1])) == 3, "the review names three files and the picks of the day: four readers"
+        assert "from fbi.ai.team_claims import team_claims" in source, name
+    assert "from fbi.ai.team_claims import team_claims" in DAILY_SRC
+    # looking forward (the decision, the set of the day) the term leaves out what the server set aside, as the packet does; looking back (the review,
+    # the report) it keeps it
+    for name, looks_back in (("decision", False), ("match_review", True), ("report", True)):
+        source = (BACKEND / "src" / "fbi" / "intel" / f"{name}.py").read_text(encoding="utf-8")
+        assert ("set_aside=True" in source) is looks_back, name
+    assert "set_aside=True" not in DAILY_SRC
+    assert "La decisión y los picks del día miran adelante y, como el paquete, no ven la que el servidor ya dio por `OUTDATED`" in cell
+    assert "la revisión del partido y el informe del día miran atrás y la ven con el estado que el servidor le dio" in cell
+    # what it is worth to the decision: the context of the pick goes from LIMITED to FULL and the score, in points of 100, by the difference of depth x weight
+    assert pick_score.CONTEXT_DEPTH["FULL"] == 1.0 and pick_score.CONTEXT_DEPTH["LIMITED"] == 0.3 and pick_score.WEIGHTS["context_depth"] == 10
+    assert sum(pick_score.WEIGHTS.values()) == 100
+    assert round((pick_score.CONTEXT_DEPTH["FULL"] - pick_score.CONTEXT_DEPTH["LIMITED"]) * pick_score.WEIGHTS["context_depth"], 2) == 7.0
+    assert ("pasa de `LIMITED` a `FULL` y el pick sube 7 puntos de 100 (profundidad del contexto, 1,0 frente a 0,3, de peso 10)" in cell)
+    # nothing is read without the caller's word: with off, shadow or on without its gate the term is false
+    assert team_claims.team_claims(home="a", away="b", at="c").startswith("(%(typed)s AND ")
+    # and the tests the guide names for it are there and count what the quality paragraph says
+    para = paragraph(section(11), "**Calidad de las pruebas.**")
+    counted = {}
+    for name in ("unit/test_team_claims.py", "integration/test_team_claims_readers.py"):
+        tree = ast.parse((BACKEND / "tests" / name).read_text(encoding="utf-8"))
+        counted[name.split("/")[0]] = sum(isinstance(node, ast.FunctionDef) and node.name.startswith("test_") for node in tree.body)
+    said(r"hallazgo H4, (\d+) pruebas: (\d+) unitarias y (\d+) de integración sobre un mundo construido", para,
+         counted["unit"] + counted["integration"], counted["unit"], counted["integration"])
+    waiting = [r for r in table(section(12), "| Falta") if "H4" in r[0]]
+    assert waiting == [], "H4 is closed: nothing is waiting for it"
     on_row = next(r for r in table(section(12), "| Falta") if r[0] == "Pasar a `on`")
-    assert "con el hallazgo H4 cerrado" in on_row[2]
+    assert on_row[2] == "solo con el gate en `PASA` (el hallazgo H4 ya está cerrado)"
 
 
 def test_the_limits_the_review_names_are_the_limits_of_the_contract() -> None:
@@ -2242,20 +2272,17 @@ def test_what_the_review_declared_and_did_not_fix_is_still_true_of_the_code() ->
 def test_what_is_missing_names_the_commands_the_words_and_the_waits_that_exist() -> None:
     sec = section(12)
     rows = table(sec, "| Falta")
-    assert [r[0] for r in rows] == ["Que pase el gate A", "Desplegar la fase (0114 y 0115), apagada", "Poner `FBI_AI_RESEARCH_V2=shadow`",
-                                    "7 días completos con todas las pasadas en sombra", "La batería sobre `extract-v2`",
-                                    "Que las lecturas de la decisión vean las afirmaciones de equipo sin partido (hallazgo H4, sección 11)", "Pasar a `on`"]
+    assert [r[0] for r in rows] == ["Que pase el gate A", "Poner `FBI_AI_RESEARCH_V2=shadow`", "7 días completos con todas las pasadas en sombra",
+                                    "La batería sobre `extract-v2`", "Pasar a `on`"]
     said(r"(\d+) días completos de medición de la fase 0", rows[0][2], gate_a.WINDOW_DAYS)
     assert "`ia_gate evaluate --record` con `PASA`" in rows[0][3] and (BACKEND / "scripts" / "ia_gate.py").is_file()
     assert "evaluate" in inspect.getsource(importlib.import_module("scripts.ia_gate")) and "--record" in inspect.getsource(importlib.import_module("scripts.ia_gate"))
-    assert "una copia de seguridad con su prueba de restauración justo antes de migrar, las dos migraciones" in rows[1][3]
-    assert "shadow" in typing.get_args(config.ResearchMode) and "con una copia fechada de `app.env` y reinicio del worker" in rows[2][2]
-    assert "la primera pasada con `research_v2_shadow` en sus cuentas" in rows[2][3] and gate_research.SHADOW_MARK in rows[2][3]
-    said(r"(\d+) días completos con todas las pasadas en sombra", rows[3][0], gate_research.WINDOW_DAYS)
-    assert rows[3][3] == "`python -m scripts.ia_research_gate evaluate --record` con `PASA`" and "evaluate" in ia_research_gate.COMMANDS
-    assert "`ia_battery submit` y `collect` con `PASA`" in rows[4][3] and {"submit", "collect"} <= set(ia_battery.COMMANDS)
-    assert "los cuatro lectores usan el predicado del paquete cuando lo tipado es visible" in rows[5][3] and "compare el contexto y la puntuación" in rows[5][3]
-    assert "tu firma de `claim_extractor` en `intel.promotions` y, entonces, tu palabra en `FBI_AI_RESEARCH_V2`" in rows[6][3]
+    assert "shadow" in typing.get_args(config.ResearchMode) and "con una copia fechada de `app.env` y reinicio del worker" in rows[1][2]
+    assert "la primera pasada con `research_v2_shadow` en sus cuentas" in rows[1][3] and gate_research.SHADOW_MARK in rows[1][3]
+    said(r"(\d+) días completos con todas las pasadas en sombra", rows[2][0], gate_research.WINDOW_DAYS)
+    assert rows[2][3] == "`python -m scripts.ia_research_gate evaluate --record` con `PASA`" and "evaluate" in ia_research_gate.COMMANDS
+    assert "`ia_battery submit` y `collect` con `PASA`" in rows[3][3] and {"submit", "collect"} <= set(ia_battery.COMMANDS)
+    assert "tu firma de `claim_extractor` en `intel.promotions` y, entonces, tu palabra en `FBI_AI_RESEARCH_V2`" in rows[4][3]
     assert "intel.promotions" in migration_source("0111")
     assert "gate B" in paragraph(sec, "**El gate.**") and "battery" in gates.GATES
     assert "Encender esta fase y empezar la 3 esperan al gate A" in sec and "Los 7 días de la fase 0 y los 7 de esta son tiempo real" in sec
@@ -2279,7 +2306,7 @@ def test_every_version_the_guide_names_is_a_version_of_the_code() -> None:
     assert {EXTRACT_V2_VERSION, base.CLAIM, cache.KEY_VERSION, BATTERY_VERSION, base.MCP} <= set(named), "the guide names each version of the phase"
 
 
-INTERNAL_REFERENCES = [5, 6, 5, 5, 3, 6, 2, 11, 11, 3, 8, 9, 3, 3, 5, 7, 7, 12, 10, 5, 5, 5, 12, 7, 6, 3, 11]
+INTERNAL_REFERENCES = [5, 6, 5, 5, 3, 6, 2, 11, 11, 3, 8, 9, 3, 3, 5, 7, 7, 12, 10, 5, 5, 5, 7, 6, 3]
 """The sections of this guide that the guide itself points to, in the order it does."""
 TOPIC_OF_SECTION = {2: "interruptor", 3: "investigación", 5: "evidencias", 6: "migraciones", 7: "gate", 8: "consola", 9: "batería", 10: "cuesta",
                     11: "pruebas", 12: "falta"}
@@ -2287,7 +2314,7 @@ TOPIC_OF_SECTION = {2: "interruptor", 3: "investigación", 5: "evidencias", 6: "
 
 def test_every_section_the_guide_points_to_is_there_and_is_about_what_the_reference_says() -> None:
     plan = re.findall(r"plan, secci[óo]n (\d+)", GUIDE)
-    assert plan == ["35", "8", "24", "35"], "the plan's sections the guide quotes by number: 35 twice (the header and what is missing), 8 in the text and 24 in the gate"
+    assert plan == ["35", "8", "24"], "the plan's sections the guide quotes by number: 35 in the header, 8 in the text and 24 in the gate"
     assert "Plan Maestro IA (aprobado), fase 2 y secciones 8, 24, 25, 30, 31 y 35" in GUIDE
     outside = re.findall(r"secci[óo]n (\d+) de `(IA_FASE\d)\.md`", GUIDE)
     assert outside == [("3", "IA_FASE1"), ("2", "IA_FASE1"), ("12", "IA_FASE1"), ("15", "IA_FASE1")]
@@ -2318,9 +2345,9 @@ def test_every_owner_action_the_guide_names_is_one_the_list_of_actions_has_and_t
 
 def test_the_header_and_the_first_section_say_where_the_phase_stands_who_writes_what_and_what_v1_does_today() -> None:
     head = GUIDE.split("\n## 1. ")[0]
-    for text in ("Estado: **código terminado en la rama `ia/p2`; se despliega apagado y se enciende solo cuando pase el gate A**",
+    for text in ("Estado: **desplegada apagada el 27 oct 2026 (ia-p02); se enciende (`shadow`) solo cuando pase el gate A, y `on` solo con tu firma**",
                  "(la fase lleva las migraciones 0114 y 0115; por el orden del plan, sección 35, depende de la fase 1 y no del gate A, "
-                 "así que el código y las migraciones van ya, con `FBI_AI_RESEARCH_V2` sin definir)",
+                 "así que el código y las migraciones fueron ya, con `FBI_AI_RESEARCH_V2` sin definir, y sigue sin definir)",
                  "Fuente: Plan Maestro IA (aprobado), fase 2 y secciones 8, 24, 25, 30, 31 y 35.",
                  "Lo que es tuyo (claves, topes de la Console) está en `IA_ACCIONES_MANUALES.md`; la fase anterior, en `IA_FASE1.md`; "
                  "el punto de partida medido, en `IA_BASELINE_F0.md`."):
@@ -2532,13 +2559,18 @@ def test_the_tests_of_the_quality_paragraph_are_files_that_exist_and_say_what_th
 def test_what_is_missing_has_the_owner_and_the_moment_of_each_step_and_the_gate_is_the_one_of_the_previous_phase() -> None:
     sec = section(12)
     rows = table(sec, "| Falta")
-    assert [r[1] for r in rows] == ["el tiempo", "yo", "yo", "el tiempo", "tú y yo", "yo", "tú"]
+    assert [r[1] for r in rows] == ["el tiempo", "yo", "el tiempo", "tú y yo", "tú"]
     assert [r[2] for r in rows] == [
-        "7 días completos de medición de la fase 0", "ya: no depende del gate A (plan, sección 35)",
+        "7 días completos de medición de la fase 0",
         "cuando el gate A haya dado `PASA`, con una copia fechada de `app.env` y reinicio del worker", "desde que se encienda",
-        "cuando estén las acciones 5 y 7", "antes de `on`; con `off` y con `shadow` no cambia nada",
-        "solo con el gate en `PASA` y con el hallazgo H4 cerrado"]
-    assert rows[1][3].endswith("la comprobación de salud y el escaneo de seguridad del rango desplegado en 0")
+        "cuando estén las acciones 5 y 7", "solo con el gate en `PASA` (el hallazgo H4 ya está cerrado)"]
+    # what was done is said as done: the deployment of the phase, off, with the proof of its backup and the scan of the range (no longer a row of what is missing)
+    done = paragraph(sec, "**Ya hecho: desplegar la fase, apagada.**")
+    for text in ("lanzamiento ia-p02", "una copia de seguridad (9 minutos) con su prueba de restauración (822 segundos, aprobada y sin fallos) justo antes de migrar",
+                 "las migraciones 0114 y 0115", "`FBI_AI_RESEARCH_V2` sin definir en el worker", "los picks y las decisiones del día idénticos antes y después",
+                 "dio 0 hallazgos", "desde ia-p04 es una puerta del constructor: con algo distinto de 0 el paquete no se construye"):
+        assert text in done, text
+    assert "FBI_AI_RESEARCH_V2" in inspect.getsource(config) and sorted(p.name[:4] for p in (BACKEND / "migrations" / "versions").glob("*_ia_phase2_*.py")) == ["0114", "0115"]
     gate = paragraph(sec, "**El gate.**")
     assert gate.startswith("**El gate.** La fase 2 no tiene gate propio: su comprobación es la parte de investigación del **gate B** (la sombra funcional tras 14 días)")
     assert "(la sombra funcional tras 14 días)" in PHASE_1 and "La fase 1 no tiene gate propio: es requisito del **gate B**" in PHASE_1, (
@@ -2592,9 +2624,10 @@ def test_the_findings_say_the_same_in_the_cell_that_names_them_and_in_the_one_th
     rest = {r[0] for r in table(sec, "| Qué | Dónde")}
     assert rest == {"la clave, la frescura y la dirección de una página", "las migraciones", "las evidencias tipadas y sus estados",
                     "el extractor: lo que lee y lo que se acepta", "la investigación por entidad", "el interruptor y el ciclo",
-                    "ninguna otra lectura ve lo tipado", "el gate y su orden de línea de comandos", "la vista de la Consola, de la base al web",
+                    "ninguna otra lectura ve lo tipado", "las afirmaciones de equipo que ven los cuatro lectores por partido (hallazgo H4)",
+                    "el gate y su orden de línea de comandos", "la vista de la Consola, de la base al web",
                     "la batería sobre `extract-v2`"}
-    assert "La fase está **terminada en el código para `off` y para `shadow`, y se despliega apagada**; para `on` falta cerrar el hallazgo H4" in section(12)
+    assert "La fase está **terminada en el código, desplegada apagada (ia-p02, 27 oct 2026) y con el hallazgo H4 cerrado (ia-p04)**." in section(12)
 
 
 def test_each_piece_of_the_first_section_does_what_the_guide_says_in_the_place_it_names() -> None:

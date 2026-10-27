@@ -1,0 +1,12 @@
+[Unit]
+Description=PrediGol: security alerts from the sign-in records and Caddy's log (every 5 min)
+Requires=docker.service
+After=docker.service predigol.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/predigol/backend/deploy/vps/bin/security-alerts.sh
+TimeoutStartSec=120
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
