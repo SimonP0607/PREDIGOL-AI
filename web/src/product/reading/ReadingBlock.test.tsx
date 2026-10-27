@@ -224,6 +224,24 @@ describe("the narrative (A11)", () => {
   });
 });
 
+describe("once the match is over (plan UX, B4)", () => {
+  test("the reading and its highlights end with the way to the Postpartido - and only then", () => {
+    const to = 'data-testid="reading-to-postmatch"';
+    expect(
+      renderToStaticMarkup(<ReadingView load={ok()} afterMatch={() => undefined} />),
+    ).toContain(to);
+    expect(renderToStaticMarkup(<ReadingView load={ok()} />)).not.toContain(to);
+    const highlights = renderToStaticMarkup(
+      <ReadingHighlightsView load={ok()} onMore={() => undefined} afterMatch={() => undefined} />,
+    );
+    expect(highlights).toContain(to);
+    expect(highlights).toContain("Qué pasó en el partido: ver el Postpartido");
+    expect(
+      renderToStaticMarkup(<ReadingHighlightsView load={ok()} onMore={() => undefined} />),
+    ).not.toContain(to);
+  });
+});
+
 describe("the Resumen's highlights", () => {
   test("the summary and the two main risks, with the way to the whole analysis", () => {
     const html = renderToStaticMarkup(

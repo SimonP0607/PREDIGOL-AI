@@ -5,6 +5,7 @@
  * now (minute and score), its result and its value against the last pre-match price (a
  * near-close price, not validated as the closing line - so the label says so).
  */
+import type { ReactNode } from "react";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { hintProps } from "@/components/system/tapHint";
 import { Link } from "@tanstack/react-router";
@@ -34,11 +35,14 @@ export function StartedPickCard({
   pick,
   shadow = false,
   className,
+  footer,
 }: {
   pick: StartedPick;
   /** From the admin's shadow preview: labelled, never a recommendation. */
   shadow?: boolean;
   className?: string | undefined;
+  /** Below the state: once the match is over, why it ended as it did (plan UX, B4: the Postpartido). */
+  footer?: ReactNode;
 }) {
   const label = selectionLabel({
     market_key: pick.market_key,
@@ -164,6 +168,7 @@ export function StartedPickCard({
           </span>
         ) : null}
       </div>
+      {footer ? <div className="border-t border-border/70 px-4 py-2.5">{footer}</div> : null}
     </article>
   );
 }

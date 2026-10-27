@@ -1040,7 +1040,53 @@
     "none": "PrediGol had no result forecast for this match.",
     "myPicks": "Your saved picks of this match and how they settled are in My picks.",
     "myPicksAction": "Go to My picks",
-    "pending": "The result is not final yet: the post-match is put together once it is."
+    "pending": "The result is not final yet: the post-match is put together once it is.",
+    "saved": {
+      "title": "What you saved",
+      "intro": "Your selections on this match and how they ended.",
+      "price": "at {odds}",
+      "yourPrice": "at your price of {odds}",
+      "pending": "It is settled as soon as the result is official.",
+      "corrected": "Settled again after the provider corrected the result."
+    },
+    "why": {
+      "cardTitle": "Why it ended this way",
+      "outcome": {
+        "win": "Won.",
+        "loss": "Lost.",
+        "push": "Returned: the result fell exactly on the line.",
+        "void": "Void: it counts as neither won nor lost.",
+        "half_win": "Half won.",
+        "half_loss": "Half lost.",
+        "pending": "Waiting for the official result."
+      },
+      "failsInTen": "A selection like this fails about {n} times in 10.",
+      "chances": "PrediGol gave it a {p} chance; at the close, the market, without its margin, {close}.",
+      "chancesAlone": "PrediGol gave it a {p} chance.",
+      "nothing": "Nothing out of the ordinary happened in the match to explain it.",
+      "notYet": "The match analysis is not ready yet: it is written the night after.",
+      "effect": {
+        "for": "For it",
+        "against": "Against it"
+      },
+      "cause": {
+        "red_card": "A man sent off for {team}, in minute {minute}.",
+        "penalty_scored": "Penalty scored by {team}, in minute {minute}.",
+        "penalty_missed": "Penalty missed by {team}, in minute {minute}.",
+        "early_goal": "{team} scored in minute {minute}: the match changed early.",
+        "early_substitution_one": "A substitution before minute 30 (a possible injury).",
+        "early_substitution_other": "{count} substitutions before minute 30 (a possible injury).",
+        "cards_above_referee": "{cards} cards, well above this referee's average of {avg}.",
+        "cards_below_referee": "{cards} cards, well below this referee's average of {avg}.",
+        "xg_supported": "The chances backed this selection: expected goals {home} {xh} – {xa} {away}.",
+        "xg_against": "The chances did not back this selection: expected goals {home} {xh} – {xa} {away}."
+      }
+    },
+    "news": {
+      "title": "After kick-off",
+      "intro": "What was published once the match had started."
+    },
+    "fromReading": "What happened in the match: see the post-match"
   },
   "news": {
     "title": "News",

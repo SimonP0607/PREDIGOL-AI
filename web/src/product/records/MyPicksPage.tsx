@@ -313,6 +313,9 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
         <Link
           to="/matches/$fixtureId"
           params={{ fixtureId: String(m.fixture_id) }}
+          // a settled pick opens its match's Postpartido: how it ended and why (plan UX, B4) - the link a result notice will use
+          {...(pick.status !== "PENDING" ? { hash: "postmatch" } : {})}
+          data-testid="my-pick-match"
           className="min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <CompetitionTag

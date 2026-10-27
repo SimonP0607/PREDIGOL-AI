@@ -97,6 +97,7 @@ import type {
 import type { MatchCalendar } from "./types_calendar";
 import type { MatchForecast } from "./types_forecast";
 import type { MatchKnowledge } from "./types_knowledge";
+import type { PostMatch } from "./types_postmatch";
 import type { MatchReading } from "./types_reading";
 import type { PickExplanation } from "./types_explanation";
 import type { MatchNews, TodayNews } from "./types_news";
@@ -593,6 +594,13 @@ export const v1 = {
    */
   matchKnowledge: (id: number | string, q: Preview = {}) =>
     getJson<Envelope<MatchKnowledge | null>>(`/matches/${id}/knowledge`, q),
+  /**
+   * POSTPARTIDO (plan UX, B4): how what the reader saved on the match ended, and how and why each of PrediGol's published picks
+   * did - the match's own facts, never what the post-mortem judges. Null data with `not_available`: readers do not see the
+   * after-match yet (FBI_KNOWLEDGE_USERS=0). `preview: "shadow"` (the Admin Console) adds the shadow picks.
+   */
+  matchPostmatch: (id: number | string, q: Preview = {}) =>
+    getJson<Envelope<PostMatch | null>>(`/matches/${id}/postmatch`, q),
   /**
    * LECTURA PREDIGOL (plan UX, A9): six sections of facts with their references - summary, context, data, market, risks and
    * the conclusion. Null data with `not_available`: the owner turned it off (FBI_READING_USERS=0).

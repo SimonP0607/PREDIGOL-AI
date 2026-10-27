@@ -180,6 +180,15 @@ export const live = {
     queryFn: () => v1.matchKnowledge(id, { preview }),
     refetchInterval: 10 * MINUTE,
   }),
+  /**
+   * A finished match's settlement and why (plan UX, B4): settled within minutes of the whistle, explained the night after;
+   * the reader's own saved picks are in it, so it is read again when they come back.
+   */
+  matchPostmatch: (id: string, preview: Preview) => ({
+    queryKey: ["v1", "match-postmatch", id, preview ?? "user"],
+    queryFn: () => v1.matchPostmatch(id, { preview }),
+    refetchInterval: 5 * MINUTE,
+  }),
   /** The reading changes when PrediGol Intelligence stores a new packet (every one to three hours) or a new forecast. */
   matchReading: (id: string, preview: Preview) => ({
     queryKey: ["v1", "match-reading", id, preview ?? "user"],

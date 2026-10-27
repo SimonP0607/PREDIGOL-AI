@@ -258,8 +258,32 @@ function Frame({
   );
 }
 
-/** The whole reading, from an answer of the API (apart from the query so a test can render it from a fixture). */
-export function ReadingView({ load }: { load: ReadingLoad }) {
+/** Once the match is over, the way from what was read before it to what happened (plan UX, B4). */
+function ToPostmatch({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid="reading-to-postmatch"
+      className="tap-y relative inline-flex min-h-9 items-center gap-1 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    >
+      {t("match.postmatch.fromReading")}
+      <ChevronRight aria-hidden className="h-4 w-4" />
+    </button>
+  );
+}
+
+/**
+ * The whole reading, from an answer of the API (apart from the query so a test can render it from a fixture). ``afterMatch``:
+ * the match is over, and the reading ends with the way to its Postpartido.
+ */
+export function ReadingView({
+  load,
+  afterMatch,
+}: {
+  load: ReadingLoad;
+  afterMatch?: (() => void) | undefined;
+}) {
   const titleId = useId();
   if (load.status === "pending") {
     return (
@@ -317,6 +341,7 @@ export function ReadingView({ load }: { load: ReadingLoad }) {
         }
       >
         <NarrativeBody narrative={narrative} priced={priced} />
+        {afterMatch ? <ToPostmatch onClick={afterMatch} /> : null}
       </Frame>
     );
   }
@@ -347,13 +372,19 @@ export function ReadingView({ load }: { load: ReadingLoad }) {
       {reading.sections.map((s) => (
         <SectionView key={s.key} section={s} />
       ))}
+      {afterMatch ? <ToPostmatch onClick={afterMatch} /> : null}
     </Frame>
   );
 }
 
-/** The Análisis tab's block. */
+/** The Análisis tab's block: once the match is over, it ends with the way to the Postpartido. */
 export function ReadingBlock({ ctx }: { ctx: MatchCtx }) {
-  return <ReadingView load={useReading(ctx)} />;
+  return (
+    <ReadingView
+      load={useReading(ctx)}
+      afterMatch={ctx.phase === "finished" ? () => ctx.goTo("postmatch") : undefined}
+    />
+  );
 }
 
 /**
@@ -361,7 +392,15 @@ export function ReadingBlock({ ctx }: { ctx: MatchCtx }) {
  * main risks, with the way to the whole analysis. Nothing while the owner has turned the reading off; its own states
  * otherwise (a skeleton, an error with a retry).
  */
-export function ReadingHighlightsView({ load, onMore }: { load: ReadingLoad; onMore: () => void }) {
+export function ReadingHighlightsView({
+  load,
+  onMore,
+  afterMatch,
+}: {
+  load: ReadingLoad;
+  onMore: () => void;
+  afterMatch?: (() => void) | undefined;
+}) {
   if (load.status === "pending") {
     return (
       <div
@@ -423,10 +462,21 @@ export function ReadingHighlightsView({ load, onMore }: { load: ReadingLoad; onM
         {t("match.readingBlock.seeAll")}
         <ChevronRight aria-hidden className="h-4 w-4" />
       </button>
+      {afterMatch ? (
+        <div>
+          <ToPostmatch onClick={afterMatch} />
+        </div>
+      ) : null}
     </section>
   );
 }
 
 export function ReadingHighlights({ ctx }: { ctx: MatchCtx }) {
-  return <ReadingHighlightsView load={useReading(ctx)} onMore={() => ctx.goTo("analysis")} />;
+  return (
+    <ReadingHighlightsView
+      load={useReading(ctx)}
+      onMore={() => ctx.goTo("analysis")}
+      afterMatch={ctx.phase === "finished" ? () => ctx.goTo("postmatch") : undefined}
+    />
+  );
 }

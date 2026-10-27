@@ -1040,7 +1040,53 @@
     "none": "PrediGol no tenía pronóstico de resultado para este partido.",
     "myPicks": "Tus picks guardados de este partido y su liquidación están en Mis picks.",
     "myPicksAction": "Ir a Mis picks",
-    "pending": "El resultado todavía no es definitivo: el postpartido se arma cuando lo sea."
+    "pending": "El resultado todavía no es definitivo: el postpartido se arma cuando lo sea.",
+    "saved": {
+      "title": "Lo que guardaste",
+      "intro": "Tus selecciones de este partido y cómo terminaron.",
+      "price": "a {odds}",
+      "yourPrice": "a tu cuota de {odds}",
+      "pending": "Se liquida en cuanto el resultado sea oficial.",
+      "corrected": "Se liquidó otra vez después de que el proveedor corrigiera el resultado."
+    },
+    "why": {
+      "cardTitle": "Por qué terminó así",
+      "outcome": {
+        "win": "Ganó.",
+        "loss": "Perdió.",
+        "push": "Se devolvió: el resultado cayó exactamente en la línea.",
+        "void": "Se anuló: no cuenta como ganado ni como perdido.",
+        "half_win": "Ganó la mitad.",
+        "half_loss": "Perdió la mitad.",
+        "pending": "Esperando el resultado oficial."
+      },
+      "failsInTen": "Una selección así falla aproximadamente {n} de cada 10 veces.",
+      "chances": "PrediGol le daba un {p} de probabilidad; al cierre, el mercado sin su margen, un {close}.",
+      "chancesAlone": "PrediGol le daba un {p} de probabilidad.",
+      "nothing": "No pasó nada fuera de lo normal en el partido que lo explique.",
+      "notYet": "El análisis del partido todavía no está: se escribe la noche siguiente.",
+      "effect": {
+        "for": "A favor",
+        "against": "En contra"
+      },
+      "cause": {
+        "red_card": "Expulsión en {team}, en el minuto {minute}.",
+        "penalty_scored": "Penalti convertido por {team}, en el minuto {minute}.",
+        "penalty_missed": "Penalti fallado por {team}, en el minuto {minute}.",
+        "early_goal": "Gol de {team} en el minuto {minute}: el partido cambió pronto.",
+        "early_substitution_one": "Un cambio antes del minuto 30 (posible lesión).",
+        "early_substitution_other": "{count} cambios antes del minuto 30 (posible lesión).",
+        "cards_above_referee": "{cards} tarjetas, muy por encima de las {avg} que este árbitro saca de media.",
+        "cards_below_referee": "{cards} tarjetas, muy por debajo de las {avg} que este árbitro saca de media.",
+        "xg_supported": "Las ocasiones respaldaban esta selección: goles esperados {home} {xh} – {xa} {away}.",
+        "xg_against": "Las ocasiones no respaldaban esta selección: goles esperados {home} {xh} – {xa} {away}."
+      }
+    },
+    "news": {
+      "title": "Después del inicio",
+      "intro": "Lo que se publicó una vez empezado el partido."
+    },
+    "fromReading": "Qué pasó en el partido: ver el Postpartido"
   },
   "news": {
     "title": "Noticias",

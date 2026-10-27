@@ -7,6 +7,7 @@
  *                  at the end, their result (En juego / Ganado / Perdido) - never re-priced;
  * finished         and, for the admin, the AI's post-mortem of each one.
  */
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { History, ShieldCheck, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -67,7 +68,7 @@ function Upcoming({ ctx }: { ctx: MatchCtx }) {
   );
 }
 
-function Taken({ ctx }: { ctx: MatchCtx }) {
+function Taken({ ctx, why }: { ctx: MatchCtx; why?: ((pickId: number) => ReactNode) | undefined }) {
   const q = useMatchPicks(ctx);
   const board = q.data?.data;
   const shadow = board?.source === "shadow_preview";
@@ -95,7 +96,7 @@ function Taken({ ctx }: { ctx: MatchCtx }) {
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             {paged.items.map((p) => (
-              <StartedPickCard key={p.pick_id} pick={p} shadow={shadow} />
+              <StartedPickCard key={p.pick_id} pick={p} shadow={shadow} footer={why?.(p.pick_id)} />
             ))}
           </div>
           <Pager paged={paged} />
@@ -133,11 +134,21 @@ function Postmortems({ ctx }: { ctx: MatchCtx }) {
   );
 }
 
-export function PicksTab({ ctx }: { ctx: MatchCtx }) {
+/**
+ * ``why``: in the Postpartido, what each pick taken before kick-off gets under its card - how it ended and the facts of the match
+ * behind it (plan UX, B4).
+ */
+export function PicksTab({
+  ctx,
+  why,
+}: {
+  ctx: MatchCtx;
+  why?: ((pickId: number) => ReactNode) | undefined;
+}) {
   if (ctx.phase === "scheduled") return <Upcoming ctx={ctx} />;
   return (
     <div className="space-y-4">
-      <Taken ctx={ctx} />
+      <Taken ctx={ctx} why={why} />
       {ctx.showAdmin && ctx.phase === "finished" ? <Postmortems ctx={ctx} /> : null}
     </div>
   );
