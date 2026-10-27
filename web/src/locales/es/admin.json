@@ -112,7 +112,7 @@
     },
     "operation": {
       "title": "Operación",
-      "description": "El día de PrediGol Intelligence y de la IA en un solo sitio: qué se analizó y qué se decidió, el dossier de cada partido, lo que hizo la IA con cada uno, cuánto cuesta y qué se ejecutó. Todo en shadow: nada se publica ni se apuesta."
+      "description": "El día de PrediGol Intelligence y de la IA en un solo sitio: qué se analizó y qué se decidió, el dossier de cada partido, lo que hizo la IA con cada uno, los agentes y su estado, cuánto cuesta y qué se ejecutó. Todo en shadow: nada se publica ni se apuesta."
     },
     "learning": {
       "title": "Aprendizaje",
@@ -607,6 +607,7 @@
       "decisions": "Decisiones",
       "match": "Partido",
       "ai": "Trabajo de la IA",
+      "agents": "Agentes",
       "costs": "Costos",
       "runs": "Ejecuciones"
     },

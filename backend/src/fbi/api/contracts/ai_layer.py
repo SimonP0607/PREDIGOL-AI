@@ -142,6 +142,9 @@ class AiOverview(Contract):
         "The readers' AI (plan UX, A11), apart from the budget above: the switch (FBI_USER_NARRATIVE: off, shadow or on), its "
         "own budget (FBI_AI_USER_MONTHLY_BUDGET_USD: state, cap, spent today and this month) and today's narratives by "
         "outcome, translations and calls."))
+    envelopes: dict[str, Any] = Field(default_factory=dict, description="Phase 0 of the AI master plan: the production, LAB and Exa "
+                                      "envelopes against their budgets, what the cache and the Batch saved, the switches. "
+                                      "Empty when it could not be built.")
 
 
 class ReviewRow(Contract):

@@ -138,7 +138,8 @@ export interface AiCycleRow {
 }
 
 export interface AiBudgetView {
-  state: "NORMAL" | "REDUCED" | "CHEAP_ONLY" | "EXHAUSTED";
+  /** AJUSTE (budget v3): the projection passed 95 % of the envelope; duplicate work stops, the quality of the main path does not change. */
+  state: "NORMAL" | "AJUSTE" | "REDUCED" | "CHEAP_ONLY" | "EXHAUSTED";
   spent_today_usd: string;
   spent_month_usd: string;
   /** Today's adaptive budget (pace left in the month x the day's load). */
@@ -155,6 +156,15 @@ export interface AiBudgetView {
   days_left?: number;
   month_ratio?: number;
   day?: string | null;
+  /** "v3" once the adaptive budget of the AI master plan is in force; absent on the old arithmetic. */
+  version?: string;
+  projected_month_usd?: string | null;
+  projection_ratio?: number | null;
+  reserve_locked_usd?: string;
+  /** The provider said a spend limit is spent: no call is made until then. */
+  limit_until?: Iso | null;
+  /** Why the state is not NORMAL (projection_over_95, day_allocation, day_cap, month_spent, api_limit...). */
+  reasons?: string[];
 }
 
 export interface AiProjection {
@@ -292,6 +302,8 @@ export interface AiOverview {
   day?: AiDayPlan | null;
   /** The readers' AI (plan UX, A11), apart from the budget above. Older answers omit it. */
   user_ai?: AiUserView;
+  /** Phase 0 of the AI master plan: the three envelopes, the savings, the switches. Empty when the server could not build it. */
+  envelopes?: AiEnvelopes | Record<string, never>;
 }
 
 /** The readers' narrative: its switch, its own budget (FBI_AI_USER_MONTHLY_BUDGET_USD) and what it wrote today. */
@@ -309,6 +321,145 @@ export interface AiUserView {
     day: string | null;
   };
   today: { ok?: number; rejected?: number; failed?: number; translations?: number; calls?: number };
+}
+
+/** A provider's spend limit: while `active`, no call is made to that workspace. */
+export interface AiEnvelopeLimit {
+  active: boolean;
+  until: Iso | null;
+  hits: number;
+}
+
+/** Claude of the production workspace against its envelope (US$185), its projection and the reserve it keeps. */
+export interface AiEnvelopeProduction {
+  spent_usd: Dec;
+  budget_usd: Dec;
+  spent_today_usd: Dec;
+  share: number | null;
+  projected_usd: Dec;
+  projection_share: number | null;
+  state: AiBudgetView["state"];
+  /** What the Message Batches still open have reserved: counted by the budget, not spent yet. */
+  reserved_for_batches_usd: Dec;
+  reserve_usd: Dec;
+  reserve_locked_usd: Dec;
+  run_rate_usd: Dec;
+  unit_cost_usd: Dec | null;
+  limit: AiEnvelopeLimit;
+  workspace: string;
+}
+
+/** Claude of the LAB workspace (experiments): it runs a day whole or not at all and yields to production. */
+export interface AiEnvelopeLab {
+  spent_usd: Dec;
+  budget_usd: Dec;
+  spent_today_usd: Dec;
+  allocation_usd: Dec;
+  share: number | null;
+  allowed: boolean;
+  reason: string;
+  reserved_for_batches_usd: Dec;
+  limit: AiEnvelopeLimit;
+  workspace: string;
+}
+
+/** Every web search: Exa's money, never Claude's. */
+export interface AiEnvelopeExa {
+  spent_usd: Dec;
+  budget_usd: Dec;
+  spent_today_usd: Dec;
+  share: number | null;
+  allowed: boolean;
+  reason: string;
+  searches: number;
+}
+
+/** Production and the LAB together against the joint ceiling Claude may not pass. */
+export interface AiEnvelopeClaude {
+  spent_usd: Dec;
+  ceiling_usd: Dec;
+  share: number | null;
+  projected_usd: Dec;
+  projection_share: number | null;
+}
+
+/** What the cache and the Message Batches saved, measured on the ledger's tokens (the cache's may be negative while a write is unread). */
+export interface AiSavings {
+  cache_usd: Dec;
+  batch_usd: Dec;
+  total_usd: Dec;
+  calls: number;
+  batch_calls: number;
+  batch_share: number | null;
+  input_tokens: number;
+  cached_tokens: number;
+  write_tokens: number;
+  read_share: number | null;
+}
+
+export interface AiReuse {
+  briefs_paid: number;
+  briefs_reused: number;
+  briefs_reused_material: number;
+  reviews_reused: number;
+  reviews_batched: number;
+}
+
+export interface AiBatchState {
+  open_items: number;
+  open_batches: number;
+  ended_batches: number;
+  lost_batches: number;
+  items_ended: number;
+}
+
+/** One optimisation: the owner's switch (off, on, auto), whether it is in force, and why. */
+export interface AiSwitchState {
+  mode: "off" | "on" | "auto" | string;
+  on: boolean;
+  why: string;
+  gate: string | null;
+}
+
+export interface AiGateState {
+  gate: string;
+  passed: boolean;
+  at: Iso | null;
+  evidence_hash: string | null;
+  models: string[] | null;
+}
+
+export interface AiSwitches {
+  cache: AiSwitchState;
+  brief_material: AiSwitchState;
+  budget_v3: AiSwitchState;
+  batch: AiSwitchState;
+  native_schema: AiSwitchState;
+  cache_layout: AiSwitchState;
+  gates: Record<string, AiGateState>;
+}
+
+export interface AiEnvelopeDay {
+  day: string;
+  production_usd: Dec;
+  lab_usd: Dec;
+  exa_usd: Dec;
+}
+
+export interface AiEnvelopes {
+  month: string;
+  days_left: number;
+  budget_version: string;
+  production: AiEnvelopeProduction;
+  lab: AiEnvelopeLab;
+  exa: AiEnvelopeExa;
+  claude: AiEnvelopeClaude;
+  savings: { month: AiSavings };
+  reuse: AiReuse;
+  batch: AiBatchState;
+  switches: AiSwitches;
+  days: AiEnvelopeDay[];
+  factors: { batch: string };
 }
 
 export interface AiReviewRow {

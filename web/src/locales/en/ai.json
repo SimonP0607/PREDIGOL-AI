@@ -297,6 +297,7 @@
       "today": "Today",
       "month": "Month",
       "NORMAL": "Normal",
+      "AJUSTE": "Adjusting (same quality)",
       "REDUCED": "Reduced (no final tier)",
       "CHEAP_ONLY": "Cheapest model only",
       "EXHAUSTED": "Exhausted (rules only)"
@@ -308,7 +309,8 @@
       "analysis": "Last analysis",
       "learning": "Last learning",
       "postmortem": "Last post-mortem",
-      "evaluation": "Last evaluation"
+      "evaluation": "Last evaluation",
+      "package": "Last match states"
     },
     "cycleStatus": {
       "running": "running",
@@ -543,6 +545,7 @@
       "barValue": "{share} of the monthly budget",
       "stateHelp": {
         "NORMAL": "Below today's budget: every level is available.",
+        "AJUSTE": "The month's projection is past 95% of the envelope: duplicate work stops, what is stored is reused and what can wait goes by batch. The main path's quality does not change.",
         "REDUCED": "Past 100% of today's budget: no L3 (strong) level and no images.",
         "CHEAP_ONLY": "Past 125% of today's budget: only the economical model (L1), no web search.",
         "EXHAUSTED": "Today's ceiling reached or the month spent: no model calls, only the rules work."
@@ -631,6 +634,93 @@
         "CHEAP_ONLY": "Above the day's pace",
         "EXHAUSTED": "Cap reached: the structured reading"
       }
+    },
+    "envelopes": {
+      "title": "The three spending envelopes",
+      "subtitle": "Claude of production, Claude of the LAB and Exa are measured apart, each against its own; Claude as a whole stays under the joint ceiling.",
+      "empty": "The server does not send the envelopes yet (an older version, or it could not build them).",
+      "production": "Claude · production",
+      "lab": "Claude · LAB (experiments)",
+      "exa": "Exa · web search",
+      "joint": "Claude in total",
+      "workspace": "Workspace {name}",
+      "spent": "Spent this month",
+      "spentHint": "{share} of {budget}",
+      "today": "Today",
+      "projection": "Month's projection",
+      "projectionHint": "{share} of the envelope",
+      "reserve": "Production's reserve",
+      "reserveHint": "{locked} locked until the last 5 days",
+      "reserved": "Reserved for open batches",
+      "reservedHint": "Counts as spent until the result arrives",
+      "allocation": "LAB's allocation",
+      "allocationHint": "Its envelope, or what the joint ceiling leaves after production",
+      "ceiling": "Joint ceiling",
+      "searches": "Searches",
+      "bar": "{name}'s spend this month",
+      "limit": "The provider said the limit is spent: no calls until {time}.",
+      "labReason": {
+        "ok": "Runs today",
+        "no_envelope": "No envelope: the LAB makes no calls",
+        "api_limit": "Provider limit spent",
+        "yields_to_production": "Yields to production",
+        "allocation_spent": "Its allocation for the month is spent"
+      },
+      "exaReason": {
+        "ok": "May search",
+        "no_envelope": "No envelope: no searches",
+        "month_spent": "The month's envelope is spent",
+        "day_cap": "Today's cap reached"
+      },
+      "days": "Daily spend",
+      "daysHelp": "The last 14 days (Bogotá time), per envelope.",
+      "day": "Day"
+    },
+    "savings": {
+      "title": "What the cache and the batches save",
+      "subtitle": "Measured on the ledger's tokens with the same price table. The cache's may come out negative while a cache write has not been read yet.",
+      "total": "Month's saving",
+      "cache": "Prompt cache",
+      "cacheHint": "{share} of the input tokens were read from the cache",
+      "batch": "Batches (half price)",
+      "batchHint": "{share} of the calls with tokens went by batch",
+      "writes": "Written to the cache",
+      "writesHint": "tokens",
+      "reuse": "Reused instead of paid",
+      "briefs": "Briefs reused",
+      "briefsHint": "{material} for no material change · {paid} paid",
+      "reviews": "Reviews reused",
+      "reviewsHint": "{batched} sent by batch",
+      "batches": "Open batches",
+      "batchesHint": "{items} tasks waiting for a result · {ended} finished this month",
+      "lost": "Lost batches",
+      "lostHint": "Failed or abandoned: their tasks are asked again in real time"
+    },
+    "switches": {
+      "title": "Phase 0 optimisations",
+      "subtitle": "Each one switches itself on only when what it changes is proven; the owner can turn it off with its variable.",
+      "on": "On",
+      "off": "Off",
+      "names": {
+        "cache": "Prompt cache",
+        "brief_material": "Brief only on a material change",
+        "budget_v3": "Adaptive budget v3",
+        "batch": "Batches (Batch API)",
+        "native_schema": "Native structured outputs",
+        "cache_layout": "Shared match block"
+      },
+      "why": {
+        "default": "On by default: it changes what is billed or reused, never a verdict.",
+        "forced": "Forced on by the owner.",
+        "ownerOff": "Turned off by the owner.",
+        "passed": "On: its evidence passed.",
+        "waiting": "Waiting for the evidence of its real test.",
+        "layout": "It reorders what the model reads: it needs its own equivalence test."
+      },
+      "evidence": "Evidence",
+      "passedOn": "passed on {date}",
+      "failedOn": "did not pass ({date})",
+      "none": "no evidence yet"
     }
   },
   "v2": {
@@ -1049,5 +1139,324 @@
     "settled": "{won} won · {lost} lost · {pnl}",
     "events_one": "{count} memory event",
     "events_other": "{count} memory events"
+  },
+  "agents": {
+    "intro": "The AI's agents: what exists, which engine each family of markets reads, what the state job wrote and how the queue is doing. Read only: nothing here calls a model, creates a task or changes a pick.",
+    "attention": {
+      "title": "What to look at",
+      "none": "Nothing to attend to: the registry matches the code, the audit found no leaks and the state job did not fail.",
+      "audit_violations": "Leakage-audit violations: {n}. A state knew more than its moment allowed.",
+      "drift": "Agents whose code is not the registered one: {n}",
+      "registry_problems": "Findings of the registry against the code: {n}",
+      "slices_over_cap": "Slices that do not fit their cap in some state: {n}",
+      "job_failed": "The last run of the state job failed",
+      "job_partial": "The last run of the state job ended partly",
+      "job_off": "The state job is switched off (FBI_AI_PACKAGE)"
+    },
+    "registry": {
+      "title": "Agent registry",
+      "subtitle": "What the code has, what each phase of the plan will build and what is postponed, with the fingerprint of the code that runs against the one the registry holds.",
+      "counts": {
+        "built": "Built",
+        "planned": "Planned",
+        "postponed": "Postponed",
+        "drift": "Out of sync"
+      },
+      "noProblems": "The registry matches the code: no findings.",
+      "problemsTitle": "The registry and the code do not match",
+      "col": {
+        "agent": "Agent",
+        "status": "Status",
+        "version": "Version and code",
+        "contract": "Contract and tasks",
+        "plan": "Plan"
+      },
+      "status": {
+        "built": "Built",
+        "planned": "Planned",
+        "postponed": "Postponed"
+      },
+      "sync": {
+        "in_sync": "Matches",
+        "drift": "Does not match",
+        "none": "Not compared"
+      },
+      "baseline": "Baseline: it already ran before the registry",
+      "retires": "Retired in phase {n}",
+      "next": "Next: {version} (phase {n})",
+      "phase": "Built in phase {n}",
+      "replaces": "Replaces {what}"
+    },
+    "engines": {
+      "title": "Engine of each family",
+      "subtitle": "The newest promotion row of the family decides. With none (or if the last one retired it), the family reads today's language model; only the owner's signature changes that.",
+      "col": {
+        "family": "Family",
+        "engine": "Engine",
+        "promotion": "Promotion in force",
+        "since": "Since"
+      },
+      "engineName": {
+        "llm": "Language model",
+        "agent": "Agent"
+      },
+      "notUnderstood": "A name this code does not read: shown as it is"
+    },
+    "decisions": {
+      "title": "Latest decisions on agents",
+      "empty": "No agent has been promoted or retired: every family reads the language model.",
+      "col": {
+        "when": "When",
+        "family": "Family",
+        "promotion": "Promotion",
+        "change": "Change",
+        "by": "Signed by",
+        "gate": "Gate",
+        "reason": "Reason"
+      },
+      "by": {
+        "owner": "Owner",
+        "system": "System (roll-back)"
+      }
+    },
+    "package": {
+      "title": "Match states",
+      "subtitle": "What the state job wrote in the last {days} days: one state per pass and match, built without calling any model.",
+      "stat": {
+        "states": "States written",
+        "matches": "Matches",
+        "blocked": "With something that blocks an agent",
+        "blockedHint": "A class of competition or a quarantined validation",
+        "flagged": "With provider text marked",
+        "flaggedHint": "Text that read like an instruction",
+        "build": "Build time",
+        "cycles": "Runs of the job",
+        "job": "State job"
+      },
+      "cyclesText": "{ok} ok · {partial} partial · {failed} failed · {running} running",
+      "job": {
+        "on": "On",
+        "off": "Off",
+        "mode": "AI mode: {mode}"
+      },
+      "last": "Last run of the job",
+      "lastStarted": "Started",
+      "lastError": "Error",
+      "never": "The job has not run in this window yet.",
+      "count": {
+        "pending": "Passes to build",
+        "built": "Built",
+        "existing": "Already there",
+        "refused": "Refused",
+        "failed": "Failed",
+        "deferred": "Deferred",
+        "build_ms": "Build time (ms)",
+        "tokens_max": "Largest slice (tokens)"
+      },
+      "byPass": "States by pass",
+      "pass": {
+        "first": "First pass",
+        "pre": "Pre-match pass",
+        "final": "Final pass",
+        "request": "On request"
+      },
+      "slices": {
+        "title": "Size of each slice (real tokens)",
+        "hint": "A slice that does not fit its cap is one an agent would refuse. A trimmed one lost content to fit: if that is the usual case, the cap is biting.",
+        "empty": "There are no states in the window yet: the job has written none.",
+        "col": {
+          "slice": "Slice",
+          "states": "States",
+          "max": "Max.",
+          "cap": "Cap",
+          "share": "p95 / cap",
+          "trimmed": "Trimmed",
+          "over": "Not fitting",
+          "level": "Verdict"
+        },
+        "level": {
+          "ok": "Comfortable",
+          "near": "Near the cap",
+          "cut": "Trimmed",
+          "over": "Does not fit"
+        }
+      },
+      "perDay": {
+        "title": "States by Bogotá day",
+        "empty": "No states in the window.",
+        "col": {
+          "day": "Day",
+          "states": "States",
+          "matches": "Matches",
+          "blocked": "Blocked",
+          "flagged": "Marked"
+        }
+      },
+      "rule": {
+        "title": "Rules of the job",
+        "stateVersion": "State version",
+        "packageVersion": "Package version",
+        "window": "Window of passes",
+        "windowDays": "{n} days",
+        "limit": "Most per run",
+        "maxSeconds": "Longest time per run",
+        "seconds": "{n} s"
+      }
+    },
+    "queue": {
+      "title": "Orchestrator queue",
+      "subtitle": "Empty until phase 3: nothing creates tasks yet. Once there are, they show here by state, with what they reserve of the budget.",
+      "stat": {
+        "open": "Open tasks",
+        "reserved": "Reserved of the budget"
+      },
+      "tasks": "Tasks created in the last {days} days, by state",
+      "runs": "Attempts of the last {days} days, by result",
+      "state": {
+        "planned": "Planned",
+        "queued": "Queued",
+        "running": "Running",
+        "done": "Done",
+        "failed": "Failed",
+        "skipped": "Skipped",
+        "expired": "Expired"
+      },
+      "status": {
+        "ok": "Ok",
+        "invalid": "Invalid",
+        "timeout": "Timed out",
+        "abstain": "Abstained",
+        "skipped": "Skipped",
+        "expired": "Expired",
+        "budget_skip": "No budget"
+      }
+    },
+    "audit": {
+      "title": "Leakage audit of the agents",
+      "subtitle": "Every night what each state knew is derived again and compared with what its moment allowed it to know. A rule the audit does not run yet has no days: that is not a clean record.",
+      "empty": "The audit has no agent rule yet.",
+      "col": {
+        "rule": "Rule",
+        "verdict": "Verdict",
+        "days": "Days audited",
+        "checked": "Checked",
+        "violations": "Violations",
+        "last": "Last day"
+      },
+      "verdict": {
+        "never": "Not audited",
+        "clean": "Clean",
+        "violations": "With violations"
+      },
+      "rule": {
+        "slice_known": "Each slice knew only what its moment knew",
+        "agent_known": "Each agent knew only what its moment knew",
+        "review_known": "Each review knew only what its moment knew",
+        "shadow_review_known": "Each shadow review knew only what its moment knew",
+        "memory_known": "Each memory note knew only what its moment knew"
+      },
+      "examples": "Days with violations"
+    },
+    "match": {
+      "title": "State of the match for the agents",
+      "subtitle": "What the state job wrote about this match, without any model: the measures of each slice, never their content.",
+      "empty": "This match has no live state yet: the job writes one when a pass has been made within its window.",
+      "current": "Live state",
+      "none": "none",
+      "field": {
+        "pass": "Pass",
+        "knownAt": "Known until",
+        "written": "Written",
+        "version": "State and package version",
+        "hash": "Package fingerprint",
+        "code": "Model code",
+        "packet": "Data packet",
+        "elapsed": "Build time",
+        "blocking": "Blocks the agents",
+        "flags": "Provider text marked",
+        "agents": "Agents foreseen",
+        "contradictions": "Contradictions",
+        "candidates": "Candidates",
+        "risks": "Risks",
+        "final": "Verdict of the Council"
+      },
+      "final": {
+        "yes": "Written into the state",
+        "no": "Not yet"
+      },
+      "slice": {
+        "col": {
+          "slice": "Slice",
+          "tokens": "Tokens",
+          "cap": "Cap",
+          "fits": "Fits",
+          "trimmed": "Trimmed",
+          "blocks": "Blocks"
+        }
+      },
+      "fits": {
+        "yes": "Fits",
+        "no": "Does not fit"
+      },
+      "history": {
+        "title": "States the match went through",
+        "current": "live",
+        "over": "{name} does not fit",
+        "col": {
+          "pass": "Pass",
+          "known": "Known until",
+          "written": "Written",
+          "hash": "Fingerprint",
+          "tokens": "Tokens",
+          "problems": "Problems"
+        }
+      },
+      "tasks": {
+        "title": "Tasks of the agents on this match",
+        "empty": "No agent has worked on this match: the Orchestrator arrives in phase 3.",
+        "col": {
+          "agent": "Agent",
+          "task": "Task",
+          "pass": "Pass",
+          "state": "State",
+          "priority": "Priority",
+          "cost": "Estimated cost",
+          "attempts": "Attempts",
+          "reason": "Reason"
+        }
+      },
+      "runs": {
+        "title": "Attempts of the agents on this match",
+        "empty": "No attempts: no agent has called a model on this match.",
+        "col": {
+          "agent": "Agent",
+          "task": "Task",
+          "status": "Result",
+          "model": "Model",
+          "verdict": "Verdict",
+          "started": "Started",
+          "cost": "Cost",
+          "reason": "Reason"
+        }
+      },
+      "state": {
+        "planned": "Planned",
+        "queued": "Queued",
+        "running": "Running",
+        "done": "Done",
+        "failed": "Failed",
+        "skipped": "Skipped",
+        "expired": "Expired"
+      },
+      "status": {
+        "ok": "Ok",
+        "invalid": "Invalid",
+        "timeout": "Timed out",
+        "abstain": "Abstained",
+        "skipped": "Skipped",
+        "expired": "Expired",
+        "budget_skip": "No budget"
+      }
+    }
   }
 }

@@ -39,7 +39,7 @@ import pytest
 from fbi.ai import learning, pm_narratives, usage
 from fbi.ai.config import AiSettings
 from fbi.families import bets, dependence, variants
-from fbi.intel import calibration, decision, memory, postmortem, score, stake
+from fbi.intel import calibration, decision, leakage, memory, postmortem, score, stake
 from fbi.market import closing_reference, closing_value
 from fbi.research import pattern_search as ps
 
@@ -1879,3 +1879,12 @@ def test_the_guide_of_the_search_for_patterns_says_what_was_measured() -> None:
         assert lead_in in doc, f"the guide no longer says {lead_in}"
     # § 8: nothing has been written to the owner's page by this reading
     assert "La lectura de esta guía no registró ninguna" in flat and "la lectura de esta guía no escribió nada" in flat
+
+
+def test_section_10_names_the_leak_audit_the_code_runs_and_each_rule_that_runs_code() -> None:
+    """Plan IA, phase 1: the nightly audit has rules that are code and not one statement (``slice_known``, in ``leakage.PYTHON_RULES``). The
+    heading of section 10 of the document carries the version of the audit the code runs, and the section names each of those rules."""
+    section = PI.split("\n## 10. ", 1)[1].split("\n## 11. ", 1)[0]
+    assert section.startswith(f"Fugas de datos (`{leakage.VERSION}`,"), section[:80]
+    for rule in leakage.PYTHON_RULES:
+        assert f"`{rule}`" in section, rule

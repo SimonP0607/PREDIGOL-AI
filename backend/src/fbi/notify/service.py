@@ -117,6 +117,36 @@ SELECT job_type, max(started_at) AS last_at, (array_agg(last_error ORDER BY star
 """A job whose last three runs all failed: one failure is noise, three in a row is a broken job."""
 
 
+BUDGET_SCOPES = {"production": "Claude de producción", "lab": "Claude del LAB", "exa": "Exa"}
+
+
+def budget_draft(r: dict[str, Any]) -> Draft:
+    """The notification of one budget alert (``ai.budget_alerts_all``). An alert of production's month is worded and keyed as it
+    always was; the LAB's, Exa's and the projections (Plan Maestro IA, phase 0) say which envelope they are about. An alert
+    warns: nothing is cut by it."""
+    scope, kind, threshold = str(r["scope"]), str(r["kind"]), int(r["threshold"])
+    month = r["month"]
+    spent, budget = float(r["spent_usd"]), float(r["budget_usd"])
+    if (scope, kind) == ("production", "month"):
+        return Draft(
+            "ai_budget", f"ai_budget:{month:%Y-%m}:{threshold}", f"Presupuesto de IA: {threshold} % del mes",
+            f"Gastado US${spent:.2f} de US${budget:.2f} en {month:%Y-%m}. "
+            + ("La IA se detiene hasta el próximo mes; las reglas siguen." if threshold >= 100 else
+               "El presupuesto diario se adapta para no pasar el tope del mes."),
+            {"threshold": threshold})
+    what = BUDGET_SCOPES.get(scope, scope)
+    key = f"ai_budget:{month:%Y-%m}:{scope}:{kind}:{threshold}"
+    if kind == "projection":
+        return Draft("ai_budget", key, f"Presupuesto de IA · {what}: la proyección llega al {threshold} %",
+                     f"El gasto previsto de {what} en {month:%Y-%m} es US${spent:.2f}, el {threshold} % de su sobre de "
+                     f"US${budget:.2f}. Es un aviso: no se recorta nada por él.", {"threshold": threshold, "scope": scope})
+    return Draft("ai_budget", key, f"Presupuesto de IA · {what}: {threshold} % del mes",
+                 f"Gastado US${spent:.2f} de US${budget:.2f} en {month:%Y-%m} ({what}). "
+                 + ("Cuando se agota, lo que depende de ese sobre espera al próximo mes; producción sigue con el suyo."
+                    if threshold >= 100 else "Es un aviso: no se recorta nada por él."),
+                 {"threshold": threshold, "scope": scope})
+
+
 def collect(conn: psycopg.Connection, *, at: datetime) -> list[Draft]:
     drafts: list[Draft] = []
     with conn.cursor(row_factory=dict_row) as cur:
@@ -180,19 +210,21 @@ def collect(conn: psycopg.Connection, *, at: datetime) -> list[Draft]:
                                 f"{r['job_type']}: the last 3 runs failed",
                                 f"Last at {r['last_at']:%d %b %H:%M} UTC: {(r['last_error'] or '')[:300]}",
                                 {"job_type": r["job_type"]}))
-        cur.execute("SELECT to_regclass('ai.budget_alerts') IS NOT NULL AS present")
+        # ai.budget_alerts_all (migration 0110) reads the old table - production's month - and the envelopes' alerts; before 0110
+        # only the old table exists, and every row of it is production's month.
+        cur.execute("SELECT to_regclass('ai.budget_alerts_all') IS NOT NULL AS wide, "
+                    "to_regclass('ai.budget_alerts') IS NOT NULL AS plain")
         present = cur.fetchone()
-        if present and present["present"]:
-            cur.execute("SELECT month, threshold, spent_usd, budget_usd, created_at FROM ai.budget_alerts "
+        if present and present["wide"]:
+            cur.execute("SELECT month, threshold, spent_usd, budget_usd, created_at, scope, kind FROM ai.budget_alerts_all "
                         "WHERE created_at > %s - interval '40 days'", (at,))
             for r in cur.fetchall():
-                drafts.append(Draft(
-                    "ai_budget", f"ai_budget:{r['month']:%Y-%m}:{r['threshold']}",
-                    f"Presupuesto de IA: {r['threshold']} % del mes",
-                    f"Gastado US${r['spent_usd']:.2f} de US${r['budget_usd']:.2f} en {r['month']:%Y-%m}. "
-                    + ("La IA se detiene hasta el próximo mes; las reglas siguen." if r["threshold"] >= 100 else
-                       "El presupuesto diario se adapta para no pasar el tope del mes."),
-                    {"threshold": int(r["threshold"])}))
+                drafts.append(budget_draft(r))
+        elif present and present["plain"]:
+            cur.execute("SELECT month, threshold, spent_usd, budget_usd, created_at, 'production' AS scope, 'month' AS kind "
+                        "FROM ai.budget_alerts WHERE created_at > %s - interval '40 days'", (at,))
+            for r in cur.fetchall():
+                drafts.append(budget_draft(r))
         cur.execute("SELECT worker_id, last_beat_at, tick_interval_s FROM raw.worker_heartbeats "
                     "ORDER BY last_beat_at DESC LIMIT 1")
         hb = cur.fetchone()

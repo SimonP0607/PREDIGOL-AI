@@ -21,6 +21,7 @@ import {
   dayLabel,
   decisionsFor,
   edgePoints,
+  envelopesOf,
   evidenceSummary,
   gateTone,
   groupOf,
@@ -40,6 +41,7 @@ import {
   sampleCounts,
   selectionText,
   settledLabel,
+  shareTone,
   teamsOf,
   thresholdText,
   usd,
@@ -182,6 +184,7 @@ describe("V2: the month bar and its alerts", () => {
 
   test("tones: budget state, projection against the budget, the shadow gate", () => {
     expect(budgetTone("NORMAL")).toBe("positive");
+    expect(budgetTone("AJUSTE")).toBe("warning");
     expect(budgetTone("REDUCED")).toBe("warning");
     expect(budgetTone("CHEAP_ONLY")).toBe("warning");
     expect(budgetTone("EXHAUSTED")).toBe("negative");
@@ -541,5 +544,36 @@ describe("V2: evidence, compact", () => {
       rejected: null,
     });
     expect(sampleCounts(undefined)).toEqual({ selections: null, days: null, rejected: null });
+  });
+});
+
+describe("Phase 0: the three envelopes", () => {
+  test("a share of an envelope turns amber from 85 % and red past the whole envelope", () => {
+    expect(shareTone(0.4)).toBe("default");
+    expect(shareTone(0.85)).toBe("warning");
+    expect(shareTone(1)).toBe("warning");
+    expect(shareTone(1.01)).toBe("negative");
+    expect(shareTone(null)).toBe("default");
+    expect(shareTone(undefined)).toBe("default");
+    expect(shareTone(Number.NaN)).toBe("default");
+  });
+
+  test("the envelopes are only there when the server sent them: an older server, or a panel that failed, sends none", () => {
+    expect(envelopesOf({})).toBeNull();
+    expect(envelopesOf({ envelopes: {} })).toBeNull();
+    const sent = { month: "2032-08-01", production: { spent_usd: "72.0000" } } as unknown;
+    const e = envelopesOf({ envelopes: sent as never });
+    expect(e?.month).toBe("2032-08-01");
+  });
+
+  test("every state of the budget has its label and its help in both languages (AJUSTE is the budget v3's)", () => {
+    for (const lang of ["es", "en"] as const) {
+      setLocale(lang);
+      for (const state of ["NORMAL", "AJUSTE", "REDUCED", "CHEAP_ONLY", "EXHAUSTED"]) {
+        expect(hasKey(`ai.layer.budget.${state}`)).toBe(true);
+        expect(hasKey(`ai.layer.budgetCard.stateHelp.${state}`)).toBe(true);
+      }
+    }
+    setLocale("es");
   });
 });

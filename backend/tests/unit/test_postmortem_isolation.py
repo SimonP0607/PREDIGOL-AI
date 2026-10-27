@@ -74,6 +74,8 @@ NAMES_IT: dict[str, str] = {
     "scripts/postmortems.py": "the owner's command for the post-mortem: status, coverage, closes (the two closes a price is judged against) and "
                               "build (a dry run until --apply)",
     "scripts/memory.py": "the owner's command for the memory: status, coverage, rebuild (a dry run until --apply) and audit",
+    "scripts/ia_baseline_report.py": "the Plan Maestro IA's line base (phase 0): a report of the AI layer's tables that COUNTS the rows of the "
+                                     "post-mortems, the memory and the notes among them (their first and last day); it reads none of their content",
 }
 """Every file under ``src/fbi``, ``scripts`` and ``apps`` that names the objects and sits after a kick-off, with why."""
 
