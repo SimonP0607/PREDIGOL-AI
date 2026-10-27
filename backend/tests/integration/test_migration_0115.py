@@ -216,5 +216,5 @@ def test_the_chain_of_the_revisions_has_this_migration_after_0114() -> None:
     revision = script.get_revision("0115")
     assert revision is not None and revision.down_revision == "0114"
     heads = script.get_heads()
-    assert "0115" in heads or all(h > "0115" for h in heads), heads
+    assert all("0115" in {r.revision for r in script.iterate_revisions(h, "base")} for h in heads), heads
     assert re.fullmatch(r"\d{4}", revision.revision)
