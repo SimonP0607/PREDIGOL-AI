@@ -269,7 +269,43 @@
     "readers7": "Readers 7 d",
     "events30": "Events 30 d",
     "readers30": "Readers 30 d",
-    "antiMetrics": "Not optimised: time in the app, picks saved per reader, notices sent. The owner and the synthetic account are not counted."
+    "antiMetrics": "Not optimised: time in the app, picks saved per reader, notices sent. The owner and the synthetic account are not counted.",
+    "feedback": {
+      "title": "What readers think",
+      "on": "Survey and «Was it useful?» on",
+      "off": "Off (FBI_FEEDBACK=0): the answers are kept",
+      "since": "Since {date}",
+      "period": "Period",
+      "days": "{n} days",
+      "n": "Survey answers",
+      "mean": "Mean (1 to 5)",
+      "csat": "CSAT (4 and 5)",
+      "low": "Answers of 1 or 2",
+      "skipped": "Closed without an answer",
+      "atRisk": "Readers AT RISK (2 or less, 30 days)",
+      "empty": "No survey answers in this period yet.",
+      "small": "Small sample: with {n} answers (fewer than {min}) the percentages move a lot with each answer.",
+      "scores": "Answers by score",
+      "votes": "«Was it useful?» by kind of reading",
+      "noVotes": "No votes in this period yet.",
+      "subjectCol": "What was read",
+      "yes": "Yes",
+      "no": "No",
+      "yesShare": "% yes",
+      "subject": {
+        "reading": "Analysis (data)",
+        "narrative": "Analysis (narrative)",
+        "explanation": "A pick's explanation",
+        "explain": "«Explain it» answer"
+      },
+      "comments": "Newest comments (never who wrote them)",
+      "noComments": "No comments in this period yet.",
+      "trigger": {
+        "analysis_opened": "after opening an analysis",
+        "result_seen": "after seeing a result"
+      },
+      "nps": "NPS will be added once there are more than about 100 answers a quarter. The opinion improves the product and never enters the models."
+    }
   },
   "audit": {
     "when": "When",

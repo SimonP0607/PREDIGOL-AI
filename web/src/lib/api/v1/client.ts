@@ -1,5 +1,6 @@
 import { reportApiFailure } from "@/lib/observability";
 import { API_BASE_URL } from "@/lib/api/mode";
+import { markTrouble } from "@/lib/feedback/session";
 import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
@@ -101,6 +102,16 @@ import type { MatchForecast } from "./types_forecast";
 import type { MatchKnowledge } from "./types_knowledge";
 import type { PostMatch } from "./types_postmatch";
 import type { MyPicksFilter, PicksSummary } from "./types_mypicks";
+import type {
+  FeedbackContext,
+  FeedbackOverview,
+  FeedbackSubject,
+  HelpfulIn,
+  HelpfulVote,
+  SurveyIn,
+  SurveyState,
+  UpdatesSeen,
+} from "./types_feedback";
 import type { MatchReading } from "./types_reading";
 import type { PickExplanation } from "./types_explanation";
 import type { MatchNews, TodayNews } from "./types_news";
@@ -366,6 +377,7 @@ async function request<T>(
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
   } catch {
+    markTrouble(); // plan UX, B6: no survey after the API was out of reach
     throw new LiveApiError("The API is not reachable.", 0, "unreachable", null);
   }
   if (res.status === 204) return undefined as T;
@@ -374,6 +386,7 @@ async function request<T>(
   try {
     parsed = text ? JSON.parse(text) : null;
   } catch {
+    markTrouble();
     throw new LiveApiError(`Unexpected response from ${path}.`, res.status, "bad_response", null);
   }
   if (!res.ok) {
@@ -394,8 +407,12 @@ async function request<T>(
     if (requestId && /^[A-Za-z0-9]{1,32}$/.test(requestId) && res.status !== 401) {
       lastError = { requestId, at: Date.now() };
     }
-    // A server error reaches Sentry with its request id, the one in the server's log line (plan UX, A2).
-    if (res.status >= 500) reportApiFailure({ status: res.status, code, requestId, method, path });
+    // A server error reaches Sentry with its request id, the one in the server's log line (plan UX, A2), and keeps the
+    // monthly survey away for the rest of the visit (B6: never after an error).
+    if (res.status >= 500) {
+      reportApiFailure({ status: res.status, code, requestId, method, path });
+      markTrouble();
+    }
     throw new LiveApiError(
       err.error?.message ?? `${method} ${path} failed (${res.status})`,
       res.status,
@@ -519,6 +536,21 @@ export const v1 = {
   completeOnboarding: () => postJson<OnboardingState>("/me/onboarding", {}),
   /** A first-visit hint dismissed: it never comes back. */
   dismissHint: (hint: HintKey) => postJson<OnboardingState>("/me/hints", { hint }),
+
+  // ── what readers think of PrediGol (plan UX, B6) ──────────────────────────
+  /** Whether the monthly survey is owed now (once every 30 days from the last answer or skip). */
+  mySurvey: () => getJson<SurveyState>("/me/feedback/survey"),
+  /** 409 survey_not_due when it was answered or closed in the last 30 days; 404 feedback_off. */
+  answerSurvey: (body: SurveyIn) => postJson<{ id: number }>("/me/feedback/survey", body),
+  /** The survey closed without an answer: not again for 30 days. */
+  skipSurvey: (context: FeedbackContext) => postJson<void>("/me/feedback/survey/skip", { context }),
+  myHelpfulVote: (subject: FeedbackSubject, subjectId: number) =>
+    getJson<HelpfulVote>("/me/feedback/helpful", { subject, subject_id: subjectId }),
+  /** «¿Te sirvió?» answered (the last answer counts): 429 too_many_votes, 404 feedback_off. */
+  voteHelpful: (body: HelpfulIn) => putJson<HelpfulVote>("/me/feedback/helpful", body),
+  /** The newest entry of Novedades the reader has seen. */
+  myUpdatesSeen: () => getJson<UpdatesSeen>("/me/updates/seen"),
+  markUpdatesSeen: (id: string) => postJson<UpdatesSeen>("/me/updates/seen", { id }),
 
   // ── help and support (plan UX, A14) ───────────────────────────────────────
   /** Public: the WhatsApp number and the reply address, for whoever cannot sign in; nulls until the owner gives them. */
@@ -938,6 +970,8 @@ export const v1 = {
   messagePreview: (id: number) => getJson<OutboxPreview>(`/admin/messages/${id}/preview`),
   /** Product analytics (plan UX, A6): activation, habit, usage, devices - only with enough readers. */
   productOverview: () => getJson<ProductOverview>("/admin/product"),
+  /** The survey with its n, «¿Te sirvió?» per kind and the newest comments (never who wrote them) - plan UX, B6. */
+  feedbackOverview: (days = 90) => getJson<FeedbackOverview>("/admin/product/feedback", { days }),
   createUser: (body: AdminUserCreate) => postJson<Envelope<AdminUser>>("/admin/users", body),
   /** Invitations (plan UX, A7): whether they can be sent, sending one, sending it again. */
   selfServiceState: () => getJson<SelfServiceState>("/admin/users/self-service"),

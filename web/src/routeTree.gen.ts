@@ -24,6 +24,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as TransparencyRouteImport } from './routes/transparency'
 import { Route as UnlockRouteImport } from './routes/unlock'
+import { Route as UpdatesRouteImport } from './routes/updates'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAiAnalystRouteImport } from './routes/admin.ai-analyst'
@@ -137,6 +138,11 @@ const TransparencyRoute = TransparencyRouteImport.update({
 const UnlockRoute = UnlockRouteImport.update({
   id: '/unlock',
   path: '/unlock',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UpdatesRoute = UpdatesRouteImport.update({
+  id: '/updates',
+  path: '/updates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WelcomeRoute = WelcomeRouteImport.update({
@@ -351,6 +357,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
+  '/updates': typeof UpdatesRoute
   '/welcome': typeof WelcomeRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
@@ -406,6 +413,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
+  '/updates': typeof UpdatesRoute
   '/welcome': typeof WelcomeRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
@@ -463,6 +471,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
+  '/updates': typeof UpdatesRoute
   '/welcome': typeof WelcomeRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
@@ -521,6 +530,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/transparency'
     | '/unlock'
+    | '/updates'
     | '/welcome'
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
@@ -576,6 +586,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/transparency'
     | '/unlock'
+    | '/updates'
     | '/welcome'
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
@@ -632,6 +643,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/transparency'
     | '/unlock'
+    | '/updates'
     | '/welcome'
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
@@ -689,6 +701,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   TransparencyRoute: typeof TransparencyRoute
   UnlockRoute: typeof UnlockRoute
+  UpdatesRoute: typeof UpdatesRoute
   WelcomeRoute: typeof WelcomeRoute
   HelpGlossaryRoute: typeof HelpGlossaryRoute
   LegalDocRoute: typeof LegalDocRoute
@@ -803,6 +816,13 @@ declare module '@tanstack/react-router' {
       path: '/unlock'
       fullPath: '/unlock'
       preLoaderRoute: typeof UnlockRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/updates': {
+      id: '/updates'
+      path: '/updates'
+      fullPath: '/updates'
+      preLoaderRoute: typeof UpdatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/welcome': {
@@ -1169,6 +1189,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   TransparencyRoute: TransparencyRoute,
   UnlockRoute: UnlockRoute,
+  UpdatesRoute: UpdatesRoute,
   WelcomeRoute: WelcomeRoute,
   HelpGlossaryRoute: HelpGlossaryRoute,
   LegalDocRoute: LegalDocRoute,

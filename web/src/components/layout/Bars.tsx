@@ -15,7 +15,16 @@ import { cn } from "@/lib/utils";
 import { MoreMenu } from "./MoreSheet";
 import { destinationOf, holds, userNav, type MoreItem } from "./nav";
 
-export function TopNav({ pathname, items }: { pathname: string; items: readonly MoreItem[] }) {
+export function TopNav({
+  pathname,
+  items,
+  unread,
+}: {
+  pathname: string;
+  items: readonly MoreItem[];
+  /** The rows of «Más» with something not seen yet (Novedades, B6). */
+  unread?: readonly string[] | undefined;
+}) {
   return (
     <nav aria-label={t("nav.mainNavigation")} className="hidden flex-1 items-center gap-1 lg:flex">
       {userNav.map((item) => {
@@ -41,7 +50,12 @@ export function TopNav({ pathname, items }: { pathname: string; items: readonly 
           </Link>
         );
       })}
-      <MoreMenu items={items} pathname={pathname} active={destinationOf(pathname) === "more"} />
+      <MoreMenu
+        items={items}
+        pathname={pathname}
+        active={destinationOf(pathname) === "more"}
+        unread={unread}
+      />
     </nav>
   );
 }
@@ -64,12 +78,15 @@ export function BottomBar({
   moreOpen,
   onMore,
   moreRef,
+  moreUnread = false,
 }: {
   pathname: string;
   moreOpen: boolean;
   onMore: () => void;
   /** «Más»: where the sheet gives the focus back when it closes. */
   moreRef?: Ref<HTMLButtonElement> | undefined;
+  /** «Más» holds something the reader has not seen yet (Novedades, B6): a dot on its icon. */
+  moreUnread?: boolean;
 }) {
   const inMore = destinationOf(pathname) === "more";
   return (
@@ -113,10 +130,20 @@ export function BottomBar({
             )}
           >
             {inMore ? <ActiveLine /> : null}
-            <MoreHorizontal aria-hidden className="h-5 w-5 shrink-0 short:h-4 short:w-4" />
+            <span className="relative shrink-0">
+              <MoreHorizontal aria-hidden className="h-5 w-5 short:h-4 short:w-4" />
+              {moreUnread ? (
+                <span
+                  aria-hidden
+                  data-testid="tab-more-dot"
+                  className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-gold ring-2 ring-background"
+                />
+              ) : null}
+            </span>
             <span className="max-w-full truncate" data-testid="tab-label">
               {t("nav.more")}
             </span>
+            {moreUnread ? <span className="sr-only">{t("nav.moreUnread")}</span> : null}
           </button>
         </li>
       </ul>

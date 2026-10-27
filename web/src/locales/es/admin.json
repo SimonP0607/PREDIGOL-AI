@@ -269,7 +269,43 @@
     "readers7": "Lectores 7 d",
     "events30": "Eventos 30 d",
     "readers30": "Lectores 30 d",
-    "antiMetrics": "No se optimizan: el tiempo en la app, los picks guardados por lector ni los avisos enviados. El dueño y la cuenta sintética no cuentan."
+    "antiMetrics": "No se optimizan: el tiempo en la app, los picks guardados por lector ni los avisos enviados. El dueño y la cuenta sintética no cuentan.",
+    "feedback": {
+      "title": "Opinión de los lectores",
+      "on": "Encuesta y «¿Te sirvió?» encendidos",
+      "off": "Apagados (FBI_FEEDBACK=0): las respuestas se conservan",
+      "since": "Desde {date}",
+      "period": "Periodo",
+      "days": "{n} días",
+      "n": "Respuestas a la encuesta",
+      "mean": "Media (1 a 5)",
+      "csat": "CSAT (4 y 5)",
+      "low": "Respuestas de 1 o 2",
+      "skipped": "Cerradas sin responder",
+      "atRisk": "Lectores EN RIESGO (2 o menos, 30 días)",
+      "empty": "Todavía no hay respuestas a la encuesta en este periodo.",
+      "small": "Muestra pequeña: con {n} respuestas (menos de {min}) los porcentajes se mueven mucho con cada respuesta.",
+      "scores": "Respuestas por puntuación",
+      "votes": "«¿Te sirvió?» por tipo de lectura",
+      "noVotes": "Todavía no hay votos en este periodo.",
+      "subjectCol": "Qué se leyó",
+      "yes": "Sí",
+      "no": "No",
+      "yesShare": "% sí",
+      "subject": {
+        "reading": "Análisis (datos)",
+        "narrative": "Análisis (narrativa)",
+        "explanation": "Explicación de un pick",
+        "explain": "Respuesta de «Explícame»"
+      },
+      "comments": "Comentarios más recientes (sin quién los escribió)",
+      "noComments": "Todavía no hay comentarios en este periodo.",
+      "trigger": {
+        "analysis_opened": "tras abrir un análisis",
+        "result_seen": "tras ver un resultado"
+      },
+      "nps": "El NPS se añadirá cuando haya más de unas 100 respuestas por trimestre. La opinión mejora el producto y nunca entra en los modelos."
+    }
   },
   "audit": {
     "when": "Cuándo",

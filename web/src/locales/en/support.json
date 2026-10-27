@@ -353,5 +353,92 @@
     },
     "privacyNote": "A privacy request: it is answered with its legal rules (deadline and one extension).",
     "notice": "Answer saved."
+  },
+  "feedback": {
+    "survey": {
+      "question": "How useful was PrediGol to you this month?",
+      "scale": {
+        "1": "Not useful",
+        "2": "Slightly useful",
+        "3": "Somewhat useful",
+        "4": "Useful",
+        "5": "Very useful"
+      },
+      "scaleItem": "{n} of 5: {label}",
+      "comment": {
+        "missing": "What was missing?",
+        "best": "What was most useful?"
+      },
+      "optional": "(optional)",
+      "noPersonal": "No personal data: if you write an email address or a phone number, we remove it.",
+      "send": "Send",
+      "notNow": "Not now",
+      "close": "Close the survey",
+      "note": "One question a month, never required. Your answer helps us improve the app; it changes no forecast and no pick.",
+      "failed": "It could not be sent. Try again.",
+      "thanks": "Thank you!",
+      "thanksBody": "Whatever we change thanks to readers' comments, we will tell you in What's new.",
+      "seeUpdates": "See What's new"
+    },
+    "helpful": {
+      "question": {
+        "analysis": "Was this analysis useful?",
+        "explanation": "Was this explanation useful?",
+        "answer": "Was this answer useful?"
+      },
+      "yes": "Yes",
+      "no": "No",
+      "thanks": "Thank you: it helps us improve what we write.",
+      "thanksNo": "Thank you for telling us.",
+      "tellUs": "Tell us what was missing",
+      "failed": "Your answer could not be saved. Try again."
+    }
+  },
+  "updates": {
+    "title": "What's new",
+    "intro": "What changes in PrediGol, newest first. When a change comes from what readers tell us, we say so.",
+    "fromReaders": "Thanks to readers' comments",
+    "go": {
+      "myPicks": "Go to My picks",
+      "matches": "See the matches",
+      "picks": "See the picks",
+      "profile": "Go to your football",
+      "help": "Go to Help"
+    },
+    "items": {
+      "feedback": {
+        "title": "Your opinion, once a month",
+        "body": "Now and then we will ask you how useful PrediGol was to you (once a month at most, and it can always be skipped), and at the end of every analysis and every pick explanation you can say whether it was useful. Whatever we change thanks to those comments, we will tell you here."
+      },
+      "myPicks": {
+        "title": "My picks, complete",
+        "body": "Everything you saved, by day and with filters; the balance of your results with a notice while they are still too few to draw conclusions; your price against the closing price, and a CSV download of your data."
+      },
+      "postmatch": {
+        "title": "After the match",
+        "body": "When a match ends, its After the match tab shows what PrediGol expected against what happened, how each published pick ended and why, and how what you saved ended."
+      },
+      "whyPick": {
+        "title": "Why this pick?",
+        "body": "Every published pick explains its reasons in layers, the conclusion first, and says its state in words."
+      },
+      "football": {
+        "title": "Your football first",
+        "body": "Follow your leagues and your teams: Home, Matches and Picks start with them. You can change them whenever you like from your profile."
+      },
+      "matchCentre": {
+        "title": "Match centre and PrediGol Analysis",
+        "body": "Every match has its summary, the PrediGol Analysis with the data behind it, statistics, markets, line-ups and verified news with their source. Tap a term to see what it means."
+      },
+      "help": {
+        "title": "Help, profile and the app on your phone",
+        "body": "A help centre with common questions and «Report a problem» from any error; a profile that brings together your account, privacy, security and notices; and PrediGol can be installed on your phone like an app."
+      }
+    },
+    "suggest": {
+      "title": "What would you like to change?",
+      "body": "Tell us: we read every suggestion, and whatever changes thanks to them will show up here.",
+      "action": "Send a suggestion"
+    }
   }
 }

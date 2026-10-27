@@ -39,6 +39,7 @@ import { isAccountPath } from "@/product/auth/accountPaths";
 import { isLimitedPath } from "@/product/membership/membership";
 import { LimitedAccess } from "@/product/membership/LimitedAccess";
 import { noteLocation, startSession, track } from "@/lib/track";
+import { markTrouble } from "@/lib/feedback/session";
 import { TourProvider } from "@/product/tour/Tour";
 import { ReportProblemProvider } from "@/product/support/ReportProblem";
 
@@ -68,6 +69,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
     reportError(error, "root"); // to Sentry, when the server switched it on (plan UX, A2)
+    markTrouble(); // and no monthly survey for the rest of the visit (B6)
   }, [error]);
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">

@@ -353,5 +353,92 @@
     },
     "privacyNote": "Solicitud de privacidad: se responde con sus reglas legales (plazo y una sola prórroga).",
     "notice": "Respuesta guardada."
+  },
+  "feedback": {
+    "survey": {
+      "question": "¿Qué tan útil te resultó PrediGol este mes?",
+      "scale": {
+        "1": "Nada útil",
+        "2": "Poco útil",
+        "3": "Algo útil",
+        "4": "Útil",
+        "5": "Muy útil"
+      },
+      "scaleItem": "{n} de 5: {label}",
+      "comment": {
+        "missing": "¿Qué faltó?",
+        "best": "¿Qué fue lo más útil?"
+      },
+      "optional": "(opcional)",
+      "noPersonal": "Sin datos personales: si escribes un correo o un teléfono, lo quitamos.",
+      "send": "Enviar",
+      "notNow": "Ahora no",
+      "close": "Cerrar la encuesta",
+      "note": "Una pregunta al mes, nunca obligatoria. Tu respuesta nos ayuda a mejorar la app; no cambia ningún pronóstico ni ningún pick.",
+      "failed": "No se pudo enviar. Inténtalo de nuevo.",
+      "thanks": "¡Gracias!",
+      "thanksBody": "Lo que cambiemos gracias a los comentarios de los lectores lo contaremos en Novedades.",
+      "seeUpdates": "Ver Novedades"
+    },
+    "helpful": {
+      "question": {
+        "analysis": "¿Te sirvió este análisis?",
+        "explanation": "¿Te sirvió esta explicación?",
+        "answer": "¿Te sirvió esta respuesta?"
+      },
+      "yes": "Sí",
+      "no": "No",
+      "thanks": "Gracias: nos ayuda a mejorar lo que escribimos.",
+      "thanksNo": "Gracias por decirlo.",
+      "tellUs": "Cuéntanos qué faltó",
+      "failed": "No se pudo guardar tu respuesta. Inténtalo de nuevo."
+    }
+  },
+  "updates": {
+    "title": "Novedades",
+    "intro": "Lo que cambia en PrediGol, lo más reciente primero. Cuando un cambio nace de lo que nos cuentan los lectores, lo decimos.",
+    "fromReaders": "Gracias a los comentarios de los lectores",
+    "go": {
+      "myPicks": "Ir a Mis picks",
+      "matches": "Ver los partidos",
+      "picks": "Ver los picks",
+      "profile": "Ir a tu fútbol",
+      "help": "Ir a Ayuda"
+    },
+    "items": {
+      "feedback": {
+        "title": "Tu opinión, una vez al mes",
+        "body": "De vez en cuando te preguntaremos qué tan útil te resultó PrediGol (como mucho una vez al mes y siempre se puede saltar), y al final de cada análisis y de cada explicación de un pick puedes decir si te sirvió. Lo que cambiemos gracias a esos comentarios lo contaremos aquí."
+      },
+      "myPicks": {
+        "title": "Mis picks, completo",
+        "body": "Todo lo que guardaste, ordenado por día y con filtros; el balance de tus resultados con un aviso cuando todavía son pocos para sacar conclusiones; el valor de tu cuota frente a la de cierre, y la descarga de tus datos en CSV."
+      },
+      "postmatch": {
+        "title": "Postpartido",
+        "body": "Cuando un partido termina, su pestaña Postpartido muestra lo que PrediGol esperaba frente a lo que pasó, cómo terminó cada pick publicado y por qué, y cómo terminó lo que tú guardaste."
+      },
+      "whyPick": {
+        "title": "¿Por qué este pick?",
+        "body": "Cada pick publicado explica sus razones por capas, con la conclusión primero, y dice su estado en palabras."
+      },
+      "football": {
+        "title": "Tu fútbol primero",
+        "body": "Sigue tus ligas y tus equipos: Inicio, Partidos y Picks empiezan por ellos. Puedes cambiarlos cuando quieras desde tu perfil."
+      },
+      "matchCentre": {
+        "title": "Centro de partido y Análisis PrediGol",
+        "body": "Cada partido tiene su resumen, el Análisis PrediGol con los datos que lo sostienen, estadísticas, mercados, alineaciones y noticias verificadas con su fuente. Toca un término para ver qué significa."
+      },
+      "help": {
+        "title": "Ayuda, perfil y la app en tu teléfono",
+        "body": "Un centro de ayuda con preguntas frecuentes y «Reportar un problema» desde cualquier error; un perfil que reúne tu cuenta, privacidad, seguridad y avisos; y PrediGol se puede instalar en el teléfono como una app."
+      }
+    },
+    "suggest": {
+      "title": "¿Qué te gustaría que cambiara?",
+      "body": "Cuéntanoslo: leemos cada sugerencia, y lo que cambie gracias a ellas aparecerá aquí.",
+      "action": "Enviar una sugerencia"
+    }
   }
 }

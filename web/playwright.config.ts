@@ -33,6 +33,9 @@
  *   mypicks   Mis picks completo on a reader with more than 600 saved picks: «Todo» page by page, the filters, totals and
  *             breakdown against SQL, the sample, the line value and the CSV (E2E_MYPICKS=1, the QA stack with
  *             QA_MYPICKS=1: seed_b5.py; E2E_DATABASE_URL for the readers' saved picks)
+ *   feedback  the monthly survey (once in 30 days, never after an error, by keyboard, at 320 px), «¿Te sirvió?» saved with
+ *             its context, Novedades and /admin/product (E2E_FEEDBACK=1, the QA stack with QA_PICK_STATES=1;
+ *             E2E_DATABASE_URL for the readers' answers; E2E_FEEDBACK_OFF=1 against FBI_FEEDBACK=0)
  *   a11y      axe-core on the sign-in page and the product, WCAG 2.2 A/AA (E2E_A11Y=1)
  *   screens   reference screenshots of the product at 320/360/390/412/430 px (E2E_SCREENS=1)
  * A full run loads a few hundred pages: the API's per-client limit must allow it
@@ -247,6 +250,19 @@ export default defineConfig({
           {
             name: "mypicks",
             testMatch: /mypicks\.spec\.ts/,
+            use: desktop,
+            dependencies: ["setup"],
+          },
+        ]
+      : []),
+    ...(process.env["E2E_FEEDBACK"] || process.env["E2E_FEEDBACK_OFF"]
+      ? [
+          // What readers think (plan UX, B6): the monthly survey, «¿Te sirvió?», Novedades and the owner's view, on readers
+          // the test makes (aged past their first week in the QA database, E2E_DATABASE_URL); the QA stack with
+          // QA_PICK_STATES=1 for an explanation to vote on. E2E_FEEDBACK_OFF=1 against FBI_FEEDBACK=0.
+          {
+            name: "feedback",
+            testMatch: /feedback\.spec\.ts/,
             use: desktop,
             dependencies: ["setup"],
           },

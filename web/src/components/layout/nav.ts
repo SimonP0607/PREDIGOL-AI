@@ -5,8 +5,8 @@
  *
  * The product has five destinations (plan UX, A15, section 36): Inicio, Partidos, Picks, Mis picks and «Más» - on
  * the phone's bottom bar and in the desk's top bar alike. En vivo is a filter of Partidos and its board (/live) stays
- * at its address, under Partidos; Parlays, Cuotas, Transparencia, Ayuda, Perfil and Glosario live in «Más». No
- * address changed.
+ * at its address, under Partidos; Parlays, Cuotas, Transparencia, Ayuda, Perfil, Glosario and Novedades live in «Más».
+ * No address changed.
  */
 import {
   Activity,
@@ -27,6 +27,7 @@ import {
   LineChart,
   ListChecks,
   Mail,
+  Megaphone,
   Radar,
   ScanSearch,
   ScrollText,
@@ -67,7 +68,7 @@ export interface MoreItem extends NavItem {
   transparency?: boolean;
 }
 
-/** What «Más» holds, in the plan's order (section 36). Novedades joins with B6. */
+/** What «Más» holds, in the plan's order (section 36): Novedades, since B6, after Glosario. */
 export const moreNav: MoreItem[] = [
   {
     to: "/parlays",
@@ -112,7 +113,17 @@ export const moreNav: MoreItem[] = [
     icon: BookOpen,
     testId: "more-glossary",
   },
+  {
+    to: "/updates",
+    label: "nav.updates",
+    hint: "nav.moreHint.updates",
+    icon: Megaphone,
+    testId: "more-updates",
+  },
 ];
+
+/** Novedades: «Más» carries a dot while it holds an entry the reader has not seen (plan UX, B6). */
+export const UPDATES_PATH = "/updates";
 
 /** The items of «Más» this reader sees. */
 export function moreItems(showTransparency: boolean): MoreItem[] {

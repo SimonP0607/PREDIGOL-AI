@@ -2,7 +2,8 @@
  * Product analytics (plan UX, A6 and section 39): activation, habit, usage by function, devices and errors, from the
  * readers' events of the closed catalog. Global figures only with enough readers active in 30 days (20 by default):
  * below that, the page says how many there are and nothing else. The owner and the synthetic account are never
- * counted. Anti-metrics - time in the app, picks saved per reader, notices sent - are not shown to be optimised.
+ * counted. Anti-metrics - time in the app, picks saved per reader, notices sent - are not shown to be optimised. Under
+ * them, what readers think (B6): the monthly survey with its n, «¿Te sirvió?» and the comments.
  */
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, Loader2, RefreshCw } from "lucide-react";
@@ -13,6 +14,7 @@ import { t, translateOr } from "@/lib/i18n";
 import { fmtInt } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { Card, ErrorState } from "@/product/shared/States";
+import { FeedbackCard } from "./FeedbackCard";
 
 function Figure({ label, value, testId }: { label: string; value: string; testId?: string }) {
   return (
@@ -153,6 +155,8 @@ export function ProductPage() {
           </>
         )}
       </Card>
+      {/* What readers think of PrediGol: the monthly survey, «¿Te sirvió?» and the comments (plan UX, B6). */}
+      <FeedbackCard />
     </div>
   );
 }

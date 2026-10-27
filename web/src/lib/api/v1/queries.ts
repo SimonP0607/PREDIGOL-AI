@@ -2,6 +2,7 @@
 import { infiniteQueryOptions } from "@tanstack/react-query";
 import { filterParams, v1, type BestOddsQuery, type MatchQuery } from "./client";
 import type { MyPicksFilter } from "./types_mypicks";
+import type { FeedbackSubject } from "./types_feedback";
 import type { ParlayKind, PicksQuery } from "./types_product";
 import type { BuilderQuery } from "./types_builder";
 import type { HistoryPeriod } from "./types_records";
@@ -29,6 +30,20 @@ export const live = {
    * (found by A16's journey: the receipt's «Ver mi mensaje» within a minute of the owner's answer).
    */
   support: { queryKey: ["me", "support"], queryFn: v1.mySupport, staleTime: 0 },
+  /** Whether the monthly survey is owed (plan UX, B6): read once per visit; an answer or a skip reads it again. */
+  survey: { queryKey: ["me", "feedback", "survey"], queryFn: v1.mySurvey, staleTime: 30 * MINUTE },
+  /** The reader's «¿Te sirvió?» on one thing read. */
+  helpfulVote: (subject: FeedbackSubject, subjectId: number) => ({
+    queryKey: ["me", "feedback", "helpful", subject, subjectId],
+    queryFn: () => v1.myHelpfulVote(subject, subjectId),
+    staleTime: 30 * MINUTE,
+  }),
+  /** The newest entry of Novedades the reader has seen: «Más» marks a newer one. */
+  updatesSeen: {
+    queryKey: ["me", "updates", "seen"],
+    queryFn: v1.myUpdatesSeen,
+    staleTime: 30 * MINUTE,
+  },
   /**
    * The account centre (plan UX, B1): what the profile's eight blocks say folded. Read again whenever the profile opens
    * (staleTime 0) and after a change in one of its blocks.

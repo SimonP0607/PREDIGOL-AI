@@ -54,6 +54,7 @@ import { PicksSummaryBlock } from "./PicksSummary";
 import { lineValueText } from "./picksText";
 import { track } from "@/lib/track";
 import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
+import { useUsefulMoment } from "@/product/feedback/moments";
 
 const PERIODS: readonly HistoryPeriod[] = ["today", "7d", "30d", "all"];
 
@@ -512,6 +513,11 @@ function SavedPicks() {
   });
   const summary = useQuery({ ...live.myPicksSummary(api), placeholderData: keepPreviousData });
   const picks = pages.data?.pages.flatMap((p) => p.data) ?? [];
+  // a result of one's own seen: a useful moment, after which the monthly survey may come (plan UX, B6)
+  useUsefulMoment(
+    "result_seen",
+    picks.some((p) => p.status !== "PENDING"),
+  );
   const total = pages.data?.pages[0]?.meta.total ?? picks.length;
   const filtered = activeCount(filter) > 0;
   const options = summary.data?.data.options;

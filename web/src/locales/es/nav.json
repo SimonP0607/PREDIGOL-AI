@@ -8,6 +8,7 @@
   "myPicks": "Mis picks",
   "profile": "Perfil",
   "glossary": "Glosario",
+  "updates": "Novedades",
   "adminConsole": "Admin Console",
   "backToApp": "Volver a la app",
   "previewAsUser": "Ver como usuario",
@@ -28,7 +29,8 @@
     "transparency": "Cómo le va a PrediGol",
     "help": "Preguntas frecuentes, tus mensajes y contacto",
     "profile": "Cuenta, membresía, avisos y privacidad",
-    "glossary": "Qué significa cada palabra"
+    "glossary": "Qué significa cada palabra",
+    "updates": "Lo que cambió en PrediGol"
   },
   "install": {
     "label": "Instalar PrediGol",
@@ -37,5 +39,7 @@
     "android": "En Android, con Chrome: toca Más (⋮) junto a la barra de direcciones y elige «Instalar y crear acceso directo» (o «Agregar a la pantalla principal»).",
     "other": "En un computador, con Chrome o Edge: usa el icono de instalar de la barra de direcciones.",
     "after": "Instalada, se abre desde su icono, a pantalla completa y con tu misma cuenta. Se actualiza sola: cuando haya una versión nueva, PrediGol te lo dirá."
-  }
+  },
+  "unread": "sin leer",
+  "moreUnread": "hay novedades"
 }

@@ -28,6 +28,7 @@ import {
 import { Disclaimer } from "@/components/system/Disclaimer";
 import { ProbCompare } from "@/product/shared/Bits";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
+import { HelpfulVote } from "@/product/feedback/HelpfulVote";
 import { UserStatusBadge } from "@/product/shared/UserStatusBadge";
 import { reasonText } from "@/product/shared/userStatus";
 import { useTransparencyOpen } from "@/product/transparency/useTransparencyOpen";
@@ -124,7 +125,11 @@ function WhyPickContent({ pickId }: { pickId: number }) {
       ) : q.isError || !e ? (
         <ErrorState error={q.error} onRetry={() => void q.refetch()} className="py-5" />
       ) : (
-        <PickExplanationView e={e} transparency={transparency} />
+        <PickExplanationView
+          e={e}
+          transparency={transparency}
+          footer={<HelpfulVote subject="explanation" subjectId={pickId} />}
+        />
       )}
     </div>
   );
@@ -165,10 +170,13 @@ function Lines({ lines, testId }: { lines: string[]; testId: string }) {
 export function PickExplanationView({
   e,
   transparency = false,
+  footer,
 }: {
   e: PickExplanation;
   /** «Cómo le va a PrediGol» is open to this account: layer 5 links to it. */
   transparency?: boolean;
+  /** After the layers, before the notice that closes it: «¿Te sirvió?» (plan UX, B6). */
+  footer?: ReactNode;
 }) {
   const conclusionId = useId();
   const context = contextLines(e);
@@ -258,6 +266,7 @@ export function PickExplanationView({
           ) : null}
         </Fold>
       </div>
+      {footer}
       <Disclaimer className="border-t border-border pt-3 text-center text-caption text-muted-foreground" />
     </div>
   );

@@ -2,8 +2,9 @@
 /**
  * The product's navigation (plan UX, A15, section 36), without a browser: five destinations - Inicio, Partidos, Picks,
  * Mis picks and «Más» - on the phone's bar and the desk's alike; En vivo held by Partidos, whose board keeps its
- * address; «Más» with Parlays, Cuotas, Transparencia (once it is open to readers), Ayuda, Perfil and Glosario in the
- * plan's order, the install steps outside the installed app, and «Cerrar sesión»; labels of 12 px in both languages. The
+ * address; «Más» with Parlays, Cuotas, Transparencia (once it is open to readers), Ayuda, Perfil, Glosario and Novedades
+ * (with its dot while unread, B6) in the plan's order, the install steps outside the installed app, and «Cerrar sesión»;
+ * labels of 12 px in both languages. The
  * browser half (whole at 320 px, 44 px, two taps to Perfil and Ayuda, WebKit) is e2e/responsive.spec.ts.
  */
 import { afterAll, describe, expect, test } from "bun:test";
@@ -18,7 +19,15 @@ import {
 import { setLocale, t } from "@/lib/i18n";
 import { BottomBar, TopNav } from "./Bars";
 import { InstallSteps, MoreList } from "./MoreSheet";
-import { currentMore, destinationOf, holds, moreItems, moreNav, userNav } from "./nav";
+import {
+  currentMore,
+  destinationOf,
+  holds,
+  moreItems,
+  moreNav,
+  UPDATES_PATH,
+  userNav,
+} from "./nav";
 
 afterAll(() => setLocale("es"));
 
@@ -77,7 +86,9 @@ describe("five destinations", () => {
       "/help",
       "/profile",
       "/help/glossary",
+      "/updates",
     ]);
+    expect(UPDATES_PATH).toBe("/updates");
     expect(moreItems(false).map((i) => i.to)).not.toContain("/transparency");
     expect(moreItems(true).map((i) => i.to)).toContain("/transparency");
   });
@@ -105,6 +116,8 @@ describe("five destinations", () => {
         "nav.install.android",
         "nav.install.other",
         "nav.install.after",
+        "nav.unread",
+        "nav.moreUnread",
       ]) {
         expect([locale, key, t(key)]).not.toEqual([locale, key, key]);
       }
@@ -190,6 +203,7 @@ describe("«Más»", () => {
       "more-help",
       "more-profile",
       "more-glossary",
+      "more-updates",
     ].map((id) => out.indexOf(`data-testid="${id}"`));
     expect(order.every((at) => at >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
@@ -197,6 +211,39 @@ describe("«Más»", () => {
     expect(tag(out, "more-help")).not.toContain("aria-current");
     expect(tag(out, "more-profile")).toContain("min-h-14");
     expect(tag(out, "more-sign-out")).toContain("min-h-12");
+  });
+
+  test("Novedades carries a dot while it holds an entry the reader has not seen - with its words for a screen reader", async () => {
+    setLocale("es");
+    const seen = await list("/home");
+    expect(seen).not.toContain('data-testid="unread-dot"');
+    const unread = await html(
+      <MoreList
+        items={moreItems(true)}
+        pathname="/home"
+        standalone={false}
+        platform="android"
+        onPick={() => {}}
+        onSignOut={() => {}}
+        unread={[UPDATES_PATH]}
+      />,
+    );
+    const row = /<a[^>]*data-testid="more-updates"[\s\S]*?<\/a>/.exec(unread)?.[0] ?? "";
+    expect(row).toContain('data-testid="unread-dot"');
+    expect(row).toContain("sin leer");
+    expect([...unread.matchAll(/data-testid="unread-dot"/g)]).toHaveLength(1);
+    const bar = await html(
+      <BottomBar pathname="/home" moreOpen={false} onMore={() => {}} moreUnread />,
+    );
+    expect(bar).toContain('data-testid="tab-more-dot"');
+    expect(bar).toContain("hay novedades");
+    const quiet = await html(<BottomBar pathname="/home" moreOpen={false} onMore={() => {}} />);
+    expect(quiet).not.toContain('data-testid="tab-more-dot"');
+    const top = await html(
+      <TopNav pathname="/home" items={moreItems(true)} unread={[UPDATES_PATH]} />,
+    );
+    expect(tag(top, "nav-more")).toBeTruthy();
+    expect(top).toMatch(/data-testid="nav-more"[\s\S]*?data-testid="unread-dot"/);
   });
 
   test("Transparencia waits for the owner; the install steps are not offered inside the installed app", async () => {

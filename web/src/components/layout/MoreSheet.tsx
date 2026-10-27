@@ -1,8 +1,9 @@
 /**
  * «Más» (plan UX, A15, section 36): what does not fit in the five cells of the bar, one tap from any screen - Parlays,
- * Cuotas, Transparencia (once it is open to readers), Ayuda, Perfil and Glosario, then «Instalar PrediGol» with the
+ * Cuotas, Transparencia (once it is open to readers), Ayuda, Perfil, Glosario and Novedades, then «Instalar PrediGol» with the
  * basic steps for this device (section 35; the guided install with Android's own prompt is B7's) and «Cerrar sesión»,
- * which revokes the session on the server as the account menu does. Novedades joins with B6.
+ * which revokes the session on the server as the account menu does. Novedades (B6) carries a dot while it holds an
+ * entry the reader has not seen.
  *
  * On a phone and a tablet it is a sheet that comes up from the bottom, under the thumb; at a desk (the top bar from
  * 1024 px) it is a menu under «Más». The list itself (MoreList) takes everything it shows as props, so it renders
@@ -28,8 +29,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { currentMore, type MoreItem } from "./nav";
+import { currentMore, UPDATES_PATH, type MoreItem } from "./nav";
 import { useMoreItems } from "./useMoreItems";
+import { useUpdatesUnread } from "./useUpdatesUnread";
 
 /** «Instalar PrediGol»: the basic steps, this device's first (an iPhone has no install prompt of its own). */
 export function InstallSteps({
@@ -85,6 +87,20 @@ export function InstallSteps({
   );
 }
 
+/** Something not seen yet: a gold dot, and the words for a screen reader. */
+export function UnreadDot({ label = "nav.unread" }: { label?: string }) {
+  return (
+    <>
+      <span
+        aria-hidden
+        className="h-2 w-2 shrink-0 rounded-full bg-gold"
+        data-testid="unread-dot"
+      />
+      <span className="sr-only">{t(label)}</span>
+    </>
+  );
+}
+
 /** The rows of «Más», then the install steps (not inside the installed app) and «Cerrar sesión». */
 export function MoreList({
   items,
@@ -93,6 +109,7 @@ export function MoreList({
   platform,
   onPick,
   onSignOut,
+  unread = [],
 }: {
   items: readonly MoreItem[];
   pathname: string;
@@ -101,6 +118,8 @@ export function MoreList({
   platform: InstallPlatform;
   onPick: () => void;
   onSignOut: () => void;
+  /** The rows with something the reader has not seen yet (Novedades, B6): a dot. */
+  unread?: readonly string[] | undefined;
 }) {
   const current = currentMore(pathname, items);
   return (
@@ -127,7 +146,10 @@ export function MoreList({
                     className={cn("h-5 w-5 shrink-0", here ? "text-gold" : "text-muted-foreground")}
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium">{t(item.label)}</span>
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      {t(item.label)}
+                      {unread.includes(item.to) ? <UnreadDot /> : null}
+                    </span>
                     <span className="block text-caption text-muted-foreground">{t(item.hint)}</span>
                   </span>
                   <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-subtle-foreground" />
@@ -167,6 +189,7 @@ export function MoreSheet({
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const items = useMoreItems();
+  const unread = useUpdatesUnread();
   // closed by one of its rows: the reader went on to that page, so the focus does not jump back to the bar
   const picked = useRef(false);
   return (
@@ -195,6 +218,7 @@ export function MoreSheet({
           pathname={pathname}
           standalone={isStandalone()}
           platform={installPlatform()}
+          unread={unread ? [UPDATES_PATH] : []}
           onPick={() => {
             picked.current = true;
             onOpenChange(false);
@@ -214,12 +238,16 @@ export function MoreMenu({
   items,
   pathname,
   active,
+  unread = [],
 }: {
   items: readonly MoreItem[];
   pathname: string;
   active: boolean;
+  /** The rows with something the reader has not seen yet (Novedades, B6): a dot on them and on «Más». */
+  unread?: readonly string[] | undefined;
 }) {
   const current = currentMore(pathname, items);
+  const marked = items.some((item) => unread.includes(item.to));
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -230,6 +258,7 @@ export function MoreMenu({
         )}
       >
         {t("nav.more")}
+        {marked ? <UnreadDot label="nav.moreUnread" /> : null}
         <ChevronDown aria-hidden className="h-3.5 w-3.5" />
         {active ? (
           <span
@@ -255,7 +284,10 @@ export function MoreMenu({
               >
                 <Icon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0">
-                  <span className="block font-medium">{t(item.label)}</span>
+                  <span className="flex items-center gap-2 font-medium">
+                    {t(item.label)}
+                    {unread.includes(item.to) ? <UnreadDot /> : null}
+                  </span>
                   <span className="block text-caption text-muted-foreground">{t(item.hint)}</span>
                 </span>
               </Link>

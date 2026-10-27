@@ -5,6 +5,7 @@ import { AlertTriangle, ChevronRight, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t, translateOr } from "@/lib/i18n";
 import { LiveApiError } from "@/lib/api/v1/client";
+import { markTrouble } from "@/lib/feedback/session";
 import { track } from "@/lib/track";
 import { useReportProblem } from "@/product/support/report";
 
@@ -128,9 +129,10 @@ export function ErrorState({
   const status = error instanceof LiveApiError ? error.status : 0;
   // Plan UX, A14: from every error, «Reportar un problema» with this error's reference (never on the owner's console).
   const report = useReportProblem();
-  // Plan UX, A6: which errors readers see (the code and the status, never the message).
+  // Plan UX, A6: which errors readers see (the code and the status, never the message); B6: and after one, no survey.
   useEffect(() => {
     track("error_shown", { code: /^[A-Za-z0-9_.+-]{1,40}$/.test(code) ? code : "other", status });
+    markTrouble();
   }, [code, status]);
   return (
     <div

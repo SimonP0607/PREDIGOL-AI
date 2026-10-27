@@ -23,6 +23,8 @@ import type {
   ReadingSection,
 } from "@/lib/api/v1/types_reading";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
+import { useUsefulMoment } from "@/product/feedback/moments";
+import { HelpfulVote } from "@/product/feedback/HelpfulVote";
 import type { MatchCtx } from "@/product/match/context";
 import { factText } from "./text";
 import { useReading, type ReadingLoad } from "./useReading";
@@ -280,9 +282,12 @@ function ToPostmatch({ onClick }: { onClick: () => void }) {
 export function ReadingView({
   load,
   afterMatch,
+  footer,
 }: {
   load: ReadingLoad;
   afterMatch?: (() => void) | undefined;
+  /** The end of a reading shown: «¿Te sirvió?» (plan UX, B6). */
+  footer?: ReactNode;
 }) {
   const titleId = useId();
   if (load.status === "pending") {
@@ -341,6 +346,7 @@ export function ReadingView({
         }
       >
         <NarrativeBody narrative={narrative} priced={priced} />
+        {footer}
         {afterMatch ? <ToPostmatch onClick={afterMatch} /> : null}
       </Frame>
     );
@@ -372,17 +378,33 @@ export function ReadingView({
       {reading.sections.map((s) => (
         <SectionView key={s.key} section={s} />
       ))}
+      {footer}
       {afterMatch ? <ToPostmatch onClick={afterMatch} /> : null}
     </Frame>
   );
 }
 
-/** The Análisis tab's block: once the match is over, it ends with the way to the Postpartido. */
+/**
+ * The Análisis tab's block: once the match is over, it ends with the way to the Postpartido. A reading shown is a useful
+ * moment (the monthly survey may follow, B6) and ends with «¿Te sirvió?» about it - the narrative's, or the facts'.
+ */
 export function ReadingBlock({ ctx }: { ctx: MatchCtx }) {
+  const load = useReading(ctx);
+  const reading =
+    load.status === "success" && load.envelope.status === "ok" ? load.envelope.data : null;
+  useUsefulMoment("analysis_opened", reading !== null);
   return (
     <ReadingView
-      load={useReading(ctx)}
+      load={load}
       afterMatch={ctx.phase === "finished" ? () => ctx.goTo("postmatch") : undefined}
+      footer={
+        reading ? (
+          <HelpfulVote
+            subject={reading.narrative ? "narrative" : "reading"}
+            subjectId={reading.fixture_id}
+          />
+        ) : null
+      }
     />
   );
 }

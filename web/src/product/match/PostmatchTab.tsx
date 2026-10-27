@@ -33,6 +33,7 @@ import {
   outcomeText,
   type Sides,
 } from "./postmatch";
+import { useUsefulMoment } from "@/product/feedback/moments";
 import { KnowledgeBlock } from "./KnowledgeBlock";
 import { PicksTab } from "./PicksTab";
 import { ResultBlock } from "./SummaryTab";
@@ -263,6 +264,8 @@ function MyPicksLink() {
 
 export function PostmatchTab({ ctx }: { ctx: MatchCtx }) {
   const preview = usePreviewParam();
+  // a result seen: a useful moment, after which the monthly survey may come (plan UX, B6)
+  useUsefulMoment("result_seen", ctx.phase === "finished");
   // GET /matches/{id}/postmatch: what the reader saved, and how and why each published pick ended (plan UX, B4). Nothing of it
   // while the owner keeps the after-match from readers (FBI_KNOWLEDGE_USERS=0): the base blocks say what there is.
   const q = useQuery(live.matchPostmatch(ctx.fixtureId, preview));
