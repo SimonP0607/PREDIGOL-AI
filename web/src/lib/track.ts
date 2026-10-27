@@ -101,7 +101,20 @@ export const EVENTS = {
     props: {
       channel: { enum: ["email", "push"] },
       category: {
-        enum: ["account", "security", "membership", "support", "privacy", "legal", "match"],
+        enum: [
+          "account",
+          "security",
+          "membership",
+          "support",
+          "privacy",
+          "legal",
+          "match",
+          "result",
+          "lineup",
+          "digest",
+          "reminder",
+          "device",
+        ],
       },
     },
   },
@@ -110,7 +123,20 @@ export const EVENTS = {
     source: "web",
     props: {
       category: {
-        enum: ["account", "security", "membership", "support", "privacy", "legal", "match"],
+        enum: [
+          "account",
+          "security",
+          "membership",
+          "support",
+          "privacy",
+          "legal",
+          "match",
+          "result",
+          "lineup",
+          "digest",
+          "reminder",
+          "device",
+        ],
       },
     },
   },
@@ -120,7 +146,20 @@ export const EVENTS = {
     props: {
       channel: { enum: ["email", "push"] },
       category: {
-        enum: ["account", "security", "membership", "support", "privacy", "legal", "match"],
+        enum: [
+          "account",
+          "security",
+          "membership",
+          "support",
+          "privacy",
+          "legal",
+          "match",
+          "result",
+          "lineup",
+          "digest",
+          "reminder",
+          "device",
+        ],
       },
     },
   },
@@ -260,8 +299,16 @@ export function noteLocation(pathname: string): void {
 
 export type Origin = PropsOf<"match_opened">["origin"];
 
+/** The page a tapped notice opened (plan UX, B7: sw.js marks it ?notice=…): its match_opened comes from the notice. */
+const FROM_NOTICE = "\u0000notice";
+
+export function noteNoticeLanding(): void {
+  previousPath = FROM_NOTICE;
+}
+
 export function originOf(path: string | null = previousPath): NonNullable<Origin> {
   if (path === null) return "direct";
+  if (path === FROM_NOTICE) return "notification";
   if (path === "/home" || path === "/") return "home";
   if (path === "/matches") return "matches";
   if (path === "/live") return "live";

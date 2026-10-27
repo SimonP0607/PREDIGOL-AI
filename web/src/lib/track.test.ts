@@ -7,7 +7,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { EVENTS, deviceOf, originOf, validEvent } from "./track";
+import { EVENTS, deviceOf, noteLocation, noteNoticeLanding, originOf, validEvent } from "./track";
 
 const BACKEND = join(
   import.meta.dir,
@@ -60,6 +60,12 @@ describe("the catalog of product events", () => {
     expect(originOf("/home")).toBe("home");
     expect(originOf("/my-picks")).toBe("my_picks");
     expect(originOf("/matches/12")).toBe("other");
+    // Plan UX, B7: the page a tapped notice opened says so; the next page says where the reader came from
+    noteLocation("/matches/12");
+    noteNoticeLanding();
+    expect(originOf()).toBe("notification");
+    noteLocation("/my-picks");
+    expect(originOf()).toBe("other");
     expect([deviceOf(320), deviceOf(767), deviceOf(768), deviceOf(1024), deviceOf(1025)]).toEqual([
       "phone",
       "phone",
