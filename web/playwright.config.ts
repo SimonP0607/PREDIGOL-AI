@@ -30,6 +30,9 @@
  *             stack with QA_PICK_STATES=1: seed_b3.py and the AI's review applied)
  *   postmatch the Postpartido of QA's finished match with its picks explained (E2E_POSTMATCH=1, the QA stack with
  *             QA_POSTMATCH=1: seed_b4.py; E2E_DATABASE_URL for the reader's saved picks)
+ *   mypicks   Mis picks completo on a reader with more than 600 saved picks: «Todo» page by page, the filters, totals and
+ *             breakdown against SQL, the sample, the line value and the CSV (E2E_MYPICKS=1, the QA stack with
+ *             QA_MYPICKS=1: seed_b5.py; E2E_DATABASE_URL for the readers' saved picks)
  *   a11y      axe-core on the sign-in page and the product, WCAG 2.2 A/AA (E2E_A11Y=1)
  *   screens   reference screenshots of the product at 320/360/390/412/430 px (E2E_SCREENS=1)
  * A full run loads a few hundred pages: the API's per-client limit must allow it
@@ -232,6 +235,18 @@ export default defineConfig({
           {
             name: "postmatch",
             testMatch: /postmatch\.spec\.ts/,
+            use: desktop,
+            dependencies: ["setup"],
+          },
+        ]
+      : []),
+    ...(process.env["E2E_MYPICKS"]
+      ? [
+          // Mis picks completo (plan UX, B5): QA's world of 330 finished matches (seed_b5.py on fbi_qa_relm, the QA stack with
+          // QA_MYPICKS=1) and two readers the test makes, with their saved picks written into the QA database (E2E_DATABASE_URL).
+          {
+            name: "mypicks",
+            testMatch: /mypicks\.spec\.ts/,
             use: desktop,
             dependencies: ["setup"],
           },
