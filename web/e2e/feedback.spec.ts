@@ -23,7 +23,15 @@
  */
 import { execFileSync } from "node:child_process";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, request, test, type APIRequestContext, type Page } from "@playwright/test";
+import {
+  devices,
+  expect,
+  request,
+  test,
+  type APIRequestContext,
+  type Browser,
+  type Page,
+} from "@playwright/test";
 import { statePath } from "./accounts";
 import { L, getJson, sendJson, skipWelcome, smallTargets } from "./support";
 
@@ -92,6 +100,19 @@ test.afterAll(async () => {
   }
   await admin.dispose();
 });
+
+/** A 320 px touch phone (pointer: coarse, as the plan's phones; the 44 px targets count the "tap" widening), in the project's language. */
+async function phone(browser: Browser): Promise<{ page: Page; close: () => Promise<void> }> {
+  const context = await browser.newContext({
+    ...devices["Pixel 7"],
+    viewport: PHONE,
+    baseURL: BASE,
+    locale: "es-ES",
+    timezoneId: "America/Bogota",
+  });
+  const page = await context.newPage();
+  return { page, close: () => context.close() };
+}
 
 async function signIn(page: Page, email: string): Promise<void> {
   await page.goto("/login");
@@ -259,9 +280,9 @@ test.describe("FBI_FEEDBACK on", () => {
   });
 
   test("on a 320 px phone: a card over the page's foot, above the tab bar, 44 px targets; «Ahora no» closes it in one tap for 30 days", async ({
-    page,
+    browser,
   }) => {
-    await page.setViewportSize(PHONE);
+    const { page, close } = await phone(browser);
     const reader = await account("phone");
     await signIn(page, reader.email);
     const fixture = await finishedMatch(page);
@@ -292,6 +313,7 @@ test.describe("FBI_FEEDBACK on", () => {
       `csat_skipped||||||{"route": "/matches/${fixture}", "trigger": "result_seen"}`,
     ]);
     expect((await survey(page)).due, "closed: not for 30 days").toBe(false);
+    await close();
   });
 
   test("never after an error: a visit where something failed does not bring it, even owed; and never in an account's first week", async ({
@@ -425,9 +447,9 @@ test.describe("FBI_FEEDBACK on", () => {
   });
 
   test("Novedades: a dot on «Más» while an entry is unread; opening it marks the newest seen and the dot goes", async ({
-    page,
+    browser,
   }) => {
-    await page.setViewportSize(PHONE);
+    const { page, close } = await phone(browser);
     const reader = await account("updates", true);
     await signIn(page, reader.email);
     const more = page.getByTestId("tab-more");
@@ -464,6 +486,7 @@ test.describe("FBI_FEEDBACK on", () => {
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       ),
     ).toBeLessThanOrEqual(1);
+    await close();
   });
 
   test("/admin/product: the survey with its n and the comments - never who wrote them", async ({
@@ -472,7 +495,9 @@ test.describe("FBI_FEEDBACK on", () => {
     const context = await browser.newContext({
       storageState: statePath("admin"),
       viewport: DESK,
-      locale: "es-CO",
+      baseURL: BASE,
+      locale: "es-ES",
+      timezoneId: "America/Bogota",
     });
     const page = await context.newPage();
     const answers = Number(
