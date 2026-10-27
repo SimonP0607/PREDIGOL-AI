@@ -84,9 +84,9 @@ def test_the_switch_is_born_off(monkeypatch: pytest.MonkeyPatch, raw: str | None
                                            ("1", "on"), ("off", "off"), ("whatever", "dry")])
 def test_the_purge_is_born_dry(monkeypatch: pytest.MonkeyPatch, raw: str | None, mode: str) -> None:
     if raw is None:
-        monkeypatch.delenv("FBI_TOKENS_PURGE", raising=False)
+        monkeypatch.delenv("FBI_LINKS_PURGE", raising=False)
     else:
-        monkeypatch.setenv("FBI_TOKENS_PURGE", raw)
+        monkeypatch.setenv("FBI_LINKS_PURGE", raw)
     assert tokens.purge_mode() == mode
 
 
