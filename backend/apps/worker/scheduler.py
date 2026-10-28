@@ -106,8 +106,9 @@ NEAR_CLOSE_SPAN_MINUTES = 2 * NEAR_CLOSE_TOLERANCE_MINUTES
 """Width of the near-close opportunity: the planner accepts a fixture within that many
 minutes either side of the configured window."""
 
-TICK_MINUTES = int(os.environ.get(
-    "FBI_ODDS_TICK_MINUTES", str(max(1, NEAR_CLOSE_SPAN_MINUTES - 1))))
+TICK_MINUTES = int(
+    os.environ.get("FBI_ODDS_TICK_MINUTES", str(max(1, NEAR_CLOSE_SPAN_MINUTES - 1)))
+)
 """How often the capture tick runs, and it cannot be coarser than the near-close window.
 
 It was 15 minutes against a 6-minute window, so the closing price was captured on about
@@ -123,8 +124,9 @@ FIXTURES_SYNC_HOURS = int(os.environ.get("FBI_FIXTURES_SYNC_HOURS", "6" if PAID_
 """Every current season's whole fixture list, one request each (~124 a run). Six hours, not
 twelve: a cup draw published in the morning reached the database at the next run, and a
 match announced 3 days out had already missed its T-72h price window."""
-FIXTURES_HORIZON_DAYS = int(os.environ.get(
-    "FBI_FIXTURES_HORIZON_DAYS", str(DEFAULT_HORIZON_DAYS) if PAID_PLAN else "1"))
+FIXTURES_HORIZON_DAYS = int(
+    os.environ.get("FBI_FIXTURES_HORIZON_DAYS", str(DEFAULT_HORIZON_DAYS) if PAID_PLAN else "1")
+)
 """Four days was the Free-plan figure, kept after the upgrade by oversight.
 
 Prices were measured at T-18.2 days, so a four-day horizon meant a fixture ten days
@@ -174,8 +176,9 @@ Data Quality page showed whatever the last manual run found - two days old after
 the machine was off."""
 BACKFILL_HOURS = int(os.environ.get("FBI_BACKFILL_HOURS", "1" if PAID_PLAN else "6"))
 BACKFILL_MAX_PER_RUN = int(os.environ.get("FBI_BACKFILL_MAX_PER_RUN", "1500" if PAID_PLAN else "6"))
-LIVE_TICK_SECONDS = int(os.environ.get(
-    "FBI_LIVE_TICK_SECONDS", str(wake_interval(POLL_FLOOR_SECONDS))))
+LIVE_TICK_SECONDS = int(
+    os.environ.get("FBI_LIVE_TICK_SECONDS", str(wake_interval(POLL_FLOOR_SECONDS)))
+)
 """How often the live job WAKES. How often it CALLS is the cadence's decision.
 
 HALF the 30 s capture interval, and the halving is the point. The provider's
@@ -190,8 +193,7 @@ this reason, and a missed in-play refresh cannot be re-fetched.
 A wake-up is not a request. The job asks the database whether anything could be
 on the pitch and returns without calling the provider when nothing is - so a
 night with no football costs a handful of queries and no quota at all."""
-LIVE_DAILY_BUDGET = int(os.environ.get(
-    "FBI_LIVE_DAILY_BUDGET", str(DEFAULT_LIVE_DAILY_BUDGET)))
+LIVE_DAILY_BUDGET = int(os.environ.get("FBI_LIVE_DAILY_BUDGET", str(DEFAULT_LIVE_DAILY_BUDGET)))
 PIPELINE_MINUTES = int(os.environ.get("FBI_PIPELINE_MINUTES", "30"))
 NOTIFY_MINUTES = int(os.environ.get("FBI_NOTIFY_MINUTES", "10"))
 AI_REPORT_HOUR = int(os.environ.get("FBI_AI_REPORT_HOUR", "6"))
@@ -251,15 +253,24 @@ async def _tick() -> TickOutcome:
         planner = _build_planner()
         repo = OddsRepository(conn)
         ids = [f.provider_fixture_id for f in fixtures]
-        covered = planner.covered_keys(repo.window_observations_since(since=now() - timedelta(hours=24),
-                                                                      provider_fixture_ids=ids))
+        covered = planner.covered_keys(
+            repo.window_observations_since(
+                since=now() - timedelta(hours=24), provider_fixture_ids=ids
+            )
+        )
         asked = repo.last_asked(provider_fixture_ids=ids, since=now() - timedelta(days=4))
         tasks = planner.plan(fixtures, at=now(), already_done=covered, last_asked=asked)
         if not tasks:
-            log.info("tick.nothing_due", fixtures=len(fixtures), next_window=planner.next_run_at(fixtures, at=now()))
+            log.info(
+                "tick.nothing_due",
+                fixtures=len(fixtures),
+                next_window=planner.next_run_at(fixtures, at=now()),
+            )
             return "nothing_due"
         check = validate_plan(
-            tasks, at=now(), budget_remaining=settings.api_football.daily_budget,
+            tasks,
+            at=now(),
+            budget_remaining=settings.api_football.daily_budget,
             known_fixture_ids={f.provider_fixture_id for f in fixtures},
         )
         if not check.ok:
@@ -267,7 +278,9 @@ async def _tick() -> TickOutcome:
             return "plan_rejected"
         provider = ApiFootballProvider(_client(), market_filter=settings.odds.market_filter)
         try:
-            service = OddsCaptureService(conn, provider, planner, raw_root=settings.runtime.raw_store_dir)
+            service = OddsCaptureService(
+                conn, provider, planner, raw_root=settings.runtime.raw_store_dir
+            )
             await service.capture(fixtures)
         finally:
             await provider.aclose()
@@ -297,17 +310,21 @@ async def _live_tick() -> None:
     new_run_id()
     cfg = settings.api_football
     with _connect() as conn:
-        remaining = read_usage(
-            conn, budget=min(cfg.daily_budget, cfg.per_day_limit)
-        ).remaining
+        remaining = read_usage(conn, budget=min(cfg.daily_budget, cfg.per_day_limit)).remaining
         service = LiveCaptureService(
-            conn, provider=None, live_daily_budget=LIVE_DAILY_BUDGET  # type: ignore[arg-type]
+            conn,
+            provider=None,
+            live_daily_budget=LIVE_DAILY_BUDGET,  # type: ignore[arg-type]
         )
         decision = service.plan(remaining_quota=remaining)
         if not decision.should_capture:
             purged = service.purge_stale()
-            log.debug("live_tick.skipped", reason=decision.reason,
-                      next_in_seconds=decision.next_in_seconds, purged_fixtures=purged.fixtures)
+            log.debug(
+                "live_tick.skipped",
+                reason=decision.reason,
+                next_in_seconds=decision.next_in_seconds,
+                purged_fixtures=purged.fixtures,
+            )
             return
         ensure_partitions(conn, today=today())
         provider = ApiFootballProvider(_client())

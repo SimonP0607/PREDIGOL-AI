@@ -1,0 +1,43 @@
+name: Web CI
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - '.github/workflows/web.yml'
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
+
+      - name: Run lint
+        working-directory: web
+        run: bun run lint
+
+      - name: Run typecheck
+        working-directory: web
+        run: bun run typecheck
+
+      - name: Run tests
+        working-directory: web
+        run: bun test src
+
+      - name: Build
+        working-directory: web
+        run: bun run build

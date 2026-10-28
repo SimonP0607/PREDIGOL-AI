@@ -1,0 +1,37 @@
+# Gitleaks ignore file - known false positives
+# Generated after full history scan on 2026-10-28
+
+# Test passwords and fake secrets in test files
+backend/tests/integration/test_auth_mfa.py:generic-api-key:199
+backend/tests/integration/test_auth_mfa.py:generic-api-key:219
+backend/tests/integration/test_auth_mfa.py:generic-api-key:226
+backend/tests/integration/test_auth_mfa.py:generic-api-key:269
+backend/tests/integration/test_auth_mfa.py:generic-api-key:273
+tests/integration/test_auth_mfa.py:generic-api-key:*
+
+# Fake test secret used across integration tests
+backend/tests/conftest.py:generic-api-key:11
+backend/tests/integration/test_backfill.py:generic-api-key:31
+backend/tests/integration/test_fixtures_sync_and_ledger.py:generic-api-key:23
+backend/tests/integration/test_ledger_states.py:generic-api-key:32
+backend/tests/integration/test_lineage_and_replay.py:generic-api-key:47
+backend/tests/integration/test_odds_capture.py:generic-api-key:29
+tests/integration/test_backfill.py:generic-api-key:31
+tests/integration/test_lineage_and_replay.py:generic-api-key:47
+tests/integration/test_results_sync.py:generic-api-key:31
+tests/integration/test_ledger_states.py:generic-api-key:32
+tests/integration/test_fixtures_sync_and_ledger.py:generic-api-key:23
+tests/unit/test_api_football_client.py:generic-api-key:19
+tests/unit/test_payload_store.py:generic-api-key:15
+tests/integration/test_odds_capture.py:generic-api-key:29
+
+# Example environment file with placeholder IP
+backend/deploy/env_example.txt:generic-api-key:2
+
+# Market configuration keys (not API keys)
+backend/src/fbi/backtesting/evaluate.py:generic-api-key:79
+backend/src/fbi/research/prospective.py:generic-api-key:176
+
+# CI database password (public, not a secret)
+.github/workflows/backend.yml:predigol-db-url-password:63
+.github/workflows/backend.yml:predigol-db-url-password:87
