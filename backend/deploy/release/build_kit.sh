@@ -101,7 +101,7 @@ $gstatus"; fi
 cp "$guard" "$KIT/model_code_guard.py"
 
 # Scripts: the templates with the release's names, then the extras (a file of the same name replaces the template's).
-render() { sed -e "s|__STAMP__|$STAMP|g" -e "s|__REL__|$REL|g" -e "s|__PARTS__|$PARTS|g" -e "s|__BE_FROM__|$FROM_BE|g" -e "s|__BE_WANT__|$BE_WANT|g" \
+render() { sed -e "s|__STAMP__|$STAMP|g" -e "s|__REL__|$REL|g" -e "s|__PARTS__|${PARTS//,/ }|g" -e "s|__BE_FROM__|$FROM_BE|g" -e "s|__BE_WANT__|$BE_WANT|g" \
   -e "s|__WEB_FROM__|$FROM_WEB|g" -e "s|__WEB_WANT__|$WEB_WANT|g" -e "s|__MODEL_FP__|$mc_after|g" "$1" > "$2"; chmod 755 "$2"; }
 for f in "$here"/templates/server/*; do render "$f" "$KIT/$(basename "$f")"; done
 if [[ -n "$EXTRAS" ]]; then for f in "$EXTRAS"/*; do [[ -f "$f" ]] && render "$f" "$KIT/$(basename "$f")"; done; fi
