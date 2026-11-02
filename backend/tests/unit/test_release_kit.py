@@ -47,3 +47,14 @@ def test_no_template_keeps_a_release_of_the_past() -> None:
 def test_the_chain_never_starts_a_deploy_without_the_owners_word() -> None:
     ship = (ROOT / "ship.sh").read_text(encoding="utf-8")
     assert "--owner-ok" in ship and "needs --owner-ok" in ship
+
+
+def test_the_parts_reach_the_templates_as_words_not_as_a_comma_list() -> None:
+    """The templates ask ``case " $PARTS " in *" backend "*``: a list written ``backend,web`` made the first real deploy say that the backend was
+    not released (it stopped, nothing moved). The builder takes the commas out when it fills ``__PARTS__``."""
+    build = (ROOT / "build_kit.sh").read_text(encoding="utf-8")
+    assert "s|__PARTS__|${PARTS//,/ }|g" in build
+    for p in TEMPLATES:
+        text = p.read_text(encoding="utf-8")
+        if "__PARTS__" in text:
+            assert 'case " $PARTS " in' in text, f"{p.name} matches the parts some other way than the builder fills them"
