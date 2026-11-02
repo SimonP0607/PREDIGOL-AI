@@ -113,8 +113,10 @@ def cmd_revoke_sessions(args: argparse.Namespace) -> int:
 def cmd_unlock(args: argparse.Namespace) -> int:
     with write_connection() as conn:
         row = _one(conn, args.email)
+        address = normalize_email(str(row["email"]))
+        store.lock_address(conn, address)  # the order of a sign-in: the address's streak, then the row
         store.unlock(conn, int(row["id"]))
-        store.record_event(conn, "user.unlocked", target_user_id=row["id"], detail=BY)
+        store.record_event(conn, "user.unlocked", target_user_id=row["id"], email=address, detail=BY)
     print(f"{masked(row['email'])} unlocked")
     return 0
 

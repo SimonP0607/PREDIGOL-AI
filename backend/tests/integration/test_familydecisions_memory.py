@@ -28,8 +28,8 @@ from .test_families_forecast import referees
 from .test_families_score import play
 from .test_familydecisions_outcomes import LATER, decided
 from .test_leak_audit_families import forged
-from .test_migration_0094_family_learning import MEMORY, POSTMORTEMS, insert, post_mortem
-from .test_migration_0094_family_learning import memory as a_snapshot
+from .test_migration_0118_family_learning import MEMORY, POSTMORTEMS, insert, post_mortem
+from .test_migration_0118_family_learning import memory as a_snapshot
 
 pytestmark = pytest.mark.integration
 

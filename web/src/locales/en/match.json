@@ -84,7 +84,7 @@
   },
   "picks": {
     "title": "Picks for this match",
-    "none": "No qualified picks for this match.",
+    "none": "No PrediGol picks for this match.",
     "noneShadow": "No shadow picks for this match.",
     "showAll": "See all {count} picks",
     "showLess": "See less",
@@ -386,7 +386,7 @@
     "PRICE_PENDING": "Prices not in yet: they are asked for 3 days before kick-off.",
     "PRICE_UNAVAILABLE": "No bookmaker we receive prices this market.",
     "NOT_COVERED": "Our odds provider does not cover this competition.",
-    "model": "Model (evaluation mode): {selection} {probability} · fair odds {fair}.",
+    "model": "The model's estimate, not yet proven against the market: {selection} {probability} · fair odds {fair}.",
     "minOdds": "At {min} or more at your bookmaker, the bet would carry the margin our rule asks for.",
     "notAPick": "Not a pick and not a bookmaker's price: no model has beaten the market yet."
   },
@@ -456,7 +456,7 @@
       "title": "Why?",
       "estimate": "PrediGol estimates {model} against the market's {market}",
       "estimateOnly": "PrediGol puts this selection's chance at {model}",
-      "edge": "An edge of {edge} pp over the market's fair price",
+      "edge": "An edge of {edge} percentage points over the market's fair price",
       "minimum": "It would only be worth it at odds of {min} or more",
       "none": "Not enough figures to explain it yet."
     },
@@ -483,7 +483,7 @@
     "byAi": "Analysed by PrediGol AI",
     "byRules": "Reviewed by PrediGol's rules",
     "updated": "updated {when}",
-    "shadowNote": "reviews do not filter picks yet (evaluation mode)",
+    "shadowNote": "the AI's context review is not applied to the picks yet",
     "notYet": "PrediGol has not analysed this match yet.",
     "none": "PrediGol has no analysis to show for this match today.",
     "inEvaluation_one": "{count} selection of this match is in evaluation: it will be published once a model beats the market.",
@@ -549,7 +549,8 @@
       "byModel": "Written by {model} (L1)",
       "byRules": "Written by the rules",
       "aiModel": "PrediGol AI"
-    }
+    },
+    "contextPending": "Context review not applied yet"
   },
   "forecast": {
     "title": "PrediGol forecast",
@@ -818,7 +819,7 @@
   "captures": {
     "title": "Price captures",
     "summary": "{captures} captures · {quotes} quotes from {books} bookmakers",
-    "help": "Each capture stores every bookmaker's price for every selection and line. These are the Cronología's numbers, and all of them are shown here, whether or not they pass the pick filters.",
+    "help": "Each capture stores every bookmaker's price for every selection and line at that moment. All of them are shown here, whether or not they pass the pick filters.",
     "chip": "{when} · {quotes}",
     "none": "No price has been captured for this match yet."
   },

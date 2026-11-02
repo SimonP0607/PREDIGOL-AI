@@ -102,7 +102,7 @@
     },
     "operation": {
       "title": "Operation",
-      "description": "The day of PrediGol Intelligence and of the AI in one place: what was analysed and what was decided, the dossier of each match, what the AI did with each one, what it costs and what ran. All in shadow: nothing is published and nothing is staked."
+      "description": "The day of PrediGol Intelligence and of the AI in one place: what was analysed and what was decided, the dossier of each match, what the AI did with each one, the agents and their state, what it costs and what ran. All in shadow: nothing is published and nothing is staked."
     },
     "learning": {
       "title": "Learning",
@@ -286,7 +286,8 @@
     "historical_validation": "Historical validation",
     "truth_audit": "Data truth audit",
     "capacity_probe": "Capacity probe",
-    "raw_backfill_season_stats": "Season stats from RAW"
+    "raw_backfill_season_stats": "Season stats from RAW",
+    "synthetic_journey": "Synthetic journey"
   },
   "labels": {
     "marketAverage": "Market average",
@@ -462,6 +463,7 @@
       "decisions": "Decisions",
       "match": "Match",
       "ai": "AI work",
+      "agents": "Agents",
       "costs": "Costs",
       "runs": "Runs"
     },
@@ -469,6 +471,7 @@
       "label": "Views of the AI's work",
       "today": "Today",
       "research": "Research",
+      "topics": "By entity and topic",
       "reviews": "Reviews",
       "evidence": "Evidence",
       "sources": "Sources"

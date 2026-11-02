@@ -3,6 +3,7 @@
  * red cards, a few statistics side by side and the main in-play prices. The whole card
  * opens the match; the data meter in the corner opens its own small list.
  */
+import { countryLabel } from "@/product/matches/country";
 import { Link } from "@tanstack/react-router";
 import { Clock, Lock, RectangleVertical, Volleyball } from "lucide-react";
 import type { LiveMatch, LiveQuote, LiveTeam } from "@/lib/api/v1/types_center";
@@ -333,7 +334,7 @@ export function LiveCard({ m, now }: { m: LiveMatch; now: number }) {
             name={m.competition}
             logo={m.competition_logo}
             flag={m.competition_flag}
-            country={m.country}
+            country={countryLabel(m.country, m.country_code) ?? m.country}
           />
         </div>
         {m.data_status === "stale" ? (

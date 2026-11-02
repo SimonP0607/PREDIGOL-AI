@@ -19,6 +19,7 @@ import type {
   AiBudgetView,
   AiCostPeriod,
   AiDecision,
+  AiEnvelopes,
   CardVerdict,
   EscalationReason,
   EvidenceStatus,
@@ -139,6 +140,7 @@ export type BudgetState = AiBudgetView["state"];
 
 export const BUDGET_TONE: Record<BudgetState, BadgeTone> = {
   NORMAL: "positive",
+  AJUSTE: "warning",
   REDUCED: "warning",
   CHEAP_ONLY: "warning",
   EXHAUSTED: "negative",
@@ -216,6 +218,23 @@ export function projectionTone(share: number | null | undefined): BadgeTone {
 
 export function budgetTone(state: string): BadgeTone {
   return state in BUDGET_TONE ? BUDGET_TONE[state as BudgetState] : "neutral";
+}
+
+/** How much of an envelope is spent (or projected): amber from 85 %, red past the whole envelope. */
+export function shareTone(share: number | null | undefined): "default" | "warning" | "negative" {
+  if (share === null || share === undefined || !Number.isFinite(share)) return "default";
+  return share > 1 ? "negative" : share >= 0.85 ? "warning" : "default";
+}
+
+function hasEnvelopes(e: AiEnvelopes | Record<string, never> | undefined): e is AiEnvelopes {
+  return e !== undefined && "production" in e;
+}
+
+/** The three envelopes of Phase 0, or null when the server did not send them (an older server, or a panel that could not be built). */
+export function envelopesOf(o: {
+  envelopes?: AiEnvelopes | Record<string, never> | undefined;
+}): AiEnvelopes | null {
+  return hasEnvelopes(o.envelopes) ? o.envelopes : null;
 }
 
 /** The verdict of the AI's shadow gate. */

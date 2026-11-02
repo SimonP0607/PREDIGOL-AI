@@ -1,4 +1,5 @@
 /** TanStack Query option factories for the live API. */
+import { infiniteQueryOptions } from "@tanstack/react-query";
 import { v1, type BestOddsQuery, type MatchQuery } from "./client";
 import type { ParlayKind, PicksQuery } from "./types_product";
 import type { BuilderQuery } from "./types_builder";
@@ -52,16 +53,33 @@ export const live = {
     queryFn: () => v1.daily({ day, preview }),
     refetchInterval: 2 * MINUTE,
   }),
+  /** The first 500 saved picks: what the product needs to show a selection as saved (useSavedPicks). */
   myPicks: {
     queryKey: ["v1", "me", "picks"],
     queryFn: () => v1.myPicks(),
     refetchInterval: 2 * MINUTE,
   },
-  myParlays: {
-    queryKey: ["v1", "me", "parlays"],
-    queryFn: () => v1.myParlays(),
-    refetchInterval: 2 * MINUTE,
-  },
+  /**
+   * The saved picks a page at a time (plan UX, A1: "Todo" was cut at 500 and called everything): `size` per page,
+   * the next page from `meta.next_cursor`. Mis picks lists with pages of 25 (parlays: 10); the recap reads every
+   * page, of 500 (parlays: 200, the most the API serves).
+   */
+  myPicksPages: (size: number) =>
+    infiniteQueryOptions({
+      queryKey: ["v1", "me", "picks", "pages", size],
+      queryFn: ({ pageParam }) => v1.myPicks({ limit: size, cursor: pageParam }),
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last) => last.meta.next_cursor ?? undefined,
+      refetchInterval: 2 * MINUTE,
+    }),
+  myParlaysPages: (size: number) =>
+    infiniteQueryOptions({
+      queryKey: ["v1", "me", "parlays", "pages", size],
+      queryFn: ({ pageParam }) => v1.myParlays({ limit: size, cursor: pageParam }),
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last) => last.meta.next_cursor ?? undefined,
+      refetchInterval: 2 * MINUTE,
+    }),
   history: (period: HistoryPeriod, preview: Preview) => ({
     queryKey: ["v1", "me", "history", period, preview ?? "qualified"],
     queryFn: () => v1.history(period, { preview }),
@@ -280,6 +298,23 @@ export const live = {
     queryFn: v1.aiCosts,
     refetchInterval: 5 * MINUTE,
   },
+  aiAgents: (days = 7) => ({
+    queryKey: ["v1", "ai-layer", "agents", days],
+    queryFn: () => v1.aiAgents(days),
+    refetchInterval: MINUTE,
+  }),
+  aiResearchEntities: (days = 7) => ({
+    queryKey: ["v1", "ai-layer", "research-entities", days],
+    queryFn: () => v1.aiResearchEntities(days),
+    refetchInterval: 2 * MINUTE,
+  }),
+  /** Asked for with a fixture the page has (a match found by the picker); no fixture, no request. */
+  aiMatchState: (fixtureId: string) => ({
+    queryKey: ["v1", "ai-layer", "match-state", fixtureId],
+    queryFn: () => v1.aiMatchState(fixtureId),
+    enabled: fixtureId !== "",
+    refetchInterval: MINUTE,
+  }),
   aiShadow: { queryKey: ["v1", "ai-layer", "shadow"], queryFn: v1.aiShadow, staleTime: 5 * MINUTE },
   aiMemory: (kind?: string) => ({
     queryKey: ["v1", "ai-layer", "memory", kind ?? "all"],

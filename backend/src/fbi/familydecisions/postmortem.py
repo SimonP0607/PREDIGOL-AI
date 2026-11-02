@@ -28,7 +28,7 @@ and the row says which. Zero requests to the provider, zero AI. Written once per
 changes is a new version, ``pm-fam-v2``, and the rows of this one stay as they were written).
 
 WHERE IT STOPS. What a family learns is the future of the match it describes and it is derived: no forecast, decision, packet or pick reads it
-(``tests/unit/test_postmortem_isolation.py``). It is kept apart from the pipeline's post-mortem on purpose - see revision 0094.
+(``tests/unit/test_postmortem_isolation.py``). It is kept apart from the pipeline's post-mortem on purpose - see revision 0118.
 """
 
 from __future__ import annotations

@@ -61,6 +61,9 @@ import enFamilies from "@/locales/en/families.json";
 import enStorage from "@/locales/en/storage.json";
 
 export type Locale = "es" | "en";
+
+/** Each language named in itself - the same in every language (plan UX, A1, F08: the switch said "ES" / "EN"). */
+export const LOCALE_NAMES: Readonly<Record<Locale, string>> = { es: "Español", en: "English" };
 export type Catalog = { [key: string]: string | Catalog };
 
 export const CATALOGS: Record<Locale, Catalog> = {

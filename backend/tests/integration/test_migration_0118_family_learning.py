@@ -1,7 +1,7 @@
-"""Migration 0094 (what a family learns from its own decisions): additive, empty and reversible - and a row of it cannot contradict the rule.
+"""Migration 0118 (what a family learns from its own decisions): additive, empty and reversible - and a row of it cannot contradict the rule.
 
 Deploying must change nothing the system does: it adds two tables and a view, alters nothing that existed, writes no row, and leaves as it came.
-Run on a scratch database at revision 0093, the way production does. The only foreign key it adds is to ``intel.decisions``: none to
+Run on a scratch database at revision 0117, the way production does. The only foreign key it adds is to ``intel.decisions``: none to
 ``core.fixtures`` (revision 0090: ``fixtures_sync`` holds a lock on that table for ~27 minutes every six hours, and a migration that waits for it
 fails whole).
 
@@ -37,7 +37,7 @@ from .test_familydecisions_decide import KICKOFF
 from .test_familydecisions_outcomes import LATER, decided
 
 pytestmark = pytest.mark.integration
-SCRATCH = "fbi_test_m0094"
+SCRATCH = "fbi_test_m0118"
 POSTMORTEMS, MEMORY, LATEST = "intel.family_postmortems", "intel.family_memory", "intel.family_memory_latest"
 OWN = {name.split(".")[1] for name in (POSTMORTEMS, MEMORY, LATEST)}
 
@@ -69,7 +69,7 @@ def _shape(c: psycopg.Connection[Any]) -> list[tuple[Any, ...]]:
     return [r for r in rows if not (r[0] == "intel" and r[1] in OWN)]
 
 
-def test_0094_adds_two_tables_and_a_view_and_nothing_else_and_comes_back_out(migrated_database: str) -> None:
+def test_0118_adds_two_tables_and_a_view_and_nothing_else_and_comes_back_out(migrated_database: str) -> None:
     previous = os.environ.get("FBI_DATABASE_URL")
     _drop()
     with psycopg.connect(ADMIN_URL, autocommit=True) as admin:
@@ -77,12 +77,12 @@ def test_0094_adds_two_tables_and_a_view_and_nothing_else_and_comes_back_out(mig
     dsn = _dsn(SCRATCH)
     os.environ["FBI_DATABASE_URL"] = dsn.replace("postgresql://", "postgresql+psycopg://")
     try:
-        command.upgrade(_cfg(), "0093")
+        command.upgrade(_cfg(), "0117")
         with psycopg.connect(dsn) as c:
             assert not any(_exists(c, name) for name in (POSTMORTEMS, MEMORY, LATEST))
             before = _shape(c)
 
-        command.upgrade(_cfg(), "0094")
+        command.upgrade(_cfg(), "0118")
         with psycopg.connect(dsn) as c:
             assert all(_exists(c, name) for name in (POSTMORTEMS, MEMORY, LATEST))
             assert _shape(c) == before, "nothing that existed was changed"
@@ -103,14 +103,14 @@ def test_0094_adds_two_tables_and_a_view_and_nothing_else_and_comes_back_out(mig
             foreign = c.execute("SELECT conrelid::regclass::text, confrelid::regclass::text FROM pg_constraint WHERE contype = 'f' "
                                 "AND conrelid IN (%s::regclass, %s::regclass)", (POSTMORTEMS, MEMORY)).fetchall()
             assert foreign == [(POSTMORTEMS, "intel.decisions")], "the only reference is to the small table of the decisions, never to core.fixtures"
-            assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0094",)
+            assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0118",)
 
-        command.downgrade(_cfg(), "0093")
+        command.downgrade(_cfg(), "0117")
         with psycopg.connect(dsn) as c:
             assert not any(_exists(c, name) for name in (POSTMORTEMS, MEMORY, LATEST))
             assert _shape(c) == before, "and it leaves as it came"
 
-        command.upgrade(_cfg(), "0094")  # and applies again
+        command.upgrade(_cfg(), "0118")  # and applies again
         with psycopg.connect(dsn) as c:
             assert all(_exists(c, name) for name in (POSTMORTEMS, MEMORY, LATEST))
     finally:

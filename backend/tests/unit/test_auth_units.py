@@ -65,3 +65,56 @@ def test_only_failures_count_towards_the_throttle() -> None:
     w.fail("a@b.co")
     w.clear("a@b.co")
     assert not w.blocked("a@b.co")
+
+
+def test_asking_about_a_client_never_keeps_it_in_memory() -> None:
+    """Every client that tried to sign in stayed in the per-client window for good (third review of A1): a stream of
+    new addresses could fill a worker's memory. Asking keeps nothing; a failure is kept only while it counts."""
+    t = [0.0]
+    w = FailureWindow(max_failures=3, window_s=60, clock=lambda: t[0])
+    for i in range(5000):
+        assert not w.blocked(f"203.0.113.{i}") and w.retry_after(f"203.0.113.{i}") == 0
+    assert w.keys() == 0
+    w.fail("198.51.100.1")
+    assert w.keys() == 1
+    t[0] = 61.0
+    assert not w.blocked("198.51.100.1") and w.keys() == 0, "its failure aged out: the client is forgotten"
+
+
+def test_the_clients_whose_failures_aged_out_are_dropped_as_failures_go_on() -> None:
+    t = [0.0]
+    w = FailureWindow(max_failures=3, window_s=60, clock=lambda: t[0])
+    for i in range(500):
+        w.fail(f"client-{i}")
+    assert w.keys() == 500
+    t[0] = 120.0
+    for _ in range(FailureWindow.PRUNE_EVERY):
+        w.fail("one-more")
+    assert w.keys() == 1, "the 500 whose failures aged out are gone, without anybody asking about them"
+
+
+def test_a_streak_locks_by_the_rule_of_the_account_and_the_lock_doubles_by_blocks() -> None:
+    """The rule every address follows, with or without an account (plan UX, A1; R12): failures 5-9 lock for 15
+    minutes, from the 10th for 30, doubling by blocks of 5 up to the cap."""
+    from fbi.auth.throttle import lock_minutes
+
+    rule = {"threshold": 5, "minutes": 15, "max_minutes": 40}
+    assert [lock_minutes(n, **rule) for n in range(1, 5)] == [0, 0, 0, 0]
+    assert [lock_minutes(n, **rule) for n in range(5, 10)] == [15] * 5
+    assert [lock_minutes(n, **rule) for n in range(10, 15)] == [30] * 5
+    assert lock_minutes(15, **rule) == 40, "60 by the doubling, 40 by the cap"
+    assert lock_minutes(10_000, threshold=5, minutes=15, max_minutes=1440) == 1440
+
+
+def test_the_wait_runs_from_the_last_failure_in_whole_seconds_rounded_up() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from fbi.auth.throttle import wait_seconds
+
+    rule = {"threshold": 5, "minutes": 15, "max_minutes": 1440}
+    last = datetime(2026, 10, 25, 12, tzinfo=UTC)
+    assert wait_seconds(5, last, last + timedelta(seconds=0.4), **rule) == 15 * 60  # 899.6 s left: said 900
+    assert wait_seconds(5, last, last + timedelta(minutes=1), **rule) == 14 * 60 + 1
+    assert wait_seconds(5, last, last + timedelta(minutes=15), **rule) == 0, "the lock has passed"
+    assert wait_seconds(4, last, last, **rule) == 0, "below the threshold nothing waits"
+    assert wait_seconds(5, None, last, **rule) == 0

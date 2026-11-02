@@ -35,8 +35,8 @@ from .test_familydecisions_memory import AFTER, NIGHT, switch
 from .test_familydecisions_outcomes import LATER, decided
 from .test_intel_api import client_for, env  # noqa: F401  (a fixture)
 from .test_leak_audit_families import forged
-from .test_migration_0094_family_learning import DAY, MEMORY, POSTMORTEMS, insert, post_mortem
-from .test_migration_0094_family_learning import memory as a_snapshot
+from .test_migration_0118_family_learning import DAY, MEMORY, POSTMORTEMS, insert, post_mortem
+from .test_migration_0118_family_learning import memory as a_snapshot
 
 pytestmark = pytest.mark.integration
 

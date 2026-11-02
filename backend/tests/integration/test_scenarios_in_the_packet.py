@@ -110,7 +110,7 @@ def test_a_first_leg_is_passed_through(db: psycopg.Connection[Any], seed: Seed) 
 
 
 def test_the_rule_is_in_the_audit_and_the_version_says_so() -> None:
-    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v7" and RULE in (leakage.__doc__ or "")
+    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v8" and RULE in (leakage.__doc__ or "")
 
 
 def test_honest_packets_pass_one_check_for_the_snapshot_and_one_per_side_and_one_per_tie(
@@ -126,7 +126,7 @@ def test_honest_packets_pass_one_check_for_the_snapshot_and_one_per_side_and_one
     store_packet(db, leg, built_at=at2)
     assert audited(db, at2, run=1)["checked"] == 1, "and the reading of the second leg, on its own day"
     rows = db.execute("SELECT version, n_violations FROM intel.audit_checks WHERE rule = %s ORDER BY id", (RULE,)).fetchall()
-    assert all(v == "leak-audit-v7" and bad == 0 for v, bad in rows)
+    assert all(v == "leak-audit-v8" and bad == 0 for v, bad in rows)
 
 
 def _table_cases() -> list[tuple[str, Callable[[dict[str, Any]], None]]]:

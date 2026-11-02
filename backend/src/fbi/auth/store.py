@@ -8,6 +8,8 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from fbi.auth.settings import session_settings
+
 Row = dict[str, Any]
 Conn = psycopg.Connection[Any]
 
@@ -82,18 +84,78 @@ def mark_login(conn: Conn, user_id: int) -> None:
                  "WHERE id = %s", (user_id,))
 
 
-def record_failure(conn: Conn, user_id: int, *, threshold: int, lock_minutes: int, max_minutes: int) -> Row:
-    """One more consecutive failure. From the threshold on, each failure (re)locks the account: lock_minutes, then
-    doubling with every further block of `threshold` failures, never more than max_minutes. Returns the counters."""
+# ── an address's sign-in streak, shared by every API process ────────────────────────────────
+
+FAILURE_ACTIONS = ("login.failed", "mfa.failed")
+"""A wrong password (for any address, with or without an account) and a wrong second-factor code."""
+RESET_ACTIONS = ("login.succeeded", "user.unlocked", "password.reset")
+"""What ends a streak, as it ends the account's own count (mark_login, unlock)."""
+STREAK_HORIZON_DAYS = 30
+"""How far back a streak is read: older failures are forgotten, for every address alike."""
+
+
+def _in(actions: tuple[str, ...]) -> str:
+    """A list of this module's constant action names, written into SQL (never a value from a request)."""
+    return ", ".join(f"'{a}'" for a in actions)
+
+
+# The action lists are written into the SQL as constants, never sent as parameters: the partial index of revision 0094
+# (auth.audit_events (email, at DESC) for these five actions) is used only when the planner sees them.
+# The first half reads the rows of the address. The second reads the account's rows written WITHOUT an address -
+# before A1, the owner's unlock and password reset wrote none; from A1 every row a streak is made of has its address -
+# through the same index (its NULL entries): the same few old rows for an address with an account as for one without,
+# so neither its cost nor its time tells whether the address has an account, and nobody can grow it (third review of
+# A1: through the index of every action of the account, it read the account's whole month, and someone with the
+# password could grow it at will).
+ADDRESS_STREAK_SQL = f"""
+    WITH account AS (SELECT id FROM auth.users WHERE email = %(a)s),
+    recent AS (
+        SELECT e.at, e.action FROM auth.audit_events e
+         WHERE e.email = %(a)s AND e.at > now() - make_interval(days => %(h)s)
+           AND e.action IN ({_in(FAILURE_ACTIONS + RESET_ACTIONS)})
+        UNION ALL
+        SELECT e.at, e.action FROM auth.audit_events e
+         WHERE e.target_user_id = (SELECT id FROM account) AND e.email IS NULL
+           AND e.at > now() - make_interval(days => %(h)s)
+           AND e.action IN ({_in(FAILURE_ACTIONS + RESET_ACTIONS)})),
+    reset AS (SELECT max(at) AS at FROM recent WHERE action IN ({_in(RESET_ACTIONS)}))
+    SELECT count(*) FILTER (WHERE r.action IN ({_in(FAILURE_ACTIONS)})
+                              AND (reset.at IS NULL OR r.at > reset.at))::int AS streak,
+           max(r.at) FILTER (WHERE r.action IN ({_in(FAILURE_ACTIONS)})
+                               AND (reset.at IS NULL OR r.at > reset.at)) AS last_at,
+           now() AS now
+      FROM reset LEFT JOIN recent r ON true
+"""
+
+
+def lock_address(conn: Conn, address: str) -> None:
+    """One sign-in decision at a time per address, until the transaction ends (review of A1): two attempts of the
+    same address in two processes would each read the streak before the other's failure is written."""
+    conn.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 7041))", (address[:254],))
+
+
+def address_streak(conn: Conn, address: str) -> Row:
+    """The consecutive sign-in failures of an address since what last ended them, the time of the last one and the
+    database's now - read from the audit trail every API process writes (plan UX, A1; R12). The API runs several
+    worker processes and restarts: a count kept in one process's memory would lock an address without an account
+    later than one with (the account's own count is in the database), and tell which addresses have accounts. The
+    trail already records every failure with its address, with or without an account, and from A1 every row that
+    ends a streak too (a success, an unlock, a password reset); the rows an account got without an address before A1
+    are read by its id."""
+    row = _one(conn, ADDRESS_STREAK_SQL, {"a": address[:254], "h": STREAK_HORIZON_DAYS})
+    assert row is not None
+    return row
+
+
+def set_failures(conn: Conn, user_id: int, *, streak: int, lock_minutes: int) -> Row:
+    """The account's own count follows the address's streak (address_streak + the failure being recorded): the
+    Admin Console reads it. Its lock is the streak's - set, or cleared below the threshold - never one of its own."""
     row = _one(conn, """
-        UPDATE auth.users SET failed_logins = failed_logins + 1,
-               locked_until = CASE
-                 WHEN failed_logins + 1 >= %(t)s THEN now() + make_interval(mins => LEAST(%(max)s,
-                      %(m)s * power(2, LEAST(10, (failed_logins + 1 - %(t)s) / %(t)s))::int))
-                 ELSE locked_until END
+        UPDATE auth.users SET failed_logins = %(s)s,
+               locked_until = CASE WHEN %(m)s > 0 THEN now() + make_interval(mins => %(m)s) END
         WHERE id = %(id)s
-        RETURNING failed_logins, locked_until, locked_until > now() AS is_locked
-    """, {"t": threshold, "m": lock_minutes, "max": max_minutes, "id": user_id})
+        RETURNING failed_logins, locked_until, COALESCE(locked_until > now(), false) AS is_locked
+    """, {"s": streak, "m": lock_minutes, "id": user_id})
     assert row is not None
     return row
 
@@ -134,14 +196,27 @@ def use_recovery_code(conn: Conn, user_id: int, code_hash: str) -> bool:
     return cur.rowcount == 1
 
 
-def list_users(conn: Conn) -> list[Row]:
+IDLE_ALIVE = ("s.last_seen_at > now() - make_interval(hours => CASE WHEN u.role = 'SUPER_ADMIN' "
+              "THEN %(admin_idle)s ELSE %(idle)s END)")
+"""A session used within its idle limit: the same test session_principal applies before letting a request in, so a
+session listed or counted is one that can still be used."""
+
+
+def _idle(idle_hours: int | None, admin_idle_hours: int | None) -> dict[str, int]:
+    """The idle limits to apply, from the session settings unless the caller gives them."""
+    cfg = session_settings()
+    return {"idle": cfg.idle_hours if idle_hours is None else idle_hours,
+            "admin_idle": cfg.admin_idle_hours if admin_idle_hours is None else admin_idle_hours}
+
+
+def list_users(conn: Conn, *, idle_hours: int | None = None, admin_idle_hours: int | None = None) -> list[Row]:
     return _all(conn, f"""
         SELECT {USER_COLUMNS},
                (SELECT count(*) FROM auth.sessions s
                  WHERE s.user_id = u.id AND s.revoked_at IS NULL AND s.expires_at > now()
-                   AND s.stage = 'full')::int AS active_sessions
+                   AND s.stage = 'full' AND {IDLE_ALIVE})::int AS active_sessions
         FROM auth.users u ORDER BY u.created_at, u.id
-    """)
+    """, _idle(idle_hours, admin_idle_hours))
 
 
 def count_active_super_admins(conn: Conn, *, excluding: int | None = None) -> int:
@@ -229,14 +304,17 @@ def revoke_user_session_by_prefix(conn: Conn, user_id: int, prefix: str, reason:
     return cur.rowcount
 
 
-def list_sessions(conn: Conn, user_id: int) -> list[Row]:
-    return _all(conn, """
+def list_sessions(conn: Conn, user_id: int, *, idle_hours: int | None = None,
+                  admin_idle_hours: int | None = None) -> list[Row]:
+    """The sessions of an account that can still be used: not revoked, not past their absolute expiry and not dead
+    from idleness."""
+    return _all(conn, f"""
         SELECT left(s.id, 16) AS id, s.created_at, s.last_seen_at, s.expires_at, s.ip, s.user_agent, s.stage,
                s.mfa_verified_at IS NOT NULL AS mfa_verified, s.id AS full_id
-        FROM auth.sessions s
-        WHERE s.user_id = %s AND s.revoked_at IS NULL AND s.expires_at > now()
+        FROM auth.sessions s JOIN auth.users u ON u.id = s.user_id
+        WHERE s.user_id = %(user)s AND s.revoked_at IS NULL AND s.expires_at > now() AND {IDLE_ALIVE}
         ORDER BY s.last_seen_at DESC
-    """, (user_id,))
+    """, {"user": user_id, **_idle(idle_hours, admin_idle_hours)})
 
 
 # ── audit ────────────────────────────────────────────────────────────────────────────

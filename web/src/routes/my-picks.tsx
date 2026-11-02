@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MyPicksPage } from "@/product/records/MyPicksPage";
+import { titled } from "@/lib/i18n/head";
 
 export const Route = createFileRoute("/my-picks")({
-  head: () => ({ meta: [{ title: "PrediGol" }] }),
+  head: titled("nav.myPicks"),
   component: MyPicksPage,
 });

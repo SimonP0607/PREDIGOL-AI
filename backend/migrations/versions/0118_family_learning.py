@@ -47,16 +47,16 @@ of ~27 minutes every six hours), and a lock that cannot be had within 10 s fails
 Downgrade: drops the view and the two tables. They hold derived rows only: the nightly pass writes them again from the decisions and the
 outcomes, which stay.
 
-Revision ID: 0094
-Revises: 0093
+Revision ID: 0118
+Revises: 0117
 """
 
 from __future__ import annotations
 
 from alembic import op
 
-revision = "0094"
-down_revision = "0093"
+revision = "0118"
+down_revision = "0117"
 branch_labels = None
 depends_on = None
 

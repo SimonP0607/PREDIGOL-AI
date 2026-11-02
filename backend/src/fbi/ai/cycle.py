@@ -47,8 +47,9 @@ import structlog
 from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
-from fbi.ai import research
+from fbi.ai import entity_research, gates, research
 from fbi.ai.analysis import ValueOption, build_cards, store_analysis
+from fbi.ai.batch import BatchClient, BatchQueue, abandon_unsent, open_counts
 from fbi.ai.brief import Brief, make_brief
 from fbi.ai.calendar import day_bounds, day_start, local_day
 from fbi.ai.collectors import SearchFn, collect_provider, collect_web
@@ -58,7 +59,14 @@ from fbi.ai.evidence import seed_sources
 from fbi.ai.packet import CORE_KEYS, Packet, PacketBuilder, store_packet
 from fbi.ai.prompts import REVIEW_VERSION
 from fbi.ai.providers.base import LlmProvider
-from fbi.ai.review import Candidate, Reviewed, carried_review, latest_reviews, review_candidate
+from fbi.ai.review import (
+    Candidate,
+    Deferral,
+    Reviewed,
+    carried_review,
+    latest_reviews,
+    review_candidate,
+)
 from fbi.ai.usage import UsageLedger, check_alerts
 from fbi.ai.usage import budget as budget_of
 from fbi.core.clock import now
@@ -129,6 +137,19 @@ SELECT l.fixture_id, l.market_key, l.selection, l.line FROM picks.parlay_legs l
   JOIN picks.parlays p ON p.id = l.parlay_id
  WHERE p.day = %(day)s OR (p.window_from < %(end)s AND p.window_to >= %(start)s)
 """
+
+PASS_SQL = """
+INSERT INTO ai.fixture_passes (fixture_id, day, pass, started_at, finished_at, kickoff_at, status, escalated, reasons, brief_id,
+                               packet_id, counts, cost_usd)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (fixture_id, day, pass) DO NOTHING
+"""
+
+UNSENT_FIXTURES_SQL = """
+SELECT DISTINCT fixture_id FROM ai.batch_items
+ WHERE purpose = 'pick_review' AND created_at = %(at)s AND status = 'abandoned' AND fixture_id IS NOT NULL
+"""
+"""The matches whose reviews THIS cycle recorded for a Message Batch that then was not sent (it could not be created, or the record
+outlived the request body): their pass is not done."""
 
 ESCALATED_SQL = """
 SELECT DISTINCT ON (fixture_id) fixture_id, escalate, content -> 'research' AS research FROM ai.match_briefs
@@ -257,7 +278,10 @@ def needs_llm(last: dict[str, Any] | None, cand: Candidate, *, evidence_ids: set
 def run_analysis_cycle(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings | None = None,
                        ledger: UsageLedger | None = None, only_fixtures: list[int] | None = None,
                        search: SearchFn | None = None, provider: tuple[LlmProvider, str] | None = None,
-                       transport: httpx.BaseTransport | None = None, request: bool = False) -> CycleReport:
+                       transport: httpx.BaseTransport | None = None, request: bool = False,
+                       batches: BatchClient | None = None) -> CycleReport:
+    """One analysis cycle. ``batches`` is the Message Batches client the cycle's queue sends through (tests give a simulated one; the
+    worker leaves it out and the queue builds the real one from the settings)."""
     settings = settings or AiSettings.from_env()
     report = CycleReport()
     if settings.mode == "off":
@@ -272,12 +296,17 @@ def run_analysis_cycle(conn: psycopg.Connection[Any], *, at: datetime, settings:
         return report
     try:
         seed_sources(conn, at=at)
+        # what an earlier cycle recorded for a batch and never sent (it stopped) is abandoned: the cycle lock means nothing is sending now
+        report.counts["batch_items_unsent"] = abandon_unsent(conn, at=at, before=at)
+        if not report.counts["batch_items_unsent"]:
+            del report.counts["batch_items_unsent"]
         conn.commit()
         report.cycle_id = open_cycle(conn, "analysis", at=at, settings=settings)
         ledger = ledger or UsageLedger()
+        queue = BatchQueue(conn, settings, at=at, ledger=ledger, client=batches, transport=transport)
         try:
             _run(conn, settings, report, at=at, ledger=ledger, only=only_fixtures, search=search, provider=provider,
-                 transport=transport, request=request)
+                 transport=transport, request=request, queue=queue)
         except Exception as exc:  # the cycle records its own failure; the worker carries on
             report.status = "failed"
             report.errors.append(f"{type(exc).__name__}: {exc}"[:300])
@@ -309,8 +338,9 @@ def _allowance(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datet
         used = cur.fetchone() or {}
         cur.execute(WEB_USED_SQL, {"day": day})
         web = {str(r["pass"]): int(r["count"]) for r in cur.fetchall()}
-    return Allowance(llm=max(0, settings.max_llm_reviews_per_day - int(used.get("llm") or 0)),
-                     deep=max(0, settings.max_deep_per_day - int(used.get("deep") or 0)),
+    waiting = open_counts(conn, "pick_review")  # reviews asked of a Message Batch and not answered yet: they are spent allowance
+    return Allowance(llm=max(0, settings.max_llm_reviews_per_day - int(used.get("llm") or 0) - sum(waiting.values())),
+                     deep=max(0, settings.max_deep_per_day - int(used.get("deep") or 0) - waiting.get("final", 0)),
                      watch=max(0, settings.max_watch_per_day - int(used.get("watch") or 0)),
                      web_first=max(0, settings.max_web_first - web.get("first", 0)),
                      web_pre=max(0, settings.max_web_pre - web.get("pre", 0)))
@@ -334,7 +364,8 @@ def _l3_keys(conn: psycopg.Connection[Any], by_fixture: dict[int, list[Ranked]],
 
 def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleReport, *, at: datetime,
          ledger: UsageLedger, only: list[int] | None, search: SearchFn | None,
-         provider: tuple[LlmProvider, str] | None, transport: httpx.BaseTransport | None, request: bool) -> None:
+         provider: tuple[LlmProvider, str] | None, transport: httpx.BaseTransport | None, request: bool,
+         queue: BatchQueue | None = None) -> None:
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(FIXTURES_SQL, {"start": at + timedelta(minutes=10),
                                    "until": at + timedelta(hours=settings.horizon_hours), "limit": MAX_FIXTURES})
@@ -342,6 +373,10 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
     if only:
         fixtures = [f for f in fixtures if f[0] in set(only)]
     report.counts["fixtures"] = len(fixtures)
+    # what the research of an entity does in this cycle (``FBI_AI_RESEARCH_V2`` and its gate): nothing, runs beside v1 (shadow), or replaces it (on)
+    research_mode = gates.research_mode(conn, settings)
+    if research_mode != "off":
+        report.counts[f"research_v2_{research_mode}"] = 1
 
     # 1. evidence from the provider (free)
     for fid, kickoff in fixtures:
@@ -355,6 +390,8 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
                 conn.rollback()
                 report.status = "partial"
                 report.errors.append(f"evidence {fid}: {type(exc).__name__}")
+            if research_mode != "off":
+                _refresh_typed(conn, report, fid, at=at, replaces=research_mode == "on")
 
     # 2. the shortlist: the value gate at the current price, one per selection
     rows = load_candidates(conn, at=at, until=at + SHORTLIST_HORIZON, include_shadow=True)
@@ -406,28 +443,83 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
               {d.fixture.fixture_id for d in pres[:allow.web_pre]}
 
     # 4-5. packets, briefs, reviews, analyses - the paid ones first, by priority
-    builder = PacketBuilder(conn)
+    builder = PacketBuilder(conn, typed_evidence=research_mode == "on")  # shadow writes claims nobody reads
     with conn.cursor(row_factory=tuple_row) as tcur:
         tcur.execute(NEWEST_PACKETS_SQL, {"fixtures": [f[0] for f in fixtures]})
         newest = {int(r[0]): r[1] for r in tcur.fetchall()}
     order = sorted(fixtures, key=lambda f: (f[0] not in dues, -(dues[f[0]].fixture.priority if f[0] in dues else 0),
                                             f[1]))
     health = {"llm_down": False}
-    for fid, kickoff in order:
-        due = dues.get(fid)
-        try:
-            if due is not None:
-                _pass(conn, settings, report, due, by_fixture.get(fid, []), builder, at=at, ledger=ledger,
-                      search=search, provider=provider, transport=transport, allow=allow, l3=l3,
-                      web=fid in web, llm_ready=llm_ready, health=health, asks=asked.get(fid, []))
-            else:
-                _free(conn, settings, report, fid, kickoff, by_fixture.get(fid, []), builder, newest, at=at)
-            conn.commit()
-        except Exception as exc:
-            conn.rollback()
-            report.status = "partial"
-            report.errors.append(f"fixture {fid}: {type(exc).__name__}: {exc}"[:200])
-            log.warning("ai.cycle.fixture_failed", fixture=fid, error=f"{type(exc).__name__}: {exc}"[:200])
+    held: list[tuple[Any, ...]] = []  # the passes whose record waits for the batch their reviews went to
+    try:
+        for fid, kickoff in order:
+            due = dues.get(fid)
+            try:
+                if due is not None:
+                    _pass(conn, settings, report, due, by_fixture.get(fid, []), builder, at=at, ledger=ledger,
+                          search=search, provider=provider, transport=transport, allow=allow, l3=l3,
+                          web=fid in web, llm_ready=llm_ready, health=health, asks=asked.get(fid, []), queue=queue,
+                          held=held, research_mode=research_mode)
+                else:
+                    _free(conn, settings, report, fid, kickoff, by_fixture.get(fid, []), builder, newest, at=at)
+                conn.commit()
+            except Exception as exc:
+                conn.rollback()
+                report.status = "partial"
+                report.errors.append(f"fixture {fid}: {type(exc).__name__}: {exc}"[:200])
+                log.warning("ai.cycle.fixture_failed", fixture=fid, error=f"{type(exc).__name__}: {exc}"[:200])
+    finally:
+        _send_batches(conn, report, queue, held, at=at)
+
+
+def _send_batches(conn: psycopg.Connection[Any], report: CycleReport, queue: BatchQueue | None,
+                  held: list[tuple[Any, ...]], *, at: datetime) -> None:
+    """The end of the cycle: what it recorded for the Message Batches API is sent, one batch per workspace, and only then are the passes
+    that waited for it recorded as done. A batch that could not be created leaves its matches' passes undone: the next cycle asks again
+    (the brief and the web are reused, nothing is paid twice) and after two failures asks in real time. A failure here is noted and
+    never stops the cycle: the reviews were not paid, and the quantitative pipeline never waited for them."""
+    if queue is None:
+        return
+    try:
+        sent = queue.flush()
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        report.status = "partial"
+        report.errors.append(f"batch flush: {type(exc).__name__}: {exc}"[:200])
+        log.error("ai.batch.flush_failed", error=f"{type(exc).__name__}: {exc}"[:200])
+        report.counts["passes_to_retry"] += len(held)
+        held.clear()
+        return
+    for key, n in (("batches_sent", sent.batches), ("batch_items_sent", sent.sent), ("batch_items_failed", sent.failed),
+                   ("batch_items_orphans", sent.orphans)):
+        if n:
+            report.counts[key] += n
+    if sent.error:
+        report.errors.append(f"batch: {sent.error}"[:200])
+    if sent.failed or sent.orphans:
+        report.status = "partial" if report.status == "ok" else report.status
+    for reason, n in queue.refused.items():
+        report.counts[f"batch_refused_{reason}"] += n
+    unsent: set[int] = set()
+    if held and (sent.failed or sent.orphans):
+        with conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute(UNSENT_FIXTURES_SQL, {"at": at})
+            unsent = {int(r[0]) for r in cur.fetchall()}
+    try:
+        for row in held:
+            if int(row[0]) in unsent:
+                report.counts["passes_to_retry"] += 1
+                continue
+            with conn.cursor() as cur:
+                cur.execute(PASS_SQL, row)
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        report.status = "partial"
+        report.errors.append(f"passes: {type(exc).__name__}: {exc}"[:200])
+        log.error("ai.cycle.passes_failed", error=f"{type(exc).__name__}: {exc}"[:200])
+    held.clear()
 
 
 def web_rank(d: Due, by_fixture: dict[int, list[Ranked]]) -> tuple[int, int, float, float, datetime]:
@@ -485,22 +577,94 @@ def _free(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
     report.counts["analyses_new" if created else "analyses_same"] += 1
 
 
+def _refresh_typed(conn: psycopg.Connection[Any], report: CycleReport, fid: int, *, at: datetime, replaces: bool) -> None:
+    """The statuses of what research v2 knows for a match, decided again (new line-ups, time passing): free, no model, no search. It never
+    stops the cycle - beside v1 a failure is only noted."""
+    try:
+        entity_research.refresh_for(conn, fid, at=at)
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        _research_failed(report, fid, exc, replaces=replaces)
+
+
+def _research_failed(report: CycleReport, fid: int, exc: Exception, *, replaces: bool, counts: dict[str, int] | None = None) -> None:
+    """Research v2 failed for a match: counted and written down, never raised. Beside v1 (shadow) the cycle stays ``ok`` - the quantitative
+    pipeline and v1 did their work; instead of v1 (on) the match went without research, which is what ``partial`` says.
+
+    ``counts`` is the pass's own (a failure inside a pass): the pass row says v2 failed, so a comparison does not read «v2 found nothing»."""
+    text = f"{type(exc).__name__}: {exc}"[:200]
+    report.counts["v2_failed"] += 1
+    if counts is not None:
+        counts["v2_failed"] += 1
+    report.errors.append(f"research v2 {fid}: {text}")
+    if replaces:
+        report.status = "partial" if report.status == "ok" else report.status
+    log.warning("ai.research_v2.failed", fixture=fid, error=text)
+
+
+def _research_v2(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleReport, counts: dict[str, int], fid: int, *, at: datetime,
+                 ledger: UsageLedger, search: SearchFn | None, provider: tuple[LlmProvider, str] | None,
+                 transport: httpx.BaseTransport | None, levels: int | Sequence[int], replaces: bool) -> tuple[Decimal, bool]:
+    """The research of an entity for one pass (``fbi.ai.entity_research``) - returns what it cost and whether it ran. It fails open: an
+    exception is rolled back (what it paid is in the ledger, which has its own connection), counted and written down, and the pass goes on.
+
+    Beside v1 (``replaces`` False) its numbers are the ``v2_*`` counts and nothing else moves: not ``web_searches`` - the allowance of the day
+    counts v1's searches -, not a status of v1, not a packet. Instead of v1 (``replaces`` True) its searches, items and reasons ARE the pass's
+    web numbers, because the allowance of the day, the pass row and the reports read those."""
+    try:
+        got = entity_research.collect(conn, settings, fid, at=at, ledger=ledger, search=search, provider=provider, transport=transport, levels=levels)
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        _research_failed(report, fid, exc, replaces=replaces, counts=counts)
+        return Decimal(0), False
+    for key, n in got.counts().items():
+        counts[key] += n
+        report.counts[key] += n
+    if got.skipped:
+        reason = got.skipped.replace(" ", "_")
+        counts[f"v2_skipped_{reason}"] += 1
+        report.counts[f"v2_skipped_{reason}"] += 1
+    if replaces:
+        counts["web_searches"] += got.searches
+        counts["web_items"] += got.extracted
+        counts["web_new"] += got.created
+        report.counts["web_searches"] += got.searches
+        report.counts["web_items"] += got.extracted
+        if got.skipped:
+            report.counts[f"web_skipped_{got.skipped}"] += 1
+    return Decimal(str(got.cost_usd)), True
+
+
 def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleReport, due: Due, options: list[Ranked],
           builder: PacketBuilder, *, at: datetime, ledger: UsageLedger, search: SearchFn | None,
           provider: tuple[LlmProvider, str] | None, transport: httpx.BaseTransport | None, allow: Allowance,
           l3: set[tuple[int, str, str, Decimal]], web: bool, llm_ready: bool, health: dict[str, bool],
-          asks: Sequence[research.Ask] = ()) -> None:
+          asks: Sequence[research.Ask] = (), queue: BatchQueue | None = None,
+          held: list[tuple[Any, ...]] | None = None, research_mode: str = "off") -> None:
     """One pass of one match of the day: web (when chosen), packet, L1 brief, L2/L3 reviews, cards, the pass row.
     A pass the provider failed (down, timing out) is not recorded: the next cycle tries it again.
 
+    ``queue`` is where a candidate's review goes when it can wait (``fbi.ai.batch``): in a Message Batch, at half the price, answered
+    later; the combined review is the rules' alone until then, and the next cycle combines the two. Without a queue, or when the
+    queue refuses (a switch, a gate, a budget), the review is asked in real time exactly as before. A pass that put a review in a batch
+    is recorded as done only once the batch is sent (``held``, ``_send_batches``).
+
     ``asks`` is what the match's latest brief asked the server to look into (``fbi.ai.research``): a pass that reads the web reads it
     with the levels of the topics asked, when the match has no candidate to read it deeper for; a pass that does not, or has no
-    allowance or budget for it, says so in its counts (``research_unserved_<reason>``)."""
+    allowance or budget for it, says so in its counts (``research_unserved_<reason>``).
+
+    ``research_mode`` is what the research of an entity does (``fbi.ai.gates.research_mode``): ``off``, beside v1 (``shadow``: after v1's
+    research, in the same pass and with the same allowance, its claims written for the comparison and shown to nobody - its numbers are the
+    ``v2_*`` counts) or instead of it (``on``: v1's research does not run and v2's numbers are the pass's web numbers)."""
     fid, kind = due.fixture.fixture_id, due.pass_kind
     started = now()
     counts: dict[str, int] = defaultdict(int)
     cost = Decimal(0)
     report.counts[f"pass_{kind}"] += 1
+    if research_mode != "off":  # the pass says which research it ran under: the gate of research v2 reads the days from these rows
+        counts[f"research_v2_{research_mode}"] = 1
     llm_ready = llm_ready and not health["llm_down"]
     transient = False
     # Near the budget a match without any candidate loses its paid depth first (``Budget.marginal_allowed``): no
@@ -523,17 +687,25 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
     else:
         # the tiered search (sources-v2): up to three levels for a match with candidates, the levels of the topics asked for
         # (``fbi.ai.research``) or the first level for the others
-        got = collect_web(conn, settings, fid, at=at, ledger=ledger, search=search, provider=provider,
-                          transport=transport, levels=research.levels_for(asks, candidates=bool(options)))
-        counts["web_searches"] += got.searches
-        counts["web_items"] += got.extracted
-        counts["web_new"] += got.created
-        cost += Decimal(str(got.cost_usd))
-        report.counts["web_searches"] += got.searches
-        report.counts["web_items"] += got.extracted
-        if got.skipped:
-            report.counts[f"web_skipped_{got.skipped}"] += 1
-        conn.commit()
+        levels = research.levels_for(asks, candidates=bool(options))
+        if research_mode != "on":  # v1 decides what the packet knows (research v2 off, or beside it in shadow)
+            got = collect_web(conn, settings, fid, at=at, ledger=ledger, search=search, provider=provider,
+                              transport=transport, levels=levels)
+            counts["web_searches"] += got.searches
+            counts["web_items"] += got.extracted
+            counts["web_new"] += got.created
+            cost += Decimal(str(got.cost_usd))
+            report.counts["web_searches"] += got.searches
+            report.counts["web_items"] += got.extracted
+            if got.skipped:
+                report.counts[f"web_skipped_{got.skipped}"] += 1
+            conn.commit()
+        if research_mode != "off":
+            spent, ran = _research_v2(conn, settings, report, counts, fid, at=at, ledger=ledger, search=search, provider=provider,
+                                      transport=transport, levels=levels, replaces=research_mode == "on")
+            cost += spent
+            if not ran and research_mode == "on":
+                barrier = "research_failed"  # v1 did not run either: nobody read the web for this match
     if asks:
         counts["research_asked"] = len(asks)
         report.counts["research_asked"] += len(asks)
@@ -563,6 +735,9 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
     counts["brief_reused" if brief.reused else f"brief_{brief.engine}"] += 1
     report.counts["briefs_llm" if brief.engine == "llm" and not brief.reused else
                   "briefs_reused" if brief.reused else "briefs_rules"] += 1
+    if brief.reuse == "material":  # a call saved because nothing material changed (plan section 19), apart from the identical input
+        counts["brief_reused_material"] += 1
+        report.counts["briefs_reused_material"] += 1
     if brief.escalate:
         report.counts["escalated"] += 1
     if not brief.reused and brief.content.get("research"):  # what this reading asks the next pass that reads the web to look into
@@ -584,14 +759,20 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
         sel_key = x.leg.candidate.selection_key
         strong = sel_key in l3 or (bool(material) and sel_key == best_key)
         tier: Tier = "final" if strong and allow.deep > 0 else "analysis"
+        role = "pick" if sel_key in l3 else "candidate"
         last = last_llm.get(key)
         b = budget_of(conn, at=at, settings=settings)
         use_llm = (llm_ready and allow.llm > 0 and b.pass_allows(kind) and b.allows("bulk")
                    and needs_llm(last, cand, evidence_ids=evidence_ids, lineups_confirmed=confirmed))
+        # a review that can wait goes to a Message Batch: the plan's table (first pass; pre pass with the match four hours away or
+        # more), the owner's switch and the evidence of the gate decide (``BatchQueue.routes``)
+        deferral = Deferral(queue, packet_id, settings.mode, kind) if use_llm and queue is not None and queue.routes(
+            tier=tier, pass_kind=kind, kickoff_at=cand.kickoff_at, role=role) else None
         reviewed = review_candidate(conn, settings, cand, packet, packet_id, at=at, use_llm=use_llm, tier=tier,
                                     ledger=ledger, transport=transport, provider=provider,
-                                    prior_llm=None if use_llm else _carried(last, at=at),
-                                    role="pick" if sel_key in l3 else "candidate")
+                                    prior_llm=None if use_llm else _carried(last, at=at), role=role, deferral=deferral)
+        if reviewed.pending is not None:
+            _count_batched(report, counts, reviewed, allow, tier)
         if use_llm and reviewed.llm is not None and reviewed.llm.status == "ok" and tier == "analysis" \
                 and {reviewed.rules.decision, reviewed.llm.decision} == {"APPROVE", "REJECT"} and allow.deep > 0 \
                 and budget_of(conn, at=at, settings=settings).pass_allows(kind):
@@ -600,6 +781,14 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
             cost += reviewed.llm.cost
             conn.commit()
             tier = "final"
+            reviewed = review_candidate(conn, settings, cand, packet, packet_id, at=at, use_llm=True, tier=tier,
+                                        ledger=ledger, transport=transport, provider=provider, role="contradiction")
+        elif _arbitrable(reviewed, use_llm=use_llm) and llm_ready and allow.llm > 0 and allow.deep > 0 \
+                and budget_of(conn, at=at, settings=settings).pass_allows(kind):
+            # the same contradiction, with the intermediate review having come from a Message Batch: it arrived after the pass that asked it,
+            # so the strong model decides now, in real time, at the first pass that can (once: its answer is the newest review)
+            tier = "final"
+            report.counts["batch_arbitrations"] += 1
             reviewed = review_candidate(conn, settings, cand, packet, packet_id, at=at, use_llm=True, tier=tier,
                                         ledger=ledger, transport=transport, provider=provider, role="contradiction")
         reviews[key] = reviewed
@@ -643,13 +832,13 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
         return
     counts["reviews"] = len(reviews)
     counts["candidates"] = len(options)
+    row = (fid, local_day(at), kind, min(started, at), max(now(), at), due.fixture.kickoff_at, "ok", brief.escalate,
+           brief.reasons, brief.id, packet_id, Jsonb(dict(counts)), cost)
+    if held is not None and counts.get("batch_queued"):
+        held.append(row)  # recorded when the batch is sent: a batch that cannot be created leaves this pass to be done again
+        return
     with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute("INSERT INTO ai.fixture_passes (fixture_id, day, pass, started_at, finished_at, kickoff_at, status, "
-                    "escalated, reasons, brief_id, packet_id, counts, cost_usd) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
-                    "ON CONFLICT (fixture_id, day, pass) DO NOTHING",
-                    (fid, local_day(at), kind, min(started, at), max(now(), at), due.fixture.kickoff_at, "ok",
-                     brief.escalate, brief.reasons, brief.id, packet_id, Jsonb(dict(counts)), cost))
+        cur.execute(PASS_SQL, row)
 
 
 def _count_llm(report: CycleReport, counts: dict[str, int], reviewed: Reviewed, allow: Allowance, tier: str) -> None:
@@ -669,6 +858,31 @@ def _count_llm(report: CycleReport, counts: dict[str, int], reviewed: Reviewed, 
     report.counts[f"llm_{level}"] += 1
     if reviewed.llm.status != "ok":
         report.counts[f"llm_{reviewed.llm.status}"] += 1
+
+
+def _count_batched(report: CycleReport, counts: dict[str, int], reviewed: Reviewed, allow: Allowance, tier: str) -> None:
+    """A review that waits in a Message Batch: nothing was paid and nothing stored yet. The day's allowance holds its place from the
+    moment it is queued (the cycle counts the open items of earlier cycles at its start); one already waiting was counted then."""
+    assert reviewed.pending is not None
+    state = str(reviewed.pending.output.get("batch"))
+    report.counts["reviews_batched"] += 1
+    if state != "queued":
+        counts["batch_waiting"] += 1
+        report.counts["batch_waiting"] += 1
+        return
+    allow.llm -= 1
+    if tier == "final":
+        allow.deep -= 1
+    counts["batch_queued"] += 1
+    report.counts["batch_queued"] += 1
+
+
+def _arbitrable(reviewed: Reviewed, *, use_llm: bool) -> bool:
+    """A model review that came from a Message Batch, still in force, that the rules contradict outright (the model approves what they
+    reject, or the reverse): the strong model arbitrates it, as it arbitrates a live one."""
+    carried = reviewed.carried
+    return (not use_llm and carried is not None and carried.output.get("via") == "batch" and carried.output.get("tier") == "analysis"
+            and {reviewed.rules.decision, carried.decision} == {"APPROVE", "REJECT"})
 
 
 # ── learning: post-mortems, notes, patterns, dependence, the AI's shadow evaluation, tomorrow ──

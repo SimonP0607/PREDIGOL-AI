@@ -7,7 +7,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { statePath } from "./accounts";
-import { assertClean, getJson, note, settle, watch } from "./support";
+import { L, assertClean, getJson, note, sendJson, settle, watch } from "./support";
 
 const PAGES = [
   "/home",
@@ -199,7 +199,8 @@ test("a phone held sideways gives the screen to the content", async ({ page }) =
   await assertClean(page, w);
 });
 
-for (const width of [320, 390]) {
+// The five phone widths of the plan (UX, section 36; A1 asks 44 px on all of them).
+for (const width of [320, 360, 390, 412, 430]) {
   test(`controls answer a finger: 44 x 44 px on a ${width} px touch phone`, async ({ page }) => {
     test.setTimeout(150_000);
     const w = watch(page);
@@ -308,6 +309,164 @@ test("the parlay slip under a thumb: a 44 px close, nothing on its title, its fi
   await expect(sheet.getByTestId("slip-save")).toBeInViewport();
   await sheet.getByTestId("slip-clear").click();
   await expect(sheet.getByTestId("slip-leg")).toHaveCount(0);
+  // Plan UX, A1 (F53): the cleared slip can be put back for five seconds - its button within a thumb's reach -
+  // and then the offer goes.
+  await expect(sheet.getByTestId("slip-undo")).toBeVisible();
+  expect(
+    await smallTargets(page, '[data-testid="slip-undo"]'),
+    "the undo button under 44 px",
+  ).toEqual([]);
+  await sheet.getByTestId("slip-undo-button").click();
+  await expect(sheet.getByTestId("slip-leg")).toHaveCount(2);
+  await sheet.getByTestId("slip-clear").click();
+  await expect(sheet.getByTestId("slip-undo")).toBeVisible();
+  await expect(sheet.getByTestId("slip-undo")).toHaveCount(0, { timeout: 8_000 });
+  await expect(sheet.getByTestId("slip-leg")).toHaveCount(0);
+  await assertClean(page, w);
+});
+
+test("the update notice floats above the tab bar and the parlay button, its buttons in a finger's reach", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F33): the "new version" notice sat on the tab bar. It is raised by the service worker when a new
+  // version waits (src/lib/pwa.ts); here the same event is sent by hand.
+  const w = watch(page);
+  // A leg in the slip, so the parlay button shows too (the slip lives in this tab's session storage).
+  await page.addInitScript(() =>
+    window.sessionStorage.setItem(
+      "predigol.slip",
+      JSON.stringify([
+        {
+          fixture_id: 999_999,
+          market_key: "1X2",
+          selection: "Home",
+          line: "0",
+          home: "Local",
+          away: "Visitante",
+          kickoff_at: "2099-01-01T18:00:00Z",
+          odds: "2.00",
+          bookmaker: null,
+        },
+      ]),
+    ),
+  );
+  for (const [width, height] of [
+    [320, 700],
+    [390, 844],
+    [844, 390],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto("/home");
+    await settle(page);
+    await page.evaluate(() =>
+      window.dispatchEvent(
+        new CustomEvent("predigol:update-ready", { detail: { postMessage: () => undefined } }),
+      ),
+    );
+    const notice = page.getByTestId("update-toast");
+    await expect(notice).toBeVisible();
+    const box = await notice.boundingBox();
+    const bar = await page.getByRole("navigation", { name: L.es.nav.mainNavigation }).boundingBox();
+    expect(box && bar, `notice and tab bar at ${width}x${height}`).toBeTruthy();
+    if (!box || !bar) return;
+    expect(
+      box.y + box.height,
+      `the notice ends above the tab bar at ${width}x${height}`,
+    ).toBeLessThanOrEqual(bar.y);
+    const slip = await page.getByTestId("slip-open").boundingBox();
+    expect(slip, "the parlay button shows").toBeTruthy();
+    if (slip) {
+      const apart =
+        box.y + box.height <= slip.y ||
+        slip.y + slip.height <= box.y ||
+        box.x + box.width <= slip.x ||
+        slip.x + slip.width <= box.x;
+      expect(apart, `the notice covers the parlay button at ${width}x${height}`).toBe(true);
+    }
+    expect(await smallTargets(page, '[data-testid="update-toast"]'), "notice buttons").toEqual([]);
+    await page.getByTestId("update-later").click();
+    await expect(notice).toHaveCount(0);
+  }
+  await assertClean(page, w);
+});
+
+test("a figure's help opens with a tap inside a card's link, and that tap does not open the match", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F16): a card is one link, and the help on its figures could not be read with a finger - a tap
+  // followed the link. A [data-hint] now shows its help, and only the rest of the card opens the match.
+  const w = watch(page);
+  await page.goto("/home");
+  await settle(page);
+  const badge = page.getByTestId("upcoming-bookmakers").first();
+  if ((await badge.count()) === 0) {
+    note(test.info(), "no upcoming match with prices on Inicio");
+    return;
+  }
+  await badge.tap();
+  await expect(page.getByTestId("title-tap")).toHaveText(L.es.home.upcoming.bookmakersHelp);
+  await page.waitForTimeout(800); // the click that followed the tap was the link's: it must not navigate
+  await expect(page).toHaveURL(/\/home$/);
+  await page.getByTestId("upcoming-row").first().getByTestId("matchup").tap();
+  await expect(page).toHaveURL(/\/matches\/\d+/);
+  await assertClean(page, w);
+});
+
+test("Mis picks with an open pick, its confirmation, and a match's markets: 44 px at the five phone widths", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F33): Mis picks had 32 px buttons (your price, remove) and the line selector of a match's markets
+  // 32 px; they show only with an open saved pick and a priced match, so the check makes one and removes it.
+  test.setTimeout(180_000);
+  const w = watch(page);
+  const { body } = await getJson<{
+    data: { fixtures: Array<{ fixture_id: number; kickoff_at: string }> };
+  }>(page.request, "/api/v1/odds/best?hours=72&market=1X2");
+  const soon = Date.now() + 30 * 60_000;
+  const fixture = body.data.fixtures.find((f) => Date.parse(f.kickoff_at) > soon);
+  if (!fixture) {
+    note(test.info(), "no upcoming match with a 1X2 price");
+    return;
+  }
+  const open = await getJson<{ data: Array<{ id: number; match: { fixture_id: number } }> }>(
+    page.request,
+    "/api/v1/me/picks?status=open",
+  );
+  for (const p of open.body.data.filter((x) => x.match.fixture_id === fixture.fixture_id)) {
+    await sendJson(page.request, "DELETE", `/api/v1/me/picks/${p.id}`);
+  }
+  const saved = await sendJson<{ data: { id: number } }>(page.request, "POST", "/api/v1/me/picks", {
+    fixture_id: fixture.fixture_id,
+    market_key: "1X2",
+    selection: "Home",
+  });
+  expect(saved.status, "the pick is saved").toBe(201);
+  try {
+    for (const width of [320, 360, 390, 412, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto("/my-picks");
+      await settle(page);
+      const row = page.locator(
+        `[data-testid="saved-pick"][data-fixture-id="${fixture.fixture_id}"]`,
+      );
+      await expect(row).toBeVisible();
+      expect(await smallTargets(page, "main"), `Mis picks at ${width} px`).toEqual([]);
+      await row.getByTestId("saved-pick-remove").click();
+      await expect(page.getByTestId("confirm-remove-pick")).toBeVisible();
+      expect(
+        await smallTargets(page, '[data-testid="confirm-remove-pick"]'),
+        `the confirmation at ${width} px`,
+      ).toEqual([]);
+      await page.getByTestId("confirm-remove-pick-cancel").click();
+      await page.goto(`/matches/${fixture.fixture_id}`);
+      await settle(page);
+      await page.getByRole("tab", { name: L.es.match.tabs.markets }).click();
+      await settle(page);
+      expect(await smallTargets(page, "main"), `a match's markets at ${width} px`).toEqual([]);
+    }
+  } finally {
+    await sendJson(page.request, "DELETE", `/api/v1/me/picks/${saved.body.data.id}`);
+  }
   await assertClean(page, w);
 });
 
@@ -348,6 +507,7 @@ const AI_PAGES_PLACES = [
   "/admin/operation#tab=ai&view=reviews",
   "/admin/operation#tab=ai&view=evidence",
   "/admin/operation#tab=ai&view=sources",
+  "/admin/operation#tab=agents",
   "/admin/operation#tab=costs",
   "/admin/operation#tab=runs",
   "/admin/learning",

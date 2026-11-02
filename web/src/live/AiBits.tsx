@@ -162,6 +162,60 @@ export function SubTitle({ children }: { children: ReactNode }) {
   );
 }
 
+/** A titled block inside a panel: the title, a line of what it means, then the block. */
+export function Block({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string | undefined;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <SubTitle>{title}</SubTitle>
+      {hint ? <Note>{hint}</Note> : null}
+      {children}
+    </div>
+  );
+}
+
+/** A table inside a padded panel: its own frame, so its edge fade and its scroll stay inside the card. */
+export function Framed({ children }: { children: ReactNode }) {
+  return <div className="overflow-hidden rounded-md border border-border">{children}</div>;
+}
+
+/** A framed list of things to look at: a warning, or an alarm when what it lists is a fault of ours. */
+export function Notice({
+  tone,
+  testId,
+  title,
+  children,
+}: {
+  tone: "warning" | "negative";
+  testId: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      role={tone === "negative" ? "alert" : undefined}
+      data-tone={tone}
+      data-testid={testId}
+      className={cn(
+        "rounded-md border px-3 py-2 text-xs",
+        tone === "negative"
+          ? "border-negative/35 bg-negative-soft"
+          : "border-warning/35 bg-warning-soft",
+      )}
+    >
+      <div className="font-medium">{title}</div>
+      <ul className="mt-1 list-disc space-y-0.5 pl-4 text-foreground/85">{children}</ul>
+    </div>
+  );
+}
+
 /** A plain date input (a Bogotá day, "YYYY-MM-DD"). Clearing it keeps the day it had. */
 export function DayInput({
   value,

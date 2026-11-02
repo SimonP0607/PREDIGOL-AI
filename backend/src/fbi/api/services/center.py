@@ -306,7 +306,7 @@ def live_board(conn: Conn, *, at: datetime | None = None) -> Envelope[LiveBoard]
         matches.append(LiveMatch(
             fixture_id=fid, kickoff_at=r["kickoff_at"], competition=r["competition"], country=r["country"],
             competition_id=r.get("competition_id"), competition_logo=r.get("competition_logo"),
-            competition_flag=r.get("competition_flag"),
+            competition_flag=r.get("competition_flag"), country_code=r.get("country_code"),
             home=LiveTeam(id=r["home_id"], name=r["home_name"], logo_url=r.get("home_logo")),
             away=LiveTeam(id=r["away_id"], name=r["away_name"], logo_url=r.get("away_logo")),
             status=(r["feed_status"] if use_feed else r["odds_status"]) or "?",

@@ -119,7 +119,10 @@
     "no_h2h": "No previous meeting with a result.",
     "no_live_states": "No in-play state was recorded for this match.",
     "live_odds_not_kept": "In-play prices are shown only while the match is played and are not kept afterwards.",
-    "no_market_data": "No prices captured for this match yet."
+    "no_market_data": "No prices captured for this match yet.",
+    "no_v2_passes": "No pass of the window ran research v2 beside v1: there is nothing to compare yet.",
+    "comparison_failed": "The comparison between v1 and v2 could not be computed. The rest of the page is still valid.",
+    "gate_failed": "The gate of research v2 could not be evaluated. The rest of the page is still valid."
   },
   "pager": {
     "label": "Pages",
@@ -128,5 +131,10 @@
     "range": "{from}–{to} of {total}",
     "page": "Page {page} of {pages}"
   },
-  "reset": "Reset"
+  "reset": "Reset",
+  "roleAdmin": "Administrator",
+  "meta": {
+    "title": "PrediGol — Football Intelligence",
+    "description": "PrediGol: matches, live scores, value picks, parlays and the best odds."
+  }
 }

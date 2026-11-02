@@ -23,10 +23,34 @@ const NOT_A_TOOLTIP = new Set(["iframe", "object", "embed", "svg"]);
 export interface Titled<N extends TitleNode = TitleNode> {
   node: N;
   text: string;
+  /**
+   * A `data-hint` inside a control (a card that is one link): the tap shows the hint and must not also follow the
+   * link - the caller swallows that tap's click.
+   */
+  inControl?: boolean;
 }
 
-/** The nearest element at or above the tapped one that carries a `title`; null when a control is in the way or none has one. */
+/**
+ * The hint a tap reaches. A `[data-hint]` element (plan UX, A1, defect F16) speaks even inside a control: a card is
+ * one link, and the help on its figures - the expected value, how fresh a price is - could never be read on a phone,
+ * since a tap on a link follows it. Its hint shows instead, and that tap does not follow the link. Otherwise the
+ * nearest `title` at or above the tapped element, as long as no control is in the way.
+ */
 export function titledTarget<N extends TitleNode>(start: N | null): Titled<N> | null {
+  for (let node: N | null = start; node; node = node.parentElement as N | null) {
+    if (node.matches(CONTROLS)) break;
+    const hint = node.getAttribute("data-hint")?.trim();
+    if (hint) {
+      let inControl = false;
+      for (let up = node.parentElement as N | null; up; up = up.parentElement as N | null) {
+        if (up.matches(CONTROLS)) {
+          inControl = true;
+          break;
+        }
+      }
+      return { node, text: hint, inControl };
+    }
+  }
   for (let node: N | null = start; node; node = node.parentElement as N | null) {
     if (node.matches(CONTROLS)) return null;
   }
@@ -35,6 +59,18 @@ export function titledTarget<N extends TitleNode>(start: N | null): Titled<N> | 
     if (text && !NOT_A_TOOLTIP.has(node.tagName.toLowerCase())) return { node, text };
   }
   return null;
+}
+
+/**
+ * The attributes of a figure's help: `title` for a mouse (the browser's own tooltip) and `data-hint` for a finger,
+ * which TitleTap shows even where the figure sits inside a card's link.
+ */
+export function hintProps(text: string | null | undefined): {
+  title?: string;
+  "data-hint"?: string;
+} {
+  const help = text?.trim();
+  return help ? { title: help, "data-hint": help } : {};
 }
 
 export interface Touch {

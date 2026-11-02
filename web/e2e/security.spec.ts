@@ -26,6 +26,9 @@ test("a new account: authenticator from the QR's key, recovery codes, its own pa
   page,
   browser,
 }) => {
+  // a whole account's life - set-up, three sign-ins, the owner's resets: it ran out of 60 s at its very last step
+  // beside the phone tests (A2's e2e), the work done
+  test.setTimeout(120_000);
   const admin = await owner();
   const email = `e2e.mfa.${Date.now()}@predigol.local`;
   const created = await sendJson<{ data: { id: number; must_change_password: boolean } }>(

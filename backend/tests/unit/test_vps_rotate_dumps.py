@@ -14,10 +14,16 @@ def _dumps(folder: Path, names: list[str]) -> None:
         (folder / f"predigol-{n}.json").write_text("{}")
 
 
-def _rotate(folder: Path, daily: int = 3, weekly: int = 2, offsite: int = 0) -> set[str]:
-    subprocess.run(["bash", str(SCRIPT), str(folder), str(daily), str(weekly), str(offsite)], check=True,
+def _rotate(folder: Path, daily: int = 3, weekly: int = 2, offsite: int = 0, unverified: int | None = None) -> set[str]:
+    extra = [] if unverified is None else [str(unverified)]
+    subprocess.run(["bash", str(SCRIPT), str(folder), str(daily), str(weekly), str(offsite), *extra], check=True,
                    capture_output=True, text=True)
     return {p.name.removeprefix("predigol-").removesuffix(".dump") for p in folder.glob("predigol-*.dump")}
+
+
+def _copied(folder: Path, *names: str) -> None:
+    for n in names:
+        (folder / f"predigol-{n}.json").write_text('{"offsite": {"verified_at": "2026-10-20T05:00:00Z"}}')
 
 
 def test_a_morning_of_deploys_keeps_the_previous_days(tmp_path: Path) -> None:
@@ -45,3 +51,34 @@ def test_with_an_off_server_copy_an_unchecked_dump_is_kept(tmp_path: Path) -> No
     (tmp_path / "predigol-20261001T041939Z.json").write_text('{"offsite": {"verified_at": "2026-10-01T05:00:00Z"}}')
     kept = _rotate(tmp_path, offsite=1)
     assert "20261001T041939Z" not in kept and "20261002T041939Z" in kept, "only a checked copy lets it go"
+
+
+def test_an_unchecked_dump_goes_once_a_newer_one_has_been_copied(tmp_path: Path) -> None:
+    """The local copy of a night whose upload failed is kept only while it may be the only one: when a LATER dump reached the
+    bucket, it is superseded and rotates out like any other (otherwise it would stay for ever)."""
+    _dumps(tmp_path, [f"202610{d:02d}T041939Z" for d in range(1, 11)])
+    _copied(tmp_path, "20261007T041939Z")
+    kept = _rotate(tmp_path, offsite=1)
+    assert kept == {"20261010T041939Z", "20261009T041939Z", "20261008T041939Z", "20261004T041939Z"}, (
+        "the rules' own: the newest three and the newest of the last two weeks; nothing older is kept for being unchecked")
+
+
+def test_an_unchecked_dump_is_kept_while_nothing_newer_was_copied(tmp_path: Path) -> None:
+    _dumps(tmp_path, [f"202610{d:02d}T041939Z" for d in range(1, 11)])
+    _copied(tmp_path, "20261002T041939Z")  # older than the ones in doubt
+    kept = _rotate(tmp_path, offsite=1)
+    assert {"20261003T041939Z", "20261005T041939Z", "20261006T041939Z", "20261007T041939Z"} <= kept
+    assert "20261002T041939Z" not in kept, "its own copy is checked: it goes"
+
+
+def test_the_dumps_in_doubt_are_capped_so_that_a_bucket_down_for_weeks_cannot_fill_the_disk(tmp_path: Path) -> None:
+    _dumps(tmp_path, [f"202610{d:02d}T041939Z" for d in range(1, 15)])  # none ever copied
+    kept = _rotate(tmp_path, offsite=1, unverified=3)
+    # by the rules: 12, 13, 14 and the newest of the week before (11); in doubt, the newest three of the rest: 10, 9, 8
+    assert kept == {f"202610{d:02d}T041939Z" for d in (14, 13, 12, 11, 10, 9, 8)}
+    assert not (tmp_path / "predigol-20261007T041939Z.json").exists()
+
+
+def test_without_an_off_server_copy_the_rules_alone_decide(tmp_path: Path) -> None:
+    _dumps(tmp_path, [f"202610{d:02d}T041939Z" for d in range(1, 15)])
+    assert _rotate(tmp_path, offsite=0, unverified=99) == {f"202610{d:02d}T041939Z" for d in (14, 13, 12, 11)}

@@ -57,6 +57,18 @@ def _subkey(purpose: bytes) -> bytes:
     return hmac.new(_master_key(), b"predigol/" + purpose, hashlib.sha256).digest()
 
 
+def observability_id(user_id: int) -> str | None:
+    """The pseudonym an account's errors carry to Sentry (plan UX, A2): an HMAC of its id under a key derived from
+    FBI_AUTH_SECRET_KEY - the same account always gets the same pseudonym, so its errors group, and nobody without
+    the key can tell which account it is (nor walk the ids to find out). None when the key is not there: then errors
+    carry no user at all."""
+    try:
+        key = _subkey(b"observability")
+    except KeyUnavailableError:
+        return None
+    return hmac.new(key, f"user:{user_id}".encode(), hashlib.sha256).hexdigest()[:20]
+
+
 def new_key_b64() -> str:
     """A fresh FBI_AUTH_SECRET_KEY value (for install scripts)."""
     return base64.b64encode(os.urandom(32)).decode("ascii")

@@ -390,6 +390,9 @@ class LiveMatch(Contract):
     kickoff_at: datetime
     competition: str
     country: str | None
+    country_code: str | None = Field(default=None, description="ISO code of the competition's country (GB-ENG for "
+                                                               "a home nation): the client names it in the "
+                                                               "reader's language.")
     competition_id: int | None = None
     competition_logo: str | None = None
     competition_flag: str | None = None

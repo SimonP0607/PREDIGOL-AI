@@ -10,6 +10,8 @@ import { t } from "@/lib/i18n";
 import { fmtSignedPp } from "@/lib/i18n/format";
 import type { PickCard as PickCardData } from "@/lib/api/v1/types_product";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
+import { Hint } from "@/components/system/Hint";
+import { glossaryText } from "@/lib/glossary";
 import { EvBadge, Freshness, Kickoff, OddsPill, ProbCompare, ShadowBadge } from "./Bits";
 import { gateReason, marketName, selectionLabel } from "./markets";
 
@@ -92,7 +94,12 @@ export function PickCard({
           />
         </div>
 
-        <div className={cn("mt-3 border-t border-border/70 px-4", compact ? "py-3" : "py-3.5")}>
+        <div
+          className={cn(
+            "mt-3 border-t border-border/70 px-4",
+            compact ? "pb-2 pt-3" : "pb-2.5 pt-3.5",
+          )}
+        >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="text-caption uppercase tracking-wider text-subtle-foreground">
@@ -118,21 +125,32 @@ export function PickCard({
           {!compact ? (
             <ProbCompare model={pick.p_model} market={pick.p_market} className="mt-3" />
           ) : null}
-
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <EvBadge ev={pick.ev} />
-            {pick.edge !== null ? (
-              <span className="numeric text-caption text-muted-foreground" title={t("common.edge")}>
-                {t("common.edge")} {fmtSignedPp(pick.edge)}
-              </span>
-            ) : null}
-            <Freshness at={pick.price_at} level={pick.freshness} className="ml-auto" />
-          </div>
           {!pick.value_now && pick.value_reason ? (
             <p className="mt-2 text-caption text-warning">{gateReason(pick.value_reason)}</p>
           ) : null}
         </div>
       </Link>
+      {/* The figures with their help, beside the card's link and not inside it (plan UX, A1, defect F16): a tap, a
+          hover or the keyboard opens each definition without opening the match. */}
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4",
+          compact ? "pb-3" : "pb-3.5",
+        )}
+        data-testid="pick-card-figures"
+      >
+        <Hint text={glossaryText("ev")} className="no-underline">
+          <EvBadge ev={pick.ev} hint={false} />
+        </Hint>
+        {pick.edge !== null ? (
+          <Hint text={glossaryText("edge")} className="numeric text-caption text-muted-foreground">
+            {t("common.edge")} {fmtSignedPp(pick.edge)}
+          </Hint>
+        ) : null}
+        <Hint text={t(`common.freshnessLevel.${pick.freshness}`)} className="ml-auto no-underline">
+          <Freshness at={pick.price_at} level={pick.freshness} hint={false} />
+        </Hint>
+      </div>
       {actions ? <div className="border-t border-border/70 px-4 py-2.5">{actions}</div> : null}
     </div>
   );

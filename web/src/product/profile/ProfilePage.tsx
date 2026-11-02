@@ -16,11 +16,27 @@ import {
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { v1 } from "@/lib/api/v1/client";
 import { LOCALES, t, useI18n } from "@/lib/i18n";
-import { detectTimeZone, formatDateTime, formatTime, listTimeZones, zoneAbbrev } from "@/lib/time";
+import { LOCALE_NAMES } from "@/lib/i18n/catalogs";
+import { fmtInt } from "@/lib/i18n/format";
+import {
+  detectTimeZone,
+  formatDateTime,
+  formatTime,
+  listTimeZones,
+  zoneAbbrev,
+  zoneName,
+} from "@/lib/time";
 import { Card, PageTitle, errorMessage } from "@/product/shared/States";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { cn } from "@/lib/utils";
 import { AccessPanel, SessionsPanel, TwoFactorPanel } from "./SecurityPanels";
+
+/** "7 días", "8 horas": how long a session may go unused. */
+function idleText(hours: number): string {
+  return hours % 24 === 0
+    ? t("profile.idleDays", { count: hours / 24, n: fmtInt(hours / 24) })
+    : t("profile.idleHours", { count: hours, n: fmtInt(hours) });
+}
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -66,6 +82,10 @@ function TimeZonePicker() {
         >
           {current} · {zoneAbbrev(Date.now(), current)}
         </span>
+        {/* The zone in words, in the reader's language (plan UX, A1, F09). */}
+        <span className="text-xs text-foreground" data-testid="current-timezone-name">
+          {zoneName(current)}
+        </span>
         <span className="text-xs text-muted-foreground">
           {t("profile.currentTime", { time: formatTime(Date.now()) })}
         </span>
@@ -95,7 +115,9 @@ function TimeZonePicker() {
         aria-label={t("profile.timezone")}
       >
         {matches.map((z) => (
-          <li key={z}>
+          // The item is only a wrapper: the option is the button, so the listbox owns its options (axe, line base of
+          // A0: aria-required-parent, listitem and aria-required-children on this list).
+          <li key={z} role="presentation">
             <button
               type="button"
               role="option"
@@ -224,13 +246,27 @@ export function ProfilePage() {
         <h2 className="mb-1 font-display text-base font-semibold">{t("profile.account")}</h2>
         <Row label={t("profile.displayName")}>{user.display_name}</Row>
         <Row label={t("profile.email")}>{user.email}</Row>
-        <Row label={t("profile.role")}>
-          <span className="rounded-full border border-gold/40 bg-gold-soft px-2 py-0.5 text-xs font-bold tracking-wider text-gold-strong">
-            {user.role}
-          </span>
-        </Row>
+        {/* Plan UX, A1 (F07): a reader never sees an internal role; the owner's account says "Administrador". */}
+        {user.role === "SUPER_ADMIN" ? (
+          <Row label={t("profile.role")}>
+            <span
+              className="rounded-full border border-gold/40 bg-gold-soft px-2 py-0.5 text-xs font-bold tracking-wider text-gold-strong"
+              data-testid="profile-role"
+            >
+              {t("common.roleAdmin")}
+            </span>
+          </Row>
+        ) : null}
         <Row label={t("profile.sessionLabel")}>
-          <span className="numeric text-xs">{formatDateTime(user.session_expires_at)}</span>
+          {/* The session slides with use (plan UX, A1): open until this date at most, sooner if it goes unused. */}
+          <span className="text-xs" data-testid="profile-session">
+            {t("profile.sessionUntil", { date: formatDateTime(user.session_expires_at) })}
+            {user.session_idle_hours ? (
+              <span className="block text-caption text-muted-foreground">
+                {t("profile.sessionIdle", { idle: idleText(user.session_idle_hours) })}
+              </span>
+            ) : null}
+          </span>
         </Row>
       </Card>
 
@@ -247,6 +283,7 @@ export function ProfilePage() {
               type="button"
               role="radio"
               aria-checked={locale === l}
+              lang={l}
               data-testid={`profile-lang-${l}`}
               onClick={() => void auth.setLocale(l)}
               className={cn(
@@ -256,7 +293,7 @@ export function ProfilePage() {
                   : "border-border-strong hover:bg-elevated",
               )}
             >
-              {l === "es" ? "Español" : "English"}
+              {LOCALE_NAMES[l]}
             </button>
           ))}
         </div>

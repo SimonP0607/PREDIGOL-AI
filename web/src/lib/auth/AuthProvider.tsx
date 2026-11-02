@@ -19,6 +19,7 @@ import { LiveApiError, STAGE_EVENT, UNAUTHENTICATED_EVENT, v1 } from "@/lib/api/
 import { live } from "@/lib/api/v1/queries";
 import type { Language, Me, PermissionKey, PreferencesIn } from "@/lib/api/v1/types_auth";
 import { browserLocale, isLocale, rememberLocale, type Locale } from "@/lib/i18n";
+import { setObservedUser } from "@/lib/observability";
 import { detectTimeZone, isValidTimeZone } from "@/lib/time";
 
 /** staged: the password was right, but a step of signing in is still owed (user.stage). */
@@ -82,6 +83,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const error = me.error instanceof LiveApiError ? me.error : null;
   const user = me.data ?? null;
+  // The account's pseudonym on the errors the page reports (plan UX, A2); none once signed out.
+  useEffect(() => setObservedUser(user?.observability_id ?? null), [user?.observability_id]);
   const status: AuthStatus = me.isPending
     ? "loading"
     : user

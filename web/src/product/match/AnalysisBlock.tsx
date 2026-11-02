@@ -305,6 +305,7 @@ export function AnalysisCardView({
   away,
   match,
   updatedAt,
+  contextPending = false,
 }: {
   card: AnalysisCard;
   home: string;
@@ -313,6 +314,11 @@ export function AnalysisCardView({
   match?: CardMatch | undefined;
   /** When the analysis (or its brief) was last written. */
   updatedAt?: string | null | undefined;
+  /**
+   * The AI's context review does not act on picks yet (it runs in shadow, or is not enforced): a "Recomendado" says
+   * so beside it (plan UX, A1, defect F48) - the verdict is the quantitative rule's, before any review of context.
+   */
+  contextPending?: boolean;
 }) {
   const id = useId();
   const sides = { home, away };
@@ -344,14 +350,25 @@ export function AnalysisCardView({
             <p className="mt-0.5 break-words text-xs text-muted-foreground">{verdictReason}</p>
           ) : null}
         </div>
-        <span
-          className={cn(
-            "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[0.7rem] font-bold uppercase tracking-wider",
-            VERDICT_STYLE[card.verdict],
-          )}
-        >
-          {translateOr(`match.analysis.verdict.${card.verdict}`, card.verdict)}
-        </span>
+        <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.7rem] font-bold uppercase tracking-wider",
+              VERDICT_STYLE[card.verdict],
+            )}
+            data-testid="analysis-verdict"
+          >
+            {translateOr(`match.analysis.verdict.${card.verdict}`, card.verdict)}
+          </span>
+          {contextPending && card.verdict === "recommended" ? (
+            <span
+              className="text-caption text-subtle-foreground"
+              data-testid="verdict-context-pending"
+            >
+              {t("match.analysis.contextPending")}
+            </span>
+          ) : null}
+        </div>
       </header>
 
       {noMarket ? (
@@ -636,6 +653,7 @@ export function AnalysisBlock({
                       away={away}
                       match={match}
                       updatedAt={updatedAt}
+                      contextPending={a.mode === "shadow" || !a.enforced}
                     />
                   ))}
                 </div>

@@ -99,7 +99,7 @@ def test_the_register_names_leak_rules_and_isolation_tests_that_exist() -> None:
     named_rules = set(re.findall(r"`([a-z0-9_]+_known)`", register))
     assert {"tie_legs_known", "referee_known", "forecast_known", "calendar_known", "h2h_known", "factors_known", "family_forecast_known",
             "family_price_known"} <= named_rules
-    missing = sorted(rule for rule in named_rules if rule not in leakage.RULES)
+    missing = sorted(rule for rule in named_rules if rule not in leakage.RULE_NAMES)
     assert not missing, f"the checklist names leak-audit rules the code does not have: {missing}"
 
     named_tests = set(re.findall(r"`(test_[a-z_]+_isolation\.py)`", register))

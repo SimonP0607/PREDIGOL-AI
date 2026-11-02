@@ -16,6 +16,7 @@
  *   mobile    the product at 390 px
  *   mobile-webkit  the phone checks at 320, 390 and 430 px in WebKit, the engine of every iPhone browser
  *   pwa       manifest, service worker and offline page (E2E_PWA=1, production build only)
+ *   prod-smoke  read-only checks of a deployed site, no sign-in (E2E_PROD_SMOKE=1, E2E_BASE_URL=the site)
  * Two measurements run only when asked, and never fail on what they measure:
  *   a11y      axe-core on the sign-in page and the product, WCAG 2.2 A/AA (E2E_A11Y=1)
  *   screens   reference screenshots of the product at 320/360/390/412/430 px (E2E_SCREENS=1)
@@ -78,7 +79,8 @@ export default defineConfig({
     },
     {
       name: "admin",
-      testMatch: /admin\.spec\.ts/,
+      // observability.spec.ts: the console's error-reporting tests (plan UX, A2), skipped without E2E_SENTRY_SINK
+      testMatch: /(admin|observability)\.spec\.ts/,
       use: { ...desktop, storageState: statePath("admin"), locale: "en-GB" },
       dependencies: ["setup"],
     },
@@ -127,6 +129,13 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
+    ...(process.env["E2E_PROD_SMOKE"]
+      ? [
+          // Read-only checks of a deployed site (plan UX, A2): E2E_BASE_URL=https://predigolai.com E2E_PROD_SMOKE=1.
+          // No sign-in, no account, nothing written.
+          { name: "prod-smoke", testMatch: /prod-smoke\.spec\.ts/, use: desktop },
+        ]
+      : []),
     ...(process.env["E2E_A11Y"]
       ? [{ name: "a11y", testMatch: /a11y\.spec\.ts/, use: desktop, dependencies: ["setup"] }]
       : []),

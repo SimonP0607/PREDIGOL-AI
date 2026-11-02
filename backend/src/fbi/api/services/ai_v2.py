@@ -6,6 +6,7 @@ model, a search API or anything that costs.
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -15,6 +16,7 @@ from fbi.ai import shadow as ai_shadow
 from fbi.ai.calendar import day_bounds, local_day
 from fbi.ai.config import TIERS, AiSettings
 from fbi.ai.day import STALE_ODDS, universe
+from fbi.ai.gates import typed_visible
 from fbi.ai.text import shown
 from fbi.api.contracts.ai_layer import (
     AiComparison,
@@ -33,6 +35,8 @@ from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.core.clock import now
 from fbi.intel.pm_facts import AI_ROLES
 from fbi.intel.pm_questions import stored_clv
+
+log = logging.getLogger(__name__)
 
 LEVEL_ROLE = {"bulk": ("L1", "Resumen de cada partido del día con mercado; extracción de noticias"),
               "analysis": ("L2", "Revisión de candidatos y partidos escalados"),
@@ -83,7 +87,7 @@ SELECT (SELECT count(*) FROM b) AS analyzed,
        (SELECT count(*) FROM ai.usage WHERE purpose = 'web_search' AND status = 'ok' AND at >= %(start)s
           AND at < %(end)s) AS searches,
        (SELECT count(*) FROM ai.evidence WHERE retrieved_at >= %(start)s AND retrieved_at < %(end)s
-          AND origin = 'web') AS news,
+          AND origin = 'web' AND (subject_type IS NULL OR %(typed)s)) AS news,
        (SELECT COALESCE(sum(cost_usd), 0) FROM ai.usage WHERE at >= %(start)s AND at < %(end)s) AS cost
 """
 
@@ -94,8 +98,8 @@ def efficiency(conn: Conn, *, at: datetime) -> dict[str, Any]:
     start, end = day_bounds(day)
     today = universe(conn, day=day, at=at, scheduled_only=False)
     with_market = [f for f in today if f.has_market]
-    r = fetch_one(conn, EFFICIENCY_SQL, {"start": start, "end": end,
-                                         "universe": [f.fixture_id for f in with_market]}) or {}
+    r = fetch_one(conn, EFFICIENCY_SQL, {"start": start, "end": end, "universe": [f.fixture_id for f in with_market],
+                                         "typed": typed_visible(conn)}) or {}
     cost = float(r.get("cost") or 0)
 
     def per(n: Any) -> float | None:
@@ -216,6 +220,7 @@ SELECT e.id, e.fixture_id, e.kind, e.claim, e.origin, e.source_name, e.source_ur
        e.confidence, e.relevance, t.name AS team
   FROM ai.evidence e LEFT JOIN core.teams t ON t.id = e.team_id
  WHERE e.fixture_id = ANY(%(fixtures)s) AND (e.origin = 'web' OR e.retrieved_at >= %(start)s - interval '2 days')
+   AND (e.subject_type IS NULL OR %(typed)s)
  ORDER BY e.fixture_id, e.retrieved_at DESC, e.id DESC
 """
 
@@ -241,7 +246,7 @@ def research(conn: Conn, *, day: date | None = None) -> Envelope[list[ResearchRo
     if not ids:
         return listing([], empty_reason="no_research_today")
     evidence: dict[int, list[dict[str, Any]]] = defaultdict(list)
-    for r in fetch_all(conn, RESEARCH_EVIDENCE_SQL, {"fixtures": ids, "start": start}):
+    for r in fetch_all(conn, RESEARCH_EVIDENCE_SQL, {"fixtures": ids, "start": start, "typed": typed_visible(conn)}):
         evidence[int(r["fixture_id"])].append({
             "id": r["id"], "kind": r["kind"], "claim": r["claim"], "origin": r["origin"], "team": r["team"],
             "source": r["source_name"], "url": r["source_url"], "domain": r["source_domain"], "tier": r["source_tier"],
@@ -409,18 +414,32 @@ def comparison(conn: Conn) -> Envelope[AiComparison]:
                                    if k in ("selections", "days", "rejected")}))
 
 
+def envelopes(conn: Conn, *, at: datetime, settings: AiSettings) -> dict[str, Any]:
+    """The three envelopes and what the cache and the Batch saved (Plan Maestro IA, Phase 0). A failure here leaves this panel
+    empty and logs why; it never takes the rest of the overview down (a savepoint keeps the connection usable)."""
+    from fbi.ai import costs_v3
+
+    try:
+        with conn.transaction():
+            return costs_v3.envelopes(conn, at=at, settings=settings)
+    except Exception:
+        log.exception("the AI overview: the envelopes panel could not be built")
+        return {}
+
+
 def overview_extra(conn: Conn, *, at: datetime, settings: AiSettings) -> dict[str, Any]:
     from fbi.ai import costs as ai_costs
 
     return {"projection": ai_costs.projection(conn, at=at, settings=settings), "alerts": ai_costs.alerts(conn, at=at),
             "stack": stack(settings), "efficiency": efficiency(conn, at=at),
-            "day": day_plan(conn, day=local_day(at))}
+            "day": day_plan(conn, day=local_day(at)), "envelopes": envelopes(conn, at=at, settings=settings)}
 
 
 def day_counts(conn: Conn, *, day: date) -> dict[str, Any]:
     """EL DÍA EN PREDIGOL AI."""
     start, end = day_bounds(day)
-    r = fetch_one(conn, DAY_SQL, {"start": start, "end": end, "day": day, "ai_roles": sorted(AI_ROLES)}) or {}
+    r = fetch_one(conn, DAY_SQL, {"start": start, "end": end, "day": day, "ai_roles": sorted(AI_ROLES),
+                                  "typed": typed_visible(conn)}) or {}
     return {k: (float(v) if isinstance(v, Decimal) else int(v or 0)) for k, v in r.items()}
 
 
@@ -430,12 +449,12 @@ SELECT (SELECT COALESCE(max(fixtures_with_market), 0) FROM ai.day_plans WHERE da
            AS matches_analyzed,
        (SELECT count(*) FROM ai.usage WHERE purpose = 'web_search' AND status = 'ok' AND at >= %(start)s
           AND at < %(end)s) AS searches,
-       (SELECT count(*) FROM ai.evidence WHERE origin = 'web' AND retrieved_at >= %(start)s AND retrieved_at < %(end)s)
-           AS news,
+       (SELECT count(*) FROM ai.evidence WHERE origin = 'web' AND retrieved_at >= %(start)s AND retrieved_at < %(end)s
+          AND (subject_type IS NULL OR %(typed)s)) AS news,
        (SELECT count(*) FROM ai.evidence WHERE kind IN ('injury', 'suspension', 'doubtful') AND retrieved_at >= %(start)s
-          AND retrieved_at < %(end)s) AS injuries,
-       (SELECT count(*) FROM ai.evidence WHERE kind = 'lineup' AND retrieved_at >= %(start)s AND retrieved_at < %(end)s)
-           AS lineups,
+          AND retrieved_at < %(end)s AND (subject_type IS NULL OR %(typed)s)) AS injuries,
+       (SELECT count(*) FROM ai.evidence WHERE kind = 'lineup' AND retrieved_at >= %(start)s AND retrieved_at < %(end)s
+          AND (subject_type IS NULL OR %(typed)s)) AS lineups,
        (SELECT count(DISTINCT (fixture_id, market_key, selection, line)) FROM ai.pick_reviews WHERE engine = 'combined'
           AND reviewed_at >= %(start)s AND reviewed_at < %(end)s) AS candidates,
        (SELECT count(*) FROM ai.pick_reviews WHERE engine = 'llm' AND status = 'ok' AND NOT output ? 'reused_from'
@@ -453,5 +472,5 @@ SELECT (SELECT COALESCE(max(fixtures_with_market), 0) FROM ai.day_plans WHERE da
 """
 
 
-__all__ = ["NARRATIVE_SQL", "comparison", "day_counts", "day_plan", "efficiency", "learning", "notes_learned_on", "overview_extra",
+__all__ = ["NARRATIVE_SQL", "comparison", "day_counts", "day_plan", "efficiency", "envelopes", "learning", "notes_learned_on", "overview_extra",
            "postmortems", "proposals", "research", "sources", "stack", "today_view"]

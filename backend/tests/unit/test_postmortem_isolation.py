@@ -16,7 +16,7 @@ kick-off: if any of them could read this, a model trained on it, or a packet tha
 the nightly proof of ``intel/leakage.py`` would have nothing to tell it by.
 
 The families of counts (plan F11: corners, cards, the goals of the halves; in shadow) learn from their own decisions in tables apart -
-``intel.family_postmortems`` and ``intel.family_memory`` with its view ``intel.family_memory_latest`` (migration 0094; ``fbi.familydecisions``) -
+``intel.family_postmortems`` and ``intel.family_memory`` with its view ``intel.family_memory_latest`` (migration 0118; ``fbi.familydecisions``) -
 so that a research layer with forecasts that are not calibrated does not move the sample sizes, the verdicts or the confidence of the layer that
 acts. They are held to the same rule: they are the future of the match they describe, they are derived, and nothing that is said before a kick-off
 reads them.
@@ -79,6 +79,8 @@ NAMES_IT: dict[str, str] = {
     "scripts/postmortems.py": "the owner's command for the post-mortem: status, coverage, closes (the two closes a price is judged against) and "
                               "build (a dry run until --apply)",
     "scripts/memory.py": "the owner's command for the memory: status, coverage, rebuild (a dry run until --apply) and audit",
+    "scripts/ia_baseline_report.py": "the Plan Maestro IA's line base (phase 0): a report of the AI layer's tables that COUNTS the rows of the "
+                                     "post-mortems, the memory and the notes among them (their first and last day); it reads none of their content",
     "familydecisions/postmortem.py": "the post-mortem of the families (pm-fam-v1, F11, shadow): the only writer of intel.family_postmortems; it names the "
                                      "pipeline's tables only to say why it is kept apart from them",
     "familydecisions/memory.py": "the memory of the families (memory-fam-v1, F11, shadow): the only writer of intel.family_memory, and the reader of the "
@@ -414,7 +416,7 @@ def test_only_its_own_migrations_name_the_tables() -> None:
     naming = {p.name for p in MIGRATIONS.glob("*.py") if WORDS.search(p.read_text(encoding="utf-8"))}
     assert naming == {
         "0072_ai_decision_layer.py", "0073_ai_v2_day_passes_learning.py", "0076_predigol_intelligence.py", "0079_promoted_forecast_spec.py",
-        "0091_single_postmortem_memory_v4.py", "0094_family_learning.py"}, (
+        "0091_single_postmortem_memory_v4.py", "0118_family_learning.py"}, (
         f"migrations naming the post-mortem, the memory or the notes: {sorted(naming)}. A migration that adds an object over them (a view, a "
         "function, a key) opens a second way in: decide here, with the reason, whether the pre-match side may reach it")
 

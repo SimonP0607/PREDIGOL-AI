@@ -50,11 +50,27 @@ test("changing the time zone moves every kick-off, DST included", async ({ page 
     await page.getByTestId("timezone-search").fill(zone.split("/")[1] ?? zone);
     await page.getByTestId(`tz-${zone}`).click();
     await expect(page.getByTestId("current-timezone")).toContainText(zone);
+    // Plan UX, A1 (F09): the zone in words, in the reader's language - never the raw id alone
+    await expect(page.getByTestId("current-timezone-name")).toHaveText(
+      zone === "Europe/Madrid"
+        ? /Europa central \(GMT\+[12]\)$/
+        : "hora estándar de Colombia (GMT-5)",
+    );
     await page.goto(`/matches/${fixture.id}`);
     await settle(page);
     await expect(page.getByTestId("match-center")).toContainText(
       wallClock(fixture.kickoff_at, zone),
     );
+    // the picks' day is Bogotá's: a reader on another clock is told so; one on Bogotá's is not
+    await page.goto("/picks");
+    await settle(page);
+    if (zone === "Europe/Madrid") {
+      await expect(page.getByTestId("daily-zone")).toHaveText(
+        "Días de picks en hora estándar de Colombia (GMT-5)",
+      );
+    } else {
+      await expect(page.getByTestId("daily-zone")).toHaveCount(0);
+    }
   }
   await assertClean(page, w);
 });

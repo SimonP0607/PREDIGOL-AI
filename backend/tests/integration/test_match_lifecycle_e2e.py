@@ -35,9 +35,9 @@ PROVIDER_FIXTURE = 66001
 def match(migrated_database: str, seed: Seed) -> Iterator[dict[str, Any]]:
     ids: dict[str, Any] = {"dsn": migrated_database}
     with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute("INSERT INTO core.competitions (provider_league_id, name, country, type, entity_scope, "
-                    "competition_type, is_tracked) VALUES (66039, 'Lifecycle League', 'Spain', 'league', 'club', "
-                    "'domestic_league', true) RETURNING id")
+        cur.execute("INSERT INTO core.competitions (provider_league_id, name, country, country_code, type, "
+                    "entity_scope, competition_type, is_tracked) VALUES (66039, 'Lifecycle League', 'Spain', 'ES', "
+                    "'league', 'club', 'domestic_league', true) RETURNING id")
         ids["competition"] = scalar(cur)
         cur.execute("INSERT INTO core.competition_seasons (competition_id, season, is_current) VALUES (%s, 2029, true) "
                     "RETURNING id", (ids["competition"],))
@@ -165,6 +165,8 @@ def test_one_match_before_during_and_after_kick_off(client: TestClient, match: d
     assert board["status"] == "ok"
     live = next(m for m in board["data"]["matches"] if m["fixture_id"] == f)
     assert (live["goals_home"], live["goals_away"], live["elapsed"]) == (1, 0, 20)
+    # plan UX, A1 (F08): the country's code too, so the client names it in the reader's language ("España")
+    assert (live["country"], live["country_code"]) == ("Spain", "ES")
     assert live["events"] and live["events"][0]["type"] == "Goal"
     assert {s["side"] for s in live["statistics"]} == {"home", "away"}
     prices = {(q["market_key"], q["selection"]): Decimal(q["odds"]) for q in live["main_odds"]}

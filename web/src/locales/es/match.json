@@ -84,7 +84,7 @@
   },
   "picks": {
     "title": "Picks para este partido",
-    "none": "No hay picks calificados para este partido.",
+    "none": "No hay picks de PrediGol para este partido.",
     "noneShadow": "No hay picks shadow para este partido.",
     "showAll": "Ver los {count} picks",
     "showLess": "Ver menos",
@@ -386,7 +386,7 @@
     "PRICE_PENDING": "Aún no hay cuotas: se piden desde 3 días antes del partido.",
     "PRICE_UNAVAILABLE": "Ninguna casa que recibimos cotiza este mercado.",
     "NOT_COVERED": "Nuestro proveedor de cuotas no cubre esta competición.",
-    "model": "Modelo (modo evaluación): {selection} {probability} · cuota justa {fair}.",
+    "model": "Estimación del modelo, aún no probada frente al mercado: {selection} {probability} · cuota justa {fair}.",
     "minOdds": "Con {min} o más en tu casa, la apuesta tendría el margen que pide nuestra regla.",
     "notAPick": "No es un pick ni una cuota de casa: ningún modelo ha superado al mercado todavía."
   },
@@ -447,16 +447,16 @@
       "fair": "Cuota justa",
       "edge": "Ventaja",
       "minimum": "Cuota mínima aceptable",
-      "edgeHelp": "Probabilidad de PrediGol menos la del mercado, en puntos porcentuales (pp)",
+      "edgeHelp": "Probabilidad de PrediGol menos la del mercado, en puntos porcentuales (p. p.)",
       "minimumHelp": "La cuota más baja que vale la pena tomar con la probabilidad prudente de PrediGol"
     },
-    "ppUnit": "pp",
+    "ppUnit": "p. p.",
     "area": "Análisis PrediGol",
     "why": {
       "title": "¿Por qué?",
       "estimate": "PrediGol estima {model} frente a {market} del mercado",
       "estimateOnly": "PrediGol estima una probabilidad de {model} para esta selección",
-      "edge": "Ventaja de {edge} pp sobre el precio justo del mercado",
+      "edge": "Ventaja de {edge} puntos porcentuales sobre el precio justo del mercado",
       "minimum": "Solo tendría valor con una cuota de {min} o más",
       "none": "Todavía no hay cifras suficientes para explicarlo."
     },
@@ -483,7 +483,7 @@
     "byAi": "Analizado por PrediGol AI",
     "byRules": "Revisado por las reglas de PrediGol",
     "updated": "actualizado {when}",
-    "shadowNote": "las revisiones aún no filtran picks (modo evaluación)",
+    "shadowNote": "la revisión de contexto de la IA aún no se aplica a los picks",
     "notYet": "PrediGol aún no ha analizado este partido.",
     "none": "Hoy PrediGol no tiene un análisis que mostrar para este partido.",
     "inEvaluation_one": "{count} selección de este partido está en evaluación: se publicará cuando un modelo supere al mercado.",
@@ -549,7 +549,8 @@
       "byModel": "Escrito por {model} (L1)",
       "byRules": "Escrito por las reglas",
       "aiModel": "PrediGol AI"
-    }
+    },
+    "contextPending": "Revisión de contexto aún no aplicada"
   },
   "forecast": {
     "title": "Pronóstico PrediGol",
@@ -818,7 +819,7 @@
   "captures": {
     "title": "Capturas de cuotas",
     "summary": "{captures} capturas · {quotes} cotizaciones de {books} casas",
-    "help": "Cada captura guarda el precio de cada casa, opción y línea. Son las mismas cifras de la Cronología, y aquí se muestran todas, pasen o no los filtros de los picks.",
+    "help": "Cada captura guarda el precio de cada casa, opción y línea en ese momento. Aquí se muestran todas, pasen o no los filtros de los picks.",
     "chip": "{when} · {quotes}",
     "none": "Todavía no se ha capturado ninguna cuota de este partido."
   },

@@ -31,6 +31,17 @@ at worst, and a duplicated tick costs nothing at all.
     (from 00:05, 6-4 h before, after the line-ups); post-mortems, yesterday's notes, patterns as hypotheses, the
     parlays' measured dependence, the AI's own shadow report and tomorrow prepared; the owner's "run now".
     Zero API-Football requests; a language model and a search API only when configured, inside the budget.
+  * ``ai_batch_poll`` (every 5 min)  the Message Batches the analysis cycle sent for what can wait (``fbi.ai.batch``, plan IA
+    section 29): the ones that ended are collected, priced at half and stored as the reviews they answer. One query when none is
+    open; it never sends anything and works whatever the Batch switch says.
+  * ``ai_package`` (every 10 min)  the state of each match at the end of each pass (``fbi.ai.match_runs``, plan IA phase 1): the
+    ``mcp-v1`` package derived from the packet the pass stored, its slices measured, one row of ``ai.match_runs``. Database only - no
+    model, no search, no request, nothing paid - and nothing reads it yet. One query when nothing waits; ``FBI_AI_PACKAGE=0`` stops it.
+  * ``ai_switches`` (every 10 min, the first look a minute after the worker starts)  the owner's words the worker runs with (the five switches, the
+    mode, research v2, the model of each tier, the three envelopes), written to the ledger ``ai.feature_gates`` (gate ``switches``, plan IA,
+    review of phase 2) when they are not the words of the newest row: an environment variable changed by hand leaves no row of its own, and Gate A
+    must know what was in force and on which days the configuration changed. One query when nothing changed; no model, no search, no key read, and
+    no switch turns it off.
   * ``intel_decide`` (every 15 min) / ``intel_nightly`` (07:50 Bogotá) / ``intel_weekly`` (Monday 04:40 Bogotá)
     PrediGol Intelligence (``fbi.intel``): the decision layer (ten filters, states, score, stake) on the next 36
     hours and the picks of the day of daily-set-v6; outcomes, post-mortems pm-v4, memory, calibration, the leakage
@@ -272,6 +283,17 @@ analyses of the next days. Database only unless a model or a search API is confi
 AI_LEARN_HOUR = int(os.environ.get("FBI_AI_LEARN_HOUR", "7"))
 """Post-mortems, memory, patterns and the AI's shadow report, daily at HH:35 Bogotá (after the monitor)."""
 AI_REQUESTS_MINUTES = 2
+AI_BATCH_POLL_MINUTES = int(os.environ.get("FBI_AI_BATCH_POLL_MINUTES", "5"))
+"""How often the open Message Batches are asked about (``fbi.ai.batch.poll``). A batch ends within the hour in the usual case and
+within 24 h at the latest; with none open the job is a single query."""
+AI_PACKAGE_MINUTES = int(os.environ.get("FBI_AI_PACKAGE_MINUTES", "10"))
+"""How often the passes without a state are turned into one (``fbi.ai.match_runs.run``): the ``mcp-v1`` package of each, its slices measured,
+a row of ``ai.match_runs``. Database only - no model, no search, no request - and a single query when nothing waits. ``FBI_AI_PACKAGE=0``
+(or ``FBI_AI_MODE=off``) stops it; the rows already written stay."""
+AI_SWITCHES_MINUTES = 10
+"""How often the worker looks at the owner's words it runs with and leaves a trace when they changed (``fbi.ai.gates.record_switches``): one
+query when nothing changed, one row when something did. The first look is one minute after the worker starts, so a change made in the environment
+- which means a new worker - is written within the minute."""
 RESEARCH_MONITOR_HOUR = int(os.environ.get("FBI_RESEARCH_MONITOR_HOUR", "7"))
 """The evolution loop's daily monitor (Bogotá): the shadow-pick audit and the prospective
 evaluation, turned into memory and proposals. Seconds of database reads, zero requests."""
@@ -923,6 +945,24 @@ async def _match_knowledge_sweep() -> None:
     await asyncio.to_thread(functools.partial(_match_knowledge_now, sweep=True))
 
 
+def _synthetic_now() -> None:
+    from fbi.ops.synthetic import config_from_env, run_once
+
+    cfg = config_from_env()
+    if cfg is None:  # the owner took the account or its password away since the clock started
+        return
+    with _connect() as conn:
+        run_once(conn, cfg)
+
+
+async def _synthetic() -> None:
+    """The synthetic journey (plan UX, A2): a dedicated USER account walks the sign-in, Home, a match of today, the
+    picks and its own picks through the public front door, and writes one row in the ledger. In a thread so the live
+    jobs keep their cadence; nothing of PrediGol Intelligence is read or written."""
+    new_run_id()
+    await asyncio.to_thread(_synthetic_now)
+
+
 def _notify_now() -> None:
     """Turn new events into messages. Without a Telegram token they are recorded as skipped."""
     from fbi.notify.service import channel_from_env, run_notifier
@@ -1112,6 +1152,76 @@ async def _ai_requests() -> None:
     await asyncio.to_thread(_ai_requests_now)
 
 
+def _ai_batch_poll_now() -> None:
+    """Collect the Message Batches that ended: validated, stored, priced at half (``fbi.ai.batch.poll``). Never raises. It works on
+    whatever is open whatever the Batch switch says: ``FBI_AI_BATCH=0`` stops new batches, never the collection of those paid for."""
+    from fbi.ai.batch import poll
+    from fbi.ai.config import AiSettings
+
+    try:
+        with _connect() as conn:
+            r = poll(conn, AiSettings.from_env(), at=now())
+        if r.batches or r.errors:
+            log.info("ai.batch_poll", batches=r.batches, ended=r.ended, waiting=r.waiting, items=r.items,
+                     cost_usd=str(r.cost_usd), errors=len(r.errors), **r.counts)
+    except Exception as exc:
+        log.error("ai.batch_poll.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_batch_poll() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_batch_poll_now)
+
+
+def _ai_switches_now() -> None:
+    """The owner's words this worker runs with (the switches, the mode, research v2, the models, the envelopes), written down when they are not the
+    words of the newest row of the ledger (``fbi.ai.gates.record_switches``): an environment variable changed by hand leaves no row of its own, and
+    Gate A needs to know what was in force and on which days the configuration changed. It calls no model, searches nothing, reads no key, and is
+    not switched off by any switch - it is the trace of the switches. Never raises."""
+    from fbi.ai import gates
+    from fbi.ai.config import AiSettings
+
+    try:
+        with _connect() as conn:
+            row = gates.record_switches(conn, AiSettings.from_env(), at=now(), code_version=code_version())
+            conn.commit()
+        if row is not None:
+            log.info("ai.switches.recorded", row=row)
+    except Exception as exc:
+        log.error("ai.switches.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_switches() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_switches_now)
+
+
+def _ai_package_now() -> None:
+    """The passes the AI layer has already run, turned into the state of their match (``fbi.ai.match_runs.run``). It calls no model, searches
+    nothing and asks the provider for nothing. Never raises. Off with ``FBI_AI_PACKAGE=0`` or ``FBI_AI_MODE=off`` (and then it does not even
+    open a connection); with nothing waiting it is one query and leaves no trace."""
+    from fbi.ai.config import AiSettings
+    from fbi.ai.match_runs import run
+
+    try:
+        settings = AiSettings.from_env()
+        if settings.mode == "off" or not settings.package:
+            return
+        with _connect() as conn:
+            r = run(conn, settings, at=now())
+        if r is not None:
+            log.info("ai.package", status=r.status, cycle=r.cycle_id, **dict(r.counts))
+            if r.errors:
+                log.warning("ai.package.errors", errors=[e[:200] for e in r.errors[:3]], total=len(r.errors))
+    except Exception as exc:
+        log.error("ai.package.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_package() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_package_now)
+
+
 def _research_monitor_now() -> None:
     """Audit + prospective -> memory and proposals. Never raises."""
     from fbi.research.loop import run_monitor
@@ -1267,6 +1377,7 @@ WORKER_JOB_TYPES = frozenset({
     "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
+    "synthetic_journey",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1545,6 +1656,16 @@ async def main() -> None:
     else:
         log.warning("worker.family_forecasts_off",
                     hint="FBI_FAMILY_FORECASTS=0: the goals of each half, the corners and the cards are not being forecast")
+    from fbi.ops.synthetic import EVERY_MINUTES as SYNTHETIC_MINUTES
+    from fbi.ops.synthetic import config_from_env as synthetic_config
+
+    if synthetic_config() is not None:
+        scheduler.add_job(_deadline("synthetic_journey", "synthetic_journey", _synthetic), "interval",
+                          minutes=SYNTHETIC_MINUTES, id="synthetic_journey", max_instances=1, coalesce=True,
+                          misfire_grace_time=SYNTHETIC_MINUTES * 60, next_run_time=moment + timedelta(minutes=4))
+    else:
+        log.info("worker.synthetic_journey_off",
+                 hint="FBI_SYNTHETIC_BASE_URL, FBI_SYNTHETIC_EMAIL and its password unset: no synthetic journey")
     scheduler.add_job(_ai_report, "interval", minutes=AI_CHECK_MINUTES, id="ai_daily_report",
                       max_instances=1, coalesce=True, misfire_grace_time=AI_CHECK_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=9))
@@ -1568,6 +1689,15 @@ async def main() -> None:
                       next_run_time=moment + timedelta(minutes=7))
     scheduler.add_job(_ai_requests, "interval", minutes=AI_REQUESTS_MINUTES, id="ai_requests", max_instances=1,
                       coalesce=True, misfire_grace_time=AI_REQUESTS_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=1))
+    scheduler.add_job(_ai_batch_poll, "interval", minutes=AI_BATCH_POLL_MINUTES, id="ai_batch_poll", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_BATCH_POLL_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=3))
+    scheduler.add_job(_ai_package, "interval", minutes=AI_PACKAGE_MINUTES, id="ai_package", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_PACKAGE_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=4))
+    scheduler.add_job(_ai_switches, "interval", minutes=AI_SWITCHES_MINUTES, id="ai_switches", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_SWITCHES_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=1))
     scheduler.add_job(_research_monitor, "cron", hour=RESEARCH_MONITOR_HOUR, minute=5, timezone="America/Bogota",
                       id="research_monitor", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)

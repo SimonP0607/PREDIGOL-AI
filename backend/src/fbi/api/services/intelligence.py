@@ -12,6 +12,7 @@ import psycopg
 
 from fbi.ai.calendar import day_bounds, day_start, local_day, month_start
 from fbi.ai.config import AiSettings
+from fbi.ai.gates import typed_visible
 from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
@@ -101,7 +102,8 @@ def day_view(conn: Conn, *, day: date | None = None) -> Envelope[dict[str, Any]]
     sources = fetch_all(conn, """
         SELECT e.origin, e.status, e.source_tier, count(*) AS n FROM ai.evidence e
           JOIN core.fixtures f ON f.id = e.fixture_id WHERE f.kickoff_at >= %(s)s AND f.kickoff_at < %(e)s
-         GROUP BY 1, 2, 3 ORDER BY 4 DESC""", {"s": start, "e": end})
+           AND (e.subject_type IS NULL OR %(typed)s)
+         GROUP BY 1, 2, 3 ORDER BY 4 DESC""", {"s": start, "e": end, "typed": typed_visible(conn)})
     v6 = fetch_all(conn, """
         SELECT s.kind, s.rank, s.odds, s.p_est, s.ev, s.stake_units, s.selected_at, s.decision_ids, s.detail,
                s.correlation FROM intel.day_selections s WHERE s.day = %(d)s ORDER BY s.kind, s.rank""", {"d": d})
@@ -162,7 +164,7 @@ FAMILY_PM_SQL = """
 SELECT p.*, p.quality AS decision_quality FROM intel.family_postmortems p WHERE p.decision_id = %(id)s ORDER BY p.created_at DESC, p.id DESC LIMIT 1
 """
 """The post-mortem of a decision of a family (``pm-fam-v1``), in the shape the page of a decision reads the pipeline's: the quality of the price under
-the pipeline's name for it as well. A family keeps its lessons apart from the pipeline's (``fbi.familydecisions``, migration 0094)."""
+the pipeline's name for it as well. A family keeps its lessons apart from the pipeline's (``fbi.familydecisions``, migration 0118)."""
 
 
 def decision_detail(conn: Conn, decision_id: int) -> Envelope[dict[str, Any]]:

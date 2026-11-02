@@ -1,9 +1,9 @@
 {
   "subtitle": "Selections with value against the market, at the best price available now.",
   "all": {
-    "title": "All qualified selections",
+    "title": "Every selection that passes the rule",
     "subtitle": "Filter by competition, market, odds and kick-off time.",
-    "emptyBody": "Qualified selections in this time window will show up here.",
+    "emptyBody": "Selections that pass the rule in this time window will show up here.",
     "widen": "Show the next {days} days"
   },
   "count_one": "{count} selection",

@@ -139,6 +139,20 @@ test("Preview as USER shows the product only, until it is switched off", async (
   await assertClean(page, w);
 });
 
+test("the owner's account says Administrator, never an internal role name, and its short session", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F07): the profile and the account menu showed the raw role ("SUPER_ADMIN", "USER").
+  const w = watch(page);
+  await go(page, w, "/profile");
+  await expect(page.getByTestId("profile-role")).toHaveText(t.common.roleAdmin);
+  await expect(page.locator("main")).not.toContainText("SUPER_ADMIN");
+  await expect(page.getByTestId("profile-session")).toContainText("8 hours");
+  await page.getByTestId("account-menu").click();
+  await expect(page.getByTestId("account-role")).toHaveText(t.common.roleAdmin);
+  await expect(page.getByRole("menu")).not.toContainText("SUPER_ADMIN");
+});
+
 test("evaluation mode is the owner's: the recorded evaluation picks and parlays, labelled, kept after kick-off", async ({
   page,
 }) => {
@@ -241,7 +255,7 @@ test("Operation: the day, the decisions, the match, the AI's work with its five 
   await oneShadowLine(page);
   const tabs = OP.tabs.label;
   await expect(openTab(page, tabs)).toHaveText(OP.tabs.day);
-  for (const tab of ["decisions", "match", "ai", "costs", "runs", "day"] as const) {
+  for (const tab of ["decisions", "match", "ai", "agents", "costs", "runs", "day"] as const) {
     await choose(page, tabs, OP.tabs[tab]);
     await expect(openTab(page, tabs)).toHaveText(OP.tabs[tab]);
     await settle(page);
@@ -299,6 +313,23 @@ test("Operation: the day, the decisions, the match, the AI's work with its five 
     await settle(page);
     await assertClean(page, w);
   }
+
+  // the agents (plan IA, phase 1): the registry against the code, the engine of each family, the state job, the queue and the audit - no key
+  await choose(page, tabs, OP.tabs.agents);
+  await expect(page.getByTestId("operation-agents")).toBeVisible();
+  await expect(page.getByTestId("agents-body")).toBeVisible();
+  const agents = await getJson<{
+    data: { registry: unknown[]; problems: unknown[]; families: Array<{ engine: string }> };
+  }>(page.request, "/api/v1/admin/ai/agents");
+  expect(agents.status).toBe(200);
+  expect(JSON.stringify(agents.body)).not.toMatch(/sk-[A-Za-z0-9]/);
+  note(
+    info,
+    `agents: ${agents.body.data.registry.length} in the registry, ${agents.body.data.problems.length} findings, ` +
+      `engines ${agents.body.data.families.map((f) => f.engine).join("/")}`,
+  );
+  await settle(page);
+  await assertClean(page, w);
 
   // what it costs: one budget, one stack, the simulation per profile - not one copy per page that talked about the AI
   await choose(page, tabs, OP.tabs.costs);

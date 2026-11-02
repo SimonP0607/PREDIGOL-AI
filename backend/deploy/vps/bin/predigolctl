@@ -7,8 +7,19 @@
 #   predigolctl logs [service]     follow the logs (postgres, api, worker, web, caddy)
 #   predigolctl deploy             build the checked-out code, back up, migrate, restart, verify
 #   predigolctl rollback           start the previous versions again (the database is NOT downgraded)
-#   predigolctl backup | restore-test | health | raw-sync
+#   predigolctl backup | restore-test | health | raw-sync [--full]
+#   predigolctl prune [--dry-run]  old images and build cache (bin/prune.sh); a deploy runs it by itself when it is done
 #   predigolctl pitr init|backup|verify|test|status|restore ...   point-in-time recovery (bin/pitr.sh)
+#   predigolctl incident list|show|note|severity|open|close ...   the incident register: causes, users affected, closing (bin/incident.sh)
+#   predigolctl secrets-export [--out DIR]   the server's secrets, encrypted with the owner's age PUBLIC key, in one file for
+#                                  the password manager and the offline copy (bin/secrets-export.sh); no value is printed
+#   predigolctl alert-test         one test message to the owner's Telegram, through the function every alert uses (bin/alert-test.sh);
+#                                  it says which bot took it and never prints a token
+#   predigolctl alert-drill KEY|--list|--healthchecks NAME|--evidence   a drill of one alert: its message to the owner's phone through the real bot, without the alert
+#                                  being true (bin/alert-drill.sh); the session runs it during the drills, the owner looks at the phone
+#   predigolctl sentry-drill       ONE made-up error to Sentry, with the API's settings: the "new exception" alert arrives (scripts/sentry_drill.py); the DSN is never printed
+#   predigolctl config-baseline [--status]   take (or just look at) the baseline of the alert "the configuration changed" (bin/config-baseline.sh): deploy and
+#                                  rollback take it when they finish; take it by hand as the LAST step of any change to an env file, the Caddyfile or sshd
 #   predigolctl maint              the owner's daily maintenance: partitions ahead, retention (scripts/db_maintenance)
 #   predigolctl import FOLDER      ONCE, on a fresh server: the old machine's export (deploy/cutover/export.sh)
 #   predigolctl psql               a read-only psql session
@@ -80,8 +91,12 @@ cmd_deploy() {
   fi
   record_versions "$new_be" "$new_web"
   printf '%s\t%s\t%s\t%s\t%s\n' "$(date -u +%FT%TZ)" "$new_be" "$new_web" "$old_be" "$old_web" >> "$STATE/deploys.log"
+  # The files of this release are the baseline of the alert "the configuration changed" from now on (the check below must not take them for a surprise).
+  "$BIN/config-baseline.sh" || log "deploy: the configuration baseline was not taken (the deploy itself is done): predigolctl config-baseline"
   "$BIN/healthcheck.sh" || true
   log "deploy: done ($new_be / $new_web)"
+  # Old images and build cache, bounded after every deploy; the previous versions (rollback) are kept. Never fails the deploy.
+  PREDIGOL_PRUNE_AFTER_DEPLOY=1 "$BIN/prune.sh" || log "deploy: prune did not finish (the deploy itself is done)"
 }
 
 cmd_rollback() {
@@ -96,6 +111,8 @@ cmd_rollback() {
   compose up -d --no-build --remove-orphans
   record_versions "$be" "$web"
   printf '%s\t%s\t%s\t%s\t%s\trollback\n' "$(date -u +%FT%TZ)" "$be" "$web" "-" "-" >> "$STATE/deploys.log"
+  # A rollback is a planned change that has ended too: what is on disk now is the baseline of the alert "the configuration changed".
+  "$BIN/config-baseline.sh" || log "rollback: the configuration baseline was not taken (the rollback itself is done): predigolctl config-baseline"
 }
 
 # An account with a generated password, written to a 0600 file on this server and nowhere else (not the
@@ -125,9 +142,16 @@ case "${1:-}" in
   backup) shift; exec "$BIN/backup.sh" "$@" ;;
   restore-test) shift; exec "$BIN/restore-test.sh" "$@" ;;
   health) shift; exec "$BIN/healthcheck.sh" "$@" ;;
-  raw-sync) exec "$BIN/raw-sync.sh" ;;
+  raw-sync) shift; exec "$BIN/raw-sync.sh" "$@" ;;
+  prune) shift; exec "$BIN/prune.sh" "$@" ;;
   import) shift; exec "$BIN/import.sh" "$@" ;;
   pitr) shift; exec "$BIN/pitr.sh" "$@" ;;
+  incident) shift; exec "$BIN/incident.sh" "$@" ;;
+  secrets-export) shift; exec "$BIN/secrets-export.sh" "$@" ;;
+  alert-test) shift; exec "$BIN/alert-test.sh" "$@" ;;
+  alert-drill) shift; exec "$BIN/alert-drill.sh" "$@" ;;
+  sentry-drill) shift; ops python -m scripts.sentry_drill "$@" ;;
+  config-baseline) shift; exec "$BIN/config-baseline.sh" "$@" ;;
   maint) shift; exec "$BIN/maint.sh" "$@" ;;
   bench) shift; exec "$BIN/bench.sh" "$@" ;;
   loadtest) shift; exec "$BIN/loadtest.sh" "$@" ;;
@@ -136,5 +160,5 @@ case "${1:-}" in
   grants) apply_grants && log "grants applied" ;;
   psql) compose exec -e PGOPTIONS="-c default_transaction_read_only=on" postgres psql -U fbi -d fbi ;;
   create-user) shift; cmd_create_user "$@" ;;
-  *) sed -n '2,22p' "$0"; exit 2 ;;
+  *) sed -n '2,32p' "$0"; exit 2 ;;
 esac

@@ -415,7 +415,8 @@
         "no_allowance": "sin búsquedas disponibles",
         "near_budget": "cerca del presupuesto",
         "pass_budget": "sin presupuesto en este pase",
-        "no_search_pass": "este pase no lee la web"
+        "no_search_pass": "este pase no lee la web",
+        "research_failed": "la investigación por entidad falló en este pase"
       },
       "how": "Un pase pide al terminar su informe; el siguiente pase que lee la web lo atiende. El pase final no lee la web: lo que pidió el previo queda para «ejecutar ahora». Pedir no escala el partido ni cambia ninguna decisión."
     },

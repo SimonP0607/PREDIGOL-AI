@@ -141,7 +141,7 @@ def test_the_audit_counts_each_leg_a_stored_packet_cites_and_finds_them_recorded
     assert packet is not None
     store_packet(db, packet, built_at=at)
 
-    assert "tie_legs_known" in leakage.RULES and leakage.VERSION == "leak-audit-v7"
+    assert "tie_legs_known" in leakage.RULES and leakage.VERSION == "leak-audit-v8"
     assert audited(db, at) == {"checked": 1, "violations": 0, "examples": []}
 
 

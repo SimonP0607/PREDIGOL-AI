@@ -78,9 +78,9 @@
     "price_outlier": "Precio atípico frente al consenso del mercado"
   },
   "reason": {
-    "no_qualified_picks": "No hay suficientes selecciones calificadas hoy.",
+    "no_qualified_picks": "Hoy no hay suficientes selecciones que cumplan la regla.",
     "no_shadow_picks": "No hay picks shadow en esta ventana.",
-    "no_value_now": "Ninguna selección calificada tiene valor al precio actual.",
+    "no_value_now": "Ninguna selección que cumpla la regla tiene valor al precio actual.",
     "no_picks_match_filters": "Ninguna selección coincide con estos filtros.",
     "no_live_matches": "No hay partidos en juego ahora mismo.",
     "no_best_prices": "Todavía no hay precios por encima del mercado.",

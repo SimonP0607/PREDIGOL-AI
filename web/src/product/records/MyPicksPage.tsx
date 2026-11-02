@@ -6,13 +6,13 @@
  */
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { Bookmark, Layers, LineChart, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { fmtInt, fmtOdds, fmtPct, localFixed, toNumber } from "@/lib/i18n/format";
-import { formatKickoff, formatRelative } from "@/lib/time";
+import { formatKickoff, formatRelative, zoneName } from "@/lib/time";
 import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { HistoryGroup, HistoryPeriod, UserParlay, UserPick } from "@/lib/api/v1/types_records";
@@ -30,6 +30,7 @@ import {
 } from "@/product/shared/States";
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { ChipGroup } from "@/product/picks/Controls";
+import { ConfirmAction } from "@/product/shared/Confirm";
 import { EvaluationBadge, OriginLabel, ParlayStatusBadge, RecordState, Units } from "./Badges";
 import { CorrectionNote } from "./CorrectionNote";
 import { useRefreshMine } from "./hooks";
@@ -67,7 +68,9 @@ function GroupCard({ name, group }: { name: string; group: HistoryGroup }) {
         <span className="numeric text-2xl font-semibold" data-testid={`history-${name}-total`}>
           {fmtInt(group.total)}
         </span>
-        <Units value={group.profit_units} className="text-sm" />
+        <span data-testid={`history-${name}-profit`}>
+          <Units value={group.profit_units} className="text-sm" />
+        </span>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5">
         <Stat
@@ -78,7 +81,22 @@ function GroupCard({ name, group }: { name: string; group: HistoryGroup }) {
         <Stat label={t("records.mine.results.hitRate")} value={fmtPct(group.hit_rate, 0)} />
         <Stat
           label={t("records.mine.results.roi")}
-          value={roi === null ? "—" : fmtPct(roi, 1)}
+          value={
+            <>
+              <span data-testid={`history-${name}-roi`}>{roi === null ? "—" : fmtPct(roi, 1)}</span>
+              {roi === null ? null : (
+                <span
+                  className="block text-caption font-normal text-subtle-foreground"
+                  data-testid={`history-${name}-roi-sample`}
+                >
+                  {t("records.roiSample", {
+                    count: Number(group.staked_units),
+                    n: fmtInt(Number(group.staked_units)),
+                  })}
+                </span>
+              )}
+            </>
+          }
           tone={roi === null || roi === 0 ? undefined : roi > 0 ? "text-positive" : "text-negative"}
         />
       </dl>
@@ -136,7 +154,7 @@ function Results() {
             </p>
           ) : null}
           <p className="text-caption text-subtle-foreground">
-            {t("records.mine.results.note", { zone: auth.timeZone })}
+            {t("records.mine.results.note", { zone: zoneName(auth.timeZone) })}
           </p>
         </>
       ) : null}
@@ -188,7 +206,7 @@ function UserOddsForm({ pick, onDone }: { pick: UserPick; onDone: () => void }) 
           placeholder={t("records.mine.picks.oddsPlaceholder")}
           aria-invalid={invalid}
           data-testid="user-odds-input"
-          className="numeric mt-1 h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-negative"
+          className="numeric mt-1 h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-negative pointer-coarse:h-11"
         />
       </label>
       <button
@@ -200,14 +218,23 @@ function UserOddsForm({ pick, onDone }: { pick: UserPick; onDone: () => void }) 
         {t("records.mine.picks.saveOdds")}
       </button>
       {pick.user_odds ? (
-        <button
-          type="button"
-          disabled={save.isPending}
-          onClick={() => save.mutate(null)}
-          className="tap-y relative h-9 rounded-full border border-border-strong px-3 text-xs font-medium text-muted-foreground hover:bg-elevated"
-        >
-          {t("records.mine.picks.clearOdds")}
-        </button>
+        <ConfirmAction
+          testId="clear-odds"
+          title={t("records.mine.picks.confirmClearOdds.title")}
+          body={t("records.mine.picks.confirmClearOdds.body")}
+          confirm={t("records.mine.picks.confirmClearOdds.ok")}
+          onConfirm={() => save.mutate(null)}
+          trigger={
+            <button
+              type="button"
+              disabled={save.isPending}
+              data-testid="user-odds-clear"
+              className="tap-y relative h-9 rounded-full border border-border-strong px-3 text-xs font-medium text-muted-foreground hover:bg-elevated"
+            >
+              {t("records.mine.picks.clearOdds")}
+            </button>
+          }
+        />
       ) : null}
       <button
         type="button"
@@ -252,9 +279,18 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
       data-fixture-id={m.fixture_id}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* Plan UX, A1: the user's own selection says so, and a PrediGol pick they saved stays PrediGol's - never mixed. */}
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <OriginLabel origin="mine" />
-          {pick.origin === "predigol_pick" ? <OriginLabel origin="predigol" /> : null}
+          {pick.origin === "predigol_pick" ? (
+            <>
+              <OriginLabel origin="predigol" />
+              <span className="text-caption text-subtle-foreground">
+                {t("records.labels.savedPredigol")}
+              </span>
+            </>
+          ) : (
+            <OriginLabel origin="mine" />
+          )}
         </div>
         <span className="text-caption text-subtle-foreground">
           {t("records.mine.picks.savedAt", { when: formatRelative(pick.saved_at) })}
@@ -328,23 +364,31 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
               type="button"
               onClick={() => setEditing(true)}
               data-testid="saved-pick-odds"
-              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border-strong px-3 text-xs font-medium hover:bg-elevated"
+              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border-strong px-3 text-xs font-medium hover:bg-elevated pointer-coarse:min-h-11"
             >
               <Pencil aria-hidden className="h-3 w-3" />
               {pick.user_odds
                 ? t("records.mine.picks.editYours")
                 : t("records.mine.picks.addYours")}
             </button>
-            <button
-              type="button"
-              disabled={remove.isPending}
-              onClick={() => remove.mutate()}
-              data-testid="saved-pick-remove"
-              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border-strong px-3 text-xs font-medium text-muted-foreground hover:bg-elevated hover:text-foreground disabled:opacity-50"
-            >
-              <Trash2 aria-hidden className="h-3 w-3" />
-              {t("records.mine.picks.remove")}
-            </button>
+            <ConfirmAction
+              testId="remove-pick"
+              title={t("records.mine.picks.confirmRemove.title")}
+              body={t("records.mine.picks.confirmRemove.body")}
+              confirm={t("records.mine.picks.confirmRemove.ok")}
+              onConfirm={() => remove.mutate()}
+              trigger={
+                <button
+                  type="button"
+                  disabled={remove.isPending}
+                  data-testid="saved-pick-remove"
+                  className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border-strong px-3 text-xs font-medium text-muted-foreground hover:bg-elevated hover:text-foreground disabled:opacity-50 pointer-coarse:min-h-11"
+                >
+                  <Trash2 aria-hidden className="h-3 w-3" />
+                  {t("records.mine.picks.remove")}
+                </button>
+              }
+            />
           </div>
         ) : null}
       </div>
@@ -354,9 +398,50 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
   );
 }
 
+/** "Ver más": the next page of a list read page by page, with how many of how many are shown. */
+function MoreButton({
+  shown,
+  total,
+  busy,
+  onMore,
+  label,
+  countLabel,
+  testId,
+}: {
+  shown: number;
+  total: number;
+  busy: boolean;
+  onMore: () => void;
+  label: string;
+  countLabel: string;
+  testId: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-3">
+      <span className="numeric text-caption text-subtle-foreground" data-testid={`${testId}-count`}>
+        {t(countLabel, { shown: fmtInt(shown), total: fmtInt(total) })}
+      </span>
+      <button
+        type="button"
+        onClick={onMore}
+        disabled={busy}
+        data-testid={testId}
+        className="inline-flex min-h-9 items-center rounded-full border border-border-strong px-4 text-xs font-semibold hover:bg-elevated disabled:opacity-50 pointer-coarse:min-h-11"
+      >
+        {label}
+      </button>
+    </div>
+  );
+}
+
+/** Plan UX, A1: every saved pick, a page of 25 at a time - "Todo" was cut at 500 and called everything. */
+const PICKS_PAGE = 25;
+const PARLAYS_PAGE = 10;
+
 function SavedPicks() {
-  const q = useQuery(live.myPicks);
-  const picks = q.data?.data ?? [];
+  const q = useInfiniteQuery(live.myPicksPages(PICKS_PAGE));
+  const picks = q.data?.pages.flatMap((p) => p.data) ?? [];
+  const total = q.data?.pages[0]?.meta.total ?? picks.length;
   return (
     <section className="space-y-3" data-testid="saved-picks">
       <SectionHeader
@@ -380,13 +465,26 @@ function SavedPicks() {
           />
         </Card>
       ) : (
-        <Card>
-          <ul className="divide-y divide-border/70">
-            {picks.map((p) => (
-              <SavedPickRow key={p.id} pick={p} />
-            ))}
-          </ul>
-        </Card>
+        <>
+          <Card>
+            <ul className="divide-y divide-border/70">
+              {picks.map((p) => (
+                <SavedPickRow key={p.id} pick={p} />
+              ))}
+            </ul>
+          </Card>
+          {q.hasNextPage || total > picks.length ? (
+            <MoreButton
+              shown={picks.length}
+              total={total}
+              busy={q.isFetchingNextPage || !q.hasNextPage}
+              onMore={() => void q.fetchNextPage()}
+              label={t("records.mine.picks.more")}
+              countLabel="records.mine.picks.count"
+              testId="saved-picks-more"
+            />
+          ) : null}
+        </>
       )}
     </section>
   );
@@ -409,7 +507,7 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
       <div data-testid="my-parlay" data-status={parlay.status}>
         <header className="flex flex-wrap items-start justify-between gap-2 px-4 pt-4 sm:px-5">
           <div className="min-w-0">
-            <OriginLabel origin="mine" />
+            <OriginLabel origin="mine" kind="parlay" />
             <h3
               className="mt-1 break-words font-display text-base font-semibold leading-snug"
               data-testid="my-parlay-name"
@@ -463,16 +561,24 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
             {settled ? <Units value={parlay.profit_units} className="text-sm" /> : null}
           </div>
           {removable ? (
-            <button
-              type="button"
-              disabled={remove.isPending}
-              onClick={() => remove.mutate()}
-              data-testid="my-parlay-remove"
-              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border-strong px-3 text-xs font-medium text-muted-foreground hover:bg-elevated hover:text-foreground disabled:opacity-50"
-            >
-              <Trash2 aria-hidden className="h-3 w-3" />
-              {t("records.mine.parlays.remove")}
-            </button>
+            <ConfirmAction
+              testId="remove-parlay"
+              title={t("records.mine.parlays.confirmRemove.title")}
+              body={t("records.mine.parlays.confirmRemove.body")}
+              confirm={t("records.mine.parlays.confirmRemove.ok")}
+              onConfirm={() => remove.mutate()}
+              trigger={
+                <button
+                  type="button"
+                  disabled={remove.isPending}
+                  data-testid="my-parlay-remove"
+                  className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border-strong px-3 text-xs font-medium text-muted-foreground hover:bg-elevated hover:text-foreground disabled:opacity-50 pointer-coarse:min-h-11"
+                >
+                  <Trash2 aria-hidden className="h-3 w-3" />
+                  {t("records.mine.parlays.remove")}
+                </button>
+              }
+            />
           ) : null}
         </footer>
       </div>
@@ -481,9 +587,10 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
 }
 
 function MyParlays() {
-  const q = useQuery(live.myParlays);
+  const q = useInfiniteQuery(live.myParlaysPages(PARLAYS_PAGE));
   const slip = useSlip();
-  const parlays = q.data?.data ?? [];
+  const parlays = q.data?.pages.flatMap((p) => p.data) ?? [];
+  const total = q.data?.pages[0]?.meta.total ?? parlays.length;
   const build = (
     <button
       type="button"
@@ -521,11 +628,24 @@ function MyParlays() {
           />
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {parlays.map((p) => (
-            <UserParlayCard key={p.id} parlay={p} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {parlays.map((p) => (
+              <UserParlayCard key={p.id} parlay={p} />
+            ))}
+          </div>
+          {q.hasNextPage || total > parlays.length ? (
+            <MoreButton
+              shown={parlays.length}
+              total={total}
+              busy={q.isFetchingNextPage || !q.hasNextPage}
+              onMore={() => void q.fetchNextPage()}
+              label={t("records.mine.parlays.more")}
+              countLabel="records.mine.parlays.count"
+              testId="my-parlays-more"
+            />
+          ) : null}
+        </>
       )}
     </section>
   );

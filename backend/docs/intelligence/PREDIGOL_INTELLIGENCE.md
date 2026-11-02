@@ -335,7 +335,7 @@ vista por familia de lo mismo; ver `docs/owner/CATALOGO_MERCADOS_F9.md`.
 * Los tokens de respuestas inválidas se cuentan. Métricas: coste por partido, candidato, pick, investigación,
   post-mortem, día y proyección mensual. Los análisis son compartidos: ningún token por usuario.
 
-## 10. Fugas de datos (`leak-audit-v7`, diario y en tests)
+## 10. Fugas de datos (`leak-audit-v8`, diario y en tests)
 
 Para cada decisión: `known_at` < saque; `price_at` ≤ `known_at`; pick `data_cutoff_ts` y `created_at` ≤ `known_at`;
 calibrador `fitted_at` ≤ `known_at` y sus datos liquidados antes de `fitted_at`; revisión y paquete ≤ `known_at`;
@@ -350,7 +350,11 @@ violación); y (v6, plan F6) cuatro reglas más sobre los bloques nuevos: `h2h_k
 resultado registrado a la hora del paquete, y no se dejó fuera un cruce conocido por uno más antiguo), `scenarios_known` (la tabla sobre la que se calcula existe, se tomó a tiempo y trae las filas
 que el bloque cita, y el global de una vuelta es el del bloque `phase` del propio paquete), `tactics_known` (cada partido de la muestra existe, es del equipo, está dentro de la ventana y tenía su
 resultado, sus eventos y su hoja registrados a la hora del paquete -una fila que el trabajo posterior al partido volvió a escribir después, en un partido ya liquidado a esa hora y desde una lectura que ese trabajo pidió, es una relectura y cuenta como ya registrada-; la muestra son los últimos `N` conocidos y los goles contados son los de los 90 minutos) y `factors_known` (el estado que
-dice el paquete de cada factor, la decisión que cita y el experimento son los de la última decisión de esa versión tomada a esa hora). Toda violación queda en `intel.audit_checks`.
+dice el paquete de cada factor, la decisión que cita y el experimento son los de la última decisión de esa versión tomada a esa hora); y (v7, Plan Maestro IA, fase 1) `slice_known` (cada estado de un partido de `ai.match_runs` que nombra un paquete `mcp-v1` salió de un paquete guardado del mismo partido,
+construido antes de escribirse la fila, con su `as_of` igual al `known_at` de la fila y anterior al saque; y el paquete y cada una de sus porciones, derivados de nuevo desde ese paquete con
+el código de hoy, tienen byte por byte el hash que la fila anotó -así una porción es parte del paquete, el paquete es parte del paquete guardado y ninguno lleva un momento posterior a la
+pasada-; una versión de paquete que el código no sabe derivar de nuevo es una violación). Es la única regla que no es una sola sentencia: lee uno a uno los paquetes de las filas del día.
+Toda violación queda en `intel.audit_checks`.
 
 **Capas (v7, plan F11).** La auditoría sabe qué capa escribió cada decisión (`decision_version`). Las reglas que leen decisiones de todas las capas son `known_before_kickoff` y `price_known`
 (una decisión de una familia, que no tiene pick, calibrador, revisión ni evidencias, sale de las reglas que los unen pero cuenta en esas dos); `consensus_known` lee solo la capa del pipeline

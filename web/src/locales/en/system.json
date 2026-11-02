@@ -317,5 +317,26 @@
     "provider_ok": "{spent} of {budget} requests today (our limit)",
     "provider_budget_exhausted": "daily budget exhausted ({spent} of {budget})",
     "provider_recent_error": "provider error in the last hour"
+  },
+  "synthetic": {
+    "title": "Synthetic journey",
+    "subtitle": "Every 15 minutes a dedicated account walks what a reader does: sign in, Home, a match of today, the picks and its own picks",
+    "off": "Off: the dedicated account and its configuration on the server are missing (owner's action).",
+    "last": "Last run",
+    "lastSuccess": "Last complete run",
+    "runs24h": "Runs in 24 h",
+    "failed24h": "Failed in 24 h",
+    "lastError": "Last failed step: {error}"
+  },
+  "observability": {
+    "title": "Observability tests",
+    "subtitle": "An error raised on purpose in the API and one in the browser: find them in Sentry by their reference",
+    "apiTest": "Test error in the API",
+    "webTest": "Test error in the web",
+    "apiSent": "Raised: reference {id}. Look for it in Sentry.",
+    "webSent": "Sent from the browser.",
+    "webOff": "The web reports no errors: the server has no Sentry web project.",
+    "unexpected": "The API did not answer with the expected error.",
+    "failed": "Could not raise it: {error}"
   }
 }

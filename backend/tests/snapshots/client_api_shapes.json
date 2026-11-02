@@ -3,6 +3,17 @@
   {
    "date": "2026-10-25",
    "reason": "A0: line base of the six client routes, taken from the code that runs in production (backend 6851c0081d75)"
+<<<<<<< HEAD
+  },
+  {
+   "date": "2026-10-25",
+   "reason": "A1: Meta gains next_cursor (optional, null unless a list has a next page) for the pages of /me/picks and /me/parlays (defect F53); the six routes answer the same fields as before"
+  },
+  {
+   "date": "2026-10-25",
+   "reason": "A1 (F08): LiveMatch gains country_code, so the client names a live match's country in the reader's language"
+=======
+>>>>>>> refs/scratch/u-theirs
   }
  ],
  "routes": {
@@ -805,6 +816,21 @@
        ],
        "title": "Limit"
       },
+<<<<<<< HEAD
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
+=======
+>>>>>>> refs/scratch/u-theirs
       "offset": {
        "anyOf": [
         {
@@ -1684,6 +1710,21 @@
        ],
        "title": "Country"
       },
+<<<<<<< HEAD
+      "country_code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "ISO code of the competition's country (GB-ENG for a home nation): the client names it in the reader's language.",
+       "title": "Country Code"
+      },
+=======
+>>>>>>> refs/scratch/u-theirs
       "data_status": {
        "description": "stale: no state for 3 minutes; no_odds: in play but nobody quotes it in play.",
        "enum": [
@@ -2136,6 +2177,21 @@
        ],
        "title": "Limit"
       },
+<<<<<<< HEAD
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
+=======
+>>>>>>> refs/scratch/u-theirs
       "offset": {
        "anyOf": [
         {
@@ -4461,6 +4517,21 @@
        ],
        "title": "Limit"
       },
+<<<<<<< HEAD
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
+=======
+>>>>>>> refs/scratch/u-theirs
       "offset": {
        "anyOf": [
         {
@@ -6582,6 +6653,21 @@
        ],
        "title": "Limit"
       },
+<<<<<<< HEAD
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
+=======
+>>>>>>> refs/scratch/u-theirs
       "offset": {
        "anyOf": [
         {
@@ -7053,6 +7139,21 @@
        ],
        "title": "Limit"
       },
+<<<<<<< HEAD
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
+=======
+>>>>>>> refs/scratch/u-theirs
       "offset": {
        "anyOf": [
         {
@@ -7577,6 +7678,21 @@
        ],
        "title": "Limit"
       },
+<<<<<<< HEAD
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
+=======
+>>>>>>> refs/scratch/u-theirs
       "offset": {
        "anyOf": [
         {

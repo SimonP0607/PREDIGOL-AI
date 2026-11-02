@@ -1,7 +1,10 @@
+import { reportApiFailure } from "@/lib/observability";
 import { API_BASE_URL } from "@/lib/api/mode";
 import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
+import type { AgentsOverview, MatchState } from "./types_ai_agents";
+import type { EntityResearchOverview } from "./types_ai_research";
 import type { StorageOverview } from "./types_storage";
 import type {
   IntelCalibration,
@@ -276,11 +279,14 @@ async function request<T>(
       window.dispatchEvent(new Event(STAGE_EVENT));
     }
     const { code: _c, message: _m, problems, ...details } = err.error ?? {};
+    const requestId = err.request_id ?? res.headers.get("x-request-id");
+    // A server error reaches Sentry with its request id, the one in the server's log line (plan UX, A2).
+    if (res.status >= 500) reportApiFailure({ status: res.status, code, requestId, method, path });
     throw new LiveApiError(
       err.error?.message ?? `${method} ${path} failed (${res.status})`,
       res.status,
       code,
-      err.request_id ?? res.headers.get("x-request-id"),
+      requestId,
       (problems as string[] | undefined) ?? [],
       details,
     );
@@ -365,8 +371,13 @@ export const v1 = {
   // ── records: the day as persisted, and the user's own ──────────────────────
   daily: (q: { day?: string | undefined } & Preview = {}) =>
     getJson<Envelope<DailyBoard>>("/daily", q as Params),
-  myPicks: (status?: "open" | "settled") =>
-    getJson<Envelope<UserPick[]>>("/me/picks", { status, limit: 500 }),
+  /** A page of the user's saved picks: `meta.total` counts them all, `meta.next_cursor` leads on. */
+  myPicks: (q: { status?: "open" | "settled"; limit?: number; cursor?: string | undefined } = {}) =>
+    getJson<Envelope<UserPick[]>>("/me/picks", {
+      status: q.status,
+      limit: q.limit ?? 500,
+      cursor: q.cursor,
+    }),
   savePick: (body: SavePickIn) =>
     postJson<Envelope<{ id: number; snapshot: unknown }>>("/me/picks", body),
   setPickOdds: (id: number, userOdds: string | number | null) =>
@@ -376,7 +387,9 @@ export const v1 = {
     postJson<Envelope<ParlayValidation>>("/me/parlays/validate", { legs }),
   createParlay: (body: ParlayIn) =>
     postJson<Envelope<{ id: number; combined_odds: string | null }>>("/me/parlays", body),
-  myParlays: () => getJson<Envelope<UserParlay[]>>("/me/parlays", { limit: 200 }),
+  /** A page of the user's parlays (`meta.total`, `meta.next_cursor`). */
+  myParlays: (q: { limit?: number; cursor?: string | undefined } = {}) =>
+    getJson<Envelope<UserParlay[]>>("/me/parlays", { limit: q.limit ?? 200, cursor: q.cursor }),
   removeParlay: (id: number) => deleteJson<void>(`/me/parlays/${id}`),
   history: (period: HistoryPeriod, q: Preview = {}) =>
     getJson<Envelope<History>>("/me/history", { period, ...q }),
@@ -482,6 +495,8 @@ export const v1 = {
   issues: () => getJson<Envelope<QualityIssue[]>>("/admin/data-quality/issues"),
   runs: (limit = 20) => getJson<Envelope<RunSummary[]>>("/admin/ingestion/runs", { limit }),
   jobs: () => getJson<Envelope<JobHealth[]>>("/admin/ops/jobs"),
+  /** The owner's test of error reporting (plan UX, A2): always answers 500, with the request id to look for. */
+  monitoringTestError: () => postJson<void>("/admin/monitoring/test-error", {}),
   match: (id: number | string) => getJson<Envelope<MatchDetail>>(`/admin/matches/${id}`),
   audit: (id: number | string) => getJson<Envelope<MatchAudit>>(`/admin/matches/${id}/audit`),
   providerPrediction: (id: number | string) =>
@@ -544,6 +559,14 @@ export const v1 = {
   aiEvidence: (q: { fixture_id?: number | undefined; status?: EvidenceStatus | undefined } = {}) =>
     getJson<Envelope<AiEvidenceRow[]>>("/admin/ai/evidence", q as Params),
   aiCosts: () => getJson<Envelope<AiCosts>>("/admin/ai/costs"),
+  /** The agents (plan IA, phase 1): the registry, the engine of each family, what the state job wrote, the queue and the audit. Reading only. */
+  aiAgents: (days = 7) => getJson<Envelope<AgentsOverview>>("/admin/ai/agents", { days }),
+  /** Research by entity and topic (plan IA, phase 2): what research v2 kept, found, spent and reused, v1 against v2, and its gate. Reading only. */
+  aiResearchEntities: (days = 7) =>
+    getJson<Envelope<EntityResearchOverview>>("/admin/ai/research/entities", { days }),
+  /** The file of one match: its live state, every state it went through, and the tasks and attempts of the agents on it. */
+  aiMatchState: (fixtureId: number | string) =>
+    getJson<Envelope<MatchState>>(`/admin/ai/matches/${fixtureId}/state`),
   aiShadow: () => getJson<Envelope<ShadowReportRow[]>>("/admin/ai/shadow"),
   aiMemory: (kind?: string) => getJson<Envelope<AiMemoryEvent[]>>("/admin/ai/memory", { kind }),
   aiRunRequests: () => getJson<Envelope<AiRunRequest[]>>("/admin/ai/run-requests"),

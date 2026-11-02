@@ -10,10 +10,24 @@
  */
 import { tabFromHash } from "@/lib/useUrlTab";
 
-/** OPERACIÓN: the day of PrediGol Intelligence, its decisions, the dossier of a match, the work of the AI, what it costs, and what ran. */
-export const OPERATION_TABS = ["day", "decisions", "match", "ai", "costs", "runs"] as const;
-/** The views of the "ai" tab of Operación: the analysis of each match, the research, the reviews of the picks, the evidence and the sources. */
-export const AI_VIEWS = ["today", "research", "reviews", "evidence", "sources"] as const;
+/**
+ * OPERACIÓN: the day of PrediGol Intelligence, its decisions, the dossier of a match, the work of the AI, the agents (plan IA, phase 1: the registry,
+ * the engine of each family, the state of the matches, the queue and the audit), what it costs, and what ran.
+ */
+export const OPERATION_TABS = [
+  "day",
+  "decisions",
+  "match",
+  "ai",
+  "agents",
+  "costs",
+  "runs",
+] as const;
+/**
+ * The views of the "ai" tab of Operación: the analysis of each match, the research, the research by entity and topic (plan IA, phase 2: what research
+ * v2 kept, how fresh it is, how often it was reused, the class of each source), the reviews of the picks, the evidence and the sources.
+ */
+export const AI_VIEWS = ["today", "research", "topics", "reviews", "evidence", "sources"] as const;
 /** APRENDIZAJE: the close of the day, what was learned, the post-mortems, the memory, the experiments and promotions, the calibration, the markets, the families in shadow and the AI against the model. */
 export const LEARNING_TABS = [
   "close",

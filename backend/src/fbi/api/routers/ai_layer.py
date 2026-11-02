@@ -17,6 +17,7 @@ from typing import Annotated, Any, Literal
 import psycopg
 from fastapi import APIRouter, Depends, Path, Query
 
+from fbi.api.contracts.ai_agents import AgentsOverview, MatchState
 from fbi.api.contracts.ai_layer import (
     AiComparison,
     AiLearning,
@@ -36,11 +37,12 @@ from fbi.api.contracts.ai_layer import (
     RunQueued,
     SourceRow,
 )
+from fbi.api.contracts.ai_research import ResearchOverview
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
 from fbi.api.security import Admin, App
-from fbi.api.services import ai_layer, ai_v2, daily_review, match_memory
+from fbi.api.services import ai_agents, ai_layer, ai_research, ai_v2, daily_review, match_memory
 from fbi.api.services.match_memory import MatchMemory, MemoryFilters
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
@@ -86,6 +88,22 @@ def get_overview(conn: Db) -> Envelope[AiOverview]:
     """Mode (off/shadow/enforce), configured tiers (never a key), budget and its state, whether enforcement is
     on (it needs the owner's switch AND a passed shadow gate), the last cycles and today's counts."""
     return ai_layer.overview(conn)
+
+
+@admin_router.get("/ai/agents", response_model=Envelope[AgentsOverview])
+def get_agents(conn: Db, days: Annotated[int, Query(ge=1, le=30)] = 7) -> Envelope[AgentsOverview]:
+    """AGENTES (plan IA, phase 1): the registry as the code has it and every way it disagrees with the code, the engine each family of markets
+    reads (the newest promotion row decides; none means the language model of today), what the job that writes the state of each match did in the
+    last ``days`` (how many states, how big the slices against their cap, how long), the Orchestrator's queue and the nightly audit of what an agent
+    may know. Reading only: it calls no model and creates no task."""
+    return ai_agents.overview(conn, days=days)
+
+
+@admin_router.get("/ai/matches/{fixture_id}/state", response_model=Envelope[MatchState])
+def get_match_state(conn: Db, fixture_id: FixtureId) -> Envelope[MatchState]:
+    """The state of a match (``ai.match_state``: the newest live row), the states it went through, newest first, and the tasks and attempts of the
+    agents on it. A state keeps the measures of each slice of the package, never its content."""
+    return ai_agents.match_state(conn, fixture_id)
 
 
 @admin_router.get("/ai/reviews", response_model=Envelope[list[ReviewRow]])
@@ -149,6 +167,15 @@ def get_research(conn: Db, day: Day = None) -> Envelope[list[ResearchRow]]:
     """INVESTIGACIONES: per match, the searches (when, cost, outcome) and the evidence with its source, link, dates,
     level, status, first and last seen."""
     return ai_v2.research(conn, day=day)
+
+
+@admin_router.get("/ai/research/entities", response_model=Envelope[ResearchOverview])
+def get_research_entities(conn: Db, days: Annotated[int, Query(ge=1, le=30)] = 7) -> Envelope[ResearchOverview]:
+    """INVESTIGACIÓN POR ENTIDAD Y TEMA (plan IA, phase 2): the mode of research v2 and the evidence behind it, how fresh the answer kept for each topic is
+    and how often it was reused instead of searched again, the answers kept entity by entity, the typed claims by class of source and by status, what
+    each day's passes needed, paid, borrowed and reused, the Exa spend of v1 and of v2, v1 against v2 over the window and the gate evaluated now.
+    Reading only: it searches nothing, calls no model and records no verdict."""
+    return ai_research.overview(conn, days=days)
 
 
 @admin_router.get("/ai/postmortems", response_model=Envelope[list[PickPostmortemRow]])

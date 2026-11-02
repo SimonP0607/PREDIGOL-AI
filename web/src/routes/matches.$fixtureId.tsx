@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MatchPage } from "@/product/match/MatchPage";
+import { titled } from "@/lib/i18n/head";
 
 export const Route = createFileRoute("/matches/$fixtureId")({
-  head: () => ({ meta: [{ title: "PrediGol" }] }),
+  head: titled("nav.matches"),
   component: MatchRoute,
 });
 

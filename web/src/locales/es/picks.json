@@ -1,9 +1,9 @@
 {
   "subtitle": "Selecciones con valor frente al mercado, al mejor precio disponible ahora.",
   "all": {
-    "title": "Todas las selecciones calificadas",
+    "title": "Todas las selecciones que cumplen la regla",
     "subtitle": "Filtra por competición, mercado, cuota y hora de inicio.",
-    "emptyBody": "Cuando haya selecciones calificadas en esta ventana de tiempo, aparecerán aquí.",
+    "emptyBody": "Cuando haya selecciones que cumplan la regla en esta ventana de tiempo, aparecerán aquí.",
     "widen": "Ver los próximos {days} días"
   },
   "count_one": "{count} selección",

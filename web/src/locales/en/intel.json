@@ -415,7 +415,8 @@
         "no_allowance": "no searches left",
         "near_budget": "near the budget",
         "pass_budget": "no budget left in this pass",
-        "no_search_pass": "this pass does not read the web"
+        "no_search_pass": "this pass does not read the web",
+        "research_failed": "the research of an entity failed in this pass"
       },
       "how": "A pass asks when it writes its brief; the next pass that reads the web serves it. The final pass does not read the web: what the pre pass asked waits for “run now”. Asking neither escalates the match nor changes any decision."
     },

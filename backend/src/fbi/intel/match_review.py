@@ -32,7 +32,10 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from fbi.ai.gates import typed_visible
 from fbi.ai.memory import remember
+from fbi.ai.team_claims import team_claims
+from fbi.ai.team_claims import words as team_words
 from fbi.intel.pm_questions import logloss
 from fbi.market import closing_value
 from fbi.picks.settlement import market_outcome
@@ -90,12 +93,18 @@ SELECT lp.team_side, lp.provider_player_id, lp.player_name, lp.is_starter
   FROM core.fixture_lineup_players lp WHERE lp.fixture_id = %(fixture)s
 """
 
-EVIDENCE_SQL = """
+EVIDENCE_SQL = f"""
 SELECT e.id, e.team_id, e.provider_player_id, e.kind, e.origin, e.source_tier, e.status, e.attributes, e.claim
-  FROM ai.evidence e JOIN core.fixtures f ON f.id = e.fixture_id
- WHERE e.fixture_id = %(fixture)s AND e.retrieved_at < f.kickoff_at
-   AND e.kind IN ('injury', 'suspension', 'doubtful')
+  FROM core.fixtures f
+  JOIN ai.evidence e ON (e.fixture_id = f.id OR {team_claims(home="f.home_team_id", away="f.away_team_id", at="f.kickoff_at", set_aside=True)})
+ WHERE f.id = %(fixture)s AND e.retrieved_at < f.kickoff_at
+   AND e.kind IN ('injury', 'suspension', 'doubtful') AND (e.subject_type IS NULL OR %(typed)s)
 """
+"""What was reported before the match, to be judged by who started. The claims of research v2 (``subject_type``) are judged only when research v2 is
+``on``: beside v1 they are not part of what v1 learns from. Then they are judged the ones about the match and the ones about its teams that belong to
+no match and were fresh at the kick-off (``fbi.ai.team_claims``): a source is judged on what it said. Whatever the server did with a claim afterwards
+(``set_aside``): the line-up that proves a report wrong is what sets it aside, so a review that left out the claims set aside would judge the sources by
+their hits alone - as it does not leave out the ones of a match."""
 
 CLOSING_1X2_SQL = """
 SELECT DISTINCT ON (m.selection) m.selection, m.p_fair
@@ -187,7 +196,8 @@ def analyse(conn: psycopg.Connection[Any], fixture_id: int) -> tuple[dict[str, A
 
     findings: dict[str, Any] = {"evidence": [], "missing_information": [], "model_vs_market": None}
     side_of_team = {f["home_team_id"]: "home", f["away_team_id"]: "away"}
-    for e in _rows(conn, EVIDENCE_SQL, {"fixture": fixture_id}):
+    reports = _rows(conn, EVIDENCE_SQL, {"fixture": fixture_id} | team_words(typed_visible(conn)))
+    for e in reports:
         side = side_of_team.get(e["team_id"])
         pid = e["provider_player_id"]
         if side is None or pid is None or not lineup:
@@ -201,8 +211,7 @@ def analyse(conn: psycopg.Connection[Any], fixture_id: int) -> tuple[dict[str, A
                                      "origin": e["origin"],
                                      "kind": e["kind"], "status": e["status"], "assertion": assertion, "verdict": verdict,
                                      "claim": e["claim"][:160]})
-    reported = {(side_of_team.get(e["team_id"]), e["provider_player_id"]) for e in
-                _rows(conn, EVIDENCE_SQL, {"fixture": fixture_id})}
+    reported = {(side_of_team.get(e["team_id"]), e["provider_player_id"]) for e in reports}
     if lineup:
         for side, team in (("home", f["home_team_id"]), ("away", f["away_team_id"])):
             for r in _rows(conn, REGULARS_SQL, {"team": team, "kickoff": f["kickoff_at"]}):
