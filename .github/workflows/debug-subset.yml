@@ -35,15 +35,24 @@ jobs:
             backend/pyproject.toml
             backend/constraints.txt
       - run: pip install -c constraints.txt -e ".[analytics,ml,dev]"
-      - name: forecast report
+      - name: admin overview traceback and the rbac test
+        continue-on-error: true
         run: |
-          cat > dbgplugin.py <<'PY'
-          import fbi.predictions.forecast as f
-          orig = f.forecast_upcoming
-          def wrapped(*a, **k):
-              r = orig(*a, **k)
-              print("FORECAST_REPORT", r)
-              return r
-          f.forecast_upcoming = wrapped
+          python - <<'PY'
+          import traceback, os
+          import psycopg
+          from alembic import command
+          from alembic.config import Config
+          cfg = Config("alembic.ini"); cfg.set_main_option("script_location", "migrations")
+          command.upgrade(cfg, "head")
+          from fbi.api.services import center
+          conn = psycopg.connect("postgresql://fbi@localhost:5432/fbi_test")
+          try:
+              r = center.admin_overview(conn)
+              print("ADMIN_OK", type(r))
+          except Exception:
+              traceback.print_exc()
           PY
-          PYTHONPATH=. pytest -p dbgplugin tests/integration/test_pick_pipeline.py -q -s -p no:randomly --tb=line -k "whole" 2>&1 | grep -E "FORECAST_REPORT|passed|failed" | cut -c1-1500
+          pytest tests/integration/test_auth_rbac.py -q -p no:randomly --tb=short -k admin_console 2>&1 | tail -15
+      - name: pick pipeline
+        run: pytest tests/integration/test_pick_pipeline.py -q -p no:randomly --tb=short
