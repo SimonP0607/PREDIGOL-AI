@@ -9,7 +9,7 @@
  * finding it out would cost in searches, that nothing serves it while the families are in shadow, and the context factors that could explain
  * the family. A decision from before the record shows none.
  */
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { setLocale } from "@/lib/i18n";
 import { fmtOdds, fmtPct, fmtSignedPct } from "@/lib/i18n/format";
@@ -26,6 +26,8 @@ import type {
 import { bogotaDateTime } from "./aiModel";
 import { FamiliesBody } from "./FamiliesPanel";
 
+// Test files share one process and one i18n module: another file may leave "en" behind, so start every test in Spanish.
+beforeEach(() => setLocale("es"));
 afterEach(() => setLocale("es"));
 
 const text = (html: string) =>
