@@ -1,0 +1,20 @@
+# gitleaks: the full history was scanned on 2026-11-02 (767 commits, 12 hits). All 12 are test fixtures or
+# placeholders (test keys in tests/conftest.py, the base64 of a test-only string, an env example). No real secret.
+title = "PrediGol gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures and examples, reviewed 2026-11-02"
+paths = [
+  '''backend/tests/.*''',
+  '''tests/.*''',
+  '''(backend/)?deploy/env_example\.txt''',
+  '''(backend/)?src/fbi/(research/prospective|backtesting/evaluate|api/security)\.py''',
+  '''(backend/)?scripts/api_shapes\.py''',
+]
+regexes = [
+  '''dGVzdC1vbmx5LWtleS1mb3ItcHJlZGlnb2wtdGVzdHM=''',
+]
+commits = []
