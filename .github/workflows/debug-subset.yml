@@ -53,5 +53,6 @@ jobs:
               print("OK", type(r))
           except Exception:
               traceback.print_exc()
-          PY      - name: pick pipeline file
+          PY
+      - name: pick pipeline file
         run: pytest tests/integration/test_pick_pipeline.py -q -p no:randomly --tb=short
