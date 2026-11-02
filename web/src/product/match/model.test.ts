@@ -408,10 +408,21 @@ describe("form, head to head, line-ups", () => {
       away,
       goals_home: gh,
       goals_away: ga,
+      regulation_goals_home: gh,
+      regulation_goals_away: ga,
+      after_extra_time: false,
+      penalties_home: null,
+      penalties_away: null,
+      scope: "same_competition" as const,
+      home_side_was: "home" as const,
+      weight: 1,
     });
     expect(
       h2hSummary([row("A", "B", 2, 0), row("B", "A", 1, 0), row("B", "A", 1, 1)], "A", "B"),
     ).toEqual({ homeWins: 1, draws: 1, awayWins: 1, counted: 3 });
+    // 3-2 after extra time, 2-2 at 90 minutes: a draw, as in the packet the AI reads
+    const aet = { ...row("A", "B", 3, 2), regulation_goals_home: 2, regulation_goals_away: 2 };
+    expect(h2hSummary([aet], "A", "B")).toEqual({ homeWins: 0, draws: 1, awayWins: 0, counted: 1 });
   });
 
   test("the away side is mirrored on the pitch; no grid, no pitch", () => {

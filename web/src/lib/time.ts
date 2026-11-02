@@ -122,6 +122,27 @@ export function zoneAbbrev(value: string | number | Date = Date.now(), tz: strin
   return part?.value ?? tz;
 }
 
+/**
+ * The zone in words, in the reader's language (plan UX, A1, defect F09: "America/Bogota" on screen): "hora estándar
+ * de Colombia (GMT-5)", "Central European Time (GMT+1)"; just the offset where the zone has no name ("GMT+0").
+ */
+export function zoneName(tz: string = zone, value: string | number | Date = Date.now()): string {
+  const d = toDate(value);
+  const part = (style: "longGeneric" | "long" | "shortOffset") => {
+    try {
+      return dtf({ timeZoneName: style }, tz)
+        .formatToParts(d)
+        .find((p) => p.type === "timeZoneName")?.value;
+    } catch {
+      return undefined;
+    }
+  };
+  const offset = part("shortOffset");
+  const name = part("long") ?? part("longGeneric");
+  if (name && offset && !/^(GMT|UTC)[+-−]?[\d:]*$/.test(name)) return `${name} (${offset})`;
+  return offset ?? tz;
+}
+
 /** "YYYY-MM-DD" of the instant, in the zone. */
 export function dayKey(value: string | number | Date, tz: string = zone): string {
   const parts = dtf(

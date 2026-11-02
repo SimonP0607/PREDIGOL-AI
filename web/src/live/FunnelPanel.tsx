@@ -103,9 +103,11 @@ function ItemRow({ x }: { x: FunnelItem }) {
         <Link
           to="/matches/$fixtureId"
           params={{ fixtureId: String(x.fixture_id) }}
-          className="block truncate text-sm font-medium hover:underline"
+          className="tap-y relative block text-sm font-medium hover:underline"
         >
-          {x.home.name} – {x.away.name}
+          <span className="block truncate">
+            {x.home.name} – {x.away.name}
+          </span>
         </Link>
         <div className="truncate text-caption text-muted-foreground">
           {formatKickoff(x.kickoff_at)} · {x.competition.name}

@@ -153,8 +153,16 @@ def known_before(m: MatchRecord, cutoff: datetime) -> bool:
 def train_hash(rows: Sequence[MatchRecord]) -> str:
     d = hashlib.sha256()
     for m in sorted(rows, key=lambda r: r.fixture_id):
-        d.update(f"{m.fixture_id}:{m.settle_home}-{m.settle_away};".encode())
+        # '|n' only for a neutral venue: a history with none hashes as it always did
+        d.update(f"{m.fixture_id}:{m.settle_home}-{m.settle_away}{'|n' if m.is_neutral else ''};".encode())
     return d.hexdigest()
+
+
+def prediction_hash(training: str, target: MatchRecord) -> str:
+    """What a goal-model prediction was computed from: the training set (``train_hash``) and, for a neutral venue, the
+    fixture's own flag - the same training set prices a neutral fixture differently (no home advantage), and a forecast
+    already stored for it must not be taken for the current one."""
+    return training + ("|n" if target.is_neutral else "")
 
 
 def _check_block(cutoff: datetime, train: Sequence[MatchRecord], group: Sequence[MatchRecord]) -> Block:
@@ -178,7 +186,10 @@ def run_goal_model(
     cfg: WalkForwardConfig,
     refit_days: int,
     intervals: bool,
+    max_teams: int | None = None,
 ) -> ModelRun:
+    """``max_teams``: decline a competition-block whose training window holds more teams than this, as the real-time
+    forecast does (``fbi.predictions.forecast.MAX_GOAL_TEAMS``); None (the default) fits whatever there is."""
     by_comp: dict[int, list[MatchRecord]] = defaultdict(list)
     for m in data.matches:
         by_comp[m.competition_id].append(m)
@@ -194,6 +205,9 @@ def run_goal_model(
             if len(train) < MIN_GOAL_TRAIN:
                 run.uncovered.extend(
                     (m.fixture_id, f"fewer than {MIN_GOAL_TRAIN} training matches before the cut-off") for m in group)
+                continue
+            if max_teams is not None and len({t for m in train for t in (m.home_team_id, m.away_team_id)}) > max_teams:
+                run.uncovered.extend((m.fixture_id, f"more than {max_teams} teams in the training window") for m in group)
                 continue
             obs = [GoalObs(m.home_team_id, m.away_team_id, m.settle_home or 0, m.settle_away or 0,
                            weight=math.exp(-spec.xi * (cutoff - m.kickoff_at).total_seconds() / 86400),

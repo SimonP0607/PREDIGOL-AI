@@ -751,9 +751,10 @@ export function h2hSummary(
   for (const r of rows) {
     const names = [r.home, r.away];
     if (!names.includes(home) || !names.includes(away)) continue;
-    if (r.goals_home === r.goals_away) draws += 1;
+    // The 90 minutes, like every market and like the packet the AI reads: a 2-2 that went to penalties is a draw here.
+    if (r.regulation_goals_home === r.regulation_goals_away) draws += 1;
     else {
-      const winner = r.goals_home > r.goals_away ? r.home : r.away;
+      const winner = r.regulation_goals_home > r.regulation_goals_away ? r.home : r.away;
       if (winner === home) homeWins += 1;
       else awayWins += 1;
     }

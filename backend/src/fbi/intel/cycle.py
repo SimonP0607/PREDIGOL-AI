@@ -4,11 +4,17 @@
                    layer over the next 36 hours (``fbi.intel.decision.decide``); once the AI has read the day (its
                    first passes done, or 06:00 Bogotá), the PICKS DEL DÍA of daily-set-v6 and its parlays
     intel_nightly  07:50 Bogotá, after the AI's own learning (07:35): outcomes and closing-line value of the
-                   decisions, post-mortems pm-v3, the longitudinal memory of yesterday (and the day before, whose late
-                   matches may have settled), calibration (prospective evaluation, refits, promotions by the gates),
+                   decisions, post-mortems pm-v5, the longitudinal memory of yesterday (with what the days before it
+                   learned late booked inside), calibration (prospective evaluation, refits, promotions by the gates),
                    the leakage audit of yesterday's decisions, the DAILY LEARNING REPORT, and the hypotheses the
                    calibration experiment answers
-    intel_weekly   Monday 04:40 Bogotá: the market discovery engine
+    intel_weekly   Monday 04:40 Bogotá: the market catalogue, the market discovery engine, the matrix of markets and - only when
+                   ``FBI_PATTERN_SEARCH`` says so - the search for patterns in the settled decisions (``fbi.research.pattern_search``)
+
+The jobs take ``after``: steps the caller wants run right after one of the job's own (``with_extra``). The worker uses it to add the
+decision, the settlement, the post-mortem and the memory of the FAMILIES (``fbi.familydecisions.decide`` / ``.outcomes`` / ``.postmortem`` /
+``.memory``, in shadow, off unless ``FBI_FAMILY_DECISIONS`` says so; docs/owner/CICLO_FAMILIAS_F11.md) without this package importing them: they
+sit above it, and a package below may not know the one above.
 
 One run of each kind at a time (advisory locks); a run that dies is closed as ``interrupted`` by the next worker
 (``recover_interrupted``). Every step commits on its own, so a failure part-way keeps what was done and is written in
@@ -18,7 +24,7 @@ the run's ``errors``. Zero API-Football requests and zero language-model calls: 
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
@@ -29,12 +35,40 @@ from psycopg.rows import tuple_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import local_day
+from fbi.core.decision_versions import (
+    DECISION_FAMILIES,
+    MEMORY_FAMILIES,
+    OUTCOME_FAMILIES,
+    POSTMORTEM_FAMILIES,
+)
 from fbi.core.version import code_version
 
 log = structlog.get_logger(__name__)
 
 LOCKS = {"decide": 7310076, "nightly": 7310077, "weekly": 7310078, "calibrate": 7310077, "select": 7310076,
          "backfill": 7310079, "manual": 7310079}
+
+
+Step = tuple[str, Callable[[], Any]]
+"""A step of a job: its name in the run's record, and what it does."""
+Extra = Mapping[str, Sequence[Step]]
+"""Steps another package asks a job to run: for the name of one of the job's own steps, the steps to run right after it. The caller (the
+worker) builds them; this package does not import the packages they come from (``tests/unit/test_architecture.py`` holds the layering)."""
+
+
+def with_extra(steps: list[Step], after: Extra | None) -> list[Step]:
+    """The steps of a job with the extra ones spliced in after the step they name. A name that is not a step of the job is an error: a step that
+    was asked for and never ran must not pass in silence."""
+    if not after:
+        return steps
+    unknown = sorted(set(after) - {name for name, _ in steps})
+    if unknown:
+        raise ValueError(f"extra steps asked to run after {unknown}, which are not steps of this job ({[name for name, _ in steps]})")
+    out: list[Step] = []
+    for name, fn in steps:
+        out.append((name, fn))
+        out.extend(after.get(name, ()))
+    return out
 
 
 @dataclass
@@ -63,7 +97,9 @@ def versions() -> dict[str, str]:
             "calibration": calibration.VERSION, "calib_gate": calibration.GATE_VERSION,
             "edge_gate": calibration.EDGE_GATE_VERSION, "outcome": outcomes.VERSION, "postmortem": postmortem.VERSION,
             "memory": memory.VERSION, "report": report.VERSION, "discovery": discovery.VERSION,
-            "leakage": leakage.VERSION, "selection": decision.RULE_V6}
+            "leakage": leakage.VERSION, "selection": decision.RULE_V6,
+            "decision_families": DECISION_FAMILIES, "outcome_families": OUTCOME_FAMILIES,
+            "postmortem_families": POSTMORTEM_FAMILIES, "memory_families": MEMORY_FAMILIES}
 
 
 def open_run(conn: psycopg.Connection[Any], job: str, *, at: datetime) -> int:
@@ -155,7 +191,7 @@ def _run(conn: psycopg.Connection[Any], job: str, at: datetime, steps: list[tupl
     return report
 
 
-def run_decide(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
+def run_decide(conn: psycopg.Connection[Any], *, at: datetime, after: Extra | None = None) -> RunReport:
     from fbi.intel.decision import decide, select_day
     from fbi.picks.daily import day_ready
 
@@ -173,15 +209,41 @@ def run_decide(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
         picks, parlays = select_day(conn, at=at, ready=ready)
         return {"ready": int(ready), "picks": picks, "parlays": parlays}
 
-    return _run(conn, "decide", at, [("decide", _decide), ("select", _select)])
+    return _run(conn, "decide", at, with_extra([("decide", _decide), ("select", _select)], after))
 
 
-def run_nightly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
+def memory_step(conn: psycopg.Connection[Any], *, at: datetime) -> dict[str, int]:
+    """The nightly memory: yesterday's rows. What the days before it learned late (a match settled after its day was
+    written, a night the worker missed) is booked inside them - the memory never writes to a day that has its row.
+
+    memory-v4 continues its own rows and nothing else, and its first day is ``LINEAGE_START``: until ``python -m scripts.memory rebuild``
+    has built the days up to yesterday, a night writes nothing (and says so), because a row written alone would give its entity a state
+    that forgets every day before it - and a rebuild afterwards could not put them back (rows are never rewritten)."""
+    from fbi.intel.memory import LINEAGE_START, build_memory, lineage_started
+
+    day = local_day(at) - timedelta(days=1)
+    if day > LINEAGE_START and not lineage_started(conn, day):
+        return {day.isoformat(): 0, "waiting_for_rebuild": 1}
+    return {day.isoformat(): build_memory(conn, day=day, at=at)}
+
+
+def postmortems_step(conn: psycopg.Connection[Any], *, at: datetime) -> dict[str, int]:
+    """The nightly post-mortem (plan F8): every selection that finished is studied once, then the matches as a whole. The learning
+    cycle of the AI runs the same two functions earlier in the day; whichever runs first writes, the other finds it all written."""
+    from fbi.intel.match_review import review_matches
+    from fbi.intel.postmortem import study
+
+    selections = study(conn, at=at)
+    conn.commit()
+    matches = review_matches(conn, at=at)
+    return {"selections": selections.studied, "matches": matches.matches, "memory_events": selections.memory_events + matches.memory_events,
+            "left": selections.left, "errors": len(selections.errors) + len(matches.errors)}
+
+
+def run_nightly(conn: psycopg.Connection[Any], *, at: datetime, after: Extra | None = None) -> RunReport:
     from fbi.intel.calibration import run_calibration
     from fbi.intel.leakage import audit_day
-    from fbi.intel.memory import build_memory
     from fbi.intel.outcomes import settle_decisions
-    from fbi.intel.postmortem import run_postmortems
     from fbi.intel.report import days_to_report, write_report
 
     today = local_day(at)
@@ -193,10 +255,6 @@ def run_nightly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
                       "edge_changes": r.edge_changes, "evaluations": r.evaluations, "summary": r.summary})
         return {k: v for k, v in calib.items() if k != "summary"}
 
-    def _memory() -> dict[str, int]:
-        return {d.isoformat(): build_memory(conn, day=d, at=at) for d in (today - timedelta(days=2),
-                                                                          today - timedelta(days=1))}
-
     def _audit() -> dict[str, Any]:
         out = audit_day(conn, day=today - timedelta(days=1), at=at)
         return {k: v["violations"] for k, v in out.items()} | {"checked": sum(v["checked"] for v in out.values())}
@@ -207,15 +265,15 @@ def run_nightly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
     def _hypotheses() -> int:
         return link_hypotheses(conn, at=at, calibration=calib)
 
-    return _run(conn, "nightly", at, [
+    return _run(conn, "nightly", at, with_extra([
         ("outcomes", lambda: settle_decisions(conn, at=at)),
-        ("postmortems", lambda: run_postmortems(conn, at=at)),
-        ("memory", _memory),
+        ("postmortems", lambda: postmortems_step(conn, at=at)),
+        ("memory", lambda: memory_step(conn, at=at)),
         ("calibration", _calibration),
         ("leakage_audit", _audit),
         ("hypotheses", _hypotheses),
         ("report", _report),
-    ])
+    ], after))
 
 
 def run_weekly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
@@ -230,7 +288,27 @@ def run_weekly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
         holder["run"] = int(row[0]) if row else 0
         return run_discovery(conn, at=at, run_id=holder["run"])
 
-    return _run(conn, "weekly", at, [("discovery", _discovery)])
+    def _catalogue() -> dict[str, Any]:
+        from fbi.market import catalogue
+
+        return catalogue.sync(conn).as_dict()
+
+    def _matrix() -> dict[str, Any]:
+        from fbi.market import matrix
+
+        generated = matrix.generate(conn, at=at)
+        run = matrix.store(conn, generated)
+        return {"run": run, "verdicts": generated["summary"]["by_verdict"], "duration_ms": generated["duration_ms"]}
+
+    def _patterns() -> dict[str, Any]:
+        from fbi.research import pattern_search
+
+        return pattern_search.weekly(conn, at=at)
+
+    # the catalogue first (the links of the definitions are what the discovery reads), the matrix after it (it reads the registry the
+    # discovery has just written), the search for patterns last (it only reads the decisions, and does nothing unless FBI_PATTERN_SEARCH
+    # says so); a step that fails does not stop the others
+    return _run(conn, "weekly", at, [("catalogue", _catalogue), ("discovery", _discovery), ("matrix", _matrix), ("patterns", _patterns)])
 
 
 # ── the hypotheses the calibration experiment answers ────────────────────────────────────────────────────────────

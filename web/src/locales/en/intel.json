@@ -1,15 +1,7 @@
 {
-  "shadowLine": "SHADOW: PrediGol Intelligence decides and measures every candidate, but publishes no pick and moves no money. Users still see daily-set-v5.",
   "tabs": {
-    "day": "The day",
-    "decisions": "Decisions",
-    "match": "Match",
-    "calibration": "Calibration",
-    "memory": "Memory",
-    "markets": "Markets",
-    "costs": "Costs and runs"
+    "match": "Match"
   },
-  "tabsLabel": "PrediGol Intelligence views",
   "day": {
     "title": "PrediGol Intelligence's day",
     "prev": "Previous day",
@@ -39,7 +31,6 @@
     "v6Empty": "No pick of the day: no candidate reached APPROVED (no market has an edge validated out of sample). Zero is the honest answer; it is never padded.",
     "v5Title": "daily-set-v5 (what users see, evaluation)",
     "v5Empty": "daily-set-v5 chose no picks this day.",
-    "calibrationTitle": "Calibration per market and model",
     "reportTitle": "DAILY LEARNING REPORT",
     "reportEmpty": "No report for this day yet (written at 07:50 the next morning).",
     "runsTitle": "Latest runs",
@@ -74,7 +65,9 @@
     "risk": "7 · Risk",
     "correlation": "8 · Correlation",
     "price": "9 · Current price",
-    "final": "10 · Classification"
+    "final": "10 · Classification",
+    "family": "Family",
+    "research": "Request for research"
   },
   "cols": {
     "match": "Match",
@@ -117,7 +110,8 @@
     "pick": "Model and data",
     "calibrator": "Calibrator",
     "outcome": "Outcome",
-    "postmortem": "Post-mortem (pm-v3)",
+    "postmortem": "Post-mortem",
+    "pmVersion": "Post-mortem version",
     "history": "Selection history",
     "cost": "Review cost",
     "points": "Points",
@@ -144,13 +138,13 @@
     "params": "Parameters",
     "evRaw": "raw EV {ev}",
     "source": "source",
-    "pnl": "P&L (1 u)"
+    "pnl": "P&L (1 u)",
+    "noParams": "No coefficients (changes nothing)",
+    "nValues": "{n} values"
   },
   "match": {
     "title": "Match dossier",
-    "fixture": "Match id",
-    "load": "Show",
-    "hint": "Pick a decision or type a match id.",
+    "hint": "Find a match by team, competition or number, or pick one of the day.",
     "narrative": "Narrative",
     "engineLlm": "written by the economical model and verified",
     "engineRules": "written by the rules from the data",
@@ -177,6 +171,7 @@
     "players": "Key players",
     "h2h": "Head to head",
     "relevance": "Relevance",
+    "nEffective": "Effective n",
     "decisions": "Decisions on the match",
     "empty": "No PrediGol Intelligence packet for this match.",
     "yes": "yes",
@@ -211,6 +206,241 @@
       "rating": "Rating",
       "load": "Min 14 d",
       "out": "Reported out"
+    },
+    "picker": {
+      "title": "Pick a match",
+      "close": "Close",
+      "search": "Search",
+      "placeholder": "Team, competition or match number",
+      "tooShort": "Type at least two letters, or the match number.",
+      "dayCount_one": "{count} match of the day · {studied} with an AI packet.",
+      "dayCount_other": "{count} matches of the day · {studied} with an AI packet.",
+      "searchCount_one": "{count} match for “{q}” within ±45 days of {day}.",
+      "searchCount_other": "{count} matches for “{q}” within ±45 days of {day}.",
+      "cut": "Showing the first {shown} of {total}.",
+      "none": "No matches.",
+      "change": "Pick another match",
+      "studied": "has packet",
+      "unstudied": "no packet",
+      "research_one": "{count} research asked",
+      "research_other": "{count} researches asked",
+      "escalated": "escalated"
+    },
+    "age": {
+      "days_one": "{count} day",
+      "days_other": "{count} days",
+      "months_one": "{count} month",
+      "months_other": "{count} months",
+      "years": "{years} years"
+    },
+    "h2hw": {
+      "title": "Weighted head to head",
+      "subtitle": "How much each meeting between {home} and {away} says about this match, by age, competition, ground and coaches. A description, not a validated signal.",
+      "n": "Meetings read",
+      "last": "Latest meeting",
+      "oldest": "Oldest",
+      "record": "Record in 90 min · {home}",
+      "recordText": "{w} W · {d} D · {l} L",
+      "sameVenue": "With {home} at home, as now",
+      "weighted": "Weighted by weight (W · D · L of {home})",
+      "goals": "Weighted goals per meeting ({home} – rival)",
+      "coaches": "Benches",
+      "coachesText": "{same} same · {changed} changed · {unknown} unknown",
+      "coach": {
+        "none": "the same",
+        "home": "home coach changed",
+        "away": "away coach changed",
+        "both": "both changed",
+        "unknown": "unknown"
+      },
+      "col": {
+        "when": "Ago",
+        "competition": "Competition",
+        "score": "90 min",
+        "ground": "Ground",
+        "scope": "Kind",
+        "coaches": "Coaches",
+        "weight": "Weight",
+        "share": "Share"
+      },
+      "aet": "extra time",
+      "empty": "No meetings on record."
+    },
+    "scen": {
+      "title": "What this match does",
+      "subtitle": "Arithmetic of THIS match alone: the others are not simulated, so a place is an interval. These are not probabilities.",
+      "tableTitle": "Table",
+      "unavailable": "This table is not ordered by points: nothing is read from it.",
+      "today": "Today",
+      "now": "{rank}. · {points} pts · {played} P",
+      "result": {
+        "home_win": "If the home side wins",
+        "draw": "If they draw",
+        "away_win": "If the away side wins"
+      },
+      "points": "{points} pts",
+      "place": "place {n}",
+      "places": "places {best}–{worst}",
+      "snapshot": "Table of {when}.",
+      "tieTitle": "Tie",
+      "kind": {
+        "single_match": "single match",
+        "first_leg": "first leg",
+        "second_leg": "second leg",
+        "replay": "replay",
+        "series": "series"
+      },
+      "before": "Aggregate before the match (this match's home side first)",
+      "series": "Series",
+      "seriesText": "game {game} · {home}–{away} ({draws} draws)",
+      "tie": {
+        "ahead": "Ahead if the margin is",
+        "level": "Level if it is",
+        "behind": "Behind if it is",
+        "limit": "Limit"
+      },
+      "canLose": "can lose by up to {n}",
+      "needsWin": "needs to win by {n} or more",
+      "cannotLose": "cannot lose"
+    },
+    "tactics": {
+      "title": "Observable tactics",
+      "subtitle": "What can be observed in each team's last matches, with the size of each sample. It describes; it does not predict.",
+      "row": {
+        "read": "Matches read (events that add up)",
+        "data": "Missing data",
+        "formation": "Starting formation",
+        "rotation": "Rotation of the eleven",
+        "coach": "With the current coach",
+        "goals": "Goals for – against",
+        "late": "Late goals (76–90') for – against",
+        "scoredFirst": "When it scores first",
+        "concededFirst": "When it concedes first",
+        "htLeading": "Leading at the break",
+        "htTrailing": "Trailing at the break",
+        "firstSub": "First substitution (mean minute)"
+      },
+      "tally": "{w} W {d} D {l} L",
+      "sample": "{n} of {of}",
+      "formationText": "{main} in {count} of {n} · latest {last} · {changes} changes",
+      "rotationText": "{avg} changes per match ({pairs} pairs)",
+      "coachText": "{newest} of {n} ({distinct} distinct)",
+      "goalsText": "{for} – {against} ({n} matches)",
+      "lateText": "{for} – {against} ({n} matches)",
+      "firstSubText": "{mean} ({n} of {of} matches)",
+      "noSheet_one": "{count} without a sheet",
+      "noSheet_other": "{count} without a sheet",
+      "crossed_one": "{count} crossed sheet",
+      "crossed_other": "{count} crossed sheets",
+      "noEvents_one": "{count} without events",
+      "noEvents_other": "{count} without events",
+      "inconsistent_one": "{count} with events that do not add up",
+      "inconsistent_other": "{count} with events that do not add up",
+      "complete": "complete"
+    },
+    "factors": {
+      "title": "Context factors",
+      "subtitle": "The status each factor had when the AI read the packet and the one it has in the registry today. Descriptive: it describes the match, it does not justify a selection. Validated: a person vouched for it with an experiment.",
+      "labels": {
+        "h2h_weighted": "Weighted head to head",
+        "scenarios": "Table and tie scenarios",
+        "tactics_profile": "Observable tactics",
+        "rest_congestion": "Rest and congestion"
+      },
+      "status": {
+        "DESCRIPTIVE": "Descriptive",
+        "VALIDATED": "Validated"
+      },
+      "error": "The registry could not be read when the packet was built: every factor counts as descriptive.",
+      "col": {
+        "factor": "Factor",
+        "packet": "In the packet",
+        "today": "Registry today"
+      },
+      "experiment": "experiment: {name}",
+      "changed": "changed after the packet",
+      "decisions": "Registry decisions",
+      "noDecisions": "The registry holds no decision: every factor is still descriptive."
+    },
+    "brief": {
+      "title": "AI brief",
+      "engine": "Written by",
+      "uncertainty": "Uncertainty",
+      "quality": "Data quality",
+      "escalate": "Escalated for a closer review",
+      "level": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "dataQuality": {
+        "good": "good",
+        "fair": "fair",
+        "poor": "poor"
+      },
+      "reasons": "Reasons to escalate",
+      "refused": "Claims refused",
+      "research": "Research asked",
+      "byLlm": "the economical model, checked by the server",
+      "byRules": "the rules, from the data"
+    },
+    "research": {
+      "title": "Research the AI asked for",
+      "subtitle": "The AI says WHAT it is missing and for which side, from a list the server wrote. The server decides whether to look, inside the day's searches and budget.",
+      "asked": "What the latest brief asked for",
+      "none": "The latest brief asked for no research.",
+      "topic": {
+        "availability": "Who can play (injuries, doubts, suspensions)",
+        "confirmation": "Confirm with official sources",
+        "preview": "International media preview"
+      },
+      "side": {
+        "home": "home",
+        "away": "away",
+        "both": "both"
+      },
+      "passes": "Passes of the match",
+      "noPasses": "No pass on record.",
+      "col": {
+        "pass": "Pass",
+        "when": "Finished",
+        "requested": "Asked",
+        "asked": "Received",
+        "searched": "Searched",
+        "unserved": "Not served",
+        "searches": "Searches",
+        "cost": "Cost"
+      },
+      "unserved": {
+        "no_allowance": "no searches left",
+        "near_budget": "near the budget",
+        "pass_budget": "no budget left in this pass",
+        "no_search_pass": "this pass does not read the web",
+        "research_failed": "the research of an entity failed in this pass"
+      },
+      "how": "A pass asks when it writes its brief; the next pass that reads the web serves it. The final pass does not read the web: what the pre pass asked waits for “run now”. Asking neither escalates the match nor changes any decision."
+    },
+    "refused": {
+      "title": "Claims the server refused",
+      "subtitle": "Every claim of the AI is checked against the packet. This is what did not pass, and why.",
+      "shown": "{shown} of {total}",
+      "descriptive": "rested on {factor}, a descriptive factor",
+      "group": {
+        "context": "Context",
+        "changes": "Changes",
+        "injuries": "Absences",
+        "cards": "Selections",
+        "cards_why": "Why of a selection",
+        "cards_risks": "Risks of a selection",
+        "research": "Research asked",
+        "narrative": "Narrative"
+      }
+    },
+    "firstLegScore": "First leg {home}–{away}",
+    "need": {
+      "home": "home side must come back",
+      "away": "away side must come back",
+      "level": "level on aggregate"
     }
   },
   "calibration": {
@@ -234,7 +464,27 @@
     "reason": "Reason",
     "empty": "No calibrators yet: the nightly cycle fits them.",
     "day": "Day",
-    "n": "n"
+    "n": "n",
+    "gate": {
+      "groups": {
+        "calib_gate": "To validate a calibrator",
+        "edge_gate": "To validate an edge",
+        "general": "General"
+      },
+      "labels": {
+        "version": "Criterion version",
+        "min_oos_n": "Minimum out-of-sample matches",
+        "min_oos_days": "Minimum out-of-sample days",
+        "min_gain_vs_raw": "Minimum log-loss gain over the uncalibrated model",
+        "max_ece": "Maximum ECE",
+        "max_loss_vs_market": "Maximum log-loss shortfall against the market",
+        "ev_rule": "Expected value the rule asks for",
+        "min_rule_n": "Minimum bets of the rule",
+        "min_rule_clv": "Minimum CLV of the rule",
+        "replace_gain": "Minimum gain to replace the champion (log loss)",
+        "refit_every_days": "Refit every (days)"
+      }
+    }
   },
   "memory": {
     "type": "Entity",
@@ -283,20 +533,194 @@
     "run": "Run",
     "empty": "The Market Discovery Engine runs every Monday at 04:40 (Bogotá).",
     "never": "It never activates a market: it proposes research.",
-    "market": "Market"
+    "market": "Market",
+    "clock": {
+      "title": "Price clock",
+      "subtitle": "Every price the API returned before the match, with its exact minute",
+      "explain": "It is structured from the raw /odds bodies that are already stored (RAW), without asking the provider for anything new. Reading only: it changes no pick, no probability and not the SHADOW mode. A new price is recorded the first time it was seen with that value, not every time it was asked.",
+      "empty": "No body has been structured yet. The job runs in the worker every 10 minutes, a few hundred bodies per round.",
+      "extractor": "Reader version",
+      "rawBodies": "Raw /odds bodies",
+      "pending": "To read",
+      "pendingHint": "Bodies the current version has not finished",
+      "upToDate": "Up to date",
+      "quotes": "Prices",
+      "fixtures": "Matches with prices",
+      "size": "Table size",
+      "ledger": "Reading status",
+      "ledgerHelp": "Each raw body ends up read, empty, waiting for its match, after kick-off or failed. Those waiting or failed are retried on their own for 14 days.",
+      "status": {
+        "ok": "Read",
+        "empty": "Empty",
+        "no_fixture": "No match",
+        "after_kickoff": "After kick-off",
+        "error": "Failed"
+      },
+      "version": "Version",
+      "bodies": "Bodies",
+      "refused": "Refused",
+      "last": "Latest",
+      "families": "Market families",
+      "familiesHelp": "Only the marked markets are structured. The rest stays intact in RAW and can be read later without losing anything.",
+      "countsLate": "The per-market count took longer than allowed; it is retried on the next refresh.",
+      "family": "Family",
+      "bets": "Markets",
+      "extracted": "Structured",
+      "structured": "Structured markets",
+      "period": "Period",
+      "subject": "Subject",
+      "reading": "Reading",
+      "familyName": {
+        "result": "Result",
+        "goals": "Goals",
+        "goals_half": "Goals by half",
+        "corners": "Corners",
+        "cards": "Cards",
+        "shots": "Team shots",
+        "fouls": "Fouls",
+        "offsides": "Offsides",
+        "tackles": "Tackles",
+        "saves": "Goalkeeper saves",
+        "timing": "Timing and sequences",
+        "special": "Specials",
+        "advance": "Qualification",
+        "players": "Players",
+        "other_sport": "Other sports",
+        "unclassified": "Unclassified"
+      },
+      "periodName": {
+        "FT": "Full time",
+        "1H": "1st half",
+        "2H": "2nd half",
+        "INTERVAL": "Interval",
+        "OTHER": "Other"
+      },
+      "subjectName": {
+        "match": "Match",
+        "home": "Home",
+        "away": "Away",
+        "player": "Player",
+        "keeper": "Goalkeeper"
+      },
+      "issues": "What failed or was refused",
+      "issuesHelp": "Whatever could not be structured stays here with its reason; nothing is hidden. A body's detail is found by its identifier in RAW.",
+      "body": "Body",
+      "providerFixture": "Match (API)",
+      "detail": "Detail",
+      "unclassified": "New unclassified markets",
+      "unclassifiedHelp": "The provider sent these bet types and the taxonomy does not know them yet. Nothing is lost: their prices are still in RAW.",
+      "runs": "Latest job runs",
+      "rows": "Prices written"
+    },
+    "matrix": {
+      "title": "Market matrix by family",
+      "subtitle": "What each kind of bet can become: its price, its results, its model and the verdict",
+      "explain": "For each kind of bet: whether the provider offers it, whether we store its price and the figure that would settle it, whether a model exists yet and the verdict that earns. It is read from the newest stored matrix, as it was measured at the time shown. Reading only: it changes no pick, no probability and not the SHADOW mode.",
+      "empty": "No matrix has been stored yet: one is built every week (or with python -m scripts.markets matrix --store).",
+      "stale": "Matrix from an earlier version ({version}; the current one is {current}): it is renewed by the weekly run.",
+      "generated": "Generated (Bogotá time)",
+      "generatedHint": "Version {version} · taxonomy {taxonomy}",
+      "keys": "Keys in the catalogue",
+      "keysHint": "{followed} followed, {modelled} modelled",
+      "rules": "Settlement rules",
+      "rulesHint": "{n} can grade",
+      "definitions": "Provider bets",
+      "definitionsHint": "{extracted} with a stored price, {withRule} with a settlement rule",
+      "verdict": {
+        "ready": "Ready",
+        "partial": "Partial",
+        "investigate": "To investigate",
+        "notViable": "Not viable"
+      },
+      "legend": "Ready: a model, a calibrator and an edge validated against the closing line. Partial: a model prices it and the pipeline runs it, but its edge is not validated. To investigate: it can be graded and there is a price to measure it against, but there is no model yet; the priority says where to start. Not viable: nothing to grade it on or no price to measure it against, or it was judged not worth it.",
+      "priority": {
+        "alta": "High priority",
+        "media": "Medium priority",
+        "baja": "Low priority"
+      },
+      "group": {
+        "A": "Result",
+        "B": "Goals",
+        "C": "Corners",
+        "D": "Cards",
+        "E": "Players",
+        "F": "Goalkeepers",
+        "G": "Shots, fouls and offsides",
+        "H": "Futures",
+        "Z": "Other"
+      },
+      "howToRead": "Bets: with a stored price / total the provider offers. Price: matches with a price in the last {price} days, median number of houses per match and coverage (the share of matches with any price that have this market's). Results: finished matches of the followed competitions in the last {results} days that carry the figure that would settle the market, and their share of the total.",
+      "cols": {
+        "market": "Market",
+        "verdict": "Verdict",
+        "reason": "Reason",
+        "bets": "Bets",
+        "price": "Price",
+        "results": "Results",
+        "model": "Model"
+      },
+      "price": {
+        "fixtures": "Matches",
+        "houses": "Houses",
+        "coverage": "Coverage"
+      },
+      "results": {
+        "matches": "Matches",
+        "share": "Of total"
+      },
+      "estimated": "estimated",
+      "estimatedHint": "Figure from the weekly discovery run: the platform does not store this market's prices yet.",
+      "curated": "set by hand",
+      "curatedHint": "Verdict from a documented judgement: the data alone does not give it.",
+      "model": {
+        "enabled": "Modelled",
+        "edge": {
+          "VALIDATED": "edge validated",
+          "NOT_VALIDATED": "edge not validated",
+          "unknown": "edge not assessed"
+        }
+      },
+      "reason": {
+        "priced": "priced and with results: it can be measured",
+        "edge_validated": "edge validated",
+        "edge_not_validated": "modelled, edge not validated",
+        "no_prices_in_window": "no prices this week",
+        "thin_price": "fewer than 2 houses: the price cannot be measured",
+        "after_parent": "measured after the total",
+        "not_extracted": "the platform does not store its prices yet",
+        "not_offered": "the provider does not offer it",
+        "no_period_data": "no per-half data: it cannot be settled",
+        "player_level": "settled on one player's figures",
+        "out_of_scope": "outside the plan (timing, specials, other sports)",
+        "no_data": "we do not store the figure that would settle it",
+        "rejected_backtest": "rejected by the backtest",
+        "low_information": "little information: not worth a model",
+        "kind_not_graded": "its kind of bet is not graded on this figure",
+        "not_understood": "its selections are not read yet"
+      },
+      "cards": {
+        "title": "Cards: how they are counted",
+        "convention": "Houses do not count cards the same way: under another convention, {pct} of the {matches} matches with card events would settle differently, the ones with a sending-off.",
+        "statistics": "Card events and card statistics agree in {pct} of the {compared} matches where they can be compared."
+      },
+      "competitions": {
+        "title": "Coverage by competition",
+        "help": "The {n} followed competitions with the most finished matches. All followed ones together: {finished} finished matches and {priced} matches with a price.",
+        "name": "Competition",
+        "finished": "Finished ({days} d)",
+        "priced": "With a price ({days} d)"
+      }
+    }
   },
   "costs": {
+    "title": "PrediGol Intelligence cost per unit",
+    "subtitle": "The last 7 closed days: what each match, candidate, pick, research and post-mortem cost.",
     "perMatch": "Per match",
     "perCandidate": "Per candidate",
     "perPick": "Per pick",
     "perResearch": "Per research",
     "perPostmortem": "Per post-mortem",
     "perDay": "Per day (7 d)",
-    "projection": "Month projection",
-    "budget": "Monthly budget",
-    "spentMonth": "Spent this month",
-    "alerts": "This month's alerts",
-    "noAlerts": "No alert this month.",
     "runs": "PrediGol Intelligence runs",
     "audit": "Data-leakage audit",
     "rule": "Rule",
@@ -310,13 +734,25 @@
     "none": "—",
     "auditEmpty": "The audit runs every morning over the previous day's decisions."
   },
-  "learning": {
-    "title": "PrediGol Intelligence learning center",
-    "subtitle": "Calibrators with criteria fixed in advance, edge validated per market, promotions and regressions, and the day's learning report.",
-    "open": "Open PrediGol Intelligence",
-    "champions": "Champion / challenger per market and model",
-    "promotions": "Promotions",
-    "regressions": "Regressions (retired)",
-    "noRegressions": "No regression recorded."
+  "codes": {
+    "verdict": {
+      "MERECIDO": "Deserved",
+      "SUERTE": "Lucky",
+      "VARIANZA": "Variance",
+      "ERROR": "Mistake",
+      "NULO": "Void",
+      "SIN_DATOS": "No data"
+    },
+    "quality": {
+      "GOOD": "Good",
+      "BAD": "Bad",
+      "NEUTRAL": "Neutral",
+      "UNKNOWN": "Unknown"
+    },
+    "method": {
+      "logit2": "Logistic with the market price",
+      "platt": "Platt",
+      "identity": "No correction"
+    }
   }
 }

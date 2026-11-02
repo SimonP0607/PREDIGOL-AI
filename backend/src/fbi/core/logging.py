@@ -66,17 +66,121 @@ def redact_text(text: str) -> str:
     return text
 
 
+# What names a person or opens a door, as it can turn up inside an error message or a traceback: a byte string, a
+# password hash, an email address (any script), an IP address, a session token (secrets.token_urlsafe: letters of
+# both cases, digits mostly) and a long hex digest. Function names, paths, line numbers and versions are left alone
+# (plan UX, A1: the trace of an unexpected error is logged).
+_PERSONAL_PATTERNS = (
+    (re.compile(r"""\bb(?:'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*")"""), "<bytes>"),
+    (re.compile(r"\$argon2(?:id|i|d)\$[^\s'\"]*"), "<hash>"),
+    (re.compile(r"[\w.%+-]+@[\w-]+(?:\.[\w-]+)*\.[^\W\d_]{2,}"), "<email>"),
+    (re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?![\d.])"), "<ip>"),
+    (re.compile(r"(?<![\w:.])(?=[0-9A-Fa-f:]*::|(?:[0-9A-Fa-f]{1,4}:){3})"
+                r"[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?<=[0-9A-Fa-f])(?![\w:])"), "<ip>"),
+    (re.compile(r"(?<![\w-])(?=[\w-]*[A-Z])(?=[\w-]*[a-z])[\w-]{32,}(?![\w-])"), "<token>"),
+    (re.compile(r"(?<![0-9a-f])[0-9a-f]{32,}(?![0-9a-f])"), "<hex>"),
+)
+
+
+# A value quoted inside a message - Python's own repr ('...') or a library's ("...") - is what a caller passed: int()
+# and float() quote the text they could not read, fromisoformat() the date, a KeyError the key (third review of A1).
+_QUOTED = re.compile(r"'(?:[^'\\\n]|\\.)*'" r'|"(?:[^"\\\n]|\\.)*"')
+_FIRST_LINE_MAX = 1000
+"""A message is cut BEFORE the filter runs: the filter's patterns over a 16 KB line cost more than a second."""
+
+
+def scrub_personal(text: str) -> str:
+    """The text without credentials (redact_text) and without personal data: what an error may carry before it is
+    written to a log."""
+    text = redact_text(text)
+    for pattern, replacement in _PERSONAL_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
+def scrub_value(text: str, *, limit: int = 300, quoted: bool = True) -> str:
+    """One line of text as it may leave the server - in a log line or to Sentry (fbi.core.sentry): its first line
+    (the lines after it are where libraries put the data), cut before the filter runs, every quoted value replaced by
+    <value> (``quoted``: not for a line of source code), through the filter of personal data and credentials, at most
+    ``limit`` characters."""
+    stripped = text.strip() if text else ""
+    first = stripped.splitlines()[0][:_FIRST_LINE_MAX] if stripped else ""
+    return scrub_personal(_QUOTED.sub("<value>", first) if quoted else first)[:limit]
+
+
+def error_summary(exc: BaseException) -> str:
+    """What an unexpected error says, safe for a log (plan UX, A1; reviews of A1), at most 300 characters:
+
+    - a validation error (pydantic, FastAPI): where it failed and how - the fields and the kinds of error - never the
+      input it was given;
+    - a database error (psycopg): its SQLSTATE and the constraint, table and column it names - never the values its
+      messages quote;
+    - a group of errors: how many, and their types;
+    - a KeyError: nothing - its message is the key it did not find;
+    - any other: the first line of its message - the lines after it are where libraries put the data - with every
+      quoted value replaced by <value>, through the filter of personal data (third review of A1: int() and float()
+      quote the text they could not read, fromisoformat() the date).
+    """
+    errors = getattr(exc, "errors", None)
+    if callable(errors):
+        try:
+            found = errors()
+        except Exception:  # an error that cannot say its errors falls back to its first line
+            found = None
+        if isinstance(found, list) and all(isinstance(e, dict) and "loc" in e for e in found):
+            where = "; ".join(f"{'.'.join(str(x) for x in e['loc']) or '-'} ({e.get('type', '?')})" for e in found[:10])
+            return scrub_personal(f"{len(found)} validation error(s): {where}"[:_FIRST_LINE_MAX])[:300]
+    sqlstate = getattr(exc, "sqlstate", None)
+    diag = getattr(exc, "diag", None)
+    if isinstance(sqlstate, str) and diag is not None:
+        parts = [f"sqlstate {sqlstate}"]
+        for label in ("schema_name", "table_name", "column_name", "constraint_name"):
+            value = getattr(diag, label, None)
+            if value:
+                parts.append(f"{label.removesuffix('_name')} {value}")
+        return scrub_personal(", ".join(parts))[:300]
+    if isinstance(exc, BaseExceptionGroup):
+        kinds = ", ".join(type(e).__name__ for e in exc.exceptions[:10])
+        return f"{len(exc.exceptions)} errors: {kinds}"[:300]
+    if isinstance(exc, KeyError):
+        return ""
+    return scrub_value(str(exc))
+
+
+def error_trace(exc: BaseException) -> str:
+    """Where an unexpected error came from, safe for a log: the frames (file, line, function, the source line) and
+    the types - never a message's data or a frame's values - through the filter of personal data. Each link of the
+    chain of causes keeps its own end (the frames nearest the error), within 6,000 characters in all."""
+    import traceback
+
+    chain: list[BaseException] = []
+    link: BaseException | None = exc
+    while link is not None and link not in chain and len(chain) < 4:
+        chain.append(link)
+        link = link.__cause__ or link.__context__
+    budget = 6000 // len(chain)
+    parts = []
+    for link in reversed(chain):
+        frames = "".join(traceback.format_tb(link.__traceback__))[-(budget - 80):]
+        role = "" if link is exc else " (a cause)"
+        parts.append(f"{frames}{type(link).__name__}{role}")
+    return scrub_personal("\n".join(parts))[-6000:]
+
+
 def configure(level: str = "INFO") -> None:
     logging.basicConfig(format="%(message)s", stream=sys.stdout, level=level)
     # httpx logs every request URL at INFO. A Telegram bot token is in the URL
     # path, so those lines never reach the log: warnings and errors only.
     for noisy in ("httpx", "httpcore"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
+    from fbi.core.sentry import report_error_logs
+
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
             _add_run_id,
             _redact,
+            report_error_logs,
             structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso", utc=True),
             structlog.processors.StackInfoRenderer(),

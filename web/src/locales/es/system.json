@@ -317,5 +317,26 @@
     "provider_ok": "{spent} de {budget} peticiones hoy (nuestro límite)",
     "provider_budget_exhausted": "presupuesto diario agotado ({spent} de {budget})",
     "provider_recent_error": "error del proveedor en la última hora"
+  },
+  "synthetic": {
+    "title": "Recorrido sintético",
+    "subtitle": "Cada 15 minutos una cuenta dedicada recorre lo que hace un lector: entrar, Inicio, un partido de hoy, los picks y sus picks",
+    "off": "Apagado: falta la cuenta dedicada y su configuración en el servidor (acción del dueño).",
+    "last": "Última vuelta",
+    "lastSuccess": "Última vuelta completa",
+    "runs24h": "Vueltas en 24 h",
+    "failed24h": "Fallidas en 24 h",
+    "lastError": "Último paso fallido: {error}"
+  },
+  "observability": {
+    "title": "Pruebas de observabilidad",
+    "subtitle": "Un error provocado a propósito en la API y otro en el navegador: búscalos en Sentry por su referencia",
+    "apiTest": "Error de prueba en la API",
+    "webTest": "Error de prueba en la web",
+    "apiSent": "Provocado: referencia {id}. Búscala en Sentry.",
+    "webSent": "Enviado desde el navegador.",
+    "webOff": "La web no informa errores: el servidor no tiene el proyecto web de Sentry.",
+    "unexpected": "La API no devolvió el error esperado.",
+    "failed": "No se pudo provocar: {error}"
   }
 }

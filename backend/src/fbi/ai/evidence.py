@@ -23,6 +23,7 @@ import hashlib
 import json
 import re
 from collections import defaultdict
+from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Literal
@@ -32,6 +33,7 @@ import psycopg
 from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
+from fbi.ai.contracts.mcp import source_class
 from fbi.analyst.provenance import OFFICIAL_DOMAINS, REPUTABLE_DOMAINS
 
 Status = Literal["CONFIRMED", "PROBABLE", "RUMOR", "CONTRADICTORY", "OUTDATED"]
@@ -174,6 +176,23 @@ def tier_of(conn: psycopg.Connection[Any], domain: str | None) -> str:
     return "unknown"
 
 
+def outlets_of(conn: psycopg.Connection[Any], hosts: Iterable[str | None]) -> dict[str, str]:
+    """For each host, WHO publishes it: the registered domain that vouches for it (the most specific one, the one ``tier_of`` reads its tier
+    from), or the host itself when none does. ``marca.com`` and ``amp.marca.com`` are one outlet, and so are two blogs under a registered
+    media suffix: what the registry accepts as «a media outlet» is the registered domain, not every address under it."""
+    suffixes: dict[str, list[str]] = {}
+    for host in {h for h in hosts if h}:
+        parts = host.split(".")
+        suffixes[host] = [".".join(parts[i:]) for i in range(len(parts) - 1)]
+    wanted = sorted({s for ss in suffixes.values() for s in ss})
+    registered: set[str] = set()
+    if wanted:
+        with conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute("SELECT domain FROM ai.sources WHERE domain = ANY(%s)", (wanted,))
+            registered = {str(d) for (d,) in cur.fetchall()}
+    return {host: next((s for s in ss if s in registered), host) for host, ss in suffixes.items()}
+
+
 def normalize_name(name: str | None) -> str:
     import unicodedata
 
@@ -204,11 +223,23 @@ class EvidenceIn:
     confidence: float = 0.5
     relevance: float = 0.5
     attributes: dict[str, Any] = field(default_factory=dict)
+    claim_type: str | None = None
+    subject_type: str | None = None
+    subject_id: int | None = None
+    fresh_until: datetime | None = None
+    """Research v2 (migration 0114): what kind of claim it is and about whom (the words of ``claim-v1``), and until when it can be reused
+    without asking again. All four stay ``None`` for what v1 writes, and then the row is exactly the row v1 always wrote."""
+
+    @property
+    def typed(self) -> bool:
+        return any(v is not None for v in (self.claim_type, self.subject_type, self.subject_id, self.fresh_until))
 
     def content_hash(self) -> str:
-        body = {"claim": " ".join(self.claim.split()), "url": self.source_url, "source": self.source_name,
+        body: dict[str, Any] = {"claim": " ".join(self.claim.split()), "url": self.source_url, "source": self.source_name,
                 "assertion": self.assertion, "published_at": None if self.published_at is None
                 else self.published_at.isoformat(), "attributes": self.attributes}
+        if self.typed:  # the hash of an untyped item is what it always was; a typed claim says more, so it is another piece of content
+            body["typed"] = [self.claim_type, self.subject_type, self.subject_id]
         return hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
 
 
@@ -223,13 +254,15 @@ def store(conn: psycopg.Connection[Any], item: EvidenceIn, *, at: datetime) -> t
         cur.execute(
             "INSERT INTO ai.evidence (fixture_id, team_id, provider_player_id, kind, claim, origin, source_name, source_url, "
             "source_domain, source_tier, author, published_at, retrieved_at, event_at, story_key, content_hash, "
-            "payload_hash, confidence, relevance, attributes, status, status_reason, status_changed_at) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+            "payload_hash, confidence, relevance, attributes, status, status_reason, status_changed_at, "
+            "claim_type, subject_type, subject_id, source_class, fresh_until) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
             "ON CONFLICT (story_key, content_hash) DO NOTHING RETURNING id",
             (item.fixture_id, item.team_id, item.provider_player_id, item.kind, item.claim[:600], item.origin,
              item.source_name[:200], item.source_url, domain, tier, item.author, published, item.retrieved_at,
              item.event_at, item.story_key, item.content_hash(), item.payload_hash, round(item.confidence, 3),
-             round(item.relevance, 3), Jsonb(attributes), initial, "not yet classified", at))
+             round(item.relevance, 3), Jsonb(attributes), initial, "not yet classified", at,
+             item.claim_type, item.subject_type, item.subject_id, source_class(tier, domain) if item.typed else None, item.fresh_until))
         row = cur.fetchone()
         if row is not None:
             return int(row[0]), True
@@ -262,10 +295,25 @@ class Row:
     story_key: str
     status: str
     attributes: dict[str, Any]
+    typed: bool = False
+    """Research v2 wrote it: it says what kind of claim it is and about whom (``ai.evidence.subject_type`` is not NULL)."""
+    outlet: str | None = None
+    """Who published it, for the claims of research v2: the registered domain that vouches for the host (``outlets_of``), so that
+    ``marca.com`` and ``amp.marca.com`` are one outlet. None for what v1 wrote - and then the host is the outlet, as it always was."""
+
+    @property
+    def flagged(self) -> bool:
+        """The page it came from read like an order to a model (``fbi.ai.untrusted``): whatever it says, it says with the standing of a
+        source nobody classified. Research v2 marks the claims of such a page (``attributes.instruction_like``); v1 never does."""
+        return bool(self.attributes.get("instruction_like"))
+
+    @property
+    def effective_tier(self) -> str:
+        return "unknown" if self.flagged else self.tier
 
     @property
     def rank(self) -> int:
-        return TIER_RANK.get(self.tier, 8)
+        return TIER_RANK.get(self.effective_tier, 8)
 
     @property
     def when(self) -> datetime:
@@ -278,6 +326,21 @@ class Row:
         who = self.player_id if self.player_id is not None else self.player_name or None
         return self.fixture_id, self.team_id, who
 
+    @property
+    def person(self) -> tuple[Any, ...]:
+        """Who the item is about, whatever match it is tied to: the same player of the same team. Research v2 decides by person: a claim
+        that says «he is out» without a match and one that says «he is available» for this match are about the same man."""
+        return self.subject[1:]
+
+
+@dataclass(frozen=True)
+class Lineup:
+    """A confirmed line-up the provider gave for a team, in any match: who started, and when the server knew it."""
+
+    team_id: int
+    starters: frozenset[int]
+    known_at: datetime
+
 
 NEGATIVE = frozenset({"out", "doubtful"})
 POSITIVE = frozenset({"available", "starts"})
@@ -287,37 +350,55 @@ def _base_status(rows: list[Row]) -> tuple[Status, str]:
     """The status a group of items about one story can support, from its sources alone."""
     best = min(rows, key=lambda r: r.rank)
     dated_official = [r for r in rows if r.rank <= TIER_RANK["club"] and r.published_at is not None]
-    media_domains = {r.domain for r in rows if r.tier in ("media", "journalist") and r.domain}
+    media_domains = {r.outlet or r.domain for r in rows if r.effective_tier in ("media", "journalist") and (r.outlet or r.domain)}
     if any(r.kind == "lineup" and r.origin == "provider" for r in rows):
         return "CONFIRMED", "the confirmed line-up"
     if dated_official:
-        return "CONFIRMED", f"an official source ({dated_official[0].tier}) with a date"
+        return "CONFIRMED", f"an official source ({dated_official[0].effective_tier}) with a date"
     if len(media_domains) >= 2:
         return "CONFIRMED", f"{len(media_domains)} independent media outlets"
-    if best.tier == "provider":
+    if best.effective_tier == "provider":
         return "PROBABLE", "the data provider's report"
     if best.rank <= TIER_RANK["media"]:
-        return "PROBABLE", f"one {best.tier} source"
+        return "PROBABLE", f"one {best.effective_tier} source"
+    if any(r.flagged for r in rows):
+        return "RUMOR", "only sources nobody classified (a page that reads like an order to a model counts as one)"
     return "RUMOR", f"only {best.tier} sources"
 
 
+def _too_old(r: Row, kickoff: datetime | None) -> bool:
+    """A report about who plays, from the web, published more than ``STALE_AFTER`` before the match: it does not stand on its own."""
+    return kickoff is not None and r.kind in AVAILABILITY and r.origin == "web" and kickoff - r.when > STALE_AFTER
+
+
 def classify(rows: list[Row], *, kickoff: datetime | None, at: datetime, lineup_starters: dict[int, set[int]],
-             absences_checked_at: datetime | None) -> dict[int, tuple[Status, str]]:
+             absences_checked_at: datetime | None, across_scopes: bool = False, lineups: Sequence[Lineup] = ()) -> dict[int, tuple[Status, str]]:
     """The status of every item, decided together (a newer item can outdate an older one, two items can
-    contradict each other). ``lineup_starters``: team id -> provider ids of the confirmed starters."""
+    contradict each other). ``lineup_starters``: team id -> provider ids of the confirmed starters.
+
+    ``across_scopes`` and ``lineups`` are research v2's (``refresh_typed_statuses``); left alone, the rules are the ones v1 always had.
+    ``across_scopes``: the same player of the same team is one subject whatever match his items are tied to, because a claim that belongs to
+    no match («he is out») and one for this match («he is available») are about the same man. ``lineups``: the confirmed line-ups of the
+    teams in any match; a claim that belongs to no match and says a player is out is disproved by a line-up that came after it with him
+    in the eleven - and stays disproved, whichever match is being prepared."""
     out: dict[int, tuple[Status, str]] = {}
-    by_story: dict[str, list[Row]] = defaultdict(list)
+    # the claims of a page that read like an order to a model are a story of their own: they neither lift nor are lifted by the honest
+    # sources of the same story (``flagged`` is never true for what v1 wrote, so for v1 the groups are the stories, as always)
+    by_story: dict[tuple[str, bool], list[Row]] = defaultdict(list)
     for r in rows:
-        by_story[r.story_key].append(r)
+        by_story[(r.story_key, r.flagged)].append(r)
     for story in by_story.values():
-        status, reason = _base_status(story)
+        # a story of research v2 spans weeks: a report that is too old to count is outdated below, and it does not corroborate the others
+        live = [r for r in story if not (r.typed and _too_old(r, kickoff))] or story
+        status, reason = _base_status(live)
         for r in story:
             out[r.id] = (status, reason)
     # the same subject, different stories: newer and stronger outdates; comparable and opposite contradicts
     by_subject: dict[tuple[Any, ...], list[Row]] = defaultdict(list)
     for r in rows:
-        if r.kind in AVAILABILITY and r.subject[2] is not None:
-            by_subject[r.subject].append(r)
+        who = r.person if across_scopes else r.subject
+        if r.kind in AVAILABILITY and who[-1] is not None:
+            by_subject[who].append(r)
     for items in by_subject.values():
         items.sort(key=lambda r: (r.when, -r.rank))
         for i, older in enumerate(items):
@@ -340,24 +421,95 @@ def classify(rows: list[Row], *, kickoff: datetime | None, at: datetime, lineup_
         if r.kind in ("injury", "suspension", "doubtful") and r.player_id is not None and r.player_id in starters:
             out[r.id] = ("OUTDATED", "the player is in the confirmed starting line-up")
             continue
+        if r.typed and r.fixture_id is None and r.assertion in NEGATIVE and r.kind in ("injury", "suspension", "doubtful") \
+                and r.player_id is not None and any(x.team_id == r.team_id and r.player_id in x.starters and x.known_at >= r.retrieved_at
+                                                    for x in lineups):
+            # what a team's claim says about a player was disproved by a later eleven of that team (any match): it does not come back
+            # for the next match just because that match has no line-up yet
+            out[r.id] = ("OUTDATED", "the player started in a later confirmed line-up of the team")
+            continue
         if r.kind in ("injury", "suspension") and r.player_id is not None and starters and r.player_id not in starters \
-                and r.assertion == "out":
+                and r.assertion == "out" and not (r.typed and r.rank > TIER_RANK["media"]):
+            # the absence from the eleven is confirmed by the provider; what a rumour says about WHY is not (research v2: a rumour never
+            # reaches CONFIRMED - the claims v1 wrote keep the rule they always had)
             out[r.id] = ("CONFIRMED", "absent from the confirmed starting line-up")
             continue
         if r.origin == "provider" and r.kind in ("injury", "suspension", "doubtful") and absences_checked_at is not None \
                 and r.retrieved_at < absences_checked_at - CHECK_MARGIN:
             out[r.id] = ("OUTDATED", "no longer in the provider's latest injury report")
             continue
-        if kickoff is not None and r.kind in AVAILABILITY and r.origin == "web" and kickoff - r.when > STALE_AFTER:
+        if _too_old(r, kickoff):
             out[r.id] = ("OUTDATED", "published more than ten days before the match")
     return out
 
 
 LOAD_SQL = """
 SELECT e.id, e.fixture_id, e.team_id, e.provider_player_id, e.kind, e.origin, e.source_tier, e.source_domain,
-       e.published_at, e.retrieved_at, e.story_key, e.status, e.status_reason, e.attributes
-  FROM ai.evidence e WHERE e.fixture_id = %(fixture)s AND e.retrieved_at <= %(at)s
+       e.published_at, e.retrieved_at, e.story_key, e.status, e.status_reason, e.attributes, e.subject_type
+  FROM ai.evidence e WHERE e.fixture_id = %(fixture)s AND e.subject_type IS NULL AND e.retrieved_at <= %(at)s
 """
+"""What v1 decides: the items of a match that nobody typed - the provider's reports and what the web collector of v1 wrote. The claims of
+research v2 (``subject_type`` is not NULL) are decided apart (``TYPED_SQL``): while research v2 runs beside v1, nothing it writes can move a
+status of v1."""
+
+TYPED_SQL = """
+SELECT e.id, e.fixture_id, e.team_id, e.provider_player_id, e.kind, e.origin, e.source_tier, e.source_domain,
+       e.published_at, e.retrieved_at, e.story_key, e.status, e.status_reason, e.attributes, e.subject_type
+  FROM ai.evidence e
+ WHERE e.subject_type IS NOT NULL AND e.retrieved_at <= %(at)s AND e.retrieved_at > %(since)s
+   AND (e.fixture_id = %(fixture)s OR (e.fixture_id IS NULL AND e.team_id = ANY(%(teams)s)))
+"""
+CONTEXT_SQL = """
+SELECT e.id, e.fixture_id, e.team_id, e.provider_player_id, e.kind, e.origin, e.source_tier, e.source_domain,
+       e.published_at, e.retrieved_at, e.story_key, e.status, e.status_reason, e.attributes, e.subject_type
+  FROM ai.evidence e
+ WHERE e.fixture_id = %(fixture)s AND e.subject_type IS NULL AND e.status <> 'OUTDATED' AND e.retrieved_at <= %(at)s
+   AND e.kind IN ('injury', 'suspension', 'doubtful', 'lineup')
+"""
+"""What v1 and the provider say about who plays in the match, read — and only read — when the claims of research v2 are decided: a newer
+report of the provider settles an older claim of the web, as it does among the items of v1. Nothing here is ever written."""
+TEAM_LINEUPS_SQL = """
+SELECT CASE l.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END AS team_id, l.fetched_at,
+       COALESCE(array_agg(lp.provider_player_id) FILTER (WHERE lp.is_starter), '{}') AS starters
+  FROM core.fixture_lineups l JOIN core.fixtures f ON f.id = l.fixture_id
+  LEFT JOIN core.fixture_lineup_players lp ON lp.fixture_id = l.fixture_id AND lp.team_side = l.team_side AND lp.source = l.source
+ WHERE (f.home_team_id = ANY(%(teams)s) OR f.away_team_id = ANY(%(teams)s)) AND l.fetched_at <= %(at)s AND l.fetched_at > %(since)s
+ GROUP BY l.fixture_id, l.team_side, l.source, l.fetched_at, f.home_team_id, f.away_team_id
+"""
+"""The confirmed line-ups of the teams in ANY of their matches of the last ``TYPED_WINDOW``: a man who started in one of them is not absent
+for what a claim said before it, whichever match is being prepared now."""
+TYPED_WINDOW = timedelta(days=21)
+"""How far back the statuses of what research v2 knows about a team are re-decided: more than ``STALE_AFTER`` and some, so that a report
+that has become too old is marked so before it stops being looked at. The packet does not show a typed claim older than ``STALE_AFTER``."""
+
+
+def _decide(conn: psycopg.Connection[Any], raw: list[dict[str, Any]], *, at: datetime, kickoff: datetime | None,
+            lineup_starters: dict[int, set[int]], absences_checked_at: datetime | None, across_scopes: bool = False,
+            lineups: Sequence[Lineup] = (), read_only: Collection[int] = ()) -> dict[str, int]:
+    """Decide the status of every row together and write only the statuses that changed (the trigger keeps the history). ``read_only``: rows
+    that take part in the decision but are never written (what v1 and the provider say, when the claims of research v2 are decided)."""
+    typed_hosts = [r["source_domain"] for r in raw if r.get("subject_type") is not None]
+    outlets = outlets_of(conn, typed_hosts) if typed_hosts else {}
+    rows = [Row(int(r["id"]), r["fixture_id"], r["team_id"], r["provider_player_id"],
+                normalize_name((r["attributes"] or {}).get("player_name")), r["kind"], r["origin"], r["source_tier"],
+                r["source_domain"], str((r["attributes"] or {}).get("assertion") or "info"), r["published_at"],
+                r["retrieved_at"], r["story_key"], r["status"], r["attributes"] or {},
+                typed=r.get("subject_type") is not None,
+                outlet=outlets.get(r["source_domain"]) if r.get("subject_type") is not None and r["source_domain"] else None) for r in raw]
+    decided = classify(rows, kickoff=kickoff, at=at, lineup_starters=lineup_starters,
+                       absences_checked_at=absences_checked_at, across_scopes=across_scopes, lineups=lineups)
+    skip = set(read_only)
+    counts: dict[str, int] = defaultdict(int)
+    current = {int(r["id"]): (r["status"], r["status_reason"]) for r in raw}
+    with conn.cursor(row_factory=tuple_row) as cur:
+        for eid, (status, reason) in decided.items():
+            if eid in skip:
+                continue
+            counts[status] += 1
+            if current[eid] != (status, reason):
+                cur.execute("UPDATE ai.evidence SET status = %s, status_reason = %s, status_changed_at = %s "
+                            "WHERE id = %s", (status, reason, at, eid))
+    return dict(counts)
 
 
 def refresh_statuses(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, kickoff: datetime | None,
@@ -367,18 +519,38 @@ def refresh_statuses(conn: psycopg.Connection[Any], fixture_id: int, *, at: date
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(LOAD_SQL, {"fixture": fixture_id, "at": at})
         raw = [dict(r) for r in cur.fetchall()]
-    rows = [Row(int(r["id"]), r["fixture_id"], r["team_id"], r["provider_player_id"],
-                normalize_name((r["attributes"] or {}).get("player_name")), r["kind"], r["origin"], r["source_tier"],
-                r["source_domain"], str((r["attributes"] or {}).get("assertion") or "info"), r["published_at"],
-                r["retrieved_at"], r["story_key"], r["status"], r["attributes"] or {}) for r in raw]
-    decided = classify(rows, kickoff=kickoff, at=at, lineup_starters=lineup_starters,
-                       absences_checked_at=absences_checked_at)
-    counts: dict[str, int] = defaultdict(int)
-    current = {int(r["id"]): (r["status"], r["status_reason"]) for r in raw}
-    with conn.cursor(row_factory=tuple_row) as cur:
-        for eid, (status, reason) in decided.items():
-            counts[status] += 1
-            if current[eid] != (status, reason):
-                cur.execute("UPDATE ai.evidence SET status = %s, status_reason = %s, status_changed_at = %s "
-                            "WHERE id = %s", (status, reason, at, eid))
-    return dict(counts)
+    return _decide(conn, raw, at=at, kickoff=kickoff, lineup_starters=lineup_starters, absences_checked_at=absences_checked_at)
+
+
+def refresh_typed_statuses(conn: psycopg.Connection[Any], fixture_id: int, team_ids: Sequence[int], *, at: datetime, kickoff: datetime | None,
+                           lineup_starters: dict[int, set[int]]) -> dict[str, int]:
+    """Re-decide what research v2 knows for a match: its claims typed by subject - the ones about the match itself (``fixture_id``) and the
+    ones about its teams and their players that belong to no match (``fixture_id`` NULL: what is known of a team whatever match asks) - of the
+    last ``TYPED_WINDOW``. The rules are the ones of a match: the same story in two independent outlets is CONFIRMED, a rumour alone stays a
+    rumour, opposite claims of comparable sources contradict each other unless a newer, stronger one settles it, a report too old for the match
+    is outdated, a player in the confirmed eleven is not absent - read at the kick-off and the line-ups of the match that is being prepared.
+
+    Three things are particular to research v2 (the independent review of 27 Oct 2026):
+
+    * the same player of the same team is ONE subject whatever match his claims are tied to (the model's ``applies_to`` decides what a claim
+      is tied to, never whether the rules of contradiction apply to it), and what v1 and the provider say about the match is read beside them,
+      so a newer report of the provider settles an older claim of the web as it does among the items of v1 (those rows are read, never written:
+      while research v2 runs beside v1, nothing it does moves a status of v1);
+    * a claim that belongs to no match and says a player is out is disproved by any confirmed line-up of his team, in any match, that came
+      after it with him in the eleven - so it does not come back for the next match;
+    * outlets are counted by the registered domain that vouches for them, and a report too old to count does not corroborate a current one.
+
+    The statuses it writes are the claims'. Returns the count per status of those."""
+    team_list = list(team_ids)
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(TYPED_SQL, {"fixture": fixture_id, "teams": team_list, "at": at, "since": at - TYPED_WINDOW})
+        raw = [dict(r) for r in cur.fetchall()]
+        if not raw:
+            return {}
+        cur.execute(CONTEXT_SQL, {"fixture": fixture_id, "at": at})
+        context = [dict(r) for r in cur.fetchall()]
+        cur.execute(TEAM_LINEUPS_SQL, {"teams": team_list, "at": at, "since": at - TYPED_WINDOW})
+        lineups = [Lineup(int(x["team_id"]), frozenset(int(p) for p in (x["starters"] or []) if p is not None), x["fetched_at"])
+                   for x in cur.fetchall() if int(x["team_id"]) in set(team_list)]
+    return _decide(conn, raw + context, at=at, kickoff=kickoff, lineup_starters=lineup_starters, absences_checked_at=None, across_scopes=True,
+                   lineups=lineups, read_only=[int(r["id"]) for r in context])

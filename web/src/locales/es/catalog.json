@@ -228,6 +228,46 @@
         "title": "Lesiones y sanciones",
         "absence": "Baja",
         "noReason": "sin motivo indicado"
+      },
+      "history": {
+        "title": "Clubes en el tiempo",
+        "subtitle": "Tramos en clubes construidos con convocatorias, estadísticas y traspasos. Un inicio desconocido significa que ya estaba allí cuando lo vimos por primera vez.",
+        "headers": {
+          "club": "Club",
+          "from": "Desde",
+          "to": "Hasta",
+          "source": "Fuente",
+          "matches": "Partidos",
+          "lastEvidence": "Última vez"
+        },
+        "unknownStart": "Antes de verlo",
+        "stillThere": "Sigue allí",
+        "source": {
+          "transfer": "Traspaso",
+          "lineup": "Alineaciones",
+          "squad": "Plantillas"
+        },
+        "empty": "Todavía no hay tramos de clubes para este jugador.",
+        "caps": {
+          "title": "Con la selección",
+          "subtitle": "Partidos terminados de una selección absoluta cuya convocatoria lo incluye.",
+          "summary": "{caps} jugados ({starts} de titular, {minutes} min) · {waiting} a la espera de las estadísticas",
+          "headers": {
+            "date": "Fecha",
+            "team": "Selección",
+            "opponent": "Rival",
+            "competition": "Competición",
+            "role": "Rol",
+            "minutes": "Minutos"
+          },
+          "role": {
+            "started": "Titular",
+            "cameOn": "Entró",
+            "unused": "No jugó",
+            "waiting": "A la espera de estadísticas"
+          },
+          "empty": "Todavía no tiene partidos con una selección absoluta."
+        }
       }
     }
   },

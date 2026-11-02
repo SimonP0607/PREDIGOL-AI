@@ -29,7 +29,7 @@ field, the payload and a sentence.
 | `/fixtures?ids=` (≤20) | `fixture_details` | events, line-ups, team stats, player stats, `core.fixture_detail_coverage`, `core.players`, `core.coaches` | **3.21 KB/fixture gzipped, measured over 818 payloads / 16,053 fixtures** |
 | `/fixtures?date=` | live sync | `core.fixtures`, `core.fixture_results` | visible **−365 … +90 days** on Ultra (measured 2026-09-29) |
 | `/standings` | `standings_season` | `core.standings` | 1.8 KB/request measured |
-| `/injuries` | `injuries_season` | `core.player_absences` | 43 KB/request measured |
+| `/injuries` | `injuries_season` | `core.player_absences` (la última respuesta), `core.player_availability_obs` (historial de cambios, migración 0078) | 43 KB/request measured |
 | `/teams` | `teams_season` | `core.teams`, `core.venues`, `core.team_season_memberships` | was raw-only until 2026-09-29 |
 | `/odds` | odds capture | `market.odds_snapshots` | prices exist to **T-18.2 days, measured**; documented figure is 14 |
 | `/odds/live` | near-close | `market.odds_snapshots`, `market.near_close_snapshots` | **answered for the first time 2026-09-29**; in-play bet ids are a DIFFERENT namespace |

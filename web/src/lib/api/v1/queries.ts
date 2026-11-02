@@ -1,4 +1,5 @@
 /** TanStack Query option factories for the live API. */
+import { infiniteQueryOptions } from "@tanstack/react-query";
 import { v1, type BestOddsQuery, type MatchQuery } from "./client";
 import type { ParlayKind, PicksQuery } from "./types_product";
 import type { BuilderQuery } from "./types_builder";
@@ -6,6 +7,7 @@ import type { HistoryPeriod } from "./types_records";
 import type { RatingPool } from "./types";
 import type { FindingsQuery, ScoresQuery } from "./types_truth";
 import type { MemoryFilters } from "./types_ai_layer";
+import type { PairStatus } from "./types_referees";
 
 const MINUTE = 60_000;
 type Preview = "shadow" | undefined;
@@ -51,16 +53,33 @@ export const live = {
     queryFn: () => v1.daily({ day, preview }),
     refetchInterval: 2 * MINUTE,
   }),
+  /** The first 500 saved picks: what the product needs to show a selection as saved (useSavedPicks). */
   myPicks: {
     queryKey: ["v1", "me", "picks"],
     queryFn: () => v1.myPicks(),
     refetchInterval: 2 * MINUTE,
   },
-  myParlays: {
-    queryKey: ["v1", "me", "parlays"],
-    queryFn: () => v1.myParlays(),
-    refetchInterval: 2 * MINUTE,
-  },
+  /**
+   * The saved picks a page at a time (plan UX, A1: "Todo" was cut at 500 and called everything): `size` per page,
+   * the next page from `meta.next_cursor`. Mis picks lists with pages of 25 (parlays: 10); the recap reads every
+   * page, of 500 (parlays: 200, the most the API serves).
+   */
+  myPicksPages: (size: number) =>
+    infiniteQueryOptions({
+      queryKey: ["v1", "me", "picks", "pages", size],
+      queryFn: ({ pageParam }) => v1.myPicks({ limit: size, cursor: pageParam }),
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last) => last.meta.next_cursor ?? undefined,
+      refetchInterval: 2 * MINUTE,
+    }),
+  myParlaysPages: (size: number) =>
+    infiniteQueryOptions({
+      queryKey: ["v1", "me", "parlays", "pages", size],
+      queryFn: ({ pageParam }) => v1.myParlays({ limit: size, cursor: pageParam }),
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last) => last.meta.next_cursor ?? undefined,
+      refetchInterval: 2 * MINUTE,
+    }),
   history: (period: HistoryPeriod, preview: Preview) => ({
     queryKey: ["v1", "me", "history", period, preview ?? "qualified"],
     queryFn: () => v1.history(period, { preview }),
@@ -105,12 +124,43 @@ export const live = {
     queryFn: () => v1.matchAnalysis(id, { preview }),
     refetchInterval: 5 * MINUTE,
   }),
+  matchForecast: (id: string, preview: Preview) => ({
+    queryKey: ["v1", "match-forecast", id, preview ?? "user"],
+    queryFn: () => v1.matchForecast(id, { preview }),
+    refetchInterval: 5 * MINUTE,
+  }),
+  matchCalendar: (id: string, preview: Preview) => ({
+    queryKey: ["v1", "match-calendar", id, preview ?? "user"],
+    queryFn: () => v1.matchCalendar(id, { preview }),
+    refetchInterval: 15 * MINUTE,
+  }),
+  /** A finished match does not change by the minute: the worker rebuilds it when its inputs change, a few times at most. */
+  matchKnowledge: (id: string, preview: Preview) => ({
+    queryKey: ["v1", "match-knowledge", id, preview ?? "user"],
+    queryFn: () => v1.matchKnowledge(id, { preview }),
+    refetchInterval: 10 * MINUTE,
+  }),
   liveBoard: { queryKey: ["v1", "live"], queryFn: v1.liveBoard, refetchInterval: 15_000 },
   players: (q: { q?: string | undefined; team_id?: number | undefined }) => ({
     queryKey: ["v1", "players", q.q ?? "", q.team_id ?? 0],
     queryFn: () => v1.players(q),
   }),
   player: (id: string) => ({ queryKey: ["v1", "player", id], queryFn: () => v1.player(id) }),
+  /** Referees as people (plan F3). Every decision invalidates the `["v1", "referees"]` prefix. */
+  referees: (q: { q?: string | undefined; offset?: number } = {}) => ({
+    queryKey: ["v1", "referees", "list", q.q ?? "", q.offset ?? 0],
+    queryFn: () => v1.referees(q),
+  }),
+  refereeQueue: (
+    q: { status?: PairStatus; reason?: string | undefined; offset?: number } = {},
+  ) => ({
+    queryKey: ["v1", "referees", "queue", q.status ?? "open", q.reason ?? "", q.offset ?? 0],
+    queryFn: () => v1.refereeQueue(q),
+  }),
+  referee: (id: string) => ({
+    queryKey: ["v1", "referees", "one", id],
+    queryFn: () => v1.referee(id),
+  }),
   health: { queryKey: ["v1", "health"], queryFn: v1.health, refetchInterval: MINUTE },
   matches: (q: MatchQuery) => ({ queryKey: ["v1", "matches", q], queryFn: () => v1.matches(q) }),
   competitions: { queryKey: ["v1", "competitions"], queryFn: () => v1.competitions() },
@@ -137,6 +187,12 @@ export const live = {
 
   // ── Admin Console ─────────────────────────────────────────────────────────
   admin: { queryKey: ["v1", "admin"], queryFn: v1.admin, refetchInterval: 30_000 },
+  /** The storage report is written four times a day: a few minutes is as fresh as it gets. */
+  adminStorage: {
+    queryKey: ["v1", "admin", "storage"],
+    queryFn: v1.adminStorage,
+    refetchInterval: 10 * MINUTE,
+  },
   overview: { queryKey: ["v1", "overview"], queryFn: v1.overview, refetchInterval: MINUTE },
   quality: { queryKey: ["v1", "quality"], queryFn: v1.quality, refetchInterval: MINUTE },
   coverage: { queryKey: ["v1", "coverage"], queryFn: v1.coverage },
@@ -169,6 +225,12 @@ export const live = {
     queryFn: () => v1.evolutionDashboard(day),
     refetchInterval: MINUTE,
   }),
+  /** Costs the server a month of predictions (about 4 s): never refreshed by itself, and outside the `evolution` key so a decision does not re-ask. */
+  codePromotions: (days?: number) => ({
+    queryKey: ["v1", "code-promotions", days ?? "default"],
+    queryFn: () => v1.codePromotions(days),
+    staleTime: 5 * MINUTE,
+  }),
   aiToday: (day?: string) => ({
     queryKey: ["v1", "ai-layer", "today", day ?? "today"],
     queryFn: () => v1.aiToday(day),
@@ -182,10 +244,6 @@ export const live = {
   aiPostmortems: (q: Parameters<typeof v1.aiPostmortems>[0]) => ({
     queryKey: ["v1", "ai-layer", "postmortems", q],
     queryFn: () => v1.aiPostmortems(q),
-  }),
-  aiLearning: (day?: string) => ({
-    queryKey: ["v1", "ai-layer", "learning", day ?? "yesterday"],
-    queryFn: () => v1.aiLearning(day),
   }),
   aiDailyReviews: (days = 30) => ({
     queryKey: ["v1", "ai-layer", "daily-reviews", days],
@@ -240,6 +298,23 @@ export const live = {
     queryFn: v1.aiCosts,
     refetchInterval: 5 * MINUTE,
   },
+  aiAgents: (days = 7) => ({
+    queryKey: ["v1", "ai-layer", "agents", days],
+    queryFn: () => v1.aiAgents(days),
+    refetchInterval: MINUTE,
+  }),
+  aiResearchEntities: (days = 7) => ({
+    queryKey: ["v1", "ai-layer", "research-entities", days],
+    queryFn: () => v1.aiResearchEntities(days),
+    refetchInterval: 2 * MINUTE,
+  }),
+  /** Asked for with a fixture the page has (a match found by the picker); no fixture, no request. */
+  aiMatchState: (fixtureId: string) => ({
+    queryKey: ["v1", "ai-layer", "match-state", fixtureId],
+    queryFn: () => v1.aiMatchState(fixtureId),
+    enabled: fixtureId !== "",
+    refetchInterval: MINUTE,
+  }),
   aiShadow: { queryKey: ["v1", "ai-layer", "shadow"], queryFn: v1.aiShadow, staleTime: 5 * MINUTE },
   aiMemory: (kind?: string) => ({
     queryKey: ["v1", "ai-layer", "memory", kind ?? "all"],
@@ -271,6 +346,16 @@ export const live = {
     queryFn: () => v1.intelDossier(fixtureId),
     enabled: fixtureId !== "",
   }),
+  intelMatches: (q: Parameters<typeof v1.intelMatches>[0]) => ({
+    queryKey: ["v1", "intel", "matches", q],
+    queryFn: () => v1.intelMatches(q),
+    refetchInterval: 5 * MINUTE,
+  }),
+  intelFactors: {
+    queryKey: ["v1", "intel", "factors"],
+    queryFn: v1.intelFactors,
+    refetchInterval: 10 * MINUTE,
+  },
   intelCalibration: {
     queryKey: ["v1", "intel", "calibration"],
     queryFn: v1.intelCalibration,
@@ -289,6 +374,23 @@ export const live = {
     queryFn: v1.intelMarkets,
     staleTime: 10 * MINUTE,
   },
+  intelPriceClock: {
+    queryKey: ["v1", "intel", "price-clock"],
+    queryFn: v1.intelPriceClock,
+    refetchInterval: 5 * MINUTE,
+  },
+  /** The newest matrix of markets the weekly job stored: it changes once a week, so it is kept 10 minutes. */
+  intelMarketMatrix: {
+    queryKey: ["v1", "intel", "market-matrix"],
+    queryFn: v1.intelMarketMatrix,
+    staleTime: 10 * MINUTE,
+  },
+  /** The families in shadow: the worker writes them hourly and nightly, so a few minutes is as fresh as they get. */
+  intelFamilies: (q: Parameters<typeof v1.intelFamilies>[0]) => ({
+    queryKey: ["v1", "intel", "families", q],
+    queryFn: () => v1.intelFamilies(q),
+    refetchInterval: 5 * MINUTE,
+  }),
   intelRuns: { queryKey: ["v1", "intel", "runs"], queryFn: v1.intelRuns, refetchInterval: MINUTE },
   intelCosts: {
     queryKey: ["v1", "intel", "costs"],

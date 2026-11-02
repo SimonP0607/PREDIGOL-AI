@@ -1,0 +1,142 @@
+{
+  "title": "Referees",
+  "description": "Referees as people: the rules place every spelling the provider used; what they doubt waits here for a decision.",
+  "tabs": {
+    "people": "People",
+    "queue": "Doubts"
+  },
+  "counts": {
+    "people": "People",
+    "spellings": "Spellings",
+    "matches": "Matches with a referee",
+    "settled": "Matches without a doubt",
+    "settledHint": "Share of the matches with a referee whose referee has no doubt waiting.",
+    "queue": "Doubts waiting",
+    "doubtMatches": "Matches with a doubt",
+    "problems": "Table problems",
+    "none": "None"
+  },
+  "list": {
+    "search": "Search by name (any spelling)",
+    "headers": {
+      "name": "Referee",
+      "country": "Country",
+      "matches": "Matches",
+      "first": "First match",
+      "last": "Last match"
+    },
+    "empty": "No referee matches.",
+    "unknownCountry": "Not known",
+    "locked": "Name chosen by an owner"
+  },
+  "queue": {
+    "filter": {
+      "status": "Status",
+      "reason": "Reason",
+      "all": "All"
+    },
+    "status": {
+      "open": "Waiting",
+      "rejected": "Different people",
+      "merged": "Merged"
+    },
+    "headers": {
+      "pair": "The two",
+      "reason": "Reason",
+      "score": "Score",
+      "impact": "Matches touched",
+      "decision": "Decision"
+    },
+    "empty": {
+      "open": "No doubt is waiting.",
+      "other": "Nothing here."
+    },
+    "matches": "{n} matches",
+    "decidedBy": "by {who}"
+  },
+  "reasons": {
+    "same_name_other_scope": "The same name in another country",
+    "longer_name": "One name holds the other",
+    "initial_and_full": "An initial and a full name that fit",
+    "spelling_variant": "One spelling apart"
+  },
+  "basis": {
+    "identity": "Anchors the person",
+    "extension": "A longer form of the name",
+    "initial": "Initial of the first name",
+    "foreign": "From another country",
+    "unscoped": "Without a country",
+    "stored": "Kept from before",
+    "manual": "Placed by a person"
+  },
+  "action": {
+    "keep": "Same person: keep {name}",
+    "different": "Two different people",
+    "reopen": "Back to doubt",
+    "force": "Merge anyway",
+    "undo": "Undo",
+    "pending": "Saving…",
+    "conflict": "They have matches at the same time, so they may be two men. Merge only if the provider's data is wrong.",
+    "names": {
+      "merge": "Merge",
+      "undo": "Undo",
+      "split": "Split",
+      "reject": "Different people",
+      "reopen": "Back to doubt",
+      "rename": "Rename"
+    }
+  },
+  "detail": {
+    "notFound": "This referee does not exist.",
+    "mergedInto": "Merged into",
+    "subtitle": "{matches} matches · {country}",
+    "rename": {
+      "title": "Name",
+      "placeholder": "The name to show",
+      "save": "Save the name",
+      "rules": "Give it back to the rules",
+      "locked": "Chosen by an owner: the rules keep it."
+    },
+    "aliases": {
+      "title": "Spellings",
+      "subtitle": "Every string the provider wrote for him. Select the ones that belong to another man to split them out.",
+      "headers": {
+        "display": "Spelling",
+        "basis": "Why it is his",
+        "matches": "Matches",
+        "last": "Last seen"
+      },
+      "select": "Select {name}"
+    },
+    "split": {
+      "name": "Name of the new referee (optional)",
+      "button": "Split the selected spellings",
+      "hint": "Two men were taken for one: the selected spellings go to a new referee and the pair is not suggested again."
+    },
+    "candidates": {
+      "title": "Doubts about him",
+      "empty": "No doubt about him."
+    },
+    "matches": {
+      "title": "Recent matches",
+      "headers": {
+        "date": "Date",
+        "match": "Match",
+        "competition": "Competition",
+        "spelling": "Written as"
+      },
+      "empty": "No match yet."
+    },
+    "events": {
+      "title": "Decisions",
+      "subtitle": "Every decision is reversible and leaves a record.",
+      "headers": {
+        "when": "When",
+        "who": "Who",
+        "action": "Action"
+      },
+      "undone": "Undone",
+      "empty": "No decision has been taken on him."
+    }
+  }
+}

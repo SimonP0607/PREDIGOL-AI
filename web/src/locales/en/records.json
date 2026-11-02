@@ -1,8 +1,10 @@
 {
   "labels": {
     "predigolPick": "PrediGol Pick",
-    "savedByMe": "Saved by me",
-    "result": "Result"
+    "result": "Result",
+    "mine": "Your selection",
+    "mineParlay": "Your parlay",
+    "savedPredigol": "Saved"
   },
   "status": {
     "PENDING": "Pending",
@@ -20,7 +22,19 @@
     "WON": "Won",
     "LOST": "Lost",
     "VOID": "Void",
-    "PARTIAL_VOID": "Won with voids"
+    "PARTIAL_VOID": "Won with partial or void legs"
+  },
+  "correction": {
+    "title": "Result corrected",
+    "help": "This record changed result after it was settled: it was settled again and what it said before is kept here.",
+    "step": "{when} · {from} → {to}",
+    "cause": {
+      "result_corrected": "The data provider corrected the match score and this record was settled again.",
+      "status_changed": "The match status changed and this record was settled again.",
+      "audit": "A review found that the stored result did not match the match score, and it was settled again."
+    },
+    "leg": "Leg {n}",
+    "more": "and {n} more"
   },
   "stage": {
     "T-24h": "Chosen ≈24 h before",
@@ -77,11 +91,7 @@
     "save": "Save",
     "saved": "Saved",
     "unsave": "Remove from my picks",
-    "addToParlay": "Add to my parlay",
-    "inParlay": "In your parlay",
-    "removeFromParlay": "Remove from parlay",
     "started": "The match has started",
-    "choose": "What would you like to do with this price?",
     "priceAt": "{odds} at {bookmaker}",
     "quarterLine": "Quarter lines (.25 / .75) cannot go in a parlay"
   },
@@ -190,7 +200,10 @@
       "risk": "Risk",
       "independent": "No selections depend on each other.",
       "dependent": "Some selections may depend on each other."
-    }
+    },
+    "undo": "Undo",
+    "undoRemoved": "Selection removed.",
+    "undoCleared": "Slip cleared."
   },
   "mine": {
     "title": "My picks",
@@ -214,9 +227,9 @@
       "pending": "Pending",
       "record": "{won} W · {lost} L",
       "hitRate": "Hit rate",
-      "roi": "ROI",
+      "roi": "Return (ROI)",
       "empty": "Nothing in this period.",
-      "note": "By the day the match kicks off in your time zone ({zone}). Profit in units of one stake, at the recorded price. PrediGol handles no money and takes no bets."
+      "note": "By the day the match kicks off in your time zone: {zone}. Profit in units of one stake, at the recorded price. PrediGol handles no money and takes no bets."
     },
     "picks": {
       "title": "Saved picks",
@@ -234,7 +247,19 @@
       "cancel": "Cancel",
       "savedAt": "Saved {when}",
       "remove": "Remove",
-      "settlesAt": "Settled at your price if you give one; otherwise at the price shown."
+      "settlesAt": "Settled at your price if you give one; otherwise at the price shown.",
+      "count": "{shown} of {total}",
+      "more": "Show more",
+      "confirmRemove": {
+        "title": "Remove this pick from your list?",
+        "body": "It stops showing here and counting in your results. This cannot be undone.",
+        "ok": "Remove"
+      },
+      "confirmClearOdds": {
+        "title": "Clear your price?",
+        "body": "The pick counts again at the price we showed when you saved it.",
+        "ok": "Clear"
+      }
     },
     "parlays": {
       "title": "My parlays",
@@ -243,7 +268,14 @@
       "build": "Build a parlay",
       "remove": "Delete",
       "createdAt": "Created {when}",
-      "unnamed": "Unnamed parlay"
+      "unnamed": "Unnamed parlay",
+      "more": "Show more",
+      "count": "{shown} of {total}",
+      "confirmRemove": {
+        "title": "Delete this parlay?",
+        "body": "It disappears from your list and this cannot be undone.",
+        "ok": "Delete"
+      }
     }
   },
   "ai": {
@@ -297,7 +329,8 @@
     "yesterday": "Yesterday",
     "jump": "Go to",
     "summary": "{count} picks · {won} won · {lost} lost · {open} to play or in play",
-    "units": "{units} u"
+    "units": "{units} u",
+    "zone": "Pick days in {zone}"
   },
   "outcome": {
     "playing": "In play",
@@ -324,7 +357,7 @@
       "record": "{won} W · {lost} L · {void} void",
       "hitRate": "Hit rate",
       "profit": "Profit",
-      "roi": "Return",
+      "roi": "Return (ROI)",
       "avgOdds": "Average odds",
       "avgOddsWon": "When won: {odds}",
       "bestStreak": "Best streak",
@@ -377,7 +410,8 @@
       "current": "Current",
       "bestWin": "Best",
       "worstLoss": "Worst"
-    }
+    },
+    "loading": "Reading your records: {loaded} of {total}…"
   },
   "funnel": {
     "label": "How a pick of the day gets here",
@@ -392,5 +426,7 @@
       "selection": "Selection (max 5)"
     },
     "help": "Each step is a filter: if no pick passes them all, the day has fewer or none. The picks of the day are chosen once PrediGol Intelligence has read the day: its pass of each match, with a news search."
-  }
+  },
+  "roiSample_one": "over {n} settled",
+  "roiSample_other": "over {n} settled"
 }

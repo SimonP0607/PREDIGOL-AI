@@ -33,6 +33,7 @@ const NAMESPACES = [
   "records",
   "truth",
   "ai",
+  "memory",
 ] as const;
 interface Catalogs {
   admin: typeof import("../src/locales/es/admin.json");
@@ -52,6 +53,7 @@ interface Catalogs {
   records: typeof import("../src/locales/es/records.json");
   truth: typeof import("../src/locales/es/truth.json");
   ai: typeof import("../src/locales/es/ai.json");
+  memory: typeof import("../src/locales/es/memory.json");
 }
 
 function catalogs(lang: "es" | "en"): Catalogs {

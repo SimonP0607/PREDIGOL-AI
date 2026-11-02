@@ -31,10 +31,27 @@ at worst, and a duplicated tick costs nothing at all.
     (from 00:05, 6-4 h before, after the line-ups); post-mortems, yesterday's notes, patterns as hypotheses, the
     parlays' measured dependence, the AI's own shadow report and tomorrow prepared; the owner's "run now".
     Zero API-Football requests; a language model and a search API only when configured, inside the budget.
+  * ``ai_batch_poll`` (every 5 min)  the Message Batches the analysis cycle sent for what can wait (``fbi.ai.batch``, plan IA
+    section 29): the ones that ended are collected, priced at half and stored as the reviews they answer. One query when none is
+    open; it never sends anything and works whatever the Batch switch says.
+  * ``ai_package`` (every 10 min)  the state of each match at the end of each pass (``fbi.ai.match_runs``, plan IA phase 1): the
+    ``mcp-v1`` package derived from the packet the pass stored, its slices measured, one row of ``ai.match_runs``. Database only - no
+    model, no search, no request, nothing paid - and nothing reads it yet. One query when nothing waits; ``FBI_AI_PACKAGE=0`` stops it.
+  * ``ai_switches`` (every 10 min, the first look a minute after the worker starts)  the owner's words the worker runs with (the five switches, the
+    mode, research v2, the model of each tier, the three envelopes), written to the ledger ``ai.feature_gates`` (gate ``switches``, plan IA,
+    review of phase 2) when they are not the words of the newest row: an environment variable changed by hand leaves no row of its own, and Gate A
+    must know what was in force and on which days the configuration changed. One query when nothing changed; no model, no search, no key read, and
+    no switch turns it off.
   * ``intel_decide`` (every 15 min) / ``intel_nightly`` (07:50 Bogotá) / ``intel_weekly`` (Monday 04:40 Bogotá)
     PrediGol Intelligence (``fbi.intel``): the decision layer (ten filters, states, score, stake) on the next 36
-    hours and the picks of the day of daily-set-v6; outcomes, post-mortems pm-v3, memory, calibration, the leakage
-    audit and the DAILY LEARNING REPORT; the market discovery engine. Shadow; database only.
+    hours and the picks of the day of daily-set-v6; outcomes, post-mortems pm-v4, memory, calibration, the leakage
+    audit and the DAILY LEARNING REPORT; the market discovery engine. Shadow; database only. While
+    ``FBI_FAMILY_DECISIONS`` is not ``off`` the same jobs carry the steps of the families (``family_decide_steps`` /
+    ``family_nightly_steps``: their decision once an hour, after the picks of the day, and their settlement).
+  * ``family_forecasts``  every 3 hours (``FBI_FAMILY_FORECAST_MINUTES``): the goals of each half, the corners and the cards of the
+    upcoming matches (``fbi.families``, plan F10), a negative binomial per team, written to the forecast table under ``family-v1``.
+    Research: the forecast of a match reads none of it; only the Admin Console's preview of a match shows it, in a section of its own.
+    Database only; ``FBI_FAMILY_FORECASTS=0`` switches it off.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
     trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
@@ -193,6 +210,65 @@ night with no football costs a handful of queries and no quota at all."""
 LIVE_DAILY_BUDGET = int(os.environ.get(
     "FBI_LIVE_DAILY_BUDGET", str(DEFAULT_LIVE_DAILY_BUDGET)))
 PIPELINE_MINUTES = int(os.environ.get("FBI_PIPELINE_MINUTES", "30"))
+QUOTES_MINUTES = int(os.environ.get("FBI_QUOTES_EXTRACT_MINUTES", "10"))
+QUOTES_PER_RUN = int(os.environ.get("FBI_QUOTES_PER_RUN", "300"))
+QUOTES_RUN_SECONDS = float(os.environ.get("FBI_QUOTES_RUN_SECONDS", "240"))
+QUOTES_ENABLED = os.environ.get("FBI_QUOTES_EXTRACT", "1").strip().lower() not in {"0", "off", "false", "no"}
+"""The price clock (plan F1): the structured markets of every RAW /odds payload, a bounded pass every QUOTES_MINUTES.
+Database and the RAW files only - no request to the provider. FBI_QUOTES_EXTRACT=0 switches it off without a deploy;
+FBI_QUOTES_MIN_FREE_GB / FBI_QUOTES_MAX_TABLE_GB are its disk and size brakes."""
+QUOTES_MIN_FREE_GB = float(os.environ.get("FBI_QUOTES_MIN_FREE_GB", "8"))
+QUOTES_MAX_TABLE_GB = float(os.environ.get("FBI_QUOTES_MAX_TABLE_GB", "25"))
+STRUCTURE_MINUTES = int(os.environ.get("FBI_COMPETITION_STRUCTURE_MINUTES", "15"))
+STRUCTURE_PER_RUN = int(os.environ.get("FBI_COMPETITION_STRUCTURE_PER_RUN", "400"))
+STRUCTURE_RUN_SECONDS = float(os.environ.get("FBI_COMPETITION_STRUCTURE_RUN_SECONDS", "240"))
+STRUCTURE_SWEEP_SECONDS = float(os.environ.get("FBI_COMPETITION_STRUCTURE_SWEEP_SECONDS", "900"))
+STRUCTURE_SWEEP_HOUR, STRUCTURE_SWEEP_MINUTE = 9, 40
+STRUCTURE_ENABLED = os.environ.get("FBI_COMPETITION_STRUCTURE", "1").strip().lower() not in {"0", "off", "false", "no"}
+"""The stages and ties of the competitions (plan F2): which phase of a competition every match belongs to and which tie it is a
+leg of, derived from the fixtures already stored (``fbi.competitions``). Database only - no request to the provider. A pass
+every STRUCTURE_MINUTES builds the seasons never built, those built by older rules and those with a match near now (a bounded
+number, a bounded time); a sweep at STRUCTURE_SWEEP_HOUR:STRUCTURE_SWEEP_MINUTE UTC reads every season, so that a result the
+provider corrects long after its season ended still reaches its tie. FBI_COMPETITION_STRUCTURE=0 switches both off without a
+deploy: the columns it fills (``fixtures.stage_id`` / ``leg`` / ``tie_id``) then simply stop being refreshed."""
+REFEREE_MINUTES = int(os.environ.get("FBI_REFEREE_IDENTITY_MINUTES", "60"))
+REFEREE_SWEEP_HOUR, REFEREE_SWEEP_MINUTE = 9, 50
+REFEREE_ENABLED = os.environ.get("FBI_REFEREE_IDENTITY", "1").strip().lower() not in {"0", "off", "false", "no"}
+"""The identity of the referees (plan F3): who is who among the spellings the provider wrote, and who officiated each match,
+derived from the facts already stored (``fbi.people``). Database only - no request to the provider. A pass every REFEREE_MINUTES
+places the spellings nobody has placed (most hours there are none: no ledger row); a sweep at REFEREE_SWEEP_HOUR:REFEREE_SWEEP_MINUTE
+UTC audits the result and logs what is off. FBI_REFEREE_IDENTITY=0 switches both off without a deploy: the matches then simply
+stop getting a referee id and the readers keep the text they read before."""
+PLAYER_HISTORY_MINUTES = int(os.environ.get("FBI_PLAYER_HISTORY_MINUTES", "240"))
+PLAYER_HISTORY_SWEEP_HOUR, PLAYER_HISTORY_SWEEP_MINUTE = 10, 0
+PLAYER_HISTORY_ENABLED = os.environ.get("FBI_PLAYER_HISTORY", "1").strip().lower() not in {"0", "off", "false", "no"}
+"""The clubs and national-team caps of the players, and the careers of the coaches tied to the person and the club (plan F3),
+derived from the facts already stored (``fbi.people``). Database only - no request to the provider. A pass every
+PLAYER_HISTORY_MINUTES reads the players of the matches, transfers and squad lists of the last days and writes the difference (most
+passes write nothing: no ledger row); a sweep at PLAYER_HISTORY_SWEEP_HOUR:PLAYER_HISTORY_SWEEP_MINUTE UTC (after the referees')
+reads everyone, which catches what arrived late, and audits the tables. FBI_PLAYER_HISTORY=0 switches both off without a deploy:
+the tables then simply stop being refreshed and the readers keep what they read before."""
+KNOWLEDGE_MINUTES = int(os.environ.get("FBI_MATCH_KNOWLEDGE_MINUTES", "30"))
+KNOWLEDGE_DAYS = int(os.environ.get("FBI_MATCH_KNOWLEDGE_DAYS", "10"))
+KNOWLEDGE_SWEEP_DAYS = int(os.environ.get("FBI_MATCH_KNOWLEDGE_SWEEP_DAYS", "400"))
+KNOWLEDGE_PER_RUN = int(os.environ.get("FBI_MATCH_KNOWLEDGE_PER_RUN", "300"))
+KNOWLEDGE_RUN_SECONDS = float(os.environ.get("FBI_MATCH_KNOWLEDGE_RUN_SECONDS", "240"))
+KNOWLEDGE_SWEEP_SECONDS = float(os.environ.get("FBI_MATCH_KNOWLEDGE_SWEEP_SECONDS", "900"))
+KNOWLEDGE_SWEEP_HOUR, KNOWLEDGE_SWEEP_MINUTE = 10, 30
+KNOWLEDGE_ENABLED = os.environ.get("FBI_MATCH_KNOWLEDGE", "1").strip().lower() not in {"0", "off", "false", "no"}
+FAMILY_MINUTES = int(os.environ.get("FBI_FAMILY_FORECAST_MINUTES", "180"))
+FAMILY_ENABLED = os.environ.get("FBI_FAMILY_FORECASTS", "1").strip().lower() not in {"0", "off", "false", "no"}
+"""The forecast of the counts (plan F10: the goals of each half, corners, cards): every FAMILY_MINUTES the upcoming matches are forecast by
+each family and what is new is written to the forecast table under ``family-v1`` (``fbi.families.job``). Database only - no request to the
+provider, no language model - and invisible to every user: the page of the forecast of a match reads another version. FBI_FAMILY_FORECASTS=0
+switches it off."""
+"""Match Knowledge (plan F7): a finished match as one object in layers (``fbi.knowledge``), built from the facts already stored once the
+match has been settled (26 hours after kick-off), and built again, as a new row that names the one it replaced, only when what it was built
+from has changed. Database only - no request to the provider, and nothing a user sees until FBI_KNOWLEDGE_USERS says so. A pass every
+KNOWLEDGE_MINUTES looks at the matches of the last KNOWLEDGE_DAYS days (a bounded number of rows, a bounded time; most passes write nothing:
+no ledger row); a sweep at KNOWLEDGE_SWEEP_HOUR:KNOWLEDGE_SWEEP_MINUTE UTC looks at the last KNOWLEDGE_SWEEP_DAYS days, which catches a
+result the provider corrects weeks later and a rule that changed. FBI_MATCH_KNOWLEDGE=0 switches both off without a deploy: the rows
+stop being refreshed and the readers keep what they read before."""
 NOTIFY_MINUTES = int(os.environ.get("FBI_NOTIFY_MINUTES", "10"))
 AI_REPORT_HOUR = int(os.environ.get("FBI_AI_REPORT_HOUR", "6"))
 """The daily research report is written from this hour (Bogotá), once a day: a check every
@@ -207,6 +283,17 @@ analyses of the next days. Database only unless a model or a search API is confi
 AI_LEARN_HOUR = int(os.environ.get("FBI_AI_LEARN_HOUR", "7"))
 """Post-mortems, memory, patterns and the AI's shadow report, daily at HH:35 Bogotá (after the monitor)."""
 AI_REQUESTS_MINUTES = 2
+AI_BATCH_POLL_MINUTES = int(os.environ.get("FBI_AI_BATCH_POLL_MINUTES", "5"))
+"""How often the open Message Batches are asked about (``fbi.ai.batch.poll``). A batch ends within the hour in the usual case and
+within 24 h at the latest; with none open the job is a single query."""
+AI_PACKAGE_MINUTES = int(os.environ.get("FBI_AI_PACKAGE_MINUTES", "10"))
+"""How often the passes without a state are turned into one (``fbi.ai.match_runs.run``): the ``mcp-v1`` package of each, its slices measured,
+a row of ``ai.match_runs``. Database only - no model, no search, no request - and a single query when nothing waits. ``FBI_AI_PACKAGE=0``
+(or ``FBI_AI_MODE=off``) stops it; the rows already written stay."""
+AI_SWITCHES_MINUTES = 10
+"""How often the worker looks at the owner's words it runs with and leaves a trace when they changed (``fbi.ai.gates.record_switches``): one
+query when nothing changed, one row when something did. The first look is one minute after the worker starts, so a change made in the environment
+- which means a new worker - is written within the minute."""
 RESEARCH_MONITOR_HOUR = int(os.environ.get("FBI_RESEARCH_MONITOR_HOUR", "7"))
 """The evolution loop's daily monitor (Bogotá): the shadow-pick audit and the prospective
 evaluation, turned into memory and proposals. Seconds of database reads, zero requests."""
@@ -219,7 +306,7 @@ INTEL_DECIDE_MINUTES = int(os.environ.get("FBI_INTEL_DECIDE_MINUTES", "15"))
 ten filters, written at their checkpoints; the picks of the day of daily-set-v6 once the AI has read the day. Shadow,
 database only, zero requests and zero model calls."""
 INTEL_NIGHTLY_HOUR, INTEL_NIGHTLY_MINUTE = 7, 50
-"""After the AI's learning (07:35): outcomes, post-mortems pm-v3, memory, calibration, leakage audit, the report."""
+"""After the AI's learning (07:35): outcomes, post-mortems pm-v4, memory, calibration, leakage audit, the report."""
 INTEL_WEEKLY_WEEKDAY, INTEL_WEEKLY_HOUR, INTEL_WEEKLY_MINUTE = "mon", 4, 40
 """The market discovery engine, weekly (Bogotá)."""
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -740,6 +827,142 @@ async def _elo_refresh() -> None:
     await asyncio.to_thread(_elo_refresh_now)
 
 
+def _quotes_extract_now() -> None:
+    from fbi.odds.quote_extract import run_extraction_job
+
+    with _connect() as conn:
+        run_extraction_job(conn, settings.runtime.raw_store_dir, limit=QUOTES_PER_RUN, max_seconds=QUOTES_RUN_SECONDS,
+                           min_free_gb=QUOTES_MIN_FREE_GB, max_table_gb=QUOTES_MAX_TABLE_GB)
+
+
+async def _quotes_extract() -> None:
+    """The price clock: every structured market of the RAW /odds payloads nobody has read yet (plan F1). Reads local files and
+    the database, writes only market.odds_quotes and its ledger; in a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_quotes_extract_now)
+
+
+def _competition_structure_now(*, everything: bool = False) -> None:
+    from fbi.ingestion.competition_structure import run_job
+
+    with _connect() as conn:
+        if everything:
+            run_job(conn, now=now(), max_seconds=STRUCTURE_SWEEP_SECONDS, limit=None, everything=True)
+        else:
+            run_job(conn, now=now(), max_seconds=STRUCTURE_RUN_SECONDS, limit=STRUCTURE_PER_RUN)
+
+
+async def _competition_structure() -> None:
+    """The stages and ties of the seasons that need them (plan F2): reads the fixtures and results already stored and writes
+    ``core.competition_stages``, ``core.ties`` and the three columns of the fixtures. A quiet pass leaves no row in the ledger.
+    In a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_competition_structure_now)
+
+
+async def _competition_structure_sweep() -> None:
+    """The same, over every season whatever its age (daily): the pass above only looks at the seasons near today."""
+    new_run_id()
+    await asyncio.to_thread(functools.partial(_competition_structure_now, everything=True))
+
+
+def _referee_identity_now(*, sweep: bool = False) -> None:
+    from fbi.ingestion.referee_identity import run_job
+
+    with _connect() as conn:
+        run_job(conn, sweep=sweep)
+
+
+async def _referee_identity() -> None:
+    """Who officiated the matches whose referee nobody has placed yet (plan F3): reads the facts already stored and writes
+    ``core.referees``, ``core.referee_aliases``, ``core.fixture_officials`` and the merge queue. A quiet pass leaves no row in
+    the ledger. In a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_referee_identity_now)
+
+
+async def _referee_identity_sweep() -> None:
+    """The same, once a day, and then an audit of the result that logs what is off."""
+    new_run_id()
+    await asyncio.to_thread(functools.partial(_referee_identity_now, sweep=True))
+
+
+def _player_history_now(*, sweep: bool = False) -> None:
+    from fbi.ingestion.player_history import run_job
+
+    with _connect() as conn:
+        run_job(conn, sweep=sweep)
+
+
+async def _player_history() -> None:
+    """The clubs and caps of the players of the last days and the careers of the coaches (plan F3): reads the facts already
+    stored and writes ``core.player_spells``, ``core.player_national_caps`` and the links of ``core.coach_careers``. A quiet pass
+    leaves no row in the ledger. In a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_player_history_now)
+
+
+async def _player_history_sweep() -> None:
+    """The same over everyone (once a day), and then an audit of the result that logs what is off."""
+    new_run_id()
+    await asyncio.to_thread(functools.partial(_player_history_now, sweep=True))
+
+
+def _match_knowledge_now(*, sweep: bool = False) -> None:
+    from fbi.ingestion.match_knowledge import run_job
+
+    with _connect() as conn:
+        if sweep:
+            run_job(conn, now=now(), days=KNOWLEDGE_SWEEP_DAYS, max_seconds=KNOWLEDGE_SWEEP_SECONDS, limit=None)
+        else:
+            run_job(conn, now=now(), days=KNOWLEDGE_DAYS, max_seconds=KNOWLEDGE_RUN_SECONDS, limit=KNOWLEDGE_PER_RUN)
+
+
+async def _match_knowledge() -> None:
+    """Match Knowledge of the finished matches of the last days (plan F7): reads what is stored and writes ``intel.match_knowledge`` and
+    ``core.fixture_event_kinds``. A quiet pass leaves no row in the ledger. In a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_match_knowledge_now)
+
+
+def _family_forecasts_now() -> None:
+    from fbi.families.job import run_job
+
+    with _connect() as conn:
+        run_job(conn, now=now(), code_version=code_version())
+
+
+async def _family_forecasts() -> None:
+    """The forecast of the counts (plan F10) of the upcoming matches. Reads what is stored and writes the forecast table under ``family-v1``;
+    a pass that writes nothing leaves no row in the ledger. In a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_family_forecasts_now)
+
+
+async def _match_knowledge_sweep() -> None:
+    """The same over the last year and a bit (daily): the pass above only looks at the matches of the last days."""
+    new_run_id()
+    await asyncio.to_thread(functools.partial(_match_knowledge_now, sweep=True))
+
+
+def _synthetic_now() -> None:
+    from fbi.ops.synthetic import config_from_env, run_once
+
+    cfg = config_from_env()
+    if cfg is None:  # the owner took the account or its password away since the clock started
+        return
+    with _connect() as conn:
+        run_once(conn, cfg)
+
+
+async def _synthetic() -> None:
+    """The synthetic journey (plan UX, A2): a dedicated USER account walks the sign-in, Home, a match of today, the
+    picks and its own picks through the public front door, and writes one row in the ledger. In a thread so the live
+    jobs keep their cadence; nothing of PrediGol Intelligence is read or written."""
+    new_run_id()
+    await asyncio.to_thread(_synthetic_now)
+
+
 def _notify_now() -> None:
     """Turn new events into messages. Without a Telegram token they are recorded as skipped."""
     from fbi.notify.service import channel_from_env, run_notifier
@@ -929,6 +1152,76 @@ async def _ai_requests() -> None:
     await asyncio.to_thread(_ai_requests_now)
 
 
+def _ai_batch_poll_now() -> None:
+    """Collect the Message Batches that ended: validated, stored, priced at half (``fbi.ai.batch.poll``). Never raises. It works on
+    whatever is open whatever the Batch switch says: ``FBI_AI_BATCH=0`` stops new batches, never the collection of those paid for."""
+    from fbi.ai.batch import poll
+    from fbi.ai.config import AiSettings
+
+    try:
+        with _connect() as conn:
+            r = poll(conn, AiSettings.from_env(), at=now())
+        if r.batches or r.errors:
+            log.info("ai.batch_poll", batches=r.batches, ended=r.ended, waiting=r.waiting, items=r.items,
+                     cost_usd=str(r.cost_usd), errors=len(r.errors), **r.counts)
+    except Exception as exc:
+        log.error("ai.batch_poll.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_batch_poll() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_batch_poll_now)
+
+
+def _ai_switches_now() -> None:
+    """The owner's words this worker runs with (the switches, the mode, research v2, the models, the envelopes), written down when they are not the
+    words of the newest row of the ledger (``fbi.ai.gates.record_switches``): an environment variable changed by hand leaves no row of its own, and
+    Gate A needs to know what was in force and on which days the configuration changed. It calls no model, searches nothing, reads no key, and is
+    not switched off by any switch - it is the trace of the switches. Never raises."""
+    from fbi.ai import gates
+    from fbi.ai.config import AiSettings
+
+    try:
+        with _connect() as conn:
+            row = gates.record_switches(conn, AiSettings.from_env(), at=now(), code_version=code_version())
+            conn.commit()
+        if row is not None:
+            log.info("ai.switches.recorded", row=row)
+    except Exception as exc:
+        log.error("ai.switches.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_switches() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_switches_now)
+
+
+def _ai_package_now() -> None:
+    """The passes the AI layer has already run, turned into the state of their match (``fbi.ai.match_runs.run``). It calls no model, searches
+    nothing and asks the provider for nothing. Never raises. Off with ``FBI_AI_PACKAGE=0`` or ``FBI_AI_MODE=off`` (and then it does not even
+    open a connection); with nothing waiting it is one query and leaves no trace."""
+    from fbi.ai.config import AiSettings
+    from fbi.ai.match_runs import run
+
+    try:
+        settings = AiSettings.from_env()
+        if settings.mode == "off" or not settings.package:
+            return
+        with _connect() as conn:
+            r = run(conn, settings, at=now())
+        if r is not None:
+            log.info("ai.package", status=r.status, cycle=r.cycle_id, **dict(r.counts))
+            if r.errors:
+                log.warning("ai.package.errors", errors=[e[:200] for e in r.errors[:3]], total=len(r.errors))
+    except Exception as exc:
+        log.error("ai.package.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_package() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_package_now)
+
+
 def _research_monitor_now() -> None:
     """Audit + prospective -> memory and proposals. Never raises."""
     from fbi.research.loop import run_monitor
@@ -974,17 +1267,47 @@ async def _research_weekly() -> None:
     await asyncio.to_thread(_research_weekly_now)
 
 
+def family_decide_steps(conn: psycopg.Connection[Any], at: datetime) -> dict[str, list[tuple[str, Callable[[], Any]]]]:
+    """The decision of the families (plan F11) as a step of the decide job: it runs AFTER the one that chooses the picks of the day, so that it
+    cannot delay them, and only while ``FBI_FAMILY_DECISIONS`` is not ``off``: with the switch off the job is what it was before the families
+    existed - no step, no key in its record. The intelligence package does not import the families (they sit above it); the worker, which
+    sits above both, puts them together."""
+    from fbi.familydecisions import decide
+
+    if decide.mode() == "off":
+        return {}
+    return {"select": [("families", lambda: decide.run_step(conn, at=at))]}
+
+
+def family_nightly_steps(conn: psycopg.Connection[Any], at: datetime) -> dict[str, list[tuple[str, Callable[[], Any]]]]:
+    """What the nightly job does for the families (plan F11), each step right after the one of the core layer it follows, and only while
+    ``FBI_FAMILY_DECISIONS`` is not ``off``: the settlement of the decisions they took (``family_outcomes``), once settled what became of each
+    one (``family_postmortems``) and what those post-mortems add up to (``family_memory``). The order is the one of the core layer: outcomes first,
+    then the post-mortems that read them, then the memory that sums them."""
+    from fbi.familydecisions import decide, memory, outcomes, postmortem
+
+    if decide.mode() == "off":
+        return {}
+    return {
+        "outcomes": [("family_outcomes", lambda: outcomes.run_step(conn, at=at))],
+        "postmortems": [("family_postmortems", lambda: postmortem.run_step(conn, at=at))],
+        "memory": [("family_memory", lambda: memory.run_step(conn, at=at))],
+    }
+
+
 def _intel_decide_now() -> None:
     """PrediGol Intelligence's decision layer. Never raises: it must never stop the worker."""
     from fbi.intel.cycle import run_decide
 
     try:
+        moment = now()
         with _connect() as conn:
-            r = run_decide(conn, at=now())
+            r = run_decide(conn, at=moment, after=family_decide_steps(conn, moment))
         if r.status != "skipped":
             d = r.counts.get("decide") or {}
             log.info("intel.decide", status=r.status, candidates=d.get("candidates"), written=d.get("written"),
-                     by_state=d.get("by_state"), select=r.counts.get("select"), errors=r.errors[:2])
+                     by_state=d.get("by_state"), select=r.counts.get("select"), families=r.counts.get("families"),
+                     errors=r.errors[:2])
     except Exception as exc:
         log.error("intel.decide.failed", error=f"{type(exc).__name__}: {exc}"[:300])
 
@@ -999,8 +1322,9 @@ def _intel_nightly_now() -> None:
     from fbi.intel.cycle import run_nightly
 
     try:
+        moment = now()
         with _connect() as conn:
-            r = run_nightly(conn, at=now())
+            r = run_nightly(conn, at=moment, after=family_nightly_steps(conn, moment))
         log.info("intel.nightly", status=r.status, counts={k: v for k, v in r.counts.items() if not k.endswith("_ms")},
                  errors=r.errors[:3])
     except Exception as exc:
@@ -1051,7 +1375,9 @@ WORKER_JOB_TYPES = frozenset({
     "odds_capture", "live_odds_capture", "live_match_capture", "fixtures_sync", "results_sync", "historical_backfill",
     "pick_pipeline", "quality_sweep", "context_refresh", "context_due", "results_repair", "final_prematch",
     "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
-    "research_monitor", "research_v2", "feature_build", "pick_settlement",
+    "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
+    "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
+    "synthetic_journey",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1275,6 +1601,71 @@ async def main() -> None:
     scheduler.add_job(_elo_refresh, "interval", hours=ELO_REFRESH_HOURS, id="elo_refresh",
                       max_instances=1, coalesce=True, misfire_grace_time=3600,
                       next_run_time=max(elo_next, moment + timedelta(minutes=12)))
+    if QUOTES_ENABLED:
+        scheduler.add_job(_deadline("odds_quotes_extract", "odds_quotes_extract", _quotes_extract), "interval",
+                          minutes=QUOTES_MINUTES, id="odds_quotes_extract", max_instances=1, coalesce=True,
+                          misfire_grace_time=QUOTES_MINUTES * 60, next_run_time=moment + timedelta(minutes=13))
+    else:
+        log.warning("worker.quotes_extract_off", hint="FBI_QUOTES_EXTRACT=0: the price clock is not structuring RAW /odds")
+    if STRUCTURE_ENABLED:
+        # The first pass waits for the quotes clock's, and a person's historical build (python -m scripts.competition_stages)
+        # may have gone first: whatever it built is left as it is.
+        scheduler.add_job(_deadline("competition_structure", "competition_structure", _competition_structure), "interval",
+                          minutes=STRUCTURE_MINUTES, id="competition_structure", max_instances=1, coalesce=True,
+                          misfire_grace_time=STRUCTURE_MINUTES * 60, next_run_time=moment + timedelta(minutes=17))
+        scheduler.add_job(_deadline("competition_structure_sweep", "competition_structure", _competition_structure_sweep),
+                          "cron", hour=STRUCTURE_SWEEP_HOUR, minute=STRUCTURE_SWEEP_MINUTE, timezone="UTC",
+                          id="competition_structure_sweep", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
+    else:
+        log.warning("worker.competition_structure_off",
+                    hint="FBI_COMPETITION_STRUCTURE=0: stages and ties are not being refreshed")
+    if REFEREE_ENABLED:
+        scheduler.add_job(_deadline("referee_identity", "referee_identity", _referee_identity), "interval",
+                          minutes=REFEREE_MINUTES, id="referee_identity", max_instances=1, coalesce=True,
+                          misfire_grace_time=REFEREE_MINUTES * 60, next_run_time=moment + timedelta(minutes=19))
+        scheduler.add_job(_deadline("referee_identity_sweep", "referee_identity", _referee_identity_sweep),
+                          "cron", hour=REFEREE_SWEEP_HOUR, minute=REFEREE_SWEEP_MINUTE, timezone="UTC",
+                          id="referee_identity_sweep", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
+    else:
+        log.warning("worker.referee_identity_off",
+                    hint="FBI_REFEREE_IDENTITY=0: the referees of the matches are not being identified")
+    if PLAYER_HISTORY_ENABLED:
+        scheduler.add_job(_deadline("player_history", "player_history", _player_history), "interval",
+                          minutes=PLAYER_HISTORY_MINUTES, id="player_history", max_instances=1, coalesce=True,
+                          misfire_grace_time=PLAYER_HISTORY_MINUTES * 60, next_run_time=moment + timedelta(minutes=23))
+        scheduler.add_job(_deadline("player_history_sweep", "player_history", _player_history_sweep),
+                          "cron", hour=PLAYER_HISTORY_SWEEP_HOUR, minute=PLAYER_HISTORY_SWEEP_MINUTE, timezone="UTC",
+                          id="player_history_sweep", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
+    else:
+        log.warning("worker.player_history_off",
+                    hint="FBI_PLAYER_HISTORY=0: the clubs and caps of the players are not being rebuilt")
+    if KNOWLEDGE_ENABLED:
+        scheduler.add_job(_deadline("match_knowledge", "match_knowledge", _match_knowledge), "interval",
+                          minutes=KNOWLEDGE_MINUTES, id="match_knowledge", max_instances=1, coalesce=True,
+                          misfire_grace_time=KNOWLEDGE_MINUTES * 60, next_run_time=moment + timedelta(minutes=29))
+        scheduler.add_job(_deadline("match_knowledge_sweep", "match_knowledge", _match_knowledge_sweep),
+                          "cron", hour=KNOWLEDGE_SWEEP_HOUR, minute=KNOWLEDGE_SWEEP_MINUTE, timezone="UTC",
+                          id="match_knowledge_sweep", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
+    else:
+        log.warning("worker.match_knowledge_off",
+                    hint="FBI_MATCH_KNOWLEDGE=0: the finished matches are not being put together (Match Knowledge)")
+    if FAMILY_ENABLED:
+        scheduler.add_job(_deadline("family_forecasts", "family_forecasts", _family_forecasts), "interval",
+                          minutes=FAMILY_MINUTES, id="family_forecasts", max_instances=1, coalesce=True,
+                          misfire_grace_time=FAMILY_MINUTES * 60, next_run_time=moment + timedelta(minutes=37))
+    else:
+        log.warning("worker.family_forecasts_off",
+                    hint="FBI_FAMILY_FORECASTS=0: the goals of each half, the corners and the cards are not being forecast")
+    from fbi.ops.synthetic import EVERY_MINUTES as SYNTHETIC_MINUTES
+    from fbi.ops.synthetic import config_from_env as synthetic_config
+
+    if synthetic_config() is not None:
+        scheduler.add_job(_deadline("synthetic_journey", "synthetic_journey", _synthetic), "interval",
+                          minutes=SYNTHETIC_MINUTES, id="synthetic_journey", max_instances=1, coalesce=True,
+                          misfire_grace_time=SYNTHETIC_MINUTES * 60, next_run_time=moment + timedelta(minutes=4))
+    else:
+        log.info("worker.synthetic_journey_off",
+                 hint="FBI_SYNTHETIC_BASE_URL, FBI_SYNTHETIC_EMAIL and its password unset: no synthetic journey")
     scheduler.add_job(_ai_report, "interval", minutes=AI_CHECK_MINUTES, id="ai_daily_report",
                       max_instances=1, coalesce=True, misfire_grace_time=AI_CHECK_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=9))
@@ -1298,6 +1689,15 @@ async def main() -> None:
                       next_run_time=moment + timedelta(minutes=7))
     scheduler.add_job(_ai_requests, "interval", minutes=AI_REQUESTS_MINUTES, id="ai_requests", max_instances=1,
                       coalesce=True, misfire_grace_time=AI_REQUESTS_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=1))
+    scheduler.add_job(_ai_batch_poll, "interval", minutes=AI_BATCH_POLL_MINUTES, id="ai_batch_poll", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_BATCH_POLL_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=3))
+    scheduler.add_job(_ai_package, "interval", minutes=AI_PACKAGE_MINUTES, id="ai_package", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_PACKAGE_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=4))
+    scheduler.add_job(_ai_switches, "interval", minutes=AI_SWITCHES_MINUTES, id="ai_switches", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_SWITCHES_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=1))
     scheduler.add_job(_research_monitor, "cron", hour=RESEARCH_MONITOR_HOUR, minute=5, timezone="America/Bogota",
                       id="research_monitor", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)

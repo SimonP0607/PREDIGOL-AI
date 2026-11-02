@@ -97,3 +97,19 @@ def test_a_season_the_provider_does_not_call_current_is_never_refreshed(
         make_season(cur, 97005, is_current=False,
                     last_kickoff=datetime.now(UTC) + timedelta(days=7))
     assert 97005 not in {s.provider_league_id for s in active_seasons(db)}
+
+
+def test_the_grace_window_is_measured_by_the_application_clock_not_by_the_database_clock(
+    db: psycopg.Connection,
+) -> None:
+    """Regression. The window used to be ``now()`` in SQL while every other date in the sync came from the application
+    clock, so freezing the application clock did not move it: on 2026-10-15 the integration suite's seed fixture
+    (2026-09-15) crossed the 30-day mark and six tests failed with no code having changed. ``at`` is the day the
+    caller lives on; the same season is active five days after its last fixture and over forty days after it."""
+    last = datetime(2026, 3, 1, 19, 0, tzinfo=UTC)
+    with db.cursor() as cur:
+        make_season(cur, 97006, is_current=True, last_kickoff=last)
+    five_days_later = last + timedelta(days=5)
+    forty_days_later = last + timedelta(days=FINISHED_GRACE_DAYS + 10)
+    assert 97006 in {s.provider_league_id for s in active_seasons(db, at=five_days_later)}
+    assert 97006 not in {s.provider_league_id for s in active_seasons(db, at=forty_days_later)}

@@ -181,7 +181,7 @@ def test_discovery_classifies_and_never_activates() -> None:
         coverage={"corners": 0.87}, at=at, fixtures_by_competition={1: 160})
     assert status == "RESEARCH" and "corners" in proposal
     assert crit["calibration"]["ok"] is False and crit["shadow"]["ok"] is False
-    assert len([k for k in crit if k != "settle_data"]) == 10
+    assert len([k for k in crit if k not in ("settle_data", "settle_rule")]) == 10, "the ten criteria of incorporation; settle_data and settle_rule say what settles it"
     active, *_ = discovery.criteria_for(5, discovery.BetStats(name="Goals Over/Under", fixtures={1}),
                                         catalogue=None, active={5: "OU"}, n_fixtures=1, coverage={}, at=at)
     assert active == "ACTIVE"
@@ -215,3 +215,38 @@ def test_the_rules_narrative_states_rank_and_gaps_before_the_inference() -> None
     assert "Bodrum (15.º) a 7 puntos de la zona de ascenso, 1 por encima de la zona de descenso." in text
     assert "Bodrum pelea por no descender." in text and "Sariyer pelea el ascenso." in text
     assert "está en zona" not in text
+
+
+# ── a second leg in words (plan F2) ───────────────────────────────────────────
+
+
+def _second_leg(lead: int) -> dict[str, object]:
+    from fbi.competitions.context import second_leg_outlook
+
+    return {"fixture": {"home": {"name": "Alfa"}, "away": {"name": "Beta"}},
+            "phase": {"tie": {"outlook": second_leg_outlook(lead)}}}
+
+
+def test_a_second_leg_is_told_from_the_arithmetic_of_the_first_leg() -> None:
+    from fbi.intel.narrative import tie_scenarios
+
+    assert tie_scenarios(_second_leg(-1)) == (
+        "En el global, tras los 90 minutos Alfa va por delante si gana por 2 goles o más; queda igualado si gana por 1 gol; "
+        "en otro caso va por delante Beta. Si queda igualado, deciden las reglas de la competición.")
+    assert tie_scenarios(_second_leg(0)) == (
+        "En el global, tras los 90 minutos Alfa va por delante si gana; queda igualado si empata; en otro caso va por "
+        "delante Beta. Si queda igualado, deciden las reglas de la competición.")
+    assert "va por delante si empata o gana; queda igualado si pierde por 1 gol;" in str(tie_scenarios(_second_leg(1)))
+    assert "va por delante si no pierde por más de 1 gol; queda igualado si pierde por 2 goles;" in str(
+        tie_scenarios(_second_leg(2)))
+    assert "va por delante si gana por 5 goles o más; queda igualado si gana por 4 goles;" in str(tie_scenarios(_second_leg(-4)))
+
+
+def test_there_is_no_scenario_to_tell_without_a_known_aggregate_or_before_packet_v4() -> None:
+    from fbi.intel.narrative import tie_scenarios
+
+    assert tie_scenarios({}) is None
+    assert tie_scenarios({"phase": None}) is None
+    assert tie_scenarios({"phase": {"tie": None}}) is None
+    assert tie_scenarios({"phase": {"tie": {"outlook": {"kind": "first_leg"}}}}) is None
+    assert tie_scenarios({"phase": {"tie": {"outlook": {"kind": "second_leg", "aggregate": "unknown"}}}}) is None

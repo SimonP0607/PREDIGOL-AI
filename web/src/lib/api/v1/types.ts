@@ -19,6 +19,8 @@ export interface Meta {
   limit: number | null;
   offset: number | null;
   data_as_of: Iso | null;
+  /** A list read page by page (/me/picks, /me/parlays): the `cursor` of the next page, null on the last one. */
+  next_cursor?: string | null;
 }
 
 export interface Envelope<T> {
@@ -814,6 +816,11 @@ export interface PickEvent {
   to_status: string;
   at: Iso;
   reason: string;
+  /**
+   * `status`: a change of the pick's status. `resettlement`: the pick stayed settled but its result
+   * changed because the provider corrected the match (plan F0, defect 5); `reason` says from what to what.
+   */
+  event_kind: "status" | "resettlement";
 }
 
 export type PickStatus = "shadow" | "qualified" | "published" | "settled";

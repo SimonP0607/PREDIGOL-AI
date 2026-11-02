@@ -60,13 +60,31 @@
       "result_missing": "We are checking the result."
     }
   },
+  "tie": {
+    "firstLeg": "First leg",
+    "secondLeg": "Second leg",
+    "replay": "Replay",
+    "series": "Game {n} of the series",
+    "first": "First leg {score}",
+    "global": "Aggregate {score}",
+    "advances": "{team} go through",
+    "by": {
+      "extraTime": "after extra time",
+      "penalties": "on penalties",
+      "aggregate": "on aggregate",
+      "awayGoals": "on away goals",
+      "tiebreak": "on a tiebreak",
+      "walkover": "by administrative decision",
+      "series": "in the series"
+    }
+  },
   "note": {
     "noData": "No data yet",
     "notAvailable": "Not available for this match"
   },
   "picks": {
     "title": "Picks for this match",
-    "none": "No qualified picks for this match.",
+    "none": "No PrediGol picks for this match.",
     "noneShadow": "No shadow picks for this match.",
     "showAll": "See all {count} picks",
     "showLess": "See less",
@@ -188,7 +206,9 @@
     "wins": "{team} wins",
     "draws": "Draws",
     "meetings_one": "{count} match",
-    "meetings_other": "{count} matches"
+    "meetings_other": "{count} matches",
+    "aet": "(a.e.t.)",
+    "pens": "(pens {home}–{away})"
   },
   "absences": {
     "title": "Absences",
@@ -366,7 +386,7 @@
     "PRICE_PENDING": "Prices not in yet: they are asked for 3 days before kick-off.",
     "PRICE_UNAVAILABLE": "No bookmaker we receive prices this market.",
     "NOT_COVERED": "Our odds provider does not cover this competition.",
-    "model": "Model (evaluation mode): {selection} {probability} · fair odds {fair}.",
+    "model": "The model's estimate, not yet proven against the market: {selection} {probability} · fair odds {fair}.",
     "minOdds": "At {min} or more at your bookmaker, the bet would carry the margin our rule asks for.",
     "notAPick": "Not a pick and not a bookmaker's price: no model has beaten the market yet."
   },
@@ -436,7 +456,7 @@
       "title": "Why?",
       "estimate": "PrediGol estimates {model} against the market's {market}",
       "estimateOnly": "PrediGol puts this selection's chance at {model}",
-      "edge": "An edge of {edge} pp over the market's fair price",
+      "edge": "An edge of {edge} percentage points over the market's fair price",
       "minimum": "It would only be worth it at odds of {min} or more",
       "none": "Not enough figures to explain it yet."
     },
@@ -463,7 +483,7 @@
     "byAi": "Analysed by PrediGol AI",
     "byRules": "Reviewed by PrediGol's rules",
     "updated": "updated {when}",
-    "shadowNote": "reviews do not filter picks yet (evaluation mode)",
+    "shadowNote": "the AI's context review is not applied to the picks yet",
     "notYet": "PrediGol has not analysed this match yet.",
     "none": "PrediGol has no analysis to show for this match today.",
     "inEvaluation_one": "{count} selection of this match is in evaluation: it will be published once a model beats the market.",
@@ -473,12 +493,16 @@
     "missing": "Data we do not have yet: {blocks}.",
     "block": {
       "absences": "absences",
+      "dossier": "match context",
       "elo": "Elo",
+      "forecast": "forecast",
       "form": "form",
       "h2h": "head to head",
       "lineups": "line-ups",
       "market": "market",
       "models": "models",
+      "phase": "stage",
+      "schedule": "schedule",
       "standings": "table",
       "stats": "statistics"
     },
@@ -525,6 +549,211 @@
       "byModel": "Written by {model} (L1)",
       "byRules": "Written by the rules",
       "aiModel": "PrediGol AI"
+    },
+    "contextPending": "Context review not applied yet"
+  },
+  "forecast": {
+    "title": "PrediGol forecast",
+    "subtitle": "What PrediGol expects of this match. It is a probability, not a recommendation nor odds to bet on.",
+    "likely": "Most likely",
+    "range": "between {low} and {high}",
+    "rangeNone": "no range measured",
+    "calibrated": "Calibrated",
+    "uncalibrated": "Uncalibrated",
+    "basis": {
+      "champion": "PrediGol corrected the model's probability with matches already played.",
+      "no_champion": "This is the model's own probability: there is no proven correction for this market yet.",
+      "needs_price": "For now this is the model's own probability: this market's correction needs a recent price and there is none.",
+      "not_applicable": "This is the model's own probability: the correction could not be applied to this number."
+    },
+    "footnote": "A forecast says what is likely, not whether it is well paid: the value analysis says that, and what PrediGol recommends is in the Picks tab.",
+    "updated": "Updated {when}",
+    "model": "Model: {model}",
+    "models": {
+      "poisson": "Poisson (Maher)",
+      "dixon_coles": "Dixon-Coles",
+      "elo_ologit": "Elo (ordered logit)"
+    },
+    "admin": {
+      "fairOdds": "fair odds {odds}",
+      "modelNumber": "model {p}",
+      "detailsTitle": "Value and picks of this match (admin only)",
+      "valueTitle": "Value: what the decision layer said (needs a price)",
+      "picksTitle": "Frozen picks",
+      "odds": "odds",
+      "edge": "edge",
+      "ev": "expected value",
+      "state": "state",
+      "selection": "selection",
+      "familiesTitle": "Families for this match (research, admin only)",
+      "familiesNote": "What the families of goals by half, corners, cards and yellow cards forecast: the model's own number, uncalibrated and with no measured range. In brackets, the fair odds (1 / probability). It is research: not the forecast above, and not a recommendation.",
+      "familyMarkets": "Markets: {n}",
+      "settledWith": "Graded with: {rule}",
+      "noRule": "No settlement rule can grade a bet on this market."
+    },
+    "reason": {
+      "data_not_fit": "PrediGol does not forecast this competition: its data is not fit for a model yet.",
+      "quarantined": "PrediGol made no forecast: the data of this match is under review.",
+      "no_forecast_yet": "PrediGol has no forecast for this match yet.",
+      "no_evaluation": "The decision layer has not evaluated any price of this match: without a price there is no value.",
+      "no_pick": "No pick was frozen for this match: a forecast, however sure, is not one.",
+      "no_family_forecast": "The families have forecast nothing for this match: they forecast the matches about to be played of the competitions whose data is fit for a model."
+    }
+  },
+  "calendar": {
+    "title": "Schedule and rest",
+    "subtitle": "How much each team rested and what it plays next, in every competition and not just this one.",
+    "complete": "Complete",
+    "partial": "Partial",
+    "rest": "Rest",
+    "restNone": "No earlier match known",
+    "restExact": "{days} since its last match",
+    "restAtMost": "at most {days} since its last match",
+    "last14": "Last 14 days",
+    "matches_one": "{count} match",
+    "matches_other": "{count} matches",
+    "matchesAtLeast_one": "at least {count} match",
+    "matchesAtLeast_other": "at least {count} matches",
+    "outside_one": "{count} in a competition PrediGol does not follow",
+    "outside_other": "{count} in competitions PrediGol does not follow",
+    "days_one": "{days} day",
+    "days_other": "{days} days",
+    "before_one": "{days} day before",
+    "before_other": "{days} days before",
+    "after_one": "{days} day after",
+    "after_other": "{days} days after",
+    "playedTitle": "Played before",
+    "nextTitle": "Plays after",
+    "playedNone": "No earlier match known.",
+    "nextNone": "Nothing in the next 7 days.",
+    "nextNoneUnknown": "Nothing known in the next 7 days.",
+    "venue": {
+      "home": "home",
+      "away": "away"
+    },
+    "versus": "vs {opponent}",
+    "kind": {
+      "domestic_league": "League",
+      "domestic_cup": "Cup",
+      "continental": "Continental",
+      "international": "National teams"
+    },
+    "note": {
+      "never_fetched": "PrediGol has not read the full calendar of {team} yet: its rest could be shorter and there could be more matches than shown.",
+      "stale": "The calendar of {team} was read {age} ago: a recent or announced match may be missing.",
+      "unconfirmed_match": "A recent match of {team} is not confirmed: we do not know whether it was played, so it does not count as rest."
+    },
+    "footnote": "This is context, not a recommendation: it counts days and matches, it does not say who will win.",
+    "footnotePartial": "When a team's calendar is not complete, its rest is a maximum and its matches a minimum. This is context, not a recommendation.",
+    "read": "Calendar read {when}"
+  },
+  "knowledge": {
+    "title": "After the match",
+    "subtitle": "What happened in this match, put together once the provider has stopped changing it. Facts, not a recommendation.",
+    "updated": "Updated {when}",
+    "empty": "There is nothing to tell about this match yet.",
+    "teamMinute": "{team}, {minute}",
+    "teamMinuteState": "{team}, {minute} ({state})",
+    "reason": {
+      "not_finished": "The provider has not finished the match yet.",
+      "not_settled_yet": "The after-match summary is put together a few hours after the final whistle, once the provider has stopped changing its data.",
+      "not_followed": "PrediGol does not follow this competition, so it does not put its after-match summary together.",
+      "no_build_yet": "PrediGol has not put this match's after-match summary together yet."
+    },
+    "tag": {
+      "extraTime": "Decided in extra time",
+      "penalties": "Decided on penalties",
+      "comeback": "{team} came from behind",
+      "levelled": "{team} came back to draw",
+      "neutral": "Neutral ground",
+      "corrected": "Result corrected by the provider"
+    },
+    "lead": {
+      "ahead": "leading by {n}",
+      "behind": "trailing by {n}",
+      "level": "level"
+    },
+    "minutes": {
+      "short": "{n} min",
+      "hours": "{h} h",
+      "hoursMinutes": "{h} h {m} min"
+    },
+    "story": {
+      "title": "How the score went",
+      "subtitle": "Who was ahead during the 90 minutes.",
+      "aria": "Who was ahead during the 90 minutes: {summary}.",
+      "ahead": "{team} ahead",
+      "level": "Level",
+      "firstGoal": "First goal",
+      "lastGoal": "Last goal",
+      "leadChanges": "Lead changes",
+      "firstDismissal": "First sending-off",
+      "goals": "Goals",
+      "noGoals": "None in the 90 minutes",
+      "notTold": "The way the score went cannot be told: the provider's list of events does not match the result."
+    },
+    "market": {
+      "title": "What the market expected",
+      "subtitle": "The probability the bookmakers gave, without their margin, from the first reading of the week to the last one before kick-off. What happened is marked.",
+      "happened": "Happened",
+      "opened": "opened at {p}",
+      "openedNone": "no opening reading",
+      "happenedNow": "At the close, the market gave {close} to what happened.",
+      "happenedFrom": "At the close, the market gave {close} to what happened (it had opened at {open}).",
+      "pushed": "The line landed exactly: no selection won.",
+      "closing_one": "Closing reading: {when} before kick-off, from {count} bookmaker.",
+      "closing_other": "Closing reading: {when} before kick-off, from {count} bookmakers.",
+      "closingBare": "Closing reading: {when} before kick-off."
+    },
+    "players": {
+      "title": "Best of the match",
+      "subtitle": "The top rated of each team."
+    },
+    "tactics": {
+      "title": "Formations and changes",
+      "formation": "Formation {formation}",
+      "noFormation": "Formation not given",
+      "subs_one": "{count} substitution",
+      "subs_other": "{count} substitutions",
+      "noSubs": "No substitutions",
+      "subLead": "{minute} ({lead})"
+    },
+    "quality": {
+      "complete": "Complete",
+      "partial": "Partial",
+      "minimal": "Minimal",
+      "completeNote": "Result, statistics, events and players, all with trustworthy data.",
+      "partialNote": "Something is missing or does not add up: what is told here is said only as far as it can be confirmed.",
+      "minimalNote": "Only the result, or not even that.",
+      "doubtsTitle": "What we could not confirm"
+    },
+    "doubt": {
+      "no_result": "We do not have this match's result confirmed.",
+      "events_do_not_give_the_score": "The goals in the provider's list of events do not add up to the result.",
+      "events_ht_differ": "The first-half goals in the events do not match the half-time score.",
+      "events_et_differ": "The extra-time goals in the events do not match the result.",
+      "events_pen_differ": "The shoot-out goals in the events do not match the result.",
+      "cards_differ_from_the_statistics": "The cards in the events do not match the statistics.",
+      "sheets_crossed": "The provider crossed the line-ups of the two teams, so we do not show the formations.",
+      "event_words_not_met": "An event carries a description we do not recognise and is counted without interpreting it.",
+      "lines_with_no_player": "The provider gave a goal no player.",
+      "odd_minutes": "An event carries a minute outside the normal range.",
+      "other": "There is a figure we could not confirm."
+    },
+    "admin": {
+      "detailsTitle": "How it is stored (admin only)",
+      "build": "Stored version no. {id}",
+      "replaces": "replaces no. {id}",
+      "first": "first version",
+      "hashes": "inputs {inputs} · content {content}",
+      "layersTitle": "The nine layers as stored",
+      "ownLayers": "Layers 7 to 9 (context, picks and post-mortems) are the admin's: a user never sees them.",
+      "notes": "notes",
+      "showData": "Show stored data",
+      "finalTitle": "The provider's last prices before kick-off (not probabilities)",
+      "finalLine": "{odds} · {count} bookmakers · {before} before kick-off",
+      "chainTitle": "Versions of the match (oldest first)",
+      "chainLine": "no. {id} · {built} · {completeness} · {hash}"
     }
   },
   "picksTab": {
@@ -590,7 +819,7 @@
   "captures": {
     "title": "Price captures",
     "summary": "{captures} captures · {quotes} quotes from {books} bookmakers",
-    "help": "Each capture stores every bookmaker's price for every selection and line. These are the Cronología's numbers, and all of them are shown here, whether or not they pass the pick filters.",
+    "help": "Each capture stores every bookmaker's price for every selection and line at that moment. All of them are shown here, whether or not they pass the pick filters.",
     "chip": "{when} · {quotes}",
     "none": "No price has been captured for this match yet."
   },

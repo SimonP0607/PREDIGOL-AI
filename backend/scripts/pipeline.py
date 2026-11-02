@@ -4,8 +4,8 @@
     python -m scripts.pipeline --apply    # keep it (the worker does this every 30 minutes)
 
 Database only - zero provider requests. Forecasts use the hyper-parameters of
-the latest backtest session; picks stay in shadow (publishing is disabled in
-the schema); settlement is on the 90-minute score.
+the promoted forecast spec (``python -m scripts.promote_forecast_spec``); picks stay
+in shadow (publishing is disabled in the schema); settlement is on the 90-minute score.
 """
 
 from __future__ import annotations

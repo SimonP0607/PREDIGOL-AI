@@ -30,14 +30,18 @@ import { Route as AdminDataQualityRouteImport } from './routes/admin.data-qualit
 import { Route as AdminDataTruthRouteImport } from './routes/admin.data-truth'
 import { Route as AdminEvolutionRouteImport } from './routes/admin.evolution'
 import { Route as AdminIntelligenceRouteImport } from './routes/admin.intelligence'
+import { Route as AdminLearningRouteImport } from './routes/admin.learning'
+import { Route as AdminMemoryRouteImport } from './routes/admin.memory'
 import { Route as AdminMigrationRouteImport } from './routes/admin.migration'
 import { Route as AdminModelsRouteImport } from './routes/admin.models'
 import { Route as AdminOddsRouteImport } from './routes/admin.odds'
+import { Route as AdminOperationRouteImport } from './routes/admin.operation'
 import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
 import { Route as AdminPerformanceRouteImport } from './routes/admin.performance'
 import { Route as AdminPicksRouteImport } from './routes/admin.picks'
 import { Route as AdminRankingsRouteImport } from './routes/admin.rankings'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminStorageRouteImport } from './routes/admin.storage'
 import { Route as AdminSystemRouteImport } from './routes/admin.system'
 import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
@@ -45,6 +49,8 @@ import { Route as MatchesIndexRouteImport } from './routes/matches.index'
 import { Route as MatchesFixtureIdRouteImport } from './routes/matches.$fixtureId'
 import { Route as AdminPlayersIndexRouteImport } from './routes/admin.players.index'
 import { Route as AdminPlayersPlayerIdRouteImport } from './routes/admin.players.$playerId'
+import { Route as AdminRefereesIndexRouteImport } from './routes/admin.referees.index'
+import { Route as AdminRefereesRefereeIdRouteImport } from './routes/admin.referees.$refereeId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -151,6 +157,16 @@ const AdminIntelligenceRoute = AdminIntelligenceRouteImport.update({
   path: '/intelligence',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminLearningRoute = AdminLearningRouteImport.update({
+  id: '/learning',
+  path: '/learning',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMemoryRoute = AdminMemoryRouteImport.update({
+  id: '/memory',
+  path: '/memory',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMigrationRoute = AdminMigrationRouteImport.update({
   id: '/migration',
   path: '/migration',
@@ -164,6 +180,11 @@ const AdminModelsRoute = AdminModelsRouteImport.update({
 const AdminOddsRoute = AdminOddsRouteImport.update({
   id: '/odds',
   path: '/odds',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOperationRoute = AdminOperationRouteImport.update({
+  id: '/operation',
+  path: '/operation',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminOverviewRoute = AdminOverviewRouteImport.update({
@@ -189,6 +210,11 @@ const AdminRankingsRoute = AdminRankingsRouteImport.update({
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminStorageRoute = AdminStorageRouteImport.update({
+  id: '/storage',
+  path: '/storage',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminSystemRoute = AdminSystemRouteImport.update({
@@ -226,6 +252,16 @@ const AdminPlayersPlayerIdRoute = AdminPlayersPlayerIdRouteImport.update({
   path: '/players/$playerId',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminRefereesIndexRoute = AdminRefereesIndexRouteImport.update({
+  id: '/referees/',
+  path: '/referees/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRefereesRefereeIdRoute = AdminRefereesRefereeIdRouteImport.update({
+  id: '/referees/$refereeId',
+  path: '/referees/$refereeId',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -248,14 +284,18 @@ export interface FileRoutesByFullPath {
   '/admin/data-truth': typeof AdminDataTruthRoute
   '/admin/evolution': typeof AdminEvolutionRoute
   '/admin/intelligence': typeof AdminIntelligenceRoute
+  '/admin/learning': typeof AdminLearningRoute
+  '/admin/memory': typeof AdminMemoryRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
+  '/admin/operation': typeof AdminOperationRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/picks': typeof AdminPicksRoute
   '/admin/rankings': typeof AdminRankingsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/storage': typeof AdminStorageRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -263,7 +303,9 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
+  '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
   '/admin/players/': typeof AdminPlayersIndexRoute
+  '/admin/referees/': typeof AdminRefereesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -285,14 +327,18 @@ export interface FileRoutesByTo {
   '/admin/data-truth': typeof AdminDataTruthRoute
   '/admin/evolution': typeof AdminEvolutionRoute
   '/admin/intelligence': typeof AdminIntelligenceRoute
+  '/admin/learning': typeof AdminLearningRoute
+  '/admin/memory': typeof AdminMemoryRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
+  '/admin/operation': typeof AdminOperationRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/picks': typeof AdminPicksRoute
   '/admin/rankings': typeof AdminRankingsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/storage': typeof AdminStorageRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -300,7 +346,9 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/matches': typeof MatchesIndexRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
+  '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
   '/admin/players': typeof AdminPlayersIndexRoute
+  '/admin/referees': typeof AdminRefereesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -324,14 +372,18 @@ export interface FileRoutesById {
   '/admin/data-truth': typeof AdminDataTruthRoute
   '/admin/evolution': typeof AdminEvolutionRoute
   '/admin/intelligence': typeof AdminIntelligenceRoute
+  '/admin/learning': typeof AdminLearningRoute
+  '/admin/memory': typeof AdminMemoryRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
+  '/admin/operation': typeof AdminOperationRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/picks': typeof AdminPicksRoute
   '/admin/rankings': typeof AdminRankingsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/storage': typeof AdminStorageRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -339,7 +391,9 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
+  '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
   '/admin/players/': typeof AdminPlayersIndexRoute
+  '/admin/referees/': typeof AdminRefereesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -364,14 +418,18 @@ export interface FileRouteTypes {
     | '/admin/data-truth'
     | '/admin/evolution'
     | '/admin/intelligence'
+    | '/admin/learning'
+    | '/admin/memory'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
+    | '/admin/operation'
     | '/admin/overview'
     | '/admin/performance'
     | '/admin/picks'
     | '/admin/rankings'
     | '/admin/settings'
+    | '/admin/storage'
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
@@ -379,7 +437,9 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/matches/'
     | '/admin/players/$playerId'
+    | '/admin/referees/$refereeId'
     | '/admin/players/'
+    | '/admin/referees/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -401,14 +461,18 @@ export interface FileRouteTypes {
     | '/admin/data-truth'
     | '/admin/evolution'
     | '/admin/intelligence'
+    | '/admin/learning'
+    | '/admin/memory'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
+    | '/admin/operation'
     | '/admin/overview'
     | '/admin/performance'
     | '/admin/picks'
     | '/admin/rankings'
     | '/admin/settings'
+    | '/admin/storage'
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
@@ -416,7 +480,9 @@ export interface FileRouteTypes {
     | '/admin'
     | '/matches'
     | '/admin/players/$playerId'
+    | '/admin/referees/$refereeId'
     | '/admin/players'
+    | '/admin/referees'
   id:
     | '__root__'
     | '/'
@@ -439,14 +505,18 @@ export interface FileRouteTypes {
     | '/admin/data-truth'
     | '/admin/evolution'
     | '/admin/intelligence'
+    | '/admin/learning'
+    | '/admin/memory'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
+    | '/admin/operation'
     | '/admin/overview'
     | '/admin/performance'
     | '/admin/picks'
     | '/admin/rankings'
     | '/admin/settings'
+    | '/admin/storage'
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
@@ -454,7 +524,9 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/matches/'
     | '/admin/players/$playerId'
+    | '/admin/referees/$refereeId'
     | '/admin/players/'
+    | '/admin/referees/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -621,6 +693,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIntelligenceRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/learning': {
+      id: '/admin/learning'
+      path: '/learning'
+      fullPath: '/admin/learning'
+      preLoaderRoute: typeof AdminLearningRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/memory': {
+      id: '/admin/memory'
+      path: '/memory'
+      fullPath: '/admin/memory'
+      preLoaderRoute: typeof AdminMemoryRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/migration': {
       id: '/admin/migration'
       path: '/migration'
@@ -640,6 +726,13 @@ declare module '@tanstack/react-router' {
       path: '/odds'
       fullPath: '/admin/odds'
       preLoaderRoute: typeof AdminOddsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/operation': {
+      id: '/admin/operation'
+      path: '/operation'
+      fullPath: '/admin/operation'
+      preLoaderRoute: typeof AdminOperationRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/overview': {
@@ -675,6 +768,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/storage': {
+      id: '/admin/storage'
+      path: '/storage'
+      fullPath: '/admin/storage'
+      preLoaderRoute: typeof AdminStorageRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/system': {
@@ -726,6 +826,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPlayersPlayerIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/referees/': {
+      id: '/admin/referees/'
+      path: '/referees'
+      fullPath: '/admin/referees/'
+      preLoaderRoute: typeof AdminRefereesIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/referees/$refereeId': {
+      id: '/admin/referees/$refereeId'
+      path: '/referees/$refereeId'
+      fullPath: '/admin/referees/$refereeId'
+      preLoaderRoute: typeof AdminRefereesRefereeIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
@@ -740,20 +854,26 @@ interface AdminRouteChildren {
   AdminDataTruthRoute: typeof AdminDataTruthRoute
   AdminEvolutionRoute: typeof AdminEvolutionRoute
   AdminIntelligenceRoute: typeof AdminIntelligenceRoute
+  AdminLearningRoute: typeof AdminLearningRoute
+  AdminMemoryRoute: typeof AdminMemoryRoute
   AdminMigrationRoute: typeof AdminMigrationRoute
   AdminModelsRoute: typeof AdminModelsRoute
   AdminOddsRoute: typeof AdminOddsRoute
+  AdminOperationRoute: typeof AdminOperationRoute
   AdminOverviewRoute: typeof AdminOverviewRoute
   AdminPerformanceRoute: typeof AdminPerformanceRoute
   AdminPicksRoute: typeof AdminPicksRoute
   AdminRankingsRoute: typeof AdminRankingsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminStorageRoute: typeof AdminStorageRoute
   AdminSystemRoute: typeof AdminSystemRoute
   AdminTeamsRoute: typeof AdminTeamsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminPlayersPlayerIdRoute: typeof AdminPlayersPlayerIdRoute
+  AdminRefereesRefereeIdRoute: typeof AdminRefereesRefereeIdRoute
   AdminPlayersIndexRoute: typeof AdminPlayersIndexRoute
+  AdminRefereesIndexRoute: typeof AdminRefereesIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -767,20 +887,26 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminDataTruthRoute: AdminDataTruthRoute,
   AdminEvolutionRoute: AdminEvolutionRoute,
   AdminIntelligenceRoute: AdminIntelligenceRoute,
+  AdminLearningRoute: AdminLearningRoute,
+  AdminMemoryRoute: AdminMemoryRoute,
   AdminMigrationRoute: AdminMigrationRoute,
   AdminModelsRoute: AdminModelsRoute,
   AdminOddsRoute: AdminOddsRoute,
+  AdminOperationRoute: AdminOperationRoute,
   AdminOverviewRoute: AdminOverviewRoute,
   AdminPerformanceRoute: AdminPerformanceRoute,
   AdminPicksRoute: AdminPicksRoute,
   AdminRankingsRoute: AdminRankingsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminStorageRoute: AdminStorageRoute,
   AdminSystemRoute: AdminSystemRoute,
   AdminTeamsRoute: AdminTeamsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminPlayersPlayerIdRoute: AdminPlayersPlayerIdRoute,
+  AdminRefereesRefereeIdRoute: AdminRefereesRefereeIdRoute,
   AdminPlayersIndexRoute: AdminPlayersIndexRoute,
+  AdminRefereesIndexRoute: AdminRefereesIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

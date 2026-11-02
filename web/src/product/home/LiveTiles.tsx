@@ -1,4 +1,5 @@
 /** Up to six matches in play, as small score tiles that open the match. */
+import { countryLabel } from "@/product/matches/country";
 import { Link } from "@tanstack/react-router";
 import { Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -93,7 +94,7 @@ function LiveTile({ m }: { m: LiveMatch }) {
           name={m.competition}
           logo={m.competition_logo}
           flag={m.competition_flag}
-          country={m.country}
+          country={countryLabel(m.country, m.country_code) ?? m.country}
           size={14}
           className="min-w-0"
         />

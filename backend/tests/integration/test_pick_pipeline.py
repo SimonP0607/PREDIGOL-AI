@@ -20,6 +20,7 @@ from fbi.market.consensus import recompute_from_snapshots
 from fbi.picks.engine import evaluate_captures, settle_open_picks
 from fbi.picks.rules import CURRENT_RULE
 from fbi.predictions.forecast import forecast_upcoming
+from fbi.predictions.spec import promote as promote_spec
 from tests.integration.helpers import scalar
 from tests.integration.signed_in import SAME_SITE, signed_in
 
@@ -27,6 +28,19 @@ KO = datetime(2026, 10, 3, 14, 0, tzinfo=UTC)
 AT = KO - timedelta(hours=26)          # the forecast
 CAPTURED = KO - timedelta(minutes=1439)  # the price, later than the forecast
 N_TEAMS = 10
+
+
+@pytest.fixture(autouse=True)
+def _prices_do_not_age(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests live in a fixed October (KO, AT, CAPTURED); quoted_lines() only reads prices captured in the last 30 days of the
+    WALL clock, so from 2 Nov 2026 on the forecasts priced no line and the chain broke at its first link. The window is widened here;
+    production keeps the 30 days. (A guard that these tests do not age is the CI itself: it is what found this.)"""
+    from fbi.models.quoted import quoted_lines as real
+
+    def wide(conn: psycopg.Connection, ids: Any, **kw: Any) -> Any:
+        return real(conn, ids, **{**kw, 'since_days': 36500})
+
+    monkeypatch.setattr("fbi.predictions.forecast.quoted_lines", wide)
 
 
 @pytest.fixture()
@@ -91,6 +105,9 @@ def league(db: psycopg.Connection, seed: object, migrated_database: str) -> Iter
             ([comp], json.dumps({"history_days": 730}),
              json.dumps({k: {"chosen": {"xi": 0.002, "penalty": 1.0}} for k in ("poisson", "dixon_coles")})))
         ids["session"] = scalar(cur)
+        # A completed session is research until somebody promotes it (plan F0, defect 2): the forecast reads the
+        # promoted spec, so the fixture promotes the one it made.
+        promote_spec(db, int(ids["session"]), by="owner", reason="the pipeline test's own backtest session")  # type: ignore[call-overload]
         cur.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, status, finished_at) "
                     "VALUES ('odds_capture','odds_capture','completed',now()) RETURNING id")
         run = scalar(cur)
@@ -113,6 +130,8 @@ def league(db: psycopg.Connection, seed: object, migrated_database: str) -> Iter
         cur.execute("DELETE FROM core.teams WHERE provider_team_id BETWEEN 88101 AND 88199")
         cur.execute("DELETE FROM core.competition_seasons WHERE id = %s", (ids["season"],))
         cur.execute("DELETE FROM core.competitions WHERE id = %s", (ids["comp"],))
+        cur.execute("SELECT set_config('fbi.analytics_maintenance', 'on', true)")  # the promotion history is append-only
+        cur.execute("DELETE FROM analytics.promoted_forecast_spec")
         cur.execute("DELETE FROM analytics.backtest_sessions WHERE id = %s", (ids["session"],))
         cur.execute("DELETE FROM models.model_versions WHERE version LIKE '%%@pipetes' OR version LIKE '%%@pipenew'")
         cur.execute("DELETE FROM models.model_registry r WHERE NOT EXISTS "
@@ -243,7 +262,7 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
     with db.cursor() as cur:
         cur.execute("SELECT r.result_status, r.profit_units, r.settlement_basis, r.rule_version, p.status "
                     "FROM picks.pick_results r JOIN picks.picks p ON p.id = r.pick_id WHERE r.pick_id = %s", (pick_id,))
-        assert cur.fetchone() == ("loss", Decimal("-1.0000"), "regulation_90", "settle-v3", "settled")
+        assert cur.fetchone() == ("loss", Decimal("-1.0000"), "regulation_90", "settle-v4", "settled")
         cur.execute("SELECT to_status FROM picks.pick_events WHERE pick_id = %s ORDER BY at, id", (pick_id,))
         assert [r[0] for r in cur.fetchall()] == ["shadow", "settled"]
     assert settle_open_picks(db, run_id=run_id).open_picks == 0, "settled picks are not settled again"

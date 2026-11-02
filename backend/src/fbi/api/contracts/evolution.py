@@ -17,6 +17,76 @@ Target = Literal["models", "backtesting", "analytics", "features", "rankings", "
                  "ai", "other"]
 
 
+CodeStatus = Literal["BASELINE", "PROMOTED", "AFTER_USE", "PENDING_SYNC", "UNTRACED", "PRE_LEDGER"]
+"""What covers one fingerprint of the model code (``fbi.research.trace``): the baseline recorded after the fact, a decision dated before the code
+first ran, a decision dated after it, an entry not yet copied to the database, nothing at all, or a change older than the ledger (listed, not counted)."""
+
+
+class CodePromotionRow(Contract):
+    """The CHAMPION row of ``intel.promotions`` that covers a fingerprint."""
+
+    id: int
+    decided_by: str
+    decided_at: datetime
+    reason: str
+    evidence: dict[str, Any] = Field(description="What the decision rested on: the hypothesis, the experiments, the gate, the release.")
+
+
+class CodeFingerprint(Contract):
+    """One fingerprint of the model packages that production forecast with in the window, and what covers it."""
+
+    fingerprint: str = Field(description="``mc`` and ten hex digits, as the model versions carry it; ``legacy`` for the versions keyed by a commit.")
+    status: CodeStatus
+    appeared_at: datetime = Field(description="When its first model version came into being.")
+    last_use: datetime
+    in_force_now: bool = Field(description="Used in the last two days. It is NOT 'the code in force': see ``CodePromotions.running_code``.")
+    versions: int
+    models: list[str]
+    rows: dict[str, int] = Field(description="What it produced in the window, by source: predictions, forecasts, decisions.")
+    promotion: CodePromotionRow | None
+
+
+class CodeCounts(Contract):
+    fingerprints: int
+    counted: int = Field(description="The changes since the ledger began: the fingerprints that are not PRE_LEDGER.")
+    traced: int = Field(description="Of those, the ones with a promotion on record (BASELINE, PROMOTED, AFTER_USE).")
+    untraced: int
+    pending_sync: int
+    after_use: int
+    pre_ledger: int
+
+
+class CodeLedgerEntry(Contract):
+    """One decision of ``fbi.research.promotions.LEDGER`` - the ledger carried by the code this server runs."""
+
+    fingerprint: str
+    decided_at: datetime
+    decided_by: str
+    phase: str
+    reason: str
+    baseline: bool
+    evidence: dict[str, Any]
+    recorded: bool = Field(description="``intel.promotions`` has its CHAMPION row.")
+    used: bool = Field(description="Production forecast with it in the window.")
+
+
+class CodePromotions(Contract):
+    """The model code against its promotions (plan F12): every fingerprint that forecast in production, and the decision that covers each."""
+
+    now: datetime
+    since: datetime
+    days: int
+    running_code: str = Field(description="The fingerprint of the model code this server runs (``mc`` + ten hex digits).")
+    ledger_in_force: str | None = Field(description="The last entry of the ledger: the code the ledger says production forecasts with.")
+    ledger_since: datetime | None
+    in_force_matches_running: bool = Field(description="The code running is the one the ledger has in force.")
+    fingerprints: list[CodeFingerprint]
+    counts: CodeCounts
+    coverage: float | None = Field(description="``traced / counted`` as a fraction of 1; null when nothing changed since the ledger began.")
+    ledger: list[CodeLedgerEntry]
+    other: dict[str, int] = Field(description="The promotions of the other kinds of change in the same window, for context.")
+
+
 class Hypothesis(Contract):
     id: int
     proposed_by: Literal["ai", "owner", "system"]

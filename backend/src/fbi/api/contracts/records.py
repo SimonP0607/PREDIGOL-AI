@@ -65,6 +65,28 @@ class MatchRef(Contract):
     live_at: datetime | None = Field(default=None, description="When that state was observed.")
 
 
+CorrectionCause = Literal["result_corrected", "status_changed", "audit"]
+
+
+class ResultCorrection(Contract):
+    """A settled record whose result changed afterwards (plan F0, defect 5): the record shows the result it has now,
+    this is one it had. A leg's correction carries the leg's number; a record's own - a pick's, a parlay's - does not.
+
+    What the person is told is the cause as a code and the words they translate - never the trail's own reason, which
+    names internal revisions and whoever ran a manual pass."""
+
+    at: datetime = Field(description="When the record was settled again.")
+    leg_no: int | None = Field(default=None, description="The leg, for a correction of one leg of a parlay.")
+    from_status: ResultStatus | ParlayStatus
+    to_status: ResultStatus | ParlayStatus
+    from_profit: Decimal | None = None
+    to_profit: Decimal | None = None
+    cause: CorrectionCause = Field(description=(
+        "result_corrected: the data provider corrected the match's result after full time. status_changed: the match's "
+        "status moved (a result confirmed, a match annulled). audit: a review found the stored result was not the one "
+        "the match's result gives - and no correction of the match was recorded."))
+
+
 class DailyItem(Contract):
     rank: int
     pick_id: int
@@ -87,6 +109,8 @@ class DailyItem(Contract):
     settled_at: datetime | None
     ai: ItemAi | None = None
     ai_latest: AiLatest | None = None
+    corrections: list[ResultCorrection] = Field(default_factory=list, description=(
+        "Settled again after the provider corrected the match; oldest first. Empty: never."))
 
 
 class DailySet(Contract):
@@ -139,6 +163,8 @@ class ParlayRecord(Contract):
                                      "(some won, none lost), PARTIAL_LOST (a leg lost, others still to play), WON, "
                                      "LOST, VOID. A parlay stays on the board until every leg is settled.")
     legs_pending: int = 0
+    corrections: list[ResultCorrection] = Field(default_factory=list, description=(
+        "The parlay's own and its legs' (with ``leg_no``); oldest first. Empty: never corrected."))
 
 
 class DailyBoard(Contract):
@@ -184,6 +210,8 @@ class UserPick(Contract):
     profit_units: Decimal | None
     settled_at: datetime | None
     snapshot: dict[str, Any]
+    corrections: list[ResultCorrection] = Field(default_factory=list, description=(
+        "Settled again after the provider corrected the match; oldest first. Empty: never."))
 
 
 class LegInBody(BaseModel):
@@ -238,6 +266,8 @@ class UserParlay(Contract):
     settled_at: datetime | None
     warnings: list[dict[str, Any]]
     legs: list[UserParlayLeg]
+    corrections: list[ResultCorrection] = Field(default_factory=list, description=(
+        "The parlay's own and its legs' (with ``leg_no``); oldest first. Empty: never corrected."))
 
 
 class HistoryGroup(Contract):

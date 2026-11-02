@@ -1,110 +1,4 @@
 {
-  "tabs": {
-    "label": "Secciones de IA",
-    "report": "Informe diario",
-    "flags": "Avisos sobre picks",
-    "ask": "Preguntar",
-    "usage": "Uso y costo"
-  },
-  "status": {
-    "llm": "Modelo de lenguaje",
-    "search": "Búsqueda web",
-    "on": "Activo",
-    "off": "Sin configurar",
-    "budget": "Presupuesto de IA ({month})",
-    "spent": "{spent} de {cap} USD",
-    "questions": "Preguntas hoy",
-    "notConfigured": "Faltan claves en el servidor ({missing}): el informe diario lleva solo los datos de la plataforma y la revisión de picks aplica solo sus reglas. Crear una cuenta de proveedor es decisión del dueño; nada se ha contratado."
-  },
-  "report": {
-    "title": "Informe diario de investigación",
-    "subtitle": "Se escribe a las 06:00 (Bogotá): datos de la plataforma siempre; investigación web con fuentes cuando hay claves.",
-    "day": "Día",
-    "run": "Generar ahora",
-    "running": "Generando…",
-    "meta": "{when} · modelo {model} · costo {cost}",
-    "claims": "Afirmaciones con fuente",
-    "noClaims": "Sin afirmaciones: sin búsqueda web configurada, o nada publicado sobre estos partidos. Una afirmación sin fuente nunca se muestra como hecho.",
-    "noDate": "sin fecha",
-    "cols": {
-      "claim": "Afirmación",
-      "grade": "Grado",
-      "source": "Fuente",
-      "published": "Publicado",
-      "retrieved": "Consultado"
-    },
-    "notYet": "Todavía no hay informe para este día: se escribe a las 06:00 (Bogotá), o cuando pulsas «Generar ahora»."
-  },
-  "grade": {
-    "CONFIRMED": "Confirmado",
-    "REPORTED": "Reportado",
-    "RUMOR": "Rumor",
-    "help": "Confirmado: fuente oficial con fecha, o dos medios independientes. Reportado: un medio reputado. Rumor: lo demás. El servidor solo puede bajar el grado que propone la IA, nunca subirlo."
-  },
-  "flags": {
-    "title": "Avisos sobre los picks",
-    "subtitle": "Solo avisos: el revisor no puede cambiar una probabilidad, un precio ni un pick. Las reglas corren siempre; la IA solo con claves y sobre afirmaciones con fuente.",
-    "run": "Revisar ahora",
-    "sourceLabel": "Conjunto",
-    "rank": "Pick #{rank}",
-    "claims": "Afirmaciones: {ids}",
-    "source": {
-      "evaluation": "Modo de evaluación",
-      "qualified": "PrediGol Picks"
-    },
-    "engine": {
-      "rules": "Reglas",
-      "model": "IA"
-    },
-    "severity": {
-      "info": "Info",
-      "warn": "Atención",
-      "review": "Revisar"
-    },
-    "code": {
-      "injury_news": "Lesión",
-      "lineup_uncertain": "Alineación incierta",
-      "suspension": "Sanción",
-      "rotation_risk": "Rotación",
-      "motivation": "Motivación",
-      "stale_price": "Precio ya no disponible",
-      "data_gap": "Mercado sin precio",
-      "kickoff_change": "Cambio de hora",
-      "weather": "Clima",
-      "other": "Otro"
-    }
-  },
-  "usage": {
-    "title": "Cada ejecución, con su costo",
-    "subtitle": "Tokens y costo se registran en cada llamada; el tope mensual se revisa antes de cada una.",
-    "cols": {
-      "started": "Inicio",
-      "kind": "Tipo",
-      "status": "Estado",
-      "model": "Modelo",
-      "tokens": "Tokens (ent./sal.)",
-      "cost": "Costo"
-    }
-  },
-  "kind": {
-    "ask": "Pregunta",
-    "daily_report": "Informe diario",
-    "pick_review": "Revisión de picks"
-  },
-  "runStatus": {
-    "running": "En curso",
-    "ok": "Completado",
-    "failed": "Falló",
-    "not_configured": "Sin configurar",
-    "over_budget": "Sin presupuesto"
-  },
-  "schedule": {
-    "title": "Calendario",
-    "daily_report": "Informe diario: todos los días desde las 06:00 (Bogotá), y a pedido.",
-    "pick_review": "Revisión de picks: cada hora sobre los conjuntos de hoy y mañana.",
-    "research_monitor": "Monitor de investigación: todos los días a las 07:05 (Bogotá).",
-    "research_v2": "Investigación V2: semanal (lunes 04:20) si cambió el código o pasaron 4 semanas."
-  },
   "evolution": {
     "loopTitle": "Cómo funciona",
     "hypotheses": "Hipótesis",
@@ -159,8 +53,6 @@
     "today": {
       "title": "Qué es esto hoy",
       "deterministic": "Hoy: monitor determinista",
-      "aiOn": "IA configurada: solo propone",
-      "aiOff": "IA: sin configurar",
       "body": "Cada 30 minutos la capa de decisión arma el paquete de contexto de cada partido próximo (con la fuente de cada dato), revisa las selecciones que pasan el filtro de valor y guarda un análisis por partido. Cada día, tras los resultados, escribe post-mortems y memoria, y propone hipótesis solo con evidencia suficiente.",
       "never": "Ningún resultado cambia una regla, un umbral, un modelo o un pick por sí mismo. Mientras la puerta shadow de la IA no se supere (y tú no actives el modo enforce), sus revisiones no filtran nada de lo que ven los usuarios.",
       "futureTitle": "Arquitectura futura (no implementada: requiere tu aprobación y una cuenta de proveedor)",
@@ -177,8 +69,7 @@
         "f10": "APROBACIÓN HUMANA: el dueño decide.",
         "f11": "PROMOCIÓN: solo entonces cambia producción, versionado y reversible."
       },
-      "futureNote": "Nunca: «mal resultado → la IA cambia producción automáticamente». La IA no tendrá permisos de escritura en producción.",
-      "mode": "Modo: {mode}"
+      "futureNote": "Nunca: «mal resultado → la IA cambia producción automáticamente». La IA no tendrá permisos de escritura en producción."
     },
     "frozen": "Investigación congelada: {reason}. Ninguna ejecución guarda un modelo hasta que la descongeles tú.",
     "dueWhenUnfrozen": "Al descongelarla, la investigación semanal correría porque {reason}.",
@@ -292,17 +183,90 @@
       "nMatches": "Número de partidos",
       "impact": "Impacto potencial",
       "cost": "Costo de investigarlo"
+    },
+    "code": {
+      "title": "Código de los modelos",
+      "subtitle": "Cada versión de un modelo lleva la huella del código que la produjo. Aquí se ve qué huellas pronosticaron en producción, quién decidió ponerlas y con qué pruebas. Solo lectura: este panel no cambia nada.",
+      "measured": "Medido {when}",
+      "refresh": "Actualizar",
+      "tiles": {
+        "coverage": "Cambios con promoción",
+        "coverageValue": "{traced} de {counted}",
+        "coverageNone": "Ninguno",
+        "coverageHint": "{percent} de los cambios de código desde que empezó el registro. La meta del plan es el 100 %.",
+        "coverageHintNone": "No hubo cambios de código desde que empezó el registro.",
+        "running": "Código que corre ahora",
+        "runningMatches": "Es el que el registro tiene en vigor.",
+        "runningDiffers": "No es el que el registro tiene en vigor ({code}).",
+        "fingerprints": "Huellas en la ventana",
+        "fingerprintsHint_one": "{count} anterior al registro: se lista y no cuenta.",
+        "fingerprintsHint_other": "{count} anteriores al registro: se listan y no cuentan.",
+        "fingerprintsHintNone": "Todas son posteriores al inicio del registro.",
+        "ledgerSince": "Registro iniciado",
+        "ledgerSinceHint": "Ventana de {days} días hacia atrás."
+      },
+      "counted": {
+        "title": "Desde que empezó el registro",
+        "empty": "Ningún código pronosticó en la ventana desde que empezó el registro."
+      },
+      "before": {
+        "title": "Anteriores al registro · {count}",
+        "help": "Existían antes de que empezara el registro: se listan y no cuentan, porque el pasado no se puede decidir después."
+      },
+      "legacy": "Versiones por commit (antes del 5 de octubre de 2026)",
+      "legacyHelp": "Hasta esa fecha una versión se identificaba por el commit del repositorio y no por el código de los modelos.",
+      "running": "Corre ahora",
+      "recent": "Usado en los últimos 2 días",
+      "appeared": "Apareció {when}",
+      "lastUse": "último uso {when}",
+      "versions_one": "{count} versión de {models}",
+      "versions_other": "{count} versiones de {models}",
+      "source": {
+        "predictions": "predicciones",
+        "forecasts": "pronósticos",
+        "decisions": "decisiones"
+      },
+      "status": {
+        "BASELINE": "Base del registro",
+        "PROMOTED": "Promovido",
+        "AFTER_USE": "Decidido después",
+        "PENDING_SYNC": "Sin copiar a la base",
+        "UNTRACED": "Sin promoción",
+        "PRE_LEDGER": "Anterior al registro"
+      },
+      "statusHelp": {
+        "BASELINE": "El código que ya estaba en vigor cuando empezó el registro; se anotó después de los hechos y así se dice.",
+        "PROMOTED": "Una decisión registrada, anterior al primer uso del código, lo cubre.",
+        "AFTER_USE": "Hay una decisión registrada, pero con fecha posterior al primer uso del código.",
+        "PENDING_SYNC": "Está en el registro del código, pero todavía no se copió a la base de datos.",
+        "UNTRACED": "Ninguna decisión lo cubre: es el cambio que el plan dice que no debe ocurrir.",
+        "PRE_LEDGER": "Es anterior al registro: se lista y no cuenta."
+      },
+      "promotion": "Promoción n.º {id} · decidida por {who} · {when}",
+      "noPromotion": "Ninguna decisión registrada cubre este código.",
+      "ledger": {
+        "title": "Decisiones del registro",
+        "subtitle": "El registro que lleva el código de este servidor: una entrada por cambio, escrita en el mismo cambio de código.",
+        "empty": "El registro está vacío.",
+        "baseline": "Base del registro",
+        "recorded": "Copiada a la base",
+        "pending": "Sin copiar a la base",
+        "used": "Usada en la ventana",
+        "unused": "Aún sin usar",
+        "by": "Decidida por {who} · fase {phase} · {when}"
+      },
+      "other": {
+        "title": "Otras promociones en la ventana",
+        "help": "Cambios de otra clase, que ya pasan por su propia tabla de promociones.",
+        "goal_spec": "Especificación de goles",
+        "calibrator": "Calibradores",
+        "market_edge": "Ventaja sobre el mercado",
+        "neutral_rule": "Regla de sede neutral"
+      },
+      "how": "Para cambiar el código de un modelo: se cambia, se añade su entrada al registro (quién lo decidió, por qué y con qué pruebas) en el mismo cambio, y al lanzar se copia a la base. Una prueba falla mientras el código y el registro no coincidan. Mirar esta pantalla no cambia nada."
     }
   },
   "layer": {
-    "tabs": {
-      "label": "Vistas de la capa IA",
-      "reviews": "Revisiones",
-      "evidence": "Evidencias",
-      "costs": "Costos",
-      "shadow": "Shadow",
-      "memory": "Memoria"
-    },
     "mode": {
       "off": "apagada",
       "shadow": "evaluación (shadow)",
@@ -333,6 +297,7 @@
       "today": "Hoy",
       "month": "Mes",
       "NORMAL": "Normal",
+      "AJUSTE": "Ajuste (misma calidad)",
       "REDUCED": "Reducido (sin nivel final)",
       "CHEAP_ONLY": "Solo el modelo barato",
       "EXHAUSTED": "Agotado (solo reglas)"
@@ -344,7 +309,8 @@
       "analysis": "Último análisis",
       "learning": "Último aprendizaje",
       "postmortem": "Último post-mortem",
-      "evaluation": "Última evaluación"
+      "evaluation": "Última evaluación",
+      "package": "Últimos estados de partido"
     },
     "cycleStatus": {
       "running": "corriendo",
@@ -498,6 +464,7 @@
       "unitsHelp": "Cuánto cuesta cada pieza del trabajo de la IA en cada periodo.",
       "byLevel": "Gasto por nivel",
       "byLevelHelp": "L1 resumen económico · L2 revisión intermedia · L3 revisión fuerte · web búsquedas.",
+      "byModelHelp": "Cuánto costó cada modelo en cada periodo, con sus llamadas.",
       "searches": "Búsquedas",
       "failed": "Fallidas"
     },
@@ -578,6 +545,7 @@
       "barValue": "{share} del presupuesto mensual",
       "stateHelp": {
         "NORMAL": "Por debajo del presupuesto de hoy: todos los niveles disponibles.",
+        "AJUSTE": "La proyección del mes pasó el 95 % de la bolsa: se deja de repetir trabajo, se reutiliza lo guardado y lo que puede esperar va por lotes. La calidad del camino principal no cambia.",
         "REDUCED": "Pasó el 100 % del presupuesto de hoy: sin nivel L3 (fuerte) ni imágenes.",
         "CHEAP_ONLY": "Pasó el 125 % del presupuesto de hoy: solo el modelo económico (L1), sin búsqueda web.",
         "EXHAUSTED": "Tope del día alcanzado o mes agotado: ninguna llamada a modelos, trabajan solo las reglas."
@@ -638,7 +606,95 @@
       "sample": "Muestra: {selections} selecciones · {days} días · {rejected} rechazadas",
       "marketNote": "El mercado no apuesta: no tiene ROI, CLV ni VE; es la referencia de log loss, Brier y calibración.",
       "evNote": "VE observado: el valor esperado de las cuotas tomadas con la probabilidad del mercado.",
+      "clvNote": "CLV: la cuota tomada frente a la probabilidad justa del cierre, sin margen (la misma medida de Inteligencia).",
       "empty": "Aún no hay evaluación shadow con la que comparar."
+    },
+    "envelopes": {
+      "title": "Las tres bolsas de gasto",
+      "subtitle": "Claude de producción, Claude del LAB y Exa se miden por separado, cada una contra la suya; Claude en total no pasa del tope conjunto.",
+      "empty": "El servidor aún no envía las bolsas (versión anterior, o no pudo calcularlas).",
+      "production": "Claude · producción",
+      "lab": "Claude · LAB (experimentos)",
+      "exa": "Exa · búsquedas web",
+      "joint": "Claude en total",
+      "workspace": "Espacio de trabajo {name}",
+      "spent": "Gastado este mes",
+      "spentHint": "{share} de {budget}",
+      "today": "Hoy",
+      "projection": "Proyección del mes",
+      "projectionHint": "{share} de la bolsa",
+      "reserve": "Reserva de producción",
+      "reserveHint": "{locked} bloqueados hasta los últimos 5 días",
+      "reserved": "Reservado en lotes abiertos",
+      "reservedHint": "Cuenta como gasto hasta que llegue el resultado",
+      "allocation": "Asignación del LAB",
+      "allocationHint": "Su bolsa o lo que deja el tope conjunto tras producción",
+      "ceiling": "Tope conjunto",
+      "searches": "Búsquedas",
+      "bar": "Gasto del mes de {name}",
+      "limit": "El proveedor dijo que el límite está agotado: sin llamadas hasta {time}.",
+      "labReason": {
+        "ok": "Corre hoy",
+        "no_envelope": "Sin bolsa: el LAB no llama",
+        "api_limit": "Límite del proveedor agotado",
+        "yields_to_production": "Cede ante producción",
+        "allocation_spent": "Su asignación del mes está gastada"
+      },
+      "exaReason": {
+        "ok": "Puede buscar",
+        "no_envelope": "Sin bolsa: no busca",
+        "month_spent": "La bolsa del mes está gastada",
+        "day_cap": "Tope del día alcanzado"
+      },
+      "days": "Gasto diario",
+      "daysHelp": "Los últimos 14 días (hora de Bogotá), por bolsa.",
+      "day": "Día"
+    },
+    "savings": {
+      "title": "Lo que ahorran la caché y los lotes",
+      "subtitle": "Medido sobre los tokens del libro de gasto con la misma tabla de precios. El de la caché puede salir negativo mientras una escritura de caché todavía no se ha leído.",
+      "total": "Ahorro del mes",
+      "cache": "Caché de prompts",
+      "cacheHint": "{share} de los tokens de entrada se leyeron de la caché",
+      "batch": "Lotes (mitad de precio)",
+      "batchHint": "{share} de las llamadas con tokens fueron en lote",
+      "writes": "Escritos en la caché",
+      "writesHint": "tokens",
+      "reuse": "Reutilizado en vez de pagado",
+      "briefs": "Resúmenes reutilizados",
+      "briefsHint": "{material} por no haber cambio material · {paid} pagados",
+      "reviews": "Revisiones reutilizadas",
+      "reviewsHint": "{batched} enviadas en lote",
+      "batches": "Lotes abiertos",
+      "batchesHint": "{items} tareas esperando resultado · {ended} terminados este mes",
+      "lost": "Lotes perdidos",
+      "lostHint": "Fallidos o abandonados: sus tareas se piden de nuevo en tiempo real"
+    },
+    "switches": {
+      "title": "Optimizaciones de la Fase 0",
+      "subtitle": "Cada una se enciende sola solo cuando lo que cambia está probado; el dueño puede apagarla con su variable.",
+      "on": "Activa",
+      "off": "Apagada",
+      "names": {
+        "cache": "Caché de prompts",
+        "brief_material": "Resumen solo si cambia lo material",
+        "budget_v3": "Presupuesto adaptativo v3",
+        "batch": "Lotes (Batch)",
+        "native_schema": "Salidas estructuradas nativas",
+        "cache_layout": "Bloque compartido del partido"
+      },
+      "why": {
+        "default": "Activa por defecto: cambia lo que se factura o se reutiliza, nunca un veredicto.",
+        "forced": "Forzada por el dueño.",
+        "ownerOff": "Apagada por el dueño.",
+        "passed": "Activa: su evidencia pasó.",
+        "waiting": "Espera la evidencia de su prueba real.",
+        "layout": "Reordena lo que lee el modelo: necesita su propia prueba de equivalencia."
+      },
+      "evidence": "Evidencia",
+      "passedOn": "pasó el {date}",
+      "failedOn": "no pasó ({date})",
+      "none": "todavía sin evidencia"
     }
   },
   "v2": {
@@ -794,7 +850,21 @@
       "by_tier": "Por nivel de fuente",
       "postmortem_findings": "Comprobaciones",
       "impact": "Impacto",
-      "investigation_cost": "Costo de investigarlo"
+      "investigation_cost": "Costo de investigarlo",
+      "guide": "Guía",
+      "window": "Ventana de precios",
+      "ratio_obs_over_pred": "Observado entre pronosticado",
+      "gap_before": "Mercado − modelo, antes",
+      "gap_after": "Mercado − modelo, corregido",
+      "simulated_bets": "Apuestas simuladas",
+      "signal_close": "Señal extra al cierre",
+      "signal_24h": "Señal extra a 24 h",
+      "depends_on": "Depende de",
+      "group": "Grupo",
+      "measure": "Medida",
+      "delta": "Diferencia",
+      "tests": "Comparaciones",
+      "expected_by_chance": "Esperadas por azar"
     },
     "costs": {
       "requests_one": "{n} llamada",
@@ -815,17 +885,6 @@
     }
   },
   "research": {
-    "tabs": {
-      "label": "Secciones de IA e investigación",
-      "today": "Hoy",
-      "research": "Investigaciones",
-      "postmortems": "Post-mortems",
-      "learning": "Aprendizaje",
-      "sources": "Fuentes",
-      "costs": "Costos",
-      "close": "Cierre diario",
-      "memory": "Memoria"
-    },
     "day": "Día",
     "today": {
       "title": "Partidos con mercado",
@@ -895,23 +954,16 @@
       "empty": "Aún no hay post-mortems de ese día.",
       "emptyFiltered": "Ningún post-mortem de ese día con estos filtros.",
       "odds": "Cuota",
-      "close": "Cierre",
+      "close": "Cierre (casa)",
+      "priceMove": "Cuota vs cierre",
       "clv": "CLV",
+      "priceNote": "Cuota vs cierre: la cuota tomada frente al cierre de la misma casa, con su margen; dice si ese precio se movió. CLV: la cuota tomada frente a la probabilidad justa del cierre, sin margen; es la misma medida de Inteligencia y suele quedar unos puntos por debajo.",
       "model": "PrediGol",
       "market": "Mercado",
       "questions": "Las diez preguntas",
       "narrative": "Narrativa",
       "decision": "Decisión de la IA",
       "noDecision": "Sin revisión"
-    },
-    "learning": {
-      "notes": "Qué aprendió PrediGol",
-      "notesSubtitle": "Notas de los resultados de ese día, con su evidencia. Una observación no es una regla.",
-      "empty": "Aún no hay notas de aprendizaje de ese día.",
-      "proposals": "Mejoras propuestas",
-      "proposalsSubtitle": "Esperan tu decisión en Evolución; aquí solo se leen.",
-      "noProposals": "Ninguna propuesta espera decisión.",
-      "decide": "Decidir en Evolución"
     },
     "sources": {
       "title": "Fuentes",
@@ -931,23 +983,14 @@
       "empty": "Aún no hay estadísticas de fuentes en ese periodo."
     },
     "costs": {
-      "today": "Hoy",
-      "month": "Este mes",
-      "requests": "Llamadas",
-      "searches": "Búsquedas",
-      "total": "Costo",
-      "failed": "Fallidas",
-      "byLevel": "Por nivel",
       "byModel": "Por modelo",
-      "units": "Costos unitarios",
       "noModel": "Sin llamadas a modelos en este periodo.",
-      "projection": "Proyección del mes",
       "projectionValue": "{value} · {share} del presupuesto",
       "runRate": "Ritmo de los últimos 7 días",
+      "pace": "Ritmo de gasto",
       "perDay": "{value}/día",
       "lastDays": "Últimos días",
-      "budget": "Presupuesto mensual",
-      "spentMonth": "Gastado este mes"
+      "noDays": "Sin gasto registrado en los últimos días."
     }
   },
   "dailyReview": {
@@ -1070,5 +1113,627 @@
     "settled": "{won} ganadas · {lost} perdidas · {pnl}",
     "events_one": "{count} evento de memoria",
     "events_other": "{count} eventos de memoria"
+  },
+  "agents": {
+    "intro": "Los agentes de la IA: qué existe, qué motor lee cada familia de mercados, qué escribió el job de estados y cómo va la cola. Solo lectura: nada aquí llama a un modelo, crea una tarea ni cambia un pick.",
+    "attention": {
+      "title": "Qué mirar",
+      "none": "Nada que atender: el registro coincide con el código, la auditoría no halló fugas y el job de estados no falló.",
+      "audit_violations": "Violaciones de la auditoría de fugas: {n}. Un estado supo más de lo que su momento permitía.",
+      "drift": "Agentes cuyo código no es el registrado: {n}",
+      "registry_problems": "Hallazgos del registro frente al código: {n}",
+      "slices_over_cap": "Slices que no caben en su tope en algún estado: {n}",
+      "job_failed": "El último ciclo del job de estados falló",
+      "job_partial": "El último ciclo del job de estados terminó a medias",
+      "job_off": "El job de estados está apagado (FBI_AI_PACKAGE)"
+    },
+    "registry": {
+      "title": "Registro de agentes",
+      "subtitle": "Lo que el código tiene, lo que cada fase del plan construirá y lo que está pospuesto, con la huella del código que corre frente a la que guarda el registro.",
+      "counts": {
+        "built": "Construidos",
+        "planned": "Planeados",
+        "postponed": "Pospuestos",
+        "drift": "Fuera de sincronía"
+      },
+      "noProblems": "El registro coincide con el código: sin hallazgos.",
+      "problemsTitle": "El registro y el código no coinciden",
+      "col": {
+        "agent": "Agente",
+        "status": "Estado",
+        "version": "Versión y código",
+        "contract": "Contrato y tareas",
+        "plan": "Plan"
+      },
+      "status": {
+        "built": "Construido",
+        "planned": "Planeado",
+        "postponed": "Pospuesto"
+      },
+      "sync": {
+        "in_sync": "Coincide",
+        "drift": "No coincide",
+        "none": "Sin comparar"
+      },
+      "baseline": "Línea base: ya funcionaba antes del registro",
+      "retires": "Se retira en la fase {n}",
+      "next": "Después: {version} (fase {n})",
+      "phase": "Se construye en la fase {n}",
+      "replaces": "Reemplaza a {what}"
+    },
+    "engines": {
+      "title": "Motor de cada familia",
+      "subtitle": "Decide la fila más reciente de promociones de la familia. Sin fila (o si la última la retiró), la familia lee el modelo de lenguaje de hoy; solo la firma del propietario cambia eso.",
+      "col": {
+        "family": "Familia",
+        "engine": "Motor",
+        "promotion": "Promoción vigente",
+        "since": "Desde"
+      },
+      "engineName": {
+        "llm": "Modelo de lenguaje",
+        "agent": "Agente"
+      },
+      "notUnderstood": "Nombre que este código no lee: se muestra tal cual"
+    },
+    "decisions": {
+      "title": "Últimas decisiones sobre agentes",
+      "empty": "Ningún agente ha sido promovido ni retirado: todas las familias leen el modelo de lenguaje.",
+      "col": {
+        "when": "Cuándo",
+        "family": "Familia",
+        "promotion": "Promoción",
+        "change": "Cambio",
+        "by": "Firmó",
+        "gate": "Puerta",
+        "reason": "Razón"
+      },
+      "by": {
+        "owner": "Propietario",
+        "system": "Sistema (reversión)"
+      }
+    },
+    "package": {
+      "title": "Estados de partido",
+      "subtitle": "Lo que escribió el job de estados en los últimos {days} días: un estado por pase y partido, armado sin llamar a ningún modelo.",
+      "stat": {
+        "states": "Estados escritos",
+        "matches": "Partidos",
+        "blocked": "Con algo que bloquea a un agente",
+        "blockedHint": "Una clase de competición o una validación en cuarentena",
+        "flagged": "Con texto de proveedor marcado",
+        "flaggedHint": "Texto que parecía una instrucción",
+        "build": "Tiempo de armado",
+        "cycles": "Ciclos del job",
+        "job": "Job de estados"
+      },
+      "cyclesText": "{ok} correctos · {partial} parciales · {failed} fallidos · {running} en curso",
+      "job": {
+        "on": "Encendido",
+        "off": "Apagado",
+        "mode": "Modo de la IA: {mode}"
+      },
+      "last": "Último ciclo del job",
+      "lastStarted": "Empezó",
+      "lastError": "Error",
+      "never": "El job todavía no ha corrido en esta ventana.",
+      "count": {
+        "pending": "Pases por armar",
+        "built": "Armados",
+        "existing": "Ya existían",
+        "refused": "Rechazados",
+        "failed": "Fallidos",
+        "deferred": "Aplazados",
+        "build_ms": "Tiempo de armado (ms)",
+        "tokens_max": "Slice mayor (tokens)"
+      },
+      "byPass": "Estados por pase",
+      "pass": {
+        "first": "Primer pase",
+        "pre": "Pase previo",
+        "final": "Pase final",
+        "request": "A petición"
+      },
+      "slices": {
+        "title": "Tamaño de cada slice (tokens reales)",
+        "hint": "Un slice que no cabe en su tope es uno que un agente rechazaría. Uno recortado perdió contenido para caber: si es lo habitual, el tope está mordiendo.",
+        "empty": "Todavía no hay estados en la ventana: el job no ha escrito ninguno.",
+        "col": {
+          "slice": "Slice",
+          "states": "Estados",
+          "max": "Máx.",
+          "cap": "Tope",
+          "share": "p95 / tope",
+          "trimmed": "Recortados",
+          "over": "Sin caber",
+          "level": "Veredicto"
+        },
+        "level": {
+          "ok": "Holgado",
+          "near": "Cerca del tope",
+          "cut": "Recortado",
+          "over": "No cabe"
+        }
+      },
+      "perDay": {
+        "title": "Estados por día de Bogotá",
+        "empty": "Sin estados en la ventana.",
+        "col": {
+          "day": "Día",
+          "states": "Estados",
+          "matches": "Partidos",
+          "blocked": "Bloqueados",
+          "flagged": "Marcados"
+        }
+      },
+      "rule": {
+        "title": "Reglas del job",
+        "stateVersion": "Versión del estado",
+        "packageVersion": "Versión del paquete",
+        "window": "Ventana de pases",
+        "windowDays": "{n} días",
+        "limit": "Máximo por ciclo",
+        "maxSeconds": "Tiempo máximo por ciclo",
+        "seconds": "{n} s"
+      }
+    },
+    "queue": {
+      "title": "Cola del Orquestador",
+      "subtitle": "Vacía hasta la fase 3: nada crea tareas todavía. Cuando las haya, se verán aquí por estado, con lo que reservan del presupuesto.",
+      "stat": {
+        "open": "Tareas abiertas",
+        "reserved": "Reservado del presupuesto"
+      },
+      "tasks": "Tareas creadas en los últimos {days} días, por estado",
+      "runs": "Intentos de los últimos {days} días, por resultado",
+      "state": {
+        "planned": "Planeadas",
+        "queued": "En cola",
+        "running": "En curso",
+        "done": "Hechas",
+        "failed": "Fallidas",
+        "skipped": "Omitidas",
+        "expired": "Vencidas"
+      },
+      "status": {
+        "ok": "Correctos",
+        "invalid": "Inválidos",
+        "timeout": "Tiempo agotado",
+        "abstain": "Abstenciones",
+        "skipped": "Omitidos",
+        "expired": "Vencidos",
+        "budget_skip": "Sin presupuesto"
+      }
+    },
+    "audit": {
+      "title": "Auditoría de fugas de los agentes",
+      "subtitle": "Cada noche se vuelve a derivar lo que cada estado sabía y se compara con lo que su momento permitía saber. Una regla que la auditoría aún no corre no tiene días: no es un registro limpio.",
+      "empty": "La auditoría todavía no tiene ninguna regla de agentes.",
+      "col": {
+        "rule": "Regla",
+        "verdict": "Veredicto",
+        "days": "Días auditados",
+        "checked": "Revisados",
+        "violations": "Violaciones",
+        "last": "Último día"
+      },
+      "verdict": {
+        "never": "Sin auditar",
+        "clean": "Limpia",
+        "violations": "Con violaciones"
+      },
+      "rule": {
+        "slice_known": "Cada slice sabía solo lo de su momento",
+        "agent_known": "Cada agente sabía solo lo de su momento",
+        "review_known": "Cada revisión sabía solo lo de su momento",
+        "shadow_review_known": "Cada revisión en shadow sabía solo lo de su momento",
+        "memory_known": "Cada nota de memoria sabía solo lo de su momento"
+      },
+      "examples": "Días con violaciones"
+    },
+    "match": {
+      "title": "Estado del partido para los agentes",
+      "subtitle": "Lo que el job de estados escribió de este partido, sin ningún modelo: las medidas de cada slice, nunca su contenido.",
+      "empty": "Este partido todavía no tiene estado vivo: el job lo escribe cuando hay un pase hecho dentro de su ventana.",
+      "current": "Estado vivo",
+      "none": "ninguno",
+      "field": {
+        "pass": "Pase",
+        "knownAt": "Conocido hasta",
+        "written": "Escrito",
+        "version": "Versión del estado y del paquete",
+        "hash": "Huella del paquete",
+        "code": "Código del modelo",
+        "packet": "Paquete de datos",
+        "elapsed": "Tiempo de armado",
+        "blocking": "Bloquea a los agentes",
+        "flags": "Texto de proveedor marcado",
+        "agents": "Agentes previstos",
+        "contradictions": "Contradicciones",
+        "candidates": "Candidatos",
+        "risks": "Riesgos",
+        "final": "Veredicto del Consejo"
+      },
+      "final": {
+        "yes": "Escrito en el estado",
+        "no": "Aún no"
+      },
+      "slice": {
+        "col": {
+          "slice": "Slice",
+          "tokens": "Tokens",
+          "cap": "Tope",
+          "fits": "Cabe",
+          "trimmed": "Recortado",
+          "blocks": "Bloques"
+        }
+      },
+      "fits": {
+        "yes": "Cabe",
+        "no": "No cabe"
+      },
+      "history": {
+        "title": "Estados por los que pasó el partido",
+        "current": "vivo",
+        "over": "{name} no cabe",
+        "col": {
+          "pass": "Pase",
+          "known": "Conocido hasta",
+          "written": "Escrito",
+          "hash": "Huella",
+          "tokens": "Tokens",
+          "problems": "Problemas"
+        }
+      },
+      "tasks": {
+        "title": "Tareas de los agentes en este partido",
+        "empty": "Ningún agente ha trabajado en este partido: el Orquestador llega en la fase 3.",
+        "col": {
+          "agent": "Agente",
+          "task": "Tarea",
+          "pass": "Pase",
+          "state": "Estado",
+          "priority": "Prioridad",
+          "cost": "Costo estimado",
+          "attempts": "Intentos",
+          "reason": "Razón"
+        }
+      },
+      "runs": {
+        "title": "Intentos de los agentes en este partido",
+        "empty": "Sin intentos: ningún agente ha llamado a un modelo sobre este partido.",
+        "col": {
+          "agent": "Agente",
+          "task": "Tarea",
+          "status": "Resultado",
+          "model": "Modelo",
+          "verdict": "Veredicto",
+          "started": "Empezó",
+          "cost": "Costo",
+          "reason": "Razón"
+        }
+      },
+      "state": {
+        "planned": "Planeada",
+        "queued": "En cola",
+        "running": "En curso",
+        "done": "Hecha",
+        "failed": "Fallida",
+        "skipped": "Omitida",
+        "expired": "Vencida"
+      },
+      "status": {
+        "ok": "Correcto",
+        "invalid": "Inválido",
+        "timeout": "Tiempo agotado",
+        "abstain": "Abstención",
+        "skipped": "Omitido",
+        "expired": "Vencido",
+        "budget_skip": "Sin presupuesto"
+      }
+    }
+  },
+  "topics": {
+    "intro": "Cómo investiga la IA por entidad y tema (plan IA, fase 2): la respuesta que la caché guarda para cada equipo o partido en cada tema, lo fresca que está, las veces que se reutilizó en vez de buscar otra vez y la clase de fuente de cada afirmación. Junto a eso, la comparación con la investigación v1 y la puerta que decide si v2 puede sustituirla. Solo lectura: nada aquí busca, llama a un modelo, escribe una afirmación ni cambia el interruptor.",
+    "attention": {
+      "title": "Qué mirar",
+      "none": "Nada que atender: ninguna parte de la página falló, la investigación v2 no falló ni se cortó y no hay páginas marcadas.",
+      "part_unavailable": "Partes de esta página que no se pudieron calcular: {n}",
+      "v2_failed": "Pases en los que la investigación v2 falló: {n}",
+      "v2_cut": "Pases en los que la investigación v2 se cortó (presupuesto o caída de la búsqueda): {n}",
+      "not_running": "El interruptor no está apagado, pero ningún pase de la ventana ejecutó la investigación v2",
+      "held_as_shadow": "Se pidió «on», pero la puerta no ha pasado: v2 sigue corriendo en shadow, junto a v1",
+      "claims_flagged": "Afirmaciones leídas de páginas que sonaban a una orden para un modelo: {n}",
+      "pages_flagged": "Páginas marcadas porque parecían una instrucción: {n}",
+      "unreadable": "Filas de la caché de entidades que este código no sabe leer: {n}"
+    },
+    "switch": {
+      "title": "Interruptor de la investigación v2",
+      "subtitle": "Lo que pidió el propietario (FBI_AI_RESEARCH_V2) y lo que hace el ciclo con ello. «on» solo rige si la última evaluación de la puerta pasó; mientras no, v2 corre en shadow junto a v1 y solo v1 decide.",
+      "asked": "Pedido",
+      "mode": "En vigor",
+      "typed": "Afirmaciones tipificadas",
+      "typedVisible": "Las lee el sistema",
+      "typedHidden": "Ocultas: solo se miden",
+      "gate": "Puerta de v2",
+      "gateState": {
+        "never": "Nunca se registró",
+        "passed": "Pasó el {date}",
+        "failed": "No pasó el {date}"
+      },
+      "state": {
+        "off": "Apagada: v1 investiga sola",
+        "shadow": "Shadow: v2 corre junto a v1 y nadie lee lo suyo",
+        "on": "En vigor: v2 sustituye a v1",
+        "held": "Pedida «on» y retenida como shadow: la puerta no ha pasado"
+      },
+      "history": {
+        "title": "Veredictos registrados de la puerta",
+        "hint": "Cada evaluación registrada de la puerta «research_v2». Solo se añaden filas: decide la más reciente.",
+        "empty": "La puerta nunca se registró. Se evalúa y se registra con python -m scripts.ia_research_gate evaluate --record, y solo con un veredicto PASA o NO PASA.",
+        "passed": "Pasó",
+        "failed": "No pasó",
+        "col": {
+          "when": "Cuándo",
+          "verdict": "Veredicto",
+          "by": "Registró",
+          "version": "Versión del código",
+          "hash": "Huella de la evidencia"
+        }
+      }
+    },
+    "gate": {
+      "title": "Puerta de la investigación v2",
+      "subtitle": "Lo que decide si v2 puede sustituir a v1: siete días completos de Bogotá con v2 en shadow en todos los pases y siete comprobaciones. Evaluarla no escribe nada y nunca sustituye a la evidencia real.",
+      "none": "Esta página no tiene una evaluación de la puerta que mostrar.",
+      "evaluatedAt": "Evaluada el {at}",
+      "verdict": {
+        "pass": "PASA",
+        "fail": "NO PASA",
+        "pending": "PENDIENTE POR TIEMPO REAL"
+      },
+      "window": {
+        "days": "Días completos con v2 en shadow",
+        "daysOf": "{n} de {total}",
+        "range": "Ventana evaluada",
+        "since": "Primer día de la racha",
+        "eligible": "Primer día evaluable",
+        "anchoredBy": "Lo que fija el inicio"
+      },
+      "pendingTitle": "Lo que falta",
+      "col": {
+        "check": "Comprobación",
+        "result": "Resultado",
+        "detail": "Detalle",
+        "revert": "Si falla, se revierte"
+      },
+      "check": {
+        "window": "Siete días completos con v2 en shadow",
+        "fewer_searches": "Menos búsquedas que v1",
+        "coverage": "Cobertura de las evidencias de v1 (≥ 95 %)",
+        "coverage_players": "Cobertura de quién puede jugar (≥ 95 %)",
+        "shadow_invisible": "En shadow nada cita a v2",
+        "evidence_known": "Auditoría nocturna «evidence_known» sin violaciones",
+        "sample": "Muestra suficiente de partidos y hechos"
+      },
+      "mark": {
+        "yes": "Sí",
+        "no": "No",
+        "pending": "Pendiente"
+      },
+      "consequenceTitle": "Consecuencia",
+      "preview": {
+        "title": "Lo que muestran los días transcurridos",
+        "hint": "No es evidencia de la puerta: solo las cifras de los días completos que lleva con v2 en shadow.",
+        "figure": {
+          "passes_compared": "Pases comparados",
+          "searches_v1": "Búsquedas de v1",
+          "searches_v2_alone": "Búsquedas de v2 por sí sola",
+          "saved_pct": "Búsquedas ahorradas",
+          "reuse_pct": "Reutilización",
+          "fixtures": "Partidos con hechos de v1",
+          "facts_v1": "Hechos de v1",
+          "facts_v2": "Hechos de v2",
+          "coverage_pct": "Cobertura de v1",
+          "coverage_players_pct": "Cobertura de quién puede jugar"
+        }
+      },
+      "recordNote": "Esta página solo lee. La puerta se evalúa y se registra desde el servidor con python -m scripts.ia_research_gate evaluate --record, y solo queda registrado un veredicto PASA o NO PASA; las cifras que preceden a un PENDIENTE no cuentan."
+    },
+    "comparison": {
+      "title": "Investigación v1 frente a v2",
+      "subtitle": "La misma aritmética de la puerta sobre la ventana de esta página, pase a pase: v1 decide y v2 corre detrás sin que nadie lea lo suyo. Una lectura de los días transcurridos, no una evidencia.",
+      "range": "Del {first} al {last}.",
+      "none": "Ningún pase de la ventana ejecutó la investigación v2 junto a v1: todavía no hay nada que comparar.",
+      "stat": {
+        "passes": "Pases comparados",
+        "passesHint": "{n} en shadow · {failed} con fallo de v2 · {cut} cortados",
+        "searchesV1": "Búsquedas de v1",
+        "searchesV2": "Búsquedas de v2 por sí sola",
+        "searchesV2Hint": "Las pagadas más las que respondió la caché de búsquedas: lo que habría pagado sin v1 al lado",
+        "saved": "Búsquedas ahorradas",
+        "reuse": "Reutilización",
+        "reuseHint": "Respuestas aún frescas sobre todo lo que v2 necesitó",
+        "coverage": "Cobertura de v1",
+        "coverageHint": "{found} de {facts} hechos de v1 los encontró también v2",
+        "players": "Cobertura de quién puede jugar",
+        "playersHint": "Solo los hechos sobre jugadores y entrenadores",
+        "perMatch": "Hechos por partido (v1 · v2)",
+        "perMatchHint": "Sobre {n} partidos con hechos de v1",
+        "exaV1": "Gasto en Exa de v1",
+        "exaV2": "Gasto en Exa de v2",
+        "exaSearches": "{n} búsquedas",
+        "extractor": "Llamadas del extractor",
+        "invalid": "Salidas inválidas del extractor",
+        "invalidHint": "Respuestas del modelo que no cumplían el contrato claim-v1"
+      },
+      "missed": {
+        "title": "Hechos de v1 que v2 no encontró",
+        "hint": "Partido · lado · quién · clase de fuente. Son ejemplos, no la lista completa.",
+        "none": "v2 encontró todos los hechos de v1 de la ventana, o v1 no halló ninguno."
+      }
+    },
+    "freshness": {
+      "title": "Frescura por tema",
+      "subtitle": "La caché guarda una sola respuesta por entidad y tema, compartida por todos los partidos y agentes que la necesiten. Cuánto tiempo vale depende de lo cerca que esté el saque.",
+      "topic": {
+        "availability": "Disponibilidad",
+        "confirmation": "Confirmación",
+        "preview": "Previa"
+      },
+      "col": {
+        "topic": "Tema",
+        "entity": "Sobre",
+        "levels": "Niveles",
+        "rule": "Vigencia (lejos / cerca)",
+        "entries": "Guardadas",
+        "fresh": "Frescas",
+        "expired": "Caducadas",
+        "reuses": "Reutilizadas",
+        "newest": "La más reciente",
+        "lastReuse": "Última reutilización"
+      },
+      "window": "«Cerca» son las últimas {n} h antes del saque más próximo de la entidad; «lejos», todo lo anterior. Cuanto más cerca del saque, antes caduca una respuesta.",
+      "empty": "La caché todavía no guarda ninguna respuesta por entidad: v2 aún no ha buscado nada.",
+      "unreadable": "Filas de la caché de entidades con una clave que este código no lee: {n}. Se cuentan, no se interpretan."
+    },
+    "entity": {
+      "TEAM": "Equipo",
+      "PLAYER": "Jugador",
+      "COACH": "Entrenador",
+      "REFEREE": "Árbitro",
+      "MATCH": "Partido",
+      "COMPETITION": "Competición"
+    },
+    "answers": {
+      "title": "Respuestas guardadas",
+      "subtitle": "Las más recientes de la caché, con las afirmaciones que dejaron en los últimos {days} días.",
+      "empty": "La caché todavía no guarda respuestas por entidad.",
+      "col": {
+        "entity": "Entidad",
+        "topic": "Tema",
+        "level": "Nivel",
+        "results": "Resultados",
+        "standing": "Fuente reconocida",
+        "tiers": "Resultados por nivel de fuente",
+        "fetched": "Buscada",
+        "state": "Estado",
+        "reuses": "Reutilizada",
+        "claims": "Afirmaciones"
+      },
+      "standing": {
+        "yes": "Sí",
+        "no": "No"
+      },
+      "tier": {
+        "official": "Oficial",
+        "competition": "Competición",
+        "club": "Club",
+        "provider": "Proveedor",
+        "journalist": "Periodista",
+        "media": "Medio",
+        "aggregator": "Agregador",
+        "social": "Red social",
+        "unknown": "Desconocida"
+      },
+      "fresh": {
+        "yes": "Fresca",
+        "no": "Caducada"
+      },
+      "until": "hasta el {at}",
+      "claimsFresh": "({n} vigentes)"
+    },
+    "claims": {
+      "title": "Afirmaciones por clase de fuente y estado",
+      "subtitle": "Lo que v2 dejó escrito en la ventana como afirmaciones tipificadas: quién lo dijo (la clase de fuente), de qué trata (el tipo) y en qué estado terminó.",
+      "empty": "v2 no escribió ninguna afirmación tipificada en la ventana.",
+      "stat": {
+        "total": "Afirmaciones",
+        "fresh": "Vigentes",
+        "entity": "Sobre una entidad",
+        "entityHint": "Un equipo o un jugador sin partido: el próximo partido del equipo también las lee",
+        "match": "Sobre un partido",
+        "flagged": "De páginas marcadas",
+        "flaggedHint": "Leídas de una página que sonaba a una orden para un modelo: cuentan como fuente desconocida"
+      },
+      "status": {
+        "CONFIRMED": "Confirmadas",
+        "PROBABLE": "Probables",
+        "RUMOR": "Rumores",
+        "CONTRADICTORY": "Contradictorias",
+        "OUTDATED": "Desactualizadas"
+      },
+      "byClass": "Por clase de fuente",
+      "byClassHint": "De la que cierra un hecho (oficial, proveedor) a la que no cierra ninguno (red social, desconocida).",
+      "byType": "Por tipo de afirmación",
+      "class": {
+        "OFFICIAL": "Oficial",
+        "PROVIDER": "Proveedor de datos",
+        "JOURNALIST": "Periodista",
+        "RELIABLE_MEDIA": "Medio fiable",
+        "LOCAL_MEDIA": "Medio local",
+        "AGGREGATOR": "Agregador",
+        "SOCIAL": "Red social",
+        "UNKNOWN": "Desconocida"
+      },
+      "type": {
+        "OUT": "Baja",
+        "DOUBT": "Duda",
+        "AVAILABLE": "Disponible",
+        "STARTER": "Titular",
+        "SUSPENSION": "Sanción",
+        "COACH": "Entrenador",
+        "SCHEDULE": "Horario",
+        "VENUE": "Sede",
+        "OTHER": "Otra"
+      },
+      "col": {
+        "class": "Clase de fuente",
+        "type": "Tipo",
+        "total": "Total",
+        "fresh": "Vigentes"
+      },
+      "silent": "Clases de fuente sin ninguna afirmación en la ventana: {list}"
+    },
+    "days": {
+      "title": "Día a día del ciclo",
+      "subtitle": "Por día de Bogotá, lo que hizo cada pase del ciclo: cuántos corrieron v2, cuántas búsquedas hicieron falta, cuántas se pagaron, cuántas respondió la caché de búsquedas y cuántas se evitaron con una respuesta fresca.",
+      "hint": "Búsquedas: las de v1. Necesarias: las que v2 necesitó porque la respuesta de la entidad no estaba fresca. Pagadas: las que v2 pagó. Compartidas: las que la caché de búsquedas ya tenía pagadas por v1 o por un pase anterior (v2 las habría pagado sola). Reutilizadas: respuestas de entidad aún frescas, es decir, búsquedas que no hizo falta pedir. Reutilización = reutilizadas / (reutilizadas + necesarias).",
+      "total": "Total",
+      "known": "({n} conocidas)",
+      "new": "({n} nuevas)",
+      "col": {
+        "day": "Día",
+        "passes": "Pases",
+        "v2": "Con v2",
+        "failed": "Fallidos",
+        "cut": "Cortados",
+        "searches": "Búsquedas de v1",
+        "demand": "Necesarias",
+        "paid": "Pagadas",
+        "shared": "Compartidas",
+        "reused": "Reutilizadas",
+        "reuse": "Reutilización",
+        "pages": "Páginas",
+        "claims": "Afirmaciones",
+        "exaV1": "Exa v1",
+        "exaV2": "Exa v2"
+      }
+    },
+    "pages": {
+      "title": "Páginas leídas",
+      "subtitle": "v2 recuerda cada página que leyó: si ya la leyó para los mismos sujetos, no se la vuelve a mostrar al extractor.",
+      "stat": {
+        "remembered": "Páginas recordadas",
+        "fresh": "Aún vigentes",
+        "reuses": "Reutilizaciones",
+        "read": "Leídas en la ventana",
+        "known": "Ya conocidas",
+        "unread": "Sin leer",
+        "unreadHint": "Más allá de las seis páginas más fiables de cada pase",
+        "flagged": "Marcadas",
+        "flaggedHint": "Parecían una instrucción para un modelo: su texto se trata como no fiable"
+      }
+    }
   }
 }

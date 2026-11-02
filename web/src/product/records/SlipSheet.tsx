@@ -19,6 +19,7 @@ import {
   Target,
   Trash2,
   TrendingUp,
+  Undo2,
   X,
   XCircle,
   Zap,
@@ -566,6 +567,41 @@ function EmptySlip({ onLeave }: { onLeave: () => void }) {
   );
 }
 
+/**
+ * The legs just taken out, offered back while the slip is open (plan UX, A1, defect F53): five seconds, then the
+ * offer goes. The region is always there so a screen reader hears the offer when it appears.
+ */
+function UndoBar() {
+  const slip = useSlip();
+  return (
+    <div role="status" aria-live="polite" data-testid="slip-undo-region">
+      {slip.undo ? (
+        <div
+          className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border-strong bg-elevated px-3 py-1.5 text-sm"
+          data-testid="slip-undo"
+        >
+          <span className="min-w-0">
+            {t(
+              slip.undo.effect === "cleared"
+                ? "records.slip.undoCleared"
+                : "records.slip.undoRemoved",
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={slip.restore}
+            data-testid="slip-undo-button"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 font-semibold text-primary transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:h-11"
+          >
+            <Undo2 aria-hidden className="h-4 w-4" />
+            {t("records.slip.undo")}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 const SECONDARY =
   "inline-flex h-10 min-w-0 items-center pointer-coarse:h-11 justify-center gap-1.5 rounded-full border border-border-strong px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
@@ -674,6 +710,7 @@ export function SlipSheet() {
         </SheetHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-5">
+          <UndoBar />
           {empty ? (
             <EmptySlip onLeave={leave} />
           ) : (

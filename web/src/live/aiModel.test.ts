@@ -21,6 +21,7 @@ import {
   dayLabel,
   decisionsFor,
   edgePoints,
+  envelopesOf,
   evidenceSummary,
   gateTone,
   groupOf,
@@ -40,6 +41,7 @@ import {
   sampleCounts,
   selectionText,
   settledLabel,
+  shareTone,
   teamsOf,
   thresholdText,
   usd,
@@ -182,6 +184,7 @@ describe("V2: the month bar and its alerts", () => {
 
   test("tones: budget state, projection against the budget, the shadow gate", () => {
     expect(budgetTone("NORMAL")).toBe("positive");
+    expect(budgetTone("AJUSTE")).toBe("warning");
     expect(budgetTone("REDUCED")).toBe("warning");
     expect(budgetTone("CHEAP_ONLY")).toBe("warning");
     expect(budgetTone("EXHAUSTED")).toBe("negative");
@@ -354,6 +357,24 @@ describe("V2: selections, edges and small formats", () => {
     expect(plain(selectionText("OU", "Over", "2.5"))).toBe("Goles · Más de 2,5 goles");
   });
 
+  test("a bet of a family is named by its parts and keeps its line, in both languages", () => {
+    setLocale("es");
+    expect(selectionText("CORNERS_OU", "Over", "9.5", "Millonarios - Santa Fe")).toBe(
+      "Córners · más/menos · Más de 9,5",
+    );
+    expect(selectionText("CARDS_DC", "1X", 0, "Millonarios - Santa Fe")).toBe(
+      "Tarjetas · doble oportunidad · Millonarios o empate",
+    );
+    expect(selectionText("HTFT", "Draw/Away", null)).toBe("Descanso/final · Empate / Visitante");
+    setLocale("en");
+    expect(selectionText("OU_2H", "Under", 1.5)).toBe("Goals · over/under · 2nd half · Under 1.5");
+    expect(selectionText("YELLOW_OU_HOME", "Over", 1.5, "Millonarios - Santa Fe")).toBe(
+      "Home yellow cards · over/under · Over 1.5",
+    );
+    // the markets of the pipeline keep reading as they did
+    expect(selectionText("OU", "Over", "2.5")).toBe("Goals · Over 2.5 goals");
+  });
+
   test("ages and days", () => {
     expect(minutesText(45)).toBe("45 min");
     expect(minutesText(900)).toBe("15 h");
@@ -427,6 +448,113 @@ describe("V2: evidence, compact", () => {
     expect(evidenceSummary(null)).toEqual([]);
   });
 
+  test("the evidence of the hypotheses the repository proposes reads in the page's words, each figure as its guide writes it", () => {
+    // As `fbi.research.hypotheses` writes them (the decimals are text, so a ratio of 1,045 is not shown as 1,05).
+    const apart = ["n_matches", "impact", "investigation_cost"];
+    const shared = {
+      n_matches: 1268,
+      impact: "Totales de córners",
+      investigation_cost: "Ninguna petición al proveedor ni IA",
+      guide: "FAMILIAS_VS_MERCADO_F11.md §7",
+      window: "precios del 25 de septiembre al 24 de octubre de 2026",
+    };
+    const level = {
+      ...shared,
+      ratio_obs_over_pred: "1,045",
+      gap_before: "−0,0040 ± 0,0032",
+      gap_after: "−0,0006 ± 0,0030",
+      simulated_bets: 672,
+    };
+    const blend = {
+      ...shared,
+      signal_close: "+0,35 ± 0,27",
+      signal_24h: "+0,15 ± 0,34",
+      depends_on: "Córners: corregir el nivel con lo observado en las 4 semanas anteriores",
+    };
+    setLocale("es");
+    expect(evidenceSummary(level, { omit: apart, max: 6 })).toEqual([
+      { key: "guide", label: "Guía", value: "FAMILIAS_VS_MERCADO_F11.md §7" },
+      {
+        key: "window",
+        label: "Ventana de precios",
+        value: "precios del 25 de septiembre al 24 de octubre de 2026",
+      },
+      { key: "ratio_obs_over_pred", label: "Observado entre pronosticado", value: "1,045" },
+      { key: "gap_before", label: "Mercado − modelo, antes", value: "−0,0040 ± 0,0032" },
+      { key: "gap_after", label: "Mercado − modelo, corregido", value: "−0,0006 ± 0,0030" },
+      { key: "simulated_bets", label: "Apuestas simuladas", value: "672" },
+    ]);
+    expect(evidenceSummary(blend, { omit: apart, max: 6 }).map((i) => [i.label, i.value])).toEqual([
+      ["Guía", "FAMILIAS_VS_MERCADO_F11.md §7"],
+      ["Ventana de precios", "precios del 25 de septiembre al 24 de octubre de 2026"],
+      ["Señal extra al cierre", "+0,35 ± 0,27"],
+      ["Señal extra a 24 h", "+0,15 ± 0,34"],
+      ["Depende de", "Córners: corregir el nivel con lo observado en las 4 semanas anteriores"],
+    ]);
+    setLocale("en");
+    const english = evidenceSummary(level, { omit: apart, max: 6 }).map((i) => i.label);
+    expect(english).toEqual([
+      "Guide",
+      "Price window",
+      "Observed over predicted",
+      "Market − model, before",
+      "Market − model, corrected",
+      "Simulated bets",
+    ]);
+    // none falls back to its raw key
+    for (const item of [
+      ...evidenceSummary(level, { omit: apart }),
+      ...evidenceSummary(blend, { omit: apart }),
+    ]) {
+      expect(item.label).not.toBe(item.key.replace(/_/g, " "));
+    }
+    setLocale("es");
+  });
+
+  test("the evidence of a pattern the weekly search proposes: the six values the card has room for, in the page's words", () => {
+    // As `fbi.research.pattern_search` writes them, in the order the database hands a JSON object back (the shortest key first).
+    const apart = ["n_matches", "impact", "investigation_cost"];
+    const evidence = {
+      z: -3.64,
+      delta: -0.0431,
+      group: "Competición: Championship",
+      tests: 180,
+      measure: "calibración",
+      expected_by_chance: 0.6,
+      n_matches: 24,
+      impact: "-0.031 frente a +0.012 en el resto en 24 partidos",
+      investigation_cost:
+        "US$0 en IA: la comparación se repite en local y luego unos 30 días de shadow",
+      pattern_version: "search-v1",
+    };
+    setLocale("es");
+    expect(
+      evidenceSummary(evidence, { omit: apart, max: 6 }).map((i) => [i.label, i.value]),
+    ).toEqual([
+      ["z", "-3,64"],
+      ["Diferencia", "-0,043"],
+      ["Grupo", "Competición: Championship"],
+      ["Comparaciones", "180"],
+      ["Medida", "calibración"],
+      ["Esperadas por azar", "0,6"],
+    ]);
+    setLocale("en");
+    expect(evidenceSummary(evidence, { omit: apart, max: 6 }).map((i) => i.label)).toEqual([
+      "z",
+      "Difference",
+      "Group",
+      "Comparisons",
+      "Measure",
+      "Expected by chance",
+    ]);
+    // none falls back to its raw key (the version is not shown at all)
+    for (const item of evidenceSummary(evidence, { omit: apart })) {
+      expect(item.key === "z" || item.label !== item.key.replace(/_/g, " ")).toBe(true);
+      expect(item.key).not.toBe("pattern_version");
+    }
+    setLocale("es");
+  });
+
   test("the comparison's sample as counts", () => {
     expect(sampleCounts({ selections: 120, days: "14", rejected: null, other: 3 })).toEqual({
       selections: 120,
@@ -434,5 +562,36 @@ describe("V2: evidence, compact", () => {
       rejected: null,
     });
     expect(sampleCounts(undefined)).toEqual({ selections: null, days: null, rejected: null });
+  });
+});
+
+describe("Phase 0: the three envelopes", () => {
+  test("a share of an envelope turns amber from 85 % and red past the whole envelope", () => {
+    expect(shareTone(0.4)).toBe("default");
+    expect(shareTone(0.85)).toBe("warning");
+    expect(shareTone(1)).toBe("warning");
+    expect(shareTone(1.01)).toBe("negative");
+    expect(shareTone(null)).toBe("default");
+    expect(shareTone(undefined)).toBe("default");
+    expect(shareTone(Number.NaN)).toBe("default");
+  });
+
+  test("the envelopes are only there when the server sent them: an older server, or a panel that failed, sends none", () => {
+    expect(envelopesOf({})).toBeNull();
+    expect(envelopesOf({ envelopes: {} })).toBeNull();
+    const sent = { month: "2032-08-01", production: { spent_usd: "72.0000" } } as unknown;
+    const e = envelopesOf({ envelopes: sent as never });
+    expect(e?.month).toBe("2032-08-01");
+  });
+
+  test("every state of the budget has its label and its help in both languages (AJUSTE is the budget v3's)", () => {
+    for (const lang of ["es", "en"] as const) {
+      setLocale(lang);
+      for (const state of ["NORMAL", "AJUSTE", "REDUCED", "CHEAP_ONLY", "EXHAUSTED"]) {
+        expect(hasKey(`ai.layer.budget.${state}`)).toBe(true);
+        expect(hasKey(`ai.layer.budgetCard.stateHelp.${state}`)).toBe(true);
+      }
+    }
+    setLocale("es");
   });
 });

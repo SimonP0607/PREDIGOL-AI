@@ -16,6 +16,7 @@ import { dec, decPct, relative, utcDate, utcDateTime } from "./format";
 import { bookLabel, seasonLabel } from "./labels";
 import { FixtureLink, StatusGroupBadge } from "./shared";
 import { localFixed } from "@/lib/i18n/format";
+import { useUrlTab } from "@/lib/useUrlTab";
 
 /* ------------------------------------------------------------------------ */
 /* Odds explorer                                                            */
@@ -58,7 +59,7 @@ function priceKindLabel(kind: string): string {
 }
 
 export function OddsLive() {
-  const [page, setPage] = useState<PageTab>("Captured by us");
+  const [page, setPage] = useUrlTab(pageTabs, "Captured by us", "page");
   return (
     <div className="space-y-4">
       <PageHeader
@@ -155,7 +156,7 @@ function bestPrices(quotes: MarketQuote[]) {
 }
 
 function FixtureOddsPanel({ id }: { id: number }) {
-  const [tab, setTab] = useState<OddsTab>("Board");
+  const [tab, setTab] = useUrlTab(oddsTabs, "Board", "odds");
   const q = useLiveQuery(live.fixtureOdds(String(id)));
   const best = useMemo(
     () => (q.data?.data.board.status === "ok" ? bestPrices(q.data.data.board.data) : []),

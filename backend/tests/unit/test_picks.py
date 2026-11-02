@@ -215,7 +215,7 @@ def test_no_official_result_72_hours_after_kickoff_is_void() -> None:
     from datetime import UTC, datetime, timedelta
 
     from fbi.picks.settlement import NO_RESULT_BASIS, RULE_VERSION, VOID_AFTER
-    assert RULE_VERSION == "settle-v3" and timedelta(hours=72) == VOID_AFTER
+    assert RULE_VERSION == "settle-v4" and timedelta(hours=72) == VOID_AFTER
     ko = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
     for status in ("PST", "SUSP", "INT", "ABD", "AWD", "WO", "NS", "2H"):
         state = MatchState(status, None, None, kickoff_at=ko)

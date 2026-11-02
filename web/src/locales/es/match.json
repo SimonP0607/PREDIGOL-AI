@@ -60,13 +60,31 @@
       "result_missing": "Estamos verificando el resultado."
     }
   },
+  "tie": {
+    "firstLeg": "Ida",
+    "secondLeg": "Vuelta",
+    "replay": "Repetición",
+    "series": "Partido {n} de la serie",
+    "first": "Ida {score}",
+    "global": "Global {score}",
+    "advances": "Pasa {team}",
+    "by": {
+      "extraTime": "tras tiempo extra",
+      "penalties": "en penales",
+      "aggregate": "por el global",
+      "awayGoals": "por gol de visitante",
+      "tiebreak": "por desempate",
+      "walkover": "por decisión administrativa",
+      "series": "por la serie"
+    }
+  },
   "note": {
     "noData": "Sin datos todavía",
     "notAvailable": "No disponible para este partido"
   },
   "picks": {
     "title": "Picks para este partido",
-    "none": "No hay picks calificados para este partido.",
+    "none": "No hay picks de PrediGol para este partido.",
     "noneShadow": "No hay picks shadow para este partido.",
     "showAll": "Ver los {count} picks",
     "showLess": "Ver menos",
@@ -188,7 +206,9 @@
     "wins": "Victorias {team}",
     "draws": "Empates",
     "meetings_one": "{count} partido",
-    "meetings_other": "{count} partidos"
+    "meetings_other": "{count} partidos",
+    "aet": "(prórroga)",
+    "pens": "(pen. {home}–{away})"
   },
   "absences": {
     "title": "Bajas",
@@ -366,7 +386,7 @@
     "PRICE_PENDING": "Aún no hay cuotas: se piden desde 3 días antes del partido.",
     "PRICE_UNAVAILABLE": "Ninguna casa que recibimos cotiza este mercado.",
     "NOT_COVERED": "Nuestro proveedor de cuotas no cubre esta competición.",
-    "model": "Modelo (modo evaluación): {selection} {probability} · cuota justa {fair}.",
+    "model": "Estimación del modelo, aún no probada frente al mercado: {selection} {probability} · cuota justa {fair}.",
     "minOdds": "Con {min} o más en tu casa, la apuesta tendría el margen que pide nuestra regla.",
     "notAPick": "No es un pick ni una cuota de casa: ningún modelo ha superado al mercado todavía."
   },
@@ -427,16 +447,16 @@
       "fair": "Cuota justa",
       "edge": "Ventaja",
       "minimum": "Cuota mínima aceptable",
-      "edgeHelp": "Probabilidad de PrediGol menos la del mercado, en puntos porcentuales (pp)",
+      "edgeHelp": "Probabilidad de PrediGol menos la del mercado, en puntos porcentuales (p. p.)",
       "minimumHelp": "La cuota más baja que vale la pena tomar con la probabilidad prudente de PrediGol"
     },
-    "ppUnit": "pp",
+    "ppUnit": "p. p.",
     "area": "Análisis PrediGol",
     "why": {
       "title": "¿Por qué?",
       "estimate": "PrediGol estima {model} frente a {market} del mercado",
       "estimateOnly": "PrediGol estima una probabilidad de {model} para esta selección",
-      "edge": "Ventaja de {edge} pp sobre el precio justo del mercado",
+      "edge": "Ventaja de {edge} puntos porcentuales sobre el precio justo del mercado",
       "minimum": "Solo tendría valor con una cuota de {min} o más",
       "none": "Todavía no hay cifras suficientes para explicarlo."
     },
@@ -463,7 +483,7 @@
     "byAi": "Analizado por PrediGol AI",
     "byRules": "Revisado por las reglas de PrediGol",
     "updated": "actualizado {when}",
-    "shadowNote": "las revisiones aún no filtran picks (modo evaluación)",
+    "shadowNote": "la revisión de contexto de la IA aún no se aplica a los picks",
     "notYet": "PrediGol aún no ha analizado este partido.",
     "none": "Hoy PrediGol no tiene un análisis que mostrar para este partido.",
     "inEvaluation_one": "{count} selección de este partido está en evaluación: se publicará cuando un modelo supere al mercado.",
@@ -473,12 +493,16 @@
     "missing": "Datos que aún no tenemos: {blocks}.",
     "block": {
       "absences": "bajas",
+      "dossier": "contexto del partido",
       "elo": "Elo",
+      "forecast": "pronóstico",
       "form": "forma",
       "h2h": "historial directo",
       "lineups": "alineaciones",
       "market": "mercado",
       "models": "modelos",
+      "phase": "fase",
+      "schedule": "calendario",
       "standings": "tabla",
       "stats": "estadísticas"
     },
@@ -525,6 +549,211 @@
       "byModel": "Escrito por {model} (L1)",
       "byRules": "Escrito por las reglas",
       "aiModel": "PrediGol AI"
+    },
+    "contextPending": "Revisión de contexto aún no aplicada"
+  },
+  "forecast": {
+    "title": "Pronóstico PrediGol",
+    "subtitle": "Lo que PrediGol espera de este partido. Es una probabilidad, no una recomendación ni una cuota para apostar.",
+    "likely": "Lo más probable",
+    "range": "entre {low} y {high}",
+    "rangeNone": "sin rango medido",
+    "calibrated": "Calibrada",
+    "uncalibrated": "Sin calibrar",
+    "basis": {
+      "champion": "PrediGol corrigió la probabilidad del modelo con partidos ya jugados.",
+      "no_champion": "Es la probabilidad del modelo tal cual: en este mercado todavía no hay una corrección comprobada.",
+      "needs_price": "Por ahora es la probabilidad del modelo tal cual: la corrección de este mercado necesita un precio reciente y no lo hay.",
+      "not_applicable": "Es la probabilidad del modelo tal cual: la corrección no se pudo aplicar a este número."
+    },
+    "footnote": "Un pronóstico dice qué es probable, no si está bien pagado: eso lo dice el análisis de valor, y lo que PrediGol recomienda está en la pestaña Picks.",
+    "updated": "Actualizado {when}",
+    "model": "Modelo: {model}",
+    "models": {
+      "poisson": "Poisson (Maher)",
+      "dixon_coles": "Dixon-Coles",
+      "elo_ologit": "Elo (logit ordenado)"
+    },
+    "admin": {
+      "fairOdds": "cuota justa {odds}",
+      "modelNumber": "modelo {p}",
+      "detailsTitle": "Valor y picks de este partido (solo administrador)",
+      "valueTitle": "Valor: lo que dijo la capa de decisión (necesita precio)",
+      "picksTitle": "Picks congelados",
+      "odds": "cuota",
+      "edge": "ventaja",
+      "ev": "valor esperado",
+      "state": "estado",
+      "selection": "selección",
+      "familiesTitle": "Familias de este partido (investigación, solo administrador)",
+      "familiesNote": "Lo que pronostican las familias de goles por mitad, córners, tarjetas y amarillas: la cifra del modelo tal cual, sin calibrar y sin rango medido. Entre paréntesis, la cuota justa (1 / probabilidad). Es investigación: no es el pronóstico de arriba ni una recomendación.",
+      "familyMarkets": "Mercados: {n}",
+      "settledWith": "Se liquida con: {rule}",
+      "noRule": "Ninguna regla de liquidación puede juzgar una apuesta en este mercado."
+    },
+    "reason": {
+      "data_not_fit": "PrediGol no pronostica esta competición: sus datos todavía no sirven para un modelo.",
+      "quarantined": "PrediGol no hizo pronóstico: los datos de este partido están en revisión.",
+      "no_forecast_yet": "PrediGol todavía no tiene pronóstico para este partido.",
+      "no_evaluation": "La capa de decisión no evaluó ningún precio de este partido: sin precio no hay valor.",
+      "no_pick": "No se congeló ningún pick para este partido: un pronóstico, por seguro que sea, no lo es.",
+      "no_family_forecast": "Las familias no han pronosticado nada de este partido: pronostican los partidos por jugarse de las competiciones con datos aptos para un modelo."
+    }
+  },
+  "calendar": {
+    "title": "Calendario y descanso",
+    "subtitle": "Cuánto descansó cada equipo y qué juega después, en todas sus competiciones y no solo en la de este partido.",
+    "complete": "Completo",
+    "partial": "Parcial",
+    "rest": "Descanso",
+    "restNone": "Sin partido anterior conocido",
+    "restExact": "{days} desde su último partido",
+    "restAtMost": "como máximo {days} desde su último partido",
+    "last14": "Últimos 14 días",
+    "matches_one": "{count} partido",
+    "matches_other": "{count} partidos",
+    "matchesAtLeast_one": "al menos {count} partido",
+    "matchesAtLeast_other": "al menos {count} partidos",
+    "outside_one": "{count} en una competición que PrediGol no sigue",
+    "outside_other": "{count} en competiciones que PrediGol no sigue",
+    "days_one": "{days} día",
+    "days_other": "{days} días",
+    "before_one": "{days} día antes",
+    "before_other": "{days} días antes",
+    "after_one": "{days} día después",
+    "after_other": "{days} días después",
+    "playedTitle": "Jugó antes",
+    "nextTitle": "Juega después",
+    "playedNone": "Ningún partido anterior conocido.",
+    "nextNone": "Nada en los 7 días siguientes.",
+    "nextNoneUnknown": "Nada conocido en los 7 días siguientes.",
+    "venue": {
+      "home": "local",
+      "away": "visitante"
+    },
+    "versus": "vs {opponent}",
+    "kind": {
+      "domestic_league": "Liga",
+      "domestic_cup": "Copa",
+      "continental": "Continental",
+      "international": "Selecciones"
+    },
+    "note": {
+      "never_fetched": "PrediGol todavía no ha leído el calendario completo de {team}: su descanso podría ser menor y haber más partidos de los que se muestran.",
+      "stale": "El calendario de {team} se leyó hace {age}: puede faltar algún partido reciente o anunciado.",
+      "unconfirmed_match": "Falta confirmar un partido reciente de {team}: no sabemos si se jugó y por eso no cuenta como descanso."
+    },
+    "footnote": "Es contexto, no una recomendación: cuenta días y partidos, no dice quién va a ganar.",
+    "footnotePartial": "Cuando el calendario de un equipo no está completo, su descanso es un máximo y sus partidos un mínimo. Es contexto, no una recomendación.",
+    "read": "Calendario leído {when}"
+  },
+  "knowledge": {
+    "title": "Postpartido",
+    "subtitle": "Lo que pasó en este partido, armado cuando el proveedor ya no lo cambia. Son hechos, no una recomendación.",
+    "updated": "Actualizado {when}",
+    "empty": "Este postpartido todavía no tiene nada que contar.",
+    "teamMinute": "{team}, {minute}",
+    "teamMinuteState": "{team}, {minute} ({state})",
+    "reason": {
+      "not_finished": "El partido todavía no terminó para el proveedor.",
+      "not_settled_yet": "El postpartido se arma unas horas después del final, cuando el proveedor ya no cambia sus datos.",
+      "not_followed": "PrediGol no sigue esta competición, así que no arma su postpartido.",
+      "no_build_yet": "PrediGol todavía no armó el postpartido de este partido."
+    },
+    "tag": {
+      "extraTime": "Se resolvió en tiempo extra",
+      "penalties": "Se resolvió en penales",
+      "comeback": "Remontada de {team}",
+      "levelled": "{team} rescató el empate",
+      "neutral": "Campo neutral",
+      "corrected": "Resultado corregido por el proveedor"
+    },
+    "lead": {
+      "ahead": "ganando por {n}",
+      "behind": "perdiendo por {n}",
+      "level": "empatando"
+    },
+    "minutes": {
+      "short": "{n} min",
+      "hours": "{h} h",
+      "hoursMinutes": "{h} h {m} min"
+    },
+    "story": {
+      "title": "Cómo fue el marcador",
+      "subtitle": "Quién iba por delante durante los 90 minutos.",
+      "aria": "Quién iba por delante durante los 90 minutos: {summary}.",
+      "ahead": "{team} por delante",
+      "level": "Empatados",
+      "firstGoal": "Primer gol",
+      "lastGoal": "Último gol",
+      "leadChanges": "Cambios de ventaja",
+      "firstDismissal": "Primera expulsión",
+      "goals": "Goles",
+      "noGoals": "Ninguno en los 90 minutos",
+      "notTold": "No se puede contar cómo fue el marcador: la lista de eventos del proveedor no coincide con el resultado."
+    },
+    "market": {
+      "title": "Lo que esperaba el mercado",
+      "subtitle": "La probabilidad que daban las casas de apuestas, sin su margen, desde la primera lectura de la semana hasta la última antes del inicio. Lo que ocurrió va marcado.",
+      "happened": "Ocurrió",
+      "opened": "abrió en {p}",
+      "openedNone": "sin lectura de apertura",
+      "happenedNow": "Al cierre, el mercado daba un {close} a lo que ocurrió.",
+      "happenedFrom": "Al cierre, el mercado daba un {close} a lo que ocurrió (había abierto en {open}).",
+      "pushed": "La línea quedó justa: ninguna opción ganó.",
+      "closing_one": "Lectura de cierre: {when} antes del inicio, de {count} casa.",
+      "closing_other": "Lectura de cierre: {when} antes del inicio, de {count} casas.",
+      "closingBare": "Lectura de cierre: {when} antes del inicio."
+    },
+    "players": {
+      "title": "Los mejores del partido",
+      "subtitle": "Los mejor valorados de cada equipo."
+    },
+    "tactics": {
+      "title": "Formaciones y cambios",
+      "formation": "Formación {formation}",
+      "noFormation": "Formación no informada",
+      "subs_one": "{count} cambio",
+      "subs_other": "{count} cambios",
+      "noSubs": "Sin cambios",
+      "subLead": "{minute} ({lead})"
+    },
+    "quality": {
+      "complete": "Completo",
+      "partial": "Parcial",
+      "minimal": "Mínimo",
+      "completeNote": "Resultado, estadísticas, eventos y jugadores, todos con datos fiables.",
+      "partialNote": "Algo falta o no cuadra: lo que se cuenta aquí se dice solo hasta donde se puede confirmar.",
+      "minimalNote": "Solo hay el resultado, o ni siquiera eso.",
+      "doubtsTitle": "Lo que no pudimos confirmar"
+    },
+    "doubt": {
+      "no_result": "No tenemos confirmado el resultado de este partido.",
+      "events_do_not_give_the_score": "Los goles de la lista de eventos del proveedor no suman el resultado.",
+      "events_ht_differ": "Los goles del primer tiempo según los eventos no coinciden con el marcador del descanso.",
+      "events_et_differ": "Los goles del tiempo extra según los eventos no coinciden con el resultado.",
+      "events_pen_differ": "Los penales de la tanda según los eventos no coinciden con el resultado.",
+      "cards_differ_from_the_statistics": "Las tarjetas de los eventos no coinciden con las de las estadísticas.",
+      "sheets_crossed": "El proveedor cruzó las alineaciones de los dos equipos, así que no mostramos las formaciones.",
+      "event_words_not_met": "Algún evento trae una descripción que no reconocemos y se cuenta sin interpretar.",
+      "lines_with_no_player": "A algún gol el proveedor no le puso jugador.",
+      "odd_minutes": "Algún evento trae un minuto fuera de lo normal.",
+      "other": "Hay un dato que no pudimos confirmar."
+    },
+    "admin": {
+      "detailsTitle": "Cómo está guardado (solo administrador)",
+      "build": "Versión guardada n.º {id}",
+      "replaces": "reemplaza a la n.º {id}",
+      "first": "primera versión",
+      "hashes": "entradas {inputs} · contenido {content}",
+      "layersTitle": "Las nueve capas tal como están guardadas",
+      "ownLayers": "Las capas 7 a 9 (contexto, picks y post-mortems) son del administrador: un usuario nunca las ve.",
+      "notes": "notas",
+      "showData": "Ver datos guardados",
+      "finalTitle": "Últimos precios del proveedor antes del inicio (no son probabilidades)",
+      "finalLine": "{odds} · {count} casas · {before} antes del inicio",
+      "chainTitle": "Versiones del partido (la más antigua primero)",
+      "chainLine": "n.º {id} · {built} · {completeness} · {hash}"
     }
   },
   "picksTab": {
@@ -590,7 +819,7 @@
   "captures": {
     "title": "Capturas de cuotas",
     "summary": "{captures} capturas · {quotes} cotizaciones de {books} casas",
-    "help": "Cada captura guarda el precio de cada casa, opción y línea. Son las mismas cifras de la Cronología, y aquí se muestran todas, pasen o no los filtros de los picks.",
+    "help": "Cada captura guarda el precio de cada casa, opción y línea en ese momento. Aquí se muestran todas, pasen o no los filtros de los picks.",
     "chip": "{when} · {quotes}",
     "none": "Todavía no se ha capturado ninguna cuota de este partido."
   },

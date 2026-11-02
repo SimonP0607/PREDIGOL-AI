@@ -15,6 +15,7 @@ import { int } from "@/lib/format";
 import { relative, utcDateTime } from "./format";
 import { healthReason, jobLabel } from "./labels";
 import { ComponentStatusBadge } from "./shared";
+import { ObservabilityTestPanel, SyntheticPanel } from "./ObservabilityPanels";
 import { localFixed } from "@/lib/i18n/format";
 
 const FRONTEND_VERSION = (import.meta.env["VITE_APP_VERSION"] as string | undefined) ?? "dev";
@@ -87,6 +88,11 @@ export function AdminLive() {
               value={bytes(d.database_bytes)}
               hint={t("system.metrics.schemaHint", { rev: d.schema_revision ?? "?" })}
             />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <SyntheticPanel />
+            <ObservabilityTestPanel />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">

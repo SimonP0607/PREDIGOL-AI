@@ -197,13 +197,13 @@ def pm(i: int, verdict: str, cls: str | None = None, **over: Any) -> dict[str, A
     base = {"id": i, "fixture_id": i, "market_key": "1X2", "selection": "Home", "line": Decimal(0), "roles": [],
             "decision": {"approved": "APPROVE", "caution": "DOWNGRADE", "rejected": "REJECT"}.get(verdict.split("_")[0]),
             "settled": "loss" if verdict.endswith(("lost", "correctly")) else "win", "verdict": verdict,
-            "classification": cls, "odds": Decimal("2.0"), "close_odds": None, "clv": None, "p_model": 0.5,
+            "classification": cls, "odds": Decimal("2.0"), "close_odds": None, "price_move": None, "p_model": 0.5,
             "p_market": 0.45, "answers": {"model": {"data": {"p_close": 0.46}}}, "evidence": {}, "match": f"M{i}"}
     return base | over
 
 
 def test_the_days_notes_count_and_cite_their_post_mortems() -> None:
-    rows = [pm(1, "approved_won"), pm(2, "approved_lost", "MARKET_ERROR", clv=Decimal("-0.05")),
+    rows = [pm(1, "approved_won"), pm(2, "approved_lost", "MARKET_ERROR", price_move=Decimal("-0.05")),
             pm(3, "rejected_would_have_won"), pm(4, "rejected_correctly", "MODEL_ERROR")]
     notes = {n.kind: n for n in notes_for(rows, [], [])}
     assert notes["summary"].n == 4 and "Aprobadas 2 (1 ganadas, 1 perdidas)" in notes["summary"].body

@@ -11,6 +11,7 @@ import { fmtOdds } from "@/lib/i18n/format";
 import { useSavedPicks } from "@/product/records/hooks";
 import { hasStarted, normLine, selectionKey } from "@/product/records/model";
 import type { Pickable } from "@/product/records/pickable";
+import { ConfirmAction } from "@/product/shared/Confirm";
 import { selectionLabel } from "@/product/shared/markets";
 import { pickableLeg } from "./parlay";
 import { ParlayToggle, PricePill } from "./ParlayPrice";
@@ -89,7 +90,11 @@ export function SelectablePriceRow({ sel }: { sel: Pickable }) {
   );
 }
 
-/** "Guardar" as an icon beside a price: in "Mis picks" (filled) or not; nothing to save once it kicked off. */
+/**
+ * "Guardar" as an icon beside a price: in "Mis picks" (filled) or not; nothing to save once it kicked off. Taking a
+ * saved pick out asks first (plan UX, A1, defect F53): it goes with the price it was saved at, which a new save would
+ * not get back.
+ */
 function SaveToggle({ sel, label }: { sel: Pickable; label: string }) {
   const { saved, save, remove } = useSavedPicks();
   const mine = saved.get(selectionKey(sel));
@@ -97,11 +102,7 @@ function SaveToggle({ sel, label }: { sel: Pickable; label: string }) {
   if (started && !mine) return null;
   const busy = save.isPending || remove.isPending;
   const locked = !!mine && (started || mine.status !== "PENDING");
-  const onClick = () => {
-    if (mine) {
-      if (mine.status === "PENDING") remove.mutate(mine.id);
-      return;
-    }
+  const onSave = () =>
     save.mutate({
       fixture_id: sel.fixture_id,
       market_key: sel.market_key,
@@ -109,8 +110,7 @@ function SaveToggle({ sel, label }: { sel: Pickable; label: string }) {
       line: normLine(sel.line),
       pick_id: sel.pick_id ?? null,
     });
-  };
-  return (
+  const button = (
     <button
       type="button"
       data-testid="save-pick"
@@ -118,7 +118,7 @@ function SaveToggle({ sel, label }: { sel: Pickable; label: string }) {
       aria-label={`${mine ? t("records.actions.unsave") : t("records.actions.save")}: ${label}`}
       title={mine ? t("records.actions.saved") : t("records.actions.save")}
       disabled={busy || locked}
-      onClick={onClick}
+      onClick={mine ? undefined : onSave}
       className={cn(
         // Touch: 36 px drawn, 44 touched; the 8 px gap beside the price keeps the reach off the price.
         "tap relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:h-9 pointer-coarse:w-9",
@@ -133,5 +133,16 @@ function SaveToggle({ sel, label }: { sel: Pickable; label: string }) {
         <Bookmark aria-hidden className="h-3.5 w-3.5" />
       )}
     </button>
+  );
+  if (!mine || locked) return button;
+  return (
+    <ConfirmAction
+      testId="unsave-pick"
+      title={t("records.mine.picks.confirmRemove.title")}
+      body={t("records.mine.picks.confirmRemove.body")}
+      confirm={t("records.mine.picks.confirmRemove.ok")}
+      onConfirm={() => remove.mutate(mine.id)}
+      trigger={button}
+    />
   );
 }

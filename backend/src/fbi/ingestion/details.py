@@ -6,6 +6,13 @@ A row is replaced only by a payload fetched at the same instant or later, so
 replaying an old payload can never overwrite a newer one, and applying the
 same payload twice writes the same rows. A fixture the catalogue does not
 hold is counted as skipped - never created from a detail payload.
+
+The newest payload wins at every level (plan F0, defect 9): the fixture (a payload older than anything applied for it is
+skipped), each upsert (``WHERE stored.fetched_at <= EXCLUDED.fetched_at``) and each list that is replaced whole - events,
+a side's line-up and its players - which is replaced only when no newer one is stored. And the check and the writes
+that follow it are ONE unit per fixture: ``apply_fixture_details`` takes a transaction-scoped advisory lock per
+fixture, in ascending order, before it reads what is stored, so two writers on the same fixture (the worker and a
+reprocess, two jobs near the final whistle) take turns instead of the older one writing after the newer one committed.
 """
 
 from __future__ import annotations
@@ -56,6 +63,8 @@ coverage flag simply has no block - which is why what ARRIVED is recorded per
 fixture rather than inferred from an empty table."""
 
 STARTERS_PER_SIDE = 11
+LOCK_PREFIX = "fixture_detail:"
+"""``pg_advisory_xact_lock(hashtextextended(LOCK_PREFIX + fixture id, 0))``: one writer of a fixture's detail at a time."""
 
 TEAM_STAT_COLUMNS = (
     "shots", "shots_on_target", "shots_off_target", "shots_blocked", "shots_inside_box", "shots_outside_box",
@@ -81,6 +90,8 @@ class DetailReport:
     player_rows: int = 0
     stale: int = 0
     """Payload older than what is stored for that fixture: nothing written."""
+    stale_lineups: int = 0
+    """Line-ups (one side of one fixture) not written because a newer one is stored."""
     unknown_stat_types: set[str] = field(default_factory=set)
     issues: list[QualityIssue] = field(default_factory=list)
     """What the provider sent that we could not store as sent. Recorded in
@@ -205,6 +216,11 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
     fmap = _fixture_map(conn, (d.provider_fixture_id for d in details))
     report = DetailReport()
     with conn.cursor(row_factory=tuple_row) as cur:
+        # Take turns on a fixture: the lock is held to the end of the transaction, taken in ascending order so two
+        # writers with overlapping batches cannot wait on each other, and BEFORE reading what is stored.
+        for locked in sorted({known[0] for known in map(fmap.get, (d.provider_fixture_id for d in details))
+                              if known is not None}):
+            cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (f"{LOCK_PREFIX}{locked}",))
         for d in details:
             known = fmap.get(d.provider_fixture_id)
             if known is None:
@@ -265,9 +281,11 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                                   e.assist_name, e.event_type, e.detail, e.comments) for e in d.events),
                                 key=lambda r: r[0])
                 delivered["events"] += len(wanted)
-                cur.execute(f"SELECT {EVENT_COLUMNS} FROM core.fixture_events WHERE fixture_id = %s AND source = %s "
-                            "ORDER BY seq", (fixture_id, SOURCE))
-                if [tuple(r) for r in cur.fetchall()] != wanted:
+                cur.execute(f"SELECT {EVENT_COLUMNS}, fetched_at FROM core.fixture_events "
+                            "WHERE fixture_id = %s AND source = %s ORDER BY seq", (fixture_id, SOURCE))
+                stored = [tuple(r) for r in cur.fetchall()]
+                newer_events = any(r[-1] > fetched_at for r in stored)   # a newer list is stored: it stays
+                if [r[:-1] for r in stored] != wanted and not newer_events:
                     # Change-only: the list is replaced only when the provider's list changed; a finished
                     # match's previous list is kept by audit.keep_settled_detail (migration 0061).
                     cur.execute("DELETE FROM core.fixture_events WHERE fixture_id = %s AND source = %s",
@@ -289,10 +307,14 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                         "provider_coach_id, coach_name, payload_hash, fetched_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
                         "ON CONFLICT (fixture_id, team_side, source) DO UPDATE SET formation = EXCLUDED.formation, "
                         "provider_coach_id = EXCLUDED.provider_coach_id, coach_name = EXCLUDED.coach_name, "
-                        "payload_hash = EXCLUDED.payload_hash, fetched_at = EXCLUDED.fetched_at",
+                        "payload_hash = EXCLUDED.payload_hash, fetched_at = EXCLUDED.fetched_at "
+                        "WHERE core.fixture_lineups.fetched_at <= EXCLUDED.fetched_at",
                         (fixture_id, side, SOURCE, lu.formation, lu.provider_coach_id, lu.coach_name,
                          payload_hash, fetched_at),
                     )
+                    if cur.rowcount < 1:
+                        report.stale_lineups += 1   # a newer line-up of this side is stored: it and its players stay
+                        continue
                     report.lineups += 1
                     delivered["lineups"] += 1
                     seen: set[int] = set()

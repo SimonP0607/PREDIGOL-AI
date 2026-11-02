@@ -57,9 +57,16 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "context_refresh": timedelta(hours=2),
     "quality_sweep": timedelta(hours=2),
     "elo_refresh": timedelta(hours=2),
+    "odds_quotes_extract": timedelta(minutes=20),
+    "competition_structure": timedelta(minutes=20),
+    "referee_identity": timedelta(minutes=30),
+    "match_knowledge": timedelta(minutes=20),
+    "family_forecasts": timedelta(minutes=30),
+    "player_history": timedelta(hours=3),
     "historical_validation": timedelta(hours=2),
     "historical_backfill": timedelta(hours=3),
     "research_monitor": timedelta(hours=3),
+    "synthetic_journey": timedelta(minutes=5),
 }
 """How long a run of each job may stay open. Generous: three to ten times the longest run observed in the ledger
 (4-5 Oct 2026). Prefix rules below cover the families of CLI jobs."""

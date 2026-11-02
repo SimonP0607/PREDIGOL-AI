@@ -51,12 +51,15 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds, local_day
+from fbi.ai.team_claims import team_claims
+from fbi.ai.team_claims import words as team_words
+from fbi.core.decision_versions import DECISION_CORE
 from fbi.core.version import code_version
 from fbi.intel import score as scoring
 from fbi.intel import stake as staking
 from fbi.intel.calibration import CalibrationState, calibration_state
 
-VERSION = "decision-v1"
+VERSION = DECISION_CORE
 HORIZON = timedelta(hours=36)
 CONSENSUS_LOOKBACK = timedelta(hours=36)
 MIN_MINUTES = 10
@@ -70,6 +73,8 @@ RISK_MAX_ODDS = 3.00
 RISK_MIN_P = 0.30
 RISK_MAX_WIDTH = 0.25
 FINAL_FRESH = timedelta(minutes=30)
+TYPE_CLV_WINDOW = timedelta(days=30)
+"""The closing-line value of a kind of pick (market x selection x odds band) is read over this window."""
 PREMIUM_SCORE = 80.0
 PARLAY_ODDS = (1.25, 2.20)
 PARLAY_MIN_P = 0.5
@@ -162,13 +167,16 @@ SELECT DISTINCT ON (r.fixture_id, r.market_key, r.selection, r.line, r.engine)
  ORDER BY r.fixture_id, r.market_key, r.selection, r.line, r.engine, r.reviewed_at DESC, r.id DESC
 """
 
-EVIDENCE_SQL = """
-SELECT e.fixture_id, e.origin, e.status, e.source_tier, count(*) AS n, array_agg(e.id ORDER BY e.id) AS ids
-  FROM ai.evidence e
- WHERE e.fixture_id = ANY(%(fixtures)s) AND e.retrieved_at <= %(at)s
-   AND (e.published_at IS NULL OR e.published_at <= %(at)s)
+EVIDENCE_SQL = f"""
+SELECT f.id AS fixture_id, e.origin, e.status, e.source_tier, count(*) AS n, array_agg(e.id ORDER BY e.id) AS ids
+  FROM core.fixtures f
+  JOIN ai.evidence e ON (e.fixture_id = f.id OR {team_claims(home="f.home_team_id", away="f.away_team_id", at="%(at)s")})
+ WHERE f.id = ANY(%(fixtures)s) AND e.retrieved_at <= %(at)s
+   AND (e.published_at IS NULL OR e.published_at <= %(at)s) AND (e.subject_type IS NULL OR %(typed)s)
  GROUP BY 1, 2, 3, 4
 """
+"""The claims of research v2 (``subject_type``) are part of a decision's context only when research v2 is ``on`` - the ones about the match and the
+ones about its teams that belong to no match, as the packet shows them (``fbi.ai.team_claims``; finding H4 of the review of phase 2)."""
 
 PASSES_SQL = """
 SELECT p.fixture_id, bool_or(p.pass = 'first') AS first_done,
@@ -313,8 +321,11 @@ def _key(r: dict[str, Any]) -> Key:
     return int(r["fixture_id"]), str(r["market_key"]), str(r["selection"]), Decimal(str(r["line"])).quantize(LINE_Q)
 
 
-def read_world(conn: psycopg.Connection[Any], fixtures: list[int], *, at: datetime) -> World:
+def read_world(conn: psycopg.Connection[Any], fixtures: list[int], *, at: datetime, version: str = VERSION) -> World:
+    """Everything a run reads once. ``version`` is the decision version whose previous rows are read (``previous``): the families decide
+    under a version of their own (``fbi.familydecisions.decide``), and their rows are not the previous ones of the core layer."""
     from fbi.ai.config import AiSettings
+    from fbi.ai.gates import typed_visible
 
     cal = calibration_state(conn, at=at)
     quality: dict[int, dict[str, Any]] = {}
@@ -330,17 +341,17 @@ def read_world(conn: psycopg.Connection[Any], fixtures: list[int], *, at: dateti
         quality = {int(r["fixture_id"]): dict(r) for r in cur.fetchall()}
         cur.execute(LINEUPS_SQL, {"fixtures": fixtures, "at": at})
         lineups = {int(r["fixture_id"]): r["fetched_at"] for r in cur.fetchall()}
-        cur.execute(TYPE_CLV_SQL, {"since": at - timedelta(days=30), "at": at})
+        cur.execute(TYPE_CLV_SQL, {"since": at - TYPE_CLV_WINDOW, "at": at})
         type_clv = {(str(r["market_key"]), str(r["selection"]), str(r["band"])): (float(r["clv"]), int(r["n"]))
                     for r in cur.fetchall()}
-        cur.execute(PREVIOUS_SQL, {"fixtures": fixtures, "at": at, "version": VERSION})
+        cur.execute(PREVIOUS_SQL, {"fixtures": fixtures, "at": at, "version": version})
         previous = {_key(r): dict(r) for r in cur.fetchall()}
     try:
         with conn.transaction(), conn.cursor(row_factory=dict_row) as cur:
             cur.execute(REVIEWS_SQL, {"fixtures": fixtures, "at": at})
             for r in cur.fetchall():
                 (reviews if r["engine"] == "combined" else rules)[_key(r)] = dict(r)
-            cur.execute(EVIDENCE_SQL, {"fixtures": fixtures, "at": at})
+            cur.execute(EVIDENCE_SQL, {"fixtures": fixtures, "at": at} | team_words(typed_visible(conn)))
             for r in cur.fetchall():
                 evidence[int(r["fixture_id"])].append(dict(r))
             cur.execute(PASSES_SQL, {"fixtures": fixtures, "at": at})
@@ -441,10 +452,14 @@ def evaluate(world: World, key: Key, models: dict[str, dict[str, Any]]) -> Evalu
     p_model = float(r["p_model"])
     p_push = float(r.get("p_push") or 0)
     has_interval = r.get("p_low") is not None and r.get("p_high") is not None
-    filters.append(_f("model", has_interval and 0 < p_model < 1,
-                      f"{model}: p {p_model:.3f}" + ("" if has_interval else " sin intervalo"), "RECHAZADO", 2,
-                      model=model, model_version_id=r.get("model_version_id")))
-    if not (has_interval and 0 < p_model < 1):
+    # a family of the counts states no interval yet (plan F10): its candidates say so (``interval_optional``) and the width of the
+    # interval is judged only where there is one. A row that does not say it keeps the rule: no interval, no decision.
+    model_ok = (has_interval or bool(r.get("interval_optional"))) and 0 < p_model < 1
+    no_interval = (" sin intervalo (la familia no lo guarda: no se juzga su ancho)" if r.get("interval_optional")
+                   else " sin intervalo")
+    filters.append(_f("model", model_ok, f"{model}: p {p_model:.3f}" + ("" if has_interval else no_interval),
+                      "RECHAZADO", 2, model=model, model_version_id=r.get("model_version_id")))
+    if not model_ok:
         stop("RECHAZADO", "model")
     width = (float(r["p_high"]) - float(r["p_low"])) if has_interval else None
 
@@ -640,14 +655,17 @@ def correlate(evaluated: list[Evaluated]) -> None:
             e.filters.sort(key=lambda f: f["n"])
 
 
-def input_hash(e: Evaluated) -> str:
+def input_hash(e: Evaluated, *, version: str = VERSION) -> str:
+    """What the decision was made from, in a digest. A selection with no pick (a family's) names the forecast it rests on in its place."""
     odds = e.row.get("best_odds")
-    payload = {"v": VERSION, "cp": e.checkpoint, "state": e.state,
+    payload = {"v": version, "cp": e.checkpoint, "state": e.state,
                "odds": None if odds is None else round(float(odds), 2),
                "p_model": round(float(e.row["p_model"]), 4), "p_cal": None if e.p_cal is None else round(e.p_cal, 4),
                "cal": e.calibrator_id, "p_mkt": None if e.row.get("p_fair") is None else round(float(e.row["p_fair"]), 4),
                "ctx": e.context.status, "review": None if e.context.review is None else int(e.context.review["id"]),
-               "pick": int(e.row["pick_id"])}
+               "pick": None if e.row.get("pick_id") is None else int(e.row["pick_id"])}
+    if e.row.get("pick_id") is None and e.row.get("forecast_id") is not None:
+        payload["forecast"] = int(e.row["forecast_id"])
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:32]
 
 
@@ -689,15 +707,18 @@ def _d(x: float | None, places: int = 6) -> Decimal | None:
 
 
 def store(conn: psycopg.Connection[Any], e: Evaluated, *, at: datetime, checkpoint: str | None = None,
-          state: str | None = None, stake: staking.Stake | None = None) -> int | None:
+          state: str | None = None, stake: staking.Stake | None = None, version: str = VERSION) -> int | None:
+    """Write one decision (append-only). ``version`` is the decision version it is written under; a selection with no pick (a family's) writes
+    ``pick_id`` as NULL."""
     r = e.row
     rejected = (state or e.state) == "RECHAZADO"
     st = stake or e.stake
     cp = checkpoint or e.checkpoint
     with conn.cursor() as cur:
         cur.execute(INSERT_SQL, {
-            "v": VERSION, "at": at, "cp": cp, "fixture": e.key[0], "kickoff": r["kickoff_at"], "market": e.key[1],
-            "selection": e.key[2], "line": e.key[3], "pick": int(r["pick_id"]), "model": r["model_used"],
+            "v": version, "at": at, "cp": cp, "fixture": e.key[0], "kickoff": r["kickoff_at"], "market": e.key[1],
+            "selection": e.key[2], "line": e.key[3], "pick": None if r.get("pick_id") is None else int(r["pick_id"]),
+            "model": r["model_used"],
             "mv": r.get("model_version_id"), "odds": _d(None if r.get("best_odds") is None else float(r["best_odds"]), 3),
             "bookmaker": r.get("best_bookmaker_id"), "price_at": r.get("price_at"), "books": r.get("n_bookmakers"),
             "p_model": _d(float(r["p_model"])), "p_low": _d(_num(r.get("p_low"))), "p_high": _d(_num(r.get("p_high"))),
@@ -714,8 +735,8 @@ def store(conn: psycopg.Connection[Any], e: Evaluated, *, at: datetime, checkpoi
                          else {"status": e.context.status}),
             "review": None if e.context.review is None else int(e.context.review["id"]),
             "evidence": e.context.evidence_ids if not rejected else [],
-            "hash": input_hash(e) if checkpoint is None and state is None else
-            hashlib.sha256(f"{input_hash(e)}|{cp}|{state}".encode()).hexdigest()[:32],
+            "hash": input_hash(e, version=version) if checkpoint is None and state is None else
+            hashlib.sha256(f"{input_hash(e, version=version)}|{cp}|{state}".encode()).hexdigest()[:32],
             "code": code_version()})
         row = cur.fetchone()
     return None if row is None else int(row[0])
@@ -760,6 +781,8 @@ MAX_PICKS = 5
 MAX_PER_COMPETITION = 2
 MAX_PARLAYS = 2
 PARLAY_MIN_EV = 0.02
+DAY_FRESH = timedelta(minutes=30)
+"""A decision enters the day's picks and parlays only if it is at most this old."""
 
 LATEST_DAY_SQL = """
 SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line) d.*, c.id AS competition_id,
@@ -801,7 +824,7 @@ def select_day(conn: psycopg.Connection[Any], *, at: datetime, ready: bool) -> t
         comp_count[comp] += 1
     n_picks = sum(1 for x in existing if x["kind"] == "pick")
     fresh = [d for d in latest if d["state"] in ("APROBADO", "CANDIDATO_PARLAY", "PICK_PREMIUM")
-             and at - d["known_at"] <= timedelta(minutes=30)]
+             and at - d["known_at"] <= DAY_FRESH]
     fresh.sort(key=lambda d: -float(d["score"] or 0))
     added = 0
     for d in fresh:
@@ -863,7 +886,7 @@ def _select_parlays(conn: psycopg.Connection[Any], *, day: date, at: datetime, l
     used = {i for x in existing if x["kind"] == "parlay" for i in x["decision_ids"]}
     legs = [d for d in latest if (d["parlay_eligible"] or d["state"] == "CANDIDATO_PARLAY")
             and d["state"] in ("APROBADO", "CANDIDATO_PARLAY", "PICK_PREMIUM")
-            and at - d["known_at"] <= timedelta(minutes=30) and int(d["id"]) not in used]
+            and at - d["known_at"] <= DAY_FRESH and int(d["id"]) not in used]
     options: list[tuple[float, dict[str, Any], dict[str, Any], float, float]] = []
     for i, a in enumerate(legs):
         for b in legs[i + 1:]:

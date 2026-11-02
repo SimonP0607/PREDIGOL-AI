@@ -119,12 +119,17 @@ def test_iter_live_states_reads_status_minute_and_score() -> None:
 async def test_a_match_in_play_is_followed_and_its_state_recorded_once_per_change(
         migrated_database: str, fixture_in_play: tuple[int, int, dict[str, int]]) -> None:
     fid, pid, meta = fixture_in_play
-    ko = datetime.fromtimestamp(meta["kickoff"], tz=UTC)
+    # The provider answers at the real clock, and a final whistle is read at the end of a match: this one kicked off
+    # 105 minutes ago (the fixture's default, 30 minutes ago, would make the "FT" a reading 30 minutes in - the
+    # impossible one the follow declines, see test_premature_final).
+    ko = (datetime.now(UTC) - timedelta(minutes=105)).replace(microsecond=0)
     with psycopg.connect(migrated_database) as conn:
+        conn.execute("UPDATE core.fixtures SET kickoff_at = %s WHERE id = %s", (ko, fid))
+        conn.commit()
         assert (fid, pid) in fixtures_to_follow(conn, at=datetime.now(UTC))
         provider = FakeProvider(conn, [
-            _body(pid, meta["league"], meta["season"], 77001, 77002, short="1H", elapsed=30, gh=1, ga=0, kickoff=ko),
-            _body(pid, meta["league"], meta["season"], 77001, 77002, short="1H", elapsed=30, gh=1, ga=0, kickoff=ko),
+            _body(pid, meta["league"], meta["season"], 77001, 77002, short="2H", elapsed=85, gh=1, ga=0, kickoff=ko),
+            _body(pid, meta["league"], meta["season"], 77001, 77002, short="2H", elapsed=85, gh=1, ga=0, kickoff=ko),
             _body(pid, meta["league"], meta["season"], 77001, 77002, short="FT", elapsed=90, gh=2, ga=0, kickoff=ko),
         ])
         first = await capture_live_matches(conn, provider)

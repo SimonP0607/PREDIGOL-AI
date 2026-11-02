@@ -8,12 +8,16 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
+import psycopg
+
 from fbi.ai.calendar import day_bounds, day_start, local_day, month_start
 from fbi.ai.config import AiSettings
+from fbi.ai.gates import typed_visible
 from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.core.clock import now
+from fbi.core.decision_versions import DECISION_CORE
 
 
 def j(x: Any) -> Any:
@@ -33,7 +37,7 @@ LATEST_DAY_SQL = """
 WITH last AS (
     SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line) d.*
       FROM intel.decisions d
-     WHERE d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s
+     WHERE d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s AND d.decision_version = %(decision_version)s
      ORDER BY d.fixture_id, d.market_key, d.selection, d.line, d.known_at DESC, d.id DESC
 )
 SELECT l.id, l.known_at, l.checkpoint, l.fixture_id, l.kickoff_at, th.name || ' - ' || ta.name AS match,
@@ -66,10 +70,10 @@ def day_view(conn: Conn, *, day: date | None = None) -> Envelope[dict[str, Any]]
     start, end = day_bounds(d)
     states = fetch_all(conn, """
         WITH last AS (SELECT DISTINCT ON (fixture_id, market_key, selection, line) state, context_status, fixture_id
-                        FROM intel.decisions WHERE kickoff_at >= %(s)s AND kickoff_at < %(e)s
+                        FROM intel.decisions WHERE kickoff_at >= %(s)s AND kickoff_at < %(e)s AND decision_version = %(v)s
                        ORDER BY fixture_id, market_key, selection, line, known_at DESC, id DESC)
         SELECT state, context_status, count(*) AS n, count(DISTINCT fixture_id) AS fixtures FROM last GROUP BY 1, 2""",
-                       {"s": start, "e": end})
+                       {"s": start, "e": end, "v": DECISION_CORE})
     by_state: dict[str, int] = {}
     by_context: dict[str, int] = {}
     for r in states:
@@ -77,8 +81,10 @@ def day_view(conn: Conn, *, day: date | None = None) -> Envelope[dict[str, Any]]
         by_context[r["context_status"]] = by_context.get(r["context_status"], 0) + int(r["n"])
     fixtures = fetch_one(conn, """
         SELECT count(*) AS fixtures, count(*) FILTER (WHERE EXISTS (SELECT 1 FROM intel.decisions x
-                                                                   WHERE x.fixture_id = f.id)) AS with_candidates
-          FROM core.fixtures f WHERE f.kickoff_at >= %(s)s AND f.kickoff_at < %(e)s""", {"s": start, "e": end}) or {}
+                                                                   WHERE x.fixture_id = f.id
+                                                                     AND x.decision_version = %(v)s)) AS with_candidates
+          FROM core.fixtures f WHERE f.kickoff_at >= %(s)s AND f.kickoff_at < %(e)s""",
+                         {"s": start, "e": end, "v": DECISION_CORE}) or {}
     passes = fetch_all(conn, """
         SELECT pass, count(*) AS n, sum(COALESCE((counts->>'web_searches')::int, 0)) AS web,
                sum(COALESCE((counts->>'l2')::int, 0)) AS l2, sum(COALESCE((counts->>'l3')::int, 0)) AS l3,
@@ -96,7 +102,8 @@ def day_view(conn: Conn, *, day: date | None = None) -> Envelope[dict[str, Any]]
     sources = fetch_all(conn, """
         SELECT e.origin, e.status, e.source_tier, count(*) AS n FROM ai.evidence e
           JOIN core.fixtures f ON f.id = e.fixture_id WHERE f.kickoff_at >= %(s)s AND f.kickoff_at < %(e)s
-         GROUP BY 1, 2, 3 ORDER BY 4 DESC""", {"s": start, "e": end})
+           AND (e.subject_type IS NULL OR %(typed)s)
+         GROUP BY 1, 2, 3 ORDER BY 4 DESC""", {"s": start, "e": end, "typed": typed_visible(conn)})
     v6 = fetch_all(conn, """
         SELECT s.kind, s.rank, s.odds, s.p_est, s.ev, s.stake_units, s.selected_at, s.decision_ids, s.detail,
                s.correlation FROM intel.day_selections s WHERE s.day = %(d)s ORDER BY s.kind, s.rank""", {"d": d})
@@ -149,8 +156,15 @@ def decisions(conn: Conn, *, day: date | None, state: str | None, market: str | 
     d = _day(day)
     start, end = day_bounds(d)
     rows = fetch_all(conn, LATEST_DAY_SQL, {"start": start, "end": end, "state": state, "market": market,
-                                            "fixture": fixture_id, "limit": limit})
+                                            "fixture": fixture_id, "limit": limit, "decision_version": DECISION_CORE})
     return ok(j({"day": d, "items": rows}))
+
+
+FAMILY_PM_SQL = """
+SELECT p.*, p.quality AS decision_quality FROM intel.family_postmortems p WHERE p.decision_id = %(id)s ORDER BY p.created_at DESC, p.id DESC LIMIT 1
+"""
+"""The post-mortem of a decision of a family (``pm-fam-v1``), in the shape the page of a decision reads the pipeline's: the quality of the price under
+the pipeline's name for it as well. A family keeps its lessons apart from the pipeline's (``fbi.familydecisions``, migration 0118)."""
 
 
 def decision_detail(conn: Conn, decision_id: int) -> Envelope[dict[str, Any]]:
@@ -182,10 +196,14 @@ def decision_detail(conn: Conn, decision_id: int) -> Envelope[dict[str, Any]]:
     outcome = fetch_one(conn, "SELECT * FROM intel.decision_outcomes WHERE decision_id = %(id)s", {"id": decision_id})
     pm = fetch_one(conn, "SELECT * FROM intel.postmortems WHERE decision_id = %(id)s ORDER BY id DESC LIMIT 1",
                    {"id": decision_id})
+    if pm is None and d["pick_id"] is None:  # the decision of a family has no pick and its post-mortem is the family's own (pm-fam-v1)
+        pm = fetch_one(conn, FAMILY_PM_SQL, {"id": decision_id})
     history = fetch_all(conn, """
         SELECT id, known_at, checkpoint, state, odds, p_cal, ev_cal, score, stake_units, context_status
           FROM intel.decisions WHERE fixture_id = %(f)s AND market_key = %(m)s AND selection = %(s)s AND line = %(l)s
-         ORDER BY known_at, id""", {"f": d["fixture_id"], "m": d["market_key"], "s": d["selection"], "l": d["line"]})
+           AND decision_version = %(v)s
+         ORDER BY known_at, id""", {"f": d["fixture_id"], "m": d["market_key"], "s": d["selection"], "l": d["line"],
+                                    "v": d["decision_version"]})
     cost = fetch_one(conn, """
         SELECT COALESCE(sum(cost_usd), 0) AS reviews_usd, count(*) AS reviews FROM ai.pick_reviews
          WHERE fixture_id = %(f)s AND market_key = %(m)s AND selection = %(s)s AND line = %(l)s
@@ -196,14 +214,108 @@ def decision_detail(conn: Conn, decision_id: int) -> Envelope[dict[str, Any]]:
                  "outcome": outcome, "postmortem": pm, "history": history, "cost": cost}))
 
 
+PICKER_COLUMNS = """
+       f.id AS fixture_id, f.kickoff_at, f.status_short, th.name AS home, ta.name AS away, c.name AS competition, c.country,
+       pk.as_of AS packet_as_of, bf.pass AS brief_pass, bf.escalate AS brief_escalate,
+       CASE WHEN jsonb_typeof(bf.research) = 'array' THEN jsonb_array_length(bf.research) ELSE 0 END AS research_asked"""
+PICKER_JOINS = """
+  JOIN core.teams th ON th.id = f.home_team_id
+  JOIN core.teams ta ON ta.id = f.away_team_id
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+  LEFT JOIN LATERAL (SELECT p.as_of FROM ai.match_packets p WHERE p.fixture_id = f.id
+                      ORDER BY p.as_of DESC, p.id DESC LIMIT 1) pk ON true
+  LEFT JOIN LATERAL (SELECT b.pass, b.escalate, b.content -> 'research' AS research FROM ai.match_briefs b
+                      WHERE b.fixture_id = f.id ORDER BY b.created_at DESC, b.id DESC LIMIT 1) bf ON true"""
+
+PICKER_DAY_SQL = f"""
+SELECT {PICKER_COLUMNS}
+  FROM core.fixtures f {PICKER_JOINS}
+ WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s
+ ORDER BY (pk.as_of IS NULL), f.kickoff_at, f.id LIMIT %(limit)s
+"""
+PICKER_DAY_COUNT_SQL = """
+SELECT count(*) AS total, count(*) FILTER (WHERE EXISTS (SELECT 1 FROM ai.match_packets p WHERE p.fixture_id = f.id)) AS with_packet
+  FROM core.fixtures f WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s
+"""
+PICKER_FIND_SQL = f"""
+WITH tm AS (SELECT t.id FROM core.teams t WHERE t.name ILIKE %(pattern)s),
+     cm AS (SELECT c.id FROM core.competitions c WHERE c.name ILIKE %(pattern)s),
+     fx AS (SELECT f.id FROM core.fixtures f WHERE f.home_team_id IN (SELECT id FROM tm)
+               AND f.kickoff_at >= %(from)s AND f.kickoff_at < %(until)s
+            UNION
+            SELECT f.id FROM core.fixtures f WHERE f.away_team_id IN (SELECT id FROM tm)
+               AND f.kickoff_at >= %(from)s AND f.kickoff_at < %(until)s
+            UNION
+            SELECT f.id FROM core.fixtures f JOIN core.competition_seasons s ON s.id = f.competition_season_id
+             WHERE s.competition_id IN (SELECT id FROM cm) AND f.kickoff_at >= %(from)s AND f.kickoff_at < %(until)s
+            UNION
+            SELECT f.id FROM core.fixtures f WHERE f.id = %(fixture)s::bigint)
+SELECT {PICKER_COLUMNS}
+  FROM fx JOIN core.fixtures f ON f.id = fx.id {PICKER_JOINS}
+ ORDER BY (f.id = %(fixture)s::bigint) DESC, abs(extract(epoch FROM f.kickoff_at - %(around)s)), f.id LIMIT %(limit)s
+"""
+SEARCH_DAYS = 45
+"""How far from the chosen day a text looks for a match: the matches a person looks for are the ones near it."""
+
+
+def _like(text: str) -> str:
+    """The text as a ``%...%`` pattern that matches itself: the wildcards of LIKE written by a person are letters."""
+    return "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
+
+def matches(conn: Conn, *, q: str | None = None, day: date | None = None, limit: int = 40) -> Envelope[dict[str, Any]]:
+    """THE PICKER OF THE DOSSIER: the matches of a Bogotá day - the ones the AI has a packet for first - or, with a text, the
+    matches of the teams or the competitions it names within 45 days of that day (nearest first); a number is also a match id.
+    Each says whether the AI studied it (its packet) and how many pieces of research its latest brief asked for."""
+    d = _day(day)
+    start, end = day_bounds(d)
+    text = " ".join((q or "").split())
+    if not text:
+        rows = fetch_all(conn, PICKER_DAY_SQL, {"start": start, "end": end, "limit": limit})
+        counted = fetch_one(conn, PICKER_DAY_COUNT_SQL, {"start": start, "end": end}) or {}
+        return ok(j({"mode": "day", "day": d, "q": None, "total": int(counted.get("total") or 0),
+                     "with_packet": int(counted.get("with_packet") or 0), "matches": rows}))
+    around = start + (end - start) / 2
+    fixture = int(text) if text.isdigit() and int(text) <= 2**62 else None
+    rows = fetch_all(conn, PICKER_FIND_SQL, {"pattern": _like(text), "from": around - timedelta(days=SEARCH_DAYS),
+                                             "until": around + timedelta(days=SEARCH_DAYS), "around": around,
+                                             "fixture": fixture, "limit": limit})
+    return ok(j({"mode": "search", "day": d, "q": text, "total": len(rows),
+                 "with_packet": sum(1 for r in rows if r["packet_as_of"] is not None), "matches": rows}))
+
+
+def research_counts(counts: dict[str, Any]) -> dict[str, Any]:
+    """What a pass did about the research its match's brief asked for (``fbi.ai.research``), from the pass's counts."""
+    def n(key: str) -> int:
+        try:
+            return int(counts.get(key) or 0)
+        except (TypeError, ValueError):
+            return 0
+    prefix = "research_unserved_"
+    return {"requested": n("research_requested"), "asked": n("research_asked"), "searched": n("research_searched"),
+            "unserved": {k.removeprefix(prefix): n(k) for k in sorted(counts) if k.startswith(prefix) and n(k)},
+            "web_searches": n("web_searches")}
+
+
+PASSES_SHOWN = 12
+"""The latest passes of a match the dossier lists (a match has three a day at most)."""
+REFUSED_SHOWN = 40
+"""The refused claims of the latest brief the dossier lists."""
+
+
 def dossier(conn: Conn, fixture_id: int) -> Envelope[dict[str, Any]]:
     from fbi.intel.narrative import SECTIONS, TITLES, rules_narrative
 
     packet = fetch_one(conn, "SELECT id, packet_version AS version, as_of, content, missing FROM ai.match_packets "
                              "WHERE fixture_id = %(f)s "
                              "ORDER BY as_of DESC, id DESC LIMIT 1", {"f": fixture_id})
-    brief = fetch_one(conn, "SELECT id, created_at, pass, version, engine, model, content, cost_usd FROM ai.match_briefs "
+    brief = fetch_one(conn, "SELECT id, created_at, pass, version, engine, model, status, escalate, reasons, uncertainty, "
+                            "data_quality, content, rejected, cost_usd FROM ai.match_briefs "
                             "WHERE fixture_id = %(f)s ORDER BY created_at DESC, id DESC LIMIT 1", {"f": fixture_id})
+    passes = fetch_all(conn, "SELECT pass, day, status, started_at, finished_at, escalated, reasons, counts, cost_usd, note "
+                             "FROM ai.fixture_passes WHERE fixture_id = %(f)s ORDER BY finished_at DESC, id DESC LIMIT %(n)s",
+                       {"f": fixture_id, "n": PASSES_SHOWN})
     fx = fetch_one(conn, """
         SELECT f.id, f.kickoff_at, f.status_short, th.name AS home, ta.name AS away, c.name AS competition,
                c.country FROM core.fixtures f JOIN core.teams th ON th.id = f.home_team_id
@@ -219,20 +331,66 @@ def dossier(conn: Conn, fixture_id: int) -> Envelope[dict[str, Any]]:
     decisions_ = fetch_all(conn, """
         SELECT DISTINCT ON (market_key, selection, line) id, known_at, checkpoint, market_key, selection, line, odds,
                p_model, p_cal, p_market, ev_cal, state, score, stake_units, context_status
-          FROM intel.decisions WHERE fixture_id = %(f)s ORDER BY market_key, selection, line, known_at DESC, id DESC""",
-                           {"f": fixture_id})
+          FROM intel.decisions WHERE fixture_id = %(f)s AND decision_version = %(v)s
+         ORDER BY market_key, selection, line, known_at DESC, id DESC""",
+                           {"f": fixture_id, "v": DECISION_CORE})
     return ok(j({"fixture": fx, "packet": None if packet is None else {
         "id": packet["id"], "version": packet["version"], "as_of": packet["as_of"], "missing": packet["missing"]},
                  "dossier": content.get("dossier"), "stakes": content.get("stakes"), "form": content.get("form"),
                  "absences": content.get("absences"), "lineups": content.get("lineups"),
+                 "h2h": content.get("h2h"), "scenarios": content.get("scenarios"), "factors": content.get("factors"),
                  "narrative": None if not narrative else [{"key": k, "title": TITLES[k], "text": narrative.get(k)}
                                                           for k in SECTIONS],
                  "narrative_engine": engine,
-                 "brief": None if brief is None else {"id": brief["id"], "created_at": brief["created_at"],
-                                                      "pass": brief["pass"], "engine": brief["engine"],
-                                                      "model": brief["model"], "summary": (brief["content"] or {}).get(
-                                                          "summary"), "cost_usd": brief["cost_usd"]},
+                 "brief": None if brief is None else _brief(brief),
+                 "passes": [_pass(p) for p in passes],
                  "decisions": decisions_}))
+
+
+def _brief(brief: dict[str, Any]) -> dict[str, Any]:
+    """The latest brief of a match as the admin reads it: what it said, what it asked the server to look into, and every claim the
+    server refused (with the reason) - the AI's side of the record, which the users never see."""
+    said = brief["content"] or {}
+    asks = said.get("research")
+    refused = brief["rejected"]
+    return {"id": brief["id"], "created_at": brief["created_at"], "pass": brief["pass"], "version": brief["version"],
+            "engine": brief["engine"], "model": brief["model"], "status": brief["status"], "summary": said.get("summary"),
+            "escalate": brief["escalate"], "reasons": list(brief["reasons"] or []), "uncertainty": brief["uncertainty"],
+            "data_quality": brief["data_quality"], "cost_usd": brief["cost_usd"],
+            "research": asks if isinstance(asks, list) else [],
+            "refused": refused[:REFUSED_SHOWN] if isinstance(refused, list) else [],
+            "refused_total": len(refused) if isinstance(refused, list) else 0}
+
+
+def _pass(row: dict[str, Any]) -> dict[str, Any]:
+    """A pass of a match: when it ran, what became of it and what it did about the research the match's brief asked for."""
+    counts = row["counts"] if isinstance(row["counts"], dict) else {}
+    return {"pass": row["pass"], "day": row["day"], "status": row["status"], "started_at": row["started_at"],
+            "finished_at": row["finished_at"], "escalated": row["escalated"], "reasons": list(row["reasons"] or []),
+            "cost_usd": row["cost_usd"], "note": row["note"], "research": research_counts(counts)}
+
+
+def factors(conn: Conn) -> Envelope[dict[str, Any]]:
+    """THE REGISTRY OF CONTEXT FACTORS as it stands now: each factor of the catalogue, what an experiment would have to show for it to be
+    validated, its status and the decisions behind it (newest first). Only a person with an experiment moves a factor off DESCRIPTIVE
+    (``python -m scripts.context_factors``); this page only reads."""
+    from fbi.intel import factors as registry
+
+    taken: dict[str, list[dict[str, Any]]] = {}
+    for d in reversed(registry.history(conn)):
+        taken.setdefault(d.factor, []).append({
+            "id": d.id, "version": d.version, "status": d.status, "decided_at": d.decided_at, "decided_by": d.decided_by,
+            "who": d.who, "reason": d.reason, "experiment": d.experiment, "previous_id": d.previous_id})
+    stands = registry.standings(conn, at=now())
+    out = []
+    for f in registry.CATALOGUE:
+        standing = stands[f.key].decision
+        out.append({"key": f.key, "label": f.label, "claim": f.claim, "version": f.version, "block": f.where,
+                    "status": stands[f.key].status,
+                    "decision": None if standing is None else {"id": standing.id, "decided_at": standing.decided_at,
+                                                               "experiment": standing.experiment},
+                    "decisions": taken.get(f.key, [])})
+    return ok(j({"version": registry.VERSION, "note": registry.NOTE, "factors": out}))
 
 
 def calibration(conn: Conn) -> Envelope[dict[str, Any]]:
@@ -260,20 +418,27 @@ def calibration(conn: Conn) -> Envelope[dict[str, Any]]:
                  "evaluations": evaluations, "gates": gates}))
 
 
-def memory(conn: Conn, *, entity_type: str | None, q: str | None, limit: int) -> Envelope[dict[str, Any]]:
+def memory(conn: Conn, *, entity_type: str | None, q: str | None, limit: int, aspect: str | None = None) -> Envelope[dict[str, Any]]:
+    """The newest state of every entity and aspect, from the newest version that wrote it (``intel.entity_memory_latest``), with the
+    confidence it rests on and what it rests on (memory-v4; both null for a state an older version wrote). ``aspect`` keeps one kind
+    of memory (corners, cards, xg, discipline, market:1X2...): the list is cut at ``limit`` after sorting by sample, so without it the
+    kinds with the most rows crowd the others out."""
     rows = fetch_all(conn, """
         SELECT DISTINCT ON (entity_type, entity_id, aspect) entity_type, entity_id, entity_name, aspect, as_of_day,
-               stats, delta
-          FROM intel.entity_memory
+               version, stats, delta, confidence::float8 AS confidence, evidence_ref
+          FROM intel.entity_memory_latest
          WHERE (%(t)s::text IS NULL OR entity_type = %(t)s)
            AND (%(q)s::text IS NULL OR entity_name ILIKE '%%' || %(q)s || '%%')
-         ORDER BY entity_type, entity_id, aspect, as_of_day DESC""", {"t": entity_type, "q": q})
+           AND (%(a)s::text IS NULL OR aspect = %(a)s)
+           AND NOT (entity_type = 'referee' AND entity_id !~ '^[0-9]+$')
+         ORDER BY entity_type, entity_id, aspect, as_of_day DESC""", {"t": entity_type, "q": q, "a": aspect})
     rows.sort(key=lambda r: -int((r["stats"] or {}).get("decisions") or (r["stats"] or {}).get("matches") or 0))
     return ok(j({"items": rows[:limit], "total": len(rows)}))
 
 
 def memory_history(conn: Conn, entity_type: str, entity_id: str) -> Envelope[dict[str, Any]]:
-    rows = fetch_all(conn, "SELECT aspect, as_of_day, entity_name, stats, delta, sources, built_at FROM intel.entity_memory "
+    rows = fetch_all(conn, "SELECT aspect, as_of_day, entity_name, version, stats, delta, sources, built_at, "
+                           "confidence::float8 AS confidence, evidence_ref FROM intel.entity_memory_latest "
                            "WHERE entity_type = %(t)s AND entity_id = %(i)s ORDER BY aspect, as_of_day",
                      {"t": entity_type, "i": entity_id})
     return ok(j({"entity_type": entity_type, "entity_id": entity_id, "history": rows}))
@@ -300,6 +465,76 @@ def markets(conn: Conn) -> Envelope[dict[str, Any]]:
     for r in rows:
         by_status[r["status"]] = by_status.get(r["status"], 0) + 1
     return ok(j({"run": run, "by_status": by_status, "items": rows}))
+
+
+def market_matrix(conn: Conn) -> Envelope[dict[str, Any]]:
+    """THE MATRIX OF MARKETS BY FAMILY (plan F9): the newest one stored by the weekly job or by ``python -m scripts.markets matrix
+    --store``. Reading only, and cheap: the work (the scans of prices and results) is done when the matrix is built, never here."""
+    from fbi.market.matrix import GROUPS, MATRIX_VERSION
+
+    row = fetch_one(conn, "SELECT id, generated_at, matrix_version, taxonomy_version, window_days, duration_ms, rows, coverage, summary "
+                          "FROM market.catalogue_runs ORDER BY generated_at DESC, id DESC LIMIT 1")
+    keys = fetch_one(conn, "SELECT count(*) AS keys, count(*) FILTER (WHERE is_tracked) AS followed, "
+                           "count(*) FILTER (WHERE is_model_enabled) AS modelled FROM market.markets") or {}
+    rules = fetch_one(conn, "SELECT count(*) AS rules, count(*) FILTER (WHERE liquidable) AS can_grade FROM market.settlement_rules") or {}
+    if row is None:
+        return ok(j({"run": None, "rows": [], "coverage": None, "summary": None, "groups": GROUPS, "keys": keys, "rules": rules,
+                     "current_version": MATRIX_VERSION}))
+    run = {k: row[k] for k in ("id", "generated_at", "matrix_version", "taxonomy_version", "window_days", "duration_ms")}
+    return ok(j({"run": run, "rows": row["rows"], "coverage": row["coverage"], "summary": row["summary"], "groups": GROUPS,
+                 "keys": keys, "rules": rules, "current_version": MATRIX_VERSION}))
+
+
+def price_clock(conn: Conn) -> Envelope[dict[str, Any]]:
+    """THE PRICE CLOCK (plan F1): how many of the provider's markets are structured from the RAW /odds payloads, how many
+    payloads are read and how many wait, what the table weighs, and what went wrong. Reading only. The per-bet counts are an
+    index-only scan of a table that grows, so they are bounded in time and absent (null) when the bound is hit."""
+    from fbi.odds.quote_extract import EXTRACTOR_VERSION, JOB, backlog, table_bytes
+
+    raw = fetch_one(conn, "SELECT count(*) AS payloads, min(fetched_at) AS first, max(fetched_at) AS last "
+                          "FROM raw.ingestion_payloads WHERE endpoint = '/odds' AND http_status = 200 AND results_count > 0")
+    ledger = fetch_all(conn, "SELECT status, extractor_version AS version, count(*) AS payloads, "
+                             "coalesce(sum(quotes_written), 0) AS quotes, coalesce(sum(quotes_refused), 0) AS refused, "
+                             "max(extracted_at) AS last FROM market.odds_extractions GROUP BY 1, 2 ORDER BY 1, 2")
+    span = fetch_one(conn, "SELECT min(captured_at) AS first, max(captured_at) AS last, count(DISTINCT fixture_id) AS fixtures, "
+                           "coalesce(sum(quotes_written), 0) AS quotes FROM market.odds_extractions WHERE status = 'ok'") or {}
+    families = fetch_all(conn, "SELECT f.key, f.label, count(d.id) AS bets, count(d.id) FILTER (WHERE d.extract) AS extracted "
+                               "FROM market.market_families f LEFT JOIN market.market_definitions d ON d.family = f.key "
+                               "GROUP BY f.key, f.label, f.sort_order ORDER BY f.sort_order")
+    bets = fetch_all(conn, "SELECT id, provider_bet_id AS bet_id, name, family, period, subject, status, schema "
+                           "FROM market.market_definitions WHERE extract ORDER BY family, provider_bet_id")
+    counts: dict[int, dict[str, Any]] | None = None
+    try:
+        with conn.transaction():
+            conn.execute("SET LOCAL statement_timeout = '4s'")
+            per_bet = fetch_all(conn, "SELECT definition_id, count(*) AS quotes, max(captured_at) AS last "
+                                      "FROM market.odds_quotes GROUP BY definition_id")
+            conn.execute("SET LOCAL statement_timeout = DEFAULT")
+        counts = {int(r["definition_id"]): r for r in per_bet}
+    except psycopg.errors.QueryCanceled:
+        counts = None
+    for b in bets:
+        found = None if counts is None else counts.get(int(b.pop("id")))
+        b["quotes"] = None if counts is None else int(found["quotes"]) if found else 0
+        b["last"] = found["last"] if found else None
+    by_family: dict[str, int] = {}
+    for b in bets:
+        if b["quotes"] is not None:
+            by_family[b["family"]] = by_family.get(b["family"], 0) + b["quotes"]
+    for fam in families:
+        fam["quotes"] = None if counts is None else by_family.get(fam["key"], 0)
+    unclassified = fetch_all(conn, "SELECT provider_bet_id AS bet_id, name, classified_at FROM market.market_definitions "
+                                   "WHERE family = 'unclassified' ORDER BY provider_bet_id")
+    issues = fetch_all(conn, "SELECT left(payload_hash, 12) AS payload, provider_fixture_id, status, detail, quotes_refused, "
+                             "extracted_at FROM market.odds_extractions WHERE status IN ('error', 'no_fixture') "
+                             "OR (status = 'ok' AND detail IS NOT NULL) ORDER BY extracted_at DESC LIMIT 20")
+    runs_ = fetch_all(conn, "SELECT id, started_at, finished_at, status, rows_written, errors, last_error, notes "
+                            "FROM raw.ingestion_runs WHERE job_type = %(j)s ORDER BY started_at DESC LIMIT 8", {"j": JOB})
+    return ok(j({
+        "extractor": EXTRACTOR_VERSION, "raw": raw, "backlog": backlog(conn), "ledger": ledger,
+        "quotes": {**span, "gigabytes": round(table_bytes(conn) / 1e9, 3)},
+        "families": families, "bets": bets, "unclassified": unclassified, "issues": issues, "runs": runs_,
+    }))
 
 
 def runs(conn: Conn, *, limit: int) -> Envelope[dict[str, Any]]:
@@ -334,8 +569,8 @@ def costs(conn: Conn) -> Envelope[dict[str, Any]]:
         SELECT count(DISTINCT (fixture_id, market_key, selection, line)) AS candidates,
                count(DISTINCT (fixture_id, market_key, selection, line)) FILTER (WHERE state <> 'RECHAZADO') AS live,
                count(DISTINCT fixture_id) AS fixtures
-          FROM intel.decisions WHERE known_at >= %(s)s AND known_at < %(e)s""",
-                      {"s": since, "e": day_start(today)}) or {}
+          FROM intel.decisions WHERE known_at >= %(s)s AND known_at < %(e)s AND decision_version = %(v)s""",
+                      {"s": since, "e": day_start(today), "v": DECISION_CORE}) or {}
     picks = fetch_one(conn, "SELECT count(*) AS picks FROM intel.day_selections WHERE kind = 'pick' AND day >= %(d)s "
                             "AND day < %(t)s", {"d": today - timedelta(days=7), "t": today}) or {}
     total = float(per.get("total") or 0)

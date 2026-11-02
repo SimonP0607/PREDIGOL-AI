@@ -183,7 +183,11 @@ def test_wrong_codes_end_the_staged_session_and_lock_the_account(accounts: dict[
                            (accounts["owner"],)).fetchone()
         assert row == (5, True)
         assert conn.execute("SELECT count(*) FROM auth.audit_events WHERE action = 'login.locked'").fetchone() == (1,)
+        # the lock ends as the console ends it: the account's counters and an unlock in the trail, which ends the
+        # address's streak (plan UX, A1: the streak is read from the trail by every API process)
         conn.execute("UPDATE auth.users SET failed_logins = 0, locked_until = NULL WHERE id = %s",
+                     (accounts["owner"],))
+        conn.execute("INSERT INTO auth.audit_events (action, target_user_id) VALUES ('user.unlocked', %s)",
                      (accounts["owner"],))
         conn.commit()
     with client() as c:
@@ -195,9 +199,11 @@ def test_wrong_codes_end_the_staged_session_and_lock_the_account(accounts: dict[
 def test_wrong_passwords_lock_the_account_across_processes_until_the_owner_unlocks_it(
         accounts: dict[str, int], db: str) -> None:
     with client() as c:
-        for _ in range(5):
+        for _ in range(4):
             assert c.post("/api/v1/auth/login", json={"email": FAN, "password": "Wrong-pass-2026"}).status_code == 401
-        throttle.reset_all()  # another API process: nothing in its memory
+        # the fifth locks, and says so (plan UX, A1)
+        assert c.post("/api/v1/auth/login", json={"email": FAN, "password": "Wrong-pass-2026"}).status_code == 429
+        throttle.reset_all()  # another API process (or a restart): nothing in its memory, the lock still holds
         r = c.post("/api/v1/auth/login", json={"email": FAN, "password": FAN_PW})
         assert r.status_code == 429 and r.json()["error"]["retry_after"] > 800
     with client() as owner:

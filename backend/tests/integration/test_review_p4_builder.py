@@ -43,7 +43,8 @@ def test_without_filters_it_is_predigols_own_daily_parlay(db: psycopg.Connection
         assert [leg.pick_id for leg in body.legs] == _legs(db, source), f"{source}: the builder is the same rule"
         assert body.source == ("shadow_preview" if include_shadow else "qualified")
         assert body.parlay_rule == "parlay-v5" and body.rule_version == "builder-v2"
-        assert body.combined_odds is not None and body.p_all_low is not None and body.expected_log_growth > 0
+        assert body.combined_odds is not None and body.p_all_low is not None
+        assert body.expected_log_growth is not None and body.expected_log_growth > 0
     user = built_parlay(db, wide, include_shadow=False, at=AT).data
     assert user is not None
     assert {leg.fixture_id for leg in user.legs} <= {w.fixtures["F1"], w.fixtures["F2"], w.fixtures["F3"]}, \

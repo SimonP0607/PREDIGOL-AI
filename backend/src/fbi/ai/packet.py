@@ -28,11 +28,82 @@ from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai import context as ctx
+from fbi.ai.absences import absences_as_of, checked_at_as_of
+from fbi.ai.evidence import STALE_AFTER
 from fbi.ai.pricing import approx_tokens
+from fbi.catalog.neutral_store import rule_in_force
+from fbi.competitions import context as phase_context
+from fbi.competitions import team_calendar as tc
+from fbi.competitions.stages import stage_of
+from fbi.competitions.tables import match_tables
+from fbi.intel import factors, scenarios
+from fbi.intel.h2h import head_to_head
+from fbi.people.officials import referee_as_of
 
-PACKET_VERSION = "packet-v2"
-"""v2 (13 Oct 2026): the ``dossier`` block (``fbi.intel.dossier``): teams in depth, coaches, key players, the
-referee, the competitive context, how much the head-to-head is worth."""
+PACKET_VERSION = "packet-v8"
+"""v8 (plan F6, pre-match v3): the ``h2h`` block is the weighted head-to-head of ``fbi.intel.h2h`` (``h2h-v2``), the one the
+match page reads too. The last eight meetings that were played to a result (``FT`` / ``AET`` / ``PEN``), kicked off before the match
+and had their result recorded by the packet's moment, each with the weight it has for THIS match (how recent, the same competition
+or kind, the same ground, the same coaches on the benches) - fixed round numbers, not fitted, written in the block - the
+effective sample size, the record in regulation time and the same record weighted, and ``status`` (``DESCRIPTIVE`` until an
+experiment shows it adds anything: ``intel.context_factors``). ``n`` and ``home_view`` are what the block always carried. The
+dossier is ``dossier-v4``. The ``scenarios`` block (``fbi.intel.scenarios``, ``scenarios-v1``): what the match alone does to the table of
+its own stage (the points and the interval of places of both sides after each result, every other team keeping its points) and, for the
+second leg of a tie, the margin with which each side is ahead, level or behind on aggregate after 90 minutes - arithmetic, not
+probability; ``DESCRIPTIVE``. Absent when there is neither a table of the match's own stage nor a tie. And ``dossier.tactics``
+(``fbi.intel.tactics``, ``tactics-v1``): per side, from its last ten matches, the formations and changes of eleven, the goals by quarter of
+an hour with the late ones apart, the results by who scores first and by the half-time score, and the first substitution by the score -
+each with its sample size, and with the matches it could not read (events that do not give the score, squad sheets the provider crossed,
+no list at all) counted, not guessed; ``DESCRIPTIVE``. A squad sheet the provider crossed no longer gives the ``coach`` block a formation.
+The ``status`` of those three blocks is read from the registry (``factors``, ``fbi.intel.factors``): for each context factor - the
+head-to-head, the scenarios, the tactics, rest and congestion - the version of the code that computes it, the block that carries it, its
+status as of the packet's moment (``DESCRIPTIVE`` unless a person validated THAT version citing an experiment) and the decision behind
+it. A registry that cannot be read leaves every factor ``DESCRIPTIVE`` and says so (``factors.error``, ``missing``).
+v7 (plan F4): the ``schedule`` block is read from each team's calendar in EVERY competition (``fbi.competitions.team_calendar``),
+as it stood at the packet's moment, not only from the competitions PrediGol follows. Where a team's own list was read recently
+and has no doubt in it (``schedule.calendar.<side>.complete``) its ``rest_days``, ``matches_last_7d/14d/30d`` and ``next_match``
+are the team's real figures (``outside_last_14d`` says how many of the fortnight's matches were in a competition PrediGol does
+not follow); where it was not, they are the same bounds as in v6 (rest at most, matches at least) and the side says why
+(``never_fetched``, ``stale``, ``unconfirmed_match``). ``recent`` (the last three matches played) and ``upcoming`` (the next two
+within the week) name the competition of each, whether PrediGol follows it and whether the team was at home - and carry no
+score and no opponent. The flags say a side is at a disadvantage only when BOTH calendars are whole. A calendar that could not
+be read is ``schedule: {"error": ...}`` and named in ``missing``.
+v6 (plan F5): the ``forecast`` block - what PrediGol itself stated about the match by the packet's moment
+(``models.match_forecasts``): per core market the probability of each outcome with the interval the model measured, whether it
+was ``CALIBRATED`` (a champion calibrator exists) or ``UNCALIBRATED`` (the model's own number; ``basis`` says why) and which
+outcome is the likely one. It is a probability, not a price: it carries no odds and no edge, and the review and the brief are told
+that the likely outcome is not the best paid one. A match PrediGol made no forecast for (or had not yet by the moment) has no
+block and no ``missing`` entry - the forecast is derived from ``models``, which names itself when it is absent; a forecast that
+could not be read is ``{"error": ...}`` and named in ``missing``. Only sets with ``known_at`` at or before the moment are read, the
+newest of each market, so a packet built for a past moment is the forecast a reader could really have had.
+v5 (plan F3): the referee is a person (``fbi.people``). ``fixture.referee`` is his name, ``fixture.referee_id`` his id and
+``fixture.referee_seen_at`` the moment of the provider's observation the answer comes from, all read AS OF the packet's moment
+(``fbi.people.officials``): the newest thing the provider had said by then, and nothing when it had taken the referee off the
+match. The dossier is ``dossier-v3``: his matches are counted under every spelling the provider used for him. A match the
+identity has not seen yet, or whose newest observation it has not caught up with (the pass runs hourly), keeps the string the
+provider wrote (``referee_id`` null, ``dossier.referee.identity == "text"``): never a person who is no longer the one named.
+The players are persons too: in a national-team match ``dossier.national`` says, for the eleven, the club he plays for on the day
+(``core.player_spells``), his form there and his record for the country (``core.player_national_caps``), all as of the moment.
+v4 (plan F2): the ``phase`` block (``fbi.competitions.context``): the stage of the round and, for a leg of a tie, the tie
+as it could be seen BEFORE the match - the earlier legs that had a result at the packet's moment, the aggregate of those and what
+the first 90 minutes of this match do to it (never the winner, the aggregate or the way a tie was decided: those include this
+very match). ``fixture.stage`` is read by the one classifier of round labels, not a regular expression of its own, and the
+dossier is ``dossier-v2``. The ``standings`` block is the table of the MATCH'S OWN stage as it stood at the packet's moment
+(``fbi.competitions.tables.match_tables``, the mapping the match page uses, cut at that moment): each side says which
+``stage`` and ``group`` its row ranks and why that table was chosen (``selection``: ``fixture_stage``, ``phase_league_stage``
+or ``previous_stage``). Before v4 each team got the newest row of any table of the season and the table whose name sorted last
+won, so a championship-round match was described with the regular-season table; ``stakes`` are computed only from the match's own
+stage (``remaining`` counts the matches the team has left in THAT stage) and are ``None`` for a knock-out round, which shows the
+table of the stage before it as context only. A stage with no table of its own is ``missing: standings``, never another
+stage's table.
+v2 (13 Oct 2026): the ``dossier`` block (``fbi.intel.dossier``): teams in depth, coaches, key players, the
+referee, the competitive context, how much the head-to-head is worth.
+v3 (plan F0): the ``schedule`` block says what its numbers are (``schedule.calendar``): rest and congestion are read from
+the competitions we follow, so the rest is an upper bound and the matches in 14 days a lower bound; the rest-difference
+flags (``*_rest_disadvantage``), which are false whenever a side played a competition we do not follow, are no longer
+emitted, only ``*_short_rest`` (defect 10). The ``absences`` block is the latest /injuries answer AS OF the packet's
+moment (``fbi.ai.absences``): a player the newest answer no longer names has recovered and is not listed, and a row
+refreshed after the moment does not hide what was known at it (defect 8)."""
 CORE_KEYS: tuple[tuple[str, str, Decimal], ...] = (
     ("1X2", "Home", Decimal(0)), ("1X2", "Draw", Decimal(0)), ("1X2", "Away", Decimal(0)),
     ("OU", "Over", Decimal("2.5")), ("OU", "Under", Decimal("2.5")),
@@ -41,7 +112,6 @@ CORE_KEYS: tuple[tuple[str, str, Decimal], ...] = (
 MODELS = ("dixon_coles", "poisson", "elo_ologit")
 FORM_N = 6
 STATS_N = 10
-H2H_N = 8
 PRICE_LOOKBACK = timedelta(hours=36)
 P = 3
 """Decimals kept for a probability in a packet: finer changes are noise to a review and would only make a
@@ -49,7 +119,8 @@ new packet (a new row) without a new context."""
 OPENING_LOOKBACK = timedelta(days=7)
 
 FIXTURE_SQL = """
-SELECT f.id, f.provider_fixture_id, f.kickoff_at, f.round, f.status_short, f.status_group, f.is_neutral,
+SELECT f.id, f.provider_fixture_id, f.kickoff_at, f.round, f.status_short, f.status_group,
+       (f.is_neutral OR c.neutral_venue OR COALESCE(k.neutral, false)) AS is_neutral,
        f.venue_name, COALESCE(v.city, f.venue_city) AS venue_city, v.country AS venue_country,
        f.home_team_id, f.away_team_id, th.name AS home_name, ta.name AS away_name,
        th.provider_team_id AS home_provider_id, ta.provider_team_id AS away_provider_id,
@@ -67,11 +138,8 @@ SELECT f.id, f.provider_fixture_id, f.kickoff_at, f.round, f.status_short, f.sta
   LEFT JOIN core.venues v ON v.id = f.venue_id
   LEFT JOIN core.venues vh ON vh.id = th.venue_id
   LEFT JOIN core.venues va ON va.id = ta.venue_id
+  LEFT JOIN core.fixture_venue_class k ON k.fixture_id = f.id AND k.rule_version = %(rule)s
  WHERE f.id = %(fixture)s
-"""
-
-FACTS_SQL = """
-SELECT referee, observed_at FROM core.fixture_facts_latest WHERE fixture_id = %(fixture)s AND observed_at <= %(at)s
 """
 
 KICKOFF_CHANGES_SQL = """
@@ -80,20 +148,23 @@ SELECT observed_at, before_kickoff, after_kickoff FROM core.fixture_kickoff_chan
 """
 
 STANDINGS_SQL = """
-SELECT DISTINCT ON (st.team_id, st.group_key)
-       st.team_id, st.group_key, st.rank, st.points, st.played, st.goals_diff, st.form, st.description,
+SELECT st.team_id, st.group_key, st.rank, st.points, st.played, st.goals_diff, st.form, st.description,
        st.snapshot_at, st.home_played, st.home_wins, st.home_draws, st.home_losses, st.away_played, st.away_wins,
        st.away_draws, st.away_losses
   FROM core.standings st
- WHERE st.competition_season_id = %(season)s AND st.snapshot_at <= %(at)s
- ORDER BY st.team_id, st.group_key, st.snapshot_at DESC
+ WHERE st.competition_season_id = %(season)s AND st.snapshot_at = %(snapshot)s AND st.group_key = ANY(%(keys)s)
 """
+"""The rows of the tables ``fbi.competitions.tables.match_tables`` chose for the match, in the one snapshot it chose (taken by the
+packet's moment). Never "each team's newest row": a season with a regular season and a championship round, or an Apertura and a
+Clausura, has several tables with the same teams."""
 
 REMAINING_SQL = """
-SELECT count(*) FROM core.fixtures f
+SELECT f.round FROM core.fixtures f
  WHERE f.competition_season_id = %(season)s AND (f.home_team_id = %(team)s OR f.away_team_id = %(team)s)
    AND f.kickoff_at >= %(kickoff)s AND f.status_group IN ('scheduled', 'live')
 """
+"""The rounds of the matches the team has left from this one on (this one included). What is still to play is what the TABLE's
+stage still has: the Clausura matches already scheduled are not points the Apertura table can still give."""
 
 PAST_SQL = """
 SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, r.reg_goals_home, r.reg_goals_away, c.name AS competition
@@ -106,32 +177,6 @@ SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, r.reg_goals_home, r.r
    AND r.settled_at <= %(at)s AND r.reg_goals_home IS NOT NULL AND r.reg_goals_away IS NOT NULL
  ORDER BY f.kickoff_at DESC
  LIMIT %(limit)s
-"""
-
-H2H_SQL = """
-SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, r.reg_goals_home, r.reg_goals_away
-  FROM core.fixtures f JOIN core.fixture_results r ON r.fixture_id = f.id
- WHERE ((f.home_team_id = %(a)s AND f.away_team_id = %(b)s) OR (f.home_team_id = %(b)s AND f.away_team_id = %(a)s))
-   AND f.kickoff_at < %(kickoff)s AND r.settled_at <= %(at)s AND r.reg_goals_home IS NOT NULL
- ORDER BY f.kickoff_at DESC LIMIT %(limit)s
-"""
-
-PREVIOUS_SQL = """
-SELECT max(f.kickoff_at) AS previous,
-       count(*) FILTER (WHERE f.kickoff_at >= %(kickoff)s - interval '14 days') AS last_14d
-  FROM core.fixtures f
- WHERE (f.home_team_id = %(team)s OR f.away_team_id = %(team)s) AND f.kickoff_at < %(kickoff)s
-   AND f.kickoff_at >= %(kickoff)s - interval '60 days' AND f.status_group = 'finished'
-"""
-
-NEXT_SQL = """
-SELECT f.kickoff_at, c.name AS competition, c.type AS competition_type
-  FROM core.fixtures f
-  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-  JOIN core.competitions c ON c.id = cs.competition_id
- WHERE (f.home_team_id = %(team)s OR f.away_team_id = %(team)s) AND f.kickoff_at > %(kickoff)s
-   AND f.kickoff_at <= %(kickoff)s + interval '7 days' AND f.created_at <= %(at)s
- ORDER BY f.kickoff_at LIMIT 1
 """
 
 ELO_RUN_SQL = """
@@ -176,18 +221,6 @@ SELECT count(DISTINCT p.id) FILTER (WHERE own.fixture_id IS NOT NULL) AS n,
   FROM past p
   LEFT JOIN stats own ON own.fixture_id = p.id AND own.team_side = p.side
   LEFT JOIN stats opp ON opp.fixture_id = p.id AND opp.team_side <> p.side
-"""
-
-ABSENCES_SQL = """
-SELECT a.provider_team_id, a.provider_player_id, a.player_name, a.absence_type, a.reason, a.fetched_at, a.payload_hash
-  FROM core.player_absences a
- WHERE a.fixture_id = %(fixture)s AND a.fetched_at <= %(at)s
- ORDER BY a.provider_team_id, a.player_name
-"""
-
-ABSENCE_CHECK_SQL = """
-SELECT max(checked_at) AS checked_at FROM core.context_checks
- WHERE competition_season_id = %(season)s AND dataset = 'injuries' AND checked_at <= %(at)s
 """
 
 SQUAD_STATS_SQL = """
@@ -255,6 +288,24 @@ SELECT n.model, p.model_version_id, p.data_cutoff_ts, p.market_key, p.selection,
  WHERE p.fixture_id = %(fixture)s AND p.backtest_session_id IS NULL
 """
 
+FORECAST_VERSION = "forecast-v1"
+"""``fbi.forecasting.match_forecast.VERSION`` (a test holds the two equal: this module does not import the worker's)."""
+FORECAST_ORDER = {"1X2": 0, "OU": 1, "BTTS": 2}
+
+FORECAST_SQL = """
+WITH last AS (
+    SELECT market_key, line, max(known_at) AS k
+      FROM models.match_forecasts
+     WHERE fixture_id = %(fixture)s AND version = %(version)s AND known_at <= %(at)s
+     GROUP BY 1, 2
+)
+SELECT x.market_key, x.line, x.model_name, x.calibration, x.basis, x.known_at, x.data_cutoff_ts, x.selection,
+       x.p, x.p_lo, x.p_hi
+  FROM models.match_forecasts x JOIN last l ON l.market_key = x.market_key AND l.line = x.line AND l.k = x.known_at
+ WHERE x.fixture_id = %(fixture)s AND x.version = %(version)s
+ ORDER BY x.market_key, x.line, x.id
+"""
+
 QUALITY_SQL = """
 SELECT (SELECT jsonb_build_object('class', s.class, 'score', s.score, 'computed_at', s.computed_at)
           FROM analytics.competition_data_scores s
@@ -270,9 +321,13 @@ SELECT e.id, e.kind, e.claim, e.team_id, e.provider_player_id, e.status, e.origi
   FROM ai.evidence e
  WHERE (e.fixture_id = %(fixture)s OR (e.fixture_id IS NULL AND e.team_id = ANY(%(teams)s)))
    AND e.retrieved_at <= %(at)s AND e.status <> 'OUTDATED'
+   AND (e.subject_type IS NULL OR (%(typed)s AND COALESCE(e.published_at, e.retrieved_at) > %(at)s - %(stale)s))
  ORDER BY e.relevance DESC, e.retrieved_at DESC, e.id
  LIMIT 40
 """
+"""A claim typed by research v2 (``subject_type`` not NULL) is shown only when the builder was told to (``PacketBuilder.typed_evidence``: research v2 is
+``on``, ``fbi.ai.gates.typed_visible``) and only while it is not older than ``STALE_AFTER`` - by its own date, the page's, or the day it was read.
+What v1 wrote and the provider's reports have no ``subject_type``: they are read exactly as before."""
 
 
 @dataclass
@@ -318,6 +373,16 @@ def _ts(x: datetime | None) -> str | None:
     return None if x is None else x.isoformat()
 
 
+def _calendar_entry(m: tc.Match, kickoff: datetime, *, ahead: bool) -> dict[str, Any]:
+    """One match of a team's calendar as the packet says it: when, in which competition, whether PrediGol follows it and whether
+    the team was at home. No score and no opponent: the packet's ``form`` block has the results of the competitions it follows,
+    and what a calendar adds is how crowded the days around the match are."""
+    days = ((m.kickoff_at - kickoff) if ahead else (kickoff - m.kickoff_at)).total_seconds() / 86400
+    return {"provider_fixture_id": m.provider_fixture_id, "kickoff_at": _ts(m.kickoff_at),
+            "days_after" if ahead else "days_before": round(days, 1), "competition": m.competition,
+            "type": m.competition_type, "followed": m.followed, "home": m.home}
+
+
 def _rows(conn: psycopg.Connection[Any], sql: str, params: dict[str, Any]) -> list[dict[str, Any]]:
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(sql, params)
@@ -332,8 +397,10 @@ def _row(conn: psycopg.Connection[Any], sql: str, params: dict[str, Any]) -> dic
 class PacketBuilder:
     """Builds packets for many fixtures with the per-run lookups (the Elo run) done once."""
 
-    def __init__(self, conn: psycopg.Connection[Any]) -> None:
+    def __init__(self, conn: psycopg.Connection[Any], *, typed_evidence: bool = False) -> None:
         self.conn = conn
+        self.typed_evidence = typed_evidence
+        """Whether the claims of research v2 are part of the packet's ``evidence`` block (research v2 ``on``; shadow shows none)."""
         self._elo_run: dict[datetime, tuple[str, int] | None] = {}
 
     def _elo_version(self, at: datetime) -> tuple[str, int] | None:
@@ -343,11 +410,19 @@ class PacketBuilder:
             self._elo_run[key] = None if row is None else (str(row["elo_version"]), int(row["run_id"]))
         return self._elo_run[key]
 
+    def _referee(self, fixture_id: int, at: datetime) -> tuple[str | None, int | None, datetime | None]:
+        """(name, id, the provider's observation it comes from) of the referee AS OF ``at`` (``fbi.people.officials``): the person
+        when the identity has the answer, the string the provider wrote when it has not caught up yet, nobody when the provider
+        had not said or had taken him off - never a guess."""
+        ref = referee_as_of(self.conn, fixture_id, at)
+        return ref.name, ref.referee_id, ref.seen_at
+
     # ── the blocks ──────────────────────────────────────────────────────────
     def build(self, fixture_id: int, *, at: datetime, extra_keys: list[tuple[str, str, Decimal]] | None = None
               ) -> Packet | None:
         conn = self.conn
-        f = _row(conn, FIXTURE_SQL, {"fixture": fixture_id})
+        rule = rule_in_force(conn)
+        f = _row(conn, FIXTURE_SQL, {"fixture": fixture_id, "rule": rule})
         if f is None:
             return None
         kickoff: datetime = f["kickoff_at"]
@@ -355,17 +430,18 @@ class PacketBuilder:
         sources: list[dict[str, Any]] = [{"block": "fixture", "table": "core.fixtures", "note": "current values"}]
         missing: list[str] = []
         content: dict[str, Any] = {}
+        stands, factors_error = self._factors(at, missing)
 
-        facts = _row(conn, FACTS_SQL, {"fixture": fixture_id, "at": at})
+        referee_name, referee_id, referee_seen = self._referee(fixture_id, at)
         changes = _rows(conn, KICKOFF_CHANGES_SQL, {"fixture": fixture_id, "at": at})
         content["fixture"] = {
             "id": fixture_id, "provider_fixture_id": f["provider_fixture_id"], "kickoff_at": _ts(kickoff),
             "competition": f["competition"], "competition_country": f["competition_country"],
             "competition_type": f["competition_type"], "competition_tier": f["competition_tier"],
-            "season": f["season"], "round": f["round"], "stage": ctx.round_stage(f["round"]),
+            "season": f["season"], "round": f["round"], "stage": phase_context.coarse_stage(f["round"]),
             "venue": f["venue_name"], "venue_city": f["venue_city"], "venue_country": f["venue_country"],
             "neutral": bool(f["is_neutral"]), "status": f["status_short"],
-            "referee": facts["referee"] if facts else None,
+            "referee": referee_name, "referee_id": referee_id, "referee_seen_at": _ts(referee_seen),
             "home": {"id": home, "name": f["home_name"], "country": f["home_country"]},
             "away": {"id": away, "name": f["away_name"], "country": f["away_country"]},
             "kickoff_changes": [{"observed_at": _ts(c["observed_at"]), "before": _ts(c["before_kickoff"]),
@@ -375,37 +451,34 @@ class PacketBuilder:
             sources.append({"block": "fixture.kickoff_changes", "table": "core.fixture_kickoff_changes",
                             "as_of": _ts(changes[-1]["observed_at"])})
 
-        content["standings"], content["stakes"] = self._standings(f, at, sources, missing)
+        content["phase"], tie = self._phase(fixture_id, at, sources, missing)
+        content["standings"], content["stakes"], table_effect = self._standings(f, at, sources, missing)
+        block = scenarios.scenarios_block(table_effect, scenarios.tie_reading(tie), status=stands[factors.SCENARIOS].status)
+        if block is not None:
+            content["scenarios"] = block
+            sources.append({"block": "scenarios", "derived_from": ["standings", "phase"], "as_of": _ts(at),
+                            "version": scenarios.VERSION})
         content["form"] = {}
-        content["schedule"] = {}
         for side, team in (("home", home), ("away", away)):
             past = _rows(conn, PAST_SQL, {"team": team, "kickoff": kickoff, "at": at, "limit": FORM_N})
             content["form"][side] = ctx.form(team, [ctx.PastMatch(r["kickoff_at"], r["home_team_id"], r["away_team_id"],
                                                                    int(r["reg_goals_home"]), int(r["reg_goals_away"]))
                                                      for r in past])
-            prev = _row(conn, PREVIOUS_SQL, {"team": team, "kickoff": kickoff})
-            nxt = _row(conn, NEXT_SQL, {"team": team, "kickoff": kickoff, "at": at})
-            content["schedule"][side] = {
-                "previous_kickoff": _ts(prev["previous"]) if prev else None,
-                "rest_days": ctx.rest_days(kickoff, prev["previous"]) if prev else None,
-                "matches_last_14d": int(prev["last_14d"]) if prev else 0,
-                "next_match": None if nxt is None else {
-                    "kickoff_at": _ts(nxt["kickoff_at"]), "competition": nxt["competition"],
-                    "days_after": round((nxt["kickoff_at"] - kickoff).total_seconds() / 86400, 1)},
-            }
         if not content["form"]["home"].get("n") and not content["form"]["away"].get("n"):
             missing.append("form")
         else:
             sources.append({"block": "form", "table": "core.fixture_results", "as_of": _ts(at)})
-        content["schedule"]["flags"] = ctx.rest_flags(content["schedule"]["home"]["rest_days"],
-                                                      content["schedule"]["away"]["rest_days"])
+        content["schedule"] = self._schedule(f, at, sources, missing)
 
-        h2h = _rows(conn, H2H_SQL, {"a": home, "b": away, "kickoff": kickoff, "at": at, "limit": H2H_N})
-        content["h2h"] = {"n": len(h2h), "home_view": ctx.form(home, [
-            ctx.PastMatch(r["kickoff_at"], r["home_team_id"], r["away_team_id"], int(r["reg_goals_home"]),
-                          int(r["reg_goals_away"])) for r in h2h])}
-        if not h2h:
+        h2h = head_to_head(conn, home_team_id=home, away_team_id=away, kickoff=kickoff, at=at,
+                           competition_id=int(f["competition_id"]), competition_kind=f["competition_kind"],
+                           provider_league_id=f["provider_league_id"], neutral=bool(f["is_neutral"]), rule=rule)
+        content["h2h"] = h2h.as_packet(status=stands[factors.H2H].status)
+        if not h2h.n:
             missing.append("h2h")
+        else:
+            sources.append({"block": "h2h", "tables": ["core.fixtures", "core.fixture_results", "core.fixture_lineups"],
+                            "as_of": _ts(at), "version": h2h.version})
 
         content["elo"] = self._elo(f, at, sources, missing)
         from fbi.intel.dossier import VERSION as DOSSIER_VERSION
@@ -414,11 +487,14 @@ class PacketBuilder:
         try:  # in a savepoint: a dossier that cannot be read never costs the rest of the packet
             with conn.transaction():
                 content["dossier"] = finite(build_dossier(
-                    conn, f, at=at, elo=self._elo_version(at), referee=facts["referee"] if facts else None,
-                    h2h_n=len(h2h), h2h_last=h2h[0]["kickoff_at"] if h2h else None))
+                    conn, f, at=at, elo=self._elo_version(at), referee=referee_name, referee_id=referee_id,
+                    h2h=h2h, tactics_status=stands[factors.TACTICS].status))
             sources.append({"block": "dossier", "tables": ["core.fixture_team_stats", "core.fixture_events",
-                                                           "core.fixture_lineups", "core.fixture_player_stats",
-                                                           "core.fixture_facts", "features.elo_ratings"],
+                                                           "core.fixture_lineups", "core.fixture_lineup_players",
+                                                           "core.fixture_results", "core.fixture_player_stats",
+                                                           "core.fixture_facts", "core.fixture_officials",
+                                                           "core.referee_aliases", "core.player_spells",
+                                                           "core.player_national_caps", "features.elo_ratings"],
                             "as_of": _ts(at), "version": DOSSIER_VERSION})
         except psycopg.Error as exc:
             content["dossier"] = {"version": DOSSIER_VERSION, "error": type(exc).__name__}
@@ -439,40 +515,139 @@ class PacketBuilder:
                                        f["away_base_country"], neutral=bool(f["is_neutral"]))
         content["market"] = self._market(fixture_id, at, extra_keys or [], sources, missing, kickoff=kickoff)
         content["models"] = self._models(fixture_id, at, content["market"], extra_keys or [], sources, missing)
+        forecast = self._forecast(fixture_id, at, sources, missing)
+        if forecast is not None:
+            content["forecast"] = forecast
         quality = self._quality(f, at, content, sources)
         content["quality"] = quality
         content["evidence"] = self._evidence(fixture_id, home, away, at, sources)
+        content["factors"] = factors.block(stands, error=factors_error)
+        sources.append({"block": "factors", "table": "intel.context_factors", "as_of": _ts(at), "version": factors.VERSION})
         return Packet(fixture_id, at, content, sources, sorted(set(missing)), quality)
 
-    def _standings(self, f: dict[str, Any], at: datetime, sources: list[dict[str, Any]], missing: list[str]
-                   ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-        rows = _rows(self.conn, STANDINGS_SQL, {"season": f["season_id"], "at": at})
-        home, away = int(f["home_team_id"]), int(f["away_team_id"])
-        mine = {int(r["team_id"]): r for r in rows if int(r["team_id"]) in (home, away)}
-        if not mine:
-            missing.append("standings")
+    def _factors(self, at: datetime, missing: list[str]) -> tuple[dict[str, factors.Standing], str | None]:
+        """The status of every context factor as of ``at`` (``fbi.intel.factors``). In a savepoint: a registry that cannot be read
+        never costs the rest of the packet - every factor is then DESCRIPTIVE, the status they are born with, and the block says why."""
+        try:
+            with self.conn.transaction():
+                return factors.standings(self.conn, at=at), None
+        except psycopg.Error as exc:
+            missing.append("factors")
+            return factors.unread(), type(exc).__name__
+
+    def _schedule(self, f: dict[str, Any], at: datetime, sources: list[dict[str, Any]], missing: list[str]) -> dict[str, Any]:
+        """Each side's rest, congestion and next matches from its calendar in EVERY competition as it stood at ``at`` (plan F4,
+        ``fbi.competitions.team_calendar``): the matches of the competitions PrediGol follows and the rest of what the provider
+        lists for the team. ``calendar`` says, side by side, whether the list is whole (read recently, nothing unconfirmed) and
+        so whether the figures are the team's real ones or the bounds they were in packet-v6; the rest-gap flags are only claimed
+        when both calendars are whole. In a savepoint: a calendar that cannot be read never costs the rest of the packet."""
+        kickoff: datetime = f["kickoff_at"]
+        try:
+            with self.conn.transaction():
+                cals = {side: tc.load(self.conn, team_id=int(f[f"{side}_team_id"]), at=at, kickoff=kickoff)
+                        for side in ("home", "away")}
+        except psycopg.Error as exc:
+            missing.append("schedule")
+            return {"error": type(exc).__name__}
+        out: dict[str, Any] = {}
+        states: dict[str, dict[str, Any]] = {}
+        for side, cal in cals.items():
+            state = cal.state(kickoff)
+            states[side] = {"complete": state.complete, "reason": state.reason, "fetched_at": _ts(state.fetched_at),
+                            "age_hours": state.age_hours}
+            previous, nxt = cal.previous(kickoff), cal.next_after(kickoff)
+            out[side] = {
+                "previous_kickoff": None if previous is None else _ts(previous.kickoff_at),
+                "rest_days": cal.rest_days(kickoff),
+                "matches_last_7d": len(cal.played_within(kickoff, tc.WEEK)),
+                "matches_last_14d": len(cal.played_within(kickoff, tc.FORTNIGHT)),
+                "matches_last_30d": len(cal.played_within(kickoff, tc.MONTH)),
+                "outside_last_14d": cal.outside_within(kickoff, tc.FORTNIGHT),
+                "recent": [_calendar_entry(m, kickoff, ahead=False) for m in cal.recent(kickoff)],
+                "next_match": None if nxt is None else _calendar_entry(nxt, kickoff, ahead=True),
+                "upcoming": [_calendar_entry(m, kickoff, ahead=True) for m in cal.upcoming(kickoff)],
+            }
+        out["calendar"] = ctx.calendar_scope(states["home"], states["away"])
+        rests = (out["home"]["rest_days"], out["away"]["rest_days"])
+        out["flags"] = ctx.rest_flags(*rests) if out["calendar"]["complete"] else ctx.rest_flags_recorded(*rests)
+        sources.append({"block": "schedule", "tables": list(tc.TABLES), "as_of": _ts(at), "version": tc.VERSION,
+                        "fetched_at": {side: s["fetched_at"] for side, s in states.items()}})
+        return out
+
+    def _phase(self, fixture_id: int, at: datetime, sources: list[dict[str, Any]], missing: list[str]
+               ) -> tuple[dict[str, Any] | None, phase_context.TieAsOf | None]:
+        """The stage of the round and, for a leg of a tie, the tie as seen before the match (``fbi.competitions.context``:
+        the legs that had a result at ``at``, nothing that came out of the tie). In a savepoint: a phase that cannot be read
+        never costs the rest of the packet. The tie comes back as well, for ``fbi.intel.scenarios``."""
+        try:
+            with self.conn.transaction():
+                phase = phase_context.phase_as_of(self.conn, fixture_id, at=at)
+        except psycopg.Error:
+            missing.append("phase")
             return None, None
+        if phase is None:  # the competition season was never built: said, not guessed
+            missing.append("phase")
+            return None, None
+        sources.append({"block": "phase", "tables": list(phase_context.TABLES), "as_of": _ts(at),
+                        "version": phase_context.VERSION})
+        return phase.as_json(), phase.tie
+
+    def _standings(self, f: dict[str, Any], at: datetime, sources: list[dict[str, Any]], missing: list[str]
+                   ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, Any] | None]:
+        """Each side's row in the table of the match's own stage, from the newest snapshot taken by ``at``
+        (``fbi.competitions.tables``: the mapping the match page uses, cut at this moment). A match whose stage has no table
+        says so: it is never described with another stage's table. What a position is worth (``stakes``) is computed only
+        from the match's own stage; a knock-out round shows the table of the stage before it as context and no stakes. The
+        third value is what the match alone does to that table (``fbi.intel.scenarios``): only for the match's own stage and
+        only when both sides are in the same group."""
+        home, away = int(f["home_team_id"]), int(f["away_team_id"])
+        try:
+            with self.conn.transaction():
+                found = match_tables(self.conn, int(f["season_id"]), f["round"], f["kickoff_at"], home, away,
+                                     not_after=at)
+        except psycopg.Error:
+            found = None
+        if found is None or not found.choice.keys:
+            missing.append("standings")
+            return None, None, None
+        keys = sorted(set(found.choice.keys.values()))
+        rows = _rows(self.conn, STANDINGS_SQL, {"season": f["season_id"], "snapshot": found.snapshot_at, "keys": keys})
+        mine = {(int(r["team_id"]), str(r["group_key"])): r for r in rows}
+        own = found.choice.reason == "fixture_stage"
         out: dict[str, Any] = {}
         stakes: dict[str, Any] = {}
-        snapshot = max(r["snapshot_at"] for r in mine.values())
         for side, team in (("home", home), ("away", away)):
-            r = mine.get(team)
-            if r is None:
+            group = found.choice.keys.get(team)
+            r = None if group is None else mine.get((team, group))
+            if group is None or r is None:
                 continue
-            group = r["group_key"]
             table = [ctx.TableRow(int(x["team_id"]), int(x["rank"]), int(x["points"] or 0), int(x["played"] or 0),
                                   x["description"]) for x in rows if x["group_key"] == group]
-            remaining_row = _row(self.conn, REMAINING_SQL, {"season": f["season_id"], "team": team,
-                                                            "kickoff": f["kickoff_at"]})
-            remaining = int(remaining_row["count"]) if remaining_row else None
-            st = ctx.stakes(table, team, remaining)
+            stage = found.maps[group].stage
+            st = None
+            if own:
+                left = [x["round"] for x in _rows(self.conn, REMAINING_SQL, {
+                    "season": f["season_id"], "team": team, "kickoff": f["kickoff_at"]})]
+                st = ctx.stakes(table, team, sum(1 for x in left if stage_of(x) == stage))
             out[side] = {"rank": r["rank"], "points": r["points"], "played": r["played"], "goals_diff": r["goals_diff"],
                          "form": r["form"], "description": r["description"], "group": group, "teams": len(table),
+                         "stage": stage, "selection": found.choice.reason,
                          "home_record": [r["home_wins"], r["home_draws"], r["home_losses"]],
                          "away_record": [r["away_wins"], r["away_draws"], r["away_losses"]]}
             stakes[side] = None if st is None else st.as_json()
-        sources.append({"block": "standings", "table": "core.standings", "as_of": _ts(snapshot)})
-        return out, stakes
+        if not out:
+            missing.append("standings")
+            return None, None, None
+        sources.append({"block": "standings", "table": "core.standings", "as_of": _ts(found.snapshot_at),
+                        "tables": keys, "selection": found.choice.reason})
+        effect = None
+        shared = found.choice.keys.get(home)
+        if own and shared is not None and shared == found.choice.keys.get(away):
+            effect = scenarios.table_effect(
+                [ctx.TableRow(int(x["team_id"]), int(x["rank"]), int(x["points"] or 0), int(x["played"] or 0),
+                              x["description"]) for x in rows if x["group_key"] == shared],
+                home, away, snapshot_at=found.snapshot_at, group=shared)
+        return out, stakes, effect
 
     def _elo(self, f: dict[str, Any], at: datetime, sources: list[dict[str, Any]], missing: list[str]
              ) -> dict[str, Any] | None:
@@ -501,9 +676,8 @@ class PacketBuilder:
 
     def _absences(self, f: dict[str, Any], at: datetime, sources: list[dict[str, Any]], missing: list[str]
                   ) -> dict[str, Any]:
-        rows = _rows(self.conn, ABSENCES_SQL, {"fixture": f["id"], "at": at})
-        check = _row(self.conn, ABSENCE_CHECK_SQL, {"season": f["season_id"], "at": at})
-        checked = None if check is None else check.get("checked_at")
+        rows = absences_as_of(self.conn, int(f["id"]), at)  # the latest answer as of `at`, not every row ever written
+        checked = checked_at_as_of(self.conn, int(f["season_id"]), at)
         out: dict[str, Any] = {"checked": checked is not None}
         for side, team, provider_team in (("home", f["home_team_id"], f["home_provider_id"]),
                                           ("away", f["away_team_id"], f["away_provider_id"])):
@@ -530,7 +704,7 @@ class PacketBuilder:
                          "key_out": sum(1 for x in listed if x["key"] and not str(x["type"] or "").startswith("Quest")),
                          "squad_known": len(players)}
         if rows or checked:
-            sources.append({"block": "absences", "table": "core.player_absences",
+            sources.append({"block": "absences", "table": "core.player_availability_obs",
                             "as_of": _ts(max(r["fetched_at"] for r in rows)) if rows else None,
                             "checked_at": _ts(checked),
                             "payload_hashes": sorted({r["payload_hash"] for r in rows})[:5]})
@@ -619,6 +793,38 @@ class PacketBuilder:
                             "data_cutoff_ts": dict(sorted(cutoffs.items()))})
         return out
 
+    def _forecast(self, fixture_id: int, at: datetime, sources: list[dict[str, Any]], missing: list[str]
+                  ) -> dict[str, Any] | None:
+        """What PrediGol stated about the match by ``at`` (plan F5): the newest set of each market written at or before it.
+
+        No odds and no edge: a forecast is a probability, and what is well paid is the ``market`` and ``models`` blocks' to say.
+        None when there is no forecast (nothing to name as missing: see the packet's docstring); an error is named, in a
+        savepoint, so that a forecast that cannot be read never costs the rest of the packet."""
+        try:
+            with self.conn.transaction():
+                rows = _rows(self.conn, FORECAST_SQL, {"fixture": fixture_id, "at": at, "version": FORECAST_VERSION})
+        except psycopg.Error as exc:
+            missing.append("forecast")
+            return {"version": FORECAST_VERSION, "error": type(exc).__name__}
+        if not rows:
+            return None
+        grouped: dict[tuple[str, Decimal], list[dict[str, Any]]] = {}
+        for r in rows:
+            grouped.setdefault((str(r["market_key"]), Decimal(r["line"])), []).append(r)
+        markets: list[dict[str, Any]] = []
+        for (market, line), rs in sorted(grouped.items(), key=lambda kv: (FORECAST_ORDER.get(kv[0][0], 99), kv[0][1])):
+            best = max(rs, key=lambda r: r["p"])  # the first of them if two tie
+            first = rs[0]
+            markets.append({
+                "market": market, "line": str(line), "model": first["model_name"], "calibration": first["calibration"],
+                "basis": first["basis"], "known_at": _ts(first["known_at"]), "data_cutoff_at": _ts(first["data_cutoff_ts"]),
+                "likely": best["selection"],
+                "outcomes": [{"selection": r["selection"], "p": _f(r["p"], P), "p_lo": _f(r["p_lo"], P),
+                              "p_hi": _f(r["p_hi"], P)} for r in rs]})
+        sources.append({"block": "forecast", "table": "models.match_forecasts", "version": FORECAST_VERSION,
+                        "known_at": {f"{m['market']}@{m['line']}": m["known_at"] for m in markets}})
+        return {"version": FORECAST_VERSION, "markets": markets}
+
     def _quality(self, f: dict[str, Any], at: datetime, content: dict[str, Any], sources: list[dict[str, Any]]
                  ) -> dict[str, Any]:
         q = _row(self.conn, QUALITY_SQL, {"season": f["season_id"], "fixture": f["id"], "at": at}) or {}
@@ -629,7 +835,8 @@ class PacketBuilder:
 
     def _evidence(self, fixture_id: int, home: int, away: int, at: datetime, sources: list[dict[str, Any]]
                   ) -> list[dict[str, Any]]:
-        rows = _rows(self.conn, EVIDENCE_SQL, {"fixture": fixture_id, "teams": [home, away], "at": at})
+        rows = _rows(self.conn, EVIDENCE_SQL, {"fixture": fixture_id, "teams": [home, away], "at": at, "typed": self.typed_evidence,
+                                               "stale": STALE_AFTER})
         out = [{"id": int(r["id"]), "kind": r["kind"], "claim": r["claim"],
                 "side": "home" if r["team_id"] == home else "away" if r["team_id"] == away else None,
                 "player_id": r["provider_player_id"], "status": r["status"], "origin": r["origin"], "tier": r["source_tier"],
@@ -667,6 +874,23 @@ def store_packet(conn: psycopg.Connection[Any], packet: Packet, *, built_at: dat
         row = cur.fetchone()
     assert row is not None
     return int(row[0])
+
+
+LOAD_PACKET_SQL = ("SELECT fixture_id, packet_version, as_of, content, sources, missing, quality FROM ai.match_packets "
+                   "WHERE id = %s")
+
+
+def load_packet(conn: psycopg.Connection[Any], packet_id: int) -> Packet | None:
+    """A stored packet as it was read (``store_packet`` writes its content as canonical JSON): what a review that was asked for
+    earlier - a Message Batch's - is validated against when its answer arrives."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(LOAD_PACKET_SQL, (packet_id,))
+        row = cur.fetchone()
+    if row is None:
+        return None
+    return Packet(fixture_id=int(row["fixture_id"]), as_of=row["as_of"], content=dict(row["content"] or {}),
+                  sources=list(row["sources"] or []), missing=list(row["missing"] or []),
+                  quality=dict(row["quality"] or {}), version=str(row["packet_version"]))
 
 
 def _jsonable(value: Any) -> Any:

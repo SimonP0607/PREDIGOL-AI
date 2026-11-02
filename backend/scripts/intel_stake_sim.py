@@ -25,6 +25,7 @@ from typing import Any
 
 import numpy as np
 
+from fbi.ai.calendar import day_start
 from fbi.core.clock import now
 from fbi.intel import calibration
 from fbi.intel.stake import kelly
@@ -90,7 +91,7 @@ def main() -> int:
         for i, d in enumerate(days):
             if i < calibration.WF_MIN_PRIOR_DAYS:
                 continue
-            train = calibration.train_set(xs, cutoff=calibration.day_start(d))
+            train = calibration.train_set(xs, cutoff=day_start(d))
             if len(train) < calibration.MIN_TRAIN:
                 continue
             params = calibration.fit_params("logit2", train)

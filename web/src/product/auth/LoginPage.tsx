@@ -6,13 +6,13 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { t, translateOr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { tooManyAttempts } from "./wait";
 
-function loginError(error: unknown, retryAfter: number | null): string {
+/** The refusal in the reader's words; a lock says the real wait, in minutes (plan UX, A1, defect F01). */
+function loginError(error: unknown): string {
   if (error instanceof LiveApiError) {
     if (error.status === 0) return t("errors.unreachable");
-    if (error.code === "too_many_attempts") {
-      return t("errors.code.too_many_attempts", { seconds: retryAfter ?? 60 });
-    }
+    if (error.code === "too_many_attempts") return tooManyAttempts(error.retryAfter);
     return translateOr(`errors.code.${error.code}`, t("errors.generic"));
   }
   return t("errors.generic");
@@ -34,7 +34,7 @@ export function LoginPage({ expired }: { expired: boolean }) {
     try {
       await auth.signIn(email, password);
     } catch (err) {
-      setError(loginError(err, null));
+      setError(loginError(err));
       setPassword("");
     } finally {
       setBusy(false);

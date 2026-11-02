@@ -24,6 +24,7 @@ import { marketShort, selectionLabel } from "@/product/shared/markets";
 import { rejectionReason } from "./labels";
 import { FunnelPanel } from "./FunnelPanel";
 import { SettlementPanel } from "./SettlementPanel";
+import { useUrlTab } from "@/lib/useUrlTab";
 
 const statusTone: Record<PickStatus, BadgeTone> = {
   shadow: "neutral",
@@ -49,13 +50,21 @@ function signedPct(value: string | null | undefined, digits = 1): string | null 
   return `${n > 0 ? "+" : n < 0 ? "−" : "±"}${localFixed(Math.abs(n), digits)}%`;
 }
 
+/** The edge is a difference of probabilities: percentage points ("+7.4 pp"). A price gap or the expected value is `signedPct`. */
+function signedPp(value: string | null | undefined, digits = 1): string | null {
+  if (value === null || value === undefined) return null;
+  const n = Number(value) * 100;
+  if (!Number.isFinite(n)) return null;
+  return `${n > 0 ? "+" : n < 0 ? "−" : "±"}${localFixed(Math.abs(n), digits)} pp`;
+}
+
 const tabs = ["Picks", "Candidates"] as const;
 type Tab = (typeof tabs)[number];
 
 export function PicksLive() {
   const q = useLiveQuery(live.picks);
   const d = q.data?.data;
-  const [tab, setTab] = useState<Tab>("Picks");
+  const [tab, setTab] = useUrlTab(tabs, "Picks");
   const [open, setOpen] = useState<number | null>(null);
   const lc = d?.lifecycle;
   const stages: Array<[string, string, number | null, string]> = [
@@ -237,7 +246,7 @@ export function PicksLive() {
                           <Numeric muted>{decPct(p.p_market_fair)}</Numeric>
                         </TD>
                         <TD align="right">
-                          <Numeric>{signedPct(p.probability_edge)}</Numeric>
+                          <Numeric>{signedPp(p.probability_edge)}</Numeric>
                         </TD>
                         <TD align="right">
                           <Numeric>{signedPct(p.ev)}</Numeric>
@@ -318,10 +327,14 @@ export function PicksLive() {
                         </TD>
                         <TD>
                           {c.decision === "selected" ? (
-                            <StatusBadge tone="brand">selected</StatusBadge>
+                            <StatusBadge tone="brand">
+                              {t("ops.picks.decisionState.selected")}
+                            </StatusBadge>
                           ) : (
                             <div>
-                              <StatusBadge tone="neutral">rejected</StatusBadge>
+                              <StatusBadge tone="neutral">
+                                {t("ops.picks.decisionState.rejected")}
+                              </StatusBadge>
                               <div className="mt-0.5 text-caption text-subtle-foreground">
                                 {c.rejection_reason}
                               </div>
@@ -419,9 +432,15 @@ function PickLineage({ p }: { p: PickRow }) {
         </div>
         <ul className="mt-1 space-y-0.5 text-caption text-muted-foreground">
           {p.events.map((e) => (
-            <li key={`${e.at}-${e.to_status}`}>
-              <span className="numeric">{utcDateTime(e.at)}</span> · {e.from_status ?? "∅"} →{" "}
-              {e.to_status} · {e.reason}
+            <li key={`${e.at}-${e.event_kind}-${e.to_status}`} data-kind={e.event_kind}>
+              <span className="numeric">{utcDateTime(e.at)}</span> ·{" "}
+              {e.event_kind === "resettlement" ? (
+                t("ops.picks.lineage.resettled", { reason: e.reason })
+              ) : (
+                <>
+                  {e.from_status ?? "∅"} → {e.to_status} · {e.reason}
+                </>
+              )}
             </li>
           ))}
         </ul>

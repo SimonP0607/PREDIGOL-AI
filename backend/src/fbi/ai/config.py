@@ -12,7 +12,17 @@ from a request, never sent to a client.
                                 GROQ, DEEPINFRA); FBI_ANALYST_API_KEY still counts for Anthropic
     FBI_AI_BASE_URL_<PROVIDER>  another endpoint for that provider (a proxy, a regional endpoint)
     FBI_AI_MONTHLY_BUDGET_USD   default FBI_ANALYST_MONTHLY_BUDGET_USD or 20 - the month's HARD cap for the whole
-                                AI layer (the owner's machine: 150)
+                                AI layer (the owner's machine: 150). With budget v3 on (Plan Maestro IA, section 26) it
+                                is PRODUCTION's own envelope - Claude only, US$185 - and Exa and the LAB have theirs
+    FBI_AI_LAB_MONTHLY_BUDGET_USD   default 0 (no LAB call is made) - the LAB workspace's internal envelope:
+                                15 in phases 0-2, 55 in phases 3-8, 15 from phase 9
+    FBI_AI_EXA_MONTHLY_BUDGET_USD   default 35 - Exa's own envelope, outside Claude's
+    FBI_AI_JOINT_CEILING_USD    default 190 - production + LAB never plan to spend more than this together
+    FBI_AI_RESERVE_USD          default 10 - kept for production only; released in the last 5 days of the month
+    FBI_AI_KEY_ANTHROPIC_LAB    the LAB workspace's key (``worker-lab``); the production key stays FBI_AI_KEY_ANTHROPIC
+    FBI_AI_WORKSPACE / FBI_AI_WORKSPACE_LAB / FBI_AI_KEY_LABEL / FBI_AI_KEY_LABEL_LAB
+                                the NAMES the ledger records for each call (PREDIGOL, PREDIGOL-LAB, worker-prod,
+                                worker-lab): labels only, never a key
     FBI_AI_DAILY_TARGET_USD     the day's SOFT target (FBI_AI_DAILY_BUDGET_USD is the older name); default the
                                 monthly budget / 30. The day's real budget adapts to it (``fbi.ai.usage``): the pace
                                 left in the month times the day's load, at most FBI_AI_DAILY_MAX_FACTOR times it
@@ -25,6 +35,26 @@ from a request, never sent to a client.
     FBI_AI_MULTIMODAL           off (default) | on - images only for selected matches, each one logged
     FBI_AI_HORIZON_HOURS        default 96 - how far ahead the free part (packets, rules, analyses) looks
     FBI_AI_SEARCH               exa | brave | tavily | none (default exa when EXA_API_KEY is set, else none)
+
+Phase 0 of the Plan Maestro IA (each switch: ``off`` = rolled back, ``on`` = forced, ``auto`` (default) = on once its
+own evidence allows it - ``fbi.ai.gates``). To go back: set the switch to 0 and restart the worker (about a minute):
+
+    FBI_AI_CACHE                prompt caching: the system block is cached (1 h); the match block too once the
+                                ``cache_layout`` gate has passed
+    FBI_AI_BATCH                the Message Batches API (half price) for what can wait: needs the ``batch`` gate
+    FBI_AI_NATIVE_SCHEMA        structured outputs (``output_config.format``) instead of a forced tool call: needs the
+                                ``native_schema`` gate (a stability test on stored packets)
+    FBI_AI_BRIEF_MATERIAL       the brief is paid again only for a MATERIAL change (section 19 of the plan)
+    FBI_AI_BUDGET_V3            the adaptive budget v3 of section 26 (projection, scopes, AJUSTE, API limit errors)
+    FBI_AI_BATCH_MIN_LEAD_MINUTES   default 240 - a task goes to Batch only with this many minutes before kick-off
+
+Phase 2 of the plan - the research of an entity (``fbi.ai.entity_research``):
+
+    FBI_AI_RESEARCH_V2          off (default) | shadow | on. off: the cycle does not know it. shadow: it runs after v1's research in the same
+                                pass and writes typed evidence that no packet shows (the week of comparison; v1 goes on deciding). on: it
+                                REPLACES v1's research and the packet shows what it wrote - and only once the ``research_v2`` gate has passed
+                                (``fbi.ai.gates.research_mode``); until then ``on`` behaves as ``shadow``. Any other word is ``off``. To go
+                                back: set it to ``off`` (or ``shadow``) and restart the worker (about a minute).
 
 A model or a search is used only for TODAY's matches (America/Bogota) that have a market (``fbi.ai.day``).
 
@@ -45,6 +75,11 @@ from fbi.core.env import environment
 Mode = Literal["off", "shadow", "enforce"]
 Tier = Literal["bulk", "analysis", "final"]
 TIERS: tuple[Tier, ...] = ("bulk", "analysis", "final")
+Switch = Literal["off", "on", "auto"]
+ResearchMode = Literal["off", "shadow", "on"]
+SWITCH_ENV: dict[str, str] = {"cache": "FBI_AI_CACHE", "batch": "FBI_AI_BATCH", "native_schema": "FBI_AI_NATIVE_SCHEMA",
+                              "brief_material": "FBI_AI_BRIEF_MATERIAL", "budget_v3": "FBI_AI_BUDGET_V3"}
+"""The five optimisations of Phase 0 and the variable that rolls each one back."""
 PROVIDERS = ("anthropic", "openai", "gemini", "mistral", "deepseek", "together", "groq", "deepinfra")
 
 BASE_URLS: dict[str, str] = {
@@ -94,6 +129,26 @@ def _int(name: str, default: int, env: Mapping[str, str]) -> int:
         return default
 
 
+def _switch(raw: str | None) -> Switch:
+    value = (raw or "").strip().lower()
+    if value in ("0", "off", "false", "no"):
+        return "off"
+    if value in ("1", "on", "true", "yes"):
+        return "on"
+    return "auto"
+
+
+def _research_mode(raw: str | None) -> ResearchMode:
+    """``FBI_AI_RESEARCH_V2``: only the words ``shadow`` and ``on`` switch research v2 on - ``1``, ``true`` or a typo are ``off``, so nothing
+    reaches the packet by accident."""
+    value = (raw or "").strip().lower()
+    return "shadow" if value == "shadow" else "on" if value == "on" else "off"
+
+
+def _all_auto() -> dict[str, Switch]:
+    return dict.fromkeys(SWITCH_ENV, "auto")
+
+
 @dataclass(frozen=True)
 class AiSettings:
     mode: Mode = "shadow"
@@ -112,6 +167,32 @@ class AiSettings:
     multimodal: bool = False
     horizon_hours: int = 96
     search: str | None = None
+    legacy_postmortems: bool = False
+    """The two first post-mortems (``fbi.ai.postmortem`` by match, ``fbi.ai.pick_postmortem`` by selection) write again, beside the
+    one post-mortem of ``fbi.intel.postmortem`` (plan F8). Off: they are frozen - their tables keep what they wrote, nothing reads them
+    for what is new. It exists to go back, not to be used (``FBI_AI_LEGACY_POSTMORTEMS=1``)."""
+    switches: dict[str, Switch] = field(default_factory=_all_auto)
+    """Phase 0's five optimisations (``SWITCH_ENV``): off = rolled back, on = forced, auto = once its evidence allows."""
+    lab_keys: dict[str, str] = field(default_factory=dict, repr=False)
+    """The LAB workspace's key per provider (``FBI_AI_KEY_ANTHROPIC_LAB``): experiments never spend production's key."""
+    workspace: str = "PREDIGOL"
+    workspace_lab: str = "PREDIGOL-LAB"
+    key_label: str = "worker-prod"
+    key_label_lab: str = "worker-lab"
+    lab_monthly_budget: Decimal = Decimal(0)
+    """The LAB's internal envelope (15 / 55 / 15 by phase). Zero: no LAB call is made."""
+    exa_monthly_budget: Decimal = Decimal("35")
+    joint_ceiling: Decimal = Decimal("190")
+    """Production + LAB, never planned above it."""
+    reserve: Decimal = Decimal("10")
+    """Kept for production only (released in the last five days of the month)."""
+    batch_min_lead_minutes: int = 240
+    package: bool = True
+    """Plan IA, phase 1: the state of each match is written from the passes already run (``fbi.ai.match_runs``; no model, no cost, and nothing reads it
+    yet). ``FBI_AI_PACKAGE=0`` stops the job - it is the phase's rollback."""
+    research_v2: ResearchMode = "off"
+    """Plan IA, phase 2: what the owner asked of the research of an entity (``FBI_AI_RESEARCH_V2``). What the cycle does is ``gates.research_mode``:
+    ``on`` is ``shadow`` until the ``research_v2`` gate has passed."""
 
     @classmethod
     def from_env(cls) -> AiSettings:
@@ -147,12 +228,35 @@ class AiSettings:
             multimodal=(env.get("FBI_AI_MULTIMODAL") or "").strip().lower() in ("1", "on", "true", "yes"),
             horizon_hours=max(1, _int("FBI_AI_HORIZON_HOURS", 96, env)),
             search=None if search_raw in ("", "none", "off") else search_raw,
+            legacy_postmortems=(env.get("FBI_AI_LEGACY_POSTMORTEMS") or "").strip().lower() in ("1", "on", "true", "yes"),
+            switches={name: _switch(env.get(var)) for name, var in SWITCH_ENV.items()},
+            lab_keys={p: v for p in PROVIDERS if (v := env.get(f"FBI_AI_KEY_{p.upper()}_LAB") or "")},
+            workspace=(env.get("FBI_AI_WORKSPACE") or "PREDIGOL").strip()[:60],
+            workspace_lab=(env.get("FBI_AI_WORKSPACE_LAB") or "PREDIGOL-LAB").strip()[:60],
+            key_label=(env.get("FBI_AI_KEY_LABEL") or "worker-prod").strip()[:60],
+            key_label_lab=(env.get("FBI_AI_KEY_LABEL_LAB") or "worker-lab").strip()[:60],
+            lab_monthly_budget=_decimal("FBI_AI_LAB_MONTHLY_BUDGET_USD", "0", env),
+            exa_monthly_budget=_decimal("FBI_AI_EXA_MONTHLY_BUDGET_USD", "35", env),
+            joint_ceiling=_decimal("FBI_AI_JOINT_CEILING_USD", "190", env),
+            reserve=_decimal("FBI_AI_RESERVE_USD", "10", env),
+            batch_min_lead_minutes=max(30, _int("FBI_AI_BATCH_MIN_LEAD_MINUTES", 240, env)),
+            package=(env.get("FBI_AI_PACKAGE") or "1").strip().lower() not in ("0", "off", "false", "no"),
+            research_v2=_research_mode(env.get("FBI_AI_RESEARCH_V2")),
         )
 
-    def tier(self, tier: Tier) -> TierModel | None:
-        """The model of a tier, only when its provider's key is present."""
+    def switch(self, name: str) -> Switch:
+        """The owner's setting of one Phase 0 optimisation: what the environment says, ``auto`` for a known switch it does not
+        mention, and ``off`` for a name that is not one (so a typo never switches anything on)."""
+        return self.switches.get(name, "auto" if name in SWITCH_ENV else "off")
+
+    def labelled(self, *, lab: bool) -> tuple[str, str]:
+        """The workspace and key NAMES the ledger records for a call (never the key)."""
+        return (self.workspace_lab, self.key_label_lab) if lab else (self.workspace, self.key_label)
+
+    def tier(self, tier: Tier, *, lab: bool = False) -> TierModel | None:
+        """The model of a tier, only when its provider's key is present (the LAB workspace's own key for a LAB call)."""
         tm = self.tiers.get(tier)
-        return tm if tm is not None and tm.provider in self.keys else None
+        return tm if tm is not None and tm.provider in (self.lab_keys if lab else self.keys) else None
 
     @property
     def llm_configured(self) -> bool:
@@ -191,6 +295,18 @@ class AiSettings:
             "horizon_hours": self.horizon_hours,
             "search": self.search,
             "search_configured": self.search_configured,
+            "legacy_postmortems": self.legacy_postmortems,
+            "switches": dict(self.switches),
+            "workspaces": {"production": self.workspace, "lab": self.workspace_lab},
+            "key_labels": {"production": self.key_label, "lab": self.key_label_lab},
+            "lab_key_present": "anthropic" in self.lab_keys,
+            "lab_monthly_budget_usd": str(self.lab_monthly_budget),
+            "exa_monthly_budget_usd": str(self.exa_monthly_budget),
+            "joint_ceiling_usd": str(self.joint_ceiling),
+            "reserve_usd": str(self.reserve),
+            "batch_min_lead_minutes": self.batch_min_lead_minutes,
+            "package": self.package,
+            "research_v2": self.research_v2,
         }
 
     @property

@@ -65,11 +65,25 @@ def get_daily(conn: Db, principal: App, preview: Preview = None,
     return records.daily_board(conn, day=day, include_shadow=_shadow(preview, principal))
 
 
+Cursor = Annotated[str | None, Query(max_length=200, description=(
+    "The `meta.next_cursor` of the previous page; omitted for the first page."))]
+
+
+def _cursor_refused(exc: records.CursorError) -> ApiError:
+    return ApiError(422, "invalid_cursor", str(exc))
+
+
 @router.get("/me/picks", response_model=Envelope[list[UserPick]])
 def get_my_picks(conn: Db, principal: App,
                  status: Annotated[Literal["open", "settled"] | None, Query()] = None,
-                 limit: Annotated[int, Query(ge=1, le=500)] = 200) -> Envelope[list[UserPick]]:
-    return records.user_picks(conn, user_id=principal.user_id, status=status, limit=limit)
+                 limit: Annotated[int, Query(ge=1, le=500)] = 200,
+                 cursor: Cursor = None) -> Envelope[list[UserPick]]:
+    """The user's saved picks, newest kick-off first, a page at a time: `meta.total` counts all of them (with the
+    filter) and `meta.next_cursor` leads to the next page."""
+    try:
+        return records.user_picks(conn, user_id=principal.user_id, status=status, limit=limit, cursor=cursor)
+    except records.CursorError as exc:
+        raise _cursor_refused(exc) from exc
 
 
 @router.post("/me/picks", response_model=Envelope[dict[str, Any]], status_code=201)
@@ -148,8 +162,13 @@ def remove_my_parlay(principal: App, record_id: Annotated[int, Path(ge=1)]) -> R
 
 @router.get("/me/parlays", response_model=Envelope[list[UserParlay]])
 def get_my_parlays(conn: Db, principal: App,
-                   limit: Annotated[int, Query(ge=1, le=200)] = 100) -> Envelope[list[UserParlay]]:
-    return records.user_parlays(conn, user_id=principal.user_id, limit=limit)
+                   limit: Annotated[int, Query(ge=1, le=200)] = 100,
+                   cursor: Cursor = None) -> Envelope[list[UserParlay]]:
+    """The user's parlays, newest first, a page at a time (`meta.total`, `meta.next_cursor`)."""
+    try:
+        return records.user_parlays(conn, user_id=principal.user_id, limit=limit, cursor=cursor)
+    except records.CursorError as exc:
+        raise _cursor_refused(exc) from exc
 
 
 @router.get("/me/history", response_model=Envelope[History])

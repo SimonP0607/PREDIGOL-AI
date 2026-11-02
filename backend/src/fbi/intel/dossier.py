@@ -1,4 +1,4 @@
-"""MATCH INTELLIGENCE PACKAGE - ``dossier-v1``: the part of a match's packet (``fbi.ai.packet``, block ``dossier``) that
+"""MATCH INTELLIGENCE PACKAGE - ``dossier-v4``: the part of a match's packet (``fbi.ai.packet``, block ``dossier``) that
 describes the people and the situation, beyond the score-based form the packet already carries:
 
     teams        the last ten matches each (and split home / away): goals, expected goals, shots, on target, corners,
@@ -9,14 +9,23 @@ describes the people and the situation, beyond the score-based form the packet a
     players      the ten matches' most important players: starts, minutes, goals, assists, shots, fouls, cards, rating,
                  saves for a goalkeeper, the minutes of the last fourteen days (load), and whether the provider reports
                  them out for this match
-    referee      matches refereed in the 400 days before, cards (yellow + red) and fouls per match, penalties per match,
-                 how the cards split between home and away sides
+    referee      the person (``fbi.people``) and his matches in the 400 days before - under any spelling the provider used
+                 for him: cards (yellow + red) and fouls per match, penalties per match, how the cards split between home
+                 and away sides
     context      a derby (same city), a cup or knockout round, a final, a friendly, the second leg of a tie and its first
-                 result - and, from the packet's own stakes block, what each side plays for
-    h2h          how much the head-to-head is worth: its age and size
+                 result - and, from the packet's own stakes block, what each side plays for. The round is read by the one
+                 classifier of round labels (``fbi.competitions.stages``) and the second leg from the legs of its tie
+                 already recorded at the packet's moment (``fbi.competitions.context``)
+    h2h          how much the head-to-head is worth: its size (and its effective size, once the meetings are weighed), its age
+    tactics      what the last matches of each side show of how it lines up and how a match goes for it - formations and changes of
+                 eleven, goals by quarter of an hour and the late ones, results by who scores first and by the half-time score, the
+                 first substitution by the score - each with its sample (``fbi.intel.tactics``). Descriptions only
+    national     (national-team matches only) the people of each senior national side - the eleven of the match's own sheet, or
+                 of the previous match's while the sheet is not known - with the club each plays for on the day and since when,
+                 his form there (``fbi.intel.national``), his record for the country and whether he is reported out
 
 Everything is read AS OF the packet's moment: matches settled by then, statistics, events and line-ups fetched by
-then, the absences reported by then. A block without data says so (``n = 0``); nothing is estimated to fill a gap.
+then, the absences the latest /injuries answer by then listed. A block without data says so (``n = 0``); nothing is estimated to fill a gap.
 "Nunca convertir una narrativa emocional en una certeza estadística": these are descriptions with their sample sizes.
 """
 
@@ -32,7 +41,32 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
-VERSION = "dossier-v1"
+from fbi.ai.absences import absences_as_of
+from fbi.competitions import context as phase_context
+from fbi.intel import national, tactics
+from fbi.intel.h2h import NOTE_HIGH, NOTE_LOW, HeadToHead
+
+VERSION = "dossier-v4"
+"""v4 (plan F6): ``h2h`` is read from the weighted head-to-head (``fbi.intel.h2h``) the packet carries: ``n`` is the number of
+meetings, ``n_effective`` the size that their weights leave (Kish), ``relevance`` follows the effective size and the age of the newest
+meeting. The words are the ones the narrative already read (``nula`` / ``baja`` / ``media`` / ``alta``). The dossier gains ``tactics``
+(``fbi.intel.tactics``, ``tactics-v1``). And a squad sheet that the statistics of its match put on the other side (the provider crossed
+both sheets in 202 matches, ``fbi.people.sides``) no longer gives the ``coach`` block a formation or an eleven - the coach written beside
+it is the right one and is still read.
+
+v3 (plan F3): the referee is a person with an id. His matches are those whose referee, as the provider had named it at the
+packet's moment, is HIM under any of the spellings the provider used (``core.fixture_officials`` through ``core.referee_aliases``,
+``fbi.people``). v2 counted the matches whose facts EVER carried the same string, so a man written three ways was three referees
+with a few matches each, two men with the same initial and surname were one, and a match whose referee the provider later
+changed still counted for the first. A match the identity has not seen yet falls back to the string
+(``referee.identity == "text"``). The block gains ``id`` and ``identity``. The dossier gains ``national``
+(``fbi.intel.national``): the clubs, the club form and the record for the country of the players of a national-team match, as of
+the packet's moment (None for a match of clubs).
+
+v2 (plan F2): ``context.knockout`` / ``context.final`` come from the one classifier of round labels (a qualifying round is
+a knockout round here too, as it already was in the packet's ``fixture.stage``) and ``context.second_leg`` from the tie the match
+belongs to, not from a search for the last meeting of the two sides in the 60 days before (which read any earlier match of
+the pair in the season - a group-stage meeting, a first leg played earlier than that - as a first leg)."""
 N = 10
 LOAD_WINDOW = timedelta(days=14)
 REFEREE_WINDOW = timedelta(days=400)
@@ -93,12 +127,7 @@ SELECT fixture_id, team_id, rating_before::float8 AS rating FROM features.elo_ra
 serves it: by fixture alone the run's half a million rows were read (0.24-0.75 s per team on production, 13 Oct 2026),
 by team 3 ms."""
 
-ABSENT_SQL = """
-SELECT provider_player_id, absence_type FROM core.player_absences
- WHERE fixture_id = %(fixture)s AND fetched_at <= %(at)s
-"""
-
-REFEREE_SQL = """
+REFEREE_TEXT_HEAD = """
 WITH m AS (
     SELECT DISTINCT ON (ff.fixture_id) ff.fixture_id
       FROM core.fixture_facts ff
@@ -107,7 +136,28 @@ WITH m AS (
      WHERE ff.referee = %(referee)s AND ff.observed_at <= %(at)s AND f.kickoff_at < %(kickoff)s
        AND f.kickoff_at >= %(since)s AND r.settled_at <= %(at)s
      ORDER BY ff.fixture_id, ff.observed_at DESC
-), s AS (
+)"""
+"""The matches whose facts carried this string, until the identity had seen them. Known flaw, kept only for the fallback: the
+newest row is chosen among the rows with THIS string, so a match whose referee changed afterwards still counts."""
+
+REFEREE_ID_HEAD = """
+WITH m AS (
+    SELECT o.fixture_id
+      FROM core.referee_aliases a
+      JOIN core.fixture_officials o ON o.alias_id = a.id AND o.role = 'referee'
+      JOIN core.fixtures f ON f.id = o.fixture_id
+      JOIN core.fixture_results r ON r.fixture_id = f.id
+     WHERE a.referee_id = %(referee_id)s AND o.observed_at <= %(at)s AND f.kickoff_at < %(kickoff)s
+       AND f.kickoff_at >= %(since)s AND r.settled_at <= %(at)s
+       AND NOT EXISTS (SELECT 1 FROM core.fixture_officials n
+                        WHERE n.fixture_id = o.fixture_id AND n.role = o.role
+                          AND n.observed_at > o.observed_at AND n.observed_at <= %(at)s)
+)"""
+"""The matches whose referee, AS THE PROVIDER HAD NAMED IT at ``at`` (the newest officials row at or before it), is this person
+under any of his spellings."""
+
+REFEREE_TAIL = """
+, s AS (
     SELECT DISTINCT ON (t.fixture_id, t.team_side) t.fixture_id, t.team_side, t.yellow_cards, t.red_cards, t.fouls
       FROM core.fixture_team_stats t JOIN m ON m.fixture_id = t.fixture_id
      WHERE t.fetched_at <= %(at)s
@@ -129,16 +179,8 @@ SELECT (SELECT count(*) FROM m) AS matches,
   FROM s
 """
 
-TIE_SQL = """
-SELECT f.id, f.kickoff_at, f.home_team_id, COALESCE(r.reg_goals_home, r.goals_home) AS gh,
-       COALESCE(r.reg_goals_away, r.goals_away) AS ga, f.round
-  FROM core.fixtures f JOIN core.fixture_results r ON r.fixture_id = f.id
- WHERE f.competition_season_id = %(season)s AND f.kickoff_at < %(kickoff)s
-   AND f.kickoff_at >= %(kickoff)s - interval '60 days' AND r.settled_at <= %(at)s
-   AND ((f.home_team_id = %(home)s AND f.away_team_id = %(away)s) OR (f.home_team_id = %(away)s AND f.away_team_id = %(home)s))
- ORDER BY f.kickoff_at DESC LIMIT 1
-"""
-
+REFEREE_SQL = REFEREE_TEXT_HEAD + REFEREE_TAIL
+REFEREE_BY_ID_SQL = REFEREE_ID_HEAD + REFEREE_TAIL
 
 def _avg(xs: Sequence[float | int | None], places: int = 2) -> float | None:
     v = [float(x) for x in xs if x is not None]
@@ -186,6 +228,7 @@ def team_profile(conn: psycopg.Connection[Any], team: int, *, kickoff: datetime,
         events[int(r["fixture_id"])].append(r)
     lineups: dict[tuple[int, str], dict[str, Any]] = {(int(r["fixture_id"]), str(r["team_side"])): r
                                                       for r in _rows(conn, LINEUPS_SQL, {"fixtures": fids, "at": at})}
+    crossed = tactics.crossed_sheets(conn, fids, at=at)
     ratings: dict[tuple[int, int], float] = {}
     if elo is not None:
         opponents = sorted({int(m["opponent"]) for m in matches})
@@ -205,6 +248,8 @@ def team_profile(conn: psycopg.Connection[Any], team: int, *, kickoff: datetime,
                            and e.get("comments") != "Penalty Shootout" and e["team_side"] == opp)
         subs = [int(e["minute"] or 0) for e in evs if str(e["event_type"]).lower() == "subst" and e["team_side"] == side]
         lu = lineups.get((fid, side)) or {}
+        if fid in crossed:  # the provider gave each team the other's eleven: the coach beside it is right, the rest is not read
+            lu = {"coach_name": lu.get("coach_name")}
         per.append({"fid": fid, "kickoff": m["kickoff_at"], "side": side, "gf": gf, "ga": ga,
                     "own": own, "their": their, "pens_for": pens_for, "pens_against": pens_against,
                     "events": bool(evs), "behaviour": scoreline_behaviour(evs, side, gf, ga) if evs else None,
@@ -317,15 +362,22 @@ def players_profile(conn: psycopg.Connection[Any], fids: list[int], side_of_fixt
     return out[:6]
 
 
-def referee_profile(conn: psycopg.Connection[Any], referee: str | None, *, kickoff: datetime,
-                    at: datetime) -> dict[str, Any]:
-    if not referee:
-        return {"name": None, "matches": 0}
+def referee_profile(conn: psycopg.Connection[Any], referee: str | None, *, kickoff: datetime, at: datetime,
+                    referee_id: int | None = None) -> dict[str, Any]:
+    """The referee of the match and what he does, as known at ``at``. With ``referee_id`` the matches are his under every
+    spelling; without it (the identity has not seen the match yet) they are the matches whose facts carried ``referee``."""
+    if referee_id is None and not referee:
+        return {"name": None, "matches": 0, "id": None, "identity": None}
+    params: dict[str, Any] = {"at": at, "kickoff": kickoff, "since": kickoff - REFEREE_WINDOW}
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(REFEREE_SQL, {"referee": referee, "at": at, "kickoff": kickoff, "since": kickoff - REFEREE_WINDOW})
+        if referee_id is not None:
+            cur.execute(REFEREE_BY_ID_SQL, params | {"referee_id": referee_id})
+        else:
+            cur.execute(REFEREE_SQL, params | {"referee": referee})
         r = dict(cur.fetchone() or {})
     n, ns = int(r.get("matches") or 0), int(r.get("with_stats") or 0)
-    out: dict[str, Any] = {"name": referee, "matches": n, "with_stats": ns}
+    out: dict[str, Any] = {"name": referee, "id": referee_id, "identity": "id" if referee_id is not None else "text",
+                           "matches": n, "with_stats": ns}
     if ns:
         out |= {"cards_per_match": round(float(r["cards"] or 0) / ns, 2),
                 "reds_per_match": round(float(r["reds"] or 0) / ns, 3),
@@ -339,50 +391,46 @@ def referee_profile(conn: psycopg.Connection[Any], referee: str | None, *, kicko
 
 
 def context_profile(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: datetime) -> dict[str, Any]:
-    """Derby, cup, knockout, final, friendly, second leg - from the fixture's own attributes and the stored results."""
+    """Derby, cup, knockout, final, friendly, second leg. The round by the one classifier of round labels, the second leg by the
+    legs of its tie already recorded at ``at`` - never by anything that came out of the tie."""
     name = str(fx.get("competition") or "")
     kind = str(fx.get("competition_kind") or fx.get("competition_type") or "")
     rnd = str(fx.get("round") or "")
-    low = rnd.lower()
+    reading = phase_context.reading_of(rnd)
     friendly = "friendl" in name.lower() or "friendl" in kind.lower()
     cup = "cup" in kind.lower() or "copa" in name.lower() or "cup" in name.lower() or "pokal" in name.lower()
-    knockout = any(w in low for w in ("final", "semi", "quarter", "round of", "1/8", "1/16", "8th", "16th", "play-off",
-                                      "playoff", "knockout", "eliminat"))
-    final = "final" in low and not any(w in low for w in ("semi", "quarter", "1/"))
+    knockout = reading is not None and reading.kind in ("knockout", "qualifying")
+    final = reading is not None and reading.role == "final"
     derby = bool(fx.get("home_base_city")) and fx.get("home_base_city") == fx.get("away_base_city")
     out: dict[str, Any] = {"derby": derby, "friendly": friendly, "cup": cup, "knockout": knockout, "final": final,
                            "round": rnd or None}
-    if knockout and fx.get("season_id"):
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(TIE_SQL, {"season": fx["season_id"], "kickoff": fx["kickoff_at"], "at": at,
-                                  "home": fx["home_team_id"], "away": fx["away_team_id"]})
-            first = cur.fetchone()
-        if first is not None:
-            home_first = int(first["home_team_id"]) == int(fx["home_team_id"])
-            # the aggregate from this match's home side's point of view
-            h, a = (int(first["gh"]), int(first["ga"])) if home_first else (int(first["ga"]), int(first["gh"]))
-            out["second_leg"] = {"first_leg_at": first["kickoff_at"].isoformat(), "first_leg_score_home_side": h,
-                                 "first_leg_score_away_side": a, "aggregate_need": (
-                                     "el local remonta" if h < a else "el visitante remonta" if a < h else "empate global")}
+    phase = phase_context.phase_as_of(conn, int(fx["id"]), at=at) if fx.get("id") is not None else None
+    tie = None if phase is None else phase.tie
+    if tie is not None and tie.format == "two_legged" and tie.leg >= 2 and tie.aggregate is not None and tie.previous:
+        first = tie.previous[0]
+        h, a = first.goals_home_side, first.goals_away_side  # the first leg from this match's home side's point of view
+        out["second_leg"] = {"first_leg_at": first.kickoff_at.isoformat(), "first_leg_score_home_side": h,
+                             "first_leg_score_away_side": a, "aggregate_need": (
+                                 "el local remonta" if h < a else "el visitante remonta" if a < h else "empate global")}
     return out
 
 
-def h2h_relevance(n: int, last_at: datetime | None, *, kickoff: datetime) -> dict[str, Any]:
-    """How much the head-to-head is worth: few and old meetings weigh little."""
-    age = None if last_at is None else round((kickoff - last_at).total_seconds() / 86400)
-    level = "nula" if n == 0 else "baja" if n < 3 or (age is not None and age > 730) else "media" if n < 6 else "alta"
-    return {"n": n, "last_days_ago": age, "relevance": level,
-            "note": "el historial directo pesa poco frente a la forma y el mercado" if level in ("nula", "baja", "media")
-            else "historial amplio; aun así, plantillas y entrenadores cambian"}
+def h2h_relevance(h2h: HeadToHead) -> dict[str, Any]:
+    """How much the head-to-head is worth: few, old or minor meetings weigh little (the words of ``fbi.intel.h2h``)."""
+    return {"n": h2h.n, "n_effective": round(h2h.n_effective, 1), "last_days_ago": h2h.last_age_days,
+            "relevance": h2h.relevance, "note": NOTE_HIGH if h2h.relevance == "alta" else NOTE_LOW}
 
 
 def build_dossier(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: datetime, elo: tuple[str, int] | None,
-                  referee: str | None, h2h_n: int, h2h_last: datetime | None) -> dict[str, Any]:
-    """The dossier of one match as of ``at``. ``fx`` is the packet's FIXTURE_SQL row."""
+                  referee: str | None, h2h: HeadToHead, referee_id: int | None = None,
+                  tactics_status: str = "DESCRIPTIVE") -> dict[str, Any]:
+    """The dossier of one match as of ``at``. ``fx`` is the packet's FIXTURE_SQL row; ``referee`` and ``referee_id`` are the
+    referee of the match as of ``at`` (``fbi.people.officials``), the id absent when the identity has not seen the match;
+    ``tactics_status`` is the status of the tactics factor in the registry (``fbi.intel.factors``) as the packet read it."""
     kickoff: datetime = fx["kickoff_at"]
     home, away = int(fx["home_team_id"]), int(fx["away_team_id"])
     absent: dict[int, str] = {int(r["provider_player_id"]): str(r["absence_type"] or "")
-                              for r in _rows(conn, ABSENT_SQL, {"fixture": int(fx["id"]), "at": at})}
+                              for r in absences_as_of(conn, int(fx["id"]), at)}
     teams: dict[str, Any] = {}
     players: dict[str, Any] = {}
     for side, team in (("home", home), ("away", away)):
@@ -396,8 +444,10 @@ def build_dossier(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: date
                 sides[int(r["id"])] = "home" if r["h"] else "away"
         players[side] = players_profile(conn, fids, sides, at=at, kickoff=kickoff, absent=absent)
     return {"version": VERSION, "teams": teams, "players": players,
-            "referee": referee_profile(conn, referee, kickoff=kickoff, at=at),
-            "context": context_profile(conn, fx, at=at), "h2h": h2h_relevance(h2h_n, h2h_last, kickoff=kickoff)}
+            "referee": referee_profile(conn, referee, kickoff=kickoff, at=at, referee_id=referee_id),
+            "context": context_profile(conn, fx, at=at), "h2h": h2h_relevance(h2h),
+            "tactics": tactics.block(conn, home=home, away=away, kickoff=kickoff, at=at, status=tactics_status),
+            "national": national.block(conn, fx, at=at, absent=absent)}
 
 
 def finite(x: Any) -> Any:

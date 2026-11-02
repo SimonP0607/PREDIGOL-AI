@@ -3,6 +3,8 @@
  * was chosen, the stage it was chosen at, and - once the match is played - its result. It
  * stays on the page after kick-off.
  */
+import { Hint } from "@/components/system/Hint";
+import { glossaryText } from "@/lib/glossary";
 import { Link } from "@tanstack/react-router";
 import { Snowflake } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,6 +14,7 @@ import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { EvBadge, Kickoff, OddsPill, ProbCompare } from "@/product/shared/Bits";
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { AiNote } from "./AiNote";
+import { CorrectionNote } from "./CorrectionNote";
 import { DecisionChain } from "./DecisionChain";
 import { formatTime } from "@/lib/time";
 import { isLivePhase, matchPhaseOf } from "@/product/matches/status";
@@ -111,7 +114,7 @@ export function DailyItemCard({
           />
         </div>
 
-        <div className="mt-3 border-t border-border/70 px-4 py-3">
+        <div className="mt-3 border-t border-border/70 px-4 pb-2.5 pt-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <OriginLabel origin="predigol" />
@@ -150,25 +153,30 @@ export function DailyItemCard({
             admin={admin}
             className="mt-3"
           />
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <EvBadge ev={item.ev} />
-            <span
-              className="inline-flex items-center gap-1 text-caption text-muted-foreground"
-              title={t("records.frozenHelp")}
-              data-testid="daily-item-stage"
-            >
-              <Snowflake aria-hidden className="h-3 w-3" />
-              {t(`records.stage.${item.stage}`)}
-            </span>
-            <span
-              className="text-caption text-muted-foreground"
-              data-testid="daily-item-selected-at"
-            >
-              {t("records.selectedAt", { time: formatTime(item.selected_at) })}
-            </span>
-          </div>
         </div>
       </Link>
+      {/* The figures with their help, beside the link (plan UX, A1, defect F16): a tap, a hover or the keyboard
+          opens each without opening the match. */}
+      <div
+        className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pb-3"
+        data-testid="daily-item-figures"
+      >
+        <Hint text={glossaryText("ev")} className="no-underline">
+          <EvBadge ev={item.ev} hint={false} />
+        </Hint>
+        <Hint text={t("records.frozenHelp")} className="no-underline">
+          <span
+            className="inline-flex items-center gap-1 text-caption text-muted-foreground"
+            data-testid="daily-item-stage"
+          >
+            <Snowflake aria-hidden className="h-3 w-3" />
+            {t(`records.stage.${item.stage}`)}
+          </span>
+        </Hint>
+        <span className="text-caption text-muted-foreground" data-testid="daily-item-selected-at">
+          {t("records.selectedAt", { time: formatTime(item.selected_at) })}
+        </span>
+      </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 px-4 py-2.5">
         <div className="flex items-center gap-2">
@@ -182,6 +190,11 @@ export function DailyItemCard({
         </div>
         {!started ? <SelectablePrice sel={pickableOfItem(item)} save size="sm" /> : null}
       </div>
+      <CorrectionNote
+        corrections={item.corrections}
+        record="result"
+        className="border-t border-border/70 px-4 py-2.5"
+      />
     </article>
   );
 }

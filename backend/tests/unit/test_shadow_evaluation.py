@@ -1,4 +1,4 @@
-"""Shadow picks are judged by fixture-clustered intervals, closing-line value and calibration - not by ROI alone."""
+"""Shadow picks are judged by fixture-clustered intervals, the closing measures and calibration - not by ROI alone."""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ from decimal import Decimal
 
 from scripts.shadow_evaluation import (
     calibration,
-    clv,
     edge_reliability,
     ev_at_pinnacle_close,
     evaluate,
     fair_close,
+    price_move,
     roi_with_interval,
 )
 
@@ -33,11 +33,25 @@ def test_ten_lines_of_one_match_are_one_bet_for_the_interval() -> None:
     assert r["ci95"][0] <= -0.99 and r["ci95"][1] >= 0.99, "two independent outcomes say almost nothing"
 
 
-def test_closing_line_value_is_the_price_taken_over_the_close() -> None:
-    c = clv([pick(1, "win", "1", odds="2.10", close="2.00"), pick(2, "loss", "-1", odds="1.90", close="2.00")],
-            "close_same_book")
+def test_the_price_move_is_the_price_taken_over_the_close() -> None:
+    c = price_move([pick(1, "win", "1", odds="2.10", close="2.00"), pick(2, "loss", "-1", odds="1.90", close="2.00")],
+                   "close_same_book")
     assert c["n"] == 2 and c["mean"] == 0.0 and c["positive_share"] == 0.5
-    assert clv([pick(1, "win", "1", close=None)], "close_same_book")["n"] == 0
+    assert price_move([pick(1, "win", "1", close=None)], "close_same_book")["n"] == 0
+
+
+def test_the_report_calls_a_price_move_a_price_move_and_keeps_the_clv_for_the_clv() -> None:
+    """Plan F0, defect 7. The ratio to a bookmaker's own close keeps its margin in both prices: it is no CLV. The CLV is
+    the price at the closing fair probability, here Pinnacle's own de-vigged close (``ev_at_pinnacle_close``)."""
+    d = Decimal
+    book = {("OU", "Over", d("2.5")): 1.90, ("OU", "Under", d("2.5")): 1.90}  # 5.3 % margin: fair 0.5 / 0.5
+    taken = {**pick(1, "win", "1", odds="1.90", close="1.90"), "line": d("2.5"), "selection": "Over"}
+    out = evaluate([taken], {1: book})
+    overall = out["overall"]
+    assert "clv_same_book" not in overall and "clv_pinnacle" not in overall, "the old names meant a price move"
+    assert overall["price_move_same_book"]["mean"] == 0.0, "the price did not move"
+    assert overall["ev_at_pinnacle_close"]["mean"] == -0.05, "and it was 5 % under the fair value: that is the CLV"
+    assert all("clv" not in key for key in out["by_market"]["OU"]), "no group calls a price move a CLV"
 
 
 def test_calibration_counts_decided_bets_only() -> None:

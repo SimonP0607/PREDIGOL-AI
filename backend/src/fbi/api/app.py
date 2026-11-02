@@ -25,10 +25,15 @@ from fbi.api.routers import (
     evolution,
     explorer,
     football,
+    forecast,
     intelligence,
+    knowledge,
     market,
+    match_calendar,
+    monitoring,
     product,
     records,
+    referees,
     system,
     truth,
 )
@@ -36,6 +41,7 @@ from fbi.api.security import (
     SAFE_METHODS,
     allowed_origins,
     client_ip,
+    observe_principal,
     require_admin,
     require_app,
     same_site_only,
@@ -43,8 +49,9 @@ from fbi.api.security import (
 from fbi.api.services.ops import VERSION
 from fbi.auth import crypto
 from fbi.auth.service import Principal, record_admin_write
+from fbi.core import sentry
 from fbi.core.config import settings
-from fbi.core.logging import configure
+from fbi.core.logging import configure, error_summary, error_trace
 
 log = structlog.get_logger("api")
 
@@ -97,7 +104,23 @@ def create_app() -> FastAPI:
             return await call_next(request)
         except Exception as exc:
             rid = errors.request_id(request)
-            log.error("api.unhandled", request_id=rid, path=request.url.path, error=exc.__class__.__name__)
+            # The detail of the error, under the request id the client gets (plan UX, A1): its type, the first line
+            # of its message and its frames, each through the filter of personal data and credentials - never the
+            # lines where libraries put the data, nor a frame's values. The client gets the request id only.
+            try:
+                message, trace = error_summary(exc), error_trace(exc)
+            except Exception:
+                # The summary must never become an error of its own: the server would log the original error's
+                # messages unfiltered (third review of A1). The type and the request id are kept.
+                message, trace = "(no summary: summarising the error failed)", ""
+            log.error("api.unhandled", request_id=rid, method=request.method, path=request.url.path,
+                      error=exc.__class__.__name__, message=message, trace=trace)
+            # To Sentry too, when it is on (plan UX, A2): the same error under the same request id, with the
+            # account's pseudonym - the event takes the filter of fbi.core.sentry before it leaves.
+            principal = getattr(request.state, "principal", None)
+            sentry.capture_exception(
+                exc, request_id=rid, path=request.url.path, method=request.method,
+                user=crypto.observability_id(principal.user_id) if isinstance(principal, Principal) else None)
             return JSONResponse(errors.body("internal", "internal error; see the server log for this request id", rid),
                                 status_code=500)
 
@@ -121,6 +144,10 @@ def create_app() -> FastAPI:
         rid = request.headers.get("x-request-id", "")
         rid = rid if rid.isalnum() and len(rid) <= 32 else uuid.uuid4().hex[:12]
         request.state.request_id = rid
+        # Every log line written while this request is served carries its id (plan UX, A2); the account's id joins
+        # once it is known (fbi.api.security.observe_principal).
+        structlog.contextvars.clear_contextvars()
+        structlog.contextvars.bind_contextvars(request_id=rid)
         client = request.client.host if request.client else "unknown"
         path = request.url.path
         limited = request.method != "OPTIONS" and not limiter.allow(client)
@@ -157,14 +184,17 @@ def create_app() -> FastAPI:
     #   admin   - /api/v1/admin/*, SUPER_ADMIN only
     for r in (system.router, auth.public_router, auth.session_router):
         app.include_router(r, prefix="/api/v1")
-    app_tier = [Depends(same_site_only), Depends(require_app)]
+    # The browser's error reports (plan UX, A2): public - an error can happen before signing in - but same-site.
+    app.include_router(monitoring.router, prefix="/api/v1", dependencies=[Depends(same_site_only)])
+    app_tier = [Depends(same_site_only), Depends(require_app), Depends(observe_principal)]
     for r in (auth.router, product.router, records.router, football.router, market.router, center.router,
-              ai_layer.router):
+              ai_layer.router, forecast.router, match_calendar.router, knowledge.router):
         app.include_router(r, prefix="/api/v1", dependencies=app_tier)
-    admin_tier = [Depends(same_site_only), Depends(require_admin)]
+    admin_tier = [Depends(same_site_only), Depends(require_admin), Depends(observe_principal)]
     for r in (system.admin_router, football.admin_router, market.admin_router,
               center.admin_router, explorer.router, analyst.router, admin_users.router, truth.router,
-              evolution.router, ai_layer.admin_router, intelligence.router):
+              evolution.router, ai_layer.admin_router, intelligence.router, referees.router,
+              monitoring.admin_router):
         app.include_router(r, prefix="/api/v1/admin", dependencies=admin_tier)
     # The original unversioned health endpoint stays where monitors expect it.
     app.add_api_route("/health", system.get_health, methods=["GET"], include_in_schema=False)

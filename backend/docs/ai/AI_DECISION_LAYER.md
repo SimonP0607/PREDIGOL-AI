@@ -1,9 +1,11 @@
 # Capa de decisión IA de PrediGol (`fbi.ai`)
 
-*Versión de la capa: packet-v1 · rules-review-v1 · review-v2 · brief-v1 · day-v1 · match-analysis-v1 · pm-v1 ·
-pm-v2 · learning-v1 · patterns-v1 · ai-gate-v1 · icc-v1 · daily-set-v3 · parlay-v4. Migraciones 0072-0073.
-Escrito el 8 oct 2026; **V2** (el día de Bogotá, los tres pasos, L1/L2/L3, presupuesto adaptable de US$150,
-post-mortems por selección y aprendizaje diario) el mismo día.*
+*Versión de la capa: packet-v8 · rules-review-v1 · review-v2 · brief-v8 · day-v1 · match-analysis-v1 · learning-v1.2 ·
+patterns-v1 · ai-gate-v2 · icc-v1 · daily-set-v3 · parlay-v4 · pmn-v1; `pm-v1.1` y `pm-v2` congelados. Migraciones 0072-0073
+(y 0091, F8). Escrito el 8 oct 2026; **V2** (el día de Bogotá, los tres pasos, L1/L2/L3, presupuesto adaptable de US$150,
+post-mortems por selección y aprendizaje diario) el mismo día. **F8 (23 oct 2026):** el post-mortem de una selección es uno solo,
+`pm-v6` (`fbi.intel.postmortem`, tabla `intel.postmortems`), armado por reglas; lo que esta capa conserva de él es la narrativa
+opcional (`pmn-v1`) y el aprendizaje que lo lee (sección 5).*
 
 La IA es la capa de razonamiento **sobre** el pipeline cuantitativo, no un reemplazo de él. Lee lo que la
 plataforma ya mide (modelos, mercado, calidad de datos, bajas, alineaciones, calendario, tabla), le suma
@@ -25,7 +27,7 @@ abstenerse** sobre lo que el pipeline ya eligió. No crea picks, no sube probabi
 | Ningún gasto por usuario | todo lo calcula el worker; el parlay personal del usuario nunca llama a un modelo |
 | Fallar hacia lo seguro | timeout, caída, respuesta inválida o presupuesto agotado → la revisión del modelo se abstiene y manda el revisor de reglas; el pipeline cuantitativo no depende de nada de esto |
 | Auditoría completa | modelo, versión, `prompt_version`, `input_hash`, fuentes, evidencias, uso (tokens, caché, costo) por llamada; sin claves ni prompts guardados |
-| Append-only | trigger `ai.refuse_change` en paquetes, revisiones, análisis, memoria, post-mortems, shadow, correlaciones y uso; la evidencia solo cambia de estado (con historial) |
+| Append-only | trigger `ai.refuse_change` en paquetes, revisiones, análisis, memoria, post-mortems congelados y narrativas de post-mortem, shadow, correlaciones y uso (el post-mortem único, `intel.postmortems`, lo protege `intel.refuse_change`); la evidencia solo cambia de estado (con historial) |
 
 ## 2. El día de la IA (V2) y el ciclo (worker)
 
@@ -33,7 +35,7 @@ abstenerse** sobre lo que el pipeline ya eligió. No crea picks, no sube probabi
 |---|---|---|
 | `ai_cycle` | cada 15 min (`FBI_AI_CYCLE_MINUTES`) | **gratis** para 4 días: evidencias del proveedor (48 h), shortlist con el filtro de valor (72 h), paquetes, reglas, análisis; **pagado** solo en los pasos debidos de los partidos de hoy con mercado |
 | `ai_day_start` | 00:05 Bogotá | abre el día (`ai.day_plans`, etapa `opened`, con su presupuesto) y corre los primeros pasos |
-| `ai_learn` | 07:35 Bogotá (+ recuperación si pasaron > 26 h) | post-mortems por partido (pm-v1) y por selección (pm-v2), notas del día anterior, estadísticas de fuentes, patrones → hipótesis (con modelo, máx. 2 al día), correlación semanal, shadow, alertas de presupuesto y **mañana preparado** (sin modelo ni búsqueda) |
+| `ai_learn` | 07:35 Bogotá (+ recuperación si pasaron > 26 h) | el post-mortem único de cada selección y de cada partido (`pm-v6`, por reglas, sin modelo; si el paso nocturno de la capa PI ya lo escribió, lo encuentra hecho), las narrativas opcionales (con modelo, máx. 12), notas del día anterior, estadísticas de fuentes, patrones → hipótesis (con modelo, máx. 2 al día), correlación semanal, shadow, alertas de presupuesto y **mañana preparado** (sin modelo ni búsqueda) |
 | `ai_requests` | cada 2 min | ejecuta el «ejecutar ahora» del dueño (máx. 5 en cola); un partido de hoy se analiza como un paso |
 
 **Los tres pasos** (`fbi.ai.day.due_pass`, una vez por partido y día, `ai.fixture_passes`):
@@ -56,10 +58,26 @@ contradicción o noticia importante, y una revisión L2 que las reglas contradic
 Sin modelo disponible, el brief lo escriben las reglas (`engine=rules`). Un paso que el proveedor falló (caído,
 timeout) no se registra y se reintenta en el ciclo siguiente; el resto del ciclo no vuelve a llamarlo.
 
-Paquete (`fbi.ai.packet`): partido (estado, cambios de hora), tabla y lo que está en juego, forma, calendario
-(descanso, rotación), H2H, Elo, estadísticas, bajas ponderadas por importancia del jugador, alineaciones,
+Paquete (`fbi.ai.packet`): partido (estado, cambios de hora), la fase de la ronda y, en una vuelta, solo lo que se sabía del cruce antes
+del partido (bloque `phase`: las patas anteriores con resultado registrado a la hora del paquete, el global de esas patas y qué
+hacen al global los primeros 90 minutos; nunca el ganador ni el global final; packet-v4, plan F2), tabla y lo que está en juego
+(**la tabla de la etapa propia del partido** según la misma asignación que la página, de la captura más reciente a la hora del
+paquete; lo que está en juego se calcula solo con esa etapa y los partidos que le quedan al equipo en ella, y una ronda eliminatoria
+muestra la tabla de la etapa anterior como contexto y sin «en juego»; una etapa sin tabla se declara en `missing`; packet-v4), forma, calendario
+(descanso, rotación — desde packet-v7 (plan F4) con **todos los partidos del equipo que lista el proveedor** —copa, continental, amistosos—,
+sin resultados ni rivales, y solo si la lista del equipo es completa (leída como mucho 96 h antes y sin un partido de las dos últimas semanas
+por confirmar); si no lo es, sigue siendo lo de antes: leído solo de las competiciones que seguimos, así que el descanso es un **máximo** y los partidos
+en 14 días un **mínimo**: el bloque lo declara en `schedule.calendar` y solo emite la bandera «poco descanso», nunca
+«desventaja de descanso» entre los dos lados, que solo se afirma cuando los dos calendarios son completos; packet-v3, plan F0 defecto 10), H2H, Elo, estadísticas, bajas ponderadas por importancia del jugador (**solo la última respuesta de `/injuries` a la fecha de corte**: un jugador que la respuesta más reciente ya no nombra se recuperó y no cuenta, y un refresco posterior no borra lo que se sabía en ese momento; se lee del historial `core.player_availability_obs`, no de `core.player_absences`, que solo guarda la última respuesta; packet-v3, plan F0 defecto 8), alineaciones,
+árbitro (**la persona**, no la cadena que escribió el proveedor: `fixture.referee`, `fixture.referee_id` y `fixture.referee_seen_at` son lo que el proveedor había dado a la hora del paquete —nada si ya lo había quitado del partido—, y el dossier cuenta sus partidos bajo cualquier grafía y sin mezclar homónimos; un partido que la identidad aún no vio conserva la cadena, con `referee_id` nulo; packet-v5, plan F3),
 viaje, mercado (Shin, apertura fija = primer consenso de la semana previa, movimiento, dispersión, nº de casas),
-modelos (Dixon-Coles, Poisson, Elo-ologit con intervalos), calidad de datos y evidencias. Todo **as-of**: nada
+modelos (Dixon-Coles, Poisson, Elo-ologit con intervalos), **pronóstico de PrediGol** (bloque `forecast`, packet-v6, plan F5: por mercado la probabilidad de cada resultado con su intervalo,
+`CALIBRATED` o `UNCALIBRATED` y cuál es el más probable; es una probabilidad, sin cuota ni ventaja: lo más probable no es lo mejor pagado, y el brief —brief-v8— lo escribe aparte
+de las selecciones que muestran las tarjetas; un partido sin pronóstico no tiene bloque y no se nombra en `missing`, un pronóstico que no se pudo leer sí), calidad de datos y evidencias.
+Desde **packet-v8** (plan F6) el paquete trae además, como **descripciones** que ningún modelo lee: el cara a cara ponderado (`h2h`, `h2h-v2`: los ocho últimos cruces jugados hasta un resultado,
+cada uno con el peso que tiene para este partido —recencia, competición, campo, entrenadores—, el registro en 90 minutos y el tamaño efectivo), los escenarios (`scenarios`: qué le hace este partido
+solo a su tabla y a su eliminatoria, en aritmética), la táctica observable (`dossier.tactics`) y el estado de cada factor en el registro (`factors`, `intel.context_factors`: `DESCRIPTIVE` salvo que una
+persona lo haya validado con un experimento). Un registro que no se puede leer deja todos en `DESCRIPTIVE` y se anota en `missing`. Todo **as-of**: nada
 registrado después del momento del paquete. Un paquete nuevo solo se guarda si el contexto cambió.
 
 **Web (Exa).** Consulta en el idioma de la competición (español, portugués, inglés); dos cubetas por partido:
@@ -77,6 +95,12 @@ resuelve el servidor; cada evidencia guarda fuente, URL, dominio, nivel, fecha p
 * **Modelo de lenguaje (`review-v1`, opcional):** recibe el paquete, la candidata y las señales; responde JSON
   validado (`ReviewOut`) con afirmaciones tipadas (DATA/INFERENCE/NEWS/OPINION/UNKNOWN). El servidor
   recalcula la cuota justa y la mínima (no confía en las del modelo) y descarta afirmaciones sin base.
+  **Lee el paquete a través de `fbi.ai.views.review_view` (plan F6):** sin los bloques de `packet-v8` que siguen siendo
+  `DESCRIPTIVE` (el cara a cara ponderado salvo sus dos claves de siempre, `n` y `home_view`; `scenarios`; `dossier.tactics`; `factors`),
+  es decir, el paquete de antes del plan F6. Dos razones: lo que no se ha probado no debe pesar en que se muestre un pick, y esos
+  bloques son ≈ 49 % más de tokens (≈ +2.000 aproximados de 4.200) en las 90 revisiones diarias de Sonnet y Opus, unos US$1,0 al día. Sus afirmaciones se verifican contra esa vista (un
+  número que solo está en un bloque que no recibió no sostiene una afirmación) y su respuesta se reutiliza por el hash de esa vista (un cambio solo en lo que no recibe no compra una revisión
+  nueva). Un factor `VALIDATED` se le entrega entero, con su entrada del registro. El informe (`brief-v8`) sí lee todo.
 * **Combinada:** la más conservadora de las opiniones (ignorando abstenciones).
 
 **Presupuesto (V2, `fbi.ai.usage`).** Tope mensual duro (`FBI_AI_MONTHLY_BUDGET_USD`, en el portátil US$150) y
@@ -113,27 +137,74 @@ final `medium`) y `max_tokens` deja sitio (revisión 8.000). Con 1.200 las respu
 OBSERVACIÓN → PATRÓN → HIPÓTESIS → MUESTRA SUFICIENTE → EXPERIMENTO → BACKTEST → SHADOW → COMPARACIÓN CON
 MERCADO → APROBACIÓN DEL DUEÑO. Nada aquí ejecuta `adjust_weights` ni cambia una regla.
 
-* **Post-mortem por selección (`pm-v2`, `ai.pick_postmortems`):** picks del día, piernas de parlay, todo lo que
-  revisó un modelo y lo revisado en partidos con paso. Diez preguntas respondidas con lo guardado antes del
-  partido y el resultado (¿qué esperaba PrediGol?, ¿qué ocurrió?, ¿falló el modelo?, ¿falló la información?,
-  ¿había una señal ignorada?, ¿se movió la cuota?, ¿existía una baja importante?, ¿cambió la alineación?, ¿la
-  incertidumbre estaba subestimada?, ¿fue varianza?) y la clase de una pérdida, la primera que aplica:
-  DATA_ERROR → EXECUTION_ERROR → CONTEXT_ERROR → MARKET_ERROR (CLV ≤ −3 %) → MODEL_ERROR (modelo ≥ 8 pts sobre el
-  cierre) → NORMAL_VARIANCE → UNKNOWN. Narrativa con Haiku (máx. 12) y Sonnet para pérdidas de picks del día (3).
-* **Notas del día (`ai.learning_notes`, QUÉ APRENDIÓ PREDIGOL HOY):** resumen, aprobadas perdidas por clase,
-  rechazos (acertados / habrían ganado), contexto que falló, noticias confirmadas o desmentidas por la alineación,
-  bajas, mercado (CLV), modelo frente al cierre, fuentes; y hasta 3 lecciones de Sonnet que citan las notas.
+* **El post-mortem único (`pm-v6`, `fbi.intel.postmortem`, `intel.postmortems`; plan F8):** hasta F8 había tres
+  (`pm-v1.1` por partido en `ai.postmortems`, `pm-v2` por selección en `ai.pick_postmortems` y los `pm-v3`–`pm-v5` de la capa de
+  inteligencia) que se solapaban poco y ponían precio distinto a la misma selección. Ahora hay **uno por selección**, armado por reglas
+  sin llamar a ningún modelo y una sola vez: los picks del día, las piernas de parlay, todo lo que revisó un modelo, lo revisado en
+  partidos con paso y lo que la capa de decisión PI juzgó (ver `docs/intelligence/PREDIGOL_INTELLIGENCE.md`, sección 7). Se estudia 3
+  horas después del inicio, mira los últimos 7 días y lo escribe el primero que corra, el aprendizaje de las 07:35 o el paso nocturno
+  de las 07:50; el otro lo encuentra hecho. El partido como un todo (marcador, la evidencia de la IA frente a las alineaciones, el
+  pronóstico 1X2 frente al cierre) va en `intel.match_postmortems`. Los dos de esta capa están **congelados**: se escriben solo con
+  `FBI_AI_LEGACY_POSTMORTEMS` (apagado) y siempre después del único, y sus filas siguen legibles. Las **diez preguntas** y la clase de una
+  pérdida son las de `pm-v2` (viven ahora en `fbi.intel.pm_questions`), respondidas con lo guardado antes del partido y el resultado
+  (¿qué esperaba PrediGol?, ¿qué ocurrió?, ¿falló el modelo?, ¿falló la información?, ¿había una señal ignorada?, ¿se movió la cuota?,
+  ¿existía una baja importante?, ¿cambió la alineación?, ¿la incertidumbre estaba subestimada?, ¿fue varianza?) y la clase de una
+  pérdida, la primera que aplica: DATA_ERROR → EXECUTION_ERROR → CONTEXT_ERROR → MARKET_ERROR (la cuota de la misma casa se movió 3 %
+  o más en contra, o la probabilidad de cierre bajó 3 pts: es un **movimiento de precio**, no un CLV) → MODEL_ERROR (modelo ≥ 8 pts
+  sobre el cierre) → NORMAL_VARIANCE → UNKNOWN. Lo que cambia es **qué precio se juzga** (el que vio una persona, si lo hubo; si no, el
+  que congeló la capa de decisión; si no, el que leyó el revisor; los tres quedan en `evidence.prices`) y que la calidad de la decisión se
+  juzga por el **CLV** (`clv-v1`, precio bueno / neutro / malo con banda ±1 %) y no por el movimiento de la misma casa, separada del
+  resultado: ganó con buen precio o neutro = MERECIDO, ganó con mal precio = SUERTE, perdió con buen precio o neutro = VARIANZA, perdió
+  con mal precio = ERROR (más NULO sin resultado y SIN_DATOS sin cierre). El revisor de la IA (APPROVE / DOWNGRADE / REJECT / ABSTAIN)
+  se guarda aparte (`review_decision`, `review_verdict`) y nunca se mezcla con la calidad del precio. Lo leen el aprendizaje de abajo,
+  los patrones, el cierre del día, las pantallas de la consola y la capa 9 de Match Knowledge, siempre por la vista
+  `intel.selection_postmortems` (la fila más reciente de cada selección).
+* **La narrativa es aparte, opcional y de pago (`pmn-v1`, `ai.postmortem_narratives`).** Ya no forma parte del post-mortem y nada
+  depende de ella: un modelo escribe una explicación corta solo de lo que alguien querría ver explicado, con los mismos límites que
+  tenía `pm-v2` (Haiku, máx. 12 por corrida, y Sonnet para las pérdidas de picks del día, 3; ventana de 7 días; nunca sin presupuesto
+  ni sin modelo configurado), así que **no suma gasto nuevo** (medido: ≈ US$ 0,012 al día entre todas las llamadas de post-mortem).
+  La prosa por partido de `pm-v1.1` ya no se pide: el partido como un todo no llama a ningún modelo.
+* **Una sola definición de CLV (`clv-v1`, `fbi.market.closing_value`; plan F0, defecto 7).** Dos números se llamaban
+  «CLV» y no son lo mismo:
+
+  | Medida | Fórmula | Qué dice |
+  |---|---|---|
+  | **CLV** | `cuota × p_cierre − 1`; `p_cierre` = probabilidad sin margen (Shin) de la última instantánea de consenso antes del inicio | cuánto valía el precio tomado frente al cierre justo; con un margen del 5 % y nada movido, vale ≈ −5 % |
+  | **movimiento de precio** | `cuota / cuota_cierre − 1`; `cuota_cierre` = último precio de la MISMA casa | si el precio de esa casa se movió después de tomarlo; el margen está en ambos precios y se cancela |
+
+  Se relacionan por el margen de cierre (CLV ≈ movimiento − margen: −3 % de movimiento son ≈ −7 % de CLV), así que
+  no comparten umbral ni se promedian juntas. Solo `closing_value.py` escribe las fórmulas; el SQL gemelo
+  (`picks.pick_line_value`: `lv_devigged` = CLV, `lv_raw` = movimiento), las decisiones PI, la auditoría de picks,
+  la puerta shadow y el post-mortem dan los mismos números (`test_clv_single_definition`). **Filas anteriores:** la
+  columna `ai.pick_postmortems.clv` y las claves `clv` del JSON de `pm-v1`/`pm-v2` y de los informes `ai-gate-v1`
+  guardan un movimiento de precio (la historia no se reescribe); los lectores nunca las toman por CLV y lo derivan de la
+  cuota y la `p_close` guardadas junto a ellas. Las claves nuevas son `price_move` y `clv_v1`; el post-mortem único
+  (`intel.postmortems`, `pm-v6`, plan F8) las guarda en dos columnas, `clv` y `price_move`, y el cierre de referencia del CLV tiene
+  nombre (`last-shin-consensus-before-kickoff`, `fbi.market.closing_reference`). Umbrales: calidad de un precio ±1 % de **CLV**;
+  MARKET_ERROR −3 % de **movimiento**.
+* **Notas del día (`ai.learning_notes`, QUÉ APRENDIÓ PREDIGOL HOY, `learning-v1.2`):** resumen, aprobadas perdidas por
+  clase, rechazos (acertados / habrían ganado), contexto que falló, noticias confirmadas o desmentidas por la
+  alineación, bajas, mercado (CLV medio de las aprobadas, y aparte cuántas selecciones vieron su cuota moverse en
+  contra), modelo frente al cierre, fuentes; y hasta 3 lecciones de Sonnet que citan las notas. Hasta `learning-v1`
+  la nota de mercado promediaba el movimiento de precio y lo llamaba «CLV medio» (unos 4 pts más favorable que el real).
+  Desde `learning-v1.2` (F8) las notas se leen del post-mortem único (`intel.selection_postmortems` e
+  `intel.match_postmortems`) y no de los dos de la IA: las mismas selecciones (las que la IA estudió: los `roles` `daily_pick`,
+  `parlay_leg`, `llm`, `reviewed` y `rejected`; una selección que solo juzgó la capa de decisión PI no entra en estas notas), las mismas
+  palabras; los ids de la evidencia de una nota escrita desde `v1.2` son ids de `intel.postmortems`.
 * **Patrones → hipótesis:** fiabilidad por nivel de fuente, señales de revisión, ligas (z ≥ 3) y, en V2, clases
   de pérdida (≥ 20 pérdidas, z ≥ 2 frente a un reparto parejo); cada propuesta lleva nº de partidos, impacto
   potencial y costo de investigarla. Una hipótesis de la IA sin referencias a la memoria se rechaza. Promover
   exige `DONE` con `gate_passed=true` y la palabra escrita por el dueño.
 
-## 6. Evaluación shadow de la IA (`ai-gate-v1`)
+## 6. Evaluación shadow de la IA (`ai-gate-v2`)
 
 Ventana 60 días; grupos: modelo solo, modelo + IA (sin rechazados), aprobados, con cautela, rechazados,
-abstenciones; métricas: n, acierto, ROI, EV declarado y de mercado, CLV, log loss y Brier (modelo y mercado),
-ECE, drawdown. La puerta pide ≥ 300 selecciones, ≥ 30 días, ≥ 50 rechazos, calidad de rechazo z ≥ 2 (bootstrap
-por partido), CLV de lo conservado ≥ CLV de lo rechazado y calibración no peor (+0,002).
+abstenciones; métricas: n, acierto, ROI, EV declarado y de mercado, CLV (`clv-v1`, con su `n_clv`) y movimiento de
+precio (`price_move`, con su `n_price_move`; solo informativo), log loss y Brier (modelo y mercado), ECE, drawdown.
+La puerta pide ≥ 300 selecciones, ≥ 30 días, ≥ 50 rechazos, calidad de rechazo z ≥ 2 (bootstrap por partido),
+**CLV** de lo conservado ≥ CLV de lo rechazado y calibración no peor (+0,002). `ai-gate-v1` comparaba movimientos de
+precio bajo el nombre «clv»; sus informes guardados se conservan tal cual y la capa solo lee el veredicto
+(`gate.verdict == "pass"`; modo SHADOW).
 
 ## 7. Configuración (variables)
 
@@ -156,8 +227,10 @@ nueva se usa desde el ciclo siguiente, sin reiniciar. Las claves se guardan con 
 * `python -m scripts.ai_simulate --dsn <copia> --start … --days 3 --search` — mide en una **copia** cuántas
   llamadas haría la capa y las cotiza con cada perfil de proveedor.
 * Admin Console → «Capa de decisión IA» (presupuesto, proyección, alertas, eficiencia, stack real, comparación
-  shadow), «IA e investigación» (HOY, INVESTIGACIONES, POST-MORTEMS, APRENDIZAJE, FUENTES, COSTOS) y «Evolución»
-  (EL DÍA EN PREDIGOL AI, QUÉ APRENDIÓ PREDIGOL HOY, MEJORAS PROPUESTAS).
+  shadow), «IA e investigación» (HOY, CIERRE DIARIO, INVESTIGACIONES, APRENDIZAJE, FUENTES, COSTOS) y «Evolución»
+  (EL DÍA EN PREDIGOL AI, QUÉ APRENDIÓ PREDIGOL HOY, MEJORAS PROPUESTAS). Desde F8 los post-mortems, la memoria y las notas de
+  aprendizaje se ven en un solo sitio, **Memoria** (`/admin/memory`): entidades (cada serie con la versión que la escribió, su confianza
+  y en qué se apoya), partidos, el post-mortem único de cada selección, las notas de aprendizaje y los hallazgos de investigación.
 * API (solo lectura, SUPER_ADMIN): `/admin/ai/overview`, `/today`, `/research`, `/postmortems`, `/learning`,
   `/sources`, `/costs`, `/comparison`, `/reviews`, `/evidence`, `/packets/{id}`, `/memory`, `/shadow`; producto:
   `/matches/{id}/analysis` (el brief y las notas por tarjeta solo en la vista del dueño o con enforcement).

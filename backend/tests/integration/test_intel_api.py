@@ -17,7 +17,11 @@ VIEWS = ("/api/v1/admin/intelligence/day", "/api/v1/admin/intelligence/decisions
          "/api/v1/admin/intelligence/calibration", "/api/v1/admin/intelligence/memory",
          "/api/v1/admin/intelligence/reports", "/api/v1/admin/intelligence/markets",
          "/api/v1/admin/intelligence/runs", "/api/v1/admin/intelligence/costs",
-         "/api/v1/admin/intelligence/memory/team/1")
+         "/api/v1/admin/intelligence/price-clock", "/api/v1/admin/intelligence/market-matrix",
+         "/api/v1/admin/intelligence/families",
+         "/api/v1/admin/intelligence/memory/team/1",
+         "/api/v1/admin/intelligence/matches", "/api/v1/admin/intelligence/matches?q=manchester",
+         "/api/v1/admin/intelligence/factors")
 
 
 @pytest.fixture()
@@ -52,7 +56,40 @@ def test_every_view_answers_for_the_owner_and_none_for_a_user(env: Seed) -> None
     assert costs["thresholds"] == [50, 70, 85, 95, 100]
     dossier = admin.get(f"/api/v1/admin/intelligence/matches/{env.fixture_id}/dossier")
     assert dossier.status_code == 200
+    assert {"h2h", "scenarios", "factors", "brief", "passes"} <= set(dossier.json()["data"])
+    picker = admin.get("/api/v1/admin/intelligence/matches", params={"q": str(env.fixture_id), "day": "2026-09-15"})
+    assert picker.status_code == 200 and picker.json()["data"]["mode"] == "search"
+    assert picker.json()["data"]["matches"][0]["fixture_id"] == env.fixture_id
+    assert admin.get("/api/v1/admin/intelligence/matches", params={"q": "x" * 61}).status_code == 422, "a search is a name, not a text"
+    assert admin.get("/api/v1/admin/intelligence/matches", params={"limit": 101}).status_code == 422
+    factors = admin.get("/api/v1/admin/intelligence/factors").json()["data"]["factors"]
+    assert [f["status"] for f in factors] == ["DESCRIPTIVE"] * len(factors)
     assert admin.get("/api/v1/admin/intelligence/decisions/999999999").status_code == 404
     user = client_for("USER")
-    for path in VIEWS[:3]:
+    for path in VIEWS:
         assert user.get(path).status_code in (401, 403)
+
+
+def test_the_matrix_of_markets_is_read_from_what_is_stored_and_says_when_there_is_none(env: Seed, migrated_database: str) -> None:
+    import psycopg
+
+    from fbi.market import matrix
+
+    owner = client_for("SUPER_ADMIN")
+    empty = owner.get("/api/v1/admin/intelligence/market-matrix")
+    assert empty.status_code == 200
+    body = empty.json()["data"]
+    assert body["run"] is None and body["rows"] == [] and body["groups"]["C"] == "Córners"
+    with psycopg.connect(migrated_database) as conn:
+        generated = matrix.generate(conn, at=None)
+        run = matrix.store(conn, generated)
+        conn.commit()
+    try:
+        got = owner.get("/api/v1/admin/intelligence/market-matrix").json()["data"]
+        assert got["run"]["id"] == run and got["run"]["matrix_version"] == matrix.MATRIX_VERSION
+        assert [r["key"] for r in got["rows"]] == [r.key for r in matrix.ROWS]
+        assert got["summary"]["definitions"] == generated["summary"]["definitions"] and got["current_version"] == matrix.MATRIX_VERSION
+        assert {"keys", "followed", "modelled"} <= set(got["keys"])
+    finally:
+        with psycopg.connect(migrated_database, autocommit=True) as conn:
+            conn.execute("DELETE FROM market.catalogue_runs WHERE id = %s", (run,))

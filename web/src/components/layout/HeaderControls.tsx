@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff, LayoutDashboard, LogOut, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { LOCALES, t, useI18n, type Locale } from "@/lib/i18n";
+import { LOCALE_NAMES } from "@/lib/i18n/catalogs";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -27,6 +28,9 @@ export function LanguageSwitch({ className }: { className?: string | undefined }
           key={l}
           type="button"
           aria-pressed={locale === l}
+          aria-label={LOCALE_NAMES[l]}
+          title={LOCALE_NAMES[l]}
+          lang={l}
           data-testid={`lang-${l}`}
           onClick={() => void auth.setLocale(l)}
           className={cn(
@@ -75,9 +79,15 @@ export function AccountMenu() {
           <div className="truncate text-caption font-normal text-muted-foreground">
             {user.email}
           </div>
-          <div className="text-[0.65rem] font-bold uppercase tracking-wider text-gold">
-            {user.role}
-          </div>
+          {/* Plan UX, A1 (F07): a reader never sees an internal role ("USER"); the owner sees "Administrador". */}
+          {user.role === "SUPER_ADMIN" ? (
+            <div
+              className="text-[0.65rem] font-bold uppercase tracking-wider text-gold"
+              data-testid="account-role"
+            >
+              {t("common.roleAdmin")}
+            </div>
+          ) : null}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>

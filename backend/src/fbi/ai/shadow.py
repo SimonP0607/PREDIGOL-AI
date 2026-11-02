@@ -8,16 +8,20 @@ three things are compared on the same matches:
     market        the de-vigged market's own forecast of the same selections
 
 with log loss and Brier score (of the model's and the market's probabilities), calibration (expected
-calibration error, ten bins), hit rate, ROI at the price taken (flat one unit), closing-line value (the
-price taken against the provider's final pre-match price of the same bookmaker), the claimed EV and the EV by
-the market's own price, and the worst drawdown. REJECTION QUALITY is the point: what the review rejected must
-do measurably worse than what it kept.
+calibration error, ten bins), hit rate, ROI at the price taken (flat one unit), closing-line value (the price
+taken at the closing fair probability, ``fbi.market.closing_value``: the system's single CLV), the claimed EV and
+the EV by the market's own price, and the worst drawdown. REJECTION QUALITY is the point: what the review
+rejected must do measurably worse than what it kept.
 
-The gate (``ai-gate-v1``), which ``FBI_AI_MODE=enforce`` also needs (``fbi.ai.gating``):
+Beside the CLV the arms report the PRICE MOVE (the price taken against the final pre-match price of the same
+bookmaker, margin in both): ``ai-gate-v1`` called that number CLV, and judged the gate by it; ``ai-gate-v2`` (plan
+F0, defect 7) judges by the CLV and keeps the price move as information. Reports written under v1 keep what they say.
+
+The gate (``ai-gate-v2``), which ``FBI_AI_MODE=enforce`` also needs (``fbi.ai.gating``):
 
 * at least 300 settled reviewed selections over at least 30 days, at least 50 of them rejected;
 * ROI(kept) - ROI(rejected) at least two standard errors above zero (bootstrap over matches);
-* the kept selections' closing-line value not below the rejected ones';
+* the kept selections' closing-line value (CLV) not below the rejected ones';
 * the kept selections' Brier score no worse than all selections' (+0.002).
 
 Otherwise the verdict is ``insufficient`` (not enough evidence yet) or ``fail``. The numbers are reported
@@ -39,9 +43,10 @@ import psycopg
 from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
+from fbi.market import closing_value
 from fbi.picks.settlement import Status, market_outcome, profit
 
-VERSION = "ai-gate-v1"
+VERSION = "ai-gate-v2"
 WINDOW = timedelta(days=60)
 MIN_SELECTIONS = 300
 MIN_DAYS = 30
@@ -52,17 +57,28 @@ ENGINES = ("rules", "llm", "combined")
 BOOTSTRAP = 300
 
 SETTLED_SQL = """
-SELECT DISTINCT ON (r.fixture_id, r.market_key, r.selection, r.line)
-       r.fixture_id, r.market_key, r.selection, r.line, r.odds, r.bookmaker_id, r.p_model, r.p_market, r.decision,
-       r.reviewed_at, f.kickoff_at, res.reg_goals_home, res.reg_goals_away
-  FROM ai.pick_reviews r
-  JOIN core.fixtures f ON f.id = r.fixture_id
-  JOIN core.fixture_results res ON res.fixture_id = f.id
- WHERE r.engine = %(engine)s AND r.reviewed_at < f.kickoff_at AND f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s
-   AND f.status_group = 'finished' AND res.reg_goals_home IS NOT NULL AND r.odds IS NOT NULL AND r.p_model IS NOT NULL
-   AND r.status IN ('ok', 'fallback')
- ORDER BY r.fixture_id, r.market_key, r.selection, r.line, r.reviewed_at DESC, r.id DESC
+WITH last AS (
+    SELECT DISTINCT ON (r.fixture_id, r.market_key, r.selection, r.line)
+           r.fixture_id, r.market_key, r.selection, r.line, r.odds, r.bookmaker_id, r.p_model, r.p_market, r.decision,
+           r.reviewed_at, f.kickoff_at, res.reg_goals_home, res.reg_goals_away
+      FROM ai.pick_reviews r
+      JOIN core.fixtures f ON f.id = r.fixture_id
+      JOIN core.fixture_results res ON res.fixture_id = f.id
+     WHERE r.engine = %(engine)s AND r.reviewed_at < f.kickoff_at AND f.kickoff_at >= %(since)s
+       AND f.kickoff_at < %(until)s AND f.status_group = 'finished' AND res.reg_goals_home IS NOT NULL
+       AND r.odds IS NOT NULL AND r.p_model IS NOT NULL AND r.status IN ('ok', 'fallback')
+     ORDER BY r.fixture_id, r.market_key, r.selection, r.line, r.reviewed_at DESC, r.id DESC
+)
+SELECT l.*, cp.p_fair AS p_close
+  FROM last l
+  LEFT JOIN LATERAL (
+      SELECT m.p_fair FROM market.market_consensus m
+       WHERE m.fixture_id = l.fixture_id AND m.market_key = l.market_key AND m.selection = l.selection
+         AND m.line = l.line AND m.devig_method = 'shin' AND m.as_of < l.kickoff_at
+       ORDER BY m.as_of DESC LIMIT 1) cp ON true
 """
+"""``p_close``: the closing fair probability - the Shin consensus of the last snapshot before kick-off, the same reference
+``intel.decision_outcomes`` and ``picks.pick_line_value.lv_devigged`` use - for the CLV."""
 
 CLOSE_SQL = """
 SELECT fixture_id, bookmaker_id, market_key, selection, line, odds_decimal FROM market.final_prematch_odds
@@ -81,6 +97,9 @@ class Settled:
     status: str
     profit: float
     close: float | None
+    """The final pre-match price of the same bookmaker (``market.final_prematch_odds``): for the PRICE MOVE."""
+    p_close: float | None = None
+    """The closing fair probability (Shin consensus before kick-off): for the CLV."""
 
     @property
     def won(self) -> bool | None:
@@ -115,7 +134,8 @@ def load(conn: psycopg.Connection[Any], *, engine: str, since: datetime, until: 
         close = None if r["bookmaker_id"] is None else closes.get(
             (int(r["fixture_id"]), int(r["bookmaker_id"]), r["market_key"], r["selection"], Decimal(r["line"])))
         out.append(Settled(int(r["fixture_id"]), r["kickoff_at"], r["decision"], float(r["odds"]), float(r["p_model"]),
-                           None if r["p_market"] is None else float(r["p_market"]), status, prof, close))
+                           None if r["p_market"] is None else float(r["p_market"]), status, prof, close,
+                           None if r["p_close"] is None else float(r["p_close"])))
     return out
 
 
@@ -149,7 +169,8 @@ def metrics(items: Sequence[Settled]) -> dict[str, Any]:
         return {"n": 0}
     binary = [s for s in items if s.won is not None]
     with_market = [s for s in binary if s.p_market is not None]
-    clv = [s.odds / s.close - 1 for s in items if s.close]
+    clv = [closing_value.clv(s.odds, s.p_close) for s in items if s.p_close is not None]
+    moves = [closing_value.price_move(s.odds, s.close) for s in items if s.close]
     out: dict[str, Any] = {
         "n": n, "fixtures": len({s.fixture_id for s in items}),
         "hit_rate": round(sum(1 for s in binary if s.won) / len(binary), 4) if binary else None,
@@ -158,6 +179,7 @@ def metrics(items: Sequence[Settled]) -> dict[str, Any]:
         "ev_market": round(sum((s.p_market or 0) * s.odds - 1 for s in with_market) / len(with_market), 4)
         if with_market else None,
         "clv": round(sum(clv) / len(clv), 4) if clv else None, "n_clv": len(clv),
+        "price_move": round(sum(moves) / len(moves), 4) if moves else None, "n_price_move": len(moves),
         "logloss_model": round(sum(_ll(s.p_model, bool(s.won)) for s in binary) / len(binary), 5) if binary else None,
         "logloss_market": round(sum(_ll(s.p_market or 0.5, bool(s.won)) for s in with_market) / len(with_market), 5)
         if with_market else None,

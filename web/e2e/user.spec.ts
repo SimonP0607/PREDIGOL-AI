@@ -203,6 +203,12 @@ test.describe.serial("a user's own records", () => {
     const price = await firstPrice(page, w, fixture.fixture_id);
     await price.getByTestId("save-pick").click();
     await expect(price.getByTestId("save-pick")).toHaveAttribute("aria-pressed", "true");
+    // Plan UX, A1 (F53): taking a saved pick out asks first; cancelling keeps it.
+    await price.getByTestId("save-pick").click();
+    await expect(page.getByTestId("confirm-unsave-pick")).toBeVisible();
+    await page.getByTestId("confirm-unsave-pick-cancel").click();
+    await expect(page.getByTestId("confirm-unsave-pick")).toHaveCount(0);
+    await expect(price.getByTestId("save-pick")).toHaveAttribute("aria-pressed", "true");
 
     await open(page, w, "/my-picks");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(t.records.mine.title);
@@ -213,7 +219,8 @@ test.describe.serial("a user's own records", () => {
     );
     const row = mine.first();
     await expect(row).toBeVisible();
-    await expect(row.getByTestId("origin-mine")).toHaveText(t.records.labels.savedByMe);
+    // Plan UX, A1: the user's own selection says so ("Tu selección"), never mixed with PrediGol's picks.
+    await expect(row.getByTestId("origin-mine")).toHaveText(t.records.labels.mine);
     await expect(row.getByTestId("result-badge")).toHaveAttribute("data-status", "PENDING");
 
     await row.getByTestId("saved-pick-odds").click();
@@ -223,7 +230,13 @@ test.describe.serial("a user's own records", () => {
       lang() === "es" ? "2,35" : "2.35",
     );
 
+    // Removing asks first: cancel keeps the pick, confirm removes it.
     await row.getByTestId("saved-pick-remove").click();
+    await expect(page.getByTestId("confirm-remove-pick")).toBeVisible();
+    await page.getByTestId("confirm-remove-pick-cancel").click();
+    await expect(row).toBeVisible();
+    await row.getByTestId("saved-pick-remove").click();
+    await page.getByTestId("confirm-remove-pick-ok").click();
     await expect(mine).toHaveCount(0);
     await assertClean(page, w);
   });
@@ -246,6 +259,12 @@ test.describe.serial("a user's own records", () => {
     await page.getByTestId("slip-open").click();
     const sheet = page.getByTestId("slip-sheet");
     await expect(sheet.getByTestId("slip-leg")).toHaveCount(2);
+    // Plan UX, A1 (F53): a leg taken out can be put back, as it was, for five seconds.
+    await sheet.getByTestId("slip-remove").first().click();
+    await expect(sheet.getByTestId("slip-leg")).toHaveCount(1);
+    await sheet.getByTestId("slip-undo-button").click();
+    await expect(sheet.getByTestId("slip-leg")).toHaveCount(2);
+    await expect(sheet.getByTestId("slip-undo")).toHaveCount(0);
     await expect(sheet.getByTestId("slip-save")).toBeEnabled();
     await expect(sheet.getByTestId("slip-error")).toHaveCount(0);
     const name = `E2E ${lang()} ${Date.now()}`;
@@ -259,6 +278,7 @@ test.describe.serial("a user's own records", () => {
     await expect(card).toBeVisible();
     await expect(card.getByTestId("parlay-status")).toHaveText(t.records.parlayStatus.READY);
     await card.getByTestId("my-parlay-remove").click();
+    await page.getByTestId("confirm-remove-parlay-ok").click();
     await expect(page.getByTestId("my-parlay").filter({ hasText: name })).toHaveCount(0);
     await assertClean(page, w);
   });
@@ -286,6 +306,48 @@ test.describe.serial("a user's own records", () => {
     }
     await assertClean(page, w);
   });
+});
+
+test("One figure: over 30 days and over everything, the recap's profit and return are My results' own", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F53, F54): the recap counted its own "Rentabilidad" over the first 500 picks, with another formula
+  // and another window than "Tus resultados". Now both count every record, the same way, over the same days.
+  const w = watch(page);
+  const t = L[lang()];
+  await page.emulateMedia({ reducedMotion: "reduce" }); // the recap's figures count up; without motion they are final
+  await open(page, w, "/my-picks");
+  const recap = page.getByTestId("my-recap");
+  const results = page.getByTestId("my-results");
+  for (const [period, recapLabel] of [
+    ["30d", t.records.recap.days_other.replace("{count}", "30")],
+    ["all", t.records.recap.all],
+  ] as const) {
+    const { body } = await getJson<{
+      data: { groups: { my_picks: { won: number; lost: number } } };
+    }>(page.request, `/api/v1/me/history?period=${period}`);
+    const g = body.data.groups.my_picks;
+    if (g.won + g.lost === 0) {
+      note(test.info(), `no settled pick of this account in the period ${period}`);
+      continue;
+    }
+    await results
+      .getByTestId("history-period")
+      .getByRole("button", { name: t.records.mine.results.period[period] })
+      .click();
+    await recap.getByTestId("recap-period").getByRole("button", { name: recapLabel }).click();
+    await settle(page);
+    for (const [mine, theirs] of [
+      ["recap-kpi-profit", "history-my_picks-profit"],
+      ["recap-kpi-roi", "history-my_picks-roi"],
+      ["recap-roi-sample", "history-my_picks-roi-sample"],
+    ] as const) {
+      await expect(recap.getByTestId(mine), `${mine} over ${period}`).toHaveText(
+        (await results.getByTestId(theirs).innerText()).trim(),
+      );
+    }
+  }
+  await assertClean(page, w);
 });
 
 test("Odds: the best-odds board per market", async ({ page }) => {
@@ -573,4 +635,55 @@ test("Profile shows the account's language and time zone", async ({ page }) => {
   const tz = lang() === "es" ? "America/Bogota" : "Europe/Madrid";
   await expect(page.getByTestId("current-timezone")).toContainText(tz);
   await expect(page.getByTestId(`profile-lang-${lang()}`)).toHaveAttribute("aria-checked", "true");
+  // The time zones are a listbox that owns its options: every item is a wrapper, every option a button inside it (the
+  // three findings of axe on this page in the line base of A0).
+  const zones = page.getByRole("listbox");
+  await expect(zones.getByRole("option").first()).toBeVisible();
+  await expect(zones.locator("> li:not([role='presentation'])")).toHaveCount(0);
+  // Plan UX, A1 (F07): no internal role on screen - not in the profile, not in the account menu.
+  await expect(page.getByTestId("profile-role")).toHaveCount(0);
+  await expect(page.locator("main")).not.toContainText("USER");
+  // The session slides with use (F05): the profile says it closes sooner if it goes unused.
+  await expect(page.getByTestId("profile-session")).toContainText(
+    lang() === "es" ? "7 días" : "7 days",
+  );
+  await page.getByTestId("account-menu").click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  await expect(page.getByTestId("account-role")).toHaveCount(0);
+  await expect(page.getByRole("menu")).not.toContainText("USER");
+});
+
+test("Profile security: a failure to read the sessions or the activity says so, with the reference and a retry", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F05): a failed read showed as an empty list - "no sessions", "no activity" - which is not true.
+  const t = L[lang()];
+  const fault = (id: string) => ({
+    status: 500,
+    headers: { "content-type": "application/json", "x-request-id": id },
+    body: JSON.stringify({ error: { code: "internal", message: "fault" }, request_id: id }),
+  });
+  await page.route("**/api/v1/auth/me/sessions", (route) => route.fulfill(fault("e2e-sessions-1")));
+  await page.route("**/api/v1/auth/me/access*", (route) => route.fulfill(fault("e2e-access-1")));
+  await page.goto("/profile");
+  const sessions = page.getByTestId("sessions-error");
+  // The error shows after the two retries of a 5xx (1 s and 2 s apart) - and, on the QA dev server under load, after
+  // up to 12 s of hydration (A2's run 3: the first request left 12.6 s after the page loaded).
+  await expect(sessions).toBeVisible({ timeout: 30_000 });
+  await expect(sessions).toContainText(t.errors.requestId.replace("{id}", "e2e-sessions-1"));
+  await expect(page.getByTestId("access-error")).toContainText(
+    t.errors.requestId.replace("{id}", "e2e-access-1"),
+  );
+  await expect(page.getByTestId("sessions-panel")).not.toContainText(
+    t.profile.securityPanel.thisDevice,
+  );
+  // the retry reads them again, and the panels show what is there
+  await page.unroute("**/api/v1/auth/me/sessions");
+  await page.unroute("**/api/v1/auth/me/access*");
+  await sessions.getByRole("button", { name: t.common.retry }).click();
+  await expect(page.getByTestId("sessions-panel")).toContainText(
+    t.profile.securityPanel.thisDevice,
+  );
+  await page.getByTestId("access-error").getByRole("button", { name: t.common.retry }).click();
+  await expect(page.getByTestId("access-error")).toHaveCount(0);
 });

@@ -1,15 +1,7 @@
 {
-  "shadowLine": "SHADOW: PrediGol Intelligence decide y mide cada candidato, pero no publica picks ni mueve dinero. Los usuarios siguen viendo daily-set-v5.",
   "tabs": {
-    "day": "El día",
-    "decisions": "Decisiones",
-    "match": "Partido",
-    "calibration": "Calibración",
-    "memory": "Memoria",
-    "markets": "Mercados",
-    "costs": "Costes y ejecuciones"
+    "match": "Partido"
   },
-  "tabsLabel": "Vistas de PrediGol Intelligence",
   "day": {
     "title": "El día de PrediGol Intelligence",
     "prev": "Día anterior",
@@ -39,7 +31,6 @@
     "v6Empty": "Ningún pick del día: ningún candidato llegó a APROBADO (ningún mercado tiene edge validado fuera de muestra). Cero es la respuesta honesta, nunca se rellena.",
     "v5Title": "daily-set-v5 (lo que ven los usuarios, evaluación)",
     "v5Empty": "daily-set-v5 no eligió picks este día.",
-    "calibrationTitle": "Calibración por mercado y modelo",
     "reportTitle": "DAILY LEARNING REPORT",
     "reportEmpty": "Aún no hay informe para este día (se escribe a las 07:50 del día siguiente).",
     "runsTitle": "Últimas ejecuciones",
@@ -74,7 +65,9 @@
     "risk": "7 · Riesgo",
     "correlation": "8 · Correlación",
     "price": "9 · Precio actual",
-    "final": "10 · Clasificación"
+    "final": "10 · Clasificación",
+    "family": "Familia",
+    "research": "Pedir investigación"
   },
   "cols": {
     "match": "Partido",
@@ -117,7 +110,8 @@
     "pick": "Modelo y datos",
     "calibrator": "Calibrador",
     "outcome": "Resultado",
-    "postmortem": "Post-mortem (pm-v3)",
+    "postmortem": "Post-mortem",
+    "pmVersion": "Versión del post-mortem",
     "history": "Historial de la selección",
     "cost": "Coste de revisiones",
     "points": "Puntos",
@@ -144,13 +138,13 @@
     "params": "Parámetros",
     "evRaw": "EV crudo {ev}",
     "source": "fuente",
-    "pnl": "P&G (1 u)"
+    "pnl": "P&G (1 u)",
+    "noParams": "Sin coeficientes (no corrige nada)",
+    "nValues": "{n} valores"
   },
   "match": {
     "title": "Dossier del partido",
-    "fixture": "Id del partido",
-    "load": "Ver",
-    "hint": "Elige una decisión o escribe el id de un partido.",
+    "hint": "Busca un partido por equipo, competición o número, o elige uno del día.",
     "narrative": "Narrativa",
     "engineLlm": "escrita por el modelo económico y verificada",
     "engineRules": "escrita por las reglas desde los datos",
@@ -177,6 +171,7 @@
     "players": "Jugadores clave",
     "h2h": "Historial directo",
     "relevance": "Relevancia",
+    "nEffective": "n efectiva",
     "decisions": "Decisiones del partido",
     "empty": "Sin paquete de PrediGol Intelligence para este partido.",
     "yes": "sí",
@@ -211,6 +206,241 @@
       "rating": "Nota",
       "load": "Min 14 d",
       "out": "Baja reportada"
+    },
+    "picker": {
+      "title": "Elegir partido",
+      "close": "Cerrar",
+      "search": "Buscar",
+      "placeholder": "Equipo, competición o número de partido",
+      "tooShort": "Escribe al menos dos letras, o el número del partido.",
+      "dayCount_one": "{count} partido del día · {studied} con paquete de la IA.",
+      "dayCount_other": "{count} partidos del día · {studied} con paquete de la IA.",
+      "searchCount_one": "{count} partido para «{q}» a ±45 días del {day}.",
+      "searchCount_other": "{count} partidos para «{q}» a ±45 días del {day}.",
+      "cut": "Se muestran los primeros {shown} de {total}.",
+      "none": "Ningún partido.",
+      "change": "Elegir otro partido",
+      "studied": "con paquete",
+      "unstudied": "sin paquete",
+      "research_one": "{count} investigación pedida",
+      "research_other": "{count} investigaciones pedidas",
+      "escalated": "escalado"
+    },
+    "age": {
+      "days_one": "{count} día",
+      "days_other": "{count} días",
+      "months_one": "{count} mes",
+      "months_other": "{count} meses",
+      "years": "{years} años"
+    },
+    "h2hw": {
+      "title": "Cara a cara ponderado",
+      "subtitle": "Cuánto dice cada cruce entre {home} y {away} sobre este partido, según su antigüedad, la competición, el campo y los entrenadores. Es una descripción, no una señal validada.",
+      "n": "Cruces leídos",
+      "last": "Último cruce",
+      "oldest": "El más antiguo",
+      "record": "Registro a 90 min · {home}",
+      "recordText": "{w} G · {d} E · {l} P",
+      "sameVenue": "Con {home} de local, como ahora",
+      "weighted": "Ponderado por peso (G · E · P de {home})",
+      "goals": "Goles ponderados por cruce ({home} – rival)",
+      "coaches": "Banquillos",
+      "coachesText": "{same} iguales · {changed} con cambio · {unknown} sin dato",
+      "coach": {
+        "none": "los mismos",
+        "home": "cambió el local",
+        "away": "cambió el visitante",
+        "both": "cambiaron los dos",
+        "unknown": "sin dato"
+      },
+      "col": {
+        "when": "Hace",
+        "competition": "Competición",
+        "score": "90 min",
+        "ground": "Campo",
+        "scope": "Tipo",
+        "coaches": "Entrenadores",
+        "weight": "Peso",
+        "share": "Cuenta"
+      },
+      "aet": "prórroga",
+      "empty": "Sin cruces guardados."
+    },
+    "scen": {
+      "title": "Escenarios de este partido",
+      "subtitle": "Aritmética de ESTE partido solo: los demás no se simulan, así que un puesto es un intervalo. No son probabilidades.",
+      "tableTitle": "Tabla",
+      "unavailable": "Esta tabla no está ordenada por puntos: no se lee nada de ella.",
+      "today": "Hoy",
+      "now": "{rank}.º · {points} pts · {played} PJ",
+      "result": {
+        "home_win": "Si gana el local",
+        "draw": "Si empatan",
+        "away_win": "Si gana el visitante"
+      },
+      "points": "{points} pts",
+      "place": "puesto {n}",
+      "places": "puestos {best}–{worst}",
+      "snapshot": "Tabla del {when}.",
+      "tieTitle": "Eliminatoria",
+      "kind": {
+        "single_match": "partido único",
+        "first_leg": "ida",
+        "second_leg": "vuelta",
+        "replay": "desempate",
+        "series": "serie"
+      },
+      "before": "Global antes del partido (el local de este partido primero)",
+      "series": "Serie",
+      "seriesText": "juego {game} · {home}–{away} ({draws} empates)",
+      "tie": {
+        "ahead": "Delante si el margen es",
+        "level": "Igualada si es",
+        "behind": "Detrás si es",
+        "limit": "Límite"
+      },
+      "canLose": "puede perder por hasta {n}",
+      "needsWin": "necesita ganar por {n} o más",
+      "cannotLose": "no puede perder"
+    },
+    "tactics": {
+      "title": "Táctica observable",
+      "subtitle": "Lo observable en los últimos partidos de cada equipo, con el tamaño de cada muestra. Describe; no predice.",
+      "row": {
+        "read": "Partidos leídos (eventos que cuadran)",
+        "data": "Datos que faltan",
+        "formation": "Formación inicial",
+        "rotation": "Rotación del once",
+        "coach": "Con el entrenador actual",
+        "goals": "Goles a favor – en contra",
+        "late": "Goles tardíos (76–90') a favor – en contra",
+        "scoredFirst": "Si marca primero",
+        "concededFirst": "Si recibe primero",
+        "htLeading": "Ganando al descanso",
+        "htTrailing": "Perdiendo al descanso",
+        "firstSub": "Primer cambio (minuto medio)"
+      },
+      "tally": "{w} G {d} E {l} P",
+      "sample": "{n} de {of}",
+      "formationText": "{main} en {count} de {n} · última {last} · {changes} cambios",
+      "rotationText": "{avg} cambios por partido ({pairs} pares)",
+      "coachText": "{newest} de {n} ({distinct} distintos)",
+      "goalsText": "{for} – {against} ({n} partidos)",
+      "lateText": "{for} – {against} ({n} partidos)",
+      "firstSubText": "{mean} ({n} de {of} partidos)",
+      "noSheet_one": "{count} sin hoja",
+      "noSheet_other": "{count} sin hoja",
+      "crossed_one": "{count} hoja cruzada",
+      "crossed_other": "{count} hojas cruzadas",
+      "noEvents_one": "{count} sin eventos",
+      "noEvents_other": "{count} sin eventos",
+      "inconsistent_one": "{count} con eventos que no cuadran",
+      "inconsistent_other": "{count} con eventos que no cuadran",
+      "complete": "completos"
+    },
+    "factors": {
+      "title": "Factores de contexto",
+      "subtitle": "Qué estado tenía cada factor cuando la IA leyó el paquete y cuál tiene hoy en el registro. Descriptivo: describe el partido, no justifica una selección. Validado: una persona lo avaló con un experimento.",
+      "labels": {
+        "h2h_weighted": "Cara a cara ponderado",
+        "scenarios": "Escenarios de tabla y eliminatoria",
+        "tactics_profile": "Táctica observable",
+        "rest_congestion": "Descanso y congestión"
+      },
+      "status": {
+        "DESCRIPTIVE": "Descriptivo",
+        "VALIDATED": "Validado"
+      },
+      "error": "No se pudo leer el registro al armar el paquete: todos los factores cuentan como descriptivos.",
+      "col": {
+        "factor": "Factor",
+        "packet": "En el paquete",
+        "today": "Hoy en el registro"
+      },
+      "experiment": "experimento: {name}",
+      "changed": "cambió después del paquete",
+      "decisions": "Decisiones del registro",
+      "noDecisions": "El registro no tiene ninguna decisión: todos los factores siguen descriptivos."
+    },
+    "brief": {
+      "title": "Informe de la IA",
+      "engine": "Quién lo escribió",
+      "uncertainty": "Incertidumbre",
+      "quality": "Calidad de los datos",
+      "escalate": "Escalado a revisión mayor",
+      "level": {
+        "low": "baja",
+        "medium": "media",
+        "high": "alta"
+      },
+      "dataQuality": {
+        "good": "buena",
+        "fair": "regular",
+        "poor": "mala"
+      },
+      "reasons": "Motivos del escalado",
+      "refused": "Afirmaciones rechazadas",
+      "research": "Investigaciones pedidas",
+      "byLlm": "el modelo económico, verificado por el servidor",
+      "byRules": "las reglas, a partir de los datos"
+    },
+    "research": {
+      "title": "Investigación pedida por la IA",
+      "subtitle": "La IA dice QUÉ le falta y de qué lado, de una lista que escribió el servidor. El servidor decide si lo busca, dentro del cupo de búsquedas y del presupuesto del día.",
+      "asked": "Lo que pidió el último informe",
+      "none": "El último informe no pidió investigación.",
+      "topic": {
+        "availability": "Quién puede jugar (bajas, dudas, sanciones)",
+        "confirmation": "Confirmar con fuentes oficiales",
+        "preview": "Previa de medios internacionales"
+      },
+      "side": {
+        "home": "local",
+        "away": "visitante",
+        "both": "los dos"
+      },
+      "passes": "Pases del partido",
+      "noPasses": "Ningún pase registrado.",
+      "col": {
+        "pass": "Pase",
+        "when": "Terminó",
+        "requested": "Pidió",
+        "asked": "Recibió",
+        "searched": "Buscó",
+        "unserved": "Sin atender",
+        "searches": "Búsquedas",
+        "cost": "Costo"
+      },
+      "unserved": {
+        "no_allowance": "sin búsquedas disponibles",
+        "near_budget": "cerca del presupuesto",
+        "pass_budget": "sin presupuesto en este pase",
+        "no_search_pass": "este pase no lee la web",
+        "research_failed": "la investigación por entidad falló en este pase"
+      },
+      "how": "Un pase pide al terminar su informe; el siguiente pase que lee la web lo atiende. El pase final no lee la web: lo que pidió el previo queda para «ejecutar ahora». Pedir no escala el partido ni cambia ninguna decisión."
+    },
+    "refused": {
+      "title": "Afirmaciones que el servidor rechazó",
+      "subtitle": "Cada afirmación de la IA se comprueba contra el paquete. Esto es lo que no pasó, y por qué.",
+      "shown": "{shown} de {total}",
+      "descriptive": "descansaba en {factor}, un factor descriptivo",
+      "group": {
+        "context": "Contexto",
+        "changes": "Cambios",
+        "injuries": "Bajas",
+        "cards": "Selecciones",
+        "cards_why": "Por qué de una selección",
+        "cards_risks": "Riesgos de una selección",
+        "research": "Investigación pedida",
+        "narrative": "Narrativa"
+      }
+    },
+    "firstLegScore": "Ida {home}–{away}",
+    "need": {
+      "home": "el local remonta",
+      "away": "el visitante remonta",
+      "level": "empate global"
     }
   },
   "calibration": {
@@ -234,7 +464,27 @@
     "reason": "Motivo",
     "empty": "Aún no hay calibradores: el ciclo nocturno los ajusta.",
     "day": "Día",
-    "n": "n"
+    "n": "n",
+    "gate": {
+      "groups": {
+        "calib_gate": "Para validar un calibrador",
+        "edge_gate": "Para validar una ventaja",
+        "general": "General"
+      },
+      "labels": {
+        "version": "Versión del criterio",
+        "min_oos_n": "Partidos mínimos fuera de muestra",
+        "min_oos_days": "Días mínimos fuera de muestra",
+        "min_gain_vs_raw": "Mejora mínima de log loss frente al modelo sin calibrar",
+        "max_ece": "ECE máximo",
+        "max_loss_vs_market": "Pérdida máxima de log loss frente al mercado",
+        "ev_rule": "Valor esperado mínimo de la regla",
+        "min_rule_n": "Apuestas mínimas de la regla",
+        "min_rule_clv": "CLV mínimo de la regla",
+        "replace_gain": "Mejora mínima para reemplazar al champion (log loss)",
+        "refit_every_days": "Reajuste cada (días)"
+      }
+    }
   },
   "memory": {
     "type": "Entidad",
@@ -283,20 +533,194 @@
     "run": "Corrida",
     "empty": "El Market Discovery Engine corre cada lunes a las 04:40 (Bogotá).",
     "never": "Nunca activa un mercado: propone investigación.",
-    "market": "Mercado"
+    "market": "Mercado",
+    "clock": {
+      "title": "Reloj de precios",
+      "subtitle": "Cada cuota que la API devolvió antes del partido, con su minuto exacto",
+      "explain": "Se estructura desde los cuerpos crudos de /odds que ya se guardan (RAW), sin pedirle nada nuevo al proveedor. Es solo lectura: no cambia ningún pick, ninguna probabilidad ni el modo SHADOW. Una cuota nueva queda registrada la primera vez que se vio con ese valor, no cada vez que se preguntó.",
+      "empty": "Todavía no se ha estructurado ningún cuerpo. El trabajo corre en el worker cada 10 minutos, unos cientos de cuerpos por vuelta.",
+      "extractor": "Versión del lector",
+      "rawBodies": "Cuerpos RAW de /odds",
+      "pending": "Por leer",
+      "pendingHint": "Cuerpos que la versión actual aún no termina",
+      "upToDate": "Al día",
+      "quotes": "Cuotas",
+      "fixtures": "Partidos con cuotas",
+      "size": "Tamaño de la tabla",
+      "ledger": "Estado de la lectura",
+      "ledgerHelp": "Cada cuerpo RAW queda leído, vacío, esperando a su partido, posterior al inicio o fallido. Los que esperan o fallan se reintentan solos durante 14 días.",
+      "status": {
+        "ok": "Leído",
+        "empty": "Vacío",
+        "no_fixture": "Sin partido",
+        "after_kickoff": "Tras el inicio",
+        "error": "Falló"
+      },
+      "version": "Versión",
+      "bodies": "Cuerpos",
+      "refused": "Rechazadas",
+      "last": "Último",
+      "families": "Familias de mercado",
+      "familiesHelp": "Solo se estructuran los mercados marcados. El resto sigue intacto en RAW y se puede leer más adelante sin perder nada.",
+      "countsLate": "El conteo por mercado tardó más de lo permitido; se reintenta en el próximo refresco.",
+      "family": "Familia",
+      "bets": "Mercados",
+      "extracted": "Estructurados",
+      "structured": "Mercados estructurados",
+      "period": "Periodo",
+      "subject": "Sujeto",
+      "reading": "Lectura",
+      "familyName": {
+        "result": "Resultado",
+        "goals": "Goles",
+        "goals_half": "Goles por mitad",
+        "corners": "Córners",
+        "cards": "Tarjetas",
+        "shots": "Tiros de equipo",
+        "fouls": "Faltas",
+        "offsides": "Fuera de juego",
+        "tackles": "Entradas",
+        "saves": "Paradas del portero",
+        "timing": "Tiempos y secuencias",
+        "special": "Especiales",
+        "advance": "Clasificación",
+        "players": "Jugadores",
+        "other_sport": "Otros deportes",
+        "unclassified": "Sin clasificar"
+      },
+      "periodName": {
+        "FT": "Partido",
+        "1H": "1.ª parte",
+        "2H": "2.ª parte",
+        "INTERVAL": "Intervalo",
+        "OTHER": "Otro"
+      },
+      "subjectName": {
+        "match": "Partido",
+        "home": "Local",
+        "away": "Visitante",
+        "player": "Jugador",
+        "keeper": "Portero"
+      },
+      "issues": "Qué falló o se rechazó",
+      "issuesHelp": "Lo que no se pudo estructurar queda aquí con su motivo; nada se oculta. El detalle de un cuerpo se ve con su identificador en RAW.",
+      "body": "Cuerpo",
+      "providerFixture": "Partido (API)",
+      "detail": "Detalle",
+      "unclassified": "Mercados nuevos sin clasificar",
+      "unclassifiedHelp": "El proveedor envió estos tipos de apuesta y la taxonomía aún no los conoce. No se pierde nada: sus cuotas siguen en RAW.",
+      "runs": "Últimas ejecuciones del trabajo",
+      "rows": "Cuotas escritas"
+    },
+    "matrix": {
+      "title": "Matriz de mercados por familia",
+      "subtitle": "Qué puede llegar a ser cada tipo de apuesta: su precio, sus resultados, su modelo y el veredicto",
+      "explain": "Para cada tipo de apuesta: si el proveedor la ofrece, si guardamos su precio y el dato que la liquidaría, si ya hay un modelo y el veredicto que eso merece. Se lee de la última matriz guardada, tal como se midió en el momento que indica. Es solo lectura: no cambia ningún pick, ninguna probabilidad ni el modo SHADOW.",
+      "empty": "Aún no hay una matriz guardada: se genera cada semana (o con python -m scripts.markets matrix --store).",
+      "stale": "Matriz de una versión anterior ({version}; la vigente es {current}): se renueva con la corrida semanal.",
+      "generated": "Generada (hora de Bogotá)",
+      "generatedHint": "Versión {version} · taxonomía {taxonomy}",
+      "keys": "Claves en el catálogo",
+      "keysHint": "{followed} seguidas, {modelled} modeladas",
+      "rules": "Reglas de liquidación",
+      "rulesHint": "{n} pueden liquidar",
+      "definitions": "Apuestas del proveedor",
+      "definitionsHint": "{extracted} con precio guardado, {withRule} con regla de liquidación",
+      "verdict": {
+        "ready": "Listo",
+        "partial": "Parcial",
+        "investigate": "Por investigar",
+        "notViable": "No viable"
+      },
+      "legend": "Listo: modelo, calibrador y ventaja validada contra el cierre. Parcial: un modelo la calcula y el sistema la corre, pero su ventaja no está validada. Por investigar: se puede liquidar y hay un precio contra el que medirla, pero aún no hay modelo; la prioridad dice por dónde empezar. No viable: falta con qué liquidarla o con qué medirla, o se juzgó que no vale la pena.",
+      "priority": {
+        "alta": "Prioridad alta",
+        "media": "Prioridad media",
+        "baja": "Prioridad baja"
+      },
+      "group": {
+        "A": "Resultado",
+        "B": "Goles",
+        "C": "Córners",
+        "D": "Tarjetas",
+        "E": "Jugadores",
+        "F": "Porteros",
+        "G": "Tiros, faltas y fueras de juego",
+        "H": "Futuros",
+        "Z": "Otros"
+      },
+      "howToRead": "Apuestas: con precio guardado / total que ofrece el proveedor. Precio: partidos con precio en los últimos {price} días, mediana de casas por partido y cobertura (la parte de los partidos con algún precio que tienen el de este mercado). Resultados: partidos terminados de las competiciones seguidas, en los últimos {results} días, que traen el dato que liquidaría el mercado, y su parte del total.",
+      "cols": {
+        "market": "Mercado",
+        "verdict": "Veredicto",
+        "reason": "Motivo",
+        "bets": "Apuestas",
+        "price": "Precio",
+        "results": "Resultados",
+        "model": "Modelo"
+      },
+      "price": {
+        "fixtures": "Partidos",
+        "houses": "Casas",
+        "coverage": "Cobertura"
+      },
+      "results": {
+        "matches": "Partidos",
+        "share": "Del total"
+      },
+      "estimated": "estimado",
+      "estimatedHint": "Cifra del descubrimiento semanal: la plataforma aún no guarda los precios de este mercado.",
+      "curated": "fijado a mano",
+      "curatedHint": "Veredicto de un juicio documentado: los datos por sí solos no lo dan.",
+      "model": {
+        "enabled": "Modelado",
+        "edge": {
+          "VALIDATED": "ventaja validada",
+          "NOT_VALIDATED": "sin ventaja validada",
+          "unknown": "ventaja sin evaluar"
+        }
+      },
+      "reason": {
+        "priced": "con precio y resultados: se puede medir",
+        "edge_validated": "con ventaja validada",
+        "edge_not_validated": "modelada, sin ventaja validada",
+        "no_prices_in_window": "sin precios esta semana",
+        "thin_price": "menos de 2 casas: el precio no se puede medir",
+        "after_parent": "se mide después del total",
+        "not_extracted": "la plataforma aún no guarda sus precios",
+        "not_offered": "el proveedor no la ofrece",
+        "no_period_data": "no hay dato por mitad: no se puede liquidar",
+        "player_level": "se liquida con datos de un jugador",
+        "out_of_scope": "fuera del plan (tiempo, especiales, otros deportes)",
+        "no_data": "no guardamos el dato que la liquidaría",
+        "rejected_backtest": "rechazada por el backtest",
+        "low_information": "poca información: no vale un modelo",
+        "kind_not_graded": "su tipo de apuesta no se liquida con este dato",
+        "not_understood": "aún no se leen sus selecciones"
+      },
+      "cards": {
+        "title": "Tarjetas: cómo se cuentan",
+        "convention": "Las casas no cuentan las tarjetas igual: con otra convención, se liquidaría distinto el {pct} de los {matches} partidos con eventos de tarjeta, los que tuvieron una expulsión.",
+        "statistics": "Los eventos y las estadísticas de tarjetas coinciden en el {pct} de los {compared} partidos en que se pueden comparar."
+      },
+      "competitions": {
+        "title": "Cobertura por competición",
+        "help": "Las {n} competiciones seguidas con más partidos terminados. Todas las seguidas juntas: {finished} partidos terminados y {priced} con precio.",
+        "name": "Competición",
+        "finished": "Terminados ({days} d)",
+        "priced": "Con precio ({days} d)"
+      }
+    }
   },
   "costs": {
+    "title": "Coste por unidad de PrediGol Intelligence",
+    "subtitle": "Los últimos 7 días cerrados: lo que costó cada partido, candidato, pick, investigación y post-mortem.",
     "perMatch": "Por partido",
     "perCandidate": "Por candidato",
     "perPick": "Por pick",
     "perResearch": "Por investigación",
     "perPostmortem": "Por post-mortem",
     "perDay": "Por día (7 d)",
-    "projection": "Proyección del mes",
-    "budget": "Presupuesto mensual",
-    "spentMonth": "Gastado este mes",
-    "alerts": "Alertas del mes",
-    "noAlerts": "Ninguna alerta este mes.",
     "runs": "Ejecuciones de PrediGol Intelligence",
     "audit": "Auditoría de fugas de datos",
     "rule": "Regla",
@@ -310,13 +734,25 @@
     "none": "—",
     "auditEmpty": "La auditoría corre cada mañana sobre las decisiones del día anterior."
   },
-  "learning": {
-    "title": "Centro de aprendizaje de PrediGol Intelligence",
-    "subtitle": "Calibradores con criterios fijados de antemano, edge validado por mercado, promociones y regresiones, y el informe de aprendizaje del día.",
-    "open": "Abrir PrediGol Intelligence",
-    "champions": "Champion / challenger por mercado y modelo",
-    "promotions": "Promociones",
-    "regressions": "Regresiones (retirados)",
-    "noRegressions": "Ninguna regresión registrada."
+  "codes": {
+    "verdict": {
+      "MERECIDO": "Merecido",
+      "SUERTE": "Suerte",
+      "VARIANZA": "Varianza",
+      "ERROR": "Error",
+      "NULO": "Nulo",
+      "SIN_DATOS": "Sin datos"
+    },
+    "quality": {
+      "GOOD": "Buena",
+      "BAD": "Mala",
+      "NEUTRAL": "Neutra",
+      "UNKNOWN": "Desconocida"
+    },
+    "method": {
+      "logit2": "Logística con el precio del mercado",
+      "platt": "Platt",
+      "identity": "Sin corrección"
+    }
   }
 }

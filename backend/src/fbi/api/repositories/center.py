@@ -14,6 +14,32 @@ SELECT f.id, f.kickoff_at, f.status_group, f.round, f.competition_season_id, f.h
  WHERE f.id = %(f)s
 """
 
+STAGE_AND_TIE = """
+SELECT s.stage, s.kind, s.role, s.round_key, s.is_replay, s.ordinal,
+       t.id AS tie_id, t.format, t.status, t.legs, t.team_a_id, t.team_b_id, t.aggregate_a, t.aggregate_b,
+       t.winner_team_id, t.decided_by, t.shootout_a, t.shootout_b, t.winner_check
+  FROM core.fixtures f
+  JOIN core.competition_stages s ON s.id = f.stage_id
+  LEFT JOIN core.ties t ON t.id = f.tie_id
+ WHERE f.id = %(f)s
+"""
+"""The stage of the match and the tie it is a leg of, as the worker stored them (``fbi.competitions.builder``). The page may
+show a finished tie's outcome: it is a reader of what happened. A pre-match reader never comes through here - it goes through
+``fbi.competitions.context``."""
+
+TIE_LEGS = """
+SELECT g.id AS fixture_id, g.leg, g.kickoff_at, g.home_team_id, g.away_team_id, th.name AS home, ta.name AS away,
+       g.status_short AS status, g.status_group, r.goals_home, r.goals_away,
+       (r.et_goals_home IS NOT NULL OR r.et_goals_away IS NOT NULL) AS extra_time,
+       r.pen_home AS shootout_home, r.pen_away AS shootout_away
+  FROM core.fixtures g
+  JOIN core.teams th ON th.id = g.home_team_id
+  JOIN core.teams ta ON ta.id = g.away_team_id
+  LEFT JOIN core.fixture_results r ON r.fixture_id = g.id
+ WHERE g.tie_id = %(tie)s
+ ORDER BY g.kickoff_at, g.id
+"""
+
 MATCH_PLAYER_SEASONS = """
 SELECT s.provider_player_id, s.provider_team_id, s.appearances, s.lineups, s.minutes, s.goals, s.assists,
        s.yellow_cards, s.red_cards, s.observed_at
@@ -154,21 +180,20 @@ SELECT f.id AS fixture_id, f.kickoff_at,
  ORDER BY f.kickoff_at DESC LIMIT 6
 """
 
-H2H = """
-SELECT f.id AS fixture_id, f.kickoff_at, c.name AS competition, th.name AS home, ta.name AS away,
-       r.goals_home, r.goals_away
+H2H_SITUATION = """
+SELECT c.id AS competition_id, c.competition_type AS competition_kind, c.provider_league_id,
+       (f.is_neutral OR c.neutral_venue OR COALESCE(k.neutral, false)) AS is_neutral
   FROM core.fixtures f
-  JOIN core.fixture_results r ON r.fixture_id = f.id
-  JOIN core.teams th ON th.id = f.home_team_id
-  JOIN core.teams ta ON ta.id = f.away_team_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
- WHERE ((f.home_team_id = %(home)s AND f.away_team_id = %(away)s)
-     OR (f.home_team_id = %(away)s AND f.away_team_id = %(home)s))
-   AND f.status_group = 'finished' AND f.kickoff_at < %(ko)s
-   AND r.goals_home IS NOT NULL AND r.goals_away IS NOT NULL
- ORDER BY f.kickoff_at DESC LIMIT 8
+  LEFT JOIN core.fixture_venue_class k ON k.fixture_id = f.id AND k.rule_version = %(rule)s
+ WHERE f.id = %(f)s
 """
+"""What the head-to-head weighs a meeting against (``fbi.intel.h2h``): the competition of the match, its kind, and whether it is
+played on neutral ground by the rule in force. The meetings themselves are read by ``fbi.intel.h2h`` - the same function the AI
+packet reads - not by a query of the page's own: until plan F6 the page counted the final score (extra time in) of the last eight
+matches stored as finished, and the packet the 90-minute score of the last eight with a result, so a 2-2 that went to penalties was
+a draw in one and a win in the other."""
 
 LIVE_STATES = """
 SELECT observed_at, 'fixture_feed' AS source, status_short AS status, elapsed, extra, goals_home, goals_away
@@ -223,7 +248,7 @@ WITH feed AS (
     UNION
     SELECT fixture_id FROM odds WHERE NOT COALESCE(is_finished, false) AND at > %(at)s - interval '5 minutes'
 )
-SELECT f.id AS fixture_id, f.kickoff_at, c.name AS competition, c.country,
+SELECT f.id AS fixture_id, f.kickoff_at, c.name AS competition, c.country, c.country_code,
        c.id AS competition_id, c.logo_url AS competition_logo, c.flag_url AS competition_flag,
        th.id AS home_id, th.name AS home_name, th.logo_url AS home_logo,
        ta.id AS away_id, ta.name AS away_name, ta.logo_url AS away_logo,
@@ -502,6 +527,34 @@ SELECT x.provider_team_id, t.id AS team_id, COALESCE(x.team_name, t.name) AS tea
  WHERE x.provider_player_id = %(pid)s
  ORDER BY x.ordinal
 """
+
+PLAYER_SPELLS = """
+SELECT s.provider_team_id, t.id AS team_id, COALESCE(t.name, s.team_name) AS team, s.valid_from, s.valid_to, s.source,
+       s.matches, s.last_evidence, s.via
+  FROM core.player_spells s
+  LEFT JOIN core.teams t ON t.provider_team_id = s.provider_team_id
+ WHERE s.provider_player_id = %(pid)s
+ ORDER BY s.ordinal DESC
+"""
+"""The player's streaks at clubs (``fbi.people.spells``), newest first."""
+
+PLAYER_NATIONAL_CAPS = """
+SELECT c.fixture_id, f.kickoff_at, c.team_id, t.name AS team, o.id AS opponent_id, o.name AS opponent, comp.name AS competition,
+       c.is_starter, c.appeared, c.minutes,
+       CASE WHEN r.fixture_id IS NULL THEN NULL WHEN f.home_team_id = c.team_id THEN r.goals_home ELSE r.goals_away END AS goals_for,
+       CASE WHEN r.fixture_id IS NULL THEN NULL WHEN f.home_team_id = c.team_id THEN r.goals_away ELSE r.goals_home END AS goals_against
+  FROM core.player_national_caps c
+  JOIN core.fixtures f ON f.id = c.fixture_id
+  JOIN core.teams t ON t.id = c.team_id
+  LEFT JOIN core.teams o ON o.id = CASE WHEN f.home_team_id = c.team_id THEN f.away_team_id ELSE f.home_team_id END
+  LEFT JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  LEFT JOIN core.competitions comp ON comp.id = cs.competition_id
+  LEFT JOIN core.fixture_results r ON r.fixture_id = f.id
+ WHERE c.provider_player_id = %(pid)s
+ ORDER BY f.kickoff_at DESC, c.fixture_id DESC
+ LIMIT 200
+"""
+"""The player's matches with a senior national team (``fbi.people.caps``), newest first."""
 
 REFERENCE_SEASONS = """
 SELECT cs.id, cs.season, cs.is_current FROM core.competition_seasons cs WHERE cs.competition_id = %(c)s

@@ -16,9 +16,11 @@ import {
   slipProbability,
   slipReduce,
   toProbability,
+  undoOf,
   DEPENDENCY_LEVELS,
   DEPENDENCY_REASONS,
   MAX_SLIP_LEGS,
+  UNDO_MS,
   type SlipLeg,
 } from "./model";
 
@@ -141,6 +143,53 @@ describe("the slip", () => {
       [3, null],
       [4, null],
     ]);
+  });
+});
+
+describe("undoing what was taken out of the slip (plan UX, A1, defect F53)", () => {
+  const three = () => {
+    let legs: SlipLeg[] = [];
+    for (const i of [1, 2, 3]) legs = slipReduce(legs, { type: "toggle", leg: leg(i) }).legs;
+    return legs;
+  };
+
+  test("a leg removed - from the slip or by a second tap on its card - can be put back as it was", () => {
+    const before = three();
+    for (const action of [
+      { type: "remove", key: before[1]!.key } as const,
+      { type: "toggle", leg: leg(2) } as const,
+    ]) {
+      const change = slipReduce(before, action);
+      const undo = undoOf(before, change);
+      expect(undo).toEqual({ effect: "removed", before, count: 1 });
+      // putting it back restores the order and every field, the second leg in second place
+      expect(slipReduce(change.legs, { type: "load", legs: undo!.before }).legs).toEqual(before);
+    }
+  });
+
+  test("the whole slip cleared can be put back", () => {
+    const before = three();
+    const change = slipReduce(before, { type: "clear" });
+    expect(undoOf(before, change)).toEqual({ effect: "cleared", before, count: 3 });
+  });
+
+  test("nothing to undo when nothing went out", () => {
+    const before = three();
+    expect(undoOf(before, slipReduce(before, { type: "toggle", leg: leg(4) }))).toBeNull();
+    expect(undoOf(before, slipReduce(before, { type: "toggle", leg: leg(1, "Draw") }))).toBeNull();
+    expect(undoOf([], slipReduce([], { type: "clear" }))).toBeNull();
+    expect(undoOf(before, slipReduce(before, { type: "remove", key: "not-there" }))).toBeNull();
+  });
+
+  test("the offer lasts five seconds", () => {
+    expect(UNDO_MS).toBe(5_000);
+  });
+
+  test("the snapshot is a copy: a later change does not alter what is put back", () => {
+    const before = three();
+    const undo = undoOf(before, slipReduce(before, { type: "clear" }))!;
+    before.pop();
+    expect(undo.before).toHaveLength(3);
   });
 });
 

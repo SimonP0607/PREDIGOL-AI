@@ -1,0 +1,10 @@
+[Unit]
+Description=PrediGol: storage report (disk, database, RAW, Docker, copies; reads only)
+Requires=docker.service
+After=docker.service predigol.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/predigol/backend/deploy/vps/bin/storage-report.sh --quiet
+Nice=19
+IOSchedulingClass=idle

@@ -23,7 +23,8 @@ import {
 } from "./filters";
 import { live } from "@/lib/api/v1/queries";
 import type { LiveMatch } from "@/lib/api/v1/types_center";
-import { t } from "@/lib/i18n";
+import { intlTag, t } from "@/lib/i18n";
+import { countryLabel } from "@/product/matches/country";
 import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { emptyReason } from "@/product/shared/markets";
@@ -96,16 +97,23 @@ export function LivePage() {
     () => picksFirst(all, picks).filter((m) => inLiveFilters(m, filters, picks)),
     [all, picks, filters],
   );
+  // Countries in the reader's language (plan UX, A1, F08: the provider's English names): the filter keeps the
+  // stored name as its key, the label is the ISO code's name ("Inglaterra", "España").
   const countries = useMemo(() => {
-    const by = new Map<string, number>();
-    for (const m of all) by.set(countryOf(m), (by.get(countryOf(m)) ?? 0) + 1);
+    const by = new Map<string, { count: number; label: string }>();
+    for (const m of all) {
+      const key = countryOf(m);
+      const known = by.get(key);
+      if (known) known.count += 1;
+      else
+        by.set(key, {
+          count: 1,
+          label: countryLabel(m.country, m.country_code) ?? t("live.filters.world"),
+        });
+    }
     return [...by.entries()]
-      .map(([key, count]) => ({
-        key,
-        label: key === "World" ? t("live.filters.world") : key,
-        count,
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+      .map(([key, { count, label }]) => ({ key, label, count }))
+      .sort((a, b) => a.label.localeCompare(b.label, intlTag()));
   }, [all]);
   const leagues = useMemo(() => {
     const by = new Map<string, { key: string; label: string; count: number }>();
@@ -117,7 +125,9 @@ export function LivePage() {
       else
         by.set(key, {
           key,
-          label: m.country ? `${m.competition} · ${m.country}` : m.competition,
+          label: countryLabel(m.country, m.country_code)
+            ? `${m.competition} · ${countryLabel(m.country, m.country_code)}`
+            : m.competition,
           count: 1,
         });
     }

@@ -126,8 +126,12 @@ class PlayerLine(Contract):
 class MatchFacts(Contract):
     """What the fixture's payloads say beyond the score (core.fixture_facts, newest change)."""
 
-    referee: str | None
+    referee: str | None = Field(description="The referee's name: the person's (the same man under every spelling the provider "
+                                "used) when the identity is up to date with the newest observation, otherwise the string the "
+                                "provider wrote.")
     referee_country: str | None
+    referee_id: int | None = Field(default=None, description="The referee's id in `core.referees`; null when the identity has "
+                                   "not caught up with the newest observation (the string is shown as it came) or nobody is named.")
     home_winner: bool | None = Field(description="The provider's winner flag: the side that won, or went through "
                                      "on penalties; null for a draw or a match not over.")
     away_winner: bool | None
@@ -207,13 +211,29 @@ class TeamForm(Contract):
 
 
 class H2HMatch(Contract):
+    """One earlier meeting of the two sides, as it was played and as it weighs for this match (``fbi.intel.h2h``, plan F6)."""
+
     fixture_id: int
     kickoff_at: datetime
     competition: str
     home: str
     away: str
-    goals_home: int
+    goals_home: int = Field(description="The final score, extra time in, shoot-out out.")
     goals_away: int
+    regulation_goals_home: int = Field(
+        description="The 90 minutes: what the head-to-head record counts and what every market settles on.")
+    regulation_goals_away: int
+    after_extra_time: bool = Field(description="True when it went to extra time (and, maybe, penalties).")
+    penalties_home: int | None = Field(default=None, description="The shoot-out, when there was one.")
+    penalties_away: int | None = None
+    scope: Literal["same_competition", "same_kind", "other_official", "friendly"] = Field(
+        description="What kind of meeting it was, against the match: the same competition, the same kind of competition "
+                    "(league, cup, continental, international), another official one, or a friendly.")
+    home_side_was: Literal["home", "away", "neutral"] = Field(
+        description="Where this match's HOME side played that day: at home, away or on neutral ground.")
+    weight: float = Field(
+        description="What the meeting weighs for this match, 0 to 1: fixed round numbers for how recent it is, the competition, "
+                    "the ground and the coaches. A description, not a fitted signal.")
 
 
 class LiveState(Contract):
@@ -251,6 +271,80 @@ class LiveMove(Contract):
     kind: Literal["moved", "withdrawn", "offered", "suspended", "available", "other"]
 
 
+StageKind = Literal["league", "knockout", "qualifying", "friendly", "unresolved"]
+StageRole = Literal["league", "group", "knockout", "playoff", "final", "third_place", "placement", "qualifying",
+                    "friendly", "unresolved"]
+TieFormat = Literal["single", "two_legged", "replay", "series"]
+TieState = Literal["scheduled", "in_progress", "decided", "unresolved"]
+TieDecidedBy = Literal["normal_time", "extra_time", "penalties", "aggregate", "away_goals", "tiebreak", "walkover",
+                       "series"]
+
+
+class MatchStage(Contract):
+    """The stage of the competition this match belongs to: what the words of its round label say, read by the one
+    classifier of round labels (``fbi.competitions.stages``) and stored in ``core.competition_stages``."""
+
+    name: str = Field(description="The round without its match day: 'Round of 16', 'Regular Season', 'Group Stage'.")
+    kind: StageKind
+    role: StageRole
+    round_key: str | None = Field(default=None, description="'round_of_16', 'quarter_final', 'final'...: null when the "
+                                                           "round has no standard name.")
+    is_replay: bool = Field(default=False, description="The stage is the replay of a round whose first match was level.")
+    ordinal: int = Field(description="Its place among the competition season's stages, in order of play.")
+
+
+class TieScore(Contract):
+    home: int = Field(description="Goals of the side that hosts THIS match.")
+    away: int = Field(description="Goals of the side that visits in THIS match.")
+
+
+class TieLeg(Contract):
+    """One match of the tie, as it was played (home and away of THAT match)."""
+
+    fixture_id: int
+    leg: int | None
+    kickoff_at: datetime
+    home: str
+    away: str
+    status: str
+    status_group: str
+    goals_home: int | None = Field(description="Final goals, extra time included; null when no result is stored.")
+    goals_away: int | None
+    extra_time: bool = False
+    shootout_home: int | None = None
+    shootout_away: int | None = None
+    is_this: bool = Field(description="This is the match the page is about.")
+
+
+class TieOutcome(Contract):
+    """Who went through, said only once THIS match is over and the tie is decided."""
+
+    winner: Side = Field(description="'home' or 'away' of THIS match.")
+    decided_by: TieDecidedBy
+    shootout: TieScore | None = Field(default=None, description="The shoot-out, when the tie was decided by it.")
+    contradicted: bool = Field(default=False, description="The provider's winner flag disagrees with the goals "
+                                                         "(an administrative decision): the sporting winner is shown.")
+
+
+class MatchTie(Contract):
+    """The tie this match belongs to (``core.ties``), told as of now: the legs that have a final result, and who went
+    through only when the tie is decided and this match is over. Scores are from THIS match's home and away."""
+
+    format: TieFormat
+    state: TieState
+    leg: int | None = Field(description="This match's place in the tie (1 = first), when known.")
+    legs: int = Field(description="Matches the format plans (2 for a two-legged tie).")
+    played: int = Field(description="Matches of the tie with a final result.")
+    aggregate_before: TieScore | None = Field(
+        description="The legs played before this one, summed (extra time in, shoot-out out); null when there are none "
+                    "or no aggregate applies (a single match, a replay, a series).")
+    aggregate: TieScore | None = Field(
+        description="Every leg with a final result, this one included once it is over; null when none applies or the "
+                    "sum would mislead (a leg decided at the table, a shoot-out that contradicts the goals).")
+    outcome: TieOutcome | None = None
+    legs_list: list[TieLeg] = Field(default_factory=list)
+
+
 class MatchCenter(Contract):
     fixture_id: int
     status_group: str
@@ -263,6 +357,9 @@ class MatchCenter(Contract):
     standings_tables: list[StandingsTable] = Field(
         default_factory=list, description="The whole table(s) the two rows come from (one, or each team's group).")
     facts: MatchFacts | None = None
+    stage: MatchStage | None = Field(default=None, description="The stage of the competition; null when the "
+                                                               "competition season has not been built (F2).")
+    tie: MatchTie | None = Field(default=None, description="The tie this match is a leg of; null for a league match.")
     form: Section[list[TeamForm]]
     h2h: Section[list[H2HMatch]]
     live_states: Section[list[LiveState]]
@@ -293,6 +390,9 @@ class LiveMatch(Contract):
     kickoff_at: datetime
     competition: str
     country: str | None
+    country_code: str | None = Field(default=None, description="ISO code of the competition's country (GB-ENG for "
+                                                               "a home nation): the client names it in the "
+                                                               "reader's language.")
     competition_id: int | None = None
     competition_logo: str | None = None
     competition_flag: str | None = None
@@ -462,6 +562,43 @@ class PlayerCareerTeam(Contract):
     seasons: list[int] = Field(default_factory=list)
 
 
+class PlayerClubSpell(Contract):
+    """A streak at a club (plan F3, ``core.player_spells``), built from squad sheets, statistics and transfers: when he arrived,
+    when he left, how it is known, and the last day anything placed him there. Newest first."""
+
+    provider_team_id: int
+    team_id: int | None = Field(default=None, description="PrediGol's team when the club is held.")
+    team: str | None = None
+    valid_from: date | None = Field(default=None, description="First day of the streak; null: he was already there when the "
+                                    "facts begin (the start is not known).")
+    valid_to: date | None = Field(default=None, description="The day he left (exclusive); null: he is still there as far as "
+                                  "the facts say.")
+    source: Literal["transfer", "lineup", "squad"] = Field(description="What gives the streak its start: a transfer, a line-up "
+                                                          "or a squad list.")
+    matches: int = Field(description="Matches (line-ups and statistics) that place him at the club in the streak.")
+    last_evidence: date = Field(description="The last day anything placed him there.")
+    via: str | None = Field(default=None, description="The provider's text of the transfer that gives the start ('Free', 'Loan'...).")
+
+
+class PlayerNationalCap(Contract):
+    """A finished match of a SENIOR national team whose squad sheet carries the player (plan F3, ``core.player_national_caps``):
+    youth and Olympic sides are not caps. Newest first, the last 200."""
+
+    fixture_id: int
+    kickoff_at: datetime
+    team_id: int
+    team: str
+    opponent_id: int | None = None
+    opponent: str | None = None
+    competition: str | None = None
+    is_starter: bool
+    appeared: bool | None = Field(description="true: he played; false: he stayed on the bench; null: the statistics of the match "
+                                  "have not arrived yet, so it cannot be said.")
+    minutes: int | None = Field(default=None, description="Only when he played.")
+    goals_for: int | None = Field(default=None, description="From the point of view of his team; null while the result is not stored.")
+    goals_against: int | None = None
+
+
 class PlayerDetail(Contract):
     player: PlayerSummary
     firstname: str | None
@@ -476,6 +613,8 @@ class PlayerDetail(Contract):
     trophies: Section[list[PlayerTrophy]] | None = None
     provider_seasons: Section[list[PlayerProviderSeason]] | None = None
     career: Section[list[PlayerCareerTeam]] | None = None
+    club_history: Section[list[PlayerClubSpell]] | None = None
+    national_caps: Section[list[PlayerNationalCap]] | None = None
     provenance: dict[str, Provenance] = Field(default_factory=dict, description="Per list (transfers, sidelined, "
                                               "trophies, provider_seasons, career): the payload and time it comes "
                                               "from.")

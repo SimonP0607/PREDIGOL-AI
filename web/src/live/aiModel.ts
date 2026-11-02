@@ -12,12 +12,14 @@ import { hasKey, intlTag, t, translateOr } from "@/lib/i18n";
 import { localFixed, localInt, localPct } from "@/lib/i18n/format";
 import { formatDate, formatDateLong, formatDateTime, formatTime } from "@/lib/time";
 import { marketShort, selectionLabel } from "@/product/shared/markets";
+import { isFamilyMarket, marketText, pickText } from "./familiesText";
 import type { HypothesisDecision, HypothesisStatus, Hypothesis } from "@/lib/api/v1/types_ai";
 import type {
   AiBudgetAlert,
   AiBudgetView,
   AiCostPeriod,
   AiDecision,
+  AiEnvelopes,
   CardVerdict,
   EscalationReason,
   EvidenceStatus,
@@ -33,6 +35,14 @@ export const DECISION_TONE: Record<AiDecision, BadgeTone> = {
   REJECT: "negative",
   ABSTAIN: "neutral",
 };
+
+export function decisionLabel(d: string): string {
+  return translateOr(`ai.layer.decision.${d}`, d);
+}
+
+export function decisionTone(d: string | null | undefined): BadgeTone {
+  return d && d in DECISION_TONE ? DECISION_TONE[d as AiDecision] : "neutral";
+}
 
 export const VERDICT_TONE: Record<CardVerdict, BadgeTone> = {
   recommended: "positive",
@@ -130,6 +140,7 @@ export type BudgetState = AiBudgetView["state"];
 
 export const BUDGET_TONE: Record<BudgetState, BadgeTone> = {
   NORMAL: "positive",
+  AJUSTE: "warning",
   REDUCED: "warning",
   CHEAP_ONLY: "warning",
   EXHAUSTED: "negative",
@@ -209,6 +220,23 @@ export function budgetTone(state: string): BadgeTone {
   return state in BUDGET_TONE ? BUDGET_TONE[state as BudgetState] : "neutral";
 }
 
+/** How much of an envelope is spent (or projected): amber from 85 %, red past the whole envelope. */
+export function shareTone(share: number | null | undefined): "default" | "warning" | "negative" {
+  if (share === null || share === undefined || !Number.isFinite(share)) return "default";
+  return share > 1 ? "negative" : share >= 0.85 ? "warning" : "default";
+}
+
+function hasEnvelopes(e: AiEnvelopes | Record<string, never> | undefined): e is AiEnvelopes {
+  return e !== undefined && "production" in e;
+}
+
+/** The three envelopes of Phase 0, or null when the server did not send them (an older server, or a panel that could not be built). */
+export function envelopesOf(o: {
+  envelopes?: AiEnvelopes | Record<string, never> | undefined;
+}): AiEnvelopes | null {
+  return hasEnvelopes(o.envelopes) ? o.envelopes : null;
+}
+
 /** The verdict of the AI's shadow gate. */
 export function gateTone(verdict: string | null | undefined): BadgeTone {
   return verdict === "pass" ? "positive" : verdict === "fail" ? "negative" : "neutral";
@@ -254,7 +282,10 @@ export function teamsOf(match: string): { home: string; away: string } | null {
   return home && away ? { home, away } : null;
 }
 
-/** "1X2 · Gana Millonarios", "Goles · Más de 2,5 goles": the market and the selection in the reader's words. */
+/**
+ * "1X2 · Gana Millonarios", "Goles · Más de 2,5 goles": the market and the selection in the reader's words. A bet of a family (the corners, the
+ * cards, the yellows, the goals of a half) is named by the words of the families tab, with its line: the pipeline's markets have no name for it.
+ */
 export function selectionText(
   market: string,
   selection: string,
@@ -262,6 +293,9 @@ export function selectionText(
   match?: string,
 ): string {
   const teams = match ? teamsOf(match) : null;
+  if (isFamilyMarket(market)) {
+    return `${marketText(market)} · ${pickText(market, selection, line, teams ?? undefined)}`;
+  }
   const label = selectionLabel({
     market_key: market,
     selection,

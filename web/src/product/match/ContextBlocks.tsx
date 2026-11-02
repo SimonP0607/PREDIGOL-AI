@@ -7,7 +7,7 @@ import { t } from "@/lib/i18n";
 import { fmtLine } from "@/lib/i18n/format";
 import { formatDateYear, formatRelative } from "@/lib/time";
 import type { TeamRef } from "@/lib/api/v1/types";
-import type { Absence, H2HMatch, Side, StandingLine } from "@/lib/api/v1/types_center";
+import type { Absence, H2HMatch, Side, StandingLine, TableRow } from "@/lib/api/v1/types_center";
 import { PlayerPhoto, TeamName } from "@/components/football/Logos";
 import { sectionCodeText } from "@/components/system/sectionCode";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
@@ -16,6 +16,7 @@ import { PlayerSummary, SeasonLine } from "./PlayerSummary";
 import { absenceKind, absenceReason, h2hSummary, lastFive } from "./model";
 import { matchTables, rankedRows } from "@/product/shared/standings";
 import { Block, CenterSection, FormChips, MoreButton, PlayerName, SectionNote } from "./ui";
+import { Hint } from "@/components/system/Hint";
 
 const SIDES: readonly Side[] = ["home", "away"];
 
@@ -125,6 +126,75 @@ function TableCaption({ rows }: { rows: StandingLine[] }) {
   );
 }
 
+/** Widths of the figure columns. The tables are `table-fixed`: the header row is the first row, so it is what sets them. */
+const COLUMN_WIDTHS = {
+  regular: { rank: "w-8", played: "w-9", diff: "w-11", points: "w-10" },
+  compact: { rank: "w-7", played: "w-8", diff: "w-10", points: "w-9" },
+} as const;
+
+/**
+ * The header both tables of this block share (plan F2): a number in a table is never bare. Each column is named by its short
+ * label, with the long one on a tap, on hover and for assistive technology (`Hint`).
+ */
+function StandingsHead({ size }: { size: keyof typeof COLUMN_WIDTHS }) {
+  const w = COLUMN_WIDTHS[size];
+  return (
+    <thead>
+      <tr className="text-caption text-subtle-foreground">
+        <th scope="col" className={cn(w.rank, "pb-1.5 text-left font-medium")}>
+          <Hint text={t("match.standings.rankLong")}>{t("match.standings.rank")}</Hint>
+        </th>
+        <th scope="col" className="pb-1.5 text-left font-medium">
+          {t("match.standings.team")}
+        </th>
+        <th scope="col" className={cn(w.played, "pb-1.5 text-right font-medium")}>
+          <Hint text={t("match.standings.playedLong")}>{t("match.standings.played")}</Hint>
+        </th>
+        <th scope="col" className={cn(w.diff, "pb-1.5 text-right font-medium")}>
+          <Hint text={t("match.standings.goalDiffLong")}>{t("match.standings.goalDiff")}</Hint>
+        </th>
+        <th scope="col" className={cn(w.points, "pb-1.5 text-right font-medium")}>
+          <Hint text={t("match.standings.pointsLong")}>{t("match.standings.points")}</Hint>
+        </th>
+      </tr>
+    </thead>
+  );
+}
+
+/** One table of the full view, named for assistive technology, with the two teams of the match highlighted. */
+export function FullTable({
+  rows,
+  mine,
+  label,
+}: {
+  rows: TableRow[];
+  mine: ReadonlySet<number>;
+  label: string;
+}) {
+  return (
+    <table className="w-full table-fixed text-xs">
+      <caption className="sr-only">{label}</caption>
+      <StandingsHead size="compact" />
+      <tbody className="divide-y divide-border/40">
+        {rankedRows(rows, "all").map(({ rank, row, figures: f }) => (
+          <tr
+            key={row.team_id}
+            className={cn(mine.has(row.team_id) && "bg-primary/8 font-semibold")}
+          >
+            <td className="numeric py-1 text-muted-foreground">{rank}</td>
+            <td className="py-1 pr-2">
+              <TeamName name={row.team} logo={row.team_logo} size={16} wrap />
+            </td>
+            <td className="numeric py-1 text-right text-muted-foreground">{f.played}</td>
+            <td className="numeric py-1 text-right">{fmtLine(f.goalDiff, true)}</td>
+            <td className="numeric py-1 text-right font-semibold">{f.points}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 /** The whole table(s) the two rows come from, opened on demand; both teams highlighted. */
 function FullTables({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) {
   const [open, setOpen] = useState(false);
@@ -147,26 +217,7 @@ function FullTables({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) {
               {tables.length > 1 ? (
                 <p className="mb-1 text-caption font-medium text-muted-foreground">{tb.label}</p>
               ) : null}
-              <table className="w-full table-fixed text-xs">
-                <tbody className="divide-y divide-border/40">
-                  {rankedRows(tb.rows, "all").map(({ rank, row, figures: f }) => (
-                    <tr
-                      key={row.team_id}
-                      className={cn(mine.has(row.team_id) && "bg-primary/8 font-semibold")}
-                    >
-                      <td className="numeric w-7 py-1 text-muted-foreground">{rank}</td>
-                      <td className="py-1 pr-2">
-                        <TeamName name={row.team} logo={row.team_logo} size={16} wrap />
-                      </td>
-                      <td className="numeric w-8 py-1 text-right text-muted-foreground">
-                        {f.played}
-                      </td>
-                      <td className="numeric w-10 py-1 text-right">{fmtLine(f.goalDiff, true)}</td>
-                      <td className="numeric w-9 py-1 text-right font-semibold">{f.points}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <FullTable rows={tb.rows} mine={mine} label={tb.label} />
             </div>
           ))
         : null}
@@ -181,33 +232,7 @@ function StandingsTable({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) 
     <>
       <TableCaption rows={rows} />
       <table className="w-full table-fixed text-sm">
-        <thead>
-          <tr className="text-caption text-subtle-foreground">
-            <th scope="col" className="w-8 pb-1.5 text-left font-medium">
-              <abbr title={t("match.standings.rankLong")} className="no-underline">
-                {t("match.standings.rank")}
-              </abbr>
-            </th>
-            <th scope="col" className="pb-1.5 text-left font-medium">
-              {t("match.standings.team")}
-            </th>
-            <th scope="col" className="w-9 pb-1.5 text-right font-medium">
-              <abbr title={t("match.standings.playedLong")} className="no-underline">
-                {t("match.standings.played")}
-              </abbr>
-            </th>
-            <th scope="col" className="w-11 pb-1.5 text-right font-medium">
-              <abbr title={t("match.standings.goalDiffLong")} className="no-underline">
-                {t("match.standings.goalDiff")}
-              </abbr>
-            </th>
-            <th scope="col" className="w-10 pb-1.5 text-right font-medium">
-              <abbr title={t("match.standings.pointsLong")} className="no-underline">
-                {t("match.standings.points")}
-              </abbr>
-            </th>
-          </tr>
-        </thead>
+        <StandingsHead size="regular" />
         <tbody className="divide-y divide-border/60">
           {sorted.map((s) => {
             const team = teamOf(ctx, s.side);
@@ -339,6 +364,13 @@ function H2HBody({ ctx, rows }: { ctx: MatchCtx; rows: H2HMatch[] }) {
                 </span>
                 <span className="numeric rounded-md bg-elevated px-2 py-0.5 text-xs font-semibold">
                   {r.goals_home}–{r.goals_away}
+                  {r.after_extra_time ? (
+                    <span className="ml-1 font-normal text-subtle-foreground">
+                      {r.penalties_home !== null && r.penalties_away !== null
+                        ? t("match.h2h.pens", { home: r.penalties_home, away: r.penalties_away })
+                        : t("match.h2h.aet")}
+                    </span>
+                  ) : null}
                 </span>
                 <span
                   className={cn(

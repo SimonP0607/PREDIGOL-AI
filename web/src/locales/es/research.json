@@ -324,5 +324,6 @@
       "ensemble": "Ensamble (pool de modelos)"
     },
     "notJudged": "sin juzgar"
-  }
+  },
+  "legacyRun": "Ejecución heredada"
 }

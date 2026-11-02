@@ -5,11 +5,14 @@
  * now (minute and score), its result and its value against the last pre-match price (a
  * near-close price, not validated as the closing line - so the label says so).
  */
+import { Hint } from "@/components/system/Hint";
+import { hintProps } from "@/components/system/tapHint";
+import { glossaryText } from "@/lib/glossary";
 import { Link } from "@tanstack/react-router";
 import { History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtOdds, fmtSignedPct } from "@/lib/i18n/format";
+import { fmtOdds, fmtSignedPct, fmtSignedPp } from "@/lib/i18n/format";
 import { formatTime } from "@/lib/time";
 import type { StartedPick } from "@/lib/api/v1/types_product";
 import type { ResultStatus } from "@/lib/api/v1/types_records";
@@ -87,10 +90,10 @@ export function StartedPickCard({
           className="px-4 pt-2.5"
         />
 
-        <div className="mt-3 border-t border-border/70 px-4 py-3">
+        <div className="mt-3 border-t border-border/70 px-4 pb-2.5 pt-3">
           <div
             className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.7rem] font-semibold uppercase tracking-wider text-gold"
-            title={t("match.picks.prematchHelp")}
+            {...hintProps(t("match.picks.prematchHelp"))}
           >
             <History aria-hidden className="h-3 w-3" />
             <span>{t("match.picks.prematchBadge")}</span>
@@ -120,19 +123,25 @@ export function StartedPickCard({
             </div>
           </div>
           <ProbCompare model={pick.p_model} market={pick.p_market} className="mt-3" />
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <EvBadge ev={pick.ev} />
-            <span className="numeric text-caption text-muted-foreground">
-              {t("common.edge")} {fmtSignedPct(pick.edge)}
-            </span>
-            {pick.evaluations > 1 ? (
-              <span className="text-caption text-muted-foreground">
-                {t("match.picks.evaluations", { count: pick.evaluations })}
-              </span>
-            ) : null}
-          </div>
         </div>
       </Link>
+      {/* The figures with their help, beside the link (plan UX, A1, defect F16). */}
+      <div
+        className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pb-3"
+        data-testid="started-pick-figures"
+      >
+        <Hint text={glossaryText("ev")} className="no-underline">
+          <EvBadge ev={pick.ev} hint={false} />
+        </Hint>
+        <Hint text={glossaryText("edge")} className="numeric text-caption text-muted-foreground">
+          {t("common.edge")} {fmtSignedPp(pick.edge)}
+        </Hint>
+        {pick.evaluations > 1 ? (
+          <span className="text-caption text-muted-foreground">
+            {t("match.picks.evaluations", { count: pick.evaluations })}
+          </span>
+        ) : null}
+      </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 px-4 py-2.5">
         <div className="flex items-center gap-2">

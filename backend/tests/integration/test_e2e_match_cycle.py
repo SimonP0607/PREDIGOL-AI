@@ -35,12 +35,17 @@ _HASHES = itertools.count(1)
 
 
 class Provider:
-    """/fixtures?ids= as API-Football answers it, one prepared body per call."""
+    """/fixtures?ids= as API-Football answers it, one prepared body per call.
+
+    ``moment`` is the time of the next answer: the world of these tests is set in 2032, so an answer stamped with the
+    real clock would be read before the match began (a final whistle 5 years before kick-off, which the follow now
+    declines). ``follow`` sets it together with the moment of the pass."""
 
     def __init__(self, bodies: list[dict[str, Any]]) -> None:
         from fbi.providers.api_football import ApiFootballProvider
         self._parser = ApiFootballProvider.__new__(ApiFootballProvider)
         self.bodies = bodies
+        self.moment: datetime | None = None
 
     def parse_fixtures(self, body: dict[str, Any]) -> Any:
         return self._parser.parse_fixtures(body)
@@ -50,10 +55,17 @@ class Provider:
 
     async def fetch_fixture_details(self, *, provider_fixture_ids: list[int]) -> Any:
         body = self.bodies.pop(0)
-        raw = RawResponse(endpoint="/fixtures", params={}, fetched_at=datetime.now(UTC), http_status=200,
-                          results_count=1, payload_hash=f"e2e-{next(_HASHES)}-{datetime.now(UTC).timestamp()}",
+        raw = RawResponse(endpoint="/fixtures", params={}, fetched_at=self.moment or datetime.now(UTC),
+                          http_status=200, results_count=1,
+                          payload_hash=f"e2e-{next(_HASHES)}-{datetime.now(UTC).timestamp()}",
                           file_path="x", bytes_written=1, body=body)
         return list(iter_fixture_details(body)), raw
+
+
+async def follow(conn: Any, provider: Provider, *, at: datetime) -> Any:
+    """One pass of the live follow at the simulated moment ``at``, which the provider answers at too."""
+    provider.moment = at
+    return await capture_live_matches(conn, provider, at=at)
 
 
 def _body(db: psycopg.Connection[Any], fixture: int, *, short: str, minute: int | None, home: int,
@@ -101,7 +113,7 @@ async def test_one_match_through_the_whole_cycle(db: psycopg.Connection[Any], se
     provider = Provider([_body(db, f1, short="1H", minute=12, home=1, away=0),
                          _body(db, f1, short="FT", minute=90, home=2, away=0)])
     conn: Any = Savepoints(db)  # the worker's commits, kept inside this test's transaction
-    first = await capture_live_matches(conn, provider, at=KO + timedelta(minutes=12))
+    first = await follow(conn, provider, at=KO + timedelta(minutes=12))
     assert first.followed >= 1 and first.ended == []
     live_day = daily_board(db, day=None, include_shadow=False, at=KO + timedelta(minutes=13)).data
     assert live_day is not None and live_day.set is not None
@@ -116,7 +128,7 @@ async def test_one_match_through_the_whole_cycle(db: psycopg.Connection[Any], se
     assert (started.phase, str(started.odds_taken), started.live_home, started.live_away) == ("live", "2.300", 1, 0)
 
     # 6-7. Full time: the live follow hands the match over, and it is settled at once.
-    second = await capture_live_matches(conn, provider, at=KO + timedelta(minutes=110))
+    second = await follow(conn, provider, at=KO + timedelta(minutes=110))
     assert second.ended == [f1]
     settled = settle_fixtures(db, second.ended, path="live_follow", at=KO + timedelta(minutes=111))
     assert settled.fixtures == 1 and settled.picks >= 1 and settled.items >= 1
@@ -134,7 +146,7 @@ async def test_one_match_through_the_whole_cycle(db: psycopg.Connection[Any], se
     next_morning = datetime.combine(product_day(AT) + timedelta(days=1), datetime.min.time(), tzinfo=UTC) \
         + timedelta(hours=12, minutes=35)  # 07:35 Bogotá
     run_learning_cycle(conn, at=next_morning, settings=AiSettings(mode="shadow"))
-    pm = db.execute("SELECT verdict, answers->'win_quality'->'data'->>'win_quality' FROM ai.pick_postmortems "
+    pm = db.execute("SELECT review_verdict, answers->'win_quality'->'data'->>'win_quality' FROM intel.selection_postmortems "
                     "WHERE fixture_id = %s", (f1,)).fetchone()
     assert pm is not None and pm[0].endswith("won")
     assert db.execute("SELECT count(*) FROM ai.learning_notes WHERE day = %s", (product_day(AT),)).fetchone()[0] >= 1  # type: ignore[index]

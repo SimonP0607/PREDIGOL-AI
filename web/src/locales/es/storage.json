@@ -1,0 +1,146 @@
+{
+  "title": "Almacenamiento",
+  "description": "Dónde va el disco del servidor, cuánto crece, las copias y la política de retención. Solo lectura: desde aquí no se borra nada.",
+  "measuredAt": "Medido {when} en {host}",
+  "notReported": "Todavía no hay informe de almacenamiento: el servidor lo escribe cuatro veces al día (02:41, 08:41, 14:41 y 20:41 UTC).",
+  "stale": "El último informe tiene más de 8 horas: el servidor se saltó una medición.",
+  "readOnly": "Esta página no borra nada. Las limpiezas se hacen en el servidor, con copia fuera verificada y la palabra del dueño para lo que no se puede deshacer.",
+  "level": {
+    "ok": "Bien",
+    "warning": "Aviso (≥ 70 %)",
+    "high": "Alto (≥ 80 %)",
+    "critical": "Crítico (≥ 90 %)"
+  },
+  "metrics": {
+    "disk": "Disco",
+    "diskHint": "{used} de {size} · {free} libres",
+    "database": "Base de datos",
+    "databaseHint": "Tamaño según PostgreSQL",
+    "raw": "Archivos del proveedor (RAW)",
+    "rawHint": "{files} archivos",
+    "docker": "Docker",
+    "dockerHint": "{reclaimable} recuperables"
+  },
+  "parts": {
+    "title": "Qué ocupa el disco",
+    "subtitle": "Cada parte medida en el servidor",
+    "pgdata": "Carpeta de PostgreSQL (con WAL)",
+    "raw": "RAW del proveedor",
+    "backups": "Copias locales de la base",
+    "releases": "Paquetes de despliegue",
+    "logs": "Registros (logs)",
+    "dockerImages": "Imágenes de Docker",
+    "dockerVolumes": "Volúmenes de Docker",
+    "orphanVolumes": "Volúmenes huérfanos ({n})",
+    "buildCache": "Caché de construcción",
+    "reclaimable": "recuperable: {bytes}"
+  },
+  "growth": {
+    "title": "Crecimiento y proyección",
+    "subtitle": "Al ritmo del día mediano de las últimas dos semanas",
+    "perDay": "Ritmo",
+    "perDayValue": "{bytes} al día",
+    "in": "En {days} días",
+    "inValue": "{bytes} ({pct} %)",
+    "to80": "Días hasta el 80 %",
+    "to90": "Días hasta el 90 %",
+    "never": "no se alcanza a este ritmo",
+    "now": "ya alcanzado",
+    "noProjection": "Hacen falta al menos 7 días de medidas para proyectar.",
+    "lastDay": "Último día ({day})",
+    "anomaly": "Crecimiento anómalo: el último día creció {delta} y la mediana es {median}.",
+    "partsPace": "Ritmo por parte",
+    "pace": {
+      "db_bytes": "Base de datos",
+      "raw_bytes": "RAW",
+      "docker_bytes": "Docker",
+      "backups_bytes": "Copias locales"
+    }
+  },
+  "tables": {
+    "title": "Tablas más grandes",
+    "subtitle": "Con sus índices",
+    "name": "Tabla",
+    "size": "Tamaño"
+  },
+  "backups": {
+    "title": "Copias",
+    "subtitle": "La última copia, dónde está y la última restauración probada",
+    "latest": "Última copia",
+    "none": "Ninguna",
+    "size": "Tamaño",
+    "checksum": "Huella (sha256)",
+    "offsite": "Copia fuera del servidor (R2)",
+    "offsiteYes": "verificada {when}",
+    "offsiteNotConfigured": "No configurada: todas las copias están en el mismo disco",
+    "offsiteMissing": "Configurada, pero esta copia no salió",
+    "restore": "Última restauración probada",
+    "restorePassed": "superada {when} ({seconds} s)",
+    "restoreFailed": "FALLÓ {when}",
+    "restoreNever": "Nunca registrada",
+    "keep": "Se guardan en el servidor",
+    "keepValue": "{daily} diarias y {weekly} semanales"
+  },
+  "cleanup": {
+    "title": "Limpieza",
+    "subtitle": "La última poda tras un despliegue",
+    "last": "Última ejecución",
+    "freed": "Espacio recuperado",
+    "items": "Elementos eliminados",
+    "none": "Aún no hay limpieza registrada."
+  },
+  "retention": {
+    "title": "Política de retención",
+    "subtitle": "Lo que se guarda, dónde y cuánto tiempo",
+    "headers": {
+      "what": "Qué",
+      "where": "Dónde",
+      "keep": "Cuánto"
+    },
+    "tier": {
+      "permanent": "Permanente",
+      "long": "Retención larga",
+      "medium": "Retención media",
+      "short": "Retención corta",
+      "none": "No se conserva"
+    },
+    "what": {
+      "matches_results": "Partidos y resultados",
+      "prematch_odds": "Cuotas prepartido",
+      "forecasts_predictions_models": "Pronósticos, predicciones y modelos",
+      "picks_parlays_settlements": "Picks, combinadas y liquidaciones",
+      "ai_decisions_postmortems_memory": "Decisiones de la IA, post-mortems y memoria",
+      "experiments_promotions_lineage_audits": "Experimentos, promociones, linaje y auditorías",
+      "raw_provider_files": "Archivos RAW del proveedor",
+      "monthly_dumps": "Copias mensuales",
+      "audit_exports": "Exportaciones de auditoría",
+      "weekly_dumps": "Copias semanales",
+      "daily_dumps": "Copias diarias",
+      "pitr_wal": "Recuperación a un minuto (WAL)",
+      "docker_images": "Imágenes de Docker",
+      "build_cache": "Caché de construcción",
+      "logs": "Registros (logs)",
+      "release_packages": "Paquetes de despliegue",
+      "orphan_volumes_test_restores": "Volúmenes huérfanos y restauraciones de prueba"
+    },
+    "where": {
+      "postgres": "PostgreSQL (servidor y cada copia)",
+      "vps": "Servidor",
+      "r2": "Cloudflare R2",
+      "vps+r2": "Servidor y Cloudflare R2"
+    },
+    "keep": {
+      "forever": "Siempre",
+      "r2_forever_locked": "Siempre en R2 (bloqueado contra borrado)",
+      "12_months_locked": "12 meses, bloqueado",
+      "8_weeks_r2_locked": "8 semanas en R2, bloqueado",
+      "14_days_r2_locked": "14 días en R2, bloqueado",
+      "pitr_full_backups": "Lo que cubren las copias completas del PITR",
+      "running_plus_previous": "La que corre y la anterior (marcha atrás)",
+      "7_days": "7 días",
+      "rotated": "Rotación automática con tope de tamaño",
+      "30_days": "30 días",
+      "delete_after_review": "Se borra tras revisarlo, con la palabra del dueño"
+    }
+  }
+}

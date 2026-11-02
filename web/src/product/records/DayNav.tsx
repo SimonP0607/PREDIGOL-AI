@@ -9,7 +9,14 @@ import { cn } from "@/lib/utils";
 import { useScrollCue } from "@/lib/scrollCue";
 import { t } from "@/lib/i18n";
 import { fmtSignedPct, localFixed } from "@/lib/i18n/format";
-import { formatDate, formatDateLong, shiftDay } from "@/lib/time";
+import {
+  formatDate,
+  formatDateLong,
+  getTimeZone,
+  offsetMinutes,
+  shiftDay,
+  zoneName,
+} from "@/lib/time";
 import type { DailyItem } from "@/lib/api/v1/types_records";
 import { daySummary, recentDays } from "./days";
 
@@ -64,6 +71,12 @@ export function DayNav({
           <p className="break-words font-display text-lg font-semibold leading-tight first-letter:uppercase sm:text-xl">
             {formatDateLong(at(day), ZONE)}
           </p>
+          {/* The picks' day is Bogotá's (plan UX, A1, F09): said so to a reader whose clock is not on its time. */}
+          {offsetMinutes(Date.now(), getTimeZone()) !== offsetMinutes(Date.now(), ZONE) ? (
+            <p className="mt-0.5 text-caption text-muted-foreground" data-testid="daily-zone">
+              {t("records.dayNav.zone", { zone: zoneName(ZONE) })}
+            </p>
+          ) : null}
         </div>
         <button
           type="button"

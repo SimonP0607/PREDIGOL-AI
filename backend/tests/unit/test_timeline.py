@@ -19,7 +19,7 @@ def _row(**over: object) -> dict[str, object]:
     return row
 
 
-def _by(events: list, key: str):  # type: ignore[no-untyped-def]
+def _by(events: list, key: str):
     return next(e for e in events if e.key == key)
 
 

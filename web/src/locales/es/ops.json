@@ -193,7 +193,8 @@
       "result": "Resultado",
       "basis": "Base de liquidación",
       "needsReview": "Requiere revisión: {reason}",
-      "history": "Historial"
+      "history": "Historial",
+      "resettled": "Liquidado de nuevo ({reason})"
     },
     "rejection": {
       "oddsOutside": "cuota fuera de [{a}, {b}]",
@@ -293,31 +294,10 @@
       "noWeb": "sin búsqueda de noticias",
       "dayReady": "Día leído por PrediGol Intelligence: {days}",
       "dayNotReady": "PrediGol Intelligence aún no termina la primera pasada del día (desde las 00:05 de Bogotá, a más tardar a las 06:00): el set de hoy espera."
-    }
-  },
-  "analyst": {
-    "notConfigured": "No hay ningún modelo de lenguaje configurado en el host de la API ({missing} sin definir), así que el analista no puede responder. No se envía nada a ningún lado. Las herramientas de abajo son exactamente lo que leería, y ya funcionan.",
-    "ask": {
-      "title": "Preguntar",
-      "subtitle": "Las preguntas van al host de la API, que llama al modelo y a las herramientas. El navegador nunca ve ninguna clave.",
-      "placeholder": "p. ej. ¿Cómo le fue a Dixon-Coles frente al mercado?",
-      "placeholderOff": "Sin configurar en el host de la API",
-      "label": "Pregunta para el analista",
-      "submit": "Preguntar",
-      "pending": "Preguntando…",
-      "unverified": "Cifras sin verificar (no aparecen en ningún resultado de las herramientas): {figures}"
     },
-    "rules": "Reglas con las que trabaja el analista",
-    "console": {
-      "title": "Consola de herramientas",
-      "subtitle": "Permite ejecutar a mano cualquier herramienta del analista y ver exactamente lo que leería",
-      "tool": "Herramienta",
-      "run": "Ejecutar"
-    },
-    "output": {
-      "status": "Estado",
-      "generated": "Generado",
-      "dataAsOf": "Datos a fecha de"
+    "decisionState": {
+      "selected": "seleccionado",
+      "rejected": "rechazado"
     }
   }
 }

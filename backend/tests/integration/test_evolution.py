@@ -13,6 +13,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from fbi.core.config import reset_cache
+from fbi.core.version import model_code_version
+from fbi.research import promotions
 from fbi.research.evolution import (
     DecisionError,
     decide,
@@ -146,6 +148,25 @@ def test_the_owner_proposes_and_decides_over_http(owner_api: tuple[TestClient, i
     assert listed[hid]["decided_by"] == "owner-api-evolution@test.local"
     user_client = client_for(user, role="USER")
     assert user_client.get("/api/v1/admin/evolution").status_code == 403
+
+
+def test_the_code_of_the_models_is_the_owners_to_read_and_the_server_runs_the_code_the_ledger_has_in_force(
+        owner_api: tuple[TestClient, int]) -> None:
+    """Plan F12 in the Admin Console: only the owner reads which fingerprints of the model code forecast and what covers them, and the page
+    says whether the code this server runs is the one the ledger has in force."""
+    c, user = owner_api
+    path = "/api/v1/admin/evolution/code-promotions"
+    res = c.get(path)
+    assert res.status_code == 200, res.text
+    page = res.json()["data"]
+    assert page["days"] == 30 and page["running_code"] == model_code_version() == promotions.in_force().fingerprint
+    assert page["ledger_in_force"] == promotions.in_force().fingerprint and page["in_force_matches_running"] is True
+    assert [e["fingerprint"] for e in page["ledger"]] == [p.fingerprint for p in promotions.LEDGER]
+    assert set(page["counts"]) == {"fingerprints", "counted", "traced", "untraced", "pending_sync", "after_use", "pre_ledger"}
+    assert set(page["other"]) == {"goal_spec", "calibrator", "market_edge", "neutral_rule"}
+    assert c.get(path, params={"days": 7}).json()["data"]["days"] == 7
+    assert c.get(path, params={"days": 0}).status_code == 422 and c.get(path, params={"days": 366}).status_code == 422
+    assert client_for(user, role="USER").get(path).status_code == 403, "a signed-in user is not the owner"
 
 
 def test_the_daily_monitor_commits_whole_and_records_its_run(migrated_database: str, seed: Seed) -> None:

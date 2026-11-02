@@ -1,4 +1,4 @@
-"""MARKET DISCOVERY ENGINE - ``discovery-v1`` (weekly): every pre-match market API-Football offers, what it would take
+"""MARKET DISCOVERY ENGINE - ``discovery-v3`` (weekly): every pre-match market API-Football offers, what it would take
 to model it, and the ten incorporation criteria - written down (``intel.market_registry``), never activated.
 
 What it reads: the provider's catalogue (``market.provider_markets``) and, for the last ``DAYS`` days, the last
@@ -15,6 +15,22 @@ score matrix), calibration (a calibrator exists - only the active five), backtes
 Status: ACTIVE (modelled today), RESEARCH (price, volume and settle-able data: worth a model and a backtest),
 CANDIDATE (one of the two is missing), NOT_MODELABLE (specials, exotic or unsettleable). The activation path stays
 Mercado -> Datos -> Features -> Modelo -> Calibración -> Backtest -> Shadow -> Producción, with the owner's approval.
+
+discovery-v2 (plan F0, defect 11). A bet on ONE HALF of a statistic (corners 1st half, shots 2nd half...) was read as the
+statistic and so judged settle-able with the coverage of the MATCH total. The platform stores corners, shots, saves, fouls
+and offsides only as totals of the match (``core.fixture_team_stats``): nothing in the database can settle them by half, so
+such a bet needs ``<stat>_by_half`` data, which has no coverage, and is NOT_MODELABLE (``corners``, ``shots``...). Cards by
+half could be counted from the events (minute), but that coverage is not measured here: they need ``cards_by_half`` and
+stay CANDIDATE until it is (plan F9). Goals by half do settle (the half-time score is stored for 97.9 % of matches).
+"Yellow Over/Under (1st Half)" has no "card" in its name: it fell through to the half-time-GOALS rule and was judged by the
+goals' coverage; "yellow" now reads as cards, so it is a cards-by-half bet like the others.
+
+discovery-v3 (plan F9). The coverage of the data that settles a bet is no longer the guess of the match's statistics but what
+``market.fixture_outcomes`` holds for the matches of the last 90 days, measure by measure (``corners_ft``, ``goals_1h``,
+``yellow_1h``...): the cards of a half, which v2 left as CANDIDATE "until measured", are measured (from the classified
+events). Every bet is also read by the rule that would grade it (``fbi.market.rules``): the criterion ``settle_rule`` says which
+rule it is, or why none can (``no_period_data``, ``not_understood``...), and a bet no rule can grade is never RESEARCH. The name
+based reading of ``classify`` is kept for what a name says that the taxonomy does not (how it could be modelled).
 """
 
 from __future__ import annotations
@@ -33,7 +49,10 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-VERSION = "discovery-v1"
+from fbi.market import rules as settlement_rules
+from fbi.odds.quote_taxonomy import spec_for
+
+VERSION = "discovery-v3"
 DAYS = 7
 MAX_PAYLOADS = 3000
 
@@ -70,6 +89,17 @@ SELECT count(*) AS finished,
  WHERE f.kickoff_at >= %(since)s AND f.kickoff_at < %(at)s AND f.status_group = 'finished'
 """
 
+
+def _outcome_coverage_sql() -> str:
+    parts = ["count(*) AS finished"] + [
+        f"avg(({' AND '.join(c + ' IS NOT NULL' for c in r.columns)})::int)::float8 AS {r.measure}"
+        for r in settlement_rules.RULES if r.liquidable]
+    return f"SELECT {', '.join(parts)} FROM {settlement_rules.OUTCOMES_VIEW} WHERE kickoff_at >= %(since)s AND kickoff_at < %(at)s"
+
+
+OUTCOME_COVERAGE_SQL = _outcome_coverage_sql()
+"""For each measure a rule reads: the share of the finished matches that have it (``market.fixture_outcomes``, F9)."""
+
 PLAYER_COVERAGE_SQL = """
 SELECT avg((EXISTS (SELECT 1 FROM core.fixture_player_stats p WHERE p.fixture_id = f.id))::int)::float8 AS players
   FROM core.fixtures f
@@ -81,7 +111,7 @@ SELECT avg((EXISTS (SELECT 1 FROM core.fixture_player_stats p WHERE p.fixture_id
 RULES: tuple[tuple[re.Pattern[str], str, str], ...] = (
     (re.compile(r"player|scorer|goalscorer|assist|anytime|first goal|last goal", re.I), "players", "new_model"),
     (re.compile(r"corner", re.I), "corners", "new_model"),
-    (re.compile(r"card|booking", re.I), "cards", "new_model"),
+    (re.compile(r"card|booking|yellow", re.I), "cards", "new_model"),
     (re.compile(r"shots? on target", re.I), "shots", "new_model"),
     (re.compile(r"shot", re.I), "shots", "new_model"),
     (re.compile(r"save", re.I), "saves", "new_model"),
@@ -94,6 +124,11 @@ RULES: tuple[tuple[re.Pattern[str], str, str], ...] = (
                 r"match winner|home/away|winning margin|to score in both|win both|win either|"
                 r"to win to nil|team to score", re.I), "goals", "goal_matrix"),
 )
+HALF = re.compile(r"first half|second half|1st half|2nd half|\(1st|\(2nd|half[- ]?time|\b[12]h\b", re.I)
+NO_HALF_DATA = frozenset({"corners", "shots", "saves", "fouls", "offsides"})
+"""Statistics stored only as totals of the match: a bet on one half of them cannot be settled with anything we keep."""
+EVENT_HALF_DATA = frozenset({"cards"})
+"""Statistics a half of which could be counted from the events (cards, by minute); that coverage is not measured here."""
 SPECIALS = re.compile(r"own goal|penalty|var|red card in|substitut|injury|method|minute|time of|first to|race to|"
                       r"specials|scorecast|wincast|chance mix|multi", re.I)
 PRIOR_RESEARCH: dict[int, str] = {
@@ -113,11 +148,17 @@ class BetStats:
 
 
 def classify(name: str) -> tuple[str | None, str]:
-    """(data the bet needs to settle, how it could be modelled) from its name."""
+    """(data the bet needs to settle, how it could be modelled) from its name. A bet on one half of a statistic needs that
+    statistic BY HALF (``corners_by_half``): the match total does not settle it, and when nothing we keep splits the
+    statistic by half the bet cannot be modelled at all."""
     if SPECIALS.search(name) and not re.search(r"handicap|double chance", name, re.I):
         return None, "not_modelable"
     for pattern, data, how in RULES:
         if pattern.search(name):
+            if data in NO_HALF_DATA and HALF.search(name):
+                return f"{data}_by_half", "not_modelable"
+            if data in EVENT_HALF_DATA and HALF.search(name):
+                return f"{data}_by_half", how
             return data, how
     return None, "not_modelable"
 
@@ -162,7 +203,8 @@ def scan_payloads(rows: list[dict[str, Any]], root: Path) -> tuple[dict[int, Bet
 def criteria_for(bid: int, b: BetStats, *, catalogue: dict[str, Any] | None, active: dict[int, str],
                  n_fixtures: int, coverage: dict[str, float], at: datetime,
                  fixtures_by_competition: dict[int, int] | None = None,
-                 priced_since: datetime | None = None) -> tuple[str, dict[str, Any], dict[str, Any], str]:
+                 priced_since: datetime | None = None,
+                 outcome_coverage: dict[str, float] | None = None) -> tuple[str, dict[str, Any], dict[str, Any], str]:
     """``priced_since``: the oldest kick-off with stored prices of this market (``market.historical_odds``), known only
     for the markets the platform normalises. The catalogue's own date is when the catalogue was loaded (29 Sep 2026
     for all 338 bets), which alone read every market - the five active ones too, priced since 2022 - as 14 days old."""
@@ -172,7 +214,16 @@ def criteria_for(bid: int, b: BetStats, *, catalogue: dict[str, Any] | None, act
     first_seen = min(seen) if seen else None
     history_days = None if first_seen is None else (at - first_seen).days
     median_books = statistics.median(b.books_per_fixture) if b.books_per_fixture else 0
+    decision = settlement_rules.explain(spec_for(bid, b.name))
+    measure = decision.measure
     data_cov = None if data is None else coverage.get(data)
+    if outcome_coverage and measure in outcome_coverage and decision.liquidable:
+        data_cov = outcome_coverage[measure]  # measured on the outcomes of the matches, not guessed from the statistics
+        if data is not None and data.endswith("_by_half") and how != "not_modelable":
+            data = measure  # the cards of a half: counted from the classified events, and now measured
+    elif decision.rule is not None and not decision.liquidable and data is not None:
+        data_cov = None  # the rule exists and says it cannot grade (corners of a half): no coverage stands in for it
+    rule_value = decision.rule.key if decision.liquidable and decision.rule else decision.reason
     is_active = bid in active
     in_comps = sum((fixtures_by_competition or {}).get(c, 0) for c in b.competitions)
     stability = None if not in_comps else len(b.fixtures) / in_comps
@@ -192,15 +243,21 @@ def criteria_for(bid: int, b: BetStats, *, catalogue: dict[str, Any] | None, act
                       "value": None if stability is None else round(stability, 3)},
         "settle_data": {"ok": data is not None and (data_cov or 0) >= 0.8, "value": None if data is None else
                         {"data": data, "coverage": None if data_cov is None else round(data_cov, 3)}},
+        "settle_rule": {"ok": decision.liquidable, "value": rule_value},
     }
     metrics = {"fixtures": len(b.fixtures), "share": round(share, 4), "median_books": median_books,
                "lines": len(b.lines), "sample_lines": sorted(b.lines)[:8], "history_days": history_days,
-               "data": data, "how": how}
+               "data": data, "how": how, "measure": measure, "settle_rule": decision.rule.key if decision.liquidable and decision.rule else None,
+               "rule_reason": decision.reason}
     if is_active:
         status, proposal = "ACTIVE", f"activo como {active[bid]}; sin edge validado: se mide en investigación"
     elif how == "not_modelable":
-        status, proposal = "NOT_MODELABLE", "especial o exótico: sin modelo ni datos de liquidación fiables"
-    elif crit["real_price"]["ok"] and crit["coverage"]["ok"] and crit["volume"]["ok"] and crit["settle_data"]["ok"]:
+        status = "NOT_MODELABLE"
+        proposal = ("sin datos por mitad: solo se guarda el total del partido, no se puede liquidar"
+                    if data is not None and data.endswith("_by_half") else
+                    "especial o exótico: sin modelo ni datos de liquidación fiables")
+    elif (crit["real_price"]["ok"] and crit["coverage"]["ok"] and crit["volume"]["ok"] and crit["settle_data"]["ok"]
+          and crit["settle_rule"]["ok"]):
         status = "RESEARCH"
         proposal = (PRIOR_RESEARCH.get(bid) or
                     ("derivable de la matriz de goles: backtest contra el cierre antes de cualquier shadow"
@@ -208,7 +265,7 @@ def criteria_for(bid: int, b: BetStats, *, catalogue: dict[str, Any] | None, act
                      f"necesita un modelo propio de {data}: features, modelo, calibración y backtest"))
     else:
         status = "CANDIDATE"
-        missing = [k for k in ("real_price", "coverage", "volume", "settle_data") if not crit[k]["ok"]]
+        missing = [k for k in ("real_price", "coverage", "volume", "settle_data", "settle_rule") if not crit[k]["ok"]]
         proposal = "falta: " + ", ".join(missing)
     return status, crit, metrics, proposal
 
@@ -233,6 +290,8 @@ def run_discovery(conn: psycopg.Connection[Any], *, at: datetime, run_id: int, r
         cov = dict(cur.fetchone() or {})
         cur.execute(PLAYER_COVERAGE_SQL, {"since": at - timedelta(days=30), "at": at})
         cov["players"] = (cur.fetchone() or {}).get("players")
+        cur.execute(OUTCOME_COVERAGE_SQL, {"since": at - timedelta(days=90), "at": at})
+        outcome = {k: float(v) for k, v in (cur.fetchone() or {}).items() if k != "finished" and v is not None}
     coverage = {k: float(v) for k, v in cov.items() if k != "finished" and v is not None}
     coverage["goals"] = 1.0
     bets, stats = scan_payloads(rows, root)
@@ -249,7 +308,8 @@ def run_discovery(conn: psycopg.Connection[Any], *, at: datetime, run_id: int, r
             status, crit, metrics, proposal = criteria_for(bid, b, catalogue=catalogue.get(bid), active=active,
                                                            n_fixtures=n_fix, coverage=coverage, at=at,
                                                            fixtures_by_competition=by_comp,
-                                                           priced_since=priced.get(active.get(bid, "")))
+                                                           priced_since=priced.get(active.get(bid, "")),
+                                                           outcome_coverage=outcome)
             counts[status] += 1
             cur.execute("INSERT INTO intel.market_registry (run_id, provider_bet_id, name, market_key, status, criteria, "
                         "metrics, proposal, version, built_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
@@ -258,4 +318,5 @@ def run_discovery(conn: psycopg.Connection[Any], *, at: datetime, run_id: int, r
                          active.get(bid) or (catalogue.get(bid) or {}).get("market_key"), status, Jsonb(crit),
                          Jsonb(metrics), proposal, VERSION, at))
     return {"payloads": len(rows), "scan": stats, "markets": len(bets), "by_status": dict(counts),
-            "data_coverage": {k: round(v, 3) for k, v in coverage.items()}}
+            "data_coverage": {k: round(v, 3) for k, v in coverage.items()},
+            "outcome_coverage": {k: round(v, 3) for k, v in outcome.items()}}

@@ -27,6 +27,10 @@ import esTruth from "@/locales/es/truth.json";
 import esRecords from "@/locales/es/records.json";
 import esAi from "@/locales/es/ai.json";
 import esIntel from "@/locales/es/intel.json";
+import esReferees from "@/locales/es/referees.json";
+import esMemory from "@/locales/es/memory.json";
+import esFamilies from "@/locales/es/families.json";
+import esStorage from "@/locales/es/storage.json";
 import enAdmin from "@/locales/en/admin.json";
 import enAuth from "@/locales/en/auth.json";
 import enCommon from "@/locales/en/common.json";
@@ -51,8 +55,15 @@ import enTruth from "@/locales/en/truth.json";
 import enRecords from "@/locales/en/records.json";
 import enAi from "@/locales/en/ai.json";
 import enIntel from "@/locales/en/intel.json";
+import enReferees from "@/locales/en/referees.json";
+import enMemory from "@/locales/en/memory.json";
+import enFamilies from "@/locales/en/families.json";
+import enStorage from "@/locales/en/storage.json";
 
 export type Locale = "es" | "en";
+
+/** Each language named in itself - the same in every language (plan UX, A1, F08: the switch said "ES" / "EN"). */
+export const LOCALE_NAMES: Readonly<Record<Locale, string>> = { es: "Español", en: "English" };
 export type Catalog = { [key: string]: string | Catalog };
 
 export const CATALOGS: Record<Locale, Catalog> = {
@@ -81,6 +92,10 @@ export const CATALOGS: Record<Locale, Catalog> = {
     records: esRecords,
     ai: esAi,
     intel: esIntel,
+    referees: esReferees,
+    memory: esMemory,
+    families: esFamilies,
+    storage: esStorage,
   },
   en: {
     admin: enAdmin,
@@ -107,5 +122,9 @@ export const CATALOGS: Record<Locale, Catalog> = {
     records: enRecords,
     ai: enAi,
     intel: enIntel,
+    referees: enReferees,
+    memory: enMemory,
+    families: enFamilies,
+    storage: enStorage,
   },
 };

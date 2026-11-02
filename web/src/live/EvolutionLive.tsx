@@ -1,37 +1,31 @@
 /**
- * Evolución - the owner's decision center. EL DÍA EN PREDIGOL AI (what the AI did on a Bogotá day: matches,
- * searches, news, injuries, line-ups, candidates and decisions, post-mortems, findings, hypotheses, cost), QUÉ
- * APRENDIÓ PREDIGOL HOY (the notes written that day, with their evidence) and MEJORAS PROPUESTAS (the hypotheses
- * waiting for the owner: RECHAZAR, INVESTIGAR or APROBAR EXPERIMENTO). Below: findings, errors and every
- * hypothesis by stage. An approved experiment goes through backtest and shadow; only a DONE experiment whose
- * gate passed can be PROMOTED, by the owner, typing the word. There is no "activate automatically": nothing
- * here changes a rule, a model or a pick.
+ * Evolución - the owner's decision center, as two views of Aprendizaje (plan F13, see adminAi.ts).
+ * LO APRENDIDO (LearnedDay): EL DÍA EN PREDIGOL AI (what the AI did on a Bogotá day: matches, searches, news, injuries, line-ups,
+ * candidates and decisions, post-mortems, findings, hypotheses, cost), QUÉ APRENDIÓ PREDIGOL HOY (the notes written that day, with
+ * their evidence) and MEJORAS PROPUESTAS (the hypotheses waiting for the owner: RECHAZAR, INVESTIGAR or APROBAR EXPERIMENTO), with
+ * the findings and the errors of the day. EXPERIMENTOS (ExperimentsView): every hypothesis by stage. An approved experiment goes
+ * through backtest and shadow; only a DONE experiment whose gate passed can be PROMOTED, by the owner, typing the word. There is
+ * no "activate automatically": nothing here changes a rule, a model or a pick. The last panel is the model code against its
+ * promotions (plan F12). The close of the day is in its own tab (CloseTab) and the calibrators in Calibración.
  */
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t, translateOr } from "@/lib/i18n";
 import { localInt } from "@/lib/i18n/format";
 import { int } from "@/lib/format";
-import { shiftDay, todayKey } from "@/lib/time";
+import { todayKey } from "@/lib/time";
 import { dueReason } from "./evolutionDue";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { KeyValue, Panel, WarningBanner } from "@/components/primitives/Panel";
+import { KeyValue, Panel } from "@/components/primitives/Panel";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
 import { TableSkeleton } from "@/components/primitives/DataTable";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice } from "@/components/system/LiveState";
 import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
-import type {
-  Hypothesis,
-  HypothesisDecision,
-  HypothesisTarget,
-  MemoryEntry,
-} from "@/lib/api/v1/types_ai";
+import type { Hypothesis, HypothesisDecision, HypothesisTarget } from "@/lib/api/v1/types_ai";
 import type { EvolutionDashboard } from "@/lib/api/v1/types_ai_layer";
 import { DayInput, Note, NoteCard, ProposalCard, Stat, StatGrid } from "./AiBits";
-import { DailyReviewPanel } from "./DailyReviewPanel";
-import { IntelLearningCenter } from "./IntelLearningCenter";
+import { CodePromotionsPanel } from "./CodePromotionsPanel";
 import {
   AI_TZ,
   DECISION_TONE,
@@ -97,8 +91,6 @@ const DECISION_STYLE: Record<HypothesisDecision, string> = {
 
 function invalidate(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ["v1", "evolution"] });
-  // the same proposals are read-only in IA e investigación > APRENDIZAJE
-  void qc.invalidateQueries({ queryKey: ["v1", "ai-layer", "learning"] });
 }
 
 // ── the day ──────────────────────────────────────────────────────────────────
@@ -391,7 +383,7 @@ function HypothesisCard({ h }: { h: Hypothesis }) {
       </p>
       {Object.keys(h.evidence).length ? (
         <details className="text-caption text-subtle-foreground">
-          <summary className="cursor-pointer">{t("ai.evolution.evidence")}</summary>
+          <summary className="tap relative cursor-pointer">{t("ai.evolution.evidence")}</summary>
           <pre className="mt-1 max-h-48 overflow-auto rounded border border-border bg-card p-2">
             {JSON.stringify(h.evidence, null, 2)}
           </pre>
@@ -557,76 +549,25 @@ function Propose() {
   );
 }
 
-function MemoryList({ memory }: { memory: MemoryEntry[] }) {
-  if (!memory.length)
-    return <p className="text-xs text-subtle-foreground">{t("ai.evolution.emptyMemory")}</p>;
-  return (
-    <ul className="space-y-2" data-testid="memory">
-      {memory.map((m) => (
-        <li key={m.id} className="space-y-1 border-b border-border pb-2 last:border-0">
-          <div className="flex flex-wrap items-center gap-1.5 text-caption text-subtle-foreground">
-            <StatusBadge tone="neutral">{t(`ai.evolution.source.${m.source}`)}</StatusBadge>
-            <span className="numeric">{m.topic}</span>
-            <span>· {utcDateTime(m.created_at)}</span>
-            {m.versions > 1 ? (
-              <span>· {t("ai.evolution.versions", { count: localInt(m.versions) })}</span>
-            ) : null}
-          </div>
-          <p className="text-xs text-muted-foreground">{m.finding}</p>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 /** What this page is today, in plain words: a shadow layer that proposes; the owner decides. */
 function Honesty() {
-  const ai = useLiveQuery(live.aiOverview);
-  const o = ai.data?.data ?? null;
-  const llm = o?.settings.llm_configured ?? false;
   return (
     <Panel title={t("ai.evolution.today.title")} bodyClassName="p-4 space-y-3">
-      <div className="flex flex-wrap items-center gap-1.5" data-testid="evolution-today">
-        <StatusBadge tone="neutral">
-          {t("ai.evolution.today.mode", {
-            mode: t(`ai.layer.mode.${o?.settings.mode ?? "shadow"}`),
-          })}
-        </StatusBadge>
-        <StatusBadge tone={llm ? "brand" : "neutral"}>
-          {llm ? t("ai.evolution.today.aiOn") : t("ai.evolution.today.aiOff")}
-        </StatusBadge>
-        <StatusBadge tone={o?.enforcement.enforced ? "warning" : "neutral"}>
-          {o?.enforcement.enforced ? t("ai.layer.enforced") : t("ai.layer.notEnforced")}
-        </StatusBadge>
-      </div>
-      <p className="text-xs text-muted-foreground">{t("ai.evolution.today.body")}</p>
+      <p className="text-xs text-muted-foreground" data-testid="evolution-today">
+        {t("ai.evolution.today.body")}
+      </p>
       <p className="text-xs text-muted-foreground">{t("ai.evolution.today.never")}</p>
     </Panel>
   );
 }
 
-export function EvolutionLive() {
-  const q = useLiveQuery(live.evolution);
-  const d = q.data?.data ?? null;
+/** LO APRENDIDO: a Bogotá day of PrediGol AI - the day's tiles, what it learned, the improvements proposed, the findings and the errors. */
+export function LearnedDay() {
   // The AI's day is Bogotá's (the API's default "today" too), not the browser's UTC date.
   const today = todayKey(AI_TZ);
   const [day, setDay] = useState(today);
-  // AYER: yesterday's close by default - the day whose results are in (navigable to any closed day).
-  const [closeDay, setCloseDay] = useState(() => shiftDay(today, -1));
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title={t("admin.pages.evolution.title")}
-        description={t("admin.pages.evolution.description")}
-      />
-      <WarningBanner tone="info">{t("ai.evolution.noAuto")}</WarningBanner>
-      <DailyReviewPanel
-        day={closeDay}
-        onDay={setCloseDay}
-        max={today}
-        title={closeDay === shiftDay(today, -1) ? t("ai.dailyReview.yesterday") : undefined}
-      />
-      <IntelLearningCenter />
+    <div className="space-y-4" data-testid="evolution-day">
       <DayDashboard day={day} onDay={setDay} max={today} />
       <div className="grid gap-4 xl:grid-cols-2">
         <Learned day={day} />
@@ -636,6 +577,16 @@ export function EvolutionLive() {
         <Findings day={day} />
         <Errors day={day} />
       </div>
+    </div>
+  );
+}
+
+/** EXPERIMENTOS: every hypothesis by stage, the honesty rules, the loop, the last monitor and research, the owner's proposals, and the model code against its promotions. */
+export function ExperimentsView() {
+  const q = useLiveQuery(live.evolution);
+  const d = q.data?.data ?? null;
+  return (
+    <div className="space-y-4" data-testid="evolution-experiments">
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
       {q.isLoading ? <TableSkeleton rows={5} cols={3} /> : null}
       {d ? (
@@ -681,12 +632,10 @@ export function EvolutionLive() {
               </p>
             </Panel>
             <Propose />
-            <Panel title={t("ai.evolution.memory")} subtitle={t("ai.evolution.memoryHelp")}>
-              <MemoryList memory={d.memory} />
-            </Panel>
           </div>
         </div>
       ) : null}
+      <CodePromotionsPanel />
     </div>
   );
 }

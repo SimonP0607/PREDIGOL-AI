@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LoginPage } from "@/product/auth/LoginPage";
+import { titled } from "@/lib/i18n/head";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (
@@ -8,7 +9,7 @@ export const Route = createFileRoute("/login")({
     next: typeof s["next"] === "string" ? s["next"] : undefined,
     expired: s["expired"] === "1" || s["expired"] === 1 ? "1" : undefined,
   }),
-  head: () => ({ meta: [{ title: "PrediGol — Iniciar sesión" }] }),
+  head: titled("auth.title"),
   component: LoginRoute,
 });
 

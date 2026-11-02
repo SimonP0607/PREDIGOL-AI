@@ -1,0 +1,8300 @@
+{
+ "changes": [
+  {
+   "date": "2026-10-25",
+   "reason": "A0: line base of the six client routes, taken from the code that runs in production (backend 6851c0081d75)"
+  },
+  {
+   "date": "2026-10-25",
+   "reason": "A1: Meta gains next_cursor (optional, null unless a list has a next page) for the pages of /me/picks and /me/parlays (defect F53); the six routes answer the same fields as before"
+  },
+  {
+   "date": "2026-10-25",
+   "reason": "A1 (F08): LiveMatch gains country_code, so the client names a live match's country in the reader's language"
+  }
+ ],
+ "routes": {
+  "GET /api/v1/daily": {
+   "answer": {
+    "$ref": "#/components/schemas/Envelope_DailyBoard_"
+   },
+   "parameters": [
+    {
+     "in": "query",
+     "name": "day",
+     "required": false,
+     "schema": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Product day (America/Bogota); today if omitted.",
+      "title": "Day"
+     }
+    },
+    {
+     "in": "query",
+     "name": "preview",
+     "required": false,
+     "schema": {
+      "anyOf": [
+       {
+        "const": "shadow",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "SUPER_ADMIN only: the evaluation records built from shadow picks. Never a user's view.",
+      "title": "Preview"
+     }
+    }
+   ],
+   "schemas": {
+    "AiLatest": {
+     "description": "The AI's NEWEST combined review of a selection before its kick-off - which can differ from the one frozen\nwhen the selection entered the set (``ai``): the review keeps working until the match starts. Unless the owner\npreviews (or the review was enforced) only that it was reviewed is said.",
+     "properties": {
+      "by_llm": {
+       "default": false,
+       "title": "By Llm",
+       "type": "boolean"
+      },
+      "confidence": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Confidence"
+      },
+      "decision": {
+       "anyOf": [
+        {
+         "enum": [
+          "APPROVE",
+          "DOWNGRADE",
+          "REJECT",
+          "ABSTAIN"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Decision"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "reviewed_at": {
+       "format": "date-time",
+       "title": "Reviewed At",
+       "type": "string"
+      }
+     },
+     "required": [
+      "reviewed_at"
+     ],
+     "title": "AiLatest",
+     "type": "object"
+    },
+    "CompetitionBadge": {
+     "properties": {
+      "country": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Country"
+      },
+      "flag_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Flag Url"
+      },
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "logo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Logo Url"
+      },
+      "name": {
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "name",
+      "country",
+      "logo_url",
+      "flag_url"
+     ],
+     "title": "CompetitionBadge",
+     "type": "object"
+    },
+    "DailyBoard": {
+     "properties": {
+      "daily_parlay": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/ParlayRecord"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "day": {
+       "format": "date",
+       "title": "Day",
+       "type": "string"
+      },
+      "evaluation_mode": {
+       "description": "True when this is the owner's preview of shadow picks: no model has beaten the market, nothing here is a recommendation.",
+       "title": "Evaluation Mode",
+       "type": "boolean"
+      },
+      "multiday_parlay": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/ParlayRecord"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "set": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/DailySet"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "source": {
+       "enum": [
+        "qualified",
+        "evaluation"
+       ],
+       "title": "Source",
+       "type": "string"
+      },
+      "timezone": {
+       "title": "Timezone",
+       "type": "string"
+      }
+     },
+     "required": [
+      "day",
+      "timezone",
+      "source",
+      "evaluation_mode",
+      "set",
+      "daily_parlay",
+      "multiday_parlay"
+     ],
+     "title": "DailyBoard",
+     "type": "object"
+    },
+    "DailyItem": {
+     "properties": {
+      "ai": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/ItemAi"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "ai_latest": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/AiLatest"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "bookmaker": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Bookmaker"
+      },
+      "corrections": {
+       "description": "Settled again after the provider corrected the match; oldest first. Empty: never.",
+       "items": {
+        "$ref": "#/components/schemas/ResultCorrection"
+       },
+       "title": "Corrections",
+       "type": "array"
+      },
+      "ev": {
+       "title": "Ev",
+       "type": "string"
+      },
+      "line": {
+       "title": "Line",
+       "type": "string"
+      },
+      "market_key": {
+       "title": "Market Key",
+       "type": "string"
+      },
+      "match": {
+       "$ref": "#/components/schemas/MatchRef"
+      },
+      "model": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Model"
+      },
+      "odds": {
+       "description": "The price frozen when the pick entered the set.",
+       "title": "Odds",
+       "type": "string"
+      },
+      "p_low": {
+       "title": "P Low",
+       "type": "string"
+      },
+      "p_market": {
+       "title": "P Market",
+       "type": "string"
+      },
+      "p_model": {
+       "title": "P Model",
+       "type": "string"
+      },
+      "pick_id": {
+       "title": "Pick Id",
+       "type": "integer"
+      },
+      "price_at": {
+       "format": "date-time",
+       "title": "Price At",
+       "type": "string"
+      },
+      "profit_units": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Profit Units"
+      },
+      "rank": {
+       "title": "Rank",
+       "type": "integer"
+      },
+      "selected_at": {
+       "format": "date-time",
+       "title": "Selected At",
+       "type": "string"
+      },
+      "selection": {
+       "title": "Selection",
+       "type": "string"
+      },
+      "settled_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Settled At"
+      },
+      "stage": {
+       "enum": [
+        "T-24h",
+        "T-12h",
+        "T-6h",
+        "T-3h"
+       ],
+       "title": "Stage",
+       "type": "string"
+      },
+      "status": {
+       "enum": [
+        "PENDING",
+        "WIN",
+        "LOSS",
+        "PUSH",
+        "VOID",
+        "HALF_WIN",
+        "HALF_LOSS"
+       ],
+       "title": "Status",
+       "type": "string"
+      }
+     },
+     "required": [
+      "rank",
+      "pick_id",
+      "match",
+      "market_key",
+      "selection",
+      "line",
+      "stage",
+      "selected_at",
+      "odds",
+      "bookmaker",
+      "price_at",
+      "p_model",
+      "p_low",
+      "p_market",
+      "ev",
+      "model",
+      "status",
+      "profit_units",
+      "settled_at"
+     ],
+     "title": "DailyItem",
+     "type": "object"
+    },
+    "DailySet": {
+     "properties": {
+      "day": {
+       "format": "date",
+       "title": "Day",
+       "type": "string"
+      },
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "items": {
+       "items": {
+        "$ref": "#/components/schemas/DailyItem"
+       },
+       "title": "Items",
+       "type": "array"
+      },
+      "rule_version": {
+       "title": "Rule Version",
+       "type": "string"
+      },
+      "source": {
+       "enum": [
+        "qualified",
+        "evaluation"
+       ],
+       "title": "Source",
+       "type": "string"
+      },
+      "status": {
+       "enum": [
+        "BUILDING",
+        "COMPLETE",
+        "SETTLED"
+       ],
+       "title": "Status",
+       "type": "string"
+      },
+      "timezone": {
+       "title": "Timezone",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "day",
+      "timezone",
+      "source",
+      "rule_version",
+      "status",
+      "items"
+     ],
+     "title": "DailySet",
+     "type": "object"
+    },
+    "DataStatus": {
+     "enum": [
+      "ok",
+      "empty",
+      "insufficient_data",
+      "not_available"
+     ],
+     "title": "DataStatus",
+     "type": "string"
+    },
+    "Envelope_DailyBoard_": {
+     "properties": {
+      "data": {
+       "$ref": "#/components/schemas/DailyBoard"
+      },
+      "meta": {
+       "$ref": "#/components/schemas/Meta"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Envelope[DailyBoard]",
+     "type": "object"
+    },
+    "ItemAi": {
+     "description": "The AI decision layer's review of a selection, frozen when the selection entered the set or parlay.\nIn shadow mode it is shown and recorded but changed nothing; only with enforcement on (the owner's switch AND\na passed shadow gate) can a REJECT keep a selection out.",
+     "properties": {
+      "by_llm": {
+       "default": false,
+       "description": "A language model took part; otherwise the rules reviewer alone.",
+       "title": "By Llm",
+       "type": "boolean"
+      },
+      "confidence": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Confidence"
+      },
+      "decision": {
+       "anyOf": [
+        {
+         "enum": [
+          "APPROVE",
+          "DOWNGRADE",
+          "REJECT",
+          "ABSTAIN"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Null when no review existed when the selection was frozen.",
+       "title": "Decision"
+      },
+      "enforced": {
+       "title": "Enforced",
+       "type": "boolean"
+      },
+      "mode": {
+       "enum": [
+        "off",
+        "shadow",
+        "enforce"
+       ],
+       "title": "Mode",
+       "type": "string"
+      },
+      "positives": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Positives",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "review_id": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Review Id"
+      },
+      "risks": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Risks",
+       "type": "array"
+      }
+     },
+     "required": [
+      "decision",
+      "mode",
+      "enforced"
+     ],
+     "title": "ItemAi",
+     "type": "object"
+    },
+    "MatchRef": {
+     "properties": {
+      "away": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "competition": {
+       "$ref": "#/components/schemas/CompetitionBadge"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "home": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "live_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "When that state was observed.",
+       "title": "Live At"
+      },
+      "live_away": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Live Away"
+      },
+      "live_extra": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Live Extra"
+      },
+      "live_home": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The score now, while in play (extra time included).",
+       "title": "Live Home"
+      },
+      "live_minute": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The minute, while in play.",
+       "title": "Live Minute"
+      },
+      "phase": {
+       "default": "unknown",
+       "description": "What the card shows (fbi.core.match_state).",
+       "enum": [
+        "scheduled",
+        "live",
+        "suspended",
+        "finished",
+        "postponed",
+        "cancelled",
+        "abandoned",
+        "not_played",
+        "awaiting",
+        "unknown"
+       ],
+       "title": "Phase",
+       "type": "string"
+      },
+      "score_away": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Score Away"
+      },
+      "score_home": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Regulation score, once the match has one.",
+       "title": "Score Home"
+      },
+      "status_group": {
+       "title": "Status Group",
+       "type": "string"
+      },
+      "status_short": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The provider's code (NS, 1H, HT, FT, PST...).",
+       "title": "Status Short"
+      }
+     },
+     "required": [
+      "fixture_id",
+      "kickoff_at",
+      "status_group",
+      "competition",
+      "home",
+      "away"
+     ],
+     "title": "MatchRef",
+     "type": "object"
+    },
+    "Meta": {
+     "properties": {
+      "api_version": {
+       "const": "v1",
+       "default": "v1",
+       "title": "Api Version",
+       "type": "string"
+      },
+      "count": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Count"
+      },
+      "data_as_of": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Newest timestamp among the rows the answer was built from.",
+       "title": "Data As Of"
+      },
+      "generated_at": {
+       "format": "date-time",
+       "title": "Generated At",
+       "type": "string"
+      },
+      "limit": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Limit"
+      },
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
+      "offset": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Offset"
+      },
+      "total": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Total"
+      }
+     },
+     "title": "Meta",
+     "type": "object"
+    },
+    "ParlayRecord": {
+     "properties": {
+      "combined_odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Combined Odds"
+      },
+      "corrections": {
+       "description": "The parlay's own and its legs' (with ``leg_no``); oldest first. Empty: never corrected.",
+       "items": {
+        "$ref": "#/components/schemas/ResultCorrection"
+       },
+       "title": "Corrections",
+       "type": "array"
+      },
+      "day": {
+       "format": "date",
+       "title": "Day",
+       "type": "string"
+      },
+      "expected_log_growth": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Of a 1% stake, at the pessimistic probabilities.",
+       "title": "Expected Log Growth"
+      },
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "kind": {
+       "enum": [
+        "daily",
+        "multiday"
+       ],
+       "title": "Kind",
+       "type": "string"
+      },
+      "legs": {
+       "items": {
+        "$ref": "#/components/schemas/ParlayRecordLeg"
+       },
+       "title": "Legs",
+       "type": "array"
+      },
+      "legs_pending": {
+       "default": 0,
+       "title": "Legs Pending",
+       "type": "integer"
+      },
+      "max_legs": {
+       "title": "Max Legs",
+       "type": "integer"
+      },
+      "min_legs": {
+       "title": "Min Legs",
+       "type": "integer"
+      },
+      "p_all_low": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Probability every leg wins, at each leg's pessimistic probability.",
+       "title": "P All Low"
+      },
+      "profit_units": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Profit Units"
+      },
+      "progress": {
+       "default": "OPEN",
+       "description": "From the legs: OPEN (none settled), PARTIAL_WON (some won, none lost), PARTIAL_LOST (a leg lost, others still to play), WON, LOST, VOID. A parlay stays on the board until every leg is settled.",
+       "enum": [
+        "OPEN",
+        "PARTIAL_WON",
+        "PARTIAL_LOST",
+        "WON",
+        "LOST",
+        "VOID"
+       ],
+       "title": "Progress",
+       "type": "string"
+      },
+      "ready_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Ready At"
+      },
+      "rule_version": {
+       "title": "Rule Version",
+       "type": "string"
+      },
+      "settled_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Settled At"
+      },
+      "source": {
+       "enum": [
+        "qualified",
+        "evaluation"
+       ],
+       "title": "Source",
+       "type": "string"
+      },
+      "status": {
+       "enum": [
+        "BUILDING",
+        "READY",
+        "ACTIVE",
+        "WON",
+        "LOST",
+        "VOID",
+        "PARTIAL_VOID"
+       ],
+       "title": "Status",
+       "type": "string"
+      },
+      "window_from": {
+       "format": "date-time",
+       "title": "Window From",
+       "type": "string"
+      },
+      "window_to": {
+       "format": "date-time",
+       "title": "Window To",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "kind",
+      "day",
+      "source",
+      "rule_version",
+      "status",
+      "min_legs",
+      "max_legs",
+      "window_from",
+      "window_to",
+      "combined_odds",
+      "p_all_low",
+      "expected_log_growth",
+      "ready_at",
+      "settled_at",
+      "profit_units",
+      "legs"
+     ],
+     "title": "ParlayRecord",
+     "type": "object"
+    },
+    "ParlayRecordLeg": {
+     "properties": {
+      "ai": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/ItemAi"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "ai_latest": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/AiLatest"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "bookmaker": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Bookmaker"
+      },
+      "ev": {
+       "title": "Ev",
+       "type": "string"
+      },
+      "leg_no": {
+       "title": "Leg No",
+       "type": "integer"
+      },
+      "line": {
+       "title": "Line",
+       "type": "string"
+      },
+      "market_key": {
+       "title": "Market Key",
+       "type": "string"
+      },
+      "match": {
+       "$ref": "#/components/schemas/MatchRef"
+      },
+      "odds": {
+       "title": "Odds",
+       "type": "string"
+      },
+      "p_low": {
+       "title": "P Low",
+       "type": "string"
+      },
+      "p_market": {
+       "title": "P Market",
+       "type": "string"
+      },
+      "p_model": {
+       "title": "P Model",
+       "type": "string"
+      },
+      "pick_id": {
+       "title": "Pick Id",
+       "type": "integer"
+      },
+      "selection": {
+       "title": "Selection",
+       "type": "string"
+      },
+      "status": {
+       "enum": [
+        "PENDING",
+        "WIN",
+        "LOSS",
+        "PUSH",
+        "VOID",
+        "HALF_WIN",
+        "HALF_LOSS"
+       ],
+       "title": "Status",
+       "type": "string"
+      }
+     },
+     "required": [
+      "leg_no",
+      "pick_id",
+      "match",
+      "market_key",
+      "selection",
+      "line",
+      "odds",
+      "bookmaker",
+      "p_model",
+      "p_low",
+      "p_market",
+      "ev",
+      "status"
+     ],
+     "title": "ParlayRecordLeg",
+     "type": "object"
+    },
+    "ResultCorrection": {
+     "description": "A settled record whose result changed afterwards (plan F0, defect 5): the record shows the result it has now,\nthis is one it had. A leg's correction carries the leg's number; a record's own - a pick's, a parlay's - does not.\n\nWhat the person is told is the cause as a code and the words they translate - never the trail's own reason, which\nnames internal revisions and whoever ran a manual pass.",
+     "properties": {
+      "at": {
+       "description": "When the record was settled again.",
+       "format": "date-time",
+       "title": "At",
+       "type": "string"
+      },
+      "cause": {
+       "description": "result_corrected: the data provider corrected the match's result after full time. status_changed: the match's status moved (a result confirmed, a match annulled). audit: a review found the stored result was not the one the match's result gives - and no correction of the match was recorded.",
+       "enum": [
+        "result_corrected",
+        "status_changed",
+        "audit"
+       ],
+       "title": "Cause",
+       "type": "string"
+      },
+      "from_profit": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "From Profit"
+      },
+      "from_status": {
+       "anyOf": [
+        {
+         "enum": [
+          "PENDING",
+          "WIN",
+          "LOSS",
+          "PUSH",
+          "VOID",
+          "HALF_WIN",
+          "HALF_LOSS"
+         ],
+         "type": "string"
+        },
+        {
+         "enum": [
+          "BUILDING",
+          "READY",
+          "ACTIVE",
+          "WON",
+          "LOST",
+          "VOID",
+          "PARTIAL_VOID"
+         ],
+         "type": "string"
+        }
+       ],
+       "title": "From Status"
+      },
+      "leg_no": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The leg, for a correction of one leg of a parlay.",
+       "title": "Leg No"
+      },
+      "to_profit": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "To Profit"
+      },
+      "to_status": {
+       "anyOf": [
+        {
+         "enum": [
+          "PENDING",
+          "WIN",
+          "LOSS",
+          "PUSH",
+          "VOID",
+          "HALF_WIN",
+          "HALF_LOSS"
+         ],
+         "type": "string"
+        },
+        {
+         "enum": [
+          "BUILDING",
+          "READY",
+          "ACTIVE",
+          "WON",
+          "LOST",
+          "VOID",
+          "PARTIAL_VOID"
+         ],
+         "type": "string"
+        }
+       ],
+       "title": "To Status"
+      }
+     },
+     "required": [
+      "at",
+      "from_status",
+      "to_status",
+      "cause"
+     ],
+     "title": "ResultCorrection",
+     "type": "object"
+    },
+    "TeamBadge": {
+     "properties": {
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "logo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Logo Url"
+      },
+      "name": {
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "name",
+      "logo_url"
+     ],
+     "title": "TeamBadge",
+     "type": "object"
+    }
+   }
+  },
+  "GET /api/v1/home": {
+   "answer": {
+    "$ref": "#/components/schemas/Envelope_Home_"
+   },
+   "parameters": [
+    {
+     "in": "query",
+     "name": "preview",
+     "required": false,
+     "schema": {
+      "anyOf": [
+       {
+        "const": "shadow",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "SUPER_ADMIN only: show unqualified shadow picks laid out as the product would. Never a user's view.",
+      "title": "Preview"
+     }
+    }
+   ],
+   "schemas": {
+    "BestHighlight": {
+     "properties": {
+      "away": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "competition": {
+       "$ref": "#/components/schemas/CompetitionBadge"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "home": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "line": {
+       "title": "Line",
+       "type": "string"
+      },
+      "market_key": {
+       "title": "Market Key",
+       "type": "string"
+      },
+      "price": {
+       "$ref": "#/components/schemas/BestPrice"
+      }
+     },
+     "required": [
+      "fixture_id",
+      "kickoff_at",
+      "competition",
+      "home",
+      "away",
+      "market_key",
+      "line",
+      "price"
+     ],
+     "title": "BestHighlight",
+     "type": "object"
+    },
+    "BestPrice": {
+     "properties": {
+      "as_of": {
+       "format": "date-time",
+       "title": "As Of",
+       "type": "string"
+      },
+      "best_odds": {
+       "title": "Best Odds",
+       "type": "string"
+      },
+      "bookmaker": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Bookmaker"
+      },
+      "fair_odds": {
+       "title": "Fair Odds",
+       "type": "string"
+      },
+      "n_bookmakers": {
+       "title": "N Bookmakers",
+       "type": "integer"
+      },
+      "outlier": {
+       "default": false,
+       "description": "More than 25% above fair: very likely one book's stale or mistaken quote. Shown, flagged, never highlighted.",
+       "title": "Outlier",
+       "type": "boolean"
+      },
+      "p_fair": {
+       "title": "P Fair",
+       "type": "string"
+      },
+      "price_edge": {
+       "description": "best_odds * p_fair - 1: how far the best price sits above fair.",
+       "title": "Price Edge",
+       "type": "string"
+      },
+      "selection": {
+       "title": "Selection",
+       "type": "string"
+      }
+     },
+     "required": [
+      "selection",
+      "best_odds",
+      "bookmaker",
+      "p_fair",
+      "fair_odds",
+      "price_edge",
+      "n_bookmakers",
+      "as_of"
+     ],
+     "title": "BestPrice",
+     "type": "object"
+    },
+    "CompetitionBadge": {
+     "properties": {
+      "country": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Country"
+      },
+      "flag_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Flag Url"
+      },
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "logo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Logo Url"
+      },
+      "name": {
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "name",
+      "country",
+      "logo_url",
+      "flag_url"
+     ],
+     "title": "CompetitionBadge",
+     "type": "object"
+    },
+    "DataFreshness": {
+     "properties": {
+      "live_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Live At"
+      },
+      "odds_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Odds At"
+      }
+     },
+     "required": [
+      "odds_at",
+      "live_at"
+     ],
+     "title": "DataFreshness",
+     "type": "object"
+    },
+    "DataStatus": {
+     "enum": [
+      "ok",
+      "empty",
+      "insufficient_data",
+      "not_available"
+     ],
+     "title": "DataStatus",
+     "type": "string"
+    },
+    "Envelope_Home_": {
+     "properties": {
+      "data": {
+       "$ref": "#/components/schemas/Home"
+      },
+      "meta": {
+       "$ref": "#/components/schemas/Meta"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Envelope[Home]",
+     "type": "object"
+    },
+    "Home": {
+     "properties": {
+      "best_prices": {
+       "$ref": "#/components/schemas/Section_list_BestHighlight__"
+      },
+      "daily_parlay": {
+       "$ref": "#/components/schemas/Parlay"
+      },
+      "data_freshness": {
+       "$ref": "#/components/schemas/DataFreshness"
+      },
+      "live": {
+       "$ref": "#/components/schemas/Section_list_LiveMatch__"
+      },
+      "multiday_parlay": {
+       "$ref": "#/components/schemas/Parlay"
+      },
+      "source": {
+       "enum": [
+        "qualified",
+        "shadow_preview"
+       ],
+       "title": "Source",
+       "type": "string"
+      },
+      "top_picks": {
+       "$ref": "#/components/schemas/Section_list_PickCard__"
+      },
+      "upcoming": {
+       "$ref": "#/components/schemas/Section_list_UpcomingMatch__"
+      }
+     },
+     "required": [
+      "source",
+      "data_freshness",
+      "top_picks",
+      "daily_parlay",
+      "multiday_parlay",
+      "live",
+      "best_prices",
+      "upcoming"
+     ],
+     "title": "Home",
+     "type": "object"
+    },
+    "LiveCompleteness": {
+     "description": "How much of the match we can actually show, from what is stored - not a guess.\n\nWeights (sum 100): score 10, minute 10, key events 15, team statistics 20, line-ups 10,\nplayer ratings 10, in-play prices 15, in-play market breadth 10.",
+     "properties": {
+      "level": {
+       "enum": [
+        "rich",
+        "partial",
+        "basic"
+       ],
+       "title": "Level",
+       "type": "string"
+      },
+      "score": {
+       "maximum": 100.0,
+       "minimum": 0.0,
+       "title": "Score",
+       "type": "integer"
+      },
+      "signals": {
+       "additionalProperties": {
+        "type": "boolean"
+       },
+       "title": "Signals",
+       "type": "object"
+      }
+     },
+     "required": [
+      "score",
+      "level",
+      "signals"
+     ],
+     "title": "LiveCompleteness",
+     "type": "object"
+    },
+    "LiveMatch": {
+     "properties": {
+      "away": {
+       "$ref": "#/components/schemas/LiveTeam"
+      },
+      "competition": {
+       "title": "Competition",
+       "type": "string"
+      },
+      "competition_flag": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Competition Flag"
+      },
+      "competition_id": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Competition Id"
+      },
+      "competition_logo": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Competition Logo"
+      },
+      "completeness": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/LiveCompleteness"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "country": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Country"
+      },
+      "country_code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "ISO code of the competition's country (GB-ENG for a home nation): the client names it in the reader's language.",
+       "title": "Country Code"
+      },
+      "data_status": {
+       "description": "stale: no state for 3 minutes; no_odds: in play but nobody quotes it in play.",
+       "enum": [
+        "ok",
+        "stale",
+        "no_odds"
+       ],
+       "title": "Data Status",
+       "type": "string"
+      },
+      "elapsed": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Elapsed"
+      },
+      "events": {
+       "items": {
+        "$ref": "#/components/schemas/MatchEvent"
+       },
+       "title": "Events",
+       "type": "array"
+      },
+      "extra": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Extra"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "goals_away": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Goals Away"
+      },
+      "goals_home": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Goals Home"
+      },
+      "has_lineups": {
+       "default": false,
+       "title": "Has Lineups",
+       "type": "boolean"
+      },
+      "has_player_stats": {
+       "default": false,
+       "title": "Has Player Stats",
+       "type": "boolean"
+      },
+      "home": {
+       "$ref": "#/components/schemas/LiveTeam"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "main_odds": {
+       "items": {
+        "$ref": "#/components/schemas/LiveQuote"
+       },
+       "title": "Main Odds",
+       "type": "array"
+      },
+      "markets_offered": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Markets Offered"
+      },
+      "odds_feed_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Odds Feed At"
+      },
+      "state_age_seconds": {
+       "title": "State Age Seconds",
+       "type": "integer"
+      },
+      "state_at": {
+       "format": "date-time",
+       "title": "State At",
+       "type": "string"
+      },
+      "state_source": {
+       "enum": [
+        "fixture_feed",
+        "odds_feed"
+       ],
+       "title": "State Source",
+       "type": "string"
+      },
+      "statistics": {
+       "items": {
+        "$ref": "#/components/schemas/TeamStatLine"
+       },
+       "title": "Statistics",
+       "type": "array"
+      },
+      "status": {
+       "title": "Status",
+       "type": "string"
+      },
+      "values_suspended": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Values Suspended"
+      }
+     },
+     "required": [
+      "fixture_id",
+      "kickoff_at",
+      "competition",
+      "country",
+      "home",
+      "away",
+      "status",
+      "elapsed",
+      "extra",
+      "goals_home",
+      "goals_away",
+      "state_at",
+      "state_source",
+      "state_age_seconds",
+      "odds_feed_at",
+      "markets_offered",
+      "values_suspended",
+      "events",
+      "statistics",
+      "main_odds",
+      "data_status"
+     ],
+     "title": "LiveMatch",
+     "type": "object"
+    },
+    "LiveQuote": {
+     "properties": {
+      "captured_at": {
+       "format": "date-time",
+       "title": "Captured At",
+       "type": "string"
+      },
+      "line": {
+       "title": "Line",
+       "type": "string"
+      },
+      "main_line": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Main Line"
+      },
+      "market_key": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Null for an in-play bet with no market of ours; its price is kept.",
+       "title": "Market Key"
+      },
+      "minute": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Minute"
+      },
+      "odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Null: the selection was withdrawn at this instant.",
+       "title": "Odds"
+      },
+      "provider_bet_id": {
+       "title": "Provider Bet Id",
+       "type": "integer"
+      },
+      "selection": {
+       "title": "Selection",
+       "type": "string"
+      },
+      "suspended": {
+       "title": "Suspended",
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "market_key",
+      "provider_bet_id",
+      "selection",
+      "line",
+      "odds",
+      "suspended",
+      "main_line",
+      "captured_at",
+      "minute"
+     ],
+     "title": "LiveQuote",
+     "type": "object"
+    },
+    "LiveTeam": {
+     "properties": {
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "logo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Logo Url"
+      },
+      "name": {
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "name"
+     ],
+     "title": "LiveTeam",
+     "type": "object"
+    },
+    "MatchEvent": {
+     "properties": {
+      "assist": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Assist"
+      },
+      "comments": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Comments"
+      },
+      "detail": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Detail"
+      },
+      "extra_minute": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Extra Minute"
+      },
+      "minute": {
+       "title": "Minute",
+       "type": "integer"
+      },
+      "player": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Player"
+      },
+      "player_id": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "core.players id when the provider's player is known to us.",
+       "title": "Player Id"
+      },
+      "seq": {
+       "title": "Seq",
+       "type": "integer"
+      },
+      "side": {
+       "anyOf": [
+        {
+         "enum": [
+          "home",
+          "away"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Side"
+      },
+      "type": {
+       "title": "Type",
+       "type": "string"
+      }
+     },
+     "required": [
+      "seq",
+      "minute",
+      "extra_minute",
+      "side",
+      "player",
+      "player_id",
+      "assist",
+      "type",
+      "detail",
+      "comments"
+     ],
+     "title": "MatchEvent",
+     "type": "object"
+    },
+    "Meta": {
+     "properties": {
+      "api_version": {
+       "const": "v1",
+       "default": "v1",
+       "title": "Api Version",
+       "type": "string"
+      },
+      "count": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Count"
+      },
+      "data_as_of": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Newest timestamp among the rows the answer was built from.",
+       "title": "Data As Of"
+      },
+      "generated_at": {
+       "format": "date-time",
+       "title": "Generated At",
+       "type": "string"
+      },
+      "limit": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Limit"
+      },
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
+      "offset": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Offset"
+      },
+      "total": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Total"
+      }
+     },
+     "title": "Meta",
+     "type": "object"
+    },
+    "Parlay": {
+     "properties": {
+      "combined_odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Combined Odds"
+      },
+      "eligible_legs": {
+       "description": "Selections that passed the value gate in the window.",
+       "title": "Eligible Legs",
+       "type": "integer"
+      },
+      "expected_value": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Per unit: product of (1 + leg EV) minus one.",
+       "title": "Expected Value"
+      },
+      "generated_at": {
+       "format": "date-time",
+       "title": "Generated At",
+       "type": "string"
+      },
+      "independence": {
+       "anyOf": [
+        {
+         "enum": [
+          "distinct_fixtures_and_teams",
+          "not_independent"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Independence"
+      },
+      "kind": {
+       "enum": [
+        "daily",
+        "multiday"
+       ],
+       "title": "Kind",
+       "type": "string"
+      },
+      "legs": {
+       "items": {
+        "$ref": "#/components/schemas/ParlayLeg"
+       },
+       "title": "Legs",
+       "type": "array"
+      },
+      "max_legs": {
+       "title": "Max Legs",
+       "type": "integer"
+      },
+      "prices_as_of": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The oldest price among the legs.",
+       "title": "Prices As Of"
+      },
+      "probability_all_win": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Product of the legs' win probabilities - legs are distinct matches of distinct teams. Null when that independence does not hold.",
+       "title": "Probability All Win"
+      },
+      "rejections": {
+       "additionalProperties": {
+        "type": "integer"
+       },
+       "description": "Selections left out, by the rule they failed.",
+       "title": "Rejections",
+       "type": "object"
+      },
+      "required_legs": {
+       "title": "Required Legs",
+       "type": "integer"
+      },
+      "risk": {
+       "anyOf": [
+        {
+         "enum": [
+          "moderate",
+          "high",
+          "very_high"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Risk"
+      },
+      "source": {
+       "enum": [
+        "qualified",
+        "shadow_preview"
+       ],
+       "title": "Source",
+       "type": "string"
+      },
+      "status": {
+       "enum": [
+        "ok",
+        "no_valid_parlay"
+       ],
+       "title": "Status",
+       "type": "string"
+      },
+      "window_from": {
+       "format": "date-time",
+       "title": "Window From",
+       "type": "string"
+      },
+      "window_to": {
+       "format": "date-time",
+       "title": "Window To",
+       "type": "string"
+      }
+     },
+     "required": [
+      "kind",
+      "status",
+      "source",
+      "legs",
+      "required_legs",
+      "max_legs",
+      "eligible_legs",
+      "window_from",
+      "window_to",
+      "combined_odds",
+      "probability_all_win",
+      "expected_value",
+      "risk",
+      "independence",
+      "prices_as_of",
+      "rejections",
+      "generated_at"
+     ],
+     "title": "Parlay",
+     "type": "object"
+    },
+    "ParlayLeg": {
+     "properties": {
+      "away": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "bookmaker": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Bookmaker"
+      },
+      "competition": {
+       "$ref": "#/components/schemas/CompetitionBadge"
+      },
+      "edge": {
+       "title": "Edge",
+       "type": "string"
+      },
+      "ev": {
+       "title": "Ev",
+       "type": "string"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "home": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "line": {
+       "title": "Line",
+       "type": "string"
+      },
+      "market_key": {
+       "title": "Market Key",
+       "type": "string"
+      },
+      "odds": {
+       "title": "Odds",
+       "type": "string"
+      },
+      "p_market": {
+       "title": "P Market",
+       "type": "string"
+      },
+      "p_model": {
+       "title": "P Model",
+       "type": "string"
+      },
+      "p_win": {
+       "description": "Unconditional probability this leg wins (pushes excluded).",
+       "title": "P Win",
+       "type": "string"
+      },
+      "pick_id": {
+       "title": "Pick Id",
+       "type": "integer"
+      },
+      "price_at": {
+       "format": "date-time",
+       "title": "Price At",
+       "type": "string"
+      },
+      "selection": {
+       "title": "Selection",
+       "type": "string"
+      }
+     },
+     "required": [
+      "pick_id",
+      "fixture_id",
+      "kickoff_at",
+      "competition",
+      "home",
+      "away",
+      "market_key",
+      "selection",
+      "line",
+      "odds",
+      "bookmaker",
+      "price_at",
+      "p_model",
+      "p_market",
+      "p_win",
+      "edge",
+      "ev"
+     ],
+     "title": "ParlayLeg",
+     "type": "object"
+    },
+    "PickCard": {
+     "description": "A pick as the product shows it, re-priced at the best price available now.",
+     "properties": {
+      "away": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "best_odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Best price available now (latest de-vigged consensus).",
+       "title": "Best Odds"
+      },
+      "bookmaker": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Bookmaker"
+      },
+      "competition": {
+       "$ref": "#/components/schemas/CompetitionBadge"
+      },
+      "edge": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "p_model - p_market.",
+       "title": "Edge"
+      },
+      "ev": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Expected value per unit at best_odds. Null without a price.",
+       "title": "Ev"
+      },
+      "fair_odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "1 / p_market: the market's fair price.",
+       "title": "Fair Odds"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "freshness": {
+       "enum": [
+        "fresh",
+        "aging",
+        "stale",
+        "none"
+       ],
+       "title": "Freshness",
+       "type": "string"
+      },
+      "home": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "line": {
+       "title": "Line",
+       "type": "string"
+      },
+      "market_key": {
+       "title": "Market Key",
+       "type": "string"
+      },
+      "model": {
+       "title": "Model",
+       "type": "string"
+      },
+      "p_market": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "De-vigged market consensus probability (Shin).",
+       "title": "P Market"
+      },
+      "p_model": {
+       "description": "Model probability, conditional on the bet being settled.",
+       "title": "P Model",
+       "type": "string"
+      },
+      "pick_id": {
+       "title": "Pick Id",
+       "type": "integer"
+      },
+      "price_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Price At"
+      },
+      "selection": {
+       "title": "Selection",
+       "type": "string"
+      },
+      "status": {
+       "enum": [
+        "shadow",
+        "qualified",
+        "published"
+       ],
+       "title": "Status",
+       "type": "string"
+      },
+      "value_now": {
+       "description": "Passes the value gate at this moment.",
+       "title": "Value Now",
+       "type": "boolean"
+      },
+      "value_reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The gate it fails, as a code, when value_now is false.",
+       "title": "Value Reason"
+      }
+     },
+     "required": [
+      "pick_id",
+      "fixture_id",
+      "kickoff_at",
+      "competition",
+      "home",
+      "away",
+      "market_key",
+      "selection",
+      "line",
+      "status",
+      "model",
+      "best_odds",
+      "bookmaker",
+      "price_at",
+      "p_model",
+      "p_market",
+      "fair_odds",
+      "edge",
+      "ev",
+      "freshness",
+      "value_now",
+      "value_reason"
+     ],
+     "title": "PickCard",
+     "type": "object"
+    },
+    "Section_list_BestHighlight__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/BestHighlight"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[BestHighlight]]",
+     "type": "object"
+    },
+    "Section_list_LiveMatch__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/LiveMatch"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[LiveMatch]]",
+     "type": "object"
+    },
+    "Section_list_PickCard__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/PickCard"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[PickCard]]",
+     "type": "object"
+    },
+    "Section_list_UpcomingMatch__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/UpcomingMatch"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[UpcomingMatch]]",
+     "type": "object"
+    },
+    "TeamBadge": {
+     "properties": {
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "logo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Logo Url"
+      },
+      "name": {
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "name",
+      "logo_url"
+     ],
+     "title": "TeamBadge",
+     "type": "object"
+    },
+    "TeamStatLine": {
+     "properties": {
+      "corners": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Corners"
+      },
+      "expected_goals": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Expected Goals"
+      },
+      "fetched_at": {
+       "format": "date-time",
+       "title": "Fetched At",
+       "type": "string"
+      },
+      "fouls": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Fouls"
+      },
+      "offsides": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Offsides"
+      },
+      "passes": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Passes"
+      },
+      "passes_accurate": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Passes Accurate"
+      },
+      "possession_pct": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Possession Pct"
+      },
+      "red_cards": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Red Cards"
+      },
+      "saves": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Saves"
+      },
+      "shots": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots"
+      },
+      "shots_blocked": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots Blocked"
+      },
+      "shots_inside_box": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots Inside Box"
+      },
+      "shots_off_target": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots Off Target"
+      },
+      "shots_on_target": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots On Target"
+      },
+      "shots_outside_box": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots Outside Box"
+      },
+      "side": {
+       "enum": [
+        "home",
+        "away"
+       ],
+       "title": "Side",
+       "type": "string"
+      },
+      "source": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Where these numbers come from: api-football, or football-data.co.uk when it is the only source.",
+       "title": "Source"
+      },
+      "yellow_cards": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Yellow Cards"
+      }
+     },
+     "required": [
+      "side",
+      "shots",
+      "shots_on_target",
+      "shots_off_target",
+      "shots_blocked",
+      "shots_inside_box",
+      "shots_outside_box",
+      "corners",
+      "fouls",
+      "offsides",
+      "yellow_cards",
+      "red_cards",
+      "saves",
+      "possession_pct",
+      "passes",
+      "passes_accurate",
+      "expected_goals",
+      "fetched_at"
+     ],
+     "title": "TeamStatLine",
+     "type": "object"
+    },
+    "UpcomingMatch": {
+     "properties": {
+      "away": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "bookmakers": {
+       "title": "Bookmakers",
+       "type": "integer"
+      },
+      "competition": {
+       "$ref": "#/components/schemas/CompetitionBadge"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "home": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      }
+     },
+     "required": [
+      "fixture_id",
+      "kickoff_at",
+      "competition",
+      "home",
+      "away",
+      "bookmakers"
+     ],
+     "title": "UpcomingMatch",
+     "type": "object"
+    }
+   }
+  },
+  "GET /api/v1/matches/{fixture_id}/center": {
+   "answer": {
+    "$ref": "#/components/schemas/Envelope_Union_MatchCenter__NoneType__"
+   },
+   "parameters": [
+    {
+     "in": "path",
+     "name": "fixture_id",
+     "required": true,
+     "schema": {
+      "minimum": 1,
+      "title": "Fixture Id",
+      "type": "integer"
+     }
+    }
+   ],
+   "schemas": {
+    "Absence": {
+     "properties": {
+      "fetched_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "When the provider reported this absence.",
+       "title": "Fetched At"
+      },
+      "photo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Photo Url"
+      },
+      "player": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Player"
+      },
+      "player_id": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Player Id"
+      },
+      "position": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The player's position as the provider files it.",
+       "title": "Position"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "season": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/MatchPlayerSeason"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "How much he plays: his season in this competition, as the provider aggregates it."
+      },
+      "side": {
+       "anyOf": [
+        {
+         "enum": [
+          "home",
+          "away"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Side"
+      },
+      "type": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Type"
+      }
+     },
+     "required": [
+      "side",
+      "player",
+      "player_id",
+      "type",
+      "reason"
+     ],
+     "title": "Absence",
+     "type": "object"
+    },
+    "DataStatus": {
+     "enum": [
+      "ok",
+      "empty",
+      "insufficient_data",
+      "not_available"
+     ],
+     "title": "DataStatus",
+     "type": "string"
+    },
+    "Envelope_Union_MatchCenter__NoneType__": {
+     "properties": {
+      "data": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/MatchCenter"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "meta": {
+       "$ref": "#/components/schemas/Meta"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Envelope[Union[MatchCenter, NoneType]]",
+     "type": "object"
+    },
+    "FormMatch": {
+     "properties": {
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "goals_against": {
+       "title": "Goals Against",
+       "type": "integer"
+      },
+      "goals_for": {
+       "title": "Goals For",
+       "type": "integer"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "opponent": {
+       "title": "Opponent",
+       "type": "string"
+      },
+      "result": {
+       "enum": [
+        "W",
+        "D",
+        "L"
+       ],
+       "title": "Result",
+       "type": "string"
+      },
+      "venue": {
+       "enum": [
+        "H",
+        "A"
+       ],
+       "title": "Venue",
+       "type": "string"
+      }
+     },
+     "required": [
+      "fixture_id",
+      "kickoff_at",
+      "opponent",
+      "venue",
+      "goals_for",
+      "goals_against",
+      "result"
+     ],
+     "title": "FormMatch",
+     "type": "object"
+    },
+    "H2HMatch": {
+     "description": "One earlier meeting of the two sides, as it was played and as it weighs for this match (``fbi.intel.h2h``, plan F6).",
+     "properties": {
+      "after_extra_time": {
+       "description": "True when it went to extra time (and, maybe, penalties).",
+       "title": "After Extra Time",
+       "type": "boolean"
+      },
+      "away": {
+       "title": "Away",
+       "type": "string"
+      },
+      "competition": {
+       "title": "Competition",
+       "type": "string"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "goals_away": {
+       "title": "Goals Away",
+       "type": "integer"
+      },
+      "goals_home": {
+       "description": "The final score, extra time in, shoot-out out.",
+       "title": "Goals Home",
+       "type": "integer"
+      },
+      "home": {
+       "title": "Home",
+       "type": "string"
+      },
+      "home_side_was": {
+       "description": "Where this match's HOME side played that day: at home, away or on neutral ground.",
+       "enum": [
+        "home",
+        "away",
+        "neutral"
+       ],
+       "title": "Home Side Was",
+       "type": "string"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "penalties_away": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Penalties Away"
+      },
+      "penalties_home": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The shoot-out, when there was one.",
+       "title": "Penalties Home"
+      },
+      "regulation_goals_away": {
+       "title": "Regulation Goals Away",
+       "type": "integer"
+      },
+      "regulation_goals_home": {
+       "description": "The 90 minutes: what the head-to-head record counts and what every market settles on.",
+       "title": "Regulation Goals Home",
+       "type": "integer"
+      },
+      "scope": {
+       "description": "What kind of meeting it was, against the match: the same competition, the same kind of competition (league, cup, continental, international), another official one, or a friendly.",
+       "enum": [
+        "same_competition",
+        "same_kind",
+        "other_official",
+        "friendly"
+       ],
+       "title": "Scope",
+       "type": "string"
+      },
+      "weight": {
+       "description": "What the meeting weighs for this match, 0 to 1: fixed round numbers for how recent it is, the competition, the ground and the coaches. A description, not a fitted signal.",
+       "title": "Weight",
+       "type": "number"
+      }
+     },
+     "required": [
+      "fixture_id",
+      "kickoff_at",
+      "competition",
+      "home",
+      "away",
+      "goals_home",
+      "goals_away",
+      "regulation_goals_home",
+      "regulation_goals_away",
+      "after_extra_time",
+      "scope",
+      "home_side_was",
+      "weight"
+     ],
+     "title": "H2HMatch",
+     "type": "object"
+    },
+    "LineupPlayer": {
+     "properties": {
+      "grid": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Grid"
+      },
+      "name": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Name"
+      },
+      "number": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Number"
+      },
+      "photo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The provider's photo URL as stored (profiles); null when none is stored - pages show initials, never a guessed URL.",
+       "title": "Photo Url"
+      },
+      "player_id": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Player Id"
+      },
+      "position": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Position"
+      },
+      "provider_player_id": {
+       "title": "Provider Player Id",
+       "type": "integer"
+      },
+      "season": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/MatchPlayerSeason"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "His season in this competition, as the provider aggregates it; null when not stored."
+      },
+      "starter": {
+       "title": "Starter",
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "provider_player_id",
+      "player_id",
+      "name",
+      "number",
+      "position",
+      "grid",
+      "starter"
+     ],
+     "title": "LineupPlayer",
+     "type": "object"
+    },
+    "LiveMove": {
+     "properties": {
+      "captured_at": {
+       "format": "date-time",
+       "title": "Captured At",
+       "type": "string"
+      },
+      "delta": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Delta"
+      },
+      "kind": {
+       "enum": [
+        "moved",
+        "withdrawn",
+        "offered",
+        "suspended",
+        "available",
+        "other"
+       ],
+       "title": "Kind",
+       "type": "string"
+      },
+      "line": {
+       "title": "Line",
+       "type": "string"
+      },
+      "market_key": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Market Key"
+      },
+      "minute": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Minute"
+      },
+      "odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Odds"
+      },
+      "previous_odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Previous Odds"
+      },
+      "score": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Score"
+      },
+      "selection": {
+       "title": "Selection",
+       "type": "string"
+      }
+     },
+     "required": [
+      "market_key",
+      "selection",
+      "line",
+      "captured_at",
+      "minute",
+      "score",
+      "previous_odds",
+      "odds",
+      "delta",
+      "kind"
+     ],
+     "title": "LiveMove",
+     "type": "object"
+    },
+    "LiveQuote": {
+     "properties": {
+      "captured_at": {
+       "format": "date-time",
+       "title": "Captured At",
+       "type": "string"
+      },
+      "line": {
+       "title": "Line",
+       "type": "string"
+      },
+      "main_line": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Main Line"
+      },
+      "market_key": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Null for an in-play bet with no market of ours; its price is kept.",
+       "title": "Market Key"
+      },
+      "minute": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Minute"
+      },
+      "odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Null: the selection was withdrawn at this instant.",
+       "title": "Odds"
+      },
+      "provider_bet_id": {
+       "title": "Provider Bet Id",
+       "type": "integer"
+      },
+      "selection": {
+       "title": "Selection",
+       "type": "string"
+      },
+      "suspended": {
+       "title": "Suspended",
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "market_key",
+      "provider_bet_id",
+      "selection",
+      "line",
+      "odds",
+      "suspended",
+      "main_line",
+      "captured_at",
+      "minute"
+     ],
+     "title": "LiveQuote",
+     "type": "object"
+    },
+    "LiveState": {
+     "properties": {
+      "elapsed": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Elapsed"
+      },
+      "extra": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Extra"
+      },
+      "goals_away": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Goals Away"
+      },
+      "goals_home": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Goals Home"
+      },
+      "observed_at": {
+       "format": "date-time",
+       "title": "Observed At",
+       "type": "string"
+      },
+      "source": {
+       "enum": [
+        "fixture_feed",
+        "odds_feed"
+       ],
+       "title": "Source",
+       "type": "string"
+      },
+      "status": {
+       "title": "Status",
+       "type": "string"
+      }
+     },
+     "required": [
+      "observed_at",
+      "source",
+      "status",
+      "elapsed",
+      "extra",
+      "goals_home",
+      "goals_away"
+     ],
+     "title": "LiveState",
+     "type": "object"
+    },
+    "MatchCenter": {
+     "properties": {
+      "absences": {
+       "$ref": "#/components/schemas/Section_list_Absence__"
+      },
+      "events": {
+       "$ref": "#/components/schemas/Section_list_MatchEvent__"
+      },
+      "facts": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/MatchFacts"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "form": {
+       "$ref": "#/components/schemas/Section_list_TeamForm__"
+      },
+      "h2h": {
+       "$ref": "#/components/schemas/Section_list_H2HMatch__"
+      },
+      "lineups": {
+       "$ref": "#/components/schemas/Section_list_TeamLineup__"
+      },
+      "live_movement": {
+       "$ref": "#/components/schemas/Section_list_LiveMove__"
+      },
+      "live_odds": {
+       "$ref": "#/components/schemas/Section_list_LiveQuote__"
+      },
+      "live_states": {
+       "$ref": "#/components/schemas/Section_list_LiveState__"
+      },
+      "players": {
+       "$ref": "#/components/schemas/Section_list_PlayerLine__"
+      },
+      "stage": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/MatchStage"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The stage of the competition; null when the competition season has not been built (F2)."
+      },
+      "standings": {
+       "$ref": "#/components/schemas/Section_list_StandingLine__"
+      },
+      "standings_tables": {
+       "description": "The whole table(s) the two rows come from (one, or each team's group).",
+       "items": {
+        "$ref": "#/components/schemas/StandingsTable"
+       },
+       "title": "Standings Tables",
+       "type": "array"
+      },
+      "statistics": {
+       "$ref": "#/components/schemas/Section_list_TeamStatLine__"
+      },
+      "status_group": {
+       "title": "Status Group",
+       "type": "string"
+      },
+      "tie": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/MatchTie"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The tie this match is a leg of; null for a league match."
+      }
+     },
+     "required": [
+      "fixture_id",
+      "status_group",
+      "statistics",
+      "events",
+      "lineups",
+      "players",
+      "absences",
+      "standings",
+      "form",
+      "h2h",
+      "live_states",
+      "live_odds",
+      "live_movement"
+     ],
+     "title": "MatchCenter",
+     "type": "object"
+    },
+    "MatchEvent": {
+     "properties": {
+      "assist": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Assist"
+      },
+      "comments": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Comments"
+      },
+      "detail": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Detail"
+      },
+      "extra_minute": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Extra Minute"
+      },
+      "minute": {
+       "title": "Minute",
+       "type": "integer"
+      },
+      "player": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Player"
+      },
+      "player_id": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "core.players id when the provider's player is known to us.",
+       "title": "Player Id"
+      },
+      "seq": {
+       "title": "Seq",
+       "type": "integer"
+      },
+      "side": {
+       "anyOf": [
+        {
+         "enum": [
+          "home",
+          "away"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Side"
+      },
+      "type": {
+       "title": "Type",
+       "type": "string"
+      }
+     },
+     "required": [
+      "seq",
+      "minute",
+      "extra_minute",
+      "side",
+      "player",
+      "player_id",
+      "assist",
+      "type",
+      "detail",
+      "comments"
+     ],
+     "title": "MatchEvent",
+     "type": "object"
+    },
+    "MatchFacts": {
+     "description": "What the fixture's payloads say beyond the score (core.fixture_facts, newest change).",
+     "properties": {
+      "away_winner": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Away Winner"
+      },
+      "first_half_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "First Half At"
+      },
+      "home_winner": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The provider's winner flag: the side that won, or went through on penalties; null for a draw or a match not over.",
+       "title": "Home Winner"
+      },
+      "normalizer_version": {
+       "title": "Normalizer Version",
+       "type": "string"
+      },
+      "observed_at": {
+       "format": "date-time",
+       "title": "Observed At",
+       "type": "string"
+      },
+      "payload_hash": {
+       "title": "Payload Hash",
+       "type": "string"
+      },
+      "referee": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The referee's name: the person's (the same man under every spelling the provider used) when the identity is up to date with the newest observation, otherwise the string the provider wrote.",
+       "title": "Referee"
+      },
+      "referee_country": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Referee Country"
+      },
+      "referee_id": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The referee's id in `core.referees`; null when the identity has not caught up with the newest observation (the string is shown as it came) or nobody is named.",
+       "title": "Referee Id"
+      },
+      "second_half_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Second Half At"
+      }
+     },
+     "required": [
+      "referee",
+      "referee_country",
+      "home_winner",
+      "away_winner",
+      "first_half_at",
+      "second_half_at",
+      "observed_at",
+      "payload_hash",
+      "normalizer_version"
+     ],
+     "title": "MatchFacts",
+     "type": "object"
+    },
+    "MatchPlayerSeason": {
+     "description": "The provider's season aggregate of a player for this match's team in this competition (labelled as the\nprovider's). ``team_matches``: the team's finished matches in it before kick-off, to read the share.",
+     "properties": {
+      "appearances": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Appearances"
+      },
+      "assists": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Assists"
+      },
+      "goals": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Goals"
+      },
+      "lineups": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Matches started.",
+       "title": "Lineups"
+      },
+      "minutes": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Minutes"
+      },
+      "observed_at": {
+       "format": "date-time",
+       "title": "Observed At",
+       "type": "string"
+      },
+      "red_cards": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Red Cards"
+      },
+      "team_matches": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Team Matches"
+      },
+      "yellow_cards": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Yellow Cards"
+      }
+     },
+     "required": [
+      "appearances",
+      "lineups",
+      "minutes",
+      "goals",
+      "assists",
+      "yellow_cards",
+      "red_cards",
+      "observed_at"
+     ],
+     "title": "MatchPlayerSeason",
+     "type": "object"
+    },
+    "MatchStage": {
+     "description": "The stage of the competition this match belongs to: what the words of its round label say, read by the one\nclassifier of round labels (``fbi.competitions.stages``) and stored in ``core.competition_stages``.",
+     "properties": {
+      "is_replay": {
+       "default": false,
+       "description": "The stage is the replay of a round whose first match was level.",
+       "title": "Is Replay",
+       "type": "boolean"
+      },
+      "kind": {
+       "enum": [
+        "league",
+        "knockout",
+        "qualifying",
+        "friendly",
+        "unresolved"
+       ],
+       "title": "Kind",
+       "type": "string"
+      },
+      "name": {
+       "description": "The round without its match day: 'Round of 16', 'Regular Season', 'Group Stage'.",
+       "title": "Name",
+       "type": "string"
+      },
+      "ordinal": {
+       "description": "Its place among the competition season's stages, in order of play.",
+       "title": "Ordinal",
+       "type": "integer"
+      },
+      "role": {
+       "enum": [
+        "league",
+        "group",
+        "knockout",
+        "playoff",
+        "final",
+        "third_place",
+        "placement",
+        "qualifying",
+        "friendly",
+        "unresolved"
+       ],
+       "title": "Role",
+       "type": "string"
+      },
+      "round_key": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "'round_of_16', 'quarter_final', 'final'...: null when the round has no standard name.",
+       "title": "Round Key"
+      }
+     },
+     "required": [
+      "name",
+      "kind",
+      "role",
+      "ordinal"
+     ],
+     "title": "MatchStage",
+     "type": "object"
+    },
+    "MatchTie": {
+     "description": "The tie this match belongs to (``core.ties``), told as of now: the legs that have a final result, and who went\nthrough only when the tie is decided and this match is over. Scores are from THIS match's home and away.",
+     "properties": {
+      "aggregate": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/TieScore"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Every leg with a final result, this one included once it is over; null when none applies or the sum would mislead (a leg decided at the table, a shoot-out that contradicts the goals)."
+      },
+      "aggregate_before": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/TieScore"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The legs played before this one, summed (extra time in, shoot-out out); null when there are none or no aggregate applies (a single match, a replay, a series)."
+      },
+      "format": {
+       "enum": [
+        "single",
+        "two_legged",
+        "replay",
+        "series"
+       ],
+       "title": "Format",
+       "type": "string"
+      },
+      "leg": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "This match's place in the tie (1 = first), when known.",
+       "title": "Leg"
+      },
+      "legs": {
+       "description": "Matches the format plans (2 for a two-legged tie).",
+       "title": "Legs",
+       "type": "integer"
+      },
+      "legs_list": {
+       "items": {
+        "$ref": "#/components/schemas/TieLeg"
+       },
+       "title": "Legs List",
+       "type": "array"
+      },
+      "outcome": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/TieOutcome"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "played": {
+       "description": "Matches of the tie with a final result.",
+       "title": "Played",
+       "type": "integer"
+      },
+      "state": {
+       "enum": [
+        "scheduled",
+        "in_progress",
+        "decided",
+        "unresolved"
+       ],
+       "title": "State",
+       "type": "string"
+      }
+     },
+     "required": [
+      "format",
+      "state",
+      "leg",
+      "legs",
+      "played",
+      "aggregate_before",
+      "aggregate"
+     ],
+     "title": "MatchTie",
+     "type": "object"
+    },
+    "Meta": {
+     "properties": {
+      "api_version": {
+       "const": "v1",
+       "default": "v1",
+       "title": "Api Version",
+       "type": "string"
+      },
+      "count": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Count"
+      },
+      "data_as_of": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Newest timestamp among the rows the answer was built from.",
+       "title": "Data As Of"
+      },
+      "generated_at": {
+       "format": "date-time",
+       "title": "Generated At",
+       "type": "string"
+      },
+      "limit": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Limit"
+      },
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
+      "offset": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Offset"
+      },
+      "total": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Total"
+      }
+     },
+     "title": "Meta",
+     "type": "object"
+    },
+    "PlayerLine": {
+     "properties": {
+      "assists": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Assists"
+      },
+      "dribbled_past": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Dribbled Past"
+      },
+      "goals": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Goals"
+      },
+      "key_passes": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Key Passes"
+      },
+      "minutes": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Minutes"
+      },
+      "name": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Name"
+      },
+      "offsides": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Offsides"
+      },
+      "passes": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Passes"
+      },
+      "penalties_committed": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Penalties Committed"
+      },
+      "penalties_saved": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Penalties Saved"
+      },
+      "penalties_won": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Penalties Won"
+      },
+      "photo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Photo Url"
+      },
+      "player_id": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Player Id"
+      },
+      "position_played": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The position he played in this match (G, D, M, F), from the provider's player statistics.",
+       "title": "Position Played"
+      },
+      "provider_player_id": {
+       "title": "Provider Player Id",
+       "type": "integer"
+      },
+      "rating": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Rating"
+      },
+      "red_cards": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Red Cards"
+      },
+      "saves": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Saves"
+      },
+      "shots": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots"
+      },
+      "shots_on": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots On"
+      },
+      "side": {
+       "enum": [
+        "home",
+        "away"
+       ],
+       "title": "Side",
+       "type": "string"
+      },
+      "substitute": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Substitute"
+      },
+      "tackles": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Tackles"
+      },
+      "yellow_cards": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Yellow Cards"
+      }
+     },
+     "required": [
+      "provider_player_id",
+      "player_id",
+      "side",
+      "name",
+      "minutes",
+      "rating",
+      "goals",
+      "assists",
+      "shots",
+      "shots_on",
+      "passes",
+      "key_passes",
+      "tackles",
+      "yellow_cards",
+      "red_cards",
+      "saves",
+      "substitute"
+     ],
+     "title": "PlayerLine",
+     "type": "object"
+    },
+    "Section_list_Absence__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/Absence"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[Absence]]",
+     "type": "object"
+    },
+    "Section_list_H2HMatch__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/H2HMatch"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[H2HMatch]]",
+     "type": "object"
+    },
+    "Section_list_LiveMove__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/LiveMove"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[LiveMove]]",
+     "type": "object"
+    },
+    "Section_list_LiveQuote__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/LiveQuote"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[LiveQuote]]",
+     "type": "object"
+    },
+    "Section_list_LiveState__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/LiveState"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[LiveState]]",
+     "type": "object"
+    },
+    "Section_list_MatchEvent__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/MatchEvent"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[MatchEvent]]",
+     "type": "object"
+    },
+    "Section_list_PlayerLine__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/PlayerLine"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[PlayerLine]]",
+     "type": "object"
+    },
+    "Section_list_StandingLine__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/StandingLine"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[StandingLine]]",
+     "type": "object"
+    },
+    "Section_list_TeamForm__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/TeamForm"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[TeamForm]]",
+     "type": "object"
+    },
+    "Section_list_TeamLineup__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/TeamLineup"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[TeamLineup]]",
+     "type": "object"
+    },
+    "Section_list_TeamStatLine__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/TeamStatLine"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[TeamStatLine]]",
+     "type": "object"
+    },
+    "StandingLine": {
+     "properties": {
+      "before_kickoff": {
+       "description": "False when the only table we hold was taken after kick-off.",
+       "title": "Before Kickoff",
+       "type": "boolean"
+      },
+      "checked_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "When the provider was last asked for this table.",
+       "title": "Checked At"
+      },
+      "description": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The provider's zone: 'Promotion - Champions League'.",
+       "title": "Description"
+      },
+      "draws": {
+       "title": "Draws",
+       "type": "integer"
+      },
+      "fixture_stage": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "This match's stage, from its round label.",
+       "title": "Fixture Stage"
+      },
+      "form": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Form"
+      },
+      "goals_against": {
+       "title": "Goals Against",
+       "type": "integer"
+      },
+      "goals_for": {
+       "title": "Goals For",
+       "type": "integer"
+      },
+      "group": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Group"
+      },
+      "losses": {
+       "title": "Losses",
+       "type": "integer"
+      },
+      "phase": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Its phase ('Clausura'); null for an aggregate.",
+       "title": "Phase"
+      },
+      "played": {
+       "title": "Played",
+       "type": "integer"
+      },
+      "points": {
+       "title": "Points",
+       "type": "integer"
+      },
+      "rank": {
+       "title": "Rank",
+       "type": "integer"
+      },
+      "selection": {
+       "anyOf": [
+        {
+         "enum": [
+          "fixture_stage",
+          "phase_league_stage",
+          "previous_stage"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "fixture_stage: the match's own stage's table; phase_league_stage: a knock-out round shown with its phase's league table; previous_stage: a knock-out round shown with the last league stage before it (a single-phase season).",
+       "title": "Selection"
+      },
+      "side": {
+       "enum": [
+        "home",
+        "away"
+       ],
+       "title": "Side",
+       "type": "string"
+      },
+      "snapshot_at": {
+       "format": "date-time",
+       "title": "Snapshot At",
+       "type": "string"
+      },
+      "stage": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The stage the table ranks ('Clausura', 'Group Stage').",
+       "title": "Stage"
+      },
+      "table": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The provider's label of the table this row comes from ('Clausura', 'Apertura - Group A', 'Eastern Conference'). A season can hold several tables; a row is never taken from another phase's table.",
+       "title": "Table"
+      },
+      "table_key": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The stored table key (the label, '#n' for the n-th table under a repeated label).",
+       "title": "Table Key"
+      },
+      "table_kind": {
+       "anyOf": [
+        {
+         "enum": [
+          "full",
+          "group",
+          "ranking",
+          "aggregate",
+          "other"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "full, group, ranking, aggregate or other (fbi.competitions.phases).",
+       "title": "Table Kind"
+      },
+      "table_reason": {
+       "default": "no_table",
+       "description": "no_match_yet, reflects_last_match, provider_not_updated or not_asked_since (fbi.truth.freshness.table_reason).",
+       "title": "Table Reason",
+       "type": "string"
+      },
+      "table_state": {
+       "default": "UNKNOWN",
+       "description": "Whether the table reflects every match played before this one.",
+       "enum": [
+        "FRESH",
+        "STALE",
+        "UNKNOWN",
+        "UNAVAILABLE"
+       ],
+       "title": "Table State",
+       "type": "string"
+      },
+      "table_teams": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Teams in that table.",
+       "title": "Table Teams"
+      },
+      "team": {
+       "title": "Team",
+       "type": "string"
+      },
+      "team_logo": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Team Logo"
+      },
+      "wins": {
+       "title": "Wins",
+       "type": "integer"
+      }
+     },
+     "required": [
+      "side",
+      "team",
+      "rank",
+      "points",
+      "played",
+      "wins",
+      "draws",
+      "losses",
+      "goals_for",
+      "goals_against",
+      "form",
+      "group",
+      "snapshot_at",
+      "before_kickoff"
+     ],
+     "title": "StandingLine",
+     "type": "object"
+    },
+    "StandingsTable": {
+     "description": "One table of the provider's answer, kept apart from the season's other tables.",
+     "properties": {
+      "agreement": {
+       "description": "Rows whose games played agree with the stage's finished matches ('20/20').",
+       "title": "Agreement",
+       "type": "string"
+      },
+      "is_current": {
+       "title": "Is Current",
+       "type": "boolean"
+      },
+      "key": {
+       "title": "Key",
+       "type": "string"
+      },
+      "kind": {
+       "enum": [
+        "full",
+        "group",
+        "ranking",
+        "aggregate",
+        "other"
+       ],
+       "title": "Kind",
+       "type": "string"
+      },
+      "label": {
+       "title": "Label",
+       "type": "string"
+      },
+      "method": {
+       "description": "How its stage was found: its label names it, its games played agree with the stage's matches, the season's only league stage, or not found.",
+       "enum": [
+        "label",
+        "games",
+        "single",
+        "unmapped"
+       ],
+       "title": "Method",
+       "type": "string"
+      },
+      "note": {
+       "default": "",
+       "title": "Note",
+       "type": "string"
+      },
+      "phase": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Phase"
+      },
+      "rows": {
+       "items": {
+        "$ref": "#/components/schemas/TableRow"
+       },
+       "title": "Rows",
+       "type": "array"
+      },
+      "stage": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The stage it ranks; null for an aggregate or an unmapped table.",
+       "title": "Stage"
+      },
+      "stages": {
+       "description": "Every stage it counts (several for an aggregate).",
+       "items": {
+        "type": "string"
+       },
+       "title": "Stages",
+       "type": "array"
+      }
+     },
+     "required": [
+      "key",
+      "label",
+      "stage",
+      "stages",
+      "phase",
+      "kind",
+      "method",
+      "agreement",
+      "is_current",
+      "rows"
+     ],
+     "title": "StandingsTable",
+     "type": "object"
+    },
+    "TableRow": {
+     "properties": {
+      "away": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/TableSplit"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "description": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The provider's zone ('Promotion - Libertadores').",
+       "title": "Description"
+      },
+      "draws": {
+       "title": "Draws",
+       "type": "integer"
+      },
+      "form": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Form"
+      },
+      "goals_against": {
+       "title": "Goals Against",
+       "type": "integer"
+      },
+      "goals_diff": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Goals Diff"
+      },
+      "goals_for": {
+       "title": "Goals For",
+       "type": "integer"
+      },
+      "group": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Group"
+      },
+      "home": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/TableSplit"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "losses": {
+       "title": "Losses",
+       "type": "integer"
+      },
+      "played": {
+       "title": "Played",
+       "type": "integer"
+      },
+      "points": {
+       "title": "Points",
+       "type": "integer"
+      },
+      "rank": {
+       "title": "Rank",
+       "type": "integer"
+      },
+      "team": {
+       "title": "Team",
+       "type": "string"
+      },
+      "team_id": {
+       "title": "Team Id",
+       "type": "integer"
+      },
+      "team_logo": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Team Logo"
+      },
+      "wins": {
+       "title": "Wins",
+       "type": "integer"
+      },
+      "zone_status": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The provider's move since the last round: same, up, down.",
+       "title": "Zone Status"
+      }
+     },
+     "required": [
+      "rank",
+      "team_id",
+      "team",
+      "played",
+      "wins",
+      "draws",
+      "losses",
+      "goals_for",
+      "goals_against",
+      "points",
+      "form",
+      "group"
+     ],
+     "title": "TableRow",
+     "type": "object"
+    },
+    "TableSplit": {
+     "description": "A row's home or away games (the provider gives no points for them: 3 a win, 1 a draw).",
+     "properties": {
+      "draws": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Draws"
+      },
+      "goals_against": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Goals Against"
+      },
+      "goals_for": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Goals For"
+      },
+      "losses": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Losses"
+      },
+      "played": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Played"
+      },
+      "wins": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Wins"
+      }
+     },
+     "required": [
+      "played",
+      "wins",
+      "draws",
+      "losses",
+      "goals_for",
+      "goals_against"
+     ],
+     "title": "TableSplit",
+     "type": "object"
+    },
+    "TeamForm": {
+     "properties": {
+      "matches": {
+       "items": {
+        "$ref": "#/components/schemas/FormMatch"
+       },
+       "title": "Matches",
+       "type": "array"
+      },
+      "side": {
+       "enum": [
+        "home",
+        "away"
+       ],
+       "title": "Side",
+       "type": "string"
+      },
+      "team": {
+       "title": "Team",
+       "type": "string"
+      }
+     },
+     "required": [
+      "side",
+      "team",
+      "matches"
+     ],
+     "title": "TeamForm",
+     "type": "object"
+    },
+    "TeamLineup": {
+     "properties": {
+      "coach": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Coach"
+      },
+      "coach_photo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The coach's photo URL as /coachs stored it; null when none is stored.",
+       "title": "Coach Photo Url"
+      },
+      "coach_provider_id": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Coach Provider Id"
+      },
+      "formation": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Formation"
+      },
+      "players": {
+       "items": {
+        "$ref": "#/components/schemas/LineupPlayer"
+       },
+       "title": "Players",
+       "type": "array"
+      },
+      "side": {
+       "enum": [
+        "home",
+        "away"
+       ],
+       "title": "Side",
+       "type": "string"
+      }
+     },
+     "required": [
+      "side",
+      "formation",
+      "coach",
+      "players"
+     ],
+     "title": "TeamLineup",
+     "type": "object"
+    },
+    "TeamStatLine": {
+     "properties": {
+      "corners": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Corners"
+      },
+      "expected_goals": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Expected Goals"
+      },
+      "fetched_at": {
+       "format": "date-time",
+       "title": "Fetched At",
+       "type": "string"
+      },
+      "fouls": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Fouls"
+      },
+      "offsides": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Offsides"
+      },
+      "passes": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Passes"
+      },
+      "passes_accurate": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Passes Accurate"
+      },
+      "possession_pct": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Possession Pct"
+      },
+      "red_cards": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Red Cards"
+      },
+      "saves": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Saves"
+      },
+      "shots": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots"
+      },
+      "shots_blocked": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots Blocked"
+      },
+      "shots_inside_box": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots Inside Box"
+      },
+      "shots_off_target": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots Off Target"
+      },
+      "shots_on_target": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots On Target"
+      },
+      "shots_outside_box": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shots Outside Box"
+      },
+      "side": {
+       "enum": [
+        "home",
+        "away"
+       ],
+       "title": "Side",
+       "type": "string"
+      },
+      "source": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Where these numbers come from: api-football, or football-data.co.uk when it is the only source.",
+       "title": "Source"
+      },
+      "yellow_cards": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Yellow Cards"
+      }
+     },
+     "required": [
+      "side",
+      "shots",
+      "shots_on_target",
+      "shots_off_target",
+      "shots_blocked",
+      "shots_inside_box",
+      "shots_outside_box",
+      "corners",
+      "fouls",
+      "offsides",
+      "yellow_cards",
+      "red_cards",
+      "saves",
+      "possession_pct",
+      "passes",
+      "passes_accurate",
+      "expected_goals",
+      "fetched_at"
+     ],
+     "title": "TeamStatLine",
+     "type": "object"
+    },
+    "TieLeg": {
+     "description": "One match of the tie, as it was played (home and away of THAT match).",
+     "properties": {
+      "away": {
+       "title": "Away",
+       "type": "string"
+      },
+      "extra_time": {
+       "default": false,
+       "title": "Extra Time",
+       "type": "boolean"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "goals_away": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Goals Away"
+      },
+      "goals_home": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Final goals, extra time included; null when no result is stored.",
+       "title": "Goals Home"
+      },
+      "home": {
+       "title": "Home",
+       "type": "string"
+      },
+      "is_this": {
+       "description": "This is the match the page is about.",
+       "title": "Is This",
+       "type": "boolean"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "leg": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Leg"
+      },
+      "shootout_away": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shootout Away"
+      },
+      "shootout_home": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Shootout Home"
+      },
+      "status": {
+       "title": "Status",
+       "type": "string"
+      },
+      "status_group": {
+       "title": "Status Group",
+       "type": "string"
+      }
+     },
+     "required": [
+      "fixture_id",
+      "leg",
+      "kickoff_at",
+      "home",
+      "away",
+      "status",
+      "status_group",
+      "goals_home",
+      "goals_away",
+      "is_this"
+     ],
+     "title": "TieLeg",
+     "type": "object"
+    },
+    "TieOutcome": {
+     "description": "Who went through, said only once THIS match is over and the tie is decided.",
+     "properties": {
+      "contradicted": {
+       "default": false,
+       "description": "The provider's winner flag disagrees with the goals (an administrative decision): the sporting winner is shown.",
+       "title": "Contradicted",
+       "type": "boolean"
+      },
+      "decided_by": {
+       "enum": [
+        "normal_time",
+        "extra_time",
+        "penalties",
+        "aggregate",
+        "away_goals",
+        "tiebreak",
+        "walkover",
+        "series"
+       ],
+       "title": "Decided By",
+       "type": "string"
+      },
+      "shootout": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/TieScore"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The shoot-out, when the tie was decided by it."
+      },
+      "winner": {
+       "description": "'home' or 'away' of THIS match.",
+       "enum": [
+        "home",
+        "away"
+       ],
+       "title": "Winner",
+       "type": "string"
+      }
+     },
+     "required": [
+      "winner",
+      "decided_by"
+     ],
+     "title": "TieOutcome",
+     "type": "object"
+    },
+    "TieScore": {
+     "properties": {
+      "away": {
+       "description": "Goals of the side that visits in THIS match.",
+       "title": "Away",
+       "type": "integer"
+      },
+      "home": {
+       "description": "Goals of the side that hosts THIS match.",
+       "title": "Home",
+       "type": "integer"
+      }
+     },
+     "required": [
+      "home",
+      "away"
+     ],
+     "title": "TieScore",
+     "type": "object"
+    }
+   }
+  },
+  "GET /api/v1/me/history": {
+   "answer": {
+    "$ref": "#/components/schemas/Envelope_History_"
+   },
+   "parameters": [
+    {
+     "in": "query",
+     "name": "period",
+     "required": false,
+     "schema": {
+      "default": "7d",
+      "enum": [
+       "today",
+       "7d",
+       "30d",
+       "all"
+      ],
+      "title": "Period",
+      "type": "string"
+     }
+    },
+    {
+     "in": "query",
+     "name": "preview",
+     "required": false,
+     "schema": {
+      "anyOf": [
+       {
+        "const": "shadow",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "SUPER_ADMIN only: the evaluation records built from shadow picks. Never a user's view.",
+      "title": "Preview"
+     }
+    }
+   ],
+   "schemas": {
+    "DataStatus": {
+     "enum": [
+      "ok",
+      "empty",
+      "insufficient_data",
+      "not_available"
+     ],
+     "title": "DataStatus",
+     "type": "string"
+    },
+    "Envelope_History_": {
+     "properties": {
+      "data": {
+       "$ref": "#/components/schemas/History"
+      },
+      "meta": {
+       "$ref": "#/components/schemas/Meta"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Envelope[History]",
+     "type": "object"
+    },
+    "History": {
+     "properties": {
+      "evaluation_mode": {
+       "title": "Evaluation Mode",
+       "type": "boolean"
+      },
+      "groups": {
+       "additionalProperties": {
+        "$ref": "#/components/schemas/HistoryGroup"
+       },
+       "description": "predigol_picks, my_picks, predigol_parlays, my_parlays",
+       "title": "Groups",
+       "type": "object"
+      },
+      "period": {
+       "enum": [
+        "today",
+        "7d",
+        "30d",
+        "all"
+       ],
+       "title": "Period",
+       "type": "string"
+      },
+      "since": {
+       "format": "date-time",
+       "title": "Since",
+       "type": "string"
+      },
+      "timezone": {
+       "title": "Timezone",
+       "type": "string"
+      },
+      "until": {
+       "format": "date-time",
+       "title": "Until",
+       "type": "string"
+      }
+     },
+     "required": [
+      "period",
+      "timezone",
+      "since",
+      "until",
+      "evaluation_mode",
+      "groups"
+     ],
+     "title": "History",
+     "type": "object"
+    },
+    "HistoryGroup": {
+     "properties": {
+      "hit_rate": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Hit Rate"
+      },
+      "lost": {
+       "title": "Lost",
+       "type": "integer"
+      },
+      "pending": {
+       "title": "Pending",
+       "type": "integer"
+      },
+      "profit_units": {
+       "title": "Profit Units",
+       "type": "string"
+      },
+      "push": {
+       "title": "Push",
+       "type": "integer"
+      },
+      "roi": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Roi"
+      },
+      "staked_units": {
+       "title": "Staked Units",
+       "type": "string"
+      },
+      "total": {
+       "title": "Total",
+       "type": "integer"
+      },
+      "void": {
+       "title": "Void",
+       "type": "integer"
+      },
+      "won": {
+       "title": "Won",
+       "type": "integer"
+      }
+     },
+     "required": [
+      "total",
+      "pending",
+      "won",
+      "lost",
+      "push",
+      "void",
+      "hit_rate",
+      "staked_units",
+      "profit_units",
+      "roi"
+     ],
+     "title": "HistoryGroup",
+     "type": "object"
+    },
+    "Meta": {
+     "properties": {
+      "api_version": {
+       "const": "v1",
+       "default": "v1",
+       "title": "Api Version",
+       "type": "string"
+      },
+      "count": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Count"
+      },
+      "data_as_of": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Newest timestamp among the rows the answer was built from.",
+       "title": "Data As Of"
+      },
+      "generated_at": {
+       "format": "date-time",
+       "title": "Generated At",
+       "type": "string"
+      },
+      "limit": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Limit"
+      },
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
+      "offset": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Offset"
+      },
+      "total": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Total"
+      }
+     },
+     "title": "Meta",
+     "type": "object"
+    }
+   }
+  },
+  "GET /api/v1/odds/best": {
+   "answer": {
+    "$ref": "#/components/schemas/Envelope_BestOddsBoard_"
+   },
+   "parameters": [
+    {
+     "in": "query",
+     "name": "hours",
+     "required": false,
+     "schema": {
+      "default": 48,
+      "maximum": 168,
+      "minimum": 1,
+      "title": "Hours",
+      "type": "integer"
+     }
+    },
+    {
+     "in": "query",
+     "name": "market",
+     "required": false,
+     "schema": {
+      "anyOf": [
+       {
+        "maxLength": 10,
+        "pattern": "^(1X2|OU|BTTS|AH|DC)$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Market"
+     }
+    },
+    {
+     "in": "query",
+     "name": "picks",
+     "required": false,
+     "schema": {
+      "default": true,
+      "description": "False: prices only, no picks in ``value`` - the Cuotas page compares every selection's best price with its fair price, whatever the picks (REVIEW 11 Oct 2026, point 17).",
+      "title": "Picks",
+      "type": "boolean"
+     }
+    },
+    {
+     "in": "query",
+     "name": "preview",
+     "required": false,
+     "schema": {
+      "anyOf": [
+       {
+        "const": "shadow",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "SUPER_ADMIN only: show unqualified shadow picks laid out as the product would. Never a user's view.",
+      "title": "Preview"
+     }
+    }
+   ],
+   "schemas": {
+    "BestHighlight": {
+     "properties": {
+      "away": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "competition": {
+       "$ref": "#/components/schemas/CompetitionBadge"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "home": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "line": {
+       "title": "Line",
+       "type": "string"
+      },
+      "market_key": {
+       "title": "Market Key",
+       "type": "string"
+      },
+      "price": {
+       "$ref": "#/components/schemas/BestPrice"
+      }
+     },
+     "required": [
+      "fixture_id",
+      "kickoff_at",
+      "competition",
+      "home",
+      "away",
+      "market_key",
+      "line",
+      "price"
+     ],
+     "title": "BestHighlight",
+     "type": "object"
+    },
+    "BestMarket": {
+     "properties": {
+      "line": {
+       "title": "Line",
+       "type": "string"
+      },
+      "market_key": {
+       "title": "Market Key",
+       "type": "string"
+      },
+      "selections": {
+       "items": {
+        "$ref": "#/components/schemas/BestPrice"
+       },
+       "title": "Selections",
+       "type": "array"
+      }
+     },
+     "required": [
+      "market_key",
+      "line",
+      "selections"
+     ],
+     "title": "BestMarket",
+     "type": "object"
+    },
+    "BestOddsBoard": {
+     "properties": {
+      "fixtures": {
+       "items": {
+        "$ref": "#/components/schemas/BestOddsFixture"
+       },
+       "title": "Fixtures",
+       "type": "array"
+      },
+      "highlights": {
+       "description": "Best prices furthest above the market's fair price.",
+       "items": {
+        "$ref": "#/components/schemas/BestHighlight"
+       },
+       "title": "Highlights",
+       "type": "array"
+      },
+      "markets": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Markets",
+       "type": "array"
+      },
+      "source": {
+       "enum": [
+        "qualified",
+        "shadow_preview"
+       ],
+       "title": "Source",
+       "type": "string"
+      },
+      "value": {
+       "description": "Picks with value now (qualified only, unless a shadow preview).",
+       "items": {
+        "$ref": "#/components/schemas/PickCard"
+       },
+       "title": "Value",
+       "type": "array"
+      },
+      "window_hours": {
+       "title": "Window Hours",
+       "type": "integer"
+      }
+     },
+     "required": [
+      "window_hours",
+      "markets",
+      "fixtures",
+      "highlights",
+      "value",
+      "source"
+     ],
+     "title": "BestOddsBoard",
+     "type": "object"
+    },
+    "BestOddsFixture": {
+     "properties": {
+      "as_of": {
+       "format": "date-time",
+       "title": "As Of",
+       "type": "string"
+      },
+      "away": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "competition": {
+       "$ref": "#/components/schemas/CompetitionBadge"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "home": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "markets": {
+       "items": {
+        "$ref": "#/components/schemas/BestMarket"
+       },
+       "title": "Markets",
+       "type": "array"
+      }
+     },
+     "required": [
+      "fixture_id",
+      "kickoff_at",
+      "competition",
+      "home",
+      "away",
+      "markets",
+      "as_of"
+     ],
+     "title": "BestOddsFixture",
+     "type": "object"
+    },
+    "BestPrice": {
+     "properties": {
+      "as_of": {
+       "format": "date-time",
+       "title": "As Of",
+       "type": "string"
+      },
+      "best_odds": {
+       "title": "Best Odds",
+       "type": "string"
+      },
+      "bookmaker": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Bookmaker"
+      },
+      "fair_odds": {
+       "title": "Fair Odds",
+       "type": "string"
+      },
+      "n_bookmakers": {
+       "title": "N Bookmakers",
+       "type": "integer"
+      },
+      "outlier": {
+       "default": false,
+       "description": "More than 25% above fair: very likely one book's stale or mistaken quote. Shown, flagged, never highlighted.",
+       "title": "Outlier",
+       "type": "boolean"
+      },
+      "p_fair": {
+       "title": "P Fair",
+       "type": "string"
+      },
+      "price_edge": {
+       "description": "best_odds * p_fair - 1: how far the best price sits above fair.",
+       "title": "Price Edge",
+       "type": "string"
+      },
+      "selection": {
+       "title": "Selection",
+       "type": "string"
+      }
+     },
+     "required": [
+      "selection",
+      "best_odds",
+      "bookmaker",
+      "p_fair",
+      "fair_odds",
+      "price_edge",
+      "n_bookmakers",
+      "as_of"
+     ],
+     "title": "BestPrice",
+     "type": "object"
+    },
+    "CompetitionBadge": {
+     "properties": {
+      "country": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Country"
+      },
+      "flag_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Flag Url"
+      },
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "logo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Logo Url"
+      },
+      "name": {
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "name",
+      "country",
+      "logo_url",
+      "flag_url"
+     ],
+     "title": "CompetitionBadge",
+     "type": "object"
+    },
+    "DataStatus": {
+     "enum": [
+      "ok",
+      "empty",
+      "insufficient_data",
+      "not_available"
+     ],
+     "title": "DataStatus",
+     "type": "string"
+    },
+    "Envelope_BestOddsBoard_": {
+     "properties": {
+      "data": {
+       "$ref": "#/components/schemas/BestOddsBoard"
+      },
+      "meta": {
+       "$ref": "#/components/schemas/Meta"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Envelope[BestOddsBoard]",
+     "type": "object"
+    },
+    "Meta": {
+     "properties": {
+      "api_version": {
+       "const": "v1",
+       "default": "v1",
+       "title": "Api Version",
+       "type": "string"
+      },
+      "count": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Count"
+      },
+      "data_as_of": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Newest timestamp among the rows the answer was built from.",
+       "title": "Data As Of"
+      },
+      "generated_at": {
+       "format": "date-time",
+       "title": "Generated At",
+       "type": "string"
+      },
+      "limit": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Limit"
+      },
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
+      "offset": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Offset"
+      },
+      "total": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Total"
+      }
+     },
+     "title": "Meta",
+     "type": "object"
+    },
+    "PickCard": {
+     "description": "A pick as the product shows it, re-priced at the best price available now.",
+     "properties": {
+      "away": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "best_odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Best price available now (latest de-vigged consensus).",
+       "title": "Best Odds"
+      },
+      "bookmaker": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Bookmaker"
+      },
+      "competition": {
+       "$ref": "#/components/schemas/CompetitionBadge"
+      },
+      "edge": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "p_model - p_market.",
+       "title": "Edge"
+      },
+      "ev": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Expected value per unit at best_odds. Null without a price.",
+       "title": "Ev"
+      },
+      "fair_odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "1 / p_market: the market's fair price.",
+       "title": "Fair Odds"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "freshness": {
+       "enum": [
+        "fresh",
+        "aging",
+        "stale",
+        "none"
+       ],
+       "title": "Freshness",
+       "type": "string"
+      },
+      "home": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "line": {
+       "title": "Line",
+       "type": "string"
+      },
+      "market_key": {
+       "title": "Market Key",
+       "type": "string"
+      },
+      "model": {
+       "title": "Model",
+       "type": "string"
+      },
+      "p_market": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "De-vigged market consensus probability (Shin).",
+       "title": "P Market"
+      },
+      "p_model": {
+       "description": "Model probability, conditional on the bet being settled.",
+       "title": "P Model",
+       "type": "string"
+      },
+      "pick_id": {
+       "title": "Pick Id",
+       "type": "integer"
+      },
+      "price_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Price At"
+      },
+      "selection": {
+       "title": "Selection",
+       "type": "string"
+      },
+      "status": {
+       "enum": [
+        "shadow",
+        "qualified",
+        "published"
+       ],
+       "title": "Status",
+       "type": "string"
+      },
+      "value_now": {
+       "description": "Passes the value gate at this moment.",
+       "title": "Value Now",
+       "type": "boolean"
+      },
+      "value_reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The gate it fails, as a code, when value_now is false.",
+       "title": "Value Reason"
+      }
+     },
+     "required": [
+      "pick_id",
+      "fixture_id",
+      "kickoff_at",
+      "competition",
+      "home",
+      "away",
+      "market_key",
+      "selection",
+      "line",
+      "status",
+      "model",
+      "best_odds",
+      "bookmaker",
+      "price_at",
+      "p_model",
+      "p_market",
+      "fair_odds",
+      "edge",
+      "ev",
+      "freshness",
+      "value_now",
+      "value_reason"
+     ],
+     "title": "PickCard",
+     "type": "object"
+    },
+    "TeamBadge": {
+     "properties": {
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "logo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Logo Url"
+      },
+      "name": {
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "name",
+      "logo_url"
+     ],
+     "title": "TeamBadge",
+     "type": "object"
+    }
+   }
+  },
+  "GET /api/v1/picks": {
+   "answer": {
+    "$ref": "#/components/schemas/Envelope_PicksBoard_"
+   },
+   "parameters": [
+    {
+     "in": "query",
+     "name": "competition_id",
+     "required": false,
+     "schema": {
+      "anyOf": [
+       {
+        "minimum": 1,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Id"
+     }
+    },
+    {
+     "in": "query",
+     "name": "fixture_id",
+     "required": false,
+     "schema": {
+      "anyOf": [
+       {
+        "minimum": 1,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fixture Id"
+     }
+    },
+    {
+     "in": "query",
+     "name": "hours",
+     "required": false,
+     "schema": {
+      "default": 72,
+      "maximum": 168,
+      "minimum": 1,
+      "title": "Hours",
+      "type": "integer"
+     }
+    },
+    {
+     "in": "query",
+     "name": "market",
+     "required": false,
+     "schema": {
+      "anyOf": [
+       {
+        "maxLength": 10,
+        "pattern": "^(1X2|OU|BTTS|AH|DC)$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Market"
+     }
+    },
+    {
+     "in": "query",
+     "name": "max_odds",
+     "required": false,
+     "schema": {
+      "anyOf": [
+       {
+        "maximum": 1000.0,
+        "minimum": 1.0,
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Odds"
+     }
+    },
+    {
+     "in": "query",
+     "name": "min_odds",
+     "required": false,
+     "schema": {
+      "anyOf": [
+       {
+        "maximum": 1000.0,
+        "minimum": 1.0,
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Min Odds"
+     }
+    },
+    {
+     "in": "query",
+     "name": "preview",
+     "required": false,
+     "schema": {
+      "anyOf": [
+       {
+        "const": "shadow",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "SUPER_ADMIN only: show unqualified shadow picks laid out as the product would. Never a user's view.",
+      "title": "Preview"
+     }
+    }
+   ],
+   "schemas": {
+    "CompetitionBadge": {
+     "properties": {
+      "country": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Country"
+      },
+      "flag_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Flag Url"
+      },
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "logo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Logo Url"
+      },
+      "name": {
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "name",
+      "country",
+      "logo_url",
+      "flag_url"
+     ],
+     "title": "CompetitionBadge",
+     "type": "object"
+    },
+    "DataStatus": {
+     "enum": [
+      "ok",
+      "empty",
+      "insufficient_data",
+      "not_available"
+     ],
+     "title": "DataStatus",
+     "type": "string"
+    },
+    "Envelope_PicksBoard_": {
+     "properties": {
+      "data": {
+       "$ref": "#/components/schemas/PicksBoard"
+      },
+      "meta": {
+       "$ref": "#/components/schemas/Meta"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Envelope[PicksBoard]",
+     "type": "object"
+    },
+    "Meta": {
+     "properties": {
+      "api_version": {
+       "const": "v1",
+       "default": "v1",
+       "title": "Api Version",
+       "type": "string"
+      },
+      "count": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Count"
+      },
+      "data_as_of": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Newest timestamp among the rows the answer was built from.",
+       "title": "Data As Of"
+      },
+      "generated_at": {
+       "format": "date-time",
+       "title": "Generated At",
+       "type": "string"
+      },
+      "limit": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Limit"
+      },
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
+      "offset": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Offset"
+      },
+      "total": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Total"
+      }
+     },
+     "title": "Meta",
+     "type": "object"
+    },
+    "PickCard": {
+     "description": "A pick as the product shows it, re-priced at the best price available now.",
+     "properties": {
+      "away": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "best_odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Best price available now (latest de-vigged consensus).",
+       "title": "Best Odds"
+      },
+      "bookmaker": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Bookmaker"
+      },
+      "competition": {
+       "$ref": "#/components/schemas/CompetitionBadge"
+      },
+      "edge": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "p_model - p_market.",
+       "title": "Edge"
+      },
+      "ev": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Expected value per unit at best_odds. Null without a price.",
+       "title": "Ev"
+      },
+      "fair_odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "1 / p_market: the market's fair price.",
+       "title": "Fair Odds"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "freshness": {
+       "enum": [
+        "fresh",
+        "aging",
+        "stale",
+        "none"
+       ],
+       "title": "Freshness",
+       "type": "string"
+      },
+      "home": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "line": {
+       "title": "Line",
+       "type": "string"
+      },
+      "market_key": {
+       "title": "Market Key",
+       "type": "string"
+      },
+      "model": {
+       "title": "Model",
+       "type": "string"
+      },
+      "p_market": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "De-vigged market consensus probability (Shin).",
+       "title": "P Market"
+      },
+      "p_model": {
+       "description": "Model probability, conditional on the bet being settled.",
+       "title": "P Model",
+       "type": "string"
+      },
+      "pick_id": {
+       "title": "Pick Id",
+       "type": "integer"
+      },
+      "price_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Price At"
+      },
+      "selection": {
+       "title": "Selection",
+       "type": "string"
+      },
+      "status": {
+       "enum": [
+        "shadow",
+        "qualified",
+        "published"
+       ],
+       "title": "Status",
+       "type": "string"
+      },
+      "value_now": {
+       "description": "Passes the value gate at this moment.",
+       "title": "Value Now",
+       "type": "boolean"
+      },
+      "value_reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The gate it fails, as a code, when value_now is false.",
+       "title": "Value Reason"
+      }
+     },
+     "required": [
+      "pick_id",
+      "fixture_id",
+      "kickoff_at",
+      "competition",
+      "home",
+      "away",
+      "market_key",
+      "selection",
+      "line",
+      "status",
+      "model",
+      "best_odds",
+      "bookmaker",
+      "price_at",
+      "p_model",
+      "p_market",
+      "fair_odds",
+      "edge",
+      "ev",
+      "freshness",
+      "value_now",
+      "value_reason"
+     ],
+     "title": "PickCard",
+     "type": "object"
+    },
+    "PicksBoard": {
+     "properties": {
+      "competitions": {
+       "items": {
+        "$ref": "#/components/schemas/CompetitionBadge"
+       },
+       "title": "Competitions",
+       "type": "array"
+      },
+      "markets": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Markets",
+       "type": "array"
+      },
+      "picks": {
+       "description": "Every pick in the window, best value first.",
+       "items": {
+        "$ref": "#/components/schemas/PickCard"
+       },
+       "title": "Picks",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Why there is nothing to show, as a code.",
+       "title": "Reason"
+      },
+      "source": {
+       "enum": [
+        "qualified",
+        "shadow_preview"
+       ],
+       "title": "Source",
+       "type": "string"
+      },
+      "started": {
+       "description": "Pre-match picks whose match has kicked off (today's, or every one of ``fixture_id``): they stay, with the price taken, the state of the match and the result.",
+       "items": {
+        "$ref": "#/components/schemas/StartedPick"
+       },
+       "title": "Started",
+       "type": "array"
+      },
+      "top": {
+       "description": "Up to five picks with value now, kicking off in the next 24 hours.",
+       "items": {
+        "$ref": "#/components/schemas/PickCard"
+       },
+       "title": "Top",
+       "type": "array"
+      },
+      "window_hours": {
+       "title": "Window Hours",
+       "type": "integer"
+      }
+     },
+     "required": [
+      "source",
+      "top",
+      "picks",
+      "competitions",
+      "markets",
+      "window_hours",
+      "reason"
+     ],
+     "title": "PicksBoard",
+     "type": "object"
+    },
+    "StartedPick": {
+     "description": "A pre-match pick whose match has kicked off: the record as it was taken before kick-off, never re-priced.\n\nOne per selection: the last pick made before kick-off (``evaluations`` says how many there were). What\nhappened since - the state, the minute, the score, the result, the line value - is shown beside it, never\nmixed into it.",
+     "properties": {
+      "away": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "bookmaker": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Bookmaker"
+      },
+      "competition": {
+       "$ref": "#/components/schemas/CompetitionBadge"
+      },
+      "created_at": {
+       "description": "When the pick was made.",
+       "format": "date-time",
+       "title": "Created At",
+       "type": "string"
+      },
+      "edge": {
+       "title": "Edge",
+       "type": "string"
+      },
+      "ev": {
+       "description": "Expected value per unit at the price taken.",
+       "title": "Ev",
+       "type": "string"
+      },
+      "evaluations": {
+       "description": "Picks made on this selection before kick-off; this is the last.",
+       "title": "Evaluations",
+       "type": "integer"
+      },
+      "fair_odds": {
+       "title": "Fair Odds",
+       "type": "string"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "home": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "line": {
+       "title": "Line",
+       "type": "string"
+      },
+      "line_value": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "odds_taken / near_close_odds - 1: value against a near-close price, not validated as the close.",
+       "title": "Line Value"
+      },
+      "live_away": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Live Away"
+      },
+      "live_extra": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Live Extra"
+      },
+      "live_home": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Live Home"
+      },
+      "live_minute": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Live Minute"
+      },
+      "market_key": {
+       "title": "Market Key",
+       "type": "string"
+      },
+      "model": {
+       "title": "Model",
+       "type": "string"
+      },
+      "near_close_odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The same bookmaker's last pre-match price.",
+       "title": "Near Close Odds"
+      },
+      "odds_taken": {
+       "title": "Odds Taken",
+       "type": "string"
+      },
+      "p_market": {
+       "description": "De-vigged market probability when it was taken.",
+       "title": "P Market",
+       "type": "string"
+      },
+      "p_model": {
+       "title": "P Model",
+       "type": "string"
+      },
+      "phase": {
+       "enum": [
+        "scheduled",
+        "live",
+        "suspended",
+        "finished",
+        "postponed",
+        "cancelled",
+        "abandoned",
+        "not_played",
+        "awaiting",
+        "unknown"
+       ],
+       "title": "Phase",
+       "type": "string"
+      },
+      "pick_id": {
+       "title": "Pick Id",
+       "type": "integer"
+      },
+      "profit_units": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Profit Units"
+      },
+      "result_status": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "win, loss, push, void, half_win, half_loss, pending, or None before the match ends.",
+       "title": "Result Status"
+      },
+      "review_reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Why it waits for a human, if it does.",
+       "title": "Review Reason"
+      },
+      "score_away": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Score Away"
+      },
+      "score_home": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The 90-minute score, once the match has one.",
+       "title": "Score Home"
+      },
+      "selection": {
+       "title": "Selection",
+       "type": "string"
+      },
+      "settled_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Settled At"
+      },
+      "status": {
+       "description": "What it was before kick-off.",
+       "enum": [
+        "shadow",
+        "qualified",
+        "published"
+       ],
+       "title": "Status",
+       "type": "string"
+      },
+      "status_short": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Status Short"
+      },
+      "taken_at": {
+       "description": "When the price was captured.",
+       "format": "date-time",
+       "title": "Taken At",
+       "type": "string"
+      }
+     },
+     "required": [
+      "pick_id",
+      "fixture_id",
+      "kickoff_at",
+      "competition",
+      "home",
+      "away",
+      "market_key",
+      "selection",
+      "line",
+      "status",
+      "model",
+      "created_at",
+      "taken_at",
+      "odds_taken",
+      "bookmaker",
+      "p_model",
+      "p_market",
+      "fair_odds",
+      "edge",
+      "ev",
+      "evaluations",
+      "phase",
+      "status_short"
+     ],
+     "title": "StartedPick",
+     "type": "object"
+    },
+    "TeamBadge": {
+     "properties": {
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "logo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Logo Url"
+      },
+      "name": {
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "name",
+      "logo_url"
+     ],
+     "title": "TeamBadge",
+     "type": "object"
+    }
+   }
+  }
+ }
+}

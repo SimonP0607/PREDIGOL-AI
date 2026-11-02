@@ -1,9 +1,8 @@
 /**
  * DEMO DATA — research layer: model comparison, backtests, performance shapes,
- * search index and analyst answers. No result here is a real measurement.
+ * search index. No result here is a real measurement.
  */
 import type {
-  AnalystAnswer,
   BacktestConfig,
   BacktestResult,
   BreakdownRow,
@@ -14,8 +13,6 @@ import type {
   SeriesPoint,
 } from "@/types/domain";
 import { competitions, fixtures, models, teams, calibrationBins } from "./data";
-
-const day = "2026-09-04";
 
 export function modelComparison(fixtureId: string): ModelComparisonRow[] {
   const skew = fixtureId.charCodeAt(fixtureId.length - 1) % 5;
@@ -203,174 +200,4 @@ export const searchIndex: SearchHit[] = [
     sublabel: `${m.family} · ${m.version}`,
     fixtureId: null,
   })),
-];
-
-export const suggestedQueries = [
-  "Why does this candidate have positive EV?",
-  "Compare Poisson vs market baseline.",
-  "Which competitions have poor data coverage?",
-  "Show models with worsening calibration.",
-  "Find matches with strong model-market disagreement.",
-];
-
-export const analystAnswers: AnalystAnswer[] = [
-  {
-    id: "ans-ev",
-    question: "Why does this candidate have positive EV?",
-    answer:
-      "The candidate Brentford vs Newcastle · Over 2.5 shows positive expected value because the model probability (54.8%) exceeds the overround-removed consensus (52.1%) while the best available price (1.95 at Book D) is above the fair price implied by the model (1.82). Expected value is the product of model probability and available price minus one; it is not a claim about profitability and the model producing it is in shadow status.",
-    evidence: [
-      "Model probability 54.8% comes from Poisson v0.4.2-rc1 on feature snapshot feat-2026.08.3.",
-      "Market probability 52.1% is derived from 14 bookmakers after overround removal.",
-      "Best price 1.95 was captured at 12:03 UTC and is 7.1% above the fair price.",
-      "Sample for this model is 6,320 scored fixtures, below the validation threshold.",
-    ],
-    metrics: [
-      { label: "Model probability", value: "54.8%", source: "prediction pred_01J9F3K2QF8N" },
-      { label: "Market probability", value: "52.1%", source: "odds snapshot odds_snap_44812" },
-      { label: "Edge", value: "+2.70%", source: "derived" },
-      { label: "Expected value", value: "+6.86%", source: "derived" },
-    ],
-    relatedFixtures: [{ id: "fx-10241", label: "Brentford vs Newcastle" }],
-    relatedModels: [{ id: "poisson", label: "Poisson (bivariate)" }],
-    sources: [
-      {
-        label: "Prediction pred_01J9F3K2QF8N",
-        kind: "model",
-        reference: "poisson v0.4.2-rc1",
-        capturedAt: `${day}T12:04:11Z`,
-        fixtureId: "fx-10241",
-      },
-      {
-        label: "Odds snapshot odds_snap_44812",
-        kind: "odds",
-        reference: "14 bookmakers · overround 1.043",
-        capturedAt: `${day}T12:03:50Z`,
-        fixtureId: "fx-10241",
-      },
-    ],
-    generatedAt: `${day}T12:10:00Z`,
-  },
-  {
-    id: "ans-poisson",
-    question: "Compare Poisson vs market baseline.",
-    answer:
-      "On the current evaluation window the market baseline is still ahead. Poisson scores a Brier of 0.2074 against 0.2012 for the baseline, and log loss 0.9903 against 0.9741. Calibration error is 1.48% versus 0.61%. Poisson has not beaten the reference on any competition split, so it remains in shadow status.",
-    evidence: [
-      "Poisson sample: 6,320 scored fixtures. Baseline sample: 12,480.",
-      "Difference versus market on Brier: -0.62% (worse).",
-      "No economic evaluation exists: historical prices per selection are not reconstructed.",
-    ],
-    metrics: [
-      { label: "Brier (Poisson)", value: "0.2074", source: "model evaluation 2026-09-03" },
-      { label: "Brier (baseline)", value: "0.2012", source: "model evaluation 2026-09-03" },
-      { label: "Calibration error", value: "1.48%", source: "calibration bins" },
-      { label: "ROI", value: "—", source: "no validated economic history" },
-    ],
-    relatedFixtures: [],
-    relatedModels: [
-      { id: "poisson", label: "Poisson (bivariate)" },
-      { id: "market-baseline", label: "Market Baseline" },
-    ],
-    sources: [
-      {
-        label: "Model evaluation run",
-        kind: "model",
-        reference: "eval_2026_09_03",
-        capturedAt: "2026-09-03T22:10:00Z",
-        fixtureId: null,
-      },
-    ],
-    generatedAt: `${day}T12:11:00Z`,
-  },
-  {
-    id: "ans-coverage",
-    question: "Which competitions have poor data coverage?",
-    answer:
-      "Ligue 1 is the worst partition: odds coverage 33%, markets coverage 34%, 3 bookmakers, and the last successful capture was at 09:12 UTC — beyond the stale threshold, caused by a failed odds sweep. Serie A is degraded at 67% odds coverage with 6 bookmakers and an aging capture. Every other tracked competition is healthy.",
-    evidence: [
-      "Ligue 1 odds sweep aborted after 3 provider rate-limit responses.",
-      "Serie A is missing 2 fixtures relative to the competition calendar.",
-      "Analytical layer partition for Ligue 1 has not been refreshed since 09:12 UTC.",
-    ],
-    metrics: [
-      { label: "Ligue 1 odds coverage", value: "33.0%", source: "coverage table" },
-      { label: "Serie A odds coverage", value: "67.0%", source: "coverage table" },
-      { label: "Failed jobs", value: "1", source: "data quality" },
-    ],
-    relatedFixtures: [{ id: "fx-10245", label: "Lille vs Rennes" }],
-    relatedModels: [],
-    sources: [
-      {
-        label: "Coverage snapshot",
-        kind: "data-quality",
-        reference: "coverage_2026_09_04",
-        capturedAt: `${day}T12:03:00Z`,
-        fixtureId: null,
-      },
-    ],
-    generatedAt: `${day}T12:12:00Z`,
-  },
-  {
-    id: "ans-calibration",
-    question: "Show models with worsening calibration.",
-    answer:
-      "Dixon-Coles has the highest calibration error at 3.34% on a sample of 1,980 fixtures, which is too small to separate drift from noise. Elo sits at 2.12% and has degraded in the long-odds region. Poisson is the closest shadow model to the baseline at 1.48%. Logistic Regression, Gradient Boosting and the Ensemble are not trained, so no calibration exists.",
-    evidence: [
-      "Calibration is measured as mean absolute gap between predicted probability and observed frequency per decile.",
-      "Long-odds deciles carry the largest gaps for every goal-process model.",
-      "No model has crossed the validation gate.",
-    ],
-    metrics: [
-      { label: "Dixon-Coles calibration error", value: "3.34%", source: "model evaluation" },
-      { label: "Elo calibration error", value: "2.12%", source: "model evaluation" },
-      { label: "Poisson calibration error", value: "1.48%", source: "model evaluation" },
-    ],
-    relatedFixtures: [],
-    relatedModels: [
-      { id: "dixon-coles", label: "Dixon-Coles" },
-      { id: "elo", label: "Elo" },
-    ],
-    sources: [
-      {
-        label: "Calibration bins",
-        kind: "model",
-        reference: "eval_2026_09_03",
-        capturedAt: "2026-09-03T22:10:00Z",
-        fixtureId: null,
-      },
-    ],
-    generatedAt: `${day}T12:13:00Z`,
-  },
-  {
-    id: "ans-disagreement",
-    question: "Find matches with strong model-market disagreement.",
-    answer:
-      "Three fixtures show a model-market gap above 2 percentage points on the tracked markets: Brentford vs Newcastle (Over 2.5, +2.70%), Real Betis vs Osasuna (BTTS Yes, +2.60%) and Atalanta vs Torino (Away, +2.40%). The Atalanta fixture should be treated with caution: market coverage is 61%, the capture is stale and the producing model is in research status.",
-    evidence: [
-      "Disagreement is computed against the overround-removed consensus, not against a single bookmaker.",
-      "Atalanta vs Torino has only 6 tracked bookmakers.",
-      "None of these fixtures has a near-close snapshot yet.",
-    ],
-    metrics: [
-      { label: "Largest gap", value: "+2.70%", source: "value scanner" },
-      { label: "Fixtures above threshold", value: "3", source: "value scanner" },
-    ],
-    relatedFixtures: [
-      { id: "fx-10241", label: "Brentford vs Newcastle" },
-      { id: "fx-10242", label: "Real Betis vs Osasuna" },
-      { id: "fx-10243", label: "Atalanta vs Torino" },
-    ],
-    relatedModels: [{ id: "poisson", label: "Poisson (bivariate)" }],
-    sources: [
-      {
-        label: "Value scanner sweep",
-        kind: "odds",
-        reference: "scan_2026_09_04_1203",
-        capturedAt: `${day}T12:03:00Z`,
-        fixtureId: null,
-      },
-    ],
-    generatedAt: `${day}T12:14:00Z`,
-  },
 ];

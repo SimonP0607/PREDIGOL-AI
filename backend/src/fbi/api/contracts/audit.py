@@ -27,7 +27,7 @@ class AuditItem(Contract):
                                   "facts | player_extras | "
                                   "feature_set | model_version | experiment | prediction | odds_snapshots | "
                                   "near_close | historical_odds | market_baseline | consensus | pick_candidate | "
-                                  "pick | settlement")
+                                  "pick | settlement | result_revision | resettlement")
     ref: str = Field(description="Identifier within its kind: a hash, an id, or a composite key.")
     at: datetime | None = None
     source: str | None = None

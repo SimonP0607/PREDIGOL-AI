@@ -1,8 +1,10 @@
 {
   "labels": {
     "predigolPick": "PrediGol Pick",
-    "savedByMe": "Guardado por mí",
-    "result": "Resultado"
+    "result": "Resultado",
+    "mine": "Tu selección",
+    "mineParlay": "Tu parlay",
+    "savedPredigol": "Guardado"
   },
   "status": {
     "PENDING": "Pendiente",
@@ -20,7 +22,19 @@
     "WON": "Ganada",
     "LOST": "Perdida",
     "VOID": "Anulada",
-    "PARTIAL_VOID": "Ganada con anuladas"
+    "PARTIAL_VOID": "Ganada con parciales o anuladas"
+  },
+  "correction": {
+    "title": "Resultado corregido",
+    "help": "Este registro cambió de resultado después de liquidarse: se liquidó de nuevo y aquí queda lo que decía antes.",
+    "step": "{when} · {from} → {to}",
+    "cause": {
+      "result_corrected": "El proveedor de datos corrigió el marcador del partido y este registro se liquidó de nuevo.",
+      "status_changed": "Cambió el estado del partido y este registro se liquidó de nuevo.",
+      "audit": "Una revisión comprobó que el resultado guardado no correspondía al marcador del partido y se liquidó de nuevo."
+    },
+    "leg": "Selección {n}",
+    "more": "y {n} más"
   },
   "stage": {
     "T-24h": "Elegido ≈24 h antes",
@@ -77,11 +91,7 @@
     "save": "Guardar",
     "saved": "Guardado",
     "unsave": "Quitar de mis picks",
-    "addToParlay": "Agregar a mi parlay",
-    "inParlay": "En tu parlay",
-    "removeFromParlay": "Quitar del parlay",
     "started": "El partido ya empezó",
-    "choose": "¿Qué quieres hacer con esta cuota?",
     "priceAt": "{odds} en {bookmaker}",
     "quarterLine": "Las líneas de cuarto (.25 / .75) no van en un parlay"
   },
@@ -190,7 +200,10 @@
       "risk": "Riesgo",
       "independent": "Sin selecciones dependientes entre sí.",
       "dependent": "Hay selecciones que pueden depender entre sí."
-    }
+    },
+    "undo": "Deshacer",
+    "undoRemoved": "Selección quitada.",
+    "undoCleared": "Slip vaciado."
   },
   "mine": {
     "title": "Mis picks",
@@ -214,9 +227,9 @@
       "pending": "Pendientes",
       "record": "{won} G · {lost} P",
       "hitRate": "Acierto",
-      "roi": "ROI",
+      "roi": "Rentabilidad (ROI)",
       "empty": "Nada en este periodo.",
-      "note": "Por el día de inicio del partido en tu zona horaria ({zone}). Beneficio en unidades de una apuesta, a la cuota registrada. PrediGol no maneja dinero ni acepta apuestas."
+      "note": "Por el día de inicio del partido en tu zona horaria: {zone}. Beneficio en unidades de una apuesta, a la cuota registrada. PrediGol no maneja dinero ni acepta apuestas."
     },
     "picks": {
       "title": "Picks guardados",
@@ -234,7 +247,19 @@
       "cancel": "Cancelar",
       "savedAt": "Guardado {when}",
       "remove": "Quitar",
-      "settlesAt": "Se liquida a tu cuota si la indicas; si no, a la mostrada."
+      "settlesAt": "Se liquida a tu cuota si la indicas; si no, a la mostrada.",
+      "count": "{shown} de {total}",
+      "more": "Ver más",
+      "confirmRemove": {
+        "title": "¿Quitar este pick de tu lista?",
+        "body": "Deja de verse aquí y de contar en tus resultados. No se puede deshacer.",
+        "ok": "Quitar"
+      },
+      "confirmClearOdds": {
+        "title": "¿Borrar tu cuota?",
+        "body": "El pick vuelve a contar con la cuota que te mostramos al guardarlo.",
+        "ok": "Borrar"
+      }
     },
     "parlays": {
       "title": "Mis parlays",
@@ -243,7 +268,14 @@
       "build": "Armar un parlay",
       "remove": "Eliminar",
       "createdAt": "Creado {when}",
-      "unnamed": "Parlay sin nombre"
+      "unnamed": "Parlay sin nombre",
+      "more": "Ver más",
+      "count": "{shown} de {total}",
+      "confirmRemove": {
+        "title": "¿Borrar este parlay?",
+        "body": "Deja de verse en tu lista y no se puede deshacer.",
+        "ok": "Borrar"
+      }
     }
   },
   "ai": {
@@ -297,7 +329,8 @@
     "yesterday": "Ayer",
     "jump": "Ir a",
     "summary": "{count} picks · {won} ganados · {lost} perdidos · {open} por jugar o en juego",
-    "units": "{units} u"
+    "units": "{units} u",
+    "zone": "Días de picks en {zone}"
   },
   "outcome": {
     "playing": "En juego",
@@ -324,7 +357,7 @@
       "record": "{won} G · {lost} P · {void} nulos",
       "hitRate": "Acierto",
       "profit": "Ganancia",
-      "roi": "Rentabilidad",
+      "roi": "Rentabilidad (ROI)",
       "avgOdds": "Cuota media",
       "avgOddsWon": "En aciertos: {odds}",
       "bestStreak": "Mejor racha",
@@ -377,7 +410,8 @@
       "current": "Actual",
       "bestWin": "Mejor",
       "worstLoss": "Peor"
-    }
+    },
+    "loading": "Leyendo tus registros: {loaded} de {total}…"
   },
   "funnel": {
     "label": "Cómo llega un pick del día",
@@ -392,5 +426,7 @@
       "selection": "Selección (máx. 5)"
     },
     "help": "Cada paso es un filtro: si no hay picks que los pasen todos, el día se queda con menos o sin ninguno. Los picks del día se eligen cuando PrediGol Intelligence ya leyó el día: su pasada de cada partido, con búsqueda de noticias."
-  }
+  },
+  "roiSample_one": "sobre {n} liquidado",
+  "roiSample_other": "sobre {n} liquidados"
 }

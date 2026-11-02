@@ -80,7 +80,8 @@ def test_only_the_current_absences_before_the_match_every_one_after(db: psycopg.
 
 def test_empty_sections_carry_a_code() -> None:
     from fbi.api.services.center import _sec
-    s = _sec([], "nothing", code="no_h2h")
+    none: list[str] = []
+    s = _sec(none, "nothing", code="no_h2h")
     assert (s.status.value, s.reason, s.code) == ("empty", "nothing", "no_h2h")
 
 

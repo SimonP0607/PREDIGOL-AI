@@ -7,7 +7,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { statePath } from "./accounts";
-import { assertClean, getJson, note, settle, watch } from "./support";
+import { L, assertClean, getJson, note, sendJson, settle, watch } from "./support";
 
 const PAGES = [
   "/home",
@@ -119,10 +119,14 @@ async function smallTargets(page: Page, scope = "body"): Promise<string[]> {
   }, scope);
 }
 
-test("every product page fits every phone width, with the whole tab bar", async ({ page }) => {
-  test.setTimeout(420_000);
-  const w = watch(page);
-  for (const width of PHONES) {
+// One test per width, not one loop over all of them: a browser tab that loads forty-odd pages in a row keeps
+// every page's decoded fonts and images in shared memory until it closes (about 300 MB per page load in headless
+// Chromium) and a small CI machine or a laptop's sandbox ends with "page crashed". A test per width gets a fresh
+// tab, tells which width broke, and runs on its own worker.
+for (const width of PHONES) {
+  test(`every product page fits a ${width} px phone, with the whole tab bar`, async ({ page }) => {
+    test.setTimeout(150_000);
+    const w = watch(page);
     await page.setViewportSize({ width, height: width < 360 ? 568 : 844 });
     for (const path of PAGES) {
       await page.goto(path);
@@ -131,8 +135,8 @@ test("every product page fits every phone width, with the whole tab bar", async 
       expect(await cutLabels(page), `tab bar labels cut at ${width} px on ${path}`).toEqual([]);
       await assertClean(page, w);
     }
-  }
-});
+  });
+}
 
 test("team names are whole in the cards of a 320 px phone", async ({ page }) => {
   test.setTimeout(180_000);
@@ -157,26 +161,27 @@ test("team names are whole in the cards of a 320 px phone", async ({ page }) => 
   }
 });
 
-test("tablets in both orientations and a phone held sideways", async ({ page }) => {
-  test.setTimeout(300_000);
-  const w = watch(page);
-  const sizes: Array<[number, number]> = [
-    [768, 1024],
-    [820, 1180],
-    [1024, 1366],
-    [1024, 768],
-    [1180, 820],
-    [844, 390],
-  ];
-  for (const [width, height] of sizes) {
+// Tablets in both orientations and a phone held sideways - a test per screen, for the reason given above.
+const SCREENS: Array<[number, number]> = [
+  [768, 1024],
+  [820, 1180],
+  [1024, 1366],
+  [1024, 768],
+  [1180, 820],
+  [844, 390],
+];
+for (const [width, height] of SCREENS) {
+  test(`every product page fits a ${width} x ${height} screen`, async ({ page }) => {
+    test.setTimeout(150_000);
+    const w = watch(page);
     await page.setViewportSize({ width, height });
     for (const path of PAGES) {
       await page.goto(path);
       await settle(page);
       await assertClean(page, w);
     }
-  }
-});
+  });
+}
 
 test("a phone held sideways gives the screen to the content", async ({ page }) => {
   const w = watch(page);
@@ -194,10 +199,11 @@ test("a phone held sideways gives the screen to the content", async ({ page }) =
   await assertClean(page, w);
 });
 
-test("controls answer a finger: 44 x 44 px on a touch phone", async ({ page }) => {
-  test.setTimeout(240_000);
-  const w = watch(page);
-  for (const width of [320, 390]) {
+// The five phone widths of the plan (UX, section 36; A1 asks 44 px on all of them).
+for (const width of [320, 360, 390, 412, 430]) {
+  test(`controls answer a finger: 44 x 44 px on a ${width} px touch phone`, async ({ page }) => {
+    test.setTimeout(150_000);
+    const w = watch(page);
     await page.setViewportSize({ width, height: 844 });
     for (const path of PAGES) {
       await page.goto(path);
@@ -207,13 +213,14 @@ test("controls answer a finger: 44 x 44 px on a touch phone", async ({ page }) =
       );
       await assertClean(page, w);
     }
-  }
-});
+  });
+}
 
-test("form fields never make iOS zoom in (16 px at least on a touch screen)", async ({ page }) => {
-  test.setTimeout(180_000);
-  const w = watch(page);
-  for (const path of ["/matches", "/odds", "/parlays", "/picks", "/profile"]) {
+for (const path of ["/matches", "/odds", "/parlays", "/picks", "/profile"]) {
+  test(`form fields never make iOS zoom in (16 px at least on a touch screen): ${path}`, async ({
+    page,
+  }) => {
+    const w = watch(page);
     await page.goto(path);
     await settle(page);
     const small = await page.$$eval("input, select, textarea", (els) =>
@@ -230,8 +237,8 @@ test("form fields never make iOS zoom in (16 px at least on a touch screen)", as
     );
     expect(small, `form fields under 16 px on ${path}`).toEqual([]);
     await assertClean(page, w);
-  }
-});
+  });
+}
 
 test("the Match Center's tab strip says when more tabs wait beyond the edge", async ({ page }) => {
   const w = watch(page);
@@ -302,6 +309,164 @@ test("the parlay slip under a thumb: a 44 px close, nothing on its title, its fi
   await expect(sheet.getByTestId("slip-save")).toBeInViewport();
   await sheet.getByTestId("slip-clear").click();
   await expect(sheet.getByTestId("slip-leg")).toHaveCount(0);
+  // Plan UX, A1 (F53): the cleared slip can be put back for five seconds - its button within a thumb's reach -
+  // and then the offer goes.
+  await expect(sheet.getByTestId("slip-undo")).toBeVisible();
+  expect(
+    await smallTargets(page, '[data-testid="slip-undo"]'),
+    "the undo button under 44 px",
+  ).toEqual([]);
+  await sheet.getByTestId("slip-undo-button").click();
+  await expect(sheet.getByTestId("slip-leg")).toHaveCount(2);
+  await sheet.getByTestId("slip-clear").click();
+  await expect(sheet.getByTestId("slip-undo")).toBeVisible();
+  await expect(sheet.getByTestId("slip-undo")).toHaveCount(0, { timeout: 8_000 });
+  await expect(sheet.getByTestId("slip-leg")).toHaveCount(0);
+  await assertClean(page, w);
+});
+
+test("the update notice floats above the tab bar and the parlay button, its buttons in a finger's reach", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F33): the "new version" notice sat on the tab bar. It is raised by the service worker when a new
+  // version waits (src/lib/pwa.ts); here the same event is sent by hand.
+  const w = watch(page);
+  // A leg in the slip, so the parlay button shows too (the slip lives in this tab's session storage).
+  await page.addInitScript(() =>
+    window.sessionStorage.setItem(
+      "predigol.slip",
+      JSON.stringify([
+        {
+          fixture_id: 999_999,
+          market_key: "1X2",
+          selection: "Home",
+          line: "0",
+          home: "Local",
+          away: "Visitante",
+          kickoff_at: "2099-01-01T18:00:00Z",
+          odds: "2.00",
+          bookmaker: null,
+        },
+      ]),
+    ),
+  );
+  for (const [width, height] of [
+    [320, 700],
+    [390, 844],
+    [844, 390],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto("/home");
+    await settle(page);
+    await page.evaluate(() =>
+      window.dispatchEvent(
+        new CustomEvent("predigol:update-ready", { detail: { postMessage: () => undefined } }),
+      ),
+    );
+    const notice = page.getByTestId("update-toast");
+    await expect(notice).toBeVisible();
+    const box = await notice.boundingBox();
+    const bar = await page.getByRole("navigation", { name: L.es.nav.mainNavigation }).boundingBox();
+    expect(box && bar, `notice and tab bar at ${width}x${height}`).toBeTruthy();
+    if (!box || !bar) return;
+    expect(
+      box.y + box.height,
+      `the notice ends above the tab bar at ${width}x${height}`,
+    ).toBeLessThanOrEqual(bar.y);
+    const slip = await page.getByTestId("slip-open").boundingBox();
+    expect(slip, "the parlay button shows").toBeTruthy();
+    if (slip) {
+      const apart =
+        box.y + box.height <= slip.y ||
+        slip.y + slip.height <= box.y ||
+        box.x + box.width <= slip.x ||
+        slip.x + slip.width <= box.x;
+      expect(apart, `the notice covers the parlay button at ${width}x${height}`).toBe(true);
+    }
+    expect(await smallTargets(page, '[data-testid="update-toast"]'), "notice buttons").toEqual([]);
+    await page.getByTestId("update-later").click();
+    await expect(notice).toHaveCount(0);
+  }
+  await assertClean(page, w);
+});
+
+test("a figure's help opens with a tap inside a card's link, and that tap does not open the match", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F16): a card is one link, and the help on its figures could not be read with a finger - a tap
+  // followed the link. A [data-hint] now shows its help, and only the rest of the card opens the match.
+  const w = watch(page);
+  await page.goto("/home");
+  await settle(page);
+  const badge = page.getByTestId("upcoming-bookmakers").first();
+  if ((await badge.count()) === 0) {
+    note(test.info(), "no upcoming match with prices on Inicio");
+    return;
+  }
+  await badge.tap();
+  await expect(page.getByTestId("title-tap")).toHaveText(L.es.home.upcoming.bookmakersHelp);
+  await page.waitForTimeout(800); // the click that followed the tap was the link's: it must not navigate
+  await expect(page).toHaveURL(/\/home$/);
+  await page.getByTestId("upcoming-row").first().getByTestId("matchup").tap();
+  await expect(page).toHaveURL(/\/matches\/\d+/);
+  await assertClean(page, w);
+});
+
+test("Mis picks with an open pick, its confirmation, and a match's markets: 44 px at the five phone widths", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F33): Mis picks had 32 px buttons (your price, remove) and the line selector of a match's markets
+  // 32 px; they show only with an open saved pick and a priced match, so the check makes one and removes it.
+  test.setTimeout(180_000);
+  const w = watch(page);
+  const { body } = await getJson<{
+    data: { fixtures: Array<{ fixture_id: number; kickoff_at: string }> };
+  }>(page.request, "/api/v1/odds/best?hours=72&market=1X2");
+  const soon = Date.now() + 30 * 60_000;
+  const fixture = body.data.fixtures.find((f) => Date.parse(f.kickoff_at) > soon);
+  if (!fixture) {
+    note(test.info(), "no upcoming match with a 1X2 price");
+    return;
+  }
+  const open = await getJson<{ data: Array<{ id: number; match: { fixture_id: number } }> }>(
+    page.request,
+    "/api/v1/me/picks?status=open",
+  );
+  for (const p of open.body.data.filter((x) => x.match.fixture_id === fixture.fixture_id)) {
+    await sendJson(page.request, "DELETE", `/api/v1/me/picks/${p.id}`);
+  }
+  const saved = await sendJson<{ data: { id: number } }>(page.request, "POST", "/api/v1/me/picks", {
+    fixture_id: fixture.fixture_id,
+    market_key: "1X2",
+    selection: "Home",
+  });
+  expect(saved.status, "the pick is saved").toBe(201);
+  try {
+    for (const width of [320, 360, 390, 412, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto("/my-picks");
+      await settle(page);
+      const row = page.locator(
+        `[data-testid="saved-pick"][data-fixture-id="${fixture.fixture_id}"]`,
+      );
+      await expect(row).toBeVisible();
+      expect(await smallTargets(page, "main"), `Mis picks at ${width} px`).toEqual([]);
+      await row.getByTestId("saved-pick-remove").click();
+      await expect(page.getByTestId("confirm-remove-pick")).toBeVisible();
+      expect(
+        await smallTargets(page, '[data-testid="confirm-remove-pick"]'),
+        `the confirmation at ${width} px`,
+      ).toEqual([]);
+      await page.getByTestId("confirm-remove-pick-cancel").click();
+      await page.goto(`/matches/${fixture.fixture_id}`);
+      await settle(page);
+      await page.getByRole("tab", { name: L.es.match.tabs.markets }).click();
+      await settle(page);
+      expect(await smallTargets(page, "main"), `a match's markets at ${width} px`).toEqual([]);
+    }
+  } finally {
+    await sendJson(page.request, "DELETE", `/api/v1/me/picks/${saved.body.data.id}`);
+  }
   await assertClean(page, w);
 });
 
@@ -310,9 +475,8 @@ const ADMIN_PAGES = [
   "/admin/overview",
   "/admin/picks",
   "/admin/users",
-  "/admin/ai-layer",
-  "/admin/ai-analyst",
-  "/admin/evolution",
+  "/admin/operation",
+  "/admin/learning",
   "/admin/performance",
   "/admin/odds",
   "/admin/models",
@@ -328,6 +492,35 @@ const ADMIN_PAGES = [
   "/admin/system",
   "/admin/audit",
   "/admin/settings",
+];
+
+/**
+ * Operación and Aprendizaje keep their sections behind tabs, and a tab is an address: each one has to hold on a phone, not only the first one
+ * the page opens on (plan F13: the five pages that talked about the AI are these two).
+ */
+const AI_PAGES_PLACES = [
+  "/admin/operation",
+  "/admin/operation#tab=decisions",
+  "/admin/operation#tab=match",
+  "/admin/operation#tab=ai",
+  "/admin/operation#tab=ai&view=research",
+  "/admin/operation#tab=ai&view=reviews",
+  "/admin/operation#tab=ai&view=evidence",
+  "/admin/operation#tab=ai&view=sources",
+  "/admin/operation#tab=agents",
+  "/admin/operation#tab=costs",
+  "/admin/operation#tab=runs",
+  "/admin/learning",
+  "/admin/learning#tab=learned",
+  "/admin/learning#tab=postmortems",
+  "/admin/learning#tab=memory",
+  "/admin/learning#tab=memory&view=matches",
+  "/admin/learning#tab=memory&view=notes",
+  "/admin/learning#tab=memory&view=findings",
+  "/admin/learning#tab=experiments",
+  "/admin/learning#tab=calibration",
+  "/admin/learning#tab=markets",
+  "/admin/learning#tab=shadow",
 ];
 
 test.describe("the Admin Console on a phone", () => {
@@ -351,21 +544,43 @@ test.describe("the Admin Console on a phone", () => {
       }
     }
   });
+
+  // Every tab and view of the two pages, each by its address: nothing scrolls sideways and every control is within a finger's reach.
+  test("every tab and view of Operación and Aprendizaje holds at 320 and 390 px and answers a finger", async ({
+    context,
+  }) => {
+    test.setTimeout(480_000);
+    for (const width of [320, 390]) {
+      for (const path of AI_PAGES_PLACES) {
+        const page = await context.newPage();
+        const w = watch(page);
+        await page.setViewportSize({ width, height: 800 });
+        await page.goto(path);
+        await settle(page);
+        expect(await smallTargets(page, "main"), `controls at ${width} px on ${path}`).toEqual([]);
+        await assertClean(page, w);
+        await page.close();
+      }
+    }
+  });
 });
 
 test.describe("the Admin Console on a touch tablet", () => {
   test.use({ storageState: statePath("admin"), locale: "en-GB" });
 
-  test("no page scrolls sideways; the header and the menu answer a finger", async ({ page }) => {
+  test("no page scrolls sideways; the header and the menu answer a finger", async ({ context }) => {
     test.setTimeout(240_000);
-    const w = watch(page);
     for (const [width, height] of [
       [768, 1024],
       [1024, 768],
       [1180, 820],
     ] as const) {
-      await page.setViewportSize({ width, height });
-      for (const path of ["/admin/overview", "/admin/picks", "/admin/users", "/admin/ai-layer"]) {
+      for (const path of ["/admin/overview", "/admin/picks", "/admin/users", "/admin/operation"]) {
+        // A page of its own for each load (as in the phone test): a dozen loads of the dev server's unbundled modules in one
+        // page run Chromium out of resources (ERR_INSUFFICIENT_RESOURCES), and Operación, which holds the views of five pages, is the heaviest.
+        const page = await context.newPage();
+        const w = watch(page);
+        await page.setViewportSize({ width, height });
         await page.goto(path);
         await settle(page);
         expect(
@@ -373,25 +588,38 @@ test.describe("the Admin Console on a touch tablet", () => {
           `header controls at ${width} px on ${path}`,
         ).toEqual([]);
         await assertClean(page, w);
+        await page.close();
       }
     }
   });
 
   // The overview's panel links ("Live" was 21 px wide), the explained "—" (cut to 7 x 16 px by a truncating value
   // cell) and the definitions in table headers (38 px under the table's scroll box) were out of a finger's reach.
-  test("the modules' own controls answer a finger, not only the header's", async ({ page }) => {
-    test.setTimeout(240_000);
-    const w = watch(page);
+  test("the modules' own controls answer a finger, not only the header's", async ({ context }) => {
+    test.setTimeout(300_000);
     for (const [width, height] of [
       [768, 1024],
       [1024, 768],
     ] as const) {
-      await page.setViewportSize({ width, height });
-      for (const path of ["/admin/overview", "/admin/picks", "/admin/models", "/admin/system"]) {
+      for (const path of [
+        "/admin/overview",
+        "/admin/picks",
+        "/admin/models",
+        "/admin/system",
+        "/admin/operation",
+        "/admin/operation#tab=match",
+        "/admin/learning",
+        "/admin/learning#tab=experiments",
+      ]) {
+        // A page of its own for each load (see the test above).
+        const page = await context.newPage();
+        const w = watch(page);
+        await page.setViewportSize({ width, height });
         await page.goto(path);
         await settle(page);
         expect(await smallTargets(page, "main"), `controls at ${width} px on ${path}`).toEqual([]);
         await assertClean(page, w);
+        await page.close();
       }
     }
   });

@@ -542,10 +542,25 @@ export function ContextTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
                     <span className="min-w-0 truncate text-right">{m.home}</span>
                     <Numeric className="rounded border border-border-strong bg-elevated px-1.5 py-0.5 text-xs">
                       {m.goals_home}–{m.goals_away}
+                      {m.after_extra_time
+                        ? m.penalties_home !== null && m.penalties_away !== null
+                          ? ` ${t("match.h2h.pens", { home: m.penalties_home, away: m.penalties_away })}`
+                          : ` ${t("match.h2h.aet")}`
+                        : ""}
                     </Numeric>
                     <span className="min-w-0 truncate">{m.away}</span>
                     <span className="col-span-3 truncate text-center text-caption text-subtle-foreground">
                       {utcDate(m.kickoff_at)} · {m.competition}
+                    </span>
+                    <span
+                      className="col-span-3 truncate text-center text-caption text-subtle-foreground"
+                      data-testid="admin-h2h-weight"
+                    >
+                      {t("center.context.h2h.weight", {
+                        weight: m.weight.toFixed(2),
+                        scope: t(`center.context.h2h.scope.${m.scope}`),
+                        ground: t(`center.context.h2h.ground.${m.home_side_was}`),
+                      })}
                     </span>
                   </Link>
                 </li>

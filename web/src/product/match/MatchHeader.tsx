@@ -10,6 +10,8 @@ import { Freshness, LiveMinute } from "@/product/shared/Bits";
 import { Card } from "@/product/shared/States";
 import { venueFacts, venuePlace } from "@/product/shared/venue";
 import type { MatchCtx } from "./context";
+import { tieView } from "./tie";
+import { TieLines } from "./TieLines";
 import {
   ageLevel,
   capitalize,
@@ -229,6 +231,7 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
   const { match: m, venue, phase, live, score } = ctx;
   const round = roundLabel(m.round);
   const center = ctx.center.data;
+  const tie = tieView(center?.tie, phase, score, { home: m.home.name, away: m.away.name });
   const played = phase === "live" || phase === "finished" || phase === "awaiting";
   const events = played && center?.events.status === "ok" ? center.events.data : [];
   const goals = scorers(events, score);
@@ -258,12 +261,23 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
             <span className="min-w-0 break-words">{round}</span>
           </>
         ) : null}
+        {tie?.place ? (
+          <>
+            <span aria-hidden className="text-subtle-foreground">
+              ·
+            </span>
+            <span className="min-w-0 break-words" data-testid="tie-place">
+              {tie.place}
+            </span>
+          </>
+        ) : null}
       </div>
 
       <div className="mx-auto grid max-w-3xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 px-3 pb-4 pt-3 sm:gap-6 sm:px-6 sm:pb-6 sm:pt-4 short:pb-3 short:pt-2">
         <TeamSide team={m.home} goals={goals.home} dim={winner === "away"} />
         <div className="min-w-[6.25rem] sm:min-w-[9rem]">
           <Center ctx={ctx} />
+          {tie ? <TieLines view={tie} /> : null}
         </div>
         <TeamSide team={m.away} goals={goals.away} dim={winner === "home"} />
       </div>

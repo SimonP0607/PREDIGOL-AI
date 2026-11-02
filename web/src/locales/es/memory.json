@@ -1,0 +1,50 @@
+{
+  "intro": "Todo lo que PrediGol ha aprendido, en un solo lugar. Las entidades son los equipos, ligas, árbitros, entrenadores, jugadores y mercados a lo largo del tiempo, cada una con cuánto fiarse y en qué se apoya; los partidos son los que miró, antes y después; las notas de aprendizaje son lo que apuntó el ciclo diario de la IA; los hallazgos de investigación son lo que concluyó la investigación de modelos. Los post-mortems de cada selección tienen su propia pestaña. Solo lectura: nada de aquí cambia un pick, una probabilidad ni un modelo.",
+  "tabs": {
+    "label": "Secciones de memoria"
+  },
+  "entities": {
+    "allTypes": "Todas",
+    "allAspects": "Todos los aspectos",
+    "version": "Versión",
+    "confidence": "Confianza",
+    "evidence": "Evidencia",
+    "sample": "Muestra",
+    "legacy": "ninguna",
+    "shown": "{shown} de {total} series",
+    "help": "La confianza es la muestra efectiva sobre ella misma más una constante: 0 sin evidencia, un medio con una muestra que depende del tipo de memoria (por ejemplo 30 decisiones de un equipo o 20 partidos de un árbitro), nunca 1. Cada pieza de evidencia pierde la mitad de su peso tras una vida media (90 días las decisiones, 180 las cifras de un equipo, 365 las ligas y los árbitros). Los córners, tarjetas y goles esperados de un equipo se acercan a la media de su liga cuanto menos partidos tiene el equipo; para ellos la constante es el número de partidos que vale la media de la liga, medido sobre los partidos guardados, así que la confianza es exactamente la parte de la cifra que es del propio equipo y el resto es de su liga. Son convenciones de la memoria, no parámetros de un modelo, y cambiar una crea una versión nueva.",
+    "legacyNote": "Una serie sin confianza la escribió una versión anterior de la memoria, que no la medía; la versión nueva empieza el 13-oct-2026 y no continúa ninguna de ellas.",
+    "evidenceNewest": "las {count} más recientes",
+    "figureTeam": "propios {own}, del rival {opp} por partido",
+    "figurePrior": "liga {prior}",
+    "figureRaw": "propios {own}, del rival {opp} por partido (aún sin cifra de la liga)",
+    "figureLeague": "{rate} por equipo y partido",
+    "aspects": {
+      "corners": "Córners",
+      "cards": "Tarjetas",
+      "xg": "Goles esperados",
+      "decisions": "Decisiones",
+      "discipline": "Disciplina",
+      "profile": "Perfil",
+      "availability": "Disponibilidad"
+    },
+    "coachLine": "{wins}G {draws}E {losses}P · {formations}",
+    "playerLine": "jugaron {started} de {out} reportados fuera"
+  },
+  "evidenceKinds": {
+    "fixtures_one": "{count} partido",
+    "fixtures_other": "{count} partidos",
+    "decisions_one": "{count} decisión",
+    "decisions_other": "{count} decisiones",
+    "postmortems_one": "{count} post-mortem",
+    "postmortems_other": "{count} post-mortems"
+  },
+  "events": {
+    "kind": "Tipo",
+    "allKinds": "Todos los tipos",
+    "note": "Lo que el ciclo diario de aprendizaje de la IA apuntó sobre un partido, un pick o una entidad. Cada nota nombra la versión de las reglas que la escribió."
+  },
+  "research": {
+    "note": "Lo que concluyó la investigación de modelos y cuándo. Un tema que se vuelve a concluir conserva sus hallazgos anteriores: el contador dice cuántos ha habido."
+  }
+}

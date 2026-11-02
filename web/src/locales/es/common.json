@@ -119,7 +119,10 @@
     "no_h2h": "No hay enfrentamientos previos con resultado.",
     "no_live_states": "No se registró ningún estado en vivo de este partido.",
     "live_odds_not_kept": "Las cuotas en vivo solo se muestran mientras se juega y no se guardan después.",
-    "no_market_data": "Todavía no hay cuotas capturadas para este partido."
+    "no_market_data": "Todavía no hay cuotas capturadas para este partido.",
+    "no_v2_passes": "Ningún pase de la ventana ejecutó la investigación v2 junto a v1: todavía no hay nada que comparar.",
+    "comparison_failed": "No se pudo calcular la comparación entre v1 y v2. El resto de la página sigue siendo válido.",
+    "gate_failed": "No se pudo evaluar la puerta de la investigación v2. El resto de la página sigue siendo válido."
   },
   "pager": {
     "label": "Páginas",
@@ -127,5 +130,11 @@
     "next": "Siguiente",
     "range": "{from}–{to} de {total}",
     "page": "Página {page} de {pages}"
+  },
+  "reset": "Restablecer",
+  "roleAdmin": "Administrador",
+  "meta": {
+    "title": "PrediGol — Inteligencia de fútbol",
+    "description": "PrediGol: partidos, en vivo, picks con valor, parlays y las mejores cuotas."
   }
 }

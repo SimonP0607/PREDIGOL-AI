@@ -1,28 +1,22 @@
 /**
- * Pieces shared by the AI V2 screens - Capa de decisión IA, IA e investigación and Evolución - so the shadow
- * line, the budget bar, the costs, the learning notes and the proposals read the same wherever they appear.
+ * Pieces shared by the AI screens - the tabs of Operación and Aprendizaje (plan F13) - so the shadow line, the budget bar,
+ * the costs, the learning notes and the proposals read the same wherever they appear.
  */
 import type { ReactNode } from "react";
 import { t, translateOr } from "@/lib/i18n";
 import { localInt } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
-import { KeyValue, WarningBanner } from "@/components/primitives/Panel";
+import { WarningBanner } from "@/components/primitives/Panel";
 import { StatusBadge, type BadgeTone } from "@/components/primitives/StatusBadge";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { live } from "@/lib/api/v1/queries";
-import type {
-  AiBudgetAlert,
-  AiCostPeriod,
-  LearningNote,
-  Proposal,
-} from "@/lib/api/v1/types_ai_layer";
+import type { AiBudgetAlert, LearningNote, Proposal } from "@/lib/api/v1/types_ai_layer";
 import {
   barPercent,
   bogotaDateTime,
   budgetMarkers,
   evidenceSummary,
   levelLabel,
-  levelRows,
   probText,
   ratioOf,
   thresholdText,
@@ -30,6 +24,36 @@ import {
   usd,
   type EvidenceItem,
 } from "./aiModel";
+
+const SELECT =
+  "h-8 max-w-[15rem] rounded-md border border-border bg-card px-2 text-xs normal-case tracking-normal text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+/** A row of controls above a list: the day, a filter or two. */
+export function Toolbar({ children }: { children: ReactNode }) {
+  return <div className="flex flex-wrap items-center gap-x-4 gap-y-2">{children}</div>;
+}
+
+/** A labelled drop-down whose options are the children. */
+export function Choice({
+  label,
+  value,
+  onChange,
+  children,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
+}) {
+  return (
+    <label className="inline-flex items-center gap-2 text-caption uppercase tracking-wider text-subtle-foreground">
+      {label}
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={SELECT}>
+        {children}
+      </select>
+    </label>
+  );
+}
 
 const STAT_TONE = {
   default: "text-foreground",
@@ -113,12 +137,82 @@ export function Note({ children, className }: { children: ReactNode; className?:
   return <p className={cn("text-xs text-subtle-foreground", className)}>{children}</p>;
 }
 
+/**
+ * A label and its figure on one line - or, when the label is too long for both (a phone), the figure on the line below,
+ * right-aligned. The shared KeyValue squeezes the figure in beside the label instead, and "1–0" or "2 G · 0 E · 1 P" came
+ * out cut in the middle of a figure.
+ */
+export function Fact({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-0.5 border-b border-border/60 py-1.5 last:border-0">
+      <span className="text-caption uppercase tracking-wider text-subtle-foreground">{label}</span>
+      <span className="numeric ml-auto min-w-0 break-words text-right text-xs text-foreground">
+        {value}
+      </span>
+    </div>
+  );
+}
+
 /** A small uppercase heading inside a card. */
 export function SubTitle({ children }: { children: ReactNode }) {
   return (
     <h3 className="text-caption font-medium uppercase tracking-wider text-subtle-foreground">
       {children}
     </h3>
+  );
+}
+
+/** A titled block inside a panel: the title, a line of what it means, then the block. */
+export function Block({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string | undefined;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <SubTitle>{title}</SubTitle>
+      {hint ? <Note>{hint}</Note> : null}
+      {children}
+    </div>
+  );
+}
+
+/** A table inside a padded panel: its own frame, so its edge fade and its scroll stay inside the card. */
+export function Framed({ children }: { children: ReactNode }) {
+  return <div className="overflow-hidden rounded-md border border-border">{children}</div>;
+}
+
+/** A framed list of things to look at: a warning, or an alarm when what it lists is a fault of ours. */
+export function Notice({
+  tone,
+  testId,
+  title,
+  children,
+}: {
+  tone: "warning" | "negative";
+  testId: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      role={tone === "negative" ? "alert" : undefined}
+      data-tone={tone}
+      data-testid={testId}
+      className={cn(
+        "rounded-md border px-3 py-2 text-xs",
+        tone === "negative"
+          ? "border-negative/35 bg-negative-soft"
+          : "border-warning/35 bg-warning-soft",
+      )}
+    >
+      <div className="font-medium">{title}</div>
+      <ul className="mt-1 list-disc space-y-0.5 pl-4 text-foreground/85">{children}</ul>
+    </div>
   );
 }
 
@@ -253,44 +347,6 @@ export function MonthBar({
         ))}
       </ul>
       {alerts.length === 0 ? <Note>{t("ai.v2.alerts.none")}</Note> : null}
-    </div>
-  );
-}
-
-/** A period's spend by level (L1 / L2 / L3 / web): what each cost and how many calls. */
-export function LevelCosts({ period }: { period: AiCostPeriod }) {
-  const rows = levelRows(period.by_level);
-  if (!rows.length) return <Note>{t("ai.v2.costs.noLevel")}</Note>;
-  return (
-    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {rows.map((r) => (
-        <li key={r.key} className="min-w-0 rounded-md border border-border px-2.5 py-2">
-          <LevelBadge level={r.key} />
-          <div className="numeric mt-1.5 text-sm font-semibold">{usd(r.cost_usd)}</div>
-          <div className="text-caption text-subtle-foreground">
-            {t("ai.v2.costs.requests", { count: r.requests, n: localInt(r.requests) })}
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/** A period's unit costs: per match, analysis, search, reviewed pick, approved pick, selected pick. */
-export function UnitCosts({ period }: { period: AiCostPeriod }) {
-  const rows: Array<[string, number | null | undefined]> = [
-    [t("ai.v2.costs.perMatch"), period.cost_per_match],
-    [t("ai.v2.costs.perAnalysis"), period.cost_per_analysis],
-    [t("ai.v2.costs.perSearch"), period.cost_per_search],
-    [t("ai.v2.costs.perReviewedPick"), period.cost_per_review],
-    [t("ai.v2.costs.perApproved"), period.cost_per_approved],
-    [t("ai.v2.costs.perSelected"), period.cost_per_selected],
-  ];
-  return (
-    <div>
-      {rows.map(([label, value]) => (
-        <KeyValue key={label} label={label} value={usd(value)} />
-      ))}
     </div>
   );
 }

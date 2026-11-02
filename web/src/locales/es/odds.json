@@ -20,9 +20,9 @@
   },
   "value": {
     "title": "Oportunidades de valor",
-    "subtitle": "Selecciones calificadas con valor al mejor precio de ahora.",
+    "subtitle": "Selecciones que cumplen la regla de PrediGol y tienen valor al mejor precio de ahora.",
     "seeAll": "Ver picks",
-    "none": "Ahora mismo no hay oportunidades de valor calificadas en este mercado."
+    "none": "Ahora mismo ninguna selección de este mercado cumple la regla con valor."
   },
   "board": {
     "summary_one": "{count} partido en las próximas {hours} h",

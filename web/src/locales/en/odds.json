@@ -20,9 +20,9 @@
   },
   "value": {
     "title": "Value opportunities",
-    "subtitle": "Qualified selections with value at today's best price.",
+    "subtitle": "Selections that pass PrediGol's rule and have value at today's best price.",
     "seeAll": "See picks",
-    "none": "No qualified value opportunity in this market right now."
+    "none": "Right now no selection in this market passes the rule with value."
   },
   "board": {
     "summary_one": "{count} match in the next {hours} h",

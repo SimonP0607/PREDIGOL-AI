@@ -427,7 +427,8 @@ publicar un pick: la base de datos lo impide.
 | Log loss / Brier | errores de una probabilidad frente a lo que pasó; menor es mejor; siempre en los mismos partidos |
 | Calibración / ECE | si "60 %" ocurre el 60 % de las veces / cuánto se aleja |
 | VE (valor esperado) | cuota × probabilidad − 1; solo vale si la probabilidad es buena |
-| CLV | si el precio tomado era mejor que el de cierre; medirlo contra el cierre **sin margen** de una casa afilada |
+| CLV | si el precio tomado era mejor que el de cierre; medirlo contra el cierre **sin margen**: `cuota × probabilidad de cierre sin margen − 1` (una sola definición, `clv-v1`); un precio con margen del 5 % y sin movimiento marca ≈ −5 % |
+| Movimiento de precio | `cuota / última cuota de la misma casa − 1`: si el precio de esa casa se movió después de tomarlo. **No es CLV** (el margen está en los dos precios); en pantalla y en informes se llama «movimiento de precio» o «cuota frente al cierre (casa)» |
 | Walk-forward | reentrenar día a día solo con lo que se sabía |
 | Leakage | usar algo que no se sabía al predecir |
 | MODEL_READY | dato apto para entrenar y juzgar modelos; para un dataset entero, lo decide el dueño |

@@ -1,6 +1,8 @@
 # PrediGol Intelligence — arquitectura, contratos y ciclo diario
 
-Versión del documento: **pi-arch-v1** (13 oct 2026). Estado: **SHADOW** (nada de esto publica picks ni mueve dinero).
+Versión del documento: **pi-arch-v1.2** (22 oct 2026, plan F2: etapas y cruces; la v1.1 es de la misma fecha y la v1 del 13 oct). Estado: **SHADOW** (nada de esto publica picks ni mueve dinero).
+
+> Documentación = código (plan F0, defecto 12): las cifras de los 10 filtros, del PICK PREMIUM, del parlay, del score, del stake, de la calibración y del presupuesto de este documento las compara con las constantes del código `tests/unit/test_docs_match_code.py`; si una cambia, el test falla hasta que el documento la diga. La sección 0 es la auditoría inicial (datos de entonces) y no se compara.
 
 > Prioridad absoluta: una inteligencia cada día más informada y mejor calibrada, no una que produzca cada día más
 > picks. «Más información ≠ más certeza».
@@ -34,7 +36,8 @@ CAPA 1 · DATOS           API-Football (fixtures, odds de todas las casas, stats
 CAPA 2 · MODELOS         Por mercado: Poisson, Dixon-Coles (goles), Elo ordered-logit (1X2) -> P_modelo con intervalo
                          (existente: fbi.models, picks shadow-rule-v2). NUEVO: calibración por (mercado, modelo)
                          fbi.intel.calibration -> P_calibrada, versionada, champion/challenger con criterios fijos.
-CAPA 3 · PREDIGOL        Contexto: paquete del partido (packet-v2 = packet-v1 + dossier-v1), evidencia con fuente,
+CAPA 3 · PREDIGOL        Contexto: paquete del partido (packet-v7 = packet-v1 + dossier-v3 + el calendario completo de cada equipo (todos los partidos que lista el proveedor, sin resultados ni rivales; con su alcance declarado y si la lista está completa) + bajas de la última respuesta a la fecha +
+                         fase y cruce de la ronda, solo lo sabido antes del partido + la tabla de la etapa propia a la hora del paquete + el árbitro como persona, el que el proveedor había dado a esa hora + el pronóstico que PrediGol había dado a esa hora, solo como probabilidad: sin cuota ni ventaja), evidencia con fuente,
 INTELLIGENCE             nivel y estado, brief L1 / revisión L2 / revisión L3 (existente: fbi.ai). NUEVO: dossier
                          (equipo, árbitro, entrenador, contexto competitivo, jugadores clave), fuentes clasificadas
                          (sources-v2), estado de contexto FULL / PARTIAL / LIMITED (CONTEXTO EXTERNO LIMITADO) /
@@ -43,7 +46,7 @@ INTELLIGENCE             nivel y estado, brief L1 / revisión L2 / revisión L3 
 CAPA 4 · DECISIÓN        NUEVO fbi.intel.decision (decision-v1): 10 filtros -> estado (RECHAZADO, INVESTIGACIÓN,
                          CAUTELA, APROBADO, PICK DEL DÍA, CANDIDATO A PARLAY, PICK PREMIUM), PrediGol Pick Score
                          (pick-score-v1), stake (stake-v1), selección del día (0-5, nunca relleno), parlays solo de
-                         aprobados con correlación. Todo en intel.decisions, append-only.
+                         aprobados de competiciones distintas. Todo en intel.decisions, append-only.
 ```
 
 La capa 4 solo lee de las capas 1–3; nunca escribe en ellas. La capa 3 nunca modifica una probabilidad: produce
@@ -57,13 +60,13 @@ señales de contexto que la capa 4 usa como filtro de riesgo y como componente d
 | cada 30 min | pronósticos y picks shadow (escaneo cuantitativo de todas las selecciones) | `pick_pipeline` | 0 |
 | 23:59 | CIERRE DEL DÍA (revisiones hasta que el día queda completo) | `ai_day_close`, `ai_day_follow` | 0 |
 | 00:05 | apertura del día de la IA, primera pasada (paquete, brief L1, web, revisiones) | `ai_day_start` | Nivel A/B |
-| 00:10 y cada 15 min | **decisión**: candidatos de las próximas 36 h re-evaluados en sus puntos de control (T−24h, T−12h, T−6h, T−3h, T−90m, T−60m, alineaciones, T−15m para PICK DEL DÍA/PREMIUM); una fila nueva solo si cambia el punto de control, el estado o el precio > 3 % | `intel_decide` | 0 |
+| 00:10 y cada 15 min | **decisión**: candidatos de las próximas 36 h re-evaluados en sus puntos de control (T−36h al entrar en el horizonte, T−24h, T−12h, T−6h, T−3h, T−90m, T−60m, alineaciones, T−15m para los aprobados); una fila nueva si cambia el estado o —salvo en RECHAZADO, que no se repite— el punto de control, el calibrador, el estado de contexto o el precio más de un 3 % | `intel_decide` | 0 |
 | 6–4 h antes | pasada `pre` (noticias, lesiones, movimientos) | `ai_cycle` | Nivel B |
 | 06:00 | **PICKS DEL DÍA PI** (v6, shadow): hasta 5 APROBADOS por score, uno por partido, máx. 2 por competición; después se añaden los de partidos tardíos hasta completar 5 | `intel_decide` | 0 |
 | 100–10 min antes | pasada `final` tras alineaciones; L3 solo para los mejores | `ai_cycle` | Nivel C/D |
-| 07:35 | aprendizaje IA existente (post-mortems pm-v2, notas, patrones, sombra de la IA) | `ai_learn` | bajo |
-| 07:50 | **ciclo nocturno PI**: liquidación y CLV de decisiones, post-mortems pm-v3, memoria longitudinal, calibradores (challenger nuevo + evaluación prospectiva + promoción por criterios), auditoría de fugas, DAILY LEARNING REPORT, vínculo hipótesis↔experimentos | `intel_nightly` | 0 |
-| lunes 04:40 | **MARKET DISCOVERY ENGINE** (propone, nunca activa) | `intel_weekly` | 0 |
+| 07:35 | aprendizaje IA existente (el post-mortem único `pm-v6` de cada selección y de cada partido, las narrativas opcionales, notas, patrones, sombra de la IA) | `ai_learn` | bajo |
+| 07:50 | **ciclo nocturno PI**: liquidación y CLV de decisiones, el mismo post-mortem `pm-v6` si `ai_learn` no lo escribió ya, memoria longitudinal `memory-v4`, calibradores (challenger nuevo + evaluación prospectiva + promoción por criterios), auditoría de fugas, DAILY LEARNING REPORT, vínculo hipótesis↔experimentos | `intel_nightly` | 0 |
+| lunes 04:40 | **MARKET DISCOVERY ENGINE** (propone, nunca activa) y, como último paso y apagada por omisión (`FBI_PATTERN_SEARCH`), la **búsqueda de patrones** de las decisiones liquidadas (F12.6, `docs/owner/PATRONES_F12.md`: solo lee la base, propone hipótesis, nunca activa) | `intel_weekly` | 0 |
 
 Nada se recalcula si sus entradas no cambiaron: el paquete y el brief se guardan por hash, las búsquedas web se
 cachean, la decisión se deduplica por (selección, punto de control, hash de entradas).
@@ -81,15 +84,38 @@ fila nueva. Nada se reescribe después del saque ni después del resultado.
 | `intel.decisions` | evaluación de una selección en un punto de control | `known_at`, pick y versión de modelo, precio, casa, `price_at`, p_modelo, p_calibrada, `calibrator_id`, p_mercado, EV/edge crudos y calibrados, 10 filtros, estado, score y componentes, stake y componentes, contexto (estado, revisión, evidencias), `input_hash`, `decision_version` |
 | `intel.day_selections` | pick del día / parlay elegido por la regla v6 | decisión(es) congeladas, rango, stake, correlación |
 | `intel.decision_outcomes` | resultado de una decisión | estado del pick, P&L a la cuota de la decisión (plano y con stake), CLV contra el cierre sin margen |
-| `intel.postmortems` | post-mortem pm-v3 de una decisión | calidad de la decisión separada del resultado, causas del partido, preguntas respondidas, evidencia |
-| `intel.entity_memory` | estado acumulado de una entidad × aspecto en un día | equipo, jugador, entrenador, árbitro, competición, mercado; decisiones, aciertos, CLV, errores, contexto recurrente |
+| `intel.postmortems` | **el** post-mortem (`pm-v6`, plan F8) de una **selección**, con su decisión si la hubo; las filas por decisión `pm-v3` a `pm-v5` se conservan. La vista `intel.selection_postmortems` da la más reciente de cada selección | calidad del precio (CLV) separada del resultado, lo que decidió la revisión de la IA, clase de la pérdida, causas del partido, preguntas respondidas, el precio elegido y los otros dos, `clv` y `price_move` por separado, `roles` (por qué se estudió), evidencia |
+| `intel.match_postmortems` (migración 0091, plan F8) | el partido como un todo, una vez por versión | marcador, la evidencia de la IA frente a las alineaciones, el pronóstico 1X2 frente al cierre del mercado |
+| `ai.postmortem_narratives` (migración 0091, plan F8) | narrativa corta de un modelo de lenguaje sobre un post-mortem que importa (`pmn-v1`): aparte, opcional y de pago | texto, versión, `usage_ids` del libro de uso de la IA |
+| `intel.entity_memory` | estado acumulado de una entidad × aspecto en un día, por versión de la memoria (`memory-v4`, plan F8, con `confidence` y `evidence_ref`). La vista `intel.entity_memory_latest` da la fila de la versión más nueva de cada entidad, aspecto y día | equipo, jugador, entrenador, árbitro, competición, mercado; decisiones, aciertos, CLV, errores, contexto recurrente; córners, tarjetas y goles esperados de equipos y ligas |
 | `intel.daily_reports` | revisión del DAILY LEARNING REPORT de un día | contenido JSON + texto, hash |
 | `intel.market_registry` | estado de un mercado del proveedor en una corrida de discovery | 10 criterios, cobertura, casas, historial, estabilidad, modelabilidad, estado (ACTIVE / RESEARCH / CANDIDATE / NOT_MODELABLE) |
 | `intel.runs` | ejecución de un trabajo PI | duración, estado, conteos, errores, coste, versión de código |
 | `intel.audit_checks` | comprobación de fugas de datos de un día | regla, n revisadas, violaciones, ejemplos |
+| `intel.context_factors` (migración 0088, plan F6) | decisión sobre un factor de contexto del paquete (cara a cara ponderado, escenarios, táctica observable, descanso y congestión) en una versión del código | factor, versión, estado (`DESCRIPTIVE` / `VALIDATED`), quién (una persona), el experimento y su resultado, cuándo, la decisión que sustituye; sin fila, el factor es `DESCRIPTIVE`. La vista `intel.context_factors_latest` da el estado vigente de cada factor y versión |
+| `intel.match_knowledge` (migración 0090, plan F7) | construcción de un partido **terminado y asentado** (26 horas después del inicio): las nueve capas de lo que el partido resultó ser | `layers` (JSON: por capa, estado, `known_at`, fuentes, datos y notas), `quality`, `completeness` (`complete` / `partial` / `minimal`), `known_at`, `inputs_hash` (huella de lo que se leyó) y `content_hash` (de lo que dice), `version` (`mk-v1`) y `supersedes` (la fila que reemplaza). La vista `intel.match_knowledge_latest` da la más reciente de cada partido y versión |
 
 Además: `ai.budget_alerts` acepta 50 %; `ai.sources` recibe la semilla `sources-v2` (medios reconocidos, oficiales,
 sitios de apuestas como agregadores).
+
+**El registro de factores de contexto (plan F6).** Un factor es algo que PrediGol dice de un partido sin que ningún experimento haya
+probado que predice algo que el modelo y el mercado no digan ya. Nace `DESCRIPTIVE`: se describe (con su tamaño de muestra), ningún
+modelo lo lee (`tests/unit/test_context_isolation.py`) y la IA no puede usarlo como razón de una selección ni de una probabilidad.
+Pasa a `VALIDATED` solo si una persona lo decide citando el experimento y su resultado (la base de datos rechaza una fila sin las tres
+cosas), y solo para **la versión del código** que el experimento midió: cambiar un peso o una regla (`h2h-v2`, `scenarios-v1`,
+`tactics-v1`) lo devuelve a `DESCRIPTIVE`. Quitar una validación es una fila nueva `DESCRIPTIVE`; nada se edita ni se borra. Se
+gestiona con `python -m scripts.context_factors list | history | promote | retire` (en seco hasta `--by NOMBRE --confirm`) y se ve en
+la consola del administrador. Ver `docs/owner/PREPARTIDO_V3_F6.md`.
+
+**Match Knowledge (plan F7).** Un partido terminado queda como un solo objeto, armado por reglas (sin IA ni llamadas al proveedor), en nueve
+capas: resultado, estadísticas de los equipos, eventos por periodo, jugadores, táctica e historia del marcador, mercado (de la apertura al
+cierre), contexto externo (apagada), picks y decisiones, y post-mortem. Es lo que el partido **resultó ser**, no algo que PrediGol dijo
+antes: **ningún lector de antes del partido (modelos, pronóstico, capa de decisión, dossier, paquete de la IA) puede leerlo ni nombrar sus
+tablas** (`tests/unit/test_knowledge_isolation.py`), de modo que conocer cómo terminó un partido no puede colarse en lo que se dice antes
+de otro; la memoria de F8 tampoco lo lee: se arma de los datos del partido con su propia regla «a fecha». Lo acompaña `core.fixture_event_kinds` (migración 0089, derivada): qué es
+cada línea de la lista de eventos del proveedor (gol, autogol, penal, lanzamiento de la tanda, segunda amarilla, decisión del VAR…) y en qué
+periodo cae. Un usuario no ve nada hasta que el dueño enciende `FBI_KNOWLEDGE_USERS` y, aun entonces, solo los hechos y las probabilidades
+del mercado, nunca un precio, un pick ni un post-mortem. Ver `docs/intelligence/MATCH_KNOWLEDGE.md` y `docs/owner/POSTPARTIDO_F7.md`.
 
 ## 4. Calibración (Capa 2) — `cal-logit2-v1`
 
@@ -120,16 +146,16 @@ promoción y cada rollback es una fila en `intel.promotions`.
 
 | # | Filtro | Falla → |
 |---|---|---|
-| 1 | Calidad de datos: partido programado, ≥ 10 min al saque, pronóstico ≤ 48 h, sin bloqueo de calidad | RECHAZADO |
+| 1 | Calidad de datos: partido programado (ni PST, CANC, ABD, SUSP, AWD, WO ni INT), ≥ 10 min al saque, pronóstico de hace ≤ 72 h, competición con datos aptos (ni «solo producto» ni insuficientes) y partido fuera de cuarentena | RECHAZADO |
 | 2 | Modelo especializado del mercado disponible (p_modelo con intervalo) | RECHAZADO |
-| 3 | Mercado: precio actual de ≥ 3 casas, ≤ 3 h, no atípico (≤ 25 % sobre el consenso) | RECHAZADO (precio viejo → INVESTIGACIÓN) |
+| 3 | Mercado: precio actual de ≥ 3 casas, de ≤ 3 h, no atípico (≤ 25 % sobre el consenso) | RECHAZADO (sin precio, menos de 3 casas o atípico); precio de más de 3 h → INVESTIGACIÓN |
 | 4 | Calibración: calibrador CHAMPION del (mercado, modelo) | tope INVESTIGACIÓN |
 | 5 | EV: EV calibrado ≥ 2 % y edge calibrado ≥ 1 pto | RECHAZADO |
-| 6 | Contexto PI: revisión combinada y evidencias; REJECT/DOWNGRADE de la IA o evidencia en contra no confirmada → CAUTELA; ausencia clave CONFIRMADA en el lado elegido → RECHAZADO; sin contexto → «CONTEXTO EXTERNO LIMITADO» (no rechaza, penaliza) | CAUTELA / RECHAZADO |
+| 6 | Contexto PI: revisión combinada y evidencias. Un contexto que impide jugarlo (partido no jugable, en cuarentena o sin datos aptos) → RECHAZADO; baja clave en el lado elegido → CAUTELA si solo está reportada y RECHAZADO si las alineaciones la confirman; REJECT/DOWNGRADE de la revisión de la IA → CAUTELA; sin contexto → «CONTEXTO EXTERNO LIMITADO» (no rechaza, penaliza en el score) | CAUTELA / RECHAZADO |
 | 7 | Riesgo: cuota > 3,00 (risk-v1, evidencia P5), p_calibrada < 0,30, intervalo > 0,25 | CAUTELA |
-| 8 | Correlación: una selección por partido (la de mayor score); el resto | CAUTELA |
-| 9 | Precio actual: el EV se recalcula con el mejor precio vigente en cada punto de control | RECHAZADO |
-| 10 | Clasificación final: APROBADO solo con edge-gate del mercado cumplido; PICK DEL DÍA (top 5 por score, uno por partido, máx. 2 por competición); PICK PREMIUM (score ≥ 80 y CLV histórico del tipo > 0); CANDIDATO A PARLAY (aprobado, cuota 1,25–2,20, p ≥ 0,5) | — |
+| 8 | Correlación: una selección aprobable por partido (la de mayor score); las demás del mismo partido | CAUTELA |
+| 9 | Precio al final: el EV se recalcula con el mejor precio vigente en cada punto de control, y en los finales (T−90m, alineaciones, T−60m y T−15m) ese precio debe tener ≤ 30 min | CAUTELA |
+| 10 | Clasificación final: APROBADO solo con edge-gate del mercado cumplido; PICK DEL DÍA (hasta 5 por score, uno por partido, máx. 2 por competición); PICK PREMIUM (aprobado con score ≥ 80, CLV walk-forward de la regla del mercado > 0 y CLV del tipo de pick —mercado × selección × banda de cuota, últimos 30 días— > 0); CANDIDATO A PARLAY (aprobado, cuota 1,25–2,20, p ≥ 0,5) | — |
 
 **PrediGol Pick Score (`pick-score-v1`, 0–100, explicable):** suma ponderada de componentes en [0, 1]:
 EV calibrado (15), edge calibrado (10), calidad de calibración del mercado (10), historial del modelo/mercado —
@@ -142,19 +168,40 @@ redondeo hacia abajo a 0,25 u, topes por estado: CAUTELA 0,25 u, APROBADO 1,00 u
 1,50 u, parlay 0,25 u; INVESTIGACIÓN y RECHAZADO 0. Los topes se validan por simulación
 (`scripts/intel_stake_sim.py`) y nunca se usa Kelly completo.
 
-**Parlays:** solo de CANDIDATOS A PARLAY de partidos y competiciones distintos; probabilidad conjunta con la
-dependencia medida (`ai.correlation_estimates`, icc-v1), no el producto ingenuo; se muestran cuota combinada,
-probabilidad estimada, EV, riesgo, correlación y stake (¼ Kelly, tope 0,25 u).
+**Parlays:** hasta 2 al día, de 2 patas, de selecciones APROBADAS (con una decisión de ≤ 30 min) de partidos y
+competiciones distintos y sin ningún equipo en común; solo entran los de EV ≥ 2 %, los de mayor EV primero y cada
+decisión en un único parlay. La probabilidad conjunta es **el producto de las dos probabilidades calibradas**: con
+una pata por competición y sin equipo compartido no hay jornada común cuya dependencia medir (la dependencia medida,
+`ai.correlation_estimates` icc-v1, es por competición-día y la usa el parlay de producto `parlay-v4` —ver
+`docs/ai/AI_DECISION_LAYER.md`—, no este). Cada parlay guarda cuota combinada, probabilidad estimada, EV, el método
+(`correlation.method`: independiente entre competiciones), el riesgo y el stake (¼ Kelly, tope 0,25 u).
 
 ## 6. Capa 3 — dossier, investigación y narrativa
 
-* **dossier-v1** (en `packet-v2`, todo a la fecha de corte): por equipo, últimos 10 partidos en casa/fuera con goles,
+* **dossier-v4** (plan F6: `h2h` sale del cara a cara ponderado de `fbi.intel.h2h` —su tamaño efectivo incluido— y el dossier gana `tactics`, la táctica observable de
+  `fbi.intel.tactics`: formaciones y cambios de once, goles por cuarto de hora y los tardíos, resultados según quién marca primero y el marcador al descanso, y el primer
+  cambio según el marcador, cada cosa con el tamaño de su muestra y contando —sin adivinar— los partidos que no pudo leer; un once que el proveedor cruzó entre los dos equipos
+  (202 partidos) ya no da formación al bloque `coach`. Antes, **dossier-v3** (v1 desde `packet-v2`; la v2, de `packet-v4`, saca «es la vuelta» de la estructura del cruce y no de «el último partido entre el par en 60 días»; la v3, de `packet-v5` —plan F3—, cuenta los partidos del árbitro **por persona**: bajo cualquier grafía que el proveedor usó y sin mezclar homónimos; el bloque `referee` trae `id` e `identity` (`id`, o `text` si la identidad aún no vio el partido); todo a la fecha de corte): por equipo, últimos 10 partidos en casa/fuera con goles,
   xG, tiros, a puerta, córners, faltas, tarjetas, fueras de juego, posesión, penaltis (eventos), rachas, calidad del
   rival (Elo), comportamiento según marcador (goles a favor/en contra yendo por delante/detrás); árbitro (partidos,
   amarillas, rojas, faltas, penaltis por partido, reparto local/visitante); entrenadores (formaciones, alternativas,
   rotación entre partidos, minuto medio de cambios, rendimiento casa/fuera); contexto competitivo (posición, puntos a
   título / plazas / descenso, partidos restantes, ida/vuelta, copa, final, derbi, amistoso); jugadores clave (minutos,
-  goles, asistencias, rating, ausencias, carga de los últimos 14 días); H2H con peso por antigüedad.
+  goles, asistencias, rating, ausencias, carga de los últimos 14 días); H2H con peso por antigüedad (desde el plan F6, el de `fbi.intel.h2h`: recencia, competición,
+  campo y entrenadores, con pesos fijos y redondos sin ajustar, el registro en 90 minutos y el tamaño efectivo). Las ausencias del
+  dossier, las del paquete y las que el recolector convierte en evidencia salen de la **misma lectura**
+  (`fbi.ai.absences.absences_as_of`): la última respuesta de `/injuries` a la fecha de corte, del historial
+  `core.player_availability_obs` (migración 0078, plan F0 defecto 8). `core.player_absences` conserva la última
+  respuesta por jugador y la leen el Centro de partido y las auditorías; nada que razone «a fecha» debe leerla.
+* **Bloques descriptivos del plan F6** (`packet-v8`): `h2h` (cara a cara ponderado, `h2h-v2`), `scenarios` (qué le hace este partido solo a su tabla y a su
+  eliminatoria, `scenarios-v1`: aritmética, sin simular los demás partidos y sin probabilidades), `dossier.tactics` (`tactics-v1`) y `factors` (el estado de cada factor
+  en el registro, `factors-v1`). **El informe (`brief-v8`) los lee todos** y separa lo que describe de lo que una persona probó que es señal: un bloque `DESCRIPTIVE` se dice
+  como un hecho del pasado con su tamaño, nunca como razón de algo, y el servidor descarta una razón de una selección (`cards[*].why`) que cite uno. **La revisión de picks
+  (Sonnet / Opus) no los recibe** mientras sean descriptivos (`fbi.ai.views.review_view`): lee el paquete de antes del plan F6, con el mismo tamaño y el mismo coste, y sus afirmaciones
+  se verifican contra eso; un factor `VALIDATED` se le entrega entero, con su entrada del registro.
+* **Pedir investigación** (`research-v1`): el informe puede decir QUÉ falta (quién puede jugar, confirmar con fuentes oficiales, previa internacional; hasta tres
+  peticiones, cada una con su razón como afirmación tipada) y de qué lado; nunca escribe una consulta. El servidor decide si la atiende y cuándo, dentro de las búsquedas
+  del día y del presupuesto de siempre, y cuenta lo que hizo (`research_asked`, `research_searched`, `research_unserved`).
 * **sources-v2**: oficiales (ligas, federaciones, clubes) > prensa reconocida (ESPN, TyC Sports, Win Sports, Gol
   Caracol, RCN, DirecTV Sports, BBC Sport, Sky Sports, The Athletic, Marca, AS, Mundo Deportivo, L'Équipe, Bild,
   Gazzetta y equivalentes por país) > medios locales > periodistas > secundarios/agregadores > redes solo verificadas.
@@ -169,21 +216,84 @@ probabilidad estimada, EV, riesgo, correlación y stake (¼ Kelly, tope 0,25 u).
 
 ## 7. Aprender sin sobreajustar
 
-* **pm-v3** (cada decisión CAUTELA o superior y las 20 mejores INVESTIGACIONES del día): calidad de la decisión
-  (CLV, EV al cierre, p_calibrada frente al cierre) separada del resultado — merecido / varianza / suerte / error —;
-  causas del partido (roja y minuto, penaltis, gol temprano, lesiones antes del 30', tarjetas frente a lo esperado del
-  árbitro, alineación distinta de la esperada); las preguntas del POST_MATCH_REVIEW respondidas con datos. Un pick
-  perdido nunca ajusta un modelo.
-* **Memoria longitudinal** (`memory-v1`): instantánea diaria por entidad × aspecto (equipo×mercado,
-  competición×mercado, árbitro, entrenador, jugador-disponibilidad, mercado) con decisiones, aciertos, CLV, errores
-  y contexto recurrente. Una racha es una señal a investigar, no una regla.
+* **El post-mortem único** (`pm-v6`, plan F8): una fila por **selección** (partido, mercado, selección, línea), armada por reglas a coste cero y
+  una sola vez (un índice único), para todo lo que PrediGol miró, venga de donde venga: la última decisión de cada selección antes del inicio si
+  llegó a CAUTELA o más (o es una de las 20 mejores INVESTIGACIONES de un día de Bogotá ya terminado), los picks del día y las piernas de parlay
+  que vieron los usuarios, y toda selección que revisó un modelo de lenguaje o que es de un partido en que la IA trabajó ese día. Se estudia 3
+  horas después del inicio y mira los últimos 7 días. Responde: la calidad del precio por CLV (BUENO / NEUTRO / MALO, ±1 %) separada del
+  resultado —merecido / varianza / suerte / error / nulo / sin datos—, lo que decidió la revisión de la IA aparte (nueve valores) y nunca mezclado,
+  la clase de la pérdida (datos, ejecución, contexto, mercado, modelo, varianza normal, desconocida: la primera que aplica), las causas del
+  partido (roja y minuto, penaltis del partido —los de una tanda no cuentan—, gol temprano, cambios tempranos, tarjetas frente a lo esperado del
+  árbitro como persona, lo que los goles esperados dicen que merecía el partido), las diez preguntas de la IA y las ocho de la capa de decisión.
+  El precio es el que vio una persona, si lo hubo; si no, el que congeló la capa de decisión; si no, el que leyó el revisor (los tres se guardan en
+  `evidence.prices`). El partido como un todo va en `intel.match_postmortems`. Lo leen las pantallas, el aprendizaje y los patrones por
+  `intel.selection_postmortems`, y la capa 9 de Match Knowledge, que se queda con la fila más reciente de cada selección. Los dos post-mortems de la IA (`pm-v1.1` por partido y `pm-v2` por selección) están
+  congelados detrás de `FBI_AI_LEGACY_POSTMORTEMS` y sus filas siguen legibles. La **narrativa** de un modelo (`pmn-v1`) existe solo para las
+  pérdidas que alguien querría ver explicadas (hasta 12 por corrida, 3 con el modelo intermedio, nunca sin presupuesto ni sin modelo), es
+  opcional y de pago y nada depende de ella. Un pick perdido nunca ajusta un modelo. Ver `docs/owner/POSTMORTEM_MEMORIA_F8.md`.
+* **Una sola definición de CLV** (`clv-v1`, `fbi.market.closing_value`; plan F0, defecto 7): CLV es siempre
+  `cuota × p_cierre − 1`, con `p_cierre` la probabilidad sin margen (Shin) de la última instantánea de consenso antes
+  del inicio (`market.market_consensus.p_fair`, que es P(gana | se liquida)). Es la que escriben
+  `intel.decision_outcomes.clv`, `picks.pick_line_value.lv_devigged`, la auditoría de picks, la puerta walk-forward
+  y la evaluación shadow de la IA. El cociente frente al último precio de la MISMA casa
+  (`cuota / cuota_cierre − 1`, `lv_raw`) se llama **movimiento de precio**: tiene el margen en ambos precios, así que
+  no mide si el precio era bueno (con el margen de cierre, −3 % de movimiento son ≈ −7 % de CLV) y nunca se promedia ni
+  se compara con un CLV. La calidad de un precio (GOOD / NEUTRAL / BAD, ±1 %) se juzga sobre CLV; el «mercado se movió
+  en contra» del post-mortem por selección (−3 %), sobre el movimiento. El cierre es la última captura previa al inicio:
+  mientras `close_minutes_to_ko` no pruebe que es el cierre, es valor frente a un precio casi de cierre. **El cierre de referencia es uno solo y
+  tiene nombre** (plan F8): el último consenso sin margen capturado antes del inicio (`last-shin-consensus-before-kickoff`,
+  `fbi.market.closing_reference`; mediana ≈ 175 minutos antes del inicio); cada post-mortem guarda a cuántos minutos del inicio se capturó
+  (`close_minutes_to_ko`) y marca `far` si fueron más de 120. El otro candidato (el último precio del proveedor en la misma casa) no se usa
+  para el CLV: `python -m scripts.postmortems closes` lo mide sobre las mismas selecciones. Cuál manda lo decide el dueño.
+* **Memoria longitudinal** (`memory-v4`, plan F8): instantánea diaria por entidad × aspecto (equipo×mercado, competición×mercado, árbitro,
+  entrenador, jugador-disponibilidad, mercado y, desde `memory-v4`, córners, tarjetas y goles esperados de cada equipo y de cada liga) con
+  decisiones, aciertos, CLV, errores y contexto recurrente. Una racha es una señal a investigar, no una regla.
+  **Confianza y evidencia** (`memory-v4`): cada fila dice cuánto fiarse (`confidence` = `n_eff / (n_eff + k)`, con `n_eff` la muestra efectiva en
+  la que cada pieza de evidencia pierde la mitad de su peso tras una vida media) y en qué se apoya (`evidence_ref`: los partidos, o las
+  decisiones y los post-mortems que las juzgaron; las 40 más recientes). Las vidas medias y las constantes son convenciones de la memoria y
+  cambiarlas es una versión nueva:
+
+  | Memoria | Vida media (días) | k |
+  |---|---|---|
+  | Decisiones de un equipo | 90 | 30 |
+  | Decisiones de una competición | 90 | 60 |
+  | Decisiones de un mercado | 180 | 100 |
+  | Árbitro (persona) | 365 | 20 |
+  | Entrenador (por id) | 365 | 10 |
+  | Jugador (disponibilidad) | 120 | 5 |
+  | Córners, tarjetas y goles esperados de un equipo | 180 | 15 / 38 / 10 |
+  | Córners, tarjetas y goles esperados de una liga | 365 | 60 |
+
+  Las cifras de un equipo se contraen hacia la media de su liga (`propio_contraído = confianza × propio + (1 − confianza) × liga`): la
+  confianza de la fila es exactamente la parte de la cifra que es del equipo. Los tres pesos son el número de partidos que vale la media de
+  la liga, **medidos** sobre los 34.611 partidos terminados de 365 días (`python -m scripts.memory priors`), no supuestos. **Su propio linaje:**
+  `memory-v4` no continúa ninguna versión anterior; empieza el 13 de octubre de 2026 y se reconstruye día a día (`python -m scripts.memory
+  rebuild`), y el paso nocturno no escribe nada hasta que existe. La vista `intel.entity_memory_latest` da la fila de la versión más nueva.
+  La memoria no entra en ningún paquete ni en nada de antes del partido (`tests/unit/test_postmortem_isolation.py`). Ver
+  `docs/owner/POSTMORTEM_MEMORIA_F8.md`.
+
+  **Novedades tardías** (plan F0, defecto 3): un partido que se liquida, una estadística o un post-mortem que llegan
+  *después* de escrita la fila del día. `memory-v1` los descartaba (`ON CONFLICT DO NOTHING`). Una fila nunca se
+  reescribe, así que `memory-v2` los **anota en la fila del día en que se supieron**, en `delta.late[<día>]`: lo que los
+  datos dicen hoy de ese día menos lo que ya está registrado (su fila y lo que otras filas anotaron). El estado
+  acumulado de cada fila coincide con recalcular desde cero (las rachas `last10` van en el orden en que se supo), el
+  estado «a fecha de» un día no incluye nada que se supo después (sin trampa de futuro) y reconciliar dos veces no
+  anota nada dos veces. El ciclo nocturno construye solo la fila de ayer y mira los 3 días anteriores (`LATE_DAYS`):
+  una noche perdida del worker se recupera así como novedad tardía. Para una reparación puntual de un periodo más
+  largo existe `build_memory(..., late_days=N)` (operación manual). `memory-v2` continuó el estado que dejó `memory-v1` (sus filas no se
+  tocan); `memory-v4`, en cambio, empieza su propio linaje.
+  **Árbitros = personas** (`memory-v3`, plan F3): la entidad `referee` es la persona de `core.referees` (su `entity_id` es el id), no la
+  cadena que escribió el proveedor. Las filas que `memory-v2` escribió bajo una cadena quedan como historia (nada las continúa ni las
+  reconcilia, y la lista de la consola solo muestra personas); la historia de cada persona empieza el primer día que corre `memory-v3`.
+  Si dos árbitros se fusionan (o uno se separa) los días que aún caen en la ventana de novedades tardías se reasignan a la persona
+  correcta; el dossier, que se calcula desde los partidos, es exacto en cualquier caso.
 * **DAILY LEARNING REPORT** (`learn-report-v1`): ganadas/perdidas/nulas, CLV, ROI, calibración, errores, contexto
   que funcionó y que falló, noticias, anomalías de modelo y mercado, equipos y jugadores, hipótesis nuevas,
   oportunidades (discovery). Revisiones append-only.
 * **Champion/challenger** (sección 4) y **hipótesis**: las hipótesis de sobreconfianza (#14, #21, #26, #32, #39)
   quedan enlazadas al experimento de calibración con su resultado (`stage_history`, `outcome`).
 
-## 8. Mercados — `discovery-v1` y los 10 criterios
+## 8. Mercados — `discovery-v3` y los 10 criterios
 
 Semanal: lee el catálogo del proveedor (`market.provider_markets`), lo visto en las cuotas reales
 (`market.odds_mapping_seen`, `raw.ingestion_payloads`) y los datos de resultado disponibles (`core.fixture_team_stats`,
@@ -193,9 +303,30 @@ ACTIVE (los 5 modelados), RESEARCH (datos y precio suficientes, falta modelo/bac
 resultado o al revés), NOT_MODELABLE. **Nunca activa un mercado**: la activación sigue Mercado → Datos → Features →
 Modelo → Calibración → Backtest → Shadow → Producción con aprobación explícita.
 
+**Qué cuenta como «liquidable»** (plan F0, defecto 11; `discovery-v2`). El motor clasifica por el nombre de la apuesta y
+mide la cobertura del dato que la liquidaría. Una apuesta sobre **una mitad** de una estadística (córners 1.ª parte, tiros
+2.ª parte…) necesita esa estadística **por mitad** (`corners_by_half`…), no el total del partido: la plataforma guarda
+córners, tiros, paradas, faltas y fueras de juego solo como totales del partido (`core.fixture_team_stats`), así que esas
+apuestas son **NOT_MODELABLE** («sin datos por mitad: no se puede liquidar»), por muy bien cubierto que esté el total.
+Las tarjetas por mitad podrían contarse desde los eventos (minuto), pero esa cobertura aún no se mide aquí: quedan
+**CANDIDATE** (`cards_by_half`) hasta medirla (F9). Los goles por mitad sí se liquidan (marcador al descanso, 97,9 %).
+«Yellow Over/Under (1st Half)» no lleva «card» en el nombre y caía en la regla de goles al descanso: «yellow» se lee ahora
+como tarjetas. Un registro (`intel.market_registry`) ya escrito no se reescribe: la corrección aparece en la siguiente
+corrida semanal, con su `version`.
+
+**`discovery-v3` (plan F9).** La cobertura del dato que liquida una apuesta ya no se adivina: se mide sobre
+`market.fixture_outcomes` (los partidos terminados de los últimos 90 días), medida por medida (`corners_ft`, `goals_1h`,
+`yellow_1h`…). Las tarjetas por mitad, que v2 dejaba en CANDIDATE «hasta medirlas», se miden (se cuentan desde los eventos
+clasificados). Cada apuesta se lee además con la regla que la liquidaría (`fbi.market.rules`): el criterio `settle_rule`
+dice cuál es, o por qué ninguna puede (`no_period_data`, `not_understood`…), y una apuesta que ninguna regla puede
+liquidar nunca pasa a RESEARCH. La matriz del plan §9 (`market.catalogue_runs`, `python -m scripts.markets matrix`) es la
+vista por familia de lo mismo; ver `docs/owner/CATALOGO_MERCADOS_F9.md`.
+
 ## 9. Presupuesto IA (US$180/mes)
 
-* Tope mensual único US$180 para toda la capa (decisión + analista); alertas 50/70/85/95/100 % (una vez por mes).
+* Tope mensual único para toda la capa (decisión + analista): **US$180 en el servidor** (`FBI_AI_MONTHLY_BUDGET_USD=180`
+  desde el 13 oct 2026). Sin esa variable el código usa **US$20** (o `FBI_ANALYST_MONTHLY_BUDGET_USD` si existe) y un
+  objetivo diario de mes/30. Alertas 50/70/85/95/100 % (una vez por mes).
 * Día adaptativo existente (ritmo × carga, techo 1,5×), más **reserva de prioridad**: el trabajo marginal (brief
   LLM y web de partidos sin candidatos) se detiene al 80 % del presupuesto del día o con el mes ≥ 85 %; el análisis
   de candidatos críticos (APROBADOS / mejores del día) sigue hasta el techo.
@@ -204,11 +335,36 @@ Modelo → Calibración → Backtest → Shadow → Producción con aprobación 
 * Los tokens de respuestas inválidas se cuentan. Métricas: coste por partido, candidato, pick, investigación,
   post-mortem, día y proyección mensual. Los análisis son compartidos: ningún token por usuario.
 
-## 10. Fugas de datos (`leak-audit-v1`, diario y en tests)
+## 10. Fugas de datos (`leak-audit-v8`, diario y en tests)
 
 Para cada decisión: `known_at` < saque; `price_at` ≤ `known_at`; pick `data_cutoff_ts` y `created_at` ≤ `known_at`;
 calibrador `fitted_at` ≤ `known_at` y sus datos liquidados antes de `fitted_at`; revisión y paquete ≤ `known_at`;
-evidencias `retrieved_at` (y `published_at` si existe) ≤ `known_at`. Toda violación queda en `intel.audit_checks`.
+evidencias `retrieved_at` (y `published_at` si existe) ≤ `known_at`; y (v2, plan F2, regla `tie_legs_known`) toda pata de un cruce que cite un paquete guardado
+empezó antes del partido y tenía su resultado registrado a la hora del paquete; y (v3, plan F3, regla `referee_known`) todo paquete que nombra a un árbitro cita una observación del
+proveedor que existe, que no es posterior a la hora del paquete y que era la más nueva a esa hora (no mira quién es hoy esa grafía: una fusión cambia a la persona,
+no lo que el proveedor dijo entonces); y (v4, plan F5, regla `forecast_known`) todo paquete que cita un pronóstico de PrediGol cita un conjunto que existe
+(partido, mercado, línea y modelo), que se había escrito a la hora del paquete y que era el más nuevo de ese mercado a esa hora; y (v5, plan F4, regla `calendar_known`) todo
+paquete que cita el calendario de un equipo cita lecturas de la lista del proveedor que existían a la hora del paquete (sin una más nueva con más de un minuto de antelación),
+una lista dada por «completa» no tenía más de 96 horas, y cada partido citado existía a esa hora con el mismo inicio (un partido seguido grabado después, o un anuncio posterior, es una
+violación); y (v6, plan F6) cuatro reglas más sobre los bloques nuevos: `h2h_known` (cada cruce citado existe, es entre los dos equipos, se jugó hasta un resultado antes del partido, con su
+resultado registrado a la hora del paquete, y no se dejó fuera un cruce conocido por uno más antiguo), `scenarios_known` (la tabla sobre la que se calcula existe, se tomó a tiempo y trae las filas
+que el bloque cita, y el global de una vuelta es el del bloque `phase` del propio paquete), `tactics_known` (cada partido de la muestra existe, es del equipo, está dentro de la ventana y tenía su
+resultado, sus eventos y su hoja registrados a la hora del paquete -una fila que el trabajo posterior al partido volvió a escribir después, en un partido ya liquidado a esa hora y desde una lectura que ese trabajo pidió, es una relectura y cuenta como ya registrada-; la muestra son los últimos `N` conocidos y los goles contados son los de los 90 minutos) y `factors_known` (el estado que
+dice el paquete de cada factor, la decisión que cita y el experimento son los de la última decisión de esa versión tomada a esa hora); y (v7, Plan Maestro IA, fase 1) `slice_known` (cada estado de un partido de `ai.match_runs` que nombra un paquete `mcp-v1` salió de un paquete guardado del mismo partido,
+construido antes de escribirse la fila, con su `as_of` igual al `known_at` de la fila y anterior al saque; y el paquete y cada una de sus porciones, derivados de nuevo desde ese paquete con
+el código de hoy, tienen byte por byte el hash que la fila anotó -así una porción es parte del paquete, el paquete es parte del paquete guardado y ninguno lleva un momento posterior a la
+pasada-; una versión de paquete que el código no sabe derivar de nuevo es una violación). Es la única regla que no es una sola sentencia: lee uno a uno los paquetes de las filas del día.
+Toda violación queda en `intel.audit_checks`.
+
+**Capas (v7, plan F11).** La auditoría sabe qué capa escribió cada decisión (`decision_version`). Las reglas que leen decisiones de todas las capas son `known_before_kickoff` y `price_known`
+(una decisión de una familia, que no tiene pick, calibrador, revisión ni evidencias, sale de las reglas que los unen pero cuenta en esas dos); `consensus_known` lee solo la capa del pipeline
+(`decision-v1`, cuyo precio sale de `market.market_consensus`); y dos reglas nuevas leen solo la capa de las familias (`decision-fam-v1`, en *shadow*, escrita por `fbi.familydecisions`).
+`family_forecast_known`: el pronóstico que la decisión cita en su filtro `model` existe para ese partido, modelo, mercado, línea y selección, se había escrito y tenía sus datos cortados a la
+hora de la decisión, y era el más nuevo de ese modelo para esa selección a esa hora; una decisión que no cita ninguno, o que cita algo que no es un número, es una violación (y no detiene la
+auditoría). `family_price_known`: la casa que la decisión nombra había cotizado exactamente ese precio, para esa selección y línea y antes del partido, a la hora de la decisión. Esa regla
+no pide que siguiera siendo el precio vigente de la casa: un cuerpo del proveedor leído otra vez por un extractor más nuevo escribe sus cotizaciones con la hora en que se pidió, así que puede
+aparecer una cotización para un momento que la decisión no podía conocer, y tomar un precio más viejo es retraso, no fuga. Son 19 reglas; una prueba de escala (5.000 decisiones de un día) mide
+las dos nuevas en una fracción de segundo.
 
 ## 11. Autonomía controlada
 

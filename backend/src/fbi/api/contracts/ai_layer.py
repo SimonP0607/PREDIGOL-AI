@@ -129,6 +129,9 @@ class AiOverview(Contract):
                                                                           "search API - from the configuration.")
     efficiency: dict[str, Any] = Field(default_factory=dict)
     day: dict[str, Any] | None = None
+    envelopes: dict[str, Any] = Field(default_factory=dict, description="Phase 0 of the AI master plan: the production, LAB and Exa "
+                                      "envelopes against their budgets, what the cache and the Batch saved, the switches. "
+                                      "Empty when it could not be built.")
 
 
 class ReviewRow(Contract):
@@ -292,7 +295,12 @@ class PickPostmortemRow(Contract):
     classification: str | None
     odds: Decimal | None
     close_odds: Decimal | None
-    clv: Decimal | None
+    clv: Decimal | None = Field(
+        description="Closing-line value (clv-v1): the price taken at the closing fair probability, margin removed. "
+        "Derived from the odds and the closing probability the post-mortem stores.")
+    price_move: Decimal | None = Field(
+        description="The price taken against the same bookmaker's closing price, margin in both. NOT the CLV: the "
+        "stored column that used to be called clv.")
     p_model: Decimal | None
     p_market: Decimal | None
     answers: dict[str, Any]

@@ -16,6 +16,7 @@ import {
   setTimeZone,
   shiftDay,
   zonedInstant,
+  zoneName,
 } from "@/lib/time";
 
 afterEach(() => {
@@ -113,5 +114,28 @@ describe("days and labels", () => {
     expect(isValidTimeZone("Europe/Madrid")).toBe(true);
     expect(isValidTimeZone("Mars/Olympus")).toBe(false);
     expect(isValidTimeZone("")).toBe(false);
+  });
+});
+
+describe("the zone in words (plan UX, A1, F09)", () => {
+  afterEach(() => setLocale("es"));
+
+  test("its name and offset in the reader's language, never the raw IANA id", () => {
+    setLocale("es");
+    const winter = "2026-01-15T12:00:00Z";
+    expect(zoneName("America/Bogota", winter)).toBe("hora estándar de Colombia (GMT-5)");
+    expect(zoneName("Europe/Madrid", winter)).toBe("hora estándar de Europa central (GMT+1)");
+    setLocale("en");
+    expect(zoneName("America/Bogota", winter)).toBe("Colombia Standard Time (GMT-5)");
+    expect(zoneName("Europe/Madrid", "2026-07-15T12:00:00Z")).toBe(
+      "Central European Summer Time (GMT+2)",
+    );
+  });
+
+  test("just the offset where the zone has no name of its own", () => {
+    setLocale("es");
+    expect(zoneName("UTC", "2026-01-15T12:00:00Z")).toBe("tiempo universal coordinado (GMT+0)");
+    // a fixed offset has no name: "GMT-03:00 (GMT-3)" would say it twice
+    expect(zoneName("Etc/GMT+3", "2026-01-15T12:00:00Z")).toBe("GMT-3");
   });
 });

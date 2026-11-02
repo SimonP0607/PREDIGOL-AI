@@ -1,0 +1,9 @@
+[Unit]
+Description=PrediGol: storage report (four times a day, away from fixtures_sync at :03)
+
+[Timer]
+OnCalendar=*-*-* 02,08,14,20:41:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

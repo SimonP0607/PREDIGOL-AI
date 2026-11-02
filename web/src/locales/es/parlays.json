@@ -16,13 +16,13 @@
     "title": "Cómo construimos los parlays",
     "value": {
       "title": "Filtro de valor en cada selección",
-      "qualified": "Selección calificada: su modelo ha superado al mercado",
+      "qualified": "Cumple la regla: su modelo ha superado al mercado",
       "fresh": "Precio actual de hace ≤ 3 h",
       "ev": "Valor esperado positivo al precio actual",
       "consensus": "Consenso de mercado con ≥ 2 casas",
       "interval": "Una probabilidad sin intervalo medido no entra, ni una con incertidumbre de más de 40 puntos",
       "books": "Cada selección cotizada por 3 casas o más",
-      "ai": "Toda selección pasó por PrediGol Intelligence; en modo de aplicación deja fuera lo que rechaza o rebaja",
+      "ai": "Toda selección pasa por la revisión de contexto de PrediGol Intelligence; solo cuando esa revisión está activa deja fuera lo que rechaza o rebaja",
       "risk": "Ninguna selección por encima de 3,00: en nuestro histórico las cuotas altas pierden dinero"
     },
     "independence": {

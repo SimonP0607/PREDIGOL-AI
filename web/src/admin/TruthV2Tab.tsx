@@ -199,11 +199,7 @@ export function TruthV2Tab() {
                     <TRow key={e.code}>
                       <TD className="font-mono text-[11px]">{e.code}</TD>
                       <TD>
-                        {e.severity === "info" ? (
-                          <StatusBadge tone="neutral">info</StatusBadge>
-                        ) : (
-                          <SeverityBadge severity={e.severity} />
-                        )}
+                        <SeverityBadge severity={e.severity} />
                       </TD>
                       <TD className="text-xs">
                         <div>{e.issue_type}</div>

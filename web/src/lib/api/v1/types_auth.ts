@@ -21,12 +21,16 @@ export interface Me {
   /** IANA zone every time on screen is shown in. Stored data stays UTC. */
   timezone: string;
   session_expires_at: Iso;
+  /** A session not used for this long ends; every use gives it this long again, never past session_expires_at. */
+  session_idle_hours?: number;
   stage: Stage;
   mfa_enabled: boolean;
   /** The role or the owner requires a second factor: it cannot be turned off. */
   mfa_required: boolean;
   must_change_password: boolean;
   recovery_codes_left: number;
+  /** The pseudonym this account's errors carry to Sentry (an HMAC the server computes), never the id: plan UX, A2. */
+  observability_id?: string | null;
 }
 
 export interface MfaEnrollment {

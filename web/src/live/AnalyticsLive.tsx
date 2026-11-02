@@ -30,6 +30,7 @@ import type { Envelope, ExperimentSummary, TeamAnalytics } from "@/lib/api/v1/ty
 import { int } from "@/lib/format";
 import { ratio, shortHash, utcDate, utcDateTime } from "./format";
 import { localFixed, localPct } from "@/lib/i18n/format";
+import { useUrlTab } from "@/lib/useUrlTab";
 
 const tabs = ["Competitions", "Teams", "Models", "Market", "Coverage", "Migration"] as const;
 type Tab = (typeof tabs)[number];
@@ -92,7 +93,7 @@ function Loading<T>({
 }
 
 export function AnalyticsLive() {
-  const [tab, setTab] = useState<Tab>("Competitions");
+  const [tab, setTab] = useUrlTab(tabs, "Competitions");
   return (
     <div className="space-y-4">
       <PageHeader

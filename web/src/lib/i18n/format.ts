@@ -49,6 +49,24 @@ export function fmtSignedPct(value: number | string | null | undefined, digits =
       }).format(n);
 }
 
+/**
+ * A difference between two probabilities - the edge, p_model - p_market - in percentage points, signed: 0.0745 -> "+7,5 pp".
+ * It is not "7,5 %" (that reads as 7,5 % more likely, or as a return on the stake): a gap of a PRICE (price_edge) or the
+ * expected value is relative and stays a percentage (`fmtSignedPct`). The unit is kept with the figure by a no-break space.
+ */
+export function fmtSignedPp(value: number | string | null | undefined, digits = 1): string {
+  const n = num(value);
+  if (n === null) return DASH;
+  // 0.0745 * 100 is 7.4499... in binary: settle the product first so a half rounds up, as on paper.
+  const points = Number((n * 100).toFixed(6));
+  const figure = nf({
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+    signDisplay: "exceptZero",
+  }).format(points);
+  return `${figure}\u00a0pp`;
+}
+
 export function fmtInt(value: number | string | null | undefined): string {
   const n = num(value);
   return n === null ? DASH : nf({ maximumFractionDigits: 0 }).format(n);

@@ -111,6 +111,7 @@ ln -sf "$KIT/bin/predigolctl" /usr/local/bin/predigolctl
 systemctl daemon-reload
 systemctl enable predigol.service predigol-post-boot.service
 systemctl enable --now predigol-health.timer predigol-backup.timer predigol-restore-test.timer predigol-raw-sync.timer \
-  predigol-pitr.timer predigol-pitr-verify.timer predigol-pitr-test.timer predigol-maint.timer
+  predigol-pitr.timer predigol-pitr-verify.timer predigol-pitr-test.timer predigol-maint.timer \
+  predigol-security-alerts.timer predigol-weekly-summary.timer predigol-incident-dump.timer predigol-storage.timer
 
 log "done. Next (README.md): fill /etc/predigol/predigol.env, point the domain's DNS here, then: predigolctl deploy"

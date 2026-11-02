@@ -41,6 +41,7 @@ from psycopg.rows import tuple_row
 from fbi.core.clock import now
 from fbi.core.errors import ProviderError, QuotaExhaustedError
 from fbi.core.logging import get_logger
+from fbi.ingestion.availability import record_answer
 from fbi.ingestion.details import apply_injuries, apply_standings_outcome
 from fbi.ingestion.fixtures import ActiveSeason, active_seasons
 from fbi.ingestion.ledger import RunCounters, RunLedger
@@ -100,9 +101,13 @@ class _Totals:
     tables: int = 0
     injuries: int = 0
     unknown_rows: int = 0
+    availability: int = 0
+    """Changes written to the absences history (core.player_availability_obs): players named, changed or cleared."""
 
     def notes(self) -> str:
         text = f"{self.tables} tables, {self.injuries} absence rows"
+        if self.availability:
+            text += f", {self.availability} changes in the absences history"
         if self.unknown_rows:
             text += f", {self.unknown_rows} table rows for teams not in core.teams"
         return text
@@ -138,6 +143,14 @@ async def _refresh_one(conn: psycopg.Connection, provider: Any, ledger: RunLedge
     else:
         n = apply_injuries(conn, absences, payload_hash=raw.payload_hash, fetched_at=observed)
         totals.injuries += n
+        # The history of what was reported and when (plan F0, defect 8): dated by when WE asked, not by the index time
+        # of a body the store keeps once. The table above stays the latest answer; this is what no overwrite loses.
+        recorded = record_answer(conn, absences, payload_hash=raw.payload_hash,
+                                 competition_season_id=season.competition_season_id, requested_at=raw.fetched_at)
+        totals.availability += recorded.changes
+        if recorded.stale:
+            log.info("context_refresh.availability_stale", season=season.competition_season_id,
+                     requested_at=raw.fetched_at.isoformat())
         record_check(conn, competition_season_id=season.competition_season_id, dataset="injuries",
                      checked_at=raw.fetched_at, payload_hash=raw.payload_hash, rows_seen=len(absences))
     counters.rows_inserted += n
@@ -148,7 +161,7 @@ async def _refresh_one(conn: psycopg.Connection, provider: Any, ledger: RunLedge
 async def refresh_context(conn: psycopg.Connection, provider: Any, *, at: datetime | None = None,
                           max_requests: int = 400) -> RunCounters:
     moment = at or now()
-    seasons = active_seasons(conn)
+    seasons = active_seasons(conn, at=moment)
     tables = table_seasons(conn)
     ledger = RunLedger(conn)
     run_id = ledger.open("context_refresh", params={"seasons": len(seasons)}, scheduled_for=moment)

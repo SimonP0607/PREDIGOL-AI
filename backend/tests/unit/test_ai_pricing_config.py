@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -22,6 +23,36 @@ def test_a_call_is_priced_per_million_tokens_with_the_cached_share_at_the_cache_
     # more cached tokens than input tokens cannot make a call cheaper than free input
     assert token_cost("anthropic", "claude-haiku-5-5", input_tokens=100, output_tokens=0, cached_tokens=900) \
         == Decimal("0.000001")
+
+
+def test_a_cache_write_costs_125_percent_for_five_minutes_and_double_for_an_hour() -> None:
+    # Plan Maestro IA, section 28 (verified 24 Oct 2026). Sonnet 5.5: 2 in, 10 out, 0.10 read (USD per 1M)
+    base: dict[str, Any] = {"input_tokens": 10_000, "output_tokens": 0}
+    plain = token_cost("anthropic", "claude-sonnet-5-5", **base)
+    five = token_cost("anthropic", "claude-sonnet-5-5", cache_write_5m_tokens=10_000, **base)
+    hour = token_cost("anthropic", "claude-sonnet-5-5", cache_write_1h_tokens=10_000, **base)
+    assert (plain, five, hour) == (Decimal("0.020000"), Decimal("0.025000"), Decimal("0.040000"))
+    # a real mix: 2,000 fresh + 6,000 read + 1,500 written for five minutes + 500 for an hour + 800 written out
+    mixed = token_cost("anthropic", "claude-sonnet-5-5", input_tokens=10_000, output_tokens=800, cached_tokens=6_000,
+                       cache_write_5m_tokens=1_500, cache_write_1h_tokens=500)
+    assert mixed == Decimal((2_000 * 2 + 6_000 * 0.10 + 1_500 * 2 * 1.25 + 500 * 2 * 2 + 800 * 10) / 1e6).quantize(
+        Decimal("0.000001"))
+    # a provider with no write surcharge charges a write as plain input
+    assert token_cost("openai", "gpt-6-luna", input_tokens=1000, output_tokens=0, cache_write_1h_tokens=1000) \
+        == token_cost("openai", "gpt-6-luna", input_tokens=1000, output_tokens=0)
+    # more written tokens than the call read cannot make it dearer than the input it had
+    assert token_cost("anthropic", "claude-sonnet-5-5", input_tokens=100, output_tokens=0,
+                      cache_write_5m_tokens=900) == token_cost("anthropic", "claude-sonnet-5-5", input_tokens=100,
+                                                               output_tokens=0, cache_write_5m_tokens=100)
+
+
+def test_a_batch_call_costs_half_of_everything_it_reads_and_writes() -> None:
+    kw: dict[str, Any] = {"input_tokens": 12_000, "output_tokens": 900, "cached_tokens": 4_000,
+                          "cache_write_5m_tokens": 2_000}
+    live = token_cost("anthropic", "claude-sonnet-5-5", **kw)
+    batch = token_cost("anthropic", "claude-sonnet-5-5", batch=True, **kw)
+    assert batch == (live / 2).quantize(Decimal("0.000001"))
+    assert token_cost("anthropic", "claude-opus-5-5", input_tokens=0, output_tokens=0, batch=True) == Decimal(0)
 
 
 def test_long_prompts_and_ended_promotions_pay_their_own_prices() -> None:
@@ -103,6 +134,41 @@ def test_a_tier_needs_its_providers_key_and_the_public_view_has_no_key(clean_env
     public = repr(s.public()) + repr(s)
     assert "sk-secret-value" not in public
     assert s.public()["tiers"]["bulk"] == {"provider": "openai", "model": "gpt-6-luna", "key_present": True}
+
+
+def test_phase_0_switches_default_to_auto_and_each_variable_rolls_its_own_back(clean_env: pytest.MonkeyPatch) -> None:
+    s = AiSettings.from_env()
+    assert {n: s.switch(n) for n in ("cache", "batch", "native_schema", "brief_material", "budget_v3")} \
+        == dict.fromkeys(("cache", "batch", "native_schema", "brief_material", "budget_v3"), "auto")
+    assert s.switch("a-typo") == "off", "an unknown switch is never on"
+    clean_env.setenv("FBI_AI_CACHE", "0")
+    clean_env.setenv("FBI_AI_BATCH", "OFF")
+    clean_env.setenv("FBI_AI_NATIVE_SCHEMA", "1")
+    clean_env.setenv("FBI_AI_BRIEF_MATERIAL", "maybe")
+    clean_env.setenv("FBI_AI_BUDGET_V3", "false")
+    s = AiSettings.from_env()
+    assert (s.switch("cache"), s.switch("batch"), s.switch("native_schema"), s.switch("brief_material"),
+            s.switch("budget_v3")) == ("off", "off", "on", "auto", "off")
+    assert s.public()["switches"]["cache"] == "off"
+
+
+def test_the_budget_envelopes_have_safe_defaults_and_the_lab_key_is_never_shown(
+        clean_env: pytest.MonkeyPatch) -> None:
+    s = AiSettings.from_env()
+    # LAB: no money until the owner sets it; Exa, the joint ceiling and the reserve: the approved values
+    assert (s.lab_monthly_budget, s.exa_monthly_budget, s.joint_ceiling, s.reserve) \
+        == (Decimal(0), Decimal("35"), Decimal("190"), Decimal("10"))
+    assert s.labelled(lab=False) == ("PREDIGOL", "worker-prod") and s.labelled(lab=True) == ("PREDIGOL-LAB", "worker-lab")
+    assert s.batch_min_lead_minutes == 240 and not s.public()["lab_key_present"]
+    clean_env.setenv("FBI_AI_KEY_ANTHROPIC_LAB", "sk-lab-secret")
+    clean_env.setenv("FBI_AI_LAB_MONTHLY_BUDGET_USD", "15")
+    clean_env.setenv("FBI_AI_EXA_MONTHLY_BUDGET_USD", "40")
+    clean_env.setenv("FBI_AI_BATCH_MIN_LEAD_MINUTES", "5")
+    s = AiSettings.from_env()
+    assert s.lab_keys == {"anthropic": "sk-lab-secret"} and "anthropic" not in s.keys, "the LAB key is not production's"
+    assert (s.lab_monthly_budget, s.exa_monthly_budget, s.batch_min_lead_minutes) == (Decimal(15), Decimal(40), 30)
+    shown = repr(s) + repr(s.public())
+    assert "sk-lab-secret" not in shown and s.public()["lab_key_present"] is True
 
 
 def test_bad_numbers_fall_back_to_the_defaults_and_an_unknown_mode_to_shadow(clean_env: pytest.MonkeyPatch) -> None:

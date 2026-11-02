@@ -6,6 +6,8 @@
              value of the price taken at the closing fair probability (``picks.pick_line_value.lv_devigged`` is the
              same measure for the shadow picks). The reference is the last captured consensus before kick-off, which
              has not been shown to BE the closing line: ``close_minutes_to_ko`` says how close it was.
+             The one definition of CLV in the system (``fbi.market.closing_value``, ``clv-v1``): this module applies
+             it, it does not re-write it.
 
 Every decision gets an outcome, the rejected ones too: whether what was rejected would have won - and at what price
 against the close - is how the filters themselves are judged. Written once (``intel.decision_outcomes`` is
@@ -21,10 +23,15 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
-VERSION = "outcome-v1"
+from fbi.core.decision_versions import DECISION_CORE, OUTCOME_CORE
+from fbi.market import closing_value
+
+VERSION = OUTCOME_CORE
 BATCH = 20000
 
 TODO_SQL = """
+-- the settlement of the pipeline's decisions, which are settled through their pick; the decisions of the families have no pick and are
+-- settled by ``fbi.familydecisions.outcomes``, on the counts of the match
 WITH todo AS (
     SELECT d.id, d.fixture_id, d.market_key, d.selection, d.line, d.odds, d.stake_units, d.kickoff_at,
            pr.result_status, pr.settled_at
@@ -32,6 +39,7 @@ WITH todo AS (
       JOIN picks.pick_results pr ON pr.pick_id = d.pick_id
       LEFT JOIN intel.decision_outcomes o ON o.decision_id = d.id
      WHERE o.decision_id IS NULL AND pr.result_status <> 'pending' AND pr.settled_at <= %(at)s AND d.odds IS NOT NULL
+       AND d.decision_version = %(decision_version)s
      ORDER BY d.id
      LIMIT %(limit)s
 )
@@ -61,7 +69,7 @@ def profit_per_unit(result: str, odds: Decimal) -> Decimal:
 
 def settle_decisions(conn: psycopg.Connection[Any], *, at: datetime, limit: int = BATCH) -> int:
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(TODO_SQL, {"at": at, "limit": limit})
+        cur.execute(TODO_SQL, {"at": at, "limit": limit, "decision_version": DECISION_CORE})
         rows = cur.fetchall()
     n = 0
     with conn.cursor() as cur:
@@ -69,7 +77,7 @@ def settle_decisions(conn: psycopg.Connection[Any], *, at: datetime, limit: int 
             odds = Decimal(r["odds"])
             unit = profit_per_unit(str(r["result_status"]), odds)
             close_p = r["close_p_fair"]
-            clv = None if close_p is None else (odds * Decimal(close_p) - 1).quantize(Decimal("0.000001"))
+            clv = None if close_p is None else closing_value.clv(odds, Decimal(close_p)).quantize(Decimal("0.000001"))
             minutes = None if r["close_as_of"] is None else int((r["kickoff_at"] - r["close_as_of"]).total_seconds() // 60)
             cur.execute(
                 "INSERT INTO intel.decision_outcomes (decision_id, settled_at, result_status, profit_flat, "

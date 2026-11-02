@@ -14,6 +14,30 @@ export type Stage = "T-24h" | "T-12h" | "T-6h" | "T-3h";
 /** A parlay as its legs stand: a lost leg makes it lost at once, but it stays on the board until the rest play. */
 export type ParlayProgress = "OPEN" | "PARTIAL_WON" | "PARTIAL_LOST" | "WON" | "LOST" | "VOID";
 
+/**
+ * Why a record was settled again: `result_corrected` the data provider corrected the match's result
+ * after full time; `status_changed` the match's status moved; `audit` a review found the stored
+ * result was not the one the match's result gives and no correction of the match was recorded.
+ */
+export type CorrectionCause = "result_corrected" | "status_changed" | "audit";
+
+/**
+ * A settled record whose result changed afterwards (plan F0, defect 5): the record shows the
+ * current result, this is one it had. A leg's correction carries its leg number; the record's own
+ * does not. The cause is a code the screen translates - the backend's own reason (internal
+ * revisions, who ran a manual pass) is the owner's and never comes here.
+ */
+export interface ResultCorrection {
+  /** When it was settled again. */
+  at: Iso;
+  leg_no?: number | null;
+  from_status: ResultStatus | ParlayStatus;
+  to_status: ResultStatus | ParlayStatus;
+  from_profit?: Dec | null;
+  to_profit?: Dec | null;
+  cause: CorrectionCause;
+}
+
 /** The AI decision layer's review of a selection, frozen when it entered the set or the parlay. */
 export interface ItemAi {
   /** Null when no review existed when the selection was frozen. */
@@ -83,6 +107,8 @@ export interface DailyItem {
   settled_at: Iso | null;
   ai?: ItemAi | null;
   ai_latest?: AiLatest | null;
+  /** Settled again after the provider corrected the match; oldest first. Empty: never. */
+  corrections?: ResultCorrection[];
 }
 
 export interface DailySet {
@@ -137,6 +163,8 @@ export interface ParlayRecord {
   legs: ParlayRecordLeg[];
   progress?: ParlayProgress;
   legs_pending?: number;
+  /** The parlay's own and its legs' (with `leg_no`); oldest first. Empty: never corrected. */
+  corrections?: ResultCorrection[];
 }
 
 export interface DailyBoard {
@@ -201,6 +229,8 @@ export interface UserPick {
   profit_units: Dec | null;
   settled_at: Iso | null;
   snapshot: PickSnapshot;
+  /** Settled again after the provider corrected the match; oldest first. Empty: never. */
+  corrections?: ResultCorrection[];
 }
 
 export interface LegIn {
@@ -287,6 +317,8 @@ export interface UserParlay {
   settled_at: Iso | null;
   warnings: ValidationIssue[];
   legs: UserParlayLeg[];
+  /** The parlay's own and its legs' (with `leg_no`); oldest first. Empty: never corrected. */
+  corrections?: ResultCorrection[];
 }
 
 export type HistoryPeriod = "today" | "7d" | "30d" | "all";

@@ -1,0 +1,11 @@
+[Unit]
+Description=PrediGol: copy of the incident register into the database (every 10 min)
+
+[Timer]
+# 11 min after boot and then every 10 min after the last run: it never lands on the same second as predigol-health.timer (5 min) or predigol-security-alerts.timer
+# (7 min after boot, then every 5 min).
+OnBootSec=11min
+OnUnitActiveSec=10min
+
+[Install]
+WantedBy=timers.target

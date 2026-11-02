@@ -2,7 +2,9 @@
 
 Each goal model is refitted on the results known now (kick-off + 3 h before
 the forecast instant), for the fixture's competition, with the time decay and
-shrinkage its latest backtest chose on the validation season. The Elo ordered
+shrinkage the PROMOTED forecast spec holds (``fbi.predictions.spec``: chosen by a
+backtest on its validation season, in force only because somebody promoted it - a
+newer backtest or research run changes nothing here). The Elo ordered
 logit is refitted on every domestic league result with an Elo feature, and fed
 the fixture's own Elo difference as of now. Nothing here is tuned on what
 happens next.
@@ -26,7 +28,7 @@ from typing import Any
 
 import numpy as np
 import psycopg
-from psycopg.rows import dict_row, tuple_row
+from psycopg.rows import tuple_row
 
 from fbi.backtesting.data import load_backtest_data
 from fbi.backtesting.persist import ensure_version, goal_hyper, ologit_hyper
@@ -34,11 +36,10 @@ from fbi.backtesting.walkforward import (
     MIN_ELO_HISTORY,
     MIN_GOAL_TRAIN,
     MIN_OLOGIT_TRAIN,
-    GoalSpec,
-    WalkForwardConfig,
     elo_history_short,
     known_before,
     outcome_index,
+    prediction_hash,
     train_hash,
 )
 from fbi.features.data import MatchRecord, load_team_stats
@@ -50,6 +51,7 @@ from fbi.models.goals import GoalObs, InvalidCorrectionError, fit_goal_model
 from fbi.models.line_intervals import line_intervals
 from fbi.models.quoted import price_quoted_lines, quoted_lines
 from fbi.models.scoring import MARKET_ROWS
+from fbi.predictions.spec import current_spec
 
 HORIZON = timedelta(days=4)
 MIN_LEAD = timedelta(minutes=15)
@@ -81,31 +83,6 @@ class ForecastReport:
     """Target vectors identical to the fixture's newest stored set (same inputs, same code): not stored again.
     Every 30-minute run used to store every target's vector anew under the run's cut-off - about 50,000 feature
     sets and 2 million values a day of exact copies (5 Oct 2026)."""
-
-
-@dataclass(frozen=True, slots=True)
-class Spec:
-    competition_ids: tuple[int, ...]
-    cfg: WalkForwardConfig
-    goal: dict[str, GoalSpec]
-    session_id: int
-
-
-def current_spec(conn: psycopg.Connection) -> Spec | None:
-    """Hyper-parameters from the latest completed backtest session - the only
-    place they are chosen, and always on a validation season."""
-    with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute("SELECT id, competition_ids, config, selection FROM analytics.backtest_sessions "
-                    "WHERE status = 'completed' ORDER BY finished_at DESC NULLS LAST, id DESC LIMIT 1")
-        row = cur.fetchone()
-    if row is None:
-        return None
-    config: dict[str, Any] = dict(row["config"])
-    cfg = WalkForwardConfig(competition_ids=tuple(int(x) for x in row["competition_ids"]),
-                            history_days=int(config.get("history_days", 730)))
-    goal = {kind: GoalSpec(kind, float(sel["chosen"]["xi"]), float(sel["chosen"]["penalty"]))
-            for kind, sel in dict(row["selection"]).items() if kind in ("poisson", "dixon_coles")}
-    return Spec(cfg.competition_ids, cfg, goal, int(row["id"]))
 
 
 def upcoming(conn: psycopg.Connection, at: datetime, horizon: timedelta) -> list[int]:
@@ -167,7 +144,8 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
     # What the market quoted, read once for every target rather than per model.
     quoted = quoted_lines(conn, target_ids)
     if spec is None:
-        report.skipped_models["all"] = "no completed backtest session: no validated hyper-parameters to use"
+        report.skipped_models["all"] = ("no promoted forecast spec: no hyper-parameters are in force "
+                                        "(python -m scripts.promote_forecast_spec promotes a backtest session)")
         return report
     # Features only where the feature-based model trains (the domestic leagues of the latest
     # backtest): the targets' own vectors are computed fresh below.
@@ -215,7 +193,8 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
                     report.uncovered.append((t.fixture_id, kind, "a team has no result in this competition's "
                                              "training window (promoted, or a season the plan cannot read)"))
                     continue
-                if latest.get((t.fixture_id, version_id)) == th:
+                inputs = prediction_hash(th, t)
+                if latest.get((t.fixture_id, version_id)) == inputs:
                     report.unchanged += 1
                     continue
                 try:
@@ -228,7 +207,7 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
                 for k, (mk, sel, line) in enumerate(MARKET_ROWS):
                     rows.append((t.fixture_id, version_id, mk, sel, line, round(point[k], 6), round(point[k], 6),
                                  None if bounds is None else round(float(bounds[0][k]), 6),
-                                 None if bounds is None else round(float(bounds[1][k]), 6), th, at, 0))
+                                 None if bounds is None else round(float(bounds[1][k]), 6), inputs, at, 0))
 
                 # Every other line the market quoted for this fixture, off the
                 # same matrix. 8,841 Asian Handicap and 1,444 Double Chance
@@ -249,7 +228,7 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
                                      lp.selection, lp.line, round(lp.p_win, 6),
                                      round(lp.p_win, 6),
                                      None if b is None else round(min(b[0], lp.p_win), 6),
-                                     None if b is None else round(max(b[1], lp.p_win), 6), th, at,
+                                     None if b is None else round(max(b[1], lp.p_win), 6), inputs, at,
                                      round(lp.p_push, 6)))
                         report.lines_priced += 1
                 report.predicted[kind] += 1

@@ -18,6 +18,7 @@ import psycopg
 import pytest
 from psycopg.types.json import Jsonb
 
+from fbi.ai.claims import check as real_check
 from fbi.ai.config import AiSettings
 from fbi.ai.cycle import run_analysis_cycle, run_learning_cycle
 from fbi.ai.evidence import EvidenceIn, refresh_statuses, seed_sources, store
@@ -223,6 +224,37 @@ def test_a_model_review_is_validated_combined_conservatively_and_paid_once(db: p
     newest = db.execute("SELECT decision, output->'engines' FROM ai.pick_reviews WHERE fixture_id = %s AND "
                         "engine = 'combined' ORDER BY reviewed_at DESC, id DESC LIMIT 1", (only[0],)).fetchone()
     assert newest is not None and newest[0] == "REJECT"
+
+
+def test_the_pick_reviewer_is_not_given_the_blocks_that_only_describe_and_the_brief_is(
+        db: psycopg.Connection[Any], world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan F6: packet-v8 carries the weighted head-to-head, the scenarios, the tactics and the registry of the factors, every one of them
+    DESCRIPTIVE until a person validates it. The brief (cheap, it describes the match) reads all of it. The pick reviewer (the dear call, the
+    one that weighs on whether a pick is shown) reads the packet of before plan F6 and its claims are checked against that."""
+    conn = Savepoints(db)
+    model = fake("REJECT")
+    only = [world.fixtures["F1"]]
+    checked_against: list[dict[str, Any]] = []
+
+    def spy(review: Any, *, packet_content: dict[str, Any], **kw: Any) -> Any:
+        checked_against.append(packet_content)
+        return real_check(review, packet_content=packet_content, **kw)
+
+    monkeypatch.setattr("fbi.ai.review.check", spy)
+    cycle(conn, provider=model, only=only)
+    brief = json.loads(next(r for r in model.requests if r.schema_name == "submit_brief").user)["packet"]
+    review = json.loads(reviews_asked(model)[0].user)["packet"]
+    assert brief["h2h"]["version"] == "h2h-v2" and brief["factors"]["version"] == "factors-v1", "the brief reads packet-v8 whole"
+    assert all(brief["factors"][k]["status"] == "DESCRIPTIVE" for k in ("h2h_weighted", "scenarios", "tactics_profile"))
+    assert "tactics" in brief["dossier"]
+    assert "factors" not in review and "scenarios" not in review and "tactics" not in review["dossier"]
+    assert set(review["h2h"]) == {"n", "home_view"}, "the head-to-head as the reviewer has always read it"
+    assert {k: v for k, v in review.items() if k not in ("h2h", "dossier", "ages_minutes")} == \
+        {k: v for k, v in brief.items() if k not in ("h2h", "dossier", "factors", "scenarios", "ages_minutes")}, \
+        "and everything else is the same packet"
+    assert len(json.dumps(review)) < len(json.dumps(brief)) * 0.9
+    assert len(checked_against) == 1 and "factors" not in checked_against[0] and "scenarios" not in checked_against[0], \
+        "its claims are checked against what it read"
 
 
 def test_an_invalid_answer_or_a_timeout_falls_back_to_the_rules(db: psycopg.Connection[Any], world: World) -> None:

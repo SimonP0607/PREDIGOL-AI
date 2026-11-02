@@ -14,6 +14,7 @@ import { int } from "@/lib/format";
 import { ratio, relative, utcDateTime } from "./format";
 import { DatasetStatesPanel } from "./DatasetStatesPanel";
 import { JobsPanel, RunsPanel } from "./RunsPanel";
+import { useUrlTab } from "@/lib/useUrlTab";
 
 const tabs = ["Issues", "States", "Coverage", "Jobs", "Ingestion runs", "Notes"] as const;
 type Tab = (typeof tabs)[number];
@@ -228,7 +229,7 @@ function issueDetail(i: { key: string; detail: string }): string {
 }
 
 export function DataQualityLive() {
-  const [tab, setTab] = useState<Tab>("Issues");
+  const [tab, setTab] = useUrlTab(tabs, "Issues");
   const quality = useLiveQuery(live.quality);
   const issues = useLiveQuery(live.issues);
   const coverage = useLiveQuery(live.coverage);

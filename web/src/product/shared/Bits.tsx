@@ -5,6 +5,8 @@ import { t } from "@/lib/i18n";
 import { fmtOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import { formatKickoff, formatRelative, formatTime } from "@/lib/time";
 import type { PriceFreshness, ParlayRisk } from "@/lib/api/v1/types_product";
+import { glossaryText } from "@/lib/glossary";
+import { hintProps } from "@/components/system/tapHint";
 import { riskLabel } from "./markets";
 
 /** A decimal price. `best` marks the selected value in PrediGol gold. */
@@ -37,13 +39,18 @@ export function OddsPill({
   );
 }
 
-/** Expected value per unit, signed, coloured by sign. */
+/**
+ * Expected value per unit, signed, coloured by sign. Its definition shows to a mouse and to a finger, even inside a
+ * card's link (hintProps); `hint={false}` where a Hint around it already says it.
+ */
 export function EvBadge({
   ev,
   className,
+  hint = true,
 }: {
   ev: string | number | null | undefined;
   className?: string | undefined;
+  hint?: boolean;
 }) {
   const n = toNumber(ev);
   if (n === null)
@@ -54,7 +61,7 @@ export function EvBadge({
     );
   return (
     <span
-      title={t("common.evLong")}
+      {...(hint ? hintProps(glossaryText("ev")) : {})}
       className={cn(
         "numeric inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.7rem] font-semibold",
         n > 0 ? "bg-positive-soft text-positive" : "bg-negative-soft text-negative",
@@ -105,15 +112,17 @@ const FRESH_TONE: Record<PriceFreshness, string> = {
   none: "bg-subtle-foreground",
 };
 
-/** A dot and "hace 12 min" for when a price was captured. */
+/** A dot and "hace 12 min" for when a price was captured; what the dot means shows to a mouse and a finger. */
 export function Freshness({
   at,
   level,
   className,
+  hint = true,
 }: {
   at: string | null | undefined;
   level?: PriceFreshness | undefined;
   className?: string | undefined;
+  hint?: boolean;
 }) {
   const lvl: PriceFreshness = level ?? (at ? "fresh" : "none");
   return (
@@ -122,7 +131,7 @@ export function Freshness({
         "inline-flex items-center gap-1.5 text-caption text-muted-foreground",
         className,
       )}
-      title={t(`common.freshnessLevel.${lvl}`)}
+      {...(hint ? hintProps(t(`common.freshnessLevel.${lvl}`)) : {})}
     >
       <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", FRESH_TONE[lvl])} />
       {at ? formatRelative(at) : t("common.freshnessLevel.none")}

@@ -1,7 +1,11 @@
+import { reportApiFailure } from "@/lib/observability";
 import { API_BASE_URL } from "@/lib/api/mode";
 import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
+import type { AgentsOverview, MatchState } from "./types_ai_agents";
+import type { EntityResearchOverview } from "./types_ai_research";
+import type { StorageOverview } from "./types_storage";
 import type {
   IntelCalibration,
   IntelCosts,
@@ -9,11 +13,27 @@ import type {
   IntelDecisionDetail,
   IntelDecisionRow,
   IntelDossier,
+  IntelFactorsRegistry,
+  IntelMarketMatrix,
   IntelMarketRow,
   IntelMemoryRow,
+  IntelPicker,
+  IntelPriceClock,
   IntelRun,
   IntelState,
 } from "./types_intel";
+import type { IntelFamilies } from "./types_families";
+import type {
+  PairStatus,
+  RefereeActionResult,
+  RefereeDetail,
+  RefereeList,
+  RefereeMergeBody,
+  RefereePairBody,
+  RefereeQueue,
+  RefereeRenameBody,
+  RefereeSplitBody,
+} from "./types_referees";
 
 export interface BestOddsQuery {
   market?: string | undefined;
@@ -26,6 +46,7 @@ import type {
   AiRunKind,
   AiRunRow,
   AiStatus,
+  CodePromotions,
   EvolutionOverview,
   HypothesisDecision,
   HypothesisTarget,
@@ -40,7 +61,6 @@ import type {
   MatchMemory,
   MemoryFilters,
   AiEvidenceRow,
-  AiLearning,
   AiMemoryEvent,
   AiOverview,
   AiPacketView,
@@ -57,6 +77,9 @@ import type {
   PickPostmortem,
   ShadowReportRow,
 } from "./types_ai_layer";
+import type { MatchCalendar } from "./types_calendar";
+import type { MatchForecast } from "./types_forecast";
+import type { MatchKnowledge } from "./types_knowledge";
 import type {
   AnalystReply,
   AnalystStatus,
@@ -256,11 +279,14 @@ async function request<T>(
       window.dispatchEvent(new Event(STAGE_EVENT));
     }
     const { code: _c, message: _m, problems, ...details } = err.error ?? {};
+    const requestId = err.request_id ?? res.headers.get("x-request-id");
+    // A server error reaches Sentry with its request id, the one in the server's log line (plan UX, A2).
+    if (res.status >= 500) reportApiFailure({ status: res.status, code, requestId, method, path });
     throw new LiveApiError(
       err.error?.message ?? `${method} ${path} failed (${res.status})`,
       res.status,
       code,
-      err.request_id ?? res.headers.get("x-request-id"),
+      requestId,
       (problems as string[] | undefined) ?? [],
       details,
     );
@@ -345,8 +371,13 @@ export const v1 = {
   // ── records: the day as persisted, and the user's own ──────────────────────
   daily: (q: { day?: string | undefined } & Preview = {}) =>
     getJson<Envelope<DailyBoard>>("/daily", q as Params),
-  myPicks: (status?: "open" | "settled") =>
-    getJson<Envelope<UserPick[]>>("/me/picks", { status, limit: 500 }),
+  /** A page of the user's saved picks: `meta.total` counts them all, `meta.next_cursor` leads on. */
+  myPicks: (q: { status?: "open" | "settled"; limit?: number; cursor?: string | undefined } = {}) =>
+    getJson<Envelope<UserPick[]>>("/me/picks", {
+      status: q.status,
+      limit: q.limit ?? 500,
+      cursor: q.cursor,
+    }),
   savePick: (body: SavePickIn) =>
     postJson<Envelope<{ id: number; snapshot: unknown }>>("/me/picks", body),
   setPickOdds: (id: number, userOdds: string | number | null) =>
@@ -356,7 +387,9 @@ export const v1 = {
     postJson<Envelope<ParlayValidation>>("/me/parlays/validate", { legs }),
   createParlay: (body: ParlayIn) =>
     postJson<Envelope<{ id: number; combined_odds: string | null }>>("/me/parlays", body),
-  myParlays: () => getJson<Envelope<UserParlay[]>>("/me/parlays", { limit: 200 }),
+  /** A page of the user's parlays (`meta.total`, `meta.next_cursor`). */
+  myParlays: (q: { limit?: number; cursor?: string | undefined } = {}) =>
+    getJson<Envelope<UserParlay[]>>("/me/parlays", { limit: q.limit ?? 200, cursor: q.cursor }),
   removeParlay: (id: number) => deleteJson<void>(`/me/parlays/${id}`),
   history: (period: HistoryPeriod, q: Preview = {}) =>
     getJson<Envelope<History>>("/me/history", { period, ...q }),
@@ -388,6 +421,27 @@ export const v1 = {
   /** ANÁLISIS PREDIGOL: up to three cards, computed once per match by the worker and read by everyone. */
   matchAnalysis: (id: number | string, q: Preview = {}) =>
     getJson<Envelope<MatchAnalysis | null>>(`/matches/${id}/analysis`, q),
+  /**
+   * PRONÓSTICO PREDIGOL (plan F5): what PrediGol expects of the match, apart from its value and its picks. Null data
+   * with `not_available`: users do not see it yet. `preview: "shadow"` (the Admin Console) adds the fair odds and the
+   * decision layer's value and picks beside it.
+   */
+  matchForecast: (id: number | string, q: Preview = {}) =>
+    getJson<Envelope<MatchForecast | null>>(`/matches/${id}/forecast`, q),
+  /**
+   * CALENDARIO (plan F4): what each team has played and has coming in every competition, and whether the list behind it is
+   * whole. Null data with `not_available`: users do not see it yet. `preview: "shadow"` (the Admin Console) shows it either way.
+   */
+  matchCalendar: (id: number | string, q: Preview = {}) =>
+    getJson<Envelope<MatchCalendar | null>>(`/matches/${id}/calendar`, q),
+  /**
+   * POSTPARTIDO (plan F7): a finished match put together in layers - the result, the statistics of the teams, the events, the
+   * players, the tactics and the story of the score, the market from its opening to its close. Facts only. Null data with
+   * `not_available`: users do not see it yet (or the match has none, and the section says why). `preview: "shadow"` (the Admin
+   * Console) shows it either way, with the row as stored and the chain of rebuilds.
+   */
+  matchKnowledge: (id: number | string, q: Preview = {}) =>
+    getJson<Envelope<MatchKnowledge | null>>(`/matches/${id}/knowledge`, q),
   liveBoard: () => getJson<Envelope<LiveBoard>>("/live"),
   players: (q: { q?: string | undefined; team_id?: number | undefined; limit?: number } = {}) =>
     getJson<Envelope<PlayerSummary[]>>("/players", {
@@ -396,6 +450,35 @@ export const v1 = {
       limit: q.limit ?? 100,
     }),
   player: (id: number | string) => getJson<Envelope<PlayerDetail | null>>(`/players/${id}`),
+  /** Referees as people (plan F3): the list, the queue of doubts, one person and the decisions on them. */
+  referees: (q: { q?: string | undefined; limit?: number; offset?: number } = {}) =>
+    getJson<Envelope<RefereeList>>("/admin/referees", {
+      q: q.q,
+      limit: q.limit ?? 50,
+      offset: q.offset ?? 0,
+    }),
+  refereeQueue: (
+    q: { status?: PairStatus; reason?: string | undefined; limit?: number; offset?: number } = {},
+  ) =>
+    getJson<Envelope<RefereeQueue>>("/admin/referees/queue", {
+      status: q.status ?? "open",
+      reason: q.reason,
+      limit: q.limit ?? 50,
+      offset: q.offset ?? 0,
+    }),
+  referee: (id: number | string) => getJson<Envelope<RefereeDetail>>(`/admin/referees/${id}`),
+  refereeMerge: (id: number, body: RefereeMergeBody) =>
+    postJson<Envelope<RefereeActionResult>>(`/admin/referees/${id}/merge`, body),
+  refereeUndo: (eventId: number) =>
+    postJson<Envelope<RefereeActionResult>>(`/admin/referees/events/${eventId}/undo`, {}),
+  refereeSplit: (id: number, body: RefereeSplitBody) =>
+    postJson<Envelope<RefereeActionResult>>(`/admin/referees/${id}/split`, body),
+  refereeReject: (id: number, body: RefereePairBody) =>
+    postJson<Envelope<RefereeActionResult>>(`/admin/referees/${id}/reject`, body),
+  refereeReopen: (id: number, body: RefereePairBody) =>
+    postJson<Envelope<RefereeActionResult>>(`/admin/referees/${id}/reopen`, body),
+  refereeRename: (id: number, body: RefereeRenameBody) =>
+    postJson<Envelope<RefereeActionResult>>(`/admin/referees/${id}/rename`, body),
   standings: (competitionId: number | string, season?: number) =>
     getJson<Envelope<CompetitionTable | null>>(`/competitions/${competitionId}/standings`, {
       season,
@@ -412,6 +495,8 @@ export const v1 = {
   issues: () => getJson<Envelope<QualityIssue[]>>("/admin/data-quality/issues"),
   runs: (limit = 20) => getJson<Envelope<RunSummary[]>>("/admin/ingestion/runs", { limit }),
   jobs: () => getJson<Envelope<JobHealth[]>>("/admin/ops/jobs"),
+  /** The owner's test of error reporting (plan UX, A2): always answers 500, with the request id to look for. */
+  monitoringTestError: () => postJson<void>("/admin/monitoring/test-error", {}),
   match: (id: number | string) => getJson<Envelope<MatchDetail>>(`/admin/matches/${id}`),
   audit: (id: number | string) => getJson<Envelope<MatchAudit>>(`/admin/matches/${id}/audit`),
   providerPrediction: (id: number | string) =>
@@ -435,6 +520,9 @@ export const v1 = {
   evolution: () => getJson<Envelope<EvolutionOverview>>("/admin/evolution"),
   evolutionDashboard: (day?: string) =>
     getJson<Envelope<EvolutionDashboard>>("/admin/evolution/dashboard", { day }),
+  /** The model code against its promotions (plan F12); the server keeps an answer five minutes. */
+  codePromotions: (days?: number) =>
+    getJson<Envelope<CodePromotions>>("/admin/evolution/code-promotions", { days }),
   proposeHypothesis: (body: {
     title: string;
     hypothesis: string;
@@ -471,6 +559,14 @@ export const v1 = {
   aiEvidence: (q: { fixture_id?: number | undefined; status?: EvidenceStatus | undefined } = {}) =>
     getJson<Envelope<AiEvidenceRow[]>>("/admin/ai/evidence", q as Params),
   aiCosts: () => getJson<Envelope<AiCosts>>("/admin/ai/costs"),
+  /** The agents (plan IA, phase 1): the registry, the engine of each family, what the state job wrote, the queue and the audit. Reading only. */
+  aiAgents: (days = 7) => getJson<Envelope<AgentsOverview>>("/admin/ai/agents", { days }),
+  /** Research by entity and topic (plan IA, phase 2): what research v2 kept, found, spent and reused, v1 against v2, and its gate. Reading only. */
+  aiResearchEntities: (days = 7) =>
+    getJson<Envelope<EntityResearchOverview>>("/admin/ai/research/entities", { days }),
+  /** The file of one match: its live state, every state it went through, and the tasks and attempts of the agents on it. */
+  aiMatchState: (fixtureId: number | string) =>
+    getJson<Envelope<MatchState>>(`/admin/ai/matches/${fixtureId}/state`),
   aiShadow: () => getJson<Envelope<ShadowReportRow[]>>("/admin/ai/shadow"),
   aiMemory: (kind?: string) => getJson<Envelope<AiMemoryEvent[]>>("/admin/ai/memory", { kind }),
   aiRunRequests: () => getJson<Envelope<AiRunRequest[]>>("/admin/ai/run-requests"),
@@ -484,7 +580,6 @@ export const v1 = {
       fixture_id?: number | undefined;
     } = {},
   ) => getJson<Envelope<PickPostmortem[]>>("/admin/ai/postmortems", q as Params),
-  aiLearning: (day?: string) => getJson<Envelope<AiLearning>>("/admin/ai/learning", { day }),
   aiSources: (days = 7) => getJson<Envelope<AiSourceRow[]>>("/admin/ai/sources", { days }),
   aiDailyReviews: (days = 30) =>
     getJson<Envelope<DailyReviewDay[]>>("/admin/ai/daily-reviews", { days }),
@@ -512,8 +607,21 @@ export const v1 = {
     getJson<Envelope<IntelDecisionDetail>>(`/admin/intelligence/decisions/${id}`),
   intelDossier: (fixtureId: number | string) =>
     getJson<Envelope<IntelDossier>>(`/admin/intelligence/matches/${fixtureId}/dossier`),
+  /** The dossier's picker: a Bogotá day, or a text (team, competition or match id) within 45 days of it. */
+  intelMatches: (
+    q: { day?: string | undefined; q?: string | undefined; limit?: number | undefined } = {},
+  ) => getJson<Envelope<IntelPicker>>("/admin/intelligence/matches", q as Params),
+  /** The registry of context factors as it stands. */
+  intelFactors: () => getJson<Envelope<IntelFactorsRegistry>>("/admin/intelligence/factors"),
   intelCalibration: () => getJson<Envelope<IntelCalibration>>("/admin/intelligence/calibration"),
-  intelMemory: (q: { entity_type?: string | undefined; q?: string | undefined } = {}) =>
+  intelMemory: (
+    q: {
+      entity_type?: string | undefined;
+      q?: string | undefined;
+      aspect?: string | undefined;
+      limit?: number | undefined;
+    } = {},
+  ) =>
     getJson<Envelope<{ items: IntelMemoryRow[]; total: number }>>(
       "/admin/intelligence/memory",
       q as Params,
@@ -539,6 +647,18 @@ export const v1 = {
         items: IntelMarketRow[];
       }>
     >("/admin/intelligence/markets"),
+  intelPriceClock: () => getJson<Envelope<IntelPriceClock>>("/admin/intelligence/price-clock"),
+  intelMarketMatrix: () =>
+    getJson<Envelope<IntelMarketMatrix>>("/admin/intelligence/market-matrix"),
+  /** The families in shadow (plan F10.17, F11.11): what they decided, how each was graded, what became of it and what they remember. */
+  intelFamilies: (
+    q: {
+      family?: string | undefined;
+      state?: string | undefined;
+      days?: number | undefined;
+      limit?: number | undefined;
+    } = {},
+  ) => getJson<Envelope<IntelFamilies>>("/admin/intelligence/families", q as Params),
   intelRuns: () =>
     getJson<
       Envelope<{
@@ -578,6 +698,8 @@ export const v1 = {
   dataCoverage: () => getJson<Envelope<CoverageCell[]>>("/admin/analytics/coverage"),
   migration: () => getJson<Envelope<MigrationProgress>>("/admin/analytics/migration"),
   admin: () => getJson<Envelope<AdminOverview>>("/admin/system"),
+  /** Where the server's disk goes, the copies, the last cleanup and the retention policy (reading only). */
+  adminStorage: () => getJson<Envelope<StorageOverview>>("/admin/storage"),
   users: () => getJson<Envelope<AdminUser[]>>("/admin/users"),
   createUser: (body: AdminUserCreate) => postJson<Envelope<AdminUser>>("/admin/users", body),
   resetUserPassword: (id: number, password?: string) =>

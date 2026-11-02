@@ -111,8 +111,11 @@ export interface PlayerLine {
 
 /** What the fixture's payloads say beyond the score: referee, winner flags, half starts. */
 export interface MatchFacts {
+  /** The person's name when the identity is at the newest observation, otherwise the string the provider wrote. */
   referee: string | null;
   referee_country: string | null;
+  /** The referee's id (`core.referees`); null while the identity has not caught up, or when nobody is named. */
+  referee_id?: number | null;
   home_winner: boolean | null;
   away_winner: boolean | null;
   first_half_at: Iso | null;
@@ -202,8 +205,22 @@ export interface H2HMatch {
   competition: string;
   home: string;
   away: string;
+  /** The final score, extra time in, shoot-out out. */
   goals_home: number;
   goals_away: number;
+  /** The 90 minutes: what the head-to-head record counts and what every market settles on. */
+  regulation_goals_home: number;
+  regulation_goals_away: number;
+  after_extra_time: boolean;
+  /** The shoot-out, when there was one. */
+  penalties_home: number | null;
+  penalties_away: number | null;
+  /** What kind of meeting it was, against the match being described. */
+  scope: "same_competition" | "same_kind" | "other_official" | "friendly";
+  /** Where this match's HOME side played that day. */
+  home_side_was: "home" | "away" | "neutral";
+  /** What the meeting weighs for this match, 0 to 1 (a description, not a fitted signal). */
+  weight: number;
 }
 
 export interface LiveState {
@@ -241,6 +258,92 @@ export interface LiveMove {
   kind: "moved" | "withdrawn" | "offered" | "suspended" | "available" | "other";
 }
 
+/** The stage of the competition a match belongs to: the words of its round label, read by one classifier. */
+export interface MatchStage {
+  /** The round without its match day: "Round of 16", "Regular Season", "Group Stage". */
+  name: string;
+  kind: "league" | "knockout" | "qualifying" | "friendly" | "unresolved";
+  role:
+    | "league"
+    | "group"
+    | "knockout"
+    | "playoff"
+    | "final"
+    | "third_place"
+    | "placement"
+    | "qualifying"
+    | "friendly"
+    | "unresolved";
+  /** "round_of_16", "quarter_final", "final"...; null when the round has no standard name. */
+  round_key: string | null;
+  is_replay: boolean;
+  /** Its place among the competition season's stages, in order of play. */
+  ordinal: number;
+}
+
+/** A score from THIS match's home and away: the left side of the header is the left side of the score. */
+export interface TieScore {
+  home: number;
+  away: number;
+}
+
+/** One match of the tie, as it was played (home and away of THAT match). */
+export interface TieLeg {
+  fixture_id: number;
+  leg: number | null;
+  kickoff_at: Iso;
+  home: string;
+  away: string;
+  status: string;
+  status_group: string;
+  /** Final goals, extra time included; null when no result is stored. */
+  goals_home: number | null;
+  goals_away: number | null;
+  extra_time: boolean;
+  shootout_home: number | null;
+  shootout_away: number | null;
+  /** This is the match the page is about. */
+  is_this: boolean;
+}
+
+export type TieDecidedBy =
+  | "normal_time"
+  | "extra_time"
+  | "penalties"
+  | "aggregate"
+  | "away_goals"
+  | "tiebreak"
+  | "walkover"
+  | "series";
+
+/** Who went through: said only once THIS match is over and the tie is decided. */
+export interface TieOutcome {
+  /** "home" or "away" of THIS match. */
+  winner: Side;
+  decided_by: TieDecidedBy;
+  shootout: TieScore | null;
+  /** The provider's winner flag disagrees with the goals (an administrative decision). */
+  contradicted: boolean;
+}
+
+/** The tie this match is a leg of, told as of now. Scores are from THIS match's home and away. */
+export interface MatchTie {
+  format: "single" | "two_legged" | "replay" | "series";
+  state: "scheduled" | "in_progress" | "decided" | "unresolved";
+  /** This match's place in the tie (1 = first), when known. */
+  leg: number | null;
+  /** Matches the format plans (2 for a two-legged tie). */
+  legs: number;
+  /** Matches of the tie with a final result. */
+  played: number;
+  /** The legs played before this one, summed; null when there are none or no aggregate applies. */
+  aggregate_before: TieScore | null;
+  /** Every leg with a final result, this one included once it is over; null when none applies. */
+  aggregate: TieScore | null;
+  outcome: TieOutcome | null;
+  legs_list: TieLeg[];
+}
+
 export interface MatchCenter {
   fixture_id: number;
   status_group: string;
@@ -258,6 +361,10 @@ export interface MatchCenter {
   live_odds: Section<LiveQuote[]>;
   live_movement: Section<LiveMove[]>;
   facts?: MatchFacts | null;
+  /** The stage of the competition; absent when the competition season has not been built. */
+  stage?: MatchStage | null;
+  /** The tie this match is a leg of; absent for a league match. */
+  tie?: MatchTie | null;
 }
 
 export interface LiveTeam {
@@ -281,6 +388,8 @@ export interface LiveMatch {
   kickoff_at: Iso;
   competition: string;
   country: string | null;
+  /** ISO code of the country (GB-ENG for a home nation): named in the reader's language (countryLabel). */
+  country_code?: string | null;
   competition_id?: number | null;
   competition_logo?: string | null;
   competition_flag?: string | null;
@@ -444,6 +553,40 @@ export interface PlayerCareerTeam {
   seasons: number[];
 }
 
+/** A streak at a club (plan F3, `core.player_spells`): from squad sheets, statistics and transfers. */
+export interface PlayerClubSpell {
+  provider_team_id: number;
+  /** PrediGol's team when we hold the club. */
+  team_id: number | null;
+  team: string | null;
+  /** First day of the streak; null: he was already there when the facts begin. */
+  valid_from: string | null;
+  /** Day he left (exclusive); null: he is still there as far as the facts say. */
+  valid_to: string | null;
+  source: "transfer" | "lineup" | "squad";
+  matches: number;
+  last_evidence: string;
+  /** How the transfer is described by the provider ("Free", "Loan"...). */
+  via: string | null;
+}
+
+/** A match of a senior national team whose squad sheet carries the player (plan F3, `core.player_national_caps`). */
+export interface PlayerNationalCap {
+  fixture_id: number;
+  kickoff_at: string;
+  team_id: number;
+  team: string;
+  opponent_id: number | null;
+  opponent: string | null;
+  competition: string | null;
+  is_starter: boolean;
+  /** true: he played; false: he stayed on the bench; null: the statistics of the match have not arrived. */
+  appeared: boolean | null;
+  minutes: number | null;
+  goals_for: number | null;
+  goals_against: number | null;
+}
+
 export interface PlayerDetail {
   player: PlayerSummary;
   firstname: string | null;
@@ -458,6 +601,8 @@ export interface PlayerDetail {
   trophies?: Section<PlayerTrophy[]> | null;
   provider_seasons?: Section<PlayerProviderSeason[]> | null;
   career?: Section<PlayerCareerTeam[]> | null;
+  club_history?: Section<PlayerClubSpell[]> | null;
+  national_caps?: Section<PlayerNationalCap[]> | null;
   provenance?: Record<string, Provenance>;
 }
 

@@ -10,6 +10,10 @@ export interface SlipValue {
   clear: (quiet?: boolean) => void;
   /** Replace the legs with these (the automatic builder's parlay, to change before saving). */
   load: (legs: SlipLeg[]) => void;
+  /** Legs just taken out that can still be put back (for UNDO_MS), or null. */
+  undo: { effect: "removed" | "cleared"; count: number } | null;
+  /** Put them back: the slip as it was before they went. */
+  restore: () => void;
   open: boolean;
   setOpen: (open: boolean) => void;
 }

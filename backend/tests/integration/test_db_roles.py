@@ -70,8 +70,32 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "ai.pick_reviews", "INSERT", False),
     ("predigol_api", "ai.usage", "INSERT", False),
     ("predigol_api", "ai.match_analyses", "UPDATE", False),
+    # the referee queue (plan F3): a person decides pairs and moves aliases; only the worker's pass makes aliases and officials
+    ("predigol_api", "core.referees", "UPDATE", True),
+    ("predigol_api", "core.referees", "INSERT", True),            # a split makes a referee
+    ("predigol_api", "core.referees", "DELETE", False),
+    ("predigol_api", "core.referee_aliases", "UPDATE", True),
+    ("predigol_api", "core.referee_aliases", "INSERT", False),
+    ("predigol_api", "core.referee_aliases", "DELETE", False),
+    ("predigol_api", "core.fixture_officials", "SELECT", True),
+    ("predigol_api", "core.fixture_officials", "INSERT", False),
+    ("predigol_api", "core.fixture_officials", "UPDATE", False),
+    ("predigol_api", "core.referee_candidates", "DELETE", True),
+    ("predigol_api", "core.referee_events", "INSERT", True),
+    ("predigol_api", "core.referee_events", "DELETE", False),
+    ("predigol_worker", "core.fixture_officials", "INSERT", True),
+    ("predigol_worker", "core.referee_aliases", "INSERT", True),
     ("predigol_worker", "ai.pick_reviews", "INSERT", True),
     ("predigol_worker", "ai.usage", "INSERT", True),
+    # Match Knowledge (plan F7): the worker builds it and rewrites what each line of the events is; the API only reads
+    ("predigol_api", "intel.match_knowledge", "SELECT", True),
+    ("predigol_api", "intel.match_knowledge", "INSERT", False),
+    ("predigol_api", "intel.match_knowledge_latest", "SELECT", True),
+    ("predigol_api", "core.fixture_event_kinds", "SELECT", True),
+    ("predigol_api", "core.fixture_event_kinds", "INSERT", False),
+    ("predigol_worker", "intel.match_knowledge", "INSERT", True),
+    ("predigol_worker", "core.fixture_event_kinds", "INSERT", True),
+    ("predigol_worker", "core.fixture_event_kinds", "DELETE", True),
 ])
 def test_each_role_gets_exactly_what_it_uses(granted: str, role: str, table: str, privilege: str,
                                             expected: bool) -> None:
@@ -108,11 +132,14 @@ def test_the_worker_may_not_create_a_partition_and_carries_on(granted: str) -> N
         # the connection is usable afterwards, and nothing was created
         row = conn.execute("SELECT to_regclass('market.odds_snapshots_2031_03')").fetchone()
         assert row == (None,)
+        row = conn.execute("SELECT to_regclass('market.odds_quotes_2031_03')").fetchone()
+        assert row == (None,)
         conn.execute("RESET ROLE")
     with psycopg.connect(granted) as owner:
         created = ensure_partitions(owner, today=far, months_ahead=0)
-        assert created == ["market.odds_snapshots_2031_03"]
+        assert created == ["market.odds_snapshots_2031_03", "market.odds_quotes_2031_03"]
         owner.execute("DROP TABLE market.odds_snapshots_2031_03")
+        owner.execute("DROP TABLE market.odds_quotes_2031_03")
         owner.commit()
 
 

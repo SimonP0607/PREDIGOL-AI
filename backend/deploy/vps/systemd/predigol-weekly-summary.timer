@@ -1,0 +1,10 @@
+[Unit]
+Description=PrediGol: weekly summary of incidents (Monday 08:11 Bogota)
+
+[Timer]
+# 13:11 UTC: after the 13:03 fixtures sync has started, so it never lands on the same minute.
+OnCalendar=Mon *-*-* 13:11:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

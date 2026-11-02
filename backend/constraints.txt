@@ -1,0 +1,77 @@
+# The versions of every library the backend image runs, one per line: the `pip freeze` of the running image, minus the project itself.
+#
+# Why this file exists (plan F14): `pip install -e ".[analytics]"` asks for lower bounds (`>=`), so every time that layer of the image is
+# rebuilt it takes whatever is newest that day. It is rebuilt whenever pyproject.toml changes (it did at F2, F3.2, F5, F7 and F10.1, each
+# time the list of packages mypy checks grew). On 24 Oct 2026 production ran FastAPI 0.162.0, pandas 3.1.0 and sentry-sdk 2.73.0 (and newer
+# certifi, pycparser and tzlocal) while the gate's environment ran 0.159.1, 3.0.6 and 2.72.0: nobody chose that, nothing recorded it, and the
+# fingerprint of the model code does not see a library. The Dockerfile installs with `-c constraints.txt`, so that layer now rebuilds to
+# exactly these versions.
+#
+# Taken from predigol-backend:7a7d010653a5 (Python 3.12.15) on 24 Oct 2026. The whole gate (ruff, mypy, mypy over the whole tree, pytest:
+# 4746 passed) was run on these versions that day, and tests/unit/test_dependency_pins.py keeps the gate's environment equal to this file.
+#
+# To upgrade a library: change its line here, install the file in the gate's environment
+#   pip install -c constraints.txt -e ".[dev,analytics]"
+# run the whole gate, measure the models before and after if the library can move a number (the fingerprint of the model code, and so
+# the F12 ledger, does not see a library) and ship it like any other change. To regenerate the whole list from a new image: the output of
+# `pip freeze --exclude-editable` there, in the order pip prints it (the test checks the order).
+alembic==1.20.1
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+APScheduler==3.11.3
+argon2-cffi==25.1.0
+argon2-cffi-bindings==26.1.0
+certifi==2026.10.23
+cffi==2.1.1
+click==8.5.0
+cryptography==50.0.2
+duckdb==2.0.0
+fastapi==0.162.0
+formulaic==1.2.2
+h11==0.16.0
+httpcore==1.0.9
+httptools==0.9.0
+httpx==0.28.1
+idna==3.20
+interface_meta==2.0.1
+Mako==1.4.3
+MarkupSafe==3.0.4
+narwhals==2.27.1
+numpy==2.5.4
+opentelemetry-api==1.45.1
+packaging==26.3
+pandas==3.1.0
+patsy==1.0.3
+polars==2.0.0
+polars-runtime-32==2.0.0
+psycopg==3.3.6
+psycopg-binary==3.3.6
+psycopg-pool==3.3.3
+pyarrow==26.0.0
+pycparser==3.12
+pydantic==2.14.1
+pydantic-settings==2.16.1
+pydantic_core==2.50.1
+python-dateutil==3.0.0
+python-dotenv==1.2.4
+PyYAML==6.0.3
+scipy==1.18.1
+segno==1.6.6
+sentry-sdk==2.73.0
+six==1.17.0
+SQLAlchemy==2.1.6
+starlette==1.9.0
+statsmodels==0.15.0
+structlog==26.1.0
+tenacity==9.2.1
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+tzdata==2026.5
+tzlocal==5.4.5
+urllib3==2.8.0
+uvicorn==0.54.0
+uvloop==0.23.0
+watchfiles==1.3.0
+websockets==17.3
+wrapt==2.5.1

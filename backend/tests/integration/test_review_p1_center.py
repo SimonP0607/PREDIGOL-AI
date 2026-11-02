@@ -83,9 +83,9 @@ def test_no_season_stored_is_null_not_zero(db: psycopg.Connection, seed: Seed) -
 def test_the_admin_reads_one_matchs_postmortems_whatever_its_day(db: psycopg.Connection, seed: Seed) -> None:
     """REVIEW point 4: a finished match's Picks tab shows its post-mortems (admin), not only yesterday's."""
     from fbi.api.services.ai_v2 import postmortems
-    db.execute("INSERT INTO ai.pick_postmortems (fixture_id, market_key, selection, line, created_at, version, roles, "
-               "settled, verdict, answers) VALUES (%s, 'OU', 'Under', 2.5, now(), 'pm-test', '{shadow}', 'LOST', "
-               "'unreviewed_lost', '{}'::jsonb)", (seed.fixture_id,))
+    db.execute("INSERT INTO intel.postmortems (fixture_id, created_at, version, outcome, decision_quality, verdict, answers, "
+               "market_key, selection, line, roles, review_verdict) VALUES (%s, now(), 'pm-test', 'lost', 'UNKNOWN', 'SIN_DATOS', "
+               "'{}'::jsonb, 'OU', 'Under', 2.5, '{shadow}', 'unreviewed_lost')", (seed.fixture_id,))
     rows = postmortems(db, fixture_id=seed.fixture_id).data
     assert [(r.fixture_id, r.market_key, r.verdict) for r in rows] == [(seed.fixture_id, "OU", "unreviewed_lost")]
     assert postmortems(db).data == [], "without a fixture, still yesterday's (the seed match is in September)"

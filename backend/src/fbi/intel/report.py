@@ -24,6 +24,11 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
+from fbi.ai.gates import typed_visible
+from fbi.ai.team_claims import team_claims
+from fbi.ai.team_claims import words as team_words
+from fbi.core.decision_versions import DECISION_CORE
+from fbi.intel import postmortem
 
 VERSION = "learn-report-v1"
 
@@ -31,7 +36,7 @@ LAST_SQL = """
 WITH last AS (
     SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line) d.*
       FROM intel.decisions d
-     WHERE d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s
+     WHERE d.decision_version = %(decision_version)s AND d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s
      ORDER BY d.fixture_id, d.market_key, d.selection, d.line, d.known_at DESC, d.id DESC
 )
 SELECT l.id, l.state, l.market_key, l.selection, l.context_status, l.score::float8 AS score, l.odds::float8 AS odds,
@@ -41,8 +46,21 @@ SELECT l.id, l.state, l.market_key, l.selection, l.context_status, l.score::floa
        o.clv::float8 AS clv, pm.verdict, pm.causes
   FROM last l
   LEFT JOIN intel.decision_outcomes o ON o.decision_id = l.id
-  LEFT JOIN intel.postmortems pm ON pm.decision_id = l.id
+  LEFT JOIN LATERAL (SELECT x.verdict, x.causes FROM intel.postmortems x WHERE x.decision_id = l.id
+                      ORDER BY x.id DESC LIMIT 1) pm ON true
 """
+
+
+EVIDENCE_SQL = f"""
+SELECT e.origin, e.status, e.source_tier, count(DISTINCT e.id) AS n
+  FROM core.fixtures f
+  JOIN ai.evidence e ON (e.fixture_id = f.id OR {team_claims(home="f.home_team_id", away="f.away_team_id", at="f.kickoff_at", set_aside=True)})
+ WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND (e.subject_type IS NULL OR %(typed)s)
+ GROUP BY 1, 2, 3 ORDER BY 4 DESC
+"""
+"""The outside evidence of the day's matches, by origin, status and tier. The claims of research v2 count only when research v2 is ``on``
+(``fbi.ai.gates.typed_visible``) - the ones about the match and the ones about its teams that belong to no match (``fbi.ai.team_claims``), each once,
+whatever status the server gave them (the report looks back, as the review does: ``set_aside``)."""
 
 
 def _mean(xs: list[float]) -> float | None:
@@ -83,7 +101,7 @@ def _calibration(rows: list[dict[str, Any]]) -> dict[str, Any]:
 def build_report(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> dict[str, Any]:
     start, end = day_bounds(day)
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(LAST_SQL, {"start": start, "end": end})
+        cur.execute(LAST_SQL, {"start": start, "end": end, "decision_version": DECISION_CORE})
         rows = [dict(r) for r in cur.fetchall()]
         cur.execute("SELECT kind, rank, odds::float8 AS odds, p_est::float8 AS p, ev::float8 AS ev, "
                     "stake_units::float8 AS stake, decision_ids, detail FROM intel.day_selections "
@@ -93,9 +111,7 @@ def build_report(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> d
                     "FROM picks.daily_set_items i JOIN picks.daily_sets s ON s.id = i.set_id "
                     "WHERE s.day = %s AND s.source = 'evaluation' GROUP BY 1", (day,))
         v5 = [dict(r) for r in cur.fetchall()]
-        cur.execute("SELECT origin, status, source_tier, count(*) AS n FROM ai.evidence e JOIN core.fixtures f "
-                    "ON f.id = e.fixture_id WHERE f.kickoff_at >= %s AND f.kickoff_at < %s GROUP BY 1, 2, 3 "
-                    "ORDER BY 4 DESC", (start, end))
+        cur.execute(EVIDENCE_SQL, {"start": start, "end": end} | team_words(typed_visible(conn)))
         evidence = [dict(r) for r in cur.fetchall()]
         cur.execute("SELECT purpose, tier, count(*) AS calls, sum(cost_usd)::float8 AS usd FROM ai.usage "
                     "WHERE at >= %s AND at < %s GROUP BY 1, 2 ORDER BY 4 DESC", (start, end))
@@ -103,11 +119,11 @@ def build_report(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> d
         cur.execute("SELECT entity, market_key, model_name, to_role, reason, at FROM intel.promotions "
                     "WHERE at >= %s AND at < %s + interval '1 day' ORDER BY at", (start, end))
         promotions = [dict(r) | {"at": r["at"].isoformat()} for r in cur.fetchall()]
-        cur.execute("SELECT entity_type, entity_name, aspect, stats FROM intel.entity_memory WHERE as_of_day = %s "
+        cur.execute("SELECT entity_type, entity_name, aspect, stats FROM intel.entity_memory_latest WHERE as_of_day = %s "
                     "AND entity_type IN ('team', 'competition') AND (stats->>'decisions')::int >= 5 "
                     "ORDER BY (stats->>'clv_mean')::float8 NULLS LAST LIMIT 12", (day,))
         memory = [dict(r) for r in cur.fetchall()]
-        cur.execute("SELECT entity_name, stats FROM intel.entity_memory WHERE as_of_day = %s AND entity_type = 'player' "
+        cur.execute("SELECT entity_name, stats FROM intel.entity_memory_latest WHERE as_of_day = %s AND entity_type = 'player' "
                     "AND (delta->>'started_anyway')::int > 0 LIMIT 15", (day,))
         players = [dict(r) for r in cur.fetchall()]
         cur.execute("SELECT r.id FROM intel.runs r WHERE r.job = 'weekly' AND r.status IN ('ok', 'partial') "
@@ -211,7 +227,7 @@ def render(c: dict[str, Any]) -> str:
         lines.append(f"- {cal.get('note')} (n={cal.get('n')})")
     pm = c["postmortems"]
     lines.append("")
-    lines.append("## Post-mortems (pm-v3)")
+    lines.append(f"## Post-mortems ({postmortem.VERSION})")
     lines.append("- Veredictos: " + (", ".join(f"{k} {v}" for k, v in pm["verdicts"].items()) or "ninguno"))
     lines.append("- Causas: " + (", ".join(f"{k} {v}" for k, v in pm["causes"].items()) or "ninguna registrada"))
     ctx = c["context"]

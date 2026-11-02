@@ -5,10 +5,11 @@
 For the settled shadow picks (never shown to a user): ROI with a 95% interval from a bootstrap that resamples
 FIXTURES, not picks (several lines of one match win or lose together, so 1,500 picks are far fewer independent
 bets); the same split by market, odds band and selection side; calibration (the model's probability, the market's
-de-vigged probability and what happened, per market and side); and closing-line value: the price taken against the
-same bookmaker's last pre-match price and against Pinnacle's, both read after the match
-(market.final_prematch_odds). A model that beats the market should take prices that the close moves against
-(positive CLV) - consistently, not in one lucky week.
+de-vigged probability and what happened, per market and side); and the two closing measures, kept apart (plan F0,
+defect 7, ``fbi.market.closing_value``): the PRICE MOVE - the price taken against the same bookmaker's last pre-match
+price and against Pinnacle's, margin in both - and the CLV proper, ``ev_at_pinnacle_close`` - the price taken at
+Pinnacle's de-vigged close. Both are read after the match (market.final_prematch_odds). A model that beats the market
+should take prices that the close moves against (positive CLV) - consistently, not in one lucky week.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from psycopg.rows import dict_row
 
 from fbi.core.config import settings
 from fbi.core.version import code_version
+from fbi.market import closing_value
 
 OUT_ROOT = Path("data/evaluation")
 BOOTSTRAP = 2000
@@ -109,16 +111,18 @@ def clustered_mean(values: list[tuple[int, float]], rng: random.Random) -> dict[
 
 
 def ev_at_pinnacle_close(rows: list[dict[str, Any]], books: dict[int, Book], rng: random.Random) -> dict[str, Any]:
-    """EV of the price taken against Pinnacle's de-vigged final pre-match price: odds x p_fair - 1.
+    """The CLV (``clv-v1``) of the price taken against Pinnacle's own de-vigged final pre-match price:
+    odds x p_fair - 1, with Pinnacle's proportional de-vig as the closing probability.
 
-    The raw ratio to Pinnacle's price (``clv_pinnacle``) compares the best of several books with one book that keeps
-    a margin, so it flatters every pick; this is the figure a sharp close says the pick was worth."""
+    The raw ratio to Pinnacle's price (``price_move_pinnacle``) compares the best of several books with one book that
+    keeps a margin, so it flatters every pick and is NOT a CLV; this is the figure a sharp close says the pick was
+    worth."""
     values = []
     for r in rows:
         p = fair_close(books.get(r["fixture_id"], {}), r["market_key"], r["selection"],
                        Decimal(str(r.get("line") or 0)))
         if p is not None:
-            values.append((r["fixture_id"], float(r["market_odds"]) * p - 1))
+            values.append((r["fixture_id"], closing_value.clv(float(r["market_odds"]), p)))
     return clustered_mean(values, rng)
 
 
@@ -143,9 +147,11 @@ def roi_with_interval(rows: list[dict[str, Any]], rng: random.Random) -> dict[st
             "ci95": [round(samples[int(0.025 * BOOTSTRAP)], 4), round(samples[int(0.975 * BOOTSTRAP) - 1], 4)]}
 
 
-def clv(rows: list[dict[str, Any]], key: str) -> dict[str, Any]:
-    """Closing-line value: taken / close - 1, over the picks with a close for that reference."""
-    values = [float(r["market_odds"]) / float(r[key]) - 1 for r in rows if r.get(key)]
+def price_move(rows: list[dict[str, Any]], key: str) -> dict[str, Any]:
+    """The price taken against a bookmaker's closing price (margin included in both), ``taken / close - 1``, over the
+    picks with that close. Not CLV (``fbi.market.closing_value``): it says whether that price moved, not whether it
+    was a good one."""
+    values = [closing_value.price_move(float(r["market_odds"]), float(r[key])) for r in rows if r.get(key)]
     if not values:
         return {"n": 0, "mean": None, "median": None, "positive_share": None}
     return {"n": len(values), "mean": round(statistics.mean(values), 4), "median": round(statistics.median(values), 4),
@@ -197,8 +203,8 @@ def band(odds: float) -> str:
 def evaluate(rows: list[dict[str, Any]], books: dict[int, Book] | None = None) -> dict[str, Any]:
     rng = random.Random(SEED)
     books = books or {}
-    out: dict[str, Any] = {"overall": {**roi_with_interval(rows, rng), "clv_same_book": clv(rows, "close_same_book"),
-                                       "clv_pinnacle": clv(rows, "close_pinnacle"),
+    out: dict[str, Any] = {"overall": {**roi_with_interval(rows, rng), "price_move_same_book": price_move(rows, "close_same_book"),
+                                       "price_move_pinnacle": price_move(rows, "close_pinnacle"),
                                        "ev_at_pinnacle_close": ev_at_pinnacle_close(rows, books, rng),
                                        "edge_reliability": edge_reliability(rows, rng)}}
     for name, key in (("by_market", lambda r: r["market_key"]), ("by_odds_band", lambda r: band(float(r["market_odds"]))),
@@ -207,7 +213,7 @@ def evaluate(rows: list[dict[str, Any]], books: dict[int, Book] | None = None) -
         groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for r in rows:
             groups[key(r)].append(r)
-        out[name] = {g: {**roi_with_interval(v, rng), "clv_same_book": clv(v, "close_same_book"),
+        out[name] = {g: {**roi_with_interval(v, rng), "price_move_same_book": price_move(v, "close_same_book"),
                          "ev_at_pinnacle_close": ev_at_pinnacle_close(v, books, rng),
                          "calibration": calibration(v), "edge_reliability": edge_reliability(v, rng)}
                      for g, v in sorted(groups.items())}
@@ -227,15 +233,16 @@ def main() -> int:
         books: dict[int, Book] = defaultdict(dict)
         for b in cur.fetchall():
             books[b["fixture_id"]][(b["market_key"], b["selection"], Decimal(str(b["line"])))] = float(b["odds_decimal"])
-    report = {"at": at.isoformat(), "code_version": code_version(), "bootstrap": BOOTSTRAP, "seed": SEED,
-              "note": "shadow picks only; none was shown to a user", **evaluate(rows, books)}
+    report = {"at": at.isoformat(), "code_version": code_version(), "clv_version": closing_value.VERSION,
+              "bootstrap": BOOTSTRAP, "seed": SEED, "note": "shadow picks only; none was shown to a user",
+              **evaluate(rows, books)}
     folder = OUT_ROOT / at.strftime("%Y%m%dT%H%M%SZ")
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "shadow_evaluation.json").write_text(json.dumps(report, indent=2, default=str))
     o = report["overall"]
     print(folder / "shadow_evaluation.json")
     print(f"picks {o['picks']} fixtures {o['fixtures']} roi {o['roi']} ci95 {o['ci95']} "
-          f"clv_same_book {o['clv_same_book']} clv_pinnacle {o['clv_pinnacle']} "
+          f"price_move_same_book {o['price_move_same_book']} price_move_pinnacle {o['price_move_pinnacle']} "
           f"ev_at_pinnacle_close {o['ev_at_pinnacle_close']} "
           f"edge_reliability {o['edge_reliability']}")
     return 0

@@ -35,77 +35,40 @@ when a page is built, so it cannot go stale.
 from __future__ import annotations
 
 import re
-import unicodedata
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Literal
 
-VERSION = "phases-1"
-"""Bumped whenever a rule below changes what a table maps to; pages and audits report it."""
+# The readers of a label live in ``stages``; ``phases`` keeps offering ``phase_of`` and ``stage_of`` as it always has.
+from fbi.competitions.stages import GROUPISH, MATCH_DAY, fold
+from fbi.competitions.stages import phase_of as phase_of
+from fbi.competitions.stages import stage_kind as read_stage_kind
+from fbi.competitions.stages import stage_of as stage_of
+
+VERSION = "phases-2"
+"""Bumped whenever a rule below changes what a table maps to; pages and audits report it. phases-2 (F2, 22 Oct 2026):
+the words of a round label are read by ``fbi.competitions.stages`` alone, and a few labels no table ever counted
+("7th place", "Play-In Round", "Play Offs", "Reclasificación") stopped being read as league stages."""
 
 StageKind = Literal["league", "knockout", "qualifying", "friendly"]
 TableKind = Literal["full", "group", "ranking", "aggregate", "other"]
 Method = Literal["label", "games", "single", "unmapped"]
 Reason = Literal["fixture_stage", "phase_league_stage", "previous_stage"]
 
-MATCH_DAY = re.compile(r"\s*-\s*\d+\s*$")
-KNOCKOUT = re.compile(r"final|play-?offs?|knockout|round of|quarter|semi|8th|16th|1/\d|qualifying|qualification|preliminary|"
-                      r"promotion|relegation (?:play|deciding)|third place|3rd place|super cup|repechage|elimination",
-                      re.IGNORECASE)
-"""Rounds no league table counts (the truth audit's rule, shared)."""
-STRICT_KNOCKOUT = re.compile(r"final|semi|quarter|round of|1/\d|8th|16th|32nd|play-?offs?(?!\s*group)|knockout|"
-                             r"repechage|third place|3rd place", re.IGNORECASE)
-"""Knock-out words that still mean knock-out when the rounds carry a match-day number."""
-LEAGUE_FORMAT = re.compile(r"\bgroups?\b|quadrangular|hexagonal|triangular|pentagonal|octagonal|"
-                           r"league (?:stage|phase)|round robin|championship round|relegation round|regular season",
-                           re.IGNORECASE)
-NUMBERED_LEAGUE = re.compile(r"final (?:round|stage|phase|tournament)", re.IGNORECASE)
-"""With match-day numbers these are round-robins ("Final Round - 3": CONCACAF's World Cup qualifying groups)."""
-GROUPISH = re.compile(r"^group\b", re.IGNORECASE)
-"""Phases that are one group of a group stage ("Group A - 2" in Euro 2024): together they are one phase."""
-QUALIFYING = re.compile(r"qualif|preliminary", re.IGNORECASE)
-UNNUMBERED_KNOCKOUT = re.compile(r"\b\d+(?:st|nd|rd|th) (?:round|phase)\b|\bround \d+\b", re.IGNORECASE)
-FRIENDLY = re.compile(r"friendl", re.IGNORECASE)
 LABEL_COPY = re.compile(r"\s*#\d+$")
 LAG = timedelta(hours=30)
 """A table may be up to this far behind its snapshot (the provider updates hourly; a slow day)."""
 RUNNING_AFTER = timedelta(days=3)
 
 
-def stage_of(round_label: str | None) -> str:
-    """The round label without its match-day number: "Apertura - 7" -> "Apertura", "Apertura -
-    Quadrangular - 3" -> "Apertura - Quadrangular", "Round of 16" -> "Round of 16"."""
-    return MATCH_DAY.sub("", round_label or "").strip()
-
-
-def phase_of(label: str | None) -> str:
-    """The first part of a round or stage label: "Apertura - Quarter-finals" -> "Apertura"."""
-    return (label or "").split(" - ")[0].strip()
-
-
-def fold(s: str) -> str:
-    """Lower case without accents: "Primera División" and "Primera Division" are one name."""
-    return "".join(c for c in unicodedata.normalize("NFKD", s.lower()) if not unicodedata.combining(c))
-
-
 def stage_kind(stage: str, *, numbered: bool) -> StageKind:
-    """``league`` (a table counts it), ``knockout``, ``qualifying`` or ``friendly``. Rounds with a
-    match-day number are a league format unless a knock-out word says otherwise; "Championship
-    Group", "Quadrangular" and "Conference League Play-off Group" are league formats whatever else
-    they say."""
-    if FRIENDLY.search(stage):
-        return "friendly"
-    if LEAGUE_FORMAT.search(stage):
-        return "league"
-    if numbered:
-        return "knockout" if STRICT_KNOCKOUT.search(stage) and not NUMBERED_LEAGUE.search(stage) else "league"
-    if QUALIFYING.search(stage):
-        return "qualifying"
-    if KNOCKOUT.search(stage) or UNNUMBERED_KNOCKOUT.search(stage):
-        return "knockout"
-    return "league"
+    """``league`` (a table counts it), ``knockout``, ``qualifying`` or ``friendly``: the coarse reading of
+    ``fbi.competitions.stages``. A label that reading could not place (an internal id the provider wrote as a round)
+    is a league stage here, as it was in phases-1: no table is promised for it and none is shown."""
+    kind = read_stage_kind(stage, numbered=numbered)
+    return "league" if kind == "unresolved" else kind
 
 
 @dataclass(frozen=True)

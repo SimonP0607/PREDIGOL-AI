@@ -61,3 +61,20 @@ def test_the_default_partition_exists_so_nothing_is_ever_rejected(db: psycopg.Co
     Losing a row because of housekeeping would be the same class of failure the
     rebuild exists to prevent."""
     assert "odds_snapshots_default" in _partitions(db)
+
+
+def test_the_price_clocks_table_is_maintained_with_the_prematch_series(db: psycopg.Connection) -> None:
+    """The months revision 0077 created exist already; a later month is created ahead of time with the other series,
+    and its default partition catches whatever has no month yet."""
+    assert "odds_quotes_default" in _partitions(db, "odds_quotes")
+    assert {"odds_quotes_2026_09", "odds_quotes_2026_10", "odds_quotes_2027_03"} <= _partitions(db, "odds_quotes")
+    created = ensure_partitions(db, today=date(2027, 3, 20), months_ahead=2)
+    try:
+        assert "market.odds_quotes_2027_04" in created and "market.odds_quotes_2027_05" in created
+        assert "market.odds_quotes_2027_03" not in created, "it already exists: nothing is created twice"
+        assert "odds_quotes_2027_04" in _partitions(db, "odds_quotes")
+    finally:
+        with db.cursor() as cur:
+            for name in created:
+                cur.execute(f"DROP TABLE IF EXISTS {name}")
+        db.commit()

@@ -30,6 +30,7 @@ import {
   StatsTab,
   WithCenter,
 } from "./MatchCenterExtra";
+import { useUrlTab } from "@/lib/useUrlTab";
 
 const tabs = [
   "Overview",
@@ -85,7 +86,7 @@ export function MatchCenterLive({
   /** Embedded under another page's header (the product Match Center's admin tab). */
   hideHeader?: boolean;
 }) {
-  const [tab, setTab] = useState<Tab>("Overview");
+  const [tab, setTab] = useUrlTab(tabs, "Overview");
   const q = useLiveQuery(live.match(fixtureId));
 
   if (q.isLoading) {

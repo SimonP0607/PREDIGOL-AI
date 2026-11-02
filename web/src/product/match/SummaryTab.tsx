@@ -1,11 +1,13 @@
 /**
  * Resumen, by the match's state (REVIEW PREDIGOL, point 4 - the picks have their own tab now):
- * before kick-off - PrediGol Intelligence first, the way to the match's picks, the best prices, form,
- *                   table, absences, line-ups and head to head;
+ * before kick-off - PrediGol's forecast (what it expects; the owner decides when users see it), then PrediGol
+ *                   Intelligence, the way to the match's picks, the best prices, form, rest and calendar in every
+ *                   competition (also the owner's call), table, absences, line-ups and head to head;
  * in play        - the match events first, then the day's reading as it was written before kick-off,
  *                  key figures and in-play prices; the context folded away;
- * after          - result, the way to the picks and how they ended, events, the pre-match reading and
- *                  key figures; the context folded away;
+ * after          - result, the way to the picks and how they ended, events, what happened put together
+ *                  (the owner decides when users see it), the pre-match reading and key figures; the context
+ *                  folded away;
  * not played     - what happened (postponed, cancelled, abandoned, awarded) and the way to the picks.
  */
 import { useId, useState, type ReactNode } from "react";
@@ -14,9 +16,12 @@ import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { Card, EmptyState } from "@/product/shared/States";
 import { AnalysisBlock } from "./AnalysisBlock";
+import { CalendarBlock } from "./CalendarBlock";
 import type { MatchCtx } from "./context";
 import { AbsencesBlock, FormBlock, H2HBlock, LineupsTeaser, StandingsBlock } from "./ContextBlocks";
 import { EventsBlock } from "./EventsTimeline";
+import { ForecastBlock } from "./ForecastBlock";
+import { KnowledgeBlock } from "./KnowledgeBlock";
 import { KEY_STATS, statRows } from "./model";
 import { PicksTeaser } from "./PicksTab";
 import { LiveOddsBlock, QuickPricesBlock } from "./prices";
@@ -147,9 +152,13 @@ function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
   const form = <FormBlock ctx={ctx} />;
   const table = <StandingsBlock ctx={ctx} />;
   const absences = <AbsencesBlock ctx={ctx} />;
+  // Rest and congestion in every competition (plan F4); the owner decides when users see it.
+  const calendar = <CalendarBlock ctx={ctx} />;
   return (
     <div className={TWO_COLUMNS}>
       <div className="min-w-0 space-y-4">
+        {/* What PrediGol expects (plan F5), before whether it is well paid (the analysis) and what it recommends (the picks). */}
+        <ForecastBlock ctx={ctx} />
         <AnalysisBlock ctx={ctx} />
         <PicksTeaser ctx={ctx} />
         <QuickPricesBlock ctx={ctx} />
@@ -158,6 +167,7 @@ function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
             {form}
             {table}
           </div>
+          {calendar}
           <div className="grid items-start gap-4 md:grid-cols-2">
             {lineups}
             {absences}
@@ -168,6 +178,7 @@ function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
       <div className="hidden min-w-0 space-y-4 lg:block">
         {lineups}
         {form}
+        {calendar}
         {table}
         {absences}
       </div>
@@ -202,6 +213,8 @@ function AfterMatch({ ctx }: { ctx: MatchCtx }) {
           <ResultBlock ctx={ctx} />
           <PicksTeaser ctx={ctx} />
           <EventsBlock ctx={ctx} />
+          {/* What happened, put together once the provider stopped changing it (plan F7); the owner decides when users see it. */}
+          <KnowledgeBlock ctx={ctx} />
           <AnalysisBlock ctx={ctx} variant="reference" />
         </div>
         <div className="min-w-0 space-y-4">

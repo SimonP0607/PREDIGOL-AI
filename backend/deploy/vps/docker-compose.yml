@@ -161,9 +161,12 @@ services:
       FBI_API_CACHE: "1"
       # The Admin Console's System page lists the backups it can see.
       FBI_BACKUP_DIRS: /backups
+      # The Admin Console's «Almacenamiento» page reads what bin/storage-report.sh measured on the host (sizes only).
+      FBI_STORAGE_REPORT_DIR: /storage
     volumes:
       - ${PREDIGOL_DATA:-/srv/predigol}/raw:/app/data/raw:ro
       - ${PREDIGOL_DATA:-/srv/predigol}/backups/db:/backups:ro
+      - ${PREDIGOL_DATA:-/srv/predigol}/state/storage:/storage:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
       interval: 30s

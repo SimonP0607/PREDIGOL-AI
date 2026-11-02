@@ -32,6 +32,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from fbi.ai.gates import typed_visible
 from fbi.ai.packet import PacketBuilder
 from fbi.ai.review import RULES_VERSION, Candidate, rules_review
 from fbi.ai.shadow import Settled, evaluate, metrics
@@ -123,7 +124,7 @@ def run(dsn: str, *, since: datetime, limit: int) -> dict[str, Any]:
     skipped: dict[str, int] = defaultdict(int)
     with psycopg.connect(dsn) as conn:
         conn.execute("SET default_transaction_read_only = on")
-        builder = PacketBuilder(conn)
+        builder = PacketBuilder(conn, typed_evidence=typed_visible(conn))  # the packets the cycle builds in the mode it is in
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(PICKS_SQL, {"since": since, "limit": limit})
             picks = [dict(r) for r in cur.fetchall()]

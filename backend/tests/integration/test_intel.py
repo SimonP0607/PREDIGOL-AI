@@ -1,5 +1,5 @@
 """PrediGol Intelligence on a built world (``fbi.intel``): calibration from settled history, the decision layer at its
-checkpoints, outcomes and closing-line value, post-mortems pm-v3, memory, the daily learning report, the leakage audit,
+checkpoints, outcomes and closing-line value, post-mortems (pm-v5), memory, the daily learning report, the leakage audit,
 the runs' record and the append-only guard.
 
 HISTORY: twelve Bogotá days of settled OU selections flagged by ``dixon_coles`` whose probability is 12 points too
@@ -23,7 +23,7 @@ from typing import Any
 import psycopg
 import pytest
 
-from fbi.ai.calendar import local_day
+from fbi.ai.calendar import day_bounds, local_day
 from fbi.intel import calibration, cycle, decision, leakage, memory, outcomes, postmortem, report
 
 from .conftest import Seed
@@ -254,7 +254,11 @@ def test_the_decision_layer_end_to_end(db: psycopg.Connection[Any], world: Intel
     assert row[2] == Decimal("0.092000"), "2.10 x the closing fair 0.52 - 1"
     assert outcomes.settle_decisions(db, at=after) == 0, "an outcome is written once"
 
-    pms = postmortem.run_postmortems(db, at=after)
+    # a post-mortem waits for the events and the line-ups (three hours), and the best INVESTIGACION selections are chosen once the
+    # Bogota day is over (a half day would rank differently every hour)
+    pm_at = day_bounds(local_day(ko))[1] + timedelta(hours=4)
+    assert postmortem.run_postmortems(db, at=after) == 0, "the day is not over and the match is not three hours old"
+    pms = postmortem.run_postmortems(db, at=pm_at)
     assert pms == 2, "the two INVESTIGACION selections (top of the day); the rejected one is not reviewed"
     pm = db.execute("SELECT verdict, decision_quality FROM intel.postmortems p JOIN intel.decisions d "
                     "ON d.id = p.decision_id WHERE d.market_key = 'OU'").fetchone()
@@ -309,7 +313,7 @@ def test_a_day_without_decisions_says_so(db: psycopg.Connection[Any]) -> None:
 
 def test_discovery_reads_an_active_markets_priced_history(db: psycopg.Connection[Any], seed: Seed,
                                                           tmp_path: Any) -> None:
-    """discovery-v1 on the database. Regression (13 Oct 2026): the catalogue was loaded on one day for all 338 bets,
+    """discovery on the database. Regression (13 Oct 2026): the catalogue was loaded on one day for all 338 bets,
     so every market - the five active ones too, priced since 2022 - failed "history" (>= 28 days)."""
     from fbi.intel import discovery
 
@@ -321,8 +325,10 @@ def test_discovery_reads_an_active_markets_priced_history(db: psycopg.Connection
                "'closing', 1.9, %s)", (seed.fixture_id, seed.payload_hash))
     kickoff = db.execute("SELECT kickoff_at FROM core.fixtures WHERE id = %s", (seed.fixture_id,)).fetchone()
     assert kickoff is not None
-    run = db.execute("INSERT INTO intel.runs (job, started_at, status) VALUES ('weekly', %s, 'running') RETURNING id",
-                     (at,)).fetchone()[0]  # not cycle.open_run: it commits, and this test must leave nothing behind
+    opened = db.execute("INSERT INTO intel.runs (job, started_at, status) VALUES ('weekly', %s, 'running') RETURNING id",
+                        (at,)).fetchone()  # not cycle.open_run: it commits, and this test must leave nothing behind
+    assert opened is not None
+    run = opened[0]
     discovery.run_discovery(db, at=at, run_id=run, root=tmp_path)
     crit = {int(r[0]): r[1] for r in db.execute("SELECT provider_bet_id, criteria FROM intel.market_registry "
                                                  "WHERE run_id = %s", (run,)).fetchall()}

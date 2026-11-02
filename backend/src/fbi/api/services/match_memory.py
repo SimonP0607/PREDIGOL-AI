@@ -129,11 +129,11 @@ SELECT b.*,
          WHERE lp.fixture_id = b.id AND pr.result_status IN ('loss', 'half_loss')) AS lost,
        (SELECT sum(pr.profit_units) FROM last_pick lp JOIN picks.pick_results pr ON pr.pick_id = lp.id
          WHERE lp.fixture_id = b.id AND pr.result_status <> 'pending') AS pnl,
-       (SELECT COALESCE(jsonb_object_agg(k.classification, k.n), '{}'::jsonb) FROM (
-            SELECT pm.classification, count(*) AS n FROM ai.pick_postmortems pm
-             WHERE pm.fixture_id = b.id AND pm.classification IS NOT NULL GROUP BY 1) k) AS classes,
+       (SELECT COALESCE(jsonb_object_agg(k.loss_class, k.n), '{}'::jsonb) FROM (
+            SELECT pm.loss_class, count(*) AS n FROM intel.selection_postmortems pm
+             WHERE pm.fixture_id = b.id AND pm.loss_class IS NOT NULL GROUP BY 1) k) AS classes,
        (SELECT COALESCE(jsonb_object_agg(w.q, w.n), '{}'::jsonb) FROM (
-            SELECT pm.answers->'win_quality'->'data'->>'win_quality' AS q, count(*) AS n FROM ai.pick_postmortems pm
+            SELECT pm.answers->'win_quality'->'data'->>'win_quality' AS q, count(*) AS n FROM intel.selection_postmortems pm
              WHERE pm.fixture_id = b.id AND pm.answers->'win_quality'->'data'->>'win_quality' IS NOT NULL
              GROUP BY 1) w) AS wins,
        (SELECT count(*) FROM ai.memory_events e WHERE e.fixture_id = b.id) AS events

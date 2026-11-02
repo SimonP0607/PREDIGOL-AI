@@ -1,0 +1,101 @@
+name: Backend CI
+
+# The gates of backend/CLAUDE.md `make check` + deploy/release.sh step 2, run on GitHub's machines:
+#   ruff check . && mypy && mypy . && pytest -q -p no:randomly
+# (`ruff format --check` is NOT a gate of this project: 600+ files are not in that style on purpose.)
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yml'
+  push:
+    branches: [main, 'ci/**']
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  lint-types:
+    name: ruff + mypy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/pyproject.toml
+            backend/constraints.txt
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -c constraints.txt -e ".[analytics,ml,dev]"
+      - name: ruff check
+        run: ruff check .
+      - name: mypy (strict packages)
+        run: mypy
+      - name: mypy (whole tree)
+        run: mypy .
+      - name: Model-code guard (informative)
+        run: python3 scripts/model_code_guard.py fingerprint dir=.
+
+  tests:
+    name: pytest (PostgreSQL 16)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: fbi
+          POSTGRES_HOST_AUTH_METHOD: trust # throw-away service container of the job, never reachable from outside
+          POSTGRES_DB: fbi_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fbi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      FBI_DATABASE_URL: postgresql+psycopg://fbi@localhost:5432/fbi_test
+      FBI_ENV: test
+      PYTHONUTF8: '1'
+      # what backend/.env.test gives a developer's machine; the API settings refuse to load without a key (no call is ever made)
+      FBI_APIFOOTBALL_KEY: test-key-not-real
+      FBI_APIFOOTBALL_PLAN: pro
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/pyproject.toml
+            backend/constraints.txt
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -c constraints.txt -e ".[analytics,ml,dev]"
+      - name: Migrations apply (up, down one, up)
+        run: |
+          alembic upgrade head
+          alembic downgrade -1
+          alembic upgrade head
+      - name: pytest
+        run: pytest -q -p no:randomly --durations=15

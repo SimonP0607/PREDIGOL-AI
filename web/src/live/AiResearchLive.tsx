@@ -1,14 +1,16 @@
 /**
- * IA e investigación (Admin Console): the AI's own day, read-only, in cards and chips.
+ * IA e investigación (Admin Console): the AI's own day, read-only, in cards and chips - the views plan F13 gathered into two pages (see adminAi.ts).
  *
- *   HOY              today's matches with a market (Bogotá): the passes done, the L1 brief, the reviewed selections
- *   INVESTIGACIONES  per match, the web searches and the evidence with its source, level, status and dates
- *   POST-MORTEMS     each selection of a day's matches: verdict, class of a loss, CLV and the ten questions
- *   APRENDIZAJE      what a day's results taught, and the improvements awaiting the owner (decided in Evolución)
- *   FUENTES          which domains brought useful evidence, over 7 or 30 days
- *   COSTOS           the day and the month by level, model and unit; the projection and the alerts
+ * OPERACIÓN holds
+ *   TodayTab     today's matches with a market (Bogotá): the passes done, the L1 brief, the reviewed selections
+ *   ResearchTab  per match, the web searches and the evidence with its source, level, status and dates
+ *   SourcesTab   which domains brought useful evidence, over 7 or 30 days
+ * APRENDIZAJE holds
+ *   CloseTab     the close of each day: the picks settled, the post-mortems and the revisions
  *
- * Nothing here calls a model or changes anything: everything was stored by the worker.
+ * What a day's results taught and the improvements awaiting the owner are in Aprendizaje > Lo aprendido (the owner decides there); the costs are
+ * one view with the rest of the AI's costs (AiCosts). The post-mortems and the memory are in Aprendizaje too. Nothing here calls a model or changes
+ * anything: everything was stored by the worker.
  */
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -16,90 +18,47 @@ import { ChevronDown, ExternalLink } from "lucide-react";
 import { t, translateOr } from "@/lib/i18n";
 import { fmtOdds, localInt } from "@/lib/i18n/format";
 import { int } from "@/lib/format";
-import { shiftDay, todayKey } from "@/lib/time";
+import { shiftDay } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Panel } from "@/components/primitives/Panel";
 import { StatusBadge, type BadgeTone } from "@/components/primitives/StatusBadge";
 import { TD, TH, THead, TRow, TableShell, TableSkeleton } from "@/components/primitives/DataTable";
-import { SegmentedTabs } from "@/components/system/Filters";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
 import type {
   AiClaim,
-  AiCostPeriod,
   AiDayBrief,
   AiDayFixture,
-  AiDecision,
   AiPassRow,
   AiResearchEvidence,
   AiResearchRow,
   AiToday,
   EvidenceStatus,
-  PickPostmortem,
 } from "@/lib/api/v1/types_ai_layer";
+import { Choice, DayInput, EngineBadge, Note, Stat, StatGrid, SubTitle, Toolbar } from "./AiBits";
 import {
-  DayInput,
-  EngineBadge,
-  LevelCosts,
-  MonthBar,
-  Note,
-  NoteCard,
-  ProposalCard,
-  ShadowBanner,
-  Stat,
-  StatGrid,
-  SubTitle,
-  UnitCosts,
-} from "./AiBits";
-import {
-  AI_TZ,
-  DECISION_TONE,
   EVIDENCE_TONE,
-  LOSS_CLASSES,
   PASSES,
-  POSTMORTEM_VERDICTS,
   STALE_ODDS_MINUTES,
-  answerView,
   bogotaDateTime,
   bogotaTime,
-  classTone,
   dayLabel,
-  dayShort,
+  decisionLabel,
+  decisionTone,
   edgePoints,
-  lossClassLabel,
   minutesText,
-  orderedAnswers,
   passLabel,
   pointsText,
   probText,
-  questionLabel,
-  ratioOf,
   reasonLabel,
   selectionText,
-  signedText,
   teamsOf,
-  toNum,
   usd,
-  verdictLabel,
-  verdictTone,
 } from "./aiModel";
 import { DailyReviewPanel } from "./DailyReviewPanel";
-import { MatchMemoryPanel } from "./MatchMemoryPanel";
 import { Fact } from "./shared";
 
-const TABS = [
-  "today",
-  "close",
-  "memory",
-  "research",
-  "postmortems",
-  "learning",
-  "sources",
-  "costs",
-] as const;
-type Tab = (typeof TABS)[number];
 const EVIDENCE_STATUSES: EvidenceStatus[] = [
   "CONFIRMED",
   "PROBABLE",
@@ -124,43 +83,7 @@ const INJURY_TONE: Record<string, BadgeTone> = {
   returns: "positive",
   starts: "positive",
 };
-const SELECT =
-  "h-8 max-w-[15rem] rounded-md border border-border bg-card px-2 text-xs normal-case tracking-normal text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
-
-function decisionLabel(d: string): string {
-  return translateOr(`ai.layer.decision.${d}`, d);
-}
-
-function decisionTone(d: string | null | undefined): BadgeTone {
-  return d && d in DECISION_TONE ? DECISION_TONE[d as AiDecision] : "neutral";
-}
-
 // ── small pieces ─────────────────────────────────────────────────────────────
-
-function Toolbar({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap items-center gap-x-4 gap-y-2">{children}</div>;
-}
-
-function Choice({
-  label,
-  value,
-  onChange,
-  children,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  children: ReactNode;
-}) {
-  return (
-    <label className="inline-flex items-center gap-2 text-caption uppercase tracking-wider text-subtle-foreground">
-      {label}
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={SELECT}>
-        {children}
-      </select>
-    </label>
-  );
-}
 
 /** A card that opens: the summary always visible, the detail on demand. */
 function Fold({
@@ -488,7 +411,15 @@ function FixtureCard({ f }: { f: AiDayFixture }) {
   );
 }
 
-function TodayTab({ day, onDay, max }: { day: string; onDay: (d: string) => void; max: string }) {
+export function TodayTab({
+  day,
+  onDay,
+  max,
+}: {
+  day: string;
+  onDay: (d: string) => void;
+  max: string;
+}) {
   const q = useLiveQuery(live.aiToday(day));
   const d = q.data?.data ?? null;
   return (
@@ -677,7 +608,7 @@ function ResearchCard({ r }: { r: AiResearchRow }) {
   );
 }
 
-function ResearchTab({
+export function ResearchTab({
   day,
   onDay,
   max,
@@ -711,234 +642,11 @@ function ResearchTab({
   );
 }
 
-// ── POST-MORTEMS ─────────────────────────────────────────────────────────────
-
-export function PostmortemCard({ pm }: { pm: PickPostmortem }) {
-  const answers = orderedAnswers(pm.answers);
-  const clv = toNum(pm.clv);
-  return (
-    <li
-      className="min-w-0 space-y-2.5 rounded-md border border-border bg-card p-3"
-      data-testid="ai-postmortem"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-medium wrap-anywhere">{pm.match}</p>
-          <p className="text-caption text-subtle-foreground wrap-anywhere">
-            {pm.competition ?? "—"} · {bogotaDateTime(pm.kickoff_at)}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          <StatusBadge tone={verdictTone(pm.verdict)}>{verdictLabel(pm.verdict)}</StatusBadge>
-          {pm.classification ? (
-            <StatusBadge tone={classTone(pm.classification)}>
-              {lossClassLabel(pm.classification)}
-            </StatusBadge>
-          ) : null}
-        </div>
-      </div>
-      <p className="text-xs font-medium wrap-anywhere">
-        {selectionText(pm.market_key, pm.selection, pm.line, pm.match)}
-      </p>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-caption uppercase tracking-wider text-subtle-foreground">
-          {t("ai.research.postmortems.decision")}
-        </span>
-        <StatusBadge tone={decisionTone(pm.decision)}>
-          {pm.decision ? decisionLabel(pm.decision) : t("ai.research.postmortems.noDecision")}
-        </StatusBadge>
-        {pm.roles.map((r) => (
-          <StatusBadge key={r} dot={false}>
-            {translateOr(`ai.v2.role.${r}`, r)}
-          </StatusBadge>
-        ))}
-      </div>
-      <dl className="grid max-w-2xl grid-cols-3 gap-x-3 sm:grid-cols-5">
-        <Fact label={t("ai.research.postmortems.odds")} value={fmtOdds(pm.odds)} />
-        <Fact label={t("ai.research.postmortems.close")} value={fmtOdds(pm.close_odds)} />
-        <Fact
-          label={t("ai.research.postmortems.clv")}
-          value={
-            <span
-              className={cn(
-                clv !== null && clv > 0 && "text-positive",
-                clv !== null && clv < 0 && "text-negative",
-              )}
-            >
-              {signedText(pm.clv)}
-            </span>
-          }
-        />
-        <Fact label={t("ai.research.postmortems.model")} value={probText(pm.p_model)} />
-        <Fact label={t("ai.research.postmortems.market")} value={probText(pm.p_market)} />
-      </dl>
-      {answers.length ? (
-        <details className="group max-w-4xl rounded-md border border-border">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md px-3 py-2 text-xs font-medium hover:bg-elevated/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-            {t("ai.research.postmortems.questions")}
-            <ChevronDown
-              aria-hidden
-              className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-            />
-          </summary>
-          <ol className="divide-y divide-border/60 border-t border-border">
-            {answers.map(([question, a]) => {
-              const v = answerView(question, String(a.answer ?? ""));
-              return (
-                <li key={question} className="space-y-1 px-3 py-2" data-question={question}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-medium">{questionLabel(question)}</span>
-                    {v.chip ? <StatusBadge tone={v.tone}>{v.label}</StatusBadge> : null}
-                  </div>
-                  {!v.chip && v.label ? <p className="text-xs wrap-anywhere">{v.label}</p> : null}
-                  {a.detail ? (
-                    <p className="text-caption text-muted-foreground wrap-anywhere">{a.detail}</p>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ol>
-        </details>
-      ) : null}
-      {pm.narrative ? (
-        <div className="max-w-4xl space-y-1 rounded-md border border-border bg-elevated/40 p-2.5">
-          <SubTitle>{t("ai.research.postmortems.narrative")}</SubTitle>
-          <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground wrap-anywhere">
-            {pm.narrative}
-          </p>
-        </div>
-      ) : null}
-    </li>
-  );
-}
-
-function PostmortemsTab({
-  day,
-  onDay,
-  max,
-}: {
-  day: string;
-  onDay: (d: string) => void;
-  max: string;
-}) {
-  const [verdict, setVerdict] = useState("");
-  const [cls, setCls] = useState("");
-  const q = useLiveQuery(
-    live.aiPostmortems({
-      day,
-      verdict: verdict || undefined,
-      classification: cls || undefined,
-    }),
-  );
-  const rows = q.data?.data ?? [];
-  return (
-    <div className="space-y-3">
-      <Toolbar>
-        <DayInput value={day} onChange={onDay} label={t("ai.research.day")} max={max} />
-        <Choice label={t("ai.research.postmortems.verdict")} value={verdict} onChange={setVerdict}>
-          <option value="">{t("ai.research.postmortems.all")}</option>
-          {POSTMORTEM_VERDICTS.map((v) => (
-            <option key={v} value={v}>
-              {verdictLabel(v)}
-            </option>
-          ))}
-        </Choice>
-        <Choice label={t("ai.research.postmortems.class")} value={cls} onChange={setCls}>
-          <option value="">{t("ai.research.postmortems.all")}</option>
-          {LOSS_CLASSES.map((c) => (
-            <option key={c} value={c}>
-              {lossClassLabel(c)}
-            </option>
-          ))}
-        </Choice>
-      </Toolbar>
-      {q.isError ? <ApiErrorNotice error={q.error} /> : null}
-      <Loading show={q.isLoading} />
-      {q.isSuccess && rows.length === 0 ? (
-        <Note>
-          {verdict || cls
-            ? t("ai.research.postmortems.emptyFiltered")
-            : t("ai.research.postmortems.empty")}
-        </Note>
-      ) : null}
-      {rows.length ? (
-        <ul className="space-y-2" data-testid="ai-postmortems">
-          {rows.map((pm) => (
-            <PostmortemCard key={pm.id} pm={pm} />
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
-
 // ── APRENDIZAJE ──────────────────────────────────────────────────────────────
-
-function LearningTab({
-  day,
-  onDay,
-  max,
-}: {
-  day: string;
-  onDay: (d: string) => void;
-  max: string;
-}) {
-  const q = useLiveQuery(live.aiLearning(day));
-  const d = q.data?.data ?? null;
-  return (
-    <div className="space-y-3">
-      <Toolbar>
-        <DayInput value={day} onChange={onDay} label={t("ai.research.day")} max={max} />
-      </Toolbar>
-      {q.isError ? <ApiErrorNotice error={q.error} /> : null}
-      <Loading show={q.isLoading} />
-      {d ? (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-          <Panel
-            title={t("ai.research.learning.notes")}
-            subtitle={t("ai.research.learning.notesSubtitle")}
-          >
-            {d.notes.length === 0 ? (
-              <Note>{t("ai.research.learning.empty")}</Note>
-            ) : (
-              <ul className="space-y-2" data-testid="ai-learning-notes">
-                {d.notes.map((n) => (
-                  <NoteCard key={n.id} note={n} />
-                ))}
-              </ul>
-            )}
-          </Panel>
-          <Panel
-            title={t("ai.research.learning.proposals")}
-            subtitle={t("ai.research.learning.proposalsSubtitle")}
-          >
-            <div className="space-y-3">
-              {d.proposals.length === 0 ? (
-                <Note>{t("ai.research.learning.noProposals")}</Note>
-              ) : (
-                <ul className="space-y-2" data-testid="ai-learning-proposals">
-                  {d.proposals.map((p) => (
-                    <ProposalCard key={p.id} p={p} />
-                  ))}
-                </ul>
-              )}
-              <Link
-                to="/admin/evolution"
-                className="tap-y relative inline-flex text-xs font-medium text-primary hover:underline"
-              >
-                {t("ai.research.learning.decide")} →
-              </Link>
-            </div>
-          </Panel>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 // ── FUENTES ──────────────────────────────────────────────────────────────────
 
-function SourcesTab() {
+export function SourcesTab() {
   const [days, setDays] = useState<(typeof SOURCE_DAYS)[number]>(7);
   const q = useLiveQuery(live.aiSources(days));
   const rows = q.data?.data ?? [];
@@ -1007,135 +715,18 @@ function SourcesTab() {
   );
 }
 
-// ── COSTOS ───────────────────────────────────────────────────────────────────
-
-function PeriodCosts({ title, p }: { title: string; p: AiCostPeriod }) {
-  return (
-    <Panel title={title}>
-      <div className="space-y-4">
-        <StatGrid>
-          <Stat label={t("ai.research.costs.total")} value={usd(p.cost_usd)} />
-          <Stat label={t("ai.research.costs.requests")} value={int(p.requests)} />
-          <Stat label={t("ai.research.costs.searches")} value={int(p.searches)} />
-          <Stat
-            label={t("ai.research.costs.failed")}
-            value={int(p.failed)}
-            tone={p.failed > 0 ? "warning" : "default"}
-          />
-        </StatGrid>
-        <section className="space-y-1.5">
-          <SubTitle>{t("ai.research.costs.byLevel")}</SubTitle>
-          <LevelCosts period={p} />
-        </section>
-        <section className="space-y-1.5">
-          <SubTitle>{t("ai.research.costs.byModel")}</SubTitle>
-          {p.by_model.length === 0 ? (
-            <Note>{t("ai.research.costs.noModel")}</Note>
-          ) : (
-            <ul className="divide-y divide-border/60">
-              {p.by_model.map((m) => (
-                <li
-                  key={m.key}
-                  className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-1.5 text-xs"
-                >
-                  <span className="numeric min-w-0 wrap-anywhere">{m.key}</span>
-                  <span className="numeric text-muted-foreground">
-                    {usd(m.cost_usd)} ·{" "}
-                    {t("ai.v2.costs.requests", { count: m.requests, n: localInt(m.requests) })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-        <section className="space-y-1">
-          <SubTitle>{t("ai.research.costs.units")}</SubTitle>
-          <UnitCosts period={p} />
-        </section>
-      </div>
-    </Panel>
-  );
-}
-
-function CostsTab() {
-  const q = useLiveQuery(live.aiCosts);
-  const c = q.data?.data ?? null;
-  if (q.isError) return <ApiErrorNotice error={q.error} />;
-  if (!c) return <Loading show={q.isLoading} />;
-  const p = c.projection;
-  const share = p
-    ? (p.projected_share ?? ratioOf(p.projected_month_usd, p.monthly_budget_usd))
-    : null;
-  // the API sends an empty projection ({}) when it has none
-  const runRate = toNum(p?.run_rate_usd);
-  const lastDays = p?.last_days ?? [];
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-4 xl:grid-cols-2">
-        <PeriodCosts title={t("ai.research.costs.today")} p={c.periods.today} />
-        <PeriodCosts title={t("ai.research.costs.month")} p={c.periods.month} />
-      </div>
-      <Panel title={t("ai.research.costs.projection")}>
-        <div className="space-y-4" data-testid="ai-costs-projection">
-          <StatGrid>
-            <Stat
-              label={t("ai.research.costs.projection")}
-              value={usd(p?.projected_month_usd)}
-              tone={
-                share === null
-                  ? "default"
-                  : share > 1
-                    ? "negative"
-                    : share >= 0.85
-                      ? "warning"
-                      : "default"
-              }
-              hint={
-                share === null
-                  ? undefined
-                  : t("ai.layer.budgetCard.barValue", { share: probText(share, 0) })
-              }
-            />
-            <Stat
-              label={t("ai.research.costs.runRate")}
-              value={
-                runRate === null ? "—" : t("ai.research.costs.perDay", { value: usd(runRate) })
-              }
-            />
-            <Stat label={t("ai.research.costs.budget")} value={usd(c.budget.monthly_budget_usd)} />
-            <Stat label={t("ai.research.costs.spentMonth")} value={usd(c.budget.spent_month_usd)} />
-          </StatGrid>
-          <MonthBar
-            spent={c.budget.spent_month_usd}
-            budget={c.budget.monthly_budget_usd}
-            alerts={c.alerts ?? []}
-          />
-          {lastDays.length ? (
-            <section className="space-y-1.5">
-              <SubTitle>{t("ai.research.costs.lastDays")}</SubTitle>
-              <ul className="flex flex-wrap gap-1.5">
-                {lastDays.map((d) => (
-                  <li
-                    key={d.day}
-                    className="rounded border border-border bg-elevated/50 px-1.5 py-0.5 text-caption"
-                  >
-                    <span className="text-subtle-foreground">{dayShort(d.day)}</span>{" "}
-                    <span className="numeric text-foreground">{usd(d.cost_usd)}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-        </div>
-      </Panel>
-    </div>
-  );
-}
-
 // ── the page ─────────────────────────────────────────────────────────────────
 
 /** CIERRE DIARIO: the closed days, newest first, and one day's close with its revisions. */
-function CloseTab({ day, onDay, max }: { day: string; onDay: (d: string) => void; max: string }) {
+export function CloseTab({
+  day,
+  onDay,
+  max,
+}: {
+  day: string;
+  onDay: (d: string) => void;
+  max: string;
+}) {
   const q = useLiveQuery(live.aiDailyReviews(30));
   const days = q.data?.data ?? [];
   return (
@@ -1174,40 +765,12 @@ function CloseTab({ day, onDay, max }: { day: string; onDay: (d: string) => void
           ))}
         </ul>
       </Panel>
-      <DailyReviewPanel day={day} onDay={onDay} max={max} />
-    </div>
-  );
-}
-
-export function AiResearchLive() {
-  const [tab, setTab] = useState<Tab>("today");
-  const today = todayKey(AI_TZ);
-  const [liveDay, setLiveDay] = useState(today);
-  const [pastDay, setPastDay] = useState(() => shiftDay(today, -1));
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title={t("admin.pages.aiAnalyst.title")}
-        description={t("admin.pages.aiAnalyst.description")}
+      <DailyReviewPanel
+        day={day}
+        onDay={onDay}
+        max={max}
+        title={day === shiftDay(max, -1) ? t("ai.dailyReview.yesterday") : undefined}
       />
-      <ShadowBanner />
-      <SegmentedTabs
-        tabs={TABS}
-        value={tab}
-        onChange={setTab}
-        label={t("ai.research.tabs.label")}
-        format={(x) => t(`ai.research.tabs.${x}`)}
-      />
-      {tab === "today" ? <TodayTab day={liveDay} onDay={setLiveDay} max={today} /> : null}
-      {tab === "close" ? <CloseTab day={pastDay} onDay={setPastDay} max={today} /> : null}
-      {tab === "memory" ? <MatchMemoryPanel /> : null}
-      {tab === "research" ? <ResearchTab day={liveDay} onDay={setLiveDay} max={today} /> : null}
-      {tab === "postmortems" ? (
-        <PostmortemsTab day={pastDay} onDay={setPastDay} max={today} />
-      ) : null}
-      {tab === "learning" ? <LearningTab day={pastDay} onDay={setPastDay} max={today} /> : null}
-      {tab === "sources" ? <SourcesTab /> : null}
-      {tab === "costs" ? <CostsTab /> : null}
     </div>
   );
 }

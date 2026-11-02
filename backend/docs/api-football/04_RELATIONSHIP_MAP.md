@@ -64,6 +64,7 @@ API                          V2 (esquema.tabla)
   └─ players              →  core.fixture_player_stats              ✅
 /standings                →  core.standings    (solo bloque `all`)  🟡
 /injuries                 →  core.player_absences                   ✅
+  └─ historial            →  core.player_availability_obs           ✅ (0078: un cambio por fila, "a fecha")
 /teams                    →  ✗ payload guardado, 0 filas            ❌
 /players                  →  ✗ payload guardado, 0 filas            ❌
 /odds                     →  market.odds_snapshots                  ✅

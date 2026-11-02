@@ -36,7 +36,7 @@ export function FilterBar({
             className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-caption text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <X aria-hidden className="h-3 w-3" />
-            Reset
+            {t("common.reset")}
           </button>
         ) : null}
       </div>

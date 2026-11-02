@@ -35,9 +35,11 @@ from fbi.api.contracts.center import (
     MatchPlayerSeason,
     PlayerAbsence,
     PlayerCareerTeam,
+    PlayerClubSpell,
     PlayerDetail,
     PlayerLine,
     PlayerMatch,
+    PlayerNationalCap,
     PlayerProviderSeason,
     PlayerSeason,
     PlayerSidelined,
@@ -61,11 +63,17 @@ from fbi.api.contracts.center import (
 from fbi.api.envelope import DataStatus, Envelope, Section, listing, ok, section, unavailable
 from fbi.api.repositories import Conn, Row, fetch_all, fetch_one, fetch_value
 from fbi.api.repositories import center as repo
+from fbi.api.services import center_tie
 from fbi.api.services.live_quality import completeness
+from fbi.catalog.neutral_store import rule_in_force
 from fbi.competitions.phases import VERSION as PHASES_VERSION
-from fbi.competitions.phases import TableMap, current_stage, phase_of, stage_of
+from fbi.competitions.phases import TableMap, current_stage
+from fbi.competitions.stages import phase_of, stage_of
 from fbi.competitions.tables import load_season, match_tables, newest_maps
 from fbi.core.clock import now
+from fbi.intel.h2h import head_to_head
+from fbi.people.officials import ID as IDENTITY_ID
+from fbi.people.officials import referee_as_of
 from fbi.truth.freshness import table_reason
 
 STALE_AFTER = timedelta(minutes=3)
@@ -97,6 +105,18 @@ def _clean(row: Row, drop: tuple[str, ...] = ()) -> Row:
     return {k: v for k, v in row.items() if k not in drop}
 
 
+def _with_referee_identity(conn: Conn, fixture_id: int, facts: Row | None) -> Row | None:
+    """The facts of the match with the referee as the person he is, when the identity is at the newest observation
+    (``fbi.people.officials``): the same man reads the same under every spelling the provider used, with his id. While the pass
+    that places the facts (hourly) has not caught up with a change of the provider, the string is shown as it came, no id."""
+    if facts is None:
+        return None
+    ref = referee_as_of(conn, fixture_id, facts["observed_at"])
+    if ref.identity != IDENTITY_ID:
+        return {**facts, "referee_id": None}
+    return {**facts, "referee": ref.name, "referee_country": ref.country, "referee_id": ref.referee_id}
+
+
 # ── Match Center ───────────────────────────────────────────────────────────
 
 def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
@@ -125,17 +145,22 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
     player_lines = [PlayerLine(**r) for r in fetch_all(conn, repo.PLAYER_STATS, f)]
     absences = [Absence(**r, season=seasons.get((r["provider_player_id"], team_of.get(r["side"] or ""))))
                 for r in absence_rows]
-    ctx = {"cs": fx["competition_season_id"], "home": fx["home_team_id"], "away": fx["away_team_id"],
-           "ko": fx["kickoff_at"]}
     standings, no_table, standing_tables = _match_standings(conn, fx)
-    facts_row = fetch_one(conn, repo.FIXTURE_FACTS, f)
+    facts_row = _with_referee_identity(conn, fixture_id, fetch_one(conn, repo.FIXTURE_FACTS, f))
+    stage, tie = center_tie.stage_and_tie(conn, fx)
     forms: list[TeamForm] = []
     for side, team_id, name in (("home", fx["home_team_id"], fx["home"]), ("away", fx["away_team_id"], fx["away"])):
         rows = fetch_all(conn, repo.FORM, {"team": team_id, "ko": fx["kickoff_at"]})
         matches = [FormMatch(**r, result="W" if r["goals_for"] > r["goals_against"]
                              else "D" if r["goals_for"] == r["goals_against"] else "L") for r in rows]
         forms.append(TeamForm(side=side, team=name, matches=matches))  # type: ignore[arg-type]
-    h2h = [H2HMatch(**r) for r in fetch_all(conn, repo.H2H, ctx)]
+    rule = rule_in_force(conn)
+    sit = fetch_one(conn, repo.H2H_SITUATION, {"f": fixture_id, "rule": rule}) or {}
+    head = head_to_head(
+        conn, home_team_id=fx["home_team_id"], away_team_id=fx["away_team_id"], kickoff=fx["kickoff_at"], at=now(),
+        competition_id=sit.get("competition_id"), competition_kind=sit.get("competition_kind"),
+        provider_league_id=sit.get("provider_league_id"), neutral=bool(sit.get("is_neutral")), rule=rule)
+    h2h = [H2HMatch(**r) for r in head.as_api()]
     states = [LiveState(**r) for r in fetch_all(conn, repo.LIVE_STATES, f)]
     since = fx["kickoff_at"] - timedelta(minutes=30)
     quotes = [LiveQuote(**r) for r in fetch_all(conn, repo.LIVE_LATEST_QUOTES, {"f": fixture_id, "since": since})]
@@ -158,6 +183,8 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
         standings=_sec(standings, no_table, code="no_table"),
         standings_tables=standing_tables,
         facts=MatchFacts(**facts_row) if facts_row else None,
+        stage=stage,
+        tie=tie,
         form=section(forms) if any(t.matches for t in forms) else section(
             forms, status=DataStatus.EMPTY, reason="Neither team has a finished match with a result before this one.",
             code="no_form"),
@@ -279,7 +306,7 @@ def live_board(conn: Conn, *, at: datetime | None = None) -> Envelope[LiveBoard]
         matches.append(LiveMatch(
             fixture_id=fid, kickoff_at=r["kickoff_at"], competition=r["competition"], country=r["country"],
             competition_id=r.get("competition_id"), competition_logo=r.get("competition_logo"),
-            competition_flag=r.get("competition_flag"),
+            competition_flag=r.get("competition_flag"), country_code=r.get("country_code"),
             home=LiveTeam(id=r["home_id"], name=r["home_name"], logo_url=r.get("home_logo")),
             away=LiveTeam(id=r["away_id"], name=r["away_name"], logo_url=r.get("away_logo")),
             status=(r["feed_status"] if use_feed else r["odds_status"]) or "?",
@@ -372,6 +399,8 @@ def player(conn: Conn, player_id: int, *, at: datetime | None = None) -> Envelop
                                           normalizer_version=first.get("normalizer_version"),
                                           checked_at=checks.get("players_teams"))
     career = [PlayerCareerTeam(**_clean(x, drop)) for x in career_rows]
+    spells = [PlayerClubSpell(**x) for x in fetch_all(conn, repo.PLAYER_SPELLS, pid)]
+    caps = [PlayerNationalCap(**x) for x in fetch_all(conn, repo.PLAYER_NATIONAL_CAPS, pid)]
     return ok(PlayerDetail(
         player=PlayerSummary(**r), **extra,
         seasons=_sec(seasons, "No match statistics are stored for this player."),
@@ -388,6 +417,9 @@ def player(conn: Conn, player_id: int, *, at: datetime | None = None) -> Envelop
                                                 "competitions)."),
         career=_sec(career, "The provider lists no team for this player." if "career" in provenance
                     else "The provider's list of this player's teams has not been read yet."),
+        club_history=_sec(spells, "No club streak is built for this player yet (the history is rebuilt every few hours from squad "
+                                  "sheets, statistics and transfers)."),
+        national_caps=_sec(caps, "No match of a senior national team carries this player in its squad sheet."),
         provenance=provenance,
     ))
 

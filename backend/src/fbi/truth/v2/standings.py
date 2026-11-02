@@ -38,7 +38,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.competitions.phases import KNOCKOUT, phase_of, stage_of
+from fbi.competitions.stages import KNOCKOUT, phase_of, stage_of
 from fbi.providers.api_football.details import labelled_rows
 from fbi.truth.v2.ledger import Evidence
 

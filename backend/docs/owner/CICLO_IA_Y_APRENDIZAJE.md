@@ -5,6 +5,12 @@ nunca modifica producción por sí misma.** Funciona en modo sombra; sus registr
 añaden); un pick prepartido queda congelado por un trigger; y para promover cualquier cosa hacen falta un
 experimento, una prueba superada y la decisión explícita del dueño.
 
+> **Después de F8 (23 oct 2026):** donde este documento habla del post-mortem de una selección hay **uno solo**, `pm-v6`
+> (`fbi.intel.postmortem`, tabla `intel.postmortems`), armado por reglas a coste cero; los dos que escribía la IA (`pm-v1.1` por partido,
+> `ai.postmortems`, y `pm-v2` por selección, `ai.pick_postmortems`) están congelados y siguen legibles. La narrativa de un modelo
+> es aparte y opcional (`ai.postmortem_narratives`). La memoria con confianza y evidencia (`memory-v4`) y su página están en
+> **Admin → Memoria**. Todo lo que cambió y por qué está en `docs/owner/POSTMORTEM_MEMORIA_F8.md`.
+
 ## 1. El ciclo formal (F8)
 
 | Paso | Qué hace | Dónde | Registro |
@@ -14,8 +20,8 @@ experimento, una prueba superada y la decisión explícita del dueño.
 | **INVESTIGAR** | Busca en la web solo los partidos que lo merecen y cuando la caché está vieja | `fbi.ai.collectors`, `fbi.ai.cache` | `ai.evidence`, `ai.research_cache` |
 | **REDACTAR** | Escribe el resumen y el porqué con un modelo de lenguaje (económico por defecto) | `fbi.ai.brief`, `fbi.ai.analysis` | `ai.match_briefs`, `ai.match_analyses` |
 | **SELECCIONAR** | Decide **APROBADO**, **CAUTELA**, **RECHAZADO** o **SIN JUICIO** | `fbi.ai.review` (motor `combined`) | `ai.pick_reviews` |
-| **MEDIR** | Compara la decisión con el resultado y con el cierre; contrasta la IA con el modelo y con el mercado en sombra | `fbi.ai.pick_postmortem`, `fbi.ai.shadow` | `ai.pick_postmortems`, `ai.shadow_reports` |
-| **APRENDER** | Escribe las notas del día, con la evidencia que las respalda | `fbi.ai.learning` (07:35 Bogotá) | `ai.learning_notes` |
+| **MEDIR** | Compara la decisión con el resultado y con el cierre (un solo post-mortem por selección, `pm-v6`); contrasta la IA con el modelo y con el mercado en sombra | `fbi.intel.postmortem` (antes `fbi.ai.pick_postmortem`), `fbi.ai.shadow` | `intel.postmortems` (antes `ai.pick_postmortems`), `ai.shadow_reports` |
+| **APRENDER** | Escribe las notas del día, con la evidencia que las respalda, y la memoria con su confianza (`memory-v4`) | `fbi.ai.learning` (07:35 Bogotá), `fbi.intel.memory` (07:50) | `ai.learning_notes`, `intel.entity_memory` |
 | **PROPONER** | Convierte los patrones en hipótesis para el dueño; nunca en cambios | `fbi.ai.patterns`, `fbi.research.evolution` | `analytics.research_hypotheses` |
 | **CERRAR EL DÍA** *(nuevo)* | A las 23:59 escribe el cierre del día y lo revisa mientras algo de ese día cambie | `fbi.ai.daily_review` | `ai.daily_reviews` |
 
@@ -48,8 +54,8 @@ quedan en observación, y solo el patrón de sobreconfianza (8.822 selecciones) 
 
 ## 4. Memoria por partido (F9) y reutilización (F14)
 
-**Admin → IA e investigación → Memoria.** Se busca por equipo, liga, entrenador, jugador, mercado, rango de cuota
-y modelo. Cada partido muestra:
+**Admin → Memoria** (desde F8; antes estaba repartida en cuatro sitios). Se busca por equipo, liga, entrenador, jugador, mercado, rango de
+cuota y modelo. Cada partido muestra:
 
 - **ANTES:** el último resumen de la IA antes del saque (con la calidad de datos y la incertidumbre), sus decisiones
   y los picks en sombra (mercados y modelos);
@@ -67,10 +73,10 @@ post-mortem, gane o pierda.
 
 - **Pérdidas:** se clasifican en MODEL_ERROR, CONTEXT_ERROR, DATA_ERROR, MARKET_ERROR, EXECUTION_ERROR,
   NORMAL_VARIANCE o UNKNOWN.
-- **Aciertos (nuevo):** se juzgan con la misma vara, frente al cierre. Son **merecidos** si el mercado se movió
-  hacia la selección o el modelo estaba cerca del cierre; **con suerte** si el mercado iba en contra; y **sin
-  datos** si no hay cierre con qué comparar. Un acierto con suerte no enseña nada sobre el modelo, así que no se
-  aprende de él como si fuera una buena decisión.
+- **Aciertos:** se juzgan con la misma vara, frente al cierre, por el valor del precio (el CLV, `clv-v1`, con una banda de ±1 %).
+  Son **merecidos** si el precio fue bueno o neutro; **con suerte** si fue malo (el mercado iba en contra); y **sin datos** si no hay
+  cierre con qué comparar. Un acierto con suerte no enseña nada sobre el modelo, así que no se aprende de él como si fuera una buena
+  decisión. (Hasta F8 el criterio era el movimiento del precio de la misma casa, que lleva el margen dentro y no es un CLV.)
 
 ## 6. Evaluación no es recomendación (F16)
 

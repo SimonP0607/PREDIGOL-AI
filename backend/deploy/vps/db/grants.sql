@@ -7,6 +7,9 @@
 --                    (picks.user_*) and the Admin Console's few tables (AI layer, research decisions, the
 --                    evidence-ledger verdicts, the AI decision layer's run requests). Never ai.* results: those
 --                    are the worker's, append-only.
+--   predigol_rollback  (NOLOGIN, created by the operator: db/roles.sql) the automatic roll-back of an agent's promotion:
+--                    reads intel.promotions and inserts into it, nothing else anywhere. Which row it may insert is the
+--                    row policy of migration 0111, not this file: the worker reaches the role with SET ROLE.
 --
 -- Run as the owner after EVERY migration (bin/predigolctl does: deploy, import). Idempotent. A table a future
 -- migration adds is covered at once by the default privileges below, and re-granted explicitly the next run.
@@ -41,6 +44,20 @@ $grants$;
 -- The migration ledger: read by both (the health check shows the revision), written only by the owner.
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.alembic_version FROM predigol_worker, predigol_api;
 
+-- The incident register (S3, bin/incident-dump.sh and bin/incident.sh): the owner role writes and reads it; the application never does. The loop above
+-- hands the API SELECT and the worker every privilege on every table of every schema, so for these objects it is taken back, after every migration.
+DO $incidents$
+BEGIN
+  IF to_regclass('audit.incident_events') IS NOT NULL THEN
+    REVOKE ALL ON audit.incident_events FROM predigol_api, predigol_worker;
+    REVOKE ALL ON SEQUENCE audit.incident_events_id_seq FROM predigol_api, predigol_worker;
+  END IF;
+  IF to_regclass('audit.incidents') IS NOT NULL THEN
+    REVOKE ALL ON audit.incidents FROM predigol_api, predigol_worker;
+  END IF;
+END
+$incidents$;
+
 -- The API's writes.
 GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO predigol_api;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO predigol_api;
@@ -63,7 +80,11 @@ BEGIN
     -- the owner's "run now" for the AI decision layer: a queued request the worker picks up (fbi.ai.cycle)
     'ai.run_requests:INSERT',
     -- the owner's verdict on an evidence-ledger entry (Admin Console, Data truth)
-    'audit.evidence_ledger:UPDATE'
+    'audit.evidence_ledger:UPDATE',
+    -- the owner's decisions in the referee queue: merge, undo, split, reject, reopen, rename (fbi.people.referees). A person
+    -- moves aliases between referees and decides pairs; the rules' own pass (the worker) is the only one that makes aliases.
+    'core.referees:INSERT, UPDATE', 'core.referee_aliases:UPDATE', 'core.referee_candidates:INSERT, UPDATE, DELETE',
+    'core.referee_events:INSERT, UPDATE'
   ]
   LOOP
     IF to_regclass(split_part(t, ':', 1)) IS NULL THEN
@@ -80,3 +101,21 @@ BEGIN
   END LOOP;
 END
 $api_writes$;
+
+-- The automatic roll-back of an agent's promotion (Plan Maestro IA, sections 25 and 32). The role does not exist until the operator
+-- creates it (db/roles.sql), so until then there is nothing to grant. It gets nothing by default: only what is named here.
+DO $rollback$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'predigol_rollback') THEN
+    RAISE NOTICE 'grants: the role predigol_rollback does not exist (yet) - skipped (db/roles.sql creates it)';
+    RETURN;
+  END IF;
+  IF to_regclass('intel.promotions') IS NULL THEN
+    RAISE NOTICE 'grants: intel.promotions does not exist (yet) - skipped';
+    RETURN;
+  END IF;
+  GRANT USAGE ON SCHEMA intel TO predigol_rollback;
+  GRANT SELECT, INSERT ON intel.promotions TO predigol_rollback;
+  EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE %s TO predigol_rollback', pg_get_serial_sequence('intel.promotions', 'id'));
+END
+$rollback$;

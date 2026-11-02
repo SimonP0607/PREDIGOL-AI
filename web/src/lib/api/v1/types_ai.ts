@@ -173,3 +173,80 @@ export interface EvolutionOverview {
   v2_due_code?: string | null;
   v2_due_vars?: Record<string, string>;
 }
+
+/** What covers one fingerprint of the model code (backend `fbi.research.trace`). */
+export type CodeStatus =
+  "BASELINE" | "PROMOTED" | "AFTER_USE" | "PENDING_SYNC" | "UNTRACED" | "PRE_LEDGER";
+
+/** The CHAMPION row of `intel.promotions` that covers a fingerprint. */
+export interface CodePromotionRow {
+  id: number;
+  decided_by: string;
+  decided_at: string;
+  reason: string;
+  /** What the decision rested on: the hypothesis, the experiments, the gate, the release. */
+  evidence: Record<string, unknown>;
+}
+
+/** A fingerprint of the model packages that production forecast with in the window. */
+export interface CodeFingerprint {
+  /** `mc` and ten hex digits; `legacy` for the versions keyed by a repository commit. */
+  fingerprint: string;
+  status: CodeStatus;
+  appeared_at: string;
+  last_use: string;
+  /** Used in the last two days. Not "the code in force": see `CodePromotions.running_code`. */
+  in_force_now: boolean;
+  versions: number;
+  models: string[];
+  /** What it produced in the window, by source: predictions, forecasts, decisions. */
+  rows: Record<string, number>;
+  promotion: CodePromotionRow | null;
+}
+
+export interface CodeCounts {
+  fingerprints: number;
+  /** The changes since the ledger began: the fingerprints that are not PRE_LEDGER. */
+  counted: number;
+  /** Of those, the ones with a promotion on record (BASELINE, PROMOTED, AFTER_USE). */
+  traced: number;
+  untraced: number;
+  pending_sync: number;
+  after_use: number;
+  pre_ledger: number;
+}
+
+/** One decision of the ledger the running code carries. */
+export interface CodeLedgerEntry {
+  fingerprint: string;
+  decided_at: string;
+  decided_by: string;
+  phase: string;
+  reason: string;
+  baseline: boolean;
+  evidence: Record<string, unknown>;
+  /** `intel.promotions` has its CHAMPION row. */
+  recorded: boolean;
+  /** Production forecast with it in the window. */
+  used: boolean;
+}
+
+/** The model code against its promotions (plan F12). */
+export interface CodePromotions {
+  now: string;
+  since: string;
+  days: number;
+  /** The fingerprint of the model code this server runs. */
+  running_code: string;
+  /** The last entry of the ledger: the code the ledger says production forecasts with. */
+  ledger_in_force: string | null;
+  ledger_since: string | null;
+  in_force_matches_running: boolean;
+  fingerprints: CodeFingerprint[];
+  counts: CodeCounts;
+  /** `traced / counted` as a fraction of 1; null when nothing changed since the ledger began. */
+  coverage: number | null;
+  ledger: CodeLedgerEntry[];
+  /** The promotions of the other kinds of change in the same window, for context. */
+  other: Record<string, number>;
+}

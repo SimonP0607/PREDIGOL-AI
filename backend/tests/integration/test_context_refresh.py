@@ -9,9 +9,10 @@ from typing import Any
 import psycopg
 import pytest
 
+from fbi.core.clock import FrozenClock, SystemClock, set_clock
 from fbi.core.errors import ProviderError
 from fbi.ingestion.context_refresh import refresh_context
-from fbi.providers.api_football.details import StandingRef
+from fbi.providers.api_football.details import AbsenceRef, StandingRef
 from fbi.providers.base import RawResponse
 from tests.integration.conftest import Seed
 
@@ -40,8 +41,15 @@ class FakeProvider:
         return [], self._raw("/injuries")
 
 
+SEED_TODAY = datetime(2026, 9, 20, 12, 0, tzinfo=UTC)
+"""The day these tests live on: five days after the seed fixture (2026-09-15). A season is refreshed while its newest
+fixture is less than 30 days old (``active_seasons``), so against the REAL day these tests stopped finding the season
+on 2026-10-15 and six of them failed with no code having changed. The application clock is frozen instead."""
+
+
 @pytest.fixture
 def current_league(migrated_database: str, seed: Seed) -> Iterator[dict[str, int]]:
+    set_clock(FrozenClock(SEED_TODAY))
     with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute("SELECT is_tracked, type FROM core.competitions WHERE id = %s", (seed.competition_id,))
         tracked, kind = cur.fetchone()  # type: ignore[misc]
@@ -57,6 +65,7 @@ def current_league(migrated_database: str, seed: Seed) -> Iterator[dict[str, int
                     (seed.home_team_id, seed.away_team_id, seed.home_team_id))
         home, away = (r[0] for r in cur.fetchall())
     yield {"league": int(league), "season": int(season), "home": int(home), "away": int(away)}
+    set_clock(SystemClock())
     with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute("DELETE FROM core.standings WHERE competition_season_id = %s", (seed.season_id,))
         cur.execute("DELETE FROM core.context_checks WHERE competition_season_id = %s", (seed.season_id,))
@@ -209,3 +218,63 @@ async def test_a_cup_with_a_table_is_refreshed_and_one_without_is_not(migrated_d
                      (current_league["league"], current_league["season"]))
         conn.execute("UPDATE core.competitions SET type = 'league' WHERE id = %s", (seed.competition_id,))
         conn.commit()
+
+
+class AnsweringProvider(FakeProvider):
+    """Answers /injuries with what it is told, stamped with the moment it is told."""
+
+    def __init__(self, league: int, season: int, home_pid: int, away_pid: int,
+                 answers: list[tuple[datetime, list[AbsenceRef]]]) -> None:
+        super().__init__(league, season, home_pid, away_pid)
+        self.answers = answers
+
+    async def fetch_injuries(self, *, league_id: int, season: int) -> Any:
+        self.calls.append(f"injuries {league_id}")
+        at, refs = self.answers.pop(0)
+        raw = RawResponse(endpoint="/injuries", params={}, fetched_at=at, http_status=200, results_count=len(refs),
+                          payload_hash=f"ctx-injuries-{at.timestamp()}", file_path="x", bytes_written=1, body={})
+        return refs, raw
+
+
+async def test_each_injury_answer_enters_the_history_dated_by_when_it_was_asked(
+        migrated_database: str, seed: Seed, current_league: dict[str, int]) -> None:
+    """Plan F0, defect 8: the answer overwrites ``core.player_absences`` as before, and is also recorded as the changes it
+    makes in ``core.player_availability_obs`` - a player the next answer no longer names is cleared, not forgotten."""
+    t1 = datetime(2026, 9, 14, 8, 0, tzinfo=UTC)
+    t2 = t1 + timedelta(hours=4)  # both before the seed match (2026-09-15 19:00), which is still to be played
+
+    def ref(player: int, kind: str) -> AbsenceRef:
+        return AbsenceRef(1001, player, current_league["home"], f"Player {player}", kind, "Knee Injury")
+
+    provider = AnsweringProvider(current_league["league"], current_league["season"], current_league["home"],
+                                 current_league["away"],
+                                 [(t1, [ref(9001, "Missing Fixture"), ref(9002, "Questionable")]),
+                                  (t2, [ref(9002, "Questionable")])])
+    with psycopg.connect(migrated_database) as conn:
+        before = conn.execute("SELECT status_short, status_group, kickoff_at FROM core.fixtures WHERE id = %s",
+                              (seed.fixture_id,)).fetchone()
+        assert before is not None
+        conn.execute("UPDATE core.fixtures SET status_short = 'NS', status_group = 'scheduled', "
+                     "kickoff_at = '2026-09-15 19:00Z' WHERE id = %s", (seed.fixture_id,))
+        conn.commit()
+        try:
+            await refresh_context(conn, provider)
+            await refresh_context(conn, provider)
+            rows = conn.execute("SELECT provider_player_id, status, observed_at, origin FROM "
+                                "core.player_availability_obs WHERE fixture_id = %s ORDER BY 1, 3",
+                                (seed.fixture_id,)).fetchall()
+            assert rows == [(9001, "LISTED", t1, "answer"), (9001, "CLEARED", t2, "answer"),
+                            (9002, "LISTED", t1, "answer")]
+            latest = conn.execute("SELECT provider_player_id FROM core.player_absences WHERE fixture_id = %s "
+                                  "ORDER BY 1", (seed.fixture_id,)).fetchall()
+            assert latest == [(9001,), (9002,)], "the latest table is written as before: it still holds the cleared one"
+            note = conn.execute("SELECT notes FROM raw.ingestion_runs WHERE job_type = 'context_refresh' "
+                                "ORDER BY id DESC LIMIT 1").fetchone()
+            assert note is not None and "1 changes in the absences history" in str(note[0])
+        finally:
+            conn.rollback()
+            conn.execute("DELETE FROM core.player_availability_obs WHERE fixture_id = %s", (seed.fixture_id,))
+            conn.execute("DELETE FROM core.player_absences WHERE fixture_id = %s", (seed.fixture_id,))
+            conn.execute("UPDATE core.fixtures SET status_short = %s, status_group = %s, kickoff_at = %s WHERE id = %s",
+                         (*before, seed.fixture_id))
+            conn.commit()

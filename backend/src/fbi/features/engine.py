@@ -212,6 +212,10 @@ class WalkForward:
         if self.newest_input_at is None or m.kickoff_at > self.newest_input_at:
             self.newest_input_at = m.kickoff_at
         self._digest.update(f"{m.fixture_id}:{gh}-{ga}".encode())
+        if m.is_neutral:
+            # A neutral venue changes what the result does to the ratings: the same score is not the same input.
+            # Written only when set, so every hash of a history with no neutral match is what it always was.
+            self._digest.update(b"|n")
         if stats is not None:
             self._digest.update(f"|s{hs},{as_},{hst},{ast}".encode())
         self._digest.update(b";")
@@ -298,10 +302,13 @@ class WalkForward:
             "league_elo_mean": (sum((g[2] + g[3]) / 2 for g in league) / len(league)) if league else None,
         }
         assert set(values) == set(FEATURE_NAMES)
+        digest = self._digest.copy()
+        if t.is_neutral:
+            digest.update(b"|target-neutral")  # the fixture's own venue is an input too (the home advantage term)
         return FeatureVector(
             fixture_id=t.fixture_id, kickoff_at=t.kickoff_at, data_cutoff=cutoff, values=values,
             n_inputs=self.n_inputs, newest_input_at=self.newest_input_at,
-            input_hash=self._digest.copy().hexdigest(),
+            input_hash=digest.hexdigest(),
         )
 
 
