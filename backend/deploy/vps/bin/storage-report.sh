@@ -26,7 +26,7 @@ REPORT="$OUT_DIR/report.json"
 HISTORY="$OUT_DIR/history.jsonl"
 GIB=$(( 1024 * 1024 * 1024 ))
 
-bytes_of() { du -sxB1 "$1" 2> /dev/null | awk 'NR == 1 {print $1+0; f = 1} END {if (!f) print 0}'; }  # exactly one number, even when du fails
+bytes_of() { du -sxB1 "$1" 2> /dev/null | awk 'NR == 1 {print $1+0; f = 1} END {if (!f) print 0}' || true; }  # exactly one number, even when du fails
 num() { [[ "${1:-}" =~ ^[0-9]+$ ]] && echo "$1" || echo 0; }
 
 # 1. The disk.
@@ -42,8 +42,9 @@ raw_files="$(find "$PREDIGOL_DATA/raw" -xdev -type f 2> /dev/null | wc -l)"
 backups="$(bytes_of "$DB_BACKUPS")"
 backup_count="$(find "$DB_BACKUPS" -maxdepth 1 -name '*.dump' 2> /dev/null | wc -l)"
 releases="$(bytes_of /root/releases)"
-dlogs="$(du -cB1 /var/lib/docker/containers/*/*-json.log 2> /dev/null | awk 'END {print $1+0}')"
-logs=$(( $(bytes_of /var/log) + $(num "${dlogs:-0}") ))
+docker_logs() { du -cB1 /var/lib/docker/containers/*/*-json.log 2> /dev/null | awk 'END {print $1+0}' || true; }  # no container, no glob match: 0, never a failure
+dl="$(docker_logs)"
+logs=$(( $(bytes_of /var/log) + $(num "${dl:-0}") ))
 
 # 3. Docker, from its own accounting (sizes in bytes).
 docker_json="$(docker system df --format '{{json .}}' 2> /dev/null || true)"
