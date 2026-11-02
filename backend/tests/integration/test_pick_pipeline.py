@@ -35,14 +35,12 @@ def _prices_do_not_age(monkeypatch: pytest.MonkeyPatch) -> None:
     """These tests live in a fixed October (KO, AT, CAPTURED); quoted_lines() only reads prices captured in the last 30 days of the
     WALL clock, so from 2 Nov 2026 on the forecasts priced no line and the chain broke at its first link. The window is widened here;
     production keeps the 30 days. (A guard that these tests do not age is the CI itself: it is what found this.)"""
-    import fbi.predictions.forecast as forecast
-
-    real = forecast.quoted_lines
+    from fbi.models.quoted import quoted_lines as real
 
     def wide(conn: psycopg.Connection, ids: Any, **kw: Any) -> Any:
         return real(conn, ids, **{**kw, 'since_days': 36500})
 
-    monkeypatch.setattr(forecast, "quoted_lines", wide)
+    monkeypatch.setattr("fbi.predictions.forecast.quoted_lines", wide)
 
 
 @pytest.fixture()
