@@ -5,7 +5,7 @@
  * be judged yet is a lack of time with the days it lacks, never a failure; a part of the page that could not be computed does not take the others
  * down; every word the page counts by has its translation. The view reads only: the figures come from the server.
  */
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { hasKey, setLocale } from "@/lib/i18n";
 import type {
@@ -43,7 +43,7 @@ const text = (html: string) =>
     .replace(/&lt;/g, "<")
     .replace(/\s+/g, " ");
 
-afterEach(() => setLocale("es"));
+beforeEach(() => setLocale("es")); // a file that ran before may have left another language on\nafterEach(() => setLocale("es"));
 
 // ── a world to render ────────────────────────────────────────────────────────
 

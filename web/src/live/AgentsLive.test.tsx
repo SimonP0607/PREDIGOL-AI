@@ -5,7 +5,7 @@
  * not shown as clean; a slice is shown against its cap; a name of promotion the page does not read is shown as it is; every word the page counts
  * by has its translation. The tab reads only: the figures come from the server.
  */
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { hasKey, setLocale } from "@/lib/i18n";
 import { localInt } from "@/lib/i18n/format";
@@ -32,7 +32,7 @@ const text = (html: string) =>
     .replace(/&lt;/g, "<")
     .replace(/\s+/g, " ");
 
-afterEach(() => setLocale("es"));
+beforeEach(() => setLocale("es")); // a file that ran before may have left another language on\nafterEach(() => setLocale("es"));
 
 const FINGERPRINT = "ag0123456789";
 
