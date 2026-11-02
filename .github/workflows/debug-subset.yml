@@ -40,5 +40,18 @@ jobs:
             backend/pyproject.toml
             backend/constraints.txt
       - run: pip install -c constraints.txt -e ".[analytics,ml,dev]"
-      - name: pick pipeline file
+      - name: admin overview traceback
+        continue-on-error: true
+        run: |
+          alembic upgrade head
+          python - <<'PY'
+          import traceback, psycopg
+          from fbi.api.services import center
+          conn = psycopg.connect("postgresql://fbi@localhost:5432/fbi_test")
+          try:
+              r = center.admin_overview(conn)
+              print("OK", type(r))
+          except Exception:
+              traceback.print_exc()
+          PY      - name: pick pipeline file
         run: pytest tests/integration/test_pick_pipeline.py -q -p no:randomly --tb=short
