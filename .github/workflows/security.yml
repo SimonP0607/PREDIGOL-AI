@@ -41,7 +41,7 @@ jobs:
           python-version: '3.12'
       - working-directory: backend
         run: |
-          pip install -c constraints.txt -e ".[dev]"
+          pip install -c constraints.txt -e ".[analytics,dev]"
           pip-audit --skip-editable
 
   audit-web:
