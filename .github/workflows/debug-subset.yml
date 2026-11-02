@@ -23,7 +23,7 @@ jobs:
           POSTGRES_USER: fbi
           POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: fbi_test
-          POSTGRES_INITDB_ARGS: "--locale=${{ matrix.locale }}"
+          POSTGRES_INITDB_ARGS: --locale=${{ matrix.locale }}
         ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U fbi" --health-interval 5s --health-timeout 5s --health-retries 10
@@ -55,4 +55,4 @@ jobs:
               traceback.print_exc()
           PY
       - name: pick pipeline file
-        run: pytest tests/integration/test_pick_pipeline.py -q -p no:randomly --tb=short
+        run: pytest tests/integration/test_pick_pipeline.py -q -s -p no:randomly --tb=short -k whole_line_pick_keeps 2>&1 | tail -60
