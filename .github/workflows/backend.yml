@@ -76,6 +76,9 @@ jobs:
       FBI_DATABASE_URL: postgresql+psycopg://fbi@localhost:5432/fbi_test
       FBI_ENV: test
       PYTHONUTF8: '1'
+      # what backend/.env.test gives a developer's machine; the API settings refuse to load without a key (no call is ever made)
+      FBI_APIFOOTBALL_KEY: test-key-not-real
+      FBI_APIFOOTBALL_PLAN: pro
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
