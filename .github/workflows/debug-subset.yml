@@ -10,10 +10,6 @@ defaults:
     working-directory: backend
 jobs:
   subset:
-    strategy:
-      fail-fast: false
-      matrix:
-        locale: ['en_US.utf8', 'C']
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -23,7 +19,6 @@ jobs:
           POSTGRES_USER: fbi
           POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: fbi_test
-          POSTGRES_INITDB_ARGS: --locale=${{ matrix.locale }}
         ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U fbi" --health-interval 5s --health-timeout 5s --health-retries 10
@@ -40,19 +35,8 @@ jobs:
             backend/pyproject.toml
             backend/constraints.txt
       - run: pip install -c constraints.txt -e ".[analytics,ml,dev]"
-      - name: admin overview traceback
-        continue-on-error: true
+      - name: pick pipeline, with the logs
+        run: pytest tests/integration/test_pick_pipeline.py -q -s -p no:randomly --tb=short -k whole_line_pick_keeps 2>&1 | tail -70
+      - name: what Postgres and locale
         run: |
-          alembic upgrade head
-          python - <<'PY'
-          import traceback, psycopg
-          from fbi.api.services import center
-          conn = psycopg.connect("postgresql://fbi@localhost:5432/fbi_test")
-          try:
-              r = center.admin_overview(conn)
-              print("OK", type(r))
-          except Exception:
-              traceback.print_exc()
-          PY
-      - name: pick pipeline file
-        run: pytest tests/integration/test_pick_pipeline.py -q -s -p no:randomly --tb=short -k whole_line_pick_keeps 2>&1 | tail -60
+          psql -h localhost -U fbi -d postgres -c "select version(), current_setting('lc_collate'), current_setting('TimeZone')"
