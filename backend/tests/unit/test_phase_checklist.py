@@ -118,7 +118,7 @@ def test_the_register_says_how_many_rules_the_newest_audit_has() -> None:
     """'`leak-audit-vN`, M reglas' for the version the code runs: a rule added to the audit without the row of its release is seen here."""
     found = re.search(rf"`{re.escape(leakage.VERSION)}`, (\d+) reglas", section(3))
     assert found, f"the register does not say how many rules {leakage.VERSION} has"
-    assert int(found.group(1)) == len(leakage.RULES), (found.group(1), len(leakage.RULES))
+    assert int(found.group(1)) == len(leakage.RULE_NAMES), (found.group(1), len(leakage.RULE_NAMES))
 
 
 def test_the_template_has_the_nine_lines_and_both_signatures() -> None:

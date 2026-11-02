@@ -45,6 +45,7 @@ from fbi.ai.config import AiSettings
 from fbi.ai.entity_research import AGENT, LEDGER_PREFIX
 from fbi.ai.evidence import STALE_AFTER, normalize_name
 from fbi.ai.gate_a import Check
+from fbi.core.decision_versions import DECISION_CORE
 
 GATE: Final = "research_v2"
 PASS, FAIL = "PASA", "NO PASA"
@@ -184,7 +185,7 @@ SELECT COALESCE(sum(CASE WHEN jsonb_typeof(p.counts -> 'v2_invalid') = 'number' 
 CITED_SQL = """
 SELECT (SELECT count(*) FROM ai.pick_reviews r WHERE r.reviewed_at >= %(since)s AND r.reviewed_at < %(until)s
            AND EXISTS (SELECT 1 FROM ai.evidence e WHERE e.id = ANY(r.evidence_ids) AND e.subject_type IS NOT NULL)) AS reviews,
-       (SELECT count(*) FROM intel.decisions d WHERE d.known_at >= %(since)s AND d.known_at < %(until)s
+       (SELECT count(*) FROM intel.decisions d WHERE d.known_at >= %(since)s AND d.known_at < %(until)s AND d.decision_version = %(layer)s
            AND EXISTS (SELECT 1 FROM ai.evidence e WHERE e.id = ANY(d.evidence_ids) AND e.subject_type IS NOT NULL)) AS decisions
 """
 AUDIT_SQL = """
@@ -402,7 +403,7 @@ def check_sample(c: Coverage) -> Check:
 
 def check_invisible(conn: psycopg.Connection[Any], first: date, last: date) -> Check:
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(CITED_SQL, {"since": day_start(first), "until": day_start(last + timedelta(days=1))})
+        cur.execute(CITED_SQL, {"since": day_start(first), "until": day_start(last + timedelta(days=1)), "layer": DECISION_CORE})
         row = cur.fetchone()
     assert row is not None
     reviews, decisions = int(row["reviews"]), int(row["decisions"])

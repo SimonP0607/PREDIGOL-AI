@@ -293,7 +293,7 @@ El ciclo termina `ok` si no hubo `refused` ni `failed`, `partial` si los hubo y 
 
 ## 10. La auditoría de fugas: `slice_known`
 
-Cada noche la auditoría de fugas (`leak-audit-v7`, `intel/leakage.py`) comprueba, para las decisiones del día de Bogotá, que nada usó algo que no se sabía en su momento. **Hoy tiene 18 reglas**; la fase 1 añade la última, `slice_known`, que es la primera que lee estados de partido. Para cada fila de `ai.match_runs` escrita ese día que nombra un paquete `mcp-v1` comprueba:
+Cada noche la auditoría de fugas (`leak-audit-v8`, `intel/leakage.py`) comprueba, para las decisiones del día de Bogotá, que nada usó algo que no se sabía en su momento. **Hoy tiene 20 reglas** (las 18 de la fase 1 y las dos de las familias, de F11); la fase 1 añade la última, `slice_known`, que es la primera que lee estados de partido. Para cada fila de `ai.match_runs` escrita ese día que nombra un paquete `mcp-v1` comprueba:
 
 * que el paquete salió de un paquete de datos guardado **del mismo partido**, que ya estaba construido en el momento en que se escribió la fila, que su momento (`as_of`) es el `known_at` de la fila y que ese momento es anterior al inicio del partido;
 * que el paquete y **cada una** de sus porciones, derivados otra vez desde ese paquete de datos con el código de hoy, son idénticos byte por byte a lo que registró la fila (la huella del paquete y la de cada porción, en el orden de las porciones): una porción es parte del paquete, el paquete es parte del paquete de datos, y ninguno lleva un momento posterior a la pasada (`PackageLeakError` también es una violación);
