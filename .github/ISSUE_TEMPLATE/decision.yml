@@ -1,0 +1,30 @@
+name: Decisión del dueño
+description: Algo que espera una decisión de Simon
+title: "ÁREA-NNN: decisión sobre …"
+labels: ["requiere-decision-del-dueno"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options: [CI, SEG, IA, UX, BE, FE, OPS, DOC]
+    validations:
+      required: true
+  - type: textarea
+    id: pregunta
+    attributes:
+      label: La decisión
+      description: "Una frase: qué hay que decidir."
+    validations:
+      required: true
+  - type: textarea
+    id: opciones
+    attributes:
+      label: Opciones
+      description: Cada opción con su efecto, coste y riesgo.
+    validations:
+      required: true
+  - type: textarea
+    id: recomendacion
+    attributes:
+      label: Recomendación y fecha límite

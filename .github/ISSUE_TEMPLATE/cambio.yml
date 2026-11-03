@@ -1,0 +1,44 @@
+name: Cambio
+description: Algo nuevo o a mejorar en PrediGol
+title: "ÁREA-NNN: resumen"
+labels: ["tipo:feat"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        El título lleva el código del cambio (por ejemplo `UX-004: simplificar la pantalla de pronósticos`).
+        Pide el siguiente número en `docs/proyecto/REGISTRO_CODIGOS.md`.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options: [CI, SEG, IA, UX, BE, FE, OPS, DOC]
+    validations:
+      required: true
+  - type: textarea
+    id: que
+    attributes:
+      label: Qué se quiere
+      description: Qué debe cambiar para el usuario o para el equipo.
+    validations:
+      required: true
+  - type: textarea
+    id: porque
+    attributes:
+      label: Por qué
+      description: El problema o la decisión que lo motiva; enlaza el plan si existe.
+    validations:
+      required: true
+  - type: textarea
+    id: hecho
+    attributes:
+      label: Cómo sabremos que está hecho
+    validations:
+      required: true
+  - type: dropdown
+    id: despliegue
+    attributes:
+      label: ¿Toca producción?
+      options: ["No", "Sí: backend", "Sí: web", "Sí: servidor"]
+    validations:
+      required: true

@@ -1,0 +1,46 @@
+name: Título, rama y descripción del PR
+
+# Comprueba las convenciones de docs/proyecto/CONVENCIONES_GITHUB.md (CI-005).
+# Sin filtros de ruta: tiene que correr en todos los PR para poder ser obligatorio.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-convenciones-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  convenciones:
+    name: Convenciones del PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar título, rama y descripción
+        id: validar
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BRANCH: ${{ github.head_ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: python3 .github/scripts/check_pr_title.py
+      - name: Etiquetar área y tipo
+        # Los PR de Dependabot tienen token de solo lectura: aquí no debe romper nada.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          AREA: ${{ steps.validar.outputs.area }}
+          TIPO: ${{ steps.validar.outputs.tipo }}
+        run: |
+          labels=""
+          if [ -n "$AREA" ]; then labels="area:$AREA"; fi
+          if [ -n "$TIPO" ]; then labels="${labels:+$labels,}tipo:$TIPO"; fi
+          if [ -n "$labels" ]; then
+            gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --add-label "$labels"
+          fi
