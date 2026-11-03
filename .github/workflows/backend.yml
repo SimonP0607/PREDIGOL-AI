@@ -92,6 +92,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -c constraints.txt -e ".[analytics,ml,dev]"
+      - name: PostgreSQL 16 client tools (pg_dump, pg_restore)
+        # The runner image ships newer client tools than the PostgreSQL 16 service: a dump made by a newer pg_dump
+        # (``SET transaction_timeout``) does not restore into 16. The backup tests must use the version production runs.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-16
+          echo /usr/lib/postgresql/16/bin >> "$GITHUB_PATH"
+          /usr/lib/postgresql/16/bin/pg_dump --version
       - name: Migrations apply (up, down one, up)
         run: |
           alembic upgrade head
