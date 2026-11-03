@@ -43,6 +43,10 @@ EXPECTED = {
         198,
     ),
     "test_incident_pen.sh": ("incident.sh: the owner's pen", 64),
+    "test_gh_deploy_gate.sh": (
+        "predigol-gh-deploy: the forced command of the GitHub deploy key (CI/CD C4)",
+        60,
+    ),
 }
 
 needs_tools = pytest.mark.skipif(
