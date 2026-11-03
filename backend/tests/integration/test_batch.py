@@ -903,7 +903,7 @@ def test_a_cycle_that_takes_over_half_an_hour_still_sends_everything_it_recorded
     def slow(request: JsonRequest) -> dict[str, Any]:
         """Every time the cycle asks the model, the worker's poll looks, an hour into the cycle: it is the poll of 31 Oct."""
         waiting = n(db, "SELECT count(*) FROM ai.batch_items WHERE status = 'submitting'")
-        looked.append((poll(Quiet(db), SETTINGS, at=AT + timedelta(minutes=61), ledger=UsageLedger(shared(db)), client=fake), waiting))
+        looked.append((poll(Quiet(db), SETTINGS, at=AT + timedelta(minutes=61), ledger=UsageLedger(shared(db)), client=fake), waiting))  # type: ignore[arg-type]  # Quiet stands in for the connection
         return brief_reply() if request.schema_name == "submit_brief" else review_reply("APPROVE")
 
     report = cycle(Savepoints(db), FakeProvider(slow, name="anthropic"), fake)

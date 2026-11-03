@@ -289,7 +289,7 @@ def test_a_review_asked_in_this_pass_is_judged_by_the_pass_not_by_the_carried_on
 def test_the_cycle_and_the_poll_name_the_same_lock() -> None:
     from fbi.ai import cycle
 
-    assert cycle.CYCLE_LOCK is CYCLE_LOCK, "one definition: the lock the cycle takes is the lock the poll looks at"
+    assert vars(cycle)["CYCLE_LOCK"] is CYCLE_LOCK, "one definition: the lock the cycle takes is the lock the poll looks at"
     assert 0 <= CYCLE_LOCK < 2**32, "the probe reads it as classid 0 and objid = the key: true only for a key under 2^32"
 
 
