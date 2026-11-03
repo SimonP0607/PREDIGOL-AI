@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# The FORCED COMMAND of the GitHub deploy key (plan CI/CD, phase C4). In /root/.ssh/authorized_keys the key reads
+#   command="/usr/local/sbin/predigol-gh-deploy",restrict ssh-ed25519 AAAA... predigol-github-deploy
+# so whatever the client asks for arrives here in $SSH_ORIGINAL_COMMAND and this script decides. It is the only thing that key can do:
+#   git -C /opt/predigol/{backend,web} rev-parse --short=12 HEAD     the commits production runs (what build_kit.sh --from-server reads)
+#   git-upload-pack '/opt/predigol/{backend,web}'                    read-only fetch of those two checkouts (build_kit.sh ensure_base)
+#   receive NAME      a tar of a kit on stdin -> /root/releases/NAME, hashes checked HERE, refused if NAME exists
+#   precheck NAME     step_precheck.sh of that kit (read-only)
+#   start NAME        starts chain.sh detached (systemd-run), exactly like ship.sh --start; only a kit this script received
+#   status NAME       one line STATE: ... and the tail of chain.log
+#   discard NAME      removes a kit that was received and never started
+# Everything else is refused and written to the log. It starts nothing by itself: "start" is called by the GitHub job that the owner approved
+# in the `production` environment (that approval is the owner's word). Residual risk, said plainly: the kit's scripts run as root, so whoever
+# can change what GitHub sends (write access to the repository, the workflow on main) can run code on the server; branch protection and the
+# environment's reviewer are what hold that, until security plan S4 narrows the account.
+set -uo pipefail
+umask 077
+RELEASES="${PREDIGOL_RELEASES:-/root/releases}"
+LOGF="${PREDIGOL_GH_LOG:-/var/log/predigol-gh-deploy.log}"
+MAX_BYTES="${PREDIGOL_GH_MAX_BYTES:-419430400}"
+APP="${PREDIGOL_APP_DIR:-/opt/predigol}"
+NAME_RE='^[0-9]{8}T[0-9]{4}Z-[a-z0-9][a-z0-9-]{0,40}$'
+WHO="${SSH_CLIENT%% *}"
+
+log() { printf '%s %s client=%s %s\n' "$(date -u +%FT%TZ)" "$1" "${WHO:-local}" "${2:-}" >> "$LOGF" 2> /dev/null || true; }
+refuse() { log REFUSED "$*"; echo "predigol-gh-deploy: refused: $*" >&2; exit 126; }
+fail() { log FAILED "$*"; echo "predigol-gh-deploy: $*" >&2; exit 1; }
+
+CMD="${SSH_ORIGINAL_COMMAND:-}"
+[[ -n "$CMD" ]] || refuse "no command (an interactive shell is not offered)"
+# no shell metacharacter at all: only letters, digits, space and  _ . / ' : = -
+[[ "$CMD" =~ ^[A-Za-z0-9\ _./\':=-]+$ ]] || refuse "characters that are not allowed in: ${CMD:0:80}"
+(( ${#CMD} <= 200 )) || refuse "command too long"
+read -r -a W <<< "$CMD"
+VERB="${W[0]}"
+
+name_ok() { [[ "${1:-}" =~ $NAME_RE ]] || refuse "bad kit name '${1:-}'"; }
+kit_dir() { echo "$RELEASES/$1"; }   # the name was checked at top level below: a refusal inside $(...) would only leave the subshell
+received() { [[ -f "$1/.gh-received" ]] || refuse "$1 was not received through this door"; }
+
+case "$CMD" in
+  "git -C /opt/predigol/backend rev-parse --short=12 HEAD") log OK heads-backend; exec git -C "$APP/backend" rev-parse --short=12 HEAD ;;
+  "git -C /opt/predigol/web rev-parse --short=12 HEAD") log OK heads-web; exec git -C "$APP/web" rev-parse --short=12 HEAD ;;
+  "git-upload-pack '/opt/predigol/backend'" | "git-upload-pack /opt/predigol/backend") log OK fetch-backend; exec git upload-pack "$APP/backend" ;;
+  "git-upload-pack '/opt/predigol/web'" | "git-upload-pack /opt/predigol/web") log OK fetch-web; exec git upload-pack "$APP/web" ;;
+esac
+
+case "$VERB" in receive | precheck | start | status | discard) name_ok "${W[1]:-}" ;; esac
+case "$VERB" in
+  receive)
+    (( ${#W[@]} == 2 )) || refuse "usage: receive NAME"
+    D="$(kit_dir "${W[1]}")"; NAME="${W[1]}"
+    [[ ! -e "$D" ]] || fail "$D already exists"
+    mkdir -p "$RELEASES" || fail "cannot create $RELEASES"
+    T="$(mktemp -d "$RELEASES/.incoming.XXXXXX")" || fail "no temp dir"
+    trap 'rm -rf "$T"' EXIT
+    head -c $((MAX_BYTES + 1)) > "$T/kit.tar"
+    sz=$(stat -c %s "$T/kit.tar")
+    (( sz > 0 && sz <= MAX_BYTES )) || fail "the kit is empty or bigger than $MAX_BYTES bytes"
+    # only flat regular files with plain names: no directories, links, devices, absolute paths or ..
+    tar -tvf "$T/kit.tar" > "$T/list" 2> /dev/null || fail "not a tar"
+    while IFS= read -r line; do
+      [[ "${line:0:1}" == "-" ]] || fail "the tar has an entry that is not a regular file: ${line:0:60}"
+    done < "$T/list"
+    tar -tf "$T/kit.tar" > "$T/names" 2> /dev/null || fail "not a tar"
+    while IFS= read -r n; do
+      n="${n#./}"
+      [[ "$n" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || fail "the tar has a name that is not a plain file name: ${n:0:60}"
+    done < "$T/names"
+    mkdir "$T/kit" && tar -xf "$T/kit.tar" -C "$T/kit" --no-same-owner --no-same-permissions || fail "cannot unpack"
+    for f in RELEASE.json SHA256SUMS SCRIPTS.sha256 chain.sh step_precheck.sh step_deploy.sh; do [[ -f "$T/kit/$f" ]] || fail "the kit has no $f"; done
+    chmod 755 "$T"/kit/*.sh
+    (cd "$T/kit" && sha256sum -c --quiet SHA256SUMS && sha256sum -c --quiet SCRIPTS.sha256) || fail "the hashes of the kit do not check"
+    grep -qx "D=/root/releases/$NAME" "$T/kit/chain.sh" || fail "chain.sh was built for another folder than $NAME"
+    [[ ! -e "$T/kit/chain.status" && ! -e "$T/kit/deploy.started" ]] || fail "the kit carries the marks of an earlier attempt"
+    printf '%s client=%s\n' "$(date -u +%FT%TZ)" "${WHO:-local}" > "$T/kit/.gh-received"
+    chmod 700 "$T/kit"
+    mv "$T/kit" "$D" || fail "cannot move the kit into place"
+    log OK "receive $NAME ($sz bytes)"
+    echo "received: $D (hashes checked here)"
+    ;;
+  precheck)
+    (( ${#W[@]} == 2 )) || refuse "usage: precheck NAME"
+    D="$(kit_dir "${W[1]}")"; [[ -d "$D" ]] || fail "no kit $D"; received "$D"
+    [[ ! -e "$D/deploy.started" ]] || refuse "this kit already began to deploy"
+    log OK "precheck ${W[1]}"
+    cd "$D" && exec ./step_precheck.sh < /dev/null 2>&1
+    ;;
+  start)
+    (( ${#W[@]} == 2 )) || refuse "usage: start NAME"
+    D="$(kit_dir "${W[1]}")"; [[ -d "$D" ]] || fail "no kit $D"; received "$D"
+    [[ ! -e "$D/chain.status" && ! -e "$D/chain.log" && ! -e "$D/deploy.started" ]] || refuse "this kit was started before: $(cat "$D/chain.status" 2> /dev/null)"
+    REL="$(jq -r .release "$D/RELEASE.json" 2> /dev/null)"
+    [[ "$REL" =~ ^[a-z0-9][a-z0-9-]{0,40}$ ]] || fail "RELEASE.json has no valid release name"
+    if systemctl list-units --state=active --no-legend '*-chain.service' 2> /dev/null | grep -q .; then refuse "another chain is running"; fi
+    log OK "start ${W[1]} (unit $REL-chain)"
+    systemd-run --unit="$REL-chain" --collect --quiet --working-directory="$D" /bin/bash -c "$D/chain.sh < /dev/null > $D/chain.out 2>&1" || fail "systemd-run could not start the chain"
+    echo "chain started: $REL-chain (follow it with: status ${W[1]})"
+    ;;
+  status)
+    (( ${#W[@]} == 2 )) || refuse "usage: status NAME"
+    D="$(kit_dir "${W[1]}")"; [[ -d "$D" ]] || fail "no kit $D"; received "$D"
+    if [[ -f "$D/chain.status" ]]; then
+      s="$(head -n 1 "$D/chain.status")"
+      case "$s" in deployed*) echo "STATE: deployed ($s)" ;; stopped*) echo "STATE: stopped ($s)" ;; *) echo "STATE: unknown ($s)" ;; esac
+    elif [[ -f "$D/chain.log" ]]; then echo "STATE: running"
+    else echo "STATE: not-started"; fi
+    [[ -f "$D/chain.log" ]] && tail -n 8 "$D/chain.log"
+    exit 0
+    ;;
+  discard)
+    (( ${#W[@]} == 2 )) || refuse "usage: discard NAME"
+    D="$(kit_dir "${W[1]}")"; [[ -d "$D" ]] || fail "no kit $D"; received "$D"
+    [[ ! -e "$D/chain.log" && ! -e "$D/chain.status" && ! -e "$D/deploy.started" ]] || refuse "this kit was started: it is not discarded from here"
+    rm -rf -- "$D" && log OK "discard ${W[1]}" && echo "discarded $D"
+    ;;
+  *) refuse "not in the list: ${CMD:0:80}" ;;
+esac
