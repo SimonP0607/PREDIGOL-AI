@@ -128,7 +128,7 @@ def test_the_counts_always_have_the_eight_codes_and_count_pairs_not_contradictio
         state(1, [{"code": "C01", "subject": "player:7", "candidates": ["c1", "c2"], "refs": ["E:3"], "confirmed": True},
                   {"code": "C01", "subject": "player:8", "candidates": ["c1"], "refs": []}], {"ma-v1": {"verdicts": {"c1": "APPROVE:LOW"}}}, rid=1),
         state(2, [{"code": "C06", "subject": "match", "candidates": ["c1"], "refs": [], "gap": "0.31"}], rid=2),
-        state(3, [{"code": "C42", "subject": "match", "candidates": []}, "junk"], rid=3)]
+        state(3, [{"code": "C42", "subject": "match", "candidates": []}, "junk"], rid=3)]  # type: ignore[list-item]
     items = service.contradiction_items(rows)
     assert [i.code for i in items] == ["C01", "C01", "C06"]
     run_of = [1, 1, 2]
@@ -178,7 +178,7 @@ def test_pauses_and_silences_are_tallied_by_code_and_a_paused_arm_is_not_also_a_
         {"engine": "ma-v1", "paused": None, "status": "fallback", "reason": "see https://evil.example"},
         {"engine": "ma-v1", "paused": None, "status": "ok", "reason": None},
         {"engine": "ma-v1", "paused": [], "status": None, "reason": None}]
-    paused, silent = service.tally_states(rows)
+    paused, silent = service.tally_states(rows)  # type: ignore[arg-type]
     assert paused == {"cs-v1": {"circuit_open": 2, "envelope_spent": 1}}
     assert silent == {"ma-v1": {"over_budget": 1, "view_too_large": 1, "fallback": 1}}, "an address is never a key"
 
@@ -208,11 +208,11 @@ def test_the_switches_name_the_three_words_and_say_which_of_them_is_missing() ->
 # ── the routes ────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_the_four_routes_are_reads_of_the_admin_router() -> None:
-    found = {r.path: r for r in routes.admin_router.routes if getattr(r, "path", "") in (
+    found = {r.path: r for r in routes.admin_router.routes if getattr(r, "path", "") in (  # type: ignore[attr-defined]
         "/ai/shadow/arms", "/ai/contradictions", "/ai/agent-runs", "/ai/matches/{fixture_id}/shadow")}
     assert set(found) == {"/ai/shadow/arms", "/ai/contradictions", "/ai/agent-runs", "/ai/matches/{fixture_id}/shadow"}
     assert all(getattr(r, "methods", None) == {"GET"} for r in found.values())
-    old = {r.path for r in routes.admin_router.routes if getattr(r, "path", "") in ("/ai/shadow", "/ai/reviews", "/ai/comparison")}
+    old = {r.path for r in routes.admin_router.routes if getattr(r, "path", "") in ("/ai/shadow", "/ai/reviews", "/ai/comparison")}  # type: ignore[attr-defined]
     assert old == {"/ai/shadow", "/ai/reviews", "/ai/comparison"}, "the endpoints production reads are still where they were"
 
 

@@ -87,7 +87,7 @@ def as_asked(script: Any) -> Any:
             if request.system.startswith(text):
                 request = replace(request, system=text)
                 break
-        return script(request)  # type: ignore[no-any-return]
+        return script(request)
 
     return wrapped
 
@@ -97,13 +97,13 @@ def fake_batches(script: Any = None, **kw: Any) -> FakeBatches:
 
 
 def run(db: psycopg.Connection[Any], gear: Gear, fake: FakeBatches | None, *, at: Any = RUN, conf: Any = None, prov: Any = None) -> orchestrator.Report:
-    return orchestrator.run(Savepoints(db), conf or cfg(), at=at, provider=prov, ledger=gear.ledger, slots=gear.slots, circuit=gear.circuit, batch_client=fake)
+    return orchestrator.run(Savepoints(db), conf or cfg(), at=at, provider=prov, ledger=gear.ledger, slots=gear.slots, circuit=gear.circuit, batch_client=fake)  # type: ignore[arg-type]
 
 
 def settle(db: psycopg.Connection[Any], gear: Gear, fake: FakeBatches, *, at: Any, conf: Any = None, **outcomes: Any) -> batch.PollReport:
     """The provider ends every open batch and the poll takes the results."""
     fake.end(outcomes=outcomes.get("outcomes"))
-    return batch.poll(Savepoints(db), conf or cfg(), at=at, ledger=gear.ledger, client=fake)
+    return batch.poll(Savepoints(db), conf or cfg(), at=at, ledger=gear.ledger, client=fake)  # type: ignore[arg-type]
 
 
 def items(db: psycopg.Connection[Any]) -> list[dict[str, Any]]:
@@ -254,7 +254,7 @@ def test_a_pass_through_the_batch_leaves_the_rows_of_a_pass_asked_in_real_time(d
     w = world(db, seed)
     assign(db, w.fixture)
     db.execute("SAVEPOINT equivalence")
-    sync = orchestrator.run(Savepoints(db), settings(), at=RUN, provider=provider(script), ledger=Gear(db).ledger, slots=Gear(db).slots, circuit=Gear(db).circuit)
+    sync = orchestrator.run(Savepoints(db), settings(), at=RUN, provider=provider(script), ledger=Gear(db).ledger, slots=Gear(db).slots, circuit=Gear(db).circuit)  # type: ignore[arg-type]
     assert sync.ran == 1 and sync.queued == 0
     real = normalized(db, w.fixture)
     db.execute("ROLLBACK TO SAVEPOINT equivalence")
@@ -296,7 +296,7 @@ def test_the_opus_cap_counts_the_opus_tasks_that_wait_in_the_batch(db: psycopg.C
         now += 10 * MINUTE
         settle(db, gear, fake, at=now)
         now += 10 * MINUTE
-    assert orchestrator.opus_today(db, now)[0] == 1 and orchestrator.opus_today(db, now)[1] > 0
+    assert orchestrator.opus_today(db, now)[0] == 1 and orchestrator.opus_today(db, now)[1] > 0  # type: ignore[attr-defined]
 
 
 # ── what the Batch can do wrong ───────────────────────────────────────────────────────────────────────────────────
@@ -557,13 +557,13 @@ def test_a_shadow_answer_settled_twice_is_the_same_answer(db: psycopg.Connection
     fake, gear = fake_batches(), Gear(db)
     run(db, gear, fake)
     settle(db, gear, fake, at=RUN + 20 * MINUTE)
-    again = batch.poll(Savepoints(db), cfg(), at=RUN + 25 * MINUTE, ledger=gear.ledger, client=fake)
+    again = batch.poll(Savepoints(db), cfg(), at=RUN + 25 * MINUTE, ledger=gear.ledger, client=fake)  # type: ignore[arg-type]
     assert again.items == 0 and again.batches == 0, "an ended batch is not taken twice"
     item = items(db)[0]
     first = dict(item["context"]["result"])
     resolved = Resolved(item, LlmResult(first["data"], LlmUsage(input_tokens=10, output_tokens=5), "anthropic", str(item["model"]), latency_ms=0), None, item["usage_id"], D(first["cost"]), RUN, False, int(item["batch_id"]))
-    lab.settle_lab(Savepoints(db), resolved)
-    lab.settle_lab(Savepoints(db), resolved)
+    lab.settle_lab(Savepoints(db), resolved)  # type: ignore[arg-type]
+    lab.settle_lab(Savepoints(db), resolved)  # type: ignore[arg-type]
     assert items(db)[0]["context"]["result"]["data"] == first["data"] and items(db)[0]["context"]["result"]["ok"] is True
     reports = to_the_end(db, gear, fake, start=RUN + 40 * MINUTE)
     assert reports[-1].ran == 1

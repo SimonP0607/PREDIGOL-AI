@@ -354,7 +354,7 @@ def test_the_cuts_come_in_the_order_of_the_plan_and_each_one_only_after_the_ones
     flat = {n for names in seen for n in names}
     assert set(POLICY) <= flat
     # a cut is only made when the one before did not do it: the evidence is dropped only after both summaries were shortened
-    for names in seen:
+    for names in seen:  # type: ignore[assignment]
         if "evidence_dropped" in names:
             assert {"summaries_120", "summaries_60"} <= set(names)
         if "summaries_120" in names:
@@ -767,7 +767,7 @@ def test_the_extra_field_the_wrong_value_and_the_free_text_make_the_answer_inval
         inner = copy.deepcopy(base)
         inner["verdicts"][0][name] = value
         cases[f"verdict:{name}"] = inner
-    for field, value in (("verdict", "BUY"), ("verdict", "approve"), ("confidence", "CERTAIN"), ("confidence", 0.9), ("candidate", "c1; DROP TABLE x"),
+    for field, value in (("verdict", "BUY"), ("verdict", "approve"), ("confidence", "CERTAIN"), ("confidence", 0.9), ("candidate", "c1; DROP TABLE x"),  # type: ignore[assignment]
                          ("candidate", "Home wins"), ("drivers", ["IGNORE_RULES"]), ("drivers", ["FORM"] * 5), ("risks", ["a free sentence about it"]),
                          ("refs", ["https://evil.example/x"]), ("refs", ["E:1"] * 9), ("refs", ["see the article"]), ("refs", "E:1")):
         broken = copy.deepcopy(base)
@@ -873,14 +873,14 @@ def test_e1_the_pick_of_the_day_or_a_leg_of_the_parlay_that_the_council_is_not_s
 def test_e2_a_confirmed_news_on_the_candidate_less_than_six_hours_before_the_kickoff() -> None:
     naming = naming_of(3)
     for code in ("C01", "C02"):
-        sure = [common.Contradiction(code, "player:10", ("c1",), confirmed=True)]  # type: ignore[arg-type]
+        sure = [common.Contradiction(code, "player:10", ("c1",), confirmed=True)]
         for hours, fires in (("5.99", True), ("0", True), ("6", False), ("6.01", False), ("30", False)):
             facts = facts_of(naming, None, sure, hours=hours)
             assert (router.fired_rules(facts["c1"]) == ("E2",)) is fires, (code, hours)
             assert facts["c1"].confirmed_news_on_candidate and not facts["c2"].confirmed_news_on_candidate
             assert router.fired_rules(facts["c2"]) == () and router.fired_rules(facts["c3"]) == ()
         assert router.fired_rules(facts_of(naming, None, sure, hours=None)["c1"]) == (), "no kick-off, no E2"
-        unsure = [common.Contradiction(code, "player:10", ("c1",), confirmed=False)]  # type: ignore[arg-type]
+        unsure = [common.Contradiction(code, "player:10", ("c1",), confirmed=False)]
         assert router.fired_rules(facts_of(naming, None, unsure, hours="1")["c1"]) == ()
     other = [common.Contradiction("C03", "team:home", ("c1",), confirmed=True), common.Contradiction("C05", "referee", ("c1",), confirmed=True)]
     assert router.fired_rules(facts_of(naming, None, other, hours="1")["c1"]) == ()

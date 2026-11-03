@@ -44,7 +44,7 @@ def scalar(db: psycopg.Connection[Any], sql: str, *args: object) -> Any:
 
 
 def audited(db: psycopg.Connection[Any], rule: str) -> tuple[int, int, list[int]]:
-    start, end = leakage.day_bounds(DAY)
+    start, end = leakage.day_bounds(DAY)  # type: ignore[attr-defined]
     return leakage.PYTHON_RULES[rule](db, start, end)
 
 
@@ -212,7 +212,7 @@ def test_a_shadow_review_with_no_packet_a_late_packet_or_after_the_kickoff_is_a_
     none = review(db, seed, "none", packet_id=None, selection="DRAW")
     late = review(db, seed, "late", packet_id=late_pk, selection="AWAY")
     after_kickoff = review(db, seed, "kickoff", packet_id=good_pk, reviewed=KICKOFF, selection="OVER")
-    assert leakage.day_bounds(DAY)[0] <= KICKOFF < leakage.day_bounds(DAY)[1]
+    assert leakage.day_bounds(DAY)[0] <= KICKOFF < leakage.day_bounds(DAY)[1]  # type: ignore[attr-defined]
     assert audited(db, "shadow_review_known") == (4, 3, [none, late, after_kickoff])
 
 

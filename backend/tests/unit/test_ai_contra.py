@@ -1103,7 +1103,7 @@ def assessed(label: str, *, refs: Sequence[str] = ("P:shared.absences",), **stan
     candidates = [CandidateAssessment(candidate=name, stance=stance, drivers=[] if stance == "NEUTRAL" else ["ABSENCES"], risks=[],  # type: ignore[arg-type]
                                       refs=list(refs)) for name, stance in stances.items()]
     agent = "stats" if label.startswith("stats") else "match"
-    out = AssessmentOut(contract="aa-v1", agent=agent, mode="EVALUATION", data_quality="GOOD", signals=[], candidates=candidates, research=[])
+    out = AssessmentOut(contract="aa-v1", agent=agent, mode="EVALUATION", data_quality="GOOD", signals=[], candidates=candidates, research=[])  # type: ignore[arg-type]
     return Assessed(label, out)
 
 

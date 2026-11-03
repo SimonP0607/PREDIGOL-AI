@@ -147,7 +147,7 @@ class Rig:
         monkeypatch.setattr(orchestrator, "existing", lambda conn, key: None)
         monkeypatch.setattr(orchestrator, "open_batch_of", lambda conn, cid: 9)
         monkeypatch.setattr(orchestrator, "link_batch", lambda conn, task, batch_id: None)
-        monkeypatch.setattr(orchestrator.gates, "enabled", lambda *a, **kw: gate)
+        monkeypatch.setattr(orchestrator.gates, "enabled", lambda *a, **kw: gate)  # type: ignore[attr-defined]
         clock = SimpleNamespace(now=now)
         self.runner = orchestrator._Runner(object(), cfg or settings(), at=AT, limit=20, max_seconds=240.0, provider=None, transport=None, ledger=None,  # type: ignore[arg-type]
                                            slots=runtime.Slots(), circuit=runtime.Circuit(), monotonic=lambda: 0.0, sleep=lambda s: None)
@@ -396,6 +396,6 @@ def test_the_opus_hours_are_frozen_in_the_pass_once_read() -> None:
     first = runner.hours_for(p)  # type: ignore[arg-type]
     assert first == D("8.00") and p.batch.hours == first
     p.work = dataclasses.replace(p.work, kickoff_at=KICKOFF - timedelta(hours=5))
-    assert runner.hours_for(p) == first, "a later run reads the frozen hours: the rules fire on the same candidates"
+    assert runner.hours_for(p) == first, "a later run reads the frozen hours: the rules fire on the same candidates"  # type: ignore[arg-type]
     sync = SimpleNamespace(batch=None, work=p.work)
     assert runner.hours_for(sync) == D("3.00"), "in real time they are read from the clock, as before"  # type: ignore[arg-type]

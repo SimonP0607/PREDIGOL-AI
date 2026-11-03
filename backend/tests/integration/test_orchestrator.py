@@ -68,7 +68,7 @@ def rows(db: psycopg.Connection[Any], sql: str, *args: Any, **named: Any) -> lis
 
 def go(db: psycopg.Connection[Any], gear: Gear, prov: Any = None, cfg: Any = None, **kw: Any) -> orchestrator.Report:
     kw.setdefault("at", RUN)
-    return orchestrator.run(Savepoints(db), cfg or settings(), provider=prov or provider(), ledger=gear.ledger, slots=gear.slots, circuit=gear.circuit, **kw)
+    return orchestrator.run(Savepoints(db), cfg or settings(), provider=prov or provider(), ledger=gear.ledger, slots=gear.slots, circuit=gear.circuit, **kw)  # type: ignore[arg-type]
 
 
 def reviews_of(db: psycopg.Connection[Any], fixture: int, *engines: str) -> list[dict[str, Any]]:
@@ -363,7 +363,7 @@ def test_a_call_never_waits_past_the_deadline(db: psycopg.Connection[Any], seed:
 def test_a_failure_in_one_match_rolls_back_that_match_and_the_loop_goes_on(db: psycopg.Connection[Any], seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:
     one = world(db, seed)
     two = second(db, one)
-    real = orchestrator.write_review
+    real = orchestrator.write_review  # type: ignore[attr-defined]
     calls = {"n": 0}
 
     def flaky(*a: Any, **kw: Any) -> Any:
@@ -429,7 +429,7 @@ def test_a_rule_sends_the_doubtful_approvals_to_opus_and_its_verdict_replaces_th
     assert {(r["decision"], r["confidence"]) for r in shadow} == {("REJECT", D("0.850"))}
     assert all(r["output"]["escalation"] == {"rule": "E7", "model": OPUS, "replaced": True} and r["model"] == OPUS for r in shadow)
     assert rows(db, "SELECT count(*) AS n FROM ai.agent_runs WHERE task_kind = 'escalation' AND status = 'ok'")[0]["n"] == 1
-    assert orchestrator.opus_today(db, RUN)[0] == 1, "the cap counts it"
+    assert orchestrator.opus_today(db, RUN)[0] == 1, "the cap counts it"  # type: ignore[attr-defined]
 
 
 def test_a_model_cannot_ask_for_opus(db: psycopg.Connection[Any], seed: Seed) -> None:

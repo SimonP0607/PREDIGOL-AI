@@ -488,7 +488,7 @@ def test_a_turn_looks_at_twenty_passes_for_240_seconds_in_the_last_two_days() ->
     assert "Primero las que aún pueden terminar antes de T-15" in sec
     assert "ai.agent_tasks" in sec and "ai.agent_runs" in sec and "`run_kind = 'shadow'`" in sec and "`mode = 'shadow'`" in sec
     assert orchestrator_store.SHADOW_RUN == "shadow" and "'shadow'" in STORE_SRC
-    assert "never raises" in inspect.getdoc(orchestrator.run).lower() and "NEVER raises" in inspect.getdoc(orchestrator.run)
+    assert "never raises" in inspect.getdoc(orchestrator.run).lower() and "NEVER raises" in inspect.getdoc(orchestrator.run)  # type: ignore[operator,union-attr]
 
 
 def test_the_candidates_are_the_selections_production_reviewed_named_by_a_pure_function() -> None:
