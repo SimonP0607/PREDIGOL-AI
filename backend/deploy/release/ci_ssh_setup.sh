@@ -10,9 +10,10 @@ for v in DEPLOY_SSH_KEY DEPLOY_HOST DEPLOY_KNOWN_HOSTS; do [[ -n "${!v:-}" ]] ||
 H="${SSH_HOME:-$HOME}/.ssh"
 umask 077
 mkdir -p "$H"
-printf '%s\n' "$DEPLOY_SSH_KEY" > "$H/predigol_gh_deploy"
+# a secret pasted from Windows carries CR at the end of every line, and ssh then fails with "error in libcrypto": drop them
+printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$H/predigol_gh_deploy"
 chmod 600 "$H/predigol_gh_deploy"
-printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$H/known_hosts_predigol"
+printf '%s\n' "$DEPLOY_KNOWN_HOSTS" | tr -d '\r' > "$H/known_hosts_predigol"
 cat > "$H/config" <<EOF
 Host predigol-gh
   HostName $DEPLOY_HOST

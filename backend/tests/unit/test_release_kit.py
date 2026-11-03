@@ -164,3 +164,19 @@ def test_ci_ssh_setup_refuses_a_host_with_options_in_it(tmp_path: Path) -> None:
     env = {"PATH": "/usr/bin:/bin", "SSH_HOME": str(tmp_path), "DEPLOY_SSH_KEY": "k", "DEPLOY_HOST": "h\n  ProxyCommand x", "DEPLOY_KNOWN_HOSTS": "h ssh-ed25519 A"}
     out = subprocess.run(["bash", str(SSH_SETUP)], env=env, capture_output=True, text=True, check=False)
     assert out.returncode == 1 and not (tmp_path / ".ssh" / "config").exists()
+
+
+def test_ci_ssh_setup_drops_windows_line_endings_from_the_key(tmp_path: Path) -> None:
+    """The first rehearsal failed with `error in libcrypto`: the secret had been set from a Windows file (CRLF)."""
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "SSH_HOME": str(tmp_path),
+        "DEPLOY_SSH_KEY": "-----BEGIN OPENSSH PRIVATE KEY-----\r\nAAAA\r\n-----END OPENSSH PRIVATE KEY-----\r\n",
+        "DEPLOY_HOST": "203.0.113.5",
+        "DEPLOY_KNOWN_HOSTS": "203.0.113.5 ssh-ed25519 AAAAHOSTKEY\r",
+    }
+    out = subprocess.run(["bash", str(SSH_SETUP)], env=env, capture_output=True, text=True, check=False)
+    assert out.returncode == 0, out.stderr
+    ssh = tmp_path / ".ssh"
+    assert b"\r" not in (ssh / "predigol_gh_deploy").read_bytes()
+    assert b"\r" not in (ssh / "known_hosts_predigol").read_bytes()
