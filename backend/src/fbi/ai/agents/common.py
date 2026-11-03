@@ -1,0 +1,181 @@
+"""What the agents of phase 3 share: the NAME of a candidate (``c1``, ``c2``...) and the labels of the assessments the Council cites
+(Plan Maestro IA, sections 9 and 11; contracts ``aa-v1`` and ``cd-v1``).
+
+The contracts never carry a market, a selection or a price: they carry ``c1``... and the server resolves the name. This is the one place
+that decides which candidate is ``c1``, so that the Match Agent, the detector ``contra-v1``, the Council and the orchestrator that stores
+what they say all speak of the same selection. The names are a pure function of the candidates: the same candidates give the same names
+whatever order they came in, and a candidate that is left out (more than the contract takes, or a family no agent of the phase reads) is
+said and never renamed into a free name.
+
+Nothing here reads a clock, a database or a setting.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Collection, Iterable, Mapping, Sequence
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import Any, Final, Literal, get_args
+
+from fbi.ai.contracts.assessment import CANDIDATES_MAX, AssessmentOut
+from fbi.ai.contracts.base import FAMILIES, GOALS_RESULT, Agent, Family, Mode, paths_of
+from fbi.ai.contracts.mcp import family_of
+from fbi.ai.review import Candidate
+
+NAMING_VERSION: Final = "cand-names-v1"
+"""The method of the names. Changing it changes which selection is ``c1`` in every stored run: it is a new name here, never an edit."""
+FAMILY_ORDER: Final[dict[str, int]] = {family: i for i, family in enumerate(FAMILIES)}
+"""The families in the order of the contracts (1X2, DC, AH, OU, BTTS, CORNERS, CARDS): the order the names follow."""
+
+
+@dataclass(frozen=True, slots=True)
+class Named:
+    """A candidate with the name the agents know it by."""
+
+    key: str
+    candidate: Candidate
+    family: Family
+
+
+@dataclass(frozen=True, slots=True)
+class Naming:
+    """The candidates of one match as the agents see them, and those that were left out (with the reason)."""
+
+    named: tuple[Named, ...]
+    left_out: tuple[tuple[Candidate, str], ...] = ()
+    version: str = NAMING_VERSION
+
+    @property
+    def keys(self) -> tuple[str, ...]:
+        return tuple(n.key for n in self.named)
+
+    def resolve(self, key: str) -> Named | None:
+        """The candidate a name stands for, or None for a name this match does not have."""
+        return next((n for n in self.named if n.key == key), None)
+
+    def of_family(self, families: Collection[str]) -> tuple[Named, ...]:
+        return tuple(n for n in self.named if n.family in families)
+
+
+def _identity(c: Candidate) -> tuple[int, str, str, Decimal]:
+    return c.key
+
+
+def _order(c: Candidate, family: Family) -> tuple[int, str, str, Decimal]:
+    return FAMILY_ORDER[family], c.market_key, c.selection, c.line
+
+
+def _worth(c: Candidate) -> tuple[int, Decimal, str, str, Decimal]:
+    """Who stays when there are more candidates than the contract takes: the one with the larger expected value first, one without a value
+    last, and ties by identity so that the choice never depends on the order they came in."""
+    has_ev = 0 if c.ev is not None else 1
+    return has_ev, -(c.ev if c.ev is not None else Decimal(0)), c.market_key, c.selection, c.line
+
+
+def name_candidates(candidates: Iterable[Candidate], *, families: Collection[str] = GOALS_RESULT,
+                    limit: int = CANDIDATES_MAX) -> Naming:
+    """``c1``... for the candidates of ONE match. Only the families asked for (the Match Agent's five by default) are named; a market of a
+    family nobody reads is left out (``family_not_read``), a candidate seen twice is named once, and when there are more than ``limit`` the
+    ones with the larger expected value stay (``beyond_the_limit``). The names follow the order of the families, then the market, the
+    selection and the line - not the order the candidates came in."""
+    seen: dict[tuple[int, str, str, Decimal], Candidate] = {}
+    for c in candidates:
+        seen.setdefault(_identity(c), c)
+    kept: list[tuple[Candidate, Family]] = []
+    left: list[tuple[Candidate, str]] = []
+    for c in sorted(seen.values(), key=lambda x: (x.market_key, x.selection, x.line)):
+        family = family_of(c.market_key)
+        if family is None or family not in families:
+            left.append((c, "family_not_read"))
+        else:
+            kept.append((c, family))
+    if len(kept) > limit:
+        ranked = sorted(kept, key=lambda pair: _worth(pair[0]))
+        for c, _ in ranked[limit:]:
+            left.append((c, "beyond_the_limit"))
+        kept = ranked[:limit]
+    kept.sort(key=lambda pair: _order(pair[0], pair[1]))
+    named = tuple(Named(f"c{i}", c, family) for i, (c, family) in enumerate(kept, start=1))
+    return Naming(named, tuple(left))
+
+
+# -- what the agents read of each other -----------------------------------------------------------------------------------------------
+
+@dataclass(frozen=True, slots=True)
+class Assessed:
+    """An assessment as the detector and the Council read it: the label it is cited by (``A:<label>``, ``assessment_label``) and the answer
+    after ``contracts.assessment.check`` (a stance that rested on nothing is already ``NEUTRAL``)."""
+
+    label: str
+    out: AssessmentOut
+
+
+ContraCode = Literal["C01", "C02", "C03", "C04", "C05", "C06", "C07", "C08"]
+CONTRA_CODES: Final = get_args(ContraCode)
+Requires = Literal["cite_and_explain", "escalate", "research_first", "resolve_in_writing"]
+REQUIRES: Final[dict[str, Requires]] = {
+    "C01": "cite_and_explain", "C02": "cite_and_explain", "C03": "cite_and_explain", "C04": "cite_and_explain",
+    "C05": "cite_and_explain", "C06": "escalate", "C07": "research_first", "C08": "resolve_in_writing"}
+"""What each contradiction obliges (architecture, section 12): C01-C05 the Council must cite it and say why it keeps or lowers the selection;
+C06 is the escalation to Opus (E6); C07 a research before deciding; C08 the Council must resolve it in writing (in codes)."""
+
+
+@dataclass(frozen=True, slots=True)
+class Contradiction:
+    """One contradiction of ``contra-v1`` (written by code, never by a model). It names the candidates it touches by their ``c<n>`` name and
+    cites what it rests on by typed references that exist in the package; ``detail`` holds codes and numbers computed by the server, never a
+    text that came from outside. The typed fields are what ``router-v1`` reads to escalate (E2, E3, E5, E6), so that nobody parses ``detail``."""
+
+    code: ContraCode
+    subject: str
+    """``match``, ``team:home``, ``team:away``, ``player:<id>``, ``referee`` or ``pair:c1+c4``."""
+    candidates: tuple[str, ...]
+    refs: tuple[str, ...] = ()
+    confirmed: bool = False
+    """C01 and C02: the evidence that fires it is CONFIRMED (E2 needs it)."""
+    official_lineup: bool = False
+    """C03: judged with the official line-up (E3 needs it)."""
+    starters_out: int = 0
+    """C03: how many usual starters the official line-up leaves out."""
+    gap: Decimal | None = None
+    """C06: the gap between the model and the market, in probability (absolute value)."""
+    detail: tuple[tuple[str, str], ...] = ()
+
+    @property
+    def requires(self) -> Requires:
+        return REQUIRES[self.code]
+
+    def to_json(self) -> dict[str, Any]:
+        """What ``ai.match_runs.contradictions`` keeps: codes, names, references and numbers - never a text."""
+        out: dict[str, Any] = {"code": self.code, "subject": self.subject, "candidates": list(self.candidates), "refs": list(self.refs),
+                               "requires": self.requires}
+        if self.confirmed:
+            out["confirmed"] = True
+        if self.official_lineup:
+            out["official_lineup"] = True
+        if self.starters_out:
+            out["starters_out"] = self.starters_out
+        if self.gap is not None:
+            out["gap"] = str(self.gap)
+        if self.detail:
+            out["detail"] = dict(self.detail)
+        return out
+
+
+# -- the references an answer may make -----------------------------------------------------------------------------------------------
+
+def assessment_label(agent: Agent, mode: Mode) -> str:
+    """How the Council cites an assessment (``A:match_evaluation``): the agent and the mode it wrote it in. One per pair in a view."""
+    return f"{agent}_{mode.lower()}"
+
+
+def known_refs(document: Mapping[str, Any]) -> tuple[frozenset[int], frozenset[str]]:
+    """The evidence ids and the paths a slice or a view has, for ``contracts.*.check``: ``E:<id>`` must be in the first, ``P:<path>`` in the
+    second. A path names a block or anything inside it; a list element is not addressed by index."""
+    evidence = document.get("evidence")
+    ids: set[int] = set()
+    if isinstance(evidence, Sequence) and not isinstance(evidence, str):
+        for item in evidence:
+            if isinstance(item, Mapping) and isinstance(item.get("id"), int):
+                ids.add(int(item["id"]))
+    return frozenset(ids), frozenset(paths_of(dict(document)))

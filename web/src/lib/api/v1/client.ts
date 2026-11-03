@@ -5,6 +5,14 @@ import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
 import type { AgentsOverview, MatchState } from "./types_ai_agents";
 import type { EntityResearchOverview } from "./types_ai_research";
+import type {
+  AgentRuns,
+  AgentRunsQuery,
+  ContraCode,
+  Contradictions,
+  ShadowArms,
+  ShadowFile,
+} from "./types_ai_shadow";
 import type { StorageOverview } from "./types_storage";
 import type {
   IntelCalibration,
@@ -56,6 +64,7 @@ import type {
   AiComparison,
   AiCosts,
   AiDecision,
+  AiEngine,
   DailyReview,
   DailyReviewDay,
   MatchMemory,
@@ -547,7 +556,7 @@ export const v1 = {
   aiReviews: (
     q: {
       day?: string | undefined;
-      engine?: "combined" | "rules" | "llm";
+      engine?: AiEngine;
       decision?: AiDecision | undefined;
       fixture_id?: number | undefined;
       limit?: number;
@@ -568,6 +577,17 @@ export const v1 = {
   aiMatchState: (fixtureId: number | string) =>
     getJson<Envelope<MatchState>>(`/admin/ai/matches/${fixtureId}/state`),
   aiShadow: () => getJson<Envelope<ShadowReportRow[]>>("/admin/ai/shadow"),
+  /** The seven arms of the shadow (plan IA phase 3) side by side over the last `days`, the assignments and the "enough data" counts. Reading only. */
+  aiShadowArms: (days = 30) => getJson<Envelope<ShadowArms>>("/admin/ai/shadow/arms", { days }),
+  /** C01-C08 of the shadow: counts by code, what the Council did with what they touch, and the most recent ones. */
+  aiContradictions: (q: { days?: number; code?: ContraCode | undefined; limit?: number } = {}) =>
+    getJson<Envelope<Contradictions>>("/admin/ai/contradictions", q as Params),
+  /** The attempts of the agents on a Bogotá day, with filters, and the day's Opus calls against the shadow's cap. */
+  aiAgentRuns: (q: AgentRunsQuery = {}) =>
+    getJson<Envelope<AgentRuns>>("/admin/ai/agent-runs", q as Params),
+  /** The file of a match for the shadow: assignment, candidates, assessments, contradictions, verdicts side by side, calls. */
+  aiMatchShadow: (fixtureId: number | string, pass?: string) =>
+    getJson<Envelope<ShadowFile>>(`/admin/ai/matches/${fixtureId}/shadow`, { pass_kind: pass }),
   aiMemory: (kind?: string) => getJson<Envelope<AiMemoryEvent[]>>("/admin/ai/memory", { kind }),
   aiRunRequests: () => getJson<Envelope<AiRunRequest[]>>("/admin/ai/run-requests"),
   aiToday: (day?: string) => getJson<Envelope<AiToday>>("/admin/ai/today", { day }),

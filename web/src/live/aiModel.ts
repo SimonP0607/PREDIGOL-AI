@@ -19,6 +19,7 @@ import type {
   AiBudgetView,
   AiCostPeriod,
   AiDecision,
+  AiEngine,
   AiEnvelopes,
   CardVerdict,
   EscalationReason,
@@ -42,6 +43,48 @@ export function decisionLabel(d: string): string {
 
 export function decisionTone(d: string | null | undefined): BadgeTone {
   return d && d in DECISION_TONE ? DECISION_TONE[d as AiDecision] : "neutral";
+}
+
+// ── the engines of a review ──────────────────────────────────────────────────
+
+/**
+ * What each engine of a review is. `rules`, `llm` and `combined` are production's: the decision layer reads `combined` (and `rules`).
+ * `ma-v1`, `ma-v1-h` and `cs-v1` are the SHADOW engines of plan IA phase 3: their reviews are written for the evaluation and never
+ * reach the decision layer or a user. A record keyed by the union: an engine added to `AiEngine` does not compile until it is
+ * classified here (and `aiModel.test.ts` asks for its words in both languages).
+ */
+export const ENGINE_KIND: Record<AiEngine, "production" | "shadow"> = {
+  rules: "production",
+  llm: "production",
+  combined: "production",
+  "ma-v1": "shadow",
+  "ma-v1-h": "shadow",
+  "cs-v1": "shadow",
+};
+
+/** The engines the reviews filter offers, in order: the review the decision layer reads (the default), production's others, then the shadow ones. */
+export const REVIEW_ENGINES: readonly AiEngine[] = [
+  "combined",
+  "rules",
+  "llm",
+  "ma-v1",
+  "ma-v1-h",
+  "cs-v1",
+];
+
+/** What an engine is, or "unknown" for a name this client does not know (a newer server): it is shown as given and claimed to be nothing. */
+export function engineKind(engine: string): "production" | "shadow" | "unknown" {
+  return Object.hasOwn(ENGINE_KIND, engine) ? ENGINE_KIND[engine as AiEngine] : "unknown";
+}
+
+/** A shadow engine's reviews are evaluation only: they are never read by the decision layer. */
+export function isShadowEngine(engine: string): boolean {
+  return engineKind(engine) === "shadow";
+}
+
+/** "Combinada", "Multiagente (sombra)"; an engine without words as given. */
+export function engineLabel(engine: string): string {
+  return translateOr(`ai.layer.engine.${engine}`, engine);
 }
 
 export const VERDICT_TONE: Record<CardVerdict, BadgeTone> = {

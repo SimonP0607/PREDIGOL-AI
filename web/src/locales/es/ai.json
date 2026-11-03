@@ -341,7 +341,10 @@
     "engine": {
       "combined": "Combinada",
       "rules": "Reglas",
-      "llm": "Modelo de lenguaje"
+      "llm": "Modelo de lenguaje",
+      "ma-v1": "Multiagente (sombra)",
+      "ma-v1-h": "Multiagente + Council Haiku (sombra)",
+      "cs-v1": "Council solo (sombra)"
     },
     "decision": {
       "APPROVE": "Aprobar",
@@ -365,7 +368,8 @@
       "market": "Mercado %",
       "decision": "Decisión",
       "reason": "Razón",
-      "detail": "Revisión #{id}"
+      "detail": "Revisión #{id}",
+      "shadowNote": "Motor en sombra: sus revisiones se guardan para evaluarlo y nunca llegan a la capa de decisión ni a los usuarios."
     },
     "claimType": {
       "DATA": "Dato",
@@ -1734,6 +1738,346 @@
         "flagged": "Marcadas",
         "flaggedHint": "Parecían una instrucción para un modelo: su texto se trata como no fiable"
       }
+    }
+  },
+  "shadowOff": {
+    "title": "La sombra está apagada",
+    "titleOn": "La sombra aún no ha escrito nada",
+    "body": "El Orquestador no corre mientras las tres palabras del dueño no estén puestas en app.env. Estas son, con lo que valen ahora.",
+    "bodyOn": "Las tres palabras están puestas, pero todavía no hay ciclos con resultados en esta ventana. Aquí aparecerán cuando los haya.",
+    "modeOff": "El modo de la capa de IA está apagado: tampoco corre nada de la sombra.",
+    "on": "Puesta",
+    "missing": "Falta"
+  },
+  "arms": {
+    "title": "Sombra con brazos",
+    "subtitle": "Los siete brazos del experimento sobre las mismas selecciones. Solo lectura.",
+    "intro": "Cada brazo revisa las mismas selecciones. Las cifras son conteos del servidor; alcanzar los umbrales solo dice que hay datos suficientes para mirar, nunca que algún brazo pasó.",
+    "noDecisions": "Sin decisiones propias",
+    "arm": {
+      "model": "Modelo solo",
+      "rules": "Reglas",
+      "gap": "Filtro de brecha 0,20",
+      "llm": "IA actual",
+      "council_solo": "Council solo",
+      "ma-v1": "Multiagente ma-v1",
+      "ma-v1-h": "Multiagente + Haiku ma-v1-h"
+    },
+    "kind": {
+      "derived": "Derivado",
+      "production": "Producción",
+      "shadow": "Sombra"
+    },
+    "status": {
+      "ok": "Correctas",
+      "fallback": "Respaldo",
+      "invalid_output": "Salida inválida",
+      "failed": "Fallidas",
+      "over_budget": "Sin presupuesto"
+    },
+    "pass": {
+      "first": "Primer pase",
+      "pre": "Pase previo",
+      "final": "Pase final",
+      "request": "A petición"
+    },
+    "reason": {
+      "invalid_over_3pct": "Más de 3 % de salidas inválidas",
+      "circuit_open": "Circuito abierto",
+      "envelope_spent": "Sobre gastado",
+      "paused": "Pausado",
+      "view_too_large": "Vista demasiado grande",
+      "no_verdict_for_the_candidate": "Sin veredicto para el candidato",
+      "no_candidate_to_name": "Ningún candidato que nombrar",
+      "slice_over_its_cap": "Porción sobre su tope",
+      "blocked": "Bloqueado",
+      "no_envelope": "Sin sobre",
+      "allocation_spent": "Asignación gastada"
+    },
+    "table": {
+      "title": "Los siete brazos, últimos {days} días",
+      "hint": "Los porcentajes son sobre las selecciones que la sombra también revisó (la misma base para todos). La tasa de inválidas y el costo son de cada brazo; el costo es del LAB, del libro de gasto."
+    },
+    "col": {
+      "arm": "Brazo",
+      "reviews": "Revisiones",
+      "onSample": "En la muestra",
+      "approved": "Aprobadas",
+      "downgraded": "Rebajadas",
+      "rejected": "Rechazadas",
+      "abstained": "Abstenciones",
+      "invalid": "Inválidas",
+      "cost": "Costo LAB",
+      "p95": "Latencia p95",
+      "selectionsN": "{n} selecciones",
+      "ledger": "{v} en {n} llamadas"
+    },
+    "detail": {
+      "title": "Detrás de las cifras",
+      "statuses": "Estado de sus revisiones",
+      "paused": "Pausas ({n})",
+      "silent": "Sin respuesta ({n})",
+      "none": "Ninguna",
+      "settled": "Última evaluación ({date})",
+      "settledValue": "{n} selecciones · conservadas {kept} · rechazadas {rejected} · CLV conservadas {clvKept} · CLV rechazadas {clvRejected}",
+      "settledNone": "Aún sin evaluación liquidada"
+    },
+    "enough": {
+      "title": "Datos suficientes para mirar",
+      "hint": "Solo cuentas contra los umbrales del plan: 30 días y 300 selecciones revisadas por los dos motores. No es un veredicto.",
+      "days": "Días de sombra",
+      "daysHint": "{bar} % del umbral; ventana de {n} días",
+      "selections": "Selecciones revisadas por ambos",
+      "selectionsHint": "{bar} % del umbral",
+      "state": {
+        "none": "Aún no se alcanza ningún umbral.",
+        "days": "Se alcanzaron los días, faltan selecciones.",
+        "selections": "Se alcanzaron las selecciones, faltan días.",
+        "both": "Hay datos suficientes para mirar. Eso no es un veredicto: la decisión es del dueño."
+      }
+    },
+    "assign": {
+      "title": "Asignación de los partidos",
+      "hint": "Experimento {salt}: cada partido cae en un cubo fijo; el cubo decide si entra en la muestra.",
+      "assigned": "Asignados",
+      "sampled": "En la muestra",
+      "unsampled": "Fuera de la muestra",
+      "solo": "Council solo",
+      "soloHint": "{share} de la muestra",
+      "observed": "Muestra observada",
+      "asked": "Pedida: {share}",
+      "col": {
+        "share": "Fracción",
+        "assigned": "Asignados",
+        "sampled": "En la muestra",
+        "solo": "Council solo"
+      }
+    },
+    "lab": {
+      "title": "Gasto del LAB",
+      "hint": "Del libro de gasto, alcance lab. No toca el presupuesto de producción.",
+      "window": "Últimos {days} días",
+      "shadow": "De ellos, la sombra",
+      "calls": "Llamadas",
+      "cycle": "Último ciclo"
+    },
+    "cycle": {
+      "ok": "Correcto",
+      "failed": "Fallido",
+      "running": "En curso",
+      "skipped": "Omitido",
+      "partial": "Parcial"
+    }
+  },
+  "contra": {
+    "title": "Contradicciones",
+    "subtitle": "Lo que contra-v1 encontró entre los números de un partido y lo que el estado dice de él.",
+    "intro": "Ocho códigos, C01 a C08. Se muestran códigos y cifras del servidor, nunca texto del modelo. Qué hizo el Council con cada candidato afectado: lo mantuvo, lo rebajó, se abstuvo, o no tiene veredicto.",
+    "code": {
+      "C01": "Jugador clave ausente",
+      "C02": "Portero titular ausente",
+      "C03": "Rotación probable",
+      "C04": "Nada en juego",
+      "C05": "Árbitro permisivo",
+      "C06": "Modelo contra mercado",
+      "C07": "Evidencia en conflicto",
+      "C08": "Especialistas en desacuerdo"
+    },
+    "treatment": {
+      "kept": "mantuvo",
+      "lowered": "rebajó",
+      "abstained": "se abstuvo",
+      "none": "sin veredicto"
+    },
+    "passes": "Pases revisados",
+    "withContra": "Pases con contradicciones",
+    "total": "Contradicciones",
+    "counts": {
+      "title": "Por código, últimos {days} días",
+      "hint": "Cuántas veces saltó cada código, en cuántos pases y partidos, cuántas quedaron confirmadas y qué hizo cada motor con los candidatos que tocan."
+    },
+    "col": {
+      "code": "Código",
+      "n": "Veces",
+      "passes": "Pases",
+      "matches": "Partidos",
+      "confirmed": "Confirmadas",
+      "council": "Qué hizo el Council",
+      "match": "Partido",
+      "candidates": "Candidatos",
+      "state": "Estado",
+      "refs": "Referencias"
+    },
+    "never": "No saltó en esta ventana.",
+    "recent": {
+      "title": "Las más recientes",
+      "hint": "Cada fila es un código en un pase de un partido. Pulsa el partido para abrir su expediente.",
+      "empty": "Ninguna contradicción en esta ventana."
+    },
+    "wholeMatch": "Todo el partido",
+    "confirmed": "Confirmada",
+    "unconfirmed": "Sin confirmar",
+    "lineup": "Alineación oficial",
+    "filter": {
+      "days": "Ventana",
+      "nDays": "{n} días",
+      "code": "Código",
+      "allCodes": "Todos"
+    }
+  },
+  "agentRuns": {
+    "title": "Ejecuciones de los agentes",
+    "subtitle": "Las llamadas recientes del Orquestador, con lo que costaron y la regla que las mandó a Opus.",
+    "agent": {
+      "match": "Agente de partido",
+      "council": "Council"
+    },
+    "task": {
+      "context": "Contexto",
+      "evaluation": "Evaluación",
+      "council": "Council",
+      "escalation": "Escalada"
+    },
+    "status": {
+      "ok": "Correcta",
+      "invalid": "Inválida",
+      "timeout": "Tiempo agotado",
+      "abstain": "Abstención",
+      "skipped": "Omitida",
+      "expired": "Vencida",
+      "budget_skip": "Sin presupuesto"
+    },
+    "filter": {
+      "day": "Día",
+      "agent": "Agente",
+      "task": "Tarea",
+      "status": "Estado",
+      "all": "Todos"
+    },
+    "opus": {
+      "title": "Opus del día {day}",
+      "hint": "Las escaladas a Opus del día contra el tope. Al llegar al tope, la siguiente conserva el veredicto de la primera ronda.",
+      "calls": "Llamadas a Opus",
+      "remaining": "Quedan",
+      "skipped": "Escaladas omitidas",
+      "cost": "Costo de Opus",
+      "level": {
+        "free": "Con margen",
+        "last": "Queda una",
+        "spent": "Tope alcanzado"
+      }
+    },
+    "total": "Ejecuciones del día",
+    "cost": "Costo del día",
+    "empty": "Ninguna ejecución de agentes en este día con estos filtros.",
+    "col": {
+      "time": "Hora",
+      "agent": "Agente",
+      "task": "Tarea",
+      "match": "Partido",
+      "model": "Modelo",
+      "status": "Estado",
+      "tokens": "Tokens",
+      "tokensHint": "Entrada, y debajo salida y caché",
+      "cost": "Costo",
+      "latency": "Latencia",
+      "rule": "Regla",
+      "ruleHint": "La regla de router-v1 (E1 a E7) que mandó la tarea a Opus"
+    }
+  },
+  "shadowFile": {
+    "title": "Expediente de la sombra",
+    "subtitle": "Lo que vio el Orquestador de este partido: candidatos, evaluación, contradicciones y el veredicto de cada motor junto al de hoy.",
+    "none": "El Orquestador no ha escrito nada de este partido.",
+    "passPick": "Pase",
+    "newest": "El más reciente",
+    "yes": "Sí",
+    "no": "No",
+    "quality": "Calidad de datos: {q}",
+    "differs": "Distinto de Combinada",
+    "replaced": "reemplazó",
+    "answered": "{n} con veredicto",
+    "level": {
+      "LOW": "Baja",
+      "MEDIUM": "Media",
+      "HIGH": "Alta",
+      "GOOD": "Buena",
+      "FAIR": "Regular",
+      "POOR": "Pobre"
+    },
+    "direction": {
+      "HOME": "Local",
+      "DRAW": "Empate",
+      "AWAY": "Visitante",
+      "OVER": "Más",
+      "UNDER": "Menos",
+      "BOTH_SCORE": "Ambos marcan",
+      "NOT_BOTH_SCORE": "No marcan ambos",
+      "NEUTRAL": "Neutral"
+    },
+    "stance": {
+      "SUPPORT": "Apoya",
+      "NEUTRAL": "Neutral",
+      "CONCERN": "Preocupa",
+      "REJECT_SIGNAL": "Señal de rechazo"
+    },
+    "assignment": {
+      "title": "Asignación",
+      "sampled": "En la muestra",
+      "solo": "Solo Council",
+      "share": "Fracción",
+      "bucket": "Cubo",
+      "engines": "Motores",
+      "at": "Asignado",
+      "none": "Este partido no fue asignado."
+    },
+    "pass": {
+      "title": "Pase",
+      "kind": "Tipo",
+      "knownAt": "Datos hasta",
+      "status": "Resultado",
+      "elapsed": "Duración",
+      "ran": "Corrió",
+      "not_run": "No corrió"
+    },
+    "candidates": {
+      "title": "Candidatos",
+      "hint": "Con los nombres c1..cN y las cifras del servidor. Los modelos no ven cifras que el servidor no calculó."
+    },
+    "col": {
+      "key": "Id",
+      "pick": "Selección",
+      "odds": "Cuota",
+      "pModel": "P modelo",
+      "pMarket": "P mercado",
+      "edge": "Ventaja",
+      "ev": "EV",
+      "leftOut": "Quedó fuera",
+      "candidate": "Candidato"
+    },
+    "assessment": {
+      "title": "Evaluación del partido",
+      "hint": "La respuesta del Agente de partido en códigos: señales con su dirección y fuerza, y su postura sobre cada candidato."
+    },
+    "contra": {
+      "title": "Contradicciones",
+      "none": "Ninguna en este pase."
+    },
+    "verdicts": {
+      "title": "Veredictos lado a lado",
+      "hint": "Cada motor de la sombra junto a los revisores de hoy. Un guion es que el motor no dio veredicto para ese candidato."
+    },
+    "arms": {
+      "title": "Estado de cada brazo en este pase"
+    },
+    "evidence": {
+      "title": "Evidencia citada",
+      "hint": "Solo los números de las evidencias; ningún texto ni dirección."
+    },
+    "calls": {
+      "title": "Llamadas",
+      "n": "Llamadas",
+      "cost": "Costo"
     }
   }
 }

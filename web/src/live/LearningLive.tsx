@@ -25,6 +25,7 @@ import { LEARNING_PATH, LEARNING_TABS } from "./adminAi";
 import { useStrayRedirect } from "./useStrayRedirect";
 import { ShadowBanner } from "./AiBits";
 import { ComparisonPanel, ShadowTab } from "./AiLayerLive";
+import { ShadowArmsPanel } from "./ShadowArmsPanel";
 import { CloseTab } from "./AiResearchLive";
 import { AI_TZ } from "./aiModel";
 import { ExperimentsView, LearnedDay } from "./EvolutionLive";
@@ -66,6 +67,7 @@ export function LearningLive() {
         <div className="space-y-4">
           <ComparisonPanel />
           <ShadowTab />
+          <ShadowArmsPanel />
         </div>
       ) : null}
     </div>

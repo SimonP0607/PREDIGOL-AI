@@ -30,13 +30,15 @@ import { CostsView } from "./AiCosts";
 import { ShadowBanner } from "./AiBits";
 import { EvidenceTab, ReviewsTab, StatusStrip } from "./AiLayerLive";
 import { ResearchTab, SourcesTab, TodayTab } from "./AiResearchLive";
+import { AgentRunsPanel } from "./AgentRunsPanel";
 import { AgentsView } from "./AgentsLive";
+import { ContradictionsView } from "./ContradictionsLive";
 import { TopicsView } from "./TopicsLive";
 import { AI_TZ } from "./aiModel";
 import { DayView, DecisionDetail, DecisionsView, MatchView, RunsView } from "./IntelligenceLive";
 
 /** TRABAJO IA: the state of the AI layer and the owner's "run now", then the views of what the AI did. */
-function AiWork() {
+function AiWork({ onMatch }: { onMatch: (fixture: number) => void }) {
   const [view, setView] = useUrlTab(AI_VIEWS, "today", VIEW_PARAM);
   // The AI's day is Bogotá's, not the browser's UTC date.
   const today = todayKey(AI_TZ);
@@ -63,6 +65,7 @@ function AiWork() {
       {view === "research" ? <ResearchTab day={day} onDay={setDay} max={today} /> : null}
       {view === "topics" ? <TopicsView /> : null}
       {view === "reviews" ? <ReviewsTab /> : null}
+      {view === "contradictions" ? <ContradictionsView onMatch={onMatch} /> : null}
       {view === "evidence" ? <EvidenceTab /> : null}
       {view === "sources" ? <SourcesTab /> : null}
     </div>
@@ -101,8 +104,13 @@ export function OperationLive() {
       {tab === "match" ? (
         <MatchView fixture={fixture} setFixture={setFixture} onOpen={openDecision} />
       ) : null}
-      {tab === "ai" ? <AiWork /> : null}
-      {tab === "agents" ? <AgentsView /> : null}
+      {tab === "ai" ? <AiWork onMatch={toMatch} /> : null}
+      {tab === "agents" ? (
+        <div className="space-y-4">
+          <AgentsView />
+          <AgentRunsPanel />
+        </div>
+      ) : null}
       {tab === "costs" ? <CostsView /> : null}
       {tab === "runs" ? <RunsView /> : null}
     </div>

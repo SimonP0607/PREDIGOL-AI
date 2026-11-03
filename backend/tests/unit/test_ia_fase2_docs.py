@@ -1180,7 +1180,7 @@ def test_who_reads_the_evidence_table_is_what_the_guide_counts_and_the_structura
                       flags=re.S)
     assert words
     counted = tuple(WORDS[w.lower()] for w in words.groups())
-    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (13, 3, 10, 4)
+    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (13, 3, 10, 5)
     assert set(all_ticked(readers.split("Los otros")[0].split("Tres la leen a propósito")[1])) == own
     assert others == {"ai/packet.py", "picks/daily.py", "intel/decision.py", "intel/match_review.py", "intel/report.py", "ai/learning.py",
                       "intel/leakage.py", "api/services/ai_layer.py", "api/services/ai_v2.py", "api/services/intelligence.py"}
@@ -2595,9 +2595,9 @@ def test_the_sentences_that_say_what_the_research_does_with_its_pages_and_its_mo
     assert "v2 lee con su extractor las mismas páginas que ya leyó el de hoy" in sec_10
     assert "cuando solo falta un equipo, paga la búsqueda de ese equipo solo, que v1 no hacía" in sec_10
     assert "las que v2 habría pagado solo y el gasto de Exa de cada una" in sec_10
-    # the fourth query by identifier of the readers is the one that avoids storing the same twice
+    # the fifth query by identifier of the readers is the one that avoids storing the same twice
     readers = paragraph(section(5), "**Quién lee lo tipado.**")
-    assert "la cuarta, la que evita guardar dos veces lo mismo, no encuentra nunca una afirmación de v2 para un elemento de v1" in readers
+    assert "la quinta, la que evita guardar dos veces lo mismo, no encuentra nunca una afirmación de v2 para un elemento de v1" in readers
     assert "La batería sobre `extract-v2` pasó por lo mismo" in paragraph(section(11), "**Calidad de las pruebas.**")
     assert "(un barrido de comportamiento de 12 lectores, la guarda estructural y sus predicados)" in section(11)
     # the head of the guide says what happens when a figure and a constant stop agreeing

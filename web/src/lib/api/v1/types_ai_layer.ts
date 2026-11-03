@@ -6,6 +6,12 @@
 import type { Dec, Iso } from "./types";
 
 export type AiDecision = "APPROVE" | "DOWNGRADE" | "REJECT" | "ABSTAIN";
+/**
+ * The engine of a review (`ai.pick_reviews.engine`; the API's `Engine`, in the order it lists them).
+ * `rules`, `llm` and `combined` are production's. `ma-v1` (multi-agent), `ma-v1-h` (multi-agent + Haiku Council) and `cs-v1`
+ * (Council alone) are the SHADOW engines of plan IA phase 3: written for the evaluation, never read by the decision layer.
+ */
+export type AiEngine = "rules" | "llm" | "combined" | "ma-v1" | "ma-v1-h" | "cs-v1";
 export type CardVerdict = "recommended" | "caution" | "not_recommended" | "no_market";
 export type CardKind = "value" | "evaluated" | "no_market";
 export type AiMode = "off" | "shadow" | "enforce";
@@ -268,7 +274,7 @@ export interface ShadowArm {
 }
 
 export interface ShadowReportRow {
-  engine: "rules" | "llm" | "combined";
+  engine: AiEngine;
   created_at: Iso;
   window_from: string;
   window_to: string;
@@ -449,7 +455,7 @@ export interface AiReviewRow {
   edge: Dec | null;
   decision: AiDecision;
   confidence: Dec;
-  engine: "rules" | "llm" | "combined";
+  engine: AiEngine;
   engine_version: string;
   model: string | null;
   reason: string | null;

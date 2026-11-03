@@ -37,6 +37,10 @@ at worst, and a duplicated tick costs nothing at all.
   * ``ai_package`` (every 10 min)  the state of each match at the end of each pass (``fbi.ai.match_runs``, plan IA phase 1): the
     ``mcp-v1`` package derived from the packet the pass stored, its slices measured, one row of ``ai.match_runs``. Database only - no
     model, no search, no request, nothing paid - and nothing reads it yet. One query when nothing waits; ``FBI_AI_PACKAGE=0`` stops it.
+  * ``ai_orchestrate`` (every 5 min, ``FBI_AI_ORCHESTRATE_MINUTES``)  the shadow engines of plan IA phase 3 (``fbi.ai.orchestrator``): ``ma-v1``,
+    ``ma-v1-h`` and ``cs-v1`` over the sample of matches the analysis cycle has reviewed, in the LAB workspace; one row of ``ai.cycles``
+    (kind ``orchestrate``) with its report. Inert - no connection opened - until ``FBI_AI_ENGINES``, ``FBI_AI_SHADOW_SAMPLE`` and ``FBI_AI_AGENTS``
+    all say so; it takes no cycle lock and never raises into the clock; what it writes never reaches the decision layer.
   * ``ai_switches`` (every 10 min, the first look a minute after the worker starts)  the owner's words the worker runs with (the five switches, the
     mode, research v2, the model of each tier, the three envelopes), written to the ledger ``ai.feature_gates`` (gate ``switches``, plan IA,
     review of phase 2) when they are not the words of the newest row: an environment variable changed by hand leaves no row of its own, and Gate A
@@ -71,6 +75,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import importlib
 import os
 import signal
 import subprocess
@@ -79,6 +84,7 @@ import threading
 import time
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -290,6 +296,11 @@ AI_PACKAGE_MINUTES = int(os.environ.get("FBI_AI_PACKAGE_MINUTES", "10"))
 """How often the passes without a state are turned into one (``fbi.ai.match_runs.run``): the ``mcp-v1`` package of each, its slices measured,
 a row of ``ai.match_runs``. Database only - no model, no search, no request - and a single query when nothing waits. ``FBI_AI_PACKAGE=0``
 (or ``FBI_AI_MODE=off``) stops it; the rows already written stay."""
+AI_ORCHESTRATE_MINUTES = max(1, int(os.environ.get("FBI_AI_ORCHESTRATE_MINUTES", "5")))
+"""How often the orchestrator looks for matches to run the shadow engines on (``fbi.ai.orchestrator.run``, plan IA, phase 3): ``ma-v1``,
+``ma-v1-h`` and ``cs-v1`` over the matches the analysis cycle already reviewed, in the LAB workspace only. Inert until the owner's three words
+(``FBI_AI_ENGINES``, ``FBI_AI_SHADOW_SAMPLE``, ``FBI_AI_AGENTS``) all say so (``AiSettings.orchestrate``): then the job does not even open a
+connection. A value below 1 counts as 1."""
 AI_SWITCHES_MINUTES = 10
 """How often the worker looks at the owner's words it runs with and leaves a trace when they changed (``fbi.ai.gates.record_switches``): one
 query when nothing changed, one row when something did. The first look is one minute after the worker starts, so a change made in the environment
@@ -1224,6 +1235,72 @@ async def _ai_package() -> None:
     await asyncio.to_thread(_ai_package_now)
 
 
+def _plain(value: Any) -> Any:
+    """``value`` as plain JSON: a Decimal is written as its text, a tuple or set as a list; nothing else changes."""
+    if isinstance(value, dict):
+        return {str(k): _plain(v) for k, v in value.items()}
+    if isinstance(value, list | tuple | set | frozenset):
+        return [_plain(v) for v in value]
+    if isinstance(value, Decimal):
+        return str(value)
+    return value
+
+
+def _orchestrate_cycle_report(data: dict[str, Any], *, cycle_id: int) -> Any:
+    """The orchestrator's report (``Report.to_json()``) as the record of its cycle (a ``CycleReport``): the whole report, as plain JSON, is what
+    ``ai.cycles.counts`` keeps; the cost goes to ``cost_usd``. A report that skipped the run is ``ok`` (nothing was wrong); one whose engines
+    failed open is ``partial`` when others ran and ``failed`` when none did."""
+    from fbi.ai.cycle import CycleReport
+
+    try:
+        cost = max(Decimal(0), Decimal(str(data.get("cost_usd") or 0)))
+    except ArithmeticError:
+        cost = Decimal(0)
+    failed, ran = data.get("failed_open"), data.get("ran")
+    status = "ok"
+    if not data.get("skipped") and isinstance(failed, int) and failed > 0:
+        status = "partial" if isinstance(ran, int) and ran > 0 else "failed"
+    return CycleReport(cycle_id=cycle_id, status=status, cost_usd=cost, detail=data)
+
+
+def _ai_orchestrate_now() -> None:
+    """The shadow engines of phase 3 (``fbi.ai.orchestrator.run``): ``ma-v1``, ``ma-v1-h`` and ``cs-v1`` over the sample of matches the analysis
+    cycle has reviewed, in the LAB workspace; what they write never reaches the decision layer. Never raises. Off - and then it does not even open a
+    connection - unless ``AiSettings.orchestrate`` (the three words ``FBI_AI_ENGINES``, ``FBI_AI_SHADOW_SAMPLE`` and ``FBI_AI_AGENTS``, and the layer
+    not off). It leaves a row of ``ai.cycles`` of kind ``orchestrate``; it does not take the cycle lock (it runs beside the analysis cycle) and
+    ``max_instances=1`` keeps it from running beside itself."""
+    from fbi.ai.config import AiSettings
+
+    try:
+        settings = AiSettings.from_env()
+        if not settings.orchestrate:
+            return
+        from fbi.ai.cycle import CycleReport, close_cycle, open_cycle
+
+        run = importlib.import_module("fbi.ai.orchestrator").run  # read only when the shadow is on, and by name: it is another branch's module
+        at = now()
+        with _connect() as conn:
+            cycle_id = open_cycle(conn, "orchestrate", at=at, settings=settings)
+            try:
+                data = _plain(run(conn, settings, at=at).to_json())
+                report = _orchestrate_cycle_report(data, cycle_id=cycle_id)
+            except Exception as exc:
+                why = f"{type(exc).__name__}: {exc}"[:300]
+                close_cycle(conn, cycle_id, CycleReport(cycle_id=cycle_id, status="failed", errors=[why]), at=at)
+                raise
+            close_cycle(conn, cycle_id, report, at=at)
+        counts = {k: v for k, v in data.items() if isinstance(v, int) and not isinstance(v, bool)}
+        log.info("ai.orchestrate", status=report.status, cycle=cycle_id, skipped=data.get("skipped"),
+                 cost_usd=str(report.cost_usd), budget_stop=data.get("budget_stop"), **counts)
+    except Exception as exc:
+        log.error("ai.orchestrate.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_orchestrate() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_orchestrate_now)
+
+
 def _research_monitor_now() -> None:
     """Audit + prospective -> memory and proposals. Never raises."""
     from fbi.research.loop import run_monitor
@@ -1698,6 +1775,9 @@ async def main() -> None:
     scheduler.add_job(_ai_package, "interval", minutes=AI_PACKAGE_MINUTES, id="ai_package", max_instances=1,
                       coalesce=True, misfire_grace_time=AI_PACKAGE_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=4))
+    scheduler.add_job(_ai_orchestrate, "interval", minutes=AI_ORCHESTRATE_MINUTES, id="ai_orchestrate", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_ORCHESTRATE_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=6))
     scheduler.add_job(_ai_switches, "interval", minutes=AI_SWITCHES_MINUTES, id="ai_switches", max_instances=1,
                       coalesce=True, misfire_grace_time=AI_SWITCHES_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=1))

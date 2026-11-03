@@ -164,6 +164,9 @@ class CycleReport:
     counts: dict[str, int] = field(default_factory=lambda: defaultdict(int))
     cost_usd: Decimal = Decimal(0)
     errors: list[str] = field(default_factory=list)
+    detail: dict[str, Any] | None = None
+    """What the cycle writes in ``counts`` when it is more than counts: the orchestrator's report (counts and codes, plain JSON). None - every
+    other kind of cycle - writes ``counts`` as before."""
 
 
 def open_cycle(conn: psycopg.Connection[Any], kind: str, *, at: datetime, settings: AiSettings) -> int:
@@ -180,8 +183,9 @@ def open_cycle(conn: psycopg.Connection[Any], kind: str, *, at: datetime, settin
 def close_cycle(conn: psycopg.Connection[Any], cycle_id: int, report: CycleReport, *, at: datetime) -> None:
     conn.rollback()  # whatever the last match left half-done is not part of the record
     with conn.cursor(row_factory=tuple_row) as cur:
+        counts = dict(report.counts) if report.detail is None else report.detail
         cur.execute("UPDATE ai.cycles SET finished_at = %s, status = %s, counts = %s, cost_usd = %s, error = %s "
-                    "WHERE id = %s", (max(at, now()), report.status, Jsonb(dict(report.counts)),
+                    "WHERE id = %s", (max(at, now()), report.status, Jsonb(counts),
                                       report.cost_usd, "; ".join(report.errors)[:500] or None, cycle_id))
     conn.commit()
 
