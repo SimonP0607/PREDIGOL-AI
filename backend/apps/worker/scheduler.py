@@ -1161,6 +1161,8 @@ def _ai_batch_poll_now() -> None:
     try:
         with _connect() as conn:
             r = poll(conn, AiSettings.from_env(), at=now())
+        if r.abandoned:  # recorded and never sent, with no cycle running: the cycle that recorded them stopped
+            log.warning("ai.batch_unsent_abandoned", items=r.abandoned)
         if r.batches or r.errors:
             log.info("ai.batch_poll", batches=r.batches, ended=r.ended, waiting=r.waiting, items=r.items,
                      cost_usd=str(r.cost_usd), errors=len(r.errors), **r.counts)

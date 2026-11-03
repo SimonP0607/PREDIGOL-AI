@@ -24,7 +24,10 @@ from fbi.predictions.spec import promote as promote_spec
 from tests.integration.helpers import scalar
 from tests.integration.signed_in import SAME_SITE, signed_in
 
-KO = datetime(2026, 10, 3, 14, 0, tzinfo=UTC)
+KO = (datetime.now(UTC) - timedelta(days=5)).replace(hour=14, minute=0, second=0, microsecond=0)
+"""The target match: five days ago, 14:00 UTC. It was the literal 3 Oct 2026, and on 1 Nov 2026 two tests began to fail: the forecast prices the
+lines the market QUOTED, read with ``market.odds_snapshots.captured_at > now() - 30 days`` (``fbi.models.quoted.quoted_lines``), a window that
+runs on the real clock while this file's captures sit on its own. Every instant below hangs from this one, so they stay inside the window."""
 AT = KO - timedelta(hours=26)          # the forecast
 CAPTURED = KO - timedelta(minutes=1439)  # the price, later than the forecast
 N_TEAMS = 10

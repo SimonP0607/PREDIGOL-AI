@@ -330,6 +330,13 @@ def test_what_goes_in_a_batch_is_what_the_guide_says() -> None:
     assert str(pricing.BATCH_FACTOR) == "0.5" and "la mitad de precio" in text
 
 
+def test_what_the_poll_abandons_is_what_the_guide_says() -> None:
+    text = section(6)
+    said(r"cuando llevan más de (\d+) minutos y \*\*ningún ciclo está en marcha\*\*", text, batch.UNSENT_AFTER.total_seconds() / 60)
+    assert "`ai.batch_unsent_abandoned`" in text and "`batch_items_unsent`" in text
+    assert "ai.batch_unsent_abandoned" in SCHEDULER, "the worker says it"
+
+
 def test_the_key_and_the_poll_of_a_batch_are_what_the_guide_says() -> None:
     text = section(6)
     task = batch.Task(purpose="pick_review", tier="analysis", request=JsonRequest(system="s", user="u", schema={}, schema_name="x"),
