@@ -49,7 +49,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai import entity_research, gates, research
 from fbi.ai.analysis import ValueOption, build_cards, store_analysis
-from fbi.ai.batch import BatchClient, BatchQueue, abandon_unsent, open_counts
+from fbi.ai.batch import CYCLE_LOCK, BatchClient, BatchQueue, abandon_unsent, open_counts
 from fbi.ai.brief import Brief, make_brief
 from fbi.ai.calendar import day_bounds, day_start, local_day
 from fbi.ai.collectors import SearchFn, collect_provider, collect_web
@@ -91,7 +91,6 @@ TRANSIENT = frozenset({"timeout", "unavailable", "rate_limited", "failed"})
 tried again at the next one (what was paid is reused through its input hash, never paid twice)."""
 NEAR_VALUE_EV = Decimal("-0.02")
 """A watch review is made only for a selection this close to value at the current price."""
-CYCLE_LOCK = 7310073
 
 NEWEST_PACKETS_SQL = """
 SELECT DISTINCT ON (fixture_id) fixture_id, as_of FROM ai.match_packets
@@ -289,7 +288,7 @@ def run_analysis_cycle(conn: psycopg.Connection[Any], *, at: datetime, settings:
         report.counts["skipped_mode_off"] = 1
         return report
     with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute("SELECT pg_try_advisory_lock(%s)", (CYCLE_LOCK,))
+        cur.execute("SELECT pg_try_advisory_lock(%s)", (CYCLE_LOCK,))  # the lock the batch poll looks at to know a cycle is running
         row = cur.fetchone()
     if not (row and row[0]):
         report.counts["skipped_busy"] = 1  # another cycle is running: it will do this one's work

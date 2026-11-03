@@ -15,7 +15,10 @@ import pytest
 from fbi.ai.batch import (
     BATCH_PASSES,
     BATCH_ROLES,
+    CYCLE_LOCK,
+    CYCLE_RUNNING_SQL,
     BatchQueue,
+    PollReport,
     Task,
     custom_id_of,
     decode_flags,
@@ -279,3 +282,24 @@ def test_a_review_asked_in_this_pass_is_judged_by_the_pass_not_by_the_carried_on
     from fbi.ai.cycle import _arbitrable
 
     assert not _arbitrable(reviewed("APPROVE", "REJECT"), use_llm=True)
+
+
+# ── the poll and the cycle that is still running ────────────────────────────────────────────────────────────────
+
+def test_the_cycle_and_the_poll_name_the_same_lock() -> None:
+    from fbi.ai import cycle
+
+    assert cycle.CYCLE_LOCK is CYCLE_LOCK, "one definition: the lock the cycle takes is the lock the poll looks at"
+    assert 0 <= CYCLE_LOCK < 2**32, "the probe reads it as classid 0 and objid = the key: true only for a key under 2^32"
+
+
+def test_the_probe_only_looks_at_the_list_of_locks() -> None:
+    sql = " ".join(CYCLE_RUNNING_SQL.split()).lower()
+    assert "from pg_locks" in sql and "advisory_lock" not in sql, "taking the lock to find out would make a cycle that starts then skip its work"
+    assert "objsubid = 1" in sql and "current_database()" in sql and "granted" in sql
+    assert CYCLE_RUNNING_SQL.count("%s") == 1
+
+
+def test_a_poll_report_says_nothing_was_abandoned_and_no_cycle_was_running_until_it_finds_out() -> None:
+    quiet = PollReport()
+    assert (quiet.abandoned, quiet.cycle_running) == (0, False)
