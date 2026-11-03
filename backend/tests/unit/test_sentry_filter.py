@@ -121,20 +121,24 @@ def test_an_event_the_filter_cannot_read_is_never_sent_as_it_came(broken: dict[s
     assert out is None or "password" not in json.dumps(out)
 
 
+# a ten-digit number: a pseudonym of 20 hex characters cannot contain it by chance ("42" did, about one run in fourteen)
+ACCOUNT = 4_242_424_242
+
+
 def test_the_pseudonym_groups_one_account_and_tells_nobody_which(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FBI_AUTH_SECRET_KEY", crypto.new_key_b64())
     reset_auth_settings()
     try:
-        first = crypto.observability_id(42)
+        first = crypto.observability_id(ACCOUNT)
         assert first is not None and sentry.USER_ID.fullmatch(first)
-        assert crypto.observability_id(42) == first and crypto.observability_id(43) != first
-        assert "42" not in first
+        assert crypto.observability_id(ACCOUNT) == first and crypto.observability_id(ACCOUNT + 1) != first
+        assert str(ACCOUNT) not in first, "the pseudonym does not carry the account number"
         monkeypatch.setenv("FBI_AUTH_SECRET_KEY", crypto.new_key_b64())
         reset_auth_settings()
-        assert crypto.observability_id(42) != first, "another key, another pseudonym: it depends on the secret"
+        assert crypto.observability_id(ACCOUNT) != first, "another key, another pseudonym: it depends on the secret"
         monkeypatch.delenv("FBI_AUTH_SECRET_KEY")
         reset_auth_settings()
-        assert crypto.observability_id(42) is None, "without the key, no user at all"
+        assert crypto.observability_id(ACCOUNT) is None, "without the key, no user at all"
     finally:
         reset_auth_settings()
 
