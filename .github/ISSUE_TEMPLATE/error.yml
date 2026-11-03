@@ -1,0 +1,36 @@
+name: Error
+description: Algo no funciona como debería
+title: "ÁREA-NNN: resumen del fallo"
+labels: ["tipo:fix"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options: [CI, SEG, IA, UX, BE, FE, OPS, DOC]
+    validations:
+      required: true
+  - type: textarea
+    id: ocurre
+    attributes:
+      label: Qué ocurre
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Qué debería ocurrir
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Cómo reproducirlo o dónde se ve
+      description: Pasos, enlace, captura o registro. No pegues contraseñas ni claves.
+  - type: dropdown
+    id: prioridad
+    attributes:
+      label: Prioridad
+      options: ["Alta: afecta a producción o a usuarios", "Media", "Baja"]
+    validations:
+      required: true

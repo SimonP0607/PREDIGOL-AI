@@ -1,0 +1,153 @@
+{
+  "labels": [
+    {
+      "name": "area:CI",
+      "description": "Integración y despliegue continuos",
+      "color": "1d76db"
+    },
+    {
+      "name": "area:SEG",
+      "description": "Seguridad",
+      "color": "b60205"
+    },
+    {
+      "name": "area:IA",
+      "description": "Capa de inteligencia artificial",
+      "color": "5319e7"
+    },
+    {
+      "name": "area:UX",
+      "description": "Experiencia de usuario y diseño",
+      "color": "e99695"
+    },
+    {
+      "name": "area:BE",
+      "description": "Backend",
+      "color": "0e8a16"
+    },
+    {
+      "name": "area:FE",
+      "description": "Web (frontend)",
+      "color": "fbca04"
+    },
+    {
+      "name": "area:OPS",
+      "description": "Servidor y operación",
+      "color": "d93f0b"
+    },
+    {
+      "name": "area:DOC",
+      "description": "Documentación y planes",
+      "color": "0075ca"
+    },
+    {
+      "name": "tipo:feat",
+      "description": "Algo nuevo",
+      "color": "a2eeef"
+    },
+    {
+      "name": "tipo:fix",
+      "description": "Corrige un fallo",
+      "color": "d73a4a"
+    },
+    {
+      "name": "tipo:docs",
+      "description": "Solo documentación",
+      "color": "0075ca"
+    },
+    {
+      "name": "tipo:test",
+      "description": "Pruebas",
+      "color": "bfd4f2"
+    },
+    {
+      "name": "tipo:refactor",
+      "description": "Reorganiza sin cambiar el comportamiento",
+      "color": "c5def5"
+    },
+    {
+      "name": "tipo:perf",
+      "description": "Rendimiento",
+      "color": "fef2c0"
+    },
+    {
+      "name": "tipo:ci",
+      "description": "Flujos de GitHub",
+      "color": "1d76db"
+    },
+    {
+      "name": "tipo:build",
+      "description": "Construcción y empaquetado",
+      "color": "ededed"
+    },
+    {
+      "name": "tipo:chore",
+      "description": "Mantenimiento",
+      "color": "ededed"
+    },
+    {
+      "name": "tipo:revert",
+      "description": "Revierte un cambio",
+      "color": "e4e669"
+    },
+    {
+      "name": "estado:en-revision",
+      "description": "Esperando revisión",
+      "color": "c2e0c6"
+    },
+    {
+      "name": "estado:bloqueado",
+      "description": "Detenido por algo externo",
+      "color": "b60205"
+    },
+    {
+      "name": "estado:listo-para-desplegar",
+      "description": "Fusionado y listo para un lanzamiento",
+      "color": "0e8a16"
+    },
+    {
+      "name": "estado:desplegado",
+      "description": "Ya está en producción",
+      "color": "006b75"
+    },
+    {
+      "name": "prioridad:alta",
+      "description": "Afecta a producción o a usuarios",
+      "color": "b60205"
+    },
+    {
+      "name": "prioridad:media",
+      "description": "Importante, sin urgencia",
+      "color": "fbca04"
+    },
+    {
+      "name": "prioridad:baja",
+      "description": "Cuando haya hueco",
+      "color": "c5def5"
+    },
+    {
+      "name": "requiere-despliegue",
+      "description": "Toca producción; necesita lanzamiento",
+      "color": "d93f0b"
+    },
+    {
+      "name": "requiere-decision-del-dueno",
+      "description": "Espera una decisión de Simon",
+      "color": "5319e7"
+    }
+  ],
+  "keep": [
+    "dependencies",
+    "python",
+    "javascript",
+    "github_actions"
+  ],
+  "milestones": [
+    "Plan CI/CD",
+    "Plan de Seguridad",
+    "Plan de UX",
+    "Plan de IA",
+    "Plan de Usuario",
+    "Mantenimiento"
+  ]
+}

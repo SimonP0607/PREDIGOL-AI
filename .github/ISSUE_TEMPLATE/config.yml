@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Convenciones de GitHub de PrediGol
+    url: https://github.com/SimonP0607/PREDIGOL-AI/blob/main/docs/proyecto/CONVENCIONES_GITHUB.md
+    about: Cómo se nombran y codifican los cambios (ÁREA-NNN, ramas, títulos, etiquetas).
