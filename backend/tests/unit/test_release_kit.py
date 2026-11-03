@@ -27,7 +27,7 @@ def test_there_are_templates() -> None:
     assert {"chain.sh", "step_deploy.sh", "step_precheck.sh", "step_backup.sh", "step_smoke.sh", "step_verify.sh", "quiet.sh"} <= names
 
 
-@pytest.mark.parametrize("path", [*TEMPLATES, *EXTRAS, GATE, ROOT / "ci_ssh_setup.sh", ROOT / "build_kit.sh", ROOT / "ship.sh", ROOT / "gate.sh"], ids=lambda p: p.name)
+@pytest.mark.parametrize("path", [*TEMPLATES, *EXTRAS, GATE, ROOT / "ci_ssh_setup.sh", ROOT / "ci_precheck.sh", ROOT / "build_kit.sh", ROOT / "ship.sh", ROOT / "gate.sh"], ids=lambda p: p.name)
 def test_every_script_parses(path: Path) -> None:
     out = subprocess.run(["bash", "-n", str(path)], capture_output=True, text=True, check=False)
     assert out.returncode == 0, out.stderr
@@ -180,3 +180,63 @@ def test_ci_ssh_setup_drops_windows_line_endings_from_the_key(tmp_path: Path) ->
     ssh = tmp_path / ".ssh"
     assert b"\r" not in (ssh / "predigol_gh_deploy").read_bytes()
     assert b"\r" not in (ssh / "known_hosts_predigol").read_bytes()
+
+
+# ---- C4: the precheck as CI runs it ------------------------------------------------------------------------------------------------------
+PRECHECK = ROOT / "ci_precheck.sh"
+
+
+def _fake_ssh(tmp_path: Path, answers: list[str]) -> dict[str, str]:
+    """A `ssh` that answers with the n-th text of `answers` (the n-th call), so the loop can be driven without a server."""
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    for i, text in enumerate(answers, start=1):
+        (tmp_path / f"a{i}").write_text(text, encoding="utf-8")
+    (bindir / "ssh").write_text(
+        '#!/usr/bin/env bash\nn=$(cat "$FAKE/n" 2>/dev/null || echo 0); n=$((n + 1)); echo $n > "$FAKE/n"\n'
+        'f="$FAKE/a$n"; [ -f "$f" ] || f="$FAKE/a$(ls "$FAKE" | grep -c "^a[0-9]")"; cat "$f"\n'
+        'grep -q "^NOT OK" "$f" && exit 2; exit 0\n',
+        encoding="utf-8",
+    )
+    (bindir / "ssh").chmod(0o755)
+    return {"PATH": f"{bindir}:/usr/bin:/bin", "FAKE": str(tmp_path)}
+
+
+def _run_precheck(env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["bash", str(PRECHECK), "h", "20261103T1000Z-x", "4", "0"], env=env, capture_output=True, text=True, check=False, timeout=60)
+
+
+def test_ci_precheck_passes_when_every_line_is_ok(tmp_path: Path) -> None:
+    out = _run_precheck(_fake_ssh(tmp_path, ["OK: a\nPRECHECK: every line OK\n"]))
+    assert out.returncode == 0 and "every line OK (try 1)" in out.stdout
+
+
+def test_ci_precheck_waits_while_the_server_is_only_busy(tmp_path: Path) -> None:
+    busy = "not quiet: pid 1\nNOT OK: the server is not quiet (the lines above say who)\nPRECHECK: 1 line(s) NOT OK\n"
+    out = _run_precheck(_fake_ssh(tmp_path, [busy, busy, "OK: x\nPRECHECK: every line OK\n"]))
+    assert out.returncode == 0 and "every line OK (try 3)" in out.stdout and out.stdout.count("only waits for somebody else") == 2
+
+
+def test_ci_precheck_fails_at_once_on_a_line_waiting_does_not_fix(tmp_path: Path) -> None:
+    bad = "NOT OK: backend checkout = abc, the package was cut from def\nPRECHECK: 1 line(s) NOT OK\n"
+    out = _run_precheck(_fake_ssh(tmp_path, [bad]))
+    assert out.returncode == 1 and "that waiting does not fix" in out.stdout and "only waits" not in out.stdout
+
+
+def test_ci_precheck_gives_up_when_the_server_never_calms_down(tmp_path: Path) -> None:
+    busy = "NOT OK: lock deploy is HELD by x\nPRECHECK: 1 line(s) NOT OK\n"
+    out = _run_precheck(_fake_ssh(tmp_path, [busy]))
+    assert out.returncode == 1 and "still not ready after 4 tries" in out.stdout
+
+
+def test_ci_precheck_fails_when_the_precheck_does_not_reach_its_last_line(tmp_path: Path) -> None:
+    out = _run_precheck(_fake_ssh(tmp_path, ["OK: something\n"]))
+    assert out.returncode == 1 and "did not reach its last line" in out.stdout
+
+
+def test_ci_precheck_waits_for_exactly_what_the_chain_waits_for() -> None:
+    """The list of lines that mean 'wait' is copied from chain.sh; if one changes, the other must follow."""
+    pattern = re.compile(r"WAITABLE='([^']+)'")
+    chain = pattern.search((ROOT / "templates" / "server" / "chain.sh").read_text(encoding="utf-8"))
+    ci = pattern.search(PRECHECK.read_text(encoding="utf-8"))
+    assert chain is not None and ci is not None and chain.group(1) == ci.group(1)

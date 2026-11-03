@@ -94,9 +94,13 @@ jobs:
           kit="$(ls -d "$RUNNER_TEMP"/kits/*-"$REL" | head -n 1)"
           echo "kit=$(basename "$kit")" >> "$GITHUB_OUTPUT"
           echo "KIT_DIR=$kit" >> "$GITHUB_ENV"
-      - name: Send the kit and run the precheck
+      - name: Send the kit to the server
+        run: bash backend/deploy/release/ship.sh --host predigol-gh --kit "$KIT_DIR" --gate
+      - name: Precheck (read-only; waits like the chain does while the server is busy)
         shell: bash   # explicit bash = -eo pipefail: a failing precheck must fail the step even through `tee`
-        run: bash backend/deploy/release/ship.sh --host predigol-gh --kit "$KIT_DIR" --gate --precheck 2>&1 | tee "$RUNNER_TEMP/precheck.txt"
+        env:
+          KIT_NAME: ${{ steps.build.outputs.kit }}
+        run: bash backend/deploy/release/ci_precheck.sh predigol-gh "$KIT_NAME" 2>&1 | tee "$RUNNER_TEMP/precheck.txt"
       - name: Summary for the approver of the next step
         if: always()
         env:
