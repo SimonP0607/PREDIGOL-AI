@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -14,6 +15,9 @@ ROOT = Path(__file__).resolve().parents[2] / "deploy" / "release"
 TEMPLATES = sorted((ROOT / "templates" / "server").glob("*"))
 EXTRAS = sorted((ROOT / "extras").rglob("*.sh"))
 TOKENS = {"__STAMP__", "__REL__", "__PARTS__", "__BE_FROM__", "__BE_WANT__", "__WEB_FROM__", "__WEB_WANT__", "__MODEL_FP__"}
+
+GATE = ROOT / "templates" / "gate" / "predigol-gh-deploy"  # C4: the forced command of the GitHub deploy key (not a server template: it lives on the server for good)
+GATE_SUITE = Path(__file__).resolve().parents[1] / "vps_shell" / "test_gh_deploy_gate.sh"
 
 pytestmark = pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
 
@@ -23,7 +27,7 @@ def test_there_are_templates() -> None:
     assert {"chain.sh", "step_deploy.sh", "step_precheck.sh", "step_backup.sh", "step_smoke.sh", "step_verify.sh", "quiet.sh"} <= names
 
 
-@pytest.mark.parametrize("path", [*TEMPLATES, *EXTRAS, ROOT / "build_kit.sh", ROOT / "ship.sh", ROOT / "gate.sh"], ids=lambda p: p.name)
+@pytest.mark.parametrize("path", [*TEMPLATES, *EXTRAS, GATE, ROOT / "ci_ssh_setup.sh", ROOT / "build_kit.sh", ROOT / "ship.sh", ROOT / "gate.sh"], ids=lambda p: p.name)
 def test_every_script_parses(path: Path) -> None:
     out = subprocess.run(["bash", "-n", str(path)], capture_output=True, text=True, check=False)
     assert out.returncode == 0, out.stderr
@@ -58,3 +62,105 @@ def test_the_parts_reach_the_templates_as_words_not_as_a_comma_list() -> None:
         text = p.read_text(encoding="utf-8")
         if "__PARTS__" in text:
             assert 'case " $PARTS " in' in text, f"{p.name} matches the parts some other way than the builder fills them"
+
+
+@pytest.mark.skipif(shutil.which("jq") is None or shutil.which("tar") is None, reason="needs jq and tar")
+def test_the_github_door_suite_passes() -> None:
+    out = subprocess.run(["bash", str(GATE_SUITE)], capture_output=True, text=True, check=False, timeout=300)
+    assert out.returncode == 0, out.stdout[-3000:] + out.stderr[-1000:]
+    m = re.search(r"RESULT: (\d+) ok, (\d+) failed", out.stdout)
+    assert m is not None and int(m.group(2)) == 0 and int(m.group(1)) >= 60, out.stdout[-500:]
+
+
+def test_ship_has_a_gate_mode_that_still_needs_the_owners_word() -> None:
+    ship = (ROOT / "ship.sh").read_text(encoding="utf-8")
+    assert "--gate" in ship and "predigol-gh-deploy" in ship
+    gate_block = ship.split("if (( GATE ))", 1)[1].split("\nfi\n", 1)[0]
+    assert "(( OK )) || die" in gate_block, "in gate mode --start must still need --owner-ok"
+
+
+# ---- C4: the deploy workflow and its CI-side helper ------------------------------------------------------------------------------------
+WORKFLOW = Path(__file__).resolve().parents[3] / ".github" / "workflows" / "deploy.yml"
+SSH_SETUP = ROOT / "ci_ssh_setup.sh"
+
+
+def _workflow() -> dict[Any, Any]:
+    import yaml
+
+    loaded = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    assert isinstance(loaded, dict)
+    return loaded
+
+
+def test_the_deploy_workflow_is_a_button_and_nothing_else() -> None:
+    wf = _workflow()
+    triggers = wf.get(True, wf.get("on"))  # YAML reads a bare `on` as the boolean True
+    assert isinstance(triggers, dict) and list(triggers) == ["workflow_dispatch"], "deploy.yml must only run when a person presses the button"
+
+
+def test_every_job_that_can_reach_the_server_waits_for_the_production_environment() -> None:
+    jobs = _workflow()["jobs"]
+    assert isinstance(jobs, dict)
+    for name, job in jobs.items():
+        text = str(job)
+        touches_server = "DEPLOY_SSH_KEY" in text or "predigol-gh" in text
+        if touches_server:
+            assert job.get("environment") == "production", f"job {name} uses the deploy key without the production environment (the owner's approval)"
+    assert jobs["plan"].get("if") == "github.ref == 'refs/heads/main'", "only main can be released"
+    assert "environment" not in jobs["plan"], "plan must not hold the key"
+    assert jobs["go"].get("needs") == "prepare" and jobs["go"].get("if") == "inputs.mode == 'deploy'"
+
+
+def test_the_secret_only_appears_in_the_environment_bound_steps() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert text.count("secrets.DEPLOY_SSH_KEY") == 2, "the key is read twice (prepare and go), nowhere else"
+    assert "secrets.GITHUB_TOKEN" not in text and "github.token" in text
+
+
+def test_no_run_step_interpolates_a_github_expression() -> None:
+    jobs = _workflow()["jobs"]
+    assert isinstance(jobs, dict)
+    for jname, job in jobs.items():
+        for step in job["steps"]:
+            run = step.get("run")
+            assert run is None or "${{" not in run, f"{jname}/{step.get('name')}: values reach the shell through env, never through ${{{{ }}}} in run (script injection)"
+
+
+def test_the_workflow_follows_the_server_door_and_never_a_shell() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert "ship.sh --host predigol-gh" in text and "--gate" in text and "--owner-ok" not in text, "the owner's word is the approval, not a flag typed by CI"
+    for verb in re.findall(r'ssh predigol-gh "(\w+)', text):
+        assert verb in {"discard", "start", "status"}, verb
+    assert "scp " not in text and "rsync" not in text
+
+
+def test_ci_ssh_setup_writes_a_pinned_restricted_client_and_prints_no_secret(tmp_path: Path) -> None:
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "SSH_HOME": str(tmp_path),
+        "DEPLOY_SSH_KEY": "-----BEGIN KEY-----\nSECRETSECRET\n-----END KEY-----",
+        "DEPLOY_HOST": "203.0.113.5",
+        "DEPLOY_KNOWN_HOSTS": "203.0.113.5 ssh-ed25519 AAAAHOSTKEY",
+    }
+    out = subprocess.run(["bash", str(SSH_SETUP)], env=env, capture_output=True, text=True, check=False)
+    assert out.returncode == 0, out.stderr
+    assert "SECRETSECRET" not in out.stdout + out.stderr
+    ssh = tmp_path / ".ssh"
+    cfg = (ssh / "config").read_text(encoding="utf-8")
+    assert "Host predigol-gh" in cfg and "StrictHostKeyChecking yes" in cfg and "IdentitiesOnly yes" in cfg and "BatchMode yes" in cfg
+    assert oct((ssh / "predigol_gh_deploy").stat().st_mode & 0o777) == "0o600"
+    assert (ssh / "known_hosts_predigol").read_text(encoding="utf-8").startswith("203.0.113.5 ssh-ed25519")
+
+
+@pytest.mark.parametrize("missing", ["DEPLOY_SSH_KEY", "DEPLOY_HOST", "DEPLOY_KNOWN_HOSTS"])
+def test_ci_ssh_setup_refuses_when_a_value_is_missing(tmp_path: Path, missing: str) -> None:
+    env = {"PATH": "/usr/bin:/bin", "SSH_HOME": str(tmp_path), "DEPLOY_SSH_KEY": "k", "DEPLOY_HOST": "h", "DEPLOY_KNOWN_HOSTS": "h ssh-ed25519 A"}
+    env[missing] = ""
+    out = subprocess.run(["bash", str(SSH_SETUP)], env=env, capture_output=True, text=True, check=False)
+    assert out.returncode == 1 and missing in out.stderr
+
+
+def test_ci_ssh_setup_refuses_a_host_with_options_in_it(tmp_path: Path) -> None:
+    env = {"PATH": "/usr/bin:/bin", "SSH_HOME": str(tmp_path), "DEPLOY_SSH_KEY": "k", "DEPLOY_HOST": "h\n  ProxyCommand x", "DEPLOY_KNOWN_HOSTS": "h ssh-ed25519 A"}
+    out = subprocess.run(["bash", str(SSH_SETUP)], env=env, capture_output=True, text=True, check=False)
+    assert out.returncode == 1 and not (tmp_path / ".ssh" / "config").exists()
