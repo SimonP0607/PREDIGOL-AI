@@ -4,13 +4,15 @@
  * the projection, the copies (honest when nothing leaves the server), the last cleanup and the retention policy - in both languages, with no
  * control that deletes anything.
  */
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { setLocale } from "@/lib/i18n";
 import type { StorageOverview, StorageReport } from "@/lib/api/v1/types_storage";
 import { StorageView } from "./StorageLive";
 import { bytes, daysText, levelTone, offsiteState, parts, retentionByTier } from "./storageModel";
 
+// Test files share one process and one i18n module: another file may leave "en" behind, so start every test in Spanish.
+beforeEach(() => setLocale("es"));
 afterEach(() => setLocale("es"));
 
 const GIB = 1024 ** 3;
