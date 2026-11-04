@@ -445,6 +445,11 @@ def counts(conn: psycopg.Connection[Any], *, at: datetime) -> dict[str, int]:
     }
 
 
+def owner_tickets_of(conn: psycopg.Connection[Any], user_id: int, *, limit: int = 50) -> list[Ticket]:
+    """Every ticket and privacy request of one reader, for the owner's card (plan UX, B10): open first, newest first."""
+    return _tickets(conn, "t.user_id = %s", (user_id,), owner=True, order=READER_ORDER, limit=limit)
+
+
 def owner_ticket(conn: psycopg.Connection[Any], ticket_id: int) -> Ticket:
     found = _tickets(conn, "t.id = %s", (ticket_id,), owner=True)
     if not found:

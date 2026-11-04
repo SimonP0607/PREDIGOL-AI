@@ -18,6 +18,7 @@ from fbi.api import errors
 from fbi.api.limits import BodyLimit, SlidingWindow
 from fbi.api.routers import (
     account,
+    admin_customers,
     admin_users,
     ai_layer,
     analyst,
@@ -239,7 +240,7 @@ def create_app() -> FastAPI:
     for r in (system.admin_router, football.admin_router, market.admin_router,
               center.admin_router, explorer.router, analyst.router, admin_users.router, truth.router,
               evolution.router, ai_layer.admin_router, intelligence.router, referees.router,
-              monitoring.admin_router, customer.admin_router, messaging.admin_router, events.admin_router,
+              monitoring.admin_router, admin_customers.router, admin_customers.audit_router, customer.admin_router, messaging.admin_router, events.admin_router,
               membership.admin_router, support.admin_router, feedback.admin_router, push.admin_router):
         app.include_router(r, prefix="/api/v1/admin", dependencies=admin_tier)
     # The original unversioned health endpoint stays where monitors expect it.
