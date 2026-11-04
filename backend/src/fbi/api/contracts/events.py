@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -38,6 +39,21 @@ class FunnelStep(Contract):
     subjects: int
 
 
+class LifecycleRate(Contract):
+    n: int
+    of: int = Field(description="The cohort's size.")
+    value: float | None = Field(description="None while the cohort is under 30 readers: never a share of a handful.")
+
+
+class LifecycleMetrics(Contract):
+    day: date | None = Field(description="The newest day of the lifecycle's calculation (B11); None before the first.")
+    states: dict[str, int] = Field(description="Readers in each state on that day.")
+    renewal_30d: LifecycleRate = Field(description="Memberships that ended in 30 days and have a later period.")
+    activation_7d: LifecycleRate = Field(description="Accounts of 7-90 days that activated within 7 days.")
+    retention_d7: LifecycleRate = Field(description="Accounts of 14-90 days active between their day 7 and 13.")
+    retention_d30: LifecycleRate = Field(description="Accounts of 37-90 days active between their day 30 and 36.")
+
+
 class ProductOverview(Contract):
     mode: Literal["off", "on", "consent"] = Field(description="FBI_PRODUCT_EVENTS: off records nothing.")
     purge: Literal["off", "dry", "on"] = Field(description="FBI_EVENTS_PURGE: dry counts, on deletes (the owner's OK).")
@@ -51,3 +67,4 @@ class ProductOverview(Contract):
     days_active_per_week: float | None
     errors_per_active: float | None
     dau_mau: float | None = Field(description="Only from 100 readers active in 30 days.")
+    lifecycle: LifecycleMetrics | None = Field(default=None, description="The customers' lifecycle (B11).")

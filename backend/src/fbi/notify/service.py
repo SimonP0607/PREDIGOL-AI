@@ -38,7 +38,9 @@ KINDS = ("shadow_pick", "pick_settled", "first_capture", "capture_failed", "work
          "job_failing", "ai_budget",
          # The readers' side (plan UX, A5; revision 0096), drafted by the messenger with the API's role - counts and a
          # link to the console, never a reader's address, alias or words - and sent by this notifier like the others.
-         "outbox_failing", "membership_due", "ticket_new", "privacy_due", "synthetic_failed", "ai_user_budget")
+         "outbox_failing", "membership_due", "ticket_new", "privacy_due", "synthetic_failed", "ai_user_budget",
+         # The customers' morning count (plan UX, B11; revision 0106): counts and a link, never names.
+         "lifecycle_daily")
 
 
 @dataclass(frozen=True, slots=True)

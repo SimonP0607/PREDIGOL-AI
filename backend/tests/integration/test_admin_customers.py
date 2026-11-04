@@ -189,7 +189,7 @@ def test_each_view_holds_exactly_who_it_should(world: str) -> None:
     assert emails(owner, "tickets") == [TICKET]
     assert emails(owner, "errors") == [ERRORS]
     counts = {v["view"]: v["count"] for v in owner.get("/api/v1/admin/customers").json()["views"]}
-    assert counts == {"all": 5, "expiring": 1, "inactive": 1, "tickets": 1, "errors": 1}
+    assert counts == {"all": 5, "expiring": 1, "inactive": 1, "tickets": 1, "errors": 1, "at_risk": 0, "invited": 0}
     assert emails(owner, "all", q="VENCE") == [ENDING], "found by address, without regard to case"
     assert owner.get("/api/v1/admin/customers", params={"view": "nope"}).status_code == 422
     page = owner.get("/api/v1/admin/customers", params={"limit": 2, "offset": 4}).json()
@@ -221,7 +221,8 @@ def test_the_card_has_what_is_needed_and_nothing_more(world: str) -> None:
     assert (card["usage"]["matches_viewed_30"], card["usage"]["picks_opened_30"]) == (9, 3)
     assert card["usage"]["measured"] is True
     assert set(card) == {"identity", "membership", "suspended_reason", "usage", "notifications", "consents",
-                         "consents_due", "tickets", "feedback", "notes", "privacy_requests_open"}
+                         "consents_due", "tickets", "feedback", "notes", "privacy_requests_open", "lifecycle",
+                         "lifecycle_history"}
     text = json.dumps(card).lower()
     for forbidden in ("\"ip\"", "user_agent", "token", "password", "hash", "secret", "totp", "endpoint", "auth_key",
                       "phone", "whatsapp"):

@@ -163,6 +163,15 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "customer.feedback", "DELETE", True),
     ("predigol_worker", "customer.feedback", "SELECT", False),
     ("predigol_worker", "customer.feedback", "INSERT", False),
+    # each customer's state of the day (plan UX, B11): the messenger (the API's role) writes it once and never edits it
+    # (the table's trigger refuses it too); the rows go with an anonymised account and past 24 months; the worker of
+    # PrediGol Intelligence reads none of it
+    ("predigol_api", "customer.lifecycle_snapshots", "SELECT", True),
+    ("predigol_api", "customer.lifecycle_snapshots", "INSERT", True),
+    ("predigol_api", "customer.lifecycle_snapshots", "DELETE", True),
+    ("predigol_api", "customer.lifecycle_snapshots", "UPDATE", False),
+    ("predigol_worker", "customer.lifecycle_snapshots", "SELECT", False),
+    ("predigol_worker", "customer.lifecycle_snapshots", "INSERT", False),
     # the readers' notices on their devices (plan UX, B7): the API subscribes and revokes a browser, rings and silences a
     # match's bell and queues the account's notices; the messenger (the API's role) writes the rest, sends them, records
     # each one's fate and purges; the worker of PrediGol Intelligence reads none of it

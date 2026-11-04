@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field
 from fbi.api.contracts.common import Contract
 from fbi.api.contracts.membership import MembershipSummary
 
-CustomerView = Literal["all", "expiring", "inactive", "tickets", "errors"]
+CustomerView = Literal["all", "expiring", "inactive", "tickets", "errors", "at_risk", "invited"]
+LifecycleState = Literal["invited", "activated", "habitual", "at_risk", "expiring", "renewed", "expired"]
 
 
 class CustomerRow(Contract):
@@ -26,6 +27,9 @@ class CustomerRow(Contract):
     errors_24h: int = Field(description="The `error_shown` events of the last 24 hours.")
     active_days_7: int
     last_csat: int | None
+    lifecycle: LifecycleState | None = Field(default=None, description="Their state on the newest day computed (B11); "
+                                                                       "None before the first calculation.")
+    lifecycle_reasons: list[str] = Field(default_factory=list, description="Why, in codes from a closed list.")
 
 
 class CustomerViewCount(Contract):
@@ -132,6 +136,12 @@ class CustomerNote(Contract):
     note: str
 
 
+class LifecycleChange(Contract):
+    day: date
+    state: LifecycleState
+    reasons: list[str]
+
+
 class Customer(Contract):
     identity: CustomerIdentity
     membership: MembershipSummary | None
@@ -144,6 +154,8 @@ class Customer(Contract):
     feedback: CustomerFeedbackSummary
     notes: list[CustomerNote]
     privacy_requests_open: int
+    lifecycle: LifecycleChange | None = Field(default=None, description="Their newest state and why (B11).")
+    lifecycle_history: list[LifecycleChange] = Field(default_factory=list, description="Their changes of state, newest first.")
 
 
 class NoteIn(BaseModel):

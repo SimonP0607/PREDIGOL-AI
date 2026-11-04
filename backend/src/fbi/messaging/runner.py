@@ -33,7 +33,7 @@ import structlog
 from fbi.auth import tokens
 from fbi.core.clock import now
 from fbi.core.logging import error_summary
-from fbi.customer import events, feedback, membership
+from fbi.customer import events, feedback, lifecycle, membership
 from fbi.customer import push as push_rules
 from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.messaging import digest, notices, push_jobs
@@ -101,6 +101,9 @@ class CycleTotals:
     push_purge: push_rules.PurgeReport | None = None
     digest: int = 0
     """The weekly summaries queued this cycle (plan UX, B8)."""
+    lifecycle: int = 0
+    """The readers' states of the day written this cycle (plan UX, B11)."""
+    lifecycle_purge: lifecycle.PurgeReport | None = None
     errors: list[str] = field(default_factory=list)
 
     def add(self, report: DispatchReport) -> None:
@@ -114,7 +117,7 @@ class CycleTotals:
         provider_calls = self.sent + self.retried + self.deferred
         c = RunCounters(api_calls=provider_calls + self.push_devices,
                         rows_inserted=(self.notices + self.legal + self.rollup + self.membership + self.push_queued
-                                       + self.digest),
+                                       + self.digest + self.lifecycle),
                         rows_updated=self.sent + self.retried + self.failed + self.suppressed + self.deferred,
                         errors=list(self.errors))
         if interrupted:
@@ -128,6 +131,8 @@ class CycleTotals:
             purge += f"; links purge {self.links_purge[0]}: {self.links_purge[1]}"
         if self.feedback_purge is not None:
             purge += f"; feedback purge {self.feedback_purge.mode}: {self.feedback_purge.rows}"
+        if self.lifecycle_purge is not None:
+            purge += f"; lifecycle purge {self.lifecycle_purge.mode}: {self.lifecycle_purge.rows}"
         if self.push_purge is not None:
             purge += f"; push purge {self.push_purge.mode}: {self.push_purge.notices} notices, {self.push_purge.devices} devices"
         push = (f"; push queued {self.push_queued}, sent {self.push_sent} to {self.push_devices} devices, "
@@ -136,7 +141,7 @@ class CycleTotals:
         return (f"sending {'on' if sending else 'off'}{'' if provider or not sending else ' (no provider)'}; "
                 f"sent {self.sent}, retried {self.retried}, failed {self.failed}, suppressed {self.suppressed}, "
                 f"deferred {self.deferred}; notices {self.notices}, legal {self.legal}, membership {self.membership}, "
-                f"weekly summaries {self.digest}; "
+                f"weekly summaries {self.digest}, lifecycle {self.lifecycle}; "
                 f"activity rows {self.rollup}{purge}{push}")
 
 
@@ -168,6 +173,16 @@ def start_of_cycle(conn: psycopg.Connection[Any], totals: CycleTotals, *, sendin
         conn.rollback()
         totals.errors.append(f"activity: {error_summary(exc)}"[:300])
         log.error("messenger.activity_failed", error=error_summary(exc))
+    try:
+        # each reader's state of the day (plan UX, B11): only with FBI_LIFECYCLE; its retention under the analytics' switch
+        if lifecycle.enabled():
+            totals.lifecycle += lifecycle.compute_day(conn, at=now())
+            totals.lifecycle_purge = lifecycle.purge(conn, at=now(), mode=events.purge_mode())
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        totals.errors.append(f"lifecycle: {error_summary(exc)}"[:300])
+        log.error("messenger.lifecycle_failed", error=error_summary(exc))
     try:
         totals.membership += membership.remind(conn, at=now())
     except Exception as exc:

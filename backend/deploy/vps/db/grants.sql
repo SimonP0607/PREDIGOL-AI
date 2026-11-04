@@ -117,6 +117,10 @@ BEGIN
     -- (notices past 90 days, revoked browsers past 30)
     'customer.push_subscriptions:INSERT, UPDATE, DELETE', 'customer.match_alerts:INSERT, UPDATE, DELETE',
     'customer.push_notices:INSERT, UPDATE, DELETE',
+    -- each customer's state of the day (fbi.customer.lifecycle, plan UX, B11): written once a day by the messenger, never edited
+    -- (the table's own trigger refuses it); deleted only when the account is anonymised (A7) and, once the owner switches the
+    -- purge on, past its 24 months - both under the maintenance switch
+    'customer.lifecycle_snapshots:INSERT, DELETE',
     -- a user's own records (fbi.userdata)
     'picks.user_picks:INSERT, UPDATE, DELETE', 'picks.user_parlays:INSERT, UPDATE, DELETE',
     'picks.user_parlay_legs:INSERT, UPDATE, DELETE',

@@ -211,6 +211,8 @@ class Ticket:
     """The owner's inbox only, never the reader's own view."""
     display_name: str | None = None
     account_status: str | None = None
+    at_risk: bool = False
+    """The owner's inbox only: the reader is AT RISK in the newest day of the lifecycle (plan UX, B11)."""
 
     @property
     def priority(self) -> Priority:
@@ -252,10 +254,13 @@ SELECT_SQL = """
      ORDER BY {order}
      LIMIT %s
 """
+AT_RISK_SQL = ("EXISTS (SELECT 1 FROM customer.lifecycle_snapshots l WHERE l.user_id = t.user_id "
+               "AND l.state = 'at_risk' AND l.day = (SELECT max(day) FROM customer.lifecycle_snapshots))")
+"""Whether the ticket's reader is at risk on the newest day the lifecycle computed (plan UX, B11)."""
 QUEUE_ORDER = ("(t.status = 'closed'), (t.status <> 'open'), CASE WHEN t.category = 'access' THEN 0 "
                "WHEN t.category = 'wrong_data' THEN 2 WHEN t.category = 'suggestion' THEN 3 ELSE 1 END, "
-               "t.opened_at, t.id")
-"""Waiting first, then by priority, then the oldest: the order the owner answers in."""
+               f"(NOT {AT_RISK_SQL}), t.opened_at, t.id")
+"""Waiting first, then by priority, then the readers at risk (B11), then the oldest: the order the owner answers in."""
 READER_ORDER = "(t.status = 'closed'), t.opened_at DESC, t.id DESC"
 
 
@@ -267,7 +272,7 @@ def _rows(conn: psycopg.Connection[Any], sql: str, params: tuple[Any, ...]) -> l
 
 def _tickets(conn: psycopg.Connection[Any], where: str, params: tuple[Any, ...], *, owner: bool = False,
              order: str = READER_ORDER, limit: int = 200) -> list[Ticket]:
-    extra = ", u.email, u.display_name, u.status AS account_status" if owner else ""
+    extra = f", u.email, u.display_name, u.status AS account_status, {AT_RISK_SQL} AS at_risk" if owner else ""
     join = " JOIN auth.users u ON u.id = t.user_id" if owner else ""
     rows = _rows(conn, SELECT_SQL.format(extra=extra, join=join, where=where, order=order), (*params, limit))
     ids = [r["id"] for r in rows]

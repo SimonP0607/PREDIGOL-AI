@@ -4,18 +4,27 @@ minute - and the owner's view in the console. Nothing a client sends here reache
 from __future__ import annotations
 
 import os
+from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
 import psycopg
 from fastapi import APIRouter, Depends
 
-from fbi.api.contracts.events import EventsIn, EventsRecorded, FunnelStep, ProductOverview, UsageRow
+from fbi.api.contracts.events import (
+    EventsIn,
+    EventsRecorded,
+    FunnelStep,
+    LifecycleMetrics,
+    LifecycleRate,
+    ProductOverview,
+    UsageRow,
+)
 from fbi.api.deps import get_db
 from fbi.api.errors import ApiError
 from fbi.api.limits import SlidingWindow
 from fbi.api.security import App, same_site_only
-from fbi.customer import events
+from fbi.customer import events, lifecycle
 from fbi.customer.db import CustomerError
 
 router = APIRouter(prefix="/events", tags=["analytics"], dependencies=[Depends(same_site_only)])
@@ -43,10 +52,17 @@ def record_events(body: EventsIn, principal: App) -> EventsRecorded:
 @admin_router.get("", response_model=ProductOverview)
 def product_overview(conn: Db) -> ProductOverview:
     """Activation, habit, usage by function, devices and errors - global figures only with enough readers."""
-    o = events.overview(conn, at=datetime.now(UTC))
+    moment = datetime.now(UTC)
+    o = events.overview(conn, at=moment)
+    m = lifecycle.metrics(conn, at=moment)
     return ProductOverview(mode=o.mode, purge=o.purge, min_subjects=o.min_subjects, status=o.status,
                            active_30d=o.active_30d, active=o.active,
                            usage=[UsageRow.model_validate(u) for u in o.usage],
                            funnel=[FunnelStep.model_validate(f) for f in o.funnel], devices=o.devices,
                            days_active_per_week=o.days_active_per_week, errors_per_active=o.errors_per_active,
-                           dau_mau=o.dau_mau)
+                           dau_mau=o.dau_mau,
+                           lifecycle=LifecycleMetrics(
+                               day=m.day, states=m.states, renewal_30d=LifecycleRate(**asdict(m.renewal_30d)),
+                               activation_7d=LifecycleRate(**asdict(m.activation_7d)),
+                               retention_d7=LifecycleRate(**asdict(m.retention_d7)),
+                               retention_d30=LifecycleRate(**asdict(m.retention_d30))))

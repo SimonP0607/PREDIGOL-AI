@@ -147,7 +147,8 @@ def _admin_ticket(t: support.Ticket) -> AdminTicket:
         priority=t.priority, status=t.status, opened_at=t.opened_at,  # type: ignore[arg-type]
         closed_at=t.closed_at, respond_by=t.respond_by, deadline=t.deadline, extended=t.extended_to is not None,
         first_answer_at=t.first_answer_at, waiting=t.waiting, late=t.late(at),
-        context=SupportContext(**t.context) if t.context else None, effort=t.effort, messages=_messages(t))
+        context=SupportContext(**t.context) if t.context else None, effort=t.effort, at_risk=t.at_risk,
+        messages=_messages(t))
 
 
 @admin_router.get("", response_model=AdminInbox)

@@ -70,11 +70,18 @@ def test_the_messenger_is_a_job_the_watchdog_knows_and_its_notices_are_kinds_the
     assert spec and spec.loader
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
-    assert set(m.KINDS_BEFORE + m.KINDS_NEW) == set(KINDS)
+    assert set(m.KINDS_BEFORE + m.KINDS_NEW) == set(KINDS) - {"lifecycle_daily"}
     source = Path(notices.__file__).read_text(encoding="utf-8")
     drafted = {k for k in m.KINDS_NEW if f'"{k}", f"' in source}
     assert drafted == {"ticket_new", "privacy_due", "outbox_failing", "synthetic_failed",
                        "membership_due"}  # A8
+    # the lifecycle's morning count (plan UX, B11) joined the kinds in 0106
+    spec = importlib.util.spec_from_file_location("m0106", BACKEND / "migrations/versions/0106_customer_lifecycle.py")
+    assert spec and spec.loader
+    m6 = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m6)
+    assert {*m6.KINDS_BEFORE, "lifecycle_daily"} == set(KINDS)
+    assert '"lifecycle_daily", f"lifecycle_daily:' in source
 
 
 def test_the_messenger_runs_alone_with_the_apis_role_and_no_raw_store() -> None:

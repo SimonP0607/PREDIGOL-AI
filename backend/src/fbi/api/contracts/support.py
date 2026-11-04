@@ -135,6 +135,8 @@ class AdminTicket(Contract):
     late: bool = Field(description="Past the target of its first answer with none yet, or past its legal deadline.")
     context: SupportContext | None
     effort: int | None
+    at_risk: bool = Field(default=False, description="The reader is AT RISK on the newest day of the lifecycle (B11): "
+                                                    "the queue puts their request first within its priority.")
     messages: list[SupportMessage]
 
 

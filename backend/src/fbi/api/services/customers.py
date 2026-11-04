@@ -31,10 +31,11 @@ from fbi.api.contracts.customers import (
     CustomerUsage,
     CustomerView,
     CustomerViewCount,
+    LifecycleChange,
 )
 from fbi.api.contracts.membership import MembershipSummary
 from fbi.auth import crypto
-from fbi.customer import consents, events, membership, push, support
+from fbi.customer import consents, events, lifecycle, membership, push, support
 from fbi.customer.db import CustomerError
 
 VIEWS: Final[tuple[str, ...]] = get_args(CustomerView)
@@ -64,6 +65,8 @@ class Facts:
     suspended: bool
     open_tickets: int
     errors_24h: int
+    lifecycle: str | None = None
+    """The newest state of the lifecycle (B11), None before its first calculation."""
 
 
 def in_view(view: str, f: Facts, at: datetime) -> bool:
@@ -73,6 +76,7 @@ def in_view(view: str, f: Facts, at: datetime) -> bool:
     * inactive - an activated account that has not been seen for 14 days (since the invitation when never seen).
     * tickets - at least one ticket or request not closed.
     * errors - at least one error shown to them in the last 24 hours.
+    * at_risk / invited - the lifecycle's newest state (B11): at risk, or invited and never activated.
     """
     if view == "all":
         return True
@@ -88,6 +92,8 @@ def in_view(view: str, f: Facts, at: datetime) -> bool:
         return f.open_tickets > 0
     if view == "errors":
         return f.errors_24h > 0
+    if view in ("at_risk", "invited"):
+        return f.lifecycle == view
     raise CustomerError(422, "unknown_view", "no such view")
 
 
@@ -181,6 +187,7 @@ def listing(conn: psycopg.Connection[Any], *, view: str, query: str | None, limi
     errors = _errors_24h(conn, subjects, moment)
     active7 = _active_days(conn, subjects, moment, 7)
     csat = _last_csat(conn, ids)
+    states = lifecycle.latest_states(conn, ids)
 
     rows: list[tuple[CustomerRow, Facts]] = []
     for a in accounts:
@@ -188,12 +195,14 @@ def listing(conn: psycopg.Connection[Any], *, view: str, query: str | None, limi
         m = members[uid]
         facts = Facts(status=a["status"], created_at=a["created_at"], last_seen_at=a["last_seen_at"],
                       ends_at=m.ends_at, grace_until=m.grace_until, suspended=m.state == "suspended",
-                      open_tickets=tickets.get(uid, 0), errors_24h=errors.get(uid, 0))
+                      open_tickets=tickets.get(uid, 0), errors_24h=errors.get(uid, 0),
+                      lifecycle=states[uid][0] if uid in states else None)
         rows.append((CustomerRow(
             id=uid, email=a["email"], display_name=a["display_name"], status=a["status"],
             created_at=a["created_at"], last_seen_at=a["last_seen_at"], membership=_summary(m, moment),
             open_tickets=facts.open_tickets, errors_24h=facts.errors_24h, active_days_7=active7.get(uid, 0),
-            last_csat=csat.get(uid)), facts))
+            last_csat=csat.get(uid), lifecycle=states[uid][0] if uid in states else None,  # type: ignore[arg-type]
+            lifecycle_reasons=states[uid][1] if uid in states else []), facts))
 
     counts = [CustomerViewCount(view=v, count=sum(1 for _, f in rows if in_view(v, f, moment)))  # type: ignore[arg-type]
               for v in VIEWS]
@@ -273,6 +282,13 @@ def _feedback(conn: psycopg.Connection[Any], user_id: int) -> CustomerFeedbackSu
                                  created_at=r["created_at"]) for r in rows[:5]])
 
 
+def _latest(conn: psycopg.Connection[Any], user_id: int) -> LifecycleChange | None:
+    found = lifecycle.latest_states(conn, [user_id]).get(user_id)
+    if found is None:
+        return None
+    return LifecycleChange(day=found[2], state=found[0], reasons=found[1])  # type: ignore[arg-type]
+
+
 def card(conn: psycopg.Connection[Any], user_id: int, *, at: datetime | None = None) -> Customer:
     """One reader's card (404 ``not_found`` for an account that is not a reader: the owner's own is not a customer)."""
     moment = at or datetime.now(UTC)
@@ -285,6 +301,8 @@ def card(conn: psycopg.Connection[Any], user_id: int, *, at: datetime | None = N
                             "AND expires_at > %s", (user_id, moment)).fetchone()
     latest = consents.latest(conn, user_id)
     tickets = support.owner_tickets_of(conn, user_id)
+    changes = [LifecycleChange(day=c["day"], state=c["state"], reasons=c["reasons"])
+               for c in lifecycle.history(conn, user_id)]
     requests = [t for t in tickets if t.kind != "support" and t.status != "closed"]
     return Customer(
         identity=CustomerIdentity(
@@ -300,4 +318,5 @@ def card(conn: psycopg.Connection[Any], user_id: int, *, at: datetime | None = N
         tickets=[CustomerTicket(id=t.id, kind=t.kind, category=t.category, status=t.status, opened_at=t.opened_at,
                                 closed_at=t.closed_at, messages=len(t.messages), late=t.late(moment))
                  for t in tickets[:20]],
-        feedback=_feedback(conn, user_id), notes=_notes(conn, user_id), privacy_requests_open=len(requests))
+        feedback=_feedback(conn, user_id), notes=_notes(conn, user_id), privacy_requests_open=len(requests),
+        lifecycle=_latest(conn, user_id), lifecycle_history=changes)

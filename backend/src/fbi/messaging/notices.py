@@ -33,7 +33,7 @@ import psycopg
 import structlog
 from psycopg.rows import dict_row
 
-from fbi.customer import events, membership, support, workdays
+from fbi.customer import events, lifecycle, membership, support, workdays
 from fbi.customer.privacy import bogota_today
 from fbi.messaging.templates import long_date, web_base
 from fbi.notify.service import Draft
@@ -216,10 +216,33 @@ def membership_due(conn: psycopg.Connection[Any], *, at: datetime) -> list[Draft
         counts)]
 
 
+def lifecycle_daily(conn: psycopg.Connection[Any], *, at: datetime) -> list[Draft]:
+    """The owner's morning count of the readers' states (plan UX, B11): about to expire, at risk, invited and never
+    activated. Counts and a link, never names; only when there is something to look at."""
+    local = at.astimezone(events.BOGOTA)
+    if local.hour < MORNING_HOUR or not lifecycle.enabled():
+        return []
+    today = local.date()
+    counts = lifecycle.counts(conn, day=today)
+    wanted = {k: counts[k] for k in ("expiring", "at_risk", "invited")}
+    if not any(wanted.values()):
+        return []
+    lines = []
+    if wanted["at_risk"]:
+        lines.append(f"{_n(wanted['at_risk'], 'cliente está', 'clientes están')} en riesgo.")
+    if wanted["expiring"]:
+        lines.append(f"{_n(wanted['expiring'], 'cliente está', 'clientes están')} por vencer.")
+    if wanted["invited"]:
+        lines.append(f"{_n(wanted['invited'], 'invitación sigue', 'invitaciones siguen')} sin activar.")
+    return [Draft(
+        "lifecycle_daily", f"lifecycle_daily:{today.isoformat()}", "Clientes que piden tu atención hoy",
+        " ".join(lines) + f" Los nombres, en la consola: {web_base()}/admin/customers", wanted)]
+
+
 def collect(conn: psycopg.Connection[Any], *, at: datetime, sending: bool, provider: bool) -> list[Draft]:
     return [*ticket_new(conn), *support_waiting(conn, at=at), *privacy_due(conn, at=at),
             *outbox_failing(conn, at=at, sending=sending, provider=provider), *synthetic_failed(conn),
-            *membership_due(conn, at=at)]
+            *membership_due(conn, at=at), *lifecycle_daily(conn, at=at)]
 
 
 def write(conn: psycopg.Connection[Any], drafts: list[Draft]) -> int:
