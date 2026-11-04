@@ -71,6 +71,15 @@ reads, and are rolled back by the same three words. Nothing runs until ALL THREE
                                 dropped). The plan's activation is ``match,council``, and ``match,council,stats`` adds the Statistics Agent; its
                                 rollback is to take ``stats`` out. ``stats`` alone switches nothing on: the orchestrator needs ``match`` and ``council``.
 
+Phase 5 of the plan - after the result (the Post-Match Reviewer ``pmr-v1`` and the Learning Analyst ``la-v1``). Both are OFF by default, both write only
+into tables no pick, filter, decision or user reads, and both go back with a single word:
+
+    FBI_AI_PM_REVIEWER          default off - ``1``/``on``/``true``/``yes`` switches on, in the daily step ``ai_learn`` (07:35 Bogota), the MECHANICAL
+                                attribution of the shadow (``intel.agent_attributions``, no model) and the Post-Match Reviewer's classification of the
+                                rows the code left ``UNKNOWN`` (Batch, LAB). Any other word - a typo - is off. Rollback: ``0``.
+    FBI_AI_LEARNING_ANALYST     default off - the same words switch on, in the weekly step ``intel_weekly`` (Monday), the Learning Analyst: at most five
+                                hypotheses a week, each for one agent version and citing attributions (Batch, LAB); it only proposes. Rollback: ``0``.
+
 A model or a search is used only for TODAY's matches (America/Bogota) that have a market (``fbi.ai.day``).
 
 No tier configured = the layer runs its deterministic reviewer only and says so (``status()``). A tier is
@@ -188,6 +197,11 @@ def _agents(raw: str | None) -> tuple[str, ...]:
     return tuple(a for a in AGENTS if a in asked)
 
 
+def _on(raw: str | None) -> bool:
+    """A word that is on only when it says so (``1``, ``on``, ``true``, ``yes``): a typo or an empty word is off, so nothing starts by accident."""
+    return (raw or "").strip().lower() in ("1", "on", "true", "yes")
+
+
 def _switch(raw: str | None) -> Switch:
     value = (raw or "").strip().lower()
     if value in ("0", "off", "false", "no"):
@@ -259,6 +273,10 @@ class AiSettings:
     """Plan IA, phase 3: the share (0 to 1) of the matches with candidates the shadow runs on (``FBI_AI_SHADOW_SAMPLE``). Zero: no match is assigned."""
     agents: tuple[str, ...] = ()
     """Plan IA, phase 3: the agents that may run (``FBI_AI_AGENTS``), in the canonical order of ``AGENTS``."""
+    pm_reviewer: bool = False
+    """Plan IA, phase 5: the attribution of the shadow and the Post-Match Reviewer (``FBI_AI_PM_REVIEWER``). Off unless the word says ``on``."""
+    learning_analyst: bool = False
+    """Plan IA, phase 5: the Learning Analyst (``FBI_AI_LEARNING_ANALYST``). Off unless the word says ``on``."""
 
     @classmethod
     def from_env(cls) -> AiSettings:
@@ -311,6 +329,8 @@ class AiSettings:
             engines=_engines(env.get("FBI_AI_ENGINES")),
             shadow_sample=_share(env.get("FBI_AI_SHADOW_SAMPLE")),
             agents=_agents(env.get("FBI_AI_AGENTS")),
+            pm_reviewer=_on(env.get("FBI_AI_PM_REVIEWER")),
+            learning_analyst=_on(env.get("FBI_AI_LEARNING_ANALYST")),
         )
 
     def switch(self, name: str) -> Switch:
@@ -393,6 +413,8 @@ class AiSettings:
             "shadow_sample": format(self.shadow_sample.normalize(), "f"),
             "agents": list(self.agents),
             "orchestrate": self.orchestrate,
+            "pm_reviewer": self.pm_reviewer,
+            "learning_analyst": self.learning_analyst,
         }
 
     @property

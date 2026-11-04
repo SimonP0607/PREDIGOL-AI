@@ -74,14 +74,13 @@ def test_a_task_says_which_prompt_which_schema_and_what_it_runs_on() -> None:
 def test_a_planned_agent_says_in_which_phase_it_is_built_and_what_it_takes_over_from() -> None:
     views, _ = ai_agents.registry()
     planned = {v.agent: v for v in views if v.status == "planned"}
-    assert planned["post_match_reviewer"].phase == 5 and planned["post_match_reviewer"].version == "pmr-v1"
-    assert planned["post_match_reviewer"].in_sync is None and planned["post_match_reviewer"].fingerprint is None, "it has no code to be in sync with"
     assert "match" not in planned, "the Match Agent is built (phase 3): it is on the page as built, with the version in force"
     assert "statistics" not in planned and "stats" not in planned, "the Statistics Agent is built (phase 4): it is on the page as built"
-    assert planned["post_match_reviewer"].replaces == "pick-postmortem-v4"
+    assert planned == {}, "phases 2 to 5 are built: every agent of the plan is on the page as built (only the postponed one is left)"
     built = {v.agent: v for v in views if v.status == "built"}
     assert {t.task: t.model for t in built["council"].tasks} == {"council": "claude-sonnet-5-5", "escalation": "claude-opus-5-5"}
-    assert built["learning_analyst"].next_version == "la-v1" and built["learning_analyst"].next_phase == 5
+    assert built["learning_analyst"].next_version is None and built["la"].version == "la-v1" and built["la"].replaces == "learning_analyst"
+    assert built["pmr"].version == "pmr-v1" and built["pmr"].replaces == "post_match_reviewer" and built["pmr"].born_as == "CHALLENGER"
     assert (built["match"].version, built["match"].contract, built["match"].reads, built["match"].born_as) == ("match-v1", "aa-v1", "match", "CHALLENGER")
     assert built["match"].next_version is None and [t.task for t in built["match"].tasks] == ["context", "evaluation"]
     assert (built["stats"].version, built["stats"].contract, built["stats"].reads, built["stats"].born_as) == ("stats-v1", "aa-v1", "stats", "CHALLENGER")

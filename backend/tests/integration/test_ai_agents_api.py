@@ -94,10 +94,11 @@ def test_the_overview_has_the_shape_the_page_reads(world: dict[str, Any]) -> Non
     assert o["problems"] == [] and o["settings"] == {"mode": "shadow", "package": True}
     built = {r["agent"]: r for r in o["registry"] if r["status"] == "built"}
     assert {"brief", "reviewer", "extractor", "postmortem", "post_match_reviewer", "learning_analyst", "claim_extractor",
-            "match", "council", "stats"} == set(built)
+            "match", "council", "stats", "pmr", "la"} == set(built)
     assert all(r["in_sync"] is True for r in built.values())
-    assert all((built[a]["born_as"], built[a]["baseline"]) == ("CHALLENGER", False) for a in ("match", "council", "stats")), (
-        "the match agent, the council and the statistics agent are born challengers in shadow: they replace nobody")
+    assert all((built[a]["born_as"], built[a]["baseline"]) == ("CHALLENGER", False) for a in ("match", "council", "stats", "pmr", "la")), (
+        "the match agent, the council, the statistics agent and the reviewers of phase 5 are born challengers: they replace nobody")
+    assert (built["pmr"]["replaces"], built["la"]["replaces"]) == ("post_match_reviewer", "learning_analyst")
     challenger = built["claim_extractor"]
     assert (challenger["born_as"], challenger["baseline"], challenger["replaces"]) == ("CHALLENGER", False, "extractor"), (
         "research v2's extractor is not the baseline: it runs beside the extractor of today and takes over only by a row the owner signs")
@@ -159,3 +160,18 @@ def test_a_match_without_a_state_is_an_empty_answer_with_its_reason(world: dict[
 @pytest.mark.parametrize("fixture", ["0", "-3", "abc", str(2**63)])
 def test_a_fixture_that_cannot_be_one_is_refused(world: dict[str, Any], fixture: str) -> None:
     assert client_for("SUPER_ADMIN").get(f"/api/v1/admin/ai/matches/{fixture}/state").status_code == 422
+
+
+def test_the_attribution_route_is_the_owners_and_has_the_shape_the_page_reads(world: dict[str, Any]) -> None:
+    user, owner = client_for("USER"), client_for("SUPER_ADMIN")
+    path = "/api/v1/admin/ai/attribution"
+    assert user.get(path).status_code == 403
+    res = owner.get(path, params={"days": 7})
+    assert res.status_code == 200, res.text
+    assert "sk-must-never-leak" not in res.text
+    o = res.json()["data"]
+    assert set(o) == {"switches", "coverage", "scoreboard", "classes", "postmortems", "hypotheses", "hypothesis_counts", "days"}
+    assert o["days"] == 7 and o["coverage"]["bar"] == 0.95
+    assert (o["switches"]["pm_reviewer"], o["switches"]["learning_analyst"]) == (False, False), "off unless the owner says so"
+    for bad in (0, 61, "week"):
+        assert owner.get(path, params={"days": bad}).status_code == 422, bad

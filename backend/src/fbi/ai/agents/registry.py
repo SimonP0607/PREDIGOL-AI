@@ -40,7 +40,7 @@ from typing import Any, Final, Literal
 from fbi.ai import claims, prompts, router
 from fbi.ai.config import TIERS, Tier
 from fbi.ai.contracts import CONTRACTS, schema_of
-from fbi.ai.contracts.base import ASSESSMENT, CLAIM, COUNCIL, OUTPUTS
+from fbi.ai.contracts.base import ASSESSMENT, CLAIM, COUNCIL, LEARNING, OUTPUTS, POST_MATCH
 from fbi.ai.contracts.mcp import SLICE_NAMES, PassKind
 from fbi.ai.idempotency import EFFORTS, Effort, TaskIdentity, Workspace
 from fbi.ai.pricing import PRICES
@@ -286,6 +286,14 @@ def _learning() -> Definition:
     return Definition(prompts.LEARNING_VERSION, prompts.LEARNING_SYSTEM, prompts.LEARNING_VERSION, prompts.LEARNING_SCHEMA)
 
 
+def _pmr() -> Definition:
+    return Definition(prompts.PMR_VERSION, prompts.PMR_SYSTEM, POST_MATCH, schema_of(POST_MATCH))
+
+
+def _la() -> Definition:
+    return Definition(prompts.LA_VERSION, prompts.LA_SYSTEM, LEARNING, schema_of(LEARNING))
+
+
 def _council() -> Definition:
     return Definition(prompts.COUNCIL_VERSION, prompts.COUNCIL_SYSTEM, COUNCIL, schema_of(COUNCIL))
 
@@ -331,15 +339,20 @@ AGENTS: Final[tuple[AgentSpec, ...]] = (
                BuiltTask("escalation", router.SPECS["escalation"].effort, _council_opus,
                          model=router.MODELS[router.SPECS["escalation"].level])),
               contract=COUNCIL, reads="council_view"),
+    AgentSpec("pmr", "The Post-Match Reviewer (phase 5): after the result, the class of the misses the attribution of the code left UNKNOWN and a short "
+              "narrative for the owner, in pmr-v1. Haiku for the narrative, Sonnet for the losses worth explaining; Batch, LAB. It runs beside "
+              "post_match_reviewer (pick-postmortem-v4) and takes over from it only by the owner's signature.",
+              (BuiltTask("narrative", router.SPECS["narrative"].effort, _pmr, model=router.MODELS[router.SPECS["narrative"].level]),
+               BuiltTask("loss_review", router.SPECS["loss_review"].effort, _pmr, model=router.MODELS[router.SPECS["loss_review"].level])),
+              contract=POST_MATCH, reads="settled_match", replaces="post_match_reviewer"),
+    AgentSpec("la", "The Learning Analyst (phase 5): at most five hypotheses a week, each for one version of one agent and each citing the attributions "
+              "it rests on, in la-v1. It only proposes. Sonnet; Batch, LAB, Mondays. It runs beside learning_analyst (learning-v2) and takes over from "
+              "it only by the owner's signature.",
+              (BuiltTask("analyst", router.SPECS["analyst"].effort, _la, model=router.MODELS[router.SPECS["analyst"].level]),),
+              contract=LEARNING, reads="week", replaces="learning_analyst"),
 )
 
 PLANNED: Final[tuple[PlannedAgent, ...]] = (
-    PlannedAgent("post_match_reviewer", "pmr-v1", "The Post-Match Reviewer: which signal of which agent was right, the class of the error, after settlement.", 5,
-                 "pmr-v1", (PlannedTask("narrative", "claude-haiku-5-5", "low", "pmr-v1"),
-                            PlannedTask("loss_review", "claude-sonnet-5-5", "medium", "pmr-v1")),
-                 reads="settled_match", replaces="pick-postmortem-v4"),
-    PlannedAgent("learning_analyst", "la-v1", "The Learning Analyst: at most five hypotheses a week, each with its evidence; it only proposes.", 5, "la-v1",
-                 (PlannedTask("analyst", "claude-sonnet-5-5", "medium", "la-v1"),), reads="week", replaces="learning-v2"),
 )
 
 POSTPONED: Final[tuple[PostponedAgent, ...]] = (
@@ -401,6 +414,19 @@ LEDGER: Final[tuple[Registration, ...]] = (
                         "until the owner signs a row in intel.promotions for its family.",
                  fingerprint="aga50a72bba7",
                  parts={"evaluation": Part("stats-assess-v1", "3e902d08074b", "aa-v1", "ab5f098304ef")}),
+    Registration(agent="pmr", version="pmr-v1", registered_at=datetime(2026, 11, 3, 13, 0, tzinfo=UTC), decided_by="owner", phase="IA-5",
+                 reason="Built under the Plan Maestro IA the owner approved in full (phase 5, section 12): after the result, the class of the misses the "
+                        "attribution of the code left UNKNOWN and a short narrative, in pmr-v1, Haiku for the narrative and Sonnet for the losses worth "
+                        "explaining, in the Batch of the LAB. It is born CHALLENGER and takes over from pick-postmortem-v4 only by a row the owner signs.",
+                 fingerprint="ag1181bf8275",
+                 parts={"loss_review": Part("pmr-v1", "1a3e7572d971", "pmr-v1", "a57a3df3f837"),
+                        "narrative": Part("pmr-v1", "1a3e7572d971", "pmr-v1", "a57a3df3f837")}),
+    Registration(agent="la", version="la-v1", registered_at=datetime(2026, 11, 3, 13, 1, tzinfo=UTC), decided_by="owner", phase="IA-5",
+                 reason="Built under the Plan Maestro IA the owner approved in full (phase 5, section 13): once a week, at most five hypotheses, each for "
+                        "one version of one agent and each citing the attributions it rests on, in la-v1, Sonnet, in the Batch of the LAB. It only "
+                        "proposes; it is born CHALLENGER and takes over from learning-v2 only by a row the owner signs.",
+                 fingerprint="agcf22e218b2",
+                 parts={"analyst": Part("la-v1", "e3746420c593", "la-v1", "1daff1cc3c97")}),
 )
 """Oldest first, by agent; the last entry of an agent is its version in force. To change an agent - a prompt, a schema, a model, an effort - change
 it, add the entry below the last one of the agent and bump the label of the prompt that changed, in the same commit."""

@@ -91,7 +91,7 @@ FAILED = ("errored", "canceled", "expired")
 
 Handler = Callable[[psycopg.Connection[Any], "Resolved"], None]
 _HANDLERS: dict[str, Handler] = {}
-_MODULES = ("fbi.ai.review", "fbi.ai.lab")
+_MODULES = ("fbi.ai.review", "fbi.ai.lab", "fbi.ai.agents.pmr", "fbi.ai.agents.analyst")
 """The modules that register the handlers: imported on first use, so the worker's poll never depends on who imported what."""
 
 ITEMS_SQL = """

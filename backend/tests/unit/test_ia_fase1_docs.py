@@ -233,7 +233,9 @@ def test_every_variable_the_guide_names_is_read_by_the_code() -> None:
 # ── 2. the six contracts ──────────────────────────────────────────────────────────────────────────────────────────
 
 WRITERS = {"claim_extractor": "extractor", "match": "Match Agent", "stats": "Statistics Agent", "council": "Council",
-           "post_match_reviewer": "Post-Match Reviewer", "learning_analyst": "Learning Analyst"}
+           "pmr": "Post-Match Reviewer", "la": "Learning Analyst"}
+"""The agents that write each contract, by the id the registry gives them: the Post-Match Reviewer and the Learning Analyst were planned as
+``post_match_reviewer`` and ``learning_analyst`` and are built (phase 5) as ``pmr`` and ``la``, which replace them."""
 
 LIMITS: dict[str, tuple[tuple[int, ...], tuple[str, ...]]] = {
     "afirmaciones por respuesta": ((claim.CLAIMS_MAX,), ("claim-v1",)),
@@ -500,10 +502,12 @@ def test_the_fields_of_the_key_are_the_fields_in_the_order_the_code_hashes() -> 
 
 # ── 7. the registry ───────────────────────────────────────────────────────────────────────────────────────────────
 
-BUILT_AFTER_THE_GUIDE = ("council", "stats")
-"""The agents the plan built after this guide was written (phase 3: the Council; phase 4: the Statistics Agent): the registry holds them and the
-guide still lists them as planned (the Statistics Agent as ``statistics``). What they are is said by the guide of their phase."""
+BUILT_AFTER_THE_GUIDE = ("council", "stats", "pmr", "la")
+"""The agents the plan built after this guide was written (phase 3: the Council; phase 4: the Statistics Agent; phase 5: ``pmr`` and ``la``): the
+registry holds them and the guide still lists them as planned (the Statistics Agent as ``statistics``). What they are is said by the guide of their phase."""
 NAME_IN_THE_GUIDE = {"statistics": "stats"}
+REPLACED_AFTER_THE_GUIDE = ("post_match_reviewer", "learning_analyst")
+"""The ids under which the guide lists the two agents of phase 5 as planned: the registry has them as ``pmr`` and ``la`` (``replaces``)."""
 
 
 def test_the_agents_of_today_are_the_baseline_of_the_ledger() -> None:
@@ -520,6 +524,7 @@ def test_the_agents_of_today_are_the_baseline_of_the_ledger() -> None:
     # what the plan has built since is another sentence of the bullet: born CHALLENGER, never a baseline
     since = [r for r in ledger if not r.baseline]
     assert [(r.agent, r.version) for r in since] == [("claim_extractor", EXTRACT_V2_VERSION), ("match", "match-v1")]
+    assert {r.agent: r.replaces for r in registry.REGISTRY.agents if r.agent in ("pmr", "la")} == {"pmr": "post_match_reviewer", "la": "learning_analyst"}
     assert all(r.born_as == "CHALLENGER" and re.fullmatch(r"ag[0-9a-f]{10}", r.fingerprint) for r in since)
     assert "Desde la fase 2 hay un séptimo**, `claim_extractor` (`extract-v2`)" in bullet and "**nace CHALLENGER**" in bullet
     assert "Desde la fase 3 hay un octavo**, `match` (`match-v1`)" in bullet and "también **nace CHALLENGER**" in bullet
@@ -529,7 +534,8 @@ def test_the_agents_of_today_are_the_baseline_of_the_ledger() -> None:
 
 
 def test_the_planned_agents_of_the_guide_are_the_planned_agents_of_the_registry() -> None:
-    rows = [r for r in table(section(7), "| Agente") if NAME_IN_THE_GUIDE.get(ticked(r[0]), ticked(r[0])) not in BUILT_AFTER_THE_GUIDE]
+    rows = [r for r in table(section(7), "| Agente")
+            if NAME_IN_THE_GUIDE.get(ticked(r[0]), ticked(r[0])) not in (*BUILT_AFTER_THE_GUIDE, *REPLACED_AFTER_THE_GUIDE)]
     planned = registry.REGISTRY.planned
     assert [(ticked(r[0]), ticked(r[1]), int(r[2]), ticked(r[3])) for r in rows] == [(p.agent, p.version, p.phase, p.contract) for p in planned]
 

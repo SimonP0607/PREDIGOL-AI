@@ -265,12 +265,13 @@ def research(conn: Conn, *, day: date | None = None) -> Envelope[list[ResearchRo
     return listing(rows, empty_reason="no_research_today")
 
 
-NARRATIVE_SQL = """COALESCE((SELECT n.narrative FROM ai.postmortem_narratives n WHERE n.postmortem_id = pm.id ORDER BY n.id DESC LIMIT 1),
+NARRATIVE_SQL = """COALESCE((SELECT n.narrative FROM ai.postmortem_narratives n WHERE n.postmortem_id = pm.id AND n.version <> 'pmr-v1' ORDER BY n.id DESC LIMIT 1),
                 (SELECT lp.narrative FROM ai.pick_postmortems lp
                   WHERE lp.fixture_id = pm.fixture_id AND lp.market_key = pm.market_key AND lp.selection = pm.selection
                     AND lp.line = pm.line AND lp.narrative IS NOT NULL ORDER BY lp.id DESC LIMIT 1))"""
 """The narrative of a post-mortem ``pm`` of ``intel.selection_postmortems`` (plan F8): the one a language model wrote for it
-(``ai.postmortem_narratives``) or, for a selection studied before F8, the one the first post-mortem by selection wrote."""
+(``ai.postmortem_narratives``) or, for a selection studied before F8, the one the first post-mortem by selection wrote.
+The Post-Match Reviewer's (``pmr-v1``, phase 5) is kept apart: it has its own view and this one reads what it always read."""
 
 POSTMORTEMS_SQL = f"""
 SELECT pm.id, pm.fixture_id, th.name || ' - ' || ta.name AS match, c.name AS competition, f.kickoff_at, pm.market_key,

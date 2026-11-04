@@ -1749,6 +1749,127 @@
     "on": "Puesta",
     "missing": "Falta"
   },
+  "attribution": {
+    "title": "Atribución",
+    "subtitle": "Qué agente, en qué versión, acertó o falló en cada selección liquidada de la sombra. Solo lectura.",
+    "intro": "La atribución la calcula el servidor desde códigos, sin modelo: no cambia ninguna selección, regla ni modelo. Las cifras son conteos; estar por encima de la barra solo dice que hay datos, la Puerta B la decide el dueño. La narrativa y las hipótesis las escribió la IA: se muestran, nunca se miden.",
+    "switches": {
+      "title": "Interruptores",
+      "hint": "Apagados salvo que el dueño los encienda en app.env.",
+      "reviewer": "Revisor posterior y atribución diaria (FBI_AI_PM_REVIEWER)",
+      "analyst": "Analista de aprendizaje (FBI_AI_LEARNING_ANALYST)",
+      "on": "Encendido",
+      "off": "Apagado"
+    },
+    "coverage": {
+      "title": "Cobertura de la atribución, últimos {days} días",
+      "hint": "De los partidos terminados que un motor de la sombra revisó, los que tienen atribuciones. Barra del plan para la Puerta B: {bar}.",
+      "matches": "Partidos con atribución",
+      "selections": "Selecciones con atribución",
+      "of": "{n} de {total}",
+      "bar": "Barra del plan",
+      "state": {
+        "none": "No hay partidos que juzgar en esta ventana.",
+        "below": "Por debajo de la barra del plan.",
+        "reached": "En o por encima de la barra del plan; la puerta no la decide esta página."
+      }
+    },
+    "score": {
+      "title": "Aciertos y fallos por agente y versión",
+      "hint": "Un acierto es una postura (a favor o en contra) que coincidió con el resultado liquidado; el anulado no cuenta.",
+      "empty": "Aún no hay atribuciones en esta ventana."
+    },
+    "classes": {
+      "title": "Clases de los fallos del veredicto",
+      "hint": "La clase la fija el código desde el post-mortem; «refinados» son los UNKNOWN a los que el revisor añadió una clase en una segunda fila."
+    },
+    "col": {
+      "agent": "Agente",
+      "engine": "Motor",
+      "hits": "Aciertos",
+      "misses": "Fallos",
+      "voids": "Anulados",
+      "rate": "Tasa",
+      "class": "Clase",
+      "n": "Casos",
+      "refined": "Refinados",
+      "signal": "Señal",
+      "stance": "Postura",
+      "outcome": "Resultado",
+      "close": "Hacia el cierre",
+      "proposed": "Propuestas",
+      "accepted": "Aceptadas",
+      "rejected": "Rechazadas",
+      "other": "Abiertas"
+    },
+    "class": {
+      "MODEL_ERROR": "Error del modelo",
+      "CONTEXT_ERROR": "Error de contexto",
+      "DATA_ERROR": "Error de datos",
+      "MARKET_ERROR": "Error de mercado",
+      "EXECUTION_ERROR": "Error de ejecución",
+      "NORMAL_VARIANCE": "Varianza normal",
+      "UNKNOWN": "Sin clasificar",
+      "NONE": "Ninguna"
+    },
+    "outcome": {
+      "HIT": "Acierto",
+      "MISS": "Fallo",
+      "VOID": "Anulado"
+    },
+    "stance": {
+      "FOR": "A favor",
+      "AGAINST": "En contra",
+      "NONE": "Sin postura"
+    },
+    "signal": {
+      "VERDICT": "Veredicto"
+    },
+    "settled": {
+      "won": "Ganada",
+      "lost": "Perdida",
+      "half_won": "Media ganada",
+      "half_lost": "Media perdida",
+      "push": "Devuelta",
+      "void": "Anulada"
+    },
+    "calib": {
+      "MODEL_BETTER": "El modelo se acercó más",
+      "MARKET_BETTER": "El mercado se acercó más",
+      "EQUAL": "Igual"
+    },
+    "close": {
+      "toward": "Sí",
+      "away": "No"
+    },
+    "refined": "Refinada por el revisor: {klass}",
+    "clv": "CLV",
+    "calibration": "Calibración",
+    "narrative": "Narrativa del revisor (escrita por la IA, solo se muestra)",
+    "postmortems": {
+      "title": "Post-mortems con atribución",
+      "hint": "Primero los que tienen fallos del veredicto. Cada fila es lo que hizo un agente ante esa selección.",
+      "empty": "Ningún post-mortem tiene atribución en esta ventana."
+    },
+    "hypotheses": {
+      "title": "Hipótesis por versión",
+      "hint": "Cada una es de una versión de un agente y cita las atribuciones en que se apoya. El analista solo propone: no promueve nada.",
+      "empty": "El analista aún no ha propuesto hipótesis."
+    },
+    "hstatus": {
+      "PROPOSED": "Propuesta",
+      "INVESTIGATING": "En estudio",
+      "ACCEPTED": "Aceptada",
+      "REJECTED": "Rechazada",
+      "RUNNING": "En experimento",
+      "SHADOW": "En sombra",
+      "DONE": "Terminada",
+      "PROMOTED": "Promovida"
+    },
+    "cites": "Atribuciones citadas ({n})",
+    "week": "Semana desde",
+    "experiment": "Experimento propuesto (borrador, no ejecutado)"
+  },
   "arms": {
     "title": "Sombra con brazos",
     "subtitle": "Los siete brazos del experimento sobre las mismas selecciones. Solo lectura.",

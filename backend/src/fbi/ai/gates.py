@@ -137,6 +137,17 @@ def shadow_words(settings: AiSettings) -> dict[str, str]:
     return words
 
 
+def phase5_words(settings: AiSettings) -> dict[str, bool]:
+    """The two words of phase 5 (``FBI_AI_PM_REVIEWER``, ``FBI_AI_LEARNING_ANALYST``) - only the ones that are on. Off is the default and a default is not
+    written, for the reason ``shadow_words`` gives: putting the code in place is not a change of the owner's words; switching one on, or back off, is."""
+    words: dict[str, bool] = {}
+    if settings.pm_reviewer:
+        words["pm_reviewer"] = True
+    if settings.learning_analyst:
+        words["learning_analyst"] = True
+    return words
+
+
 def switch_words(settings: AiSettings) -> dict[str, Any]:
     """The owner's words that decide what the layer does, exactly as the running process holds them: the mode, the five switches, the package
     job, research v2, the model of each tier and the three monthly envelopes - and, once the owner has moved them, the words of the shadow of
@@ -150,6 +161,7 @@ def switch_words(settings: AiSettings) -> dict[str, Any]:
         "budgets_usd": {"production": _figure(settings.monthly_budget), "lab": _figure(settings.lab_monthly_budget),
                         "exa": _figure(settings.exa_monthly_budget)},
         **shadow_words(settings),
+        **phase5_words(settings),
     }
 
 

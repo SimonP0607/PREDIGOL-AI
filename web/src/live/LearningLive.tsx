@@ -11,6 +11,7 @@
  *   MERCADOS          the discovery of markets, the clock of the prices and the matrix of markets by family
  *   FAMILIAS          corners, cards, yellow cards and the goals of the halves deciding in shadow: what they said, how it was graded, what became of it
  *   LA IA FRENTE AL MODELO   the model alone, with rules, with the AI and the market on the same settled selections
+ *   ATRIBUCIÓN        which agent, in which version, was right or wrong (computed from codes), the coverage of Gate B and the hypotheses per version
  *
  * Nothing here changes a rule, a model or a pick by itself: every change goes through an experiment, a backtest, shadow and the owner.
  */
@@ -26,6 +27,7 @@ import { useStrayRedirect } from "./useStrayRedirect";
 import { ShadowBanner } from "./AiBits";
 import { ComparisonPanel, ShadowTab } from "./AiLayerLive";
 import { ShadowArmsPanel } from "./ShadowArmsPanel";
+import { AttributionPanel } from "./AttributionPanel";
 import { CloseTab } from "./AiResearchLive";
 import { AI_TZ } from "./aiModel";
 import { ExperimentsView, LearnedDay } from "./EvolutionLive";
@@ -70,6 +72,7 @@ export function LearningLive() {
           <ShadowArmsPanel />
         </div>
       ) : null}
+      {tab === "attribution" ? <AttributionPanel /> : null}
     </div>
   );
 }

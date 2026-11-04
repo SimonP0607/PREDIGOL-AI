@@ -374,6 +374,13 @@ function HypothesisCard({ h }: { h: Hypothesis }) {
         {h.target ? (
           <StatusBadge tone="neutral">{t(`ai.evolution.target.${h.target}`)}</StatusBadge>
         ) : null}
+        {h.agent && h.agent_version ? (
+          <StatusBadge tone="info" dot={false}>
+            <span data-testid="hypothesis-agent">
+              {h.agent} · {h.agent_version}
+            </span>
+          </StatusBadge>
+        ) : null}
         <span className="text-caption text-subtle-foreground">{utcDateTime(h.created_at)}</span>
       </div>
       <p className="text-sm font-medium">{h.title}</p>

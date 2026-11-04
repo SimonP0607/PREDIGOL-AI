@@ -7,6 +7,11 @@
 --                       gives the role its privileges. The worker reaches it with SET ROLE: the membership carries SET and not
 --                       INHERIT, so the worker does not get the role's privileges until it asks for them, and then it has ONLY
 --                       those - it cannot promote, and it cannot write any other entity.
+--   predigol_learning   NOLOGIN. The Learning Analyst (la-v1, Plan Maestro IA phase 5): the hypotheses it proposes are written as this role. It
+--                       reads and inserts into analytics.research_hypotheses and has nothing else anywhere: it cannot write intel.promotions
+--                       (it has no privilege on it, and the row policy of migration 0111 would refuse it anyway), so an analyst that is mistaken or
+--                       manipulated can propose a hypothesis and cannot promote anything. Reached with SET ROLE, as predigol_rollback is. A cluster
+--                       where this role does not exist yet still runs the analyst as the worker, which cannot sign an agent promotion either.
 --
 -- Run it as the superuser, inside the database container, from the checkout (the same way grants.sql travels, on stdin):
 --
@@ -22,7 +27,12 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'predigol_rollback') THEN
     CREATE ROLE predigol_rollback NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'predigol_learning') THEN
+    CREATE ROLE predigol_learning NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+  END IF;
 END
 $roles$;
 COMMENT ON ROLE predigol_rollback IS 'PrediGol: writes only the automatic demotion of a champion agent in intel.promotions (reached with SET ROLE)';
 GRANT predigol_rollback TO predigol_worker WITH INHERIT FALSE, SET TRUE;
+COMMENT ON ROLE predigol_learning IS 'PrediGol: the Learning Analyst writes only hypotheses (analytics.research_hypotheses), never a promotion (reached with SET ROLE)';
+GRANT predigol_learning TO predigol_worker WITH INHERIT FALSE, SET TRUE;

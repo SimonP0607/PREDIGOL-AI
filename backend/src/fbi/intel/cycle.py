@@ -305,10 +305,21 @@ def run_weekly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
 
         return pattern_search.weekly(conn, at=at)
 
+    def _learning_analyst() -> dict[str, Any]:
+        from fbi.ai.agents import analyst
+        from fbi.ai.config import AiSettings
+
+        settings = AiSettings.from_env()
+        if not settings.learning_analyst:
+            return {"skipped": "switch_off"}
+        return analyst.run(conn, settings, at=at)
+
     # the catalogue first (the links of the definitions are what the discovery reads), the matrix after it (it reads the registry the
     # discovery has just written), the search for patterns last (it only reads the decisions, and does nothing unless FBI_PATTERN_SEARCH
-    # says so); a step that fails does not stop the others
-    return _run(conn, "weekly", at, [("catalogue", _catalogue), ("discovery", _discovery), ("matrix", _matrix), ("patterns", _patterns)])
+    # says so); the Learning Analyst (phase 5: it reads the week's attributions, sends them to the Batch of the LAB and writes nothing now) sits
+    # before the matrix, and does nothing unless FBI_AI_LEARNING_ANALYST says so; a step that fails does not stop the others
+    return _run(conn, "weekly", at, [("catalogue", _catalogue), ("discovery", _discovery), ("learning_analyst", _learning_analyst),
+                                     ("matrix", _matrix), ("patterns", _patterns)])
 
 
 # ── the hypotheses the calibration experiment answers ────────────────────────────────────────────────────────────

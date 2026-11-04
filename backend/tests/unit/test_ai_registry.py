@@ -119,10 +119,9 @@ def test_what_the_plan_builds_is_what_the_router_and_the_contracts_can_run() -> 
 def test_the_plan_gives_each_agent_its_phase_and_its_prompts() -> None:
     by_agent = {(p.agent, p.version): p for p in PLANNED}
     assert {k: v.phase for k, v in by_agent.items()} == {
-        ("post_match_reviewer", "pmr-v1"): 5, ("learning_analyst", "la-v1"): 5}, "phases 2, 3 and 4 are built: the extractor, the Match Agent, the Council and the Statistics Agent left the plan for the code"
-    assert {(p.agent, p.contract) for p in PLANNED} == {("post_match_reviewer", "pmr-v1"), ("learning_analyst", "la-v1")}
-    assert {p.agent: p.replaces for p in PLANNED if p.replaces} == {
-        "post_match_reviewer": "pick-postmortem-v4", "learning_analyst": "learning-v2"}
+        }, "phases 2 to 5 are built: the extractor, the Match Agent, the Council, the Statistics Agent and the two agents of the learning left the plan for the code"
+    assert {(p.agent, p.contract) for p in PLANNED} == set()
+    assert {p.agent: p.replaces for p in PLANNED if p.replaces} == {}
 
 
 def test_the_council_judges_with_sonnet_and_opus_only_by_escalation_and_the_match_agent_reads_with_haiku() -> None:
@@ -130,7 +129,8 @@ def test_the_council_judges_with_sonnet_and_opus_only_by_escalation_and_the_matc
     assert models[("council", "council")] == "claude-sonnet-5-5"
     assert models[("council", "escalation")] == "claude-opus-5-5"
     assert models[("match", "context")] == models[("match", "evaluation")] == models[("stats", "evaluation")] == "claude-haiku-5-5"
-    assert models[("learning_analyst", "analyst")] == "claude-sonnet-5-5"
+    assert models[("la", "analyst")] == "claude-sonnet-5-5"
+    assert models[("pmr", "narrative")] == "claude-haiku-5-5" and models[("pmr", "loss_review")] == "claude-sonnet-5-5"
     assert "claude-fable-5-1" not in set(models.values()), "Fable is the owner's own research: no agent runs on it"
 
 
@@ -157,15 +157,21 @@ def test_the_ledger_starts_every_agent_of_today_as_a_baseline_champion() -> None
 def test_an_agent_built_after_the_baseline_is_born_a_challenger_with_a_reason_and_replaces_one_of_the_registry() -> None:
     """Phase 2 builds the claim extractor beside the extractor of today: the same registry holds both, the switch of the phase decides which runs,
     and only a row the owner signs in ``intel.promotions`` makes the new one the champion. Phase 3 builds the Match Agent and the Council, born
-    the same way; neither replaces an agent of the registry. Phase 4 builds the Statistics Agent, born a challenger too."""
+    the same way; neither replaces an agent of the registry. Phase 4 builds the Statistics Agent, born a challenger too. Phase 5 builds the Post-Match
+    Reviewer (``pmr``) and the Learning Analyst (``la``) beside the two of today (``post_match_reviewer``, ``learning_analyst``): the registry holds one
+    version of an agent - the one the code has - and the code still has pick-postmortem-v4 and learning-v2 until the owner signs, so the new versions
+    are agents of their own that REPLACE the old ones."""
     built = {s.agent for s in AGENTS} - set(BASELINE_AGENTS)
-    assert built == {"claim_extractor", "match", "council", "stats"}
+    assert built == {"claim_extractor", "match", "council", "stats", "pmr", "la"}
     for agent in built:
         (entry,) = REGISTRY.history(agent)
         assert not entry.baseline and entry.born_as == "CHALLENGER" and entry.decided_by in rg.DECIDERS
         assert len(entry.reason) >= rg.MIN_REASON
-        assert entry.phase == {"claim_extractor": "IA-2", "match": "IA-3", "council": "IA-3", "stats": "IA-4"}[agent]
-    assert {s.agent: s.replaces for s in AGENTS if s.replaces} == {"claim_extractor": "extractor"}
+        assert entry.phase == {"claim_extractor": "IA-2", "match": "IA-3", "council": "IA-3", "stats": "IA-4", "pmr": "IA-5", "la": "IA-5"}[agent]
+    assert {s.agent: s.replaces for s in AGENTS if s.replaces} == {
+        "claim_extractor": "extractor", "pmr": "post_match_reviewer", "la": "learning_analyst"}
+    assert (REGISTRY.in_force("pmr").version, REGISTRY.in_force("la").version) == ("pmr-v1", "la-v1")
+    assert (REGISTRY.in_force("post_match_reviewer").version, REGISTRY.in_force("learning_analyst").version) == ("pick-postmortem-v4", "learning-v2")
     assert REGISTRY.spec("claim_extractor").contract == "claim-v1"
     assert REGISTRY.in_force("claim_extractor").version == "extract-v2" and REGISTRY.in_force("extractor").version == "extract-v1"
 
@@ -482,11 +488,15 @@ def planned_with(**kw: Any) -> Registry:
     ({"tasks": (PlannedTask("evaluation", "claude-haiku-9-9", "medium", "scout-assess-v1"),)}, "model"),
     ({"tasks": (PlannedTask("evaluation", "claude-haiku-5-5", "low", "scout-assess-v1"),)}, "effort"),
     ({"tasks": (PlannedTask("evaluation", "claude-haiku-5-5", "medium", "assess"),)}, "prompt_label"),
-    ({"tasks": (PlannedTask("evaluation", "claude-haiku-5-5", "medium", "pmr-v1"),)}, "planned_label"),  # a label another planned agent has
 ])
 def test_a_plan_that_the_router_the_contracts_or_the_price_list_cannot_run_is_found(change: dict[str, Any], code: str) -> None:
     assert codes(planned_with()) == set(), "the same plan without a defect is clean"
     assert code in codes(planned_with(**change))
+
+
+def test_two_planned_agents_never_share_a_prompt_label() -> None:
+    other = replace(plan(), agent="other", version="other-v1")
+    assert "planned_label" in codes(with_(planned=(*PLANNED, plan(), other)))
 
 
 def test_the_phases_of_the_plan_run_from_the_second_to_the_tenth() -> None:
@@ -656,13 +666,12 @@ def test_the_snapshot_lists_what_is_built_then_what_is_planned_then_what_is_post
     built = {r["agent"]: r for r in rows if r["status"] == "built"}
     assert all(r["in_sync"] for r in built.values())
     assert built["brief"]["version"] == "brief-v8" and built["brief"]["retire_phase"] == 9 and built["brief"]["next_version"] is None
-    assert built["learning_analyst"]["next_version"] == "la-v1" and built["learning_analyst"]["next_phase"] == 5
+    assert built["learning_analyst"]["next_version"] is None and built["la"]["replaces"] == "learning_analyst" and built["la"]["version"] == "la-v1"
     assert built["reviewer"]["tasks"][1] == {"task": "review_final", "prompt_version": "review-v2", "schema_version": "review-v2", "model": None,
                                              "tier": "final", "effort": "medium"}
     assert built["council"]["tasks"][1] == {"task": "escalation", "prompt_version": "council-opus-v1", "schema_version": "cd-v1",
                                             "model": "claude-opus-5-5", "tier": None, "effort": "medium"}
-    planned = {(r["agent"], r["version"]): r for r in rows if r["status"] == "planned"}
-    assert planned[("post_match_reviewer", "pmr-v1")]["replaces"] == "pick-postmortem-v4"
+    assert built["pmr"]["replaces"] == "post_match_reviewer" and built["pmr"]["born_as"] == "CHALLENGER" and built["pmr"]["reads"] == "settled_match"
 
 
 def test_the_snapshot_shows_the_version_in_force_and_the_versions_before_it() -> None:

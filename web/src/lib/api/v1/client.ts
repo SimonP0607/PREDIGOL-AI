@@ -4,6 +4,7 @@ import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
 import type { AgentsOverview, MatchState } from "./types_ai_agents";
+import type { AttributionOverview } from "./types_ai_attribution";
 import type { EntityResearchOverview } from "./types_ai_research";
 import type {
   AgentRuns,
@@ -579,6 +580,9 @@ export const v1 = {
   aiShadow: () => getJson<Envelope<ShadowReportRow[]>>("/admin/ai/shadow"),
   /** The seven arms of the shadow (plan IA phase 3) side by side over the last `days`, the assignments and the "enough data" counts. Reading only. */
   aiShadowArms: (days = 30) => getJson<Envelope<ShadowArms>>("/admin/ai/shadow/arms", { days }),
+  /** Plan IA, phase 5: the attribution of the shadow, the coverage of Gate B and the hypotheses by agent and version. */
+  aiAttribution: (days = 14) =>
+    getJson<Envelope<AttributionOverview>>("/admin/ai/attribution", { days }),
   /** C01-C08 of the shadow: counts by code, what the Council did with what they touch, and the most recent ones. */
   aiContradictions: (q: { days?: number; code?: ContraCode | undefined; limit?: number } = {}) =>
     getJson<Envelope<Contradictions>>("/admin/ai/contradictions", q as Params),

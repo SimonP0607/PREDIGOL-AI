@@ -104,6 +104,8 @@ class Hypothesis(Contract):
     stage_history: list[dict[str, Any]] = Field(default_factory=list, description="Every move, who and when.")
     outcome: dict[str, Any] | None = Field(default=None, description="The experiment's judged result "
                                            "(gate_passed decides whether it can be promoted).")
+    agent: str | None = Field(default=None, description="The agent of the layer the hypothesis is about (plan IA, phase 5); None for the older ones.")
+    agent_version: str | None = Field(default=None, description="The version of that agent; set together with the agent or not at all.")
 
 
 class MemoryEntry(Contract):

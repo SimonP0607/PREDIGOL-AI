@@ -489,7 +489,8 @@
       "calibration": "Calibración",
       "markets": "Mercados",
       "families": "Familias",
-      "shadow": "La IA frente al modelo"
+      "shadow": "La IA frente al modelo",
+      "attribution": "Atribución"
     },
     "memoryViews": {
       "entities": "Entidades",

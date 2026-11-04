@@ -142,6 +142,9 @@ export interface Hypothesis {
   stage_history?: StageMove[];
   /** The experiment's judged result; gate_passed decides whether it can be promoted. */
   outcome?: Record<string, unknown> | null;
+  /** The agent of the layer the hypothesis is about and its version (plan IA, phase 5); absent in the older ones. */
+  agent?: string | null;
+  agent_version?: string | null;
 }
 
 export interface MemoryEntry {
