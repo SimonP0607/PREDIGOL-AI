@@ -27,7 +27,7 @@ export type CalendarLoad =
   | { status: "success"; envelope: Envelope<MatchCalendar | null> };
 
 export type CalendarScreen =
-  /** A user is not told about a calendar that is not there: not allowed yet, not loaded, not loadable. */
+  /** The owner turned it off for readers (`FBI_CALENDAR_USERS=0`): nothing to show. */
   | { kind: "nothing" }
   | { kind: "loading" }
   | { kind: "error"; error: unknown; retry?: (() => void) | undefined }
@@ -36,15 +36,13 @@ export type CalendarScreen =
   | { kind: "calendar"; data: MatchCalendar };
 
 /**
- * What the block shows. A user sees it only once the API says so (the owner decides when: `FBI_CALENDAR_USERS`), and
- * never a spinner, an error or a gap for something that may not be shown to them at all. The Admin Console's preview
- * sees every state.
+ * What the block shows. Readers see it since plan UX A9 (`FBI_CALENDAR_USERS` on unless the owner turns it off), loading
+ * and failing included; only an answer that says readers may not see it shows nothing. The preview sees every state.
  */
 export function calendarScreen(load: CalendarLoad, preview: boolean): CalendarScreen {
-  if (load.status === "pending") return preview ? { kind: "loading" } : { kind: "nothing" };
-  if (load.status === "error") {
-    return preview ? { kind: "error", error: load.error, retry: load.retry } : { kind: "nothing" };
-  }
+  // Shown to readers since A9 (the owner approved it): a reader sees it load and sees it fail, never a silent gap.
+  if (load.status === "pending") return { kind: "loading" };
+  if (load.status === "error") return { kind: "error", error: load.error, retry: load.retry };
   const { envelope } = load;
   if (envelope.status !== "ok" || !envelope.data) {
     return preview ? { kind: "none" } : { kind: "nothing" };

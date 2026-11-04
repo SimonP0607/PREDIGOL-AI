@@ -12,12 +12,14 @@ import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import { t, useI18n } from "@/lib/i18n";
 import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { GlossaryLink } from "@/components/system/GlossaryTerm";
 import { Card, EmptyState, ErrorState, PageTitle, SkeletonBlock } from "@/product/shared/States";
 import { MARKETS, marketShort, type MarketKey } from "@/product/shared/markets";
 import { Pager } from "@/product/shared/Pager";
 import { usePaged } from "@/product/shared/paging";
 import { ChipGroup, ShadowToggle, type ChipOption } from "@/product/picks/Controls";
 import { FacetPicker, SearchBox } from "@/product/matches/Filters";
+import { FilterSheet, SheetField } from "@/product/shared/FilterSheet";
 import { Highlights } from "./Highlights";
 import { OddsBoard } from "./OddsBoard";
 import {
@@ -66,14 +68,18 @@ function FairExplainer() {
             className="h-4 w-4 shrink-0 text-subtle-foreground transition-transform group-open:rotate-180"
           />
         </summary>
-        <p className="px-4 pb-3 pl-10">{t("odds.fairExplainer")}</p>
+        <p className="px-4 pb-3 pl-10">
+          {t("odds.fairExplainer")} <GlossaryLink term="fairOdds" />
+        </p>
       </details>
       <p
         className="hidden items-start gap-2 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground md:flex"
         data-testid="odds-fair-explainer"
       >
         <Scale aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <span>{t("odds.fairExplainer")}</span>
+        <span>
+          {t("odds.fairExplainer")} <GlossaryLink term="fairOdds" />
+        </span>
       </p>
     </>
   );
@@ -145,6 +151,75 @@ export function OddsPage() {
     { value: "time", label: t("odds.filters.sortTime") },
     { value: "edge", label: t("odds.filters.sortEdge") },
   ];
+
+  // Drawn in the desk's rows and in the phone's sheet (plan UX, A15).
+  const searchBox = (
+    <SearchBox
+      value={filters.query}
+      onChange={(q) => update({ query: q })}
+      placeholder={t("odds.filters.searchPlaceholder")}
+      label={t("odds.filters.search")}
+      testId="odds-search"
+    />
+  );
+  const countryPicker = (sheet: boolean) => (
+    <FacetPicker<string>
+      label={t("odds.filters.country")}
+      anyLabel={t("odds.filters.allCountries")}
+      emptyText={sheet ? t("odds.filters.allCountries") : undefined}
+      value={country}
+      options={countries}
+      onChange={(c) => update({ country: c, competition: null })}
+      icon={<Globe2 />}
+      testId="odds-country"
+    />
+  );
+  const competitionPicker = (sheet: boolean) => (
+    <FacetPicker<string>
+      label={t("odds.filters.competition")}
+      anyLabel={t("odds.filters.allCompetitions")}
+      emptyText={sheet ? t("odds.filters.allCompetitions") : undefined}
+      value={competition === null ? null : String(competition)}
+      options={competitions.map((c) => ({ ...c, key: String(c.key) }))}
+      onChange={(c) => update({ competition: c === null ? null : Number(c) })}
+      icon={<Trophy />}
+      testId="odds-competition"
+    />
+  );
+  const aboveFairChip = (
+    <button
+      type="button"
+      aria-pressed={filters.aboveFair}
+      onClick={() => update({ aboveFair: !filters.aboveFair })}
+      data-testid="odds-above-fair"
+      className={cn(
+        "tap-y relative inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        filters.aboveFair
+          ? "border-positive/50 bg-positive-soft text-positive"
+          : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",
+      )}
+    >
+      {t("odds.filters.aboveFair")}
+    </button>
+  );
+  const sortChips = (
+    <ChipGroup
+      label={t("odds.filters.sort")}
+      value={filters.sort}
+      options={sorts}
+      onChange={(sort) => update({ sort })}
+      testId="odds-sort"
+    />
+  );
+  const clearButton = (
+    <button
+      type="button"
+      onClick={() => setFilters({ ...NO_ODDS_FILTERS, sort: filters.sort })}
+      className="tap relative ml-auto inline-flex min-h-9 items-center text-xs font-medium text-primary hover:underline"
+    >
+      {t("odds.filters.clear")}
+    </button>
+  );
 
   let content;
   if (query.isPending) {
@@ -235,72 +310,42 @@ export function OddsPage() {
             </span>
           ) : null}
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <div className="col-span-2 sm:col-span-1">
-            <SearchBox
-              value={filters.query}
-              onChange={(q) => update({ query: q })}
-              placeholder={t("odds.filters.searchPlaceholder")}
-              label={t("odds.filters.search")}
-              testId="odds-search"
-            />
-          </div>
-          <FacetPicker<string>
-            label={t("odds.filters.country")}
-            anyLabel={t("odds.filters.allCountries")}
-            value={country}
-            options={countries}
-            onChange={(c) => update({ country: c, competition: null })}
-            icon={<Globe2 />}
-            testId="odds-country"
-          />
-          <FacetPicker<string>
-            className="max-[359px]:col-span-2"
-            label={t("odds.filters.competition")}
-            anyLabel={t("odds.filters.allCompetitions")}
-            value={competition === null ? null : String(competition)}
-            options={competitions.map((c) => ({ ...c, key: String(c.key) }))}
-            onChange={(c) => update({ competition: c === null ? null : Number(c) })}
-            icon={<Trophy />}
-            testId="odds-competition"
-          />
+        {/* From 1024 px the filters sit in two rows of the page; below it, in the «Filtros» sheet (plan UX, A15). The
+            market and the window stay on the page. */}
+        <div className="hidden gap-2 lg:flex lg:flex-wrap lg:items-center">
+          {searchBox}
+          {countryPicker(false)}
+          {competitionPicker(false)}
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <button
-            type="button"
-            aria-pressed={filters.aboveFair}
-            onClick={() => update({ aboveFair: !filters.aboveFair })}
-            data-testid="odds-above-fair"
-            className={cn(
-              "tap-y relative inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              filters.aboveFair
-                ? "border-positive/50 bg-positive-soft text-positive"
-                : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",
-            )}
-          >
-            {t("odds.filters.aboveFair")}
-          </button>
+        <div className="hidden flex-wrap items-center gap-x-4 gap-y-2 lg:flex">
+          {aboveFairChip}
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
             <span aria-hidden className="text-label text-subtle-foreground">
               {t("odds.filters.sort")}
             </span>
-            <ChipGroup
-              label={t("odds.filters.sort")}
-              value={filters.sort}
-              options={sorts}
-              onChange={(sort) => update({ sort })}
-              testId="odds-sort"
-            />
+            {sortChips}
           </div>
-          {filtered ? (
-            <button
-              type="button"
-              onClick={() => setFilters({ ...NO_ODDS_FILTERS, sort: filters.sort })}
-              className="tap relative ml-auto inline-flex min-h-9 items-center text-xs font-medium text-primary hover:underline"
-            >
-              {t("odds.filters.clear")}
-            </button>
-          ) : null}
+          {filtered ? clearButton : null}
+        </div>
+        <div className="flex items-center gap-3 lg:hidden">
+          <FilterSheet
+            testId="odds-filters"
+            active={
+              (effective.query.trim() !== "" ? 1 : 0) +
+              (country !== null ? 1 : 0) +
+              (competition !== null ? 1 : 0) +
+              (effective.aboveFair ? 1 : 0)
+            }
+            onReset={() => setFilters({ ...NO_ODDS_FILTERS, sort: filters.sort })}
+            showLabel={board ? t("odds.filters.show", { count: kept.length }) : undefined}
+          >
+            <SheetField label={t("odds.filters.search")}>{searchBox}</SheetField>
+            <SheetField label={t("odds.filters.country")}>{countryPicker(true)}</SheetField>
+            <SheetField label={t("odds.filters.competition")}>{competitionPicker(true)}</SheetField>
+            <div>{aboveFairChip}</div>
+            <SheetField label={t("odds.filters.sort")}>{sortChips}</SheetField>
+          </FilterSheet>
+          {filtered ? clearButton : null}
         </div>
       </div>
 

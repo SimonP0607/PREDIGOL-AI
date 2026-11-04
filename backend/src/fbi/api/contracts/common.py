@@ -11,6 +11,10 @@ MatchPhase = Literal["scheduled", "live", "suspended", "finished", "postponed", 
 """What a reader sees: the provider's code with the time guard of fbi.core.match_state."""
 ResultWaitCode = Literal["provider_pending", "provider_silent", "jobs_stalled", "provider_conflict", "result_missing"]
 """Why a match that should be over has no result (fbi.core.match_state.ResultWait)."""
+UserStatus = Literal["RECOMMENDED", "CAUTION", "NOT_RECOMMENDED", "EVALUATION"]
+"""The visible state of a pick (plan UX, B3): the states of fbi/picks/user_status.py, the one table that decides them."""
+StatusReason = Literal["approved", "value", "not_reviewed", "downgraded", "rejected", "no_value_now", "evaluation"]
+"""Why a pick's visible state is the one it is (StatusReason of fbi/picks/user_status.py)."""
 Outcome1x2 = Literal["Home", "Draw", "Away"]
 
 

@@ -1,0 +1,112 @@
+{
+  "button": "Explícame",
+  "buttonLabel": "Explícame: preguntas frecuentes sobre {what}",
+  "about": {
+    "match": "este partido",
+    "pick": "este pick",
+    "parlay": "tu parlay"
+  },
+  "title": "Explícame",
+  "description": "Respuestas con lo que PrediGol ya sabe. Sin IA y sin inventar: si falta un dato, te lo digo.",
+  "choose": "¿Qué quieres saber?",
+  "loading": "Buscando la respuesta…",
+  "failed": "No pude traer la respuesta.",
+  "retry": "Reintentar",
+  "back": "Otras preguntas",
+  "noData": "No tengo ese dato",
+  "terms": "Palabras de esta respuesta",
+  "more": "Para leer más",
+  "question": {
+    "match": {
+      "no_pick": "¿Por qué no hay pick?",
+      "forecast": "¿Qué significa este pronóstico?",
+      "risks": "¿Qué puede salir mal?"
+    },
+    "pick": {
+      "risks": "¿Qué puede salir mal?",
+      "caution": "¿Por qué cautela?"
+    },
+    "parlay": {
+      "probability": "¿Por qué baja la probabilidad de mi parlay?"
+    }
+  },
+  "other": {
+    "label": "Otra pregunta",
+    "help": "¿No está tu pregunta? Escríbenos y la tendremos en cuenta para las próximas.",
+    "action": "Escribir a PrediGol"
+  },
+  "links": {
+    "transparency": "Cómo le va a PrediGol",
+    "why_pick": "¿Por qué este pick?",
+    "glossary": "Glosario"
+  },
+  "uncalibrated": ", sin calibrar",
+  "source": {
+    "model": "según PrediGol",
+    "market": "según el mercado, sin margen"
+  },
+  "reason": {
+    "shared_team": "comparten equipo",
+    "same_competition_day": "son de la misma competición y el mismo día",
+    "measured_dependence": "sus resultados se mueven juntos"
+  },
+  "part": {
+    "no_value": "la cuota no paga lo suficiente por lo que vale",
+    "odds": "una cuota fuera del rango que usa",
+    "market": "un mercado que todavía no cubre",
+    "other": "otras reglas"
+  },
+  "say": {
+    "has_pick_one": "Este partido tiene un pick de PrediGol: ábrelo y toca «¿Por qué este pick?» para ver por qué se publicó.",
+    "has_pick_other": "Este partido tiene {count} picks de PrediGol: abre cualquiera y toca «¿Por qué este pick?» para ver por qué se publicó.",
+    "pick_rule": "PrediGol solo publica un pick cuando la cuota de una casa paga más de lo que su pronóstico dice que vale ese resultado (eso es «valor») y la selección cumple todas sus reglas. Si ninguna lo consigue, no publica nada: nunca inventa un pick para llenar el espacio.",
+    "no_pick_published": "PrediGol no publicó ningún pick de este partido.",
+    "no_pick_past": "Un partido que ya empezó no recibe picks nuevos: se eligen antes del inicio, con las cuotas de antes del partido.",
+    "no_pick_no_forecast": "Todavía no hay pronóstico de PrediGol para este partido, y sin pronóstico no hay con qué comparar las cuotas.",
+    "no_pick_no_prices": "Todavía no hay cuotas recientes de este partido para compararlas con el pronóstico de PrediGol.",
+    "no_pick_not_compared": "PrediGol todavía no ha comparado su pronóstico con las cuotas de este partido.",
+    "no_pick_not_published_one": "PrediGol comparó una selección de este partido con las cuotas y todavía no cumple todas sus reglas para publicarse.",
+    "no_pick_not_published_other": "PrediGol comparó {count} selecciones de este partido con las cuotas y ninguna cumple todavía todas sus reglas para publicarse.",
+    "no_pick_no_value_one": "PrediGol comparó una selección de este partido con las cuotas de ahora y no cumple sus reglas. Por qué: {parts}.",
+    "no_pick_no_value_other": "PrediGol comparó {count} selecciones de este partido con las cuotas de ahora y ninguna cumple sus reglas. Por qué: {parts}.",
+    "no_pick_may_change": "Las cuotas cambian hasta el inicio: si alguna selección llega a cumplir todas las reglas, el pick aparecerá en el partido.",
+    "forecast_hidden": "PrediGol no muestra ahora su pronóstico de este partido.",
+    "forecast_what": "El pronóstico es la probabilidad que PrediGol calcula para cada resultado, con sus modelos y los datos de antes del partido.",
+    "forecast_market": "{market}: lo más probable es «{likely}» ({pct}{uncal}). El resto: {others}.",
+    "forecast_market_even": "{market}: {others}.",
+    "forecast_calibrated": "«Calibrada» quiere decir que esas probabilidades se comprobaron contra resultados: cuando PrediGol dijo 60 %, pasó cerca de 6 de cada 10 veces.",
+    "forecast_uncalibrated": "«Sin calibrar» quiere decir que es el número del modelo, todavía sin comprobar contra suficientes resultados: tómalo con más cautela.",
+    "forecast_not_pick": "Un pronóstico no es un pick: el resultado más probable puede pagar poco. Solo hay pick cuando la cuota paga más de lo que ese resultado vale.",
+    "risks_hidden": "PrediGol no muestra ahora la lectura de este partido.",
+    "risks_intro": "Lo que podría torcer el partido, según los datos de PrediGol:",
+    "risks_none": "Todavía no tengo datos de los riesgos de este partido.",
+    "risks_incomplete": "La lectura aún no está completa (faltan datos, como las alineaciones): puede cambiar antes del partido.",
+    "pick_probability": "PrediGol le da a esta selección un {pct} de probabilidad de acertar: aun con valor, no siempre gana.",
+    "pick_interval": "Su estimación tiene un margen de duda: entre {low} y {high}.",
+    "pick_review_risks": "La revisión del contexto señaló: {risks}.",
+    "pick_reading_hidden": "PrediGol no muestra ahora la lectura del partido, así que aquí no hay más riesgos que ver.",
+    "pick_started": "El partido ya empezó: estos son los datos con los que se publicó el pick.",
+    "caution_downgraded": "Está en cautela porque la revisión del contexto encontró riesgos que pesan en contra, aunque la cuota todavía tenga valor.",
+    "caution_none_approved": "No está en cautela: la revisión del contexto lo aprobó.",
+    "caution_none_pending": "No está en cautela: se recomienda por el valor de su cuota, y la revisión del contexto todavía no cambia ningún estado.",
+    "caution_none_not_reviewed": "No está en cautela: todavía no tiene revisión del contexto, así que se recomienda por el valor de su cuota.",
+    "caution_no_value": "No se recomienda ahora: a la mejor cuota disponible ya no tiene valor.",
+    "caution_rejected": "No se recomienda: la revisión del contexto encontró motivos en contra.",
+    "caution_evaluation": "Es un pick en evaluación, no una recomendación.",
+    "caution_what": "«Cautela» significa que PrediGol mantiene el pick pero te avisa de un riesgo: decides tú, con esa información.",
+    "parlay_invalid": "Así no se puede calcular: el parlay no cumple una regla.",
+    "parlay_issue": "La selección {leg} no cumple una regla.",
+    "parlay_single": "Con una sola selección, la probabilidad es la de esa selección.",
+    "parlay_all_win": "Un parlay solo se gana si aciertan las {legs} selecciones: cada una que añades es otra condición que se tiene que cumplir.",
+    "parlay_leg": "{leg}. {match} · {selection}: {pct} ({source}).",
+    "parlay_leg_missing_one": "No tengo la probabilidad de la selección {legs}: sin ese dato no puedo calcular el parlay.",
+    "parlay_leg_missing_other": "No tengo la probabilidad de las selecciones {legs}: sin ese dato no puedo calcular el parlay.",
+    "parlay_product": "Multiplicadas: {chain} = {pct}.",
+    "parlay_dependency": "Algunas selecciones están relacionadas ({reasons}), y PrediGol ajusta el cálculo con lo que midió: {pct}.",
+    "parlay_related": "Algunas selecciones están relacionadas ({reasons}); PrediGol no tiene una medida de cuánto, así que no ajusta el cálculo: tómalo con más cautela.",
+    "parlay_shrinks": "Por eso la probabilidad baja con cada selección: aunque cada una sea probable, que se cumplan todas a la vez lo es mucho menos.",
+    "parlay_very_unlikely": "Con las probabilidades del mercado, sin su margen, que acierten todas es muy poco probable: {pct}.",
+    "parlay_leg_nodata": "{leg}. {match} · {selection}: no tengo su probabilidad."
+  },
+  "unknownMatch": "un partido"
+}

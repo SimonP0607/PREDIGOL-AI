@@ -7,6 +7,8 @@
   "odds": "Odds",
   "myPicks": "My picks",
   "profile": "Profile",
+  "glossary": "Glossary",
+  "updates": "What's new",
   "adminConsole": "Admin Console",
   "backToApp": "Back to the app",
   "previewAsUser": "Preview as a user",
@@ -15,5 +17,29 @@
   "previewNote": "Only the presentation changes; your real permissions do not.",
   "signOut": "Sign out",
   "mainNavigation": "Main navigation",
-  "adminNavigation": "Admin Console navigation"
+  "adminNavigation": "Admin Console navigation",
+  "help": "Help",
+  "more": "More",
+  "moreTitle": "More",
+  "moreDescription": "What does not fit in the bar: one tap away from any screen.",
+  "transparency": "Transparency",
+  "moreHint": {
+    "parlays": "Parlays built only from selections with value",
+    "odds": "The best price of every selection",
+    "transparency": "How PrediGol is doing",
+    "help": "Common questions, your messages and contact",
+    "profile": "Account, membership, notices and privacy",
+    "glossary": "What every word means",
+    "updates": "What changed in PrediGol"
+  },
+  "install": {
+    "label": "Install PrediGol",
+    "hint": "Open it like an app, full screen",
+    "ios": "On iPhone or iPad, in Safari: tap Share, scroll down and choose “Add to Home Screen”. If you see “Open as Web App”, leave it on and tap “Add”.",
+    "android": "On Android, in Chrome: tap More (⋮) next to the address bar and choose “Install” (or “Add to Home screen”).",
+    "other": "On a computer, in Chrome or Edge: use the install icon in the address bar.",
+    "after": "Once installed it opens from its icon, full screen, with the same account. It updates itself: when there is a new version, PrediGol tells you."
+  },
+  "unread": "unread",
+  "moreUnread": "something new"
 }

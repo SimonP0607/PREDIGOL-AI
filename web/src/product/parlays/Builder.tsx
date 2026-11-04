@@ -26,6 +26,7 @@ import {
 } from "./builderForm";
 import { CompetitionsPicker, Field, LegsSelect, MarketChips, OddsInput } from "./BuilderControls";
 import { NoParlay, Result } from "./BuilderResult";
+import { track } from "@/lib/track";
 
 export function ParlayBuilder() {
   const preview = usePreviewParam();
@@ -45,6 +46,7 @@ export function ParlayBuilder() {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (issues.length) return;
+    track("builder_run", { legs: Math.min(Math.max(form.maxLegs, 0), 30) });
     setAsked(toBuilderQuery(form));
   };
   const set = (patch: Partial<BuilderForm>) => setForm((f) => ({ ...f, ...patch }));

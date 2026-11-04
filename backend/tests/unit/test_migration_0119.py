@@ -73,7 +73,8 @@ def test_the_chain_has_one_head_and_it_is_this_migration_or_one_that_came_after_
     script = ScriptDirectory.from_config(cfg)
     heads = script.get_heads()
     assert len(heads) == 1, heads
-    assert heads[0] >= "0119"
+    # "or one that came after it" by the chain, not by the number: the UX chain 0095-0106 hangs from 0119
+    assert "0119" in {r.revision for r in script.walk_revisions(base="base", head=heads[0])}
     revision = script.get_revision("0119")
     assert revision is not None and revision.down_revision == "0118"
 

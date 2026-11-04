@@ -17,17 +17,84 @@
   },
   "best": {
     "title": "Best odds",
-    "subtitle": "Prices above the market's fair price",
+    "subtitle": "Odds above the market's fair odds",
     "seeAll": "See all",
-    "overFair": "{pct} over the fair price",
+    "overFair": "{pct} over the fair odds",
     "empty": "No price above the market yet."
   },
-  "upcoming": {
-    "title": "Upcoming matches",
-    "seeAll": "See all",
-    "bookmakers_one": "{count} bookmaker",
-    "bookmakers_other": "{count} bookmakers",
-    "bookmakersHelp": "Bookmakers quoting this match",
-    "empty": "No upcoming matches."
+  "today": {
+    "title": "Today in the suggested leagues",
+    "subtitle": "Until you pick your leagues, the most followed in Colombia",
+    "why": "Suggested",
+    "whyHelp": "Until you pick your leagues, we suggest the most followed in Colombia: the Liga BetPlay, the national team, the Libertadores, the Champions League and Europe's big leagues.",
+    "updated": "Updated at {time}",
+    "zone": "Times in {zone}",
+    "seeAll": "See all matches",
+    "more_one": "{count} more match of the suggested leagues today",
+    "more_other": "{count} more matches of the suggested leagues today",
+    "empty": "The suggested leagues do not play today.",
+    "played_one": "Today's match of the suggested leagues is over: its result is in Results.",
+    "played_other": "Today's {count} matches of the suggested leagues are over: their results are in Results.",
+    "next": "Next matches of the suggested leagues",
+    "forecast": {
+      "home": "Forecast: {team} to win",
+      "away": "Forecast: {team} to win",
+      "draw": "Forecast: a draw"
+    },
+    "uncalibrated": "uncalibrated",
+    "forecastNote": "The forecast says which result is likeliest; it is not a recommendation. What PrediGol recommends is the pick.",
+    "titleMine": "Today in your leagues",
+    "subtitleMine": "Your leagues and teams: today's matches, live first",
+    "whyLeague": "Your league",
+    "whyTeam": "You follow {team}",
+    "whyLeagueHelp": "We show you this match because you follow this league.",
+    "whyTeamHelp": "We show you this match because you follow {team}.",
+    "emptyMine": "Your leagues do not play today.",
+    "playedMine_one": "Today's match of your leagues is over: its result is in Results.",
+    "playedMine_other": "Today's {count} matches of your leagues are over: their results are in Results.",
+    "moreMine_one": "{count} more match of your leagues today",
+    "moreMine_other": "{count} more matches of your leagues today",
+    "nextMine": "Next for your favourites",
+    "nextOf": "Next for {name}",
+    "mineLabel": "Your leagues and teams",
+    "choose": "Pick my leagues",
+    "edit": "Change"
+  },
+  "relevant": {
+    "title": "Matches worth a look",
+    "subtitle": "From other competitions we follow, with PrediGol's analysis"
+  },
+  "context": {
+    "title": "What is at stake",
+    "subtitle": "The suggested leagues' next matches: table or tie, rest and next match",
+    "analysis": "See the analysis",
+    "subtitleMine": "The next matches of your leagues and teams: table or tie, rest and next match"
+  },
+  "results": {
+    "title": "Results",
+    "subtitle": "Suggested leagues · last 48 hours",
+    "empty": "No recent results in the suggested leagues.",
+    "postmatch": "Post-match",
+    "subtitleMine": "Your leagues and teams · last 48 hours",
+    "emptyMine": "No recent results of your teams."
+  },
+  "parlaysNone": "No PrediGol parlays yet today: they are only built from selections that pass all its rules, and we never pad them.",
+  "parlaysLink": "See parlays",
+  "news": {
+    "title": "News",
+    "subtitle": "Confirmed or probable, from today's matches of the suggested leagues",
+    "match": "{home} – {away} · {time}",
+    "subtitleMine": "Confirmed or probable, from the matches of your leagues and teams"
+  },
+  "suggest": {
+    "titleLeague": "Add {name} to your leagues?",
+    "titleTeam": "Do you follow {name}?",
+    "reason_one": "You opened {count} of its matches in the last 30 days.",
+    "reason_other": "You opened {count} of its matches in the last 30 days.",
+    "rule": "We suggest it because you open it often and it is not among your favourites. It is added only if you confirm.",
+    "add": "Add",
+    "dismiss": "No, thanks",
+    "failed": "It could not be saved. Try again.",
+    "added": "{name} is now among your favourites."
   }
 }

@@ -1,0 +1,112 @@
+{
+  "button": "Explain",
+  "buttonLabel": "Explain: frequent questions about {what}",
+  "about": {
+    "match": "this match",
+    "pick": "this pick",
+    "parlay": "your parlay"
+  },
+  "title": "Explain",
+  "description": "Answers from what PrediGol already knows. No AI and nothing made up: if a piece of data is missing, I say so.",
+  "choose": "What would you like to know?",
+  "loading": "Looking for the answer…",
+  "failed": "I couldn't get the answer.",
+  "retry": "Try again",
+  "back": "Other questions",
+  "noData": "I don't have that data",
+  "terms": "Words in this answer",
+  "more": "Read more",
+  "question": {
+    "match": {
+      "no_pick": "Why is there no pick?",
+      "forecast": "What does this forecast mean?",
+      "risks": "What could go wrong?"
+    },
+    "pick": {
+      "risks": "What could go wrong?",
+      "caution": "Why caution?"
+    },
+    "parlay": {
+      "probability": "Why does my parlay's probability go down?"
+    }
+  },
+  "other": {
+    "label": "Another question",
+    "help": "Is your question not here? Write to us and we'll consider it for the next ones.",
+    "action": "Write to PrediGol"
+  },
+  "links": {
+    "transparency": "How PrediGol is doing",
+    "why_pick": "Why this pick?",
+    "glossary": "Glossary"
+  },
+  "uncalibrated": ", uncalibrated",
+  "source": {
+    "model": "according to PrediGol",
+    "market": "according to the market, margin removed"
+  },
+  "reason": {
+    "shared_team": "they share a team",
+    "same_competition_day": "they are from the same competition and day",
+    "measured_dependence": "their results move together"
+  },
+  "part": {
+    "no_value": "the price does not pay enough for what it is worth",
+    "odds": "a price outside the range it uses",
+    "market": "a market it does not cover yet",
+    "other": "other rules"
+  },
+  "say": {
+    "has_pick_one": "This match has one PrediGol pick: open it and tap «Why this pick?» to see why it was published.",
+    "has_pick_other": "This match has {count} PrediGol picks: open any of them and tap «Why this pick?» to see why it was published.",
+    "pick_rule": "PrediGol only publishes a pick when a bookmaker's price pays more than its forecast says that outcome is worth (that is «value») and the selection meets all its rules. If none does, it publishes nothing: it never makes up a pick to fill the space.",
+    "no_pick_published": "PrediGol did not publish any pick for this match.",
+    "no_pick_past": "A match that has started gets no new picks: they are chosen before kick-off, with the prices from before the match.",
+    "no_pick_no_forecast": "There is no PrediGol forecast for this match yet, and without a forecast there is nothing to compare the prices with.",
+    "no_pick_no_prices": "There are no recent prices for this match yet to compare with PrediGol's forecast.",
+    "no_pick_not_compared": "PrediGol has not compared its forecast with this match's prices yet.",
+    "no_pick_not_published_one": "PrediGol compared one selection of this match with the prices and it does not meet all its rules for publication yet.",
+    "no_pick_not_published_other": "PrediGol compared {count} selections of this match with the prices and none meets all its rules for publication yet.",
+    "no_pick_no_value_one": "PrediGol compared one selection of this match with today's prices and it does not meet its rules. Why: {parts}.",
+    "no_pick_no_value_other": "PrediGol compared {count} selections of this match with today's prices and none meets its rules. Why: {parts}.",
+    "no_pick_may_change": "Prices change until kick-off: if a selection comes to meet all the rules, the pick will appear on the match.",
+    "forecast_hidden": "PrediGol is not showing its forecast for this match right now.",
+    "forecast_what": "The forecast is the probability PrediGol works out for each outcome, with its models and the data from before the match.",
+    "forecast_market": "{market}: the most likely is «{likely}» ({pct}{uncal}). The rest: {others}.",
+    "forecast_market_even": "{market}: {others}.",
+    "forecast_calibrated": "«Calibrated» means those probabilities were checked against results: when PrediGol said 60 %, it happened about 6 times in 10.",
+    "forecast_uncalibrated": "«Uncalibrated» means it is the model's own number, not yet checked against enough results: take it with more caution.",
+    "forecast_not_pick": "A forecast is not a pick: the most likely outcome can pay little. There is only a pick when the price pays more than that outcome is worth.",
+    "risks_hidden": "PrediGol is not showing this match's reading right now.",
+    "risks_intro": "What could turn the match, according to PrediGol's data:",
+    "risks_none": "I don't have data on this match's risks yet.",
+    "risks_incomplete": "The reading is not complete yet (data are missing, such as the line-ups): it may change before the match.",
+    "pick_probability": "PrediGol gives this selection a {pct} probability of winning: even with value, it does not always win.",
+    "pick_interval": "Its estimate has a margin of doubt: between {low} and {high}.",
+    "pick_review_risks": "The context review pointed out: {risks}.",
+    "pick_reading_hidden": "PrediGol is not showing the match's reading right now, so there are no more risks to see here.",
+    "pick_started": "The match has started: these are the data the pick was published with.",
+    "caution_downgraded": "It is in caution because the context review found risks that weigh against it, even though the price still has value.",
+    "caution_none_approved": "It is not in caution: the context review approved it.",
+    "caution_none_pending": "It is not in caution: it is recommended for the value of its price, and the context review does not change any state yet.",
+    "caution_none_not_reviewed": "It is not in caution: it has no context review yet, so it is recommended for the value of its price.",
+    "caution_no_value": "It is not recommended now: at the best price available it no longer has value.",
+    "caution_rejected": "It is not recommended: the context review found reasons against it.",
+    "caution_evaluation": "It is a pick in evaluation, not a recommendation.",
+    "caution_what": "«Caution» means PrediGol keeps the pick but warns you of a risk: you decide, with that information.",
+    "parlay_invalid": "It cannot be worked out like this: the parlay breaks a rule.",
+    "parlay_issue": "Selection {leg} breaks a rule.",
+    "parlay_single": "With a single selection, the probability is that selection's.",
+    "parlay_all_win": "A parlay only wins if all {legs} selections win: each one you add is another condition that has to be met.",
+    "parlay_leg": "{leg}. {match} · {selection}: {pct} ({source}).",
+    "parlay_leg_missing_one": "I don't have the probability of selection {legs}: without it I cannot work out the parlay.",
+    "parlay_leg_missing_other": "I don't have the probability of selections {legs}: without it I cannot work out the parlay.",
+    "parlay_product": "Multiplied: {chain} = {pct}.",
+    "parlay_dependency": "Some selections are related ({reasons}), and PrediGol adjusts the calculation with what it measured: {pct}.",
+    "parlay_related": "Some selections are related ({reasons}); PrediGol has no measure of how much, so it does not adjust the calculation: take it with more caution.",
+    "parlay_shrinks": "That is why the probability goes down with each selection: even if each one is likely, all of them coming true at once is much less so.",
+    "parlay_very_unlikely": "By the market's probabilities, margin removed, all of them winning is very unlikely: {pct}.",
+    "parlay_leg_nodata": "{leg}. {match} · {selection}: I don't have its probability."
+  },
+  "unknownMatch": "a match"
+}

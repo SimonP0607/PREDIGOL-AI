@@ -33,8 +33,8 @@ describe("why a leg is in the parlay (REVIEW point 15)", () => {
     expect(html).toContain("PrediGol le da 55,0 %");
     expect(html).toContain("al menos 50,0 %");
     expect(html).toContain("el mercado, 45,0 %");
-    expect(html).toContain("Cuota 2,30 frente a un precio justo de 2,22");
-    expect(html).toContain("+3,5 % frente al justo");
+    expect(html).toContain("Cuota 2,30 frente a una cuota justa de 2,22");
+    expect(html).toContain("+3,5 % frente a la justa");
     expect(html).toContain("a la cuota de ahora");
     expect(html).toContain("4 casas");
   });
@@ -139,9 +139,31 @@ describe("no parlay: why, and what to change (REVIEW point 15)", () => {
         />,
       ),
     );
-    expect(html).toContain("no hay selecciones que pasen las reglas");
+    // plan UX, A9: the builder's empty day says it as Inicio does
+    expect(html).toContain("cumplió las condiciones de PrediGol");
+    expect(html).toContain("Preferimos no publicar a publicar por publicar");
     expect(html).toContain("Vuelve más tarde");
     expect(html).not.toContain("De 0 selecciones");
+  });
+
+  test("every reason opens the glossary's words behind it (plan UX, A9)", () => {
+    const reasons = [
+      "no_candidates",
+      "no_match",
+      "too_few_legs",
+      "total_odds_cap",
+      "no_growth",
+      "risk_cap",
+      "not_reviewed",
+    ] as const;
+    for (const reason of reasons) {
+      const html = renderToStaticMarkup(<NoParlay body={empty(reason)} />);
+      expect(html, reason).toContain('data-testid="builder-terms"');
+      expect(html.match(/data-glossary="/g)?.length ?? 0, reason).toBeGreaterThan(0);
+    }
+    expect(text(renderToStaticMarkup(<NoParlay body={empty("no_growth")} />))).toContain(
+      "Dependencia",
+    );
   });
 });
 

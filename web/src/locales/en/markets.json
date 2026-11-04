@@ -81,6 +81,7 @@
     "no_qualified_picks": "Today there are not enough selections that pass the rule.",
     "no_shadow_picks": "There are no shadow picks in this window.",
     "no_value_now": "No selection that passes the rule has value at the current price.",
+    "none_recommended": "No selection is recommended now: on its match, each one says why.",
     "no_picks_match_filters": "No selection matches these filters.",
     "no_live_matches": "No match is being played right now.",
     "no_best_prices": "No price above the market yet.",

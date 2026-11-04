@@ -67,6 +67,10 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "historical_backfill": timedelta(hours=3),
     "research_monitor": timedelta(hours=3),
     "synthetic_journey": timedelta(minutes=5),
+    # The readers' narrative (plan UX, A11): at most twelve matches a run, no new one after eight minutes, a call 90 s at most.
+    "user_narrative": timedelta(minutes=30),
+    # The messenger (plan UX, A5): a cycle of five minutes with a heartbeat every 15 seconds.
+    "messenger_cycle": timedelta(minutes=15),
 }
 """How long a run of each job may stay open. Generous: three to ten times the longest run observed in the ledger
 (4-5 Oct 2026). Prefix rules below cover the families of CLI jobs."""

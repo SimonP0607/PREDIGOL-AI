@@ -31,7 +31,7 @@ export type ForecastLoad =
   | { status: "success"; envelope: Envelope<MatchForecast | null> };
 
 export type ForecastScreen =
-  /** A user is not told about a forecast that is not there: not allowed yet, not loaded, not loadable. */
+  /** The owner turned it off for readers (`FBI_FORECAST_USERS=0`): nothing to show. */
   | { kind: "nothing" }
   | { kind: "loading" }
   | { kind: "error"; error: unknown; retry?: (() => void) | undefined }
@@ -40,15 +40,14 @@ export type ForecastScreen =
   | { kind: "forecast"; data: MatchForecast; markets: ForecastMarket[] };
 
 /**
- * What the block shows. A user sees it only once the API says so (the owner decides when: `FBI_FORECAST_USERS`), and
- * never a spinner, an error or a gap for something that may not be shown to them at all. The Admin Console's preview
- * sees every state, so that a missing forecast is a thing it can read.
+ * What the block shows. Readers see it since plan UX A9 (`FBI_FORECAST_USERS` on unless the owner turns it off), with every
+ * state - loading, an error with its retry, why there is no forecast; only an answer that says readers may not see it
+ * (the owner turned it off) shows nothing. The Admin Console's preview sees every state.
  */
 export function forecastScreen(load: ForecastLoad, preview: boolean): ForecastScreen {
-  if (load.status === "pending") return preview ? { kind: "loading" } : { kind: "nothing" };
-  if (load.status === "error") {
-    return preview ? { kind: "error", error: load.error, retry: load.retry } : { kind: "nothing" };
-  }
+  // Shown to readers since A9 (the owner approved it): a reader sees it load and sees it fail, never a silent gap.
+  if (load.status === "pending") return { kind: "loading" };
+  if (load.status === "error") return { kind: "error", error: load.error, retry: load.retry };
   const { envelope } = load;
   const data = envelope.data;
   if (envelope.status !== "ok" || !data) {

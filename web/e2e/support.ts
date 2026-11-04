@@ -34,6 +34,13 @@ const NAMESPACES = [
   "truth",
   "ai",
   "memory",
+  "glossary",
+  "legal",
+  "transparency",
+  "onboarding",
+  "support",
+  "push",
+  "explain",
 ] as const;
 interface Catalogs {
   admin: typeof import("../src/locales/es/admin.json");
@@ -54,6 +61,13 @@ interface Catalogs {
   truth: typeof import("../src/locales/es/truth.json");
   ai: typeof import("../src/locales/es/ai.json");
   memory: typeof import("../src/locales/es/memory.json");
+  glossary: typeof import("../src/locales/es/glossary.json");
+  legal: typeof import("../src/locales/es/legal.json");
+  transparency: typeof import("../src/locales/es/transparency.json");
+  onboarding: typeof import("../src/locales/es/onboarding.json");
+  support: typeof import("../src/locales/es/support.json");
+  push: typeof import("../src/locales/es/push.json");
+  explain: typeof import("../src/locales/es/explain.json");
 }
 
 function catalogs(lang: "es" | "en"): Catalogs {
@@ -76,7 +90,7 @@ const LEAKS: ReadonlyArray<readonly [string, RegExp]> = [
   ["Infinity", /\bInfinity\b/],
   [
     "an untranslated key",
-    /\b(common|nav|home|picks|parlays|odds|matches|live|match|markets|admin|profile|auth|errors|system|ops|research|analytics|catalog|center|truth|records|ai)\.[a-z][\w.]+[a-z]\b/,
+    /\b(common|nav|home|picks|parlays|odds|matches|live|match|markets|admin|profile|auth|errors|system|ops|research|analytics|catalog|center|truth|records|ai|glossary|legal|transparency|onboarding|support|push|explain)\.[a-z][\w.]+[a-z]\b/,
   ],
 ];
 
@@ -121,7 +135,10 @@ export function watch(
   });
   page.on("requestfailed", (req) => {
     const why = req.failure()?.errorText ?? "";
-    if (isApi(req.url()) && !why.includes("ERR_ABORTED")) {
+    // A request the page itself gave up (a navigation away, a query superseded) is not a failure: Chromium says
+    // ERR_ABORTED, WebKit "Load request cancelled" (the analytics' last batch as a page is left, plan UX, A15).
+    const cancelled = why.includes("ERR_ABORTED") || why.includes("Load request cancelled");
+    if (isApi(req.url()) && !cancelled) {
       w.problems.push(`request failed: ${req.url()} ${why}`);
     }
   });
@@ -169,10 +186,96 @@ export async function sendJson<T>(
   return { status: res.status(), body: (await res.json().catch(() => null)) as T };
 }
 
+/**
+ * A new account's welcome (plan UX, A13), recorded as done through the API - for the tests that are not about it: the
+ * gate then sends the account where the test goes, once the page loads again.
+ */
+export async function skipWelcome(request: APIRequestContext): Promise<void> {
+  const r = await request.fetch("/api/v1/me/onboarding", {
+    method: "POST",
+    headers: { "x-requested-with": "predigol", "content-type": "application/json" },
+    data: {},
+  });
+  expect(r.status(), "the welcome recorded as done").toBe(200);
+}
+
 export async function getJson<T>(
   request: APIRequestContext,
   path: string,
 ): Promise<{ status: number; body: T }> {
   const res = await request.get(path, { headers: { "x-requested-with": "predigol" } });
   return { status: res.status(), body: (await res.json().catch(() => null)) as T };
+}
+
+/**
+ * The controls a finger cannot hit at 44 x 44 px: the box, widened by the "tap" utilities' ::after, cut by a
+ * clipping parent the control sits inside. Inline text links are exempt (WCAG 2.5.8).
+ */
+export async function smallTargets(page: Page, scope = "body"): Promise<string[]> {
+  return page.evaluate((root) => {
+    const out: string[] = [];
+    const container = document.querySelector(root);
+    if (!container) return out;
+    const sel =
+      'a[href], button, [role="tab"], input:not([type="hidden"]), select, textarea, summary, [role="switch"]';
+    for (const control of Array.from(container.querySelectorAll<HTMLElement>(sel))) {
+      // A native select or date field laid invisibly over its chip (opacity 0): the chip is what a finger aims at.
+      const el =
+        getComputedStyle(control).opacity === "0" && control.parentElement
+          ? control.parentElement
+          : control;
+      const r = el.getBoundingClientRect();
+      const s = getComputedStyle(el);
+      if (!r.width || !r.height || s.visibility === "hidden" || s.display === "none") continue;
+      if (el.tagName === "A" && s.display === "inline") continue;
+      // A control under another layer (an open sheet's backdrop) is not in reach anyway.
+      const hitTest = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (
+        hitTest &&
+        !el.contains(hitTest) &&
+        !hitTest.contains(el) &&
+        r.top >= 0 &&
+        r.bottom <= innerHeight
+      )
+        continue;
+      let top = r.top;
+      let bottom = r.bottom;
+      let left = r.left;
+      let right = r.right;
+      const a = getComputedStyle(el, "::after");
+      if (
+        a.content &&
+        a.content !== "none" &&
+        a.content !== "normal" &&
+        a.position === "absolute"
+      ) {
+        top = Math.min(top, r.top + parseFloat(a.top));
+        bottom = Math.max(bottom, r.bottom - parseFloat(a.bottom));
+        left = Math.min(left, r.left + parseFloat(a.left));
+        right = Math.max(right, r.right - parseFloat(a.right));
+      }
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        const ps = getComputedStyle(p);
+        if (ps.overflowX === "visible" && ps.overflowY === "visible") continue;
+        const pr = p.getBoundingClientRect();
+        if (r.top >= pr.top - 0.5 && r.bottom <= pr.bottom + 0.5) {
+          top = Math.max(top, pr.top);
+          bottom = Math.min(bottom, pr.bottom);
+        }
+        if (r.left >= pr.left - 0.5 && r.right <= pr.right + 0.5) {
+          left = Math.max(left, pr.left);
+          right = Math.min(right, pr.right);
+        }
+      }
+      if (right - left < 43.5 || bottom - top < 43.5) {
+        const name = (control.getAttribute("aria-label") ?? control.textContent ?? "")
+          .trim()
+          .slice(0, 40);
+        out.push(
+          `${el.tagName.toLowerCase()} "${name}" ${Math.round(right - left)}x${Math.round(bottom - top)}`,
+        );
+      }
+    }
+    return out;
+  }, scope);
 }

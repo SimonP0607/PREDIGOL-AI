@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Path, Query, Request, Response
 
 from fbi.api.contracts.auth import (
     AccessEvent,
+    IdentityIn,
     LoginIn,
     Me,
     MfaCodeIn,
@@ -24,6 +25,7 @@ from fbi.api.contracts.auth import (
     RequiredPasswordIn,
     SessionInfo,
 )
+from fbi.api.contracts.membership import MembershipSummary
 from fbi.api.deps import get_db
 from fbi.api.security import (
     AnySession,
@@ -34,9 +36,12 @@ from fbi.api.security import (
     same_site_only,
     set_session_cookie,
 )
+from fbi.api.switches import explain_on, transparency_open
 from fbi.auth import crypto, service
+from fbi.auth.roles import Role
 from fbi.auth.service import Principal
 from fbi.auth.settings import session_settings
+from fbi.customer import consents, favorites, membership, support
 
 public_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
 session_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
@@ -58,22 +63,45 @@ def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
         stage=p.stage,  # type: ignore[arg-type]
         mfa_enabled=p.mfa_enabled, mfa_required=p.mfa_required, must_change_password=p.must_change_password,
         recovery_codes_left=p.recovery_codes_left, observability_id=crypto.observability_id(p.user_id),
+        transparency=transparency_open(), support=support.support_on(), explain=explain_on(),
     )
 
 
-def _signed_in(response: Response, issued: tuple[str, Principal]) -> Me:
+def with_consents(who: Me, principal: Principal, conn: psycopg.Connection[Any]) -> Me:
+    """The consents the reader owes (plan UX, A4) and their membership now (A8), on every Me a step of signing in or
+    /auth/me answers: the page shows the gate, or what a limited account can do, at once instead of opening the
+    product and meeting a 403 on its first read."""
+    if not principal.is_full:
+        return who
+    update: dict[str, Any] = {}
+    if consents.gate_enabled() and not consents.exempt(principal.email, super_admin=principal.is_super_admin):
+        update["consents_due"] = consents.due_cached(conn, principal.user_id)
+    found = membership.summary(membership.of(conn, principal.user_id, email=principal.email,
+                                             super_admin=principal.is_super_admin))
+    if found is not None:
+        update["membership"] = MembershipSummary(**found)
+    # the welcome and the hints (plan UX, A13): the page opens /welcome once the consents are done
+    prefs = favorites.preferences(conn, principal.user_id)
+    update["hints_seen"] = list(prefs.hints_seen)
+    if favorites.welcome_due(conn, principal.user_id, reader=principal.role == Role.USER):
+        update["welcome_due"] = True
+        update["welcome_steps"] = list(favorites.welcome_steps(conn, principal.user_id))
+    return who.model_copy(update=update) if update else who
+
+
+def _signed_in(response: Response, issued: tuple[str, Principal], conn: psycopg.Connection[Any]) -> Me:
     token, principal = issued
     set_session_cookie(response, token, principal.session_expires_at)
-    return me_of(principal)
+    return with_consents(me_of(principal), principal, conn)
 
 
 @public_router.post("/login", response_model=Me)
-def login(body: LoginIn, request: Request, response: Response) -> Me:
+def login(body: LoginIn, request: Request, response: Response, conn: Db) -> Me:
     """Sets an HttpOnly, SameSite session cookie. The token is never in the body. When a step is still owed
     (stage mfa / enroll / password) the session can do nothing but that step."""
     issued = service.login(body.email, body.password, ip=client_ip(request),
                            user_agent=request.headers.get("user-agent"))
-    return _signed_in(response, issued)
+    return _signed_in(response, issued, conn)
 
 
 @public_router.post("/logout", status_code=204)
@@ -87,17 +115,18 @@ def logout(request: Request, principal: Annotated[Principal | None, Depends(opti
 
 
 @session_router.get("/me", response_model=Me)
-def me(principal: AnySession) -> Me:
-    return me_of(principal)
+def me(principal: AnySession, conn: Db) -> Me:
+    return with_consents(me_of(principal), principal, conn)
 
 
 @session_router.post("/mfa/verify", response_model=Me)
-def verify_mfa(body: MfaVerifyIn, request: Request, response: Response, principal: AnySession) -> Me:
+def verify_mfa(body: MfaVerifyIn, request: Request, response: Response, principal: AnySession,
+               conn: Db) -> Me:
     """Second step: a 6-digit code from the authenticator app, or one recovery code. A new session replaces the
     staged one."""
     issued = service.verify_mfa(principal, code=body.code, recovery_code=body.recovery_code, ip=client_ip(request),
                                 user_agent=request.headers.get("user-agent"))
-    return _signed_in(response, issued)
+    return _signed_in(response, issued, conn)
 
 
 @session_router.post("/mfa/enroll/start", response_model=MfaEnrollment)
@@ -108,31 +137,34 @@ def start_enrollment(body: MfaStartIn, request: Request, principal: AnySession) 
 
 
 @session_router.post("/mfa/enroll/confirm", response_model=MfaEnrolled)
-def confirm_enrollment(body: MfaCodeIn, request: Request, response: Response, principal: AnySession) -> MfaEnrolled:
+def confirm_enrollment(body: MfaCodeIn, request: Request, response: Response, principal: AnySession,
+                       conn: Db) -> MfaEnrolled:
     """The first code turns the second factor on. The recovery codes come back ONCE, here."""
     codes, advanced = service.confirm_enrollment(principal, code=body.code, ip=client_ip(request),
                                                  user_agent=request.headers.get("user-agent"))
     if advanced is not None:
-        me_now = _signed_in(response, advanced)
+        me_now = _signed_in(response, advanced, conn)
     else:
-        me_now = me_of(principal).model_copy(update={"mfa_enabled": True, "recovery_codes_left": len(codes)})
+        me_now = with_consents(
+            me_of(principal).model_copy(update={"mfa_enabled": True, "recovery_codes_left": len(codes)}),
+            principal, conn)
     return MfaEnrolled(me=me_now, recovery_codes=codes)
 
 
 @session_router.post("/password/required", response_model=Me)
 def set_required_password(body: RequiredPasswordIn, request: Request, response: Response,
-                          principal: AnySession) -> Me:
+                          principal: AnySession, conn: Db) -> Me:
     """The account was created or reset by an administrator: it chooses its own password before anything else."""
     issued = service.set_required_password(principal, new_password=body.new_password, ip=client_ip(request),
                                            user_agent=request.headers.get("user-agent"))
-    return _signed_in(response, issued)
+    return _signed_in(response, issued, conn)
 
 
 @router.patch("/me/preferences", response_model=Me)
-def update_preferences(body: PreferencesIn, principal: App) -> Me:
+def update_preferences(body: PreferencesIn, principal: App, conn: Db) -> Me:
     row = service.update_preferences(principal, language=body.language, timezone=body.timezone,
                                      display_name=body.display_name)
-    return me_of(principal, row)
+    return with_consents(me_of(principal, row), principal, conn)
 
 
 @router.post("/me/password", status_code=204)
@@ -164,8 +196,12 @@ def my_sessions(conn: Db, principal: App) -> list[SessionInfo]:
 
 @router.post("/me/sessions/{session_id}/revoke", status_code=204)
 def revoke_my_session(request: Request, principal: App,
-                      session_id: Annotated[str, Path(pattern=r"^[0-9a-f]{16}$")]) -> Response:
-    own = service.revoke_my_session(principal, session_id, ip=client_ip(request))
+                      session_id: Annotated[str, Path(pattern=r"^[0-9a-f]{16}$")],
+                      body: IdentityIn | None = None) -> Response:
+    """Ending another session asks for the password or a code (ASVS 7.5.2); ending this one is signing out."""
+    who = body or IdentityIn()
+    own = service.revoke_my_session(principal, session_id, ip=client_ip(request), password=who.password,
+                                    code=who.code)
     response = Response(status_code=204)
     if own:
         clear_session_cookie(response)
@@ -173,8 +209,11 @@ def revoke_my_session(request: Request, principal: App,
 
 
 @router.post("/me/sessions/revoke-others", response_model=dict[str, int])
-def revoke_my_other_sessions(request: Request, principal: App) -> dict[str, int]:
-    return {"revoked": service.revoke_my_other_sessions(principal, ip=client_ip(request))}
+def revoke_my_other_sessions(request: Request, principal: App, body: IdentityIn | None = None) -> dict[str, int]:
+    """Every other session ends, once the password or a code of the second factor confirms who asks (ASVS 7.5.2)."""
+    who = body or IdentityIn()
+    return {"revoked": service.revoke_my_other_sessions(principal, ip=client_ip(request), password=who.password,
+                                                        code=who.code)}
 
 
 @router.get("/me/access", response_model=list[AccessEvent])

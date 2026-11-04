@@ -243,7 +243,7 @@ function MarketPrices({ market, fixture }: { market: BestMarket; fixture: BestOd
     <div className="flex items-stretch gap-2 lg:shrink-0 lg:items-center lg:gap-3">
       {line !== null ? (
         <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-lg border border-border bg-background/40 px-1 py-1.5 lg:w-16">
-          <span className="text-[0.6rem] font-semibold uppercase tracking-wider text-subtle-foreground">
+          <span className="text-micro font-semibold uppercase tracking-wider text-subtle-foreground">
             {t("odds.board.line")}
           </span>
           <span className="numeric text-sm font-semibold">{line}</span>
@@ -323,12 +323,13 @@ function PriceCell({
   );
   const body = (
     <span aria-hidden className="flex min-w-0 flex-col gap-1">
-      <span className="flex items-center justify-between gap-1">
+      {/* The edge drops under the selection when a 320 px phone's narrow cell cannot hold both at 12 px (plan UX, A15). */}
+      <span className="flex flex-wrap items-center justify-between gap-x-1">
         <span className="truncate text-xs font-semibold text-foreground">{short}</span>
         <span
           title={t("odds.board.edgeHelp")}
           className={cn(
-            "numeric shrink-0 text-[0.68rem] font-semibold",
+            "numeric shrink-0 text-micro font-semibold",
             p.outlier
               ? "text-warning"
               : edge !== null && edge > 0
@@ -354,14 +355,15 @@ function PriceCell({
           {t("odds.board.outlier")}
         </span>
       ) : null}
-      {/* 11 px in these narrow cells: three to a row on a 320 px phone leave 67 px for "Marathonbet". */}
+      {/* The smallest size in these narrow cells (12 px on a phone): three to a row on a 320 px phone leave 67 px for
+          "Marathonbet", which then ends in an ellipsis (its full name is in the title and the cell's description). */}
       <span
         title={t("odds.board.bookmakers", { count: p.n_bookmakers })}
-        className="max-w-full truncate text-[0.6875rem] leading-4 text-muted-foreground"
+        className="max-w-full truncate text-micro leading-4 text-muted-foreground"
       >
         {bookmaker}
       </span>
-      <span className="numeric max-w-full break-words text-[0.6875rem] leading-4 text-subtle-foreground">
+      <span className="numeric max-w-full break-words text-micro leading-4 text-subtle-foreground">
         {t("odds.board.fair", { odds: fmtOdds(p.fair_odds) })}
       </span>
     </span>

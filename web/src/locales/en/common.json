@@ -136,5 +136,14 @@
   "meta": {
     "title": "PrediGol — Football Intelligence",
     "description": "PrediGol: matches, live scores, value picks, parlays and the best odds."
+  },
+  "filters": {
+    "open": "Filters",
+    "title": "Filters",
+    "description": "Choose what to see; the list changes at once.",
+    "active_one": "{count} filter on",
+    "active_other": "{count} filters on",
+    "reset": "Clear filters",
+    "show": "Show results"
   }
 }

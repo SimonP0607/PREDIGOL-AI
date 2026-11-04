@@ -22,7 +22,7 @@ every change here only adds): the columns and the table go. The attributions go 
 upgrade recomputes them from the shadow reviews, which stay.
 
 Revision ID: 0120
-Revises: 0119
+Revises: 0106
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from __future__ import annotations
 from alembic import op
 
 revision = "0120"
-down_revision = "0119"
+down_revision = "0106"
 branch_labels = None
 depends_on = None
 

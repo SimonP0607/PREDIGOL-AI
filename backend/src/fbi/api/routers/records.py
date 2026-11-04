@@ -17,6 +17,7 @@ from typing import Annotated, Any, Literal
 import psycopg
 from fastapi import APIRouter, Depends, Path, Query, Response
 
+from fbi.api.contracts.mypicks import Band, Origin, PicksSummary, Result
 from fbi.api.contracts.records import (
     DailyBoard,
     History,
@@ -31,7 +32,8 @@ from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
 from fbi.api.security import App
-from fbi.api.services import records
+from fbi.api.services import mypicks, records
+from fbi.api.services.pick_filter import FilterError, PickFilter
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
 from fbi.core.clock import now
@@ -73,17 +75,70 @@ def _cursor_refused(exc: records.CursorError) -> ApiError:
     return ApiError(422, "invalid_cursor", str(exc))
 
 
+def pick_filter_of(
+    result: Annotated[Result | None, Query(description="pending, won (a half win too), lost (a half loss too), push or void.")] = None,
+    market: Annotated[str | None, Query(max_length=8, description="A kind of bet: 1X2, OU, BTTS, AH or DC.")] = None,
+    competition: Annotated[int | None, Query(ge=1, description="A league's id (meta of /me/picks/summary: options).")] = None,
+    origin: Annotated[Origin | None, Query(description="predigol: PrediGol's picks the reader saved; mine: their own.")] = None,
+    band: Annotated[Band | None, Query(description="The odds range of the price the reader counts.")] = None,
+    since: Annotated[date | None, Query(description="The first day of the matches, in the reader's time zone.")] = None,
+    until: Annotated[date | None, Query(description="The last day of the matches, in the reader's time zone.")] = None,
+    q: Annotated[str | None, Query(max_length=60, description="Found in the teams' or the league's names, without accents.")] = None,
+) -> PickFilter:
+    """The filter of Mis picks (plan UX, B5): the same for the list, its totals and breakdown, and its CSV."""
+    try:
+        return PickFilter.of(result=result, market=market, competition=competition, origin=origin, band=band,
+                             since=since, until=until, search=q)
+    except FilterError as exc:
+        raise ApiError(422, "invalid_filter", str(exc)) from exc
+
+
+Filter = Annotated[PickFilter, Depends(pick_filter_of)]
+
+
 @router.get("/me/picks", response_model=Envelope[list[UserPick]])
-def get_my_picks(conn: Db, principal: App,
+def get_my_picks(conn: Db, principal: App, flt: Filter,
                  status: Annotated[Literal["open", "settled"] | None, Query()] = None,
                  limit: Annotated[int, Query(ge=1, le=500)] = 200,
                  cursor: Cursor = None) -> Envelope[list[UserPick]]:
     """The user's saved picks, newest kick-off first, a page at a time: `meta.total` counts all of them (with the
     filter) and `meta.next_cursor` leads to the next page."""
     try:
-        return records.user_picks(conn, user_id=principal.user_id, status=status, limit=limit, cursor=cursor)
+        return records.user_picks(conn, user_id=principal.user_id, status=status, limit=limit, cursor=cursor, flt=flt,
+                                  tz=principal.timezone)
     except records.CursorError as exc:
         raise _cursor_refused(exc) from exc
+
+
+@router.get("/me/picks/summary", response_model=Envelope[PicksSummary])
+def get_my_picks_summary(conn: Db, principal: App, flt: Filter) -> Envelope[PicksSummary]:
+    """The reader's saved picks under the filter (plan UX, B5): totals, by kind of bet, by league and by odds range, always
+    with their sample (units, ROI, hit rate and margin from 25 settled picks), the line value of their prices, and the
+    filter's choices from their own picks."""
+    return ok(mypicks.summary(conn, user_id=principal.user_id, flt=flt, tz=principal.timezone))
+
+
+def _csv(body: str, kind: str) -> Response:
+    return Response(content=body.encode("utf-8"), media_type="text/csv; charset=utf-8",
+                    headers={"content-disposition": f'attachment; filename="{mypicks.filename(kind)}"',
+                             "cache-control": "no-store"})
+
+
+@router.get("/me/picks/export", response_class=Response,
+            responses={200: {"content": {"text/csv": {}}, "description": "The reader's saved picks, as CSV."}})
+def export_my_picks(conn: Db, principal: App, flt: Filter) -> Response:
+    """Every saved pick of the reader under the filter, as a CSV file (plan UX, B5: the reader's own data - still readable
+    with a limited membership). Times in the reader's time zone, headings in their language."""
+    return _csv(mypicks.picks_csv(conn, user_id=principal.user_id, flt=flt, tz=principal.timezone,
+                                  language=principal.language), "picks")
+
+
+@router.get("/me/parlays/export", response_class=Response,
+            responses={200: {"content": {"text/csv": {}}, "description": "The reader's parlays, as CSV."}})
+def export_my_parlays(conn: Db, principal: App) -> Response:
+    """Every parlay of the reader, one line per leg, as a CSV file (plan UX, B5)."""
+    return _csv(mypicks.parlays_csv(conn, user_id=principal.user_id, tz=principal.timezone,
+                                    language=principal.language), "parlays")
 
 
 @router.post("/me/picks", response_model=Envelope[dict[str, Any]], status_code=201)

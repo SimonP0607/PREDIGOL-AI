@@ -8,6 +8,8 @@ import type { TeamRef } from "@/lib/api/v1/types";
 import { CompetitionTag, TeamLogo } from "@/components/football/Logos";
 import { Freshness, LiveMinute } from "@/product/shared/Bits";
 import { Card } from "@/product/shared/States";
+import { FollowStar } from "@/product/favorites/FollowStar";
+import { MatchBell } from "@/product/push/MatchBell";
 import { venueFacts, venuePlace } from "@/product/shared/venue";
 import type { MatchCtx } from "./context";
 import { tieView } from "./tie";
@@ -36,7 +38,7 @@ function StatePill({ tone = "neutral", children }: { tone?: Tone; children: Reac
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold",
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-micro font-semibold",
         PILL_TONE[tone],
       )}
     >
@@ -90,6 +92,15 @@ function Center({ ctx }: { ctx: MatchCtx }) {
             {t("match.header.startsIn", { when: formatRelative(m.kickoff_at) })}
           </StatePill>
         ) : null}
+        {/* Plan UX, B7: «avísame antes de que empiece» - the bell asks for a notice; the star only follows a team. */}
+        {tbd ? null : (
+          <MatchBell
+            fixtureId={m.id}
+            kickoffAt={m.kickoff_at}
+            home={m.home.name}
+            away={m.away.name}
+          />
+        )}
       </div>
     );
   }
@@ -208,10 +219,12 @@ function TeamSide({
       >
         {team.name}
       </span>
+      {/* Plan UX, A13: follow the team from its match - Inicio shows its matches first. */}
+      <FollowStar team={{ id: team.id, name: team.name, logo_url: team.logo_url ?? null }} />
       {goals.length > 0 ? (
         <ul
           aria-label={t("match.header.scorers", { team: team.name })}
-          className="w-full space-y-0.5 text-[0.7rem] leading-snug text-muted-foreground sm:text-xs"
+          className="w-full space-y-0.5 text-micro leading-snug text-muted-foreground sm:text-xs"
         >
           {goals.map((g) => (
             <li key={g.seq} className="break-words" title={g.name}>

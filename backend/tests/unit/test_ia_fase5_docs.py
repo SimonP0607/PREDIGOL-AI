@@ -121,7 +121,7 @@ def test_the_guide_names_the_migration_it_ships_and_the_chain_ends_at_or_after_i
     cfg.set_main_option("script_location", str(BACKEND / "migrations"))
     script = ScriptDirectory.from_config(cfg)
     revision = script.get_revision("0120")
-    assert revision is not None and revision.down_revision == "0119"
+    assert revision is not None and revision.down_revision == "0106"
 
 
 # ── section 1: the pieces ─────────────────────────────────────────────────────────────────────────────────────────
@@ -204,7 +204,7 @@ def test_the_daily_step_attributes_only_when_the_word_is_on_and_the_weekly_one_a
 def test_the_migration_is_what_section_three_says() -> None:
     sec = section(3)
     m = migration()
-    assert (m.revision, m.down_revision) == ("0120", "0119")
+    assert (m.revision, m.down_revision) == ("0120", "0106")
     rows = table(sec, "| Qué")
     assert [r[0] for r in rows] == ["`intel.agent_attributions`", "`analytics.research_hypotheses`", "`analytics.experiments`"]
     for name in ("agent_attributions_append_only", "agent_attributions_once", "agent_attributions_one_refinement", "research_hypotheses_agent_pair",

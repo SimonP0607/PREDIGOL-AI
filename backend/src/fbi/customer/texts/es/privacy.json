@@ -1,0 +1,162 @@
+{
+  "title": "Política de tratamiento de datos personales",
+  "summary": "Qué datos tuyos tratamos, para qué, quién más los recibe, cuánto tiempo los guardamos y cómo ejercer tus derechos (Ley 1581 de 2012 y Decreto 1074 de 2015).",
+  "sections": [
+    {
+      "id": "responsable",
+      "title": "1. Responsable del tratamiento",
+      "blocks": [
+        {
+          "p": "{{controller.name}}, con domicilio en {{controller.address}}. Correo para asuntos de privacidad: {{controller.email}}. Teléfono: {{controller.phone}}."
+        },
+        {
+          "p": "El responsable atiende directamente las consultas y los reclamos sobre tus datos."
+        }
+      ]
+    },
+    {
+      "id": "datos",
+      "title": "2. Qué datos tratamos",
+      "blocks": [
+        {
+          "ul": [
+            "De tu cuenta: correo electrónico, nombre o alias, idioma, zona horaria y la contraseña guardada solo como huella (argon2id), nunca en claro.",
+            "De la seguridad de tu cuenta: las sesiones abiertas (fecha, dispositivo y dirección IP), el historial de accesos y, si la activas, la verificación en dos pasos.",
+            "De tu uso del producto: los picks y parlays que guardas y sus resultados, y tus preferencias.",
+            "Tus consentimientos (qué aceptaste, en qué versión y cuándo) y tus solicitudes de privacidad o soporte."
+          ]
+        },
+        {
+          "p": "No pedimos ni guardamos documentos de identidad, números de tarjeta o de cuenta bancaria, ni datos sensibles."
+        }
+      ]
+    },
+    {
+      "id": "finalidades",
+      "title": "3. Para qué los tratamos",
+      "blocks": [
+        {
+          "p": "Tratamos tus datos para estas finalidades, cada una distinta:"
+        },
+        {
+          "ul": [
+            "Prestar el servicio y gestionar tu cuenta y tu membresía, incluidos los correos necesarios para ello: acceso, recuperación de la contraseña, vencimiento de la membresía y respuesta a tus solicitudes.",
+            "Proteger tu cuenta y el servicio: detectar accesos indebidos y frenar intentos repetidos.",
+            "Mejorar el producto con estadísticas de uso basadas en identificadores seudónimos, sin rastreadores de terceros. [Pendiente de la revisión legal (P5): si esta finalidad necesita una casilla aparte.]",
+            "Enviarte correos comerciales (un resumen semanal y novedades de PrediGol) solo si lo pides aparte en tu perfil, con baja en un clic. Hoy no enviamos correos comerciales."
+          ]
+        },
+        {
+          "p": "Las tres primeras forman parte de la autorización que nos das al crear tu cuenta; la última, solo si la pides."
+        }
+      ]
+    },
+    {
+      "id": "encargados",
+      "title": "4. Quién más recibe datos",
+      "blocks": [
+        {
+          "p": "Solo proveedores que nos ayudan a prestar el servicio, con lo mínimo necesario:"
+        },
+        {
+          "ul": [
+            "Contabo, alojamiento del servidor (Estados Unidos).",
+            "Sentry (registro de errores): un identificador seudónimo, la referencia del error, la versión y el navegador; nunca tu correo, contraseñas, tokens ni cookies.",
+            "Resend (correo, cuando se active): tu correo, tu idioma y el contenido del aviso.",
+            "WhatsApp de Meta (soporte, cuando se active): tu número y lo que escribas."
+          ]
+        },
+        {
+          "p": "[Pendiente de la revisión legal (P5): si cada envío al extranjero es una transmisión con contrato o una transferencia, y sus garantías.]"
+        }
+      ]
+    },
+    {
+      "id": "derechos",
+      "title": "5. Tus derechos",
+      "blocks": [
+        {
+          "p": "Como titular puedes, en cualquier momento y sin costo:"
+        },
+        {
+          "ul": [
+            "conocer, actualizar y rectificar tus datos;",
+            "pedir prueba de la autorización que nos diste;",
+            "saber qué uso hemos dado a tus datos;",
+            "revocar una autorización o pedir que suprimamos tus datos, cuando no exista un deber legal o contractual de conservarlos;",
+            "presentar quejas ante la Superintendencia de Industria y Comercio, después de haber acudido a nosotros."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "como-ejercerlos",
+      "title": "6. Cómo ejercerlos y en qué plazo",
+      "blocks": [
+        {
+          "p": "Desde tu perfil puedes ver qué aceptaste y cuándo, retirar tu autorización, descargar tus datos (con tu contraseña), hacer una consulta o un reclamo y pedir el borrado de tus datos. También puedes escribir a {{controller.email}}."
+        },
+        {
+          "p": "Respondemos las consultas en un máximo de 10 días hábiles (ampliables 5, avisándote por qué) y los reclamos (corrección, actualización o supresión) en un máximo de 15 días hábiles (ampliables 8). La fecha límite de tu solicitud se ve en tu perfil."
+        }
+      ]
+    },
+    {
+      "id": "conservacion",
+      "title": "7. Cuánto tiempo los guardamos",
+      "blocks": [
+        {
+          "ul": [
+            "Los datos de tu cuenta, mientras la cuenta exista.",
+            "Las sesiones, hasta 90 días después de vencer; el historial de accesos, 12 meses.",
+            "Tus consentimientos, mientras exista la relación y el tiempo en que podrían exigirse como prueba.",
+            "Las solicitudes y tickets, 24 meses después de cerrarse."
+          ]
+        },
+        {
+          "p": "Cuando pides el borrado, tu cuenta se anonimiza: se eliminan tus datos personales y solo se conservan, sin identificarte, los registros que la ley obliga a guardar."
+        }
+      ]
+    },
+    {
+      "id": "seguridad",
+      "title": "8. Seguridad",
+      "blocks": [
+        {
+          "p": "Las conexiones van cifradas, las contraseñas se guardan como huella, las sesiones caducan, puedes activar la verificación en dos pasos y el acceso a los datos está limitado a lo que cada parte del sistema necesita."
+        }
+      ]
+    },
+    {
+      "id": "menores",
+      "title": "9. Menores de edad",
+      "blocks": [
+        {
+          "p": "PrediGol es solo para mayores de 18 años y no trata a sabiendas datos de menores. Si detectamos la cuenta de un menor, la cerramos y suprimimos sus datos."
+        }
+      ]
+    },
+    {
+      "id": "cookies",
+      "title": "10. Cookies",
+      "blocks": [
+        {
+          "p": "Usamos la cookie de sesión, necesaria para que inicies sesión, y el almacenamiento de tu propio navegador para recordar tu idioma y lo que estás armando (por ejemplo, un parlay sin guardar); eso no sale de tu dispositivo. No usamos cookies ni rastreadores de terceros, y las fuentes tipográficas se sirven desde PrediGol."
+        }
+      ]
+    },
+    {
+      "id": "vigencia",
+      "title": "11. Vigencia y cambios",
+      "blocks": [
+        {
+          "p": "Esta política rige desde su publicación [fecha — pendiente]. La base de datos se mantiene mientras dure la finalidad para la que se recogieron los datos. Si cambiamos algo importante, te pediremos aceptar la nueva versión; cada versión queda fechada y con su huella (sha256)."
+        }
+      ]
+    }
+  ],
+  "statements": {
+    "privacy": "Autorizo el tratamiento de mis datos para las finalidades de la Política de tratamiento de datos personales: prestar el servicio, proteger mi cuenta y mejorar el producto con estadísticas seudónimas.",
+    "marketing_email": "Quiero recibir por correo el resumen semanal de PrediGol: mis picks de la semana y cómo terminaron, los partidos de mis equipos y las novedades. Puedo darme de baja en un clic desde cualquier resumen o en mi perfil."
+  }
+}

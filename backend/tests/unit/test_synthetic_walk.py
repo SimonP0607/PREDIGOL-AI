@@ -21,7 +21,9 @@ TODAY = date(2026, 10, 25)
 
 
 def platform(*, fail: str | None = None, stage: str = "full", matches: list[dict[str, object]] | None = None,
-             seen: list[httpx.Request] | None = None) -> httpx.Client:
+             seen: list[httpx.Request] | None = None,
+             activation: tuple[int, dict[str, object]] = (410, {"status": "error", "error": {"code": "link_invalid"}})
+             ) -> httpx.Client:
     def handler(request: httpx.Request) -> httpx.Response:
         if seen is not None:
             seen.append(request)
@@ -30,6 +32,10 @@ def platform(*, fail: str | None = None, stage: str = "full", matches: list[dict
             return httpx.Response(500, json={"status": "error"})
         if path == "/login":
             return httpx.Response(200, text="<!doctype html><html lang=\"es\"><body>Inicia sesión</body></html>")
+        if path == "/api/v1/auth/activate/check":
+            assert request.headers["x-requested-with"] == "predigol"
+            assert len(json.loads(request.content)["token"]) >= 43, "a link nobody was sent, of a real link's shape"
+            return httpx.Response(activation[0], json=activation[1])
         if path == "/api/v1/auth/login":
             assert request.headers["x-requested-with"] == "predigol"
             body = json.loads(request.content)
@@ -45,8 +51,8 @@ def platform(*, fail: str | None = None, stage: str = "full", matches: list[dict
 def test_the_reader_walk_in_order_with_the_match_of_today() -> None:
     seen: list[httpx.Request] = []
     steps = synthetic.walk(CFG, client=platform(matches=[{"id": 77}, {"id": 78}], seen=seen), today=TODAY)
-    assert [s.name for s in steps] == ["page", "sign_in", "home", "matches_today", "match_center", "picks",
-                                       "my_picks", "sign_out"]
+    assert [s.name for s in steps] == ["page", "activation", "sign_in", "home", "matches_today", "match_center",
+                                       "picks", "my_picks", "sign_out"]
     assert all(s.ok for s in steps)
     paths = [r.url.path for r in seen]
     assert "/api/v1/matches/77/center" in paths
@@ -71,16 +77,16 @@ def test_a_session_opened_with_a_step_still_owed_is_closed_all_the_same() -> Non
     session open on every run."""
     seen: list[httpx.Request] = []
     steps = synthetic.walk(CFG, client=platform(stage="mfa", seen=seen), today=TODAY)
-    assert [s.name for s in steps] == ["page", "sign_in", "sign_out"]
+    assert [s.name for s in steps] == ["page", "activation", "sign_in", "sign_out"]
     assert seen[-1].url.path == "/api/v1/auth/logout"
 
 
 def test_past_its_time_budget_the_walk_skips_the_rest_but_signs_out() -> None:
-    ticks = iter([0.0, 1.0, 2.0, 3.0, 200.0, 201.0, 202.0, 203.0, 204.0, 205.0])
+    ticks = iter([0.0, 1.0, 2.0, 3.0, 4.0, 200.0, 201.0, 202.0, 203.0, 204.0, 205.0])
     steps = synthetic.walk(CFG, client=platform(matches=[{"id": 9}]), today=TODAY, budget_s=90.0,
                            clock=lambda: next(ticks))
     names = [(s.name, s.ok) for s in steps]
-    assert names[:3] == [("page", True), ("sign_in", True), ("home", True)]
+    assert names[:4] == [("page", True), ("activation", True), ("sign_in", True), ("home", True)]
     skipped = [s for s in steps if s.note.startswith("skipped")]
     assert skipped and all(not s.ok for s in skipped)
     assert steps[-1].name == "sign_out" and steps[-1].ok
@@ -95,7 +101,8 @@ def test_a_sign_in_that_does_not_finish_stops_the_walk(stage: str, fail: str | N
     problems = [s.problem() for s in steps if not s.ok]
     assert problems[0] == first_problem
     if stage == "mfa":
-        assert [s.name for s in steps] == ["page", "sign_in", "sign_out"], "nothing is visited, the session closed"
+        assert [s.name for s in steps] == ["page", "activation", "sign_in", "sign_out"], (
+            "nothing is visited, the session closed")
 
 
 def test_an_unreachable_platform_is_a_failed_step_never_an_exception() -> None:
@@ -104,7 +111,29 @@ def test_an_unreachable_platform_is_a_failed_step_never_an_exception() -> None:
 
     client = httpx.Client(base_url=CFG.base_url, transport=httpx.MockTransport(down))
     steps = synthetic.walk(CFG, client=client, today=TODAY)
-    assert [(s.name, s.ok, s.note) for s in steps] == [("page", False, "ConnectError"), ("sign_in", False, "ConnectError")]
+    assert [(s.name, s.ok, s.note) for s in steps] == [("page", False, "ConnectError"),
+                                                        ("activation", False, "ConnectError"),
+                                                        ("sign_in", False, "ConnectError")]
+
+
+@pytest.mark.parametrize(("status", "body", "ok", "problem"), [
+    (410, {"status": "error", "error": {"code": "link_invalid"}}, True, ""),
+    (404, {"status": "error", "error": {"code": "not_found"}}, True, ""),  # FBI_SELF_SERVICE off
+    (200, {"email": "someone@predigol.test"}, False, "activation: HTTP 200"),
+    (410, {"status": "error", "error": {"code": "rate_limited"}}, False,
+     "activation: HTTP 410 (refused as 'rate_limited', not as a link that does not work)"),
+    (429, {"status": "error", "error": {"code": "too_many_attempts"}}, False, "activation: HTTP 429"),
+])
+def test_the_activation_step_wants_a_link_nobody_was_sent_refused(status: int, body: dict[str, object], ok: bool,
+                                                                   problem: str) -> None:
+    """Plan UX, A7: the activation of an invitation as a step of the journey, creating nothing - a random link must
+    be refused as a link that does not work (or the route be off), through the lookup a real link takes."""
+    steps = synthetic.walk(CFG, client=platform(activation=(status, body)), today=TODAY)
+    step = next(s for s in steps if s.name == "activation")
+    assert step.ok is ok
+    if not ok:
+        assert step.problem() == problem
+    assert steps[-1].name == "sign_out", "the walk goes on: the reader's own steps are measured too"
 
 
 def test_the_configuration_is_whole_or_absent_and_never_shows_the_password(tmp_path: Path) -> None:

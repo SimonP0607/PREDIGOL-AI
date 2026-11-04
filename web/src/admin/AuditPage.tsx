@@ -1,6 +1,6 @@
 /** Sign-ins and account changes. The API never stores a password or a token here. */
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { live } from "@/lib/api/v1/queries";
 import { t, translateOr } from "@/lib/i18n";
@@ -9,7 +9,8 @@ import { Card, EmptyState, ErrorState, SkeletonCards } from "@/product/shared/St
 import { cn } from "@/lib/utils";
 import { detailText } from "./auditDetail";
 
-const ACTIONS = [
+/** The kinds the console always lists; the trail adds every other kind it holds (plan UX, B10). */
+const KNOWN_ACTIONS = [
   "login.succeeded",
   "login.password_ok",
   "login.failed",
@@ -54,8 +55,13 @@ const TONE: Record<string, string> = {
 
 export function AuditPage() {
   const [action, setAction] = useState<string>("");
-  const q = useQuery({ ...live.authAudit(action || undefined) });
-  const events = q.data?.data ?? [];
+  const q = useInfiniteQuery({ ...live.authAuditPages(action || undefined) });
+  const held = useQuery({ ...live.authAuditActions });
+  const actions = [
+    ...new Set([...KNOWN_ACTIONS, ...(held.data?.data ?? []).map((a) => a.action)]),
+  ].sort();
+  const events = q.data?.pages.flatMap((p) => p.data) ?? [];
+  const total = q.data?.pages[0]?.meta.total ?? events.length;
   return (
     <div className="space-y-5">
       <PageHeader
@@ -71,7 +77,7 @@ export function AuditPage() {
               className="h-8 min-w-0 max-w-full rounded-md border border-input bg-background px-2 text-xs"
             >
               <option value="">{t("admin.audit.allActions")}</option>
-              {ACTIONS.map((a) => (
+              {actions.map((a) => (
                 <option key={a} value={a}>
                   {actionLabel(a)}
                 </option>
@@ -123,6 +129,26 @@ export function AuditPage() {
             </table>
           </div>
         )}
+        {events.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-2 text-caption text-muted-foreground">
+            <span data-testid="audit-shown">
+              {t("admin.audit.shown", { shown: events.length, total })}
+            </span>
+            {q.hasNextPage ? (
+              <button
+                type="button"
+                data-testid="audit-more"
+                disabled={q.isFetchingNextPage}
+                onClick={() => void q.fetchNextPage()}
+                className="tap-y relative rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+              >
+                {t("admin.audit.loadMore")}
+              </button>
+            ) : (
+              <span>{t("admin.audit.allLoaded")}</span>
+            )}
+          </div>
+        ) : null}
       </Card>
     </div>
   );

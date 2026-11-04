@@ -17,30 +17,49 @@ from starlette.concurrency import run_in_threadpool
 from fbi.api import errors
 from fbi.api.limits import BodyLimit, SlidingWindow
 from fbi.api.routers import (
+    account,
+    admin_customers,
     admin_users,
     ai_layer,
     analyst,
     auth,
     center,
+    customer,
+    events,
     evolution,
+    explain,
     explorer,
+    favorites,
+    feedback,
     football,
     forecast,
     intelligence,
     knowledge,
     market,
     match_calendar,
+    membership,
+    messaging,
     monitoring,
+    news,
+    personal,
+    postmatch,
     product,
+    push,
+    reading,
     records,
     referees,
+    support,
     system,
+    today,
+    transparency,
     truth,
 )
 from fbi.api.security import (
     SAFE_METHODS,
     allowed_origins,
     client_ip,
+    consent_required,
+    membership_required,
     observe_principal,
     require_admin,
     require_app,
@@ -56,7 +75,12 @@ from fbi.core.logging import configure, error_summary, error_trace
 log = structlog.get_logger("api")
 
 AUTH_STEP_PATHS = frozenset({"/api/v1/auth/login", "/api/v1/auth/mfa/verify",
-                             "/api/v1/auth/mfa/enroll/confirm", "/api/v1/auth/password/required"})
+                             "/api/v1/auth/mfa/enroll/confirm", "/api/v1/auth/password/required",
+                             # plan UX, A7: the one-use links and the requests for one
+                             "/api/v1/auth/activate", "/api/v1/auth/activate/check", "/api/v1/auth/activate/renew",
+                             "/api/v1/auth/password/forgot", "/api/v1/auth/password/reset",
+                             "/api/v1/auth/password/reset/check", "/api/v1/auth/unlock",
+                             "/api/v1/auth/unlock/request"})
 SELF_AUDITED = ("/api/v1/admin/users",)
 """Account management records its own, more precise events (user.created, password.reset, ...)."""
 
@@ -179,22 +203,45 @@ def create_app() -> FastAPI:
         return response
 
     # Three tiers, decided here and nowhere else (see fbi.api.security):
-    #   public  - health, sign-in, sign-out
-    #   app     - the product, for any signed-in account
+    #   public  - health, sign-in, sign-out, and the one-use links of an account (plan UX, A7)
+    #   app     - the product, for any signed-in account (and, once FBI_CONSENT_GATE is on, its current consents)
     #   admin   - /api/v1/admin/*, SUPER_ADMIN only
-    for r in (system.router, auth.public_router, auth.session_router):
+    # The provider's signed webhook (plan UX, A5) is public too: its signature is its authentication.
+    # The way to reach PrediGol without signing in (plan UX, A14) is public too: data the owner publishes.
+    # The one-click leaving of the weekly summary (B8) is public too: its signed link is its authentication.
+    for r in (system.router, auth.public_router, auth.session_router, account.router, customer.public_router,
+              messaging.webhook_router, support.public_router, messaging.unsubscribe_router):
         app.include_router(r, prefix="/api/v1")
     # The browser's error reports (plan UX, A2): public - an error can happen before signing in - but same-site.
     app.include_router(monitoring.router, prefix="/api/v1", dependencies=[Depends(same_site_only)])
     app_tier = [Depends(same_site_only), Depends(require_app), Depends(observe_principal)]
-    for r in (auth.router, product.router, records.router, football.router, market.router, center.router,
-              ai_layer.router, forecast.router, match_calendar.router, knowledge.router):
+    # The account itself, its membership and the reader's rights (consents, export, privacy requests, notification
+    # preferences) and their questions to PrediGol (A14): never behind the gates - a limited reader still sees why, how
+    # to renew, and reaches Ayuda. Novedades read (B6) is the reader's own state, like a dismissed hint; so are the reader's
+    # devices and categories of notices (B7) - a limited reader is still told their membership ends.
+    for r in (auth.router, customer.router, messaging.router, membership.router, favorites.router, support.router,
+              feedback.updates_router, push.router):
         app.include_router(r, prefix="/api/v1", dependencies=app_tier)
+    # The product's own analytics (A6), behind the consent gate only: a reader who has not accepted the processing is
+    # not measured; a limited one is (what they open while limited is part of renewing). What the reader's own use orders
+    # and suggests (B2) reads what is measured: the same gate. The survey and «¿Te sirvió?» (B6) are measurement too.
+    measured_tier = [*app_tier, Depends(consent_required)]
+    for r in (events.router, personal.router, feedback.router):
+        app.include_router(r, prefix="/api/v1", dependencies=measured_tier)
+    # The product, behind the consent gate (plan UX, A4; FBI_CONSENT_GATE, born off: fbi.customer.consents) and the
+    # membership's (A8; FBI_MEMBERSHIP_ENFORCE, born off: fbi.customer.membership). «Explícame» (B9) explains the product:
+    # the same gates.
+    product_tier = [*measured_tier, Depends(membership_required)]
+    for r in (product.router, records.router, football.router, market.router, center.router,
+              ai_layer.router, forecast.router, match_calendar.router, knowledge.router, postmatch.router,
+              reading.router, today.router, news.router, transparency.router, push.alerts_router, explain.router):
+        app.include_router(r, prefix="/api/v1", dependencies=product_tier)
     admin_tier = [Depends(same_site_only), Depends(require_admin), Depends(observe_principal)]
     for r in (system.admin_router, football.admin_router, market.admin_router,
               center.admin_router, explorer.router, analyst.router, admin_users.router, truth.router,
               evolution.router, ai_layer.admin_router, intelligence.router, referees.router,
-              monitoring.admin_router):
+              monitoring.admin_router, admin_customers.router, admin_customers.audit_router, customer.admin_router, messaging.admin_router, events.admin_router,
+              membership.admin_router, support.admin_router, feedback.admin_router, push.admin_router):
         app.include_router(r, prefix="/api/v1/admin", dependencies=admin_tier)
     # The original unversioned health endpoint stays where monitors expect it.
     app.add_api_route("/health", system.get_health, methods=["GET"], include_in_schema=False)

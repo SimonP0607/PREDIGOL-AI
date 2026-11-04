@@ -1,5 +1,7 @@
 # Pronóstico PrediGol: lo que se espera de un partido, aparte de lo que vale y de lo que se recomienda (Plan Maestro, fase F5)
 
+> **Desde la fase A9 del plan UX** (aprobada por el dueño con el plan), los usuarios ven el pronóstico sin hacer nada: `FBI_FORECAST_USERS` vale «encendido» cuando su línea no está, y `FBI_FORECAST_USERS=0` lo vuelve a ocultar sin desplegar (se recrea la API). Donde este documento dice «apagado hasta que el dueño decida», describe el estado anterior a A9. Guía: `VALOR_DIARIO_UX_A9.md`.
+
 **Qué es.** Hasta hoy un modelo solo podía hablarle a un usuario a través de un *candidato*: un pick nace de una selección que ya
 pasó la regla de valor (un precio, una ventaja sobre el mercado y diez filtros). Un partido en el que los modelos estaban muy
 seguros pero el precio era corto (un favorito a 1,30) no dejaba ninguna fila: el sistema no tenía dónde decir «esto es lo más

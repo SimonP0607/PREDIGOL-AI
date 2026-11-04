@@ -12,7 +12,7 @@
  * match - three answers that are not one - and, in a block of its own, what the families (the goals of each half, the
  * corners, the cards) forecast for it: research, uncalibrated, and never mixed into the forecast above (plan F10.17b).
  */
-import { useId, type ReactNode } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CircleCheck, Gauge } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ import { fmtOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import { formatRelative } from "@/lib/time";
 import { live } from "@/lib/api/v1/queries";
 import { usePreviewParam } from "@/lib/auth/AuthProvider";
+import { track } from "@/lib/track";
 import type { Section } from "@/lib/api/v1/types";
 import type {
   FamilyMarket,
@@ -30,8 +31,10 @@ import type {
   ForecastValueRow,
   MatchForecast,
 } from "@/lib/api/v1/types_forecast";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { familyName, marketText, ruleKeyText } from "@/live/familiesText";
 import { ShadowBadge } from "@/product/shared/Bits";
+import { ExplainLayers } from "@/product/shared/ExplainLayers";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import {
@@ -61,7 +64,7 @@ function Tag({ tone, children }: { tone: string; children: ReactNode }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold leading-tight",
+        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-micro font-semibold leading-tight",
         tone,
       )}
     >
@@ -137,7 +140,7 @@ function OutcomeRow({
       </div>
       <RangeBar outcome={outcome} />
       <p className="mt-1 flex flex-wrap gap-x-2 text-caption text-muted-foreground">
-        <span>{intervalText(outcome)}</span>
+        <GlossaryTerm term="range">{intervalText(outcome)}</GlossaryTerm>
         {fair ? (
           <span className="numeric">
             · {t("match.forecast.admin.fairOdds", { odds: fmtOdds(fair) })}
@@ -175,7 +178,7 @@ function MarketView({
         <h3 className="min-w-0 break-words text-sm font-semibold">{forecastMarketTitle(market)}</h3>
         <Tag tone={calibrated ? CALIBRATED_TAG : UNCALIBRATED_TAG}>
           {calibrated ? <CircleCheck aria-hidden className="h-3 w-3" /> : null}
-          {calibrationLabel(market.calibration)}
+          <GlossaryTerm term="calibrated">{calibrationLabel(market.calibration)}</GlossaryTerm>
         </Tag>
       </header>
       <ul className="space-y-3">
@@ -191,8 +194,15 @@ function MarketView({
       </ul>
       <p className="text-caption leading-snug text-subtle-foreground">
         {note ? <span data-testid="forecast-basis">{note} </span> : null}
-        <span>{t("match.forecast.model", { model: modelLabel(market.model) })}</span>
-        <span> · {t("match.forecast.updated", { when: formatRelative(market.known_at) })}</span>
+        {/* The model's name is the owner's preview only (plan UX, A9): a reader gets null. */}
+        {market.model ? (
+          <>
+            <span>{t("match.forecast.model", { model: modelLabel(market.model) })}</span>
+            <span> · {t("match.forecast.updated", { when: formatRelative(market.known_at) })}</span>
+          </>
+        ) : (
+          <span>{t("match.forecast.updated", { when: formatRelative(market.known_at) })}</span>
+        )}
       </p>
     </section>
   );
@@ -493,9 +503,8 @@ export function ForecastView({
                 preview={preview}
               />
             ))}
-            <p className="text-caption leading-snug text-subtle-foreground">
-              {t("match.forecast.footnote")}
-            </p>
+            {/* forecast ≠ value ≠ pick (plan UX, A3): where the three answers are told apart */}
+            <ExplainLayers compact />
           </>
         ) : null}
         {preview && data ? <AdminDetails data={data} sides={sides} /> : null}
@@ -514,8 +523,13 @@ export function ForecastBlock({ ctx }: { ctx: MatchCtx }) {
   const load: ForecastLoad = q.isPending
     ? { status: "pending" }
     : q.isError
-      ? { status: "error", error: q.error }
+      ? { status: "error", error: q.error, retry: () => void q.refetch() }
       : { status: "success", envelope: q.data };
+  const shown = forecastScreen(load, shadow === "shadow").kind === "forecast";
+  // Plan UX, A6 and A9: a reader saw PrediGol's forecast of this match (once per match opened; the owner is never measured).
+  useEffect(() => {
+    if (shown && shadow !== "shadow") track("forecast_viewed", { match_id: Number(ctx.fixtureId) });
+  }, [shown, shadow, ctx.fixtureId]);
   return (
     <ForecastView
       load={load}

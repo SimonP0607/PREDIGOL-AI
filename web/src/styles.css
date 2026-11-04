@@ -1,6 +1,21 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+/*
+ * The three typefaces, served from PrediGol (plan UX, A4; plan de seguridad, S5): no request to Google - a visitor's
+ * address went to fonts.googleapis.com on every page. Space Grotesk and IBM Plex Sans as variable fonts (one file per
+ * script for every weight, as Google served them: nine static weights were twice the fonts to decode per page);
+ * IBM Plex Mono has no variable cut, so its three weights in use, Latin and Latin Extended. A browser fetches a file
+ * only when a character in its range appears (unicode-range).
+ */
+@import "@fontsource-variable/space-grotesk/wght.css";
+@import "@fontsource-variable/ibm-plex-sans/wght.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-ext-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+@import "@fontsource/ibm-plex-mono/latin-ext-500.css";
+@import "@fontsource/ibm-plex-mono/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-ext-600.css";
 
 @custom-variant dark (&:is(.dark *));
 /* A phone held sideways: so little height that fixed chrome must give way to the content. */
@@ -20,8 +35,8 @@
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
 
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans Variable", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
   --color-background: var(--background);
@@ -232,6 +247,21 @@
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  /* Phones and tablets: 12 px, the plan's minimum on a reader's screen (plan UX, A15, section 36; 11 px on a desk). */
+  @media (max-width: 63.98rem), (pointer: coarse) {
+    font-size: 0.75rem;
+  }
+}
+
+/*
+ * The smallest text of a pill, a count or a note: 11 px on a desk, 12 px on a phone or a tablet - never under the plan's
+ * minimum where a finger reads it (plan UX, A15, section 36). Only the size: weight and line height stay the element's.
+ */
+@utility text-micro {
+  font-size: 0.6875rem;
+  @media (max-width: 63.98rem), (pointer: coarse) {
+    font-size: 0.75rem;
+  }
 }
 
 @utility text-caption {

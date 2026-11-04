@@ -1,0 +1,71 @@
+{
+  "_comment": "The register of the legal texts (fbi/customer/legal.py): every version of each document, oldest first. A text never changes without a new entry here: add one with the date, draft (true until the lawyer's written OK, P5), material (true when every reader must accept again), what changed in both languages, and the sha256 printed by `python -m scripts.legal_texts hashes`. The test suite recomputes every hash.",
+  "terms": {
+    "versions": [
+      {
+        "version": "2026-10-25-draft1",
+        "date": "2026-10-25",
+        "draft": true,
+        "material": true,
+        "changes": {
+          "es": "Primera versión: borrador pendiente de la revisión del abogado (P5) y de los datos del responsable (P4).",
+          "en": "First version: a draft pending the lawyer's review (P5) and the controller's details (P4)."
+        },
+        "sha256": {
+          "es": "dcecec5c95a14ab56e0281c8931084534e531b902cc20b3b20ebab556015a4c1",
+          "en": "0f19010504b18993eb8465533396d132193a1bc62bdeee7eb30352680a5c8838"
+        }
+      }
+    ]
+  },
+  "privacy": {
+    "versions": [
+      {
+        "version": "2026-10-25-draft1",
+        "date": "2026-10-25",
+        "draft": true,
+        "material": true,
+        "changes": {
+          "es": "Primera versión: borrador pendiente de la revisión del abogado (P5) y de los datos del responsable (P4).",
+          "en": "First version: a draft pending the lawyer's review (P5) and the controller's details (P4)."
+        },
+        "sha256": {
+          "es": "c1f67f52a3727639fce45c41f4b7e8e74f0201601fdb0ae3abf1bdf9ddcc6add",
+          "en": "d8e71a15c5185190a5e779319cf99bbb6261b4e142cdf9142428a39299056370"
+        }
+      },
+      {
+        "version": "2026-10-27-draft2",
+        "date": "2026-10-27",
+        "draft": true,
+        "material": false,
+        "changes": {
+          "es": "Se añade la frase de la casilla opcional del resumen semanal por correo (plan UX, B8). No cambia ninguna finalidad ni lo que ya autorizaste: sigue siendo un borrador pendiente de la revisión del abogado (P5).",
+          "en": "Adds the sentence of the optional box of the weekly summary by e-mail (plan UX, B8). No purpose and nothing you already authorised changes: it is still a draft pending the lawyer's review (P5)."
+        },
+        "sha256": {
+          "es": "50d7d4fe87a8211f7e305aa146899e51adc517b0ba7d5d523f92d6b86cea1d8a",
+          "en": "0f5839bed94cd7c1d2d11593522f0f1300fb26bf93b62ed72697321758d7bb0e"
+        }
+      }
+    ]
+  },
+  "responsible_gaming": {
+    "versions": [
+      {
+        "version": "2026-10-25-draft1",
+        "date": "2026-10-25",
+        "draft": true,
+        "material": true,
+        "changes": {
+          "es": "Primera versión: borrador pendiente de la revisión del abogado (P5) y de los datos del responsable (P4).",
+          "en": "First version: a draft pending the lawyer's review (P5) and the controller's details (P4)."
+        },
+        "sha256": {
+          "es": "afaab58898a5ce81d61f71b2fbcefb171793ee283f52a14ade309fdb799df9c5",
+          "en": "d374158c14ec1338aa079b59e9d071e3bcb2e22120ed547e908ed8f27a20a048"
+        }
+      }
+    ]
+  }
+}

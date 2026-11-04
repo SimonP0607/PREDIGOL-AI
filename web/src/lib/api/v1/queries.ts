@@ -1,6 +1,9 @@
 /** TanStack Query option factories for the live API. */
 import { infiniteQueryOptions } from "@tanstack/react-query";
-import { v1, type BestOddsQuery, type MatchQuery } from "./client";
+import { filterParams, v1, type BestOddsQuery, type MatchQuery } from "./client";
+import type { MyPicksFilter } from "./types_mypicks";
+import type { FeedbackSubject } from "./types_feedback";
+import type { ExplainIntent, SlipLegBody } from "./types_explain";
 import type { ParlayKind, PicksQuery } from "./types_product";
 import type { BuilderQuery } from "./types_builder";
 import type { HistoryPeriod } from "./types_records";
@@ -10,12 +13,68 @@ import type { MemoryFilters } from "./types_ai_layer";
 import type { AgentRunsQuery, ContraCode } from "./types_ai_shadow";
 import type { PairStatus } from "./types_referees";
 
+export const AUDIT_PAGE = 100;
 const MINUTE = 60_000;
 type Preview = "shadow" | undefined;
 
 export const live = {
   // ── auth ──────────────────────────────────────────────────────────────────
   me: { queryKey: ["auth", "me"], queryFn: v1.me, staleTime: 5 * MINUTE, retry: false },
+  /** The reader's favourites (plan UX, A13): Home's own part follows them through /today. */
+  favorites: { queryKey: ["me", "favorites"], queryFn: v1.myFavorites, staleTime: 5 * MINUTE },
+  favoriteOptions: (q: string) => ({
+    queryKey: ["me", "favorite-options", q],
+    queryFn: () => v1.favoriteOptions(q),
+    staleTime: 10 * MINUTE,
+  }),
+  /**
+   * Help and support (plan UX, A14): the reader's tickets, the categories and the contact. Read again whenever Ayuda or a
+   * message's page opens (staleTime 0): a ticket answered a moment ago never reads «Esperando respuesta» from the cache
+   * (found by A16's journey: the receipt's «Ver mi mensaje» within a minute of the owner's answer).
+   */
+  support: { queryKey: ["me", "support"], queryFn: v1.mySupport, staleTime: 0 },
+  /** Whether the monthly survey is owed (plan UX, B6): read once per visit; an answer or a skip reads it again. */
+  survey: { queryKey: ["me", "feedback", "survey"], queryFn: v1.mySurvey, staleTime: 30 * MINUTE },
+  /** The reader's «¿Te sirvió?» on one thing read. */
+  helpfulVote: (subject: FeedbackSubject, subjectId: number) => ({
+    queryKey: ["me", "feedback", "helpful", subject, subjectId],
+    queryFn: () => v1.myHelpfulVote(subject, subjectId),
+    staleTime: 30 * MINUTE,
+  }),
+  /**
+   * The reader's notices on their devices (plan UX, B7): whether they can be offered at all, the key to subscribe with,
+   * their devices and categories. Read again after any change of theirs.
+   */
+  push: { queryKey: ["me", "push"], queryFn: v1.myPush, staleTime: 5 * MINUTE },
+  /** The bell of one match. */
+  matchAlert: (fixtureId: number) => ({
+    queryKey: ["me", "match-alert", fixtureId],
+    queryFn: () => v1.myMatchAlert(fixtureId),
+    staleTime: 5 * MINUTE,
+  }),
+  /** The newest entry of Novedades the reader has seen: «Más» marks a newer one. */
+  updatesSeen: {
+    queryKey: ["me", "updates", "seen"],
+    queryFn: v1.myUpdatesSeen,
+    staleTime: 30 * MINUTE,
+  },
+  /**
+   * The account centre (plan UX, B1): what the profile's eight blocks say folded. Read again whenever the profile opens
+   * (staleTime 0) and after a change in one of its blocks.
+   */
+  account: { queryKey: ["me", "account"], queryFn: v1.myAccount, staleTime: 0 },
+  /**
+   * What the reader's own use orders and suggests (plan UX, B2): their markets first in a match's «Mercados» and one league
+   * or team to follow. Kept five minutes: their habits move slowly; a choice of theirs reads it again.
+   */
+  personal: { queryKey: ["me", "personal"], queryFn: v1.myPersonal, staleTime: 5 * MINUTE },
+  /** Public: the way to reach PrediGol without signing in. */
+  supportContact: {
+    queryKey: ["support", "contact"],
+    queryFn: v1.supportContact,
+    staleTime: 30 * MINUTE,
+    retry: false,
+  },
 
   // ── product ───────────────────────────────────────────────────────────────
   home: (preview: Preview) => ({
@@ -32,6 +91,38 @@ export const live = {
     queryKey: ["v1", "started-picks", preview ?? "qualified"],
     queryFn: () => v1.startedPicks({ preview }),
     refetchInterval: MINUTE,
+  }),
+  /**
+   * «¿Por qué este pick?» (plan UX, B3): asked for when the reader opens it (the sheet sets `enabled`); the same for every
+   * reader, kept a minute - its price now moves, its reasons do not.
+   */
+  pickExplanation: (pickId: number, preview: Preview) => ({
+    queryKey: ["v1", "pick-explanation", pickId, preview ?? "qualified"],
+    queryFn: () => v1.pickExplanation(pickId, { preview }),
+    staleTime: MINUTE,
+    retry: false,
+  }),
+  /**
+   * «Explícame» (plan UX, B9): asked for when the reader picks a question (the sheet sets `enabled`); the same answer for every
+   * reader of a match or a pick, kept a minute.
+   */
+  explain: (entity: "match" | "pick", id: number, intent: ExplainIntent, preview: Preview) => ({
+    queryKey: ["v1", "explain", entity, id, intent, preview ?? "qualified"],
+    queryFn: () => v1.explain(entity, id, intent, { preview }),
+    staleTime: MINUTE,
+    retry: false,
+  }),
+  /** The parlay being built: keyed by its legs, so a leg added or removed asks again. */
+  explainParlay: (legs: SlipLegBody[]) => ({
+    queryKey: [
+      "v1",
+      "explain",
+      "parlay",
+      legs.map((l) => `${l.fixture_id}:${l.market_key}:${l.selection}:${l.line}`),
+    ],
+    queryFn: () => v1.explainParlay(legs),
+    staleTime: MINUTE,
+    retry: false,
   }),
   parlay: (kind: ParlayKind, preview: Preview) => ({
     queryKey: ["v1", "parlay", kind, preview ?? "qualified"],
@@ -65,14 +156,21 @@ export const live = {
    * the next page from `meta.next_cursor`. Mis picks lists with pages of 25 (parlays: 10); the recap reads every
    * page, of 500 (parlays: 200, the most the API serves).
    */
-  myPicksPages: (size: number) =>
+  /** The reader's saved picks a page at a time, under the filter of Mis picks when one is given (plan UX, B5). */
+  myPicksPages: (size: number, filter?: MyPicksFilter) =>
     infiniteQueryOptions({
-      queryKey: ["v1", "me", "picks", "pages", size],
-      queryFn: ({ pageParam }) => v1.myPicks({ limit: size, cursor: pageParam }),
+      queryKey: ["v1", "me", "picks", "pages", size, filterParams(filter)],
+      queryFn: ({ pageParam }) => v1.myPicks({ limit: size, cursor: pageParam, filter }),
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (last) => last.meta.next_cursor ?? undefined,
       refetchInterval: 2 * MINUTE,
     }),
+  /** Totals, breakdown and line value of the reader's saved picks under the filter (plan UX, B5). */
+  myPicksSummary: (filter?: MyPicksFilter) => ({
+    queryKey: ["v1", "me", "picks", "summary", filterParams(filter)],
+    queryFn: () => v1.myPicksSummary(filter),
+    refetchInterval: 2 * MINUTE,
+  }),
   myParlaysPages: (size: number) =>
     infiniteQueryOptions({
       queryKey: ["v1", "me", "parlays", "pages", size],
@@ -141,6 +239,43 @@ export const live = {
     queryFn: () => v1.matchKnowledge(id, { preview }),
     refetchInterval: 10 * MINUTE,
   }),
+  /**
+   * A finished match's settlement and why (plan UX, B4): settled within minutes of the whistle, explained the night after;
+   * the reader's own saved picks are in it, so it is read again when they come back.
+   */
+  matchPostmatch: (id: string, preview: Preview) => ({
+    queryKey: ["v1", "match-postmatch", id, preview ?? "user"],
+    queryFn: () => v1.matchPostmatch(id, { preview }),
+    refetchInterval: 5 * MINUTE,
+  }),
+  /** The reading changes when PrediGol Intelligence stores a new packet (every one to three hours) or a new forecast. */
+  matchReading: (id: string, preview: Preview) => ({
+    queryKey: ["v1", "match-reading", id, preview ?? "user"],
+    queryFn: () => v1.matchReading(id, { preview }),
+    refetchInterval: 10 * MINUTE,
+  }),
+  /** Home's board: the server keeps it a minute; the page reads it again when the reader comes back to it. */
+  today: { queryKey: ["v1", "today"], queryFn: v1.today, refetchInterval: 2 * MINUTE },
+  /** Why the day has no pick, for the Picks page: the server keeps it five minutes. */
+  noPick: { queryKey: ["v1", "today", "no-pick"], queryFn: v1.noPick, refetchInterval: 5 * MINUTE },
+  /** «Cómo le va a PrediGol» (A12): the server keeps it ten minutes per time zone. */
+  transparency: (preview: Preview) => ({
+    queryKey: ["v1", "transparency", preview ?? "user"],
+    queryFn: () => v1.transparency({ preview }),
+    refetchInterval: 10 * MINUTE,
+  }),
+  /** A match's news change when PrediGol Intelligence reads the press again (hours apart; the last hours before kick-off). */
+  matchNews: (id: string) => ({
+    queryKey: ["v1", "match-news", id],
+    queryFn: () => v1.matchNews(id),
+    refetchInterval: 5 * MINUTE,
+  }),
+  /** Home's «Noticias»: the server keeps it two minutes. */
+  todayNews: {
+    queryKey: ["v1", "today", "news"],
+    queryFn: v1.todayNews,
+    refetchInterval: 5 * MINUTE,
+  },
   liveBoard: { queryKey: ["v1", "live"], queryFn: v1.liveBoard, refetchInterval: 15_000 },
   players: (q: { q?: string | undefined; team_id?: number | undefined }) => ({
     queryKey: ["v1", "players", q.q ?? "", q.team_id ?? 0],
@@ -478,6 +613,18 @@ export const live = {
     queryFn: () => v1.authAudit({ action, limit: 200 }),
     refetchInterval: MINUTE,
   }),
+  /** The trail by pages of AUDIT_PAGE events, newest first, as far back as the owner reads (plan UX, B10). */
+  authAuditPages: (action?: string) => ({
+    queryKey: ["v1", "admin", "audit", "pages", action ?? "all"],
+    queryFn: ({ pageParam }: { pageParam: number }) =>
+      v1.authAudit({ action, limit: AUDIT_PAGE, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (last: Awaited<ReturnType<typeof v1.authAudit>>) => {
+      const next = (last.meta.offset ?? 0) + (last.meta.count ?? 0);
+      return next < (last.meta.total ?? 0) ? next : undefined;
+    },
+  }),
+  authAuditActions: { queryKey: ["v1", "admin", "audit", "actions"], queryFn: v1.authAuditActions },
 
   // ── data truth ────────────────────────────────────────────────────────────
   truthLatest: { queryKey: ["v1", "truth", "latest"], queryFn: v1.truthLatest },

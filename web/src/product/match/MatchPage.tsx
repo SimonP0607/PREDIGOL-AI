@@ -1,8 +1,8 @@
 /**
- * The Match Center as the product shows it: the match at a glance, then Resumen, Picks,
- * Estadísticas, Mercados and Alineaciones - each adapted to before, during and after
- * the match (REVIEW PREDIGOL, point 4: the picks are a module of their own). SUPER_ADMIN
- * also gets "Avanzado / Auditoría", the research view.
+ * The Match Center as the product shows it (plan UX, A9; section 25): the match at a glance, then Resumen (the reading's
+ * summary and main risks, the forecast, the published picks with their state), Análisis PrediGol (the structured reading),
+ * Estadísticas, Mercados, Alineaciones and, once the match is over, Postpartido - each adapted to before, during and after
+ * the match, with what matters first. SUPER_ADMIN also gets "Avanzado / Auditoría", the research view.
  */
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -20,14 +20,16 @@ import type { MatchCtx, TabKey } from "./context";
 import { LineupsTab } from "./LineupsTab";
 import { MarketsTab } from "./MarketsTab";
 import { MatchHeader } from "./MatchHeader";
-import { PicksTab } from "./PicksTab";
+import { ReportWrongData } from "@/product/support/ReportWrongData";
+import { PostmatchTab } from "./PostmatchTab";
+import { ReadingBlock } from "@/product/reading/ReadingBlock";
+import { NewsTab } from "@/product/news/NewsTab";
 import { liveSnapshot, matchPhase, shownScore } from "./model";
 import { StatsTab } from "./StatsTab";
 import { SummaryTab } from "./SummaryTab";
-import { useMatchTab } from "./useMatchTab";
-
-const USER_TABS: readonly TabKey[] = ["summary", "picks", "stats", "markets", "lineups"];
-const ADMIN_TABS: readonly TabKey[] = [...USER_TABS, "advanced"];
+import { tabsFor, useMatchTab } from "./useMatchTab";
+import { originOf, track } from "@/lib/track";
+import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
 
 function BackLink() {
   return (
@@ -202,8 +204,18 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
       return kickoff - Date.now() < 75 * 60_000 ? 60_000 : 120_000;
     },
   });
-  const tabs = auth.showAdmin ? ADMIN_TABS : USER_TABS;
-  const [tab, setTab] = useMatchTab(fixtureId, tabs);
+  const knownPhase = view.data ? matchPhase(view.data.data.match) : null;
+  const tabs = tabsFor(knownPhase, auth.showAdmin);
+  const [tab, setTab] = useMatchTab(fixtureId, tabs, knownPhase);
+  // Plan UX, A6: which matches readers open, from where, and which sections they read.
+  useEffect(() => {
+    if (valid) track("match_opened", { match_id: Number(fixtureId), origin: originOf() });
+  }, [fixtureId, valid]);
+  const openSection = (key: TabKey) => {
+    if (valid && key !== tab)
+      track("match_section_opened", { section: key, match_id: Number(fixtureId) });
+    setTab(key);
+  };
 
   if (!valid) return <NotFound />;
   if (!view.data) {
@@ -244,13 +256,16 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
       retry: () => void center.refetch(),
     },
     showAdmin: auth.showAdmin,
-    goTo: setTab,
+    goTo: openSection,
   };
 
   let panel: ReactNode;
   switch (tab) {
-    case "picks":
-      panel = <PicksTab ctx={ctx} />;
+    case "analysis":
+      panel = <ReadingBlock ctx={ctx} />;
+      break;
+    case "postmatch":
+      panel = <PostmatchTab ctx={ctx} />;
       break;
     case "stats":
       panel = <StatsTab ctx={ctx} />;
@@ -260,6 +275,9 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
       break;
     case "lineups":
       panel = <LineupsTab ctx={ctx} />;
+      break;
+    case "news":
+      panel = <NewsTab ctx={ctx} />;
       break;
     case "advanced":
       panel = auth.showAdmin ? <AdvancedTab fixtureId={fixtureId} /> : null;
@@ -272,8 +290,9 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
     <div className="space-y-4" data-testid="match-center" data-phase={phase}>
       <BackLink />
       <MatchHeader ctx={ctx} />
+      <FirstVisitHint hint="match" />
       <div id="match-tabs-anchor" aria-hidden className="mb-0" />
-      <TabBar tabs={tabs} active={tab} onSelect={setTab} live={phase === "live"} />
+      <TabBar tabs={tabs} active={tab} onSelect={openSection} live={phase === "live"} />
       <div
         role="tabpanel"
         id={`match-panel-${tab}`}
@@ -283,6 +302,7 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
       >
         {panel}
       </div>
+      <ReportWrongData matchId={Number(fixtureId)} />
     </div>
   );
 }

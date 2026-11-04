@@ -169,7 +169,7 @@ def test_a_hypothesis_about_an_agent_names_the_agent_and_its_version_or_neither(
 # -- the migration -----------------------------------------------------------------------------------------------------------------
 
 def test_0120_goes_down_and_up_again_and_keeps_the_rows_written_before() -> None:
-    with scratch_at("0119") as dsn:
+    with scratch_at("0106") as dsn:
         with psycopg.connect(dsn) as c:
             hid = hypothesis(c, dedup_key="old")
             c.commit()
@@ -180,7 +180,7 @@ def test_0120_goes_down_and_up_again_and_keeps_the_rows_written_before() -> None
             c.execute("UPDATE analytics.research_hypotheses SET agent = 'match', agent_version = 'match-v1' WHERE id = %s", (hid,))
             put(c)
             c.commit()
-        command.downgrade(_cfg(), "0119")
+        command.downgrade(_cfg(), "0106")
         with psycopg.connect(dsn) as c:
             assert not exists(c, TABLE)
             for table in BOTH:
@@ -194,7 +194,7 @@ def test_0120_goes_down_and_up_again_and_keeps_the_rows_written_before() -> None
 
 @pytest.mark.parametrize("direction", ["up", "down"])
 def test_0120_never_waits_for_a_lock_longer_than_it_can_afford(direction: str) -> None:
-    before, after = ("0119", "0120") if direction == "up" else ("0120", "0119")
+    before, after = ("0106", "0120") if direction == "up" else ("0120", "0106")
 
     def move() -> None:
         (command.upgrade if direction == "up" else command.downgrade)(_cfg(), after)

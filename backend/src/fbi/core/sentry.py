@@ -73,7 +73,7 @@ def options(component: str) -> dict[str, Any] | None:
         "dsn": dsn,
         "environment": environment(),
         "release": f"predigol-backend@{code_version()}",
-        "server_name": component,  # "api" or "worker", not the host's name
+        "server_name": component,  # "api", "worker" or "messenger" (plan UX, A5), not the host's name
         "send_default_pii": False,
         "include_local_variables": False,
         "max_request_body_size": "never",

@@ -181,7 +181,10 @@ describe("what a user sees once the owner lets users see the forecast", () => {
     expect(out).toContain('data-testid="forecast-block"');
     expect(out).toContain("Pronóstico PrediGol");
     expect(out).toContain("no una recomendación ni una cuota para apostar");
-    expect(out).toContain("no si está bien pagado");
+    // forecast ≠ value ≠ pick (plan UX, A3): the three questions under the forecast, each word opening its definition
+    expect(out).toContain('data-testid="explain-layers"');
+    expect(out).toContain("¿Está bien pagado?");
+    expect(out).toContain('data-glossary="calibrated"');
   });
 
   test("the three markets in order, each with its title", () => {
@@ -237,6 +240,7 @@ describe("what a user sees once the owner lets users see the forecast", () => {
 
   test("no odds, no edge, no value, no pick, no preview badge", () => {
     expect(out).not.toContain("cuota justa");
+    expect(out).not.toContain("cuota según PrediGol");
     expect(out).not.toContain("modelo 55");
     expect(out).not.toContain("forecast-admin");
     expect(out).not.toContain("forecast-value");
@@ -254,6 +258,7 @@ describe("what a user sees once the owner lets users see the forecast", () => {
     };
     const seen = render(leaky, false);
     expect(seen).not.toContain("cuota justa");
+    expect(seen).not.toContain("cuota según PrediGol");
     expect(seen).not.toContain("1,92");
     expect(seen).not.toContain("forecast-admin");
     expect(seen).not.toContain("RECHAZADO");
@@ -261,8 +266,8 @@ describe("what a user sees once the owner lets users see the forecast", () => {
   });
 });
 
-describe("a user sees nothing until the owner decides", () => {
-  test("the API says not available (users do not see the forecast yet)", () => {
+describe("a reader sees it load and fail; only the owner's switch hides it (plan UX, A9)", () => {
+  test("the API says not available (the owner turned the forecast off for readers)", () => {
     const load: ForecastLoad = {
       status: "success",
       envelope: envelope(null, "not_available"),
@@ -270,15 +275,17 @@ describe("a user sees nothing until the owner decides", () => {
     expect(render(load, false)).toBe("");
   });
 
-  test("while it loads, and when it cannot be loaded: no spinner, no error", () => {
-    expect(render({ status: "pending" }, false)).toBe("");
-    expect(render({ status: "error", error: new Error("boom") }, false)).toBe("");
+  test("while it loads a skeleton, and when it cannot be loaded the error with its retry: never a silent gap", () => {
+    expect(render({ status: "pending" }, false)).toContain("animate-pulse");
+    const failed = render({ status: "error", error: new Error("boom") }, false);
+    expect(failed).not.toBe("");
+    expect(failed).toContain('role="alert"');
   });
 
   test("the screen is decided apart from React", () => {
-    expect(forecastScreen({ status: "pending" }, false).kind).toBe("nothing");
+    expect(forecastScreen({ status: "pending" }, false).kind).toBe("loading");
     expect(forecastScreen({ status: "pending" }, true).kind).toBe("loading");
-    expect(forecastScreen({ status: "error", error: 1 }, false).kind).toBe("nothing");
+    expect(forecastScreen({ status: "error", error: 1 }, false).kind).toBe("error");
     expect(forecastScreen({ status: "error", error: 1 }, true).kind).toBe("error");
     expect(forecastScreen(userSees(), false).kind).toBe("forecast");
   });
@@ -323,10 +330,11 @@ describe("the Admin Console's preview", () => {
     expect(out).toContain("No es una recomendación");
   });
 
-  test("shows the fair odds beside each number, and the model's own number where it was corrected", () => {
-    expect(out).toContain("cuota justa 1,92");
-    expect(out).toContain("cuota justa 3,85");
-    expect(out.match(/cuota justa/g)?.length).toBe(7);
+  test("shows PrediGol's odds beside each number, and the model's own number where it was corrected", () => {
+    expect(out).toContain("cuota según PrediGol 1,92"); // the model's 1/p (plan UX, A3: «cuota justa» is the market's)
+    expect(out).toContain("cuota según PrediGol 3,85");
+    expect(out.match(/cuota según PrediGol/g)?.length).toBe(7);
+    expect(out).not.toContain("cuota justa");
     // only the calibrated market has a model number that differs from the stated one
     expect(out.match(/modelo 55\s%/g)?.length).toBe(1);
   });
@@ -483,7 +491,7 @@ describe("what the families forecast, in the preview's block of their own", () =
     );
     expect(keys).toEqual(["1X2", "OU", "BTTS"]);
     expect(block).toContain("no es el pronóstico de arriba ni una recomendación");
-    expect(block).toContain("Entre paréntesis, la cuota justa");
+    expect(block).toContain("Entre paréntesis, la cuota según PrediGol");
   });
 
   test("one folded group per family, in the order the API sent them", () => {
@@ -510,7 +518,7 @@ describe("what the families forecast, in the preview's block of their own", () =
     expect(corners).toMatch(/Menos de 8,5\s28\s%/);
     expect(corners).toContain("(1,39)");
     expect(corners).toContain("(3,57)");
-    expect(corners).toContain("cuota justa 1,39");
+    expect(corners).toContain("cuota según PrediGol 1,39");
     // one outcome of each line is the most probable one
     const likely = [...corners.matchAll(/data-selection="([^"]+)" data-likely="(true|false)"/g)];
     expect(likely.map((m) => `${m[1]}:${m[2]}`)).toEqual([

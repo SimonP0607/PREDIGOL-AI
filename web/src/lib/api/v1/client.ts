@@ -1,11 +1,34 @@
 import { reportApiFailure } from "@/lib/observability";
 import { API_BASE_URL } from "@/lib/api/mode";
+import { markTrouble } from "@/lib/feedback/session";
 import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
 import type { AgentsOverview, MatchState } from "./types_ai_agents";
 import type { AttributionOverview } from "./types_ai_attribution";
 import type { EntityResearchOverview } from "./types_ai_research";
+import type {
+  AdminPrivacyRequest,
+  ConsentState,
+  ConsentsIn,
+  ExportDocument,
+  LegalDocument,
+  LegalDocumentName,
+  PrivacyAnswerIn,
+  PrivacyRequest,
+  PrivacyRequestIn,
+  ReauthIn,
+} from "./types_customer";
+import type {
+  NotificationPreferences,
+  NotificationPreferencesIn,
+  MessageStatus,
+  OutboxPreview,
+  OutboxSummary,
+  UnsubscribeResult,
+} from "./types_messaging";
+import type { ProductOverview } from "./types_events";
+import type { AdminMembership, MyMembership, PaymentIn, PaymentRecorded } from "./types_membership";
 import type {
   AgentRuns,
   AgentRunsQuery,
@@ -90,6 +113,63 @@ import type {
 import type { MatchCalendar } from "./types_calendar";
 import type { MatchForecast } from "./types_forecast";
 import type { MatchKnowledge } from "./types_knowledge";
+import type { PostMatch } from "./types_postmatch";
+import type { MyPicksFilter, PicksSummary } from "./types_mypicks";
+import type {
+  FeedbackContext,
+  FeedbackOverview,
+  FeedbackSubject,
+  HelpfulIn,
+  HelpfulVote,
+  SurveyIn,
+  SurveyState,
+  UpdatesSeen,
+} from "./types_feedback";
+import type {
+  AlertMinutes,
+  MatchAlert,
+  PushCategories,
+  PushCategoriesIn,
+  PushDevice,
+  PushOverview,
+  PushState,
+  PushSubscribeIn,
+  PushUnsubscribeIn,
+} from "./types_push";
+import type { MatchReading } from "./types_reading";
+import type { ExplainIntent, Explanation, SlipLegBody } from "./types_explain";
+import type { PickExplanation } from "./types_explanation";
+import type { MatchNews, TodayNews } from "./types_news";
+import type { NoPick, Today } from "./types_today";
+import type {
+  FavoriteOptions,
+  FavoritesIn,
+  FavoritesView,
+  HintKey,
+  OnboardingState,
+} from "./types_favorites";
+import type { Transparency } from "./types_transparency";
+import type { AccountSummary } from "./types_account";
+import type { PersonalView, Suggestion } from "./types_personal";
+import type {
+  AdminInbox,
+  AdminTicket,
+  InboxQuery,
+  SupportContact,
+  SupportState,
+  SupportTicket,
+  TicketAnswerIn,
+  TicketIn,
+} from "./types_support";
+import type {
+  AuditActionCount,
+  ConsentRecord,
+  Customer,
+  CustomerList,
+  CustomerNote,
+  CustomerView,
+  TicketReview,
+} from "./types_customers";
 import type {
   AnalystReply,
   AnalystStatus,
@@ -137,15 +217,25 @@ import type {
   ProviderPredictionView,
 } from "./types_center";
 import type {
+  Accepted,
   AccessEvent,
+  AccountOptions,
+  ActivateIn,
+  ActivationInfo,
+  AdminAnonymised,
+  AdminInviteIn,
   AdminPasswordResult,
   AdminUser,
   AdminUserCreate,
   AuditEvent,
+  IdentityIn,
   Me,
   MfaEnrolled,
   MfaEnrollment,
   PreferencesIn,
+  ResetIn,
+  ResetInfo,
+  SelfServiceState,
   SessionInfo,
 } from "./types_auth";
 import type {
@@ -217,13 +307,68 @@ export class LiveApiError extends Error {
 
 /** Fired when the API says the session is gone; the auth layer sends the reader to sign in. */
 export const UNAUTHENTICATED_EVENT = "predigol:unauthenticated";
-/** Fired when the API says a step of signing in is still owed; the auth layer asks /auth/me which one. */
+/**
+ * Fired when the API says a step of signing in is still owed, that the current consents are (plan UX, A4), or that
+ * the membership has ended or is suspended (A8); the auth layer asks /auth/me which.
+ */
 export const STAGE_EVENT = "predigol:stage";
 const STAGE_CODES = new Set([
   "mfa_required",
   "mfa_enrollment_required",
   "password_change_required",
+  "consent_required",
+  "membership_expired",
+  "membership_suspended",
 ]);
+
+/** How long the last error's request id rides along with a report (plan UX, A14): an older one is not «the» error. */
+const LAST_ERROR_MS = 30 * 60 * 1000;
+let lastError: { requestId: string; at: number } | null = null;
+
+/**
+ * The request id of the last API error this page met in the last half hour, or null (plan UX, A14): «Reportar un
+ * problema» attaches it, so the owner finds the server's log line of that error. Never a body, a path or a value.
+ */
+export function lastApiError(now = Date.now()): string | null {
+  return lastError && now - lastError.at <= LAST_ERROR_MS ? lastError.requestId : null;
+}
+
+/** For tests: forget the last error. */
+export function resetLastApiError(): void {
+  lastError = null;
+}
+
+/** The filter of Mis picks as query parameters (plan UX, B5): what is not set is left out. */
+export function filterParams(
+  filter: MyPicksFilter | undefined,
+): Record<string, string | number | undefined> {
+  const f = filter ?? {};
+  return {
+    result: f.result ?? undefined,
+    market: f.market ?? undefined,
+    competition: f.competition ?? undefined,
+    origin: f.origin ?? undefined,
+    band: f.band ?? undefined,
+    since: f.since ?? undefined,
+    until: f.until ?? undefined,
+    q: f.q?.trim() ? f.q.trim() : undefined,
+  };
+}
+
+/**
+ * The address of a CSV file of the reader's own records (plan UX, B5): a plain download from the page's own origin, with
+ * the session cookie, the filter of Mis picks for the picks. A GET: nothing to protect from another site's form.
+ */
+export function exportUrl(kind: "picks" | "parlays", filter?: MyPicksFilter): string {
+  const params = new URLSearchParams();
+  if (kind === "picks") {
+    for (const [k, v] of Object.entries(filterParams(filter))) {
+      if (v !== undefined && v !== "") params.set(k, String(v));
+    }
+  }
+  const query = params.toString();
+  return `/api/v1/me/${kind}/export${query ? `?${query}` : ""}`;
+}
 
 /** A repeated parameter (`?market=1X2&market=OU`) is an array; an empty one is left out. */
 type Params = Record<
@@ -236,7 +381,7 @@ type Params = Record<
  * the same-site header the API requires on anything that changes state.
  */
 async function request<T>(
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   { params, body }: { params?: Params | undefined; body?: unknown } = {},
 ): Promise<T> {
@@ -266,6 +411,7 @@ async function request<T>(
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
   } catch {
+    markTrouble(); // plan UX, B6: no survey after the API was out of reach
     throw new LiveApiError("The API is not reachable.", 0, "unreachable", null);
   }
   if (res.status === 204) return undefined as T;
@@ -274,6 +420,7 @@ async function request<T>(
   try {
     parsed = text ? JSON.parse(text) : null;
   } catch {
+    markTrouble();
     throw new LiveApiError(`Unexpected response from ${path}.`, res.status, "bad_response", null);
   }
   if (!res.ok) {
@@ -290,8 +437,16 @@ async function request<T>(
     }
     const { code: _c, message: _m, problems, ...details } = err.error ?? {};
     const requestId = err.request_id ?? res.headers.get("x-request-id");
-    // A server error reaches Sentry with its request id, the one in the server's log line (plan UX, A2).
-    if (res.status >= 500) reportApiFailure({ status: res.status, code, requestId, method, path });
+    // the last error a report can point at (plan UX, A14); a sign-in that is simply over is not one
+    if (requestId && /^[A-Za-z0-9]{1,32}$/.test(requestId) && res.status !== 401) {
+      lastError = { requestId, at: Date.now() };
+    }
+    // A server error reaches Sentry with its request id, the one in the server's log line (plan UX, A2), and keeps the
+    // monthly survey away for the rest of the visit (B6: never after an error).
+    if (res.status >= 500) {
+      reportApiFailure({ status: res.status, code, requestId, method, path });
+      markTrouble();
+    }
     throw new LiveApiError(
       err.error?.message ?? `${method} ${path} failed (${res.status})`,
       res.status,
@@ -306,6 +461,7 @@ async function request<T>(
 
 const getJson = <T>(path: string, params?: Params) => request<T>("GET", path, { params });
 const postJson = <T>(path: string, body: unknown) => request<T>("POST", path, { body });
+const putJson = <T>(path: string, body: unknown) => request<T>("PUT", path, { body });
 const patchJson = <T>(path: string, body: unknown) => request<T>("PATCH", path, { body });
 const deleteJson = <T>(path: string) => request<T>("DELETE", path);
 
@@ -360,9 +516,114 @@ export const v1 = {
   renewRecoveryCodes: (password: string, code: string) =>
     postJson<{ recovery_codes: string[] }>("/auth/me/mfa/recovery-codes", { password, code }),
   mySessions: () => getJson<SessionInfo[]>("/auth/me/sessions"),
-  revokeMySession: (id: string) => postJson<void>(`/auth/me/sessions/${id}/revoke`, {}),
-  revokeMyOtherSessions: () => postJson<{ revoked: number }>("/auth/me/sessions/revoke-others", {}),
+  /** Ending another session asks for the password or a code (ASVS 7.5.2); ending this one is signing out. */
+  revokeMySession: (id: string, identity: IdentityIn = {}) =>
+    postJson<void>(`/auth/me/sessions/${id}/revoke`, identity),
+  revokeMyOtherSessions: (identity: IdentityIn) =>
+    postJson<{ revoked: number }>("/auth/me/sessions/revoke-others", identity),
   myAccess: (limit = 50) => getJson<AccessEvent[]>("/auth/me/access", { limit }),
+  /** The reader's membership: its state now, its periods with their payments and how to renew (plan UX, A8). */
+  myMembership: () => getJson<MyMembership>("/me/membership"),
+  /** The profile's eight blocks, folded: one read of the reader's own account (plan UX, B1). */
+  myAccount: () => getJson<AccountSummary>("/me/account"),
+  // ── what the reader's own use orders and suggests (plan UX, B2) ─────
+  myPersonal: () => getJson<PersonalView>("/me/personal"),
+  dismissSuggestion: (kind: Suggestion["kind"], id: number) =>
+    postJson<PersonalView>("/me/personal/suggestion/dismiss", { kind, id }),
+  setMarketOrder: (common: boolean) => putJson<PersonalView>("/me/personal/markets", { common }),
+  // getting in without the owner (plan UX, A7): public; a link's token goes in the body, never in a URL
+  accountOptions: () => getJson<AccountOptions>("/auth/options"),
+  checkInvitation: (token: string) => postJson<ActivationInfo>("/auth/activate/check", { token }),
+  activate: (body: ActivateIn) => postJson<Me>("/auth/activate", body),
+  renewInvitation: (token: string) => postJson<Accepted>("/auth/activate/renew", { token }),
+  forgotPassword: (email: string) => postJson<Accepted>("/auth/password/forgot", { email }),
+  checkReset: (token: string) => postJson<ResetInfo>("/auth/password/reset/check", { token }),
+  resetPassword: (body: ResetIn) => postJson<void>("/auth/password/reset", body),
+  requestUnlock: (email: string) => postJson<Accepted>("/auth/unlock/request", { email }),
+  unlock: (token: string) => postJson<void>("/auth/unlock", { token }),
+  /** The weekly summary's way out (plan UX, B8): public, the link's token in the body - never in a URL. */
+  leaveWeeklySummary: (token: string) =>
+    postJson<UnsubscribeResult>("/email/unsubscribe/link", { token }),
+
+  // ── legal texts, consents and the reader's rights (plan UX, A4) ───────────
+  /** Public: anyone may read the texts before having an account. */
+  legalDocument: (document: LegalDocumentName, lang: "es" | "en") =>
+    getJson<LegalDocument>(`/legal/${document}`, { lang }),
+  myConsents: (lang: "es" | "en") => getJson<ConsentState>("/me/consents", { lang }),
+  decideConsents: (body: ConsentsIn) => postJson<ConsentState>("/me/consents", body),
+  /** Everything PrediGol keeps about the reader: the password first (and the code with a second factor). */
+  exportMyData: (body: ReauthIn) => postJson<ExportDocument>("/me/export", body),
+  myPrivacyRequests: () => getJson<PrivacyRequest[]>("/me/privacy-requests"),
+  openPrivacyRequest: (body: PrivacyRequestIn) =>
+    postJson<PrivacyRequest>("/me/privacy-requests", body),
+  /** Which e-mails the reader receives, by category, and whether their address can receive them (plan UX, A5). */
+  myNotificationPreferences: () => getJson<NotificationPreferences>("/me/preferences"),
+  updateNotificationPreferences: (body: NotificationPreferencesIn) =>
+    patchJson<NotificationPreferences>("/me/preferences", body),
+
+  // ── the reader's favourites, the welcome and the hints (plan UX, A13) ─────
+  /** The leagues and teams the reader follows - the suggested ones for Colombia, labelled, while they chose none. */
+  myFavorites: () => getJson<FavoritesView>("/me/favorites"),
+  /** They become exactly these: 422 too_many_leagues / too_many_teams / unknown_league / unknown_team otherwise. */
+  saveFavorites: (body: FavoritesIn) => putJson<FavoritesView>("/me/favorites", body),
+  /** Every league PrediGol follows, and the teams of those leagues whose name matches `q` (two letters or more). */
+  favoriteOptions: (q = "") => getJson<FavoriteOptions>("/me/favorites/options", { q }),
+  myOnboarding: () => getJson<OnboardingState>("/me/onboarding"),
+  /** The welcome done or skipped: recorded once, never shown again. */
+  completeOnboarding: () => postJson<OnboardingState>("/me/onboarding", {}),
+  /** A first-visit hint dismissed: it never comes back. */
+  dismissHint: (hint: HintKey) => postJson<OnboardingState>("/me/hints", { hint }),
+
+  // ── what readers think of PrediGol (plan UX, B6) ──────────────────────────
+  /** Whether the monthly survey is owed now (once every 30 days from the last answer or skip). */
+  mySurvey: () => getJson<SurveyState>("/me/feedback/survey"),
+  /** 409 survey_not_due when it was answered or closed in the last 30 days; 404 feedback_off. */
+  answerSurvey: (body: SurveyIn) => postJson<{ id: number }>("/me/feedback/survey", body),
+  /** The survey closed without an answer: not again for 30 days. */
+  skipSurvey: (context: FeedbackContext) => postJson<void>("/me/feedback/survey/skip", { context }),
+  myHelpfulVote: (subject: FeedbackSubject, subjectId: number) =>
+    getJson<HelpfulVote>("/me/feedback/helpful", { subject, subject_id: subjectId }),
+  /** «¿Te sirvió?» answered (the last answer counts): 429 too_many_votes, 404 feedback_off. */
+  voteHelpful: (body: HelpfulIn) => putJson<HelpfulVote>("/me/feedback/helpful", body),
+  /** The newest entry of Novedades the reader has seen. */
+  myUpdatesSeen: () => getJson<UpdatesSeen>("/me/updates/seen"),
+  markUpdatesSeen: (id: string) => postJson<UpdatesSeen>("/me/updates/seen", { id }),
+
+  // ── the readers' notices on their devices (plan UX, B7) ───────────────────
+  /** Whether notices can be offered (FBI_PUSH and PrediGol's key, P12), the key to subscribe with, devices, categories. */
+  myPush: () => getJson<PushState>("/me/push"),
+  /** A browser the reader allowed: 422 unknown_push_service or bad_key, 404 push_off. */
+  subscribePush: (body: PushSubscribeIn) => postJson<PushDevice>("/me/push/devices", body),
+  /** This browser (its address, in the body) or another of the list (its id) stops. */
+  unsubscribePush: (body: PushUnsubscribeIn) => postJson<void>("/me/push/devices/stop", body),
+  updatePushCategories: (body: PushCategoriesIn) =>
+    putJson<PushCategories>("/me/push/categories", body),
+  /** «Así se verán tus avisos», now: 409 no_device, 429 too_many_tests (3 a day). */
+  sendTestPush: () => postJson<{ id: number }>("/me/push/test", {}),
+  /** The bell of a match. */
+  myMatchAlert: (fixtureId: number) => getJson<MatchAlert>(`/me/match-alerts/${fixtureId}`),
+  /** 422 match_started, too_far (more than 7 days ahead) or too_many_alerts; 404 not_found or push_off. */
+  setMatchAlert: (fixtureId: number, minutes: AlertMinutes) =>
+    putJson<MatchAlert>(`/me/match-alerts/${fixtureId}`, { minutes_before: minutes }),
+  clearMatchAlert: (fixtureId: number) => deleteJson<void>(`/me/match-alerts/${fixtureId}`),
+
+  // ── help and support (plan UX, A14) ───────────────────────────────────────
+  /** Public: the WhatsApp number and the reply address, for whoever cannot sign in; nulls until the owner gives them. */
+  supportContact: () => getJson<SupportContact>("/support/contact"),
+  /** Whether tickets are on, the contact, the categories and the reader's own tickets with their threads. */
+  mySupport: () => getJson<SupportState>("/me/support"),
+  /** 409 too_many_open (3), 429 too_many_tickets (10 a day), 404 not_available while FBI_SUPPORT is off. */
+  openTicket: (body: TicketIn) => postJson<SupportTicket>("/me/support/tickets", body),
+  replyTicket: (id: number, text: string) =>
+    postJson<SupportTicket>(`/me/support/tickets/${id}/messages`, { text }),
+  /** «Ya está resuelto», with how easy it was (1-5) if the reader says. */
+  closeTicket: (id: number, effort?: number) =>
+    postJson<SupportTicket>(
+      `/me/support/tickets/${id}/close`,
+      effort === undefined ? {} : { effort },
+    ),
+  rateTicket: (id: number, effort: number) =>
+    postJson<SupportTicket>(`/me/support/tickets/${id}/effort`, { effort }),
 
   // ── product ───────────────────────────────────────────────────────────────
   home: (q: Preview = {}) => getJson<Envelope<Home>>("/home", q),
@@ -370,6 +631,15 @@ export const v1 = {
     getJson<Envelope<PicksBoard>>("/picks", q as Params),
   /** Today's pre-match picks that already kicked off, unfiltered: the page filters them (REVIEW pt 14). */
   startedPicks: (q: Preview = {}) => getJson<Envelope<StartedPick[]>>("/picks/started", q),
+  /** «¿Por qué PrediGol eligió este pick?» (plan UX, B3): one published pick in five layers. 404: not a pick a reader sees. */
+  pickExplanation: (pickId: number, q: Preview = {}) =>
+    getJson<Envelope<PickExplanation>>(`/picks/${pickId}/explanation`, q),
+  /** «Explícame» (plan UX, B9): one question of a match or a pick. */
+  explain: (entity: "match" | "pick", id: number, intent: ExplainIntent, q: Preview = {}) =>
+    getJson<Envelope<Explanation>>("/explain", { entity, id, intent, ...q }),
+  /** «¿Por qué baja la probabilidad de mi parlay?» for the legs the slip holds (nothing is stored). */
+  explainParlay: (legs: SlipLegBody[]) =>
+    postJson<Envelope<Explanation>>("/explain/parlay", { legs }),
   parlay: (kind: ParlayKind, q: Preview = {}) => getJson<Envelope<Parlay>>(`/parlays/${kind}`, q),
   /** The automatic parlay builder (REVIEW pt 15): nothing is stored - saving it is createParlay. */
   buildParlay: (q: BuilderQuery & Preview) =>
@@ -381,13 +651,27 @@ export const v1 = {
   // ── records: the day as persisted, and the user's own ──────────────────────
   daily: (q: { day?: string | undefined } & Preview = {}) =>
     getJson<Envelope<DailyBoard>>("/daily", q as Params),
-  /** A page of the user's saved picks: `meta.total` counts them all, `meta.next_cursor` leads on. */
-  myPicks: (q: { status?: "open" | "settled"; limit?: number; cursor?: string | undefined } = {}) =>
+  /**
+   * A page of the user's saved picks: `meta.total` counts them all, `meta.next_cursor` leads on - under the filter of
+   * Mis picks when one is given (plan UX, B5).
+   */
+  myPicks: (
+    q: {
+      status?: "open" | "settled";
+      limit?: number;
+      cursor?: string | undefined;
+      filter?: MyPicksFilter | undefined;
+    } = {},
+  ) =>
     getJson<Envelope<UserPick[]>>("/me/picks", {
       status: q.status,
       limit: q.limit ?? 500,
       cursor: q.cursor,
+      ...filterParams(q.filter),
     }),
+  /** The reader's saved picks under the filter: totals, breakdown and line value, with their sample (plan UX, B5). */
+  myPicksSummary: (filter?: MyPicksFilter) =>
+    getJson<Envelope<PicksSummary>>("/me/picks/summary", filterParams(filter)),
   savePick: (body: SavePickIn) =>
     postJson<Envelope<{ id: number; snapshot: unknown }>>("/me/picks", body),
   setPickOdds: (id: number, userOdds: string | number | null) =>
@@ -452,6 +736,33 @@ export const v1 = {
    */
   matchKnowledge: (id: number | string, q: Preview = {}) =>
     getJson<Envelope<MatchKnowledge | null>>(`/matches/${id}/knowledge`, q),
+  /**
+   * POSTPARTIDO (plan UX, B4): how what the reader saved on the match ended, and how and why each of PrediGol's published picks
+   * did - the match's own facts, never what the post-mortem judges. Null data with `not_available`: readers do not see the
+   * after-match yet (FBI_KNOWLEDGE_USERS=0). `preview: "shadow"` (the Admin Console) adds the shadow picks.
+   */
+  matchPostmatch: (id: number | string, q: Preview = {}) =>
+    getJson<Envelope<PostMatch | null>>(`/matches/${id}/postmatch`, q),
+  /**
+   * LECTURA PREDIGOL (plan UX, A9): six sections of facts with their references - summary, context, data, market, risks and
+   * the conclusion. Null data with `not_available`: the owner turned it off (FBI_READING_USERS=0).
+   */
+  matchReading: (id: number | string, q: Preview = {}) =>
+    getJson<Envelope<MatchReading | null>>(`/matches/${id}/reading`, q),
+  /** HOY (plan UX, A9): the matches around today with the forecast and a line of the reading, and the day's picks state. */
+  today: () => getJson<Envelope<Today>>("/today"),
+  /** The day's picks state and its reason alone, for the Picks page (the same as /today's no_pick). */
+  noPick: () => getJson<Envelope<NoPick>>("/today/no-pick"),
+  /** NOTICIAS (plan UX, A10): the match's verified news, confirmed first, rumours and the outdated last. */
+  matchNews: (id: string) => getJson<Envelope<MatchNews | null>>(`/matches/${id}/news`),
+  /** Home's «Noticias»: the confirmed or probable news of the suggested matches not yet over. */
+  todayNews: () => getJson<Envelope<TodayNews | null>>("/today/news"),
+  /**
+   * CÓMO LE VA A PREDIGOL (plan UX, A12): the published picks and how they went, the days without picks and why, the line
+   * value, the forecast's calibration and what is in evaluation - always with its sample. Null data with `not_available`:
+   * readers do not see it yet (FBI_TRANSPARENCY). `preview: "shadow"` (the owner) shows it either way.
+   */
+  transparency: (q: Preview = {}) => getJson<Envelope<Transparency | null>>("/transparency", q),
   liveBoard: () => getJson<Envelope<LiveBoard>>("/live"),
   players: (q: { q?: string | undefined; team_id?: number | undefined; limit?: number } = {}) =>
     getJson<Envelope<PlayerSummary[]>>("/players", {
@@ -725,7 +1036,56 @@ export const v1 = {
   /** Where the server's disk goes, the copies, the last cleanup and the retention policy (reading only). */
   adminStorage: () => getJson<Envelope<StorageOverview>>("/admin/storage"),
   users: () => getJson<Envelope<AdminUser[]>>("/admin/users"),
+  /** The readers' privacy requests (plan UX, A4), open first by their legal deadline. */
+  privacyRequests: (status: "open" | "all" = "open") =>
+    getJson<AdminPrivacyRequest[]>("/admin/privacy-requests", { status }),
+  answerPrivacyRequest: (id: number, body: PrivacyAnswerIn) =>
+    postJson<AdminPrivacyRequest>(`/admin/privacy-requests/${id}/answer`, body),
+  /** The support inbox (plan UX, A14): tickets and privacy requests, waiting first by priority, with their counts. */
+  supportInbox: (q: InboxQuery = {}) =>
+    getJson<AdminInbox>("/admin/support", {
+      status: q.status ?? "open",
+      category: q.category,
+      priority: q.priority,
+    }),
+  answerTicket: (id: number, body: TicketAnswerIn) =>
+    postJson<AdminTicket>(`/admin/support/${id}/answer`, body),
+  /** The queue of messages to readers (plan UX, A5): sending on or off, today's count, the latest messages. */
+  messageQueue: (status?: MessageStatus) =>
+    getJson<OutboxSummary>("/admin/messages", status ? { status } : {}),
+  messagePreview: (id: number) => getJson<OutboxPreview>(`/admin/messages/${id}/preview`),
+  /** Product analytics (plan UX, A6): activation, habit, usage, devices - only with enough readers. */
+  productOverview: () => getJson<ProductOverview>("/admin/product"),
+  /** The survey with its n, «¿Te sirvió?» per kind and the newest comments (never who wrote them) - plan UX, B6. */
+  feedbackOverview: (days = 90) => getJson<FeedbackOverview>("/admin/product/feedback", { days }),
+  /** Live devices by browser and a week of notices by category - counts, never who (plan UX, B7). */
+  pushOverview: () => getJson<PushOverview>("/admin/product/push"),
   createUser: (body: AdminUserCreate) => postJson<Envelope<AdminUser>>("/admin/users", body),
+  /** Invitations (plan UX, A7): whether they can be sent, sending one, sending it again. */
+  selfServiceState: () => getJson<SelfServiceState>("/admin/users/self-service"),
+  inviteUser: (body: AdminInviteIn) => postJson<Envelope<AdminUser>>("/admin/users/invite", body),
+  resendInvitation: (id: number) =>
+    postJson<Envelope<AdminUser>>(`/admin/users/${id}/invitation`, {}),
+  // the membership (plan UX, A8): the owner records; every answer is the account's membership as the console reads it
+  adminMembership: (id: number) => getJson<AdminMembership>(`/admin/users/${id}/membership`),
+  recordPayment: (id: number, body: PaymentIn) =>
+    postJson<PaymentRecorded>(`/admin/users/${id}/membership/payments`, body),
+  grantCourtesy: (id: number, days: number, reason: string) =>
+    postJson<AdminMembership>(`/admin/users/${id}/membership/courtesy`, { days, reason }),
+  startTrial: (id: number, days: number) =>
+    postJson<AdminMembership>(`/admin/users/${id}/membership/trial`, { days }),
+  suspendMembership: (id: number, reason: string) =>
+    postJson<AdminMembership>(`/admin/users/${id}/membership/suspend`, { reason }),
+  liftMembership: (id: number, reason?: string) =>
+    postJson<AdminMembership>(`/admin/users/${id}/membership/lift`, reason ? { reason } : {}),
+  renewalIntent: (id: number, willRenew: boolean, reason?: string) =>
+    postJson<AdminMembership>(`/admin/users/${id}/membership/renewal`, {
+      will_renew: willRenew,
+      ...(reason ? { reason } : {}),
+    }),
+  /** Deleting an account as anonymisation, with its address typed again (plan UX, A7). Cannot be undone. */
+  anonymiseUser: (id: number, confirm: string) =>
+    postJson<Envelope<AdminAnonymised>>(`/admin/users/${id}/anonymise`, { confirm }),
   resetUserPassword: (id: number, password?: string) =>
     postJson<Envelope<AdminPasswordResult>>(
       `/admin/users/${id}/password`,
@@ -741,6 +1101,26 @@ export const v1 = {
   ) => patchJson<Envelope<AdminUser>>(`/admin/users/${id}`, body),
   authAudit: (q: { action?: string | undefined; limit?: number; offset?: number } = {}) =>
     getJson<Envelope<AuditEvent[]>>("/admin/audit", q as Params),
+  /** Every kind of event the trail holds, with how many: the audit page's filter (plan UX, B10). */
+  authAuditActions: () => getJson<Envelope<AuditActionCount[]>>("/admin/audit/actions"),
+  /** One account's open sessions, for the owner: no cookie, only what names them (plan UX, B10). */
+  userSessions: (id: number) => getJson<Envelope<SessionInfo[]>>(`/admin/users/${id}/sessions`),
+
+  // ── the customer's card (plan UX, B10) ──────────────────────────────────────
+  customers: (q: { view?: CustomerView; q?: string; limit?: number; offset?: number } = {}) =>
+    getJson<CustomerList>("/admin/customers", q as Params),
+  customer: (id: number) => getJson<Customer>(`/admin/customers/${id}`),
+  addCustomerNote: (id: number, note: string) =>
+    postJson<Envelope<CustomerNote>>(`/admin/customers/${id}/notes`, { note }),
+  /** Reading a reader's consents with their proof is recorded in the trail. */
+  customerConsents: (id: number) =>
+    getJson<Envelope<ConsentRecord[]>>(`/admin/customers/${id}/consents`),
+  /** Reviewing a ticket is recorded in the trail. */
+  customerTicket: (id: number, ticketId: number) =>
+    getJson<TicketReview>(`/admin/customers/${id}/tickets/${ticketId}`),
+  /** The copy of a reader's data, with the owner's password (and code) first; recorded in the trail. */
+  exportCustomer: (id: number, body: { password: string; code?: string | null }) =>
+    postJson<Record<string, unknown>>(`/admin/customers/${id}/export`, body),
 
   // ── data truth ────────────────────────────────────────────────────────────
   truthLatest: () => getJson<Envelope<TruthSummary | null>>("/admin/truth/latest"),

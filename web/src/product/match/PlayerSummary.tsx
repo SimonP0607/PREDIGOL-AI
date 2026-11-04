@@ -17,7 +17,7 @@ import { fmtDecimal } from "./model";
 function Stat({ label, value }: { label: string; value: number | null | undefined }) {
   return (
     <div className="min-w-0 rounded-md border border-border/70 bg-elevated/40 px-2 py-1.5 text-center">
-      <dt className="break-words text-[0.6875rem] leading-tight text-subtle-foreground">{label}</dt>
+      <dt className="break-words text-micro leading-tight text-subtle-foreground">{label}</dt>
       <dd className="numeric text-sm font-semibold">{value ?? "—"}</dd>
     </div>
   );
@@ -124,7 +124,7 @@ export function PlayerSummary({
                   })}
                 </p>
               ) : null}
-              <p className="mt-1 text-[0.65rem] text-subtle-foreground">
+              <p className="mt-1 text-micro text-subtle-foreground">
                 {t("match.playerCard.source", { when: formatRelative(season.observed_at) })}
               </p>
             </>

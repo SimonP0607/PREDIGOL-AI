@@ -1,0 +1,73 @@
+{
+  "title": "Responsible gaming",
+  "summary": "PrediGol informs; it is not a bookmaker and promotes no operator. Betting means losing money, and no probability prevents it.",
+  "sections": [
+    {
+      "id": "que-hacemos",
+      "title": "1. What PrediGol does and what it does not",
+      "blocks": [
+        {
+          "p": "PrediGol shows football information and analysis. It takes no bets, pays no winnings, has no links to place bets and recommends no operator."
+        },
+        {
+          "p": "Only people aged 18 or over may use it."
+        }
+      ]
+    },
+    {
+      "id": "riesgo",
+      "title": "2. The risk of betting",
+      "blocks": [
+        {
+          "p": "Every bet can be lost. A high probability fails often: 70% fails three times out of ten. Good runs do not announce the next ones."
+        }
+      ]
+    },
+    {
+      "id": "senales",
+      "title": "3. Warning signs",
+      "blocks": [
+        {
+          "ul": [
+            "You bet more money or more often than you had decided.",
+            "You try to win back what you lost with new bets.",
+            "You bet money you need for other things, or borrow to bet.",
+            "You hide how much you bet, or betting causes you anxiety or arguments."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "consejos",
+      "title": "4. If you decide to bet",
+      "blocks": [
+        {
+          "ul": [
+            "Set beforehand how much you can lose, and do not go over it.",
+            "Do not chase your losses.",
+            "Take breaks, and do not bet under pressure, after drinking or when tired.",
+            "Use only operators authorised in Colombia by Coljuegos."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ayuda",
+      "title": "5. Where to ask for help",
+      "blocks": [
+        {
+          "ul": [
+            "Línea 192, option 4, of Colombia's Ministry of Health and Social Protection: free mental-health guidance.",
+            "«Toma el control», Coljuegos' responsible-gaming site (tomaelcontrol.coljuegos.gov.co), and its e-mail colombiajuegaresponsable@coljuegos.gov.co."
+          ]
+        },
+        {
+          "p": "If you feel gambling is harming you, talk to someone you trust or to a health professional."
+        }
+      ]
+    }
+  ],
+  "statements": {
+    "risk_notice": "I understand that PrediGol's forecasts are probabilities, not guarantees, and I have read the responsible gaming page."
+  }
+}

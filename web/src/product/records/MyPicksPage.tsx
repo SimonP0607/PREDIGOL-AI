@@ -4,20 +4,30 @@
  * user saved, and the parlays they built. Profit is in units of one stake: PrediGol handles no
  * money.
  */
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
-import { Bookmark, Layers, LineChart, Pencil, Trash2 } from "lucide-react";
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
+import { Bookmark, Download, Layers, LineChart, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtInt, fmtOdds, fmtPct, localFixed, toNumber } from "@/lib/i18n/format";
-import { formatKickoff, formatRelative, zoneName } from "@/lib/time";
-import { v1 } from "@/lib/api/v1/client";
+import { DASH, fmtInt, fmtOdds, fmtPct, localFixed } from "@/lib/i18n/format";
+import {
+  dayKey,
+  formatDateLong,
+  formatDateYear,
+  formatKickoff,
+  formatRelative,
+  relativeDay,
+  todayKey,
+  zoneName,
+} from "@/lib/time";
+import { exportUrl, v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { HistoryGroup, HistoryPeriod, UserParlay, UserPick } from "@/lib/api/v1/types_records";
 import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { OddsPill } from "@/product/shared/Bits";
 import {
   Card,
@@ -37,6 +47,14 @@ import { useRefreshMine } from "./hooks";
 import { HISTORY_GROUPS, hasStarted } from "./model";
 import { useSlip } from "./slipContext";
 import { Recap } from "./Recap";
+import { CONCLUSIVE, MIN_SAMPLE, sampleLine } from "./sample";
+import { NO_FILTER, activeCount, toApiFilter, type PicksFilterState } from "./myPicksFilter";
+import { PicksFilters, PicksSearch } from "./PicksFilters";
+import { PicksSummaryBlock } from "./PicksSummary";
+import { lineValueText } from "./picksText";
+import { track } from "@/lib/track";
+import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
+import { useUsefulMoment } from "@/product/feedback/moments";
 
 const PERIODS: readonly HistoryPeriod[] = ["today", "7d", "30d", "all"];
 
@@ -45,7 +63,7 @@ function Stat({
   value,
   tone,
 }: {
-  label: string;
+  label: ReactNode;
   value: ReactNode;
   tone?: string | undefined;
 }) {
@@ -57,8 +75,24 @@ function Stat({
   );
 }
 
-function GroupCard({ name, group }: { name: string; group: HistoryGroup }) {
+/**
+ * A group of «Mis resultados» with its sample (plan UX, B5, section 30): the counts always; the hit rate, the units and the
+ * return only from the server's min_sample settled records, the return with its margin, and below `conclusive` the
+ * notice that the sample does not allow a conclusion yet.
+ */
+function GroupCard({
+  name,
+  group,
+  min,
+  conclusive,
+}: {
+  name: string;
+  group: HistoryGroup;
+  min: number;
+  conclusive: number;
+}) {
   const roi = group.roi;
+  const n = Number(group.staked_units);
   return (
     <Card className="p-4" as="article">
       <h3 className="font-display text-sm font-semibold" data-testid={`history-group-title`}>
@@ -69,7 +103,11 @@ function GroupCard({ name, group }: { name: string; group: HistoryGroup }) {
           {fmtInt(group.total)}
         </span>
         <span data-testid={`history-${name}-profit`}>
-          <Units value={group.profit_units} className="text-sm" />
+          {group.profit_units === null ? (
+            <span className="numeric text-sm text-subtle-foreground">{DASH}</span>
+          ) : (
+            <Units value={group.profit_units} className="text-sm" />
+          )}
         </span>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5">
@@ -80,21 +118,22 @@ function GroupCard({ name, group }: { name: string; group: HistoryGroup }) {
         <Stat label={t("records.mine.results.pending")} value={fmtInt(group.pending)} />
         <Stat label={t("records.mine.results.hitRate")} value={fmtPct(group.hit_rate, 0)} />
         <Stat
-          label={t("records.mine.results.roi")}
+          label={<GlossaryTerm term="roi">{t("records.mine.results.roi")}</GlossaryTerm>}
           value={
             <>
-              <span data-testid={`history-${name}-roi`}>{roi === null ? "—" : fmtPct(roi, 1)}</span>
-              {roi === null ? null : (
+              <span data-testid={`history-${name}-roi`}>
+                {roi === null ? DASH : fmtPct(roi, 1)}
+              </span>
+              {n > 0 ? (
                 <span
                   className="block text-caption font-normal text-subtle-foreground"
                   data-testid={`history-${name}-roi-sample`}
                 >
-                  {t("records.roiSample", {
-                    count: Number(group.staked_units),
-                    n: fmtInt(Number(group.staked_units)),
-                  })}
+                  <GlossaryTerm term="sample">
+                    {sampleLine({ n, margin: group.margin ?? null, min, conclusive })}
+                  </GlossaryTerm>
                 </span>
-              )}
+              ) : null}
             </>
           }
           tone={roi === null || roi === 0 ? undefined : roi > 0 ? "text-positive" : "text-negative"}
@@ -145,7 +184,13 @@ function Results() {
             )}
           >
             {HISTORY_GROUPS.map((g) => (
-              <GroupCard key={g} name={g} group={history.groups[g]} />
+              <GroupCard
+                key={g}
+                name={g}
+                group={history.groups[g]}
+                min={history.min_sample ?? MIN_SAMPLE}
+                conclusive={history.conclusive ?? CONCLUSIVE}
+              />
             ))}
           </div>
           {q.data?.status === "empty" ? (
@@ -154,7 +199,8 @@ function Results() {
             </p>
           ) : null}
           <p className="text-caption text-subtle-foreground">
-            {t("records.mine.results.note", { zone: zoneName(auth.timeZone) })}
+            {t("records.mine.results.note", { zone: zoneName(auth.timeZone) })}{" "}
+            <GlossaryTerm term="units">{t("records.unitsLink")}</GlossaryTerm>
           </p>
         </>
       ) : null}
@@ -250,15 +296,22 @@ function UserOddsForm({ pick, onDone }: { pick: UserPick; onDone: () => void }) 
   );
 }
 
+/** A limited account reads its records and changes none of them (plan UX, A8): the server refuses the writes too. */
+function useReadOnly(): boolean {
+  return useAuth().user?.membership?.limited ?? false;
+}
+
 function SavedPickRow({ pick }: { pick: UserPick }) {
   const refresh = useRefreshMine();
   const [editing, setEditing] = useState(false);
+  const readOnly = useReadOnly();
   const m = pick.match;
   const started = hasStarted(m);
-  const open = pick.status === "PENDING" && !started;
+  const open = pick.status === "PENDING" && !started && !readOnly;
   const remove = useMutation({
     mutationFn: () => v1.removePick(pick.id),
     onSuccess: () => {
+      track("pick_removed");
       toast(t("records.toast.unsaved"));
       void refresh();
     },
@@ -300,6 +353,9 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
         <Link
           to="/matches/$fixtureId"
           params={{ fixtureId: String(m.fixture_id) }}
+          // a settled pick opens its match's Postpartido: how it ended and why (plan UX, B4) - the link a result notice will use
+          {...(pick.status !== "PENDING" ? { hash: "postmatch" } : {})}
+          data-testid="my-pick-match"
           className="min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <CompetitionTag
@@ -392,6 +448,14 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
           </div>
         ) : null}
       </div>
+      {lineValueText(pick.line_value) ? (
+        <p
+          className="mt-1.5 text-caption text-muted-foreground"
+          data-testid="saved-pick-line-value"
+        >
+          <GlossaryTerm term="lineValue">{lineValueText(pick.line_value)}</GlossaryTerm>
+        </p>
+      ) : null}
       <CorrectionNote corrections={pick.corrections} record="result" className="mt-2" />
       {open && editing ? <UserOddsForm pick={pick} onDone={() => setEditing(false)} /> : null}
     </li>
@@ -439,9 +503,25 @@ const PICKS_PAGE = 25;
 const PARLAYS_PAGE = 10;
 
 function SavedPicks() {
-  const q = useInfiniteQuery(live.myPicksPages(PICKS_PAGE));
-  const picks = q.data?.pages.flatMap((p) => p.data) ?? [];
-  const total = q.data?.pages[0]?.meta.total ?? picks.length;
+  const [filter, setFilter] = useState<PicksFilterState>(NO_FILTER);
+  // the search waits for the reader to stop typing before it asks the server
+  const q = useDebounced(filter.q, 300);
+  const api = useMemo(() => toApiFilter({ ...filter, q }), [filter, q]);
+  const pages = useInfiniteQuery({
+    ...live.myPicksPages(PICKS_PAGE, api),
+    placeholderData: keepPreviousData,
+  });
+  const summary = useQuery({ ...live.myPicksSummary(api), placeholderData: keepPreviousData });
+  const picks = pages.data?.pages.flatMap((p) => p.data) ?? [];
+  // a result of one's own seen: a useful moment, after which the monthly survey may come (plan UX, B6)
+  useUsefulMoment(
+    "result_seen",
+    picks.some((p) => p.status !== "PENDING"),
+  );
+  const total = pages.data?.pages[0]?.meta.total ?? picks.length;
+  const filtered = activeCount(filter) > 0;
+  const options = summary.data?.data.options;
+  const everything = (options?.markets.length ?? 0) > 0 || filtered || picks.length > 0;
   return (
     <section className="space-y-3" data-testid="saved-picks">
       <SectionHeader
@@ -449,48 +529,141 @@ function SavedPicks() {
         subtitle={picks.length > 0 ? t("records.mine.picks.settlesAt") : undefined}
         icon={<Bookmark aria-hidden className="h-4 w-4 text-primary" />}
       />
-      {q.isPending ? (
+      {everything ? (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <PicksSearch
+              value={filter.q}
+              onChange={(value) => setFilter({ ...filter, q: value })}
+            />
+          </div>
+          <PicksFilters
+            value={filter}
+            onChange={setFilter}
+            markets={options?.markets ?? []}
+            competitions={options?.competitions ?? []}
+            showLabel={t("records.mine.filters.show", { count: total, n: fmtInt(total) })}
+          />
+          {summary.data ? (
+            <PicksSummaryBlock
+              summary={summary.data.data}
+              exportHref={exportUrl("picks", api)}
+              busy={summary.isFetching}
+            />
+          ) : summary.isError ? null : (
+            <SkeletonBlock className="h-28" />
+          )}
+        </>
+      ) : null}
+      {pages.isPending ? (
         <SkeletonBlock className="h-40" />
-      ) : q.isError ? (
+      ) : pages.isError ? (
         <Card>
-          <ErrorState error={q.error} onRetry={() => void q.refetch()} />
+          <ErrorState error={pages.error} onRetry={() => void pages.refetch()} />
         </Card>
       ) : picks.length === 0 ? (
         <Card>
-          <EmptyState
-            compact
-            icon={<Bookmark aria-hidden className="h-5 w-5" />}
-            title={t("records.mine.picks.empty")}
-            body={t("records.mine.picks.emptyBody")}
-          />
+          {filtered ? (
+            <EmptyState
+              compact
+              icon={<Bookmark aria-hidden className="h-5 w-5" />}
+              title={t("records.mine.filters.empty")}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setFilter(NO_FILTER)}
+                  data-testid="mypicks-empty-reset"
+                  className="tap-y relative mt-1 inline-flex h-9 items-center rounded-full border border-border-strong px-4 text-xs font-semibold hover:bg-elevated"
+                >
+                  {t("common.filters.reset")}
+                </button>
+              }
+            />
+          ) : (
+            <EmptyState
+              compact
+              icon={<Bookmark aria-hidden className="h-5 w-5" />}
+              title={t("records.mine.picks.empty")}
+              body={t("records.mine.picks.emptyBody")}
+            />
+          )}
         </Card>
       ) : (
         <>
-          <Card>
-            <ul className="divide-y divide-border/70">
-              {picks.map((p) => (
-                <SavedPickRow key={p.id} pick={p} />
+          <Card className={cn("transition-opacity", pages.isPlaceholderData && "opacity-70")}>
+            <ul className="divide-y divide-border/70" data-testid="saved-picks-list">
+              {byDay(picks).map(([day, rows]) => (
+                <li key={day} data-testid="saved-picks-day" data-day={day}>
+                  <h4 className="px-4 pb-1.5 pt-3 text-label text-subtle-foreground sm:px-5">
+                    {dayHeading(day, rows[0]!.match.kickoff_at)}
+                  </h4>
+                  <ul className="divide-y divide-border/70">
+                    {rows.map((p) => (
+                      <SavedPickRow key={p.id} pick={p} />
+                    ))}
+                  </ul>
+                </li>
               ))}
             </ul>
           </Card>
-          {q.hasNextPage || total > picks.length ? (
+          {pages.hasNextPage || total > picks.length ? (
             <MoreButton
               shown={picks.length}
               total={total}
-              busy={q.isFetchingNextPage || !q.hasNextPage}
-              onMore={() => void q.fetchNextPage()}
+              busy={pages.isFetchingNextPage || !pages.hasNextPage}
+              onMore={() => void pages.fetchNextPage()}
               label={t("records.mine.picks.more")}
               countLabel="records.mine.picks.count"
               testId="saved-picks-more"
             />
-          ) : null}
+          ) : (
+            <p
+              className="numeric text-center text-caption text-subtle-foreground"
+              data-testid="saved-picks-all"
+            >
+              {t("records.mine.picks.allShown", { count: total, n: fmtInt(total) })}
+            </p>
+          )}
         </>
       )}
     </section>
   );
 }
 
+/**
+ * The list goes by the day of the match, newest first, and is read page by page in that order (plan UX, B5: «paginación por
+ * fecha»): each day under its own heading in the reader's time zone, so a long record is walked by date.
+ */
+function byDay(picks: readonly UserPick[]): Array<[string, UserPick[]]> {
+  const days: Array<[string, UserPick[]]> = [];
+  for (const p of picks) {
+    const day = dayKey(p.match.kickoff_at);
+    const last = days[days.length - 1];
+    if (last && last[0] === day) last[1].push(p);
+    else days.push([day, [p]]);
+  }
+  return days;
+}
+
+/** «Hoy» · «Ayer» · «sábado, 4 de octubre» · «4 oct 2025» for another year. */
+function dayHeading(day: string, at: string): string {
+  const rel = relativeDay(at);
+  if (rel) return t(`common.day.${rel}`);
+  return day.slice(0, 4) === todayKey().slice(0, 4) ? formatDateLong(at) : formatDateYear(at);
+}
+
+/** A value that follows another after it has stood still for `ms` (the search, while the reader types). */
+function useDebounced<T>(value: T, ms: number): T {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const id = window.setTimeout(() => setSettled(value), ms);
+    return () => window.clearTimeout(id);
+  }, [value, ms]);
+  return settled;
+}
+
 function UserParlayCard({ parlay }: { parlay: UserParlay }) {
+  const readOnly = useReadOnly();
   const refresh = useRefreshMine();
   const settled = ["WON", "LOST", "VOID", "PARTIAL_VOID"].includes(parlay.status);
   const removable = parlay.status === "READY" && !parlay.legs.some((l) => hasStarted(l.match));
@@ -524,7 +697,7 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
         <ol className="mt-3 divide-y divide-border/60 border-t border-border/60">
           {parlay.legs.map((leg) => (
             <li key={leg.leg_no} className="flex items-center gap-3 px-4 py-2.5 sm:px-5">
-              <span className="numeric flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft text-[0.65rem] font-semibold text-gold-strong">
+              <span className="numeric flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft text-micro font-semibold text-gold-strong">
                 {leg.leg_no}
               </span>
               <div className="min-w-0 flex-1">
@@ -560,7 +733,7 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
             </span>
             {settled ? <Units value={parlay.profit_units} className="text-sm" /> : null}
           </div>
-          {removable ? (
+          {removable && !readOnly ? (
             <ConfirmAction
               testId="remove-parlay"
               title={t("records.mine.parlays.confirmRemove.title")}
@@ -610,7 +783,20 @@ function MyParlays() {
           title={t("records.mine.parlays.title")}
           icon={<Layers aria-hidden className="h-4 w-4 text-gold" />}
         />
-        {build}
+        <div className="flex flex-wrap items-center gap-2">
+          {total > 0 ? (
+            <a
+              href={exportUrl("parlays")}
+              download
+              data-testid="my-parlays-export"
+              className="tap-y relative inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border-strong px-3.5 text-xs font-semibold hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Download aria-hidden className="h-3.5 w-3.5" />
+              {t("records.mine.parlays.export")}
+            </a>
+          ) : null}
+          {build}
+        </div>
       </div>
       {q.isPending ? (
         <SkeletonBlock className="h-40" />
@@ -652,9 +838,16 @@ function MyParlays() {
 }
 
 export function MyPicksPage() {
+  const readOnly = useReadOnly();
   return (
     <div className="space-y-9" data-testid="my-picks-page">
       <PageTitle title={t("records.mine.title")} subtitle={t("records.mine.subtitle")} />
+      <FirstVisitHint hint="my_picks" />
+      {readOnly ? (
+        <p className="text-xs text-muted-foreground" data-testid="my-picks-read-only">
+          {t("profile.membership.limited.readOnly")}
+        </p>
+      ) : null}
       <Results />
       <Recap />
       <SavedPicks />

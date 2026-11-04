@@ -1,11 +1,13 @@
 /**
- * Picks, a module of its own (REVIEW PREDIGOL, point 4: a match has many picks and they crowded the Resumen).
+ * The picks of a match (REVIEW PREDIGOL, point 4; plan UX, A9: in the Resumen before and during the match - the published
+ * ones with their state - and in the Postpartido once it is over).
  *
  * before kick-off  every qualified pick of the match, the best value first, in pages of 15;
  * after kick-off   the picks PrediGol made before it, as they were taken, with what the match is doing and,
  *                  at the end, their result (En juego / Ganado / Perdido) - never re-priced;
  * finished         and, for the admin, the AI's post-mortem of each one.
  */
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { History, ShieldCheck, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -66,7 +68,7 @@ function Upcoming({ ctx }: { ctx: MatchCtx }) {
   );
 }
 
-function Taken({ ctx }: { ctx: MatchCtx }) {
+function Taken({ ctx, why }: { ctx: MatchCtx; why?: ((pickId: number) => ReactNode) | undefined }) {
   const q = useMatchPicks(ctx);
   const board = q.data?.data;
   const shadow = board?.source === "shadow_preview";
@@ -94,7 +96,7 @@ function Taken({ ctx }: { ctx: MatchCtx }) {
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             {paged.items.map((p) => (
-              <StartedPickCard key={p.pick_id} pick={p} shadow={shadow} />
+              <StartedPickCard key={p.pick_id} pick={p} shadow={shadow} footer={why?.(p.pick_id)} />
             ))}
           </div>
           <Pager paged={paged} />
@@ -132,43 +134,22 @@ function Postmortems({ ctx }: { ctx: MatchCtx }) {
   );
 }
 
-export function PicksTab({ ctx }: { ctx: MatchCtx }) {
+/**
+ * ``why``: in the Postpartido, what each pick taken before kick-off gets under its card - how it ended and the facts of the match
+ * behind it (plan UX, B4).
+ */
+export function PicksTab({
+  ctx,
+  why,
+}: {
+  ctx: MatchCtx;
+  why?: ((pickId: number) => ReactNode) | undefined;
+}) {
   if (ctx.phase === "scheduled") return <Upcoming ctx={ctx} />;
   return (
     <div className="space-y-4">
-      <Taken ctx={ctx} />
+      <Taken ctx={ctx} why={why} />
       {ctx.showAdmin && ctx.phase === "finished" ? <Postmortems ctx={ctx} /> : null}
     </div>
-  );
-}
-
-/** On the Resumen: one line to the Picks tab, with how many there are (the cards themselves live there). */
-export function PicksTeaser({ ctx }: { ctx: MatchCtx }) {
-  const q = useMatchPicks(ctx);
-  const board = q.data?.data;
-  const id = Number(ctx.fixtureId);
-  const count =
-    ctx.phase === "scheduled"
-      ? matchPicks(board, id).length
-      : (board?.started ?? []).filter((p) => p.fixture_id === id).length;
-  if (!q.isSuccess || count === 0) return null;
-  const label =
-    ctx.phase === "scheduled"
-      ? t("match.picksTab.teaser", { count })
-      : t("match.picksTab.teaserStarted", { count });
-  return (
-    <button
-      type="button"
-      onClick={() => ctx.goTo("picks")}
-      data-testid="picks-teaser"
-      className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 text-left transition-colors hover:bg-elevated/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-    >
-      <span className="flex items-center gap-2 text-sm font-medium">
-        <Target aria-hidden className="h-4 w-4 text-primary" />
-        {label}
-        {board?.source === "shadow_preview" ? <ShadowBadge compact /> : null}
-      </span>
-      <span className="text-xs font-semibold text-primary">{t("match.picksTab.teaserAction")}</span>
-    </button>
   );
 }

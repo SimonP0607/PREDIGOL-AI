@@ -64,8 +64,9 @@ def code(sql: str) -> str:
 
 # -- the chain -----------------------------------------------------------------------------------------------------------------------
 
-def test_it_chains_on_the_shadow_arms_migration_and_nothing_else() -> None:
-    assert (M.revision, M.down_revision, M.branch_labels, M.depends_on) == ("0120", "0119", None, None)
+def test_it_chains_on_the_head_of_the_chain_it_found_and_nothing_else() -> None:
+    """The UX chain 0095-0106 hangs from 0119 (PR #21), so the head of the chain when this phase arrived is 0106: 0120 follows it, in one line."""
+    assert (M.revision, M.down_revision, M.branch_labels, M.depends_on) == ("0120", "0106", None, None)
 
 
 def test_the_chain_has_one_head_and_it_is_this_migration_or_one_that_came_after_it() -> None:
@@ -74,9 +75,12 @@ def test_the_chain_has_one_head_and_it_is_this_migration_or_one_that_came_after_
     script = ScriptDirectory.from_config(cfg)
     heads = script.get_heads()
     assert len(heads) == 1, heads
-    assert heads[0] >= "0120"
+    # "or one that came after it" by the chain, not by the number
+    assert "0120" in {r.revision for r in script.walk_revisions(base="base", head=heads[0])}, heads
     revision = script.get_revision("0120")
-    assert revision is not None and revision.down_revision == "0119"
+    assert revision is not None and revision.down_revision == "0106"
+    parent = script.get_revision("0106")
+    assert parent is not None and parent.down_revision == "0105", "0106 is the lifecycle migration of the UX chain"
 
 
 # -- the words -----------------------------------------------------------------------------------------------------------------------

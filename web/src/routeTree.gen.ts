@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ActivateRouteImport } from './routes/activate'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as LoginRouteImport } from './routes/login'
@@ -19,6 +21,12 @@ import { Route as OddsRouteImport } from './routes/odds'
 import { Route as ParlaysRouteImport } from './routes/parlays'
 import { Route as PicksRouteImport } from './routes/picks'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as TransparencyRouteImport } from './routes/transparency'
+import { Route as UnlockRouteImport } from './routes/unlock'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
+import { Route as UpdatesRouteImport } from './routes/updates'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAiAnalystRouteImport } from './routes/admin.ai-analyst'
 import { Route as AdminAiLayerRouteImport } from './routes/admin.ai-layer'
@@ -32,6 +40,7 @@ import { Route as AdminEvolutionRouteImport } from './routes/admin.evolution'
 import { Route as AdminIntelligenceRouteImport } from './routes/admin.intelligence'
 import { Route as AdminLearningRouteImport } from './routes/admin.learning'
 import { Route as AdminMemoryRouteImport } from './routes/admin.memory'
+import { Route as AdminMessagesRouteImport } from './routes/admin.messages'
 import { Route as AdminMigrationRouteImport } from './routes/admin.migration'
 import { Route as AdminModelsRouteImport } from './routes/admin.models'
 import { Route as AdminOddsRouteImport } from './routes/admin.odds'
@@ -39,27 +48,45 @@ import { Route as AdminOperationRouteImport } from './routes/admin.operation'
 import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
 import { Route as AdminPerformanceRouteImport } from './routes/admin.performance'
 import { Route as AdminPicksRouteImport } from './routes/admin.picks'
+import { Route as AdminProductRouteImport } from './routes/admin.product'
 import { Route as AdminRankingsRouteImport } from './routes/admin.rankings'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminStorageRouteImport } from './routes/admin.storage'
+import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminSystemRouteImport } from './routes/admin.system'
 import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as HelpIndexRouteImport } from './routes/help.index'
+import { Route as HelpGlossaryRouteImport } from './routes/help.glossary'
+import { Route as LegalDocRouteImport } from './routes/legal.$doc'
 import { Route as MatchesIndexRouteImport } from './routes/matches.index'
 import { Route as MatchesFixtureIdRouteImport } from './routes/matches.$fixtureId'
+import { Route as AdminCustomersIndexRouteImport } from './routes/admin.customers.index'
+import { Route as AdminCustomersUserIdRouteImport } from './routes/admin.customers.$userId'
 import { Route as AdminPlayersIndexRouteImport } from './routes/admin.players.index'
 import { Route as AdminPlayersPlayerIdRouteImport } from './routes/admin.players.$playerId'
 import { Route as AdminRefereesIndexRouteImport } from './routes/admin.referees.index'
 import { Route as AdminRefereesRefereeIdRouteImport } from './routes/admin.referees.$refereeId'
+import { Route as HelpMessagesTicketIdRouteImport } from './routes/help.messages.$ticketId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ActivateRoute = ActivateRouteImport.update({
+  id: '/activate',
+  path: '/activate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HomeRoute = HomeRouteImport.update({
@@ -100,6 +127,36 @@ const PicksRoute = PicksRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransparencyRoute = TransparencyRouteImport.update({
+  id: '/transparency',
+  path: '/transparency',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnlockRoute = UnlockRouteImport.update({
+  id: '/unlock',
+  path: '/unlock',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UpdatesRoute = UpdatesRouteImport.update({
+  id: '/updates',
+  path: '/updates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -167,6 +224,11 @@ const AdminMemoryRoute = AdminMemoryRouteImport.update({
   path: '/memory',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminMessagesRoute = AdminMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMigrationRoute = AdminMigrationRouteImport.update({
   id: '/migration',
   path: '/migration',
@@ -202,6 +264,11 @@ const AdminPicksRoute = AdminPicksRouteImport.update({
   path: '/picks',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminProductRoute = AdminProductRouteImport.update({
+  id: '/product',
+  path: '/product',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminRankingsRoute = AdminRankingsRouteImport.update({
   id: '/rankings',
   path: '/rankings',
@@ -215,6 +282,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
 const AdminStorageRoute = AdminStorageRouteImport.update({
   id: '/storage',
   path: '/storage',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminSystemRoute = AdminSystemRouteImport.update({
@@ -232,6 +304,21 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const HelpIndexRoute = HelpIndexRouteImport.update({
+  id: '/help/',
+  path: '/help/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpGlossaryRoute = HelpGlossaryRouteImport.update({
+  id: '/help/glossary',
+  path: '/help/glossary',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalDocRoute = LegalDocRouteImport.update({
+  id: '/legal/$doc',
+  path: '/legal/$doc',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MatchesIndexRoute = MatchesIndexRouteImport.update({
   id: '/matches/',
   path: '/matches/',
@@ -241,6 +328,16 @@ const MatchesFixtureIdRoute = MatchesFixtureIdRouteImport.update({
   id: '/matches/$fixtureId',
   path: '/matches/$fixtureId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCustomersIndexRoute = AdminCustomersIndexRouteImport.update({
+  id: '/customers/',
+  path: '/customers/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCustomersUserIdRoute = AdminCustomersUserIdRouteImport.update({
+  id: '/customers/$userId',
+  path: '/customers/$userId',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminPlayersIndexRoute = AdminPlayersIndexRouteImport.update({
   id: '/players/',
@@ -262,10 +359,17 @@ const AdminRefereesRefereeIdRoute = AdminRefereesRefereeIdRouteImport.update({
   path: '/referees/$refereeId',
   getParentRoute: () => AdminRoute,
 } as any)
+const HelpMessagesTicketIdRoute = HelpMessagesTicketIdRouteImport.update({
+  id: '/help/messages/$ticketId',
+  path: '/help/messages/$ticketId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activate': typeof ActivateRoute
   '/admin': typeof AdminRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/home': typeof HomeRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
@@ -274,6 +378,12 @@ export interface FileRoutesByFullPath {
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/transparency': typeof TransparencyRoute
+  '/unlock': typeof UnlockRoute
+  '/unsubscribe': typeof UnsubscribeRoute
+  '/updates': typeof UpdatesRoute
+  '/welcome': typeof WelcomeRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -286,6 +396,7 @@ export interface FileRoutesByFullPath {
   '/admin/intelligence': typeof AdminIntelligenceRoute
   '/admin/learning': typeof AdminLearningRoute
   '/admin/memory': typeof AdminMemoryRoute
+  '/admin/messages': typeof AdminMessagesRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
@@ -293,22 +404,32 @@ export interface FileRoutesByFullPath {
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/picks': typeof AdminPicksRoute
+  '/admin/product': typeof AdminProductRoute
   '/admin/rankings': typeof AdminRankingsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/storage': typeof AdminStorageRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/help/glossary': typeof HelpGlossaryRoute
+  '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
+  '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
+  '/help/messages/$ticketId': typeof HelpMessagesTicketIdRoute
+  '/admin/customers/': typeof AdminCustomersIndexRoute
   '/admin/players/': typeof AdminPlayersIndexRoute
   '/admin/referees/': typeof AdminRefereesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activate': typeof ActivateRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/home': typeof HomeRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
@@ -317,6 +438,12 @@ export interface FileRoutesByTo {
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/transparency': typeof TransparencyRoute
+  '/unlock': typeof UnlockRoute
+  '/unsubscribe': typeof UnsubscribeRoute
+  '/updates': typeof UpdatesRoute
+  '/welcome': typeof WelcomeRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -329,6 +456,7 @@ export interface FileRoutesByTo {
   '/admin/intelligence': typeof AdminIntelligenceRoute
   '/admin/learning': typeof AdminLearningRoute
   '/admin/memory': typeof AdminMemoryRoute
+  '/admin/messages': typeof AdminMessagesRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
@@ -336,24 +464,34 @@ export interface FileRoutesByTo {
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/picks': typeof AdminPicksRoute
+  '/admin/product': typeof AdminProductRoute
   '/admin/rankings': typeof AdminRankingsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/storage': typeof AdminStorageRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/help/glossary': typeof HelpGlossaryRoute
+  '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/admin': typeof AdminIndexRoute
+  '/help': typeof HelpIndexRoute
   '/matches': typeof MatchesIndexRoute
+  '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
+  '/help/messages/$ticketId': typeof HelpMessagesTicketIdRoute
+  '/admin/customers': typeof AdminCustomersIndexRoute
   '/admin/players': typeof AdminPlayersIndexRoute
   '/admin/referees': typeof AdminRefereesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/activate': typeof ActivateRoute
   '/admin': typeof AdminRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/home': typeof HomeRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
@@ -362,6 +500,12 @@ export interface FileRoutesById {
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/transparency': typeof TransparencyRoute
+  '/unlock': typeof UnlockRoute
+  '/unsubscribe': typeof UnsubscribeRoute
+  '/updates': typeof UpdatesRoute
+  '/welcome': typeof WelcomeRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -374,6 +518,7 @@ export interface FileRoutesById {
   '/admin/intelligence': typeof AdminIntelligenceRoute
   '/admin/learning': typeof AdminLearningRoute
   '/admin/memory': typeof AdminMemoryRoute
+  '/admin/messages': typeof AdminMessagesRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
@@ -381,17 +526,25 @@ export interface FileRoutesById {
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/picks': typeof AdminPicksRoute
+  '/admin/product': typeof AdminProductRoute
   '/admin/rankings': typeof AdminRankingsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/storage': typeof AdminStorageRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/help/glossary': typeof HelpGlossaryRoute
+  '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
+  '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
+  '/help/messages/$ticketId': typeof HelpMessagesTicketIdRoute
+  '/admin/customers/': typeof AdminCustomersIndexRoute
   '/admin/players/': typeof AdminPlayersIndexRoute
   '/admin/referees/': typeof AdminRefereesIndexRoute
 }
@@ -399,7 +552,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/activate'
     | '/admin'
+    | '/forgot-password'
     | '/home'
     | '/live'
     | '/login'
@@ -408,6 +563,12 @@ export interface FileRouteTypes {
     | '/parlays'
     | '/picks'
     | '/profile'
+    | '/reset-password'
+    | '/transparency'
+    | '/unlock'
+    | '/unsubscribe'
+    | '/updates'
+    | '/welcome'
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
     | '/admin/analytics'
@@ -420,6 +581,7 @@ export interface FileRouteTypes {
     | '/admin/intelligence'
     | '/admin/learning'
     | '/admin/memory'
+    | '/admin/messages'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
@@ -427,22 +589,32 @@ export interface FileRouteTypes {
     | '/admin/overview'
     | '/admin/performance'
     | '/admin/picks'
+    | '/admin/product'
     | '/admin/rankings'
     | '/admin/settings'
     | '/admin/storage'
+    | '/admin/support'
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
+    | '/help/glossary'
+    | '/legal/$doc'
     | '/matches/$fixtureId'
     | '/admin/'
+    | '/help/'
     | '/matches/'
+    | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
+    | '/help/messages/$ticketId'
+    | '/admin/customers/'
     | '/admin/players/'
     | '/admin/referees/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/activate'
+    | '/forgot-password'
     | '/home'
     | '/live'
     | '/login'
@@ -451,6 +623,12 @@ export interface FileRouteTypes {
     | '/parlays'
     | '/picks'
     | '/profile'
+    | '/reset-password'
+    | '/transparency'
+    | '/unlock'
+    | '/unsubscribe'
+    | '/updates'
+    | '/welcome'
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
     | '/admin/analytics'
@@ -463,6 +641,7 @@ export interface FileRouteTypes {
     | '/admin/intelligence'
     | '/admin/learning'
     | '/admin/memory'
+    | '/admin/messages'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
@@ -470,23 +649,33 @@ export interface FileRouteTypes {
     | '/admin/overview'
     | '/admin/performance'
     | '/admin/picks'
+    | '/admin/product'
     | '/admin/rankings'
     | '/admin/settings'
     | '/admin/storage'
+    | '/admin/support'
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
+    | '/help/glossary'
+    | '/legal/$doc'
     | '/matches/$fixtureId'
     | '/admin'
+    | '/help'
     | '/matches'
+    | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
+    | '/help/messages/$ticketId'
+    | '/admin/customers'
     | '/admin/players'
     | '/admin/referees'
   id:
     | '__root__'
     | '/'
+    | '/activate'
     | '/admin'
+    | '/forgot-password'
     | '/home'
     | '/live'
     | '/login'
@@ -495,6 +684,12 @@ export interface FileRouteTypes {
     | '/parlays'
     | '/picks'
     | '/profile'
+    | '/reset-password'
+    | '/transparency'
+    | '/unlock'
+    | '/unsubscribe'
+    | '/updates'
+    | '/welcome'
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
     | '/admin/analytics'
@@ -507,6 +702,7 @@ export interface FileRouteTypes {
     | '/admin/intelligence'
     | '/admin/learning'
     | '/admin/memory'
+    | '/admin/messages'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
@@ -514,24 +710,34 @@ export interface FileRouteTypes {
     | '/admin/overview'
     | '/admin/performance'
     | '/admin/picks'
+    | '/admin/product'
     | '/admin/rankings'
     | '/admin/settings'
     | '/admin/storage'
+    | '/admin/support'
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
+    | '/help/glossary'
+    | '/legal/$doc'
     | '/matches/$fixtureId'
     | '/admin/'
+    | '/help/'
     | '/matches/'
+    | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
+    | '/help/messages/$ticketId'
+    | '/admin/customers/'
     | '/admin/players/'
     | '/admin/referees/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActivateRoute: typeof ActivateRoute
   AdminRoute: typeof AdminRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   HomeRoute: typeof HomeRoute
   LiveRoute: typeof LiveRoute
   LoginRoute: typeof LoginRoute
@@ -540,8 +746,18 @@ export interface RootRouteChildren {
   ParlaysRoute: typeof ParlaysRoute
   PicksRoute: typeof PicksRoute
   ProfileRoute: typeof ProfileRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  TransparencyRoute: typeof TransparencyRoute
+  UnlockRoute: typeof UnlockRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
+  UpdatesRoute: typeof UpdatesRoute
+  WelcomeRoute: typeof WelcomeRoute
+  HelpGlossaryRoute: typeof HelpGlossaryRoute
+  LegalDocRoute: typeof LegalDocRoute
   MatchesFixtureIdRoute: typeof MatchesFixtureIdRoute
+  HelpIndexRoute: typeof HelpIndexRoute
   MatchesIndexRoute: typeof MatchesIndexRoute
+  HelpMessagesTicketIdRoute: typeof HelpMessagesTicketIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -553,11 +769,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/activate': {
+      id: '/activate'
+      path: '/activate'
+      fullPath: '/activate'
+      preLoaderRoute: typeof ActivateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/home': {
@@ -614,6 +844,48 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transparency': {
+      id: '/transparency'
+      path: '/transparency'
+      fullPath: '/transparency'
+      preLoaderRoute: typeof TransparencyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unlock': {
+      id: '/unlock'
+      path: '/unlock'
+      fullPath: '/unlock'
+      preLoaderRoute: typeof UnlockRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/updates': {
+      id: '/updates'
+      path: '/updates'
+      fullPath: '/updates'
+      preLoaderRoute: typeof UpdatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -707,6 +979,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMemoryRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/messages': {
+      id: '/admin/messages'
+      path: '/messages'
+      fullPath: '/admin/messages'
+      preLoaderRoute: typeof AdminMessagesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/migration': {
       id: '/admin/migration'
       path: '/migration'
@@ -756,6 +1035,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPicksRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/product': {
+      id: '/admin/product'
+      path: '/product'
+      fullPath: '/admin/product'
+      preLoaderRoute: typeof AdminProductRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/rankings': {
       id: '/admin/rankings'
       path: '/rankings'
@@ -775,6 +1061,13 @@ declare module '@tanstack/react-router' {
       path: '/storage'
       fullPath: '/admin/storage'
       preLoaderRoute: typeof AdminStorageRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/support': {
+      id: '/admin/support'
+      path: '/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/system': {
@@ -798,6 +1091,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/help/': {
+      id: '/help/'
+      path: '/help'
+      fullPath: '/help/'
+      preLoaderRoute: typeof HelpIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/glossary': {
+      id: '/help/glossary'
+      path: '/help/glossary'
+      fullPath: '/help/glossary'
+      preLoaderRoute: typeof HelpGlossaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/$doc': {
+      id: '/legal/$doc'
+      path: '/legal/$doc'
+      fullPath: '/legal/$doc'
+      preLoaderRoute: typeof LegalDocRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/matches/': {
       id: '/matches/'
       path: '/matches'
@@ -811,6 +1125,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/matches/$fixtureId'
       preLoaderRoute: typeof MatchesFixtureIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/customers/': {
+      id: '/admin/customers/'
+      path: '/customers'
+      fullPath: '/admin/customers/'
+      preLoaderRoute: typeof AdminCustomersIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/customers/$userId': {
+      id: '/admin/customers/$userId'
+      path: '/customers/$userId'
+      fullPath: '/admin/customers/$userId'
+      preLoaderRoute: typeof AdminCustomersUserIdRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/players/': {
       id: '/admin/players/'
@@ -840,6 +1168,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRefereesRefereeIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/help/messages/$ticketId': {
+      id: '/help/messages/$ticketId'
+      path: '/help/messages/$ticketId'
+      fullPath: '/help/messages/$ticketId'
+      preLoaderRoute: typeof HelpMessagesTicketIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -856,6 +1191,7 @@ interface AdminRouteChildren {
   AdminIntelligenceRoute: typeof AdminIntelligenceRoute
   AdminLearningRoute: typeof AdminLearningRoute
   AdminMemoryRoute: typeof AdminMemoryRoute
+  AdminMessagesRoute: typeof AdminMessagesRoute
   AdminMigrationRoute: typeof AdminMigrationRoute
   AdminModelsRoute: typeof AdminModelsRoute
   AdminOddsRoute: typeof AdminOddsRoute
@@ -863,15 +1199,19 @@ interface AdminRouteChildren {
   AdminOverviewRoute: typeof AdminOverviewRoute
   AdminPerformanceRoute: typeof AdminPerformanceRoute
   AdminPicksRoute: typeof AdminPicksRoute
+  AdminProductRoute: typeof AdminProductRoute
   AdminRankingsRoute: typeof AdminRankingsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminStorageRoute: typeof AdminStorageRoute
+  AdminSupportRoute: typeof AdminSupportRoute
   AdminSystemRoute: typeof AdminSystemRoute
   AdminTeamsRoute: typeof AdminTeamsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminCustomersUserIdRoute: typeof AdminCustomersUserIdRoute
   AdminPlayersPlayerIdRoute: typeof AdminPlayersPlayerIdRoute
   AdminRefereesRefereeIdRoute: typeof AdminRefereesRefereeIdRoute
+  AdminCustomersIndexRoute: typeof AdminCustomersIndexRoute
   AdminPlayersIndexRoute: typeof AdminPlayersIndexRoute
   AdminRefereesIndexRoute: typeof AdminRefereesIndexRoute
 }
@@ -889,6 +1229,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminIntelligenceRoute: AdminIntelligenceRoute,
   AdminLearningRoute: AdminLearningRoute,
   AdminMemoryRoute: AdminMemoryRoute,
+  AdminMessagesRoute: AdminMessagesRoute,
   AdminMigrationRoute: AdminMigrationRoute,
   AdminModelsRoute: AdminModelsRoute,
   AdminOddsRoute: AdminOddsRoute,
@@ -896,15 +1237,19 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminOverviewRoute: AdminOverviewRoute,
   AdminPerformanceRoute: AdminPerformanceRoute,
   AdminPicksRoute: AdminPicksRoute,
+  AdminProductRoute: AdminProductRoute,
   AdminRankingsRoute: AdminRankingsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminStorageRoute: AdminStorageRoute,
+  AdminSupportRoute: AdminSupportRoute,
   AdminSystemRoute: AdminSystemRoute,
   AdminTeamsRoute: AdminTeamsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminCustomersUserIdRoute: AdminCustomersUserIdRoute,
   AdminPlayersPlayerIdRoute: AdminPlayersPlayerIdRoute,
   AdminRefereesRefereeIdRoute: AdminRefereesRefereeIdRoute,
+  AdminCustomersIndexRoute: AdminCustomersIndexRoute,
   AdminPlayersIndexRoute: AdminPlayersIndexRoute,
   AdminRefereesIndexRoute: AdminRefereesIndexRoute,
 }
@@ -913,7 +1258,9 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivateRoute: ActivateRoute,
   AdminRoute: AdminRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   HomeRoute: HomeRoute,
   LiveRoute: LiveRoute,
   LoginRoute: LoginRoute,
@@ -922,8 +1269,18 @@ const rootRouteChildren: RootRouteChildren = {
   ParlaysRoute: ParlaysRoute,
   PicksRoute: PicksRoute,
   ProfileRoute: ProfileRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  TransparencyRoute: TransparencyRoute,
+  UnlockRoute: UnlockRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
+  UpdatesRoute: UpdatesRoute,
+  WelcomeRoute: WelcomeRoute,
+  HelpGlossaryRoute: HelpGlossaryRoute,
+  LegalDocRoute: LegalDocRoute,
   MatchesFixtureIdRoute: MatchesFixtureIdRoute,
+  HelpIndexRoute: HelpIndexRoute,
   MatchesIndexRoute: MatchesIndexRoute,
+  HelpMessagesTicketIdRoute: HelpMessagesTicketIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -196,4 +196,6 @@ def test_the_head_of_the_chain_is_this_migration_after_0111() -> None:
     assert revision is not None and revision.down_revision == "0111"
     assert script.get_revision("0111") is not None
     heads = script.get_heads()
-    assert "0112" in heads or all(h > "0112" for h in heads), heads
+    # "or one that came after it" by the chain, not by the number: the UX chain 0095-0106 hangs from 0119
+    assert len(heads) == 1, heads
+    assert "0112" in {r.revision for r in script.walk_revisions(base="base", head=heads[0])}, heads

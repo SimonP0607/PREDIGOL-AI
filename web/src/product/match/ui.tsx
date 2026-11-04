@@ -219,7 +219,7 @@ export function FormChips({
           <span
             aria-hidden
             className={cn(
-              "numeric flex h-6 w-6 items-center justify-center rounded-md text-[0.7rem] font-bold",
+              "numeric flex h-6 w-6 items-center justify-center rounded-md text-micro font-bold",
               RESULT_TONE[c.result],
               i === chips.length - 1 && "ring-1 ring-inset ring-foreground/35",
             )}

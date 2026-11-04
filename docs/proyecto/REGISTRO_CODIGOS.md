@@ -25,6 +25,12 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | IA-007 | Agente de Estadísticas en sombra para córners y tarjetas (interruptor apagado por defecto, sin migración) | en curso | este PR | ia-p4 (fase 4 del plan de IA) |
 | IA-008 | Revisor posterior (`pmr-v1`) y Analista de aprendizaje (`la-v1`) en sombra, con la atribución mecánica `attr-v1` y la migración 0120 (interruptores apagados por defecto) | en curso | este PR | ia-p5 (fase 5 del plan de IA) |
 
+## UX — experiencia de usuario y diseño de la web
+
+| Código | Qué es | Estado | PR | Fase o nombre anterior |
+| --- | --- | --- | --- | --- |
+| UX-001 | Plan maestro de UX completo, de A3 a B11: Inicio, Análisis y Postpartido, Mis picks, avisos y dispositivos, membresía, ficha del cliente y ciclo de vida (migraciones 0095 a 0106, que cuelgan de la 0119). A1 y A2 ya corrían en producción | en curso (falta desplegar) | #21 | A3 a B11 |
+
 ## BE — backend
 
 | Código | Qué es | Estado | PR | Fase o nombre anterior |
@@ -37,4 +43,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-007 · SEG-001 · IA-009 · UX-001 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-007 · SEG-001 · IA-009 · UX-002 · BE-002 · FE-001 · OPS-001 · DOC-001

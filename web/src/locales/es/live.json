@@ -75,6 +75,10 @@
     "clear": "Quitar filtros",
     "showing": "{shown} de {total} partidos",
     "emptyTitle": "Ningún partido en vivo coincide con estos filtros",
-    "emptyBody": "Quita algún filtro para ver el resto de partidos que se están jugando."
-  }
+    "emptyBody": "Quita algún filtro para ver el resto de partidos que se están jugando.",
+    "show_one": "Ver {count} partido",
+    "show_other": "Ver {count} partidos",
+    "team": "Equipo"
+  },
+  "backToMatches": "Volver a Partidos"
 }

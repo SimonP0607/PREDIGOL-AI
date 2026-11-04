@@ -488,7 +488,7 @@ function AbsenceList({ ctx, rows }: { ctx: MatchCtx; rows: Absence[] }) {
                       </span>
                       <span
                         className={cn(
-                          "rounded-full border px-1.5 py-px text-[0.65rem] font-semibold",
+                          "rounded-full border px-1.5 py-px text-micro font-semibold",
                           KIND_TONE[kind],
                         )}
                       >
@@ -503,6 +503,28 @@ function AbsenceList({ ctx, rows }: { ctx: MatchCtx; rows: Absence[] }) {
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Where the absences come from (plan UX, A10: «las bajas con su fuente»): the data provider's absence report, with when it
+ * last reported one. What the press says, with its own sources, is in Alineaciones and Noticias.
+ */
+function AbsenceSource({ rows }: { rows: Absence[] }) {
+  const newest = rows.reduce<string | null>(
+    (best, a) =>
+      a.fetched_at && (!best || Date.parse(a.fetched_at) > Date.parse(best)) ? a.fetched_at : best,
+    null,
+  );
+  return (
+    <p
+      className="mt-2 text-caption leading-snug text-subtle-foreground"
+      data-testid="absences-source"
+    >
+      {newest
+        ? t("match.absences.source", { when: formatRelative(newest) })
+        : t("match.absences.sourceNoTime")}
+    </p>
   );
 }
 
@@ -521,7 +543,12 @@ export function AbsencesBlock({ ctx }: { ctx: MatchCtx }) {
       }
     >
       <CenterSection center={ctx.center} pick={(c) => c.absences}>
-        {(rows) => <AbsenceList ctx={ctx} rows={rows} />}
+        {(rows) => (
+          <>
+            <AbsenceList ctx={ctx} rows={rows} />
+            <AbsenceSource rows={rows} />
+          </>
+        )}
       </CenterSection>
     </Block>
   );

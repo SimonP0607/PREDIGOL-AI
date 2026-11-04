@@ -39,6 +39,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
+import { ExplainButton } from "@/product/explain/ExplainSheet";
 import { OddsPill } from "@/product/shared/Bits";
 import { errorMessage } from "@/product/shared/States";
 import { marketName, riskLabel, selectionLabel } from "@/product/shared/markets";
@@ -57,6 +59,7 @@ import {
   type SlipLeg,
 } from "./model";
 import { useSlip } from "./slipContext";
+import { track } from "@/lib/track";
 
 /** The server is asked once the legs stop changing for this long; the client's figures show at once. */
 const CHECK_DELAY_MS = 250;
@@ -141,7 +144,7 @@ function LegRow({
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="numeric mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft text-[0.65rem] font-semibold text-gold-strong"
+          className="numeric mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft text-micro font-semibold text-gold-strong"
         >
           {n}
         </span>
@@ -374,7 +377,7 @@ function Summary({
 
         <div className="min-w-0">
           <dt className="text-caption font-medium text-muted-foreground">
-            {t("records.slip.summary.fair")}
+            <GlossaryTerm term="marketProbability">{t("records.slip.summary.fair")}</GlossaryTerm>
           </dt>
           <dd className="mt-0.5">
             <Value
@@ -384,9 +387,6 @@ function Summary({
             >
               {fmtProbability(fair)}
             </Value>
-            <span className="mt-0.5 block text-caption text-subtle-foreground">
-              {t("records.slip.summary.fairHelp")}
-            </span>
           </dd>
         </div>
 
@@ -398,13 +398,13 @@ function Summary({
             data-source={dep?.source}
           >
             <dt className="text-caption font-medium text-muted-foreground">
-              {t("records.slip.summary.dependency")}
+              <GlossaryTerm term="dependency">{t("records.slip.summary.dependency")}</GlossaryTerm>
             </dt>
             <dd>
               {dep ? (
                 <span
                   className={cn(
-                    "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.7rem] font-bold uppercase tracking-wider",
+                    "inline-flex items-center rounded-full border px-2.5 py-0.5 text-micro font-bold uppercase tracking-wider",
                     DEPENDENCY_TONE[dep.level],
                   )}
                 >
@@ -422,7 +422,7 @@ function Summary({
 
         <div className="min-w-0">
           <dt className="text-caption font-medium text-muted-foreground">
-            {t("records.slip.measures.ev")}
+            <GlossaryTerm term="expectedValue">{t("records.slip.measures.ev")}</GlossaryTerm>
           </dt>
           <dd className="mt-0.5">
             <Value
@@ -657,6 +657,7 @@ export function SlipSheet() {
   const create = useMutation({
     mutationFn: () => v1.createParlay({ name: name.trim() || null, legs: legsBody(legs) }),
     onSuccess: () => {
+      track("parlay_created", { legs: Math.min(Math.max(legs.length, 1), 30) });
       toast.success(t("records.toast.parlaySaved"), {
         action: {
           label: t("records.slip.history"),
@@ -692,7 +693,7 @@ export function SlipSheet() {
             {t("records.slip.title")}
             {empty ? null : (
               <span
-                className="numeric rounded-full border border-gold/40 bg-gold-soft px-2 py-0.5 text-[0.7rem] font-semibold text-gold-strong"
+                className="numeric rounded-full border border-gold/40 bg-gold-soft px-2 py-0.5 text-micro font-semibold text-gold-strong"
                 data-testid="slip-count"
               >
                 <span aria-hidden>
@@ -742,6 +743,16 @@ export function SlipSheet() {
                   waiting={waiting}
                 />
                 <NoAiCaption />
+                {body.length > 0 ? (
+                  <div className="flex">
+                    <ExplainButton
+                      entity="parlay"
+                      itemId={null}
+                      legs={body}
+                      testId="explain-parlay"
+                    />
+                  </div>
+                ) : null}
                 {validation ? <Issues validation={validation} /> : null}
                 {failed ? (
                   <p className="text-xs text-negative" role="alert" data-testid="slip-check-error">

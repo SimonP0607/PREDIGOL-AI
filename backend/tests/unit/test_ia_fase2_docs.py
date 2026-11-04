@@ -124,7 +124,7 @@ REPLAY_SRC = (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")
 # ── reading the documents ─────────────────────────────────────────────────────────────────────────────────────────
 
 WORDS = {"un": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10,
-         "once": 11, "doce": 12, "trece": 13}
+         "once": 11, "doce": 12, "trece": 13, "catorce": 14, "quince": 15}
 """The numbers the guide writes in words."""
 
 
@@ -331,7 +331,7 @@ def test_the_pieces_of_the_guide_are_files_scripts_and_migrations_that_exist() -
         for name in names:
             assert exists(name), f"{name!r} (piece {row[0]!r}) is not in the repository"
     readers = next(r for r in rows if r[0] == "Lectores")
-    assert all_ticked(readers[2]) == ["ai/packet.py", "picks/daily.py", "intel/decision.py"] and "y otros siete (sección 5)" in readers[2]
+    assert all_ticked(readers[2]) == ["ai/packet.py", "picks/daily.py", "intel/decision.py"] and "y otros nueve (sección 5)" in readers[2]
     assert {r[0]: all_ticked(r[2]) for r in rows} == {
         "Caché por entidad y tema": ["ai/cache.py"],
         "Evidencias tipadas": ["ai/evidence.py", "0114"],
@@ -1180,12 +1180,13 @@ def test_who_reads_the_evidence_table_is_what_the_guide_counts_and_the_structura
                       flags=re.S)
     assert words
     counted = tuple(WORDS[w.lower()] for w in words.groups())
-    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (13, 3, 10, 5)
+    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (15, 3, 12, 5)
     assert set(all_ticked(readers.split("Los otros")[0].split("Tres la leen a propósito")[1])) == own
     assert others == {"ai/packet.py", "picks/daily.py", "intel/decision.py", "intel/match_review.py", "intel/report.py", "ai/learning.py",
-                      "intel/leakage.py", "api/services/ai_layer.py", "api/services/ai_v2.py", "api/services/intelligence.py"}
-    assert "y otros siete (sección 5)" in section(1) and len(others) - 3 == 7
-    assert "trece módulos, diez de ellos ajenos a v2" in section(11) and "el paquete, los picks del día, la decisión, la revisión del partido" in section(11)
+                      "intel/leakage.py", "api/services/ai_layer.py", "api/services/ai_v2.py", "api/services/intelligence.py",
+                      "api/services/news.py", "narrative/job.py"}  # the IA's ten, and the readers' news and narrative of the UX plan (A10, A11)
+    assert "y otros nueve (sección 5)" in section(1) and len(others) - 3 == 9
+    assert "quince módulos, doce de ellos ajenos a v2" in section(11) and "el paquete, los picks del día, la decisión, la revisión del partido" in section(11)
     assert "(`subject_type IS NULL OR` lo que diga `gates.typed_visible`: v2 en `on` **y** la fila más nueva del gate en `PASA`)" in readers
     assert "ai_replay.py" in readers
     assert "PacketBuilder(conn, typed_evidence=typed_visible(conn))" in (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")
@@ -2546,7 +2547,7 @@ def test_the_tests_of_the_quality_paragraph_are_files_that_exist_and_say_what_th
                 if isinstance(n, ast.Import | ast.ImportFrom) for a in n.names}
     assert "sobre un mundo construido, sin red ni clave" in para
     assert not {"httpx", "requests", "urllib", "socket", "anthropic"} & imported and "FakeProvider" in source
-    # «un barrido de comportamiento de 12 lectores»: the readers of the table of the test
+    # «un barrido de comportamiento de 13 lectores»: the readers of the table of the test
     tree = ast.parse((BACKEND / "tests" / "integration" / "test_typed_evidence_readers.py").read_text(encoding="utf-8"))
     table_of_readers = next(n for n in ast.walk(tree) if isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.target.id == "READERS")
     assert isinstance(table_of_readers.value, ast.Dict)
@@ -2599,7 +2600,7 @@ def test_the_sentences_that_say_what_the_research_does_with_its_pages_and_its_mo
     readers = paragraph(section(5), "**Quién lee lo tipado.**")
     assert "la quinta, la que evita guardar dos veces lo mismo, no encuentra nunca una afirmación de v2 para un elemento de v1" in readers
     assert "La batería sobre `extract-v2` pasó por lo mismo" in paragraph(section(11), "**Calidad de las pruebas.**")
-    assert "(un barrido de comportamiento de 12 lectores, la guarda estructural y sus predicados)" in section(11)
+    assert "(un barrido de comportamiento de 13 lectores, la guarda estructural y sus predicados)" in section(11)
     # the head of the guide says what happens when a figure and a constant stop agreeing
     assert "la prueba falla hasta que se corrija una de las dos" in GUIDE.split("\n## 1. ")[0]
     assert "| Tipo de afirmación | Se acepta sobre | Se guarda como |" in sec_4

@@ -217,5 +217,7 @@ def test_the_chain_of_the_revisions_has_this_migration_after_0115() -> None:
     revision = script.get_revision("0116")
     assert revision is not None and revision.down_revision == "0115"
     heads = script.get_heads()
-    assert "0116" in heads or all(h > "0116" for h in heads), heads
+    # "or one that came after it" by the chain, not by the number: the UX chain 0095-0106 hangs from 0119
+    assert len(heads) == 1, heads
+    assert "0116" in {r.revision for r in script.walk_revisions(base="base", head=heads[0])}, heads
     assert re.fullmatch(r"\d{4}", revision.revision)

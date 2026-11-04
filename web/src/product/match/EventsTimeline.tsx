@@ -81,7 +81,7 @@ function Line({
         "flex min-w-0 items-center gap-1",
         align === "right" && "flex-row-reverse",
         // text-caption is not merge-safe in cn(): spelled out here.
-        muted ? "text-[0.6875rem] leading-4 text-muted-foreground" : "text-sm font-medium",
+        muted ? "text-micro leading-4 text-muted-foreground" : "text-sm font-medium",
       )}
     >
       {icon}
@@ -181,7 +181,7 @@ function EventContent({
             {main}
           </span>
           {running ? (
-            <span className="numeric shrink-0 rounded bg-primary/15 px-1 text-[0.7rem] font-semibold text-primary">
+            <span className="numeric shrink-0 rounded bg-primary/15 px-1 text-micro font-semibold text-primary">
               {running.home}–{running.away}
             </span>
           ) : null}
@@ -198,7 +198,7 @@ function Divider({ item }: { item: Extract<TimelineItem, { kind: "divider" }> })
   return (
     <li className="relative flex items-center gap-3 py-2.5">
       <span aria-hidden className="h-px flex-1 bg-border" />
-      <span className="numeric relative z-10 rounded-full border border-border-strong bg-elevated px-2.5 py-0.5 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="numeric relative z-10 rounded-full border border-border-strong bg-elevated px-2.5 py-0.5 text-micro font-semibold uppercase tracking-wider text-muted-foreground">
         {t(`match.events.divider.${item.label}`)}
         {item.score ? ` · ${item.score.home}–${item.score.away}` : ""}
       </span>
@@ -244,7 +244,7 @@ function Timeline({
         if (it.kind === "divider") return <Divider key={`div-${it.label}`} item={it} />;
         const e = it.event;
         const minute = (
-          <span className="numeric relative z-10 whitespace-nowrap rounded-full border border-border-strong bg-card px-1.5 py-0.5 text-[0.7rem] font-semibold text-muted-foreground">
+          <span className="numeric relative z-10 whitespace-nowrap rounded-full border border-border-strong bg-card px-1.5 py-0.5 text-micro font-semibold text-muted-foreground">
             {minuteText(e.minute, e.extra_minute)}
           </span>
         );

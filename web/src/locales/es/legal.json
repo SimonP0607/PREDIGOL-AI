@@ -1,0 +1,116 @@
+{
+  "doc": {
+    "terms": "Términos del servicio",
+    "privacy": "Política de tratamiento de datos personales",
+    "responsible_gaming": "Juego responsable"
+  },
+  "links": {
+    "label": "Textos legales",
+    "terms": "Términos",
+    "privacy": "Privacidad",
+    "responsibleGaming": "Juego responsable"
+  },
+  "page": {
+    "draft": "Borrador: este texto está pendiente de la revisión legal y todavía no está en vigor.",
+    "version": "Versión {version} · {date}",
+    "fingerprint": "Huella (sha256) de este texto: {sha}",
+    "contents": "Contenido",
+    "history": "Versiones de este texto",
+    "historyRow": "{version} · {date}",
+    "historyMaterial": "pidió aceptarla de nuevo",
+    "historyDraft": "borrador",
+    "notFound": "Ese texto no existe.",
+    "others": "Otros textos",
+    "back": "Volver a PrediGol",
+    "signIn": "Iniciar sesión"
+  },
+  "gate": {
+    "title": "Antes de seguir",
+    "intro": "Para usar PrediGol necesitamos tu respuesta a cada uno de estos puntos, por separado.",
+    "changed": "Actualizamos «{document}». Qué cambió: {changes}",
+    "read": "Leer «{document}»",
+    "submit": "Aceptar y continuar",
+    "submitting": "Guardando…",
+    "allRequired": "Marca cada casilla para continuar.",
+    "textChanged": "El texto cambió mientras lo leías: revisa la versión nueva y vuelve a marcar las casillas.",
+    "profile": "Ver mis datos y mis solicitudes",
+    "signOut": "Cerrar sesión"
+  },
+  "privacy": {
+    "title": "Privacidad y datos",
+    "help": "Qué aceptaste y cuándo, una copia de tus datos y tus solicitudes sobre ellos.",
+    "documents": "Los textos",
+    "consentsTitle": "Lo que aceptaste",
+    "accepted": "Aceptado el {date} · versión {version}",
+    "withdrawn": "Retirado el {date}",
+    "pending": "Sin respuesta",
+    "outdated": "Aceptaste una versión anterior: se te pedirá aceptar la nueva.",
+    "withdraw": "Retirar mi autorización",
+    "withdrawConfirm": "Si retiras tu autorización para tratar tus datos, no podrás usar PrediGol hasta darla de nuevo. Tus datos no se borran por esto: para borrarlos, pide el borrado más abajo.",
+    "withdrawYes": "Sí, retirarla",
+    "regrant": "Dar de nuevo mi autorización",
+    "history": "Historial completo",
+    "historyGranted": "Aceptado",
+    "historyWithdrawn": "Retirado",
+    "historyMeta": "{date} · versión {version} · {source}",
+    "source": {
+      "gate": "al entrar",
+      "profile": "desde el perfil",
+      "activation": "al activar la cuenta",
+      "email": "desde un correo"
+    },
+    "exportTitle": "Descargar mis datos",
+    "exportHelp": "Un archivo con todo lo que PrediGol guarda de ti: tu cuenta, tus sesiones y accesos, tus consentimientos, tus solicitudes y lo que guardaste. Hasta 3 veces al día.",
+    "exportButton": "Descargar mis datos",
+    "password": "Tu contraseña",
+    "code": "Código de tu app de verificación",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "exported": "Listo: el archivo se descargó.",
+    "requestsTitle": "Consultas, reclamos y borrado",
+    "requestsHelp": "Respondemos las consultas en 10 días hábiles como máximo y los reclamos y el borrado en 15. La fecha límite queda a la vista aquí.",
+    "kindLabel": "Tipo de solicitud",
+    "kind": {
+      "privacy_query": "Consulta sobre mis datos",
+      "privacy_claim": "Reclamo: corregir o actualizar mis datos",
+      "privacy_deletion": "Borrar mis datos"
+    },
+    "message": "Tu mensaje",
+    "deletionWarning": "Al borrar tus datos se cierra tu cuenta: se anonimiza y solo se conserva, sin identificarte, lo que la ley obliga a guardar. Confírmalo con tu contraseña.",
+    "send": "Enviar solicitud",
+    "sent": "Solicitud enviada. Te respondemos a más tardar el {date}.",
+    "none": "No tienes solicitudes.",
+    "status": {
+      "open": "Abierta",
+      "answered": "Respondida",
+      "closed": "Cerrada"
+    },
+    "opened": "Enviada el {date}",
+    "deadline": "Respuesta a más tardar el {date}",
+    "extended": "Plazo ampliado hasta el {date}",
+    "author": {
+      "customer": "Tú",
+      "owner": "PrediGol",
+      "system": "PrediGol"
+    },
+    "optional": "Opcional: lo cambias en Notificaciones.",
+    "optionalLink": "Ir a Notificaciones"
+  },
+  "admin": {
+    "title": "Solicitudes de privacidad",
+    "help": "Consultas: 10 días hábiles (ampliables 5). Reclamos y borrado: 15 (ampliables 8). Una sola ampliación, diciendo en la respuesta por qué y hasta cuándo.",
+    "empty": "No hay solicitudes abiertas.",
+    "showAll": "Ver también las cerradas",
+    "showOpen": "Ver solo las abiertas",
+    "answerPlaceholder": "Tu respuesta al titular",
+    "status": "Estado tras responder",
+    "extend": "Usar la ampliación",
+    "send": "Enviar respuesta",
+    "overdue": "Vencida",
+    "author": {
+      "customer": "El titular",
+      "owner": "Tú (PrediGol)",
+      "system": "PrediGol"
+    }
+  }
+}

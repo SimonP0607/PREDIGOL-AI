@@ -50,7 +50,7 @@ export function LegWhy({
   const ev = toNumber(why.ev);
   return (
     <div className={cn("space-y-1.5", className)} data-testid="leg-why">
-      <p className="text-[0.68rem] font-semibold uppercase tracking-wider text-subtle-foreground">
+      <p className="text-micro font-semibold uppercase tracking-wider text-subtle-foreground">
         {t("parlays.why.title")}
       </p>
       <ul className="space-y-1 text-caption text-muted-foreground">

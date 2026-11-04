@@ -10,9 +10,10 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Globe2, RadioTower, RefreshCw, Target, Trophy, Users } from "lucide-react";
+import { ChevronLeft, Globe2, RadioTower, RefreshCw, Target, Trophy, Users } from "lucide-react";
 import { usePreviewParam } from "@/lib/auth/AuthProvider";
 import { FacetPicker, SearchBox } from "@/product/matches/Filters";
+import { FilterSheet, SheetField } from "@/product/shared/FilterSheet";
 import {
   NO_FILTERS,
   competitionKey,
@@ -69,7 +70,7 @@ function BoardSkeleton() {
 function PicksBadge({ count }: { count: number }) {
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-gold/50 bg-gold-soft px-2 py-0.5 text-[0.6875rem] font-semibold text-gold-strong"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-gold/50 bg-gold-soft px-2 py-0.5 text-micro font-semibold text-gold-strong"
       data-testid="live-picks-badge"
     >
       <Target aria-hidden className="h-3 w-3" />
@@ -149,6 +150,55 @@ export function LivePage() {
           .filter(Boolean)
           .join(" · ")
       : undefined;
+
+  // The board's four facets, drawn in the desk's row and in the phone's sheet (plan UX, A15).
+  const facetsOn =
+    (filters.team.trim() ? 1 : 0) +
+    (filters.country !== null ? 1 : 0) +
+    (filters.competition !== null ? 1 : 0) +
+    (filters.gender !== null ? 1 : 0);
+  const searchBox = (
+    <SearchBox value={filters.team} onChange={(team) => setFilters((f) => ({ ...f, team }))} />
+  );
+  const countryPicker = (sheet: boolean) => (
+    <FacetPicker<string>
+      label={t("live.filters.country")}
+      anyLabel={t("live.filters.allCountries")}
+      emptyText={sheet ? t("live.filters.allCountries") : undefined}
+      value={filters.country}
+      options={countries}
+      onChange={(country) => setFilters((f) => ({ ...f, country, competition: null }))}
+      icon={<Globe2 />}
+      testId="live-country"
+    />
+  );
+  const leaguePicker = (sheet: boolean) => (
+    <FacetPicker<string>
+      label={t("live.filters.league")}
+      anyLabel={t("live.filters.allLeagues")}
+      emptyText={sheet ? t("live.filters.allLeagues") : undefined}
+      value={filters.competition}
+      options={leagues}
+      onChange={(competition) => setFilters((f) => ({ ...f, competition }))}
+      icon={<Trophy />}
+      testId="live-league"
+    />
+  );
+  const genderPicker = (sheet: boolean) => (
+    <FacetPicker<"men" | "women">
+      label={t("live.filters.gender")}
+      anyLabel={t("live.filters.allGenders")}
+      emptyText={sheet ? t("live.filters.allGenders") : undefined}
+      value={filters.gender}
+      options={[
+        { key: "men", label: t("live.filters.men") },
+        { key: "women", label: t("live.filters.women") },
+      ]}
+      onChange={(gender) => setFilters((f) => ({ ...f, gender }))}
+      icon={<Users />}
+      testId="live-gender"
+    />
+  );
 
   let body: ReactNode;
   if (q.isPending) {
@@ -250,6 +300,15 @@ export function LivePage() {
 
   return (
     <div className="space-y-5">
+      {/* En vivo lives under Partidos (plan UX, A15): the way back, at the top, whatever brought the reader here. */}
+      <Link
+        to="/matches"
+        data-testid="live-back"
+        className="tap-y relative -mb-2 inline-flex min-h-9 items-center gap-1 text-sm font-medium text-primary hover:underline"
+      >
+        <ChevronLeft aria-hidden className="h-4 w-4" />
+        {t("live.backToMatches")}
+      </Link>
       <PageTitle
         title={t("nav.live")}
         subtitle={subtitle}
@@ -262,43 +321,25 @@ export function LivePage() {
       />
       {all.length > 0 ? (
         <div className="space-y-2.5" data-testid="live-filters">
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-            <SearchBox
-              value={filters.team}
-              onChange={(team) => setFilters((f) => ({ ...f, team }))}
-            />
-            <FacetPicker<string>
-              label={t("live.filters.country")}
-              anyLabel={t("live.filters.allCountries")}
-              value={filters.country}
-              options={countries}
-              onChange={(country) => setFilters((f) => ({ ...f, country, competition: null }))}
-              icon={<Globe2 />}
-              testId="live-country"
-            />
-            <FacetPicker<string>
-              label={t("live.filters.league")}
-              anyLabel={t("live.filters.allLeagues")}
-              value={filters.competition}
-              options={leagues}
-              onChange={(competition) => setFilters((f) => ({ ...f, competition }))}
-              icon={<Trophy />}
-              testId="live-league"
-            />
-            <FacetPicker<"men" | "women">
-              label={t("live.filters.gender")}
-              anyLabel={t("live.filters.allGenders")}
-              value={filters.gender}
-              options={[
-                { key: "men", label: t("live.filters.men") },
-                { key: "women", label: t("live.filters.women") },
-              ]}
-              onChange={(gender) => setFilters((f) => ({ ...f, gender }))}
-              icon={<Users />}
-              testId="live-gender"
-            />
+          {/* From 1024 px in a row; below it in the «Filtros» sheet (plan UX, A15). */}
+          <div className="hidden gap-2 lg:flex lg:flex-wrap">
+            {searchBox}
+            {countryPicker(false)}
+            {leaguePicker(false)}
+            {genderPicker(false)}
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <FilterSheet
+              testId="live-facets"
+              active={facetsOn}
+              onReset={() => setFilters((f) => ({ ...NO_FILTERS, picksOnly: f.picksOnly }))}
+              showLabel={t("live.filters.show", { count: matches.length })}
+            >
+              <SheetField label={t("live.filters.team")}>{searchBox}</SheetField>
+              <SheetField label={t("live.filters.country")}>{countryPicker(true)}</SheetField>
+              <SheetField label={t("live.filters.league")}>{leaguePicker(true)}</SheetField>
+              <SheetField label={t("live.filters.gender")}>{genderPicker(true)}</SheetField>
+            </FilterSheet>
             {withPicks > 0 ? (
               <button
                 type="button"

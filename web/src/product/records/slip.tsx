@@ -21,6 +21,7 @@ import {
   type SlipUndo,
 } from "./model";
 import { SlipContext, type SlipValue } from "./slipContext";
+import { track } from "@/lib/track";
 
 const KEY = "predigol.slip";
 
@@ -107,6 +108,8 @@ export function SlipProvider({ children }: { children: ReactNode }) {
         offer.current = { undo: back, timer, toast: id };
         setUndo(back);
       }
+      if (change.effect === "added" && !quiet)
+        track("slip_leg_added", { legs: change.legs.length });
       if (quiet || shown.current) return;
       if (change.effect === "added") toast.success(t("records.toast.added"));
       else if (change.effect === "replaced") toast(t("records.toast.replaced"));

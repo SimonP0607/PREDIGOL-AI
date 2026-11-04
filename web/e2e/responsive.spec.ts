@@ -4,10 +4,15 @@
  * bar is whole, a control answers a finger (44 x 44 px, the "tap" reach included), a form field never makes iOS
  * zoom in, team names are whole in the cards, the Match Center's tab strip says when more tabs wait beyond the
  * screen's edge, and the parlay slip works under a thumb. The project runs as a touch phone (Pixel 7).
+ *
+ * Plan UX, A15 (gate G11): five destinations - Inicio, Partidos, Picks, Mis picks and «Más» - whole at 320 px with
+ * 12 px labels; Perfil, Ayuda and Transparencia two taps away from any page; no reader's text under 12 px; filters in a
+ * sheet that comes up from the bottom; En vivo a filter of Partidos whose board keeps its address; the desk's top bar
+ * with the same groups; the pages of A4 to A14 in the tour of widths.
  */
 import { expect, test, type Page } from "@playwright/test";
 import { statePath } from "./accounts";
-import { L, assertClean, getJson, note, sendJson, settle, watch } from "./support";
+import { assertClean, getJson, L, note, sendJson, settle, smallTargets, watch } from "./support";
 
 const PAGES = [
   "/home",
@@ -18,6 +23,11 @@ const PAGES = [
   "/odds",
   "/my-picks",
   "/profile",
+  "/help",
+  // the pages of A3, A4 and A12 the reader reaches from «Más» or a footer (plan UX, A15)
+  "/help/glossary",
+  "/transparency",
+  "/legal/terms",
 ];
 const PHONES = [320, 360, 375, 390, 412, 430];
 
@@ -46,94 +56,86 @@ async function cutNames(page: Page): Promise<string[]> {
   );
 }
 
+// One test per width, not one loop over all of them: a browser tab that loads forty-odd pages in a row keeps
+// every page's decoded fonts and images in shared memory until it closes (about 300 MB per page load in headless
+// Chromium) and a small CI machine or a laptop's sandbox ends with "page crashed". A test per width gets a fresh
+// tab, tells which width broke, and runs on its own worker.
+/** The labels of the tab bar, with their size: five cells, 12 px each (plan UX, A15). */
+async function tabLabels(page: Page): Promise<Array<{ text: string; size: number }>> {
+  return page.$$eval('[data-testid="tab-label"]', (els) =>
+    els
+      .filter((e) => e.getBoundingClientRect().width > 0)
+      .map((e) => ({ text: e.textContent ?? "", size: parseFloat(getComputedStyle(e).fontSize) })),
+  );
+}
+
 /**
- * The controls a finger cannot hit at 44 x 44 px: the box, widened by the "tap" utilities' ::after, cut by a
- * clipping parent the control sits inside. Inline text links are exempt (WCAG 2.5.8).
+ * A reader's text under 12 px (plan UX, section 36). Not text to read, so not counted: a pictogram (a logo's initials,
+ * aria-hidden), a diagram (the lineup pitch, role="img") and the logo's own tagline.
  */
-async function smallTargets(page: Page, scope = "body"): Promise<string[]> {
+async function smallText(page: Page, scope = "body"): Promise<string[]> {
   return page.evaluate((root) => {
     const out: string[] = [];
     const container = document.querySelector(root);
     if (!container) return out;
-    const sel =
-      'a[href], button, [role="tab"], input:not([type="hidden"]), select, textarea, summary, [role="switch"]';
-    for (const control of Array.from(container.querySelectorAll<HTMLElement>(sel))) {
-      // A native select or date field laid invisibly over its chip (opacity 0): the chip is what a finger aims at.
-      const el =
-        getComputedStyle(control).opacity === "0" && control.parentElement
-          ? control.parentElement
-          : control;
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    const seen = new Set<Element>();
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const text = (n.textContent ?? "").trim();
+      const el = n.parentElement;
+      if (!text || !el || seen.has(el)) continue;
+      seen.add(el);
       const r = el.getBoundingClientRect();
-      const s = getComputedStyle(el);
-      if (!r.width || !r.height || s.visibility === "hidden" || s.display === "none") continue;
-      if (el.tagName === "A" && s.display === "inline") continue;
-      // A control under another layer (an open sheet's backdrop) is not in reach anyway.
-      const hitTest = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      if (
-        hitTest &&
-        !el.contains(hitTest) &&
-        !hitTest.contains(el) &&
-        r.top >= 0 &&
-        r.bottom <= innerHeight
-      )
-        continue;
-      let top = r.top;
-      let bottom = r.bottom;
-      let left = r.left;
-      let right = r.right;
-      const a = getComputedStyle(el, "::after");
-      if (
-        a.content &&
-        a.content !== "none" &&
-        a.content !== "normal" &&
-        a.position === "absolute"
-      ) {
-        top = Math.min(top, r.top + parseFloat(a.top));
-        bottom = Math.max(bottom, r.bottom - parseFloat(a.bottom));
-        left = Math.min(left, r.left + parseFloat(a.left));
-        right = Math.max(right, r.right - parseFloat(a.right));
-      }
-      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      if (r.width <= 1 || r.height <= 1) continue;
+      let skip = false;
+      for (let p: Element | null = el; p; p = p.parentElement) {
         const ps = getComputedStyle(p);
-        if (ps.overflowX === "visible" && ps.overflowY === "visible") continue;
-        const pr = p.getBoundingClientRect();
-        if (r.top >= pr.top - 0.5 && r.bottom <= pr.bottom + 0.5) {
-          top = Math.max(top, pr.top);
-          bottom = Math.min(bottom, pr.bottom);
-        }
-        if (r.left >= pr.left - 0.5 && r.right <= pr.right + 0.5) {
-          left = Math.max(left, pr.left);
-          right = Math.min(right, pr.right);
-        }
+        if (ps.display === "none" || ps.visibility === "hidden" || Number(ps.opacity) === 0)
+          skip = true;
+        if (
+          p.getAttribute("aria-hidden") === "true" ||
+          p.getAttribute("role") === "img" ||
+          p.hasAttribute("data-brand-tagline")
+        )
+          skip = true;
+        if (skip) break;
       }
-      if (right - left < 43.5 || bottom - top < 43.5) {
-        const name = (control.getAttribute("aria-label") ?? control.textContent ?? "")
-          .trim()
-          .slice(0, 40);
-        out.push(
-          `${el.tagName.toLowerCase()} "${name}" ${Math.round(right - left)}x${Math.round(bottom - top)}`,
-        );
-      }
+      if (skip) continue;
+      const size = parseFloat(getComputedStyle(el).fontSize);
+      if (size < 11.95) out.push(`${size}px «${text.slice(0, 40)}»`);
     }
     return out;
   }, scope);
 }
 
-// One test per width, not one loop over all of them: a browser tab that loads forty-odd pages in a row keeps
-// every page's decoded fonts and images in shared memory until it closes (about 300 MB per page load in headless
-// Chromium) and a small CI machine or a laptop's sandbox ends with "page crashed". A test per width gets a fresh
-// tab, tells which width broke, and runs on its own worker.
 for (const width of PHONES) {
-  test(`every product page fits a ${width} px phone, with the whole tab bar`, async ({ page }) => {
-    test.setTimeout(150_000);
-    const w = watch(page);
-    await page.setViewportSize({ width, height: width < 360 ? 568 : 844 });
+  test(`every product page fits a ${width} px phone, with the whole tab bar`, async ({
+    context,
+  }) => {
+    test.setTimeout(180_000);
     for (const path of PAGES) {
+      // A tab of its own for each page (see «One test per width» above): twelve pages in one tab ran Chromium out of
+      // memory («page crashed») once A15 added the glossary, transparency and the legal texts to the tour.
+      const page = await context.newPage();
+      const w = watch(page);
+      await page.setViewportSize({ width, height: width < 360 ? 568 : 844 });
       await page.goto(path);
       await settle(page);
       await expect(page.getByTestId("tab-home"), `the tab bar at ${width} px`).toBeVisible();
       expect(await cutLabels(page), `tab bar labels cut at ${width} px on ${path}`).toEqual([]);
+      // Plan UX, A15: five cells - Inicio, Partidos, Picks, Mis picks and «Más» -, every label 12 px or more.
+      const labels = await tabLabels(page);
+      expect(
+        labels.map((l) => l.text),
+        `the five destinations at ${width} px on ${path}`,
+      ).toEqual([L.es.nav.home, L.es.nav.matches, L.es.nav.picks, L.es.nav.myPicks, L.es.nav.more]);
+      expect(
+        labels.filter((l) => l.size < 11.95),
+        `tab labels under 12 px at ${width} px`,
+      ).toEqual([]);
+      expect(await smallText(page), `text under 12 px at ${width} px on ${path}`).toEqual([]);
       await assertClean(page, w);
+      await page.close();
     }
   });
 }
@@ -171,14 +173,17 @@ const SCREENS: Array<[number, number]> = [
   [844, 390],
 ];
 for (const [width, height] of SCREENS) {
-  test(`every product page fits a ${width} x ${height} screen`, async ({ page }) => {
+  test(`every product page fits a ${width} x ${height} screen`, async ({ context }) => {
     test.setTimeout(150_000);
-    const w = watch(page);
-    await page.setViewportSize({ width, height });
     for (const path of PAGES) {
+      // a tab of its own for each page, as in the phones' tour: a tablet's larger screen holds even more of each page
+      const page = await context.newPage();
+      const w = watch(page);
+      await page.setViewportSize({ width, height });
       await page.goto(path);
       await settle(page);
       await assertClean(page, w);
+      await page.close();
     }
   });
 }
@@ -201,17 +206,20 @@ test("a phone held sideways gives the screen to the content", async ({ page }) =
 
 // The five phone widths of the plan (UX, section 36; A1 asks 44 px on all of them).
 for (const width of [320, 360, 390, 412, 430]) {
-  test(`controls answer a finger: 44 x 44 px on a ${width} px touch phone`, async ({ page }) => {
+  test(`controls answer a finger: 44 x 44 px on a ${width} px touch phone`, async ({ context }) => {
     test.setTimeout(150_000);
-    const w = watch(page);
-    await page.setViewportSize({ width, height: 844 });
     for (const path of PAGES) {
+      // a tab of its own for each page, as in the tour above
+      const page = await context.newPage();
+      const w = watch(page);
+      await page.setViewportSize({ width, height: 844 });
       await page.goto(path);
       await settle(page);
       expect(await smallTargets(page), `controls under 44 px at ${width} px on ${path}`).toEqual(
         [],
       );
       await assertClean(page, w);
+      await page.close();
     }
   });
 }
@@ -268,6 +276,205 @@ test("the Match Center's tab strip says when more tabs wait beyond the edge", as
   // The last tab can be reached and opened.
   await page.getByRole("tab").last().click();
   await expect(page.getByRole("tab").last()).toHaveAttribute("aria-selected", "true");
+  await assertClean(page, w);
+});
+
+test("a match's Análisis and Postpartido fit every phone width and the tablets, the tabs in a finger's reach", async ({
+  page,
+}) => {
+  // Plan UX, A9: «RESPONSIVE: Inicio y partido en los cinco anchos y en tablet» - Inicio is in the tour above.
+  test.setTimeout(240_000);
+  const after = new Date().toISOString();
+  const upcoming = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    `/api/v1/matches?status=scheduled&order=asc&limit=1&kickoff_after=${encodeURIComponent(after)}`,
+  );
+  const finished = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    "/api/v1/matches?status=finished&order=desc&limit=1",
+  );
+  const paths = [
+    upcoming.body.data[0] ? `/matches/${upcoming.body.data[0].id}?s=analisis` : null,
+    finished.body.data[0] ? `/matches/${finished.body.data[0].id}` : null,
+  ].filter((x): x is string => x !== null);
+  if (paths.length === 0) {
+    note(test.info(), "no match to open");
+    return;
+  }
+  for (const width of [...PHONES, 768, 1024]) {
+    // A fresh tab per width (see «One test per width» above): sixteen match pages loaded in one tab kept their decoded
+    // fonts and images until it closed, and the test machine's memory limit ended the browser («page crashed»).
+    const tab = await page.context().newPage();
+    const w = watch(tab);
+    await tab.setViewportSize({ width, height: width >= 768 ? 1024 : 800 });
+    for (const path of paths) {
+      await tab.goto(path);
+      await settle(tab);
+      const sideways = await tab.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(sideways, `${path} at ${width} px scrolls sideways`).toBeLessThanOrEqual(1);
+      expect(await smallTargets(tab, '[role="tablist"]'), `${path} at ${width} px: tabs`).toEqual(
+        [],
+      );
+    }
+    await assertClean(tab, w);
+    await tab.close();
+  }
+});
+
+test("a match's Noticias at every phone width: cards stacked, the status in words, the link in a finger's reach", async ({
+  page,
+}) => {
+  // Plan UX, A10: «RESPONSIVE: tarjetas a 320 px» and «ACCESSIBILITY: el estado se lee sin depender del color».
+  test.setTimeout(180_000);
+  const w = watch(page);
+  const today = await getJson<{ data: { matches: { data: Array<{ fixture_id: number }> } } }>(
+    page.request,
+    "/api/v1/today",
+  );
+  let id: number | null = null;
+  for (const m of today.body.data.matches.data) {
+    const r = await getJson<{ status: string }>(
+      page.request,
+      `/api/v1/matches/${m.fixture_id}/news`,
+    );
+    if (r.body.status === "ok") {
+      id = m.fixture_id;
+      break;
+    }
+  }
+  if (id === null) {
+    note(test.info(), "no match with news on this database");
+    return;
+  }
+  const labels = Object.values(L.es.match.news.status).map((s) => s.label);
+  for (const width of PHONES) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto(`/matches/${id}?s=noticias`);
+    await settle(page);
+    const cards = page.getByTestId("news-card");
+    await expect(cards.first()).toBeVisible();
+    const closed = page.locator('[data-testid="match-news"] details:not([open]) > summary');
+    while ((await closed.count()) > 0) await closed.first().click();
+    const sideways = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(sideways, `Noticias at ${width} px scrolls sideways`).toBeLessThanOrEqual(1);
+    const wider = await cards.evaluateAll(
+      (els, vw) => els.filter((e) => e.getBoundingClientRect().right > vw + 1).length,
+      width,
+    );
+    expect(wider, `cards wider than ${width} px`).toBe(0);
+    expect(await smallTargets(page, '[data-testid="match-news"]'), `${width} px`).toEqual([]);
+    for (const text of await page.getByTestId("news-status").allInnerTexts()) {
+      expect(
+        labels.some((label) => text.trim().startsWith(label)),
+        `the status is written, not only coloured: ${text}`,
+      ).toBe(true);
+    }
+  }
+  await assertClean(page, w);
+});
+
+test("a match's narrative (A11) at every phone width: the conclusion first, the sections folding under 44 px rows", async ({
+  page,
+}) => {
+  // Plan UX, A11: «MÓVIL: apartados plegables con la conclusión arriba».
+  test.setTimeout(180_000);
+  const w = watch(page);
+  const after = new Date().toISOString();
+  const upcoming = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    `/api/v1/matches?status=scheduled&order=asc&limit=20&kickoff_after=${encodeURIComponent(after)}`,
+  );
+  let id: number | null = null;
+  for (const m of upcoming.body.data) {
+    const r = await getJson<{ data: { narrative?: unknown } | null }>(
+      page.request,
+      `/api/v1/matches/${m.id}/reading`,
+    );
+    if (r.body.data?.narrative) {
+      id = m.id;
+      break;
+    }
+  }
+  if (id === null) {
+    note(test.info(), "no narrative on this database");
+    return;
+  }
+  for (const width of PHONES) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto(`/matches/${id}?s=analisis`);
+    await settle(page);
+    const block = page.getByTestId("reading-narrative");
+    await expect(block).toBeVisible();
+    const first = await block
+      .locator('[data-testid^="narrative-section-"]')
+      .first()
+      .getAttribute("data-testid");
+    expect(first, `${width} px: the conclusion first`).toBe("narrative-section-conclusion");
+    expect(
+      await block.locator("details[open]").count(),
+      `${width} px: only the summary open on a phone`,
+    ).toBeLessThanOrEqual(1);
+    const closed = block.locator("details:not([open]) > summary");
+    while ((await closed.count()) > 0) await closed.first().click();
+    const sideways = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(sideways, `the narrative at ${width} px scrolls sideways`).toBeLessThanOrEqual(1);
+    expect(await smallTargets(page, '[data-testid="reading-narrative"]'), `${width} px`).toEqual(
+      [],
+    );
+  }
+  await assertClean(page, w);
+});
+
+test("«Cómo le va a PrediGol» (A12) at every phone width: the blocks stacked as cards, each figure with its n, the list of days under a 44 px fold, nothing sideways", async ({
+  page,
+}) => {
+  // Plan UX, A12: «MÓVIL: bloques en tarjetas con la cifra y su n juntas»; «RESPONSIVE: tablas convertidas en tarjetas a 320 px».
+  test.setTimeout(180_000);
+  const w = watch(page);
+  const { body } = await getJson<{ status: string }>(page.request, "/api/v1/transparency");
+  if (body.status !== "ok") {
+    note(test.info(), "the page is not open to readers on this database");
+    return;
+  }
+  for (const width of PHONES) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/transparency");
+    await settle(page);
+    await expect(page.getByTestId("transparency-body")).toBeVisible();
+    // the three periods one under the other: a card per period, never a table squeezed sideways
+    const tops = await page
+      .locator('[data-testid^="transparency-period-"]')
+      .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top));
+    tops
+      .slice(1)
+      .forEach((top, i) =>
+        expect(top, `${width} px: period ${i + 2} under the one before`).toBeGreaterThan(
+          tops[i] ?? 0,
+        ),
+      );
+    const list = page.getByTestId("transparency-day-list");
+    if ((await list.count()) > 0) {
+      const summary = list.locator("summary");
+      expect(
+        (await summary.boundingBox())!.height,
+        `${width} px: the days' fold under a finger`,
+      ).toBeGreaterThanOrEqual(43.5);
+      await summary.click();
+    }
+    const sideways = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(sideways, `the page at ${width} px scrolls sideways`).toBeLessThanOrEqual(1);
+    expect(await smallTargets(page, '[data-testid="transparency-page"]'), `${width} px`).toEqual(
+      [],
+    );
+  }
   await assertClean(page, w);
 });
 
@@ -395,19 +602,20 @@ test("a figure's help opens with a tap inside a card's link, and that tap does n
 }) => {
   // Plan UX, A1 (F16): a card is one link, and the help on its figures could not be read with a finger - a tap
   // followed the link. A [data-hint] now shows its help, and only the rest of the card opens the match.
+  // Plan UX, A9: Inicio's rows say why they show («Sugerida») - a figure's help inside the row's link.
   const w = watch(page);
   await page.goto("/home");
   await settle(page);
-  const badge = page.getByTestId("upcoming-bookmakers").first();
+  const badge = page.getByTestId("today-why").first();
   if ((await badge.count()) === 0) {
-    note(test.info(), "no upcoming match with prices on Inicio");
+    note(test.info(), "no match of the suggested leagues on Inicio");
     return;
   }
   await badge.tap();
-  await expect(page.getByTestId("title-tap")).toHaveText(L.es.home.upcoming.bookmakersHelp);
+  await expect(page.getByTestId("title-tap")).toHaveText(L.es.home.today.whyHelp);
   await page.waitForTimeout(800); // the click that followed the tap was the link's: it must not navigate
   await expect(page).toHaveURL(/\/home$/);
-  await page.getByTestId("upcoming-row").first().getByTestId("matchup").tap();
+  await page.getByTestId("today-row").first().getByTestId("matchup").tap();
   await expect(page).toHaveURL(/\/matches\/\d+/);
   await assertClean(page, w);
 });
@@ -452,7 +660,12 @@ test("Mis picks with an open pick, its confirmation, and a match's markets: 44 p
       await expect(row).toBeVisible();
       expect(await smallTargets(page, "main"), `Mis picks at ${width} px`).toEqual([]);
       await row.getByTestId("saved-pick-remove").click();
-      await expect(page.getByTestId("confirm-remove-pick")).toBeVisible();
+      const dialog = page.getByTestId("confirm-remove-pick");
+      await expect(dialog).toBeVisible();
+      // Measured once it has finished opening: during its zoom-in the buttons are drawn at 95 % of their size.
+      await dialog.evaluate((el) =>
+        Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
+      );
       expect(
         await smallTargets(page, '[data-testid="confirm-remove-pick"]'),
         `the confirmation at ${width} px`,
@@ -467,6 +680,231 @@ test("Mis picks with an open pick, its confirmation, and a match's markets: 44 p
   } finally {
     await sendJson(page.request, "DELETE", `/api/v1/me/picks/${saved.body.data.id}`);
   }
+  await assertClean(page, w);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Plan UX, A15 · navegación móvil y PWA base (gate G11)
+
+/** «Más» from the bar, open: its sheet under the thumb, inside the screen and clear of the notch and the home bar. */
+async function openMore(page: Page) {
+  await page.getByTestId("tab-more").click();
+  const sheet = page.getByTestId("more-sheet");
+  await expect(sheet).toBeVisible();
+  // measured once it has finished coming up: during its slide its rows are below the screen
+  await sheet.evaluate((el) =>
+    Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
+  );
+  return sheet;
+}
+
+for (const width of [320, 390]) {
+  test(`«Más» on a ${width} px phone: Perfil, Ayuda and Transparencia two taps away from any page, every row in a finger's reach`, async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    const w = watch(page);
+    await page.setViewportSize({ width, height: width < 360 ? 568 : 844 });
+    const { body: me } = await getJson<{ transparency?: boolean }>(page.request, "/api/v1/auth/me");
+    const targets: Array<[string, string, RegExp]> = [
+      ["/odds", "more-profile", /\/profile$/],
+      ["/matches", "more-help", /\/help$/],
+      ["/my-picks", "more-glossary", /\/help\/glossary$/],
+      ["/home", "more-parlays", /\/parlays$/],
+      ["/picks", "more-odds", /\/odds$/],
+    ];
+    if (me.transparency) targets.push(["/live", "more-transparency", /\/transparency$/]);
+    else
+      note(
+        test.info(),
+        "«Cómo le va a PrediGol» is not open to readers on this database: not offered",
+      );
+    for (const [from, row, to] of targets) {
+      await page.goto(from);
+      await settle(page);
+      const sheet = await openMore(page);
+      await expect(page.getByTestId("tab-more")).toHaveAttribute("aria-expanded", "true");
+      const box = await sheet.boundingBox();
+      const vh = page.viewportSize()?.height ?? 0;
+      expect(
+        box && Math.abs(box.y + box.height - vh) <= 1,
+        "the sheet comes up from the bottom",
+      ).toBe(true);
+      expect(
+        await smallTargets(page, '[data-testid="more-sheet"]'),
+        `«Más» at ${width} px`,
+      ).toEqual([]);
+      expect(await smallText(page, '[data-testid="more-sheet"]'), "«Más» text").toEqual([]);
+      // tap 1: «Más»; tap 2: the row
+      await sheet.getByTestId(row).click();
+      await expect(page).toHaveURL(to);
+      await expect(page.getByTestId("more-sheet")).toHaveCount(0);
+      await settle(page);
+      // the page of «Más» lights its cell
+      await expect(page.getByTestId("tab-more")).toHaveClass(/text-gold/);
+    }
+    // Transparencia waits for the owner: never offered while closed
+    await page.goto("/home");
+    await settle(page);
+    const sheet = await openMore(page);
+    await expect(sheet.getByTestId("more-transparency")).toHaveCount(me.transparency ? 1 : 0);
+    // the install steps (a browser tab, not the installed app), then «Cerrar sesión» last
+    await sheet.getByTestId("more-install-toggle").click();
+    await expect(sheet.getByTestId("more-install-steps")).toBeVisible();
+    // this device's steps first: an iPhone (WebKit's project) or an Android (Chromium's)
+    const ua = await page.evaluate(() => navigator.userAgent);
+    await expect(
+      sheet.getByTestId("more-install-steps").locator("[data-platform]").first(),
+    ).toHaveAttribute("data-platform", /iPhone|iPad/.test(ua) ? "ios" : "android");
+    await expect(sheet.getByTestId("more-sign-out")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("more-sheet")).toHaveCount(0);
+    await expect(page.getByTestId("tab-more")).toHaveAttribute("aria-expanded", "false");
+    // with a keyboard: «Más» opens with Enter, the focus goes into the sheet and comes back to «Más» when it closes
+    await page.getByTestId("tab-more").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("more-sheet")).toBeVisible();
+    expect(
+      await page.evaluate(() => !!document.activeElement?.closest('[data-testid="more-sheet"]')),
+      "the focus is inside the sheet",
+    ).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("more-sheet")).toHaveCount(0);
+    await expect(page.getByTestId("tab-more")).toBeFocused();
+    await assertClean(page, w);
+  });
+}
+
+test("the bar's cells name themselves and the page's own says so; En vivo is Partidos' and its board keeps its address", async ({
+  page,
+}) => {
+  const w = watch(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const [path, cell] of [
+    ["/home", "tab-home"],
+    ["/matches", "tab-matches"],
+    ["/live", "tab-matches"],
+    ["/picks", "tab-picks"],
+    ["/my-picks", "tab-my-picks"],
+  ] as const) {
+    await page.goto(path);
+    await settle(page);
+    await expect(page.getByTestId(cell), `${path} lights ${cell}`).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(page.locator('nav [aria-current="page"]:visible')).toHaveCount(1);
+  }
+  // the board is at its address, with the way back to Partidos; the bar has no «En vivo» of its own
+  await page.goto("/live");
+  await settle(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(L.es.nav.live);
+  await expect(page.getByTestId("tab-live")).toHaveCount(0);
+  await page.getByTestId("live-back").click();
+  await expect(page).toHaveURL(/\/matches$/);
+  // En vivo, a filter of Partidos at one tap, in view at once
+  await settle(page);
+  const chips = page.getByTestId("status-chips");
+  const live = chips.getByRole("button", { name: new RegExp(`^${L.es.matches.status.live}`) });
+  await expect(live).toBeInViewport();
+  await live.click();
+  await expect(live).toHaveAttribute("aria-pressed", "true");
+  const { body } = await getJson<{ data: { matches: Array<unknown> } }>(
+    page.request,
+    "/api/v1/live",
+  );
+  if (body.data.matches.length > 0) {
+    // live now: the board is one tap further
+    await expect(page.getByTestId("matches-live-board")).toBeVisible();
+  } else {
+    note(test.info(), "no match in play on this database: the board's link is not offered");
+    await expect(page.getByTestId("matches-live-board")).toHaveCount(0);
+  }
+  // back to «Todos» for the next test of this account
+  await chips.getByRole("button", { name: new RegExp(`^${L.es.matches.status.all}`) }).click();
+  await assertClean(page, w);
+});
+
+test("the filters come up from the bottom on a 320 px phone: «Filtros» says how many are on, «Ver N» under the thumb, «Borrar filtros»", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  const w = watch(page);
+  await page.setViewportSize({ width: 320, height: 640 });
+  for (const [path, base, field, show] of [
+    ["/matches", "matches-filters", "match-search", L.es.matches.filters.show_other],
+    ["/odds", "odds-filters", "odds-search", L.es.odds.filters.show_other],
+  ] as const) {
+    await page.goto(path);
+    await settle(page);
+    const open = page.getByTestId(`${base}-open`);
+    await expect(open).toBeVisible();
+    await expect(page.getByTestId(`${base}-count`)).toHaveCount(0);
+    expect(await smallTargets(page, "main"), `${path}: the page's controls`).toEqual([]);
+    await open.click();
+    const sheet = page.getByTestId(`${base}-sheet`);
+    await expect(sheet).toBeVisible();
+    await sheet.evaluate((el) =>
+      Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
+    );
+    const box = await sheet.boundingBox();
+    expect(box && Math.abs(box.y + box.height - 640) <= 1, `${path}: from the bottom`).toBe(true);
+    expect(await smallTargets(page, `[data-testid="${base}-sheet"]`), `${path}: the sheet`).toEqual(
+      [],
+    );
+    expect(await smallText(page, `[data-testid="${base}-sheet"]`), `${path}: its text`).toEqual([]);
+    // fields of 16 px: iOS never zooms in
+    const sizes = await sheet
+      .locator("input, select")
+      .evaluateAll((els) => els.map((e) => parseFloat(getComputedStyle(e).fontSize)));
+    expect(
+      sizes.filter((x) => x < 16),
+      `${path}: fields under 16 px`,
+    ).toEqual([]);
+    // a filter on: the list behind changes at once, the button counts it, «Ver N» closes
+    await sheet.getByTestId(field).fill("zzzz-no-team");
+    const showButton = sheet.getByTestId(`${base}-show`);
+    await expect(showButton).toHaveText(
+      new RegExp(show.replace("{count}", "0").replace(/[()]/g, ".")),
+    );
+    await expect(showButton).toBeInViewport();
+    await showButton.click();
+    await expect(sheet).toHaveCount(0);
+    await expect(page.getByTestId(`${base}-count`)).toHaveText("1");
+    // and cleared from the sheet
+    await page.getByTestId(`${base}-open`).click();
+    await page.getByTestId(`${base}-reset`).click();
+    await expect(page.getByTestId(`${base}-reset`)).toBeDisabled();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId(`${base}-count`)).toHaveCount(0);
+  }
+  await assertClean(page, w);
+});
+
+test("from 1024 px the desk's top bar has the same groups and the filters sit in the page; under it, the phone's bar", async ({
+  page,
+}) => {
+  const w = watch(page);
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto("/matches");
+  await settle(page);
+  const top = page.getByRole("navigation", { name: L.es.nav.mainNavigation }).first();
+  for (const id of ["nav-home", "nav-matches", "nav-picks", "nav-my-picks", "nav-more"]) {
+    await expect(top.getByTestId(id)).toBeVisible();
+  }
+  await expect(page.getByTestId("tab-home")).toBeHidden();
+  await expect(page.getByTestId("matches-facets")).toBeVisible();
+  await expect(page.getByTestId("matches-filters-open")).toBeHidden();
+  await top.getByTestId("nav-more").click();
+  const menu = page.getByTestId("nav-more-menu");
+  await expect(menu.getByTestId("nav-more-odds")).toBeVisible();
+  await menu.getByTestId("nav-more-odds").click();
+  await expect(page).toHaveURL(/\/odds$/);
+  await settle(page);
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await expect(page.getByTestId("tab-more")).toBeVisible();
+  await expect(page.getByTestId("tab-more")).toHaveClass(/text-gold/);
+  await expect(page.getByTestId("odds-filters-open")).toBeVisible();
   await assertClean(page, w);
 });
 

@@ -76,11 +76,11 @@
     "legsResult": "{won} de {total} acertadas",
     "building": {
       "title": "Buscando el parlay",
-      "body": "Hay selecciones con valor, pero ninguna combinación crece con su probabilidad prudente. Nunca rellenamos un parlay."
+      "body": "Hay selecciones que pasan las reglas, pero ninguna combinación de {min} o más crece con su probabilidad prudente."
     },
     "none": {
       "title": "Aún no hay parlay",
-      "body": "Se arma cuando hay selecciones con valor en su ventana."
+      "body": "Se arma cuando al menos {min} selecciones de su ventana pasan todas las reglas de PrediGol."
     },
     "void": {
       "title": "No hubo parlay este día",
@@ -145,8 +145,7 @@
       "estimatedIndependent": "Producto de las probabilidades de PrediGol: las selecciones son independientes.",
       "estimatedWaiting": "Esperando el ajuste por dependencia.",
       "estimatedNone": "Sin estimación: falta la probabilidad de alguna selección.",
-      "fair": "Probabilidad justa",
-      "fairHelp": "La del mercado, sin el margen de las casas.",
+      "fair": "Probabilidad del mercado",
       "dependency": "Nivel de dependencia",
       "calculating": "calculando…"
     },
@@ -259,7 +258,10 @@
         "title": "¿Borrar tu cuota?",
         "body": "El pick vuelve a contar con la cuota que te mostramos al guardarlo.",
         "ok": "Borrar"
-      }
+      },
+      "lineValue": "Valor de línea {value}",
+      "allShown_one": "{n} pick: todos a la vista.",
+      "allShown_other": "Los {n} picks, todos a la vista."
     },
     "parlays": {
       "title": "Mis parlays",
@@ -275,7 +277,85 @@
         "title": "¿Borrar este parlay?",
         "body": "Deja de verse en tu lista y no se puede deshacer.",
         "ok": "Borrar"
-      }
+      },
+      "export": "Descargar CSV"
+    },
+    "filters": {
+      "title": "Filtrar tus picks",
+      "search": "Buscar equipo o liga",
+      "clearSearch": "Borrar la búsqueda",
+      "resultLabel": "Resultado",
+      "result": {
+        "pending": "Pendientes",
+        "won": "Ganados",
+        "lost": "Perdidos",
+        "push": "Devueltos",
+        "void": "Anulados"
+      },
+      "marketLabel": "Mercado",
+      "allMarkets": "Todos los mercados",
+      "competitionLabel": "Liga",
+      "allCompetitions": "Todas las ligas",
+      "bandLabel": "Cuota",
+      "band": {
+        "lt1.5": "< 1,50",
+        "1.5-2": "1,50–2",
+        "2-3": "2–3",
+        "3-5": "3–5",
+        "5+": "5 o más"
+      },
+      "originLabel": "Quién lo eligió",
+      "origin": {
+        "predigol": "PrediGol",
+        "mine": "Tú"
+      },
+      "since": "Desde",
+      "until": "Hasta",
+      "show_one": "Ver {n} pick",
+      "show_other": "Ver {n} picks",
+      "empty": "Ningún pick guardado con estos filtros"
+    },
+    "summary": {
+      "all": "Todos tus picks guardados",
+      "filtered": "Tus picks con estos filtros",
+      "total_one": "{n} pick:",
+      "total_other": "{n} picks:",
+      "counts": {
+        "won_one": "{n} ganado",
+        "won_other": "{n} ganados",
+        "lost_one": "{n} perdido",
+        "lost_other": "{n} perdidos",
+        "half_won_one": "{n} medio ganado",
+        "half_won_other": "{n} medio ganados",
+        "half_lost_one": "{n} medio perdido",
+        "half_lost_other": "{n} medio perdidos",
+        "push_one": "{n} devuelto",
+        "push_other": "{n} devueltos",
+        "void_one": "{n} anulado",
+        "void_other": "{n} anulados",
+        "pending_one": "{n} pendiente",
+        "pending_other": "{n} pendientes"
+      },
+      "units": "Unidades",
+      "export": "Descargar CSV",
+      "lineValue": {
+        "title": "Valor de línea",
+        "none": "Todavía ningún pick tuyo empezado tiene su referencia de cierre.",
+        "small_one": "{n} pick con su referencia de cierre: la media se ve desde {min}.",
+        "small_other": "{n} picks con su referencia de cierre: la media se ve desde {min}.",
+        "mean_one": "De media {mean} frente al cierre, en {n} pick; {positive} por encima de cero.",
+        "mean_other": "De media {mean} frente al cierre, en {n} picks; {positive} por encima de cero.",
+        "minutes": "La referencia se tomó, de mediana, {minutes} minutos antes del inicio.",
+        "definition": "Tu cuota (la tuya si la indicaste) por la probabilidad sin margen del consenso de las casas en la última captura antes del inicio, menos uno. Definición {version}, vigente desde el {since}."
+      },
+      "breakdown": "Ver el desglose",
+      "breakdownNote": "Cada fila con su muestra: las unidades y la rentabilidad, desde {min} liquidados en esa fila.",
+      "byMarket": "Por mercado",
+      "byCompetition": "Por liga",
+      "byBand": "Por cuota",
+      "row": "{total} · {settled} liquidados · {won} G {lost} P",
+      "rowCounts": "solo conteos",
+      "rowRoi": "ROI {roi}"
     }
   },
   "ai": {
@@ -341,7 +421,7 @@
   },
   "recap": {
     "title": "Tu recapitulación",
-    "subtitle": "Lo que llevan tus picks liquidados: ganancia, cuotas, rachas y mercados.",
+    "subtitle": "Lo que llevan tus picks liquidados: cuántos, cómo fueron y, con muestra suficiente, sus unidades día a día.",
     "scope": "Qué ver",
     "scopePicks": "Mis picks",
     "scopeParlays": "Mis parlays",
@@ -359,14 +439,7 @@
       "profit": "Ganancia",
       "roi": "Rentabilidad (ROI)",
       "avgOdds": "Cuota media",
-      "avgOddsWon": "En aciertos: {odds}",
-      "bestStreak": "Mejor racha",
-      "current": {
-        "win_one": "Racha actual: {count} acierto",
-        "win_other": "Racha actual: {count} aciertos",
-        "loss_one": "Racha actual: {count} fallo",
-        "loss_other": "Racha actual: {count} fallos"
-      }
+      "avgOddsWon": "En aciertos: {odds}"
     },
     "cumulative": {
       "title": "Ganancia acumulada",
@@ -380,38 +453,9 @@
       "count_one": "{count} pick",
       "count_other": "{count} picks"
     },
-    "odds": {
-      "title": "Por rango de cuota",
-      "subtitle": "Cuota media: {odds}. Cuántos tomaste en cada rango y cómo fueron.",
-      "count": "Liquidados",
-      "tooltip": "{count} · acierto {hit} · {profit}",
-      "bucket": {
-        "lt1.5": "< 1,50",
-        "1.5-2": "1,50–2",
-        "2-3": "2–3",
-        "3-5": "3–5",
-        "5+": "5 o más"
-      }
-    },
-    "markets": {
-      "title": "Acierto por mercado",
-      "subtitle": "En qué mercados aciertas más.",
-      "hitRate": "Acierto",
-      "tooltip": "{pct} % · {count} picks · {profit}"
-    },
-    "streak": {
-      "title": "Rachas",
-      "subtitle_one": "Tu último resultado, del más antiguo al más reciente.",
-      "subtitle_other": "Tus últimos {count} resultados, del más antiguo al más reciente.",
-      "win": "Acierto",
-      "loss": "Fallo",
-      "w": "G",
-      "l": "P",
-      "current": "Actual",
-      "bestWin": "Mejor",
-      "worstLoss": "Peor"
-    },
-    "loading": "Leyendo tus registros: {loaded} de {total}…"
+    "loading": "Leyendo tus registros: {loaded} de {total}…",
+    "sampleNote_one": "Con {n} liquidado solo se ven los conteos: las gráficas de unidades aparecen desde {min}.",
+    "sampleNote_other": "Con {n} liquidados solo se ven los conteos: las gráficas de unidades aparecen desde {min}."
   },
   "funnel": {
     "label": "Cómo llega un pick del día",
@@ -428,5 +472,52 @@
     "help": "Cada paso es un filtro: si no hay picks que los pasen todos, el día se queda con menos o sin ninguno. Los picks del día se eligen cuando PrediGol Intelligence ya leyó el día: su pasada de cada partido, con búsqueda de noticias."
   },
   "roiSample_one": "sobre {n} liquidado",
-  "roiSample_other": "sobre {n} liquidados"
+  "roiSample_other": "sobre {n} liquidados",
+  "unitsLink": "¿Qué es una unidad?",
+  "noPick": {
+    "honest": "Hoy ningún partido cumplió las condiciones para publicar un pick. Preferimos no publicar a publicar por publicar.",
+    "reviewing": "Todavía estamos revisando los partidos de hoy",
+    "reviewingBody": "Los picks del día aparecen aquí cuando termina la revisión. Mientras tanto, los partidos de hoy ya tienen su pronóstico y su análisis.",
+    "noMatches": "Hoy no hay partidos de las competiciones que seguimos, así que tampoco hay picks.",
+    "why": "Motivo",
+    "reasonError": "No pudimos cargar el motivo.",
+    "reason": {
+      "no_qualified_candidates": "Ninguno de los modelos con los que PrediGol publica tenía selecciones para los partidos de hoy.",
+      "not_scheduled": "Los partidos con selecciones ya no estaban programados: empezaron, se aplazaron o se suspendieron.",
+      "too_close_to_kickoff": "Las selecciones llegaron demasiado cerca del inicio de su partido.",
+      "outside_window": "Los partidos con selecciones quedaban fuera de la ventana en la que elegimos los picks.",
+      "no_price": "Las selecciones no tenían cuota en las casas que seguimos.",
+      "stale_price": "Las cuotas de las selecciones no estaban al día.",
+      "no_consensus": "Las casas no coincidían lo suficiente en el precio de las selecciones.",
+      "few_bookmakers": "Muy pocas casas ofrecían las selecciones.",
+      "price_outlier": "La mejor cuota de las selecciones se alejaba demasiado del resto del mercado.",
+      "not_qualified": "Las selecciones venían de modelos que todavía no han superado al mercado en su propio backtest.",
+      "model_retired": "Las selecciones venían de un modelo retirado.",
+      "no_interval": "El modelo no tenía medido el rango de su probabilidad para esas selecciones.",
+      "non_positive_ev": "Ningún mercado mostró ventaja frente al precio del mercado.",
+      "no_pessimistic_growth": "Con el extremo prudente de su probabilidad, ninguna selección compensaba su riesgo.",
+      "odds_above_cap": "Las selecciones que llegaron hasta ahí pagaban cuotas por encima de nuestro límite de riesgo: en nuestro histórico, las cuotas altas pierden dinero.",
+      "day_not_ready": "PrediGol Intelligence no terminó a tiempo de revisar el contexto de los partidos.",
+      "no_day_pass": "PrediGol Intelligence no terminó a tiempo de revisar el contexto de los partidos.",
+      "not_reviewed": "PrediGol Intelligence no terminó a tiempo de revisar el contexto de los partidos.",
+      "ai_rejected": "PrediGol Intelligence descartó las selecciones al revisar el contexto de sus partidos."
+    },
+    "stage": {
+      "data": "Los partidos de hoy no reunían los datos que pedimos para publicar.",
+      "market": "Los precios del mercado no cumplían nuestras condiciones.",
+      "model": "Los modelos no cumplían nuestras condiciones para publicar.",
+      "calibration": "El modelo no tenía medido el rango de su probabilidad.",
+      "value": "Ningún mercado mostró ventaja frente al precio del mercado.",
+      "risk": "Las selecciones pagaban cuotas por encima de nuestro límite de riesgo.",
+      "context": "PrediGol Intelligence no terminó a tiempo de revisar el contexto de los partidos."
+    }
+  },
+  "sample": {
+    "countsOnly_one": "{n} liquidado: los aciertos, las unidades y la rentabilidad se ven desde {min}.",
+    "countsOnly_other": "{n} liquidados: los aciertos, las unidades y la rentabilidad se ven desde {min}.",
+    "inconclusive_one": "±{pts} puntos sobre {n} liquidado: la muestra todavía no permite concluir.",
+    "inconclusive_other": "±{pts} puntos sobre {n} liquidados: la muestra todavía no permite concluir.",
+    "conclusive_one": "±{pts} puntos sobre {n} liquidado.",
+    "conclusive_other": "±{pts} puntos sobre {n} liquidados."
+  }
 }

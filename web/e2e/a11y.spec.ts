@@ -21,6 +21,11 @@ const PRODUCT = [
   "/odds",
   "/my-picks",
   "/profile",
+  "/help/glossary",
+  "/help",
+  // plan UX, A15: the pages of A4 and A12 the reader reaches from «Más» or a footer
+  "/transparency",
+  "/legal/terms",
 ];
 const WIDTHS: ReadonlyArray<readonly [number, number]> = [
   [1440, 900],
@@ -83,4 +88,40 @@ test.describe("the product, signed in", () => {
       });
     }
   }
+});
+
+// Plan UX, B1: the account centre on a phone - folded (the eight headers and their lines) and with every block open.
+test.describe("the account centre on a phone", () => {
+  test.use({ storageState: statePath("user") });
+  test("axe on the profile's eight blocks open at 390 px", async ({ page }, info) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/profile");
+    await settle(page);
+    for (const toggle of await page.locator('[data-testid^="profile-toggle-"]').all())
+      await toggle.click();
+    await settle(page);
+    await measure(page, info, "/profile+open", 390);
+  });
+});
+
+// Plan UX, A15: the bar's «Más» and the filters' sheet, open on a phone (focus, names, contrast inside the dialogs).
+test.describe("the sheets of the phone, open", () => {
+  test.use({ storageState: statePath("user") });
+  test("axe on «Más» open at 390 px", async ({ page }, info) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/home");
+    await settle(page);
+    await page.getByTestId("tab-more").click();
+    await page.getByTestId("more-sheet").waitFor();
+    await page.getByTestId("more-install-toggle").click();
+    await measure(page, info, "/home+more", 390);
+  });
+  test("axe on the filters of Partidos open at 390 px", async ({ page }, info) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/matches");
+    await settle(page);
+    await page.getByTestId("matches-filters-open").click();
+    await page.getByTestId("matches-filters-sheet").waitFor();
+    await measure(page, info, "/matches+filters", 390);
+  });
 });

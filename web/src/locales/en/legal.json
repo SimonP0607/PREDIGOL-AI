@@ -1,0 +1,116 @@
+{
+  "doc": {
+    "terms": "Terms of service",
+    "privacy": "Personal data processing policy",
+    "responsible_gaming": "Responsible gaming"
+  },
+  "links": {
+    "label": "Legal texts",
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "responsibleGaming": "Responsible gaming"
+  },
+  "page": {
+    "draft": "Draft: this text is pending the legal review and is not in force yet.",
+    "version": "Version {version} · {date}",
+    "fingerprint": "Fingerprint (sha256) of this text: {sha}",
+    "contents": "Contents",
+    "history": "Versions of this text",
+    "historyRow": "{version} · {date}",
+    "historyMaterial": "asked to be accepted again",
+    "historyDraft": "draft",
+    "notFound": "That text does not exist.",
+    "others": "Other texts",
+    "back": "Back to PrediGol",
+    "signIn": "Sign in"
+  },
+  "gate": {
+    "title": "Before you go on",
+    "intro": "To use PrediGol we need your answer to each of these points, one by one.",
+    "changed": "We updated “{document}”. What changed: {changes}",
+    "read": "Read “{document}”",
+    "submit": "Accept and continue",
+    "submitting": "Saving…",
+    "allRequired": "Tick every box to continue.",
+    "textChanged": "The text changed while you were reading it: look at the new version and tick the boxes again.",
+    "profile": "See my data and my requests",
+    "signOut": "Sign out"
+  },
+  "privacy": {
+    "title": "Privacy and data",
+    "help": "What you accepted and when, a copy of your data and your requests about it.",
+    "documents": "The texts",
+    "consentsTitle": "What you accepted",
+    "accepted": "Accepted on {date} · version {version}",
+    "withdrawn": "Withdrawn on {date}",
+    "pending": "No answer",
+    "outdated": "You accepted an earlier version: you will be asked to accept the new one.",
+    "withdraw": "Withdraw my authorisation",
+    "withdrawConfirm": "If you withdraw your authorisation to process your data, you cannot use PrediGol until you give it again. Your data is not deleted by this: to delete it, ask for deletion below.",
+    "withdrawYes": "Yes, withdraw it",
+    "regrant": "Give my authorisation again",
+    "history": "Full history",
+    "historyGranted": "Accepted",
+    "historyWithdrawn": "Withdrawn",
+    "historyMeta": "{date} · version {version} · {source}",
+    "source": {
+      "gate": "when signing in",
+      "profile": "from the profile",
+      "activation": "when activating the account",
+      "email": "from an e-mail"
+    },
+    "exportTitle": "Download my data",
+    "exportHelp": "A file with everything PrediGol keeps about you: your account, your sessions and sign-ins, your consents, your requests and what you saved. Up to 3 times a day.",
+    "exportButton": "Download my data",
+    "password": "Your password",
+    "code": "Code from your authenticator app",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "exported": "Done: the file was downloaded.",
+    "requestsTitle": "Queries, claims and deletion",
+    "requestsHelp": "We answer queries within 10 business days at most, and claims and deletion within 15. The deadline is shown here.",
+    "kindLabel": "Kind of request",
+    "kind": {
+      "privacy_query": "A query about my data",
+      "privacy_claim": "A claim: correct or update my data",
+      "privacy_deletion": "Delete my data"
+    },
+    "message": "Your message",
+    "deletionWarning": "Deleting your data closes your account: it is anonymised and only what the law requires us to keep is kept, without identifying you. Confirm it with your password.",
+    "send": "Send request",
+    "sent": "Request sent. We answer by {date} at the latest.",
+    "none": "You have no requests.",
+    "status": {
+      "open": "Open",
+      "answered": "Answered",
+      "closed": "Closed"
+    },
+    "opened": "Sent on {date}",
+    "deadline": "Answer by {date} at the latest",
+    "extended": "Deadline extended to {date}",
+    "author": {
+      "customer": "You",
+      "owner": "PrediGol",
+      "system": "PrediGol"
+    },
+    "optional": "Optional: you change it under Notifications.",
+    "optionalLink": "Go to Notifications"
+  },
+  "admin": {
+    "title": "Privacy requests",
+    "help": "Queries: 10 business days (extendable by 5). Claims and deletion: 15 (extendable by 8). One extension only, saying in the answer why and until when.",
+    "empty": "No open requests.",
+    "showAll": "Show closed ones too",
+    "showOpen": "Show open ones only",
+    "answerPlaceholder": "Your answer to the data subject",
+    "status": "Status after answering",
+    "extend": "Use the extension",
+    "send": "Send answer",
+    "overdue": "Overdue",
+    "author": {
+      "customer": "The data subject",
+      "owner": "You (PrediGol)",
+      "system": "PrediGol"
+    }
+  }
+}

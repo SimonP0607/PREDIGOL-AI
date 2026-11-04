@@ -52,6 +52,10 @@ at worst, and a duplicated tick costs nothing at all.
     audit and the DAILY LEARNING REPORT; the market discovery engine. Shadow; database only. While
     ``FBI_FAMILY_DECISIONS`` is not ``off`` the same jobs carry the steps of the families (``family_decide_steps`` /
     ``family_nightly_steps``: their decision once an hour, after the picks of the day, and their settlement).
+  * ``user_narrative``  every 10 min (``FBI_USER_NARRATIVE_MINUTES``), only while ``FBI_USER_NARRATIVE`` is not off: the readers'
+    narrative of the matches PrediGol Intelligence gave its final pass (plan UX, A11; ``fbi.narrative.job``), from the facts
+    of the structured reading, checked sentence by sentence, with its own budget (``FBI_AI_USER_MONTHLY_BUDGET_USD``, 0 by
+    default). Nothing of Intelligence is written; nothing of a reader is read.
   * ``family_forecasts``  every 3 hours (``FBI_FAMILY_FORECAST_MINUTES``): the goals of each half, the corners and the cards of the
     upcoming matches (``fbi.families``, plan F10), a negative binomial per team, written to the forecast table under ``family-v1``.
     Research: the forecast of a match reads none of it; only the Admin Console's preview of a match shows it, in a section of its own.
@@ -974,6 +978,27 @@ async def _synthetic() -> None:
     await asyncio.to_thread(_synthetic_now)
 
 
+USER_NARRATIVE_MINUTES = int(os.environ.get("FBI_USER_NARRATIVE_MINUTES", "10"))
+
+
+def _user_narrative_now() -> None:
+    """The readers' narrative (plan UX, A11): one pass with its ledger row. Never raises: the readers' AI must never stop the
+    worker."""
+    from fbi.narrative.job import run_job
+
+    try:
+        with _connect() as conn:
+            r = run_job(conn)
+        log.info("user_narrative.run", status=r.status, cost_usd=str(r.cost_usd), alerts=r.alerts, **dict(r.counts))
+    except Exception as exc:
+        log.error("user_narrative.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _user_narrative() -> None:
+    new_run_id()
+    await asyncio.to_thread(_user_narrative_now)
+
+
 def _notify_now() -> None:
     """Turn new events into messages. Without a Telegram token they are recorded as skipped."""
     from fbi.notify.service import channel_from_env, run_notifier
@@ -1456,7 +1481,7 @@ WORKER_JOB_TYPES = frozenset({
     "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
-    "synthetic_journey",
+    "synthetic_journey", "user_narrative",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1745,6 +1770,15 @@ async def main() -> None:
     else:
         log.info("worker.synthetic_journey_off",
                  hint="FBI_SYNTHETIC_BASE_URL, FBI_SYNTHETIC_EMAIL and its password unset: no synthetic journey")
+    from fbi.api.services.reading import narrative_mode
+
+    if narrative_mode() != "off":
+        scheduler.add_job(_deadline("user_narrative", "user_narrative", _user_narrative), "interval",
+                          minutes=USER_NARRATIVE_MINUTES, id="user_narrative", max_instances=1, coalesce=True,
+                          misfire_grace_time=USER_NARRATIVE_MINUTES * 60, next_run_time=moment + timedelta(minutes=6))
+    else:
+        log.info("worker.user_narrative_off",
+                 hint="FBI_USER_NARRATIVE unset or off: the readers keep the structured reading, nothing is spent")
     scheduler.add_job(_ai_report, "interval", minutes=AI_CHECK_MINUTES, id="ai_daily_report",
                       max_instances=1, coalesce=True, misfire_grace_time=AI_CHECK_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=9))

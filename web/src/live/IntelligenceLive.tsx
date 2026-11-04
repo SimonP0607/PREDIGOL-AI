@@ -1060,6 +1060,7 @@ export function MatchView({
         </>
       ) : null}
       {fixture ? <MatchStatePanel fixture={fixture} /> : null}
+      {fixture ? <MatchStatePanel fixture={fixture} /> : null}
       {fixture ? <ShadowFilePanel fixture={fixture} /> : null}
     </div>
   );
