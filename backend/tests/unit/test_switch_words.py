@@ -174,3 +174,46 @@ def test_gate_a_does_not_move_its_window_when_the_shadow_code_is_deployed_but_do
     assert "engines: None -> rules,llm,ma-v1,ma-v1-h" in changes[0][1]
     ledger([(1, day(1), before), (2, day(5), activated), (3, day(20), rolled_back)])
     assert [d.day for d, _ in gate_a.switch_changes(None)] == [5, 20]  # type: ignore[arg-type]
+
+
+# -- phase 5: FBI_AI_PM_REVIEWER and FBI_AI_LEARNING_ANALYST ---------------------------------------------------------------------------------
+
+PHASE5 = ("pm_reviewer", "learning_analyst")
+
+
+def test_the_words_of_phase_5_are_not_written_while_they_are_off() -> None:
+    """Putting the phase-5 code in place is not a change of the owner's words; switching one on, or back off, is."""
+    assert gates.phase5_words(settings()) == {}
+    assert not set(PHASE5) & set(gates.switch_words(settings()))
+    assert gates.switch_words(settings()) == gates.switch_words(settings(pm_reviewer=False, learning_analyst=False))
+
+
+def test_each_word_of_phase_5_appears_only_once_it_is_on_and_touches_no_other_word() -> None:
+    assert gates.phase5_words(settings(pm_reviewer=True)) == {"pm_reviewer": True}
+    assert gates.phase5_words(settings(learning_analyst=True)) == {"learning_analyst": True}
+    both = settings(pm_reviewer=True, learning_analyst=True)
+    assert gates.phase5_words(both) == {"pm_reviewer": True, "learning_analyst": True}
+    assert {k: v for k, v in gates.switch_words(both).items() if k not in PHASE5} == gates.switch_words(settings())
+
+
+def test_switching_phase_5_on_is_one_line_per_word_and_taking_it_back_is_too() -> None:
+    off, on = gates.switch_words(settings()), gates.switch_words(settings(pm_reviewer=True, learning_analyst=True))
+    assert gates.words_diff(off, on) == ["learning_analyst: None -> True", "pm_reviewer: None -> True"]
+    assert gates.words_diff(on, off) == ["learning_analyst: True -> None", "pm_reviewer: True -> None"]
+
+
+@pytest.mark.parametrize(("raw", "expected"), [(None, False), ("", False), ("  ", False), ("0", False), ("off", False), ("no", False), ("ture", False),
+                                               ("2", False), ("enabled", False), ("1", True), ("on", True), ("ON", True), (" True ", True), ("yes", True)])
+def test_a_word_of_phase_5_is_on_only_when_it_says_so_and_a_typo_is_off(monkeypatch: pytest.MonkeyPatch, raw: str | None, expected: bool) -> None:
+    env = {} if raw is None else {"FBI_AI_PM_REVIEWER": raw, "FBI_AI_LEARNING_ANALYST": raw}
+    monkeypatch.setattr("fbi.ai.config.environment", lambda: env)
+    s = AiSettings.from_env()
+    assert (s.pm_reviewer, s.learning_analyst) == (expected, expected)
+    public = s.public()
+    assert (public["pm_reviewer"], public["learning_analyst"]) == (expected, expected)
+
+
+def test_the_words_of_phase_5_do_not_turn_the_other_switches_or_the_shadow_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("fbi.ai.config.environment", lambda: {"FBI_AI_PM_REVIEWER": "1", "FBI_AI_LEARNING_ANALYST": "1"})
+    s = AiSettings.from_env()
+    assert s.engines == ("rules", "llm") and s.agents == () and not s.orchestrate and s.shadow_sample == 0

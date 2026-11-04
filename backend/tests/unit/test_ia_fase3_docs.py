@@ -819,9 +819,9 @@ def test_gate_b_asks_what_the_plan_asks_and_says_what_is_not_built() -> None:
     assert not list((BACKEND / "scripts").glob("*gate_b*")) and not list((BACKEND / "scripts").glob("ia_gate_b*"))
     # unique index of paid runs: no duplicated payment
     assert "ai_agent_runs_paid_once" in sec and "ai_agent_runs_paid_once" in (next((BACKEND / "migrations" / "versions").glob("0111_*.py"))).read_text(encoding="utf-8")
-    # the attribution of settled matches is not built
+    # the attribution of settled matches was not built when this guide was written; phase 5 builds it (docs/owner/IA_FASE5.md), as code in one place
     assert "no construido" in rows[7][2]
-    assert not [p for p in (SRC / "ai").glob("*.py") if re.search(r"attribution", p.read_text(encoding="utf-8"), flags=re.I)]
+    assert (SRC / "ai" / "agents" / "attribution.py").is_file()
     assert "ia_battery" in rows[1][1] and "ia_research_gate" in rows[2][1]
     assert (BACKEND / "scripts" / "ia_battery.py").is_file() and (BACKEND / "scripts" / "ia_research_gate.py").is_file()
 

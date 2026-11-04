@@ -42,7 +42,8 @@ LOOP = [
 
 HYPOTHESES_SQL = """
 SELECT h.id, h.proposed_by, h.title, h.hypothesis, h.rationale, h.evidence, h.status, h.experiment_ids, h.created_at,
-       h.decided_at, u.email AS decided_by, h.decision_note, h.target, h.stage_history, h.outcome
+       h.decided_at, u.email AS decided_by, h.decision_note, h.target, h.stage_history, h.outcome,
+       h.agent, h.agent_version
   FROM analytics.research_hypotheses h LEFT JOIN auth.users u ON u.id = h.decided_by
  ORDER BY (h.status IN ('PROPOSED', 'INVESTIGATING')) DESC, h.created_at DESC, h.id DESC
  LIMIT 200

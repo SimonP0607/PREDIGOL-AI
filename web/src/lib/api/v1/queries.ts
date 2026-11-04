@@ -457,6 +457,11 @@ export const live = {
     queryFn: () => v1.aiShadowArms(days),
     refetchInterval: 5 * MINUTE,
   }),
+  aiAttribution: (days = 14) => ({
+    queryKey: ["v1", "ai-layer", "attribution", days],
+    queryFn: () => v1.aiAttribution(days),
+    refetchInterval: 5 * MINUTE,
+  }),
   aiContradictions: (days = 7, code?: ContraCode) => ({
     queryKey: ["v1", "ai-layer", "contradictions", days, code ?? "all"],
     queryFn: () => v1.aiContradictions({ days, code, limit: 50 }),

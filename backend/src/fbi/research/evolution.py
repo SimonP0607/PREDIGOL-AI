@@ -70,21 +70,27 @@ TARGETS = ("models", "backtesting", "analytics", "features", "rankings", "pick_e
 
 def propose(conn: psycopg.Connection[Any], *, title: str, hypothesis: str, rationale: str,
             evidence: dict[str, Any], proposed_by: str, at: datetime, key: str | None = None,
-            target: str = "other") -> int | None:
+            target: str = "other", agent: str | None = None, agent_version: str | None = None) -> int | None:
     """A hypothesis for the owner. A keyed proposal is made once. Returns its id, or None
-    when the same key was proposed before."""
+    when the same key was proposed before. ``agent`` and ``agent_version`` (both or neither) say which version of which agent
+    it is about (the Learning Analyst, plan IA phase 5)."""
     if proposed_by not in ("ai", "owner", "system"):
         raise ValueError("proposed_by is ai, owner or system")
     if target not in TARGETS:
         raise ValueError(f"unknown target {target!r}")
     if proposed_by == "ai" and key is None:
         key = "ai:" + hashlib.sha256(" ".join(title.lower().split()).encode()).hexdigest()[:24]
+    if (agent is None) != (agent_version is None):
+        raise ValueError("agent and agent_version come together")
+    # The columns of phase 5 are named only when they are used: a hypothesis about no agent is written by the statement it always was.
+    about = ", agent, agent_version" if agent is not None else ""
+    marks = ",%s,%s" if agent is not None else ""
+    values = (proposed_by, title[:160], hypothesis, rationale, Json(evidence), key, at, target) + ((agent, agent_version) if agent is not None else ())
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO analytics.research_hypotheses (proposed_by, title, hypothesis, rationale, evidence, "
-            "dedup_key, created_at, target) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (dedup_key) WHERE dedup_key "
-            "IS NOT NULL DO NOTHING RETURNING id",
-            (proposed_by, title[:160], hypothesis, rationale, Json(evidence), key, at, target))
+            f"INSERT INTO analytics.research_hypotheses (proposed_by, title, hypothesis, rationale, evidence, "
+            f"dedup_key, created_at, target{about}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s{marks}) ON CONFLICT (dedup_key) WHERE dedup_key "
+            f"IS NOT NULL DO NOTHING RETURNING id", values)
         row = cur.fetchone()
     return None if row is None else int(row[0])
 

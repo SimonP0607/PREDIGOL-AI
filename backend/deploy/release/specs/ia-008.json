@@ -1,0 +1,38 @@
+{
+  "precheck": {
+    "objects_absent": ["intel.agent_attributions"]
+  },
+  "verify_checks": [
+    {
+      "name": "migration 0120 is the head",
+      "sql": "select version_num from alembic_version",
+      "expect": "0120"
+    },
+    {
+      "name": "the attributions table exists and is empty (the switches are off: nothing is attributed)",
+      "sql": "select count(*) from intel.agent_attributions",
+      "expect": "0"
+    },
+    {
+      "name": "the agent and its version are columns of the hypotheses and of the experiments",
+      "sql": "select count(*) from information_schema.columns where table_schema = 'analytics' and table_name in ('research_hypotheses', 'experiments') and column_name in ('agent', 'agent_version')",
+      "expect": "4"
+    },
+    {
+      "name": "the gate A verdict recorded on 3 Nov is still the newest row of its gate",
+      "sql": "select passed from ai.feature_gates where gate = 'gate_a' order by at desc, id desc limit 1",
+      "expect": "t"
+    },
+    {
+      "name": "no promotion of an agent was written by the deploy",
+      "sql": "select count(*) from intel.promotions where entity = 'agent' and at >= '@DEPLOY_STARTED@'",
+      "expect": "0"
+    }
+  ],
+  "verify_env": [
+    {"container": "predigol-worker", "name": "FBI_AI_MODE", "expect": "shadow"},
+    {"container": "predigol-api", "name": "FBI_AI_MODE", "expect": "shadow"},
+    {"container": "predigol-worker", "name": "FBI_AI_RESEARCH_V2", "expect": "shadow"},
+    {"container": "predigol-worker", "name": "FBI_AI_AGENTS", "expect": "match,council"}
+  ]
+}

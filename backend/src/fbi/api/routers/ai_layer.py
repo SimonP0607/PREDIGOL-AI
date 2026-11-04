@@ -18,6 +18,7 @@ import psycopg
 from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.ai_agents import AgentsOverview, MatchState
+from fbi.api.contracts.ai_attribution import AttributionOverview
 from fbi.api.contracts.ai_layer import (
     AiComparison,
     AiLearning,
@@ -45,6 +46,7 @@ from fbi.api.errors import ApiError
 from fbi.api.security import Admin, App
 from fbi.api.services import (
     ai_agents,
+    ai_attribution,
     ai_layer,
     ai_research,
     ai_shadow,
@@ -201,6 +203,15 @@ def get_postmortems(conn: Db, day: Day = None, verdict: Verdict | None = None,
     narrative. ``fixture_id``: one match's, whatever its day."""
     return ai_v2.postmortems(conn, day=day, verdict=verdict, classification=classification, limit=limit,
                              fixture_id=fixture_id)
+
+
+@admin_router.get("/ai/attribution", response_model=Envelope[AttributionOverview])
+def get_attribution(conn: Db, days: Annotated[int, Query(ge=1, le=60)] = 14) -> Envelope[AttributionOverview]:
+    """ATRIBUCIÓN (plan IA, phase 5): which agent, in which version, was right or wrong about each settled selection of the shadow - computed by the
+    server from codes -, the share of the matches with attributions against the 95 % of Gate B, hits and misses per agent and version, the post-mortems
+    with their attributions and the reviewer's narrative, and the hypotheses the Learning Analyst proposed per version with the ids they cite. Reading
+    only: it calls no model, writes nothing and decides no gate."""
+    return ai_attribution.overview(conn, days=days)
 
 
 @admin_router.get("/ai/learning", response_model=Envelope[AiLearning])

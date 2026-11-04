@@ -1775,6 +1775,127 @@
     "on": "Set",
     "missing": "Missing"
   },
+  "attribution": {
+    "title": "Attribution",
+    "subtitle": "Which agent, in which version, was right or wrong about each settled selection of the shadow. Read only.",
+    "intro": "The attribution is computed by the server from codes, with no model: it changes no pick, rule or model. The figures are counts; being above the bar only says there is data, Gate B is decided by the owner. The narrative and the hypotheses were written by the AI: they are shown, never measured.",
+    "switches": {
+      "title": "Switches",
+      "hint": "Off unless the owner switches them on in app.env.",
+      "reviewer": "Post-Match Reviewer and daily attribution (FBI_AI_PM_REVIEWER)",
+      "analyst": "Learning Analyst (FBI_AI_LEARNING_ANALYST)",
+      "on": "On",
+      "off": "Off"
+    },
+    "coverage": {
+      "title": "Attribution coverage, last {days} days",
+      "hint": "Of the finished matches a shadow engine reviewed, the ones with attributions. The plan's bar for Gate B: {bar}.",
+      "matches": "Matches with attribution",
+      "selections": "Selections with attribution",
+      "of": "{n} of {total}",
+      "bar": "Plan's bar",
+      "state": {
+        "none": "There are no matches to judge in this window.",
+        "below": "Below the plan's bar.",
+        "reached": "At or above the plan's bar; this page does not decide the gate."
+      }
+    },
+    "score": {
+      "title": "Hits and misses per agent and version",
+      "hint": "A hit is a stance (for or against) that matched the settled result; a void does not count.",
+      "empty": "There are no attributions in this window yet."
+    },
+    "classes": {
+      "title": "Classes of the verdict's misses",
+      "hint": "The code sets the class from the post-mortem; «refined» are the UNKNOWN ones the reviewer added a class to in a second row."
+    },
+    "col": {
+      "agent": "Agent",
+      "engine": "Engine",
+      "hits": "Hits",
+      "misses": "Misses",
+      "voids": "Voids",
+      "rate": "Rate",
+      "class": "Class",
+      "n": "Cases",
+      "refined": "Refined",
+      "signal": "Signal",
+      "stance": "Stance",
+      "outcome": "Outcome",
+      "close": "Toward close",
+      "proposed": "Proposed",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "other": "Open"
+    },
+    "class": {
+      "MODEL_ERROR": "Model error",
+      "CONTEXT_ERROR": "Context error",
+      "DATA_ERROR": "Data error",
+      "MARKET_ERROR": "Market error",
+      "EXECUTION_ERROR": "Execution error",
+      "NORMAL_VARIANCE": "Normal variance",
+      "UNKNOWN": "Unclassified",
+      "NONE": "None"
+    },
+    "outcome": {
+      "HIT": "Hit",
+      "MISS": "Miss",
+      "VOID": "Void"
+    },
+    "stance": {
+      "FOR": "For",
+      "AGAINST": "Against",
+      "NONE": "No stance"
+    },
+    "signal": {
+      "VERDICT": "Verdict"
+    },
+    "settled": {
+      "won": "Won",
+      "lost": "Lost",
+      "half_won": "Half won",
+      "half_lost": "Half lost",
+      "push": "Push",
+      "void": "Void"
+    },
+    "calib": {
+      "MODEL_BETTER": "The model was closer",
+      "MARKET_BETTER": "The market was closer",
+      "EQUAL": "Equal"
+    },
+    "close": {
+      "toward": "Yes",
+      "away": "No"
+    },
+    "refined": "Refined by the reviewer: {klass}",
+    "clv": "CLV",
+    "calibration": "Calibration",
+    "narrative": "The reviewer's narrative (written by the AI, shown only)",
+    "postmortems": {
+      "title": "Post-mortems with attribution",
+      "hint": "Those with verdict misses first. Each row is what an agent did about that selection.",
+      "empty": "No post-mortem has attribution in this window."
+    },
+    "hypotheses": {
+      "title": "Hypotheses per version",
+      "hint": "Each one is about one version of one agent and cites the attributions it rests on. The analyst only proposes: it promotes nothing.",
+      "empty": "The analyst has not proposed hypotheses yet."
+    },
+    "hstatus": {
+      "PROPOSED": "Proposed",
+      "INVESTIGATING": "Investigating",
+      "ACCEPTED": "Accepted",
+      "REJECTED": "Rejected",
+      "RUNNING": "Running",
+      "SHADOW": "In shadow",
+      "DONE": "Done",
+      "PROMOTED": "Promoted"
+    },
+    "cites": "Cited attributions ({n})",
+    "week": "Week from",
+    "experiment": "Proposed experiment (draft, not run)"
+  },
   "arms": {
     "title": "Shadow with arms",
     "subtitle": "The experiment's seven arms over the same selections. Read-only.",

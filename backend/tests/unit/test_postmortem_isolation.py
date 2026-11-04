@@ -71,6 +71,12 @@ NAMES_IT: dict[str, str] = {
     "knowledge/layers.py": "Match Knowledge (plan F7), layer c9: the pure layer that turns the post-mortems of a finished match into facts",
     "knowledge/reader.py": "Match Knowledge (plan F7): reads the post-mortems of the finished matches it puts together (layer c9)",
     "api/services/intelligence.py": "the Admin Console's PrediGol Intelligence: the post-mortem of a decision and the memory (GET /admin/intelligence/memory)",
+    "ai/agents/attribution.py": "the attribution of the shadow (plan IA, phase 5, attr-v1): reads the post-mortem of each settled selection (its class, its CLV) to "
+                                "say which agent was right - after the result, into intel.agent_attributions; no pick, filter or decision reads it",
+    "ai/agents/pmr.py": "the Post-Match Reviewer (plan IA, phase 5, pmr-v1): reads the post-mortem answers of the cases it is asked about and keeps its narrative in "
+                        "ai.postmortem_narratives under its own version; Batch only, for the owner",
+    "api/services/ai_attribution.py": "the Admin Console's Atribución tab (GET /admin/ai/attribution): the post-mortems of the shadow with what each agent did and "
+                                      "the reviewer's narrative; reading only",
     "api/services/families.py": "the Admin Console's page of the families in shadow (GET /admin/intelligence/families): their post-mortems and their memory, read",
     "api/services/ai_v2.py": "the Admin Console's post-mortems, learning and sources: the selections of a day with their narratives and notes",
     "api/services/ai_layer.py": "the Admin Console's AI pages: the dashboard of errors, the day's counts and the log of memory events (the card a "
@@ -413,11 +419,12 @@ def test_only_its_own_migrations_name_the_tables() -> None:
     """A view, a function or a foreign key over the tables is made by a migration: the one that makes it is the one that must be listed here, so
     that no pre-match reader reaches the post-mortem or the memory through an object that does not carry its name. 0072, 0073 and 0076 made the
     tables, 0079 only comments a column, 0091 made the one post-mortem and memory-v4 (their two views are the ones the readers use) and 0094 made
-    what the families of counts learn, apart from all of them (it names the pipeline's tables to say why)."""
+    what the families of counts learn, apart from all of them (it names the pipeline's tables to say why) and 0120 (plan IA, phase 5) says in its
+    comments which post-mortem and narratives the attribution of the shadow reads: it adds a table of its own and no object over theirs."""
     naming = {p.name for p in MIGRATIONS.glob("*.py") if WORDS.search(p.read_text(encoding="utf-8"))}
     assert naming == {
         "0072_ai_decision_layer.py", "0073_ai_v2_day_passes_learning.py", "0076_predigol_intelligence.py", "0079_promoted_forecast_spec.py",
-        "0091_single_postmortem_memory_v4.py", "0118_family_learning.py"}, (
+        "0091_single_postmortem_memory_v4.py", "0118_family_learning.py", "0120_ia_phase5_attributions.py"}, (
         f"migrations naming the post-mortem, the memory or the notes: {sorted(naming)}. A migration that adds an object over them (a view, a "
         "function, a key) opens a second way in: decide here, with the reason, whether the pre-match side may reach it")
 

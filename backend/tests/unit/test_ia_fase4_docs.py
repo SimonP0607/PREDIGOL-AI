@@ -193,7 +193,8 @@ def test_what_the_phase_does_not_touch_is_what_the_default_leaves_alone() -> Non
 
 def test_there_is_no_migration_of_phase_4() -> None:
     versions = sorted(p.name for p in (BACKEND / "migrations" / "versions").glob("[0-9]*_*.py"))
-    assert not any(name.startswith("0120_") for name in versions) and versions[-1].startswith("0119_")
+    # phase 4 adds none: the last one it knew is 0119 (phase 5 adds the 0120 after it, and that one has nothing to do with the Statistics Agent)
+    assert any(name.startswith("0119_") for name in versions) and not any("stats" in name for name in versions)
     sec = section(3)
     assert "la última sigue siendo la 0119" in sec and "Una migración `0120` no hizo falta" in sec
     assert "ON CONFLICT (factor, version) WHERE previous_id IS NULL DO NOTHING" in (SRC / "ai" / "stats_factors.py").read_text(encoding="utf-8")

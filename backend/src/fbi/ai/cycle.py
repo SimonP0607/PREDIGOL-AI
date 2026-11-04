@@ -919,6 +919,25 @@ def _isolated(conn: psycopg.Connection[Any], report: CycleReport, name: str, ste
         return 0
 
 
+def _attributions(conn: psycopg.Connection[Any], report: CycleReport, *, at: datetime, settings: AiSettings,
+                  ledger: UsageLedger, transport: httpx.BaseTransport | None) -> None:
+    """Phase 5, behind ``FBI_AI_PM_REVIEWER``: which agent and version was right or wrong in the matches that finished (code only, nothing of
+    production changes), then the cases the Post-Match Reviewer is asked about, in the Batch of the LAB. The attribution is committed before the
+    model is asked: the model's failure leaves it standing."""
+    from fbi.ai.agents import attribution, pmr
+
+    today = local_day(at)
+    for d in (today - timedelta(days=1), today):
+        r = attribution.attribute_day(conn, day=d, at=at)
+        report.counts["attributions"] = report.counts.get("attributions", 0) + r.written
+    conn.commit()
+    sent = pmr.run(conn, settings, at=at, ledger=ledger, transport=transport)
+    for key, value in sent.items():
+        if isinstance(value, int):
+            report.counts[f"pmr_{key}"] = value
+    conn.commit()
+
+
 def _postmortems(conn: psycopg.Connection[Any], report: CycleReport, *, at: datetime, settings: AiSettings,
                  ledger: UsageLedger, provider: tuple[LlmProvider, str] | None,
                  transport: httpx.BaseTransport | None) -> None:
@@ -991,6 +1010,9 @@ def run_learning_cycle(conn: psycopg.Connection[Any], *, at: datetime, settings:
         if settings.legacy_postmortems:
             steps += _isolated(conn, report, "legacy_postmortems", lambda: _legacy_postmortems(
                 conn, report, at=at, settings=settings, ledger=ledger, provider=provider, transport=transport))
+        if settings.pm_reviewer:
+            steps += _isolated(conn, report, "attributions", lambda: _attributions(
+                conn, report, at=at, settings=settings, ledger=ledger, transport=transport))
         for d in (yesterday, today):
             report.counts["source_domains"] = refresh_source_stats(conn, day=d, at=at)
         conn.commit()

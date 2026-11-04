@@ -1115,5 +1115,5 @@ def test_the_weekly_job_ends_with_the_search_for_patterns_which_is_off_by_defaul
     monkeypatch.setattr(cycle, "_run", fake)
     switch(monkeypatch, None)
     cycle.run_weekly(Untouched(), at=T0)  # type: ignore[arg-type]
-    assert seen["job"] == "weekly" and [name for name, _ in seen["steps"]] == ["catalogue", "discovery", "matrix", "patterns"]
+    assert seen["job"] == "weekly" and [name for name, _ in seen["steps"]] == ["catalogue", "discovery", "learning_analyst", "matrix", "patterns"]
     assert dict(seen["steps"])["patterns"]() == {"mode": "off"}, "off: the step does nothing, and it does not fail the run"

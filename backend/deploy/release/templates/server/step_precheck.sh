@@ -152,13 +152,13 @@ verdict "$(ro -c "select pg_get_userbyid(relowner) from pg_class where oid = 'in
 section "the roles (read only): the operator's way in as the superuser inside the database container, and the roles db/roles.sql and grants.sql work with"
 SU=$(docker exec -e PGOPTIONS='-c default_transaction_read_only=on' predigol-postgres psql -U postgres -d fbi -At -F '|' -c "select current_user, (select rolsuper from pg_roles where rolname = current_user)" < /dev/null 2>&1)
 verdict "$SU" "postgres|t" "the superuser path inside the database container (db/roles.sql runs through it)"
-ro -c "select rolname, 'super=' || rolsuper, 'login=' || rolcanlogin, 'bypassrls=' || rolbypassrls from pg_roles where rolname in ('fbi','predigol_worker','predigol_api','predigol_rollback') order by 1"
+ro -c "select rolname, 'super=' || rolsuper, 'login=' || rolcanlogin, 'bypassrls=' || rolbypassrls from pg_roles where rolname in ('fbi','predigol_worker','predigol_api','predigol_rollback','predigol_learning') order by 1"
 verdict "$(ro -c "select count(*) from pg_roles where rolname in ('predigol_worker','predigol_api')")" "2" "roles predigol_worker and predigol_api"
 echo "predigol_rollback exists now: $(ro -c "select count(*) from pg_roles where rolname = 'predigol_rollback'") (0 before step_roles.sh, 1 after)"
 section "the AI settings of the application: NAMES, and a value only where it is not secret (the file is the owner's; this reads it, prints no key)"
 if [ -r "$ENV_FILE" ]; then
   awk '
-    function safe(n) { return n ~ /^FBI_AI_(MODE|MODEL_[A-Z]+|MONTHLY_BUDGET_USD|LAB_MONTHLY_BUDGET_USD|EXA_MONTHLY_BUDGET_USD|JOINT_CEILING_USD|RESERVE_USD|DAILY_TARGET_USD|DAILY_BUDGET_USD|DAILY_MAX_FACTOR|MAX_[A-Z_]+|HORIZON_HOURS|SEARCH|CACHE|BATCH|NATIVE_SCHEMA|BRIEF_MATERIAL|BUDGET_V3|PACKAGE|PACKAGE_MINUTES|MULTIMODAL|WORKSPACE|WORKSPACE_LAB|KEY_LABEL|KEY_LABEL_LAB|LEGACY_POSTMORTEMS|BATCH_MIN_LEAD_MINUTES|ENGINES|SHADOW_SAMPLE|AGENTS|ORCHESTRATE_MINUTES)$/ }
+    function safe(n) { return n ~ /^FBI_AI_(MODE|MODEL_[A-Z]+|MONTHLY_BUDGET_USD|LAB_MONTHLY_BUDGET_USD|EXA_MONTHLY_BUDGET_USD|JOINT_CEILING_USD|RESERVE_USD|DAILY_TARGET_USD|DAILY_BUDGET_USD|DAILY_MAX_FACTOR|MAX_[A-Z_]+|HORIZON_HOURS|SEARCH|CACHE|BATCH|NATIVE_SCHEMA|BRIEF_MATERIAL|BUDGET_V3|PACKAGE|PACKAGE_MINUTES|MULTIMODAL|WORKSPACE|WORKSPACE_LAB|KEY_LABEL|KEY_LABEL_LAB|LEGACY_POSTMORTEMS|BATCH_MIN_LEAD_MINUTES|ENGINES|SHADOW_SAMPLE|AGENTS|ORCHESTRATE_MINUTES|PM_REVIEWER|LEARNING_ANALYST)$/ }
     /^(FBI_AI_|FBI_ANALYST_|EXA_API_KEY)/ {
       i = index($0, "="); if (i == 0) next
       n = substr($0, 1, i - 1); v = substr($0, i + 1); gsub(/["\047 \t\r]/, "", v)

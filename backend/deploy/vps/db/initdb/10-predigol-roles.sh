@@ -8,6 +8,7 @@
 #   predigol_api     the API
 #   predigol_rollback  NOLOGIN: the automatic roll-back of an agent's promotion (../roles.sql carries the same statements for a
 #                    cluster that already exists); the worker reaches it with SET ROLE
+#   predigol_learning  NOLOGIN: the Learning Analyst writes hypotheses and nothing else (no promotion); reached with SET ROLE as well
 #
 # The passwords come from the env file through docker-compose.yml (PREDIGOL_DB_*_PASSWORD), never from here.
 set -Eeuo pipefail
@@ -25,6 +26,9 @@ COMMENT ON ROLE predigol_api IS 'PrediGol API: reads; writes accounts, user reco
 CREATE ROLE predigol_rollback NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 COMMENT ON ROLE predigol_rollback IS 'PrediGol: writes only the automatic demotion of a champion agent in intel.promotions (reached with SET ROLE)';
 GRANT predigol_rollback TO predigol_worker WITH INHERIT FALSE, SET TRUE;
+CREATE ROLE predigol_learning NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+COMMENT ON ROLE predigol_learning IS 'PrediGol: the Learning Analyst writes only hypotheses (analytics.research_hypotheses), never a promotion (reached with SET ROLE)';
+GRANT predigol_learning TO predigol_worker WITH INHERIT FALSE, SET TRUE;
 
 CREATE DATABASE fbi OWNER fbi;
 REVOKE ALL ON DATABASE fbi FROM PUBLIC;
@@ -42,4 +46,4 @@ ALTER ROLE predigol_worker SET idle_in_transaction_session_timeout = '30min';
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 ALTER SCHEMA public OWNER TO fbi;
 SQL
-echo "predigol: roles fbi, predigol_worker, predigol_api, predigol_rollback and database fbi created"
+echo "predigol: roles fbi, predigol_worker, predigol_api, predigol_rollback, predigol_learning and database fbi created"

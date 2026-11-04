@@ -256,6 +256,9 @@ export interface AiSettingsView {
   horizon_hours: number;
   search: string | null;
   search_configured: boolean;
+  /** Plan IA, phase 5: FBI_AI_PM_REVIEWER and FBI_AI_LEARNING_ANALYST (off unless the owner switched them on). */
+  pm_reviewer?: boolean;
+  learning_analyst?: boolean;
 }
 
 export interface ShadowGateCheck {

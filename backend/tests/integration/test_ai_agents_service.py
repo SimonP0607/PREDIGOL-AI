@@ -576,7 +576,7 @@ def test_the_overview_puts_the_parts_together_for_the_window_it_is_asked(db: psy
     seven = ai_agents.overview(db, at=AT)
     assert seven.status is DataStatus.OK
     o = seven.data
-    assert o.problems == [] and {v.status for v in o.registry} == {"built", "planned", "postponed"}
+    assert o.problems == [] and {v.status for v in o.registry} == {"built", "postponed"}
     assert [f.family for f in o.families] == list(FAMILIES) and o.decisions == []
     assert (o.package.days, o.package.states) == (7, 1) and o.queue.days == 7 and o.queue.open == 0
     assert [a.rule for a in o.audit] == list(ai_agents.AUDIT_RULES)

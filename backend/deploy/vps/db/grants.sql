@@ -17,6 +17,8 @@
 --   predigol_rollback  (NOLOGIN, created by the operator: db/roles.sql) the automatic roll-back of an agent's promotion:
 --                    reads intel.promotions and inserts into it, nothing else anywhere. Which row it may insert is the
 --                    row policy of migration 0111, not this file: the worker reaches the role with SET ROLE.
+--   predigol_learning  (NOLOGIN, created by the operator: db/roles.sql) the Learning Analyst (phase 5): reads and inserts hypotheses
+--                    (analytics.research_hypotheses) and nothing else anywhere - in particular nothing in intel.promotions.
 --
 -- Run as the owner after EVERY migration (bin/predigolctl does: deploy, import). Idempotent. A table a future
 -- migration adds is covered at once by the default privileges below, and re-granted explicitly the next run.
@@ -170,3 +172,22 @@ BEGIN
   EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE %s TO predigol_rollback', pg_get_serial_sequence('intel.promotions', 'id'));
 END
 $rollback$;
+
+-- The Learning Analyst (Plan Maestro IA, phase 5): the same way - nothing until the operator creates the role, and then only the hypotheses table
+-- (and its sequence). It has no privilege on intel.promotions and no schema but analytics; the worker reaches the role with SET ROLE and holds none
+-- of its privileges until it asks.
+DO $learning$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'predigol_learning') THEN
+    RAISE NOTICE 'grants: the role predigol_learning does not exist (yet) - skipped (db/roles.sql creates it)';
+    RETURN;
+  END IF;
+  IF to_regclass('analytics.research_hypotheses') IS NULL THEN
+    RAISE NOTICE 'grants: analytics.research_hypotheses does not exist (yet) - skipped';
+    RETURN;
+  END IF;
+  GRANT USAGE ON SCHEMA analytics TO predigol_learning;
+  GRANT SELECT, INSERT ON analytics.research_hypotheses TO predigol_learning;
+  EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE %s TO predigol_learning', pg_get_serial_sequence('analytics.research_hypotheses', 'id'));
+END
+$learning$;

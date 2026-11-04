@@ -730,7 +730,8 @@
       "calibration": "Calibration",
       "markets": "Markets",
       "families": "Families",
-      "shadow": "The AI against the model"
+      "shadow": "The AI against the model",
+      "attribution": "Attribution"
     },
     "memoryViews": {
       "entities": "Entities",

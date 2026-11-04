@@ -36,7 +36,7 @@ export const AI_VIEWS = [
   "evidence",
   "sources",
 ] as const;
-/** APRENDIZAJE: the close of the day, what was learned, the post-mortems, the memory, the experiments and promotions, the calibration, the markets, the families in shadow and the AI against the model. */
+/** APRENDIZAJE: the close of the day, what was learned, the post-mortems, the memory, the experiments and promotions, the calibration, the markets, the families in shadow, the AI against the model and the attribution of the shadow (plan IA, phase 5). */
 export const LEARNING_TABS = [
   "close",
   "learned",
@@ -47,6 +47,7 @@ export const LEARNING_TABS = [
   "markets",
   "families",
   "shadow",
+  "attribution",
 ] as const;
 /** The views of the "memory" tab of Aprendizaje: the entities over time, the matches, the notes of the learning cycle and the research findings. */
 export const MEMORY_VIEWS = ["entities", "matches", "notes", "findings"] as const;
