@@ -108,7 +108,14 @@ consentimiento `marketing_email` estaba previsto desde A4, pero no existían ni 
 
 ## 7. Puertas
 
-PUERTAS_B8
+Puertas sobre el árbol integrado del PR #21 (`feat/UX-001`, 4-nov-2026), el que se desplegará:
+
+- Backend: `ruff check .` limpio; `mypy` estricto (597 ficheros) y `mypy .` (1.492 ficheros) sin errores; pruebas unitarias **7.904 pasan, 16 omitidas**;
+  migraciones 0095 a 0106 con una sola cabeza (0106, colgada de la 0119).
+- Web: lint 0 errores (26 avisos que ya existían), tipos de la web y del e2e, **1.456 pruebas pasan, 0 fallan**, build.
+- Seguridad: autoprueba de Gitleaks 41 de 41; escaneo de todo el historial limpio.
+- CI del PR #21: Convenciones del PR, web, `ruff + mypy`, `scan` y secretos en verde; `pytest` con PostgreSQL 16 y la corrida de integración
+  completa se anotan en el PR al terminar. El e2e de esta fase se repite sobre el árbol integrado antes del despliegue.
 
 ## 8. Despliegue
 
