@@ -21,3 +21,12 @@ d39c9ebf615b76cdfa4ea0f69ac61249031249f1:deploy/env_example.txt:generic-api-key:
 # no es una credencial. Vive solo en estos dos ficheros de prueba.
 1c659358cd438c6071e1b7c307f73471299096ee:web/e2e/observability.spec.ts:generic-api-key:111
 76250dff8f8e0e666ff0cb907d55dba8f0831587:web/src/lib/observability.test.ts:generic-api-key:19
+
+# Valores falsos de pruebas (plan UX A2/A10 y contención de trazas), clasificados al integrar el PR UX-001 con las reglas propias de S1: una contraseña
+# de cuenta sintética de prueba, el «token» de mentira que arma por partes el ensayo del filtro de Sentry y del túnel de monitoreo, y la URL de ejemplo con
+# «hunter2secret» del ensayo de redacción de trazas. Ninguno es una credencial; viven solo en ficheros de pruebas.
+07848a1027bb6fb77434ce75f550281d5903e34c:backend/tests/integration/test_synthetic_journey.py:generic-api-key:22
+5ee0edb5496fcc29b055ddc6075911e8d5fbb306:backend/tests/unit/test_monitoring_tunnel.py:generic-api-key:26
+5ee0edb5496fcc29b055ddc6075911e8d5fbb306:backend/tests/unit/test_sentry_filter.py:generic-api-key:28
+b38b556c4e81af7bf093ade5a13d7df6089eed90:backend/tests/unit/test_contain_trace.py:generic-api-key:21
+b38b556c4e81af7bf093ade5a13d7df6089eed90:backend/tests/unit/test_contain_trace.py:predigol-db-url-password:74
