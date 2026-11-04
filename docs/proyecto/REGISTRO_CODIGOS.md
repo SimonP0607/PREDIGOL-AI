@@ -27,7 +27,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 
 | Código | Qué es | Estado | PR | Fase o nombre anterior |
 | --- | --- | --- | --- | --- |
-| UX-001 | Plan maestro de UX completo, de A3 a B11: Inicio, Análisis y Postpartido, Mis picks, avisos y dispositivos, membresía, ficha del cliente y ciclo de vida (migraciones 0095 a 0106, que cuelgan de la 0119). A1 y A2 ya corrían en producción | en curso (falta desplegar) | este PR | A3 a B11 |
+| UX-001 | Plan maestro de UX completo, de A3 a B11: Inicio, Análisis y Postpartido, Mis picks, avisos y dispositivos, membresía, ficha del cliente y ciclo de vida (migraciones 0095 a 0106, que cuelgan de la 0119). A1 y A2 ya corrían en producción | en curso (falta desplegar) | #21 | A3 a B11 |
 
 ## BE — backend
 
