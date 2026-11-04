@@ -85,7 +85,17 @@ if releases web; then
 fi
 
 # What the scripts need to know about the backend's migrations and model code.
-mig_num() { git ls-tree -r --name-only "$1" -- migrations/versions | sed -n 's#.*/\([0-9]\{4\}\)_.*\.py$#\1#p' | sort | tail -n 1; }
+# The head is the migration no other one hangs from (the chain), not the highest number: a line can be numbered below what it hangs from (UX 0095 hangs from 0119).
+mig_num() { # <ref>
+  local f body rev down revs="" downs=""
+  while IFS= read -r f; do
+    body="$(git show "$1:$f")"
+    rev="$(sed -n 's#^revision *= *"\([^"]*\)".*#\1#p' <<< "$body" | head -n 1)"
+    down="$(sed -n 's#^down_revision *= *"\([^"]*\)".*#\1#p' <<< "$body" | head -n 1)"
+    revs+="$rev"$'\n'; downs+="$down"$'\n'
+  done < <(git ls-tree -r --name-only "$1" -- migrations/versions | grep -E '/[0-9]{4}_.*\.py$')
+  grep -vxF -f <(printf '%s' "$downs") <(printf '%s' "$revs") | grep . | cut -c1-4 | sort | tail -n 1
+}
 after_ref="$base_be"; releases backend && after_ref="refs/release/backend-$REL"
 latest_migration="$(mig_num "$after_ref")"; revision_before="$(mig_num "$base_be")"
 migrations_new="$(git diff --name-only --diff-filter=A "$base_be" "$after_ref" -- migrations/versions | sed 's#.*/##; s#\.py$##' | sort | jq -R . | jq -s .)"

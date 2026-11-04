@@ -240,3 +240,38 @@ def test_ci_precheck_waits_for_exactly_what_the_chain_waits_for() -> None:
     chain = pattern.search((ROOT / "templates" / "server" / "chain.sh").read_text(encoding="utf-8"))
     ci = pattern.search(PRECHECK.read_text(encoding="utf-8"))
     assert chain is not None and ci is not None and chain.group(1) == ci.group(1)
+
+
+def test_the_kit_takes_the_migration_head_from_the_chain_not_from_the_highest_number(
+    tmp_path: Path,
+) -> None:
+    """A line numbered below what it hangs from (UX 0095 hangs from 0119) must not hide the head."""
+    git = shutil.which("git")
+    assert git is not None
+    repo = tmp_path / "repo"
+    versions = repo / "migrations" / "versions"
+    versions.mkdir(parents=True)
+    for name, rev, down in (
+        ("0118_a", "0118", "0117"),
+        ("0119_b", "0119", "0118"),
+        ("0095_c", "0095", "0119"),
+        ("0106_d", "0106", "0095"),
+    ):
+        (versions / f"{name}.py").write_text(f'revision = "{rev}"\ndown_revision = "{down}"\n')
+    run = lambda *a: subprocess.run(  # noqa: E731
+        [git, "-C", str(repo), *a], check=True, capture_output=True, text=True
+    ).stdout.strip()
+    run("init", "-q")
+    run("add", ".")
+    run("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "t")
+    script = Path(__file__).resolve().parents[2] / "deploy" / "release" / "build_kit.sh"
+    fn = re.search(r"^mig_num\(\) \{.*?^\}", script.read_text(), re.S | re.M)
+    assert fn is not None
+    out = subprocess.run(
+        ["bash", "-c", f"{fn.group(0)}\nmig_num HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert out == "0106"

@@ -14,6 +14,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | CI-004 | Despliegue desde GitHub: puerta del servidor, llave restringida y doble aprobación | hecho (falta ver un despliegue completo con éxito desde GitHub) | #12, #13, #14 | C4 |
 | CI-005 | Convenciones de GitHub: códigos, plantillas, validador y etiquetas | hecho (3-nov-2026) | #16 | — |
 | CI-006 | Las pruebas de copia usan el cliente de PostgreSQL 16 en el CI (la imagen de GitHub trajo un `pg_dump` más nuevo) | hecho (3-nov-2026) | #17 | — |
+| CI-008 | El kit de lanzamiento toma la cabeza de migraciones de la cadena (`down_revision`), no el número más alto: la verificación de `ux-001` marcó «NOT OK» por comparar con 0119 cuando la cabeza real era 0106 | en curso | este PR | — |
 
 ## IA — capa de inteligencia artificial
 
@@ -29,7 +30,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 
 | Código | Qué es | Estado | PR | Fase o nombre anterior |
 | --- | --- | --- | --- | --- |
-| UX-001 | Plan maestro de UX completo, de A3 a B11: Inicio, Análisis y Postpartido, Mis picks, avisos y dispositivos, membresía, ficha del cliente y ciclo de vida (migraciones 0095 a 0106, que cuelgan de la 0119). A1 y A2 ya corrían en producción | en curso (falta desplegar) | #21 | A3 a B11 |
+| UX-001 | Plan maestro de UX completo, de A3 a B11: Inicio, Análisis y Postpartido, Mis picks, avisos y dispositivos, membresía, ficha del cliente y ciclo de vida (migraciones 0095 a 0106, que cuelgan de la 0119). A1 y A2 ya corrían en producción | desplegado el 4-nov-2026 (release `ux-001`, backend `0306f006e631`, web `32dce8b44177`, base en 0106) | #21 | A3 a B11 |
 
 ## BE — backend
 
@@ -43,4 +44,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-007 · SEG-001 · IA-009 · UX-002 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-009 · SEG-001 · IA-009 · UX-002 · BE-002 · FE-001 · OPS-001 · DOC-001
