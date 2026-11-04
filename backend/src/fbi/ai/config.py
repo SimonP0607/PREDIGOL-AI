@@ -67,8 +67,9 @@ reads, and are rolled back by the same three words. Nothing runs until ALL THREE
     FBI_AI_SHADOW_SAMPLE        default 0 - the share of the matches with candidates the shadow runs on, from 0 to 1 (0.3 = 30 %; above 1 counts
                                 as 1, below 0 as 0, and a word that is not a number as 0). Each match is assigned once, before its first shadow
                                 pass, and never changes group (``ai.shadow_assignments``). The plan's activation is ``0.3``; its rollback is ``0``.
-    FBI_AI_AGENTS               default empty - the agents that may run: ``match`` and ``council`` (a name that is neither is dropped). The plan's
-                                activation is ``match,council``.
+    FBI_AI_AGENTS               default empty - the agents that may run: ``match``, ``council`` and (phase 4) ``stats`` (a name that is none of those is
+                                dropped). The plan's activation is ``match,council``, and ``match,council,stats`` adds the Statistics Agent; its
+                                rollback is to take ``stats`` out. ``stats`` alone switches nothing on: the orchestrator needs ``match`` and ``council``.
 
 A model or a search is used only for TODAY's matches (America/Bogota) that have a market (``fbi.ai.day``).
 
@@ -107,8 +108,8 @@ PRODUCTION_ENGINES: Final[tuple[str, ...]] = (*BASELINE_ENGINES, "combined")
 """The engines whose rows every figure of production counts: the two of the baseline and what they add up to. Every reader of ``ai.pick_reviews`` that
 does not name its engine filters on exactly this list (``engine IN ('rules', 'llm', 'combined')``): a shadow row added to the table moves no figure of
 production (``tests/unit/test_engine_filter_guard.py`` keeps every reader in line with it)."""
-AGENTS: Final[tuple[str, ...]] = ("match", "council")
-"""The agents ``FBI_AI_AGENTS`` can name, in canonical order (phase 4 adds ``stats``: the one place the list is kept)."""
+AGENTS: Final[tuple[str, ...]] = ("match", "council", "stats")
+"""The agents ``FBI_AI_AGENTS`` can name, in canonical order (phase 4 added ``stats``: the one place the list is kept)."""
 ORCHESTRATOR_AGENTS: Final[tuple[str, ...]] = ("match", "council")
 """The agents the orchestrator needs to run at all (a multi-agent without its Match Agent or its Council is not one)."""
 

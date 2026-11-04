@@ -40,7 +40,7 @@ def test_the_engines_the_owner_can_name_are_these_five_in_this_order() -> None:
 
 
 def test_the_agents_the_owner_can_name_are_one_list() -> None:
-    assert AGENTS == ("match", "council"), "phase 4 adds the statistics agent here, and nowhere else"
+    assert AGENTS == ("match", "council", "stats"), "phase 4 added the statistics agent here, and nowhere else"
     assert set(config.ORCHESTRATOR_AGENTS) <= set(AGENTS)
 
 
@@ -125,7 +125,7 @@ def test_a_settings_object_made_by_hand_has_the_sample_at_zero() -> None:
     (None, ()), ("", ()), ("  ", ()), ("match", ("match",)), ("council", ("council",)), ("match,council", ("match", "council")),
     ("council,match", ("match", "council")), (" Match , COUNCIL ", ("match", "council")), ("match,match,MATCH", ("match",)), ("match,", ("match",)),
     ("match,typo,council", ("match", "council")),
-    ("stats", ()), ("match,stats", ("match",)),  # the statistics agent is phase 4's: today it is a word nobody knows
+    ("stats", ("stats",)), ("match,stats", ("match", "stats")), ("stats,council,match", ("match", "council", "stats")),  # phase 4's agent
     ("ma-v1", ()), ("matches", ()), ("match council", ()), ("match;council", ()), ("all", ()), ("*", ()), ("1", ()), ("true", ()), ("orchestrator", ()),
 ])
 def test_the_agents_are_the_known_ones_the_list_names_in_the_canonical_order(monkeypatch: pytest.MonkeyPatch, raw: str | None,
