@@ -37,9 +37,11 @@ export function PageHeader({
             ))}
           </nav>
         ) : null}
-        <h1 className="text-display">{title}</h1>
+        <h1 className="text-display [overflow-wrap:anywhere]">{title}</h1>
         {description ? (
-          <p className="mt-1 max-w-2xl text-xs text-muted-foreground">{description}</p>
+          <p className="mt-1 max-w-2xl text-xs text-muted-foreground [overflow-wrap:anywhere]">
+            {description}
+          </p>
         ) : null}
       </div>
       {actions ? (

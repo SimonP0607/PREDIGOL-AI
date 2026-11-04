@@ -15,6 +15,7 @@ export function Card({
   premium = false,
   as: Tag = "section",
   id,
+  "data-testid": testId,
 }: {
   children: ReactNode;
   className?: string | undefined;
@@ -22,10 +23,13 @@ export function Card({
   as?: "section" | "article" | "div";
   /** An anchor a link can lead to (an e-mail's button: /profile#privacy). */
   id?: string | undefined;
+  /** The handle the end-to-end tests find the card by (the customer's card, the Product page). */
+  "data-testid"?: string | undefined;
 }) {
   return (
     <Tag
       id={id}
+      data-testid={testId}
       className={cn(
         "rounded-xl border border-border bg-card",
         premium && "gold-ring bg-gradient-to-b from-gold-soft/40 to-card",

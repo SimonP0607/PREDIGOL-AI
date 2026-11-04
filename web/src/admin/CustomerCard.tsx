@@ -78,7 +78,7 @@ function Actions({ card, onNotice }: { card: Customer; onNotice: (text: string) 
       {!invited ? (
         <button
           type="button"
-          data-testid="customer-membership"
+          data-testid="customer-manage-membership"
           onClick={() => setMembershipOpen(true)}
           className={BUTTON}
         >
