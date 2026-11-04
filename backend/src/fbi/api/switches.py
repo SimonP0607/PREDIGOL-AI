@@ -22,6 +22,11 @@ it in QA (P9) - and ``=1`` opens it to every signed-in reader (the API recreated
 (``preview=shadow``) shows it either way."""
 
 
+EXPLAIN: Final = "FBI_EXPLAIN"
+"""«Explícame» (plan UX, B9): ON while the line is absent - it reads what PrediGol already keeps, calls no AI and costs
+nothing - and ``=0`` takes the buttons and their routes away (the API recreated)."""
+
+
 def user_switch(name: str, *, default: bool) -> bool:
     """Whether the switch ``name`` is on: ``default`` while the line is absent or empty, off for a value it cannot read."""
     raw = environment().get(name)
@@ -33,3 +38,8 @@ def user_switch(name: str, *, default: bool) -> bool:
 def transparency_open() -> bool:
     """Whether readers see «Cómo le va a PrediGol» (``FBI_TRANSPARENCY``, off by default)."""
     return user_switch(TRANSPARENCY, default=False)
+
+
+def explain_on() -> bool:
+    """Whether readers get «Explícame» (``FBI_EXPLAIN``, on by default)."""
+    return user_switch(EXPLAIN, default=True)

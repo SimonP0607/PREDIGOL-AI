@@ -26,6 +26,7 @@ from fbi.api.routers import (
     customer,
     events,
     evolution,
+    explain,
     explorer,
     favorites,
     feedback,
@@ -227,11 +228,12 @@ def create_app() -> FastAPI:
     for r in (events.router, personal.router, feedback.router):
         app.include_router(r, prefix="/api/v1", dependencies=measured_tier)
     # The product, behind the consent gate (plan UX, A4; FBI_CONSENT_GATE, born off: fbi.customer.consents) and the
-    # membership's (A8; FBI_MEMBERSHIP_ENFORCE, born off: fbi.customer.membership).
+    # membership's (A8; FBI_MEMBERSHIP_ENFORCE, born off: fbi.customer.membership). «Explícame» (B9) explains the product:
+    # the same gates.
     product_tier = [*measured_tier, Depends(membership_required)]
     for r in (product.router, records.router, football.router, market.router, center.router,
               ai_layer.router, forecast.router, match_calendar.router, knowledge.router, postmatch.router,
-              reading.router, today.router, news.router, transparency.router, push.alerts_router):
+              reading.router, today.router, news.router, transparency.router, push.alerts_router, explain.router):
         app.include_router(r, prefix="/api/v1", dependencies=product_tier)
     admin_tier = [Depends(same_site_only), Depends(require_admin), Depends(observe_principal)]
     for r in (system.admin_router, football.admin_router, market.admin_router,

@@ -50,12 +50,21 @@ def user_get_routes(spec: dict[str, Any]) -> list[tuple[str, list[dict[str, Any]
 
 
 def concrete(template: str, params: list[dict[str, Any]], seed: Seed) -> str:
-    """The template with real ids from the seed graph, plus the query parameters a route requires."""
+    """The template with real ids from the seed graph, plus the query parameters a route requires: the first value a closed
+    list allows, the seed's match for a number (``GET /explain?entity=match&id=...``), a word for free text - so the route
+    really runs instead of stopping at its own validation."""
     ids = {"fixture_id": seed.fixture_id, "competition_id": seed.competition_id, "team_id": seed.home_team_id,
            "kind": "daily"}
     path = re.sub(r"\{([^}]+)\}", lambda m: str(ids.get(m.group(1), 1)), template)
-    required = [p["name"] for p in params if p["in"] == "query" and p.get("required")]
-    return path + ("?" + "&".join(f"{name}=a" for name in required) if required else "")
+
+    def value(p: dict[str, Any]) -> str:
+        schema = p.get("schema", {})
+        if schema.get("enum"):
+            return str(schema["enum"][0])
+        return str(seed.fixture_id) if schema.get("type") == "integer" else "a"
+
+    required = [p for p in params if p["in"] == "query" and p.get("required")]
+    return path + ("?" + "&".join(f"{p['name']}={value(p)}" for p in required) if required else "")
 
 
 @pytest.fixture()

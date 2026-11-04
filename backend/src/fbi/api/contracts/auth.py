@@ -64,6 +64,9 @@ class Me(Contract):
     support: bool = Field(default=False, description="A reader can write to PrediGol from the page (plan UX, A14; "
                                                      "FBI_SUPPORT, on unless the owner turned it off): «Reportar un "
                                                      "problema» in Ayuda, in an error and in a match.")
+    explain: bool = Field(default=False, description="«Explícame» answers the frequent questions of a match, a pick and "
+                                                     "the parlay being built (plan UX, B9; FBI_EXPLAIN, on unless the "
+                                                     "owner turned it off): the page shows its buttons only then.")
 
 
 class PreferencesIn(BaseModel):

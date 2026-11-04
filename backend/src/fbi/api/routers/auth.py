@@ -36,7 +36,7 @@ from fbi.api.security import (
     same_site_only,
     set_session_cookie,
 )
-from fbi.api.switches import transparency_open
+from fbi.api.switches import explain_on, transparency_open
 from fbi.auth import crypto, service
 from fbi.auth.roles import Role
 from fbi.auth.service import Principal
@@ -63,7 +63,7 @@ def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
         stage=p.stage,  # type: ignore[arg-type]
         mfa_enabled=p.mfa_enabled, mfa_required=p.mfa_required, must_change_password=p.must_change_password,
         recovery_codes_left=p.recovery_codes_left, observability_id=crypto.observability_id(p.user_id),
-        transparency=transparency_open(), support=support.support_on(),
+        transparency=transparency_open(), support=support.support_on(), explain=explain_on(),
     )
 
 
