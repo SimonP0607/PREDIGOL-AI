@@ -29,6 +29,15 @@ import type {
 import type { ProductOverview } from "./types_events";
 import type { AdminMembership, MyMembership, PaymentIn, PaymentRecorded } from "./types_membership";
 import type {
+  AgentRuns,
+  AgentRunsQuery,
+  ContraCode,
+  Contradictions,
+  ShadowArms,
+  ShadowFile,
+} from "./types_ai_shadow";
+import type { StorageOverview } from "./types_storage";
+import type {
   IntelCalibration,
   IntelCosts,
   IntelDay,
@@ -44,6 +53,7 @@ import type {
   IntelRun,
   IntelState,
 } from "./types_intel";
+import type { IntelFamilies } from "./types_families";
 import type {
   PairStatus,
   RefereeActionResult,
@@ -77,6 +87,7 @@ import type {
   AiComparison,
   AiCosts,
   AiDecision,
+  AiEngine,
   DailyReview,
   DailyReviewDay,
   MatchMemory,
@@ -856,7 +867,7 @@ export const v1 = {
   aiReviews: (
     q: {
       day?: string | undefined;
-      engine?: "combined" | "rules" | "llm";
+      engine?: AiEngine;
       decision?: AiDecision | undefined;
       fixture_id?: number | undefined;
       limit?: number;
@@ -877,6 +888,17 @@ export const v1 = {
   aiMatchState: (fixtureId: number | string) =>
     getJson<Envelope<MatchState>>(`/admin/ai/matches/${fixtureId}/state`),
   aiShadow: () => getJson<Envelope<ShadowReportRow[]>>("/admin/ai/shadow"),
+  /** The seven arms of the shadow (plan IA phase 3) side by side over the last `days`, the assignments and the "enough data" counts. Reading only. */
+  aiShadowArms: (days = 30) => getJson<Envelope<ShadowArms>>("/admin/ai/shadow/arms", { days }),
+  /** C01-C08 of the shadow: counts by code, what the Council did with what they touch, and the most recent ones. */
+  aiContradictions: (q: { days?: number; code?: ContraCode | undefined; limit?: number } = {}) =>
+    getJson<Envelope<Contradictions>>("/admin/ai/contradictions", q as Params),
+  /** The attempts of the agents on a Bogotá day, with filters, and the day's Opus calls against the shadow's cap. */
+  aiAgentRuns: (q: AgentRunsQuery = {}) =>
+    getJson<Envelope<AgentRuns>>("/admin/ai/agent-runs", q as Params),
+  /** The file of a match for the shadow: assignment, candidates, assessments, contradictions, verdicts side by side, calls. */
+  aiMatchShadow: (fixtureId: number | string, pass?: string) =>
+    getJson<Envelope<ShadowFile>>(`/admin/ai/matches/${fixtureId}/shadow`, { pass_kind: pass }),
   aiMemory: (kind?: string) => getJson<Envelope<AiMemoryEvent[]>>("/admin/ai/memory", { kind }),
   aiRunRequests: () => getJson<Envelope<AiRunRequest[]>>("/admin/ai/run-requests"),
   aiToday: (day?: string) => getJson<Envelope<AiToday>>("/admin/ai/today", { day }),
@@ -959,6 +981,15 @@ export const v1 = {
   intelPriceClock: () => getJson<Envelope<IntelPriceClock>>("/admin/intelligence/price-clock"),
   intelMarketMatrix: () =>
     getJson<Envelope<IntelMarketMatrix>>("/admin/intelligence/market-matrix"),
+  /** The families in shadow (plan F10.17, F11.11): what they decided, how each was graded, what became of it and what they remember. */
+  intelFamilies: (
+    q: {
+      family?: string | undefined;
+      state?: string | undefined;
+      days?: number | undefined;
+      limit?: number | undefined;
+    } = {},
+  ) => getJson<Envelope<IntelFamilies>>("/admin/intelligence/families", q as Params),
   intelRuns: () =>
     getJson<
       Envelope<{
@@ -998,6 +1029,8 @@ export const v1 = {
   dataCoverage: () => getJson<Envelope<CoverageCell[]>>("/admin/analytics/coverage"),
   migration: () => getJson<Envelope<MigrationProgress>>("/admin/analytics/migration"),
   admin: () => getJson<Envelope<AdminOverview>>("/admin/system"),
+  /** Where the server's disk goes, the copies, the last cleanup and the retention policy (reading only). */
+  adminStorage: () => getJson<Envelope<StorageOverview>>("/admin/storage"),
   users: () => getJson<Envelope<AdminUser[]>>("/admin/users"),
   /** The readers' privacy requests (plan UX, A4), open first by their legal deadline. */
   privacyRequests: (status: "open" | "all" = "open") =>

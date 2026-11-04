@@ -55,6 +55,8 @@ def envelope(dsn: str = BROWSER_DSN, *, extra_items: list[tuple[dict[str, Any], 
 @pytest.fixture()
 def tunnel(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[TestClient, list[tuple[str, bytes]]]]:
     monkeypatch.setenv("FBI_SENTRY_WEB_DSN", WEB_DSN)
+    monkeypatch.delenv("FBI_SENTRY_ENVIRONMENT", raising=False)
+    monkeypatch.setenv("FBI_ENV", "local")  # what the answer names: not whatever the CI exports
     monkeypatch.setattr(monitoring, "PER_CLIENT", SlidingWindow(per_window=1000, window_s=60.0))
     monkeypatch.setattr(monitoring, "PER_PROCESS", SlidingWindow(per_window=1000, window_s=3600.0))
     monkeypatch.setattr(monitoring, "PER_DAY", SlidingWindow(per_window=1000, window_s=86400.0))
@@ -73,6 +75,8 @@ def tunnel(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[TestClient, list[t
 
 def test_without_a_web_project_the_browser_reports_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("FBI_SENTRY_WEB_DSN", raising=False)
+    monkeypatch.delenv("FBI_SENTRY_ENVIRONMENT", raising=False)
+    monkeypatch.setenv("FBI_ENV", "local")
     from fbi.api.app import create_app
 
     with TestClient(create_app()) as client:

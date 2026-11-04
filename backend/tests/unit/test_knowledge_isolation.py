@@ -93,7 +93,7 @@ PREMATCH_FILES = {
     "intel/dossier.py", "intel/decision.py", "intel/score.py", "intel/stake.py", "intel/calibration.py", "intel/discovery.py",
     "intel/narrative.py", "intel/national.py", "intel/h2h.py", "intel/scenarios.py", "intel/tactics.py", "intel/factors.py", "intel/stats.py",
     "ai/packet.py", "ai/views.py", "ai/brief.py", "ai/review.py", "ai/context.py", "ai/evidence.py", "ai/analysis.py", "ai/absences.py",
-    "ai/claims.py",
+    "ai/claims.py", "familydecisions/decide.py",
 }
 """The files of the two packages that mix both sides (``intel`` and ``ai`` also hold the post-mortems, the memory and the learning of what
 happened) which build or judge what is said before a kick-off: the dossier, the decision layer and its steps, the AI's packet and what reads it.

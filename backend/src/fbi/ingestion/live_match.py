@@ -24,6 +24,17 @@ A reading of a match as finished that cannot be true - sooner after kick-off tha
 (``fbi.core.match_state.final_is_plausible``) - is declined by the sink and by this follow alike: no result, no
 state row, no detail. The match stays what it was, the next pass asks again, and the run's notes count the
 declined readings.
+
+A reading the table cannot hold (``LiveMatchState.impossible``: a negative minute, a minute past 200, a negative score)
+is declined the same way, match by match: nothing of that match's reading is stored - no fixture row, result, detail or
+state - and one match's bad reading never costs the others of its batch. On 25 Oct 2026, at 01:00 UTC, when the clocks
+changed, the provider sent minutes 59 short - -2 in a second half, -38, -37 and -44 in first halves, one match per
+minute - the table's CHECK refused the row, the batch's transaction rolled back (fixtures, details, states and the
+payload's own index row, for all 19 matches followed) and the pass ended 'partial' four minutes running. Now the match
+with the bad reading stays what it was until the next pass, the other 18 are stored as usual, and the run's notes
+count the declined readings. A data fault this check does not foresee (any other integrity or data error of the
+database) costs its batch of at most 20 matches, not the pass: the error is recorded on the run, the payload stays
+indexed, and the next batch goes on.
 """
 
 from __future__ import annotations
@@ -34,6 +45,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import psycopg
+import psycopg.errors
 from psycopg.rows import tuple_row
 
 from fbi.core import match_state
@@ -81,6 +93,12 @@ SELECT id FROM core.fixtures WHERE provider_fixture_id = ANY(%(ids)s) AND upper(
 """
 
 
+MINUTE_MAX = 200
+"""The largest minute core.fixture_live_states holds (CHECK live_state_minute_is_possible, migration 0041)."""
+SMALLINT_MAX = 32767
+"""Minute, added time and both scores are smallint columns."""
+
+
 @dataclass(frozen=True, slots=True)
 class LiveMatchState:
     provider_fixture_id: int
@@ -92,6 +110,18 @@ class LiveMatchState:
 
     def key(self) -> tuple[Any, ...]:
         return (self.status_short, self.elapsed, self.extra, self.goals_home, self.goals_away)
+
+    def impossible(self) -> str | None:
+        """Why the table cannot hold this reading, or None. The same limits as the table's own (the minute from 0 to
+        ``MINUTE_MAX``, no negative score, nothing past smallint), and a negative added time besides - which the table
+        would take but no match has. Declined, a reading like this never reaches the INSERT: refused there it would
+        roll back the whole batch (module docstring, 25 Oct 2026)."""
+        for name, value, high in (("elapsed", self.elapsed, MINUTE_MAX), ("extra", self.extra, SMALLINT_MAX),
+                                  ("goals_home", self.goals_home, SMALLINT_MAX),
+                                  ("goals_away", self.goals_away, SMALLINT_MAX)):
+            if value is not None and not 0 <= value <= high:
+                return f"{name} {value}"
+        return None
 
 
 def _int(v: Any) -> int | None:
@@ -130,7 +160,8 @@ def fixtures_to_follow(conn: psycopg.Connection, *, at: datetime) -> list[tuple[
 
 def write_states(conn: psycopg.Connection, states: Sequence[LiveMatchState], *,
                  observed_at: datetime, payload_hash: str) -> int:
-    """Append a row for each fixture whose state differs from its last one. Returns rows written."""
+    """Append a row for each fixture whose state differs from its last one. Returns rows written. A state the table
+    cannot hold (``LiveMatchState.impossible``) is skipped, whoever calls: the match keeps its last state."""
     if not states:
         return 0
     written = 0
@@ -140,7 +171,7 @@ def write_states(conn: psycopg.Connection, states: Sequence[LiveMatchState], *,
         ids = {int(a): int(b) for a, b in cur.fetchall()}
         for s in states:
             fixture_id = ids.get(s.provider_fixture_id)
-            if fixture_id is None:
+            if fixture_id is None or s.impossible() is not None:
                 continue
             cur.execute(
                 "SELECT status_short, elapsed, extra, goals_home, goals_away, observed_at "
@@ -177,6 +208,13 @@ class LiveMatchReport:
     premature_finals: int = 0
     """Readings of a match as finished, made sooner after kick-off than a match can last: declined, so nothing of them
     is stored (``fbi.core.match_state.final_is_plausible``). The follow keeps asking for the match."""
+    impossible_states: int = 0
+    """Readings whose minute or score the table cannot hold (a negative minute at the change of the clocks, 25 Oct
+    2026): declined like a premature final - nothing of them is stored, the match stays what it was, the rest of its
+    batch is stored as usual (``LiveMatchState.impossible``) and the next pass asks again."""
+    batches_failed: int = 0
+    """Batches the database refused for a reason the check above does not foresee (an integrity or data error): rolled
+    back to their savepoint, recorded in ``errors``, and the pass went on with the next batch."""
 
 
 STALE_SQL = """
@@ -392,22 +430,47 @@ async def _follow(conn: psycopg.Connection, provider: Any, follow: list[tuple[in
             counters.api_calls += 1
             counters.payloads_stored += ledger.record_payloads(run_id, [raw])
             observed_at = ledger.indexed_at(raw.payload_hash) or raw.fetched_at
-            outcome = apply_fixtures_payload(conn, provider, raw.body, payload_hash=raw.payload_hash,
-                                             fetched_at=observed_at, season_ids=season_ids)
+            readings = list(iter_live_states(raw.body))
+            impossible = [s for s in readings if s.impossible() is not None]
+            impossible_ids = frozenset(s.provider_fixture_id for s in impossible)
+            try:
+                # In a savepoint: a fault of the database in this batch (a value a table refuses) costs this batch of
+                # at most 20 matches, not the pass, and the payload's index row written above stays for whoever looks.
+                with conn.transaction():
+                    # A reading that cannot be true is declined everywhere - a final whistle the sink finds too early
+                    # (premature), a minute or a score the table cannot hold (impossible): no fixture row, no result,
+                    # no live state saying "FT 90'" on the board, no detail of a snapshot that contradicts itself. The
+                    # match stays what it was and the next pass asks again.
+                    outcome = apply_fixtures_payload(conn, provider, raw.body, payload_hash=raw.payload_hash,
+                                                     fetched_at=observed_at, season_ids=season_ids,
+                                                     skip_ids=impossible_ids)
+                    declined = outcome.premature_ids | impossible_ids
+                    rep = apply_fixture_details(conn, [d for d in details if d.provider_fixture_id not in declined],
+                                                payload_hash=raw.payload_hash, fetched_at=observed_at, run_id=run_id)
+                    written = write_states(conn, [s for s in readings if s.provider_fixture_id not in declined],
+                                           observed_at=observed_at, payload_hash=raw.payload_hash)
+                    if on_batch is not None:
+                        on_batch(batch, raw, run_id)
+            except (psycopg.errors.IntegrityError, psycopg.errors.DataError) as exc:
+                report.batches_failed += 1
+                message = f"batch of {len(batch)} fixtures not applied: {type(exc).__name__}: {exc}"[:500]
+                counters.errors.append(message)
+                report.errors.append(message)
+                log.error("live_match.batch_not_applied", payload_hash=raw.payload_hash, fixtures=len(batch),
+                          error=type(exc).__name__, detail=str(exc)[:300])
+                conn.commit()  # what the savepoint kept: the payload's index row
+                continue
             report.fixtures_updated += outcome.fixtures_updated
             report.results_written += outcome.results_written
-            # A reading the sink declined (a final whistle that cannot be true) is declined everywhere: no live state
-            # saying "FT 90'" on the board, no detail of a snapshot the provider has just contradicted.
-            declined = outcome.premature_ids
-            report.premature_finals += len(declined)
-            rep = apply_fixture_details(conn, [d for d in details if d.provider_fixture_id not in declined],
-                                        payload_hash=raw.payload_hash, fetched_at=observed_at, run_id=run_id)
+            report.premature_finals += len(outcome.premature_ids)
             report.detail_fixtures += rep.fixtures
-            report.states_written += write_states(
-                conn, [s for s in iter_live_states(raw.body) if s.provider_fixture_id not in declined],
-                observed_at=observed_at, payload_hash=raw.payload_hash)
-            if on_batch is not None:
-                on_batch(batch, raw, run_id)
+            report.states_written += written
+            if impossible:
+                report.impossible_states += len(impossible)
+                log.warning("live_match.impossible_state", payload_hash=raw.payload_hash,
+                            fetched_at=observed_at.isoformat(),
+                            fixtures=[{"provider_fixture_id": s.provider_fixture_id, "status": s.status_short,
+                                       "reading": s.impossible()} for s in impossible])
             conn.commit()
             with conn.cursor(row_factory=tuple_row) as cur:
                 cur.execute(ENDED_SQL, {"ids": batch, "ended": sorted(match_state.ENDED)})
@@ -418,9 +481,14 @@ async def _follow(conn: psycopg.Connection, provider: Any, follow: list[tuple[in
         counters.rows_updated = report.fixtures_updated + report.results_written
     finally:
         declined_note = f", {report.premature_finals} premature final(s) declined" if report.premature_finals else ""
-        ledger.close(run_id, counters, notes=f"{report.followed} followed, {report.requests} requests{declined_note}")
+        impossible_note = (f", {report.impossible_states} impossible reading(s) declined"
+                           if report.impossible_states else "")
+        failed_note = f", {report.batches_failed} batch(es) not applied" if report.batches_failed else ""
+        ledger.close(run_id, counters, notes=(f"{report.followed} followed, {report.requests} requests"
+                                              f"{declined_note}{impossible_note}{failed_note}"))
         conn.commit()
     log.info(f"{job_type}.done", followed=report.followed, requests=report.requests,
              states=report.states_written, fixtures_updated=report.fixtures_updated,
-             results=report.results_written, premature_finals=report.premature_finals)
+             results=report.results_written, premature_finals=report.premature_finals,
+             impossible_states=report.impossible_states, batches_failed=report.batches_failed)
     return report

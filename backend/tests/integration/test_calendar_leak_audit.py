@@ -74,7 +74,7 @@ def tampered(packet: Packet, change: Callable[[dict[str, Any]], None]) -> dict[s
 
 
 def test_the_rule_is_in_the_audit_and_the_version_says_so() -> None:
-    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v7" and RULE in (leakage.__doc__ or "")
+    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v8" and RULE in (leakage.__doc__ or "")
 
 
 def test_an_honest_packet_passes_one_check_per_side_and_per_match_cited(db: psycopg.Connection[Any], seed: Seed) -> None:
@@ -87,7 +87,7 @@ def test_an_honest_packet_passes_one_check_per_side_and_per_match_cited(db: psyc
 
     assert audited(db) == {"checked": 6, "violations": 0, "examples": []}, "2 sides, 3 matches played and 1 to come"
     rows = db.execute("SELECT version, n_checked, n_violations FROM intel.audit_checks WHERE rule = %s", (RULE,)).fetchall()
-    assert rows == [("leak-audit-v7", 6, 0)], "the run is kept in the ledger of the audit with its version"
+    assert rows == [("leak-audit-v8", 6, 0)], "the run is kept in the ledger of the audit with its version"
 
 
 def test_a_side_never_read_is_honest_when_it_says_so(db: psycopg.Connection[Any]) -> None:

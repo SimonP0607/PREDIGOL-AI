@@ -40,7 +40,7 @@ from typing import Any, Final, Literal
 from fbi.ai import claims, prompts, router
 from fbi.ai.config import TIERS, Tier
 from fbi.ai.contracts import CONTRACTS, schema_of
-from fbi.ai.contracts.base import CLAIM, OUTPUTS
+from fbi.ai.contracts.base import ASSESSMENT, CLAIM, COUNCIL, OUTPUTS
 from fbi.ai.contracts.mcp import SLICE_NAMES, PassKind
 from fbi.ai.idempotency import EFFORTS, Effort, TaskIdentity, Workspace
 from fbi.ai.pricing import PRICES
@@ -262,6 +262,14 @@ def _extract_v2() -> Definition:
     return Definition(prompts.EXTRACT_V2_VERSION, prompts.EXTRACT_V2_SYSTEM, CLAIM, schema_of(CLAIM))
 
 
+def _match_context() -> Definition:
+    return Definition(prompts.MATCH_CONTEXT_VERSION, prompts.MATCH_CONTEXT_SYSTEM, ASSESSMENT, schema_of(ASSESSMENT))
+
+
+def _match_assess() -> Definition:
+    return Definition(prompts.MATCH_ASSESS_VERSION, prompts.MATCH_ASSESS_SYSTEM, ASSESSMENT, schema_of(ASSESSMENT))
+
+
 def _postmortem() -> Definition:
     return Definition(prompts.POSTMORTEM_VERSION, prompts.POSTMORTEM_SYSTEM, prompts.POSTMORTEM_VERSION, prompts.POSTMORTEM_SCHEMA)
 
@@ -272,6 +280,14 @@ def _pick_postmortem() -> Definition:
 
 def _learning() -> Definition:
     return Definition(prompts.LEARNING_VERSION, prompts.LEARNING_SYSTEM, prompts.LEARNING_VERSION, prompts.LEARNING_SCHEMA)
+
+
+def _council() -> Definition:
+    return Definition(prompts.COUNCIL_VERSION, prompts.COUNCIL_SYSTEM, COUNCIL, schema_of(COUNCIL))
+
+
+def _council_opus() -> Definition:
+    return Definition(prompts.COUNCIL_OPUS_VERSION, prompts.COUNCIL_OPUS_SYSTEM, COUNCIL, schema_of(COUNCIL))
 
 
 AGENTS: Final[tuple[AgentSpec, ...]] = (
@@ -294,16 +310,21 @@ AGENTS: Final[tuple[AgentSpec, ...]] = (
               (BuiltTask("narrative", "low", _pick_postmortem, tier="bulk"), BuiltTask("loss_review", "medium", _pick_postmortem, tier="analysis"))),
     AgentSpec("learning_analyst", "The weekly lessons from the post-mortems; the Learning Analyst of phase 5 is its evolution.",
               (BuiltTask("analyst", "medium", _learning, tier="analysis"),)),
+    AgentSpec("match", "The Match Agent: signals and an evaluation per candidate for the families of goals and result; its context mode takes "
+              "over from brief-v8.",
+              (BuiltTask("context", router.SPECS["context"].effort, _match_context, model=router.MODELS[router.SPECS["context"].level]),
+               BuiltTask("evaluation", router.SPECS["evaluation"].effort, _match_assess, model=router.MODELS[router.SPECS["evaluation"].level])),
+              contract=ASSESSMENT, reads="match"),
+    AgentSpec("council", "The Council: the one verdict per selection of a match, in codes (cd-v1), from the compact view of the numbers, the assessments, the "
+              "contradictions and the evidence index. Sonnet reads every match; Opus only the cases a rule of router-v1 escalates (E1-E7); the Haiku arm of the "
+              "experiment (ma-v1-h) reads the same prompt, so the registry pins the task's own model.",
+              (BuiltTask("council", router.SPECS["council"].effort, _council, model=router.MODELS[router.SPECS["council"].level]),
+               BuiltTask("escalation", router.SPECS["escalation"].effort, _council_opus,
+                         model=router.MODELS[router.SPECS["escalation"].level])),
+              contract=COUNCIL, reads="council_view"),
 )
 
 PLANNED: Final[tuple[PlannedAgent, ...]] = (
-    PlannedAgent("match", "match-v1", "The Match Agent: signals and an evaluation per candidate for the families of goals and result; its context mode takes "
-                 "over from brief-v8.", 3, "aa-v1",
-                 (PlannedTask("context", "claude-haiku-5-5", "low", "match-context-v1"),
-                  PlannedTask("evaluation", "claude-haiku-5-5", "medium", "match-assess-v1")), reads="match"),
-    PlannedAgent("council", "council-v1", "The Council: the one verdict per selection, with reasons in code; Opus enters only by a rule of router-v1.", 3,
-                 "cd-v1", (PlannedTask("council", "claude-sonnet-5-5", "medium", "council-v1"),
-                           PlannedTask("escalation", "claude-opus-5-5", "medium", "council-opus-v1")), reads="council_view"),
     PlannedAgent("statistics", "stats-v1", "The Statistics Agent: corners and cards, in shadow.", 4, "aa-v1",
                  (PlannedTask("evaluation", "claude-haiku-5-5", "medium", "stats-assess-v1"),), reads="stats"),
     PlannedAgent("post_match_reviewer", "pmr-v1", "The Post-Match Reviewer: which signal of which agent was right, the class of the error, after settlement.", 5,
@@ -352,6 +373,20 @@ LEDGER: Final[tuple[Registration, ...]] = (
                         "and becomes the champion only by a row the owner signs.",
                  fingerprint="ag851f0d8c93",
                  parts={"extraction": Part("extract-v2", "16a3d6d616f2", "claim-v1", "732492401844")}),
+    Registration(agent="match", version="match-v1", registered_at=datetime(2026, 11, 3, 12, 0, tzinfo=UTC), decided_by="owner", phase="IA-3",
+                 reason="Built under the Plan Maestro IA the owner approved in full (phase 3, section 9): the Match Agent reads the match slice of mcp-v1 "
+                        "and answers in aa-v1, a context mode and an evaluation per candidate, both on Haiku 5.5. It is born CHALLENGER: it runs in "
+                        "shadow in the LAB workspace and its answers reach no decision until the owner signs a row in intel.promotions.",
+                 fingerprint="ag23a84c189f",
+                 parts={"context": Part("match-context-v1", "e055ea4d9bc1", "aa-v1", "ab5f098304ef"),
+                        "evaluation": Part("match-assess-v1", "f360df0b38ae", "aa-v1", "ab5f098304ef")}),
+    Registration(agent="council", version="council-v1", registered_at=datetime(2026, 11, 3, 11, 0, tzinfo=UTC), decided_by="owner", phase="IA-3",
+                 reason="Built under the Plan Maestro IA the owner approved in full (phase 3, section 11): the Council gives the one verdict per selection "
+                        "in cd-v1, Sonnet for every match and Opus only where a rule of router-v1 escalates; it is born CHALLENGER, runs in shadow in the "
+                        "LAB and becomes the champion only by a row the owner signs.",
+                 fingerprint="ag0ba76f3e1c",
+                 parts={"council": Part("council-v1", "25ba480edcbb", "cd-v1", "f9b614bec399"),
+                        "escalation": Part("council-opus-v1", "1eb30e6112e6", "cd-v1", "f9b614bec399")}),
 )
 """Oldest first, by agent; the last entry of an agent is its version in force. To change an agent - a prompt, a schema, a model, an effort - change
 it, add the entry below the last one of the agent and bump the label of the prompt that changed, in the same commit."""

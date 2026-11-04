@@ -196,6 +196,4 @@ def test_the_head_of_the_chain_is_this_migration_after_0111() -> None:
     assert revision is not None and revision.down_revision == "0111"
     assert script.get_revision("0111") is not None
     heads = script.get_heads()
-    # every head descends from 0112: it is the head, or a later migration follows it - by the chain, not by the number (the UX
-    # chain 0095..0102 hangs from 0113: the IA release reached production first)
-    assert all("0112" in {r.revision for r in script.iterate_revisions(h, "base")} for h in heads), heads
+    assert "0112" in heads or all(h > "0112" for h in heads), heads

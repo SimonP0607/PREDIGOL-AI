@@ -25,11 +25,13 @@ TABLE = re.compile(r"\bmodels\.match_forecasts\b|\bFROM\s+match_forecasts\b|\bJO
 
 NAMES_THE_TABLE = {
     "forecasting/match_forecast.py": "the writer: the only module that inserts, and the one that reads back its own rows",
-    "api/services/forecast.py": "the page of a match: the product's forecast and the Admin Console's preview",
+    "api/services/forecast.py": "the page of a match: the product's forecast (`forecast-v1`) and the Admin Console's preview, which also reads `family-v1` for a section of its own",
     "ai/packet.py": "the packet's `forecast` block: context a review or a brief may cite, never an input of a computation",
     "ai/package.py": "the `families` block of the `mcp-v1` package (IA phase 1): the forecasts of the counts (`family-v1`), read as of the pass's moment, that the Statistics Agent may cite in shadow - context, never an input of a computation",
     "intel/leakage.py": "the nightly proof (`forecast_known`) that no packet cited a forecast from after its moment",
     "families/score.py": "the scoreboard of the family forecasts (`family-v1`) after the matches: read-only, a measure of the research, never an input",
+    "familydecisions/decide.py": "the decision layer for a family (F11, shadow): reads the last `family-v1` forecast of each selection to see which the model finds valuable; "
+                          "the rows it writes are research under their own decision version, and the pipeline's decision layer does not import it",
     "research/trace.py": "the trace of the model code's promotions (F12): counts the stored forecasts per model version to say which code production used; read-only, never an input",
     "api/services/transparency.py": "«Cómo le va a PrediGol» (plan UX, A12): the forecast's calibration after the matches - the last forecast before kick-off against the result; read-only, never an input",
     "scripts/transparency_check.py": "the contrast of that page (A12): the same calibration counted by an independent query at each deploy; read-only",
@@ -37,7 +39,7 @@ NAMES_THE_TABLE = {
 
 IMPORTS_THE_WRITER = {
     "picks/pipeline.py": "runs the writer as a step of its own, in a savepoint, after the forecasts of the models",
-    "families/forecast.py": "the counts of F10 (halves, corners, cards): same table, version `family-v1` that the page of the match never reads",
+    "families/forecast.py": "the counts of F10 (halves, corners, cards): same table, version `family-v1` that the forecast of the page of the match never reads (only the Admin Console's preview does, apart)",
 }
 """(``api/services/forecast.py``, ``ai/packet.py`` and ``ai/package.py`` do not import it: they duplicate its constants and a test holds
 them equal, so that neither the API nor the AI layer depends on the worker's package.)"""

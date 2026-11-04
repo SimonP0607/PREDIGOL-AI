@@ -65,6 +65,7 @@ from fbi.api.repositories import Conn, fetch_all
 from fbi.api.services.forecast import VERSION as FORECAST_VERSION
 from fbi.api.switches import transparency_open
 from fbi.core.clock import now
+from fbi.core.decision_versions import DECISION_CORE
 from fbi.market import closing_value
 from fbi.picks.daily import DAY_TZ, product_day
 from fbi.userdata.records import period_bounds
@@ -132,7 +133,7 @@ WITH last AS (
     SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line)
            (d.kickoff_at AT TIME ZONE %(tz)s)::date AS day, d.filters, d.pick_id
       FROM intel.decisions d
-     WHERE d.known_at >= %(known_from)s AND d.known_at < %(stop)s
+     WHERE d.decision_version = %(decision_version)s AND d.known_at >= %(known_from)s AND d.known_at < %(stop)s
        AND d.kickoff_at >= %(start)s AND d.kickoff_at < %(stop)s AND d.known_at < d.kickoff_at
      ORDER BY d.fixture_id, d.market_key, d.selection, d.line, d.known_at DESC, d.id DESC
 )
@@ -321,7 +322,8 @@ def no_pick_days(conn: Conn, *, at: datetime) -> tuple[NoPickDays, int]:
     stops_qualified: dict[date, Counter[str]] = defaultdict(Counter)
     if first <= last:
         for r in fetch_all(conn, STOPS_SQL, {"tz": tz, "start": start, "stop": stop,
-                                             "known_from": start - timedelta(days=2)}):
+                                             "known_from": start - timedelta(days=2),
+                                             "decision_version": DECISION_CORE}):
             day = r["day"]
             measured[day] += int(r["n"])
             if r["stop"] is not None:

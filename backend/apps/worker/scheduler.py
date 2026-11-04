@@ -37,6 +37,10 @@ at worst, and a duplicated tick costs nothing at all.
   * ``ai_package`` (every 10 min)  the state of each match at the end of each pass (``fbi.ai.match_runs``, plan IA phase 1): the
     ``mcp-v1`` package derived from the packet the pass stored, its slices measured, one row of ``ai.match_runs``. Database only - no
     model, no search, no request, nothing paid - and nothing reads it yet. One query when nothing waits; ``FBI_AI_PACKAGE=0`` stops it.
+  * ``ai_orchestrate`` (every 5 min, ``FBI_AI_ORCHESTRATE_MINUTES``)  the shadow engines of plan IA phase 3 (``fbi.ai.orchestrator``): ``ma-v1``,
+    ``ma-v1-h`` and ``cs-v1`` over the sample of matches the analysis cycle has reviewed, in the LAB workspace; one row of ``ai.cycles``
+    (kind ``orchestrate``) with its report. Inert - no connection opened - until ``FBI_AI_ENGINES``, ``FBI_AI_SHADOW_SAMPLE`` and ``FBI_AI_AGENTS``
+    all say so; it takes no cycle lock and never raises into the clock; what it writes never reaches the decision layer.
   * ``ai_switches`` (every 10 min, the first look a minute after the worker starts)  the owner's words the worker runs with (the five switches, the
     mode, research v2, the model of each tier, the three envelopes), written to the ledger ``ai.feature_gates`` (gate ``switches``, plan IA,
     review of phase 2) when they are not the words of the newest row: an environment variable changed by hand leaves no row of its own, and Gate A
@@ -45,14 +49,17 @@ at worst, and a duplicated tick costs nothing at all.
   * ``intel_decide`` (every 15 min) / ``intel_nightly`` (07:50 Bogotá) / ``intel_weekly`` (Monday 04:40 Bogotá)
     PrediGol Intelligence (``fbi.intel``): the decision layer (ten filters, states, score, stake) on the next 36
     hours and the picks of the day of daily-set-v6; outcomes, post-mortems pm-v4, memory, calibration, the leakage
-    audit and the DAILY LEARNING REPORT; the market discovery engine. Shadow; database only.
+    audit and the DAILY LEARNING REPORT; the market discovery engine. Shadow; database only. While
+    ``FBI_FAMILY_DECISIONS`` is not ``off`` the same jobs carry the steps of the families (``family_decide_steps`` /
+    ``family_nightly_steps``: their decision once an hour, after the picks of the day, and their settlement).
   * ``user_narrative``  every 10 min (``FBI_USER_NARRATIVE_MINUTES``), only while ``FBI_USER_NARRATIVE`` is not off: the readers'
     narrative of the matches PrediGol Intelligence gave its final pass (plan UX, A11; ``fbi.narrative.job``), from the facts
     of the structured reading, checked sentence by sentence, with its own budget (``FBI_AI_USER_MONTHLY_BUDGET_USD``, 0 by
     default). Nothing of Intelligence is written; nothing of a reader is read.
   * ``family_forecasts``  every 3 hours (``FBI_FAMILY_FORECAST_MINUTES``): the goals of each half, the corners and the cards of the
     upcoming matches (``fbi.families``, plan F10), a negative binomial per team, written to the forecast table under ``family-v1``.
-    Research: no page reads that version. Database only; ``FBI_FAMILY_FORECASTS=0`` switches it off.
+    Research: the forecast of a match reads none of it; only the Admin Console's preview of a match shows it, in a section of its own.
+    Database only; ``FBI_FAMILY_FORECASTS=0`` switches it off.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
     trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
@@ -72,6 +79,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import importlib
 import os
 import signal
 import subprocess
@@ -80,6 +88,7 @@ import threading
 import time
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -291,6 +300,11 @@ AI_PACKAGE_MINUTES = int(os.environ.get("FBI_AI_PACKAGE_MINUTES", "10"))
 """How often the passes without a state are turned into one (``fbi.ai.match_runs.run``): the ``mcp-v1`` package of each, its slices measured,
 a row of ``ai.match_runs``. Database only - no model, no search, no request - and a single query when nothing waits. ``FBI_AI_PACKAGE=0``
 (or ``FBI_AI_MODE=off``) stops it; the rows already written stay."""
+AI_ORCHESTRATE_MINUTES = max(1, int(os.environ.get("FBI_AI_ORCHESTRATE_MINUTES", "5")))
+"""How often the orchestrator looks for matches to run the shadow engines on (``fbi.ai.orchestrator.run``, plan IA, phase 3): ``ma-v1``,
+``ma-v1-h`` and ``cs-v1`` over the matches the analysis cycle already reviewed, in the LAB workspace only. Inert until the owner's three words
+(``FBI_AI_ENGINES``, ``FBI_AI_SHADOW_SAMPLE``, ``FBI_AI_AGENTS``) all say so (``AiSettings.orchestrate``): then the job does not even open a
+connection. A value below 1 counts as 1."""
 AI_SWITCHES_MINUTES = 10
 """How often the worker looks at the owner's words it runs with and leaves a trace when they changed (``fbi.ai.gates.record_switches``): one
 query when nothing changed, one row when something did. The first look is one minute after the worker starts, so a change made in the environment
@@ -1183,6 +1197,8 @@ def _ai_batch_poll_now() -> None:
     try:
         with _connect() as conn:
             r = poll(conn, AiSettings.from_env(), at=now())
+        if r.abandoned:  # recorded and never sent, with no cycle running: the cycle that recorded them stopped
+            log.warning("ai.batch_unsent_abandoned", items=r.abandoned)
         if r.batches or r.errors:
             log.info("ai.batch_poll", batches=r.batches, ended=r.ended, waiting=r.waiting, items=r.items,
                      cost_usd=str(r.cost_usd), errors=len(r.errors), **r.counts)
@@ -1244,6 +1260,72 @@ async def _ai_package() -> None:
     await asyncio.to_thread(_ai_package_now)
 
 
+def _plain(value: Any) -> Any:
+    """``value`` as plain JSON: a Decimal is written as its text, a tuple or set as a list; nothing else changes."""
+    if isinstance(value, dict):
+        return {str(k): _plain(v) for k, v in value.items()}
+    if isinstance(value, list | tuple | set | frozenset):
+        return [_plain(v) for v in value]
+    if isinstance(value, Decimal):
+        return str(value)
+    return value
+
+
+def _orchestrate_cycle_report(data: dict[str, Any], *, cycle_id: int) -> Any:
+    """The orchestrator's report (``Report.to_json()``) as the record of its cycle (a ``CycleReport``): the whole report, as plain JSON, is what
+    ``ai.cycles.counts`` keeps; the cost goes to ``cost_usd``. A report that skipped the run is ``ok`` (nothing was wrong); one whose engines
+    failed open is ``partial`` when others ran and ``failed`` when none did."""
+    from fbi.ai.cycle import CycleReport
+
+    try:
+        cost = max(Decimal(0), Decimal(str(data.get("cost_usd") or 0)))
+    except ArithmeticError:
+        cost = Decimal(0)
+    failed, ran = data.get("failed_open"), data.get("ran")
+    status = "ok"
+    if not data.get("skipped") and isinstance(failed, int) and failed > 0:
+        status = "partial" if isinstance(ran, int) and ran > 0 else "failed"
+    return CycleReport(cycle_id=cycle_id, status=status, cost_usd=cost, detail=data)
+
+
+def _ai_orchestrate_now() -> None:
+    """The shadow engines of phase 3 (``fbi.ai.orchestrator.run``): ``ma-v1``, ``ma-v1-h`` and ``cs-v1`` over the sample of matches the analysis
+    cycle has reviewed, in the LAB workspace; what they write never reaches the decision layer. Never raises. Off - and then it does not even open a
+    connection - unless ``AiSettings.orchestrate`` (the three words ``FBI_AI_ENGINES``, ``FBI_AI_SHADOW_SAMPLE`` and ``FBI_AI_AGENTS``, and the layer
+    not off). It leaves a row of ``ai.cycles`` of kind ``orchestrate``; it does not take the cycle lock (it runs beside the analysis cycle) and
+    ``max_instances=1`` keeps it from running beside itself."""
+    from fbi.ai.config import AiSettings
+
+    try:
+        settings = AiSettings.from_env()
+        if not settings.orchestrate:
+            return
+        from fbi.ai.cycle import CycleReport, close_cycle, open_cycle
+
+        run = importlib.import_module("fbi.ai.orchestrator").run  # read only when the shadow is on, and by name: it is another branch's module
+        at = now()
+        with _connect() as conn:
+            cycle_id = open_cycle(conn, "orchestrate", at=at, settings=settings)
+            try:
+                data = _plain(run(conn, settings, at=at).to_json())
+                report = _orchestrate_cycle_report(data, cycle_id=cycle_id)
+            except Exception as exc:
+                why = f"{type(exc).__name__}: {exc}"[:300]
+                close_cycle(conn, cycle_id, CycleReport(cycle_id=cycle_id, status="failed", errors=[why]), at=at)
+                raise
+            close_cycle(conn, cycle_id, report, at=at)
+        counts = {k: v for k, v in data.items() if isinstance(v, int) and not isinstance(v, bool)}
+        log.info("ai.orchestrate", status=report.status, cycle=cycle_id, skipped=data.get("skipped"),
+                 cost_usd=str(report.cost_usd), budget_stop=data.get("budget_stop"), **counts)
+    except Exception as exc:
+        log.error("ai.orchestrate.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_orchestrate() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_orchestrate_now)
+
+
 def _research_monitor_now() -> None:
     """Audit + prospective -> memory and proposals. Never raises."""
     from fbi.research.loop import run_monitor
@@ -1289,17 +1371,47 @@ async def _research_weekly() -> None:
     await asyncio.to_thread(_research_weekly_now)
 
 
+def family_decide_steps(conn: psycopg.Connection[Any], at: datetime) -> dict[str, list[tuple[str, Callable[[], Any]]]]:
+    """The decision of the families (plan F11) as a step of the decide job: it runs AFTER the one that chooses the picks of the day, so that it
+    cannot delay them, and only while ``FBI_FAMILY_DECISIONS`` is not ``off``: with the switch off the job is what it was before the families
+    existed - no step, no key in its record. The intelligence package does not import the families (they sit above it); the worker, which
+    sits above both, puts them together."""
+    from fbi.familydecisions import decide
+
+    if decide.mode() == "off":
+        return {}
+    return {"select": [("families", lambda: decide.run_step(conn, at=at))]}
+
+
+def family_nightly_steps(conn: psycopg.Connection[Any], at: datetime) -> dict[str, list[tuple[str, Callable[[], Any]]]]:
+    """What the nightly job does for the families (plan F11), each step right after the one of the core layer it follows, and only while
+    ``FBI_FAMILY_DECISIONS`` is not ``off``: the settlement of the decisions they took (``family_outcomes``), once settled what became of each
+    one (``family_postmortems``) and what those post-mortems add up to (``family_memory``). The order is the one of the core layer: outcomes first,
+    then the post-mortems that read them, then the memory that sums them."""
+    from fbi.familydecisions import decide, memory, outcomes, postmortem
+
+    if decide.mode() == "off":
+        return {}
+    return {
+        "outcomes": [("family_outcomes", lambda: outcomes.run_step(conn, at=at))],
+        "postmortems": [("family_postmortems", lambda: postmortem.run_step(conn, at=at))],
+        "memory": [("family_memory", lambda: memory.run_step(conn, at=at))],
+    }
+
+
 def _intel_decide_now() -> None:
     """PrediGol Intelligence's decision layer. Never raises: it must never stop the worker."""
     from fbi.intel.cycle import run_decide
 
     try:
+        moment = now()
         with _connect() as conn:
-            r = run_decide(conn, at=now())
+            r = run_decide(conn, at=moment, after=family_decide_steps(conn, moment))
         if r.status != "skipped":
             d = r.counts.get("decide") or {}
             log.info("intel.decide", status=r.status, candidates=d.get("candidates"), written=d.get("written"),
-                     by_state=d.get("by_state"), select=r.counts.get("select"), errors=r.errors[:2])
+                     by_state=d.get("by_state"), select=r.counts.get("select"), families=r.counts.get("families"),
+                     errors=r.errors[:2])
     except Exception as exc:
         log.error("intel.decide.failed", error=f"{type(exc).__name__}: {exc}"[:300])
 
@@ -1314,8 +1426,9 @@ def _intel_nightly_now() -> None:
     from fbi.intel.cycle import run_nightly
 
     try:
+        moment = now()
         with _connect() as conn:
-            r = run_nightly(conn, at=now())
+            r = run_nightly(conn, at=moment, after=family_nightly_steps(conn, moment))
         log.info("intel.nightly", status=r.status, counts={k: v for k, v in r.counts.items() if not k.endswith("_ms")},
                  errors=r.errors[:3])
     except Exception as exc:
@@ -1696,6 +1809,9 @@ async def main() -> None:
     scheduler.add_job(_ai_package, "interval", minutes=AI_PACKAGE_MINUTES, id="ai_package", max_instances=1,
                       coalesce=True, misfire_grace_time=AI_PACKAGE_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=4))
+    scheduler.add_job(_ai_orchestrate, "interval", minutes=AI_ORCHESTRATE_MINUTES, id="ai_orchestrate", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_ORCHESTRATE_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=6))
     scheduler.add_job(_ai_switches, "interval", minutes=AI_SWITCHES_MINUTES, id="ai_switches", max_instances=1,
                       coalesce=True, misfire_grace_time=AI_SWITCHES_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=1))

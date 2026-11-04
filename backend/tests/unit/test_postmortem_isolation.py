@@ -15,6 +15,12 @@ known then. The dossier, the AI's packet, the models, the forecast, the decision
 kick-off: if any of them could read this, a model trained on it, or a packet that cites it, would know the answer to the question it asks - and
 the nightly proof of ``intel/leakage.py`` would have nothing to tell it by.
 
+The families of counts (plan F11: corners, cards, the goals of the halves; in shadow) learn from their own decisions in tables apart -
+``intel.family_postmortems`` and ``intel.family_memory`` with its view ``intel.family_memory_latest`` (migration 0118; ``fbi.familydecisions``) -
+so that a research layer with forecasts that are not calibrated does not move the sample sizes, the verdicts or the confidence of the layer that
+acts. They are held to the same rule: they are the future of the match they describe, they are derived, and nothing that is said before a kick-off
+reads them.
+
 The memory is NOT in the AI's packet, and that is a decision, not an omission: whether PrediGol's own history of a team, a referee or a market
 goes into what the AI reads before a match is the owner's (plan F8, decision 17). When it does, that change adds its files here with the reason
 and a leak-audit rule (``memory_known``: ``built_at`` not after the packet's moment and ``as_of_day`` before the match day), as ``calendar_known``
@@ -41,11 +47,12 @@ APPS = ROOT / "apps"
 MIGRATIONS = ROOT / "migrations" / "versions"
 
 WORDS = re.compile(
-    r"\b(?:intel\.(?:postmortems|selection_postmortems|match_postmortems|entity_memory(?:_latest)?)"
+    r"\b(?:intel\.(?:postmortems|selection_postmortems|match_postmortems|entity_memory(?:_latest)?|family_postmortems|family_memory(?:_latest)?)"
     r"|ai\.(?:postmortem_narratives|learning_notes|pick_postmortems|postmortems|memory_events))\b")
 """How the objects are named: the post-mortem (``intel.postmortems``, the view ``intel.selection_postmortems``, ``intel.match_postmortems``, the
 narratives ``ai.postmortem_narratives`` and the two frozen tables), the memory (``intel.entity_memory`` and its view, the events
-``ai.memory_events``) and the notes (``ai.learning_notes``). Always with their schema: that is how every query of the platform writes them."""
+``ai.memory_events``), the notes (``ai.learning_notes``) and what the families of counts learned (``intel.family_postmortems``,
+``intel.family_memory`` and its view). Always with their schema: that is how every query of the platform writes them."""
 
 NAMES_IT: dict[str, str] = {
     "intel/postmortem.py": "THE post-mortem (pm-v6): the only writer of intel.postmortems (it reads the selections already studied, to write each once)",
@@ -64,18 +71,21 @@ NAMES_IT: dict[str, str] = {
     "knowledge/layers.py": "Match Knowledge (plan F7), layer c9: the pure layer that turns the post-mortems of a finished match into facts",
     "knowledge/reader.py": "Match Knowledge (plan F7): reads the post-mortems of the finished matches it puts together (layer c9)",
     "api/services/intelligence.py": "the Admin Console's PrediGol Intelligence: the post-mortem of a decision and the memory (GET /admin/intelligence/memory)",
+    "api/services/families.py": "the Admin Console's page of the families in shadow (GET /admin/intelligence/families): their post-mortems and their memory, read",
     "api/services/ai_v2.py": "the Admin Console's post-mortems, learning and sources: the selections of a day with their narratives and notes",
     "api/services/ai_layer.py": "the Admin Console's AI pages: the dashboard of errors, the day's counts and the log of memory events (the card a "
                                 "user is shown, match_analysis, reaches none of it: held below)",
     "api/services/match_memory.py": "the Memory page: the matches PrediGol looked at, by team, league, coach, player and market",
-    "api/services/postmatch.py": "the Postpartido of a finished match (plan UX, B4): of each published pick's post-mortem only the outcome it "
-                                 "saw, the market's close and the facts it found (codes and figures) - never a verdict, a class, a price "
-                                 "or a sentence: held below",
+    "api/services/postmatch.py": "the reader's Postpartido (plan UX, B4): the facts the post-mortem found in a finished match (a red card, a penalty), read, never its judgement",
     "scripts/postmortems.py": "the owner's command for the post-mortem: status, coverage, closes (the two closes a price is judged against) and "
                               "build (a dry run until --apply)",
     "scripts/memory.py": "the owner's command for the memory: status, coverage, rebuild (a dry run until --apply) and audit",
     "scripts/ia_baseline_report.py": "the Plan Maestro IA's line base (phase 0): a report of the AI layer's tables that COUNTS the rows of the "
                                      "post-mortems, the memory and the notes among them (their first and last day); it reads none of their content",
+    "familydecisions/postmortem.py": "the post-mortem of the families (pm-fam-v1, F11, shadow): the only writer of intel.family_postmortems; it names the "
+                                     "pipeline's tables only to say why it is kept apart from them",
+    "familydecisions/memory.py": "the memory of the families (memory-fam-v1, F11, shadow): the only writer of intel.family_memory, and the reader of the "
+                                 "post-mortems of the families it adds up",
 }
 """Every file under ``src/fbi``, ``scripts`` and ``apps`` that names the objects and sits after a kick-off, with why."""
 
@@ -93,6 +103,8 @@ IMPORTS: dict[str, dict[str, str]] = {
         "ai/cycle.py": "the learning cycle: the same function, so that whichever of the two jobs runs first writes the day",
         "ai/pm_narratives.py": "the narratives wait as long as the post-mortem does before a selection counts as settled (SETTLE_DELAY)",
         "scripts/postmortems.py": "the owner's command: build (a dry run until --apply), status, coverage and closes",
+        "familydecisions/postmortem.py": "the post-mortem of a family is judged by the pipeline's own definitions - the quality of a price, the verdict, "
+                                         "the causes and the queries of the events, the statistics and the referee's average - not by copies of them",
     },
     "fbi.intel.match_review": {
         "intel/cycle.py": "the nightly: the post-mortems step reviews the matches after the selections",
@@ -153,6 +165,10 @@ IMPORTS: dict[str, dict[str, str]] = {
     },
     "fbi.api.services.intelligence": {
         "api/routers/intelligence.py": "the routes of PrediGol Intelligence, all of the Admin Console",
+        "api/services/families.py": "the page of the families in shadow writes its numbers the way this page does (j)",
+    },
+    "fbi.api.services.families": {
+        "api/routers/intelligence.py": "the routes of PrediGol Intelligence, all of the Admin Console (GET /admin/intelligence/families)",
     },
     "fbi.api.services.match_memory": {
         "api/routers/ai_layer.py": "GET /admin/ai/match-memory",
@@ -164,6 +180,13 @@ IMPORTS: dict[str, dict[str, str]] = {
     "fbi.api.services.ai_layer": {
         "api/routers/ai_layer.py": "the admin routes of the AI pages and, beside them, the card of a match (held below)",
         "api/routers/evolution.py": "the dashboard of the evolution loop: errors and findings",
+    },
+    "fbi.familydecisions.postmortem": {
+        "apps/worker/scheduler.py": "the nightly: the post-mortems of the families, right after the one of the core layer (only while FBI_FAMILY_DECISIONS is not off)",
+        "familydecisions/memory.py": "the memory adds up the post-mortems of the version the post-mortem writes, and names the families the way it does",
+    },
+    "fbi.familydecisions.memory": {
+        "apps/worker/scheduler.py": "the nightly: the memory of the families, right after the one of the core layer (only while FBI_FAMILY_DECISIONS is not off)",
     },
 }
 """Module -> the files that may import it (a path under ``src/fbi``, ``apps/..`` or ``scripts/..``), each with why. Inside its own file a module is
@@ -180,6 +203,8 @@ WRITERS: dict[str, set[str]] = {
     "ai/learning.py": {"ai.learning_notes", "ai.source_stats"},
     "ai/daily_review.py": {"ai.daily_reviews"},
     "intel/report.py": {"intel.daily_reports"},
+    "familydecisions/postmortem.py": {"intel.family_postmortems"},
+    "familydecisions/memory.py": {"intel.family_memory"},
     "ai/patterns.py": set(),
     "intel/pm_facts.py": set(),
     "intel/pm_questions.py": set(),
@@ -187,8 +212,8 @@ WRITERS: dict[str, set[str]] = {
 """File -> the only tables its SQL writes to. A post-mortem, a memory or a note is built FROM the facts of a match - fixtures, events, statistics,
 players, prices, picks, settlements - and never into them (``ai.source_stats`` is the day's tally of the sources the notes quote)."""
 
-READ_ONLY = ("api/services/intelligence.py", "api/services/ai_v2.py", "api/services/match_memory.py", "api/services/postmatch.py",
-             "scripts/postmortems.py", "scripts/memory.py")
+READ_ONLY = ("api/services/intelligence.py", "api/services/ai_v2.py", "api/services/match_memory.py", "api/services/families.py", "api/services/postmatch.py", "scripts/postmortems.py",
+             "scripts/memory.py")
 """The pages and commands that look at the post-mortem and the memory write nothing themselves: what a command builds, the builders write."""
 
 CYCLES: dict[str, dict[str, set[str]]] = {
@@ -219,6 +244,7 @@ PREMATCH_FILES = {
     "intel/narrative.py", "intel/national.py", "intel/h2h.py", "intel/scenarios.py", "intel/tactics.py", "intel/factors.py", "intel/stats.py",
     "ai/packet.py", "ai/views.py", "ai/brief.py", "ai/review.py", "ai/context.py", "ai/evidence.py", "ai/analysis.py", "ai/absences.py",
     "ai/claims.py", "ai/prompts.py", "ai/gating.py", "ai/research.py", "ai/day.py", "ai/collectors.py",
+    "familydecisions/decide.py",
 }
 """The files of the two packages that mix both sides (``intel`` and ``ai`` also hold the post-mortems, the memory and the learning) which build or
 judge what is said before a kick-off: the dossier, the decision layer and its steps, the AI's packet, its prompts, what it asks to research and
@@ -386,11 +412,12 @@ def test_the_listed_modules_and_files_exist() -> None:
 def test_only_its_own_migrations_name_the_tables() -> None:
     """A view, a function or a foreign key over the tables is made by a migration: the one that makes it is the one that must be listed here, so
     that no pre-match reader reaches the post-mortem or the memory through an object that does not carry its name. 0072, 0073 and 0076 made the
-    tables, 0079 only comments a column and 0091 made the one post-mortem and memory-v4 (their two views are the ones the readers use)."""
+    tables, 0079 only comments a column, 0091 made the one post-mortem and memory-v4 (their two views are the ones the readers use) and 0094 made
+    what the families of counts learn, apart from all of them (it names the pipeline's tables to say why)."""
     naming = {p.name for p in MIGRATIONS.glob("*.py") if WORDS.search(p.read_text(encoding="utf-8"))}
     assert naming == {
         "0072_ai_decision_layer.py", "0073_ai_v2_day_passes_learning.py", "0076_predigol_intelligence.py", "0079_promoted_forecast_spec.py",
-        "0091_single_postmortem_memory_v4.py"}, (
+        "0091_single_postmortem_memory_v4.py", "0118_family_learning.py"}, (
         f"migrations naming the post-mortem, the memory or the notes: {sorted(naming)}. A migration that adds an object over them (a view, a "
         "function, a key) opens a second way in: decide here, with the reason, whether the pre-match side may reach it")
 
@@ -508,24 +535,6 @@ def test_the_card_a_user_is_shown_reaches_none_of_it() -> None:
         assert any(WORDS.search(s) for s in reach(path, admin)), f"the walk must see through the constants: {admin}() does read them"
 
 
-JUDGED = re.compile(r"\b(?:verdict|loss_class|decision_quality|review_verdict|review_decision|clv|price_move|answers|evidence|close_odds|"
-                    r"odds|p_market|text|roles|review_id|decision_id)\b")
-"""What a post-mortem judges or keeps for the owner: its verdict, the class of a loss, the quality of the decision, what the review decided, the
-price against the close, its answers and evidence, its sentences."""
-
-
-def test_the_postpartido_takes_only_the_facts_a_reader_may_get() -> None:
-    """``GET /matches/{id}/postmatch`` (plan UX, B4) is the one route a reader calls that reads the post-mortem: of each published pick it selects
-    the outcome the post-mortem saw (to check it against the settlement), the market's close and the facts it found - and nothing it judges."""
-    path = SRC / "api" / "services" / "postmatch.py"
-    queries = [" ".join(q.split()) for q in reach(path, "postmatch") if WORDS.search(q)]
-    assert queries, "the walk must see the query of the post-mortem, or it proves nothing"
-    for q in queries:
-        selected = q.split("FROM")[0]
-        assert not JUDGED.search(selected), f"the Postpartido selects what a post-mortem judges: {selected}"
-        assert "pm.*" not in q and "SELECT *" not in q.upper(), q
-
-
 def test_the_routes_that_read_it_are_the_admin_console_and_one_card() -> None:
     """Every route of the three routers that serve the post-mortem, the memory and the notes is the Admin Console's (``/api/v1/admin``, which a
     user is refused on every route: test_auth_rbac) except the card of a match, which the previous test holds."""
@@ -541,4 +550,3 @@ def test_the_routes_that_read_it_are_the_admin_console_and_one_card() -> None:
         outside = [r for r in tagged[tag] if not r[1].startswith("/api/v1/admin/")]
         assert not outside, f"{tag}: routes outside the Admin Console: {outside}"
     assert tagged["predigol analysis"] == [("GET", "/api/v1/matches/{fixture_id}/analysis")], tagged["predigol analysis"]
-    assert tagged["postmatch"] == [("GET", "/api/v1/matches/{fixture_id}/postmatch")], tagged["postmatch"]

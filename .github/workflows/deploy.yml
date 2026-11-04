@@ -1,0 +1,171 @@
+name: Deploy
+
+# Plan CI/CD, phase C4. A button, not an automatic push: a person with write access presses "Run workflow" on `main`, and then
+# GitHub waits for the owner TWICE, in the `production` environment (required reviewer):
+#   1. `prepare`  builds the kit from this commit, sends it to the server through the restricted deploy key and runs the read-only precheck.
+#                 mode=rehearsal ends here and discards the kit: nothing in production moved.
+#   2. `go`       (mode=deploy only) starts the chain on the server: backup + restore test, deploy, smoke, verify. Waits for it and fails if it stops.
+# The deploy key can only talk to predigol-gh-deploy on the server (receive / precheck / start / status / discard and the read-only git fetch
+# of the two checkouts); it is not a shell. The key, the host and the host key live in the `production` environment, so a job that
+# does not wait for that approval cannot even read them.
+
+on:
+  workflow_dispatch:
+    inputs:
+      rel:
+        description: 'Release name: lowercase letters, digits, dashes (e.g. f11, ci-c4)'
+        required: true
+        type: string
+      mode:
+        description: 'rehearsal = build, send, precheck, discard. deploy = also start the chain (second approval)'
+        required: true
+        type: choice
+        options: [rehearsal, deploy]
+        default: rehearsal
+      parts:
+        description: 'Which parts go to production'
+        required: true
+        type: choice
+        options: ['backend,web', 'backend', 'web']
+        default: 'backend,web'
+      spec:
+        description: 'Optional: path (in the repository) of the release spec JSON, e.g. backend/deploy/release/specs/f11.json'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: The commit passed the CI
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gate.sh (Backend CI and Web CI green for these trees)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PARTS: ${{ inputs.parts }}
+        run: bash backend/deploy/release/gate.sh --head "$GITHUB_SHA" --parts "$PARTS"
+
+  prepare:
+    name: Build, send and precheck (needs the owner's approval)
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
+    outputs:
+      kit: ${{ steps.build.outputs.kit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Deploy key and pinned host key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+        run: bash backend/deploy/release/ci_ssh_setup.sh
+      - name: Build the kit
+        id: build
+        env:
+          REL: ${{ inputs.rel }}
+          PARTS: ${{ inputs.parts }}
+          SPEC: ${{ inputs.spec }}
+        run: |
+          set -euo pipefail
+          args=(--rel "$REL" --head "$GITHUB_SHA" --from-server predigol-gh --parts "$PARTS" --out "$RUNNER_TEMP/kits")
+          if [[ -n "$SPEC" ]]; then
+            [[ "$SPEC" =~ ^[A-Za-z0-9._/-]+$ && "$SPEC" != *..* && -f "$SPEC" ]] || { echo "the spec '$SPEC' is not a file of this repository"; exit 1; }
+            args+=(--spec "$SPEC")
+          fi
+          bash backend/deploy/release/build_kit.sh "${args[@]}"
+          kit="$(ls -d "$RUNNER_TEMP"/kits/*-"$REL" | head -n 1)"
+          echo "kit=$(basename "$kit")" >> "$GITHUB_OUTPUT"
+          echo "KIT_DIR=$kit" >> "$GITHUB_ENV"
+      - name: Send the kit to the server
+        run: bash backend/deploy/release/ship.sh --host predigol-gh --kit "$KIT_DIR" --gate
+      - name: Precheck (read-only; waits like the chain does while the server is busy)
+        shell: bash   # explicit bash = -eo pipefail: a failing precheck must fail the step even through `tee`
+        env:
+          KIT_NAME: ${{ steps.build.outputs.kit }}
+        run: bash backend/deploy/release/ci_precheck.sh predigol-gh "$KIT_NAME" 2>&1 | tee "$RUNNER_TEMP/precheck.txt"
+      - name: Summary for the approver of the next step
+        if: always()
+        env:
+          KIT_NAME: ${{ steps.build.outputs.kit }}
+          MODE: ${{ inputs.mode }}
+          PARTS: ${{ inputs.parts }}
+        run: |
+          {
+            echo "## Kit \`$KIT_NAME\`"
+            echo "- commit: \`$GITHUB_SHA\`"
+            echo "- mode: \`$MODE\`, parts: \`$PARTS\`"
+            if [[ -f "${KIT_DIR:-/nonexistent}/RELEASE.json" ]]; then
+              echo "- sha256 of SHA256SUMS: \`$(sha256sum "$KIT_DIR/SHA256SUMS" | cut -c1-16)\`"
+              echo '```json'; head -c 2500 "$KIT_DIR/RELEASE.json"; echo; echo '```'
+            fi
+            echo '### Precheck'; echo '```'; tail -n 40 "$RUNNER_TEMP/precheck.txt" 2> /dev/null || echo "(no precheck output)"; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Discard the kit (rehearsal, or the job failed)
+        if: always() && steps.build.outputs.kit != '' && (inputs.mode == 'rehearsal' || failure() || cancelled())
+        env:
+          KIT_NAME: ${{ steps.build.outputs.kit }}
+        run: ssh predigol-gh "discard $KIT_NAME" || true
+      - name: Remove the key from the runner
+        if: always()
+        run: rm -f ~/.ssh/predigol_gh_deploy ~/.ssh/config ~/.ssh/known_hosts_predigol
+
+  go:
+    name: Start the chain on the server (second approval)
+    needs: prepare
+    if: inputs.mode == 'deploy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy key and pinned host key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+        run: bash backend/deploy/release/ci_ssh_setup.sh
+      - name: Start the chain and follow it
+        env:
+          KIT: ${{ needs.prepare.outputs.kit }}
+        run: |
+          set -uo pipefail
+          [[ "$KIT" =~ ^[0-9]{8}T[0-9]{4}Z-[a-z0-9][a-z0-9-]*$ ]] || { echo "bad kit name"; exit 1; }
+          ssh predigol-gh "start $KIT" || exit 1
+          bad=0
+          for i in $(seq 1 170); do
+            sleep 60
+            if out="$(ssh predigol-gh "status $KIT" 2> /dev/null)"; then
+              bad=0
+              state="$(head -n 1 <<< "$out")"
+              echo "[$i] $state"
+              case "$state" in
+                "STATE: deployed"*) echo "$out" | tail -n 8; echo "### Deployed" >> "$GITHUB_STEP_SUMMARY"; echo "\`$state\`" >> "$GITHUB_STEP_SUMMARY"; exit 0 ;;
+                "STATE: stopped"*) echo "$out"; { echo "### The chain STOPPED"; echo '```'; echo "$out"; echo '```'; echo "Nothing is rolled back by itself: read chain.log on the server and decide."; } >> "$GITHUB_STEP_SUMMARY"; exit 1 ;;
+              esac
+            else
+              bad=$((bad + 1)); echo "[$i] no answer from the server ($bad)"
+              [[ $bad -lt 10 ]] || { echo "the server did not answer 10 times in a row: look at it by hand (the chain keeps running there)"; exit 1; }
+            fi
+          done
+          echo "still running after 170 minutes: look at it by hand (the chain keeps running there)"; exit 1
+      - name: Remove the key from the runner
+        if: always()
+        run: rm -f ~/.ssh/predigol_gh_deploy ~/.ssh/config ~/.ssh/known_hosts_predigol

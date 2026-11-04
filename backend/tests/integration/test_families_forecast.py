@@ -12,11 +12,15 @@ from typing import Any
 import numpy as np
 import psycopg
 import pytest
+from fastapi.testclient import TestClient
 
+from fbi.api.app import create_app
+from fbi.api.deps import get_db
 from fbi.api.services import forecast as page
 from fbi.families import forecast, versioning
 from fbi.families.fit import OUTCOME_KNOWN_AFTER
 from tests.integration.conftest import Seed
+from tests.integration.signed_in import SAME_SITE, signed_in
 
 from .knowledge_world import World
 
@@ -30,6 +34,9 @@ CATALOGUE = (("OU_1H", 2, True), ("1X2_1H", 3, False), ("HTFT", 9, False), ("HSH
 WRITTEN = {key for key, _, _ in CATALOGUE}
 FAMILY_OF = {"OU_1H": "GOALS_HALF", "1X2_1H": "GOALS_HALF", "HTFT": "GOALS_HALF", "HSH": "GOALS_HALF", "CORNERS_OU": "CORNERS",
              "CORNERS_OU_HOME": "CORNERS", "CORNERS_1X2": "CORNERS", "CARDS_OU": "CARDS", "YELLOW_OU": "YELLOW"}
+RULE_OF = {"OU_1H": "goals_1h@v1", "1X2_1H": "goals_1h@v1", "HTFT": "goals_halves@v1", "HSH": "goals_halves@v1",
+           "CORNERS_OU": "corners_ft@v1", "CORNERS_OU_HOME": "corners_ft@v1", "CORNERS_1X2": "corners_ft@v1",
+           "CARDS_OU": "cards_lines_ft@v1", "YELLOW_OU": "yellow_ft@v1"}
 
 
 @pytest.fixture()
@@ -134,14 +141,76 @@ def test_every_family_states_the_markets_the_catalogue_has_under_a_version_of_it
     assert {r[8] for r in rows} == {s.model for s in forecast.SPECS}
 
 
-def test_the_page_of_the_forecast_of_a_match_sees_none_of_it(db: psycopg.Connection[Any], w: World) -> None:
+def test_the_page_of_the_forecast_of_a_match_sees_none_of_it_and_the_preview_has_a_section_of_its_own(
+        db: psycopg.Connection[Any], w: World, monkeypatch: pytest.MonkeyPatch) -> None:
     catalogue(db)
     played(w)
     fid = upcoming(w)
     run(db, [fid])
-    assert stored(db, fid)
-    body = page.match_forecast(db, fid, preview=True, at=AT + timedelta(hours=1)).data
-    assert body is not None and not body.forecast.data, "the page reads forecast-v1 and nothing else"
+    rows = stored(db, fid)
+    assert rows
+    seen = AT + timedelta(hours=1)
+    body = page.match_forecast(db, fid, preview=True, at=seen).data
+    assert body is not None and not body.forecast.data, "the forecast of the match reads forecast-v1 and nothing else"
+
+    # the preview gets what the families stored, whole, regrouped by family, market and line - and not a number more
+    assert body.families is not None and body.families.status == "ok"
+    markets = body.families.data
+    assert {m.market: m.family for m in markets} == FAMILY_OF
+    assert {m.market: m.rule for m in markets} == RULE_OF, "each market says the rule that grades a bet on it"
+    assert {m.model for m in markets} == {s.model for s in forecast.SPECS}
+    assert {m.calibration for m in markets} == {"UNCALIBRATED"}
+    shown = sorted((m.market, float(ln.line), o.selection, float(o.probability)) for m in markets for ln in m.lines for o in ln.outcomes)
+    assert shown == sorted((r[0], float(r[1]), r[2], float(r[3])) for r in rows), "every stored outcome is on the page, once"
+    for m in markets:
+        assert [ln.line for ln in m.lines] == sorted(ln.line for ln in m.lines), "from the lowest line"
+        for ln in m.lines:
+            assert sum(float(o.probability) for o in ln.outcomes) == pytest.approx(1.0, abs=1e-4), (m.market, ln.line)
+            assert sum(1 for o in ln.outcomes if o.likely) == 1
+            assert all(o.low is None and o.high is None and o.model_probability is None for o in ln.outcomes), "no interval and no second number"
+            assert all(o.fair_odds is not None and abs(float(o.fair_odds) - 1 / float(o.probability)) <= 0.005 for o in ln.outcomes)
+    assert {float(ln.line) for m in markets if m.market == "CORNERS_OU" for ln in m.lines} == {8.5, 9.5, 10.5, 11.5, 12.5}
+
+    # said at a moment: before the families said it there is nothing, and the section says so
+    before = page.match_forecast(db, fid, preview=True, at=AT - timedelta(hours=1)).data
+    assert before is not None and before.families is not None
+    assert (before.families.status, before.families.code, before.families.data) == ("empty", "no_family_forecast", [])
+
+    # a user never gets the section, whether or not users see the forecast of the product
+    for users in ("0", "1"):
+        monkeypatch.setenv(page.USERS_SWITCH, users)
+        answer = page.match_forecast(db, fid, preview=False, at=seen)
+        assert answer.data is None or (answer.data.families is None and not answer.data.forecast.data)
+
+
+def test_the_route_gives_the_families_to_the_admin_preview_and_to_nobody_else(
+        db: psycopg.Connection[Any], w: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    catalogue(db)
+    played(w)
+    fid = upcoming(w)
+    run(db, [fid])
+    monkeypatch.setattr(page, "now", lambda: AT + timedelta(hours=1))
+    monkeypatch.setenv(page.USERS_SWITCH, "1")  # users may see the forecast of the product: that is not this
+
+    def get(role: str, preview: bool) -> Any:
+        app = signed_in(create_app(), role)
+        app.dependency_overrides[get_db] = lambda: db
+        return TestClient(app, headers=SAME_SITE).get(f"/api/v1/matches/{fid}/forecast" + ("?preview=shadow" if preview else ""))
+
+    admin = get("SUPER_ADMIN", True)
+    assert admin.status_code == 200
+    section = admin.json()["data"]["families"]
+    assert section["status"] == "ok" and {m["market"] for m in section["data"]} == WRITTEN
+    corners = next(m for m in section["data"] if m["market"] == "CORNERS_OU")
+    assert (corners["family"], corners["rule"], corners["calibration"]) == ("CORNERS", "corners_ft@v1", "UNCALIBRATED")
+    assert [float(ln["line"]) for ln in corners["lines"]] == [8.5, 9.5, 10.5, 11.5, 12.5]
+    assert admin.json()["data"]["forecast"]["data"] == [], "and the forecast of the match, beside it, has none of it"
+
+    for response in (get("USER", False), get("USER", True)):
+        assert "CORNERS_OU" not in response.text and "family-" not in response.text and "corners_ft" not in response.text
+    user = get("USER", False)
+    assert user.status_code == 200 and user.json()["data"]["families"] is None and user.json()["data"]["forecast"]["data"] == []
+    assert get("USER", True).status_code == 403, "the preview is not a user's to ask for"
 
 
 def test_the_upcoming_matches_are_found_when_none_is_named(db: psycopg.Connection[Any], w: World) -> None:

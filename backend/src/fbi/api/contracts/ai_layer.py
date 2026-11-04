@@ -163,7 +163,8 @@ class ReviewRow(Contract):
     edge: Decimal | None
     decision: Decision
     confidence: Decimal
-    engine: str
+    engine: str = Field(description="Production: rules, llm, combined. Shadow (plan IA phase 3; never read by the decision layer): ma-v1, ma-v1-h, "
+                                    "cs-v1. A free text on purpose: an engine this contract does not know yet must not turn a listing into an error.")
     engine_version: str
     model: str | None
     reason: str | None

@@ -29,6 +29,7 @@ from fbi.api.services import transparency as service
 from fbi.api.services.forecast import VERSION as FORECAST_VERSION
 from fbi.core.clock import now
 from fbi.core.config import settings
+from fbi.core.decision_versions import DECISION_CORE
 from fbi.market import closing_value
 
 PERIOD_SQL = """
@@ -92,7 +93,7 @@ WITH ranked AS (
            row_number() OVER (PARTITION BY d.fixture_id, d.market_key, d.selection, d.line
                               ORDER BY d.known_at DESC, d.id DESC) AS rn
       FROM intel.decisions d
-     WHERE d.known_at < d.kickoff_at
+     WHERE d.decision_version = %(decision_version)s AND d.known_at < d.kickoff_at
        AND d.kickoff_at >= (%(first)s::date::timestamp AT TIME ZONE 'America/Bogota')
        AND d.kickoff_at < ((%(last)s::date + 1)::timestamp AT TIME ZONE 'America/Bogota')
 ), latest AS (
@@ -216,7 +217,7 @@ def check(conn: psycopg.Connection[Any], *, tz: str, at: datetime) -> list[Misma
     stops: dict[Any, dict[tuple[str, bool], int]] = {}
     measured: dict[Any, int] = {}
     if first <= last:
-        for r in _rows(conn, DAY_STOPS_SQL, {"first": first, "last": last}):
+        for r in _rows(conn, DAY_STOPS_SQL, {"first": first, "last": last, "decision_version": DECISION_CORE}):
             measured[r["day"]] = measured.get(r["day"], 0) + int(r["n"])
             if r["stop"] is not None:
                 slot = (str(r["stop"]), bool(r["qualified"]))

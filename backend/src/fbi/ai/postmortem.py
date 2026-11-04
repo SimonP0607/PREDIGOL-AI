@@ -56,11 +56,12 @@ SELECT DISTINCT f.id, f.kickoff_at
   FROM core.fixtures f JOIN core.fixture_results r ON r.fixture_id = f.id
  WHERE f.kickoff_at >= %(since)s AND f.kickoff_at <= %(until)s AND f.status_group = 'finished'
    AND r.reg_goals_home IS NOT NULL AND r.reg_goals_away IS NOT NULL
-   AND EXISTS (SELECT 1 FROM ai.pick_reviews pr WHERE pr.fixture_id = f.id)
+   AND EXISTS (SELECT 1 FROM ai.pick_reviews pr WHERE pr.fixture_id = f.id AND pr.engine IN ('rules', 'llm', 'combined'))
    AND NOT EXISTS (SELECT 1 FROM ai.postmortems pm WHERE pm.fixture_id = f.id AND pm.version = %(version)s)
  ORDER BY f.kickoff_at
  LIMIT %(limit)s
 """
+"""The finished matches a review of production read: one only the shadow of phase 3 reviewed has nothing here to study (and writes no memory)."""
 
 
 def _rows(conn: psycopg.Connection[Any], sql: str, params: dict[str, Any]) -> list[dict[str, Any]]:

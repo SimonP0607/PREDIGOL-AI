@@ -36,6 +36,8 @@ import esOnboarding from "@/locales/es/onboarding.json";
 import esSupport from "@/locales/es/support.json";
 import esPush from "@/locales/es/push.json";
 import esExplain from "@/locales/es/explain.json";
+import esFamilies from "@/locales/es/families.json";
+import esStorage from "@/locales/es/storage.json";
 import enAdmin from "@/locales/en/admin.json";
 import enAuth from "@/locales/en/auth.json";
 import enCommon from "@/locales/en/common.json";
@@ -69,6 +71,8 @@ import enOnboarding from "@/locales/en/onboarding.json";
 import enSupport from "@/locales/en/support.json";
 import enPush from "@/locales/en/push.json";
 import enExplain from "@/locales/en/explain.json";
+import enFamilies from "@/locales/en/families.json";
+import enStorage from "@/locales/en/storage.json";
 
 export type Locale = "es" | "en";
 
@@ -111,6 +115,8 @@ export const CATALOGS: Record<Locale, Catalog> = {
     support: esSupport,
     push: esPush,
     explain: esExplain,
+    families: esFamilies,
+    storage: esStorage,
   },
   en: {
     admin: enAdmin,
@@ -146,5 +152,7 @@ export const CATALOGS: Record<Locale, Catalog> = {
     support: enSupport,
     push: enPush,
     explain: enExplain,
+    families: enFamilies,
+    storage: enStorage,
   },
 };

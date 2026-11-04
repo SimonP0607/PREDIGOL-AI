@@ -29,7 +29,9 @@ The gate ``switches`` (review of phase 2, M5) is not a gate: nothing waits for i
 words - the switches, the models, the envelopes - as the worker holds them (``record_switches``: a row only when they differ from the newest row).
 An environment variable changed by hand writes no gate row of its own, so Gate A could not tell which optimisation had been in force during its
 window; with this ledger a change of any word is a day the configuration changed, and what was in force is read from the ledger, not from the
-process that happens to evaluate (``fbi.ai.gate_a``).
+process that happens to evaluate (``fbi.ai.gate_a``). The three words of the shadow of phase 3 (engines, sample, agents) enter the ledger only
+once the owner moves them from their default (``shadow_words``): the day they are switched on is a day the configuration changed, and the day the
+code that knows them is deployed is not.
 
 Nothing here reads a key and nothing changes a probability, a threshold or a pick."""
 
@@ -120,9 +122,25 @@ def _figure(value: Decimal) -> str:
     return format(value.normalize(), "f")
 
 
+def shadow_words(settings: AiSettings) -> dict[str, str]:
+    """The owner's three words of phase 3 (``FBI_AI_ENGINES``, ``FBI_AI_SHADOW_SAMPLE``, ``FBI_AI_AGENTS``) - only the ones that are not at their
+    default. A word at its default is not written: the words of a worker that has not been told about the shadow are the words it wrote before
+    phase 3 existed, so putting the new code in place is not a change of the owner's words (Gate A anchors its window on the last such change),
+    and switching the shadow on - or taking a word back to its default, which the ledger reads as ``-> None`` - is one."""
+    words: dict[str, str] = {}
+    if settings.shadow_engines:
+        words["engines"] = ",".join(settings.engines)
+    if settings.shadow_sample > 0:
+        words["shadow_sample"] = _figure(settings.shadow_sample)
+    if settings.agents:
+        words["agents"] = ",".join(settings.agents)
+    return words
+
+
 def switch_words(settings: AiSettings) -> dict[str, Any]:
     """The owner's words that decide what the layer does, exactly as the running process holds them: the mode, the five switches, the package
-    job, research v2, the model of each tier and the three monthly envelopes. Words, model names and figures - never a key, a URL or a label."""
+    job, research v2, the model of each tier and the three monthly envelopes - and, once the owner has moved them, the words of the shadow of
+    phase 3 (``shadow_words``). Words, model names and figures - never a key, a URL or a label."""
     return {
         "mode": settings.mode,
         "package": settings.package,
@@ -131,6 +149,7 @@ def switch_words(settings: AiSettings) -> dict[str, Any]:
         "models": {tier: tm.model for tier in TIERS if (tm := settings.tiers.get(tier)) is not None},
         "budgets_usd": {"production": _figure(settings.monthly_budget), "lab": _figure(settings.lab_monthly_budget),
                         "exa": _figure(settings.exa_monthly_budget)},
+        **shadow_words(settings),
     }
 
 

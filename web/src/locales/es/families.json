@@ -1,0 +1,283 @@
+{
+  "title": "Familias en shadow",
+  "subtitle": "Córners, tarjetas, amarillas y goles por mitad: lo que deciden en sombra, cómo se liquida cada apuesta y qué aprenden. Solo lectura.",
+  "explain": "Las familias deciden en shadow, con versiones propias: sus decisiones nunca son un pick, su estado llega como mucho a Investigación y su stake es cero. Aquí se lee la última palabra de cada modelo sobre cada mercado de cada partido (las revisiones de cada hora son la misma apuesta vista de nuevo), la regla que la liquida, lo que pasó y lo que el post-mortem y la memoria sacaron de ella. La probabilidad de una familia es la cifra de su modelo, sin calibrar: no es una recomendación.",
+  "versions": "Versiones: pronóstico {forecast} · decisión {decision} · liquidación {outcome} · post-mortem {postmortem} · memoria {memory}",
+  "mode": {
+    "label": "Ciclo",
+    "shadow": "En shadow",
+    "off": "Apagado",
+    "none": "Sin pasadas",
+    "offHelp": "El interruptor de las familias (FBI_FAMILY_DECISIONS) está apagado: el trabajador no decide, no liquida ni aprende para ellas. Lo que se ve abajo es lo que ya estaba escrito.",
+    "noneHelp": "El ciclo de las familias no ha corrido en los últimos 7 días. Su interruptor (FBI_FAMILY_DECISIONS) está apagado por defecto: se enciende en shadow solo cuando el dueño lo decide."
+  },
+  "cycle": {
+    "title": "El ciclo",
+    "help": "Cuatro pasos del trabajador: decidir (una pasada por hora, dentro del trabajo que decide cada cuarto de hora) y, de noche, liquidar, hacer el post-mortem y recordar. Se muestra la última vez que cada uno trabajó de verdad: un cuarto de hora en que no tocaba pasada no cuenta."
+  },
+  "step": {
+    "families": "Decidir",
+    "family_outcomes": "Liquidar",
+    "family_postmortems": "Post-mortem",
+    "family_memory": "Recordar",
+    "never": "Sin pasadas en los últimos 7 días",
+    "lastRun": "Última: {when}",
+    "error": "Falló: {error}"
+  },
+  "status": {
+    "ok": "Bien",
+    "partial": "Parcial",
+    "failed": "Fallida",
+    "skipped": "Omitida",
+    "interrupted": "Interrumpida",
+    "running": "En curso"
+  },
+  "fact": {
+    "forecasts": "Pronósticos",
+    "candidates": "Candidatas",
+    "written": "Escritas",
+    "failed": "Fallidas",
+    "open": "Abiertas",
+    "settled": "Liquidadas",
+    "no_close": "Sin cierre",
+    "unreadable": "Ilegibles",
+    "postmortems": "Post-mortems",
+    "entities": "Entidades",
+    "unchanged": "Sin cambios"
+  },
+  "family": {
+    "GOALS_HALF": "Goles por mitad",
+    "CORNERS": "Córners",
+    "CARDS": "Tarjetas",
+    "YELLOW": "Amarillas"
+  },
+  "card": {
+    "selections": "Selecciones",
+    "selectionsHint": "Su última palabra es Investigación",
+    "rejected": "Rechazadas",
+    "rejectedHint": "Su última palabra la rechazaron los filtros",
+    "settled": "Liquidadas",
+    "open": "Abiertas",
+    "results": "Resultados",
+    "verdicts": "Veredictos",
+    "rules": "Se liquida con",
+    "memory": "Memoria",
+    "noMemory": "Aún no recuerda nada: la memoria necesita post-mortems.",
+    "none": "Sin decisiones en la ventana."
+  },
+  "result": {
+    "win": "Ganada",
+    "loss": "Perdida",
+    "push": "Devuelta",
+    "void": "Anulada",
+    "half_win": "Media ganada",
+    "half_loss": "Media perdida"
+  },
+  "verdictHint": {
+    "MERECIDO": "Ganó con un precio igual o mejor que el cierre: decisión y resultado alineados.",
+    "VARIANZA": "Perdió con un precio igual o mejor que el cierre: varianza, no se toca el modelo.",
+    "SUERTE": "Ganó con un precio peor que el cierre: no enseña nada a favor del modelo.",
+    "ERROR": "Perdió con un precio peor que el cierre: a revisar en el patrón del mercado, no por este partido.",
+    "NULO": "Devuelta o anulada: no hay resultado que juzgar.",
+    "SIN_DATOS": "Sin cierre con el que juzgar el precio de la decisión."
+  },
+  "quality": {
+    "GOOD": "Precio bueno",
+    "NEUTRAL": "Precio neutro",
+    "BAD": "Precio malo",
+    "UNKNOWN": "Sin cierre"
+  },
+  "reason": {
+    "family_research": "Familia en investigación",
+    "family_shadow_only": "La familia solo mide",
+    "not_calibrated": "Sin calibrar",
+    "data": "Datos insuficientes",
+    "model": "El modelo no pasa",
+    "no_price": "Sin precio",
+    "thin_market": "Mercado poco profundo",
+    "price_outlier": "Precio atípico",
+    "price_stale": "Precio desactualizado",
+    "ev_unknown": "EV desconocido",
+    "ev_cal_below": "EV por debajo del mínimo",
+    "context_stop": "El contexto lo detiene",
+    "key_absence_confirmed": "Baja clave confirmada",
+    "key_absence_reported": "Baja clave reportada",
+    "risk": "Riesgo",
+    "price_not_fresh": "Precio no fresco",
+    "edge_not_validated": "Ventaja no validada",
+    "correlated_same_match": "Correlada con otra del partido"
+  },
+  "rule": {
+    "goals_1h": "Goles de la 1.ª parte: el marcador al descanso.",
+    "goals_2h": "Goles de la 2.ª parte: los goles a los 90 minutos menos el marcador al descanso.",
+    "goals_halves": "Las dos mitades: el marcador al descanso y los goles de la 2.ª parte (descanso/final, mitad con más goles).",
+    "corners_ft": "Córners del partido (sin dato tras la prórroga: el proveedor no dice si su total incluye la media hora extra).",
+    "cards_lines_ft": "Cada tarjeta mostrada cuenta uno: cada amarilla y cada roja, y la roja que sigue a una segunda amarilla cuenta como la roja que es.",
+    "yellow_ft": "Solo tarjetas amarillas: cuenta la primera amarilla de un par; la roja que le sigue, no."
+  },
+  "ruleNote": {
+    "cards_lines_ft": "El proveedor no dice qué convención usan las casas detrás de «Tarjetas más/menos»."
+  },
+  "what": {
+    "goals": "Goles",
+    "goals_home": "Goles del local",
+    "goals_away": "Goles del visitante",
+    "corners": "Córners",
+    "corners_home": "Córners del local",
+    "corners_away": "Córners del visitante",
+    "cards": "Tarjetas",
+    "cards_home": "Tarjetas del local",
+    "cards_away": "Tarjetas del visitante",
+    "yellow": "Amarillas",
+    "yellow_home": "Amarillas del local",
+    "yellow_away": "Amarillas del visitante"
+  },
+  "kind": {
+    "OU": "más/menos",
+    "1X2": "1X2",
+    "DC": "doble oportunidad",
+    "DNB": "empate no apuesta",
+    "BTTS": "ambos marcan",
+    "AH": "hándicap",
+    "OE": "par/impar"
+  },
+  "half": {
+    "1H": "1.ª parte",
+    "2H": "2.ª parte"
+  },
+  "special": {
+    "HTFT": "Descanso/final",
+    "HSH": "Mitad con más goles",
+    "HSH_HOME": "Mitad con más goles del local",
+    "HSH_AWAY": "Mitad con más goles del visitante"
+  },
+  "pick": {
+    "over": "Más de {line}",
+    "under": "Menos de {line}",
+    "overNoLine": "Más",
+    "underNoLine": "Menos",
+    "home": "Local",
+    "draw": "Empate",
+    "away": "Visitante",
+    "dc1X": "{home} o empate",
+    "dc12": "{home} o {away}",
+    "dcX2": "Empate o {away}",
+    "yes": "Sí",
+    "no": "No",
+    "odd": "Impar",
+    "even": "Par",
+    "handicap": "{team} {line}",
+    "half1": "1.ª parte",
+    "half2": "2.ª parte",
+    "halfDraw": "Igual en las dos"
+  },
+  "filters": {
+    "family": "Familia",
+    "state": "Estado",
+    "days": "Ventana",
+    "all": "Todas",
+    "allStates": "Todos",
+    "daysOption": "{count} días"
+  },
+  "items": {
+    "title": "La última palabra de cada familia",
+    "help": "Una fila por modelo, mercado y partido: la última decisión que escribió la familia antes del inicio. Pulsa una fila para abrir su detalle (los filtros que aplicó, el pronóstico que citó y su post-mortem).",
+    "shown": "Mostrando {shown} de {total} · partidos de los últimos {days} días",
+    "empty": "Ninguna familia ha decidido sobre partidos de esta ventana con estos filtros.",
+    "revisions_one": "1 revisión",
+    "revisions_other": "{count} revisiones",
+    "open": "Abierta",
+    "noRule": "Sin regla"
+  },
+  "cols": {
+    "match": "Partido",
+    "market": "Mercado y selección",
+    "odds": "Cuota",
+    "pModel": "P familia",
+    "pModelHint": "La probabilidad que afirmaba la familia, sin calibrar",
+    "pMarket": "P mercado",
+    "pMarketHint": "El consenso de las casas en el momento de la decisión",
+    "ev": "EV bruto",
+    "evHint": "P de la familia por la cuota, menos uno: lo que creía ganar la familia",
+    "state": "Estado",
+    "research": "Qué le falta saber",
+    "researchHint": "Lo que la decisión no sabía cuando se tomó, lo que averiguarlo costaría y los factores de contexto que podrían explicar a la familia. Es informativo: no cambia la decisión, y nada se sirve mientras las familias estén en sombra.",
+    "rule": "Regla",
+    "outcome": "Resultado",
+    "postmortem": "Post-mortem"
+  },
+  "outcome": {
+    "profit": "{profit} u",
+    "clv": "CLV {clv}",
+    "count": "{actual} en el partido",
+    "margin": "({margin} sobre la línea)"
+  },
+  "pm": {
+    "more": "+{count} más",
+    "none": "Aún sin post-mortem"
+  },
+  "research": {
+    "none": "Sin registro",
+    "noneHint": "Decisión anterior al registro de lo que le faltaba saber, o con una lectura que falló: la decisión no pierde nada.",
+    "nothing": "No le falta nada que se pueda saber antes del partido",
+    "need": {
+      "referee": "El árbitro designado",
+      "lineups": "Las alineaciones confirmadas",
+      "context": "El contexto de fuera (bajas y previa)"
+    },
+    "state": {
+      "KNOWN": "conocido",
+      "PARTIAL": "en parte",
+      "MISSING": "falta"
+    },
+    "source": {
+      "provider": "lo trae el proveedor",
+      "search": "una búsqueda"
+    },
+    "searches_one": "1 búsqueda si se sirviera",
+    "searches_other": "{count} búsquedas si se sirviera",
+    "noSearches": "Sin búsquedas: solo lo trae el proveedor",
+    "unserved": {
+      "family_shadow": "No se sirve: las familias están en sombra"
+    },
+    "served": "Servida",
+    "factors": "Podrían explicarla",
+    "factorsHint": "Factores de contexto para un experimento futuro. Son hipótesis, no resultados: ninguno está validado hasta que una persona lo valide, y ningún modelo de familia los lee.",
+    "factor": {
+      "h2h_weighted": "Cara a cara ponderado",
+      "scenarios": "Escenarios de tabla y de eliminatoria",
+      "tactics_profile": "Táctica observable",
+      "rest_congestion": "Descanso y congestión"
+    },
+    "standing": {
+      "DESCRIPTIVE": "sin validar",
+      "VALIDATED": "validado"
+    },
+    "registryUnread": "No se pudo leer el registro de factores: se muestran todos sin validar.",
+    "since": "desde {when}"
+  },
+  "memory": {
+    "title": "Lo que recuerdan",
+    "help": "Cada noche la memoria suma los post-mortems por familia, mercado, competición y árbitro (de estos dos, los de más post-mortems). Acierto es la parte de las decididas que ganó; Decía, la probabilidad media que la familia afirmaba. Una diferencia grande y sostenida con muchas muestras merece investigarse; con pocas es ruido: por eso va la confianza.",
+    "empty": "Aún no hay memoria: se escribe de noche, cuando hay post-mortems detrás.",
+    "entity": "Entidad",
+    "type": {
+      "family": "Familia",
+      "market": "Mercado",
+      "competition": "Competición",
+      "referee": "Árbitro"
+    },
+    "cols": {
+      "n": "Post-mortems",
+      "hit": "Acierto",
+      "claimed": "Decía",
+      "gap": "Diferencia",
+      "z": "z",
+      "clv": "CLV medio",
+      "roi": "ROI plano",
+      "confidence": "Confianza",
+      "recent": "Últimos {days} días"
+    },
+    "asOf": "Al {day}"
+  }
+}

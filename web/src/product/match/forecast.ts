@@ -10,12 +10,15 @@ import { t, translateOr } from "@/lib/i18n";
 import { fmtPct, toNumber } from "@/lib/i18n/format";
 import type { Envelope } from "@/lib/api/v1/types";
 import type {
+  FamilyLine,
+  FamilyMarket,
   ForecastBasis,
   ForecastCalibration,
   ForecastMarket,
   ForecastOutcome,
   MatchForecast,
 } from "@/lib/api/v1/types_forecast";
+import { pickText } from "@/live/familiesText";
 import { marketTitle, selectionPhrase, type Sides } from "./intelligence";
 
 /** The block's anchor. */
@@ -103,6 +106,46 @@ export function noForecastText(code: string | null | undefined): string {
   return code
     ? translateOr(`match.forecast.reason.${code}`, t("match.note.notAvailable"))
     : t("match.note.notAvailable");
+}
+
+// ── what the families forecast (the preview's own section) ──────────────────
+
+export interface FamilyGroup {
+  /** GOALS_HALF, CORNERS, CARDS or YELLOW, as the API names it. */
+  family: string;
+  /** The markets it forecasts for the match, in the order the API sent them. */
+  markets: FamilyMarket[];
+}
+
+/** The markets of the families grouped by family, the families and their markets in the order the API sent them. */
+export function groupFamilies(markets: readonly FamilyMarket[]): FamilyGroup[] {
+  const groups: FamilyGroup[] = [];
+  for (const market of markets) {
+    const found = groups.find((g) => g.family === market.family);
+    if (found) found.markets.push(market);
+    else groups.push({ family: market.family, markets: [market] });
+  }
+  return groups;
+}
+
+/** An outcome of a market of a family in words: "Más de 9,5", "Gana Nashville SC o empate", "Nashville SC / Empate" (half-time/full-time). */
+export function familyOutcomeText(
+  market: Pick<FamilyMarket, "market">,
+  line: Pick<FamilyLine, "line">,
+  outcome: Pick<ForecastOutcome, "selection">,
+  sides: Sides,
+): string {
+  return pickText(market.market, outcome.selection, line.line, sides);
+}
+
+/**
+ * A family's probability: whole percentages, and one decimal below 10 % so that the long tail of a market with many outcomes (half-time/full-time)
+ * does not read as a row of "2 %" and "1 %".
+ */
+export function familyPercent(value: string | number | null | undefined): string {
+  const n = toNumber(value);
+  if (n === null || Number.isNaN(n)) return fmtPct(null);
+  return fmtPct(n, n > 0 && n < 0.1 ? 1 : 0);
 }
 
 // ── the bar ─────────────────────────────────────────────────────────────────

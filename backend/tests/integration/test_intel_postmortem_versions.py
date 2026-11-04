@@ -12,6 +12,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from fbi.core.decision_versions import DECISION_CORE
 from fbi.intel import memory, postmortem, report
 
 from .conftest import Seed
@@ -92,12 +93,12 @@ def test_the_current_post_mortem_judges_a_shootout_match_without_its_kicks_and_t
     assert [c["minute"] for c in _causes(db, decision, "pm-v3")] == [120], "the v3 row is history: it stays as written"
     assert postmortem.run_postmortems(db, at=AFTER) == 0, "judged once per version"
 
-    start, end = KICKOFF - timedelta(days=1), KICKOFF + timedelta(days=1)
+    window = {"start": KICKOFF - timedelta(days=1), "end": KICKOFF + timedelta(days=1), "decision_version": DECISION_CORE}
     with db.cursor(row_factory=dict_row) as cur:
-        cur.execute(report.LAST_SQL, {"start": start, "end": end})
+        cur.execute(report.LAST_SQL, window)
         rows = [r for r in cur.fetchall() if r["id"] == decision]
         assert len(rows) == 1, "a decision judged under two versions is counted once"
         assert rows[0]["verdict"] != "ERROR", "and by its newest post-mortem"
-        cur.execute(memory.DECISIONS_SQL, {"start": start, "end": end})
+        cur.execute(memory.DECISIONS_SQL, window)
         mem = [r for r in cur.fetchall() if r["id"] == decision]
         assert len(mem) == 1 and mem[0]["verdict"] != "ERROR"

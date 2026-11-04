@@ -21,6 +21,7 @@ import type {
   AiClaim,
   AiComparisonRow,
   AiDecision,
+  AiEngine,
   AiOverview,
   AiReviewDetail,
   EvidenceStatus,
@@ -31,8 +32,11 @@ import { Note } from "./AiBits";
 import {
   DECISION_TONE,
   EVIDENCE_TONE,
+  REVIEW_ENGINES,
+  engineLabel,
   fixedText,
   gateTone,
+  isShadowEngine,
   pct,
   probText,
   sampleCounts,
@@ -307,7 +311,8 @@ export function StatusStrip({ o }: { o: AiOverview | null }) {
 // ── reviews ──────────────────────────────────────────────────────────────────
 
 function ClaimList({ claims }: { claims: AiClaim[] | undefined }) {
-  if (!claims || claims.length === 0)
+  // What is not a list is shown as nothing: the output of a shadow engine is the first this view reads that its types do not pin down.
+  if (!Array.isArray(claims) || claims.length === 0)
     return <p className="text-caption text-subtle-foreground">—</p>;
   return (
     <ul className="space-y-1">
@@ -328,7 +333,28 @@ function ClaimList({ claims }: { claims: AiClaim[] | undefined }) {
   );
 }
 
-function ReviewDetailView({ d }: { d: AiReviewDetail }) {
+/**
+ * The engine of a review as the owner reads it: its name, and a Shadow badge before it when the engine is a shadow one - its reviews
+ * are written for the evaluation and never reach the decision layer or a user.
+ */
+export function EngineTag({ engine }: { engine: string }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5"
+      data-testid="ai-engine-tag"
+      data-engine={engine}
+    >
+      {isShadowEngine(engine) ? (
+        <StatusBadge tone="brand" dot={false}>
+          {t("ai.v2.shadowBadge")}
+        </StatusBadge>
+      ) : null}
+      <span>{engineLabel(engine)}</span>
+    </span>
+  );
+}
+
+export function ReviewDetailView({ d }: { d: AiReviewDetail }) {
   const out = d.output;
   return (
     <div className="space-y-3" data-testid="ai-review-detail">
@@ -340,6 +366,7 @@ function ReviewDetailView({ d }: { d: AiReviewDetail }) {
         <span className="text-subtle-foreground">
           {d.review.market_key} · {d.review.selection} · {utcDateTime(d.review.reviewed_at)}
         </span>
+        {isShadowEngine(d.review.engine) ? <EngineTag engine={d.review.engine} /> : null}
       </div>
       {out.reason ? <p className="text-sm">{out.reason}</p> : null}
       <div className="grid gap-3 lg:grid-cols-2">
@@ -352,7 +379,7 @@ function ReviewDetailView({ d }: { d: AiReviewDetail }) {
           </div>
         ))}
       </div>
-      {out.rejected_claims && out.rejected_claims.length ? (
+      {Array.isArray(out.rejected_claims) && out.rejected_claims.length ? (
         <div className="rounded-md border border-warning/30 bg-warning-soft/40 p-2.5">
           <h4 className="mb-1 text-caption uppercase tracking-wider text-warning">
             {t("ai.layer.claims.rejected")}
@@ -374,7 +401,8 @@ function ReviewDetailView({ d }: { d: AiReviewDetail }) {
             <ul className="space-y-1 text-xs">
               {d.components.map((c) => (
                 <li key={c.id}>
-                  {c.engine} · {c.engine_version} · {c.model ?? "—"} ·{" "}
+                  {isShadowEngine(c.engine) ? <EngineTag engine={c.engine} /> : c.engine} ·{" "}
+                  {c.engine_version} · {c.model ?? "—"} ·{" "}
                   <StatusBadge tone={DECISION_TONE[c.decision]}>
                     {t(`ai.layer.decision.${c.decision}`)}
                   </StatusBadge>{" "}
@@ -473,8 +501,39 @@ function ReviewDetailView({ d }: { d: AiReviewDetail }) {
   );
 }
 
-export function ReviewsTab() {
-  const [engine, setEngine] = useState<"combined" | "rules" | "llm">("combined");
+/** The engine filter of the reviews: production's three, then the shadow ones, each by its name (the shadow ones say so in it). */
+export function EngineSelect({
+  value,
+  onChange,
+}: {
+  value: AiEngine;
+  onChange: (engine: AiEngine) => void;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as AiEngine)}
+      className={SELECT}
+      aria-label={t("ai.layer.filters.engine")}
+    >
+      {REVIEW_ENGINES.map((x) => (
+        <option key={x} value={x}>
+          {engineLabel(x)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** Under the filter, while a shadow engine is chosen: what its reviews are and are not. */
+export function ShadowEngineNote({ engine }: { engine: string }) {
+  if (!isShadowEngine(engine)) return null;
+  return <WarningBanner tone="info">{t("ai.layer.reviews.shadowNote")}</WarningBanner>;
+}
+
+/** The reviews, one engine at a time: the combined review the decision layer reads unless the owner asks for another (or the page says which). */
+export function ReviewsTab({ initialEngine = "combined" }: { initialEngine?: AiEngine } = {}) {
+  const [engine, setEngine] = useState<AiEngine>(initialEngine);
   const [decision, setDecision] = useState<AiDecision | "">("");
   const [day, setDay] = useState("");
   const [selected, setSelected] = useState(0);
@@ -486,18 +545,7 @@ export function ReviewsTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <select
-          value={engine}
-          onChange={(e) => setEngine(e.target.value as typeof engine)}
-          className={SELECT}
-          aria-label={t("ai.layer.filters.engine")}
-        >
-          {(["combined", "rules", "llm"] as const).map((x) => (
-            <option key={x} value={x}>
-              {t(`ai.layer.engine.${x}`)}
-            </option>
-          ))}
-        </select>
+        <EngineSelect value={engine} onChange={setEngine} />
         <select
           value={decision}
           onChange={(e) => setDecision(e.target.value as AiDecision | "")}
@@ -519,6 +567,7 @@ export function ReviewsTab() {
           aria-label={t("ai.layer.filters.day")}
         />
       </div>
+      <ShadowEngineNote engine={engine} />
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
       {q.isLoading ? <TableSkeleton rows={6} cols={6} /> : null}
       {!q.isLoading && rows.length === 0 ? (
@@ -711,7 +760,7 @@ export function ShadowTab() {
       {rows.map((r) => (
         <Panel
           key={r.engine}
-          title={t(`ai.layer.engine.${r.engine}`)}
+          title={engineLabel(r.engine)}
           subtitle={t("ai.layer.shadow.window", { from: r.window_from, to: r.window_to })}
           actions={
             <StatusBadge tone={gateTone(r.verdict)}>

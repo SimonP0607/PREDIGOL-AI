@@ -38,11 +38,20 @@ from fbi.api.contracts.ai_layer import (
     SourceRow,
 )
 from fbi.api.contracts.ai_research import ResearchOverview
+from fbi.api.contracts.ai_shadow import AgentRuns, Contradictions, ShadowArms, ShadowFile
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
 from fbi.api.security import Admin, App
-from fbi.api.services import ai_agents, ai_layer, ai_research, ai_v2, daily_review, match_memory
+from fbi.api.services import (
+    ai_agents,
+    ai_layer,
+    ai_research,
+    ai_shadow,
+    ai_v2,
+    daily_review,
+    match_memory,
+)
 from fbi.api.services.match_memory import MatchMemory, MemoryFilters
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
@@ -51,7 +60,10 @@ router = APIRouter(tags=["predigol analysis"])
 admin_router = APIRouter(tags=["admin: ai decision layer"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 FixtureId = Annotated[int, Path(ge=1, le=2**62)]
-Engine = Literal["combined", "rules", "llm"]
+Engine = Literal["rules", "llm", "combined", "ma-v1", "ma-v1-h", "cs-v1"]
+"""The engines of ``ai.pick_reviews.engine`` the Console can ask for. ``rules``, ``llm`` and ``combined`` are production's: the decision layer reads
+``combined`` (and ``rules``). ``ma-v1`` (MULTIAGENTE), ``ma-v1-h`` (MULTIAGENTE + COUNCIL HAIKU) and ``cs-v1`` (COUNCIL SOLO) are the SHADOW engines of
+plan IA phase 3: their rows are written for the evaluation and never reach the decision layer or a user; they are listed only when asked for by name."""
 DecisionQ = Literal["APPROVE", "DOWNGRADE", "REJECT", "ABSTAIN"]
 EvidenceStatus = Literal["CONFIRMED", "PROBABLE", "RUMOR", "CONTRADICTORY", "OUTDATED"]
 MemoryKind = Literal["match_result", "pick_result", "context_error", "news_signal", "injury_signal", "market_signal",
@@ -110,6 +122,8 @@ def get_match_state(conn: Db, fixture_id: FixtureId) -> Envelope[MatchState]:
 def get_reviews(conn: Db, day: Annotated[date | None, Query()] = None, engine: Engine = "combined",
                 decision: DecisionQ | None = None, fixture_id: Annotated[int | None, Query(ge=1, le=2**62)] = None,
                 limit: Annotated[int, Query(ge=1, le=500)] = 200) -> Envelope[list[ReviewRow]]:
+    """The reviews of a Bogotá day (default today) of ONE engine, newest first. ``engine`` defaults to ``combined``, the review the decision layer
+    reads; the shadow engines (``ma-v1``, ``ma-v1-h``, ``cs-v1``) are listed only when asked for by name and never mixed with the others."""
     return ai_layer.reviews(conn, day=day, engine=engine, decision=decision, fixture_id=fixture_id, limit=limit)
 
 
@@ -250,3 +264,52 @@ def post_run_request(body: RunIn, principal: Admin) -> Envelope[RunQueued]:
     """Queue an analysis (of one fixture, or of the day) or a learning cycle; the worker runs it within two minutes
     under the same budget and caps. At most five requests wait at once."""
     return ok(ai_layer.request_run(body, user_id=principal.user_id))
+
+
+
+# ── the shadow of phase 3 (plan IA): the arms, the contradictions, the runs of the agents, the file of a match. Reading only. ──────────────────────
+
+ContraQ = Literal["C01", "C02", "C03", "C04", "C05", "C06", "C07", "C08"]
+AgentQ = Literal["match", "council", "stats", "brief", "reviewer", "extractor", "postmortem", "post_match_reviewer", "learning_analyst",
+                 "claim_extractor"]
+TaskQ = Literal["context", "evaluation", "extraction", "narrative", "council", "analyst", "loss_review", "escalation", "owner_research",
+                "review_analysis", "review_final"]
+RunStatusQ = Literal["ok", "invalid", "timeout", "abstain", "skipped", "expired", "budget_skip"]
+RunKindQ = Literal["live", "shadow", "replay", "battery"]
+PassQ = Literal["first", "pre", "final", "request"]
+
+
+@admin_router.get("/ai/shadow/arms", response_model=Envelope[ShadowArms])
+def get_shadow_arms(conn: Db, days: Annotated[int, Query(ge=1, le=90)] = ai_shadow.WINDOW_DAYS) -> Envelope[ShadowArms]:
+    """SOMBRA CON BRAZOS (plan IA, section 22): the seven arms over the last ``days`` days - reviews and selections, the share approved, downgraded,
+    rejected and abstained, invalid outputs, cost (LAB, from the ledger), p95 latency, pause reasons -, how the matches were assigned, and the plan's
+    thresholds (30 days, 300 selections) as counts. It never says an arm passed: reaching a threshold only says there is enough to look."""
+    return ai_shadow.shadow_arms(conn, days=days)
+
+
+@admin_router.get("/ai/contradictions", response_model=Envelope[Contradictions])
+def get_contradictions(conn: Db, days: Annotated[int, Query(ge=1, le=60)] = 7, code: ContraQ | None = None,
+                       limit: Annotated[int, Query(ge=1, le=200)] = 50) -> Envelope[Contradictions]:
+    """CONTRADICCIONES (plan IA, sections 11 and 33): C01-C08 written by ``contra-v1`` in the shadow over the last ``days`` days - how many of each,
+    in how many passes and matches, how many rest on confirmed evidence, what each engine's Council did with the candidates they touch (kept,
+    lowered, abstained, none) - and the most recent ones (``code`` filters them) with their candidates and references."""
+    return ai_shadow.contradictions(conn, days=days, code_=code, limit=limit)
+
+
+@admin_router.get("/ai/agent-runs", response_model=Envelope[AgentRuns])
+def get_agent_runs(conn: Db, day: Day = None, agent: AgentQ | None = None, task_kind: TaskQ | None = None, status: RunStatusQ | None = None,
+                   model: Annotated[str | None, Query(max_length=64, pattern=r"^[A-Za-z0-9._-]+$")] = None,
+                   run_kind: RunKindQ | None = "shadow", fixture_id: Annotated[int | None, Query(ge=1, le=2**62)] = None,
+                   limit: Annotated[int, Query(ge=1, le=500)] = 100) -> Envelope[AgentRuns]:
+    """EJECUCIONES DE LOS AGENTES: the attempts of ``ai.agent_runs`` of a Bogotá day (default today), newest first - agent, task, model, status, tokens,
+    cost, latency, the rule of ``router-v1`` that escalated it - with filters, and the day's Opus calls against the shadow's cap of 3."""
+    return ai_shadow.agent_runs(conn, day=day, agent=agent, task_kind=task_kind, status=status, model=model, run_kind=run_kind,
+                                fixture_id=fixture_id, limit=limit)
+
+
+@admin_router.get("/ai/matches/{fixture_id}/shadow", response_model=Envelope[ShadowFile])
+def get_match_shadow(conn: Db, fixture_id: FixtureId, pass_kind: PassQ | None = None) -> Envelope[ShadowFile]:
+    """EXPEDIENTE of a match for the shadow: its assignment, the candidates the server named (c1..cN) with its numbers, the Match Agent's assessments
+    and the contradictions in codes, every engine's verdict on every candidate beside today's reviewers', the evidence ids cited and the calls with their
+    cost. Codes only: no free text of a model, no address."""
+    return ai_shadow.shadow_file(conn, fixture_id, pass_kind=pass_kind)

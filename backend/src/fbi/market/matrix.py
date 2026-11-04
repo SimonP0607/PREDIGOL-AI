@@ -31,6 +31,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from fbi.core.decision_versions import DECISION_CORE
 from fbi.market.catalogue import DEFINITIONS_SQL, market_key_for, spec_from_row
 from fbi.market.rules import NO_DATA, OK, OUTCOMES_VIEW, RULES, RULES_BY_MEASURE, Rule, explain
 from fbi.odds.quote_taxonomy import PROVIDER, SCOPE, TAXONOMY_VERSION, BetSpec
@@ -254,7 +255,8 @@ def collect(conn: psycopg.Connection[Any], *, at: datetime, price_days: int = PR
                 edge[str(r["market_key"])] = str(r["to_role"])
         cur.execute("SELECT market_key, count(DISTINCT model_name) AS models FROM intel.calibrators GROUP BY 1")
         calibrated = {str(r["market_key"]): int(r["models"]) for r in cur.fetchall()}
-        cur.execute("SELECT market_key, count(*) AS n FROM intel.decisions WHERE known_at >= %s GROUP BY 1", (at - timedelta(days=14),))
+        cur.execute("SELECT market_key, count(*) AS n FROM intel.decisions WHERE decision_version = %s AND known_at >= %s GROUP BY 1",
+                    (DECISION_CORE, at - timedelta(days=14)))
         decisions = {str(r["market_key"]): int(r["n"]) for r in cur.fetchall()}
 
         cur.execute("SELECT provider_bet_id, (metrics->>'fixtures')::float AS fixtures, (metrics->>'median_books')::float AS houses "

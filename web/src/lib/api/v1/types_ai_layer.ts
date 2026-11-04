@@ -7,6 +7,12 @@ import type { Dec, Iso } from "./types";
 import type { StatusReason, UserStatus } from "./types_product";
 
 export type AiDecision = "APPROVE" | "DOWNGRADE" | "REJECT" | "ABSTAIN";
+/**
+ * The engine of a review (`ai.pick_reviews.engine`; the API's `Engine`, in the order it lists them).
+ * `rules`, `llm` and `combined` are production's. `ma-v1` (multi-agent), `ma-v1-h` (multi-agent + Haiku Council) and `cs-v1`
+ * (Council alone) are the SHADOW engines of plan IA phase 3: written for the evaluation, never read by the decision layer.
+ */
+export type AiEngine = "rules" | "llm" | "combined" | "ma-v1" | "ma-v1-h" | "cs-v1";
 export type CardVerdict = "recommended" | "caution" | "not_recommended" | "no_market";
 export type CardKind = "value" | "evaluated" | "no_market";
 export type AiMode = "off" | "shadow" | "enforce";
@@ -278,7 +284,7 @@ export interface ShadowArm {
 }
 
 export interface ShadowReportRow {
-  engine: "rules" | "llm" | "combined";
+  engine: AiEngine;
   created_at: Iso;
   window_from: string;
   window_to: string;
@@ -460,6 +466,147 @@ export interface AiEnvelopes {
   switches: AiSwitches;
   days: AiEnvelopeDay[];
   factors: { batch: string };
+  /** Phase 0 of the AI master plan: the three envelopes, the savings, the switches. Empty when the server could not build it. */
+  envelopes?: AiEnvelopes | Record<string, never>;
+}
+
+/** A provider's spend limit: while `active`, no call is made to that workspace. */
+export interface AiEnvelopeLimit {
+  active: boolean;
+  until: Iso | null;
+  hits: number;
+}
+
+/** Claude of the production workspace against its envelope (US$185), its projection and the reserve it keeps. */
+export interface AiEnvelopeProduction {
+  spent_usd: Dec;
+  budget_usd: Dec;
+  spent_today_usd: Dec;
+  share: number | null;
+  projected_usd: Dec;
+  projection_share: number | null;
+  state: AiBudgetView["state"];
+  /** What the Message Batches still open have reserved: counted by the budget, not spent yet. */
+  reserved_for_batches_usd: Dec;
+  reserve_usd: Dec;
+  reserve_locked_usd: Dec;
+  run_rate_usd: Dec;
+  unit_cost_usd: Dec | null;
+  limit: AiEnvelopeLimit;
+  workspace: string;
+}
+
+/** Claude of the LAB workspace (experiments): it runs a day whole or not at all and yields to production. */
+export interface AiEnvelopeLab {
+  spent_usd: Dec;
+  budget_usd: Dec;
+  spent_today_usd: Dec;
+  allocation_usd: Dec;
+  share: number | null;
+  allowed: boolean;
+  reason: string;
+  reserved_for_batches_usd: Dec;
+  limit: AiEnvelopeLimit;
+  workspace: string;
+}
+
+/** Every web search: Exa's money, never Claude's. */
+export interface AiEnvelopeExa {
+  spent_usd: Dec;
+  budget_usd: Dec;
+  spent_today_usd: Dec;
+  share: number | null;
+  allowed: boolean;
+  reason: string;
+  searches: number;
+}
+
+/** Production and the LAB together against the joint ceiling Claude may not pass. */
+export interface AiEnvelopeClaude {
+  spent_usd: Dec;
+  ceiling_usd: Dec;
+  share: number | null;
+  projected_usd: Dec;
+  projection_share: number | null;
+}
+
+/** What the cache and the Message Batches saved, measured on the ledger's tokens (the cache's may be negative while a write is unread). */
+export interface AiSavings {
+  cache_usd: Dec;
+  batch_usd: Dec;
+  total_usd: Dec;
+  calls: number;
+  batch_calls: number;
+  batch_share: number | null;
+  input_tokens: number;
+  cached_tokens: number;
+  write_tokens: number;
+  read_share: number | null;
+}
+
+export interface AiReuse {
+  briefs_paid: number;
+  briefs_reused: number;
+  briefs_reused_material: number;
+  reviews_reused: number;
+  reviews_batched: number;
+}
+
+export interface AiBatchState {
+  open_items: number;
+  open_batches: number;
+  ended_batches: number;
+  lost_batches: number;
+  items_ended: number;
+}
+
+/** One optimisation: the owner's switch (off, on, auto), whether it is in force, and why. */
+export interface AiSwitchState {
+  mode: "off" | "on" | "auto" | string;
+  on: boolean;
+  why: string;
+  gate: string | null;
+}
+
+export interface AiGateState {
+  gate: string;
+  passed: boolean;
+  at: Iso | null;
+  evidence_hash: string | null;
+  models: string[] | null;
+}
+
+export interface AiSwitches {
+  cache: AiSwitchState;
+  brief_material: AiSwitchState;
+  budget_v3: AiSwitchState;
+  batch: AiSwitchState;
+  native_schema: AiSwitchState;
+  cache_layout: AiSwitchState;
+  gates: Record<string, AiGateState>;
+}
+
+export interface AiEnvelopeDay {
+  day: string;
+  production_usd: Dec;
+  lab_usd: Dec;
+  exa_usd: Dec;
+}
+
+export interface AiEnvelopes {
+  month: string;
+  days_left: number;
+  budget_version: string;
+  production: AiEnvelopeProduction;
+  lab: AiEnvelopeLab;
+  exa: AiEnvelopeExa;
+  claude: AiEnvelopeClaude;
+  savings: { month: AiSavings };
+  reuse: AiReuse;
+  batch: AiBatchState;
+  switches: AiSwitches;
+  days: AiEnvelopeDay[];
+  factors: { batch: string };
 }
 
 export interface AiReviewRow {
@@ -478,7 +625,7 @@ export interface AiReviewRow {
   edge: Dec | null;
   decision: AiDecision;
   confidence: Dec;
-  engine: "rules" | "llm" | "combined";
+  engine: AiEngine;
   engine_version: string;
   model: string | null;
   reason: string | null;

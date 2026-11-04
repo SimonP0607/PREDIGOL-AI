@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
+from fbi.api.services import families as families_svc
 from fbi.api.services import intelligence as svc
 
 router = APIRouter(tags=["admin: predigol intelligence"])
@@ -20,6 +21,8 @@ Day = Annotated[date | None, Query(description="A Bogotá day (default: today)."
 State = Literal["RECHAZADO", "INVESTIGACION", "CAUTELA", "APROBADO", "PICK_DEL_DIA", "CANDIDATO_PARLAY", "PICK_PREMIUM"]
 Market = Literal["1X2", "OU", "BTTS", "DC", "AH"]
 EntityType = Literal["team", "player", "coach", "referee", "competition", "market"]
+Family = Literal["GOALS_HALF", "CORNERS", "CARDS", "YELLOW"]
+FamilyState = Literal["INVESTIGACION", "RECHAZADO"]
 
 
 @router.get("/intelligence/day", response_model=Envelope[dict[str, Any]])
@@ -107,6 +110,16 @@ def get_market_matrix(conn: Db) -> Envelope[dict[str, Any]]:
     """THE MATRIX OF MARKETS BY FAMILY (plan F9): for each kind of bet, what is priced, what can be graded and the verdict. Reads the
     newest stored matrix; building one is the weekly job's work."""
     return svc.market_matrix(conn)
+
+
+@router.get("/intelligence/families", response_model=Envelope[dict[str, Any]])
+def get_families(conn: Db, family: Family | None = None, state: FamilyState | None = None,
+                 days: Annotated[int, Query(ge=1, le=families_svc.MAX_DAYS)] = families_svc.DEFAULT_DAYS,
+                 limit: Annotated[int, Query(ge=1, le=500)] = 200) -> Envelope[dict[str, Any]]:
+    """THE FAMILIES IN SHADOW (plan F10.17 and F11.11): corners, cards and the goals of the halves decide without being believed. The last word of
+    each family's model on each market of the matches of the window, the rule that grades each bet, what became of it, the post-mortem the
+    families made of it and what they remember. Reading only; empty while the switch of the families is off."""
+    return families_svc.overview(conn, family=family, state=state, days=days, limit=limit)
 
 
 @router.get("/intelligence/price-clock", response_model=Envelope[dict[str, Any]])

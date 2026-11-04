@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+    labels: ["dependencies", "python", "area:BE", "tipo:chore"]
+  - package-ecosystem: bun
+    directory: /web
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+    labels: ["dependencies", "javascript", "area:FE", "tipo:chore"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+    commit-message:
+      prefix: "chore(deps)"
+    labels: ["dependencies", "github_actions", "area:CI", "tipo:chore"]

@@ -183,7 +183,7 @@ def test_a_goal_filed_under_the_side_that_gets_it_is_the_teams_own_goal_count(db
 
 
 def test_the_rule_is_in_the_audit_and_the_version_says_so() -> None:
-    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v7" and RULE in (leakage.__doc__ or "")
+    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v8" and RULE in (leakage.__doc__ or "")
 
 
 def test_an_honest_packet_passes_one_check_per_cited_match_and_two_per_side(world: World, db: psycopg.Connection[Any]) -> None:
@@ -191,7 +191,7 @@ def test_an_honest_packet_passes_one_check_per_cited_match_and_two_per_side(worl
     store_packet(db, packet(db, world), built_at=at)
     assert audited(db, at) == {"checked": 14, "violations": 0, "examples": []}, "7 + 3 matches, and the sample and the omissions of two sides"
     rows = db.execute("SELECT version, n_violations FROM intel.audit_checks WHERE rule = %s", (RULE,)).fetchall()
-    assert rows and all(v == "leak-audit-v7" and bad == 0 for v, bad in rows)
+    assert rows and all(v == "leak-audit-v8" and bad == 0 for v, bad in rows)
 
 
 def test_a_packet_without_the_block_is_not_read(world: World, db: psycopg.Connection[Any]) -> None:

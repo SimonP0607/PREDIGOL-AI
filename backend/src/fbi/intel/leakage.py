@@ -1,4 +1,4 @@
-"""Data-leakage audit - ``leak-audit-v7``: did any decision use something that was not known at its ``known_at``?
+"""Data-leakage audit - ``leak-audit-v8``: did any decision use something that was not known at its ``known_at``?
 
 Run every night over the decisions taken on a Bogotá day, and in the tests. One row per rule
 (``intel.audit_checks``): how many decisions were checked and how many violate it, with examples. The rules:
@@ -7,9 +7,11 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
     price_known              price_at <= known_at (the consensus row the price came from was captured by then)
     pick_known               the pick (the model's probability) was created, and its data cut off, by known_at
     calibrator_known         the calibrator was fitted by known_at, on results settled before it was fitted
-    review_known             the AI review the decision read was made by known_at
+    review_known             the AI review the decision read was made by known_at (whatever its engine: it filters none, it reads the
+                             review a decision LINKS; the reviews of the shadow engines are linked from no decision: see shadow_review_known)
     evidence_known           every evidence item it cites was retrieved (and, when dated, published) by known_at
-    consensus_known          the de-vigged consensus at the price's timestamp exists and was captured by known_at
+    consensus_known          the de-vigged consensus at the price's timestamp exists and was captured by known_at (v7: only the decisions
+                             of the pipeline's own layer, ``decision-v1``: a family prices from the quotes of the books, not from this table)
     tie_legs_known           (v2, plan F2) the AI packets built on the day: every earlier leg of its tie that the packet
                              cites kicked off before the match (so it is not the match itself, nor a later leg) and had
                              its result recorded by the packet's moment. Counted per cited leg; the examples are packet
@@ -95,6 +97,41 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              this code cannot derive again is a violation: the audit is taught a new version when the code is. One check
                              per row. Examples are the ids of the rows. The one rule that is not a statement: it reads the packets one
                              at a time, but only those of the rows of the day (some hundreds at most).
+    family_forecast_known    (v8, plan F11) the decisions the FAMILIES took on the day (``decision-fam-v1``, ``fbi.familydecisions``): the
+                             forecast each one cites (``filters``, ``model``, ``data.forecast_id``) is a row that exists for that match,
+                             model, market, line and selection, was written (``known_at``) and had its data cut off by the decision's
+                             moment, and no newer forecast of that selection by the same model existed by then (a decision that read an
+                             older forecast than the one that stood). A decision that cites none is a violation. Examples are decision ids.
+    family_price_known       (v8, plan F11) the same decisions' price: the bookmaker it names had quoted that very price for that selection
+                             and line, before the match, by the decision's moment (``captured_at``). Whether it was still the book's price
+                             then is not asked: a payload read again by a newer extractor writes its quotes with the instant it was
+                             fetched, so a quote can appear for a moment the decision could not have known of, and taking an older price
+                             is staleness, not a leak. This is what ``consensus_known`` is for the pipeline's layer (a family prices from
+                             the quotes of the books, not from the consensus table). Examples are decision ids.
+
+    agent_known              (plan IA, phase 3) the runs of the agents (``ai.agent_runs``, the Match Agent and the Council of the shadow) that
+                             STARTED on the day, whatever their kind but the battery (synthetic scenarios, no package behind them): the
+                             moment of the knowledge they read (``known_at``) is not later than their start and, when the run has a
+                             match, is before its kick-off; a run that names a package, a slice or an evidence names the moment too (a
+                             reference with no moment cannot be proved); the package it names (``package_hash``) is one of that SAME match
+                             (``ai.match_runs``) at that very moment, made from a packet stored by the start of the run; every evidence it
+                             cites - ``evidence_ids``, the ``E:<n>`` of ``data_refs`` and those inside its ``output`` - exists and was
+                             retrieved (and, when dated, published) by that moment; and the run it was told to read (``parent_run_id``: the
+                             assessment the Council reads) is a run of the same match that had FINISHED by the start of this one. One check
+                             per run. Examples are the ids of the runs.
+    shadow_review_known      (plan IA, phase 3) the reviews of the engines of the shadow (``ma-v1``, ``ma-v1-h``, ``cs-v1``) written on
+                             the day: ``review_known`` only looks at the review a decision links, and the shadow reaches no decision, so
+                             this is what proves them. Each one names a stored packet of the SAME match whose moment and storage are not
+                             later than the review, is written before the kick-off, and cites only evidence that exists and was retrieved
+                             (and, when dated, published) by the moment of its packet. One check per review. Examples are review ids. It is
+                             the one rule whose silence means something: the plan's Gate B asks to have SEEN rows every night while the
+                             shadow is on (``n > 0``), and the rule itself does not call zero rows a violation (a night with the shadow
+                             off has none): it keeps the zero in ``intel.audit_checks.n_checked`` and Gate B reads it there
+                             (``shadow_review_known_has_data``, ``passes_gate``).
+
+The other rules over decisions (``known_before_kickoff``, ``price_known``, ``pick_known``, ``calibrator_known``, ``review_known``,
+``evidence_known``) read the decisions of every layer: a family's row has no pick, calibrator, review or evidence and drops out of the rules
+that join them, and must still be written before the kick-off and with a price captured by then.
 
 Every other rule is ONE statement over the whole Bogotá day, so it has to stay linear in the number of packets (a night has some 11,000, each
 citing up to two lists of ten matches): to compare what a packet cited with what it should have cited, build one list per packet
@@ -109,7 +146,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Final
 
 import psycopg
 from psycopg.rows import dict_row
@@ -117,11 +154,13 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai import package as mcp_package
 from fbi.ai.calendar import day_bounds
+from fbi.ai.contracts.base import parse_ref
 from fbi.ai.contracts.mcp import SLICE_NAMES
 from fbi.core import match_state
+from fbi.core.decision_versions import DECISION_CORE, DECISION_FAMILIES
 from fbi.intel import factors, h2h, tactics
 
-VERSION = "leak-audit-v7"
+VERSION = "leak-audit-v8"
 
 FINISHED = "ARRAY[" + ", ".join(f"'{code}'" for code in sorted(match_state.FINISHED)) + "]"
 """The stored states of a match played to a result, as a SQL array (constants of ``fbi.core.match_state``, not user input)."""
@@ -192,7 +231,7 @@ RULES: dict[str, str] = {
                (array_agg(DISTINCT e.decision_id) FILTER (WHERE e.retrieved_at > e.known_at
                                                           OR e.published_at > e.known_at))[1:5] AS examples FROM e""",
     "consensus_known": f"""
-        WITH d AS ({BASE}) SELECT count(*) FILTER (WHERE d.price_at IS NOT NULL) AS n,
+        WITH d AS ({BASE} AND d.decision_version = %(core)s) SELECT count(*) FILTER (WHERE d.price_at IS NOT NULL) AS n,
                count(*) FILTER (WHERE d.price_at IS NOT NULL AND NOT EXISTS (
                    SELECT 1 FROM market.market_consensus m WHERE m.fixture_id = d.fixture_id
                       AND m.market_key = d.market_key AND m.selection = d.selection AND m.line = d.line
@@ -202,6 +241,36 @@ RULES: dict[str, str] = {
                       AND m.market_key = d.market_key AND m.selection = d.selection AND m.line = d.line
                       AND m.as_of = d.price_at AND m.devig_method = 'shin' AND m.as_of <= d.known_at)))[1:5]
                  AS examples FROM d""",
+    "family_forecast_known": f"""
+        WITH d AS ({BASE} AND d.decision_version = %(families)s), t AS (
+            SELECT d.id, d.known_at, d.fixture_id, d.model_name, d.market_key, d.selection, d.line,
+                   jsonb_path_query_first(d.filters, '$[*] ? (@.key == "model").data.forecast_id') #>> '{{}}' AS cited
+              FROM d),
+        c AS (
+            SELECT t.id, t.known_at, t.fixture_id, t.model_name, t.market_key, t.selection, t.line,
+                   CASE WHEN t.cited ~ '^[0-9]{{1,18}}$' THEN t.cited::bigint END AS forecast_id
+              FROM t),
+        k AS (
+            SELECT c.id, (mf.id IS NOT NULL AND mf.known_at <= c.known_at AND mf.data_cutoff_ts <= c.known_at
+                          AND NOT EXISTS (SELECT 1 FROM models.match_forecasts n
+                                           WHERE n.fixture_id = mf.fixture_id AND n.version = mf.version AND n.model_name = mf.model_name
+                                             AND n.market_key = mf.market_key AND n.line = mf.line AND n.selection = mf.selection
+                                             AND n.known_at <= c.known_at AND (n.known_at, n.id) > (mf.known_at, mf.id))) AS ok
+              FROM c LEFT JOIN models.match_forecasts mf
+                     ON mf.id = c.forecast_id AND mf.fixture_id = c.fixture_id AND mf.model_name = c.model_name
+                    AND mf.market_key = c.market_key AND mf.selection = c.selection AND mf.line = c.line)
+        SELECT count(*) AS n, count(*) FILTER (WHERE NOT k.ok) AS bad,
+               (array_agg(k.id ORDER BY k.id) FILTER (WHERE NOT k.ok))[1:5] AS examples FROM k""",
+    "family_price_known": f"""
+        WITH d AS ({BASE} AND d.decision_version = %(families)s AND d.odds IS NOT NULL), k AS (
+            SELECT d.id, EXISTS (
+                SELECT 1 FROM market.odds_quotes x JOIN market.market_definitions md ON md.id = x.definition_id
+                 WHERE x.fixture_id = d.fixture_id AND x.bookmaker_id = d.bookmaker_id AND md.market_key = d.market_key
+                   AND md.scope = 'prematch' AND x.selection = d.selection AND x.line = d.line
+                   AND x.odds_decimal = d.odds AND x.captured_at <= d.known_at) AS ok
+              FROM d)
+        SELECT count(*) AS n, count(*) FILTER (WHERE NOT k.ok) AS bad,
+               (array_agg(k.id ORDER BY k.id) FILTER (WHERE NOT k.ok))[1:5] AS examples FROM k""",
     "tie_legs_known": f"""
         WITH p AS ({PACKETS}), l AS (
             SELECT p.id AS packet_id, p.as_of, p.fixture_id, (x ->> 'fixture_id')::bigint AS leg_id
@@ -580,8 +649,213 @@ def slice_known(conn: psycopg.Connection[Any], start: datetime, end: datetime) -
     return len(rows), len(bad), bad[:5]
 
 
+# ── the agents and the shadow (plan IA, phase 3) ─────────────────────────────────────────────────────────────────────
+
+AGENT_RUNS = """
+SELECT r.id, r.fixture_id, r.parent_run_id, r.started_at, r.finished_at, r.known_at, r.package_hash, r.slice_hash, r.evidence_ids,
+       r.data_refs, r.output, f.kickoff_at
+  FROM ai.agent_runs r
+  LEFT JOIN core.fixtures f ON f.id = r.fixture_id
+ WHERE r.started_at >= %(start)s AND r.started_at < %(end)s AND r.run_kind <> 'battery'
+ ORDER BY r.id
+"""
+
+PACKAGES = """
+SELECT r.fixture_id, r.package_hash, r.known_at, p.fixture_id AS packet_fixture, p.built_at AS packet_built_at
+  FROM ai.match_runs r
+  LEFT JOIN ai.match_packets p ON p.id = r.packet_id
+ WHERE r.package_hash = ANY(%(hashes)s)
+"""
+
+PARENTS = "SELECT id, fixture_id, finished_at FROM ai.agent_runs WHERE id = ANY(%(ids)s)"
+
+SHADOW_REVIEWS = """
+SELECT r.id, r.fixture_id, r.reviewed_at, r.packet_id, r.evidence_ids, p.fixture_id AS packet_fixture, p.as_of AS packet_as_of,
+       p.built_at AS packet_built_at, f.kickoff_at
+  FROM ai.pick_reviews r
+  LEFT JOIN ai.match_packets p ON p.id = r.packet_id
+  LEFT JOIN core.fixtures f ON f.id = r.fixture_id
+ WHERE r.reviewed_at >= %(start)s AND r.reviewed_at < %(end)s AND r.engine IN ('ma-v1', 'ma-v1-h', 'cs-v1')
+ ORDER BY r.id
+"""
+"""The engines of the shadow are written out (``fbi.ai.config.SHADOW_ENGINES``; a test holds the two together): the guard of the readers of the reviews
+reads the engines a statement names."""
+
+EVIDENCE_TIMES = "SELECT ev.id, ev.retrieved_at, ev.published_at FROM ai.evidence ev WHERE ev.id = ANY(%(ids)s)"
+"""The moments of the evidence a run or a review cites, BY ID: the audit measures what was cited, whatever it was (a lookup of what something
+else already named, as the one of ``evidence_known``)."""
+
+Times = tuple[datetime, datetime | None]
+"""``(retrieved_at, published_at)`` of an evidence."""
+
+
+def _present(conn: psycopg.Connection[Any], *tables: str) -> bool:
+    """Whether every table exists: a database from before them (the code is ahead of its schema, or the schema was rolled back) has nothing to read."""
+    with conn.cursor() as cur:
+        for table in tables:
+            cur.execute("SELECT to_regclass(%s) IS NOT NULL", (table,))
+            row = cur.fetchone()
+            if not row or not row[0]:
+                return False
+    return True
+
+
+def cited_evidence(row: dict[str, Any]) -> set[int]:
+    """Every evidence a run cites: ``evidence_ids``, the ``E:<n>`` of ``data_refs`` and the ``E:<n>`` anywhere in its ``output`` (a string that
+    is a well-formed reference and nothing else: a number written in a sentence is not a reference)."""
+    found = {int(i) for i in row.get("evidence_ids") or []}
+
+    def take(text: Any) -> None:
+        ref = parse_ref(text) if isinstance(text, str) else None
+        if ref is not None and ref.kind == "E":
+            found.add(int(ref.value))
+
+    def walk(node: Any, depth: int) -> None:
+        if depth > 12:  # a document nested deeper than the contracts allow is not read further (and never loops)
+            return
+        if isinstance(node, dict):
+            for value in node.values():
+                walk(value, depth + 1)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value, depth + 1)
+        else:
+            take(node)
+
+    for text in row.get("data_refs") or []:
+        take(text)
+    walk(row.get("output"), 0)
+    return found
+
+
+def evidence_problems(cited: set[int], times: dict[int, Times], by: datetime) -> list[str]:
+    """What is wrong with the evidence cited, against the moment ``by`` of the knowledge: ``evidence_missing`` (a row that does not exist cannot be
+    proved to have been known) and ``evidence_late`` (retrieved, or published, after ``by``)."""
+    out: list[str] = []
+    if any(i not in times for i in cited):
+        out.append("evidence_missing")
+    if any(retrieved > by or (published is not None and published > by) for retrieved, published in (times[i] for i in cited if i in times)):
+        out.append("evidence_late")
+    return out
+
+
+def run_problems(row: dict[str, Any], *, times: dict[int, Times], packages: list[dict[str, Any]], parents: dict[int, dict[str, Any]]) -> list[str]:
+    """The codes of what is wrong with one run of an agent (an empty list: the run is honest): see ``agent_known`` in the module's text.
+    ``times`` has the evidence of the day by id, ``packages`` the states of the match that name the package of the run, ``parents`` the runs
+    that were named as read."""
+    out: list[str] = []
+    started, known = row["started_at"], row["known_at"]
+    cited = cited_evidence(row)
+    if known is not None and known > started:
+        out.append("known_after_start")
+    if known is None and (row["package_hash"] or row["slice_hash"] or cited):
+        out.append("no_known_at")
+    if known is not None and row["kickoff_at"] is not None and known >= row["kickoff_at"]:
+        out.append("known_after_kickoff")
+    if row["package_hash"]:
+        mine = [p for p in packages if p["package_hash"] == row["package_hash"] and p["fixture_id"] == row["fixture_id"]
+                and known is not None and p["known_at"] == known]
+        if not mine:
+            out.append("package_unknown")
+        elif not any(p["packet_fixture"] == row["fixture_id"] and p["packet_built_at"] <= started for p in mine):
+            out.append("package_late")  # no state that names it came from a packet of this match stored by the start of the run
+    out += evidence_problems(cited, times, min(known, started) if known is not None else started)
+    parent_id = row["parent_run_id"]
+    if parent_id is not None:
+        parent = parents.get(int(parent_id))
+        if parent is None:
+            out.append("parent_missing")
+        elif parent["fixture_id"] != row["fixture_id"]:
+            out.append("parent_other_match")
+        elif parent["finished_at"] > started:
+            out.append("parent_after")  # the assessment the run read did not exist yet when it started
+    return out
+
+
+def _evidence_times(conn: psycopg.Connection[Any], ids: set[int]) -> dict[int, Times]:
+    if not ids:
+        return {}
+    with conn.cursor() as cur:
+        cur.execute(EVIDENCE_TIMES, {"ids": sorted(ids)})
+        return {int(i): (retrieved, published) for i, retrieved, published in cur.fetchall()}
+
+
+def agent_known(conn: psycopg.Connection[Any], start: datetime, end: datetime) -> tuple[int, int, list[int]]:
+    """``(checked, violations, examples)`` of the rule ``agent_known`` over the runs that started between ``start`` and ``end``."""
+    if not _present(conn, "ai.agent_runs", "ai.match_runs", "ai.match_packets", "ai.evidence"):
+        return 0, 0, []
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(AGENT_RUNS, {"start": start, "end": end})
+        rows = [dict(r) for r in cur.fetchall()]
+        if not rows:
+            return 0, 0, []
+        hashes = sorted({str(r["package_hash"]) for r in rows if r["package_hash"]})
+        packages = [dict(r) for r in cur.execute(PACKAGES, {"hashes": hashes}).fetchall()] if hashes else []
+        named = sorted({int(r["parent_run_id"]) for r in rows if r["parent_run_id"] is not None})
+        parents = {int(r["id"]): dict(r) for r in cur.execute(PARENTS, {"ids": named}).fetchall()} if named else {}
+    times = _evidence_times(conn, {i for r in rows for i in cited_evidence(r)})
+    bad = [int(r["id"]) for r in rows
+           if run_problems(r, times=times, packages=[p for p in packages if p["package_hash"] == r["package_hash"]], parents=parents)]
+    return len(rows), len(bad), bad[:5]
+
+
+def review_problems(row: dict[str, Any], *, times: dict[int, Times]) -> list[str]:
+    """The codes of what is wrong with one review of the shadow (an empty list: it is honest): see ``shadow_review_known`` in the module's text."""
+    out: list[str] = []
+    reviewed = row["reviewed_at"]
+    by = reviewed
+    if row["packet_id"] is None or row["packet_fixture"] != row["fixture_id"]:  # none is named, it is not there, or it is another match's
+        out.append("packet_unknown")
+    else:
+        if row["packet_built_at"] > reviewed:
+            out.append("packet_late")
+        if row["packet_as_of"] > reviewed:
+            out.append("moment_late")
+        by = min(reviewed, row["packet_as_of"])  # the review can cite only what its packet had: the moment of the packet, not the one of the review
+    if row["kickoff_at"] is not None and reviewed >= row["kickoff_at"]:
+        out.append("after_kickoff")
+    return out + evidence_problems({int(i) for i in row["evidence_ids"] or []}, times, by)
+
+
+def shadow_review_known(conn: psycopg.Connection[Any], start: datetime, end: datetime) -> tuple[int, int, list[int]]:
+    """``(checked, violations, examples)`` of the rule ``shadow_review_known`` over the reviews of the engines of the shadow written between
+    ``start`` and ``end``. ``checked`` is the number of reviews READ: zero is not a violation (see ``passes_gate`` for who asks for more)."""
+    if not _present(conn, "ai.pick_reviews", "ai.match_packets", "ai.evidence"):
+        return 0, 0, []
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(SHADOW_REVIEWS, {"start": start, "end": end})
+        rows = [dict(r) for r in cur.fetchall()]
+    if not rows:
+        return 0, 0, []
+    times = _evidence_times(conn, {int(i) for r in rows for i in r["evidence_ids"] or []})
+    bad = [int(r["id"]) for r in rows if review_problems(r, times=times)]
+    return len(rows), len(bad), bad[:5]
+
+
+NEEDS_DATA: Final = frozenset({"shadow_review_known"})
+"""The rules of the nightly audit that must have READ rows to be clean: a night with none is not a clean night but one the audit saw nothing of
+(Gate B of the plan, section 24: «shadow_review_known, con n > 0»)."""
+
+
+def passes_gate(rule: str, checked: int, violations: int) -> bool:
+    """Whether one night's verdict of a rule counts as clean for Gate B: no violation, and for the rules in ``NEEDS_DATA`` more than 0 rows checked."""
+    return violations == 0 and (checked > 0 or rule not in NEEDS_DATA)
+
+
+def shadow_review_known_has_data(conn: psycopg.Connection[Any], *, day: date) -> bool:
+    """Whether the audit of the Bogotá ``day`` read at least one review of the shadow: the latest ``intel.audit_checks`` row of the rule for that
+    day has ``n_checked > 0`` (a day not audited has no row: False). This is the number Gate B reads, night by night, while the shadow is on."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT n_checked FROM intel.audit_checks WHERE day = %s AND rule = 'shadow_review_known' "
+                    "ORDER BY checked_at DESC, id DESC LIMIT 1", (day,))
+        row = cur.fetchone()
+    return bool(row and row[0] > 0)
+
+
 PYTHON_RULES: dict[str, Callable[[psycopg.Connection[Any], datetime, datetime], tuple[int, int, list[int]]]] = {
     "slice_known": slice_known,
+    "agent_known": agent_known,
+    "shadow_review_known": shadow_review_known,
 }
 """The rules that need the code to be run, not only a statement: ``(connection, start, end) -> (checked, violations, examples)``."""
 
@@ -600,7 +874,7 @@ def audit_day(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> dict
 
     with conn.cursor(row_factory=dict_row) as cur:
         for rule, sql in RULES.items():
-            cur.execute(sql, {"start": start, "end": end})
+            cur.execute(sql, {"start": start, "end": end, "core": DECISION_CORE, "families": DECISION_FAMILIES})
             r = cur.fetchone() or {}
             keep(cur, rule, int(r.get("n") or 0), int(r.get("bad") or 0), [int(x) for x in (r.get("examples") or [])])
     for rule, check in PYTHON_RULES.items():

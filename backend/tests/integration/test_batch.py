@@ -11,6 +11,7 @@ No network and no key: the provider is ``FakeBatches``. One transaction, rolled 
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -19,7 +20,15 @@ from typing import Any
 import psycopg
 import pytest
 
-from fbi.ai.batch import BatchQueue, Task, abandon_unsent, open_counts, poll
+from fbi.ai.batch import (
+    CYCLE_LOCK,
+    BatchQueue,
+    Task,
+    abandon_unsent,
+    cycle_is_running,
+    open_counts,
+    poll,
+)
 from fbi.ai.config import AiSettings, Tier, TierModel
 from fbi.ai.packet import Packet, store_packet
 from fbi.ai.pricing import token_cost
@@ -29,7 +38,7 @@ from fbi.ai.providers.fake import FakeBatches, FakeProvider
 from fbi.ai.review import Candidate, Deferral, Reviewed, review_candidate
 from fbi.ai.usage import UsageLedger, budget, reserved_by_day, shared
 
-from .conftest import Seed
+from .conftest import ADMIN_URL, Seed
 from .test_ai_decision_layer import Savepoints, review_reply
 from .test_brief_material import content, fixture_block
 
@@ -805,3 +814,134 @@ def test_a_contradiction_a_batch_delivers_is_arbitrated_by_the_strong_model_at_t
     third = cycle(conn, model, fake, at=AT + timedelta(hours=2, minutes=25), settings_=later_cfg)
     assert third.counts.get("batch_arbitrations", 0) == 0, "once: its answer is now the newest review"
     assert n(db, "SELECT count(*) FROM ai.pick_reviews WHERE engine = 'llm' AND output ->> 'role' = 'contradiction'") == done
+
+
+# ── a cycle that is still running has not stopped ────────────────────────────────────────────────────────────────
+# 31 Oct and 1 Nov 2026: the first cycle of the Bogotá day lasted 61 and 49 minutes (268 and 185 matches to study), the poll abandoned
+# every batch it found ``submitting`` for over half an hour, and the 120 reviews the cycle had recorded to send at its end were never sent.
+# The poll now asks whether a cycle holds its lock before it abandons anything (plan IA, phase 0).
+
+@contextmanager
+def holding_the_lock(dsn: str, *keys: int) -> Iterator[psycopg.Connection[Any]]:
+    """Another session that holds the advisory lock ``keys`` names, as the worker's cycle holds ``CYCLE_LOCK`` from its start to its end."""
+    other = psycopg.connect(dsn, autocommit=True)
+    try:
+        other.execute("SELECT pg_advisory_lock(%s)" if len(keys) == 1 else "SELECT pg_advisory_lock(%s, %s)", keys)
+        yield other
+    finally:
+        other.execute("SELECT pg_advisory_unlock_all()")
+        other.close()
+
+
+class Quiet:
+    """The connection of a poll that runs in the middle of a cycle in a test: the same session, so it sees what the cycle has recorded (the
+    worker's poll sees it because the cycle commits each match), and it cannot end the test's transaction."""
+
+    def __init__(self, conn: psycopg.Connection[Any]) -> None:
+        self._conn = conn
+
+    def commit(self) -> None:
+        pass
+
+    def rollback(self) -> None:
+        pass
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._conn, name)
+
+
+def test_the_probe_sees_the_cycles_lock_from_any_session_and_takes_nothing(env: Env, migrated_database: str) -> None:
+    assert cycle_is_running(env.conn) is False, "nobody holds it"
+    with holding_the_lock(migrated_database, CYCLE_LOCK):
+        assert cycle_is_running(env.conn) is True, "a cycle of another session is running"
+    assert cycle_is_running(env.conn) is False, "and it is not once that session lets go - or dies, which lets go too"
+    with psycopg.connect(migrated_database, autocommit=True) as starting:  # a cycle that starts right after the probe
+        got = starting.execute("SELECT pg_try_advisory_lock(%s)", (CYCLE_LOCK,)).fetchone()
+        assert got == (True,), "the probe left no lock behind: it only looks"
+        starting.execute("SELECT pg_advisory_unlock(%s)", (CYCLE_LOCK,))
+
+
+def test_only_the_cycles_own_lock_counts(env: Env, migrated_database: str) -> None:
+    for keys in ((CYCLE_LOCK + 1,), (CYCLE_LOCK << 32,), (0, CYCLE_LOCK), (CYCLE_LOCK, 0)):  # next key, key as high half, two-key forms
+        with holding_the_lock(migrated_database, *keys):
+            assert cycle_is_running(env.conn) is False, keys
+    with holding_the_lock(ADMIN_URL, CYCLE_LOCK):  # the same key, in another database of the server
+        assert cycle_is_running(env.conn) is False
+
+
+def test_the_poll_leaves_alone_what_a_running_cycle_has_recorded_and_the_cycle_then_sends_it(env: Env, migrated_database: str) -> None:
+    env.ask()
+    env.conn.commit()  # the cycle commits each match: the poll's own session sees the record
+    with holding_the_lock(migrated_database, CYCLE_LOCK):
+        report = env.poll(at=AT + timedelta(minutes=61))  # twice what the poll used to wait
+        assert (report.cycle_running, report.abandoned) == (True, 0)
+        assert env.items("status", "error") == [("submitting", None)] and env.one("SELECT status FROM ai.batches") == "submitting"
+    sent = env.queue.flush()  # the cycle reaches its end
+    assert (sent.batches, sent.sent) == (1, 1) and len(env.fake.created) == 1
+    assert env.items("status") == [("submitted",)]
+
+
+def test_the_poll_abandons_what_was_recorded_and_never_sent_once_no_cycle_is_running(env: Env, migrated_database: str) -> None:
+    env.ask()
+    env.conn.commit()
+    soon = env.poll(at=AT + timedelta(minutes=10))
+    assert (soon.cycle_running, soon.abandoned) == (False, 0), "a recent record may still be about to be sent"
+    with holding_the_lock(migrated_database, CYCLE_LOCK):
+        assert env.poll(at=AT + timedelta(minutes=61)).abandoned == 0
+    late = env.poll(at=AT + timedelta(minutes=66))  # the process that held the lock is gone: nothing will send this
+    assert (late.cycle_running, late.abandoned) == (False, 1)
+    assert env.items("status", "error") == [("abandoned", "never_sent")] and env.one("SELECT status FROM ai.batches") == "abandoned"
+    assert env.poll(at=AT + timedelta(minutes=71)).abandoned == 0, "and it is said once"
+
+
+def test_a_cycle_that_takes_over_half_an_hour_still_sends_everything_it_recorded(db: psycopg.Connection[Any], world: World) -> None:
+    from .test_ai_decision_layer import brief_reply
+
+    fake = FakeBatches(lambda r: review_reply("APPROVE"), name="anthropic")
+    looked: list[tuple[Any, int]] = []
+
+    def slow(request: JsonRequest) -> dict[str, Any]:
+        """Every time the cycle asks the model, the worker's poll looks, an hour into the cycle: it is the poll of 31 Oct."""
+        waiting = n(db, "SELECT count(*) FROM ai.batch_items WHERE status = 'submitting'")
+        looked.append((poll(Quiet(db), SETTINGS, at=AT + timedelta(minutes=61), ledger=UsageLedger(shared(db)), client=fake), waiting))  # type: ignore[arg-type]  # Quiet stands in for the connection
+        return brief_reply() if request.schema_name == "submit_brief" else review_reply("APPROVE")
+
+    report = cycle(Savepoints(db), FakeProvider(slow, name="anthropic"), fake)
+    assert report.status == "ok", report.errors
+    items = n(db, "SELECT count(*) FROM ai.batch_items")
+    assert items >= 1 and max(waiting for _, waiting in looked) >= 1, "the poll looked while the cycle had records waiting to be sent"
+    assert n(db, "SELECT count(*) FROM ai.batch_items WHERE status = 'abandoned'") == 0, "nothing was abandoned"
+    assert n(db, "SELECT count(*) FROM ai.batch_items WHERE status = 'submitted'") == items, "everything recorded was sent"
+    assert report.counts["batches_sent"] == 1 and report.counts["batch_items_sent"] == items
+    assert len(fake.created) == 1 and len(fake.created[0]) == items
+    assert n(db, "SELECT count(*) FROM ai.fixture_passes WHERE pass = 'first'") == 6, "and no pass was left to be done again"
+    assert all(p.cycle_running and p.abandoned == 0 for p, _ in looked), "the poll knew a cycle was running every time it looked"
+
+
+def test_the_cycle_holds_its_lock_for_its_whole_run_and_lets_go_of_it_however_it_ends(
+        db: psycopg.Connection[Any], world: World, migrated_database: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    from fbi.ai import cycle as cycle_module
+
+    from .test_ai_decision_layer import brief_reply
+
+    with psycopg.connect(migrated_database, autocommit=True) as polling:  # the session of the worker's poll
+        during: list[bool] = []
+
+        def watching(request: JsonRequest) -> dict[str, Any]:
+            during.append(cycle_is_running(polling))
+            return brief_reply() if request.schema_name == "submit_brief" else review_reply("APPROVE")
+
+        assert cycle_is_running(polling) is False
+        fake = FakeBatches(lambda r: review_reply("APPROVE"), name="anthropic")
+        ran = cycle(Savepoints(db), FakeProvider(watching, name="anthropic"), fake)
+        assert ran.status == "ok", ran.errors
+        assert during and all(during), "held every time the cycle asks the model, which is most of its time"
+        assert cycle_is_running(polling) is False, "and let go of when it ends"
+
+        def falls_over(*args: Any, **kwargs: Any) -> None:
+            raise RuntimeError("the cycle fell over")
+
+        monkeypatch.setattr(cycle_module, "_run", falls_over)
+        failed = cycle(Savepoints(db), live_model(), None, at=AT + timedelta(minutes=15))
+        assert failed.status == "failed"
+        assert cycle_is_running(polling) is False, "a cycle that fails lets go too: the poll can abandon what it left"

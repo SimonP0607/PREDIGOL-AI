@@ -2,15 +2,18 @@
 /**
  * Plan F5, PRONÓSTICO PREDIGOL in the Resumen: a probability and the interval around it, "Sin calibrar" wherever no
  * champion calibrator exists, no price anywhere for a user, and nothing at all for a user until the owner decides.
- * The Admin Console's preview alone sees the fair odds and, folded away, the value and the picks of the match.
+ * The Admin Console's preview alone sees the fair odds and, folded away, the value and the picks of the match and,
+ * in a block of its own, what the families forecast for it (plan F10.17b): research, never shown to a user.
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { setLocale } from "@/lib/i18n";
 import enMatch from "@/locales/en/match.json";
 import esMatch from "@/locales/es/match.json";
-import type { Envelope } from "@/lib/api/v1/types";
+import type { Envelope, Section } from "@/lib/api/v1/types";
 import type {
+  FamilyLine,
+  FamilyMarket,
   ForecastBasis,
   ForecastCalibration,
   ForecastMarket,
@@ -23,7 +26,10 @@ import { ForecastView } from "./ForecastBlock";
 import {
   barPercent,
   basisNote,
+  familyOutcomeText,
+  familyPercent,
   forecastScreen,
+  groupFamilies,
   intervalSpan,
   intervalText,
   modelLabel,
@@ -373,6 +379,315 @@ describe("the Admin Console's preview", () => {
     const failed = render({ status: "error", error: new Error("boom") }, true);
     expect(failed).toContain('data-screen="error"');
     expect(failed).toContain('role="alert"');
+  });
+});
+
+// ── what the families forecast ──────────────────────────────────────────────
+
+function familyOutcome(selection: string, p: number, likely = false): ForecastOutcome {
+  return {
+    selection,
+    probability: p.toFixed(4),
+    low: null,
+    high: null,
+    likely,
+    fair_odds: (1 / p).toFixed(2),
+  };
+}
+
+function familyLine(line: string, outcomes: ForecastOutcome[]): FamilyLine {
+  return { line, known_at: KNOWN, outcomes };
+}
+
+function familyMarket(
+  family: string,
+  key: string,
+  rule: string | null,
+  model: string,
+  lines: FamilyLine[],
+): FamilyMarket {
+  return {
+    family,
+    market: key,
+    model,
+    calibration: "UNCALIBRATED",
+    rule,
+    known_at: KNOWN,
+    data_cutoff_at: "2026-10-23T08:30:00Z",
+    lines,
+  };
+}
+
+/** What the API lays out for a match: the four families in their order, each family's markets by key, each market's lines from the lowest. */
+function familyMarkets(): FamilyMarket[] {
+  return [
+    familyMarket("GOALS_HALF", "HTFT", "goals_halves@v1", "family-goals_halves", [
+      familyLine("0.00", [
+        familyOutcome("Home/Home", 0.31, true),
+        familyOutcome("Draw/Draw", 0.18),
+        familyOutcome("Home/Away", 0.021),
+      ]),
+    ]),
+    familyMarket("GOALS_HALF", "OU_1H", "goals_1h@v1", "family-goals_halves", [
+      familyLine("0.50", [familyOutcome("Over", 0.66, true), familyOutcome("Under", 0.34)]),
+    ]),
+    familyMarket("CORNERS", "CORNERS_OU", "corners_ft@v1", "family-corners_ft", [
+      familyLine("8.50", [familyOutcome("Over", 0.72, true), familyOutcome("Under", 0.28)]),
+      familyLine("9.50", [familyOutcome("Over", 0.55, true), familyOutcome("Under", 0.45)]),
+      familyLine("10.50", [familyOutcome("Over", 0.38), familyOutcome("Under", 0.62, true)]),
+    ]),
+    familyMarket("CARDS", "CARDS_OU", "cards_lines_ft@v1", "family-cards_lines_ft", [
+      familyLine("3.50", [familyOutcome("Over", 0.52, true), familyOutcome("Under", 0.48)]),
+    ]),
+    familyMarket("YELLOW", "YELLOW_OU", "yellow_ft@v1", "family-yellow_ft", [
+      familyLine("2.50", [familyOutcome("Over", 0.41), familyOutcome("Under", 0.59, true)]),
+    ]),
+  ];
+}
+
+function withFamilies(
+  data: MatchForecast,
+  families: Section<FamilyMarket[]> | null,
+): MatchForecast {
+  return { ...data, families };
+}
+
+const familiesSection = (markets: FamilyMarket[]): Section<FamilyMarket[]> => ({
+  status: "ok",
+  data: markets,
+  reason: null,
+});
+
+function loaded(data: MatchForecast): ForecastLoad {
+  return { status: "success", envelope: envelope(data) };
+}
+
+/** The html of one market of a family, from its opening to the opening of the next. */
+function marketHtml(html: string, key: string): string {
+  const start = html.indexOf(`data-testid="family-market" data-market="${key}"`);
+  expect(start).toBeGreaterThan(-1);
+  const next = html.indexOf('data-testid="family-market"', start + 10);
+  return html.slice(start, next === -1 ? undefined : next);
+}
+
+describe("what the families forecast, in the preview's block of their own", () => {
+  const withBlock = (): MatchForecast =>
+    withFamilies(forecast(threeMarkets({ fair: true }), true), familiesSection(familyMarkets()));
+  const out = render(loaded(withBlock()), true);
+  const block = out.slice(out.indexOf('data-testid="forecast-families"'));
+
+  test("is a block of its own, folded away, after the value and the picks and apart from the forecast above", () => {
+    expect(out.match(/data-testid="forecast-families"/g)?.length).toBe(1);
+    expect(out).toContain("Familias de este partido (investigación, solo administrador)");
+    expect(out.indexOf('data-testid="forecast-families"')).toBeGreaterThan(
+      out.indexOf('data-testid="forecast-admin"'),
+    );
+    expect(out.indexOf('data-testid="forecast-admin"')).toBeGreaterThan(
+      out.lastIndexOf('data-testid="forecast-market"'),
+    );
+    // the forecast above is the three core markets: not one of the families' is among them
+    const keys = [...out.matchAll(/data-testid="forecast-market" data-market="([^"]+)"/g)].map(
+      (m) => m[1],
+    );
+    expect(keys).toEqual(["1X2", "OU", "BTTS"]);
+    expect(block).toContain("no es el pronóstico de arriba ni una recomendación");
+    expect(block).toContain("Entre paréntesis, la cuota según PrediGol");
+  });
+
+  test("one folded group per family, in the order the API sent them", () => {
+    const groups = [...out.matchAll(/data-testid="family-group" data-family="([^"]+)"/g)].map(
+      (m) => m[1],
+    );
+    expect(groups).toEqual(["GOALS_HALF", "CORNERS", "CARDS", "YELLOW"]);
+    for (const name of ["Goles por mitad", "Córners", "Tarjetas", "Amarillas"]) {
+      expect(block).toContain(name);
+    }
+    expect(block).toContain("Mercados: 2");
+    expect(block.match(/data-testid="family-group"/g)?.length).toBe(4);
+  });
+
+  test("each market in words, its lines from the lowest and the probability of every outcome with its fair odds", () => {
+    const corners = marketHtml(out, "CORNERS_OU");
+    expect(corners).toContain("Córners · más/menos");
+    expect([...corners.matchAll(/data-line="([^"]+)"/g)].map((m) => m[1])).toEqual([
+      "8.50",
+      "9.50",
+      "10.50",
+    ]);
+    expect(corners).toMatch(/Más de 8,5\s72\s%/);
+    expect(corners).toMatch(/Menos de 8,5\s28\s%/);
+    expect(corners).toContain("(1,39)");
+    expect(corners).toContain("(3,57)");
+    expect(corners).toContain("cuota según PrediGol 1,39");
+    // one outcome of each line is the most probable one
+    const likely = [...corners.matchAll(/data-selection="([^"]+)" data-likely="(true|false)"/g)];
+    expect(likely.map((m) => `${m[1]}:${m[2]}`)).toEqual([
+      "Over:true",
+      "Under:false",
+      "Over:true",
+      "Under:false",
+      "Over:false",
+      "Under:true",
+    ]);
+    // ... and it is set apart in the type, not only in the markup's data
+    expect(corners.match(/data-likely="true" class="[^"]*font-semibold/g)?.length).toBe(3);
+    expect(corners.match(/data-likely="false" class="[^"]*font-semibold/g)).toBeNull();
+  });
+
+  test("a market with no line names the sides of the match, and a small probability keeps a decimal", () => {
+    const htft = marketHtml(out, "HTFT");
+    expect(htft).toContain("Descanso/final");
+    expect(htft).toMatch(/Nashville SC \/ Nashville SC\s31\s%/);
+    expect(htft).toMatch(/Nashville SC \/ Inter Miami\s2,1\s%/);
+    expect(marketHtml(out, "OU_1H")).toContain("Goles · más/menos · 1.ª parte");
+    expect(marketHtml(out, "YELLOW_OU")).toContain("Amarillas · más/menos");
+  });
+
+  test("each market says the rule that grades a bet on it", () => {
+    expect(marketHtml(out, "CORNERS_OU")).toContain("Se liquida con: Córners del partido");
+    expect(marketHtml(out, "OU_1H")).toContain(
+      "Se liquida con: Goles de la 1.ª parte: el marcador al descanso.",
+    );
+    expect(marketHtml(out, "HTFT")).toContain("Se liquida con: Las dos mitades");
+    expect(marketHtml(out, "CARDS_OU")).toContain("Cada tarjeta mostrada cuenta uno");
+    expect(marketHtml(out, "YELLOW_OU")).toContain("Solo tarjetas amarillas");
+  });
+
+  test("a market no rule can grade says so instead of leaving a blank", () => {
+    const orphan = familyMarket("CARDS", "CARDS_OU", null, "family-cards_lines_ft", [
+      familyLine("3.50", [familyOutcome("Over", 0.52, true), familyOutcome("Under", 0.48)]),
+    ]);
+    const seen = render(loaded(withFamilies(forecast([], true), familiesSection([orphan]))), true);
+    expect(seen).toContain(
+      "Ninguna regla de liquidación puede juzgar una apuesta en este mercado.",
+    );
+    expect(seen).not.toContain("Se liquida con");
+  });
+
+  test("every market of the families says it is not calibrated, and none reads as a recommendation", () => {
+    expect(block.match(/data-calibration="UNCALIBRATED"/g)?.length).toBe(5);
+    expect(block.match(/Sin calibrar/g)?.length).toBe(5);
+    expect(block).not.toContain("Calibrada");
+    expect(block).not.toContain("Lo más probable");
+    expect(block).not.toContain("entre 4"); // no interval anywhere: the families measure none
+  });
+
+  test("the model and when the family said it", () => {
+    expect(marketHtml(out, "CORNERS_OU")).toContain("Modelo: family-corners_ft");
+    expect(marketHtml(out, "CORNERS_OU")).toContain("Actualizado");
+  });
+
+  test("a match the families forecast nothing for says so, in the reader's language", () => {
+    const empty: Section<FamilyMarket[]> = {
+      status: "empty",
+      data: [],
+      reason: "x",
+      code: "no_family_forecast",
+    };
+    const seen = render(
+      loaded(withFamilies(forecast(threeMarkets({ fair: true }), true), empty)),
+      true,
+    );
+    expect(seen).toContain('data-testid="forecast-families-none"');
+    expect(seen).toContain("Las familias no han pronosticado nada de este partido");
+    expect(seen).not.toContain("family-group");
+  });
+
+  test("an answer without the section (an API that predates it) shows no block", () => {
+    expect(render(adminSees(), true)).not.toContain("forecast-families");
+    const nulled = withFamilies(forecast(threeMarkets({ fair: true }), true), null);
+    expect(render(loaded(nulled), true)).not.toContain("forecast-families");
+  });
+
+  test("still shows what the families forecast for a match PrediGol has no forecast for", () => {
+    const data = withFamilies(forecast([], true), familiesSection(familyMarkets()));
+    data.forecast = { status: "not_available", data: [], reason: "x", code: "no_forecast_yet" };
+    const seen = render(loaded(data), true);
+    expect(seen).toContain('data-testid="forecast-none"');
+    expect(seen).toContain('data-testid="forecast-families"');
+  });
+
+  test("a user is shown none of it, even if the payload carried it", () => {
+    // Defence in depth: the API sends the section to the preview alone; the view shows it to the preview alone.
+    const seen = render(loaded(withBlock()), false);
+    for (const word of [
+      "forecast-families",
+      "family-market",
+      "family-group",
+      "Familias de este partido",
+      "Se liquida con",
+      "Goles por mitad",
+      "Córners",
+    ]) {
+      expect(seen).not.toContain(word);
+    }
+    expect(render(loaded(withBlock()), true)).toContain("forecast-families");
+  });
+
+  test("in English", () => {
+    setLocale("en");
+    const seen = render(loaded(withBlock()), true);
+    expect(seen).toContain("Families for this match (research, admin only)");
+    for (const name of ["Goals by half", "Corners", "Cards", "Yellow cards"]) {
+      expect(seen).toContain(name);
+    }
+    const corners = marketHtml(seen, "CORNERS_OU");
+    expect(corners).toContain("Corners · over/under");
+    expect(corners).toMatch(/Over 9\.5\s55%/);
+    expect(corners).toContain("Graded with: Corners of the match");
+    expect(seen).toContain("Markets: 2");
+    expect(seen).not.toContain("Sin calibrar");
+    expect(seen).not.toContain("Se liquida");
+  });
+});
+
+describe("the families' words, apart from React", () => {
+  test("the markets are grouped by family in the order the API sent them", () => {
+    const groups = groupFamilies(familyMarkets());
+    expect(groups.map((g) => [g.family, g.markets.map((m) => m.market)])).toEqual([
+      ["GOALS_HALF", ["HTFT", "OU_1H"]],
+      ["CORNERS", ["CORNERS_OU"]],
+      ["CARDS", ["CARDS_OU"]],
+      ["YELLOW", ["YELLOW_OU"]],
+    ]);
+    expect(groupFamilies([])).toEqual([]);
+    const shuffled = [...familyMarkets()].reverse();
+    expect(groupFamilies(shuffled).map((g) => g.family)).toEqual([
+      "YELLOW",
+      "CARDS",
+      "CORNERS",
+      "GOALS_HALF",
+    ]);
+  });
+
+  test("a probability keeps a decimal below 10 % and is a whole percentage above", () => {
+    expect(familyPercent("0.5500")).toMatch(/^55\s%$/);
+    expect(familyPercent(0.21)).toMatch(/^21\s%$/);
+    expect(familyPercent("0.0999")).toMatch(/^10,0\s%$/);
+    expect(familyPercent("0.1000")).toMatch(/^10\s%$/);
+    expect(familyPercent("0.0210")).toMatch(/^2,1\s%$/);
+    expect(familyPercent("0.0000")).toMatch(/^0\s%$/);
+    expect(familyPercent(null)).toBe("—");
+    expect(familyPercent("not a number")).toBe("—");
+  });
+
+  test("an outcome is said with the line of its bet and the sides of the match", () => {
+    const sides = { home: "Nashville SC", away: "Inter Miami" };
+    const corners = familyMarkets()[2]!;
+    expect(familyOutcomeText(corners, corners.lines[1]!, { selection: "Over" }, sides)).toBe(
+      "Más de 9,5",
+    );
+    expect(familyOutcomeText(corners, corners.lines[1]!, { selection: "Under" }, sides)).toBe(
+      "Menos de 9,5",
+    );
+    const htft = familyMarkets()[0]!;
+    expect(familyOutcomeText(htft, htft.lines[0]!, { selection: "Draw/Away" }, sides)).toBe(
+      "Empate / Inter Miami",
+    );
+    // a selection nobody knows comes back as it came, with its line
+    expect(familyOutcomeText(corners, corners.lines[0]!, { selection: "Exactly" }, sides)).toBe(
+      "Exactly 8,5",
+    );
   });
 });
 

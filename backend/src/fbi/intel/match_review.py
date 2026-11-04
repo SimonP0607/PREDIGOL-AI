@@ -53,14 +53,15 @@ SELECT DISTINCT f.id, f.kickoff_at
   FROM core.fixtures f JOIN core.fixture_results r ON r.fixture_id = f.id
  WHERE f.kickoff_at >= %(since)s AND f.kickoff_at <= %(until)s AND f.status_group = 'finished'
    AND r.reg_goals_home IS NOT NULL AND r.reg_goals_away IS NOT NULL
-   AND (EXISTS (SELECT 1 FROM ai.pick_reviews pr WHERE pr.fixture_id = f.id)
+   AND (EXISTS (SELECT 1 FROM ai.pick_reviews pr WHERE pr.fixture_id = f.id AND pr.engine IN ('rules', 'llm', 'combined'))
         OR EXISTS (SELECT 1 FROM intel.postmortems pm WHERE pm.fixture_id = f.id AND pm.market_key IS NOT NULL
                                                           AND pm.version = %(version)s))
    AND NOT EXISTS (SELECT 1 FROM intel.match_postmortems m WHERE m.fixture_id = f.id AND m.version = %(version)s)
  ORDER BY f.kickoff_at
  LIMIT %(limit)s
 """
-"""The finished matches that have something to study (a review of the AI, or a selection of the one post-mortem) and no row yet."""
+"""The finished matches that have something to study (a review of the AI, or a selection of the one post-mortem) and no row yet. The review is one
+of production: the shadow of phase 3 (``fbi.ai.config.SHADOW_ENGINES``) is not something this study learns from."""
 
 FIXTURE_SQL = """
 SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, th.name AS home_name, ta.name AS away_name,

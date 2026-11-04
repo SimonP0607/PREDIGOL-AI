@@ -379,7 +379,7 @@ def test_the_attempts_are_counted_by_status_inside_the_window(db: psycopg.Connec
 # ── the audit of what an agent may know ───────────────────────────────────────────────────────────────────────────────────────────
 
 def check(db: psycopg.Connection[Any], rule: str, day: date, checked: int, bad: int, at: datetime, *, examples: list[Any] | None = None,
-          version: str = "leak-audit-v7") -> None:
+          version: str = "leak-audit-v8") -> None:
     insert_audit = ("INSERT INTO intel.audit_checks (day, checked_at, version, rule, n_checked, n_violations, examples) "
                     "VALUES (%s, %s, %s, %s, %s, %s, %s)")
     db.execute(insert_audit, (day, at, version, rule, checked, bad, Jsonb(examples or [])))
@@ -398,7 +398,7 @@ def test_each_day_of_the_audit_shows_its_latest_verdict_and_the_totals_add_those
     r = rules["slice_known"]
     assert [x.day for x in r.days] == [d, d - timedelta(days=1), d - timedelta(days=3)], "newest first, one per day"
     assert [(x.n_checked, x.n_violations) for x in r.days] == [(40, 0), (30, 0), (25, 1)]
-    assert r.days[2].examples == [5] and r.days[0].version == "leak-audit-v7" and r.days[0].checked_at == AT - timedelta(hours=1)
+    assert r.days[2].examples == [5] and r.days[0].version == "leak-audit-v8" and r.days[0].checked_at == AT - timedelta(hours=1)
     assert (r.days_audited, r.checked, r.violations) == (3, 95, 1)
 
 

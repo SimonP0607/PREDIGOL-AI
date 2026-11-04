@@ -73,7 +73,18 @@ ATTEMPT_WINDOW = timedelta(hours=24)
 TYPICAL_OUTPUT_ROWS = 100
 TYPICAL_OUTPUT_DAYS = 14
 UNSENT_AFTER = timedelta(minutes=30)
-"""A batch still ``submitting`` this long after it was opened was never sent (the cycle that opened it stopped)."""
+"""A batch still ``submitting`` this long after it was opened, with no cycle running, was never sent (the cycle that opened it stopped)."""
+CYCLE_LOCK = 7310073
+"""The advisory lock an analysis cycle holds from its start to its end (``fbi.ai.cycle`` takes it; it is defined here because the cycle imports this
+module and not the other way round). While it is held the cycle is still recording tasks and sends them in one go at its end, so a batch that is
+``submitting`` is not a batch that was never sent, however old it is: the first cycle of the Bogotá day lasted 61 minutes on 31 Oct 2026 and 49
+minutes on 1 Nov, and the poll abandoned the 120 tasks it had recorded (plan IA, phase 0)."""
+CYCLE_RUNNING_SQL = ("SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted "
+                     "AND database = (SELECT oid FROM pg_database WHERE datname = current_database()) "
+                     "AND classid = 0 AND objid = %s::oid AND objsubid = 1)")
+"""How a session sees that another holds ``CYCLE_LOCK``: a one-key advisory lock (``pg_try_advisory_lock(bigint)``) is listed with the
+key's high half in ``classid`` (0: the key is under 2^32), its low half in ``objid`` and ``objsubid`` 1 (the two-key form has 2), in this
+database only."""
 OPEN = ("submitting", "submitted")
 ANSWERED = ("succeeded", "invalid", "late")
 FAILED = ("errored", "canceled", "expired")
@@ -454,10 +465,20 @@ class BatchQueue:
                         (status, self.at, error[:300], batch_id))
 
 
+def cycle_is_running(conn: psycopg.Connection[Any]) -> bool:
+    """Whether an analysis cycle holds its lock right now, in any session (this one too). It only LOOKS at the lock: taking it to find out
+    would make a cycle that starts in that instant believe another one is running and skip its work."""
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(CYCLE_RUNNING_SQL, (CYCLE_LOCK,))
+        row = cur.fetchone()
+    return bool(row and row[0])
+
+
 def abandon_unsent(conn: psycopg.Connection[Any], *, at: datetime, before: datetime | None = None) -> int:
     """Batches and items still ``submitting`` from an earlier cycle: they were recorded but never sent (the cycle stopped), so they are
     abandoned and the task is free to be asked again. The cycle calls it at its start, under its lock - nothing else is sending then;
-    the poll calls it for those older than ``UNSENT_AFTER``. Returns the number of items."""
+    the poll calls it for those older than ``UNSENT_AFTER``, and only when no cycle is running (``cycle_is_running``): a cycle that is
+    still running sends what it recorded at its end, however long it takes. Returns the number of items."""
     cutoff = before if before is not None else at - UNSENT_AFTER
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute("UPDATE ai.batch_items i SET status = 'abandoned', resolved_at = %s, error = 'never_sent' "
@@ -480,6 +501,10 @@ class PollReport:
     counts: dict[str, int] = field(default_factory=dict)
     cost_usd: Decimal = Decimal(0)
     errors: list[str] = field(default_factory=list)
+    abandoned: int = 0
+    """Items recorded and never sent (the cycle that recorded them stopped) that this poll abandoned."""
+    cycle_running: bool = False
+    """A cycle was running, so the poll left the unsent batches alone: they are the cycle's own, to be sent when it ends."""
 
     def bump(self, key: str, n: int = 1) -> None:
         self.counts[key] = self.counts.get(key, 0) + n
@@ -492,7 +517,10 @@ def poll(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetime, l
     those already paid for. Never raises for a provider's failure: it is noted on the batch and tried again at the next poll."""
     report = PollReport()
     ledger = ledger or UsageLedger()
-    abandon_unsent(conn, at=at)
+    if cycle_is_running(conn):  # its batches are still 'submitting' because it has not reached its flush, not because it never sent them
+        report.cycle_running = True
+    else:
+        report.abandoned = abandon_unsent(conn, at=at)
     conn.commit()
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(OPEN_BATCHES_SQL, {"limit": limit})

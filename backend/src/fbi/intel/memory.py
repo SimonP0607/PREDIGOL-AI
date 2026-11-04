@@ -79,6 +79,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
+from fbi.core.decision_versions import DECISION_CORE
 
 VERSION = "memory-v4"
 LINEAGE_START = date(2026, 10, 13)
@@ -92,7 +93,7 @@ DECISIONS_SQL = """
 WITH last AS (
     SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line) d.*
       FROM intel.decisions d
-     WHERE d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s
+     WHERE d.decision_version = %(decision_version)s AND d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s
      ORDER BY d.fixture_id, d.market_key, d.selection, d.line, d.known_at DESC, d.id DESC
 )
 SELECT l.id, l.fixture_id, l.market_key, l.selection, l.state, o.result_status, o.clv::float8 AS clv,
@@ -363,7 +364,7 @@ def day_deltas(conn: psycopg.Connection[Any], day: date) -> tuple[dict[EKey, Del
     names: dict[EKey, str] = {}
     sources: dict[EKey, list[int]] = defaultdict(list)
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(DECISIONS_SQL, {"start": start, "end": end})
+        cur.execute(DECISIONS_SQL, {"start": start, "end": end, "decision_version": DECISION_CORE})
         decisions = [dict(r) for r in cur.fetchall()]
     groups: dict[EKey, list[dict[str, Any]]] = defaultdict(list)
     for r in decisions:

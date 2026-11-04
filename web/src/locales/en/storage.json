@@ -1,0 +1,146 @@
+{
+  "title": "Storage",
+  "description": "Where the server's disk goes, how fast it grows, the copies and the retention policy. Read-only: nothing is deleted from here.",
+  "measuredAt": "Measured {when} on {host}",
+  "notReported": "No storage report yet: the server writes it four times a day (02:41, 08:41, 14:41 and 20:41 UTC).",
+  "stale": "The last report is older than 8 hours: the server missed a measurement.",
+  "readOnly": "This page deletes nothing. Cleanups run on the server, with a verified off-site copy and the owner's word for anything that cannot be undone.",
+  "level": {
+    "ok": "Fine",
+    "warning": "Warning (≥ 70%)",
+    "high": "High (≥ 80%)",
+    "critical": "Critical (≥ 90%)"
+  },
+  "metrics": {
+    "disk": "Disk",
+    "diskHint": "{used} of {size} · {free} free",
+    "database": "Database",
+    "databaseHint": "Size according to PostgreSQL",
+    "raw": "Provider files (RAW)",
+    "rawHint": "{files} files",
+    "docker": "Docker",
+    "dockerHint": "{reclaimable} reclaimable"
+  },
+  "parts": {
+    "title": "What fills the disk",
+    "subtitle": "Each part measured on the server",
+    "pgdata": "PostgreSQL folder (with WAL)",
+    "raw": "Provider RAW",
+    "backups": "Local database copies",
+    "releases": "Deploy packages",
+    "logs": "Logs",
+    "dockerImages": "Docker images",
+    "dockerVolumes": "Docker volumes",
+    "orphanVolumes": "Orphan volumes ({n})",
+    "buildCache": "Build cache",
+    "reclaimable": "reclaimable: {bytes}"
+  },
+  "growth": {
+    "title": "Growth and projection",
+    "subtitle": "At the pace of the median day of the last two weeks",
+    "perDay": "Pace",
+    "perDayValue": "{bytes} a day",
+    "in": "In {days} days",
+    "inValue": "{bytes} ({pct}%)",
+    "to80": "Days to 80%",
+    "to90": "Days to 90%",
+    "never": "not reached at this pace",
+    "now": "already reached",
+    "noProjection": "At least 7 days of measures are needed to project.",
+    "lastDay": "Last day ({day})",
+    "anomaly": "Anomalous growth: the last day grew {delta} and the median is {median}.",
+    "partsPace": "Pace by part",
+    "pace": {
+      "db_bytes": "Database",
+      "raw_bytes": "RAW",
+      "docker_bytes": "Docker",
+      "backups_bytes": "Local copies"
+    }
+  },
+  "tables": {
+    "title": "Largest tables",
+    "subtitle": "With their indexes",
+    "name": "Table",
+    "size": "Size"
+  },
+  "backups": {
+    "title": "Copies",
+    "subtitle": "The last copy, where it is and the last tested restore",
+    "latest": "Last copy",
+    "none": "None",
+    "size": "Size",
+    "checksum": "Checksum (sha256)",
+    "offsite": "Off-site copy (R2)",
+    "offsiteYes": "verified {when}",
+    "offsiteNotConfigured": "Not configured: every copy is on the same disk",
+    "offsiteMissing": "Configured, but this copy did not leave",
+    "restore": "Last tested restore",
+    "restorePassed": "passed {when} ({seconds} s)",
+    "restoreFailed": "FAILED {when}",
+    "restoreNever": "Never recorded",
+    "keep": "Kept on the server",
+    "keepValue": "{daily} daily and {weekly} weekly"
+  },
+  "cleanup": {
+    "title": "Cleanup",
+    "subtitle": "The last prune after a deploy",
+    "last": "Last run",
+    "freed": "Space recovered",
+    "items": "Items removed",
+    "none": "No cleanup recorded yet."
+  },
+  "retention": {
+    "title": "Retention policy",
+    "subtitle": "What is kept, where and for how long",
+    "headers": {
+      "what": "What",
+      "where": "Where",
+      "keep": "How long"
+    },
+    "tier": {
+      "permanent": "Permanent",
+      "long": "Long retention",
+      "medium": "Medium retention",
+      "short": "Short retention",
+      "none": "Not kept"
+    },
+    "what": {
+      "matches_results": "Matches and results",
+      "prematch_odds": "Pre-match odds",
+      "forecasts_predictions_models": "Forecasts, predictions and models",
+      "picks_parlays_settlements": "Picks, parlays and settlements",
+      "ai_decisions_postmortems_memory": "AI decisions, post-mortems and memory",
+      "experiments_promotions_lineage_audits": "Experiments, promotions, lineage and audits",
+      "raw_provider_files": "Provider RAW files",
+      "monthly_dumps": "Monthly copies",
+      "audit_exports": "Audit exports",
+      "weekly_dumps": "Weekly copies",
+      "daily_dumps": "Daily copies",
+      "pitr_wal": "Point-in-time recovery (WAL)",
+      "docker_images": "Docker images",
+      "build_cache": "Build cache",
+      "logs": "Logs",
+      "release_packages": "Deploy packages",
+      "orphan_volumes_test_restores": "Orphan volumes and test restores"
+    },
+    "where": {
+      "postgres": "PostgreSQL (server and every copy)",
+      "vps": "Server",
+      "r2": "Cloudflare R2",
+      "vps+r2": "Server and Cloudflare R2"
+    },
+    "keep": {
+      "forever": "Forever",
+      "r2_forever_locked": "Forever on R2 (locked against deletion)",
+      "12_months_locked": "12 months, locked",
+      "8_weeks_r2_locked": "8 weeks on R2, locked",
+      "14_days_r2_locked": "14 days on R2, locked",
+      "pitr_full_backups": "What the PITR full backups cover",
+      "running_plus_previous": "The running one and the previous (rollback)",
+      "7_days": "7 days",
+      "rotated": "Automatic rotation with a size cap",
+      "30_days": "30 days",
+      "delete_after_review": "Deleted after review, with the owner's word"
+    }
+  }
+}

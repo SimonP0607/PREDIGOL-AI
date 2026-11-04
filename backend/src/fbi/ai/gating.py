@@ -31,6 +31,8 @@ def enforcement(conn: psycopg.Connection[Any], settings: AiSettings) -> Enforcem
     if settings.mode != "enforce":
         return Enforcement(False, f"mode_{settings.mode}")
     with conn.cursor(row_factory=dict_row) as cur:
+        # the report of ``combined`` and of no other engine: the shadow of phase 3 (``ma-v1``, ``ma-v1-h``, ``cs-v1``) has reports of its
+        # own in this table (``fbi.ai.shadow``), and none of them is a gate for what users see
         cur.execute("SELECT gate, created_at, engine FROM ai.shadow_reports WHERE engine = 'combined' "
                     "ORDER BY created_at DESC, id DESC LIMIT 1")
         row = cur.fetchone()

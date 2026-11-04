@@ -66,6 +66,12 @@
       "useCode": "Usar un código de la app",
       "usePassword": "Usar la contraseña",
       "confirm": "Confirmar y cerrar"
+    },
+    "confirmEndOthers": {
+      "title": "¿Cerrar las demás sesiones?",
+      "body_one": "Se cerrará {count} sesión abierta en otro dispositivo; allí habrá que volver a entrar. Esta se queda abierta.",
+      "body_other": "Se cerrarán {count} sesiones abiertas en otros dispositivos; allí habrá que volver a entrar. Esta se queda abierta.",
+      "ok": "Cerrar sesiones"
     }
   },
   "notifications": {

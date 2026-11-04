@@ -204,12 +204,11 @@ Dos tareas con la misma clave son la misma pregunta puesta al mismo modelo con l
 
 Un **agente** es sus prompts, el contrato de su respuesta, su modelo y su esfuerzo. Cambiar cualquiera de ellos es una **versión nueva** del agente; una versión nueva nace CHALLENGER y llega a CHAMPION solo por una fila que firmas tú en `intel.promotions` (sección 8). El registro vive en el repositorio y lo ata al código una prueba (`tests/unit/test_ai_registry.py`), igual que el libro de código de modelos de la F12 del plan anterior. Guarda tres cosas, cada una con una relación distinta con el código:
 
-* **Lo que el código tiene hoy (`AGENTS`).** Seis agentes de línea base, los que corren en producción tal como están, con el motor `llm`: `brief` (`brief-v8`), `reviewer` (`review-v2`), `extractor` (`extract-v1`), `postmortem` (`postmortem-v3`), `post_match_reviewer` (`pick-postmortem-v4`) y `learning_analyst` (`learning-v2`). Cada uno tiene su **huella** (`ag` y 10 caracteres, de `agent-fp-v1`), calculada a partir del código que corre, y su entrada en el libro (`LEDGER`) como CHAMPION **por línea base**: la decisión de ponerlo en marcha se tomó antes de que existiera el registro, y la entrada lo dice. `brief` y `reviewer` llevan marcada su retirada en la fase 9. **Desde la fase 2 hay un séptimo**, `claim_extractor` (`extract-v2`), el extractor del Servicio de investigación v2: lo construyó el plan y no estaba en producción, así que su entrada en el libro **nace CHALLENGER** y no es línea base. Corre junto a `extractor` durante la semana de comparación y solo lo sustituye una fila que firmas tú en `intel.promotions`.
+* **Lo que el código tiene hoy (`AGENTS`).** Seis agentes de línea base, los que corren en producción tal como están, con el motor `llm`: `brief` (`brief-v8`), `reviewer` (`review-v2`), `extractor` (`extract-v1`), `postmortem` (`postmortem-v3`), `post_match_reviewer` (`pick-postmortem-v4`) y `learning_analyst` (`learning-v2`). Cada uno tiene su **huella** (`ag` y 10 caracteres, de `agent-fp-v1`), calculada a partir del código que corre, y su entrada en el libro (`LEDGER`) como CHAMPION **por línea base**: la decisión de ponerlo en marcha se tomó antes de que existiera el registro, y la entrada lo dice. `brief` y `reviewer` llevan marcada su retirada en la fase 9. **Desde la fase 2 hay un séptimo**, `claim_extractor` (`extract-v2`), el extractor del Servicio de investigación v2: lo construyó el plan y no estaba en producción, así que su entrada en el libro **nace CHALLENGER** y no es línea base. Corre junto a `extractor` durante la semana de comparación y solo lo sustituye una fila que firmas tú en `intel.promotions`. **Desde la fase 3 hay un octavo**, `match` (`match-v1`), el Match Agent: lee la porción `match` del paquete y contesta en `aa-v1`, en modo contexto y en modo evaluación, con Haiku 5.5; su entrada en el libro también **nace CHALLENGER** y corre en sombra en el LAB hasta que firmes una fila en `intel.promotions`.
 * **Lo que el plan construirá (`PLANNED`).** Sin código todavía. La prueba lo ata al router, a los contratos y a la lista de precios, y falla el día que un prompt planeado aparece en `ai/prompts.py` sin que el agente haya pasado a `AGENTS`:
 
 | Agente | Versión | Fase | Contrato |
 | --- | --- | --- | --- |
-| `match` | `match-v1` | 3 | `aa-v1` |
 | `council` | `council-v1` | 3 | `cd-v1` |
 | `statistics` | `stats-v1` | 4 | `aa-v1` |
 | `post_match_reviewer` | `pmr-v1` | 5 | `pmr-v1` |
@@ -293,7 +292,7 @@ El ciclo termina `ok` si no hubo `refused` ni `failed`, `partial` si los hubo y 
 
 ## 10. La auditoría de fugas: `slice_known`
 
-Cada noche la auditoría de fugas (`leak-audit-v7`, `intel/leakage.py`) comprueba, para las decisiones del día de Bogotá, que nada usó algo que no se sabía en su momento. **Hoy tiene 18 reglas**; la fase 1 añade la última, `slice_known`, que es la primera que lee estados de partido. Para cada fila de `ai.match_runs` escrita ese día que nombra un paquete `mcp-v1` comprueba:
+Cada noche la auditoría de fugas (`leak-audit-v8`, `intel/leakage.py`) comprueba, para las decisiones del día de Bogotá, que nada usó algo que no se sabía en su momento. **Hoy tiene 22 reglas** (las 18 de la fase 1, las dos de las familias, de F11, y las dos de la fase 3, la sombra); la fase 1 añadió `slice_known`, la primera que lee estados de partido, y la fase 3 añade después `agent_known` y `shadow_review_known`, la última, `shadow_review_known`. Para cada fila de `ai.match_runs` escrita ese día que nombra un paquete `mcp-v1` comprueba:
 
 * que el paquete salió de un paquete de datos guardado **del mismo partido**, que ya estaba construido en el momento en que se escribió la fila, que su momento (`as_of`) es el `known_at` de la fila y que ese momento es anterior al inicio del partido;
 * que el paquete y **cada una** de sus porciones, derivados otra vez desde ese paquete de datos con el código de hoy, son idénticos byte por byte a lo que registró la fila (la huella del paquete y la de cada porción, en el orden de las porciones): una porción es parte del paquete, el paquete es parte del paquete de datos, y ninguno lleva un momento posterior a la pasada (`PackageLeakError` también es una violación);
@@ -301,14 +300,14 @@ Cada noche la auditoría de fugas (`leak-audit-v7`, `intel/leakage.py`) comprueb
 
 Es una comprobación por fila y los ejemplos que guarda son los identificadores de las filas. Es la única regla que no es una sola sentencia sobre el día entero: lee los paquetes de datos de uno en uno, pero solo los de las filas de ese día (unos cientos como mucho).
 
-**Las cinco reglas del plan.** El plan pide cinco pruebas de fuga para esta capa. Hoy corren dos: `slice_known` (nueva) y `review_known` (que ya existía). Las otras tres se añaden a la auditoría el día que existe el código que auditan, ni antes ni sin él:
+**Las cinco reglas del plan.** El plan pide cinco pruebas de fuga para esta capa. Hoy corren cuatro: `slice_known` (fase 1), `review_known` (que ya existía), `agent_known` y `shadow_review_known` (fase 3). La quinta, `memory_known`, se añade a la auditoría el día que existe el código que audita, ni antes ni sin él:
 
 | Regla del plan | Estado | Qué comprueba |
 | --- | --- | --- |
 | `slice_known` | corre desde esta fase | que una porción es parte del paquete, y el paquete de un paquete de datos anterior a la pasada |
 | `review_known` | ya corría | que la revisión que leyó cada decisión de `intel.decisions` se hizo antes de su momento (solo mira las revisiones enlazadas desde esa tabla) |
-| `agent_known` | llega con el Council (fase 3) | que toda evaluación que lee el Council es anterior a su ejecución |
-| `shadow_review_known` | llega con la sombra (fase 3) | lo mismo que `review_known` para las revisiones de los brazos en sombra, y exige ver más de 0 filas cada noche |
+| `agent_known` | corre desde la fase 3 | que toda ejecución de un agente (`ai.agent_runs`) leyó solo lo que se sabía a su `known_at`, anterior al saque: el paquete que nombra es de ese partido y de ese momento, cada evidencia que cita existía a esa hora, y la evaluación que lee el Council (`parent_run_id`) había terminado antes de que empezara |
+| `shadow_review_known` | corre desde la fase 3 | lo mismo que `review_known` para las revisiones de los brazos en sombra (los motores de `fbi.ai.config.SHADOW_ENGINES`), que no enlaza ninguna decisión; la regla devuelve 0 filas leídas sin llamarlo violación y la puerta B exige ver más de 0 filas cada noche (`n_checked` de `intel.audit_checks`) |
 | `memory_known` | solo si algún día la memoria entra en los prompts (fase 10, tu decisión 17, pospuesta) | que ninguna fila de memoria tiene un `known_at` posterior a la pasada |
 
 La Consola nunca presenta una regla que la auditoría no corre como una regla limpia: sin días auditados, enseña «Sin auditar».
@@ -464,7 +463,7 @@ Y las que el plan pide para cualquier fase de IA y esta fase ya puede cumplir:
 | 3 | **La regla de la batería.** El plan fija los 40 casos y los tres ceros; no dice cuánto varía un modelo cuando nadie lo ataca | línea base de 5 respuestas limpias, 4 de 5 para llamar estable a una base y 3 repeticiones de cada sospechoso, para no confundir una oscilación con un ataque (sección 12) |
 | 4 | **Más estricta que el plan.** Un modelo puede obedecer una orden sin que cambie su veredicto | el canario cuenta como fallo (*obedecida*), y también una negativa (sección 12) |
 | 5 | **Cuándo llega cada pieza.** El Orquestador y el Match Agent son de la fase 3, no de la 2 | la cola y los apartados de agentes del estado están vacíos hasta entonces, y la Consola lo dice |
-| 6 | **Tres reglas de fuga no pueden correr todavía.** `agent_known`, `shadow_review_known` y `memory_known` auditan algo que no existe | se añaden con su código (sección 10), y la Consola enseña «Sin auditar» y no «Limpia» |
+| 6 | **Una regla de fuga no puede correr todavía.** `memory_known` audita algo que no existe (`agent_known` y `shadow_review_known` corren desde la fase 3) | se añade con su código (sección 10), y la Consola enseña «Sin auditar» y no «Limpia» |
 
 ## 16. Lo que falta
 

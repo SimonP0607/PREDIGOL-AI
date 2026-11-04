@@ -51,6 +51,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_start, local_day
 from fbi.ai.memory import remember
+from fbi.core.decision_versions import DECISION_CORE
 from fbi.intel.match_review import analyse
 from fbi.intel.pm_facts import Candidate, Key, build_facts, resolve
 from fbi.intel.pm_questions import Facts, answers, classify, review_verdict_of
@@ -73,7 +74,7 @@ DECISIONS_SQL = """
 WITH last AS (
     SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line) d.*
       FROM intel.decisions d
-     WHERE d.kickoff_at >= %(since)s AND d.kickoff_at <= %(until)s
+     WHERE d.decision_version = %(decision_version)s AND d.kickoff_at >= %(since)s AND d.kickoff_at <= %(until)s
      ORDER BY d.fixture_id, d.market_key, d.selection, d.line, d.known_at DESC, d.id DESC
 ), ranked AS (
     SELECT l.id, row_number() OVER (PARTITION BY (l.kickoff_at AT TIME ZONE 'America/Bogota')::date
@@ -362,7 +363,7 @@ def _key(r: dict[str, Any]) -> Key:
 
 def universe(conn: psycopg.Connection[Any], *, since: datetime, until: datetime) -> dict[Key, Candidate]:
     """Every selection that finished in the window and that the decision layer or the AI looked at, merged into one candidate each."""
-    window = {"since": since, "until": until, "top": TOP_INVESTIGATION}
+    window = {"since": since, "until": until, "top": TOP_INVESTIGATION, "decision_version": DECISION_CORE}
     decisions = {_key(r): r for r in _rows(conn, DECISIONS_SQL, window)}
     roles: dict[Key, set[str]] = {}
     items: dict[Key, dict[str, Any]] = {}

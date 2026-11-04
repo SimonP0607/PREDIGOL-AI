@@ -78,6 +78,30 @@ class PickRow(Contract):
     probability: Decimal | None
 
 
+class FamilyLine(Contract):
+    """One line of a market of a family: the probability of each of its outcomes, as the family stated it."""
+
+    line: Decimal = Field(description="0 for a market that has no line (the result of the count, double chance, HT/FT).")
+    known_at: datetime = Field(description="When the family said it. A newer set replaces it only when an outcome moved by half a point.")
+    outcomes: list[ForecastOutcome]
+
+
+class FamilyMarket(Contract):
+    """A market that one of the families (corners, cards, yellow cards, the goals of the halves) forecasts. Research: it is the model's own number,
+    UNCALIBRATED, with no interval, and it is shown to the Admin Console's preview alone (plan F10; the owner has not decided that users see it)."""
+
+    family: str = Field(description="GOALS_HALF, CORNERS, CARDS or YELLOW.")
+    market: str = Field(description="The key of the market catalogue (CORNERS_OU, OU_1H, HTFT...).")
+    model: str
+    calibration: Calibration
+    rule: str | None = Field(
+        description="The key of the settlement rule that grades a bet on this market (goals_1h@v1, corners_ft@v1...): the count it is graded on. "
+                    "Null when no rule can grade the key.")
+    known_at: datetime = Field(description="The newest of its lines.")
+    data_cutoff_at: datetime = Field(description="The cut-off of the data the model used for that line.")
+    lines: list[FamilyLine]
+
+
 class MatchForecast(Contract):
     fixture_id: int
     kickoff_at: datetime
@@ -87,3 +111,6 @@ class MatchForecast(Contract):
         default=None, description="Admin preview only; null for a user. The forecast is not a value: this is.")
     picks: Section[list[PickRow]] | None = Field(
         default=None, description="Admin preview only; null for a user. Neither a forecast nor a value is a pick: this is.")
+    families: Section[list[FamilyMarket]] | None = Field(
+        default=None, description="Admin preview only; null for a user. What the families forecast for the match (research, uncalibrated): "
+                                  "not the forecast of the block above, which reads another version.")

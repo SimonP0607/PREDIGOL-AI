@@ -24,10 +24,26 @@ from fbi.predictions.spec import promote as promote_spec
 from tests.integration.helpers import scalar
 from tests.integration.signed_in import SAME_SITE, signed_in
 
-KO = datetime(2026, 10, 3, 14, 0, tzinfo=UTC)
+KO = (datetime.now(UTC) - timedelta(days=5)).replace(hour=14, minute=0, second=0, microsecond=0)
+"""The target match: five days ago, 14:00 UTC. It was the literal 3 Oct 2026, and on 1 Nov 2026 two tests began to fail: the forecast prices the
+lines the market QUOTED, read with ``market.odds_snapshots.captured_at > now() - 30 days`` (``fbi.models.quoted.quoted_lines``), a window that
+runs on the real clock while this file's captures sit on its own. Every instant below hangs from this one, so they stay inside the window."""
 AT = KO - timedelta(hours=26)          # the forecast
 CAPTURED = KO - timedelta(minutes=1439)  # the price, later than the forecast
 N_TEAMS = 10
+
+
+@pytest.fixture(autouse=True)
+def _prices_do_not_age(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests live in a fixed October (KO, AT, CAPTURED); quoted_lines() only reads prices captured in the last 30 days of the
+    WALL clock, so from 2 Nov 2026 on the forecasts priced no line and the chain broke at its first link. The window is widened here;
+    production keeps the 30 days. (A guard that these tests do not age is the CI itself: it is what found this.)"""
+    from fbi.models.quoted import quoted_lines as real
+
+    def wide(conn: psycopg.Connection, ids: Any, **kw: Any) -> Any:
+        return real(conn, ids, **{**kw, 'since_days': 36500})
+
+    monkeypatch.setattr("fbi.predictions.forecast.quoted_lines", wide)
 
 
 @pytest.fixture()

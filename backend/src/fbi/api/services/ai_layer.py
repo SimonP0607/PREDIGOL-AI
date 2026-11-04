@@ -217,6 +217,24 @@ def reviews(conn: Conn, *, day: date | None, engine: str, decision: str | None, 
     return listing([ReviewRow.model_validate(r) for r in rows], empty_reason="no_reviews")
 
 
+def component_ids(output: dict[str, Any]) -> list[int]:
+    """The reviews a combined review was made of: the ``review_id`` of each entry of ``output.engines``. Only an entry that carries one counts. What a
+    shadow engine (``ma-v1``, ``ma-v1-h``, ``cs-v1``) keeps under ``engines`` is its own business, and the page of its review must open all the same."""
+    engines = output.get("engines")
+    if not isinstance(engines, list):
+        return []
+    ids: list[int] = []
+    for entry in engines:
+        value = entry.get("review_id") if isinstance(entry, dict) else None
+        if not value or isinstance(value, bool) or not isinstance(value, int | str):
+            continue
+        try:
+            ids.append(int(value))
+        except ValueError:
+            continue
+    return ids
+
+
 def review_detail(conn: Conn, review_id: int) -> Envelope[ReviewDetail]:
     one = REVIEWS_SQL.replace("WHERE r.reviewed_at >= %(since)s AND r.reviewed_at < %(until)s AND r.engine = %(engine)s\n"
                               "   AND (%(decision)s::text IS NULL OR r.decision = %(decision)s) AND (%(fixture)s::bigint "
@@ -234,9 +252,8 @@ def review_detail(conn: Conn, review_id: int) -> Envelope[ReviewDetail]:
         packet = fetch_one(conn, "SELECT id, packet_hash, as_of, approx_tokens, missing, content FROM ai.match_packets "
                                  "WHERE id = %(id)s", {"id": full["packet_id"]})
     output = dict(full.get("output") or {})
-    component_ids = [int(e["review_id"]) for e in output.get("engines", []) if e.get("review_id")]
     components = []
-    for cid in component_ids:
+    for cid in component_ids(output):
         c = fetch_one(conn, one.replace("LIMIT %(limit)s", ""), {"id": cid})
         if c is not None:
             components.append(ReviewRow.model_validate(c))

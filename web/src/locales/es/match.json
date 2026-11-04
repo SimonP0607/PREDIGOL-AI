@@ -596,14 +596,20 @@
       "edge": "ventaja",
       "ev": "valor esperado",
       "state": "estado",
-      "selection": "selección"
+      "selection": "selección",
+      "familiesTitle": "Familias de este partido (investigación, solo administrador)",
+      "familiesNote": "Lo que pronostican las familias de goles por mitad, córners, tarjetas y amarillas: la cifra del modelo tal cual, sin calibrar y sin rango medido. Entre paréntesis, la cuota según PrediGol (1 / probabilidad). Es investigación: no es el pronóstico de arriba ni una recomendación.",
+      "familyMarkets": "Mercados: {n}",
+      "settledWith": "Se liquida con: {rule}",
+      "noRule": "Ninguna regla de liquidación puede juzgar una apuesta en este mercado."
     },
     "reason": {
       "data_not_fit": "PrediGol no pronostica esta competición: sus datos todavía no sirven para un modelo.",
       "quarantined": "PrediGol no hizo pronóstico: los datos de este partido están en revisión.",
       "no_forecast_yet": "PrediGol todavía no tiene pronóstico para este partido.",
       "no_evaluation": "La capa de decisión no evaluó ningún precio de este partido: sin precio no hay valor.",
-      "no_pick": "No se congeló ningún pick para este partido: un pronóstico, por seguro que sea, no lo es."
+      "no_pick": "No se congeló ningún pick para este partido: un pronóstico, por seguro que sea, no lo es.",
+      "no_family_forecast": "Las familias no han pronosticado nada de este partido: pronostican los partidos por jugarse de las competiciones con datos aptos para un modelo."
     }
   },
   "calendar": {

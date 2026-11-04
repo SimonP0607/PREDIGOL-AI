@@ -97,7 +97,10 @@ haya resultados se puede medir cuánto acierta y si el ajuste se sostiene (F10 y
   probabilidades, su rango, la etiqueta de calibración y el aviso fijo «Es una probabilidad, no una recomendación ni una cuota para
   apostar» con el pie «Un pronóstico dice qué es probable, no si está bien pagado… lo que PrediGol recomienda está en la pestaña Picks».
 * **API:** `GET /api/v1/matches/{id}/forecast`; con `?preview=shadow` (solo SUPER_ADMIN; cualquier otro recibe 403) añade la cuota justa
-  y, al lado, el valor y los picks del partido. Ninguna ruta de F5 calcula una probabilidad, llama a un modelo ni puede cambiar un pick.
+  y, al lado, el valor y los picks del partido. Desde F10 añade un cuarto bloque, `families`, con lo que pronostican las familias (goles por
+  mitad, córners, tarjetas y amarillas, versión `family-v1`): sin calibrar, sin intervalo y aparte del pronóstico de arriba, que sigue
+  leyendo solo `forecast-v1`; para cualquier otra respuesta es `null`. Ninguna ruta de F5 calcula una probabilidad, llama a un modelo ni puede
+  cambiar un pick.
 
 ## La IA y el pronóstico
 

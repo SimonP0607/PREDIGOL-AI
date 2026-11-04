@@ -140,7 +140,7 @@ def test_no_meetings_is_named_missing_and_the_narrative_reads_the_relevance(db: 
 
 
 def test_the_rule_is_in_the_audit_and_the_version_says_so() -> None:
-    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v7" and RULE in (leakage.__doc__ or "")
+    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v8" and RULE in (leakage.__doc__ or "")
 
 
 def test_an_honest_packet_passes_one_check_per_meeting_and_one_for_the_list(db: psycopg.Connection[Any], seed: Seed) -> None:
@@ -148,7 +148,7 @@ def test_an_honest_packet_passes_one_check_per_meeting_and_one_for_the_list(db: 
     store_packet(db, built(db, match), built_at=AT)
     assert audited(db) == {"checked": 4, "violations": 0, "examples": []}, "3 meetings cited, and nothing known left out"
     rows = db.execute("SELECT version, n_checked, n_violations FROM intel.audit_checks WHERE rule = %s", (RULE,)).fetchall()
-    assert rows == [("leak-audit-v7", 4, 0)]
+    assert rows == [("leak-audit-v8", 4, 0)]
 
 
 def test_a_packet_without_the_new_block_is_not_read(db: psycopg.Connection[Any], seed: Seed) -> None:

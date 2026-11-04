@@ -9,7 +9,8 @@
  * pick is what the Picks tab shows. Whether users see this block at all is the owner's decision (the API answers
  * `not_available` until then, and the block renders nothing for them). The Admin Console's preview sees it with the
  * fair odds beside each number and, folded away, what the decision layer and the pick engine said about the same
- * match - three answers that are not one.
+ * match - three answers that are not one - and, in a block of its own, what the families (the goals of each half, the
+ * corners, the cards) forecast for it: research, uncalibrated, and never mixed into the forecast above (plan F10.17b).
  */
 import { useEffect, useId, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -23,6 +24,7 @@ import { usePreviewParam } from "@/lib/auth/AuthProvider";
 import { track } from "@/lib/track";
 import type { Section } from "@/lib/api/v1/types";
 import type {
+  FamilyMarket,
   ForecastMarket,
   ForecastOutcome,
   ForecastPickRow,
@@ -30,6 +32,7 @@ import type {
   MatchForecast,
 } from "@/lib/api/v1/types_forecast";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
+import { familyName, marketText, ruleKeyText } from "@/live/familiesText";
 import { ShadowBadge } from "@/product/shared/Bits";
 import { ExplainLayers } from "@/product/shared/ExplainLayers";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
@@ -39,8 +42,11 @@ import {
   barPercent,
   basisNote,
   calibrationLabel,
+  familyOutcomeText,
+  familyPercent,
   forecastMarketTitle,
   forecastScreen,
+  groupFamilies,
   intervalSpan,
   intervalText,
   modelLabel,
@@ -322,11 +328,119 @@ function AdminDetails({ data, sides }: { data: MatchForecast; sides: Sides }) {
   );
 }
 
+// ── what the families forecast: research, apart from the forecast and from the value ──
+
+function FamilyMarketView({ market, sides }: { market: FamilyMarket; sides: Sides }) {
+  return (
+    <li
+      data-testid="family-market"
+      data-market={market.market}
+      data-calibration={market.calibration}
+      className="min-w-0 space-y-1.5 rounded-md border border-border/60 bg-card/60 px-2.5 py-2"
+    >
+      <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs">
+        <span className="min-w-0 break-words font-medium">{marketText(market.market)}</span>
+        <Tag tone={UNCALIBRATED_TAG}>{calibrationLabel(market.calibration)}</Tag>
+      </p>
+      <p data-testid="family-rule" className="text-caption leading-snug text-subtle-foreground">
+        {market.rule
+          ? t("match.forecast.admin.settledWith", { rule: ruleKeyText(market.rule) })
+          : t("match.forecast.admin.noRule")}
+      </p>
+      <ul className="space-y-1">
+        {market.lines.map((line) => (
+          <li
+            key={line.line}
+            data-testid="family-line"
+            data-line={line.line}
+            className="flex flex-wrap gap-x-3 gap-y-0.5 text-caption"
+          >
+            {line.outcomes.map((o) => (
+              <span
+                key={o.selection}
+                data-testid="family-outcome"
+                data-selection={o.selection}
+                data-likely={o.likely ? "true" : "false"}
+                className={cn(
+                  "numeric min-w-0 break-words",
+                  o.likely ? "font-semibold text-foreground" : "text-muted-foreground",
+                )}
+              >
+                {familyOutcomeText(market, line, o, sides)} {familyPercent(o.probability)}
+                {o.fair_odds ? (
+                  <span title={t("match.forecast.admin.fairOdds", { odds: fmtOdds(o.fair_odds) })}>
+                    {" "}
+                    ({fmtOdds(o.fair_odds)})
+                  </span>
+                ) : null}
+              </span>
+            ))}
+          </li>
+        ))}
+      </ul>
+      <p className="text-caption leading-snug text-subtle-foreground">
+        <span>{t("match.forecast.model", { model: modelLabel(market.model) })}</span>
+        <span> · {t("match.forecast.updated", { when: formatRelative(market.known_at) })}</span>
+      </p>
+    </li>
+  );
+}
+
+/**
+ * Folded away, in a block of its own: the families' forecasts are research (the model's own number, uncalibrated, with no interval), they are not
+ * the forecast above, and the owner has not decided that a user sees them. One folded group per family, so that ~130 numbers do not push the page.
+ */
+function FamiliesDetails({ section, sides }: { section: Section<FamilyMarket[]>; sides: Sides }) {
+  const groups = section.status === "ok" ? groupFamilies(section.data) : [];
+  return (
+    <details
+      data-testid="forecast-families"
+      className="rounded-lg border border-info/30 bg-info-soft/30 px-3 py-2"
+    >
+      <summary className="cursor-pointer text-xs font-semibold text-info focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+        {t("match.forecast.admin.familiesTitle")}
+      </summary>
+      <div className="mt-2 space-y-2">
+        <p className="text-caption leading-snug text-subtle-foreground">
+          {t("match.forecast.admin.familiesNote")}
+        </p>
+        {groups.length === 0 ? (
+          <p data-testid="forecast-families-none" className="text-caption text-subtle-foreground">
+            {reasonLine(section)}
+          </p>
+        ) : (
+          groups.map((group) => (
+            <details
+              key={group.family}
+              data-testid="family-group"
+              data-family={group.family}
+              className="rounded-md border border-border/60 bg-card/40 px-2.5 py-1.5"
+            >
+              <summary className="cursor-pointer text-xs font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                {familyName(group.family)}
+                <span className="font-normal text-muted-foreground">
+                  {" "}
+                  · {t("match.forecast.admin.familyMarkets", { n: group.markets.length })}
+                </span>
+              </summary>
+              <ul className="mt-2 space-y-2">
+                {group.markets.map((m) => (
+                  <FamilyMarketView key={m.market} market={m} sides={sides} />
+                ))}
+              </ul>
+            </details>
+          ))
+        )}
+      </div>
+    </details>
+  );
+}
+
 // ── the block ───────────────────────────────────────────────────────────────
 
 /**
  * The block from an answer of the API. Apart from the query so that it can be rendered from a fixture: `preview` is
- * the Admin Console's shadow preview, the only view that sees the fair odds, the value and the picks.
+ * the Admin Console's shadow preview, the only view that sees the fair odds, the value, the picks and the families.
  */
 export function ForecastView({
   load,
@@ -394,6 +508,9 @@ export function ForecastView({
           </>
         ) : null}
         {preview && data ? <AdminDetails data={data} sides={sides} /> : null}
+        {preview && data?.families ? (
+          <FamiliesDetails section={data.families} sides={sides} />
+        ) : null}
       </div>
     </section>
   );

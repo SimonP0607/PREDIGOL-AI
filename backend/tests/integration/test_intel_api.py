@@ -18,6 +18,7 @@ VIEWS = ("/api/v1/admin/intelligence/day", "/api/v1/admin/intelligence/decisions
          "/api/v1/admin/intelligence/reports", "/api/v1/admin/intelligence/markets",
          "/api/v1/admin/intelligence/runs", "/api/v1/admin/intelligence/costs",
          "/api/v1/admin/intelligence/price-clock", "/api/v1/admin/intelligence/market-matrix",
+         "/api/v1/admin/intelligence/families",
          "/api/v1/admin/intelligence/memory/team/1",
          "/api/v1/admin/intelligence/matches", "/api/v1/admin/intelligence/matches?q=manchester",
          "/api/v1/admin/intelligence/factors")

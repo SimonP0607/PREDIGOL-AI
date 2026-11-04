@@ -397,7 +397,7 @@ def comparison(conn: Conn) -> Envelope[AiComparison]:
     """MODELO SOLO / MODELO + REGLAS / MODELO + IA / MERCADO on the same settled selections (the AI's shadow
     report): log loss, Brier, calibration, ROI, CLV, the EV claimed and by the market's price, hit rate,
     drawdown."""
-    reports = {r["engine"]: r for r in ai_shadow.latest(conn)}
+    reports = {r["engine"]: r for r in ai_shadow.latest(conn)}  # by name: the engines of phase 3's shadow are listed too, and are no arm of this
     combined = reports.get("combined") or {}
     rules = reports.get("rules") or {}
     arms_c = combined.get("arms") or {}

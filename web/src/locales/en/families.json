@@ -1,0 +1,283 @@
+{
+  "title": "Families in shadow",
+  "subtitle": "Corners, cards, yellow cards and goals by half: what they decide in shadow, how each bet is settled and what they learn. Read only.",
+  "explain": "The families decide in shadow, under versions of their own: their decisions are never a pick, their state reaches Investigation at most and their stake is zero. This is where the last word of each model on each market of each match is read (the revisions of each hour are the same bet seen again), with the rule that settles it, what happened and what the post-mortem and the memory made of it. A family's probability is its model's own number, uncalibrated: it is not a recommendation.",
+  "versions": "Versions: forecast {forecast} · decision {decision} · settlement {outcome} · post-mortem {postmortem} · memory {memory}",
+  "mode": {
+    "label": "Cycle",
+    "shadow": "In shadow",
+    "off": "Off",
+    "none": "No passes",
+    "offHelp": "The switch of the families (FBI_FAMILY_DECISIONS) is off: the worker does not decide, settle or learn for them. What you see below is what had already been written.",
+    "noneHelp": "The cycle of the families has not run in the last 7 days. Its switch (FBI_FAMILY_DECISIONS) is off by default: it is turned to shadow only when the owner decides so."
+  },
+  "cycle": {
+    "title": "The cycle",
+    "help": "Four steps of the worker: deciding (one pass an hour, inside the job that decides every quarter of an hour) and, at night, settling, the post-mortem and remembering. It shows the last time each one really worked: a quarter of an hour in which no pass was due does not count."
+  },
+  "step": {
+    "families": "Decide",
+    "family_outcomes": "Settle",
+    "family_postmortems": "Post-mortem",
+    "family_memory": "Remember",
+    "never": "No passes in the last 7 days",
+    "lastRun": "Last: {when}",
+    "error": "Failed: {error}"
+  },
+  "status": {
+    "ok": "Done",
+    "partial": "Partial",
+    "failed": "Failed",
+    "skipped": "Skipped",
+    "interrupted": "Interrupted",
+    "running": "Running"
+  },
+  "fact": {
+    "forecasts": "Forecasts",
+    "candidates": "Candidates",
+    "written": "Written",
+    "failed": "Failed",
+    "open": "Open",
+    "settled": "Settled",
+    "no_close": "No close",
+    "unreadable": "Unreadable",
+    "postmortems": "Post-mortems",
+    "entities": "Entities",
+    "unchanged": "Unchanged"
+  },
+  "family": {
+    "GOALS_HALF": "Goals by half",
+    "CORNERS": "Corners",
+    "CARDS": "Cards",
+    "YELLOW": "Yellow cards"
+  },
+  "card": {
+    "selections": "Selections",
+    "selectionsHint": "Their last word is Investigation",
+    "rejected": "Rejected",
+    "rejectedHint": "Their last word was a rejection by the filters",
+    "settled": "Settled",
+    "open": "Open",
+    "results": "Results",
+    "verdicts": "Verdicts",
+    "rules": "Settled with",
+    "memory": "Memory",
+    "noMemory": "It remembers nothing yet: the memory needs post-mortems.",
+    "none": "No decisions in the window."
+  },
+  "result": {
+    "win": "Won",
+    "loss": "Lost",
+    "push": "Push",
+    "void": "Void",
+    "half_win": "Half won",
+    "half_loss": "Half lost"
+  },
+  "verdictHint": {
+    "MERECIDO": "Won at a price equal to or better than the close: decision and result agree.",
+    "VARIANZA": "Lost at a price equal to or better than the close: variance, the model is left alone.",
+    "SUERTE": "Won at a price worse than the close: it teaches nothing in the model's favour.",
+    "ERROR": "Lost at a price worse than the close: look at the pattern of the market, not at this match.",
+    "NULO": "Push or void: there is no result to judge.",
+    "SIN_DATOS": "No close to judge the price of the decision against."
+  },
+  "quality": {
+    "GOOD": "Good price",
+    "NEUTRAL": "Neutral price",
+    "BAD": "Bad price",
+    "UNKNOWN": "No close"
+  },
+  "reason": {
+    "family_research": "Family under investigation",
+    "family_shadow_only": "The family only measures",
+    "not_calibrated": "Not calibrated",
+    "data": "Not enough data",
+    "model": "The model does not pass",
+    "no_price": "No price",
+    "thin_market": "Thin market",
+    "price_outlier": "Outlier price",
+    "price_stale": "Stale price",
+    "ev_unknown": "EV unknown",
+    "ev_cal_below": "EV below the minimum",
+    "context_stop": "Stopped by the context",
+    "key_absence_confirmed": "Key absence confirmed",
+    "key_absence_reported": "Key absence reported",
+    "risk": "Risk",
+    "price_not_fresh": "Price not fresh",
+    "edge_not_validated": "Edge not validated",
+    "correlated_same_match": "Correlated with another in the match"
+  },
+  "rule": {
+    "goals_1h": "Goals of the 1st half: the half-time score.",
+    "goals_2h": "Goals of the 2nd half: the goals after 90 minutes minus the half-time score.",
+    "goals_halves": "Both halves: the half-time score and the goals of the 2nd half (half-time/full-time, highest scoring half).",
+    "corners_ft": "Corners of the match (no figure after extra time: the provider does not say whether its total includes the extra half hour).",
+    "cards_lines_ft": "Every card shown counts one: each yellow and each red, and the red that follows a second yellow counts as the red it is.",
+    "yellow_ft": "Yellow cards only: the first yellow of a pair counts; the red that follows it does not."
+  },
+  "ruleNote": {
+    "cards_lines_ft": "The provider does not state the convention of the houses behind 'Cards Over/Under'."
+  },
+  "what": {
+    "goals": "Goals",
+    "goals_home": "Home goals",
+    "goals_away": "Away goals",
+    "corners": "Corners",
+    "corners_home": "Home corners",
+    "corners_away": "Away corners",
+    "cards": "Cards",
+    "cards_home": "Home cards",
+    "cards_away": "Away cards",
+    "yellow": "Yellow cards",
+    "yellow_home": "Home yellow cards",
+    "yellow_away": "Away yellow cards"
+  },
+  "kind": {
+    "OU": "over/under",
+    "1X2": "1X2",
+    "DC": "double chance",
+    "DNB": "draw no bet",
+    "BTTS": "both teams score",
+    "AH": "handicap",
+    "OE": "odd/even"
+  },
+  "half": {
+    "1H": "1st half",
+    "2H": "2nd half"
+  },
+  "special": {
+    "HTFT": "Half-time/full-time",
+    "HSH": "Highest scoring half",
+    "HSH_HOME": "Highest scoring half, home team",
+    "HSH_AWAY": "Highest scoring half, away team"
+  },
+  "pick": {
+    "over": "Over {line}",
+    "under": "Under {line}",
+    "overNoLine": "Over",
+    "underNoLine": "Under",
+    "home": "Home",
+    "draw": "Draw",
+    "away": "Away",
+    "dc1X": "{home} or draw",
+    "dc12": "{home} or {away}",
+    "dcX2": "Draw or {away}",
+    "yes": "Yes",
+    "no": "No",
+    "odd": "Odd",
+    "even": "Even",
+    "handicap": "{team} {line}",
+    "half1": "1st half",
+    "half2": "2nd half",
+    "halfDraw": "Same in both"
+  },
+  "filters": {
+    "family": "Family",
+    "state": "State",
+    "days": "Window",
+    "all": "All",
+    "allStates": "All",
+    "daysOption": "{count} days"
+  },
+  "items": {
+    "title": "The last word of each family",
+    "help": "One row per model, market and match: the last decision the family wrote before kick-off. Click a row to open its detail (the filters it applied, the forecast it cited and its post-mortem).",
+    "shown": "Showing {shown} of {total} · matches of the last {days} days",
+    "empty": "No family has decided on matches of this window with these filters.",
+    "revisions_one": "1 revision",
+    "revisions_other": "{count} revisions",
+    "open": "Open",
+    "noRule": "No rule"
+  },
+  "cols": {
+    "match": "Match",
+    "market": "Market and selection",
+    "odds": "Odds",
+    "pModel": "Family P",
+    "pModelHint": "The probability the family stated, uncalibrated",
+    "pMarket": "Market P",
+    "pMarketHint": "The consensus of the houses at the moment of the decision",
+    "ev": "Raw EV",
+    "evHint": "The family's P times the odds, minus one: what the family believed it would win",
+    "state": "State",
+    "research": "What it did not know",
+    "researchHint": "What the decision did not know when it was taken, what finding it out would cost and the context factors that could explain the family. Informational: it changes nothing of the decision, and nothing is served while the families are in shadow.",
+    "rule": "Rule",
+    "outcome": "Result",
+    "postmortem": "Post-mortem"
+  },
+  "outcome": {
+    "profit": "{profit} u",
+    "clv": "CLV {clv}",
+    "count": "{actual} in the match",
+    "margin": "({margin} over the line)"
+  },
+  "pm": {
+    "more": "+{count} more",
+    "none": "No post-mortem yet"
+  },
+  "research": {
+    "none": "No record",
+    "noneHint": "A decision from before the record of what it did not know, or one whose read failed: the decision loses nothing.",
+    "nothing": "Nothing is missing that can be known before the match",
+    "need": {
+      "referee": "The designated referee",
+      "lineups": "The confirmed line-ups",
+      "context": "The outside context (absences and preview)"
+    },
+    "state": {
+      "KNOWN": "known",
+      "PARTIAL": "in part",
+      "MISSING": "missing"
+    },
+    "source": {
+      "provider": "the provider brings it",
+      "search": "a search"
+    },
+    "searches_one": "1 search if it were served",
+    "searches_other": "{count} searches if it were served",
+    "noSearches": "No searches: only the provider can bring it",
+    "unserved": {
+      "family_shadow": "Not served: the families are in shadow"
+    },
+    "served": "Served",
+    "factors": "Could explain it",
+    "factorsHint": "Context factors for a future experiment. They are hypotheses, not findings: none is validated until a person validates it, and no model of a family reads them.",
+    "factor": {
+      "h2h_weighted": "Weighted head-to-head",
+      "scenarios": "Table and knockout scenarios",
+      "tactics_profile": "Observable tactics",
+      "rest_congestion": "Rest and congestion"
+    },
+    "standing": {
+      "DESCRIPTIVE": "not validated",
+      "VALIDATED": "validated"
+    },
+    "registryUnread": "The registry of factors could not be read: all are shown as not validated.",
+    "since": "since {when}"
+  },
+  "memory": {
+    "title": "What they remember",
+    "help": "Every night the memory adds up the post-mortems by family, market, competition and referee (of these two, those with the most post-mortems). Hit is the share of the decided ones that won; Claimed, the average probability the family stated. A large and lasting gap over many samples deserves research; over few it is noise: that is what the confidence is for.",
+    "empty": "There is no memory yet: it is written at night, once there are post-mortems behind it.",
+    "entity": "Entity",
+    "type": {
+      "family": "Family",
+      "market": "Market",
+      "competition": "Competition",
+      "referee": "Referee"
+    },
+    "cols": {
+      "n": "Post-mortems",
+      "hit": "Hit",
+      "claimed": "Claimed",
+      "gap": "Gap",
+      "z": "z",
+      "clv": "Mean CLV",
+      "roi": "Flat ROI",
+      "confidence": "Confidence",
+      "recent": "Last {days} days"
+    },
+    "asOf": "As of {day}"
+  }
+}

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -15,8 +15,10 @@ from scripts import families as cli
 from fbi.core.clock import now as clock_now
 from fbi.families import dependence, evaluate, score
 from fbi.families.fit import Match
+from fbi.familydecisions import decide as family_decide
 
 from .test_families_dependence import synthetic
+from .test_familydecisions_preview import decided
 
 N = 12
 
@@ -305,3 +307,88 @@ def test_the_dependence_command_reads_the_database_through_a_connection_that_can
     capsys.readouterr()
     since, cutoff = seen["window"]
     assert cutoff - since == timedelta(days=dependence.HISTORY_DAYS), "three years unless told"
+
+
+class ReadOnlyConnection:
+    """What ``psycopg.connect`` hands back when the connection itself is not the point: a context that remembers it was closed and rolled back."""
+
+    def __init__(self, seen: dict[str, Any]) -> None:
+        self.seen = seen
+
+    def __enter__(self) -> ReadOnlyConnection:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.seen["closed"] = True
+
+    def rollback(self) -> None:
+        self.seen["rolled_back"] = True
+
+
+def test_the_decide_command_runs_the_pass_as_a_dry_run_through_a_connection_that_cannot_write(monkeypatch: pytest.MonkeyPatch,
+                                                                                            capsys: pytest.CaptureFixture[str]) -> None:
+    seen: dict[str, Any] = {}
+
+    def connect(url: str, **kwargs: Any) -> ReadOnlyConnection:
+        seen["options"] = kwargs.get("options")
+        return ReadOnlyConnection(seen)
+
+    def dry_pass(conn: ReadOnlyConnection, **kwargs: Any) -> tuple[family_decide.FamilyReport, list[Any]]:
+        seen["asked"] = kwargs
+        return family_decide.FamilyReport(forecasts=4, fixtures=1), []
+
+    monkeypatch.setattr(psycopg, "connect", connect)
+    monkeypatch.setattr(family_decide, "decide_families", dry_pass)
+    monkeypatch.setattr(family_decide, "environment", lambda: {"FBI_FAMILY_DECISIONS": "shadow"})
+    assert cli.main(["decide", "--at", "2035-03-01T12:00", "--horizon-hours", "10", "--fixture", "5", "--fixture", "7"]) == 0
+    out = capsys.readouterr().out
+    assert "what a pass would do at 2035-03-01 12:00 UTC over the next 10 h under decision-fam-v1" in out
+    assert "FBI_FAMILY_DECISIONS is shadow" in out, "the switch as the worker would read it"
+    assert "funnel: 4 forecasts of 1 matches" in out
+    assert seen["options"] == "-c default_transaction_read_only=on", "it reads; it cannot write by mistake"
+    assert seen["rolled_back"] and seen["closed"]
+    assert seen["asked"] == {"at": datetime(2035, 3, 1, 12, tzinfo=UTC), "horizon": timedelta(hours=10), "only": [5, 7], "write": False}
+
+
+def test_the_decide_command_looks_at_the_next_36_hours_of_every_match_from_now_unless_told(monkeypatch: pytest.MonkeyPatch,
+                                                                                        capsys: pytest.CaptureFixture[str]) -> None:
+    seen: dict[str, Any] = {}
+    monkeypatch.setattr(psycopg, "connect", lambda url, **kw: ReadOnlyConnection(seen))
+    monkeypatch.setattr(family_decide, "decide_families",
+                        lambda conn, **kw: (seen.update(asked=kw) or (family_decide.FamilyReport(), [])))
+    monkeypatch.setattr(family_decide, "environment", lambda: {})
+    before = clock_now()
+    assert cli.main(["decide"]) == 0
+    after = clock_now()
+    asked = seen["asked"]
+    assert before <= asked["at"] <= after and asked["horizon"] == timedelta(hours=36) == family_decide.HORIZON
+    assert asked["only"] is None and asked["write"] is False
+    out = capsys.readouterr().out
+    assert "FBI_FAMILY_DECISIONS is off: the worker runs no pass" in out, "unset is off"
+    assert "nothing to decide: the families have stated no forecast" in out, "an empty pass says where it ran dry"
+
+
+def test_the_decide_command_can_print_everything_as_json_and_limit_the_text(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    seen: dict[str, Any] = {}
+    monkeypatch.setattr(psycopg, "connect", lambda url, **kw: ReadOnlyConnection(seen))
+    monkeypatch.setattr(family_decide, "decide_families", lambda conn, **kw: (family_decide.FamilyReport(forecasts=2, would_write=0), []))
+    assert cli.main(["decide", "--at", "2035-03-01", "--json"]) == 0
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["version"] == "decision-fam-v1" and summary["at"] == "2035-03-01T00:00:00+00:00" and summary["horizon_hours"] == 36.0
+    assert summary["report"]["forecasts"] == 2 and summary["report"]["would_write"] == 0 and summary["decisions"] == []
+    assert cli.main(["decide", "--top", "0"]) == 0
+    assert "decisions of the families, dry run" in capsys.readouterr().out
+    monkeypatch.setattr(family_decide, "decide_families", lambda conn, **kw: (family_decide.FamilyReport(forecasts=9, evaluated=5),
+                                                                              [decided(fixture=i, odds=2.0 + i / 10) for i in (1, 2, 3, 4, 5)]))
+    assert cli.main(["decide", "--top", "1"]) == 0
+    listed = capsys.readouterr().out
+    assert listed.count(" [CORNERS]: ") == 1 and "best price 2.50" in listed and "... and 4 more" in listed, "the one that sees the most value"
+    assert cli.main(["decide"]) == 0
+    everything = capsys.readouterr().out
+    assert everything.count(" [CORNERS]: ") == 5 and " more (" not in everything, "twenty are listed unless told: all five are"
+    assert cli.main(["decide", "--json"]) == 0
+    assert [x["fixture_id"] for x in json.loads(capsys.readouterr().out)["decisions"]] == [5, 4, 3, 2, 1], "and the JSON carries them all, the best first"
+    with pytest.raises(SystemExit):
+        cli.main(["decide", "--horizon-hours", "soon"])
+    with pytest.raises(SystemExit):
+        cli.main(["decide", "--at", "tomorrow"])

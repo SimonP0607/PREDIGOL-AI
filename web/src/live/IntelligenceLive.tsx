@@ -35,6 +35,7 @@ import { bogotaDateTime, dayLabel, selectionText, toNum, usd } from "./aiModel";
 import { BriefPanel, RefusedPanel, ResearchPanel } from "./IntelAiPanels";
 import { MatchPicker } from "./IntelMatchPicker";
 import { MatchStatePanel } from "./MatchStatePanel";
+import { ShadowFilePanel } from "./ShadowFilePanel";
 import { FactorsPanel, H2hPanel, ScenariosPanel, TacticsPanel } from "./IntelMatchPanels";
 import { hasScenarios } from "./intelMatch";
 import { calibratorParamsText, codeText, gateGroups, secondLegText } from "./intelText";
@@ -1059,6 +1060,8 @@ export function MatchView({
         </>
       ) : null}
       {fixture ? <MatchStatePanel fixture={fixture} /> : null}
+      {fixture ? <MatchStatePanel fixture={fixture} /> : null}
+      {fixture ? <ShadowFilePanel fixture={fixture} /> : null}
     </div>
   );
 }

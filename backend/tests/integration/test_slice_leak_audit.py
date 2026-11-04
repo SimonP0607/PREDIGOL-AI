@@ -154,9 +154,10 @@ def audited(db: psycopg.Connection[Any], day_of: datetime = WRITTEN, *, ran: dat
 
 def test_the_rule_is_one_that_runs_code_and_the_version_and_the_text_say_so() -> None:
     assert RULE in leakage.PYTHON_RULES and RULE not in leakage.RULES and RULE in (leakage.__doc__ or "")
-    assert leakage.VERSION == "leak-audit-v7"
+    assert leakage.VERSION == "leak-audit-v8"
     assert (*leakage.RULES, *leakage.PYTHON_RULES) == leakage.RULE_NAMES and len(set(leakage.RULE_NAMES)) == len(leakage.RULE_NAMES)
-    assert leakage.RULE_NAMES[-1] == RULE, "the statements run first, then the rules that run code"
+    assert list(leakage.PYTHON_RULES) == [RULE, "agent_known", "shadow_review_known"], "the rules that run code, in the order they were added"
+    assert leakage.RULE_NAMES[-3:] == tuple(leakage.PYTHON_RULES), "the statements run first, then the rules that run code"
 
 
 def test_the_night_runs_every_rule_in_order_and_keeps_a_row_of_the_run(db: psycopg.Connection[Any], seed: Seed) -> None:
@@ -169,7 +170,7 @@ def test_the_night_runs_every_rule_in_order_and_keeps_a_row_of_the_run(db: psyco
     assert list(out) == list(leakage.RULE_NAMES), "one entry per rule, the rules of code last"
     assert out[RULE] == {"checked": 2, "violations": 1, "examples": [bad_id]}
     kept = db.execute("SELECT version, n_checked, n_violations, examples FROM intel.audit_checks WHERE rule = %s", (RULE,)).fetchall()
-    assert kept == [("leak-audit-v7", 2, 1, [bad_id])], "the run is kept in the ledger of the audit with its version"
+    assert kept == [("leak-audit-v8", 2, 1, [bad_id])], "the run is kept in the ledger of the audit with its version"
     assert {r[0] for r in db.execute("SELECT rule FROM intel.audit_checks WHERE checked_at = %s", (RAN,)).fetchall()} == set(leakage.RULE_NAMES)
 
 

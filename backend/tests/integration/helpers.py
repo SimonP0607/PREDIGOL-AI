@@ -106,3 +106,5 @@ def forget_memberships(conn: psycopg.Connection) -> None:
             conn.execute("DELETE FROM customer.lifecycle_snapshots")  # the states of their days (B11, from the 0106)
         for table in ("customer.membership_events", "customer.membership_periods", "customer.payments"):
             conn.execute(f"DELETE FROM {table}")
+
+

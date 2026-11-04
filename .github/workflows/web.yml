@@ -1,0 +1,50 @@
+name: Web CI
+
+# Gates of web/CLAUDE.md and deploy/release.sh step 2: lint, typecheck, unit tests, production build.
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - '.github/workflows/web.yml'
+  push:
+    branches: [main, 'ci/**']
+    paths:
+      - 'web/**'
+      - '.github/workflows/web.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: web
+
+jobs:
+  web:
+    name: lint + typecheck + test + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: lint
+        run: bun run lint
+      - name: typecheck
+        run: bun run typecheck
+      - name: unit tests
+        run: bun test src
+      - name: production build
+        run: bun run build
+        env:
+          NITRO_PRESET: node-server
+          VITE_DATA_MODE: live

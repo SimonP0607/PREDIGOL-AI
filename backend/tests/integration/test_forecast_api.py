@@ -61,6 +61,7 @@ def test_a_user_gets_nothing_until_the_owner_decides_and_then_only_the_forecast(
     body = on.json()
     assert body["status"] == "ok" and body["data"]["fixture_id"] == fid
     assert body["data"]["value"] is None and body["data"]["picks"] is None, "no value and no pick beside it"
+    assert body["data"]["families"] is None, "nor what the families forecast: that is research, and the preview's"
     assert body["data"]["forecast"]["status"] == "ok"
     markets = markets_of(body)
     assert list(markets) == ["1X2", "OU", "BTTS"], "the result first, then the total, then both teams to score"
@@ -120,6 +121,8 @@ def test_the_admin_preview_lays_the_forecast_beside_the_value_and_the_picks(
     assert markets["1X2"]["model"] == "dixon_coles", "the owner's preview names the model that priced it"
     assert data["value"]["status"] == "empty" and data["value"]["code"] == "no_evaluation", "no price evaluated, so no value"
     assert data["picks"]["status"] == "empty" and data["picks"]["code"] == "no_pick", "and no pick: a forecast is not one"
+    assert (data["families"]["status"], data["families"]["code"]) == ("empty", "no_family_forecast"), (
+        "the families forecast nothing for this match, and the preview says so instead of leaving a gap")
 
     # the decision layer's own word about the same selection arrives in its own section, not inside the forecast
     kickoff = db.execute("SELECT kickoff_at FROM core.fixtures WHERE id = %s", (fid,)).fetchone()

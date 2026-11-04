@@ -74,12 +74,15 @@ def test_a_task_says_which_prompt_which_schema_and_what_it_runs_on() -> None:
 def test_a_planned_agent_says_in_which_phase_it_is_built_and_what_it_takes_over_from() -> None:
     views, _ = ai_agents.registry()
     planned = {v.agent: v for v in views if v.status == "planned"}
-    assert planned["match"].phase == 3 and planned["match"].version == "match-v1" and planned["match"].contract == "aa-v1"
-    assert planned["match"].in_sync is None and planned["match"].fingerprint is None, "it has no code to be in sync with"
+    assert planned["statistics"].phase == 4 and planned["statistics"].version == "stats-v1" and planned["statistics"].contract == "aa-v1"
+    assert planned["statistics"].in_sync is None and planned["statistics"].fingerprint is None, "it has no code to be in sync with"
+    assert "match" not in planned, "the Match Agent is built (phase 3): it is on the page as built, with the version in force"
     assert planned["post_match_reviewer"].replaces == "pick-postmortem-v4"
-    assert {t.task: t.model for t in planned["council"].tasks} == {"council": "claude-sonnet-5-5", "escalation": "claude-opus-5-5"}
     built = {v.agent: v for v in views if v.status == "built"}
+    assert {t.task: t.model for t in built["council"].tasks} == {"council": "claude-sonnet-5-5", "escalation": "claude-opus-5-5"}
     assert built["learning_analyst"].next_version == "la-v1" and built["learning_analyst"].next_phase == 5
+    assert (built["match"].version, built["match"].contract, built["match"].reads, built["match"].born_as) == ("match-v1", "aa-v1", "match", "CHALLENGER")
+    assert built["match"].next_version is None and [t.task for t in built["match"].tasks] == ["context", "evaluation"]
 
 
 def test_the_player_agent_is_on_the_page_as_postponed_with_the_gate_that_would_wake_it() -> None:
@@ -150,6 +153,7 @@ def test_the_audit_the_page_shows_is_the_part_of_the_plans_list_the_audit_alread
     assert set(ai_agents.AUDIT_RULES) <= set(leakage.RULE_NAMES), "a rule is shown only when the audit has it"
     assert tuple(r for r in ai_agents.PLAN_AUDIT_RULES if r in leakage.RULE_NAMES) == ai_agents.AUDIT_RULES, "in the order of the plan"
     assert "slice_known" in ai_agents.AUDIT_RULES, "phase 1 audits the states it writes"
+    assert ai_agents.AUDIT_RULES == ("slice_known", "agent_known", "review_known", "shadow_review_known"), "phase 3 audits the agents and the shadow"
 
 
 def test_the_window_is_a_week_and_the_lists_of_a_match_are_bounded() -> None:

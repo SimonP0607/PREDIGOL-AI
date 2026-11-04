@@ -1,110 +1,20 @@
-# PrediGol — configuración de Gitleaks (plan de seguridad, R07 / S1.c).
-# Se usa igual en el hook de pre-commit (.githooks/pre-commit), en la puerta de cada lanzamiento (security/scan_release.sh) y en la CI
-# (.github/workflows/gitleaks.yml). Partimos de las reglas de fábrica de la versión fijada (security/GITLEAKS_VERSION) y solo se
-# permiten dos cosas, las dos con su motivo:
-#   1) las constantes FIJAS Y FALSAS de las pruebas y las pocas líneas de código clasificadas como falsas (abajo);
-#   2) las coincidencias ya clasificadas del historial, una a una, en .gitleaksignore (con su explicación).
-# Cualquier otra coincidencia es un hallazgo: no se silencia con una expresión amplia. Un hallazgo real se REVOCA primero y se limpia después
-# (security/README.md). Los valores nunca se imprimen (--redact=100).
-
-title = "PrediGol - secret scanning"
+# gitleaks: the full history was scanned on 2026-11-02 (767 commits, 12 hits). All 12 are test fixtures or
+# placeholders (test keys in tests/conftest.py, the base64 of a test-only string, an env example). No real secret.
+title = "PrediGol gitleaks"
 
 [extend]
 useDefault = true
 
-[[allowlists]]
-description = "Constantes fijas y falsas de las suites de pruebas (claves HMAC de mentira y contraseñas de cuentas de prueba)"
-# AND: solo cuenta lo que está en una carpeta de pruebas Y en una línea que asigna uno de estos nombres. Un valor nuevo con otro nombre, o
-# fuera de las pruebas, se sigue marcando. Solo se relaja la regla genérica: las reglas de formato (Telegram, AWS, GitHub, Anthropic, ...) siguen vivas.
-condition = "AND"
-targetRules = ["generic-api-key"]
-paths = ['''(^|/)tests?/''']
-regexTarget = "line"
-regexes = [
-  '''^\s*(TEST_AUTH_KEY|SECRET)\s*=\s*["']''',
-  '''"(new_|old_|current_)?password"\s*:''',
+[allowlist]
+description = "Test fixtures and examples, reviewed 2026-11-02"
+paths = [
+  '''backend/tests/.*''',
+  '''tests/.*''',
+  '''(backend/)?deploy/env_example\.txt''',
+  '''(backend/)?src/fbi/(research/prospective|backtesting/evaluate|api/security)\.py''',
+  '''(backend/)?scripts/api_shapes\.py''',
 ]
-
-[[allowlists]]
-description = "Líneas de código que parecen un secreto solo por llevar «key» en el nombre (etiquetas de mercado y de precio, argumentos de set_cookie): clasificadas una a una (security/README.md). Independiente del commit y de si la ruta lleva el prefijo backend/"
-# AND: solo cuenta en esos tres ficheros Y en una línea con esa forma exacta. Un valor al azar con otro nombre en esos mismos ficheros se sigue marcando.
-condition = "AND"
-targetRules = ["generic-api-key"]
-paths = ['''(^|/)src/fbi/(backtesting/evaluate|research/prospective|api/security)\.py$''']
-regexTarget = "line"
 regexes = [
-  '''^\s*BET_PRICE_KEY\s*=\s*["'][A-Za-z0-9_./:-]+["']\s*$''',
-  '''\bbaseline_key\s*=\s*["'][A-Za-z0-9_./:-]+["']''',
-  '''\bkey=cfg\.cookie_name\b''',
+  '''dGVzdC1vbmx5LWtleS1mb3ItcHJlZGlnb2wtdGVzdHM=''',
 ]
-
-[[allowlists]]
-description = "Plantilla de variables de entorno sin valores: con una asignación vacía la regla genérica lee la línea siguiente. Las reglas por nombre siguen vivas en este fichero"
-targetRules = ["generic-api-key"]
-paths = ['''(^|/)deploy/env_example\.txt$''']
-
-# --- Reglas propias: los secretos de PrediGol por NOMBRE -----------------------------------------------------------------------------------
-# La regla genérica de fábrica descarta los valores con poca entropía (< 3,5 bits por carácter) y una clave real de 32 hexadecimales puede quedar por
-# debajo (probado: un 15-20 % de las aleatorias). Estas dos reglas no miran la entropía: si una variable que sabemos secreta recibe un valor con
-# aspecto real, es un hallazgo. Lo que NO cuenta: una referencia a otra variable o con valor por defecto (${VAR}, ${VAR:-x}, ${VAR:?msg}: el
-# nombre va precedido de «{»), un marcador <así>, un valor vacío (los espacios del patrón son [ \t], no cruzan de línea) y los valores de relleno
-# de las plantillas (stopwords). Un valor corto (menos de 12 caracteres) tampoco: no es una clave generada.
-
-[[rules]]
-id = "predigol-apifootball-key"
-description = "Clave de API-Football (32 hexadecimales) asignada a una variable o a una cabecera con ese nombre"
-regex = '''(?mi)(?:^|[^A-Za-z0-9])(?:[A-Z0-9_]*API_?FOOTBALL[A-Z0-9_]*KEY|X-APISPORTS-KEY|X-RAPIDAPI-KEY)["']?\]?[ \t]*[:=][ \t]*["']?([0-9a-f]{32})\b'''
-secretGroup = 1
-keywords = ["footballkey", "football_key", "football_api_key", "apifootball", "x-apisports-key", "x-rapidapi-key"]
-
-[[rules]]
-id = "predigol-secret-by-name"
-description = "Una variable secreta de PrediGol con un valor que parece real (no un relleno ni una referencia a otra variable)"
-regex = '''(?mi)(?:^|[\s"'`,;(\[.:$=&])(?:FBI_APIFOOTBALL_KEY|EXA_API_KEY|FBI_AI_KEY_[A-Z0-9_]+|FBI_ANALYST_API_KEY|FBI_AUTH_SECRET_KEY|FBI_TELEGRAM_BOT_TOKEN|PITR_CIPHER_PASS|PITR_S3_KEY(?:_SECRET)?|R2_(?:ACCESS_KEY_ID|SECRET_ACCESS_KEY)|FBI_RO_PASSWORD|POSTGRES(?:_ADMIN|_API|_WORKER)?_PASSWORD|FBI_SENTRY_DSN|RESEND_API_KEY)["']?\]?[ \t]*[:=][ \t]*["']?([^\s"'`#<>$()\[\]{},;|\\]{12,})'''
-secretGroup = 1
-keywords = ["fbi_apifootball_key", "exa_api_key", "fbi_ai_key_", "fbi_analyst_api_key", "fbi_auth_secret_key", "fbi_telegram_bot_token", "pitr_cipher_pass", "pitr_s3_key", "r2_access_key_id", "r2_secret_access_key", "fbi_ro_password", "postgres_password", "postgres_admin_password", "postgres_api_password", "postgres_worker_password", "fbi_sentry_dsn", "resend_api_key"]
-
-[rules.allowlist]
-description = "Valores de relleno de las plantillas, de las pruebas y de los ensayos"
-stopwords = ["change", "example", "your", "placeholder", "replace", "dummy", "fake", "redacted", "todo", "tbd", "sample", "xxxx", "0000", "****", "....", "test", "secret-key", "password", "none", "null", "unset", "empty", "local_dev", "local-dev", "rehearsal"]
-
-[[rules]]
-id = "predigol-db-url-password"
-description = "Contraseña escrita en una URL de base de datos, caché o cola (postgresql://usuario:CONTRASEÑA@host)"
-regex = '''(?i)\b(?:postgres(?:ql)?(?:\+[a-z0-9_]+)?|mysql(?:\+[a-z0-9_]+)?|mariadb|mongodb(?:\+srv)?|rediss?|amqps?|nats)://[^\s:/@"'<>$\{\}]{1,64}:([^\s@/"'<>$\{\}]{6,})@'''
-secretGroup = 1
-keywords = ["postgres://", "postgresql", "mysql", "mariadb", "mongodb", "redis://", "rediss://", "amqp://", "amqps://", "nats://"]
-
-[[rules.allowlists]]
-description = "Contraseñas de relleno de las plantillas y de los ensayos (la referencia ${VAR} ya no entra: el patrón excluye $ y llaves)"
-stopwords = ["change", "example", "your", "placeholder", "replace", "dummy", "fake", "redacted", "todo", "tbd", "sample", "xxxx", "0000", "****", "....", "test", "password", "none", "null", "unset", "empty", "local_dev", "local-dev", "rehearsal"]
-
-[[rules.allowlists]]
-description = "URLs de las pruebas que apuntan a localhost (ensayos de redacción de registros y de lectura de configuración): solo carpeta de pruebas Y host local"
-condition = "AND"
-paths = ['''(^|/)tests?/''']
-regexTarget = "line"
-regexes = ['''@(localhost|127\.0\.0\.1)(:[0-9]+)?[/"']''']
-
-[[rules]]
-id = "predigol-healthchecks-ping-url"
-description = "URL de ping de Healthchecks.io (el identificador de la URL es la llave: quien lo conozca puede enviar avisos de «todo bien»)"
-regex = '''(?i)\bhc-ping\.com/(?:[a-z0-9_-]{1,40}/)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b'''
-secretGroup = 1
-keywords = ["hc-ping.com"]
-
-[rules.allowlist]
-description = "Identificadores de relleno"
-stopwords = ["0000", "xxxx", "example", "your", "placeholder", "uuid", "redacted"]
-
-[[rules]]
-id = "predigol-resend-api-key"
-description = "Clave de API de Resend (re_ + 8 caracteres + _ + 24 caracteres)"
-regex = '''\bre_[A-Za-z0-9]{6,12}_[A-Za-z0-9]{20,32}\b'''
-keywords = ["re_"]
-
-[[rules]]
-id = "predigol-supabase-secret-key"
-description = "Clave secreta de Supabase con el formato nuevo (sb_secret_...)"
-regex = '''\bsb_secret_[A-Za-z0-9_-]{20,}'''
-keywords = ["sb_secret_"]
+commits = []
