@@ -33,7 +33,8 @@ import structlog
 from fbi.auth import tokens
 from fbi.core.clock import now
 from fbi.core.logging import error_summary
-from fbi.customer import events, feedback, lifecycle, membership
+from fbi.customer import events, feedback, membership
+from fbi.customer import lifecycle as lifecycle_rules
 from fbi.customer import push as push_rules
 from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.messaging import digest, notices, push_jobs
@@ -103,7 +104,7 @@ class CycleTotals:
     """The weekly summaries queued this cycle (plan UX, B8)."""
     lifecycle: int = 0
     """The readers' states of the day written this cycle (plan UX, B11)."""
-    lifecycle_purge: lifecycle.PurgeReport | None = None
+    lifecycle_purge: lifecycle_rules.PurgeReport | None = None
     errors: list[str] = field(default_factory=list)
 
     def add(self, report: DispatchReport) -> None:
@@ -175,9 +176,9 @@ def start_of_cycle(conn: psycopg.Connection[Any], totals: CycleTotals, *, sendin
         log.error("messenger.activity_failed", error=error_summary(exc))
     try:
         # each reader's state of the day (plan UX, B11): only with FBI_LIFECYCLE; its retention under the analytics' switch
-        if lifecycle.enabled():
-            totals.lifecycle += lifecycle.compute_day(conn, at=now())
-            totals.lifecycle_purge = lifecycle.purge(conn, at=now(), mode=events.purge_mode())
+        if lifecycle_rules.enabled():
+            totals.lifecycle += lifecycle_rules.compute_day(conn, at=now())
+            totals.lifecycle_purge = lifecycle_rules.purge(conn, at=now(), mode=events.purge_mode())
         conn.commit()
     except Exception as exc:
         conn.rollback()

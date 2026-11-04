@@ -169,7 +169,9 @@ def client(email: str) -> TestClient:
     return c
 
 
-NOW = datetime(2026, 10, 27, 15, 0, tzinfo=UTC)
+# Tomorrow at 15:00 UTC: the rows carry the database's real created_at, so a fixed date in the past would not find them due (and the day's cap
+# counts what was created since the start of the simulated day) - this way the suite does not depend on the day it is run.
+NOW = (datetime.now(UTC) + timedelta(days=1)).replace(hour=15, minute=0, second=0, microsecond=0)
 
 
 # ── the queue ─────────────────────────────────────────────────────────────────────────
@@ -278,7 +280,7 @@ def test_the_providers_daily_quota_waits_for_midnight_without_spending_an_attemp
     row = message(conn, mid)
     assert report.deferred == 1 and report.stopped == "resend 429 daily_quota_exceeded"
     assert row["attempts"] == 0 and row["status"] == "queued"
-    assert row["next_attempt_at"] == datetime(2026, 10, 28, 0, 5, tzinfo=UTC)
+    assert row["next_attempt_at"] == (NOW + timedelta(days=1)).replace(hour=0, minute=5)
     assert message(conn, other)["attempts"] == 0
 
 

@@ -22,7 +22,7 @@ import pytest
 
 from fbi.auth import crypto
 from fbi.messaging import digest, templates, unsubscribe
-from fbi.messaging.templates import COMMERCIAL, OUTBOX_CATEGORIES, TEMPLATES, render
+from fbi.messaging.templates import COMMERCIAL, OUTBOX_CATEGORIES, TEMPLATES, Locale, render
 
 MIGRATION = Path(__file__).resolve().parents[2] / "migrations" / "versions" / "0105_customer_marketing.py"
 NOW = datetime(2026, 10, 27, 15, 0, tzinfo=UTC)
@@ -54,7 +54,8 @@ def words(**changes: str) -> dict[str, str]:
      "3 of the picks you saved ended this week: 3 lost."),
 ])
 def test_how_the_weeks_picks_ended_counts_only(won: str, lost: str, void: str, es: str, en: str) -> None:
-    for locale, sentence in (("es", es), ("en", en)):
+    pairs: tuple[tuple[Locale, str], ...] = (("es", es), ("en", en))
+    for locale, sentence in pairs:
         text = render("weekly_digest", locale, words(won=won, lost=lost, void=void), {"name": "Ana"}).text
         assert sentence in text
         assert "%" not in text and "unidad" not in text.lower() and "unit" not in text.lower()
@@ -93,9 +94,11 @@ def test_counts_and_words_the_queue_refuses() -> None:
 
 def test_the_commercial_footer_says_why_and_how_to_leave_in_one_click() -> None:
     page = "https://predigol.example/unsubscribe#t=1x2xabc"
-    for locale, why, leave in (("es", "Recibes este resumen porque lo pediste en tu perfil.", "Darte de baja en un clic"),
-                               ("en", "You get this summary because you asked for it in your profile.",
-                                "Leave it in one click")):
+    cases: tuple[tuple[Locale, str, str], ...] = (
+        ("es", "Recibes este resumen porque lo pediste en tu perfil.", "Darte de baja en un clic"),
+        ("en", "You get this summary because you asked for it in your profile.", "Leave it in one click"),
+    )
+    for locale, why, leave in cases:
         r = render("weekly_digest", locale, SAMPLE, {"name": "Ana"}, unsubscribe=page)
         assert why in r.text and f"{leave}: {page}" in r.text
         assert f'href="{page}"' in r.html and leave in r.html

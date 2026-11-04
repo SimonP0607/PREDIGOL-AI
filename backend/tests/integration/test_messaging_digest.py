@@ -31,7 +31,7 @@ from fbi.api.routers import messaging as messaging_router
 from fbi.auth import service, throttle
 from fbi.auth.settings import reset as reset_session_settings
 from fbi.core.config import reset_cache
-from fbi.customer import consents, legal
+from fbi.customer import consents, legal, updates
 from fbi.messaging import digest, outbox, unsubscribe
 from fbi.messaging.provider import Outgoing
 from tests.integration.helpers import forget_memberships, forget_sign_in_failures, scalar
@@ -229,7 +229,7 @@ def test_the_box_is_offered_only_while_the_summary_can_reach_the_reader(fresh: s
     reader = client(READER)
     kinds = lambda: [p["kind"] for p in reader.get("/api/v1/me/consents?lang=es").json()["purposes"]]  # noqa: E731
     version = legal.current("privacy").version
-    ask = {"decisions": [{"kind": "marketing_email", "granted": True, "version": version}], "locale": "es",
+    ask: dict[str, Any] = {"decisions": [{"kind": "marketing_email", "granted": True, "version": version}], "locale": "es",
            "source": "profile"}
     assert "marketing_email" not in kinds(), "born off: no box that promises nothing"
     r = reader.post("/api/v1/me/consents", json=ask)
@@ -306,11 +306,23 @@ def test_a_bounced_address_gets_no_summary_and_the_day_has_its_cap(fresh: str, m
         conn.execute("INSERT INTO customer.preferences (user_id, email_status, email_status_at) VALUES (%s, 'bounced', "
                      "now())", (uid(fresh, OTHER),))
     monday = datetime(2026, 10, 26, 15, 0, tzinfo=UTC)
-    report = run_queue(fresh, monday)
+
+    def queue_at(at: datetime) -> digest.DigestReport:
+        # The rows carry the database's real created_at, and the day's cap counts those created since the start of the simulated day: put
+        # them on the simulated clock, so the test does not depend on the day it is run.
+        report = run_queue(fresh, at)
+        with psycopg.connect(fresh, autocommit=True) as conn:
+            conn.execute("ALTER TABLE customer.messages_outbox DISABLE TRIGGER USER")  # the guard keeps a row's ask fixed
+            conn.execute("UPDATE customer.messages_outbox SET created_at = %s WHERE template = %s AND created_at > %s",
+                         (at, digest.TEMPLATE, at))
+            conn.execute("ALTER TABLE customer.messages_outbox ENABLE TRIGGER USER")
+        return report
+
+    report = queue_at(monday)
     assert (report.queued, report.capped) == (1, True)
-    report = run_queue(fresh, monday + timedelta(hours=1))
+    report = queue_at(monday + timedelta(hours=1))
     assert (report.queued, report.capped) == (0, True), "the day's cap counts what was queued today"
-    assert run_queue(fresh, monday + timedelta(days=7)).queued == 1
+    assert queue_at(monday + timedelta(days=7)).queued == 1
     assert uid(fresh, OTHER) not in {r["user_id"] for r in summaries(fresh)}
 
 
@@ -347,7 +359,7 @@ def test_it_counts_the_weeks_settled_picks_the_teams_matches_and_the_weeks_noved
         params = digest.params_for(conn, me, "America/Bogota", at)
     assert params["won"] == "2" and params["lost"] == "1" and params["void"] == "2"
     assert (params["matches"], params["follows"]) == ("2", "yes")
-    week = [u.id for u in digest.updates.between(at.date() - timedelta(days=6), at.date())][:3]
+    week = [u.id for u in updates.between(at.date() - timedelta(days=6), at.date())][:3]
     assert params["news"] == (",".join(week) or "-")
     with psycopg.connect(fresh) as conn:
         assert digest.params_for(conn, them, "America/Bogota", at)["follows"] == "no"
