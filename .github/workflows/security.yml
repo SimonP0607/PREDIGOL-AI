@@ -24,10 +24,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: gitleaks
+      # The same scanner and the same rules as .github/workflows/gitleaks.yml and the pre-commit hook (security/, plan de seguridad R07): the
+      # version and its checksum are pinned in security/GITLEAKS_VERSION. A different version reads the rules in .gitleaks.toml differently.
+      - name: gitleaks (pinned version)
         run: |
-          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz | tar -xz gitleaks
-          ./gitleaks git . --config .gitleaks.toml --redact --exit-code 1
+          set -euo pipefail
+          . security/GITLEAKS_VERSION
+          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz"
+          echo "${linux_x64_sha256}  gitleaks.tgz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/gl"
+          tar -xzf gitleaks.tgz -C "$RUNNER_TEMP/gl" gitleaks
+          rm -f gitleaks.tgz
+          GITLEAKS_BIN="$RUNNER_TEMP/gl/gitleaks" security/scan.sh history
 
   audit-backend:
     name: pip-audit (informative)
