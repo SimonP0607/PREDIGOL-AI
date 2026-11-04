@@ -150,6 +150,15 @@ import type {
   TicketIn,
 } from "./types_support";
 import type {
+  AuditActionCount,
+  ConsentRecord,
+  Customer,
+  CustomerList,
+  CustomerNote,
+  CustomerView,
+  TicketReview,
+} from "./types_customers";
+import type {
   AnalystReply,
   AnalystStatus,
   CompetitionDetail,
@@ -1055,6 +1064,26 @@ export const v1 = {
   ) => patchJson<Envelope<AdminUser>>(`/admin/users/${id}`, body),
   authAudit: (q: { action?: string | undefined; limit?: number; offset?: number } = {}) =>
     getJson<Envelope<AuditEvent[]>>("/admin/audit", q as Params),
+  /** Every kind of event the trail holds, with how many: the audit page's filter (plan UX, B10). */
+  authAuditActions: () => getJson<Envelope<AuditActionCount[]>>("/admin/audit/actions"),
+  /** One account's open sessions, for the owner: no cookie, only what names them (plan UX, B10). */
+  userSessions: (id: number) => getJson<Envelope<SessionInfo[]>>(`/admin/users/${id}/sessions`),
+
+  // ── the customer's card (plan UX, B10) ──────────────────────────────────────
+  customers: (q: { view?: CustomerView; q?: string; limit?: number; offset?: number } = {}) =>
+    getJson<CustomerList>("/admin/customers", q as Params),
+  customer: (id: number) => getJson<Customer>(`/admin/customers/${id}`),
+  addCustomerNote: (id: number, note: string) =>
+    postJson<Envelope<CustomerNote>>(`/admin/customers/${id}/notes`, { note }),
+  /** Reading a reader's consents with their proof is recorded in the trail. */
+  customerConsents: (id: number) =>
+    getJson<Envelope<ConsentRecord[]>>(`/admin/customers/${id}/consents`),
+  /** Reviewing a ticket is recorded in the trail. */
+  customerTicket: (id: number, ticketId: number) =>
+    getJson<TicketReview>(`/admin/customers/${id}/tickets/${ticketId}`),
+  /** The copy of a reader's data, with the owner's password (and code) first; recorded in the trail. */
+  exportCustomer: (id: number, body: { password: string; code?: string | null }) =>
+    postJson<Record<string, unknown>>(`/admin/customers/${id}/export`, body),
 
   // ── data truth ────────────────────────────────────────────────────────────
   truthLatest: () => getJson<Envelope<TruthSummary | null>>("/admin/truth/latest"),

@@ -31,7 +31,8 @@
     "product": "Producto",
     "audit": "Auditoría",
     "settings": "Ajustes",
-    "support": "Soporte"
+    "support": "Soporte",
+    "customers": "Clientes"
   },
   "pages": {
     "overview": {
@@ -117,6 +118,10 @@
     "learning": {
       "title": "Aprendizaje",
       "description": "Lo que PrediGol aprende de sus resultados: el cierre de cada día, lo aprendido y lo que se propone, los post-mortems, la memoria, los experimentos y las promociones de código, la calibración, los mercados y la IA frente al modelo. Aquí nada cambia un pick, una probabilidad ni un modelo por sí solo: lo decide el dueño."
+    },
+    "customers": {
+      "title": "Clientes",
+      "description": "Cada lector con lo necesario para atenderlo y renovarlo, y nada más. Solo SUPER_ADMIN."
     }
   },
   "users": {
@@ -194,7 +199,13 @@
     "anonymiseDone": "Cuenta borrada: {picks} picks, {parlays} combinadas y {sessions} sesiones; {messages} correos ya no saldrán; {trail} filas del registro enmascaradas.",
     "showDeleted": "Mostrar las borradas ({count})",
     "hideDeleted": "Ocultar las borradas",
-    "answerFirst": "Responde antes de borrar y comprueba en Mensajes que la respuesta salió: después ya no hay una dirección a la que escribir y lo que quede en la cola no se envía."
+    "answerFirst": "Responde antes de borrar y comprueba en Mensajes que la respuesta salió: después ya no hay una dirección a la que escribir y lo que quede en la cola no se envía.",
+    "viewSessions": "Ver sesiones",
+    "hideSessions": "Ocultar sesiones",
+    "noSessions": "Ninguna sesión abierta.",
+    "sessionStage": "Etapa",
+    "sessionUntil": "Vence",
+    "createdOn": "Alta"
   },
   "messages": {
     "sendingOn": "Envío encendido",
@@ -382,7 +393,14 @@
       "membership_suspended": "Membresía suspendida",
       "membership_suspension_lifted": "Suspensión de membresía levantada",
       "membership_will_not_renew": "Marcada «no renovará»",
-      "membership_will_renew": "Quitada «no renovará»"
+      "membership_will_renew": "Quitada «no renovará»",
+      "customer_note": "Nota interna de un cliente",
+      "customer_consents_viewed": "Pruebas de consentimiento consultadas",
+      "customer_ticket_reviewed": "Ticket de un cliente revisado",
+      "customer_exported": "Copia de los datos de un cliente entregada",
+      "customer_export": "Contraseña pedida para la copia de un cliente",
+      "privacy_export": "Copia de datos descargada por el cliente",
+      "privacy_deletion_request": "Solicitud de borrado de datos"
     },
     "keys": {
       "fields": "campos",
@@ -444,7 +462,10 @@
       "unlock": "desbloqueo",
       "link": "enlace del correo",
       "password_reset": "nueva contraseña por enlace"
-    }
+    },
+    "loadMore": "Cargar más",
+    "shown": "Mostrando {shown} de {total}",
+    "allLoaded": "Todo el rastro está cargado."
   },
   "shadowToggle": "Modo de evaluación (solo admin)",
   "shadowToggleHelp": "Muestra los registros de evaluación, armados con picks de modelos que no han superado al mercado. Nunca es lo que ve un USER.",
@@ -768,5 +789,114 @@
     },
     "inviteTrial": "Días de prueba",
     "inviteTrialDefault": "Lo predeterminado (FBI_TRIAL_DAYS)"
+  },
+  "customers": {
+    "views": {
+      "all": "Todos",
+      "expiring": "Vencen en 7 días",
+      "inactive": "Inactivos 14 días",
+      "tickets": "Tickets abiertos",
+      "errors": "Errores en 24 h"
+    },
+    "search": "Buscar por correo o alias",
+    "empty": "Ningún cliente en esta vista.",
+    "shown": "{from}–{to} de {total}",
+    "previous": "Anteriores",
+    "next": "Siguientes",
+    "customer": "Cliente",
+    "lastSeen": "Último acceso",
+    "activeDays": "Días activos (7)",
+    "csat": "Satisfacción",
+    "attention": "Atención",
+    "back": "Clientes",
+    "ticketsFlag": "{count} ticket(s)",
+    "errorsFlag": "{count} error(es) 24 h",
+    "status": {
+      "active": "Activo",
+      "disabled": "Desactivado",
+      "invited": "Invitado"
+    },
+    "manageMembership": "Renovar o extender",
+    "identity": "Identidad",
+    "alias": "Alias",
+    "security": "Seguridad",
+    "noMfa": "sin 2FA",
+    "openSessions": "{count} sesión(es) abierta(s)",
+    "willNotRenew": "Dijo que no renovará.",
+    "usage": "Uso",
+    "notMeasured": "No se mide su uso (sin aceptar la analítica o sin la clave): los conteos en cero no significan que no use PrediGol.",
+    "activeDays7": "Días activos en 7 días",
+    "activeDays30": "Días activos en 30 días",
+    "matches30": "Partidos vistos (30 días)",
+    "picksOpened30": "Picks abiertos (30 días)",
+    "picksSaved": "Picks guardados",
+    "parlaysSaved": "Parlays guardados",
+    "errors24": "Errores en 24 h",
+    "notifications": "Notificaciones",
+    "emailStatus": "Entregabilidad del correo",
+    "emailStatuses": {
+      "ok": "Correcta",
+      "bounced": "Rebotó",
+      "complained": "Se quejó"
+    },
+    "emailOff": "Correos que apagó",
+    "pushOff": "Avisos push que apagó",
+    "none": "ninguno",
+    "emails30": "Correos (30 días)",
+    "emailCounts": "{sent} enviados · {failed} fallidos · {bounced} rebotados · {suppressed} retenidos",
+    "devices": "Dispositivos con avisos",
+    "noDevices": "Ninguno.",
+    "installed": "instalada",
+    "lastOk": "último aviso {when}",
+    "neverOk": "sin avisos aún",
+    "consents": "Consentimientos",
+    "noConsents": "No ha decidido nada todavía.",
+    "granted": "Aceptado",
+    "withdrawn": "Retirado",
+    "consentsDue": "Pendientes de aceptar: {list}.",
+    "viewProof": "Ver la prueba de cada decisión",
+    "recorded": "Consultar la prueba queda registrado en el rastro de auditoría.",
+    "consentKind": "Finalidad",
+    "decision": "Decisión",
+    "document": "Texto",
+    "source": "Origen",
+    "consentKinds": {
+      "terms": "Términos",
+      "privacy": "Política de privacidad",
+      "age_18": "Mayoría de edad",
+      "risk_notice": "Aviso de riesgo",
+      "marketing_email": "Resumen semanal por correo"
+    },
+    "tickets": "Tickets",
+    "noTickets": "Sin tickets.",
+    "late": "fuera de plazo",
+    "review": "Revisar",
+    "hide": "Ocultar",
+    "ticketStatus": {
+      "open": "Esperando a PrediGol",
+      "answered": "Respondido",
+      "closed": "Cerrado"
+    },
+    "author": {
+      "customer": "Cliente",
+      "owner": "PrediGol",
+      "system": "Sistema"
+    },
+    "privacyOpen": "{count} solicitud(es) de privacidad abierta(s): se responden en la bandeja de Soporte.",
+    "feedback": "Opiniones",
+    "lastCsat": "Última encuesta",
+    "surveyAnswers": "Encuestas respondidas",
+    "helpful": "«¿Te sirvió?» sí / no",
+    "notes": "Notas internas",
+    "notesHelp": "Solo las ve el administrador y quedan en el rastro de auditoría. No escribas datos sensibles (salud, documentos, pagos).",
+    "newNote": "Nueva nota",
+    "saveNote": "Guardar nota",
+    "export": "Copia de sus datos",
+    "exportHelp": "Para cuando el cliente la pide por otro canal. Pide tu contraseña, queda registrado y se entrega el mismo archivo que él descargaría.",
+    "exportButton": "Descargar su copia",
+    "yourPassword": "Tu contraseña",
+    "yourCode": "Tu código 2FA",
+    "exportConfirm": "Confirmar y descargar",
+    "exported": "Copia descargada y registrada."
   }
 }

@@ -60,6 +60,8 @@ import { Route as HelpGlossaryRouteImport } from './routes/help.glossary'
 import { Route as LegalDocRouteImport } from './routes/legal.$doc'
 import { Route as MatchesIndexRouteImport } from './routes/matches.index'
 import { Route as MatchesFixtureIdRouteImport } from './routes/matches.$fixtureId'
+import { Route as AdminCustomersIndexRouteImport } from './routes/admin.customers.index'
+import { Route as AdminCustomersUserIdRouteImport } from './routes/admin.customers.$userId'
 import { Route as AdminPlayersIndexRouteImport } from './routes/admin.players.index'
 import { Route as AdminPlayersPlayerIdRouteImport } from './routes/admin.players.$playerId'
 import { Route as AdminRefereesIndexRouteImport } from './routes/admin.referees.index'
@@ -321,6 +323,16 @@ const MatchesFixtureIdRoute = MatchesFixtureIdRouteImport.update({
   path: '/matches/$fixtureId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCustomersIndexRoute = AdminCustomersIndexRouteImport.update({
+  id: '/customers/',
+  path: '/customers/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCustomersUserIdRoute = AdminCustomersUserIdRouteImport.update({
+  id: '/customers/$userId',
+  path: '/customers/$userId',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminPlayersIndexRoute = AdminPlayersIndexRouteImport.update({
   id: '/players/',
   path: '/players/',
@@ -399,9 +411,11 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
+  '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
   '/help/messages/$ticketId': typeof HelpMessagesTicketIdRoute
+  '/admin/customers/': typeof AdminCustomersIndexRoute
   '/admin/players/': typeof AdminPlayersIndexRoute
   '/admin/referees/': typeof AdminRefereesIndexRoute
 }
@@ -456,9 +470,11 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/help': typeof HelpIndexRoute
   '/matches': typeof MatchesIndexRoute
+  '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
   '/help/messages/$ticketId': typeof HelpMessagesTicketIdRoute
+  '/admin/customers': typeof AdminCustomersIndexRoute
   '/admin/players': typeof AdminPlayersIndexRoute
   '/admin/referees': typeof AdminRefereesIndexRoute
 }
@@ -515,9 +531,11 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
+  '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
   '/help/messages/$ticketId': typeof HelpMessagesTicketIdRoute
+  '/admin/customers/': typeof AdminCustomersIndexRoute
   '/admin/players/': typeof AdminPlayersIndexRoute
   '/admin/referees/': typeof AdminRefereesIndexRoute
 }
@@ -575,9 +593,11 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/help/'
     | '/matches/'
+    | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
     | '/help/messages/$ticketId'
+    | '/admin/customers/'
     | '/admin/players/'
     | '/admin/referees/'
   fileRoutesByTo: FileRoutesByTo
@@ -632,9 +652,11 @@ export interface FileRouteTypes {
     | '/admin'
     | '/help'
     | '/matches'
+    | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
     | '/help/messages/$ticketId'
+    | '/admin/customers'
     | '/admin/players'
     | '/admin/referees'
   id:
@@ -690,9 +712,11 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/help/'
     | '/matches/'
+    | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
     | '/help/messages/$ticketId'
+    | '/admin/customers/'
     | '/admin/players/'
     | '/admin/referees/'
   fileRoutesById: FileRoutesById
@@ -1083,6 +1107,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MatchesFixtureIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/customers/': {
+      id: '/admin/customers/'
+      path: '/customers'
+      fullPath: '/admin/customers/'
+      preLoaderRoute: typeof AdminCustomersIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/customers/$userId': {
+      id: '/admin/customers/$userId'
+      path: '/customers/$userId'
+      fullPath: '/admin/customers/$userId'
+      preLoaderRoute: typeof AdminCustomersUserIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/players/': {
       id: '/admin/players/'
       path: '/players'
@@ -1150,8 +1188,10 @@ interface AdminRouteChildren {
   AdminTeamsRoute: typeof AdminTeamsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminCustomersUserIdRoute: typeof AdminCustomersUserIdRoute
   AdminPlayersPlayerIdRoute: typeof AdminPlayersPlayerIdRoute
   AdminRefereesRefereeIdRoute: typeof AdminRefereesRefereeIdRoute
+  AdminCustomersIndexRoute: typeof AdminCustomersIndexRoute
   AdminPlayersIndexRoute: typeof AdminPlayersIndexRoute
   AdminRefereesIndexRoute: typeof AdminRefereesIndexRoute
 }
@@ -1185,8 +1225,10 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminTeamsRoute: AdminTeamsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminCustomersUserIdRoute: AdminCustomersUserIdRoute,
   AdminPlayersPlayerIdRoute: AdminPlayersPlayerIdRoute,
   AdminRefereesRefereeIdRoute: AdminRefereesRefereeIdRoute,
+  AdminCustomersIndexRoute: AdminCustomersIndexRoute,
   AdminPlayersIndexRoute: AdminPlayersIndexRoute,
   AdminRefereesIndexRoute: AdminRefereesIndexRoute,
 }

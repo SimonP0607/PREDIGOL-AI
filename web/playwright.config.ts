@@ -101,8 +101,9 @@ export default defineConfig({
     },
     {
       name: "admin",
-      // observability.spec.ts: the console's error-reporting tests (plan UX, A2), skipped without E2E_SENTRY_SINK
-      testMatch: /(admin|observability)\.spec\.ts/,
+      // observability.spec.ts: the console's error-reporting tests (plan UX, A2), skipped without E2E_SENTRY_SINK;
+      // customers.spec.ts: the customer's card and the audit page's fixes (plan UX, B10)
+      testMatch: /(admin|observability|customers)\.spec\.ts/,
       use: { ...desktop, storageState: statePath("admin"), locale: "en-GB" },
       dependencies: ["setup"],
     },

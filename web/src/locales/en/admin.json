@@ -31,7 +31,8 @@
     "product": "Product",
     "audit": "Audit",
     "settings": "Settings",
-    "support": "Support"
+    "support": "Support",
+    "customers": "Customers"
   },
   "pages": {
     "overview": {
@@ -117,6 +118,10 @@
     "learning": {
       "title": "Learning",
       "description": "What PrediGol learns from its results: the close of each day, what was learned and what is proposed, the post-mortems, the memory, the experiments and the code promotions, the calibration, the markets and the AI against the model. Nothing here changes a pick, a probability or a model by itself: the owner decides."
+    },
+    "customers": {
+      "title": "Customers",
+      "description": "Each reader with what is needed to attend and renew them, and nothing more. SUPER_ADMIN only."
     }
   },
   "users": {
@@ -194,7 +199,13 @@
     "anonymiseDone": "Account deleted: {picks} picks, {parlays} parlays and {sessions} sessions; {messages} e-mails will not leave; {trail} rows of the trail masked.",
     "showDeleted": "Show deleted ({count})",
     "hideDeleted": "Hide deleted",
-    "answerFirst": "Answer before deleting and check in Messages that the answer left: afterwards there is no address to write to, and whatever is still queued is not sent."
+    "answerFirst": "Answer before deleting and check in Messages that the answer left: afterwards there is no address to write to, and whatever is still queued is not sent.",
+    "viewSessions": "See sessions",
+    "hideSessions": "Hide sessions",
+    "noSessions": "No open session.",
+    "sessionStage": "Stage",
+    "sessionUntil": "Expires",
+    "createdOn": "Created"
   },
   "messages": {
     "sendingOn": "Sending on",
@@ -382,7 +393,14 @@
       "membership_suspended": "Membership suspended",
       "membership_suspension_lifted": "Membership suspension lifted",
       "membership_will_not_renew": "Marked “will not renew”",
-      "membership_will_renew": "Removed “will not renew”"
+      "membership_will_renew": "Removed “will not renew”",
+      "customer_note": "Internal note on a customer",
+      "customer_consents_viewed": "Consent proof read",
+      "customer_ticket_reviewed": "Customer's ticket reviewed",
+      "customer_exported": "Copy of a customer's data handed over",
+      "customer_export": "Password asked for a customer's copy",
+      "privacy_export": "Data copy downloaded by the customer",
+      "privacy_deletion_request": "Data deletion request"
     },
     "keys": {
       "fields": "fields",
@@ -444,7 +462,10 @@
       "unlock": "unlock",
       "link": "the e-mail's link",
       "password_reset": "new password by link"
-    }
+    },
+    "loadMore": "Load more",
+    "shown": "Showing {shown} of {total}",
+    "allLoaded": "The whole trail is loaded."
   },
   "shadowToggle": "Evaluation mode (admin only)",
   "shadowToggleHelp": "Shows the evaluation records, built from picks of models that have not beaten the market. Never what a USER sees.",
@@ -768,5 +789,114 @@
     },
     "inviteTrial": "Trial days",
     "inviteTrialDefault": "The default (FBI_TRIAL_DAYS)"
+  },
+  "customers": {
+    "views": {
+      "all": "All",
+      "expiring": "Expiring in 7 days",
+      "inactive": "Inactive 14 days",
+      "tickets": "Open tickets",
+      "errors": "Errors in 24 h"
+    },
+    "search": "Search by address or alias",
+    "empty": "No customer in this view.",
+    "shown": "{from}–{to} of {total}",
+    "previous": "Previous",
+    "next": "Next",
+    "customer": "Customer",
+    "lastSeen": "Last seen",
+    "activeDays": "Active days (7)",
+    "csat": "Satisfaction",
+    "attention": "Attention",
+    "back": "Customers",
+    "ticketsFlag": "{count} ticket(s)",
+    "errorsFlag": "{count} error(s) 24 h",
+    "status": {
+      "active": "Active",
+      "disabled": "Deactivated",
+      "invited": "Invited"
+    },
+    "manageMembership": "Renew or extend",
+    "identity": "Identity",
+    "alias": "Alias",
+    "security": "Security",
+    "noMfa": "no 2FA",
+    "openSessions": "{count} open session(s)",
+    "willNotRenew": "Said they will not renew.",
+    "usage": "Use",
+    "notMeasured": "Their use is not measured (analytics not accepted or no key): zero counts do not mean they do not use PrediGol.",
+    "activeDays7": "Active days in 7 days",
+    "activeDays30": "Active days in 30 days",
+    "matches30": "Matches viewed (30 days)",
+    "picksOpened30": "Picks opened (30 days)",
+    "picksSaved": "Picks saved",
+    "parlaysSaved": "Parlays saved",
+    "errors24": "Errors in 24 h",
+    "notifications": "Notifications",
+    "emailStatus": "E-mail deliverability",
+    "emailStatuses": {
+      "ok": "Fine",
+      "bounced": "Bounced",
+      "complained": "Complained"
+    },
+    "emailOff": "E-mails switched off",
+    "pushOff": "Push notices switched off",
+    "none": "none",
+    "emails30": "E-mails (30 days)",
+    "emailCounts": "{sent} sent · {failed} failed · {bounced} bounced · {suppressed} held back",
+    "devices": "Devices with notices",
+    "noDevices": "None.",
+    "installed": "installed",
+    "lastOk": "last notice {when}",
+    "neverOk": "no notice yet",
+    "consents": "Consents",
+    "noConsents": "Nothing decided yet.",
+    "granted": "Accepted",
+    "withdrawn": "Withdrawn",
+    "consentsDue": "Waiting to be accepted: {list}.",
+    "viewProof": "See the proof of each decision",
+    "recorded": "Reading the proof is recorded in the audit trail.",
+    "consentKind": "Purpose",
+    "decision": "Decision",
+    "document": "Text",
+    "source": "Source",
+    "consentKinds": {
+      "terms": "Terms",
+      "privacy": "Privacy policy",
+      "age_18": "Age of majority",
+      "risk_notice": "Risk notice",
+      "marketing_email": "Weekly summary by e-mail"
+    },
+    "tickets": "Tickets",
+    "noTickets": "No tickets.",
+    "late": "past its target",
+    "review": "Review",
+    "hide": "Hide",
+    "ticketStatus": {
+      "open": "Waiting for PrediGol",
+      "answered": "Answered",
+      "closed": "Closed"
+    },
+    "author": {
+      "customer": "Customer",
+      "owner": "PrediGol",
+      "system": "System"
+    },
+    "privacyOpen": "{count} privacy request(s) open: answered in the Support inbox.",
+    "feedback": "Feedback",
+    "lastCsat": "Last survey",
+    "surveyAnswers": "Surveys answered",
+    "helpful": "«Was it useful?» yes / no",
+    "notes": "Internal notes",
+    "notesHelp": "Only the administrator sees them and they stay in the audit trail. Do not write sensitive data (health, documents, payments).",
+    "newNote": "New note",
+    "saveNote": "Save note",
+    "export": "Copy of their data",
+    "exportHelp": "For when the customer asks for it by another channel. It asks for your password, is recorded and hands over the same file they would download.",
+    "exportButton": "Download their copy",
+    "yourPassword": "Your password",
+    "yourCode": "Your 2FA code",
+    "exportConfirm": "Confirm and download",
+    "exported": "Copy downloaded and recorded."
   }
 }

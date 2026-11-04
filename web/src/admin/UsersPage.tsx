@@ -557,6 +557,57 @@ function RowActions({
   );
 }
 
+/** An account's open sessions, as the owner reads them (plan UX, B10): when each began, was last used and ends, in which
+ * stage, from which browser - no cookie, only what names them. */
+function SessionsList({ user }: { user: AdminUser }) {
+  const [open, setOpen] = useState(false);
+  const q = useQuery({
+    queryKey: ["v1", "admin", "user-sessions", user.id],
+    queryFn: () => v1.userSessions(user.id),
+    enabled: open,
+  });
+  if (user.status === "invited" || user.status === "deleted") return null;
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        data-testid={`sessions-${user.id}`}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="tap-y relative text-caption font-medium text-primary"
+      >
+        {open ? t("admin.users.hideSessions") : t("admin.users.viewSessions")}
+      </button>
+      {open ? (
+        q.isPending ? (
+          <Loader2 aria-hidden className="h-3 w-3 animate-spin" />
+        ) : q.isError ? (
+          <p role="alert" className="text-caption text-negative">
+            {errorMessage(q.error)}
+          </p>
+        ) : (q.data?.data ?? []).length === 0 ? (
+          <p className="text-caption text-muted-foreground">{t("admin.users.noSessions")}</p>
+        ) : (
+          <ul
+            className="space-y-1 text-caption text-muted-foreground"
+            data-testid={`sessions-list-${user.id}`}
+          >
+            {q.data?.data.map((s) => (
+              <li key={s.id} className="break-words">
+                <span className="numeric">{formatDateTime(s.created_at)}</span> ·{" "}
+                {t("admin.users.lastLogin")} {formatRelative(s.last_seen_at)} ·{" "}
+                {t("admin.users.sessionUntil")} {formatDateTime(s.expires_at)} ·{" "}
+                {t("admin.users.sessionStage")} {s.stage}
+                {s.user_agent ? ` · ${s.user_agent.slice(0, 60)}` : ""}
+              </li>
+            ))}
+          </ul>
+        )
+      ) : null}
+    </div>
+  );
+}
+
 function SecurityBadges({ user }: { user: AdminUser }) {
   const chip =
     "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[0.65rem] font-semibold";
@@ -928,6 +979,7 @@ export function UsersPage() {
                       <td className="space-y-2 px-3 py-3">
                         <RowActions user={u} self={u.id === auth.user?.id} onNotice={setNotice} />
                         <SecurityActions user={u} self={u.id === auth.user?.id} />
+                        <SessionsList user={u} />
                       </td>
                     </tr>
                   ))}
@@ -962,6 +1014,9 @@ export function UsersPage() {
                     <StatusDot status={u.status} />
                     <span className="uppercase">{u.language}</span>
                     <span>{u.timezone}</span>
+                    <span data-testid={`user-card-created-${u.id}`}>
+                      {t("admin.users.createdOn")}: {formatDateTime(u.created_at)}
+                    </span>
                     <span>
                       {t("admin.users.lastLogin")}:{" "}
                       {u.last_login_at ? formatRelative(u.last_login_at) : t("admin.users.never")}
@@ -971,6 +1026,7 @@ export function UsersPage() {
                   <MembershipCell user={u} />
                   <RowActions user={u} self={u.id === auth.user?.id} onNotice={setNotice} />
                   <SecurityActions user={u} self={u.id === auth.user?.id} />
+                  <SessionsList user={u} />
                 </li>
               ))}
             </ul>

@@ -26,6 +26,7 @@ const PAGES: Array<[string, keyof typeof t.admin.pages]> = [
   ["system", "system"],
   ["migration", "migration"],
   ["users", "users"],
+  ["customers", "customers"],
   ["audit", "audit"],
   ["settings", "settings"],
 ];

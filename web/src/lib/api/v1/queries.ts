@@ -12,6 +12,7 @@ import type { FindingsQuery, ScoresQuery } from "./types_truth";
 import type { MemoryFilters } from "./types_ai_layer";
 import type { PairStatus } from "./types_referees";
 
+export const AUDIT_PAGE = 100;
 const MINUTE = 60_000;
 type Preview = "shadow" | undefined;
 
@@ -572,6 +573,18 @@ export const live = {
     queryFn: () => v1.authAudit({ action, limit: 200 }),
     refetchInterval: MINUTE,
   }),
+  /** The trail by pages of AUDIT_PAGE events, newest first, as far back as the owner reads (plan UX, B10). */
+  authAuditPages: (action?: string) => ({
+    queryKey: ["v1", "admin", "audit", "pages", action ?? "all"],
+    queryFn: ({ pageParam }: { pageParam: number }) =>
+      v1.authAudit({ action, limit: AUDIT_PAGE, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (last: Awaited<ReturnType<typeof v1.authAudit>>) => {
+      const next = (last.meta.offset ?? 0) + (last.meta.count ?? 0);
+      return next < (last.meta.total ?? 0) ? next : undefined;
+    },
+  }),
+  authAuditActions: { queryKey: ["v1", "admin", "audit", "actions"], queryFn: v1.authAuditActions },
 
   // ── data truth ────────────────────────────────────────────────────────────
   truthLatest: { queryKey: ["v1", "truth", "latest"], queryFn: v1.truthLatest },
