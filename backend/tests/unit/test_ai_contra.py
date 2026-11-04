@@ -1574,3 +1574,63 @@ def test_to_json_of_everything_is_codes_numbers_and_references_and_never_a_text(
         assert all(CODE_TEXT.fullmatch(s) for s in strings_in(js)), js
         assert all(CANDIDATE.fullmatch(k) for k in js["candidates"])
         assert all(parse_ref(r) is not None for r in js["refs"])
+
+
+# -- phase 4: C05 and C08 per family (the corners and the cards of the Statistics Agent) ------------------------------------------------------
+
+CORNERS_OVER = one("CORNERS_OU", "Over", "9.5")
+CARDS_OVER = one("CARDS_OU", "Over", "4.5")
+CARDS_UNDER = one("CARDS_OU", "Under", "4.5")
+
+
+def test_coverage_by_family_says_c05_is_about_the_cards_and_that_no_builder_writes_what_it_reads() -> None:
+    got = contra.coverage_by_family(base(), naming=NAMING)
+    assert set(got) == {"1X2", "DC", "AH", "OU", "BTTS", "CORNERS", "CARDS"}
+    assert got["CARDS"]["C05"] == contra.INPUT_MISSING, "a package of today has no multiplier: the rule did not run, which is not the same as finding nothing"
+    assert {f: row["C05"] for f, row in got.items() if f != "CARDS"} == dict.fromkeys(set(got) - {"CARDS"}, contra.NOT_APPLICABLE)
+    assert all(row["C08"] == contra.EVALUATED for row in got.values()), "its input is the assessments: always evaluated"
+    assert got["CORNERS"]["C06"] == got["CARDS"]["C06"] == contra.EVALUATED, "every count candidate has the model's probability and the market's"
+    doc = with_multiplier(1.0)
+    assert contra.coverage_by_family(doc, naming=NAMING)["CARDS"]["C05"] == contra.EVALUATED
+    assert contra.coverage_by_family(doc, naming=NAMING)["CORNERS"]["C05"] == contra.NOT_APPLICABLE
+
+
+def test_coverage_by_family_says_c06_is_not_evaluated_for_a_family_with_a_candidate_that_has_no_market() -> None:
+    naming = naming_of([("CORNERS_OU", "Over", "9.5"), ("CARDS_OU", "Over", "4.5")], prices={("CARDS_OU", "Over", "4.5"): ("0.5", None)})
+    got = contra.coverage_by_family(base(), naming=naming)
+    assert (got["CORNERS"]["C06"], got["CARDS"]["C06"]) == (contra.EVALUATED, contra.INPUT_MISSING)
+
+
+def test_coverage_by_family_is_total_whatever_the_document_is() -> None:
+    junks: list[Any] = [None, [], "text", 5, {}, {"shared": 3}, {"shared": {"referee": []}}]
+    for junk in junks:
+        got = contra.coverage_by_family(junk, naming=NAMING)
+        assert set(got) == {"1X2", "DC", "AH", "OU", "BTTS", "CORNERS", "CARDS"} and got["CARDS"]["C05"] != contra.NOT_APPLICABLE
+
+
+def test_c05_fires_for_the_cards_over_and_the_tally_by_family_counts_it_under_cards_only() -> None:
+    found = run(with_multiplier(0.7))
+    assert contra.tally_by_family(found, naming=NAMING) == {"CARDS": {"C05": 1}}
+    assert contra.tally_by_family((), naming=NAMING) == {}
+
+
+def test_the_agents_do_not_contradict_each_other_across_families() -> None:
+    """The Match Agent speaks of goals and the Statistics Agent of counts: ``over 2.5`` and ``cards over`` are not the same outcome, so no C08 between them."""
+    found = run(base(), assessments=[assessed(MATCH, **{OVER_25: "SUPPORT"}), assessed(STATS, **{CARDS_OVER: "CONCERN", CORNERS_OVER: "REJECT_SIGNAL"})])
+    assert of(found, "C08") == [] and contra.tally_by_family(found, naming=NAMING) == {}
+
+
+def test_two_assessments_of_the_same_count_would_be_a_c08_of_that_family() -> None:
+    """With one specialist for the counts there is nothing to set against: the rule fires when a second label takes the other side, and it is a C08 of CARDS."""
+    found = run(base(), assessments=[assessed(STATS, **{CARDS_OVER: "SUPPORT"}), assessed("stats_second", **{CARDS_OVER: "CONCERN"})])
+    c = only(found, "C08")
+    assert c.candidates == (CARDS_OVER, CARDS_OVER) or set(c.candidates) == {CARDS_OVER}
+    assert contra.tally_by_family(found, naming=NAMING) == {"CARDS": {"C08": 1}}
+    assert CARDS_UNDER not in c.candidates
+
+
+def test_the_tally_counts_a_contradiction_once_for_each_family_it_touches() -> None:
+    both = Contradiction("C08", f"pair:{CARDS_OVER}+{CORNERS_OVER}", (CARDS_OVER, CORNERS_OVER))
+    assert contra.tally_by_family([both, both], naming=NAMING) == {"CARDS": {"C08": 2}, "CORNERS": {"C08": 2}}
+    ghost = Contradiction("C01", "player:1", ("c99",))
+    assert contra.tally_by_family([ghost], naming=NAMING) == {}, "a name the match does not have touches no family"

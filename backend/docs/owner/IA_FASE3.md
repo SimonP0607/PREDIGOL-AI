@@ -32,7 +32,7 @@ La sombra necesita **las tres palabras a la vez**. Si falta una, o si `FBI_AI_MO
 | --- | --- | --- | --- | --- |
 | `FBI_AI_ENGINES` | `rules,llm` | los motores que revisan, separados por comas, sin importar mayúsculas ni espacios; `rules` y `llm` están siempre (la línea base de producción) y la lista solo puede **añadir** `ma-v1`, `ma-v1-h` y `cs-v1`; un nombre que no es ninguno se descarta | `rules,llm,ma-v1,ma-v1-h` | `rules,llm` |
 | `FBI_AI_SHADOW_SAMPLE` | `0` | la parte de los partidos con candidatos sobre la que corre la sombra, de 0 a 1 (`0.3` es el 30 %); más de 1 cuenta como 1, menos de 0 como 0 y lo que no es un número, como 0 | `0.3` | `0` |
-| `FBI_AI_AGENTS` | vacío | los agentes que pueden correr: `match` y `council` (otro nombre se descarta); el Orchestrator necesita los dos | `match,council` | vacío o quitar uno |
+| `FBI_AI_AGENTS` | vacío | los agentes que pueden correr: `match` y `council` (otro nombre se descarta); el Orchestrator necesita los dos (la fase 4 añade `stats`, que por sí solo no enciende nada: `IA_FASE4.md`) | `match,council` | vacío o quitar uno |
 
 Aparte, `FBI_AI_ORCHESTRATE_MINUTES` (de serie 5, nunca menos de 1) dice cada cuánto mira el trabajo `ai_orchestrate`; no es un interruptor.
 

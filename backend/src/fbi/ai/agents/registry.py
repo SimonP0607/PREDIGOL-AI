@@ -270,6 +270,10 @@ def _match_assess() -> Definition:
     return Definition(prompts.MATCH_ASSESS_VERSION, prompts.MATCH_ASSESS_SYSTEM, ASSESSMENT, schema_of(ASSESSMENT))
 
 
+def _stats_assess() -> Definition:
+    return Definition(prompts.STATS_ASSESS_VERSION, prompts.STATS_ASSESS_SYSTEM, ASSESSMENT, schema_of(ASSESSMENT))
+
+
 def _postmortem() -> Definition:
     return Definition(prompts.POSTMORTEM_VERSION, prompts.POSTMORTEM_SYSTEM, prompts.POSTMORTEM_VERSION, prompts.POSTMORTEM_SCHEMA)
 
@@ -315,6 +319,11 @@ AGENTS: Final[tuple[AgentSpec, ...]] = (
               (BuiltTask("context", router.SPECS["context"].effort, _match_context, model=router.MODELS[router.SPECS["context"].level]),
                BuiltTask("evaluation", router.SPECS["evaluation"].effort, _match_assess, model=router.MODELS[router.SPECS["evaluation"].level])),
               contract=ASSESSMENT, reads="match"),
+    AgentSpec("stats", "The Statistics Agent: an evaluation per candidate for the families of counts (corners and cards of the whole match), from the stats slice. "
+              "It runs in shadow in the LAB and feeds the Council only inside the shadow arms; its answers reach no decision until the owner signs a row in "
+              "intel.promotions for its family.",
+              (BuiltTask("evaluation", router.SPECS["evaluation"].effort, _stats_assess, model=router.MODELS[router.SPECS["evaluation"].level]),),
+              contract=ASSESSMENT, reads="stats"),
     AgentSpec("council", "The Council: the one verdict per selection of a match, in codes (cd-v1), from the compact view of the numbers, the assessments, the "
               "contradictions and the evidence index. Sonnet reads every match; Opus only the cases a rule of router-v1 escalates (E1-E7); the Haiku arm of the "
               "experiment (ma-v1-h) reads the same prompt, so the registry pins the task's own model.",
@@ -325,8 +334,6 @@ AGENTS: Final[tuple[AgentSpec, ...]] = (
 )
 
 PLANNED: Final[tuple[PlannedAgent, ...]] = (
-    PlannedAgent("statistics", "stats-v1", "The Statistics Agent: corners and cards, in shadow.", 4, "aa-v1",
-                 (PlannedTask("evaluation", "claude-haiku-5-5", "medium", "stats-assess-v1"),), reads="stats"),
     PlannedAgent("post_match_reviewer", "pmr-v1", "The Post-Match Reviewer: which signal of which agent was right, the class of the error, after settlement.", 5,
                  "pmr-v1", (PlannedTask("narrative", "claude-haiku-5-5", "low", "pmr-v1"),
                             PlannedTask("loss_review", "claude-sonnet-5-5", "medium", "pmr-v1")),
@@ -387,6 +394,13 @@ LEDGER: Final[tuple[Registration, ...]] = (
                  fingerprint="ag0ba76f3e1c",
                  parts={"council": Part("council-v1", "25ba480edcbb", "cd-v1", "f9b614bec399"),
                         "escalation": Part("council-opus-v1", "1eb30e6112e6", "cd-v1", "f9b614bec399")}),
+    Registration(agent="stats", version="stats-v1", registered_at=datetime(2026, 11, 3, 18, 0, tzinfo=UTC), decided_by="owner", phase="IA-4",
+                 reason="Built under the Plan Maestro IA the owner approved in full (phase 4, section 10): the Statistics Agent reads the stats slice of mcp-v1 "
+                        "and answers in aa-v1, an evaluation per candidate of corners and cards of the whole match, on Haiku 5.5 at effort medium. It is born "
+                        "CHALLENGER: it runs in shadow in the LAB workspace, feeds the Council only inside the shadow arms and its answers reach no decision "
+                        "until the owner signs a row in intel.promotions for its family.",
+                 fingerprint="aga50a72bba7",
+                 parts={"evaluation": Part("stats-assess-v1", "3e902d08074b", "aa-v1", "ab5f098304ef")}),
 )
 """Oldest first, by agent; the last entry of an agent is its version in force. To change an agent - a prompt, a schema, a model, an effort - change
 it, add the entry below the last one of the agent and bump the label of the prompt that changed, in the same commit."""

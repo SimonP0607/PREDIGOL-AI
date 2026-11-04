@@ -13,7 +13,7 @@ from typing import Any
 import psycopg
 from psycopg.types.json import Jsonb
 
-from fbi.ai import arms, orchestrator, runtime
+from fbi.ai import arms, orchestrator, prompts, runtime
 from fbi.ai.agents import council, match
 from fbi.ai.config import AiSettings, TierModel
 from fbi.ai.providers.base import JsonRequest
@@ -31,6 +31,10 @@ TIERS = {
 }
 D = Decimal
 SELECTIONS = (("1X2", "Home", "0", "0.55", "2.10"), ("1X2", "Draw", "0", "0.27", "3.60"), ("OU", "Over", "2.5", "0.58", "1.95"))
+COUNT_SELECTIONS = (("CORNERS_OU", "Over", "9.5", "0.56", "1.90"), ("CARDS_OU", "Over", "4.5", "0.55", "1.85"))
+"""The corners and the cards of the whole match production reviewed (phase 4: the Statistics Agent's candidates)."""
+HALF_SELECTION = ("CORNERS_OU_1H", "Over", "4.5", "0.54", "1.95")
+"""A count of a half: the catalogue cannot grade it (``corners_1h@v1``, ``no_period_data``) and it is never named for an agent."""
 
 
 def settings(**over: Any) -> AiSettings:
@@ -72,13 +76,14 @@ def rules_review(db: psycopg.Connection[Any], fixture: int, packet: int | None, 
     return int(row[0])
 
 
-def world(db: psycopg.Connection[Any], seed: Seed, *, pass_kind: str = "pre", n: int = 3, with_pass: bool = True) -> World:
-    """A match with the packet of ``AT`` and a pass that stored it, reviewed by production on ``n`` selections."""
+def world(db: psycopg.Connection[Any], seed: Seed, *, pass_kind: str = "pre", n: int = 3, with_pass: bool = True,
+          extra: tuple[tuple[str, str, str, str, str], ...] = ()) -> World:
+    """A match with the packet of ``AT`` and a pass that stored it, reviewed by production on ``n`` selections (and on ``extra``)."""
     s = scene(db, seed)
     if with_pass:
         passed(db, s.w.fixture, pass_kind, s.packet)
     w = World(db, s, s.w.fixture, s.packet)
-    for spec in SELECTIONS[:n]:
+    for spec in (*SELECTIONS[:n], *extra):
         w.reviews.append(rules_review(db, s.w.fixture, s.packet, spec))
     return w
 
@@ -97,8 +102,22 @@ def assign(db: psycopg.Connection[Any], fixture: int, *, sampled: bool = True, s
 # -- the scripted provider -----------------------------------------------------------------------------------------------------------------
 
 
+def stats_answer(request: JsonRequest, *, stance: str = "SUPPORT", extra: dict[str, Any] | None = None, refs: tuple[str, ...] = ("P:shared.absences.home",),
+                 drivers: tuple[str, ...] = ("ABSENCES",)) -> dict[str, Any]:
+    """A valid answer of the Statistics Agent: a stance for each count it was asked about, resting on a block that is data (never a DESCRIPTIVE one)."""
+    asked = json.loads(request.user.split("\n")[1])["candidates"]
+    return {
+        "contract": "aa-v1", "agent": "stats", "mode": "EVALUATION", "data_quality": "GOOD",
+        "signals": [{"code": "RATE", "direction": "OVER", "strength": "MEDIUM", "refs": list(refs)}],
+        "candidates": [{"candidate": c["candidate"], "stance": stance, "drivers": list(drivers) if stance != "NEUTRAL" else [], "risks": [], "refs": list(refs)} for c in asked],
+        "research": [],
+    } | (extra or {})
+
+
 def answer_for(request: JsonRequest, *, verdict: str = "APPROVE", confidence: str = "MEDIUM", stance: str = "NEUTRAL", extra: dict[str, Any] | None = None) -> dict[str, Any]:
-    """A valid answer to any of the requests of the orchestrator: the Match Agent's two modes and the Council at any level."""
+    """A valid answer to any of the requests of the orchestrator: the Match Agent's two modes, the Statistics Agent's and the Council at any level."""
+    if request.system == prompts.STATS_ASSESS_SYSTEM:
+        return stats_answer(request, extra=extra)
     if request.schema_name == council.TOOL:
         message = json.loads(request.user)
         refs = ["A:match_evaluation"] if message["view"].get("assessments") else ["P:shared.absences.home"]
@@ -147,4 +166,4 @@ def counts(db: psycopg.Connection[Any]) -> dict[str, int]:
     return {t: int(db.execute(f"SELECT count(*) FROM {t}").fetchone()[0]) for t in tables}  # type: ignore[index]
 
 
-__all__ = ["AT", "HAIKU", "OPUS", "PASSED", "RUN", "SONNET", "Gear", "World", "answer_for", "assign", "counts", "orchestrator", "provider", "rules_review", "settings", "world"]
+__all__ = ["AT", "COUNT_SELECTIONS", "HAIKU", "HALF_SELECTION", "OPUS", "PASSED", "RUN", "SONNET", "Gear", "World", "answer_for", "assign", "counts", "orchestrator", "provider", "rules_review", "settings", "stats_answer", "world"]

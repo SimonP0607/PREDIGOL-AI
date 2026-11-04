@@ -232,7 +232,7 @@ def test_every_variable_the_guide_names_is_read_by_the_code() -> None:
 
 # ── 2. the six contracts ──────────────────────────────────────────────────────────────────────────────────────────
 
-WRITERS = {"claim_extractor": "extractor", "match": "Match Agent", "statistics": "Statistics Agent", "council": "Council",
+WRITERS = {"claim_extractor": "extractor", "match": "Match Agent", "stats": "Statistics Agent", "council": "Council",
            "post_match_reviewer": "Post-Match Reviewer", "learning_analyst": "Learning Analyst"}
 
 LIMITS: dict[str, tuple[tuple[int, ...], tuple[str, ...]]] = {
@@ -500,9 +500,10 @@ def test_the_fields_of_the_key_are_the_fields_in_the_order_the_code_hashes() -> 
 
 # ── 7. the registry ───────────────────────────────────────────────────────────────────────────────────────────────
 
-BUILT_AFTER_THE_GUIDE = ("council",)
-"""The agents the plan built after this guide was written (phase 3): the registry holds them and the guide still lists them as planned. What
-they are is said by the guide of their phase."""
+BUILT_AFTER_THE_GUIDE = ("council", "stats")
+"""The agents the plan built after this guide was written (phase 3: the Council; phase 4: the Statistics Agent): the registry holds them and the
+guide still lists them as planned (the Statistics Agent as ``statistics``). What they are is said by the guide of their phase."""
+NAME_IN_THE_GUIDE = {"statistics": "stats"}
 
 
 def test_the_agents_of_today_are_the_baseline_of_the_ledger() -> None:
@@ -528,7 +529,7 @@ def test_the_agents_of_today_are_the_baseline_of_the_ledger() -> None:
 
 
 def test_the_planned_agents_of_the_guide_are_the_planned_agents_of_the_registry() -> None:
-    rows = [r for r in table(section(7), "| Agente") if ticked(r[0]) not in BUILT_AFTER_THE_GUIDE]
+    rows = [r for r in table(section(7), "| Agente") if NAME_IN_THE_GUIDE.get(ticked(r[0]), ticked(r[0])) not in BUILT_AFTER_THE_GUIDE]
     planned = registry.REGISTRY.planned
     assert [(ticked(r[0]), ticked(r[1]), int(r[2]), ticked(r[3])) for r in rows] == [(p.agent, p.version, p.phase, p.contract) for p in planned]
 
