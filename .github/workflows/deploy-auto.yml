@@ -1,0 +1,132 @@
+name: Deploy automático
+
+# CI-007 - despliegue continuo. A cada fusión en `main` cuyo CI termina en verde, esto lleva a producción lo que cambió, sin botón ni aprobación:
+#   plan     el CI de ESTE commit (mismos árboles de backend y web) está verde; si aún no lo está, no hace nada y lo hará la ejecución del CI que falte.
+#   release  entorno `production-auto` (solo la rama main): comprueba que producción es un lanzamiento de GitHub contenido en main (ci_auto_plan.sh),
+#            fabrica el kit SOLO de las partes que cambiaron, lo envía por la misma puerta restringida, hace el precheck y arranca la cadena del
+#            servidor (copia de seguridad + prueba de restauración, despliegue, humo, verificación) y la espera. Si algo falla, se detiene y el
+#            servidor no se toca más: nada se revierte solo (ver chain.log).
+# Interruptor: la variable del repositorio AUTO_DEPLOY (true/false). Apagado, este flujo no hace nada; el botón manual (`Deploy`) sigue con sus dos
+# aprobaciones. Solo corre para ejecuciones `push` del propio repositorio sobre `main` (nunca de forks ni de pull requests).
+
+on:
+  workflow_run:
+    workflows: ["Backend CI", "Web CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: El CI de este commit está verde
+    if: >-
+      github.ref == 'refs/heads/main' && vars.AUTO_DEPLOY == 'true' && github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      ready: ${{ steps.gate.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gate.sh (Backend CI y Web CI verdes para estos árboles)
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if bash backend/deploy/release/gate.sh --head "$GITHUB_SHA" --parts backend,web; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::El CI de ${GITHUB_SHA:0:12} aún no está verde: no se despliega; lo hará la ejecución del CI que falte."
+          fi
+
+  release:
+    name: Fabricar, enviar y desplegar lo que cambió
+    needs: plan
+    if: needs.plan.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    environment: production-auto
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Llave de despliegue y huella del servidor
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+        run: bash backend/deploy/release/ci_ssh_setup.sh
+      - name: Qué hay que lanzar (y si producción sigue siendo de GitHub)
+        id: what
+        run: |
+          set -euo pipefail
+          out="$(bash backend/deploy/release/ci_auto_plan.sh predigol-gh "$GITHUB_SHA")"
+          parts="${out##*PARTS=}"
+          echo "parts=$parts" >> "$GITHUB_OUTPUT"
+          if [[ "$parts" == "none" ]]; then echo "::notice::Producción ya ejecuta este commit: nada que desplegar."; fi
+      - name: Fabricar el kit
+        id: build
+        if: steps.what.outputs.parts != 'none'
+        env:
+          PARTS: ${{ steps.what.outputs.parts }}
+        run: |
+          set -euo pipefail
+          rel="auto-${GITHUB_SHA:0:7}"
+          bash backend/deploy/release/build_kit.sh --rel "$rel" --head "$GITHUB_SHA" --from-server predigol-gh --parts "$PARTS" --out "$RUNNER_TEMP/kits"
+          kit="$(ls -d "$RUNNER_TEMP"/kits/*-"$rel" | head -n 1)"
+          echo "kit=$(basename "$kit")" >> "$GITHUB_OUTPUT"
+          echo "KIT_DIR=$kit" >> "$GITHUB_ENV"
+      - name: Enviar el kit al servidor
+        if: steps.build.outputs.kit != ''
+        run: bash backend/deploy/release/ship.sh --host predigol-gh --kit "$KIT_DIR" --gate
+      - name: Precheck (solo lectura; espera mientras el servidor está ocupado)
+        if: steps.build.outputs.kit != ''
+        shell: bash   # bash explícito = -eo pipefail: un precheck que falla debe fallar el paso aunque pase por tee
+        env:
+          KIT_NAME: ${{ steps.build.outputs.kit }}
+        run: bash backend/deploy/release/ci_precheck.sh predigol-gh "$KIT_NAME" 2>&1 | tee "$RUNNER_TEMP/precheck.txt"
+      - name: Arrancar la cadena y seguirla
+        if: steps.build.outputs.kit != ''
+        env:
+          KIT: ${{ steps.build.outputs.kit }}
+        run: |
+          set -uo pipefail
+          [[ "$KIT" =~ ^[0-9]{8}T[0-9]{4}Z-[a-z0-9][a-z0-9-]*$ ]] || { echo "bad kit name"; exit 1; }
+          ssh predigol-gh "start $KIT" || exit 1
+          bad=0
+          for i in $(seq 1 220); do
+            sleep 60
+            if out="$(ssh predigol-gh "status $KIT" 2> /dev/null)"; then
+              bad=0
+              state="$(head -n 1 <<< "$out")"
+              echo "[$i] $state"
+              case "$state" in
+                "STATE: deployed"*) echo "$out" | tail -n 8; { echo "### Desplegado"; echo "\`$state\`"; } >> "$GITHUB_STEP_SUMMARY"; exit 0 ;;
+                "STATE: stopped"*) echo "$out"; { echo "### La cadena SE DETUVO"; echo '```'; echo "$out"; echo '```'; echo "Nada se revierte solo: leer chain.log en el servidor y decidir."; } >> "$GITHUB_STEP_SUMMARY"; exit 1 ;;
+              esac
+            else
+              bad=$((bad + 1)); echo "[$i] sin respuesta del servidor ($bad)"
+              [[ $bad -lt 10 ]] || { echo "el servidor no respondió 10 veces seguidas: mirarlo a mano (la cadena sigue allí)"; exit 1; }
+            fi
+          done
+          echo "sigue en marcha tras 220 minutos: mirarlo a mano (la cadena sigue allí)"; exit 1
+      - name: Descartar el kit si el trabajo falló antes de arrancar
+        if: failure() && steps.build.outputs.kit != ''
+        env:
+          KIT_NAME: ${{ steps.build.outputs.kit }}
+        run: ssh predigol-gh "discard $KIT_NAME" || true
+      - name: Quitar la llave del runner
+        if: always()
+        run: rm -f ~/.ssh/predigol_gh_deploy ~/.ssh/config ~/.ssh/known_hosts_predigol
