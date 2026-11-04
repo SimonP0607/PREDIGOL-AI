@@ -382,6 +382,22 @@ def split_cost(total: Decimal, parts: int) -> list[Decimal]:
     return out
 
 
+def settle_costs(exact: Sequence[Decimal]) -> list[Decimal]:
+    """Round the engines' exact costs to six decimals so that they add up to the rounded whole, never a millionth off.
+
+    Rounding each engine on its own can lose or invent a millionth (three shares of 0.0000005 round to 0 each, yet their sum to 0.000002).
+    Rounding the running total and giving each engine the step between two running totals cannot.
+    """
+    out: list[Decimal] = []
+    running, paid = Decimal(0), Decimal(0)
+    for cost in exact:
+        running += cost
+        settled = running.quantize(Decimal("0.000001"))
+        out.append(settled - paid)
+        paid = settled
+    return out
+
+
 def budget_stop_reason(
     can_spend: bool, remaining: Decimal, reason: str, estimate: Decimal
 ) -> str | None:
@@ -2061,14 +2077,17 @@ class _Runner:
                 users.setdefault(a.key, [])
                 if arm.engine not in users[a.key]:
                     users[a.key].append(arm.engine)
-        costs: dict[str, tuple[Decimal, tuple[int, ...]]] = {}
+        exact: list[Decimal] = []
+        ids_of: list[list[int]] = []
         for arm in p.arms:
             total, ids = Decimal(0), []
             for a in arm.users:
                 total += a.cost / len(users[a.key])
                 ids.extend(a.usage_ids)
-            costs[arm.engine] = (total, distinct(ids))
-        return costs
+            exact.append(total)
+            ids_of.append(ids)
+        # What the engines cost adds up to what the run paid: settled on the running total, not engine by engine.
+        return {arm.engine: (cost, distinct(ids)) for arm, cost, ids in zip(p.arms, settle_costs(exact), ids_of, strict=True)}
 
     def review_rows(
         self,

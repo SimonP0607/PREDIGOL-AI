@@ -92,6 +92,20 @@ def test_a_split_of_nothing_is_nothing_and_the_split_never_creates_money() -> No
         assert sum(orchestrator.split_cost(total, parts)) == total.quantize(D("0.000001"))
 
 
+def test_the_engines_costs_settle_to_the_rounded_whole_never_a_millionth_off() -> None:
+    # Three engines of 0.0000025: each alone rounds to 0.000002 (six millionths in all), the three together to 0.000008.
+    shares = [D("0.0000025"), D("0.0000025"), D("0.0000025")]
+    assert sum((x.quantize(D("0.000001")) for x in shares), D(0)) != sum(shares, D(0)).quantize(D("0.000001")), "the case is a real one"
+    got = orchestrator.settle_costs(shares)
+    assert sum(got, D(0)) == sum(shares, D(0)).quantize(D("0.000001")) and all(x >= 0 and x == x.quantize(D("0.000001")) for x in got)
+    assert orchestrator.settle_costs([]) == []
+    rnd = random.Random(11)
+    for _ in range(300):
+        parts = [D(rnd.randint(0, 10**7)) / D(10**rnd.randint(4, 9)) for _ in range(rnd.randint(1, 8))]
+        settled = orchestrator.settle_costs(parts)
+        assert sum(settled, D(0)) == sum(parts, D(0)).quantize(D("0.000001")) and all(x >= 0 for x in settled)
+
+
 @pytest.mark.parametrize("can, left, reason, estimate, expected", [
     (True, "10", "ok", "1", None), (True, "1", "ok", "1", None), (True, "1", "ok", "1.000001", "insufficient"),
     (False, "0", "no_envelope", "1", "no_envelope"), (False, "0", "api_limit", "1", "api_limit"), (False, "5", "yields_to_production", "1", "yields_to_production"),
