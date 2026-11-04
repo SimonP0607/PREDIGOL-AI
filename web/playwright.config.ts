@@ -234,6 +234,19 @@ export default defineConfig({
           },
         ]
       : []),
+    ...(process.env["E2E_EXPLAIN"]
+      ? [
+          // «Explícame» (plan UX, B9): the frequent questions of a pick, a match and the parlay answered from what PrediGol
+          // already keeps - on QA's example picks of B3 (the stack with QA_PICK_STATES=1), at a desk and on a 320 px phone, on
+          // a reader account the test makes and deletes.
+          {
+            name: "explain",
+            testMatch: /explain\.spec\.ts/,
+            use: desktop,
+            dependencies: ["setup"],
+          },
+        ]
+      : []),
     ...(process.env["E2E_POSTMATCH"]
       ? [
           // Postpartido (plan UX, B4): QA's finished match with its published picks settled and explained (seed_b4.py on

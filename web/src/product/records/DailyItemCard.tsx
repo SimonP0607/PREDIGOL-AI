@@ -24,6 +24,7 @@ import { pickableOfItem } from "./pickable";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { SelectablePrice } from "@/product/odds/SelectablePrice";
 import { UserStatusBadge } from "@/product/shared/UserStatusBadge";
+import { ExplainButton } from "@/product/explain/ExplainSheet";
 import { WhyPickButton } from "@/product/picks/WhyPick";
 import { track } from "@/lib/track";
 
@@ -184,8 +185,9 @@ export function DailyItemCard({
         </span>
       </div>
 
-      <div className="flex px-4 pb-3">
+      <div className="flex flex-wrap gap-2 px-4 pb-3">
         <WhyPickButton pickId={item.pick_id} />
+        <ExplainButton entity="pick" itemId={item.pick_id} testId="explain-pick" />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 px-4 py-2.5">
         <div className="flex items-center gap-2">

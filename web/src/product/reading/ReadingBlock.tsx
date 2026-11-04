@@ -24,6 +24,7 @@ import type {
 } from "@/lib/api/v1/types_reading";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import { useUsefulMoment } from "@/product/feedback/moments";
+import { ExplainButton } from "@/product/explain/ExplainSheet";
 import { HelpfulVote } from "@/product/feedback/HelpfulVote";
 import type { MatchCtx } from "@/product/match/context";
 import { factText } from "./text";
@@ -393,19 +394,27 @@ export function ReadingBlock({ ctx }: { ctx: MatchCtx }) {
   const reading =
     load.status === "success" && load.envelope.status === "ok" ? load.envelope.data : null;
   useUsefulMoment("analysis_opened", reading !== null);
+  const fixtureId = Number(ctx.fixtureId);
   return (
-    <ReadingView
-      load={load}
-      afterMatch={ctx.phase === "finished" ? () => ctx.goTo("postmatch") : undefined}
-      footer={
-        reading ? (
-          <HelpfulVote
-            subject={reading.narrative ? "narrative" : "reading"}
-            subjectId={reading.fixture_id}
-          />
-        ) : null
-      }
-    />
+    <div className="space-y-2">
+      <ReadingView
+        load={load}
+        afterMatch={ctx.phase === "finished" ? () => ctx.goTo("postmatch") : undefined}
+        footer={
+          reading ? (
+            <HelpfulVote
+              subject={reading.narrative ? "narrative" : "reading"}
+              subjectId={reading.fixture_id}
+            />
+          ) : null
+        }
+      />
+      {Number.isInteger(fixtureId) && fixtureId > 0 ? (
+        <div className="flex px-1">
+          <ExplainButton entity="match" itemId={fixtureId} testId="explain-match" />
+        </div>
+      ) : null}
+    </div>
   );
 }
 

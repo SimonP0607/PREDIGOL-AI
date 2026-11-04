@@ -49,6 +49,8 @@ export interface Me {
   hints_seen?: string[];
   /** A reader can write to PrediGol from the page (plan UX, A14; FBI_SUPPORT): «Reportar un problema». */
   support?: boolean;
+  /** «Explícame» answers the frequent questions of a match, a pick and the parlay (plan UX, B9; FBI_EXPLAIN): its buttons only then. */
+  explain?: boolean;
 }
 
 export interface MfaEnrollment {

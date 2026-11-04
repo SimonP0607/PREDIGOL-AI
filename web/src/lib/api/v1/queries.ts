@@ -3,6 +3,7 @@ import { infiniteQueryOptions } from "@tanstack/react-query";
 import { filterParams, v1, type BestOddsQuery, type MatchQuery } from "./client";
 import type { MyPicksFilter } from "./types_mypicks";
 import type { FeedbackSubject } from "./types_feedback";
+import type { ExplainIntent, SlipLegBody } from "./types_explain";
 import type { ParlayKind, PicksQuery } from "./types_product";
 import type { BuilderQuery } from "./types_builder";
 import type { HistoryPeriod } from "./types_records";
@@ -96,6 +97,28 @@ export const live = {
   pickExplanation: (pickId: number, preview: Preview) => ({
     queryKey: ["v1", "pick-explanation", pickId, preview ?? "qualified"],
     queryFn: () => v1.pickExplanation(pickId, { preview }),
+    staleTime: MINUTE,
+    retry: false,
+  }),
+  /**
+   * «Explícame» (plan UX, B9): asked for when the reader picks a question (the sheet sets `enabled`); the same answer for every
+   * reader of a match or a pick, kept a minute.
+   */
+  explain: (entity: "match" | "pick", id: number, intent: ExplainIntent, preview: Preview) => ({
+    queryKey: ["v1", "explain", entity, id, intent, preview ?? "qualified"],
+    queryFn: () => v1.explain(entity, id, intent, { preview }),
+    staleTime: MINUTE,
+    retry: false,
+  }),
+  /** The parlay being built: keyed by its legs, so a leg added or removed asks again. */
+  explainParlay: (legs: SlipLegBody[]) => ({
+    queryKey: [
+      "v1",
+      "explain",
+      "parlay",
+      legs.map((l) => `${l.fixture_id}:${l.market_key}:${l.selection}:${l.line}`),
+    ],
+    queryFn: () => v1.explainParlay(legs),
     staleTime: MINUTE,
     retry: false,
   }),

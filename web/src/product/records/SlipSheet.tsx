@@ -40,6 +40,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
+import { ExplainButton } from "@/product/explain/ExplainSheet";
 import { OddsPill } from "@/product/shared/Bits";
 import { errorMessage } from "@/product/shared/States";
 import { marketName, riskLabel, selectionLabel } from "@/product/shared/markets";
@@ -742,6 +743,16 @@ export function SlipSheet() {
                   waiting={waiting}
                 />
                 <NoAiCaption />
+                {body.length > 0 ? (
+                  <div className="flex">
+                    <ExplainButton
+                      entity="parlay"
+                      itemId={null}
+                      legs={body}
+                      testId="explain-parlay"
+                    />
+                  </div>
+                ) : null}
                 {validation ? <Issues validation={validation} /> : null}
                 {failed ? (
                   <p className="text-xs text-negative" role="alert" data-testid="slip-check-error">

@@ -125,6 +125,7 @@ import type {
   PushUnsubscribeIn,
 } from "./types_push";
 import type { MatchReading } from "./types_reading";
+import type { ExplainIntent, Explanation, SlipLegBody } from "./types_explain";
 import type { PickExplanation } from "./types_explanation";
 import type { MatchNews, TodayNews } from "./types_news";
 import type { NoPick, Today } from "./types_today";
@@ -612,6 +613,12 @@ export const v1 = {
   /** «¿Por qué PrediGol eligió este pick?» (plan UX, B3): one published pick in five layers. 404: not a pick a reader sees. */
   pickExplanation: (pickId: number, q: Preview = {}) =>
     getJson<Envelope<PickExplanation>>(`/picks/${pickId}/explanation`, q),
+  /** «Explícame» (plan UX, B9): one question of a match or a pick. */
+  explain: (entity: "match" | "pick", id: number, intent: ExplainIntent, q: Preview = {}) =>
+    getJson<Envelope<Explanation>>("/explain", { entity, id, intent, ...q }),
+  /** «¿Por qué baja la probabilidad de mi parlay?» for the legs the slip holds (nothing is stored). */
+  explainParlay: (legs: SlipLegBody[]) =>
+    postJson<Envelope<Explanation>>("/explain/parlay", { legs }),
   parlay: (kind: ParlayKind, q: Preview = {}) => getJson<Envelope<Parlay>>(`/parlays/${kind}`, q),
   /** The automatic parlay builder (REVIEW pt 15): nothing is stored - saving it is createParlay. */
   buildParlay: (q: BuilderQuery & Preview) =>
