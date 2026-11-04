@@ -389,6 +389,7 @@ describe("the view kept for the tab", () => {
         query: "Emmen",
         country: "NL",
         category: "league",
+        scope: "all",
       });
       expect(readView()).toEqual({
         day: "2026-01-02",
@@ -397,8 +398,12 @@ describe("the view kept for the tab", () => {
         query: "Emmen",
         country: "NL",
         category: "league",
+        scope: "all",
       });
       const saved = JSON.parse(store.get("predigol.matches.view") ?? "{}") as object;
+      // Plan UX, B2: a view kept before the scope existed, or with a scope it cannot read, leaves it to the page's default.
+      store.set("predigol.matches.view", JSON.stringify({ ...saved, scope: "x" }));
+      expect(readView().scope).toBeNull();
       store.set("predigol.matches.view", JSON.stringify({ ...saved, savedOn: "1999-01-01" }));
       expect(readView().status).toBe("all");
     } finally {

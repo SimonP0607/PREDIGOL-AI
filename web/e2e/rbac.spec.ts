@@ -19,14 +19,36 @@ const ADMIN_ROUTES = [
   "/api/v1/admin/analytics/migration",
   "/api/v1/admin/ops/jobs",
   "/api/v1/admin/provider",
+  // the queue of messages to readers (plan UX, A5)
+  "/api/v1/admin/messages",
+  // product analytics (plan UX, A6)
+  "/api/v1/admin/product",
 ];
 
 test("without a session the product is closed and health stays open", async () => {
   const anon = await request.newContext({ baseURL: BASE, extraHTTPHeaders: H });
   expect((await anon.get("/health")).status()).toBeLessThan(600);
-  for (const path of ["/api/v1/home", "/api/v1/matches", "/api/v1/auth/me", ...ADMIN_ROUTES]) {
+  for (const path of [
+    "/api/v1/home",
+    "/api/v1/matches",
+    "/api/v1/auth/me",
+    "/api/v1/me/consents",
+    "/api/v1/me/privacy-requests",
+    "/api/v1/me/preferences",
+    "/api/v1/me/membership",
+    ...ADMIN_ROUTES,
+  ]) {
     expect((await anon.get(path)).status(), path).toBe(401);
   }
+  // the legal texts are public (plan UX, A4): anyone reads the terms before having an account
+  for (const document of ["terms", "privacy", "responsible_gaming"]) {
+    expect((await anon.get(`/api/v1/legal/${document}`)).status(), document).toBe(200);
+  }
+  expect((await anon.post("/api/v1/me/export", { data: { password: "x" } })).status()).toBe(401);
+  // the provider's webhook (plan UX, A5) answers only a signed event: QA has no secret, so it does not exist
+  expect(
+    (await anon.post("/api/v1/webhooks/resend", { data: { type: "email.bounced" } })).status(),
+  ).toBe(404);
   await anon.dispose();
 });
 
@@ -54,6 +76,19 @@ test("a USER gets the product and 403 on every admin route, and no shadow previe
   expect(
     (await user.patch("/api/v1/admin/users/1", { data: { role: "SUPER_ADMIN" } })).status(),
   ).toBe(403);
+  // the membership (plan UX, A8): the reader reads their own; only the owner records a payment or reads another's
+  expect((await user.get("/api/v1/me/membership")).status()).toBe(200);
+  expect((await user.get("/api/v1/admin/users/1/membership")).status()).toBe(403);
+  const payment = await user.post("/api/v1/admin/users/1/membership/payments", {
+    data: {
+      amount: "1",
+      currency: "COP",
+      method: "cash",
+      months: 1,
+      idempotency_key: "rbac-e2e-0001",
+    },
+  });
+  expect(payment.status()).toBe(403);
   await user.dispose();
 });
 

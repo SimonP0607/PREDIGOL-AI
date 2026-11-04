@@ -85,7 +85,7 @@ function Tag({ tone, children }: { tone: string; children: ReactNode }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold leading-tight",
+        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-micro font-semibold leading-tight",
         tone,
       )}
     >
@@ -170,7 +170,7 @@ function StoryBar({ drawing, sides }: { drawing: StoryDrawing; sides: Sides }) {
       ) : null}
       <div
         aria-hidden
-        className="numeric flex justify-between text-[0.65rem] leading-none text-subtle-foreground"
+        className="numeric flex justify-between text-micro leading-none text-subtle-foreground"
       >
         <span>0&apos;</span>
         <span>45&apos;</span>
@@ -544,7 +544,7 @@ function AdminDetails({ data, after }: { data: MatchKnowledge; after: AfterMatch
                     <summary className="cursor-pointer text-info">
                       {t("match.knowledge.admin.showData")}
                     </summary>
-                    <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/50 p-2 text-[0.7rem] leading-snug">
+                    <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/50 p-2 text-micro leading-snug">
                       {l.json}
                     </pre>
                   </details>

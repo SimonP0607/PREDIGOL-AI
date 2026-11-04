@@ -76,11 +76,11 @@
     "legsResult": "{won} of {total} won",
     "building": {
       "title": "Looking for the parlay",
-      "body": "There are selections with value, but no combination grows at their cautious probability. We never pad a parlay."
+      "body": "Some selections pass the rules, but no combination of {min} or more grows at their cautious probability."
     },
     "none": {
       "title": "No parlay yet",
-      "body": "It is built when there are selections with value in its window."
+      "body": "It is built when at least {min} selections in its window pass all of PrediGol's rules."
     },
     "void": {
       "title": "There was no parlay this day",
@@ -145,8 +145,7 @@
       "estimatedIndependent": "Product of PrediGol's probabilities: the selections are independent.",
       "estimatedWaiting": "Waiting for the dependence adjustment.",
       "estimatedNone": "No estimate: a selection has no probability.",
-      "fair": "Fair probability",
-      "fairHelp": "The market's, without the bookmakers' margin.",
+      "fair": "Market probability",
       "dependency": "Dependence level",
       "calculating": "calculating…"
     },
@@ -259,7 +258,10 @@
         "title": "Clear your price?",
         "body": "The pick counts again at the price we showed when you saved it.",
         "ok": "Clear"
-      }
+      },
+      "lineValue": "Line value {value}",
+      "allShown_one": "{n} pick: all in view.",
+      "allShown_other": "All {n} picks in view."
     },
     "parlays": {
       "title": "My parlays",
@@ -275,7 +277,85 @@
         "title": "Delete this parlay?",
         "body": "It disappears from your list and this cannot be undone.",
         "ok": "Delete"
-      }
+      },
+      "export": "Download CSV"
+    },
+    "filters": {
+      "title": "Filter your picks",
+      "search": "Search a team or a league",
+      "clearSearch": "Clear the search",
+      "resultLabel": "Result",
+      "result": {
+        "pending": "Pending",
+        "won": "Won",
+        "lost": "Lost",
+        "push": "Push",
+        "void": "Void"
+      },
+      "marketLabel": "Market",
+      "allMarkets": "Every market",
+      "competitionLabel": "League",
+      "allCompetitions": "Every league",
+      "bandLabel": "Odds",
+      "band": {
+        "lt1.5": "< 1.50",
+        "1.5-2": "1.50–2",
+        "2-3": "2–3",
+        "3-5": "3–5",
+        "5+": "5 or more"
+      },
+      "originLabel": "Who chose it",
+      "origin": {
+        "predigol": "PrediGol",
+        "mine": "You"
+      },
+      "since": "From",
+      "until": "To",
+      "show_one": "See {n} pick",
+      "show_other": "See {n} picks",
+      "empty": "No saved pick with these filters"
+    },
+    "summary": {
+      "all": "All your saved picks",
+      "filtered": "Your picks with these filters",
+      "total_one": "{n} pick:",
+      "total_other": "{n} picks:",
+      "counts": {
+        "won_one": "{n} won",
+        "won_other": "{n} won",
+        "lost_one": "{n} lost",
+        "lost_other": "{n} lost",
+        "half_won_one": "{n} half won",
+        "half_won_other": "{n} half won",
+        "half_lost_one": "{n} half lost",
+        "half_lost_other": "{n} half lost",
+        "push_one": "{n} push",
+        "push_other": "{n} pushes",
+        "void_one": "{n} void",
+        "void_other": "{n} void",
+        "pending_one": "{n} pending",
+        "pending_other": "{n} pending"
+      },
+      "units": "Units",
+      "export": "Download CSV",
+      "lineValue": {
+        "title": "Line value",
+        "none": "None of your started picks has its closing reference yet.",
+        "small_one": "{n} pick with its closing reference: the mean shows from {min}.",
+        "small_other": "{n} picks with their closing reference: the mean shows from {min}.",
+        "mean_one": "On average {mean} against the close, over {n} pick; {positive} above zero.",
+        "mean_other": "On average {mean} against the close, over {n} picks; {positive} above zero.",
+        "minutes": "The reference was taken, as a median, {minutes} minutes before kick-off.",
+        "definition": "Your odds (your own when you gave them) times the bookmakers' consensus probability without margin at the last capture before kick-off, minus one. Definition {version}, in force since {since}."
+      },
+      "breakdown": "See the breakdown",
+      "breakdownNote": "Each row with its own sample: units and return from {min} settled in that row.",
+      "byMarket": "By market",
+      "byCompetition": "By league",
+      "byBand": "By odds",
+      "row": "{total} · {settled} settled · {won} W {lost} L",
+      "rowCounts": "counts only",
+      "rowRoi": "ROI {roi}"
     }
   },
   "ai": {
@@ -341,7 +421,7 @@
   },
   "recap": {
     "title": "Your recap",
-    "subtitle": "What your settled picks add up to: profit, odds, streaks and markets.",
+    "subtitle": "What your settled picks add up to: how many, how they went and, with a sample large enough, their units day by day.",
     "scope": "What to see",
     "scopePicks": "My picks",
     "scopeParlays": "My parlays",
@@ -359,14 +439,7 @@
       "profit": "Profit",
       "roi": "Return (ROI)",
       "avgOdds": "Average odds",
-      "avgOddsWon": "When won: {odds}",
-      "bestStreak": "Best streak",
-      "current": {
-        "win_one": "Current streak: {count} win",
-        "win_other": "Current streak: {count} wins",
-        "loss_one": "Current streak: {count} loss",
-        "loss_other": "Current streak: {count} losses"
-      }
+      "avgOddsWon": "When won: {odds}"
     },
     "cumulative": {
       "title": "Cumulative profit",
@@ -380,38 +453,9 @@
       "count_one": "{count} pick",
       "count_other": "{count} picks"
     },
-    "odds": {
-      "title": "By odds range",
-      "subtitle": "Average odds: {odds}. How many you took in each range and how they went.",
-      "count": "Settled",
-      "tooltip": "{count} · hit rate {hit} · {profit}",
-      "bucket": {
-        "lt1.5": "< 1.50",
-        "1.5-2": "1.50–2",
-        "2-3": "2–3",
-        "3-5": "3–5",
-        "5+": "5 or more"
-      }
-    },
-    "markets": {
-      "title": "Hit rate by market",
-      "subtitle": "The markets you get right most.",
-      "hitRate": "Hit rate",
-      "tooltip": "{pct}% · {count} picks · {profit}"
-    },
-    "streak": {
-      "title": "Streaks",
-      "subtitle_one": "Your last result, oldest to newest.",
-      "subtitle_other": "Your last {count} results, oldest to newest.",
-      "win": "Win",
-      "loss": "Loss",
-      "w": "W",
-      "l": "L",
-      "current": "Current",
-      "bestWin": "Best",
-      "worstLoss": "Worst"
-    },
-    "loading": "Reading your records: {loaded} of {total}…"
+    "loading": "Reading your records: {loaded} of {total}…",
+    "sampleNote_one": "With {n} settled only the counts show: the charts of units appear from {min}.",
+    "sampleNote_other": "With {n} settled only the counts show: the charts of units appear from {min}."
   },
   "funnel": {
     "label": "How a pick of the day gets here",
@@ -428,5 +472,52 @@
     "help": "Each step is a filter: if no pick passes them all, the day has fewer or none. The picks of the day are chosen once PrediGol Intelligence has read the day: its pass of each match, with a news search."
   },
   "roiSample_one": "over {n} settled",
-  "roiSample_other": "over {n} settled"
+  "roiSample_other": "over {n} settled",
+  "unitsLink": "What is a unit?",
+  "noPick": {
+    "honest": "No match met the conditions to publish a pick today. We would rather not publish than publish for the sake of it.",
+    "reviewing": "We are still going through today's matches",
+    "reviewingBody": "Today's picks show here when the review is over. Meanwhile, today's matches already have their forecast and their analysis.",
+    "noMatches": "There are no matches of the competitions we follow today, so there are no picks either.",
+    "why": "Why",
+    "reasonError": "We could not load the reason.",
+    "reason": {
+      "no_qualified_candidates": "None of the models PrediGol publishes with had selections for today's matches.",
+      "not_scheduled": "The matches with selections were no longer scheduled: they had started, were postponed or suspended.",
+      "too_close_to_kickoff": "The selections came too close to their match's kick-off.",
+      "outside_window": "The matches with selections were outside the window in which we choose the picks.",
+      "no_price": "The selections had no odds at the bookmakers we follow.",
+      "stale_price": "The selections' odds were not up to date.",
+      "no_consensus": "The bookmakers did not agree enough on the selections' price.",
+      "few_bookmakers": "Too few bookmakers offered the selections.",
+      "price_outlier": "The selections' best odds were too far from the rest of the market.",
+      "not_qualified": "The selections came from models that have not beaten the market in their own backtest yet.",
+      "model_retired": "The selections came from a retired model.",
+      "no_interval": "The model had not measured the range of its probability for those selections.",
+      "non_positive_ev": "No market showed an edge over the market price.",
+      "no_pessimistic_growth": "At the cautious end of its probability, no selection made up for its risk.",
+      "odds_above_cap": "The selections that got that far paid odds above our risk limit: in our history, long odds lose money.",
+      "day_not_ready": "PrediGol Intelligence did not finish reviewing the matches' context in time.",
+      "no_day_pass": "PrediGol Intelligence did not finish reviewing the matches' context in time.",
+      "not_reviewed": "PrediGol Intelligence did not finish reviewing the matches' context in time.",
+      "ai_rejected": "PrediGol Intelligence turned the selections down after reviewing their matches' context."
+    },
+    "stage": {
+      "data": "Today's matches did not have the data we ask for to publish.",
+      "market": "The market's prices did not meet our conditions.",
+      "model": "The models did not meet our conditions to publish.",
+      "calibration": "The model had not measured the range of its probability.",
+      "value": "No market showed an edge over the market price.",
+      "risk": "The selections paid odds above our risk limit.",
+      "context": "PrediGol Intelligence did not finish reviewing the matches' context in time."
+    }
+  },
+  "sample": {
+    "countsOnly_one": "{n} settled: hit rate, units and return show from {min}.",
+    "countsOnly_other": "{n} settled: hit rate, units and return show from {min}.",
+    "inconclusive_one": "±{pts} points over {n} settled: the sample does not allow a conclusion yet.",
+    "inconclusive_other": "±{pts} points over {n} settled: the sample does not allow a conclusion yet.",
+    "conclusive_one": "±{pts} points over {n} settled.",
+    "conclusive_other": "±{pts} points over {n} settled."
+  }
 }

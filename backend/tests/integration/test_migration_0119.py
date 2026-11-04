@@ -454,5 +454,6 @@ def test_the_chain_of_the_revisions_has_this_migration_after_0118() -> None:
     revision = script.get_revision("0119")
     assert revision is not None and revision.down_revision == "0118"
     heads = script.get_heads()
-    assert "0119" in heads or all(h > "0119" for h in heads), heads
+    # by the chain, not by the number: the UX chain 0095-0106 hangs from 0119
+    assert "0119" in heads or all("0119" in {r.revision for r in script.walk_revisions(base="base", head=h)} for h in heads), heads
     assert re.fullmatch(r"\d{4}", revision.revision)

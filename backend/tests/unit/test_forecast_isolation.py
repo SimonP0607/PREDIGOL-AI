@@ -33,6 +33,8 @@ NAMES_THE_TABLE = {
     "familydecisions/decide.py": "the decision layer for a family (F11, shadow): reads the last `family-v1` forecast of each selection to see which the model finds valuable; "
                           "the rows it writes are research under their own decision version, and the pipeline's decision layer does not import it",
     "research/trace.py": "the trace of the model code's promotions (F12): counts the stored forecasts per model version to say which code production used; read-only, never an input",
+    "api/services/transparency.py": "«Cómo le va a PrediGol» (plan UX, A12): the forecast's calibration after the matches - the last forecast before kick-off against the result; read-only, never an input",
+    "scripts/transparency_check.py": "the contrast of that page (A12): the same calibration counted by an independent query at each deploy; read-only",
 }
 
 IMPORTS_THE_WRITER = {

@@ -18,7 +18,7 @@
   "currentPassword": "Contraseña actual",
   "newPassword": "Nueva contraseña",
   "passwordChanged": "Contraseña cambiada. Las demás sesiones se han cerrado.",
-  "passwordRules": "Mínimo 10 caracteres, sin espacios al principio o al final.",
+  "passwordRules": "Mínimo 15 caracteres (12 con la verificación en dos pasos), sin espacios al principio ni al final; no uses tu correo, tu nombre ni «predigol».",
   "signOut": "Cerrar sesión",
   "saved": "Preferencias guardadas.",
   "sessionLabel": "Tu sesión",
@@ -53,7 +53,19 @@
       "mfa.enrolled": "Verificación en dos pasos activada",
       "logout": "Cierre de sesión",
       "password.changed": "Contraseña cambiada",
-      "session.revoked": "Sesión cerrada"
+      "session.revoked": "Sesión cerrada",
+      "password.reset": "Contraseña restablecida",
+      "user.unlocked": "Cuenta desbloqueada",
+      "user.activated": "Cuenta activada"
+    },
+    "identity": {
+      "title": "Confirma que eres tú",
+      "body": "Para cerrar otras sesiones, escribe tu contraseña o un código de tu app de autenticación.",
+      "password": "Contraseña",
+      "code": "Código de 6 dígitos",
+      "useCode": "Usar un código de la app",
+      "usePassword": "Usar la contraseña",
+      "confirm": "Confirmar y cerrar"
     },
     "confirmEndOthers": {
       "title": "¿Cerrar las demás sesiones?",
@@ -62,10 +74,174 @@
       "ok": "Cerrar sesiones"
     }
   },
+  "notifications": {
+    "title": "Notificaciones",
+    "help": "Qué correos te enviamos. Los de tu cuenta, su seguridad, tus solicitudes sobre tus datos y los cambios de los textos legales llegan siempre.",
+    "email": "Correo",
+    "always": "Siempre",
+    "on": "Activado",
+    "off": "Desactivado",
+    "category": {
+      "account": "Tu cuenta",
+      "security": "Seguridad",
+      "membership": "Membresía",
+      "support": "Soporte",
+      "privacy": "Tus datos",
+      "legal": "Textos legales"
+    },
+    "categoryHelp": {
+      "account": "Invitación, activación y cambios de tu cuenta.",
+      "security": "Recuperar tu contraseña y avisos de acceso.",
+      "membership": "Recordatorios antes de que venza y confirmaciones de pago.",
+      "support": "Respuestas a tus preguntas y reportes.",
+      "privacy": "El acuse y la respuesta de tus solicitudes sobre tus datos.",
+      "legal": "Cambios de los términos o de la privacidad que debes aceptar."
+    },
+    "status": {
+      "bounced": "Tu correo rebota: no podemos entregarte mensajes. Revisa que la dirección de tu cuenta sea correcta y escríbenos si cambió.",
+      "complained": "Marcaste un correo nuestro como spam: solo te enviamos lo imprescindible de tu cuenta, su seguridad, tus datos y los textos legales."
+    },
+    "statusSince": "Desde el {date}",
+    "digest": {
+      "title": "Resumen semanal",
+      "help": "Llega una vez por semana, desde las 9:00 de tu zona horaria. Puedes darte de baja aquí o con un clic desde cualquier resumen.",
+      "since": "Lo pediste el {date}",
+      "left": "Te diste de baja el {date}"
+    }
+  },
   "sessionUntil": "Abierta hasta el {date} como máximo",
   "sessionIdle": "Se cierra antes si pasas {idle} sin usarla; cada uso la renueva.",
   "idleDays_one": "{n} día",
   "idleDays_other": "{n} días",
   "idleHours_one": "{n} hora",
-  "idleHours_other": "{n} horas"
+  "idleHours_other": "{n} horas",
+  "membership": {
+    "title": "Membresía",
+    "state": {
+      "trial": "En prueba",
+      "active": "Activa",
+      "expiring": "Próxima a vencer",
+      "grace": "En gracia",
+      "expired": "Vencida",
+      "renewed": "Renovada",
+      "suspended": "Suspendida",
+      "none": "Sin periodo"
+    },
+    "line": {
+      "trial": "En prueba hasta el {date}.",
+      "active": "Activa hasta el {date}.",
+      "expiringTrial": "Tu prueba termina el {date}.",
+      "expiring": "Tu membresía termina el {date}.",
+      "grace": "Tu membresía terminó: hasta el {date} sigues con acceso completo.",
+      "expired": "Tu membresía terminó. Tus datos siguen aquí; al renovar vuelve todo.",
+      "renewed": "Renovada hasta el {date}. Gracias.",
+      "suspended": "Tu cuenta está suspendida: escríbenos.",
+      "none": "Tu cuenta todavía no tiene un periodo de membresía."
+    },
+    "daysLeft_one": "Queda {count} día.",
+    "daysLeft_other": "Quedan {count} días.",
+    "willNotRenew": "Nos dijiste que no renovarás. Si cambias de idea, escríbenos.",
+    "notEnforced": "Por ahora, el acceso sigue completo aunque la membresía termine.",
+    "howToRenew": "Cómo renovar",
+    "renewHelp": "Pagas por el medio acordado y lo registramos al momento: la membresía sigue desde su fecha de fin, o desde hoy si ya terminó.",
+    "renewWhatsapp": "Escribir por WhatsApp",
+    "renewEmail": "Escribir un correo",
+    "renewNone": "Para renovar, responde a cualquiera de nuestros correos o pídeselo a quien te invitó.",
+    "whatsappText": "Hola, quiero renovar mi membresía de PrediGol.",
+    "history": "Periodos",
+    "period": {
+      "trial": "Prueba",
+      "paid": "Pago",
+      "courtesy": "Cortesía"
+    },
+    "range": "{from} – {to}",
+    "banner": {
+      "expiringTrial": "Tu prueba termina el {date}.",
+      "expiring": "Tu membresía termina el {date}.",
+      "eveTrial": "Mañana termina tu prueba.",
+      "eve": "Mañana termina tu membresía.",
+      "grace": "Tu membresía terminó: hasta el {date} sigues con acceso completo.",
+      "expired": "Acceso limitado: tu membresía terminó. Al renovar vuelve todo.",
+      "suspended": "Tu cuenta está suspendida: escríbenos.",
+      "action": "Cómo renovar"
+    },
+    "limited": {
+      "expiredTitle": "Tu membresía terminó",
+      "expiredBody": "Tus datos siguen aquí. Puedes ver tu perfil, tus picks guardados, la ayuda y los textos legales, y descargar tus datos. Al renovar vuelve todo.",
+      "suspendedTitle": "Tu cuenta está suspendida",
+      "suspendedBody": "Puedes ver tu perfil, tus picks guardados, la ayuda y los textos legales, y descargar tus datos. Escríbenos para saber más.",
+      "myPicks": "Mis picks guardados",
+      "profile": "Mi perfil y mi membresía",
+      "help": "Ayuda",
+      "legal": "Textos legales",
+      "export": "Descargar mis datos",
+      "readOnly": "Solo lectura mientras la membresía está terminada."
+    }
+  },
+  "centre": {
+    "subtitle": "Tu cuenta, tu fútbol, tus avisos, tu privacidad y tu seguridad, en un solo lugar.",
+    "region": "Idioma y zona",
+    "password": "Contraseña",
+    "stateLabel": "Estado",
+    "sinceLabel": "Cuenta creada",
+    "since": "En PrediGol desde el {date}",
+    "summaryError": "No pudimos leer el resumen de tu cuenta. Los bloques siguen funcionando.",
+    "state": {
+      "active": "Activa",
+      "activeUntil": "Activa hasta el {date}",
+      "trial": "En prueba hasta el {date}",
+      "expiring": "Vence el {date}",
+      "expiringTrial": "Tu prueba termina el {date}",
+      "grace": "En gracia hasta el {date}",
+      "expired": "Vencida",
+      "suspended": "Suspendida"
+    },
+    "alias": {
+      "label": "Alias",
+      "help": "Así te saluda PrediGol. Solo lo ves tú (y PrediGol, si le escribes).",
+      "empty": "Escribe un alias.",
+      "long": "Como mucho {max} caracteres.",
+      "save": "Guardar alias",
+      "saved": "Guardamos tu alias."
+    },
+    "help": {
+      "title": "Ayuda",
+      "label": "Ayuda y contacto",
+      "center": "Centro de ayuda",
+      "centerHint": "Respuestas a las preguntas más comunes",
+      "reportHint": "Cuéntanos qué pasó: te respondemos aquí y por correo",
+      "messages": "Tus mensajes",
+      "whatsappHint": "Escríbenos por WhatsApp"
+    },
+    "summary": {
+      "account": "{name} · {state}",
+      "footballSuggested_one": "Sugerida para Colombia: {n} liga",
+      "footballSuggested_other": "Sugeridas para Colombia: {n} ligas",
+      "footballNone": "Aún no sigues ligas ni equipos",
+      "leagues_one": "{n} liga",
+      "leagues_other": "{n} ligas",
+      "teams_one": "{n} equipo",
+      "teams_other": "{n} equipos",
+      "email": "Correos: {on} de {total} temas",
+      "emailBounced": "Tu correo rebotó: ahora no te llega nada",
+      "emailComplained": "Marcaste un correo como spam: no te enviamos más",
+      "consentsDue_one": "Tienes {n} autorización por aceptar",
+      "consentsDue_other": "Tienes {n} autorizaciones por aceptar",
+      "requests_one": "{n} solicitud abierta",
+      "requests_other": "{n} solicitudes abiertas",
+      "requestsUntil_one": "{n} solicitud abierta, con plazo hasta el {date}",
+      "requestsUntil_other": "{n} solicitudes abiertas; la primera vence el {date}",
+      "privacyOk": "Autorizaciones al día · ninguna solicitud abierta",
+      "mfaOn": "Verificación en dos pasos activada",
+      "mfaOff": "Sin verificación en dos pasos",
+      "sessions_one": "{n} sesión abierta",
+      "sessions_other": "{n} sesiones abiertas",
+      "noMembership": "Sin membresía",
+      "waiting_one": "{n} mensaje espera respuesta",
+      "waiting_other": "{n} mensajes esperan respuesta",
+      "answered_one": "{n} mensaje respondido",
+      "answered_other": "{n} mensajes respondidos",
+      "helpNone": "Ningún mensaje abierto"
+    }
+  }
 }

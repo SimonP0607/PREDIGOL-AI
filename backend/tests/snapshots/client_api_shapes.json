@@ -11,6 +11,26 @@
   {
    "date": "2026-10-25",
    "reason": "A1 (F08): LiveMatch gains country_code, so the client names a live match's country in the reader's language"
+  },
+  {
+   "date": "2026-10-27",
+   "reason": "B3: each pick carries its visible state (user_status, status_reason, context_pending) from the one table in fbi/picks/user_status.py on /home, /picks, /odds/best and /daily; /picks counts in withheld the picks it keeps for their match page"
+  },
+  {
+   "date": "2026-10-27",
+   "reason": "B3: /picks says none_recommended when every pick of the window stays on its match and some were rejected by the applied AI review (no_value_now only when none has value at the best price now)"
+  },
+  {
+   "date": "2026-10-27",
+   "reason": "UX B5 (Mis picks completo): GET /me/history says its sample - min_sample (25) and conclusive (100) on the history, and on each group the margin and whether it is conclusive; hit rate, units and ROI are null below the sample, as «Cómo le va a PrediGol» counts"
+  },
+  {
+   "date": "2026-10-25",
+   "reason": "A1: Meta gains next_cursor (optional, null unless a list has a next page) for the pages of /me/picks and /me/parlays (defect F53); the six routes answer the same fields as before"
+  },
+  {
+   "date": "2026-10-25",
+   "reason": "A1 (F08): LiveMatch gains country_code, so the client names a live match's country in the reader's language"
   }
  ],
  "routes": {
@@ -281,6 +301,11 @@
        ],
        "title": "Bookmaker"
       },
+      "context_pending": {
+       "description": "RECOMMENDED by the value rule alone: «revisión de contexto aún no aplicada» is said beside it.",
+       "title": "Context Pending",
+       "type": "boolean"
+      },
       "corrections": {
        "description": "Settled again after the provider corrected the match; oldest first. Empty: never.",
        "items": {
@@ -399,6 +424,30 @@
        ],
        "title": "Status",
        "type": "string"
+      },
+      "status_reason": {
+       "enum": [
+        "approved",
+        "value",
+        "not_reviewed",
+        "downgraded",
+        "rejected",
+        "no_value_now",
+        "evaluation"
+       ],
+       "title": "Status Reason",
+       "type": "string"
+      },
+      "user_status": {
+       "description": "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table), as the pick stood when it entered the set: its price then passed the value rule, and the AI review frozen with it counts only if it was applied then. EVALUATION for the evaluation set (the owner's preview).",
+       "enum": [
+        "RECOMMENDED",
+        "CAUTION",
+        "NOT_RECOMMENDED",
+        "EVALUATION"
+       ],
+       "title": "User Status",
+       "type": "string"
       }
      },
      "required": [
@@ -420,7 +469,10 @@
       "model",
       "status",
       "profit_units",
-      "settled_at"
+      "settled_at",
+      "user_status",
+      "status_reason",
+      "context_pending"
      ],
      "title": "DailyItem",
      "type": "object"
@@ -2509,6 +2561,11 @@
       "competition": {
        "$ref": "#/components/schemas/CompetitionBadge"
       },
+      "context_pending": {
+       "description": "RECOMMENDED by the value rule alone: «revisión de contexto aún no aplicada» is said beside it (the AI's review does not act on picks, or has no decision on this one).",
+       "title": "Context Pending",
+       "type": "boolean"
+      },
       "edge": {
        "anyOf": [
         {
@@ -2625,6 +2682,31 @@
        "title": "Status",
        "type": "string"
       },
+      "status_reason": {
+       "description": "Why, as a code: approved, value, not_reviewed, downgraded, rejected, no_value_now or evaluation.",
+       "enum": [
+        "approved",
+        "value",
+        "not_reviewed",
+        "downgraded",
+        "rejected",
+        "no_value_now",
+        "evaluation"
+       ],
+       "title": "Status Reason",
+       "type": "string"
+      },
+      "user_status": {
+       "description": "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it - only on its match, never in the list) or EVALUATION (a shadow pick: the owner's preview only).",
+       "enum": [
+        "RECOMMENDED",
+        "CAUTION",
+        "NOT_RECOMMENDED",
+        "EVALUATION"
+       ],
+       "title": "User Status",
+       "type": "string"
+      },
       "value_now": {
        "description": "Passes the value gate at this moment.",
        "title": "Value Now",
@@ -2665,7 +2747,10 @@
       "ev",
       "freshness",
       "value_now",
-      "value_reason"
+      "value_reason",
+      "user_status",
+      "status_reason",
+      "context_pending"
      ],
      "title": "PickCard",
      "type": "object"
@@ -6470,6 +6555,12 @@
     },
     "History": {
      "properties": {
+      "conclusive": {
+       "default": 100,
+       "description": "Settled records from which the sample allows a conclusion.",
+       "title": "Conclusive",
+       "type": "integer"
+      },
       "evaluation_mode": {
        "title": "Evaluation Mode",
        "type": "boolean"
@@ -6481,6 +6572,12 @@
        "description": "predigol_picks, my_picks, predigol_parlays, my_parlays",
        "title": "Groups",
        "type": "object"
+      },
+      "min_sample": {
+       "default": 25,
+       "description": "Settled records from which hit rate, units, ROI and margin are shown.",
+       "title": "Min Sample",
+       "type": "integer"
       },
       "period": {
        "enum": [
@@ -6519,7 +6616,14 @@
      "type": "object"
     },
     "HistoryGroup": {
+     "description": "A group of records counted with the sample rule of Mis picks (plan UX, B5, section 30; «Cómo le va a PrediGol»'s): below\nmin_sample settled records only the counts - hit rate, units and ROI are null - and below `conclusive` the page says the\nsample does not allow a conclusion yet.",
      "properties": {
+      "conclusive": {
+       "default": false,
+       "description": "False below `conclusive` settled records (100).",
+       "title": "Conclusive",
+       "type": "boolean"
+      },
       "hit_rate": {
        "anyOf": [
         {
@@ -6529,19 +6633,40 @@
          "type": "null"
         }
        ],
+       "description": "Won over won and lost; null below min_sample settled records.",
        "title": "Hit Rate"
       },
       "lost": {
        "title": "Lost",
        "type": "integer"
       },
+      "margin": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Plus or minus one standard error of the ROI, a share: 1 / sqrt(staked) (0.20 with 25, 0.10 with 100); null below min_sample.",
+       "title": "Margin"
+      },
       "pending": {
        "title": "Pending",
        "type": "integer"
       },
       "profit_units": {
-       "title": "Profit Units",
-       "type": "string"
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The profit at one unit per record; null below min_sample.",
+       "title": "Profit Units"
       },
       "push": {
        "title": "Push",
@@ -6556,9 +6681,11 @@
          "type": "null"
         }
        ],
+       "description": "Profit over the units staked; null below min_sample.",
        "title": "Roi"
       },
       "staked_units": {
+       "description": "Settled records with a stake - the n of the sample.",
        "title": "Staked Units",
        "type": "string"
       },
@@ -7191,6 +7318,11 @@
       "competition": {
        "$ref": "#/components/schemas/CompetitionBadge"
       },
+      "context_pending": {
+       "description": "RECOMMENDED by the value rule alone: «revisión de contexto aún no aplicada» is said beside it (the AI's review does not act on picks, or has no decision on this one).",
+       "title": "Context Pending",
+       "type": "boolean"
+      },
       "edge": {
        "anyOf": [
         {
@@ -7307,6 +7439,31 @@
        "title": "Status",
        "type": "string"
       },
+      "status_reason": {
+       "description": "Why, as a code: approved, value, not_reviewed, downgraded, rejected, no_value_now or evaluation.",
+       "enum": [
+        "approved",
+        "value",
+        "not_reviewed",
+        "downgraded",
+        "rejected",
+        "no_value_now",
+        "evaluation"
+       ],
+       "title": "Status Reason",
+       "type": "string"
+      },
+      "user_status": {
+       "description": "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it - only on its match, never in the list) or EVALUATION (a shadow pick: the owner's preview only).",
+       "enum": [
+        "RECOMMENDED",
+        "CAUTION",
+        "NOT_RECOMMENDED",
+        "EVALUATION"
+       ],
+       "title": "User Status",
+       "type": "string"
+      },
       "value_now": {
        "description": "Passes the value gate at this moment.",
        "title": "Value Now",
@@ -7347,7 +7504,10 @@
       "ev",
       "freshness",
       "value_now",
-      "value_reason"
+      "value_reason",
+      "user_status",
+      "status_reason",
+      "context_pending"
      ],
      "title": "PickCard",
      "type": "object"
@@ -7727,6 +7887,11 @@
       "competition": {
        "$ref": "#/components/schemas/CompetitionBadge"
       },
+      "context_pending": {
+       "description": "RECOMMENDED by the value rule alone: «revisión de contexto aún no aplicada» is said beside it (the AI's review does not act on picks, or has no decision on this one).",
+       "title": "Context Pending",
+       "type": "boolean"
+      },
       "edge": {
        "anyOf": [
         {
@@ -7843,6 +8008,31 @@
        "title": "Status",
        "type": "string"
       },
+      "status_reason": {
+       "description": "Why, as a code: approved, value, not_reviewed, downgraded, rejected, no_value_now or evaluation.",
+       "enum": [
+        "approved",
+        "value",
+        "not_reviewed",
+        "downgraded",
+        "rejected",
+        "no_value_now",
+        "evaluation"
+       ],
+       "title": "Status Reason",
+       "type": "string"
+      },
+      "user_status": {
+       "description": "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it - only on its match, never in the list) or EVALUATION (a shadow pick: the owner's preview only).",
+       "enum": [
+        "RECOMMENDED",
+        "CAUTION",
+        "NOT_RECOMMENDED",
+        "EVALUATION"
+       ],
+       "title": "User Status",
+       "type": "string"
+      },
       "value_now": {
        "description": "Passes the value gate at this moment.",
        "title": "Value Now",
@@ -7883,7 +8073,10 @@
       "ev",
       "freshness",
       "value_now",
-      "value_reason"
+      "value_reason",
+      "user_status",
+      "status_reason",
+      "context_pending"
      ],
      "title": "PickCard",
      "type": "object"
@@ -7921,7 +8114,7 @@
          "type": "null"
         }
        ],
-       "description": "Why there is nothing to show, as a code.",
+       "description": "Why there is nothing to show, as a code: no_qualified_picks, no_shadow_picks, no_picks_match_filters, no_value_now or, when every pick of the window stays on its match and some were rejected by the applied AI review, none_recommended (plan UX, B3).",
        "title": "Reason"
       },
       "source": {
@@ -7950,6 +8143,12 @@
       },
       "window_hours": {
        "title": "Window Hours",
+       "type": "integer"
+      },
+      "withheld": {
+       "default": 0,
+       "description": "Published picks of the window a reader is not shown in this list now (plan UX, B3): without value at the best price now, or rejected by the applied AI review - each stays on its match, with its state. Always 0 for one match (``fixture_id``) and in the owner's preview, which show every pick.",
+       "title": "Withheld",
        "type": "integer"
       }
      },

@@ -11,9 +11,13 @@ import { fmtSignedPp } from "@/lib/i18n/format";
 import type { PickCard as PickCardData } from "@/lib/api/v1/types_product";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { Hint } from "@/components/system/Hint";
-import { glossaryText } from "@/lib/glossary";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
+import { track } from "@/lib/track";
+import { ExplainButton } from "@/product/explain/ExplainSheet";
+import { WhyPickButton } from "@/product/picks/WhyPick";
 import { EvBadge, Freshness, Kickoff, OddsPill, ProbCompare, ShadowBadge } from "./Bits";
 import { gateReason, marketName, selectionLabel } from "./markets";
+import { UserStatusBadge } from "./UserStatusBadge";
 
 export function PickCard({
   pick,
@@ -22,6 +26,7 @@ export function PickCard({
   compact = false,
   className,
   actions,
+  why,
 }: {
   pick: PickCardData;
   /** 1-5 for the Top 5. */
@@ -32,6 +37,8 @@ export function PickCard({
   className?: string | undefined;
   /** Save / add to parlay: below the card's link, never inside it. */
   actions?: ReactNode;
+  /** Why the reader is shown it (plan UX, B2): «Sigues a Nacional», «Tu liga» - one line under the teams. */
+  why?: ReactNode;
 }) {
   const label = selectionLabel({
     market_key: pick.market_key,
@@ -53,6 +60,7 @@ export function PickCard({
       <Link
         to="/matches/$fixtureId"
         params={{ fixtureId: String(pick.fixture_id) }}
+        onClick={() => track("pick_opened", { pick_id: pick.pick_id })}
         className="block flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         <div
@@ -93,6 +101,7 @@ export function PickCard({
             className="flex-1"
           />
         </div>
+        {why ? <div className="flex min-w-0 px-4 pt-1.5">{why}</div> : null}
 
         <div
           className={cn(
@@ -111,6 +120,8 @@ export function PickCard({
               >
                 {label}
               </div>
+              {/* Plan UX, B3: the state a reader is shown, in words (the one table). */}
+              <UserStatusBadge state={pick} className="mt-1.5" />
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               <OddsPill odds={pick.best_odds} best={pick.value_now} size={compact ? "md" : "lg"} />
@@ -133,23 +144,24 @@ export function PickCard({
       {/* The figures with their help, beside the card's link and not inside it (plan UX, A1, defect F16): a tap, a
           hover or the keyboard opens each definition without opening the match. */}
       <div
-        className={cn(
-          "flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4",
-          compact ? "pb-3" : "pb-3.5",
-        )}
+        className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pb-2"
         data-testid="pick-card-figures"
       >
-        <Hint text={glossaryText("ev")} className="no-underline">
+        <GlossaryTerm term="expectedValue" className="no-underline">
           <EvBadge ev={pick.ev} hint={false} />
-        </Hint>
+        </GlossaryTerm>
         {pick.edge !== null ? (
-          <Hint text={glossaryText("edge")} className="numeric text-caption text-muted-foreground">
+          <GlossaryTerm term="edge" className="numeric text-caption text-muted-foreground">
             {t("common.edge")} {fmtSignedPp(pick.edge)}
-          </Hint>
+          </GlossaryTerm>
         ) : null}
         <Hint text={t(`common.freshnessLevel.${pick.freshness}`)} className="ml-auto no-underline">
           <Freshness at={pick.price_at} level={pick.freshness} hint={false} />
         </Hint>
+      </div>
+      <div className={cn("flex flex-wrap gap-2 px-4", compact ? "pb-3" : "pb-3.5")}>
+        <WhyPickButton pickId={pick.pick_id} />
+        <ExplainButton entity="pick" itemId={pick.pick_id} testId="explain-pick" />
       </div>
       {actions ? <div className="border-t border-border/70 px-4 py-2.5">{actions}</div> : null}
     </div>

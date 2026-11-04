@@ -1,5 +1,6 @@
 /** Types for /api/v1/auth/* and /api/v1/admin/{users,audit}. Mirrors fbi.api.contracts.auth. */
 import type { Iso } from "./types";
+import type { MembershipSummary } from "./types_membership";
 
 export type Language = "es" | "en";
 export type RoleKey = "SUPER_ADMIN" | "USER";
@@ -31,6 +32,25 @@ export interface Me {
   recovery_codes_left: number;
   /** The pseudonym this account's errors carry to Sentry (an HMAC the server computes), never the id: plan UX, A2. */
   observability_id?: string | null;
+  /**
+   * The consents the reader must accept before using the product (plan UX, A4): empty while the gate is off or
+   * nothing is owed. GET /auth/me fills it; a 403 consent_required elsewhere means: ask /auth/me again.
+   */
+  consents_due?: string[];
+  /** The membership now (plan UX, A8), filled by GET /auth/me; null or absent for the owner's accounts. */
+  membership?: MembershipSummary | null;
+  /** «Cómo le va a PrediGol» is open to readers (plan UX, A12; FBI_TRANSPARENCY): link to it only then. */
+  transparency?: boolean;
+  /** The account still owes its welcome (plan UX, A13; FBI_ONBOARDING): /welcome after the consents. Readers only, once. */
+  welcome_due?: boolean;
+  /** football (the favourites) and, for a new account, about («Qué es PrediGol»). */
+  welcome_steps?: string[];
+  /** The first-visit hints the reader dismissed (picks, match, parlay, my_picks): never shown again. */
+  hints_seen?: string[];
+  /** A reader can write to PrediGol from the page (plan UX, A14; FBI_SUPPORT): «Reportar un problema». */
+  support?: boolean;
+  /** «Explícame» answers the frequent questions of a match, a pick and the parlay (plan UX, B9; FBI_EXPLAIN): its buttons only then. */
+  explain?: boolean;
 }
 
 export interface MfaEnrollment {
@@ -75,12 +95,18 @@ export interface PreferencesIn {
   display_name?: string;
 }
 
+/**
+ * invited: created by an invitation, not activated yet; deleted: anonymised at the reader's request (plan UX, A7) -
+ * its address is masked and nothing about it changes any more.
+ */
+export type AccountStatus = "active" | "disabled" | "invited" | "deleted";
+
 export interface AdminUser {
   id: number;
   email: string;
   display_name: string;
   role: RoleKey | string;
-  status: "active" | "disabled";
+  status: AccountStatus;
   language: Language;
   timezone: string;
   created_at: Iso;
@@ -93,6 +119,8 @@ export interface AdminUser {
   locked_until: Iso | null;
   failed_logins: number;
   recovery_codes_left: number;
+  /** The membership now (plan UX, A8): read by the list; null for the owner's accounts. */
+  membership?: MembershipSummary | null;
 }
 
 export interface AdminPasswordResult {
@@ -122,4 +150,76 @@ export interface AuditEvent {
   email: string | null;
   ip: string | null;
   detail: Record<string, unknown>;
+}
+
+// ── account and access (plan UX, A7) ──────────────────────────────────────────
+
+/** What the sign-in page may offer: recovery and unlocking by e-mail, only while they work (FBI_SELF_SERVICE). */
+export interface AccountOptions {
+  self_service: boolean;
+}
+
+/** An invitation link that works: whose, to fill the page (and for the password manager to save under it). */
+export interface ActivationInfo {
+  email: string;
+  display_name: string;
+  language: Language;
+  timezone: string;
+}
+
+export interface ActivateIn {
+  token: string;
+  password: string;
+  language: Language;
+  timezone: string;
+}
+
+/** A reset link that works: the address, and whether the account's second factor is asked with the new password. */
+export interface ResetInfo {
+  email: string;
+  mfa: boolean;
+}
+
+export interface ResetIn {
+  token: string;
+  password: string;
+  code?: string;
+  recovery_code?: string;
+}
+
+/** Always the same answer to a request for a link: whether or not the address has an account. */
+export interface Accepted {
+  status: "accepted";
+}
+
+/** Ending another session of one's own account: the password, or a code of the second factor (ASVS 7.5.2). */
+export interface IdentityIn {
+  password?: string;
+  code?: string;
+}
+
+export interface AdminInviteIn {
+  email: string;
+  display_name?: string;
+  language: Language;
+  timezone: string;
+  /** The trial it gets when activated, 7 to 14 days (plan UX, A8); the server's default when left out. */
+  trial_days?: number;
+}
+
+export interface AdminAnonymised {
+  user: AdminUser;
+  picks: number;
+  parlays: number;
+  sessions: number;
+  /** Messages still queued for the reader that will not be sent. */
+  messages_dropped: number;
+  /** Rows of the sign-in trail whose typed address was masked. */
+  trail_rows: number;
+}
+
+export interface SelfServiceState {
+  self_service: boolean;
+  /** FBI_EMAIL_SEND: off, invitations wait in the queue. */
+  email_sending: boolean;
 }

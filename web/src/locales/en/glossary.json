@@ -1,0 +1,190 @@
+{
+  "page": {
+    "title": "Glossary",
+    "subtitle": "One definition for every word PrediGol uses. Tap a term on any screen and it opens here.",
+    "search": "Search a term",
+    "searchLabel": "Search the glossary",
+    "noResults": "No term matches “{query}”.",
+    "count_one": "{count} term",
+    "count_other": "{count} terms",
+    "related": "Related:",
+    "categories": {
+      "predigol": "What PrediGol says",
+      "prices": "Probabilities and odds",
+      "parlays": "Parlays",
+      "results": "Results and accounts"
+    }
+  },
+  "ui": {
+    "open": "What “{term}” means",
+    "close": "Close",
+    "more": "See it in the glossary",
+    "dialog": "Definition of “{term}”"
+  },
+  "layers": {
+    "title": "Forecast, value and pick: three different things",
+    "subtitle": "Something being likely does not make it well paid, and being well paid is not enough for PrediGol to recommend it.",
+    "forecast": {
+      "title": "Forecast",
+      "question": "What is likely?",
+      "body": "The probability PrediGol gives each result. It does not look at the odds."
+    },
+    "value": {
+      "title": "Value",
+      "question": "Is it well paid?",
+      "body": "That probability against the odds: there is value when they pay more than it is worth."
+    },
+    "pick": {
+      "title": "Pick",
+      "question": "Does PrediGol recommend it?",
+      "body": "Only what has value and passes every rule. When nothing passes, there is no pick."
+    }
+  },
+  "terms": {
+    "forecast": {
+      "name": "Forecast",
+      "short": "The probability PrediGol gives each result of a match. It says what is likely, not whether it is well paid.",
+      "long": "It comes from PrediGol's model, corrected with matches already played when a correction has been proven. It is neither a recommendation nor a price: whether a result is well paid needs the odds (that is value), and what PrediGol recommends is the pick."
+    },
+    "range": {
+      "name": "Range",
+      "short": "Where PrediGol's probability may truly lie, given the uncertainty measured. The narrower it is, the firmer the number.",
+      "long": "A forecast of 55% with a range between 49% and 61% cannot claim more precision than that. When it could not be measured, the screen says “no range measured”, and such a probability never goes into PrediGol's parlays."
+    },
+    "calibrated": {
+      "name": "Calibrated",
+      "short": "A forecast is calibrated when its percentages come true: of everything it gave 70%, about 70% happened.",
+      "long": "PrediGol labels its forecast “Calibrated” when it corrected the model's probability with matches already played and that correction was proven. “Uncalibrated” is the model's probability as it is: it can be useful, but its percentages are not proven."
+    },
+    "value": {
+      "name": "Value",
+      "short": "There is value when the odds pay more than an option is worth by its probability: over time it would win more than it loses.",
+      "long": "A very likely option can have no value if it pays little, and an unlikely one can have it if it pays a lot. Value always depends on the price: without odds there is no value to measure. It is measured by the expected value."
+    },
+    "expectedValue": {
+      "name": "Expected value (EV)",
+      "short": "What one unit staked would win or lose on average, over time: probability × odds − 1. Positive means value.",
+      "long": "With a probability of 50% and odds of 2.20, the expected value is 0.5 × 2.2 − 1 = +0.10: ten cents per unit on average over many bets, not on each one. It is arithmetic on today's numbers, not a promise of profit."
+    },
+    "edge": {
+      "name": "Edge",
+      "short": "How many percentage points separate PrediGol's probability from the market's, margin removed.",
+      "long": "An edge of +4 pp means PrediGol sees the option 4 points more likely than the bookmakers. It needs both probabilities and, on its own, does not say whether the odds pay enough: the expected value does."
+    },
+    "pick": {
+      "name": "Pick",
+      "short": "The selection PrediGol recommends: one with value that passes every rule at a price that can be taken.",
+      "long": "Being likely is not enough: the model must have beaten the margin-free market in its own history, and the price must be offered by several bookmakers and leave a positive expected value. When no selection passes, there is no pick that day: PrediGol never pads."
+    },
+    "probability": {
+      "name": "Probability",
+      "short": "How many times in a hundred something would happen. 60% means that, over many similar matches, it would happen about 60 times in 100.",
+      "long": "No probability guarantees a result: 70% fails three times in ten. PrediGol shows its probability and the market's apart, so they can be compared."
+    },
+    "impliedProbability": {
+      "name": "Implied probability",
+      "short": "The one a price implies: 1 divided by the odds. It still includes the bookmaker's margin.",
+      "long": "Odds of 2.00 imply 50%. Add those of every option in a market and the total goes over 100%: that excess is the margin."
+    },
+    "marketProbability": {
+      "name": "Market probability",
+      "short": "The probability the bookmakers give together, with their margin removed.",
+      "long": "It is the benchmark PrediGol has to beat. It is worked out from several bookmakers' odds, removing the margin so the options of a market add up to 100%."
+    },
+    "odds": {
+      "name": "Odds",
+      "short": "What a bookmaker pays for each unit staked, the unit included: at odds of 2.50, a winning unit returns 2.50.",
+      "long": "PrediGol uses decimal odds. The net profit is the odds minus 1: 1.50 units at odds of 2.50. PrediGol takes no bets and handles no money: it shows the odds bookmakers publish."
+    },
+    "bestOdds": {
+      "name": "Best odds",
+      "short": "The highest odds PrediGol has read for an option among the bookmakers it follows, with the bookmaker offering them and when they were read.",
+      "long": "Odds move: that is why each one carries the time it was read. A price from a single bookmaker far above the rest is marked as an outlier, since it is usually stale or a mistake."
+    },
+    "margin": {
+      "name": "Margin",
+      "short": "What the bookmaker keeps: that is why the implied probabilities of a market add up to more than 100%.",
+      "long": "If a two-way market pays 1.90 and 1.90, the implied probabilities add up to 105.3%: that 5.3% is the margin. To compare fairly, PrediGol removes it before working out the market probability and the fair odds."
+    },
+    "fairOdds": {
+      "name": "Fair odds",
+      "short": "The odds an option would pay if bookmakers charged no margin: 1 divided by the margin-free market probability.",
+      "long": "It is not a price that can be taken: it is a benchmark. When the best odds are above the fair odds, they pay more than the market thinks the option is worth. It is not PrediGol's odds, which come from PrediGol's probability."
+    },
+    "predigolOdds": {
+      "name": "PrediGol's odds",
+      "short": "The odds at which an option would neither win nor lose over time by PrediGol's probability: 1 divided by that probability.",
+      "long": "If a bookmaker pays more than these odds, there is value by PrediGol's numbers. They are not an available price, and they are not the fair odds, which come from the market."
+    },
+    "bookmaker": {
+      "name": "Bookmaker",
+      "short": "The company that publishes the odds. PrediGol reads several to compare them; it is not a bookmaker and takes no bets.",
+      "long": "An option offered by several bookmakers is one of the conditions of a pick: a price only one bookmaker gives may vanish or be a mistake."
+    },
+    "market": {
+      "name": "Market",
+      "short": "A kind of bet on a match and its options: 1X2 (home, draw, away), over/under goals, both teams to score, double chance…",
+      "long": "Each market settles by its own rules. PrediGol settles only the markets it knows: an option of another market cannot be saved."
+    },
+    "line": {
+      "name": "Line",
+      "short": "The number an over/under or handicap market is set at: in “over 2.5 goals”, the line is 2.5.",
+      "long": "With a whole line (2 or 3 goals) the stake comes back when the match ends exactly on it. With a quarter line (2.25 or 2.75) it is split in two halves, and it can end half won or half lost."
+    },
+    "parlay": {
+      "name": "Parlay",
+      "short": "A combination of selections that wins only if all of them win. Their odds multiply, and so does how hard it is to win.",
+      "long": "A refunded or void selection counts as odds of 1 and the parlay goes on with the rest; a lost one loses it all. PrediGol builds parlays only from selections that have value one by one, and shows none when there are not enough."
+    },
+    "dependency": {
+      "name": "Dependence",
+      "short": "When the results of two selections tend to go together, the chance of winning both is not just one probability times the other.",
+      "long": "It happens, for instance, with selections from the same match, or from the same competition and day. PrediGol measures that dependence and, when there is some, uses it only to lower a parlay's joint probability, never to raise it."
+    },
+    "settlement": {
+      "name": "Settlement",
+      "short": "When the match ends, PrediGol decides each pick's result from the 90-minute score and the odds on record.",
+      "long": "Your pick settles at the odds you gave or, if you gave none, at the ones shown when you saved it. If the data provider corrects a score, it is settled again and what it said before is kept."
+    },
+    "push": {
+      "name": "Refunded",
+      "short": "The result lands exactly on the line: nothing is won or lost, and the unit comes back whole.",
+      "long": "Example: “over 2 goals” in a match that ends with 2 goals. It adds no profit; in the return it counts as staked without profit and, in a parlay, as odds of 1."
+    },
+    "void": {
+      "name": "Void",
+      "short": "The pick does not count: the match was cancelled or had no official result within 72 hours of kick-off. The unit comes back whole.",
+      "long": "A void pick adds nothing to the profit or the return. In a parlay it counts as odds of 1 and the parlay goes on with the other selections."
+    },
+    "halfWon": {
+      "name": "Half won",
+      "short": "On a quarter line, half the unit wins at the odds and the other half comes back.",
+      "long": "Example: “over 2.75 goals” in a match with 3 goals. Half goes on “over 2.5” and wins; the other half goes on “over 3” and comes back. At odds of 2.00 it leaves +0.50 units."
+    },
+    "halfLost": {
+      "name": "Half lost",
+      "short": "On a quarter line, half the unit is lost and the other half comes back: it leaves −0.50 units.",
+      "long": "Example: “over 2.25 goals” in a match with 2 goals. Half goes on “over 2” and comes back; the other half goes on “over 2.5” and loses. In a parlay, a half-lost selection halves the payout instead of losing it all."
+    },
+    "units": {
+      "name": "Units",
+      "short": "PrediGol counts each pick as a one-unit bet and gives the profit in units, not money.",
+      "long": "That way results can be compared without amounts: +3.2 units means that, always staking the same, you would have won 3.2 times that amount. PrediGol handles no money and takes no bets."
+    },
+    "roi": {
+      "name": "Return (ROI)",
+      "short": "The profit divided by what was staked, over settled picks: 5% means 5 units won for every 100 staked.",
+      "long": "Settled picks count: a refunded one counts as staked without profit and a void one does not count. With few picks it can rise or fall a lot by luck: always read it with the sample."
+    },
+    "sample": {
+      "name": "Sample",
+      "short": "How many cases stand behind a figure. With few, luck weighs as much as skill.",
+      "long": "A 20% return over 15 picks says little; over 500, far more. That is why PrediGol shows how many settled picks stand behind each result."
+    },
+    "lineValue": {
+      "name": "Line value",
+      "short": "What your odds were worth against the fair closing price: the odds times the bookmakers' consensus probability without margin at the last capture before kick-off, minus one.",
+      "long": "Positive: you took better odds than the close without margin. It is worked out once the match has started, with your own odds when you gave them. It says whether the price was good, not whether the pick won: it has its sample too."
+    }
+  }
+}

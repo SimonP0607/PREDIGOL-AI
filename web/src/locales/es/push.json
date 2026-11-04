@@ -1,0 +1,110 @@
+{
+  "offer": {
+    "follow": {
+      "title": "¿Te avisamos de las alineaciones de {team}?",
+      "body": "Cuando estén confirmadas, y también del resultado de lo que guardes."
+    },
+    "save": {
+      "title": "¿Te avisamos cuando se resuelva tu pick?",
+      "body": "En cuanto termine el partido te diremos cómo quedó."
+    },
+    "rules": "Nunca de {from} a {to}, como máximo {cap} al día, y los apagas cuando quieras en tu perfil.",
+    "enable": "Activar avisos",
+    "later": "Ahora no",
+    "close": "Cerrar",
+    "busy": "Activando…",
+    "done": "Listo: te avisaremos en este dispositivo.",
+    "denied": "Bloqueaste los avisos de PrediGol en este navegador. Si cambias de idea, permítelos en sus ajustes y actívalos en tu perfil, en «Notificaciones».",
+    "failed": "No pudimos activar los avisos ahora. Puedes intentarlo de nuevo desde tu perfil, en «Notificaciones».",
+    "installTitle": "En iPhone, los avisos llegan a la app instalada",
+    "understood": "Entendido"
+  },
+  "install": {
+    "iosWhy": "En iPhone y iPad los avisos llegan solo a PrediGol instalada en tu pantalla de inicio, no a Safari:",
+    "iosIntro": "En iPhone y iPad, PrediGol se instala desde Safari:",
+    "iosStep1": "En Safari, toca Compartir (el cuadrado con la flecha hacia arriba).",
+    "iosStep2": "Baja y elige «Agregar a Inicio». Si ves «Abrir como app web», déjalo activado y toca «Agregar».",
+    "iosStep3Notices": "Abre PrediGol desde su icono y activa los avisos en tu perfil, en «Notificaciones».",
+    "iosStep3": "Ábrela desde su icono: a pantalla completa y con tu misma cuenta.",
+    "iosVersion": "Los avisos necesitan iOS 16.4 o posterior.",
+    "otherIntro": "Instalada, PrediGol se abre desde su icono, a pantalla completa, y sus avisos llegan aunque no la tengas abierta.",
+    "button": "Instalar PrediGol",
+    "accepted": "Instalada: ábrela desde su icono."
+  },
+  "bell": {
+    "add": "Avísame antes de que empiece",
+    "on": "Aviso puesto: {minutes}",
+    "title": "Avísame antes de que empiece",
+    "description": "{home} – {away}, {when}.",
+    "minutes": {
+      "15": "15 minutos antes",
+      "30": "30 minutos antes",
+      "60": "1 hora antes"
+    },
+    "choose": "¿Cuándo te avisamos?",
+    "save": "Guardar aviso",
+    "saveEnable": "Activar avisos y guardar",
+    "remove": "Quitar aviso",
+    "night": "Este aviso llega aunque sea de noche: lo pediste tú.",
+    "elsewhere": "Te llegará a tus dispositivos con los avisos activados.",
+    "needsDevice": "Para recibirlo, activa los avisos en este dispositivo.",
+    "saved": "Te avisaremos {minutes}.",
+    "removed": "Aviso quitado.",
+    "following": "Seguir a un equipo (la estrella) ordena tu Inicio; la campana te avisa de este partido."
+  },
+  "profile": {
+    "title": "Avisos en tus dispositivos",
+    "help": "El resultado de lo que guardas, las alineaciones de tus equipos, un resumen al día y tu cuenta. Nunca de {from} a {to} (salvo los recordatorios que pidas en la campana de un partido) y como máximo {cap} al día de resultados, alineaciones y resúmenes.",
+    "thisDevice": "Este dispositivo",
+    "status": {
+      "on": "Recibe tus avisos.",
+      "off": "No recibe avisos.",
+      "denied": "Bloqueaste los avisos de PrediGol en este navegador. Para recibirlos, permítelos en sus ajustes (en Android: Ajustes → Apps → Chrome → Notificaciones; en iPhone: Ajustes → Notificaciones → PrediGol) y vuelve aquí.",
+      "unsupported": "Este navegador no puede recibir avisos. Prueba con Chrome, Edge o Firefox o, en iPhone, con PrediGol instalada.",
+      "needs_install": "En iPhone y iPad, los avisos llegan a PrediGol instalada."
+    },
+    "enable": "Activar en este dispositivo",
+    "disable": "Desactivar en este dispositivo",
+    "categories": "Qué te avisamos",
+    "category": {
+      "result": "Resultado de lo que guardas",
+      "lineup": "Alineaciones de tus equipos",
+      "digest": "Resumen del día",
+      "account": "Tu cuenta"
+    },
+    "categoryHelp": {
+      "result": "Si tu pick o tu parlay ganó o perdió, en cuanto se liquida.",
+      "lineup": "Cuando hay alineaciones confirmadas de un partido de tus equipos.",
+      "digest": "Una vez al día, por la mañana: los partidos de hoy de tus equipos y tus ligas.",
+      "account": "Un día antes de que venza tu membresía y cuando entras desde un dispositivo nuevo. Lo importante también te llega por correo."
+    },
+    "devices": "Tus dispositivos",
+    "noDevices": "Todavía no recibes avisos en ningún dispositivo.",
+    "device": "{browser} en {system}",
+    "installed": "app instalada",
+    "lastOk": "último aviso entregado {when}",
+    "never": "aún sin avisos entregados",
+    "here": "este dispositivo",
+    "remove": "Quitar",
+    "removeLabel": "Dejar de enviar avisos a {device}",
+    "removed": "Ese dispositivo ya no recibirá avisos.",
+    "test": "Enviar un aviso de prueba",
+    "testSent": "Enviado: llegará en unos segundos a tus dispositivos.",
+    "testHelp": "Para comprobar que llegan. Hasta 3 al día.",
+    "families": {
+      "chrome": "Chrome",
+      "firefox": "Firefox",
+      "safari": "Safari",
+      "edge": "Edge",
+      "other": "Navegador"
+    },
+    "systems": {
+      "android": "Android",
+      "ios": "iPhone o iPad",
+      "windows": "Windows",
+      "macos": "Mac",
+      "linux": "Linux",
+      "other": "otro sistema"
+    }
+  }
+}

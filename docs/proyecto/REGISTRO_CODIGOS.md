@@ -24,6 +24,12 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | IA-006 | Fases 3 y 3b de IA (agentes, orquestador, brazos en sombra, migración 0119) incorporadas a `main` tal como corren en producción | desplegado el 3-nov-2026 (en `main` por este PR) | #20 | ia-p3, ia-p3b (y los interruptores ia-switch-v2/v3) |
 | IA-007 | Agente de Estadísticas en sombra para córners y tarjetas (interruptor apagado por defecto, sin migración) | en curso | este PR | ia-p4 (fase 4 del plan de IA) |
 
+## UX — experiencia de usuario y diseño de la web
+
+| Código | Qué es | Estado | PR | Fase o nombre anterior |
+| --- | --- | --- | --- | --- |
+| UX-001 | Plan maestro de UX completo, de A3 a B11: Inicio, Análisis y Postpartido, Mis picks, avisos y dispositivos, membresía, ficha del cliente y ciclo de vida (migraciones 0095 a 0106, que cuelgan de la 0119). A1 y A2 ya corrían en producción | en curso (falta desplegar) | #21 | A3 a B11 |
+
 ## BE — backend
 
 | Código | Qué es | Estado | PR | Fase o nombre anterior |
@@ -36,4 +42,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-007 · SEG-001 · IA-008 · UX-001 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-007 · SEG-001 · IA-008 · UX-002 · BE-002 · FE-001 · OPS-001 · DOC-001

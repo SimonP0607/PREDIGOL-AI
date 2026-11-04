@@ -12,15 +12,16 @@ from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 import psycopg
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.builder import BuiltParlay
+from fbi.api.contracts.explanation import PickExplanation
 from fbi.api.contracts.product import BestOddsBoard, Home, Parlay, PicksBoard, StartedPick
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.errors import ApiError
 from fbi.api.security import App
-from fbi.api.services import product
+from fbi.api.services import explanation, product
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
 from fbi.parlays import builder
@@ -67,6 +68,15 @@ def get_picks(
     return product.picks_board(conn, include_shadow=_shadow(preview, principal), competition_id=competition_id,
                                market=market, min_odds=min_odds, max_odds=max_odds, hours=hours,
                                fixture_id=fixture_id)
+
+
+@router.get("/picks/{pick_id}/explanation", response_model=Envelope[PickExplanation])
+def get_pick_explanation(conn: Db, principal: App, pick_id: Annotated[int, Path(ge=1, le=2**62)],
+                         preview: Preview = None) -> Envelope[PickExplanation]:
+    """«¿Por qué PrediGol eligió este pick?» (plan UX, B3): a published pick in five layers - the conclusion, the context and
+    data of the match's reading, the market, the risks and how picks are decided - with the state a reader is shown. 404 for a
+    pick a reader may not see: a shadow pick is the owner's preview only, labelled EVALUATION, never a recommendation."""
+    return explanation.pick_explanation(conn, pick_id, preview=_shadow(preview, principal))
 
 
 @router.get("/picks/started", response_model=Envelope[list[StartedPick]])

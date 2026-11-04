@@ -8,6 +8,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import { Clock, ListX, Search } from "lucide-react";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
@@ -127,7 +128,11 @@ function Summary({ parlay }: { parlay: ParlayRecord }) {
   );
 }
 
-function NoParlay({ state }: { state: "none" | "building" | "void" }) {
+/**
+ * No parlay, honestly (plan UX, A9): why - nothing yet passes all the rules, or nothing that passes them grows together,
+ * or the day ended without one - and what a parlay is. Never padded.
+ */
+function NoParlay({ state, min }: { state: "none" | "building" | "void"; min: number }) {
   const Icon = state === "building" ? Search : ListX;
   return (
     <div
@@ -145,8 +150,13 @@ function NoParlay({ state }: { state: "none" | "building" | "void" }) {
         <p className="font-display text-sm font-bold uppercase tracking-wider text-foreground">
           {t(`records.parlay.${state}.title`)}
         </p>
-        <p className="mt-1 text-sm text-muted-foreground">{t(`records.parlay.${state}.body`)}</p>
-        <p className="mt-3 text-caption text-subtle-foreground">{t("parlays.empty.never")}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t(`records.parlay.${state}.body`, { min })}
+        </p>
+        <p className="mt-3 text-caption text-subtle-foreground">
+          {t("parlays.empty.never")}{" "}
+          <GlossaryTerm term="parlay">{t("parlays.empty.what")}</GlossaryTerm>
+        </p>
       </div>
     </div>
   );
@@ -234,7 +244,7 @@ export function ParlayRecordCard({
           <Summary parlay={parlay} />
         </>
       ) : (
-        <NoParlay state={state} />
+        <NoParlay state={state} min={parlay?.min_legs ?? (kind === "daily" ? 2 : 3)} />
       )}
       {footer}
     </article>

@@ -37,7 +37,7 @@ export type KnowledgeLoad =
   | { status: "success"; envelope: Envelope<MatchKnowledge | null> };
 
 export type KnowledgeScreen =
-  /** A user is not told about a summary that is not there: not allowed yet, not loaded, not loadable, nothing to tell. */
+  /** Nothing a reader is told: turned off by the owner, or no summary for a reason that does not end by itself. */
   | { kind: "nothing" }
   | { kind: "loading" }
   | { kind: "error"; error: unknown; retry?: (() => void) | undefined }
@@ -53,15 +53,14 @@ export type KnowledgeScreen =
 const REASONS_FOR_USERS: ReadonlySet<string> = new Set(["not_settled_yet"]);
 
 /**
- * What the block shows. A user sees it only once the API says so (the owner decides when: `FBI_KNOWLEDGE_USERS`), and never a
- * spinner, an error or a gap for something that may not be shown to them at all. The Admin Console's preview sees every
- * state, so that a missing summary is a thing it can read.
+ * What the block shows. Readers see it since plan UX A9 (`FBI_KNOWLEDGE_USERS` on unless the owner turns it off), loading and
+ * failing included; an answer that says readers may not see it shows nothing, and of the reasons for no summary a reader is
+ * told only the one that ends by itself (still being settled). The Admin Console's preview sees every state.
  */
 export function knowledgeScreen(load: KnowledgeLoad, preview: boolean): KnowledgeScreen {
-  if (load.status === "pending") return preview ? { kind: "loading" } : { kind: "nothing" };
-  if (load.status === "error") {
-    return preview ? { kind: "error", error: load.error, retry: load.retry } : { kind: "nothing" };
-  }
+  // Shown to readers since A9 (the owner approved it): a reader sees it load and sees it fail, never a silent gap.
+  if (load.status === "pending") return { kind: "loading" };
+  if (load.status === "error") return { kind: "error", error: load.error, retry: load.retry };
   const { envelope } = load;
   const data = envelope.data;
   if (envelope.status !== "ok" || !data) {

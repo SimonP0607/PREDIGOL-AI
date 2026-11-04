@@ -145,7 +145,7 @@ function GlobalSearch({ onOpenPalette }: { onOpenPalette: () => void }) {
           type="button"
           onClick={onOpenPalette}
           aria-label={t("admin.shell.openPalette")}
-          className="numeric tap absolute right-1.5 rounded border border-border px-1 py-0.5 text-caption text-subtle-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="numeric tap absolute right-1.5 inline-flex min-h-6 min-w-6 items-center justify-center rounded border border-border px-1 py-0.5 text-caption text-subtle-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           ⌘K
         </button>

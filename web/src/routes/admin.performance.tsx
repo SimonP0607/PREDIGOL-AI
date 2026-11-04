@@ -18,7 +18,7 @@ import {
 } from "@/components/analytics/Charts";
 import { queries } from "@/lib/api/resources";
 import { EMPTY, int, num } from "@/lib/format";
-import type { GlossaryKey } from "@/lib/glossary";
+import type { GlossaryKey } from "@/lib/glossary/admin";
 
 export const Route = createFileRoute("/admin/performance")({
   head: () => ({

@@ -16,6 +16,7 @@ from scripts import accounts
 from fbi.auth import service, throttle, totp
 from fbi.auth.settings import reset as reset_auth_settings
 from fbi.core.config import reset_cache
+from tests.integration.helpers import forget_memberships
 
 SAME_SITE = {"x-requested-with": "predigol"}
 
@@ -29,12 +30,13 @@ def people(migrated_database: str) -> Iterator[str]:
     reset_auth_settings()
     throttle.reset_all()
     with psycopg.connect(migrated_database, autocommit=True) as conn:
+        forget_memberships(conn)
         for t in ("auth.sessions", "auth.recovery_codes", "auth.audit_events", "auth.users"):
             conn.execute(f"DELETE FROM {t}")
     service.create_user_unattended(email="owner@example.com", display_name="Owner", role="SUPER_ADMIN",
-                                   password="Owner-pass-2026!")
+                                   password="Stadium-lights-2026!")
     service.create_user_unattended(email="qa.admin@predigol.local", display_name="QA", role="SUPER_ADMIN",
-                                   password="Qa-admin-pass-26")
+                                   password="Corner-flag-pass-26")  # gitleaks:allow - a made-up test password
     for i in range(2):
         service.create_user_unattended(email=f"qa.user{i}@predigol.local", display_name="QA", role="USER",
                                        password="Qa-user-pass-26")
@@ -73,7 +75,7 @@ def test_the_owner_chooses_a_new_password_at_the_next_sign_in(people: str, monke
     from fbi.api.app import create_app
 
     with TestClient(create_app(), headers=SAME_SITE) as c:
-        me = c.post("/api/v1/auth/login", json={"email": "owner@example.com", "password": "Owner-pass-2026!"}).json()
+        me = c.post("/api/v1/auth/login", json={"email": "owner@example.com", "password": "Stadium-lights-2026!"}).json()
         assert me["stage"] == "enroll"  # a SUPER_ADMIN: the authenticator first, then the new password
 
 
@@ -91,7 +93,7 @@ def test_a_test_account_gets_an_authenticator_secret_in_a_private_file(people: s
 
     with TestClient(create_app(), headers=SAME_SITE) as c:
         me = c.post("/api/v1/auth/login",
-                    json={"email": "qa.admin@predigol.local", "password": "Qa-admin-pass-26"}).json()
+                    json={"email": "qa.admin@predigol.local", "password": "Corner-flag-pass-26"}).json()
         assert me["stage"] == "mfa"
         ok = c.post("/api/v1/auth/mfa/verify", json={"code": totp.code_at(secret, totp.step_at())})
         assert ok.status_code == 200 and ok.json()["stage"] == "full"

@@ -22,10 +22,28 @@ import { requestLocale } from "@/lib/i18n/requestLocale";
 import { TitleTap } from "@/components/system/TitleTap";
 import { setTimeZone } from "@/lib/time";
 import { UserShell } from "@/components/layout/UserShell";
+import { PublicShell } from "@/components/layout/PublicShell";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { BrandMark } from "@/components/brand/Brand";
-import { applyUpdate, registerServiceWorker, UPDATE_EVENT } from "@/lib/pwa";
+import {
+  applyUpdate,
+  captureInstallPrompt,
+  isStandalone,
+  markInstalledOnce,
+  registerServiceWorker,
+  UPDATE_EVENT,
+} from "@/lib/pwa";
 import { SecurityStep } from "@/product/auth/SecurityStep";
+import { ConsentGate } from "@/product/legal/ConsentGate";
+import { isLegalPath } from "@/product/legal/links";
+import { isAccountPath } from "@/product/auth/accountPaths";
+import { isLimitedPath } from "@/product/membership/membership";
+import { LimitedAccess } from "@/product/membership/LimitedAccess";
+import { noteLocation, noteNoticeLanding, startSession, track } from "@/lib/track";
+import { eventCategory, withoutNoticeMark } from "@/lib/push";
+import { markTrouble } from "@/lib/feedback/session";
+import { TourProvider } from "@/product/tour/Tour";
+import { ReportProblemProvider } from "@/product/support/ReportProblem";
 
 function NotFoundComponent() {
   return (
@@ -53,6 +71,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
     reportError(error, "root"); // to Sentry, when the server switched it on (plan UX, A2)
+    markTrouble(); // and no monthly survey for the rest of the visit (B6)
   }, [error]);
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
@@ -117,12 +136,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { rel: "manifest", href: "/manifest.webmanifest" },
         { rel: "icon", href: "/favicon.ico", sizes: "any" },
         { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-        { rel: "preconnect", href: "https://fonts.googleapis.com" },
-        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-        {
-          rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap",
-        },
+        // The fonts are served from PrediGol, inside styles.css (plan UX, A4): no request to Google.
       ],
     };
   },
@@ -166,6 +180,7 @@ function RootComponent() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   useEffect(() => {
+    captureInstallPrompt();
     void registerServiceWorker();
     void startObservability();
   }, []);
@@ -174,7 +189,11 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Localized>
-          <Gate />
+          <TourProvider>
+            <ReportProblemProvider>
+              <Gate />
+            </ReportProblemProvider>
+          </TourProvider>
           <UpdateToast />
           <TitleTap />
         </Localized>
@@ -302,9 +321,53 @@ function Gate() {
   const path = location.pathname;
   const onLogin = path === "/login";
   const onAdmin = path === "/admin" || path.startsWith("/admin/");
+  // The legal texts are public (plan UX, A4): anyone reads the terms before having an account.
+  const onLegal = isLegalPath(path);
+  // Activating an invitation, recovering a password, unlocking (plan UX, A7), leaving the weekly summary (B8): public,
+  // whatever the session.
+  const onAccount = isAccountPath(path);
+  // The account's welcome (plan UX, A13): once, after the consents - its own page, whatever the address asked for.
+  const onWelcome = path === "/welcome";
+  const consentsDone = (auth.user?.consents_due ?? []).length === 0;
+  const welcomeOwed =
+    auth.status === "signed-in" &&
+    consentsDone &&
+    Boolean(auth.user?.welcome_due) &&
+    !onWelcome &&
+    !onLegal &&
+    !onAccount &&
+    !onAdmin &&
+    path !== "/profile";
+  // Plan UX, A6: where the reader comes from (match_opened's origin) and the session's start, once per tab.
+  useEffect(() => noteLocation(path), [path]);
+  const measured = auth.status === "signed-in" && (auth.user?.consents_due ?? []).length === 0;
+  useEffect(() => {
+    if (!measured) return;
+    startSession(auth.locale);
+    // Plan UX, A15 (section 35): the first opening of the installed app on this device - the rule that also counts
+    // an iPhone, which never fires appinstalled.
+    if (isStandalone() && markInstalledOnce()) track("pwa_installed");
+  }, [measured, auth.locale]);
+  // Plan UX, B7: a notice tapped on the device opened this page (public/sw.js marks it ?notice=<category>) - counted
+  // once the reader is in (after signing in, if the session had ended), and then the mark leaves the address.
+  useEffect(() => {
+    if (!measured) return;
+    const params = new URLSearchParams(location.searchStr ?? "");
+    if (!params.has("notice")) return;
+    const category = eventCategory(params.get("notice"));
+    if (category) {
+      track("notification_opened", { category });
+      noteNoticeLanding();
+    }
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${window.location.pathname}${withoutNoticeMark(window.location.search)}${window.location.hash}`,
+    );
+  }, [measured, location.searchStr]);
 
   useEffect(() => {
-    if (auth.status === "anonymous" && !onLogin) {
+    if (auth.status === "anonymous" && !onLogin && !onLegal && !onAccount) {
       const next = `${location.pathname}${location.searchStr ?? ""}`;
       void navigate({
         to: "/login",
@@ -320,18 +383,72 @@ function Gate() {
           : "/home";
       void navigate({ to: safe as never, replace: true });
     }
-  }, [auth.status, auth.sessionExpired, onLogin, location.pathname, location.searchStr, navigate]);
+  }, [
+    auth.status,
+    auth.sessionExpired,
+    onLogin,
+    onLegal,
+    onAccount,
+    location.pathname,
+    location.searchStr,
+    navigate,
+  ]);
+
+  // The welcome is owed: to /welcome, keeping where the reader was going (a link they opened) for after it.
+  useEffect(() => {
+    if (!welcomeOwed) return;
+    const asked = `${location.pathname}${location.searchStr ?? ""}`;
+    void navigate({
+      to: "/welcome",
+      search: (path === "/home" || path === "/" ? {} : { next: asked }) as never,
+      replace: true,
+    });
+  }, [welcomeOwed, location.pathname, location.searchStr, path, navigate]);
 
   if (auth.status === "loading") return <Splash />;
   if (auth.status === "error") return <ConnectionProblem onRetry={auth.retry} />;
+  // The account pages carry their own frame, signed in or not, with a step owed or not.
+  if (onAccount) return <Outlet />;
   // The password was right but a step is owed (second factor, setting it up, a new password): that step,
   // whatever the address; the page the reader wanted shows once it is done.
   if (auth.status === "staged") return <SecurityStep />;
-  if (auth.status === "anonymous") return onLogin ? <Outlet /> : <Splash />;
+  if (auth.status === "anonymous") {
+    if (onLegal) {
+      return (
+        <PublicShell key={auth.locale}>
+          <Outlet />
+        </PublicShell>
+      );
+    }
+    return onLogin ? <Outlet /> : <Splash />;
+  }
   if (onLogin) return <Splash />;
 
   // A remount on a language or time-zone change re-renders every formatted string.
   const key = `${auth.locale}|${auth.timeZone}`;
+  // The current consents are owed (plan UX, A4; the server refuses the product with 403 consent_required): the
+  // boxes, whatever the address - except the texts themselves and the profile, where the reader can still take a
+  // copy of their data or ask for its deletion without accepting.
+  const due = auth.user?.consents_due ?? [];
+  if (due.length > 0 && !onLegal && path !== "/profile") {
+    return <ConsentGate key={key} due={due} />;
+  }
+  // The welcome (plan UX, A13): its own frame, like the consents'; the page sends the reader on when nothing is owed.
+  if (onWelcome) return <Outlet key={key} />;
+  if (welcomeOwed) return <Splash />;
+  // The membership has ended or is suspended (plan UX, A8; the server refuses the product with 403
+  // membership_expired / membership_suspended): what a limited account can do, on every page but those it still
+  // opens - its profile, its saved picks, the help and the legal texts.
+  const member = auth.user?.membership;
+  if (member?.limited && !onAdmin && !isLimitedPath(path)) {
+    return (
+      <Fragment key={key}>
+        <UserShell>
+          <LimitedAccess membership={member} />
+        </UserShell>
+      </Fragment>
+    );
+  }
   if (onAdmin) {
     return (
       <Fragment key={key}>

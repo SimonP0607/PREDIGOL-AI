@@ -22,12 +22,13 @@ from fbi.api.security import observe_principal, require_app, same_site_only
 from fbi.auth import crypto, service, throttle
 from fbi.auth.settings import reset as reset_auth_settings
 from fbi.core.config import reset_cache
+from tests.integration.helpers import forget_memberships
 from tests.unit.sentry_capture import capturing_sentry
 
 OWNER = "lookout@predigol.test"
-OWNER_PW = "Lookout-pass-2026!"
+OWNER_PW = "Floodlit-night-2026!"
 READER = "reader-a2@predigol.test"
-READER_PW = "Reader-a2-pass-26"
+READER_PW = "Terrace-a2-pass-2026"
 SAME_SITE = {"x-requested-with": "predigol"}
 
 
@@ -40,6 +41,7 @@ def people(migrated_database: str) -> Iterator[dict[str, int]]:
     reset_auth_settings()
     throttle.reset_all()
     with psycopg.connect(migrated_database, autocommit=True) as conn:
+        forget_memberships(conn)
         for t in ("auth.sessions", "auth.recovery_codes", "auth.audit_events", "auth.users"):
             conn.execute(f"DELETE FROM {t}")
     owner = service.create_user_unattended(email=OWNER, display_name="Lookout", role="SUPER_ADMIN", password=OWNER_PW)

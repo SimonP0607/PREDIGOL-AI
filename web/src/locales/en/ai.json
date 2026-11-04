@@ -613,6 +613,32 @@
       "clvNote": "CLV: the price taken against the fair closing probability, margin removed (the same measure as Intelligence).",
       "empty": "No shadow evaluation to compare yet."
     },
+    "userAi": {
+      "title": "Readers' AI (narrative)",
+      "subtitle": "Its own budget, apart from PrediGol Intelligence's",
+      "mode": {
+        "off": "Off",
+        "shadow": "Shadow",
+        "on": "On"
+      },
+      "modeHelp": {
+        "off": "Nothing is written and readers see the structured reading (FBI_USER_NARRATIVE).",
+        "shadow": "It is written and only the preview shows it: review a sample before switching it on.",
+        "on": "Readers see the validated narrative; when it fails the checks, they see the structured reading."
+      },
+      "written": "Validated narratives today",
+      "refused": "Not shown today",
+      "refusedHint": "Refused by the checks or no answer from the model: the reader sees the structured reading",
+      "translations": "News items translated today",
+      "apart": "This spend is recorded apart and never counts in Intelligence's budget above. With the budget at 0 nothing is spent (the owner approves it: P8).",
+      "state": {
+        "none": "No budget: it spends nothing",
+        "NORMAL": "Within its budget",
+        "REDUCED": "Above the day's pace",
+        "CHEAP_ONLY": "Above the day's pace",
+        "EXHAUSTED": "Cap reached: the structured reading"
+      }
+    },
     "envelopes": {
       "title": "The three spending envelopes",
       "subtitle": "Claude of production, Claude of the LAB and Exa are measured apart, each against its own; Claude as a whole stays under the joint ceiling.",

@@ -29,6 +29,13 @@ import esAi from "@/locales/es/ai.json";
 import esIntel from "@/locales/es/intel.json";
 import esReferees from "@/locales/es/referees.json";
 import esMemory from "@/locales/es/memory.json";
+import esGlossary from "@/locales/es/glossary.json";
+import esLegal from "@/locales/es/legal.json";
+import esTransparency from "@/locales/es/transparency.json";
+import esOnboarding from "@/locales/es/onboarding.json";
+import esSupport from "@/locales/es/support.json";
+import esPush from "@/locales/es/push.json";
+import esExplain from "@/locales/es/explain.json";
 import esFamilies from "@/locales/es/families.json";
 import esStorage from "@/locales/es/storage.json";
 import enAdmin from "@/locales/en/admin.json";
@@ -57,6 +64,13 @@ import enAi from "@/locales/en/ai.json";
 import enIntel from "@/locales/en/intel.json";
 import enReferees from "@/locales/en/referees.json";
 import enMemory from "@/locales/en/memory.json";
+import enGlossary from "@/locales/en/glossary.json";
+import enLegal from "@/locales/en/legal.json";
+import enTransparency from "@/locales/en/transparency.json";
+import enOnboarding from "@/locales/en/onboarding.json";
+import enSupport from "@/locales/en/support.json";
+import enPush from "@/locales/en/push.json";
+import enExplain from "@/locales/en/explain.json";
 import enFamilies from "@/locales/en/families.json";
 import enStorage from "@/locales/en/storage.json";
 
@@ -94,6 +108,13 @@ export const CATALOGS: Record<Locale, Catalog> = {
     intel: esIntel,
     referees: esReferees,
     memory: esMemory,
+    glossary: esGlossary,
+    legal: esLegal,
+    transparency: esTransparency,
+    onboarding: esOnboarding,
+    support: esSupport,
+    push: esPush,
+    explain: esExplain,
     families: esFamilies,
     storage: esStorage,
   },
@@ -124,6 +145,13 @@ export const CATALOGS: Record<Locale, Catalog> = {
     intel: enIntel,
     referees: enReferees,
     memory: enMemory,
+    glossary: enGlossary,
+    legal: enLegal,
+    transparency: enTransparency,
+    onboarding: enOnboarding,
+    support: enSupport,
+    push: enPush,
+    explain: enExplain,
     families: enFamilies,
     storage: enStorage,
   },

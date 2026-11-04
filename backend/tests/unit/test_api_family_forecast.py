@@ -16,6 +16,7 @@ from typing import Any
 
 import pytest
 
+from fbi.api import switches
 from fbi.api.contracts.forecast import FamilyMarket
 from fbi.api.envelope import DataStatus
 from fbi.api.services import families as families_service
@@ -70,7 +71,8 @@ def database(monkeypatch: pytest.MonkeyPatch) -> Database:
     db = Database()
     monkeypatch.setattr(service, "fetch_all", db.fetch_all)
     monkeypatch.setattr(service, "fetch_one", db.fetch_one)
-    monkeypatch.setattr(service, "environment", lambda: {})
+    # the readers' forecast is on by default since plan UX A9 (fbi.api.switches): these tests are about the families, so it is off
+    monkeypatch.setattr(switches, "environment", lambda: {"FBI_FORECAST_USERS": "0"})
     return db
 
 
@@ -176,7 +178,7 @@ def test_the_forecast_of_the_product_shows_what_forecast_v1_holds_and_none_of_wh
 
 @pytest.mark.parametrize("users", [False, True])
 def test_a_user_never_gets_the_section_and_its_query_is_never_made(database: Database, monkeypatch: pytest.MonkeyPatch, users: bool) -> None:
-    monkeypatch.setattr(service, "environment", lambda: {service.USERS_SWITCH: "1" if users else "0"})
+    monkeypatch.setattr(switches, "environment", lambda: {service.USERS_SWITCH: "1" if users else "0"})
     database.families = two_way("CORNERS", "CORNERS_OU", "9.5", "0.55")
     answer = service.match_forecast(object(), FIXTURE, preview=False, at=AT)  # type: ignore[arg-type]
     assert answer.data is None or answer.data.families is None

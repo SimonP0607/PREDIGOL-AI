@@ -32,7 +32,7 @@ from zoneinfo import available_timezones
 import psycopg
 import structlog
 
-from fbi.auth import crypto, passwords, store, throttle, tokens, totp
+from fbi.auth import account_mail, crypto, passwords, store, throttle, tokens, totp
 from fbi.auth.db import write_connection
 from fbi.auth.roles import Permission, Role, is_role, permissions_for
 from fbi.auth.settings import auth_settings, session_settings
@@ -135,6 +135,11 @@ def _principal(user: dict[str, Any], session_id: str, expires_at: datetime, stag
     )
 
 
+def _who(principal: Principal) -> dict[str, Any]:
+    """The account of a principal as the e-mails of an account need it (fbi.auth.account_mail)."""
+    return {"id": principal.user_id, "email": principal.email}
+
+
 def _next_stage(user: dict[str, Any], *, mfa_done: bool) -> str:
     enabled = user.get("totp_enabled_at") is not None
     if enabled and not mfa_done:
@@ -171,6 +176,8 @@ def _open_session(conn: psycopg.Connection[Any], user: dict[str, Any], *, stage:
         store.record_event(conn, "login.succeeded", actor_user_id=user["id"], target_user_id=user["id"],
                            email=user["email"], ip=ip,
                            detail={"user_agent": (user_agent or "")[:200], "second_factor": mfa_verified})
+        # A browser and system this account has not signed in with before: it is told (plan UX, A7).
+        account_mail.notify_new_device(conn, user, session_id=str(session["id"]), user_agent=user_agent)
     fresh = store.user_by_id(conn, int(user["id"]))
     assert fresh is not None
     return token, _principal(fresh, session["id"], session["expires_at"], stage)
@@ -426,6 +433,7 @@ def confirm_enrollment(principal: Principal, *, code: str, ip: str | None,
             codes = _new_recovery_codes(conn, principal.user_id)
             store.record_event(conn, "mfa.enrolled", actor_user_id=principal.user_id,
                                target_user_id=principal.user_id, ip=ip, detail={"recovery_codes": len(codes)})
+            account_mail.notify_change(conn, _who(principal), "mfa_on")
             if principal.stage == "enroll":
                 advanced = _advance(conn, principal.user_id, principal.session_id, mfa_done=True, ip=ip,
                                     user_agent=user_agent)
@@ -472,6 +480,7 @@ def disable_mfa(principal: Principal, *, password: str, code: str | None, ip: st
             store.clear_totp(conn, principal.user_id)
             store.record_event(conn, "mfa.disabled", actor_user_id=principal.user_id,
                                target_user_id=principal.user_id, ip=ip)
+            account_mail.notify_change(conn, _who(principal), "mfa_off")
     if refusal is not None:
         raise refusal
 
@@ -493,9 +502,36 @@ def regenerate_recovery_codes(principal: Principal, *, password: str, code: str 
             codes = _new_recovery_codes(conn, principal.user_id)
             store.record_event(conn, "mfa.recovery_codes_renewed", actor_user_id=principal.user_id,
                                target_user_id=principal.user_id, ip=ip, detail={"count": len(codes)})
+            account_mail.notify_change(conn, _who(principal), "recovery_codes")
     if refusal is not None:
         raise refusal
     return codes
+
+
+def reauthenticate(principal: Principal, *, password: str, code: str | None, ip: str | None, action: str,
+                   per_day: int | None = None) -> None:
+    """The account's own password once more - and its second factor's code when it has one - before an action that
+    hands over or ends the account's data (plan UX, A4: the export and the deletion request; plan de seguridad, S5).
+    A wrong password or code counts like one at sign-in. ``per_day`` caps how often the action runs in 24 hours
+    (counted in the audit trail, so the two API processes share it). The action is recorded under its own name."""
+    refusal: AuthError | None = None
+    with write_connection() as conn:
+        _lock_streak_of(conn, principal.email)
+        user = store.user_by_id(conn, principal.user_id, for_update=True)
+        if user is None or user.get("status") != "active":
+            raise AuthError(401, "unauthenticated")
+        if per_day is not None:
+            row = conn.execute("SELECT count(*) FROM auth.audit_events WHERE action = %s AND target_user_id = %s "
+                               "AND at > now() - interval '24 hours'", (action, principal.user_id)).fetchone()
+            if row is not None and int(row[0]) >= per_day:
+                raise AuthError(429, "daily_limit", retry_after=3600)
+        refusal = _check_password_and_code(conn, principal, user, password=password, code=code, ip=ip,
+                                           action=action)
+        if refusal is None:
+            store.record_event(conn, action, actor_user_id=principal.user_id, target_user_id=principal.user_id,
+                               ip=ip)
+    if refusal is not None:
+        raise refusal
 
 
 def principal_from_token(conn: psycopg.Connection[Any], token: str | None) -> Principal | None:
@@ -552,7 +588,10 @@ def update_preferences(principal: Principal, *, language: str | None = None, tim
 
 
 def _new_password_problems(user: dict[str, Any], new_password: str) -> list[str]:
-    problems = passwords.password_problems(new_password, email=user["email"])
+    """The one rule (fbi.auth.passwords, R11), for this account: its address and name, its second factor (12
+    characters instead of 15), and never the password it has now."""
+    problems = passwords.password_problems(new_password, email=user["email"], name=user.get("display_name"),
+                                           has_mfa=user.get("totp_enabled_at") is not None)
     if not problems and passwords.verify_password(user["password_hash"], new_password):
         problems.append("password_reused")
     return problems
@@ -577,9 +616,12 @@ def change_password(principal: Principal, *, current_password: str, new_password
                                                             "must_change_password": False})
                 revoked = store.revoke_user_sessions(conn, principal.user_id, "password_changed",
                                                      keep=principal.session_id)
+                # A recovery or unlock link asked for before the change no longer works (plan UX, A7).
+                tokens.revoke_open(conn, principal.user_id, ("reset", "unlock"), "password_changed")
                 store.record_event(conn, "password.changed", actor_user_id=principal.user_id,
                                    target_user_id=principal.user_id, ip=ip,
                                    detail={"other_sessions_revoked": revoked})
+                account_mail.notify_change(conn, user, "password")
     if refusal is not None:
         raise refusal
 
@@ -602,6 +644,7 @@ def set_required_password(principal: Principal, *, new_password: str, ip: str | 
             store.update_user(conn, principal.user_id, {"password_hash": passwords.hash_password(new_password),
                                                         "must_change_password": False})
             store.revoke_user_sessions(conn, principal.user_id, "password_changed", keep=principal.session_id)
+            tokens.revoke_open(conn, principal.user_id, ("reset", "unlock"), "password_changed")
             store.record_event(conn, "password.changed", actor_user_id=principal.user_id,
                                target_user_id=principal.user_id, ip=ip, detail={"reason": "required"})
             result = _advance(conn, principal.user_id, principal.session_id, mfa_done=True, ip=ip,
@@ -628,24 +671,69 @@ def my_sessions(conn: psycopg.Connection[Any], principal: Principal) -> list[dic
 SESSION_PREFIX = re.compile(r"^[0-9a-f]{16}$")
 
 
-def revoke_my_session(principal: Principal, session_prefix: str, *, ip: str | None) -> bool:
-    """True when it was this browser's own session (the caller then clears the cookie)."""
+def _confirm_identity(conn: psycopg.Connection[Any], principal: Principal, *, password: str | None,
+                      code: str | None, ip: str | None, action: str) -> AuthError | None:
+    """The account's password, or a code of its second factor - either is enough (ASVS 7.5.2; R25 of the security
+    plan): ending the other sessions of an account must not be one stolen session's to do. None when it holds; a wrong
+    password is recorded, a wrong code counts like one at sign-in."""
+    user = store.user_by_id(conn, principal.user_id, for_update=True)
+    if user is None or user["status"] != "active":
+        return AuthError(401, "unauthenticated")
+    if password:
+        if passwords.verify_password(user["password_hash"], password):
+            return None
+        store.record_event(conn, f"{action}_refused", actor_user_id=principal.user_id,
+                           target_user_id=principal.user_id, ip=ip, detail={"reason": "wrong_password"})
+        return AuthError(403, "wrong_password")
+    if code and user["totp_secret"] is not None:
+        try:
+            secret = crypto.open_totp(principal.user_id, bytes(user["totp_secret"]))
+        except crypto.KeyUnavailableError:
+            return AuthError(503, "mfa_unavailable")
+        step = totp.matching_step(secret, code, last_step=user["totp_last_step"])
+        if step is not None and store.accept_totp_step(conn, principal.user_id, step):
+            return None
+        return _wrong_code(conn, principal, kind=action, ip=ip)
+    return AuthError(422, "identity_required")
+
+
+def revoke_my_session(principal: Principal, session_prefix: str, *, ip: str | None, password: str | None = None,
+                      code: str | None = None) -> bool:
+    """True when it was this browser's own session (the caller then clears the cookie): that one is signing out and
+    asks for nothing; another one asks for the password or a code (``_confirm_identity``)."""
     if not SESSION_PREFIX.match(session_prefix):
         raise AuthError(422, "invalid_session_id")
+    own = principal.session_id.startswith(session_prefix)
+    refusal: AuthError | None = None
     with write_connection() as conn:
-        n = store.revoke_user_session_by_prefix(conn, principal.user_id, session_prefix, "revoked_by_user")
-        if n == 0:
-            raise AuthError(404, "session_not_found")
-        store.record_event(conn, "session.revoked", actor_user_id=principal.user_id,
-                           target_user_id=principal.user_id, ip=ip, detail={"session": session_prefix})
-    return principal.session_id.startswith(session_prefix)
+        _lock_streak_of(conn, principal.email)
+        if not own:
+            refusal = _confirm_identity(conn, principal, password=password, code=code, ip=ip, action="session.revoke")
+        if refusal is None:
+            n = store.revoke_user_session_by_prefix(conn, principal.user_id, session_prefix, "revoked_by_user")
+            if n == 0:
+                raise AuthError(404, "session_not_found")
+            store.record_event(conn, "session.revoked", actor_user_id=principal.user_id,
+                               target_user_id=principal.user_id, ip=ip, detail={"session": session_prefix})
+    if refusal is not None:
+        raise refusal
+    return own
 
 
-def revoke_my_other_sessions(principal: Principal, *, ip: str | None) -> int:
+def revoke_my_other_sessions(principal: Principal, *, ip: str | None, password: str | None = None,
+                             code: str | None = None) -> int:
+    """Every other session of the account ends, once the password or a code confirms who asks."""
+    refusal: AuthError | None = None
+    n = 0
     with write_connection() as conn:
-        n = store.revoke_user_sessions(conn, principal.user_id, "revoked_by_user", keep=principal.session_id)
-        store.record_event(conn, "session.revoked", actor_user_id=principal.user_id,
-                           target_user_id=principal.user_id, ip=ip, detail={"others": n})
+        _lock_streak_of(conn, principal.email)
+        refusal = _confirm_identity(conn, principal, password=password, code=code, ip=ip, action="session.revoke")
+        if refusal is None:
+            n = store.revoke_user_sessions(conn, principal.user_id, "revoked_by_user", keep=principal.session_id)
+            store.record_event(conn, "session.revoked", actor_user_id=principal.user_id,
+                               target_user_id=principal.user_id, ip=ip, detail={"others": n})
+    if refusal is not None:
+        raise refusal
     return n
 
 
@@ -686,10 +774,10 @@ def _create_user(actor_user_id: int | None, *, email: str, display_name: str | N
         raise AuthError(422, "invalid_language")
     if not valid_timezone(timezone):
         raise AuthError(422, "invalid_timezone")
-    problems = passwords.password_problems(password, email=address)
+    name = (display_name or address.split("@", 1)[0]).strip()[:80] or address
+    problems = passwords.password_problems(password, email=address, name=name)
     if problems:
         raise AuthError(422, "weak_password", problems=problems)
-    name = (display_name or address.split("@", 1)[0]).strip()[:80] or address
     with write_connection() as conn:
         if store.user_by_email(conn, address) is not None:
             raise AuthError(409, "email_taken")
@@ -710,21 +798,32 @@ def create_user_unattended(*, email: str, display_name: str | None, role: str, p
 
 
 def set_password_unattended(*, email: str, password: str, must_change: bool = False) -> dict[str, Any]:
+    """The operator's backup (plan UX, A7: the temporary password stays as the way when an e-mail cannot be used): an
+    invited account it gives a password to becomes active and its invitation links stop working."""
     address = normalize_email(email)
-    problems = passwords.password_problems(password, email=address)
-    if problems:
-        raise AuthError(422, "weak_password", problems=problems)
     with write_connection() as conn:
         _lock_streak_of(conn, address)
         user = store.user_by_email(conn, address)
         if user is None:
             raise AuthError(404, "user_not_found")
-        row = store.update_user(conn, int(user["id"]), {"password_hash": passwords.hash_password(password),
-                                                         "must_change_password": must_change})
+        if user["status"] == "deleted":
+            raise AuthError(409, "account_deleted")
+        problems = passwords.password_problems(password, email=address, name=user["display_name"],
+                                               has_mfa=user["totp_enabled_at"] is not None)
+        if problems:
+            raise AuthError(422, "weak_password", problems=problems)
+        fields: dict[str, Any] = {"password_hash": passwords.hash_password(password),
+                                  "must_change_password": must_change}
+        if user["status"] == "invited":
+            fields["status"] = "active"
+            tokens.revoke_open(conn, int(user["id"]), ("invite",), "superseded")
+        row = store.update_user(conn, int(user["id"]), fields)
         store.unlock(conn, int(user["id"]))
         store.revoke_user_sessions(conn, int(user["id"]), "password_reset")
+        tokens.revoke_open(conn, int(user["id"]), ("reset", "unlock"), "password_changed")
         store.record_event(conn, "password.reset", target_user_id=user["id"], email=address,
-                           detail={"by": "command_line", "must_change": must_change})
+                           detail={"by": "command_line", "must_change": must_change,
+                                   "activated": user["status"] == "invited"})
     assert row is not None
     return row
 
@@ -733,6 +832,8 @@ def _target(conn: psycopg.Connection[Any], user_id: int) -> dict[str, Any]:
     target = store.user_by_id(conn, user_id, for_update=True)
     if target is None:
         raise AuthError(404, "user_not_found")
+    if target["status"] == "deleted":
+        raise AuthError(409, "account_deleted")  # anonymised (plan UX, A7): nothing about it changes any more
     return target
 
 
@@ -756,6 +857,10 @@ def update_user(actor: Principal, user_id: int, *, role: str | None = None, stat
         raise AuthError(422, "invalid_status")
     with write_connection() as conn:
         target = _target(conn, user_id)
+        if target["status"] == "invited" and (
+                (role is not None and role != target["role"]) or (status is not None and status != target["status"])):
+            # An invitation is resent, given a temporary password or withdrawn (anonymised) - plan UX, A7.
+            raise AuthError(409, "account_invited")
         loses_admin = target["role"] == Role.SUPER_ADMIN and target["status"] == "active" and (
             (role is not None and role != Role.SUPER_ADMIN) or status == "disabled")
         if user_id == actor.user_id and status == "disabled":
@@ -794,21 +899,31 @@ def update_user(actor: Principal, user_id: int, *, role: str | None = None, stat
 def admin_reset_password(actor: Principal, user_id: int, *, password: str | None,
                          ip: str | None) -> tuple[dict[str, Any], str | None]:
     """A temporary password (the owner's, or a generated one returned ONCE): the account must choose its own at the
-    next sign-in. Unlocks it and ends its sessions."""
+    next sign-in. Unlocks it and ends its sessions. An invited account becomes active with it - the backup when the
+    invitation's e-mail cannot be used (plan UX, A7) - and its invitation links stop working."""
     generated = password is None
     temporary = crypto.new_temporary_password() if password is None else password
     with write_connection() as conn:
         target = _streak_target(conn, user_id)
-        problems = passwords.password_problems(temporary, email=target["email"])
+        problems = passwords.password_problems(temporary, email=target["email"], name=target["display_name"],
+                                               has_mfa=target["totp_enabled_at"] is not None)
         if problems:
             raise AuthError(422, "weak_password", problems=problems)
-        row = store.update_user(conn, user_id, {"password_hash": passwords.hash_password(temporary),
-                                                "must_change_password": True})
+        invited = target["status"] == "invited"
+        fields: dict[str, Any] = {"password_hash": passwords.hash_password(temporary), "must_change_password": True}
+        if invited:
+            fields["status"] = "active"
+            tokens.revoke_open(conn, user_id, ("invite",), "superseded")
+        row = store.update_user(conn, user_id, fields)
         store.unlock(conn, user_id)
         revoked = store.revoke_user_sessions(conn, user_id, "password_reset")
+        tokens.revoke_open(conn, user_id, ("reset", "unlock"), "password_changed")
         store.record_event(conn, "password.reset", actor_user_id=actor.user_id, target_user_id=user_id,
                            email=normalize_email(str(target["email"])), ip=ip,
-                           detail={"by": "admin", "generated": generated, "sessions_revoked": revoked})
+                           detail={"by": "admin", "generated": generated, "sessions_revoked": revoked,
+                                   "activated": invited})
+        if not invited:
+            account_mail.notify_change(conn, target, "password_admin")
     assert row is not None
     return row, (temporary if generated else None)
 
@@ -817,11 +932,14 @@ def admin_reset_mfa(actor: Principal, user_id: int, *, ip: str | None) -> dict[s
     """For a lost phone: the second factor and the recovery codes go; the account sets a new one up at its next
     sign-in when its role requires one. Ends its sessions."""
     with write_connection() as conn:
-        _target(conn, user_id)
+        target = _target(conn, user_id)
+        had = target["totp_enabled_at"] is not None
         store.clear_totp(conn, user_id)
         revoked = store.revoke_user_sessions(conn, user_id, "mfa_reset")
         store.record_event(conn, "mfa.reset", actor_user_id=actor.user_id, target_user_id=user_id, ip=ip,
                            detail={"sessions_revoked": revoked})
+        if had:
+            account_mail.notify_change(conn, target, "mfa_reset")
         row = store.user_by_id(conn, user_id)
     assert row is not None
     return row

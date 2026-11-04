@@ -69,7 +69,7 @@ export function AuditTimeline({ steps }: { steps: AuditStep[] }) {
       {steps.map((s, i) => (
         <li key={s.id} className="flex gap-3">
           <div className="flex flex-col items-center">
-            <span className="numeric flex h-6 w-6 shrink-0 items-center justify-center rounded border border-border bg-elevated text-[0.6rem] text-muted-foreground">
+            <span className="numeric flex h-6 w-6 shrink-0 items-center justify-center rounded border border-border bg-elevated text-micro text-muted-foreground">
               {i + 1}
             </span>
             {i < steps.length - 1 ? (

@@ -1,14 +1,14 @@
 /**
- * Resumen, by the match's state (REVIEW PREDIGOL, point 4 - the picks have their own tab now):
- * before kick-off - PrediGol's forecast (what it expects; the owner decides when users see it), then PrediGol
- *                   Intelligence, the way to the match's picks, the best prices, form, rest and calendar in every
- *                   competition (also the owner's call), table, absences, line-ups and head to head;
- * in play        - the match events first, then the day's reading as it was written before kick-off,
- *                  key figures and in-play prices; the context folded away;
- * after          - result, the way to the picks and how they ended, events, what happened put together
- *                  (the owner decides when users see it), the pre-match reading and key figures; the context
- *                  folded away;
- * not played     - what happened (postponed, cancelled, abandoned, awarded) and the way to the picks.
+ * Resumen, by the match's state (plan UX, A9; section 25: what matters first):
+ * before kick-off - the reading's summary and its two main risks (with the way to the whole Análisis), PrediGol's forecast
+ *                   labelled, the picks PrediGol published for the match with their state (or that it published none),
+ *                   PrediGol Intelligence's markets, the best prices, form, rest and calendar in every competition, table,
+ *                   absences, line-ups and head to head;
+ * in play        - the match events first, then the day's reading as it was written before kick-off, the picks as they
+ *                  were taken with what the match is doing, key figures and in-play prices; the context folded away;
+ * after          - result, events, the pre-match reading and key figures; the context folded away (what happened put
+ *                  together, the forecast against the result and how the picks ended are the Postpartido's);
+ * not played     - what happened (postponed, cancelled, abandoned, awarded) and the picks.
  */
 import { useId, useState, type ReactNode } from "react";
 import { BarChart3, CalendarX2, ChevronDown, Flag } from "lucide-react";
@@ -21,9 +21,9 @@ import type { MatchCtx } from "./context";
 import { AbsencesBlock, FormBlock, H2HBlock, LineupsTeaser, StandingsBlock } from "./ContextBlocks";
 import { EventsBlock } from "./EventsTimeline";
 import { ForecastBlock } from "./ForecastBlock";
-import { KnowledgeBlock } from "./KnowledgeBlock";
 import { KEY_STATS, statRows } from "./model";
-import { PicksTeaser } from "./PicksTab";
+import { PicksTab } from "./PicksTab";
+import { ReadingHighlights } from "@/product/reading/ReadingBlock";
 import { LiveOddsBlock, QuickPricesBlock } from "./prices";
 import { Block, CenterSection, MoreButton, StatBars, TeamsLegend } from "./ui";
 
@@ -38,7 +38,7 @@ function Fact({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function ResultBlock({ ctx }: { ctx: MatchCtx }) {
+export function ResultBlock({ ctx }: { ctx: MatchCtx }) {
   const s = ctx.match.score;
   // Awaiting its result: what was seen in play is not a final score yet.
   const score = ctx.phase === "finished" ? ctx.score : s ? { home: s.home, away: s.away } : null;
@@ -157,10 +157,12 @@ function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
   return (
     <div className={TWO_COLUMNS}>
       <div className="min-w-0 space-y-4">
-        {/* What PrediGol expects (plan F5), before whether it is well paid (the analysis) and what it recommends (the picks). */}
+        {/* The reading's summary and main risks (A9), what PrediGol expects (F5), what it published (the picks) and, apart,
+            whether a market is well paid (the analysis). */}
+        <ReadingHighlights ctx={ctx} />
         <ForecastBlock ctx={ctx} />
+        <PicksTab ctx={ctx} />
         <AnalysisBlock ctx={ctx} />
-        <PicksTeaser ctx={ctx} />
         <QuickPricesBlock ctx={ctx} />
         <div className="space-y-4 lg:hidden">
           <div className="grid items-start gap-4 md:grid-cols-2">
@@ -195,7 +197,7 @@ function InPlay({ ctx }: { ctx: MatchCtx }) {
           <AnalysisBlock ctx={ctx} variant="reference" />
         </div>
         <div className="min-w-0 space-y-4">
-          <PicksTeaser ctx={ctx} />
+          <PicksTab ctx={ctx} />
           <KeyStatsBlock ctx={ctx} />
           <LiveOddsBlock ctx={ctx} />
         </div>
@@ -211,10 +213,7 @@ function AfterMatch({ ctx }: { ctx: MatchCtx }) {
       <div className={TWO_COLUMNS}>
         <div className="min-w-0 space-y-4">
           <ResultBlock ctx={ctx} />
-          <PicksTeaser ctx={ctx} />
           <EventsBlock ctx={ctx} />
-          {/* What happened, put together once the provider stopped changing it (plan F7); the owner decides when users see it. */}
-          <KnowledgeBlock ctx={ctx} />
           <AnalysisBlock ctx={ctx} variant="reference" />
         </div>
         <div className="min-w-0 space-y-4">
@@ -240,7 +239,7 @@ function NotPlayed({ ctx }: { ctx: MatchCtx }) {
           body={t(`match.notPlayed.${key}Body`)}
         />
       </Card>
-      <PicksTeaser ctx={ctx} />
+      <PicksTab ctx={ctx} />
       <ContextSection ctx={ctx} open />
     </div>
   );

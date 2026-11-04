@@ -1,14 +1,15 @@
 /**
  * The day's picks as PrediGol recorded them (GET /daily): up to five, chosen as their matches
  * came within 24 hours, frozen when chosen, kept after kick-off and settled after the match.
- * Never padded: a day with two picks shows two, a day with none says so.
+ * Never padded: a day with two picks shows two, a day with none says so - and, for today, why
+ * (plan UX, A9: the honest sentence and the reason from the published set's own funnel).
  */
 import type { ReactNode } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ArrowRight, Target, Trophy } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { t } from "@/lib/i18n";
-import { formatDateLong } from "@/lib/time";
+import { formatDateLong, formatTime } from "@/lib/time";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { DailyBoard } from "@/lib/api/v1/types_records";
 import {
@@ -22,6 +23,9 @@ import { EvaluationBadge } from "./Badges";
 import { DailyItemCard } from "./DailyItemCard";
 import { DayNav } from "./DayNav";
 import { FunnelLine } from "./FunnelLine";
+import type { NoPickLoad } from "./noPick";
+import { NoPickState } from "./NoPickState";
+import { TransparencyLink } from "@/product/transparency/TransparencyLink";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
 
@@ -61,6 +65,7 @@ export function DailySetBlock({
   variant = "page",
   title,
   nav,
+  noPick,
 }: {
   query: BoardQuery;
   variant?: "page" | "home";
@@ -68,6 +73,8 @@ export function DailySetBlock({
   title?: string | undefined;
   /** The page's day navigation: the previous days' sets stay readable, never gone. */
   nav?: { day: string; today: string; onDay: (day: string) => void } | undefined;
+  /** Today's set: why it is empty (GET /today). Not for another day, never for the evaluation records. */
+  noPick?: NoPickLoad | undefined;
 }) {
   const board = query.data?.data;
   const items = board?.set?.items ?? [];
@@ -83,6 +90,8 @@ export function DailySetBlock({
         <ErrorState error={query.error} onRetry={() => void query.refetch()} />
       </Card>
     );
+  } else if (items.length === 0 && noPick && !evaluation) {
+    body = <NoPickState load={noPick} more={<TransparencyLink />} />;
   } else if (items.length === 0) {
     body = (
       <Card>
@@ -153,7 +162,11 @@ export function DailySetBlock({
           title={title ?? t("records.daily.title")}
           subtitle={
             board
-              ? t("records.daily.subtitle", { date: dayLabel(board.day, board.timezone) })
+              ? t("records.daily.subtitle", { date: dayLabel(board.day, board.timezone) }) +
+                // Inicio: every block says when it was read (plan UX, A9; section 24)
+                (variant === "home" && query.dataUpdatedAt
+                  ? ` · ${t("home.today.updated", { time: formatTime(query.dataUpdatedAt) })}`
+                  : "")
               : undefined
           }
           icon={

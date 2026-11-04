@@ -1,4 +1,8 @@
-/** Accounts: who can sign in, with which role. SUPER_ADMIN only (enforced by the API). */
+/**
+ * Accounts: who can sign in, with which role. SUPER_ADMIN only (enforced by the API). From A7 (plan UX), an account is
+ * opened by an invitation - an e-mail with a one-use link - while self-service is on; the temporary password stays as
+ * the backup. An account is deleted only as anonymisation, its address typed again; the deleted ones hide by default.
+ */
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -7,8 +11,10 @@ import {
   Loader2,
   Lock,
   LogOut,
+  Mail,
   Plus,
   RefreshCw,
+  Send,
   ShieldCheck,
   ShieldOff,
   Unlock,
@@ -19,13 +25,24 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { LiveApiError, v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
-import type { AdminUser, AdminUserCreate, Language, RoleKey } from "@/lib/api/v1/types_auth";
+import type {
+  AdminInviteIn,
+  AdminUser,
+  AdminUserCreate,
+  Language,
+  RoleKey,
+} from "@/lib/api/v1/types_auth";
 import { t } from "@/lib/i18n";
 import { detectTimeZone, formatDateTime, formatRelative, listTimeZones } from "@/lib/time";
 import { Card, ErrorState, SkeletonCards, errorMessage } from "@/product/shared/States";
 import { cn } from "@/lib/utils";
+import { AnonymiseAccount } from "./AnonymiseAccount";
+import { MembershipCell } from "./MembershipCell";
+import { anonymisedSummary } from "./anonymised";
+import { PrivacyRequestsCard } from "./PrivacyRequests";
 
 const ROLES: RoleKey[] = ["USER", "SUPER_ADMIN"];
+const DUE_STATES: readonly string[] = ["expiring", "grace", "expired"];
 
 function RoleBadge({ role }: { role: string }) {
   const admin = role === "SUPER_ADMIN";
@@ -53,7 +70,16 @@ function StatusDot({ status }: { status: AdminUser["status"] }) {
     <span className="inline-flex items-center gap-1.5 text-xs">
       <span
         aria-hidden
-        className={cn("h-2 w-2 rounded-full", status === "active" ? "bg-positive" : "bg-negative")}
+        className={cn(
+          "h-2 w-2 rounded-full",
+          status === "active"
+            ? "bg-positive"
+            : status === "invited"
+              ? "bg-warning"
+              : status === "deleted"
+                ? "bg-subtle-foreground"
+                : "bg-negative",
+        )}
       />
       {t(`admin.users.${status}`)}
     </span>
@@ -67,7 +93,146 @@ function generated(): string {
   return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
-function CreateForm({ onDone }: { onDone: () => void }) {
+const field =
+  "mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none";
+
+/** «Invitar» (plan UX, A7): address, alias, language and time zone; the e-mail carries the one-use link. */
+function InviteForm({
+  emailSending,
+  onDone,
+}: {
+  emailSending: boolean;
+  onDone: (notice: string) => void;
+}) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState<AdminInviteIn>({
+    email: "",
+    display_name: "",
+    language: "es",
+    timezone: "America/Bogota",
+  });
+  const [error, setError] = useState<string | null>(null);
+  const invite = useMutation({
+    mutationFn: (body: AdminInviteIn) => v1.inviteUser(body),
+    onSuccess: (r) => {
+      void qc.invalidateQueries({ queryKey: live.users.queryKey });
+      const sent = t("admin.users.invitedOk", { email: r.data.email });
+      onDone(emailSending ? sent : `${sent} ${t("admin.users.emailSendingOff")}`);
+    },
+    onError: (err) => setError(errorMessage(err)),
+  });
+  const zones = listTimeZones();
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const body: AdminInviteIn = { ...form, email: form.email.trim() };
+    if (!body.display_name?.trim()) delete body.display_name;
+    invite.mutate(body);
+  }
+  return (
+    <form onSubmit={submit} className="space-y-3 p-4" data-testid="invite-form">
+      <div>
+        <h2 className="font-display text-base font-semibold">{t("admin.users.inviteTitle")}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">{t("admin.users.inviteHelp")}</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <label className="block">
+          <span className="text-xs text-muted-foreground">{t("admin.users.email")}</span>
+          <input
+            type="email"
+            required
+            autoComplete="off"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            className={field}
+            data-testid="invite-email"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-muted-foreground">{t("admin.users.alias")}</span>
+          <input
+            value={form.display_name ?? ""}
+            maxLength={80}
+            onChange={(e) => setForm({ ...form, display_name: e.target.value })}
+            className={field}
+            data-testid="invite-alias"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-muted-foreground">{t("admin.users.language")}</span>
+          <select
+            value={form.language}
+            onChange={(e) => setForm({ ...form, language: e.target.value as Language })}
+            className={field}
+            data-testid="invite-language"
+          >
+            <option value="es">Español</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-xs text-muted-foreground">{t("admin.users.timezone")}</span>
+          <select
+            value={form.timezone}
+            onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+            className={field}
+            data-testid="invite-timezone"
+          >
+            {zones.map((z) => (
+              <option key={z} value={z}>
+                {z}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-xs text-muted-foreground">{t("admin.membership.inviteTrial")}</span>
+          <select
+            value={form.trial_days ?? ""}
+            onChange={(e) => {
+              const days = e.target.value ? Number(e.target.value) : undefined;
+              const next: AdminInviteIn = { ...form };
+              if (days === undefined) delete next.trial_days;
+              else next.trial_days = days;
+              setForm(next);
+            }}
+            className={field}
+            data-testid="invite-trial"
+          >
+            <option value="">{t("admin.membership.inviteTrialDefault")}</option>
+            {[7, 8, 9, 10, 11, 12, 13, 14].map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {error ? (
+        <p role="alert" className="text-xs text-negative">
+          {error}
+        </p>
+      ) : null}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={invite.isPending || !form.email.trim()}
+          className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+          data-testid="invite-submit"
+        >
+          {invite.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+          {invite.isPending ? t("admin.users.sending") : t("admin.users.sendInvite")}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function CreateForm({ onDone, backup }: { onDone: () => void; backup: boolean }) {
   const qc = useQueryClient();
   const [form, setForm] = useState<AdminUserCreate>({
     email: "",
@@ -100,14 +265,17 @@ function CreateForm({ onDone }: { onDone: () => void }) {
     if (!body.display_name) delete body.display_name;
     create.mutate(body);
   }
-  const field =
-    "mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none";
   return (
     <form
       onSubmit={submit}
       className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3"
       data-testid="create-user-form"
     >
+      {backup ? (
+        <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
+          {t("admin.users.temporaryBackupHelp")}
+        </p>
+      ) : null}
       <label className="block">
         <span className="text-xs text-muted-foreground">{t("admin.users.email")}</span>
         <input
@@ -241,10 +409,28 @@ function CreateForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-function RowActions({ user, self }: { user: AdminUser; self: boolean }) {
+function RowActions({
+  user,
+  self,
+  onNotice,
+}: {
+  user: AdminUser;
+  self: boolean;
+  onNotice: (notice: string) => void;
+}) {
   const qc = useQueryClient();
   const [confirm, setConfirm] = useState<"status" | "role" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resent, setResent] = useState(false);
+  const resend = useMutation({
+    mutationFn: () => v1.resendInvitation(user.id),
+    onSuccess: () => {
+      setError(null);
+      setResent(true);
+      void qc.invalidateQueries({ queryKey: live.users.queryKey });
+    },
+    onError: (err) => setError(errorMessage(err)),
+  });
   const update = useMutation({
     mutationFn: (body: { role?: string; status?: "active" | "disabled" }) =>
       v1.updateUser(user.id, body),
@@ -260,6 +446,51 @@ function RowActions({ user, self }: { user: AdminUser; self: boolean }) {
   // Touch: taller, with a 44 px reach (tap-y) and a 10 px gap between wrapped rows so reaches never overlap.
   const btn =
     "tap-y relative rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-50 pointer-coarse:px-2.5 pointer-coarse:py-2";
+  // Nothing about a deleted account changes any more.
+  if (user.status === "deleted")
+    return <span className="text-caption text-subtle-foreground">—</span>;
+  const deletable = !self && user.role !== "SUPER_ADMIN";
+  const remove = deletable ? (
+    <AnonymiseAccount
+      userId={user.id}
+      email={user.email}
+      invited={user.status === "invited"}
+      onDone={(r) => onNotice(anonymisedSummary(r))}
+    />
+  ) : null;
+  // An invitation nobody used yet: a new link (the previous one stops working), or withdrawing it.
+  if (user.status === "invited") {
+    return (
+      <div className="flex flex-col items-start gap-1">
+        <div className="flex flex-wrap gap-1.5 pointer-coarse:gap-2.5">
+          <button
+            type="button"
+            data-testid={`resend-${user.id}`}
+            disabled={resend.isPending}
+            onClick={() => resend.mutate()}
+            className={cn(
+              btn,
+              "inline-flex items-center gap-1 border-border-strong hover:bg-elevated",
+            )}
+          >
+            <Mail aria-hidden className="h-3 w-3" />
+            {t("admin.users.resendInvite")}
+          </button>
+          {remove}
+        </div>
+        {resent ? (
+          <span className="text-caption text-positive" data-testid={`resent-${user.id}`}>
+            {t("admin.users.inviteResent")}
+          </span>
+        ) : null}
+        {error ? (
+          <span role="alert" className="text-caption text-negative">
+            {error}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col items-start gap-1">
       <div className="flex flex-wrap gap-1.5 pointer-coarse:gap-2.5">
@@ -315,11 +546,63 @@ function RowActions({ user, self }: { user: AdminUser; self: boolean }) {
             {t("common.cancel")}
           </button>
         ) : null}
+        {confirm ? null : remove}
       </div>
       {error ? (
         <span role="alert" className="text-caption text-negative">
           {error}
         </span>
+      ) : null}
+    </div>
+  );
+}
+
+/** An account's open sessions, as the owner reads them (plan UX, B10): when each began, was last used and ends, in which
+ * stage, from which browser - no cookie, only what names them. */
+function SessionsList({ user }: { user: AdminUser }) {
+  const [open, setOpen] = useState(false);
+  const q = useQuery({
+    queryKey: ["v1", "admin", "user-sessions", user.id],
+    queryFn: () => v1.userSessions(user.id),
+    enabled: open,
+  });
+  if (user.status === "invited" || user.status === "deleted") return null;
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        data-testid={`sessions-${user.id}`}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="tap-y relative text-caption font-medium text-primary"
+      >
+        {open ? t("admin.users.hideSessions") : t("admin.users.viewSessions")}
+      </button>
+      {open ? (
+        q.isPending ? (
+          <Loader2 aria-hidden className="h-3 w-3 animate-spin" />
+        ) : q.isError ? (
+          <p role="alert" className="text-caption text-negative">
+            {errorMessage(q.error)}
+          </p>
+        ) : (q.data?.data ?? []).length === 0 ? (
+          <p className="text-caption text-muted-foreground">{t("admin.users.noSessions")}</p>
+        ) : (
+          <ul
+            className="space-y-1 text-caption text-muted-foreground"
+            data-testid={`sessions-list-${user.id}`}
+          >
+            {q.data?.data.map((s) => (
+              <li key={s.id} className="break-words">
+                <span className="numeric">{formatDateTime(s.created_at)}</span> ·{" "}
+                {t("admin.users.lastLogin")} {formatRelative(s.last_seen_at)} ·{" "}
+                {t("admin.users.sessionUntil")} {formatDateTime(s.expires_at)} ·{" "}
+                {t("admin.users.sessionStage")} {s.stage}
+                {s.user_agent ? ` · ${s.user_agent.slice(0, 60)}` : ""}
+              </li>
+            ))}
+          </ul>
+        )
       ) : null}
     </div>
   );
@@ -403,8 +686,9 @@ function SecurityActions({ user, self }: { user: AdminUser; self: boolean }) {
   // Touch: taller, with a 44 px reach (tap-y) and a 10 px gap between wrapped rows so reaches never overlap.
   const btn =
     "tap-y relative rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-50 pointer-coarse:px-2.5 pointer-coarse:py-2";
+  const invited = user.status === "invited";
   const labels: Record<SecurityAction, string> = {
-    password: t("admin.users.resetPassword"),
+    password: invited ? t("admin.users.temporaryBackup") : t("admin.users.resetPassword"),
     mfa: t("admin.users.resetMfa"),
     sessions: t("admin.users.endSessions"),
     unlock: t("admin.users.unlock"),
@@ -412,13 +696,19 @@ function SecurityActions({ user, self }: { user: AdminUser; self: boolean }) {
       ? t("admin.users.dropMfaRequirement")
       : t("admin.users.requireMfa"),
   };
-  const available: SecurityAction[] = [
-    "password",
-    ...(user.mfa_enabled ? (["mfa"] as const) : []),
-    ...(user.active_sessions > 0 && !self ? (["sessions"] as const) : []),
-    ...(user.locked_until ? (["unlock"] as const) : []),
-    ...(user.role !== "SUPER_ADMIN" ? (["requireMfa"] as const) : []),
-  ];
+  const available: SecurityAction[] =
+    user.status === "deleted"
+      ? []
+      : invited
+        ? ["password"]
+        : [
+            "password",
+            ...(user.mfa_enabled ? (["mfa"] as const) : []),
+            ...(user.active_sessions > 0 && !self ? (["sessions"] as const) : []),
+            ...(user.locked_until ? (["unlock"] as const) : []),
+            ...(user.role !== "SUPER_ADMIN" ? (["requireMfa"] as const) : []),
+          ];
+  if (available.length === 0) return null;
   return (
     <div className="flex flex-col items-start gap-1">
       <div className="flex flex-wrap gap-1.5 pointer-coarse:gap-2.5">
@@ -498,8 +788,33 @@ function SecurityActions({ user, self }: { user: AdminUser; self: boolean }) {
 export function UsersPage() {
   const auth = useAuth();
   const q = useQuery({ ...live.users });
-  const [creating, setCreating] = useState(false);
-  const users = q.data?.data ?? [];
+  const options = useQuery({
+    queryKey: ["admin", "self-service"],
+    queryFn: v1.selfServiceState,
+    staleTime: 60_000,
+  });
+  const selfService = options.data?.self_service ?? false;
+  const [creating, setCreating] = useState<"invite" | "password" | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  // The owner's morning notice links here with ?membership=due (plan UX, A8): the accounts ending, in grace or ended.
+  const [dueOnly, setDueOnly] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("membership") === "due";
+    } catch {
+      return false;
+    }
+  });
+  const everyone = q.data?.data ?? [];
+  const deleted = everyone.filter((u) => u.status === "deleted").length;
+  const visible = showDeleted ? everyone : everyone.filter((u) => u.status !== "deleted");
+  const users = dueOnly
+    ? visible.filter((u) => DUE_STATES.includes(u.membership?.state ?? "none"))
+    : visible;
+  const toggle = (form: "invite" | "password") => {
+    setNotice(null);
+    setCreating((v) => (v === form ? null : form));
+  };
   return (
     <div className="space-y-5">
       <PageHeader
@@ -515,21 +830,61 @@ export function UsersPage() {
             >
               <RefreshCw aria-hidden className={cn("h-4 w-4", q.isFetching && "animate-spin")} />
             </button>
+            {selfService ? (
+              <button
+                type="button"
+                data-testid="invite-user"
+                onClick={() => toggle("invite")}
+                className="tap-y relative inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground"
+              >
+                <Send aria-hidden className="h-4 w-4" />
+                {t("admin.users.invite")}
+              </button>
+            ) : null}
             <button
               type="button"
               data-testid="new-user"
-              onClick={() => setCreating((v) => !v)}
-              className="tap-y relative inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground"
+              onClick={() => toggle("password")}
+              className={cn(
+                "tap-y relative inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-semibold",
+                selfService
+                  ? "border border-border-strong hover:bg-elevated"
+                  : "bg-primary text-primary-foreground",
+              )}
             >
               <Plus aria-hidden className="h-4 w-4" />
-              {t("admin.users.newUser")}
+              {selfService ? t("admin.users.temporaryBackup") : t("admin.users.newUser")}
             </button>
           </>
         }
       />
-      {creating ? (
+      {options.data && !selfService ? (
+        <p className="text-xs text-muted-foreground" data-testid="self-service-off">
+          {t("admin.users.selfServiceOff")}
+        </p>
+      ) : null}
+      {notice ? (
+        <p
+          role="status"
+          className="rounded-md border border-positive/40 bg-positive/10 px-3 py-2 text-sm text-positive"
+          data-testid="users-notice"
+        >
+          {notice}
+        </p>
+      ) : null}
+      {creating === "invite" ? (
         <Card>
-          <CreateForm onDone={() => setCreating(false)} />
+          <InviteForm
+            emailSending={options.data?.email_sending ?? false}
+            onDone={(msg) => {
+              setCreating(null);
+              setNotice(msg);
+            }}
+          />
+        </Card>
+      ) : creating === "password" ? (
+        <Card>
+          <CreateForm onDone={() => setCreating(null)} backup={selfService} />
         </Card>
       ) : null}
       <Card className="overflow-hidden">
@@ -539,8 +894,31 @@ export function UsersPage() {
           <ErrorState error={q.error} onRetry={() => void q.refetch()} />
         ) : (
           <>
-            <div className="border-b border-border px-4 py-2 text-caption text-muted-foreground">
-              {t("admin.users.count", { count: users.length })}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2 text-caption text-muted-foreground">
+              <span>
+                {dueOnly ? `${t("admin.membership.dueFilterOn")} · ` : ""}
+                {t("admin.users.count", { count: users.length })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setDueOnly((v) => !v)}
+                className="tap-y relative text-caption font-medium text-primary"
+                data-testid="membership-due-filter"
+              >
+                {dueOnly ? t("admin.membership.showAll") : t("admin.membership.dueFilter")}
+              </button>
+              {deleted > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleted((v) => !v)}
+                  className="tap-y relative text-caption font-medium text-primary"
+                  data-testid="show-deleted"
+                >
+                  {showDeleted
+                    ? t("admin.users.hideDeleted")
+                    : t("admin.users.showDeleted", { count: deleted })}
+                </button>
+              ) : null}
             </div>
             {/* The table from xl only: on a tablet (768-1279 px) its actions column sat off-screen and every row
                 was a tower of buttons; there each account is a card with its actions in reach. */}
@@ -552,6 +930,7 @@ export function UsersPage() {
                     <th className="px-3 py-2 font-medium">{t("admin.users.role")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.status")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.security")}</th>
+                    <th className="px-3 py-2 font-medium">{t("admin.membership.column")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.language")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.timezone")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.created")}</th>
@@ -586,6 +965,9 @@ export function UsersPage() {
                       <td className="px-3 py-3">
                         <SecurityBadges user={u} />
                       </td>
+                      <td className="px-3 py-3">
+                        <MembershipCell user={u} />
+                      </td>
                       <td className="px-3 py-3 text-xs uppercase">{u.language}</td>
                       <td className="px-3 py-3 text-xs">{u.timezone}</td>
                       <td className="numeric px-3 py-3 text-xs text-muted-foreground">
@@ -595,8 +977,9 @@ export function UsersPage() {
                         {u.last_login_at ? formatRelative(u.last_login_at) : t("admin.users.never")}
                       </td>
                       <td className="space-y-2 px-3 py-3">
-                        <RowActions user={u} self={u.id === auth.user?.id} />
+                        <RowActions user={u} self={u.id === auth.user?.id} onNotice={setNotice} />
                         <SecurityActions user={u} self={u.id === auth.user?.id} />
+                        <SessionsList user={u} />
                       </td>
                     </tr>
                   ))}
@@ -631,20 +1014,26 @@ export function UsersPage() {
                     <StatusDot status={u.status} />
                     <span className="uppercase">{u.language}</span>
                     <span>{u.timezone}</span>
+                    <span data-testid={`user-card-created-${u.id}`}>
+                      {t("admin.users.createdOn")}: {formatDateTime(u.created_at)}
+                    </span>
                     <span>
                       {t("admin.users.lastLogin")}:{" "}
                       {u.last_login_at ? formatRelative(u.last_login_at) : t("admin.users.never")}
                     </span>
                   </div>
                   <SecurityBadges user={u} />
-                  <RowActions user={u} self={u.id === auth.user?.id} />
+                  <MembershipCell user={u} />
+                  <RowActions user={u} self={u.id === auth.user?.id} onNotice={setNotice} />
                   <SecurityActions user={u} self={u.id === auth.user?.id} />
+                  <SessionsList user={u} />
                 </li>
               ))}
             </ul>
           </>
         )}
       </Card>
+      <PrivacyRequestsCard />
     </div>
   );
 }

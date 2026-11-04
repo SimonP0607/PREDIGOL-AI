@@ -60,6 +60,8 @@ Cada fila es un lanzamiento (varias fases salieron juntas). Fechas en UTC.
 
 *Anotado el 25 de octubre de 2026, fuera del registro de arriba (una fila es un lanzamiento y esto aún no ha salido).* El Plan Maestro IA, fase 1, sube la auditoría a `leak-audit-v7` y le añade la regla `slice_known`: cada estado de un partido (`ai.match_runs`) que nombra un paquete `mcp-v1` sale de un paquete guardado del mismo partido, y el paquete y cada una de sus porciones, derivados de nuevo con el código de hoy, tienen el hash que la fila anotó. Está escrita y probada (con filas honestas y manipuladas y con mutaciones) en la rama de la fase 1 y recibirá su fila aquí cuando esa fase se lance. Al unir las líneas (IA y familias de F11) la auditoría pasa a `leak-audit-v8`, 22 reglas: a las 18 de la IA se suman `family_forecast_known` y `family_price_known`, de F11 (las dos habían reclamado la v7), y las dos de la sombra de la fase 3 (`agent_known` y `shadow_review_known`, sin subir la versión).
 
+*Anotado el 25 de octubre de 2026, fuera del registro de arriba (una fila es un lanzamiento y esto aún no ha salido).* El Plan Maestro IA, fase 1, sube la auditoría a `leak-audit-v7` y le añade la regla `slice_known`: cada estado de un partido (`ai.match_runs`) que nombra un paquete `mcp-v1` sale de un paquete guardado del mismo partido, y el paquete y cada una de sus porciones, derivados de nuevo con el código de hoy, tienen el hash que la fila anotó. Está escrita y probada (con filas honestas y manipuladas y con mutaciones) en la rama de la fase 1 y recibirá su fila aquí cuando esa fase se lance.
+
 ## 4. Registro por fase (B): worker, restauración, despliegue, shadow, dueño
 
 | Fase | 5 Reinicio del worker | 6 Restauración | 7 Despliegue | 8 Shadow ≥ 2 sem. | 9 Dueño |

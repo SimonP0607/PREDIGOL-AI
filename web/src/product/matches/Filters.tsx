@@ -207,11 +207,13 @@ export function StatusChips({
   value,
   counts,
   onChange,
+  className,
 }: {
   value: StatusFilter;
   /** Null while the day is loading (or failed): no count beats a wrong 0. */
   counts: Record<StatusFilter, number> | null;
   onChange: (value: StatusFilter) => void;
+  className?: string | undefined;
 }) {
   const filters: StatusFilter[] = ["all", "live", "upcoming", "finished"];
   const strip = useRef<HTMLDivElement>(null);
@@ -221,7 +223,10 @@ export function StatusChips({
       ref={strip}
       role="group"
       aria-label={t("matches.status.label")}
-      className="scroll-strip -mx-4 -my-1 flex gap-2 px-4 py-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+      className={cn(
+        "scroll-strip -mx-4 -my-1 flex gap-2 px-4 py-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0",
+        className,
+      )}
       data-testid="status-chips"
     >
       {filters.map((f) => (
@@ -242,7 +247,7 @@ export function StatusChips({
           {counts ? (
             <span
               className={cn(
-                "numeric rounded-full px-1.5 text-[0.6875rem] tabular-nums",
+                "numeric rounded-full px-1.5 text-micro tabular-nums",
                 value === f ? "bg-primary/15" : "bg-elevated text-subtle-foreground",
               )}
             >
@@ -268,11 +273,14 @@ export function CompetitionPicker({
   options,
   onChange,
   className,
+  emptyText,
 }: {
   value: number | null;
   options: readonly CompetitionOption[];
   onChange: (value: number | null) => void;
   className?: string | undefined;
+  /** What it says while none is chosen, where its name is written above it (a sheet): «Todas las competiciones». */
+  emptyText?: string | undefined;
 }) {
   const selected = options.find((o) => o.id === value) ?? null;
   return (
@@ -285,7 +293,7 @@ export function CompetitionPicker({
     >
       <Trophy aria-hidden className="h-3.5 w-3.5 shrink-0 text-subtle-foreground" />
       <span aria-hidden className="truncate">
-        {selected ? selected.name : t("matches.filters.competitionAny")}
+        {selected ? selected.name : (emptyText ?? t("matches.filters.competitionAny"))}
       </span>
       <ChevronDown
         aria-hidden
@@ -372,6 +380,7 @@ export function FacetPicker<T extends string>({
   icon,
   testId,
   className,
+  emptyText,
 }: {
   label: string;
   anyLabel: string;
@@ -381,6 +390,8 @@ export function FacetPicker<T extends string>({
   icon: ReactNode;
   testId: string;
   className?: string | undefined;
+  /** What it says while nothing is chosen, where its name is written above it (a sheet): «Todos los países». */
+  emptyText?: string | undefined;
 }) {
   const selected = options.find((o) => o.key === value) ?? null;
   return (
@@ -395,7 +406,7 @@ export function FacetPicker<T extends string>({
         {icon}
       </span>
       <span aria-hidden className="truncate">
-        {selected ? selected.label : label}
+        {selected ? selected.label : (emptyText ?? label)}
       </span>
       <ChevronDown
         aria-hidden

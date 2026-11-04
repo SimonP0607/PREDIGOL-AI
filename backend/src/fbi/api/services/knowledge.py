@@ -52,8 +52,8 @@ from fbi.api.contracts.knowledge import (
 from fbi.api.envelope import DataStatus, Envelope, ok, section, unavailable
 from fbi.api.errors import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
+from fbi.api.switches import user_switch
 from fbi.core.clock import now
-from fbi.core.env import environment
 from fbi.knowledge import layers
 
 log = structlog.get_logger(__name__)
@@ -63,8 +63,8 @@ VERSION: Final = layers.VERSION
 SETTLE: Final = layers.SETTLE
 """A match is put together 26 hours after kick-off: before that the answer says it is not settled yet."""
 USERS_SWITCH: Final = "FBI_KNOWLEDGE_USERS"
-"""``FBI_KNOWLEDGE_USERS=1`` lets every signed-in account see the knowledge of a finished match. Off until the owner decides: the Admin
-Console's preview does not depend on it. The API needs a restart to read it."""
+"""Every signed-in account sees the knowledge of a finished match: on since plan UX A9 (the owner approved it), ``FBI_KNOWLEDGE_USERS=0`` hides it again
+without a deploy (``fbi.api.switches``). The Admin Console's preview does not depend on it. The API needs a restart to read it."""
 MAX_CHAIN: Final = 50
 MARKET_ORDER: Final = {market: n for n, market in enumerate(layers.MARKETS)}
 """The order of the board: 1X2, Over/Under, both teams to score, handicap. The row keeps its keys in the order the database likes."""
@@ -96,7 +96,7 @@ STATUSES: Final = frozenset(layers.STATUSES)
 
 
 def users_may_see() -> bool:
-    return environment().get(USERS_SWITCH, "0").strip().lower() in {"1", "on", "true", "yes"}
+    return user_switch(USERS_SWITCH, default=True)
 
 
 # ── a stored layer, read through its model ───────────────────────────────────────────────────────────────────────────────

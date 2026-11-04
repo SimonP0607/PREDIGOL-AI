@@ -5,7 +5,7 @@ import { t } from "@/lib/i18n";
 import { fmtOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import { formatKickoff, formatRelative, formatTime } from "@/lib/time";
 import type { PriceFreshness, ParlayRisk } from "@/lib/api/v1/types_product";
-import { glossaryText } from "@/lib/glossary";
+import { termShort } from "@/lib/glossary";
 import { hintProps } from "@/components/system/tapHint";
 import { riskLabel } from "./markets";
 
@@ -61,9 +61,9 @@ export function EvBadge({
     );
   return (
     <span
-      {...(hint ? hintProps(glossaryText("ev")) : {})}
+      {...(hint ? hintProps(termShort("expectedValue")) : {})}
       className={cn(
-        "numeric inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.7rem] font-semibold",
+        "numeric inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-micro font-semibold",
         n > 0 ? "bg-positive-soft text-positive" : "bg-negative-soft text-negative",
         className,
       )}
@@ -156,7 +156,7 @@ export function RiskBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold",
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-micro font-semibold",
         RISK_TONE[risk],
         className,
       )}
@@ -180,7 +180,7 @@ export function ShadowBadge({
       title={t("common.source.shadowPreview")}
       aria-label={t("common.source.shadowPreview")}
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full border border-info/40 bg-info-soft px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-info",
+        "inline-flex shrink-0 items-center gap-1 rounded-full border border-info/40 bg-info-soft px-2 py-0.5 text-micro font-bold uppercase tracking-wider text-info",
         compact && "px-1.5 sm:px-2",
         className,
       )}

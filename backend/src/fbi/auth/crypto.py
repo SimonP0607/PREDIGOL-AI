@@ -69,6 +69,35 @@ def observability_id(user_id: int) -> str | None:
     return hmac.new(key, f"user:{user_id}".encode(), hashlib.sha256).hexdigest()[:20]
 
 
+def product_id(user_id: int) -> str | None:
+    """The pseudonym a reader's product events carry (plan UX, A6): an HMAC of the account's id under its own subkey -
+    not the one of Sentry's pseudonym, so the two cannot be joined - stable for an account, and meaningless without
+    the key. None without the key: then nothing is recorded."""
+    try:
+        key = _subkey(b"product-events")
+    except KeyUnavailableError:
+        return None
+    return hmac.new(key, f"user:{user_id}".encode(), hashlib.sha256).hexdigest()[:20]
+
+
+def account_token(token_id: int, nonce: bytes) -> str:
+    """The link of an account's one-use token (plan UX, A7): an HMAC of the row's id and its random nonce under a
+    subkey of FBI_AUTH_SECRET_KEY, as 43 URL-safe characters. The database keeps the nonce and the link's SHA-256,
+    never the link: the messenger derives it when the e-mail leaves - the same link at every retry of the same e-mail
+    - and neither a copy of the database nor the key alone can produce it. KeyUnavailableError without the key."""
+    digest = hmac.new(_subkey(b"account-tokens"), f"{token_id}:".encode() + nonce, hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+
+
+def unsubscribe_mac(payload: str) -> str:
+    """The signature of a one-click unsubscribe link (plan UX, B8): an HMAC of the payload (the account and the day the
+    e-mail left) under its own subkey of FBI_AUTH_SECRET_KEY, as 22 URL-safe characters (132 bits). The link changes
+    nothing but the reader's consent to commercial e-mail, so it keeps no row and works for a year.
+    KeyUnavailableError without the key."""
+    digest = hmac.new(_subkey(b"unsubscribe"), payload.encode("ascii"), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")[:22]
+
+
 def new_key_b64() -> str:
     """A fresh FBI_AUTH_SECRET_KEY value (for install scripts)."""
     return base64.b64encode(os.urandom(32)).decode("ascii")

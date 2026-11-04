@@ -18,9 +18,16 @@ NOW = datetime(2026, 9, 6, 12, 0, tzinfo=UTC)
 
 
 def head_revision() -> str:
-    """The newest migration on disk, read rather than remembered."""
-    versions = pathlib.Path(__file__).parents[2] / "migrations" / "versions"
-    return max(f.name.split("_", 1)[0] for f in versions.glob("[0-9]*.py"))
+    """The head of the migrations on disk - read, not remembered, and by the chain, not by the number (since the IA's release went
+    first, the UX chain 0095..0102 hangs from 0113: the head is 0102 while 0113 is the highest number)."""
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    backend = pathlib.Path(__file__).parents[2]
+    cfg = Config(str(backend / "alembic.ini"))
+    cfg.set_main_option("script_location", str(backend / "migrations"))
+    (head,) = ScriptDirectory.from_config(cfg).get_heads()
+    return head
 
 
 def test_health_with_an_empty_ledger_is_honest_not_green(db: psycopg.Connection) -> None:

@@ -34,8 +34,13 @@ import type {
   CardAi,
   MatchAnalysis,
 } from "@/lib/api/v1/types_ai_layer";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
+import type { TermKey } from "@/lib/glossary";
 import { ShadowBadge } from "@/product/shared/Bits";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
+import { UserStatusBadge } from "@/product/shared/UserStatusBadge";
+import { WhyPickButton } from "@/product/picks/WhyPick";
+import type { PickState } from "@/lib/api/v1/types_product";
 import { useParlayLeg } from "@/product/odds/useParlayLeg";
 import type { MatchCtx } from "./context";
 import {
@@ -91,15 +96,19 @@ const QUALITY_TONE: Record<string, string> = { good: GOOD, fair: FAIR, poor: POO
  */
 function Figure({
   label,
+  term,
   value,
   sub,
   help,
   tone,
 }: {
   label: string;
+  /** The glossary's word for it (plan UX, A3): the label opens its one definition. */
+  term?: TermKey | undefined;
   value: ReactNode;
   /** A second line under the value: where the price is. */
   sub?: string | null | undefined;
+  /** For a figure the glossary has no word for (the minimum odds). */
   help?: string | undefined;
   tone?: string | undefined;
 }) {
@@ -109,7 +118,9 @@ function Figure({
       className="row-span-2 grid min-w-0 grid-rows-subgrid gap-y-1 rounded-lg border border-border/70 bg-elevated/40 px-2.5 py-2 lg:px-2 xl:px-2.5"
       title={help}
     >
-      <dt className="break-words text-caption text-subtle-foreground">{label}</dt>
+      <dt className="break-words text-caption text-subtle-foreground">
+        {term ? <GlossaryTerm term={term}>{label}</GlossaryTerm> : label}
+      </dt>
       <dd className="min-w-0">
         <span
           className={cn(
@@ -132,8 +143,16 @@ function Figures({ card }: { card: AnalysisCard }) {
     // No observed price: no best odds, no market probability, no edge - nothing to call value.
     return (
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <Figure label={t("match.analysis.figure.model")} value={fmtPct(card.p_model)} />
-        <Figure label={t("match.analysis.figure.fair")} value={fmtOdds(card.fair_odds)} />
+        <Figure
+          label={t("match.analysis.figure.model")}
+          term="forecast"
+          value={fmtPct(card.p_model)}
+        />
+        <Figure
+          label={t("match.analysis.figure.fair")}
+          term="predigolOdds"
+          value={fmtOdds(card.fair_odds)}
+        />
         <Figure
           label={t("match.analysis.figure.minimum")}
           value={fmtOdds(card.minimum_odds)}
@@ -149,15 +168,29 @@ function Figures({ card }: { card: AnalysisCard }) {
     <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
       <Figure
         label={t("match.analysis.figure.bestOdds")}
+        term="bestOdds"
         value={fmtOdds(card.odds)}
         sub={card.bookmaker}
         tone={card.verdict === "recommended" ? "text-gold-strong" : undefined}
       />
-      <Figure label={t("match.analysis.figure.model")} value={fmtPct(card.p_model)} />
-      <Figure label={t("match.analysis.figure.market")} value={fmtPct(card.p_market)} />
-      <Figure label={t("match.analysis.figure.fair")} value={fmtOdds(card.fair_odds)} />
+      <Figure
+        label={t("match.analysis.figure.model")}
+        term="forecast"
+        value={fmtPct(card.p_model)}
+      />
+      <Figure
+        label={t("match.analysis.figure.market")}
+        term="marketProbability"
+        value={fmtPct(card.p_market)}
+      />
+      <Figure
+        label={t("match.analysis.figure.fair")}
+        term="predigolOdds"
+        value={fmtOdds(card.fair_odds)}
+      />
       <Figure
         label={t("match.analysis.figure.edge")}
+        term="edge"
         value={
           pp ? (
             <>
@@ -167,7 +200,6 @@ function Figures({ card }: { card: AnalysisCard }) {
             DASH
           )
         }
-        help={t("match.analysis.figure.edgeHelp")}
         tone={
           edge === null || edge === 0 ? undefined : edge > 0 ? "text-positive" : "text-negative"
         }
@@ -323,6 +355,18 @@ export function AnalysisCardView({
   const id = useId();
   const sides = { home, away };
   const noMarket = card.kind === "no_market";
+  // The state a reader is shown (plan UX, B3) when the API says it; an older answer keeps the card's own verdict.
+  const state: PickState | null = card.user_status
+    ? {
+        user_status: card.user_status,
+        status_reason: card.status_reason ?? "value",
+        context_pending: card.context_pending ?? false,
+      }
+    : null;
+  const pending = state
+    ? state.context_pending && state.user_status === "RECOMMENDED"
+    : contextPending && card.verdict === "recommended";
+  const explained = card.kind === "value" && card.pick_id ? card.pick_id : null;
   // Why the verdict is what it is, when no review says it; the banner says it for an unpriced market.
   const verdictReason = noMarket
     ? ""
@@ -351,16 +395,21 @@ export function AnalysisCardView({
           ) : null}
         </div>
         <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
-          <span
-            className={cn(
-              "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.7rem] font-bold uppercase tracking-wider",
-              VERDICT_STYLE[card.verdict],
-            )}
-            data-testid="analysis-verdict"
-          >
-            {translateOr(`match.analysis.verdict.${card.verdict}`, card.verdict)}
-          </span>
-          {contextPending && card.verdict === "recommended" ? (
+          {state ? (
+            // Plan UX, B3: the state of the one table, in words and an icon (never colour alone).
+            <UserStatusBadge state={state} pendingNote={false} testId="analysis-verdict" />
+          ) : (
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full border px-2.5 py-0.5 text-micro font-bold uppercase tracking-wider",
+                VERDICT_STYLE[card.verdict],
+              )}
+              data-testid="analysis-verdict"
+            >
+              {translateOr(`match.analysis.verdict.${card.verdict}`, card.verdict)}
+            </span>
+          )}
+          {pending ? (
             <span
               className="text-caption text-subtle-foreground"
               data-testid="verdict-context-pending"
@@ -410,13 +459,14 @@ export function AnalysisCardView({
         {card.ai ? <ReviewLine ai={card.ai} /> : null}
       </section>
 
-      {updatedAt || match ? (
+      {updatedAt || match || explained ? (
         <footer className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border/70 pt-3">
           {updatedAt ? (
             <span className="text-caption text-subtle-foreground">
               {t("common.updated", { when: formatRelative(updatedAt) })}
             </span>
           ) : null}
+          {explained ? <WhyPickButton pickId={explained} testId="analysis-why-pick" /> : null}
           {match ? (
             <div className="w-full sm:ml-auto sm:w-auto">
               <ParlayButton card={card} match={match} sides={sides} describedBy={`${id}-title`} />
@@ -434,7 +484,7 @@ function Chip({ children, tone }: { children: ReactNode; tone?: string | undefin
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-medium",
+        "inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-micro font-medium",
         tone ?? "border-border-strong bg-elevated text-muted-foreground",
       )}
     >

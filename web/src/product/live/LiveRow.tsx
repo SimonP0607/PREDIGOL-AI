@@ -18,7 +18,7 @@ import { liveLabel, phaseOf, shortStatus } from "@/product/matches/status";
 function PicksMark({ count }: { count: number }) {
   return (
     <span
-      className="inline-flex items-center gap-0.5 rounded-full border border-gold/50 bg-gold-soft px-1.5 text-[0.6875rem] font-semibold leading-4 text-gold-strong"
+      className="inline-flex items-center gap-0.5 rounded-full border border-gold/50 bg-gold-soft px-1.5 text-micro font-semibold leading-4 text-gold-strong"
       data-testid="live-picks-badge"
       title={t("live.picksBadge", { count })}
     >

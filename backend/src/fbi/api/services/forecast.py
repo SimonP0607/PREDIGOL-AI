@@ -30,20 +30,20 @@ from fbi.api.contracts.forecast import (
     ValueRow,
 )
 from fbi.api.envelope import DataStatus, Envelope, Section, ok, section, unavailable
-from fbi.api.errors import ApiError
+from fbi.api.problem import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.api.services.family_rules import FAMILIES, rule_of
+from fbi.api.switches import user_switch
 from fbi.core.clock import now
 from fbi.core.decision_versions import DECISION_CORE
-from fbi.core.env import environment
 
 VERSION: Final = "forecast-v1"
 """The forecast the worker writes (``fbi.forecasting.match_forecast.VERSION``; a test holds the two equal)."""
 NOT_FIT: Final = frozenset({"PRODUCT_ONLY", "INSUFFICIENT"})
 """The competition data classes the worker does not forecast (``match_forecast.NOT_FIT``; a test holds them equal)."""
 USERS_SWITCH: Final = "FBI_FORECAST_USERS"
-"""``FBI_FORECAST_USERS=1`` lets every signed-in account see the forecast. Off until the owner decides (plan §22): the
-Admin Console's preview does not depend on it. The API needs a restart to read it."""
+"""Every signed-in account sees the forecast: on since plan UX A9 (the owner approved it), ``FBI_FORECAST_USERS=0`` hides it again
+without a deploy (``fbi.api.switches``). The Admin Console's preview does not depend on it. The API needs a restart to read it."""
 MARKET_ORDER: Final = {"1X2": 0, "OU": 1, "BTTS": 2}
 MAX_VALUE_ROWS: Final = 200
 FAMILY_VERSION: Final = "family-v1"
@@ -91,7 +91,36 @@ SELECT id, market_key, selection, line, status, mode, market_odds, p_calibrated
 
 
 def users_may_see() -> bool:
-    return environment().get(USERS_SWITCH, "0").strip().lower() in {"1", "on", "true", "yes"}
+    return user_switch(USERS_SWITCH, default=True)
+
+
+LIKELY_SQL = """
+WITH last AS (
+    SELECT fixture_id, max(known_at) AS k
+      FROM models.match_forecasts
+     WHERE fixture_id = ANY(%(ids)s) AND version = %(version)s AND market_key = '1X2' AND known_at <= %(at)s
+     GROUP BY 1
+)
+SELECT x.fixture_id, x.selection, x.p, x.calibration
+  FROM models.match_forecasts x JOIN last l ON l.fixture_id = x.fixture_id AND l.k = x.known_at
+ WHERE x.version = %(version)s AND x.market_key = '1X2'
+ ORDER BY x.fixture_id, x.id
+"""
+"""The newest result forecast (1X2) of many matches at once, for a list (Home, plan UX A9)."""
+
+
+def likely_results(conn: Conn, fixture_ids: list[int], *, at: datetime | None = None
+                   ) -> dict[int, tuple[str, Decimal, str]]:
+    """Per match, the likely outcome of the result forecast as a reader may see it: (selection, probability, calibration).
+    Nothing while readers do not see the forecast (``FBI_FORECAST_USERS=0``) and nothing for a match without one."""
+    if not fixture_ids or not users_may_see():
+        return {}
+    out: dict[int, tuple[str, Decimal, str]] = {}
+    for r in fetch_all(conn, LIKELY_SQL, {"ids": fixture_ids, "version": VERSION, "at": at or now()}):
+        fid = int(r["fixture_id"])
+        if fid not in out or Decimal(r["p"]) > out[fid][1]:  # the first of two equal ones, as the match page says
+            out[fid] = (str(r["selection"]), Decimal(r["p"]), str(r["calibration"]))
+    return out
 
 
 def _fair_odds(p: Decimal) -> Decimal | None:
@@ -107,7 +136,8 @@ def _markets(rows: list[dict[str, Any]], *, preview: bool) -> list[ForecastMarke
         best = max(rs, key=lambda r: r["p"])  # the first of them if two tie: ``max`` keeps the first maximum
         first = rs[0]
         out.append(ForecastMarket(
-            market=market, line=line, family=str(first["family"]), model=str(first["model_name"]),
+            market=market, line=line, family=str(first["family"]),
+            model=str(first["model_name"]) if preview else None,
             calibration=first["calibration"], basis=first["basis"], known_at=first["known_at"],
             data_cutoff_at=first["data_cutoff_ts"],
             outcomes=[ForecastOutcome(

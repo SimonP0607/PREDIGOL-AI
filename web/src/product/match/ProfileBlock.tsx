@@ -45,7 +45,7 @@ function Cell({
         {text ?? t("match.profile.noData")}
       </span>
       {text !== null && v.n < matches ? (
-        <span className="block text-[0.65rem] leading-tight text-subtle-foreground">
+        <span className="block text-micro leading-tight text-subtle-foreground">
           {t("match.profile.coverage", { n: v.n, total: matches })}
         </span>
       ) : null}

@@ -15,7 +15,7 @@ from typing import Literal
 from pydantic import Field
 
 from fbi.api.contracts.center import LiveMatch
-from fbi.api.contracts.common import Contract, MatchPhase
+from fbi.api.contracts.common import Contract, MatchPhase, StatusReason, UserStatus
 from fbi.api.envelope import Section
 
 Source = Literal["qualified", "shadow_preview"]
@@ -61,6 +61,15 @@ class PickCard(Contract):
     freshness: Freshness
     value_now: bool = Field(description="Passes the value gate at this moment.")
     value_reason: str | None = Field(description="The gate it fails, as a code, when value_now is false.")
+    user_status: UserStatus = Field(description=(
+        "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI "
+        "review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it - only on its "
+        "match, never in the list) or EVALUATION (a shadow pick: the owner's preview only)."))
+    status_reason: StatusReason = Field(description="Why, as a code: approved, value, not_reviewed, downgraded, rejected, "
+                                                    "no_value_now or evaluation.")
+    context_pending: bool = Field(description="RECOMMENDED by the value rule alone: «revisión de contexto aún no aplicada» "
+                                              "is said beside it (the AI's review does not act on picks, or has no "
+                                              "decision on this one).")
 
 
 class StartedPick(Contract):
@@ -116,7 +125,14 @@ class PicksBoard(Contract):
     competitions: list[CompetitionBadge]
     markets: list[str]
     window_hours: int
-    reason: str | None = Field(description="Why there is nothing to show, as a code.")
+    reason: str | None = Field(description=(
+        "Why there is nothing to show, as a code: no_qualified_picks, no_shadow_picks, no_picks_match_filters, no_value_now "
+        "or, when every pick of the window stays on its match and some were rejected by the applied AI review, "
+        "none_recommended (plan UX, B3)."))
+    withheld: int = Field(default=0, description=(
+        "Published picks of the window a reader is not shown in this list now (plan UX, B3): without value at the best price "
+        "now, or rejected by the applied AI review - each stays on its match, with its state. Always 0 for one match "
+        "(``fixture_id``) and in the owner's preview, which show every pick."))
     started: list[StartedPick] = Field(
         default_factory=list,
         description="Pre-match picks whose match has kicked off (today's, or every one of ``fixture_id``): they "

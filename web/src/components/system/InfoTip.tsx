@@ -1,7 +1,7 @@
 import { Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { glossaryText, type GlossaryKey } from "@/lib/glossary";
+import { glossaryText, type GlossaryKey } from "@/lib/glossary/admin";
 import { t } from "@/lib/i18n";
 import { useTapTooltip } from "./tapTooltip";
 

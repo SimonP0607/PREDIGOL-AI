@@ -45,7 +45,7 @@ function Tag({ tone, children }: { tone: string; children: ReactNode }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold leading-tight",
+        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-micro font-semibold leading-tight",
         tone,
       )}
     >
@@ -237,7 +237,7 @@ export function CalendarBlock({ ctx }: { ctx: MatchCtx }) {
   const load: CalendarLoad = q.isPending
     ? { status: "pending" }
     : q.isError
-      ? { status: "error", error: q.error }
+      ? { status: "error", error: q.error, retry: () => void q.refetch() }
       : { status: "success", envelope: q.data };
   return <CalendarView load={load} preview={shadow === "shadow"} />;
 }

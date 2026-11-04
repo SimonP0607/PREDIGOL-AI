@@ -18,7 +18,7 @@
   "currentPassword": "Current password",
   "newPassword": "New password",
   "passwordChanged": "Password changed. Your other sessions were signed out.",
-  "passwordRules": "At least 10 characters, no spaces at the start or the end.",
+  "passwordRules": "At least 15 characters (12 with two-step verification), no spaces at the start or the end; do not use your e-mail, your name or “predigol”.",
   "signOut": "Sign out",
   "saved": "Preferences saved.",
   "sessionLabel": "Your session",
@@ -53,7 +53,19 @@
       "mfa.enrolled": "Two-step verification turned on",
       "logout": "Signed out",
       "password.changed": "Password changed",
-      "session.revoked": "Session ended"
+      "session.revoked": "Session ended",
+      "password.reset": "Password reset",
+      "user.unlocked": "Account unlocked",
+      "user.activated": "Account activated"
+    },
+    "identity": {
+      "title": "Confirm it is you",
+      "body": "To end other sessions, type your password or a code from your authenticator app.",
+      "password": "Password",
+      "code": "6-digit code",
+      "useCode": "Use a code from the app",
+      "usePassword": "Use the password",
+      "confirm": "Confirm and end"
     },
     "confirmEndOthers": {
       "title": "Close the other sessions?",
@@ -62,10 +74,174 @@
       "ok": "Close sessions"
     }
   },
+  "notifications": {
+    "title": "Notifications",
+    "help": "Which e-mails we send you. Those about your account, its security, your requests about your data and changes to the legal texts always arrive.",
+    "email": "E-mail",
+    "always": "Always",
+    "on": "On",
+    "off": "Off",
+    "category": {
+      "account": "Your account",
+      "security": "Security",
+      "membership": "Membership",
+      "support": "Support",
+      "privacy": "Your data",
+      "legal": "Legal texts"
+    },
+    "categoryHelp": {
+      "account": "Invitation, activation and changes to your account.",
+      "security": "Recovering your password and sign-in notices.",
+      "membership": "Reminders before it expires and payment confirmations.",
+      "support": "Answers to your questions and reports.",
+      "privacy": "The receipt and the answer of your requests about your data.",
+      "legal": "Changes to the terms or the privacy policy you must accept."
+    },
+    "status": {
+      "bounced": "Your e-mail bounces: we cannot deliver messages to you. Check that your account's address is right and write to us if it changed.",
+      "complained": "You marked one of our e-mails as spam: we only send you what is essential about your account, its security, your data and the legal texts."
+    },
+    "statusSince": "Since {date}",
+    "digest": {
+      "title": "Weekly summary",
+      "help": "It arrives once a week, from 9:00 in your time zone. You can leave it here or in one click from any summary.",
+      "since": "You asked for it on {date}",
+      "left": "You left it on {date}"
+    }
+  },
   "sessionUntil": "Open until {date} at most",
   "sessionIdle": "It closes sooner if you go {idle} without using it; every use renews it.",
   "idleDays_one": "{n} day",
   "idleDays_other": "{n} days",
   "idleHours_one": "{n} hour",
-  "idleHours_other": "{n} hours"
+  "idleHours_other": "{n} hours",
+  "membership": {
+    "title": "Membership",
+    "state": {
+      "trial": "On trial",
+      "active": "Active",
+      "expiring": "Ending soon",
+      "grace": "In grace",
+      "expired": "Ended",
+      "renewed": "Renewed",
+      "suspended": "Suspended",
+      "none": "No period"
+    },
+    "line": {
+      "trial": "On trial until {date}.",
+      "active": "Active until {date}.",
+      "expiringTrial": "Your trial ends on {date}.",
+      "expiring": "Your membership ends on {date}.",
+      "grace": "Your membership has ended: until {date} you keep full access.",
+      "expired": "Your membership has ended. Your data stays here; renewing brings everything back.",
+      "renewed": "Renewed until {date}. Thank you.",
+      "suspended": "Your account is suspended: write to us.",
+      "none": "Your account has no membership period yet."
+    },
+    "daysLeft_one": "{count} day left.",
+    "daysLeft_other": "{count} days left.",
+    "willNotRenew": "You told us you will not renew. If you change your mind, write to us.",
+    "notEnforced": "For now, access stays full even when the membership ends.",
+    "howToRenew": "How to renew",
+    "renewHelp": "You pay by the agreed means and we record it at once: the membership carries on from its end date, or from today if it has ended.",
+    "renewWhatsapp": "Write on WhatsApp",
+    "renewEmail": "Write an e-mail",
+    "renewNone": "To renew, answer any of our e-mails or ask whoever invited you.",
+    "whatsappText": "Hello, I would like to renew my PrediGol membership.",
+    "history": "Periods",
+    "period": {
+      "trial": "Trial",
+      "paid": "Payment",
+      "courtesy": "Courtesy"
+    },
+    "range": "{from} – {to}",
+    "banner": {
+      "expiringTrial": "Your trial ends on {date}.",
+      "expiring": "Your membership ends on {date}.",
+      "eveTrial": "Your trial ends tomorrow.",
+      "eve": "Your membership ends tomorrow.",
+      "grace": "Your membership has ended: until {date} you keep full access.",
+      "expired": "Limited access: your membership has ended. Renewing brings everything back.",
+      "suspended": "Your account is suspended: write to us.",
+      "action": "How to renew"
+    },
+    "limited": {
+      "expiredTitle": "Your membership has ended",
+      "expiredBody": "Your data stays here. You can see your profile, your saved picks, the help and the legal texts, and download your data. Renewing brings everything back.",
+      "suspendedTitle": "Your account is suspended",
+      "suspendedBody": "You can see your profile, your saved picks, the help and the legal texts, and download your data. Write to us to know more.",
+      "myPicks": "My saved picks",
+      "profile": "My profile and membership",
+      "help": "Help",
+      "legal": "Legal texts",
+      "export": "Download my data",
+      "readOnly": "Read-only while the membership has ended."
+    }
+  },
+  "centre": {
+    "subtitle": "Your account, your football, your notifications, your privacy and your security, in one place.",
+    "region": "Language and time zone",
+    "password": "Password",
+    "stateLabel": "Status",
+    "sinceLabel": "Account created",
+    "since": "On PrediGol since {date}",
+    "summaryError": "We could not read your account's summary. The blocks still work.",
+    "state": {
+      "active": "Active",
+      "activeUntil": "Active until {date}",
+      "trial": "On trial until {date}",
+      "expiring": "Ends on {date}",
+      "expiringTrial": "Your trial ends on {date}",
+      "grace": "In grace until {date}",
+      "expired": "Ended",
+      "suspended": "Suspended"
+    },
+    "alias": {
+      "label": "Alias",
+      "help": "How PrediGol greets you. Only you see it (and PrediGol, if you write to us).",
+      "empty": "Write an alias.",
+      "long": "At most {max} characters.",
+      "save": "Save alias",
+      "saved": "We saved your alias."
+    },
+    "help": {
+      "title": "Help",
+      "label": "Help and contact",
+      "center": "Help centre",
+      "centerHint": "Answers to the most common questions",
+      "reportHint": "Tell us what happened: we answer here and by e-mail",
+      "messages": "Your messages",
+      "whatsappHint": "Write to us on WhatsApp"
+    },
+    "summary": {
+      "account": "{name} · {state}",
+      "footballSuggested_one": "Suggested for Colombia: {n} league",
+      "footballSuggested_other": "Suggested for Colombia: {n} leagues",
+      "footballNone": "You follow no league or team yet",
+      "leagues_one": "{n} league",
+      "leagues_other": "{n} leagues",
+      "teams_one": "{n} team",
+      "teams_other": "{n} teams",
+      "email": "E-mails: {on} of {total} topics",
+      "emailBounced": "Your e-mail bounced: nothing reaches you now",
+      "emailComplained": "You marked an e-mail as spam: we send you no more",
+      "consentsDue_one": "You have {n} authorisation to accept",
+      "consentsDue_other": "You have {n} authorisations to accept",
+      "requests_one": "{n} open request",
+      "requests_other": "{n} open requests",
+      "requestsUntil_one": "{n} open request, due by {date}",
+      "requestsUntil_other": "{n} open requests; the first is due on {date}",
+      "privacyOk": "Authorisations up to date · no open request",
+      "mfaOn": "Two-step verification on",
+      "mfaOff": "No two-step verification",
+      "sessions_one": "{n} open session",
+      "sessions_other": "{n} open sessions",
+      "noMembership": "No membership",
+      "waiting_one": "{n} message waits for an answer",
+      "waiting_other": "{n} messages wait for an answer",
+      "answered_one": "{n} message answered",
+      "answered_other": "{n} messages answered",
+      "helpNone": "No open message"
+    }
+  }
 }

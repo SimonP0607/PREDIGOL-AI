@@ -15,6 +15,7 @@ from scripts import loadtest_accounts
 from fbi.auth import throttle
 from fbi.auth.settings import reset as reset_auth_settings
 from fbi.core.config import reset_cache
+from tests.integration.helpers import forget_memberships
 
 SAME_SITE = {"x-requested-with": "predigol"}
 
@@ -27,6 +28,7 @@ def db(migrated_database: str) -> Iterator[str]:
     reset_auth_settings()
     throttle.reset_all()
     with psycopg.connect(migrated_database, autocommit=True) as conn:
+        forget_memberships(conn)
         for t in ("auth.sessions", "auth.recovery_codes", "auth.audit_events", "auth.users"):
             conn.execute(f"DELETE FROM {t}")
     yield migrated_database

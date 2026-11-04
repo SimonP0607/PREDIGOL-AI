@@ -5,9 +5,9 @@
  * now (minute and score), its result and its value against the last pre-match price (a
  * near-close price, not validated as the closing line - so the label says so).
  */
-import { Hint } from "@/components/system/Hint";
+import type { ReactNode } from "react";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { hintProps } from "@/components/system/tapHint";
-import { glossaryText } from "@/lib/glossary";
 import { Link } from "@tanstack/react-router";
 import { History } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,11 +35,14 @@ export function StartedPickCard({
   pick,
   shadow = false,
   className,
+  footer,
 }: {
   pick: StartedPick;
   /** From the admin's shadow preview: labelled, never a recommendation. */
   shadow?: boolean;
   className?: string | undefined;
+  /** Below the state: once the match is over, why it ended as it did (plan UX, B4: the Postpartido). */
+  footer?: ReactNode;
 }) {
   const label = selectionLabel({
     market_key: pick.market_key,
@@ -92,7 +95,7 @@ export function StartedPickCard({
 
         <div className="mt-3 border-t border-border/70 px-4 pb-2.5 pt-3">
           <div
-            className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.7rem] font-semibold uppercase tracking-wider text-gold"
+            className="flex flex-wrap items-center gap-x-2 gap-y-1 text-micro font-semibold uppercase tracking-wider text-gold"
             {...hintProps(t("match.picks.prematchHelp"))}
           >
             <History aria-hidden className="h-3 w-3" />
@@ -130,12 +133,12 @@ export function StartedPickCard({
         className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pb-3"
         data-testid="started-pick-figures"
       >
-        <Hint text={glossaryText("ev")} className="no-underline">
+        <GlossaryTerm term="expectedValue" className="no-underline">
           <EvBadge ev={pick.ev} hint={false} />
-        </Hint>
-        <Hint text={glossaryText("edge")} className="numeric text-caption text-muted-foreground">
+        </GlossaryTerm>
+        <GlossaryTerm term="edge" className="numeric text-caption text-muted-foreground">
           {t("common.edge")} {fmtSignedPp(pick.edge)}
-        </Hint>
+        </GlossaryTerm>
         {pick.evaluations > 1 ? (
           <span className="text-caption text-muted-foreground">
             {t("match.picks.evaluations", { count: pick.evaluations })}
@@ -165,6 +168,7 @@ export function StartedPickCard({
           </span>
         ) : null}
       </div>
+      {footer ? <div className="border-t border-border/70 px-4 py-2.5">{footer}</div> : null}
     </article>
   );
 }

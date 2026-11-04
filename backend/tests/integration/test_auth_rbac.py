@@ -16,11 +16,11 @@ from fastapi.testclient import TestClient
 from fbi.auth import service, throttle
 from fbi.auth.settings import reset as reset_session_settings
 from fbi.core.config import reset_cache
-from tests.integration.helpers import forget_sign_in_failures
+from tests.integration.helpers import forget_memberships, forget_sign_in_failures
 
 ADMIN_EMAIL = "owner@predigol.test"
 USER_EMAIL = "fan@predigol.test"
-ADMIN_PW = "Owner-pass-2026!"
+ADMIN_PW = "Stadium-lights-2026!"
 USER_PW = "Fan-password-2026"
 SAME_SITE = {"x-requested-with": "predigol"}
 COOKIE = "predigol_session"
@@ -38,6 +38,7 @@ def accounts(migrated_database: str) -> Iterator[dict[str, int]]:
     with psycopg.connect(migrated_database, autocommit=True) as conn:
         conn.execute("DELETE FROM auth.sessions")
         conn.execute("DELETE FROM auth.audit_events")
+        forget_memberships(conn)
         conn.execute("DELETE FROM auth.users")
     admin = service.create_user_unattended(email=ADMIN_EMAIL, display_name="Owner", role="SUPER_ADMIN",
                                            password=ADMIN_PW, language="es", timezone="Europe/Madrid")
@@ -47,6 +48,7 @@ def accounts(migrated_database: str) -> Iterator[dict[str, int]]:
     with psycopg.connect(migrated_database, autocommit=True) as conn:
         conn.execute("DELETE FROM auth.sessions")
         conn.execute("DELETE FROM auth.audit_events")
+        forget_memberships(conn)
         conn.execute("DELETE FROM auth.users")
     mp.undo()
     reset_cache()
@@ -190,15 +192,15 @@ def test_changing_the_password_ends_the_other_sessions(accounts: dict[str, int])
     with TestClient(create_app(), headers=SAME_SITE) as a, TestClient(create_app(), headers=SAME_SITE) as b:
         login(a, USER_EMAIL, USER_PW)
         login(b, USER_EMAIL, USER_PW)
-        wrong = a.post("/api/v1/auth/me/password", json={"current_password": "nope", "new_password": "N3w-pass-2026"})
+        wrong = a.post("/api/v1/auth/me/password", json={"current_password": "nope", "new_password": "N3w-pass-2026-long"})
         assert wrong.status_code == 403 and wrong.json()["error"]["code"] == "wrong_password"
         weak = a.post("/api/v1/auth/me/password", json={"current_password": USER_PW, "new_password": "short"})
         assert weak.status_code == 422 and "password_too_short" in weak.json()["error"]["problems"]
-        ok = a.post("/api/v1/auth/me/password", json={"current_password": USER_PW, "new_password": "N3w-pass-2026"})
+        ok = a.post("/api/v1/auth/me/password", json={"current_password": USER_PW, "new_password": "N3w-pass-2026-long"})
         assert ok.status_code == 204
         assert a.get("/api/v1/auth/me").status_code == 200
         assert b.get("/api/v1/auth/me").status_code == 401
-        assert a.post("/api/v1/auth/me/password", json={"current_password": "N3w-pass-2026",
+        assert a.post("/api/v1/auth/me/password", json={"current_password": "N3w-pass-2026-long",
                                                         "new_password": USER_PW}).status_code == 204
 
 
@@ -255,5 +257,5 @@ def test_the_audit_trail_records_who_did_what_and_never_a_secret(app_client: Tes
     actions = {e["action"] for e in events}
     assert {"login.succeeded", "login.failed", "logout", "user.created", "user.role_changed",
             "user.status_changed", "password.changed"} <= actions
-    for secret in (ADMIN_PW, USER_PW, "N3w-pass-2026"):
+    for secret in (ADMIN_PW, USER_PW, "N3w-pass-2026-long"):
         assert secret not in body.text

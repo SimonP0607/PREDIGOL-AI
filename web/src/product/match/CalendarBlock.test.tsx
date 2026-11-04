@@ -260,21 +260,23 @@ describe("a side whose calendar is not whole says so", () => {
   });
 });
 
-describe("a user sees nothing until the owner decides", () => {
-  test("the API says not available (users do not see the calendar yet)", () => {
+describe("a reader sees it load and fail; only the owner's switch hides it (plan UX, A9)", () => {
+  test("the API says not available (the owner turned the calendar off for readers)", () => {
     const load: CalendarLoad = { status: "success", envelope: envelope(null, "not_available") };
     expect(render(load, false)).toBe("");
   });
 
-  test("while it loads, and when it cannot be loaded: no spinner, no error", () => {
-    expect(render({ status: "pending" }, false)).toBe("");
-    expect(render({ status: "error", error: new Error("boom") }, false)).toBe("");
+  test("while it loads a skeleton, and when it cannot be loaded the error with its retry: never a silent gap", () => {
+    expect(render({ status: "pending" }, false)).toContain("animate-pulse");
+    const failed = render({ status: "error", error: new Error("boom") }, false);
+    expect(failed).not.toBe("");
+    expect(failed).toContain('role="alert"');
   });
 
   test("the screen is decided apart from React", () => {
-    expect(calendarScreen({ status: "pending" }, false).kind).toBe("nothing");
+    expect(calendarScreen({ status: "pending" }, false).kind).toBe("loading");
     expect(calendarScreen({ status: "pending" }, true).kind).toBe("loading");
-    expect(calendarScreen({ status: "error", error: 1 }, false).kind).toBe("nothing");
+    expect(calendarScreen({ status: "error", error: 1 }, false).kind).toBe("error");
     expect(calendarScreen({ status: "error", error: 1 }, true).kind).toBe("error");
     expect(calendarScreen(whole(), false).kind).toBe("calendar");
     const gone: CalendarLoad = { status: "success", envelope: envelope(null, "not_available") };

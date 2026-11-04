@@ -1,6 +1,15 @@
 /** Language switch, account menu and the Preview-as-USER banner - shared by both shells. */
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Eye, EyeOff, LayoutDashboard, LogOut, UserRound } from "lucide-react";
+import {
+  BarChart3,
+  BookOpen,
+  Eye,
+  EyeOff,
+  LayoutDashboard,
+  LifeBuoy,
+  LogOut,
+  UserRound,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { LOCALES, t, useI18n, type Locale } from "@/lib/i18n";
 import { LOCALE_NAMES } from "@/lib/i18n/catalogs";
@@ -35,7 +44,7 @@ export function LanguageSwitch({ className }: { className?: string | undefined }
           onClick={() => void auth.setLocale(l)}
           className={cn(
             // Touch: wider and taller to the eye, and 44 px tall to the finger (tap-y: the two sit side by side).
-            "tap-y relative rounded px-1.5 py-0.5 text-[0.7rem] font-bold uppercase tracking-wider transition-colors pointer-coarse:min-w-11 pointer-coarse:px-2 pointer-coarse:py-1.5",
+            "tap-y relative rounded px-1.5 py-0.5 text-[0.7rem] pointer-coarse:text-xs font-bold uppercase tracking-wider transition-colors pointer-coarse:min-w-11 pointer-coarse:px-2 pointer-coarse:py-1.5",
             locale === l
               ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:text-foreground",
@@ -82,7 +91,7 @@ export function AccountMenu() {
           {/* Plan UX, A1 (F07): a reader never sees an internal role ("USER"); the owner sees "Administrador". */}
           {user.role === "SUPER_ADMIN" ? (
             <div
-              className="text-[0.65rem] font-bold uppercase tracking-wider text-gold"
+              className="text-micro font-bold uppercase tracking-wider text-gold"
               data-testid="account-role"
             >
               {t("common.roleAdmin")}
@@ -96,6 +105,33 @@ export function AccountMenu() {
             {t("nav.profile")}
           </Link>
         </DropdownMenuItem>
+        {/* plan UX, A14: Ayuda - the questions, the contact and the reader's messages - two taps from any screen */}
+        <DropdownMenuItem asChild>
+          <Link to="/help" className="flex items-center gap-2" data-testid="go-help">
+            <LifeBuoy aria-hidden className="h-4 w-4" />
+            {t("nav.help")}
+          </Link>
+        </DropdownMenuItem>
+        {/* plan UX, A3: every word PrediGol uses, one definition each («Más» carries it too, A15) */}
+        <DropdownMenuItem asChild>
+          <Link to="/help/glossary" className="flex items-center gap-2" data-testid="go-glossary">
+            <BookOpen aria-hidden className="h-4 w-4" />
+            {t("nav.glossary")}
+          </Link>
+        </DropdownMenuItem>
+        {/* plan UX, A12: «Cómo le va a PrediGol», once it is open to readers (the owner reviews it before) */}
+        {user.transparency || auth.showAdmin ? (
+          <DropdownMenuItem asChild>
+            <Link
+              to="/transparency"
+              className="flex items-center gap-2"
+              data-testid="go-transparency"
+            >
+              <BarChart3 aria-hidden className="h-4 w-4" />
+              {t("transparency.page.link")}
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         {auth.isSuperAdmin && !auth.previewAsUser ? (
           <DropdownMenuItem asChild>
             <Link to="/admin/overview" className="flex items-center gap-2" data-testid="go-admin">

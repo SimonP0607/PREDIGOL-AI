@@ -84,7 +84,7 @@ export function ProgressBadge({
       data-testid="parlay-progress"
       data-progress={progress}
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-wide",
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-micro font-semibold uppercase tracking-wide",
         PROGRESS_STYLE[progress],
       )}
       title={pending ? t("records.progress.pending", { count: pending }) : undefined}

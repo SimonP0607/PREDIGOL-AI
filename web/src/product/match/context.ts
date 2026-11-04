@@ -10,7 +10,21 @@ import type {
 import type { MatchCenter } from "@/lib/api/v1/types_center";
 import type { Goals, LiveSnapshot, Phase } from "./model";
 
-export const TAB_KEYS = ["summary", "picks", "stats", "markets", "lineups", "advanced"] as const;
+/**
+ * The Match Center's sections (plan UX, A9 and A10; section 25): Resumen, Análisis PrediGol, Estadísticas, Mercados,
+ * Alineaciones, Noticias and, once the match is over, Postpartido. The picks of the match live in the Resumen - before
+ * kick-off, the published ones with their state - and, once it is over, in the Postpartido with how they ended.
+ */
+export const TAB_KEYS = [
+  "summary",
+  "analysis",
+  "stats",
+  "markets",
+  "lineups",
+  "news",
+  "postmatch",
+  "advanced",
+] as const;
 export type TabKey = (typeof TAB_KEYS)[number];
 
 /** GET /matches/{id}/center, as loaded: each block renders its own state from it. */

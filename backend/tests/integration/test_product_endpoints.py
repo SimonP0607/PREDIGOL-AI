@@ -167,21 +167,29 @@ def test_the_multiday_parlay_reaches_two_days(as_role: Any, dataset: dict[str, A
 
 
 def test_picks_are_re_priced_and_say_when_they_have_no_value_now(as_role: Any, dataset: dict[str, Any]) -> None:
-    board = data(as_role("USER"), "/api/v1/picks")
+    """Plan UX, B3: the list shows what it may recommend - a pick without value at the best price now is NOT_RECOMMENDED,
+    counted (``withheld``) and left on its match, whose own view shows it with its state and the gate it fails."""
+    user = as_role("USER")
+    board = data(user, "/api/v1/picks")
     assert board["source"] == "qualified" and len(board["top"]) == 5 and board["reason"] is None
     by_fixture = {p["fixture_id"]: p for p in board["picks"]}
-    assert len(by_fixture) == 9
-    stale = by_fixture[dataset["fixtures"]["F8"]]
-    assert stale["value_now"] is False and stale["value_reason"] == "stale_price" and stale["freshness"] == "stale"
-    poor = by_fixture[dataset["fixtures"]["F9"]]
-    assert poor["value_now"] is False and poor["value_reason"] == "non_positive_ev" and Decimal(poor["ev"]) < 0
+    assert len(by_fixture) == 7 and board["withheld"] == 2, "F8 (stale price) and F9 (no value) stay on their match"
+    assert {(p["user_status"], p["status_reason"], p["context_pending"]) for p in board["picks"]} == {
+        ("RECOMMENDED", "value", True)}, "the AI's review is not applied: the value rule alone, and it says so"
     good = by_fixture[dataset["fixtures"]["F1"]]
     assert good["value_now"] and good["freshness"] == "fresh" and Decimal(good["fair_odds"]) == Decimal("2.326")
-    only_9 = data(as_role("USER"), "/api/v1/picks?max_odds=1.80")
-    assert [p["fixture_id"] for p in only_9["picks"]] == [dataset["fixtures"]["F9"]]
-    assert only_9["reason"] == "no_value_now"
-    none = data(as_role("USER"), "/api/v1/picks?market=BTTS")
-    assert none["picks"] == [] and none["reason"] == "no_picks_match_filters"
+    stale = data(user, f"/api/v1/picks?fixture_id={dataset['fixtures']['F8']}&hours=168")
+    assert stale["withheld"] == 0 and len(stale["picks"]) == 1 and stale["top"] == []
+    s = stale["picks"][0]
+    assert s["value_now"] is False and s["value_reason"] == "stale_price" and s["freshness"] == "stale"
+    assert (s["user_status"], s["status_reason"], s["context_pending"]) == ("NOT_RECOMMENDED", "no_value_now", False)
+    poor = data(user, f"/api/v1/picks?fixture_id={dataset['fixtures']['F9']}&hours=168")["picks"][0]
+    assert poor["value_now"] is False and poor["value_reason"] == "non_positive_ev" and Decimal(poor["ev"]) < 0
+    assert poor["user_status"] == "NOT_RECOMMENDED"
+    only_9 = data(user, "/api/v1/picks?max_odds=1.80")
+    assert only_9["picks"] == [] and only_9["withheld"] == 1 and only_9["reason"] == "no_value_now"
+    none = data(user, "/api/v1/picks?market=BTTS")
+    assert none["picks"] == [] and none["withheld"] == 0 and none["reason"] == "no_picks_match_filters"
 
 
 def test_without_enough_qualified_picks_there_is_no_parlay(as_role: Any, dataset: dict[str, Any],

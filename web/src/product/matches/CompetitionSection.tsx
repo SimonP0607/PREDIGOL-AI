@@ -1,23 +1,33 @@
 /**
  * One competition of the day: a header that stays under the app bar while its matches
- * scroll past (tap to fold it away), then its matches by kick-off.
+ * scroll past (tap to fold it away), then its matches by kick-off. A league the reader
+ * follows says so on its header («Tu liga» / «Sugerida»), and a match shown because of a
+ * team they follow says so on its row (plan UX, B2).
  */
 import { ChevronDown } from "lucide-react";
 import { CompetitionLogo, CountryFlag } from "@/components/football/Logos";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { WhyChip } from "@/product/favorites/WhyChip";
+import type { Why } from "@/product/home/why";
 import { countryLabel } from "./country";
 import { MatchRow } from "./MatchRow";
-import type { CompetitionGroup } from "./model";
+import type { CompetitionGroup, MatchItem } from "./model";
 
 export function CompetitionSection({
   group,
   collapsed,
   onToggle,
+  why = null,
+  rowWhy,
 }: {
   group: CompetitionGroup;
   collapsed: boolean;
   onToggle: () => void;
+  /** Why the whole competition is the reader's: a league they follow. */
+  why?: Why | null;
+  /** Why one of its matches is the reader's when the competition is not: a team they follow plays it. */
+  rowWhy?: ((item: MatchItem) => Why | null) | undefined;
 }) {
   const c = group.competition;
   const country = countryLabel(c.country, c.country_code);
@@ -48,7 +58,12 @@ export function CompetitionSection({
           )}
         >
           <CompetitionLogo src={c.logo_url} name={c.name} size={18} />
-          <span className="min-w-0 break-words text-sm font-semibold leading-tight">{c.name}</span>
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="min-w-0 break-words text-sm font-semibold leading-tight">
+              {c.name}
+            </span>
+            {why ? <WhyChip why={why} testId="competition-why" className="text-micro" /> : null}
+          </span>
           {country ? (
             <span className="flex min-w-0 shrink-[4] items-center gap-1.5 text-caption text-muted-foreground">
               <CountryFlag src={c.flag_url} name={country} height={11} />
@@ -83,7 +98,7 @@ export function CompetitionSection({
         <ul id={listId} className="divide-y divide-border/60 [&>li:last-child>a]:rounded-b-xl">
           {group.items.map((item) => (
             <li key={item.match.id}>
-              <MatchRow item={item} />
+              <MatchRow item={item} why={rowWhy ? rowWhy(item) : null} />
             </li>
           ))}
         </ul>

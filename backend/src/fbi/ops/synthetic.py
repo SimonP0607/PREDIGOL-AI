@@ -1,6 +1,7 @@
 """The synthetic journey (plan UX, A2): every 15 minutes a dedicated USER account walks what a reader does - the
-sign-in page, signing in, Home, a match of today and its centre, the day's picks and their own picks, signing out -
-through the public front door, as a browser would, and the worker writes the result in the job ledger
+sign-in page, the activation of an invitation (A7), signing in, Home, a match of today and its centre, the day's picks
+and their own picks, signing out - through the public front door, as a browser would, and the worker writes the
+result in the job ledger
 (``raw.ingestion_runs``, job ``synthetic_journey``). A failed step is an error in the log, which reaches Sentry
 (fbi.core.sentry.report_error_logs), and the console shows the last runs with the jobs.
 
@@ -18,6 +19,7 @@ Off until the owner configures it (and creates the account, which only the owner
 from __future__ import annotations
 
 import os
+import secrets
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -83,6 +85,14 @@ def config_from_env(env: dict[str, str] | None = None) -> JourneyConfig | None:
     return JourneyConfig(base_url=base, email=email, password=password)
 
 
+def _activation_answer(reply: httpx.Response) -> str:
+    """The activation step's answer: refused as a link that does not work (or the route off), nothing else."""
+    if reply.status_code == 404:
+        return ""  # FBI_SELF_SERVICE off: nothing to activate
+    code = (reply.json().get("error") or {}).get("code")
+    return "" if code == "link_invalid" else f"refused as {code!r}, not as a link that does not work"
+
+
 def walk(cfg: JourneyConfig, *, client: httpx.Client | None = None, today: date | None = None,
          budget_s: float = BUDGET_S, clock: Callable[[], float] = time.monotonic) -> list[Step]:
     """Walk the journey once and say how each step went. Stops at a failed sign-in; signs out whenever the server
@@ -96,7 +106,7 @@ def walk(cfg: JourneyConfig, *, client: httpx.Client | None = None, today: date 
                                   headers={"user-agent": AGENT})
 
     def call(name: str, method: str, path: str, *, check: Callable[[httpx.Response], str] | None = None,
-             always: bool = False, **kwargs: Any) -> httpx.Response | None:
+             always: bool = False, expect: tuple[int, ...] = (), **kwargs: Any) -> httpx.Response | None:
         if not always and clock() > deadline:
             steps.append(Step(name, False, None, 0, "skipped: past the walk's time budget"))
             return None
@@ -107,7 +117,8 @@ def walk(cfg: JourneyConfig, *, client: httpx.Client | None = None, today: date 
             steps.append(Step(name, False, None, int((time.monotonic() - started) * 1000), type(exc).__name__))
             return None
         ms = int((time.monotonic() - started) * 1000)
-        problem = "" if 200 <= reply.status_code < 300 else "unexpected status"
+        expected = reply.status_code in expect if expect else 200 <= reply.status_code < 300
+        problem = "" if expected else "unexpected status"
         if not problem and check is not None:
             try:
                 problem = check(reply)
@@ -121,6 +132,11 @@ def walk(cfg: JourneyConfig, *, client: httpx.Client | None = None, today: date 
     try:
         call("page", "GET", "/login", headers={"accept": "text/html"},
              check=lambda r: "" if "<html" in r.text[:4000].lower() else "not the sign-in page")
+        # The activation of an invitation (plan UX, A7), without creating anything: a link nobody was sent must be
+        # refused - 410 link_invalid - by the page's API, through the same lookup a real link takes; 404 while the
+        # owner keeps self-service off.
+        call("activation", "POST", "/api/v1/auth/activate/check", headers=SAME_SITE,
+             json={"token": secrets.token_urlsafe(32)}, expect=(404, 410), check=_activation_answer)
         last[0] = None
         signed = call("sign_in", "POST", "/api/v1/auth/login", headers=SAME_SITE,
                       json={"email": cfg.email, "password": cfg.password},

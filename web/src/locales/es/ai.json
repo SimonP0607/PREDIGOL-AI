@@ -613,6 +613,32 @@
       "clvNote": "CLV: la cuota tomada frente a la probabilidad justa del cierre, sin margen (la misma medida de Inteligencia).",
       "empty": "Aún no hay evaluación shadow con la que comparar."
     },
+    "userAi": {
+      "title": "IA de lectores (narrativa)",
+      "subtitle": "Presupuesto propio, aparte del de PrediGol Intelligence",
+      "mode": {
+        "off": "Apagada",
+        "shadow": "En sombra",
+        "on": "Encendida"
+      },
+      "modeHelp": {
+        "off": "No se escribe nada y los lectores ven la lectura estructurada (FBI_USER_NARRATIVE).",
+        "shadow": "Se escribe y solo la ves en la vista previa: revisa una muestra antes de encenderla.",
+        "on": "Los lectores ven la narrativa validada; si no pasa los controles, ven la lectura estructurada."
+      },
+      "written": "Narrativas validadas hoy",
+      "refused": "No mostradas hoy",
+      "refusedHint": "Rechazadas por los controles o sin respuesta del modelo: el lector ve la lectura estructurada",
+      "translations": "Noticias traducidas hoy",
+      "apart": "Este gasto se registra aparte y nunca cuenta en el presupuesto de Intelligence de arriba. Con el presupuesto en 0 no se gasta nada (lo aprueba el dueño: P8).",
+      "state": {
+        "none": "Sin presupuesto: no gasta",
+        "NORMAL": "Dentro del presupuesto",
+        "REDUCED": "Por encima del ritmo del día",
+        "CHEAP_ONLY": "Por encima del ritmo del día",
+        "EXHAUSTED": "Tope alcanzado: lectura estructurada"
+      }
+    },
     "envelopes": {
       "title": "Las tres bolsas de gasto",
       "subtitle": "Claude de producción, Claude del LAB y Exa se miden por separado, cada una contra la suya; Claude en total no pasa del tope conjunto.",

@@ -57,3 +57,13 @@ export function isDefault(f: PickFilters): boolean {
     f.hours === DEFAULT_FILTERS.hours
   );
 }
+
+/** How many filters differ from the page's defaults: the number on the phone's «Filtros» button (plan UX, A15). */
+export function activeCount(f: PickFilters): number {
+  return (
+    (f.competition !== null ? 1 : 0) +
+    (f.market !== null ? 1 : 0) +
+    (f.odds !== DEFAULT_FILTERS.odds ? 1 : 0) +
+    (f.hours !== DEFAULT_FILTERS.hours ? 1 : 0)
+  );
+}

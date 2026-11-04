@@ -9,9 +9,9 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from fbi.api.contracts.common import Contract
+from fbi.api.contracts.common import Contract, StatusReason, UserStatus
 
-Verdict = Literal["recommended", "caution", "not_recommended", "no_market"]
+Verdict =Literal["recommended", "caution", "not_recommended", "no_market"]
 Decision = Literal["APPROVE", "DOWNGRADE", "REJECT", "ABSTAIN"]
 
 
@@ -54,12 +54,21 @@ class AnalysisCard(Contract):
     edge: Decimal | None
     ev: Decimal | None
     model: str | None
+    pick_id: int | None = Field(default=None, description="A value card's pick: «¿Por qué este pick?» opens its "
+                                                          "explanation (GET /picks/{pick_id}/explanation).")
     qualified: bool
     verdict: Verdict
     verdict_reason: str
     ai: CardAi | None
     notes: CardNotes | None = Field(default=None, description="The brief's why / what could go wrong for this card "
                                                               "(evaluation view, or enforced).")
+    user_status: UserStatus | None = Field(default=None, description=(
+        "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table): a value card is its pick's state - "
+        "RECOMMENDED, CAUTION or NOT_RECOMMENDED by the applied AI review, EVALUATION when its pick is not qualified (the "
+        "owner's view only) -, an evaluated card NOT_RECOMMENDED (no value at its price) and an unpriced market none."))
+    status_reason: StatusReason | None = None
+    context_pending: bool = Field(default=False, description="RECOMMENDED by the value rule alone: «revisión de "
+                                                             "contexto aún no aplicada» is said beside it.")
 
 
 class BriefView(Contract):
@@ -129,6 +138,10 @@ class AiOverview(Contract):
                                                                           "search API - from the configuration.")
     efficiency: dict[str, Any] = Field(default_factory=dict)
     day: dict[str, Any] | None = None
+    user_ai: dict[str, Any] = Field(default_factory=dict, description=(
+        "The readers' AI (plan UX, A11), apart from the budget above: the switch (FBI_USER_NARRATIVE: off, shadow or on), its "
+        "own budget (FBI_AI_USER_MONTHLY_BUDGET_USD: state, cap, spent today and this month) and today's narratives by "
+        "outcome, translations and calls."))
     envelopes: dict[str, Any] = Field(default_factory=dict, description="Phase 0 of the AI master plan: the production, LAB and Exa "
                                       "envelopes against their budgets, what the cache and the Batch saved, the switches. "
                                       "Empty when it could not be built.")

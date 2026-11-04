@@ -6,17 +6,25 @@
  * opened - and the captures carry the Cronología's own numbers, pick filter or not. Point 6:
  * a price is chosen the Cuotas way (tap: in or out of "Mi parlay"), the bookmark saves it.
  */
-import { useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { ArrowDownRight, ArrowUpRight, ChevronRight, LineChart, Radar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { fmtLine, fmtOdds, toNumber } from "@/lib/i18n/format";
+import { v1 } from "@/lib/api/v1/client";
 import { live as queries } from "@/lib/api/v1/queries";
+import type { MarketOrder } from "@/lib/api/v1/types_personal";
 import type { MatchMarkets, SelectionQuotes } from "@/lib/api/v1/types_profile";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { hintProps } from "@/components/system/tapHint";
+import { track } from "@/lib/track";
 import { formatDateTime } from "@/lib/time";
+import { GlossaryLink, GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { marketName } from "@/product/shared/markets";
+import { ErrorState } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import {
   ageLevel,
@@ -36,6 +44,7 @@ import { priceChooser, type Choose } from "./choose";
 import { LiveOdds, LiveTile, PriceInline, PriceTile } from "./prices";
 import { bookRows, captureLabel, openingNote } from "./books";
 import { Block, CenterSection, FreshnessLabel, MoreButton, SectionNote } from "./ui";
+import { orderBoards, orderSentence } from "./marketOrder";
 
 type Sides = { home: string; away: string };
 
@@ -101,7 +110,7 @@ function LinesTable<T>({
           <tr className="text-caption text-subtle-foreground">
             {isOU ? (
               <th scope="col" className="w-14 pb-1.5 text-left font-medium">
-                {t("match.markets.line")}
+                <GlossaryTerm term="line">{t("match.markets.line")}</GlossaryTerm>
               </th>
             ) : null}
             <th scope="col" className="pb-1.5 pr-2 text-left font-medium">
@@ -223,7 +232,7 @@ function Moved({ now, opening }: { now: string; opening: string }) {
   const Icon = up ? ArrowUpRight : ArrowDownRight;
   return (
     <span
-      className="numeric inline-flex items-center gap-0.5 text-[0.65rem] text-subtle-foreground"
+      className="numeric inline-flex items-center gap-0.5 text-micro text-subtle-foreground"
       title={
         up
           ? t("match.books.movedUp", { odds: fmtOdds(opening) })
@@ -352,7 +361,7 @@ function CapturesStrip({ all }: { all: MatchMarkets }) {
         {prematch.map((c) => (
           <li
             key={c.captured_at}
-            className="numeric rounded-full border border-border-strong bg-elevated px-2 py-0.5 text-[0.7rem] text-muted-foreground"
+            className="numeric rounded-full border border-border-strong bg-elevated px-2 py-0.5 text-micro text-muted-foreground"
             title={Object.entries(c.by_market)
               .map(([m, n]) => `${marketName(m)}: ${n}`)
               .join(" · ")}
@@ -399,39 +408,140 @@ function LiveCard({ market, sides }: { market: LiveMarket; sides: Sides }) {
   );
 }
 
-/** Single-line markets in a row of three on wide screens; line markets side by side. */
-function CardGrid({ items }: { items: Array<{ key: string; lines: boolean; node: ReactNode }> }) {
+/**
+ * Single-line markets in a row of three on wide screens; line markets side by side. The order given is kept inside each
+ * group, and the group of the first market comes first (the reader's own market first, plan UX, B2). A tap on any control
+ * of a market (a price, its bookmakers, all its lines) is that market consulted.
+ */
+function CardGrid({
+  items,
+  onConsult,
+}: {
+  items: Array<{ key: string; lines: boolean; node: ReactNode }>;
+  onConsult?: ((market: string) => void) | undefined;
+}) {
   const single = items.filter((x) => !x.lines);
   const lines = items.filter((x) => x.lines);
+  const cell = (x: { key: string; node: ReactNode }) => (
+    <div
+      key={x.key}
+      className="min-w-0"
+      data-market={x.key}
+      onClickCapture={
+        onConsult
+          ? (e) => {
+              if (e.target instanceof Element && e.target.closest("button, a, select"))
+                onConsult(x.key);
+            }
+          : undefined
+      }
+    >
+      {x.node}
+    </div>
+  );
+  const singles = single.length ? (
+    <div key="single" className="grid gap-4 lg:grid-cols-3">
+      {single.map(cell)}
+    </div>
+  ) : null;
+  const lined = lines.length ? (
+    <div key="lines" className="grid items-start gap-4 lg:grid-cols-2">
+      {lines.map(cell)}
+    </div>
+  ) : null;
   return (
-    <div className="space-y-4">
-      {single.length ? (
-        <div className="grid gap-4 lg:grid-cols-3">
-          {single.map((x) => (
-            <div key={x.key} className="min-w-0">
-              {x.node}
-            </div>
-          ))}
-        </div>
-      ) : null}
-      {lines.length ? (
-        <div className="grid items-start gap-4 lg:grid-cols-2">
-          {lines.map((x) => (
-            <div key={x.key} className="min-w-0">
-              {x.node}
-            </div>
-          ))}
-        </div>
-      ) : null}
+    <div className="space-y-4" data-testid="markets-grid">
+      {items[0]?.lines ? [lined, singles] : [singles, lined]}
     </div>
   );
 }
 
-function LiveGroup({ ctx, sides }: { ctx: MatchCtx; sides: Sides }) {
+/**
+ * The rule said (plan UX, B2): «Primero, los mercados que más consultas: Más/Menos de goles (3) y Ambos marcan (2).» with
+ * the way back to the usual order - or, while the reader keeps the usual one, the way back to theirs. Its help (a tap)
+ * says what is counted and that probabilities and prices are the same for everyone.
+ */
+function MarketOrderNote({ order }: { order: MarketOrder }) {
+  const qc = useQueryClient();
+  const change = useMutation({
+    mutationFn: (common: boolean) => v1.setMarketOrder(common),
+    onSuccess: (view) => qc.setQueryData(queries.personal.queryKey, view),
+    onError: () => toast(t("match.markets.order.failed")),
+  });
+  if (order.views.length === 0) return null;
+  const button = (common: boolean, label: string, testId: string) => (
+    <button
+      type="button"
+      disabled={change.isPending}
+      onClick={() => change.mutate(common)}
+      data-testid={testId}
+      className="tap-y relative ml-1 inline-flex min-h-8 items-center font-medium text-primary hover:underline disabled:opacity-60"
+    >
+      {label}
+    </button>
+  );
+  if (order.common) {
+    return (
+      <p
+        className="mb-3 text-xs text-muted-foreground"
+        data-testid="markets-order"
+        data-order="usual"
+      >
+        {t("match.markets.order.usual")}
+        {button(false, t("match.markets.order.mineButton"), "markets-order-mine")}
+      </p>
+    );
+  }
+  return (
+    <p
+      className="mb-3 text-xs text-muted-foreground"
+      data-testid="markets-order"
+      data-order="mine"
+      {...hintProps(
+        t("match.markets.order.help", { days: order.window_days, min: order.min_views }),
+      )}
+    >
+      {orderSentence(order.views)}
+      {button(true, t("match.markets.order.usualButton"), "markets-order-usual")}
+    </p>
+  );
+}
+
+/**
+ * The reader's markets (GET /me/personal, plan UX, B2) and what records one consulted - once per market and visit
+ * (``market_viewed``). The owner's console account keeps the usual order, and nothing of theirs is recorded anyway.
+ */
+function useMarketOrder(fixtureId: string) {
+  const reader = useAuth().user?.role === "USER";
+  const personal = useQuery({ ...queries.personal, enabled: reader });
+  const order = reader && personal.data?.personalization ? personal.data.markets : null;
+  const seen = useRef(new Set<string>());
+  const consult = useCallback(
+    (market: string) => {
+      if (!reader || seen.current.has(market)) return;
+      seen.current.add(market);
+      track("market_viewed", { market, match_id: Number(fixtureId) });
+    },
+    [reader, fixtureId],
+  );
+  return { order, first: order?.first ?? [], consult };
+}
+
+function LiveGroup({
+  ctx,
+  sides,
+  first,
+  onConsult,
+}: {
+  ctx: MatchCtx;
+  sides: Sides;
+  first: readonly string[];
+  onConsult: (market: string) => void;
+}) {
   const quotes = ctx.markets.status === "ok" ? ctx.markets.data : [];
-  const books = marketBoards(quotes, "live");
+  const books = orderBoards(marketBoards(quotes, "live"), first);
   const feed = ctx.center.data?.live_odds.status === "ok" ? ctx.center.data.live_odds.data : [];
-  const inPlay = liveMarkets(feed);
+  const inPlay = orderBoards(liveMarkets(feed), first);
   const at =
     books.length > 0
       ? latestCapture(quotes, "live")
@@ -458,6 +568,7 @@ function LiveGroup({ ctx, sides }: { ctx: MatchCtx; sides: Sides }) {
             lines: LINE_MARKETS.has(b.market),
             node: <BookCard board={b} sides={sides} all={null} />,
           }))}
+          onConsult={onConsult}
         />
       ) : (
         <CenterSection
@@ -474,6 +585,7 @@ function LiveGroup({ ctx, sides }: { ctx: MatchCtx; sides: Sides }) {
                     lines: LINE_MARKETS.has(m.market),
                     node: <LiveCard market={m} sides={sides} />,
                   }))}
+                  onConsult={onConsult}
                 />
                 <p className="mt-2 text-caption text-subtle-foreground">
                   {t("match.markets.liveNote")}
@@ -493,7 +605,8 @@ export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
   const { markets, phase, match: m } = ctx;
   const sides = { home: m.home.name, away: m.away.name };
   const quotes = markets.status === "ok" ? markets.data : [];
-  const boards = marketBoards(quotes, "prematch");
+  const { order, first, consult } = useMarketOrder(ctx.fixtureId);
+  const boards = orderBoards(marketBoards(quotes, "prematch"), first);
   const updated = latestCapture(quotes, "prematch");
   const before = phase === "scheduled";
   const choose = priceChooser(ctx);
@@ -502,7 +615,9 @@ export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
 
   return (
     <div className="space-y-8">
-      {phase === "live" ? <LiveGroup ctx={ctx} sides={sides} /> : null}
+      {phase === "live" ? (
+        <LiveGroup ctx={ctx} sides={sides} first={first} onConsult={consult} />
+      ) : null}
 
       <section aria-labelledby="markets-pre">
         <GroupHeader
@@ -523,16 +638,36 @@ export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
         {boards.length > 0 ? (
           <>
             <p className="-mt-1.5 mb-3 text-xs text-muted-foreground">
-              {t("match.markets.bestHelp")} {before ? t("match.markets.chooseHelp") : null}
+              {t("match.markets.bestHelp")} <GlossaryLink term="bestOdds" />{" "}
+              {before ? t("match.markets.chooseHelp") : null}
             </p>
             {all ? <CapturesStrip all={all} /> : null}
+            {/* Plan UX, A9: every bookmaker's prices failing to load is said, with its reference and a retry - the
+                best prices above come from the match itself and stay. */}
+            {allQ.isError ? (
+              <div
+                className="mt-3 rounded-xl border border-border bg-card"
+                data-testid="markets-all-error"
+              >
+                <p className="px-4 pt-3 text-xs text-muted-foreground">
+                  {t("match.markets.allError")}
+                </p>
+                <ErrorState
+                  error={allQ.error}
+                  onRetry={() => void allQ.refetch()}
+                  className="py-3"
+                />
+              </div>
+            ) : null}
             <div className="mt-3">
+              {order ? <MarketOrderNote order={order} /> : null}
               <CardGrid
                 items={boards.map((b) => ({
                   key: b.market,
                   lines: LINE_MARKETS.has(b.market),
                   node: <BookCard board={b} sides={sides} choose={choose} all={all} />,
                 }))}
+                onConsult={consult}
               />
             </div>
           </>

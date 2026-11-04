@@ -76,6 +76,7 @@ NAMES_IT: dict[str, str] = {
     "api/services/ai_layer.py": "the Admin Console's AI pages: the dashboard of errors, the day's counts and the log of memory events (the card a "
                                 "user is shown, match_analysis, reaches none of it: held below)",
     "api/services/match_memory.py": "the Memory page: the matches PrediGol looked at, by team, league, coach, player and market",
+    "api/services/postmatch.py": "the reader's Postpartido (plan UX, B4): the facts the post-mortem found in a finished match (a red card, a penalty), read, never its judgement",
     "scripts/postmortems.py": "the owner's command for the post-mortem: status, coverage, closes (the two closes a price is judged against) and "
                               "build (a dry run until --apply)",
     "scripts/memory.py": "the owner's command for the memory: status, coverage, rebuild (a dry run until --apply) and audit",
@@ -211,7 +212,7 @@ WRITERS: dict[str, set[str]] = {
 """File -> the only tables its SQL writes to. A post-mortem, a memory or a note is built FROM the facts of a match - fixtures, events, statistics,
 players, prices, picks, settlements - and never into them (``ai.source_stats`` is the day's tally of the sources the notes quote)."""
 
-READ_ONLY = ("api/services/intelligence.py", "api/services/ai_v2.py", "api/services/match_memory.py", "api/services/families.py", "scripts/postmortems.py",
+READ_ONLY = ("api/services/intelligence.py", "api/services/ai_v2.py", "api/services/match_memory.py", "api/services/families.py", "api/services/postmatch.py", "scripts/postmortems.py",
              "scripts/memory.py")
 """The pages and commands that look at the post-mortem and the memory write nothing themselves: what a command builds, the builders write."""
 

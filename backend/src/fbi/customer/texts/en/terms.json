@@ -1,0 +1,143 @@
+{
+  "title": "Terms of service",
+  "summary": "PrediGol is a football information and analysis service for people aged 18 or over. It is not a bookmaker: it takes no bets, handles no money and guarantees no result.",
+  "sections": [
+    {
+      "id": "que-es",
+      "title": "1. What PrediGol is",
+      "blocks": [
+        {
+          "p": "PrediGol is an information service: it shows match data, probabilities computed by its models, odds published by bookmakers and analysis of all of it. The service is provided by {{controller.name}}, domiciled at {{controller.address}}."
+        },
+        {
+          "p": "PrediGol is not a bookmaker or a gambling operator: it takes no bets, pays no winnings, handles no money of its users and acts as an intermediary for no operator. It has no links to place bets and promotes no operator."
+        }
+      ]
+    },
+    {
+      "id": "sin-garantia",
+      "title": "2. No guaranteed results",
+      "blocks": [
+        {
+          "p": "A probability says what is likely, not what will happen. No forecast, pick, parlay or figure of PrediGol guarantees a result or a profit, and past results do not ensure future ones."
+        },
+        {
+          "p": "What you do with the information is your decision and your responsibility. PrediGol is not liable for losses from bets you place with third parties."
+        }
+      ]
+    },
+    {
+      "id": "mayores-de-18",
+      "title": "3. For people aged 18 or over only",
+      "blocks": [
+        {
+          "p": "You must be 18 or over to use PrediGol. By creating your account you declare that you are. PrediGol does not ask for documents, but it will close the account of anyone who does not meet this requirement."
+        }
+      ]
+    },
+    {
+      "id": "cuenta",
+      "title": "4. Your account",
+      "blocks": [
+        {
+          "p": "Your account is personal and non-transferable. You are responsible for keeping your password safe and for what is done with your account. If you suspect someone else is using it, change the password, sign out the other sessions from your profile and tell us."
+        },
+        {
+          "p": "You can turn on two-step verification from your profile; we recommend it."
+        }
+      ]
+    },
+    {
+      "id": "membresia",
+      "title": "5. Membership",
+      "blocks": [
+        {
+          "p": "Access to PrediGol may require a paid membership. Until there is a payment gateway, memberships are managed by hand: the start, expiry, renewal, suspension and refunds are recorded by PrediGol and told to you in the app and through the contact channels."
+        },
+        {
+          "p": "[Pending the owner's decision (P6) and the lawyer's review (P5): price and currency, payment methods, duration, renewal, the 5-business-day right of withdrawal and its exceptions, refunds and the complaints channel.]"
+        }
+      ]
+    },
+    {
+      "id": "uso",
+      "title": "6. Permitted use",
+      "blocks": [
+        {
+          "p": "You may not:"
+        },
+        {
+          "ul": [
+            "share your account or resell PrediGol's information;",
+            "extract data automatically, interfere with the service or try to reach other users' data;",
+            "use PrediGol for illegal purposes or to promote betting operators."
+          ]
+        },
+        {
+          "p": "PrediGol may suspend or close an account that breaches these terms, telling you why."
+        }
+      ]
+    },
+    {
+      "id": "datos-de-terceros",
+      "title": "7. Third-party data and availability",
+      "blocks": [
+        {
+          "p": "Results, line-ups, statistics and odds come from external providers and from bookmakers, and may contain errors or delays. PrediGol corrects them when it detects them and, if a result changes after settlement, settles again and keeps a record."
+        },
+        {
+          "p": "The service may be interrupted for maintenance or for reasons beyond our control. PrediGol will do what is reasonable to keep it available, without guaranteeing it."
+        }
+      ]
+    },
+    {
+      "id": "propiedad",
+      "title": "8. Intellectual property",
+      "blocks": [
+        {
+          "p": "PrediGol's texts, models, analysis and design belong to its provider. You may use them for your personal use; you may not copy or distribute them without permission."
+        }
+      ]
+    },
+    {
+      "id": "privacidad-y-juego",
+      "title": "9. Privacy and responsible gaming",
+      "blocks": [
+        {
+          "p": "How we process your data is in the Personal data processing policy. How we understand responsible gaming is on its page. Both are part of these terms."
+        }
+      ]
+    },
+    {
+      "id": "cambios",
+      "title": "10. Changes to these terms",
+      "blocks": [
+        {
+          "p": "If we change something important in these terms, we will ask you to accept them again before you go on using PrediGol. Each version is dated and has its fingerprint (sha256), and your profile shows which version you accepted and when."
+        }
+      ]
+    },
+    {
+      "id": "ley-y-reclamos",
+      "title": "11. Governing law and complaints",
+      "blocks": [
+        {
+          "p": "These terms are governed by Colombian law. You can send complaints or claims to {{controller.email}}. If you are not satisfied, you can turn to the Superintendence of Industry and Commerce (SIC)."
+        }
+      ]
+    },
+    {
+      "id": "contacto",
+      "title": "12. Contact",
+      "blocks": [
+        {
+          "p": "{{controller.name}} · {{controller.address}} · {{controller.email}} · {{controller.phone}}"
+        }
+      ]
+    }
+  ],
+  "statements": {
+    "terms": "I have read and accept the Terms of service.",
+    "age_18": "I declare that I am 18 or over."
+  }
+}

@@ -9,6 +9,12 @@
  * Updates are controlled: a new worker waits until the reader accepts (UPDATE_EVENT -> applyUpdate), the page
  * looks for a new version every 30 minutes and whenever it comes back to the foreground, and a script chunk of a
  * version that no longer exists on the server reloads the page once instead of breaking it.
+ *
+ * Installing (plan UX, A15, section 35): whether PrediGol runs as the installed app (isStandalone), which device's steps
+ * «Instalar PrediGol» shows first (installPlatform, installOrder), and the once-per-device mark of the first opening
+ * in installed mode that the product event pwa_installed counts (markInstalledOnce). The guided install (plan UX, B7)
+ * keeps Android's own prompt for the moment the reader asks for it (captureInstallPrompt, promptInstall): Chrome's
+ * banner never comes up on opening.
  */
 export const SERVICE_WORKER_URL = "/sw.js";
 /** Fired on window when a new version is installed and waiting; detail: the waiting worker. */
@@ -91,6 +97,125 @@ export function applyUpdate(worker: WorkerLike, host: ServiceWorkerHost = naviga
     window.location.reload();
   });
   worker.postMessage({ type: "SKIP_WAITING" });
+}
+
+interface DisplayHost {
+  matchMedia?: (query: string) => { matches: boolean };
+  navigator?: { standalone?: boolean; userAgent?: string; maxTouchPoints?: number };
+}
+
+/** Whether PrediGol runs as the installed app (from the home screen icon), not in a browser tab. */
+export function isStandalone(
+  win: DisplayHost | undefined = typeof window === "undefined" ? undefined : window,
+): boolean {
+  if (!win) return false;
+  // Safari on iPhone says so in navigator.standalone; every other browser in the display mode.
+  if (win.navigator?.standalone === true) return true;
+  return (
+    typeof win.matchMedia === "function" && win.matchMedia("(display-mode: standalone)").matches
+  );
+}
+
+export type InstallPlatform = "ios" | "android" | "other";
+
+/** Which install steps come first in «Más» (plan UX, A15): an iPhone or iPad, an Android, or anything else. */
+export function installPlatform(
+  nav: { userAgent?: string; maxTouchPoints?: number } | undefined = typeof navigator ===
+  "undefined"
+    ? undefined
+    : navigator,
+): InstallPlatform {
+  const ua = nav?.userAgent ?? "";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  // An iPad asking for the desktop site says "Macintosh", but it has a touch screen.
+  if (/Macintosh/i.test(ua) && (nav?.maxTouchPoints ?? 0) > 1) return "ios";
+  if (/Android/i.test(ua)) return "android";
+  return "other";
+}
+
+const PLATFORMS: readonly InstallPlatform[] = ["ios", "android", "other"];
+
+/** This device's steps first, the other two after them: a reader may be installing on another device. */
+export function installOrder(first: InstallPlatform): InstallPlatform[] {
+  return [first, ...PLATFORMS.filter((p) => p !== first)];
+}
+
+const INSTALLED_KEY = "predigol.pwa_installed";
+
+/**
+ * True the first time the installed app opens on this device (plan UX, section 35: pwa_installed is «the appinstalled
+ * event or the first opening in installed mode»; the first opening is the one rule that also works on an iPhone,
+ * which never fires appinstalled). Remembered in the app's own storage; without storage it never says yes, so a
+ * reader who refuses storage is not counted again and again.
+ */
+export function markInstalledOnce(storage?: Pick<Storage, "getItem" | "setItem"> | null): boolean {
+  try {
+    // Reading window.localStorage itself throws where storage is refused, so it is read inside the try.
+    const store = storage ?? (typeof window === "undefined" ? null : window.localStorage);
+    if (!store) return false;
+    if (store.getItem(INSTALLED_KEY)) return false;
+    store.setItem(INSTALLED_KEY, new Date().toISOString().slice(0, 10));
+    return store.getItem(INSTALLED_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+interface InstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
+let installPrompt: InstallPromptEvent | null = null;
+const installListeners = new Set<() => void>();
+
+function installChanged(): void {
+  for (const listener of installListeners) listener();
+}
+
+/**
+ * Android's and the desktop's own install prompt (beforeinstallprompt), kept for the guided install of B7 - offered when
+ * the reader turns notices on, never on opening (section 35: «se ofrece en contexto, nunca al abrir»).
+ */
+export function captureInstallPrompt(
+  win: Pick<Window, "addEventListener"> | undefined = typeof window === "undefined"
+    ? undefined
+    : window,
+): void {
+  if (!win) return;
+  win.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    installPrompt = event as InstallPromptEvent;
+    installChanged();
+  });
+  win.addEventListener("appinstalled", () => {
+    installPrompt = null;
+    installChanged();
+  });
+}
+
+/** Whether this browser offered its own install prompt (Chrome or Edge, not installed yet). */
+export function canPromptInstall(): boolean {
+  return installPrompt !== null;
+}
+
+export function onInstallPromptChange(listener: () => void): () => void {
+  installListeners.add(listener);
+  return () => installListeners.delete(listener);
+}
+
+/** The browser's own install prompt, from the reader's tap: it can be shown once. */
+export async function promptInstall(): Promise<"accepted" | "dismissed" | "unavailable"> {
+  const event = installPrompt;
+  if (!event) return "unavailable";
+  installPrompt = null;
+  installChanged();
+  try {
+    await event.prompt();
+    return (await event.userChoice).outcome;
+  } catch {
+    return "unavailable";
+  }
 }
 
 /** After a deploy, an open tab may ask for a script chunk the server no longer has: reload once (not in a loop). */

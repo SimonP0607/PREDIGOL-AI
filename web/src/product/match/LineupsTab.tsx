@@ -16,6 +16,7 @@ import { sectionCodeText } from "@/components/system/sectionCode";
 import { Card, EmptyState } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import { AbsencesBlock } from "./ContextBlocks";
+import { PressAbsences } from "@/product/news/PressAbsences";
 import {
   bench,
   eventKind,
@@ -72,7 +73,7 @@ function Marker({ spot, side, rating }: { spot: PitchSpot; side: Side; rating: n
     >
       <span
         className={cn(
-          "numeric relative flex h-7 w-7 items-center justify-center rounded-full border-2 text-[0.7rem] font-bold shadow-sm sm:h-8 sm:w-8 sm:text-xs",
+          "numeric relative flex h-7 w-7 items-center justify-center rounded-full border-2 text-micro font-bold shadow-sm sm:h-8 sm:w-8 sm:text-xs",
           side === "home"
             ? "border-primary/60 bg-primary text-primary-foreground"
             : "border-info/60 bg-info text-background",
@@ -125,10 +126,10 @@ function Pitch({
       }}
     >
       <PitchLines />
-      <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded bg-background/75 px-1.5 py-0.5 text-[0.65rem] font-semibold text-info">
+      <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded bg-background/75 px-1.5 py-0.5 text-micro font-semibold text-info">
         {teams.away.name} · {away.formation ?? "—"}
       </span>
-      <span className="absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded bg-background/75 px-1.5 py-0.5 text-[0.65rem] font-semibold text-primary">
+      <span className="absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded bg-background/75 px-1.5 py-0.5 text-micro font-semibold text-primary">
         {teams.home.name} · {home.formation ?? "—"}
       </span>
       {awaySpots.map((s) => (
@@ -282,7 +283,7 @@ function PlayerRows({
             </PlayerSummary>
             <Marks m={p.player_id !== null ? marks.get(p.player_id) : undefined} />
             {rating !== null ? (
-              <RatingBadge value={rating} className="min-w-[2.2rem] text-[0.7rem]" />
+              <RatingBadge value={rating} className="min-w-[2.2rem] text-micro" />
             ) : null}
             <span className="w-9 shrink-0 text-right text-caption font-medium text-muted-foreground">
               {position(p.position)}
@@ -463,6 +464,7 @@ export function LineupsTab({ ctx }: { ctx: MatchCtx }) {
         }}
       </CenterSection>
       {hasAbsences ? <AbsencesBlock ctx={ctx} /> : null}
+      <PressAbsences ctx={ctx} />
     </div>
   );
 }

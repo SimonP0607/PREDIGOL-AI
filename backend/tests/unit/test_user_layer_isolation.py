@@ -29,14 +29,15 @@ USER_LAYER = ("auth", "userdata", "customer", "messaging")
 MAY_IMPORT_THE_USER_LAYER = {
     "api": "the API serves the accounts and the client's own records (sign-in, profile, my picks); it is the user layer's door",
 }
-"""Packages allowed to import the user layer, each with its reason. A4 adds ``customer`` (it reads ``fbi.auth`` for the account
-it belongs to) and A5 adds ``messaging`` (it reads ``fbi.customer`` for preferences), with theirs."""
+"""Packages allowed to import the user layer, each with its reason. ``fbi.customer`` (A4) and ``fbi.messaging`` (A5) are part of the
+user layer itself, so their imports of ``fbi.auth`` and of each other need no reason here."""
 
 CLIENT_TABLES = re.compile(r"\b(?:auth\.[a-z_]+|customer\.[a-z_]+|picks\.user_[a-z_]+)\b")
 """A client's data in SQL: the ``auth`` and ``customer`` schemas and the picks and parlays a client saves."""
 
-USER_ROUTERS = ("system", "auth", "product", "records", "football", "market", "center", "ai_layer", "forecast",
-                "match_calendar", "knowledge")
+USER_ROUTERS = ("system", "auth", "account", "product", "records", "football", "market", "center", "ai_layer",
+                "forecast", "match_calendar", "knowledge", "postmatch", "reading", "today", "news", "customer", "messaging",
+                "events", "membership", "transparency", "favorites", "support", "personal", "feedback", "push", "explain")
 """``fbi.api.routers`` modules mounted on the public and app tiers by ``create_app`` (every other router is ``/admin``)."""
 
 CALLS_OUT = ("fbi.ai.providers", "fbi.analyst.agent", "fbi.analyst.search", "anthropic", "openai", "httpx", "requests",
@@ -170,3 +171,83 @@ def test_the_checks_see_a_violation() -> None:
     assert any(t == "httpx" for t in raw_imports("fbi.ai.providers"))
     assert CLIENT_TABLES.search("SELECT email FROM auth.users") and CLIENT_TABLES.search("JOIN picks.user_picks up")
     assert not CLIENT_TABLES.search("FROM picks.picks p")
+
+
+INTELLIGENCE = ("models", "features", "predictions", "backtesting", "domain", "picks", "intel", "ai", "analyst",
+                "research", "families", "forecasting", "knowledge", "odds", "parlays", "truth", "validation", "market",
+                "quality", "catalog", "competitions", "people", "datasets", "migration")
+"""PrediGol Intelligence and the data it is built on: what the messenger (plan UX, A5) must never load."""
+
+
+def test_the_messenger_reaches_no_model_and_no_decision() -> None:
+    """Plan UX, A5: the messenger sends the readers' messages with the API's role, "sin acceso a modelos ni
+    decisiones" - nothing it imports, at any depth, is PrediGol Intelligence."""
+    reach = closure([name for name in modules() if name.startswith("fbi.messaging")])
+    assert "fbi.messaging.runner" in reach and "fbi.ingestion.ledger" in reach, "the messenger's imports were not followed"
+    into = sorted(name for name in reach if package_of(name) in INTELLIGENCE)
+    assert not into, f"the messenger can load PrediGol Intelligence: {into}"
+
+
+def test_the_api_never_loads_the_providers_client() -> None:
+    """The API queues and previews messages; only the messenger holds the provider's HTTP client - and the push
+    services' (plan UX, B7): the API subscribes devices and queues notices, the messenger sends them."""
+    reach = closure(["fbi.api.app"])
+    assert "fbi.messaging.outbox" in reach and "fbi.api.routers.messaging" in reach
+    assert "fbi.messaging.email" not in reach and "fbi.messaging.runner" not in reach
+    assert "fbi.customer.push" in reach and "fbi.messaging.push" in reach, "the API's side of the notices"
+    assert "fbi.messaging.push_jobs" not in reach, "only the messenger calls a push service"
+    assert "httpx" not in raw_imports("fbi.messaging.push") and "httpx" not in raw_imports("fbi.customer.push")
+
+
+USER_AI_TABLES = re.compile(r"\bai\.(?:user_narratives|evidence_translations|user_usage)\b")
+"""The readers' AI (plan UX, A11): its narratives, its translations of the news and its own spend."""
+
+USER_AI_MODULES = frozenset({"fbi.narrative.job", "fbi.ai.user_budget"})
+"""The readers' AI: its job (``fbi.narrative``, outside Intelligence) and its budget, which lives beside Intelligence's in ``fbi.ai``
+and is not part of it."""
+
+MAY_NAME_USER_AI = {
+    "fbi.narrative.job": "writes the narrative and the translations, reads what it answered already",
+    "fbi.ai.user_budget": "the readers' budget: writes ai.user_usage and sums it",
+    "fbi.api.services.reading": "shows a reader the narrative of the reading beside it",
+    "fbi.api.services.news": "shows a reader an item's headline and English summary",
+    "fbi.api.services.ai_layer": "the Admin Console's view of the readers' AI beside Intelligence's",
+}
+"""The only modules that may name those tables, each with its reason."""
+
+
+def test_nothing_of_intelligence_reads_the_readers_ai() -> None:
+    """Plan UX, A11: models, decisions, picks, settlement and the AI's packet never read ``ai.user_narratives``,
+    ``ai.evidence_translations`` or ``ai.user_usage`` - nor load the modules that write them. Intelligence's budget sums
+    ``ai.usage`` and ``analytics.ai_runs`` only (``fbi.ai.usage.SPENT_SQL``)."""
+    naming = {name: sorted(set(USER_AI_TABLES.findall(path.read_text(encoding="utf-8"))))
+              for name, path in modules().items()}
+    naming = {name: tables for name, tables in naming.items() if tables}
+    unexpected = {name: tables for name, tables in naming.items() if name not in MAY_NAME_USER_AI}
+    assert not unexpected, f"these modules name the readers' AI tables without a listed reason: {unexpected}"
+    assert set(naming) == set(MAY_NAME_USER_AI), f"listed modules that no longer name them: {set(MAY_NAME_USER_AI) - set(naming)}"
+    intelligence = [name for name in modules() if package_of(name) in INTELLIGENCE and name not in USER_AI_MODULES]
+    reach = closure(intelligence)
+    assert "fbi.ai.packet" in reach and "fbi.intel.decision" in reach, "Intelligence's imports were not followed"
+    assert not reach & USER_AI_MODULES, f"PrediGol Intelligence can load the readers' AI: {sorted(reach & USER_AI_MODULES)}"
+    from fbi.ai import usage
+
+    assert "ai.usage" in usage.SPENT_SQL and not USER_AI_TABLES.search(usage.SPENT_SQL)
+
+
+SQL_CLIENT_TABLES = re.compile(r"(?<![\w.])(?:auth\.[a-z_]+|customer\.[a-z_]+|picks\.user_[a-z_]+)\b")
+"""A client's table as SQL names it - not a module path that happens to contain one (``fbi.auth.crypto`` in a docstring)."""
+
+
+def test_the_readers_ai_reads_no_clients_data() -> None:
+    """The narrative's call carries the match's facts only: nothing it loads - the user layer's packages included - names a
+    client's tables. (It reads the structured reading through the API's own service, which refuses with ``fbi.api.problem``,
+    not with the web layer's handlers that know the accounts.)"""
+    reach = closure(sorted(USER_AI_MODULES))
+    assert "fbi.api.services.reading" in reach and "fbi.ai.usage" in reach, "the readers' AI's imports were not followed"
+    into_user_layer = sorted(name for name in reach if package_of(name) in USER_LAYER)
+    assert not into_user_layer, f"the readers' AI can load the user layer: {into_user_layer}"
+    naming = {name: sorted(set(SQL_CLIENT_TABLES.findall(modules()[name].read_text(encoding="utf-8"))))
+              for name in sorted(reach)}
+    naming = {name: tables for name, tables in naming.items() if tables}
+    assert not naming, f"files the readers' AI loads name a client's tables: {naming}"

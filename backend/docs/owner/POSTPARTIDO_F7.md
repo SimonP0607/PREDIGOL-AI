@@ -1,5 +1,7 @@
 # Postpartido (Match Knowledge): lo que un partido terminado resultó ser, en nueve capas y aparte de lo que se dijo antes (Plan Maestro, fase F7)
 
+> **Desde la fase A9 del plan UX** (aprobada por el dueño con el plan), los usuarios ven el postpartido (capas c1–c6; c7–c9 siguen siendo solo tuyas) sin hacer nada: `FBI_KNOWLEDGE_USERS` vale «encendido» cuando su línea no está, y `FBI_KNOWLEDGE_USERS=0` lo vuelve a ocultar sin desplegar (se recrea la API). Donde este documento dice «apagado hasta que el dueño decida», describe el estado anterior a A9. Guía: `VALOR_DIARIO_UX_A9.md`.
+
 **Qué es.** Cuando un partido termina, lo que PrediGol sabe de él está repartido en una docena de tablas que escriben trabajos distintos en
 momentos distintos: el resultado y sus correcciones, las estadísticas de los equipos, la lista de eventos, las hojas de alineación y las
 cifras de cada jugador, las cuotas desde la apertura hasta el cierre, las decisiones y los picks con su desenlace y el post-mortem. Cada

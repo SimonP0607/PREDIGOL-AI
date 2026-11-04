@@ -8,6 +8,8 @@ import type { ParlayProgress, ParlayStatus, ResultStatus } from "@/lib/api/v1/ty
 import { matchPhaseOf, minuteText, shortStatus } from "@/product/matches/status";
 import { parlayOutcome, parlayTone, resultTone, type ParlayOutcome, type Tone } from "./model";
 import { fmtUnits } from "./units";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
+import type { TermKey } from "@/lib/glossary";
 
 const TONE: Record<Tone, string> = {
   win: "border-positive/40 bg-positive-soft text-positive",
@@ -18,7 +20,16 @@ const TONE: Record<Tone, string> = {
 };
 
 const BADGE =
-  "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold";
+  "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-micro font-semibold";
+
+/** The results a reader may not know (plan UX, A3): the badge's word opens its definition. Never inside a link: every
+ * result badge sits beside a card's link, not in it. */
+const RESULT_TERM: Partial<Record<ResultStatus, TermKey>> = {
+  PUSH: "push",
+  VOID: "void",
+  HALF_WIN: "halfWon",
+  HALF_LOSS: "halfLost",
+};
 
 export function ResultBadge({
   status,
@@ -27,13 +38,18 @@ export function ResultBadge({
   status: ResultStatus;
   className?: string | undefined;
 }) {
+  const term = RESULT_TERM[status];
   return (
     <span
       data-testid="result-badge"
       data-status={status}
       className={cn(BADGE, TONE[resultTone(status)], className)}
     >
-      {t(`records.status.${status}`)}
+      {term ? (
+        <GlossaryTerm term={term}>{t(`records.status.${status}`)}</GlossaryTerm>
+      ) : (
+        t(`records.status.${status}`)
+      )}
     </span>
   );
 }
@@ -194,7 +210,7 @@ export function OriginLabel({
     <span
       data-testid={`origin-${origin}`}
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 text-[0.7rem] font-semibold uppercase tracking-wider",
+        "inline-flex shrink-0 items-center gap-1 text-micro font-semibold uppercase tracking-wider",
         origin === "predigol" ? "text-gold" : "text-primary",
         className,
       )}
@@ -216,7 +232,7 @@ export function EvaluationBadge({ className }: { className?: string | undefined 
       data-testid="evaluation-badge"
       title={t("records.evaluation.body")}
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full border border-info/40 bg-info-soft px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-info",
+        "inline-flex shrink-0 items-center gap-1 rounded-full border border-info/40 bg-info-soft px-2 py-0.5 text-micro font-bold uppercase tracking-wider text-info",
         className,
       )}
     >

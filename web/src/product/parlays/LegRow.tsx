@@ -18,7 +18,7 @@ export function LegNumber({ n }: { n: number }) {
   return (
     <span
       aria-hidden
-      className="numeric flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft text-[0.65rem] font-semibold text-gold-strong"
+      className="numeric flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft text-micro font-semibold text-gold-strong"
     >
       {n}
     </span>

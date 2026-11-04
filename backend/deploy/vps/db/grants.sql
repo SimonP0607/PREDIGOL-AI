@@ -2,11 +2,18 @@
 --
 --   fbi              OWNS the database and every object in it: migrations, backups, maintenance. NOSUPERUSER.
 --   predigol_worker  the worker: reads and writes every data schema (core, market, features, models, picks, raw,
---                    audit, analytics ...). No DDL, nothing in auth, never the migration ledger.
---   predigol_api     the API: reads what it shows; writes only accounts (auth), a user's own records
---                    (picks.user_*) and the Admin Console's few tables (AI layer, research decisions, the
---                    evidence-ledger verdicts, the AI decision layer's run requests). Never ai.* results: those
---                    are the worker's, append-only.
+--                    audit, analytics ...). No DDL, nothing in auth or customer, never the migration ledger.
+--   predigol_api     the API: reads what it shows; writes only accounts (auth, their one-use links included -
+--                    plan UX, A7), the customer's own data (customer: consents, privacy requests - A4; the
+--                    messages to readers and their choices - A5; product analytics - A6; the membership - A8), a
+--                    user's own records (picks.user_*) and the Admin Console's few tables (AI layer, research
+--                    decisions, the evidence-ledger verdicts, the AI decision layer's run requests). Never ai.*
+--                    results: those are the worker's, append-only.
+--                    The messenger (plan UX, A5) runs with this role: it also drafts the owner's notices
+--                    (audit.notifications), records its cycles in the job ledger (raw.ingestion_runs), keeps
+--                    the product analytics' daily aggregate and retention (A6), records the notices of a
+--                    membership's end (A8), keeps the readers' feedback's retention (B6) and writes and sends the
+--                    readers' notices on their devices (B7).
 --   predigol_rollback  (NOLOGIN, created by the operator: db/roles.sql) the automatic roll-back of an agent's promotion:
 --                    reads intel.promotions and inserts into it, nothing else anywhere. Which row it may insert is the
 --                    row policy of migration 0111, not this file: the worker reaches the role with SET ROLE.
@@ -29,6 +36,15 @@ BEGIN
     IF s = 'auth' THEN
       EXECUTE 'REVOKE ALL ON ALL TABLES IN SCHEMA auth FROM predigol_worker';
       EXECUTE 'REVOKE USAGE ON SCHEMA auth FROM predigol_worker';
+    ELSIF s = 'customer' THEN
+      -- The customer's own data (plan UX, A4) is treated as auth is: the worker of PrediGol Intelligence never reads
+      -- it. Its sequences and the default privileges too, so a table a later migration adds never reaches the worker,
+      -- even after a run of an older version of this file.
+      EXECUTE 'REVOKE ALL ON ALL TABLES IN SCHEMA customer FROM predigol_worker';
+      EXECUTE 'REVOKE ALL ON ALL SEQUENCES IN SCHEMA customer FROM predigol_worker';
+      EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE fbi IN SCHEMA customer REVOKE ALL ON TABLES FROM predigol_worker';
+      EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE fbi IN SCHEMA customer REVOKE ALL ON SEQUENCES FROM predigol_worker';
+      EXECUTE 'REVOKE USAGE ON SCHEMA customer FROM predigol_worker';
     ELSE
       EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO predigol_worker', s);
       EXECUTE format('GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA %I TO predigol_worker', s);
@@ -70,6 +86,41 @@ DECLARE
   seq regclass;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
+    -- the customer's own data (fbi.customer, plan UX, A4): a consent and a request's message are never edited or
+    -- deleted (the tables' own triggers refuse it too); a request's status changes
+    'customer.consents:INSERT', 'customer.support_tickets:INSERT, UPDATE', 'customer.ticket_messages:INSERT',
+    -- the messages to readers and their choices (fbi.messaging, plan UX, A5): a queued message's fate changes, it
+    -- is never deleted (the table's own triggers refuse it too); the owner's notices the messenger drafts (the
+    -- worker's notifier sends them) and the messenger's cycles in the job ledger
+    'customer.messages_outbox:INSERT, UPDATE',
+    -- a reader's choices; deleted with the rest of what the reader keeps when their account is anonymised at their
+    -- request, with the owner's confirmation (fbi.auth.anonymize, plan UX, A7)
+    'customer.preferences:INSERT, UPDATE, DELETE',
+    'audit.notifications:INSERT', 'raw.ingestion_runs:INSERT, UPDATE',
+    -- product analytics (fbi.customer.events, plan UX, A6): the API records a reader's events; the messenger
+    -- recomputes the daily aggregate and, once the owner switches the purge on, deletes what is past its retention
+    -- (raw events 90 days, aggregates 13 months)
+    'customer.product_events:INSERT, DELETE', 'customer.activity_daily:INSERT, UPDATE, DELETE',
+    -- the membership (fbi.customer.membership, plan UX, A8): the owner's payments, periods and their events, and the
+    -- messenger's notices of a period's end - recorded, never edited or deleted (the tables' own triggers refuse it)
+    'customer.payments:INSERT', 'customer.membership_periods:INSERT', 'customer.membership_events:INSERT',
+    -- a reader's favourite leagues and teams (fbi.customer.favorites, plan UX, A13): chosen or removed, never edited; deleted
+    -- with the rest of what the reader keeps when the account is anonymised (A7)
+    'customer.favorites:INSERT, DELETE',
+    -- what readers think of PrediGol (fbi.customer.feedback, plan UX, B6): the survey answered or closed, «¿Te sirvió?»
+    -- answered and changed; deleted when the account is anonymised (A7) and, once the owner switches the purge on, by the
+    -- messenger past its 24 months
+    'customer.feedback:INSERT, UPDATE, DELETE',
+    -- the readers' notices on their devices (fbi.customer.push and fbi.messaging.push_jobs, plan UX, B7): a browser allowed
+    -- and revoked (never edited otherwise), a match's bell rung, changed and taken away, the queue written and its fate
+    -- recorded; all deleted when the account is anonymised (A7) and, once the owner switches the purge on, by the messenger
+    -- (notices past 90 days, revoked browsers past 30)
+    'customer.push_subscriptions:INSERT, UPDATE, DELETE', 'customer.match_alerts:INSERT, UPDATE, DELETE',
+    'customer.push_notices:INSERT, UPDATE, DELETE',
+    -- each customer's state of the day (fbi.customer.lifecycle, plan UX, B11): written once a day by the messenger, never edited
+    -- (the table's own trigger refuses it); deleted only when the account is anonymised (A7) and, once the owner switches the
+    -- purge on, past its 24 months - both under the maintenance switch
+    'customer.lifecycle_snapshots:INSERT, DELETE',
     -- a user's own records (fbi.userdata)
     'picks.user_picks:INSERT, UPDATE, DELETE', 'picks.user_parlays:INSERT, UPDATE, DELETE',
     'picks.user_parlay_legs:INSERT, UPDATE, DELETE',

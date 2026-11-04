@@ -6,7 +6,10 @@ the browser is presentation, not protection. A route belongs to exactly one tier
   public     /health, /auth/login, /auth/logout
   session    /auth/me and the steps that finish signing in (second factor, enrolment, required new password):
              any live session, whatever its stage
-  APP        the product (any signed-in, active account whose sign-in is complete)
+  APP        the product (any signed-in, active account whose sign-in is complete; with FBI_CONSENT_GATE on, one
+             that has accepted the current texts - else 403 consent_required; with FBI_MEMBERSHIP_ENFORCE on, one
+             whose membership has not ended - else 403 membership_expired, its own records still readable), the
+             account, its membership and the reader's rights
   ADMIN      /api/v1/admin/* (SUPER_ADMIN)
 
 A request with no valid session gets 401; a session still owing a step gets 403 with that step's code
@@ -31,6 +34,7 @@ from fbi.api.limits import SlidingWindow
 from fbi.auth.roles import Permission
 from fbi.auth.service import STAGE_REFUSALS, Principal, principal_from_token
 from fbi.auth.settings import session_settings
+from fbi.customer import consents, membership
 
 DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
@@ -130,6 +134,37 @@ def clear_session_cookie(response: Response) -> None:
     cfg = session_settings()
     response.delete_cookie(key=cfg.cookie_name, path="/", secure=cfg.cookie_secure, httponly=True,
                            samesite=cfg.cookie_samesite)
+
+
+def consent_required(conn: Db, principal: Annotated[Principal, Depends(current_principal)]) -> None:
+    """The product is used with the current versions of the four required consents (plan UX, A4). Off until
+    FBI_CONSENT_GATE says otherwise and no required text is a draft; SUPER_ADMIN and the synthetic journey's account
+    are exempt (fbi.customer.consents). 403 ``consent_required``: the page shows the boxes."""
+    if not consents.gate_enabled() or consents.exempt(principal.email, super_admin=principal.is_super_admin):
+        return
+    if consents.due_cached(conn, principal.user_id):
+        raise ApiError(403, "consent_required", "accept the current terms to continue")
+
+
+MEMBERSHIP_READS = frozenset({"/api/v1/me/picks", "/api/v1/me/parlays", "/api/v1/me/history", "/api/v1/me/picks/summary",
+                              "/api/v1/me/picks/export", "/api/v1/me/parlays/export"})
+"""What a limited account still reads of the product (plan UX, A8): its own saved picks and parlays and their history
+- to read, never to change - and, from B5, their totals and their CSV files (reading one's own data is a right)."""
+
+
+def membership_required(request: Request, conn: Db, principal: Annotated[Principal, Depends(current_principal)],
+                        ) -> None:
+    """The product with a membership in force (plan UX, A8). Off until FBI_MEMBERSHIP_ENFORCE says otherwise; the owner
+    and the synthetic journey's account are exempt, and so is an account without any period (it says so in the
+    console). An ended membership - after its 3 days of grace - or a suspended one reads only its own records: 403
+    ``membership_expired`` / ``membership_suspended`` elsewhere, and the page shows what it can do and how to renew."""
+    if not membership.enforced() or consents.exempt(principal.email, super_admin=principal.is_super_admin):
+        return
+    m = membership.gate_cached(conn, principal.user_id, email=principal.email, super_admin=principal.is_super_admin)
+    if not m.limited or (request.method in SAFE_METHODS and request.url.path in MEMBERSHIP_READS):
+        return
+    code = "membership_suspended" if m.state == "suspended" else "membership_expired"
+    raise ApiError(403, code, "this membership has ended: renew to use the product")
 
 
 require_app = require(Permission.APP)

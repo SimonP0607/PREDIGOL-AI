@@ -1,0 +1,233 @@
+/**
+ * The readers' privacy requests (plan UX, A4): queries, claims and deletion requests, open first by their legal
+ * deadline in Colombian business days, with the thread and the owner's answer - a new status, or the one extension
+ * the law allows (the answer says why and until when). Each answer is audited (an admin write). A deletion request,
+ * once answered, offers the deletion itself: the account's anonymisation, with its address typed again (A7).
+ */
+import { useState, type FormEvent } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2, ShieldQuestion } from "lucide-react";
+import { v1 } from "@/lib/api/v1/client";
+import type { AdminPrivacyRequest, TicketStatus } from "@/lib/api/v1/types_customer";
+import { t } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/time";
+import { cn } from "@/lib/utils";
+import { Card, ErrorState, errorMessage } from "@/product/shared/States";
+import { dayOf } from "@/product/legal/links";
+import { AnonymiseAccount } from "./AnonymiseAccount";
+import { anonymisedSummary, isAnonymised } from "./anonymised";
+
+function daysLeft(deadline: string): number {
+  const end = Date.parse(`${deadline.slice(0, 10)}T23:59:59-05:00`);
+  return Math.floor((end - Date.now()) / 86_400_000);
+}
+
+/** The owner's answer to a privacy request: a new status or the one extension (also used by the support inbox, A14). */
+export function PrivacyAnswer({
+  id,
+  canExtend,
+  onDone,
+}: {
+  id: number;
+  /** The law allows one extension: offered while it has not been used. */
+  canExtend: boolean;
+  onDone?: (() => void) | undefined;
+}) {
+  const qc = useQueryClient();
+  const [body, setBody] = useState("");
+  const [status, setStatus] = useState<TicketStatus>("answered");
+  const [extend, setExtend] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setFailure(null);
+    try {
+      await v1.answerPrivacyRequest(id, { body: body.trim(), status, extend });
+      setBody("");
+      setExtend(false);
+      await qc.invalidateQueries({ queryKey: ["admin", "privacy-requests"] });
+      onDone?.();
+    } catch (err) {
+      setFailure(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={(e) => void submit(e)} className="space-y-2">
+      <textarea
+        value={body}
+        rows={3}
+        maxLength={4000}
+        placeholder={t("legal.admin.answerPlaceholder")}
+        onChange={(e) => setBody(e.target.value)}
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-xs">
+          {t("legal.admin.status")}
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as TicketStatus)}
+            className="h-9 rounded-md border border-input bg-background px-2 text-sm pointer-coarse:h-11"
+          >
+            {(["open", "answered", "closed"] as const).map((s) => (
+              <option key={s} value={s}>
+                {t(`legal.privacy.status.${s}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {canExtend ? (
+          <label className="flex min-h-11 items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={extend}
+              onChange={(e) => setExtend(e.currentTarget.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            {t("legal.admin.extend")}
+          </label>
+        ) : null}
+        <button
+          type="submit"
+          disabled={busy || !body.trim()}
+          className="tap-y relative inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground disabled:opacity-50 pointer-coarse:h-11"
+        >
+          {busy ? <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> : null}
+          {t("legal.admin.send")}
+        </button>
+      </div>
+      {failure ? (
+        <p role="alert" className="text-xs text-negative">
+          {failure}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+/** The deletion itself, after the answer: until then the button waits (the answer is the reader's last e-mail). */
+export function DeletionStep({
+  request,
+  onDone,
+}: {
+  request: Pick<AdminPrivacyRequest, "id" | "user_id" | "email" | "messages">;
+  onDone: (notice: string) => void;
+}) {
+  const answered = request.messages.some((m) => m.author === "owner");
+  return (
+    <div
+      className="flex flex-wrap items-center gap-2 rounded-md border border-negative/30 p-2"
+      data-testid={`deletion-step-${request.id}`}
+    >
+      <p className="min-w-0 flex-1 text-xs text-muted-foreground">{t("admin.users.answerFirst")}</p>
+      <AnonymiseAccount
+        userId={request.user_id}
+        email={request.email}
+        disabled={!answered}
+        onDone={(r) => onDone(anonymisedSummary(r))}
+      />
+    </div>
+  );
+}
+
+export function PrivacyRequestsCard() {
+  const [all, setAll] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const q = useQuery({
+    queryKey: ["admin", "privacy-requests", all ? "all" : "open"],
+    queryFn: () => v1.privacyRequests(all ? "all" : "open"),
+  });
+  return (
+    <Card className="p-4">
+      <div className="space-y-3" data-testid="admin-privacy-requests">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+            <ShieldQuestion aria-hidden className="h-4 w-4 text-primary" />
+            {t("legal.admin.title")}
+          </h2>
+          <button
+            type="button"
+            onClick={() => setAll((v) => !v)}
+            className="tap-y relative rounded-md border border-border-strong px-3 py-1.5 text-xs hover:bg-elevated"
+          >
+            {all ? t("legal.admin.showOpen") : t("legal.admin.showAll")}
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground">{t("legal.admin.help")}</p>
+        {notice ? (
+          <p role="status" className="text-xs text-positive" data-testid="privacy-notice">
+            {notice}
+          </p>
+        ) : null}
+        {q.isPending ? (
+          <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
+        ) : q.isError ? (
+          <ErrorState error={q.error} onRetry={() => void q.refetch()} />
+        ) : q.data.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("legal.admin.empty")}</p>
+        ) : (
+          <ul className="space-y-3">
+            {q.data.map((r) => {
+              const left = r.deadline && r.status !== "closed" ? daysLeft(r.deadline) : null;
+              return (
+                <li
+                  key={r.id}
+                  className="space-y-2 rounded-md border border-border p-3"
+                  data-testid={`privacy-request-${r.id}`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">{t(`legal.privacy.kind.${r.kind}`)}</div>
+                      <div className="break-all text-caption text-muted-foreground">{r.email}</div>
+                    </div>
+                    <div className="text-right text-caption">
+                      <div>{t(`legal.privacy.status.${r.status}`)}</div>
+                      {r.deadline && r.status !== "closed" ? (
+                        <div
+                          className={cn(
+                            "font-semibold",
+                            left !== null && left < 0
+                              ? "text-negative"
+                              : left !== null && left <= 4
+                                ? "text-warning"
+                                : "text-foreground",
+                          )}
+                        >
+                          {r.extended_to
+                            ? t("legal.privacy.extended", { date: dayOf(r.extended_to) })
+                            : t("legal.privacy.deadline", { date: dayOf(r.deadline) })}
+                          {left !== null && left < 0 ? ` · ${t("legal.admin.overdue")}` : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <ul className="space-y-1.5 border-l border-border pl-3">
+                    {r.messages.map((m, i) => (
+                      <li key={`${m.at}-${i}`} className="text-xs">
+                        <span className="font-semibold">{t(`legal.admin.author.${m.author}`)}</span>
+                        <span className="text-muted-foreground"> · {formatDateTime(m.at)}</span>
+                        <p className="whitespace-pre-line break-words">{m.body}</p>
+                      </li>
+                    ))}
+                  </ul>
+                  {r.status !== "closed" ? (
+                    <PrivacyAnswer id={r.id} canExtend={r.extended_to === null} />
+                  ) : null}
+                  {r.kind === "privacy_deletion" && !isAnonymised(r.email) ? (
+                    <DeletionStep request={r} onDone={setNotice} />
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </Card>
+  );
+}

@@ -8,6 +8,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from fbi.api.contracts.common import Contract
+from fbi.api.contracts.membership import MembershipSummary
 
 Language = Literal["es", "en"]
 Stage = Literal["mfa", "enroll", "password", "full"]
@@ -43,6 +44,29 @@ class Me(Contract):
                                                                     "Sentry: an HMAC of its id under the server's "
                                                                     "key, never the id or the email (plan UX, A2). "
                                                                     "Null when the server has no key.")
+    consents_due: list[str] = Field(default_factory=list, description="The consents the reader must accept before "
+                                                                      "using the product (plan UX, A4): empty while "
+                                                                      "the gate is off or nothing is owed. Filled by "
+                                                                      "GET /auth/me; a 403 consent_required elsewhere "
+                                                                      "means: ask /auth/me again.")
+    membership: MembershipSummary | None = Field(default=None, description="The account's membership now (plan UX, "
+                                                                           "A8), filled by GET /auth/me: None for "
+                                                                           "the owner's accounts (no membership).")
+    welcome_due: bool = Field(default=False, description="The account still owes its welcome (plan UX, A13; FBI_ONBOARDING): "
+                                                         "the page opens /welcome after the consents. Readers only, once.")
+    welcome_steps: list[str] = Field(default_factory=list, description="football (the favourites) and, for a new account, "
+                                                                       "about («Qué es PrediGol»).")
+    hints_seen: list[str] = Field(default_factory=list, description="The first-visit hints the reader dismissed (picks, match, "
+                                                                    "parlay, my_picks): never shown again.")
+    transparency: bool = Field(default=False, description="«Cómo le va a PrediGol» is open to readers (plan UX, A12; "
+                                                          "FBI_TRANSPARENCY, off until the owner reviewed it): the page "
+                                                          "links to it only then.")
+    support: bool = Field(default=False, description="A reader can write to PrediGol from the page (plan UX, A14; "
+                                                     "FBI_SUPPORT, on unless the owner turned it off): «Reportar un "
+                                                     "problema» in Ayuda, in an error and in a match.")
+    explain: bool = Field(default=False, description="«Explícame» answers the frequent questions of a match, a pick and "
+                                                     "the parlay being built (plan UX, B9; FBI_EXPLAIN, on unless the "
+                                                     "owner turned it off): the page shows its buttons only then.")
 
 
 class PreferencesIn(BaseModel):
@@ -137,7 +161,9 @@ class AdminUser(Contract):
     email: str
     display_name: str
     role: str
-    status: Literal["active", "disabled"]
+    status: Literal["active", "disabled", "invited", "deleted"] = Field(
+        description="invited: created by an invitation, not activated yet; deleted: anonymised at the reader's "
+                    "request (plan UX, A7) - its address is masked and nothing about it changes any more.")
     language: Language
     timezone: str
     created_at: datetime
@@ -149,6 +175,10 @@ class AdminUser(Contract):
     locked_until: datetime | None = None
     failed_logins: int = 0
     recovery_codes_left: int = 0
+    membership: MembershipSummary | None = Field(default=None, description="The membership now (plan UX, A8): read "
+                                                                           "by the list; None for the owner's "
+                                                                           "accounts and in the answer to an action "
+                                                                           "(the console reads the list again).")
 
 
 class AdminUserCreate(BaseModel):
@@ -194,3 +224,98 @@ class AuditEvent(Contract):
     email: str | None = Field(description="The address that was tried, for sign-ins of unknown accounts.")
     ip: str | None
     detail: dict[str, Any]
+
+
+# ── account and access (plan UX, A7) ──────────────────────────────────────────────────
+
+class AccountOptions(Contract):
+    self_service: bool = Field(description="Invitations, password recovery and unlocking by e-mail are on "
+                                           "(FBI_SELF_SERVICE). Off, the owner gives accounts a temporary password.")
+
+
+class TokenIn(BaseModel):
+    """A one-use link's token, as the page read it from the link's fragment (#t=...): never in a URL the server
+    sees."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=1, max_length=128)
+
+
+class ActivationInfo(Contract):
+    email: str
+    display_name: str
+    language: Language
+    timezone: str
+
+
+class ActivateIn(TokenIn):
+    password: str = Field(min_length=1, max_length=256)
+    language: Language
+    timezone: str = Field(min_length=1, max_length=64)
+
+
+class EmailIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=1, max_length=254)
+
+
+class ResetInfo(Contract):
+    email: str
+    mfa: bool = Field(description="The account has a second factor: a code from its app (or a recovery code) is "
+                                  "asked with the new password (R25 of the security plan).")
+
+
+class ResetIn(TokenIn):
+    password: str = Field(min_length=1, max_length=256)
+    code: str | None = Field(default=None, max_length=12)
+    recovery_code: str | None = Field(default=None, max_length=24)
+
+
+class IdentityIn(BaseModel):
+    """Ending another session of one's own account: the password, or a code of the second factor (ASVS 7.5.2; R25 of
+    the security plan) - either is enough. Not needed to end the session in use (that is signing out)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    password: str | None = Field(default=None, max_length=256)
+    code: str | None = Field(default=None, max_length=12)
+
+
+class Accepted(Contract):
+    status: Literal["accepted"] = Field(default="accepted", description="Always the same answer: whether or not the "
+                                                                        "address has an account, whether or not an "
+                                                                        "e-mail leaves.")
+
+
+class AdminInviteIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=3, max_length=254)
+    display_name: str | None = Field(default=None, max_length=80)
+    language: Language = "es"
+    timezone: str = Field(default="America/Bogota", max_length=64)
+    trial_days: int | None = Field(default=None, ge=7, le=14, description="The trial this account gets when it is "
+                                                                          "activated (plan UX, A8); FBI_TRIAL_DAYS "
+                                                                          "by default.")
+
+
+class AdminAnonymiseIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    confirm: str = Field(min_length=3, max_length=254, description="The account's address, typed again.")
+
+
+class AdminAnonymised(Contract):
+    user: AdminUser
+    picks: int
+    parlays: int
+    sessions: int
+    messages_dropped: int = Field(description="Messages still queued for the reader that will not be sent.")
+    trail_rows: int = Field(description="Rows of the sign-in trail whose typed address was masked.")
+
+
+class SelfServiceState(Contract):
+    self_service: bool
+    email_sending: bool = Field(description="FBI_EMAIL_SEND: off, invitations wait in the queue.")
