@@ -678,6 +678,49 @@ def coverage(document: Mapping[str, Any], *, naming: Naming) -> dict[str, str]:
     return {code: EVALUATED if ready[code] else INPUT_MISSING for code in sorted(ready)}
 
 
+NOT_APPLICABLE: Final = "not_applicable"
+"""What ``coverage_by_family`` says of a rule that does not concern a family at all (C05 is about the cards)."""
+RULE_FAMILIES: Final[dict[str, tuple[str, ...]]] = {"C05": ("CARDS",)}
+"""The families a rule is limited to (the others concern every family): C05 touches only the Over of cards."""
+
+
+def coverage_by_family(document: Mapping[str, Any], *, naming: Naming) -> dict[str, dict[str, str]]:
+    """``coverage`` for each family the candidates have (phase 4: the Statistics Agent works on CORNERS and CARDS): for each code, ``evaluated`` when the package
+    has what the rule reads FOR THAT FAMILY, ``input_missing`` when it does not, and ``not_applicable`` for a rule the family is not in (C05 is about the cards).
+    A rule that did not fire because its input was missing is not a rule that found nothing: C05 reads ``shared.referee.multiplier`` and, while no builder writes
+    it, says ``input_missing`` for CARDS whatever the referee's ``cards_per_match`` is (the multiplier lives inside the forecasts of ``family-v1`` and is not
+    stored: a rate invented from other figures would be a statistic nobody measured). C06 is evaluated for a family when every one of its candidates has the
+    model's probability and the market's; C08 always (its input is the assessments)."""
+    doc: Mapping[str, Any] = document if isinstance(document, Mapping) else {}
+    named = _context(doc, naming).named
+    general = coverage(doc, naming=naming)
+    out: dict[str, dict[str, str]] = {}
+    for family in sorted({n.family for n in named}):
+        mine = [n for n in named if n.family == family]
+        row: dict[str, str] = {}
+        for code, state in general.items():
+            if code in RULE_FAMILIES and family not in RULE_FAMILIES[code]:
+                row[code] = NOT_APPLICABLE
+            elif code == "C06":
+                row[code] = EVALUATED if all(_gap_of(n) is not None for n in mine) else INPUT_MISSING
+            else:
+                row[code] = state
+        out[family] = row
+    return out
+
+
+def tally_by_family(items: Sequence[Contradiction], *, naming: Naming) -> dict[str, dict[str, int]]:
+    """How many contradictions of each code touch each family (a contradiction that touches candidates of two families counts once for each): the figure the
+    shadow records so that C05 and C08 of corners and cards can be read apart from those of goals and result."""
+    family_of_name = {n.key: n.family for n in naming.named}
+    out: dict[str, dict[str, int]] = {}
+    for c in items:
+        for family in sorted({family_of_name[k] for k in c.candidates if k in family_of_name}):
+            row = out.setdefault(family, {})
+            row[c.code] = row.get(c.code, 0) + 1
+    return out
+
+
 def facts_for(items: Sequence[Contradiction], candidate: str, *, hours_to_kickoff: Decimal | None, researched: bool = False
               ) -> dict[str, Any]:
     """The fields of ``router.Facts`` that ONLY the contradictions decide, for one candidate (by its name): a CONFIRMED absence that fires C01

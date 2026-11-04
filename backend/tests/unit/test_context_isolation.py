@@ -41,6 +41,9 @@ CONTEXT_MODULES: dict[str, dict[str, str]] = {
         "ai/brief.py": "the brief: which block of the packet carries which factor, so that a reason for a selection that rests on a "
                        "DESCRIPTIVE one is refused (it reads the catalogue and the words DESCRIPTIVE and VALIDATED)",
         "ai/packet.py": "the packet: the status of each context factor as of its moment, and the status each block says",
+        "ai/stats_factors.py": "the Statistics Agent (phase 4): which blocks and driver codes of the packet a stance may not rest on while a factor is "
+                               "DESCRIPTIVE, and the two relations it records as DESCRIPTIVE in the registry (it reads the catalogue's keys and blocks "
+                               "and the words DESCRIPTIVE and VALIDATED, and nothing else; it never validates)",
         "intel/leakage.py": "the nightly proof: the rule factors_known (it reads the catalogue's keys and blocks and nothing else)",
         "familydecisions/decide.py": "the decision of a family (F11, shadow) writes on its record which context factors could explain the family and "
                                      "the standing each had when it decided (it reads each factor's version and the words DESCRIPTIVE and VALIDATED, and "

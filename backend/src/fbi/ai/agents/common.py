@@ -18,12 +18,19 @@ from decimal import Decimal
 from typing import Any, Final, Literal, get_args
 
 from fbi.ai.contracts.assessment import CANDIDATES_MAX, AssessmentOut
-from fbi.ai.contracts.base import FAMILIES, GOALS_RESULT, Agent, Family, Mode, paths_of
+from fbi.ai.contracts.base import COUNTS, FAMILIES, GOALS_RESULT, Agent, Family, Mode, paths_of
 from fbi.ai.contracts.mcp import family_of
 from fbi.ai.review import Candidate
 
 NAMING_VERSION: Final = "cand-names-v1"
 """The method of the names. Changing it changes which selection is ``c1`` in every stored run: it is a new name here, never an edit."""
+NAMING_COUNTS_VERSION: Final = "cand-names-v2"
+"""The method of the names when the Statistics Agent is on (phase 4, ``name_with_counts``): the names of goals and result are EXACTLY those of
+``cand-names-v1`` and the selections of corners and cards follow them. Nothing already stored changes name."""
+HALF_TOKENS: Final = frozenset({"1H", "2H", "HT", "FH", "SH", "H1", "H2", "HALF"})
+"""The parts of a market key that say it is about ONE half. The settlement rules of the catalogue (``fbi.market.rules``) cannot grade the corners
+of a half (``no_period_data``: the provider gives corners as a total of the match), and the owner has not chosen a convention for the cards of a
+half: neither is ever named for an agent."""
 FAMILY_ORDER: Final[dict[str, int]] = {family: i for i, family in enumerate(FAMILIES)}
 """The families in the order of the contracts (1X2, DC, AH, OU, BTTS, CORNERS, CARDS): the order the names follow."""
 
@@ -97,6 +104,42 @@ def name_candidates(candidates: Iterable[Candidate], *, families: Collection[str
     kept.sort(key=lambda pair: _order(pair[0], pair[1]))
     named = tuple(Named(f"c{i}", c, family) for i, (c, family) in enumerate(kept, start=1))
     return Naming(named, tuple(left))
+
+
+def is_full_time(market_key: str) -> bool:
+    """Whether a market key is about the whole match: none of its parts (``CORNERS_OU_1H`` is ``CORNERS``, ``OU``, ``1H``) names a half."""
+    return not (set(market_key.strip().upper().split("_")) & HALF_TOKENS)
+
+
+def name_with_counts(candidates: Iterable[Candidate], *, limit: int = CANDIDATES_MAX) -> Naming:
+    """The names of ONE match when the Statistics Agent is on: ``name_candidates`` for goals and result - the very same names - and, after them,
+    the selections of corners and cards of the WHOLE match (``is_full_time``), in the order of the families, then market, selection and line.
+    The contract takes ``limit`` names: goals and result keep theirs, and the counts take the places that are left, the larger expected value
+    first (``beyond_the_limit`` for the rest). A count of a half is left out as ``period_not_settleable`` and a family nobody reads as before.
+    Pure: the same candidates give the same names whatever order they came in."""
+    every = tuple(candidates)
+    base = name_candidates(every, limit=limit)
+    pool: dict[tuple[int, str, str, Decimal], Candidate] = {}
+    for c in every:
+        if family_of(c.market_key) in COUNTS:
+            pool.setdefault(_identity(c), c)
+    left: list[tuple[Candidate, str]] = [(c, why) for c, why in base.left_out if family_of(c.market_key) not in COUNTS]
+    kept: list[tuple[Candidate, Family]] = []
+    for c in sorted(pool.values(), key=lambda x: (x.market_key, x.selection, x.line)):
+        family = family_of(c.market_key)
+        if family is None:
+            continue
+        if is_full_time(c.market_key):
+            kept.append((c, family))
+        else:
+            left.append((c, "period_not_settleable"))
+    room = max(0, limit - len(base.named))
+    ranked = sorted(kept, key=lambda pair: _worth(pair[0]))
+    left.extend((c, "beyond_the_limit") for c, _ in ranked[room:])
+    chosen = sorted(ranked[:room], key=lambda pair: _order(pair[0], pair[1]))
+    named = base.named + tuple(Named(f"c{len(base.named) + i}", c, family) for i, (c, family) in enumerate(chosen, start=1))
+    left.sort(key=lambda pair: (pair[0].market_key, pair[0].selection, pair[0].line, pair[1]))
+    return Naming(named, tuple(left), NAMING_COUNTS_VERSION)
 
 
 # -- what the agents read of each other -----------------------------------------------------------------------------------------------

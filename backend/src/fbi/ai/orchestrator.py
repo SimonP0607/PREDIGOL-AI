@@ -90,15 +90,16 @@ from typing import Any, Final, cast
 
 import psycopg
 
-from fbi.ai import arms, contra, gates, router, runtime, usage
+from fbi.ai import arms, contra, gates, router, runtime, stats_factors, usage
 from fbi.ai import package as mcp_package
 from fbi.ai import prompts as prompt_labels
-from fbi.ai.agents import council, match
-from fbi.ai.agents.common import Assessed, Contradiction, Naming, name_candidates
+from fbi.ai.agents import council, match, stats
+from fbi.ai.agents.common import Assessed, Contradiction, Naming, name_candidates, name_with_counts
 from fbi.ai.agents.registry import REGISTRY
 from fbi.ai.batch import BatchClient, BatchQueue, Task, estimate_cost
 from fbi.ai.config import AiSettings, Tier
-from fbi.ai.contracts.base import parse_ref
+from fbi.ai.contracts.base import GOALS_RESULT, parse_ref
+from fbi.ai.contracts.mcp import SLICE_NAMES
 from fbi.ai.idempotency import TaskIdentity
 from fbi.ai.orchestrator_store import (
     ABANDON_BEFORE,
@@ -165,6 +166,18 @@ ENGINE_VERSION: Final[dict[str, str]] = {
     arms.COUNCIL_SOLO: f"{arms.COUNCIL_SOLO}+{council.VERSION}+{router.VERSION}",
 }
 """``ai.pick_reviews.engine_version`` of each engine: the versions of what it is made of."""
+STATS_PART: Final = f"+{stats.VERSION}"
+"""What the engines that read the assessments add to their ``engine_version`` when the Statistics Agent is on (phase 4): a shadow row says whether the
+Council read the assessments of the Statistics Agent or not. With ``stats`` off the versions are exactly those above."""
+
+
+def engine_version(engine: str, *, with_stats: bool) -> str:
+    """``ENGINE_VERSION`` of an engine, with the Statistics Agent's version after the Match Agent's when the engine reads its assessments."""
+    base = ENGINE_VERSION[engine]
+    if with_stats and engine in WITH_MATCH:
+        return base.replace(f"+{match.VERSION}", f"+{match.VERSION}{STATS_PART}", 1)
+    return base
+
 
 EXPECTED: Final = timedelta(minutes=3)
 """How long a shadow pass is expected to take, for ``runtime.verdict``: it must END strictly before T-15."""
@@ -601,6 +614,14 @@ class _Pass:
     tiers_ok: dict[str, bool] = field(default_factory=dict)
     batch: BatchRun | None = None
     too_late: bool = False
+    slices: dict[str, mcp_package.Slice] = field(default_factory=dict)
+    """Every slice of the package, by name: ``ai.match_runs.slices`` keeps the measures of all of them, as the audit ``slice_known`` expects."""
+    stats_on: bool = False
+    """The Statistics Agent is on for this pass (phase 4): the candidates are named with the counts, and the arms that read assessments are given its own."""
+    stats_slice: mcp_package.Slice | None = None
+    """The ``stats`` slice of the package, when ``stats_on``."""
+    stats_note: str | None = None
+    """Why the Statistics Agent was not asked (a code), when it was on and nothing was asked of it."""
 
     @property
     def at(self) -> datetime:
@@ -710,7 +731,23 @@ class _Runner:
         if lapse(self.conn, at=self.at):
             self.conn.commit()
 
+    def register_relations(self) -> None:
+        """Phase 4: the relations the Statistics Agent is told nobody has tested are recorded in ``intel.context_factors`` as DESCRIPTIVE (idempotent: the
+        registry is append-only and a relation already decided is left alone). Fail open: a registry that cannot be written costs the shadow nothing."""
+        try:
+            stats_factors.register_relations(self.conn, at=self.at)
+            self.conn.commit()
+        except Exception as exc:  # the registry is a record of what is NOT a reason: not having it written changes no answer, so it never stops a pass
+            log.warning("orchestrator.relations_failed", extra={"code": type(exc).__name__})
+            try:
+                if not self.conn.closed:
+                    self.conn.rollback()
+            except Exception:  # a connection that cannot roll back is no connection to go on with: the next step of the run finds it out
+                pass
+
     def go(self) -> None:
+        if stats.AGENT in self.settings.agents:
+            self.register_relations()
         works = pending(self.conn, at=self.at, limit=self.limit)
         self.tally.considered = len(works)
         if not works:
@@ -772,12 +809,14 @@ class _Runner:
         )
         if package is None or package.fixture_id != w.fixture_id:
             raise LookupError(f"the packet {w.packet_id} is not the match's")
-        slice_ = mcp_package.slices_of(package)["match"]
+        slices = mcp_package.slices_of(package)
+        slice_ = slices["match"]
         packet = load_packet(self.conn, w.packet_id)
         if packet is None:
             raise LookupError(f"the packet {w.packet_id} is not there")
         rev = reviewed(self.conn, w)
-        naming = name_candidates(rev.candidates)
+        stats_on = self.stats_wanted(stored)
+        naming = name_with_counts(rev.candidates) if stats_on else name_candidates(rev.candidates)
         p = _Pass(
             work=w,
             engines=engines,
@@ -787,6 +826,9 @@ class _Runner:
             naming=naming,
             packet=packet,
             started=now,
+            slices=dict(slices),
+            stats_on=stats_on,
+            stats_slice=slices.get("stats") if stats_on else None,
         )
 
         reason: str | None = None
@@ -839,6 +881,14 @@ class _Runner:
             "orchestrator.pass",
             extra={"fixture": w.fixture_id, "pass": w.pass_kind, "engines": list(active)},
         )
+
+    def stats_wanted(self, stored: Sequence[StoredTask]) -> bool:
+        """Whether the Statistics Agent is on for this pass (phase 4). A pass that is new follows ``FBI_AI_AGENTS``; a pass of the Batch calendar keeps
+        what its first run decided (``route.stats``: the names of the candidates, and so every key of its tasks, depend on it) whatever the switch says
+        now. A pass stored before this phase has no such word and is a pass without the agent."""
+        if stored:
+            return stored[0].route.get("stats") is True
+        return stats.AGENT in self.settings.agents
 
     # -- the Batch calendar ------------------------------------------------------------------------------------------------------------
 
@@ -905,6 +955,8 @@ class _Runner:
                     "EVALUATION",
                     match.evaluation_request(p.slice_, p.naming, at=p.at, contradictions=contra0),
                 )
+            if not self.exhausted:
+                self.stats_task(p, contra0)
             match_waits = any(a.pending for a in p.match_users)
             if not match_waits:
                 contra1 = contra.detect(
@@ -970,6 +1022,7 @@ class _Runner:
                 match.evaluation_request(p.slice_, p.naming, at=p.at, contradictions=contra0),
                 batch=batch,
             )
+            total += self.stats_estimate(p, contra0, batch=batch)
         view = council.council_view(p.slice_, p.naming, assessments=(), contradictions=contra0)
         if view.fits:
             for engine in p.engines:
@@ -992,6 +1045,8 @@ class _Runner:
             models = [council.model_of(cast(council.CouncilLevel, ENGINE_LEVEL[engine]))]
             if engine in WITH_MATCH:
                 models.append(match.model_of("CONTEXT"))
+                if p.stats_on and p.stats_slice is not None and stats.model_of() not in models:
+                    models.append(stats.model_of())
             states = {m: self.circuit.state(m, now) for m in models}
             answers, invalid = store_arm_today(self.conn, engine, now)
             reasons = runtime.arm_pause(
@@ -1018,6 +1073,8 @@ class _Runner:
                 "EVALUATION",
                 match.evaluation_request(p.slice_, p.naming, at=p.at, contradictions=contra0),
             )
+        if not self.exhausted:
+            self.stats_task(p, contra0)
         return contra.detect(p.package.document, naming=p.naming, assessments=p.assessed, at=p.at)
 
     def match_task(self, p: _Pass, mode: str, request: JsonRequest) -> Asked:
@@ -1070,7 +1127,11 @@ class _Runner:
             self.finish_match(p, asked, reading, mode)
         return asked
 
-    def finish_match(self, p: _Pass, asked: Asked, reading: match.Reading, mode: str) -> None:
+    def finish_match(
+        self, p: _Pass, asked: Asked, reading: match.Reading, mode: str, *, agent: str = match.AGENT
+    ) -> None:
+        """Complete a task of the agents that assess (``match``, and ``stats`` in phase 4: the same contract, the same reader of an answer) and keep
+        its assessment, with the label the Council and the detector cite it by, when it stands."""
         if asked.reused:
             pass  # stored and paid before: nothing of it is written again
         elif reading.ok and reading.assessment is not None:
@@ -1088,12 +1149,86 @@ class _Runner:
             )
             self.tally.invalid += 1
             asked.data = None
-        got = match.assessed(reading, mode=cast(Any, mode))
+        got = (
+            stats.assessed(reading)
+            if agent == stats.AGENT
+            else match.assessed(reading, mode=cast(Any, mode))
+        )
         if got is not None and reading.assessment is not None:
             p.assessed.append(got)
             p.stances[got.label] = {c.candidate: c.stance for c in got.out.candidates}
             if got.out.research:
                 p.ignored_asks.extend(r.topic for r in got.out.research)
+
+    # -- the Statistics Agent --------------------------------------------------------------------------------------------------------
+
+    def stats_estimate(self, p: _Pass, contra0: Sequence[Contradiction], *, batch: bool) -> Decimal:
+        """What the Statistics Agent's task will cost, for the plan of the pass: nothing when it will not be asked."""
+        if not p.stats_on or p.stats_slice is None or not stats.asked_keys(p.naming):
+            return Decimal(0)
+        try:
+            request = stats.evaluation_request(p.stats_slice, p.naming, at=p.at, contradictions=contra0)
+        except ValueError:  # a slice that cannot be asked about costs nothing: the task is skipped, with the code
+            return Decimal(0)
+        return self.estimate(stats.model_of(), request, batch=batch)
+
+    def stats_task(self, p: _Pass, contra0: Sequence[Contradiction]) -> Asked | None:
+        """The Statistics Agent's task: the corners and cards of the whole match, assessed over the ``stats`` slice (Haiku, the router's ``evaluation``).
+        Nothing is asked when the agent is off or there is no count to assess. A slice that cannot be read (blocked, over its cap) leaves the task
+        SKIPPED with the code, and the Council reads the others: fail open. An answer that does not stand abstains in the same way."""
+        stats_slice = p.stats_slice
+        if not p.stats_on or stats_slice is None:
+            return None
+        keys = stats.asked_keys(p.naming)
+        if not keys:
+            p.stats_note = "no_count_to_assess"
+            return None
+        identity = REGISTRY.identity_for(
+            stats.AGENT,
+            stats.TASK,
+            workspace="lab",
+            input_version=mcp_package.VERSION,
+            input_hash=stats_slice.hash,
+            pass_kind=p.work.pass_kind,
+            fixture_id=p.work.fixture_id,
+            candidates=keys,
+        )
+        try:
+            request = stats.evaluation_request(stats_slice, p.naming, at=p.at, contradictions=contra0)
+        except ValueError:
+            why = "stats_slice_over_its_cap" if not stats_slice.fits else "stats_request_refused"
+            p.stats_note = why
+            skipped = self.skipped_task(p, identity, stats.TASK, why, Decimal("0.000001"))
+            p.match_users.append(skipped)
+            return skipped
+        decision = router.route(
+            router.Signals(
+                task=stats.TASK,
+                day=self.day(self.room()),
+                budget_state="NORMAL",
+                pass_kind=p.work.pass_kind,
+                blocking=(),
+            )
+        )
+        asked = self.ask(
+            p,
+            identity=identity,
+            task_kind=stats.TASK,
+            level="simple",
+            request=request,
+            purpose="match_analysis",
+            prompt_version=prompt_labels.STATS_ASSESS_VERSION,
+            input_hash=stats.input_hash(request),
+            decision=decision,
+            model=stats.model_of(),
+            agent=stats.AGENT,
+            stage=1,
+        )
+        p.match_users.append(asked)
+        if asked.data is not None and asked.error is None:
+            reading = stats.read(asked.data, slice_=stats_slice, naming=p.naming)
+            self.finish_match(p, asked, reading, stats.MODE, agent=stats.AGENT)
+        return asked
 
     @staticmethod
     def refs(output: dict[str, Any]) -> tuple[tuple[int, ...], tuple[str, ...]]:
@@ -1246,7 +1381,7 @@ class _Runner:
                 continue
             facts = council.escalation_facts(
                 arm.reading,
-                p.naming,
+                self.escalation_naming(p),
                 contra1,
                 hours_to_kickoff=self.hours_for(p),
                 pick_of_the_day=(),
@@ -1261,6 +1396,15 @@ class _Runner:
             top = router.escalation_order(qualified)[0]
             arm.escalated = dict(sorted(fired.items(), key=lambda kv: (len(kv[0]), kv[0])))
             self.opus_task(p, arm, facts_of_top=top.facts, room=room)
+
+    @staticmethod
+    def escalation_naming(p: _Pass) -> Naming:
+        """The candidates the rules E1-E7 of ``router-v1`` look at: those of goals and result, as in phase 3. The counts (corners and cards) of the
+        Statistics Agent's shadow are never sent to Opus: its three calls a day are the Council's for the selections the plan escalated, and a count
+        whose rules nobody has measured does not take them."""
+        if not p.stats_on:
+            return p.naming
+        return Naming(tuple(n for n in p.naming.named if n.family in GOALS_RESULT), p.naming.left_out, p.naming.version)
 
     def hours_for(self, p: _Pass) -> Decimal:
         """The hours to the kick-off the escalation rules read. In the Batch calendar they are frozen the first time (the first Opus task keeps them
@@ -1676,6 +1820,7 @@ class _Runner:
             "engines": list(p.engines),
             "active": list(b.active),
             "paused": {k: list(v) for k, v in b.paused.items()},
+            "stats": p.stats_on,
             "adm": adm.status,
         } | dict(route_extra)
         rec = self.record(p, asked)
@@ -1811,7 +1956,9 @@ class _Runner:
             finished_at=asked.finished,
             known_at=p.package.known_at,
             package_hash=p.package.hash,
-            slice_hash=p.slice_.hash,
+            slice_hash=p.stats_slice.hash
+            if asked.identity.agent == stats.AGENT and p.stats_slice is not None
+            else p.slice_.hash,
             model=asked.model,
             attempts=asked.calls,
             output=asked.output,
@@ -1914,10 +2061,10 @@ class _Runner:
             package_version=mcp_package.VERSION,
             package_hash=p.package.hash,
             elapsed_ms=int((now - p.started).total_seconds() * 1000),
-            slices=[p.slice_.measures()],
+            slices=self.slices_of(p),
             blocking=tuple(p.package.blocking),
             flags=tuple(p.package.flags),
-            model_status={"code": model_code_version(), "orchestrator": VERSION},
+            model_status=self.model_status(p, contra1),
             research_status={
                 "asks_ignored": len(p.ignored_asks),
                 "topics": sorted(set(p.ignored_asks)),
@@ -1965,10 +2112,10 @@ class _Runner:
             package_version=mcp_package.VERSION,
             package_hash=p.package.hash,
             elapsed_ms=0,
-            slices=[p.slice_.measures()],
+            slices=self.slices_of(p),
             blocking=tuple(p.package.blocking),
             flags=tuple(p.package.flags),
-            model_status={"code": model_code_version(), "orchestrator": VERSION},
+            model_status=self.model_status(p, ()),
             research_status={},
             agents=[],
             contradictions=[],
@@ -1988,6 +2135,34 @@ class _Runner:
         )
 
     # -- the rows --------------------------------------------------------------------------------------------------------------------
+
+    @staticmethod
+    def slices_of(p: _Pass) -> list[dict[str, Any]]:
+        """The slices of the package, as ``ai.match_runs.slices`` keeps them: ALL of them, in the order of ``SLICE_NAMES``, whether an agent read one or not.
+        The audit ``slice_known`` derives the package again and holds the state to every slice of it; phase 3 stored the Match Agent's alone, and the audit
+        counted that as a violation of every state of the shadow (found in phase 4, with the Statistics Agent's slice stored beside it)."""
+        if not p.slices:
+            return [p.slice_.measures()]
+        return [p.slices[name].measures() for name in SLICE_NAMES if name in p.slices]
+
+    @staticmethod
+    def model_status(p: _Pass, contra1: Sequence[Contradiction]) -> dict[str, Any]:
+        """``ai.match_runs.model_status``: the code version and the orchestrator's, and - with the Statistics Agent on - what it was asked and what the
+        detector found for corners and cards, apart from goals and result (the figures Gate B reads about C05 and C08 per family)."""
+        out: dict[str, Any] = {"code": model_code_version(), "orchestrator": VERSION}
+        if p.stats_on:
+            asked = stats.asked_keys(p.naming)
+            out["stats"] = {
+                "version": stats.VERSION,
+                "naming": p.naming.version,
+                "asked": list(asked),
+                "note": p.stats_note,
+                "contra": {
+                    "fired": contra.tally_by_family(contra1, naming=p.naming),
+                    "coverage": contra.coverage_by_family(p.package.document, naming=p.naming),
+                },
+            }
+        return out
 
     @staticmethod
     def agent_row(a: Asked) -> dict[str, Any]:
@@ -2104,6 +2279,9 @@ class _Runner:
             "match_context": prompt_labels.MATCH_CONTEXT_VERSION,
             "match_assess": prompt_labels.MATCH_ASSESS_VERSION,
         }
+        if p.stats_on:
+            labels["stats_assess"] = prompt_labels.STATS_ASSESS_VERSION
+        version = engine_version(arm.engine, with_stats=p.stats_on)
         for share, n in zip(shares, named, strict=True):
             c = n.candidate
             scores = p.candidates.scores.get(c.key, Scores())
@@ -2160,7 +2338,7 @@ class _Runner:
                         candidate=c,
                         scores=scores,
                         engine=arm.engine,
-                        version=ENGINE_VERSION[arm.engine],
+                        version=version,
                         decision=final.verdict,
                         confidence=confidence_value(final.confidence),
                         output=out,
@@ -2197,7 +2375,7 @@ class _Runner:
                     candidate=c,
                     scores=scores,
                     engine=arm.engine,
-                    version=ENGINE_VERSION[arm.engine],
+                    version=version,
                     decision="ABSTAIN",
                     confidence=Decimal(0),
                     output=out,

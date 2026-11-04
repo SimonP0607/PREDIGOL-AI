@@ -94,10 +94,10 @@ def test_the_overview_has_the_shape_the_page_reads(world: dict[str, Any]) -> Non
     assert o["problems"] == [] and o["settings"] == {"mode": "shadow", "package": True}
     built = {r["agent"]: r for r in o["registry"] if r["status"] == "built"}
     assert {"brief", "reviewer", "extractor", "postmortem", "post_match_reviewer", "learning_analyst", "claim_extractor",
-            "match", "council"} == set(built)
+            "match", "council", "stats"} == set(built)
     assert all(r["in_sync"] is True for r in built.values())
-    assert all((built[a]["born_as"], built[a]["baseline"]) == ("CHALLENGER", False) for a in ("match", "council")), (
-        "the match agent and the council are born challengers in shadow: they replace nobody")
+    assert all((built[a]["born_as"], built[a]["baseline"]) == ("CHALLENGER", False) for a in ("match", "council", "stats")), (
+        "the match agent, the council and the statistics agent are born challengers in shadow: they replace nobody")
     challenger = built["claim_extractor"]
     assert (challenger["born_as"], challenger["baseline"], challenger["replaces"]) == ("CHALLENGER", False, "extractor"), (
         "research v2's extractor is not the baseline: it runs beside the extractor of today and takes over only by a row the owner signs")

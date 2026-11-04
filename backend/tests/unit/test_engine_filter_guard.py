@@ -53,6 +53,9 @@ CALLERS_WORD = (
      "the newest review of ONE engine of ONE selection (``NEWEST_REVIEW_SQL``): the engine is the caller's own, as it is when the review is stored"),
     ("src/fbi/ai/shadow.py", "WHERE r.engine = %(engine)s AND r.reviewed_at < f.kickoff_at",
      "the settled selections of the engine being evaluated: ``shadow.ENGINES`` is the list of the engines a report is made for, the shadow's three included"),
+    ("src/fbi/ai/shadow.py", "WHERE f.status_group = 'finished' AND r.engine = %(engine)s",
+     "the settled reviews of corners and cards of the engine being reported (``COUNTS_SQL``, phase 4): ``shadow.counts_report`` asks for the three engines of "
+     "the shadow, writes nothing, and no figure of production reads it"),
     ("src/fbi/api/services/ai_layer.py", "AND r.engine = %(engine)s",
      "the console's listing of ONE engine, chosen by the router's ``Engine`` literal: a listing of reviews for the owner, which counts nothing"),
 )

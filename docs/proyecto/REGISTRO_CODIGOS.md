@@ -22,6 +22,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | IA-001 a IA-004 | Fases 1 a 4 del plan de IA | desplegado | (fuera de `main` hasta la unión) | ia-p01 a ia-p04 |
 | IA-005 | El sondeo de lotes no abandona lo que un ciclo en marcha aún va a enviar | desplegado el 3-nov-2026 (en `main` por #15) | #15 | ia-p05 |
 | IA-006 | Fases 3 y 3b de IA (agentes, orquestador, brazos en sombra, migración 0119) incorporadas a `main` tal como corren en producción | desplegado el 3-nov-2026 (en `main` por este PR) | #20 | ia-p3, ia-p3b (y los interruptores ia-switch-v2/v3) |
+| IA-007 | Agente de Estadísticas en sombra para córners y tarjetas (interruptor apagado por defecto, sin migración) | en curso | este PR | ia-p4 (fase 4 del plan de IA) |
 
 ## UX — experiencia de usuario y diseño de la web
 
@@ -41,4 +42,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-007 · SEG-001 · IA-007 · UX-002 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-007 · SEG-001 · IA-008 · UX-002 · BE-002 · FE-001 · OPS-001 · DOC-001
