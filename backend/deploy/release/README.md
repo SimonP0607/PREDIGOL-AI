@@ -32,3 +32,14 @@ never rolls back by itself. The sections of the checks that came from the IA rel
 templates because the objects exist in production now; a release that does not want them replaces the file through `--extras`.
 
 Not here: deciding to release. That is the owner's, in his words, in Spanish, before `--start --owner-ok`.
+
+## Automatic deploy (CI-007)
+
+`.github/workflows/deploy-auto.yml` releases by itself after a green CI: when `Backend CI` or `Web CI` ends green for a `push` to `main`, the
+`plan` job checks (gate.sh) that BOTH folders of that commit passed the CI; `release` (environment `production-auto`, `main` only) then runs
+`ci_auto_plan.sh`, which refuses unless production runs a release cut from a commit that this repository has and `main` contains (so an
+automatic deploy can never put back what someone released from outside GitHub), and says which parts changed. Only those are built, shipped
+through the same restricted door, prechecked, started and followed until `STATE: deployed`. Nothing changed -> nothing happens. Switch it off
+with the repository variable `AUTO_DEPLOY` (anything but `true`); the manual `Deploy` button keeps its two approvals. A stopped chain is never
+rolled back by itself: read `chain.log` on the server. The key of this path is its own (`predigol-github-deploy-auto` in `authorized_keys`,
+same forced command), so it can be revoked without touching the manual one.
