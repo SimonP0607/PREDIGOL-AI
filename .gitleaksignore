@@ -16,3 +16,8 @@
 
 # `POSTGRES_PASSWORD=` con el valor vacío en una plantilla de entorno.
 d39c9ebf615b76cdfa4ea0f69ac61249031249f1:deploy/env_example.txt:generic-api-key:2
+
+# Cadena falsa de las pruebas del plan UX A2 (qué llega a Sentry): se arma por partes en el fuente para probar que el filtro la quita;
+# no es una credencial. Vive solo en estos dos ficheros de prueba.
+1c659358cd438c6071e1b7c307f73471299096ee:web/e2e/observability.spec.ts:generic-api-key:111
+76250dff8f8e0e666ff0cb907d55dba8f0831587:web/src/lib/observability.test.ts:generic-api-key:19
