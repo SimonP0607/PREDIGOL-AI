@@ -26,6 +26,10 @@ The gate (``ai-gate-v2``), which ``FBI_AI_MODE=enforce`` also needs (``fbi.ai.ga
 
 Otherwise the verdict is ``insufficient`` (not enough evidence yet) or ``fail``. The numbers are reported
 either way; nothing is tuned to pass.
+
+The engines of phase 3's shadow (``ma-v1``, ``ma-v1-h``, ``cs-v1``) are judged by the same rule over the same window, and a report is written for one
+only once it has settled selections: until then it leaves no row of noise. They change nothing above them - ``fbi.ai.gating`` reads the report of
+``combined`` and the comparison of the console the ones of ``combined`` and ``rules``.
 """
 
 from __future__ import annotations
@@ -43,6 +47,7 @@ import psycopg
 from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
+from fbi.ai.config import PRODUCTION_ENGINES, SHADOW_ENGINES
 from fbi.market import closing_value
 from fbi.picks.settlement import Status, market_outcome, profit
 
@@ -53,7 +58,11 @@ MIN_DAYS = 30
 MIN_REJECTED = 50
 MIN_Z = 2.0
 BRIER_TOLERANCE = 0.002
-ENGINES = ("rules", "llm", "combined")
+ENGINES = (*PRODUCTION_ENGINES, *SHADOW_ENGINES)
+"""The engines a report is made for: ``rules``, ``llm``, ``combined`` as ever, and the three of phase 3's shadow (``fbi.ai.config``)."""
+REPORTED_EMPTY = ("rules", "combined")
+"""The engines whose report is written even when nothing has settled yet (an ``insufficient`` gate that counts from zero). The others - ``llm`` while no
+model has reviewed, an engine of the shadow while no match it reviewed has settled - leave no row of noise."""
 BOOTSTRAP = 300
 
 SETTLED_SQL = """
@@ -259,7 +268,7 @@ def run_shadow(conn: psycopg.Connection[Any], *, at: datetime, store: bool = Tru
     out = ShadowRun()
     for engine in ENGINES:
         items = load(conn, engine=engine, since=since, until=until)
-        if engine == "llm" and not items:
+        if engine not in REPORTED_EMPTY and not items:
             continue
         arms, gate = evaluate(items)
         out.reports[engine] = {"arms": arms, "gate": gate}
@@ -278,4 +287,4 @@ def latest(conn: psycopg.Connection[Any]) -> list[dict[str, Any]]:
         return [dict(r) for r in cur.fetchall()]
 
 
-__all__ = ["ENGINES", "VERSION", "evaluate", "latest", "load", "metrics", "run_shadow"]
+__all__ = ["ENGINES", "REPORTED_EMPTY", "VERSION", "evaluate", "latest", "load", "metrics", "run_shadow"]

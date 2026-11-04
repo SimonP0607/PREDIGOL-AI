@@ -345,17 +345,30 @@ def _settle_equivalence(conn: psycopg.Connection[Any], r: Resolved, ctx: dict[st
             "rejected_claims": len(out.output.get("rejected_claims") or []), "stop_reason": r.result.extra.get("stop_reason")}
 
 
+def _settle_shadow(r: Resolved) -> dict[str, Any]:
+    """The answer of a task of the Batch calendar of the shadow (``fbi.ai.orchestrator``): kept RAW in the item, nothing validated here. What the
+    contracts make of it - the references that must exist, the candidates that must be named - needs the package and the view of the pass, which
+    only the next stage of the orchestrator rebuilds; the run of ``ai.agent_runs`` (append-only, validated output or none) is written there, when
+    the pass ends. Idempotent: the same answer overwrites itself."""
+    base: dict[str, Any] = {"shadow": 1, "usage_id": r.usage_id, "cost": str(r.cost), "late": r.late, "model": str(r.item["model"])}
+    if r.result is None:
+        return base | {"ok": False, "error": "invalid_output" if r.error is None else r.error.code}
+    return base | {"ok": True, "data": dict(r.result.data), "stop_reason": r.result.extra.get("stop_reason")}
+
+
 def settle_lab(conn: psycopg.Connection[Any], r: Resolved) -> None:
     """What an answer of the LAB becomes: a summary kept in its item (``context.result``). A probe's says whether the answer fits its
     schema; an equivalence input's is the verdict the CHECKED review would have had - the same ``answer_review`` as production's; a
-    battery ask's is the outcome the rule of ``fbi.ai.battery`` reads. Nothing else is written: a LAB answer is never a review, a pick
-    or a state."""
+    battery ask's is the outcome the rule of ``fbi.ai.battery`` reads; a shadow task's is the raw answer, for the orchestrator's next stage.
+    Nothing else is written: a LAB answer is never a review, a pick or a state."""
     ctx = r.item["context"] or {}
     kind = ctx.get("lab")
     if kind == "probe":
         summary = _settle_probe(r)
     elif kind == "equivalence":
         summary = _settle_equivalence(conn, r, ctx)
+    elif kind == "shadow":
+        summary = _settle_shadow(r)
     elif kind == "battery":
         from fbi.ai.battery.settle import (
             summarise,  # the battery runs on this module: it is loaded when its answers arrive

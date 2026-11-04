@@ -255,9 +255,11 @@ SELECT count(*) AS final_done, count(*) FILTER (WHERE kickoff_at - finished_at >
 CANDIDATES_SQL = """
 WITH per AS (
   SELECT fixture_id, market_key, selection, line, bool_or(engine = 'llm') AS llm
-    FROM ai.pick_reviews WHERE reviewed_at >= %(since)s AND reviewed_at < %(until)s GROUP BY 1, 2, 3, 4)
+    FROM ai.pick_reviews WHERE reviewed_at >= %(since)s AND reviewed_at < %(until)s
+     AND engine IN ('rules', 'llm', 'combined') GROUP BY 1, 2, 3, 4)
 SELECT count(*) AS selections, count(*) FILTER (WHERE llm) AS selections_llm FROM per
 """
+"""The candidates of production: a selection only the shadow of phase 3 reviewed is not one (``fbi.ai.config.PRODUCTION_ENGINES``)."""
 PLAN_DAYS_SQL = ("SELECT count(DISTINCT day) FROM ai.day_plans WHERE stage = 'opened' AND day BETWEEN %(first)s AND %(last)s")
 TRACKED_SQL = """
 SELECT (f.kickoff_at AT TIME ZONE 'America/Bogota')::date AS day, count(*) AS n

@@ -7,6 +7,7 @@ import type { HistoryPeriod } from "./types_records";
 import type { RatingPool } from "./types";
 import type { FindingsQuery, ScoresQuery } from "./types_truth";
 import type { MemoryFilters } from "./types_ai_layer";
+import type { AgentRunsQuery, ContraCode } from "./types_ai_shadow";
 import type { PairStatus } from "./types_referees";
 
 const MINUTE = 60_000;
@@ -316,6 +317,28 @@ export const live = {
     refetchInterval: MINUTE,
   }),
   aiShadow: { queryKey: ["v1", "ai-layer", "shadow"], queryFn: v1.aiShadow, staleTime: 5 * MINUTE },
+  aiShadowArms: (days = 30) => ({
+    queryKey: ["v1", "ai-layer", "shadow-arms", days],
+    queryFn: () => v1.aiShadowArms(days),
+    refetchInterval: 5 * MINUTE,
+  }),
+  aiContradictions: (days = 7, code?: ContraCode) => ({
+    queryKey: ["v1", "ai-layer", "contradictions", days, code ?? "all"],
+    queryFn: () => v1.aiContradictions({ days, code, limit: 50 }),
+    refetchInterval: 2 * MINUTE,
+  }),
+  aiAgentRuns: (q: AgentRunsQuery) => ({
+    queryKey: ["v1", "ai-layer", "agent-runs", q],
+    queryFn: () => v1.aiAgentRuns(q),
+    refetchInterval: MINUTE,
+  }),
+  /** Asked for with a fixture the page has; no fixture, no request. */
+  aiMatchShadow: (fixtureId: string, pass?: string) => ({
+    queryKey: ["v1", "ai-layer", "match-shadow", fixtureId, pass ?? "newest"],
+    queryFn: () => v1.aiMatchShadow(fixtureId, pass),
+    enabled: fixtureId !== "",
+    refetchInterval: MINUTE,
+  }),
   aiMemory: (kind?: string) => ({
     queryKey: ["v1", "ai-layer", "memory", kind ?? "all"],
     queryFn: () => v1.aiMemory(kind),

@@ -72,14 +72,17 @@ export function TRow({
   onClick,
   selected,
   className,
+  "data-testid": testId,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
   selected?: boolean;
   className?: string;
+  "data-testid"?: string;
 }) {
   return (
     <tr
+      data-testid={testId}
       onClick={onClick}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={
@@ -109,13 +112,16 @@ export function TD({
   children,
   align = "left",
   className,
+  colSpan,
 }: {
   children: React.ReactNode;
   align?: "left" | "right" | "center";
   className?: string;
+  colSpan?: number;
 }) {
   return (
     <td
+      colSpan={colSpan}
       className={cn(
         "px-3 py-2.5 align-middle",
         align === "right" && "text-right",

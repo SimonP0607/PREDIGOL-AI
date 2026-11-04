@@ -341,7 +341,10 @@
     "engine": {
       "combined": "Combined",
       "rules": "Rules",
-      "llm": "Language model"
+      "llm": "Language model",
+      "ma-v1": "Multi-agent (shadow)",
+      "ma-v1-h": "Multi-agent + Haiku Council (shadow)",
+      "cs-v1": "Council only (shadow)"
     },
     "decision": {
       "APPROVE": "Approve",
@@ -365,7 +368,8 @@
       "market": "Market %",
       "decision": "Decision",
       "reason": "Reason",
-      "detail": "Review #{id}"
+      "detail": "Review #{id}",
+      "shadowNote": "Shadow engine: its reviews are recorded to evaluate it and never reach the decision layer or users."
     },
     "claimType": {
       "DATA": "Data",
@@ -1734,6 +1738,346 @@
         "flagged": "Flagged",
         "flaggedHint": "They looked like an instruction to a model: their text is treated as untrusted"
       }
+    }
+  },
+  "shadowOff": {
+    "title": "The shadow is off",
+    "titleOn": "The shadow has not written anything yet",
+    "body": "The Orchestrator does not run until the owner's three words are set in app.env. These are they, with their current value.",
+    "bodyOn": "All three words are set, but there are no cycles with results in this window yet. They will show here as they appear.",
+    "modeOff": "The AI layer's mode is off: none of the shadow runs either.",
+    "on": "Set",
+    "missing": "Missing"
+  },
+  "arms": {
+    "title": "Shadow with arms",
+    "subtitle": "The experiment's seven arms over the same selections. Read-only.",
+    "intro": "Every arm reviews the same selections. Figures are the server's counts; reaching the thresholds only says there is enough data to look at, never that any arm passed.",
+    "noDecisions": "No decisions of its own",
+    "arm": {
+      "model": "Model only",
+      "rules": "Rules",
+      "gap": "Gap filter 0.20",
+      "llm": "Current AI",
+      "council_solo": "Council only",
+      "ma-v1": "Multi-agent ma-v1",
+      "ma-v1-h": "Multi-agent + Haiku ma-v1-h"
+    },
+    "kind": {
+      "derived": "Derived",
+      "production": "Production",
+      "shadow": "Shadow"
+    },
+    "status": {
+      "ok": "Correct",
+      "fallback": "Fallback",
+      "invalid_output": "Invalid output",
+      "failed": "Failed",
+      "over_budget": "Over budget"
+    },
+    "pass": {
+      "first": "First pass",
+      "pre": "Pre pass",
+      "final": "Final pass",
+      "request": "On request"
+    },
+    "reason": {
+      "invalid_over_3pct": "More than 3 % invalid outputs",
+      "circuit_open": "Circuit open",
+      "envelope_spent": "Envelope spent",
+      "paused": "Paused",
+      "view_too_large": "View too large",
+      "no_verdict_for_the_candidate": "No verdict for the candidate",
+      "no_candidate_to_name": "No candidate to name",
+      "slice_over_its_cap": "Slice over its cap",
+      "blocked": "Blocked",
+      "no_envelope": "No envelope",
+      "allocation_spent": "Allocation spent"
+    },
+    "table": {
+      "title": "The seven arms, last {days} days",
+      "hint": "Percentages are over the selections the shadow also reviewed (the same basis for every arm). The invalid rate and the cost belong to each arm; the cost is the LAB's, from the spend ledger."
+    },
+    "col": {
+      "arm": "Arm",
+      "reviews": "Reviews",
+      "onSample": "On the sample",
+      "approved": "Approved",
+      "downgraded": "Downgraded",
+      "rejected": "Rejected",
+      "abstained": "Abstained",
+      "invalid": "Invalid",
+      "cost": "LAB cost",
+      "p95": "p95 latency",
+      "selectionsN": "{n} selections",
+      "ledger": "{v} over {n} calls"
+    },
+    "detail": {
+      "title": "Behind the figures",
+      "statuses": "Status of its reviews",
+      "paused": "Pauses ({n})",
+      "silent": "No answer ({n})",
+      "none": "None",
+      "settled": "Latest evaluation ({date})",
+      "settledValue": "{n} selections · kept {kept} · rejected {rejected} · CLV kept {clvKept} · CLV rejected {clvRejected}",
+      "settledNone": "No settled evaluation yet"
+    },
+    "enough": {
+      "title": "Enough data to look at",
+      "hint": "Only counts against the plan's thresholds: 30 days and 300 selections reviewed by both engines. Not a verdict.",
+      "days": "Days of shadow",
+      "daysHint": "{bar} % of the threshold; window of {n} days",
+      "selections": "Selections reviewed by both",
+      "selectionsHint": "{bar} % of the threshold",
+      "state": {
+        "none": "No threshold reached yet.",
+        "days": "The days are reached, selections are missing.",
+        "selections": "The selections are reached, days are missing.",
+        "both": "There is enough data to look at. That is not a verdict: the decision is the owner's."
+      }
+    },
+    "assign": {
+      "title": "Assignment of the matches",
+      "hint": "Experiment {salt}: each match falls in a fixed bucket; the bucket decides whether it enters the sample.",
+      "assigned": "Assigned",
+      "sampled": "On the sample",
+      "unsampled": "Off the sample",
+      "solo": "Council only",
+      "soloHint": "{share} of the sample",
+      "observed": "Observed sample",
+      "asked": "Asked for: {share}",
+      "col": {
+        "share": "Share",
+        "assigned": "Assigned",
+        "sampled": "On the sample",
+        "solo": "Council only"
+      }
+    },
+    "lab": {
+      "title": "LAB spend",
+      "hint": "From the spend ledger, lab scope. It does not touch the production budget.",
+      "window": "Last {days} days",
+      "shadow": "Of which, the shadow",
+      "calls": "Calls",
+      "cycle": "Latest cycle"
+    },
+    "cycle": {
+      "ok": "Correct",
+      "failed": "Failed",
+      "running": "Running",
+      "skipped": "Skipped",
+      "partial": "Partial"
+    }
+  },
+  "contra": {
+    "title": "Contradictions",
+    "subtitle": "What contra-v1 found between a match's numbers and what its state says.",
+    "intro": "Eight codes, C01 to C08. Codes and the server's figures are shown, never the model's text. What the Council did with each candidate affected: kept it, lowered it, abstained, or has no verdict.",
+    "code": {
+      "C01": "Key player out",
+      "C02": "First-choice goalkeeper out",
+      "C03": "Likely rotation",
+      "C04": "Nothing at stake",
+      "C05": "Lenient referee",
+      "C06": "Model against market",
+      "C07": "Evidence in conflict",
+      "C08": "Specialists disagree"
+    },
+    "treatment": {
+      "kept": "kept",
+      "lowered": "lowered",
+      "abstained": "abstained",
+      "none": "no verdict"
+    },
+    "passes": "Passes reviewed",
+    "withContra": "Passes with contradictions",
+    "total": "Contradictions",
+    "counts": {
+      "title": "By code, last {days} days",
+      "hint": "How many times each code fired, in how many passes and matches, how many were confirmed and what each engine did with the candidates they touch."
+    },
+    "col": {
+      "code": "Code",
+      "n": "Times",
+      "passes": "Passes",
+      "matches": "Matches",
+      "confirmed": "Confirmed",
+      "council": "What the Council did",
+      "match": "Match",
+      "candidates": "Candidates",
+      "state": "State",
+      "refs": "References"
+    },
+    "never": "Did not fire in this window.",
+    "recent": {
+      "title": "Most recent",
+      "hint": "Each row is one code in one pass of a match. Click the match to open its file.",
+      "empty": "No contradictions in this window."
+    },
+    "wholeMatch": "The whole match",
+    "confirmed": "Confirmed",
+    "unconfirmed": "Unconfirmed",
+    "lineup": "Official line-up",
+    "filter": {
+      "days": "Window",
+      "nDays": "{n} days",
+      "code": "Code",
+      "allCodes": "All"
+    }
+  },
+  "agentRuns": {
+    "title": "Agent runs",
+    "subtitle": "The Orchestrator's recent calls, with what they cost and the rule that sent them to Opus.",
+    "agent": {
+      "match": "Match agent",
+      "council": "Council"
+    },
+    "task": {
+      "context": "Context",
+      "evaluation": "Evaluation",
+      "council": "Council",
+      "escalation": "Escalation"
+    },
+    "status": {
+      "ok": "Correct",
+      "invalid": "Invalid",
+      "timeout": "Timed out",
+      "abstain": "Abstained",
+      "skipped": "Skipped",
+      "expired": "Expired",
+      "budget_skip": "Over budget"
+    },
+    "filter": {
+      "day": "Day",
+      "agent": "Agent",
+      "task": "Task",
+      "status": "Status",
+      "all": "All"
+    },
+    "opus": {
+      "title": "Opus on {day}",
+      "hint": "The day's escalations to Opus against the cap. At the cap, the next one keeps the first-round verdict.",
+      "calls": "Opus calls",
+      "remaining": "Left",
+      "skipped": "Escalations skipped",
+      "cost": "Opus cost",
+      "level": {
+        "free": "Room left",
+        "last": "One left",
+        "spent": "Cap reached"
+      }
+    },
+    "total": "Runs of the day",
+    "cost": "Cost of the day",
+    "empty": "No agent runs on this day with these filters.",
+    "col": {
+      "time": "Time",
+      "agent": "Agent",
+      "task": "Task",
+      "match": "Match",
+      "model": "Model",
+      "status": "Status",
+      "tokens": "Tokens",
+      "tokensHint": "Input, and below output and cache",
+      "cost": "Cost",
+      "latency": "Latency",
+      "rule": "Rule",
+      "ruleHint": "The router-v1 rule (E1 to E7) that sent the task to Opus"
+    }
+  },
+  "shadowFile": {
+    "title": "Shadow file",
+    "subtitle": "What the Orchestrator saw of this match: candidates, assessment, contradictions and each engine's verdict beside today's.",
+    "none": "The Orchestrator has not written anything about this match.",
+    "passPick": "Pass",
+    "newest": "The newest",
+    "yes": "Yes",
+    "no": "No",
+    "quality": "Data quality: {q}",
+    "differs": "Differs from Combined",
+    "replaced": "replaced",
+    "answered": "{n} with a verdict",
+    "level": {
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High",
+      "GOOD": "Good",
+      "FAIR": "Fair",
+      "POOR": "Poor"
+    },
+    "direction": {
+      "HOME": "Home",
+      "DRAW": "Draw",
+      "AWAY": "Away",
+      "OVER": "Over",
+      "UNDER": "Under",
+      "BOTH_SCORE": "Both score",
+      "NOT_BOTH_SCORE": "Not both score",
+      "NEUTRAL": "Neutral"
+    },
+    "stance": {
+      "SUPPORT": "Supports",
+      "NEUTRAL": "Neutral",
+      "CONCERN": "Concern",
+      "REJECT_SIGNAL": "Reject signal"
+    },
+    "assignment": {
+      "title": "Assignment",
+      "sampled": "On the sample",
+      "solo": "Council only",
+      "share": "Share",
+      "bucket": "Bucket",
+      "engines": "Engines",
+      "at": "Assigned",
+      "none": "This match was not assigned."
+    },
+    "pass": {
+      "title": "Pass",
+      "kind": "Kind",
+      "knownAt": "Data until",
+      "status": "Result",
+      "elapsed": "Duration",
+      "ran": "Ran",
+      "not_run": "Did not run"
+    },
+    "candidates": {
+      "title": "Candidates",
+      "hint": "With the names c1..cN and the server's figures. The models see no figure the server did not compute."
+    },
+    "col": {
+      "key": "Id",
+      "pick": "Selection",
+      "odds": "Odds",
+      "pModel": "P model",
+      "pMarket": "P market",
+      "edge": "Edge",
+      "ev": "EV",
+      "leftOut": "Left out",
+      "candidate": "Candidate"
+    },
+    "assessment": {
+      "title": "Match assessment",
+      "hint": "The Match Agent's answer in codes: signals with their direction and strength, and its stance on each candidate."
+    },
+    "contra": {
+      "title": "Contradictions",
+      "none": "None in this pass."
+    },
+    "verdicts": {
+      "title": "Verdicts side by side",
+      "hint": "Each engine of the shadow beside today's reviewers. A dash means the engine gave no verdict for that candidate."
+    },
+    "arms": {
+      "title": "State of each arm in this pass"
+    },
+    "evidence": {
+      "title": "Evidence cited",
+      "hint": "Only the evidence numbers; no text or address."
+    },
+    "calls": {
+      "title": "Calls",
+      "n": "Calls",
+      "cost": "Cost"
     }
   }
 }

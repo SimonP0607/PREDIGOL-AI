@@ -184,6 +184,7 @@ SELECT COALESCE(sum(CASE WHEN jsonb_typeof(p.counts -> 'v2_invalid') = 'number' 
 """Calls whose answer came back and was not ``claim-v1``: the ledger wrote them down as ``ok`` (the provider answered), the pass counted them."""
 CITED_SQL = """
 SELECT (SELECT count(*) FROM ai.pick_reviews r WHERE r.reviewed_at >= %(since)s AND r.reviewed_at < %(until)s
+           AND r.engine IN ('rules', 'llm', 'combined')
            AND EXISTS (SELECT 1 FROM ai.evidence e WHERE e.id = ANY(r.evidence_ids) AND e.subject_type IS NOT NULL)) AS reviews,
        (SELECT count(*) FROM intel.decisions d WHERE d.known_at >= %(since)s AND d.known_at < %(until)s AND d.decision_version = %(layer)s
            AND EXISTS (SELECT 1 FROM ai.evidence e WHERE e.id = ANY(d.evidence_ids) AND e.subject_type IS NOT NULL)) AS decisions

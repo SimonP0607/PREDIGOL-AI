@@ -54,8 +54,10 @@ SELECT count(*) FILTER (WHERE engine = 'llm' AND status = 'ok' AND NOT output ? 
        count(*) FILTER (WHERE engine = 'combined' AND decision = 'APPROVE'
                         AND engine_version NOT LIKE '%%+none') AS approved_with_llm,
        count(DISTINCT fixture_id) AS fixtures_reviewed
-  FROM ai.pick_reviews WHERE reviewed_at >= %(since)s AND reviewed_at < %(until)s
+  FROM ai.pick_reviews WHERE reviewed_at >= %(since)s AND reviewed_at < %(until)s AND engine IN ('rules', 'llm', 'combined')
 """
+"""The reviews of production: the rows of the shadow of phase 3 (``fbi.ai.config.SHADOW_ENGINES``) are not in these counts - a match only they
+reviewed is not a match reviewed (their cost is in ``ai.usage``, which these figures read beside them)."""
 
 SELECTED_SQL = """
 SELECT count(*) AS selected FROM picks.daily_set_items i JOIN picks.daily_sets s ON s.id = i.set_id

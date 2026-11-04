@@ -500,27 +500,35 @@ def test_the_fields_of_the_key_are_the_fields_in_the_order_the_code_hashes() -> 
 
 # ── 7. the registry ───────────────────────────────────────────────────────────────────────────────────────────────
 
+BUILT_AFTER_THE_GUIDE = ("council",)
+"""The agents the plan built after this guide was written (phase 3): the registry holds them and the guide still lists them as planned. What
+they are is said by the guide of their phase."""
+
+
 def test_the_agents_of_today_are_the_baseline_of_the_ledger() -> None:
     sec = section(7)
     bullet = paragraph(sec, "* **Lo que el código tiene hoy")
     pairs = re.findall(r"`(\w+)` \(`([\w-]+)`\)", bullet)
-    ledger = registry.REGISTRY.ledger
-    assert dict(pairs) == {r.agent: r.version for r in ledger} and len(pairs) == len(ledger) == len(registry.REGISTRY.agents)
+    ledger = tuple(r for r in registry.REGISTRY.ledger if r.agent not in BUILT_AFTER_THE_GUIDE)
+    assert dict(pairs) == {r.agent: r.version for r in ledger}
+    assert len(pairs) == len(ledger) == len(registry.REGISTRY.agents) - len(BUILT_AFTER_THE_GUIDE)
+    assert set(BUILT_AFTER_THE_GUIDE) <= {a.agent for a in registry.REGISTRY.agents}
     baseline = [r for r in ledger if r.baseline]
     assert len(baseline) == 6 and "Seis agentes de línea base" in bullet and "motor `llm`" in bullet
     assert all(r.born_as == "CHAMPION" and re.fullmatch(r"ag[0-9a-f]{10}", r.fingerprint) for r in baseline)
     # what the plan has built since is another sentence of the bullet: born CHALLENGER, never a baseline
     since = [r for r in ledger if not r.baseline]
-    assert [(r.agent, r.version) for r in since] == [("claim_extractor", EXTRACT_V2_VERSION)]
+    assert [(r.agent, r.version) for r in since] == [("claim_extractor", EXTRACT_V2_VERSION), ("match", "match-v1")]
     assert all(r.born_as == "CHALLENGER" and re.fullmatch(r"ag[0-9a-f]{10}", r.fingerprint) for r in since)
     assert "Desde la fase 2 hay un séptimo**, `claim_extractor` (`extract-v2`)" in bullet and "**nace CHALLENGER**" in bullet
+    assert "Desde la fase 3 hay un octavo**, `match` (`match-v1`)" in bullet and "también **nace CHALLENGER**" in bullet
     assert f"`{registry.FINGERPRINT_VERSION}`" in bullet
     assert {a.agent for a in registry.REGISTRY.agents if a.retire_phase == 9} == {"brief", "reviewer"}
     assert "`brief` y `reviewer` llevan marcada su retirada en la fase 9" in bullet
 
 
 def test_the_planned_agents_of_the_guide_are_the_planned_agents_of_the_registry() -> None:
-    rows = table(section(7), "| Agente")
+    rows = [r for r in table(section(7), "| Agente") if ticked(r[0]) not in BUILT_AFTER_THE_GUIDE]
     planned = registry.REGISTRY.planned
     assert [(ticked(r[0]), ticked(r[1]), int(r[2]), ticked(r[3])) for r in rows] == [(p.agent, p.version, p.phase, p.contract) for p in planned]
 
@@ -654,17 +662,18 @@ def test_the_job_is_switched_off_by_the_variables_the_guide_names(monkeypatch: p
 
 # ── 10. the nightly audit ─────────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_audit_has_the_rules_the_guide_counts_and_the_last_is_slice_known() -> None:
+def test_the_audit_has_the_rules_the_guide_counts_and_the_last_is_the_shadow_review() -> None:
     sec = section(10)
     assert f"`{leakage.VERSION}`" in sec
     said(r"Hoy tiene (\d+) reglas", sec, len(leakage.RULE_NAMES))
-    assert leakage.RULE_NAMES[-1] == "slice_known" and "la última, `slice_known`" in sec
+    assert leakage.RULE_NAMES[-3:] == ("slice_known", "agent_known", "shadow_review_known")
+    assert "la última, `shadow_review_known`" in sec
     rows = table(sec, "| Regla del plan")
     names = [ticked(r[0]) for r in rows]
     assert set(names) == set(ai_agents.PLAN_AUDIT_RULES) and len(names) == 5
     running = {ticked(r[0]) for r in rows if r[1].startswith(("corre", "ya corría"))}
     assert running == set(ai_agents.AUDIT_RULES) == {n for n in names if n in leakage.RULE_NAMES}
-    assert "Hoy corren dos" in sec and "El plan pide cinco pruebas" in sec
+    assert "Hoy corren cuatro" in sec and "El plan pide cinco pruebas" in sec
 
 
 # ── 11. the Console ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -858,7 +867,7 @@ def test_the_deviations_the_guide_declares_are_the_ones_the_code_shows() -> None
     rows = table(sec, "| # | Qué")
     assert [r[0] for r in rows] == [str(i) for i in range(1, 7)]
     assert "0,53" in rows[1][1] and "≈ 0,1 USD" in rows[1][1]
-    assert (ai_agents.AUDIT_RULES == ("slice_known", "review_known")) and "`agent_known`" in rows[5][1]
+    assert (ai_agents.AUDIT_RULES == ("slice_known", "agent_known", "review_known", "shadow_review_known")) and "`memory_known`" in rows[5][1]
 
 
 # ── 16. what is missing ───────────────────────────────────────────────────────────────────────────────────────────
@@ -883,7 +892,8 @@ def versions_the_code_holds() -> set[str]:
                 leakage.VERSION, match_runs.STATE_VERSION, BATTERY_VERSION, REVIEW_VERSION, EXTRACT_VERSION, POSTMORTEM_VERSION,
                 BRIEF_VERSION, PICK_PM_VERSION, LEARNING_VERSION, EXTRACT_V2_VERSION, registry.FINGERPRINT_VERSION}
     planned = {p.version for p in registry.REGISTRY.planned} | {t.prompt_version for p in registry.REGISTRY.planned for t in p.tasks}
-    return in_force | planned
+    built = {r.version for r in registry.REGISTRY.ledger} | set(registry.live_prompt_versions().values())  # the agents of the plan, once built
+    return in_force | planned | built
 
 
 def test_every_version_the_guide_names_is_a_version_of_the_code_or_of_the_plan() -> None:

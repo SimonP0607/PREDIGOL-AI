@@ -56,6 +56,20 @@ Phase 2 of the plan - the research of an entity (``fbi.ai.entity_research``):
                                 (``fbi.ai.gates.research_mode``); until then ``on`` behaves as ``shadow``. Any other word is ``off``. To go
                                 back: set it to ``off`` (or ``shadow``) and restart the worker (about a minute).
 
+Phase 3 of the plan - the multi-agent engines in SHADOW (``fbi.ai.arms``): they run in the LAB workspace only, write rows no user and no decision
+reads, and are rolled back by the same three words. Nothing runs until ALL THREE say so (``AiSettings.orchestrate``):
+
+    FBI_AI_ENGINES              default ``rules,llm`` - the engines that review, separated by commas, in any case. ``rules`` and ``llm`` are always
+                                there (the production baseline: ``FBI_AI_MODE`` governs them); the list can only ADD shadow engines: ``ma-v1`` (the
+                                multi-agent), ``ma-v1-h`` (the same with the Haiku judge) and ``cs-v1`` (COUNCIL SOLO: Sonnet reading the compact
+                                view, no specialists). A name that is none of those - a typo - is dropped: it switches nothing on. The plan's
+                                activation is ``rules,llm,ma-v1,ma-v1-h``; its rollback is ``rules,llm``.
+    FBI_AI_SHADOW_SAMPLE        default 0 - the share of the matches with candidates the shadow runs on, from 0 to 1 (0.3 = 30 %; above 1 counts
+                                as 1, below 0 as 0, and a word that is not a number as 0). Each match is assigned once, before its first shadow
+                                pass, and never changes group (``ai.shadow_assignments``). The plan's activation is ``0.3``; its rollback is ``0``.
+    FBI_AI_AGENTS               default empty - the agents that may run: ``match`` and ``council`` (a name that is neither is dropped). The plan's
+                                activation is ``match,council``.
+
 A model or a search is used only for TODAY's matches (America/Bogota) that have a market (``fbi.ai.day``).
 
 No tier configured = the layer runs its deterministic reviewer only and says so (``status()``). A tier is
@@ -68,7 +82,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 from fbi.core.env import environment
 
@@ -81,6 +95,22 @@ SWITCH_ENV: dict[str, str] = {"cache": "FBI_AI_CACHE", "batch": "FBI_AI_BATCH", 
                               "brief_material": "FBI_AI_BRIEF_MATERIAL", "budget_v3": "FBI_AI_BUDGET_V3"}
 """The five optimisations of Phase 0 and the variable that rolls each one back."""
 PROVIDERS = ("anthropic", "openai", "gemini", "mistral", "deepseek", "together", "groq", "deepinfra")
+
+KNOWN_ENGINES: Final[tuple[str, ...]] = ("rules", "llm", "ma-v1", "ma-v1-h", "cs-v1")
+"""The engines the owner can name in ``FBI_AI_ENGINES``, in the one canonical order (phase 3). ``combined`` is not a choice: it is what the production
+engines add up to (``fbi.ai.review.combine``). ``cs-v1`` is the COUNCIL SOLO arm (Sonnet reading the compact view, no specialists)."""
+BASELINE_ENGINES: Final[tuple[str, ...]] = ("rules", "llm")
+"""The production baseline: always on whatever ``FBI_AI_ENGINES`` says (``FBI_AI_MODE`` governs them)."""
+SHADOW_ENGINES: Final[tuple[str, ...]] = tuple(e for e in KNOWN_ENGINES if e not in BASELINE_ENGINES)
+"""The engines that only ever run in shadow (``ma-v1``, ``ma-v1-h``, ``cs-v1``): rows nobody reads for a decision (filter 6 never sees them)."""
+PRODUCTION_ENGINES: Final[tuple[str, ...]] = (*BASELINE_ENGINES, "combined")
+"""The engines whose rows every figure of production counts: the two of the baseline and what they add up to. Every reader of ``ai.pick_reviews`` that
+does not name its engine filters on exactly this list (``engine IN ('rules', 'llm', 'combined')``): a shadow row added to the table moves no figure of
+production (``tests/unit/test_engine_filter_guard.py`` keeps every reader in line with it)."""
+AGENTS: Final[tuple[str, ...]] = ("match", "council")
+"""The agents ``FBI_AI_AGENTS`` can name, in canonical order (phase 4 adds ``stats``: the one place the list is kept)."""
+ORCHESTRATOR_AGENTS: Final[tuple[str, ...]] = ("match", "council")
+"""The agents the orchestrator needs to run at all (a multi-agent without its Match Agent or its Council is not one)."""
 
 BASE_URLS: dict[str, str] = {
     "anthropic": "https://api.anthropic.com",
@@ -127,6 +157,34 @@ def _int(name: str, default: int, env: Mapping[str, str]) -> int:
         return max(0, int(env.get(name) or default))
     except ValueError:
         return default
+
+
+def _share(raw: str | None) -> Decimal:
+    """``FBI_AI_SHADOW_SAMPLE``: a share from 0 to 1. Clamped; a word that is not a number - or not a finite one - is 0, so a typo costs nothing."""
+    try:
+        value = Decimal((raw or "").strip() or "0")
+    except InvalidOperation:
+        return Decimal(0)
+    if not value.is_finite():
+        return Decimal(0)
+    return min(Decimal(1), max(Decimal(0), value))
+
+
+def _names(raw: str | None, known: tuple[str, ...]) -> frozenset[str]:
+    """The known names a comma-separated word lists, whatever the case or the spaces; anything else is dropped."""
+    return frozenset(part.strip().lower() for part in (raw or "").split(",")) & frozenset(known)
+
+
+def _engines(raw: str | None) -> tuple[str, ...]:
+    """``FBI_AI_ENGINES``: the baseline (``rules``, ``llm``) always, plus the shadow engines the list names, in the canonical order."""
+    asked = _names(raw, SHADOW_ENGINES)
+    return tuple(e for e in KNOWN_ENGINES if e in BASELINE_ENGINES or e in asked)
+
+
+def _agents(raw: str | None) -> tuple[str, ...]:
+    """``FBI_AI_AGENTS``: the known agents the list names, in the canonical order; none by default."""
+    asked = _names(raw, AGENTS)
+    return tuple(a for a in AGENTS if a in asked)
 
 
 def _switch(raw: str | None) -> Switch:
@@ -193,6 +251,13 @@ class AiSettings:
     research_v2: ResearchMode = "off"
     """Plan IA, phase 2: what the owner asked of the research of an entity (``FBI_AI_RESEARCH_V2``). What the cycle does is ``gates.research_mode``:
     ``on`` is ``shadow`` until the ``research_v2`` gate has passed."""
+    engines: tuple[str, ...] = BASELINE_ENGINES
+    """Plan IA, phase 3: the engines that review (``FBI_AI_ENGINES``), in the canonical order of ``KNOWN_ENGINES``: ``rules`` and ``llm`` always, and the
+    shadow engines the owner named. The list only adds: it cannot take the baseline away."""
+    shadow_sample: Decimal = Decimal(0)
+    """Plan IA, phase 3: the share (0 to 1) of the matches with candidates the shadow runs on (``FBI_AI_SHADOW_SAMPLE``). Zero: no match is assigned."""
+    agents: tuple[str, ...] = ()
+    """Plan IA, phase 3: the agents that may run (``FBI_AI_AGENTS``), in the canonical order of ``AGENTS``."""
 
     @classmethod
     def from_env(cls) -> AiSettings:
@@ -242,6 +307,9 @@ class AiSettings:
             batch_min_lead_minutes=max(30, _int("FBI_AI_BATCH_MIN_LEAD_MINUTES", 240, env)),
             package=(env.get("FBI_AI_PACKAGE") or "1").strip().lower() not in ("0", "off", "false", "no"),
             research_v2=_research_mode(env.get("FBI_AI_RESEARCH_V2")),
+            engines=_engines(env.get("FBI_AI_ENGINES")),
+            shadow_sample=_share(env.get("FBI_AI_SHADOW_SAMPLE")),
+            agents=_agents(env.get("FBI_AI_AGENTS")),
         )
 
     def switch(self, name: str) -> Switch:
@@ -257,6 +325,18 @@ class AiSettings:
         """The model of a tier, only when its provider's key is present (the LAB workspace's own key for a LAB call)."""
         tm = self.tiers.get(tier)
         return tm if tm is not None and tm.provider in (self.lab_keys if lab else self.keys) else None
+
+    @property
+    def shadow_engines(self) -> tuple[str, ...]:
+        """The engines of ``engines`` that are not the production baseline: the ones that run in shadow."""
+        return tuple(e for e in self.engines if e in SHADOW_ENGINES)
+
+    @property
+    def orchestrate(self) -> bool:
+        """Whether the orchestrator may run (plan IA, phase 3): the layer is not off, at least one shadow engine is named, the sample is above zero
+        and the agents it needs - ``match`` and ``council`` - are both allowed. Any one of the three words missing leaves the shadow switched off."""
+        return (self.mode != "off" and bool(self.shadow_engines) and self.shadow_sample > 0
+                and all(agent in self.agents for agent in ORCHESTRATOR_AGENTS))
 
     @property
     def llm_configured(self) -> bool:
@@ -307,6 +387,11 @@ class AiSettings:
             "batch_min_lead_minutes": self.batch_min_lead_minutes,
             "package": self.package,
             "research_v2": self.research_v2,
+            "engines": list(self.engines),
+            "shadow_engines": list(self.shadow_engines),
+            "shadow_sample": format(self.shadow_sample.normalize(), "f"),
+            "agents": list(self.agents),
+            "orchestrate": self.orchestrate,
         }
 
     @property

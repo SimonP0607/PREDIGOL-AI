@@ -58,6 +58,9 @@ ORDER = {"REJECT": 0, "DOWNGRADE": 1, "APPROVE": 2}
 
 Decision = Literal["APPROVE", "DOWNGRADE", "REJECT", "ABSTAIN"]
 Severity = Literal["hard", "soft", "uncertain", "positive", "info"]
+Engine = Literal["rules", "llm", "combined", "ma-v1", "ma-v1-h", "cs-v1"]
+"""The engines a review row can carry (``ai.pick_reviews.engine``, migration 0119): the production three, and the three of the shadow of phase 3
+(``fbi.ai.config.SHADOW_ENGINES``), which no reader of production counts (``fbi.ai.config.PRODUCTION_ENGINES``)."""
 BAD_STATUS = frozenset({"PST", "CANC", "ABD", "SUSP", "AWD", "WO", "INT"})
 NOT_FIT = frozenset({"PRODUCT_ONLY", "INSUFFICIENT"})
 
@@ -471,7 +474,7 @@ def input_hash(*parts: Any) -> str:
 
 @dataclass
 class EngineResult:
-    engine: Literal["rules", "llm", "combined"]
+    engine: Engine
     version: str
     decision: Decision
     output: dict[str, Any]

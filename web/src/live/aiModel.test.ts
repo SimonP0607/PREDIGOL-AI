@@ -1,9 +1,10 @@
 /// <reference types="bun" />
 import { afterAll, describe, expect, test } from "bun:test";
-import { hasKey, setLocale } from "@/lib/i18n";
-import type { AiBudgetAlert } from "@/lib/api/v1/types_ai_layer";
+import { hasKey, setLocale, translate } from "@/lib/i18n";
+import type { AiBudgetAlert, AiEngine } from "@/lib/api/v1/types_ai_layer";
 import {
   BUDGET_THRESHOLDS,
+  ENGINE_KIND,
   ESCALATION_REASONS,
   LOSS_CLASSES,
   PASSES,
@@ -35,6 +36,10 @@ import {
   projectionTone,
   promoteUnlocked,
   PROMOTE_WORD,
+  REVIEW_ENGINES,
+  engineKind,
+  engineLabel,
+  isShadowEngine,
   questionLabel,
   ratioOf,
   reasonLabel,
@@ -593,5 +598,78 @@ describe("Phase 0: the three envelopes", () => {
       }
     }
     setLocale("es");
+  });
+});
+
+describe("the engines of a review (plan IA, phase 3)", () => {
+  const PRODUCTION: AiEngine[] = ["rules", "llm", "combined"];
+  const SHADOW: AiEngine[] = ["ma-v1", "ma-v1-h", "cs-v1"];
+
+  test("three engines are production's and three are the shadow ones of phase 3", () => {
+    expect(Object.keys(ENGINE_KIND).sort()).toEqual([...PRODUCTION, ...SHADOW].sort());
+    for (const e of PRODUCTION) {
+      expect(engineKind(e)).toBe("production");
+      expect(isShadowEngine(e)).toBe(false);
+    }
+    for (const e of SHADOW) {
+      expect(engineKind(e)).toBe("shadow");
+      expect(isShadowEngine(e)).toBe(true);
+    }
+  });
+
+  test("the filter offers every engine once: the default first, the shadow ones last in the API's order", () => {
+    expect([...REVIEW_ENGINES].sort()).toEqual((Object.keys(ENGINE_KIND) as AiEngine[]).sort());
+    expect(new Set(REVIEW_ENGINES).size).toBe(REVIEW_ENGINES.length);
+    expect(REVIEW_ENGINES[0]).toBe("combined");
+    expect(REVIEW_ENGINES.slice(-3)).toEqual(SHADOW);
+  });
+
+  test("a name this client does not know is shown as given and is claimed to be neither production nor shadow", () => {
+    for (const name of ["ma-v2", "MA-V1", " ma-v1", "", "constructor", "__proto__", "toString"]) {
+      expect(engineKind(name)).toBe("unknown");
+      expect(isShadowEngine(name)).toBe(false);
+    }
+    setLocale("en");
+    expect(engineLabel("ma-v2")).toBe("ma-v2");
+    expect(engineLabel("constructor")).toBe("constructor");
+    setLocale("es");
+  });
+
+  test("every engine has its name in both languages, and a shadow engine says so in it", () => {
+    for (const [locale, marker] of [
+      ["es", "(sombra)"],
+      ["en", "(shadow)"],
+    ] as const) {
+      const names = REVIEW_ENGINES.map((e) => {
+        expect(hasKey(`ai.layer.engine.${e}`, locale)).toBe(true);
+        const name = translate(`ai.layer.engine.${e}`, undefined, locale);
+        expect(name.includes(marker)).toBe(isShadowEngine(e));
+        return name;
+      });
+      expect(new Set(names).size).toBe(names.length);
+    }
+  });
+
+  test("the names of the three shadow engines", () => {
+    setLocale("es");
+    expect(SHADOW.map(engineLabel)).toEqual([
+      "Multiagente (sombra)",
+      "Multiagente + Council Haiku (sombra)",
+      "Council solo (sombra)",
+    ]);
+    expect(PRODUCTION.map(engineLabel)).toEqual(["Reglas", "Modelo de lenguaje", "Combinada"]);
+    setLocale("en");
+    expect(SHADOW.map(engineLabel)).toEqual([
+      "Multi-agent (shadow)",
+      "Multi-agent + Haiku Council (shadow)",
+      "Council only (shadow)",
+    ]);
+    expect(PRODUCTION.map(engineLabel)).toEqual(["Rules", "Language model", "Combined"]);
+    setLocale("es");
+  });
+
+  test("the note under the filter exists in both languages", () => {
+    expect(hasKey("ai.layer.reviews.shadowNote", "es")).toBe(true);
+    expect(hasKey("ai.layer.reviews.shadowNote", "en")).toBe(true);
   });
 });
