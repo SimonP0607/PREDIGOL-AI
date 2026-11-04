@@ -213,6 +213,15 @@ function TicketRow({ ticket }: { ticket: AdminTicket }) {
                 · {t("support.admin.late")}
               </span>
             ) : null}
+            {ticket.at_risk ? (
+              <span
+                className="rounded-full border border-negative/40 px-1.5 py-0.5 text-[0.65rem] font-semibold text-negative"
+                data-testid={`ticket-at-risk-${ticket.id}`}
+                title={t("support.admin.atRiskHint")}
+              >
+                {t("support.admin.atRisk")}
+              </span>
+            ) : null}
           </span>
           <span className="block break-all text-caption text-muted-foreground">
             {ticket.display_name} · {ticket.email}

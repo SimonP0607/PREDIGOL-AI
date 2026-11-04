@@ -5,13 +5,19 @@
 import type { Iso } from "./types";
 import type { MembershipSummary } from "./types_membership";
 
-export type CustomerView = "all" | "expiring" | "inactive" | "tickets" | "errors";
+export type CustomerView =
+  "all" | "expiring" | "inactive" | "tickets" | "errors" | "at_risk" | "invited";
+/** Where a customer stands on the newest day the lifecycle computed (plan UX, B11). */
+export type LifecycleState =
+  "invited" | "activated" | "habitual" | "at_risk" | "expiring" | "renewed" | "expired";
 export const CUSTOMER_VIEWS: readonly CustomerView[] = [
   "all",
   "expiring",
   "inactive",
   "tickets",
   "errors",
+  "at_risk",
+  "invited",
 ];
 export type CustomerStatus = "active" | "disabled" | "invited";
 
@@ -27,6 +33,10 @@ export interface CustomerRow {
   errors_24h: number;
   active_days_7: number;
   last_csat: number | null;
+  /** Null before the first calculation. */
+  lifecycle: LifecycleState | null;
+  /** Why, as codes of a closed list. */
+  lifecycle_reasons: string[];
 }
 
 export interface CustomerList {
@@ -127,6 +137,12 @@ export interface CustomerNote {
   note: string;
 }
 
+export interface LifecycleChange {
+  day: string;
+  state: LifecycleState;
+  reasons: string[];
+}
+
 export interface Customer {
   identity: CustomerIdentity;
   membership: MembershipSummary | null;
@@ -139,6 +155,10 @@ export interface Customer {
   feedback: CustomerFeedbackSummary;
   notes: CustomerNote[];
   privacy_requests_open: number;
+  /** Their newest state and why. */
+  lifecycle: LifecycleChange | null;
+  /** Their changes of state, newest first. */
+  lifecycle_history: LifecycleChange[];
 }
 
 export interface ConsentRecord {

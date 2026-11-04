@@ -340,6 +340,17 @@
         "test": "Pruebas"
       },
       "note": "Recuentos, nunca quién. Los avisos enviados no son un objetivo: sirven para ver el ruido. Descartados por horas silenciosas vencidas, el máximo diario, una categoría apagada o sin dispositivo."
+    },
+    "lifecycle": {
+      "title": "Ciclo de vida de los clientes",
+      "day": "Estados al {date}",
+      "noDay": "Todavía no se calculó ningún día.",
+      "renewal": "Renovación (membresías que terminaron en 30 días)",
+      "activation": "Activación en 7 días",
+      "d7": "Vuelven en su 2.ª semana (día 7 a 13)",
+      "d30": "Vuelven en su 2.º mes (día 30 a 36)",
+      "insufficient": "Datos insuficientes: {n} de {min} lectores",
+      "note": "Para vigilar, no para optimizar: ningún mensaje ni empujón sale por estas cifras. Un porcentaje solo se muestra desde 30 lectores."
     }
   },
   "audit": {
@@ -796,7 +807,9 @@
       "expiring": "Vencen en 7 días",
       "inactive": "Inactivos 14 días",
       "tickets": "Tickets abiertos",
-      "errors": "Errores en 24 h"
+      "errors": "Errores en 24 h",
+      "at_risk": "En riesgo",
+      "invited": "Invitados sin activar"
     },
     "search": "Buscar por correo o alias",
     "empty": "Ningún cliente en esta vista.",
@@ -897,6 +910,34 @@
     "yourPassword": "Tu contraseña",
     "yourCode": "Tu código 2FA",
     "exportConfirm": "Confirmar y descargar",
-    "exported": "Copia descargada y registrada."
+    "exported": "Copia descargada y registrada.",
+    "lifecycle": {
+      "column": "Estado",
+      "title": "Ciclo de vida",
+      "none": "Todavía no se calculó su estado (se calcula una vez al día).",
+      "state": {
+        "invited": "Invitado",
+        "activated": "Activado",
+        "habitual": "Habitual",
+        "at_risk": "En riesgo",
+        "expiring": "Por vencer",
+        "renewed": "Renovó",
+        "expired": "Vencido"
+      },
+      "reason": {
+        "membership_expired": "su membresía y su gracia terminaron",
+        "membership_grace": "está en sus 3 días de gracia",
+        "membership_expiring": "su membresía termina pronto",
+        "membership_renewed": "renovó hace menos de 7 días",
+        "silent_7d": "sin actividad en 7 días",
+        "low_survey": "la última encuesta fue de 2 o menos",
+        "ticket_waiting_72h": "una solicitud espera hace más de 72 horas",
+        "used_3_of_7_days": "usó PrediGol 3 de los últimos 7 días",
+        "some_use": "ha usado PrediGol, aún sin hábito",
+        "never_used": "todavía no lo ha usado",
+        "account_invited": "la invitación no se ha activado",
+        "account_activated": "cuenta activada"
+      }
+    }
   }
 }

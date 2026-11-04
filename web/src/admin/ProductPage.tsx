@@ -15,6 +15,7 @@ import { fmtInt } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { Card, ErrorState } from "@/product/shared/States";
 import { FeedbackCard } from "./FeedbackCard";
+import { LifecycleView } from "./LifecycleCard";
 import { PushCard } from "./PushCard";
 
 function Figure({ label, value, testId }: { label: string; value: string; testId?: string }) {
@@ -155,6 +156,17 @@ export function ProductPage() {
             <Body o={q.data} />
           </>
         )}
+      </Card>
+      {/* The customers' lifecycle: states, renewal, activation and return (plan UX, B11). */}
+      <Card className="space-y-4 p-4" as="div">
+        <h2 className="font-display text-base font-semibold">
+          {t("admin.product.lifecycle.title")}
+        </h2>
+        {q.isPending ? (
+          <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
+        ) : q.data?.lifecycle ? (
+          <LifecycleView m={q.data.lifecycle} />
+        ) : null}
       </Card>
       {/* What readers think of PrediGol: the monthly survey, «¿Te sirvió?» and the comments (plan UX, B6). */}
       <FeedbackCard />

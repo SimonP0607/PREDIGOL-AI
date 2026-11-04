@@ -1,6 +1,7 @@
 /**
- * Clientes (/admin/customers, plan UX, B10): every reader with what is needed to attend and renew them. Four views say who
- * needs attention - their cover ends within 7 days, 14 days unseen, an open ticket, an error in the last 24 hours - with
+ * Clientes (/admin/customers, plan UX, B10): every reader with what is needed to attend and renew them. Six views say who
+ * needs attention - their cover ends within 7 days, 14 days unseen, an open ticket, an error in the last 24 hours, at risk or invited and
+ * never activated (the lifecycle, B11) - with
  * how many each holds; a search by address or alias; a table from xl and a card per reader below. Each row opens the
  * reader's card. Only the owner reaches it; the list holds no IP, no token and no loose click.
  */
@@ -15,7 +16,7 @@ import { t } from "@/lib/i18n";
 import { formatDateYear, formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { Card, EmptyState, ErrorState, SkeletonCards } from "@/product/shared/States";
-import { MembershipBadge } from "./CustomerParts";
+import { LifecycleBadge, MembershipBadge } from "./CustomerParts";
 
 const PAGE = 50;
 
@@ -147,6 +148,9 @@ export function CustomersPage() {
                   <tr className="border-b border-border">
                     <th className="px-4 py-2 font-medium">{t("admin.customers.customer")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.membership.column")}</th>
+                    <th className="px-3 py-2 font-medium">
+                      {t("admin.customers.lifecycle.column")}
+                    </th>
                     <th className="px-3 py-2 font-medium">{t("admin.customers.lastSeen")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.customers.activeDays")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.customers.csat")}</th>
@@ -173,6 +177,9 @@ export function CustomersPage() {
                       </td>
                       <td className="px-3 py-3">
                         <MembershipBadge membership={r.membership} />
+                      </td>
+                      <td className="px-3 py-3">
+                        <LifecycleBadge state={r.lifecycle} reasons={r.lifecycle_reasons} />
                       </td>
                       <td className="px-3 py-3">
                         <SeenCell row={r} />
@@ -209,6 +216,7 @@ export function CustomersPage() {
                   </Link>
                   <div className="break-all text-caption text-muted-foreground">{r.email}</div>
                   <MembershipBadge membership={r.membership} />
+                  <LifecycleBadge state={r.lifecycle} reasons={r.lifecycle_reasons} />
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     <span>
                       {t("admin.customers.lastSeen")}: <SeenCell row={r} />

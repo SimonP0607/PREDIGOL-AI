@@ -340,6 +340,17 @@
         "test": "Tests"
       },
       "note": "Counts, never who. Notices sent are not a target: they show the noise. Dropped when the quiet hours outlived them, the daily ceiling, a category switched off or no device."
+    },
+    "lifecycle": {
+      "title": "Customer lifecycle",
+      "day": "States as of {date}",
+      "noDay": "No day has been calculated yet.",
+      "renewal": "Renewal (memberships that ended in 30 days)",
+      "activation": "Activation within 7 days",
+      "d7": "Back in their 2nd week (day 7 to 13)",
+      "d30": "Back in their 2nd month (day 30 to 36)",
+      "insufficient": "Not enough data: {n} of {min} readers",
+      "note": "To watch, not to optimise: no message or nudge is sent because of these figures. A percentage is shown only from 30 readers."
     }
   },
   "audit": {
@@ -796,7 +807,9 @@
       "expiring": "Expiring in 7 days",
       "inactive": "Inactive 14 days",
       "tickets": "Open tickets",
-      "errors": "Errors in 24 h"
+      "errors": "Errors in 24 h",
+      "at_risk": "At risk",
+      "invited": "Invited, not activated"
     },
     "search": "Search by address or alias",
     "empty": "No customer in this view.",
@@ -897,6 +910,34 @@
     "yourPassword": "Your password",
     "yourCode": "Your 2FA code",
     "exportConfirm": "Confirm and download",
-    "exported": "Copy downloaded and recorded."
+    "exported": "Copy downloaded and recorded.",
+    "lifecycle": {
+      "column": "State",
+      "title": "Lifecycle",
+      "none": "Their state has not been calculated yet (it is calculated once a day).",
+      "state": {
+        "invited": "Invited",
+        "activated": "Activated",
+        "habitual": "Habitual",
+        "at_risk": "At risk",
+        "expiring": "Expiring",
+        "renewed": "Renewed",
+        "expired": "Expired"
+      },
+      "reason": {
+        "membership_expired": "their membership and its grace ended",
+        "membership_grace": "in their 3 days of grace",
+        "membership_expiring": "their membership ends soon",
+        "membership_renewed": "renewed less than 7 days ago",
+        "silent_7d": "no activity for 7 days",
+        "low_survey": "the last survey was 2 or less",
+        "ticket_waiting_72h": "a request has waited over 72 hours",
+        "used_3_of_7_days": "used PrediGol on 3 of the last 7 days",
+        "some_use": "has used PrediGol, no habit yet",
+        "never_used": "has not used it yet",
+        "account_invited": "the invitation was not activated",
+        "account_activated": "account activated"
+      }
+    }
   }
 }

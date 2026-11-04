@@ -19,9 +19,12 @@ const get = (tree: Tree, path: string): string | Tree | undefined =>
       tree,
     );
 
-const SOURCES = ["CustomersPage.tsx", "CustomerCard.tsx", "CustomerParts.tsx"].map((f) =>
-  readFileSync(new URL(`./${f}`, import.meta.url), "utf8"),
-);
+const SOURCES = [
+  "CustomersPage.tsx",
+  "CustomerCard.tsx",
+  "CustomerParts.tsx",
+  "LifecycleCard.tsx",
+].map((f) => readFileSync(new URL(`./${f}`, import.meta.url), "utf8"));
 const KEYS = [
   ...new Set(
     SOURCES.flatMap((s) => [...s.matchAll(/\bt\(\s*"(admin\.[A-Za-z0-9_.]+)"/g)].map((m) => m[1]!)),
@@ -43,8 +46,16 @@ describe("the texts of the customers' pages", () => {
       }
     });
   }
-  test("the four views, and «all», are named in both languages", () => {
-    expect(CUSTOMER_VIEWS).toEqual(["all", "expiring", "inactive", "tickets", "errors"]);
+  test("the views, and «all», are named in both languages", () => {
+    expect(CUSTOMER_VIEWS).toEqual([
+      "all",
+      "expiring",
+      "inactive",
+      "tickets",
+      "errors",
+      "at_risk",
+      "invited",
+    ]);
     for (const tree of [es, en] as Tree[]) {
       for (const v of CUSTOMER_VIEWS) {
         expect(typeof get(tree, `admin.customers.views.${v}`)).toBe("string");

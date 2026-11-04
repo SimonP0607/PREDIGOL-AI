@@ -17,6 +17,23 @@ export interface FunnelStep {
   subjects: number;
 }
 
+export interface LifecycleRate {
+  n: number;
+  /** The cohort's size. */
+  of: number;
+  /** Null while the cohort is under 30 readers: never a share of a handful. */
+  value: number | null;
+}
+
+export interface LifecycleMetrics {
+  day: string | null;
+  states: Record<string, number>;
+  renewal_30d: LifecycleRate;
+  activation_7d: LifecycleRate;
+  retention_d7: LifecycleRate;
+  retention_d30: LifecycleRate;
+}
+
 export interface ProductOverview {
   /** FBI_PRODUCT_EVENTS: off records nothing. */
   mode: "off" | "on" | "consent";
@@ -36,4 +53,6 @@ export interface ProductOverview {
   errors_per_active: number | null;
   /** Only from 100 readers active in 30 days. */
   dau_mau: number | null;
+  /** The customers' lifecycle (B11). */
+  lifecycle: LifecycleMetrics | null;
 }

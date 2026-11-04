@@ -107,6 +107,8 @@ export interface AdminTicket {
   late: boolean;
   context: SupportContext | null;
   effort: number | null;
+  /** The reader is AT RISK on the newest day of the lifecycle (B11): their request goes first within its priority. */
+  at_risk: boolean;
   messages: SupportMessage[];
 }
 

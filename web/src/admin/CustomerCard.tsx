@@ -14,10 +14,11 @@ import { v1 } from "@/lib/api/v1/client";
 import type { Customer } from "@/lib/api/v1/types_customers";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { t, translateOr } from "@/lib/i18n";
-import { formatDateTime, formatRelative } from "@/lib/time";
+import { formatDateTime, formatDateYear, formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { Card, ErrorState, SkeletonCards, errorMessage } from "@/product/shared/States";
-import { MembershipBadge } from "./CustomerParts";
+import { LifecycleBadge, MembershipBadge } from "./CustomerParts";
+import { calendarDay, lifecycleReasons } from "./lifecycleFigures";
 import { MembershipDialog } from "./MembershipDialog";
 
 const BUTTON =
@@ -477,6 +478,35 @@ function Export({ card, onNotice }: { card: Customer; onNotice: (text: string) =
   );
 }
 
+/** Where the customer stands today and why, and the days it changed (plan UX, B11). */
+function Lifecycle({ card }: { card: Customer }) {
+  const now = card.lifecycle;
+  return (
+    <Section id="lifecycle" title={t("admin.customers.lifecycle.title")}>
+      {now ? (
+        <div className="space-y-3">
+          <LifecycleBadge state={now.state} reasons={now.reasons} />
+          <ol className="space-y-1 text-xs text-muted-foreground" data-testid="lifecycle-history">
+            {card.lifecycle_history.map((c) => (
+              <li key={`${c.day}-${c.state}`} className="flex flex-wrap gap-x-2">
+                <span className="numeric">{formatDateYear(calendarDay(c.day))}</span>
+                <span className="font-semibold text-foreground">
+                  {t(`admin.customers.lifecycle.state.${c.state}`)}
+                </span>
+                <span>{lifecycleReasons(c.reasons).join(" · ")}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground" data-testid="lifecycle-none">
+          {t("admin.customers.lifecycle.none")}
+        </p>
+      )}
+    </Section>
+  );
+}
+
 function Body({ card }: { card: Customer }) {
   const [notice, setNotice] = useState<string | null>(null);
   const { identity: who, usage, notifications: mail, feedback } = card;
@@ -530,6 +560,7 @@ function Body({ card }: { card: Customer }) {
             <p className="text-xs text-muted-foreground">{t("admin.customers.willNotRenew")}</p>
           ) : null}
         </Section>
+        <Lifecycle card={card} />
         <Section id="usage" title={t("admin.customers.usage")}>
           {usage.measured ? null : (
             <p className="text-xs text-warning">{t("admin.customers.notMeasured")}</p>

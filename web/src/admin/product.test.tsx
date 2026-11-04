@@ -23,6 +23,7 @@ const base: ProductOverview = {
   days_active_per_week: null,
   errors_per_active: null,
   dau_mau: null,
+  lifecycle: null,
 };
 
 describe("the console's Product page", () => {

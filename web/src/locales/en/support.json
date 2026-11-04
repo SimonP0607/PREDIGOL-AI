@@ -360,7 +360,9 @@
       "send": "Save answer"
     },
     "privacyNote": "A privacy request: it is answered with its legal rules (deadline and one extension).",
-    "notice": "Answer saved."
+    "notice": "Answer saved.",
+    "atRisk": "Reader at risk",
+    "atRiskHint": "Their lifecycle state is «at risk»: their request goes first within its priority."
   },
   "feedback": {
     "survey": {

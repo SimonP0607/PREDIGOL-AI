@@ -360,7 +360,9 @@
       "send": "Guardar respuesta"
     },
     "privacyNote": "Solicitud de privacidad: se responde con sus reglas legales (plazo y una sola prórroga).",
-    "notice": "Respuesta guardada."
+    "notice": "Respuesta guardada.",
+    "atRisk": "Lector en riesgo",
+    "atRiskHint": "Su estado en el ciclo de vida es «en riesgo»: su solicitud va primero dentro de su prioridad."
   },
   "feedback": {
     "survey": {
