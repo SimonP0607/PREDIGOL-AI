@@ -54,7 +54,7 @@ def clean(fresh: str, monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:  # noqa
 def coupon(owner: Any, code: str = "BIENVENIDA", percent: int = 30, **extra: Any) -> dict[str, Any]:
     r = owner.post(COUPONS, json={"code": code, "percent": percent, **extra})
     assert r.status_code == 201, r.text
-    return r.json()  # type: ignore[no-any-return]
+    return r.json()
 
 
 def redeem(reader: Any, code: str) -> Any:
@@ -62,7 +62,7 @@ def redeem(reader: Any, code: str) -> Any:
 
 
 def standing(reader: Any) -> dict[str, Any]:
-    return reader.get(ME).json()["discounts"]  # type: ignore[no-any-return]
+    return reader.get(ME).json()["discounts"]
 
 
 def paid_for(owner: Any, user_id: int, months: int, **extra: Any) -> Any:
