@@ -210,7 +210,7 @@ def test_the_console_starts_a_trial_for_a_reader_it_creates_and_none_for_the_own
     assert reader.status_code == 201 and admin.status_code == 201, (reader.text, admin.text)
     periods = rows(fresh, "SELECT u.email, p.kind, p.ends_at - p.starts_at AS length FROM customer.membership_periods p "
                           "JOIN auth.users u ON u.id = p.user_id")
-    assert periods == [{"email": f"temp@{DOMAIN}", "kind": "trial", "length": 14 * DAY}]
+    assert periods == [{"email": f"temp@{DOMAIN}", "kind": "trial", "length": 20 * DAY}]
     listed = {u["email"]: u["membership"] for u in owner.get("/api/v1/admin/users").json()["data"]}
     assert listed[f"temp@{DOMAIN}"]["state"] == "trial"
     assert listed[OWNER] is None and listed[ROBOT] is None, "the owner and the robot have no membership"
@@ -276,6 +276,10 @@ def test_only_the_owner_records_and_a_reader_reads_only_their_own(fresh: str) ->
     assert c.get(f"/api/v1/admin/users/{victim}/membership").status_code == 403
     mine = c.get("/api/v1/me/membership").json()
     assert mine["membership"]["state"] == "none" and mine["periods"] == []
+    assert mine["plan"] == {
+        "trial_days": 20,
+        "prices": [{"currency": "COP", "amount": "150000"}, {"currency": "USD", "amount": "50"}],
+    }, "the one plan: the owner's price in both currencies and the 20-day trial (UX-004)"
     owner = signed_in(OWNER)
     exempt = owner.post(f"/api/v1/admin/users/{uid_of(OWNER, fresh)}/membership/courtesy",
                         json={"days": 5, "reason": "a mí mismo"})

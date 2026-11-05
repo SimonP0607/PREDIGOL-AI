@@ -40,7 +40,7 @@ def _require_switch() -> None:
 
 def invite(actor: Principal, *, email: str, display_name: str | None, language: str, timezone: str,
            ip: str | None, trial_days: int | None = None) -> dict[str, Any]:
-    """A new invited USER account and its invitation in the queue - one transaction. ``trial_days`` (7 to 14): the
+    """A new invited USER account and its invitation in the queue - one transaction. ``trial_days`` (7 to 20): the
     trial it gets when it is activated (plan UX, A8); FBI_TRIAL_DAYS when not said."""
     _require_switch()
     if trial_days is not None and not membership.TRIAL_DAYS_MIN <= trial_days <= membership.TRIAL_DAYS_MAX:

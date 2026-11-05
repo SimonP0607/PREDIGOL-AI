@@ -414,7 +414,7 @@ export function MembershipDialog({
                   days={{
                     label: t("admin.membership.trialDays"),
                     min: 7,
-                    max: 14,
+                    max: 20,
                     initial: view.trial_days,
                   }}
                   run={async ({ days }) => {

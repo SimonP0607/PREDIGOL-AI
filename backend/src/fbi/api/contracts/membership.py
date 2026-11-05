@@ -32,6 +32,19 @@ class RenewContact(Contract):
     email: str | None = Field(description="The address a reader's answer reaches (FBI_EMAIL_REPLY_TO).")
 
 
+class PlanPrice(Contract):
+    currency: str = Field(description="ISO 4217 code: COP or USD.")
+    amount: str = Field(description="The monthly price as a decimal string, e.g. 150000.")
+
+
+class MembershipPlan(Contract):
+    """The one plan, as the reader's membership block shows it (UX-004): the trial and the monthly price per currency.
+    ``prices`` is empty while the owner has not set one (FBI_MEMBERSHIP_PRICE_COP / FBI_MEMBERSHIP_PRICE_USD)."""
+
+    trial_days: int = Field(description="FBI_TRIAL_DAYS: the trial a new account gets, 20 by default.")
+    prices: list[PlanPrice]
+
+
 class MyPeriod(Contract):
     kind: PeriodKind
     starts_at: datetime
@@ -46,6 +59,7 @@ class MyMembership(Contract):
     enforced: bool = Field(description="FBI_MEMBERSHIP_ENFORCE: whether an ended membership limits anything.")
     periods: list[MyPeriod]
     renew: RenewContact
+    plan: MembershipPlan
 
 
 class AdminPeriod(Contract):
@@ -103,7 +117,7 @@ class CourtesyIn(BaseModel):
 class TrialIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    days: int = Field(ge=7, le=14)
+    days: int = Field(ge=7, le=20)
 
 
 class ReasonIn(BaseModel):

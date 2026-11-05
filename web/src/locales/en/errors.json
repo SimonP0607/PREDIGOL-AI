@@ -55,7 +55,7 @@
     "invalid_session_id": "Invalid session.",
     "invalid_status": "Choose a valid status.",
     "invalid_timezone": "That time zone is not valid.",
-    "invalid_trial_days": "A trial of 7 to 14 days.",
+    "invalid_trial_days": "A trial of 7 to 20 days.",
     "last_super_admin": "You cannot leave the platform without an active SUPER_ADMIN.",
     "legal_text_changed": "The text changed while you were reading it: look at the new version.",
     "link_invalid": "This link no longer works.",

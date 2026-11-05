@@ -1,6 +1,6 @@
 /**
- * The profile's Membership block (plan UX, A8): the state now in one sentence with its date, the days left, how to
- * renew, and the periods with their payments (amount, currency, method). Read from /me/membership, which no gate
+ * The profile's Membership block (plan UX, A8): the state now in one sentence with its date, the days left, the plan
+ * (its price and trial, UX-004), how to renew, and the periods with their payments (amount, currency, method). Read from /me/membership, which no gate
  * closes: a limited reader sees here why, and how to come back.
  */
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import { formatDateYear } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ErrorState } from "@/product/shared/States";
 import { membershipLine, showsDaysLeft } from "./membership";
+import { MembershipPlan } from "./MembershipPlan";
 import { RenewOptions } from "./RenewOptions";
 
 function amountOf(p: MyPeriod): string | null {
@@ -34,7 +35,7 @@ export function MembershipCard() {
       </div>
     );
   }
-  const { membership: m, periods, renew, enforced } = q.data;
+  const { membership: m, periods, renew, enforced, plan } = q.data;
   if (!m) return null;
   const ended = m.state === "expired" || m.state === "grace" || m.state === "suspended";
   return (
@@ -66,6 +67,7 @@ export function MembershipCard() {
       {!enforced && m.state === "expired" ? (
         <p className="text-xs text-muted-foreground">{t("profile.membership.notEnforced")}</p>
       ) : null}
+      <MembershipPlan plan={plan} />
       {m.state !== "none" ? (
         <div className="space-y-2 rounded-md border border-border p-3">
           <h3 className="text-sm font-semibold">{t("profile.membership.howToRenew")}</h3>
