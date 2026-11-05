@@ -416,6 +416,10 @@
       "help": "Ir a Ayuda"
     },
     "items": {
+      "explain": {
+        "title": "Explícame, la respuesta a tu duda",
+        "body": "En cada partido, en cada pick y en tu parlay hay un botón «Explícame»: elige una pregunta frecuente («¿Por qué no hay pick?», «¿Qué puede salir mal?») y recibe la respuesta con lo que PrediGol ya sabe. Sin IA y sin inventar: si falta un dato, te lo dice."
+      },
       "feedback": {
         "title": "Tu opinión, una vez al mes",
         "body": "De vez en cuando te preguntaremos qué tan útil te resultó PrediGol (como mucho una vez al mes y siempre se puede saltar), y al final de cada análisis y de cada explicación de un pick puedes decir si te sirvió. Lo que cambiemos gracias a esos comentarios lo contaremos aquí."
