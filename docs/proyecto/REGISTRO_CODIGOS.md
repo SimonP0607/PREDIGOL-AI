@@ -38,6 +38,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | Código | Qué es | Estado | PR | Fase o nombre anterior |
 | --- | --- | --- | --- | --- |
 | BE-001 | La prueba del seudónimo de Sentry ya no falla al azar (una vez de cada catorce) | en curso | este PR | — |
+| BE-002 | Se siguen las eliminatorias mundialistas de África (29) y Oceanía (33) y la Copa Asiática (7): tanda 2 de la expansión (nivel 6), comprobación de nombre y país contra el proveedor en `expand_leagues` y negativa de `manage_competitions apply` a apagar más de 5 competiciones | en curso | este PR | P3 tanda 2 |
 
 ## Otras áreas
 

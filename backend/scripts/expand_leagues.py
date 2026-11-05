@@ -9,6 +9,10 @@ disk - through the same catalogue builder as the selection (fbi.catalog.from_raw
 them like any tracked league (fixtures, pre-match and live odds, tables, injuries, reference feeds); their history is
 migrated as the batch's own tier (``python -m scripts.migration plan|seed|run --tiers <tier>``).
 
+Before anything is written the batch must match the provider: every league must be in raw.league_coverage, and its
+name and country there (newest season) must be the ones config/expansion.yaml gives it. A wrong id is refused, not
+tracked as some other competition.
+
 One run in the ledger (``league_expansion``) records what was tracked and when.
 """
 
@@ -33,6 +37,10 @@ SELECT l.league AS provider_league_id,
        (SELECT count(*) FROM raw.league_coverage lc WHERE lc.provider_league_id = l.league) AS seasons_listed,
        (SELECT max(lc.season) FILTER (WHERE lc.is_current) FROM raw.league_coverage lc
          WHERE lc.provider_league_id = l.league) AS current_season,
+       (SELECT lc.league_name FROM raw.league_coverage lc WHERE lc.provider_league_id = l.league
+         ORDER BY lc.season DESC LIMIT 1) AS provider_name,
+       (SELECT lc.country FROM raw.league_coverage lc WHERE lc.provider_league_id = l.league
+         ORDER BY lc.season DESC LIMIT 1) AS provider_country,
        c.id IS NOT NULL AS known, COALESCE(c.is_tracked, false) AS tracked, c.tier
   FROM unnest(%(ids)s::int[]) AS l(league)
   LEFT JOIN core.competitions c ON c.provider_league_id = l.league
@@ -47,6 +55,29 @@ def batch_of(number: int) -> dict[str, Any]:
     raise SystemExit(f"batch {number} is not in {EXPANSION_FILE}")
 
 
+def _same(a: object, b: object) -> bool:
+    return " ".join(str(a or "").split()).casefold() == " ".join(str(b or "").split()).casefold()
+
+
+def identity_mismatches(batch: dict[str, Any], state: list[dict[str, Any]]) -> list[str]:
+    """Leagues whose name or country in raw.league_coverage is not what config/expansion.yaml says they are.
+
+    Only what the config states is checked: a league that is not a candidate has its id as name and no country."""
+    names: dict[int, str] = batch.get("names") or {}
+    countries: dict[int, str] = batch.get("countries") or {}
+    out: list[str] = []
+    for r in state:
+        lid = int(r["provider_league_id"])
+        if not r["seasons_listed"]:
+            continue  # reported as missing
+        want_name, want_country = names.get(lid), countries.get(lid)
+        if want_name is not None and want_name != str(lid) and not _same(want_name, r["provider_name"]):
+            out.append(f"{lid}: provider calls it {r['provider_name']!r}, config says {want_name!r}")
+        if want_country is not None and not _same(want_country, r["provider_country"]):
+            out.append(f"{lid}: provider country {r['provider_country']!r}, config says {want_country!r}")
+    return out
+
+
 def expand(conn: psycopg.Connection[Any], batch: dict[str, Any], *, apply: bool) -> dict[str, Any]:
     leagues = [int(x) for x in batch["leagues"]]
     with conn.cursor(row_factory=dict_row) as cur:
@@ -56,6 +87,11 @@ def expand(conn: psycopg.Connection[Any], batch: dict[str, Any], *, apply: bool)
     out: dict[str, Any] = {"batch": batch["batch"], "tier": batch["tier"], "leagues": state, "missing": missing}
     if missing:
         out["refused"] = f"not in raw.league_coverage: {missing}; read /leagues first"
+        return out
+    wrong = identity_mismatches(batch, state)
+    if wrong:
+        out["mismatched"] = wrong
+        out["refused"] = "the provider's name or country differs from config/expansion.yaml: " + "; ".join(wrong)
         return out
     if not apply:
         return out
@@ -88,6 +124,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"batch {out['batch']} (tier {out['tier']}):")
     for r in out["leagues"]:
         print(f"  {r['provider_league_id']:>5}  name {batch['names'].get(r['provider_league_id'], '?')[:34]:34} "
+              f"provider {str(r['provider_name'] or '-')[:34]:34} "
               f"seasons listed {r['seasons_listed']:>3}  current {r['current_season']}  known {r['known']!s:5} "
               f"tracked {r['tracked']!s:5} tier {r['tier']}")
     if out.get("refused"):

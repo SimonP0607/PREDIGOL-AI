@@ -1,3 +1,8 @@
+# WARNING (BE-002, 5 Nov 2026): STALE. This is the Free-plan pilot of Sep 2026. Production tracks ~130
+# competitions set by the selection (config/migration.yaml) and the expansion batches (config/expansion.yaml,
+# scripts.expand_leagues). `manage_competitions apply` with this file would switch all of them off but two, so it
+# refuses to switch off more than 5 without --allow-mass-disable. Do not apply it.
+#
 # Which competitions the platform ingests. THE single source of truth for
 # activation. Nothing in the domain, the scheduler or the provider package
 # hard-codes a league id; they all read core.competitions.is_tracked, and
