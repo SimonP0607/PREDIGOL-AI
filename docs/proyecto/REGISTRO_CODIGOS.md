@@ -39,6 +39,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | --- | --- | --- | --- | --- |
 | BE-001 | La prueba del seudónimo de Sentry ya no falla al azar (una vez de cada catorce) | en curso | este PR | — |
 | BE-002 | Se siguen las eliminatorias mundialistas de África (29) y Oceanía (33) y la Copa Asiática (7): tanda 2 de la expansión (nivel 6), comprobación de nombre y país contra el proveedor en `expand_leagues` y negativa de `manage_competitions apply` a apagar más de 5 competiciones | en curso | este PR | P3 tanda 2 |
+| BE-003 | El pick del día da prioridad a la Champions, las ligas grandes, las copas continentales e intercontinentales y los torneos de selecciones (solo ordena a los ya elegibles; `daily-set-v7`, `comp-priority-v1`) | en curso | este PR | — |
 
 ## Otras áreas
 
@@ -46,4 +47,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-009 · SEG-001 · IA-009 · UX-002 · BE-003 · FE-001 · OPS-001 · DOC-001
+CI-009 · SEG-001 · IA-009 · UX-002 · BE-004 · FE-001 · OPS-001 · DOC-001
