@@ -176,6 +176,23 @@
       "legal": "Legal texts",
       "export": "Download my data",
       "readOnly": "Read-only while the membership has ended."
+    },
+    "plan": {
+      "title": "The plan",
+      "price": "{prices} a month",
+      "or": "or",
+      "priceHelp": "You choose which currency you pay in.",
+      "trial": "You start with {days} days of trial with full access and no card.",
+      "includesTitle": "Includes",
+      "includes": {
+        "analysis": "The analysis of every match and its reading",
+        "forecast": "The forecast of every match",
+        "explain": "Explain: answers from what PrediGol already knows, nothing made up",
+        "picks": "Picks and parlays, when PrediGol publishes them: one is never made up to fill the space",
+        "myPicks": "My picks and your favourites",
+        "help": "Help and support"
+      },
+      "how": "You pay by the means we agree with you and PrediGol records it by hand. There is no automatic charge: nothing is charged unless you agree to it."
     }
   },
   "centre": {

@@ -55,7 +55,7 @@
     "invalid_session_id": "Sesión no válida.",
     "invalid_status": "Elige un estado válido.",
     "invalid_timezone": "Esa zona horaria no es válida.",
-    "invalid_trial_days": "Una prueba de 7 a 14 días.",
+    "invalid_trial_days": "Una prueba de 7 a 20 días.",
     "last_super_admin": "No puedes dejar la plataforma sin ningún SUPER_ADMIN activo.",
     "legal_text_changed": "El texto cambió mientras lo leías: revisa la versión nueva.",
     "link_invalid": "Este enlace ya no sirve.",
