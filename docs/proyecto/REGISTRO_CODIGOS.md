@@ -46,4 +46,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-009 · SEG-001 · IA-009 · UX-002 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-009 · SEG-001 · IA-009 · UX-002 · BE-003 · FE-001 · OPS-001 · DOC-001
