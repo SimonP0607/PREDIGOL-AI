@@ -48,7 +48,9 @@ Los secretos (claves de Resend, de Sentry, VAPID, tokens) se escriben en el serv
 | `FBI_LINKS_PURGE` | `dry` | Los enlaces de un solo uso ya vencidos |
 | `FBI_EMAIL_DAILY_CAP` | 90 | Correos por día (Resend gratis envía 100) |
 | `FBI_DIGEST_DAILY_CAP` | 30 | Resúmenes por día |
-| `FBI_TRIAL_DAYS` | 14 | Prueba de una cuenta nueva, entre 7 y 14 |
+| `FBI_TRIAL_DAYS` | 20 | Prueba de una cuenta nueva, entre 7 y 20 |
+| `FBI_MEMBERSHIP_PRICE_COP` | 150000 | Precio mensual en pesos colombianos que ve el lector; `0` o `off` esconde esa moneda |
+| `FBI_MEMBERSHIP_PRICE_USD` | 50 | Precio mensual en dólares que ve el lector; `0` o `off` esconde esa moneda |
 | `FBI_MEMBERSHIP_CURRENCY` | COP | Moneda que propone la consola al registrar un pago |
 | `FBI_USER_NARRATIVE_MINUTES` | 10 | Cada cuánto el worker busca narrativas por escribir |
 | `FBI_PRODUCT_MIN_SUBJECTS` | 20 | Lectores activos mínimos para mostrar cifras globales |
