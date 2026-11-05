@@ -296,7 +296,7 @@ class AdminInviteIn(BaseModel):
     display_name: str | None = Field(default=None, max_length=80)
     language: Language = "es"
     timezone: str = Field(default="America/Bogota", max_length=64)
-    trial_days: int | None = Field(default=None, ge=7, le=14, description="The trial this account gets when it is "
+    trial_days: int | None = Field(default=None, ge=7, le=20, description="The trial this account gets when it is "
                                                                           "activated (plan UX, A8); FBI_TRIAL_DAYS "
                                                                           "by default.")
 

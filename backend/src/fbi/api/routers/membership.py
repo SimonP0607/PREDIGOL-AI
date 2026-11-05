@@ -15,6 +15,7 @@ from fbi.api.contracts.membership import (
     AdminMembershipEvent,
     AdminPeriod,
     CourtesyIn,
+    MembershipPlan,
     MembershipSummary,
     MyMembership,
     MyPeriod,
@@ -52,7 +53,7 @@ def my_membership(conn: Db, principal: App) -> MyMembership:
     mine = membership.mine(conn, principal.user_id, email=principal.email, super_admin=principal.is_super_admin)
     return MyMembership(membership=MembershipSummary(**mine["membership"]) if mine["membership"] else None,
                         enforced=mine["enforced"], periods=[MyPeriod(**p) for p in mine["periods"]],
-                        renew=RenewContact(**mine["renew"]))
+                        renew=RenewContact(**mine["renew"]), plan=MembershipPlan(**mine["plan"]))
 
 
 def _admin_view(user_id: int) -> AdminMembership:
