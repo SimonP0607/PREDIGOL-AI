@@ -3,9 +3,9 @@
  * (backend fbi/picks/user_status.py) - its words and an icon, so it never depends on colour alone - and, beside a
  * RECOMMENDED by the value rule alone, «Revisión de contexto aún no aplicada» (plan UX, A1, defect F48).
  *
- *   RECOMMENDED      Recomendado      Picks, Inicio and the match
- *   CAUTION          Cautela          Picks and the match (the applied AI review downgrades it)
- *   NOT_RECOMMENDED  No recomendado   only on the match (no value at its price, or the applied review rejects it)
+ *   RECOMMENDED      Recomendado      Picks, Inicio, the match, the day's set: the only state a reader is shown (UX-002)
+ *   CAUTION          Cautela          the owner's preview only (the applied AI review downgrades it)
+ *   NOT_RECOMMENDED  No recomendado   the owner's preview only (no value at its price, or the applied review rejects it)
  *   EVALUATION       En evaluación    the owner's preview only: its model has not beaten the market yet
  */
 import { Ban, CheckCircle2, FlaskConical, TriangleAlert, type LucideIcon } from "lucide-react";

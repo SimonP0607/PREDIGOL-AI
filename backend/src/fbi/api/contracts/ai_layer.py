@@ -65,7 +65,8 @@ class AnalysisCard(Contract):
     user_status: UserStatus | None = Field(default=None, description=(
         "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table): a value card is its pick's state - "
         "RECOMMENDED, CAUTION or NOT_RECOMMENDED by the applied AI review, EVALUATION when its pick is not qualified (the "
-        "owner's view only) -, an evaluated card NOT_RECOMMENDED (no value at its price) and an unpriced market none."))
+        "owner's view only) -, an evaluated card NOT_RECOMMENDED (no value at its price) and an unpriced market none. A "
+        "reader is shown RECOMMENDED cards and unpriced markets only (UX-002, «solo verde»)."))
     status_reason: StatusReason | None = None
     context_pending: bool = Field(default=False, description="RECOMMENDED by the value rule alone: «revisión de "
                                                              "contexto aún no aplicada» is said beside it.")
@@ -98,7 +99,9 @@ class MatchAnalysis(Contract):
     engines: list[str]
     analyzed_by_llm: bool = Field(description="A language model reviewed at least one selection of this match.")
     cards: list[AnalysisCard]
-    withheld: int = Field(description="Cards a user does not see: their pick is in evaluation (shadow).")
+    withheld: int = Field(description="Cards a user does not see because their pick is in evaluation (shadow). A published "
+                                      "card that is not RECOMMENDED is not shown to a user either (UX-002) and is not "
+                                      "counted here.")
     missing: list[str] = Field(default_factory=list, description="Context blocks the packet could not fill.")
     brief: BriefView | None = Field(default=None, description="The L1 brief of the match (evaluation view, or "
                                                               "enforced): never a probability.")

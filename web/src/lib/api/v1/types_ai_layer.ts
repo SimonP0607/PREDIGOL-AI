@@ -67,7 +67,8 @@ export interface AnalysisCard {
   notes?: CardNotes | null;
   /**
    * What a reader is shown (plan UX, B3; the one table): a value card is its pick's state, an evaluated card NOT_RECOMMENDED
-   * and an unpriced market none (null: the card keeps its own «sin mercado»).
+   * and an unpriced market none (null: the card keeps its own «sin mercado»). A reader gets RECOMMENDED cards and unpriced
+   * markets only (UX-002, «solo verde»).
    */
   user_status?: UserStatus | null;
   status_reason?: StatusReason | null;
@@ -113,7 +114,8 @@ export interface MatchAnalysis {
   /** A language model reviewed at least one selection of this match. */
   analyzed_by_llm: boolean;
   cards: AnalysisCard[];
-  /** Cards a user does not see: their pick is in evaluation (shadow). */
+  /** Cards a user does not see because their pick is in evaluation (shadow); a published card that is not RECOMMENDED is not
+   * shown either (UX-002) and is not counted here. */
   withheld: number;
   missing: string[];
   /** The L1 brief (the owner's view, or enforced). */

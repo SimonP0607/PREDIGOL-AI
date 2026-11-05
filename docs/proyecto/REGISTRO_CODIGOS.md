@@ -32,6 +32,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | Código | Qué es | Estado | PR | Fase o nombre anterior |
 | --- | --- | --- | --- | --- |
 | UX-001 | Plan maestro de UX completo, de A3 a B11: Inicio, Análisis y Postpartido, Mis picks, avisos y dispositivos, membresía, ficha del cliente y ciclo de vida (migraciones 0095 a 0106, que cuelgan de la 0119). A1 y A2 ya corrían en producción | desplegado el 4-nov-2026 (release `ux-001`, backend `0306f006e631`, web `32dce8b44177`, base en 0106) | #21 | A3 a B11 |
+| UX-002 | «Solo verde + pronóstico aparte» (decisión del dueño): los lectores solo ven picks en «Recomendado»; «Con cautela» y «No recomendado» se ocultan en listas, Top 5, partido, análisis, picks del día y parlays (la vista previa del dueño no cambia; el pronóstico sigue visible). Sin migración | en curso | este PR | B3 (estado visible de un pick) |
 
 ## BE — backend
 
