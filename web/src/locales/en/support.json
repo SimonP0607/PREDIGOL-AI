@@ -416,6 +416,10 @@
       "help": "Go to Help"
     },
     "items": {
+      "explain": {
+        "title": "Explain, the answer to your question",
+        "body": "On every match, every pick and your parlay there is an «Explain» button: choose a frequent question («Why is there no pick?», «What can go wrong?») and get the answer from what PrediGol already knows. No AI and nothing made up: if a piece of data is missing, it says so."
+      },
       "feedback": {
         "title": "Your opinion, once a month",
         "body": "Now and then we will ask you how useful PrediGol was to you (once a month at most, and it can always be skipped), and at the end of every analysis and every pick explanation you can say whether it was useful. Whatever we change thanks to those comments, we will tell you here."
