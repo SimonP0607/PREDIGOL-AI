@@ -35,7 +35,8 @@ Este documento nombra los secretos y dice cómo se reponen; **nunca lleva un val
 |---|---|---|---|---|
 | `FBI_APIFOOTBALL_KEY` | `app.env` | el worker (la API nunca llama al proveedor) | gasto de la cuota diaria del plan | «API-Football» |
 | `FBI_AUTH_SECRET_KEY` | `app.env` | la API | con una copia de la base, descifra los segundos factores y falsifica códigos de recuperación | «`FBI_AUTH_SECRET_KEY`» |
-| `FBI_SENTRY_DSN` | `app.env` | la API y el worker | mandar errores falsos y gastar la cuota de Sentry; no lee nada | «Sentry» |
+| `FBI_SENTRY_DSN`, `FBI_SENTRY_WEB_DSN` | `app.env` | la API y el worker (el primero); la API, que reenvía los errores de la web por su túnel sin que el DSN llegue al navegador (el segundo) | mandar errores falsos y gastar la cuota de Sentry; no lee nada | «Sentry» |
+| `FBI_SYNTHETIC_PASSWORD` | `app.env`, vacía hasta que el dueño crea la cuenta de lectura dedicada (plan UX, A2) | el worker, para el recorrido de un lector de prueba cada 15 minutos | entrar como esa cuenta de prueba, que es de lectura, sin segundo factor y sin datos de nadie | «Cuenta del recorrido sintético» |
 | `FBI_VAPID_PRIVATE_KEY` | `app.env`, vacía hasta la acción P12 del plan UX | el messenger firma con ella los avisos a los dispositivos; la API solo deriva de ella la clave pública que da a los navegadores | mandar avisos en nombre de PrediGol a los dispositivos que los activaron (no lee nada) | «Clave VAPID de los avisos» |
 | `FBI_RESEND_API_KEY`, `FBI_RESEND_WEBHOOK_SECRET` | `app.env`, vacíos hasta que el dueño abre la cuenta de Resend (P2 y P3 del plan UX) | el messenger manda con la clave los correos a los lectores (la API solo mira que esté puesta); la API comprueba con el secreto la firma de los avisos de Resend | con la clave, correos en nombre del dominio de PrediGol y su cuota gastada; con el secreto, falsos avisos de rebote o de spam que dejan a lectores sin correo | «Resend (correo)» |
 | `FBI_AI_KEY_ANTHROPIC` (en la Console, `worker-prod`), `FBI_AI_KEY_ANTHROPIC_LAB` (`worker-lab`), `EXA_API_KEY` | `app.env` | el worker (la IA; la clave del LAB, solo las sondas y pruebas del LAB); la API solo mira que estén puestas | gasto a tu nombre en esos proveedores, acotado por el tope de cada workspace en la Console (190 y 20 USD) | «Claves de Anthropic y de Exa» |
@@ -187,10 +188,17 @@ falsas alarmas. Healthchecks.io **no deja cambiar** el identificador de un check
 
 No hay que reiniciar nada. Si se filtra `predigol.env` entero, se repite con los siete.
 
-**Sentry (`FBI_SENTRY_DSN`).** El DSN solo deja mandar eventos, pero aquí vive en el servidor y quien lo tenga puede llenar el proyecto de
+**Sentry (`FBI_SENTRY_DSN`, `FBI_SENTRY_WEB_DSN`).** El DSN solo deja mandar eventos, pero aquí vive en el servidor y quien lo tenga puede llenar el proyecto de
 errores falsos y gastar la cuota. En Sentry → Settings → Projects → el proyecto → Client Keys (DSN): se crea una clave nueva, su DSN va
 a `app.env` (copia fechada antes), `predigolctl up` recrea la API y el worker (unos segundos de 502 en la API) y después se desactiva la
-clave antigua. Sentry no recibe cookies, cuerpos de petición, IP ni variables locales (`src/fbi/core/sentry.py`).
+clave antigua. Son dos proyectos, y cada línea se rota en el suyo: el del servidor (`FBI_SENTRY_DSN`) y el de la web (`FBI_SENTRY_WEB_DSN`),
+cuyo DSN no sale nunca de la API hacia el navegador. Sentry no recibe cookies, cuerpos de petición, IP ni variables locales (`src/fbi/core/sentry.py`).
+
+**Cuenta del recorrido sintético (`FBI_SYNTHETIC_PASSWORD`).** Si la línea está vacía en `app.env`, no hay nada que rotar. La cuenta es de lectura,
+dedicada y sin segundo factor: quien tenga su contraseña ve lo que ve cualquier lector de prueba, y nada de nadie más. Para cambiarla, el dueño
+crea otra cuenta dedicada (`predigolctl create-user --email <correo-nuevo> --role USER`, cuya contraseña queda en un fichero 600 que se borra
+al copiarla), pone el correo y la contraseña nuevos en `app.env` (copia fechada antes), `predigolctl up` recrea el worker y, con el recorrido ya en
+verde, se cierra la cuenta antigua (`predigolctl accounts disable --email <correo-antiguo> --confirm`).
 
 **Resend (correo).** Si las líneas están vacías en `app.env`, no hay nada que rotar. La clave (`FBI_RESEND_API_KEY`) se crea en
 Resend → API Keys, con permiso solo de envío y solo para el dominio de PrediGol, y va a `app.env` sin que se vea en pantalla, con copia
