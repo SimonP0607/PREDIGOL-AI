@@ -34,6 +34,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | --- | --- | --- | --- | --- |
 | UX-001 | Plan maestro de UX completo, de A3 a B11: Inicio, Análisis y Postpartido, Mis picks, avisos y dispositivos, membresía, ficha del cliente y ciclo de vida (migraciones 0095 a 0106, que cuelgan de la 0119). A1 y A2 ya corrían en producción | desplegado el 4-nov-2026 (release `ux-001`, backend `0306f006e631`, web `32dce8b44177`, base en 0106) | #21 | A3 a B11 |
 | UX-002 | «Solo verde + pronóstico aparte» (decisión del dueño): los lectores solo ven picks en «Recomendado»; «Con cautela» y «No recomendado» se ocultan en listas, Top 5, partido, análisis, picks del día y parlays (la vista previa del dueño no cambia; el pronóstico sigue visible). Sin migración | en curso | este PR | B3 (estado visible de un pick) |
+| UX-005 | Cupones y descuento por fidelidad de la membresía (decisión del dueño del 5-nov-2026): el dueño crea cupones cuando quiera (código, porcentaje, nota, último día y cupos; los apaga, nunca los borra), el lector guarda uno con su código en la sección Membresía del perfil, y quien lleva más de dos meses pagados tiene 20% en cada renovación. No se suman: se aplica el mayor. Sin cobro automático: el descuento lo registra el dueño con el pago. Migración 0121 (`customer.coupons`, `customer.coupon_redemptions` y tres columnas de `customer.payments`); no toca la inteligencia | en curso | este PR | — |
 
 ## BE — backend
 
@@ -47,4 +48,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-010 · SEG-001 · IA-009 · UX-003 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-010 · SEG-001 · IA-009 · UX-006 · BE-002 · FE-001 · OPS-001 · DOC-001
