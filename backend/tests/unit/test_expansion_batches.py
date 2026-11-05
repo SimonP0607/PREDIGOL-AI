@@ -105,8 +105,8 @@ def test_manage_competitions_apply_with_the_stale_pilot_file_writes_nothing_unle
         return _diff(131)
 
     monkeypatch.setattr(mc, "_connect", _Conn)
-    monkeypatch.setattr(mc.activation, "apply", fake_apply)
-    monkeypatch.setattr(mc.activation, "active_league_ids", lambda conn: [])
+    monkeypatch.setattr(activation, "apply", fake_apply)
+    monkeypatch.setattr(activation, "active_league_ids", lambda conn: [])
     args = Namespace(config=str(Path(mc.DEFAULT_CONFIG)), dry_run=False, allow_mass_disable=allow)
     if allow:
         with pytest.raises(RuntimeError, match="written"):
@@ -128,7 +128,7 @@ def test_manage_competitions_dry_run_still_shows_the_diff(monkeypatch: pytest.Mo
         return _diff(131)
 
     monkeypatch.setattr(mc, "_connect", _Conn)
-    monkeypatch.setattr(mc.activation, "apply", fake_apply)
-    monkeypatch.setattr(mc.activation, "active_league_ids", lambda conn: [])
+    monkeypatch.setattr(activation, "apply", fake_apply)
+    monkeypatch.setattr(activation, "active_league_ids", lambda conn: [])
     args = Namespace(config=str(mc.DEFAULT_CONFIG), dry_run=True, allow_mass_disable=False)
     assert mc.cmd_apply(args) == 0 and calls == [True]
