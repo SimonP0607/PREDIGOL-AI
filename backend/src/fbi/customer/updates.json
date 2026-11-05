@@ -2,6 +2,14 @@
   "_comment": "Novedades (plan UX, B6 and B8): the entries of web/src/product/updates/updates.ts with their titles as the web's catalogues say them (support.updates.items.<key>.title, ES and EN), newest first - what the weekly summary by e-mail names (fbi.messaging.digest). A test of the web checks that both say the same; an entry is added in both in the same change.",
   "entries": [
     {
+      "id": "2026-11-04-explicame",
+      "key": "explain",
+      "title": {
+        "es": "Explícame, la respuesta a tu duda",
+        "en": "Explain, the answer to your question"
+      }
+    },
+    {
       "id": "2026-10-27-tu-opinion",
       "key": "feedback",
       "title": {
