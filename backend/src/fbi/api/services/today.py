@@ -39,6 +39,7 @@ from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.api.services import center, reading
 from fbi.api.services import forecast as forecast_service
 from fbi.api.services.follows import Follows, follow_reason
+from fbi.api.services.records import readers_see
 from fbi.core.clock import now
 from fbi.core.suggestions import SUGGESTED_LEAGUES, SUGGESTED_TEAM
 from fbi.picks import funnel
@@ -159,10 +160,11 @@ SELECT count(*)::int AS n
 """
 
 DAY_SET_SQL = """
-SELECT count(i.rank)::int AS items
-  FROM picks.daily_sets s LEFT JOIN picks.daily_set_items i ON i.set_id = s.id
+SELECT i.inputs
+  FROM picks.daily_sets s JOIN picks.daily_set_items i ON i.set_id = s.id
  WHERE s.day = %(day)s AND s.source = 'qualified'
 """
+"""The published set's items, each with what it froze: the day «has picks» when a reader is shown one (UX-002, «solo verde»)."""
 
 
 def _competition(r: dict[str, Any]) -> CompetitionBadge:
@@ -220,7 +222,7 @@ def no_pick(conn: Conn, *, at: datetime | None = None) -> Section[NoPick]:
     day = product_day(moment)
     start, end = _day_bounds(day)
     matches = int((fetch_one(conn, DAY_MATCHES_SQL, {"start": start, "end": end}) or {}).get("n") or 0)
-    items = int((fetch_one(conn, DAY_SET_SQL, {"day": day}) or {}).get("items") or 0)
+    items = sum(readers_see(fetch_all(conn, DAY_SET_SQL, {"day": day}), "qualified"))
     if items > 0:
         return section(NoPick(day=day, state="picks", stage=None, reason=None, matches=matches))
     if matches == 0:

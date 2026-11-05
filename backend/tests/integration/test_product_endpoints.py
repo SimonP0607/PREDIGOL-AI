@@ -167,8 +167,9 @@ def test_the_multiday_parlay_reaches_two_days(as_role: Any, dataset: dict[str, A
 
 
 def test_picks_are_re_priced_and_say_when_they_have_no_value_now(as_role: Any, dataset: dict[str, Any]) -> None:
-    """Plan UX, B3: the list shows what it may recommend - a pick without value at the best price now is NOT_RECOMMENDED,
-    counted (``withheld``) and left on its match, whose own view shows it with its state and the gate it fails."""
+    """Plan UX, B3 and UX-002 («solo verde»): a reader is shown what may be recommended - a pick without value at the best price
+    now is NOT_RECOMMENDED and counted (``withheld``), in the list and on its own match alike; the owner's preview shows it with
+    its state and the gate it fails."""
     user = as_role("USER")
     board = data(user, "/api/v1/picks")
     assert board["source"] == "qualified" and len(board["top"]) == 5 and board["reason"] is None
@@ -178,12 +179,17 @@ def test_picks_are_re_priced_and_say_when_they_have_no_value_now(as_role: Any, d
         ("RECOMMENDED", "value", True)}, "the AI's review is not applied: the value rule alone, and it says so"
     good = by_fixture[dataset["fixtures"]["F1"]]
     assert good["value_now"] and good["freshness"] == "fresh" and Decimal(good["fair_odds"]) == Decimal("2.326")
-    stale = data(user, f"/api/v1/picks?fixture_id={dataset['fixtures']['F8']}&hours=168")
+    for name in ("F8", "F9"):
+        on_match = data(user, f"/api/v1/picks?fixture_id={dataset['fixtures'][name]}&hours=168")
+        assert (on_match["picks"], on_match["top"], on_match["withheld"], on_match["reason"]) == (
+            [], [], 1, "no_value_now"), f"{name}: not even its own match shows a reader a pick that is not green"
+    owner = as_role("SUPER_ADMIN")
+    stale = data(owner, f"/api/v1/picks?fixture_id={dataset['fixtures']['F8']}&hours=168&preview=shadow")
     assert stale["withheld"] == 0 and len(stale["picks"]) == 1 and stale["top"] == []
     s = stale["picks"][0]
     assert s["value_now"] is False and s["value_reason"] == "stale_price" and s["freshness"] == "stale"
     assert (s["user_status"], s["status_reason"], s["context_pending"]) == ("NOT_RECOMMENDED", "no_value_now", False)
-    poor = data(user, f"/api/v1/picks?fixture_id={dataset['fixtures']['F9']}&hours=168")["picks"][0]
+    poor = data(owner, f"/api/v1/picks?fixture_id={dataset['fixtures']['F9']}&hours=168&preview=shadow")["picks"][0]
     assert poor["value_now"] is False and poor["value_reason"] == "non_positive_ev" and Decimal(poor["ev"]) < 0
     assert poor["user_status"] == "NOT_RECOMMENDED"
     only_9 = data(user, "/api/v1/picks?max_odds=1.80")
