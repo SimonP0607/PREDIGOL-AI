@@ -16,6 +16,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | CI-006 | Las pruebas de copia usan el cliente de PostgreSQL 16 en el CI (la imagen de GitHub trajo un `pg_dump` más nuevo) | hecho (3-nov-2026) | #17 | — |
 | CI-007 | Despliegue continuo: cada fusión en `main` con el CI verde se despliega sola (interruptor `AUTO_DEPLOY`, entorno `production-auto`, comprobación de linaje) | en curso | #24 | — |
 | CI-008 | El kit de lanzamiento toma la cabeza de migraciones de la cadena (`down_revision`), no el número más alto: la verificación de `ux-001` marcó «NOT OK» por comparar con 0119 cuando la cabeza real era 0106 | en curso | este PR | — |
+| CI-009 | El CI vuelve a pasar con ruff 0.17.4: se junta un `if` anidado del revisor posterior en una sola condición (misma lógica, ahora con prueba) | en curso | este PR | — |
 
 ## IA — capa de inteligencia artificial
 
@@ -45,4 +46,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-009 · SEG-001 · IA-009 · UX-002 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-010 · SEG-001 · IA-009 · UX-002 · BE-002 · FE-001 · OPS-001 · DOC-001
