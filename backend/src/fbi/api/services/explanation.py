@@ -89,12 +89,14 @@ def _visible(status: str | None, *, preview: bool) -> bool:
     return user_status.is_published(status) or (preview and status == "shadow")
 
 
-def _day(conn: Conn, r: Row, *, shadow: bool) -> ExplanationDay | None:
+def _day(conn: Conn, r: Row, *, shadow: bool, preview: bool) -> ExplanationDay | None:
     source: SetSource = "evaluation" if shadow else "qualified"
     d = fetch_one(conn, DAY_SQL, {"pick": int(r["pick_id"]), "source": source})
     if d is None:
         return None
     state = item_state(d, source)
+    if not preview and not user_status.for_readers(state.status):
+        return None  # «solo verde» (UX-002): the day's set does not show a reader this pick, so neither does its explanation
     return ExplanationDay(day=d["day"], rank=int(d["rank"]), stage=d["stage"], selected_at=d["selected_at"],
                           odds=Decimal(d["odds"]), bookmaker=d["bookmaker"], user_status=state.status,
                           status_reason=state.reason, context_pending=state.context_pending)
@@ -156,7 +158,7 @@ def pick_explanation(conn: Conn, pick_id: int, *, preview: bool, at: datetime | 
         state = applied.shown(pick_status=r["pick_status"], value=value_now, fixture_id=fixture,
                               market_key=r["market_key"], selection=r["selection"], line=line)
 
-    day = _day(conn, r, shadow=shadow)
+    day = _day(conn, r, shadow=shadow, preview=preview)
     market = ExplanationMarket(
         p_model=Decimal(r["p_model"]), p_low=r["p_low"], p_high=r["p_high"],
         p_market=r["p_market_taken"] if started else p_market_now,

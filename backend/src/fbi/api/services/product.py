@@ -7,9 +7,9 @@ beside the match's state and its result. A user sees qualified picks
 only; ``include_shadow`` is the Admin Console's preview and is refused to anyone else
 by the router.
 
-Every card carries the state a reader is shown (plan UX, B3: ``fbi/picks/user_status.py``, the one table): a list of picks
-shows the RECOMMENDED and CAUTION ones, counts the rest (``withheld``) and leaves each on its match, whose own view
-(``fixture_id``) shows every pick with its state.
+Every card carries the state a reader is shown (plan UX, B3: ``fbi/picks/user_status.py``, the one table). A reader is shown
+the RECOMMENDED ones only - in a list, on one match (``fixture_id``) and as the legs of a parlay (UX-002, «solo verde») - and the
+rest are counted (``withheld``). The owner's preview shows every card, labelled.
 """
 
 from __future__ import annotations
@@ -169,9 +169,10 @@ def cards(rows: Iterable[Row], moment: datetime, cfg: GateConfig, *, applied: Ap
 
 
 def listed(all_cards: list[PickCard], *, include_shadow: bool) -> list[PickCard]:
-    """What a list of picks shows a reader (plan UX, B3): RECOMMENDED and CAUTION - a pick without value at the best price now,
-    or rejected by the applied AI review, stays on its match. The owner's preview shows every card, labelled."""
-    return all_cards if include_shadow else [p for p in all_cards if p.user_status in user_status.IN_LIST]
+    """What a reader is shown of these picks (plan UX, B3; UX-002, «solo verde»): the RECOMMENDED ones only - a pick downgraded
+    or rejected by the applied AI review, or without value at the best price now, is counted, never shown, in a list and on its
+    match alike. The owner's preview shows every card, labelled."""
+    return all_cards if include_shadow else [p for p in all_cards if user_status.for_readers(p.user_status)]
 
 
 def _top(all_cards: list[PickCard], moment: datetime) -> list[PickCard]:
@@ -226,19 +227,18 @@ def picks_board(conn: Conn, *, include_shadow: bool, competition_id: int | None,
             and (max_odds is None or (r["best_odds"] is not None and Decimal(r["best_odds"]) <= max_odds))]
     applied = pick_status.applied_now(conn, (int(r["fixture_id"]) for r in kept), at=moment)
     all_cards = cards(kept, moment, cfg, applied=applied)
-    # One match (its Picks tab) shows every pick with its state; a list shows what a reader may be recommended (plan UX, B3),
-    # and the Top 5 is always such a list.
-    recommendable = listed(all_cards, include_shadow=include_shadow)
-    shown = all_cards if fixture_id is not None else recommendable
-    top = _top(recommendable, moment)
+    # A list and one match (its Picks tab) alike show a reader the RECOMMENDED picks only (UX-002, «solo verde»), and the Top 5
+    # is always such a list; the owner's preview shows every pick with its state.
+    shown = listed(all_cards, include_shadow=include_shadow)
+    top = _top(shown, moment)
     reason = None
     if not rows:
         reason = "no_shadow_picks" if include_shadow else "no_qualified_picks"
     elif not kept:
         reason = "no_picks_match_filters"
     elif not shown:
-        # Every pick of the window stays on its match (plan UX, B3): say why truthfully - none has value at the best price now,
-        # or some were rejected by the applied review.
+        # No pick of the window is recommended now (plan UX, B3; UX-002): say why truthfully - none has value at the best price
+        # now, or some were downgraded or rejected by the applied review.
         reason = "no_value_now" if all(c.status_reason == "no_value_now" for c in all_cards) else "none_recommended"
     elif not top:
         reason = "no_value_now"
@@ -258,11 +258,38 @@ def started_board(conn: Conn, *, include_shadow: bool, at: datetime | None = Non
                    empty_reason="no_shadow_picks" if include_shadow else "no_started_picks")
 
 
-def parlay(rows: list[Row], spec: engine.ParlaySpec, *, include_shadow: bool, moment: datetime) -> Parlay:
+NOT_RECOMMENDED_LEG = "not_recommended"
+"""A parlay's rejection code (``Parlay.rejections``) for the selections a reader may not be shown as a leg: the applied AI review
+downgrades or rejects them (UX-002, «solo verde»)."""
+
+
+def recommendable_rows(rows: list[Row], *, applied: Applied) -> tuple[list[Row], int]:
+    """The candidates a reader's parlay may hold as legs (UX-002, «solo verde»): every leg passes the value gate (the engine's own
+    rule) and must be RECOMMENDED there - so, while the AI's review is applied, a selection it downgrades or rejects is left out
+    before the engine chooses, never shown as a leg. Returns (the rows kept, how many were left out). Free while the review is
+    not applied (production since the AI layer exists): nothing is left out."""
+    if not applied.enforced:
+        return rows, 0
+    kept = [r for r in rows if user_status.for_readers(applied.shown(
+        pick_status=r["pick_status"], value=True, fixture_id=int(r["fixture_id"]), market_key=r["market_key"],
+        selection=r["selection"], line=Decimal(r["line"])).status)]
+    return kept, len(rows) - len(kept)
+
+
+def parlay(rows: list[Row], spec: engine.ParlaySpec, *, include_shadow: bool, moment: datetime,
+           applied: Applied = pick_status.NOT_APPLIED) -> Parlay:
+    """The parlay of a kind, built now with the engine's rule. A reader's holds RECOMMENDED legs only (``recommendable_rows``);
+    the owner's preview builds from every candidate, as before."""
     cfg = GateConfig(allow_unqualified=include_shadow)
+    left_out = 0
+    if not include_shadow:
+        rows, left_out = recommendable_rows(rows, applied=applied)
     by_pick = {int(r["pick_id"]): r for r in rows}
     built = engine.build(spec.kind, [candidate_of(r) for r in rows], now=moment, window=spec.window,
                          min_legs=spec.min_legs, max_legs=spec.max_legs, cfg=cfg)
+    rejections = dict(built.rejections)
+    if left_out:
+        rejections = dict(sorted((rejections | {NOT_RECOMMENDED_LEG: left_out}).items()))
     legs: list[ParlayLeg] = []
     for leg in built.legs:
         c = leg.candidate
@@ -279,7 +306,7 @@ def parlay(rows: list[Row], spec: engine.ParlaySpec, *, include_shadow: bool, mo
         required_legs=built.required_legs, max_legs=built.max_legs, eligible_legs=built.eligible_legs,
         window_from=built.window_from, window_to=built.window_to, combined_odds=built.combined_odds,
         probability_all_win=built.probability_all_win, expected_value=built.expected_value, risk=built.risk,
-        independence=built.independence, prices_as_of=built.prices_as_of, rejections=built.rejections,
+        independence=built.independence, prices_as_of=built.prices_as_of, rejections=rejections,
         generated_at=moment,
     )
 
@@ -291,7 +318,8 @@ def parlay_board(conn: Conn, kind: engine.ParlayKind, *, include_shadow: bool,
     spec = engine.SPECS[kind]
     rows = repo.pick_candidates(conn, now=moment, until=moment + spec.window, since=moment - CONSENSUS_LOOKBACK,
                                 include_shadow=include_shadow)
-    return ok(parlay(rows, spec, include_shadow=include_shadow, moment=moment))
+    applied = pick_status.applied_now(conn, (int(r["fixture_id"]) for r in rows), at=moment)
+    return ok(parlay(rows, spec, include_shadow=include_shadow, moment=moment, applied=applied))
 
 
 # ── the automatic parlay builder (REVIEW 11 Oct 2026, point 15) ─────────────────────
@@ -489,8 +517,8 @@ def home(conn: Conn, *, include_shadow: bool, at: datetime | None = None) -> Env
         source=_source(include_shadow),
         data_freshness=DataFreshness(odds_at=odds_at, live_at=repo.live_freshness(conn, now=moment)),
         top_picks=top_section,
-        daily_parlay=parlay(rows, engine.DAILY, include_shadow=include_shadow, moment=moment),
-        multiday_parlay=parlay(rows, engine.MULTIDAY, include_shadow=include_shadow, moment=moment),
+        daily_parlay=parlay(rows, engine.DAILY, include_shadow=include_shadow, moment=moment, applied=applied),
+        multiday_parlay=parlay(rows, engine.MULTIDAY, include_shadow=include_shadow, moment=moment, applied=applied),
         live=section(live) if live else section(live, status=DataStatus.EMPTY, reason="no_live_matches"),
         best_prices=(section(highlights[:6]) if highlights
                      else section(highlights, status=DataStatus.EMPTY, reason="no_best_prices")),

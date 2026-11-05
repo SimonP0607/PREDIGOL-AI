@@ -62,9 +62,10 @@ class PickCard(Contract):
     value_now: bool = Field(description="Passes the value gate at this moment.")
     value_reason: str | None = Field(description="The gate it fails, as a code, when value_now is false.")
     user_status: UserStatus = Field(description=(
-        "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI "
-        "review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it - only on its "
-        "match, never in the list) or EVALUATION (a shadow pick: the owner's preview only)."))
+        "The pick's visible state (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI "
+        "review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it) or "
+        "EVALUATION (a shadow pick). A reader is shown RECOMMENDED cards only (UX-002, «solo verde»); the others reach the "
+        "owner's preview alone, labelled."))
     status_reason: StatusReason = Field(description="Why, as a code: approved, value, not_reviewed, downgraded, rejected, "
                                                     "no_value_now or evaluation.")
     context_pending: bool = Field(description="RECOMMENDED by the value rule alone: «revisión de contexto aún no aplicada» "
@@ -127,12 +128,12 @@ class PicksBoard(Contract):
     window_hours: int
     reason: str | None = Field(description=(
         "Why there is nothing to show, as a code: no_qualified_picks, no_shadow_picks, no_picks_match_filters, no_value_now "
-        "or, when every pick of the window stays on its match and some were rejected by the applied AI review, "
+        "or, when no pick of the window is recommended now and some were downgraded or rejected by the applied AI review, "
         "none_recommended (plan UX, B3)."))
     withheld: int = Field(default=0, description=(
-        "Published picks of the window a reader is not shown in this list now (plan UX, B3): without value at the best price "
-        "now, or rejected by the applied AI review - each stays on its match, with its state. Always 0 for one match "
-        "(``fixture_id``) and in the owner's preview, which show every pick."))
+        "Published picks of the window a reader is not shown now (plan UX, B3; UX-002, «solo verde»): every one that is not "
+        "RECOMMENDED - without value at the best price now, or downgraded or rejected by the applied AI review -, in a list "
+        "and on one match (``fixture_id``) alike. Always 0 in the owner's preview, which shows every pick."))
     started: list[StartedPick] = Field(
         default_factory=list,
         description="Pre-match picks whose match has kicked off (today's, or every one of ``fixture_id``): they "
