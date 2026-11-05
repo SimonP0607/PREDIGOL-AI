@@ -193,6 +193,27 @@
         "help": "Ayuda y soporte"
       },
       "how": "Pagas por el medio que acordemos contigo y PrediGol lo registra a mano. No hay cobro automático: nada se cobra sin que lo acuerdes."
+    },
+    "discount": {
+      "title": "Descuentos y cupones",
+      "offer": "Tu próximo pago tiene {percent}% de descuento por {source}.",
+      "sourceCoupon": "el cupón {code}",
+      "sourceLoyalty": "tu fidelidad",
+      "offerPrice": "Con el descuento: {prices}.",
+      "how": "El descuento se aplica cuando renuevas: se registra junto con tu pago. No se cobra nada automáticamente.",
+      "none": "Por ahora tu próximo pago no tiene descuento.",
+      "loyalty": "Descuento por fidelidad: {percent}% en cada renovación desde que completas {months} meses de membresía pagados.",
+      "loyaltyActive": "Ya lo tienes.",
+      "loyaltyProgress_one": "Llevas {count} mes pagado.",
+      "loyaltyProgress_other": "Llevas {count} meses pagados.",
+      "held": "Cupones guardados",
+      "rule": "Un cupón sirve para un solo pago y no se suma al descuento por fidelidad: se aplica el mayor.",
+      "haveOne": "¿Tienes un cupón?",
+      "placeholder": "Escribe el código",
+      "use": "Usar cupón",
+      "redeemed": "Cupón {code} guardado: {percent}% de descuento en un pago.",
+      "tooMany": "Probaste demasiados códigos que no son válidos. Espera unos minutos y vuelve a intentar.",
+      "carried": "con {percent}% de descuento"
     }
   },
   "centre": {

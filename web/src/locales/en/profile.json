@@ -193,6 +193,27 @@
         "help": "Help and support"
       },
       "how": "You pay by the means we agree with you and PrediGol records it by hand. There is no automatic charge: nothing is charged unless you agree to it."
+    },
+    "discount": {
+      "title": "Discounts and coupons",
+      "offer": "Your next payment has {percent}% off, from {source}.",
+      "sourceCoupon": "the coupon {code}",
+      "sourceLoyalty": "your loyalty",
+      "offerPrice": "With the discount: {prices}.",
+      "how": "The discount applies when you renew: it is recorded with your payment. Nothing is charged automatically.",
+      "none": "Your next payment has no discount for now.",
+      "loyalty": "Loyalty discount: {percent}% off every renewal once you have completed {months} months of paid membership.",
+      "loyaltyActive": "You have it already.",
+      "loyaltyProgress_one": "You have paid {count} month so far.",
+      "loyaltyProgress_other": "You have paid {count} months so far.",
+      "held": "Saved coupons",
+      "rule": "A coupon is good for a single payment and does not add up to the loyalty discount: the larger one applies.",
+      "haveOne": "Do you have a coupon?",
+      "placeholder": "Type the code",
+      "use": "Use coupon",
+      "redeemed": "Coupon {code} saved: {percent}% off one payment.",
+      "tooMany": "You tried too many codes that are not valid. Wait a few minutes and try again.",
+      "carried": "with {percent}% off"
     }
   },
   "centre": {
