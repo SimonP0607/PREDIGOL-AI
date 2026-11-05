@@ -6,7 +6,7 @@ muestran tal como son.
 
 ## 1. Qué es
 
-Un solo plan completo, **prueba de 14 días** y siete estados calculados por fecha (nunca guardados):
+Un solo plan completo, **prueba de 20 días**, **150.000 COP o 50 USD al mes** (a elección del cliente) y siete estados calculados por fecha (nunca guardados):
 
 | Estado | Cuándo | Acceso |
 | --- | --- | --- |
@@ -24,7 +24,7 @@ sale en la consola como «sin periodo» y conserva el acceso completo.
 
 ## 2. Cuándo empieza la prueba
 
-- **Invitación (A7):** al activar la cuenta. Al invitar eliges los días de prueba (7 a 14); si no, `FBI_TRIAL_DAYS` (14).
+- **Invitación (A7):** al activar la cuenta. Al invitar eliges los días de prueba (7 a 20); si no, `FBI_TRIAL_DAYS` (20).
 - **Cuenta creada con contraseña temporal (respaldo):** al crearla.
 - **Cuentas de antes:** desde la consola, «Membresía» → «Empezar prueba» (una sola prueba por cuenta).
 
@@ -70,7 +70,10 @@ los ve en su exportación.
 ## 7. Cómo se enciende (cuando decidas)
 
 1. Antes: cada cliente vivo tiene su periodo (la columna Membresía no muestra «sin periodo» en cuentas de clientes).
-2. P6 (precio, moneda y medios) y P7 (WhatsApp Business): `FBI_MEMBERSHIP_CURRENCY` y `FBI_SUPPORT_WHATSAPP`.
+2. P6 (decidido: 150.000 COP o 50 USD al mes, con 20 días de prueba) y P7 (WhatsApp Business):
+   `FBI_MEMBERSHIP_PRICE_COP`, `FBI_MEMBERSHIP_PRICE_USD` (`0` esconde esa moneda), `FBI_MEMBERSHIP_CURRENCY` (la que
+   propone la consola al registrar un pago) y `FBI_SUPPORT_WHATSAPP`. Sin ninguna línea, rigen 150000 y 50. Cambiar un
+   precio cambia lo que se dice desde ese momento; los pagos y periodos ya registrados no cambian.
 3. Una línea en `/etc/predigol/app.env` (fichero de seguridad: copia fechada, candado de despliegue, ventana propia):
    `FBI_MEMBERSHIP_ENFORCE=1`, y se recrea la API.
 
