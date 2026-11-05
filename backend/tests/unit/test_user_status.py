@@ -72,9 +72,11 @@ def test_a_reader_is_shown_green_picks_only() -> None:
     assert {"RECOMMENDED"} == us.SHOWN_TO_READERS
     for key, (state, _, _) in TABLE.items():
         published, value, review, applied = key
-        assert us.for_readers(state) == (published and value and not (applied and review in ("REJECT", "DOWNGRADE"))), key
-    for state in ("CAUTION", "NOT_RECOMMENDED", "EVALUATION", None):
-        assert not us.for_readers(state), state  # type: ignore[arg-type]
+        assert us.for_readers(state) == (  # type: ignore[arg-type]
+            published and value and not (applied and review in ("REJECT", "DOWNGRADE"))), key
+    hidden: tuple[us.UserStatus | None, ...] = ("CAUTION", "NOT_RECOMMENDED", "EVALUATION", None)
+    for other in hidden:
+        assert not us.for_readers(other), other
     assert us.for_readers("RECOMMENDED")
 
 
