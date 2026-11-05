@@ -266,11 +266,11 @@ def write_events(conn: psycopg.Connection[Any], fixture_id: int, outcome: dict[s
                         version=version, fixture_id=fixture_id, hypothesis=e["claim"], evidence=e,
                         result="the player started", dedup_key=f"{key}:ce:{e['evidence_id']}"):
                 n += 1
-        elif e["verdict"] == "right":
-            if remember(conn, at=at, kind="injury_signal", entity_type="source", entity_id=str(e["tier"]),
-                        version=version, fixture_id=fixture_id, hypothesis=e["claim"], evidence=e,
-                        result="confirmed by the line-up", dedup_key=f"{key}:is:{e['evidence_id']}"):
-                n += 1
+        elif e["verdict"] == "right" and remember(
+                conn, at=at, kind="injury_signal", entity_type="source", entity_id=str(e["tier"]),
+                version=version, fixture_id=fixture_id, hypothesis=e["claim"], evidence=e,
+                result="confirmed by the line-up", dedup_key=f"{key}:is:{e['evidence_id']}"):
+            n += 1
     for m in findings["missing_information"]:
         if remember(conn, at=at, kind="news_signal", entity_type="player", entity_id=str(m["player_id"]),
                     version=version, fixture_id=fixture_id, hypothesis="a regular starter was missing without any "
