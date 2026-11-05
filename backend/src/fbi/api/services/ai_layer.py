@@ -1,9 +1,9 @@
 """The AI decision layer, read for the product and the Admin Console. Never a model call: everything here is
 read from what the worker stored (``fbi.ai``); the owner's "run now" is a queued request the worker picks up.
 
-Who sees a match analysis: a user sees the cards whose pick is QUALIFIED and the model's view of unpriced
-markets (labelled evaluation); the owner's evaluation mode sees every card. A shadow pick's numbers never
-reach a user.
+Who sees a match analysis: a user sees the cards whose pick is QUALIFIED and RECOMMENDED (UX-002, «solo verde»:
+a card the applied AI review downgrades or rejects is not shown) and the model's view of unpriced markets
+(labelled evaluation); the owner's evaluation mode sees every card. A shadow pick's numbers never reach a user.
 """
 
 from __future__ import annotations
@@ -100,6 +100,11 @@ def match_analysis(conn: Conn, fixture_id: int, *, evaluation: bool) -> Envelope
     enf = enforcement(conn, settings)
     cards = [with_state(AnalysisCard.model_validate(c), applied=enf.enforced) for c in (row["cards"] or [])]
     shown = cards if evaluation else [c for c in cards if c.kind == "no_market" or c.qualified]
+    withheld = len(cards) - len(shown)
+    if not evaluation:
+        # «Solo verde» (UX-002): of the published cards a reader sees the RECOMMENDED ones only - a card the applied review
+        # downgrades or rejects is not shown. ``withheld`` keeps counting the cards in evaluation, as its words say.
+        shown = [c for c in shown if c.kind == "no_market" or user_status.for_readers(c.user_status)]
     brief_row = fetch_one(conn, BRIEF_SQL, {"fixture": fixture_id})
     ai_visible = evaluation or enf.enforced
     if not evaluation and not enf.enforced:
@@ -127,7 +132,7 @@ def match_analysis(conn: Conn, fixture_id: int, *, evaluation: bool) -> Envelope
         fixture_id=fixture_id, built_at=row["built_at"], audience="evaluation" if evaluation else "user",
         mode=settings.mode, enforced=enf.enforced, market_observed=bool(row["market_observed"]),
         engines=list(row["engines"] or []), analyzed_by_llm="llm" in (row["engines"] or []), cards=shown,
-        withheld=len(cards) - len(shown), missing=list((row["summary"] or {}).get("missing") or []), brief=brief,
+        withheld=withheld, missing=list((row["summary"] or {}).get("missing") or []), brief=brief,
         updated_at=updated, in_ai_day=bool(in_day.get("in_day"))))
 
 

@@ -337,8 +337,8 @@ function AllPicks({
   const board = query.data?.data;
   const shadow = board?.source === "shadow_preview";
   const picks = useMemo(() => board?.picks ?? [], [board]);
-  // Plan UX, B3: what the list does not show now - no value at the best price, or rejected by the applied review - is
-  // counted and stays on its match.
+  // Plan UX, B3 and UX-002 («solo verde»): what is not recommended now - no value at the best price, or downgraded or
+  // rejected by the applied review - is counted, never shown.
   const withheld = board?.withheld ?? 0;
   const withheldNote =
     withheld > 0 ? (
