@@ -114,7 +114,8 @@ class DailyItem(Contract):
     user_status: UserStatus = Field(description=(
         "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table), as the pick stood when it entered the "
         "set: its price then passed the value rule, and the AI review frozen with it counts only if it was applied then. "
-        "EVALUATION for the evaluation set (the owner's preview)."))
+        "EVALUATION for the evaluation set (the owner's preview). A reader is shown the items that entered RECOMMENDED only "
+        "(UX-002, «solo verde»)."))
     status_reason: StatusReason
     context_pending: bool = Field(description="RECOMMENDED by the value rule alone: «revisión de contexto aún no "
                                               "aplicada» is said beside it.")
