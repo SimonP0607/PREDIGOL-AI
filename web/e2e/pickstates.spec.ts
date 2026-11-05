@@ -4,16 +4,18 @@
  * applied - FBI_AI_MODE=enforce and a shadow report whose gate passed):
  *
  *     A  QA Cóndor     published, value now, review APPROVE    -> Recomendado        the day's set n.º 1, entered as Cautela
- *     B  QA Puma       published, value now, review DOWNGRADE  -> Cautela
- *     C  QA Colibrí    published, value now, review REJECT     -> No recomendado (rejected): only on its match
+ *     B  QA Puma       published, value now, review DOWNGRADE  -> Cautela: the owner's preview only
+ *     C  QA Colibrí    published, value now, review REJECT     -> No recomendado (rejected): the owner's preview only
  *     D  QA Guadua     published, value now, no review         -> Recomendado, «Revisión de contexto aún no aplicada»
- *     E  QA Frailejón  published, best price now 1.70          -> No recomendado (no value now): only on its match
+ *     E  QA Frailejón  published, best price now 1.70          -> No recomendado (no value now): the owner's preview only
  *     S  QA Arrecife   shadow pick                             -> En evaluación, the owner's preview only
  *
- * * Picks lists only what a reader may be recommended, each state in words with its icon, and counts what stays on its match;
+ * «Solo verde» (UX-002): a reader is shown RECOMMENDED picks only - in Picks, in the day's set, on a match and in its analysis.
+ *
+ * * Picks lists only what a reader may be recommended, the state in words with its icon, and counts the rest;
  * * every published pick answers «¿Por qué?» in five layers, the conclusion first and open, the notice last, from the side at a
  *   desk and from the bottom on a 320 px phone, by finger and by keyboard - opening it records pick_explanation_opened once;
- * * a match shows its own pick whatever its state, with the reason; the analysis card says the same state;
+ * * a match never shows a reader a pick in caution or not recommended; the owner's preview shows it, with its state;
  * * a shadow pick is never shown to a reader - not even its explanation (404) - and is «En evaluación» in the owner's preview.
  *
  * On a reader account the test makes and deletes. Run with E2E_PICK_STATES=1 against that stack (the seed's prices are fresh
@@ -120,7 +122,7 @@ async function signIn(page: Page, email: string): Promise<void> {
   }
 }
 
-/** The seed's picks in the list this caller is given (a reader's lacks C, E and S; the owner's preview has them all). */
+/** The seed's picks in the list this caller is given (a reader's lacks B, C, E and S; the owner's preview has them all). */
 async function seeded(
   api: APIRequestContext,
   preview = false,
@@ -146,11 +148,24 @@ function must(cards: Partial<Record<Name, Card>>, name: Name): Card {
   return card!;
 }
 
-async function matchCard(api: APIRequestContext, fixtureId: number): Promise<Card> {
-  const r = await getJson<{ data: Board }>(api, `/api/v1/picks?fixture_id=${fixtureId}&hours=168`);
+async function matchBoard(
+  api: APIRequestContext,
+  fixtureId: number,
+  preview = false,
+): Promise<Board> {
+  const q = preview ? "&preview=shadow" : "";
+  const r = await getJson<{ data: Board }>(
+    api,
+    `/api/v1/picks?fixture_id=${fixtureId}&hours=168${q}`,
+  );
   expect(r.status).toBe(200);
-  const [card] = r.body.data.picks;
-  expect(card, `the match ${fixtureId} shows its pick`).toBeTruthy();
+  return r.body.data;
+}
+
+/** The match's pick as the owner's preview shows it (a reader is shown it only while it is RECOMMENDED). */
+async function matchCard(api: APIRequestContext, fixtureId: number): Promise<Card> {
+  const [card] = (await matchBoard(api, fixtureId, true)).picks;
+  expect(card, `the owner's preview of the match ${fixtureId} shows its pick`).toBeTruthy();
   return card!;
 }
 
@@ -211,7 +226,7 @@ async function layersInOrder(sheet: Locator): Promise<void> {
   await expect(sheet.getByTestId("why-layer-conclusion")).toBeVisible();
 }
 
-test("Picks lists only what a reader may be recommended, each state in words, and counts what stays on its match", async ({
+test("Picks lists only what a reader may be recommended, the state in words, and counts the rest", async ({
   page,
 }) => {
   test.setTimeout(180_000);
@@ -222,6 +237,7 @@ test("Picks lists only what a reader may be recommended, each state in words, an
     const w = watch(page, { expect401: true, expectStatus: [403] });
     await signIn(page, email);
     const api = await seeded(page.request);
+    expect(api.B, "a pick in caution is not in a reader's list (UX-002)").toBeUndefined();
     expect(api.C, "a rejected pick is not in a reader's list").toBeUndefined();
     expect(api.E, "a pick without value now is not in a reader's list").toBeUndefined();
     expect(api.S, "a shadow pick never reaches a reader").toBeUndefined();
@@ -235,23 +251,21 @@ test("Picks lists only what a reader may be recommended, each state in words, an
       "a recommendation the review has not looked at says so",
     ).toHaveText(t.picks.status.contextPending);
     await expect(listed(page, "A").getByTestId("pick-status-pending")).toHaveCount(0);
-    await expectState(listed(page, "B"), "CAUTION", "downgraded", t.picks.status.CAUTION);
-    for (const name of ["C", "E", "S"] as const) await expect(listed(page, name)).toHaveCount(0);
-    const order = await page
-      .getByTestId("picks-list")
-      .getByTestId("pick-card")
-      .evaluateAll((els) => els.map((e) => e.textContent ?? ""));
-    const at = (name: Name) => order.findIndex((s) => s.includes(HOME_OF[name]));
-    expect(at("B"), "Cautela after the recommendations").toBeGreaterThan(
-      Math.max(at("A"), at("D")),
-    );
+    for (const name of ["B", "C", "E", "S"] as const)
+      await expect(listed(page, name)).toHaveCount(0);
+    await expect(
+      page
+        .getByTestId("picks-list")
+        .locator('[data-testid="pick-status"]:not([data-status="RECOMMENDED"])'),
+      "nothing but «Recomendado» in a reader's list",
+    ).toHaveCount(0);
     await expect(page.getByTestId("picks-withheld")).toHaveText(
-      t.picks.withheld_other.replace("{count}", "2"),
+      t.picks.withheld_other.replace("{count}", "3"),
     );
 
-    // The day's set shows each pick as it entered it: A with the review applied then (Cautela), D as the value rule left it.
-    const dayA = page.getByTestId("daily-item").filter({ hasText: HOME_OF.A });
-    await expectState(dayA, "CAUTION", "downgraded", t.picks.status.CAUTION);
+    // The day's set shows a reader the picks that entered it green: A entered with the review applied then (Cautela) and is
+    // not shown; D, as the value rule left it, is.
+    await expect(page.getByTestId("daily-item").filter({ hasText: HOME_OF.A })).toHaveCount(0);
     const dayD = page.getByTestId("daily-item").filter({ hasText: HOME_OF.D });
     await expectState(dayD, "RECOMMENDED", "value", t.picks.status.RECOMMENDED);
     await accessible(page, "Picks with its states");
@@ -292,11 +306,10 @@ test("«¿Por qué este pick?» at a desk: from the side, five layers, the concl
     await expect(sheet.getByTestId("why-status-reason")).toContainText(
       t.picks.status.reason.approved,
     );
-    await expect(sheet.getByTestId("why-day")).toContainText("Pick del día n.º 1");
     await expect(
-      sheet.getByTestId("why-day-status"),
-      "it entered the day's set as Cautela: said beside it",
-    ).toHaveAttribute("data-status", "CAUTION");
+      sheet.getByTestId("why-day"),
+      "it entered the day's set as Cautela, which a reader is not shown (UX-002)",
+    ).toHaveCount(0);
     await layersInOrder(sheet);
     expect(plain(await sheet.getByTestId("why-layer-conclusion").innerText())).toContain(
       `PrediGol espera «Gana ${HOME_OF.A}»: le da un 50 % de probabilidad; el mercado, sin su margen, un 43 %.`,
@@ -304,14 +317,11 @@ test("«¿Por qué este pick?» at a desk: from the side, five layers, the concl
     await sheet.getByTestId("why-layer-market").locator("summary").click();
     const market = sheet.getByTestId("why-market");
     await expect(market).toBeVisible();
-    await expect(market).toContainText("Se publicó a 2,20");
     await expect(market).toContainText("Mejor cuota ahora: 2,30");
     await expect(market).toContainText(t.picks.why.market.valueNow);
     await sheet.getByTestId("why-layer-how").locator("summary").click();
     await expect(sheet.getByTestId("why-how-steps").locator("li")).toHaveCount(5);
-    await expect(sheet.getByTestId("why-how")).toHaveText(
-      t.picks.why.how.dayPick.replace("{rank}", "1"),
-    );
+    await expect(sheet.getByTestId("why-how")).toHaveText(t.picks.why.how.listPick);
     await expect(sheet.getByTestId("disclaimer")).toBeVisible();
     await accessible(page, "the explanation at a desk", '[data-testid="why-sheet"]');
     const order = await sheet.evaluate((root) => {
@@ -329,18 +339,6 @@ test("«¿Por qué este pick?» at a desk: from the side, five layers, the concl
         timeout: 20_000,
       })
       .toEqual([{ pick_id: must(api, "A").pick_id }]);
-
-    // B: the applied review's risks, inside «Riesgos».
-    await listed(page, "B").getByTestId("why-pick").click();
-    await expect(sheet.getByTestId("why-status")).toHaveAttribute("data-status", "CAUTION");
-    await expect(sheet.getByTestId("why-status-reason")).toContainText(
-      t.picks.status.reason.downgraded,
-    );
-    await sheet.getByTestId("why-layer-risks").locator("summary").click();
-    await expect(sheet.getByTestId("why-review-risks")).toContainText(
-      "QA: el rival llega descansado y con su once completo",
-    );
-    await page.keyboard.press("Escape");
     await assertClean(page, w);
   } finally {
     await remove(admin, id, email);
@@ -375,7 +373,7 @@ test("on a 320 px phone: the states and the button inside the screen, the explan
     );
     expect(over, "nothing sideways").toBeLessThanOrEqual(1);
 
-    await listed(page, "B").getByTestId("why-pick").click();
+    await listed(page, "A").getByTestId("why-pick").click();
     const sheet = page.getByTestId("why-sheet");
     await expect(sheet.getByTestId("why-explanation")).toBeVisible();
     const box = (await sheet.boundingBox())!;
@@ -388,9 +386,6 @@ test("on a 320 px phone: the states and the button inside the screen, the explan
       expect(row!.height, `${layer}: a 44 px row`).toBeGreaterThanOrEqual(44);
     }
     await sheet.getByTestId("why-layer-risks").locator("summary").click();
-    await expect(sheet.getByTestId("why-review-risks")).toContainText(
-      "QA: el rival llega descansado y con su once completo",
-    );
     await sheet.getByTestId("disclaimer").scrollIntoViewIfNeeded();
     await expect(sheet.getByTestId("disclaimer")).toBeVisible();
     const inner = await sheet.evaluate((el) => el.scrollWidth - el.clientWidth);
@@ -403,7 +398,7 @@ test("on a 320 px phone: the states and the button inside the screen, the explan
   }
 });
 
-test("a match shows its own pick whatever its state, with the reason; a shadow pick only in the owner's preview", async ({
+test("a match never shows a reader a pick that is not green; the owner's preview shows it, with its state", async ({
   page,
   browser,
 }) => {
@@ -417,45 +412,36 @@ test("a match shows its own pick whatever its state, with the reason; a shadow p
     const w = watch(page, { expect401: true, expectStatus: [403, 404] });
     await signIn(page, email);
 
-    // C: rejected by the applied review - on its match, with the reason, the analysis card saying the same.
-    const c = await matchCard(page.request, where.C);
-    expect([c.user_status, c.status_reason]).toEqual(["NOT_RECOMMENDED", "rejected"]);
+    // B (caution), C (rejected by the applied review) and E (no value now): their own match does not show a reader the pick,
+    // nor its analysis the card; the owner's preview shows each with its state.
+    const expected = {
+      B: ["CAUTION", "downgraded"],
+      C: ["NOT_RECOMMENDED", "rejected"],
+      E: ["NOT_RECOMMENDED", "no_value_now"],
+    } as const;
+    for (const name of ["B", "C", "E"] as const) {
+      const board = await matchBoard(page.request, where[name]);
+      expect(board.picks, `${HOME_OF[name]}: not shown to a reader on its match`).toEqual([]);
+      expect(board.withheld).toBe(1);
+      const card = await matchCard(admin, where[name]);
+      expect([card.user_status, card.status_reason]).toEqual([...expected[name]]);
+      const analysis = await getJson<{ data: { cards: Card[] } | null }>(
+        page.request,
+        `/api/v1/matches/${where[name]}/analysis`,
+      );
+      expect(analysis.status).toBe(200);
+      expect(
+        (analysis.body.data?.cards ?? []).filter(
+          (x) => x.user_status && x.user_status !== "RECOMMENDED",
+        ),
+        `${HOME_OF[name]}: no analysis card a reader gets is in caution or not recommended`,
+      ).toEqual([]);
+    }
+    const c = await matchCard(admin, where.C);
     await page.goto(`/matches/${where.C}`);
     await settle(page);
-    const own = page.getByTestId("match-picks").getByTestId("pick-card");
-    await expectState(own, "NOT_RECOMMENDED", "rejected", t.picks.status.NOT_RECOMMENDED);
-    const analysis = await getJson<{ data: { cards: Card[] } | null }>(
-      page.request,
-      `/api/v1/matches/${where.C}/analysis`,
-    );
-    expect(analysis.status).toBe(200);
-    expect(analysis.body.data?.cards.map((x) => [x.user_status, x.status_reason])).toEqual([
-      ["NOT_RECOMMENDED", "rejected"],
-    ]);
-    const verdict = page.getByTestId("analysis-card").getByTestId("analysis-verdict");
-    await expect(verdict).toHaveAttribute("data-status", "NOT_RECOMMENDED");
-    await expect(verdict).toContainText(t.picks.status.NOT_RECOMMENDED);
-    await page.getByTestId("analysis-why-pick").click();
-    const sheet = page.getByTestId("why-sheet");
-    await expect(sheet.getByTestId("why-status")).toHaveAttribute("data-status", "NOT_RECOMMENDED");
-    await expect(sheet.getByTestId("why-status-reason")).toContainText(
-      t.picks.status.reason.rejected,
-    );
-    await sheet.getByTestId("why-layer-risks").locator("summary").click();
-    await expect(sheet.getByTestId("why-review-risks")).toContainText(
-      "QA: baja confirmada del delantero titular",
-    );
-    await page.keyboard.press("Escape");
-
-    // E: no value at the best price now.
-    await page.goto(`/matches/${where.E}`);
-    await settle(page);
-    await expectState(
-      page.getByTestId("match-picks").getByTestId("pick-card"),
-      "NOT_RECOMMENDED",
-      "no_value_now",
-      t.picks.status.NOT_RECOMMENDED,
-    );
+    await expect(page.getByTestId("match-picks")).toHaveCount(0);
+    await expect(page.getByTestId("analysis-verdict")).toHaveCount(0);
 
     // S: a reader never learns that a shadow pick exists.
     const shadowId = must(await seeded(admin, true), "S").pick_id;
@@ -475,6 +461,20 @@ test("a match shows its own pick whatever its state, with the reason; a shadow p
     );
     expect(published.body.data.user_status).toBe("NOT_RECOMMENDED");
     await assertClean(page, w);
+
+    // The owner's preview: B in caution, with the applied review's risks inside «Riesgos».
+    const ob = await ownerCtx.newPage();
+    await ob.addInitScript(() => window.sessionStorage.setItem("predigol.shadowPreview", "1"));
+    await ob.goto("/picks");
+    await settle(ob);
+    await listed(ob, "B").getByTestId("why-pick").click();
+    const bSheet = ob.getByTestId("why-sheet");
+    await expect(bSheet.getByTestId("why-status")).toHaveAttribute("data-status", "CAUTION");
+    await bSheet.getByTestId("why-layer-risks").locator("summary").click();
+    await expect(bSheet.getByTestId("why-review-risks")).toContainText(
+      "QA: el rival llega descansado y con su once completo",
+    );
+    await ob.close();
 
     // The owner's preview: S is «En evaluación» - never a recommendation - and says why.
     const op = await ownerCtx.newPage();

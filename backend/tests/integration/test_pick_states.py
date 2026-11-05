@@ -11,6 +11,9 @@ the transaction rolled back.
 
 «Criterio de terminado: cada estado visible equivale a uno interno ... todo pick publicado responde «¿por qué?»». The AI's review
 changes a state only while it is applied: the owner's switch (FBI_AI_MODE=enforce) AND a passed shadow gate.
+
+«Solo verde» (UX-002): a reader is shown RECOMMENDED picks only - in a list, on its match, in the match's analysis, in the day's set
+and as a parlay's legs; CAUTION and NOT_RECOMMENDED are counted, never shown. The owner's preview shows every state, labelled.
 """
 
 from __future__ import annotations
@@ -28,9 +31,13 @@ from psycopg.types.json import Jsonb
 
 from fbi.api.app import create_app
 from fbi.api.deps import get_db
+from fbi.api.repositories import product as product_repo
 from fbi.api.security import optional_principal
+from fbi.api.services import pick_status, product
 from fbi.api.services import reading as reading_service
+from fbi.api.services import today as today_service
 from fbi.core.clock import FrozenClock, SystemClock, set_clock
+from fbi.parlays import engine
 from fbi.picks.daily import product_day
 from tests.integration.conftest import Seed
 from tests.integration.helpers import scalar
@@ -176,14 +183,48 @@ def test_with_the_review_applied_the_states_follow_it(world: World, monkeypatch:
     board = data(client(world.db), "/api/v1/picks")
     assert states(board["picks"], world.picks) == {
         "A": ("RECOMMENDED", "approved", False),
-        "D": ("RECOMMENDED", "not_reviewed", True),
-        "B": ("CAUTION", "downgraded", False)}
-    order = [{v: k for k, v in world.picks.items()}[c["pick_id"]] for c in board["picks"]]
+        "D": ("RECOMMENDED", "not_reviewed", True)}, "«solo verde»: B (caution) is not in a reader's list any more"
+    assert states(board["top"], world.picks) == {"A": ("RECOMMENDED", "approved", False),
+                                                 "D": ("RECOMMENDED", "not_reviewed", True)}
+    assert board["withheld"] == 3, "B (downgraded), C (rejected) and E (no value) are counted, never shown"
+    preview = data(client(world.db, "SUPER_ADMIN"), "/api/v1/picks", preview="shadow")
+    got = states(preview["picks"], world.picks)
+    assert (got["B"], got["C"]) == (("CAUTION", "downgraded", False), ("NOT_RECOMMENDED", "rejected", False))
+    order = [{v: k for k, v in world.picks.items()}[c["pick_id"]] for c in preview["picks"] if c["value_now"]]
     assert order.index("B") > max(order.index("A"), order.index("D")), "the downgraded ones after the rest"
-    assert board["withheld"] == 2, "C (rejected) and E (no value) stay on their match"
-    match = data(client(world.db), "/api/v1/picks", fixture_id=world.fixtures["C"], hours=168)
-    assert states(match["picks"], world.picks) == {"C": ("NOT_RECOMMENDED", "rejected", False)}
-    assert match["top"] == [] and match["withheld"] == 0, "its match shows it, with its state - never ranked"
+
+
+def test_a_reader_is_never_shown_a_caution_or_a_not_recommended_pick_on_its_match(
+        world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    world.enforce(monkeypatch)
+    for name, reason in (("B", "none_recommended"), ("C", "none_recommended"), ("E", "no_value_now")):
+        match = data(client(world.db), "/api/v1/picks", fixture_id=world.fixtures[name], hours=168)
+        assert (match["picks"], match["top"], match["withheld"], match["reason"]) == ([], [], 1, reason), name
+        owner = data(client(world.db, "SUPER_ADMIN"), "/api/v1/picks", fixture_id=world.fixtures[name], hours=168,
+                     preview="shadow")
+        assert [c["pick_id"] for c in owner["picks"]] == [world.picks[name]] and owner["withheld"] == 0, \
+            f"{name}: the owner's preview still shows it, with its state"
+    green = data(client(world.db), "/api/v1/picks", fixture_id=world.fixtures["A"], hours=168)
+    assert states(green["picks"], world.picks) == {"A": ("RECOMMENDED", "approved", False)} and green["withheld"] == 0
+    best = data(client(world.db), "/api/v1/odds/best")
+    assert {c["user_status"] for c in best["value"]} == {"RECOMMENDED"}
+    assert {world.picks["B"], world.picks["C"]}.isdisjoint(c["pick_id"] for c in best["value"])
+    home = data(client(world.db), "/api/v1/home")
+    assert {c["user_status"] for c in home["top_picks"]["data"]} == {"RECOMMENDED"}
+
+
+def test_every_screen_of_a_reader_shows_green_picks_only(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Whatever the mode, nothing a reader reads carries CAUTION or NOT_RECOMMENDED."""
+    for enforced in (False, True):
+        if enforced:
+            world.enforce(monkeypatch)
+        reader = client(world.db)
+        seen = [*data(reader, "/api/v1/picks")["picks"], *data(reader, "/api/v1/picks")["top"],
+                *data(reader, "/api/v1/home")["top_picks"]["data"], *data(reader, "/api/v1/odds/best")["value"],
+                *(data(reader, "/api/v1/daily")["set"] or {"items": []})["items"]]
+        for name in PLAN:
+            seen += data(reader, "/api/v1/picks", fixture_id=world.fixtures[name], hours=168)["picks"]
+        assert seen and {c["user_status"] for c in seen} == {"RECOMMENDED"}, enforced
 
 
 def test_a_list_that_keeps_every_pick_on_its_match_says_why_truthfully(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -208,15 +249,80 @@ def test_the_switch_alone_applies_nothing_without_a_passed_gate(world: World, mo
         assert states(board["picks"], world.picks) == dict.fromkeys("ABCD", ("RECOMMENDED", "value", True)), gate
 
 
-def test_the_days_set_shows_each_pick_as_it_entered(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_days_set_shows_a_reader_the_picks_that_entered_green(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
     items = data(client(world.db), "/api/v1/daily")["set"]["items"]
-    assert states(items, world.picks) == {"A": ("CAUTION", "downgraded", False), "D": ("RECOMMENDED", "value", True)}, \
-        "A's review was applied when it entered the set; D's REJECT was not, so it changed nothing"
+    assert states(items, world.picks) == {"D": ("RECOMMENDED", "value", True)}, \
+        "A's review was applied when it entered the set (caution): not shown; D's REJECT was not, so it changed nothing"
+    assert [i["rank"] for i in items] == [2], "each item keeps its own rank"
     world.enforce(monkeypatch)
-    assert states(data(client(world.db), "/api/v1/daily")["set"]["items"], world.picks)["D"] == (
-        "RECOMMENDED", "value", True), "a record keeps the state it entered with"
+    assert states(data(client(world.db), "/api/v1/daily")["set"]["items"], world.picks) == {
+        "D": ("RECOMMENDED", "value", True)}, "a record keeps the state it entered with"
     preview = data(client(world.db, "SUPER_ADMIN"), "/api/v1/daily", preview="shadow")["set"]["items"]
     assert states(preview, world.picks) == {"S": ("EVALUATION", "evaluation", False)}
+
+
+def test_a_day_whose_only_pick_entered_in_caution_has_no_pick_for_a_reader(world: World) -> None:
+    assert today_service.no_pick(world.db, at=NOW).data.state == "picks", "D is shown"
+    world.db.execute("DELETE FROM picks.daily_set_items WHERE pick_id = %s", (world.picks["D"],))
+    board = data(client(world.db), "/api/v1/daily")
+    assert board["set"]["items"] == [] and board["reason"] == "no_qualified_picks"
+    assert today_service.no_pick(world.db, at=NOW).data.state != "picks", "«why there is no pick today» says it truthfully"
+
+
+def stored_parlay(world: World, kind: str, legs: dict[str, dict[str, Any]]) -> None:
+    """A parlay of the published records, its legs frozen with the AI review each entered with."""
+    parlay_id = scalar(world.db.execute(
+        "INSERT INTO picks.parlays (kind, day, source, rule_version, status, min_legs, max_legs, window_from, window_to, "
+        "combined_odds, p_all_low, expected_log_growth, created_at, ready_at) VALUES (%s, %s, 'qualified', 'parlay-v5', "
+        "'READY', 2, 7, %s, %s, 5.29, 0.20, 0.001, %s, %s) RETURNING id",
+        (kind, product_day(NOW), NOW - timedelta(hours=3), NOW + timedelta(hours=21), NOW - timedelta(hours=3),
+         NOW - timedelta(hours=3))))
+    for n, (name, ai) in enumerate(legs.items(), start=1):
+        world.db.execute(
+            "INSERT INTO picks.parlay_legs (parlay_id, leg_no, pick_id, fixture_id, market_key, selection, line, added_at, "
+            "odds, price_at, p_model, p_low, p_push, p_market, ev, inputs) VALUES (%s, %s, %s, %s, '1X2', 'Home', 0, %s, 2.30, "
+            "%s, 0.50, 0.45, 0, 0.43, 0.15, %s)",
+            (parlay_id, n, world.picks[name], world.fixtures[name], NOW - timedelta(hours=3), NOW - timedelta(hours=3),
+             Jsonb({"ai": ai})))
+
+
+def test_a_reader_is_never_shown_a_stored_parlay_with_a_leg_that_is_not_green(world: World) -> None:
+    stored_parlay(world, "daily", {"A": {"decision": "DOWNGRADE", "enforced": True, "mode": "enforce"},
+                                   "D": {"decision": None, "enforced": False, "mode": "shadow"}})
+    stored_parlay(world, "multiday", {"D": {"decision": "REJECT", "enforced": False, "mode": "shadow"},
+                                      "K": {"decision": "APPROVE", "enforced": True, "mode": "enforce"}})
+    board = data(client(world.db), "/api/v1/daily")
+    assert board["daily_parlay"] is None, "A entered it in caution: the whole parlay is not shown"
+    assert [leg["pick_id"] for leg in board["multiday_parlay"]["legs"]] == [world.picks["D"], world.picks["K"]]
+
+
+def test_a_readers_parlay_never_holds_a_caution_or_a_rejected_leg(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    one_leg = engine.ParlaySpec("daily", timedelta(hours=24), 1, 1)
+
+    def built(name: str, *, owner: bool) -> list[int]:
+        rows = product_repo.pick_candidates(world.db, now=NOW, until=NOW + timedelta(hours=24),
+                                            since=NOW - product.CONSENSUS_LOOKBACK, include_shadow=False,
+                                            fixture_id=world.fixtures[name])
+        applied = pick_status.applied_now(world.db, [world.fixtures[name]], at=NOW)
+        p = product.parlay(rows, one_leg, include_shadow=owner, moment=NOW, applied=applied)
+        return [leg.pick_id for leg in p.legs]
+
+    assert {n: built(n, owner=False) for n in "ABC"} == {n: [world.picks[n]] for n in "ABC"}, \
+        "the review is not applied: every published pick with value may be a leg"
+    reader = data(client(world.db), "/api/v1/parlays/daily")
+    assert "not_recommended" not in reader["rejections"]
+    world.enforce(monkeypatch)
+    assert {n: built(n, owner=False) for n in "ABC"} == {"A": [world.picks["A"]], "B": [], "C": []}, \
+        "B (caution) and C (rejected) are never a reader's legs"
+    assert {n: built(n, owner=True) for n in "BC"} == {n: [world.picks[n]] for n in "BC"}, "the owner's preview: unchanged"
+    reader = data(client(world.db), "/api/v1/parlays/daily")
+    assert reader["rejections"]["not_recommended"] == 2
+    assert {world.picks["B"], world.picks["C"]}.isdisjoint(leg["pick_id"] for leg in reader["legs"])
+    home = data(client(world.db), "/api/v1/home")
+    for kind in ("daily_parlay", "multiday_parlay"):
+        assert home[kind]["rejections"].get("not_recommended") == 2, kind
+    owner = data(client(world.db, "SUPER_ADMIN"), "/api/v1/parlays/daily", preview="shadow")
+    assert "not_recommended" not in owner["rejections"]
 
 
 # ── a match's analysis ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -246,15 +352,35 @@ def test_a_matchs_analysis_says_each_cards_state(world: World, monkeypatch: pyte
     [card] = shadow["cards"]
     assert (card["user_status"], card["status_reason"], card["context_pending"]) == ("RECOMMENDED", "value", True)
     assert card["verdict"] == "recommended" and card["ai"] is None and card["pick_id"] == world.picks["B"]
+    assert shadow["withheld"] == 2, "the two cards in evaluation"
     world.enforce(monkeypatch)
-    [card] = data(client(world.db), url)["cards"]
-    assert (card["user_status"], card["status_reason"], card["verdict"]) == ("CAUTION", "downgraded", "caution")
+    reader = data(client(world.db), url)
+    assert reader["cards"] == [] and reader["withheld"] == 2, \
+        "«solo verde»: the card the applied review downgrades is not shown to a reader (withheld counts the evaluation ones)"
     owner = data(client(world.db, "SUPER_ADMIN"), url, preview="shadow")["cards"]
     assert [(c["kind"], c["user_status"]) for c in owner] == [
         ("value", "CAUTION"), ("value", "EVALUATION"), ("evaluated", "NOT_RECOMMENDED")]
+    assert (owner[0]["status_reason"], owner[0]["verdict"]) == ("downgraded", "caution")
     verdict_of = {"RECOMMENDED": "recommended", "CAUTION": "caution", "NOT_RECOMMENDED": "not_recommended"}
-    for c in (card, *shadow["cards"]):
-        assert verdict_of[c["user_status"]] == c["verdict"], "what a reader is shown agrees with the card's own verdict"
+    for c in (owner[0], *shadow["cards"]):
+        assert verdict_of[c["user_status"]] == c["verdict"], "what is shown agrees with the card's own verdict"
+
+
+def test_a_match_analysis_shows_a_reader_its_green_cards(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    fid = world.fixtures["A"]
+    world.db.execute(
+        "INSERT INTO ai.match_analyses (fixture_id, built_at, rule_version, input_hash, market_observed, cards, engines) "
+        "VALUES (%s, %s, 'match-analysis-v1', 'b3', true, %s, '{rules}')",
+        (fid, NOW - timedelta(minutes=20), Jsonb([
+            analysis_card("1X2", "Home", "value", "recommended", qualified=True, pick_id=world.picks["A"], decision="APPROVE"),
+            analysis_card("OU", "Over", "value", "not_recommended", qualified=True, pick_id=None, decision="REJECT"),
+            analysis_card("BTTS", "Yes", "value", "caution", qualified=True, pick_id=None, decision="DOWNGRADE")])))
+    world.enforce(monkeypatch)
+    url = f"/api/v1/matches/{fid}/analysis"
+    reader = data(client(world.db), url)
+    assert [(c["market"], c["user_status"]) for c in reader["cards"]] == [("1X2", "RECOMMENDED")]
+    owner = data(client(world.db, "SUPER_ADMIN"), url, preview="shadow")["cards"]
+    assert [c["user_status"] for c in owner] == ["RECOMMENDED", "NOT_RECOMMENDED", "CAUTION"]
 
 
 # ── «¿Por qué este pick?» ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -269,12 +395,17 @@ def test_every_published_pick_answers_why_in_five_layers(world: World) -> None:
     assert e["version"] == "pick-explanation-v1" and e["started"] is False
     assert (e["user_status"], e["status_reason"], e["context_pending"]) == ("RECOMMENDED", "value", True)
     assert e["market_key"] == "1X2" and e["selection"] == "Home" and e["match"]["fixture_id"] == world.fixtures["A"]
-    day = e["day"]
+    assert e["day"] is None, "«solo verde»: it entered the day's set in caution, which a reader is not shown"
+    assert Decimal(e["market"]["published_odds"]) == Decimal("2.30"), "so the price it was taken at"
+    owner = explanation(client(world.db, "SUPER_ADMIN"), world.picks["A"], preview="shadow")
+    day = owner["day"]
     assert day["rank"] == 1 and day["stage"] == "T-6h" and Decimal(day["odds"]) == Decimal("2.20")
     assert (day["user_status"], day["status_reason"]) == ("CAUTION", "downgraded"), "as it entered the set, as its card says"
+    assert Decimal(owner["market"]["published_odds"]) == Decimal("2.20"), "a pick of the day: the set's own price"
+    d = explanation(client(world.db), world.picks["D"])["day"]
+    assert (d["rank"], d["user_status"]) == (2, "RECOMMENDED"), "a pick of the day a reader is shown keeps its day"
     m = e["market"]
     assert Decimal(m["p_model"]) == Decimal("0.50") and Decimal(m["p_market"]) == Decimal("0.43")
-    assert Decimal(m["published_odds"]) == Decimal("2.20"), "a pick of the day: the set's own price"
     assert Decimal(m["odds_now"]) == Decimal("2.30") and m["value_now"] is True and m["bookmaker_now"]
     assert e["reading_shown"] is True and e["reading_complete"] is False and e["context"] == []
     assert next(f["code"] for f in e["risks"]) == "no_context_yet", "without a packet the risks say so"

@@ -234,6 +234,11 @@ def _parlay(conn: Conn, kind: str, day: date, source: SetSource) -> ParlayRecord
     if p is None:
         return None
     rows = fetch_all(conn, LEGS_SQL, {"parlay": p["id"]})
+    if not all(readers_see(rows, source)):
+        # A reader is never shown a parlay with a leg that is not RECOMMENDED (UX-002). The parlays' own rule already leaves
+        # downgraded and rejected selections out while the review is applied (``fbi.parlays.persist.leg_pool``): this only
+        # guards a record frozen otherwise.
+        return None
     ai = ai_items(conn, rows, reveal=source == "evaluation")
     latest = ai_latest(conn, rows, reveal=source == "evaluation")
     trail = corrections(conn, {0: parlay_trail("parlay", int(p["id"]), [int(r["leg_no"]) for r in rows])})
@@ -261,6 +266,14 @@ def item_state(r: Row, source: SetSource) -> user_status.Shown:
                              applied=bool(frozen.get("enforced")))
 
 
+def readers_see(rows: list[Row], source: SetSource) -> list[bool]:
+    """Which of these frozen picks of the day (or legs of a stored parlay) a reader may be shown (UX-002, «solo verde»): the ones
+    RECOMMENDED as they entered. The evaluation records are the owner's preview, shown whole."""
+    if source == "evaluation":
+        return [True] * len(rows)
+    return [user_status.for_readers(item_state(r, source).status) for r in rows]
+
+
 @shared(30)
 def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datetime | None = None
                 ) -> Envelope[DailyBoard]:
@@ -271,6 +284,9 @@ def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datet
     daily_set = None
     if s is not None:
         rows = fetch_all(conn, ITEMS_SQL, {"set": s["id"]})
+        # «Solo verde» (UX-002): a reader sees the picks of the day that entered RECOMMENDED; one the applied review downgraded
+        # stays in the record (and is settled with it) but is not shown. Each keeps its own rank.
+        rows = [r for r, seen in zip(rows, readers_see(rows, source), strict=True) if seen]
         ai = ai_items(conn, rows, reveal=include_shadow)
         latest = ai_latest(conn, rows, reveal=include_shadow)
         trail = corrections(conn, {r["rank"]: [("daily_item", f"{s['id']}/{r['rank']}")] for r in rows})

@@ -75,13 +75,14 @@
     "same_fixture": "Otra selección del mismo partido",
     "shared_team": "Equipo repetido en otra selección",
     "duplicate_selection": "Selección repetida",
-    "price_outlier": "Precio atípico frente al consenso del mercado"
+    "price_outlier": "Precio atípico frente al consenso del mercado",
+    "not_recommended": "No recomendada: la revisión de contexto la rebaja o la rechaza"
   },
   "reason": {
     "no_qualified_picks": "Hoy no hay suficientes selecciones que cumplan la regla.",
     "no_shadow_picks": "No hay picks shadow en esta ventana.",
     "no_value_now": "Ninguna selección que cumpla la regla tiene valor al precio actual.",
-    "none_recommended": "Ninguna selección se recomienda ahora: en su partido, cada una dice por qué.",
+    "none_recommended": "Ninguna selección se recomienda ahora.",
     "no_picks_match_filters": "Ninguna selección coincide con estos filtros.",
     "no_live_matches": "No hay partidos en juego ahora mismo.",
     "no_best_prices": "Todavía no hay precios por encima del mercado.",

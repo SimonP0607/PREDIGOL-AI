@@ -31,6 +31,10 @@
   {
    "date": "2026-10-25",
    "reason": "A1 (F08): LiveMatch gains country_code, so the client names a live match's country in the reader's language"
+  },
+  {
+   "date": "2026-11-05",
+   "reason": "UX-002 (solo verde): only descriptions change - a reader is shown RECOMMENDED picks only (PickCard.user_status, DailyItem.user_status) and PicksBoard.withheld/reason count every pick that is not, in a list and on one match alike; no field, type or parameter changes"
   }
  ],
  "routes": {
@@ -439,7 +443,7 @@
        "type": "string"
       },
       "user_status": {
-       "description": "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table), as the pick stood when it entered the set: its price then passed the value rule, and the AI review frozen with it counts only if it was applied then. EVALUATION for the evaluation set (the owner's preview).",
+       "description": "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table), as the pick stood when it entered the set: its price then passed the value rule, and the AI review frozen with it counts only if it was applied then. EVALUATION for the evaluation set (the owner's preview). A reader is shown the items that entered RECOMMENDED only (UX-002, «solo verde»).",
        "enum": [
         "RECOMMENDED",
         "CAUTION",
@@ -2697,7 +2701,7 @@
        "type": "string"
       },
       "user_status": {
-       "description": "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it - only on its match, never in the list) or EVALUATION (a shadow pick: the owner's preview only).",
+       "description": "The pick's visible state (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it) or EVALUATION (a shadow pick). A reader is shown RECOMMENDED cards only (UX-002, «solo verde»); the others reach the owner's preview alone, labelled.",
        "enum": [
         "RECOMMENDED",
         "CAUTION",
@@ -7454,7 +7458,7 @@
        "type": "string"
       },
       "user_status": {
-       "description": "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it - only on its match, never in the list) or EVALUATION (a shadow pick: the owner's preview only).",
+       "description": "The pick's visible state (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it) or EVALUATION (a shadow pick). A reader is shown RECOMMENDED cards only (UX-002, «solo verde»); the others reach the owner's preview alone, labelled.",
        "enum": [
         "RECOMMENDED",
         "CAUTION",
@@ -8023,7 +8027,7 @@
        "type": "string"
       },
       "user_status": {
-       "description": "What a reader is shown (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it - only on its match, never in the list) or EVALUATION (a shadow pick: the owner's preview only).",
+       "description": "The pick's visible state (plan UX, B3; fbi/picks/user_status.py, the one table): RECOMMENDED, CAUTION (the applied AI review downgrades it), NOT_RECOMMENDED (no value at the best price now, or the applied review rejects it) or EVALUATION (a shadow pick). A reader is shown RECOMMENDED cards only (UX-002, «solo verde»); the others reach the owner's preview alone, labelled.",
        "enum": [
         "RECOMMENDED",
         "CAUTION",
@@ -8114,7 +8118,7 @@
          "type": "null"
         }
        ],
-       "description": "Why there is nothing to show, as a code: no_qualified_picks, no_shadow_picks, no_picks_match_filters, no_value_now or, when every pick of the window stays on its match and some were rejected by the applied AI review, none_recommended (plan UX, B3).",
+       "description": "Why there is nothing to show, as a code: no_qualified_picks, no_shadow_picks, no_picks_match_filters, no_value_now or, when no pick of the window is recommended now and some were downgraded or rejected by the applied AI review, none_recommended (plan UX, B3).",
        "title": "Reason"
       },
       "source": {
@@ -8147,7 +8151,7 @@
       },
       "withheld": {
        "default": 0,
-       "description": "Published picks of the window a reader is not shown in this list now (plan UX, B3): without value at the best price now, or rejected by the applied AI review - each stays on its match, with its state. Always 0 for one match (``fixture_id``) and in the owner's preview, which show every pick.",
+       "description": "Published picks of the window a reader is not shown now (plan UX, B3; UX-002, «solo verde»): every one that is not RECOMMENDED - without value at the best price now, or downgraded or rejected by the applied AI review -, in a list and on one match (``fixture_id``) alike. Always 0 in the owner's preview, which shows every pick.",
        "title": "Withheld",
        "type": "integer"
       }

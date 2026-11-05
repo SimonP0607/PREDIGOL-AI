@@ -66,12 +66,25 @@ def test_only_a_recommendation_says_its_context_review_is_pending() -> None:
         assert not pending or state == "RECOMMENDED"
 
 
-def test_the_list_of_picks_never_shows_a_rejected_an_unpriced_or_an_evaluation_pick() -> None:
-    assert {"RECOMMENDED", "CAUTION"} == us.IN_LIST
+def test_a_reader_is_shown_green_picks_only() -> None:
+    """«Solo verde» (UX-002): a reader is shown a pick only while it is RECOMMENDED - never a downgraded, a rejected, an unpriced
+    or an evaluation pick, in a list, on its match, in the day's set or as a parlay's leg."""
+    assert {"RECOMMENDED"} == us.SHOWN_TO_READERS
     for key, (state, _, _) in TABLE.items():
         published, value, review, applied = key
-        listed = state in us.IN_LIST
-        assert listed == (published and value and not (applied and review == "REJECT")), key
+        assert us.for_readers(state) == (  # type: ignore[arg-type]
+            published and value and not (applied and review in ("REJECT", "DOWNGRADE"))), key
+    hidden: tuple[us.UserStatus | None, ...] = ("CAUTION", "NOT_RECOMMENDED", "EVALUATION", None)
+    for other in hidden:
+        assert not us.for_readers(other), other
+    assert us.for_readers("RECOMMENDED")
+
+
+def test_no_analysis_card_a_reader_may_be_shown_is_downgraded_or_rejected() -> None:
+    for kind, qualified, review, applied in itertools.product(CARD_KINDS, (True, False), REVIEWS, (True, False)):
+        got = us.of_card(kind=kind, qualified=qualified, review=review, applied=applied)
+        if got is not None and us.for_readers(got.status):
+            assert kind == "value" and qualified and not (applied and review in ("REJECT", "DOWNGRADE"))
 
 
 def test_publication_states() -> None:

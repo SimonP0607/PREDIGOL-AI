@@ -77,8 +77,8 @@
       "evaluation": "Su modelo todavía no ha superado al mercado en su propia prueba: se mide, nunca se recomienda."
     }
   },
-  "withheld_one": "{count} selección más no se recomienda ahora: la ves en su partido, con el motivo.",
-  "withheld_other": "{count} selecciones más no se recomiendan ahora: las ves en sus partidos, con el motivo.",
+  "withheld_one": "{count} selección más no se recomienda ahora y no se muestra.",
+  "withheld_other": "{count} selecciones más no se recomiendan ahora y no se muestran.",
   "why": {
     "open": "¿Por qué este pick?",
     "close": "Cerrar",
