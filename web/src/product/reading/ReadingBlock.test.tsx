@@ -2,7 +2,7 @@
 /**
  * ANÁLISIS PREDIGOL (plan UX, A9): the structured reading with every state shown - a skeleton while it loads, the error with
  * its retry, the owner having turned it off (said), a partial reading without the match's context - and the conclusion's
- * caveat. The Resumen's highlights: the summary, the key points, why there is value (UX-011) and the two main risks, with
+ * caveat - and the chronicle of A11/UX-025 (a paragraph for each side, the sources). The Resumen's highlights: the summary, the key points, why there is value (UX-011) and the two main risks, with
  * the way to the whole analysis.
  */
 import { afterEach, describe, expect, test } from "bun:test";
@@ -127,7 +127,7 @@ describe("the reading's states", () => {
 });
 
 const NARRATIVE: MatchReading["narrative"] = {
-  version: "user-narrative-v1",
+  version: "user-narrative-v2",
   written_at: "2026-10-25T10:40:00Z",
   data_at: "2026-10-25T10:30:00Z",
   es: [
@@ -136,17 +136,19 @@ const NARRATIVE: MatchReading["narrative"] = {
       sentences: [{ text: "Partido de la Liga BetPlay en Medellín.", refs: ["P:fixture"] }],
     },
     {
-      key: "risks",
-      sentences: [{ text: "Las alineaciones aún no están confirmadas.", refs: ["P:lineups"] }],
+      key: "home",
+      sentences: [
+        { text: "Nacional viene de ganar 2-1 al Junior.", refs: ["P:results.home.1"] },
+        { text: "Según Win Sports, su capitán es baja.", refs: ["E:11"] },
+      ],
     },
     {
-      key: "conclusion",
-      sentences: [
-        {
-          text: "Lo más probable según PrediGol es la victoria de Nacional (48 %, sin calibrar).",
-          refs: ["P:forecast.1X2"],
-        },
-      ],
+      key: "away",
+      sentences: [{ text: "Millonarios empató 0-0 con el Cali.", refs: ["P:results.away.1"] }],
+    },
+    {
+      key: "risks",
+      sentences: [{ text: "Hay un rumor sin confirmar sobre el portero.", refs: ["E:12"] }],
     },
   ],
   en: [
@@ -155,67 +157,103 @@ const NARRATIVE: MatchReading["narrative"] = {
       sentences: [{ text: "A Liga BetPlay match in Medellín.", refs: ["P:fixture"] }],
     },
     {
-      key: "risks",
-      sentences: [{ text: "The line-ups are not confirmed yet.", refs: ["P:lineups"] }],
-    },
-    {
-      key: "conclusion",
+      key: "home",
       sentences: [
-        {
-          text: "PrediGol's most likely outcome is a Nacional win (48 %, uncalibrated).",
-          refs: ["P:forecast.1X2"],
-        },
+        { text: "Nacional come off a 2-1 win over Junior.", refs: ["P:results.home.1"] },
+        { text: "According to Win Sports, its captain is out.", refs: ["E:11"] },
       ],
     },
+    {
+      key: "away",
+      sentences: [{ text: "Millonarios drew 0-0 with Cali.", refs: ["P:results.away.1"] }],
+    },
+    {
+      key: "risks",
+      sentences: [{ text: "There is an unconfirmed rumour about the goalkeeper.", refs: ["E:12"] }],
+    },
   ],
+  sources: [{ name: "Win Sports" }, { name: "rumores.example" }],
 };
+const TEAMS = { home: "Nacional", away: "Millonarios" };
 
-describe("the narrative (A11)", () => {
-  test("shown instead of the facts, labelled as written with AI and checked, with the time of its data", () => {
+describe("the chronicle (A11, UX-025)", () => {
+  test("shown first, labelled as written with AI and checked, with the time of its data", () => {
     const html = renderToStaticMarkup(
-      <ReadingView load={ok({ ...READING, narrative: NARRATIVE })} />,
+      <ReadingView load={ok({ ...READING, narrative: NARRATIVE })} teams={TEAMS} />,
     );
     expect(html).toContain('data-testid="reading-narrative"');
     expect(html).toContain("Redactado con IA y validado contra los datos de PrediGol");
     expect(html).not.toContain("Lectura automática con los datos de PrediGol");
     expect(html).toContain("Escrito con datos de");
-    expect(html).toContain(
-      "Lo más probable según PrediGol es la victoria de Nacional (48 %, sin calibrar).",
+    expect(html).toContain("Nacional viene de ganar 2-1 al Junior.");
+    expect(html).toContain('data-refs="P:results.home.1"');
+    const chronicle = html.slice(
+      html.indexOf('data-testid="reading-narrative"'),
+      html.indexOf('data-testid="reading-section-market"'),
     );
-    expect(html).not.toContain('data-testid="reading-fact"');
-    expect(html).toContain('data-refs="P:forecast.1X2"');
-    expect(html).toContain('data-testid="reading-caveat"');
+    expect(chronicle).not.toContain('data-testid="reading-fact"'); // the chronicle is not the facts
   });
 
-  test("the conclusion first, never folded; the other sections fold, the summary open on a phone", () => {
+  test("a flowing paragraph for each side under its team's name, in order, then the head-to-head and the risks", () => {
+    const html = renderToStaticMarkup(
+      <ReadingView load={ok({ ...READING, narrative: NARRATIVE })} teams={TEAMS} />,
+    );
+    const order = ["summary", "home", "away", "risks"].map((k) =>
+      html.indexOf(`data-testid="narrative-section-${k}"`),
+    );
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(html).not.toContain('data-testid="narrative-section-h2h"'); // the match had nothing to say there
+    expect(html).not.toContain("<details"); // nothing folds: it is read as a text
+    const home = html.slice(
+      html.indexOf('data-testid="narrative-section-home"'),
+      html.indexOf('data-testid="narrative-section-away"'),
+    );
+    expect(home.match(/<p /g)?.length).toBe(1); // one paragraph, two sentences
+    expect(home.match(/data-testid="narrative-sentence"/g)?.length).toBe(2);
+    expect(home).toContain(">Nacional</h3>");
+    expect(html).toContain(">Millonarios</h3>");
+    expect(html).toContain("Qué puede salir mal");
+  });
+
+  test("without the teams' names the two sides are still told apart", () => {
     const html = renderToStaticMarkup(
       <ReadingView load={ok({ ...READING, narrative: NARRATIVE })} />,
     );
-    const conclusion = html.indexOf('data-testid="narrative-section-conclusion"');
-    const summary = html.indexOf('data-testid="narrative-section-summary"');
-    const risks = html.indexOf('data-testid="narrative-section-risks"');
-    expect(conclusion).toBeGreaterThan(-1);
-    expect(conclusion).toBeLessThan(summary);
-    expect(summary).toBeLessThan(risks);
-    expect(html).toMatch(/<details open=""[^>]*data-testid="narrative-section-summary"/);
-    expect(html).toMatch(/<details[^>]*data-testid="narrative-section-risks"/);
-    expect(html).not.toMatch(/<details open=""[^>]*data-testid="narrative-section-risks"/);
-    expect(html).not.toMatch(/<details[^>]*data-testid="narrative-section-conclusion"/);
+    expect(html).toContain(">Local</h3>");
+    expect(html).toContain(">Visitante</h3>");
+  });
+
+  test("the outlets of its news, once, and where the forecast and the market are", () => {
+    const html = renderToStaticMarkup(
+      <ReadingView load={ok({ ...READING, narrative: NARRATIVE })} teams={TEAMS} />,
+    );
+    expect(html).toContain("Fuentes: Win Sports, rumores.example.");
+    expect(html).toContain('data-testid="narrative-apart"');
+    // the forecast and the market keep their own sections, written from the reading's templates, after the chronicle
+    const chronicle = html.indexOf('data-testid="reading-narrative"');
+    const conclusion = html.indexOf('data-testid="reading-section-conclusion"');
+    expect(conclusion).toBeGreaterThan(chronicle);
+    expect(html).toContain('data-testid="reading-caveat"');
+    const noSources = renderToStaticMarkup(
+      <ReadingView load={ok({ ...READING, narrative: { ...NARRATIVE!, sources: [] } })} />,
+    );
+    expect(noSources).not.toContain('data-testid="narrative-sources"');
   });
 
   test("in the page's language", () => {
     setLocale("en");
     const html = renderToStaticMarkup(
-      <ReadingView load={ok({ ...READING, narrative: NARRATIVE })} />,
+      <ReadingView load={ok({ ...READING, narrative: NARRATIVE })} teams={TEAMS} />,
     );
     expect(html).toContain("Written with AI and checked against PrediGol&#x27;s data");
-    expect(html).toContain(
-      "PrediGol&#x27;s most likely outcome is a Nacional win (48 %, uncalibrated).",
-    );
-    expect(html).not.toContain("sin calibrar");
+    expect(html).toContain("Nacional come off a 2-1 win over Junior.");
+    expect(html).toContain("What could go wrong");
+    expect(html).toContain("Sources: Win Sports, rumores.example.");
+    expect(html).not.toContain("viene de ganar");
   });
 
-  test("without a narrative - or with null - the facts, as A9 shows them", () => {
+  test("without a chronicle - or with null - the facts, as A9 shows them", () => {
     for (const reading of [{ ...READING, narrative: null }, READING]) {
       const html = renderToStaticMarkup(<ReadingView load={ok(reading)} />);
       expect(html).not.toContain('data-testid="reading-narrative"');

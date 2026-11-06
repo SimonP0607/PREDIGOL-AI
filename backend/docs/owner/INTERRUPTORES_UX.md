@@ -25,7 +25,7 @@ Los secretos (claves de Resend, de Sentry, VAPID, tokens) se escriben en el serv
 | `FBI_PRODUCT_EVENTS` | A6 | API y mensajero | Registrar el uso (`consent` solo con quien lo permite, `on` a todos) | La casilla de analítica ya existe (UX-008); queda la decisión del abogado (P5) para `on` |
 | `FBI_MEMBERSHIP_ENFORCE` | A8 | API | Que una membresía vencida limite el acceso | Precio y términos listos (P6) y cada cuenta con su periodo |
 | `FBI_SUPPORT_WHATSAPP` | A8, A14 | API | El botón de renovar, el contacto de Ayuda y los correos de membresía | P7 (el número, solo dígitos con el prefijo del país) |
-| `FBI_AI_USER_MONTHLY_BUDGET_USD`, `FBI_USER_NARRATIVE` | A11 | Worker y API | La narrativa escrita con IA (`shadow` y luego `on`) | P8 (presupuesto) y la revisión de 50 narrativas |
+| `FBI_AI_USER_MONTHLY_BUDGET_USD`, `FBI_USER_NARRATIVE` | A11, UX-025 | Worker y API | La crónica de cada partido escrita con IA (`shadow` y luego `on`; guía `CRONICA_UX_025.md`) | P8 (presupuesto de 20 US$ aprobado) y la revisión de unas 50 crónicas |
 | `FBI_TRANSPARENCY` | A12 | API | La página de Transparencia para los lectores | P9 (el dueño la revisa) |
 | `FBI_DIGEST`, `FBI_DIGEST_FROM` | B8 | API y mensajero | El resumen semanal para quien lo pide | Correo encendido y un remitente en otro dominio (P3) |
 | `FBI_VAPID_PRIVATE_KEY` | B7 | API y mensajero | Los avisos en el dispositivo (sin la clave no se ofrece nada) | P12 |

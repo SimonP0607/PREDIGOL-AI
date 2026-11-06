@@ -44,6 +44,7 @@ from fbi.api.contracts.forecast import ForecastMarket
 from fbi.api.contracts.reading import (
     MatchReading,
     NarrativeSection,
+    NarrativeSource,
     ReadingFact,
     ReadingNarrative,
     ReadingSection,
@@ -63,8 +64,10 @@ USERS_SWITCH: Final = "FBI_READING_USERS"
 """Every signed-in account sees the structured reading: on since plan UX A9, ``FBI_READING_USERS=0`` hides it again without a
 deploy. The Admin Console's preview does not depend on it. The API needs a restart to read it."""
 
-NARRATIVE_VERSION: Final = "user-narrative-v1"
-"""The prompt and the checks of the narrative (``fbi.narrative.job``): a narrative of another version is not shown."""
+NARRATIVE_VERSION: Final = "user-narrative-v2"
+"""The prompt and the checks of the narrative (``fbi.narrative.job``): a narrative of another version is not shown. v2 (UX-025) is
+the chronicle - the lead, a paragraph for each side, the head-to-head and the risks - tied to the story of the match
+(``fbi.api.services.story``), not to the newest packet."""
 NARRATIVE_SWITCH: Final = "FBI_USER_NARRATIVE"
 NarrativeMode = Literal["off", "shadow", "on"]
 
@@ -416,7 +419,8 @@ def glance(content: Mapping[str, Any]) -> Glance:
 # ── reading it from the database ──────────────────────────────────────────────────────────────────────────────────
 
 FIXTURE_SQL = """
-SELECT f.id, f.kickoff_at, f.status_group, th.name AS home_name, ta.name AS away_name, c.name AS competition
+SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, f.away_team_id, th.name AS home_name, ta.name AS away_name,
+       c.name AS competition
   FROM core.fixtures f
   JOIN core.teams th ON th.id = f.home_team_id
   JOIN core.teams ta ON ta.id = f.away_team_id
@@ -434,15 +438,18 @@ PACKET_SQL = (
        jsonb_build_object('teams', p.content->'dossier'->'teams', 'players', p.content->'dossier'->'players',
                           'context', p.content->'dossier'->'context') AS dossier,
        CASE WHEN jsonb_typeof(p.content->'evidence') = 'array'
-            THEN (SELECT coalesce(jsonb_agg(jsonb_build_object('status', e->'status')), '[]'::jsonb)
+            THEN (SELECT coalesce(jsonb_agg(jsonb_build_object('status', e->'status', 'id', e->'id', 'kind', e->'kind',
+                                                               'side', e->'side', 'origin', e->'origin',
+                                                               'claim_md5', md5(e->>'claim'))), '[]'::jsonb)
                     FROM jsonb_array_elements(p.content->'evidence') e)
             ELSE '[]'::jsonb END AS evidence
   FROM ai.match_packets p
  WHERE p.fixture_id = %(f)s AND p.as_of <= %(at)s
  ORDER BY p.as_of DESC, p.id DESC LIMIT 1
 """)
-"""The newest packet of the match, only the blocks a reading uses: of the outside evidence, its statuses and nothing else -
-no claim, no source, no link reaches this process."""
+"""The newest packet of the match, only the blocks a reading uses: of the outside evidence, its status, its id, its kind, its
+side, its origin and the md5 of its claim (what tells one item from another) and nothing else - no claim, no source, no link
+reaches this process."""
 
 
 def users_may_see() -> bool:
@@ -557,18 +564,38 @@ def narrative_mode() -> NarrativeMode:
 
 NARRATIVE_SQL = """
 SELECT id, created_at, data_at, version, content FROM ai.user_narratives
- WHERE fixture_id = %(f)s AND status = 'ok' AND version = %(version)s AND packet_id = %(packet)s AND reading_hash = %(hash)s
+ WHERE fixture_id = %(f)s AND status = 'ok' AND version = %(version)s AND reading_hash = %(hash)s
  ORDER BY created_at DESC, id DESC LIMIT 1
 """
+"""The newest chronicle written from THIS story: ``reading_hash`` holds the hash of the story it was written from
+(``fbi.api.services.story``), whatever packet it was written from - the data of a match are rebuilt every few minutes and the
+story is not."""
+
+
+def story_hash(conn: Conn, basis: Basis) -> str | None:
+    """The identity of the story the newest packet tells now, or None while there is no packet or the match has no story to tell
+    (a side without its last results). Lazy: the story module reads this one."""
+    from fbi.api.services import story
+
+    if basis.packet_id is None or basis.data_at is None:
+        return None
+    told = story.story_of(conn, content=basis.content, home_id=int(basis.fixture["home_team_id"]),
+                          away_id=int(basis.fixture["away_team_id"]), kickoff=basis.fixture["kickoff_at"],
+                          data_at=basis.data_at)
+    return None if told.thin or not told.caps else told.hash
 
 
 def narrative_for(conn: Conn, basis: Basis, *, preview: bool) -> ReadingNarrative | None:
-    """The validated narrative of this very reading, when the reader may see it: readers only with the switch ``on``, the Admin
-    Console's preview whenever one exists. A stored narrative that does not read as the contract says is not shown (logged)."""
+    """The validated chronicle of this very story, when the reader may see it: readers only with the switch ``on``, the Admin
+    Console's preview whenever one exists. A stored narrative that does not read as the contract says is not shown (logged). It
+    is shown only while the story it was written from is the story the data tell now - a new absence, a new result or a new
+    piece of news makes the reader keep the facts until it is written again."""
     if basis.packet_id is None or not (preview or narrative_mode() == "on"):
         return None
-    row = fetch_one(conn, NARRATIVE_SQL, {"f": int(basis.fixture["id"]), "version": NARRATIVE_VERSION,
-                                          "packet": basis.packet_id, "hash": basis.hash})
+    told = story_hash(conn, basis)
+    if told is None:
+        return None
+    row = fetch_one(conn, NARRATIVE_SQL, {"f": int(basis.fixture["id"]), "version": NARRATIVE_VERSION, "hash": told})
     if row is None:
         return None
     content = row["content"] if isinstance(row["content"], Mapping) else {}
@@ -576,7 +603,8 @@ def narrative_for(conn: Conn, basis: Basis, *, preview: bool) -> ReadingNarrativ
         return ReadingNarrative(
             version=str(row["version"]), written_at=row["created_at"], data_at=row["data_at"],
             es=[NarrativeSection.model_validate(x) for x in content.get("es") or []],
-            en=[NarrativeSection.model_validate(x) for x in content.get("en") or []])
+            en=[NarrativeSection.model_validate(x) for x in content.get("en") or []],
+            sources=[NarrativeSource.model_validate(x) for x in content.get("sources") or []])
     except ValidationError as exc:
         log.error("reading.narrative_unreadable", narrative_id=row["id"], errors=len(exc.errors()))
         return None

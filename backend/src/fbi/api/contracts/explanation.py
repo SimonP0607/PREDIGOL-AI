@@ -79,8 +79,8 @@ class PickExplanation(Contract):
     context: list[ReadingFact] = Field(description="Layer 2: the facts of the reading's context and data, each with its "
                                                    "reference, in the reading's order.")
     narrative: ReadingNarrative | None = Field(description=(
-        "The validated narrative of that same reading (A11), its context, data and risks sections only: the web shows it "
-        "instead of the facts when a reader may see it. Null otherwise."))
+        "The validated chronicle of that same match (A11, UX-025): its lead, a paragraph for each side, the head-to-head "
+        "and the risks. The web shows it instead of the facts when a reader may see it. Null otherwise."))
     market: ExplanationMarket
     risks: list[ReadingFact] = Field(description="Layer 4, besides the pick's own lines: the reading's risks (never empty "
                                                  "while the reading is shown).")

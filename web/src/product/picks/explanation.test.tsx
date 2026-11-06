@@ -127,33 +127,48 @@ describe("the five layers' lines", () => {
     expect(conclusionText(explanation())).toContain("PrediGol expects «");
   });
 
-  test("the context is the narrative when there is one, otherwise the reading's facts, and says why it is empty", () => {
+  test("the context is the chronicle when there is one, otherwise the reading's facts, and says why it is empty", () => {
     setLocale("es");
     expect(contextLines(explanation())).toEqual([
       "Millonarios: GGEPG en sus últimos 5 partidos (2,00 puntos por partido; 1,8 goles a favor y 0,6 en contra por partido).",
     ]);
     const narrated = explanation({
       narrative: {
-        version: "user-narrative-v1",
+        version: "user-narrative-v2",
         written_at: "2031-06-16T11:55:00Z",
         data_at: "2031-06-16T11:50:00Z",
         es: [
           {
-            key: "context",
-            sentences: [{ text: "Millonarios llega cuarto.", refs: ["P:stakes"] }],
+            key: "summary",
+            sentences: [{ text: "Partido de la jornada 9.", refs: ["P:fixture"] }],
+          },
+          {
+            key: "home",
+            sentences: [{ text: "Millonarios llega cuarto.", refs: ["P:stakes.home"] }],
+          },
+          {
+            key: "away",
+            sentences: [{ text: "Nacional lleva tres sin ganar.", refs: ["P:streak.away"] }],
           },
           {
             key: "risks",
-            sentences: [{ text: "Las alineaciones no están confirmadas.", refs: ["P:lineups"] }],
+            sentences: [{ text: "Hay un rumor sin confirmar.", refs: ["E:3"] }],
           },
         ],
         en: [
-          { key: "context", sentences: [{ text: "Millonarios are fourth.", refs: ["P:stakes"] }] },
+          {
+            key: "home",
+            sentences: [{ text: "Millonarios are fourth.", refs: ["P:stakes.home"] }],
+          },
         ],
+        sources: [],
       },
     });
-    expect(contextLines(narrated)).toEqual(["Millonarios llega cuarto."]);
-    expect(riskLines(narrated)).toContain("Las alineaciones no están confirmadas.");
+    expect(contextLines(narrated)).toEqual([
+      "Millonarios llega cuarto.",
+      "Nacional lleva tres sin ganar.",
+    ]);
+    expect(riskLines(narrated)).toContain("Hay un rumor sin confirmar.");
     setLocale("en");
     expect(contextLines(narrated)).toEqual(["Millonarios are fourth."]);
     setLocale("es");

@@ -4,7 +4,7 @@
  * is shown as it was checked.
  *
  *   1 conclusion  what PrediGol expects, in one sentence (PrediGol's probability against the market's)
- *   2 context     the narrative's context and data, or the reading's facts, each with its reference
+ *   2 context     the chronicle's sides and head-to-head, or the reading's facts, each with its reference
  *   3 market      the price it was published at, the best price now and whether it still has value
  *   4 risks       how often a selection like this fails, the model's doubt, the reading's risks and, only while the AI's
  *                 review is applied, the review's own
@@ -14,7 +14,7 @@ import { getLocale, t } from "@/lib/i18n";
 import { fmtOdds, fmtPct, toNumber } from "@/lib/i18n/format";
 import { formatDateTime, formatTime } from "@/lib/time";
 import type { PickExplanation } from "@/lib/api/v1/types_explanation";
-import type { ReadingSectionKey } from "@/lib/api/v1/types_reading";
+import type { NarrativeSectionKey } from "@/lib/api/v1/types_reading";
 import { factText } from "@/product/reading/text";
 import { failsInTen } from "@/product/match/intelligence";
 import { selectionLabel } from "@/product/shared/markets";
@@ -47,7 +47,7 @@ export function conclusionText(e: PickExplanation): string {
 /** The validated narrative's sentences of these sections, in the page's language; empty without a narrative. */
 export function narrativeSentences(
   e: PickExplanation,
-  keys: readonly ReadingSectionKey[],
+  keys: readonly NarrativeSectionKey[],
 ): string[] {
   if (!e.narrative) return [];
   const sections = getLocale() === "es" ? e.narrative.es : e.narrative.en;
@@ -56,9 +56,9 @@ export function narrativeSentences(
   );
 }
 
-/** Layer 2: the narrative's context and data when there is one; otherwise the reading's facts. */
+/** Layer 2: the chronicle's two sides and head-to-head when there is one; otherwise the reading's facts. */
 export function contextLines(e: PickExplanation): string[] {
-  const narrative = narrativeSentences(e, ["context", "data"]);
+  const narrative = narrativeSentences(e, ["home", "away", "h2h"]);
   if (narrative.length) return narrative;
   return e.context.flatMap((f) => {
     const text = factText(f);
@@ -103,7 +103,7 @@ export function marketLines(e: PickExplanation): string[] {
   return out;
 }
 
-/** Layer 4: how often it fails, the model's doubt, then the narrative's risks or the reading's facts. */
+/** Layer 4: how often it fails, the model's doubt, then the chronicle's risks or the reading's facts. */
 export function riskLines(e: PickExplanation): string[] {
   const out: string[] = [];
   const n = failsInTen(e.market.p_model);

@@ -47,7 +47,7 @@ from fbi.picks import user_status
 
 VERSION: Final = "pick-explanation-v1"
 CONTEXT_SECTIONS: Final = ("context", "data")
-NARRATIVE_SECTIONS: Final = frozenset({"context", "data", "risks"})
+NARRATIVE_SECTIONS: Final = frozenset({"summary", "home", "away", "h2h", "risks"})
 
 PICK_SQL = """
 SELECT p.id AS pick_id, p.fixture_id, p.market_key, p.selection, p.line,

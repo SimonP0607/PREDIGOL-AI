@@ -377,10 +377,10 @@ test("a match's Noticias at every phone width: cards stacked, the status in word
   await assertClean(page, w);
 });
 
-test("a match's narrative (A11) at every phone width: the conclusion first, the sections folding under 44 px rows", async ({
+test("a match's chronicle (A11, UX-025) at every phone width: the lead first, one flowing paragraph per section, nothing sideways", async ({
   page,
 }) => {
-  // Plan UX, A11: «MÓVIL: apartados plegables con la conclusión arriba».
+  // Plan UX, A11 and UX-025: a text read from top to bottom on a phone, no folds, no horizontal scroll at 320 px.
   test.setTimeout(180_000);
   const w = watch(page);
   const after = new Date().toISOString();
@@ -400,7 +400,7 @@ test("a match's narrative (A11) at every phone width: the conclusion first, the 
     }
   }
   if (id === null) {
-    note(test.info(), "no narrative on this database");
+    note(test.info(), "no chronicle on this database");
     return;
   }
   for (const width of PHONES) {
@@ -413,17 +413,12 @@ test("a match's narrative (A11) at every phone width: the conclusion first, the 
       .locator('[data-testid^="narrative-section-"]')
       .first()
       .getAttribute("data-testid");
-    expect(first, `${width} px: the conclusion first`).toBe("narrative-section-conclusion");
-    expect(
-      await block.locator("details[open]").count(),
-      `${width} px: only the summary open on a phone`,
-    ).toBeLessThanOrEqual(1);
-    const closed = block.locator("details:not([open]) > summary");
-    while ((await closed.count()) > 0) await closed.first().click();
+    expect(first, `${width} px: the lead first`).toBe("narrative-section-summary");
+    expect(await block.locator("details").count(), `${width} px: nothing folds`).toBe(0);
     const sideways = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
-    expect(sideways, `the narrative at ${width} px scrolls sideways`).toBeLessThanOrEqual(1);
+    expect(sideways, `the chronicle at ${width} px scrolls sideways`).toBeLessThanOrEqual(1);
     expect(await smallTargets(page, '[data-testid="reading-narrative"]'), `${width} px`).toEqual(
       [],
     );
