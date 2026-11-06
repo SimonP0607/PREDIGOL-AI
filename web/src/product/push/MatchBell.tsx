@@ -75,6 +75,7 @@ export function MatchBell({
 
   function saved(value: MatchAlert) {
     qc.setQueryData(live.matchAlert(fixtureId).queryKey, value);
+    void qc.invalidateQueries({ queryKey: live.meToday.queryKey }); // Home's «Tus avisos» lists the bells
     track("notification_enabled", { channel: "push", category: "reminder" });
     toast(
       t("push.bell.saved", { minutes: t(`push.bell.minutes.${value.minutes_before ?? minutes}`) }),
@@ -125,6 +126,7 @@ export function MatchBell({
         minutes_before: null,
         kickoff_at: alert.data?.kickoff_at ?? null,
       } satisfies MatchAlert);
+      void qc.invalidateQueries({ queryKey: live.meToday.queryKey });
       track("notification_disabled", { channel: "push", category: "reminder" });
       toast(t("push.bell.removed"));
       setOpen(false);

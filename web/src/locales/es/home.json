@@ -96,5 +96,52 @@
     "dismiss": "No, gracias",
     "failed": "No se pudo guardar. Inténtalo de nuevo.",
     "added": "{name} ya está entre tus favoritos."
+  },
+  "layers": {
+    "forYou": "Para ti",
+    "forYouHint": "Lo que elegiste seguir",
+    "predigol": "PrediGol",
+    "predigolHint": "Lo mismo para todos: los picks del día, los parlays y los mejores precios",
+    "edit": "Cambiar favoritos"
+  },
+  "choose": {
+    "title": "Elige tus favoritos",
+    "body": "Con ligas, equipos, jugadores o mercados, Inicio te muestra primero lo tuyo. Los picks no cambian: son los mismos para todos.",
+    "action": "Elegir favoritos"
+  },
+  "players": {
+    "title": "Tus jugadores",
+    "subtitle": "Qué dice el próximo partido de su equipo: alineación, bajas o aún nada",
+    "note": "La alineación sale poco antes del partido; las bajas son el parte de nuestro proveedor de datos.",
+    "next": "{home} – {away} · {when}",
+    "state": {
+      "starter": "Titular",
+      "bench": "Suplente",
+      "left_out": "Fuera de la alineación",
+      "absent": "Baja",
+      "doubtful": "Duda",
+      "waiting": "Aún sin alineación ni bajas",
+      "no_match": "Sin partido próximo"
+    }
+  },
+  "related": {
+    "title": "Picks de tus partidos",
+    "subtitle": "Los picks publicados hoy que son de tus equipos, ligas o mercados",
+    "market": "Mercado que sigues: {market}",
+    "none_one": "El pick publicado hoy no es de tus equipos, ligas ni mercados. Está en PrediGol, más abajo.",
+    "none_other": "Ninguno de los {count} picks publicados hoy es de tus equipos, ligas ni mercados. Están en PrediGol, más abajo.",
+    "noDay": "Hoy no hay picks publicados, tengas lo que tengas en favoritos. En PrediGol, más abajo, está el motivo."
+  },
+  "notices": {
+    "title": "Tus avisos",
+    "subtitle": "Los que pusiste para partidos y las alineaciones de tus equipos",
+    "noDevice": "No recibes avisos en ningún dispositivo: las alineaciones de tus equipos no te llegan.",
+    "lineupOn": "Te avisamos de las alineaciones de tus equipos en tus dispositivos.",
+    "lineupOff": "Tienes apagados los avisos de alineaciones.",
+    "enable": "Activar avisos",
+    "manage": "Cambiar",
+    "bell": "{minutes} · {when}",
+    "more_one": "Y {count} aviso más, en tus partidos.",
+    "more_other": "Y {count} avisos más, en tus partidos."
   }
 }
