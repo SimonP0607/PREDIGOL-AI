@@ -293,6 +293,41 @@
     "readers7": "Readers 7 d",
     "events30": "Events 30 d",
     "readers30": "Readers 30 d",
+    "breakdown": {
+      "title": "What readers look at (30 days)",
+      "note": "In groups, never one by one: a line appears only with at least {min} readers behind it. Leagues and teams are worked out from the match opened when you open this page; they are not stored apart.",
+      "screens": "Screens, by kind",
+      "markets": "Markets of the picks saved and of the selections added to the parlay",
+      "leagues": "Leagues of the matches opened",
+      "teams": "Teams of the matches opened",
+      "none": "No line reaches the minimum of readers.",
+      "views": "Views",
+      "readers": "Readers"
+    },
+    "screen": {
+      "home": "Home",
+      "matches": "Matches (list)",
+      "match": "A match",
+      "live": "Live",
+      "picks": "Picks",
+      "my_picks": "My picks",
+      "parlays": "Parlays",
+      "odds": "Odds",
+      "updates": "What's new",
+      "transparency": "Transparency",
+      "profile": "Profile",
+      "help": "Help",
+      "legal": "Legal texts",
+      "welcome": "Welcome",
+      "other": "Other"
+    },
+    "market": {
+      "1X2": "1X2 (result)",
+      "OU": "Over/Under goals",
+      "BTTS": "Both teams score",
+      "AH": "Asian handicap",
+      "DC": "Double chance"
+    },
     "antiMetrics": "Not optimised: time in the app, picks saved per reader, notices sent. The owner and the synthetic account are not counted.",
     "feedback": {
       "title": "What readers think",

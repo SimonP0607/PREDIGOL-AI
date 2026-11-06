@@ -9,6 +9,7 @@ import type { Section } from "@/lib/api/v1/types";
 import type { LiveMatch } from "@/lib/api/v1/types_center";
 import { CompetitionTag, TeamLogo } from "@/components/football/Logos";
 import { MatchClock } from "@/product/live/LiveCard";
+import { GoalDigit } from "@/product/shared/GoalDigit";
 import { SectionHeader } from "@/product/shared/States";
 import { emptyReason } from "@/product/shared/markets";
 
@@ -64,14 +65,15 @@ function TeamLine({
       >
         {name}
       </span>
-      <span
+      <GoalDigit
+        value={goals}
         className={cn(
           "numeric w-5 shrink-0 text-right text-base font-semibold",
           lead < 0 && "text-muted-foreground",
         )}
       >
         {goals ?? "–"}
-      </span>
+      </GoalDigit>
     </div>
   );
 }

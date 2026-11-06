@@ -349,9 +349,11 @@ describe("a page open across a deploy (plan UX, A15)", () => {
     const store = new Map<string, string>();
     let reloads = 0;
     let prevented = 0;
+    const raised: string[] = [];
     const scope = globalThis as { window?: unknown };
     const before = scope.window;
     scope.window = {
+      dispatchEvent: (e: Event) => void raised.push(e.type),
       addEventListener: (_: string, fn: (e: { preventDefault: () => void }) => void) =>
         listeners.push(fn),
       sessionStorage: {
@@ -372,6 +374,8 @@ describe("a page open across a deploy (plan UX, A15)", () => {
       // the reloaded page meets the same missing chunk at once: no second reload within 30 s
       listeners.forEach((fn) => fn(event));
       expect([reloads, prevented]).toEqual([1, 1]);
+      // ... and the page is told, so that it offers «Recargar» instead of staying broken in silence (closing plan 5.3)
+      expect(raised).toEqual(["predigol:stale-module"]);
     } finally {
       scope.window = before;
     }

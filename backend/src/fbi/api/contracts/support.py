@@ -75,6 +75,10 @@ class SupportContact(Contract):
     whatsapp: str | None = Field(description="The WhatsApp Business number, digits with the country code "
                                              "(FBI_SUPPORT_WHATSAPP, P7 of the plan); null until the owner gives it.")
     email: str | None = Field(description="The address a reader's e-mail reaches (FBI_EMAIL_REPLY_TO); null if none.")
+    channels: list[Literal["whatsapp", "tickets", "email"]] = Field(
+        description="The ways to reach PrediGol the reader is offered, in the order the owner chose "
+                    "(FBI_SUPPORT_CHANNELS); only those that are available now.")
+    hours: str | None = Field(description="The hours someone answers, in the owner's words (FBI_SUPPORT_HOURS); null if none.")
 
 
 class SupportState(Contract):

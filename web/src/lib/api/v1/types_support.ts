@@ -65,7 +65,13 @@ export interface SupportContact {
   whatsapp: string | null;
   /** The address a reader's e-mail reaches; null if none. */
   email: string | null;
+  /** The channels in the order the owner chose (FBI_SUPPORT_CHANNELS), only those that are on now. */
+  channels: ContactChannel[];
+  /** The hours someone answers, plain text; null while the owner has not published them. */
+  hours: string | null;
 }
+
+export type ContactChannel = "whatsapp" | "tickets" | "email";
 
 export interface SupportState {
   /** FBI_SUPPORT: false - no new ticket or message (Ayuda, the contact and the privacy requests stay). */
