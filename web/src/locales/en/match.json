@@ -887,6 +887,21 @@
       "writtenAtDay": "Written with data as of {date}"
     }
   },
+  "understand": {
+    "keyPointsTitle": "Key points",
+    "valueTitle": "Why there is value",
+    "valueNote": "It is the gap between what PrediGol calculates and what the market pays. A pick with value can still lose: it is not a promise of any result.",
+    "pick": "{selection}: PrediGol gives it a {model} probability and the market, {market}{gap}.",
+    "gap_one": " (a gap of {count} percentage point)",
+    "gap_other": " (a gap of {count} percentage points)",
+    "price": {
+      "now": "{selection}: the best odds now are {odds}.",
+      "taken": "{selection}: the odds it was taken at were {odds}.",
+      "both": " The market's fair odds are {fair_market} and PrediGol's odds, {fair_model}.",
+      "model": " PrediGol's odds are {fair_model}.",
+      "market": " The market's fair odds are {fair_market}."
+    }
+  },
   "facts": {
     "outcome": {
       "home": "a {team} win",
