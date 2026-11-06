@@ -44,6 +44,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-010 | Transparencia completa (plan de cierre 1.5): la lista de picks publicados uno a uno con la cuota y la probabilidad con que se congelaron y su resultado (`GET /transparency/picks`, de 20 en 20), el bloque de parlays, «Qué es un pick», «Cómo leer probabilidades y cuotas», el historial de cambios (Novedades y definiciones con su fecha) y el aviso de cero picks con los días sin picks; `transparency_check` ampliado. Sin migración; no toca la inteligencia ni la regla de «solo verde» | en curso | este PR | plan de cierre UX, 1.5 |
 | UX-011 | Puntos clave, «Por qué hay valor» y factores en la lectura de un partido (plan de cierre UX, 2.1): tres apartados nuevos de la lectura estructurada, escritos con lo que ya está guardado, sin IA y sin migración. «Por qué hay valor» solo existe si PrediGol publicó un pick visible para el lector (probabilidad de PrediGol frente a la del mercado, cuota frente a la cuota justa y a la cuota según PrediGol); el Resumen del partido los muestra y Análisis sigue con sus seis apartados. No cambia picks, probabilidades ni umbrales; la narrativa de A11 no los lee (`backend/docs/owner/LECTURA_VALOR_UX_011.md`) | en curso | este PR | — |
 | UX-014 | Más favoritos: jugadores y mercados (plan de cierre UX, 3.1): el lector sigue hasta 20 jugadores (desde la ficha de una alineación o de las bajas, o buscándolos por nombre desde tres letras) y hasta 5 de los 5 mercados que PrediGol lee (desde la pestaña Mercados o desde Perfil → Tu fútbol); guardar sin ellos los conserva, vacío los borra, y salen en la exportación de datos. Migración 0122 (solo amplía `customer.favorites`); aún no los lee nada: los usa 3.2. No toca la inteligencia | en curso | este PR | — |
+| UX-021 | Sentry de experiencia (plan de cierre UX, 5.3): tiempos de carga (LCP, INP y CLS) en una muestra del 3 % de las visitas y con tope propio en el túnel, errores de módulo tras un despliegue con oferta de recargar, errores de API que el lector ve con su `request_id` (una vez por referencia) y errores del service worker. Nunca datos personales: el servidor reconstruye cada lectura solo con números y ruta. Sin migración. No toca la inteligencia | en curso | este PR | — |
 
 ## BE — backend
 
@@ -57,4 +58,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-009 · UX-015 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-009 · UX-022 · BE-002 · FE-001 · OPS-001 · DOC-001
