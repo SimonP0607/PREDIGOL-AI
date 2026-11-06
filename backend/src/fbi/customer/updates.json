@@ -2,6 +2,62 @@
   "_comment": "Novedades (plan UX, B6 and B8): the entries of web/src/product/updates/updates.ts with their titles as the web's catalogues say them (support.updates.items.<key>.title, ES and EN), newest first - what the weekly summary by e-mail names (fbi.messaging.digest). A test of the web checks that both say the same; an entry is added in both in the same change.",
   "entries": [
     {
+      "id": "2026-11-06-inicio-para-ti",
+      "key": "forYou",
+      "title": {
+        "es": "Inicio, primero lo tuyo",
+        "en": "Home, yours first"
+      }
+    },
+    {
+      "id": "2026-11-06-resumen-para-entender",
+      "key": "summary",
+      "title": {
+        "es": "El Resumen del partido, primero para entender",
+        "en": "The match Summary, first to understand"
+      }
+    },
+    {
+      "id": "2026-11-06-picks-en-una-linea",
+      "key": "compactWhy",
+      "title": {
+        "es": "El porqué de cada pick, en una línea",
+        "en": "Each pick's why, in one line"
+      }
+    },
+    {
+      "id": "2026-11-06-mas-competiciones",
+      "key": "competitions",
+      "title": {
+        "es": "Más competiciones",
+        "en": "More competitions"
+      }
+    },
+    {
+      "id": "2026-11-05-seguir-jugadores-y-mercados",
+      "key": "followMore",
+      "title": {
+        "es": "Sigue también jugadores y mercados",
+        "en": "Follow players and markets too"
+      }
+    },
+    {
+      "id": "2026-11-05-puntos-clave",
+      "key": "keyPoints",
+      "title": {
+        "es": "Puntos clave y «Por qué hay valor»",
+        "en": "Key points and «Why there is value»"
+      }
+    },
+    {
+      "id": "2026-11-05-como-funciona",
+      "key": "howItWorks",
+      "title": {
+        "es": "Cómo funciona PrediGol",
+        "en": "How PrediGol works"
+      }
+    },
+    {
       "id": "2026-11-04-explicame",
       "key": "explain",
       "title": {

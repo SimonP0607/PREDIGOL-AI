@@ -25,6 +25,18 @@ export interface UpdateEntry {
 
 /** Newest first. */
 export const UPDATES: readonly UpdateEntry[] = [
+  { id: "2026-11-06-inicio-para-ti", key: "forYou", to: "/home", go: "home" },
+  { id: "2026-11-06-resumen-para-entender", key: "summary", to: "/matches", go: "matches" },
+  { id: "2026-11-06-picks-en-una-linea", key: "compactWhy", to: "/picks", go: "picks" },
+  { id: "2026-11-06-mas-competiciones", key: "competitions", to: "/matches", go: "matches" },
+  {
+    id: "2026-11-05-seguir-jugadores-y-mercados",
+    key: "followMore",
+    to: "/profile#football",
+    go: "profile",
+  },
+  { id: "2026-11-05-puntos-clave", key: "keyPoints", to: "/matches", go: "matches" },
+  { id: "2026-11-05-como-funciona", key: "howItWorks", to: "/help/how-it-works", go: "howItWorks" },
   { id: "2026-11-04-explicame", key: "explain", to: "/matches", go: "matches" },
   { id: "2026-10-27-tu-opinion", key: "feedback" },
   { id: "2026-10-27-mis-picks", key: "myPicks", to: "/my-picks", go: "myPicks" },
