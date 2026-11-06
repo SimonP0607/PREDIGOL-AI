@@ -259,11 +259,14 @@ export function TodayBlock({
   query,
   now,
   suggestion = null,
+  choose = true,
 }: {
   query: TodayQuery;
   now: number;
   /** One league or team to add, with its reason (plan UX, B2: the page's SuggestionCard). */
   suggestion?: ReactNode;
+  /** The way to choose the leagues - off where the page already has one (the layer's «Cambiar favoritos», the prompt). */
+  choose?: boolean;
 }) {
   const today = query.data?.data ?? null;
   const suggested = today ? suggestedView(today) : true;
@@ -352,7 +355,7 @@ export function TodayBlock({
           <MineChips following={today.following} />
         )
       ) : null}
-      {today && personal ? <ChooseLink chosen={!suggested} /> : null}
+      {today && personal && choose ? <ChooseLink chosen={!suggested} /> : null}
       {today && personal ? suggestion : null}
       {body}
     </section>

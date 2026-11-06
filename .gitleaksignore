@@ -30,3 +30,7 @@ d39c9ebf615b76cdfa4ea0f69ac61249031249f1:deploy/env_example.txt:generic-api-key:
 5ee0edb5496fcc29b055ddc6075911e8d5fbb306:backend/tests/unit/test_sentry_filter.py:generic-api-key:28
 b38b556c4e81af7bf093ade5a13d7df6089eed90:backend/tests/unit/test_contain_trace.py:generic-api-key:21
 b38b556c4e81af7bf093ade5a13d7df6089eed90:backend/tests/unit/test_contain_trace.py:predigol-db-url-password:74
+
+# `FBI_TELEGRAM_WEBHOOK_SECRET=` con el valor vacío en la plantilla de entorno (UX-022): la regla genérica tomó como «valor» el nombre de la línea
+# siguiente (FBI_ANNOUNCE_DAILY_CAP), no una credencial. La plantilla ya quedó reordenada para que no vuelva a pasar; el commit publicado no se reescribe.
+4248d1217ade63ec5e0869e20a2268ce217143a3:backend/deploy/vps/app.env.example:generic-api-key:32

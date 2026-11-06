@@ -50,8 +50,9 @@ inteligencia, no la altera.
 
 ## 4. Lo que no hace (todavía)
 
-- **Nada lee aún a los jugadores ni a los mercados que el lector sigue.** Se guardan; la tarea 3.2 (Inicio en dos capas, «Para ti») es
-  la que los usa para mostrar sus partidos, bajas y noticias. Hasta entonces el selector lo dice con la frase de arriba y no promete más.
+- **Este cambio solo los guarda.** Quien los lee es la tarea 3.2 (UX-015, Inicio en dos capas, «Para ti»: el estado del próximo partido de
+  cada jugador y los picks del día que son de un mercado que sigues). Hasta que esa se despliegue, el selector lo dice con la frase de
+  arriba y no promete más.
 - **Seguir a un jugador desde una noticia** (el plan lo menciona) queda fuera de este cambio: las noticias de PrediGol no traen todavía
   el jugador como dato propio, y no se inventa. Se puede seguir desde la alineación, las bajas del partido y la búsqueda.
 - **No toca PrediGol Intelligence:** ni un modelo, una probabilidad, una calibración, un umbral, un pick ni su liquidación.

@@ -1,15 +1,23 @@
 /**
- * Inicio (plan UX, A9 and A10; section 24): «qué hay hoy para mí» in five seconds, with or without picks. Top to bottom:
+ * Inicio (plan UX, A9 and A10; section 24; closing plan 3.2): «qué hay hoy para mí» in five seconds, with or without picks, in
+ * two layers - each a landmark named by its band:
  *
- *   1  Hoy en las ligas sugeridas   today's matches, in play first, with the forecast labelled and a line of the reading
- *   2  Picks del día                the published set with its real state - or why there is none - and PrediGol's parlays
- *   3  Partidos relevantes          today's other matches with a reading (only when there are some)
- *   4  Noticias                     the confirmed or probable news of today's suggested matches (only with content)
- *   5  Qué se juega                 table or tie, rest and next match of the next suggested matches (only with content)
- *   6  Resultados                   the suggested leagues' last 48 hours
+ *   Para ti    only once the reader chose a league, a team, a player or a market (GET /me/today): their next matches, their
+ *              news, their players (starter, bench, left out, missing or doubtful), what is at stake, the day's picks that are
+ *              theirs - or that none is -, their notices and their results (./ParaTi)
+ *   PrediGol   the same for everyone, whatever they follow; nothing of the product is hidden. Top to bottom:
  *
- * then what is in play everywhere and the best prices, as before. Every block loads, fails and retries on its own: a
- * failure never reads as an empty list, and an empty block says why in plain words. Nothing here calls the AI.
+ *     1  Hoy en las ligas sugeridas   today's matches, in play first, with the forecast labelled and a line of the reading
+ *     2  Picks del día                the published set with its real state - or why there is none - and PrediGol's parlays
+ *     3  Partidos relevantes          today's other matches with a reading (only when there are some)
+ *     4  Noticias                     the confirmed or probable news of today's suggested matches (only with content)
+ *     5  Qué se juega                 table or tie, rest and next match of the next suggested matches (only with content)
+ *     6  Resultados                   the suggested leagues' last 48 hours
+ *
+ *   then what is in play everywhere and the best prices. Blocks 1, 4, 5 and 6 are the reader's own - and sit in «Para ti» - once
+ *   they chose leagues or teams; the suggested ones are PrediGol's and are never called «tuyas». Without favourites, a discreet
+ *   «Elige tus favoritos» opens the PrediGol layer. Every block loads, fails and retries on its own: a failure never reads as
+ *   an empty list, and an empty block says why in plain words. Nothing here calls the AI.
  */
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -18,7 +26,7 @@ import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { live } from "@/lib/api/v1/queries";
 import { shiftDay, todayKey } from "@/lib/time";
-import { usePreviewParam } from "@/lib/auth/AuthProvider";
+import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { Home } from "@/lib/api/v1/types_product";
 import type { DailyBoard, ParlayRecord, RecordKind } from "@/lib/api/v1/types_records";
@@ -33,6 +41,8 @@ import { LiveTiles } from "./LiveTiles";
 import { NewsBlock } from "./NewsBlock";
 import { SuggestionCard } from "@/product/favorites/SuggestionCard";
 import { ContextBlock, RelevantBlock, ResultsBlock, TodayBlock } from "./TodayBlocks";
+import { layersOf } from "./layers";
+import { ChoosePrompt, ForYouEdit, ForYouPart, Layer } from "./ParaTi";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
 type HomeQuery = UseQueryResult<Envelope<Home>>;
@@ -149,9 +159,11 @@ function LiveAndPrices({ query }: { query: HomeQuery }) {
 
 export function HomePage() {
   const preview = usePreviewParam();
+  const reader = useAuth().user?.role === "USER";
   const home = useQuery(live.home(preview));
   const today = useQuery(live.today);
   const news = useQuery(live.todayNews);
+  const me = useQuery({ ...live.meToday, enabled: reader });
   const board = useQuery(live.daily(preview));
   const yesterday = useQuery(live.daily(preview, shiftDay(todayKey("America/Bogota"), -1)));
   const now = Date.now();
@@ -159,24 +171,70 @@ export function HomePage() {
   const openYesterday = (yesterday.data?.data?.set?.items ?? []).some(
     (i) => i.status === "PENDING",
   );
+  // Two layers (closing plan 3.2): «Para ti» only once the reader chose something; PrediGol is the same for everyone. The
+  // leagues and the team suggested until they choose are PrediGol's, labelled as suggested - never «tuyas».
+  const layers = layersOf(me.data, today.data?.data);
+  const teams = layers.mine && (today.data?.data?.following?.teams.length ?? 0) > 0;
+  const common = { query: today, now } as const;
   return (
     <div className="space-y-9 sm:space-y-10" data-testid="home-page">
       <HomeHeader freshness={home.data?.data?.data_freshness ?? null} loading={home.isPending} />
-      <TodayBlock query={today} now={now} suggestion={<SuggestionCard />} />
-      {openYesterday ? (
-        <DailySetBlock query={yesterday} variant="home" title={t("records.daily.yesterdayOpen")} />
+      {layers.forYou ? (
+        <Layer
+          id="for-you"
+          title={t("home.layers.forYou")}
+          hint={t("home.layers.forYouHint")}
+          tone="primary"
+          action={<ForYouEdit />}
+        >
+          {layers.mine ? (
+            <TodayBlock {...common} suggestion={<SuggestionCard />} choose={false} />
+          ) : null}
+          {layers.mine ? <NewsBlock query={news} now={now} /> : null}
+          <ForYouPart part="players" query={me} board={board} teams={teams} now={now} />
+          {layers.mine ? <ContextBlock {...common} /> : null}
+          <ForYouPart part="picks" query={me} board={board} teams={teams} now={now} />
+          <ForYouPart part="notices" query={me} board={board} teams={teams} now={now} />
+          {layers.mine ? <ResultsBlock {...common} /> : null}
+        </Layer>
       ) : null}
-      <DailySetBlock
-        query={board}
-        variant="home"
-        noPick={noPickLoad(today, (d) => d.no_pick.data)}
-      />
-      <HomeParlays board={board} />
-      <RelevantBlock query={today} now={now} />
-      <NewsBlock query={news} now={now} />
-      <ContextBlock query={today} now={now} />
-      <ResultsBlock query={today} now={now} />
-      <LiveAndPrices query={home} />
+      <Layer
+        id="predigol"
+        title={t("home.layers.predigol")}
+        hint={t("home.layers.predigolHint")}
+        tone="gold"
+      >
+        {layers.prompt && reader ? <ChoosePrompt /> : null}
+        {layers.mine ? null : (
+          <TodayBlock
+            {...common}
+            suggestion={<SuggestionCard />}
+            choose={!(layers.prompt && reader)}
+          />
+        )}
+        {openYesterday ? (
+          <DailySetBlock
+            query={yesterday}
+            variant="home"
+            title={t("records.daily.yesterdayOpen")}
+          />
+        ) : null}
+        <DailySetBlock
+          query={board}
+          variant="home"
+          noPick={noPickLoad(today, (d) => d.no_pick.data)}
+        />
+        <HomeParlays board={board} />
+        <RelevantBlock {...common} />
+        {layers.mine ? null : (
+          <>
+            <NewsBlock query={news} now={now} />
+            <ContextBlock {...common} />
+            <ResultsBlock {...common} />
+          </>
+        )}
+        <LiveAndPrices query={home} />
+      </Layer>
     </div>
   );
 }

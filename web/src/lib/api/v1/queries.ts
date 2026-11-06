@@ -256,6 +256,11 @@ export const live = {
   }),
   /** Home's board: the server keeps it a minute; the page reads it again when the reader comes back to it. */
   today: { queryKey: ["v1", "today"], queryFn: v1.today, refetchInterval: 2 * MINUTE },
+  /**
+   * «Para ti»: the reader's own layer of Home. Under `["v1", "today"]` so that following or unfollowing anything - which
+   * invalidates that prefix - reads it again; a line-up or an absence can change it between visits.
+   */
+  meToday: { queryKey: ["v1", "today", "me"], queryFn: v1.meToday, refetchInterval: 2 * MINUTE },
   /** Why the day has no pick, for the Picks page: the server keeps it five minutes. */
   noPick: { queryKey: ["v1", "today", "no-pick"], queryFn: v1.noPick, refetchInterval: 5 * MINUTE },
   /** «Cómo le va a PrediGol» (A12): the server keeps it ten minutes per time zone. */

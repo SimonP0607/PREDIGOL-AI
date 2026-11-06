@@ -160,6 +160,9 @@ test("Home: today in the suggested leagues, the day's picks or why there are non
   const block1 = page.getByTestId("home-today");
   await expect(block1.getByRole("heading", { name: t.home.today.title })).toBeVisible();
   await expect(block1.getByTestId("suggested-leagues")).toBeVisible();
+  // the suggested leagues are PrediGol's, never «tuyas»: no «Para ti» until the reader chooses something
+  await expect(page.getByTestId("layer-for-you")).toHaveCount(0);
+  await expect(page.getByTestId("layer-predigol").getByTestId("home-today")).toBeVisible();
   const rows = block1.getByTestId("today-row");
   if ((await rows.count()) > 0) {
     await expect(rows.first().getByTestId("today-why")).toHaveText(t.home.today.why);

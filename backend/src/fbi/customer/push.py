@@ -320,6 +320,20 @@ def alert(conn: psycopg.Connection[Any], user_id: int, fixture_id: int) -> Alert
     return Alert(fixture_id=fixture_id, on=row[1] is not None, minutes_before=row[1], kickoff_at=row[0])
 
 
+BELLS_SQL = """
+SELECT a.fixture_id, f.kickoff_at, a.minutes_before FROM customer.match_alerts a
+  JOIN core.fixtures f ON f.id = a.fixture_id
+ WHERE a.user_id = %s AND f.kickoff_at > %s AND f.status_group = 'scheduled'
+ ORDER BY f.kickoff_at, a.fixture_id
+"""
+
+
+def bells(conn: psycopg.Connection[Any], user_id: int, at: datetime) -> list[Alert]:
+    """The bells the reader rang for matches still to be played, soonest first (Home's «Tus avisos»)."""
+    return [Alert(fixture_id=int(r[0]), on=True, minutes_before=int(r[2]), kickoff_at=r[1])
+            for r in conn.execute(BELLS_SQL, (user_id, at)).fetchall()]
+
+
 def set_alert(user_id: int, fixture_id: int, *, minutes_before: int, at: datetime) -> Alert:
     """Ring a match's bell (or change its minutes). 404 ``not_found``; 422 ``bad_minutes``, ``match_started`` once it
     has started, ``too_far`` more than 7 days ahead, ``too_many_alerts`` past MAX_ALERTS bells to come; 404 ``push_off``."""
