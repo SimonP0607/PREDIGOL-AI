@@ -18,8 +18,9 @@
       "transparency": "We tell you how we are doing, losses included.",
       "transparencyLink": "How PrediGol is doing",
       "enter": "Enter PrediGol",
-      "tour": "Take the tour (4 steps)",
-      "skip": "Skip"
+      "tour": "Take the tour (5 steps)",
+      "skip": "Skip",
+      "howItWorks": "How PrediGol works"
     },
     "failed": "We could not save. Try again or skip this step."
   },
@@ -71,11 +72,12 @@
   },
   "tour": {
     "start": "Take the tour",
-    "startHelp": "Four steps through the essentials: Home, a match, a pick and My picks.",
+    "startHelp": "Five steps through the essentials: Home, a match, a pick, parlays and My picks.",
     "step": "Tour · {n} of {total}",
     "next": "Next",
     "done": "Finish",
     "close": "Close the tour",
+    "more": "How everything works, with examples",
     "home": {
       "title": "Home",
       "body": "It answers what is on today for you: your leagues first, the day's picks —or why there are none— and the results."
@@ -85,8 +87,12 @@
       "body": "Every match has its centre: the forecast, the context, the market and, once it is over, the post-match."
     },
     "pick": {
-      "title": "A pick and its state",
-      "body": "In Picks you see each pick with its real state, from pending to settled, and why it met the conditions."
+      "title": "Picks",
+      "body": "In Picks you see only what PrediGol recommends now: selections with value against the market, each with its odds and the reason. If none passes the rules, there are no picks today."
+    },
+    "parlay": {
+      "title": "Parlays",
+      "body": "PrediGol builds the daily and the multi-day parlay only from selections that pass every rule, and never pads them. You can also build your own."
     },
     "myPicks": {
       "title": "My picks",

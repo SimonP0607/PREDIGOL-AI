@@ -397,7 +397,7 @@ test("a first-visit hint on Picks, a match, the parlays and Mis picks: dismissed
   }
 });
 
-test("the optional tour from the help: four steps, each on its page, closed at the end", async ({
+test("the optional tour from the help: five steps, each on its page, closed at the end", async ({
   page,
 }) => {
   test.setTimeout(150_000);
@@ -415,13 +415,14 @@ test("the optional tour from the help: four steps, each on its page, closed at t
       ["home", /\/home$/],
       ["match", /\/matches(\/\d+)?$/],
       ["pick", /\/picks$/],
+      ["parlay", /\/parlays$/],
       ["myPicks", /\/my-picks$/],
     ];
     for (const [i, [step, url]] of steps.entries()) {
       await expect(page).toHaveURL(url);
       await expect(card).toHaveAttribute("data-step", step);
       await expect(card).toContainText(
-        o.tour.step.replace("{n}", String(i + 1)).replace("{total}", "4"),
+        o.tour.step.replace("{n}", String(i + 1)).replace("{total}", "5"),
       );
       await card.getByTestId("tour-next").click();
     }

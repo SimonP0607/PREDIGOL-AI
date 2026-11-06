@@ -18,8 +18,9 @@
       "transparency": "Te contamos cómo nos va, también cuando perdemos.",
       "transparencyLink": "Cómo le va a PrediGol",
       "enter": "Entrar a PrediGol",
-      "tour": "Hacer el recorrido (4 pasos)",
-      "skip": "Saltar"
+      "tour": "Hacer el recorrido (5 pasos)",
+      "skip": "Saltar",
+      "howItWorks": "Cómo funciona PrediGol"
     },
     "failed": "No pudimos guardar. Inténtalo de nuevo o salta este paso."
   },
@@ -71,11 +72,12 @@
   },
   "tour": {
     "start": "Hacer el recorrido",
-    "startHelp": "Cuatro pasos por lo esencial: Inicio, un partido, un pick y Mis picks.",
+    "startHelp": "Cinco pasos por lo esencial: Inicio, un partido, un pick, los parlays y Mis picks.",
     "step": "Recorrido · {n} de {total}",
     "next": "Siguiente",
     "done": "Terminar",
     "close": "Cerrar el recorrido",
+    "more": "Cómo funciona todo, con ejemplos",
     "home": {
       "title": "Inicio",
       "body": "Responde qué hay hoy para ti: tus ligas primero, los picks del día —o por qué no hay— y los resultados."
@@ -85,8 +87,12 @@
       "body": "Cada partido tiene su centro: el pronóstico, el contexto, el mercado y, al terminar, el postpartido."
     },
     "pick": {
-      "title": "Un pick y su estado",
-      "body": "En Picks ves cada pick con su estado real, de pendiente a liquidado, y por qué cumplió las condiciones."
+      "title": "Picks",
+      "body": "En Picks ves solo lo que PrediGol recomienda ahora: selecciones con valor frente al mercado, cada una con su cuota y el porqué. Si ninguna cumple las reglas, hoy no hay picks."
+    },
+    "parlay": {
+      "title": "Parlays",
+      "body": "PrediGol arma el parlay del día y el multi-día solo con selecciones que pasan todas sus reglas, y nunca los rellena. También puedes armar el tuyo."
     },
     "myPicks": {
       "title": "Mis picks",

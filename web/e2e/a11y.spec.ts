@@ -22,6 +22,7 @@ const PRODUCT = [
   "/my-picks",
   "/profile",
   "/help/glossary",
+  "/help/how-it-works",
   "/help",
   // plan UX, A15: the pages of A4 and A12 the reader reaches from «Más» or a footer
   "/transparency",
