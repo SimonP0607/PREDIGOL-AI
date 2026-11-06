@@ -9,9 +9,9 @@ is estimated, and a datum that is missing is left out, never filled.
                 «there is value» written for a match that has none.
     factors     The facts of the reading's own sections that stand out by the rules the reading already applies (what a side is
                 playing for, the first leg, key absences, a long run, a market that moved), copied as they are.
-    key_points  Three to five of them, in the order a reader needs them - what limits the reading, what PrediGol expects, why
-                there is value, the factors, the main risk. Never padded: a match with little data has fewer, and one with
-                no data says so (the reading's risks never are empty).
+    key_points  Up to five of them, in the order a reader needs them - what limits the reading, what PrediGol expects (or that it has
+                no forecast yet), why there is value, the factors. The risks are not repeated here: they have their own list
+                beside. Never padded: a match with little data has fewer, one with none says what is missing.
 
 The numbers of ``value`` are the pick's own, the ones its card and its explanation already show (``PickCard``: PrediGol's
 calibrated probability, the market's de-vigged one, the best price now - or, once the match started, the price it was taken at).
@@ -110,13 +110,12 @@ def factors(sections: Mapping[str, Sequence[ReadingFact]]) -> list[ReadingFact]:
 
 def key_points(sections: Mapping[str, Sequence[ReadingFact]], value: Sequence[ReadingFact],
                standing: Sequence[ReadingFact]) -> list[ReadingFact]:
-    """Three to five points, never padded, in the order a reader needs them (see the module's docstring)."""
+    """Up to five points, never padded, in the order a reader needs them (see the module's docstring)."""
     wanted: list[ReadingFact] = []
     wanted += [f for f in sections.get("conclusion", ()) if f.code == "description_only"][:1]
     wanted += [f for f in sections.get("summary", ()) if f.code in ("expected_result", "forecast_missing")][:1]
     wanted += [f for f in value if f.code == "value_pick"][:KEY_VALUE]
     wanted += list(standing[:KEY_FACTORS])
-    wanted += list(sections.get("risks", ()))[:1]
     out: list[ReadingFact] = []
     for f in wanted:
         if f not in out:

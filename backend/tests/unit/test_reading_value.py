@@ -113,16 +113,23 @@ def test_the_key_points_go_in_the_order_a_reader_needs_them_and_never_pass_five(
     value = rv._card(card())
     standing = rv.factors(SECTIONS)
     points = rv.key_points(SECTIONS, value, standing)
-    assert [f.code for f in points] == ["expected_result", "value_pick", "stakes_pressure", "key_absences", "lineups_unconfirmed"]
-    assert len(points) == rv.MAX_POINTS
+    assert [f.code for f in points] == ["expected_result", "value_pick", "stakes_pressure", "key_absences"]
     assert all(f.code != "value_price" for f in points), "the price is told in the value section, not as a point"
+    assert all(f.code not in ("lineups_unconfirmed", "uncalibrated") for f in points), "the risks have their own list"
+
+
+def test_the_points_never_pass_five() -> None:
+    many = {**SECTIONS, "conclusion": [fact("description_only", ref="packet:quality")],
+            "context": [fact("stakes_pressure", side="home", team=f"T{i}", pressure="title") for i in range(4)]}
+    points = rv.key_points(many, rv._card(card()) + rv._card(card(pick_id=8)), rv.factors(many))
+    assert len(points) == rv.MAX_POINTS and points[0].code == "description_only"
 
 
 def test_a_match_without_a_pick_has_no_value_point_and_a_match_with_little_data_has_fewer_points_not_padding() -> None:
     sparse = {"summary": [fact("forecast_missing", ref="forecast", reason="no_forecast_yet")],
               "risks": [fact("no_context_yet", ref="packet")]}
     points = rv.key_points(sparse, [], rv.factors(sparse))
-    assert [f.code for f in points] == ["forecast_missing", "no_context_yet"], "it says what is missing"
+    assert [f.code for f in points] == ["forecast_missing"], "it says what is missing; the risks are listed beside"
     assert rv.key_points({}, [], []) == []
 
 
@@ -132,8 +139,8 @@ def test_a_conclusion_that_is_description_only_leads_the_points() -> None:
 
 
 def test_a_repeated_fact_counts_once() -> None:
-    twice = {"summary": SECTIONS["summary"], "risks": [SECTIONS["summary"][1]]}
-    assert [f.code for f in rv.key_points(twice, [], [])] == ["expected_result"]
+    value = rv._card(card())
+    assert [f.code for f in rv.key_points({}, value + value, [])] == ["value_pick"]
 
 
 def test_a_reading_that_is_not_shown_gets_nothing_added() -> None:
