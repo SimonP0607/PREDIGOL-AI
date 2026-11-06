@@ -43,6 +43,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-008 | Casilla opcional de analítica (plan de cierre UX, 1.2): la analítica de uso con identificador seudónimo pasa de la autorización general a un propósito aparte (`analytics`), sin marcar y retirable en cualquier momento; en la puerta de consentimientos aparece como casilla opcional que no cuenta para abrirla y en Perfil → Privacidad hay un interruptor; la política queda en `2026-11-05-draft4` (borrador, cambio no material: quita una finalidad de la autorización general en vez de añadir una). Permite `FBI_PRODUCT_EVENTS=consent` con lo que ya existe. No toca la inteligencia | en curso | este PR | UX-007 |
 | UX-010 | Transparencia completa (plan de cierre 1.5): la lista de picks publicados uno a uno con la cuota y la probabilidad con que se congelaron y su resultado (`GET /transparency/picks`, de 20 en 20), el bloque de parlays, «Qué es un pick», «Cómo leer probabilidades y cuotas», el historial de cambios (Novedades y definiciones con su fecha) y el aviso de cero picks con los días sin picks; `transparency_check` ampliado. Sin migración; no toca la inteligencia ni la regla de «solo verde» | en curso | este PR | plan de cierre UX, 1.5 |
 | UX-014 | Más favoritos: jugadores y mercados (plan de cierre UX, 3.1): el lector sigue hasta 20 jugadores (desde la ficha de una alineación o de las bajas, o buscándolos por nombre desde tres letras) y hasta 5 de los 5 mercados que PrediGol lee (desde la pestaña Mercados o desde Perfil → Tu fútbol); guardar sin ellos los conserva, vacío los borra, y salen en la exportación de datos. Migración 0122 (solo amplía `customer.favorites`); aún no los lee nada: los usa 3.2. No toca la inteligencia | en curso | este PR | — |
+| UX-016 | Datos de comportamiento responsables (plan de cierre UX, 3.3): el mercado al guardar un pick y al añadir una selección al parlay, y la pantalla vista por grupo (una de 15 palabras de una lista cerrada, nunca la dirección ni una búsqueda), entran al catálogo cerrado de eventos (36); las ligas y los equipos consultados se deducen en el servidor desde el partido abierto, sin recoger nada nuevo; la vista del dueño los lista por grupos y solo con el mínimo de lectores detrás. La política (versión `2026-11-05-draft5`, no material) lo nombra. Sin migración ni interruptor nuevo; encender `FBI_PRODUCT_EVENTS=consent` y la purga es del servidor, tras desplegar. No toca la inteligencia | en curso | este PR | — |
 
 ## BE — backend
 
@@ -56,4 +57,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-009 · UX-015 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-009 · UX-017 · BE-002 · FE-001 · OPS-001 · DOC-001
