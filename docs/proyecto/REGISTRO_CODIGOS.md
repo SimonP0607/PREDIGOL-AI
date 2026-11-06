@@ -38,6 +38,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-003 | Fase 0 del plan de cierre de la UX: el mapa de interruptores de la capa de usuario con su prueba (plantilla del servidor, mapa del dueño y código dicen lo mismo), el inventario de secretos al día (DSN de la web y contraseña del recorrido sintético), la novedad de «Explícame» y la limpieza de dos componentes y dos dependencias sin uso | en curso | este PR | plan de cierre UX, fase 0 |
 | UX-004 | Membresía con el precio y la prueba que decidió el dueño (5-nov-2026): 150.000 COP o 50 USD al mes (a elección del lector, configurables con `FBI_MEMBERSHIP_PRICE_COP` y `FBI_MEMBERSHIP_PRICE_USD`; `0` esconde una moneda), prueba de 20 días por defecto (de 7 a 20, también al invitar) y el bloque «El plan» en Perfil → Membresía. Sin migración; no toca la inteligencia ni la puerta `FBI_MEMBERSHIP_ENFORCE` | en curso | este PR | — |
 | UX-006 | «Cómo funciona PrediGol» (plan de cierre UX, 1.6): la página `/help/how-it-works` con 11 tarjetas (Inicio, Partidos, Picks, Parlays, Cuotas, Mis picks, Favoritos, Análisis de un partido, Probabilidades, Mercados y Estados de los picks), cada una con qué es, cómo se lee, un ejemplo y «Verlo en la app»; el glosario suma los cinco mercados y los estados de un pick; el recorrido pasa a 5 pasos (con los parlays) y su paso de picks dice lo que el lector ve de verdad; enlaces desde Ayuda, Perfil, la bienvenida y el último paso del recorrido. Solo web: no toca la inteligencia ni el backend | en curso | este PR | — |
+| UX-011 | Puntos clave, «Por qué hay valor» y factores en la lectura de un partido (plan de cierre UX, 2.1): tres apartados nuevos de la lectura estructurada, escritos con lo que ya está guardado, sin IA y sin migración. «Por qué hay valor» solo existe si PrediGol publicó un pick visible para el lector (probabilidad de PrediGol frente a la del mercado, cuota frente a la cuota justa y a la cuota según PrediGol); el Resumen del partido los muestra y Análisis sigue con sus seis apartados. No cambia picks, probabilidades ni umbrales; la narrativa de A11 no los lee (`backend/docs/owner/LECTURA_VALOR_UX_011.md`) | en curso | este PR | — |
 
 ## BE — backend
 
@@ -51,4 +52,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-009 · UX-007 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-009 · UX-012 · BE-002 · FE-001 · OPS-001 · DOC-001
