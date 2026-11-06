@@ -75,6 +75,20 @@
           "es": "635ae63e63550c8472e147169e641dc5188d8469b7ae466c335902060c2f0383",
           "en": "5de79694aa3cd6c2a3934d91f0bcc60ccc6428d81308961236f71db45d310d7f"
         }
+      },
+      {
+        "version": "2026-11-05-draft4",
+        "date": "2026-11-05",
+        "draft": true,
+        "material": false,
+        "changes": {
+          "es": "Las estadísticas de uso pasan a una casilla opcional aparte, sin marcar al crear tu cuenta y en tu perfil, que retiras cuando quieras (antes iban dentro de la autorización general). Se nombran sus datos y cuánto tiempo se guardan. Quita una autorización de la general en vez de añadir una: no cambia lo que ya aceptaste. Sigue siendo un borrador pendiente de la revisión del abogado (P5).",
+          "en": "The usage statistics become an optional box of their own, unticked when you create your account and in your profile, which you withdraw whenever you like (before, they were inside the general authorisation). Their data and how long they are kept are named. It takes a purpose out of the general authorisation instead of adding one: nothing you already accepted changes. It is still a draft pending the lawyer's review (P5)."
+        },
+        "sha256": {
+          "es": "b4f2362b9621b957f00a69fe9aed457c6bf20d8a2130f30041f19ed93cc21afc",
+          "en": "070d9205aa1a4ae6739d6f63eebeb678dfda2b22464efb6bea846973749e9457"
+        }
       }
     ]
   },

@@ -165,7 +165,8 @@ test("the consent gate: four separate boxes before the product, a withdrawal bri
     // the account's welcome (A13) is another test's: recorded as done, the gate leads to the product
     await skipWelcome(page.request);
 
-    // 1. the gate: four boxes, none ticked, the product closed until all four are
+    // 1. the gate: four boxes, none ticked, the product closed until all four are - and beside them the usage
+    //    statistics (plan de cierre UX, 1.2): optional, unticked, never needed to get in
     const gate = page.getByTestId("consent-gate");
     await expect(gate).toBeVisible();
     const state = await getJson<{
@@ -176,7 +177,10 @@ test("the consent gate: four separate boxes before the product, a withdrawal bri
     expect(state.body.gate, "the QA API must run with FBI_CONSENT_GATE=drafts").toBe(true);
     expect(state.body.due).toEqual(["terms", "privacy", "age_18", "risk_notice"]);
     const boxes = gate.locator('input[type="checkbox"]');
-    await expect(boxes).toHaveCount(4);
+    await expect(boxes).toHaveCount(5);
+    const optional = gate.getByTestId("consent-optional");
+    await expect(optional).toContainText(t.legal.gate.optional);
+    await expect(optional.getByTestId("consent-analytics")).not.toBeChecked();
     for (const p of state.body.purposes) {
       const box = gate.getByTestId(`consent-${p.kind}`);
       await expect(box).not.toBeChecked();
@@ -196,7 +200,9 @@ test("the consent gate: four separate boxes before the product, a withdrawal bri
       await gate.getByTestId(`consent-${kind}`).check();
     await expect(submit).toBeDisabled();
     await gate.getByTestId("consent-risk_notice").check();
+    // the four are enough: the optional box stays unticked and records nothing
     await expect(submit).toBeEnabled();
+    await expect(optional.getByTestId("consent-analytics")).not.toBeChecked();
     await submit.click();
     await expect(gate).toHaveCount(0);
     await expect(page.getByTestId("account-menu")).toBeVisible();
@@ -217,6 +223,19 @@ test("the consent gate: four separate boxes before the product, a withdrawal bri
 
     // 2. the profile: what was accepted and when; withdrawing the authorisation closes the product again
     await page.goto("/profile");
+    // the usage statistics have a switch of their own: off, on, off again - each a decision stored with its text
+    const statistics = page.getByTestId("analytics-switch");
+    await expect(statistics).toHaveAttribute("aria-checked", "false");
+    await statistics.click();
+    await expect(statistics).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByTestId("analytics-since")).toContainText(
+      t.legal.privacy.analytics.since.split("{date}")[0]?.trim() ?? "",
+    );
+    await statistics.click();
+    await expect(statistics).toHaveAttribute("aria-checked", "false");
+    await expect(page.getByTestId("analytics-since")).toContainText(
+      t.legal.privacy.analytics.left.split("{date}")[0]?.trim() ?? "",
+    );
     const consentRow = page.getByTestId("privacy-consent-privacy");
     await expect(consentRow).toContainText(
       t.legal.privacy.accepted.split("{date}")[0]?.trim() ?? "",
@@ -248,7 +267,7 @@ test("the consent gate: four separate boxes before the product, a withdrawal bri
       consents: unknown[];
     };
     expect(data.account.email).toBe(email);
-    expect(data.consents).toHaveLength(6);
+    expect(data.consents).toHaveLength(8); // the four, the statistics on and off, the policy withdrawn and given again
     await expect(exportBlock).toContainText(t.legal.privacy.exported);
 
     // 4. a deletion request: the password again, and its legal deadline in sight

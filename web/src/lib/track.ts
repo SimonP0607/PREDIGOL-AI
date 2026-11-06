@@ -29,12 +29,20 @@ export const EVENTS = {
   favorite_added: {
     group: "entry",
     source: "web",
-    props: { kind: { enum: ["team", "competition"] }, id: { id: true } },
+    props: {
+      kind: { enum: ["team", "competition", "player", "market"] },
+      id: { id: true },
+      market: { enum: ["1X2", "OU", "BTTS", "AH", "DC"] },
+    },
   },
   favorite_removed: {
     group: "entry",
     source: "web",
-    props: { kind: { enum: ["team", "competition"] }, id: { id: true } },
+    props: {
+      kind: { enum: ["team", "competition", "player", "market"] },
+      id: { id: true },
+      market: { enum: ["1X2", "OU", "BTTS", "AH", "DC"] },
+    },
   },
   session_started: {
     group: "use",

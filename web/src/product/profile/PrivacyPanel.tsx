@@ -21,6 +21,7 @@ import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ErrorState, errorMessage } from "@/product/shared/States";
 import { LEGAL_DOCUMENTS, dayOf, legalPath } from "@/product/legal/links";
+import { AnalyticsSection } from "./AnalyticsSection";
 import { latestOf, shownPurposes } from "./consents";
 
 const INPUT =
@@ -165,6 +166,7 @@ function ConsentsSection() {
           />
         ))}
       </ul>
+      <AnalyticsSection />
       {failure ? (
         <p role="alert" className="text-xs text-negative">
           {failure}
