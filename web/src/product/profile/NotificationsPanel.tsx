@@ -1,7 +1,7 @@
 /**
  * The reader's notifications, in their profile (plan UX, A5; F12): which e-mails PrediGol sends them, by category -
- * the account, its security, their privacy requests and the legal changes always; membership reminders and support
- * answers as they choose - and, when their address bounced or they marked a message as spam, why nothing arrives.
+ * the account, its security, their privacy requests and the legal changes always; membership reminders, support
+ * answers and service notices as they choose - and, when their address bounced or they marked a message as spam, why nothing arrives.
  * Then the weekly summary by e-mail, asked for apart (plan UX, B8: DigestSection), while it can reach the reader; below,
  * the notices on their devices (plan UX, B7: PushSection), once the owner made them available.
  */

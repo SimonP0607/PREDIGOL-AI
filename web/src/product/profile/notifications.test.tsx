@@ -21,6 +21,7 @@ const CATEGORIES: readonly MessageCategory[] = [
   "security",
   "membership",
   "support",
+  "service",
   "privacy",
   "legal",
 ];
@@ -45,9 +46,10 @@ describe("the profile's notifications", () => {
   test("the optional categories are switches; the others say they always arrive", () => {
     setLocale("es");
     const html = view(prefs());
-    expect(html.match(/role="switch"/g)?.length).toBe(2);
+    expect(html.match(/role="switch"/g)?.length).toBe(3);
     expect(html).toContain('aria-checked="false"'); // membership, off
-    expect(html).toContain('aria-checked="true"'); // support, on
+    expect(html).toContain('aria-checked="true"'); // support and service, on
+    expect(html).toContain("Avisos del servicio");
     expect(html.match(/>Siempre</g)?.length).toBe(4);
     expect(html).not.toContain("notify-email-status");
   });
