@@ -248,13 +248,15 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         SELECT email_off AS email_switched_off, email_status, email_status_at, updated_at
         FROM customer.preferences WHERE user_id = %s
     """, (user_id,))
-    # The leagues and teams the reader follows, the welcome and the hints dismissed (plan UX, A13).
+    # The leagues, teams, players and markets the reader follows, the welcome and the hints dismissed (plan UX, A13 and 3.1):
+    # a market has no id, only its key.
     favourite_rows = _all(conn, """
-        SELECT f.kind, f.ref_id AS id, COALESCE(c.name, t.name) AS name, f.created_at
+        SELECT f.kind, f.ref_id AS id, f.market_key AS market, COALESCE(c.name, t.name, p.name) AS name, f.created_at
         FROM customer.favorites f
         LEFT JOIN core.competitions c ON c.id = f.league_id
         LEFT JOIN core.teams t ON t.id = f.team_id
-        WHERE f.user_id = %s ORDER BY f.created_at, f.ref_id
+        LEFT JOIN core.players p ON p.id = f.player_id
+        WHERE f.user_id = %s ORDER BY f.created_at, f.ref_id NULLS LAST, f.market_key
     """, (user_id,))
     welcome = _all(conn, "SELECT onboarded_at, hints_seen FROM customer.preferences WHERE user_id = %s", (user_id,))
     # The product events kept under the reader's pseudonym and their daily aggregate (plan UX, A6).
@@ -288,6 +290,7 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         "membership_periods": member["membership_periods"],
         "payments": member["payments"],
         "membership_events": member["membership_events"],
+        "coupon_redemptions": member["coupon_redemptions"],
         "support_tickets": support_rows,
         "feedback": feedback_rows,
         "lifecycle": lifecycle_rows,

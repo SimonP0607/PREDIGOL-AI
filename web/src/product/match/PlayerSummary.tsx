@@ -12,6 +12,7 @@ import { formatRelative } from "@/lib/time";
 import type { MatchPlayerSeason, PlayerLine } from "@/lib/api/v1/types_center";
 import { PlayerPhoto } from "@/components/football/Logos";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { FollowPlayer } from "@/product/favorites/FollowExtras";
 import { fmtDecimal } from "./model";
 
 function Stat({ label, value }: { label: string; value: number | null | undefined }) {
@@ -93,6 +94,7 @@ export function PlayerSummary({
             {pos ? <p className="text-caption text-muted-foreground">{pos}</p> : null}
           </div>
         </div>
+        <FollowPlayer id={playerId} name={label} />
         <div>
           <h4 className="mb-1.5 text-label text-subtle-foreground">
             {competition

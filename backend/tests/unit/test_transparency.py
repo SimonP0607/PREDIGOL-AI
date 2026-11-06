@@ -13,9 +13,11 @@ from pathlib import Path
 import pytest
 
 from fbi.api.services import transparency as service
+from fbi.api.services import transparency_picks
 from fbi.api.switches import TRANSPARENCY, transparency_open
 
 SOURCE = Path(service.__file__).read_text(encoding="utf-8")
+LIST = Path(transparency_picks.__file__).read_text(encoding="utf-8")
 SCRIPT = (Path(__file__).resolve().parents[2] / "scripts" / "transparency_check.py").read_text(encoding="utf-8")
 
 
@@ -45,6 +47,35 @@ def test_units_roi_and_margin_only_from_25_settled() -> None:
 @pytest.mark.parametrize(("n", "points"), [(25, "0.2000"), (50, "0.1414"), (100, "0.1000"), (400, "0.0500")])
 def test_the_margin_is_the_plans(n: int, points: str) -> None:
     assert service.margin(n) == Decimal(points), "plan section 31: ±20 with 25, ±14 with 50, ±10 with 100, ±5 with 400"
+
+
+def parlay_rows(*triples: tuple[str, str, str | None]) -> list[dict[str, object]]:
+    return [{"kind": k, "status": s, "profit": None if p is None else Decimal(p)} for k, s, p in triples]
+
+
+def test_a_parlay_counts_like_a_pick_and_the_ones_that_paid_are_wins() -> None:
+    daily, multiday = service.parlays(parlay_rows(
+        ("daily", "WON", "3.10"), ("daily", "PARTIAL_VOID", "0.80"), ("daily", "LOST", "-1"), ("daily", "VOID", "0"),
+        ("daily", "READY", None), ("daily", "ACTIVE", None), ("multiday", "LOST", "-1")))
+    assert (daily.kind, daily.published, daily.pending, daily.won, daily.partial, daily.lost, daily.void,
+            daily.settled) == ("daily", 6, 2, 2, 1, 1, 1, 3), "a void returns the stake: it is not a settled parlay"
+    assert (daily.half_won, daily.half_lost, daily.push) == (0, 0, 0), "a parlay has no halves of its own"
+    assert (daily.units, daily.roi, daily.margin, daily.conclusive) == (None, None, None, False), "3 settled: counts only"
+    assert (multiday.kind, multiday.published, multiday.lost, multiday.settled, multiday.partial) == (
+        "multiday", 1, 1, 1, 0)
+
+
+def test_parlays_say_units_and_return_only_from_25_settled_like_the_picks() -> None:
+    daily, multiday = service.parlays(parlay_rows(*[("daily", "WON", "2")] * 10, *[("daily", "LOST", "-1")] * 15))
+    assert (daily.settled, daily.units, daily.roi, daily.margin) == (25, Decimal("5.00"), Decimal("0.2000"),
+                                                                    Decimal("0.2000"))
+    assert (multiday.published, multiday.units) == (0, None), "a kind with no parlay is said with zeros"
+
+
+def test_a_parlay_being_built_is_not_a_parlay() -> None:
+    assert "BUILDING" not in service.PARLAY_STATUS and "BUILDING" in service.PARLAYS_SQL
+    assert "<> 'BUILDING'" in service.PARLAYS_SQL and "parlay_legs" in service.PARLAYS_SQL, \
+        "only parlays with their legs, and not the ones still being looked for"
 
 
 def test_the_small_kinds_of_bet_go_together_last() -> None:
@@ -104,17 +135,20 @@ WRITES = re.compile(r"\b(?:INSERT\s+INTO|UPDATE\s+[a-z_]+\.|DELETE\s+FROM|TRUNCA
 CLIENT_TABLES = re.compile(r"(?<![\w.])(?:auth\.[a-z_]+|customer\.[a-z_]+|picks\.user_[a-z_]+)\b")
 
 
-@pytest.mark.parametrize("name", ["service", "script"])
+TEXTS = {"service": SOURCE, "script": SCRIPT, "list": LIST}
+
+
+@pytest.mark.parametrize("name", ["service", "script", "list"])
 def test_the_page_and_its_contrast_only_read(name: str) -> None:
-    text = SOURCE if name == "service" else SCRIPT
+    text = TEXTS[name]
     assert not WRITES.search(text), "the page and its contrast never write"
     assert not CLIENT_TABLES.search(text), "no client's data: no auth, customer or a client's own picks"
 
 
-@pytest.mark.parametrize("name", ["service", "script"])
+@pytest.mark.parametrize("name", ["service", "script", "list"])
 def test_the_evaluation_set_is_never_named(name: str) -> None:
-    text = SOURCE if name == "service" else SCRIPT
+    text = TEXTS[name]
     assert "'evaluation'" not in text, "no query reads the evaluation set"
     for sql in re.findall(r'"""(.*?)"""', text, re.DOTALL):
-        if "daily_sets" in sql:
-            assert "source = 'qualified'" in sql, f"a query of the sets without the qualified filter:\n{sql}"
+        if "daily_sets" in sql or "picks.parlays" in sql:
+            assert "source = 'qualified'" in sql, f"a query of the sets or the parlays without the qualified filter:\n{sql}"

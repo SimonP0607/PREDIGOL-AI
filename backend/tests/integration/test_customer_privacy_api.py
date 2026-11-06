@@ -440,7 +440,8 @@ def test_no_table_of_the_customer_schema_has_room_for_an_ip_a_card_a_token_or_an
                                        "messages_outbox", "preferences",  # A5
                                        "product_events", "activity_daily",  # A6
                                        "payments", "membership_periods", "membership_events",  # A8
-                                       "favorites",  # A13: leagues and teams only - never an amount or a bankroll
+                                       "coupons", "coupon_redemptions",  # UX-005: a code, a percentage, who holds it
+                                       "favorites",  # A13 and 3.1: leagues, teams, players and markets - never an amount or a bankroll
                                        "feedback",  # B6: a score, a comment without an address, where it was asked
                                        # B7: a browser's push address and the two values the W3C Push API gives to
                                        # encrypt a notice for it alone (p256dh, its public key; auth) - no credential:

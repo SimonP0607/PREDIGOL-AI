@@ -12,10 +12,10 @@ import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { FavoritesView } from "@/lib/api/v1/types_favorites";
 import { t } from "@/lib/i18n";
-import { track } from "@/lib/track";
 import { ErrorState } from "@/product/shared/States";
 import { FavoritesPicker } from "./FavoritesPicker";
-import { bodyOf, changes, choiceOf, limitsOf, type Choice } from "./model";
+import { trackChanges } from "./analytics";
+import { beforeOf, bodyOf, changes, choiceOf, limitsOf, type Choice } from "./model";
 
 function Current({ view }: { view: FavoritesView }) {
   return (
@@ -69,9 +69,8 @@ export function FootballPanel() {
     setFailure(false);
     try {
       const next = await v1.saveFavorites(bodyOf(editing));
-      const { added, removed } = changes(view.suggested ? null : choiceOf(view), choiceOf(next));
-      for (const c of added) track("favorite_added", { kind: c.kind, id: c.id });
-      for (const c of removed) track("favorite_removed", { kind: c.kind, id: c.id });
+      const { added, removed } = changes(beforeOf(view), choiceOf(next));
+      trackChanges({ added, removed });
       qc.setQueryData(live.favorites.queryKey, next);
       void qc.invalidateQueries({ queryKey: ["v1", "today"] });
       void qc.invalidateQueries({ queryKey: ["me", "account"] });

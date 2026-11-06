@@ -12,6 +12,7 @@ import { formatDateYear } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ErrorState } from "@/product/shared/States";
 import { membershipLine, showsDaysLeft } from "./membership";
+import { MembershipDiscounts } from "./MembershipDiscounts";
 import { MembershipPlan } from "./MembershipPlan";
 import { RenewOptions } from "./RenewOptions";
 
@@ -35,7 +36,7 @@ export function MembershipCard() {
       </div>
     );
   }
-  const { membership: m, periods, renew, enforced, plan } = q.data;
+  const { membership: m, periods, renew, enforced, plan, discounts } = q.data;
   if (!m) return null;
   const ended = m.state === "expired" || m.state === "grace" || m.state === "suspended";
   return (
@@ -68,6 +69,7 @@ export function MembershipCard() {
         <p className="text-xs text-muted-foreground">{t("profile.membership.notEnforced")}</p>
       ) : null}
       <MembershipPlan plan={plan} />
+      <MembershipDiscounts discounts={discounts} />
       {m.state !== "none" ? (
         <div className="space-y-2 rounded-md border border-border p-3">
           <h3 className="text-sm font-semibold">{t("profile.membership.howToRenew")}</h3>
@@ -94,6 +96,9 @@ export function MembershipCard() {
                   <span className="numeric text-muted-foreground">
                     · {amountOf(p)}
                     {p.method ? ` (${t(`admin.membership.methods.${p.method}`)})` : ""}
+                    {p.discount_percent
+                      ? ` · ${t("profile.membership.discount.carried", { percent: p.discount_percent })}`
+                      : ""}
                   </span>
                 ) : null}
               </li>

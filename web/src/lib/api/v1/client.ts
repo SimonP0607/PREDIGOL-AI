@@ -28,7 +28,16 @@ import type {
   UnsubscribeResult,
 } from "./types_messaging";
 import type { ProductOverview } from "./types_events";
-import type { AdminMembership, MyMembership, PaymentIn, PaymentRecorded } from "./types_membership";
+import type {
+  AdminCoupon,
+  AdminCoupons,
+  AdminMembership,
+  CouponCreateIn,
+  CouponRedeemed,
+  MyMembership,
+  PaymentIn,
+  PaymentRecorded,
+} from "./types_membership";
 import type {
   AgentRuns,
   AgentRunsQuery,
@@ -148,7 +157,7 @@ import type {
   HintKey,
   OnboardingState,
 } from "./types_favorites";
-import type { Transparency } from "./types_transparency";
+import type { PublishedPick, Transparency } from "./types_transparency";
 import type { AccountSummary } from "./types_account";
 import type { PersonalView, Suggestion } from "./types_personal";
 import type {
@@ -524,6 +533,8 @@ export const v1 = {
   myAccess: (limit = 50) => getJson<AccessEvent[]>("/auth/me/access", { limit }),
   /** The reader's membership: its state now, its periods with their payments and how to renew (plan UX, A8). */
   myMembership: () => getJson<MyMembership>("/me/membership"),
+  /** The reader holds a coupon by its code (UX-005). */
+  redeemCoupon: (code: string) => postJson<CouponRedeemed>("/me/membership/coupon", { code }),
   /** The profile's eight blocks, folded: one read of the reader's own account (plan UX, B1). */
   myAccount: () => getJson<AccountSummary>("/me/account"),
   // ── what the reader's own use orders and suggests (plan UX, B2) ─────
@@ -763,6 +774,13 @@ export const v1 = {
    * readers do not see it yet (FBI_TRANSPARENCY). `preview: "shadow"` (the owner) shows it either way.
    */
   transparency: (q: Preview = {}) => getJson<Envelope<Transparency | null>>("/transparency", q),
+  /** A page of the published picks, newest kick-off first (`meta.total`, `meta.next_cursor`; plan de cierre UX, 1.5). */
+  transparencyPicks: (q: { limit?: number; cursor?: string | undefined } & Preview = {}) =>
+    getJson<Envelope<PublishedPick[]>>("/transparency/picks", {
+      limit: q.limit ?? 20,
+      cursor: q.cursor,
+      preview: q.preview,
+    }),
   liveBoard: () => getJson<Envelope<LiveBoard>>("/live"),
   players: (q: { q?: string | undefined; team_id?: number | undefined; limit?: number } = {}) =>
     getJson<Envelope<PlayerSummary[]>>("/players", {
@@ -1068,6 +1086,10 @@ export const v1 = {
     postJson<Envelope<AdminUser>>(`/admin/users/${id}/invitation`, {}),
   // the membership (plan UX, A8): the owner records; every answer is the account's membership as the console reads it
   adminMembership: (id: number) => getJson<AdminMembership>(`/admin/users/${id}/membership`),
+  // the coupons of the membership (UX-005): the owner creates one when he wants and may disable it
+  adminCoupons: () => getJson<AdminCoupons>("/admin/coupons"),
+  createCoupon: (body: CouponCreateIn) => postJson<AdminCoupon>("/admin/coupons", body),
+  disableCoupon: (id: number) => postJson<AdminCoupon>(`/admin/coupons/${id}/disable`, {}),
   recordPayment: (id: number, body: PaymentIn) =>
     postJson<PaymentRecorded>(`/admin/users/${id}/membership/payments`, body),
   grantCourtesy: (id: number, days: number, reason: string) =>
