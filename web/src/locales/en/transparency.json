@@ -162,5 +162,97 @@
       "calibration": "Forecast and calibration",
       "evaluation": "Test against the market"
     }
+  },
+  "zero": {
+    "title": "So far we have not published a single pick",
+    "body": "This page says it as it is: PrediGol publishes only when a match meets every condition and, for now, none has. We would rather not publish than publish for the sake of it.",
+    "reason": "The most common reason: {reason}.",
+    "forecast": "What we do measure is the forecast of the matches that already finished, with its calibration, below.",
+    "toDays": "See the days without picks",
+    "toForecast": "See the forecast"
+  },
+  "parlays": {
+    "title": "PrediGol's parlays",
+    "subtitle": "The day's parlay and the multi-day one, counted like the picks. A parlay exists once it has its selections: a day without a parlay does not count.",
+    "kinds": {
+      "daily": "Daily parlay",
+      "multiday": "Multi-day parlay"
+    },
+    "created_one": "{count} parlay created",
+    "created_other": "{count} parlays created",
+    "settled_one": "{count} settled",
+    "settled_other": "{count} settled",
+    "none": "We have not created a parlay of this kind yet.",
+    "small_one": "With {count} settled parlay we do not show a return yet: the sample is too small.",
+    "small_other": "With {count} settled parlays we do not show a return yet: the sample is too small.",
+    "inconclusive": "With fewer than {count} settled parlays the sample does not allow a conclusion yet.",
+    "partial_one": "{count} won with a selection voided, returned or half-settled.",
+    "partial_other": "{count} won with a selection voided, returned or half-settled.",
+    "how": "A parlay wins if all its selections win and loses if one loses. A voided or returned selection does not count as lost: the parlay goes on with the others."
+  },
+  "picks": {
+    "title": "Pick by pick",
+    "subtitle": "Every pick we published, with the odds and the probability it was published with and how it ended. It stays as it was published: it is not changed afterwards.",
+    "none": "There are no published picks to list yet.",
+    "shown": "Showing {shown} of {total}",
+    "more": "Show more picks",
+    "odds": "Odds",
+    "said": "PrediGol said",
+    "market": "Market",
+    "units": "Units",
+    "score": "Score",
+    "pending": "Pending",
+    "legend": "The odds are the ones available when the pick was chosen. «PrediGol said» is PrediGol's probability; «Market», the one the bookmakers gave without their margin."
+  },
+  "reading": {
+    "pick": {
+      "title": "What a pick is",
+      "what": "A pick is a specific selection in a match, for example «over 2.5 goals» or «home win», that PrediGol publishes because, according to its analysis, the odds pay more than the probability says.",
+      "notSure": "It is not a sure prediction: it is a bet with value. It can lose and it will lose many times. What counts is the result of many picks, not of one.",
+      "frozen": "It is published before the match starts, with the odds of that moment, and it is not changed afterwards: it stays as it was published and the result is added beside it. PrediGol does not receive any betting money.",
+      "filters": "A forecast is not a value and a value is not a pick: only what passes every filter in «How it is decided» is published."
+    },
+    "read": {
+      "title": "How to read probabilities and odds",
+      "intro": "The numbers in this explanation are only an example of how to read them: they are not a pick.",
+      "terms": {
+        "odds": {
+          "name": "Odds",
+          "text": "The bookmaker's price. At odds of 2.00, for every 1 staked you would receive 2 if it wins (1 profit plus your stake). At 1.50 you would receive 1.50."
+        },
+        "said": {
+          "name": "PrediGol said",
+          "text": "How likely PrediGol thinks that selection is. 55% is not a promise: out of 100 such cases we expect about 55 to happen, not all of them."
+        },
+        "market": {
+          "name": "Market",
+          "text": "What the bookmakers say once their margin is removed. Odds of 2.00 are roughly equivalent to 50%."
+        },
+        "value": {
+          "name": "Value",
+          "text": "There is value when PrediGol gives a higher probability than the market: with 55% against 50%, odds of 2.00 would pay more than they risk if PrediGol's probability is the right one. That is why calibration and the sample matter: they measure whether those percentages come true."
+        },
+        "units": {
+          "name": "Units",
+          "text": "We count as if you staked 1 unit on every pick. +1.00 u is winning one unit; −1.00 u, losing it. PrediGol does not handle money."
+        },
+        "results": {
+          "name": "Results",
+          "text": "Won and Lost; Half won and Half lost, on Asian lines; Returned, when the stake comes back; Void, when there was no bet (for example, a match that was not played); Pending, until the match ends."
+        }
+      },
+      "example": "Illustrative example: odds 2.00, PrediGol said 55%, the market 50%."
+    }
+  },
+  "changes": {
+    "title": "What has changed",
+    "subtitle": "PrediGol's news and this page's definitions, with their date. If a definition changes, we say so here and recompute the history.",
+    "kinds": {
+      "novelty": "Update",
+      "definition": "Definition"
+    },
+    "definitionLine": "{name}: version {version}",
+    "more": "See the whole history ({count})",
+    "toUpdates": "See what's new"
   }
 }

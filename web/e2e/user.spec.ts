@@ -1248,6 +1248,7 @@ interface TransparencyBody {
   status: string;
   data: null | {
     periods: Array<{ period: string; published: number; settled: number; units: string | null }>;
+    parlays: Array<{ kind: string; published: number; settled: number; units: string | null }>;
     days: {
       days: number;
       without: number;
@@ -1266,6 +1267,12 @@ const NEVER_SAID: Record<Lang, RegExp> = {
   es: /racha|pick estrella|garantiz|seguro que|ganar[áa]s|recupera tus|apuesta segura/i,
   en: /streak|star pick|guarantee|sure bet|you will win|recover your/i,
 };
+
+interface PublishedPicksBody {
+  status: string;
+  data: Array<{ result: string; odds: string; p_model: string; home: string; away: string }>;
+  meta: { total?: number; next_cursor?: string | null };
+}
 
 test("«Cómo le va a PrediGol» (A12): the seven blocks, every figure as the API counted it with its sample, reached from the account menu and from a day without picks - only once readers can open it", async ({
   page,
@@ -1301,15 +1308,51 @@ test("«Cómo le va a PrediGol» (A12): the seven blocks, every figure as the AP
   await expect(page.getByTestId("transparency-preview")).toHaveCount(0);
   for (const block of [
     "published",
+    "parlays",
+    "picks",
     "days",
     "markets",
     "line-value",
     "forecast",
     "evaluation",
     "how",
+    "what-is-a-pick",
+    "how-to-read",
     "definitions",
+    "changes",
   ])
     await expect(page.getByTestId(`transparency-${block}`)).toBeVisible();
+  // plan de cierre UX, 1.5: with nothing published the page says so, as it is - and only then
+  await expect(page.getByTestId("transparency-zero")).toHaveCount(
+    data.periods.find((p) => p.period === "all")?.published === 0 ? 1 : 0,
+  );
+  // PrediGol's parlays, by kind, as the API counted them
+  for (const p of data.parlays)
+    await expect(page.getByTestId(`transparency-parlay-tally-${p.kind}`)).toHaveAttribute(
+      "data-settled",
+      String(p.settled),
+    );
+  // the published picks one by one: a page of them, as many as the counts say, and «ver más» only while there are more
+  const listed = (
+    await getJson<PublishedPicksBody>(page.request, "/api/v1/transparency/picks?limit=20")
+  ).body;
+  expect(listed.status === "ok" || listed.status === "empty").toBe(true);
+  const total = listed.meta.total ?? 0;
+  expect(total).toBe(data.periods.find((p) => p.period === "all")?.published);
+  if (total === 0) {
+    await expect(page.getByTestId("transparency-picks-none")).toBeVisible();
+  } else {
+    const rows = page.getByTestId("published-pick");
+    await expect(rows).toHaveCount(Math.min(20, total));
+    await expect(page.getByTestId("transparency-picks-shown")).toContainText(String(total));
+    const more = page.getByTestId("transparency-picks-more");
+    await expect(more).toHaveCount(total > 20 ? 1 : 0);
+    if (total > 20) {
+      expect((await more.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
+      await more.click();
+      await expect(rows).toHaveCount(Math.min(40, total));
+    }
+  }
   // the periods: what the API counted, and units only from the sample
   for (const p of data.periods) {
     await expect(page.getByTestId(`transparency-tally-${p.period}`)).toHaveAttribute(
