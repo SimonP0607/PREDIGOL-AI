@@ -3,8 +3,9 @@
  * comes from the server, computed from dates; this only says it - with the date in the reader's time zone - and
  * decides which pages a limited account still opens.
  */
-import type { MembershipSummary } from "@/lib/api/v1/types_membership";
+import type { MembershipSummary, PlanPrice } from "@/lib/api/v1/types_membership";
 import { t } from "@/lib/i18n";
+import { localDecimalText, localInt } from "@/lib/i18n/format";
 import { formatDateLong } from "@/lib/time";
 
 /** What a limited account still opens: its profile (with its membership and its data), its saved picks, the help and
@@ -91,4 +92,22 @@ export function showsDaysLeft(m: MembershipSummary): boolean {
     ["trial", "active", "expiring", "renewed"].includes(m.state) &&
     m.ends_at !== null
   );
+}
+
+/** One price as the reader reads it: "150.000 COP" in Spanish, "150,000 COP" in English; cents only when there are. */
+export function priceText(p: PlanPrice): string {
+  const value = Number(p.amount);
+  const number =
+    Number.isFinite(value) && Number.isInteger(value)
+      ? localInt(value)
+      : localDecimalText(p.amount);
+  return `${number} ${p.currency}`;
+}
+
+/** "150.000 COP o 50 USD al mes", or null while the owner has set no price - a price is never guessed. */
+export function priceLine(prices: readonly PlanPrice[]): string | null {
+  if (!prices.length) return null;
+  return t("profile.membership.plan.price", {
+    prices: prices.map(priceText).join(` ${t("profile.membership.plan.or")} `),
+  });
 }

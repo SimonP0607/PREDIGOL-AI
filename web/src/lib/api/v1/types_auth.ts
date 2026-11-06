@@ -203,7 +203,7 @@ export interface AdminInviteIn {
   display_name?: string;
   language: Language;
   timezone: string;
-  /** The trial it gets when activated, 7 to 14 days (plan UX, A8); the server's default when left out. */
+  /** The trial it gets when activated, 7 to 20 days (plan UX, A8); the server's default when left out. */
   trial_days?: number;
 }
 

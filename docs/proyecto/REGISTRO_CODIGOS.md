@@ -34,6 +34,8 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | --- | --- | --- | --- | --- |
 | UX-001 | Plan maestro de UX completo, de A3 a B11: Inicio, Análisis y Postpartido, Mis picks, avisos y dispositivos, membresía, ficha del cliente y ciclo de vida (migraciones 0095 a 0106, que cuelgan de la 0119). A1 y A2 ya corrían en producción | desplegado el 4-nov-2026 (release `ux-001`, backend `0306f006e631`, web `32dce8b44177`, base en 0106) | #21 | A3 a B11 |
 | UX-002 | «Solo verde + pronóstico aparte» (decisión del dueño): los lectores solo ven picks en «Recomendado»; «Con cautela» y «No recomendado» se ocultan en listas, Top 5, partido, análisis, picks del día y parlays (la vista previa del dueño no cambia; el pronóstico sigue visible). Sin migración | en curso | este PR | B3 (estado visible de un pick) |
+| UX-003 | Fase 0 del plan de cierre de la UX: el mapa de interruptores de la capa de usuario con su prueba (plantilla del servidor, mapa del dueño y código dicen lo mismo), el inventario de secretos al día (DSN de la web y contraseña del recorrido sintético), la novedad de «Explícame» y la limpieza de dos componentes y dos dependencias sin uso | en curso | este PR | plan de cierre UX, fase 0 |
+| UX-004 | Membresía con el precio y la prueba que decidió el dueño (5-nov-2026): 150.000 COP o 50 USD al mes (a elección del lector, configurables con `FBI_MEMBERSHIP_PRICE_COP` y `FBI_MEMBERSHIP_PRICE_USD`; `0` esconde una moneda), prueba de 20 días por defecto (de 7 a 20, también al invitar) y el bloque «El plan» en Perfil → Membresía. Sin migración; no toca la inteligencia ni la puerta `FBI_MEMBERSHIP_ENFORCE` | en curso | este PR | — |
 
 ## BE — backend
 
@@ -48,4 +50,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-010 · SEG-001 · IA-009 · UX-003 · BE-003 · FE-001 · OPS-001 · DOC-001
+CI-010 · SEG-001 · IA-009 · UX-005 · BE-003 · FE-001 · OPS-001 · DOC-001

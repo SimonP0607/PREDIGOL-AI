@@ -48,12 +48,26 @@ export interface MyPeriod {
   method: PaymentMethod | null;
 }
 
+/** The monthly price in one currency (COP or USD), as a decimal string. */
+export interface PlanPrice {
+  currency: string;
+  amount: string;
+}
+
+/** The one plan as the reader's block shows it (UX-004): the trial and the monthly price per currency. */
+export interface MembershipPlan {
+  trial_days: number;
+  /** Empty while the owner has not set a price (FBI_MEMBERSHIP_PRICE_COP / _USD). */
+  prices: PlanPrice[];
+}
+
 export interface MyMembership {
   /** Null for the owner's accounts: no membership. */
   membership: MembershipSummary | null;
   enforced: boolean;
   periods: MyPeriod[];
   renew: RenewContact;
+  plan: MembershipPlan;
 }
 
 export interface AdminPeriod {

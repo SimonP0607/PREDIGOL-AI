@@ -1,4 +1,4 @@
-"""Membership (plan UX, A8; section 22): one full plan, a trial of 14 days, seven states computed from dates, the
+"""Membership (plan UX, A8; section 22): one full plan, a trial of 20 days (the owner's decision of 5-nov-2026; it was 14), seven states computed from dates, the
 notices around a period's end, and the owner's manual renewal - the reader pays outside PrediGol, the owner records it
 here in under a minute, in rows a payment gateway (C4) could write later.
 
@@ -60,7 +60,7 @@ TRIAL_WARN = timedelta(days=3)
 WARN = timedelta(days=7)
 GRACE = timedelta(days=3)
 RENEWED_FOR = timedelta(days=7)
-TRIAL_DAYS_MIN, TRIAL_DAYS_MAX, TRIAL_DAYS_DEFAULT = 7, 14, 14
+TRIAL_DAYS_MIN, TRIAL_DAYS_MAX, TRIAL_DAYS_DEFAULT = 7, 20, 20
 COURTESY_DAYS_MAX = 90
 MONTHS_MAX = 12
 METHODS: tuple[str, ...] = ("transfer", "nequi", "daviplata", "cash", "card", "paypal", "other")
@@ -81,7 +81,7 @@ def enforced() -> bool:
 
 
 def trial_days() -> int:
-    """FBI_TRIAL_DAYS: 14 unless the owner says otherwise, between 7 and 14."""
+    """FBI_TRIAL_DAYS: 20 unless the owner says otherwise, between 7 and 20."""
     raw = os.environ.get("FBI_TRIAL_DAYS", "").strip()
     try:
         days = int(raw) if raw else TRIAL_DAYS_DEFAULT
@@ -94,6 +94,35 @@ def currency() -> str:
     """The currency the console's payment form proposes (FBI_MEMBERSHIP_CURRENCY; P6 of the plan): COP by default."""
     raw = os.environ.get("FBI_MEMBERSHIP_CURRENCY", "COP").strip().upper()
     return raw if re.fullmatch(r"[A-Z]{3}", raw) else "COP"
+
+
+PRICE_SETTINGS: tuple[tuple[str, str, Decimal], ...] = (
+    ("COP", "FBI_MEMBERSHIP_PRICE_COP", Decimal("150000")),
+    ("USD", "FBI_MEMBERSHIP_PRICE_USD", Decimal("50")),
+)
+"""The monthly price in each currency a reader may pay in, with the owner's decision of 5-nov-2026 as the default:
+150,000 COP or 50 USD, whichever the reader prefers."""
+_PRICE_OFF = ("0", "off", "false", "no")
+
+
+def prices() -> list[dict[str, str]]:
+    """The monthly price a reader sees, one entry per currency the owner offers (FBI_MEMBERSHIP_PRICE_COP and
+    FBI_MEMBERSHIP_PRICE_USD): the default without the line, nothing for a currency set to 0/off/false/no or to a value
+    that is not a positive amount (a wrong price is never shown). No payment gateway is behind it: the reader pays
+    outside PrediGol and the owner records it."""
+    found: list[dict[str, str]] = []
+    for code, name, default in PRICE_SETTINGS:
+        raw = os.environ.get(name, "").strip()
+        if raw.lower() in _PRICE_OFF:
+            continue
+        try:
+            amount = Decimal(raw) if raw else default
+        except InvalidOperation:
+            continue
+        if not amount.is_finite() or not 0 < amount <= AMOUNT_MAX:
+            continue
+        found.append({"currency": code, "amount": format(amount.normalize(), "f")})
+    return found
 
 
 def whatsapp() -> str | None:
@@ -316,7 +345,8 @@ def mine(conn: psycopg.Connection[Any], user_id: int, *, email: str, super_admin
         """, (user_id,))
         periods = [{**r, "amount": str(r["amount"]) if r["amount"] is not None else None} for r in cur.fetchall()]
     return {"membership": summary(m), "enforced": enforced(), "periods": periods,
-            "renew": {"whatsapp": whatsapp(), "email": reply_address()}}
+            "renew": {"whatsapp": whatsapp(), "email": reply_address()},
+            "plan": {"trial_days": trial_days(), "prices": prices()}}
 
 
 # ── what the owner does ───────────────────────────────────────────────────────────────
@@ -385,7 +415,7 @@ def _audit(conn: psycopg.Connection[Any], action: str, *, actor: int | None, use
 
 
 def plan_trial(conn: psycopg.Connection[Any], user_id: int, days: int, *, actor: int | None) -> None:
-    """The trial the owner chose at the invitation (7 to 14 days), started when the account is activated."""
+    """The trial the owner chose at the invitation (7 to 20 days), started when the account is activated."""
     if not TRIAL_DAYS_MIN <= days <= TRIAL_DAYS_MAX:
         raise CustomerError(422, "invalid_trial_days", f"a trial of {TRIAL_DAYS_MIN} to {TRIAL_DAYS_MAX} days")
     _event(conn, user_id, "trial_planned", detail={"days": days}, actor=actor)

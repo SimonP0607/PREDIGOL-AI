@@ -138,7 +138,7 @@ def test_the_notices_of_an_end() -> None:
 
 
 def test_the_settings(monkeypatch: pytest.MonkeyPatch) -> None:
-    for raw, days in (("", 14), ("10", 10), ("3", 7), ("40", 14), ("x", 14)):
+    for raw, days in (("", 20), ("10", 10), ("3", 7), ("40", 20), ("x", 20), ("14", 14), ("20", 20)):
         monkeypatch.setenv("FBI_TRIAL_DAYS", raw)
         assert ms.trial_days() == days, raw
     monkeypatch.delenv("FBI_MEMBERSHIP_CURRENCY", raising=False)
@@ -155,3 +155,26 @@ def test_the_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     assert not ms.enforced()
     monkeypatch.setenv(ms.SWITCH, "1")
     assert ms.enforced()
+
+
+def test_the_monthly_price_is_the_owners_decision_and_each_currency_can_be_switched_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """150,000 COP or 50 USD by default (5-nov-2026); a currency is off with 0, and a price nobody can read is never shown."""
+    for name in ("FBI_MEMBERSHIP_PRICE_COP", "FBI_MEMBERSHIP_PRICE_USD"):
+        monkeypatch.delenv(name, raising=False)
+    assert ms.prices() == [
+        {"currency": "COP", "amount": "150000"},
+        {"currency": "USD", "amount": "50"},
+    ]
+    monkeypatch.setenv("FBI_MEMBERSHIP_PRICE_COP", "180000")
+    monkeypatch.setenv("FBI_MEMBERSHIP_PRICE_USD", "off")
+    assert ms.prices() == [{"currency": "COP", "amount": "180000"}]
+    monkeypatch.setenv("FBI_MEMBERSHIP_PRICE_USD", "49.90")
+    assert ms.prices()[1] == {"currency": "USD", "amount": "49.9"}
+    for unreadable in ("-5", "abc", "NaN", "Infinity", "99999999999999"):
+        monkeypatch.setenv("FBI_MEMBERSHIP_PRICE_COP", unreadable)
+        assert [p["currency"] for p in ms.prices()] == ["USD"], unreadable
+    monkeypatch.setenv("FBI_MEMBERSHIP_PRICE_COP", "0")
+    monkeypatch.setenv("FBI_MEMBERSHIP_PRICE_USD", "no")
+    assert ms.prices() == []
