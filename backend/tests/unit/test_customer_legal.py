@@ -143,12 +143,12 @@ def test_the_membership_section_states_the_decided_facts_and_leaves_the_lawyers_
 
 def test_draft3_is_registered_as_a_draft_and_only_the_terms_ask_to_accept_again() -> None:
     terms, privacy, gaming = (legal.current(n) for n in ("terms", "privacy", "responsible_gaming"))
-    assert terms.version == "2026-11-05-draft3" and privacy.version == "2026-11-05-draft4"
+    assert terms.version == "2026-11-05-draft3" and privacy.version == "2026-11-05-draft5"
     assert terms.draft and privacy.draft and terms.material and not privacy.material
     assert gaming.version == "2026-10-25-draft1", "the responsible-gaming page did not change"
     assert legal.valid_versions("terms") == frozenset({"2026-11-05-draft3"})
     assert legal.valid_versions("privacy") == frozenset(
-        {"2026-10-25-draft1", "2026-10-27-draft2", "2026-11-05-draft3", "2026-11-05-draft4"}
+        {"2026-10-25-draft1", "2026-10-27-draft2", "2026-11-05-draft3", "2026-11-05-draft4", "2026-11-05-draft5"}
     ), "what was accepted on the policy still holds: nothing on it asked anyone again"
 
 
@@ -239,3 +239,14 @@ def test_a_broken_register_is_refused_before_it_reaches_a_reader(monkeypatch: py
         legal.register.cache_clear()
         with pytest.raises(legal.LegalTextError):
             legal.register()
+
+
+def test_the_policy_names_what_the_usage_statistics_measure() -> None:
+    """Closing plan 3.3: the screens (by kind), the market of a pick saved or a parlay's leg, and the league and teams of
+    the matches opened - said in the list of what is collected, with the box that makes it optional still there."""
+    for locale, words in (("es", ("pantallas", "mercado", "parlay", "liga", "equipos", "no los recogemos aparte")),
+                          ("en", ("screens", "market", "parlay", "league", "teams", "do not collect them separately"))):
+        text = json.loads((legal.TEXTS / locale / "privacy.json").read_text(encoding="utf-8"))
+        line = text["sections"][1]["blocks"][0]["ul"][4]
+        assert all(word in line for word in words), (locale, line)
+        assert "aceptas" in line or "accept" in line, "only with the reader's own box"

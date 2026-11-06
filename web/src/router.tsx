@@ -23,6 +23,8 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // a short cross-fade between screens where the browser has View Transitions (closing plan 5.1)
+    defaultViewTransition: true,
   });
 
   return router;

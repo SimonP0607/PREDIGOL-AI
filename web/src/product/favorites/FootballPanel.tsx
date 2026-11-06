@@ -12,7 +12,7 @@ import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { FavoritesView } from "@/lib/api/v1/types_favorites";
 import { t } from "@/lib/i18n";
-import { ErrorState } from "@/product/shared/States";
+import { ErrorState, SkeletonCards } from "@/product/shared/States";
 import { FavoritesPicker } from "./FavoritesPicker";
 import { trackChanges } from "./analytics";
 import { beforeOf, bodyOf, changes, choiceOf, limitsOf, type Choice } from "./model";
@@ -88,7 +88,7 @@ export function FootballPanel() {
     <div data-testid="football-panel">
       <p className="mb-3 text-xs text-muted-foreground">{t("onboarding.panel.help")}</p>
       {favorites.isPending ? (
-        <Loader2 aria-hidden className="h-5 w-5 animate-spin text-muted-foreground" />
+        <SkeletonCards count={2} />
       ) : favorites.isError || !view ? (
         <ErrorState error={favorites.error} onRetry={() => void favorites.refetch()} />
       ) : editing ? (
