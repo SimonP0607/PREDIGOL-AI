@@ -3,9 +3,11 @@
  * fixed periods, the days without picks and why, by kind of bet, the line value, the forecast's calibration and what is still
  * in evaluation - every figure beside its sample, never a streak, a star pick or a projection. Readers see it once the owner
  * opens it (FBI_TRANSPARENCY, after P9); the owner always sees it, labelled as a preview while readers do not.
- * Cards stacked on a phone, the figure and its n together.
+ * Cards stacked on a phone, the figure and its n together. Plan de cierre UX, 1.5: beside the counts, PrediGol's parlays, the
+ * picks one by one, what a pick is, how to read probabilities and odds and the history of changes - and, with nothing
+ * published yet, the plain statement of it.
  */
-import { useId, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
@@ -13,6 +15,7 @@ import {
   FlaskConical,
   Gauge,
   Layers,
+  Link2,
   ListChecks,
   Scale,
 } from "lucide-react";
@@ -28,8 +31,12 @@ import type {
   ForecastCalibration,
   Transparency,
   TransparencyMarketTally,
+  TransparencyParlayTally,
   TransparencyPeriodTally,
 } from "@/lib/api/v1/types_transparency";
+import { PickListSection } from "./PickList";
+import { Block, Figure, Note } from "./parts";
+import { ChangesBlock, HowToReadBlock, WhatIsPickBlock, ZeroNotice } from "./Reading";
 import {
   countsOf,
   dayText,
@@ -43,84 +50,31 @@ import {
   topStop,
 } from "./model";
 
-function Block({
-  id,
-  title,
-  subtitle,
-  icon,
-  children,
-}: {
-  id: string;
-  title: string;
-  subtitle?: string | undefined;
-  icon: ReactNode;
-  children: ReactNode;
-}) {
-  const titleId = useId();
-  return (
-    <Card className="p-4 sm:p-5" id={`transparency-${id}`}>
-      <div
-        aria-labelledby={titleId}
-        data-testid={`transparency-${id}`}
-        className="space-y-3"
-        role="group"
-      >
-        <div>
-          <h2
-            id={titleId}
-            className="flex items-center gap-2 font-display text-base font-semibold tracking-tight sm:text-lg"
-          >
-            <span aria-hidden className="text-subtle-foreground">
-              {icon}
-            </span>
-            {title}
-          </h2>
-          {subtitle ? <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p> : null}
-        </div>
-        {children}
-      </div>
-    </Card>
-  );
-}
-
-function Note({ children, testId }: { children: ReactNode; testId?: string }) {
-  return (
-    <p className="text-caption leading-snug text-subtle-foreground" data-testid={testId}>
-      {children}
-    </p>
-  );
-}
-
-/** A figure and what it counts, together (plan: «la cifra y su n juntas»). */
-function Figure({ label, value, testId }: { label: string; value: string; testId?: string }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-caption text-muted-foreground">{label}</dt>
-      <dd className="numeric text-base font-semibold text-foreground" data-testid={testId}>
-        {value}
-      </dd>
-    </div>
-  );
-}
-
 function TallyBody({
   tally,
   data,
   testId,
+  scope = "published",
 }: {
-  tally: TransparencyPeriodTally | TransparencyMarketTally;
+  tally: TransparencyPeriodTally | TransparencyMarketTally | TransparencyParlayTally;
   data: Transparency;
   testId: string;
+  /** published: the picks; parlays: PrediGol's parlays (the same rules, their own words). */
+  scope?: "published" | "parlays";
 }) {
-  const note = sampleNote(tally, data.min_sample, data.conclusive);
+  const note = sampleNote(tally, data.min_sample, data.conclusive, scope);
   const counts = countsOf(tally);
   return (
     <div className="space-y-2" data-testid={testId} data-settled={tally.settled}>
       <p className="text-sm font-semibold text-foreground">
-        {t("transparency.published.published", { count: tally.published })}
+        {scope === "parlays"
+          ? t("transparency.parlays.created", { count: tally.published })
+          : t("transparency.published.published", { count: tally.published })}
         <span className="font-normal text-muted-foreground">
           {" · "}
-          {t("transparency.published.settled", { count: tally.settled })}
+          {scope === "parlays"
+            ? t("transparency.parlays.settled", { count: tally.settled })
+            : t("transparency.published.settled", { count: tally.settled })}
         </span>
       </p>
       {counts.length > 0 ? (
@@ -189,6 +143,43 @@ function PublishedBlock({ data }: { data: Transparency }) {
           </div>
         ))}
       </div>
+    </Block>
+  );
+}
+
+function ParlaysBlock({ data }: { data: Transparency }) {
+  return (
+    <Block
+      id="parlays"
+      title={t("transparency.parlays.title")}
+      subtitle={t("transparency.parlays.subtitle")}
+      icon={<Link2 className="h-4 w-4" />}
+    >
+      <div className="grid gap-3 md:grid-cols-2">
+        {data.parlays.map((p) => (
+          <div
+            key={p.kind}
+            className="rounded-lg bg-elevated/60 p-3"
+            data-testid={`transparency-parlay-${p.kind}`}
+          >
+            <h3 className="mb-1.5 font-display text-sm font-semibold">
+              {t(`transparency.parlays.kinds.${p.kind}`)}
+            </h3>
+            <TallyBody
+              tally={p}
+              data={data}
+              testId={`transparency-parlay-tally-${p.kind}`}
+              scope="parlays"
+            />
+            {p.partial > 0 ? (
+              <p className="mt-2 text-caption text-muted-foreground">
+                {t("transparency.parlays.partial", { count: p.partial })}
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+      <Note>{t("transparency.parlays.how")}</Note>
     </Block>
   );
 }
@@ -542,17 +533,31 @@ function DefinitionsBlock({ data }: { data: Transparency }) {
   );
 }
 
-export function TransparencyBody({ data }: { data: Transparency }) {
+export function TransparencyBody({
+  data,
+  list = null,
+}: {
+  data: Transparency;
+  /** The published picks one by one (it reads its own pages): after the counts, before the days without picks. */
+  list?: ReactNode;
+}) {
+  const nothingYet = data.periods.find((p) => p.period === "all")?.published === 0;
   return (
     <div className="flex flex-col gap-4" data-testid="transparency-body">
+      {nothingYet ? <ZeroNotice data={data} /> : null}
       <PublishedBlock data={data} />
+      <ParlaysBlock data={data} />
+      {list}
       <DaysBlock data={data} />
       <MarketsBlock data={data} />
       <LineValueBlock data={data} />
       <ForecastBlock data={data} />
       <EvaluationBlock data={data} />
       <HowBlock />
+      <WhatIsPickBlock />
+      <HowToReadBlock />
       <DefinitionsBlock data={data} />
+      <ChangesBlock data={data} />
       {data.data_as_of ? (
         <Note>{t("transparency.page.dataAsOf", { time: dateTimeOf(data.data_as_of) })}</Note>
       ) : null}
@@ -579,7 +584,7 @@ export function TransparencyPage() {
         <EmptyState title={t("transparency.page.notAvailable")} />
       </Card>
     );
-  else body = <TransparencyBody data={q.data.data} />;
+  else body = <TransparencyBody data={q.data.data} list={<PickListSection preview={preview} />} />;
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5" data-testid="transparency-page">
       <PageTitle title={t("transparency.page.title")} subtitle={t("transparency.page.subtitle")} />

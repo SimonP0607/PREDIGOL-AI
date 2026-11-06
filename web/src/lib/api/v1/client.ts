@@ -148,7 +148,7 @@ import type {
   HintKey,
   OnboardingState,
 } from "./types_favorites";
-import type { Transparency } from "./types_transparency";
+import type { PublishedPick, Transparency } from "./types_transparency";
 import type { AccountSummary } from "./types_account";
 import type { PersonalView, Suggestion } from "./types_personal";
 import type {
@@ -763,6 +763,13 @@ export const v1 = {
    * readers do not see it yet (FBI_TRANSPARENCY). `preview: "shadow"` (the owner) shows it either way.
    */
   transparency: (q: Preview = {}) => getJson<Envelope<Transparency | null>>("/transparency", q),
+  /** A page of the published picks, newest kick-off first (`meta.total`, `meta.next_cursor`; plan de cierre UX, 1.5). */
+  transparencyPicks: (q: { limit?: number; cursor?: string | undefined } & Preview = {}) =>
+    getJson<Envelope<PublishedPick[]>>("/transparency/picks", {
+      limit: q.limit ?? 20,
+      cursor: q.cursor,
+      preview: q.preview,
+    }),
   liveBoard: () => getJson<Envelope<LiveBoard>>("/live"),
   players: (q: { q?: string | undefined; team_id?: number | undefined; limit?: number } = {}) =>
     getJson<Envelope<PlayerSummary[]>>("/players", {
