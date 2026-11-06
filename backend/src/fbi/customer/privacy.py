@@ -288,6 +288,7 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         "membership_periods": member["membership_periods"],
         "payments": member["payments"],
         "membership_events": member["membership_events"],
+        "coupon_redemptions": member["coupon_redemptions"],
         "support_tickets": support_rows,
         "feedback": feedback_rows,
         "lifecycle": lifecycle_rows,
