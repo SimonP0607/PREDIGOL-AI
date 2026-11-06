@@ -241,7 +241,14 @@
       "legal_change": "A legal text changed",
       "support_ticket_received": "Receipt of a support message",
       "support_ticket_answered": "Answer to a support message",
-      "weekly_digest": "Weekly summary (commercial, with consent)"
+      "weekly_digest": "Weekly summary (commercial, with consent)",
+      "welcome": "Welcome (when the account is activated)",
+      "activation_reminder": "Activation reminder (at 72 h, only one)",
+      "trial_started": "Trial started (the one the owner gives)",
+      "payment_recorded": "Payment recorded or membership renewed",
+      "maintenance_scheduled": "Scheduled maintenance",
+      "incident_resolved": "Incident resolved",
+      "important_change": "Important change (critical: reaches everyone)"
     }
   },
   "product": {
