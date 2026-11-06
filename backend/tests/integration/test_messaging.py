@@ -468,7 +468,7 @@ def test_the_reader_chooses_the_optional_categories_only(fresh: str) -> None:
     assert prefs["email_status"] == "ok" and prefs["email_status_at"] is None
     assert {e["category"]: (e["on"], e["locked"]) for e in prefs["email"]} == {
         "account": (True, True), "security": (True, True), "membership": (True, False), "support": (True, False),
-        "privacy": (True, True), "legal": (True, True)}
+        "privacy": (True, True), "legal": (True, True), "service": (True, False)}
     r = c.patch("/api/v1/me/preferences", json={"email": {"membership": False}})
     assert r.status_code == 200, r.text
     assert {e["category"]: e["on"] for e in r.json()["email"]}["membership"] is False
@@ -675,3 +675,213 @@ def test_the_readers_export_holds_their_messages_and_choices_and_nobody_elses(co
     assert document["notification_preferences"]["email_status"] == "ok"
     assert "re-export-1" not in json.dumps(document) and "provider_id" not in json.dumps(document)
     assert mine and OTHER not in json.dumps(document)
+
+
+# ── closing plan 4.1: the service's notices, the only reminder and the QA mailbox ─────────────────────────────────
+
+def maintenance(conn: psycopg.Connection[Any], email: str = READER, *, key: str | None = None) -> int:
+    """A scheduled maintenance that ends two days after the simulated moment: never «too late» while the test runs."""
+    return queue(conn, email, key=key, template="maintenance_scheduled",
+                 params={"starts": (NOW + timedelta(days=1)).isoformat(timespec="seconds"),
+                         "ends": (NOW + timedelta(days=1, hours=1)).isoformat(timespec="seconds")})
+
+
+def important_change(conn: psycopg.Connection[Any], email: str = READER) -> int:
+    return queue(conn, email, template="important_change", params={"update": "2026-11-04-explicame"})
+
+
+def test_service_notices_have_their_own_daily_cap_and_never_hold_back_the_accounts_mail(
+        conn: psycopg.Connection[Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FBI_EMAIL_SERVICE_DAILY_CAP", "2")
+    service = [maintenance(conn) for _ in range(3)]
+    mandatory = queue(conn)  # a privacy answer: queued after them, sent before them (the priorities)
+    fake = FakeProvider()
+    report = outbox.dispatch(conn, fake, at=NOW, cap=90)
+    assert report.sent == 3 and report.deferred == 1 and not report.capped
+    assert message(conn, mandatory)["status"] == "sent"
+    assert [message(conn, m)["status"] for m in service] == ["sent", "sent", "queued"]
+    held = message(conn, service[2])
+    assert held["attempts"] == 0 and held["next_attempt_at"] > NOW + timedelta(hours=8), "no attempt is spent"
+    assert outbox.dispatch(conn, FakeProvider(), at=NOW + timedelta(hours=1), cap=90).sent == 0
+    late_mandatory = queue(conn)
+    assert outbox.dispatch(conn, FakeProvider(), at=NOW + timedelta(hours=2), cap=90).sent == 1, \
+        "the account's mail still leaves while the service's waits"
+    assert message(conn, late_mandatory)["status"] == "sent"
+    next_day = outbox.dispatch(conn, FakeProvider(), at=NOW + timedelta(days=1), cap=90)
+    assert next_day.sent == 1 and message(conn, service[2])["status"] == "sent"
+
+
+def test_a_service_cap_of_zero_holds_every_service_notice_and_the_whole_cap_is_never_exceeded(
+        conn: psycopg.Connection[Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FBI_EMAIL_SERVICE_DAILY_CAP", "0")
+    service = maintenance(conn)
+    assert outbox.dispatch(conn, FakeProvider(), at=NOW, cap=90).sent == 0
+    assert message(conn, service)["status"] == "queued"
+    monkeypatch.setenv("FBI_EMAIL_SERVICE_DAILY_CAP", "50")
+    queued_again = maintenance(conn)
+    report = outbox.dispatch(conn, FakeProvider(), at=NOW + timedelta(days=1), cap=1)
+    assert report.sent == 1 and report.capped, "the service's own cap never lifts the day's cap as a whole"
+    assert {message(conn, service)["status"], message(conn, queued_again)["status"]} == {"sent", "queued"}
+
+
+def test_an_important_change_reaches_who_switched_service_off_but_never_a_bad_address(
+        conn: psycopg.Connection[Any]) -> None:
+    uid = user_id(conn, READER)
+    conn.execute("INSERT INTO customer.preferences (user_id, email_off) VALUES (%s, '{service}')", (uid,))
+    conn.commit()
+    plain, critical = maintenance(conn), important_change(conn)
+    outbox.dispatch(conn, FakeProvider(), at=NOW)
+    assert message(conn, plain)["status"] == "suppressed"
+    assert message(conn, plain)["last_error"] == "switched off by the reader"
+    assert message(conn, critical)["status"] == "sent", "an important change is never switched off"
+    conn.execute("UPDATE customer.preferences SET email_status = 'complained', email_status_at = now() "
+                 "WHERE user_id = %s", (uid,))
+    conn.commit()
+    refused = important_change(conn, READER_EN) and important_change(conn)
+    outbox.dispatch(conn, FakeProvider(), at=NOW)
+    assert message(conn, refused)["last_error"] == "address complained"
+    conn.execute("UPDATE customer.preferences SET email_status = 'bounced' WHERE user_id = %s", (uid,))
+    conn.commit()
+    bounced = important_change(conn)
+    outbox.dispatch(conn, FakeProvider(), at=NOW)
+    assert message(conn, bounced)["last_error"] == "address bounced"
+
+
+def test_the_reader_can_switch_the_service_off_and_the_database_keeps_the_choice(fresh: str) -> None:
+    c = client(READER)
+    prefs = c.get("/api/v1/me/preferences").json()
+    assert {e["category"]: e["on"] for e in prefs["email"]}["service"] is True
+    off = c.patch("/api/v1/me/preferences", json={"email": {"service": False}})
+    assert off.status_code == 200, off.text
+    assert {e["category"]: e["on"] for e in off.json()["email"]}["service"] is False
+    with psycopg.connect(fresh) as db:
+        row = db.execute("SELECT email_off FROM customer.preferences WHERE user_id = (SELECT id FROM auth.users "
+                         "WHERE email = %s)", (READER,)).fetchone()
+    assert row is not None and list(row[0]) == ["service"]
+    assert c.patch("/api/v1/me/preferences", json={"email": {"service": True}}).json()["email"][-1]["on"] is True
+
+
+@pytest.fixture()
+def invitations(fresh: str) -> Iterator[None]:
+    """The invited accounts a test creates (all at invited.test) go with it: the accounts of the module stay."""
+    def forget() -> None:
+        with psycopg.connect(fresh) as c:
+            c.execute("SET LOCAL fbi.customer_maintenance = 'on'")
+            who = "(SELECT id FROM auth.users WHERE email LIKE '%%@invited.test')"
+            for table in ("customer.messages_outbox", "customer.preferences", "auth.account_tokens"):
+                c.execute(f"DELETE FROM {table} WHERE user_id IN {who}")
+            c.execute("DELETE FROM auth.audit_events WHERE target_user_id IN " + who)
+            c.execute("DELETE FROM auth.users WHERE email LIKE '%%@invited.test'")
+
+    forget()
+    yield
+    forget()
+
+
+def invited(conn: psycopg.Connection[Any], email: str, *, sent_hours_ago: float | None) -> tuple[int, int]:
+    """An invited account and its invitation: sent that long ago (``None``: the e-mail has not left yet)."""
+    from fbi.auth import passwords, store, tokens
+
+    row = store.insert_user(conn, email=email, display_name="Invitada", password_hash=passwords.unusable_hash(),
+                            role="USER", language="es", timezone="America/Bogota", status="invited")
+    uid = int(row["id"])
+    grant = tokens.issue(conn, uid, "invite")
+    assert grant is not None
+    if sent_hours_ago is not None:
+        sent = datetime.now(UTC) - timedelta(hours=sent_hours_ago)
+        conn.execute("UPDATE auth.account_tokens SET token_hash = %s, sent_at = %s, expires_at = %s WHERE id = %s",
+                     (uuid.uuid4().hex + uuid.uuid4().hex, sent, sent + tokens.LIFETIME["invite"], grant))
+    conn.commit()
+    return uid, grant
+
+
+def test_an_invitation_nobody_used_gets_one_reminder_after_72_hours_with_its_own_link(
+        invitations: None, fresh: str, conn: psycopg.Connection[Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    from fbi.auth import tokens
+    from fbi.messaging import reminders
+
+    waiting, waiting_grant = invited(conn, "waiting@invited.test", sent_hours_ago=73)
+    invited(conn, "young@invited.test", sent_hours_ago=60)  # not yet
+    invited(conn, "unsent@invited.test", sent_hours_ago=None)  # the invitation's e-mail has not even left
+    expired, _ = invited(conn, "expired@invited.test", sent_hours_ago=24 * 8)  # its link no longer works
+    spam, _ = invited(conn, "spam@invited.test", sent_hours_ago=80)
+    conn.execute("INSERT INTO customer.preferences (user_id, email_status, email_status_at) VALUES (%s, 'complained', "
+                 "now())", (spam,))
+    conn.commit()
+    now = datetime.now(UTC)
+    monkeypatch.delenv(tokens.SWITCH, raising=False)
+    assert reminders.queue(conn, at=now) == 0, "with self-service off no link is issued, and none is reminded"
+    monkeypatch.setenv(tokens.SWITCH, "1")
+    assert reminders.queue(conn, at=now) == 1
+    assert reminders.queue(conn, at=now + timedelta(hours=1)) == 0, "the same invitation is reminded once"
+    row = conn.execute("SELECT user_id, template, category, params, dedup_key FROM customer.messages_outbox "
+                       "WHERE template = 'activation_reminder'").fetchall()
+    conn.commit()
+    assert row == [(waiting, "activation_reminder", "account", {"grant": str(waiting_grant)},
+                    f"activation_reminder:{waiting_grant}")]
+    assert expired not in {r[0] for r in row}
+    # it leaves with the invitation's own link and the same expiry: nothing is extended
+    link_before = conn.execute("SELECT token_hash, expires_at FROM auth.account_tokens WHERE id = %s",
+                               (waiting_grant,)).fetchone()
+    conn.commit()
+    fake = FakeProvider()
+    assert outbox.dispatch(conn, fake, at=datetime.now(UTC)).sent == 1
+    [mail] = [m for m in fake.sent if "invitación" in m.subject]
+    assert "activate#t=" in mail.text
+    assert conn.execute("SELECT token_hash, expires_at FROM auth.account_tokens WHERE id = %s",
+                        (waiting_grant,)).fetchone() == link_before
+    conn.commit()
+
+
+def test_a_new_invitation_starts_a_new_count_and_an_activated_account_is_never_reminded(
+        invitations: None, fresh: str, conn: psycopg.Connection[Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    from fbi.auth import tokens
+    from fbi.messaging import reminders
+
+    monkeypatch.setenv(tokens.SWITCH, "1")
+    uid, first = invited(conn, "again@invited.test", sent_hours_ago=100)
+    assert reminders.queue(conn, at=datetime.now(UTC)) == 1
+    second = tokens.issue(conn, uid, "invite")  # the owner sends it again: the first link stops working
+    assert second is not None and second != first
+    sent = datetime.now(UTC) - timedelta(hours=75)
+    conn.execute("UPDATE auth.account_tokens SET token_hash = %s, sent_at = %s, expires_at = %s WHERE id = %s",
+                 (uuid.uuid4().hex + uuid.uuid4().hex, sent, sent + tokens.LIFETIME["invite"], second))
+    conn.commit()
+    assert reminders.queue(conn, at=datetime.now(UTC)) == 1, "a new invitation, a new reminder"
+    conn.execute("UPDATE auth.users SET status = 'active' WHERE id = %s", (uid,))
+    conn.commit()
+    assert reminders.queue(conn, at=datetime.now(UTC) + timedelta(days=1)) == 0
+
+
+def test_the_messenger_queues_the_reminder_at_the_start_of_every_cycle(
+        invitations: None, fresh: str, conn: psycopg.Connection[Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    from fbi.auth import tokens
+
+    monkeypatch.setenv(tokens.SWITCH, "1")
+    monkeypatch.setenv("FBI_LIFECYCLE", "0")  # the cycle's other jobs are proved elsewhere: this one proves its own step
+    invited(conn, "cycle@invited.test", sent_hours_ago=96)
+    totals = runner.CycleTotals()
+    runner.start_of_cycle(conn, totals, sending=False, provider=False)
+    assert totals.reminders == 1 and not totals.errors
+    assert "activation reminders 1" in totals.notes(sending=False, provider=False)
+    again = runner.CycleTotals()
+    runner.start_of_cycle(conn, again, sending=False, provider=False)
+    assert again.reminders == 0, "a cycle repeated adds nothing"
+
+
+def test_the_qa_mailbox_queues_one_sample_of_every_email_for_the_owners_own_account(
+        fresh: str, conn: psycopg.Connection[Any], capsys: pytest.CaptureFixture[str]) -> None:
+    from scripts import email_test
+
+    assert email_test.main(["queue", "--user", READER, "--all"]) == 0
+    assert "queued messages" in capsys.readouterr().out
+    rows = conn.execute("SELECT template, status FROM customer.messages_outbox ORDER BY template").fetchall()
+    conn.commit()
+    assert {r[0] for r in rows} == {t.name for t in email_test.samples()}
+    assert all(r[1] == "queued" for r in rows)
+    # every sample leaves, rendered, through the fake provider (the owner's mailbox, with the real one)
+    fake = FakeProvider()
+    report = outbox.dispatch(conn, fake, at=datetime.now(UTC), limit=50)
+    assert report.sent == len(rows) and report.suppressed == 0 and report.failed == 0, report
+    assert {m.tags["template"] for m in fake.sent} == {r[0] for r in rows}
+    assert all(m.to == READER and READER_NAME.split()[0] in m.text for m in fake.sent)

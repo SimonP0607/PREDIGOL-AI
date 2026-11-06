@@ -13,6 +13,7 @@ from pydantic import Field
 from fbi.api.contracts.common import Contract
 
 SectionKey = Literal["summary", "context", "data", "market", "risks", "conclusion"]
+ReadingSectionKey = Literal["summary", "context", "data", "market", "risks", "conclusion", "key_points", "value", "factors"]
 
 
 class ReadingFact(Contract):
@@ -21,11 +22,12 @@ class ReadingFact(Contract):
     params: dict[str, str | int | float | bool | list[str] | None] = Field(
         description="The values the template fills in: names, counts, probabilities as shares of one (0.523).")
     ref: str = Field(description="Where it comes from: ``packet:<block>`` (the match packet PrediGol Intelligence stored), "
-                                 "``forecast:<market>`` (PrediGol's forecast) - every figure has one.")
+                                 "``forecast:<market>`` (PrediGol's forecast) or ``pick:<id>`` (a pick PrediGol published, "
+                                 "with the numbers it was frozen with) - every figure has one.")
 
 
 class ReadingSection(Contract):
-    key: SectionKey
+    key: ReadingSectionKey
     facts: list[ReadingFact]
 
 
@@ -55,8 +57,11 @@ class MatchReading(Contract):
                                        "forecast and says so in its risks.")
     data_at: datetime | None = Field(description="The moment of the data the context, the figures and the market come from.")
     forecast_at: datetime | None = Field(description="When PrediGol said the forecast the summary and the conclusion read.")
-    sections: list[ReadingSection] = Field(description="In order: summary, context, data, market, risks, conclusion - a "
-                                                       "section without facts is left out (risks never is).")
+    sections: list[ReadingSection] = Field(description=(
+        "In order: summary, context, data, market, risks, conclusion - a section without facts is left out (risks never "
+        "is) - and then the three derived from them (plan de cierre UX, 2.1), each only when it has facts: key_points (three "
+        "to five, never padded), value (why a pick PrediGol published for this match has value: only with such a pick that a "
+        "reader may see) and factors (what stands out). The narrative never reads them."))
     narrative: ReadingNarrative | None = Field(default=None, description=(
         "The narrative (A11): the same reading written as prose, Spanish and English, by PrediGol's AI from these facts and the "
         "match's verified news, and shown only once every sentence passed the server's checks. Null while there is none for "

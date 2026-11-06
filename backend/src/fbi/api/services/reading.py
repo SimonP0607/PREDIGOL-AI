@@ -12,6 +12,11 @@ What never leaves this module: the models' own probabilities and edges, the Elo,
 or a rumour (only how many there are, by status) and any word that reads as advice. The conclusion is the likely outcome of
 each market with its probability, labelled when it is the model's own number (uncalibrated) - never "sure", never "value".
 
+Three sections are derived from these six and added after them by the route, through ``fbi.api.services.reading_value`` (plan de
+cierre UX, 2.1): key points, why a published pick has value, and the factors that stand out. They are not added here - this module
+is loaded by the readers' AI, which must not reach the user layer the picks board lives in - so they are not part of
+``reading_hash`` either, and the narrative never reads them.
+
 ``FBI_READING_USERS`` (on since A9; ``=0`` hides it again without a deploy, ``fbi.api.switches``) decides whether readers
 see it; the Admin Console's preview does not depend on it.
 

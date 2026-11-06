@@ -303,7 +303,8 @@ def test_activating_sets_the_password_and_signs_in_and_the_link_never_works_agai
     for again in (activate(link), anon().post("/api/v1/auth/activate/check", json={"token": link})):
         assert again.status_code == 410 and error(again) == "link_invalid"
     signed_in(f"act@{DOMAIN}", NEW_PASSWORD)
-    assert queued(fresh) == [], "the first sign-ins after the activation tell nothing"
+    # the activation's own welcome (closing plan 4.1) and nothing else: the first sign-ins tell nothing
+    assert [(e, t) for e, t, _ in queued(fresh)] == [(f"act@{DOMAIN}", "welcome")]
 
 
 def test_a_link_that_does_not_work_gets_one_answer_whatever_the_reason(fresh: str) -> None:
@@ -350,7 +351,7 @@ def test_an_expired_invitation_asks_for_a_new_one_from_its_page_at_most_three_an
     # a renewal for an account that is active (or a link nobody was sent) is the same answer and nothing at all
     assert anon().post("/api/v1/auth/activate/renew", json={"token": link}).status_code == 202
     assert anon().post("/api/v1/auth/activate/renew", json={"token": secrets.token_urlsafe(32)}).status_code == 202
-    assert queued(fresh) == []
+    assert [t for _, t, _ in queued(fresh)] == ["welcome"], "only the activation's welcome: a renewal queues nothing"
 
 
 def test_the_owner_resends_an_invitation_or_gives_a_temporary_password_as_the_backup(fresh: str) -> None:

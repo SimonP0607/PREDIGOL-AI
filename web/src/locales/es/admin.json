@@ -241,7 +241,14 @@
       "legal_change": "Cambio de un texto legal",
       "support_ticket_received": "Acuse de un mensaje a soporte",
       "support_ticket_answered": "Respuesta a un mensaje de soporte",
-      "weekly_digest": "Resumen semanal (comercial, con consentimiento)"
+      "weekly_digest": "Resumen semanal (comercial, con consentimiento)",
+      "welcome": "Bienvenida (al activar la cuenta)",
+      "activation_reminder": "Recordatorio de activación (a las 72 h, uno solo)",
+      "trial_started": "Inicio de la prueba (la que da el dueño)",
+      "payment_recorded": "Pago registrado o membresía renovada",
+      "maintenance_scheduled": "Mantenimiento programado",
+      "incident_resolved": "Incidencia resuelta",
+      "important_change": "Cambio importante (crítico: llega a todos)"
     }
   },
   "product": {

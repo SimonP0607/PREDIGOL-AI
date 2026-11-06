@@ -5,7 +5,8 @@ One messenger per database (a PostgreSQL advisory lock on a connection of its ow
 organised in cycles of five minutes, each one row of the job ledger (``raw.ingestion_runs``, job
 ``messenger_cycle``): at the start of a cycle the owner's notices, the legal-change messages, the product
 analytics' daily aggregate and retention (A6: the purge only with FBI_EVENTS_PURGE=on), the weekly summaries by e-mail
-(B8: only with FBI_DIGEST, the e-mail on and their own sender) and the retention of the accounts' one-use links (A7: 30
+(B8: only with FBI_DIGEST, the e-mail on and their own sender), the one reminder to an invitation nobody used (closing
+plan 4.1: 72 hours after it left) and the retention of the accounts' one-use links (A7: 30
 days, deleted only with FBI_LINKS_PURGE=on); then a tick every
 15 seconds sends what is due (only while FBI_EMAIL_SEND is on and the provider is configured), with a heartbeat on
 the run. A cycle that dies is closed as stale by the worker's run watchdog (``fbi.ops.run_watchdog``: the
@@ -37,7 +38,7 @@ from fbi.customer import events, feedback, membership
 from fbi.customer import lifecycle as lifecycle_rules
 from fbi.customer import push as push_rules
 from fbi.ingestion.ledger import RunCounters, RunLedger
-from fbi.messaging import digest, notices, push_jobs
+from fbi.messaging import digest, notices, push_jobs, reminders
 from fbi.messaging.email import client_from_env
 from fbi.messaging.legal_change import enqueue_legal_changes
 from fbi.messaging.outbox import DispatchReport, dispatch, sending_enabled
@@ -102,6 +103,8 @@ class CycleTotals:
     push_purge: push_rules.PurgeReport | None = None
     digest: int = 0
     """The weekly summaries queued this cycle (plan UX, B8)."""
+    reminders: int = 0
+    """The activation reminders queued this cycle (closing plan 4.1)."""
     lifecycle: int = 0
     """The readers' states of the day written this cycle (plan UX, B11)."""
     lifecycle_purge: lifecycle_rules.PurgeReport | None = None
@@ -118,7 +121,7 @@ class CycleTotals:
         provider_calls = self.sent + self.retried + self.deferred
         c = RunCounters(api_calls=provider_calls + self.push_devices,
                         rows_inserted=(self.notices + self.legal + self.rollup + self.membership + self.push_queued
-                                       + self.digest + self.lifecycle),
+                                       + self.digest + self.lifecycle + self.reminders),
                         rows_updated=self.sent + self.retried + self.failed + self.suppressed + self.deferred,
                         errors=list(self.errors))
         if interrupted:
@@ -142,14 +145,14 @@ class CycleTotals:
         return (f"sending {'on' if sending else 'off'}{'' if provider or not sending else ' (no provider)'}; "
                 f"sent {self.sent}, retried {self.retried}, failed {self.failed}, suppressed {self.suppressed}, "
                 f"deferred {self.deferred}; notices {self.notices}, legal {self.legal}, membership {self.membership}, "
-                f"weekly summaries {self.digest}, lifecycle {self.lifecycle}; "
+                f"weekly summaries {self.digest}, activation reminders {self.reminders}, lifecycle {self.lifecycle}; "
                 f"activity rows {self.rollup}{purge}{push}")
 
 
 def start_of_cycle(conn: psycopg.Connection[Any], totals: CycleTotals, *, sending: bool, provider: bool) -> None:
     """The legal-change messages, the owner's notices, the product analytics' daily aggregate and retention (A6) with the
-    readers' feedback's (B6), the notices of a membership's end (A8) and the old links' purge (A7); each step's failure is
-    recorded and the cycle goes on."""
+    readers' feedback's (B6), the notices of a membership's end (A8), the reminder to an invitation nobody used (closing
+    plan 4.1) and the old links' purge (A7); each step's failure is recorded and the cycle goes on."""
     try:
         totals.legal += enqueue_legal_changes(conn)
         conn.commit()
@@ -190,6 +193,13 @@ def start_of_cycle(conn: psycopg.Connection[Any], totals: CycleTotals, *, sendin
         conn.rollback()
         totals.errors.append(f"membership: {error_summary(exc)}"[:300])
         log.error("messenger.membership_failed", error=error_summary(exc))
+    try:
+        # the only reminder to an invitation nobody used, 72 hours after it left (closing plan 4.1)
+        totals.reminders += reminders.queue(conn, at=now())
+    except Exception as exc:
+        conn.rollback()
+        totals.errors.append(f"reminders: {error_summary(exc)}"[:300])
+        log.error("messenger.reminders_failed", error=error_summary(exc))
     try:
         # the weekly summary by e-mail (plan UX, B8): only with FBI_DIGEST, the e-mail on and its own sender
         totals.digest += digest.queue(conn, at=now()).queued
