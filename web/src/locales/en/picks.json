@@ -1,5 +1,7 @@
 {
   "subtitle": "Selections with value against the market, at the best price available now.",
+  "whyLine": "PrediGol gives it {model}; the market, {market}.",
+  "riskChips": "Risks found by the context review",
   "all": {
     "title": "Every selection that passes the rule",
     "subtitle": "Filter by competition, market, odds and kick-off time.",

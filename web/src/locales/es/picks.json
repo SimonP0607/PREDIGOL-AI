@@ -1,5 +1,7 @@
 {
   "subtitle": "Selecciones con valor frente al mercado, al mejor precio disponible ahora.",
+  "whyLine": "PrediGol le da {model} y el mercado, {market}.",
+  "riskChips": "Riesgos que vio la revisión de contexto",
   "all": {
     "title": "Todas las selecciones que cumplen la regla",
     "subtitle": "Filtra por competición, mercado, cuota y hora de inicio.",
