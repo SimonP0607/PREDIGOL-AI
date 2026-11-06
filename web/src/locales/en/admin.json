@@ -891,7 +891,8 @@
       "privacy": "Privacy policy",
       "age_18": "Age of majority",
       "risk_notice": "Risk notice",
-      "marketing_email": "Weekly summary by e-mail"
+      "marketing_email": "Weekly summary by e-mail",
+      "analytics": "Usage statistics"
     },
     "tickets": "Tickets",
     "noTickets": "No tickets.",

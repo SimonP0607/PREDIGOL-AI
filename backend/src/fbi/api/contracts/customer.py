@@ -11,9 +11,9 @@ from fbi.api.contracts.common import Contract
 
 Language = Literal["es", "en"]
 LegalDocumentName = Literal["terms", "privacy", "responsible_gaming"]
-ConsentKind = Literal["terms", "privacy", "age_18", "risk_notice", "marketing_email"]
-"""The four the gate asks for and the optional one of the weekly summary by e-mail (plan UX, B8), offered only while it can
-reach the reader."""
+ConsentKind = Literal["terms", "privacy", "age_18", "risk_notice", "marketing_email", "analytics"]
+"""The four the gate asks for and the two optional ones: the weekly summary by e-mail (plan UX, B8), offered only while it
+can reach the reader, and the usage statistics under a pseudonym (plan de cierre UX, 1.2), always offered."""
 RequestKind = Literal["privacy_query", "privacy_claim", "privacy_deletion"]
 TicketStatus = Literal["open", "answered", "closed"]
 

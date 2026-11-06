@@ -2,7 +2,8 @@
 /**
  * ANÁLISIS PREDIGOL (plan UX, A9): the structured reading with every state shown - a skeleton while it loads, the error with
  * its retry, the owner having turned it off (said), a partial reading without the match's context - and the conclusion's
- * caveat. The Resumen's highlights: the summary and the two main risks, with the way to the whole analysis.
+ * caveat. The Resumen's highlights: the summary, the key points, why there is value (UX-011) and the two main risks, with
+ * the way to the whole analysis.
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -239,6 +240,116 @@ describe("once the match is over (plan UX, B4)", () => {
     expect(
       renderToStaticMarkup(<ReadingHighlightsView load={ok()} onMore={() => undefined} />),
     ).not.toContain(to);
+  });
+});
+
+const EXPECTED = READING.sections[0]!.facts[1]!;
+const PICK = {
+  market: "1X2",
+  selection: "Home",
+  line: 0,
+  home: "Nacional",
+  away: "Millonarios",
+};
+const STREAK = {
+  code: "streak_unbeaten",
+  params: { team: "Nacional", n: 5 },
+  ref: "packet:form",
+};
+const WITH_DERIVED: MatchReading = {
+  ...READING,
+  sections: [
+    ...READING.sections,
+    {
+      key: "key_points",
+      facts: [
+        EXPECTED,
+        { code: "value_pick", params: { ...PICK, p_model: 0.52, p_market: 0.45 }, ref: "pick:7" },
+        STREAK,
+      ],
+    },
+    {
+      key: "value",
+      facts: [
+        { code: "value_pick", params: { ...PICK, p_model: 0.52, p_market: 0.45 }, ref: "pick:7" },
+        {
+          code: "value_price",
+          params: { ...PICK, odds: 2.31, fair_market: 2.21, fair_model: 1.91, taken: false },
+          ref: "pick:7",
+        },
+      ],
+    },
+    { key: "factors", facts: [STREAK] },
+  ],
+};
+
+describe("the derived sections (UX-011)", () => {
+  test("the full analysis is the six sections: the derived ones repeat them and are read in the Resumen", () => {
+    for (const reading of [WITH_DERIVED, { ...WITH_DERIVED, narrative: NARRATIVE }]) {
+      const html = renderToStaticMarkup(<ReadingView load={ok(reading)} />);
+      for (const key of ["key_points", "value", "factors"])
+        expect(html).not.toContain(`reading-section-${key}`);
+      expect(html).not.toContain("Puntos clave");
+      expect(html).not.toContain("Por qué hay valor");
+    }
+    const html = renderToStaticMarkup(<ReadingView load={ok(WITH_DERIVED)} />);
+    expect(html).toContain('data-testid="reading-section-conclusion"');
+    expect(html).not.toContain("PrediGol le da 52 %");
+  });
+
+  test("the Resumen: key points, then why there is value, then the main risks - each sentence once", () => {
+    const html = renderToStaticMarkup(
+      <ReadingHighlightsView load={ok(WITH_DERIVED)} onMore={() => undefined} />,
+    ).replace(/[\u00a0\u202f]/g, " ");
+    const order = ["reading-key-points", "reading-value", "reading-risks"].map((k) =>
+      html.indexOf(`data-testid="${k}"`),
+    );
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(html).toContain("Puntos clave");
+    expect(html).toContain("Por qué hay valor");
+    expect(html).toContain("Nacional suma 5 partidos sin perder.");
+    // the pick's sentence is in «Por qué hay valor» only; the result PrediGol expects in the key points only
+    const times = (needle: string) => html.split(needle).length - 1;
+    expect(times("Gana Nacional: PrediGol le da 52 % de probabilidad y el mercado, 45 %")).toBe(1);
+    expect(times("PrediGol ve como resultado más probable la victoria de Nacional")).toBe(1);
+    expect(html).toContain("Gana Nacional: la mejor cuota ahora es 2,31.");
+    expect(html).toContain("Un pick con valor puede perder");
+    expect(html).toContain("Partido de Liga BetPlay."); // what the match is stays at the top
+    expect(html).toContain("Las alineaciones aún no están confirmadas.");
+  });
+
+  test("without a pick there is no «Por qué hay valor» - and the key points keep every sentence", () => {
+    const noValue: MatchReading = {
+      ...WITH_DERIVED,
+      sections: WITH_DERIVED.sections.filter((s) => s.key !== "value"),
+    };
+    const html = renderToStaticMarkup(
+      <ReadingHighlightsView load={ok(noValue)} onMore={() => undefined} />,
+    ).replace(/[\u00a0\u202f]/g, " ");
+    expect(html).not.toContain("Por qué hay valor");
+    expect(html).not.toContain('data-testid="reading-value"');
+    expect(html).toContain("PrediGol le da 52 % de probabilidad");
+  });
+
+  test("a reading without derived sections shows what it did: the summary and the risks", () => {
+    const html = renderToStaticMarkup(
+      <ReadingHighlightsView load={ok()} onMore={() => undefined} />,
+    );
+    expect(html).not.toContain('data-testid="reading-key-points"');
+    expect(html).not.toContain('data-testid="reading-value"');
+    expect(html).toContain("PrediGol ve como resultado más probable");
+  });
+
+  test("in English", () => {
+    setLocale("en");
+    const html = renderToStaticMarkup(
+      <ReadingHighlightsView load={ok(WITH_DERIVED)} onMore={() => undefined} />,
+    );
+    expect(html).toContain("Key points");
+    expect(html).toContain("Why there is value");
+    expect(html).toContain("Nacional to win: the best odds now are 2.31.");
+    expect(html).not.toContain("Puntos clave");
   });
 });
 
