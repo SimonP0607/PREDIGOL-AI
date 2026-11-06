@@ -46,6 +46,13 @@ const MAX = 300;
 let sdk: Sdk | null = null;
 let starting: Promise<boolean> | null = null;
 let observed: string | null = null;
+/** Reports asked for before the SDK was up (a service worker failing in the first second): sent when it starts. */
+const waiting: Array<(module: Sdk) => void> = [];
+
+function withSdk(send: (module: Sdk) => void): void {
+  if (sdk) send(sdk);
+  else if (waiting.length < 5) waiting.push(send);
+}
 
 /** At most ``n`` UTF-16 units, never half of a character (a cut emoji would make the event unreadable). */
 function cut(text: string, n: number): string {
@@ -221,6 +228,7 @@ export function startObservability(
       });
       sdk = module;
       if (observed) module.setUser({ id: observed });
+      for (const send of waiting.splice(0)) send(module);
       return true;
     } catch {
       return false;
@@ -260,6 +268,112 @@ export function reportApiFailure(info: {
   });
 }
 
+/** The reader's screen as the path a report may name (no query, no fragment), or "-" without a window. */
+function routeNow(): string {
+  try {
+    return typeof window === "undefined" ? "-" : cleanUrl(window.location.pathname) || "-";
+  } catch {
+    return "-";
+  }
+}
+
+/** A web vital's rating by the thresholds the web vitals publish (the «good» and «poor» lines). */
+export type Rating = "good" | "needs-improvement" | "poor";
+const LINES: Record<"lcp" | "cls" | "inp", readonly [number, number]> = {
+  lcp: [2500, 4000],
+  cls: [0.1, 0.25],
+  inp: [200, 500],
+};
+export function rateVital(name: "lcp" | "cls" | "inp", value: number): Rating {
+  const [good, poor] = LINES[name];
+  return value <= good ? "good" : value <= poor ? "needs-improvement" : "poor";
+}
+
+/**
+ * How the page loaded and answered (closing plan 5.3), for a small sample of visits: the three numbers, the screen's
+ * path, the worst of their ratings, the width and whether it is the installed app. Numbers and a path - nothing of the
+ * person; the server builds it again from those fields and gives it its own, smaller share than the errors'.
+ */
+export function reportWebVitals(v: { lcp?: number; cls?: number; inp?: number }): void {
+  if (!sdk || typeof window === "undefined") return;
+  const tags: Record<string, string> = {
+    kind: "web_vital",
+    route: routeNow(),
+    ...deviceTags(window),
+  };
+  const ratings: Rating[] = [];
+  for (const name of ["lcp", "inp"] as const) {
+    const value = v[name];
+    if (value === undefined || !Number.isFinite(value)) continue;
+    tags[name] = String(Math.round(value));
+    ratings.push(rateVital(name, value));
+  }
+  if (v.cls !== undefined && Number.isFinite(v.cls)) {
+    tags["cls"] = String(Math.round(v.cls * 1000) / 1000);
+    ratings.push(rateVital("cls", v.cls));
+  }
+  if (ratings.length === 0) return;
+  tags["rating"] = ratings.includes("poor")
+    ? "poor"
+    : ratings.includes("needs-improvement")
+      ? "needs-improvement"
+      : "good";
+  sdk.captureMessage("web-vitals", { level: "info", tags });
+}
+
+/** A script the server no longer has (after a deploy): reported once, the page offers (or does) the reload. */
+export function reportStaleModule(error: unknown): void {
+  const route = routeNow();
+  withSdk((module) =>
+    module.captureException(error instanceof Error ? error : new Error("stale module"), {
+      tags: { boundary: "stale-module", route },
+      level: "warning",
+    }),
+  );
+}
+
+const shown = new Set<string>();
+/** Statuses that are an answer, not a failure of ours: a closed session, no permission, a missing page. */
+const EXPECTED = new Set([401, 403, 404]);
+
+/**
+ * An API error the reader SAW (the ErrorState): with its request id, once per id. A 5xx was already reported by the
+ * client when it came back (reportApiFailure), so this one adds the ones below 500 and a network that did not answer.
+ */
+export function reportShownApiError(info: {
+  status: number;
+  code: string;
+  requestId: string | null;
+}): void {
+  if (!sdk || info.status >= 500 || EXPECTED.has(info.status)) return;
+  const key = info.requestId ?? `${info.status}:${info.code}`;
+  if (shown.has(key) || shown.size > 50) return;
+  shown.add(key);
+  sdk.captureMessage(`API error shown ${info.status || "unreachable"}`, {
+    level: "warning",
+    tags: {
+      request_id: info.requestId ?? "-",
+      status: String(info.status),
+      error_code: /^[A-Za-z0-9_.+-]{1,40}$/.test(info.code) ? info.code : "other",
+      route: routeNow(),
+      shown: "1",
+    },
+  });
+}
+
+/** The service worker failed to install, update or register: which step, never the worker's own text. */
+export function reportServiceWorkerError(
+  stage: "register" | "install" | "update" | "message",
+): void {
+  const route = routeNow();
+  withSdk((module) =>
+    module.captureMessage(`service worker ${stage} failed`, {
+      level: "warning",
+      tags: { boundary: "service-worker", stage, route },
+    }),
+  );
+}
+
 /** For the owner's test from the console (plan UX, A2): an error raised on purpose in the browser. */
 export async function reportTestError(): Promise<boolean> {
   if (!sdk) return false;
@@ -277,4 +391,6 @@ export function resetObservabilityForTests(): void {
   sdk = null;
   starting = null;
   observed = null;
+  shown.clear();
+  waiting.length = 0;
 }

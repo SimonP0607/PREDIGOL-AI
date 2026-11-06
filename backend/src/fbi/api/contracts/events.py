@@ -34,6 +34,14 @@ class UsageRow(Contract):
     subjects_30d: int
 
 
+class BreakdownRow(Contract):
+    key: str = Field(description="The screen's group, the market, or the id of the league or the team.")
+    label: str | None = Field(description="The league's or the team's name; null for a screen group or a market.")
+    events_30d: int
+    subjects_30d: int = Field(description="Never fewer than the overview's min_subjects: a line with fewer readers "
+                                          "behind it is not listed.")
+
+
 class FunnelStep(Contract):
     step: Literal["activated", "onboarding_started", "onboarding_completed", "first_value"]
     subjects: int
@@ -67,4 +75,13 @@ class ProductOverview(Contract):
     days_active_per_week: float | None
     errors_per_active: float | None
     dau_mau: float | None = Field(description="Only from 100 readers active in 30 days.")
+    screens: list[BreakdownRow] = Field(default_factory=list, description="Screens viewed in 30 days, by group (never "
+                                                                           "an address or a search).")
+    markets: list[BreakdownRow] = Field(default_factory=list, description="The market of the picks saved and of the "
+                                                                           "legs added to a parlay, in 30 days.")
+    leagues: list[BreakdownRow] = Field(default_factory=list, description="Leagues of the matches opened in 30 days: "
+                                                                           "worked out from the match, collected apart "
+                                                                           "from nothing.")
+    teams: list[BreakdownRow] = Field(default_factory=list, description="Teams of the matches opened in 30 days: "
+                                                                         "worked out from the match.")
     lifecycle: LifecycleMetrics | None = Field(default=None, description="The customers' lifecycle (B11).")

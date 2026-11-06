@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Mail, MessageCircle } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
 import { t } from "@/lib/i18n";
-import { whatsappLink } from "@/product/membership/membership";
+import { WhatsappLink } from "./WhatsappLink";
 
 const link =
   "tap-y relative inline-flex min-h-9 items-center gap-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline pointer-coarse:min-h-11";
@@ -23,16 +23,15 @@ export function LoginContact() {
     >
       <p className="text-caption text-muted-foreground">{t("support.login.trouble")}</p>
       {whatsapp ? (
-        <a
-          href={whatsappLink(whatsapp, t("support.help.contact.whatsappText"))}
-          target="_blank"
-          rel="noopener noreferrer"
+        <WhatsappLink
+          digits={whatsapp}
+          text={t("support.help.contact.whatsappText")}
           className={link}
-          data-testid="login-whatsapp"
+          testId="login-whatsapp"
         >
           <MessageCircle aria-hidden className="h-3.5 w-3.5" />
           {t("support.login.whatsapp")}
-        </a>
+        </WhatsappLink>
       ) : null}
       {email ? (
         <a href={`mailto:${email}`} className={link} data-testid="login-email">

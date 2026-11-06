@@ -12,7 +12,16 @@
  */
 import { useRef, useState, type RefObject } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, Download, LogOut, Smartphone } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Download,
+  LogOut,
+  MessageCircle,
+  Smartphone,
+} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { live } from "@/lib/api/v1/queries";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { t } from "@/lib/i18n";
 import {
@@ -36,6 +45,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { WhatsappLink } from "@/product/support/WhatsappLink";
 import { useInstallPrompt } from "@/product/push/useInstallPrompt";
 import { currentMore, UPDATES_PATH, type MoreItem } from "./nav";
 import { useMoreItems } from "./useMoreItems";
@@ -130,6 +140,7 @@ export function MoreList({
   onPick,
   onSignOut,
   unread = [],
+  whatsapp = null,
 }: {
   items: readonly MoreItem[];
   pathname: string;
@@ -140,6 +151,8 @@ export function MoreList({
   onSignOut: () => void;
   /** The rows with something the reader has not seen yet (Novedades, B6): a dot. */
   unread?: readonly string[] | undefined;
+  /** The WhatsApp number once the owner gave it (P7): a row «Escríbenos por WhatsApp» (no floating bubble, plan 4.2). */
+  whatsapp?: string | null | undefined;
 }) {
   const current = currentMore(pathname, items);
   return (
@@ -180,6 +193,21 @@ export function MoreList({
         </ul>
       </nav>
       <div className="mt-3 space-y-2 border-t border-border pt-3">
+        <WhatsappLink
+          digits={whatsapp}
+          text={t("support.help.contact.whatsappText")}
+          testId="more-whatsapp"
+          className="flex min-h-14 items-center gap-3 rounded-lg px-3 py-2 hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <MessageCircle aria-hidden className="h-5 w-5 shrink-0 text-primary" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">{t("nav.whatsapp.label")}</span>
+            <span className="block text-caption text-muted-foreground">
+              {t("nav.whatsapp.hint")}
+            </span>
+          </span>
+          <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-subtle-foreground" />
+        </WhatsappLink>
         {standalone ? null : <InstallSteps platform={platform} />}
         <button
           type="button"
@@ -210,6 +238,7 @@ export function MoreSheet({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const items = useMoreItems();
   const unread = useUpdatesUnread();
+  const contact = useQuery({ ...live.supportContact, enabled: open });
   // closed by one of its rows: the reader went on to that page, so the focus does not jump back to the bar
   const picked = useRef(false);
   return (
@@ -239,6 +268,7 @@ export function MoreSheet({
           standalone={isStandalone()}
           platform={installPlatform()}
           unread={unread ? [UPDATES_PATH] : []}
+          whatsapp={contact.data?.whatsapp ?? null}
           onPick={() => {
             picked.current = true;
             onOpenChange(false);

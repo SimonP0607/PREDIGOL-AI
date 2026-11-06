@@ -1,5 +1,7 @@
-"""The closed catalog of product events (plan UX, A6 and section 39): 35 events, each with only the properties it may
-carry - an enumeration, a bounded integer, a boolean, a slug or an id; never free text - and the switches."""
+"""The closed catalog of product events (plan UX, A6 and section 39; closing plan 3.3): 36 events, each with only the
+properties it may carry - an enumeration, a bounded integer, a boolean, a slug or an id; never free text - and the
+switches. Closing plan 3.3 added the market to «pick saved» and «leg added to the parlay», and the screen viewed,
+by group."""
 
 from __future__ import annotations
 
@@ -11,14 +13,14 @@ import pytest
 from fbi.customer import events
 from fbi.customer.events import CATALOG_FILE, EventError, check
 
-GROUPS = {"entry": 6, "use": 7, "picks": 5, "parlays": 3, "news": 2, "notices": 4, "support": 3, "membership": 3,
+GROUPS = {"entry": 6, "use": 8, "picks": 5, "parlays": 3, "news": 2, "notices": 4, "support": 3, "membership": 3,
           "other": 2}
 SERVER = {"account_activated", "ticket_created", "trial_started", "membership_renewed", "membership_expired"}
 
 
-def test_the_catalog_is_the_plans_35_events_in_their_groups() -> None:
+def test_the_catalog_is_the_plans_36_events_in_their_groups() -> None:
     cat = events.catalog()
-    assert len(cat) == 35
+    assert len(cat) == 36
     assert Counter(e.group for e in cat.values()) == GROUPS
     assert {e.name for e in cat.values() if e.source == "server"} == SERVER
     raw = json.loads(CATALOG_FILE.read_text(encoding="utf-8"))
@@ -39,6 +41,10 @@ def test_no_property_can_carry_free_text_an_address_or_a_secret() -> None:
     ("match_opened", {}, {}),
     ("market_viewed", {"market": "OU_2.5", "match_id": 1}, {"market": "OU_2.5", "match_id": 1}),
     ("analysis_helpful_voted", {"helpful": False}, {"helpful": False}),
+    ("pick_saved", {"origin": "market", "market": "BTTS"}, {"origin": "market", "market": "BTTS"}),
+    ("slip_leg_added", {"legs": 3, "market": "OU"}, {"legs": 3, "market": "OU"}),
+    ("slip_leg_added", {"legs": 3}, {"legs": 3}),
+    ("screen_viewed", {"screen": "my_picks"}, {"screen": "my_picks"}),
     ("session_started", {"device": "tablet", "width": 820, "client": "pwa", "lang": "en"},
      {"device": "tablet", "width": 820, "client": "pwa", "lang": "en"}),
 ])
@@ -60,6 +66,12 @@ def test_what_the_catalog_allows(name: str, props: dict[str, object], clean: dic
     ("term_explained", {"term": "x" * 41}, "invalid_property"),
     ("analysis_helpful_voted", {"helpful": 1}, "invalid_property"),
     ("match_opened", ["origin", "home"], "invalid_properties"),
+    ("pick_saved", {"market": "CS"}, "invalid_property"),
+    ("slip_leg_added", {"legs": 2, "market": "OU_2.5"}, "invalid_property"),
+    ("screen_viewed", {"screen": "/matches/123?q=real+madrid"}, "invalid_property"),
+    ("screen_viewed", {"screen": "login"}, "invalid_property"),
+    ("screen_viewed", {"path": "/home"}, "unknown_property"),
+    ("screen_viewed", {"screen": "match", "match_id": 5}, "unknown_property"),
 ])
 def test_anything_else_is_refused(name: object, props: object, code: str) -> None:
     with pytest.raises(EventError) as caught:
@@ -97,3 +109,19 @@ def test_a_bogota_day_and_its_bounds() -> None:
     assert events.bogota_day(datetime(2026, 10, 26, 5, 0, tzinfo=UTC)) == date(2026, 10, 26)
     start, end = events.day_bounds(date(2026, 10, 25))
     assert start == datetime(2026, 10, 25, 5, 0, tzinfo=UTC) and end == datetime(2026, 10, 26, 5, 0, tzinfo=UTC)
+
+
+def test_a_screen_is_a_group_never_an_address_a_search_or_an_id() -> None:
+    """Closing plan 3.3: «screen viewed» carries one value of a closed list of groups - the page's kind, not where it
+    is: no address, no search, no match or pick id (the match a reader opens is already ``match_opened``)."""
+    spec = events.catalog()["screen_viewed"]
+    assert spec.source == "web" and spec.group == "use" and set(spec.props) == {"screen"}
+    screens = spec.props["screen"]
+    assert screens.kind == "enum" and "other" in screens.values and len(set(screens.values)) == len(screens.values)
+    assert all(value.replace("_", "").isalpha() and value.islower() for value in screens.values)
+
+
+def test_the_market_of_a_pick_or_a_leg_is_one_of_the_five_markets_predigol_reads() -> None:
+    for name in ("pick_saved", "slip_leg_added"):
+        market = events.catalog()[name].props["market"]
+        assert market.kind == "enum" and market.values == ("1X2", "OU", "BTTS", "AH", "DC"), name

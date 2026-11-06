@@ -15,6 +15,7 @@ import { live } from "@/lib/api/v1/queries";
 import type { MarketKey } from "@/lib/api/v1/types_records";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { useJustChanged } from "@/product/shared/motion";
 import { marketName } from "@/product/shared/markets";
 import { trackChanges } from "./analytics";
 import {
@@ -31,7 +32,7 @@ import {
 } from "./model";
 
 const BUTTON =
-  "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
+  "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium motion-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
 
 function FollowButton({
   following,
@@ -48,6 +49,7 @@ function FollowButton({
   testId: string;
   data: string;
 }) {
+  const saved = useJustChanged(following);
   return (
     <button
       type="button"
@@ -65,7 +67,10 @@ function FollowButton({
           : "border-border-strong bg-card text-muted-foreground hover:text-foreground",
       )}
     >
-      <Star aria-hidden className={cn("h-4 w-4", following && "fill-current")} />
+      <Star
+        aria-hidden
+        className={cn("h-4 w-4", following && "fill-current", saved && "motion-pop")}
+      />
       {following ? t("onboarding.follow.following") : t("onboarding.follow.follow")}
     </button>
   );

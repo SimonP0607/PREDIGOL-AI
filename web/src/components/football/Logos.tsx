@@ -8,6 +8,7 @@
  * Licensing: redistribution rights for API-Sports media must be confirmed before a
  * public deployment (docs/RUNNING.md, "Before going public").
  */
+import { GoalDigit } from "@/product/shared/GoalDigit";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
@@ -257,14 +258,13 @@ export function Matchup({
   className?: string | undefined;
 }) {
   const goals = (n: number, other: number) => (
-    <span
+    <GoalDigit
+      value={n}
       className={cn(
         "numeric min-w-[1.25rem] text-right text-sm font-semibold tabular-nums",
         live ? "text-primary" : n < other ? "text-muted-foreground" : "text-foreground",
       )}
-    >
-      {n}
-    </span>
+    />
   );
   return (
     <div
