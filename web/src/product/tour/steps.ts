@@ -1,11 +1,11 @@
 /**
- * The optional four-step tour's steps and its context (plan UX, A13): which page each step opens and how a page reaches
+ * The optional five-step tour's steps and its context (plan UX, A13): which page each step opens and how a page reaches
  * the tour (./Tour.tsx draws it). Outside its provider there is no tour: nothing to show, nothing to start.
  */
 import { createContext, useContext } from "react";
 import type { Today } from "@/lib/api/v1/types_today";
 
-export const TOUR_STEPS = ["home", "match", "pick", "myPicks"] as const;
+export const TOUR_STEPS = ["home", "match", "pick", "parlay", "myPicks"] as const;
 export type TourStep = (typeof TOUR_STEPS)[number];
 
 export interface TourValue {
@@ -21,6 +21,7 @@ export const TourContext = createContext<TourValue | null>(null);
 export function stepPath(step: TourStep, today: Today | null | undefined): string {
   if (step === "home") return "/home";
   if (step === "pick") return "/picks";
+  if (step === "parlay") return "/parlays";
   if (step === "myPicks") return "/my-picks";
   const first = today?.matches.data[0];
   return first ? `/matches/${first.fixture_id}` : "/matches";
