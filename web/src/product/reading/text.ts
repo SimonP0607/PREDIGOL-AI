@@ -5,10 +5,15 @@
  *
  * The rules of section 26 live in the templates and are tested: no certainty ("seguro", "fijo", "garantizado"), no "value"
  * without a published pick, the probability always labelled when it is the model's own number (uncalibrated).
+ *
+ * The two codes of «Por qué hay valor» (UX-011, value_pick and value_price) come from a pick PrediGol published and are
+ * written from match.understand, a namespace of its own (its title and note do say «valor») with its own test - no
+ * certainty there either - so the guard of match.facts stays as strict as it was.
  */
 import { hasKey, t } from "@/lib/i18n";
-import { fmtPct, localFixed } from "@/lib/i18n/format";
+import { fmtOdds, fmtPct, localFixed } from "@/lib/i18n/format";
 import type { ReadingFact, ReadingParam } from "@/lib/api/v1/types_reading";
+import { selectionLabel } from "@/product/shared/markets";
 import CODES from "./codes.json";
 
 export const READING_CODES: readonly string[] = CODES;
@@ -58,6 +63,66 @@ function outcome(p: P): string | null {
   if (o !== "home" && o !== "away") return null;
   const team = str(p, "team");
   return team ? t(`match.facts.outcome.${o}`, { team }) : null;
+}
+
+/** A probability as the whole percentage the reader sees (28,5 -> 29, as Intl rounds it), so a gap is the difference of the two shown. */
+function whole(v: number): number {
+  return Math.round(Number((v * 100).toPrecision(12)));
+}
+
+/** «Gana Nacional», «Más de 2,5 goles»: the pick's selection as the rest of the page names it; null without its market. */
+function pickLabel(p: P): string | null {
+  const market = str(p, "market");
+  const selection = str(p, "selection");
+  if (!market || !selection) return null;
+  const line = int(p, "line");
+  return selectionLabel({
+    market_key: market,
+    selection,
+    line,
+    home: str(p, "home") ?? undefined,
+    away: str(p, "away") ?? undefined,
+  });
+}
+
+/** The probability PrediGol gives the pick next to the market's, and how far apart they are when it is by whole points. */
+function valuePick(p: P): string | null {
+  const label = pickLabel(p);
+  const model = int(p, "p_model");
+  const market = int(p, "p_market");
+  if (!label || model === null || market === null) return null;
+  const points = whole(model) - whole(market);
+  return t("match.understand.pick", {
+    selection: label,
+    model: fmtPct(model, 0),
+    market: fmtPct(market, 0),
+    gap: points > 0 ? t("match.understand.gap", { count: points }) : "",
+  });
+}
+
+/** The price against the fair price of each: the market's (1 / its probability) and PrediGol's (1 / its own). */
+function valuePrice(p: P): string | null {
+  const label = pickLabel(p);
+  const odds = int(p, "odds");
+  if (!label || odds === null || odds <= 0) return null;
+  const lead = t(
+    p["taken"] === true ? "match.understand.price.taken" : "match.understand.price.now",
+    {
+      selection: label,
+      odds: fmtOdds(odds),
+    },
+  );
+  const fairMarket = int(p, "fair_market");
+  const fairModel = int(p, "fair_model");
+  const vars = {
+    fair_market: fairMarket === null ? "" : fmtOdds(fairMarket),
+    fair_model: fairModel === null ? "" : fmtOdds(fairModel),
+  };
+  if (fairMarket !== null && fairModel !== null)
+    return lead + t("match.understand.price.both", vars);
+  if (fairModel !== null) return lead + t("match.understand.price.model", vars);
+  if (fairMarket !== null) return lead + t("match.understand.price.market", vars);
+  return lead;
 }
 
 function places(best: number | null, worst: number | null): string | null {
@@ -126,6 +191,8 @@ function writers(): Record<string, (p: P) => string | null> {
     },
     forecast_missing: (p) => missing(p),
     no_forecast: (p) => missing(p),
+    value_pick: valuePick,
+    value_price: valuePrice,
     stakes_zone: (p) => {
       const team = str(p, "team");
       const zone = known(`match.facts.zone.${str(p, "zone") ?? ""}`);

@@ -887,6 +887,21 @@
       "writtenAtDay": "Escrito con datos del {date}"
     }
   },
+  "understand": {
+    "keyPointsTitle": "Puntos clave",
+    "valueTitle": "Por qué hay valor",
+    "valueNote": "Es la diferencia entre lo que PrediGol calcula y lo que paga el mercado. Un pick con valor puede perder: no es una promesa de resultado.",
+    "pick": "{selection}: PrediGol le da {model} de probabilidad y el mercado, {market}{gap}.",
+    "gap_one": " (diferencia de {count} punto porcentual)",
+    "gap_other": " (diferencia de {count} puntos porcentuales)",
+    "price": {
+      "now": "{selection}: la mejor cuota ahora es {odds}.",
+      "taken": "{selection}: la cuota con la que se tomó fue {odds}.",
+      "both": " La cuota justa del mercado es {fair_market} y la cuota según PrediGol, {fair_model}.",
+      "model": " La cuota según PrediGol es {fair_model}.",
+      "market": " La cuota justa del mercado es {fair_market}."
+    }
+  },
   "facts": {
     "outcome": {
       "home": "la victoria de {team}",

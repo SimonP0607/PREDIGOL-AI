@@ -9,9 +9,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from fbi.api.contracts.common import Contract
 
-MessageCategory = Literal["account", "security", "membership", "support", "privacy", "legal"]
+MessageCategory = Literal["account", "security", "membership", "support", "service", "privacy", "legal"]
 """The account's e-mails: what the reader's choices speak of."""
-OutboxCategory = Literal["account", "security", "membership", "support", "privacy", "legal", "marketing"]
+OutboxCategory = Literal["account", "security", "membership", "support", "service", "privacy", "legal", "marketing"]
 """What the queue holds: the account's e-mails and commercial e-mail (plan UX, B8: the weekly summary, with consent)."""
 EmailStatus = Literal["ok", "bounced", "complained"]
 MessageStatus = Literal["queued", "sent", "failed", "bounced", "complained", "suppressed"]
