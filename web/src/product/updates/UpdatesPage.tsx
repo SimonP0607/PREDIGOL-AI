@@ -12,7 +12,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { t } from "@/lib/i18n";
+import type { PublicUpdate } from "@/lib/api/v1/types_announcements";
+import { t, useI18n } from "@/lib/i18n";
 import { formatDateYear } from "@/lib/time";
 import { useReportProblem } from "@/product/support/report";
 import { LATEST_UPDATE, UPDATES, updateDay, type UpdateEntry } from "./updates";
@@ -74,12 +75,39 @@ function Entry({ entry }: { entry: UpdateEntry }) {
   );
 }
 
+/** An entry the owner wrote in the console (closing plan 4.3): his words in the reader's language, dated by its start. */
+function OwnerEntry({ entry }: { entry: PublicUpdate }) {
+  const { locale } = useI18n();
+  const titleId = `update-owner-${entry.id}`;
+  return (
+    <article
+      aria-labelledby={titleId}
+      data-testid="update"
+      data-update={`owner-${entry.id}`}
+      className="rounded-xl border border-border bg-card p-4"
+    >
+      <p className="text-caption text-muted-foreground">
+        <time dateTime={entry.starts_at.slice(0, 10)}>{formatDateYear(entry.starts_at)}</time>
+      </p>
+      <h2 id={titleId} className="mt-0.5 font-display text-base font-semibold leading-snug">
+        {locale === "en" ? entry.title_en : entry.title_es}
+      </h2>
+      <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-foreground/90">
+        {locale === "en" ? entry.body_en : entry.body_es}
+      </p>
+    </article>
+  );
+}
+
 /** The page from its entries (a test renders it without a session). ``onSuggest``: messages to PrediGol are on. */
 export function UpdatesView({
   entries,
+  owner = [],
   onSuggest,
 }: {
   entries: readonly UpdateEntry[];
+  /** What the owner published as updates, newest first: they lead the list. */
+  owner?: readonly PublicUpdate[];
   onSuggest?: (() => void) | undefined;
 }) {
   return (
@@ -90,6 +118,11 @@ export function UpdatesView({
         actions={<Megaphone aria-hidden className="h-5 w-5 text-gold" />}
       />
       <ol className="space-y-3" data-testid="updates-list">
+        {owner.map((entry) => (
+          <li key={`owner-${entry.id}`}>
+            <OwnerEntry entry={entry} />
+          </li>
+        ))}
         {entries.map((entry) => (
           <li key={entry.id}>
             <Entry entry={entry} />
@@ -140,6 +173,7 @@ export function UpdatesPage() {
   const report = useReportProblem();
   const signedIn = auth.status === "signed-in";
   const seen = useQuery({ ...live.updatesSeen, enabled: signedIn });
+  const notices = useQuery(live.announcements);
   const last = seen.data?.last_seen;
   // the newest entry seen: the dot on «Más» goes (a failure keeps it, and the next visit tries again)
   useEffect(() => {
@@ -151,6 +185,7 @@ export function UpdatesPage() {
   return (
     <UpdatesView
       entries={UPDATES}
+      owner={notices.data?.updates ?? []}
       onSuggest={report.available ? () => report.open({ category: "suggestion" }) : undefined}
     />
   );

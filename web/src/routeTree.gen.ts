@@ -31,6 +31,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAiAnalystRouteImport } from './routes/admin.ai-analyst'
 import { Route as AdminAiLayerRouteImport } from './routes/admin.ai-layer'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as AdminAnnouncementsRouteImport } from './routes/admin.announcements'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminBacktestingRouteImport } from './routes/admin.backtesting'
 import { Route as AdminCompetitionsRouteImport } from './routes/admin.competitions'
@@ -178,6 +179,11 @@ const AdminAiLayerRoute = AdminAiLayerRouteImport.update({
 const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAnnouncementsRoute = AdminAnnouncementsRouteImport.update({
+  id: '/announcements',
+  path: '/announcements',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminAuditRoute = AdminAuditRouteImport.update({
@@ -393,6 +399,7 @@ export interface FileRoutesByFullPath {
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/backtesting': typeof AdminBacktestingRoute
   '/admin/competitions': typeof AdminCompetitionsRoute
@@ -454,6 +461,7 @@ export interface FileRoutesByTo {
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/backtesting': typeof AdminBacktestingRoute
   '/admin/competitions': typeof AdminCompetitionsRoute
@@ -517,6 +525,7 @@ export interface FileRoutesById {
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/backtesting': typeof AdminBacktestingRoute
   '/admin/competitions': typeof AdminCompetitionsRoute
@@ -581,6 +590,7 @@ export interface FileRouteTypes {
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
     | '/admin/analytics'
+    | '/admin/announcements'
     | '/admin/audit'
     | '/admin/backtesting'
     | '/admin/competitions'
@@ -642,6 +652,7 @@ export interface FileRouteTypes {
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
     | '/admin/analytics'
+    | '/admin/announcements'
     | '/admin/audit'
     | '/admin/backtesting'
     | '/admin/competitions'
@@ -704,6 +715,7 @@ export interface FileRouteTypes {
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
     | '/admin/analytics'
+    | '/admin/announcements'
     | '/admin/audit'
     | '/admin/backtesting'
     | '/admin/competitions'
@@ -927,6 +939,13 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/admin/analytics'
       preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/announcements': {
+      id: '/admin/announcements'
+      path: '/announcements'
+      fullPath: '/admin/announcements'
+      preLoaderRoute: typeof AdminAnnouncementsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/audit': {
@@ -1202,6 +1221,7 @@ interface AdminRouteChildren {
   AdminAiAnalystRoute: typeof AdminAiAnalystRoute
   AdminAiLayerRoute: typeof AdminAiLayerRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminAnnouncementsRoute: typeof AdminAnnouncementsRoute
   AdminAuditRoute: typeof AdminAuditRoute
   AdminBacktestingRoute: typeof AdminBacktestingRoute
   AdminCompetitionsRoute: typeof AdminCompetitionsRoute
@@ -1240,6 +1260,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAiAnalystRoute: AdminAiAnalystRoute,
   AdminAiLayerRoute: AdminAiLayerRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminAnnouncementsRoute: AdminAnnouncementsRoute,
   AdminAuditRoute: AdminAuditRoute,
   AdminBacktestingRoute: AdminBacktestingRoute,
   AdminCompetitionsRoute: AdminCompetitionsRoute,

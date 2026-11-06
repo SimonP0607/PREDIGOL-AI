@@ -33,7 +33,8 @@
     "settings": "Settings",
     "support": "Support",
     "customers": "Customers",
-    "storage": "Storage"
+    "storage": "Storage",
+    "announcements": "Communiqués"
   },
   "pages": {
     "overview": {

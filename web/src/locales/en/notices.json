@@ -1,0 +1,91 @@
+{
+  "banner": {
+    "close": "Close notice"
+  },
+  "kind": {
+    "maintenance": "Maintenance",
+    "incident": "Incident",
+    "update": "Update",
+    "general": "General notice"
+  },
+  "updates": {
+    "fromOwner": "Notice from PrediGol"
+  },
+  "admin": {
+    "title": "Communiqués",
+    "description": "The owner's notices to readers: maintenance, incident, update or general notice. Always a draft, a preview and a phrase to publish.",
+    "new": "New communiqué",
+    "edit": "Edit draft",
+    "save": "Save draft",
+    "saved": "Draft saved.",
+    "cancel": "Cancel",
+    "fields": {
+      "kind": "Kind",
+      "titleEs": "Title (Spanish)",
+      "titleEn": "Title (English)",
+      "bodyEs": "Text (Spanish)",
+      "bodyEn": "Text (English)",
+      "starts": "From",
+      "ends": "Until",
+      "destinations": "Where it is published",
+      "critical": "Critical (maintenance or incident)"
+    },
+    "dest": {
+      "banner": "Banner in the app, with dates",
+      "updates": "What's new (updates only)",
+      "telegram": "Telegram channel",
+      "telegramOff": "Telegram channel (not configured: it will not go out)",
+      "email": "E-mail (only if critical)"
+    },
+    "counter": "{n} of {max}",
+    "problem": {
+      "texts": "Each title and text, in Spanish and English, within its length.",
+      "dates": "It ends after it starts and lasts 90 days at most.",
+      "destination": "Choose at least one destination.",
+      "updates": "Only an update goes to What's new.",
+      "critical": "Only maintenance or an incident can be critical.",
+      "email": "E-mail goes only if critical, with texts of 200 characters at most."
+    },
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "retracted": "Retracted"
+    },
+    "today": "Published today: {n} of {max}.",
+    "telegramState": "Telegram: {state}",
+    "telegramOn": "configured",
+    "telegramNo": "not configured (everything else works)",
+    "preview": "Preview and publish",
+    "previewTitle": "This is what will go out",
+    "previewBanner": "Banner from {from} to {until}",
+    "previewUpdates": "What's new: {title}",
+    "previewTelegram": "Telegram: {title}",
+    "previewTelegramOff": "Telegram not configured: it will not go out.",
+    "previewEmail": "Critical e-mail to {n} readers.",
+    "confirmLabel": "Type PUBLICAR to confirm",
+    "publish": "Publish",
+    "published": "Published. E-mails queued: {emails}. Telegram: {telegram}.",
+    "expires": "The code is valid until {time}.",
+    "telegram": {
+      "sent": "sent",
+      "failed": "failed (the rest did go out)",
+      "not_configured": "not configured",
+      "not_requested": "not requested"
+    },
+    "retract": "Retract",
+    "retracted": "Communiqué retracted. The record stays.",
+    "log": "Record",
+    "hideLog": "Hide record",
+    "empty": "No communiqués yet.",
+    "action": {
+      "created": "Created",
+      "edited": "Edited",
+      "previewed": "Previewed",
+      "published": "Published",
+      "retracted": "Retracted",
+      "telegram": "Telegram",
+      "emails": "E-mails"
+    },
+    "never": "A communiqué is never deleted: it is retracted and stays in the record."
+  }
+}
