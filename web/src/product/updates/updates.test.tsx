@@ -56,6 +56,8 @@ describe("the entries", () => {
       /^\/picks$/,
       /^\/profile(#football)?$/,
       /^\/help$/,
+      /^\/home$/,
+      /^\/help\/how-it-works$/,
     ];
     for (const locale of ["es", "en"] as const) {
       setLocale(locale);
