@@ -33,6 +33,12 @@ def row(**kw: object) -> dict[str, object]:
     ({"email_status": "complained", "category": "membership"}, "address complained"),
     ({"email_off": ["membership"], "category": "membership"}, "switched off by the reader"),
     ({"email_off": ["membership"], "category": "support"}, None),
+    ({"email_off": ["service"], "category": "service"}, "switched off by the reader"),
+    ({"email_off": ["service"], "category": "service", "template": "important_change"}, None),  # critical: reaches all
+    ({"email_off": ["service"], "category": "service", "template": "maintenance_scheduled"},
+     "switched off by the reader"),
+    ({"email_status": "complained", "category": "service", "template": "important_change"}, "address complained"),
+    ({"email_status": "bounced", "category": "service", "template": "important_change"}, "address bounced"),
     ({"email_off": ["privacy"], "category": "privacy"}, None),  # mandatory: a stray value switches nothing off
 ])
 def test_what_stops_a_message(kw: dict[str, object], reason: str | None) -> None:

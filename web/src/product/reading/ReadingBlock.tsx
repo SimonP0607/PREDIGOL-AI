@@ -11,13 +11,19 @@
  * before it was stored - the block shows it instead, in the page's language: «Redactado con IA y validado contra los datos de
  * PrediGol», «Escrito con datos de las 12:30». The conclusion comes first and the other sections fold (open on a wide screen,
  * the summary open on a phone). Without one, the facts: never a text the server did not validate.
+ *
+ * THE DERIVED SECTIONS (UX-011). Besides the six, the API sends key_points, value and factors, written from the same facts
+ * with no AI. This block is the six and only the six (the derived ones repeat what the six say); the Resumen's highlights
+ * are where the key points and «Por qué hay valor» are read.
  */
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { BookOpenText, ChevronDown, ChevronRight, Sparkles, TriangleAlert } from "lucide-react";
 import { getLocale, t } from "@/lib/i18n";
 import { formatDateTime, formatTime, relativeDay } from "@/lib/time";
 import type {
+  MatchReading,
   NarrativeSection,
+  NarrativeSectionKey,
   ReadingFact,
   ReadingNarrative,
   ReadingSection,
@@ -29,6 +35,25 @@ import { HelpfulVote } from "@/product/feedback/HelpfulVote";
 import type { MatchCtx } from "@/product/match/context";
 import { factText } from "./text";
 import { useReading, type ReadingLoad } from "./useReading";
+
+/** The six sections of the reading, which the narrative also has: the ones the full analysis shows. */
+const BASE_KEYS: readonly NarrativeSectionKey[] = [
+  "summary",
+  "context",
+  "data",
+  "market",
+  "risks",
+  "conclusion",
+];
+
+function isBase(section: ReadingSection): boolean {
+  return (BASE_KEYS as readonly string[]).includes(section.key);
+}
+
+/** The facts of one section of a reading, or none. */
+function factsOf(reading: MatchReading, key: ReadingSection["key"]): ReadingFact[] {
+  return reading.sections.find((s) => s.key === key)?.facts ?? [];
+}
 
 /** The data's time: «Con datos de las 12:30», or of a day when it is not today's. */
 function dataAt(iso: string): string {
@@ -376,7 +401,7 @@ export function ReadingView({
           {t("match.readingBlock.incomplete")}
         </p>
       ) : null}
-      {reading.sections.map((s) => (
+      {reading.sections.filter(isBase).map((s) => (
         <SectionView key={s.key} section={s} />
       ))}
       {footer}
@@ -418,10 +443,36 @@ export function ReadingBlock({ ctx }: { ctx: MatchCtx }) {
   );
 }
 
+/** Whether a fact is already among others (the same code from the same place). */
+function isIn(fact: ReadingFact, others: ReadingFact[]): boolean {
+  return others.some((o) => o.code === fact.code && o.ref === fact.ref);
+}
+
+function HighlightBlock({
+  title,
+  testId,
+  children,
+}: {
+  title: string;
+  testId: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="mt-3 first:mt-0" data-testid={testId}>
+      <h3 className="text-caption font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {title}
+      </h3>
+      <div className="mt-1 space-y-1">{children}</div>
+    </div>
+  );
+}
+
 /**
- * The top of the Resumen (plan section 25): the reading's summary - what the match is and what is expected - and its two
- * main risks, with the way to the whole analysis. Nothing while the owner has turned the reading off; its own states
- * otherwise (a skeleton, an error with a retry).
+ * The top of the Resumen (plan section 25; UX-011): what the match is, the key points, why there is value when PrediGol
+ * published a pick and the two main risks, with the way to the whole analysis. Each only when it has something to say; a
+ * sentence is said once (the summary leaves out what the key points carry, the key points leave out the pick that «Por qué
+ * hay valor» explains right under them). Nothing while the owner has turned the reading off; its own states otherwise (a
+ * skeleton, an error with a retry).
  */
 export function ReadingHighlightsView({
   load,
@@ -457,21 +508,38 @@ export function ReadingHighlightsView({
   }
   const reading = load.envelope.data;
   if (load.envelope.status !== "ok" || !reading) return null;
-  const summary = reading.sections.find((s) => s.key === "summary")?.facts ?? [];
-  const risks = sentences(reading.sections.find((s) => s.key === "risks")?.facts ?? []).slice(0, 2);
-  if (sentences(summary).length === 0 && risks.length === 0) return null;
+  const keyPoints = factsOf(reading, "key_points");
+  const value = sentences(factsOf(reading, "value"));
+  const summary = factsOf(reading, "summary").filter((f) => !isIn(f, keyPoints));
+  const points = sentences(
+    keyPoints.filter((f) => !(value.length > 0 && f.code === "value_pick")),
+  ).map((line) => line.fact);
+  const risks = sentences(factsOf(reading, "risks")).slice(0, 2);
+  const lead = sentences(summary);
+  if (lead.length === 0 && points.length === 0 && value.length === 0 && risks.length === 0)
+    return null;
   return (
     <section
       className="min-w-0 rounded-xl border border-border bg-card px-4 py-3.5"
       data-testid="reading-highlights"
     >
-      <FactList facts={summary} testId="reading-highlights-summary" />
+      {lead.length ? (
+        <FactList facts={lead.map((l) => l.fact)} testId="reading-highlights-summary" />
+      ) : null}
+      {points.length ? (
+        <HighlightBlock title={t("match.understand.keyPointsTitle")} testId="reading-key-points">
+          <FactList facts={points} />
+        </HighlightBlock>
+      ) : null}
+      {value.length ? (
+        <HighlightBlock title={t("match.understand.valueTitle")} testId="reading-value">
+          <FactList facts={value.map((v) => v.fact)} />
+          <Note>{t("match.understand.valueNote")}</Note>
+        </HighlightBlock>
+      ) : null}
       {risks.length ? (
-        <div className="mt-3">
-          <h3 className="text-caption font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            {t("match.readingBlock.risksTitle")}
-          </h3>
-          <ul className="mt-1 space-y-1" data-testid="reading-highlights-risks">
+        <HighlightBlock title={t("match.readingBlock.risksTitle")} testId="reading-risks">
+          <ul className="space-y-1" data-testid="reading-highlights-risks">
             {risks.map(({ fact, text }, i) => (
               <li
                 key={`${fact.code}-${i}`}
@@ -482,7 +550,7 @@ export function ReadingHighlightsView({
               </li>
             ))}
           </ul>
-        </div>
+        </HighlightBlock>
       ) : null}
       <button
         type="button"

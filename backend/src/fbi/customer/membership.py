@@ -435,6 +435,17 @@ def _audit(conn: psycopg.Connection[Any], action: str, *, actor: int | None, use
     store.record_event(conn, f"membership.{action}", actor_user_id=actor, target_user_id=user_id, detail=dict(detail))
 
 
+def tell(conn: psycopg.Connection[Any], user_id: int, template: str, key: str, period: Period) -> None:
+    """The e-mail of a membership's beginning (closing plan 4.1: the welcome at the activation, the trial the owner
+    started, a payment recorded): until when the reader has access, written in the transaction that made the period, so the e-mail exists only if it happened. Once per ``key``. Nothing is sent from here: the
+    messenger sends the queue, and only while FBI_EMAIL_SEND is on."""
+    # The queue (A5), imported here: the messaging package imports this module for the owner's notices.
+    from fbi.messaging import outbox
+
+    outbox.enqueue(conn, user_id=user_id, template=template,
+                   params={"ends": period.ends_at.astimezone(UTC).isoformat(timespec="seconds")}, dedup_key=key)
+
+
 def plan_trial(conn: psycopg.Connection[Any], user_id: int, days: int, *, actor: int | None) -> None:
     """The trial the owner chose at the invitation (7 to 20 days), started when the account is activated."""
     if not TRIAL_DAYS_MIN <= days <= TRIAL_DAYS_MAX:
@@ -480,6 +491,7 @@ def start_trial_by_owner(actor: int, user_id: int, *, days: int) -> Period:
         if period is None:
             raise CustomerError(409, "trial_used", "this account had its trial already")
         _audit(conn, "trial_started", actor=actor, user_id=user_id, detail={"days": days})
+        tell(conn, user_id, "trial_started", f"trial_started:{period.id}", period)
     return period
 
 
@@ -570,6 +582,8 @@ def record_payment(actor: int, user_id: int, *, amount: str | int | float | Deci
         _event(conn, user_id, "payment_recorded", period_id=period.id, detail=detail, actor=actor)
         _audit(conn, "payment_recorded", actor=actor, user_id=user_id, detail=detail)
         events.record_server(conn, user_id, "membership_renewed")
+        if period.ends_at > moment:
+            tell(conn, user_id, "payment_recorded", f"payment_recorded:{payment[0]}", period)
     forget(user_id)
     log.info("membership.payment_recorded", user_id=user_id, months=months, renewal=renewal)
     return Recorded(int(payment[0]), period, created=True)

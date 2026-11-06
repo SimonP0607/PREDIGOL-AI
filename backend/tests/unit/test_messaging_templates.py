@@ -27,11 +27,11 @@ from fbi.messaging.templates import (
     render,
 )
 
-MIGRATION = Path(__file__).resolve().parents[2] / "migrations" / "versions" / "0096_customer_messaging.py"
+MIGRATION = Path(__file__).resolve().parents[2] / "migrations" / "versions" / "0123_service_email_category.py"
 
 
 def migration() -> ModuleType:
-    spec = importlib.util.spec_from_file_location("migration_0096", MIGRATION)
+    spec = importlib.util.spec_from_file_location("migration_0123", MIGRATION)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -53,10 +53,12 @@ def test_every_template_says_the_same_in_both_languages() -> None:
 
 def test_the_categories_are_the_databases() -> None:
     m = migration()
-    assert set(CATEGORIES) == set(m.CATEGORIES)
+    assert set(OUTBOX_CATEGORIES) == set(m.CATEGORIES)  # what the queue holds: the readers' and commercial mail
+    assert set(CATEGORIES) == set(m.CATEGORIES) - {"marketing"}
     assert set(OPTIONAL) == set(m.OPTIONAL)
     assert MANDATORY | set(OPTIONAL) == set(CATEGORIES) and not MANDATORY & set(OPTIONAL)
     assert {"account", "security", "privacy", "legal"} == MANDATORY
+    assert {"membership", "support", "service"} == set(OPTIONAL)
 
 
 @pytest.mark.parametrize("name", sorted(TEMPLATES))
