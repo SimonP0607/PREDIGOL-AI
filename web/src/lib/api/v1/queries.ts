@@ -264,6 +264,15 @@ export const live = {
     queryFn: () => v1.transparency({ preview }),
     refetchInterval: 10 * MINUTE,
   }),
+  /** The published picks one by one, a page at a time (plan de cierre UX, 1.5): the next page from `meta.next_cursor`. */
+  transparencyPickPages: (size: number, preview: Preview) =>
+    infiniteQueryOptions({
+      queryKey: ["v1", "transparency", "picks", size, preview ?? "user"],
+      queryFn: ({ pageParam }) => v1.transparencyPicks({ limit: size, cursor: pageParam, preview }),
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last) => last.meta.next_cursor ?? undefined,
+      refetchInterval: 10 * MINUTE,
+    }),
   /** A match's news change when PrediGol Intelligence reads the press again (hours apart; the last hours before kick-off). */
   matchNews: (id: string) => ({
     queryKey: ["v1", "match-news", id],
