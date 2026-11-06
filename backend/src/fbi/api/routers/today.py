@@ -4,6 +4,9 @@
   of the reading, the leagues suggested until the reader picks theirs, and whether the day has published picks - or why not,
   from the published set's own funnel. The same board for every reader (kept a minute; the reason, five), with the reader's
   own leagues and teams on top (A13): why each of their matches is theirs and the next match of each favourite.
+* ``GET /me/today`` (product) - «Para ti», the reader's layer of Home (closing plan 3.2): the players they follow with the state
+  of his next match, which of the day's published picks are of their matches or markets, and their notices - only once they
+  chose a favourite. What the leagues and teams they follow add to Home is on ``/today`` and ``/today/news``.
 * ``GET /today/no-pick`` (product) - only the day's picks state and its reason, for the Picks page: the same answer as
   ``/today``'s ``no_pick``, without the list of matches.
 
@@ -17,13 +20,16 @@ from typing import Annotated, Any
 import psycopg
 from fastapi import APIRouter, Depends
 
+from fbi.api.contracts.me_today import MeToday, Notices
 from fbi.api.contracts.today import NoPick, Today
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.security import App
-from fbi.api.services import today
+from fbi.api.services import me_today, today
 from fbi.api.services.follows import Follows
-from fbi.customer import favorites
+from fbi.auth.roles import Role
+from fbi.core.clock import now
+from fbi.customer import favorites, push
 
 router = APIRouter(tags=["today"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
@@ -55,3 +61,29 @@ def get_no_pick(conn: Db, _: App) -> Envelope[NoPick]:
     ``/today`` says it, for a page that does not need the matches (Picks)."""
     reason = today.no_pick(conn)
     return ok(reason.data)
+
+
+@router.get("/me/today", response_model=MeToday)
+def get_me_today(conn: Db, principal: App) -> MeToday:
+    """PARA TI: the reader's own layer of Home. ``chosen`` is true only when they chose a league, a team, a player or a market
+    (the suggested leagues never make it so) and personalisation is on - and it is for readers: the owner's console account
+    has none. Then: the players they follow with the state of the next match of his team (starter, bench, left out, missing,
+    doubtful, or waiting for the line-up), which of the day's published picks are of their matches or markets - or that none
+    is - and their notices (the bells they rang and whether their devices can receive the line-ups). Every reader gets the same
+    picks: only which are theirs differs."""
+    on = favorites.personalization_on()
+    mine = favorites.chosen(conn, principal.user_id) if on and principal.role == Role.USER else None
+    more = favorites.extras(conn, principal.user_id) if on and principal.role == Role.USER else favorites.Extras()
+    if mine is None and not more.players and not more.markets:
+        return MeToday(personalization=on, chosen=False, players=[], markets=[], picks=None, notices=None)
+    at = now()
+    follows = Follows(leagues=mine.leagues if mine else (), teams=mine.teams if mine else (), suggested=False)
+    picks = me_today.related(conn, follows, more.markets, at=at) if mine or more.markets else None
+    state = push.state(conn, principal.user_id)
+    rung = [(b.fixture_id, int(b.minutes_before or 0)) for b in push.bells(conn, principal.user_id, at)]
+    return MeToday(
+        personalization=on, chosen=True, players=me_today.watched(conn, more.players, at=at),
+        markets=list(more.markets),  # type: ignore[arg-type]
+        picks=picks,
+        notices=Notices(available=state.available, devices=len(state.devices), lineup=state.categories["lineup"],
+                        bells=me_today.bells(conn, rung)))

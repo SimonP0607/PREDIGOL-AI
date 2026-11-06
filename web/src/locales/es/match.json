@@ -382,6 +382,10 @@
     "title": "Antes del partido",
     "subtitle": "Forma, tabla y enfrentamientos directos"
   },
+  "deepen": {
+    "title": "Profundizar",
+    "subtitle": "Forma, tabla, cara a cara, calendario, bajas y alineaciones"
+  },
   "notPlayed": {
     "postponed": "Partido aplazado",
     "cancelled": "Partido cancelado",

@@ -12,7 +12,8 @@
  * * a first-visit hint on Picks, a match, the parlays and Mis picks: dismissed with a tap, never again, after a reload too;
  * * the optional tour from the help: four steps, each on its page;
  * * the star in a match's header follows the team; Inicio then says why its match is there;
- * * the markets a reader reads (closing plan 3.1): chosen in the profile, kept by a save that leaves them out.
+ * * the markets a reader reads (closing plan 3.1): chosen in the profile, kept by a save that leaves them out; a market alone
+ *   makes Inicio's «Para ti» (closing plan 3.2), and clearing it takes the layer away.
  */
 import AxeBuilder from "@axe-core/playwright";
 import { execFileSync } from "node:child_process";
@@ -289,8 +290,14 @@ test("an account from before: one screen of favourites; skipping keeps the sugge
     const block = page.getByTestId("home-today");
     await expect(block).toHaveAttribute("data-view", "suggested");
     await expect(block.getByRole("heading", { name: t.home.today.title })).toBeVisible();
-    await expect(block.getByTestId("today-choose")).toHaveText(t.home.today.choose);
-    await block.getByTestId("today-choose").click();
+    // two layers (closing plan 3.2): with no favourites there is no «Para ti» - the suggested leagues are PrediGol's - and one
+    // discreet card to choose them
+    await expect(page.getByTestId("layer-for-you")).toHaveCount(0);
+    await expect(page.getByTestId("layer-predigol").getByTestId("home-today")).toBeVisible();
+    const prompt = page.getByTestId("choose-prompt");
+    await expect(prompt).toContainText(t.home.choose.title);
+    await expect(block.getByTestId("today-choose")).toHaveCount(0);
+    await prompt.getByTestId("choose-prompt-link").click();
     await expect(page).toHaveURL(/\/profile#football$/);
     await expect(page.getByTestId("football-current")).toHaveAttribute("data-suggested", "true");
     await settle(page);
@@ -515,6 +522,18 @@ test("the markets a reader reads are chosen in their profile, kept by a save tha
     expect((await put({ leagues: [], teams: [] })).status()).toBe(200);
     const kept = await getJson<{ markets: string[] }>(page.request, "/api/v1/me/favorites");
     expect(kept.body.markets).toEqual(["BTTS"]);
+    // Inicio in two layers (closing plan 3.2): a market alone makes «Para ti», with the day's picks that are theirs - or the
+    // sentence that none is -; the suggested leagues stay PrediGol's and nothing asks them to choose
+    await page.goto("/home");
+    const forYou = page.getByTestId("layer-for-you");
+    await expect(forYou).toBeVisible();
+    await expect(forYou.getByTestId("home-related")).toBeVisible();
+    await expect(forYou.getByTestId("home-today")).toHaveCount(0);
+    await expect(page.getByTestId("layer-predigol").getByTestId("home-today")).toHaveAttribute(
+      "data-view",
+      "suggested",
+    );
+    await expect(page.getByTestId("choose-prompt")).toHaveCount(0);
     // a market PrediGol does not read, and an amount: never
     expect((await put({ leagues: [], teams: [], markets: ["CS"] })).status()).toBe(422);
     expect((await put({ leagues: [], teams: [], stake: 10 })).status()).toBe(422);
@@ -522,6 +541,11 @@ test("the markets a reader reads are chosen in their profile, kept by a save tha
     expect((await put({ leagues: [], teams: [], markets: [] })).status()).toBe(200);
     const cleared = await getJson<{ markets: string[] }>(page.request, "/api/v1/me/favorites");
     expect(cleared.body.markets).toEqual([]);
+    // nothing chosen again: no «Para ti», and the discreet card to choose
+    await page.goto("/home");
+    await expect(page.getByTestId("layer-predigol")).toBeVisible();
+    await expect(page.getByTestId("layer-for-you")).toHaveCount(0);
+    await expect(page.getByTestId("choose-prompt")).toBeVisible();
     await settle(page);
     await assertClean(page, w);
   } finally {
