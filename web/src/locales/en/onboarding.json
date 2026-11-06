@@ -25,9 +25,9 @@
     "failed": "We could not save. Try again or skip this step."
   },
   "picker": {
-    "searchLabel": "Find a league or a team",
-    "searchPlaceholder": "Type at least two letters",
-    "searching": "Looking for teams…",
+    "searchLabel": "Find a league, a team or a player",
+    "searchPlaceholder": "At least two letters (three for a player)",
+    "searching": "Searching…",
     "found_one": "{count} team found",
     "found_other": "{count} teams found",
     "leagues": "Leagues",
@@ -48,8 +48,16 @@
     "groupChosen_other": "{count} chosen",
     "foundLeagues_one": "{count} league",
     "foundLeagues_other": "{count} leagues",
-    "noneFound": "No league or team we follow has that name.",
-    "teamsHint": "To follow a team, find it by its name."
+    "noneFound": "No league, team or player we follow has that name.",
+    "teamsHint": "To follow a team or a player, find it by its name.",
+    "players": "Players",
+    "markets": "Markets you read",
+    "marketsHelp": "They are kept in your favourites. They only order what you see: they never change a pick, a probability or a price.",
+    "countPlayers": "{count} of {max} players",
+    "countMarkets": "{count} of {max} markets",
+    "fullPlayers": "You reached {max} players: remove one to pick another.",
+    "foundPlayers_one": "{count} player",
+    "foundPlayers_other": "{count} players"
   },
   "panel": {
     "title": "Your football",
@@ -105,6 +113,18 @@
     "added": "You now follow {team}: their matches come first on Home.",
     "removed": "You no longer follow {team}.",
     "full": "You already follow {max} teams: remove one in your profile to follow {team}.",
-    "failed": "We could not save the change. Try again."
+    "failed": "We could not save the change. Try again.",
+    "playerAdd": "Follow {name}",
+    "playerRemove": "Unfollow {name}",
+    "playerAdded": "You now follow {name}.",
+    "playerRemoved": "You no longer follow {name}.",
+    "playerFull": "You already follow {max} players: remove one in your profile to follow {name}.",
+    "marketAdd": "Follow {market}",
+    "marketRemove": "Unfollow {market}",
+    "marketAdded": "You now follow {market}.",
+    "marketRemoved": "You no longer follow {market}.",
+    "marketFull": "You already follow {max} markets: remove one in your profile to follow {market}.",
+    "follow": "Follow",
+    "following": "Following"
   }
 }
