@@ -9,8 +9,11 @@ import type {
   DecisionStop,
   NoPickDayReason,
   NoPickDays,
+  PublishedPickResult,
+  TransparencyDefinition,
   TransparencyTally,
 } from "@/lib/api/v1/types_transparency";
+import { UPDATES, type UpdateEntry } from "@/product/updates/updates";
 
 /** The decision layer's filters in their order (a tie of commonest stops goes to the earlier one, as on the server). */
 export const STOP_ORDER: readonly DecisionStop[] = [
@@ -71,14 +74,15 @@ export function sampleNote(
   tally: TransparencyTally,
   minSample: number,
   conclusive: number,
+  scope: "published" | "parlays" = "published",
 ): string | null {
-  if (tally.published === 0) return t("transparency.published.none");
+  if (tally.published === 0) return t(`transparency.${scope}.none`);
   if (tally.units === null) {
-    return tally.settled > 0 ? t("transparency.published.small", { count: tally.settled }) : null;
+    return tally.settled > 0 ? t(`transparency.${scope}.small`, { count: tally.settled }) : null;
   }
   return tally.conclusive
     ? null
-    : t("transparency.published.inconclusive", { count: conclusive || minSample });
+    : t(`transparency.${scope}.inconclusive`, { count: conclusive || minSample });
 }
 
 /** The commonest stop of the days without picks (a tie goes to the earlier filter). */
@@ -120,4 +124,51 @@ export function percentOf(share: string | number | null | undefined): string {
 
 export function intText(n: number | null | undefined): string {
   return n === null || n === undefined ? DASH : localInt(n);
+}
+
+/** How a published pick ended, as the tone its badge takes: the ones that paid, the ones that did not, the rest. */
+export function resultTone(result: PublishedPickResult): "positive" | "negative" | "neutral" {
+  if (result === "WIN" || result === "HALF_WIN") return "positive";
+  if (result === "LOSS" || result === "HALF_LOSS") return "negative";
+  return "neutral";
+}
+
+/** The score of a finished match, «2–1»; null before it has one. */
+export function scoreText(home: number | null, away: number | null): string | null {
+  return home === null || away === null ? null : `${home}–${away}`;
+}
+
+/** A line of the history of changes: a Novedad of the readers' page, or the day a definition of this page came into force. */
+export type Change =
+  | { kind: "novelty"; day: string; id: string; key: string }
+  | { kind: "definition"; day: string; id: string; key: string; version: string };
+
+/**
+ * The history of changes of this page (plan de cierre UX, 1.5): Novedades and the dated definitions together, the newest
+ * first; on the same day a Novedad comes before a definition. Nothing is invented: each line is an entry of Novedades or a
+ * definition the server states, with the day it came in.
+ */
+export function changesOf(
+  definitions: readonly TransparencyDefinition[],
+  updates: readonly UpdateEntry[] = UPDATES,
+): Change[] {
+  const out: Change[] = [
+    ...updates.map((u): Change => ({
+      kind: "novelty",
+      day: u.id.slice(0, 10),
+      id: u.id,
+      key: u.key,
+    })),
+    ...definitions.map((d): Change => ({
+      kind: "definition",
+      day: d.since,
+      id: `definition-${d.key}`,
+      key: d.key,
+      version: d.version,
+    })),
+  ];
+  const rank = (c: Change) => (c.kind === "novelty" ? 0 : 1);
+  return out.sort(
+    (a, b) => b.day.localeCompare(a.day) || rank(a) - rank(b) || a.id.localeCompare(b.id),
+  );
 }

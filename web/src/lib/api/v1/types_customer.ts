@@ -5,10 +5,12 @@
 
 export type LegalDocumentName = "terms" | "privacy" | "responsible_gaming";
 /**
- * The four the gate asks for and the optional one of the weekly summary by e-mail (plan UX, B8): offered only while it
- * can reach the reader, never ticked beforehand and never asked for by the gate.
+ * The four the gate asks for and two optional ones, never ticked beforehand and never asked for by the gate: the weekly
+ * summary by e-mail (plan UX, B8), offered only while it can reach the reader, and the usage statistics under a pseudonym
+ * (plan de cierre UX, 1.2), always offered.
  */
-export type ConsentKind = "terms" | "privacy" | "age_18" | "risk_notice" | "marketing_email";
+export type ConsentKind =
+  "terms" | "privacy" | "age_18" | "risk_notice" | "marketing_email" | "analytics";
 export type PrivacyRequestKind = "privacy_query" | "privacy_claim" | "privacy_deletion";
 export type TicketStatus = "open" | "answered" | "closed";
 

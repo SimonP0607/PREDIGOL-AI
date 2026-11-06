@@ -106,5 +106,8 @@ def forget_memberships(conn: psycopg.Connection) -> None:
             conn.execute("DELETE FROM customer.lifecycle_snapshots")  # the states of their days (B11, from the 0106)
         for table in ("customer.membership_events", "customer.membership_periods", "customer.payments"):
             conn.execute(f"DELETE FROM {table}")
+        if conn.execute("SELECT to_regclass('customer.coupons')").fetchone() != (None,):
+            for table in ("customer.coupon_redemptions", "customer.coupons"):  # UX-005, from the 0121
+                conn.execute(f"DELETE FROM {table}")
 
 

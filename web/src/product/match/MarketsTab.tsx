@@ -44,11 +44,19 @@ import { priceChooser, type Choose } from "./choose";
 import { LiveOdds, LiveTile, PriceInline, PriceTile } from "./prices";
 import { bookRows, captureLabel, openingNote } from "./books";
 import { Block, CenterSection, FreshnessLabel, MoreButton, SectionNote } from "./ui";
+import { FollowMarket } from "@/product/favorites/FollowExtras";
+import { followableMarket } from "@/product/favorites/model";
 import { orderBoards, orderSentence } from "./marketOrder";
 
 type Sides = { home: string; away: string };
 
 const LINE_MARKETS = new Set(["OU", "AH"]);
+
+/** «Seguir» beside a market PrediGol offers to follow (closing plan 3.1); nothing for another. */
+function FollowBoard({ market }: { market: string }) {
+  const key = followableMarket(market);
+  return key ? <FollowMarket market={key} /> : null;
+}
 
 function Books({ count }: { count: number }) {
   return (
@@ -183,7 +191,16 @@ function BookCard({
   const row = board.rows[0];
   const selections = all?.selections.filter((x) => x.market_key === board.market) ?? [];
   return (
-    <Block level={3} title={marketName(board.market)} right={<Books count={board.books} />}>
+    <Block
+      level={3}
+      title={marketName(board.market)}
+      right={
+        <span className="flex items-center gap-2">
+          <FollowBoard market={board.market} />
+          <Books count={board.books} />
+        </span>
+      }
+    >
       {LINE_MARKETS.has(board.market) ? (
         <LinesTable<BestPrice>
           market={board.market}

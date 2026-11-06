@@ -807,7 +807,12 @@
       "other": "Other"
     },
     "inviteTrial": "Trial days",
-    "inviteTrialDefault": "The default (FBI_TRIAL_DAYS)"
+    "inviteTrialDefault": "The default (FBI_TRIAL_DAYS)",
+    "discountOffer": "This reader's discount: {percent}% from {source}. With it the monthly price comes to {prices}.",
+    "applyDiscount": "Record this payment with the {percent}% discount ({source})",
+    "suggested": "Suggested for this payment: {amount} {currency}",
+    "useSuggested": "Use this amount",
+    "discountCarried": "{percent}% off ({source})"
   },
   "customers": {
     "views": {
@@ -886,7 +891,8 @@
       "privacy": "Privacy policy",
       "age_18": "Age of majority",
       "risk_notice": "Risk notice",
-      "marketing_email": "Weekly summary by e-mail"
+      "marketing_email": "Weekly summary by e-mail",
+      "analytics": "Usage statistics"
     },
     "tickets": "Tickets",
     "noTickets": "No tickets.",
@@ -947,5 +953,32 @@
         "account_activated": "account activated"
       }
     }
+  },
+  "coupons": {
+    "title": "Coupons",
+    "description": "A coupon takes a percentage off a single payment of the reader who saves it; it does not add up to the loyalty discount: the larger one applies. You create them whenever you want and can turn them off: turning a coupon off also takes it from whoever saved it and has not used it.",
+    "code": "Code",
+    "percent": "Discount (%)",
+    "note": "Note (only for you)",
+    "validUntil": "Can be saved until",
+    "maxRedemptions": "Places (optional)",
+    "create": "Create coupon",
+    "created": "Coupon {code} created.",
+    "empty": "There are no coupons yet.",
+    "holders": "Held by",
+    "used": "Used in",
+    "noLimit": "No limit",
+    "noDate": "No date",
+    "state": {
+      "active": "Active",
+      "disabled": "Off",
+      "expired": "Expired",
+      "full": "Full"
+    },
+    "disable": "Turn off",
+    "confirmDisable": "Turn {code} off? It cannot be turned back on.",
+    "yes": "Yes, turn off",
+    "no": "No",
+    "percentValue": "{percent}%"
   }
 }

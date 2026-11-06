@@ -69,7 +69,10 @@ describe("the texts of the customers' pages", () => {
         ["ticketStatus", ["open", "answered", "closed"]],
         ["author", ["customer", "owner", "system"]],
         ["emailStatuses", ["ok", "bounced", "complained"]],
-        ["consentKinds", ["terms", "privacy", "age_18", "risk_notice", "marketing_email"]],
+        [
+          "consentKinds",
+          ["terms", "privacy", "age_18", "risk_notice", "marketing_email", "analytics"],
+        ],
       ] as const) {
         for (const k of keys) {
           expect(typeof get(tree, `admin.customers.${group}.${k}`), `${group}.${k}`).toBe("string");

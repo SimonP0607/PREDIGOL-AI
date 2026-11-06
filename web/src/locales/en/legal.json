@@ -32,6 +32,8 @@
     "submit": "Accept and continue",
     "submitting": "Saving…",
     "allRequired": "Tick every box to continue.",
+    "optional": "Optional",
+    "optionalHelp": "It is not needed to get in. Left unticked, nothing about how you use PrediGol is recorded. You change it whenever you like in your profile.",
     "textChanged": "The text changed while you were reading it: look at the new version and tick the boxes again.",
     "profile": "See my data and my requests",
     "signOut": "Sign out"
@@ -94,7 +96,13 @@
       "system": "PrediGol"
     },
     "optional": "Optional: you change it under Notifications.",
-    "optionalLink": "Go to Notifications"
+    "optionalLink": "Go to Notifications",
+    "analytics": {
+      "title": "Usage statistics",
+      "help": "Optional. Unticked, nothing about how you use PrediGol is recorded. You change it whenever you like, here.",
+      "since": "You accepted it on {date}.",
+      "left": "You withdrew it on {date}."
+    }
   },
   "admin": {
     "title": "Privacy requests",

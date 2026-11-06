@@ -11,7 +11,8 @@
  * * the picker on a 320 px phone: nothing sideways, every control in a finger's reach - and by keyboard alone;
  * * a first-visit hint on Picks, a match, the parlays and Mis picks: dismissed with a tap, never again, after a reload too;
  * * the optional tour from the help: four steps, each on its page;
- * * the star in a match's header follows the team; Inicio then says why its match is there.
+ * * the star in a match's header follows the team; Inicio then says why its match is there;
+ * * the markets a reader reads (closing plan 3.1): chosen in the profile, kept by a save that leaves them out.
  */
 import AxeBuilder from "@axe-core/playwright";
 import { execFileSync } from "node:child_process";
@@ -466,6 +467,61 @@ test("the star in a match's header follows the team, and Inicio says why its mat
     await page.goto(`/matches/${team.fixture}`);
     await star.click();
     await expect(star).toHaveAttribute("aria-pressed", "false");
+    await settle(page);
+    await assertClean(page, w);
+  } finally {
+    await remove(admin, id, email);
+    await admin.dispose();
+  }
+});
+
+test("the markets a reader reads are chosen in their profile, kept by a save that leaves them out, and refused when PrediGol does not read them", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  const admin = await owner();
+  const { id, email } = await account(admin, "markets");
+  const put = (data: unknown) =>
+    page.request.fetch("/api/v1/me/favorites", {
+      method: "PUT",
+      headers: { "x-requested-with": "predigol", "content-type": "application/json" },
+      data,
+    });
+  try {
+    const w = watch(page, { expect401: true, expectStatus: [403, 422] });
+    await signIn(page, email);
+    await skipWelcome(page.request);
+    await consents(page);
+    await page.goto("/profile");
+    await page.getByTestId("profile-toggle-football").click();
+    await page.getByTestId("football-edit").click();
+    const market = page.getByTestId("fav-market").filter({ hasText: t.markets.name.BTTS });
+    await expect(market).toHaveAttribute("aria-pressed", "false");
+    await market.click();
+    await expect(market).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      page.getByTestId("fav-chosen").locator('[data-testid="fav-chip"][data-kind="market"]'),
+    ).toHaveCount(1);
+    await page.getByTestId("football-save").click();
+    await expect(page.getByTestId("football-saved")).toBeVisible();
+    const saved = await getJson<{ markets: string[]; max_markets: number; players: unknown[] }>(
+      page.request,
+      "/api/v1/me/favorites",
+    );
+    expect(saved.body.markets).toEqual(["BTTS"]);
+    expect(saved.body.max_markets).toBe(5);
+    expect(saved.body.players).toEqual([]);
+    // a page from before leaves the markets out of its save: they stay
+    expect((await put({ leagues: [], teams: [] })).status()).toBe(200);
+    const kept = await getJson<{ markets: string[] }>(page.request, "/api/v1/me/favorites");
+    expect(kept.body.markets).toEqual(["BTTS"]);
+    // a market PrediGol does not read, and an amount: never
+    expect((await put({ leagues: [], teams: [], markets: ["CS"] })).status()).toBe(422);
+    expect((await put({ leagues: [], teams: [], stake: 10 })).status()).toBe(422);
+    // an empty list clears them
+    expect((await put({ leagues: [], teams: [], markets: [] })).status()).toBe(200);
+    const cleared = await getJson<{ markets: string[] }>(page.request, "/api/v1/me/favorites");
+    expect(cleared.body.markets).toEqual([]);
     await settle(page);
     await assertClean(page, w);
   } finally {
