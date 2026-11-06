@@ -6,13 +6,17 @@
  */
 import type { Iso } from "./types";
 
-export type ReadingSectionKey = "summary" | "context" | "data" | "market" | "risks" | "conclusion";
+/** The six sections of the reading, which the narrative (A11) also has. */
+export type NarrativeSectionKey =
+  "summary" | "context" | "data" | "market" | "risks" | "conclusion";
+/** The six, then the three derived from them (UX-011): key points, why there is value, the factors that stand out. */
+export type ReadingSectionKey = NarrativeSectionKey | "key_points" | "value" | "factors";
 export type ReadingParam = string | number | boolean | string[] | null;
 
 export interface ReadingFact {
   code: string;
   params: Record<string, ReadingParam>;
-  /** packet:<block> (the match packet PrediGol Intelligence stored) or forecast:<market>. */
+  /** packet:<block> (the match packet PrediGol Intelligence stored), forecast:<market> or pick:<id> (a pick PrediGol published). */
   ref: string;
 }
 
@@ -28,7 +32,7 @@ export interface NarrativeSentence {
 }
 
 export interface NarrativeSection {
-  key: ReadingSectionKey;
+  key: NarrativeSectionKey;
   sentences: NarrativeSentence[];
 }
 
@@ -49,7 +53,10 @@ export interface MatchReading {
   complete: boolean;
   data_at: Iso | null;
   forecast_at: Iso | null;
-  /** In order; a section without facts is left out (risks never is). */
+  /**
+   * In order: the six (a section without facts is left out, risks never is), then - each only when it has facts - the
+   * derived ones: key_points, value, factors (UX-011). The narrative never reads those three.
+   */
   sections: ReadingSection[];
   /**
    * The narrative of THIS reading (A11), or null: none written for these facts, the owner keeps it off, or it failed its

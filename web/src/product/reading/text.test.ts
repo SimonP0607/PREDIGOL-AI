@@ -116,6 +116,34 @@ const SAMPLES: ReadingFact[] = [
     calibrated: true,
   }),
   f("no_forecast", { reason: "quarantined" }),
+  f(
+    "value_pick",
+    {
+      market: "1X2",
+      selection: "Home",
+      line: 0,
+      home: "Nacional",
+      away: "Millonarios",
+      p_model: 0.523,
+      p_market: 0.452,
+    },
+    "pick:7",
+  ),
+  f(
+    "value_price",
+    {
+      market: "1X2",
+      selection: "Home",
+      line: 0,
+      home: "Nacional",
+      away: "Millonarios",
+      odds: 2.31,
+      fair_market: 2.21,
+      fair_model: 1.91,
+      taken: false,
+    },
+    "pick:7",
+  ),
 ];
 
 function strings(node: unknown): string[] {
@@ -182,7 +210,54 @@ describe("what the sentences say", () => {
     );
   });
 
+  test("why there is value: the probability of each, the gap in whole points, the price against the fair price of each", () => {
+    expect(factText(SAMPLES[40]!)).toBe(
+      "Gana Nacional: PrediGol le da 52 % de probabilidad y el mercado, 45 % (diferencia de 7 puntos porcentuales).",
+    );
+    expect(factText(SAMPLES[41]!)).toBe(
+      "Gana Nacional: la mejor cuota ahora es 2,31. La cuota justa del mercado es 2,21 y la cuota según PrediGol, 1,91.",
+    );
+    setLocale("en");
+    expect(factText(SAMPLES[40]!)).toBe(
+      "Nacional to win: PrediGol gives it a 52% probability and the market, 45% (a gap of 7 percentage points).",
+    );
+  });
+
+  test("a pick already taken says the price it was taken at; a missing fair price leaves its clause out", () => {
+    const price = (extra: ReadingFact["params"]) =>
+      f(
+        "value_price",
+        { market: "OU", selection: "Over", line: 2.5, home: "A", away: "B", odds: 1.95, ...extra },
+        "pick:9",
+      );
+    expect(factText(price({ taken: true, fair_market: null, fair_model: null }))).toBe(
+      "Más de 2,5 goles: la cuota con la que se tomó fue 1,95.",
+    );
+    expect(factText(price({ taken: true, fair_market: null, fair_model: 1.8 }))).toBe(
+      "Más de 2,5 goles: la cuota con la que se tomó fue 1,95. La cuota según PrediGol es 1,80.",
+    );
+    expect(factText(price({ taken: false, fair_market: 2, fair_model: null }))).toBe(
+      "Más de 2,5 goles: la mejor cuota ahora es 1,95. La cuota justa del mercado es 2,00.",
+    );
+  });
+
+  test("the gap is the difference of the two percentages shown, and never a negative or a zero one", () => {
+    const pick = (p_model: number, p_market: number) =>
+      f(
+        "value_pick",
+        { market: "BTTS", selection: "Yes", line: 0, home: "A", away: "B", p_model, p_market },
+        "pick:9",
+      );
+    expect(factText(pick(0.285, 0.275))).toContain("(diferencia de 1 punto porcentual)");
+    expect(factText(pick(0.5, 0.5))).not.toContain("diferencia");
+    expect(factText(pick(0.48, 0.5))).not.toContain("diferencia");
+  });
+
   test("an unknown code or a missing parameter: no sentence at all", () => {
+    expect(
+      factText(f("value_pick", { market: "1X2", selection: "Home", p_model: 0.5 })),
+    ).toBeNull();
+    expect(factText(f("value_price", { market: "1X2", selection: "Home", odds: null }))).toBeNull();
     expect(factText(f("a_code_from_the_future", { x: 1 }))).toBeNull();
     expect(factText(f("expected_result", { outcome: "home", probability: 0.5 }))).toBeNull();
     expect(factText(f("stakes_pressure", { team: "Nacional", pressure: "unknown" }))).toBeNull();
@@ -193,6 +268,16 @@ describe("what the sentences say", () => {
 });
 
 describe("what the templates never say (plan section 26)", () => {
+  const CERTAINTY_ES =
+    /\b(seguro|segura|fijo|fija|garantizad[oa]s?|asegurad[oa]s?|ganancia|ganar[áa])\b/i;
+  const CERTAINTY_EN = /\b(sure|surely|guaranteed|lock|profit|will win)\b/i;
+  test("the words of «Por qué hay valor» promise nothing, in either language", () => {
+    for (const s of strings(esMatch.understand)) expect(s).not.toMatch(CERTAINTY_ES);
+    for (const s of strings(enMatch.understand)) expect(s).not.toMatch(CERTAINTY_EN);
+    expect(esMatch.understand.valueNote).toContain("no es una promesa");
+    expect(enMatch.understand.valueNote).toContain("not a promise");
+  });
+
   const VETOED_ES = /\b(seguro|segura|fijo|fija|garantizad[oa]s?|valor|apuesta)\b/i;
   const VETOED_EN = /\b(sure|guaranteed|value|lock|bet)\b/i;
   test("no certainty and no value in Spanish", () => {
