@@ -2,7 +2,7 @@
   "id": "/home",
   "name": "PrediGol",
   "short_name": "PrediGol",
-  "description": "Partidos, en vivo, picks con valor, parlays y las mejores cuotas.",
+  "description": "Plataforma de análisis deportivo y detección de valor: partidos, en vivo, picks con valor, parlays y las mejores cuotas. No es una casa de apuestas.",
   "lang": "es",
   "dir": "ltr",
   "start_url": "/home",

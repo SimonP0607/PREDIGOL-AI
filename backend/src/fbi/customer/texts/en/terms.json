@@ -1,25 +1,25 @@
 {
   "title": "Terms of service",
-  "summary": "PrediGol is a football information and analysis service for people aged 18 or over. It is not a bookmaker: it takes no bets, handles no money and guarantees no result.",
+  "summary": "PrediGol is a sports-analysis and value-detection platform for people aged 18 or over. It does not guarantee results or profits, it is not a bookmaker and it does not take money for bets.",
   "sections": [
     {
       "id": "que-es",
       "title": "1. What PrediGol is",
       "blocks": [
         {
-          "p": "PrediGol is an information service: it shows match data, probabilities computed by its models, odds published by bookmakers and analysis of all of it. The service is provided by {{controller.name}}, domiciled at {{controller.address}}."
+          "p": "PrediGol is a sports-analysis and value-detection platform: it shows match data, probabilities computed by its models, odds published by bookmakers and analysis of all of it, and it points out when PrediGol's probability is higher than the one the market pays. The service is provided by {{controller.name}}, domiciled at {{controller.address}}."
         },
         {
-          "p": "PrediGol is not a bookmaker or a gambling operator: it takes no bets, pays no winnings, handles no money of its users and acts as an intermediary for no operator. It has no links to place bets and promotes no operator."
+          "p": "PrediGol is not a bookmaker or a gambling operator: it takes no bets, takes no money for bets, pays no winnings and acts as an intermediary for no operator. It has no links to place bets and promotes no operator. The only money PrediGol receives is that of its own membership (section 5)."
         }
       ]
     },
     {
       "id": "sin-garantia",
-      "title": "2. No guaranteed results",
+      "title": "2. No guarantee of results or profits",
       "blocks": [
         {
-          "p": "A probability says what is likely, not what will happen. No forecast, pick, parlay or figure of PrediGol guarantees a result or a profit, and past results do not ensure future ones."
+          "p": "A probability says what is likely, not what will happen. No forecast, pick, parlay or figure of PrediGol guarantees a result, a profit or any other benefit, and past results do not ensure future ones."
         },
         {
           "p": "What you do with the information is your decision and your responsibility. PrediGol is not liable for losses from bets you place with third parties."
@@ -52,10 +52,16 @@
       "title": "5. Membership",
       "blocks": [
         {
-          "p": "Access to PrediGol may require a paid membership. Until there is a payment gateway, memberships are managed by hand: the start, expiry, renewal, suspension and refunds are recorded by PrediGol and told to you in the app and through the contact channels."
+          "p": "Access to PrediGol may require a paid, monthly membership. You start with a free trial, with full access and no card, whose length you see in your profile."
         },
         {
-          "p": "[Pending the owner's decision (P6) and the lawyer's review (P5): price and currency, payment methods, duration, renewal, the 5-business-day right of withdrawal and its exceptions, refunds and the complaints channel.]"
+          "p": "The current price, in Colombian pesos or in US dollars, as you choose, is shown in your profile (Membership) before you pay."
+        },
+        {
+          "p": "Until there is a payment gateway, you pay by the means we agree with you and PrediGol records the payment by hand: there is no automatic charge and PrediGol keeps no card or account numbers. The start, expiry, renewal, suspension and refunds are recorded by PrediGol and told to you in the app and through the contact channels. PrediGol may offer coupons and discounts, and shows you their conditions before you pay."
+        },
+        {
+          "p": "[Pending the lawyer's review (P5): payment methods, taxes (VAT), renewal, the 5-business-day right of withdrawal and its exceptions, refunds and the complaints channel.]"
         }
       ]
     },
