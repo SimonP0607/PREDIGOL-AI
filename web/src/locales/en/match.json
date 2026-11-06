@@ -382,6 +382,10 @@
     "title": "Before the match",
     "subtitle": "Form, table and head to head"
   },
+  "deepen": {
+    "title": "Go deeper",
+    "subtitle": "Form, table, head to head, calendar, absences and line-ups"
+  },
   "notPlayed": {
     "postponed": "Match postponed",
     "cancelled": "Match cancelled",
