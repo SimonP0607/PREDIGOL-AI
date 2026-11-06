@@ -25,9 +25,9 @@
     "failed": "No pudimos guardar. Inténtalo de nuevo o salta este paso."
   },
   "picker": {
-    "searchLabel": "Busca una liga o un equipo",
-    "searchPlaceholder": "Escribe al menos dos letras",
-    "searching": "Buscando equipos…",
+    "searchLabel": "Busca una liga, un equipo o un jugador",
+    "searchPlaceholder": "Al menos dos letras (tres para un jugador)",
+    "searching": "Buscando…",
     "found_one": "{count} equipo encontrado",
     "found_other": "{count} equipos encontrados",
     "leagues": "Ligas",
@@ -48,8 +48,16 @@
     "groupChosen_other": "{count} elegidas",
     "foundLeagues_one": "{count} liga",
     "foundLeagues_other": "{count} ligas",
-    "noneFound": "Ninguna liga ni equipo de los que seguimos se llama así.",
-    "teamsHint": "Para seguir a un equipo, búscalo por su nombre."
+    "noneFound": "Ninguna liga, equipo ni jugador de los que seguimos se llama así.",
+    "teamsHint": "Para seguir a un equipo o a un jugador, búscalo por su nombre.",
+    "players": "Jugadores",
+    "markets": "Mercados que lees",
+    "marketsHelp": "Quedan en tus favoritos. Solo ordenan lo que ves: no cambian ningún pick, probabilidad ni cuota.",
+    "countPlayers": "{count} de {max} jugadores",
+    "countMarkets": "{count} de {max} mercados",
+    "fullPlayers": "Llegaste a {max} jugadores: quita uno para elegir otro.",
+    "foundPlayers_one": "{count} jugador",
+    "foundPlayers_other": "{count} jugadores"
   },
   "panel": {
     "title": "Tu fútbol",
@@ -105,6 +113,18 @@
     "added": "Ahora sigues a {team}: sus partidos salen primero en Inicio.",
     "removed": "Ya no sigues a {team}.",
     "full": "Ya sigues {max} equipos: quita uno en tu perfil para seguir a {team}.",
-    "failed": "No pudimos guardar el cambio. Inténtalo de nuevo."
+    "failed": "No pudimos guardar el cambio. Inténtalo de nuevo.",
+    "playerAdd": "Seguir a {name}",
+    "playerRemove": "Dejar de seguir a {name}",
+    "playerAdded": "Ahora sigues a {name}.",
+    "playerRemoved": "Ya no sigues a {name}.",
+    "playerFull": "Ya sigues {max} jugadores: quita uno en tu perfil para seguir a {name}.",
+    "marketAdd": "Seguir {market}",
+    "marketRemove": "Dejar de seguir {market}",
+    "marketAdded": "Ahora sigues {market}.",
+    "marketRemoved": "Ya no sigues {market}.",
+    "marketFull": "Ya sigues {max} mercados: quita uno en tu perfil para seguir {market}.",
+    "follow": "Seguir",
+    "following": "Siguiendo"
   }
 }

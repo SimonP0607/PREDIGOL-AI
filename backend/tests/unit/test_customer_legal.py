@@ -81,7 +81,7 @@ def test_every_purpose_has_its_box_in_both_languages_and_the_database_takes_it()
     assert (marketing.document, marketing.required, marketing.withdrawable) == ("privacy", False, True)
     assert "marketing_email" not in legal.REQUIRED
     with pytest.raises(legal.LegalTextError):
-        legal.statement("analytics", "es")  # reserved by the database, offered by no phase yet
+        legal.statement("nonsense", "es")  # only the purposes of the register have a box
 
 
 def test_the_texts_are_plain_text_with_every_placeholder_filled() -> None:
@@ -102,6 +102,68 @@ def test_the_versions_are_dated_ordered_and_bilingual() -> None:
         for v in versions:
             assert legal.VERSION_FORMAT.match(v.version) and v.version.startswith(v.date)
             assert set(v.changes) == {"es", "en"} and all(v.changes.values())
+
+
+def _words(name: legal.DocumentName, locale: legal.Locale) -> str:
+    doc = legal.load(name, locale)
+    return json.dumps([doc.summary, doc.sections], ensure_ascii=False).lower()
+
+
+def test_the_terms_and_the_policy_say_what_predigol_is_and_what_it_is_not_in_both_languages() -> None:
+    """Plan de cierre UX, 1.1: one sentence everywhere - an analysis and value-detection platform that guarantees no
+    result or profit, is not a bookmaker, takes no money for bets and is for people aged 18 or over."""
+    must: dict[legal.Locale, list[str]] = {
+        "es": ["plataforma de análisis deportivo y detección de valor", "no garantiza resultados ni beneficios",
+               "no es una casa de apuestas", "recibe dinero de apuestas", "18 años"],
+        "en": ["sports-analysis and value-detection platform", "does not guarantee results or profits",
+               "is not a bookmaker", "money for bets", "18 or over"],
+    }
+    for locale, phrases in must.items():
+        for name in ("terms", "privacy"):
+            text = _words(name, locale)
+            for phrase in phrases:
+                assert phrase in text, f"{locale}/{name} must say: {phrase}"
+        # the summary of the terms is what a reader sees first: it carries the whole sentence
+        summary = legal.load("terms", locale).summary.lower()
+        assert phrases[0] in summary and phrases[1] in summary and phrases[2] in summary
+
+
+def test_the_membership_section_states_the_decided_facts_and_leaves_the_lawyers_to_the_lawyer() -> None:
+    for locale in legal.LOCALES:
+        doc = legal.load("terms", locale)
+        section = next(s for s in doc.sections if s["id"] == "membresia")
+        text = json.dumps(section, ensure_ascii=False)
+        assert "[Pend" in text, "the right of withdrawal, taxes and refunds stay with the lawyer (P5)"
+        assert "P6" not in text, "the price was decided by the owner: no longer pending"
+        # nothing in a hashed legal text may hard-code a price, a trial length or a discount: they live in the
+        # configuration and the profile shows them (a change of price must not need a new legal version)
+        for figure in ("150", "50 usd", "usd 50", "20 días", "20 days", "%"):
+            assert figure not in text.lower(), (locale, figure)
+
+
+def test_draft3_is_registered_as_a_draft_and_only_the_terms_ask_to_accept_again() -> None:
+    terms, privacy, gaming = (legal.current(n) for n in ("terms", "privacy", "responsible_gaming"))
+    assert terms.version == "2026-11-05-draft3" and privacy.version == "2026-11-05-draft4"
+    assert terms.draft and privacy.draft and terms.material and not privacy.material
+    assert gaming.version == "2026-10-25-draft1", "the responsible-gaming page did not change"
+    assert legal.valid_versions("terms") == frozenset({"2026-11-05-draft3"})
+    assert legal.valid_versions("privacy") == frozenset(
+        {"2026-10-25-draft1", "2026-10-27-draft2", "2026-11-05-draft3", "2026-11-05-draft4"}
+    ), "what was accepted on the policy still holds: nothing on it asked anyone again"
+
+
+def test_the_usage_statistics_are_an_optional_box_of_their_own_never_part_of_the_general_authorisation() -> None:
+    """Plan de cierre UX, 1.2: unticked, withdrawable, never asked for by the gate, and the policy's general
+    authorisation no longer says «statistics»."""
+    purpose = legal.BY_KIND["analytics"]
+    assert (purpose.document, purpose.required, purpose.withdrawable) == ("privacy", False, True)
+    assert "analytics" not in legal.REQUIRED
+    assert legal.due({}) == ["terms", "privacy", "age_18", "risk_notice"], "the gate never waits for it"
+    for locale in legal.LOCALES:
+        _, sentence = legal.statement("analytics", locale)
+        assert ("seudónimo" if locale == "es" else "pseudonymous") in sentence
+        _, general = legal.statement("privacy", locale)
+        assert ("estadística" if locale == "es" else "statistic") not in general.lower()
 
 
 def test_until_the_lawyer_says_so_the_texts_are_drafts_and_the_gate_stays_off(

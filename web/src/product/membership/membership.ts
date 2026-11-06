@@ -3,7 +3,7 @@
  * comes from the server, computed from dates; this only says it - with the date in the reader's time zone - and
  * decides which pages a limited account still opens.
  */
-import type { MembershipSummary, PlanPrice } from "@/lib/api/v1/types_membership";
+import type { DiscountOffer, MembershipSummary, PlanPrice } from "@/lib/api/v1/types_membership";
 import { t } from "@/lib/i18n";
 import { localDecimalText, localInt } from "@/lib/i18n/format";
 import { formatDateLong } from "@/lib/time";
@@ -110,4 +110,27 @@ export function priceLine(prices: readonly PlanPrice[]): string | null {
   return t("profile.membership.plan.price", {
     prices: prices.map(priceText).join(` ${t("profile.membership.plan.or")} `),
   });
+}
+
+/** Where a discount comes from, in words: "el cupón BIENVENIDA" or "la fidelidad" (UX-005). */
+export function offerSource(offer: Pick<DiscountOffer, "kind" | "code">): string {
+  return offer.kind === "coupon"
+    ? t("profile.membership.discount.sourceCoupon", { code: offer.code ?? "" })
+    : t("profile.membership.discount.sourceLoyalty");
+}
+
+/**
+ * What ``months`` months come to at the monthly prices, in one currency, as the decimal string the payment form takes:
+ * "300000", or "85.00" with cents. Null when the owner offers no price in that currency - an amount is never guessed.
+ */
+export function suggestedAmount(
+  prices: readonly PlanPrice[],
+  currency: string,
+  months: number,
+): string | null {
+  const price = prices.find((p) => p.currency === currency.trim().toUpperCase());
+  if (!price) return null;
+  const total = Math.round(Number(price.amount) * months * 100) / 100;
+  if (!Number.isFinite(total) || total <= 0) return null;
+  return Number.isInteger(total) ? String(total) : total.toFixed(2);
 }

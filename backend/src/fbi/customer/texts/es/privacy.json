@@ -11,6 +11,9 @@
         },
         {
           "p": "El responsable atiende directamente las consultas y los reclamos sobre tus datos."
+        },
+        {
+          "p": "PrediGol es una plataforma de análisis deportivo y detección de valor, solo para mayores de 18 años: no garantiza resultados ni beneficios, no es una casa de apuestas ni recibe dinero de apuestas. No te pedimos cuánto apuestas ni con qué operador: si guardas un pick, solo puedes anotar la cuota que te dieron."
         }
       ]
     },
@@ -22,7 +25,9 @@
           "ul": [
             "De tu cuenta: correo electrónico, nombre o alias, idioma, zona horaria y la contraseña guardada solo como huella (argon2id), nunca en claro.",
             "De la seguridad de tu cuenta: las sesiones abiertas (fecha, dispositivo y dirección IP), el historial de accesos y, si la activas, la verificación en dos pasos.",
-            "De tu uso del producto: los picks y parlays que guardas y sus resultados, y tus preferencias.",
+            "De tu uso del producto: los picks y parlays que guardas (con la cuota que anotes, si la anotas) y sus resultados, y tus preferencias.",
+            "De tu membresía: las fechas de tu prueba y de cada periodo, los pagos que PrediGol registra a mano (monto, moneda, fecha, medio y una referencia en palabras) y los avisos de vencimiento que te enviamos.",
+            "Solo si lo aceptas, estadísticas de uso con un identificador seudónimo: qué pantallas y funciones usas, de una lista cerrada, y nunca tu correo, tu dirección IP ni lo que escribes.",
             "Tus consentimientos (qué aceptaste, en qué versión y cuándo) y tus solicitudes de privacidad o soporte."
           ]
         },
@@ -42,12 +47,12 @@
           "ul": [
             "Prestar el servicio y gestionar tu cuenta y tu membresía, incluidos los correos necesarios para ello: acceso, recuperación de la contraseña, vencimiento de la membresía y respuesta a tus solicitudes.",
             "Proteger tu cuenta y el servicio: detectar accesos indebidos y frenar intentos repetidos.",
-            "Mejorar el producto con estadísticas de uso basadas en identificadores seudónimos, sin rastreadores de terceros. [Pendiente de la revisión legal (P5): si esta finalidad necesita una casilla aparte.]",
+            "Mejorar el producto con estadísticas de uso basadas en un identificador seudónimo, sin rastreadores de terceros, solo si lo aceptas aparte: es una casilla sin marcar al crear tu cuenta y en tu perfil, y la retiras cuando quieras.",
             "Enviarte correos comerciales (un resumen semanal y novedades de PrediGol) solo si lo pides aparte en tu perfil, con baja en un clic. Hoy no enviamos correos comerciales."
           ]
         },
         {
-          "p": "Las tres primeras forman parte de la autorización que nos das al crear tu cuenta; la última, solo si la pides."
+          "p": "Las dos primeras forman parte de la autorización que nos das al crear tu cuenta; las otras dos, solo si las pides aparte."
         }
       ]
     },
@@ -110,6 +115,7 @@
             "Los datos de tu cuenta, mientras la cuenta exista.",
             "Las sesiones, hasta 90 días después de vencer; el historial de accesos, 12 meses.",
             "Tus consentimientos, mientras exista la relación y el tiempo en que podrían exigirse como prueba.",
+            "Las estadísticas de uso, solo si las aceptas: 90 días en bruto y 13 meses ya agregadas.",
             "Las solicitudes y tickets, 24 meses después de cerrarse."
           ]
         },
@@ -156,7 +162,8 @@
     }
   ],
   "statements": {
-    "privacy": "Autorizo el tratamiento de mis datos para las finalidades de la Política de tratamiento de datos personales: prestar el servicio, proteger mi cuenta y mejorar el producto con estadísticas seudónimas.",
-    "marketing_email": "Quiero recibir por correo el resumen semanal de PrediGol: mis picks de la semana y cómo terminaron, los partidos de mis equipos y las novedades. Puedo darme de baja en un clic desde cualquier resumen o en mi perfil."
+    "privacy": "Autorizo el tratamiento de mis datos para las finalidades de la Política de tratamiento de datos personales: prestar el servicio y proteger mi cuenta.",
+    "marketing_email": "Quiero recibir por correo el resumen semanal de PrediGol: mis picks de la semana y cómo terminaron, los partidos de mis equipos y las novedades. Puedo darme de baja en un clic desde cualquier resumen o en mi perfil.",
+    "analytics": "Quiero ayudar a mejorar PrediGol con estadísticas de uso: qué pantallas y funciones uso, con un identificador seudónimo y sin mi correo, mi IP ni lo que escribo. Puedo retirarlo cuando quiera en mi perfil."
   }
 }

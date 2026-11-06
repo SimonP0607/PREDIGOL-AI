@@ -1,9 +1,12 @@
-"""A reader's favourites, the welcome and the hints against the migrated database (plan UX, A13).
+"""A reader's favourites, the welcome and the hints against the migrated database (plan UX, A13 and closing plan 3.1).
 
 * The favourites over HTTP, signed in for real: the suggested ones for Colombia, labelled, until the reader chooses; exactly
   the ones chosen, in their order, idempotent; the limits and what cannot be followed refused (422, never trimmed); each
   reader sees and changes only their own; the options - every league PrediGol follows and the teams of those leagues by name,
   without accents or case.
+* Players and markets (3.1): followed in the reader's order, kept by a save that leaves them out (a page from before), cleared
+  by an empty list; only players who appeared in a line-up of a league PrediGol follows within the window, but one already
+  followed stays when it ages out; found by name from three letters; in the export, gone with the account.
 * The welcome once per reader account (the whole one for a new account, the favourites alone for an older one), never for the
   owner's, never with FBI_ONBOARDING=0; a dismissed hint never comes back. Both reach the page through GET /auth/me.
 * Home (GET /today): each of the reader's matches says why it is theirs, and the next match of each favourite is listed.
@@ -145,6 +148,36 @@ def football(database: str) -> Football:
     return Football(database, datetime.now(UTC))
 
 
+PLAYERS = {"james": (7713501, "James Rodríguez", "Midfielder"), "falcao": (7713502, "Radamel Falcao", "Attacker"),
+           "viejo": (7713503, "Jugador Viejo", "Defender"), "lejano": (7713504, "Jugador Lejano", "Goalkeeper"),
+           "sin": (7713505, "Sin Alineación", None)}
+"""This module's players: provider id, name, position. James played for Millonarios in a match of Liga Uno today, Falcao for
+Atlético Nacional ten days ago; Viejo only 500 days ago and Lejano only in a league PrediGol does not follow; Sin never
+appears in a line-up."""
+
+
+@pytest.fixture(scope="module")
+def players(database: str, football: Football, seed: Seed) -> Iterator[dict[str, int]]:
+    ids: dict[str, int] = {}
+    fx = football.fixtures
+    lineups = (("james", "today_uno", "home"), ("falcao", "past_uno", "home"), ("viejo", "ancient", "home"),
+               ("lejano", "far", "home"))
+    with psycopg.connect(database, autocommit=True) as conn:
+        for key, (provider, name, position) in PLAYERS.items():
+            ids[key] = int(scalar(conn.execute(
+                "INSERT INTO core.players (provider_player_id, name, position) VALUES (%s, %s, %s) RETURNING id",
+                (provider, name, position))))
+        for key, fixture, side in lineups:
+            conn.execute("INSERT INTO core.fixture_lineups (fixture_id, team_side, source, payload_hash, fetched_at) "
+                         "VALUES (%s, %s, 'api-football', %s, now())", (fx[fixture], side, seed.payload_hash))
+            conn.execute("INSERT INTO core.fixture_lineup_players (fixture_id, team_side, source, provider_player_id, "
+                         "player_name, is_starter) VALUES (%s, %s, 'api-football', %s, %s, true)",
+                         (fx[fixture], side, PLAYERS[key][0], PLAYERS[key][1]))
+    yield ids
+    with psycopg.connect(database, autocommit=True) as conn:
+        conn.execute("DELETE FROM core.players WHERE provider_player_id = ANY(%s)", ([p for p, _, _ in PLAYERS.values()],))
+
+
 @pytest.fixture()
 def fresh(database: str, football: Football, monkeypatch: pytest.MonkeyPatch) -> Iterator[Football]:
     throttle.reset_all()
@@ -267,6 +300,99 @@ def test_the_options_every_followed_league_and_the_teams_by_name_without_accents
     assert names(medellin) == ["Medellín"], "a team that plays later in a followed league is found too"
 
 
+# ── players and markets (closing plan 3.1) ────────────────────────────────────────────────────────────────────────────
+
+
+def test_players_and_markets_are_followed_in_the_readers_order_and_a_save_without_them_keeps_them(
+        fresh: Football, players: dict[str, int], database: str) -> None:
+    f, reader, other = fresh.ids, client(READER), client(OTHER)
+    body = {"leagues": [f["uno"]], "teams": [f["nacional"]], "players": [players["falcao"], players["james"]],
+            "markets": ["OU", "1X2"]}
+    first = reader.put("/api/v1/me/favorites", json=body)
+    assert first.status_code == 200, first.text
+    view = first.json()
+    assert [(p["name"], p["position"], p["team"]) for p in view["players"]] == [
+        ("Radamel Falcao", "Attacker", "Atlético Nacional"), ("James Rodríguez", "Midfielder", "Millonarios")], (
+        "in the reader's order, each with the team of its latest line-up")
+    assert view["markets"] == ["OU", "1X2"] and (view["max_players"], view["max_markets"]) == (20, 5)
+    assert reader.put("/api/v1/me/favorites", json=body).json() == view, "idempotent"
+    with psycopg.connect(database) as conn:
+        rows = conn.execute("SELECT kind, ref_id, league_id, team_id, player_id, market_key FROM customer.favorites "
+                            "WHERE user_id = %s ORDER BY created_at, ref_id NULLS LAST", (uid(database, READER),)).fetchall()
+    assert rows == [("league", f["uno"], f["uno"], None, None, None), ("team", f["nacional"], None, f["nacional"], None, None),
+                    ("player", players["falcao"], None, None, players["falcao"], None),
+                    ("player", players["james"], None, None, players["james"], None),
+                    ("market", None, None, None, None, "OU"), ("market", None, None, None, None, "1X2")]
+    # a page from before 3.1 sends leagues and teams alone: the players and the markets stay
+    stale = reader.put("/api/v1/me/favorites", json={"leagues": [f["dos"]], "teams": []}).json()
+    assert names(stale["leagues"]) == ["Copa Dos"] and stale["teams"] == []
+    assert [p["name"] for p in stale["players"]] == ["Radamel Falcao", "James Rodríguez"] and stale["markets"] == ["OU", "1X2"]
+    # [] clears one kind and leaves the other
+    fewer = reader.put("/api/v1/me/favorites", json={"leagues": [f["dos"]], "teams": [], "players": [players["james"]],
+                                                     "markets": []}).json()
+    assert [p["name"] for p in fewer["players"]] == ["James Rodríguez"] and fewer["markets"] == []
+    # only the players and the markets chosen: with no league nor team the suggested ones come back, labelled, and the
+    # players and the markets are the reader's
+    only = reader.put("/api/v1/me/favorites", json={"leagues": [], "teams": [], "markets": ["BTTS"]}).json()
+    assert only["suggested"] is True and [p["name"] for p in only["players"]] == ["James Rodríguez"]
+    assert only["markets"] == ["BTTS"]
+    seen = other.get("/api/v1/me/favorites").json()
+    assert seen["players"] == [] and seen["markets"] == [], "each reader sees only their own"
+
+
+def test_a_player_must_have_played_in_a_followed_league_and_a_market_must_be_one_predigol_reads(
+        fresh: Football, players: dict[str, int]) -> None:
+    f, reader = fresh.ids, client(READER)
+    base = {"leagues": [f["uno"]], "teams": []}
+    assert reader.put("/api/v1/me/favorites", json={**base, "players": [players["james"]]}).status_code == 200
+    for key in ("viejo", "lejano", "sin"):  # 500 days ago; a league PrediGol does not follow; never in a line-up
+        r = reader.put("/api/v1/me/favorites", json={**base, "players": [players[key]]})
+        assert (r.status_code, code(r)) == (422, "unknown_player"), key
+    unknown = reader.put("/api/v1/me/favorites", json={**base, "players": [players["james"], 987654321]})
+    assert (unknown.status_code, code(unknown)) == (422, "unknown_player")
+    many = reader.put("/api/v1/me/favorites", json={**base, "players": list(range(1, 22))})
+    assert (many.status_code, code(many)) == (422, "too_many_players")
+    for body in ({"markets": ["FOO"]}, {"markets": ["1X2"] * 11}, {"players": list(range(1, 52))},
+                 {"markets": ["1X2"], "stake": 10}):  # an unknown market, too long a list, an amount: never
+        assert reader.put("/api/v1/me/favorites", json={**base, **body}).status_code == 422, body
+    after = reader.get("/api/v1/me/favorites").json()
+    assert [p["name"] for p in after["players"]] == ["James Rodríguez"] and after["markets"] == [], "nothing changed"
+
+
+def test_a_player_already_followed_stays_when_the_window_passes_and_never_blocks_a_save(
+        fresh: Football, players: dict[str, int], database: str) -> None:
+    f, reader = fresh.ids, client(READER)
+    with psycopg.connect(database, autocommit=True) as conn:  # followed when it was in the window, aged out since
+        conn.execute("INSERT INTO customer.favorites (user_id, kind, ref_id, player_id) VALUES (%s, 'player', %s, %s)",
+                     (uid(database, READER), players["viejo"], players["viejo"]))
+    both = reader.put("/api/v1/me/favorites", json={"leagues": [f["uno"]], "teams": [],
+                                                    "players": [players["viejo"], players["james"]]})
+    assert both.status_code == 200, both.text
+    assert [p["name"] for p in both.json()["players"]] == ["Jugador Viejo", "James Rodríguez"]
+    assert both.json()["players"][0]["team"] == "Equipo Viejo", "still listed, with the team of its latest line-up"
+    dropped = reader.put("/api/v1/me/favorites", json={"leagues": [f["uno"]], "teams": [], "players": [players["james"]]})
+    assert [p["name"] for p in dropped.json()["players"]] == ["James Rodríguez"], "and the reader may drop it"
+    again = reader.put("/api/v1/me/favorites", json={"leagues": [f["uno"]], "teams": [],
+                                                     "players": [players["viejo"]]})
+    assert (again.status_code, code(again)) == (422, "unknown_player"), "once dropped it is asked for like any other"
+
+
+def test_the_options_find_players_by_name_from_three_letters_without_accents(
+        fresh: Football, players: dict[str, int]) -> None:
+    reader = client(READER)
+    found = {q: reader.get("/api/v1/me/favorites/options", params={"q": q}).json()["players"]
+             for q in ("james", "RODRIGUEZ", "radamel", "ja", "viejo", "lejano", "sin ali", "%%%", "___")}
+    assert [(p["id"], p["name"], p["team"]) for p in found["james"]] == [
+        (players["james"], "James Rodríguez", "Millonarios")]
+    assert names(found["RODRIGUEZ"]) == ["James Rodríguez"] and names(found["radamel"]) == ["Radamel Falcao"]
+    assert found["ja"] == [], "three letters or more"
+    for q in ("viejo", "lejano", "sin ali", "%%%", "___"):  # aged out, not followed, no line-up, no wildcard of a search
+        assert found[q] == [], q
+    assert reader.get("/api/v1/me/favorites/options").json()["players"] == [], "no search, no players"
+    teams = reader.get("/api/v1/me/favorites/options", params={"q": "nacional"}).json()
+    assert names(teams["teams"]) == ["Atlético Nacional"] and teams["players"] == []
+
+
 # ── the welcome and the hints ─────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -349,17 +475,21 @@ def test_home_says_why_each_match_is_the_readers_and_lists_the_next_match_of_eac
 # ── what the account keeps ────────────────────────────────────────────────────────────────────────────────────────────
 
 
-def test_the_favourites_are_in_the_export_and_go_when_the_account_is_anonymised(fresh: Football, database: str) -> None:
+def test_the_favourites_are_in_the_export_and_go_when_the_account_is_anonymised(
+        fresh: Football, players: dict[str, int], database: str) -> None:
     f = fresh.ids
     reader = client(OTHER)
-    reader.put("/api/v1/me/favorites", json={"leagues": [f["uno"]], "teams": [f["nacional"]]})
+    reader.put("/api/v1/me/favorites", json={"leagues": [f["uno"]], "teams": [f["nacional"]],
+                                             "players": [players["james"]], "markets": ["BTTS"]})
     reader.post("/api/v1/me/hints", json={"hint": "parlay"})
     reader.post("/api/v1/me/onboarding")
     other_id, owner_id = uid(database, OTHER), uid(database, OWNER)
     with psycopg.connect(database) as conn:
         document = privacy.export(conn, other_id)
-    assert [(x["kind"], x["id"], x["name"]) for x in document["favorites"]] == [
-        ("league", f["uno"], "Liga Uno"), ("team", f["nacional"], "Atlético Nacional")]
+    assert [(x["kind"], x["id"], x["market"], x["name"]) for x in document["favorites"]] == [
+        ("league", f["uno"], None, "Liga Uno"), ("team", f["nacional"], None, "Atlético Nacional"),
+        ("player", players["james"], None, "James Rodríguez"), ("market", None, "BTTS", None)], (
+        "a market has no id, only its key")
     assert document["welcome"]["hints_seen"] == ["parlay"] and document["welcome"]["onboarded_at"] is not None
     anonymize.anonymise(principal("SUPER_ADMIN", user_id=owner_id), other_id, confirm=OTHER, ip=None)
     with psycopg.connect(database) as conn:

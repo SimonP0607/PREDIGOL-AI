@@ -82,7 +82,8 @@
   "logoAlt": "Escudo de {name}",
   "flagAlt": "Bandera de {name}",
   "competitionLogoAlt": "Logo de {name}",
-  "disclaimer": "PrediGol muestra información y análisis; no garantiza resultados. Juega con responsabilidad (+18).",
+  "what": "PrediGol es una plataforma de análisis deportivo y detección de valor. No garantiza resultados ni beneficios, no es una casa de apuestas ni recibe dinero de apuestas, y es solo para mayores de 18 años.",
+  "disclaimer": "PrediGol es una plataforma de análisis: no garantiza resultados ni beneficios, no es una casa de apuestas ni recibe dinero de apuestas. Solo +18. Juega con responsabilidad.",
   "openMenu": "Abrir menú",
   "closeMenu": "Cerrar menú",
   "account": "Cuenta",
@@ -135,7 +136,7 @@
   "roleAdmin": "Administrador",
   "meta": {
     "title": "PrediGol — Inteligencia de fútbol",
-    "description": "PrediGol: partidos, en vivo, picks con valor, parlays y las mejores cuotas."
+    "description": "PrediGol, plataforma de análisis deportivo y detección de valor: partidos, en vivo, picks con valor, parlays y las mejores cuotas. No es una casa de apuestas."
   },
   "filters": {
     "open": "Filtros",

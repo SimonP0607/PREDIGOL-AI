@@ -13,10 +13,10 @@ import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { TeamBadge } from "@/lib/api/v1/types_product";
 import { t } from "@/lib/i18n";
-import { track } from "@/lib/track";
 import { cn } from "@/lib/utils";
 import { usePushMoment } from "@/product/push/moments";
-import { bodyOf, changes, choiceOf, hasTeam, limitsOf, toggleTeam } from "./model";
+import { trackChanges } from "./analytics";
+import { beforeOf, bodyOf, changes, choiceOf, hasTeam, limitsOf, toggleTeam } from "./model";
 
 export function FollowStar({ team }: { team: TeamBadge }) {
   const auth = useAuth();
@@ -41,9 +41,8 @@ export function FollowStar({ team }: { team: TeamBadge }) {
     setBusy(true);
     try {
       const saved = await v1.saveFavorites(bodyOf(next));
-      const { added, removed } = changes(view.suggested ? null : before, choiceOf(saved));
-      for (const c of added) track("favorite_added", { kind: c.kind, id: c.id });
-      for (const c of removed) track("favorite_removed", { kind: c.kind, id: c.id });
+      const { added, removed } = changes(beforeOf(view), choiceOf(saved));
+      trackChanges({ added, removed });
       qc.setQueryData(live.favorites.queryKey, saved);
       void qc.invalidateQueries({ queryKey: ["v1", "today"] });
       void qc.invalidateQueries({ queryKey: ["me", "personal"] });

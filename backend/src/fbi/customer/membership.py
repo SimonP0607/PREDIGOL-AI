@@ -46,7 +46,7 @@ import structlog
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
 
-from fbi.customer import consents, events
+from fbi.customer import consents, discounts, events
 from fbi.customer.db import CustomerError, write_connection
 
 log = structlog.get_logger(__name__)
@@ -338,7 +338,7 @@ def mine(conn: psycopg.Connection[Any], user_id: int, *, email: str, super_admin
     m = of(conn, user_id, email=email, super_admin=super_admin)
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("""
-            SELECT p.kind, p.starts_at, p.ends_at, pay.amount, pay.currency, pay.method
+            SELECT p.kind, p.starts_at, p.ends_at, pay.amount, pay.currency, pay.method, pay.discount_percent
               FROM customer.membership_periods p
               LEFT JOIN customer.payments pay ON pay.id = p.payment_id
              WHERE p.user_id = %s ORDER BY p.ends_at DESC, p.id DESC LIMIT 50
@@ -346,7 +346,28 @@ def mine(conn: psycopg.Connection[Any], user_id: int, *, email: str, super_admin
         periods = [{**r, "amount": str(r["amount"]) if r["amount"] is not None else None} for r in cur.fetchall()]
     return {"membership": summary(m), "enforced": enforced(), "periods": periods,
             "renew": {"whatsapp": whatsapp(), "email": reply_address()},
-            "plan": {"trial_days": trial_days(), "prices": prices()}}
+            "plan": {"trial_days": trial_days(), "prices": prices()},
+            "discounts": discount_view(conn, user_id) if m.state != "exempt" else _NO_DISCOUNTS}
+
+
+_NO_DISCOUNTS: dict[str, Any] = {"offer": None, "coupons": [], "loyalty": None}
+
+
+def offer_view(found: discounts.Offer | None) -> dict[str, Any] | None:
+    """A discount as the pages say it: its kind, its percentage, a coupon's code and what the monthly price comes to
+    with it, in each currency the owner offers."""
+    if found is None:
+        return None
+    return {"kind": found.kind, "percent": found.percent, "code": found.code,
+            "prices": [{"currency": p["currency"], "amount": discounts.discounted(p["amount"], found.percent)}
+                       for p in prices()]}
+
+
+def discount_view(conn: psycopg.Connection[Any], user_id: int) -> dict[str, Any]:
+    """What the reader's Membership section says about discounts (UX-005): the one their next payment gets, the coupons
+    they hold and the loyalty rule with where they stand in it."""
+    found = discounts.standing(conn, user_id)
+    return {**found, "offer": offer_view(found["offer"])}
 
 
 # ── what the owner does ───────────────────────────────────────────────────────────────
@@ -414,6 +435,17 @@ def _audit(conn: psycopg.Connection[Any], action: str, *, actor: int | None, use
     store.record_event(conn, f"membership.{action}", actor_user_id=actor, target_user_id=user_id, detail=dict(detail))
 
 
+def tell(conn: psycopg.Connection[Any], user_id: int, template: str, key: str, period: Period) -> None:
+    """The e-mail of a membership's beginning (closing plan 4.1: the welcome at the activation, the trial the owner
+    started, a payment recorded): until when the reader has access, written in the transaction that made the period, so the e-mail exists only if it happened. Once per ``key``. Nothing is sent from here: the
+    messenger sends the queue, and only while FBI_EMAIL_SEND is on."""
+    # The queue (A5), imported here: the messaging package imports this module for the owner's notices.
+    from fbi.messaging import outbox
+
+    outbox.enqueue(conn, user_id=user_id, template=template,
+                   params={"ends": period.ends_at.astimezone(UTC).isoformat(timespec="seconds")}, dedup_key=key)
+
+
 def plan_trial(conn: psycopg.Connection[Any], user_id: int, days: int, *, actor: int | None) -> None:
     """The trial the owner chose at the invitation (7 to 20 days), started when the account is activated."""
     if not TRIAL_DAYS_MIN <= days <= TRIAL_DAYS_MAX:
@@ -459,6 +491,7 @@ def start_trial_by_owner(actor: int, user_id: int, *, days: int) -> Period:
         if period is None:
             raise CustomerError(409, "trial_used", "this account had its trial already")
         _audit(conn, "trial_started", actor=actor, user_id=user_id, detail={"days": days})
+        tell(conn, user_id, "trial_started", f"trial_started:{period.id}", period)
     return period
 
 
@@ -492,10 +525,13 @@ def check_reference(reference: str) -> str:
 
 
 def record_payment(actor: int, user_id: int, *, amount: str | int | float | Decimal, currency_code: str,
-                   method: str, reference: str, months: int, idempotency_key: str,
+                   method: str, reference: str, months: int, idempotency_key: str, apply_discount: bool = False,
                    at: datetime | None = None) -> Recorded:
     """«Record payment and extend»: the payment and its period - from the end of the one in force, or now when that one
-    has ended - in one transaction. The same idempotency key records one payment, whoever clicks twice."""
+    has ended - in one transaction. The same idempotency key records one payment, whoever clicks twice. With
+    ``apply_discount`` the payment keeps the discount the reader's next payment is offered at this moment (UX-005: the
+    larger of the loyalty one and the best coupon they hold; a coupon is then used) - the amount is what the owner
+    received, the discount is what the payment says it carried; 409 ``no_discount`` when there is none."""
     value = _amount(amount)
     code = currency_code.strip().upper()
     if not re.fullmatch(r"[A-Z]{3}", code):
@@ -525,19 +561,29 @@ def record_payment(actor: int, user_id: int, *, amount: str | int | float | Deci
         periods, _ = load(conn, [user_id])[user_id]
         end = _cover_end(conn, user_id)
         start = max(moment, end) if end is not None else moment
+        carried = discounts.offer(conn, user_id) if apply_discount else None
+        if apply_discount and carried is None:
+            raise CustomerError(409, "no_discount", "this account has no discount to apply")
         payment = conn.execute("""
             INSERT INTO customer.payments (user_id, provider, amount, currency, method, reference, idempotency_key,
-                                           recorded_by, recorded_at)
-            VALUES (%s, 'manual', %s, %s, %s, %s, %s, %s, %s) RETURNING id
-        """, (user_id, value, code, method, text, idempotency_key, actor, moment)).fetchone()
+                                           recorded_by, recorded_at, discount_percent, discount_kind, coupon_id)
+            VALUES (%s, 'manual', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+        """, (user_id, value, code, method, text, idempotency_key, actor, moment,
+              carried.percent if carried else None, carried.kind if carried else None,
+              carried.coupon_id if carried else None)).fetchone()
         assert payment is not None
         period = _insert_period(conn, user_id, "paid", start, add_months(start, months), payment_id=int(payment[0]),
                                 actor=actor)
         renewal = _follows_paid(period, [*periods, period])
-        detail = {"amount": str(value), "currency": code, "method": method, "months": months, "renewal": renewal}
+        detail: dict[str, Any] = {"amount": str(value), "currency": code, "method": method, "months": months,
+                                  "renewal": renewal}
+        if carried is not None:
+            detail["discount"] = {"kind": carried.kind, "percent": carried.percent}
         _event(conn, user_id, "payment_recorded", period_id=period.id, detail=detail, actor=actor)
         _audit(conn, "payment_recorded", actor=actor, user_id=user_id, detail=detail)
         events.record_server(conn, user_id, "membership_renewed")
+        if period.ends_at > moment:
+            tell(conn, user_id, "payment_recorded", f"payment_recorded:{payment[0]}", period)
     forget(user_id)
     log.info("membership.payment_recorded", user_id=user_id, months=months, renewal=renewal)
     return Recorded(int(payment[0]), period, created=True)
@@ -610,9 +656,11 @@ def history(conn: psycopg.Connection[Any], user_id: int) -> dict[str, Any]:
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("""
             SELECT p.id, p.kind, p.starts_at, p.ends_at, p.reason, p.created_at,
-                   pay.amount, pay.currency, pay.method, pay.reference, pay.provider
+                   pay.amount, pay.currency, pay.method, pay.reference, pay.provider,
+                   pay.discount_percent, pay.discount_kind, cp.code AS coupon_code
               FROM customer.membership_periods p
               LEFT JOIN customer.payments pay ON pay.id = p.payment_id
+              LEFT JOIN customer.coupons cp ON cp.id = pay.coupon_id
              WHERE p.user_id = %s ORDER BY p.ends_at DESC, p.id DESC
         """, (user_id,))
         periods = [{**r, "amount": str(r["amount"]) if r["amount"] is not None else None} for r in cur.fetchall()]
@@ -626,7 +674,7 @@ def history(conn: psycopg.Connection[Any], user_id: int) -> dict[str, Any]:
 
 def export_rows(conn: psycopg.Connection[Any], user_id: int) -> dict[str, list[dict[str, Any]]]:
     """The reader's export (plan UX, A4): every period, payment and event of their membership - the payments' reference
-    included, never who in the console recorded them."""
+    and the discount each carried included, never who in the console recorded them - and the coupons they redeemed."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("""
             SELECT kind, starts_at, ends_at, reason, created_at FROM customer.membership_periods
@@ -634,8 +682,10 @@ def export_rows(conn: psycopg.Connection[Any], user_id: int) -> dict[str, list[d
         """, (user_id,))
         periods = cur.fetchall()
         cur.execute("""
-            SELECT provider, amount, currency, method, reference, recorded_at FROM customer.payments
-             WHERE user_id = %s ORDER BY recorded_at DESC, id DESC
+            SELECT pay.provider, pay.amount, pay.currency, pay.method, pay.reference, pay.recorded_at,
+                   pay.discount_percent, pay.discount_kind, cp.code AS coupon_code
+              FROM customer.payments pay LEFT JOIN customer.coupons cp ON cp.id = pay.coupon_id
+             WHERE pay.user_id = %s ORDER BY pay.recorded_at DESC, pay.id DESC
         """, (user_id,))
         payments = [{**r, "amount": str(r["amount"])} for r in cur.fetchall()]
         cur.execute("""
@@ -643,7 +693,14 @@ def export_rows(conn: psycopg.Connection[Any], user_id: int) -> dict[str, list[d
              WHERE user_id = %s ORDER BY at DESC, id DESC
         """, (user_id,))
         events_ = cur.fetchall()
-    return {"membership_periods": periods, "payments": payments, "membership_events": events_}
+        cur.execute("""
+            SELECT c.code, c.percent, r.redeemed_at FROM customer.coupon_redemptions r
+              JOIN customer.coupons c ON c.id = r.coupon_id
+             WHERE r.user_id = %s ORDER BY r.redeemed_at DESC, r.id DESC
+        """, (user_id,))
+        coupons = cur.fetchall()
+    return {"membership_periods": periods, "payments": payments, "membership_events": events_,
+            "coupon_redemptions": coupons}
 
 
 # ── the messenger: the notices around a period's end ─────────────────────────────────

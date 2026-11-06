@@ -37,6 +37,7 @@ import { detectTimeZone, formatDateTime, formatRelative, listTimeZones } from "@
 import { Card, ErrorState, SkeletonCards, errorMessage } from "@/product/shared/States";
 import { cn } from "@/lib/utils";
 import { AnonymiseAccount } from "./AnonymiseAccount";
+import { CouponsCard } from "./CouponsCard";
 import { MembershipCell } from "./MembershipCell";
 import { anonymisedSummary } from "./anonymised";
 import { PrivacyRequestsCard } from "./PrivacyRequests";
@@ -887,6 +888,7 @@ export function UsersPage() {
           <CreateForm onDone={() => setCreating(null)} backup={selfService} />
         </Card>
       ) : null}
+      <CouponsCard />
       <Card className="overflow-hidden">
         {q.isPending ? (
           <SkeletonCards className="p-4" />

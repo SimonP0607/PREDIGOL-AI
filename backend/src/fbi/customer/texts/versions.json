@@ -15,6 +15,20 @@
           "es": "dcecec5c95a14ab56e0281c8931084534e531b902cc20b3b20ebab556015a4c1",
           "en": "0f19010504b18993eb8465533396d132193a1bc62bdeee7eb30352680a5c8838"
         }
+      },
+      {
+        "version": "2026-11-05-draft3",
+        "date": "2026-11-05",
+        "draft": true,
+        "material": true,
+        "changes": {
+          "es": "Se dice igual en toda la app qué es PrediGol: una plataforma de análisis deportivo y detección de valor que no garantiza resultados ni beneficios, no es una casa de apuestas ni recibe dinero de apuestas, y es solo para mayores de 18 años. La membresía deja de ser un hueco: prueba gratuita sin tarjeta, precio en pesos o dólares visible en tu perfil antes de pagar, pago registrado a mano, cupones y descuentos con sus condiciones a la vista. Sigue siendo un borrador pendiente de la revisión del abogado (P5).",
+          "en": "The whole app now says the same thing about what PrediGol is: a sports-analysis and value-detection platform that does not guarantee results or profits, is not a bookmaker, takes no money for bets and is only for people aged 18 or over. The membership is no longer a blank: a free trial with no card, the price in pesos or dollars shown in your profile before you pay, the payment recorded by hand, coupons and discounts with their conditions in view. It is still a draft pending the lawyer's review (P5)."
+        },
+        "sha256": {
+          "es": "0c6688c1c2f9247650da6fc77170d99e9c12ac9a8bce10b870dd1b8f7d0aef0f",
+          "en": "fb96726a82f959cccf794d2ee1a6c852fc229ed612658ed78b0678050efa3e3f"
+        }
       }
     ]
   },
@@ -46,6 +60,34 @@
         "sha256": {
           "es": "50d7d4fe87a8211f7e305aa146899e51adc517b0ba7d5d523f92d6b86cea1d8a",
           "en": "0f5839bed94cd7c1d2d11593522f0f1300fb26bf93b62ed72697321758d7bb0e"
+        }
+      },
+      {
+        "version": "2026-11-05-draft3",
+        "date": "2026-11-05",
+        "draft": true,
+        "material": false,
+        "changes": {
+          "es": "Se nombran los datos de tu membresía (fechas, pagos registrados a mano y avisos de vencimiento) y la cuota que puedes anotar en un pick, y se dice qué es PrediGol. No cambia ninguna finalidad ni lo que ya autorizaste: sigue siendo un borrador pendiente de la revisión del abogado (P5).",
+          "en": "Names the data of your membership (dates, payments recorded by hand and expiry notices) and the price you can note on a pick, and says what PrediGol is. No purpose and nothing you already authorised changes: it is still a draft pending the lawyer's review (P5)."
+        },
+        "sha256": {
+          "es": "635ae63e63550c8472e147169e641dc5188d8469b7ae466c335902060c2f0383",
+          "en": "5de79694aa3cd6c2a3934d91f0bcc60ccc6428d81308961236f71db45d310d7f"
+        }
+      },
+      {
+        "version": "2026-11-05-draft4",
+        "date": "2026-11-05",
+        "draft": true,
+        "material": false,
+        "changes": {
+          "es": "Las estadísticas de uso pasan a una casilla opcional aparte, sin marcar al crear tu cuenta y en tu perfil, que retiras cuando quieras (antes iban dentro de la autorización general). Se nombran sus datos y cuánto tiempo se guardan. Quita una autorización de la general en vez de añadir una: no cambia lo que ya aceptaste. Sigue siendo un borrador pendiente de la revisión del abogado (P5).",
+          "en": "The usage statistics become an optional box of their own, unticked when you create your account and in your profile, which you withdraw whenever you like (before, they were inside the general authorisation). Their data and how long they are kept are named. It takes a purpose out of the general authorisation instead of adding one: nothing you already accepted changes. It is still a draft pending the lawyer's review (P5)."
+        },
+        "sha256": {
+          "es": "b4f2362b9621b957f00a69fe9aed457c6bf20d8a2130f30041f19ed93cc21afc",
+          "en": "070d9205aa1a4ae6739d6f63eebeb678dfda2b22464efb6bea846973749e9457"
         }
       }
     ]

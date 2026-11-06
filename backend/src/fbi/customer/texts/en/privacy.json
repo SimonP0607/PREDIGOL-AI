@@ -11,6 +11,9 @@
         },
         {
           "p": "The controller handles queries and claims about your data directly."
+        },
+        {
+          "p": "PrediGol is a sports-analysis and value-detection platform, only for people aged 18 or over: it does not guarantee results or profits, it is not a bookmaker and it does not take money for bets. We do not ask how much you bet or with which operator: if you save a pick, you can only note the price you were given."
         }
       ]
     },
@@ -22,7 +25,9 @@
           "ul": [
             "Of your account: e-mail address, name or alias, language, time zone and the password, stored only as a fingerprint (argon2id), never in clear.",
             "Of your account's security: the open sessions (date, device and IP address), the sign-in history and, if you turn it on, two-step verification.",
-            "Of your use of the product: the picks and parlays you save and their results, and your preferences.",
+            "Of your use of the product: the picks and parlays you save (with the price you note, if you note it) and their results, and your preferences.",
+            "Of your membership: the dates of your trial and of each period, the payments PrediGol records by hand (amount, currency, date, means and a reference in words) and the expiry notices we send you.",
+            "Only if you accept it, usage statistics under a pseudonymous identifier: which screens and features you use, from a closed list, and never your e-mail, your IP address or what you write.",
             "Your consents (what you accepted, in which version and when) and your privacy or support requests."
           ]
         },
@@ -42,12 +47,12 @@
           "ul": [
             "Providing the service and managing your account and your membership, including the e-mails this needs: access, password recovery, membership expiry and the answers to your requests.",
             "Protecting your account and the service: detecting improper access and slowing down repeated attempts.",
-            "Improving the product with usage statistics based on pseudonymous identifiers, with no third-party trackers. [Pending the legal review (P5): whether this purpose needs a box of its own.]",
+            "Improving the product with usage statistics based on a pseudonymous identifier, with no third-party trackers, only if you accept it separately: it is an unticked box when you create your account and in your profile, and you withdraw it whenever you like.",
             "Sending you commercial e-mails (a weekly summary and PrediGol's news) only if you ask for them separately in your profile, with a one-click unsubscribe. Today we send no commercial e-mails."
           ]
         },
         {
-          "p": "The first three are part of the authorisation you give us when you create your account; the last one, only if you ask for it."
+          "p": "The first two are part of the authorisation you give us when you create your account; the other two, only if you ask for them separately."
         }
       ]
     },
@@ -110,6 +115,7 @@
             "Your account's data, for as long as the account exists.",
             "Sessions, up to 90 days after they expire; the sign-in history, 12 months.",
             "Your consents, for as long as the relationship lasts and the time they could be required as evidence.",
+            "Usage statistics, only if you accept them: 90 days raw and 13 months once aggregated.",
             "Requests and tickets, 24 months after they are closed."
           ]
         },
@@ -156,7 +162,8 @@
     }
   ],
   "statements": {
-    "privacy": "I authorise the processing of my data for the purposes of the Personal data processing policy: providing the service, protecting my account and improving the product with pseudonymous statistics.",
-    "marketing_email": "I want to receive PrediGol's weekly summary by e-mail: my picks of the week and how they ended, my teams' matches and what is new. I can leave it in one click from any summary or in my profile."
+    "privacy": "I authorise the processing of my data for the purposes of the Personal data processing policy: providing the service and protecting my account.",
+    "marketing_email": "I want to receive PrediGol's weekly summary by e-mail: my picks of the week and how they ended, my teams' matches and what is new. I can leave it in one click from any summary or in my profile.",
+    "analytics": "I want to help improve PrediGol with usage statistics: which screens and features I use, under a pseudonymous identifier and without my e-mail, my IP or what I write. I can withdraw it whenever I like in my profile."
   }
 }
