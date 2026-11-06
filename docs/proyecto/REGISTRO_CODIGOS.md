@@ -52,6 +52,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-020 | Presupuesto de rendimiento y accesibilidad (plan de cierre UX, 5.2): tope de tamaño del bundle como paso de Web CI (`bundle-budget.json`), axe que falla con errores críticos o graves y medición móvil de LCP y CLS en Inicio, partido y Picks. Solo web y CI. No toca la inteligencia | en curso | este PR | — |
 | UX-021 | Sentry de experiencia (plan de cierre UX, 5.3): tiempos de carga (LCP, INP y CLS) en una muestra del 3 % de las visitas y con tope propio en el túnel, errores de módulo tras un despliegue con oferta de recargar, errores de API que el lector ve con su `request_id` (una vez por referencia) y errores del service worker. Nunca datos personales: el servidor reconstruye cada lectura solo con números y ruta. Sin migración. No toca la inteligencia | en curso | este PR | — |
 | UX-022 | Comunicados del dueño (plan de cierre UX, 4.3): consola con cuatro tipos cerrados (mantenimiento, incidencia, actualización y comunicado general; no existe «promoción»), borrador, vista previa con código de 10 minutos, frase «PUBLICAR», tope diario de 3 y registro que solo se amplía. Destinos: banner en la app con fechas, Novedades (las actualizaciones), canal de Telegram si está configurado (y bot de bienvenida sin conversación) y correo solo si es crítico. Migración 0124. No toca la inteligencia | en curso | este PR | — |
+| UX-023 | Interruptor de los avisos de picks al dueño (plan de cierre UX, 4.4, P14): `FBI_NOTIFY_PICKS=off` deja fuera de su chat los avisos de picks en sombra y de liquidación para poder encender los de tickets, vencimientos y operación. Solo decide a quién se avisa: no lee ni toca picks, modelos ni histórico; encendido por defecto, sin migración | en curso | este PR | — |
 
 ## BE — backend
 
@@ -65,4 +66,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-009 · UX-023 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-009 · UX-024 · BE-002 · FE-001 · OPS-001 · DOC-001
