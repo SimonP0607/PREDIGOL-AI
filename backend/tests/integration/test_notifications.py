@@ -136,7 +136,10 @@ def test_with_the_picks_notices_off_no_pick_is_drafted_and_the_rest_still_is(
 
 
 def test_with_the_picks_notices_off_what_is_queued_about_picks_waits_untouched(
-        db: psycopg.Connection, monkeypatch: pytest.MonkeyPatch) -> None:
+        conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Uses ``conn`` (it commits, and removes what it left): a queued pick message left behind would be sent by the
+    notifier of the pick pipeline's test."""
+    db = conn
     monkeypatch.setenv(service.PICKS_ENV, "off")
     old = _queued(db, "shadow_pick", "nt:off:pick", "t")
     budget = _queued(db, "ai_budget", "nt:off:budget", "Presupuesto de IA: 50 % del mes")
