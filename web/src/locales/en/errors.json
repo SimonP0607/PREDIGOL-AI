@@ -118,7 +118,20 @@
     "wrong_password": "The current password is not right.",
     "wrong_stage": "That step no longer applies. Reload the page.",
     "invalid_link": "This link is not valid.",
-    "not_offered": "The weekly summary is not available right now."
+    "not_offered": "The weekly summary is not available right now.",
+    "coupon_invalid": "That code is not valid.",
+    "coupon_expired": "That code has expired.",
+    "coupon_exhausted": "That code has no places left.",
+    "coupon_already_yours": "You already have that coupon.",
+    "invalid_coupon_code": "A code is 3 to 32 letters, digits, dashes or underscores.",
+    "coupon_exists": "There is a coupon with that code already.",
+    "coupon_not_found": "That coupon does not exist.",
+    "coupon_disabled": "That coupon is already off.",
+    "invalid_percent": "A percentage from 1 to 100.",
+    "invalid_note": "A note of 3 to 120 characters.",
+    "invalid_valid_until": "A last day in the future.",
+    "invalid_max_redemptions": "Between 1 and 100,000 places.",
+    "no_discount": "This account has no discount to apply."
   },
   "problem": {
     "password_too_short": "At least 15 characters, or 12 if you use two-step verification.",

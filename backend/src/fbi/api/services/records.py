@@ -313,8 +313,9 @@ def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datet
 # A user's own lists are read page by page (plan UX, A1: "Todo" was cut at 500 picks and 200 parlays and called
 # everything). The cursor is the position of the last record of a page in the list's order - picks by kick-off, parlays
 # by creation, the id breaking ties, newest first - so a page never repeats or skips a record, whatever is saved in
-# between. It is opaque to the client: base64url of "c1|<list>|<timestamp>|<id>".
-CURSOR_RE = re.compile(r"^c1\|(?P<kind>[pl])\|(?P<at>\d{4}-\d\d-\d\dT[0-9:.+\-]+)\|(?P<id>\d{1,18})$")
+# between. It is opaque to the client: base64url of "c1|<list>|<timestamp>|<id>" - p: picks, l: parlays, t: the published
+# picks of Transparencia (``fbi.api.services.transparency_picks``, by kick-off, the id its set and rank).
+CURSOR_RE = re.compile(r"^c1\|(?P<kind>[plt])\|(?P<at>\d{4}-\d\d-\d\dT[0-9:.+\-]+)\|(?P<id>\d{1,18})$")
 
 
 class CursorError(ValueError):
