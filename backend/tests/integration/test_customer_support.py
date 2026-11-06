@@ -148,7 +148,7 @@ def test_a_ticket_arrives_with_its_context_its_receipt_and_its_event_in_one_go(f
         events = conn.execute("SELECT name, props FROM customer.product_events").fetchall()
         assert events == [("ticket_created", {"kind": "wrong_data"})]
     state = reader.get("/api/v1/me/support").json()
-    assert state["enabled"] is True and state["contact"] == {"whatsapp": None, "email": None}
+    assert state["enabled"] is True and state["contact"] == {"whatsapp": None, "email": None, "channels": ["tickets"], "hours": None}
     assert [c["category"] for c in state["categories"]] == list(support.CATEGORIES)
     assert {c["category"]: c["first_answer"] for c in state["categories"]} == {
         "access": "same_day", "account": "24h", "technical": "24h", "wrong_data": "48h", "suggestion": "week",
@@ -376,6 +376,12 @@ def test_with_the_switch_off_the_writing_goes_and_the_reading_stays(fresh: str,
     assert owner.post(f"/api/v1/admin/support/{t['id']}/answer", json={"body": "Seguimos"}).status_code == 200, (
         "the owner can still answer what was written")
     public = TestClient(create_app()).get("/api/v1/support/contact")
-    assert public.status_code == 200 and public.json() == {"whatsapp": "573001234567", "email": None}
+    assert public.status_code == 200 and public.json() == {"whatsapp": "573001234567", "email": None,
+                                                           "channels": ["whatsapp"], "hours": None}
+    monkeypatch.setenv(support.HOURS_ENV, "Lun-Vie 9:00-18:00, hora de Bogotá")
+    monkeypatch.setenv(support.CHANNELS_ENV, "tickets,whatsapp")
+    again = TestClient(create_app()).get("/api/v1/support/contact").json()
+    assert again["hours"] == "Lun-Vie 9:00-18:00, hora de Bogotá" and again["channels"] == ["whatsapp"], (
+        "with the tickets off only the other named channel is offered")
     monkeypatch.delenv(support.SWITCH)
     assert reader.get("/api/v1/auth/me").json()["support"] is True

@@ -8,6 +8,7 @@ import { LiveApiError } from "@/lib/api/v1/client";
 import { markTrouble } from "@/lib/feedback/session";
 import { track } from "@/lib/track";
 import { useReportProblem } from "@/product/support/report";
+import { StillFailing } from "@/product/support/StillFailing";
 
 export function Card({
   children,
@@ -169,6 +170,7 @@ export function ErrorState({
           {t("support.report.title")}
         </button>
       ) : null}
+      {report.available ? <StillFailing requestId={rid} /> : null}
     </div>
   );
 }

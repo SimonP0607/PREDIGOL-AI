@@ -109,6 +109,39 @@ LINK_PAGES: Final = ("/activate", "/reset-password", "/unlock")
 LOCK_SQL = "SELECT pg_advisory_xact_lock(hashtext('customer.support'), %s)"
 
 
+# ── how a reader reaches PrediGol (closing plan 4.2) ──────────────────────────────────────
+
+ContactChannel = Literal["whatsapp", "tickets", "email"]
+CONTACT_CHANNELS: Final[tuple[ContactChannel, ...]] = ("whatsapp", "tickets", "email")
+"""The ways to reach PrediGol the app knows. A new one (Telegram, say) is a name here and a button in the app; which of
+them are offered and in what order is the server's setting, so that passing from one to another touches no code."""
+CHANNELS_ENV: Final = "FBI_SUPPORT_CHANNELS"
+HOURS_ENV: Final = "FBI_SUPPORT_HOURS"
+HOURS_MAX: Final = 80
+_HOURS_OK = re.compile(r"[^\x00-\x1f\x7f<>]{1,80}")
+
+
+def contact_channels(*, whatsapp: str | None, email: str | None) -> list[ContactChannel]:
+    """The channels a reader is offered, in the owner's order: ``FBI_SUPPORT_CHANNELS`` is a comma list of
+    ``whatsapp``, ``tickets`` and ``email`` (the three, in that order, while it is absent or has no name the app knows);
+    a channel that is named but not available - no number, no reply address, the tickets switched off - is left out."""
+    named: list[ContactChannel] = []
+    for raw in (environment().get(CHANNELS_ENV) or "").split(","):
+        name = raw.strip().lower()
+        if name in CONTACT_CHANNELS and name not in named:
+            named.append(name)
+    available: dict[ContactChannel, bool] = {"whatsapp": whatsapp is not None, "tickets": support_on(),
+                                             "email": email is not None}
+    return [c for c in (named or list(CONTACT_CHANNELS)) if available[c]]
+
+
+def contact_hours() -> str | None:
+    """``FBI_SUPPORT_HOURS``: the hours someone answers, in the owner's words («Lun-Vie 9:00-18:00, hora de Bogotá»), up
+    to 80 characters of plain text; None when it is absent or cannot be shown as it is."""
+    raw = (environment().get(HOURS_ENV) or "").strip()
+    return raw if _HOURS_OK.fullmatch(raw) else None
+
+
 def support_on() -> bool:
     """``FBI_SUPPORT``: ON while the line is absent or empty (the plan approved it); =0 takes the tickets away without a
     deploy; a value it cannot read counts as off."""
