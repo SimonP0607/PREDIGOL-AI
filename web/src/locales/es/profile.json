@@ -192,7 +192,8 @@
         "myPicks": "Mis picks y tus favoritos",
         "help": "Ayuda y soporte"
       },
-      "how": "Pagas por el medio que acordemos contigo y PrediGol lo registra a mano. No hay cobro automático: nada se cobra sin que lo acuerdes."
+      "how": "Pagas por el medio que acordemos contigo y PrediGol lo registra a mano. No hay cobro automático: nada se cobra sin que lo acuerdes.",
+      "notBets": "La membresía paga el acceso al análisis. PrediGol no es una casa de apuestas ni recibe dinero de apuestas."
     },
     "discount": {
       "title": "Descuentos y cupones",

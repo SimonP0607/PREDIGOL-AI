@@ -192,7 +192,8 @@
         "myPicks": "My picks and your favourites",
         "help": "Help and support"
       },
-      "how": "You pay by the means we agree with you and PrediGol records it by hand. There is no automatic charge: nothing is charged unless you agree to it."
+      "how": "You pay by the means we agree with you and PrediGol records it by hand. There is no automatic charge: nothing is charged unless you agree to it.",
+      "notBets": "The membership pays for access to the analysis. PrediGol is not a bookmaker and takes no money for bets."
     },
     "discount": {
       "title": "Discounts and coupons",

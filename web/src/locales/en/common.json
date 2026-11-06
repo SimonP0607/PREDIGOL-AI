@@ -82,7 +82,8 @@
   "logoAlt": "{name} crest",
   "flagAlt": "Flag of {name}",
   "competitionLogoAlt": "{name} logo",
-  "disclaimer": "PrediGol shows information and analysis; it guarantees no result. Please gamble responsibly (18+).",
+  "what": "PrediGol is a sports-analysis and value-detection platform. It does not guarantee results or profits, it is not a bookmaker and it takes no money for bets, and it is only for people aged 18 or over.",
+  "disclaimer": "PrediGol is an analysis platform: it guarantees no results or profits, it is not a bookmaker and it takes no money for bets. 18+ only. Please gamble responsibly.",
   "openMenu": "Open menu",
   "closeMenu": "Close menu",
   "account": "Account",
@@ -135,7 +136,7 @@
   "roleAdmin": "Administrator",
   "meta": {
     "title": "PrediGol — Football Intelligence",
-    "description": "PrediGol: matches, live scores, value picks, parlays and the best odds."
+    "description": "PrediGol, a sports-analysis and value-detection platform: matches, live scores, value picks, parlays and the best odds. Not a bookmaker."
   },
   "filters": {
     "open": "Filters",
