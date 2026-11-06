@@ -176,6 +176,23 @@
       "legal": "Textos legales",
       "export": "Descargar mis datos",
       "readOnly": "Solo lectura mientras la membresía está terminada."
+    },
+    "plan": {
+      "title": "El plan",
+      "price": "{prices} al mes",
+      "or": "o",
+      "priceHelp": "Eliges en qué moneda pagas.",
+      "trial": "Empiezas con {days} días de prueba con acceso completo y sin tarjeta.",
+      "includesTitle": "Incluye",
+      "includes": {
+        "analysis": "El análisis de cada partido y su lectura",
+        "forecast": "El pronóstico de cada partido",
+        "explain": "Explícame: las respuestas con lo que PrediGol ya sabe, sin inventar",
+        "picks": "Los picks y parlays, cuando PrediGol los publica: nunca se inventa uno para llenar el espacio",
+        "myPicks": "Mis picks y tus favoritos",
+        "help": "Ayuda y soporte"
+      },
+      "how": "Pagas por el medio que acordemos contigo y PrediGol lo registra a mano. No hay cobro automático: nada se cobra sin que lo acuerdes."
     }
   },
   "centre": {

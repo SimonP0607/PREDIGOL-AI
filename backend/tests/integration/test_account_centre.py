@@ -123,7 +123,7 @@ def test_a_new_reader_reads_the_eight_blocks_folded(fresh: str) -> None:
     assert body["security"]["sessions"] == 1
     assert body["security"]["last_sign_in_at"]
     assert body["membership"]["state"] == "trial"
-    assert body["membership"]["days_left"] == 14
+    assert body["membership"]["days_left"] == 20
     assert body["help"] == {"waiting": 0, "answered": 0, "whatsapp": False, "support": True}
     text = json.dumps(body)
     for word in INTERNAL:

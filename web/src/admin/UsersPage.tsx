@@ -200,7 +200,7 @@ function InviteForm({
             data-testid="invite-trial"
           >
             <option value="">{t("admin.membership.inviteTrialDefault")}</option>
-            {[7, 8, 9, 10, 11, 12, 13, 14].map((d) => (
+            {Array.from({ length: 14 }, (_, i) => i + 7).map((d) => (
               <option key={d} value={d}>
                 {d}
               </option>
