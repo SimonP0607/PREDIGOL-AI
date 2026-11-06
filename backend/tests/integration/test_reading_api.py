@@ -121,7 +121,10 @@ def test_a_reader_gets_six_sections_of_facts_each_with_its_reference_and_nothing
     assert data["version"] == "reading-v1" and data["complete"] is True and data["fixture_id"] == fid
     assert data["data_at"] is not None and data["forecast_at"] is not None
     got = sections(body)
-    assert list(got) == ["summary", "context", "data", "market", "risks", "conclusion"]
+    assert list(got) == ["summary", "context", "data", "market", "risks", "conclusion", "key_points", "factors"], \
+        "the six, then the two derived ones that have facts (no pick published here: no «value»)"
+    assert codes(got["key_points"]) == ["expected_result", "stakes_pressure", "stakes_pressure", "lineups_unconfirmed"]
+    assert {"stakes_pressure", "key_absences", "streak_unbeaten", "market_moved"} == set(codes(got["factors"]))
     for facts in got.values():
         assert all(f["ref"].startswith(("packet", "forecast")) for f in facts), facts
 
@@ -162,7 +165,8 @@ def test_a_match_without_a_packet_has_a_shorter_reading_that_says_so(
     body = client(db, "USER", monkeypatch).get(url(fid)).json()
     assert body["status"] == "ok" and body["data"]["complete"] is False and body["data"]["data_at"] is None
     got = sections(body)
-    assert list(got) == ["summary", "risks", "conclusion"]
+    assert list(got) == ["summary", "risks", "conclusion", "key_points"]
+    assert codes(got["key_points"]) == ["expected_result", "no_context_yet"], "what is expected and what is missing"
     assert codes(got["summary"]) == ["match_intro", "expected_result"], "the names a reader knows, even without a packet"
     assert codes(got["risks"])[0] == "no_context_yet"
     assert [f["params"]["market"] for f in got["conclusion"] if f["code"] == "likely"] == ["1X2", "OU", "BTTS"]
