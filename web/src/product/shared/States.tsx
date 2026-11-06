@@ -7,6 +7,7 @@ import { t, translateOr } from "@/lib/i18n";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { markTrouble } from "@/lib/feedback/session";
 import { track } from "@/lib/track";
+import { reportShownApiError } from "@/lib/observability";
 import { useReportProblem } from "@/product/support/report";
 import { StillFailing } from "@/product/support/StillFailing";
 
@@ -138,7 +139,9 @@ export function ErrorState({
   useEffect(() => {
     track("error_shown", { code: /^[A-Za-z0-9_.+-]{1,40}$/.test(code) ? code : "other", status });
     markTrouble();
-  }, [code, status]);
+    // the error the reader SAW, with its reference, to Sentry when it is on (closing plan 5.3; once per reference)
+    if (error instanceof LiveApiError) reportShownApiError({ status, code, requestId: rid });
+  }, [error, code, status, rid]);
   return (
     <div
       role="alert"
