@@ -450,7 +450,9 @@ def test_no_table_of_the_customer_schema_has_room_for_an_ip_a_card_a_token_or_an
                                        # the database (not in the export, the logs or Sentry); the browser's family
                                        # and system as words, never its user agent. Then the bells and the queue.
                                        "push_subscriptions", "match_alerts", "push_notices",
-                                       "lifecycle_snapshots"}  # B11: a state and its reason codes, never a word
+                                       "lifecycle_snapshots",  # B11: a state and its reason codes, never a word
+                                       # 4.3: the owner's own words to readers - no reader's data in them
+                                       "announcements", "announcement_log"}
     offending = [(t, c) for t, c in columns if any(c == f or c.startswith(f + "_") or c.endswith("_" + f)
                                                    for f in forbidden)]
     assert not offending, offending

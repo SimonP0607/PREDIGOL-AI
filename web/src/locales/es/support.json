@@ -418,9 +418,39 @@
       "matches": "Ver los partidos",
       "picks": "Ver los picks",
       "profile": "Ir a tu fútbol",
-      "help": "Ir a Ayuda"
+      "help": "Ir a Ayuda",
+      "home": "Ir a Inicio",
+      "howItWorks": "Ver cómo funciona"
     },
     "items": {
+      "forYou": {
+        "title": "Inicio, primero lo tuyo",
+        "body": "Si sigues ligas, equipos, jugadores o mercados, Inicio empieza por «Para ti»: tus partidos de hoy y sus noticias, tus jugadores, los picks de tus partidos con el motivo («Tu liga», «Mercado que sigues: …») y los resultados de las últimas 48 horas. Debajo sigue PrediGol, igual para todos. Si hoy no hay picks de lo tuyo, lo dice: no rellena el espacio."
+      },
+      "summary": {
+        "title": "El Resumen del partido, primero para entender",
+        "body": "Antes del saque, el Resumen de un partido abre con la lectura y el pronóstico, después los picks publicados y los mejores precios. La forma, la tabla, el cara a cara, el calendario, las bajas y las alineaciones siguen ahí, un toque más abajo, en «Profundizar»."
+      },
+      "compactWhy": {
+        "title": "El porqué de cada pick, en una línea",
+        "body": "Las tarjetas compactas de Inicio y de Picks dicen en una línea la probabilidad que PrediGol le da frente a la del mercado, y los picks del día muestran hasta dos riesgos que anotó la revisión de contexto, cuando esa revisión se puede ver."
+      },
+      "competitions": {
+        "title": "Más competiciones",
+        "body": "PrediGol sigue ahora también las eliminatorias mundialistas de África y Oceanía y la Copa Asiática."
+      },
+      "followMore": {
+        "title": "Sigue también jugadores y mercados",
+        "body": "En Perfil → Tu fútbol, además de ligas y equipos, puedes seguir hasta 20 jugadores y 5 mercados; también con «Seguir» en la ficha de un jugador o en la pestaña Mercados de un partido. Solo ordenan lo que ves: no cambian ningún pick, probabilidad ni cuota."
+      },
+      "keyPoints": {
+        "title": "Puntos clave y «Por qué hay valor»",
+        "body": "Arriba del Resumen de cada partido, hasta cinco puntos clave con lo que PrediGol espera y lo que más pesa. Cuando PrediGol publica un pick de ese partido, «Por qué hay valor» compara su probabilidad y su cuota con las del mercado. Un pick con valor puede perder: no es una promesa de resultado."
+      },
+      "howItWorks": {
+        "title": "Cómo funciona PrediGol",
+        "body": "En Ayuda, una página explica cada parte de la app en una tarjeta, con un ejemplo."
+      },
       "explain": {
         "title": "Explícame, la respuesta a tu duda",
         "body": "En cada partido, en cada pick y en tu parlay hay un botón «Explícame»: elige una pregunta frecuente («¿Por qué no hay pick?», «¿Qué puede salir mal?») y recibe la respuesta con lo que PrediGol ya sabe. Sin IA y sin inventar: si falta un dato, te lo dice."

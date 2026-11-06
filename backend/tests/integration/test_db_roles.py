@@ -214,6 +214,15 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "customer.coupon_redemptions", "INSERT", True),
     ("predigol_api", "customer.coupon_redemptions", "UPDATE", False),
     ("predigol_worker", "customer.coupons", "SELECT", False),
+    # the owner's communiqués (closing plan 4.3): the API writes and publishes them, never deletes one nor changes the record;
+    # the worker reads none
+    ("predigol_api", "customer.announcements", "INSERT", True),
+    ("predigol_api", "customer.announcements", "UPDATE", True),
+    ("predigol_api", "customer.announcements", "DELETE", False),
+    ("predigol_api", "customer.announcement_log", "INSERT", True),
+    ("predigol_api", "customer.announcement_log", "UPDATE", False),
+    ("predigol_api", "customer.announcement_log", "DELETE", False),
+    ("predigol_worker", "customer.announcements", "SELECT", False),
     ("predigol_worker", "customer.coupon_redemptions", "SELECT", False),
 ])
 def test_each_role_gets_exactly_what_it_uses(granted: str, role: str, table: str, privilege: str,

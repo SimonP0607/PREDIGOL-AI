@@ -17,6 +17,7 @@ import { Disclaimer } from "@/components/system/Disclaimer";
 import { Toaster } from "@/components/ui/sonner";
 import { SlipProvider } from "@/product/records/slip";
 import { SlipButton, SlipSheet } from "@/product/records/SlipSheet";
+import { AnnouncementBanner } from "@/product/announcements/AnnouncementBanner";
 import { MembershipBanner } from "@/product/membership/MembershipBanner";
 import { TourCard } from "@/product/tour/Tour";
 import { FeedbackProvider } from "@/product/feedback/FeedbackProvider";
@@ -87,6 +88,7 @@ export function UserShell({ children }: { children: ReactNode }) {
               </header>
 
               {/* The membership's notice (plan UX, A8): in the page's flow, never over the tab bar. */}
+              <AnnouncementBanner />
               <MembershipBanner />
               <main className="px-safe mx-auto w-full max-w-6xl pb-6 pt-5 lg:pb-12">
                 {children}

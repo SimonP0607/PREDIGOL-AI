@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { LiveApiError, v1 } from "@/lib/api/v1/client";
 import { t, translateOr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { AnnouncementBanner } from "@/product/announcements/AnnouncementBanner";
 import { LoginContact } from "@/product/support/LoginContact";
 import { tooManyAttempts } from "./wait";
 
@@ -70,6 +71,7 @@ export function LoginPage({ expired }: { expired: boolean }) {
       <div className="flex justify-end p-4">
         <LanguageSwitch />
       </div>
+      <AnnouncementBanner />
       <main className="flex flex-1 items-center justify-center px-4 pb-16">
         <div className="w-full max-w-sm">
           <div className="flex flex-col items-center text-center">

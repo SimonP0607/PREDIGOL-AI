@@ -33,7 +33,8 @@
     "settings": "Ajustes",
     "support": "Soporte",
     "customers": "Clientes",
-    "storage": "Almacenamiento"
+    "storage": "Almacenamiento",
+    "announcements": "Comunicados"
   },
   "pages": {
     "overview": {

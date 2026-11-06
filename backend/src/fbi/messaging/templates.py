@@ -284,6 +284,11 @@ def _resolved(params: Mapping[str, str], locale: Locale, zone: str) -> dict[str,
     return {"resolved": moment(params["resolved"], locale, zone)}
 
 
+def _critical_notice(params: Mapping[str, str], locale: Locale, _zone: str) -> dict[str, str]:
+    """A communiqué of the owner marked critical (closing plan 4.3), in the words he wrote in the reader's language."""
+    return {"title": params[f"title_{locale}"], "summary": params[f"body_{locale}"]}
+
+
 def _important_change(params: Mapping[str, str], locale: Locale, _zone: str) -> dict[str, str]:
     """An important change is told by its entry of Novedades (fbi.customer.updates): its title, in the reader's language."""
     from fbi.customer import updates
@@ -758,6 +763,22 @@ TEMPLATES: dict[str, Template] = {t.name: t for t in (
                 "See What's new"),
         values=_important_change, sample=(("update", "2026-11-04-explicame"),), stale_after=timedelta(days=7),
         critical=True,
+    ),
+    # A communiqué of the owner that is critical (an incident, a maintenance; closing plan 4.3): his own words in both
+    # languages, short enough for an e-mail (the console refuses a longer one for this destination).
+    Template(
+        "critical_notice", "service", ("title_es", "title_en", "body_es", "body_en"), "/home",
+        es=Copy("{title}",
+                ("Hola, {name}.", "{summary}", "Si necesitas ayuda, escríbenos desde Ayuda."),
+                "Ir a PrediGol"),
+        en=Copy("{title}",
+                ("Hello, {name}.", "{summary}", "If you need help, write to us from Help."),
+                "Go to PrediGol"),
+        values=_critical_notice,
+        sample=(("title_es", "Mantenimiento de esta noche"), ("title_en", "Tonight's maintenance"),
+                ("body_es", "PrediGol puede ir más lento entre las 02:00 y las 03:00."),
+                ("body_en", "PrediGol may be slower between 02:00 and 03:00.")),
+        stale_after=timedelta(days=2), critical=True,
     ),
 )}
 

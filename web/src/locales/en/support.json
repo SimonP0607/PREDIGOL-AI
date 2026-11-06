@@ -418,9 +418,39 @@
       "matches": "See the matches",
       "picks": "See the picks",
       "profile": "Go to your football",
-      "help": "Go to Help"
+      "help": "Go to Help",
+      "home": "Go to Home",
+      "howItWorks": "See how it works"
     },
     "items": {
+      "forYou": {
+        "title": "Home, yours first",
+        "body": "If you follow leagues, teams, players or markets, Home starts with «For you»: your matches today and their news, your players, the picks of your matches with the reason («Your league», «A market you follow: …») and the results of the last 48 hours. PrediGol follows below, the same for everyone. If there are no picks of yours today, it says so: it never fills the space."
+      },
+      "summary": {
+        "title": "The match Summary, first to understand",
+        "body": "Before kick-off, a match's Summary opens with the reading and the forecast, then the published picks and the best prices. Form, table, head to head, schedule, absences and line-ups are still there, one tap further down, under «Go deeper»."
+      },
+      "compactWhy": {
+        "title": "Each pick's why, in one line",
+        "body": "The compact cards of Home and Picks say in one line the probability PrediGol gives against the market's, and the picks of the day show up to two risks the context review noted, when that review can be seen."
+      },
+      "competitions": {
+        "title": "More competitions",
+        "body": "PrediGol now also follows the World Cup qualifiers of Africa and Oceania and the Asian Cup."
+      },
+      "followMore": {
+        "title": "Follow players and markets too",
+        "body": "In Profile → Your football, besides leagues and teams, you can follow up to 20 players and 5 markets; also with «Follow» on a player's card or in a match's Markets tab. They only order what you see: they change no pick, probability or price."
+      },
+      "keyPoints": {
+        "title": "Key points and «Why there is value»",
+        "body": "At the top of each match's Summary, up to five key points with what PrediGol expects and what weighs most. When PrediGol publishes a pick of that match, «Why there is value» compares its probability and its price with the market's. A pick with value can lose: it is not a promise of a result."
+      },
+      "howItWorks": {
+        "title": "How PrediGol works",
+        "body": "In Help, a page explains each part of the app in a card, with an example."
+      },
       "explain": {
         "title": "Explain, the answer to your question",
         "body": "On every match, every pick and your parlay there is an «Explain» button: choose a frequent question («Why is there no pick?», «What can go wrong?») and get the answer from what PrediGol already knows. No AI and nothing made up: if a piece of data is missing, it says so."

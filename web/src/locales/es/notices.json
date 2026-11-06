@@ -1,0 +1,91 @@
+{
+  "banner": {
+    "close": "Cerrar aviso"
+  },
+  "kind": {
+    "maintenance": "Mantenimiento",
+    "incident": "Incidencia",
+    "update": "Actualización",
+    "general": "Comunicado general"
+  },
+  "updates": {
+    "fromOwner": "Aviso de PrediGol"
+  },
+  "admin": {
+    "title": "Comunicados",
+    "description": "Avisos del dueño a los lectores: mantenimiento, incidencia, actualización o comunicado general. Siempre un borrador, una vista previa y una frase para publicar.",
+    "new": "Nuevo comunicado",
+    "edit": "Editar borrador",
+    "save": "Guardar borrador",
+    "saved": "Borrador guardado.",
+    "cancel": "Cancelar",
+    "fields": {
+      "kind": "Tipo",
+      "titleEs": "Título (español)",
+      "titleEn": "Title (English)",
+      "bodyEs": "Texto (español)",
+      "bodyEn": "Text (English)",
+      "starts": "Desde",
+      "ends": "Hasta",
+      "destinations": "Dónde se publica",
+      "critical": "Crítico (maintenance o incident)"
+    },
+    "dest": {
+      "banner": "Banner en la app, con fechas",
+      "updates": "Novedades (solo actualizaciones)",
+      "telegram": "Canal de Telegram",
+      "telegramOff": "Canal de Telegram (sin configurar: no saldrá)",
+      "email": "Correo (solo si es crítico)"
+    },
+    "counter": "{n} de {max}",
+    "problem": {
+      "texts": "Cada título y texto, en español e inglés, con su largo.",
+      "dates": "Termina después de empezar y dura 90 días como máximo.",
+      "destination": "Elige al menos un destino.",
+      "updates": "Solo una actualización va a Novedades.",
+      "critical": "Solo mantenimiento o incidencia puede ser crítico.",
+      "email": "El correo sale solo si es crítico, con textos de 200 caracteres como máximo."
+    },
+    "status": {
+      "draft": "Borrador",
+      "published": "Publicado",
+      "retracted": "Retirado"
+    },
+    "today": "Publicados hoy: {n} de {max}.",
+    "telegramState": "Telegram: {state}",
+    "telegramOn": "configurado",
+    "telegramNo": "sin configurar (todo sirve igual)",
+    "preview": "Vista previa y publicar",
+    "previewTitle": "Esto es lo que saldrá",
+    "previewBanner": "Banner del {from} al {until}",
+    "previewUpdates": "Novedades: {title}",
+    "previewTelegram": "Telegram: {title}",
+    "previewTelegramOff": "Telegram sin configurar: no saldrá.",
+    "previewEmail": "Correo crítico a {n} lectores.",
+    "confirmLabel": "Escribe PUBLICAR para confirmar",
+    "publish": "Publicar",
+    "published": "Publicado. Correos en cola: {emails}. Telegram: {telegram}.",
+    "expires": "El código vale hasta las {time}.",
+    "telegram": {
+      "sent": "enviado",
+      "failed": "falló (lo demás sí salió)",
+      "not_configured": "sin configurar",
+      "not_requested": "no pedido"
+    },
+    "retract": "Retirar",
+    "retracted": "Comunicado retirado. El registro se conserva.",
+    "log": "Registro",
+    "hideLog": "Ocultar registro",
+    "empty": "Todavía no hay comunicados.",
+    "action": {
+      "created": "Creado",
+      "edited": "Editado",
+      "previewed": "Vista previa",
+      "published": "Publicado",
+      "retracted": "Retirado",
+      "telegram": "Telegram",
+      "emails": "Correos"
+    },
+    "never": "Nunca se borra un comunicado: se retira y queda en el registro."
+  }
+}

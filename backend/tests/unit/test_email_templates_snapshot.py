@@ -52,8 +52,9 @@ def test_the_seven_new_templates_are_the_ones_the_plan_names() -> None:
     for name in NEW:
         assert name in TEMPLATES
     assert {n for n, t in TEMPLATES.items() if t.category == "service"} == {
-        "maintenance_scheduled", "incident_resolved", "important_change"}
-    assert {n for n, t in TEMPLATES.items() if t.critical} == {"important_change"}
+        "maintenance_scheduled", "incident_resolved", "important_change", "critical_notice"}
+    # the two that reach everyone: an important change (4.1) and the owner's critical communiqué (4.3)
+    assert {n for n, t in TEMPLATES.items() if t.critical} == {"important_change", "critical_notice"}
 
 
 def test_each_template_says_what_it_said_when_it_was_written() -> None:

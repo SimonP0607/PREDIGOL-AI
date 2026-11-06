@@ -22,6 +22,7 @@ from fbi.api.routers import (
     admin_users,
     ai_layer,
     analyst,
+    announcements,
     auth,
     center,
     customer,
@@ -214,6 +215,8 @@ def create_app() -> FastAPI:
         app.include_router(r, prefix="/api/v1")
     # The browser's error reports (plan UX, A2): public - an error can happen before signing in - but same-site.
     app.include_router(monitoring.router, prefix="/api/v1", dependencies=[Depends(same_site_only)])
+    app.include_router(announcements.router, prefix="/api/v1", dependencies=[Depends(same_site_only)])
+    app.include_router(announcements.bot_router, prefix="/api/v1")  # Telegram's own call: its secret is the key
     app_tier = [Depends(same_site_only), Depends(require_app), Depends(observe_principal)]
     # The account itself, its membership and the reader's rights (consents, export, privacy requests, notification
     # preferences) and their questions to PrediGol (A14): never behind the gates - a limited reader still sees why, how
@@ -240,7 +243,7 @@ def create_app() -> FastAPI:
     for r in (system.admin_router, football.admin_router, market.admin_router,
               center.admin_router, explorer.router, analyst.router, admin_users.router, truth.router,
               evolution.router, ai_layer.admin_router, intelligence.router, referees.router,
-              monitoring.admin_router, admin_customers.router, admin_customers.audit_router, customer.admin_router, messaging.admin_router, events.admin_router,
+              monitoring.admin_router, announcements.admin_router, admin_customers.router, admin_customers.audit_router, customer.admin_router, messaging.admin_router, events.admin_router,
               membership.admin_router, membership.coupons_router, support.admin_router, feedback.admin_router, push.admin_router):
         app.include_router(r, prefix="/api/v1/admin", dependencies=admin_tier)
     # The original unversioned health endpoint stays where monitors expect it.

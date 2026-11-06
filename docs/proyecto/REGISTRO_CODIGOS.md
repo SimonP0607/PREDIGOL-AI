@@ -57,6 +57,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-013 | Una línea de «por qué» y chips de riesgo en los picks compactos (plan de cierre UX, 2.3): «PrediGol le da 52 % y el mercado, 45 %» con los números del propio pick, y hasta dos riesgos de la revisión de contexto como chips cuando el lector puede ver su decisión; nada inventado. Solo web (`backend/docs/owner/TARJETAS_PORQUE_UX_013.md`) | en curso | este PR | — |
 | UX-022 | Comunicados del dueño (plan de cierre UX, 4.3): consola con cuatro tipos cerrados (mantenimiento, incidencia, actualización y comunicado general; no existe «promoción»), borrador, vista previa con código de 10 minutos, frase «PUBLICAR», tope diario de 3 y registro que solo se amplía. Destinos: banner en la app con fechas, Novedades (las actualizaciones), canal de Telegram si está configurado (y bot de bienvenida sin conversación) y correo solo si es crítico. Migración 0124. No toca la inteligencia | en curso | este PR | — |
 | UX-023 | Interruptor de los avisos de picks al dueño (plan de cierre UX, 4.4, P14): `FBI_NOTIFY_PICKS=off` deja fuera de su chat los avisos de picks en sombra y de liquidación para poder encender los de tickets, vencimientos y operación. Solo decide a quién se avisa: no lee ni toca picks, modelos ni histórico; encendido por defecto, sin migración | en curso | este PR | — |
+| UX-024 | Novedades del cierre de la UX (plan de cierre, fase 6): siete entradas nuevas, en español e inglés y en la copia del servidor, de lo que el lector ya ve desplegado: Inicio «Para ti», Resumen para entender, el porqué en una línea, más competiciones, seguir jugadores y mercados, puntos clave y «Por qué hay valor», y «Cómo funciona PrediGol». Sin migración ni interruptor | en curso | este PR | — |
 
 ## BE — backend
 
@@ -72,4 +73,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-010 · UX-024 · BE-004 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-010 · UX-025 · BE-004 · FE-001 · OPS-001 · DOC-001
