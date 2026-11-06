@@ -5,6 +5,7 @@
  * From `sm`: one line, "Home [crest] 1 – 0 [crest] Away", the score in a fixed centre
  * column so crests and scores line up from row to row.
  */
+import { GoalDigit } from "@/product/shared/GoalDigit";
 import { TeamLogo } from "@/components/football/Logos";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -61,16 +62,15 @@ function Goals({
 }) {
   if (value === null) return null;
   return (
-    <span
+    <GoalDigit
+      value={value}
       className={cn(
         "numeric min-w-[1.25rem] text-right text-sm font-semibold tabular-nums",
         live ? "text-primary" : outcome === "lose" ? "text-muted-foreground" : "text-foreground",
         outcome === "win" && "font-bold",
         className,
       )}
-    >
-      {value}
-    </span>
+    />
   );
 }
 
@@ -118,15 +118,17 @@ export function FixtureLine({
       >
         {score ? (
           <>
-            <span className={cn("font-semibold", homeTone === "win" && "font-bold")}>
-              {score.home}
-            </span>
+            <GoalDigit
+              value={score.home}
+              className={cn("font-semibold", homeTone === "win" && "font-bold")}
+            />
             <span aria-hidden className="text-subtle-foreground">
               –
             </span>
-            <span className={cn("font-semibold", awayTone === "win" && "font-bold")}>
-              {score.away}
-            </span>
+            <GoalDigit
+              value={score.away}
+              className={cn("font-semibold", awayTone === "win" && "font-bold")}
+            />
           </>
         ) : (
           <span className="text-xs text-subtle-foreground">{t("common.vs")}</span>

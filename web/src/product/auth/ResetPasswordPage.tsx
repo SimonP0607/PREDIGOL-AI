@@ -12,7 +12,7 @@ import { forgetLinkFromAddress, readLinkToken } from "@/lib/auth/linkToken";
 import { LiveApiError, v1 } from "@/lib/api/v1/client";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { errorMessage } from "@/product/shared/States";
+import { errorMessage, SkeletonCards } from "@/product/shared/States";
 import { AccountShell, Notice, SideLink, accountButton, accountInput } from "./AccountShell";
 import { passwordReady } from "@/lib/auth/passwordRule";
 import { NewPassword } from "./NewPassword";
@@ -90,7 +90,7 @@ export function ResetPasswordPage() {
   if (token && !invalid && info.isPending) {
     return (
       <AccountShell title={title} testId="reset-page">
-        <Loader2 aria-hidden className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
+        <SkeletonCards count={1} />
       </AccountShell>
     );
   }

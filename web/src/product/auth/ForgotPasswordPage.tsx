@@ -3,6 +3,7 @@
  * whether or not it has an account, whether or not an e-mail leaves. While the owner keeps self-service off, the page
  * says how to get back in instead (the owner gives a temporary password).
  */
+import { SkeletonCards } from "@/product/shared/States";
 import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Mail } from "lucide-react";
@@ -45,7 +46,7 @@ export function ForgotPasswordPage() {
       testId="forgot-page"
     >
       {options.isPending ? (
-        <Loader2 aria-hidden className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
+        <SkeletonCards count={1} />
       ) : off ? (
         <Notice tone="info" testId="self-service-off">
           {t("auth.account.forgotOff")}

@@ -41,6 +41,8 @@
  *             E2E_PUSH_OFF=1 against the stack without the VAPID key)
  *   a11y      axe-core on the sign-in page and the product, WCAG 2.2 A/AA (E2E_A11Y=1)
  *   screens   reference screenshots of the product at 320/360/390/412/430 px (E2E_SCREENS=1)
+ *   motion    reduced motion stills every animation, and the layout does not shift while three screens load
+ *             (E2E_MOTION=1; closing plan 5.1)
  * A full run loads a few hundred pages: the API's per-client limit must allow it
  * (dev-up sets FBI_API_RATE_LIMIT=3000). The web must run in live mode (web/.env.example:
  * VITE_DATA_MODE=live and VITE_API_BASE_URL set to the web's own origin): without the API address the
@@ -322,6 +324,16 @@ export default defineConfig({
             name: "screens",
             testMatch: /screens\.spec\.ts/,
             use: { ...devices["Pixel 7"], storageState: statePath("phone") },
+            dependencies: ["setup"],
+          },
+        ]
+      : []),
+    ...(process.env["E2E_MOTION"]
+      ? [
+          {
+            name: "motion",
+            testMatch: /motion\.spec\.ts/,
+            use: { ...devices["Pixel 7"], storageState: statePath("user") },
             dependencies: ["setup"],
           },
         ]
