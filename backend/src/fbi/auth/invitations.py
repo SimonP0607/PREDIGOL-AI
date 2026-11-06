@@ -140,7 +140,10 @@ def activate(link: str, *, password: str, language: str, timezone: str, ip: str 
                 events.record_server(conn, user_id, "account_activated")
                 # The membership's trial starts with the account (plan UX, A8): the days the owner chose at the
                 # invitation, FBI_TRIAL_DAYS otherwise.
-                membership.start_trial(conn, user_id)
+                trial = membership.start_trial(conn, user_id)
+                if trial is not None:
+                    # the welcome (closing plan 4.1) says when that trial ends: one e-mail, not two
+                    membership.tell(conn, user_id, "welcome", f"welcome:{user_id}", trial)
                 user = store.user_by_id(conn, user_id)
                 assert user is not None
                 stage = _next_stage(user, mfa_done=False)  # "enroll" when the owner required a second factor

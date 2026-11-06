@@ -7,9 +7,9 @@
   and name read at that moment, their choices applied (an optional category they switched off, an address that
   bounced or complained), rendered, sent with an idempotency key, and the provider's answer recorded. Retries after
   1 min, 5 min, 30 min, 2 h and 12 h, then 'failed'; a daily cap under the provider's quota; the most urgent first
-  (security and account, then privacy, support, membership and the legal notices, which go to everyone at once;
-  commercial e-mail last, plan UX B8: its own sender, the consent checked again and a one-click leaving link of its
-  own, RFC 8058).
+  (security and account, then privacy, support, membership and the legal notices, which go to everyone at once, then the
+  service notices - closing plan 4.1 - under a cap of their own so a bulk of them never spends the day's quota; commercial
+  e-mail last, plan UX B8: its own sender, the consent checked again and a one-click leaving link of its own, RFC 8058).
 
 Nothing is sent while ``FBI_EMAIL_SEND`` is off: the messenger does not call ``dispatch`` and the queue waits.
 
@@ -51,9 +51,14 @@ RETRY_DELAYS: tuple[timedelta, ...] = (timedelta(minutes=1), timedelta(minutes=5
 MAX_ATTEMPTS = len(RETRY_DELAYS) + 1
 DEFAULT_DAILY_CAP = 90
 """Messages a day (UTC) the messenger hands to the provider: Resend Free allows 100, received e-mails included."""
+DEFAULT_SERVICE_DAILY_CAP = 40
+"""Of those, the service notices a day (closing plan 4.1): what is left stays for the account's, the security's, the privacy
+requests', the support's and the membership's e-mails, which a reader is waiting for. Past it, the service notices wait for
+tomorrow - a bulk goes out spread over days."""
 PRIORITY_SQL = ("CASE o.category WHEN 'security' THEN 0 WHEN 'account' THEN 0 WHEN 'privacy' THEN 1 "
-                "WHEN 'support' THEN 2 WHEN 'membership' THEN 3 WHEN 'marketing' THEN 5 ELSE 4 END")
-"""The most urgent first; commercial e-mail (plan UX, B8) last of all, after the legal notices."""
+                "WHEN 'support' THEN 2 WHEN 'membership' THEN 3 WHEN 'service' THEN 4 WHEN 'marketing' THEN 5 "
+                "ELSE 4 END")
+"""The most urgent first; commercial e-mail (plan UX, B8) last of all, after the legal and the service notices."""
 
 
 def sending_enabled() -> bool:
@@ -117,10 +122,29 @@ SELECT o.id, o.user_id, o.category, o.template, o.locale, o.params, o.dedup_key,
 """
 
 
-def sent_today(conn: psycopg.Connection[Any], at: datetime) -> int:
+def service_cap() -> int:
+    """FBI_EMAIL_SERVICE_DAILY_CAP: the service notices a day (UTC); never above the day's cap as a whole."""
+    try:
+        return max(0, int(os.environ.get("FBI_EMAIL_SERVICE_DAILY_CAP", str(DEFAULT_SERVICE_DAILY_CAP))))
+    except ValueError:
+        return DEFAULT_SERVICE_DAILY_CAP
+
+
+def sent_today(conn: psycopg.Connection[Any], at: datetime, category: str | None = None) -> int:
     midnight = at.replace(hour=0, minute=0, second=0, microsecond=0)
-    row = conn.execute("SELECT count(*) FROM customer.messages_outbox WHERE sent_at >= %s", (midnight,)).fetchone()
+    row = conn.execute("SELECT count(*) FROM customer.messages_outbox WHERE sent_at >= %s "
+                       "AND (%s::text IS NULL OR category = %s)", (midnight, category, category)).fetchone()
     return int(row[0]) if row else 0
+
+
+def hold_service(conn: psycopg.Connection[Any], at: datetime) -> int:
+    """The day's service cap is reached: the service notices still queued wait for tomorrow (no attempt is spent) and the
+    pass goes on with what is not one. How many were held."""
+    tomorrow = at.replace(hour=0, minute=5, second=0, microsecond=0) + timedelta(days=1)
+    cur = conn.execute("UPDATE customer.messages_outbox SET next_attempt_at = %s, updated_at = now() "
+                       "WHERE status = 'queued' AND category = 'service' AND next_attempt_at < %s", (tomorrow, tomorrow))
+    conn.commit()
+    return max(cur.rowcount, 0)
 
 
 def suppression(row: Mapping[str, Any], at: datetime | None = None) -> str | None:
@@ -147,7 +171,9 @@ def suppression(row: Mapping[str, Any], at: datetime | None = None) -> str | Non
     if status == "complained" and row["category"] not in MANDATORY:
         return "address complained"
     if row["category"] in OPTIONAL and row["category"] in (row["email_off"] or []):
-        return "switched off by the reader"
+        template = TEMPLATES.get(str(row.get("template") or ""))
+        if template is None or not template.critical:  # an important change reaches everyone (closing plan 4.1)
+            return "switched off by the reader"
     return None
 
 
@@ -167,11 +193,17 @@ def dispatch(conn: psycopg.Connection[Any], provider: Provider, *, at: datetime,
     report = DispatchReport()
     cap = daily_cap() if cap is None else cap
     used = sent_today(conn, at)
+    service_cap_ = min(service_cap(), cap)
+    service_used = sent_today(conn, at, "service")
     conn.commit()
+    service_held = False
     for _ in range(limit):
         if used >= cap:
             report.capped, report.stopped = True, f"daily cap of {cap} reached"
             break
+        if not service_held and service_used >= service_cap_:
+            service_held = True
+            report.deferred += hold_service(conn, at)
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(CLAIM_SQL, (at,))
             row = cur.fetchone()
@@ -282,5 +314,6 @@ def dispatch(conn: psycopg.Connection[Any], provider: Provider, *, at: datetime,
                 (at, provider_id))
         report.sent += 1
         used += 1
+        service_used += 1 if row["category"] == "service" else 0
         log.info("outbox.sent", message_id=mid, template=row["template"], category=row["category"])
     return report

@@ -117,7 +117,7 @@ def test_a_new_reader_reads_the_eight_blocks_folded(fresh: str) -> None:
     assert body["account"]["created_at"]
     assert body["region"] == {"language": "es", "timezone": "America/Bogota"}
     assert body["football"]["suggested"] is True
-    assert body["notifications"] == {"email_on": 6, "email_total": 6, "email_status": "ok", "sending": False}
+    assert body["notifications"] == {"email_on": 7, "email_total": 7, "email_status": "ok", "sending": False}
     assert body["privacy"] == {"consents_due": [], "consents_at": None, "open_requests": 0, "next_deadline": None}
     assert body["security"]["mfa_enabled"] is False
     assert body["security"]["sessions"] == 1
@@ -143,7 +143,7 @@ def test_what_the_reader_does_shows_at_once(fresh: str, monkeypatch: pytest.Monk
     assert t.status_code == 201, t.text
     ticket_id = t.json()["id"]
     body = account(c)
-    assert body["notifications"]["email_on"] == 5
+    assert body["notifications"]["email_on"] == 6
     assert body["privacy"]["open_requests"] == 1
     assert body["privacy"]["next_deadline"] == deadline
     assert date.fromisoformat(body["privacy"]["next_deadline"]) >= datetime.now(UTC).date() - timedelta(days=1)

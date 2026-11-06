@@ -27,10 +27,10 @@ from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 Locale = Literal["es", "en"]
-Category = Literal["account", "security", "membership", "support", "privacy", "legal"]
-OutboxCategory = Literal["account", "security", "membership", "support", "privacy", "legal", "marketing"]
+Category = Literal["account", "security", "membership", "support", "privacy", "legal", "service"]
+OutboxCategory = Literal["account", "security", "membership", "support", "privacy", "legal", "service", "marketing"]
 LOCALES: tuple[Locale, ...] = ("es", "en")
-CATEGORIES: tuple[Category, ...] = ("account", "security", "membership", "support", "privacy", "legal")
+CATEGORIES: tuple[Category, ...] = ("account", "security", "membership", "support", "privacy", "legal", "service")
 """The categories of the account's e-mails: what the reader's choices speak of (customer.preferences.email_off)."""
 COMMERCIAL: frozenset[OutboxCategory] = frozenset({"marketing"})
 """Commercial e-mail (plan UX, B8): only with the consent ``marketing_email``, by its own sender, left in one click - never
@@ -40,8 +40,10 @@ OUTBOX_CATEGORIES: tuple[OutboxCategory, ...] = (*CATEGORIES, "marketing")
 
 MANDATORY: frozenset[Category] = frozenset({"account", "security", "privacy", "legal"})
 """Categories a reader cannot switch off: what their account, its security, their own privacy requests and a material
-change of the legal texts need them to know (plan UX, section 33). Membership and support notices are optional
-(``OPTIONAL``; the database refuses any other in ``customer.preferences.email_off``)."""
+change of the legal texts need them to know (plan UX, section 33). Membership, support and service notices are optional
+(``OPTIONAL``; the database refuses any other in ``customer.preferences.email_off``). The service category (closing plan
+4.1: a scheduled maintenance, a resolved incident, an important change) can be switched off - except a template marked
+``critical`` (an important change), which reaches every reader whatever they chose."""
 OPTIONAL: tuple[Category, ...] = tuple(c for c in CATEGORIES if c not in MANDATORY)
 
 ACCOUNT_FIELDS = frozenset({"name"})
@@ -266,6 +268,32 @@ def _legal_change(params: Mapping[str, str], locale: Locale, _zone: str) -> dict
     return {"document": title, "changes": version.changes[locale], "document_slug": LEGAL_SLUGS[document]}
 
 
+def _ends_on(params: Mapping[str, str], locale: Locale, zone: str) -> dict[str, str]:
+    """A membership or a trial that lasts until a day (closing plan 4.1): the day, as the reader says it."""
+    return {"date": day_in_zone(params["ends"], locale, zone)}
+
+
+def _maintenance(params: Mapping[str, str], locale: Locale, zone: str) -> dict[str, str]:
+    starts, ends = params["starts"], params["ends"]
+    if datetime.fromisoformat(ends) <= datetime.fromisoformat(starts):
+        raise TemplateError("a maintenance ends after it starts")
+    return {"starts": moment(starts, locale, zone), "ends": moment(ends, locale, zone)}
+
+
+def _resolved(params: Mapping[str, str], locale: Locale, zone: str) -> dict[str, str]:
+    return {"resolved": moment(params["resolved"], locale, zone)}
+
+
+def _important_change(params: Mapping[str, str], locale: Locale, _zone: str) -> dict[str, str]:
+    """An important change is told by its entry of Novedades (fbi.customer.updates): its title, in the reader's language."""
+    from fbi.customer import updates
+
+    entry = updates.by_id(params["update"])
+    if entry is None:
+        raise TemplateError(f"no Novedades entry {params['update']!r}")
+    return {"title": entry.title(locale)}
+
+
 def _grant(params: Mapping[str, str], _locale: Locale, _zone: str) -> dict[str, str]:
     """A link's e-mail: its only parameter is the number of its token's row (the link is made when it leaves)."""
     if not params["grant"].isdigit():
@@ -377,6 +405,9 @@ class Template:
     """The parameter holding the moment (plus ``stale_grace``) past which a queued message is not sent any more: a
     membership's «ends on the 7th» after the 7th (plan UX, A8)."""
     stale_grace: timedelta = timedelta(0)
+    critical: bool = False
+    """Reaches every reader whatever their choices of an optional category (an important change, closing plan 4.1); an
+    address that bounced still gets nothing."""
 
     def copy(self, locale: Locale) -> Copy:
         return self.es if locale == "es" else self.en
@@ -602,6 +633,131 @@ TEMPLATES: dict[str, Template] = {t.name: t for t in (
                 "See my membership"),
         values=_membership, sample=(("ends", "2026-11-07T15:00:00+00:00"), ("kind", "trial")),
         stale_param="ends", stale_grace=timedelta(days=GRACE_DAYS),
+    ),
+    # ── closing plan 4.1: the e-mails that were missing, ready to be switched on (FBI_EMAIL_SEND) ──
+    # Welcome: at the activation, with the end of the trial that starts with the account (one e-mail, not two).
+    Template(
+        "welcome", "account", ("ends",), "/home",
+        es=Copy("Te damos la bienvenida a PrediGol",
+                ("Hola, {name}.",
+                 "Tu cuenta está activa y tu prueba gratuita termina el {date}. No pedimos tarjeta ni se cobra nada: "
+                 "en tu perfil, en «Membresía», ves el precio antes de pagar.",
+                 "PrediGol es una plataforma de análisis deportivo y detección de valor: no garantiza resultados ni "
+                 "beneficios, no es una casa de apuestas ni recibe dinero de apuestas, y es solo para mayores de 18 "
+                 "años.",
+                 "Para empezar, elige tus favoritos en tu perfil, en «Tu fútbol»: Inicio te mostrará primero lo tuyo."),
+                "Entrar a PrediGol"),
+        en=Copy("Welcome to PrediGol",
+                ("Hello, {name}.",
+                 "Your account is active and your free trial ends on {date}. We ask for no card and charge nothing: "
+                 "in your profile, under “Membership”, you see the price before paying.",
+                 "PrediGol is a sports-analysis and value-detection platform: it does not guarantee results or "
+                 "profits, is not a bookmaker and takes no money for bets, and is only for people aged 18 or over.",
+                 "To start, choose your favourites in your profile, under “Your football”: Home will show what is "
+                 "yours first."),
+                "Go to PrediGol"),
+        values=_ends_on, sample=(("ends", "2026-11-25T15:00:00+00:00"),), stale_after=timedelta(days=7),
+    ),
+    # The only reminder to an invitation nobody used (72 hours after it left): the same link, with the same expiry.
+    Template(
+        "activation_reminder", "account", ("grant",), "/activate#t={link}",
+        es=Copy("Tu invitación a PrediGol sigue esperándote",
+                ("Hola, {name}.",
+                 "Hace unos días te invitamos a PrediGol y tu cuenta todavía no está activa. Actívala con el botón: "
+                 "es el enlace de tu invitación, sirve una sola vez y caduca el {until}.",
+                 "Es el único recordatorio que te enviamos. Si no quieres la cuenta, ignora este correo: no se "
+                 "activa sin ti."),
+                "Activar mi cuenta"),
+        en=Copy("Your invitation to PrediGol is still waiting for you",
+                ("Hello, {name}.",
+                 "A few days ago we invited you to PrediGol and your account is not active yet. Activate it with the "
+                 "button: it is the link of your invitation, it works once and expires on {until}.",
+                 "This is the only reminder we send you. If you do not want the account, ignore this e-mail: it is "
+                 "not activated without you."),
+                "Activate my account"),
+        values=_grant, sample=(("grant", "1"),), grant="invite", stale_after=timedelta(days=7),
+    ),
+    # A trial the owner started for an account that already existed (the one of a new account is told by the welcome).
+    Template(
+        "trial_started", "membership", ("ends",), "/profile#membership",
+        es=Copy("Empezó tu prueba de PrediGol",
+                ("Hola, {name}.",
+                 "Tienes acceso completo a PrediGol hasta el {date}. No pedimos tarjeta ni se cobra nada.",
+                 "Si después quieres seguir, en tu perfil, en «Membresía», ves cómo y el precio antes de pagar."),
+                "Ver mi membresía"),
+        en=Copy("Your PrediGol trial has started",
+                ("Hello, {name}.",
+                 "You have full access to PrediGol until {date}. We ask for no card and charge nothing.",
+                 "If you want to continue afterwards, in your profile, under “Membership”, you see how and the price "
+                 "before paying."),
+                "See my membership"),
+        values=_ends_on, sample=(("ends", "2026-11-25T15:00:00+00:00"),), stale_after=timedelta(days=3),
+    ),
+    # A payment recorded by hand, first or renewal: until when the reader's membership is active.
+    Template(
+        "payment_recorded", "membership", ("ends",), "/profile#membership",
+        es=Copy("Registramos tu pago",
+                ("Hola, {name}.",
+                 "Registramos tu pago. Tu membresía de PrediGol está activa hasta el {date}.",
+                 "Ves el detalle en tu perfil, en «Membresía». Gracias por seguir con nosotros."),
+                "Ver mi membresía"),
+        en=Copy("We recorded your payment",
+                ("Hello, {name}.",
+                 "We recorded your payment. Your PrediGol membership is active until {date}.",
+                 "You see the detail in your profile, under “Membership”. Thank you for staying with us."),
+                "See my membership"),
+        values=_ends_on, sample=(("ends", "2026-12-25T15:00:00+00:00"),), stale_after=timedelta(days=3),
+    ),
+    # Service notices (the category that can be switched off), for the console's communiqués (closing plan 4.3).
+    Template(
+        "maintenance_scheduled", "service", ("starts", "ends"), "/updates",
+        es=Copy("Mantenimiento programado de PrediGol",
+                ("Hola, {name}.",
+                 "Haremos un mantenimiento programado desde el {starts} hasta el {ends}. En ese tiempo PrediGol puede "
+                 "no estar disponible o ir más lento.",
+                 "No tienes que hacer nada. Si algo cambia, lo contamos en Novedades."),
+                "Ver Novedades"),
+        en=Copy("Scheduled maintenance of PrediGol",
+                ("Hello, {name}.",
+                 "We will carry out scheduled maintenance from {starts} until {ends}. During that time PrediGol may "
+                 "be unavailable or slower.",
+                 "You do not have to do anything. If something changes, we say so in What's new."),
+                "See What's new"),
+        values=_maintenance,
+        sample=(("starts", "2026-11-10T06:00:00+00:00"), ("ends", "2026-11-10T07:00:00+00:00")),
+        stale_param="ends",
+    ),
+    Template(
+        "incident_resolved", "service", ("resolved",), "/help",
+        es=Copy("Resolvimos una incidencia en PrediGol",
+                ("Hola, {name}.",
+                 "Resolvimos una incidencia que afectaba a PrediGol. Quedó resuelta el {resolved}.",
+                 "Si algo sigue sin funcionar para ti, escríbenos desde Ayuda y cuéntanos qué ves; si la pantalla te "
+                 "mostró una referencia, inclúyela."),
+                "Ir a Ayuda"),
+        en=Copy("We resolved an incident in PrediGol",
+                ("Hello, {name}.",
+                 "We resolved an incident that affected PrediGol. It was resolved on {resolved}.",
+                 "If something still does not work for you, write to us from Help and tell us what you see; if the "
+                 "screen showed you a reference, include it."),
+                "Go to Help"),
+        values=_resolved, sample=(("resolved", "2026-11-10T07:30:00+00:00"),), stale_after=timedelta(days=2),
+    ),
+    # An important change reaches everyone (critical): it is told by its entry of Novedades.
+    Template(
+        "important_change", "service", ("update",), "/updates",
+        es=Copy("Un cambio importante en PrediGol: {title}",
+                ("Hola, {name}.",
+                 "Hay un cambio importante en PrediGol: «{title}».",
+                 "Lo explicamos con detalle en Novedades."),
+                "Ver Novedades"),
+        en=Copy("An important change in PrediGol: {title}",
+                ("Hello, {name}.",
+                 "There is an important change in PrediGol: “{title}”.",
+                 "We explain it in detail in What's new."),
+                "See What's new"),
+        values=_important_change, sample=(("update", "2026-11-04-explicame"),), stale_after=timedelta(days=7),
+        critical=True,
     ),
 )}
 
