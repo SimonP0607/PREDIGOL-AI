@@ -18,6 +18,9 @@ nothing of evaluation is shown but counts.
                      those days is reconstructed from its decisions saved (``intel.decisions``, the last one of each
                      selection before kick-off): how many selections and the commonest first filter that stopped them -
                      labelled as a reconstruction, counts only.
+    parlays          PrediGol's daily and multi-day parlays of the qualified source, whole history, counted as Mis picks counts
+                     them (``fbi.userdata.records``: ``predigol_parlays``): created once they have their legs, won (every leg
+                     won, or paid with a leg void, pushed or half), lost, void, pending - the same samples as the picks.
     by kind of bet   the whole history per market; a kind with fewer than MIN_SAMPLE settled picks goes to «other».
     line value       ``clv-v1`` (``fbi.market.closing_value``): the published price against the de-vigged (Shin) consensus of
                      the last capture before kick-off - computed by that module's own function, the definition labelled
@@ -56,6 +59,8 @@ from fbi.api.contracts.transparency import (
     NoPickDay,
     NoPickDays,
     NoPickReason,
+    ParlayKind,
+    ParlayTally,
     Period,
     PeriodTally,
     StopKey,
@@ -85,6 +90,11 @@ CALIBRATION_DAYS: Final = 90
 STATE_DAYS: Final = 14
 """A market's state is what most of its forecasts of the last 14 days of the window were."""
 PERIODS: Final[tuple[Period, ...]] = ("7d", "30d", "all")
+PARLAY_KINDS: Final[tuple[ParlayKind, ...]] = ("daily", "multiday")
+PARLAY_STATUS: Final = {"WON": "WIN", "PARTIAL_VOID": "WIN", "LOST": "LOSS", "VOID": "VOID", "READY": "PENDING",
+                        "ACTIVE": "PENDING"}
+"""A parlay's status as a pick's, the way Mis picks reads it (``fbi.userdata.records``): the ones that paid are wins, a parlay
+being built is not a parlay yet."""
 FORECAST_MARKETS: Final[tuple[tuple[Literal["1X2", "OU", "BTTS"], Decimal, str | None], ...]] = (
     ("1X2", Decimal("0"), None), ("OU", Decimal("2.5"), "Over"), ("BTTS", Decimal("0"), "Yes"))
 """The forecast's markets and the outcome whose calibration is shown (1X2: every outcome)."""
@@ -110,6 +120,15 @@ SELECT i.status, i.profit_units AS profit, i.market_key, i.settled_at, f.kickoff
   JOIN picks.daily_sets s ON s.id = i.set_id
   JOIN core.fixtures f ON f.id = i.fixture_id
  WHERE s.source = 'qualified' AND f.kickoff_at < %(until)s
+"""
+
+PARLAYS_SQL = """
+SELECT p.kind, p.status, p.profit_units AS profit
+  FROM picks.parlays p
+ WHERE p.source = 'qualified' AND p.status <> 'BUILDING'
+   AND EXISTS (SELECT 1 FROM picks.parlay_legs l WHERE l.parlay_id = p.id)
+   AND (SELECT min(f.kickoff_at) FROM picks.parlay_legs l JOIN core.fixtures f ON f.id = l.fixture_id
+         WHERE l.parlay_id = p.id) < %(until)s
 """
 
 DAYS_SQL = """
@@ -291,6 +310,20 @@ def markets(rows: list[dict[str, Any]]) -> list[MarketTally]:
     return out
 
 
+def parlays(rows: list[dict[str, Any]]) -> list[ParlayTally]:
+    """PrediGol's parlays by kind, whole history: counted like a pick (one unit per settled parlay, the profit stored on the
+    record), the ones that paid as wins, with how many of them paid with a leg void, pushed or half."""
+    out: list[ParlayTally] = []
+    for kind in PARLAY_KINDS:
+        mine = [r for r in rows if r["kind"] == kind]
+        c = Count()
+        for r in mine:
+            c.add(PARLAY_STATUS[str(r["status"])], r["profit"])
+        out.append(ParlayTally(kind=kind, partial=sum(1 for r in mine if r["status"] == "PARTIAL_VOID"),
+                               **tally_fields(c)))
+    return out
+
+
 # ── the days without picks ──────────────────────────────────────────────────────
 
 def window(at: datetime) -> tuple[date, date]:
@@ -466,7 +499,8 @@ def assemble(conn: Conn, *, tz: str, at: datetime, base: Common) -> Transparency
     settled = [r["settled_at"] for r in published if r["settled_at"] is not None]
     return Transparency(
         timezone=tz, min_sample=MIN_SAMPLE, conclusive=CONCLUSIVE, min_calibration=MIN_CALIBRATION, min_bin=MIN_BIN,
-        calibration_days=CALIBRATION_DAYS, periods=periods(published, at=at, tz=tz), days=base.days,
+        calibration_days=CALIBRATION_DAYS, periods=periods(published, at=at, tz=tz),
+        parlays=parlays(fetch_all(conn, PARLAYS_SQL, {"until": until})), days=base.days,
         markets=markets(published), line_value=base.line_value, forecasts=base.forecasts, evaluation=base.evaluation,
         definitions=base.definitions, data_as_of=max(settled, default=None))
 
