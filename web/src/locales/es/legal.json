@@ -32,6 +32,8 @@
     "submit": "Aceptar y continuar",
     "submitting": "Guardando…",
     "allRequired": "Marca cada casilla para continuar.",
+    "optional": "Opcional",
+    "optionalHelp": "No hace falta para entrar. Si la dejas sin marcar, no se registra nada de tu uso. La cambias cuando quieras en tu perfil.",
     "textChanged": "El texto cambió mientras lo leías: revisa la versión nueva y vuelve a marcar las casillas.",
     "profile": "Ver mis datos y mis solicitudes",
     "signOut": "Cerrar sesión"
@@ -94,7 +96,13 @@
       "system": "PrediGol"
     },
     "optional": "Opcional: lo cambias en Notificaciones.",
-    "optionalLink": "Ir a Notificaciones"
+    "optionalLink": "Ir a Notificaciones",
+    "analytics": {
+      "title": "Estadísticas de uso",
+      "help": "Opcional. Sin marcar, no se registra nada de tu uso. Lo cambias cuando quieras, aquí.",
+      "since": "Lo aceptaste el {date}.",
+      "left": "Lo retiraste el {date}."
+    }
   },
   "admin": {
     "title": "Solicitudes de privacidad",
