@@ -151,6 +151,9 @@ function About({
         <Sparkles aria-hidden className="h-5 w-5 text-primary" />
         {t("onboarding.welcome.about.title")}
       </h1>
+      <p className="text-[0.9375rem] leading-relaxed" data-testid="welcome-what">
+        {t("common.what")}
+      </p>
       <ul className="space-y-3" data-testid="welcome-about">
         {(["analysis", "picks", "transparency"] as const).map((k) => (
           <li key={k} className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed">

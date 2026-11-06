@@ -11,6 +11,9 @@
         },
         {
           "p": "El responsable atiende directamente las consultas y los reclamos sobre tus datos."
+        },
+        {
+          "p": "PrediGol es una plataforma de análisis deportivo y detección de valor, solo para mayores de 18 años: no garantiza resultados ni beneficios, no es una casa de apuestas ni recibe dinero de apuestas. No te pedimos cuánto apuestas ni con qué operador: si guardas un pick, solo puedes anotar la cuota que te dieron."
         }
       ]
     },
@@ -22,7 +25,8 @@
           "ul": [
             "De tu cuenta: correo electrónico, nombre o alias, idioma, zona horaria y la contraseña guardada solo como huella (argon2id), nunca en claro.",
             "De la seguridad de tu cuenta: las sesiones abiertas (fecha, dispositivo y dirección IP), el historial de accesos y, si la activas, la verificación en dos pasos.",
-            "De tu uso del producto: los picks y parlays que guardas y sus resultados, y tus preferencias.",
+            "De tu uso del producto: los picks y parlays que guardas (con la cuota que anotes, si la anotas) y sus resultados, y tus preferencias.",
+            "De tu membresía: las fechas de tu prueba y de cada periodo, los pagos que PrediGol registra a mano (monto, moneda, fecha, medio y una referencia en palabras) y los avisos de vencimiento que te enviamos.",
             "Tus consentimientos (qué aceptaste, en qué versión y cuándo) y tus solicitudes de privacidad o soporte."
           ]
         },

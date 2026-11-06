@@ -11,6 +11,9 @@
         },
         {
           "p": "The controller handles queries and claims about your data directly."
+        },
+        {
+          "p": "PrediGol is a sports-analysis and value-detection platform, only for people aged 18 or over: it does not guarantee results or profits, it is not a bookmaker and it does not take money for bets. We do not ask how much you bet or with which operator: if you save a pick, you can only note the price you were given."
         }
       ]
     },
@@ -22,7 +25,8 @@
           "ul": [
             "Of your account: e-mail address, name or alias, language, time zone and the password, stored only as a fingerprint (argon2id), never in clear.",
             "Of your account's security: the open sessions (date, device and IP address), the sign-in history and, if you turn it on, two-step verification.",
-            "Of your use of the product: the picks and parlays you save and their results, and your preferences.",
+            "Of your use of the product: the picks and parlays you save (with the price you note, if you note it) and their results, and your preferences.",
+            "Of your membership: the dates of your trial and of each period, the payments PrediGol records by hand (amount, currency, date, means and a reference in words) and the expiry notices we send you.",
             "Your consents (what you accepted, in which version and when) and your privacy or support requests."
           ]
         },
