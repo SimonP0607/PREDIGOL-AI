@@ -113,3 +113,57 @@ def test_the_operational_messages_go_out_before_the_shadow_picks(db: psycopg.Con
     budget = _queued(db, "ai_budget", "nt:queue:budget", "Presupuesto de IA: 50 % del mes")
     order = [int(r[0]) for r in db.execute(service.QUEUE_SQL, (1_000_000,)).fetchall()]
     assert order.index(budget) < min(order.index(p) for p in picks), "the alert first, though it was queued last"
+
+
+def test_with_the_picks_notices_off_no_pick_is_drafted_and_the_rest_still_is(
+        db: psycopg.Connection, seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Closing plan 4.4 (P14): the owner's chat can be left without the notices of shadow picks and their settlement
+    while the operational messages stay. The switch changes whom the notifier tells and nothing else: the picks are
+    not read for it and nothing recorded changes."""
+    from tests.integration.test_intel import IntelWorld
+
+    w = IntelWorld(db, seed)
+    at = datetime.now(UTC)
+    fid = w.fixture(at + timedelta(hours=5))
+    pick = w.pick(fid, "OU", "Over", "2.5", p_model=0.6, p_market=0.55, odds=1.9, created=at - timedelta(minutes=30))
+    before = db.execute("SELECT status, p_calibrated FROM picks.picks WHERE id = %s", (pick,)).fetchone()
+    monkeypatch.delenv(service.PICKS_ENV, raising=False)
+    assert f"pick:{pick}:created" in {d.dedup_key for d in service.collect(db, at=at)}
+    monkeypatch.setenv(service.PICKS_ENV, "off")
+    kinds = {d.kind for d in service.collect(db, at=at)}
+    assert not kinds & {"shadow_pick", "pick_settled"}
+    assert db.execute("SELECT status, p_calibrated FROM picks.picks WHERE id = %s", (pick,)).fetchone() == before
+
+
+def test_with_the_picks_notices_off_what_is_queued_about_picks_waits_untouched(
+        conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Uses ``conn`` (it commits, and removes what it left): a queued pick message left behind would be sent by the
+    notifier of the pick pipeline's test."""
+    db = conn
+    monkeypatch.setenv(service.PICKS_ENV, "off")
+    old = _queued(db, "shadow_pick", "nt:off:pick", "t")
+    budget = _queued(db, "ai_budget", "nt:off:budget", "Presupuesto de IA: 50 % del mes")
+    sent: list[str] = []
+
+    class Spy:
+        name = "spy"
+
+        def send(self, title: str, body: str) -> None:
+            sent.append(title)
+
+    monkeypatch.setattr(service, "collect", lambda conn, at: [])
+    run_notifier(db, Spy())
+    assert "Presupuesto de IA: 50 % del mes" in sent and "t" not in sent
+    rows: dict[int, str] = dict(
+        db.execute("SELECT id, status FROM audit.notifications WHERE id IN (%s, %s)", (old, budget)).fetchall())
+    assert rows == {old: "queued", budget: "sent"}
+
+
+def test_the_picks_switch_reads_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(service.PICKS_ENV, raising=False)
+    assert service.picks_notices_on()
+    for off in ("off", "OFF", "0", "false", "no"):
+        monkeypatch.setenv(service.PICKS_ENV, off)
+        assert not service.picks_notices_on()
+    monkeypatch.setenv(service.PICKS_ENV, "on")
+    assert service.picks_notices_on()

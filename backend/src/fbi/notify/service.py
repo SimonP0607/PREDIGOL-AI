@@ -29,7 +29,16 @@ from fbi.core.clock import now
 log = structlog.get_logger(__name__)
 
 SEND_BATCH = 20
+PICKS_ENV = "FBI_NOTIFY_PICKS"
 WEB_BASE = os.environ.get("FBI_WEB_BASE_URL", "http://localhost:5173")
+
+
+def picks_notices_on() -> bool:
+    """Whether the owner's chat is told about shadow picks and their settlement (closing plan 4.4, P14). On unless
+    ``FBI_NOTIFY_PICKS`` says off, so nothing changes until the owner decides. The switch only decides whom the
+    notifier tells: no pick, model, probability, state or settlement reads it, and nothing recorded is changed."""
+    return os.environ.get(PICKS_ENV, "on").strip().lower() not in ("off", "0", "false", "no")
+
 
 # Every kind collect() drafts. audit.notifications.kind is CHECKed against this same list (revision 0067). The two
 # run-watchdog kinds were drafted from 5 Oct 2026 05:45 UTC without it: the database refused them, and the refusal
@@ -107,6 +116,12 @@ SELECT id, title, body FROM audit.notifications WHERE status = 'queued'
 """What goes out next: the operational messages (budget, worker, failures) before the shadow picks' news. With ten
 thousand shadow picks a day the queue held 132,082 of them on 13 Oct 2026, and a budget alert queued behind them would
 have waited weeks for its turn."""
+QUEUE_WITHOUT_PICKS_SQL = """
+SELECT id, title, body FROM audit.notifications WHERE status = 'queued' AND kind NOT IN ('shadow_pick', 'pick_settled')
+ ORDER BY id LIMIT %s
+"""
+"""With the picks' notices off (FBI_NOTIFY_PICKS): what is already queued about picks stays queued, untouched - nothing
+recorded is changed or deleted - and the operational messages go out alone."""
 
 REPEATED_FAILURES_SQL = """
 SELECT job_type, max(started_at) AS last_at, (array_agg(last_error ORDER BY started_at DESC))[1] AS last_error
@@ -152,42 +167,43 @@ def budget_draft(r: dict[str, Any]) -> Draft:
 def collect(conn: psycopg.Connection, *, at: datetime) -> list[Draft]:
     drafts: list[Draft] = []
     with conn.cursor(row_factory=dict_row) as cur:
-        # Only the picks whose message is not recorded yet: re-drafting every shadow pick of the week on every run
-        # (137,974 drafts every ten minutes on 13 Oct 2026, one savepoint each) kept this transaction open 7-9 minutes
-        # of every 10, and a migration's lock waited behind it.
-        cur.execute(
-            """
-            SELECT p.id, th.name || ' v ' || ta.name AS fixture, f.kickoff_at, p.market_key, p.selection, p.line,
-                   p.market_odds, b.name AS bookmaker, p.p_calibrated, p.p_market_fair, p.ev, p.status,
-                   p.qualification, m.name AS model, pr.result_status, pr.profit_units, p.fixture_id
-            FROM picks.picks p
-            JOIN core.fixtures f ON f.id = p.fixture_id
-            JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
-            JOIN market.bookmakers b ON b.id = p.bookmaker_id
-            JOIN models.model_versions v ON v.id = p.model_version_id JOIN models.model_registry m ON m.id = v.model_id
-            LEFT JOIN picks.pick_results pr ON pr.pick_id = p.id
-            WHERE p.created_at > %s - interval '7 days'
-              AND (NOT EXISTS (SELECT 1 FROM audit.notifications n WHERE n.dedup_key = 'pick:' || p.id || ':created')
-                   OR (p.status = 'settled' AND NOT EXISTS (
-                       SELECT 1 FROM audit.notifications n WHERE n.dedup_key = 'pick:' || p.id || ':settled')))
-            """,
-            (at,),
-        )
-        for p in cur.fetchall():
-            sel = f"{p['market_key']} {p['selection']}" + (f" {p['line']}" if Decimal(p["line"]) != 0 else "")
-            reasons = "; ".join((p["qualification"] or {}).get("reasons", [])) or "qualified"
-            link = f"{WEB_BASE}/matches/{p['fixture_id']}"
-            drafts.append(Draft(
-                "shadow_pick", f"pick:{p['id']}:created", f"SHADOW pick #{p['id']} — research only, not a bet",
-                f"{p['fixture']} ({p['kickoff_at']:%d %b %H:%M} UTC)\n{sel} at {p['market_odds']} ({p['bookmaker']})\n"
-                f"{p['model']}: {_fmt_pct(p['p_calibrated'])} vs market {_fmt_pct(p['p_market_fair'])}; "
-                f"EV {_fmt_pct(p['ev'])}\nNot qualified: {reasons}\n{link}",
-                {"pick_id": p["id"]}))
-            if p["status"] == "settled" and p["result_status"] not in (None, "pending"):
+        if picks_notices_on():
+            # Only the picks whose message is not recorded yet: re-drafting every shadow pick of the week on every run
+            # (137,974 drafts every ten minutes on 13 Oct 2026, one savepoint each) kept this transaction open 7-9 minutes
+            # of every 10, and a migration's lock waited behind it.
+            cur.execute(
+                """
+                SELECT p.id, th.name || ' v ' || ta.name AS fixture, f.kickoff_at, p.market_key, p.selection, p.line,
+                       p.market_odds, b.name AS bookmaker, p.p_calibrated, p.p_market_fair, p.ev, p.status,
+                       p.qualification, m.name AS model, pr.result_status, pr.profit_units, p.fixture_id
+                FROM picks.picks p
+                JOIN core.fixtures f ON f.id = p.fixture_id
+                JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
+                JOIN market.bookmakers b ON b.id = p.bookmaker_id
+                JOIN models.model_versions v ON v.id = p.model_version_id JOIN models.model_registry m ON m.id = v.model_id
+                LEFT JOIN picks.pick_results pr ON pr.pick_id = p.id
+                WHERE p.created_at > %s - interval '7 days'
+                  AND (NOT EXISTS (SELECT 1 FROM audit.notifications n WHERE n.dedup_key = 'pick:' || p.id || ':created')
+                       OR (p.status = 'settled' AND NOT EXISTS (
+                           SELECT 1 FROM audit.notifications n WHERE n.dedup_key = 'pick:' || p.id || ':settled')))
+                """,
+                (at,),
+            )
+            for p in cur.fetchall():
+                sel = f"{p['market_key']} {p['selection']}" + (f" {p['line']}" if Decimal(p["line"]) != 0 else "")
+                reasons = "; ".join((p["qualification"] or {}).get("reasons", [])) or "qualified"
+                link = f"{WEB_BASE}/matches/{p['fixture_id']}"
                 drafts.append(Draft(
-                    "pick_settled", f"pick:{p['id']}:settled", f"Shadow pick #{p['id']} settled: {p['result_status']}",
-                    f"{p['fixture']} · {sel} at {p['market_odds']}\nResult on the 90-minute score: "
-                    f"{p['result_status']} ({p['profit_units']} u, hypothetical)\n{link}", {"pick_id": p["id"]}))
+                    "shadow_pick", f"pick:{p['id']}:created", f"SHADOW pick #{p['id']} — research only, not a bet",
+                    f"{p['fixture']} ({p['kickoff_at']:%d %b %H:%M} UTC)\n{sel} at {p['market_odds']} ({p['bookmaker']})\n"
+                    f"{p['model']}: {_fmt_pct(p['p_calibrated'])} vs market {_fmt_pct(p['p_market_fair'])}; "
+                    f"EV {_fmt_pct(p['ev'])}\nNot qualified: {reasons}\n{link}",
+                    {"pick_id": p["id"]}))
+                if p["status"] == "settled" and p["result_status"] not in (None, "pending"):
+                    drafts.append(Draft(
+                        "pick_settled", f"pick:{p['id']}:settled", f"Shadow pick #{p['id']} settled: {p['result_status']}",
+                        f"{p['fixture']} · {sel} at {p['market_odds']}\nResult on the 90-minute score: "
+                        f"{p['result_status']} ({p['profit_units']} u, hypothetical)\n{link}", {"pick_id": p["id"]}))
         cur.execute("SELECT min(captured_at) AS first, count(*) AS n FROM market.odds_snapshots")
         first = cur.fetchone()
         if first and first["n"]:
@@ -267,7 +283,7 @@ def run_notifier(conn: psycopg.Connection, channel: Channel | None, *, at: datet
                           detail=str(exc).splitlines()[0][:200])
                 continue
             report.new += max(cur.rowcount, 0)
-        cur.execute(QUEUE_SQL, (SEND_BATCH,))
+        cur.execute(QUEUE_SQL if picks_notices_on() else QUEUE_WITHOUT_PICKS_SQL, (SEND_BATCH,))
         queued = cur.fetchall()
         for nid, title, body in queued:
             if channel is None:

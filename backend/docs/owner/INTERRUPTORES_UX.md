@@ -32,7 +32,8 @@ Los secretos (claves de Resend, de Sentry, VAPID, tokens) se escriben en el serv
 | `FBI_VAPID_SUBJECT` | B7 | API y mensajero | El contacto (`mailto:` o `https:`) que ven los servicios de push; si falta, la dirección pública de la web | Opcional, con P12 |
 | `FBI_SENTRY_DSN`, `FBI_SENTRY_WEB_DSN` | A2 | API, worker, mensajero | Enviar errores a Sentry (el de la web nunca llega al navegador) | P1 |
 | `FBI_SYNTHETIC_BASE_URL`, `FBI_SYNTHETIC_EMAIL`, `FBI_SYNTHETIC_PASSWORD` | A2 | Worker | El recorrido de un lector de prueba cada 15 minutos | Una cuenta de lector dedicada, creada por el dueño |
-| `FBI_TELEGRAM_BOT_TOKEN`, `FBI_TELEGRAM_CHAT_ID` | S3 | API y worker | Los avisos de la app al dueño | P14 (bloqueado hasta que exista el interruptor que deja fuera los avisos de picks en sombra) |
+| `FBI_TELEGRAM_BOT_TOKEN`, `FBI_TELEGRAM_CHAT_ID` | S3 | API y worker | Los avisos de la app al dueño | P14: primero `FBI_NOTIFY_PICKS=off` (siguiente fila), después el token y el chat |
+| `FBI_NOTIFY_PICKS` | UX-023 | Worker | `off` deja fuera de tu chat los avisos de picks en sombra y de liquidación; los de tickets, vencimientos y operación siguen. Encendido por defecto | Ponlo en `off` **antes** de dar el token (P14). Lo ya apuntado sobre picks queda en cola sin tocarse; volver a `on` los enviaría |
 
 ## Los que nacen encendidos (se apagan con `=0`, sin desplegar)
 
