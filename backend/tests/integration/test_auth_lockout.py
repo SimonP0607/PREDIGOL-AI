@@ -238,8 +238,15 @@ def test_a_refusal_while_locked_writes_nothing_and_the_streak_is_read_through_it
         from fbi.auth.store import ADDRESS_STREAK_SQL
 
         conn.execute("SET enable_seqscan = off")
+        # On a table this small the planner's choice among the indexes depends on statistics that autovacuum may or
+        # may not have refreshed (it picked the date index, then the account's, on main, 6 Nov 2026). Without those
+        # rivals, in a transaction that is rolled back, the question is the one that matters: can the address's
+        # streak use its own index?
+        conn.execute("DROP INDEX auth.audit_events_at_idx")
+        conn.execute("DROP INDEX auth.audit_events_target_idx")
         plan = "\n".join(r[0] for r in conn.execute("EXPLAIN " + ADDRESS_STREAK_SQL,
                                                      {"a": UNKNOWN, "h": 30}).fetchall())
+        conn.rollback()
     assert "audit_events_signin_idx" in plan, plan
 
 
