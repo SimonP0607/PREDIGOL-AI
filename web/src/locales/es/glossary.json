@@ -185,6 +185,56 @@
       "name": "Valor de línea",
       "short": "Lo que valía tu cuota frente al precio justo del cierre: la cuota por la probabilidad sin margen del consenso de las casas en la última captura antes del inicio, menos uno.",
       "long": "Positivo: tomaste una cuota mejor que la del cierre sin margen. Se calcula cuando el partido ya empezó, con tu cuota si la indicaste. Dice si el precio era bueno, no si el pick ganó: también tiene su muestra."
+    },
+    "market1x2": {
+      "name": "Resultado final (1X2)",
+      "short": "El mercado más simple: gana el local (1), empate (X) o gana el visitante (2), con el marcador de los 90 minutos.",
+      "long": "Tiene tres opciones y se cumple una sola. El empate es una opción más, no una devolución: si eliges al local y empatan, la selección se pierde."
+    },
+    "overUnder": {
+      "name": "Más/Menos goles",
+      "short": "Si el partido tendrá más o menos goles que una línea, por ejemplo 2,5.",
+      "long": "Con «más de 2,5» ganan los partidos con tres goles o más; con «menos de 2,5», los de dos o menos. Con una línea entera, como 2, un partido que termina con 2 goles devuelve la unidad."
+    },
+    "btts": {
+      "name": "Ambos marcan",
+      "short": "Si los dos equipos marcan al menos un gol («Sí») o si alguno se queda sin marcar («No»).",
+      "long": "Cuenta el marcador de los 90 minutos. Si uno de los equipos no marca, gana el «No»."
+    },
+    "asianHandicap": {
+      "name": "Hándicap asiático",
+      "short": "Le da a un equipo una ventaja o una desventaja de goles antes de empezar, para igualar el partido.",
+      "long": "Con −0,5, el equipo tiene que ganar el partido; con +0,5, le basta con empatar o ganar. Con una línea entera la unidad se devuelve si el resultado cae justo en ella, y con una de cuarto se parte en dos mitades (medio ganado o medio perdido)."
+    },
+    "doubleChance": {
+      "name": "Doble oportunidad",
+      "short": "Cubre dos de los tres resultados del 1X2: local o empate (1X), local o visitante (12), o empate o visitante (X2).",
+      "long": "Paga menos que elegir un solo resultado, porque gana en más casos. Solo pierde cuando sale el resultado que no cubre."
+    },
+    "recommended": {
+      "name": "Recomendado",
+      "short": "El estado de un pick que PrediGol recomienda: tiene valor al mejor precio de ahora y pasa todas sus reglas.",
+      "long": "Es el único estado de pick que ve un lector: los que no se recomiendan no se muestran y la app dice cuántos quedaron fuera. Que un pick sea «Recomendado» no garantiza que gane."
+    },
+    "pending": {
+      "name": "Pendiente",
+      "short": "El partido todavía no terminó y el pick aún no tiene resultado.",
+      "long": "Cuando el partido termina y hay marcador oficial, el pick se liquida. Si no hay resultado oficial en las 72 horas siguientes al inicio, queda anulado."
+    },
+    "inPlay": {
+      "name": "En juego",
+      "short": "El partido ya empezó y todavía no termina.",
+      "long": "El pick conserva la cuota y la hora a las que se tomó: no se vuelve a calcular con las cuotas de ahora."
+    },
+    "won": {
+      "name": "Ganado",
+      "short": "La selección se cumplió: gana la cuota menos 1 por cada unidad.",
+      "long": "Con una cuota de 2,10 y una unidad, la ganancia es de 1,10 unidades. Un parlay solo se gana si aciertan todas sus selecciones (las devueltas o anuladas cuentan como cuota 1)."
+    },
+    "lost": {
+      "name": "Perdido",
+      "short": "La selección no se cumplió: se pierde la unidad entera.",
+      "long": "En un parlay, una sola selección perdida lo pierde entero. Una pérdida cuenta en la rentabilidad igual que una ganancia."
     }
   }
 }

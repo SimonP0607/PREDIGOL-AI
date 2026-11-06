@@ -38,6 +38,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-003 | Fase 0 del plan de cierre de la UX: el mapa de interruptores de la capa de usuario con su prueba (plantilla del servidor, mapa del dueño y código dicen lo mismo), el inventario de secretos al día (DSN de la web y contraseña del recorrido sintético), la novedad de «Explícame» y la limpieza de dos componentes y dos dependencias sin uso | en curso | este PR | plan de cierre UX, fase 0 |
 | UX-004 | Membresía con el precio y la prueba que decidió el dueño (5-nov-2026): 150.000 COP o 50 USD al mes (a elección del lector, configurables con `FBI_MEMBERSHIP_PRICE_COP` y `FBI_MEMBERSHIP_PRICE_USD`; `0` esconde una moneda), prueba de 20 días por defecto (de 7 a 20, también al invitar) y el bloque «El plan» en Perfil → Membresía. Sin migración; no toca la inteligencia ni la puerta `FBI_MEMBERSHIP_ENFORCE` | en curso | este PR | — |
 | UX-005 | Cupones y descuento por fidelidad de la membresía (decisión del dueño del 5-nov-2026): el dueño crea cupones cuando quiera (código, porcentaje, nota, último día y cupos; los apaga, nunca los borra), el lector guarda uno con su código en la sección Membresía del perfil, y quien lleva más de dos meses pagados tiene 20% en cada renovación. No se suman: se aplica el mayor. Sin cobro automático: el descuento lo registra el dueño con el pago. Migración 0121 (`customer.coupons`, `customer.coupon_redemptions` y tres columnas de `customer.payments`); no toca la inteligencia | en curso | este PR | — |
+| UX-006 | «Cómo funciona PrediGol» (plan de cierre UX, 1.6): la página `/help/how-it-works` con 11 tarjetas (Inicio, Partidos, Picks, Parlays, Cuotas, Mis picks, Favoritos, Análisis de un partido, Probabilidades, Mercados y Estados de los picks), cada una con qué es, cómo se lee, un ejemplo y «Verlo en la app»; el glosario suma los cinco mercados y los estados de un pick; el recorrido pasa a 5 pasos (con los parlays) y su paso de picks dice lo que el lector ve de verdad; enlaces desde Ayuda, Perfil, la bienvenida y el último paso del recorrido. Solo web: no toca la inteligencia ni el backend | en curso | este PR | — |
 
 ## BE — backend
 
@@ -51,4 +52,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-009 · UX-006 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-009 · UX-011 · BE-002 · FE-001 · OPS-001 · DOC-001
