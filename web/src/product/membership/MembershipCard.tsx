@@ -4,13 +4,12 @@
  * closes: a limited reader sees here why, and how to come back.
  */
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import { v1 } from "@/lib/api/v1/client";
 import type { MyPeriod } from "@/lib/api/v1/types_membership";
 import { t } from "@/lib/i18n";
 import { formatDateYear } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import { ErrorState } from "@/product/shared/States";
+import { ErrorState, SkeletonCards } from "@/product/shared/States";
 import { membershipLine, showsDaysLeft } from "./membership";
 import { MembershipDiscounts } from "./MembershipDiscounts";
 import { MembershipPlan } from "./MembershipPlan";
@@ -27,8 +26,7 @@ function amountOf(p: MyPeriod): string | null {
 
 export function MembershipCard() {
   const q = useQuery({ queryKey: ["v1", "me", "membership"], queryFn: v1.myMembership });
-  if (q.isPending)
-    return <Loader2 aria-hidden className="h-4 w-4 animate-spin text-muted-foreground" />;
+  if (q.isPending) return <SkeletonCards count={1} />;
   if (q.isError) {
     return (
       <div className="rounded-md border border-border" data-testid="membership-error">
