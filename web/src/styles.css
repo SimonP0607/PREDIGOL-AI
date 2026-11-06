@@ -463,3 +463,123 @@
     font-size: 1rem;
   }
 }
+
+/*
+ * Motion (closing plan 5.1): three durations - 120 ms for a press, 200 ms for a change of state, 300 ms for a change of
+ * screen - one curve, and a few keyframes. Sporting, not a video game: things settle, they do not bounce. Only CSS.
+ * With «reduce motion» (the system's setting) nothing moves: see the block at the end.
+ */
+:root {
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 300ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes motion-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes motion-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes motion-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+/* a state that just changed (a pick settled, a follow saved, a count that grew): a short, single swell */
+@keyframes motion-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+/* a goal: the score takes the gold for a moment, then settles */
+@keyframes motion-goal {
+  0% {
+    background-color: color-mix(in oklch, var(--gold) 45%, transparent);
+    transform: scale(1.15);
+  }
+  100% {
+    background-color: transparent;
+    transform: scale(1);
+  }
+}
+
+@utility motion-fade-in {
+  animation: motion-fade-in var(--motion-base) var(--motion-ease) both;
+}
+@utility motion-rise {
+  animation: motion-rise var(--motion-slow) var(--motion-ease) both;
+}
+@utility motion-slide-in {
+  animation: motion-slide-in var(--motion-base) var(--motion-ease) both;
+}
+@utility motion-pop {
+  animation: motion-pop var(--motion-base) var(--motion-ease);
+}
+@utility motion-goal {
+  animation: motion-goal 1200ms var(--motion-ease);
+  border-radius: 0.25rem;
+}
+/* what changes colour, border or shadow with a press or a choice: the fast one */
+@utility motion-press {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--motion-ease);
+}
+@utility motion-state {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: var(--motion-base);
+  transition-timing-function: var(--motion-ease);
+}
+
+/* A change of screen, where the browser has View Transitions: a short cross-fade of the page, the bars stay. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-slow);
+  animation-timing-function: var(--motion-ease);
+}
+
+/* «Reduce motion»: nothing slides, swells, flashes or fades; a spinner keeps turning because it says «loading». */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-spin {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

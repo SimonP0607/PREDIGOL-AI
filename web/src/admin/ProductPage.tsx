@@ -3,13 +3,14 @@
  * readers' events of the closed catalog. Global figures only with enough readers active in 30 days (20 by default):
  * below that, the page says how many there are and nothing else. The owner and the synthetic account are never
  * counted. Anti-metrics - time in the app, picks saved per reader, notices sent - are not shown to be optimised. Under
- * them, what readers think (B6): the monthly survey with its n, «¿Te sirvió?» and the comments.
+ * them, what readers think (B6): the monthly survey with its n, «¿Te sirvió?» and the comments. What they look at
+ * (closing plan 3.3) is shown by group - screens, markets, leagues, teams - each line only with enough readers.
  */
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, Loader2, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { v1 } from "@/lib/api/v1/client";
-import type { ProductOverview } from "@/lib/api/v1/types_events";
+import type { BreakdownRow, ProductOverview } from "@/lib/api/v1/types_events";
 import { t, translateOr } from "@/lib/i18n";
 import { fmtInt } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,85 @@ function Figure({ label, value, testId }: { label: string; value: string; testId
       <p className="text-caption text-muted-foreground">{label}</p>
       <p className="numeric font-display text-xl font-semibold">{value}</p>
     </div>
+  );
+}
+
+function BreakdownList({
+  id,
+  title,
+  rows,
+  name,
+}: {
+  id: string;
+  title: string;
+  rows: BreakdownRow[];
+  name: (row: BreakdownRow) => string;
+}) {
+  return (
+    <section aria-labelledby={`product-${id}`} data-testid={`product-${id}`}>
+      <h4 id={`product-${id}`} className="mb-1 text-caption font-semibold text-muted-foreground">
+        {title}
+      </h4>
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("admin.product.breakdown.none")}</p>
+      ) : (
+        <ol className="space-y-1 text-sm">
+          {rows.map((r) => (
+            <li key={r.key} className="flex justify-between gap-3 border-b border-border py-1">
+              <span className="min-w-0 truncate">{name(r)}</span>
+              <span className="numeric shrink-0 text-muted-foreground">
+                {fmtInt(r.events_30d)} · {fmtInt(r.subjects_30d)}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+/** What readers look at, in groups: the screens, the markets, the leagues and the teams (closing plan 3.3). */
+export function Breakdowns({ o }: { o: ProductOverview }) {
+  return (
+    <section
+      aria-labelledby="product-breakdown"
+      data-testid="product-breakdown"
+      className="space-y-3"
+    >
+      <h3 id="product-breakdown" className="text-sm font-semibold">
+        {t("admin.product.breakdown.title")}
+      </h3>
+      <p className="text-caption text-muted-foreground">
+        {t("admin.product.breakdown.note", { min: o.min_subjects })}{" "}
+        {t("admin.product.breakdown.views")} · {t("admin.product.breakdown.readers")}
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <BreakdownList
+          id="screens"
+          title={t("admin.product.breakdown.screens")}
+          rows={o.screens}
+          name={(r) => translateOr(`admin.product.screen.${r.key}`, r.key)}
+        />
+        <BreakdownList
+          id="markets"
+          title={t("admin.product.breakdown.markets")}
+          rows={o.markets}
+          name={(r) => translateOr(`admin.product.market.${r.key}`, r.key)}
+        />
+        <BreakdownList
+          id="leagues"
+          title={t("admin.product.breakdown.leagues")}
+          rows={o.leagues}
+          name={(r) => r.label ?? r.key}
+        />
+        <BreakdownList
+          id="teams"
+          title={t("admin.product.breakdown.teams")}
+          rows={o.teams}
+          name={(r) => r.label ?? r.key}
+        />
+      </div>
+    </section>
   );
 }
 
@@ -118,6 +198,7 @@ function Body({ o }: { o: ProductOverview }) {
           </table>
         </div>
       </section>
+      <Breakdowns o={o} />
       <p className="text-caption text-muted-foreground">{t("admin.product.antiMetrics")}</p>
     </div>
   );

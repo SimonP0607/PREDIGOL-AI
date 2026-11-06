@@ -2,7 +2,7 @@
 import { Mail, MessageCircle } from "lucide-react";
 import type { RenewContact } from "@/lib/api/v1/types_membership";
 import { t } from "@/lib/i18n";
-import { whatsappLink } from "./membership";
+import { WhatsappLink } from "@/product/support/WhatsappLink";
 
 const link =
   "tap-y relative inline-flex min-h-9 items-center gap-2 rounded-md border border-border-strong px-3 text-sm font-medium hover:bg-elevated pointer-coarse:min-h-11";
@@ -18,16 +18,15 @@ export function RenewOptions({ contact }: { contact: RenewContact }) {
   return (
     <div className="flex flex-wrap gap-2" data-testid="renew-options">
       {contact.whatsapp ? (
-        <a
-          href={whatsappLink(contact.whatsapp, t("profile.membership.whatsappText"))}
-          target="_blank"
-          rel="noopener noreferrer"
+        <WhatsappLink
+          digits={contact.whatsapp}
+          text={t("profile.membership.whatsappText")}
           className={link}
-          data-testid="renew-whatsapp"
+          testId="renew-whatsapp"
         >
           <MessageCircle aria-hidden className="h-4 w-4" />
           {t("profile.membership.renewWhatsapp")}
-        </a>
+        </WhatsappLink>
       ) : null}
       {contact.email ? (
         <a href={`mailto:${contact.email}`} className={link} data-testid="renew-email">

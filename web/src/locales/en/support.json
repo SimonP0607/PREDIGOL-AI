@@ -41,7 +41,10 @@
       "email": "E-mail",
       "urgent": "Cannot get in, or paid and have no access? Choose “I cannot get in” and we look at it today.",
       "off": "Messages from PrediGol are paused for now; write to us on WhatsApp or by e-mail.",
-      "nothing": "Messages from PrediGol are paused and no other channel is published yet. Please try again later."
+      "nothing": "Messages from PrediGol are paused and no other channel is published yet. Please try again later.",
+      "hours": "Hours: {hours}",
+      "stillFailing": "Still failing? Write to us",
+      "stillFailingText": "Hello, something keeps failing in PrediGol:"
     },
     "tickets": {
       "title": "Your messages",
@@ -541,5 +544,8 @@
         "example": "A “Recommended” pick at 2.10 that wins is “Won” and adds 1.10 units; one that lands exactly on the line is “Refunded”; one whose match is cancelled is “Void” and adds or subtracts nothing."
       }
     }
+  },
+  "whatsapp": {
+    "code": "Reference: {code}"
   }
 }

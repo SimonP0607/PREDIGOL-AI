@@ -89,6 +89,20 @@
           "es": "b4f2362b9621b957f00a69fe9aed457c6bf20d8a2130f30041f19ed93cc21afc",
           "en": "070d9205aa1a4ae6739d6f63eebeb678dfda2b22464efb6bea846973749e9457"
         }
+      },
+      {
+        "version": "2026-11-05-draft5",
+        "date": "2026-11-05",
+        "draft": true,
+        "material": false,
+        "changes": {
+          "es": "La política nombra lo que miden las estadísticas de uso (solo si las aceptas): el tipo de pantalla que ves (nunca la dirección ni lo que buscas), el mercado en el que guardas un pick o añades una selección al parlay, y la liga y los equipos de los partidos que abres, que deducimos del partido sin recogerlos aparte. No añade datos ni usos nuevos respecto a lo que ya decía («qué pantallas y funciones usas»): lo detalla. Sigue siendo un borrador pendiente de la revisión del abogado (P5).",
+          "en": "The policy names what the usage statistics measure (only if you accept them): the kind of screen you see (never the address or what you search for), the market in which you save a pick or add a selection to a parlay, and the league and teams of the matches you open, which we work out from the match without collecting them separately. It adds no data or use beyond what it already said (\"which screens and features you use\"): it spells it out. It is still a draft pending the lawyer's review (P5)."
+        },
+        "sha256": {
+          "es": "6121926341abc4a8b4bc42f85175cb25df8db595043070502417df54977268ed",
+          "en": "06986ad8f05d913e7dca50f58383ea0463f0f588b01aed47a866f80fb1e1da0e"
+        }
       }
     ]
   },
