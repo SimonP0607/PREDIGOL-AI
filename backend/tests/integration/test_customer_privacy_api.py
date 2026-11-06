@@ -26,7 +26,7 @@ from fastapi.testclient import TestClient
 from fbi.auth import service, throttle
 from fbi.auth.settings import reset as reset_session_settings
 from fbi.core.config import reset_cache
-from fbi.customer import consents, legal, privacy
+from fbi.customer import consents, events, legal, privacy
 from tests.integration.conftest import Seed
 from tests.integration.helpers import forget_memberships, forget_sign_in_failures
 
@@ -113,7 +113,9 @@ def client(email: str) -> TestClient:
 
 def accept(c: TestClient, kinds: list[str] | None = None, *, locale: str = "es") -> dict[str, object]:
     state = c.get("/api/v1/me/consents", params={"lang": locale}).json()
-    chosen = [p for p in state["purposes"] if kinds is None or p["kind"] in kinds]
+    # by default the four the gate asks for: an optional purpose (the weekly summary, the usage statistics) is the
+    # reader's own, asked for apart
+    chosen = [p for p in state["purposes"] if (p["required"] if kinds is None else p["kind"] in kinds)]
     r = c.post("/api/v1/me/consents", json={
         "decisions": [{"kind": p["kind"], "granted": True, "version": p["version"]} for p in chosen],
         "locale": locale, "source": "gate"})
@@ -129,7 +131,8 @@ def test_the_gate_is_off_by_default_and_the_product_opens_without_consents(fresh
     assert me["consents_due"] == []
     state = c.get("/api/v1/me/consents").json()
     assert state["gate"] is False and state["due"] == []
-    assert [p["kind"] for p in state["purposes"]] == ["terms", "privacy", "age_18", "risk_notice"]
+    assert [p["kind"] for p in state["purposes"]] == [
+        "terms", "privacy", "age_18", "risk_notice", "analytics"], "the usage statistics: always offered, never due"
 
 
 def test_with_draft_texts_turning_the_gate_on_does_nothing(fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -213,6 +216,44 @@ def test_withdrawing_the_processing_authorisation_closes_the_product_until_it_is
         """, (READER,)).fetchall()
     assert [g for _, g, _ in chain] == [True, False, True]
     assert chain[1][2] == chain[0][0] and chain[2][2] == chain[1][0], "each decision names the one it replaces"
+
+
+def test_the_usage_statistics_are_the_readers_own_choice_apart_from_the_gate(
+        fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan de cierre UX, 1.2: an unticked box beside the gate's four. Leaving it unticked records nothing and the gate
+    opens; ticking it (at the gate or later in the profile) is what lets FBI_PRODUCT_EVENTS=consent record the reader;
+    withdrawing it stops that at once."""
+    monkeypatch.setenv(consents.GATE_ENV, "drafts")
+    monkeypatch.setenv("FBI_PRODUCT_EVENTS", "consent")
+    c = client(READER)
+    me = c.get("/api/v1/auth/me").json()
+    assert "analytics" not in me["consents_due"]
+    accept(c)  # the four, the box left unticked
+    assert c.get(PRODUCT).status_code == 200, "the gate does not wait for the statistics"
+    state = c.get("/api/v1/me/consents").json()
+    box = next(p for p in state["purposes"] if p["kind"] == "analytics")
+    assert (box["required"], box["withdrawable"], box["document"]) == (False, True, "privacy")
+    assert "seudónimo" in box["statement"]
+    assert not [r for r in state["history"] if r["kind"] == "analytics"], "never answered, so nothing is stored"
+    with psycopg.connect(fresh) as conn:
+        uid = conn.execute("SELECT id FROM auth.users WHERE email = %s", (READER,)).fetchone()
+        assert uid is not None
+        assert events.subject_now(conn, uid[0], READER, super_admin=False) is None, "no consent, no statistics"
+    # ticked later, from the profile
+    r = c.post("/api/v1/me/consents", json={"decisions": [
+        {"kind": "analytics", "granted": True, "version": box["version"]}], "locale": "es", "source": "profile"})
+    assert r.status_code == 200, r.text
+    assert [x["granted"] for x in r.json()["history"] if x["kind"] == "analytics"] == [True]
+    with psycopg.connect(fresh) as conn:
+        assert events.subject_now(conn, uid[0], READER, super_admin=False) is not None
+    # withdrawn from the profile at any moment: it stops, and the account keeps working
+    r = c.post("/api/v1/me/consents", json={"decisions": [
+        {"kind": "analytics", "granted": False, "version": box["version"]}], "locale": "es", "source": "profile"})
+    assert r.status_code == 200, r.text
+    with psycopg.connect(fresh) as conn:
+        assert events.subject_now(conn, uid[0], READER, super_admin=False) is None
+    assert c.get(PRODUCT).status_code == 200
+    assert c.get("/api/v1/auth/me").json()["consents_due"] == []
 
 
 def test_accepting_again_the_same_text_adds_nothing(fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
