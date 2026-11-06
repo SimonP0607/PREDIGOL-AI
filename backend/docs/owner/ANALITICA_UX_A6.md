@@ -39,8 +39,12 @@ aparece desde 100 lectores. No se optimizan el tiempo en la app, los picks guard
 
 ## 4. Cómo se enciende (cuando decidas)
 
-1. Base legal: la finalidad «analítica de producto» está declarada en la política de tratamiento (borrador de A4). Si el
-   abogado (P5) pide una casilla aparte, el modo es `FBI_PRODUCT_EVENTS=consent` (solo quien la marque); si no, `on`.
+1. Base legal: desde UX-008 la analítica es una **casilla aparte, sin marcar y retirable**, con su frase en la política
+   de tratamiento (versión `2026-11-05-draft4`, borrador): se ofrece en la puerta de consentimientos (cuando esté
+   encendida) y siempre en Perfil → Privacidad, y la puerta no la espera. El modo prudente y recomendado es
+   `FBI_PRODUCT_EVENTS=consent`: solo se registra a quien la marcó y se deja de registrar en cuanto la retira. `on`
+   registraría a todos y solo lo decidiría el abogado (P5) después. La política promete 90 días para lo guardado en
+   bruto: cuando las primeras filas los cumplan hay que pasar la purga a `on` (punto 3).
 2. Una línea en `/etc/predigol/app.env` (fichero de seguridad: copia fechada, candado de despliegue, ventana propia) y se
    recrea la API.
 3. Comprobación: la página Producto pasa de «Medición apagada» a «encendida»; con menos de 20 lectores dice cuántos hay.
