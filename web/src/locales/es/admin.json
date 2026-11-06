@@ -286,6 +286,41 @@
     "readers7": "Lectores 7 d",
     "events30": "Eventos 30 d",
     "readers30": "Lectores 30 d",
+    "breakdown": {
+      "title": "Qué miran los lectores (30 días)",
+      "note": "Por grupos, nunca uno a uno: una línea solo aparece con al menos {min} lectores detrás. Las ligas y los equipos se deducen del partido abierto cuando abres esta página; no se guardan aparte.",
+      "screens": "Pantallas, por tipo",
+      "markets": "Mercados de los picks guardados y de las selecciones añadidas al parlay",
+      "leagues": "Ligas de los partidos abiertos",
+      "teams": "Equipos de los partidos abiertos",
+      "none": "Ninguna línea llega al mínimo de lectores.",
+      "views": "Veces",
+      "readers": "Lectores"
+    },
+    "screen": {
+      "home": "Inicio",
+      "matches": "Partidos (lista)",
+      "match": "Un partido",
+      "live": "En vivo",
+      "picks": "Picks",
+      "my_picks": "Mis picks",
+      "parlays": "Parlays",
+      "odds": "Cuotas",
+      "updates": "Novedades",
+      "transparency": "Transparencia",
+      "profile": "Perfil",
+      "help": "Ayuda",
+      "legal": "Textos legales",
+      "welcome": "Bienvenida",
+      "other": "Otra"
+    },
+    "market": {
+      "1X2": "1X2 (resultado)",
+      "OU": "Más/Menos goles",
+      "BTTS": "Ambos marcan",
+      "AH": "Hándicap asiático",
+      "DC": "Doble oportunidad"
+    },
     "antiMetrics": "No se optimizan: el tiempo en la app, los picks guardados por lector ni los avisos enviados. El dueño y la cuenta sintética no cuentan.",
     "feedback": {
       "title": "Opinión de los lectores",

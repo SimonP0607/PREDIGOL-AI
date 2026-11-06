@@ -39,7 +39,7 @@ import { isLegalPath } from "@/product/legal/links";
 import { isAccountPath } from "@/product/auth/accountPaths";
 import { isLimitedPath } from "@/product/membership/membership";
 import { LimitedAccess } from "@/product/membership/LimitedAccess";
-import { noteLocation, noteNoticeLanding, startSession, track } from "@/lib/track";
+import { noteLocation, noteNoticeLanding, screenOf, startSession, track } from "@/lib/track";
 import { eventCategory, withoutNoticeMark } from "@/lib/push";
 import { markTrouble } from "@/lib/feedback/session";
 import { TourProvider } from "@/product/tour/Tour";
@@ -341,6 +341,10 @@ function Gate() {
   // Plan UX, A6: where the reader comes from (match_opened's origin) and the session's start, once per tab.
   useEffect(() => noteLocation(path), [path]);
   const measured = auth.status === "signed-in" && (auth.user?.consents_due ?? []).length === 0;
+  // Closing plan 3.3: the kind of screen (a group of a closed list: never the address, a search or an id), once per change.
+  useEffect(() => {
+    if (measured) track("screen_viewed", { screen: screenOf(path) });
+  }, [measured, path]);
   useEffect(() => {
     if (!measured) return;
     startSession(auth.locale);
