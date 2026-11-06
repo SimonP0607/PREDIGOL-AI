@@ -10,6 +10,10 @@
 * The welcome once per reader account (the whole one for a new account, the favourites alone for an older one), never for the
   owner's, never with FBI_ONBOARDING=0; a dismissed hint never comes back. Both reach the page through GET /auth/me.
 * Home (GET /today): each of the reader's matches says why it is theirs, and the next match of each favourite is listed.
+* «Para ti» (GET /me/today, closing plan 3.2): nothing until the reader chooses - the suggested leagues never count -; the
+  players they follow with the state of the next match of his team (starter, bench, left out, missing, doubtful or waiting - the
+  published line-up first, then the provider's current absences); which of the day's published picks are of their teams, leagues
+  or markets (or none) and their bells; the same picks for every reader.
 * What the account keeps: the favourites in the reader's export, gone when the account is anonymised.
 * The rule of plan section 38 - personalise the experience, never the intelligence: two readers with different favourites
   get the very same forecasts, lines, picks and states from every page that shows them; only what is marked as theirs
@@ -585,3 +589,162 @@ def test_two_readers_with_different_favourites_get_the_same_picks_forecasts_and_
     assert mine[fid]["followed"] == {"kind": "league", "names": ["Intel League"]} and theirs[fid]["followed"] is None, (
         "the comparison is not empty: the two readers' own parts differ")
     assert answers[first]["/api/v1/today"]["data"]["following"] != answers[second]["/api/v1/today"]["data"]["following"]
+
+
+# ── «Para ti»: the reader's layer of Home (closing plan 3.2) ──────────────────────────────────────────────────────────
+
+
+def test_me_today_is_empty_until_the_reader_chooses_and_the_suggested_ones_never_count(
+        fresh: Football, monkeypatch: pytest.MonkeyPatch) -> None:
+    empty = {"personalization": True, "chosen": False, "players": [], "markets": [], "picks": None, "notices": None}
+    reader = client(READER)
+    assert reader.get("/api/v1/me/today").json() == empty, "the suggested leagues are not the reader's"
+    assert client(OWNER).get("/api/v1/me/today").json() == empty, "the owner's console account has no layer of its own"
+    reader.put("/api/v1/me/favorites", json={"leagues": [], "teams": [], "markets": ["OU"]})
+    body = reader.get("/api/v1/me/today").json()
+    assert (body["chosen"], body["markets"], body["players"]) == (True, ["OU"], []), (
+        "a market alone is a favourite: it makes «Para ti»")
+    assert body["picks"]["items"] == [] and body["notices"]["bells"] == []
+    monkeypatch.setenv(favorites.PERSONALIZATION_SWITCH, "0")
+    assert reader.get("/api/v1/me/today").json() == empty | {"personalization": False}, (
+        "FBI_PERSONALIZATION=0: the common view, whatever the reader follows")
+
+
+def test_a_followed_player_says_what_the_next_match_of_his_team_has_for_him(
+        fresh: Football, players: dict[str, int], database: str, seed: Seed) -> None:
+    fx = fresh.fixtures
+    reader = client(READER)
+    assert reader.put("/api/v1/me/favorites", json={"leagues": [], "teams": [], "players": [
+        players["james"], players["falcao"]]}).status_code == 200
+    me = uid(database, READER)
+    with psycopg.connect(database, autocommit=True) as conn:
+        for key in ("viejo", "lejano", "sin"):  # kept from before: aged out, a league PrediGol does not follow, never listed
+            conn.execute("INSERT INTO customer.favorites (user_id, kind, ref_id, player_id) VALUES (%s, 'player', %s, %s)",
+                         (me, players[key], players[key]))
+
+    def states() -> dict[str, dict[str, Any]]:
+        got = reader.get("/api/v1/me/today").json()["players"]
+        return {p["name"]: p for p in got}
+
+    first = reader.get("/api/v1/me/today").json()
+    assert [p["name"] for p in first["players"]] == [
+        "James Rodríguez", "Radamel Falcao", "Jugador Viejo", "Jugador Lejano", "Sin Alineación"], (
+        "in the order the reader chose them")
+    got = states()
+    james, falcao = got["James Rodríguez"], got["Radamel Falcao"]
+    assert (james["state"], james["team"]["name"], james["next"]["fixture_id"]) == ("starter", "Millonarios", fx["today_uno"])
+    assert james["position"] == "Midfielder" and james["reason"] is None
+    assert (falcao["state"], falcao["team"]["name"], falcao["next"]["fixture_id"]) == (
+        "waiting", "Atlético Nacional", fx["today_uno"]), "his side's line-up is not out and nothing is reported"
+    for name in ("Jugador Viejo", "Jugador Lejano", "Sin Alineación"):
+        assert (got[name]["state"], got[name]["team"], got[name]["next"], got[name]["reason"]) == (
+            "no_match", None, None, None), "never invent a match for a player with no team PrediGol follows"
+
+    at = datetime.now(UTC)
+    provider_fixture = 7713101
+    falcao_provider = PLAYERS["falcao"][0]
+
+    def report(conn: psycopg.Connection[Any], kind: str, reason: str, player: int, fetched: datetime) -> None:
+        conn.execute("INSERT INTO core.player_absences (source, provider_fixture_id, provider_player_id, fixture_id, "
+                     "player_name, absence_type, reason, payload_hash, fetched_at) VALUES ('api-football', %s, %s, %s, 'x', "
+                     "%s, %s, %s, %s)", (provider_fixture, player, fx["today_uno"], kind, reason, seed.payload_hash, fetched))
+
+    with psycopg.connect(database, autocommit=True) as conn:
+        try:
+            report(conn, "Missing Fixture", "Knee Injury", falcao_provider, at)
+            hurt = states()["Radamel Falcao"]
+            assert (hurt["state"], hurt["reason"]) == ("absent", "Knee Injury")
+            conn.execute("UPDATE core.player_absences SET absence_type = 'Questionable' WHERE provider_player_id = %s",
+                         (falcao_provider,))
+            assert states()["Radamel Falcao"]["state"] == "doubtful"
+            report(conn, "Missing Fixture", "Illness", PLAYERS["sin"][0], at + timedelta(minutes=5))
+            recovered = states()["Radamel Falcao"]
+            assert (recovered["state"], recovered["reason"]) == ("waiting", None), (
+                "the provider's newest answer no longer names him: he has recovered or was never out")
+            conn.execute("DELETE FROM core.player_absences WHERE fixture_id = %s", (fx["today_uno"],))
+
+            conn.execute("INSERT INTO core.fixture_lineups (fixture_id, team_side, source, payload_hash, fetched_at) "
+                         "VALUES (%s, 'away', 'api-football', %s, now())", (fx["today_uno"], seed.payload_hash))
+            conn.execute("INSERT INTO core.fixture_lineup_players (fixture_id, team_side, source, provider_player_id, "
+                         "player_name, is_starter) VALUES (%s, 'away', 'api-football', %s, 'Sin Alineación', true)",
+                         (fx["today_uno"], PLAYERS["sin"][0]))
+            assert states()["Radamel Falcao"]["state"] == "left_out", "the line-up is out and he is not in it"
+            report(conn, "Missing Fixture", "Suspended", falcao_provider, at)
+            assert states()["Radamel Falcao"]["state"] == "absent", "out of a published line-up and reported: absent"
+            conn.execute("DELETE FROM core.player_absences WHERE fixture_id = %s", (fx["today_uno"],))
+            conn.execute("INSERT INTO core.fixture_lineup_players (fixture_id, team_side, source, provider_player_id, "
+                         "player_name, is_starter) VALUES (%s, 'away', 'api-football', %s, 'Radamel Falcao', false)",
+                         (fx["today_uno"], falcao_provider))
+            assert states()["Radamel Falcao"]["state"] == "bench"
+            conn.execute("UPDATE core.fixture_lineup_players SET is_starter = true WHERE provider_player_id = %s AND "
+                         "fixture_id = %s", (falcao_provider, fx["today_uno"]))
+            assert states()["Radamel Falcao"]["state"] == "starter"
+            report(conn, "Missing Fixture", "Knee Injury", falcao_provider, at)
+            assert states()["Radamel Falcao"]["state"] == "starter", "a player named in the line-up plays: it is newer"
+        finally:
+            conn.execute("DELETE FROM core.player_absences WHERE fixture_id = %s", (fx["today_uno"],))
+            conn.execute("DELETE FROM core.fixture_lineups WHERE fixture_id = %s AND team_side = 'away'", (fx["today_uno"],))
+
+
+def test_para_ti_marks_which_of_todays_picks_are_the_readers_and_their_bells(
+        db: psycopg.Connection[Any], seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in (favorites.ONBOARDING_SWITCH, favorites.PERSONALIZATION_SWITCH):
+        monkeypatch.delenv(name, raising=False)
+    world = World(db, seed)
+    now = datetime.now(UTC)
+    day = product_day(now)
+    over, _ = world.item(day, "OU", "Over", "2.5", "PENDING", None, "1.95", kickoff=now + timedelta(hours=5))
+    home, _ = world.item(day, "1X2", "Home", "0", "PENDING", None, "1.90", kickoff=now + timedelta(hours=6))
+    home_team = int(scalar(db.execute("SELECT home_team_id FROM core.fixtures WHERE id = %s", (over,))))
+    other_league = int(scalar(db.execute(
+        "INSERT INTO core.competitions (provider_league_id, name, type, entity_scope, competition_type, is_tracked) "
+        "VALUES (7713902, 'Otra Liga', 'league', 'club', 'domestic_league', true) RETURNING id")))
+    users = {}
+    for key in ("team", "league", "market", "elsewhere", "player"):
+        users[key] = int(scalar(db.execute(
+            "INSERT INTO auth.users (email, display_name, password_hash, role) VALUES (%s, 'R', '$argon2id$x', 'USER') "
+            "RETURNING id", (f"{key}.p32@example.org",))))
+
+    def follow(who: str, kind: str, ref: int | None, market: str | None = None) -> None:
+        db.execute("INSERT INTO customer.favorites (user_id, kind, ref_id, league_id, team_id, player_id, market_key) "
+                   "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                   (users[who], kind, ref, ref if kind == "league" else None, ref if kind == "team" else None,
+                    ref if kind == "player" else None, market))
+
+    follow("team", "team", home_team)
+    follow("league", "league", world.competition)
+    follow("market", "market", None, "1X2")
+    follow("elsewhere", "league", other_league)
+    db.execute("INSERT INTO core.players (provider_player_id, name) VALUES (7713951, 'Jugador P32')")
+    follow("player", "player", int(scalar(db.execute("SELECT id FROM core.players WHERE provider_player_id = 7713951"))))
+    db.execute("INSERT INTO customer.match_alerts (user_id, fixture_id, minutes_before) VALUES (%s, %s, 30)",
+               (users["team"], over))
+
+    def answer(who: str) -> dict[str, Any]:
+        r = reader_app(db, users[who]).get("/api/v1/me/today")
+        assert r.status_code == 200, r.text
+        body: dict[str, Any] = r.json()
+        return body
+
+    def picks(who: str) -> list[tuple[int, int, str | None, bool]]:
+        got = answer(who)["picks"]
+        assert got["published"] == 2 and got["day"] == day.isoformat()
+        return [(i["rank"], i["fixture_id"], (i["followed"] or {}).get("kind"), i["market_followed"]) for i in got["items"]]
+
+    assert picks("team") == [(1, over, "team", False)], "the team plays the first pick's match"
+    assert picks("league") == [(1, over, "league", False), (2, home, "league", False)]
+    assert picks("market") == [(2, home, None, True)], "a market alone: the pick of that market, and why"
+    assert picks("elsewhere") == [], "none of today's two picks is theirs - the day has them, they are not the reader's"
+    assert answer("player")["picks"] is None, "a player alone follows no match and no market"
+    assert [p["name"] for p in answer("player")["players"]] == ["Jugador P32"]
+    assert answer("player")["players"][0]["state"] == "no_match"
+
+    bells = answer("team")["notices"]
+    assert [(b["fixture_id"], b["minutes_before"]) for b in bells["bells"]] == [(over, 30)]
+    assert (bells["available"], bells["devices"], bells["lineup"]) == (False, 0, True), (
+        "FBI_PUSH is off in the tests: no invitation, no device, the line-up category on by default")
+    assert answer("league")["notices"]["bells"] == [], "each reader's own bells"
+
+    shown = reader_app(db, users["team"]).get("/api/v1/daily").json()["data"]["set"]["items"]
+    assert [(i["rank"], i["match"]["fixture_id"]) for i in shown] == [(1, over), (2, home)], (
+        "the picks themselves are the day's, whoever reads: «Para ti» only says which are theirs")
