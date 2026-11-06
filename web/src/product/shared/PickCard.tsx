@@ -17,6 +17,7 @@ import { ExplainButton } from "@/product/explain/ExplainSheet";
 import { WhyPickButton } from "@/product/picks/WhyPick";
 import { EvBadge, Freshness, Kickoff, OddsPill, ProbCompare, ShadowBadge } from "./Bits";
 import { gateReason, marketName, selectionLabel } from "./markets";
+import { PickWhyLine } from "./PickWhy";
 import { UserStatusBadge } from "./UserStatusBadge";
 
 export function PickCard({
@@ -135,7 +136,9 @@ export function PickCard({
 
           {!compact ? (
             <ProbCompare model={pick.p_model} market={pick.p_market} className="mt-3" />
-          ) : null}
+          ) : (
+            <PickWhyLine model={pick.p_model} market={pick.p_market} className="mt-2.5" />
+          )}
           {!pick.value_now && pick.value_reason ? (
             <p className="mt-2 text-caption text-warning">{gateReason(pick.value_reason)}</p>
           ) : null}

@@ -96,5 +96,52 @@
     "dismiss": "No, thanks",
     "failed": "It could not be saved. Try again.",
     "added": "{name} is now among your favourites."
+  },
+  "layers": {
+    "forYou": "For you",
+    "forYouHint": "What you chose to follow",
+    "predigol": "PrediGol",
+    "predigolHint": "The same for everyone: the day's picks, the parlays and the best prices",
+    "edit": "Change favourites"
+  },
+  "choose": {
+    "title": "Choose your favourites",
+    "body": "With leagues, teams, players or markets, Home shows what is yours first. The picks do not change: they are the same for everyone.",
+    "action": "Choose favourites"
+  },
+  "players": {
+    "title": "Your players",
+    "subtitle": "What his team's next match says: line-up, absences or nothing yet",
+    "note": "The line-up comes out shortly before the match; absences are our data provider's report.",
+    "next": "{home} – {away} · {when}",
+    "state": {
+      "starter": "Starter",
+      "bench": "Substitute",
+      "left_out": "Not in the line-up",
+      "absent": "Out",
+      "doubtful": "Doubtful",
+      "waiting": "No line-up or absences yet",
+      "no_match": "No match coming up"
+    }
+  },
+  "related": {
+    "title": "Picks of your matches",
+    "subtitle": "Today's published picks that are of your teams, leagues or markets",
+    "market": "A market you follow: {market}",
+    "none_one": "Today's published pick is not of your teams, leagues or markets. It is in PrediGol, below.",
+    "none_other": "None of today's {count} published picks is of your teams, leagues or markets. They are in PrediGol, below.",
+    "noDay": "There are no published picks today, whatever you follow. The reason is in PrediGol, below."
+  },
+  "notices": {
+    "title": "Your notices",
+    "subtitle": "The ones you set for matches and the line-ups of your teams",
+    "noDevice": "You receive notices on no device: the line-ups of your teams do not reach you.",
+    "lineupOn": "We notify you of your teams' line-ups on your devices.",
+    "lineupOff": "You have the line-up notices turned off.",
+    "enable": "Turn on notices",
+    "manage": "Change",
+    "bell": "{minutes} · {when}",
+    "more_one": "And {count} more notice, on your matches.",
+    "more_other": "And {count} more notices, on your matches."
   }
 }

@@ -23,6 +23,7 @@ import { hasStarted } from "./model";
 import { pickableOfItem } from "./pickable";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { SelectablePrice } from "@/product/odds/SelectablePrice";
+import { PickWhyLine, RiskChips } from "@/product/shared/PickWhy";
 import { UserStatusBadge } from "@/product/shared/UserStatusBadge";
 import { ExplainButton } from "@/product/explain/ExplainSheet";
 import { WhyPickButton } from "@/product/picks/WhyPick";
@@ -146,11 +147,17 @@ export function DailyItemCard({
           </div>
           {!compact ? (
             <ProbCompare model={item.p_model} market={item.p_market} className="mt-3" />
-          ) : null}
+          ) : (
+            <PickWhyLine model={item.p_model} market={item.p_market} className="mt-2.5" />
+          )}
           {item.ai ? (
             <div className="mt-3">
               <AiNote ai={item.ai} compact={compact} />
             </div>
+          ) : null}
+          {/* The compact row has no list of risks: the review's own, as chips - only a decision a reader may see. */}
+          {compact && item.ai?.decision ? (
+            <RiskChips risks={item.ai.risks} className="mt-2" />
           ) : null}
           <DecisionChain
             model={item.model}

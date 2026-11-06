@@ -160,6 +160,9 @@ test("Home: today in the suggested leagues, the day's picks or why there are non
   const block1 = page.getByTestId("home-today");
   await expect(block1.getByRole("heading", { name: t.home.today.title })).toBeVisible();
   await expect(block1.getByTestId("suggested-leagues")).toBeVisible();
+  // the suggested leagues are PrediGol's, never «tuyas»: no «Para ti» until the reader chooses something
+  await expect(page.getByTestId("layer-for-you")).toHaveCount(0);
+  await expect(page.getByTestId("layer-predigol").getByTestId("home-today")).toBeVisible();
   const rows = block1.getByTestId("today-row");
   if ((await rows.count()) > 0) {
     await expect(rows.first().getByTestId("today-why")).toHaveText(t.home.today.why);
@@ -576,7 +579,12 @@ test("A league table in the Match Center says how current it is", async ({ page 
     return;
   }
   await open(page, w, `/matches/${id}`);
-  // before kick-off the table is laid out twice (phone column and wide column); read the one shown
+  // before kick-off the table is under «Profundizar» (plan de cierre UX, 2.2): folded until the reader opens it
+  const deepen = page.getByTestId("match-deepen").getByRole("button").first();
+  await expect(deepen).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator('[data-testid="table-freshness"]')).toHaveCount(0);
+  await deepen.click();
+  await expect(deepen).toHaveAttribute("aria-expanded", "true");
   const freshness = page.locator('[data-testid="table-freshness"]:visible').first();
   await expect(freshness).toBeVisible();
   await expect(freshness).toContainText(t.match.standings.updated.split("{")[0]?.trim() ?? "");

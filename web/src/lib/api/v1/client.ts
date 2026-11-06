@@ -150,6 +150,7 @@ import type { ExplainIntent, Explanation, SlipLegBody } from "./types_explain";
 import type { PickExplanation } from "./types_explanation";
 import type { MatchNews, TodayNews } from "./types_news";
 import type { NoPick, Today } from "./types_today";
+import type { MeToday } from "./types_me_today";
 import type {
   FavoriteOptions,
   FavoritesIn,
@@ -771,6 +772,8 @@ export const v1 = {
     getJson<Envelope<MatchReading | null>>(`/matches/${id}/reading`, q),
   /** HOY (plan UX, A9): the matches around today with the forecast and a line of the reading, and the day's picks state. */
   today: () => getJson<Envelope<Today>>("/today"),
+  /** «PARA TI» (closing plan 3.2): the reader's players, which of the day's picks are theirs and their notices. */
+  meToday: () => getJson<MeToday>("/me/today"),
   /** The day's picks state and its reason alone, for the Picks page (the same as /today's no_pick). */
   noPick: () => getJson<Envelope<NoPick>>("/today/no-pick"),
   /** NOTICIAS (plan UX, A10): the match's verified news, confirmed first, rumours and the outdated last. */

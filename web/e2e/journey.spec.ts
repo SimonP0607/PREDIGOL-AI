@@ -377,6 +377,10 @@ test("the real test's sixteen steps on one invited account, on a 390 px phone: f
       await expect(block.getByTestId("mine-chips")).toContainText(team.name);
       await expect(block.getByTestId("today-row").first()).toBeVisible();
       await expect(block.getByTestId("today-why").first()).toBeVisible();
+      // two layers (closing plan 3.2): the reader's own matches sit in «Para ti», the day's picks in PrediGol
+      await expect(page.getByTestId("layer-for-you").getByTestId("home-today")).toBeVisible();
+      await expect(page.getByTestId("layer-predigol").getByTestId("daily-set")).toBeVisible();
+      await expect(page.getByTestId("choose-prompt")).toHaveCount(0);
       note(`Inicio: ${await dayWithoutPicksOrPicks(page, page.getByTestId("daily-set"))}`);
       await settle(page);
       await fits(page, "Inicio");
