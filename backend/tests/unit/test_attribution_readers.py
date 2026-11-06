@@ -18,6 +18,8 @@ ALLOWED = {
     "src/fbi/ai/agents/pmr.py",  # the reviewer reads the rows the code left UNKNOWN and writes its refinement beside them
     "src/fbi/ai/agents/analyst.py",  # the analyst reads the rows it cites
     "src/fbi/api/services/ai_attribution.py",  # the page of the Admin Console: reading only
+    "src/fbi/ai/gate_b.py",  # Gate B (IA-010) counts the settled matches with an attribution: reading only, it decides nothing
+    "src/fbi/ai/eval_bench.py",  # the evaluation bench (IA-010) reads the precision of each agent version: reading only
 }
 
 

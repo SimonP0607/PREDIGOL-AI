@@ -818,7 +818,8 @@ def test_gate_b_asks_what_the_plan_asks_and_says_what_is_not_built() -> None:
                          "batería adversaria en verde", "Research v2 con ≥ 95 % de las evidencias de v1"):
             assert fragment in line
     assert "no tiene hoy un comando que lo evalúe" in sec
-    assert not list((BACKEND / "scripts").glob("*gate_b*")) and not list((BACKEND / "scripts").glob("ia_gate_b*"))
+    # the guide says what was true when it was written; IA-010 builds the command (gate-b-v1, read only), as code in one place
+    assert (BACKEND / "scripts" / "ia_gate_b.py").is_file() and (SRC / "ai" / "gate_b.py").is_file()
     # unique index of paid runs: no duplicated payment
     assert "ai_agent_runs_paid_once" in sec and "ai_agent_runs_paid_once" in (next((BACKEND / "migrations" / "versions").glob("0111_*.py"))).read_text(encoding="utf-8")
     # the attribution of settled matches was not built when this guide was written; phase 5 builds it (docs/owner/IA_FASE5.md), as code in one place
