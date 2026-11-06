@@ -12,6 +12,7 @@ Nothing here reads a clock, a database or a setting.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
@@ -222,3 +223,58 @@ def known_refs(document: Mapping[str, Any]) -> tuple[frozenset[int], frozenset[s
             if isinstance(item, Mapping) and isinstance(item.get("id"), int):
                 ids.add(int(item["id"]))
     return frozenset(ids), frozenset(paths_of(dict(document)))
+
+
+# -- the problems of an answer, in closed codes ----------------------------------------------------------------------------------------
+
+EXTRA_KEY: Final = "extra_forbidden"
+"""The kind of error of a key the contract does not have (Pydantic's ``extra="forbid"``)."""
+NAMED_EXTRA_KEYS: Final = frozenset({
+    "reasoning", "notes", "note", "summary", "analysis", "explanation", "rationale", "contradictions", "comments", "thinking", "assessment",
+    "output", "answer", "result", "findings", "confidence", "stance"})
+"""The few harmless English words a model is likely to add as a key of its own (IA-009). Where an answer has a key the contract does not have,
+the problem names it ONLY when it is one of these (or a field of the contract): what is written is then this list's own word, never the model's
+text. Any other name is cut, as before. The list is fixed here and grows only by a change of code."""
+_KIND: Final = re.compile(r"^[a-z][a-z0-9_]{0,40}$")
+
+
+def _position(step: str) -> bool:
+    return step.isascii() and step.isdigit() and len(step) <= 3
+
+
+def _named_key(step: str, fields: Collection[str]) -> str | None:
+    """The name a key of the model's may be recorded with: a field of the contract as it is, or the word of ``NAMED_EXTRA_KEYS`` it is (without
+    case or surrounding spaces). None for anything else."""
+    if step in fields:
+        return step
+    word = step.strip().lower() if step.isascii() else ""
+    return next((w for w in NAMED_EXTRA_KEYS if w == word), None)
+
+
+def closed_problem(problem: str, fields: Collection[str]) -> str:
+    """A problem of ``contracts.parse`` (``where:kind``) as a closed code ``schema:<where>:<kind>``. ``parse`` says where - the fields of the
+    contract and the position in a list - and what KIND of error, never the value; but where an answer has a key the contract does not have, the
+    location ends in that key, and its name is the model's to choose. Every step of a location that is not a field of the contract (``fields``)
+    or a position is cut, so the code carries nothing the model wrote.
+
+    One exception, for the diagnosis of IA-009: the key of an ``extra_forbidden`` error is named when it is a field of the contract or a word of
+    ``NAMED_EXTRA_KEYS`` (what is written is the list's own word). At the top level the code is ``schema:answer.<name>:extra_forbidden``, so
+    that a top-level key is never read as the field of the same name further down; inside an object it follows the location
+    (``schema:signals.0.notes:extra_forbidden``). Any other name stays cut: ``schema:answer:extra_forbidden``, ``schema:signals.0:extra_forbidden``."""
+    where, sep, kind = problem.rpartition(":")
+    if not sep:
+        return f"schema:{problem}" if _KIND.fullmatch(problem) else "schema:invalid"
+    kind = kind if _KIND.fullmatch(kind) else "invalid"
+    path = where.split(".")
+    above = path[:-1]
+    if kind == EXTRA_KEY and all(s in fields or _position(s) for s in above):
+        name = _named_key(path[-1], fields)
+        base = ".".join(above) or "answer"
+        return f"schema:{base}.{name}:{kind}" if name is not None else f"schema:{base}:{kind}"
+    steps: list[str] = []
+    for step in path:
+        if step in fields or _position(step):
+            steps.append(step)
+        else:
+            break
+    return f"schema:{'.'.join(steps) or 'answer'}:{kind}"

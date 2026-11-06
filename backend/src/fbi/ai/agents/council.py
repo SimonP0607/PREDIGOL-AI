@@ -48,10 +48,18 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Final, Literal, get_args
 
 from fbi.ai import prompts, router
-from fbi.ai.agents.common import Assessed, Contradiction, Naming, assessment_label, known_refs
+from fbi.ai.agents.common import (
+    Assessed,
+    Contradiction,
+    Naming,
+    assessment_label,
+    closed_problem,
+    known_refs,
+)
 from fbi.ai.contracts import parse, schema_of
+from fbi.ai.contracts.assessment import ResearchAsk
 from fbi.ai.contracts.base import COUNCIL, Level, Verdict, parse_ref
-from fbi.ai.contracts.council import CouncilOut, Verified, check
+from fbi.ai.contracts.council import CouncilOut, SelectionVerdict, Verified, check
 from fbi.ai.contracts.mcp import AVAILABILITY_KINDS
 from fbi.ai.package import SUMMARY_SHORT, SUMMARY_TINY, Slice, real_tokens
 from fbi.ai.packet import canonical, content_hash
@@ -702,6 +710,17 @@ def _invalid(*problems: str) -> Reading:
     return Reading("invalid_output", None, problems)
 
 
+_FIELDS: Final = frozenset(name for model in (CouncilOut, SelectionVerdict, ResearchAsk) for name in model.model_fields)
+"""Every field name of ``cd-v1``: the only words of a location of a problem that are the contract's and not the model's."""
+
+
+def _closed(problem: str) -> str:
+    """A problem of ``contracts.parse`` as a closed code (``common.closed_problem`` with the fields of ``cd-v1``): where an answer has a key the
+    contract does not have, its name is the model's, and it is cut unless it is one of the harmless words of ``common.NAMED_EXTRA_KEYS``
+    (IA-009). Before IA-009 the Council wrote the location of ``parse`` as it came, key of the model's included."""
+    return closed_problem(problem, _FIELDS)
+
+
 def read(data: object, *, view: CouncilView, naming: Naming, asked: Collection[str] | None = None) -> Reading:
     """The Council's answer as the server keeps it: ``cd-v1``, then ``check`` against what THIS view offers (its evidence ids, its paths, its
     assessments) and the candidates asked (all of the match's by default). Any failure is an ``invalid_output`` with its problem codes - an
@@ -712,7 +731,7 @@ def read(data: object, *, view: CouncilView, naming: Naming, asked: Collection[s
         parsed = parse(COUNCIL, data)
         value = parsed.value
         if not isinstance(value, CouncilOut) or parsed.problems:
-            return _invalid(*(f"schema:{p}" for p in parsed.problems or ("invalid",)))
+            return _invalid(*(_closed(p) for p in parsed.problems or ("invalid",)))
         ids, paths = known_refs(view.document)
         wanted = set(naming.keys) if asked is None else set(asked)
         verified = check(value, asked=wanted, evidence_ids=ids, paths=paths, assessments=view.assessments)

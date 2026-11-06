@@ -400,6 +400,15 @@ LEDGER: Final[tuple[Registration, ...]] = (
                  fingerprint="ag23a84c189f",
                  parts={"context": Part("match-context-v1", "e055ea4d9bc1", "aa-v1", "ab5f098304ef"),
                         "evaluation": Part("match-assess-v1", "f360df0b38ae", "aa-v1", "ab5f098304ef")}),
+    Registration(agent="match", version="match-v2", registered_at=datetime(2026, 11, 6, 12, 0, tzinfo=UTC), decided_by="owner", phase="IA-009",
+                 reason="IA-009: 28 of the 66 shadow runs of match-v1 (42 %, measured from 3 to 6 Nov 2026) were refused by aa-v1 - a key the "
+                        "contract does not have, a signal code out of the list, more than 8 refs - and gate B allows 3 %. The same rules and tasks "
+                        "end with an output checklist written from the contract's enums and caps (match-context-v2, match-assess-v2); the contract, "
+                        "the reader, the model and the effort do not change. It is born CHALLENGER and runs in shadow in place of match-v1; it "
+                        "reaches a decision only by a row the owner signs in intel.promotions.",
+                 fingerprint="agc09b002b34",
+                 parts={"context": Part("match-context-v2", "528be450eb83", "aa-v1", "ab5f098304ef"),
+                        "evaluation": Part("match-assess-v2", "efab832be700", "aa-v1", "ab5f098304ef")}),
     Registration(agent="council", version="council-v1", registered_at=datetime(2026, 11, 3, 11, 0, tzinfo=UTC), decided_by="owner", phase="IA-3",
                  reason="Built under the Plan Maestro IA the owner approved in full (phase 3, section 11): the Council gives the one verdict per selection "
                         "in cd-v1, Sonnet for every match and Opus only where a rule of router-v1 escalates; it is born CHALLENGER, runs in shadow in the "
@@ -414,6 +423,13 @@ LEDGER: Final[tuple[Registration, ...]] = (
                         "until the owner signs a row in intel.promotions for its family.",
                  fingerprint="aga50a72bba7",
                  parts={"evaluation": Part("stats-assess-v1", "3e902d08074b", "aa-v1", "ab5f098304ef")}),
+    Registration(agent="stats", version="stats-v2", registered_at=datetime(2026, 11, 6, 12, 1, tzinfo=UTC), decided_by="owner", phase="IA-009",
+                 reason="IA-009: the Statistics Agent answers in the same aa-v1 whose Match Agent prompts had 42 % of their shadow answers refused; "
+                        "before it is switched on, its prompt (stats-assess-v2) ends with the same output checklist written from the contract, with "
+                        "its own signal codes and directions and research always []. Contract, reader, model and effort do not change. It is born "
+                        "CHALLENGER, runs in shadow in place of stats-v1 and reaches a decision only by a row the owner signs in intel.promotions.",
+                 fingerprint="aga044ea3270",
+                 parts={"evaluation": Part("stats-assess-v2", "c5747a251230", "aa-v1", "ab5f098304ef")}),
     Registration(agent="pmr", version="pmr-v1", registered_at=datetime(2026, 11, 3, 13, 0, tzinfo=UTC), decided_by="owner", phase="IA-5",
                  reason="Built under the Plan Maestro IA the owner approved in full (phase 5, section 12): after the result, the class of the misses the "
                         "attribution of the code left UNKNOWN and a short narrative, in pmr-v1, Haiku for the narrative and Sonnet for the losses worth "

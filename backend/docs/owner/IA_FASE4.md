@@ -11,11 +11,11 @@ El plan pide **añadir a la sombra de la fase 3 un segundo especialista, el Agen
 | Pieza | Qué hace | Dónde está |
 | --- | --- | --- |
 | Agente de Estadísticas | una postura por selección de córners o tarjetas, contrato `aa-v1`, Haiku | `ai/agents/stats.py`, `ai/contracts/assessment.py` |
-| Prompt | `stats-assess-v1`: la evidencia es dato, solo códigos, ningún número | `ai/prompts.py` |
+| Prompt | `stats-assess-v2` (desde IA-009; nació como `stats-assess-v1`): la evidencia es dato, solo códigos, ningún número, y termina con la lista de salida cerrada (`IA_009_SALIDAS_INVALIDAS.md`) | `ai/prompts.py` |
 | Nombres | `cand-names-v2`: los de goles y resultado no cambian y los recuentos los siguen | `ai/agents/common.py` |
 | Factores descriptivos | qué puede mencionar y nunca dar como razón; las dos relaciones del plan | `ai/stats_factors.py` |
 | Contradicciones por familia | C05 y C08 leídas por familia (cobertura y cuenta) | `ai/contra.py` |
-| Registro | agente `stats` / `stats-v1`, nacido RETADOR | `ai/agents/registry.py` |
+| Registro | agente `stats` / `stats-v2` (desde IA-009; nació como `stats-v1`), RETADOR | `ai/agents/registry.py` |
 | Orchestrator | la tarea, la porción `stats`, el Batch y el estado de la pasada | `ai/orchestrator.py` |
 | Informe de recuentos | CLV, abstenciones, Brier y log loss contra el mercado, sin veredicto | `ai/shadow.py`, `scripts/ia_counts_report.py` |
 
@@ -44,7 +44,7 @@ La fase **no lleva migración** (la última sigue siendo la 0119) y por tanto no
 
 | Quién | Tarea | Modelo | Esfuerzo | Prompt | Contrato |
 | --- | --- | --- | --- | --- | --- |
-| Agente de Estadísticas | evaluación | Haiku (`claude-haiku-5-5`) | `medium` | `stats-assess-v1` | `aa-v1` |
+| Agente de Estadísticas | evaluación | Haiku (`claude-haiku-5-5`) | `medium` | `stats-assess-v2` | `aa-v1` |
 
 El modelo y el esfuerzo los fija el router (`router-v1`: la tarea se llama `evaluation`, la misma del Match Agent), nunca el agente. El agente tiene **una sola tarea**, sin modo CONTEXT: las señales del partido son las del Match Agent, y una respuesta en otro modo se rechaza. Lee la porción `stats` del paquete (`mcp-v1`, tope de 18.000 tokens: si no cabe, la tarea se salta y se anota `stats_slice_over_its_cap`) y, en una segunda línea, lo que se le pregunta ahora: el modo, el momento, los minutos al inicio, los candidatos **por su nombre** con los números que el servidor ya conocía, la regla de liquidación de cada familia y las relaciones sin probar.
 
@@ -74,7 +74,7 @@ Un factor es DESCRIPTIVO mientras una persona no lo valida con un experimento (`
 
 ## 7. En la sombra: qué lee el Council, el Batch y las fugas
 
-* **Quién lee la evaluación.** Solo los dos motores que ya leían evaluaciones (`ma-v1` y `ma-v1-h`); `cs-v1` no la lee, y por eso comparar los dos con `cs-v1` aísla lo que aporta el agente. Su `engine_version` gana `+stats-v1` cuando el agente está encendido (`ma-v1+match-v1+stats-v1+council-v1+contra-v1+router-v1`); con `stats` apagado son exactamente las de la fase 3. La evaluación se cita como `A:stats_evaluation`. Las revisiones de producción (`rules`, `llm`, `combined`) no leen nada de esto y los lectores de `ai.pick_reviews` siguen nombrando sus motores.
+* **Quién lee la evaluación.** Solo los dos motores que ya leían evaluaciones (`ma-v1` y `ma-v1-h`); `cs-v1` no la lee, y por eso comparar los dos con `cs-v1` aísla lo que aporta el agente. Su `engine_version` gana `+stats-v2` cuando el agente está encendido (`ma-v1+match-v2+stats-v2+council-v1+contra-v1+router-v1`; con las versiones de antes de IA-009 era `+stats-v1` detrás de `match-v1`); con `stats` apagado son exactamente las de la fase 3. La evaluación se cita como `A:stats_evaluation`. Las revisiones de producción (`rules`, `llm`, `combined`) no leen nada de esto y los lectores de `ai.pick_reviews` siguen nombrando sus motores.
 * **Contradicciones.** Sobre los recuentos corren las mismas reglas (sección 9). Las cifras del servidor de cada revisión (cuota, probabilidades, valor esperado, cuota justa y mínima) son las de las reglas de producción, copiadas, nunca de un modelo.
 * **El calendario de Batch** vale igual que para el Match Agent: la tarea del agente va en la etapa 1, a mitad de precio, en la misma comprobación de toda la pasada, y la etapa 2 (el Council de los brazos que leen evaluaciones) espera a que esté liquidada. La pasada guarda en `route.stats` si el agente estaba encendido cuando se encoló, y ese valor manda hasta que se escribe.
 * **Presupuesto y plazos.** La estimación de la pasada suma la tarea del agente antes de gastar nada, y la pausa de un brazo (`pausing`) tiene en cuenta el modelo del agente; el plazo de T-15, el circuito y los cerrojos son los de la sección 8 de `IA_FASE3.md`. Si el partido no tiene ningún recuento que evaluar, no se crea la tarea y el estado de la pasada lo dice (`no_count_to_assess`).
@@ -119,7 +119,7 @@ El gate B pide 14 días de evaluaciones. `shadow.counts_report(conn, score, at=.
 | D4 | **Opus no escala los recuentos** (sección 5): ni E2 ni E6 se disparan para ellos | se revisa con los 14 días, no antes |
 | D5 | **Pocas selecciones y pocas casas.** Con 3 casas de apuestas por partido, muchos partidos tienen pocos recuentos con cuota y probabilidad, y las cifras de la sección 10 pueden tardar en tener muestra | el informe lo dice (`n`, `evidence.days`); nadie lo lee antes de los 14 días |
 | D6 | **Corrección de una falla de la fase 3, visible incluso con `stats` apagado.** El Orchestrator guardaba en `ai.match_runs.slices` solo la porción que leía el Match Agent, y la regla `slice_known` comparaba contra todas las del paquete y marcaba esa fila como violación. Ahora guarda todas (`match` y `stats`); es el único cambio que se ve con el agente apagado | ninguna: una prueba lo mantiene y `slice_known` sale limpia |
-| D7 | **La batería adversaria no cubre `stats-assess-v1`**, como tampoco cubre los prompts de la fase 3 (`IA_FASE3.md`, D6); la fase sí lleva sus propias pruebas de órdenes metidas en la evidencia | seguimiento |
+| D7 | **La batería adversaria no cubre `stats-assess-v2`** (ni cubría la v1), como tampoco cubre los prompts de la fase 3 (`IA_FASE3.md`, D6); la fase sí lleva sus propias pruebas de órdenes metidas en la evidencia | seguimiento |
 | D8 | **Una pasada de Batch en vuelo conserva el estado de `stats`** con el que se encoló aunque la palabra cambie | por diseño (sección 2) |
 
 ## 12. Las pruebas y lo que falta

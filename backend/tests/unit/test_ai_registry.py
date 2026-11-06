@@ -81,8 +81,8 @@ def test_the_agents_of_the_old_route_run_at_the_effort_its_guard_gives_their_tie
                 assert TIER_EFFORT[t.tier] == t.effort, f"{spec.agent}/{t.task}: the tier {t.tier} is asked at {TIER_EFFORT[t.tier]}"
 
 
-APART = {"stats": {"stats-assess-v1"}}
-"""The agents whose version (``stats-v1``) is not the label of their one prompt (``stats-assess-v1``): phase 4's Statistics Agent."""
+APART = {"stats": {"stats-assess-v2"}}
+"""The agents whose version (``stats-v2``) is not the label of their one prompt (``stats-assess-v2``): phase 4's Statistics Agent."""
 OWN_PROMPTS = {"council": ("council-opus-v1",)}
 """The agents whose version is the label of their main prompt and that run one more task with a prompt of its own (the Council's Opus)."""
 
@@ -97,7 +97,7 @@ def test_the_version_of_an_agent_is_the_label_of_its_prompt() -> None:
             assert version not in labels and labels == APART[spec.agent], spec.agent
         elif len(labels) == 1:
             assert labels == {version}, spec.agent
-        else:  # an agent of the plan with a prompt of its own for each task (``match-v1``: match-context-v1 and match-assess-v1)
+        else:  # an agent of the plan with a prompt of its own for each task (``match-v2``: match-context-v2 and match-assess-v2)
             assert len(labels) == len(spec.tasks) and version not in labels, spec.agent
         schemas = {p.schema_version for p in rg.live_parts(spec).values()}
         if spec.contract is None:
@@ -164,10 +164,14 @@ def test_an_agent_built_after_the_baseline_is_born_a_challenger_with_a_reason_an
     built = {s.agent for s in AGENTS} - set(BASELINE_AGENTS)
     assert built == {"claim_extractor", "match", "council", "stats", "pmr", "la"}
     for agent in built:
-        (entry,) = REGISTRY.history(agent)
+        entry = REGISTRY.history(agent)[0]
         assert not entry.baseline and entry.born_as == "CHALLENGER" and entry.decided_by in rg.DECIDERS
         assert len(entry.reason) >= rg.MIN_REASON
         assert entry.phase == {"claim_extractor": "IA-2", "match": "IA-3", "council": "IA-3", "stats": "IA-4", "pmr": "IA-5", "la": "IA-5"}[agent]
+        for later in REGISTRY.history(agent)[1:]:  # a later version is born the same way: a challenger, never promoted by the code
+            assert not later.baseline and later.born_as == "CHALLENGER" and len(later.reason) >= rg.MIN_REASON
+    assert {a: [r.version for r in REGISTRY.history(a)] for a in built if len(REGISTRY.history(a)) > 1} == {
+        "match": ["match-v1", "match-v2"], "stats": ["stats-v1", "stats-v2"]}, "IA-009: the prompts of aa-v1 with their output checklist"
     assert {s.agent: s.replaces for s in AGENTS if s.replaces} == {
         "claim_extractor": "extractor", "pmr": "post_match_reviewer", "la": "learning_analyst"}
     assert (REGISTRY.in_force("pmr").version, REGISTRY.in_force("la").version) == ("pmr-v1", "la-v1")

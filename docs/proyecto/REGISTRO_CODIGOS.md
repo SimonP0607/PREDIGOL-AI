@@ -28,6 +28,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | IA-006 | Fases 3 y 3b de IA (agentes, orquestador, brazos en sombra, migración 0119) incorporadas a `main` tal como corren en producción | desplegado el 3-nov-2026 (en `main` por este PR) | #20 | ia-p3, ia-p3b (y los interruptores ia-switch-v2/v3) |
 | IA-007 | Agente de Estadísticas en sombra para córners y tarjetas (interruptor apagado por defecto, sin migración) | en curso | este PR | ia-p4 (fase 4 del plan de IA) |
 | IA-008 | Revisor posterior (`pmr-v1`) y Analista de aprendizaje (`la-v1`) en sombra, con la atribución mecánica `attr-v1` y la migración 0120 (interruptores apagados por defecto) | en curso | este PR | ia-p5 (fase 5 del plan de IA) |
+| IA-009 | El Match Agent deja de devolver salidas inválidas (42 % medido en sombra con `match-v1`): prompts nuevos `match-context-v2`, `match-assess-v2` y `stats-assess-v2` con una lista de salida cerrada escrita desde el contrato, agentes `match-v2` y `stats-v2` (RETADORES) y códigos de error que nombran solo claves de una lista fija de palabras inofensivas (también en el Council). No cambia `aa-v1` ni `cd-v1`, no hace tolerante al lector y no enciende las salidas nativas; sin migración (`backend/docs/owner/IA_009_SALIDAS_INVALIDAS.md`) | en curso | este PR | — |
 
 ## UX — experiencia de usuario y diseño de la web
 
@@ -71,4 +72,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-009 · UX-024 · BE-004 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-010 · UX-024 · BE-004 · FE-001 · OPS-001 · DOC-001

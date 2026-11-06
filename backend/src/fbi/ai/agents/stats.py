@@ -1,4 +1,4 @@
-"""The Statistics Agent (``stats-v1``; Plan Maestro IA, phase 4, section 10): what it is asked and what the server makes of what it answers.
+"""The Statistics Agent (``stats-v2``; Plan Maestro IA, phase 4, section 10): what it is asked and what the server makes of what it answers.
 
 One agent, one contract (``aa-v1``, ``fbi.ai.contracts.assessment``), ONE task: ``evaluation``, mode EVALUATION, Haiku 5.5 at effort medium (the router's
 task of that name, ``router-v1``; never this module's choice). It assesses the selections of CORNERS and CARDS the server names (``c4``, ``c5``... after
@@ -70,7 +70,7 @@ from fbi.ai.providers.base import JsonRequest
 from fbi.ai.stats_factors import RELATIONS, descriptive_blocks, under
 
 AGENT: Final = "stats"
-VERSION: Final = "stats-v1"
+VERSION: Final = "stats-v2"
 TASK: Final = "evaluation"
 """The task of the router (and of the registry) this agent runs: its only one."""
 MODE: Final[Mode] = "EVALUATION"
