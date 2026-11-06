@@ -64,7 +64,7 @@ USERS_SWITCH: Final = "FBI_READING_USERS"
 """Every signed-in account sees the structured reading: on since plan UX A9, ``FBI_READING_USERS=0`` hides it again without a
 deploy. The Admin Console's preview does not depend on it. The API needs a restart to read it."""
 
-NARRATIVE_VERSION: Final = "user-narrative-v2"
+NARRATIVE_VERSION: Final = "user-narrative-v3"
 """The prompt and the checks of the narrative (``fbi.narrative.job``): a narrative of another version is not shown. v2 (UX-025) is
 the chronicle - the lead, a paragraph for each side, the head-to-head and the risks - tied to the story of the match
 (``fbi.api.services.story``), not to the newest packet."""

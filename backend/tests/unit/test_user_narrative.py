@@ -347,7 +347,7 @@ def test_the_prompt_explains_every_code_of_the_story_and_the_schema_has_no_bound
 
     assert not keys(un.SCHEMA) & {"minimum", "maximum", "minLength", "maxLength", "minItems", "maxItems"}
     assert set(un.SCHEMA["properties"]["es"]["required"]) == set(story.SECTIONS) == set(un.LanguageOut.model_fields)
-    assert un.VERSION == reading.NARRATIVE_VERSION == "user-narrative-v2"
+    assert un.VERSION == reading.NARRATIVE_VERSION == "user-narrative-v3"
 
 
 def test_the_story_never_names_what_the_chronicle_must_not_know() -> None:
