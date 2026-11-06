@@ -1,9 +1,11 @@
 /**
  * Resumen, by the match's state (plan UX, A9; section 25: what matters first):
- * before kick-off - the reading's summary and its two main risks (with the way to the whole Análisis), PrediGol's forecast
- *                   labelled, the picks PrediGol published for the match with their state (or that it published none),
- *                   PrediGol Intelligence's markets, the best prices, form, rest and calendar in every competition, table,
- *                   absences, line-ups and head to head;
+ * before kick-off - to UNDERSTAND the match (plan de cierre UX, 2.2): the reading's summary, key points, why there is value
+ *                   and its two main risks (with the way to the whole Análisis), PrediGol's forecast labelled, the picks
+ *                   PrediGol published for the match with their state (or that it published none), whether a market is well
+ *                   paid and the best prices; then, folded under «Profundizar», what is read to go deeper - form, table and
+ *                   head to head, rest and calendar in every competition, absences and line-ups. Nothing is dropped: it
+ *                   is ordered, and what another tab shows in full links to it;
  * in play        - the match events first, then the day's reading as it was written before kick-off, the picks as they
  *                  were taken with what the match is doing, key figures and in-play prices; the context folded away;
  * after          - result, events, the pre-match reading and key figures; the context folded away (what happened put
@@ -104,12 +106,24 @@ function ContextGrid({ ctx }: { ctx: MatchCtx }) {
   );
 }
 
-/** Form, table and head to head, folded away once the match is under way. */
-function ContextSection({ ctx, open: initiallyOpen = false }: { ctx: MatchCtx; open?: boolean }) {
+/** A section that folds under its title (a 44 px row); its content is not drawn until it is opened. */
+function Fold({
+  title,
+  subtitle,
+  testId,
+  open: initiallyOpen = false,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  testId?: string;
+  open?: boolean;
+  children: ReactNode;
+}) {
   const [open, setOpen] = useState(initiallyOpen);
   const panelId = useId();
   return (
-    <section>
+    <section data-testid={testId}>
       <button
         type="button"
         aria-expanded={open}
@@ -119,11 +133,9 @@ function ContextSection({ ctx, open: initiallyOpen = false }: { ctx: MatchCtx; o
       >
         <span>
           <span className="block font-display text-[0.95rem] font-semibold tracking-tight">
-            {t("match.context.title")}
+            {title}
           </span>
-          <span className="block text-caption text-muted-foreground">
-            {t("match.context.subtitle")}
-          </span>
+          <span className="block text-caption text-muted-foreground">{subtitle}</span>
         </span>
         <ChevronDown
           aria-hidden
@@ -135,10 +147,47 @@ function ContextSection({ ctx, open: initiallyOpen = false }: { ctx: MatchCtx; o
       </button>
       {open ? (
         <div id={panelId} className="mt-4">
-          <ContextGrid ctx={ctx} />
+          {children}
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** Form, table and head to head, folded away once the match is under way. */
+function ContextSection({ ctx, open }: { ctx: MatchCtx; open?: boolean }) {
+  return (
+    <Fold
+      title={t("match.context.title")}
+      subtitle={t("match.context.subtitle")}
+      {...(open === undefined ? {} : { open })}
+    >
+      <ContextGrid ctx={ctx} />
+    </Fold>
+  );
+}
+
+/**
+ * «Profundizar», before kick-off (plan de cierre UX, 2.2): everything that is read to go deeper once the match is
+ * understood - form, table and head to head, then rest and calendar, absences and the line-ups - folded, closed until the
+ * reader opens it. The line-ups and the prices keep their link to the tab that shows them in full.
+ */
+export function DeepenSection({ ctx }: { ctx: MatchCtx }) {
+  return (
+    <Fold
+      title={t("match.deepen.title")}
+      subtitle={t("match.deepen.subtitle")}
+      testId="match-deepen"
+    >
+      <div className="space-y-4">
+        <ContextGrid ctx={ctx} />
+        <div className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <CalendarBlock ctx={ctx} />
+          <AbsencesBlock ctx={ctx} />
+          <LineupsTeaser ctx={ctx} />
+        </div>
+      </div>
+    </Fold>
   );
 }
 
@@ -147,43 +196,22 @@ function ContextSection({ ctx, open: initiallyOpen = false }: { ctx: MatchCtx; o
 const TWO_COLUMNS = "grid items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]";
 
 function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
-  // Phones and tablets read in order of use; wide screens balance the two columns.
-  const lineups = <LineupsTeaser ctx={ctx} />;
-  const form = <FormBlock ctx={ctx} />;
-  const table = <StandingsBlock ctx={ctx} />;
-  const absences = <AbsencesBlock ctx={ctx} />;
-  // Rest and congestion in every competition (plan F4); the owner decides when users see it.
-  const calendar = <CalendarBlock ctx={ctx} />;
   return (
-    <div className={TWO_COLUMNS}>
-      <div className="min-w-0 space-y-4">
-        {/* The reading's summary and main risks (A9), what PrediGol expects (F5), what it published (the picks) and, apart,
-            whether a market is well paid (the analysis). */}
+    <div className="space-y-4">
+      {/* To understand the match, in the order of use (plan de cierre UX, 2.2): the reading's summary, key points, why there
+          is value and main risks (A9, UX-011) beside what PrediGol expects (F5); then what it published (the picks), whether
+          a market is well paid (the analysis) and the best prices. */}
+      <div className={TWO_COLUMNS}>
         <ReadingHighlights ctx={ctx} />
         <ForecastBlock ctx={ctx} />
-        <PicksTab ctx={ctx} />
-        <AnalysisBlock ctx={ctx} />
+      </div>
+      <PicksTab ctx={ctx} />
+      <AnalysisBlock ctx={ctx} />
+      <div className="lg:max-w-3xl">
         <QuickPricesBlock ctx={ctx} />
-        <div className="space-y-4 lg:hidden">
-          <div className="grid items-start gap-4 md:grid-cols-2">
-            {form}
-            {table}
-          </div>
-          {calendar}
-          <div className="grid items-start gap-4 md:grid-cols-2">
-            {lineups}
-            {absences}
-          </div>
-        </div>
-        <H2HBlock ctx={ctx} />
       </div>
-      <div className="hidden min-w-0 space-y-4 lg:block">
-        {lineups}
-        {form}
-        {calendar}
-        {table}
-        {absences}
-      </div>
+      {/* To go deeper: folded, and everything still there. */}
+      <DeepenSection ctx={ctx} />
     </div>
   );
 }
