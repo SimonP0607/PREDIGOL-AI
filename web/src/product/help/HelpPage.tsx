@@ -1,7 +1,7 @@
 /**
  * Ayuda (/help, plan UX, A14; section 32): the reader finds the answer alone or writes to PrediGol. 25 questions in ES
  * and EN by group with an accent-blind search (each one opens in place; /help#faq-renew opens that one), the reader's own
- * messages with their state, the glossary, the optional four-step tour (A13 started it from the glossary until this page
+ * messages with their state, the glossary, the optional five-step tour (A13 started it from the glossary until this page
  * existed), «Juego responsable», «Privacidad y datos», and the contact: «Reportar un problema» and - once the owner has
  * given them - WhatsApp and an address. Reachable from the account menu (two taps from any screen), from every error and
  * with the membership ended or suspended (A8's limited paths). The two about the notices on the devices (B7) only while
@@ -13,6 +13,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BookOpen,
   ChevronRight,
+  Compass,
   HeartHandshake,
   LifeBuoy,
   Mail,
@@ -30,6 +31,7 @@ import { Card, PageTitle } from "@/product/shared/States";
 import { usePush } from "@/product/push/usePush";
 import { useReportProblem } from "@/product/support/report";
 import { TourStart } from "@/product/tour/Tour";
+import { HOW_PATH } from "./howItWorks";
 import {
   FAQ_GROUPS,
   FAQ_IDS,
@@ -247,6 +249,13 @@ function MoreHelp() {
       </h2>
       <div className="grid gap-2 sm:grid-cols-2">
         <MoreCard
+          to={HOW_PATH}
+          icon={<Compass aria-hidden className="h-4 w-4 text-primary" />}
+          title={t("support.help.more.howItWorks")}
+          body={t("support.help.more.howItWorksBody")}
+          testId="help-how-it-works"
+        />
+        <MoreCard
           to="/help/glossary"
           icon={<BookOpen aria-hidden className="h-4 w-4 text-primary" />}
           title={t("support.help.more.glossary")}
@@ -266,7 +275,7 @@ function MoreHelp() {
           body={t("support.help.more.privacyBody")}
         />
       </div>
-      {/* Plan UX, A13: the optional four-step tour starts from the help. */}
+      {/* Plan UX, A13: the optional five-step tour starts from the help. */}
       <TourStart />
     </section>
   );

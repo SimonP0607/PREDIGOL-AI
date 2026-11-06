@@ -14,7 +14,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { BarChart3, ChevronRight, Compass, Loader2, Sparkles } from "lucide-react";
+import { BarChart3, BookOpen, ChevronRight, Compass, Loader2, Sparkles } from "lucide-react";
 import { BrandLogo } from "@/components/brand/Brand";
 import { Disclaimer } from "@/components/system/Disclaimer";
 import { LanguageSwitch } from "@/components/layout/HeaderControls";
@@ -28,6 +28,7 @@ import { Card, ErrorState } from "@/product/shared/States";
 import { FavoritesPicker } from "@/product/favorites/FavoritesPicker";
 import { bodyOf, changes, choiceOf, limitsOf, type Choice } from "@/product/favorites/model";
 import { useOnboardingState, welcomeSteps } from "@/product/favorites/onboarding";
+import { HOW_PATH } from "@/product/help/howItWorks";
 import { useTour } from "@/product/tour/steps";
 import { afterWelcome } from "./next";
 
@@ -134,12 +135,14 @@ function About({
   busy,
   onEnter,
   onTransparency,
+  onHow,
   onTour,
 }: {
   transparency: boolean;
   busy: boolean;
   onEnter: (skipped: boolean) => void;
   onTransparency: () => void;
+  onHow: () => void;
   onTour: () => void;
 }) {
   return (
@@ -173,6 +176,18 @@ function About({
           </li>
         ))}
       </ul>
+      <p>
+        <button
+          type="button"
+          data-testid="welcome-how"
+          disabled={busy}
+          className="tap-y relative inline-flex items-center gap-1 text-[0.9375rem] font-medium text-primary hover:underline"
+          onClick={onHow}
+        >
+          <BookOpen aria-hidden className="h-3.5 w-3.5" />
+          {t("onboarding.welcome.about.howItWorks")}
+        </button>
+      </p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <button
           type="button"
@@ -236,7 +251,7 @@ export function WelcomePage() {
   const step: WelcomeStep = steps[index] ?? "football";
   const last = index >= steps.length - 1;
 
-  async function finish(then: "next" | "tour" | "transparency") {
+  async function finish(then: "next" | "tour" | "transparency" | "how") {
     setBusy(true);
     setFailure(null);
     finishing.current = true;
@@ -247,7 +262,11 @@ export function WelcomePage() {
       if (then === "tour") tour.start();
       else
         void navigate({
-          to: (then === "transparency" ? "/transparency" : afterWelcome(searchStr)) as never,
+          to: (then === "transparency"
+            ? "/transparency"
+            : then === "how"
+              ? HOW_PATH
+              : afterWelcome(searchStr)) as never,
           replace: true,
         });
     } catch (err) {
@@ -305,6 +324,7 @@ export function WelcomePage() {
                 void finish("next");
               }}
               onTransparency={() => void finish("transparency")}
+              onHow={() => void finish("how")}
               onTour={() => void finish("tour")}
             />
           )}

@@ -1,16 +1,17 @@
 /**
- * The optional four-step tour (plan UX, A13; section 20: «Recorrido opcional de 4 pasos desde Ayuda»): Inicio, a match's
- * centre, a pick with its state and Mis picks. Started only by the reader - from the welcome's «Qué es PrediGol» or from
+ * The optional five-step tour (plan UX, A13; section 20: «Recorrido opcional desde Ayuda»; the parlay joined it in the plan de cierre,
+ * 1.6): Inicio, a match's centre, Picks, the parlays and Mis picks. Its last card leads on to «Cómo funciona PrediGol». Started only by the reader - from the welcome's «Qué es PrediGol» or from
  * the help - never on its own: a small card at the foot of the page (over nothing the reader needs: it leaves the tab bar
  * and the parlay button clear), «Siguiente» to the next page, closed at any step. It keeps nothing: a reload ends it.
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Compass, X } from "lucide-react";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { Today } from "@/lib/api/v1/types_today";
 import { t } from "@/lib/i18n";
+import { HOW_PATH } from "@/product/help/howItWorks";
 import { TOUR_STEPS, TourContext, stepPath, useTour, type TourStep, type TourValue } from "./steps";
 
 export function TourProvider({ children }: { children: ReactNode }) {
@@ -80,7 +81,17 @@ export function TourCard() {
           <X aria-hidden className="h-4 w-4" />
         </button>
       </div>
-      <div className="mt-3 flex justify-end">
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
+        {last ? (
+          <Link
+            to={HOW_PATH}
+            onClick={tour.close}
+            data-testid="tour-more"
+            className="tap-y relative inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {t("onboarding.tour.more")}
+          </Link>
+        ) : null}
         <button
           type="button"
           onClick={tour.next}
