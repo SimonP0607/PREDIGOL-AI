@@ -6,6 +6,9 @@
 * The daily aggregate equals the raw events, day by Bogotá day, and recomputing it changes nothing.
 * The purge counts in ``dry`` and deletes only in ``on``; only what is past its retention.
 * The owner's view: global figures only with enough readers; 403 to a reader.
+* The owner's breakdowns (closing plan 3.3): the screens by group, the markets of the picks saved and of the legs added
+  to a parlay, and the leagues and teams of the matches opened - worked out from the match when the owner reads them,
+  each line only with enough readers behind it, none of them stored anywhere.
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ from fbi.auth.settings import reset as reset_session_settings
 from fbi.core.config import reset_cache
 from fbi.customer import consents, events
 from fbi.customer.events import EventError
+from tests.integration.conftest import Seed
 from tests.integration.helpers import forget_memberships, forget_sign_in_failures
 
 READER = "lector.eventos@example.org"
@@ -278,6 +282,50 @@ def test_the_owner_sees_global_figures_only_with_enough_readers(fresh: str, monk
     owner = client(OWNER).get("/api/v1/admin/product")
     assert owner.status_code == 200 and owner.json()["status"] == "ok"
     assert client(READER).get("/api/v1/admin/product").status_code == 403
+
+
+def test_the_owners_breakdowns_name_screens_markets_leagues_and_teams_only_with_enough_readers(
+        fresh: str, seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:
+    now = datetime.now(UTC)
+    at = max(now - timedelta(minutes=5), events.day_bounds(events.bogota_day(now))[0])
+    third = "c" * 20
+    with psycopg.connect(fresh) as conn:
+        for subject in (A, B, third):
+            put(conn, subject, "session_started", at, {"device": "phone", "width": 390, "client": "browser", "lang": "es"})
+            put(conn, subject, "screen_viewed", at, {"screen": "home"})
+            put(conn, subject, "match_opened", at, {"origin": "home", "match_id": seed.fixture_id})
+        put(conn, A, "match_opened", at, {"origin": "picks", "match_id": seed.fixture_id})   # a second time: one reader
+        put(conn, A, "screen_viewed", at, {"screen": "my_picks"})                              # one reader: under the floor
+        for subject in (A, B, third):
+            put(conn, subject, "pick_saved", at, {"origin": "market", "market": "BTTS"})
+        put(conn, A, "slip_leg_added", at, {"legs": 2, "market": "BTTS"})
+        put(conn, B, "slip_leg_added", at, {"legs": 1, "market": "OU"})                       # two readers: under the floor
+        put(conn, A, "slip_leg_added", at, {"legs": 1, "market": "OU"})
+        put(conn, B, "pick_saved", at, {"origin": "pick"})                                    # no market: not a market's
+        put(conn, B, "match_opened", at, {"origin": "home", "match_id": 987_654_321})        # a match that is gone
+        conn.commit()
+        monkeypatch.setenv("FBI_PRODUCT_MIN_SUBJECTS", "3")
+        full = events.overview(conn, at=now)
+        monkeypatch.setenv("FBI_PRODUCT_MIN_SUBJECTS", "4")
+        thin = events.overview(conn, at=now)
+    assert full.status == "ok"
+    assert full.screens == [{"key": "home", "label": None, "events_30d": 3, "subjects_30d": 3}], \
+        "my_picks has one reader: not listed"
+    assert full.markets == [{"key": "BTTS", "label": None, "events_30d": 4, "subjects_30d": 3}], \
+        "OU has two readers: not listed; a pick saved without a market counts for none"
+    assert full.leagues == [{"key": str(seed.competition_id), "label": "Premier League", "events_30d": 4,
+                             "subjects_30d": 3}], "the match that is gone is no league's"
+    assert {t["label"]: (t["events_30d"], t["subjects_30d"]) for t in full.teams} == {
+        "Manchester United": (4, 3), "Liverpool": (4, 3)}
+    assert (thin.status, thin.screens, thin.markets, thin.leagues, thin.teams) == ("insufficient_data", [], [], [], []), \
+        "below the floor of readers nothing is broken down"
+    assert "league" not in str(rows(fresh)) and "Liverpool" not in str(rows(fresh)), \
+        "the leagues and the teams are looked up when read: nothing about them is stored"
+    monkeypatch.setenv("FBI_PRODUCT_MIN_SUBJECTS", "3")
+    body = client(OWNER).get("/api/v1/admin/product").json()
+    assert body["status"] == "ok" and [r["label"] for r in body["leagues"]] == ["Premier League"]
+    assert [r["key"] for r in body["screens"]] == ["home"] and [r["key"] for r in body["markets"]] == ["BTTS"]
+    assert {r["label"] for r in body["teams"]} == {"Manchester United", "Liverpool"}
 
 
 def test_a_server_event_is_recorded_in_the_callers_transaction(fresh: str) -> None:

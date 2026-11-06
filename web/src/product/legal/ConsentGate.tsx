@@ -21,7 +21,7 @@ import { t, useI18n } from "@/lib/i18n";
 import { BrandLogo } from "@/components/brand/Brand";
 import { Disclaimer } from "@/components/system/Disclaimer";
 import { LanguageSwitch } from "@/components/layout/HeaderControls";
-import { Card, ErrorState, errorMessage } from "@/product/shared/States";
+import { Card, ErrorState, errorMessage, SkeletonCards } from "@/product/shared/States";
 import { gateOptional } from "@/product/profile/consents";
 import { legalPath } from "./links";
 import { OptionalConsent } from "./OptionalConsent";
@@ -112,7 +112,7 @@ export function ConsentGate({
             {t("legal.gate.title")}
           </h1>
           {state.isPending ? (
-            <Loader2 aria-hidden className="h-5 w-5 animate-spin text-muted-foreground" />
+            <SkeletonCards count={2} />
           ) : state.isError ? (
             <ErrorState error={state.error} onRetry={() => void state.refetch()} />
           ) : (

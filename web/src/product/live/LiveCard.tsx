@@ -13,6 +13,7 @@ import { fmtInt, fmtOdds, fmtPct } from "@/lib/i18n/format";
 import { formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { Freshness, LiveMinute } from "@/product/shared/Bits";
+import { GoalDigit } from "@/product/shared/GoalDigit";
 import { marketShort, selectionLabel } from "@/product/shared/markets";
 import { minuteText, phaseOf, shortStatus } from "@/product/matches/status";
 import { Completeness } from "./Completeness";
@@ -360,11 +361,11 @@ export function LiveCard({ m, now }: { m: LiveMatch; now: number }) {
               </span>
             ) : (
               <span className="numeric flex items-center gap-2 text-3xl font-bold leading-none tabular-nums">
-                <span>{hasScore ? m.goals_home : "–"}</span>
+                <GoalDigit value={m.goals_home}>{hasScore ? m.goals_home : "–"}</GoalDigit>
                 <span aria-hidden className="text-xl font-medium text-subtle-foreground">
                   -
                 </span>
-                <span>{hasScore ? m.goals_away : "–"}</span>
+                <GoalDigit value={m.goals_away}>{hasScore ? m.goals_away : "–"}</GoalDigit>
               </span>
             )}
             <MatchClock m={m} />

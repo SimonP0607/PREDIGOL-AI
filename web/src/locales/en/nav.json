@@ -41,5 +41,9 @@
     "after": "Once installed it opens from its icon, full screen, with the same account. It updates itself: when there is a new version, PrediGol tells you."
   },
   "unread": "unread",
-  "moreUnread": "something new"
+  "moreUnread": "something new",
+  "whatsapp": {
+    "label": "Write to us on WhatsApp",
+    "hint": "A person answers; with a code of where you were"
+  }
 }

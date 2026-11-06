@@ -41,7 +41,10 @@
       "email": "Correo",
       "urgent": "¿No puedes entrar o pagaste y no accedes? Elige «No puedo entrar» y lo vemos hoy mismo.",
       "off": "Los mensajes desde PrediGol están pausados por ahora; escríbenos por WhatsApp o por correo.",
-      "nothing": "Los mensajes desde PrediGol están pausados y todavía no hay otro canal publicado. Vuelve a intentarlo más tarde."
+      "nothing": "Los mensajes desde PrediGol están pausados y todavía no hay otro canal publicado. Vuelve a intentarlo más tarde.",
+      "hours": "Atención: {hours}",
+      "stillFailing": "¿Sigue fallando? Escríbenos",
+      "stillFailingText": "Hola, algo sigue fallando en PrediGol:"
     },
     "tickets": {
       "title": "Tus mensajes",
@@ -541,5 +544,8 @@
         "example": "Un pick «Recomendado» a 2,10 que acierta queda «Ganado» y suma 1,10 unidades; uno que cae justo en la línea queda «Devuelto»; uno cuyo partido se cancela queda «Anulado» y no suma ni resta."
       }
     }
+  },
+  "whatsapp": {
+    "code": "Código de consulta: {code}"
   }
 }

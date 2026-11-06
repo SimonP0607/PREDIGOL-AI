@@ -1,7 +1,7 @@
 """Product analytics (plan UX, A6 and section 39): the events of a closed catalog, their daily aggregate, their purge
 and the owner's view of them.
 
-* **The catalog** (``events_catalog.json``, the same in ``web/src/lib/track.ts``): 35 events, each with the only
+* **The catalog** (``events_catalog.json``, the same in ``web/src/lib/track.ts``): 36 events, each with the only
   properties it may carry - an enumeration, a bounded integer, a boolean, a slug or an id. Anything else is refused:
   an unknown event, an unknown property, a value out of its kind. No free text, no address, no IP.
 * **Who:** a pseudonym (``fbi.auth.crypto.product_id``: an HMAC of the account's id under its own key), never the id.
@@ -14,7 +14,10 @@ and the owner's view of them.
   the aggregate always equals them; raw events older than 90 days and aggregates older than 13 months are deleted only
   with ``FBI_EVENTS_PURGE=on`` - born ``dry``, which counts and deletes nothing until the owner says so.
 * **The owner's view** (``overview``): global figures only with at least ``FBI_PRODUCT_MIN_SUBJECTS`` (20) readers
-  active in the window; below that, the number and nothing else.
+  active in the window; below that, the number and nothing else. Its breakdowns (the screens by group, the markets of
+  the picks saved and the legs added to a parlay, the leagues and the teams of the matches opened) list a line only
+  when at least that many readers are behind it, and the leagues and teams are worked out here, at the time of the
+  reading, from the ``match_id`` of ``match_opened`` - nothing is collected for them.
 
 Nothing here reaches a model, the decision layer or the AI's package (tests/unit/test_user_layer_isolation.py).
 """
@@ -280,6 +283,10 @@ class Overview:
     days_active_per_week: float | None = None
     errors_per_active: float | None = None
     dau_mau: float | None = None
+    screens: list[dict[str, Any]] = field(default_factory=list)
+    markets: list[dict[str, Any]] = field(default_factory=list)
+    leagues: list[dict[str, Any]] = field(default_factory=list)
+    teams: list[dict[str, Any]] = field(default_factory=list)
 
 
 FUNNEL: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -288,6 +295,40 @@ FUNNEL: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("onboarding_completed", ("onboarding_completed",)),
     ("first_value", ("match_opened", "pick_opened", "pick_saved")),
 )
+
+
+BREAKDOWN_ROWS = 15
+
+SCREENS_SQL = """
+SELECT props->>'screen' AS key, NULL::text AS label, count(*) AS events_30d, count(DISTINCT subject) AS subjects_30d
+  FROM customer.product_events WHERE at >= %(s30)s AND name = 'screen_viewed' AND props ? 'screen'
+ GROUP BY 1 HAVING count(DISTINCT subject) >= %(floor)s ORDER BY count(*) DESC, 1 LIMIT %(rows)s
+"""
+MARKETS_SQL = """
+SELECT props->>'market' AS key, NULL::text AS label, count(*) AS events_30d, count(DISTINCT subject) AS subjects_30d
+  FROM customer.product_events WHERE at >= %(s30)s AND name IN ('pick_saved', 'slip_leg_added') AND props ? 'market'
+ GROUP BY 1 HAVING count(DISTINCT subject) >= %(floor)s ORDER BY count(*) DESC, 1 LIMIT %(rows)s
+"""
+LEAGUES_SQL = """
+SELECT c.id::text AS key, c.name AS label, count(*) AS events_30d, count(DISTINCT e.subject) AS subjects_30d
+  FROM customer.product_events e
+  JOIN core.fixtures f ON f.id = (e.props->>'match_id')::bigint
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+ WHERE e.at >= %(s30)s AND e.name = 'match_opened' AND e.props ? 'match_id'
+ GROUP BY c.id, c.name HAVING count(DISTINCT e.subject) >= %(floor)s ORDER BY count(*) DESC, c.name LIMIT %(rows)s
+"""
+TEAMS_SQL = """
+SELECT t.id::text AS key, t.name AS label, count(*) AS events_30d, count(DISTINCT e.subject) AS subjects_30d
+  FROM customer.product_events e
+  JOIN core.fixtures f ON f.id = (e.props->>'match_id')::bigint
+  CROSS JOIN LATERAL (VALUES (f.home_team_id), (f.away_team_id)) AS s(team_id)
+  JOIN core.teams t ON t.id = s.team_id
+ WHERE e.at >= %(s30)s AND e.name = 'match_opened' AND e.props ? 'match_id'
+ GROUP BY t.id, t.name HAVING count(DISTINCT e.subject) >= %(floor)s ORDER BY count(*) DESC, t.name LIMIT %(rows)s
+"""
+"""What the readers look at, in groups and never one by one: a line stands only with ``min_subjects`` readers behind it.
+The leagues and the teams come from the match a reader opened (its ``match_id``), looked up when the owner reads them."""
 
 
 def overview(conn: psycopg.Connection[Any], *, at: datetime) -> Overview:
@@ -341,6 +382,12 @@ def overview(conn: psycopg.Connection[Any], *, at: datetime) -> Overview:
         base.devices = {str(r["device"] or "unknown"): int(r["n"]) for r in cur.fetchall()}
         errors = sum(u["events_7d"] for u in base.usage if u["name"] == "error_shown")
         base.errors_per_active = round(errors / base.active["d7"], 3) if base.active["d7"] else None
+        window = {"s30": since30, "floor": floor, "rows": BREAKDOWN_ROWS}
+        for attr, sql in (("screens", SCREENS_SQL), ("markets", MARKETS_SQL), ("leagues", LEAGUES_SQL),
+                          ("teams", TEAMS_SQL)):
+            cur.execute(sql, window)
+            setattr(base, attr, [{"key": str(r["key"]), "label": r["label"], "events_30d": int(r["events_30d"]),
+                                  "subjects_30d": int(r["subjects_30d"])} for r in cur.fetchall()])
     return base
 
 
