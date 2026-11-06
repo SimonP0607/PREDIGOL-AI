@@ -258,3 +258,112 @@ def test_the_parlays_multiply_two_calibrated_probabilities_of_different_competit
         assert len(detail["legs"]) == 2
     legs = [{leg["fixture"] for leg in r[7]["legs"]} for r in rows]
     assert legs == [{f["F1"], f["F4"]}, {f["F3"], f["F5"]}], "one leg per competition; no match in two parlays"
+
+
+# ── BE-003: the owner's competitions first (daily-set-v7, comp-priority-v1) ──────────────────────────────────────
+
+def leagues(db: psycopg.Connection[Any], a: int, b: int) -> None:
+    """Give the world's two competitions real API-Football league ids: ``a`` for F1-F3, ``b`` for F4-F7."""
+    for old, new in ((97401, a), (97402, b)):
+        db.execute("UPDATE core.competitions SET provider_league_id = %s WHERE provider_league_id = %s", (new, old))
+
+
+def chosen(db: psycopg.Connection[Any]) -> list[tuple[Any, ...]]:
+    """Today's picks in rank order: (fixture, odds, p_est, ev, stake, score, source decision), then the frozen
+    decision's state and numbers (state, p_cal, ev_cal, edge_cal, score, premium) and its source's (the same six)."""
+    return db.execute(
+        "SELECT d.fixture_id, s.odds, s.p_est, s.ev, s.stake_units, s.detail->'score', "
+        "(s.detail->>'source_decision')::bigint, d.state, d.p_cal, d.ev_cal, d.edge_cal, d.score, d.premium, "
+        "src.state, src.p_cal, src.ev_cal, src.edge_cal, src.score, src.premium "
+        "FROM intel.day_selections s JOIN intel.decisions d ON d.id = s.decision_ids[1] "
+        "JOIN intel.decisions src ON src.id = (s.detail->>'source_decision')::bigint "
+        "WHERE s.kind = 'pick' ORDER BY s.rank").fetchall()
+
+
+def decisions_but_the_chosen(db: psycopg.Connection[Any]) -> list[tuple[Any, ...]]:
+    return db.execute("SELECT id, state, p_cal, ev_cal, edge_cal, score, stake_units, premium, parlay_eligible "
+                      "FROM intel.decisions WHERE checkpoint <> 'selection' ORDER BY id").fetchall()
+
+
+def test_the_champions_league_goes_first_even_with_a_lower_score_and_nothing_else_changes(
+        db: psycopg.Connection[Any], seed: Seed) -> None:
+    """F1-F3 become the Champions League (group 1), F4-F7 an unlisted league (group 4). By score the day was F4, F1a,
+    F5, F3; with the priority it is F1a and F3 (the Champions League, best score first, its cap of two reached), then
+    F4 and F5. The same four selections, frozen with the same numbers: only the order changed."""
+    w = World(db, seed)
+    made = decide(db, seed, w)
+    f = w.fixtures
+    with db.transaction(force_rollback=True):
+        decision.select_day(db, at=NOW, ready=True)
+        before = {r[0]: r for r in chosen(db)}
+        assert list(before) == [f["F4"], f["F1"], f["F5"], f["F3"]], "the control: daily-set-v6's order"
+    leagues(db, 2, 97402)
+    untouched = decisions_but_the_chosen(db)
+    added, _ = decision.select_day(db, at=NOW, ready=True)
+    after = chosen(db)
+    assert added == 4 and [r[0] for r in after] == [f["F1"], f["F3"], f["F4"], f["F5"]]
+    assert [r[6] for r in after] == [made[k][0] for k in ("F1a", "F3", "F4", "F5")]
+    for r in after:
+        assert r == before[r[0]], "odds, probability, EV, stake and score frozen exactly as without the priority"
+        assert r[7] == "PICK_DEL_DIA" and r[8:13] == r[14:19], "the frozen decision copies its source's numbers"
+    assert decisions_but_the_chosen(db) == untouched, "no decision of the day was rewritten"
+    rows = db.execute("SELECT rank, rule_version, detail->>'priority', (detail->>'priority_group')::int "
+                      "FROM intel.day_selections WHERE kind = 'pick' ORDER BY rank").fetchall()
+    assert rows == [(1, "daily-set-v7", "comp-priority-v1", 1), (2, "daily-set-v7", "comp-priority-v1", 1),
+                    (3, "daily-set-v7", "comp-priority-v1", 4), (4, "daily-set-v7", "comp-priority-v1", 4)]
+
+
+@pytest.mark.parametrize(("a", "b", "order"), [
+    (97401, 97402, ("F4", "F1", "F5", "F3")),
+    (32, 3, ("F4", "F5", "F1", "F3")),
+    (3, 32, ("F1", "F3", "F4", "F5")),
+    (39, 140, ("F4", "F1", "F5", "F3")),
+], ids=["no priority competition: score order, as before", "qualifiers (3) after the Europa League (2)",
+        "the Europa League (2) before the qualifiers (3)", "two group-1 leagues: score order"])
+def test_the_groups_order_the_day_and_the_caps_still_hold(db: psycopg.Connection[Any], seed: Seed, a: int, b: int,
+                                                           order: tuple[str, ...]) -> None:
+    w = World(db, seed)
+    decide(db, seed, w)
+    if a == 39:  # the session's seed already holds 39: free it for this test (rolled back)
+        db.execute("UPDATE core.competitions SET provider_league_id = 97499 WHERE provider_league_id = 39")
+    leagues(db, a, b)
+    decision.select_day(db, at=NOW, ready=True)
+    assert [r[0] for r in chosen(db)] == [w.fixtures[m] for m in order]
+    per_competition = db.execute(
+        "SELECT count(*) FROM intel.day_selections s JOIN intel.decisions d ON d.id = s.decision_ids[1] "
+        "JOIN core.fixtures fx ON fx.id = d.fixture_id JOIN core.competition_seasons cs "
+        "ON cs.id = fx.competition_season_id WHERE s.kind = 'pick' GROUP BY cs.competition_id").fetchall()
+    assert max(n for (n,) in per_competition) <= decision.MAX_PER_COMPETITION
+
+
+def test_the_priority_never_takes_more_than_five(db: psycopg.Connection[Any], seed: Seed,
+                                                 monkeypatch: pytest.MonkeyPatch) -> None:
+    """Three a competition and F2 fresh: six approved selections of today for five places. The Champions League's
+    three go first, then the best two of the other league; F6, the lowest of group 4, stays out."""
+    w = World(db, seed)
+    decide(db, seed, w, ages={"F2": FRESH})
+    monkeypatch.setattr(decision, "MAX_PER_COMPETITION", 3)
+    leagues(db, 2, 97402)
+    added, _ = decision.select_day(db, at=NOW, ready=True)
+    f = w.fixtures
+    assert added == decision.MAX_PICKS == 5
+    assert [r[0] for r in chosen(db)] == [f["F1"], f["F2"], f["F3"], f["F4"], f["F5"]]
+
+
+def test_a_day_begun_under_daily_set_v6_is_only_completed(db: psycopg.Connection[Any], seed: Seed,
+                                                           monkeypatch: pytest.MonkeyPatch) -> None:
+    """The day of the change: F4 was already frozen under daily-set-v6. daily-set-v7 counts it against the caps and
+    only fills the places left, so the day never holds more than five picks nor F4 twice."""
+    w = World(db, seed)
+    decide(db, seed, w, only=("F4",))
+    monkeypatch.setattr(decision, "RULE_DAY", decision.RULE_V6)
+    assert decision.select_day(db, at=NOW, ready=True)[0] == 1
+    monkeypatch.undo()
+    decide(db, seed, w, only=("F1a", "F3", "F5"))
+    assert decision.select_day(db, at=NOW, ready=True)[0] == 3
+    f = w.fixtures
+    rows = db.execute("SELECT s.rank, s.rule_version, d.fixture_id FROM intel.day_selections s "
+                      "JOIN intel.decisions d ON d.id = s.decision_ids[1] WHERE s.kind = 'pick' "
+                      "ORDER BY s.rank").fetchall()
+    assert rows == [(1, "daily-set-v6", f["F4"]), (2, "daily-set-v7", f["F1"]), (3, "daily-set-v7", f["F5"]),
+                    (4, "daily-set-v7", f["F3"])]
