@@ -57,6 +57,13 @@ candidates:
   # Companions: the other part of a candidate's competition, so a club's season is never followed by halves.
   - {rank: 51, league_id: 250, name: División Profesional - Apertura, country: Paraguay, note: "first half of #4's season (the provider splits the league in two ids)"}
   - {rank: 52, league_id: 942, name: Serie C - Girone B, country: Italy, note: "the third group of #24 and #28: Serie C is added whole or not at all"}
+  # Owner's decision (BE-002, 5 Nov 2026), not from the capacity report: the national-team competitions that were
+  # missing next to tier 4's World Cup qualifiers (Asia 30, CONCACAF 31, Europe 32, South America 34, play-offs 37).
+  # The names are what the provider is expected to call them; scripts.expand_leagues refuses to track a league whose
+  # name or country in raw.league_coverage differs, so a wrong id stops there instead of tracking something else.
+  - {rank: 53, league_id: 29, name: World Cup - Qualification Africa, country: World, note: "owner's decision (BE-002)"}
+  - {rank: 54, league_id: 33, name: World Cup - Qualification Oceania, country: World, note: "owner's decision (BE-002)"}
+  - {rank: 55, league_id: 7, name: Asian Cup, country: World, note: "owner's decision (BE-002)"}
 
 # Batches, each decided on a probe (scripts.probe_leagues) and tracked with scripts.expand_leagues. Each is migrated
 # as its own tier after the selector's tiers 1-4 (fbi.migration.config merges them), so the migration planner prices
@@ -75,3 +82,15 @@ batches:
       250 (Apertura) is the first half of 252's season: tracked together so Paraguayan clubs' history has no
       half-year gaps. Serie C Girone A (138) passed the rule but waits for its other two groups (942, 943): a
       division is added whole, or club histories break when a club changes group.
+  - batch: 2
+    tier: 6
+    decided: "2026-11-05"
+    probe: none - owner's decision (BE-002); the dry run of scripts.expand_leagues shows what the provider lists
+    rule: >-
+      owner's decision: follow every confederation's World Cup qualifiers, not only four of six, and the AFC Asian
+      Cup next to the Africa Cup of Nations, Euro, Copa America and Gold Cup that tier 4 already follows
+    leagues: [29, 33, 7]
+    notes: >-
+      National-team competitions. The catalogue classifies the two qualifiers (League, World) as national-team
+      football at once; the Asian Cup (Cup, World) is catalogued as continental until scripts.sync_teams
+      --scopes-only reads its teams, exactly as the World Cup, Euro and Africa Cup of Nations were.

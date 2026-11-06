@@ -2,7 +2,7 @@
 
     intel_decide   every 15 minutes (the first at 00:10 Bogotá, after the AI opens the day at 00:05): the decision
                    layer over the next 36 hours (``fbi.intel.decision.decide``); once the AI has read the day (its
-                   first passes done, or 06:00 Bogotá), the PICKS DEL DÍA of daily-set-v6 and its parlays
+                   first passes done, or 06:00 Bogotá), the PICKS DEL DÍA of daily-set-v7 and its parlays
     intel_nightly  07:50 Bogotá, after the AI's own learning (07:35): outcomes and closing-line value of the
                    decisions, post-mortems pm-v5, the longitudinal memory of yesterday (with what the days before it
                    learned late booked inside), calibration (prospective evaluation, refits, promotions by the gates),
@@ -82,6 +82,7 @@ class RunReport:
 def versions() -> dict[str, str]:
     from fbi.intel import (
         calibration,
+        day_priority,
         decision,
         discovery,
         leakage,
@@ -97,7 +98,7 @@ def versions() -> dict[str, str]:
             "calibration": calibration.VERSION, "calib_gate": calibration.GATE_VERSION,
             "edge_gate": calibration.EDGE_GATE_VERSION, "outcome": outcomes.VERSION, "postmortem": postmortem.VERSION,
             "memory": memory.VERSION, "report": report.VERSION, "discovery": discovery.VERSION,
-            "leakage": leakage.VERSION, "selection": decision.RULE_V6,
+            "leakage": leakage.VERSION, "selection": decision.RULE_DAY, "day_priority": day_priority.VERSION,
             "decision_families": DECISION_FAMILIES, "outcome_families": OUTCOME_FAMILIES,
             "postmortem_families": POSTMORTEM_FAMILIES, "memory_families": MEMORY_FAMILIES}
 
