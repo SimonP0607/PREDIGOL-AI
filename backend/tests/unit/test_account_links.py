@@ -93,7 +93,7 @@ def test_the_purge_is_born_dry(monkeypatch: pytest.MonkeyPatch, raw: str | None,
 # ── the e-mails ───────────────────────────────────────────────────────────────────────
 
 def test_a_link_goes_only_in_the_buttons_address_and_the_queue_keeps_only_its_rows_number() -> None:
-    assert set(LINK_TEMPLATES) == {"invitation", "password_reset", "account_unlock"}
+    assert set(LINK_TEMPLATES) == {"invitation", "password_reset", "account_unlock", "activation_reminder"}
     for t in LINK_TEMPLATES.values():
         assert t.params == ("grant",), t.name
         assert t.path is not None and t.path.endswith("#t={link}"), "in the fragment: never sent to a server"
