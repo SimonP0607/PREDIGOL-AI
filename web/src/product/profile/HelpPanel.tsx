@@ -6,10 +6,18 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, ChevronRight, LifeBuoy, MessageCircle, MessagesSquare } from "lucide-react";
+import {
+  BookOpen,
+  ChevronRight,
+  Compass,
+  LifeBuoy,
+  MessageCircle,
+  MessagesSquare,
+} from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
 import type { AccountSummary } from "@/lib/api/v1/types_account";
 import { t } from "@/lib/i18n";
+import { HOW_PATH } from "@/product/help/howItWorks";
 import { whatsappLink } from "@/product/membership/membership";
 import { useReportProblem } from "@/product/support/report";
 import { messagesHint } from "./centre";
@@ -70,6 +78,15 @@ export function HelpPanel({ summary }: { summary: AccountSummary | undefined }) 
               icon={<MessagesSquare className="h-5 w-5" />}
               title={t("profile.centre.help.messages")}
               hint={messagesHint(summary) ?? t("profile.centre.summary.helpNone")}
+            />
+          </Link>
+        </li>
+        <li>
+          <Link to={HOW_PATH} className={ROW} data-testid="profile-how-it-works">
+            <Line
+              icon={<Compass className="h-5 w-5" />}
+              title={t("support.help.more.howItWorks")}
+              hint={t("support.help.more.howItWorksBody")}
             />
           </Link>
         </li>

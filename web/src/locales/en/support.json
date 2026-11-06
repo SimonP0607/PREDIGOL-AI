@@ -23,12 +23,14 @@
       "title": "More help",
       "glossary": "Glossary",
       "glossaryBody": "Every word PrediGol uses, with one definition.",
-      "tour": "4-step tour",
+      "tour": "5-step tour",
       "tourBody": "Where everything is, in a minute.",
       "responsible": "Responsible gambling",
       "responsibleBody": "The risk of betting, the warning signs and where to get help.",
       "privacy": "Privacy and data",
-      "privacyBody": "Download your data or ask us to correct or delete it."
+      "privacyBody": "Download your data or ask us to correct or delete it.",
+      "howItWorks": "How PrediGol works",
+      "howItWorksBody": "Every part of the app on one card, with an example."
     },
     "contact": {
       "title": "Write to us",
@@ -453,6 +455,91 @@
       "title": "What would you like to change?",
       "body": "Tell us: we read every suggestion, and whatever changes thanks to them will show up here.",
       "action": "Send a suggestion"
+    }
+  },
+  "howItWorks": {
+    "pageTitle": "How PrediGol works",
+    "title": "How PrediGol works",
+    "subtitle": "Every part of the app on one card: what it is, how to read it and an example.",
+    "intro": "PrediGol is a sports analysis and value-detection platform. It is not a bookmaker, it takes no betting money and no forecast guarantees a result. It is for people aged 18 or over only.",
+    "jump": "Go to a card",
+    "what": "What it is",
+    "read": "How to read it",
+    "example": "Example",
+    "exampleNote": "The numbers in the examples are made up to explain: they are not real picks or odds.",
+    "go": "See it in the app",
+    "glossary": "See it in the glossary",
+    "terms": "On this card",
+    "footer": "Still not clear? Look the word up in the glossary or write to us from Help.",
+    "footerGlossary": "Open the glossary",
+    "footerHelp": "Go to Help",
+    "cards": {
+      "home": {
+        "title": "Home",
+        "what": "Your summary of today: the matches of your leagues and teams (or the suggested leagues until you choose yours), today's picks or the reason there are none, PrediGol's parlays, the best odds and the results of the last 48 hours.",
+        "read": "Each block says where it comes from. When one is empty, it says so and does not pad it: no pick today is an answer, not a failure.",
+        "example": "“Your leagues do not play today” does not mean the app is broken: that block is empty because there are no matches, and the others are still there."
+      },
+      "matches": {
+        "title": "Matches",
+        "what": "The matches of the competitions PrediGol follows, by day. The ones being played also appear in “Live”.",
+        "read": "Tap a match to open its match centre: everything PrediGol knows about it is there, from the forecast to the post-match.",
+        "example": "Open a match from today and you will see its forecast, its context and its markets in one place, without jumping from screen to screen."
+      },
+      "picks": {
+        "title": "Picks",
+        "what": "A selection with value against the market price, at the best odds available now. Only the ones PrediGol recommends are shown; if none passes every rule, there are no picks that day and it is not padded with others.",
+        "read": "Each pick brings its match, its market and its odds, and “Why this pick?” sums up the conclusion, the context, the market and the risks. The filters sort by competition, market, odds and start time. Tap the odds to add them to your parlay.",
+        "example": "PrediGol gives the home side a 55 % chance, so that option is “worth” odds of 1.82 (1 ÷ 0.55). At odds of 2.00 it pays more than it is worth and there is value; at 1.70 there is none, even if the home side is the favourite. To be a pick it also has to pass the rest of the rules."
+      },
+      "parlays": {
+        "title": "Parlays",
+        "what": "A combination of selections that wins only if all of them win. PrediGol builds the daily and the multi-day parlay only from selections that pass all its rules, with no related selections and no padding. You can also build your own, with the automatic builder or by tapping odds.",
+        "read": "The odds multiply, and so does how hard it is to win. One lost selection loses it all; a refunded or void one counts as odds of 1 and the parlay goes on with the rest.",
+        "example": "Three selections at 1.80, 2.00 and 1.50 give odds of 5.40 (1.80 × 2.00 × 1.50). If all three win, it wins; if one fails, it loses."
+      },
+      "odds": {
+        "title": "Odds",
+        "what": "The best odds of each selection among the bookmakers PrediGol follows, compared with its fair odds: what it would pay if bookmakers charged no margin.",
+        "read": "If the best odds are above the fair ones, they pay more than the market as a whole. Odds change, so each one carries the time it was read, and one far above the rest is usually a stale or wrong price from a single bookmaker.",
+        "example": "If the market's probability, without margin, is 50 %, the fair odds are 2.00. Best odds of 2.10 pay 5 % more than the fair ones."
+      },
+      "myPicks": {
+        "title": "My picks",
+        "what": "What you save: your picks, your selections and your parlays. They settle by themselves with the official result, and your figures come from there.",
+        "read": "Each one starts pending and, when the match ends, becomes won, lost, refunded, half won, half lost or void. Your figures count only the ones that have odds.",
+        "example": "A saved pick at 2.10 that wins settles as “Won” and adds 1.10 units; if the match ends exactly on the line, it is “Refunded” and the unit comes back whole."
+      },
+      "favorites": {
+        "title": "Favourites",
+        "what": "The leagues and teams you follow. You choose them when you join or in Profile, under “Your football”, and also with the star in a match's header.",
+        "read": "Home shows their matches first and says why each one is there. Until you choose, you see the leagues suggested for Colombia.",
+        "example": "If you follow a team, its matches come first on Home. Following a team never changes a pick, a probability or odds."
+      },
+      "analysis": {
+        "title": "Match analysis",
+        "what": "The centre of each match: the forecast, the context (form, table, head to head and absences), the market, the line-ups, the news and, when it ends, the post-match.",
+        "read": "The forecast says what is likely. If there is also value against the market and the selection passes every rule, it appears as a pick. A match with no pick does not mean a match with no analysis.",
+        "example": "A home favourite at 60 % may have no pick if its odds already pay less than it is worth: the analysis is there and the pick is not."
+      },
+      "probabilities": {
+        "title": "Probabilities",
+        "what": "How many times out of a hundred something would happen. PrediGol gives its probability for each result of a match (the forecast) and compares it with the one deduced from the odds.",
+        "read": "There are three different numbers: PrediGol's probability, the implied one of an odds price (1 ÷ odds, with the bookmaker's margin inside) and the market's (the bookmakers' without their margin). None guarantees a result: a 70 % fails three times out of ten.",
+        "example": "If the market, without margin, says 50 % and PrediGol says 55 %, the edge is +5 percentage points: PrediGol sees the option 5 points more likely than the bookmakers do."
+      },
+      "markets": {
+        "title": "Markets",
+        "what": "A kind of bet on a match and its options. PrediGol analyses five: full-time result (1X2), over/under goals, both teams to score, Asian handicap and double chance.",
+        "read": "Each market settles by its own rules, and PrediGol settles only the markets it knows: an option of another market cannot be saved. In a match, the Markets tab lists them.",
+        "example": "“Over 2.5 goals” wins with three goals or more; “Under 2.5”, with two or fewer. With a whole line, like 2, a match that ends with 2 goals returns the unit."
+      },
+      "states": {
+        "title": "Pick states",
+        "what": "A pick has two kinds of state. The visible one: a reader only sees “Recommended” picks, the ones that pass every rule; picks PrediGol does not recommend are not shown and the app says how many were left out. And the result one: pending, in play and, when the match ends, won, lost, refunded, half won, half lost or void.",
+        "read": "“Under evaluation” is an internal label: a selection whose model does not yet beat the market is measured, but never recommended or shown. A pick being “Recommended” does not guarantee it wins.",
+        "example": "A “Recommended” pick at 2.10 that wins is “Won” and adds 1.10 units; one that lands exactly on the line is “Refunded”; one whose match is cancelled is “Void” and adds or subtracts nothing."
+      }
     }
   }
 }

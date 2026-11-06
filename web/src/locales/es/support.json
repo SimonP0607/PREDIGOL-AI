@@ -23,12 +23,14 @@
       "title": "Más ayuda",
       "glossary": "Glosario",
       "glossaryBody": "Cada palabra de PrediGol, con una sola definición.",
-      "tour": "Recorrido de 4 pasos",
+      "tour": "Recorrido de 5 pasos",
       "tourBody": "Dónde está cada cosa, en un minuto.",
       "responsible": "Juego responsable",
       "responsibleBody": "El riesgo de apostar, las señales de alerta y dónde pedir ayuda.",
       "privacy": "Privacidad y datos",
-      "privacyBody": "Descarga tus datos o pide corregirlos o borrarlos."
+      "privacyBody": "Descarga tus datos o pide corregirlos o borrarlos.",
+      "howItWorks": "Cómo funciona PrediGol",
+      "howItWorksBody": "Cada parte de la app en una tarjeta, con un ejemplo."
     },
     "contact": {
       "title": "Escríbenos",
@@ -453,6 +455,91 @@
       "title": "¿Qué te gustaría que cambiara?",
       "body": "Cuéntanoslo: leemos cada sugerencia, y lo que cambie gracias a ellas aparecerá aquí.",
       "action": "Enviar una sugerencia"
+    }
+  },
+  "howItWorks": {
+    "pageTitle": "Cómo funciona PrediGol",
+    "title": "Cómo funciona PrediGol",
+    "subtitle": "Cada parte de la app en una tarjeta: qué es, cómo se lee y un ejemplo.",
+    "intro": "PrediGol es una plataforma de análisis deportivo y de detección de valor. No es una casa de apuestas, no recibe dinero de apuestas y ningún pronóstico garantiza un resultado. Es solo para mayores de 18 años.",
+    "jump": "Ir a una tarjeta",
+    "what": "Qué es",
+    "read": "Cómo se lee",
+    "example": "Ejemplo",
+    "exampleNote": "Los números de los ejemplos están inventados para explicar: no son picks ni cuotas reales.",
+    "go": "Verlo en la app",
+    "glossary": "Ver en el glosario",
+    "terms": "En esta tarjeta",
+    "footer": "¿Sigue sin quedar claro algo? Busca la palabra en el glosario o escríbenos desde la Ayuda.",
+    "footerGlossary": "Abrir el glosario",
+    "footerHelp": "Ir a la Ayuda",
+    "cards": {
+      "home": {
+        "title": "Inicio",
+        "what": "Tu resumen de hoy: los partidos de tus ligas y equipos (o los de las ligas sugeridas mientras no elijas las tuyas), los picks del día o el motivo de que hoy no haya, los parlays de PrediGol, las mejores cuotas y los resultados de las últimas 48 horas.",
+        "read": "Cada bloque explica de dónde sale. Si uno está vacío, lo dice y no lo rellena: que hoy no haya pick es una respuesta, no un fallo.",
+        "example": "«Hoy no juegan tus ligas» no quiere decir que la app falle: ese bloque está vacío porque no hay partidos, y los demás siguen ahí."
+      },
+      "matches": {
+        "title": "Partidos",
+        "what": "Los partidos de las competiciones que PrediGol sigue, por día. Los que se están jugando salen también en «En vivo».",
+        "read": "Toca un partido para abrir su centro de partido: ahí está todo lo que PrediGol sabe de él, desde el pronóstico hasta el postpartido.",
+        "example": "Abre un partido de hoy y verás su pronóstico, su contexto y sus mercados en un solo sitio, sin ir de una pantalla a otra."
+      },
+      "picks": {
+        "title": "Picks",
+        "what": "Una selección con valor frente al precio del mercado, a la mejor cuota disponible ahora. Solo se muestran las que PrediGol recomienda; si ninguna cumple todas sus reglas, ese día no hay picks y no se rellena con otras.",
+        "read": "Cada pick trae su partido, su mercado y su cuota, y «¿Por qué este pick?» resume la conclusión, el contexto, el mercado y los riesgos. Los filtros ordenan por competición, mercado, cuota y hora de inicio. Toca una cuota para agregarla a tu parlay.",
+        "example": "PrediGol da un 55 % a que gane el local, así que esa opción «vale» una cuota de 1,82 (1 ÷ 0,55). Con una cuota de 2,00 paga más de lo que vale y hay valor; con 1,70 no lo hay, aunque el local sea favorito. Para ser pick, además, tiene que pasar el resto de las reglas."
+      },
+      "parlays": {
+        "title": "Parlays",
+        "what": "Una combinación de selecciones que solo gana si aciertan todas. PrediGol arma el parlay del día y el multi-día solo con selecciones que pasan todas sus reglas, sin selecciones relacionadas entre sí y sin relleno. También puedes armar el tuyo, con el armador automático o tocando cuotas.",
+        "read": "Las cuotas se multiplican, y también lo difícil que es acertar. Una sola selección perdida lo pierde entero; una devuelta o anulada cuenta como cuota 1 y el parlay sigue con las demás.",
+        "example": "Tres selecciones a 1,80, 2,00 y 1,50 dan una cuota de 5,40 (1,80 × 2,00 × 1,50). Si las tres aciertan, gana; si una falla, pierde."
+      },
+      "odds": {
+        "title": "Cuotas",
+        "what": "La mejor cuota de cada selección entre las casas que PrediGol sigue, comparada con su cuota justa: la que pagaría si las casas no cobraran margen.",
+        "read": "Si la mejor cuota está por encima de la justa, paga más que el mercado en conjunto. Las cuotas cambian, por eso cada una lleva la hora a la que se leyó, y una muy por encima de las demás suele ser el precio desactualizado o erróneo de una sola casa.",
+        "example": "Si la probabilidad del mercado, sin margen, es del 50 %, la cuota justa es 2,00. Una mejor cuota de 2,10 paga un 5 % más que la justa."
+      },
+      "myPicks": {
+        "title": "Mis picks",
+        "what": "Lo que guardas: tus picks, tus selecciones y tus parlays. Se liquidan solos con el resultado oficial, y tus cifras salen de ahí.",
+        "read": "Cada uno empieza pendiente y, al terminar el partido, pasa a ganado, perdido, devuelto, medio ganado, medio perdido o anulado. Tus cifras cuentan solo los que tienen cuota.",
+        "example": "Un pick guardado a 2,10 que acierta se liquida «Ganado» y suma 1,10 unidades; si el partido termina justo en la línea, queda «Devuelto» y la unidad vuelve entera."
+      },
+      "favorites": {
+        "title": "Favoritos",
+        "what": "Las ligas y los equipos que sigues. Los eliges al entrar o en Perfil, en «Tu fútbol», y también con la estrella de la cabecera de un partido.",
+        "read": "Inicio muestra primero sus partidos y dice por qué cada uno está ahí. Mientras no elijas, ves las ligas sugeridas para Colombia.",
+        "example": "Si sigues a un equipo, sus partidos salen primero en Inicio. Seguir a un equipo nunca cambia un pick, una probabilidad ni una cuota."
+      },
+      "analysis": {
+        "title": "Análisis de un partido",
+        "what": "El centro de cada partido: el pronóstico, el contexto (forma, tabla, cara a cara y ausencias), el mercado, las alineaciones, las noticias y, al terminar, el postpartido.",
+        "read": "El pronóstico dice qué es probable. Si además hay valor frente al mercado y la selección pasa todas las reglas, aparece como pick. Que un partido no tenga pick no quiere decir que no tenga análisis.",
+        "example": "Un local favorito al 60 % puede no tener pick si su cuota ya paga menos de lo que vale: el análisis está ahí y el pick no."
+      },
+      "probabilities": {
+        "title": "Probabilidades",
+        "what": "Cuántas veces de cada cien pasaría algo. PrediGol da su probabilidad para cada resultado de un partido (el pronóstico) y la compara con la que se deduce de las cuotas.",
+        "read": "Hay tres números distintos: la probabilidad de PrediGol, la implícita de una cuota (1 ÷ cuota, con el margen de la casa dentro) y la del mercado (la de las casas sin su margen). Ninguna garantiza un resultado: un 70 % falla tres veces de cada diez.",
+        "example": "Si el mercado, sin margen, da un 50 % y PrediGol un 55 %, la ventaja es de +5 puntos porcentuales: PrediGol ve la opción 5 puntos más probable que las casas."
+      },
+      "markets": {
+        "title": "Mercados",
+        "what": "Un tipo de apuesta sobre un partido y sus opciones. PrediGol analiza cinco: resultado final (1X2), más o menos goles, ambos marcan, hándicap asiático y doble oportunidad.",
+        "read": "Cada mercado se liquida con sus propias reglas, y PrediGol solo liquida los mercados que conoce: una opción de otro mercado no se puede guardar. En un partido, la pestaña Mercados los ordena.",
+        "example": "«Más de 2,5 goles» gana con tres goles o más; «Menos de 2,5», con dos o menos. Con una línea entera, como 2, un partido que termina con 2 goles devuelve la unidad."
+      },
+      "states": {
+        "title": "Estados de los picks",
+        "what": "Un pick tiene dos clases de estado. El visible: el lector solo ve los picks «Recomendado», los que cumplen todas las reglas; los que PrediGol no recomienda no se muestran y la app dice cuántos quedaron fuera. Y el del resultado: pendiente, en juego y, al terminar el partido, ganado, perdido, devuelto, medio ganado, medio perdido o anulado.",
+        "read": "«En evaluación» es una etiqueta interna: una selección cuyo modelo aún no supera al mercado se mide, pero nunca se recomienda ni se muestra. Que un pick sea «Recomendado» no garantiza que gane.",
+        "example": "Un pick «Recomendado» a 2,10 que acierta queda «Ganado» y suma 1,10 unidades; uno que cae justo en la línea queda «Devuelto»; uno cuyo partido se cancela queda «Anulado» y no suma ni resta."
+      }
     }
   }
 }

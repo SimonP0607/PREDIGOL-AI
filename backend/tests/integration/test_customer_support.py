@@ -311,7 +311,13 @@ def test_an_urgent_ticket_is_told_at_once_the_rest_in_the_mornings_count(fresh: 
         assert notices.ticket_new(conn) == [], "told once"
         early = datetime(2026, 10, 27, 11, 0, tzinfo=UTC)  # 06:00 in Bogotá
         assert notices.support_waiting(conn, at=early) == []
-        morning = datetime.now(UTC).replace(hour=13, minute=0)  # 08:00 in Bogotá
+        # A fixed morning (08:00 in Bogotá) with the tickets opened half an hour before it: the test must not depend on
+        # the hour it runs at (opened at 19:30 in Bogotá, an urgent ticket is due at 23:59 - before «the next morning» -
+        # and the count rightly says it is late).
+        morning = datetime(2026, 10, 27, 13, 0, tzinfo=UTC)
+        conn.execute("SET LOCAL fbi.customer_maintenance = 'on'")
+        conn.execute("UPDATE customer.support_tickets SET opened_at = %s WHERE kind = 'support'",
+                     (morning - timedelta(minutes=30),))
         [count] = notices.support_waiting(conn, at=morning)
         assert count.kind == "ticket_new" and count.payload == {"waiting": 2, "late": 0, "urgent": 1}
         assert "2 tickets de soporte esperan tu respuesta (1 urgente)" in count.body
