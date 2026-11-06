@@ -151,7 +151,8 @@ def test_with_the_picks_notices_off_what_is_queued_about_picks_waits_untouched(
     monkeypatch.setattr(service, "collect", lambda conn, at: [])
     run_notifier(db, Spy())
     assert "Presupuesto de IA: 50 % del mes" in sent and "t" not in sent
-    rows = dict(db.execute("SELECT id, status FROM audit.notifications WHERE id IN (%s, %s)", (old, budget)).fetchall())
+    rows: dict[int, str] = dict(
+        db.execute("SELECT id, status FROM audit.notifications WHERE id IN (%s, %s)", (old, budget)).fetchall())
     assert rows == {old: "queued", budget: "sent"}
 
 
