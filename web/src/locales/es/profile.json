@@ -87,7 +87,8 @@
       "membership": "Membresía",
       "support": "Soporte",
       "privacy": "Tus datos",
-      "legal": "Textos legales"
+      "legal": "Textos legales",
+      "service": "Avisos del servicio"
     },
     "categoryHelp": {
       "account": "Invitación, activación y cambios de tu cuenta.",
@@ -95,7 +96,8 @@
       "membership": "Recordatorios antes de que venza y confirmaciones de pago.",
       "support": "Respuestas a tus preguntas y reportes.",
       "privacy": "El acuse y la respuesta de tus solicitudes sobre tus datos.",
-      "legal": "Cambios de los términos o de la privacidad que debes aceptar."
+      "legal": "Cambios de los términos o de la privacidad que debes aceptar.",
+      "service": "Mantenimientos programados, incidencias resueltas y cambios importantes de PrediGol. Un cambio importante te llega aunque lo apagues."
     },
     "status": {
       "bounced": "Tu correo rebota: no podemos entregarte mensajes. Revisa que la dirección de tu cuenta sea correcta y escríbenos si cambió.",
