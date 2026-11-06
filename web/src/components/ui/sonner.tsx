@@ -6,6 +6,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       className="toaster group"
+      // every toast the same: four seconds, the same card; Sonner moves it in and out and the reduced-motion rule stills it
+      duration={4000}
       toastOptions={{
         classNames: {
           toast:

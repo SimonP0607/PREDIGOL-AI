@@ -1,0 +1,6 @@
+{
+  "_": "Tope de tamaño del bundle (plan de cierre UX, 5.2), en bytes comprimidos con gzip (nivel 6). Medido el 2026-11-05: el mayor fragmento de JS 296 KB, todo el JS 1.220 KB, el CSS 24 KB. Subir un tope es una decisión que se explica en el PR.",
+  "maxChunkJsGzip": 348160,
+  "maxTotalJsGzip": 1433600,
+  "maxTotalCssGzip": 40960
+}

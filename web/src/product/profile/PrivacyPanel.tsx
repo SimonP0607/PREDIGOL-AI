@@ -19,7 +19,7 @@ import type {
 import { t, useI18n } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import { ErrorState, errorMessage } from "@/product/shared/States";
+import { ErrorState, errorMessage, SkeletonCards } from "@/product/shared/States";
 import { LEGAL_DOCUMENTS, dayOf, legalPath } from "@/product/legal/links";
 import { AnalyticsSection } from "./AnalyticsSection";
 import { latestOf, shownPurposes } from "./consents";
@@ -149,7 +149,7 @@ function ConsentsSection() {
     }
   }
 
-  if (state.isPending) return <Loader2 aria-hidden className="h-4 w-4 animate-spin" />;
+  if (state.isPending) return <SkeletonCards count={2} />;
   if (state.isError) return <ErrorState error={state.error} onRetry={() => void state.refetch()} />;
   const { history } = state.data;
   return (
@@ -430,7 +430,7 @@ function RequestsSection() {
       <Subtitle>{t("legal.privacy.requestsTitle")}</Subtitle>
       <p className="mb-3 text-xs text-muted-foreground">{t("legal.privacy.requestsHelp")}</p>
       {requests.isPending ? (
-        <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
+        <SkeletonCards count={1} />
       ) : requests.isError ? (
         <ErrorState error={requests.error} onRetry={() => void requests.refetch()} />
       ) : requests.data.length ? (

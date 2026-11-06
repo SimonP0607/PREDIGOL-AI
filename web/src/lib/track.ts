@@ -1,5 +1,5 @@
 /**
- * Product analytics (plan UX, A6 and section 39): the closed catalog of 35 events - the same as the backend's
+ * Product analytics (plan UX, A6 and section 39): the closed catalog of 36 events - the same as the backend's
  * (backend/src/fbi/customer/events_catalog.json; a test checks the parity) - and track(), which queues an event and
  * sends the queue in the background: every few seconds, at 20 events, and when the page is hidden. It never blocks
  * the interface, never retries, and an answer that is not 200 empties the queue. A property is an enumeration, a
@@ -54,6 +54,31 @@ export const EVENTS = {
       lang: { enum: ["es", "en"] },
     },
   },
+  screen_viewed: {
+    group: "use",
+    source: "web",
+    props: {
+      screen: {
+        enum: [
+          "home",
+          "matches",
+          "match",
+          "live",
+          "picks",
+          "my_picks",
+          "parlays",
+          "odds",
+          "updates",
+          "transparency",
+          "profile",
+          "help",
+          "legal",
+          "welcome",
+          "other",
+        ],
+      },
+    },
+  },
   match_opened: {
     group: "use",
     source: "web",
@@ -94,11 +119,18 @@ export const EVENTS = {
   pick_saved: {
     group: "picks",
     source: "web",
-    props: { origin: { enum: ["pick", "market", "odds", "other"] } },
+    props: {
+      origin: { enum: ["pick", "market", "odds", "other"] },
+      market: { enum: ["1X2", "OU", "BTTS", "AH", "DC"] },
+    },
   },
   pick_removed: { group: "picks", source: "web", props: {} },
   own_selection_saved: { group: "picks", source: "web", props: { market: { slug: true } } },
-  slip_leg_added: { group: "parlays", source: "web", props: { legs: { int: [1, 30] } } },
+  slip_leg_added: {
+    group: "parlays",
+    source: "web",
+    props: { legs: { int: [1, 30] }, market: { enum: ["1X2", "OU", "BTTS", "AH", "DC"] } },
+  },
   parlay_created: { group: "parlays", source: "web", props: { legs: { int: [1, 30] } } },
   builder_run: { group: "parlays", source: "web", props: { legs: { int: [0, 30] } } },
   news_opened: { group: "news", source: "web", props: { match_id: { id: true } } },
@@ -327,6 +359,38 @@ export function originOf(path: string | null = previousPath): NonNullable<Origin
   if (path === "/my-picks") return "my_picks";
   if (path === "/parlays") return "parlays";
   return "other";
+}
+
+export type Screen = NonNullable<PropsOf<"screen_viewed">["screen"]>;
+
+/**
+ * The kind of screen a path is (closing plan 3.3), for screen_viewed: a group from a closed list - never the address, a
+ * search, a match or a pick. Only the first segment of the path is read; anything unknown is «other».
+ */
+export function screenOf(pathname: string): Screen {
+  const [first = "", second] = (pathname.split(/[?#]/, 1)[0] ?? "").split("/").filter(Boolean);
+  switch (first) {
+    case "":
+    case "home":
+      return "home";
+    case "matches":
+      return second === undefined ? "matches" : "match";
+    case "live":
+    case "picks":
+    case "parlays":
+    case "odds":
+    case "updates":
+    case "transparency":
+    case "profile":
+    case "help":
+    case "legal":
+    case "welcome":
+      return first;
+    case "my-picks":
+      return "my_picks";
+    default:
+      return "other";
+  }
 }
 
 /** The device class from the width: the tablet trigger of block C (C5) reads it. */

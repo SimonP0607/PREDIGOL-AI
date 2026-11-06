@@ -10,7 +10,7 @@
 import { useId, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, CircleHelp, Loader2 } from "lucide-react";
+import { ChevronDown, CircleHelp } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
 import { usePreviewParam } from "@/lib/auth/AuthProvider";
 import type { PickExplanation } from "@/lib/api/v1/types_explanation";
@@ -118,7 +118,6 @@ function WhyPickContent({ pickId }: { pickId: number }) {
       </SheetHeader>
       {q.isPending ? (
         <div aria-busy="true" aria-label={t("common.loading")} className="space-y-3">
-          <Loader2 aria-hidden className="h-4 w-4 animate-spin text-muted-foreground" />
           <SkeletonBlock className="h-24" />
           <SkeletonBlock className="h-40" />
         </div>

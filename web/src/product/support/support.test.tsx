@@ -7,6 +7,7 @@
  * problema» once the sheet is available. The browser half is e2e/support.spec.ts.
  */
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 import { LiveApiError, lastApiError, resetLastApiError, v1 } from "@/lib/api/v1/client";
 import { setLocale, t } from "@/lib/i18n";
@@ -215,9 +216,11 @@ describe("an error offers «Reportar un problema»", () => {
     const error = new LiveApiError("boom", 500, "internal", "rid123");
     const offered: unknown[] = [];
     const html = renderToStaticMarkup(
-      <ReportContext.Provider value={{ available: true, open: (o) => offered.push(o) }}>
-        <ErrorState error={error} />
-      </ReportContext.Provider>,
+      <QueryClientProvider client={new QueryClient()}>
+        <ReportContext.Provider value={{ available: true, open: (o) => offered.push(o) }}>
+          <ErrorState error={error} />
+        </ReportContext.Provider>
+      </QueryClientProvider>,
     );
     expect(html).toContain('data-testid="error-report"');
     expect(html).toContain("Reportar un problema");

@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -45,7 +47,45 @@ PER_DAY = SlidingWindow(per_window=int(os.environ.get("FBI_MONITORING_DAILY_CAP"
 """Forwarded envelopes per API process (two on the server): at most ~1,200 web errors a month, the web's share of the
 free plan's 5,000 (review of A2: the DSN is public, so anyone could spend the month from outside; the backend has
 its own budget, fbi.core.sentry.EventBudget). Charged only for an envelope that is forwarded, so junk cannot use it."""
+VITALS_PER_PROCESS = SlidingWindow(per_window=int(os.environ.get("FBI_MONITORING_VITALS_HOURLY_CAP", "2")), window_s=3600.0)
+VITALS_PER_DAY = SlidingWindow(per_window=int(os.environ.get("FBI_MONITORING_VITALS_DAILY_CAP", "6")), window_s=86400.0)
+"""Load times (LCP, INP, CLS; closing plan 5.3) have their own, much smaller share, per API process: at most ~360 a
+month on the server's two processes. Past it a reading is dropped without an error (the browser must not retry) and the
+errors' share above is never touched."""
 TIMEOUT_S = 3.0
+VITAL_MESSAGE = "web-vitals"
+VITAL_NUMBER = re.compile(r"\d{1,6}(\.\d{1,3})?")
+VITAL_ROUTE = re.compile(r"/[A-Za-z0-9/_.$-]{0,99}")
+VITAL_RATINGS = frozenset({"good", "needs-improvement", "poor"})
+VITAL_CHECKS: dict[str, Callable[[str], bool]] = {
+    **dict.fromkeys(("lcp", "cls", "inp", "viewport"), lambda v: VITAL_NUMBER.fullmatch(v) is not None),
+    "route": lambda v: VITAL_ROUTE.fullmatch(v) is not None,
+    "rating": lambda v: v in VITAL_RATINGS,
+    "display": lambda v: v in ("app", "browser"),
+}
+
+
+def is_vital(event: dict[str, Any]) -> bool:
+    tags = event.get("tags")
+    return event.get("message") == VITAL_MESSAGE and isinstance(tags, dict) and tags.get("kind") == "web_vital"
+
+
+def clean_vital(event: dict[str, Any]) -> dict[str, Any] | None:
+    """A load-time reading as it may leave: built again from the few fields it needs - the numbers, the screen's path,
+    the rating, the device's width and kind - and nothing else (no user, no breadcrumbs, no contexts, no extra)."""
+    tags = event.get("tags")
+    if not isinstance(tags, dict):
+        return None
+    kept: dict[str, str] = {"kind": "web_vital"}
+    for key, valid in VITAL_CHECKS.items():
+        value = tags.get(key)
+        if isinstance(value, str) and valid(value):
+            kept[key] = value
+    if not {"lcp", "cls", "inp"} & kept.keys():
+        return None
+    keys = ("event_id", "timestamp", "platform", "release", "environment", "sdk")
+    out: dict[str, Any] = {k: event[k] for k in keys if k in event}
+    return {**out, "level": "info", "message": VITAL_MESSAGE, "tags": kept}
 
 
 class EnvelopeError(ValueError):
@@ -155,10 +195,17 @@ async def post_envelope(request: Request) -> EnvelopeForwarded:
             cleaned = sentry.scrub_event(event, keep_agent=True)
             if cleaned is not None:
                 events.append(cleaned)
+    vitals = [v for v in (clean_vital(e) for e in events if is_vital(e)) if v is not None][:1]
+    events = [e for e in events if not is_vital(e)]
+    if not events and not vitals:
+        return EnvelopeForwarded(events=0)
+    if events and (not PER_PROCESS.allow("all") or not PER_DAY.allow("all")):
+        raise ApiError(429, "rate_limited", "too many error reports", headers={"retry-after": "3600"})
+    if vitals and not (VITALS_PER_PROCESS.allow("all") and VITALS_PER_DAY.allow("all")):
+        vitals = []  # past the readings' own share: dropped without an error
+    events = events + vitals
     if not events:
         return EnvelopeForwarded(events=0)
-    if not PER_PROCESS.allow("all") or not PER_DAY.allow("all"):
-        raise ApiError(429, "rate_limited", "too many error reports", headers={"retry-after": "3600"})
     status = await run_in_threadpool(forward, dsn, build_envelope(header, events, dsn))
     log.info("monitoring.forwarded", events=len(events), upstream=status)
     if status == 429:

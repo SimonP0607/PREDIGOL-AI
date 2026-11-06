@@ -1,12 +1,12 @@
 /**
  * Accessibility, measured (phase A0 of the UX plan: "medición inicial con axe"). Runs only when asked
  * (E2E_A11Y=1, project "a11y"): axe-core reads the sign-in page and every product destination at a desk and on a
- * 390 px phone, against WCAG 2.2 A and AA, and the result is written down - it does not fail the run. The counts by
- * impact go to the report as an annotation and the whole result to axe-<page>-<width>.json in the test's output
- * folder; later phases compare against this line base, and a later phase may turn the measure into a gate.
+ * 390 px phone, against WCAG 2.2 A and AA. Since the closing plan (5.2) it is a gate: a CRITICAL or SERIOUS violation
+ * fails the test, naming the rule and the elements; moderate and minor ones are still written down. The counts by
+ * impact go to the report as an annotation and the whole result to axe-<page>-<width>.json in the test's output folder.
  */
 import AxeBuilder from "@axe-core/playwright";
-import { test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { writeFileSync } from "node:fs";
 import { statePath } from "./accounts";
 import { settle } from "./support";
@@ -44,6 +44,10 @@ async function measure(page: Page, info: TestInfo, path: string, width: number):
     type: "axe",
     description: `${path} @ ${width}px: ${result.violations.length} rules broken on ${nodes} elements - critical ${byImpact["critical"]}, serious ${byImpact["serious"]}, moderate ${byImpact["moderate"]}, minor ${byImpact["minor"]}${rules.length ? ` | ${rules.join("; ")}` : ""}`,
   });
+  // the gate: what blocks a reader (critical) or makes the page hard to use (serious) is a failure, not a note
+  const blocking = result.violations
+    .filter((v) => v.impact === "critical" || v.impact === "serious")
+    .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`);
   const name = `axe-${path.replace(/\W+/g, "_").replace(/^_|_$/g, "") || "root"}-${width}.json`;
   writeFileSync(
     info.outputPath(name),
@@ -66,6 +70,7 @@ async function measure(page: Page, info: TestInfo, path: string, width: number):
       2,
     ),
   );
+  expect(blocking, `${path} @ ${width}px: axe`).toEqual([]);
 }
 
 for (const [width, height] of WIDTHS) {

@@ -40,7 +40,7 @@ export function useSavedPicks() {
   const save = useMutation({
     mutationFn: (body: SavePickIn) => v1.savePick(body),
     onSuccess: (_data, body) => {
-      track("pick_saved", { origin: body.pick_id ? "pick" : "market" });
+      track("pick_saved", { origin: body.pick_id ? "pick" : "market", market: body.market_key });
       toast.success(t("records.toast.saved"));
       void refresh();
       // Plan UX, B7: a saved pick is a moment to offer the notice of its result (never on opening)
