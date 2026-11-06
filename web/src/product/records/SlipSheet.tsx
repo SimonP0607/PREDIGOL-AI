@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useJustChanged } from "@/product/shared/motion";
 import { t, translateOr } from "@/lib/i18n";
 import { DASH, fmtOdds, fmtPct, fmtSignedPct, localFixed, toNumber } from "@/lib/i18n/format";
 import { formatKickoff } from "@/lib/time";
@@ -678,6 +679,7 @@ export function SlipSheet() {
     !check.isFetching &&
     !create.isPending;
   const empty = legs.length === 0;
+  const countGrew = useJustChanged(legs.length);
 
   return (
     <Sheet open={slip.open} onOpenChange={slip.setOpen}>
@@ -693,7 +695,10 @@ export function SlipSheet() {
             {t("records.slip.title")}
             {empty ? null : (
               <span
-                className="numeric rounded-full border border-gold/40 bg-gold-soft px-2 py-0.5 text-micro font-semibold text-gold-strong"
+                className={cn(
+                  "numeric rounded-full border border-gold/40 bg-gold-soft px-2 py-0.5 text-micro font-semibold text-gold-strong",
+                  countGrew && "motion-pop",
+                )}
                 data-testid="slip-count"
               >
                 <span aria-hidden>
@@ -835,6 +840,8 @@ export function SlipSheet() {
 export function SlipButton() {
   const slip = useSlip();
   const n = slip.legs.length;
+  // a leg added: the button swells once and the number takes its place (closing plan 5.1)
+  const grew = useJustChanged(n);
   if (n === 0) return null;
   return (
     <button
@@ -843,10 +850,12 @@ export function SlipButton() {
       data-testid="slip-open"
       // Above the tab bar, whose height grows with the iPhone's home indicator (safe area); lower when the
       // tab bar is the short one of a phone held sideways.
-      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-40 inline-flex h-11 items-center gap-2 rounded-full border border-gold/50 bg-card px-4 text-sm font-semibold text-gold-strong shadow-lg transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring short:bottom-[calc(3.5rem+env(safe-area-inset-bottom))] lg:bottom-6"
+      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-40 inline-flex h-11 items-center gap-2 rounded-full border border-gold/50 bg-card px-4 text-sm font-semibold text-gold-strong shadow-lg motion-press motion-rise hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring short:bottom-[calc(3.5rem+env(safe-area-inset-bottom))] lg:bottom-6"
     >
-      <Layers aria-hidden className="h-4 w-4" />
-      {t("records.slip.open", { count: n })}
+      <Layers aria-hidden className={cn("h-4 w-4", grew && "motion-pop")} />
+      <span key={n} className={grew ? "motion-slide-in" : undefined}>
+        {t("records.slip.open", { count: n })}
+      </span>
     </button>
   );
 }

@@ -12,6 +12,7 @@ import psycopg
 from fastapi import APIRouter, Depends
 
 from fbi.api.contracts.events import (
+    BreakdownRow,
     EventsIn,
     EventsRecorded,
     FunnelStep,
@@ -61,6 +62,10 @@ def product_overview(conn: Db) -> ProductOverview:
                            funnel=[FunnelStep.model_validate(f) for f in o.funnel], devices=o.devices,
                            days_active_per_week=o.days_active_per_week, errors_per_active=o.errors_per_active,
                            dau_mau=o.dau_mau,
+                           screens=[BreakdownRow.model_validate(r) for r in o.screens],
+                           markets=[BreakdownRow.model_validate(r) for r in o.markets],
+                           leagues=[BreakdownRow.model_validate(r) for r in o.leagues],
+                           teams=[BreakdownRow.model_validate(r) for r in o.teams],
                            lifecycle=LifecycleMetrics(
                                day=m.day, states=m.states, renewal_30d=LifecycleRate(**asdict(m.renewal_30d)),
                                activation_7d=LifecycleRate(**asdict(m.activation_7d)),

@@ -16,6 +16,8 @@
  * keeps Android's own prompt for the moment the reader asks for it (captureInstallPrompt, promptInstall): Chrome's
  * banner never comes up on opening.
  */
+import { reportServiceWorkerError, reportStaleModule } from "@/lib/observability";
+import { STALE_EVENT } from "@/lib/staleModule";
 export const SERVICE_WORKER_URL = "/sw.js";
 /** Fired on window when a new version is installed and waiting; detail: the waiting worker. */
 export const UPDATE_EVENT = "predigol:update-ready";
@@ -60,10 +62,12 @@ export function watchForUpdates(
     const installing = registration.installing;
     installing?.addEventListener?.("statechange", () => {
       if (installing.state === "installed" && container?.controller) onReady(installing);
+      // a worker that never became the new version: said once, so that a broken release is seen
+      if (installing.state === "redundant") reportServiceWorkerError("install");
     });
   });
   if (typeof window === "undefined" || !registration.update) return;
-  const check = () => void registration.update?.().catch(() => undefined);
+  const check = () => void registration.update?.().catch(() => reportServiceWorkerError("update"));
   window.setInterval(check, CHECK_EVERY_MS);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") check();
@@ -84,6 +88,7 @@ export async function registerServiceWorker(
     return true;
   } catch (error) {
     console.warn("PrediGol: the service worker could not be registered", error);
+    reportServiceWorkerError("register");
     return false;
   }
 }
@@ -222,13 +227,18 @@ export async function promptInstall(): Promise<"accepted" | "dismissed" | "unava
 export function reloadOnStaleChunks(): void {
   if (typeof window === "undefined") return;
   window.addEventListener("vite:preloadError", (event) => {
+    // to Sentry (when it is on) and, if a reload just happened and did not mend it, an offer to reload by hand
+    reportStaleModule((event as Event & { payload?: unknown }).payload);
     let last = 0;
     try {
       last = Number(window.sessionStorage.getItem(RELOAD_KEY) ?? "0");
     } catch {
       /* storage unavailable */
     }
-    if (Date.now() - last < 30_000) return;
+    if (Date.now() - last < 30_000) {
+      window.dispatchEvent?.(new Event(STALE_EVENT));
+      return;
+    }
     try {
       window.sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
     } catch {

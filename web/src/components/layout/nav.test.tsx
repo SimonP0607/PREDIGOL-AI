@@ -213,6 +213,28 @@ describe("«Más»", () => {
     expect(tag(out, "more-sign-out")).toContain("min-h-12");
   });
 
+  test("«Escríbenos por WhatsApp» is a row of «Más» only once the owner gave the number - and there is no floating bubble", async () => {
+    setLocale("es");
+    const without = await list("/home");
+    expect(without).not.toContain('data-testid="more-whatsapp"');
+    const withNumber = await html(
+      <MoreList
+        items={moreItems(true)}
+        pathname="/home"
+        standalone={false}
+        platform="android"
+        onPick={() => {}}
+        onSignOut={() => {}}
+        whatsapp="573001234567"
+      />,
+    );
+    const row = tag(withNumber, "more-whatsapp");
+    expect(row).toContain("https://wa.me/573001234567?text=");
+    expect(row).toContain("min-h-14");
+    expect(withNumber).toContain("Escríbenos por WhatsApp");
+    expect(withNumber).not.toContain("fixed");
+  });
+
   test("Novedades carries a dot while it holds an entry the reader has not seen - with its words for a screen reader", async () => {
     setLocale("es");
     const seen = await list("/home");

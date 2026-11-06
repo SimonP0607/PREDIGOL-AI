@@ -62,7 +62,9 @@ def _refused(exc: CustomerError) -> ApiError:
 
 
 def _contact() -> SupportContact:
-    return SupportContact(whatsapp=membership.whatsapp(), email=membership.reply_address())
+    whatsapp, email = membership.whatsapp(), membership.reply_address()
+    return SupportContact(whatsapp=whatsapp, email=email, hours=support.contact_hours(),
+                          channels=support.contact_channels(whatsapp=whatsapp, email=email))
 
 
 def _messages(t: support.Ticket) -> list[SupportMessage]:

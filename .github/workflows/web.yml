@@ -48,3 +48,5 @@ jobs:
         env:
           NITRO_PRESET: node-server
           VITE_DATA_MODE: live
+      - name: bundle budget (plan de cierre UX, 5.2)
+        run: bun scripts/bundle-budget.ts
