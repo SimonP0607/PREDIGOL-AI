@@ -51,6 +51,8 @@ Los secretos (claves de Resend, de Sentry, VAPID, tokens) se escriben en el serv
 | `FBI_TRIAL_DAYS` | 20 | Prueba de una cuenta nueva, entre 7 y 20 |
 | `FBI_MEMBERSHIP_PRICE_COP` | 150000 | Precio mensual en pesos colombianos que ve el lector; `0` o `off` esconde esa moneda |
 | `FBI_MEMBERSHIP_PRICE_USD` | 50 | Precio mensual en dólares que ve el lector; `0` o `off` esconde esa moneda |
+| `FBI_LOYALTY_PERCENT` | 20 | Descuento por fidelidad que propone la consola en cada pago de quien ya pagó los meses indicados; `0` o `off` lo apaga |
+| `FBI_LOYALTY_AFTER_MONTHS` | 2 | Meses pagados (de 1 a 24) desde los que aplica el descuento por fidelidad |
 | `FBI_MEMBERSHIP_CURRENCY` | COP | Moneda que propone la consola al registrar un pago |
 | `FBI_USER_NARRATIVE_MINUTES` | 10 | Cada cuánto el worker busca narrativas por escribir |
 | `FBI_PRODUCT_MIN_SUBJECTS` | 20 | Lectores activos mínimos para mostrar cifras globales |

@@ -13,6 +13,8 @@ from pydantic import Field
 from fbi.api.contracts.common import Contract
 
 Period = Literal["7d", "30d", "all"]
+ParlayKind = Literal["daily", "multiday"]
+PickResult = Literal["PENDING", "WIN", "LOSS", "HALF_WIN", "HALF_LOSS", "PUSH", "VOID"]
 NoPickReason = Literal["no_matches", "no_qualified_candidates", "not_chosen"]
 StopKey = Literal["data", "model", "market", "calibration", "ev", "context", "risk", "correlation", "price", "final"]
 
@@ -48,6 +50,39 @@ class PeriodTally(Tally):
 class MarketTally(Tally):
     market: str = Field(description="The kind of bet (1X2, OU, BTTS, AH, DC...), or `other`: every kind with fewer than "
                                     "min_sample settled picks, together.")
+
+
+class ParlayTally(Tally):
+    """PrediGol's parlays of a kind, whole history, counted the way Mis picks counts them (``fbi.userdata.records``): a parlay is
+    created once it has its legs (a day with no parlay is not a parlay), won when it paid - with every leg won or with some
+    leg void, pushed or half (``partial``) -, lost, void (every leg returned) or pending. The same samples as the picks:
+    units and ROI only from ``min_sample`` settled parlays."""
+
+    kind: ParlayKind = Field(description="daily: the product day's matches; multiday: the next 72 hours.")
+    partial: int = Field(description="Of the won, how many paid with a leg void, pushed or half (settled by the legs' factors).")
+
+
+class PublishedPick(Contract):
+    """One published pick as it was frozen when it was chosen - the price taken, the probability said - and how it ended.
+    The qualified set only (the one a reader sees): never an evaluation item."""
+
+    day: date = Field(description="The product day (America/Bogota) whose set it belongs to.")
+    kickoff_at: datetime
+    published_at: datetime = Field(description="When the pick was chosen, before kick-off.")
+    competition: str
+    country: str | None
+    home: str
+    away: str
+    market: str = Field(description="The kind of bet (1X2, OU, BTTS, AH, DC...).")
+    selection: str
+    line: Decimal
+    odds: Decimal = Field(description="The price it was published at, frozen: never re-priced.")
+    p_model: Decimal = Field(description="The probability PrediGol said, conditional on the bet being settled.")
+    p_market: Decimal = Field(description="The market's probability without margin (Shin) when it was chosen.")
+    result: PickResult
+    units: Decimal | None = Field(description="The profit of a flat stake of one unit, once settled; null while pending.")
+    score_home: int | None = Field(description="The regular-time score, once the match has a result.")
+    score_away: int | None
 
 
 class NoPickDay(Contract):
@@ -135,6 +170,7 @@ class Transparency(Contract):
     min_bin: int
     calibration_days: int = Field(description="The window of the forecast's calibration, in days.")
     periods: list[PeriodTally] = Field(description="7 days, 30 days and the whole history: fixed, never the best one.")
+    parlays: list[ParlayTally] = Field(description="PrediGol's daily and multi-day parlays, whole history, in that order.")
     days: NoPickDays
     markets: list[MarketTally] = Field(description="The whole history by kind of bet, most settled first; `other` last.")
     line_value: LineValue

@@ -206,6 +206,15 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_worker", "customer.payments", "SELECT", False),
     ("predigol_worker", "customer.membership_periods", "SELECT", False),
     ("predigol_worker", "customer.membership_events", "SELECT", False),
+    # UX-005: the coupons - created and disabled (an update the table's trigger limits to that) by the console, a holder
+    # recorded and never edited; the worker reads none of it
+    ("predigol_api", "customer.coupons", "INSERT", True),
+    ("predigol_api", "customer.coupons", "UPDATE", True),
+    ("predigol_api", "customer.coupons", "DELETE", False),
+    ("predigol_api", "customer.coupon_redemptions", "INSERT", True),
+    ("predigol_api", "customer.coupon_redemptions", "UPDATE", False),
+    ("predigol_worker", "customer.coupons", "SELECT", False),
+    ("predigol_worker", "customer.coupon_redemptions", "SELECT", False),
 ])
 def test_each_role_gets_exactly_what_it_uses(granted: str, role: str, table: str, privilege: str,
                                             expected: bool) -> None:

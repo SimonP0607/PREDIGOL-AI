@@ -6,6 +6,9 @@
 import type { Dec, Iso } from "./types";
 
 export type TransparencyPeriod = "7d" | "30d" | "all";
+export type TransparencyParlayKind = "daily" | "multiday";
+export type PublishedPickResult =
+  "PENDING" | "WIN" | "LOSS" | "HALF_WIN" | "HALF_LOSS" | "PUSH" | "VOID";
 export type NoPickDayReason = "no_matches" | "no_qualified_candidates" | "not_chosen";
 export type DecisionStop =
   | "data"
@@ -49,6 +52,41 @@ export interface TransparencyPeriodTally extends TransparencyTally {
 export interface TransparencyMarketTally extends TransparencyTally {
   /** 1X2, OU, BTTS, AH, DC... or `other` (the kinds with fewer than min_sample settled picks, together). */
   market: string;
+}
+
+/**
+ * PrediGol's parlays of a kind, whole history, counted like the picks (plan de cierre UX, 1.5): created once they have their
+ * legs; the ones that paid are `won` (`partial` of them with a leg void, pushed or half); `half_*` and `push` are always 0.
+ */
+export interface TransparencyParlayTally extends TransparencyTally {
+  kind: TransparencyParlayKind;
+  partial: number;
+}
+
+/** One published pick as it was frozen when it was chosen, and how it ended (qualified set only). */
+export interface PublishedPick {
+  /** The product day (America/Bogota) of its set. */
+  day: string;
+  kickoff_at: Iso;
+  published_at: Iso;
+  competition: string;
+  country: string | null;
+  home: string;
+  away: string;
+  market: string;
+  selection: string;
+  line: Dec;
+  /** The price it was published at, frozen. */
+  odds: Dec;
+  /** The probability PrediGol said. */
+  p_model: Dec;
+  /** The market's probability without margin when it was chosen. */
+  p_market: Dec;
+  result: PublishedPickResult;
+  /** The profit of a flat stake of one unit, once settled; null while pending. */
+  units: Dec | null;
+  score_home: number | null;
+  score_away: number | null;
 }
 
 export interface NoPickDay {
@@ -133,6 +171,8 @@ export interface Transparency {
   min_bin: number;
   calibration_days: number;
   periods: TransparencyPeriodTally[];
+  /** Daily and multi-day, in that order. */
+  parlays: TransparencyParlayTally[];
   days: NoPickDays;
   markets: TransparencyMarketTally[];
   line_value: LineValue;

@@ -467,6 +467,26 @@ test("«Cómo le va a PrediGol» (A12) at every phone width: the blocks stacked 
       ).toBeGreaterThanOrEqual(43.5);
       await summary.click();
     }
+    // plan de cierre UX, 1.5: the picks one by one stacked as cards, «ver más» and the history's fold under a finger
+    const rows = page.getByTestId("published-pick");
+    if ((await rows.count()) > 1) {
+      const tops = await rows.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top));
+      tops
+        .slice(1)
+        .forEach((top, i) =>
+          expect(top, `${width} px: pick ${i + 2} under the one before`).toBeGreaterThan(
+            tops[i] ?? 0,
+          ),
+        );
+    }
+    const folds = page.getByTestId("transparency-changes-more");
+    if ((await folds.count()) > 0) {
+      expect(
+        (await folds.locator("summary").boundingBox())!.height,
+        `${width} px: the history's fold under a finger`,
+      ).toBeGreaterThanOrEqual(43.5);
+      await folds.locator("summary").click();
+    }
     const sideways = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );

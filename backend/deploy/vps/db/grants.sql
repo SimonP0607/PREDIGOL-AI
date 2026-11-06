@@ -106,6 +106,9 @@ BEGIN
     -- the membership (fbi.customer.membership, plan UX, A8): the owner's payments, periods and their events, and the
     -- messenger's notices of a period's end - recorded, never edited or deleted (the tables' own triggers refuse it)
     'customer.payments:INSERT', 'customer.membership_periods:INSERT', 'customer.membership_events:INSERT',
+    -- the coupons of the membership (fbi.customer.discounts, UX-005): the owner creates one and may disable it (the only
+    -- change its own trigger allows, once); a reader holding one is recorded, never edited or deleted
+    'customer.coupons:INSERT, UPDATE', 'customer.coupon_redemptions:INSERT',
     -- a reader's favourite leagues and teams (fbi.customer.favorites, plan UX, A13): chosen or removed, never edited; deleted
     -- with the rest of what the reader keeps when the account is anonymised (A7)
     'customer.favorites:INSERT, DELETE',

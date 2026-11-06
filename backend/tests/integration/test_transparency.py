@@ -12,6 +12,10 @@ PUBLISHED (the qualified set)
     09-01..09-05  OU  13 WIN at 1.90 (+0.90), 12 LOSS (-1); the closing consensus 0.55 for 20 of them, 0.50 for 5 (3 h before)
     08-10  BTTS WIN 2.50 (+1.50), LOSS, LOSS
 THE EVALUATION SET: an item on 09-17 and two on 09-12, all won - never counted.
+PARLAYS (legs on days that already have picks, or before the window, so the days without picks below stay as they are)
+    daily    09-19 WON (+3.10) - 09-15 LOST (-1) - 08-06 PARTIAL_VOID (+0.80) - 09-20 ACTIVE - 08-05 BUILDING with no legs
+    multiday 08-07 VOID - 09-22 READY (kicks off after the reader's today: not counted yet)
+    and an evaluation parlay on 09-19, won (+9) - never counted
 DAYS WITHOUT PICKS
     09-18  two qualified candidates stopped by «risk», three others by «calibration»      -> not_chosen, stop risk
     09-17  no qualified candidate; five selections measured (calibration 3, market 2)     -> no_qualified_candidates
@@ -36,8 +40,11 @@ from scripts import transparency_check
 
 from fbi.api.app import create_app
 from fbi.api.deps import get_db
+from fbi.api.services import records as records_service
 from fbi.api.services import transparency as service
+from fbi.api.services import transparency_picks
 from fbi.api.switches import TRANSPARENCY
+from fbi.core.clock import FrozenClock, SystemClock, set_clock
 from fbi.userdata import records
 from tests.integration.signed_in import SAME_SITE, signed_in
 
@@ -87,6 +94,31 @@ class World(IntelWorld):
              kick - timedelta(hours=6), self.seed.model_version_id, status, profit,
              None if status == "PENDING" else kick + timedelta(hours=2)))
         return fid, pick
+
+    def parlay(self, kind: str, day: date, status: str, profit: str | None, *, source: str = "qualified", legs: int = 2,
+               kickoff: datetime | None = None) -> int:
+        """A stored parlay of ``legs`` legs, each on its own match (kicking off the minute after the one before)."""
+        kick = kickoff or ko(day)
+        settled = status in ("WON", "LOST", "VOID", "PARTIAL_VOID")
+        self.cur.execute(
+            "INSERT INTO picks.parlays (kind, day, source, rule_version, status, min_legs, max_legs, window_from, "
+            "window_to, combined_odds, p_all_low, expected_log_growth, created_at, ready_at, settled_at, profit_units) "
+            "VALUES (%s, %s, %s, 'parlay-v5', %s, 2, 7, %s, %s, 5.29, 0.20, 0.001, %s, %s, %s, %s) RETURNING id",
+            (kind, day, source, status, kick - timedelta(hours=8), kick + timedelta(hours=40), kick - timedelta(hours=8),
+             None if status == "BUILDING" else kick - timedelta(hours=8),
+             kick + timedelta(hours=3) if settled else None, profit))
+        parlay_id = scalar(self.cur)
+        for n in range(1, (0 if status == "BUILDING" else legs) + 1):
+            when = kick + timedelta(minutes=n)
+            fid = self.fixture(when)
+            pick = self.pick(fid, "1X2", "Home", "0", p_model=0.50, p_market=0.43, odds=2.30, created=when - timedelta(hours=6))
+            self.cur.execute(
+                "INSERT INTO picks.parlay_legs (parlay_id, leg_no, pick_id, fixture_id, market_key, selection, line, "
+                "added_at, odds, bookmaker_id, price_at, p_model, p_low, p_push, p_market, ev, inputs, status, settled_at) "
+                "VALUES (%s, %s, %s, %s, '1X2', 'Home', 0, %s, 2.30, %s, %s, 0.50, 0.45, 0, 0.43, 0.15, '{}', %s, %s)",
+                (parlay_id, n, pick, fid, when - timedelta(hours=6), self.seed.bookmaker_id, when - timedelta(hours=6),
+                 "WIN" if settled else "PENDING", when + timedelta(hours=2) if settled else None))
+        return int(parlay_id)
 
     def untracked(self) -> int:
         """A season of a league PrediGol does not follow (its matches are not «the day's matches»)."""
@@ -161,7 +193,8 @@ def build(db: psycopg.Connection[Any], seed: Seed) -> World:
     w = World(db, seed)
     d = date
     w.item(d(2032, 9, 20), "1X2", "Home", "0", "PENDING", None, "2.00", kickoff=AT + timedelta(hours=5))
-    w.item(d(2032, 9, 19), "1X2", "Home", "0", "WIN", "1", "2.00")
+    won, _ = w.item(d(2032, 9, 19), "1X2", "Home", "0", "WIN", "1", "2.00")
+    w.finished(won, 2, 1)
     w.item(d(2032, 9, 19), "1X2", "Away", "0", "LOSS", "-1", "3.00")
     for status, profit, odds in (("WIN", "1.10", "2.10"), ("PUSH", "0", "1.80"), ("HALF_WIN", "0.45", "1.90"),
                                  ("HALF_LOSS", "-0.50", "1.95"), ("VOID", "0", "2.20")):
@@ -177,6 +210,15 @@ def build(db: psycopg.Connection[Any], seed: Seed) -> World:
     w.item(d(2032, 9, 17), "OU", "Over", "2.5", "WIN", "5", "6.00", source="evaluation")
     w.item(d(2032, 9, 12), "OU", "Over", "2.5", "WIN", "5", "6.00", source="evaluation")
     w.item(d(2032, 9, 12), "OU", "Under", "2.5", "WIN", "5", "6.00", source="evaluation")
+    # the parlays
+    w.parlay("daily", d(2032, 9, 19), "WON", "3.10")
+    w.parlay("daily", d(2032, 9, 15), "LOST", "-1")
+    w.parlay("daily", d(2032, 8, 6), "PARTIAL_VOID", "0.80")
+    w.parlay("daily", d(2032, 9, 20), "ACTIVE", None, kickoff=AT + timedelta(hours=5))
+    w.parlay("daily", d(2032, 8, 5), "BUILDING", None)
+    w.parlay("multiday", d(2032, 8, 7), "VOID", "0")
+    w.parlay("multiday", d(2032, 9, 22), "READY", None)
+    w.parlay("daily", d(2032, 9, 19), "WON", "9", source="evaluation")
     # 09-18: two qualified candidates stopped by risk, three others by calibration
     for k in range(2):
         fid = w.fixture(ko(d(2032, 9, 18)))
@@ -247,6 +289,71 @@ def test_the_published_picks_by_period_with_their_sample(db: psycopg.Connection[
     assert whole.since is None and (whole.published, whole.settled) == (36, 34)
     assert (whole.units, whole.roi, whole.margin) == (Decimal("0.25"), Decimal("0.0074"), Decimal("0.1715"))
     assert page.data_as_of is not None
+
+
+def test_the_parlays_by_kind_counted_like_mis_picks(db: psycopg.Connection[Any], world: World) -> None:
+    page = service.build(db, tz=TZ, at=AT)
+    daily, multiday = page.parlays
+    assert (daily.kind, daily.published, daily.pending, daily.won, daily.partial, daily.lost, daily.void,
+            daily.settled) == ("daily", 4, 1, 2, 1, 1, 0, 3), "the one being built, the one after today's end and the evaluation one are not there"
+    assert (daily.units, daily.roi, daily.conclusive) == (None, None, False), "3 settled: counts only"
+    assert (multiday.kind, multiday.published, multiday.void, multiday.settled, multiday.units) == (
+        "multiday", 1, 1, 0, None)
+    mine = records.history(db, user_id=-1, period="all", tz=TZ, at=AT, include_evaluation=False)["predigol_parlays"]
+    assert (mine.total, mine.pending, mine.won, mine.lost, mine.void) == (5, 1, 2, 1, 1), "Mis picks reads them the same"
+    assert mine.staked == daily.settled + multiday.settled and mine.profit == Decimal("2.90")
+    assert transparency_check.check(db, tz="Europe/Madrid", at=AT) == []
+
+
+def test_the_published_picks_one_by_one_newest_first(db: psycopg.Connection[Any], world: World) -> None:
+    seen: list[Any] = []
+    cursor: str | None = None
+    pages = 0
+    while True:
+        page = transparency_picks.published_picks(db, tz=TZ, limit=10, cursor=cursor, at=AT)
+        pages += 1
+        assert page.meta.total == 36 and page.status.value == "ok"
+        seen.extend(page.data)
+        cursor = page.meta.next_cursor
+        if cursor is None:
+            break
+    assert (pages, len(seen)) == (4, 36), "as many as the counts say, a page at a time"
+    assert [i.kickoff_at for i in seen] == sorted((i.kickoff_at for i in seen), reverse=True)
+    pending = seen[0]
+    assert (pending.day, pending.result, pending.units, pending.score_home) == (date(2032, 9, 20), "PENDING", None, None)
+    lost, won = seen[1], seen[2]
+    assert (lost.market, lost.selection, lost.result, lost.units, lost.odds) == ("1X2", "Away", "LOSS", Decimal("-1"), Decimal("3"))
+    assert (won.selection, won.result, won.units, won.odds, won.p_model, won.p_market) == (
+        "Home", "WIN", Decimal("1"), Decimal("2"), Decimal("0.55"), Decimal("0.50"))
+    assert (won.score_home, won.score_away) == (2, 1) and (lost.score_home, lost.score_away) == (None, None)
+    assert won.published_at < won.kickoff_at and won.home != won.away and won.competition
+    assert max(i.odds for i in seen) < Decimal("6"), "the evaluation items (all at 6.00) are not in it"
+    assert {i.day for i in seen}.isdisjoint({date(2032, 9, 17), date(2032, 9, 12)})
+    assert [i.result for i in seen].count("VOID") == 1 and [i.result for i in seen].count("HALF_WIN") == 1
+    again: list[Any] = []
+    cursor = None
+    while True:
+        page = transparency_picks.published_picks(db, tz=TZ, limit=1, cursor=cursor, at=AT)
+        again.extend(page.data)
+        cursor = page.meta.next_cursor
+        if cursor is None:
+            break
+    assert again == seen, "the same list at any page size: two picks of one kick-off are never repeated or skipped"
+
+
+def test_the_list_ends_at_the_readers_today_like_the_counts(db: psycopg.Connection[Any], world: World) -> None:
+    madrid = transparency_picks.published_picks(db, tz="Europe/Madrid", limit=50, at=AT)
+    whole = next(p for p in service.build(db, tz="Europe/Madrid", at=AT).periods if p.period == "all")
+    assert madrid.meta.total == whole.published == len(madrid.data)
+    early = AT - timedelta(days=30)
+    old = transparency_picks.published_picks(db, tz=TZ, limit=50, at=early)
+    assert old.meta.total == 3 and {i.market for i in old.data} == {"BTTS"}, "on 08-21 only the three of 08-10 had started"
+
+
+def test_a_cursor_of_another_list_is_refused(db: psycopg.Connection[Any], world: World) -> None:
+    for cursor in ("nonsense", records_service.encode_cursor("p", AT, 7)):
+        with pytest.raises(records_service.CursorError):
+            transparency_picks.published_picks(db, tz=TZ, cursor=cursor, at=AT)
 
 
 def test_the_evaluation_set_is_never_counted(db: psycopg.Connection[Any], world: World) -> None:
@@ -329,6 +436,22 @@ def test_every_figure_matches_its_independent_query(db: psycopg.Connection[Any],
     assert transparency_check.check(db, tz="Europe/Madrid", at=AT) == []
 
 
+def test_the_contrast_sees_a_wrong_parlay_and_a_wrong_list(db: psycopg.Connection[Any], world: World,
+                                                          monkeypatch: pytest.MonkeyPatch) -> None:
+    real_parlays = service.parlays
+
+    def one_more_win(rows: Any) -> Any:
+        out = real_parlays(rows)
+        out[0] = out[0].model_copy(update={"won": out[0].won + 1})
+        return out
+
+    monkeypatch.setattr(service, "parlays", one_more_win)
+    assert any(m.figure == "parlays.daily.won" for m in transparency_check.check(db, tz=TZ, at=AT))
+    monkeypatch.setattr(service, "parlays", real_parlays)
+    monkeypatch.setattr(transparency_picks, "TOTAL_SQL", transparency_picks.TOTAL_SQL.replace("count(*)", "count(*) + 1"))
+    assert any(m.figure == "picks.list.total" for m in transparency_check.check(db, tz=TZ, at=AT))
+
+
 def test_the_contrast_sees_a_wrong_figure(db: psycopg.Connection[Any], world: World,
                                           monkeypatch: pytest.MonkeyPatch) -> None:
     real = service.count
@@ -348,6 +471,10 @@ def test_an_empty_history_says_nothing_it_does_not_have(db: psycopg.Connection[A
     whole = next(p for p in page.periods if p.period == "all")
     assert (whole.published, whole.settled, whole.units, whole.roi) == (0, 0, None, None)
     assert page.markets == [] and page.line_value.n == 0 and page.line_value.mean is None
+    assert [(p.kind, p.published, p.settled, p.units) for p in page.parlays] == [("daily", 0, 0, None), ("multiday", 0, 0, None)]
+    empty = transparency_picks.published_picks(db, tz=TZ, at=AT)
+    assert (empty.status.value, empty.data, empty.meta.total, empty.meta.next_cursor) == ("empty", [], 0, None)
+    assert empty.reason == "PrediGol has not published a pick yet."
     assert transparency_check.check(db, tz=TZ, at=AT) == []
 
 
@@ -374,3 +501,28 @@ def test_readers_see_it_only_once_the_owner_opens_it(db: psycopg.Connection[Any]
     assert body["status"] == "ok" and {p["period"] for p in body["data"]["periods"]} == {"7d", "30d", "all"}
     assert opened.get("/api/v1/auth/me").json()["transparency"] is True
     assert client(db, "USER", monkeypatch, "maybe").get("/api/v1/transparency").json()["status"] == "not_available"
+
+
+def test_the_list_follows_the_same_gate_and_pages(db: psycopg.Connection[Any], world: World,
+                                                  monkeypatch: pytest.MonkeyPatch) -> None:
+    set_clock(FrozenClock(AT))
+    try:
+        hidden = client(db, "USER", monkeypatch, None).get("/api/v1/transparency/picks")
+        assert hidden.status_code == 200 and hidden.json()["status"] == "not_available" and hidden.json()["data"] == []
+        assert client(db, "USER", monkeypatch, None).get("/api/v1/transparency/picks?preview=shadow").status_code == 403
+        owner = client(db, "SUPER_ADMIN", monkeypatch, None).get("/api/v1/transparency/picks?preview=shadow&limit=5").json()
+        assert owner["status"] == "ok" and len(owner["data"]) == 5 and owner["meta"]["total"] == 36
+        opened = client(db, "USER", monkeypatch, "1")
+        first = opened.get("/api/v1/transparency/picks?limit=5").json()
+        assert first["data"] == owner["data"], "the owner's preview and the readers' page are the same list"
+        second = opened.get(f"/api/v1/transparency/picks?limit=5&cursor={first['meta']['next_cursor']}").json()
+        assert second["data"][0] != first["data"][0] and second["data"][0]["kickoff_at"] <= first["data"][-1]["kickoff_at"]
+        assert set(first["data"][0]) == {"day", "kickoff_at", "published_at", "competition", "country", "home", "away",
+                                         "market", "selection", "line", "odds", "p_model", "p_market", "result", "units",
+                                         "score_home", "score_away"}, "a price, a probability and a result: nothing internal"
+        refused = opened.get("/api/v1/transparency/picks?cursor=nonsense")
+        assert refused.status_code == 422 and refused.json()["error"]["code"] == "invalid_cursor"
+        assert opened.get("/api/v1/transparency/picks?limit=0").status_code == 422
+        assert opened.get("/api/v1/transparency/picks?limit=51").status_code == 422
+    finally:
+        set_clock(SystemClock())
