@@ -57,6 +57,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | Código | Qué es | Estado | PR | Fase o nombre anterior |
 | --- | --- | --- | --- | --- |
 | BE-001 | La prueba del seudónimo de Sentry ya no falla al azar (una vez de cada catorce) | en curso | este PR | — |
+| BE-002 | Se siguen las eliminatorias mundialistas de África (29) y Oceanía (33) y la Copa Asiática (7): tanda 2 de la expansión (nivel 6), comprobación de nombre y país contra el proveedor en `expand_leagues` y negativa de `manage_competitions apply` a apagar más de 5 competiciones | en curso | este PR | P3 tanda 2 |
 
 ## Otras áreas
 
@@ -64,4 +65,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-009 · UX-022 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-009 · UX-022 · BE-003 · FE-001 · OPS-001 · DOC-001

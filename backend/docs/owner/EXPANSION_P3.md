@@ -157,3 +157,46 @@ El equipo estuvo apagado de 18:38 UTC del 5 oct a 01:12 UTC del 6 oct (hueco de 
 * **El día completo de medición que pide la tanda 2 vuelve a empezar**: el apagado cortó el del 5 oct. Se mide desde
   el 6 oct 01:34 UTC (worker de nuevo en marcha).
 
+## 7. Tanda 2: eliminatorias de África y Oceanía y Copa Asiática (BE-002, decidida el 5 nov 2026)
+
+Decisión del dueño, sin sonda: seguir las eliminatorias mundialistas de las seis confederaciones (el nivel 4 ya sigue
+Asia 30, CONCACAF 31, Europa 32, Sudamérica 34 y la repesca 37) y la Copa Asiática junto a la Copa África, la
+Eurocopa, la Copa América y la Copa Oro. `config/expansion.yaml`, tanda 2, nivel 6:
+
+| Id | Nombre que se espera del proveedor | País |
+|---:|---|---|
+| 29 | World Cup - Qualification Africa | World |
+| 33 | World Cup - Qualification Oceania | World |
+| 7 | Asian Cup | World |
+
+Los ids no se pudieron comprobar contra el catálogo del proveedor dentro del repositorio (`raw.league_coverage` solo
+existe en la base de datos). Por eso `scripts.expand_leagues` ahora **se niega** a seguir una liga cuyo nombre o país
+en `raw.league_coverage` (temporada más reciente) no coincide con el de `config/expansion.yaml`: un id equivocado
+para en la vista previa, no sigue otra competición.
+
+**En producción, tras desplegar** (0 peticiones hasta el paso 3):
+
+1. Vista previa: `docker exec -w /app predigol-worker python -m scripts.expand_leagues --batch 2`. Muestra, por
+   liga, el nombre del proveedor, las temporadas listadas y la actual. Si dice `REFUSED`, se para y se revisa.
+2. Seguimiento: la misma orden con `--apply`. Escribe 3 filas en `core.competitions` (`is_tracked = true`,
+   `tier = 6`), una fila por temporada listada en `core.competition_seasons` y una corrida `league_expansion` en
+   `raw.ingestion_runs`. No toca el seguimiento de ninguna otra competición.
+3. Historia, como nivel propio: `python -m scripts.migration plan --tiers 6` (precio exacto, 0 peticiones), luego
+   `seed --tiers 6 --yes` y `run --yes --until-done` (nunca gasta la reserva en vivo).
+4. Cuando las unidades `teams_season` estén hechas: `python -m scripts.sync_teams --scopes-only` (0 peticiones). La
+   Copa Asiática (Cup, World) entra catalogada como continental de clubes, igual que entraron el Mundial, la Eurocopa
+   y la Copa África; este paso la pasa a selecciones con la evidencia de sus equipos. Las dos eliminatorias (League,
+   World) ya entran como selecciones.
+
+**Coste** (modelo de `API_CAPACITY.md`: 32,3 peticiones por liga y día + 12,7 por partido): ~97 al día por las tres
+ligas más 12,7 por partido en los días con partido (un día de ventana FIFA con 10 partidos: ~224). Frente a 60.000
+de presupuesto interno, menos del 0,5 %. La historia la pone en precio el paso 3 antes de gastar nada.
+
+**Vuelta atrás:** dejar de seguir, nunca borrar:
+`UPDATE core.competitions SET is_tracked = false, updated_at = now() WHERE provider_league_id IN (29, 33, 7);`
+(debe tocar 3 filas). Partidos, temporadas e historia quedan guardados; el worker deja de pedir lo suyo.
+
+**Aviso:** `config/competitions.yaml` es el archivo del piloto del plan gratuito (solo 39 y 141 activas).
+`manage_competitions apply` con él dejaría de seguir ~130 competiciones; ahora se niega a apagar más de 5 sin
+`--allow-mass-disable`. No se aplica.
+

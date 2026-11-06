@@ -10,8 +10,11 @@
 
 import-legacy writes core.competitions / competition_seasons / market.bookmakers /
 market.markets from the audited backups and prints a migration report.
-apply reads config/competitions.yaml and is the only thing that ever flips
-is_tracked. list shows what is known and what is active.
+apply reads config/competitions.yaml and switches off every tracked league the
+file does not enable. That file is still the Free-plan pilot (two leagues), so
+apply refuses to switch off more than a handful without --allow-mass-disable;
+leagues are tracked with scripts.expand_leagues. list shows what is known and
+what is active.
 
 refresh-seasons and probe are the only commands here that spend provider
 requests: exactly ONE /leagues call per league named, and both say so before
@@ -76,6 +79,11 @@ def cmd_import(args: argparse.Namespace) -> int:
 def cmd_apply(args: argparse.Namespace) -> int:
     toggles = activation.load_config(Path(args.config))
     with _connect() as conn:
+        if not args.dry_run and not args.allow_mass_disable:
+            refusal = activation.mass_disable_refusal(activation.apply(conn, toggles, dry_run=True))
+            if refusal:
+                print(f"REFUSED, nothing written: {refusal}")
+                return 1
         diff = activation.apply(conn, toggles, dry_run=args.dry_run)
         if not args.dry_run:
             conn.commit()
@@ -207,6 +215,9 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("apply")
     p.add_argument("--config", default=str(DEFAULT_CONFIG))
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--allow-mass-disable", action="store_true",
+                   help=f"write even if more than {activation.MAX_DISABLE_WITHOUT_CONFIRMATION} tracked "
+                        "competitions would be switched off")
     p = sub.add_parser("refresh-seasons")
     p.add_argument("--league", action="append", default=[], help="provider league id; repeatable. Default: every tracked competition.")
     p.add_argument("--dry-run", action="store_true")
