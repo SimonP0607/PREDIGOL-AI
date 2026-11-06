@@ -194,6 +194,13 @@ def test_an_invitation_plans_the_trial_and_the_activation_starts_it(fresh: str, 
                        "WHERE user_id = %s", (user_id,))
     assert (trial["kind"], trial["length"]) == ("trial", 10 * DAY)
     assert server_events(fresh, "trial_started") == 1
+    # one e-mail tells the account is active and when its trial ends (closing plan 4.1), not two
+    ends = one(fresh, "SELECT ends_at FROM customer.membership_periods WHERE user_id = %s", (user_id,))["ends_at"]
+    welcome = [(r["template"], r["params"], r["dedup_key"]) for r in rows(
+        fresh, "SELECT template, params, dedup_key FROM customer.messages_outbox WHERE user_id = %s "
+               "AND template <> 'invitation'", (user_id,))]
+    assert welcome == [("welcome", {"ends": ends.astimezone(UTC).isoformat(timespec="seconds")},
+                        f"welcome:{user_id}")]
     me = client()
     assert me.post("/api/v1/auth/login", json={"email": f"inv@{DOMAIN}",
                                                "password": "La-final-se-juega-en-mayo"}).status_code == 200
@@ -216,12 +223,18 @@ def test_the_console_starts_a_trial_for_a_reader_it_creates_and_none_for_the_own
     assert listed[OWNER] is None and listed[ROBOT] is None, "the owner and the robot have no membership"
     # one trial per account: the owner's «start a trial» is for an account that never had one
     temp_id = uid_of(f"temp@{DOMAIN}", fresh)
+    assert queued(fresh) == [], "an account the owner created with a password is told nothing by e-mail"
     again = owner.post(f"/api/v1/admin/users/{temp_id}/membership/trial", json={"days": 7})
     assert again.status_code == 409 and error(again) == "trial_used"
     legacy = account(f"legacy@{DOMAIN}")
     started = owner.post(f"/api/v1/admin/users/{legacy}/membership/trial", json={"days": 7})
     assert started.status_code == 200, started.text
     assert started.json()["membership"]["state"] == "trial"
+    # the trial the owner starts for an account that already existed is told once, with its end (closing plan 4.1)
+    [(email, template, params)] = queued(fresh)
+    assert (email, template) == (f"legacy@{DOMAIN}", "trial_started")
+    end = one(fresh, "SELECT ends_at FROM customer.membership_periods WHERE user_id = %s", (legacy,))["ends_at"]
+    assert params == {"ends": end.astimezone(UTC).isoformat(timespec="seconds")}
 
 
 # ── the owner's payment ─────────────────────────────────────────────────────────────────
@@ -236,6 +249,7 @@ def test_a_payment_extends_from_the_end_in_force_once_per_key(fresh: str) -> Non
     assert first.json()["created"] is True
     again = pay(owner, reader, idempotency_key=key, months=1)
     assert again.status_code == 200 and again.json()["created"] is False, "a repeated click records one payment"
+    assert [t for _, t, _ in queued(fresh)] == ["payment_recorded"], "and tells the reader once (closing plan 4.1)"
     assert one(fresh, "SELECT count(*) AS n FROM customer.payments WHERE user_id = %s", (reader,))["n"] == 1
     trial_end = one(fresh, "SELECT ends_at FROM customer.membership_periods WHERE id = %s", (trial,))["ends_at"]
     paid = one(fresh, "SELECT starts_at, ends_at FROM customer.membership_periods WHERE user_id = %s AND kind = 'paid'",
@@ -251,6 +265,12 @@ def test_a_payment_extends_from_the_end_in_force_once_per_key(fresh: str) -> Non
     assert "Nequi" not in str(trail), "the reference stays out of the trail"
     renewal = pay(owner, reader, months=2)
     assert renewal.json()["membership"]["membership"]["state"] == "renewed"
+    told = queued(fresh)
+    assert [t for _, t, _ in told] == ["payment_recorded", "payment_recorded"]
+    renewed_to = one(fresh, "SELECT max(ends_at) AS e FROM customer.membership_periods WHERE user_id = %s",
+                     (reader,))["e"]
+    assert told[1][2] == {"ends": renewed_to.astimezone(UTC).isoformat(timespec="seconds")}
+    assert all(email == f"payer@{DOMAIN}" for email, _, _ in told)
     assert server_events(fresh, "membership_renewed") == 2
     # someone else's key, a card number, a bad amount
     other = account(f"other@{DOMAIN}")

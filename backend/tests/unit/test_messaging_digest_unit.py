@@ -113,9 +113,10 @@ def test_the_commercial_footer_says_why_and_how_to_leave_in_one_click() -> None:
 
 def test_commercial_mail_is_not_one_of_the_accounts_categories_and_the_database_takes_it() -> None:
     m = migration()
-    assert set(OUTBOX_CATEGORIES) == set(m.CATEGORIES) and {"marketing"} == COMMERCIAL
+    # the service's category came after (0123, closing plan 4.1): 0105 added commercial mail to the six of 0096
+    assert set(OUTBOX_CATEGORIES) == set(m.CATEGORIES) | {"service"} and {"marketing"} == COMMERCIAL
     assert "marketing" not in templates.CATEGORIES and "marketing" not in templates.OPTIONAL
-    assert set(m.CATEGORIES_BEFORE) == set(templates.CATEGORIES)
+    assert set(m.CATEGORIES_BEFORE) | {"service"} == set(templates.CATEGORIES)
     assert TEMPLATES["weekly_digest"].category == "marketing"
     assert all(t.category not in COMMERCIAL for t in TEMPLATES.values() if t.name != "weekly_digest")
     assert m.SOURCES == ("gate", "profile", "activation", "email")
