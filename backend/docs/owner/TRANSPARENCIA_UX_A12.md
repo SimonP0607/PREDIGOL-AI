@@ -3,7 +3,9 @@
 Plan maestro UX, sección 31 y ficha A12. Rama `ux/a12`. **Sin migración.** La página responde con datos a «¿funciona?»: lo que
 PrediGol publicó y cómo fue, los días sin picks y por qué, y lo que sigue en evaluación, **siempre con su muestra**. Solo lee datos
 que ya existen: no cambia picks, modelos, reglas ni nada de PrediGol Intelligence. La ven los clientes con sesión **cuando tú la
-abras** (`FBI_TRANSPARENCY`, tras tu revisión: P9); hasta entonces solo la ves tú.
+abras** (`FBI_TRANSPARENCY`, tras tu revisión: P9); hasta entonces solo la ves tú. **Ampliada en UX-010** (plan de cierre, 1.5):
+lista de picks uno a uno, parlays, «Qué es un pick», «Cómo leer probabilidades y cuotas», historial de cambios y el aviso de «cero
+picks» — ver la sección 13.
 
 ## 1. Qué ve el cliente
 
@@ -146,3 +148,38 @@ picks de clientes), ningún dato de popularidad. Nombrar `models.match_forecasts
 
 **P9**: revisar la página antes de publicarla (con tu cuenta, en producción tras el despliegue, o con las capturas de QA de esta
 fase). Por la regla 13 de la coordinación no te lo pido mientras otra tarea tuya del plan esté abierta (hoy P4).
+
+## 13. Ampliación UX-010: la transparencia completa (plan de cierre, 1.5)
+
+**Sin migración y sin tocar la inteligencia.** Se añade lo que faltaba para que un lector vea el historial entero y sepa leerlo.
+La regla UX-002 sigue: el lector solo ve picks publicados en verde («Recomendado»); lo de evaluación nunca aparece.
+
+| Bloque nuevo | Qué dice | De dónde sale |
+| --- | --- | --- |
+| Picks, uno a uno | Cada pick publicado con partido, competición, tipo de apuesta, selección, **la cuota y la probabilidad con las que se congeló**, la del mercado y cómo terminó (ganado, perdido, medios, devuelto, anulado o pendiente; unidades y marcador cuando los hay). Del más reciente al más antiguo, de 20 en 20 con «Ver más» | `GET /transparency/picks` (`fbi.api.services.transparency_picks`): los ítems del set `qualified`; un pick se queda como se publicó y se le añade el resultado |
+| Parlays | Combinadas del día y de varios días: creadas, ganadas, perdidas, anuladas y pendientes (y cuántas ganaron con una pierna anulada), con el mismo criterio de muestra que los picks | `picks.parlays` con `source = 'qualified'`, sin las que están armándose ni las sin piernas; contadas como en Mis picks (`PARTIAL_VOID` cuenta como ganada) |
+| Qué es un pick | En palabras: qué es, que no es una predicción segura, que se congela al publicarse y que hay filtros | Solo texto |
+| Cómo leer probabilidades y cuotas | Cuota, lo que dijo PrediGol, lo que dice el mercado, valor, unidades y resultados, con un ejemplo | Solo texto |
+| Historial de cambios | Las novedades de la página «Novedades» y el día en que entró cada definición vigente, la más nueva primero; las 6 últimas a la vista, el resto bajo «Ver todo el historial» | `UPDATES` (novedades) y las definiciones que dice el servidor con su fecha: no se inventa ninguna línea |
+| Aviso de cero picks | Mientras no se haya publicado ninguno, la página lo dice tal cual, con los días sin picks y su motivo más común y lo que sí se mide (el pronóstico), y enlaza a esos bloques; nunca una cifra que no existe | Lo que ya traen los bloques de días y de pronóstico |
+
+- **La lista y las cifras son lo mismo:** el total de la lista es el «publicados» de todo el histórico; una prueba de integración y el
+  contraste lo exigen. El corte es el de las cifras (partidos que empiezan antes del final de «hoy» del lector), y el cursor es el de
+  Mis picks, así que una página no repite ni se salta un pick.
+- **Contrato:** `GET /transparency/picks?limit=1..50&cursor=` con la misma puerta y la misma vista previa que `/transparency`;
+  cerrada para los lectores devuelve `not_available`; un cursor que no es de esta lista, 422 `invalid_cursor`. `Transparency`
+  gana `parlays` (por tipo `daily` / `multiday`). El cliente web consume los dos lados en el mismo cambio.
+- **Control en cada despliegue:** `scripts.transparency_check` calcula también, con consultas aparte, el total y el orden de la
+  lista (sin repetidos), el resultado y las unidades de cada pick, y los parlays por tipo (con los de pierna anulada).
+- **Qué no dice:** ningún umbral, prompt, estado interno ni nada del panel del dueño; ninguna cifra que no tenga detrás un pick o un
+  parlay publicado. Las palabras que nunca dice (rachas, «pick estrella», garantías…) siguen vigiladas en ES y EN.
+
+**Pruebas nuevas:** unitarias del recuento de parlays y de que el servicio, el contraste y la lista solo leen y nunca nombran el
+set de evaluación (`test_transparency.py`, 35); de integración, un mundo con parlays (diario ganado, perdido, con pierna anulada,
+activo, armándose sin piernas; varios días anulado y uno que aún no ha empezado) y la lista con la puerta, la paginación con reloj
+congelado y el total igual a las cifras (`test_transparency.py`, 18); web (`transparency.test.tsx`: el cero picks, la lista con sus
+resultados, parlays, lectura, historial en ES y EN) y e2e (`user.spec.ts`: la lista de la API frente a la de pantalla con «Ver
+más»; `responsive.spec.ts`: tarjetas apiladas y 44 px a 320–430 px). El e2e se comprueba con tipos aquí y corre completo en CI.
+
+**Estado:** hecho en código; **no desplegado**. Al desplegar, la página sigue cerrada para los lectores hasta que abras
+`FBI_TRANSPARENCY` (P9, con esta ampliación incluida en tu revisión).

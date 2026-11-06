@@ -36,6 +36,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-002 | «Solo verde + pronóstico aparte» (decisión del dueño): los lectores solo ven picks en «Recomendado»; «Con cautela» y «No recomendado» se ocultan en listas, Top 5, partido, análisis, picks del día y parlays (la vista previa del dueño no cambia; el pronóstico sigue visible). Sin migración | en curso | este PR | B3 (estado visible de un pick) |
 | UX-003 | Fase 0 del plan de cierre de la UX: el mapa de interruptores de la capa de usuario con su prueba (plantilla del servidor, mapa del dueño y código dicen lo mismo), el inventario de secretos al día (DSN de la web y contraseña del recorrido sintético), la novedad de «Explícame» y la limpieza de dos componentes y dos dependencias sin uso | en curso | este PR | plan de cierre UX, fase 0 |
 | UX-004 | Membresía con el precio y la prueba que decidió el dueño (5-nov-2026): 150.000 COP o 50 USD al mes (a elección del lector, configurables con `FBI_MEMBERSHIP_PRICE_COP` y `FBI_MEMBERSHIP_PRICE_USD`; `0` esconde una moneda), prueba de 20 días por defecto (de 7 a 20, también al invitar) y el bloque «El plan» en Perfil → Membresía. Sin migración; no toca la inteligencia ni la puerta `FBI_MEMBERSHIP_ENFORCE` | en curso | este PR | — |
+| UX-010 | Transparencia completa (plan de cierre 1.5): la lista de picks publicados uno a uno con la cuota y la probabilidad con que se congelaron y su resultado (`GET /transparency/picks`, de 20 en 20), el bloque de parlays, «Qué es un pick», «Cómo leer probabilidades y cuotas», el historial de cambios (Novedades y definiciones con su fecha) y el aviso de cero picks con los días sin picks; `transparency_check` ampliado. Sin migración; no toca la inteligencia ni la regla de «solo verde» | en curso | este PR | plan de cierre UX, 1.5 |
 
 ## BE — backend
 
@@ -49,4 +50,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-010 · SEG-001 · IA-009 · UX-005 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-010 · SEG-001 · IA-009 · UX-011 · BE-002 · FE-001 · OPS-001 · DOC-001
