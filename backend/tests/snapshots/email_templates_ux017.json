@@ -1,0 +1,72 @@
+{
+  "welcome/es": {
+    "subject": "Te damos la bienvenida a PrediGol",
+    "text": "Hola, Ana.\n\nTu cuenta está activa y tu prueba gratuita termina el 25 de noviembre de 2026. No pedimos tarjeta ni se cobra nada: en tu perfil, en «Membresía», ves el precio antes de pagar.\n\nPrediGol es una plataforma de análisis deportivo y detección de valor: no garantiza resultados ni beneficios, no es una casa de apuestas ni recibe dinero de apuestas, y es solo para mayores de 18 años.\n\nPara empezar, elige tus favoritos en tu perfil, en «Tu fútbol»: Inicio te mostrará primero lo tuyo.\n\nEntrar a PrediGol: https://predigol.example/home\n\n--\n\nPrediGol · información y análisis de fútbol; no garantiza resultados (+18). Recibes este correo por tu cuenta de PrediGol; puedes elegir qué avisos recibir en tu perfil.\n",
+    "link": "https://predigol.example/home"
+  },
+  "welcome/en": {
+    "subject": "Welcome to PrediGol",
+    "text": "Hello, Ana.\n\nYour account is active and your free trial ends on 25 November 2026. We ask for no card and charge nothing: in your profile, under “Membership”, you see the price before paying.\n\nPrediGol is a sports-analysis and value-detection platform: it does not guarantee results or profits, is not a bookmaker and takes no money for bets, and is only for people aged 18 or over.\n\nTo start, choose your favourites in your profile, under “Your football”: Home will show what is yours first.\n\nGo to PrediGol: https://predigol.example/home\n\n--\n\nPrediGol · football information and analysis; it guarantees no result (18+). You receive this e-mail because of your PrediGol account; you can choose which notices you get in your profile.\n",
+    "link": "https://predigol.example/home"
+  },
+  "activation_reminder/es": {
+    "subject": "Tu invitación a PrediGol sigue esperándote",
+    "text": "Hola, Ana.\n\nHace unos días te invitamos a PrediGol y tu cuenta todavía no está activa. Actívala con el botón: es el enlace de tu invitación, sirve una sola vez y caduca el 12 de noviembre de 2026, 10:00 (hora de Bogota).\n\nEs el único recordatorio que te enviamos. Si no quieres la cuenta, ignora este correo: no se activa sin ti.\n\nActivar mi cuenta: https://predigol.example/activate#t=abcdefghijklmnopqrstuvwxyz0123456789\n\n--\n\nPrediGol · información y análisis de fútbol; no garantiza resultados (+18). Recibes este correo por tu cuenta de PrediGol; puedes elegir qué avisos recibir en tu perfil.\n",
+    "link": "https://predigol.example/activate#t=abcdefghijklmnopqrstuvwxyz0123456789"
+  },
+  "activation_reminder/en": {
+    "subject": "Your invitation to PrediGol is still waiting for you",
+    "text": "Hello, Ana.\n\nA few days ago we invited you to PrediGol and your account is not active yet. Activate it with the button: it is the link of your invitation, it works once and expires on 12 November 2026, 10:00 (Bogota time).\n\nThis is the only reminder we send you. If you do not want the account, ignore this e-mail: it is not activated without you.\n\nActivate my account: https://predigol.example/activate#t=abcdefghijklmnopqrstuvwxyz0123456789\n\n--\n\nPrediGol · football information and analysis; it guarantees no result (18+). You receive this e-mail because of your PrediGol account; you can choose which notices you get in your profile.\n",
+    "link": "https://predigol.example/activate#t=abcdefghijklmnopqrstuvwxyz0123456789"
+  },
+  "trial_started/es": {
+    "subject": "Empezó tu prueba de PrediGol",
+    "text": "Hola, Ana.\n\nTienes acceso completo a PrediGol hasta el 25 de noviembre de 2026. No pedimos tarjeta ni se cobra nada.\n\nSi después quieres seguir, en tu perfil, en «Membresía», ves cómo y el precio antes de pagar.\n\nVer mi membresía: https://predigol.example/profile#membership\n\n--\n\nPrediGol · información y análisis de fútbol; no garantiza resultados (+18). Recibes este correo por tu cuenta de PrediGol; puedes elegir qué avisos recibir en tu perfil.\n",
+    "link": "https://predigol.example/profile#membership"
+  },
+  "trial_started/en": {
+    "subject": "Your PrediGol trial has started",
+    "text": "Hello, Ana.\n\nYou have full access to PrediGol until 25 November 2026. We ask for no card and charge nothing.\n\nIf you want to continue afterwards, in your profile, under “Membership”, you see how and the price before paying.\n\nSee my membership: https://predigol.example/profile#membership\n\n--\n\nPrediGol · football information and analysis; it guarantees no result (18+). You receive this e-mail because of your PrediGol account; you can choose which notices you get in your profile.\n",
+    "link": "https://predigol.example/profile#membership"
+  },
+  "payment_recorded/es": {
+    "subject": "Registramos tu pago",
+    "text": "Hola, Ana.\n\nRegistramos tu pago. Tu membresía de PrediGol está activa hasta el 25 de diciembre de 2026.\n\nVes el detalle en tu perfil, en «Membresía». Gracias por seguir con nosotros.\n\nVer mi membresía: https://predigol.example/profile#membership\n\n--\n\nPrediGol · información y análisis de fútbol; no garantiza resultados (+18). Recibes este correo por tu cuenta de PrediGol; puedes elegir qué avisos recibir en tu perfil.\n",
+    "link": "https://predigol.example/profile#membership"
+  },
+  "payment_recorded/en": {
+    "subject": "We recorded your payment",
+    "text": "Hello, Ana.\n\nWe recorded your payment. Your PrediGol membership is active until 25 December 2026.\n\nYou see the detail in your profile, under “Membership”. Thank you for staying with us.\n\nSee my membership: https://predigol.example/profile#membership\n\n--\n\nPrediGol · football information and analysis; it guarantees no result (18+). You receive this e-mail because of your PrediGol account; you can choose which notices you get in your profile.\n",
+    "link": "https://predigol.example/profile#membership"
+  },
+  "maintenance_scheduled/es": {
+    "subject": "Mantenimiento programado de PrediGol",
+    "text": "Hola, Ana.\n\nHaremos un mantenimiento programado desde el 10 de noviembre de 2026, 01:00 (hora de Bogota) hasta el 10 de noviembre de 2026, 02:00 (hora de Bogota). En ese tiempo PrediGol puede no estar disponible o ir más lento.\n\nNo tienes que hacer nada. Si algo cambia, lo contamos en Novedades.\n\nVer Novedades: https://predigol.example/updates\n\n--\n\nPrediGol · información y análisis de fútbol; no garantiza resultados (+18). Recibes este correo por tu cuenta de PrediGol; puedes elegir qué avisos recibir en tu perfil.\n",
+    "link": "https://predigol.example/updates"
+  },
+  "maintenance_scheduled/en": {
+    "subject": "Scheduled maintenance of PrediGol",
+    "text": "Hello, Ana.\n\nWe will carry out scheduled maintenance from 10 November 2026, 01:00 (Bogota time) until 10 November 2026, 02:00 (Bogota time). During that time PrediGol may be unavailable or slower.\n\nYou do not have to do anything. If something changes, we say so in What's new.\n\nSee What's new: https://predigol.example/updates\n\n--\n\nPrediGol · football information and analysis; it guarantees no result (18+). You receive this e-mail because of your PrediGol account; you can choose which notices you get in your profile.\n",
+    "link": "https://predigol.example/updates"
+  },
+  "incident_resolved/es": {
+    "subject": "Resolvimos una incidencia en PrediGol",
+    "text": "Hola, Ana.\n\nResolvimos una incidencia que afectaba a PrediGol. Quedó resuelta el 10 de noviembre de 2026, 02:30 (hora de Bogota).\n\nSi algo sigue sin funcionar para ti, escríbenos desde Ayuda y cuéntanos qué ves; si la pantalla te mostró una referencia, inclúyela.\n\nIr a Ayuda: https://predigol.example/help\n\n--\n\nPrediGol · información y análisis de fútbol; no garantiza resultados (+18). Recibes este correo por tu cuenta de PrediGol; puedes elegir qué avisos recibir en tu perfil.\n",
+    "link": "https://predigol.example/help"
+  },
+  "incident_resolved/en": {
+    "subject": "We resolved an incident in PrediGol",
+    "text": "Hello, Ana.\n\nWe resolved an incident that affected PrediGol. It was resolved on 10 November 2026, 02:30 (Bogota time).\n\nIf something still does not work for you, write to us from Help and tell us what you see; if the screen showed you a reference, include it.\n\nGo to Help: https://predigol.example/help\n\n--\n\nPrediGol · football information and analysis; it guarantees no result (18+). You receive this e-mail because of your PrediGol account; you can choose which notices you get in your profile.\n",
+    "link": "https://predigol.example/help"
+  },
+  "important_change/es": {
+    "subject": "Un cambio importante en PrediGol: Explícame, la respuesta a tu duda",
+    "text": "Hola, Ana.\n\nHay un cambio importante en PrediGol: «Explícame, la respuesta a tu duda».\n\nLo explicamos con detalle en Novedades.\n\nVer Novedades: https://predigol.example/updates\n\n--\n\nPrediGol · información y análisis de fútbol; no garantiza resultados (+18). Recibes este correo por tu cuenta de PrediGol; puedes elegir qué avisos recibir en tu perfil.\n",
+    "link": "https://predigol.example/updates"
+  },
+  "important_change/en": {
+    "subject": "An important change in PrediGol: Explain, the answer to your question",
+    "text": "Hello, Ana.\n\nThere is an important change in PrediGol: “Explain, the answer to your question”.\n\nWe explain it in detail in What's new.\n\nSee What's new: https://predigol.example/updates\n\n--\n\nPrediGol · football information and analysis; it guarantees no result (18+). You receive this e-mail because of your PrediGol account; you can choose which notices you get in your profile.\n",
+    "link": "https://predigol.example/updates"
+  }
+}
