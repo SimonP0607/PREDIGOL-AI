@@ -26,6 +26,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.api.services import transparency as service
+from fbi.api.services import transparency_picks
 from fbi.api.services.forecast import VERSION as FORECAST_VERSION
 from fbi.core.clock import now
 from fbi.core.config import settings
@@ -52,6 +53,29 @@ SELECT count(*)::int AS published,
   JOIN picks.daily_set_items i ON i.set_id = s.id
   JOIN core.fixtures f ON f.id = i.fixture_id
  WHERE s.source = 'qualified' AND f.kickoff_at >= b.since AND f.kickoff_at < b.until
+"""
+
+PARLAY_SQL = """
+WITH p AS (
+    SELECT p.id, p.kind, p.status, p.profit_units, min(f.kickoff_at) AS first_kickoff
+      FROM picks.parlays p
+      JOIN picks.parlay_legs l ON l.parlay_id = p.id
+      JOIN core.fixtures f ON f.id = l.fixture_id
+     WHERE p.source = 'qualified' AND p.status <> 'BUILDING'
+     GROUP BY p.id
+)
+SELECT kind,
+       count(*)::int AS published,
+       count(*) FILTER (WHERE status IN ('READY', 'ACTIVE'))::int AS pending,
+       count(*) FILTER (WHERE status IN ('WON', 'PARTIAL_VOID'))::int AS won,
+       count(*) FILTER (WHERE status = 'LOST')::int AS lost,
+       count(*) FILTER (WHERE status = 'VOID')::int AS void,
+       count(*) FILTER (WHERE status = 'PARTIAL_VOID')::int AS partial,
+       count(*) FILTER (WHERE status IN ('WON', 'PARTIAL_VOID', 'LOST') AND profit_units IS NOT NULL)::int AS settled,
+       COALESCE(sum(profit_units) FILTER (WHERE status NOT IN ('READY', 'ACTIVE')), 0) AS units
+  FROM p
+ WHERE first_kickoff < ((%(at)s::timestamptz AT TIME ZONE %(tz)s)::date + 1)::timestamp AT TIME ZONE %(tz)s
+ GROUP BY kind
 """
 
 MARKET_SQL = """
@@ -190,6 +214,21 @@ def _expect_tally(out: list[Mismatch], name: str, page: Any, row: dict[str, Any]
             out.append(Mismatch(f"{name}.{key}", getattr(page, key), expected))
 
 
+def _listed(conn: psycopg.Connection[Any], *, tz: str, at: datetime) -> tuple[list[Any], int | None]:
+    """Every published pick through the list's own pages (the cursor followed to the end) and the total it announced."""
+    items: list[Any] = []
+    cursor: str | None = None
+    total: int | None = None
+    for _ in range(10_000):
+        page = transparency_picks.published_picks(conn, tz=tz, limit=7, cursor=cursor, at=at)
+        items.extend(page.data)
+        total = page.meta.total if total is None else total
+        cursor = page.meta.next_cursor
+        if cursor is None:
+            break
+    return items, total
+
+
 def check(conn: psycopg.Connection[Any], *, tz: str, at: datetime) -> list[Mismatch]:
     """The page at ``at`` for a reader in ``tz`` against the independent queries: the differences, none when they agree."""
     page = service.build(conn, tz=tz, at=at)
@@ -197,6 +236,37 @@ def check(conn: psycopg.Connection[Any], *, tz: str, at: datetime) -> list[Misma
     for p in page.periods:
         (row,) = _rows(conn, PERIOD_SQL, {"period": p.period, "tz": tz, "at": at})
         _expect_tally(out, f"periods.{p.period}", p, row)
+
+    whole = next(p for p in page.periods if p.period == "all")
+    items, announced = _listed(conn, tz=tz, at=at)
+    if announced != whole.published or len(items) != whole.published:
+        out.append(Mismatch("picks.list.total", (announced, len(items)), whole.published))
+    keys = [(i.kickoff_at, i.published_at, i.market, i.selection, i.line, i.home, i.away) for i in items]
+    if len(set(keys)) != len(keys):
+        out.append(Mismatch("picks.list.repeated", len(keys) - len(set(keys)), 0))
+    if [i.kickoff_at for i in items] != sorted((i.kickoff_at for i in items), reverse=True):
+        out.append(Mismatch("picks.list.order", "not newest first", "newest first"))
+    by_result = {r: sum(1 for i in items if i.result == r) for r in
+                 ("PENDING", "WIN", "LOSS", "HALF_WIN", "HALF_LOSS", "PUSH", "VOID")}
+    expected_results = {"PENDING": whole.pending, "WIN": whole.won, "LOSS": whole.lost, "HALF_WIN": whole.half_won,
+                "HALF_LOSS": whole.half_lost, "PUSH": whole.push, "VOID": whole.void}
+    if by_result != expected_results:
+        out.append(Mismatch("picks.list.results", by_result, expected_results))
+    listed_units = sum((i.units for i in items if i.units is not None and i.result not in ("PENDING", "VOID")),
+                       Decimal(0))
+    (whole_row,) = _rows(conn, PERIOD_SQL, {"period": "all", "tz": tz, "at": at})
+    if listed_units != Decimal(whole_row["units"]):
+        out.append(Mismatch("picks.list.units", listed_units, Decimal(whole_row["units"])))
+
+    parlay_rows = {str(r["kind"]): r for r in _rows(conn, PARLAY_SQL, {"tz": tz, "at": at})}
+    if [pl.kind for pl in page.parlays] != ["daily", "multiday"]:
+        out.append(Mismatch("parlays.kinds", [pl.kind for pl in page.parlays], ["daily", "multiday"]))
+    for pl in page.parlays:
+        row = parlay_rows.get(pl.kind) or {"published": 0, "pending": 0, "won": 0, "lost": 0, "void": 0, "partial": 0,
+                                           "settled": 0, "units": 0}
+        _expect_tally(out, f"parlays.{pl.kind}", pl, {**row, "half_won": 0, "half_lost": 0, "push": 0})
+        if pl.partial != row["partial"]:
+            out.append(Mismatch(f"parlays.{pl.kind}.partial", pl.partial, row["partial"]))
 
     markets = {str(r["market_key"]): r for r in _rows(conn, MARKET_SQL, {"tz": tz, "at": at})}
     big = {k: r for k, r in markets.items() if int(r["settled"]) >= service.MIN_SAMPLE}
@@ -301,7 +371,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"MISMATCH {m.figure}: page {m.page!r} vs independent {m.independent!r}")
     all_ = next(p for p in page.periods if p.period == "all")
     print(f"transparency: {'OK' if not found else f'{len(found)} mismatch(es)'} at {at.isoformat(timespec='seconds')} "
-          f"({args.tz}): published {all_.published}, settled {all_.settled}, days without picks "
+          f"({args.tz}): published {all_.published}, settled {all_.settled}, parlays "
+          f"{[(p.kind, p.published) for p in page.parlays]}, days without picks "
           f"{page.days.without}/{page.days.days}, line value n={page.line_value.n}, "
           f"forecasts {[(f.market, f.state, f.matches) for f in page.forecasts]}, "
           f"evaluation {page.evaluation.passed_pairs}/{page.evaluation.pairs}")

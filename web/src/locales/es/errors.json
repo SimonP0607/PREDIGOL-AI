@@ -118,7 +118,20 @@
     "wrong_password": "La contraseña actual no es correcta.",
     "wrong_stage": "Ese paso ya no corresponde. Recarga la página.",
     "invalid_link": "Este enlace no es válido.",
-    "not_offered": "El resumen semanal no está disponible ahora."
+    "not_offered": "El resumen semanal no está disponible ahora.",
+    "coupon_invalid": "Ese código no es válido.",
+    "coupon_expired": "Ese código ya venció.",
+    "coupon_exhausted": "Ese código ya no tiene cupos.",
+    "coupon_already_yours": "Ya tienes ese cupón.",
+    "invalid_coupon_code": "Un código tiene de 3 a 32 letras, números, guiones o guion bajo.",
+    "coupon_exists": "Ya hay un cupón con ese código.",
+    "coupon_not_found": "Ese cupón no existe.",
+    "coupon_disabled": "Ese cupón ya está apagado.",
+    "invalid_percent": "Un porcentaje de 1 a 100.",
+    "invalid_note": "Una nota de 3 a 120 caracteres.",
+    "invalid_valid_until": "Un último día en el futuro.",
+    "invalid_max_redemptions": "Entre 1 y 100.000 cupos.",
+    "no_discount": "Esta cuenta no tiene descuento que aplicar."
   },
   "problem": {
     "password_too_short": "Mínimo 15 caracteres, o 12 si usas la verificación en dos pasos.",

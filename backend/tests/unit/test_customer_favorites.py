@@ -1,4 +1,4 @@
-"""A reader's favourites, the welcome and the hints (plan UX, A13) - the rules that need no database.
+"""A reader's favourites, the welcome and the hints (plan UX, A13 and 3.1) - the rules that need no database.
 
 Limits refuse rather than trim, a search ignores accents and case, a hint the plan does not have is refused, the switches read
 as the owner writes them, and on Home a match says why it is the reader's: a followed team first (the nearer reason), then a
@@ -9,11 +9,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any, cast, get_args
 
 import psycopg
 import pytest
 
+from fbi.api.contracts.personal import MarketKey
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
 from fbi.api.contracts.today import TodayMatch
 from fbi.api.services import today
@@ -73,6 +74,50 @@ def test_nothing_is_asked_of_the_database_for_an_empty_choice() -> None:
     rows = Rows()
     assert favorites.validate(cast("psycopg.Connection[Any]", rows), [], []) == favorites.Chosen((), ())
     assert rows.queries == []
+
+
+def test_the_limits_of_players_and_markets_refuse_rather_than_trim() -> None:
+    with pytest.raises(CustomerError) as players:
+        favorites.validate_extras(conn(), list(range(1, favorites.MAX_PLAYERS + 2)), [])
+    assert (players.value.status, players.value.code) == (422, "too_many_players")
+    six = ["1X2", "OU", "BTTS", "AH", "DC", "XX"]
+    with pytest.raises(CustomerError) as markets:
+        favorites.validate_extras(conn(), [], six)
+    assert (markets.value.status, markets.value.code) == (422, "too_many_markets")
+    twenty = list(range(1, favorites.MAX_PLAYERS + 1))
+    kept = favorites.validate_extras(conn([(i,) for i in twenty]), [*twenty, 3], ["OU", "OU"])
+    assert kept == favorites.Extras(players=tuple(twenty), markets=("OU",)), "a repeat counts once"
+
+
+def test_only_the_markets_predigol_reads_and_players_of_the_line_ups_can_be_followed() -> None:
+    with pytest.raises(CustomerError) as market:
+        favorites.validate_extras(conn(), [], ["1X2", "CS"])
+    assert market.value.code == "unknown_market" and "CS" in str(market.value)
+    with pytest.raises(CustomerError) as player:
+        favorites.validate_extras(conn([(5,)]), [5, 6], [])
+    assert player.value.code == "unknown_player" and "6" in str(player.value)
+    ok = favorites.validate_extras(conn([(6,), (5,)]), [6, 5], ["DC", "1X2"])
+    assert ok == favorites.Extras(players=(6, 5), markets=("DC", "1X2")), "kept in the reader's own order"
+
+
+def test_a_player_already_followed_is_not_asked_for_again() -> None:
+    rows = Rows([(7,)])
+    got = favorites.validate_extras(cast("psycopg.Connection[Any]", rows), [4, 7], [],
+                                    already=favorites.Extras(players=(4,)))
+    assert got.players == (4, 7) and len(rows.queries) == 1, "only the new one goes to the database"
+    only_old = Rows()
+    assert favorites.validate_extras(cast("psycopg.Connection[Any]", only_old), [4], [],
+                                     already=favorites.Extras(players=(4,))).players == (4,)
+    assert only_old.queries == [], "a favourite that aged out of the window never blocks a save"
+    nothing = Rows()
+    assert favorites.validate_extras(cast("psycopg.Connection[Any]", nothing), [], []) == favorites.Extras()
+    assert nothing.queries == []
+
+
+def test_the_markets_a_reader_may_follow_are_the_products_markets() -> None:
+    assert set(favorites.FOLLOWABLE_MARKETS) == set(get_args(MarketKey)), "one list: the API's MarketKey"
+    assert len(favorites.FOLLOWABLE_MARKETS) <= favorites.MAX_MARKETS, "every market can be followed"
+    assert favorites.PLAYER_SEARCH_MIN > 2, "a player's name is searched from three letters"
 
 
 def test_a_search_ignores_accents_and_case() -> None:

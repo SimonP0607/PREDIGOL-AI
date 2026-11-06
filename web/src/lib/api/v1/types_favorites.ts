@@ -1,18 +1,34 @@
 /**
- * A reader's favourite leagues and teams, the welcome and the hints (plan UX, A13), as the API returns them. Mirrors
- * fbi.api.contracts.favorites. The favourites order and filter what a reader is shown; they never change a pick, a
- * probability, a state or a price.
+ * A reader's favourite leagues, teams, players and markets, the welcome and the hints (plan UX, A13 and 3.1), as the API
+ * returns them. Mirrors fbi.api.contracts.favorites. The favourites order and filter what a reader is shown; they never
+ * change a pick, a probability, a state or a price.
  */
 import type { CompetitionBadge, TeamBadge } from "./types_product";
+import type { MarketKey } from "./types_records";
+
+/** A player the reader follows or can follow: the id the line-ups carry (`player_id`). */
+export interface PlayerBadge {
+  id: number;
+  name: string;
+  position: string | null;
+  /** The team of the player's latest line-up in a league PrediGol follows, to tell two of one name apart. */
+  team: string | null;
+}
 
 export interface FavoritesView {
   /** The leagues the reader follows, in the order chosen. */
   leagues: CompetitionBadge[];
   teams: TeamBadge[];
+  /** The players the reader follows, in the order chosen. */
+  players: PlayerBadge[];
+  /** The markets the reader follows (the ones they read most), in the order chosen. */
+  markets: MarketKey[];
   /** True while the reader has chosen none: the ones suggested for Colombia, labelled as suggested. */
   suggested: boolean;
   max_leagues: number;
   max_teams: number;
+  max_players: number;
+  max_markets: number;
   /** FBI_PERSONALIZATION: false gives every reader the common view (Home without «Hoy en tus ligas»). */
   personalization: boolean;
 }
@@ -20,6 +36,10 @@ export interface FavoritesView {
 export interface FavoritesIn {
   leagues: number[];
   teams: number[];
+  /** Left out: the players the reader follows stay (a page from before 3.1 never clears them); [] clears them. */
+  players?: number[];
+  /** Left out: the markets the reader follows stay; [] clears them. */
+  markets?: MarketKey[];
 }
 
 export interface FavoriteOptions {
@@ -27,6 +47,8 @@ export interface FavoriteOptions {
   leagues: CompetitionBadge[];
   /** Teams of those leagues whose name matches the search (two letters or more, without accents or case), at most 20. */
   teams: TeamBadge[];
+  /** Players who appeared in a line-up of those leagues whose name matches the search (three letters or more), at most 20. */
+  players: PlayerBadge[];
 }
 
 export type WelcomeStep = "football" | "about";

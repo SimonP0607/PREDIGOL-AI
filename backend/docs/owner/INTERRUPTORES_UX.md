@@ -22,7 +22,7 @@ Los secretos (claves de Resend, de Sentry, VAPID, tokens) se escriben en el serv
 | `FBI_RESEND_API_KEY`, `FBI_RESEND_WEBHOOK_SECRET` | A5 | Mensajero (clave), API (webhook) | La clave de envío y el secreto de los rebotes | P2 |
 | `FBI_EMAIL_FROM`, `FBI_EMAIL_REPLY_TO` | A5 | Mensajero | Remitente en el subdominio de envío y dirección de respuesta | P2, P3 |
 | `FBI_SELF_SERVICE` | A7 | API y mensajero | Invitaciones, recuperar contraseña y desbloqueo por enlace | Cuando el correo ya pasó su prueba real |
-| `FBI_PRODUCT_EVENTS` | A6 | API y mensajero | Registrar el uso (`consent` solo con quien lo permite, `on` a todos) | La casilla de analítica y la decisión del abogado |
+| `FBI_PRODUCT_EVENTS` | A6 | API y mensajero | Registrar el uso (`consent` solo con quien lo permite, `on` a todos) | La casilla de analítica ya existe (UX-008); queda la decisión del abogado (P5) para `on` |
 | `FBI_MEMBERSHIP_ENFORCE` | A8 | API | Que una membresía vencida limite el acceso | Precio y términos listos (P6) y cada cuenta con su periodo |
 | `FBI_SUPPORT_WHATSAPP` | A8, A14 | API | El botón de renovar, el contacto de Ayuda y los correos de membresía | P7 (el número, solo dígitos con el prefijo del país) |
 | `FBI_AI_USER_MONTHLY_BUDGET_USD`, `FBI_USER_NARRATIVE` | A11 | Worker y API | La narrativa escrita con IA (`shadow` y luego `on`) | P8 (presupuesto) y la revisión de 50 narrativas |
@@ -51,6 +51,8 @@ Los secretos (claves de Resend, de Sentry, VAPID, tokens) se escriben en el serv
 | `FBI_TRIAL_DAYS` | 20 | Prueba de una cuenta nueva, entre 7 y 20 |
 | `FBI_MEMBERSHIP_PRICE_COP` | 150000 | Precio mensual en pesos colombianos que ve el lector; `0` o `off` esconde esa moneda |
 | `FBI_MEMBERSHIP_PRICE_USD` | 50 | Precio mensual en dólares que ve el lector; `0` o `off` esconde esa moneda |
+| `FBI_LOYALTY_PERCENT` | 20 | Descuento por fidelidad que propone la consola en cada pago de quien ya pagó los meses indicados; `0` o `off` lo apaga |
+| `FBI_LOYALTY_AFTER_MONTHS` | 2 | Meses pagados (de 1 a 24) desde los que aplica el descuento por fidelidad |
 | `FBI_MEMBERSHIP_CURRENCY` | COP | Moneda que propone la consola al registrar un pago |
 | `FBI_USER_NARRATIVE_MINUTES` | 10 | Cada cuánto el worker busca narrativas por escribir |
 | `FBI_PRODUCT_MIN_SUBJECTS` | 20 | Lectores activos mínimos para mostrar cifras globales |

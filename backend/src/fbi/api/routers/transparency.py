@@ -6,6 +6,9 @@
   the owner has reviewed it (``FBI_TRANSPARENCY``, P9); until then it answers ``not_available``.
   ``preview=shadow`` (SUPER_ADMIN only) shows it whatever the switch says - the owner's review.
 
+* ``GET /transparency/picks`` (product) - the published picks one by one, newest kick-off first, a page at a time with its
+  price, probability and result (``fbi.api.services.transparency_picks``). The same gate and the same preview.
+
 No route here computes a probability, prices a selection or can change a pick.
 """
 
@@ -16,12 +19,12 @@ from typing import Annotated, Any, Literal
 import psycopg
 from fastapi import APIRouter, Depends, Query
 
-from fbi.api.contracts.transparency import Transparency
+from fbi.api.contracts.transparency import PublishedPick, Transparency
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok, unavailable
 from fbi.api.errors import ApiError
 from fbi.api.security import App
-from fbi.api.services import transparency
+from fbi.api.services import records, transparency, transparency_picks
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
 
@@ -47,3 +50,21 @@ def get_transparency(conn: Db, principal: App, preview: Preview = None) -> Envel
     if not _preview(preview, principal) and not transparency.shown():
         return unavailable(None, "PrediGol's track record is not published yet: the owner reviews it first.")
     return ok(transparency.transparency(conn, tz=principal.timezone))
+
+
+@router.get("/transparency/picks", response_model=Envelope[list[PublishedPick]])
+def get_published_picks(
+    conn: Db, principal: App, preview: Preview = None,
+    limit: Annotated[int, Query(ge=1, le=transparency_picks.MAX_LIMIT)] = transparency_picks.DEFAULT_LIMIT,
+    cursor: Annotated[str | None, Query(max_length=200, description=(
+        "The `meta.next_cursor` of the previous page; omitted for the first page."))] = None,
+) -> Envelope[list[PublishedPick]]:
+    """THE PUBLISHED PICKS one by one: what PrediGol chose, at the price and the probability it was frozen with, and how it
+    ended - newest kick-off first, a page at a time (`meta.total` counts all of them, `meta.next_cursor` leads on). Only the
+    qualified set: never an evaluation item."""
+    if not _preview(preview, principal) and not transparency.shown():
+        return unavailable([], "PrediGol's track record is not published yet: the owner reviews it first.")
+    try:
+        return transparency_picks.published_picks(conn, tz=principal.timezone, limit=limit, cursor=cursor)
+    except records.CursorError as exc:
+        raise ApiError(422, "invalid_cursor", str(exc)) from exc

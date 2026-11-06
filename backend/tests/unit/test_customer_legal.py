@@ -81,7 +81,7 @@ def test_every_purpose_has_its_box_in_both_languages_and_the_database_takes_it()
     assert (marketing.document, marketing.required, marketing.withdrawable) == ("privacy", False, True)
     assert "marketing_email" not in legal.REQUIRED
     with pytest.raises(legal.LegalTextError):
-        legal.statement("analytics", "es")  # reserved by the database, offered by no phase yet
+        legal.statement("nonsense", "es")  # only the purposes of the register have a box
 
 
 def test_the_texts_are_plain_text_with_every_placeholder_filled() -> None:
@@ -143,12 +143,27 @@ def test_the_membership_section_states_the_decided_facts_and_leaves_the_lawyers_
 
 def test_draft3_is_registered_as_a_draft_and_only_the_terms_ask_to_accept_again() -> None:
     terms, privacy, gaming = (legal.current(n) for n in ("terms", "privacy", "responsible_gaming"))
-    assert terms.version == privacy.version == "2026-11-05-draft3"
+    assert terms.version == "2026-11-05-draft3" and privacy.version == "2026-11-05-draft4"
     assert terms.draft and privacy.draft and terms.material and not privacy.material
     assert gaming.version == "2026-10-25-draft1", "the responsible-gaming page did not change"
     assert legal.valid_versions("terms") == frozenset({"2026-11-05-draft3"})
     assert legal.valid_versions("privacy") == frozenset(
-        {"2026-10-25-draft1", "2026-10-27-draft2", "2026-11-05-draft3"}), "what was accepted on the policy still holds"
+        {"2026-10-25-draft1", "2026-10-27-draft2", "2026-11-05-draft3", "2026-11-05-draft4"}
+    ), "what was accepted on the policy still holds: nothing on it asked anyone again"
+
+
+def test_the_usage_statistics_are_an_optional_box_of_their_own_never_part_of_the_general_authorisation() -> None:
+    """Plan de cierre UX, 1.2: unticked, withdrawable, never asked for by the gate, and the policy's general
+    authorisation no longer says «statistics»."""
+    purpose = legal.BY_KIND["analytics"]
+    assert (purpose.document, purpose.required, purpose.withdrawable) == ("privacy", False, True)
+    assert "analytics" not in legal.REQUIRED
+    assert legal.due({}) == ["terms", "privacy", "age_18", "risk_notice"], "the gate never waits for it"
+    for locale in legal.LOCALES:
+        _, sentence = legal.statement("analytics", locale)
+        assert ("seudónimo" if locale == "es" else "pseudonymous") in sentence
+        _, general = legal.statement("privacy", locale)
+        assert ("estadística" if locale == "es" else "statistic") not in general.lower()
 
 
 def test_until_the_lawyer_says_so_the_texts_are_drafts_and_the_gate_stays_off(

@@ -807,7 +807,12 @@
       "other": "Otro"
     },
     "inviteTrial": "Días de prueba",
-    "inviteTrialDefault": "Lo predeterminado (FBI_TRIAL_DAYS)"
+    "inviteTrialDefault": "Lo predeterminado (FBI_TRIAL_DAYS)",
+    "discountOffer": "Descuento de este lector: {percent}% por {source}. Con él la mensualidad queda en {prices}.",
+    "applyDiscount": "Registrar este pago con el descuento de {percent}% ({source})",
+    "suggested": "Sugerido para este pago: {amount} {currency}",
+    "useSuggested": "Usar este importe",
+    "discountCarried": "{percent}% de descuento ({source})"
   },
   "customers": {
     "views": {
@@ -886,7 +891,8 @@
       "privacy": "Política de privacidad",
       "age_18": "Mayoría de edad",
       "risk_notice": "Aviso de riesgo",
-      "marketing_email": "Resumen semanal por correo"
+      "marketing_email": "Resumen semanal por correo",
+      "analytics": "Estadísticas de uso"
     },
     "tickets": "Tickets",
     "noTickets": "Sin tickets.",
@@ -947,5 +953,32 @@
         "account_activated": "cuenta activada"
       }
     }
+  },
+  "coupons": {
+    "title": "Cupones",
+    "description": "Un cupón descuenta un porcentaje de un solo pago del lector que lo guarda; no se suma al descuento por fidelidad: se aplica el mayor. Los creas cuando quieras y puedes apagarlos: apagar un cupón también se lo quita a quien lo guardó sin usarlo.",
+    "code": "Código",
+    "percent": "Descuento (%)",
+    "note": "Nota (solo para ti)",
+    "validUntil": "Se puede guardar hasta",
+    "maxRedemptions": "Cupos (opcional)",
+    "create": "Crear cupón",
+    "created": "Cupón {code} creado.",
+    "empty": "Todavía no hay cupones.",
+    "holders": "Lo guardan",
+    "used": "Usado en",
+    "noLimit": "Sin límite",
+    "noDate": "Sin fecha",
+    "state": {
+      "active": "Activo",
+      "disabled": "Apagado",
+      "expired": "Venció",
+      "full": "Sin cupos"
+    },
+    "disable": "Apagar",
+    "confirmDisable": "¿Apagar {code}? No se puede volver a encender.",
+    "yes": "Sí, apagar",
+    "no": "No",
+    "percentValue": "{percent}%"
   }
 }

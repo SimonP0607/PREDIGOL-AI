@@ -14,8 +14,8 @@ import { live } from "@/lib/api/v1/queries";
 import type { Suggestion } from "@/lib/api/v1/types_personal";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { t } from "@/lib/i18n";
-import { track } from "@/lib/track";
-import { bodyOf, changes, choiceOf, withSuggestion } from "./model";
+import { trackChanges } from "./analytics";
+import { beforeOf, bodyOf, changes, choiceOf, withSuggestion } from "./model";
 
 export function SuggestionCard() {
   const auth = useAuth();
@@ -35,11 +35,9 @@ export function SuggestionCard() {
     setBusy(true);
     setFailed(false);
     try {
-      const before = view.suggested ? null : choiceOf(view);
       const saved = await v1.saveFavorites(bodyOf(withSuggestion(view, suggestion)));
-      const { added, removed } = changes(before, choiceOf(saved));
-      for (const c of added) track("favorite_added", { kind: c.kind, id: c.id });
-      for (const c of removed) track("favorite_removed", { kind: c.kind, id: c.id });
+      const { added, removed } = changes(beforeOf(view), choiceOf(saved));
+      trackChanges({ added, removed });
       qc.setQueryData(live.favorites.queryKey, saved);
       void qc.invalidateQueries({ queryKey: ["v1", "today"] });
       void qc.invalidateQueries({ queryKey: ["me", "personal"] });
