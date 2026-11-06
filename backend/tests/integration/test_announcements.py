@@ -43,24 +43,31 @@ def wipe(dsn: str) -> None:
         conn.execute("DELETE FROM customer.messages_outbox WHERE template = 'critical_notice'")
 
 
+def forget_everything(dsn: str) -> None:
+    """Leave the shared database as other modules expect it: no communiqué, no queued message, no reader preference,
+    no account (each of those tables points at the accounts, so they go first)."""
+    wipe(dsn)
+    with psycopg.connect(dsn) as conn:
+        conn.execute("SET LOCAL fbi.customer_maintenance = 'on'")
+        conn.execute("DELETE FROM customer.messages_outbox")
+        conn.execute("DELETE FROM customer.preferences")
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.execute("DELETE FROM auth.sessions")
+        forget_memberships(conn)
+        conn.execute("DELETE FROM auth.users")
+
+
 @pytest.fixture(scope="module")
 def database(migrated_database: str) -> Iterator[str]:
     mp = pytest.MonkeyPatch()
     mp.setenv("FBI_DATABASE_URL", migrated_database.replace("postgresql://", "postgresql+psycopg://"))
     mp.setenv("FBI_AUTH_MFA_ROLES", "")
     reset_cache()
-    with psycopg.connect(migrated_database, autocommit=True) as conn:
-        conn.execute("DELETE FROM auth.sessions")
-        forget_memberships(conn)
-    with psycopg.connect(migrated_database) as conn:
-        conn.execute("SET LOCAL fbi.customer_maintenance = 'on'")
-        conn.execute("DELETE FROM customer.messages_outbox")
-    with psycopg.connect(migrated_database, autocommit=True) as conn:
-        conn.execute("DELETE FROM auth.users")
+    forget_everything(migrated_database)
     for email, role in ((OWNER, "SUPER_ADMIN"), *[(r, "USER") for r in READERS]):
         service.create_user_unattended(email=email, display_name=email.split("@")[0], role=role, password=PASSWORD)
     yield migrated_database
-    wipe(migrated_database)
+    forget_everything(migrated_database)
     mp.undo()
     reset_cache()
 
