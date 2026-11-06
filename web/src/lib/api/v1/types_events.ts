@@ -12,6 +12,16 @@ export interface UsageRow {
   subjects_30d: number;
 }
 
+export interface BreakdownRow {
+  /** The screen's group, the market, or the id of the league or the team. */
+  key: string;
+  /** The league's or the team's name; null for a screen group or a market. */
+  label: string | null;
+  events_30d: number;
+  /** Never fewer than the overview's min_subjects: a line with fewer readers behind it is not listed. */
+  subjects_30d: number;
+}
+
 export interface FunnelStep {
   step: "activated" | "onboarding_started" | "onboarding_completed" | "first_value";
   subjects: number;
@@ -53,6 +63,14 @@ export interface ProductOverview {
   errors_per_active: number | null;
   /** Only from 100 readers active in 30 days. */
   dau_mau: number | null;
+  /** Screens viewed in 30 days, by group (never an address or a search). */
+  screens: BreakdownRow[];
+  /** The market of the picks saved and of the legs added to a parlay, in 30 days. */
+  markets: BreakdownRow[];
+  /** Leagues of the matches opened in 30 days: worked out from the match, collected apart from nothing. */
+  leagues: BreakdownRow[];
+  /** Teams of the matches opened in 30 days: worked out from the match. */
+  teams: BreakdownRow[];
   /** The customers' lifecycle (B11). */
   lifecycle: LifecycleMetrics | null;
 }

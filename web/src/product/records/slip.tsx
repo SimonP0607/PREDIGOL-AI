@@ -109,7 +109,10 @@ export function SlipProvider({ children }: { children: ReactNode }) {
         setUndo(back);
       }
       if (change.effect === "added" && !quiet)
-        track("slip_leg_added", { legs: change.legs.length });
+        track("slip_leg_added", {
+          legs: change.legs.length,
+          ...(action.type === "toggle" ? { market: action.leg.market_key } : {}),
+        });
       if (quiet || shown.current) return;
       if (change.effect === "added") toast.success(t("records.toast.added"));
       else if (change.effect === "replaced") toast(t("records.toast.replaced"));
