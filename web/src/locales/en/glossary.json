@@ -185,6 +185,56 @@
       "name": "Line value",
       "short": "What your odds were worth against the fair closing price: the odds times the bookmakers' consensus probability without margin at the last capture before kick-off, minus one.",
       "long": "Positive: you took better odds than the close without margin. It is worked out once the match has started, with your own odds when you gave them. It says whether the price was good, not whether the pick won: it has its sample too."
+    },
+    "market1x2": {
+      "name": "Full-time result (1X2)",
+      "short": "The simplest market: home win (1), draw (X) or away win (2), by the 90-minute score.",
+      "long": "It has three options and only one comes true. The draw is one more option, not a refund: if you pick the home side and they draw, the selection is lost."
+    },
+    "overUnder": {
+      "name": "Over/Under goals",
+      "short": "Whether the match will have more or fewer goals than a line, for example 2.5.",
+      "long": "With “over 2.5” matches with three goals or more win; with “under 2.5”, the ones with two or fewer. With a whole line, like 2, a match that ends with 2 goals returns the unit."
+    },
+    "btts": {
+      "name": "Both teams to score",
+      "short": "Whether both teams score at least one goal (“Yes”) or one of them is left without (“No”).",
+      "long": "The 90-minute score counts. If one of the teams does not score, “No” wins."
+    },
+    "asianHandicap": {
+      "name": "Asian handicap",
+      "short": "Gives one team a head start or a deficit of goals before kick-off, to level the match.",
+      "long": "With −0.5, the team has to win the match; with +0.5, a draw or a win is enough. With a whole line the unit is refunded if the result lands exactly on it, and with a quarter line it is split in two halves (half won or half lost)."
+    },
+    "doubleChance": {
+      "name": "Double chance",
+      "short": "Covers two of the three results of the 1X2: home or draw (1X), home or away (12), or draw or away (X2).",
+      "long": "It pays less than picking a single result, because it wins in more cases. It only loses when the result it does not cover happens."
+    },
+    "recommended": {
+      "name": "Recommended",
+      "short": "The state of a pick PrediGol recommends: it has value at the best price now and passes every rule.",
+      "long": "It is the only pick state a reader sees: picks that are not recommended are not shown and the app says how many were left out. A pick being “Recommended” does not guarantee it wins."
+    },
+    "pending": {
+      "name": "Pending",
+      "short": "The match has not ended yet and the pick has no result.",
+      "long": "When the match ends and there is an official score, the pick settles. If there is no official result within 72 hours of the start, it is void."
+    },
+    "inPlay": {
+      "name": "In play",
+      "short": "The match has started and has not ended yet.",
+      "long": "The pick keeps the odds and the time it was taken at: it is not recalculated with today's odds."
+    },
+    "won": {
+      "name": "Won",
+      "short": "The selection came true: it wins the odds minus 1 for each unit.",
+      "long": "At odds of 2.10 and one unit, the profit is 1.10 units. A parlay is won only if all its selections win (refunded or void ones count as odds of 1)."
+    },
+    "lost": {
+      "name": "Lost",
+      "short": "The selection did not come true: the whole unit is lost.",
+      "long": "In a parlay, a single lost selection loses it all. A loss counts in the return the same as a win."
     }
   }
 }

@@ -161,6 +161,7 @@ describe("the tour and the reasons", () => {
       "/matches/42",
       "/picks",
     ]);
+    expect(stepPath("parlay", today)).toBe("/parlays");
     expect(stepPath("myPicks", null)).toBe("/my-picks");
     expect(stepPath("match", null)).toBe("/matches");
   });
