@@ -55,6 +55,7 @@ from fbi.ai.team_claims import team_claims
 from fbi.ai.team_claims import words as team_words
 from fbi.core.decision_versions import DECISION_CORE
 from fbi.core.version import code_version
+from fbi.intel import day_priority
 from fbi.intel import score as scoring
 from fbi.intel import stake as staking
 from fbi.intel.calibration import CalibrationState, calibration_state
@@ -774,9 +775,14 @@ def decide(conn: psycopg.Connection[Any], *, at: datetime, horizon: timedelta = 
     return report, out
 
 
-# ── the picks of the day (daily-set-v6) and parlays, from approved decisions only ───────────────────────────────
+# ── the picks of the day (daily-set-v7) and parlays, from approved decisions only ───────────────────────────────
 
+RULE_DAY = "daily-set-v7"
+"""daily-set-v7 (BE-003, 5 Nov 2026) is daily-set-v6 with the owner's competitions first among the eligible picks
+(``fbi.intel.day_priority``, comp-priority-v1). The parlays are unchanged; they are written under the same rule."""
 RULE_V6 = "daily-set-v6"
+"""The rule before: a day partly chosen under it stays frozen, and daily-set-v7 only fills the slots it left."""
+DAY_RULES = (RULE_DAY, RULE_V6)
 MAX_PICKS = 5
 MAX_PER_COMPETITION = 2
 MAX_PARLAYS = 2
@@ -786,7 +792,7 @@ DAY_FRESH = timedelta(minutes=30)
 
 LATEST_DAY_SQL = """
 SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line) d.*, c.id AS competition_id,
-       f.home_team_id, f.away_team_id
+       c.provider_league_id, f.home_team_id, f.away_team_id
   FROM intel.decisions d
   JOIN core.fixtures f ON f.id = d.fixture_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
@@ -798,9 +804,17 @@ SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line) d.*, c.id A
 
 
 def select_day(conn: psycopg.Connection[Any], *, at: datetime, ready: bool) -> tuple[int, int]:
-    """Add to today's PICKS DEL DÍA (up to five, one per match, at most two per competition, best score first) the
-    approved selections whose newest decision is at most 30 minutes old, and up to two parlays of approved parlay
-    candidates from different competitions. Frozen when chosen; never padded. Returns (picks, parlays) added."""
+    """Add to today's PICKS DEL DÍA (up to five, one per match, at most two per competition) the approved selections
+    whose newest decision is at most 30 minutes old, and up to two parlays of approved parlay candidates from different
+    competitions. Frozen when chosen; never padded. Returns (picks, parlays) added.
+
+    ORDER (daily-set-v7): the eligible selections are sorted by the owner's priority group of their competition
+    (``day_priority.order_for_day``: 1 the Champions League and the top leagues, 2 the continental and intercontinental
+    club cups, 3 the national-team tournaments and World Cup qualifiers, 4 the rest), then by the best PrediGol Pick
+    Score; the caps above then run over that order unchanged. The priority only orders what is already eligible: no
+    probability, EV, edge, threshold, gate, state, score or stake changes, and nothing becomes eligible because of it.
+    Without priority competitions the order is daily-set-v6's (score first). The day's selections already frozen under
+    daily-set-v6 count against the caps, so the day of the change never holds more than five picks or two parlays."""
     if not ready:
         return 0, 0
     day = local_day(at)
@@ -808,8 +822,8 @@ def select_day(conn: psycopg.Connection[Any], *, at: datetime, ready: bool) -> t
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(LATEST_DAY_SQL, {"start": start, "end": end, "at": at, "version": VERSION})
         latest = [dict(r) for r in cur.fetchall()]
-        cur.execute("SELECT kind, rank, decision_ids FROM intel.day_selections WHERE day = %s AND rule_version = %s",
-                    (day, RULE_V6))
+        cur.execute("SELECT kind, rank, decision_ids FROM intel.day_selections WHERE day = %s "
+                    "AND rule_version = ANY(%s)", (day, list(DAY_RULES)))
         existing = [dict(r) for r in cur.fetchall()]
     taken_ids = [i for x in existing if x["kind"] == "pick" for i in x["decision_ids"]]
     with conn.cursor(row_factory=dict_row) as cur:
@@ -825,7 +839,8 @@ def select_day(conn: psycopg.Connection[Any], *, at: datetime, ready: bool) -> t
     n_picks = sum(1 for x in existing if x["kind"] == "pick")
     fresh = [d for d in latest if d["state"] in ("APROBADO", "CANDIDATO_PARLAY", "PICK_PREMIUM")
              and at - d["known_at"] <= DAY_FRESH]
-    fresh.sort(key=lambda d: -float(d["score"] or 0))
+    fresh = day_priority.order_for_day(fresh, league=lambda d: d["provider_league_id"],
+                                       score=lambda d: float(d["score"] or 0))
     added = 0
     for d in fresh:
         if n_picks + added >= MAX_PICKS:
@@ -843,10 +858,12 @@ def select_day(conn: psycopg.Connection[Any], *, at: datetime, ready: bool) -> t
             cur.execute("INSERT INTO intel.day_selections (day, rule_version, kind, rank, decision_ids, selected_at, odds, "
                         "p_est, ev, stake_units, correlation, detail) VALUES (%s,%s,'pick',%s,%s,%s,%s,%s,%s,%s,%s,%s) "
                         "ON CONFLICT DO NOTHING",
-                        (day, RULE_V6, n_picks + added + 1, [new_id], at, d["odds"], d["p_cal"], d["ev_cal"],
+                        (day, RULE_DAY, n_picks + added + 1, [new_id], at, d["odds"], d["p_cal"], d["ev_cal"],
                          _d(st.units, 2), Jsonb({}),
                          Jsonb({"score": None if d["score"] is None else float(d["score"]), "premium": premium,
-                                "source_decision": int(d["id"]), "competition_id": comp})))
+                                "source_decision": int(d["id"]), "competition_id": comp,
+                                "priority": day_priority.VERSION,
+                                "priority_group": day_priority.group_of(d["provider_league_id"])})))
         taken_fixtures.add(fid)
         comp_count[comp] += 1
         added += 1
@@ -912,7 +929,7 @@ def _select_parlays(conn: psycopg.Connection[Any], *, day: date, at: datetime, l
             cur.execute("INSERT INTO intel.day_selections (day, rule_version, kind, rank, decision_ids, selected_at, odds, "
                         "p_est, ev, stake_units, correlation, detail) VALUES (%s,%s,'parlay',%s,%s,%s,%s,%s,%s,%s,%s,%s) "
                         "ON CONFLICT DO NOTHING",
-                        (day, RULE_V6, have + added + 1, [int(a["id"]), int(b["id"])], at, _d(odds, 3), _d(joint),
+                        (day, RULE_DAY, have + added + 1, [int(a["id"]), int(b["id"])], at, _d(odds, 3), _d(joint),
                          _d(ev), _d(st.units, 2),
                          Jsonb({"method": "independent across competitions (one leg per competition, no shared team)",
                                 "pairs": []}),

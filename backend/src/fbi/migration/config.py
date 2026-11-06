@@ -126,14 +126,20 @@ def _req(d: dict[str, Any], key: str, where: str) -> Any:
 
 
 def expansion_batches(path: Path = EXPANSION_FILE) -> list[dict[str, Any]]:
-    """The decided batches of config/expansion.yaml: ``{batch, tier, leagues, ...}``, in batch order."""
+    """The decided batches of config/expansion.yaml: ``{batch, tier, leagues, ...}``, in batch order.
+
+    ``names`` and ``countries`` are what the candidate list says each league is (a league that is not a candidate
+    has its id as name and no country), which scripts.expand_leagues checks against the provider's own answer."""
     if not path.exists():
         return []
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     batches = sorted(raw.get("batches") or [], key=lambda b: int(b["batch"]))
-    names = {int(c["league_id"]): str(c.get("name") or c["league_id"]) for c in raw.get("candidates") or []}
+    cands = raw.get("candidates") or []
+    names = {int(c["league_id"]): str(c.get("name") or c["league_id"]) for c in cands}
+    countries = {int(c["league_id"]): str(c["country"]) for c in cands if c.get("country")}
     for b in batches:
         b["names"] = {int(lid): names.get(int(lid), str(lid)) for lid in b.get("leagues") or []}
+        b["countries"] = {int(lid): countries[int(lid)] for lid in b.get("leagues") or [] if int(lid) in countries}
     return batches
 
 

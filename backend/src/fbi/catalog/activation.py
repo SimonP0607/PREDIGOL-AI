@@ -95,6 +95,24 @@ def apply(conn: psycopg.Connection, toggles: list[CompetitionToggle], *, dry_run
     return ActivationDiff(enabled=enable, disabled=disable, unknown=unknown, unchanged=unchanged)
 
 
+MAX_DISABLE_WITHOUT_CONFIRMATION = 5
+"""How many tracked competitions one ``apply`` may switch off without ``--allow-mass-disable``.
+
+config/competitions.yaml still describes the Free-plan pilot (two leagues), while production follows ~130 tracked
+competitions set by the selection and the expansion batches: applying it as is would stop the fixtures and odds
+capture of all of them, and a capture window that closes unobserved is gone for good (BE-002)."""
+
+
+def mass_disable_refusal(diff: ActivationDiff, *, limit: int = MAX_DISABLE_WITHOUT_CONFIRMATION) -> str | None:
+    """Why this diff must not be written without an explicit confirmation, or None when it may be."""
+    if len(diff.disabled) <= limit:
+        return None
+    return (f"this would stop tracking {len(diff.disabled)} competitions (more than {limit}): "
+            f"{diff.disabled[:10]}{' ...' if len(diff.disabled) > 10 else ''}. "
+            "config/competitions.yaml is the Free-plan pilot file, not the list production follows; "
+            "track leagues with scripts.expand_leagues, or pass --allow-mass-disable if this is really meant")
+
+
 def active_league_ids(conn: psycopg.Connection) -> list[int]:
     """The ONLY way the rest of the system learns which leagues are active."""
     with conn.cursor(row_factory=tuple_row) as cur:
