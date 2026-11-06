@@ -87,7 +87,8 @@
       "membership": "Membership",
       "support": "Support",
       "privacy": "Your data",
-      "legal": "Legal texts"
+      "legal": "Legal texts",
+      "service": "Service notices"
     },
     "categoryHelp": {
       "account": "Invitation, activation and changes to your account.",
@@ -95,7 +96,8 @@
       "membership": "Reminders before it expires and payment confirmations.",
       "support": "Answers to your questions and reports.",
       "privacy": "The receipt and the answer of your requests about your data.",
-      "legal": "Changes to the terms or the privacy policy you must accept."
+      "legal": "Changes to the terms or the privacy policy you must accept.",
+      "service": "Scheduled maintenance, resolved incidents and important changes to PrediGol. An important change reaches you even if you switch this off."
     },
     "status": {
       "bounced": "Your e-mail bounces: we cannot deliver messages to you. Check that your account's address is right and write to us if it changed.",

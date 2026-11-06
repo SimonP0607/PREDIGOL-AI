@@ -3,9 +3,9 @@
  * leaving of the weekly summary (B8). Mirrors backend/src/fbi/api/contracts/messaging.py.
  */
 
-/** The account's e-mails: what the reader's choices speak of. */
+/** The account's e-mails: what the reader's choices speak of (plan UX, 4.1: «service» is the service's own notices). */
 export type MessageCategory =
-  "account" | "security" | "membership" | "support" | "privacy" | "legal";
+  "account" | "security" | "membership" | "support" | "service" | "privacy" | "legal";
 /** What the queue holds: the account's e-mails and commercial e-mail (plan UX, B8: the weekly summary, with consent). */
 export type OutboxCategory = MessageCategory | "marketing";
 export type EmailStatus = "ok" | "bounced" | "complained";
