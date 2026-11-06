@@ -126,6 +126,9 @@ BEGIN
     -- (the table's own trigger refuses it); deleted only when the account is anonymised (A7) and, once the owner switches the
     -- purge on, past its 24 months - both under the maintenance switch
     'customer.lifecycle_snapshots:INSERT, DELETE',
+    -- the owner's communiqués (fbi.customer.announcements, plan UX, 4.3): written and published from the console, hidden again
+    -- (never deleted: a trigger refuses it); what was done to each is a line of the record, append-only
+    'customer.announcements:INSERT, UPDATE', 'customer.announcement_log:INSERT',
     -- a user's own records (fbi.userdata)
     'picks.user_picks:INSERT, UPDATE, DELETE', 'picks.user_parlays:INSERT, UPDATE, DELETE',
     'picks.user_parlay_legs:INSERT, UPDATE, DELETE',

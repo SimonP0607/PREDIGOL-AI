@@ -41,6 +41,7 @@ Este documento nombra los secretos y dice cómo se reponen; **nunca lleva un val
 | `FBI_RESEND_API_KEY`, `FBI_RESEND_WEBHOOK_SECRET` | `app.env`, vacíos hasta que el dueño abre la cuenta de Resend (P2 y P3 del plan UX) | el messenger manda con la clave los correos a los lectores (la API solo mira que esté puesta); la API comprueba con el secreto la firma de los avisos de Resend | con la clave, correos en nombre del dominio de PrediGol y su cuota gastada; con el secreto, falsos avisos de rebote o de spam que dejan a lectores sin correo | «Resend (correo)» |
 | `FBI_AI_KEY_ANTHROPIC` (en la Console, `worker-prod`), `FBI_AI_KEY_ANTHROPIC_LAB` (`worker-lab`), `EXA_API_KEY` | `app.env` | el worker (la IA; la clave del LAB, solo las sondas y pruebas del LAB); la API solo mira que estén puestas | gasto a tu nombre en esos proveedores, acotado por el tope de cada workspace en la Console (190 y 20 USD) | «Claves de Anthropic y de Exa» |
 | `FBI_TELEGRAM_BOT_TOKEN`, `FBI_TELEGRAM_CHAT_ID` | `app.env`, vacíos a propósito | el notificador del producto, si se rellenan | nada, mientras estén vacíos | «Bot de avisos» |
+| `FBI_TELEGRAM_WEBHOOK_SECRET` | `app.env`, vacío hasta que el dueño abre el canal de comunicados (plan UX, 4.3) | la API: va en la dirección del webhook del bot y solo deja pasar a quien la conozca | mandar a la API falsos mensajes del bot, que solo provocan el saludo de bienvenida; no lee nada ni publica nada | «Bot de avisos» |
 | `POSTGRES_ADMIN_PASSWORD` | `predigol.env` | solo el operador, dentro del contenedor de la base | control total de la base (no tiene puerto público) | «Contraseñas de la base» |
 | `POSTGRES_PASSWORD` (el dueño de la base, `fbi`) | `predigol.env` | migraciones, copias y mantenimiento | escribir y cambiar el esquema | «Contraseñas de la base» |
 | `POSTGRES_WORKER_PASSWORD`, `POSTGRES_API_PASSWORD` | `predigol.env` | el worker y la API | lo que puede hacer ese rol (`db/grants.sql`) | «Contraseñas de la base» |
@@ -174,6 +175,10 @@ chat), los scripts prueban con el de la aplicación; si tampoco, no mandan nada 
 No hay que reiniciar nada: los scripts y los temporizadores leen `predigol.env` en cada ejecución, y los avisos que se quedaron esperando
 salen en la siguiente pasada. Con el token se pueden mandar mensajes como el bot y leer lo que alguien le escriba, pero no los mensajes que
 el bot ya envió.
+
+El secreto del webhook del canal de comunicados (`FBI_TELEGRAM_WEBHOOK_SECRET`, en `app.env`) se cambia aparte: pon otro de 24 caracteres
+aleatorios o más en `app.env`, reinicia la API y registra de nuevo el webhook del bot con la dirección que lleva el secreto nuevo (la guía
+de los comunicados lo explica); el viejo deja de valer en cuanto la API arranca. Nunca lo pegues en el chat.
 
 **URLs de Healthchecks.io.** Son siete (`HC_PING_HEALTH`, `HC_PING_BACKUP`, `HC_PING_RESTORE_TEST`, `HC_PING_RAW_SYNC`, `HC_PING_PITR`,
 `HC_PING_PITR_TEST` y `HC_PING_MAINT`), una por tarea, con la forma `https://hc-ping.com/<identificador>` (sin barra final ni `/start` ni

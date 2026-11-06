@@ -172,6 +172,15 @@ import type {
   TicketIn,
 } from "./types_support";
 import type {
+  ActiveAnnouncements,
+  Announcement,
+  AnnouncementIn,
+  AnnouncementList,
+  AnnouncementLogLine,
+  AnnouncementPreview,
+  AnnouncementPublished,
+} from "./types_announcements";
+import type {
   AuditActionCount,
   ConsentRecord,
   Customer,
@@ -1075,6 +1084,23 @@ export const v1 = {
   messageQueue: (status?: MessageStatus) =>
     getJson<OutboxSummary>("/admin/messages", status ? { status } : {}),
   messagePreview: (id: number) => getJson<OutboxPreview>(`/admin/messages/${id}/preview`),
+  // ── the owner's communiqués (closing plan 4.3) ────────────────────────────
+  /** Public: what the owner has published and is in force now (the banners and Novedades' entries). */
+  activeAnnouncements: () => getJson<ActiveAnnouncements>("/announcements/active"),
+  announcements: () => getJson<AnnouncementList>("/admin/announcements"),
+  createAnnouncement: (body: AnnouncementIn) =>
+    postJson<Announcement>("/admin/announcements", body),
+  /** 409 not_a_draft: only a draft is edited. */
+  editAnnouncement: (id: number, body: AnnouncementIn) =>
+    putJson<Announcement>(`/admin/announcements/${id}`, body),
+  announcementLog: (id: number) => getJson<AnnouncementLogLine[]>(`/admin/announcements/${id}/log`),
+  /** Step one: what each destination will say, and the code step two needs (ten minutes). */
+  previewAnnouncement: (id: number) =>
+    postJson<AnnouncementPreview>(`/admin/announcements/${id}/preview`, {}),
+  /** Step two: the code and the typed word PUBLICAR. 409 confirmation_expired, 403 bad_code, 422 bad_phrase, 429 daily_cap. */
+  publishAnnouncement: (id: number, body: { code: string; phrase: string }) =>
+    postJson<AnnouncementPublished>(`/admin/announcements/${id}/publish`, body),
+  retractAnnouncement: (id: number) => postJson<void>(`/admin/announcements/${id}/retract`, {}),
   /** Product analytics (plan UX, A6): activation, habit, usage, devices - only with enough readers. */
   productOverview: () => getJson<ProductOverview>("/admin/product"),
   /** The survey with its n, «¿Te sirvió?» per kind and the newest comments (never who wrote them) - plan UX, B6. */

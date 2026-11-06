@@ -52,7 +52,11 @@ def wipe(dsn: str) -> None:
                           "customer.preferences", "customer.ticket_messages", "customer.support_tickets",
                           "customer.consents", "customer.feedback"):
                 conn.execute(f"DELETE FROM {table}")
-        conn.execute("DELETE FROM audit.notifications WHERE kind = 'lifecycle_daily'")
+        # The messenger drafts the owner's morning notices from the real clock: from 07:00 in Bogotá a run here also
+        # leaves the day's membership and waiting-ticket notices, kinds an older revision's CHECK refuses (the
+        # downgrade of test_inplay_history_drop failed on them, 6 Nov 2026 at 13:00 UTC).
+        conn.execute("DELETE FROM audit.notifications WHERE kind IN ('lifecycle_daily', 'membership_due', 'ticket_new', "
+                     "'outbox_failing', 'privacy_due')")
         conn.execute("DELETE FROM auth.sessions")
         conn.execute("DELETE FROM auth.audit_events")
         forget_memberships(conn)
@@ -98,7 +102,11 @@ def world(database: str, monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
                           "customer.support_tickets", "customer.feedback", "customer.membership_events",
                           "customer.membership_periods", "customer.payments", "customer.lifecycle_snapshots"):
                 conn.execute(f"DELETE FROM {table}")
-        conn.execute("DELETE FROM audit.notifications WHERE kind = 'lifecycle_daily'")
+        # The messenger drafts the owner's morning notices from the real clock: from 07:00 in Bogotá a run here also
+        # leaves the day's membership and waiting-ticket notices, kinds an older revision's CHECK refuses (the
+        # downgrade of test_inplay_history_drop failed on them, 6 Nov 2026 at 13:00 UTC).
+        conn.execute("DELETE FROM audit.notifications WHERE kind IN ('lifecycle_daily', 'membership_due', 'ticket_new', "
+                     "'outbox_failing', 'privacy_due')")
         conn.execute("UPDATE auth.users SET status = 'active', created_at = %s WHERE role = 'USER'",
                      (AT - timedelta(days=40),))
         ids = {e: uid(database, e) for e in (*READERS, GONE)}

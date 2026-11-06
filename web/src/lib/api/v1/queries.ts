@@ -68,6 +68,14 @@ export const live = {
    * or team to follow. Kept five minutes: their habits move slowly; a choice of theirs reads it again.
    */
   personal: { queryKey: ["me", "personal"], queryFn: v1.myPersonal, staleTime: 5 * MINUTE },
+  /** Public: the owner's banners and Novedades' entries in force now (closing plan 4.3). A failure shows nothing. */
+  announcements: {
+    queryKey: ["announcements", "active"],
+    queryFn: v1.activeAnnouncements,
+    staleTime: MINUTE,
+    refetchInterval: 5 * MINUTE,
+    retry: false,
+  },
   /** Public: the way to reach PrediGol without signing in. */
   supportContact: {
     queryKey: ["support", "contact"],
