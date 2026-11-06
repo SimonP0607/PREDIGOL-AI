@@ -38,6 +38,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-003 | Fase 0 del plan de cierre de la UX: el mapa de interruptores de la capa de usuario con su prueba (plantilla del servidor, mapa del dueño y código dicen lo mismo), el inventario de secretos al día (DSN de la web y contraseña del recorrido sintético), la novedad de «Explícame» y la limpieza de dos componentes y dos dependencias sin uso | en curso | este PR | plan de cierre UX, fase 0 |
 | UX-004 | Membresía con el precio y la prueba que decidió el dueño (5-nov-2026): 150.000 COP o 50 USD al mes (a elección del lector, configurables con `FBI_MEMBERSHIP_PRICE_COP` y `FBI_MEMBERSHIP_PRICE_USD`; `0` esconde una moneda), prueba de 20 días por defecto (de 7 a 20, también al invitar) y el bloque «El plan» en Perfil → Membresía. Sin migración; no toca la inteligencia ni la puerta `FBI_MEMBERSHIP_ENFORCE` | en curso | este PR | — |
 | UX-006 | «Cómo funciona PrediGol» (plan de cierre UX, 1.6): la página `/help/how-it-works` con 11 tarjetas (Inicio, Partidos, Picks, Parlays, Cuotas, Mis picks, Favoritos, Análisis de un partido, Probabilidades, Mercados y Estados de los picks), cada una con qué es, cómo se lee, un ejemplo y «Verlo en la app»; el glosario suma los cinco mercados y los estados de un pick; el recorrido pasa a 5 pasos (con los parlays) y su paso de picks dice lo que el lector ve de verdad; enlaces desde Ayuda, Perfil, la bienvenida y el último paso del recorrido. Solo web: no toca la inteligencia ni el backend | en curso | este PR | — |
+| UX-007 | Textos legales `2026-11-05-draft3` (plan de cierre UX, 1.1): términos y política dicen igual qué es PrediGol (plataforma de análisis deportivo y detección de valor; no garantiza resultados ni beneficios; no es una casa de apuestas ni recibe dinero de apuestas; solo +18), la membresía deja de ser un hueco (prueba sin tarjeta, precio visible en el perfil, pago a mano, cupones y descuentos con sus condiciones) y la política nombra los datos de membresía y la cuota que el lector anota; el aviso del pie, la descripción de la app, la bienvenida y el bloque «El plan» dicen la misma frase. Siguen en borrador pendiente del abogado (P5): la puerta de consentimientos sigue apagada. No toca la inteligencia | en curso | este PR | — |
 
 ## BE — backend
 
@@ -53,4 +54,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-009 · UX-007 · BE-004 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-009 · UX-011 · BE-004 · FE-001 · OPS-001 · DOC-001

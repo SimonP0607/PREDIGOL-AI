@@ -1,25 +1,25 @@
 {
   "title": "Términos del servicio",
-  "summary": "PrediGol es un servicio de información y análisis de fútbol para mayores de 18 años. No es una casa de apuestas, no acepta apuestas, no maneja dinero y no garantiza ningún resultado.",
+  "summary": "PrediGol es una plataforma de análisis deportivo y detección de valor para mayores de 18 años. No garantiza resultados ni beneficios, no es una casa de apuestas y no recibe dinero de apuestas.",
   "sections": [
     {
       "id": "que-es",
       "title": "1. Qué es PrediGol",
       "blocks": [
         {
-          "p": "PrediGol es un servicio de información: muestra datos de partidos, probabilidades calculadas por sus modelos, cuotas publicadas por casas de apuestas y análisis sobre todo ello. El responsable del servicio es {{controller.name}}, con domicilio en {{controller.address}}."
+          "p": "PrediGol es una plataforma de análisis deportivo y detección de valor: muestra datos de partidos, probabilidades calculadas por sus modelos, cuotas publicadas por casas de apuestas y análisis sobre todo ello, y señala cuándo la probabilidad de PrediGol es mayor que la que paga el mercado. El responsable del servicio es {{controller.name}}, con domicilio en {{controller.address}}."
         },
         {
-          "p": "PrediGol no es una casa de apuestas ni un operador de juegos de suerte y azar: no recibe apuestas, no paga premios, no maneja dinero de los usuarios y no actúa como intermediario de ningún operador. No incluye enlaces para apostar ni promueve a ningún operador."
+          "p": "PrediGol no es una casa de apuestas ni un operador de juegos de suerte y azar: no recibe apuestas, no recibe dinero de apuestas, no paga premios y no actúa como intermediario de ningún operador. No incluye enlaces para apostar ni promueve a ningún operador. El único dinero que PrediGol recibe es el de su propia membresía (sección 5)."
         }
       ]
     },
     {
       "id": "sin-garantia",
-      "title": "2. Sin garantía de resultados",
+      "title": "2. Sin garantía de resultados ni beneficios",
       "blocks": [
         {
-          "p": "Una probabilidad dice qué es probable, no qué va a pasar. Ningún pronóstico, pick, parlay o cifra de PrediGol garantiza un resultado ni una ganancia, y los resultados pasados no aseguran los futuros."
+          "p": "Una probabilidad dice qué es probable, no qué va a pasar. Ningún pronóstico, pick, parlay o cifra de PrediGol garantiza un resultado, una ganancia ni ningún otro beneficio, y los resultados pasados no aseguran los futuros."
         },
         {
           "p": "Lo que decidas hacer con la información es decisión tuya y bajo tu responsabilidad. PrediGol no responde por pérdidas derivadas de apuestas que hagas con terceros."
@@ -52,10 +52,16 @@
       "title": "5. Membresía",
       "blocks": [
         {
-          "p": "El acceso a PrediGol puede requerir una membresía de pago. Mientras no exista una pasarela de pagos, la membresía se gestiona de forma manual: el alta, el vencimiento, la renovación, la suspensión y los reembolsos se registran por PrediGol y se te informan en la aplicación y por los canales de contacto."
+          "p": "El acceso a PrediGol puede requerir una membresía de pago, mensual. Empiezas con una prueba gratuita, con acceso completo y sin tarjeta, cuya duración ves en tu perfil."
         },
         {
-          "p": "[Pendiente de la decisión del dueño (P6) y de la revisión del abogado (P5): precio y moneda, medios de pago, duración, renovación, derecho de retracto de 5 días hábiles y sus excepciones, reembolsos y canal de reclamos.]"
+          "p": "El precio vigente, en pesos colombianos o en dólares, a tu elección, se muestra en tu perfil (Membresía) antes de que pagues."
+        },
+        {
+          "p": "Mientras no exista una pasarela de pagos, pagas por el medio que acordemos contigo y PrediGol registra el pago a mano: no hay cobro automático y PrediGol no guarda números de tarjeta ni de cuenta. El alta, el vencimiento, la renovación, la suspensión y los reembolsos se registran por PrediGol y se te informan en la aplicación y por los canales de contacto. PrediGol puede ofrecer cupones y descuentos, y te muestra sus condiciones antes de pagar."
+        },
+        {
+          "p": "[Pendiente de la revisión del abogado (P5): medios de pago, impuestos (IVA), renovación, derecho de retracto de 5 días hábiles y sus excepciones, reembolsos y canal de reclamos.]"
         }
       ]
     },
