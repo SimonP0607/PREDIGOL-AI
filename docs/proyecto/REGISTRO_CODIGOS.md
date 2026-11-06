@@ -17,6 +17,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | CI-007 | Despliegue continuo: cada fusión en `main` con el CI verde se despliega sola (interruptor `AUTO_DEPLOY`, entorno `production-auto`, comprobación de linaje) | en curso | #24 | — |
 | CI-008 | El kit de lanzamiento toma la cabeza de migraciones de la cadena (`down_revision`), no el número más alto: la verificación de `ux-001` marcó «NOT OK» por comparar con 0119 cuando la cabeza real era 0106 | en curso | este PR | — |
 | CI-009 | El CI vuelve a pasar con ruff 0.17.4: se junta un `if` anidado del revisor posterior en una sola condición (misma lógica, ahora con prueba) | en curso | este PR | — |
+| CI-010 | El despliegue automático (CI-007) no llegaba al servidor: GitHub no podía leer la llave SSH del entorno `production-auto` («error in libcrypto»). `ci_ssh_setup.sh` ahora endereza la llave (BOM, CRLF, un solo renglón, tabuladores, sangrías) y, si aun así no carga, se detiene ahí diciendo qué le pasa (cabecera, pie, renglones) sin imprimirla; con pruebas sobre una llave real. No toca la inteligencia ni el servidor | en curso | este PR | — |
 
 ## IA — capa de inteligencia artificial
 
@@ -50,4 +51,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-010 · SEG-001 · IA-009 · UX-011 · BE-002 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-009 · UX-011 · BE-002 · FE-001 · OPS-001 · DOC-001
