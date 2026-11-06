@@ -11,7 +11,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, CircleHelp, Loader2, MessageSquarePlus } from "lucide-react";
+import { ArrowLeft, CircleHelp, MessageSquarePlus } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
 import type {
   ExplainEntity,
@@ -245,7 +245,6 @@ function Answer({
       </h3>
       {q.isPending && q.fetchStatus !== "idle" ? (
         <div aria-busy="true" aria-label={t("explain.loading")} className="space-y-3">
-          <Loader2 aria-hidden className="h-4 w-4 animate-spin text-muted-foreground" />
           <SkeletonBlock className="h-16" />
           <SkeletonBlock className="h-24" />
         </div>

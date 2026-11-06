@@ -43,7 +43,14 @@ test("a reader's journey leaves its events in the background, and the owner sees
   await expect(page.locator("#match-panel-markets")).toBeVisible();
   await expect
     .poll(() => sent.map((e) => e.name), { timeout: 20_000 })
-    .toEqual(expect.arrayContaining(["session_started", "match_opened", "match_section_opened"]));
+    .toEqual(
+      expect.arrayContaining([
+        "session_started",
+        "screen_viewed",
+        "match_opened",
+        "match_section_opened",
+      ]),
+    );
 
   // 2. the page hides right after a section opens: its event leaves at once, not seconds later
   await page.locator("#match-tab-stats").click();
@@ -74,6 +81,11 @@ test("a reader's journey leaves its events in the background, and the owner sees
   const started = sent.find((e) => e.name === "session_started")?.props ?? {};
   expect(Object.keys(started).sort()).toEqual(["client", "device", "lang", "width"]);
   expect(started["device"]).toBe("desktop");
+  // closing plan 3.3: the screen is a group of a closed list - home, then a match - and never an address or an id
+  const screens = sent.filter((e) => e.name === "screen_viewed").map((e) => e.props);
+  expect(screens).toEqual(expect.arrayContaining([{ screen: "home" }, { screen: "match" }]));
+  expect(screens.every((p) => Object.keys(p).join() === "screen")).toBe(true);
+  expect(JSON.stringify(screens)).not.toMatch(/\/|\?|\d/);
   expect(JSON.stringify(sent)).not.toMatch(/@|password|email/i);
   await expect.poll(() => statuses.length).toBeGreaterThan(0);
   expect(statuses.every((s) => s === 200)).toBe(true);
@@ -85,9 +97,17 @@ test("a reader's journey leaves its events in the background, and the owner sees
     status: string;
     mode: string;
     usage: Array<{ name: string; events_7d: number }>;
+    screens: unknown[];
+    markets: unknown[];
+    leagues: unknown[];
+    teams: unknown[];
   }>(owner, "/api/v1/admin/product");
   expect(overview.body.mode, "the QA API must measure (FBI_PRODUCT_EVENTS=on)").toBe("on");
   expect(overview.body.status).toBe("ok");
+  // the breakdowns are there (a line only with enough readers behind it, so they may be empty on the QA data)
+  for (const list of [overview.body.screens, overview.body.markets, overview.body.leagues])
+    expect(Array.isArray(list)).toBe(true);
+  expect(Array.isArray(overview.body.teams)).toBe(true);
   const used = new Map(overview.body.usage.map((u) => [u.name, u.events_7d]));
   for (const name of ["session_started", "match_opened", "match_section_opened"])
     expect(used.get(name) ?? 0, name).toBeGreaterThanOrEqual(1);

@@ -41,5 +41,9 @@
     "after": "Instalada, se abre desde su icono, a pantalla completa y con tu misma cuenta. Se actualiza sola: cuando haya una versión nueva, PrediGol te lo dirá."
   },
   "unread": "sin leer",
-  "moreUnread": "hay novedades"
+  "moreUnread": "hay novedades",
+  "whatsapp": {
+    "label": "Escríbenos por WhatsApp",
+    "hint": "Una persona te responde; con el código de dónde estabas"
+  }
 }

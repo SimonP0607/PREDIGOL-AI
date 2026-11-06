@@ -18,7 +18,7 @@ import { live } from "@/lib/api/v1/queries";
 import type { AccountSummary } from "@/lib/api/v1/types_account";
 import { t } from "@/lib/i18n";
 import { HOW_PATH } from "@/product/help/howItWorks";
-import { whatsappLink } from "@/product/membership/membership";
+import { WhatsappLink } from "@/product/support/WhatsappLink";
 import { useReportProblem } from "@/product/support/report";
 import { messagesHint } from "./centre";
 
@@ -101,19 +101,18 @@ export function HelpPanel({ summary }: { summary: AccountSummary | undefined }) 
         </li>
         {whatsapp ? (
           <li>
-            <a
-              href={whatsappLink(whatsapp, t("support.help.contact.whatsappText"))}
-              target="_blank"
-              rel="noopener noreferrer"
+            <WhatsappLink
+              digits={whatsapp}
+              text={t("support.help.contact.whatsappText")}
               className={ROW}
-              data-testid="profile-whatsapp"
+              testId="profile-whatsapp"
             >
               <Line
                 icon={<MessageCircle className="h-5 w-5" />}
                 title={t("support.help.contact.whatsapp")}
                 hint={t("profile.centre.help.whatsappHint")}
               />
-            </a>
+            </WhatsappLink>
           </li>
         ) : null}
       </ul>

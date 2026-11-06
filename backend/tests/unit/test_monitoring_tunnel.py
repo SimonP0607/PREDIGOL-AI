@@ -60,6 +60,8 @@ def tunnel(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[TestClient, list[t
     monkeypatch.setattr(monitoring, "PER_CLIENT", SlidingWindow(per_window=1000, window_s=60.0))
     monkeypatch.setattr(monitoring, "PER_PROCESS", SlidingWindow(per_window=1000, window_s=3600.0))
     monkeypatch.setattr(monitoring, "PER_DAY", SlidingWindow(per_window=1000, window_s=86400.0))
+    monkeypatch.setattr(monitoring, "VITALS_PER_PROCESS", SlidingWindow(per_window=1000, window_s=3600.0))
+    monkeypatch.setattr(monitoring, "VITALS_PER_DAY", SlidingWindow(per_window=1000, window_s=86400.0))
     sent: list[tuple[str, bytes]] = []
 
     def record(dsn: str, body: bytes) -> int:
@@ -221,3 +223,70 @@ def test_the_forwarder_posts_to_the_projects_envelope_endpoint(monkeypatch: pyte
 
     monkeypatch.setattr(httpx, "Client", lambda **kw: real(transport=httpx.MockTransport(down), **kw))
     assert monitoring.forward(WEB_DSN, b"{}\n") == 0, "Sentry unreachable: the browser is not made to wait"
+
+
+def vitals_envelope(**tags: str) -> bytes:
+    """A load-time reading as the browser sends it (closing plan 5.3), with whatever else a careless SDK could add."""
+    event = {
+        "event_id": "e" * 32, "platform": "javascript", "release": "predigol-web@abc", "level": "info",
+        "message": "web-vitals",
+        "tags": {"kind": "web_vital", "route": "/matches/812", "rating": "good", "lcp": "1830", "cls": "0.012",
+                 "viewport": "390", "display": "app", "email": EMAIL, "note": NAME, **tags},
+        "user": {"id": "0123456789abcdef0123"},
+        "extra": {"email": EMAIL},
+        "request": {"url": f"https://predigolai.com/home?token={TOKEN}"},
+        "breadcrumbs": [{"category": "fetch", "data": {"url": "/api/v1/me"}}],
+    }
+    payload = json.dumps(event).encode()
+    header = json.dumps({"dsn": BROWSER_DSN, "event_id": "e" * 32}).encode()
+    return b"\n".join([header, json.dumps({"type": "event", "length": len(payload)}).encode(), payload]) + b"\n"
+
+
+def test_a_load_time_reading_goes_as_numbers_and_a_path_and_nothing_personal(
+        tunnel: tuple[TestClient, list[tuple[str, bytes]]]) -> None:
+    client, sent = tunnel
+    r = client.post("/api/v1/monitoring/envelope", content=vitals_envelope(), headers=SAME_SITE)
+    assert r.status_code == 200 and r.json()["events"] == 1
+    [(_, body)] = sent
+    _, items = monitoring.parse_envelope(body)
+    event = json.loads(items[0][1])
+    assert event["message"] == "web-vitals" and event["level"] == "info"
+    assert event["tags"] == {"kind": "web_vital", "route": "/matches/812", "rating": "good", "lcp": "1830",
+                             "cls": "0.012", "viewport": "390", "display": "app"}
+    for dropped in ("user", "extra", "request", "breadcrumbs"):
+        assert dropped not in event
+    for secret in (EMAIL, TOKEN, NAME, "0123456789abcdef0123"):
+        assert secret not in body.decode(), secret
+
+
+def test_a_reading_with_values_that_are_not_numbers_or_a_path_loses_them(
+        tunnel: tuple[TestClient, list[tuple[str, bytes]]]) -> None:
+    client, sent = tunnel
+    client.post("/api/v1/monitoring/envelope", content=vitals_envelope(
+        lcp=EMAIL, route="/home?email=" + EMAIL, rating="superb"), headers=SAME_SITE)
+    [(_, body)] = sent
+    event = json.loads(monitoring.parse_envelope(body)[1][0][1])
+    assert event["tags"] == {"kind": "web_vital", "cls": "0.012", "viewport": "390", "display": "app"}
+    assert EMAIL not in body.decode()
+
+
+def test_a_reading_without_a_number_is_dropped(tunnel: tuple[TestClient, list[tuple[str, bytes]]]) -> None:
+    client, sent = tunnel
+    r = client.post("/api/v1/monitoring/envelope", content=vitals_envelope(lcp="x", cls="y"), headers=SAME_SITE)
+    assert r.status_code == 200 and r.json()["events"] == 0 and sent == []
+
+
+def test_readings_have_their_own_share_and_never_touch_the_errors(
+        tunnel: tuple[TestClient, list[tuple[str, bytes]]], monkeypatch: pytest.MonkeyPatch) -> None:
+    client, sent = tunnel
+    monkeypatch.setattr(monitoring, "VITALS_PER_DAY", SlidingWindow(per_window=1, window_s=86400.0))
+    answers = [client.post("/api/v1/monitoring/envelope", content=vitals_envelope(), headers=SAME_SITE)
+               for _ in range(3)]
+    assert [a.status_code for a in answers] == [200, 200, 200], "past the share: dropped, never an error to retry"
+    assert [a.json()["events"] for a in answers] == [1, 0, 0] and len(sent) == 1
+    # the errors' own share is whole: with it spent, readings still obey theirs and errors still obey theirs
+    monkeypatch.setattr(monitoring, "PER_DAY", SlidingWindow(per_window=0, window_s=86400.0))
+    assert client.post("/api/v1/monitoring/envelope", content=envelope(), headers=SAME_SITE).status_code == 429
+    monkeypatch.setattr(monitoring, "VITALS_PER_DAY", SlidingWindow(per_window=5, window_s=86400.0))
+    monkeypatch.setattr(monitoring, "PER_DAY", SlidingWindow(per_window=1000, window_s=86400.0))
+    assert client.post("/api/v1/monitoring/envelope", content=envelope(), headers=SAME_SITE).status_code == 200

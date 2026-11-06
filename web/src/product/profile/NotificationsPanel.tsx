@@ -18,7 +18,7 @@ import { t } from "@/lib/i18n";
 import { track } from "@/lib/track";
 import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import { ErrorState, errorMessage } from "@/product/shared/States";
+import { ErrorState, errorMessage, SkeletonCards } from "@/product/shared/States";
 import { DigestSection } from "./DigestSection";
 import { PushSection } from "./PushSection";
 
@@ -170,7 +170,7 @@ export function NotificationsPanel() {
     }
   }
 
-  if (q.isPending) return <Loader2 aria-hidden className="h-4 w-4 animate-spin" />;
+  if (q.isPending) return <SkeletonCards count={3} />;
   if (q.isError) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
   return (
     <div className="space-y-4">

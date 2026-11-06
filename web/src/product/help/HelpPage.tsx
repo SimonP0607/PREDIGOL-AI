@@ -22,11 +22,11 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
-import type { SupportContact, SupportTicket } from "@/lib/api/v1/types_support";
+import type { ContactChannel, SupportContact, SupportTicket } from "@/lib/api/v1/types_support";
 import { t } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import { whatsappLink } from "@/product/membership/membership";
+import { WhatsappLink } from "@/product/support/WhatsappLink";
 import { Card, PageTitle } from "@/product/shared/States";
 import { usePush } from "@/product/push/usePush";
 import { useReportProblem } from "@/product/support/report";
@@ -308,11 +308,37 @@ function MoreCard({
   );
 }
 
+const DEFAULT_ORDER: readonly ContactChannel[] = ["tickets", "whatsapp", "email"];
+
 function Contact({ contact, enabled }: { contact: SupportContact | null; enabled: boolean }) {
   const report = useReportProblem();
   const canReport = enabled && report.available;
   const whatsapp = contact?.whatsapp ?? null;
   const email = contact?.email ?? null;
+  const hours = contact?.hours ?? null;
+  // The owner's order (FBI_SUPPORT_CHANNELS); an older answer without it keeps the old one: report, WhatsApp, e-mail.
+  const order = contact?.channels?.length ? contact.channels : DEFAULT_ORDER;
+  const channels: Record<ContactChannel, ReactNode> = {
+    tickets: canReport ? <ReportButton key="tickets" /> : null,
+    whatsapp: whatsapp ? (
+      <WhatsappLink
+        key="whatsapp"
+        digits={whatsapp}
+        text={t("support.help.contact.whatsappText")}
+        className={linkClass}
+        testId="help-whatsapp"
+      >
+        <MessageCircle aria-hidden className="h-4 w-4" />
+        {t("support.help.contact.whatsapp")}
+      </WhatsappLink>
+    ) : null,
+    email: email ? (
+      <a key="email" href={`mailto:${email}`} className={linkClass} data-testid="help-email">
+        <Mail aria-hidden className="h-4 w-4" />
+        {t("support.help.contact.email")}
+      </a>
+    ) : null,
+  };
   return (
     <Card className="p-4" id="contact">
       <section
@@ -333,27 +359,12 @@ function Contact({ contact, enabled }: { contact: SupportContact | null; enabled
         {canReport ? (
           <p className="text-caption text-muted-foreground">{t("support.help.contact.urgent")}</p>
         ) : null}
-        <div className="flex flex-wrap gap-2">
-          {canReport ? <ReportButton /> : null}
-          {whatsapp ? (
-            <a
-              href={whatsappLink(whatsapp, t("support.help.contact.whatsappText"))}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={linkClass}
-              data-testid="help-whatsapp"
-            >
-              <MessageCircle aria-hidden className="h-4 w-4" />
-              {t("support.help.contact.whatsapp")}
-            </a>
-          ) : null}
-          {email ? (
-            <a href={`mailto:${email}`} className={linkClass} data-testid="help-email">
-              <Mail aria-hidden className="h-4 w-4" />
-              {t("support.help.contact.email")}
-            </a>
-          ) : null}
-        </div>
+        <div className="flex flex-wrap gap-2">{order.map((channel) => channels[channel])}</div>
+        {hours ? (
+          <p className="text-caption text-muted-foreground" data-testid="help-hours">
+            {t("support.help.contact.hours", { hours })}
+          </p>
+        ) : null}
       </section>
     </Card>
   );

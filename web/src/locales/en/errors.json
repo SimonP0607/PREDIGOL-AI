@@ -151,5 +151,7 @@
     "hours_one": "{n} hour",
     "hours_other": "{n} hours",
     "hoursMinutes": "{h} h {m} min"
-  }
+  },
+  "stale": "There is a new version of PrediGol. Reload to carry on.",
+  "staleReload": "Reload the page"
 }

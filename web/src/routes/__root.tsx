@@ -15,6 +15,7 @@ import { RefreshCw, ShieldAlert, WifiOff } from "lucide-react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { reportError, startObservability } from "../lib/observability";
+import { startVitals } from "@/lib/perf/vitals";
 import { AuthProvider, useAuth } from "@/lib/auth/AuthProvider";
 import { I18nProvider, t, translate } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/catalogs";
@@ -33,13 +34,14 @@ import {
   registerServiceWorker,
   UPDATE_EVENT,
 } from "@/lib/pwa";
+import { isStaleModuleError, STALE_EVENT } from "@/lib/staleModule";
 import { SecurityStep } from "@/product/auth/SecurityStep";
 import { ConsentGate } from "@/product/legal/ConsentGate";
 import { isLegalPath } from "@/product/legal/links";
 import { isAccountPath } from "@/product/auth/accountPaths";
 import { isLimitedPath } from "@/product/membership/membership";
 import { LimitedAccess } from "@/product/membership/LimitedAccess";
-import { noteLocation, noteNoticeLanding, startSession, track } from "@/lib/track";
+import { noteLocation, noteNoticeLanding, screenOf, startSession, track } from "@/lib/track";
 import { eventCategory, withoutNoticeMark } from "@/lib/push";
 import { markTrouble } from "@/lib/feedback/session";
 import { TourProvider } from "@/product/tour/Tour";
@@ -68,6 +70,8 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
+  // after a deploy: the page holds the old version's file names, and only a reload mends it (closing plan 5.3)
+  const stale = isStaleModuleError(error);
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
     reportError(error, "root"); // to Sentry, when the server switched it on (plan UX, A2)
@@ -83,12 +87,16 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
+              if (stale) {
+                window.location.reload();
+                return;
+              }
               void router.invalidate();
               reset();
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            {t("common.retry")}
+            {stale ? t("errors.staleReload") : t("common.retry")}
           </button>
           <a
             href="/home"
@@ -183,6 +191,7 @@ function RootComponent() {
     captureInstallPrompt();
     void registerServiceWorker();
     void startObservability();
+    return startVitals(); // a small sample of visits: how fast it loaded (closing plan 5.3)
   }, []);
   if (!mounted) return <Splash />;
   return (
@@ -209,25 +218,35 @@ function RootComponent() {
  */
 function UpdateToast() {
   const [worker, setWorker] = useState<{ postMessage: (m: unknown) => void } | null>(null);
+  // a page that asks for a script the server no longer has, and a reload by itself did not mend it (closing plan 5.3)
+  const [stale, setStale] = useState(false);
   useEffect(() => {
     function onReady(event: Event) {
       setWorker((event as CustomEvent<{ postMessage: (m: unknown) => void }>).detail);
     }
+    const onStale = () => setStale(true);
     window.addEventListener(UPDATE_EVENT, onReady);
-    return () => window.removeEventListener(UPDATE_EVENT, onReady);
+    window.addEventListener(STALE_EVENT, onStale);
+    return () => {
+      window.removeEventListener(UPDATE_EVENT, onReady);
+      window.removeEventListener(STALE_EVENT, onStale);
+    };
   }, []);
-  if (!worker) return null;
+  if (!worker && !stale) return null;
   return (
     <div
       role="status"
       data-testid="update-toast"
       className="fixed inset-x-4 bottom-[calc(8.5rem+env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-md items-center justify-between gap-3 rounded-lg border border-primary/40 bg-card px-4 py-3 text-sm shadow-xl short:bottom-[calc(7rem+env(safe-area-inset-bottom))] lg:inset-x-auto lg:bottom-4 lg:left-4"
     >
-      <span>{t("common.updateReady")}</span>
+      <span>{stale ? t("errors.stale") : t("common.updateReady")}</span>
       <span className="flex shrink-0 gap-2">
         <button
           type="button"
-          onClick={() => setWorker(null)}
+          onClick={() => {
+            setWorker(null);
+            setStale(false);
+          }}
           data-testid="update-later"
           className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground pointer-coarse:min-h-11 pointer-coarse:px-3"
         >
@@ -235,7 +254,7 @@ function UpdateToast() {
         </button>
         <button
           type="button"
-          onClick={() => applyUpdate(worker)}
+          onClick={() => (stale || !worker ? window.location.reload() : applyUpdate(worker))}
           data-testid="update-now"
           className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground pointer-coarse:min-h-11"
         >
@@ -341,6 +360,10 @@ function Gate() {
   // Plan UX, A6: where the reader comes from (match_opened's origin) and the session's start, once per tab.
   useEffect(() => noteLocation(path), [path]);
   const measured = auth.status === "signed-in" && (auth.user?.consents_due ?? []).length === 0;
+  // Closing plan 3.3: the kind of screen (a group of a closed list: never the address, a search or an id), once per change.
+  useEffect(() => {
+    if (measured) track("screen_viewed", { screen: screenOf(path) });
+  }, [measured, path]);
   useEffect(() => {
     if (!measured) return;
     startSession(auth.locale);
