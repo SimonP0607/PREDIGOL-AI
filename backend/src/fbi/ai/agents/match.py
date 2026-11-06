@@ -1,4 +1,4 @@
-"""The Match Agent (``match-v1``; Plan Maestro IA, phase 3, section 9): what it is asked and what the server makes of what it answers.
+"""The Match Agent (``match-v2``; Plan Maestro IA, phase 3, section 9): what it is asked and what the server makes of what it answers.
 
 One agent, one contract (``aa-v1``, ``fbi.ai.contracts.assessment``), two tasks that share a base prompt (``fbi.ai.prompts.MATCH_RULES``):
 
@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import copy
 import hashlib
-import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
@@ -51,6 +50,7 @@ from fbi.ai.agents.common import (
     Named,
     Naming,
     assessment_label,
+    closed_problem,
     known_refs,
 )
 from fbi.ai.contracts import decode, parse, schema_of
@@ -71,7 +71,7 @@ from fbi.ai.packet import canonical
 from fbi.ai.providers.base import JsonRequest
 
 AGENT: Final = "match"
-VERSION: Final = "match-v1"
+VERSION: Final = "match-v2"
 SCHEMA_NAME: Final = "submit_assessment"
 """The name of the tool (or of the structured output) the answer is asked through."""
 LINED: Final = frozenset({"AH", "OU"})
@@ -280,23 +280,15 @@ class Reading:
 
 _FIELDS: Final = frozenset(name for model in (AssessmentOut, Signal, CandidateAssessment, ResearchAsk) for name in model.model_fields)
 """Every field name of ``aa-v1``: the only words of a location of a problem that are the contract's and not the model's."""
-_KIND: Final = re.compile(r"^[a-z][a-z0-9_]{0,40}$")
 
 
 def _closed(problem: str) -> str:
-    """A problem of ``contracts.parse`` as a code of this module's. ``parse`` says where (the fields of the contract and the position in a list)
-    and what KIND of error, never the value - but where an answer has a field that is not in the contract it names it, and that name is the
-    model's to choose. Every step of a location that is not a field of ``aa-v1`` or a position is cut."""
-    where, sep, kind = problem.rpartition(":")
-    if not sep:
-        return f"schema:{problem}" if _KIND.fullmatch(problem) else "schema:invalid"
-    steps: list[str] = []
-    for step in where.split("."):
-        if step in _FIELDS or (step.isascii() and step.isdigit() and len(step) <= 3):
-            steps.append(step)
-        else:
-            break
-    return f"schema:{'.'.join(steps) or 'answer'}:{kind if _KIND.fullmatch(kind) else 'invalid'}"
+    """A problem of ``contracts.parse`` as a code of this module's (``common.closed_problem`` with the fields of ``aa-v1``). ``parse`` says where
+    (the fields of the contract and the position in a list) and what KIND of error, never the value - but where an answer has a field that is not
+    in the contract it names it, and that name is the model's to choose. Every step of a location that is not a field of ``aa-v1`` or a position
+    is cut; a key of the model's own is named only when it is one of the few harmless words of ``common.NAMED_EXTRA_KEYS``
+    (``schema:answer.reasoning:extra_forbidden``: IA-009)."""
+    return closed_problem(problem, _FIELDS)
 
 
 ORDER_LIKE: Final = "instruction_like"

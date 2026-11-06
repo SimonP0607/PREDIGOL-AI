@@ -149,7 +149,7 @@ def test_the_agent_assesses_the_corners_and_the_cards_and_the_arms_review_them(d
     assert (report.ran, report.invalid, report.failed_open, report.not_run) == (1, 0, 0, 0) and report.calls == 6 == len(pv.requests)
 
     [t] = agent_tasks(db, w.fixture, "stats")
-    assert (t["agent_version"], t["task_kind"], t["model"], t["prompt_version"], t["schema_version"]) == ("stats-v1", "evaluation", HAIKU, "stats-assess-v1", "aa-v1")
+    assert (t["agent_version"], t["task_kind"], t["model"], t["prompt_version"], t["schema_version"]) == ("stats-v2", "evaluation", HAIKU, "stats-assess-v2", "aa-v1")
     assert t["state"] == "done" and t["run_status"] == "ok" and t["workspace"] == "lab" and t["run_kind"] == "shadow" and t["input_version"] == mcp_package.VERSION
     assert t["candidates"] == ["c4", "c5"] and t["route"]["packet_id"] == w.packet and t["effort"] == "medium"
     package = mcp_package.derive(db, w.packet, pass_kind="pre", model_code=model_code_version())
@@ -174,8 +174,8 @@ def test_the_agent_assesses_the_corners_and_the_cards_and_the_arms_review_them(d
         counts_row = r["market_key"] in ("CORNERS_OU", "CARDS_OU")
         has = "stats_evaluation" in r["output"].get("assessment", {})
         assert has == (counts_row and r["engine"] in WITH_ASSESSMENTS), (r["engine"], r["market_key"])
-        assert ("+stats-v1" in r["engine_version"]) == (r["engine"] in WITH_ASSESSMENTS), r["engine_version"]
-        assert r["mode"] == "shadow" and r["status"] == "ok" and r["output"]["prompts"]["stats_assess"] == "stats-assess-v1"
+        assert ("+stats-v2" in r["engine_version"]) == (r["engine"] in WITH_ASSESSMENTS), r["engine_version"]
+        assert r["mode"] == "shadow" and r["status"] == "ok" and r["output"]["prompts"]["stats_assess"] == "stats-assess-v2"
     production = {(r["market_key"], r["selection"], r["line"]): r for r in rows(db, "SELECT * FROM ai.pick_reviews WHERE engine = 'rules' AND fixture_id = %s", w.fixture)}
     for r in shadow:
         base = production[(r["market_key"], r["selection"], r["line"])]
@@ -191,7 +191,7 @@ def test_the_agent_assesses_the_corners_and_the_cards_and_the_arms_review_them(d
     state = shadow_state(db, w.fixture)
     assert [s["name"] for s in state["slices"]] == ["match", "stats"] and [s["hash"] for s in state["slices"]] == [slices["match"].hash, slices["stats"].hash]
     status = state["model_status"]["stats"]
-    assert status["version"] == "stats-v1" and status["asked"] == ["c4", "c5"] and status["naming"] == "cand-names-v2" and status["note"] is None
+    assert status["version"] == "stats-v2" and status["asked"] == ["c4", "c5"] and status["naming"] == "cand-names-v2" and status["note"] is None
     assert set(status["contra"]["coverage"]) >= {"CORNERS", "CARDS", "OU"} and status["contra"]["coverage"]["CARDS"]["C05"] == "input_missing"
     assert status["contra"]["coverage"]["CORNERS"]["C05"] == "not_applicable"
     assert {(c["market"], c["left_out"]) for c in state["candidates"] if c.get("left_out")} == {("CORNERS_OU_1H", "period_not_settleable")}

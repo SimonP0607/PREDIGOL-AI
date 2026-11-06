@@ -9,9 +9,32 @@ abstain - it cannot raise a probability or create a pick.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Sequence
+from typing import Any, Final, get_args
 
 from fbi.ai import research
+from fbi.ai.contracts.assessment import (
+    CANDIDATES_MAX,
+    DRIVERS_MAX,
+    REFS_MAX,
+    RISKS_MAX,
+    SIGNALS_MAX,
+    AssessmentOut,
+    CandidateAssessment,
+    ResearchAsk,
+    Signal,
+)
+from fbi.ai.contracts.base import (
+    ASSESSMENT,
+    RISK_CODES,
+    SIGNAL_CODES,
+    Direction,
+    Level,
+    Quality,
+    ResearchTopic,
+    Side,
+    Stance,
+)
 
 REVIEW_VERSION = "review-v2"
 """v2 (8 Oct 2026): the same prompt asked with a set effort and room for thinking - on Claude 5.5 every v1 answer was
@@ -326,15 +349,21 @@ LEARNING_SCHEMA: dict[str, Any] = {
 
 # ── phase 3: the Match Agent (``fbi.ai.agents.match``) ──────────────────────────────────────────────────────────────
 
-MATCH_CONTEXT_VERSION = "match-context-v1"
+MATCH_CONTEXT_VERSION = "match-context-v2"
 """Plan Maestro IA, phase 3, section 9: the Match Agent reads the ``match`` slice of the package (``mcp-v1``) and writes an assessment in
 ``aa-v1`` - codes of closed lists, never a sentence, a number or a probability. In mode CONTEXT it writes the signals of the match and, when
 something is missing, one request for the server to look into a topic of the closed list (``fbi.ai.research``). It is born CHALLENGER and
-runs in shadow in the LAB workspace; it takes over from ``brief-v8`` only if the owner promotes it (phase 9)."""
-MATCH_ASSESS_VERSION = "match-assess-v1"
+runs in shadow in the LAB workspace; it takes over from ``brief-v8`` only if the owner promotes it (phase 9).
+v2 (IA-009, 6 Nov 2026, 66 shadow runs of match-v1 measured since 3 Nov, 28 invalid - 42 %): the same rules and the same task, and at the end
+an OUTPUT CHECKLIST (``output_checklist``) - the exact keys of the answer and of each object, the signal codes that are this agent's, and
+the caps of every list - written FROM the contract's own enums and limits, so that the prompt can never name a code or a key aa-v1 does not
+have. The answers were refused for a key aa-v1 does not have at the top level (most of them), a signal code out of the list (RATE or one of
+the model's own) and lists of more than 8 refs. The contract and the reader did not change: an answer that breaks aa-v1 is still invalid."""
+MATCH_ASSESS_VERSION = "match-assess-v2"
 """The same agent in mode EVALUATION: one stance (SUPPORT, NEUTRAL, CONCERN or REJECT_SIGNAL) for each candidate the server names (``c1``,
 ``c2``...), with the signals it rests on and the risks it sees. It describes; the server decides what is value and the Council decides the
-verdict. The base of the two prompts is the same text (the plan: «el mismo prompt base»); each adds its own task."""
+verdict. The base of the two prompts is the same text (the plan: «el mismo prompt base»); each adds its own task.
+v2 (IA-009): the same text with the OUTPUT CHECKLIST of its mode at the end, as ``match-context-v2``."""
 
 MATCH_RULES = """You are the Match Agent of PrediGol, a private football analytics platform. You read the package of ONE match and write an
 assessment of it in the contract aa-v1, and nothing else. An assessment is made of CODES from closed lists: it has no sentence, no number
@@ -387,6 +416,88 @@ Rules you never break:
   NOT_BOTH_SCORE, and NEUTRAL when it describes and does not push (a home striker out pushes AWAY or UNDER, never HOME). strength is LOW,
   MEDIUM or HIGH. A signal (code, direction) is written once, at most 12 signals, each with at least one reference that exists."""
 
+
+# -- the output checklist of aa-v1 (IA-009): written from the contract, never by hand ------------------------------------------------------
+
+SUBMIT_AA: Final = f"Submit the JSON of {ASSESSMENT} exactly once."
+"""The last line of every prompt that answers in aa-v1."""
+OUTPUT_KEYS: Final = tuple(AssessmentOut.model_fields)
+"""The keys of an answer of aa-v1, in the contract's order: contract, agent, mode, data_quality, signals, candidates, research."""
+SIGNAL_KEYS: Final = tuple(Signal.model_fields)
+CANDIDATE_KEYS: Final = tuple(CandidateAssessment.model_fields)
+ASK_KEYS: Final = tuple(ResearchAsk.model_fields)
+NEVER_KEYS: Final = ("reasoning", "notes", "summary", "analysis", "explanation", "contradictions", "stance")
+"""The keys a model was seen (or is likely) to add to an aa-v1 answer, named in the checklist as keys it never writes. ``contradictions`` is only
+named in the prompts whose second object has contradictions (the evaluations): the CONTEXT mode never sees the word."""
+DIRECTIONS: Final[tuple[str, ...]] = get_args(Direction)
+LEVELS: Final[tuple[str, ...]] = get_args(Level)
+QUALITIES: Final[tuple[str, ...]] = get_args(Quality)
+STANCES: Final[tuple[str, ...]] = get_args(Stance)
+TOPICS: Final[tuple[str, ...]] = get_args(ResearchTopic)
+SIDES: Final[tuple[str, ...]] = get_args(Side)
+
+MATCH_NOT_MINE: Final = ("RATE",)
+"""The signal codes of aa-v1 that are not the Match Agent's: RATE is the counts' (MATCH_RULES says so)."""
+MATCH_SIGNAL_CODES: Final = tuple(c for c in SIGNAL_CODES if c not in MATCH_NOT_MINE)
+STATS_SIGNAL_CODES: Final = tuple(c for c in SIGNAL_CODES if c not in ("STAKES", "H2H", "MARKET_MOVE"))
+"""The signal codes the Statistics Agent's rules describe (``STATS_ASSESS_SYSTEM``, «Signals»): every code of aa-v1 but what each side plays for, the
+head-to-head and the movement of the price, which are about the result and live in the Match Agent's slice."""
+STATS_DIRECTIONS: Final = tuple(d for d in DIRECTIONS if d in ("HOME", "AWAY", "OVER", "UNDER", "NEUTRAL"))
+"""The directions the Statistics Agent's rules describe: a total of corners or cards, a count of one side, or none."""
+
+
+def _one_of(values: Sequence[str]) -> str:
+    return ", ".join(values)
+
+
+def _quoted(values: Sequence[str]) -> str:
+    return ", ".join(f'"{v}"' for v in values)
+
+
+def output_checklist(*, agent: str, mode: str, signal_codes: Sequence[str], directions: Sequence[str], not_mine: Sequence[str] = (),
+                     research: bool = True) -> str:
+    """The checklist an aa-v1 prompt ends with: every key, code and cap comes from the contract (``fbi.ai.contracts.assessment``,
+    ``fbi.ai.contracts.base``), so the prompt cannot drift from what the server accepts. ``signal_codes`` and ``directions`` are the agent's own
+    (a part of the enums its rules describe); a CONTEXT checklist asks for no candidate, so it names no stance and no risk code."""
+    evaluation = mode == "EVALUATION"
+    never = [k for k in NEVER_KEYS if evaluation or k != "contradictions"]
+    inside = ["a signal", *(["a candidate"] if evaluation else []), *(["an ask"] if research else [])]
+    where = "at the top level, " + ", ".join(f"inside {i}" for i in inside[:-1]) + f" or inside {inside[-1]}"
+    lines = [
+        "OUTPUT CHECKLIST. Before you submit, check the answer against every line below; an answer that breaks one is thrown away whole.",
+        f"- The answer is ONE JSON object with EXACTLY these {len(OUTPUT_KEYS)} keys and no other: {_one_of(OUTPUT_KEYS)}. Never add a key of your "
+        f"own - not {', '.join(never[:-1])} or {never[-1]}, nor any other - {where}. Your thinking is never written in the answer.",
+        f'- contract is "{ASSESSMENT}", agent is "{agent}", mode is "{mode}". data_quality is one of: {_one_of(QUALITIES)}.',
+        f"- signals: at most {SIGNALS_MAX}. Each signal is an object with EXACTLY the keys {_one_of(SIGNAL_KEYS)}. code is one of: "
+        f"{_one_of(signal_codes)}." + (f" Never {_one_of(not_mine)}: it is not yours." if not_mine else "")
+        + " A code that is not in this list is not yours to write."
+        f" direction is one of: {_one_of(directions)}. strength is one of: {_one_of(LEVELS)}.",
+    ]
+    if evaluation:
+        lines.append(
+            f"- candidates: one object for each name you were asked about and for no other (at most {CANDIDATES_MAX}), each with EXACTLY the keys "
+            f"{_one_of(CANDIDATE_KEYS)}. stance is one of: {_one_of(STANCES)}. drivers: at most {DRIVERS_MAX} signal codes of the list above. "
+            f"risks: at most {RISKS_MAX}, each one of: {_one_of(RISK_CODES)}.")
+    else:
+        lines.append("- candidates is [].")
+    if research:
+        lines.append(f"- research: [] or ONE ask (at most 1), an object with EXACTLY the keys {_one_of(ASK_KEYS)}; topic is one of: {_one_of(TOPICS)}; "
+                     f"side is one of: {_one_of(SIDES)}.")
+    else:
+        lines.append("- research is [].")
+    lines.append(f"- refs: every list of refs - {', '.join(f'of {i}' for i in inside)} - has at most {REFS_MAX} references. "
+                 f"When more would apply, cite the block that holds them (P:shared.absences, not each item of it) or keep the {REFS_MAX} that "
+                 f"matter most: never one more.")
+    return "\n".join(lines)
+
+
+MATCH_CONTEXT_CHECKLIST: Final = output_checklist(agent="match", mode="CONTEXT", signal_codes=MATCH_SIGNAL_CODES, directions=DIRECTIONS,
+                                                  not_mine=MATCH_NOT_MINE)
+MATCH_ASSESS_CHECKLIST: Final = output_checklist(agent="match", mode="EVALUATION", signal_codes=MATCH_SIGNAL_CODES, directions=DIRECTIONS,
+                                                 not_mine=MATCH_NOT_MINE)
+STATS_ASSESS_CHECKLIST: Final = output_checklist(agent="stats", mode="EVALUATION", signal_codes=STATS_SIGNAL_CODES, directions=STATS_DIRECTIONS,
+                                                 research=False)
+
 MATCH_CONTEXT_SYSTEM = MATCH_RULES + """
 Your task, in mode CONTEXT: say what matters about this match, once, as signals. You are asked about no selection: mode is "CONTEXT" and
 candidates is [].
@@ -397,7 +508,7 @@ candidates is [].
   of the evidence).
 - research: [] or one ask, as the rules say. In this mode you are the one who notices what is missing: ask only for a gap that a search
   could fill, and most matches have none.
-Submit the JSON of aa-v1 exactly once."""
+""" + MATCH_CONTEXT_CHECKLIST + "\n" + SUBMIT_AA
 
 MATCH_ASSESS_SYSTEM = MATCH_RULES + """
 Your task, in mode EVALUATION: the second object lists under "candidates" the selections the server wants assessed, each by its NAME (c1,
@@ -433,7 +544,7 @@ other name. mode is "EVALUATION", contract is "aa-v1" and agent is "match".
   information: it may lead you to CONCERN or REJECT_SIGNAL when what it cites really supports it, it is never a reason to SUPPORT, and you
   do not copy it into the answer: you write signals, drivers and risks.
 - data_quality: GOOD, FAIR or POOR - how complete and trustworthy the package is. research: [] or one ask, as the rules say.
-Submit the JSON of aa-v1 exactly once."""
+""" + MATCH_ASSESS_CHECKLIST + "\n" + SUBMIT_AA
 
 
 # -- the Council (Plan Maestro IA, phase 3, section 11): ``cd-v1`` from the compact view of a match (``fbi.ai.agents.council``) -------------
@@ -531,11 +642,14 @@ on facts the server computed, and you judge the selections as the Council always
 
 # -- the Statistics Agent (Plan Maestro IA, phase 4, section 10): ``aa-v1`` about corners and cards from the ``stats`` slice -----------------
 
-STATS_ASSESS_VERSION = "stats-assess-v1"
+STATS_ASSESS_VERSION = "stats-assess-v2"
 """Phase 4 (the Statistics Agent, shadow): one stance (SUPPORT, NEUTRAL, CONCERN or REJECT_SIGNAL) for each selection of corners and cards the server
 names (``c4``, ``c5``...), from the ``stats`` slice of the package (``mcp-v1``): the forecasts of the families, the rates of each side, the referee
 and the light blocks both sides share. It describes; the server decides what is value, the contradictions are code's and the Council (in the shadow
-arms only) gives the verdict. It is born CHALLENGER and runs in shadow in the LAB workspace."""
+arms only) gives the verdict. It is born CHALLENGER and runs in shadow in the LAB workspace.
+v2 (IA-009, 6 Nov 2026, before it is switched on): it answers in the same aa-v1 as the Match Agent, whose v1 prompts had 42 % of their shadow answers
+refused (a key aa-v1 does not have, a signal code out of the list, more than 8 refs); the same text ends with the same OUTPUT CHECKLIST, written
+from the contract, with this agent's own signal codes and directions and research always []."""
 
 STATS_ASSESS_SYSTEM = """You are the Statistics Agent of PrediGol, a private football analytics platform. You read the statistics package of ONE match - the
 counts of corners and cards - and write an assessment of the selections the server names in the contract aa-v1, and nothing else. An assessment is
@@ -609,7 +723,8 @@ the server's own edge and ev. Assess EACH of them, exactly once and by that name
   a fact about the information: it may lead you to CONCERN or REJECT_SIGNAL when what it cites really supports it, it is never a reason to SUPPORT,
   and you do not copy it into the answer.
 - data_quality: GOOD, FAIR or POOR - how complete and trustworthy the package is (missing, shared.quality, n of the rates).
-mode is "EVALUATION", contract is "aa-v1", agent is "stats", and research is []. Submit the JSON of aa-v1 exactly once."""
+mode is "EVALUATION", contract is "aa-v1", agent is "stats", and research is [].
+""" + STATS_ASSESS_CHECKLIST + "\n" + SUBMIT_AA
 
 
 # ── phase 5: the Post-Match Reviewer and the Learning Analyst (``fbi.ai.agents.pmr``, ``fbi.ai.agents.analyst``) ─────────────────────────

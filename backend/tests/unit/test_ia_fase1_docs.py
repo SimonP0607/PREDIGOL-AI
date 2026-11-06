@@ -514,7 +514,8 @@ def test_the_agents_of_today_are_the_baseline_of_the_ledger() -> None:
     sec = section(7)
     bullet = paragraph(sec, "* **Lo que el código tiene hoy")
     pairs = re.findall(r"`(\w+)` \(`([\w-]+)`\)", bullet)
-    ledger = tuple(r for r in registry.REGISTRY.ledger if r.agent not in BUILT_AFTER_THE_GUIDE)
+    # the guide says the version each agent was BORN with: a later version (match-v2, IA-009) is said by the guide of its change
+    ledger = tuple(r for r in registry.REGISTRY.ledger if r.agent not in BUILT_AFTER_THE_GUIDE and registry.REGISTRY.history(r.agent)[0] is r)
     assert dict(pairs) == {r.agent: r.version for r in ledger}
     assert len(pairs) == len(ledger) == len(registry.REGISTRY.agents) - len(BUILT_AFTER_THE_GUIDE)
     assert set(BUILT_AFTER_THE_GUIDE) <= {a.agent for a in registry.REGISTRY.agents}
