@@ -36,7 +36,7 @@ jobs:
     outputs:
       ready: ${{ steps.gate.outputs.ready }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: gate.sh (Backend CI y Web CI verdes para estos árboles)
@@ -59,7 +59,7 @@ jobs:
     timeout-minutes: 240
     environment: production-auto
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Llave de despliegue y huella del servidor

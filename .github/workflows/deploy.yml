@@ -50,7 +50,7 @@ jobs:
       contents: read
       actions: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: gate.sh (Backend CI and Web CI green for these trees)
@@ -68,7 +68,7 @@ jobs:
     outputs:
       kit: ${{ steps.build.outputs.kit }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Deploy key and pinned host key
@@ -135,7 +135,7 @@ jobs:
     timeout-minutes: 180
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Deploy key and pinned host key
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
