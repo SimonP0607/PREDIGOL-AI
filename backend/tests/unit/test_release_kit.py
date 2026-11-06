@@ -134,22 +134,81 @@ def test_the_workflow_follows_the_server_door_and_never_a_shell() -> None:
     assert "scp " not in text and "rsync" not in text
 
 
+needs_keygen = pytest.mark.skipif(shutil.which("ssh-keygen") is None, reason="needs ssh-keygen")
+
+
+def _real_key(tmp_path: Path) -> tuple[str, str]:
+    """A fresh ed25519 key without passphrase: its private text and its public line."""
+    path = tmp_path / "k"
+    subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "test", "-f", str(path)], check=True)
+    public = subprocess.run(["ssh-keygen", "-y", "-f", str(path)], capture_output=True, text=True, check=True).stdout.strip()
+    return path.read_text(encoding="utf-8"), public
+
+
+def _setup(home: Path, key: str) -> subprocess.CompletedProcess[str]:
+    env = {"PATH": "/usr/bin:/bin", "SSH_HOME": str(home), "DEPLOY_SSH_KEY": key, "DEPLOY_HOST": "203.0.113.5",
+           "DEPLOY_KNOWN_HOSTS": "203.0.113.5 ssh-ed25519 AAAAHOSTKEY"}
+    return subprocess.run(["bash", str(SSH_SETUP)], env=env, capture_output=True, text=True, check=False)
+
+
+@needs_keygen
 def test_ci_ssh_setup_writes_a_pinned_restricted_client_and_prints_no_secret(tmp_path: Path) -> None:
-    env = {
-        "PATH": "/usr/bin:/bin",
-        "SSH_HOME": str(tmp_path),
-        "DEPLOY_SSH_KEY": "-----BEGIN KEY-----\nSECRETSECRET\n-----END KEY-----",
-        "DEPLOY_HOST": "203.0.113.5",
-        "DEPLOY_KNOWN_HOSTS": "203.0.113.5 ssh-ed25519 AAAAHOSTKEY",
-    }
-    out = subprocess.run(["bash", str(SSH_SETUP)], env=env, capture_output=True, text=True, check=False)
+    key, _ = _real_key(tmp_path)
+    secret_body = key.splitlines()[1]
+    out = _setup(tmp_path / "home", key)
     assert out.returncode == 0, out.stderr
-    assert "SECRETSECRET" not in out.stdout + out.stderr
+    assert secret_body not in out.stdout + out.stderr
+    tmp_path = tmp_path / "home"
     ssh = tmp_path / ".ssh"
     cfg = (ssh / "config").read_text(encoding="utf-8")
     assert "Host predigol-gh" in cfg and "StrictHostKeyChecking yes" in cfg and "IdentitiesOnly yes" in cfg and "BatchMode yes" in cfg
     assert oct((ssh / "predigol_gh_deploy").stat().st_mode & 0o777) == "0o600"
     assert (ssh / "known_hosts_predigol").read_text(encoding="utf-8").startswith("203.0.113.5 ssh-ed25519")
+
+
+def _mangled(key: str) -> dict[str, str]:
+    """The ways a private key is known to arrive from a Windows paste or from a one-line secret field."""
+    lines = key.strip().splitlines()
+    return {
+        "lf": key.strip(),
+        "crlf": key.strip().replace("\n", "\r\n"),
+        "utf8-bom": "\ufeff" + key.strip(),
+        "bom-and-crlf": "\ufeff" + key.strip().replace("\n", "\r\n"),
+        "one-line": " ".join(lines),
+        "tabs": "\t".join(lines),
+        "indented": "\n".join("  " + line for line in lines),
+        "trailing-blank-lines": key.strip() + "\n\n  \n",
+    }
+
+
+@needs_keygen
+@pytest.mark.parametrize("variant", list(_mangled("-----BEGIN X-----\nA\n-----END X-----")))
+def test_ci_ssh_setup_straightens_a_key_that_arrived_mangled(tmp_path: Path, variant: str) -> None:
+    """Every known mangling comes out as the exact file ssh-keygen wrote, so ssh can load it (CI-010: the first automatic deploys
+    stopped at "error in libcrypto")."""
+    key, public = _real_key(tmp_path)
+    home = tmp_path / "home"
+    assert _setup(home, _mangled(key)[variant]).returncode == 0
+    written = home / ".ssh" / "predigol_gh_deploy"
+    assert written.read_text(encoding="utf-8") == key
+    loaded = subprocess.run(["ssh-keygen", "-y", "-f", str(written)], capture_output=True, text=True, check=False)
+    assert loaded.stdout.strip() == public
+
+
+@needs_keygen
+def test_ci_ssh_setup_says_what_is_wrong_with_a_key_that_does_not_load_without_printing_it(tmp_path: Path) -> None:
+    broken = "-----BEGIN OPENSSH PRIVATE KEY-----\nTOPSECRETGARBAGE\n-----END OPENSSH PRIVATE KEY-----"
+    out = _setup(tmp_path, broken)
+    assert out.returncode == 1
+    assert "does not load" in out.stderr and "header=yes footer=yes" in out.stderr and "save DEPLOY_SSH_KEY again" in out.stderr
+    assert "TOPSECRETGARBAGE" not in out.stdout + out.stderr
+
+
+@needs_keygen
+def test_ci_ssh_setup_reports_a_key_without_header_or_footer(tmp_path: Path) -> None:
+    out = _setup(tmp_path, "just some text that is not a key")
+    assert out.returncode == 1 and "header=no footer=no" in out.stderr
+    assert "just some text" not in out.stdout + out.stderr
 
 
 @pytest.mark.parametrize("missing", ["DEPLOY_SSH_KEY", "DEPLOY_HOST", "DEPLOY_KNOWN_HOSTS"])
@@ -166,18 +225,20 @@ def test_ci_ssh_setup_refuses_a_host_with_options_in_it(tmp_path: Path) -> None:
     assert out.returncode == 1 and not (tmp_path / ".ssh" / "config").exists()
 
 
-def test_ci_ssh_setup_drops_windows_line_endings_from_the_key(tmp_path: Path) -> None:
+@needs_keygen
+def test_ci_ssh_setup_drops_windows_line_endings_from_the_key_and_the_host_line(tmp_path: Path) -> None:
     """The first rehearsal failed with `error in libcrypto`: the secret had been set from a Windows file (CRLF)."""
+    key, _ = _real_key(tmp_path)
     env = {
         "PATH": "/usr/bin:/bin",
-        "SSH_HOME": str(tmp_path),
-        "DEPLOY_SSH_KEY": "-----BEGIN OPENSSH PRIVATE KEY-----\r\nAAAA\r\n-----END OPENSSH PRIVATE KEY-----\r\n",
+        "SSH_HOME": str(tmp_path / "home"),
+        "DEPLOY_SSH_KEY": key.replace("\n", "\r\n"),
         "DEPLOY_HOST": "203.0.113.5",
         "DEPLOY_KNOWN_HOSTS": "203.0.113.5 ssh-ed25519 AAAAHOSTKEY\r",
     }
     out = subprocess.run(["bash", str(SSH_SETUP)], env=env, capture_output=True, text=True, check=False)
     assert out.returncode == 0, out.stderr
-    ssh = tmp_path / ".ssh"
+    ssh = tmp_path / "home" / ".ssh"
     assert b"\r" not in (ssh / "predigol_gh_deploy").read_bytes()
     assert b"\r" not in (ssh / "known_hosts_predigol").read_bytes()
 
