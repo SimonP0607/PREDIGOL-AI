@@ -7,20 +7,23 @@
  * partial reading when PrediGol has not gathered the match's context yet. The conclusion carries its caveat: a probability is
  * not a recommendation, and a PrediGol pick is published apart.
  *
- * THE NARRATIVE (A11). When the API sends one - written by PrediGol's AI from these very facts and checked sentence by sentence
- * before it was stored - the block shows it instead, in the page's language: «Redactado con IA y validado contra los datos de
- * PrediGol», «Escrito con datos de las 12:30». The conclusion comes first and the other sections fold (open on a wide screen,
- * the summary open on a phone). Without one, the facts: never a text the server did not validate.
+ * THE CHRONICLE (A11, UX-025). When the API sends one - the story of the match written by PrediGol's AI from the match's own
+ * facts and verified news, and checked sentence by sentence before it was stored - the block shows it first, in the page's
+ * language: the lead, a paragraph for each side under its name, the head-to-head and what could go wrong, then the outlets of
+ * the news it tells («Fuentes»). It says nothing of the forecast, the market or a pick: those stay below it, written from the
+ * reading's own templates («Mercado», «Conclusión de PrediGol»). Without a chronicle, the facts: never a text the server did
+ * not validate.
  *
  * THE DERIVED SECTIONS (UX-011). Besides the six, the API sends key_points, value and factors, written from the same facts
  * with no AI. This block is the six and only the six (the derived ones repeat what the six say); the Resumen's highlights
  * are where the key points and «Por qué hay valor» are read.
  */
-import { useEffect, useId, useState, type ReactNode } from "react";
-import { BookOpenText, ChevronDown, ChevronRight, Sparkles, TriangleAlert } from "lucide-react";
+import { useId, type ReactNode } from "react";
+import { BookOpenText, ChevronRight, Sparkles, TriangleAlert } from "lucide-react";
 import { getLocale, t } from "@/lib/i18n";
 import { formatDateTime, formatTime, relativeDay } from "@/lib/time";
 import type {
+  BaseSectionKey,
   MatchReading,
   NarrativeSection,
   NarrativeSectionKey,
@@ -36,8 +39,8 @@ import type { MatchCtx } from "@/product/match/context";
 import { factText } from "./text";
 import { useReading, type ReadingLoad } from "./useReading";
 
-/** The six sections of the reading, which the narrative also has: the ones the full analysis shows. */
-const BASE_KEYS: readonly NarrativeSectionKey[] = [
+/** The six sections of the structured reading: the ones the full analysis shows. */
+const BASE_KEYS: readonly BaseSectionKey[] = [
   "summary",
   "context",
   "data",
@@ -67,20 +70,6 @@ function writtenAt(iso: string): string {
   return relativeDay(iso) === "today"
     ? t("match.readingBlock.narrative.writtenAt", { time: formatTime(iso) })
     : t("match.readingBlock.narrative.writtenAtDay", { date: formatDateTime(iso) });
-}
-
-/** A screen at least as wide as a tablet, read after the first paint (the server cannot know it). */
-function useWide(): boolean {
-  const [wide, setWide] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
-    const query = window.matchMedia("(min-width: 768px)");
-    setWide(query.matches);
-    const changed = (e: MediaQueryListEvent) => setWide(e.matches);
-    query.addEventListener?.("change", changed);
-    return () => query.removeEventListener?.("change", changed);
-  }, []);
-  return wide;
 }
 
 function sentences(facts: ReadingFact[]): Array<{ fact: ReadingFact; text: string }> {
@@ -136,106 +125,99 @@ function SectionView({ section }: { section: ReadingSection }) {
   );
 }
 
-function SectionNotes({ keyName, priced }: { keyName: string; priced: boolean }) {
-  return (
-    <>
-      {keyName === "market" && priced ? <Note>{t("match.readingBlock.marketNote")}</Note> : null}
-      {keyName === "conclusion" ? (
-        <Note testId="reading-caveat">{t("match.readingBlock.caveat")}</Note>
-      ) : null}
-    </>
-  );
+/** The chronicle's sections in the order they are read. */
+const CHRONICLE_KEYS: readonly NarrativeSectionKey[] = ["summary", "home", "away", "h2h", "risks"];
+
+/** The teams' names for the headings of the two sides' paragraphs (without them: «Local» and «Visitante»). */
+export interface ChronicleTeams {
+  home: string;
+  away: string;
 }
 
-function Sentences({ section }: { section: NarrativeSection }) {
+/** A paragraph of the chronicle: its sentences flow together, each keeping the references it rests on. */
+function Paragraph({ section }: { section: NarrativeSection }) {
   return (
-    <div className="space-y-1.5">
+    <p className="break-words text-sm leading-relaxed text-foreground/90 sm:text-[0.95rem] sm:leading-7">
       {section.sentences.map((s, i) => (
-        <p
-          key={i}
-          data-testid="narrative-sentence"
-          data-refs={s.refs.join(" ")}
-          className="text-sm leading-relaxed text-foreground/90"
-        >
+        <span key={i} data-testid="narrative-sentence" data-refs={s.refs.join(" ")}>
+          {i > 0 ? " " : ""}
           {s.text}
-        </p>
+        </span>
       ))}
-    </div>
+    </p>
   );
 }
 
-/** One section of the narrative, folded under its title (a 44 px row); the conclusion is never folded. */
-function NarrativeFold({
+function chronicleTitle(key: NarrativeSectionKey, teams: ChronicleTeams | undefined): string {
+  if (key === "home" || key === "away") {
+    return teams?.[key] || t(`match.readingBlock.narrative.${key}`);
+  }
+  return key === "summary"
+    ? t("match.readingBlock.sections.summary")
+    : t(`match.readingBlock.narrative.${key}`);
+}
+
+function ChronicleSection({
   section,
-  open,
-  priced,
+  teams,
 }: {
   section: NarrativeSection;
-  open: boolean;
-  priced: boolean;
+  teams: ChronicleTeams | undefined;
 }) {
+  const id = useId();
+  const lead = section.key === "summary";
   return (
-    <details
-      open={open}
+    <section
+      aria-labelledby={id}
       data-testid={`narrative-section-${section.key}`}
-      className="group border-t border-border pt-1 first:border-t-0"
+      className={
+        section.key === "risks"
+          ? "space-y-1.5 rounded-lg border border-border bg-elevated/40 px-3 py-2.5"
+          : "space-y-1.5"
+      }
     >
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-        <h3 className="min-w-0 break-words">{t(`match.readingBlock.sections.${section.key}`)}</h3>
-        <ChevronDown
-          aria-hidden
-          className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
-        />
-      </summary>
-      <div className="space-y-2 pb-2">
-        <Sentences section={section} />
-        <SectionNotes keyName={section.key} priced={priced} />
-      </div>
-    </details>
+      <h3
+        id={id}
+        className={
+          lead
+            ? "sr-only"
+            : "min-w-0 break-words text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground"
+        }
+      >
+        {chronicleTitle(section.key, teams)}
+      </h3>
+      <Paragraph section={section} />
+    </section>
   );
 }
 
-/** The narrative in the page's language: the conclusion first, then the other sections, each folding. */
+/**
+ * The chronicle in the page's language: the lead, a paragraph for each side, the head-to-head and the risks - each only when
+ * the match has something to say there - then the outlets of the news it tells.
+ */
 export function NarrativeBody({
   narrative,
-  priced,
+  teams,
 }: {
   narrative: ReadingNarrative;
-  priced: boolean;
+  teams?: ChronicleTeams | undefined;
 }) {
-  const wide = useWide();
   const sections = getLocale() === "es" ? narrative.es : narrative.en;
-  const conclusion = sections.find((s) => s.key === "conclusion");
-  const rest = sections.filter((s) => s.key !== "conclusion");
-  const id = useId();
+  const outlets = (narrative.sources ?? []).map((o) => o.name).filter(Boolean);
   return (
-    <div className="space-y-3" data-testid="reading-narrative" data-version={narrative.version}>
-      {conclusion ? (
-        <section
-          aria-labelledby={id}
-          data-testid="narrative-section-conclusion"
-          className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5"
-        >
-          <h3
-            id={id}
-            className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground"
-          >
-            {t("match.readingBlock.sections.conclusion")}
-          </h3>
-          <Sentences section={conclusion} />
-          <SectionNotes keyName="conclusion" priced={priced} />
-        </section>
+    <div className="space-y-4" data-testid="reading-narrative" data-version={narrative.version}>
+      {CHRONICLE_KEYS.flatMap((key) => {
+        const section = sections.find((s) => s.key === key);
+        return section && section.sentences.length
+          ? [<ChronicleSection key={key} section={section} teams={teams} />]
+          : [];
+      })}
+      {outlets.length ? (
+        <Note testId="narrative-sources">
+          {t("match.readingBlock.narrative.sources", { names: outlets.join(", ") })}
+        </Note>
       ) : null}
-      <div>
-        {rest.map((s) => (
-          <NarrativeFold
-            key={s.key}
-            section={s}
-            open={wide || s.key === "summary"}
-            priced={priced}
-          />
-        ))}
-      </div>
+      <Note testId="narrative-apart">{t("match.readingBlock.narrative.apart")}</Note>
     </div>
   );
 }
@@ -309,11 +291,14 @@ export function ReadingView({
   load,
   afterMatch,
   footer,
+  teams,
 }: {
   load: ReadingLoad;
   afterMatch?: (() => void) | undefined;
   /** The end of a reading shown: «¿Te sirvió?» (plan UX, B6). */
   footer?: ReactNode;
+  /** The names that head the chronicle's two paragraphs. */
+  teams?: ChronicleTeams | undefined;
 }) {
   const titleId = useId();
   if (load.status === "pending") {
@@ -350,9 +335,7 @@ export function ReadingView({
   }
   const narrative = reading.narrative ?? null;
   if (narrative) {
-    const priced = reading.sections.some(
-      (s) => s.key === "market" && s.facts.some((f) => f.code !== "market_unpriced"),
-    );
+    const apart = reading.sections.filter((s) => s.key === "market" || s.key === "conclusion");
     return (
       <Frame
         titleId={titleId}
@@ -371,7 +354,10 @@ export function ReadingView({
           </span>
         }
       >
-        <NarrativeBody narrative={narrative} priced={priced} />
+        <NarrativeBody narrative={narrative} teams={teams} />
+        {apart.map((s) => (
+          <SectionView key={s.key} section={s} />
+        ))}
         {footer}
         {afterMatch ? <ToPostmatch onClick={afterMatch} /> : null}
       </Frame>
@@ -425,6 +411,7 @@ export function ReadingBlock({ ctx }: { ctx: MatchCtx }) {
       <ReadingView
         load={load}
         afterMatch={ctx.phase === "finished" ? () => ctx.goTo("postmatch") : undefined}
+        teams={{ home: ctx.match.home.name, away: ctx.match.away.name }}
         footer={
           reading ? (
             <HelpfulVote

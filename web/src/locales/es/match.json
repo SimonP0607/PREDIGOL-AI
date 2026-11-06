@@ -888,7 +888,13 @@
     "narrative": {
       "label": "Redactado con IA y validado contra los datos de PrediGol",
       "writtenAt": "Escrito con datos de las {time}",
-      "writtenAtDay": "Escrito con datos del {date}"
+      "writtenAtDay": "Escrito con datos del {date}",
+      "home": "Local",
+      "away": "Visitante",
+      "h2h": "Historial directo",
+      "risks": "Qué puede salir mal",
+      "sources": "Fuentes: {names}.",
+      "apart": "La crónica cuenta el contexto del partido. El pronóstico, el mercado y los picks de PrediGol van aparte, con sus propios datos."
     }
   },
   "understand": {

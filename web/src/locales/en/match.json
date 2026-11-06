@@ -888,7 +888,13 @@
     "narrative": {
       "label": "Written with AI and checked against PrediGol's data",
       "writtenAt": "Written with data as of {time}",
-      "writtenAtDay": "Written with data as of {date}"
+      "writtenAtDay": "Written with data as of {date}",
+      "home": "Home side",
+      "away": "Away side",
+      "h2h": "Head to head",
+      "risks": "What could go wrong",
+      "sources": "Sources: {names}.",
+      "apart": "The chronicle tells the context of the match. PrediGol's forecast, the market and its picks are shown apart, with their own data."
     }
   },
   "understand": {

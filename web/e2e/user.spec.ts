@@ -702,6 +702,7 @@ interface NarrativeBody {
   data_at: string;
   es: Array<{ key: string; sentences: Array<{ text: string; refs: string[] }> }>;
   en: Array<{ key: string; sentences: Array<{ text: string; refs: string[] }> }>;
+  sources?: Array<{ name: string }>;
 }
 
 interface ReadingBody {
@@ -850,60 +851,70 @@ async function narrativeTargets(
   return { withNarrative, withFacts };
 }
 
-test("A match's analysis written with AI (A11): labelled as checked against PrediGol's data, the conclusion first, in the reader's language; without one, the facts", async ({
+test("A match's chronicle written with AI (A11, UX-025): a paragraph for each side under its team, its sources, labelled as checked against PrediGol's data, in the reader's language; without one, the facts", async ({
   page,
 }) => {
-  // Plan UX, A11 (section 26): the narrative only when the server validated it for THIS reading; the facts otherwise.
+  // Plan UX, A11 and UX-025: the chronicle only when the server validated it for THIS story; the facts otherwise.
   const w = watch(page);
   const t = L[lang()];
   const { withNarrative, withFacts } = await narrativeTargets(page);
   if (withNarrative === null) {
     note(
       test.info(),
-      "no narrative on this database (the owner keeps it off, or none was written)",
+      "no chronicle on this database (the owner keeps it off, or none was written)",
     );
     return;
   }
   const reading = (await readingOf(page, withNarrative)).data!;
   const narrative = reading.narrative!;
-  expect(narrative.version).toBe("user-narrative-v1");
+  expect(narrative.version).toBe("user-narrative-v2");
   const sections = narrative[lang()];
   expect(sections.map((x) => x.key)).toEqual(narrative.es.map((x) => x.key));
   await open(page, w, `/matches/${withNarrative}?s=analisis`);
   const block = page.getByTestId("match-reading");
-  await expect(block.getByTestId("reading-narrative")).toBeVisible();
+  const chronicle = block.getByTestId("reading-narrative");
+  await expect(chronicle).toBeVisible();
   await expect(block.getByTestId("reading-label")).toHaveText(t.match.readingBlock.narrative.label);
   await expect(block.getByTestId("reading-data-at")).toBeVisible();
-  await expect(block.getByTestId("reading-fact")).toHaveCount(0);
-  // the conclusion first, never folded; then the other sections in the reading's order
-  const order = await block
+  await expect(chronicle.getByTestId("reading-fact")).toHaveCount(0);
+  // the lead, a paragraph for each side, the head-to-head and the risks - in that order, each only when it has something
+  const order = await chronicle
     .locator('[data-testid^="narrative-section-"]')
     .evaluateAll((els) =>
       els.map((e) => e.getAttribute("data-testid")?.replace("narrative-section-", "")),
     );
-  expect(order[0]).toBe("conclusion");
-  expect(order.slice(1)).toEqual(sections.map((x) => x.key).filter((k) => k !== "conclusion"));
-  const conclusion = sections.find((x) => x.key === "conclusion")!;
-  await expect(block.getByTestId("narrative-section-conclusion")).toContainText(
-    conclusion.sentences[0]!.text,
+  expect(order).toEqual(sections.map((x) => x.key));
+  const ranked = ["summary", "home", "away", "h2h", "risks"];
+  expect(order.map((k) => ranked.indexOf(k ?? ""))).toEqual(
+    order.map((k) => ranked.indexOf(k ?? "")).sort((x, y) => x - y),
   );
-  await expect(block.getByTestId("reading-caveat")).toHaveText(t.match.readingBlock.caveat);
-  // every folded section opens with a tap and says its sentences, each with what it rests on
-  const closed = block.locator("details:not([open]) > summary");
-  while ((await closed.count()) > 0) await closed.first().click();
-  const shown = block.getByTestId("narrative-sentence");
+  expect(order.every((k) => ranked.includes(k ?? ""))).toBe(true);
+  // a paragraph is a single block of text, never a list of cards
+  await expect(chronicle.locator("section > p")).toHaveCount(sections.length);
+  const shown = chronicle.getByTestId("narrative-sentence");
   await expect(shown).toHaveCount(sections.reduce((n, x) => n + x.sentences.length, 0));
   for (const refs of await shown.evaluateAll((els) =>
     els.map((e) => e.getAttribute("data-refs")),
   )) {
     expect(refs ?? "", "every sentence carries its references").toMatch(/^(P|E):\S+( (P|E):\S+)*$/);
   }
-  const words = await block.innerText();
+  const outlets = (narrative.sources ?? []).map((o) => o.name);
+  if (outlets.length) {
+    await expect(chronicle.getByTestId("narrative-sources")).toContainText(outlets.join(", "));
+  } else {
+    await expect(chronicle.getByTestId("narrative-sources")).toHaveCount(0);
+  }
+  await expect(chronicle.getByTestId("narrative-apart")).toBeVisible();
+  // the forecast and the market are not the chronicle's: they keep their own sections, from the reading's templates
+  if (reading.sections.some((x) => x.key === "conclusion")) {
+    await expect(block.getByTestId("reading-caveat")).toHaveText(t.match.readingBlock.caveat);
+  }
+  const words = await chronicle.innerText();
   expect(words, "never a raw code").not.toMatch(/\b[a-z]+_[a-z_]+\b/);
   expect(words, "no certainty, no «valor»").not.toMatch(VETOED[lang()]);
   const other = lang() === "es" ? narrative.en : narrative.es;
   expect(words, "only the reader's language").not.toContain(other[0]!.sentences[0]!.text);
-  // a match whose reading has no narrative shows its facts, as A9 does
+  // a match whose reading has no chronicle shows its facts, as A9 does
   if (withFacts !== null) {
     await open(page, w, `/matches/${withFacts}?s=analisis`);
     await expect(block.getByTestId("reading-fact").first()).toBeVisible();
