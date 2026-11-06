@@ -1,7 +1,7 @@
 """The structured reading of a match (plan UX, A9): six sections of facts, each a stable code with its parameters and the
 reference of where it comes from. The web writes them in the reader's language; no prose travels here - but for the narrative
-(plan UX, A11), the same six sections written in Spanish and English by PrediGol's AI and checked sentence by sentence against
-these facts and the match's news before it may be shown."""
+(plan UX, A11; its v2, UX-025, is the chronicle), written in Spanish and English by PrediGol's AI and checked sentence by
+sentence against the match's facts and its news before it may be shown."""
 
 from __future__ import annotations
 
@@ -13,6 +13,8 @@ from pydantic import Field
 from fbi.api.contracts.common import Contract
 
 SectionKey = Literal["summary", "context", "data", "market", "risks", "conclusion"]
+NarrativeKey = Literal["summary", "home", "away", "h2h", "risks"]
+"""The sections of the chronicle (narrative v2): the lead, a paragraph for each side, the head-to-head and the risks."""
 ReadingSectionKey = Literal["summary", "context", "data", "market", "risks", "conclusion", "key_points", "value", "factors"]
 
 
@@ -38,16 +40,23 @@ class NarrativeSentence(Contract):
 
 
 class NarrativeSection(Contract):
-    key: SectionKey
-    sentences: list[NarrativeSentence]
+    key: NarrativeKey
+    sentences: list[NarrativeSentence] = Field(description="The paragraph: its sentences in order, each with what it rests on.")
+
+
+class NarrativeSource(Contract):
+    name: str = Field(description="The outlet of a piece of news the chronicle tells, as PrediGol recorded it.")
 
 
 class ReadingNarrative(Contract):
-    version: str = Field(description="The prompt and the checks that wrote it: user-narrative-v1.")
+    version: str = Field(description="The prompt and the checks that wrote it: user-narrative-v2 (the chronicle).")
     written_at: datetime = Field(description="When PrediGol's AI wrote it.")
     data_at: datetime = Field(description="The moment of the data it was written from: «Escrito con datos de las 12:30».")
-    es: list[NarrativeSection] = Field(description="The sections in Spanish, in the reading's order.")
+    es: list[NarrativeSection] = Field(description="The sections in Spanish, in order: summary, home, away, h2h, risks - each only "
+                                                   "when the match has something to say there.")
     en: list[NarrativeSection] = Field(description="The same sections in English: the same sentences, references and numbers.")
+    sources: list[NarrativeSource] = Field(default_factory=list, description=(
+        "The outlets of the news the chronicle tells (none when it tells none): «Fuentes» under the text."))
 
 
 class MatchReading(Contract):

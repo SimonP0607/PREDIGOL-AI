@@ -1,16 +1,18 @@
-"""The readers' narrative (plan UX, A11): what the server checks before a reader may read a sentence the AI wrote - pure, no
-database, no model.
+"""The readers' chronicle (plan UX, A11 and UX-025): what the server checks before a reader may read a sentence the AI wrote -
+pure, no database, no model.
 
-A good narrative passes whole. Each check is shown failing on its own: a reference not given, a number the cited facts do not
-hold (small ones too, and a share never stands for a whole number), certainty and betting words in either language, the system's
-codes, a DESCRIPTIVE factor made a cause or put in the conclusion, a rumour outside the risks or not called one, a probable item
-told as a fact, an uncalibrated probability without its label, the forecast's other side, and a Spanish and an English that do
-not say the same. A translation is kept or dropped on its own."""
+A good chronicle passes whole. Each check is shown failing on its own: a reference not given or a block where a result's own
+reference is needed, a number the cited facts do not hold (a score of another match, small numbers too, and a share never stands
+for a whole number), certainty and betting words in either language, the system's codes, a DESCRIPTIVE factor made a cause, a
+rumour outside the risks or not called one, a probable item told as a fact, a player in doubt told as a certain absence, an injury
+the provider's reason does not give, a section longer than its ceiling or one the story does not have, and a Spanish and an
+English that do not say the same. A translation is kept or dropped on its own."""
 
 from __future__ import annotations
 
 import ast
 import copy
+import datetime as dt
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -20,39 +22,43 @@ from apps.worker import scheduler
 
 from fbi.ai import user_budget
 from fbi.ai.usage import Budget
-from fbi.api.services import reading
+from fbi.api.services import reading, story
 from fbi.narrative import job as un
 from fbi.ops.run_watchdog import JOB_TIMEOUTS, timeout_for
 
 MU, LIV = "Manchester United", "Liverpool"
 
 
-def F(ref: str, section: str, code: str, **params: Any) -> un.Fact:  # noqa: N802 - a constructor
-    return un.Fact(ref, section, code, params)
+def F(ref: str, section: str, code: str, **params: Any) -> story.Fact:  # noqa: N802 - a constructor
+    return story.Fact(ref, section, code, params)
 
 
 FACTS = (
     F("P:fixture", "summary", "match_intro", competition="Premier League", round="Regular Season - 9", neutral=None),
-    F("P:forecast.1X2", "summary", "expected_result", outcome="home", team=MU, probability=0.5, calibrated=False),
-    F("P:stakes.home", "context", "stakes_zone", side="home", team=MU, rank=4, zone="europe"),
-    F("P:stakes.away", "context", "stakes_pressure", side="away", team=LIV, pressure="title"),
-    F("P:scenarios.table", "context", "table_after", result="home_win", home=MU, home_points=20, home_best=2, home_worst=4,
-      away=LIV, away_points=22, away_best=1, away_worst=2),
-    F("P:schedule.home", "context", "rest_days", side="home", team=MU, days=3.0, matches_14d=4, at_most=False),
-    F("P:form.home", "data", "form", side="home", team=MU, sequence="WWDLW", n=5, ppg=2.0, goals_for=1.8, goals_against=1.0),
-    F("P:form.away", "data", "form", side="away", team=LIV, sequence="WWWWD", n=5, ppg=2.6, goals_for=2.4, goals_against=0.6),
-    F("P:h2h", "data", "h2h", n=8, n_effective=2.4, home=MU, home_wins=2, draws=3, away=LIV, away_wins=3),
-    F("P:absences.home", "data", "key_absences", side="home", team=MU, count=1, players=["Lisandro Martínez"]),
-    F("P:market.1X2", "market", "market_favourite", outcome="away", team=LIV, probability=0.42, bookmakers=11),
-    F("P:market.1X2", "market", "market_moved", outcome="home", team=MU, opening=0.352, now=0.318),
-    F("P:lineups", "risks", "lineups_unconfirmed"),
-    F("P:evidence", "risks", "rumours", count=1),
-    F("P:forecast", "risks", "uncalibrated", markets=["1X2"]),
-    F("P:forecast.1X2", "conclusion", "likely", market="1X2", outcome="home", team=MU, line=None, probability=0.5,
-      calibrated=False),
-    F("P:forecast.OU", "conclusion", "likely", market="OU", outcome="over", team=None, line="2.5", probability=0.585,
-      calibrated=True),
+    F("P:stakes.home", "home", "stakes_zone", side="home", team=MU, rank=4, zone="europe"),
+    F("P:stakes.away", "away", "stakes_pressure", side="away", team=LIV, pressure="title"),
+    F("P:form.home", "home", "form", side="home", team=MU, sequence="WWDLW", n=5, ppg=2.0, goals_for=1.8,
+      goals_against=1.0, wins=3, draws=1, losses=1),
+    F("P:form.away", "away", "form", side="away", team=LIV, sequence="WWWWD", n=5, ppg=2.6, goals_for=2.4,
+      goals_against=0.6, wins=4, draws=1, losses=0),
+    F("P:results.home.1", "home", "result", side="home", team=MU, opponent="Fulham", venue="home", goals_for=2,
+      goals_against=1, outcome="W", competition="Premier League", order=1),
+    F("P:results.home.2", "home", "result", side="home", team=MU, opponent="Brighton", venue="away", goals_for=0,
+      goals_against=0, outcome="D", competition="Premier League", order=2),
+    F("P:results.away.1", "away", "result", side="away", team=LIV, opponent="Everton", venue="away", goals_for=3,
+      goals_against=0, outcome="W", competition="Premier League", order=1),
+    F("P:absences.home", "home", "key_absences", side="home", team=MU, count=1, players=["Lisandro Martínez"]),
+    F("P:absences.home.1", "home", "absence", side="home", team=MU, player="Lisandro Martínez", status="out",
+      reason="Hamstring Injury", kind="injury", key=True),
+    F("P:absences.away.1", "away", "absence", side="away", team=LIV, player="Mohamed Salah", status="doubtful",
+      reason="Knock", kind="injury", key=True),
+    F("P:absences.away.2", "away", "absence", side="away", team=LIV, player="Trent Alexander-Arnold", status="out",
+      reason="Yellow Cards", kind="suspension", key=False),
+    F("P:h2h", "h2h", "h2h", n=8, home=MU, home_wins=2, draws=3, away=LIV, away_wins=3),
+    F("P:h2h.meeting.1", "h2h", "h2h_meeting", home=MU, away=LIV, goals_home=1, goals_away=2, winner="away",
+      home_was="away", months_ago=8, competition="Premier League", after_extra_time=None),
 )
+CAPS = {"summary": 2, "home": 4, "away": 4, "h2h": 2, "risks": 3}
 
 INJURY = "Lisandro Martínez es baja por lesión para este partido."
 DOUBT = "Según Marca, Mohamed Salah está en duda por unas molestias en el tobillo."
@@ -60,16 +66,17 @@ RUMOUR = "Se dice que el portero titular no viajó con el equipo."
 TITLE = "Lisandro Martínez se pierde el partido ante el Liverpool por lesión"
 
 
-def news(i: int, status: str, claim: str, *, translated: bool = False, title: str | None = None) -> un.NewsItem:
-    return un.NewsItem(i, f"E:{i}", "injury", status, "home", claim, "media", f"{i:064x}", title, translated)
+def news(i: int, status: str, claim: str, *, translated: bool = False, title: str | None = None,
+         source: str | None = "Marca") -> un.NewsItem:
+    return un.NewsItem(i, f"E:{i}", "injury", status, "home", claim, "media", f"{i:064x}", title, translated, source)
 
 
 def inp(**changes: Any) -> un.NarrativeInput:
     base: dict[str, Any] = {
-        "fixture_id": 7, "packet_id": 70, "data_at": __import__("datetime").datetime(2026, 10, 26, 18, 0),
-        "reading_hash": "b" * 64, "home": MU, "away": LIV, "competition": "Premier League", "facts": FACTS,
+        "fixture_id": 7, "packet_id": 70, "data_at": dt.datetime(2026, 10, 26, 18, 0, tzinfo=dt.UTC), "story_hash": "b" * 64,
+        "home": MU, "away": LIV, "competition": "Premier League", "facts": FACTS,
         "news": (news(101, "CONFIRMED", INJURY, title=TITLE), news(102, "PROBABLE", DOUBT), news(103, "RUMOR", RUMOUR)),
-        "sections": ("summary", "context", "data", "market", "risks", "conclusion")}
+        "caps": CAPS}
     base.update(changes)
     return un.NarrativeInput(**base)
 
@@ -81,47 +88,40 @@ def S(text: str, *refs: str) -> dict[str, Any]:  # noqa: N802 - a constructor
 def good() -> dict[str, Any]:
     return {
         "es": {
-            "summary": [S("Partido de la Premier League, jornada 9.", "P:fixture"),
-                        S("PrediGol ve como más probable la victoria del Manchester United, con un 50 % sin calibrar.",
-                          "P:forecast.1X2")],
-            "context": [S("Manchester United es 4.º y está en la zona de plazas internacionales.", "P:stakes.home"),
-                        S("Liverpool pelea el título.", "P:stakes.away"),
-                        S("Si gana el local, Manchester United sumaría 20 puntos y Liverpool 22.", "P:scenarios.table")],
-            "data": [S("Manchester United suma 2,0 puntos por partido en sus últimos 5 y Liverpool 2,6.", "P:form.home",
-                       "P:form.away"),
-                     S("En el cara a cara hubo 8 partidos: 2 victorias de Manchester United, 3 empates y 3 de Liverpool.",
-                       "P:h2h"),
-                     S("Lisandro Martínez es baja importante del Manchester United.", "P:absences.home", "E:101")],
-            "market": [S("El mercado da un 42 % a la victoria de Liverpool, según 11 casas.", "P:market.1X2"),
-                       S("Desde la apertura, la victoria del Manchester United bajó del 35,2 % al 31,8 %.", "P:market.1X2")],
-            "risks": [S("Las alineaciones aún no están confirmadas.", "P:lineups"),
-                      S("Hay un rumor sin confirmar sobre el portero titular del Manchester United.", "P:evidence", "E:103"),
+            "summary": [S("Manchester United recibe al Liverpool en la jornada 9 de la Premier League.", "P:fixture"),
+                        S("Los locales son cuartos y pelean por plazas internacionales; los visitantes, por el título.",
+                          "P:stakes.home", "P:stakes.away")],
+            "home": [S("Manchester United llega tras ganar 2-1 al Fulham en casa y empatar 0-0 con el Brighton fuera.",
+                       "P:results.home.1", "P:results.home.2"),
+                     S("Su baja más importante es Lisandro Martínez, lesionado en el isquiotibial.", "P:absences.home.1"),
+                     S("Marca confirma que se pierde el partido.", "E:101")],
+            "away": [S("El Liverpool viene de golear 3-0 al Everton como visitante.", "P:results.away.1"),
+                     S("Mohamed Salah es duda por unas molestias y Trent Alexander-Arnold está sancionado por acumulación "
+                       "de tarjetas.", "P:absences.away.1", "P:absences.away.2")],
+            "h2h": [S("En 8 duelos hay 2 victorias del Manchester United, 3 empates y 3 del Liverpool.", "P:h2h"),
+                    S("El último cruce, hace 8 meses, lo ganó el Liverpool por 1-2 como visitante.", "P:h2h.meeting.1")],
+            "risks": [S("La duda de Mohamed Salah y la baja de Trent Alexander-Arnold pueden pesar en el Liverpool.",
+                        "P:absences.away.1", "P:absences.away.2"),
+                      S("Hay un rumor sin confirmar sobre el portero titular del Manchester United.", "E:103"),
                       S("Según Marca, Mohamed Salah está en duda.", "E:102")],
-            "conclusion": [S("Lo más probable según PrediGol es la victoria del Manchester United (50 %, sin calibrar).",
-                             "P:forecast.1X2"),
-                           S("En goles, lo más probable es que haya más de 2,5 (58,5 %).", "P:forecast.OU")],
         },
         "en": {
-            "summary": [S("A Premier League match, round 9.", "P:fixture"),
-                        S("PrediGol sees a Manchester United win as the most likely result, at 50 % uncalibrated.",
-                          "P:forecast.1X2")],
-            "context": [S("Manchester United are 4th, in the international places.", "P:stakes.home"),
-                        S("Liverpool are fighting for the title.", "P:stakes.away"),
-                        S("If the home side wins, Manchester United would have 20 points and Liverpool 22.",
-                          "P:scenarios.table")],
-            "data": [S("Manchester United average 2.0 points per match over their last 5, Liverpool 2.6.", "P:form.home",
-                       "P:form.away"),
-                     S("The head-to-head has 8 matches: 2 Manchester United wins, 3 draws and 3 for Liverpool.", "P:h2h"),
-                     S("Lisandro Martínez is an important absence for Manchester United.", "P:absences.home", "E:101")],
-            "market": [S("The market gives a Liverpool win 42 %, from 11 bookmakers.", "P:market.1X2"),
-                       S("Since the opening, a Manchester United win fell from 35.2 % to 31.8 %.", "P:market.1X2")],
-            "risks": [S("The line-ups are not confirmed yet.", "P:lineups"),
-                      S("There is an unconfirmed rumour about Manchester United's first-choice goalkeeper.", "P:evidence",
-                        "E:103"),
+            "summary": [S("Manchester United host Liverpool in round 9 of the Premier League.", "P:fixture"),
+                        S("The home side is fourth and fights for the international places; the visitors fight for the "
+                          "title.", "P:stakes.home", "P:stakes.away")],
+            "home": [S("Manchester United arrive after beating Fulham 2-1 at home and drawing 0-0 at Brighton.",
+                       "P:results.home.1", "P:results.home.2"),
+                     S("Their most important absence is Lisandro Martínez, with a hamstring injury.", "P:absences.home.1"),
+                     S("Marca confirms he will miss the match.", "E:101")],
+            "away": [S("Liverpool come off a 3-0 win away at Everton.", "P:results.away.1"),
+                     S("Mohamed Salah is doubtful with a knock and Trent Alexander-Arnold is suspended for accumulated "
+                       "cards.", "P:absences.away.1", "P:absences.away.2")],
+            "h2h": [S("In 8 meetings there are 2 Manchester United wins, 3 draws and 3 for Liverpool.", "P:h2h"),
+                    S("The last meeting, 8 months ago, was won by Liverpool 1-2 away from home.", "P:h2h.meeting.1")],
+            "risks": [S("Mohamed Salah's doubt and Trent Alexander-Arnold's absence may weigh on Liverpool.",
+                        "P:absences.away.1", "P:absences.away.2"),
+                      S("There is an unconfirmed rumour about Manchester United's first-choice goalkeeper.", "E:103"),
                       S("According to Marca, Mohamed Salah is doubtful.", "E:102")],
-            "conclusion": [S("PrediGol's most likely outcome is a Manchester United win (50 %, uncalibrated).",
-                             "P:forecast.1X2"),
-                           S("For goals, the most likely is over 2.5 (58.5 %).", "P:forecast.OU")],
         },
         "news": [
             {"id": 101, "headline_es": "Lisandro Martínez, baja por lesión", "headline_en": "Lisandro Martínez out injured",
@@ -144,86 +144,103 @@ def set_text(data: dict[str, Any], lang: str, section: str, i: int, text: str, r
         data[lang][section][i]["refs"] = refs
 
 
-def test_a_good_narrative_passes_whole_with_its_translations() -> None:
+def test_a_good_chronicle_passes_whole_with_its_translations_and_its_sources() -> None:
     v = verdict(good())
     assert v.ok, [p.as_json() for p in v.problems]
-    assert v.content is not None and list(v.content) == ["es", "en"]
+    assert v.content is not None and list(v.content) == ["es", "en", "sources"]
     assert [s["key"] for s in v.content["es"]] == list(un.SECTIONS)
-    assert v.content["en"][5]["sentences"][0]["refs"] == ["P:forecast.1X2"]
+    assert v.content["en"][1]["sentences"][0]["refs"] == ["P:results.home.1", "P:results.home.2"]
+    assert v.content["sources"] == [{"name": "Marca"}], "the outlet of the news it cites, once"
     assert {t.evidence_id for t in v.translations} == {101, 102, 103} and not v.dropped
     t = next(t for t in v.translations if t.evidence_id == 101)
     assert t.headline_es == "Lisandro Martínez, baja por lesión" and t.claim_en is not None
 
 
 @pytest.mark.parametrize(("lang", "section", "i", "text", "refs", "why"), [
-    ("es", "context", 0, "Manchester United es 4.º en la tabla.", ["P:stakes.middle"], "references not given"),
-    ("es", "data", 0, "Manchester United suma 2,0 puntos por partido en sus últimos 6 y Liverpool 2,6.", None,
-     "numbers not in what it cites: 6"),
-    ("es", "data", 1, "En el cara a cara hubo 8 partidos: 4 victorias de Manchester United.", None,
-     "numbers not in what it cites: 4"),
-    ("es", "market", 0, "El mercado da 1 opción clara a la victoria de Liverpool.", None, "numbers not in what it cites: 1"),
-    ("es", "data", 0, "Manchester United suma cuatro victorias seguidas.", None, "numbers not in what it cites: cuatro"),
-    ("es", "summary", 1, "La victoria del Manchester United es segura.", None, "forbidden phrase"),
-    ("es", "summary", 1, "Una victoria garantizada del Manchester United, con un 50 % sin calibrar.", None,
+    ("es", "home", 0, "Manchester United ganó 2-1 al Fulham.", ["P:results.home.9"], "references not given"),
+    ("es", "home", 0, "Manchester United llega tras ganar 3-1 al Fulham en casa.", ["P:results.home.1"],
+     "numbers not in what it cites: 3"),
+    ("es", "home", 0, "Manchester United llega tras ganar 3-0 al Everton.", ["P:results.home.1"],
+     "numbers not in what it cites: 3"),
+    ("es", "home", 0, "Manchester United llega tras ganar 2-1 al Fulham en casa y empatar 0-0 con el Brighton fuera.",
+     ["P:results"], "block where the fact's own reference is needed"),
+    ("es", "home", 0, "Manchester United llega tras ganar 2-1 al Fulham en casa y empatar 0-0 con el Brighton fuera.",
+     ["P:results.home"], "block where the fact's own reference is needed"),
+    ("es", "h2h", 1, "El último cruce lo ganó el Liverpool por 1-2.", ["P:h2h.meeting"], "block where the fact's own"),
+    ("es", "home", 0, "Manchester United suma cuatro victorias seguidas.", ["P:form.home"],
+     "numbers not in what it cites: cuatro"),
+    ("es", "home", 0, "Manchester United ganó tres de sus últimos 5.", ["P:form.home"], None),
+    ("es", "summary", 0, "La victoria del Manchester United es segura.", None, "forbidden phrase"),
+    ("es", "summary", 0, "Una victoria garantizada del Manchester United.", None, "forbidden phrase"),
+    ("es", "home", 0, "Hay valor en el Manchester United, que ganó 2-1 al Fulham.", ["P:results.home.1"], "forbidden phrase"),
+    ("es", "home", 0, "Conviene una apuesta al Manchester United, que ganó 2-1 al Fulham.", ["P:results.home.1"],
      "forbidden phrase"),
-    ("es", "market", 0, "Hay valor en la victoria de Liverpool (42 %).", None, "forbidden phrase"),
-    ("es", "market", 0, "Conviene una apuesta a Liverpool (42 %).", None, "forbidden phrase"),
-    ("en", "summary", 1, "A Manchester United win is a sure thing at 50 % uncalibrated.", None, "forbidden phrase"),
-    ("en", "market", 0, "Liverpool look like value at 42 %, from 11 bookmakers.", None, "forbidden phrase"),
-    ("en", "market", 0, "Bet on Liverpool at 42 %, from 11 bookmakers.", None, "forbidden phrase"),
-    ("en", "summary", 1, "Manchester United will win, at 50 % uncalibrated.", None, "forbidden phrase"),
-    ("es", "market", 0, "El 1X2 da un 42 % a Liverpool según 11 casas.", None, "only the system says"),
-    ("es", "risks", 0, "Las alineaciones (P:lineups) no están confirmadas.", None, "only the system says"),
-    ("es", "context", 2, "Con home_win, Manchester United sumaría 20 puntos y Liverpool 22.", None, "only the system says"),
+    ("es", "home", 0, "Este pick del Manchester United viene de ganar 2-1 al Fulham.", ["P:results.home.1"],
+     "forbidden phrase"),
+    ("en", "summary", 0, "A Manchester United win is a sure thing.", None, "forbidden phrase"),
+    ("en", "home", 0, "Manchester United look like value after a 2-1 win over Fulham.", ["P:results.home.1"],
+     "forbidden phrase"),
+    ("en", "home", 0, "Bet on Manchester United after a 2-1 win over Fulham.", ["P:results.home.1"], "forbidden phrase"),
+    ("en", "summary", 0, "Manchester United will win.", None, "forbidden phrase"),
+    ("es", "home", 0, "Con home_win el Manchester United suma 2-1 al Fulham.", ["P:results.home.1"],
+     "only the system says"),
+    ("es", "home", 0, "El Manchester United (P:results.home.1) ganó 2-1 al Fulham.", ["P:results.home.1"],
+     "only the system says"),
     ("es", "risks", 2, "Según Marca (https://marca.com/1), Salah está en duda.", None, "only the system says"),
-    ("es", "context", 2, "Manchester United sumaría 20 puntos y Liverpool 22, porque la tabla lo favorece.", None,
+    ("es", "h2h", 0, "En 8 duelos hay 2 victorias del Manchester United, 3 empates y 3 del Liverpool, por eso el Liverpool "
+                     "es favorito.", None, "DESCRIPTIVE factor, a cause"),
+    ("en", "h2h", 1, "The last meeting, 8 months ago, was won by Liverpool 1-2 because of its tactics.", None,
      "DESCRIPTIVE factor, a cause"),
-    ("en", "data", 1, "The head-to-head has 8 matches: 2 Manchester United wins, 3 draws and 3 for Liverpool, so Liverpool "
-                      "is favoured because of it.", None, "DESCRIPTIVE factor, a cause"),
-    ("es", "conclusion", 0, "Lo más probable es la victoria del Manchester United tras 2 victorias en 8 partidos.",
-     ["P:forecast.1X2", "P:h2h"], "the conclusion rests on h2h"),
-    ("es", "conclusion", 0, "Lo más probable es un partido cerrado.", ["P:lineups"], "must rest on PrediGol's forecast"),
-    ("es", "data", 2, "Hay un rumor sin confirmar sobre el portero titular.", ["E:103"], "outside the risks"),
+    ("es", "away", 0, "Hay un rumor sin confirmar sobre el portero titular.", ["E:103"], "outside the risks"),
     ("es", "risks", 1, "El portero titular no viajó con el equipo.", None, "not called one"),
     ("es", "risks", 2, "Mohamed Salah no jugará.", None, "told as a fact"),
-    ("es", "conclusion", 0, "Lo más probable según PrediGol es la victoria del Manchester United (50 %).", None,
-     "uncalibrated probability without its label"),
-    ("es", "conclusion", 0, "Lo más probable según PrediGol es la victoria de Liverpool (50 %, sin calibrar).", None,
-     "names Liverpool where PrediGol's forecast says Manchester United"),
-    ("es", "conclusion", 1, "En goles, lo más probable es que haya menos de 2,5 (58,5 %).", None, "the other side"),
+    ("es", "away", 1, "Mohamed Salah y Trent Alexander-Arnold están fuera del partido.", None,
+     "a player in doubt told as a certain absence"),
+    ("en", "away", 1, "Mohamed Salah and Trent Alexander-Arnold are out of the match.", None,
+     "a player in doubt told as a certain absence"),
+    ("es", "away", 1, "Trent Alexander-Arnold está lesionado y no jugará el partido.", ["P:absences.away.2"],
+     "calls an injury what the provider's reason does not"),
+    ("en", "away", 1, "Trent Alexander-Arnold is out with a muscle injury.", ["P:absences.away.2"],
+     "calls an injury what the provider's reason does not"),
     ("es", "risks", 0, "Corto.", None, "length"),
 ])
-def test_each_check_refuses_on_its_own(lang: str, section: str, i: int, text: str, refs: list[str] | None, why: str) -> None:
+def test_each_check_refuses_on_its_own(lang: str, section: str, i: int, text: str, refs: list[str] | None,
+                                       why: str | None) -> None:
     data = good()
     set_text(data, lang, section, i, text, refs)
     other = "en" if lang == "es" else "es"
     if refs is not None:  # the other language cites the same, so only the check under test speaks
         data[other][section][i]["refs"] = refs
     v = verdict(data)
+    if why is None:  # «tres de sus últimos 5»: counted in words by the form's own wins and n - allowed
+        reasons = [p.why for p in v.problems if p.where.startswith(f"{lang}.{section}[{i}]")]
+        assert not reasons, reasons
+        return
     assert not v.ok and v.content is None
     reasons = [p.why for p in v.problems if p.where.startswith(f"{lang}.{section}[{i}]")]
     assert any(why in r for r in reasons), [p.as_json() for p in v.problems]
 
 
 def test_a_name_with_digits_is_a_name_and_a_share_is_written_as_its_percentage() -> None:
-    schalke = inp(home="Schalke 04", facts=tuple(
-        un.Fact(f.ref, f.section, f.code, {k: ("Schalke 04" if v == MU else v) for k, v in f.params.items()}) for f in FACTS))
-    s = un.SentenceOut(text="Schalke 04 es 4.º y está en la zona de plazas internacionales.", refs=["P:stakes.home"])
-    assert un.check_sentence(s, lang="es", section="context", inp=schalke) is None
-    pct = un.SentenceOut(text="El mercado da un 42,0 % a la victoria de Liverpool.", refs=["P:market.1X2"])
-    assert un.check_sentence(pct, lang="es", section="market", inp=inp()) is None
-    share = un.SentenceOut(text="El mercado da 0,42 a la victoria de Liverpool.", refs=["P:market.1X2"])
-    assert un.check_sentence(share, lang="es", section="market", inp=inp()) is None, "a share written with its decimals"
+    mainz = inp(facts=tuple(
+        story.Fact(f.ref, f.section, f.code, {k: ("Mainz 05" if v == "Fulham" else v) for k, v in f.params.items()})
+        for f in FACTS))
+    s = un.SentenceOut(text="Manchester United llega tras ganar 2-1 al Mainz 05 en casa.", refs=["P:results.home.1"])
+    assert un.check_sentence(s, lang="es", section="home", inp=mainz) is None, "an opponent's number is no number"
     assert un.stated(un.Figure("1", 1.0, 0), {0.54}) is False, "1 never stands for 0.54"
     assert un.stated(un.Figure("4", 4.0, 0), {3.5}) is True, "3.5 rounded"
     assert un.stated(un.Figure("-2", 2.0, 0), {2.0}) is True
+    zero = un.SentenceOut(text="Manchester United empató 0-0 con el Brighton fuera.", refs=["P:results.home.2"])
+    assert un.check_sentence(zero, lang="es", section="home", inp=inp()) is None, "a goalless draw is told with its zeros"
 
 
-def test_a_block_above_a_fact_covers_it_and_a_fact_below_one_is_not_given() -> None:
+def test_a_block_above_a_fact_covers_it_but_a_result_a_meeting_and_a_fact_below_one_are_not_that_block() -> None:
     above = un.SentenceOut(text="Manchester United suma 2,0 puntos por partido y Liverpool 2,6.", refs=["P:form"])
-    assert un.check_sentence(above, lang="es", section="data", inp=inp()) is None
+    assert un.check_sentence(above, lang="es", section="home", inp=inp()) is None
     below = un.SentenceOut(text="Manchester United suma 2,0 puntos por partido.", refs=["P:form.home.ppg"])
-    assert "references not given" in (un.check_sentence(below, lang="es", section="data", inp=inp()) or "")
+    assert "references not given" in (un.check_sentence(below, lang="es", section="home", inp=inp()) or "")
+    record = un.SentenceOut(text="En 8 duelos hay 2 victorias del Manchester United.", refs=["P:h2h"])
+    assert un.check_sentence(record, lang="es", section="h2h", inp=inp()) is None, "the record is cited by its block"
 
 
 def test_the_spanish_and_the_english_say_the_same() -> None:
@@ -231,30 +248,31 @@ def test_the_spanish_and_the_english_say_the_same() -> None:
     fewer["en"]["risks"].pop()
     assert any("3 sentences in Spanish, 2 in English" in p.why for p in verdict(fewer).problems)
     refs = good()
-    refs["en"]["data"][2]["refs"] = ["P:absences.home"]
+    refs["en"]["home"][1]["refs"] = ["P:absences.home"]
     assert any("other references" in p.why for p in verdict(refs).problems)
     numbers = good()
-    numbers["en"]["market"][0]["text"] = "The market gives a Liverpool win 42 %, from 11 bookmakers, or 0.42."
+    numbers["en"]["h2h"][0]["text"] = "In 8 meetings there are 2 Manchester United wins, 3 draws and 3 for Liverpool, or 0.42."
     assert any("other numbers" in p.why for p in verdict(numbers).problems)
 
 
-def test_the_sections_follow_the_reading() -> None:
-    no_market = tuple(f for f in FACTS if f.section != "market")
-    sections = ("summary", "context", "data", "risks", "conclusion")
+def test_the_sections_follow_the_story_and_none_is_longer_than_its_ceiling() -> None:
     data = good()
-    v = verdict(data, facts=no_market, sections=sections)
-    assert any(p.why == "a section the reading does not have" for p in v.problems)
+    short = {k: v for k, v in CAPS.items() if k != "h2h"}
+    v = verdict(data, caps=short)
+    assert any(p.why == "a section the story does not have" for p in v.problems)
     for lang in ("es", "en"):
-        data[lang]["market"] = []
-    assert verdict(data, facts=no_market, sections=sections).ok
+        data[lang]["h2h"] = []
+    assert verdict(data, caps=short).ok
     empty = good()
     empty["es"]["risks"] = []
     empty["en"]["risks"] = []
-    assert any(p.where == "es.risks" and p.why == "empty" for p in verdict(empty).problems), "risks are never empty"
+    assert any(p.where == "es.risks" and p.why == "empty" for p in verdict(empty).problems)
     many = good()
     for lang in ("es", "en"):
         many[lang]["summary"] = many[lang]["summary"] * 2
-    assert any("at most 3" in p.why for p in verdict(many).problems)
+    assert any("at most 2" in p.why for p in verdict(many).problems)
+    tight = verdict(good(), caps={**CAPS, "home": 2})
+    assert any("at most 2" in p.why and p.where == "es.home" for p in tight.problems), "a poor side takes fewer sentences"
 
 
 def test_a_translation_is_kept_or_dropped_on_its_own() -> None:
@@ -265,7 +283,7 @@ def test_a_translation_is_kept_or_dropped_on_its_own() -> None:
     data["news"].append({"id": 999, "headline_es": "Otra", "headline_en": "Another", "claim_en": "Another item."})
     v = verdict(data, news=(news(101, "CONFIRMED", INJURY, title=TITLE), news(102, "PROBABLE", DOUBT, title=TITLE),
                             news(103, "RUMOR", RUMOUR)))
-    assert v.ok, "the narrative does not depend on its translations"
+    assert v.ok, "the chronicle does not depend on its translations"
     by = {t.evidence_id: t for t in v.translations}
     assert by[101].claim_en is None and by[101].headline_en == "Lisandro Martínez out injured"
     assert by[102].headline_en is None, "the source's title is never written, in any language"
@@ -280,36 +298,45 @@ def test_a_translation_is_kept_or_dropped_on_its_own() -> None:
     assert 101 not in {t.evidence_id for t in already.translations}, "an item translated already is not asked again"
 
 
+def test_the_sources_are_the_outlets_of_the_news_it_cites_once_and_none_when_it_cites_none() -> None:
+    other = (news(101, "CONFIRMED", INJURY, source="Marca"), news(102, "PROBABLE", DOUBT, source="AS"),
+             news(103, "RUMOR", RUMOUR, source="Marca"))
+    v = verdict(good(), news=other)
+    assert v.content is not None and v.content["sources"] == [{"name": "Marca"}, {"name": "AS"}]
+    none = good()
+    for lang in ("es", "en"):
+        none[lang]["home"][2] = S("Su plantel llega sin otras novedades." if lang == "es" else "The squad has no other news.",
+                                  "P:form.home")
+        none[lang]["risks"] = [S("Hay un rumor sin confirmar sobre el portero titular." if lang == "es" else
+                                 "There is an unconfirmed rumour about the first-choice goalkeeper.", "P:absences.home.1")]
+    v = verdict(none)
+    assert v.ok, [p.as_json() for p in v.problems]
+    assert v.content is not None and v.content["sources"] == []
+
+
 def test_the_input_is_the_facts_and_the_news_and_its_hash_ignores_what_is_left_to_translate() -> None:
     body = inp().body()
-    assert set(body) == {"match", "sections", "facts", "news", "translate", "note"}
+    assert set(body) == {"match", "limits", "facts", "news", "translate", "note"}
+    assert body["limits"] == CAPS
     assert body["facts"][0] == {"ref": "P:fixture", "section": "summary", "code": "match_intro",
                                 "params": {"competition": "Premier League", "round": "Regular Season - 9", "neutral": None}}
     assert [n["ref"] for n in body["news"]] == ["E:101", "E:102", "E:103"] and len(body["translate"]) == 3
+    assert body["news"][0]["source"] == "Marca"
     done = inp(news=(news(101, "CONFIRMED", INJURY, translated=True), news(102, "PROBABLE", DOUBT, translated=True),
                      news(103, "RUMOR", RUMOUR, translated=True)))
-    assert done.body()["translate"] == [] and done.hash == inp().hash, "a kept translation does not make the reading new"
-    assert inp(packet_id=71).hash != inp().hash, "another packet is another input"
-    assert un.fact_ref("packet:form.home") == "P:form.home" and un.fact_ref("forecast:1X2") == "P:forecast.1X2"
-    assert un.fact_ref("forecast") == "P:forecast" and un.fact_ref("packet") == "P:packet"
+    assert done.body()["translate"] == [] and done.hash == inp().hash, "a kept translation does not make the story new"
+    assert inp(story_hash="c" * 64).hash != inp().hash, "another story is another input"
+    assert inp(caps={**CAPS, "home": 2}).hash != inp().hash, "another ceiling is another input"
+    assert "Marca" in inp().names and "Fulham" in inp().names, "the outlets and the opponents are names, never numbers"
 
 
-def reading_codes() -> set[str]:
-    tree = ast.parse(Path(reading.__file__).read_text(encoding="utf-8"))
-    found = set()
-    for node in ast.walk(tree):
-        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "add"
-                and len(node.args) >= 2 and all(isinstance(a, ast.Constant) for a in node.args[:2])):
-            found.add(str(node.args[1].value))  # type: ignore[attr-defined]
-    return found
-
-
-def test_the_prompt_explains_every_code_the_reading_writes_and_the_schema_has_no_bound() -> None:
-    codes = reading_codes()
-    assert len(codes) > 35, codes
-    assert codes <= set(un.GLOSSARY), sorted(codes - set(un.GLOSSARY))
+def test_the_prompt_explains_every_code_of_the_story_and_the_schema_has_no_bound() -> None:
+    codes = set(story.READING_CODES) | {"result", "absence", "h2h_meeting"}
+    assert codes == set(un.GLOSSARY), sorted(codes ^ set(un.GLOSSARY))
     for code in un.GLOSSARY:
         assert f"- {code}: " in un.SYSTEM
+    in_story = {f.code for f in FACTS}
+    assert in_story <= set(un.GLOSSARY), sorted(in_story - set(un.GLOSSARY))
 
     def keys(x: Any) -> set[str]:
         if isinstance(x, dict):
@@ -319,7 +346,29 @@ def test_the_prompt_explains_every_code_the_reading_writes_and_the_schema_has_no
         return set()
 
     assert not keys(un.SCHEMA) & {"minimum", "maximum", "minLength", "maxLength", "minItems", "maxItems"}
-    assert un.VERSION == reading.NARRATIVE_VERSION == "user-narrative-v1"
+    assert set(un.SCHEMA["properties"]["es"]["required"]) == set(story.SECTIONS) == set(un.LanguageOut.model_fields)
+    assert un.VERSION == reading.NARRATIVE_VERSION == "user-narrative-v2"
+
+
+def test_the_story_never_names_what_the_chronicle_must_not_know() -> None:
+    """The prompt and the facts hold no forecast, price, pick or Elo: the chronicle cannot tell what it was never given."""
+    for word in ("expected_result", "likely", "market_favourite", "market_moved", "uncalibrated", "forecast_missing"):
+        assert word not in un.GLOSSARY
+    assert not any(f.ref.startswith(("P:forecast", "P:market", "P:models", "P:elo")) for f in FACTS)
+    assert not {"expected_result", "likely", "market_favourite", "market_total"} & story.READING_CODES
+
+
+def row(fixture: int, *, pick: bool = False, tier: int = 3, absences: int = 0, web: int = 0, hour: int = 20) -> dict[str, Any]:
+    return {"fixture_id": fixture, "has_pick": pick, "tier": tier, "absences": absences, "news": web,
+            "kickoff_at": dt.datetime(2026, 11, 7, hour, 0, tzinfo=dt.UTC)}
+
+
+def test_the_money_goes_first_to_a_match_with_a_pick_then_the_first_tier_then_where_there_is_more_to_say() -> None:
+    rows = [row(1, tier=5), row(2, tier=3, absences=6, web=2), row(3, tier=1), row(4, tier=4, pick=True),
+            row(5, tier=2, absences=9), row(6, tier=1, hour=15), row(7, tier=5, hour=12)]
+    order = [r["fixture_id"] for r in sorted(rows, key=un.priority)]
+    assert order == [4, 6, 3, 2, 5, 7, 1], order
+    assert un.priority(row(8, tier=9, absences=50, web=50))[1] == -(8 + 8), "what a match can claim is capped"
 
 
 @pytest.mark.parametrize(("raw", "mode"), [(None, "off"), ("", "off"), ("0", "off"), ("off", "off"), ("maybe", "off"),
