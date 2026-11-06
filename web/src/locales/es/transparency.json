@@ -162,5 +162,97 @@
       "calibration": "Pronóstico y calibración",
       "evaluation": "Prueba frente al mercado"
     }
+  },
+  "zero": {
+    "title": "Hasta hoy no hemos publicado ningún pick",
+    "body": "Esta página lo dice tal cual: PrediGol publica solo cuando un partido cumple todas las condiciones y, de momento, ninguno las ha cumplido. Preferimos no publicar a publicar por publicar.",
+    "reason": "El motivo más común: {reason}.",
+    "forecast": "Lo que sí medimos es el pronóstico de los partidos que ya terminaron, con su calibración, más abajo.",
+    "toDays": "Ver los días sin picks",
+    "toForecast": "Ver el pronóstico"
+  },
+  "parlays": {
+    "title": "Parlays de PrediGol",
+    "subtitle": "El parlay del día y el de varios días, contados como los picks. Un parlay existe cuando tiene sus selecciones: un día sin parlay no cuenta.",
+    "kinds": {
+      "daily": "Parlay del día",
+      "multiday": "Parlay de varios días"
+    },
+    "created_one": "{count} parlay creado",
+    "created_other": "{count} parlays creados",
+    "settled_one": "{count} liquidado",
+    "settled_other": "{count} liquidados",
+    "none": "Todavía no hemos creado ningún parlay de este tipo.",
+    "small_one": "Con {count} parlay liquidado todavía no mostramos rentabilidad: la muestra es demasiado pequeña.",
+    "small_other": "Con {count} parlays liquidados todavía no mostramos rentabilidad: la muestra es demasiado pequeña.",
+    "inconclusive": "Con menos de {count} parlays liquidados la muestra todavía no permite concluir.",
+    "partial_one": "{count} ganado con alguna selección anulada, devuelta o a medias.",
+    "partial_other": "{count} ganados con alguna selección anulada, devuelta o a medias.",
+    "how": "Un parlay gana si todas sus selecciones ganan y pierde si una pierde. Una selección anulada o devuelta no cuenta como perdida: el parlay sigue con las demás."
+  },
+  "picks": {
+    "title": "Pick a pick",
+    "subtitle": "Cada pick que publicamos, con la cuota y la probabilidad con que se publicó y cómo terminó. Se queda como se publicó: no se cambia después.",
+    "none": "Todavía no hay picks publicados que listar.",
+    "shown": "Mostrando {shown} de {total}",
+    "more": "Ver más picks",
+    "odds": "Cuota",
+    "said": "PrediGol dijo",
+    "market": "Mercado",
+    "units": "Unidades",
+    "score": "Marcador",
+    "pending": "Pendiente",
+    "legend": "La cuota es la que había cuando se eligió el pick. «PrediGol dijo» es la probabilidad de PrediGol; «Mercado», la que daban las casas sin su margen."
+  },
+  "reading": {
+    "pick": {
+      "title": "Qué es un pick",
+      "what": "Un pick es una selección concreta de un partido, por ejemplo «más de 2,5 goles» o «gana el local», que PrediGol publica porque, según su análisis, la cuota paga más de lo que dice la probabilidad.",
+      "notSure": "No es una predicción segura: es una apuesta con valor. Puede perder y perderá muchas veces. Lo que cuenta es el resultado de muchos picks, no el de uno.",
+      "frozen": "Se publica antes de que empiece el partido, con la cuota de ese momento, y no se cambia después: se queda como se publicó y luego se le añade el resultado. PrediGol no recibe dinero de apuestas.",
+      "filters": "Un pronóstico no es un valor y un valor no es un pick: solo lo que pasa todos los filtros de «Cómo se decide» se publica."
+    },
+    "read": {
+      "title": "Cómo leer probabilidades y cuotas",
+      "intro": "Los números de esta explicación son solo un ejemplo para entender cómo se leen: no son un pick.",
+      "terms": {
+        "odds": {
+          "name": "Cuota",
+          "text": "Es el precio de la casa. Con una cuota de 2,00, por cada 1 apostado recibirías 2 si gana (1 de ganancia más tu apuesta). Con 1,50 recibirías 1,50."
+        },
+        "said": {
+          "name": "PrediGol dijo",
+          "text": "Cuánta probabilidad le da PrediGol a que ocurra esa selección. Un 55 % no es una promesa: de cada 100 casos así esperamos que ocurran unos 55, no todos."
+        },
+        "market": {
+          "name": "Mercado",
+          "text": "Lo que dicen las casas una vez quitado su margen. Una cuota de 2,00 equivale, más o menos, a un 50 %."
+        },
+        "value": {
+          "name": "Valor",
+          "text": "Hay valor cuando PrediGol da más probabilidad que el mercado: con 55 % frente a 50 %, una cuota de 2,00 pagaría más de lo que arriesga si la probabilidad de PrediGol es la correcta. Por eso importan la calibración y la muestra: miden si esos porcentajes se cumplen."
+        },
+        "units": {
+          "name": "Unidades",
+          "text": "Contamos como si en cada pick apostaras 1 unidad. +1,00 u es ganar una unidad; −1,00 u, perderla. PrediGol no maneja dinero."
+        },
+        "results": {
+          "name": "Resultados",
+          "text": "Ganado y Perdido; Medio ganado y Medio perdido, en las líneas asiáticas; Devuelto, cuando se devuelve la apuesta; Anulado, cuando no hubo apuesta (por ejemplo, un partido que no se jugó); Pendiente, hasta que termina el partido."
+        }
+      },
+      "example": "Ejemplo ilustrativo: cuota 2,00, PrediGol dijo 55 %, el mercado 50 %."
+    }
+  },
+  "changes": {
+    "title": "Qué ha cambiado",
+    "subtitle": "Las novedades de PrediGol y las definiciones de esta página, con su fecha. Si cambia una definición, lo decimos aquí y recalculamos el histórico.",
+    "kinds": {
+      "novelty": "Novedad",
+      "definition": "Definición"
+    },
+    "definitionLine": "{name}: versión {version}",
+    "more": "Ver todo el historial ({count})",
+    "toUpdates": "Ver todas las Novedades"
   }
 }

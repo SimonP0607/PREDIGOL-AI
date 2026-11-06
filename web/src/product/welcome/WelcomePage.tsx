@@ -25,8 +25,16 @@ import type { WelcomeStep } from "@/lib/api/v1/types_favorites";
 import { t } from "@/lib/i18n";
 import { track } from "@/lib/track";
 import { Card, ErrorState } from "@/product/shared/States";
+import { trackChanges } from "@/product/favorites/analytics";
 import { FavoritesPicker } from "@/product/favorites/FavoritesPicker";
-import { bodyOf, changes, choiceOf, limitsOf, type Choice } from "@/product/favorites/model";
+import {
+  beforeOf,
+  bodyOf,
+  changes,
+  choiceOf,
+  limitsOf,
+  type Choice,
+} from "@/product/favorites/model";
 import { useOnboardingState, welcomeSteps } from "@/product/favorites/onboarding";
 import { HOW_PATH } from "@/product/help/howItWorks";
 import { useTour } from "@/product/tour/steps";
@@ -63,10 +71,8 @@ function Football({
     setFailure(false);
     try {
       const saved = await v1.saveFavorites(bodyOf(choice));
-      const before = favorites.data.suggested ? null : choiceOf(favorites.data);
-      const { added, removed } = changes(before, choiceOf(saved));
-      for (const c of added) track("favorite_added", { kind: c.kind, id: c.id });
-      for (const c of removed) track("favorite_removed", { kind: c.kind, id: c.id });
+      const { added, removed } = changes(beforeOf(favorites.data), choiceOf(saved));
+      trackChanges({ added, removed });
       qc.setQueryData(live.favorites.queryKey, saved);
       void qc.invalidateQueries({ queryKey: ["v1", "today"] });
       void qc.invalidateQueries({ queryKey: ["me", "personal"] });
@@ -151,6 +157,9 @@ function About({
         <Sparkles aria-hidden className="h-5 w-5 text-primary" />
         {t("onboarding.welcome.about.title")}
       </h1>
+      <p className="text-[0.9375rem] leading-relaxed" data-testid="welcome-what">
+        {t("common.what")}
+      </p>
       <ul className="space-y-3" data-testid="welcome-about">
         {(["analysis", "picks", "transparency"] as const).map((k) => (
           <li key={k} className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed">

@@ -12,6 +12,7 @@ from fbi.api.contracts.common import Contract
 MembershipState = Literal["trial", "active", "expiring", "grace", "expired", "renewed", "suspended", "none"]
 PeriodKind = Literal["trial", "paid", "courtesy"]
 PaymentMethod = Literal["transfer", "nequi", "daviplata", "cash", "card", "paypal", "other"]
+DiscountKind = Literal["coupon", "loyalty"]
 
 
 class MembershipSummary(Contract):
@@ -45,6 +46,35 @@ class MembershipPlan(Contract):
     prices: list[PlanPrice]
 
 
+class DiscountOffer(Contract):
+    """The discount a reader's next payment gets (UX-005): the larger of the loyalty one and the best coupon held."""
+
+    kind: DiscountKind
+    percent: int = Field(description="1 to 100.")
+    code: str | None = Field(description="The coupon's code; None for the loyalty discount.")
+    prices: list[PlanPrice] = Field(description="The monthly price with the discount taken off, per currency.")
+
+
+class HeldCoupon(Contract):
+    code: str
+    percent: int
+
+
+class LoyaltyRule(Contract):
+    """The loyalty discount and where the reader stands (shown only while FBI_LOYALTY_PERCENT is not 0)."""
+
+    percent: int
+    after_months: int = Field(description="The months paid from which it applies: FBI_LOYALTY_AFTER_MONTHS, 2 by default.")
+    paid_months: int = Field(description="The months of the payments the owner recorded; a trial is not one.")
+    active: bool
+
+
+class MyDiscounts(Contract):
+    offer: DiscountOffer | None = Field(description="What the next payment gets, or None.")
+    coupons: list[HeldCoupon] = Field(description="The coupons held and not used yet.")
+    loyalty: LoyaltyRule | None
+
+
 class MyPeriod(Contract):
     kind: PeriodKind
     starts_at: datetime
@@ -52,6 +82,7 @@ class MyPeriod(Contract):
     amount: str | None = Field(description="The payment of a paid period, as a decimal string.")
     currency: str | None
     method: PaymentMethod | None
+    discount_percent: int | None = Field(description="The discount that payment carried; None when it had none.")
 
 
 class MyMembership(Contract):
@@ -60,6 +91,7 @@ class MyMembership(Contract):
     periods: list[MyPeriod]
     renew: RenewContact
     plan: MembershipPlan
+    discounts: MyDiscounts
 
 
 class AdminPeriod(Contract):
@@ -74,6 +106,9 @@ class AdminPeriod(Contract):
     method: PaymentMethod | None
     reference: str | None
     provider: str | None
+    discount_percent: int | None
+    discount_kind: DiscountKind | None
+    coupon_code: str | None
 
 
 class AdminMembershipEvent(Contract):
@@ -92,6 +127,8 @@ class AdminMembership(Contract):
     currency: str = Field(description="The currency the payment form proposes (FBI_MEMBERSHIP_CURRENCY).")
     trial_days: int = Field(description="FBI_TRIAL_DAYS: the trial a new account gets unless the invitation says.")
     enforced: bool = Field(description="FBI_MEMBERSHIP_ENFORCE: whether an ended membership limits anything.")
+    prices: list[PlanPrice] = Field(description="The monthly price per currency, for the payment form to propose.")
+    discount: DiscountOffer | None = Field(description="The discount this account's next payment gets, or None.")
 
 
 class PaymentIn(BaseModel):
@@ -105,6 +142,9 @@ class PaymentIn(BaseModel):
     months: int = Field(default=1, ge=1, le=12)
     idempotency_key: str = Field(min_length=8, max_length=80,
                                  description="One per payment the owner records: a repeated click records one.")
+    apply_discount: bool = Field(default=False,
+                                 description="Record the discount the account's next payment is offered (409 "
+                                             "no_discount when there is none); a coupon is then used.")
 
 
 class CourtesyIn(BaseModel):
@@ -136,3 +176,45 @@ class RenewalIntentIn(BaseModel):
 class PaymentRecorded(Contract):
     created: bool = Field(description="False: this idempotency key was recorded before - the same payment.")
     membership: AdminMembership
+
+
+class CouponIn(BaseModel):
+    """A reader types a code: capitals or not, spaces at the ends ignored."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(min_length=1, max_length=40)
+
+
+class CouponRedeemed(Contract):
+    code: str
+    percent: int
+    discounts: MyDiscounts
+
+
+class AdminCoupon(Contract):
+    id: int
+    code: str
+    percent: int
+    note: str | None
+    valid_until: datetime | None
+    max_redemptions: int | None
+    created_at: datetime
+    disabled_at: datetime | None
+    redemptions: int = Field(description="Readers holding it.")
+    used: int = Field(description="Payments that carried it.")
+    active: bool = Field(description="Can still be redeemed: not disabled, not past its last day, not at its ceiling.")
+
+
+class AdminCoupons(Contract):
+    coupons: list[AdminCoupon]
+
+
+class CouponCreateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(min_length=1, max_length=40)
+    percent: int = Field(ge=1, le=100)
+    note: str | None = Field(default=None, max_length=200)
+    valid_until: datetime | None = Field(default=None, description="The last moment a reader may redeem it.")
+    max_redemptions: int | None = Field(default=None, ge=1, le=100000)

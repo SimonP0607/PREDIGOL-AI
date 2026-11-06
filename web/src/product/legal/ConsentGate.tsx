@@ -4,6 +4,9 @@
  * separate, unticked boxes with the exact sentence the server stores, and a link to the text it refers to. After a
  * material change of a text, only the purposes on that text come back, with what changed.
  *
+ * Beside them, the usage statistics are an optional box, unticked, that never counts for opening the gate (plan de
+ * cierre UX, 1.2): left as it is, it records nothing.
+ *
  * The server decides (403 consent_required on every product route); this only asks. The reader can still sign out,
  * read the texts, and open their profile to take a copy of their data or ask for its deletion without accepting.
  */
@@ -19,7 +22,9 @@ import { BrandLogo } from "@/components/brand/Brand";
 import { Disclaimer } from "@/components/system/Disclaimer";
 import { LanguageSwitch } from "@/components/layout/HeaderControls";
 import { Card, ErrorState, errorMessage } from "@/product/shared/States";
+import { gateOptional } from "@/product/profile/consents";
 import { legalPath } from "./links";
+import { OptionalConsent } from "./OptionalConsent";
 
 export function ConsentGate({
   due,
@@ -38,6 +43,7 @@ export function ConsentGate({
     queryFn: () => v1.myConsents(locale),
   });
   const [ticked, setTicked] = useState<ReadonlySet<ConsentKind>>(new Set());
+  const [statistics, setStatistics] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -47,6 +53,7 @@ export function ConsentGate({
   const changed = owed.filter((p) => p.changes);
   const changedDocs = [...new Map(changed.map((p) => [p.document, p])).values()];
   const complete = owed.length > 0 && owed.every((p) => ticked.has(p.kind));
+  const optional = gateOptional(state.data);
 
   function toggle(kind: ConsentKind, on: boolean) {
     setTicked((prev) => {
@@ -64,7 +71,13 @@ export function ConsentGate({
     setFailure(null);
     try {
       await v1.decideConsents({
-        decisions: owed.map((p) => ({ kind: p.kind, granted: true, version: p.version })),
+        decisions: [
+          ...owed.map((p) => ({ kind: p.kind, granted: true, version: p.version })),
+          // only when the reader ticked it: an unticked optional box is no decision at all
+          ...(optional && statistics
+            ? [{ kind: optional.kind, granted: true, version: optional.version }]
+            : []),
+        ],
         locale,
         source,
       });
@@ -73,6 +86,7 @@ export function ConsentGate({
     } catch (err) {
       if (err instanceof LiveApiError && err.code === "legal_text_changed") {
         setTicked(new Set());
+        setStatistics(false);
         setFailure(t("legal.gate.textChanged"));
         await state.refetch();
       } else {
@@ -147,6 +161,9 @@ export function ConsentGate({
                   </div>
                 ))}
               </fieldset>
+              {optional ? (
+                <OptionalConsent purpose={optional} ticked={statistics} onToggle={setStatistics} />
+              ) : null}
               {failure ? (
                 <p role="alert" className="text-sm text-negative" data-testid="consent-error">
                   {failure}

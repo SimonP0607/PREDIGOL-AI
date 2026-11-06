@@ -53,6 +53,29 @@ vencer, en gracia y vencidas).
   los detiene.
 - Sin cuentas atrás, ofertas ni colores de alarma: son avisos del servicio contratado.
 
+## 4 bis. Descuentos y cupones (UX-005)
+
+Dos decisiones tuyas del 5-nov-2026. Nada se cobra desde PrediGol (no hay pasarela): el descuento es un número que el
+lector ve y que tu consola propone cuando registras el pago.
+
+- **Cupones.** En **Usuarios → Cupones** creas uno cuando quieras: código (3 a 32 letras, números, `-` o `_`), porcentaje
+  (1 a 100), una nota solo para ti, hasta qué día se puede guardar y cuántos lectores pueden guardarlo (los dos son
+  opcionales). El lector lo escribe en **Perfil → Membresía → «¿Tienes un cupón?»**. Un cupón descuenta **un solo pago**
+  del lector que lo guarda. Lo puedes **apagar** (no se borra nunca ni se edita): deja de poder guardarse y de aplicarse,
+  también para quien ya lo guardó sin usarlo. Un código que no existe y uno apagado responden lo mismo, y tras 10 códigos
+  inválidos en 15 minutos la cuenta espera.
+- **Fidelidad.** Quien ha pagado **dos meses o más** (los meses de los pagos que tú registraste: una prueba o una cortesía
+  no cuentan) tiene **20% en cada renovación**, desde ahora. Cambia con `FBI_LOYALTY_PERCENT` (`0` o `off` lo apaga) y
+  `FBI_LOYALTY_AFTER_MONTHS`.
+- **No se suman.** Si el lector tiene fidelidad y un cupón, se aplica el **mayor**; si empatan, el de fidelidad (el cupón
+  se queda guardado para después).
+- **Al registrar un pago** (Usuarios → Membresía → «Registrar pago y extender») la consola muestra el descuento de ese
+  lector y el importe sugerido; la casilla «Registrar este pago con el descuento» viene marcada. El importe que escribes es
+  lo que recibiste: el pago guarda además el porcentaje y, si fue cupón, cuál (y el cupón queda usado). Un pago sin la
+  casilla no usa ningún descuento.
+- Todo queda en el registro de auditoría (`membership.coupon_created`, `membership.coupon_disabled`,
+  `membership.coupon_redeemed`) y en la exportación del lector (sus cupones y el descuento de cada pago).
+
 ## 5. Qué recibes tú
 
 Cada mañana (desde las 07:00 de Bogotá), si hay algo que decir, un aviso por tu canal con **cuántas** membresías

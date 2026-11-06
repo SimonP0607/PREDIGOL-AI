@@ -1,4 +1,5 @@
-"""A reader's favourite leagues and teams, the welcome and the hints (plan UX, A13; sections 20 and 38 of the plan).
+"""A reader's favourite leagues, teams, players and markets, the welcome and the hints (plan UX, A13 and closing plan 3.1;
+sections 20 and 38 of the plan).
 
 Personalisation of the experience, never of the intelligence: the favourites order and filter what a reader is shown
 (Home's «Hoy en tus ligas» first); picks, probabilities, states and prices are the same for every reader - the boards stay
@@ -8,6 +9,10 @@ shared and cached, and the page applies the reader's favourites on top. Every pe
                  without a migration). Until the reader chooses, the suggested ones for Colombia - the leagues and the
                  national team Home suggested since A9 (``fbi.core.suggestions``: one list for Home, its news and here) -
                  labelled as suggested.
+    players      (3.1) up to MAX_PLAYERS players who appeared in a line-up of a league PrediGol follows within
+                 TEAM_WINDOW_DAYS: seen in a line-up or searched by name. One already followed stays even when it ages out.
+    markets      (3.1) up to MAX_MARKETS of the markets PrediGol reads (FOLLOWABLE_MARKETS): the ones the reader reads most.
+                 A market is followed for what it is - a name - never for what the reader stakes on it.
     welcome      once per account, after the consents: «Tu fútbol» (the favourites, the suggested already ticked; skipping
                  keeps them) and «Qué es PrediGol» - then Home. ``customer.preferences.onboarded_at`` records it; existing
                  accounts see the one screen of favourites too, and never the rest again. FBI_ONBOARDING=0 sends every
@@ -15,7 +20,8 @@ shared and cached, and the page applies the reader's favourites on top. Every pe
     hints        one per page (Picks, a match, the parlay slip, Mis picks), the first visit only, dismissed with a tap and
                  never again (``customer.preferences.hints_seen``).
 
-Never a betting profile: no amounts, no bankroll, no appetite for risk - only what the reader follows.
+Never a betting profile: no amounts, no bankroll, no appetite for risk - only what the reader follows (the markets they
+read, not the picks they take).
 """
 
 from __future__ import annotations
@@ -33,6 +39,10 @@ from fbi.customer.db import CustomerError, write_connection
 
 MAX_LEAGUES: Final = 10
 MAX_TEAMS: Final = 20
+MAX_PLAYERS: Final = 20
+MAX_MARKETS: Final = 5
+FOLLOWABLE_MARKETS: Final = ("1X2", "OU", "BTTS", "AH", "DC")
+"""The markets PrediGol reads and a reader may follow (the product's MarketKey: a test keeps both lists the same)."""
 HINTS: Final = ("picks", "match", "parlay", "my_picks")
 """The pages with a first-visit hint (plan section 20)."""
 ONBOARDING_SWITCH: Final = "FBI_ONBOARDING"
@@ -40,11 +50,14 @@ PERSONALIZATION_SWITCH: Final = "FBI_PERSONALIZATION"
 TEAM_WINDOW_DAYS: Final = 400
 """A team can be followed when it played or plays a match of a followed league within this many days (a season and a bit)."""
 SEARCH_LIMIT: Final = 20
+PLAYER_SEARCH_MIN: Final = 3
+"""A player's name is searched from three letters (two would list half the league)."""
 _ON: Final = frozenset({"1", "on", "true", "yes"})
 ACCENTS: Final = ("áàäâãéèëêíìïîóòöôõúùüûñç", "aaaaaeeeeiiiiooooouuuunc")
 """What a search folds: the accented letters and their plain ones (the same pair in Python and in SQL's translate)."""
 
 Kind = Literal["league", "team"]
+ExtraKind = Literal["player", "market"]
 
 
 def _switch(name: str) -> bool:
@@ -72,7 +85,36 @@ class Chosen:
     teams: tuple[int, ...]
 
 
-CHOSEN_SQL = "SELECT kind, ref_id FROM customer.favorites WHERE user_id = %s ORDER BY created_at, ref_id"
+@dataclass(frozen=True)
+class Extras:
+    """The players and markets a reader follows (3.1): apart from ``Chosen`` because the suggested leagues and team stand
+    in for the leagues and teams alone - a reader who follows a player still sees them as suggested."""
+
+    players: tuple[int, ...] = ()
+    markets: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Saved:
+    """What a save left: the favourites now, what it added and what it removed (the page records each as an event)."""
+
+    now: Chosen
+    added: Chosen
+    removed: Chosen
+    extras: Extras
+    extras_added: Extras
+    extras_removed: Extras
+
+
+CHOSEN_SQL = (
+    "SELECT kind, ref_id FROM customer.favorites WHERE user_id = %s AND kind IN ('league', 'team') "
+    "ORDER BY created_at, ref_id"
+)
+
+EXTRAS_SQL = (
+    "SELECT kind, ref_id, market_key FROM customer.favorites WHERE user_id = %s AND kind IN ('player', 'market') "
+    "ORDER BY created_at, ref_id NULLS LAST, market_key"
+)
 
 SUGGESTED_SQL = """
 SELECT 'league' AS kind, c.id FROM core.competitions c
@@ -91,6 +133,20 @@ SELECT t.id FROM core.teams t
                  JOIN core.competitions c ON c.id = cs.competition_id
                 WHERE c.is_tracked AND (f.home_team_id = t.id OR f.away_team_id = t.id)
                   AND f.kickoff_at > now() - make_interval(days => %(days)s))
+"""
+
+APPEARANCE_SQL = """
+SELECT 1 FROM core.fixture_lineup_players lp
+  JOIN core.fixtures f ON f.id = lp.fixture_id
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+ WHERE lp.provider_player_id = p.provider_player_id AND c.is_tracked
+   AND f.kickoff_at > now() - make_interval(days => %(days)s)
+"""
+"""A player's appearance in a line-up of a league PrediGol follows within the window (p is the core.players row)."""
+
+FOLLOWABLE_PLAYERS_SQL = f"""
+SELECT p.id FROM core.players p WHERE p.id = ANY(%(ids)s) AND EXISTS ({APPEARANCE_SQL})
 """
 
 PREFERENCES_SQL = "SELECT onboarded_at, hints_seen FROM customer.preferences WHERE user_id = %s"
@@ -112,8 +168,8 @@ def suggested(conn: psycopg.Connection[Any]) -> Chosen:
                   teams=tuple(sorted(int(r[1]) for r in rows if r[0] == "team")))
 
 
-def _unique(ids: Sequence[int]) -> list[int]:
-    seen: list[int] = []
+def _unique[T](ids: Sequence[T]) -> list[T]:
+    seen: list[T] = []
     for i in ids:
         if i not in seen:
             seen.append(i)
@@ -140,33 +196,85 @@ def validate(conn: psycopg.Connection[Any], leagues: Sequence[int], teams: Seque
     return Chosen(leagues=tuple(want_leagues), teams=tuple(want_teams))
 
 
-def replace(user_id: int, leagues: Sequence[int], teams: Sequence[int], *, at: datetime) -> tuple[Chosen, Chosen, Chosen]:
-    """The reader's favourites become exactly these (idempotent). Returns what they are now, what was added and what was
-    removed - the page records each as an event (favorite_added / favorite_removed)."""
+def extras(conn: psycopg.Connection[Any], user_id: int) -> Extras:
+    """The players and markets the reader follows, in the order chosen (none while they follow none)."""
+    rows = conn.execute(EXTRAS_SQL, (user_id,)).fetchall()
+    return Extras(players=tuple(int(r[1]) for r in rows if r[0] == "player"),
+                  markets=tuple(str(r[2]) for r in rows if r[0] == "market"))
+
+
+def validate_extras(conn: psycopg.Connection[Any], players: Sequence[int], markets: Sequence[str],
+                    *, already: Extras | None = None) -> Extras:
+    """The players and markets a reader may keep: within the limits, players who appeared in a line-up of a league
+    PrediGol follows, markets PrediGol reads. One the reader already follows is kept without asking again (a player ages out
+    of the window; a favourite never blocks a save). Refuses (422) rather than trims."""
+    want_players, want_markets = _unique(players), _unique([str(m) for m in markets])
+    if len(want_players) > MAX_PLAYERS:
+        raise CustomerError(422, "too_many_players", f"at most {MAX_PLAYERS} players")
+    if len(want_markets) > MAX_MARKETS:
+        raise CustomerError(422, "too_many_markets", f"at most {MAX_MARKETS} markets")
+    if unknown := [m for m in want_markets if m not in FOLLOWABLE_MARKETS]:
+        raise CustomerError(422, "unknown_market", f"not a market PrediGol reads: {unknown[0]}")
+    kept = already.players if already else ()
+    new = [i for i in want_players if i not in kept]
+    if new:
+        known = {int(r[0]) for r in conn.execute(FOLLOWABLE_PLAYERS_SQL,
+                                                   {"ids": new, "days": TEAM_WINDOW_DAYS}).fetchall()}
+        if missing := [i for i in new if i not in known]:
+            raise CustomerError(422, "unknown_player",
+                                f"not a player of a league PrediGol follows: {missing[0]}")
+    return Extras(players=tuple(want_players), markets=tuple(want_markets))
+
+
+INSERT_SQL = (
+    "INSERT INTO customer.favorites (user_id, kind, ref_id, league_id, team_id, player_id, market_key, created_at) "
+    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING"
+)
+
+
+def replace(user_id: int, leagues: Sequence[int], teams: Sequence[int], *, at: datetime,
+            players: Sequence[int] | None = None, markets: Sequence[str] | None = None) -> Saved:
+    """The reader's favourites become exactly these (idempotent). ``players`` / ``markets`` left out (None) keep what the
+    reader has - a page from before 3.1 that sends leagues and teams alone never clears them. Returns what they are now,
+    what was added and what was removed - the page records each as an event (favorite_added / favorite_removed)."""
     with write_connection() as conn:
         want = validate(conn, leagues, teams)
         conn.execute("SELECT pg_advisory_xact_lock(hashtext('customer.favorites'), %s)", (user_id % 2**31,))
         before = chosen(conn, user_id) or Chosen((), ())
+        before_extras = extras(conn, user_id)
+        want_extras = (before_extras if players is None and markets is None else
+                       validate_extras(conn, before_extras.players if players is None else players,
+                                       before_extras.markets if markets is None else markets,
+                                       already=before_extras))
         removed = Chosen(leagues=tuple(i for i in before.leagues if i not in want.leagues),
                          teams=tuple(i for i in before.teams if i not in want.teams))
         added = Chosen(leagues=tuple(i for i in want.leagues if i not in before.leagues),
                        teams=tuple(i for i in want.teams if i not in before.teams))
-        for kind, ids in (("league", removed.leagues), ("team", removed.teams)):
+        extras_removed = Extras(players=tuple(i for i in before_extras.players if i not in want_extras.players),
+                                markets=tuple(m for m in before_extras.markets if m not in want_extras.markets))
+        extras_added = Extras(players=tuple(i for i in want_extras.players if i not in before_extras.players),
+                              markets=tuple(m for m in want_extras.markets if m not in before_extras.markets))
+        for kind, ids in (("league", removed.leagues), ("team", removed.teams), ("player", extras_removed.players)):
             if ids:
                 conn.execute("DELETE FROM customer.favorites WHERE user_id = %s AND kind = %s AND ref_id = ANY(%s)",
                              (user_id, kind, list(ids)))
+        if extras_removed.markets:
+            conn.execute("DELETE FROM customer.favorites WHERE user_id = %s AND kind = 'market' "
+                         "AND market_key = ANY(%s)", (user_id, list(extras_removed.markets)))
         # The reader's order: a favourite is listed by when it was chosen, and the ones of one save a microsecond apart in
-        # the order sent (leagues, then teams) - so the list reads back as the reader put it.
+        # the order sent (leagues, teams, players, then markets) - so the list reads back as the reader put it.
         step = 0
-        for kind, ids in (("league", added.leagues), ("team", added.teams)):
+        for kind, ids in (("league", added.leagues), ("team", added.teams), ("player", extras_added.players)):
             for ref in ids:
-                conn.execute(
-                    "INSERT INTO customer.favorites (user_id, kind, ref_id, league_id, team_id, created_at) "
-                    "VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
-                    (user_id, kind, ref, ref if kind == "league" else None, ref if kind == "team" else None,
-                     at + timedelta(microseconds=step)))
+                conn.execute(INSERT_SQL, (user_id, kind, ref, ref if kind == "league" else None,
+                                          ref if kind == "team" else None, ref if kind == "player" else None, None,
+                                          at + timedelta(microseconds=step)))
                 step += 1
-    return want, added, removed
+        for key in extras_added.markets:
+            conn.execute(INSERT_SQL, (user_id, "market", None, None, None, None, key, at + timedelta(microseconds=step)))
+            step += 1
+    return Saved(now=want, added=added, removed=removed, extras=want_extras, extras_added=extras_added,
+                 extras_removed=extras_removed)
 
 
 @dataclass(frozen=True)

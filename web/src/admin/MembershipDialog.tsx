@@ -22,7 +22,12 @@ import { t, translateOr } from "@/lib/i18n";
 import { formatDateLong, formatDateTime, formatDateYear } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { errorMessage } from "@/product/shared/States";
-import { membershipLine } from "@/product/membership/membership";
+import {
+  membershipLine,
+  offerSource,
+  priceLine,
+  suggestedAmount,
+} from "@/product/membership/membership";
 
 const field =
   "mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-base focus:border-primary focus:outline-none sm:text-sm";
@@ -60,6 +65,14 @@ function PayForm({
   const [months, setMonths] = useState(1);
   const [key, setKey] = useState(newKey);
   const [error, setError] = useState<string | null>(null);
+  // The discount this account's next payment gets (UX-005): offered ticked, because it is what the reader was told.
+  const discount = view.discount;
+  const [apply, setApply] = useState(true);
+  const suggested = suggestedAmount(
+    discount && apply ? discount.prices : view.prices,
+    currency,
+    months,
+  );
   const pay = useMutation({
     mutationFn: () =>
       v1.recordPayment(userId, {
@@ -69,12 +82,14 @@ function PayForm({
         reference: reference.trim(),
         months,
         idempotency_key: key,
+        ...(discount && apply ? { apply_discount: true } : {}),
       }),
     onSuccess: (r) => {
       setError(null);
       setKey(newKey());
       setAmount("");
       setReference("");
+      setApply(true);
       const m = r.membership.membership;
       const notice = r.created
         ? t("admin.membership.paid", {
@@ -158,6 +173,54 @@ function PayForm({
           {t("admin.membership.referenceHint")}
         </span>
       </label>
+      {discount ? (
+        <div
+          className="space-y-1.5 rounded-md border border-positive/40 bg-positive/10 p-3 text-xs sm:col-span-2"
+          data-testid="pay-discount"
+        >
+          <p>
+            {t("admin.membership.discountOffer", {
+              percent: discount.percent,
+              source: offerSource(discount),
+              prices: priceLine(discount.prices) ?? "",
+            })}
+          </p>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              checked={apply}
+              onChange={(e) => setApply(e.target.checked)}
+              className="mt-0.5"
+              data-testid="pay-apply-discount"
+            />
+            <span>
+              {t("admin.membership.applyDiscount", {
+                percent: discount.percent,
+                source: offerSource(discount),
+              })}
+            </span>
+          </label>
+        </div>
+      ) : null}
+      {suggested ? (
+        <p
+          className="numeric flex flex-wrap items-center gap-2 text-caption text-muted-foreground sm:col-span-2"
+          data-testid="pay-suggested"
+        >
+          {t("admin.membership.suggested", {
+            amount: suggested,
+            currency: currency.trim().toUpperCase(),
+          })}
+          <button
+            type="button"
+            onClick={() => setAmount(suggested)}
+            className="tap-y relative font-medium text-primary"
+            data-testid="pay-use-suggested"
+          >
+            {t("admin.membership.useSuggested")}
+          </button>
+        </p>
+      ) : null}
       <p className="text-caption text-subtle-foreground sm:col-span-2">
         {t("admin.membership.payNote")}
       </p>
@@ -295,6 +358,12 @@ function History({ view }: { view: AdminMembership }) {
                 · {p.amount} {p.currency}
                 {p.method ? ` · ${t(`admin.membership.methods.${p.method}`)}` : ""}
                 {p.reference ? ` · ${p.reference}` : ""}
+                {p.discount_percent && p.discount_kind
+                  ? ` · ${t("admin.membership.discountCarried", {
+                      percent: p.discount_percent,
+                      source: offerSource({ kind: p.discount_kind, code: p.coupon_code }),
+                    })}`
+                  : ""}
               </span>
             ) : null}
             {p.reason ? <span className="text-muted-foreground">· {p.reason}</span> : null}

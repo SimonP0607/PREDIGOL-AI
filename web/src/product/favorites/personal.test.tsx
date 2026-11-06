@@ -33,6 +33,10 @@ function view(over: Partial<FavoritesView> = {}): FavoritesView {
     suggested: false,
     max_leagues: 10,
     max_teams: 20,
+    max_players: 20,
+    max_markets: 5,
+    players: [],
+    markets: [],
     personalization: true,
     ...over,
   };

@@ -48,6 +48,9 @@ export function MembershipPlan({ plan }: { plan: Plan }) {
       <p className="text-xs text-muted-foreground" data-testid="membership-how">
         {t("profile.membership.plan.how")}
       </p>
+      <p className="text-xs text-muted-foreground" data-testid="membership-not-bets">
+        {t("profile.membership.plan.notBets")}
+      </p>
     </section>
   );
 }
