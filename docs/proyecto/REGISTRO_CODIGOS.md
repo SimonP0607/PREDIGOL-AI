@@ -58,6 +58,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-022 | Comunicados del dueño (plan de cierre UX, 4.3): consola con cuatro tipos cerrados (mantenimiento, incidencia, actualización y comunicado general; no existe «promoción»), borrador, vista previa con código de 10 minutos, frase «PUBLICAR», tope diario de 3 y registro que solo se amplía. Destinos: banner en la app con fechas, Novedades (las actualizaciones), canal de Telegram si está configurado (y bot de bienvenida sin conversación) y correo solo si es crítico. Migración 0124. No toca la inteligencia | en curso | este PR | — |
 | UX-023 | Interruptor de los avisos de picks al dueño (plan de cierre UX, 4.4, P14): `FBI_NOTIFY_PICKS=off` deja fuera de su chat los avisos de picks en sombra y de liquidación para poder encender los de tickets, vencimientos y operación. Solo decide a quién se avisa: no lee ni toca picks, modelos ni histórico; encendido por defecto, sin migración | en curso | este PR | — |
 | UX-024 | Novedades del cierre de la UX (plan de cierre, fase 6): siete entradas nuevas, en español e inglés y en la copia del servidor, de lo que el lector ya ve desplegado: Inicio «Para ti», Resumen para entender, el porqué en una línea, más competiciones, seguir jugadores y mercados, puntos clave y «Por qué hay valor», y «Cómo funciona PrediGol». Sin migración ni interruptor | en curso | este PR | — |
+| UX-025 | La crónica de cada partido (plan de cierre UX, 2.4): la narrativa con IA pasa a ser una crónica corta y fluida, en español e inglés, con una entrada, un párrafo por equipo (últimos resultados con marcador y rival, bajas con su motivo, rachas, goleador, noticias verificadas), el historial directo, «Qué puede salir mal» y «Fuentes». Largo según los datos, nunca inventado; sin pronóstico ni picks (siguen aparte, con sus plantillas); atada a la historia del partido y no al paquete; presupuesto aparte de 20 US$ al mes. Nace apagada (`FBI_USER_NARRATIVE`, presupuesto 0). No cambia modelos, umbrales ni picks; sin migración (`backend/docs/owner/CRONICA_UX_025.md`) | en curso | este PR | — |
 
 ## BE — backend
 
@@ -73,4 +74,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-010 · UX-025 · BE-004 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-010 · UX-026 · BE-004 · FE-001 · OPS-001 · DOC-001
