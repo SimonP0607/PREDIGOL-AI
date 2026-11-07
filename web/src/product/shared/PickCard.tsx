@@ -28,6 +28,7 @@ export function PickCard({
   className,
   actions,
   why,
+  autoOpenWhy = false,
 }: {
   pick: PickCardData;
   /** 1-5 for the Top 5. */
@@ -40,6 +41,8 @@ export function PickCard({
   actions?: ReactNode;
   /** Why the reader is shown it (plan UX, B2): «Sigues a Nacional», «Tu liga» - one line under the teams. */
   why?: ReactNode;
+  /** The explanation opens by itself: the reader came from «Más sobre este pick» (plan de Inicio, 2.3). */
+  autoOpenWhy?: boolean;
 }) {
   const label = selectionLabel({
     market_key: pick.market_key,
@@ -163,7 +166,7 @@ export function PickCard({
         </Hint>
       </div>
       <div className={cn("flex flex-wrap gap-2 px-4", compact ? "pb-3" : "pb-3.5")}>
-        <WhyPickButton pickId={pick.pick_id} />
+        <WhyPickButton pickId={pick.pick_id} autoOpen={autoOpenWhy} />
         <ExplainButton entity="pick" itemId={pick.pick_id} testId="explain-pick" />
       </div>
       {actions ? <div className="border-t border-border/70 px-4 py-2.5">{actions}</div> : null}

@@ -1,6 +1,6 @@
 {
-  "oddsUpdated": "Cuotas actualizadas {when}",
-  "oddsNone": "Aún no hay cuotas capturadas",
+  "liveUpdated": "Datos en vivo actualizados {when}",
+  "liveNone": "Sin datos en vivo recientes",
   "picks": {
     "seeAll": "Ver todos",
     "allTile": "Ver todos los picks"
@@ -14,13 +14,6 @@
     "empty": "No hay partidos en juego ahora mismo.",
     "notStarted": "Por empezar",
     "finished": "Final"
-  },
-  "best": {
-    "title": "Mejores cuotas",
-    "subtitle": "Cuotas por encima de la cuota justa del mercado",
-    "seeAll": "Ver todas",
-    "overFair": "{pct} sobre la cuota justa",
-    "empty": "Todavía no hay precios por encima del mercado."
   },
   "today": {
     "title": "Hoy en las ligas sugeridas",
@@ -101,7 +94,7 @@
     "forYou": "Para ti",
     "forYouHint": "Lo que elegiste seguir",
     "predigol": "PrediGol",
-    "predigolHint": "Lo mismo para todos: los picks del día, los parlays y los mejores precios",
+    "predigolHint": "Lo mismo para todos: los picks del día y los parlays",
     "edit": "Cambiar favoritos"
   },
   "choose": {
