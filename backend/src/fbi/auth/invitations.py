@@ -56,8 +56,16 @@ def invite(actor: Principal, *, email: str, display_name: str | None, language: 
     with write_connection() as conn:
         if store.user_by_email(conn, address) is not None:
             raise AuthError(409, "email_taken")
-        row = store.insert_user(conn, email=address, display_name=name, password_hash=passwords.unusable_hash(),
-                                role="USER", language=language, timezone=timezone, status="invited")
+        if display_name:
+            if store.display_name_taken(conn, name):
+                raise AuthError(409, "display_name_taken")
+        else:
+            name = store.free_display_name(conn, name)  # derived from the address: made distinct, not refused
+        try:
+            row = store.insert_user(conn, email=address, display_name=name, password_hash=passwords.unusable_hash(),
+                                    role="USER", language=language, timezone=timezone, status="invited")
+        except store.DisplayNameTakenError:
+            raise AuthError(409, "display_name_taken") from None
         user_id = int(row["id"])
         grant = tokens.issue(conn, user_id, "invite")
         assert grant is not None  # a new account has asked for nothing yet

@@ -578,7 +578,13 @@ def update_preferences(principal: Principal, *, language: str | None = None, tim
             raise AuthError(422, "invalid_display_name")
         fields["display_name"] = name
     with write_connection() as conn:
-        row = store.update_user(conn, principal.user_id, fields)
+        try:
+            if "display_name" in fields and store.display_name_taken(
+                    conn, fields["display_name"], except_user_id=principal.user_id):
+                raise store.DisplayNameTakenError
+            row = store.update_user(conn, principal.user_id, fields)
+        except store.DisplayNameTakenError:
+            raise AuthError(409, "display_name_taken") from None
         if row is None:
             raise AuthError(404, "user_not_found")
         if fields:
@@ -781,9 +787,17 @@ def _create_user(actor_user_id: int | None, *, email: str, display_name: str | N
     with write_connection() as conn:
         if store.user_by_email(conn, address) is not None:
             raise AuthError(409, "email_taken")
-        row = store.insert_user(conn, email=address, display_name=name,
-                                password_hash=passwords.hash_password(password), role=role,
-                                language=language, timezone=timezone, must_change_password=must_change_password)
+        if display_name:
+            if store.display_name_taken(conn, name):
+                raise AuthError(409, "display_name_taken")
+        else:
+            name = store.free_display_name(conn, name)  # derived from the address: made distinct, not refused
+        try:
+            row = store.insert_user(conn, email=address, display_name=name,
+                                    password_hash=passwords.hash_password(password), role=role,
+                                    language=language, timezone=timezone, must_change_password=must_change_password)
+        except store.DisplayNameTakenError:
+            raise AuthError(409, "display_name_taken") from None
         store.record_event(conn, "user.created", actor_user_id=actor_user_id, target_user_id=row["id"],
                            email=address, ip=ip, detail={"role": role, "must_change_password": must_change_password})
     return row
