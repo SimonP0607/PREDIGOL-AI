@@ -35,10 +35,10 @@ def people(migrated_database: str) -> Iterator[str]:
             conn.execute(f"DELETE FROM {t}")
     service.create_user_unattended(email="owner@example.com", display_name="Owner", role="SUPER_ADMIN",
                                    password="Stadium-lights-2026!")
-    service.create_user_unattended(email="qa.admin@predigol.local", display_name="QA", role="SUPER_ADMIN",
+    service.create_user_unattended(email="qa.admin@predigol.local", display_name="QA Admin", role="SUPER_ADMIN",
                                    password="Corner-flag-pass-26")  # gitleaks:allow - a made-up test password
     for i in range(2):
-        service.create_user_unattended(email=f"qa.user{i}@predigol.local", display_name="QA", role="USER",
+        service.create_user_unattended(email=f"qa.user{i}@predigol.local", display_name=f"QA {i}", role="USER",
                                        password="Qa-user-pass-26")
     yield migrated_database
     mp.undo()

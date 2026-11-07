@@ -771,8 +771,8 @@ def payload(db: psycopg.Connection[Any], seed: Seed, tag: str) -> str:
 
 
 def user_of(db: psycopg.Connection[Any], email: str) -> int:
-    row = db.execute("INSERT INTO auth.users (email, display_name, password_hash) VALUES (%s, 'Test', '$argon2id$x') "
-                     "RETURNING id", (email,)).fetchone()
+    row = db.execute("INSERT INTO auth.users (email, display_name, password_hash) VALUES (%s, %s, '$argon2id$x') "
+                     "RETURNING id", (email, email)).fetchone()
     assert row is not None
     return int(row[0])
 

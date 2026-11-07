@@ -47,14 +47,46 @@ def user_by_id(conn: Conn, user_id: int, *, for_update: bool = False) -> Row | N
     return _one(conn, f"SELECT {USER_COLUMNS} FROM auth.users u WHERE u.id = %s{lock}", (user_id,))
 
 
+class DisplayNameTakenError(Exception):
+    """The nickname is another account's already (unique ignoring case and spaces among the accounts not deleted,
+    ``users_display_name_ci_key``). The callers turn it into their own refusal."""
+
+
+NAME_INDEX = "users_display_name_ci_key"
+
+
+def display_name_taken(conn: Conn, name: str, *, except_user_id: int | None = None) -> bool:
+    """Whether another account (not deleted) already has this nickname, ignoring case and surrounding spaces."""
+    row = _one(conn, "SELECT 1 AS taken FROM auth.users WHERE lower(btrim(display_name)) = lower(btrim(%s)) "
+                     "AND status <> 'deleted' AND id <> %s LIMIT 1", (name, except_user_id or 0))
+    return row is not None
+
+
+def free_display_name(conn: Conn, base: str) -> str:
+    """``base`` if nobody has it, else ``base-2``, ``base-3``... (within 80 characters). For the nickname the service
+    derives from an address, never for one a person typed: that one is refused when taken."""
+    base = base.strip()[:80]
+    candidate, n = base, 1
+    while display_name_taken(conn, candidate):
+        n += 1
+        suffix = f"-{n}"
+        candidate = base[: 80 - len(suffix)] + suffix
+    return candidate
+
+
 def insert_user(conn: Conn, *, email: str, display_name: str, password_hash: str, role: str,
                 language: str, timezone: str, must_change_password: bool = False, status: str = "active") -> Row:
-    row = _one(conn, """
-        INSERT INTO auth.users AS u (email, display_name, password_hash, role, language, timezone,
-                                     must_change_password, status)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        RETURNING id
-    """, (email, display_name, password_hash, role, language, timezone, must_change_password, status))
+    try:
+        row = _one(conn, """
+            INSERT INTO auth.users AS u (email, display_name, password_hash, role, language, timezone,
+                                         must_change_password, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (email, display_name, password_hash, role, language, timezone, must_change_password, status))
+    except psycopg.errors.UniqueViolation as exc:
+        if exc.diag.constraint_name == NAME_INDEX:
+            raise DisplayNameTakenError from exc
+        raise
     assert row is not None
     user = user_by_id(conn, int(row["id"]))
     assert user is not None
@@ -72,8 +104,13 @@ def update_user(conn: Conn, user_id: int, fields: dict[str, Any]) -> Row | None:
     assignments = ", ".join(f"{k} = %({k})s" for k in sets)
     extra = ", password_changed_at = now()" if "password_hash" in sets else ""
     params = {k: fields[k] for k in sets} | {"id": user_id}
-    cur = conn.execute(f"UPDATE auth.users AS u SET {assignments}, updated_at = now(){extra} WHERE u.id = %(id)s",
-                       params)
+    try:
+        cur = conn.execute(f"UPDATE auth.users AS u SET {assignments}, updated_at = now(){extra} "
+                           f"WHERE u.id = %(id)s", params)
+    except psycopg.errors.UniqueViolation as exc:
+        if exc.diag.constraint_name == NAME_INDEX:
+            raise DisplayNameTakenError from exc
+        raise
     if cur.rowcount == 0:
         return None
     return user_by_id(conn, user_id)
