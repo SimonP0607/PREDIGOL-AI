@@ -1,4 +1,4 @@
-/** Today, in the reader's zone, and how fresh the prices behind the page are. */
+/** Today, in the reader's zone, and how fresh what is in play is (the one freshness line of the page). */
 import { Clock } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { formatDateLong, formatRelative } from "@/lib/time";
@@ -9,8 +9,8 @@ export function HomeHeader({
   freshness,
   loading,
 }: {
-  /** Null until the page has data: nothing is claimed about prices it could not load. */
-  freshness: { odds_at: string | null } | null;
+  /** Null until the page has data: nothing is claimed about what it could not load. */
+  freshness: { live_at: string | null } | null;
   loading: boolean;
 }) {
   return (
@@ -33,9 +33,9 @@ export function HomeHeader({
             data-testid="home-freshness"
           >
             <Clock aria-hidden className="h-3.5 w-3.5 shrink-0 text-subtle-foreground" />
-            {freshness.odds_at
-              ? t("home.oddsUpdated", { when: formatRelative(freshness.odds_at) })
-              : t("home.oddsNone")}
+            {freshness.live_at
+              ? t("home.liveUpdated", { when: formatRelative(freshness.live_at) })
+              : t("home.liveNone")}
           </p>
         ) : null}
       </div>
