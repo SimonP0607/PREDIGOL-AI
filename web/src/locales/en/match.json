@@ -26,6 +26,7 @@
     "preliminary": "Preliminary round {n}",
     "round": "Round {n}",
     "fraction": "1/{n} finals",
+    "roundOf": "Round of {n}",
     "stage": {
       "regular_season": "Regular season",
       "group_stage": "Group stage",
@@ -41,7 +42,9 @@
       "championship_round": "Championship round",
       "qualifying_round": "Qualifying round",
       "preliminary_round": "Preliminary round",
-      "3rd_place_final": "Third place"
+      "3rd_place_final": "Third place",
+      "league_stage": "League stage",
+      "knockout_round_play_offs": "Knockout round play-offs"
     }
   },
   "header": {
@@ -984,41 +987,65 @@
       "range": "places {best} to {worst}"
     },
     "table_after": {
-      "home_win": "If {home} win: {home} would have {home_points} points ({home_places}) and {away} {away_points} ({away_places}).",
-      "draw": "If it is a draw: {home} would have {home_points} points ({home_places}) and {away} {away_points} ({away_places}).",
-      "away_win": "If {away} win: {home} would have {home_points} points ({home_places}) and {away} {away_points} ({away_places})."
+      "home_win": "If {home} win: {home} would have {home_points} ({home_places}) and {away} {away_points} ({away_places}).",
+      "draw": "If it is a draw: {home} would have {home_points} ({home_places}) and {away} {away_points} ({away_places}).",
+      "away_win": "If {away} win: {home} would have {home_points} ({home_places}) and {away} {away_points} ({away_places})."
     },
     "tableNote": "With the other teams on today's points: a place is a range.",
     "days": {
-      "exact": "{days} days",
-      "at_most": "at most {days} days"
+      "exact_one": "{days} day",
+      "exact_other": "{days} days",
+      "at_most_one": "at most {days} day",
+      "at_most_other": "at most {days} days"
+    },
+    "count": {
+      "matches_one": "{count} match",
+      "matches_other": "{count} matches",
+      "meetings_one": "{count} meeting",
+      "meetings_other": "{count} meetings",
+      "wins_one": "{count} win",
+      "wins_other": "{count} wins",
+      "draws_one": "{count} draw",
+      "draws_other": "{count} draws",
+      "goals_one": "{count} goal",
+      "goals_other": "{count} goals",
+      "minutes_one": "{count} minute",
+      "minutes_other": "{count} minutes",
+      "points_one": "{count} point",
+      "points_other": "{count} points",
+      "books_one": "{count} bookmaker",
+      "books_other": "{count} bookmakers",
+      "days_one": "{days} day",
+      "days_other": "{days} days",
+      "last_matches_one": "in the last match",
+      "last_matches_other": "in the last {count} matches"
     },
     "rest_days": "{team} comes in with {days} of rest.",
-    "rest_days_matches": "{team} comes in with {days} of rest and {matches} matches in the last 14 days.",
-    "next_match": "{team} plays again in {days} days.",
-    "next_match_comp": "{team} plays again in {days} days ({competition}).",
-    "form": "{team}: {sequence} in the last {n} matches ({ppg} points a match; {gf} goals scored and {ga} conceded a match).",
+    "rest_days_matches": "{team} comes in with {days} of rest and {matches} in the last 14 days.",
+    "next_match": "{team} plays again in {days}.",
+    "next_match_comp": "{team} plays again in {days} ({competition}).",
+    "form": "{team}: {sequence} {last} ({ppg} points a match; {gf} goals scored and {ga} conceded a match).",
     "formLetters": {
       "W": "W",
       "D": "D",
       "L": "L"
     },
     "venue_record": {
-      "home": "{team} at home: {w}W {d}D {l}L in {n} matches.",
-      "away": "{team} away: {w}W {d}D {l}L in {n} matches."
+      "home": "{team} at home: {w}W {d}D {l}L in {matches}.",
+      "away": "{team} away: {w}W {d}D {l}L in {matches}."
     },
-    "xg": "{team} creates {xg_for} xG and concedes {xg_against} (in {n} matches with statistics).",
+    "xg": "{team} creates {xg_for} xG and concedes {xg_against} (in {matches} with statistics).",
     "xg_plain": "{team} creates {xg_for} xG and concedes {xg_against}.",
-    "streak_unbeaten": "{team} is unbeaten in {n} matches.",
-    "streak_winless": "{team} has gone {n} matches without a win.",
-    "h2h": "Head to head (90 minutes): {n} meetings, {home_wins} wins for {home}, {draws} draws and {away_wins} for {away} ({n_effective} effective).",
-    "top_scorer": "{team}: {player} has {goals} goals.",
-    "top_scorer_minutes": "{team}: {player} has {goals} goals in {minutes} minutes.",
+    "streak_unbeaten": "{team} is unbeaten in {matches}.",
+    "streak_winless": "{team} has gone {matches} without a win.",
+    "h2h": "Head to head (90 minutes): {meetings}, {home_wins} for {home}, {draws} and {away_wins} for {away}.",
+    "top_scorer": "{team}: {player} has {goals}.",
+    "top_scorer_minutes": "{team}: {player} has {goals} in {minutes}.",
     "key_absences": "Key absences for {team}: {players}.",
     "key_absences_more": "Key absences for {team}: {players} and {more} more.",
     "market_unpriced": "There are no odds for this match yet.",
     "market_favourite": "The market gives {outcome} {pct}.",
-    "market_favourite_books": "The market gives {outcome} {pct} ({books} bookmakers).",
+    "market_favourite_books": "The market gives {outcome} {pct} ({books}).",
     "market_moved": "Since the opening, {outcome} has moved from {opening} to {now} in the market.",
     "total": {
       "over": "over {line} goals",
@@ -1034,7 +1061,7 @@
     "rumours_one": "There is {count} unconfirmed rumour: it does not count as a fact.",
     "rumours_other": "There are {count} unconfirmed rumours: they do not count as facts.",
     "no_external_info": "We found no outside information about the match (news or absences a source confirmed).",
-    "h2h_weak": "The head to head says little: {n} meetings, {n_effective} effective.",
+    "h2h_weak": "The head to head says little: {meetings}, with little weight for this match.",
     "data_not_fit": "This competition's data is not fit for models: this reading is description only.",
     "not_checked": "We could not check: {blocks}.",
     "blocks": {

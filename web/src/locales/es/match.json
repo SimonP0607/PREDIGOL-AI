@@ -26,6 +26,7 @@
     "preliminary": "Ronda preliminar {n}",
     "round": "Ronda {n}",
     "fraction": "1/{n} de final",
+    "roundOf": "1/{half} de final",
     "stage": {
       "regular_season": "Fase regular",
       "group_stage": "Fase de grupos",
@@ -41,7 +42,9 @@
       "championship_round": "Ronda por el título",
       "qualifying_round": "Ronda previa",
       "preliminary_round": "Ronda preliminar",
-      "3rd_place_final": "Tercer puesto"
+      "3rd_place_final": "Tercer puesto",
+      "league_stage": "Fase liga",
+      "knockout_round_play_offs": "Play-offs de eliminatoria"
     }
   },
   "header": {
@@ -984,41 +987,65 @@
       "range": "puestos {best}.º a {worst}.º"
     },
     "table_after": {
-      "home_win": "Si gana {home}: {home} sumaría {home_points} puntos ({home_places}) y {away}, {away_points} ({away_places}).",
-      "draw": "Si empatan: {home} sumaría {home_points} puntos ({home_places}) y {away}, {away_points} ({away_places}).",
-      "away_win": "Si gana {away}: {home} sumaría {home_points} puntos ({home_places}) y {away}, {away_points} ({away_places})."
+      "home_win": "Si gana {home}: {home} sumaría {home_points} ({home_places}) y {away}, {away_points} ({away_places}).",
+      "draw": "Si empatan: {home} sumaría {home_points} ({home_places}) y {away}, {away_points} ({away_places}).",
+      "away_win": "Si gana {away}: {home} sumaría {home_points} ({home_places}) y {away}, {away_points} ({away_places})."
     },
     "tableNote": "Con los demás equipos en sus puntos de hoy: un puesto es un intervalo.",
     "days": {
-      "exact": "{days} días",
-      "at_most": "a lo sumo {days} días"
+      "exact_one": "{days} día",
+      "exact_other": "{days} días",
+      "at_most_one": "a lo sumo {days} día",
+      "at_most_other": "a lo sumo {days} días"
+    },
+    "count": {
+      "matches_one": "{count} partido",
+      "matches_other": "{count} partidos",
+      "meetings_one": "{count} partido",
+      "meetings_other": "{count} partidos",
+      "wins_one": "{count} victoria",
+      "wins_other": "{count} victorias",
+      "draws_one": "{count} empate",
+      "draws_other": "{count} empates",
+      "goals_one": "{count} gol",
+      "goals_other": "{count} goles",
+      "minutes_one": "{count} minuto",
+      "minutes_other": "{count} minutos",
+      "points_one": "{count} punto",
+      "points_other": "{count} puntos",
+      "books_one": "{count} casa",
+      "books_other": "{count} casas",
+      "days_one": "{days} día",
+      "days_other": "{days} días",
+      "last_matches_one": "en su último partido",
+      "last_matches_other": "en sus últimos {count} partidos"
     },
     "rest_days": "{team} llega con {days} de descanso.",
-    "rest_days_matches": "{team} llega con {days} de descanso y {matches} partidos en los últimos 14 días.",
-    "next_match": "{team} vuelve a jugar en {days} días.",
-    "next_match_comp": "{team} vuelve a jugar en {days} días ({competition}).",
-    "form": "{team}: {sequence} en sus últimos {n} partidos ({ppg} puntos por partido; {gf} goles a favor y {ga} en contra por partido).",
+    "rest_days_matches": "{team} llega con {days} de descanso y {matches} en los últimos 14 días.",
+    "next_match": "{team} vuelve a jugar en {days}.",
+    "next_match_comp": "{team} vuelve a jugar en {days} ({competition}).",
+    "form": "{team}: {sequence} {last} ({ppg} puntos por partido; {gf} goles a favor y {ga} en contra por partido).",
     "formLetters": {
       "W": "G",
       "D": "E",
       "L": "P"
     },
     "venue_record": {
-      "home": "{team} en casa: {w}G {d}E {l}P en {n} partidos.",
-      "away": "{team} fuera: {w}G {d}E {l}P en {n} partidos."
+      "home": "{team} en casa: {w}G {d}E {l}P en {matches}.",
+      "away": "{team} fuera: {w}G {d}E {l}P en {matches}."
     },
-    "xg": "{team} genera {xg_for} xG y concede {xg_against} (en {n} partidos con estadísticas).",
+    "xg": "{team} genera {xg_for} xG y concede {xg_against} (en {matches} con estadísticas).",
     "xg_plain": "{team} genera {xg_for} xG y concede {xg_against}.",
-    "streak_unbeaten": "{team} suma {n} partidos sin perder.",
-    "streak_winless": "{team} lleva {n} partidos sin ganar.",
-    "h2h": "Cara a cara (90 minutos): {n} partidos, {home_wins} victorias de {home}, {draws} empates y {away_wins} de {away} ({n_effective} efectivos).",
-    "top_scorer": "{team}: {player} lleva {goals} goles.",
-    "top_scorer_minutes": "{team}: {player} lleva {goals} goles en {minutes} minutos.",
+    "streak_unbeaten": "{team} suma {matches} sin perder.",
+    "streak_winless": "{team} lleva {matches} sin ganar.",
+    "h2h": "Cara a cara (90 minutos): {meetings}, {home_wins} de {home}, {draws} y {away_wins} de {away}.",
+    "top_scorer": "{team}: {player} lleva {goals}.",
+    "top_scorer_minutes": "{team}: {player} lleva {goals} en {minutes}.",
     "key_absences": "Bajas importantes de {team}: {players}.",
     "key_absences_more": "Bajas importantes de {team}: {players} y {more} más.",
     "market_unpriced": "Todavía no hay cuotas para este partido.",
     "market_favourite": "El mercado da {pct} a {outcome}.",
-    "market_favourite_books": "El mercado da {pct} a {outcome} ({books} casas).",
+    "market_favourite_books": "El mercado da {pct} a {outcome} ({books}).",
     "market_moved": "Desde la apertura, {outcome} pasó de {opening} a {now} en el mercado.",
     "total": {
       "over": "más de {line} goles",
@@ -1034,7 +1061,7 @@
     "rumours_one": "Hay {count} rumor sin confirmar: no cuenta como hecho.",
     "rumours_other": "Hay {count} rumores sin confirmar: no cuentan como hechos.",
     "no_external_info": "No encontramos información externa del partido (noticias o bajas confirmadas por una fuente).",
-    "h2h_weak": "El cara a cara dice poco: {n} partidos, {n_effective} efectivos.",
+    "h2h_weak": "El cara a cara dice poco: {meetings}, con poco peso para este partido.",
     "data_not_fit": "Los datos de esta competición no son aptos para modelos: esta lectura es solo descripción.",
     "not_checked": "No pudimos comprobar: {blocks}.",
     "blocks": {

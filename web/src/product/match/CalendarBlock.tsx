@@ -218,7 +218,7 @@ export function CalendarView({ load, preview }: { load: CalendarLoad; preview: b
         ) : null}
         {screen.kind === "calendar" ? (
           <>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-1">
+            <div className="grid items-start gap-3 md:grid-cols-2" data-testid="calendar-sides">
               <SideView side={screen.data.home} which="home" />
               <SideView side={screen.data.away} which="away" />
             </div>
