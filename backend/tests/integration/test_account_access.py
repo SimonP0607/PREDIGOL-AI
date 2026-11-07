@@ -640,6 +640,13 @@ def test_anonymising_an_account_with_its_address_typed_again(fresh: str, seed: S
                      "snapshot, saved_at) VALUES (%s, %s, '1X2', 'Home', 0, 'market', 2.1, '{}'::jsonb, now())",
                      (uid, seed.fixture_id))
         conn.execute("INSERT INTO customer.preferences (user_id) VALUES (%s)", (uid,))
+        # what a reader who registered by themselves left (tramo 1, UX-027): their name, mobile and an open request for access
+        conn.execute("UPDATE auth.users SET origin = 'signup', first_name = 'Ana', last_name = 'Pérez', "
+                     "phone_e164 = '+573001234567', email_verified_at = now() WHERE id = %s", (uid,))
+        conn.execute("INSERT INTO customer.payment_requests (user_id, expected_amount, currency, declared_amount, "
+                     "declared_paid_on, method, payer_name, note, terms_version, terms_sha256, accepted_at) "
+                     "VALUES (%s, 150000, 'COP', 150000, '2026-11-07', 'nequi', 'Ana P.', 'desde mi Nequi', "
+                     "'2026-11-01draft1', %s, now())", (uid, "b" * 64))
     consents.record(uid, [consents.Decision(p.kind, True, legal.current(p.document).version)
                           for p in legal.PURPOSES if p.required], locale="es", source="gate")
     assert reader.post("/api/v1/me/privacy-requests", json={"kind": "privacy_deletion", "message": "Borren mis datos",
@@ -681,6 +688,12 @@ def test_anonymising_an_account_with_its_address_typed_again(fresh: str, seed: S
     """, {"u": uid, "a": f"gone@{DOMAIN}", "m": masked})
     assert counts == {"picks": 0, "preferences": 0, "sessions": 0, "open_links": 0, "consents": consents_before,
                       "tickets": 1, "queued": 0, "typed": 0, "masked": done["trail_rows"]}
+    gone = one(fresh, "SELECT first_name, last_name, phone_e164, email_verified_at FROM auth.users WHERE id = %s", (uid,))
+    assert gone == {"first_name": None, "last_name": None, "phone_e164": None, "email_verified_at": None}
+    request = one(fresh, "SELECT status, payer_name, note, declared_amount FROM customer.payment_requests "
+                         "WHERE user_id = %s", (uid,))
+    assert (request["status"], request["payer_name"], request["note"]) == ("cancelled", None, None)
+    assert request["declared_amount"] == 150000, "what was declared stays, like a payment's record"
     assert reader.get("/api/v1/auth/me").status_code == 401
     r = anon().post("/api/v1/auth/login", json={"email": f"gone@{DOMAIN}", "password": PASSWORD})
     assert r.status_code == 401 and error(r) == "invalid_credentials"
