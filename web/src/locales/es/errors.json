@@ -63,6 +63,7 @@
     "match_started": "El partido ya empezó.",
     "membership_exempt": "Las cuentas de administración no tienen membresía.",
     "membership_expired": "Tu membresía terminó: renuévala para seguir usando PrediGol.",
+    "membership_required": "Tu cuenta aún no tiene el acceso a PrediGol activado.",
     "membership_suspended": "Tu cuenta está suspendida: escríbenos.",
     "mfa_already_enabled": "La verificación en dos pasos ya está activada.",
     "mfa_enrollment_required": "Tu cuenta necesita activar la verificación en dos pasos.",
