@@ -8,7 +8,7 @@ division no zone is a promotion, the title is the first place only, and the same
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 import pytest
 
@@ -30,19 +30,19 @@ CHAMPIONS_LEAGUE = {**dict.fromkeys(range(1, 9), "Promotion - Champions League (
                     **dict.fromkeys(range(25, 37))}
 
 
-def table(zones: dict[int, str | None]) -> list[TableRow]:
+def table(zones: Mapping[int, str | None]) -> list[TableRow]:
     """One row per rank, 3 points apart, 10 played of 38."""
     return [TableRow(team_id=rank, rank=rank, points=40 - rank * 3 + 60, played=10, description=d)
             for rank, d in zones.items()]
 
 
-def kinds(zones: dict[int, str | None]) -> dict[int, str | None]:
+def kinds(zones: Mapping[int, str | None]) -> dict[int, str | None]:
     top = is_top_flight(zones.values())
     return {rank: zone_kind(d, rank, top_flight=top) for rank, d in zones.items()}
 
 
 @pytest.mark.parametrize("zones", [SERIE_A, BUNDESLIGA, LALIGA], ids=["Serie A", "Bundesliga", "LaLiga"])
-def test_the_same_places_read_the_same_in_every_first_division(zones: dict[int, str | None]) -> None:
+def test_the_same_places_read_the_same_in_every_first_division(zones: Mapping[int, str | None]) -> None:
     got = kinds(zones)
     assert got[1] == "title"
     assert [got[r] for r in (2, 3, 4, 5, 6)] == ["europe"] * 5, "places 2 to 6 are international places, never a title or a promotion"
@@ -99,7 +99,7 @@ def test_a_table_without_zones_is_not_a_first_division() -> None:
 
 
 @pytest.mark.parametrize("zones", [SERIE_A, BUNDESLIGA], ids=["Serie A", "Bundesliga"])
-def test_the_scenarios_name_the_same_zones(zones: dict[int, str | None]) -> None:
+def test_the_scenarios_name_the_same_zones(zones: Mapping[int, str | None]) -> None:
     rows: Sequence[TableRow] = table(zones)
     effect = table_effect(rows, 6, 7)
     assert effect is not None
