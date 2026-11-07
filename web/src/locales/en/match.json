@@ -405,7 +405,8 @@
     "subtitle": "PrediGol's reading of this match",
     "risksLead": "What could go wrong:",
     "picks": "Published picks",
-    "picksShadow": "Picks in evaluation"
+    "picksShadow": "Picks in evaluation",
+    "picksOrigin": "Each pick's probability is the one from the model PrediGol uses to choose its picks. The Forecast uses its own model (named on each market), so the same selection can show two different numbers."
   },
   "priceStatus": {
     "title": "Without a bookmaker price",
