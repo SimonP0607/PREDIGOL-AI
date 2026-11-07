@@ -241,24 +241,10 @@ export interface BestOddsBoard {
   source: ProductSource;
 }
 
-export interface UpcomingMatch {
-  fixture_id: number;
-  kickoff_at: Iso;
-  competition: CompetitionBadge;
-  home: TeamBadge;
-  away: TeamBadge;
-  bookmakers: number;
-}
-
 export interface Home {
   source: ProductSource;
-  data_freshness: { odds_at: Iso | null; live_at: Iso | null };
-  top_picks: Section<PickCard[]>;
-  daily_parlay: Parlay;
-  multiday_parlay: Parlay;
+  data_freshness: { live_at: Iso | null };
   live: Section<LiveMatch[]>;
-  best_prices: Section<BestHighlight[]>;
-  upcoming: Section<UpcomingMatch[]>;
 }
 
 export interface PicksQuery {
