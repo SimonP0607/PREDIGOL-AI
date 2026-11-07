@@ -231,8 +231,11 @@ def test_the_engines_named_are_the_engines_of_the_config() -> None:
 def test_nothing_that_decides_imports_the_trace() -> None:
     """The trace observes production; production must not come to depend on it."""
     importers = []
+    readers = {
+        "src/fbi/narrator/job.py",  # the Narrator (narrator-v1, IA-017) explains a pick AFTER its decision from its trace; it decides nothing
+    }
     for path in (ROOT / "src/fbi").rglob("*.py"):
-        if "observability" in path.parts:
+        if "observability" in path.parts or str(path.relative_to(ROOT)) in readers:
             continue
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if (isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("fbi.observability")) or (isinstance(node, ast.Import) and any(a.name.startswith("fbi.observability") for a in node.names)):
