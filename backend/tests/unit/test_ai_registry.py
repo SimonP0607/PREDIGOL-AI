@@ -81,8 +81,9 @@ def test_the_agents_of_the_old_route_run_at_the_effort_its_guard_gives_their_tie
                 assert TIER_EFFORT[t.tier] == t.effort, f"{spec.agent}/{t.task}: the tier {t.tier} is asked at {TIER_EFFORT[t.tier]}"
 
 
-APART = {"stats": {"stats-assess-v2"}}
-"""The agents whose version (``stats-v2``) is not the label of their one prompt (``stats-assess-v2``): phase 4's Statistics Agent."""
+APART = {"stats": {"stats-assess-v2"}, "player": {"player-assess-v1"}}
+"""The agents whose version (``stats-v2``) is not the label of their one prompt (``stats-assess-v2``): phase 4's Statistics Agent and IA-017's Player
+Agent (``player-v1``, ``player-assess-v1``)."""
 OWN_PROMPTS = {"council": ("council-opus-v1",)}
 """The agents whose version is the label of their main prompt and that run one more task with a prompt of its own (the Council's Opus)."""
 
@@ -134,10 +135,12 @@ def test_the_council_judges_with_sonnet_and_opus_only_by_escalation_and_the_matc
     assert "claude-fable-5-1" not in set(models.values()), "Fable is the owner's own research: no agent runs on it"
 
 
-def test_the_player_agent_is_postponed_with_no_code_no_phase_and_a_gate() -> None:
-    assert [p.agent for p in POSTPONED] == ["player"]
-    assert "player" not in {s.agent for s in AGENTS} | {p.agent for p in PLANNED}
-    assert "F-Player" in POSTPONED[0].gate
+def test_the_player_agent_is_built_off_in_shadow_and_nothing_is_postponed() -> None:
+    """IA-017 moved the Player Agent from POSTPONED to AGENTS (``player-v1``); what its gate F-Player still holds back is said in its purpose."""
+    assert POSTPONED == ()
+    spec = REGISTRY.spec("player")
+    assert spec.contract == "pa-v1" and spec.reads == "player" and "F-Player" in spec.purpose and "OFF by default" in spec.purpose
+    assert "player" not in {p.agent for p in PLANNED}
 
 
 BASELINE_AGENTS = ("brief", "reviewer", "extractor", "postmortem", "post_match_reviewer", "learning_analyst")
@@ -162,12 +165,13 @@ def test_an_agent_built_after_the_baseline_is_born_a_challenger_with_a_reason_an
     version of an agent - the one the code has - and the code still has pick-postmortem-v4 and learning-v2 until the owner signs, so the new versions
     are agents of their own that REPLACE the old ones."""
     built = {s.agent for s in AGENTS} - set(BASELINE_AGENTS)
-    assert built == {"claim_extractor", "match", "council", "stats", "pmr", "la"}
+    assert built == {"claim_extractor", "match", "council", "stats", "pmr", "la", "player"}
     for agent in built:
         entry = REGISTRY.history(agent)[0]
         assert not entry.baseline and entry.born_as == "CHALLENGER" and entry.decided_by in rg.DECIDERS
         assert len(entry.reason) >= rg.MIN_REASON
-        assert entry.phase == {"claim_extractor": "IA-2", "match": "IA-3", "council": "IA-3", "stats": "IA-4", "pmr": "IA-5", "la": "IA-5"}[agent]
+        assert entry.phase == {"claim_extractor": "IA-2", "match": "IA-3", "council": "IA-3", "stats": "IA-4", "pmr": "IA-5", "la": "IA-5",
+                               "player": "IA-017"}[agent]
         for later in REGISTRY.history(agent)[1:]:  # a later version is born the same way: a challenger, never promoted by the code
             assert not later.baseline and later.born_as == "CHALLENGER" and len(later.reason) >= rg.MIN_REASON
     assert {a: [r.version for r in REGISTRY.history(a)] for a in built if len(REGISTRY.history(a)) > 1} == {
@@ -666,7 +670,8 @@ def test_a_name_is_refused_before_it_is_built() -> None:
 def test_the_snapshot_lists_what_is_built_then_what_is_planned_then_what_is_postponed() -> None:
     rows = REGISTRY.snapshot()
     assert [(r["agent"], r["status"]) for r in rows] == (
-        [(s.agent, "built") for s in AGENTS] + [(p.agent, "planned") for p in PLANNED] + [("player", "postponed")])
+        [(s.agent, "built") for s in AGENTS] + [(p.agent, "planned") for p in PLANNED])
+    assert ("player", "built") in [(r["agent"], r["status"]) for r in rows], "IA-017: the Player Agent is built, and nothing is postponed"
     json.dumps(rows)  # plain data, all of it
     built = {r["agent"]: r for r in rows if r["status"] == "built"}
     assert all(r["in_sync"] for r in built.values())

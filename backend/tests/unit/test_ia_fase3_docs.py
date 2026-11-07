@@ -269,7 +269,7 @@ def test_the_switch_table_says_the_defaults_the_settings_have() -> None:
     # the engines that the list can add are the shadow engines of the code
     assert set(re.findall(r"`(ma-v1-h|ma-v1|cs-v1)`", rows["FBI_AI_ENGINES"][2])) == set(config.SHADOW_ENGINES)
     assert "`rules` y `llm` están siempre" in rows["FBI_AI_ENGINES"][2]
-    assert config.KNOWN_ENGINES == ("rules", "llm", "ma-v1", "ma-v1-h", "cs-v1") and config.AGENTS == ("match", "council", "stats")
+    assert config.KNOWN_ENGINES == ("rules", "llm", "ma-v1", "ma-v1-h", "cs-v1") and config.AGENTS == ("match", "council", "stats", "player")
     said(r"\(`0\.3` es el (\d+) %\)", rows["FBI_AI_SHADOW_SAMPLE"][2], 30)
 
 
@@ -305,7 +305,7 @@ def test_the_words_are_clamped_and_a_typo_switches_nothing_on(monkeypatch: pytes
     assert settings_of(monkeypatch, **{**ON, "FBI_AI_ENGINES": " MA-V1 , llm"}).engines == ("rules", "llm", "ma-v1"), "case and spaces do not count"
     assert settings_of(monkeypatch, **{**ON, "FBI_AI_ENGINES": "ma-v1"}).engines[:2] == ("rules", "llm"), "the list only adds"
     assert settings_of(monkeypatch, **{**ON, "FBI_AI_AGENTS": "match,council,stats"}).agents == ("match", "council", "stats"), "phase 4 knows stats"
-    assert settings_of(monkeypatch, **{**ON, "FBI_AI_AGENTS": "match,council,player"}).agents == ("match", "council"), "a name that is none is dropped"
+    assert settings_of(monkeypatch, **{**ON, "FBI_AI_AGENTS": "match,council,props"}).agents == ("match", "council"), "a name that is none is dropped"
     assert "más de 1 cuenta como 1, menos de 0 como 0 y lo que no es un número, como 0" in sec
 
 

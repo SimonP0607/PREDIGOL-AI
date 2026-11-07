@@ -41,7 +41,15 @@ import httpx
 import psycopg
 
 from fbi.ai.batch import BatchClient
-from fbi.ai.battery import AGENT_TARGETS, TARGETS, offline, run, simulate
+from fbi.ai.battery import (
+    AGENT_TARGETS,
+    EVERY_TARGET,
+    SHADOW_TARGETS,
+    TARGETS,
+    offline,
+    run,
+    simulate,
+)
 from fbi.ai.config import AiSettings
 from fbi.ai.usage import UsageLedger
 
@@ -53,7 +61,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="ia_battery", description=__doc__.split("\n\n")[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=COMMANDS)
-    ap.add_argument("--targets", nargs="+", choices=TARGETS, default=list(TARGETS), help="default: all")
+    ap.add_argument("--targets", nargs="+", choices=EVERY_TARGET, default=list(TARGETS),
+                    help="default: the targets of the gate (the player target, IA-017, is named on its own)")
     ap.add_argument("--native", action="store_true", help="ask with structured outputs instead of the forced tool call")
     ap.add_argument("--suffix", default="", help="repeat a measurement on purpose: a new run of the same corpus")
     ap.add_argument("--no-record", action="store_true", help="collect: show the verdict, do not write the gate")
@@ -68,7 +77,7 @@ def run_offline(targets: list[str], *, native: bool) -> tuple[dict[str, Any], in
 
 def run_simulate(targets: list[str], *, native: bool) -> tuple[dict[str, Any], int]:
     """The offline battery of the agents (``fbi.ai.battery.simulate.check``) on the agents among ``targets``: OK when green."""
-    agents = [t for t in targets if t in AGENT_TARGETS]
+    agents = [t for t in targets if t in (*AGENT_TARGETS, *SHADOW_TARGETS)]
     if not agents:
         return {"blockers": [f"simulate runs the agents' targets ({', '.join(AGENT_TARGETS)}): none was named"]}, CANNOT
     report = simulate.check(agents, native=native)

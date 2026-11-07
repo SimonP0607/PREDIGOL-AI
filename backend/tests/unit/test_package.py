@@ -15,6 +15,7 @@ import pytest
 
 from fbi.ai import package as pk
 from fbi.ai.contracts.mcp import (
+    ALL_SLICE_NAMES,
     AVAILABILITY_KINDS,
     BLOCKS,
     SLICE_BLOCKS,
@@ -82,7 +83,7 @@ def test_the_family_forecasts_are_read_under_the_version_and_the_families_the_wr
 
 
 def test_a_slice_cap_is_a_number_of_real_tokens_and_every_slice_has_one() -> None:
-    assert set(pk.CAPS) == set(SLICE_NAMES) == {"match", "stats"}
+    assert set(pk.CAPS) == set(ALL_SLICE_NAMES) == {"match", "stats", "player"} and set(SLICE_NAMES) == {"match", "stats"}
     assert all(cap == 18_000 for cap in pk.CAPS.values())
 
 

@@ -40,8 +40,16 @@ from typing import Any, Final, Literal
 from fbi.ai import claims, prompts, router
 from fbi.ai.config import TIERS, Tier
 from fbi.ai.contracts import CONTRACTS, schema_of
-from fbi.ai.contracts.base import ASSESSMENT, CLAIM, COUNCIL, LEARNING, OUTPUTS, POST_MATCH
-from fbi.ai.contracts.mcp import SLICE_NAMES, PassKind
+from fbi.ai.contracts.base import (
+    ASSESSMENT,
+    CLAIM,
+    COUNCIL,
+    LEARNING,
+    OUTPUTS,
+    PLAYER_ASSESSMENT,
+    POST_MATCH,
+)
+from fbi.ai.contracts.mcp import ALL_SLICE_NAMES, PassKind
 from fbi.ai.idempotency import EFFORTS, Effort, TaskIdentity, Workspace
 from fbi.ai.pricing import PRICES
 
@@ -118,7 +126,7 @@ class AgentSpec:
     contract: str | None = None
     """The contract of its answer (``aa-v1``...). None for the AI that runs today: it versions its schema with its prompt."""
     reads: str | None = None
-    """A slice of ``mcp-v1`` (``SLICE_NAMES``) or a view of its own (``VIEWS``); None when it reads neither (the extractor reads search results)."""
+    """A slice of ``mcp-v1`` (``ALL_SLICE_NAMES``) or a view of its own (``VIEWS``); None when it reads neither (the extractor reads search results)."""
     retire_phase: int | None = None
     """The phase of the plan that retires it, when the plan says so."""
     replaces: str | None = None
@@ -274,6 +282,10 @@ def _stats_assess() -> Definition:
     return Definition(prompts.STATS_ASSESS_VERSION, prompts.STATS_ASSESS_SYSTEM, ASSESSMENT, schema_of(ASSESSMENT))
 
 
+def _player_assess() -> Definition:
+    return Definition(prompts.PLAYER_ASSESS_VERSION, prompts.PLAYER_ASSESS_SYSTEM, PLAYER_ASSESSMENT, schema_of(PLAYER_ASSESSMENT))
+
+
 def _postmortem() -> Definition:
     return Definition(prompts.POSTMORTEM_VERSION, prompts.POSTMORTEM_SYSTEM, prompts.POSTMORTEM_VERSION, prompts.POSTMORTEM_SCHEMA)
 
@@ -332,6 +344,13 @@ AGENTS: Final[tuple[AgentSpec, ...]] = (
               "intel.promotions for its family.",
               (BuiltTask("evaluation", router.SPECS["evaluation"].effort, _stats_assess, model=router.MODELS[router.SPECS["evaluation"].level]),),
               contract=ASSESSMENT, reads="stats"),
+    AgentSpec("player", "The Player Intelligence Agent (IA-017): a position per candidate of goals and result, from who plays - the line-ups, the absences, "
+              "the history of the players and their evidence (the player slice) - in pa-v1: codes, a direction and never a magnitude, the evidence of its "
+              "package. OFF by default (FBI_AI_AGENTS must name player); on, it runs in shadow in the LAB and feeds the Council only inside the shadow "
+              "arms. Its answers reach no decision; props of a player wait for gate F-Player (a market with a validated model, a settlement rule and a "
+              "reference price) and a row the owner signs in intel.promotions.",
+              (BuiltTask("evaluation", router.SPECS["evaluation"].effort, _player_assess, model=router.MODELS[router.SPECS["evaluation"].level]),),
+              contract=PLAYER_ASSESSMENT, reads="player"),
     AgentSpec("council", "The Council: the one verdict per selection of a match, in codes (cd-v1), from the compact view of the numbers, the assessments, the "
               "contradictions and the evidence index. Sonnet reads every match; Opus only the cases a rule of router-v1 escalates (E1-E7); the Haiku arm of the "
               "experiment (ma-v1-h) reads the same prompt, so the registry pins the task's own model.",
@@ -355,10 +374,10 @@ AGENTS: Final[tuple[AgentSpec, ...]] = (
 PLANNED: Final[tuple[PlannedAgent, ...]] = (
 )
 
-POSTPONED: Final[tuple[PostponedAgent, ...]] = (
-    PostponedAgent("player", "The Player Agent: props of a player (goals, assists, shots, cards, saves). No tokens and no code until its gate F-Player.",
-                   "F-Player (plan, section 14): a market with a validated model, a settlement rule and a reference price"),
-)
+POSTPONED: Final[tuple[PostponedAgent, ...]] = ()
+"""Nothing is postponed any more: IA-017 built the Player Agent (``player-v1``), OFF by default and in shadow. What gate F-Player (plan, section 14:
+a market with a validated model, a settlement rule and a reference price) still holds back is the props of a player - no market of a player is
+named for it, and nothing it says reaches a decision."""
 
 REGISTERED = datetime(2026, 10, 25, 16, 0, tzinfo=UTC)
 BASELINE_NOTE: Final = ("Baseline of the registry (25 Oct 2026): the prompt and schema in force in production when the registry was started, in the "
@@ -441,6 +460,14 @@ LEDGER: Final[tuple[Registration, ...]] = (
                         "CHALLENGER, runs in shadow in place of stats-v1 and reaches a decision only by a row the owner signs in intel.promotions.",
                  fingerprint="aga044ea3270",
                  parts={"evaluation": Part("stats-assess-v2", "c5747a251230", "aa-v1", "ab5f098304ef")}),
+    Registration(agent="player", version="player-v1", registered_at=datetime(2026, 11, 7, 18, 0, tzinfo=UTC), decided_by="owner", phase="IA-017",
+                 reason="IA-017: the Player Intelligence Agent, postponed until gate F-Player, is built OFF and in shadow: it reads the player slice "
+                        "(slices-v2: line-ups, absences, the history of the players and their evidence, as of the pass) and takes a position per "
+                        "candidate of goals and result in pa-v1 - aa-v1 narrowed, a direction and never a strength, no research - on Haiku 5.5 at "
+                        "effort medium (the router's evaluation). It is born CHALLENGER, runs only when FBI_AI_AGENTS names player, feeds the Council "
+                        "only inside the shadow arms and reaches no decision; props of a player still wait for F-Player and a row the owner signs.",
+                 fingerprint="ag83d95ed106",
+                 parts={"evaluation": Part("player-assess-v1", "38b01626cd10", "pa-v1", "a38c75eb4ee0")}),
     Registration(agent="pmr", version="pmr-v1", registered_at=datetime(2026, 11, 3, 13, 0, tzinfo=UTC), decided_by="owner", phase="IA-5",
                  reason="Built under the Plan Maestro IA the owner approved in full (phase 5, section 12): after the result, the class of the misses the "
                         "attribution of the code left UNKNOWN and a short narrative, in pmr-v1, Haiku for the narrative and Sonnet for the losses worth "
@@ -615,7 +642,7 @@ class Registry:
                 found.append(Problem("phase", who, "a phase of the plan after the one that creates the registry"))
             if plan.contract not in OUTPUTS:
                 found.append(Problem("contract", who, f"{plan.contract!r} is not a contract an agent answers in ({', '.join(OUTPUTS)})"))
-            if plan.reads is not None and plan.reads not in SLICE_NAMES and plan.reads not in VIEWS:
+            if plan.reads is not None and plan.reads not in ALL_SLICE_NAMES and plan.reads not in VIEWS:
                 found.append(Problem("reads", who, f"{plan.reads!r} is neither a slice of the package nor a view"))
             if plan.replaces is not None and plan.replaces not in {r.version for r in self.history(plan.agent)}:
                 found.append(Problem("replaces", who, f"{plan.replaces!r} is not a version of {plan.agent} in the ledger"))
@@ -698,7 +725,7 @@ def _spec_shape_problems(spec: AgentSpec) -> list[Problem]:
         found.append(Problem("tasks", who, "at least one task, and each named once"))
     if spec.contract is not None and spec.contract not in CONTRACTS:
         found.append(Problem("contract", who, f"{spec.contract!r} is not a contract an agent answers in"))
-    if spec.reads is not None and spec.reads not in SLICE_NAMES and spec.reads not in VIEWS:
+    if spec.reads is not None and spec.reads not in ALL_SLICE_NAMES and spec.reads not in VIEWS:
         found.append(Problem("reads", who, f"{spec.reads!r} is neither a slice of the package nor a view"))
     for t in spec.tasks:
         if (t.model is None) == (t.tier is None):

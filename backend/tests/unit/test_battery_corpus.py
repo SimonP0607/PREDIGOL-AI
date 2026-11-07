@@ -100,7 +100,7 @@ def changes(case: Case, *, native: bool = False) -> tuple[set[str], set[str]]:
 
 
 def by_target(name: str) -> tuple[Case, ...]:
-    return tuple(c for c in corpus.CASES if c.target == name)
+    return tuple(c for c in (*corpus.CASES, *corpus.SHADOW_CASES) if c.target == name)
 
 
 SURFACES = {"review": reviewer.SURFACES, "extract": extractor.SURFACES, "claims": claims.SURFACES, **agentworld.SURFACES_OF}
@@ -129,8 +129,8 @@ def test_eight_families_of_section_31_five_attacks_each_for_each_prompt() -> Non
 
 
 def test_ids_are_unique_and_every_lookup_agrees() -> None:
-    ids = [c.id for c in corpus.CASES]
-    assert len(set(ids)) == len(ids) == len(corpus.BY_ID)
+    ids = [c.id for c in corpus.EVERY_CASE]
+    assert len(set(ids)) == len(ids) == len(corpus.BY_ID) and corpus.EVERY_CASE == corpus.CASES + corpus.SHADOW_CASES
     for case in corpus.CASES:
         assert case.id == f"{case.target}.{case.family}.{case.attack.n}"
         assert corpus.case_of(case.id) is case and case in corpus.cases_of(case.target)

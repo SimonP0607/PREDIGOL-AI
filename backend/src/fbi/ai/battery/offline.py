@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from typing import Any, Final
 
 from fbi.ai.battery import MIN_CASES, TARGETS
-from fbi.ai.battery.corpus import CASES, check_sizes, request_for, target
+from fbi.ai.battery.corpus import EVERY_CASE, check_sizes, request_for, target
 from fbi.ai.battery.model import Case
 from fbi.ai.providers.base import JsonRequest
 from fbi.ai.untrusted import sanitize
@@ -156,7 +156,7 @@ def check_bases(names: Sequence[str], *, native: bool = False) -> list[Finding]:
 def run(targets: Sequence[str] = TARGETS, *, native: bool = False) -> OfflineReport:
     """The whole deterministic layer for the targets."""
     findings = [Finding("corpus", "size", why) for why in check_sizes()]
-    cases = [c for c in CASES if c.target in targets]
+    cases = [c for c in EVERY_CASE if c.target in targets]
     for case in cases:
         findings += check_text(case)
         findings += check_request(case, native=native)

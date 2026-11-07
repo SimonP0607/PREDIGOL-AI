@@ -87,11 +87,12 @@ def test_a_planned_agent_says_in_which_phase_it_is_built_and_what_it_takes_over_
     assert [(t.task, t.model, t.prompt_version) for t in built["stats"].tasks] == [("evaluation", "claude-haiku-5-5", "stats-assess-v2")]
 
 
-def test_the_player_agent_is_on_the_page_as_postponed_with_the_gate_that_would_wake_it() -> None:
+def test_the_player_agent_is_on_the_page_as_built_with_its_version_and_nothing_is_postponed() -> None:
+    """IA-017 built the Player Agent (OFF by default, in shadow): the page shows it built, and no row is postponed."""
     views, _ = ai_agents.registry()
-    (player,) = [v for v in views if v.status == "postponed"]
-    assert player.agent == "player" and player.gate and "F-Player" in player.gate
-    assert player.version is None and player.tasks == []
+    assert [v for v in views if v.status == "postponed"] == []
+    (player,) = [v for v in views if v.agent == "player"]
+    assert player.status == "built" and player.version == "player-v1" and len(player.tasks) == 1
 
 
 class Unreadable:

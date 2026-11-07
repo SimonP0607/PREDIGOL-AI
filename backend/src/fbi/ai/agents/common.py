@@ -19,8 +19,9 @@ from decimal import Decimal
 from typing import Any, Final, Literal, get_args
 
 from fbi.ai.contracts.assessment import CANDIDATES_MAX, AssessmentOut
-from fbi.ai.contracts.base import COUNTS, FAMILIES, GOALS_RESULT, REF, Agent, Family, Mode, paths_of
+from fbi.ai.contracts.base import COUNTS, FAMILIES, GOALS_RESULT, REF, Family, Mode, paths_of
 from fbi.ai.contracts.mcp import family_of
+from fbi.ai.contracts.player import PlayerAssessmentOut
 from fbi.ai.review import Candidate
 
 NAMING_VERSION: Final = "cand-names-v1"
@@ -151,7 +152,8 @@ class Assessed:
     after ``contracts.assessment.check`` (a stance that rested on nothing is already ``NEUTRAL``)."""
 
     label: str
-    out: AssessmentOut
+    out: AssessmentOut | PlayerAssessmentOut
+    """``aa-v1`` of the Match and the Statistics Agents, or ``pa-v1`` of the Player Agent (IA-017: no strength, no research)."""
 
 
 ContraCode = Literal["C01", "C02", "C03", "C04", "C05", "C06", "C07", "C08"]
@@ -208,7 +210,7 @@ class Contradiction:
 
 # -- the references an answer may make -----------------------------------------------------------------------------------------------
 
-def assessment_label(agent: Agent, mode: Mode) -> str:
+def assessment_label(agent: str, mode: Mode) -> str:
     """How the Council cites an assessment (``A:match_evaluation``): the agent and the mode it wrote it in. One per pair in a view."""
     return f"{agent}_{mode.lower()}"
 

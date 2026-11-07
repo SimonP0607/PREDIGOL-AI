@@ -10,7 +10,7 @@ El objetivo del plan para esta fase es que **exista y esté probado todo lo que 
 
 | Pieza | Qué hace | Dónde está |
 | --- | --- | --- |
-| Contratos | el paquete que lee un modelo y las cinco salidas que puede escribir, todos cerrados | `ai/contracts/` |
+| Contratos | el paquete que lee un modelo y las salidas que puede escribir (cinco; IA-017 añadió la sexta), todos cerrados | `ai/contracts/` |
 | Texto de otros | limpia una sola vez lo que escribió alguien que no es PrediGol | `ai/untrusted.py` |
 | Paquete | el documento de un partido y una porción por agente, derivado sin modelo | `ai/package.py` |
 | Router | qué modelo lee qué, o ninguno, como función pura con sus razones | `ai/router.py` |
@@ -26,7 +26,7 @@ El objetivo del plan para esta fase es que **exista y esté probado todo lo que 
 
 ## 2. Los seis contratos
 
-Un **contrato** es el esquema cerrado de lo que entra en un modelo o de lo que puede salir de él. Hay seis (`ai/contracts/`): el paquete que escribe el servidor y las cinco salidas que un modelo puede devolver. Una salida es a la vez un modelo de Pydantic y su esquema JSON, y ese esquema es el que aceptan las salidas estructuradas de Anthropic: valores cerrados, todos los campos obligatorios y `additionalProperties: false` en cada objeto.
+Un **contrato** es el esquema cerrado de lo que entra en un modelo o de lo que puede salir de él. Hay siete (`ai/contracts/`): el paquete que escribe el servidor y las seis salidas que un modelo puede devolver (la sexta, `pa-v1` del Player Agent, la añadió IA-017). Una salida es a la vez un modelo de Pydantic y su esquema JSON, y ese esquema es el que aceptan las salidas estructuradas de Anthropic: valores cerrados, todos los campos obligatorios y `additionalProperties: false` en cada objeto.
 
 | Contrato | Quién lo escribe | Qué dice |
 | --- | --- | --- |
@@ -36,6 +36,7 @@ Un **contrato** es el esquema cerrado de lo que entra en un modelo o de lo que p
 | `cd-v1` | Council | un veredicto por selección, con sus motivos y riesgos en códigos |
 | `pmr-v1` | Post-Match Reviewer | qué señal de qué agente acertó, la clase del error y una narrativa |
 | `la-v1` | Learning Analyst | hasta cinco hipótesis a la semana, cada una con su evidencia |
+| `pa-v1` | Player Agent | una postura por candidato de goles y resultado según quién juega, en códigos: una dirección y nunca una magnitud (IA-017) |
 
 **Lo que una salida nunca puede llevar** lo impone la construcción, no una instrucción: ningún campo de ninguna salida puede llamarse probabilidad, precio, cuota, stake, edge, URL, consulta ni SQL (una prueba lee el nombre de cada campo). Las señales (14) y los riesgos (12) son códigos de una lista cerrada, no frases: cuanto menos texto libre puede escribir un agente, menos puede decir por él una página envenenada. Las dos salidas que sí llevan prosa, la narrativa del Post-Match Reviewer y las hipótesis del Learning Analyst, son texto no fiable: se muestran al dueño, nunca son una orden y nunca se miden. Las referencias son tipadas: `E:<n>` una evidencia, `P:<ruta>` una ruta del paquete y `A:<id>` una evaluación de otro agente.
 
@@ -214,7 +215,7 @@ Un **agente** es sus prompts, el contrato de su respuesta, su modelo y su esfuer
 | `post_match_reviewer` | `pmr-v1` | 5 | `pmr-v1` |
 | `learning_analyst` | `la-v1` | 5 | `la-v1` |
 
-* **Lo pospuesto (`POSTPONED`).** El Player Agent: ni un token ni una línea de código hasta su gate F-Player (un mercado con modelo validado, regla de liquidación y precio de referencia).
+* **Lo pospuesto (`POSTPONED`).** Vacío desde IA-017. El Player Agent esperó aquí a su gate F-Player (un mercado con modelo validado, regla de liquidación y precio de referencia); hoy está construido (`player-v1`), **apagado por defecto** y en sombra (`docs/owner/IA_017_PLAYER_AGENT.md`). Lo que F-Player sigue reteniendo son los props de un jugador: ningún mercado de jugador se le nombra y nada de lo que dice llega a una decisión.
 
 **Una etiqueta de prompt nunca nombra dos textos.** El libro guarda, para cada tarea de cada versión, la etiqueta y un hash del texto y del esquema; una etiqueta cuyo texto ha cambiado desde entonces es una edición en el sitio (lo único que `ai/prompts.py` dice que no se hace nunca) y falla. **Si falla**, el mensaje con el que falla es la entrada que hay que añadir al libro. El registro guarda la **identidad** de un agente, no su autoridad: si un agente corre, para qué partidos y con qué modelo lo deciden el router y el Orquestador; si sus respuestas cuentan lo decides tú, con una fila en `intel.promotions`.
 

@@ -72,6 +72,13 @@ PROMPT_TARGETS: Final = ("review", "extract", "claims")
 AGENT_TARGETS: Final = ("match", "stats", "council")
 """The targets of ``battery-v3``: the agents of phases 3 and 4, that answer in a contract (``aa-v1``, ``cd-v1``) read by the server."""
 TARGETS: Final = PROMPT_TARGETS + AGENT_TARGETS
+SHADOW_TARGETS: Final = ("player",)
+"""IA-017: the targets of agents born OFF - the Player Agent. Each is built exactly as an agent target of ``battery-v3`` (three bases through its own
+slice, the forty attacks of the eight families, its own reader as the judge) and run OFFLINE on every change (``simulate``); it can be measured in
+the LAB on its own (``run.submit(targets=("player",))``). It stays OUT of ``TARGETS`` - and so of ``corpus_hash``, of ``stale`` and of the evidence of
+the ``battery`` gate - while its agent is off: the measurement in force of ``battery-v3`` keeps speaking for the six targets it measured. Switching
+the agent on beyond the shadow needs a new version of the battery that moves it into ``TARGETS`` (gate F-Player)."""
+EVERY_TARGET: Final = TARGETS + SHADOW_TARGETS
 FAMILIES: Final = ("ignore", "fake_official", "hidden_html", "homoglyph", "markdown_link", "break_json", "orders", "player_name")
 """The attacks of section 31, one family each (in the order the plan names them)."""
 

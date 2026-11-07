@@ -34,7 +34,7 @@ import copy
 import json
 import time
 from collections import Counter
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import ROUND_CEILING, Decimal
@@ -49,6 +49,7 @@ from fbi.ai.contracts.mcp import (
     AVAILABILITY_KINDS,
     BLOCKS,
     NOT_FIT,
+    PLAYER_KINDS,
     SLICE_BLOCKS,
     SLICE_FAMILIES,
     SLICE_NAMES,
@@ -75,8 +76,9 @@ same packet, never a silent rewrite of an old one."""
 REAL_PER_APPROX: Final = Decimal("2.34")
 """Real tokens per approximate token (characters / 4) of a canonical package, as measured against the provider's own count in F6:
 ``packet-v8`` 6.223 approximate = ≈ 14.600 real. A planning measure, never a bill."""
-CAPS: Final[dict[str, int]] = {"match": 18_000, "stats": 18_000}
-"""Real tokens a slice may have (section 16). The Council's view (10.000) and the Research Service's (4.000) come with their phases."""
+CAPS: Final[dict[str, int]] = {"match": 18_000, "stats": 18_000, "player": 18_000}
+"""Real tokens a slice may have (section 16). The Council's view (10.000) and the Research Service's (4.000) come with their phases. The Player
+Agent's slice (IA-017) has the cap of the other two: it is a part of the same package, and smaller."""
 
 STRING_MAX: Final = 200
 """Characters of any free-text field of the header and the shared blocks (a name, a reason): longer is cut."""
@@ -104,6 +106,10 @@ PROSE_KEYS: Final = frozenset({"note", "weights_note", "weights"})
 """The constant explanations of ``packet-v8``'s blocks."""
 
 LIGHT_BLOCKS: Final = ("standings", "stakes", "schedule", "absences", "lineups", "context", "quality", "factors", "tactics", "travel")
+PLAYER_BLOCKS: Final = ("absences", "lineups", "players", "quality")
+"""What the Player Agent reads of what both sides share (IA-017): who is out and why, the line-ups as of the moment, the history of each player
+of the dossier (apps, starts, minutes, goals, assists, importance; never the counts of cards and fouls, which are another family's) and the
+quality of the data (whether the line-ups are confirmed)."""
 """What the Statistics Agent reads of what both sides share (the plan's «shared ligero»), besides the referee and the counts."""
 STAMP_KEYS: Final = frozenset({"known_at", "data_cutoff_at", "as_of", "opening_as_of", "fetched_at", "retrieved_at", "observed_at",
                                "snapshot_at", "decided_at", "published_at"})
@@ -471,6 +477,41 @@ def counts_view(shared: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
+def players_view(shared: Mapping[str, Any]) -> dict[str, Any]:
+    """The ``shared`` block as the Player Agent reads it (IA-017): ``PLAYER_BLOCKS`` and nothing else; the players without the data of the counts."""
+    out: dict[str, Any] = {}
+    for key in PLAYER_BLOCKS:
+        if key not in shared:
+            continue
+        value = shared[key]
+        if key == "players" and isinstance(value, dict):
+            value = {side: [_without(p, COUNT_PLAYER_KEYS) for p in plist] if isinstance(plist, list) else plist for side, plist in value.items()}
+        out[key] = value
+    return out
+
+
+def has_players(document: Mapping[str, Any]) -> bool:
+    """Whether a ``player`` slice says anything about a player: a line-up with a side, an absence, a player of the dossier or an evidence of who
+    can play. The Player Agent is asked only when it does (IA-017): a slice with none is no question."""
+    shared = document.get("shared")
+    shared = shared if isinstance(shared, Mapping) else {}
+    lineups = shared.get("lineups")
+    if isinstance(lineups, Mapping) and any(isinstance(lineups.get(side), Mapping) and lineups[side] for side in ("home", "away")):
+        return True
+    absences = shared.get("absences")
+    for side in ("home", "away"):
+        listed = absences.get(side) if isinstance(absences, Mapping) else None
+        if isinstance(listed, Mapping):
+            listed = listed.get("players")
+        if isinstance(listed, list) and listed:
+            return True
+    players = shared.get("players")
+    if isinstance(players, Mapping) and any(isinstance(v, list) and v for v in players.values()):
+        return True
+    evidence = document.get("evidence")
+    return isinstance(evidence, list) and any(isinstance(e, Mapping) and e.get("kind") in AVAILABILITY_KINDS for e in evidence)
+
+
 def _in_families(selections: list[dict[str, Any]], key: str, families: tuple[str, ...]) -> list[dict[str, Any]]:
     return [s for s in selections if family_of(str(s.get(key, ""))) in families]
 
@@ -484,7 +525,7 @@ def _project(package: Package, name: SliceName) -> dict[str, Any]:
         if value is None:
             continue
         if block == "shared":
-            value = goals_view(value) if name == "match" else counts_view(value)
+            value = goals_view(value) if name == "match" else counts_view(value) if name == "stats" else players_view(value)
         elif block == "market":
             value = {**value, "selections": _in_families(value.get("selections", []), "market", families)}
         elif block == "models":
@@ -494,6 +535,8 @@ def _project(package: Package, name: SliceName) -> dict[str, Any]:
                 value["forecast"] = {**value["forecast"], "markets": _in_families(value["forecast"].get("markets", []), "market", families)}
         elif block == "evidence" and name == "stats":
             value = [e for e in value if e["kind"] not in STATS_EXCLUDED_KINDS]
+        elif block == "evidence" and name == "player":
+            value = [e for e in value if e["kind"] in PLAYER_KINDS]
         blocks[block] = value
     return {"contract": MCP, "slice": name, "fixture_id": package.fixture_id, "known_at": package.known_at.isoformat(),
             "pass": package.pass_kind, **blocks, "missing": doc["missing"], "blocking": doc.get("blocking", [])}
@@ -567,8 +610,9 @@ def slice_of(package: Package, name: SliceName) -> Slice:
                  hash=content_hash(document), tokens=real_tokens(document), cap=cap, trimmed=trimmed)
 
 
-def slices_of(package: Package) -> dict[str, Slice]:
-    return {name: slice_of(package, name) for name in SLICE_NAMES}
+def slices_of(package: Package, names: Sequence[SliceName] = SLICE_NAMES) -> dict[str, Slice]:
+    """The slices of a package: those of the default set (``contracts.mcp.SLICE_SETS``) unless ``names`` says which, in that order."""
+    return {name: slice_of(package, name) for name in names}
 
 
 # ── reading (the only parts that touch the database; read only) ────────────────────────────────────────────────────

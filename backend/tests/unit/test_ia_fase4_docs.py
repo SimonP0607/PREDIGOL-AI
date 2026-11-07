@@ -165,7 +165,8 @@ def test_the_word_the_defaults_the_activation_and_the_rollback(monkeypatch: pyte
     [row] = table(sec, "| Variable")
     assert row[0].strip("`") == "FBI_AI_AGENTS" and row[1] == "vacío" and AiSettings().agents == ()
     assert row[3].strip("`") == "match,council,stats" and row[4].strip("`") == "match,council"
-    assert config.AGENTS == ("match", "council", "stats") and set(re.findall(r"`(match|council|stats)`", row[2])) == set(config.AGENTS)
+    # IA-017 added ``player`` after this guide (docs/owner/IA_017_PLAYER_AGENT.md): the three of phase 4 come first, in this order
+    assert config.AGENTS[:3] == ("match", "council", "stats") and set(re.findall(r"`(match|council|stats)`", row[2])) == set(config.AGENTS[:3])
     assert "FBI_AI_AGENTS=match,council,stats" in sec and "FBI_AI_AGENTS=match,council`" in sec
     on = settings_of(monkeypatch, **ON)
     assert on.orchestrate is True and on.agents == ("match", "council", "stats") and on.shadow_engines == ("ma-v1", "ma-v1-h")
@@ -174,7 +175,8 @@ def test_the_word_the_defaults_the_activation_and_the_rollback(monkeypatch: pyte
     # ``stats`` alone, or without one of the two, switches nothing on; a name that is none is dropped
     for agents in ("stats", "stats,match", "stats,council", ""):
         assert settings_of(monkeypatch, **{**ON, "FBI_AI_AGENTS": agents}).orchestrate is False, agents
-    assert settings_of(monkeypatch, **{**ON, "FBI_AI_AGENTS": "match,council,stats,player"}).agents == ("match", "council", "stats")
+    assert settings_of(monkeypatch, **{**ON, "FBI_AI_AGENTS": "match,council,stats,props"}).agents == ("match", "council", "stats")
+    assert settings_of(monkeypatch, **{**ON, "FBI_AI_AGENTS": "match,council,stats,player"}).agents == ("match", "council", "stats", "player"), "IA-017"
     assert "`stats` por sí solo no enciende nada" in sec
 
 
@@ -341,7 +343,7 @@ def test_the_deviations_are_what_the_code_shows() -> None:
     # D4: Opus is never asked about a count
     assert "def escalation_naming" in ORCH_SRC
     # D6: the state keeps all the slices of the package
-    assert "for name in SLICE_NAMES if name in p.slices" in ORCH_SRC
+    assert "for name in SLICE_SETS[p.slice_set] if name in p.slices" in ORCH_SRC, "IA-017: every slice of the set the state names"
     # D7: the guide says the battery had no target for the new prompt - true of battery-v2; IA-010 (battery-v3) closes it
     from fbi.ai.battery import TARGETS, corpus
     assert "`stats-assess-v2`" in rows["D7"][1] and "stats" in TARGETS and corpus.target("stats").prompts == ("stats-assess-v2",)
