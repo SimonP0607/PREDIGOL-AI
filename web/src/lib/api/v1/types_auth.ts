@@ -99,7 +99,8 @@ export interface PreferencesIn {
  * invited: created by an invitation, not activated yet; deleted: anonymised at the reader's request (plan UX, A7) -
  * its address is masked and nothing about it changes any more.
  */
-export type AccountStatus = "active" | "disabled" | "invited" | "deleted";
+/** pending: registered by the person, the address not yet confirmed (UX-038): it cannot sign in, has no membership. */
+export type AccountStatus = "active" | "disabled" | "invited" | "deleted" | "pending";
 
 export interface AdminUser {
   id: number;
@@ -157,6 +158,43 @@ export interface AuditEvent {
 /** What the sign-in page may offer: recovery and unlocking by e-mail, only while they work (FBI_SELF_SERVICE). */
 export interface AccountOptions {
   self_service: boolean;
+  /** A person may create their own account (FBI_SIGNUP on and every lock behind it closed): «Crear cuenta». */
+  signup: boolean;
+}
+
+/** One required consent of the registration form: its exact sentence, the text it points at and the version in force. */
+export interface SignupConsentIn {
+  kind: "terms" | "privacy" | "age_18" | "risk_notice" | "marketing_email" | "analytics";
+  granted: boolean;
+  version: string;
+}
+
+/** The registration form (UX-038): the server checks every field and answers 202 whatever the address. */
+export interface SignupIn {
+  first_name: string;
+  last_name: string;
+  email: string;
+  /** A mobile number; without a country code, Colombian. Kept for the owner's records: never used to send anything. */
+  phone: string;
+  /** Unique (without regard to case), 3 to 24 characters. */
+  nickname: string;
+  password: string;
+  language: Language;
+  timezone: string;
+  consents: SignupConsentIn[];
+}
+
+/** A confirmation link that works: whose, to fill the page (and for the password manager to save under it). */
+export interface VerifyInfo {
+  email: string;
+  display_name: string;
+  language: Language;
+}
+
+export interface VerifyIn {
+  token: string;
+  /** The password chosen when registering: confirming the address also proves it. */
+  password: string;
 }
 
 /** An invitation link that works: whose, to fill the page (and for the password manager to save under it). */

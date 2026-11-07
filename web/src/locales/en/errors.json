@@ -131,7 +131,15 @@
     "invalid_note": "A note of 3 to 120 characters.",
     "invalid_valid_until": "A last day in the future.",
     "invalid_max_redemptions": "Between 1 and 100,000 places.",
-    "no_discount": "This account has no discount to apply."
+    "no_discount": "This account has no discount to apply.",
+    "email_not_verified": "Your e-mail is not confirmed yet. Open the link we sent you or ask for a new one.",
+    "display_name_taken": "That nickname is already taken. Choose another.",
+    "invalid_first_name": "Enter your first name (letters, spaces, hyphen or apostrophe only).",
+    "invalid_last_name": "Enter your last name (letters, spaces, hyphen or apostrophe only).",
+    "invalid_phone": "Enter a valid mobile number. A Colombian one has 10 digits and starts with 3.",
+    "invalid_nickname": "The nickname must be 3 to 24 characters, without @, and cannot be a reserved name.",
+    "signup_paused": "We received many registrations today. Try again later.",
+    "consents_required": "Tick all four boxes to create your account."
   },
   "problem": {
     "password_too_short": "At least 15 characters, or 12 if you use two-step verification.",

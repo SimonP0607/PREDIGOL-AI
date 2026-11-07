@@ -9,6 +9,7 @@ import type { AttributionOverview } from "./types_ai_attribution";
 import type { EntityResearchOverview } from "./types_ai_research";
 import type {
   AdminPrivacyRequest,
+  ConsentPurpose,
   ConsentState,
   ConsentsIn,
   ExportDocument,
@@ -256,6 +257,9 @@ import type {
   ResetInfo,
   SelfServiceState,
   SessionInfo,
+  SignupIn,
+  VerifyInfo,
+  VerifyIn,
 } from "./types_auth";
 import type {
   CompetitionScoreRow,
@@ -557,6 +561,13 @@ export const v1 = {
   checkInvitation: (token: string) => postJson<ActivationInfo>("/auth/activate/check", { token }),
   activate: (body: ActivateIn) => postJson<Me>("/auth/activate", body),
   renewInvitation: (token: string) => postJson<Accepted>("/auth/activate/renew", { token }),
+  // a person opens their own account (UX-038): public, only while the registration is open
+  signupConsents: (lang: "es" | "en") =>
+    getJson<{ purposes: ConsentPurpose[] }>("/auth/signup/consents", { lang }),
+  signup: (body: SignupIn) => postJson<Accepted>("/auth/signup", body),
+  checkVerification: (token: string) => postJson<VerifyInfo>("/auth/verify/check", { token }),
+  verifyEmail: (body: VerifyIn) => postJson<Me>("/auth/verify", body),
+  resendVerification: (email: string) => postJson<Accepted>("/auth/verify/resend", { email }),
   forgotPassword: (email: string) => postJson<Accepted>("/auth/password/forgot", { email }),
   checkReset: (token: string) => postJson<ResetInfo>("/auth/password/reset/check", { token }),
   resetPassword: (body: ResetIn) => postJson<void>("/auth/password/reset", body),

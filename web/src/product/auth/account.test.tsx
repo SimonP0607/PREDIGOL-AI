@@ -20,17 +20,28 @@ function withQueries(node: React.ReactNode): string {
 }
 
 describe("the account pages", () => {
-  test("are the five public addresses, with or without a trailing slash", () => {
+  test("are the seven public addresses, with or without a trailing slash", () => {
     for (const path of [
       "/activate",
       "/forgot-password",
       "/reset-password/",
       "/unlock",
       "/unsubscribe/",
+      "/register",
+      "/verify-email/",
     ]) {
       expect(isAccountPath(path), path).toBe(true);
     }
-    for (const path of ["/", "/login", "/activate/x", "/unlocked", "/profile", "/unsubscribe/x"]) {
+    for (const path of [
+      "/",
+      "/login",
+      "/activate/x",
+      "/unlocked",
+      "/profile",
+      "/unsubscribe/x",
+      "/registered",
+      "/verify",
+    ]) {
       expect(isAccountPath(path), path).toBe(false);
     }
   });

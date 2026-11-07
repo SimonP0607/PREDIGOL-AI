@@ -21,11 +21,13 @@ import { Route as OddsRouteImport } from './routes/odds'
 import { Route as ParlaysRouteImport } from './routes/parlays'
 import { Route as PicksRouteImport } from './routes/picks'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as TransparencyRouteImport } from './routes/transparency'
 import { Route as UnlockRouteImport } from './routes/unlock'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as UpdatesRouteImport } from './routes/updates'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAiAnalystRouteImport } from './routes/admin.ai-analyst'
@@ -131,6 +133,11 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -154,6 +161,11 @@ const UnsubscribeRoute = UnsubscribeRouteImport.update({
 const UpdatesRoute = UpdatesRouteImport.update({
   id: '/updates',
   path: '/updates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WelcomeRoute = WelcomeRouteImport.update({
@@ -390,11 +402,13 @@ export interface FileRoutesByFullPath {
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
+  '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/updates': typeof UpdatesRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/welcome': typeof WelcomeRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
@@ -452,11 +466,13 @@ export interface FileRoutesByTo {
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
+  '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/updates': typeof UpdatesRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/welcome': typeof WelcomeRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
@@ -516,11 +532,13 @@ export interface FileRoutesById {
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
+  '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/updates': typeof UpdatesRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/welcome': typeof WelcomeRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
@@ -581,11 +599,13 @@ export interface FileRouteTypes {
     | '/parlays'
     | '/picks'
     | '/profile'
+    | '/register'
     | '/reset-password'
     | '/transparency'
     | '/unlock'
     | '/unsubscribe'
     | '/updates'
+    | '/verify-email'
     | '/welcome'
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
@@ -643,11 +663,13 @@ export interface FileRouteTypes {
     | '/parlays'
     | '/picks'
     | '/profile'
+    | '/register'
     | '/reset-password'
     | '/transparency'
     | '/unlock'
     | '/unsubscribe'
     | '/updates'
+    | '/verify-email'
     | '/welcome'
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
@@ -706,11 +728,13 @@ export interface FileRouteTypes {
     | '/parlays'
     | '/picks'
     | '/profile'
+    | '/register'
     | '/reset-password'
     | '/transparency'
     | '/unlock'
     | '/unsubscribe'
     | '/updates'
+    | '/verify-email'
     | '/welcome'
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
@@ -770,11 +794,13 @@ export interface RootRouteChildren {
   ParlaysRoute: typeof ParlaysRoute
   PicksRoute: typeof PicksRoute
   ProfileRoute: typeof ProfileRoute
+  RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TransparencyRoute: typeof TransparencyRoute
   UnlockRoute: typeof UnlockRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   UpdatesRoute: typeof UpdatesRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
   WelcomeRoute: typeof WelcomeRoute
   HelpGlossaryRoute: typeof HelpGlossaryRoute
   HelpHowItWorksRoute: typeof HelpHowItWorksRoute
@@ -871,6 +897,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -904,6 +937,13 @@ declare module '@tanstack/react-router' {
       path: '/updates'
       fullPath: '/updates'
       preLoaderRoute: typeof UpdatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/welcome': {
@@ -1310,11 +1350,13 @@ const rootRouteChildren: RootRouteChildren = {
   ParlaysRoute: ParlaysRoute,
   PicksRoute: PicksRoute,
   ProfileRoute: ProfileRoute,
+  RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TransparencyRoute: TransparencyRoute,
   UnlockRoute: UnlockRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   UpdatesRoute: UpdatesRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
   WelcomeRoute: WelcomeRoute,
   HelpGlossaryRoute: HelpGlossaryRoute,
   HelpHowItWorksRoute: HelpHowItWorksRoute,
