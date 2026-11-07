@@ -58,15 +58,17 @@ def listed(text: str, before: str) -> tuple[str, ...]:
 # -- the versions ----------------------------------------------------------------------------------------------------------------------
 
 def test_the_prompts_of_aa_v1_are_new_versions_and_so_are_their_agents() -> None:
+    # IA-014 made the Match Agent's prompts v3 (``test_ia014_match_invalid_outputs.py``): v2 stays in the ledger as IA-009 wrote it
     assert (prompts.MATCH_CONTEXT_VERSION, prompts.MATCH_ASSESS_VERSION, prompts.STATS_ASSESS_VERSION) == (
-        "match-context-v2", "match-assess-v2", "stats-assess-v2")
-    assert (match.VERSION, stats.VERSION) == ("match-v2", "stats-v2")
+        "match-context-v3", "match-assess-v3", "stats-assess-v2")
+    assert (match.VERSION, stats.VERSION) == ("match-v3", "stats-v2")
     assert rg.REGISTRY.in_force("match").version == match.VERSION and rg.REGISTRY.in_force("stats").version == stats.VERSION
-    assert [r.version for r in rg.REGISTRY.history("match")] == ["match-v1", "match-v2"]
+    assert [r.version for r in rg.REGISTRY.history("match")] == ["match-v1", "match-v2", "match-v3"]
     assert [r.version for r in rg.REGISTRY.history("stats")] == ["stats-v1", "stats-v2"]
+    assert rg.REGISTRY.history("match")[1].phase == "IA-009" and rg.REGISTRY.in_force("match").phase == "IA-014"
     for agent in ("match", "stats"):
         entry = rg.REGISTRY.in_force(agent)
-        assert entry.born_as == "CHALLENGER" and not entry.baseline and entry.phase == "IA-009", "the code never promotes: only the owner does"
+        assert entry.born_as == "CHALLENGER" and not entry.baseline and entry.phase in ("IA-009", "IA-014"), "the code never promotes: only the owner does"
         assert rg.live_fingerprint(rg.REGISTRY.spec(agent)) == entry.fingerprint
     assert not rg.REGISTRY.problems(), "every label names one text, and the ledger holds the code"
 
@@ -79,7 +81,7 @@ def test_the_council_keeps_its_version_its_prompt_already_says_the_cap_of_the_re
 def test_the_contract_and_the_reader_did_not_change() -> None:
     assert ACCEPTS[ASSESSMENT] == ("aa-v1",) and ACCEPTS[COUNCIL] == ("cd-v1",)
     for agent in ("match", "stats"):
-        old, new = rg.REGISTRY.history(agent)[-2:]
+        old, new = rg.REGISTRY.history(agent)[0], rg.REGISTRY.history(agent)[-1]
         assert {p.schema_sha for p in old.parts.values()} == {p.schema_sha for p in new.parts.values()}, "the schema of aa-v1 is the same"
     assert (SIGNALS_MAX, CANDIDATES_MAX, REFS_MAX, DRIVERS_MAX, RISKS_MAX) == (12, 12, 8, 4, 4)
 
@@ -166,7 +168,7 @@ def test_a_question_of_v2_never_shares_a_key_with_one_of_v1() -> None:
         now = rg.REGISTRY.identity_for(agent, task, workspace="lab", input_version="mcp-v1", input_hash=hash_, pass_kind="pre", fixture_id=7)
         born = rg.REGISTRY.history(agent)[0]
         then = replace(now, agent_version=born.version, prompt_version=born.parts[task].prompt_version)
-        assert now.agent_version.endswith("-v2") and now.prompt_version.endswith("-v2")
+        assert now.agent_version.endswith(("-v2", "-v3")) and now.prompt_version.endswith(("-v2", "-v3"))
         assert then.agent_version.endswith("-v1") and then.prompt_version.endswith("-v1")
         assert now.key != then.key, (agent, task)
 
@@ -210,8 +212,9 @@ def test_a_problem_names_a_key_of_the_model_only_when_it_is_a_word_of_the_list(p
 def test_the_list_of_named_keys_is_small_fixed_and_made_of_plain_lower_case_words() -> None:
     assert frozenset({
         "reasoning", "notes", "note", "summary", "analysis", "explanation", "rationale", "contradictions", "comments", "thinking", "assessment",
-        "output", "answer", "result", "findings", "confidence", "stance"}) == common.NAMED_EXTRA_KEYS
-    assert all(re.fullmatch(r"[a-z]{3,20}", w) for w in common.NAMED_EXTRA_KEYS)
+        "output", "answer", "result", "findings", "confidence", "stance"}) == common.NAMED_EXTRA_KEYS_IA009
+    assert common.NAMED_EXTRA_KEYS_IA009 <= common.NAMED_EXTRA_KEYS, "IA-014 widened the list and took no word out"
+    assert all(re.fullmatch(r"[a-z]{3,20}", w) for w in common.NAMED_EXTRA_KEYS_IA009)
     assert set(prompts.NEVER_KEYS) <= common.NAMED_EXTRA_KEYS, "a key the prompt says never to add is one the diagnosis can name"
 
 

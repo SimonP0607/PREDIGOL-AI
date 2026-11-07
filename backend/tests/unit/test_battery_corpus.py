@@ -387,10 +387,10 @@ def test_the_prompts_under_test_are_the_ones_in_force() -> None:
     assert corpus.target("review").prompt == REVIEW_VERSION == "review-v2"
     assert corpus.target("extract").prompt == EXTRACT_VERSION == "extract-v1"
     assert corpus.target("claims").prompt == EXTRACT_V2_VERSION == "extract-v2"
-    assert corpus.target("match").prompts == (MATCH_CONTEXT_VERSION, MATCH_ASSESS_VERSION) == ("match-context-v2", "match-assess-v2")
+    assert corpus.target("match").prompts == (MATCH_CONTEXT_VERSION, MATCH_ASSESS_VERSION) == ("match-context-v3", "match-assess-v3")
     assert corpus.target("stats").prompts == (STATS_ASSESS_VERSION,) == ("stats-assess-v2",)
     assert corpus.target("council").prompts == (COUNCIL_VERSION, COUNCIL_OPUS_VERSION) == ("council-v1", "council-opus-v1")
-    assert [corpus.target(t).agent for t in TARGETS] == ["", "", "", "match-v2", "stats-v2", "council-v1"]
+    assert [corpus.target(t).agent for t in TARGETS] == ["", "", "", "match-v3", "stats-v2", "council-v1"]
     assert [corpus.target(t).contract for t in TARGETS] == ["", "", "", "aa-v1", "aa-v1", "cd-v1"]
     assert [corpus.target(t).tier for t in TARGETS] == ["analysis", "bulk", "bulk", "bulk", "bulk", "analysis"], "the tier production asks them with"
     assert corpus.target("council").tier_of("k_escalated") == "final" and corpus.target("council").tiers == ("analysis", "final")
