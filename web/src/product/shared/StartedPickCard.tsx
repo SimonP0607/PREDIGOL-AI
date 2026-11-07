@@ -20,6 +20,7 @@ import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { MatchStateBadge, ResultBadge, Units } from "@/product/records/Badges";
 import { isLivePhase } from "@/product/matches/status";
 import { EvBadge, Kickoff, OddsPill, ProbCompare, ShadowBadge } from "./Bits";
+import { WhyPickButton } from "@/product/picks/WhyPick";
 import { marketName, selectionLabel } from "./markets";
 
 const RESULTS: Record<string, ResultStatus> = {
@@ -36,6 +37,7 @@ export function StartedPickCard({
   shadow = false,
   className,
   footer,
+  autoOpenWhy = false,
 }: {
   pick: StartedPick;
   /** From the admin's shadow preview: labelled, never a recommendation. */
@@ -43,6 +45,8 @@ export function StartedPickCard({
   className?: string | undefined;
   /** Below the state: once the match is over, why it ended as it did (plan UX, B4: the Postpartido). */
   footer?: ReactNode;
+  /** The explanation opens by itself: the reader came from «Más sobre este pick» (plan de Inicio, 2.3). */
+  autoOpenWhy?: boolean;
 }) {
   const label = selectionLabel({
     market_key: pick.market_key,
@@ -144,6 +148,10 @@ export function StartedPickCard({
             {t("match.picks.evaluations", { count: pick.evaluations })}
           </span>
         ) : null}
+      </div>
+
+      <div className="flex flex-wrap gap-2 px-4 pb-3">
+        <WhyPickButton pickId={pick.pick_id} autoOpen={autoOpenWhy} />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 px-4 py-2.5">

@@ -231,26 +231,11 @@ class BestOddsBoard(Contract):
     source: Source
 
 
-class UpcomingMatch(Contract):
-    fixture_id: int
-    kickoff_at: datetime
-    competition: CompetitionBadge
-    home: TeamBadge
-    away: TeamBadge
-    bookmakers: int
-
-
 class DataFreshness(Contract):
-    odds_at: datetime | None
     live_at: datetime | None
 
 
 class Home(Contract):
     source: Source
     data_freshness: DataFreshness
-    top_picks: Section[list[PickCard]]
-    daily_parlay: Parlay
-    multiday_parlay: Parlay
     live: Section[list[LiveMatch]]
-    best_prices: Section[list[BestHighlight]]
-    upcoming: Section[list[UpcomingMatch]]

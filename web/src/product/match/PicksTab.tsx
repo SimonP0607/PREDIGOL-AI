@@ -28,6 +28,7 @@ import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import { matchPicks, outcomeCounts, useMatchPicks } from "./picks";
 import { Block, SectionNote } from "./ui";
+import { PickAnchor, useFocusedPick } from "./pickFocus";
 
 export type UpcomingPicksLoad =
   | { status: "pending" }
@@ -52,10 +53,18 @@ export function UpcomingPicksView({
   load,
   resetKey,
   renderPick,
+  focused = null,
 }: {
   load: UpcomingPicksLoad;
   resetKey: string;
-  renderPick: (pick: PickCardData, rank: number | undefined, shadow: boolean) => ReactNode;
+  renderPick: (
+    pick: PickCardData,
+    rank: number | undefined,
+    shadow: boolean,
+    focused: boolean,
+  ) => ReactNode;
+  /** The pick a link names («Más sobre este pick», `?pick=`): brought into view, marked, its why opened. */
+  focused?: number | null;
 }) {
   const picks = load.status === "success" ? load.picks : [];
   const shadow = load.status === "success" && load.shadow;
@@ -93,9 +102,9 @@ export function UpcomingPicksView({
       )}
       <div className="grid gap-3 md:grid-cols-2">
         {paged.items.map((p) => (
-          <div key={p.pick_id} className="min-w-0">
-            {renderPick(p, rankOf.get(p.pick_id), shadow)}
-          </div>
+          <PickAnchor key={p.pick_id} pickId={p.pick_id} focused={focused === p.pick_id}>
+            {renderPick(p, rankOf.get(p.pick_id), shadow, focused === p.pick_id)}
+          </PickAnchor>
         ))}
       </div>
       <Pager paged={paged} />
@@ -106,6 +115,7 @@ export function UpcomingPicksView({
 /** The match's picks before kick-off, from the picks board (`/picks`), as PrediGol Intelligence shows them. */
 export function UpcomingPicks({ ctx }: { ctx: MatchCtx }) {
   const q = useMatchPicks(ctx);
+  const focused = useFocusedPick();
   const board = q.data?.data;
   const load: UpcomingPicksLoad = q.isPending
     ? { status: "pending" }
@@ -121,11 +131,13 @@ export function UpcomingPicks({ ctx }: { ctx: MatchCtx }) {
     <UpcomingPicksView
       load={load}
       resetKey={ctx.fixtureId}
-      renderPick={(p, rank, shadow) => (
+      focused={focused}
+      renderPick={(p, rank, shadow, isFocused) => (
         <PickCard
           pick={p}
           rank={rank}
           shadow={shadow}
+          autoOpenWhy={isFocused}
           actions={<SelectablePriceRow sel={pickableOfCard(p)} />}
         />
       )}
@@ -138,6 +150,7 @@ function Taken({ ctx, why }: { ctx: MatchCtx; why?: ((pickId: number) => ReactNo
   const board = q.data?.data;
   const shadow = board?.source === "shadow_preview";
   const picks = (board?.started ?? []).filter((p) => p.fixture_id === Number(ctx.fixtureId));
+  const focused = useFocusedPick();
   const paged = usePaged(picks, `${ctx.fixtureId}|${shadow}`);
   const c = outcomeCounts(picks);
   return (
@@ -161,7 +174,14 @@ function Taken({ ctx, why }: { ctx: MatchCtx; why?: ((pickId: number) => ReactNo
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             {paged.items.map((p) => (
-              <StartedPickCard key={p.pick_id} pick={p} shadow={shadow} footer={why?.(p.pick_id)} />
+              <PickAnchor key={p.pick_id} pickId={p.pick_id} focused={focused === p.pick_id}>
+                <StartedPickCard
+                  pick={p}
+                  shadow={shadow}
+                  autoOpenWhy={focused === p.pick_id}
+                  footer={why?.(p.pick_id)}
+                />
+              </PickAnchor>
             ))}
           </div>
           <Pager paged={paged} />
