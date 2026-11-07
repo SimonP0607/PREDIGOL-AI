@@ -48,7 +48,8 @@ import { AtStakeBlock, RelevantNowBlock } from "./HomeStakes";
 import { ResultsBlock } from "./ResultsBlock";
 import { layersOf } from "./layers";
 import { mineByRank } from "./related";
-import { ChoosePrompt, ForYouEdit, ForYouPart, Layer } from "./ParaTi";
+import { EditFavorites } from "./EditFavorites";
+import { ChoosePrompt, ForYouPart, Layer } from "./ParaTi";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
 type HomeQuery = UseQueryResult<Envelope<Home>>;
@@ -215,7 +216,7 @@ export function HomePage() {
           title={t("home.layers.forYou")}
           hint={t("home.layers.forYouHint")}
           tone="primary"
-          action={<ForYouEdit />}
+          action={<EditFavorites />}
         >
           {layers.mine ? (
             <TodayBlock {...common} suggestion={<SuggestionCard />} choose={false} />
