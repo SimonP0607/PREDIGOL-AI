@@ -32,6 +32,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | IA-010 | P0 de la arquitectura objetivo (consolidar sin tocar producción): evaluador del Gate B `gate-b-v1`, banco de evaluación de agentes `eval-bench-v1`, batería adversaria `battery-v3` con objetivos Match, Statistics y Council, traza de punta a punta `trace-v1`, registro único de promociones `registry-v1` (lectura), contrato Council → decisión `ctx-adj-v1` y estados `state-v2` (WATCH/ABSTAIN), todo de solo lectura o en sombra; sin migración | en curso | este PR | p0 (arquitectura objetivo) |
 | IA-011 | P1 en sombra de la arquitectura objetivo: servicio de mercado `market-signals-v1` (movimiento de línea, velocidad, dispersión, CLV; sin referencia sharp hasta que el dueño la habilite) y Knowledge Store unificado de lectura `ks-v1` sobre las cuatro memorias; nada de la decisión los importa; sin migración | en curso | este PR | p1 (arquitectura objetivo) |
 | IA-012 | P1 en sombra: Decision & Risk Engine único `decision-v2` (familias como plug-ins, cinco estados, repetición frente a `decision-v1` y `decision-fam-v1`), Evidence Engine `evidence-engine-v1` (niveles de fuente, estado, confianza calculada, vigencia, contradicciones) y protocolo determinista del Council v2 `council-protocol-v1` (pesos, contradicciones, ronda de investigación); nada que decide los importa; sin migración | en curso | este PR | p1 (arquitectura objetivo) |
+| IA-013 | P2 en sombra: Portfolio Engine `portfolio-v1` (correlaciones, exposición, stake de cartera con stake-v1, set del día y combinadas) y simulador conjunto del partido por mitades `sim-v1` (mercados derivados por suma y correlaciones), en un paquete nuevo que no cambia la huella del código de modelos; nada que decide los importa; sin migración | en curso | este PR | p2 (arquitectura objetivo) |
 
 ## UX — experiencia de usuario y diseño de la web
 
@@ -78,4 +79,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-013 · UX-027 · BE-004 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-014 · UX-027 · BE-004 · FE-001 · OPS-001 · DOC-001
