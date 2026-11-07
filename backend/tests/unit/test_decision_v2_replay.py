@@ -20,7 +20,7 @@ from fbi.decision import engine, replay
 from fbi.decision.families import CORE, FAMILIES
 from fbi.intel import decision
 
-from .test_decision_v2_engine import AT, KEY, MODEL, core, pick, v1, world
+from .test_decision_v2_engine import AT, KEY, MODEL, as_row, core, pick, v1, world
 
 PACKAGE = Path(engine.__file__).parent
 
@@ -37,7 +37,7 @@ def test_an_agreement_counts_and_a_disagreement_is_put_down_to_its_stage() -> No
     lifted = pair(world(edge=False, review="DOWNGRADE"), pick(), 3)  # decision-v1 CAUTELA, decision-v2 ABSTAIN
     gone = (dict(agree[0]) | {"id": 4}, "core", None)
     out = replay.compare([lifted, gone, stale, agree], families=[f.name for f in FAMILIES])
-    assert out["agreement"] == {"n": 4, "agree": 2, "rate": 0.5, "unmatched": 1}
+    assert out["agreement"] == {"n": 4, "agree": 2, "rate": 0.5, "unmatched": 1, "correlation_ties": 0}
     assert out["families"]["core"]["confusion"] == {"CAUTION": {"ABSTAIN": 1}, "RECOMMENDED": {"(none)": 1, "RECOMMENDED": 1}, "WATCH": {"WATCH": 1}}
     assert out["families"]["CORNERS"]["n"] == 0 and out["families"]["CORNERS"]["rate"] is None, "every family is reported"
     [d] = out["disagreements"]
@@ -48,6 +48,23 @@ def test_an_agreement_counts_and_a_disagreement_is_put_down_to_its_stage() -> No
     assert u["decision_id"] == 4 and u["stage"] == replay.NOT_FOUND
     assert out["families"]["core"]["labels"] == {"n": 1, "agree": 1} and out["families"]["core"]["checkpoints"] == {"n": 3, "agree": 3}
     assert out["families"]["core"]["by_market"] == {"1X2": {"n": 4, "agree": 2, "rate": 0.5}}
+
+
+def test_a_disagreement_of_correlation_on_a_tie_of_scores_says_so() -> None:
+    """decision-v1 breaks a tie of scores on the order the database returned its candidates in; decision-v2 on the selection. When they
+    chose differently the replay says it was a tie."""
+    k2: decision.Key = (77, "1X2", "Away", Decimal("0.00"))
+    w = world()
+    a, b = pick(), pick(selection="Away")
+    [da, db_] = engine.decide_all(w, [core({MODEL: a}), core({MODEL: b}, k2)])
+    assert da.score == db_.score and da.verdict("correlation").data["tie"] is True
+    assert (da.state, db_.state) == ("CAUTION", "RECOMMENDED"), "on a tie, the selection decides: Away before Home"
+    ea, eb = decision.evaluate(w, KEY, {MODEL: a}), decision.evaluate(w, k2, {MODEL: b})
+    decision.correlate([ea, eb])  # decision-v1 keeps the first it was given
+    rows = [as_row(e) | {"id": i, "known_at": AT, "model_name": MODEL} for i, e in enumerate((ea, eb), 1)]
+    out = replay.compare([(rows[0], "core", da), (rows[1], "core", db_)], families=["core"])
+    assert out["agreement"]["correlation_ties"] == 2 and {d["tie"] for d in out["disagreements"]} == {True}
+    assert {d["stage"] for d in out["disagreements"]} == {"correlation"}
 
 
 def test_the_comparison_is_deterministic_whatever_the_order_of_its_input() -> None:

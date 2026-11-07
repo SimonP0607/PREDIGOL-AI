@@ -265,8 +265,8 @@ def test_the_engines_that_read_the_agent_and_their_versions() -> None:
     sec = section(7)
     assert set(orchestrator.WITH_MATCH) == {"ma-v1", "ma-v1-h"} and "cs-v1" not in orchestrator.WITH_MATCH
     assert orchestrator.STATS_PART == "+stats-v2"
-    assert orchestrator.engine_version("ma-v1", with_stats=True) == "ma-v1+match-v2+stats-v2+council-v1+contra-v1+router-v1"
-    assert "`ma-v1+match-v2+stats-v2+council-v1+contra-v1+router-v1`" in sec
+    assert orchestrator.engine_version("ma-v1", with_stats=True) == "ma-v1+match-v3+stats-v2+council-v1+contra-v1+router-v1"
+    assert "`ma-v1+match-v3+stats-v2+council-v1+contra-v1+router-v1`" in sec
     assert orchestrator.engine_version("ma-v1", with_stats=False) == orchestrator.ENGINE_VERSION["ma-v1"]
     assert orchestrator.engine_version("cs-v1", with_stats=True) == orchestrator.ENGINE_VERSION["cs-v1"]
     assert "`A:stats_evaluation`" in sec and "route.stats" in sec.replace("`", "") and '"stats": p.stats_on' in ORCH_SRC

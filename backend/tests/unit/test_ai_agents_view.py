@@ -81,7 +81,7 @@ def test_a_planned_agent_says_in_which_phase_it_is_built_and_what_it_takes_over_
     assert {t.task: t.model for t in built["council"].tasks} == {"council": "claude-sonnet-5-5", "escalation": "claude-opus-5-5"}
     assert built["learning_analyst"].next_version is None and built["la"].version == "la-v1" and built["la"].replaces == "learning_analyst"
     assert built["pmr"].version == "pmr-v1" and built["pmr"].replaces == "post_match_reviewer" and built["pmr"].born_as == "CHALLENGER"
-    assert (built["match"].version, built["match"].contract, built["match"].reads, built["match"].born_as) == ("match-v2", "aa-v1", "match", "CHALLENGER")
+    assert (built["match"].version, built["match"].contract, built["match"].reads, built["match"].born_as) == ("match-v3", "aa-v1", "match", "CHALLENGER")
     assert built["match"].next_version is None and [t.task for t in built["match"].tasks] == ["context", "evaluation"]
     assert (built["stats"].version, built["stats"].contract, built["stats"].reads, built["stats"].born_as) == ("stats-v2", "aa-v1", "stats", "CHALLENGER")
     assert [(t.task, t.model, t.prompt_version) for t in built["stats"].tasks] == [("evaluation", "claude-haiku-5-5", "stats-assess-v2")]
