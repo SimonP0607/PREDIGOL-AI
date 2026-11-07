@@ -14,7 +14,7 @@
  *     5  Qué se juega                 table or tie, rest and next match of the next suggested matches (only with content)
  *     6  Resultados                   the suggested leagues' last 48 hours
  *
- *   then what is in play everywhere and the best prices. Blocks 1, 4, 5 and 6 are the reader's own - and sit in «Para ti» - once
+ *   then what is in play everywhere. Blocks 1, 4, 5 and 6 are the reader's own - and sit in «Para ti» - once
  *   they chose leagues or teams; the suggested ones are PrediGol's and are never called «tuyas». Without favourites, a discreet
  *   «Elige tus favoritos» opens the PrediGol layer. Every block loads, fails and retries on its own: a failure never reads as
  *   an empty list, and an empty block says why in plain words. Nothing here calls the AI.
@@ -35,7 +35,6 @@ import { PARLAY_ICON, parlayTitle } from "@/product/parlays/parlayText";
 import { DailySetBlock } from "@/product/records/DailySetBlock";
 import { noPickLoad } from "@/product/records/noPick";
 import { ParlayRecordCard } from "@/product/records/ParlayRecordCard";
-import { BestPrices } from "./BestPrices";
 import { HomeHeader } from "./HomeHeader";
 import { LiveTiles } from "./LiveTiles";
 import { NewsBlock } from "./NewsBlock";
@@ -116,17 +115,10 @@ function HomeParlays({ board }: { board: BoardQuery }) {
   );
 }
 
-/** What is in play everywhere and the best prices (GET /home), with their own loading and failure. */
-function LiveAndPrices({ query }: { query: HomeQuery }) {
+/** What is in play everywhere (GET /home), with its own loading and failure. */
+function LiveNow({ query }: { query: HomeQuery }) {
   const home = query.data?.data;
-  if (home) {
-    return (
-      <>
-        <LiveTiles section={home.live} liveAt={home.data_freshness.live_at} />
-        <BestPrices section={home.best_prices} />
-      </>
-    );
-  }
+  if (home) return <LiveTiles section={home.live} liveAt={home.data_freshness.live_at} />;
   return (
     <section data-testid="home-live">
       <SectionHeader
@@ -233,7 +225,7 @@ export function HomePage() {
             <ResultsBlock {...common} />
           </>
         )}
-        <LiveAndPrices query={home} />
+        <LiveNow query={home} />
       </Layer>
     </div>
   );
