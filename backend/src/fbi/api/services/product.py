@@ -491,7 +491,7 @@ def home(conn: Conn, *, include_shadow: bool, at: datetime | None = None) -> Env
     any more."""
     moment = at or clock_now()
     live_env = center.live_board(conn, at=moment)
-    in_play = list(live_env.data.matches)
+    in_play = home_board.by_priority(conn, list(live_env.data.matches))
     flagged = home_board.relevant(conn, in_play, at=moment)
     shown = {x.match.fixture_id for x in flagged}
     live = [m for m in in_play if m.fixture_id not in shown][:6]

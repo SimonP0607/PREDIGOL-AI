@@ -335,13 +335,15 @@ describe("the layers", () => {
     expect(markup).toContain('href="/profile#football"');
   });
 
-  test("without favourites: one discreet card to choose them", async () => {
+  test("without favourites: one discreet line to choose them, that can be closed", async () => {
     const markup = await html(<ChoosePrompt />);
     const page = text(markup);
     expect(page).toContain("Elige tus favoritos");
-    expect(page).toContain("Los picks no cambian: son los mismos para todos");
+    expect(page).toContain("los picks son los mismos para todos");
     expect(markup).toContain('data-testid="choose-prompt-link"');
     expect(markup).toContain('href="/profile#football"');
+    expect(markup).toContain('data-testid="choose-prompt-close"');
+    expect(markup).toContain('aria-label="Cerrar"');
   });
 });
 

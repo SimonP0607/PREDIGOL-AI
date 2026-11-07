@@ -156,20 +156,11 @@ test("Home: today in the suggested leagues, the day's picks or why there are non
   await open(page, w, "/home");
   await expect(page.getByTestId("home-date")).toBeVisible();
 
-  // 1 · Hoy en las ligas sugeridas: the suggested leagues named, each match says why it shows
-  const block1 = page.getByTestId("home-today");
-  await expect(block1.getByRole("heading", { name: t.home.today.title })).toBeVisible();
-  await expect(block1.getByTestId("suggested-leagues")).toBeVisible();
-  // the suggested leagues are PrediGol's, never «tuyas»: no «Para ti» until the reader chooses something
+  // «Hoy en las ligas sugeridas» is not in the general layer any more (plan de Inicio, D2): with no favourites there is no
+  // «Para ti», one discreet line to choose them, and the layer starts at the picks
+  await expect(page.getByTestId("home-today")).toHaveCount(0);
   await expect(page.getByTestId("layer-for-you")).toHaveCount(0);
-  await expect(page.getByTestId("layer-predigol").getByTestId("home-today")).toBeVisible();
-  const rows = block1.getByTestId("today-row");
-  if ((await rows.count()) > 0) {
-    await expect(rows.first().getByTestId("today-why")).toHaveText(t.home.today.why);
-  } else {
-    await expect(block1.getByTestId("today-empty")).toBeVisible();
-    note(test.info(), "no match of the suggested leagues today: the block said so");
-  }
+  await expect(page.getByTestId("layer-predigol").getByTestId("choose-prompt")).toBeVisible();
 
   // 2 · Picks del día: the recorded set, or the honest sentence and its reason
   const daily = page.getByTestId("daily-set");
@@ -251,20 +242,13 @@ test("Home: today in the suggested leagues, the day's picks or why there are non
   }
   // the blocks in the order of section 24
   const order = await page.$$eval(
-    '[data-testid="home-today"], [data-testid="daily-set"], [data-testid="home-relevant"], [data-testid="home-news"], [data-testid="home-at-stake"], [data-testid="home-results"]',
+    '[data-testid="daily-set"], [data-testid="home-relevant"], [data-testid="home-news"], [data-testid="home-at-stake"], [data-testid="home-results"]',
     (els) => els.map((e) => e.getAttribute("data-testid") ?? ""),
   );
   const seen = order.filter((x, i) => order.indexOf(x) === i);
-  const SECTION_24 = [
-    "home-today",
-    "daily-set",
-    "home-relevant",
-    "home-news",
-    "home-at-stake",
-    "home-results",
-  ];
+  const SECTION_24 = ["daily-set", "home-relevant", "home-news", "home-at-stake", "home-results"];
   expect(seen).toEqual(SECTION_24.filter((x) => seen.includes(x)));
-  expect(seen).toEqual(expect.arrayContaining(["home-today", "daily-set", "home-results"]));
+  expect(seen).toEqual(expect.arrayContaining(["daily-set", "home-results"]));
   await assertClean(page, w);
 });
 

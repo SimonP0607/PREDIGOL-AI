@@ -7,18 +7,18 @@
  *              theirs - or that none is -, their notices and their results (./ParaTi)
  *   PrediGol   the same for everyone, whatever they follow; nothing of the product is hidden. Top to bottom:
  *
- *     1  Hoy en las ligas sugeridas   today's matches, in play first, with the forecast labelled and a line of the reading
- *     2  Picks del día                the published set with its real state - or why there is none - and PrediGol's parlays
+ *     1  Picks del día                the published set with its real state - or why there is none
+ *     2  Parlays                      PrediGol's parlays: of the day and multi-day
  *     3  Partidos relevantes          the matches in play with a reason the server chose (final, second leg, a fight for the
  *                                     title / Europe / relegation / promotion, a comeback) - only when there are some
- *     4  Noticias                     the confirmed or probable news of today's suggested matches (only with content)
- *     5  Qué se juega                 the matches of the next 36 hours with something at stake, one sentence each (only
+ *     4  Qué se juega                 the matches of the next 36 hours with something at stake, one sentence each (only
  *                                     with content)
+ *     5  Noticias                     the confirmed or probable news of today's suggested matches (only with content)
  *     6  En vivo, Últimos resultados  what else is in play, and the last 24 hours' results
  *
- *   Blocks 1 and 4 are the reader's own - and sit in «Para ti», with their own «Qué se juega» - once they chose leagues or
- *   teams; the suggested ones are PrediGol's and are never called «tuyas». Without favourites, a discreet
- *   «Elige tus favoritos» opens the PrediGol layer. Every block loads, fails and retries on its own: a failure never reads as
+ *   «Hoy en las ligas sugeridas» is no longer in this layer (plan de Inicio, D2): it is the same for everyone, so it starts at the
+ *   picks, ordered by PrediGol's competition priority. The reader's own matches and news sit in «Para ti» once they chose leagues
+ *   or teams. Without favourites, one discreet line, «Elige tus favoritos» (it can be closed), sits on top of this layer. Every block loads, fails and retries on its own: a failure never reads as
  *   an empty list, and an empty block says why in plain words. Nothing here calls the AI.
  */
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
@@ -235,13 +235,6 @@ export function HomePage() {
         tone="gold"
       >
         {layers.prompt && reader ? <ChoosePrompt /> : null}
-        {layers.mine ? null : (
-          <TodayBlock
-            {...common}
-            suggestion={<SuggestionCard />}
-            choose={!(layers.prompt && reader)}
-          />
-        )}
         {openYesterday ? (
           <DailySetBlock
             query={yesterday}
@@ -256,8 +249,8 @@ export function HomePage() {
         />
         <HomeParlays board={board} />
         <RelevantNowBlock query={home} />
-        {layers.mine ? null : <NewsBlock query={news} now={now} />}
         <AtStakeBlock query={home} now={now} />
+        {layers.mine ? null : <NewsBlock query={news} now={now} />}
         <LiveNow query={home} />
         <ResultsBlock query={home} now={now} />
       </Layer>

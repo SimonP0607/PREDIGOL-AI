@@ -13,6 +13,10 @@ promotion (the packet's ``stakes``) and how it is going; or a comeback (a side t
 read from the fixture feed's own states). A match with no reason is not shown: nothing is made up to fill the block. Four at
 most, by competition priority.
 
+Both blocks, and what is left for «En vivo», go in PrediGol's own order of competitions (``board_group``): the Champions League
+and the big leagues first, then the continental cups and Colombia's Primera A, then the national-team tournaments, then the rest;
+inside a group by the competition's tier and then by kick-off (plan de Inicio, D2).
+
 **Qué se juega** - the matches not yet started in the next 36 hours with something at stake, one sentence each: a final, the
 first leg's result before a second leg, or a side fighting for the title, Europe, relegation or promotion. No line about rest
 or the next match (those belong to a match's own page). Four at most, by competition priority.
@@ -34,6 +38,7 @@ from fbi.api.contracts.product import (
 )
 from fbi.api.repositories import Conn, fetch_all
 from fbi.api.services import reading
+from fbi.intel import day_priority
 
 RESULTS_WINDOW: Final = timedelta(hours=24)
 """Results: the last 24 hours (plan de Inicio, section 4)."""
@@ -107,7 +112,33 @@ STAKES: Final = frozenset({"title", "europe", "relegation", "promotion"})
 """What counts as «something at stake» in a table (the packet's ``stakes.pressure``): not a settled season, not mid-table, and not
 the play-off whose meaning depends on the competition."""
 
-TIERS_SQL = "SELECT id, tier FROM core.competitions WHERE id = ANY(%(ids)s)"
+BOARD_EXTRA: Final[dict[int, int]] = {239: 2}
+"""Competitions Inicio's general layer puts in a group of its own, over ``fbi.intel.day_priority`` (which orders the picks of the day
+and is not touched): Colombia's Primera A (API-Football league 239) goes with the continental cups, so the readers of
+Colombia keep it near the top (decision D2)."""
+
+
+def board_group(provider_league_id: int | None) -> int:
+    """The priority group (1 to 4) of a competition on Inicio's general layer: PrediGol's competition priority
+    (``day_priority``, comp-priority-v1) with ``BOARD_EXTRA`` raised to its group."""
+    group = day_priority.group_of(provider_league_id)
+    extra = None if provider_league_id is None else BOARD_EXTRA.get(int(provider_league_id))
+    return group if extra is None else min(group, extra)
+
+
+def board_groups() -> dict[str, list[int]]:
+    """The league ids of groups 1 to 3, for a query to order by (group 4 is every other one)."""
+    out: dict[str, list[int]] = {"g1": [], "g2": [], "g3": []}
+    for leagues in day_priority.GROUPS.values():
+        for league in leagues:
+            out[f"g{board_group(league)}"].append(league)
+    for league in BOARD_EXTRA:
+        if league not in out[f"g{board_group(league)}"]:
+            out[f"g{board_group(league)}"].append(league)
+    return out
+
+
+TIERS_SQL = "SELECT id, tier, provider_league_id FROM core.competitions WHERE id = ANY(%(ids)s)"
 
 TRAILED_SQL = """
 SELECT s.fixture_id,
@@ -132,7 +163,9 @@ SELECT f.id AS fixture_id, f.kickoff_at,
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
  WHERE c.is_tracked AND f.status_group = 'scheduled' AND f.kickoff_at > %(at)s AND f.kickoff_at <= %(until)s
- ORDER BY c.tier NULLS LAST, f.kickoff_at, f.id
+ ORDER BY CASE WHEN c.provider_league_id = ANY(%(g1)s) THEN 1 WHEN c.provider_league_id = ANY(%(g2)s) THEN 2
+               WHEN c.provider_league_id = ANY(%(g3)s) THEN 3 ELSE 4 END,
+          c.tier NULLS LAST, f.kickoff_at, f.id
  LIMIT %(limit)s
 """
 
@@ -217,6 +250,23 @@ def _goals(m: LiveMatch) -> tuple[int, int] | None:
     return None if m.goals_home is None or m.goals_away is None else (m.goals_home, m.goals_away)
 
 
+def _priority(conn: Conn, live: list[LiveMatch]) -> dict[int, tuple[int, int, int, int]]:
+    """The order of matches in play on the general layer: the competition's group (``board_group``), its tier, then kick-off."""
+    comps = {int(r["id"]): (board_group(r["provider_league_id"]), r["tier"] if r["tier"] is not None else 10_000)
+             for r in fetch_all(conn, TIERS_SQL, {"ids": sorted({m.competition_id for m in live
+                                                                 if m.competition_id is not None})})}
+    return {m.fixture_id: (*comps.get(m.competition_id or -1, (4, 10_000)), int(m.kickoff_at.timestamp()), m.fixture_id)
+            for m in live}
+
+
+def by_priority(conn: Conn, live: list[LiveMatch]) -> list[LiveMatch]:
+    """The matches in play in the general layer's order of competitions (the order of «En vivo»)."""
+    if not live:
+        return []
+    order = _priority(conn, live)
+    return sorted(live, key=lambda m: order[m.fixture_id])
+
+
 def relevant(conn: Conn, live: list[LiveMatch], *, at: datetime) -> list[HomeRelevant]:
     """The matches in play that have a reason, by competition priority (then kick-off), four at most."""
     if not live:
@@ -225,24 +275,20 @@ def relevant(conn: Conn, live: list[LiveMatch], *, at: datetime) -> list[HomeRel
     seen = reading.glances(conn, ids, at=at)
     trailed = {int(r["fixture_id"]): {"home": int(r["home_down_by"]), "away": int(r["away_down_by"])}
                for r in fetch_all(conn, TRAILED_SQL, {"ids": ids, "since": at - HISTORY_WINDOW})}
-    tiers = {int(r["id"]): r["tier"] for r in fetch_all(
-        conn, TIERS_SQL, {"ids": [m.competition_id for m in live if m.competition_id is not None]})}
-    found: list[tuple[HomeRelevant, tuple[int, int, int]]] = []
-    for m in live:
+    order = _priority(conn, live)
+    found: list[HomeRelevant] = []
+    for m in sorted(live, key=lambda m: order[m.fixture_id]):
         reasons = live_reasons(seen.get(m.fixture_id), home=m.home.name, away=m.away.name, goals=_goals(m),
                                behind_by=trailed.get(m.fixture_id, {}))
-        if not reasons:
-            continue
-        tier = tiers.get(m.competition_id) if m.competition_id is not None else None
-        found.append((HomeRelevant(match=m, reasons=reasons),
-                      (tier if tier is not None else 10_000, int(m.kickoff_at.timestamp()), m.fixture_id)))
-    found.sort(key=lambda x: x[1])
-    return [x[0] for x in found[:RELEVANT_MAX]]
+        if reasons:
+            found.append(HomeRelevant(match=m, reasons=reasons))
+    return found[:RELEVANT_MAX]
 
 
 def at_stake(conn: Conn, *, at: datetime) -> list[HomeAtStake]:
     """The matches not yet started in the next 36 hours with something at stake, by competition priority, four at most."""
-    rows = fetch_all(conn, AT_STAKE_SQL, {"at": at, "until": at + AT_STAKE_WINDOW, "limit": AT_STAKE_SCAN})
+    rows = fetch_all(conn, AT_STAKE_SQL, {"at": at, "until": at + AT_STAKE_WINDOW, "limit": AT_STAKE_SCAN,
+                                          **board_groups()})
     seen = reading.glances(conn, [int(r["fixture_id"]) for r in rows], at=at)
     out: list[HomeAtStake] = []
     for r in rows:

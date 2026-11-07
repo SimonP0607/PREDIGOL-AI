@@ -113,7 +113,7 @@ async function signIn(page: Page, email: string): Promise<void> {
   await skipWelcome(page.request);
   await page.goto("/home");
   const gate = page.getByTestId("consent-gate");
-  await expect(gate.or(page.getByTestId("home-today"))).toBeVisible({ timeout: 30_000 });
+  await expect(gate.or(page.getByTestId("home-page"))).toBeVisible({ timeout: 30_000 });
   if (await gate.isVisible()) {
     for (const kind of ["terms", "privacy", "age_18", "risk_notice"])
       await gate.getByTestId(`consent-${kind}`).check();
