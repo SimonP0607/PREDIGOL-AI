@@ -178,6 +178,38 @@ export function ErrorState({
   );
 }
 
+/**
+ * A refresh failed but the last answer is still on the page (plan Inicio, 1.4, F6): keep what was seen, say so in one small
+ * line and offer to try again - an error never wipes the data that is already there.
+ */
+export function StaleNote({
+  onRetry,
+  className,
+}: {
+  onRetry?: (() => void) | undefined;
+  className?: string | undefined;
+}) {
+  return (
+    <p
+      role="status"
+      data-testid="stale-note"
+      className={cn("flex flex-wrap items-center gap-x-2 text-caption text-warning", className)}
+    >
+      <AlertTriangle aria-hidden className="h-3.5 w-3.5 shrink-0" />
+      <span>{t("errors.refreshFailed")}</span>
+      {onRetry ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="tap-y relative rounded-sm font-medium underline underline-offset-4 hover:text-foreground"
+        >
+          {t("common.retry")}
+        </button>
+      ) : null}
+    </p>
+  );
+}
+
 export function SkeletonBlock({ className }: { className?: string | undefined }) {
   return <div aria-hidden className={cn("animate-pulse rounded-lg bg-muted/70", className)} />;
 }

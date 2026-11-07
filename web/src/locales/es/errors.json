@@ -2,6 +2,7 @@
   "generic": "Algo ha fallado. Inténtalo de nuevo.",
   "unreachable": "No hay conexión con el servidor de PrediGol.",
   "loadFailed": "No se pudo cargar esta información.",
+  "refreshFailed": "No se pudo actualizar. Ves lo último que tenemos.",
   "notFound": "No encontramos lo que buscas.",
   "pageNotFound": "Página no encontrada",
   "pageNotFoundBody": "La página que buscas no existe o se ha movido.",

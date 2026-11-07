@@ -26,7 +26,7 @@ import { DailyItemCard } from "@/product/records/DailyItemCard";
 import { marketName } from "@/product/shared/markets";
 import { stateText } from "./playerState";
 import { relatedCards } from "./related";
-import { Card, ErrorState, SectionHeader, SkeletonBlock } from "@/product/shared/States";
+import { Card, ErrorState, SectionHeader, SkeletonBlock, StaleNote } from "@/product/shared/States";
 
 export type MeQuery = UseQueryResult<MeToday>;
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
@@ -270,13 +270,13 @@ export function RelatedPicksBlock({ me, board }: { me: MeToday; board: BoardQuer
     body = <Note testId="related-none-day">{t("home.related.noDay")}</Note>;
   } else if (picks.items.length === 0) {
     body = <Note testId="related-none">{t("home.related.none", { count: picks.published })}</Note>;
-  } else if (board.isError) {
+  } else if (board.isError && !board.data) {
     body = (
       <Card className="mt-3">
         <ErrorState error={board.error} onRetry={() => void board.refetch()} />
       </Card>
     );
-  } else if (board.isPending) {
+  } else if (!board.data) {
     body = <SkeletonBlock className="mt-3 h-56 rounded-xl" />;
   } else {
     const shown = relatedCards(picks, board.data?.data?.set?.items ?? []);
@@ -302,6 +302,9 @@ export function RelatedPicksBlock({ me, board }: { me: MeToday; board: BoardQuer
         icon={<Target aria-hidden className="h-4 w-4 shrink-0 text-primary" />}
         action={{ label: t("home.picks.seeAll"), to: "/picks" }}
       />
+      {board.isError && board.data ? (
+        <StaleNote className="mt-1" onRetry={() => void board.refetch()} />
+      ) : null}
       {body}
     </section>
   );
@@ -423,6 +426,8 @@ export function ForYouPart({
   const me = query.data;
   if (!me) {
     if (part !== "picks") return null;
+    // Not asked for (the query is off for the owner, who has no favourites): nothing to wait for, so no skeleton (plan Inicio, 1.4).
+    if (query.isPending && query.fetchStatus === "idle") return null;
     return query.isPending ? (
       <div aria-busy="true" aria-label={t("common.loading")}>
         <SkeletonBlock className="h-24 rounded-xl" />

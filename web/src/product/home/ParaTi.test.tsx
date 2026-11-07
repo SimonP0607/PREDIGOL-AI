@@ -363,6 +363,11 @@ describe("ForYouPart", () => {
     expect(text(await html(<ForYouPart part="players" query={failed} {...props} />))).toBe("");
   });
 
+  test("the owner's query is off: nothing to wait for, so no skeleton", async () => {
+    const off = { isPending: true, isError: false, data: undefined, fetchStatus: "idle" } as never;
+    expect(await html(<ForYouPart part="picks" query={off} {...props} />)).toBe("");
+  });
+
   test("when it answers: each part is its own block", async () => {
     const value = me({
       players: [player("bench")],
