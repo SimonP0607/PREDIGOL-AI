@@ -75,14 +75,17 @@ def free_display_name(conn: Conn, base: str) -> str:
 
 
 def insert_user(conn: Conn, *, email: str, display_name: str, password_hash: str, role: str,
-                language: str, timezone: str, must_change_password: bool = False, status: str = "active") -> Row:
+                language: str, timezone: str, must_change_password: bool = False, status: str = "active",
+                origin: str = "admin", first_name: str | None = None, last_name: str | None = None,
+                phone_e164: str | None = None) -> Row:
     try:
         row = _one(conn, """
             INSERT INTO auth.users AS u (email, display_name, password_hash, role, language, timezone,
-                                         must_change_password, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                         must_change_password, status, origin, first_name, last_name, phone_e164)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
-        """, (email, display_name, password_hash, role, language, timezone, must_change_password, status))
+        """, (email, display_name, password_hash, role, language, timezone, must_change_password, status, origin,
+              first_name, last_name, phone_e164))
     except psycopg.errors.UniqueViolation as exc:
         if exc.diag.constraint_name == NAME_INDEX:
             raise DisplayNameTakenError from exc

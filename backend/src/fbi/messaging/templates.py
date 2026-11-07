@@ -306,6 +306,11 @@ def _grant(params: Mapping[str, str], _locale: Locale, _zone: str) -> dict[str, 
     return {}
 
 
+def _nothing(_params: Mapping[str, str], _locale: Locale, _zone: str) -> dict[str, str]:
+    """An e-mail that says the same to everyone: no parameter."""
+    return {}
+
+
 def _new_sign_in(params: Mapping[str, str], locale: Locale, zone: str) -> dict[str, str]:
     browser = _word(BROWSERS, params["browser"], locale, "browser")
     system = _word(SYSTEMS, params["system"], locale, "system")
@@ -516,6 +521,42 @@ TEMPLATES: dict[str, Template] = {t.name: t for t in (
                  "you."),
                 "Activate my account"),
         values=_grant, sample=(("grant", "1"),), grant="invite",
+    ),
+    Template(
+        "email_verification", "account", ("grant",), "/verify-email#t={link}",
+        es=Copy("Confirma tu correo en PrediGol",
+                ("Hola, {name}.",
+                 "Creaste una cuenta en PrediGol. Para confirmar que este correo es tuyo, usa el botón e ingresa la "
+                 "contraseña que elegiste. El enlace sirve una sola vez y caduca el {until}.",
+                 "Confirmar el correo no da acceso por sí solo: después te explicamos cómo activar tu membresía.",
+                 "Si no creaste esta cuenta, ignora este correo: sin confirmar, se cierra sola en unos días."),
+                "Confirmar mi correo"),
+        en=Copy("Confirm your e-mail on PrediGol",
+                ("Hello, {name}.",
+                 "You created an account on PrediGol. To confirm this e-mail is yours, use the button and enter the "
+                 "password you chose. The link works once and expires on {until}.",
+                 "Confirming the e-mail does not give access by itself: afterwards we explain how to activate your "
+                 "membership.",
+                 "If you did not create this account, ignore this e-mail: unconfirmed, it closes by itself in a few "
+                 "days."),
+                "Confirm my e-mail"),
+        values=_grant, sample=(("grant", "1"),), grant="verify", stale_after=timedelta(hours=24),
+    ),
+    Template(
+        "account_exists", "account", (), "/login",
+        es=Copy("Ya tienes una cuenta en PrediGol",
+                ("Hola, {name}.",
+                 "Alguien intentó crear una cuenta con este correo, pero ya existe una. Si fuiste tú, entra con tu "
+                 "contraseña; si la olvidaste, puedes elegir una nueva desde la pantalla de acceso.",
+                 "Si no fuiste tú, no hagas nada: tu cuenta sigue igual."),
+                "Entrar a PrediGol"),
+        en=Copy("You already have a PrediGol account",
+                ("Hello, {name}.",
+                 "Someone tried to create an account with this e-mail, but one already exists. If it was you, sign in "
+                 "with your password; if you forgot it, you can choose a new one from the sign-in page.",
+                 "If it was not you, do nothing: your account stays as it is."),
+                "Sign in to PrediGol"),
+        values=_nothing, stale_after=timedelta(days=1),
     ),
     Template(
         "password_reset", "security", ("grant",), "/reset-password#t={link}",

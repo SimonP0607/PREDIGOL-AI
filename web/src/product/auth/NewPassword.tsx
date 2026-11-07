@@ -19,6 +19,7 @@ export function NewPassword({
   onChange,
   repeat,
   onRepeat,
+  hideEmail = false,
 }: {
   email: string;
   name?: string | undefined;
@@ -27,6 +28,8 @@ export function NewPassword({
   onChange: (v: string) => void;
   repeat: string;
   onRepeat: (v: string) => void;
+  /** The page has its own address field (registration): the read-only copy for the password manager is left out. */
+  hideEmail?: boolean;
 }) {
   const id = useId();
   const [show, setShow] = useState(false);
@@ -36,18 +39,20 @@ export function NewPassword({
   return (
     <div className="space-y-4">
       {/* The address as the username: the password manager saves the new password under the right account. */}
-      <label className="block">
-        <span className="text-xs font-medium text-muted-foreground">{t("auth.email")}</span>
-        <input
-          type="email"
-          name="username"
-          autoComplete="username"
-          value={email}
-          readOnly
-          className={cn(accountInput, "bg-muted/40 text-muted-foreground")}
-          data-testid="account-email"
-        />
-      </label>
+      {hideEmail ? null : (
+        <label className="block">
+          <span className="text-xs font-medium text-muted-foreground">{t("auth.email")}</span>
+          <input
+            type="email"
+            name="username"
+            autoComplete="username"
+            value={email}
+            readOnly
+            className={cn(accountInput, "bg-muted/40 text-muted-foreground")}
+            data-testid="account-email"
+          />
+        </label>
+      )}
       <label className="block" htmlFor={`${id}-new`}>
         <span className="text-xs font-medium text-muted-foreground">
           {t("auth.account.newPassword")}

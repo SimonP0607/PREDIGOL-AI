@@ -48,7 +48,7 @@ def test_every_template_says_the_same_in_both_languages() -> None:
         assert bool(t.es.button) == bool(t.en.button), t.name
         assert len(t.es.paragraphs) == len(t.en.paragraphs), t.name
         assert t.category in OUTBOX_CATEGORIES
-        assert t.sample, f"{t.name} needs parameters that render (tests and the console's preview use them)"
+        assert t.sample or not t.params, f"{t.name} needs parameters that render (tests and the console's preview use them)"
 
 
 def test_the_categories_are_the_databases() -> None:
