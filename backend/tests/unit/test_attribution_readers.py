@@ -21,6 +21,7 @@ ALLOWED = {
     "src/fbi/ai/gate_b.py",  # Gate B (IA-010) counts the settled matches with an attribution: reading only, it decides nothing
     "src/fbi/ai/eval_bench.py",  # the evaluation bench (IA-010) reads the precision of each agent version: reading only
     "src/fbi/observability/trace.py",  # the end-to-end trace (trace-v1, P0): reading only, for observability, never on a decision path
+    "src/fbi/council/weights.py",  # the Council v2 protocol (IA-012) weighs the specialists by their record: reading only, in shadow, decides nothing
 }
 
 
