@@ -71,8 +71,9 @@ def test_an_incomplete_window_is_pending_by_time_even_when_a_check_fails() -> No
 # ── 1. final passes out of time ──────────────────────────────────────────────────────────────────────────────────
 
 def final(**kw: int) -> g.FinalTimes:
-    base = {"passes": 40, "late_passes": 0, "calls": 120, "late_calls": 0, "undated_calls": 0, "skipped_too_late": 2}
-    return g.FinalTimes(**(base | kw))
+    base = {"passes": 40, "late_passes": 0, "calls": 120, "late_calls": 0, "undated_calls": 0, "skipped_too_late": 2} | kw
+    return g.FinalTimes(base["passes"], base["late_passes"], base["calls"], base["late_calls"], base["undated_calls"],
+                        base["skipped_too_late"])
 
 
 @pytest.mark.parametrize(("kw", "want"), [

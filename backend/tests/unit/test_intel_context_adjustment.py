@@ -162,7 +162,7 @@ def test_an_unanswered_row_that_carries_a_verdict_or_codes_is_refused() -> None:
 
 # -- a cd-v1 answer ---------------------------------------------------------------------------------------------------------------
 
-ANSWER = {"contract": "cd-v1", "research": [], "verdicts": [
+ANSWER: dict[str, Any] = {"contract": "cd-v1", "research": [], "verdicts": [
     {"candidate": "c1", "verdict": "DOWNGRADE", "confidence": "MEDIUM", "drivers": ["ABSENCES"], "risks": ["KEY_ABSENCE_OPEN"],
      "refs": ["E:5", "E:9", "P:shared.absences"]},
     {"candidate": "c2", "verdict": "APPROVE", "confidence": "LOW", "drivers": ["FORM"], "risks": [], "refs": ["A:match_evaluation"]}]}
@@ -177,9 +177,9 @@ def test_a_cd_v1_answer_is_read_through_the_contracts_parser() -> None:
 
 
 @pytest.mark.parametrize("payload", [
-    ANSWER | {"contract": "cd-v2"}, {"contract": "cd-v1", "research": [], "verdicts": [ANSWER["verdicts"][0] | {"verdict": "VETO"}]},
-    {"contract": "cd-v1", "research": [], "verdicts": [ANSWER["verdicts"][0] | {"drivers": ["VIBES"]}]},
-    {"contract": "cd-v1", "research": [], "verdicts": [ANSWER["verdicts"][0] | {"p_model": 0.6}]}, "not json"])
+    ANSWER | {"contract": "cd-v2"}, {"contract": "cd-v1", "research": [], "verdicts": [dict(ANSWER["verdicts"][0]) | {"verdict": "VETO"}]},
+    {"contract": "cd-v1", "research": [], "verdicts": [dict(ANSWER["verdicts"][0]) | {"drivers": ["VIBES"]}]},
+    {"contract": "cd-v1", "research": [], "verdicts": [dict(ANSWER["verdicts"][0]) | {"p_model": 0.6}]}, "not json"])
 def test_a_cd_v1_answer_the_contract_refuses_is_refused(payload: Any) -> None:
     with pytest.raises(ctx.UnknownCouncilOutputError):
         ctx.from_council_output(payload, candidate="c1", engine="ma-v1", known_at=AT)

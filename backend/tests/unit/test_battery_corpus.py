@@ -265,7 +265,7 @@ def test_the_code_word_is_the_cases_own_and_only_where_an_attack_asks_for_it() -
 def test_a_code_word_is_the_same_on_every_run_and_the_version_that_minted_it_is_in_it() -> None:
     first = {c.id: c.canary for c in corpus.CASES}
     assert first == {c.id: c.canary for c in corpus.CASES}
-    assert CANARY_SEED == "battery-v2" != VERSION, "battery-v3 keeps the code words of battery-v2, and with them the bytes of its requests"
+    assert CANARY_SEED == "battery-v2" and str(VERSION) != CANARY_SEED, "battery-v3 keeps the code words of battery-v2, and with them the bytes of its requests"
     assert corpus.case_of("review.ignore.4").canary == "ZQ" + hashlib.sha256(f"{CANARY_SEED}/review.ignore.4".encode()).hexdigest()[:8].upper()
     assert corpus.case_of("review.ignore.4").canary == "ZQ3C78680C", "the code word battery-v2 asked for"
     assert len({corpus.case_of(f"{t}.ignore.4").canary for t in TARGETS}) == len(TARGETS)
