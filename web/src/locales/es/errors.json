@@ -132,7 +132,15 @@
     "invalid_note": "Una nota de 3 a 120 caracteres.",
     "invalid_valid_until": "Un último día en el futuro.",
     "invalid_max_redemptions": "Entre 1 y 100.000 cupos.",
-    "no_discount": "Esta cuenta no tiene descuento que aplicar."
+    "no_discount": "Esta cuenta no tiene descuento que aplicar.",
+    "email_not_verified": "Tu correo todavía no está confirmado. Abre el enlace que te enviamos o pide uno nuevo.",
+    "display_name_taken": "Ese apodo ya está en uso. Elige otro.",
+    "invalid_first_name": "Escribe tu nombre (solo letras, espacios, guion o apóstrofo).",
+    "invalid_last_name": "Escribe tu apellido (solo letras, espacios, guion o apóstrofo).",
+    "invalid_phone": "Escribe un celular válido. Si es colombiano, de 10 dígitos y empieza por 3.",
+    "invalid_nickname": "El apodo debe tener de 3 a 24 caracteres, sin @, y no puede ser un nombre reservado.",
+    "signup_paused": "Hoy ya recibimos muchos registros. Vuelve a intentarlo más tarde.",
+    "consents_required": "Marca las cuatro casillas para crear tu cuenta."
   },
   "problem": {
     "password_too_short": "Mínimo 15 caracteres, o 12 si usas la verificación en dos pasos.",

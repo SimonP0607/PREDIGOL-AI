@@ -31,6 +31,8 @@ export function LoginPage({ expired }: { expired: boolean }) {
     staleTime: 60_000,
   });
   const selfService = options.data?.self_service === true;
+  // Registration (UX-038) is offered only while the API says it is open.
+  const signup = options.data?.signup === true;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -38,6 +40,9 @@ export function LoginPage({ expired }: { expired: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
   const [unlock, setUnlock] = useState<"idle" | "busy" | "sent" | "failed">("idle");
+  // The address registered but never confirmed: the refusal offers a new confirmation link (UX-038).
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const [confirmation, setConfirmation] = useState<"idle" | "busy" | "sent" | "failed">("idle");
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -49,6 +54,8 @@ export function LoginPage({ expired }: { expired: boolean }) {
     } catch (err) {
       setError(loginError(err));
       setLocked(err instanceof LiveApiError && err.code === "too_many_attempts");
+      setUnconfirmed(err instanceof LiveApiError && err.code === "email_not_verified");
+      setConfirmation("idle");
       setUnlock("idle");
       setPassword("");
     } finally {
@@ -63,6 +70,16 @@ export function LoginPage({ expired }: { expired: boolean }) {
       setUnlock("sent");
     } catch {
       setUnlock("failed");
+    }
+  }
+
+  async function askConfirmation() {
+    setConfirmation("busy");
+    try {
+      await v1.resendVerification(email.trim());
+      setConfirmation("sent");
+    } catch {
+      setConfirmation("failed");
     }
   }
 
@@ -102,6 +119,37 @@ export function LoginPage({ expired }: { expired: boolean }) {
                 className="rounded-md border border-negative/40 bg-negative-soft px-3 py-2 text-xs text-negative"
               >
                 {error}
+              </p>
+            ) : null}
+            {unconfirmed && email.trim() ? (
+              confirmation === "sent" ? (
+                <p
+                  role="status"
+                  data-testid="confirmation-sent"
+                  className="rounded-md border border-positive/40 bg-positive-soft px-3 py-2 text-xs"
+                >
+                  {t("auth.resendConfirmationSent")}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void askConfirmation()}
+                  disabled={confirmation === "busy"}
+                  data-testid="ask-confirmation"
+                  className="tap-y relative flex w-full items-center justify-center gap-2 rounded-md border border-border-strong px-3 py-2 text-xs font-medium hover:bg-elevated"
+                >
+                  {confirmation === "busy" ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Mail className="h-3.5 w-3.5" />
+                  )}
+                  {t("auth.resendConfirmation")}
+                </button>
+              )
+            ) : null}
+            {confirmation === "failed" ? (
+              <p role="alert" data-testid="confirmation-failed" className="text-xs text-negative">
+                {t("errors.generic")}
               </p>
             ) : null}
             {locked && selfService && email.trim() ? (
@@ -194,9 +242,19 @@ export function LoginPage({ expired }: { expired: boolean }) {
               {busy ? t("auth.submitting") : t("auth.submit")}
             </button>
           </form>
-          <p className="mt-4 text-center text-caption text-subtle-foreground">
-            {t("auth.privateNote")}
-          </p>
+          {signup ? (
+            <a
+              href="/register"
+              data-testid="signup-link"
+              className="tap-y relative mt-4 block text-center text-sm font-medium text-primary underline-offset-2 hover:underline"
+            >
+              {t("auth.createLink")}
+            </a>
+          ) : (
+            <p className="mt-4 text-center text-caption text-subtle-foreground">
+              {t("auth.privateNote")}
+            </p>
+          )}
           <LoginContact />
           <Disclaimer className="mt-6 text-center text-caption text-subtle-foreground" />
         </div>
