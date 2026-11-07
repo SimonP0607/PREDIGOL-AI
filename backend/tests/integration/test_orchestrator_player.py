@@ -91,6 +91,7 @@ def test_off_by_default_the_pass_is_the_one_of_before(db: psycopg.Connection[Any
     assert player_requests(pv) == [] and tasks(db, w.fixture, "player") == [], "no task and no cost"
     state = state_of(db, w.fixture)
     assert [s["name"] for s in state["slices"]] == list(SLICE_SETS["slices-v1"])
+    assert state["package_version"] == mcp_package.VERSION == "package-v2", "a new row is cleaned by the door of today (IA-018), set slices-v1"
     assert "slices" not in state["model_status"] and "player" not in state["model_status"] and names(state) == NAMES
     assert all("player" not in r["engine_version"] for r in reviews_of(db, w.fixture))
     assert audit(db)[1:] == (0, [])
@@ -117,6 +118,7 @@ def test_on_it_is_asked_about_goals_and_result_under_the_same_names_and_only_sha
 
     state = state_of(db, w.fixture)
     assert [s["name"] for s in state["slices"]] == ["match", "stats", "player"] and state["model_status"]["slices"] == "slices-v2"
+    assert state["package_version"] == "package-v2", "package-v2 (IA-018) and slices-v2 (IA-017) together: the Player Agent on"
     assert state["model_status"]["player"] == {"version": "player-v1", "asked": ["c1", "c2", "c3"], "note": None}
     assert names(state) == NAMES, "the names of goals and result do not move"
 

@@ -199,7 +199,7 @@ def test_the_switch_names_player_last_and_it_is_off_unless_named(monkeypatch: py
 def test_the_engine_versions_are_those_of_before_with_the_player_off() -> None:
     for engine in ENGINE_VERSION:
         assert engine_version(engine, with_stats=False) == ENGINE_VERSION[engine]
-    assert engine_version("ma-v1", with_stats=True, with_player=True).startswith("ma-v1+match-v3+stats-v2+player-v1+council-v1")
+    assert engine_version("ma-v1", with_stats=True, with_player=True).startswith("ma-v1+match-v4+stats-v3+player-v1+council-v1")
     assert engine_version("cs-v1", with_stats=True, with_player=True) == ENGINE_VERSION["cs-v1"]
 
 
