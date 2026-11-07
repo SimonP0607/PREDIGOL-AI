@@ -16,7 +16,8 @@ PAID, only for TODAY's matches (Bogotá) that HAVE A MARKET, at their passes (``
                  match escalates
     web          first pass: the candidates' matches - the daily set's own order first (``web_rank``) - and the most
                  important ones (FBI_AI_MAX_WEB_FIRST); pre pass: the escalated ones (FBI_AI_MAX_WEB_PRE) - only when
-                 the cached answer is stale
+                 the cached answer is stale. The matches of the owner's priority competitions (groups 1-3 of
+                 ``fbi.intel.day_priority``) at both passes, outside those caps (``web_choice``, FBI_AI_NEWS_PRIORITY)
     L2  review   the candidates of the day (intermediate model), again only after a material change (the price
                  moved more than 3 %, new evidence, the line-ups); an escalated match without a candidate gets at
                  most one review of its nearest-to-value selection (a watch, FBI_AI_MAX_WATCH_PER_DAY)
@@ -35,7 +36,7 @@ here writes a pick, a probability, a parlay or a rule.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -70,6 +71,7 @@ from fbi.ai.review import (
 from fbi.ai.usage import UsageLedger, check_alerts
 from fbi.ai.usage import budget as budget_of
 from fbi.core.clock import now
+from fbi.intel.day_priority import group_of
 from fbi.picks.daily import RISK, Ranked, load_candidates, passing
 
 log = structlog.get_logger(__name__)
@@ -125,8 +127,10 @@ SELECT count(*) FILTER (WHERE r.engine = 'llm' AND r.status NOT IN ('over_budget
 
 WEB_USED_SQL = """
 SELECT pass, count(*) FROM ai.fixture_passes
- WHERE day = %(day)s AND COALESCE((counts->>'web_searches')::int, 0) > 0 GROUP BY pass
+ WHERE day = %(day)s AND COALESCE((counts->>'web_searches')::int, 0) > 0
+   AND COALESCE((counts->>'web_priority')::int, 0) = 0 GROUP BY pass
 """
+"""The passes of the day that used the web caps: a pass of a priority competition's match (``web_priority``, IA-016) searched outside them."""
 
 L3_TARGETS_SQL = """
 SELECT i.fixture_id, i.market_key, i.selection, i.line FROM picks.daily_set_items i
@@ -433,25 +437,23 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
             latest = tcur.fetchall()
         escalated = {int(r[0]) for r in latest if r[1]}
         asked = {int(r[0]): found for r in latest if (found := research.asks_in(r[2]))}
+    covered: set[int] = set()
     if dues and web_ready:
-        def rank(d: Due) -> tuple[int, int, float, float, datetime]:
-            return web_rank(d, by_fixture)
-        firsts = sorted((d for d in dues.values() if d.pass_kind in ("first", "request")), key=rank)
-        # a match that asked for research is searched at its pre pass too, ranked like any other match without a candidate:
-        # after the ones with a candidate, inside the same allowance (``research`` explains why)
-        pres = sorted((d for d in dues.values() if d.pass_kind == "pre"
-                       and (d.fixture.fixture_id in by_fixture or d.fixture.fixture_id in escalated
-                            or d.fixture.fixture_id in asked)), key=rank)
-        web = {d.fixture.fixture_id for d in firsts[:allow.web_first]} | \
-              {d.fixture.fixture_id for d in pres[:allow.web_pre]}
+        web, covered = web_choice(dues.values(), by_fixture, escalated=escalated, asked=set(asked), allow=allow,
+                                  settings=settings)
+        if covered:
+            report.counts["web_priority"] += len(covered)
 
     # 4-5. packets, briefs, reviews, analyses - the paid ones first, by priority
     builder = PacketBuilder(conn, typed_evidence=research_mode == "on")  # shadow writes claims nobody reads
     with conn.cursor(row_factory=tuple_row) as tcur:
         tcur.execute(NEWEST_PACKETS_SQL, {"fixtures": [f[0] for f in fixtures]})
         newest = {int(r[0]): r[1] for r in tcur.fetchall()}
-    order = sorted(fixtures, key=lambda f: (f[0] not in dues, -(dues[f[0]].fixture.priority if f[0] in dues else 0),
-                                            f[1]))
+    # with the news coverage on, a match of the day with neither a candidate nor a priority competition comes after the others: what Exa's
+    # envelope has left goes to the covered ones first (IA-016); without it, the order is the one it always was
+    order = sorted(fixtures, key=lambda f: (f[0] not in dues,
+                                            bool(covered) and f[0] not in by_fixture and f[0] not in covered,
+                                            -(dues[f[0]].fixture.priority if f[0] in dues else 0), f[1]))
     health = {"llm_down": False}
     held: list[tuple[Any, ...]] = []  # the passes whose record waits for the batch their reviews went to
     try:
@@ -462,7 +464,7 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
                     _pass(conn, settings, report, due, by_fixture.get(fid, []), builder, at=at, ledger=ledger,
                           search=search, provider=provider, transport=transport, allow=allow, l3=l3,
                           web=fid in web, llm_ready=llm_ready, health=health, asks=asked.get(fid, []), queue=queue,
-                          held=held, research_mode=research_mode)
+                          held=held, research_mode=research_mode, covered=fid in covered)
                 else:
                     _free(conn, settings, report, fid, kickoff, by_fixture.get(fid, []), builder, newest, at=at)
                 conn.commit()
@@ -523,6 +525,44 @@ def _send_batches(conn: psycopg.Connection[Any], report: CycleReport, queue: Bat
         report.errors.append(f"passes: {type(exc).__name__}: {exc}"[:200])
         log.error("ai.cycle.passes_failed", error=f"{type(exc).__name__}: {exc}"[:200])
     held.clear()
+
+
+NEWS_GROUPS = frozenset({1, 2, 3})
+"""The owner's priority groups (``fbi.intel.day_priority``) whose matches are always searched for news (IA-016): the Champions League and the six
+top leagues, the continental and intercontinental club cups, the national teams."""
+COVERAGE_VERSION = "news-coverage-v1"
+"""The version of the coverage rule (``web_choice`` and the press search of ``fbi.ai.collectors``): a pass it covered says so (``web_priority``)."""
+
+
+def news_covered(d: Due, settings: AiSettings) -> bool:
+    """Whether a due pass is searched for news whatever the caps say (pure): ``FBI_AI_NEWS_PRIORITY`` on, a pass that reads the web (first, pre,
+    the owner's «run now») and a competition of groups 1-3."""
+    return (settings.news_priority and d.pass_kind in ("first", "pre", "request")
+            and group_of(d.fixture.provider_league_id) in NEWS_GROUPS)
+
+
+def web_choice(dues: Iterable[Due], by_fixture: dict[int, list[Ranked]], *, escalated: set[int], asked: set[int], allow: Allowance,
+               settings: AiSettings) -> tuple[set[int], set[int]]:
+    """Which due passes read the web (pure): returns (searched, covered).
+
+    Covered (``news_covered``, IA-016 ``news-coverage-v1``): every match of a priority competition at its first and pre passes, with or without a
+    candidate, outside the caps. The rest exactly as before: the first pass (and «run now») by ``web_rank`` up to ``FBI_AI_MAX_WEB_FIRST``; the pre
+    pass only for a match with a candidate, escalated or that asked for research, up to ``FBI_AI_MAX_WEB_PRE`` - a covered match takes no place
+    of the caps. Nothing here spends: the budget, the pass's share and Exa's envelope are still checked in the pass, so a covered match is not
+    searched once they are spent."""
+    def rank(d: Due) -> tuple[int, int, float, float, datetime]:
+        return web_rank(d, by_fixture)
+    due = list(dues)
+    covered = {d.fixture.fixture_id for d in due if news_covered(d, settings)}
+    rest = [d for d in due if d.fixture.fixture_id not in covered]
+    firsts = sorted((d for d in rest if d.pass_kind in ("first", "request")), key=rank)
+    # a match that asked for research is searched at its pre pass too, ranked like any other match without a candidate:
+    # after the ones with a candidate, inside the same allowance (``research`` explains why)
+    pres = sorted((d for d in rest if d.pass_kind == "pre"
+                   and (d.fixture.fixture_id in by_fixture or d.fixture.fixture_id in escalated
+                        or d.fixture.fixture_id in asked)), key=rank)
+    web = covered | {d.fixture.fixture_id for d in firsts[:allow.web_first]} | {d.fixture.fixture_id for d in pres[:allow.web_pre]}
+    return web, covered
 
 
 def web_rank(d: Due, by_fixture: dict[int, list[Ranked]]) -> tuple[int, int, float, float, datetime]:
@@ -645,7 +685,7 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
           provider: tuple[LlmProvider, str] | None, transport: httpx.BaseTransport | None, allow: Allowance,
           l3: set[tuple[int, str, str, Decimal]], web: bool, llm_ready: bool, health: dict[str, bool],
           asks: Sequence[research.Ask] = (), queue: BatchQueue | None = None,
-          held: list[tuple[Any, ...]] | None = None, research_mode: str = "off") -> None:
+          held: list[tuple[Any, ...]] | None = None, research_mode: str = "off", covered: bool = False) -> None:
     """One pass of one match of the day: web (when chosen), packet, L1 brief, L2/L3 reviews, cards, the pass row.
     A pass the provider failed (down, timing out) is not recorded: the next cycle tries it again.
 
@@ -660,7 +700,11 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
 
     ``research_mode`` is what the research of an entity does (``fbi.ai.gates.research_mode``): ``off``, beside v1 (``shadow``: after v1's
     research, in the same pass and with the same allowance, its claims written for the comparison and shown to nobody - its numbers are the
-    ``v2_*`` counts) or instead of it (``on``: v1's research does not run and v2's numbers are the pass's web numbers)."""
+    ``v2_*`` counts) or instead of it (``on``: v1's research does not run and v2's numbers are the pass's web numbers).
+
+    ``covered`` (IA-016): the match is searched because its competition is a priority one (``web_choice``): the pass says so (``web_priority``,
+    so the caps of the day do not count it) and v1 asks the press search too (``collect_web(priority=True)``). What the web read is counted
+    either way: answered searches (``web_asked``) and pages read (``web_read``) - what the match's news say about «was it searched»."""
     fid, kind = due.fixture.fixture_id, due.pass_kind
     started = now()
     counts: dict[str, int] = defaultdict(int)
@@ -691,12 +735,18 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
         # the tiered search (sources-v2): up to three levels for a match with candidates, the levels of the topics asked for
         # (``fbi.ai.research``) or the first level for the others
         levels = research.levels_for(asks, candidates=bool(options))
+        if covered:
+            counts["web_priority"] = 1
         if research_mode != "on":  # v1 decides what the packet knows (research v2 off, or beside it in shadow)
             got = collect_web(conn, settings, fid, at=at, ledger=ledger, search=search, provider=provider,
-                              transport=transport, levels=levels)
+                              transport=transport, levels=levels, priority=covered)
             counts["web_searches"] += got.searches
             counts["web_items"] += got.extracted
             counts["web_new"] += got.created
+            counts["web_asked"] += got.asked
+            counts["web_read"] += got.read
+            if got.press:
+                counts["web_press"] = 1
             cost += Decimal(str(got.cost_usd))
             report.counts["web_searches"] += got.searches
             report.counts["web_items"] += got.extracted

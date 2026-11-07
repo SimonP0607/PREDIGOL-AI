@@ -13,6 +13,7 @@
 import { hasKey, t } from "@/lib/i18n";
 import { fmtOdds, fmtPct, localFixed } from "@/lib/i18n/format";
 import type { ReadingFact, ReadingParam } from "@/lib/api/v1/types_reading";
+import { roundLabel } from "@/product/match/model";
 import { selectionLabel } from "@/product/shared/markets";
 import CODES from "./codes.json";
 
@@ -170,7 +171,8 @@ function writers(): Record<string, (p: P) => string | null> {
     match_intro: (p) => {
       const competition = str(p, "competition");
       if (!competition) return null;
-      const round = str(p, "round");
+      // The provider's own words («Regular Season - 12») read as the header reads them («Jornada 12»).
+      const round = roundLabel(str(p, "round"));
       const base = round
         ? t("match.facts.match_intro.round", { competition, round })
         : t("match.facts.match_intro.plain", { competition });

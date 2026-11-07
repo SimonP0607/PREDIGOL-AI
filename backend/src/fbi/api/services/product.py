@@ -44,7 +44,6 @@ from fbi.api.contracts.product import (
     Source,
     StartedPick,
     TeamBadge,
-    UpcomingMatch,
 )
 from fbi.api.contracts.records import ItemAi
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, section
@@ -74,7 +73,6 @@ CONSENSUS_LOOKBACK = timedelta(hours=36)
 PRICE_FRESH = timedelta(hours=1)
 TOP_WINDOW = timedelta(hours=24)
 TOP_SIZE = 5
-HOME_WINDOW = timedelta(hours=48)
 HIGHLIGHT_MIN_BOOKS = 3
 HIGHLIGHT_MAX_AGE = timedelta(hours=6)
 OUTLIER_EDGE = GateConfig().max_price_edge
@@ -486,43 +484,16 @@ def best_odds_board(conn: Conn, *, hours: int, market: str | None, include_shado
 
 # ── home ─────────────────────────────────────────────────────────────────────────
 
-def _upcoming(r: Row) -> UpcomingMatch:
-    return UpcomingMatch(fixture_id=int(r["fixture_id"]), kickoff_at=r["kickoff_at"], competition=_competition(r),
-                         home=_home(r), away=_away(r), bookmakers=int(r["bookmakers"]))
-
-
 @shared(30)
 def home(conn: Conn, *, include_shadow: bool, at: datetime | None = None) -> Envelope[Home]:
+    """What is in play, and how fresh that is (plan Inicio, 2.1). The day's picks and parlays come from ``/daily``; the best
+    prices live on the Cuotas page and in each pick - none of them is computed here any more."""
     moment = at or clock_now()
-    cfg = GateConfig(allow_unqualified=include_shadow)
-    rows = repo.pick_candidates(conn, now=moment, until=moment + HOME_WINDOW, since=moment - CONSENSUS_LOOKBACK,
-                                include_shadow=include_shadow)
-    applied = pick_status.applied_now(conn, (int(r["fixture_id"]) for r in rows), at=moment)
-    top = _top(listed(cards(rows, moment, cfg, applied=applied), include_shadow=include_shadow), moment)
-    if top:
-        top_section = section(top)
-    elif rows:
-        top_section = section(top, status=DataStatus.EMPTY, reason="no_value_now")
-    else:
-        top_section = section(top, status=DataStatus.EMPTY,
-                              reason="no_shadow_picks" if include_shadow else "no_qualified_picks")
-
     live_env = center.live_board(conn, at=moment)
     live = list(live_env.data.matches[:6])
-    price_rows = repo.best_prices(conn, now=moment, until=moment + HOME_WINDOW, since=moment - CONSENSUS_LOOKBACK)
-    _, highlights = best_odds(price_rows, moment=moment)
-    upcoming = [_upcoming(r) for r in repo.upcoming(conn, now=moment, until=moment + HOME_WINDOW, limit=8)]
-    odds_at = max((r["as_of"] for r in price_rows), default=None)
     body = Home(
         source=_source(include_shadow),
-        data_freshness=DataFreshness(odds_at=odds_at, live_at=repo.live_freshness(conn, now=moment)),
-        top_picks=top_section,
-        daily_parlay=parlay(rows, engine.DAILY, include_shadow=include_shadow, moment=moment, applied=applied),
-        multiday_parlay=parlay(rows, engine.MULTIDAY, include_shadow=include_shadow, moment=moment, applied=applied),
+        data_freshness=DataFreshness(live_at=repo.live_freshness(conn, now=moment)),
         live=section(live) if live else section(live, status=DataStatus.EMPTY, reason="no_live_matches"),
-        best_prices=(section(highlights[:6]) if highlights
-                     else section(highlights, status=DataStatus.EMPTY, reason="no_best_prices")),
-        upcoming=(section(upcoming) if upcoming
-                  else section(upcoming, status=DataStatus.EMPTY, reason="no_upcoming_matches")),
     )
-    return ok(body, data_as_of=odds_at)
+    return ok(body, data_as_of=body.data_freshness.live_at)

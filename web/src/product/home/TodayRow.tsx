@@ -33,12 +33,24 @@ function dayLabel(at: string): string | null {
 
 function When({ m, now }: { m: TodayMatch; now: number }) {
   if (inPlay(m, now)) {
-    return <RowClock label={liveLabel(m.status, m.elapsed, null)} />;
+    return <RowClock label={liveLabel(m.status, m.elapsed, m.extra)} />;
   }
   const phase = phaseOf(m, now);
   if (phase === "finished") {
+    // «Final», «Final (prór.)» or «Final (pen.)», and the shoot-out when there was one (the same words as the match list).
+    const pens =
+      m.pens_home != null && m.pens_away != null ? { home: m.pens_home, away: m.pens_away } : null;
     return (
-      <span className="text-xs font-medium text-muted-foreground">{t("matches.clock.FT")}</span>
+      <span className="flex flex-col leading-tight">
+        <span className="text-xs font-medium text-muted-foreground">
+          {t(`matches.clock.${m.status === "AET" || m.status === "PEN" ? m.status : "FT"}`)}
+        </span>
+        {pens ? (
+          <span className="numeric text-micro text-subtle-foreground">
+            {t("matches.row.pens", pens)}
+          </span>
+        ) : null}
+      </span>
     );
   }
   const day = dayLabel(m.kickoff_at);

@@ -2,15 +2,15 @@
 /**
  * ANÁLISIS PREDIGOL (plan UX, A9): the structured reading with every state shown - a skeleton while it loads, the error with
  * its retry, the owner having turned it off (said), a partial reading without the match's context - and the conclusion's
- * caveat - and the chronicle of A11/UX-025 (a paragraph for each side, the sources). The Resumen's highlights: the summary, the key points, why there is value (UX-011) and the two main risks, with
- * the way to the whole analysis.
+ * caveat - and the chronicle of A11/UX-025 (a paragraph for each side, the sources). The Resumen's one reading (plan Partidos y
+ * Match Center, R2): the chronicle's first stretch, or the structured reading as a short running text - never both.
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { setLocale } from "@/lib/i18n";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { MatchReading } from "@/lib/api/v1/types_reading";
-import { ReadingHighlightsView, ReadingView } from "./ReadingBlock";
+import { ReadingLeadView, ReadingView } from "./ReadingBlock";
 import type { ReadingLoad } from "./useReading";
 
 setLocale("es");
@@ -264,20 +264,12 @@ describe("the chronicle (A11, UX-025)", () => {
 });
 
 describe("once the match is over (plan UX, B4)", () => {
-  test("the reading and its highlights end with the way to the Postpartido - and only then", () => {
+  test("the reading ends with the way to the Postpartido - and only then", () => {
     const to = 'data-testid="reading-to-postmatch"';
     expect(
       renderToStaticMarkup(<ReadingView load={ok()} afterMatch={() => undefined} />),
     ).toContain(to);
     expect(renderToStaticMarkup(<ReadingView load={ok()} />)).not.toContain(to);
-    const highlights = renderToStaticMarkup(
-      <ReadingHighlightsView load={ok()} onMore={() => undefined} afterMatch={() => undefined} />,
-    );
-    expect(highlights).toContain(to);
-    expect(highlights).toContain("Qué pasó en el partido: ver el Postpartido");
-    expect(
-      renderToStaticMarkup(<ReadingHighlightsView load={ok()} onMore={() => undefined} />),
-    ).not.toContain(to);
   });
 });
 
@@ -334,88 +326,189 @@ describe("the derived sections (UX-011)", () => {
     expect(html).toContain('data-testid="reading-section-conclusion"');
     expect(html).not.toContain("PrediGol le da 52 %");
   });
+});
 
-  test("the Resumen: key points, then why there is value, then the main risks - each sentence once", () => {
-    const html = renderToStaticMarkup(
-      <ReadingHighlightsView load={ok(WITH_DERIVED)} onMore={() => undefined} />,
-    ).replace(/[\u00a0\u202f]/g, " ");
-    const order = ["reading-key-points", "reading-value", "reading-risks"].map((k) =>
-      html.indexOf(`data-testid="${k}"`),
-    );
-    expect(order.every((i) => i >= 0)).toBe(true);
-    expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(html).toContain("Puntos clave");
-    expect(html).toContain("Por qué hay valor");
-    expect(html).toContain("Nacional suma 5 partidos sin perder.");
-    // the pick's sentence is in «Por qué hay valor» only; the result PrediGol expects in the key points only
-    const times = (needle: string) => html.split(needle).length - 1;
-    expect(times("Gana Nacional: PrediGol le da 52 % de probabilidad y el mercado, 45 %")).toBe(1);
-    expect(times("PrediGol ve como resultado más probable la victoria de Nacional")).toBe(1);
-    expect(html).toContain("Gana Nacional: la mejor cuota ahora es 2,31.");
-    expect(html).toContain("Un pick con valor puede perder");
-    expect(html).toContain("Partido de Liga BetPlay."); // what the match is stays at the top
-    expect(html).toContain("Las alineaciones aún no están confirmadas.");
+const plain = (html: string) => html.replace(/[\u00a0\u202f]/g, " ");
+const times = (html: string, needle: string) => html.split(needle).length - 1;
+
+const ARRIVING: MatchReading = {
+  ...WITH_DERIVED,
+  sections: [
+    ...WITH_DERIVED.sections.filter((s) => s.key !== "key_points" && s.key !== "conclusion"),
+    {
+      key: "conclusion",
+      facts: [
+        ...READING.sections.find((s) => s.key === "conclusion")!.facts,
+        {
+          code: "likely",
+          params: {
+            market: "OU",
+            outcome: "over",
+            line: "2.5",
+            probability: 0.57,
+            calibrated: true,
+          },
+          ref: "forecast:OU",
+        },
+      ],
+    },
+    {
+      key: "context",
+      facts: [
+        {
+          code: "stakes_pressure",
+          params: { side: "home", team: "Nacional", pressure: "title" },
+          ref: "packet:stakes.home",
+        },
+        {
+          code: "rest_days",
+          params: { side: "home", team: "Nacional", days: 4, matches_14d: 3 },
+          ref: "packet:schedule.home",
+        },
+      ],
+    },
+    {
+      key: "data",
+      facts: [
+        STREAK,
+        {
+          code: "key_absences",
+          params: { side: "away", team: "Millonarios", count: 2, players: ["Castro", "Pérez"] },
+          ref: "packet:absences.away",
+        },
+      ],
+    },
+    {
+      key: "key_points",
+      facts: [
+        EXPECTED,
+        { code: "value_pick", params: { ...PICK, p_model: 0.52, p_market: 0.45 }, ref: "pick:7" },
+        STREAK,
+        {
+          code: "key_absences",
+          params: { side: "away", team: "Millonarios", count: 2, players: ["Castro", "Pérez"] },
+          ref: "packet:absences.away",
+        },
+      ],
+    },
+  ],
+};
+
+describe("the Resumen's one reading (plan Partidos y Match Center, R2)", () => {
+  test("the structured reading as short paragraphs, in the order it is read, each sentence once", () => {
+    const html = plain(renderToStaticMarkup(<ReadingLeadView load={ok(ARRIVING)} />));
+    const keys = [...html.matchAll(/data-testid="reading-lead-([a-z]+)"/g)].map((m) => m[1]);
+    expect(keys).toEqual(["summary", "arrival", "news", "risks", "conclusion"]);
+    // the result PrediGol expects is said once: the conclusion keeps only what the summary did not say
+    const conclusion = html.slice(html.indexOf('data-testid="reading-lead-conclusion"'));
+    const refs = [
+      ...conclusion.matchAll(/data-testid="reading-fact" data-code="[a-z_]+" data-ref="([^"]+)"/g),
+    ].map((m) => m[1]);
+    expect(refs).toEqual(["forecast:OU"]);
+    // running text: paragraphs, never section headings nor lists
+    expect(html).not.toContain("<h3");
+    expect(html).not.toContain("<li");
+    expect(html).not.toContain("Puntos clave");
+    expect(html).toContain("Partido de Liga BetPlay.");
+    expect(times(html, "PrediGol ve como resultado más probable la victoria de Nacional")).toBe(1);
+    expect(times(html, "Nacional suma 5 partidos sin perder.")).toBe(1);
+    // the key absences are the news, said once
+    const news = html.slice(html.indexOf('data-testid="reading-lead-news"'));
+    expect(news).toContain('data-code="key_absences"');
+    expect(times(html, 'data-code="key_absences"')).toBe(1);
+    // what the calendar says is Profundizar's
+    expect(html).not.toContain('data-code="rest_days"');
+    // the pick's own sentences belong to its card under the reading
+    expect(html).not.toContain('data-code="value_pick"');
+    expect(html).not.toContain('data-code="value_price"');
+    expect(html).toContain('data-testid="reading-caveat"');
+    expect(html).toContain('data-testid="reading-data-at"');
+    expect(html).toContain("Lectura automática con los datos de PrediGol");
   });
 
-  test("without a pick there is no «Por qué hay valor» - and the key points keep every sentence", () => {
-    const noValue: MatchReading = {
-      ...WITH_DERIVED,
-      sections: WITH_DERIVED.sections.filter((s) => s.key !== "value"),
+  test("«Qué puede salir mal» with the two main risks, inside the text", () => {
+    const html = plain(renderToStaticMarkup(<ReadingLeadView load={ok()} />));
+    const risks = html.slice(html.indexOf('data-testid="reading-lead-risks"'));
+    expect(risks).toContain("Qué puede salir mal:");
+    expect(risks).toContain("Las alineaciones aún no están confirmadas.");
+    expect(risks).toContain("Hay 2 rumores sin confirmar");
+    expect(html).not.toContain("No encontramos información externa"); // only the first two
+  });
+
+  test("without a conclusion (or one that only repeats the summary), no conclusion and no caveat", () => {
+    const noConclusion: MatchReading = {
+      ...READING,
+      sections: READING.sections.filter((s) => s.key !== "conclusion"),
     };
-    const html = renderToStaticMarkup(
-      <ReadingHighlightsView load={ok(noValue)} onMore={() => undefined} />,
-    ).replace(/[\u00a0\u202f]/g, " ");
-    expect(html).not.toContain("Por qué hay valor");
-    expect(html).not.toContain('data-testid="reading-value"');
-    expect(html).toContain("PrediGol le da 52 % de probabilidad");
+    expect(renderToStaticMarkup(<ReadingLeadView load={ok()} />)).not.toContain(
+      'data-testid="reading-lead-conclusion"',
+    );
+    const html = renderToStaticMarkup(<ReadingLeadView load={ok(noConclusion)} />);
+    expect(html).not.toContain('data-testid="reading-lead-conclusion"');
+    expect(html).not.toContain('data-testid="reading-caveat"');
   });
 
-  test("a reading without derived sections shows what it did: the summary and the risks", () => {
+  test("with a chronicle: its first stretch and the time of its data - never the facts as well", () => {
     const html = renderToStaticMarkup(
-      <ReadingHighlightsView load={ok()} onMore={() => undefined} />,
+      <ReadingLeadView load={ok({ ...ARRIVING, narrative: NARRATIVE })} />,
     );
-    expect(html).not.toContain('data-testid="reading-key-points"');
-    expect(html).not.toContain('data-testid="reading-value"');
-    expect(html).toContain("PrediGol ve como resultado más probable");
+    expect(html).toContain('data-kind="narrative"');
+    expect(html).toContain('data-testid="reading-narrative-lead" data-section="summary"');
+    expect(html).toContain("Partido de la Liga BetPlay en Medellín.");
+    expect(html).toContain("Escrito con datos de");
+    expect(html).toContain("Redactado con IA y validado contra los datos de PrediGol");
+    // only the first stretch: the sides' paragraphs and the risks are read in Análisis
+    expect(html).not.toContain("Nacional viene de ganar 2-1 al Junior.");
+    expect(html).not.toContain("Hay un rumor sin confirmar sobre el portero.");
+    expect(html).not.toContain('data-testid="reading-fact"');
+    expect(html).not.toContain("Lectura automática con los datos de PrediGol");
+  });
+
+  test("a chronicle without a lead starts at its first section; in the page's language", () => {
+    const narrative = { ...NARRATIVE!, es: NARRATIVE!.es.slice(1), en: NARRATIVE!.en.slice(1) };
+    const html = renderToStaticMarkup(<ReadingLeadView load={ok({ ...READING, narrative })} />);
+    expect(html).toContain('data-section="home"');
+    expect(html).toContain("Nacional viene de ganar 2-1 al Junior.");
+    setLocale("en");
+    const en = renderToStaticMarkup(
+      <ReadingLeadView load={ok({ ...READING, narrative: NARRATIVE })} />,
+    );
+    expect(en).toContain("A Liga BetPlay match in Medellín.");
+    expect(en).not.toContain("Partido de la Liga BetPlay en Medellín.");
+  });
+
+  test("without a chronicle - or with null - the facts", () => {
+    for (const reading of [{ ...READING, narrative: null }, READING]) {
+      const html = renderToStaticMarkup(<ReadingLeadView load={ok(reading)} />);
+      expect(html).toContain('data-kind="facts"');
+      expect(html).toContain('data-testid="reading-fact"');
+      expect(html).not.toContain("reading-narrative-lead");
+    }
+  });
+
+  test("its states: a skeleton, an error with its retry, the owner having turned it off (said), a partial reading", () => {
+    expect(renderToStaticMarkup(<ReadingLeadView load={{ status: "pending" }} />)).toContain(
+      'aria-busy="true"',
+    );
+    const error = renderToStaticMarkup(
+      <ReadingLeadView load={{ status: "error", error: new Error("x"), retry: () => undefined }} />,
+    );
+    expect(error).toContain('data-kind="error"');
+    const off = renderToStaticMarkup(
+      <ReadingLeadView load={{ status: "success", envelope: envelope(null, "not_available") }} />,
+    );
+    expect(off).toContain("La lectura de este partido no está disponible.");
+    const partial = renderToStaticMarkup(
+      <ReadingLeadView load={ok({ ...READING, complete: false })} />,
+    );
+    expect(partial).toContain('data-testid="reading-partial"');
   });
 
   test("in English", () => {
     setLocale("en");
-    const html = renderToStaticMarkup(
-      <ReadingHighlightsView load={ok(WITH_DERIVED)} onMore={() => undefined} />,
-    );
-    expect(html).toContain("Key points");
-    expect(html).toContain("Why there is value");
-    expect(html).toContain("Nacional to win: the best odds now are 2.31.");
-    expect(html).not.toContain("Puntos clave");
-  });
-});
-
-describe("the Resumen's highlights", () => {
-  test("the summary and the two main risks, with the way to the whole analysis", () => {
-    const html = renderToStaticMarkup(
-      <ReadingHighlightsView load={ok()} onMore={() => undefined} />,
-    );
-    expect(html).toContain("Partido de Liga BetPlay.");
-    expect(html).toContain("Las alineaciones aún no están confirmadas.");
-    expect(html).toContain("Hay 2 rumores sin confirmar");
-    expect(html).not.toContain("No encontramos información externa"); // only the first two
-    expect(html).toContain('data-testid="reading-see-all"');
-  });
-
-  test("nothing while the owner has turned the reading off; a skeleton while it loads", () => {
-    expect(
-      renderToStaticMarkup(
-        <ReadingHighlightsView
-          load={{ status: "success", envelope: envelope(null, "not_available") }}
-          onMore={() => undefined}
-        />,
-      ),
-    ).toBe("");
-    expect(
-      renderToStaticMarkup(
-        <ReadingHighlightsView load={{ status: "pending" }} onMore={() => undefined} />,
-      ),
-    ).toContain('aria-busy="true"');
+    const html = plain(renderToStaticMarkup(<ReadingLeadView load={ok(ARRIVING)} />));
+    expect(html).toContain("What could go wrong:");
+    expect(html).toContain("An automatic reading of PrediGol&#x27;s data");
+    expect(html).not.toContain("Qué puede salir mal");
   });
 });

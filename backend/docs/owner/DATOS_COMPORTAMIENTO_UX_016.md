@@ -18,7 +18,7 @@ dueño ni la del robot de monitoreo.
 
 **Nunca viaja:** la dirección de la página, lo que el lector busca, el identificador de un partido o de un pick dentro de la pantalla, el
 texto de nada, el correo ni la IP. Un evento o una propiedad fuera del catálogo se rechaza entero (422), igual que antes: el catálogo del
-servidor y el de la web son el mismo archivo y una prueba comprueba que no se separen (ahora son 36 eventos).
+servidor y el de la web son el mismo archivo y una prueba comprueba que no se separen (ahora son 40 eventos: UX-032 añadió los cuatro de las guías).
 
 **Equipos y ligas consultados: no se recogen.** El evento `match_opened` ya lleva el partido que se abrió; la liga y los dos equipos se
 **deducen en el servidor cuando el dueño abre la página**, uniendo ese partido con el calendario. No se guarda nada nuevo: ni una columna,
@@ -66,7 +66,7 @@ primero no se pierde ninguno.
 
 ## 6. Cómo se probó
 
-- Unitarias (`tests/unit/test_product_events.py`): el catálogo de 36 eventos en sus grupos; el mercado y la pantalla aceptan solo su lista;
+- Unitarias (`tests/unit/test_product_events.py`): el catálogo de 40 eventos en sus grupos; el mercado y la pantalla aceptan solo su lista;
   una dirección, una búsqueda, un identificador o una pantalla desconocida se rechazan. (`tests/unit/test_customer_legal.py`): la política
   nombra lo que se mide y sigue siendo solo con la casilla; la versión nueva no es material.
 - Integración (`tests/integration/test_product_events.py`): con tres lectores y el mínimo en 3, la vista del dueño lista la pantalla, el

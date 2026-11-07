@@ -213,8 +213,6 @@ def test_a_reader_is_never_shown_a_caution_or_a_not_recommended_pick_on_its_matc
     best = data(client(world.db), "/api/v1/odds/best")
     assert {c["user_status"] for c in best["value"]} == {"RECOMMENDED"}
     assert {world.picks["B"], world.picks["C"]}.isdisjoint(c["pick_id"] for c in best["value"])
-    home = data(client(world.db), "/api/v1/home")
-    assert {c["user_status"] for c in home["top_picks"]["data"]} == {"RECOMMENDED"}
 
 
 def test_every_screen_of_a_reader_shows_green_picks_only(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -224,7 +222,7 @@ def test_every_screen_of_a_reader_shows_green_picks_only(world: World, monkeypat
             world.enforce(monkeypatch)
         reader = client(world.db)
         seen = [*data(reader, "/api/v1/picks")["picks"], *data(reader, "/api/v1/picks")["top"],
-                *data(reader, "/api/v1/home")["top_picks"]["data"], *data(reader, "/api/v1/odds/best")["value"],
+                *data(reader, "/api/v1/odds/best")["value"],
                 *(data(reader, "/api/v1/daily")["set"] or {"items": []})["items"]]
         for name in PLAN:
             seen += data(reader, "/api/v1/picks", fixture_id=world.fixtures[name], hours=168)["picks"]
@@ -339,9 +337,6 @@ def test_a_readers_parlay_never_holds_a_caution_or_a_rejected_leg(world: World, 
     reader = data(client(world.db), "/api/v1/parlays/daily")
     assert reader["rejections"]["not_recommended"] == 2
     assert {world.picks["B"], world.picks["C"]}.isdisjoint(leg["pick_id"] for leg in reader["legs"])
-    home = data(client(world.db), "/api/v1/home")
-    for kind in ("daily_parlay", "multiday_parlay"):
-        assert home[kind]["rejections"].get("not_recommended") == 2, kind
     owner = data(client(world.db, "SUPER_ADMIN"), "/api/v1/parlays/daily", preview="shadow")
     assert "not_recommended" not in owner["rejections"]
 

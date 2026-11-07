@@ -1,17 +1,21 @@
 /**
- * One of the day's picks as PrediGol recorded it: the price and probabilities frozen when it
- * was chosen, the stage it was chosen at, and - once the match is played - its result. It
- * stays on the page after kick-off.
+ * One of the day's picks as PrediGol recorded it, the way a reader sees it (plan de Inicio, 2.3), top to bottom: league and
+ * time, the teams, the market and the selection, the reference odds (no bookmaker: they are a reference, not an offer), what
+ * PrediGol and the market give it, its level (Alto when even the prudent estimate beats the market, Medio otherwise), its
+ * state and result, two lines of why, and «Más sobre este pick», which opens the match on that pick. It stays on the page
+ * after kick-off. The model, the review, the expected value, the stage and the time it was chosen are the match's and the
+ * owner's: in the evaluation set the owner finds them folded under «Auditoría».
  */
 import { Hint } from "@/components/system/Hint";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { Link } from "@tanstack/react-router";
-import { Snowflake } from "lucide-react";
+import { ChevronRight, Gauge, Snowflake } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
+import { fmtPct } from "@/lib/i18n/format";
 import type { DailyItem } from "@/lib/api/v1/types_records";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
-import { EvBadge, Kickoff, OddsPill, ProbCompare } from "@/product/shared/Bits";
+import { EvBadge, Kickoff, OddsPill } from "@/product/shared/Bits";
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { AiNote } from "./AiNote";
 import { CorrectionNote } from "./CorrectionNote";
@@ -19,14 +23,13 @@ import { DecisionChain } from "./DecisionChain";
 import { formatTime } from "@/lib/time";
 import { isLivePhase, matchPhaseOf } from "@/product/matches/status";
 import { MatchStateBadge, OriginLabel, ResultBadge, Units } from "./Badges";
-import { hasStarted } from "./model";
+import { hasStarted, pickLevel, type PickLevel } from "./model";
+import { whyLines } from "./cardWhy";
 import { pickableOfItem } from "./pickable";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { SelectablePrice } from "@/product/odds/SelectablePrice";
-import { PickWhyLine, RiskChips } from "@/product/shared/PickWhy";
+import { RiskChips } from "@/product/shared/PickWhy";
 import { UserStatusBadge } from "@/product/shared/UserStatusBadge";
-import { ExplainButton } from "@/product/explain/ExplainSheet";
-import { WhyPickButton } from "@/product/picks/WhyPick";
 import { track } from "@/lib/track";
 
 export function MatchScore({ home, away }: { home: number | null; away: number | null }) {
@@ -38,6 +41,26 @@ export function MatchScore({ home, away }: { home: number | null; away: number |
   );
 }
 
+function Level({ level }: { level: PickLevel }) {
+  return (
+    <Hint text={t(`records.card.levelHelp.${level}`)} className="no-underline">
+      <span
+        data-testid="pick-level"
+        data-level={level}
+        className={cn(
+          "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-semibold",
+          level === "high"
+            ? "border-positive/40 bg-positive-soft text-positive"
+            : "border-border-strong bg-elevated text-muted-foreground",
+        )}
+      >
+        <Gauge aria-hidden className="h-3 w-3" />
+        {t("records.card.level.label")}: {t(`records.card.level.${level}`)}
+      </span>
+    </Hint>
+  );
+}
+
 export function DailyItemCard({
   item,
   compact = false,
@@ -46,7 +69,7 @@ export function DailyItemCard({
 }: {
   item: DailyItem;
   compact?: boolean;
-  /** From the evaluation set: the chain says it is not a published recommendation. */
+  /** From the evaluation set: the owner finds the model, the review and the publication under «Auditoría». */
   evaluation?: boolean;
   className?: string | undefined;
 }) {
@@ -66,6 +89,12 @@ export function DailyItemCard({
     isLivePhase(phase) && m.live_home != null && m.live_away != null
       ? { home: m.live_home, away: m.live_away }
       : null;
+  const level = pickLevel(item.p_low, item.p_market);
+  const why = whyLines(item, level);
+  const model = Number(item.p_model);
+  const market = Number(item.p_market);
+  const search = { s: "resumen", pick: item.pick_id } as const;
+  const open = () => track("pick_opened", { pick_id: item.pick_id });
   return (
     <article
       data-testid="daily-item"
@@ -80,7 +109,8 @@ export function DailyItemCard({
       <Link
         to="/matches/$fixtureId"
         params={{ fixtureId: String(m.fixture_id) }}
-        onClick={() => track("pick_opened", { pick_id: item.pick_id })}
+        search={search}
+        onClick={open}
         className="block flex-1 rounded-t-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         <div className="flex items-center justify-between gap-2 px-4 pt-3.5">
@@ -120,7 +150,7 @@ export function DailyItemCard({
           />
         </div>
 
-        <div className="mt-3 border-t border-border/70 px-4 pb-2.5 pt-3">
+        <div className="mt-3 border-t border-border/70 px-4 pb-3 pt-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <OriginLabel origin="predigol" />
@@ -138,64 +168,32 @@ export function DailyItemCard({
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               <OddsPill odds={item.odds} best={!settled} size={compact ? "md" : "lg"} />
-              {item.bookmaker ? (
-                <span className="max-w-[8rem] truncate text-caption text-muted-foreground">
-                  {item.bookmaker}
-                </span>
-              ) : null}
+              <span
+                className="text-caption text-muted-foreground"
+                data-testid="pick-reference-odds"
+              >
+                {t("records.card.referenceOdds")}
+              </span>
             </div>
           </div>
-          {!compact ? (
-            <ProbCompare model={item.p_model} market={item.p_market} className="mt-3" />
-          ) : (
-            <PickWhyLine model={item.p_model} market={item.p_market} className="mt-2.5" />
-          )}
-          {item.ai ? (
-            <div className="mt-3">
-              <AiNote ai={item.ai} compact={compact} />
-            </div>
-          ) : null}
-          {/* The compact row has no list of risks: the review's own, as chips - only a decision a reader may see. */}
-          {compact && item.ai?.decision ? (
-            <RiskChips risks={item.ai.risks} className="mt-2" />
-          ) : null}
-          <DecisionChain
-            model={item.model}
-            ai={item.ai}
-            aiLatest={item.ai_latest}
-            evaluation={evaluation}
-            admin={admin}
-            className="mt-3"
-          />
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {Number.isFinite(model) && Number.isFinite(market) ? (
+              <p className="numeric text-xs font-medium" data-testid="pick-probs">
+                {t("records.card.probs", { model: fmtPct(model, 0), market: fmtPct(market, 0) })}
+              </p>
+            ) : null}
+            {level ? <Level level={level} /> : null}
+          </div>
+          <ul className="mt-2 space-y-1" data-testid="pick-why-lines">
+            {why.map((line) => (
+              <li key={line} className="text-xs leading-snug text-muted-foreground">
+                {line}
+              </li>
+            ))}
+          </ul>
         </div>
       </Link>
-      {/* The figures with their help, beside the link (plan UX, A1, defect F16): a tap, a hover or the keyboard
-          opens each without opening the match. */}
-      <div
-        className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pb-3"
-        data-testid="daily-item-figures"
-      >
-        <GlossaryTerm term="expectedValue" className="no-underline">
-          <EvBadge ev={item.ev} hint={false} />
-        </GlossaryTerm>
-        <Hint text={t("records.frozenHelp")} className="no-underline">
-          <span
-            className="inline-flex items-center gap-1 text-caption text-muted-foreground"
-            data-testid="daily-item-stage"
-          >
-            <Snowflake aria-hidden className="h-3 w-3" />
-            {t(`records.stage.${item.stage}`)}
-          </span>
-        </Hint>
-        <span className="text-caption text-muted-foreground" data-testid="daily-item-selected-at">
-          {t("records.selectedAt", { time: formatTime(item.selected_at) })}
-        </span>
-      </div>
 
-      <div className="flex flex-wrap gap-2 px-4 pb-3">
-        <WhyPickButton pickId={item.pick_id} />
-        <ExplainButton entity="pick" itemId={item.pick_id} testId="explain-pick" />
-      </div>
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="text-caption text-subtle-foreground">{t("records.labels.result")}</span>
@@ -208,6 +206,67 @@ export function DailyItemCard({
         </div>
         {!started ? <SelectablePrice sel={pickableOfItem(item)} save size="sm" /> : null}
       </div>
+      <div className="border-t border-border/70 px-4 py-2">
+        <Link
+          to="/matches/$fixtureId"
+          params={{ fixtureId: String(m.fixture_id) }}
+          search={search}
+          onClick={open}
+          data-testid="pick-more"
+          className="tap-y relative -mx-1 inline-flex min-h-9 items-center gap-0.5 rounded-md px-1 text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          {t("records.card.more")}
+          <ChevronRight aria-hidden className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+      {/* The owner's, in the evaluation set only: what a reader never sees on a pick (plan de Inicio, 2.3). */}
+      {admin && evaluation ? (
+        <details
+          className="border-t border-border/70 px-4 py-2.5 text-caption"
+          data-testid="pick-audit"
+        >
+          <summary className="cursor-pointer text-xs font-semibold text-info">
+            {t("records.card.audit")}
+          </summary>
+          <div className="mt-2.5 space-y-3">
+            {item.ai ? <AiNote ai={item.ai} compact={compact} /> : null}
+            {item.ai?.decision ? <RiskChips risks={item.ai.risks} /> : null}
+            <DecisionChain
+              model={item.model}
+              ai={item.ai}
+              aiLatest={item.ai_latest}
+              evaluation={evaluation}
+              admin={admin}
+            />
+            <div
+              className="flex flex-wrap items-center gap-x-3 gap-y-1.5"
+              data-testid="daily-item-figures"
+            >
+              <GlossaryTerm term="expectedValue" className="no-underline">
+                <EvBadge ev={item.ev} hint={false} />
+              </GlossaryTerm>
+              <Hint text={t("records.frozenHelp")} className="no-underline">
+                <span
+                  className="inline-flex items-center gap-1 text-caption text-muted-foreground"
+                  data-testid="daily-item-stage"
+                >
+                  <Snowflake aria-hidden className="h-3 w-3" />
+                  {t(`records.stage.${item.stage}`)}
+                </span>
+              </Hint>
+              <span
+                className="text-caption text-muted-foreground"
+                data-testid="daily-item-selected-at"
+              >
+                {t("records.selectedAt", { time: formatTime(item.selected_at) })}
+              </span>
+              {item.bookmaker ? (
+                <span className="text-caption text-muted-foreground">{item.bookmaker}</span>
+              ) : null}
+            </div>
+          </div>
+        </details>
+      ) : null}
       <CorrectionNote
         corrections={item.corrections}
         record="result"

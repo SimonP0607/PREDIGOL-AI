@@ -215,14 +215,13 @@ def test_without_enough_qualified_picks_there_is_no_parlay(as_role: Any, dataset
             conn.execute("UPDATE picks.picks SET status = 'qualified' WHERE id = ANY(%s)", (demoted,))
 
 
-def test_home_puts_it_all_on_one_page(as_role: Any, dataset: dict[str, Any]) -> None:
+def test_home_carries_what_is_in_play_and_nothing_the_other_routes_own(as_role: Any, dataset: dict[str, Any]) -> None:
+    """Plan Inicio, 2.1: the picks and parlays are /daily's, the prices are Cuotas' - /home answers what is in play."""
     home = data(as_role("USER"), "/api/v1/home")
     assert home["source"] == "qualified"
-    assert home["top_picks"]["status"] == "ok" and len(home["top_picks"]["data"]) == 5
-    assert home["daily_parlay"]["status"] == "ok" and home["multiday_parlay"]["status"] == "ok"
     assert home["live"]["status"] == "empty" and home["live"]["reason"] == "no_live_matches"
-    assert home["upcoming"]["status"] == "ok"
-    assert home["data_freshness"]["odds_at"] is not None
+    assert set(home) == {"source", "data_freshness", "live"}
+    assert set(home["data_freshness"]) == {"live_at"}
 
 
 def test_the_best_odds_board_sets_each_price_against_the_fair_one(as_role: Any, dataset: dict[str, Any]) -> None:

@@ -107,8 +107,8 @@
     "none": "No odds for this match yet.",
     "noPrice": "No price",
     "ou25": "Over/Under {line} goals",
-    "bestOf_one": "Best price across {count} bookmaker",
-    "bestOf_other": "Best price across {count} bookmakers",
+    "bestOf_one": "Best price from the one bookmaker PrediGol checks; not the whole market",
+    "bestOf_other": "Best price among the {count} bookmakers PrediGol checks; not the whole market",
     "allMarkets": "All markets"
   },
   "markets": {
@@ -397,7 +397,14 @@
     "not_playedBody": "The result was awarded (technical loss or walkover), not played. Bets on it wait for a decision."
   },
   "advanced": {
-    "note": "Admins only: models and predictions, captures, lineage and the audit trail for this match."
+    "note": "Admins only: models and predictions, captures, lineage and the audit trail for this match.",
+    "analysisNote": "PrediGol Intelligence's evaluation view: the cards per market, the AI's reading of the day and the selections in evaluation. A reader never sees it: their Summary shows the reading and the published picks."
+  },
+  "intelligence": {
+    "subtitle": "PrediGol's reading of this match",
+    "risksLead": "What could go wrong:",
+    "picks": "Published picks",
+    "picksShadow": "Picks in evaluation"
   },
   "priceStatus": {
     "title": "Without a bookmaker price",
@@ -1124,7 +1131,21 @@
     "note": "What PrediGol found in the press about this match, with its source and status. The summary is ours; the article is at the link.",
     "count_one": "{count} item",
     "count_other": "{count} items",
-    "empty": "We found no verified news relevant to this match.",
+    "empty": "We found no news relevant to this match.",
+    "emptyNotSearched": "This match has not been searched for news yet. We search on match day.",
+    "emptySearched": "We searched on {date} and found no news relevant to this match.",
+    "search": {
+      "never": "Not searched yet",
+      "last": "Last searched {when}",
+      "read_one": "{count} source read",
+      "read_other": "{count} sources read"
+    },
+    "relation": {
+      "home": "{topic} · home side",
+      "away": "{topic} · away side",
+      "match": "{topic} · the match"
+    },
+    "relationHelp": "How it relates to the match: what it is about and which side it affects.",
     "unavailable": "The news are not available at the moment.",
     "group": {
       "verified": "Confirmed and probable",

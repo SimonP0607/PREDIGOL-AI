@@ -1,18 +1,18 @@
 /**
  * Resumen, by the match's state (plan UX, A9; section 25: what matters first):
- * before kick-off - to UNDERSTAND the match (plan de cierre UX, 2.2): the reading's summary, key points, why there is value
- *                   and its two main risks (with the way to the whole Análisis), PrediGol's forecast labelled, the picks
- *                   PrediGol published for the match with their state (or that it published none), whether a market is well
- *                   paid and the best prices; then, folded under «Profundizar», what is read to go deeper - form, table and
- *                   head to head, rest and calendar in every competition, absences and line-ups. Nothing is dropped: it
- *                   is ordered, and what another tab shows in full links to it;
+ * before kick-off - four blocks, full width, none empty (plan Partidos y Match Center, R1-R3): PrediGol Intelligence - ONE
+ *                   reading of the match (the chronicle's first stretch, or the structured reading as a short text), the
+ *                   picks PrediGol published only when there are some, and the way to the whole Análisis; PrediGol's
+ *                   forecast; then, folded under «Profundizar», what is read to go deeper - form, table and head to head,
+ *                   rest and calendar, absences and line-ups; and the best current prices last. The analysed markets'
+ *                   cards and the AI's reading of the day are the owner's, in Avanzado;
  * in play        - the match events first, then the day's reading as it was written before kick-off, the picks as they
  *                  were taken with what the match is doing, key figures and in-play prices; the context folded away;
  * after          - result, events, the pre-match reading and key figures; the context folded away (what happened put
  *                  together, the forecast against the result and how the picks ended are the Postpartido's);
  * not played     - what happened (postponed, cancelled, abandoned, awarded) and the picks.
  */
-import { useId, useState, type ReactNode } from "react";
+import { Fragment, useId, useState, type ReactNode } from "react";
 import { BarChart3, CalendarX2, ChevronDown, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
@@ -23,9 +23,9 @@ import type { MatchCtx } from "./context";
 import { AbsencesBlock, FormBlock, H2HBlock, LineupsTeaser, StandingsBlock } from "./ContextBlocks";
 import { EventsBlock } from "./EventsTimeline";
 import { ForecastBlock } from "./ForecastBlock";
+import { IntelligenceBlock } from "./IntelligenceBlock";
 import { KEY_STATS, statRows } from "./model";
 import { PicksTab } from "./PicksTab";
-import { ReadingHighlights } from "@/product/reading/ReadingBlock";
 import { LiveOddsBlock, QuickPricesBlock } from "./prices";
 import { Block, CenterSection, MoreButton, StatBars, TeamsLegend } from "./ui";
 
@@ -195,24 +195,36 @@ export function DeepenSection({ ctx }: { ctx: MatchCtx }) {
 
 const TWO_COLUMNS = "grid items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]";
 
+/** The Resumen before kick-off, in the order it is read (plan Partidos y Match Center, R1). */
+export const BEFORE_KICKOFF_ORDER = ["intelligence", "forecast", "deepen", "prices"] as const;
+export type BeforeKickoffBlock = (typeof BEFORE_KICKOFF_ORDER)[number];
+
+/**
+ * Before kick-off, four blocks, each full width and none empty (plan Partidos y Match Center, R1-R3): PrediGol Intelligence
+ * (one reading, the published picks only when there are some, the way to Análisis), PrediGol's forecast, «Profundizar»
+ * folded, and the best current prices last. The analysed markets' cards are the owner's, in Avanzado. Apart from the
+ * blocks so that a test can check the order.
+ */
+export function BeforeKickoffLayout({ blocks }: { blocks: Record<BeforeKickoffBlock, ReactNode> }) {
+  return (
+    <div className="space-y-4" data-testid="summary-before">
+      {BEFORE_KICKOFF_ORDER.map((key) => (
+        <Fragment key={key}>{blocks[key]}</Fragment>
+      ))}
+    </div>
+  );
+}
+
 function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
   return (
-    <div className="space-y-4">
-      {/* To understand the match, in the order of use (plan de cierre UX, 2.2): the reading's summary, key points, why there
-          is value and main risks (A9, UX-011) beside what PrediGol expects (F5); then what it published (the picks), whether
-          a market is well paid (the analysis) and the best prices. */}
-      <div className={TWO_COLUMNS}>
-        <ReadingHighlights ctx={ctx} />
-        <ForecastBlock ctx={ctx} />
-      </div>
-      <PicksTab ctx={ctx} />
-      <AnalysisBlock ctx={ctx} />
-      <div className="lg:max-w-3xl">
-        <QuickPricesBlock ctx={ctx} />
-      </div>
-      {/* To go deeper: folded, and everything still there. */}
-      <DeepenSection ctx={ctx} />
-    </div>
+    <BeforeKickoffLayout
+      blocks={{
+        intelligence: <IntelligenceBlock ctx={ctx} />,
+        forecast: <ForecastBlock ctx={ctx} />,
+        deepen: <DeepenSection ctx={ctx} />,
+        prices: <QuickPricesBlock ctx={ctx} />,
+      }}
+    />
   );
 }
 
