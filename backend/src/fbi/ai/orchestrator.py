@@ -14,7 +14,9 @@ What a run does, in this order:
    the engines ``arms.runnable`` says.
 2. CANDIDATES. Exactly the selections production reviewed in that pass (the ``rules`` reviews of that packet), named ``c1``.. by
    ``agents.common.name_candidates``; the ones left out are said and never reviewed. The three scores and the fair and minimum odds are the rules
-   reviewer's: no model writes a number.
+   reviewer's: no model writes a number. With the Statistics Agent on (phase 4) the full-time corners and cards of the match come from the FAMILIES'
+   decisions known by the moment of the pass (``orchestrator_store.family_counts``, ``fam-counts-v1``; production reviews none), named after goals
+   and result by ``agents.common.name_with_counts``; a row of such a candidate names the decision it comes from (``decision_id``).
 3. CALLS, in this order, each through ``usage.call_json(..., lab=True)``: the Match Agent in CONTEXT (Haiku, low) and in EVALUATION (Haiku, medium) once
    for the match; ``contra.detect`` over the whole package; the Council of each arm (``ma-v1`` Sonnet and ``ma-v1-h`` Haiku read the same view with the
    assessments, ``cs-v1`` reads a view with none); and Opus, only for the candidates a rule E1-E7 of ``router-v1`` fires on, at most 3 calls a Bogotá day
@@ -103,8 +105,10 @@ from fbi.ai.contracts.mcp import SLICE_NAMES
 from fbi.ai.idempotency import TaskIdentity
 from fbi.ai.orchestrator_store import (
     ABANDON_BEFORE,
+    COUNTS_SOURCE_VERSION,
     STATE_VERSION,
     Existing,
+    FamilyCounts,
     Reviewed,
     ReviewRow,
     Scores,
@@ -119,6 +123,7 @@ from fbi.ai.orchestrator_store import (
     distinct,
     end_task,
     existing,
+    family_counts,
     lapse,
     link_batch,
     open_batch_of,
@@ -137,7 +142,7 @@ from fbi.ai.orchestrator_store import (
 )
 from fbi.ai.packet import Packet, content_hash, load_packet
 from fbi.ai.providers.base import JsonRequest, LlmProvider
-from fbi.ai.review import fair_and_minimum
+from fbi.ai.review import Candidate, fair_and_minimum
 from fbi.core.version import model_code_version
 
 log = logging.getLogger("fbi.ai.orchestrator")
@@ -622,6 +627,9 @@ class _Pass:
     """The ``stats`` slice of the package, when ``stats_on``."""
     stats_note: str | None = None
     """Why the Statistics Agent was not asked (a code), when it was on and nothing was asked of it."""
+    counts: FamilyCounts | None = None
+    """The count candidates read from the families' decisions as of the pass (``fam-counts-v1``), when the pass reads them; None for a pass that does
+    not (the agent off, or a pass of the Batch calendar that started before the source existed)."""
 
     @property
     def at(self) -> datetime:
@@ -816,7 +824,13 @@ class _Runner:
             raise LookupError(f"the packet {w.packet_id} is not there")
         rev = reviewed(self.conn, w)
         stats_on = self.stats_wanted(stored)
-        naming = name_with_counts(rev.candidates) if stats_on else name_candidates(rev.candidates)
+        # IA-014: production reviews no corner and no card, so the Statistics Agent's candidates are the families' decisions known by the moment of the
+        # pass (the package's: never a decision written after it). The reviewed selections go first, so goals and result keep their names.
+        counts = family_counts(self.conn, w.fixture_id, at=slice_.known_at) if self.counts_wanted(stored, stats_on=stats_on) else None
+        if stats_on:
+            naming = name_with_counts((*rev.candidates, *(counts.candidates if counts is not None else ())))
+        else:
+            naming = name_candidates(rev.candidates)
         p = _Pass(
             work=w,
             engines=engines,
@@ -829,6 +843,7 @@ class _Runner:
             slices=dict(slices),
             stats_on=stats_on,
             stats_slice=slices.get("stats") if stats_on else None,
+            counts=counts,
         )
 
         reason: str | None = None
@@ -889,6 +904,17 @@ class _Runner:
         if stored:
             return stored[0].route.get("stats") is True
         return stats.AGENT in self.settings.agents
+
+    @staticmethod
+    def counts_wanted(stored: Sequence[StoredTask], *, stats_on: bool) -> bool:
+        """Whether the pass reads the count candidates of the families (``fam-counts-v1``, IA-014): only with the Statistics Agent on. A pass of the
+        Batch calendar keeps what its first run did (``route.counts``): one queued before the source existed was named without them, and its keys
+        depend on those names."""
+        if not stats_on:
+            return False
+        if stored:
+            return stored[0].route.get("counts") == COUNTS_SOURCE_VERSION
+        return True
 
     # -- the Batch calendar ------------------------------------------------------------------------------------------------------------
 
@@ -1821,6 +1847,7 @@ class _Runner:
             "active": list(b.active),
             "paused": {k: list(v) for k, v in b.paused.items()},
             "stats": p.stats_on,
+            "counts": None if p.counts is None else p.counts.source,
             "adm": adm.status,
         } | dict(route_extra)
         rec = self.record(p, asked)
@@ -2157,6 +2184,9 @@ class _Runner:
                 "naming": p.naming.version,
                 "asked": list(asked),
                 "note": p.stats_note,
+                "counts": None
+                if p.counts is None
+                else {"source": p.counts.source, "decisions": sorted(p.counts.decision_ids)},
                 "contra": {
                     "fired": contra.tally_by_family(contra1, naming=p.naming),
                     "coverage": contra.coverage_by_family(p.package.document, naming=p.naming),
@@ -2199,6 +2229,7 @@ class _Runner:
                     "edge": None if c.edge is None else str(c.edge),
                     "ev": None if c.ev is None else str(c.ev),
                 }
+                | self.decision_ref(p, c)
             )
         for c, why in p.naming.left_out:
             out.append(
@@ -2209,8 +2240,15 @@ class _Runner:
                     "selection": c.selection,
                     "line": str(c.line),
                 }
+                | self.decision_ref(p, c)
             )
         return out
+
+    @staticmethod
+    def decision_ref(p: _Pass, c: Candidate) -> dict[str, Any]:
+        """The family decision a candidate comes from (``fam-counts-v1``), for the rows that name one: nothing for a selection production reviewed."""
+        decision = None if p.counts is None else p.counts.decision_of(c)
+        return {} if decision is None else {"decision_id": decision, "source": p.counts.source if p.counts is not None else None}
 
     def final_row(
         self, p: _Pass, paused: Mapping[str, Sequence[str]], *, not_run: str | None = None
@@ -2300,7 +2338,7 @@ class _Runner:
                 "fair_odds": None if fair is None else float(fair),
                 "minimum_playable_odds": None if minimum is None else float(minimum),
                 "research_ask_ignored": len(p.ignored_asks),
-            }
+            } | self.decision_ref(p, c)
             if arm.engine in WITH_MATCH:
                 base["assessment"] = {
                     label: stances[n.key]

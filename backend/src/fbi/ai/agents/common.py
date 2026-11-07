@@ -19,7 +19,7 @@ from decimal import Decimal
 from typing import Any, Final, Literal, get_args
 
 from fbi.ai.contracts.assessment import CANDIDATES_MAX, AssessmentOut
-from fbi.ai.contracts.base import COUNTS, FAMILIES, GOALS_RESULT, Agent, Family, Mode, paths_of
+from fbi.ai.contracts.base import COUNTS, FAMILIES, GOALS_RESULT, REF, Agent, Family, Mode, paths_of
 from fbi.ai.contracts.mcp import family_of
 from fbi.ai.review import Candidate
 
@@ -225,16 +225,60 @@ def known_refs(document: Mapping[str, Any]) -> tuple[frozenset[int], frozenset[s
     return frozenset(ids), frozenset(paths_of(dict(document)))
 
 
+CITABLE_DEPTH: Final = 3
+"""How deep the list of citable blocks goes (``citable_refs``): ``shared.absences.home`` is three keys. A block deeper than that is cited by the
+block above it, as the prompts have always said; it is still a reference the reader accepts, only one the list does not offer."""
+
+
+def citable_refs(document: Mapping[str, Any], *, depth: int = CITABLE_DEPTH) -> tuple[str, ...]:
+    """The references a model may copy into an answer about ``document`` (IA-014), written by code from the document and never by a model: ``E:<id>``
+    of every item of ``evidence`` (ascending) and then ``P:<path>`` of every BLOCK - a key whose value is an object or a list - down to ``depth``
+    keys, in the order of the paths. A key that is not a reference (``REF``: lower case, digits and ``_``) is not offered, and nothing inside it.
+    Every reference of the list is one ``known_refs`` accepts: the list is a part of what the reader takes, never more."""
+    ids, _ = known_refs(document)
+    blocks: list[str] = []
+
+    def walk(node: Any, prefix: str, level: int) -> None:
+        if not isinstance(node, Mapping) or level > depth:
+            return
+        for key, value in node.items():
+            path = f"{prefix}.{key}" if prefix else str(key)
+            if isinstance(value, (Mapping, list)) and REF.fullmatch(f"P:{path}") is not None:
+                blocks.append(path)
+                walk(value, path, level + 1)
+
+    walk(document, "", 1)
+    return (*(f"E:{i}" for i in sorted(ids)), *(f"P:{p}" for p in sorted(blocks)))
+
+
 # -- the problems of an answer, in closed codes ----------------------------------------------------------------------------------------
 
 EXTRA_KEY: Final = "extra_forbidden"
 """The kind of error of a key the contract does not have (Pydantic's ``extra="forbid"``)."""
-NAMED_EXTRA_KEYS: Final = frozenset({
+NAMED_EXTRA_KEYS_IA009: Final = frozenset({
     "reasoning", "notes", "note", "summary", "analysis", "explanation", "rationale", "contradictions", "comments", "thinking", "assessment",
     "output", "answer", "result", "findings", "confidence", "stance"})
-"""The few harmless English words a model is likely to add as a key of its own (IA-009). Where an answer has a key the contract does not have,
-the problem names it ONLY when it is one of these (or a field of the contract): what is written is then this list's own word, never the model's
-text. Any other name is cut, as before. The list is fixed here and grows only by a change of code."""
+"""The words of IA-009 (6 Nov 2026)."""
+NAMED_EXTRA_KEYS_IA014: Final = frozenset({
+    # prose a model adds about its own answer
+    "reason", "reasons", "justification", "comment", "remarks", "observations", "commentary", "thoughts", "description", "details",
+    "conclusion", "conclusions", "recommendation", "recommendations", "decision", "verdict", "verdicts", "overall", "overall_stance",
+    "caveats", "warnings", "limitations", "uncertainty", "assumptions", "key_factors", "factors", "evidence", "references", "sources",
+    "citations",
+    # a wrapper, or the schema echoed back
+    "assessments", "evaluation", "evaluations", "context", "input", "arguments", "parameters", "properties", "type", "schema", "json", "data",
+    "response", "content", "message", "status", "error", "errors", "metadata", "version", "submit_assessment",
+    # the keys of the second object of the message, and of the package, copied into the answer
+    "now", "minutes_to_kickoff", "package_age_minutes", "citable", "header", "market", "models", "shared", "missing", "match", "fixture_id",
+    # a field of the contract in the wrong place or in the singular
+    "stances", "signal", "driver", "risk", "ask", "request", "research_ask", "research_request", "quality"})
+"""The words of IA-014 (7 Nov 2026): with ``match-v2`` 8 of 20 invalid answers still had a key at the top level whose name was none of IA-009's, so
+it was cut and nobody knows it. These are the words a model is likely to write there - prose about the answer, a wrapper or the schema echoed back,
+a key of the message copied into the answer, a field in the singular - so that the next measurement names them."""
+NAMED_EXTRA_KEYS: Final = NAMED_EXTRA_KEYS_IA009 | NAMED_EXTRA_KEYS_IA014
+"""The harmless English words a model is likely to add as a key of its own (IA-009, widened by IA-014). Where an answer has a key the contract does
+not have, the problem names it ONLY when it is one of these (or a field of the contract): what is written is then this list's own word, never the
+model's text. Any other name is cut, as before. The list is fixed here and grows only by a change of code."""
 _KIND: Final = re.compile(r"^[a-z][a-z0-9_]{0,40}$")
 
 

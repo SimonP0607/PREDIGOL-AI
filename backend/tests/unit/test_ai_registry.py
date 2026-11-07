@@ -97,7 +97,7 @@ def test_the_version_of_an_agent_is_the_label_of_its_prompt() -> None:
             assert version not in labels and labels == APART[spec.agent], spec.agent
         elif len(labels) == 1:
             assert labels == {version}, spec.agent
-        else:  # an agent of the plan with a prompt of its own for each task (``match-v2``: match-context-v2 and match-assess-v2)
+        else:  # an agent of the plan with a prompt of its own for each task (``match-v3``: match-context-v3 and match-assess-v3)
             assert len(labels) == len(spec.tasks) and version not in labels, spec.agent
         schemas = {p.schema_version for p in rg.live_parts(spec).values()}
         if spec.contract is None:
@@ -171,7 +171,8 @@ def test_an_agent_built_after_the_baseline_is_born_a_challenger_with_a_reason_an
         for later in REGISTRY.history(agent)[1:]:  # a later version is born the same way: a challenger, never promoted by the code
             assert not later.baseline and later.born_as == "CHALLENGER" and len(later.reason) >= rg.MIN_REASON
     assert {a: [r.version for r in REGISTRY.history(a)] for a in built if len(REGISTRY.history(a)) > 1} == {
-        "match": ["match-v1", "match-v2"], "stats": ["stats-v1", "stats-v2"]}, "IA-009: the prompts of aa-v1 with their output checklist"
+        "match": ["match-v1", "match-v2", "match-v3"], "stats": ["stats-v1", "stats-v2"]}, (
+        "IA-009: the prompts of aa-v1 with their output checklist; IA-014: the Match Agent's v3 with the references of the package")
     assert {s.agent: s.replaces for s in AGENTS if s.replaces} == {
         "claim_extractor": "extractor", "pmr": "post_match_reviewer", "la": "learning_analyst"}
     assert (REGISTRY.in_force("pmr").version, REGISTRY.in_force("la").version) == ("pmr-v1", "la-v1")
