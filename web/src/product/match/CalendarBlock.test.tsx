@@ -170,7 +170,8 @@ describe("what a user sees once the owner lets users see the calendar", () => {
       (m) => m[1],
     );
     expect(recent).toEqual(["false", "true", "false", "true"]);
-    expect(out).toContain("Copa del Rey · Round of 16");
+    expect(out).toContain("Copa del Rey · Octavos de final");
+    expect(out).not.toContain("Round of 16");
     expect(out).toContain("2,3 días antes");
     expect(out).toContain("8 días antes");
     expect(out).toContain("vs Other FC (local)");
@@ -191,6 +192,15 @@ describe("what a user sees once the owner lets users see the calendar", () => {
     );
     expect(upcoming.length).toBe(2);
     for (const html of upcoming) expect(html).not.toContain('data-testid="calendar-result"');
+  });
+
+  test("across the width of «Profundizar»: a team in each column from a tablet up, each as tall as what it holds", () => {
+    const grid = /<div class="([^"]*)" data-testid="calendar-sides">/.exec(out)?.[1] ?? "";
+    expect(grid.split(" ")).toEqual(
+      expect.arrayContaining(["grid", "items-start", "md:grid-cols-2"]),
+    );
+    // no longer stacked back into one column on a desktop, where it had a third of the row
+    expect(grid).not.toContain("lg:grid-cols-1");
   });
 
   test("no price, no probability, no pick anywhere", () => {
@@ -314,6 +324,7 @@ describe("in English", () => {
     expect(out).toContain("2.3 days before");
     expect(out).toContain("4 days after");
     expect(out).toContain("vs Rival FC (away)");
+    expect(out).toContain("Copa del Rey · Round of 16");
     expect(out).toContain("This is context, not a recommendation");
     expect(out).not.toContain("Calendario");
   });
@@ -377,6 +388,49 @@ describe("the words", () => {
     expect(matchTitle({ competition: "Copa del Rey", round: null })).toBe("Copa del Rey");
     expect(opponentText({ opponent: null, home: true })).toBe("");
     expect(opponentText({ opponent: "Other FC", home: false })).toBe("vs Other FC (visitante)");
+  });
+});
+
+describe("the round, as the header names it (plan Partidos y Match Center, C2)", () => {
+  const rounds = [
+    { competition: "La Liga", round: "Regular Season - 11" },
+    { competition: "Copa del Rey", round: "Round of 128" },
+    { competition: "UEFA Champions League", round: "League Stage - 4" },
+  ];
+
+  test("in Spanish, never the provider's English", () => {
+    expect(rounds.map(matchTitle)).toEqual([
+      "La Liga · Jornada 11",
+      "Copa del Rey · 1/64 de final",
+      "UEFA Champions League · Fase liga · Jornada 4",
+    ]);
+    for (const title of rounds.map(matchTitle)) {
+      expect(title).not.toMatch(/Regular Season|Round of|League Stage/);
+    }
+  });
+
+  test("in English, in the reader's English", () => {
+    setLocale("en");
+    expect(rounds.map(matchTitle)).toEqual([
+      "La Liga · Matchday 11",
+      "Copa del Rey · Round of 128",
+      "UEFA Champions League · League stage · Matchday 4",
+    ]);
+  });
+
+  test("a round PrediGol does not know is kept as the provider wrote it, never dropped", () => {
+    expect(matchTitle({ competition: "Copa", round: "Something New" })).toBe(
+      "Copa · Something New",
+    );
+  });
+
+  test("in the block itself", () => {
+    const played = side({
+      recent: [entry({ competition: "La Liga", round: "Regular Season - 11" })],
+    });
+    const out = render({ status: "success", envelope: envelope(calendar(played, side())) }, false);
+    expect(out).toContain("La Liga · Jornada 11");
+    expect(out).not.toContain("Regular Season");
   });
 });
 

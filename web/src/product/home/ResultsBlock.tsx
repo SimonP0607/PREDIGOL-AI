@@ -136,7 +136,7 @@ export function ResultsBlock({ query, now }: { query: HomeQuery; now: number }) 
     );
   }
   return (
-    <section data-testid="home-results">
+    <section data-testid="home-results" data-guide="home-results">
       <SectionHeader
         title={t("home.results.title")}
         subtitle={t("home.results.subtitle")}

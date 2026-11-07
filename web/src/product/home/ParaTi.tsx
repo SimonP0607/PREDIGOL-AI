@@ -56,7 +56,10 @@ export function Layer({
       data-testid={`layer-${id}`}
       className="space-y-9 sm:space-y-10"
     >
-      <div className="flex items-end justify-between gap-3 border-b border-border pb-2">
+      <div
+        className="flex items-end justify-between gap-3 border-b border-border pb-2"
+        data-guide={`layer-${id}`}
+      >
         <div className="min-w-0">
           <p
             id={`layer-${id}`}

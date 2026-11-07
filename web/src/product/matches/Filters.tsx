@@ -1,6 +1,7 @@
 /**
  * The controls of the Matches page: the reader's day (Hoy, Mañana, arrows, a date
- * picker), the state chips, a competition picker and a small text search.
+ * picker), the state chips, a competition picker, a small text search and the filters on, as
+ * chips with «×».
  */
 import {
   CalendarDays,
@@ -142,6 +143,7 @@ export function DayNav({
       aria-label={t("matches.day.label")}
       className="flex min-w-0 items-center gap-1.5"
       data-testid="day-nav"
+      data-guide="matches-days"
     >
       <ArrowButton
         direction="prev"
@@ -228,6 +230,7 @@ export function StatusChips({
         className,
       )}
       data-testid="status-chips"
+      data-guide="matches-status"
     >
       {filters.map((f) => (
         <button
@@ -426,6 +429,62 @@ export function FacetPicker<T extends string>({
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+export interface AppliedFilter {
+  /** country | category | competition | query: the test id is `applied-${key}`. */
+  key: string;
+  label: string;
+  onRemove: () => void;
+}
+
+/**
+ * The filters on, as chips with «×» - one tap takes one away -, and «Limpiar», which takes them all and the state
+ * back to «Todos» (plan Partidos, P3). Nothing is drawn while the list is the whole day.
+ */
+export function AppliedFilters({
+  filters,
+  onClear,
+  showClear,
+}: {
+  filters: readonly AppliedFilter[];
+  onClear: () => void;
+  /** «Limpiar» also when only the state is chosen (the state is not a chip: its own control shows it). */
+  showClear: boolean;
+}) {
+  if (filters.length === 0 && !showClear) return null;
+  return (
+    <div
+      role="group"
+      aria-label={t("matches.filters.applied")}
+      className="flex flex-wrap items-center gap-2"
+      data-testid="matches-applied"
+    >
+      {filters.map((f) => (
+        <button
+          key={f.key}
+          type="button"
+          onClick={f.onRemove}
+          aria-label={t("matches.filters.remove", { name: f.label })}
+          data-testid={`applied-${f.key}`}
+          className={cn(chipClass(true), "min-w-0 max-w-full pr-2")}
+        >
+          <span className="min-w-0 truncate">{f.label}</span>
+          <X aria-hidden className="h-3.5 w-3.5 shrink-0" />
+        </button>
+      ))}
+      {showClear ? (
+        <button
+          type="button"
+          onClick={onClear}
+          data-testid="matches-clear"
+          className="tap-y relative inline-flex h-9 shrink-0 items-center rounded-md px-2 text-[0.8125rem] font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          {t("matches.filters.clear")}
+        </button>
+      ) : null}
     </div>
   );
 }

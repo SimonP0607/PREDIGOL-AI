@@ -38,7 +38,7 @@ export function Block({
       data-open={open ? "true" : "false"}
     >
       <Card as="div" className="overflow-hidden p-0">
-        <h2 className="m-0">
+        <h2 className="m-0" data-guide={`profile-${id}`}>
           <button
             type="button"
             id={head}

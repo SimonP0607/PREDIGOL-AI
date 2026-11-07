@@ -363,9 +363,29 @@ def test_an_ended_membership_reads_only_its_own_records_once_the_switch_is_on(fr
     backdated(fresh, robot, "trial", ended_days_ago=10)
     assert signed_in(ROBOT).get("/api/v1/home").status_code == 200
     assert signed_in(OWNER).get("/api/v1/home").status_code == 200
-    # without any period: full access, flagged in the console
+    # without any period (a registered reader has no trial): limited like an ended one, with its own code
     account(f"old@{DOMAIN}")
-    assert signed_in(f"old@{DOMAIN}").get("/api/v1/home").status_code == 200
+    waiting = signed_in(f"old@{DOMAIN}")
+    refused = waiting.get("/api/v1/home")
+    assert refused.status_code == 403 and error(refused) == "membership_required"
+    assert waiting.get("/api/v1/auth/me").json()["membership"]["state"] == "none"
+    assert waiting.get("/api/v1/auth/me").json()["membership"]["limited"] is True
+    assert waiting.post("/api/v1/me/picks", json={"fixture_id": 1, "market_key": "1X2", "selection": "Home"}
+                        ).status_code == 403
+    for path in ("/api/v1/me/picks", "/api/v1/me/history", "/api/v1/me/membership", "/api/v1/me/consents",
+                 "/api/v1/me/preferences"):
+        assert waiting.get(path).status_code == 200, path
+    # the owner gives it its period: the door opens at once
+    assert pay(signed_in(OWNER), uid_of(f"old@{DOMAIN}", fresh)).status_code == 200
+    assert waiting.get("/api/v1/home").status_code == 200
+
+
+def test_a_reader_without_a_period_is_not_limited_while_the_switch_is_off(fresh: str) -> None:
+    account(f"free@{DOMAIN}")
+    c = signed_in(f"free@{DOMAIN}")
+    me = c.get("/api/v1/auth/me").json()["membership"]
+    assert (me["state"], me["limited"]) == ("none", False)
+    assert c.get("/api/v1/home").status_code == 200
 
 
 def test_a_suspended_membership_says_so(fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:

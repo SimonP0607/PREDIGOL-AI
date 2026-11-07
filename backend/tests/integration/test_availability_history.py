@@ -319,6 +319,38 @@ def test_the_collector_turns_only_the_current_list_into_evidence(db: psycopg.Con
     stories = [r[0] for r in db.execute("SELECT story_key FROM ai.evidence WHERE fixture_id = %s ORDER BY 1",
                                         (w.fixture,)).fetchall()]
     assert stories == [f"absence:{w.fixture}:9002"], "9001 recovered: no evidence that he is out"
+    status = db.execute("SELECT status, status_reason, retrieved_at FROM ai.evidence WHERE fixture_id = %s", (w.fixture,)).fetchone()
+    assert status is not None and status[2] == T1, "the item is dated by the first time he was listed: the unchanged answer wrote nothing"
+    assert (status[0], status[1]) == ("PROBABLE", "the data provider's report"), (
+        "IA-015: 9002 is still on the list re-read at T2, so his absence stands although it was first listed 4 h before")
+
+
+def test_an_item_of_the_report_stands_while_listed_and_goes_when_cleared(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """IA-015, through the collector: the list is re-read every 4 h and an unchanged answer writes nothing, so the items of the provider keep
+    the date they were first listed. What the latest answer lists decides whether they stand, not how old they are."""
+    w = _world(db)
+    _answer(db, seed, w, T1, [_ref(w, 9001), _ref(w, 9002, DOUBT)])
+    collect_provider(db, w.fixture, at=T1 + H)
+    _answer(db, seed, w, T2, [_ref(w, 9001), _ref(w, 9002, DOUBT)], key="unchanged")  # nothing changed: nothing written
+    _answer(db, seed, w, T3, [_ref(w, 9001), _ref(w, 9002, DOUBT)], key="unchanged-again")
+
+    def statuses() -> dict[int, tuple[str, str]]:
+        return {int(r[0]): (str(r[1]), str(r[2])) for r in db.execute(
+            "SELECT provider_player_id, status, status_reason FROM ai.evidence WHERE fixture_id = %s AND origin = 'provider'",
+            (w.fixture,)).fetchall()}
+
+    collect_provider(db, w.fixture, at=T3 + timedelta(minutes=10))  # listed 8 h ago, the list re-read 10 min ago
+    assert {p: s for p, (s, _) in statuses().items()} == {9001: "PROBABLE", 9002: "PROBABLE"}, "both still on the list"
+
+    _answer(db, seed, w, T4, [_ref(w, 9002, DOUBT)])  # 9001 has recovered
+    collect_provider(db, w.fixture, at=T4 + H)
+    now = statuses()
+    assert now[9001] == ("OUTDATED", "no longer in the provider's latest injury report")
+    assert now[9002][0] == "PROBABLE"
+    packet = PacketBuilder(db).build(w.fixture, at=T4 + H)
+    assert packet is not None
+    shown = sorted(int(e["player_id"]) for e in packet.content["evidence"] if e["origin"] == "provider")
+    assert shown == [9002], "the packet carries the absence that stands, not the cleared one"
 
 
 def test_the_dossier_flags_a_key_player_only_while_the_latest_answer_lists_him(db: psycopg.Connection[Any],

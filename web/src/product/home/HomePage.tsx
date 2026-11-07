@@ -51,6 +51,7 @@ import { layersOf } from "./layers";
 import { mineByRank } from "./related";
 import { EditFavorites } from "./EditFavorites";
 import { ChoosePrompt, ForYouPart, Layer } from "./ParaTi";
+import { useGuideScreen } from "@/product/guides/context";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
 type HomeQuery = UseQueryResult<Envelope<Home>>;
@@ -211,6 +212,10 @@ export function HomePage() {
   // The general layer's news are the suggested matches' whatever the reader follows: with favourites they are a second
   // request (the first, «mine», feeds «Para ti»); without, the one request is already the general one.
   const general = useQuery({ ...live.todayNewsGeneral, ...ON_RETURN, enabled: layers.mine });
+  // The screen's guide (plan UX-051) may launch once Inicio has what it draws.
+  useGuideScreen("home", {
+    ready: !home.isPending && !today.isPending && (!reader || !me.isPending),
+  });
   return (
     <div className="space-y-9 sm:space-y-10" data-testid="home-page">
       <HomeHeader freshness={home.data?.data?.data_freshness ?? null} loading={home.isPending} />

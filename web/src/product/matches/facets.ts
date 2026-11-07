@@ -1,7 +1,7 @@
 /**
  * How the Matches and En vivo pages narrow a day (REVIEW PREDIGOL, points 3 and 11): by country, by category
  * (league, cup, continental, national teams - and women's or youth football, told by the competition's name),
- * by gender, and by a team's name. Pure: no React here.
+ * by gender, by a team's name (En vivo) or by a team or a competition (Partidos). Pure: no React here.
  */
 import type { CompetitionRef, MatchSummary } from "@/lib/api/v1/types";
 import { countryLabel } from "./country";
@@ -98,10 +98,45 @@ export function matchesTeam(
   return q.split(/\s+/).every((w) => hay.includes(w));
 }
 
+/**
+ * The one search box of Partidos (plan Partidos, P6): a team, or a competition by its name or its country - in the
+ * reader's language or as stored. Every word must be found somewhere in them: "real ma" finds Real Madrid, "laliga"
+ * LaLiga, "españa" every Spanish competition, "liga barcelona" Barcelona's league matches.
+ */
+export function matchesTeamOrCompetition(
+  m: Pick<MatchSummary, "competition" | "home" | "away">,
+  query: string,
+): boolean {
+  const q = fold(query.trim());
+  if (!q) return true;
+  const c = m.competition;
+  const hay = fold(
+    [
+      m.home.name,
+      m.away.name,
+      c.name,
+      c.country ?? "",
+      countryLabel(c.country, c.country_code) ?? "",
+    ].join(" "),
+  );
+  return q.split(/\s+/).every((w) => hay.includes(w));
+}
+
+/**
+ * A facet saved or linked on another day may not play on this one (plan Partidos, P2): it is then ignored - the list
+ * shows them all and the picker says «Todos» - instead of an empty list under a picker that looks unset.
+ */
+export function playing<T>(value: T | null, options: readonly { key: T }[]): T | null {
+  return value !== null && options.some((o) => o.key === value) ? value : null;
+}
+
 export interface Facets {
   country: string | null;
   category: Category | null;
-  team: string;
+  /** A competition's id. */
+  competition: number | null;
+  /** A team or a competition (matchesTeamOrCompetition). */
+  query: string;
 }
 
 export function inFacets(
@@ -111,6 +146,7 @@ export function inFacets(
   return (
     (f.country === null || countryKey(m.competition) === f.country) &&
     (f.category === null || categoriesOf(m.competition).includes(f.category)) &&
-    matchesTeam(m, f.team)
+    (f.competition === null || m.competition.id === f.competition) &&
+    matchesTeamOrCompetition(m, f.query)
   );
 }

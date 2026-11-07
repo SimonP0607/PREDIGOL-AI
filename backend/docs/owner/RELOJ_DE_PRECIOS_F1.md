@@ -71,6 +71,15 @@ python -m scripts.extract_odds_quotes run --since 2026-09-25 --limit 20000 --bat
 Como RAW guarda los cuerpos idénticos una sola vez, una secuencia A → B → A de precios entre dos consultas solo deja constancia de
 A y B; la vuelta a A se recupera con `market.odds_asks` (cada consulta apunta a su cuerpo por `payload_hash`).
 
+Desde BE-004 (F4a del plan de Partidos y Match Center) esa lectura existe: `fbi.odds.quote_current` toma la última consulta
+anterior al inicio, su cuerpo por `payload_hash` y solo las cuotas de ese cuerpo (`extraction_id`), y es lo que sirve
+`GET /api/v1/matches/{id}/markets/catalog`. Tras A → B → A la cuota vigente es A y su antigüedad cuenta desde la consulta que la
+devolvió. Dos límites: `odds_asks` guarda solo el hash de la **primera página** de cada respuesta (con `fixture=` la respuesta es
+una sola página: el proveedor pagina por partidos, diez por página), y una página posterior solo cuenta si se descargó por
+primera vez en esa misma consulta; si no, se deja fuera y la respuesta dice `partial` (falta una página, nunca una cuota vieja).
+Si algún día se compacta la tabla (borrar cuotas consecutivas idénticas), esta lectura debe cambiar a la vez: hoy da por hecho
+que cada cuerpo conserva todas sus cuotas.
+
 ## Cómo deshacerlo
 
 * Parar solo la lectura: `FBI_QUOTES_EXTRACT=0` y reiniciar el worker.

@@ -5,7 +5,7 @@
  * the match, with what matters first. SUPER_ADMIN also gets "Avanzado / Auditoría", the research view.
  */
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useParams, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, SearchX, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -29,12 +29,34 @@ import { StatsTab } from "./StatsTab";
 import { SummaryTab } from "./SummaryTab";
 import { tabsFor, useMatchTab } from "./useMatchTab";
 import { originOf, track } from "@/lib/track";
-import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
+import { openedFromList } from "@/product/matches/backToList";
+import { useGuideScreen } from "@/product/guides/context";
 
+/**
+ * «‹ Partidos»: back through the history when the match was opened from the list (plan Partidos, P4), so the list
+ * comes back with its filters and its scroll; a link to the list otherwise.
+ */
 function BackLink() {
+  const router = useRouter();
+  const { fixtureId } = useParams({ strict: false });
   return (
     <Link
       to="/matches"
+      onClick={(e) => {
+        const id = Number(fixtureId);
+        if (
+          e.defaultPrevented ||
+          e.button !== 0 ||
+          e.metaKey ||
+          e.ctrlKey ||
+          e.shiftKey ||
+          e.altKey
+        )
+          return;
+        if (!Number.isSafeInteger(id) || !openedFromList(id)) return;
+        e.preventDefault();
+        router.history.back();
+      }}
       className="tap-y relative inline-flex min-h-9 items-center gap-1 rounded-md pr-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <ChevronLeft aria-hidden className="h-4 w-4" />
@@ -140,6 +162,7 @@ function TabBar({
       <div
         ref={listRef}
         role="tablist"
+        data-guide="match-tabs"
         aria-label={t("match.tabs.label")}
         onKeyDown={onKeyDown}
         // scroll-strip + useScrollCue: on a phone the edge fades where more tabs wait ("Alineaciones" at 390 px).
@@ -192,6 +215,7 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
     enabled: valid,
     refetchInterval: (q) => (q.state.data?.data.match.status_group === "finished" ? false : 60_000),
   });
+  useGuideScreen("match", { ready: valid && !view.isPending });
   const center = useQuery({
     ...live.center(fixtureId),
     enabled: valid,
@@ -290,7 +314,6 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
     <div className="space-y-4" data-testid="match-center" data-phase={phase}>
       <BackLink />
       <MatchHeader ctx={ctx} />
-      <FirstVisitHint hint="match" />
       <div id="match-tabs-anchor" aria-hidden className="mb-0" />
       <TabBar tabs={tabs} active={tab} onSelect={openSection} live={phase === "live"} />
       <div
