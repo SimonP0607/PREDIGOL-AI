@@ -409,6 +409,17 @@ LEDGER: Final[tuple[Registration, ...]] = (
                  fingerprint="agc09b002b34",
                  parts={"context": Part("match-context-v2", "528be450eb83", "aa-v1", "ab5f098304ef"),
                         "evaluation": Part("match-assess-v2", "efab832be700", "aa-v1", "ab5f098304ef")}),
+    Registration(agent="match", version="match-v3", registered_at=datetime(2026, 11, 7, 16, 0, tzinfo=UTC), decided_by="owner", phase="IA-014",
+                 reason="IA-014: 20 of the 250 answered shadow runs of match-v2 (8.0 %, measured from 6 Nov 16:55 to 7 Nov 15:00 UTC) were refused "
+                        "by aa-v1 - a key at the top level, a reference the package does not have, a signal code out of the list, a pair written "
+                        "twice, nine refs - and gate B allows 3 %. The same rules and tasks; the message now lists the references of the package "
+                        "(written by the server) and the checklist (match-context-v3, match-assess-v3) says to copy them, one signal per code and "
+                        "direction, and never a key of the second object. The contract, the reader, the model and the effort do not change. It is "
+                        "born CHALLENGER and runs in shadow in place of match-v2; it reaches a decision only by a row the owner signs in "
+                        "intel.promotions.",
+                 fingerprint="ag7b031b5901",
+                 parts={"context": Part("match-context-v3", "b63b15a78ecf", "aa-v1", "ab5f098304ef"),
+                        "evaluation": Part("match-assess-v3", "6eb32492e520", "aa-v1", "ab5f098304ef")}),
     Registration(agent="council", version="council-v1", registered_at=datetime(2026, 11, 3, 11, 0, tzinfo=UTC), decided_by="owner", phase="IA-3",
                  reason="Built under the Plan Maestro IA the owner approved in full (phase 3, section 11): the Council gives the one verdict per selection "
                         "in cd-v1, Sonnet for every match and Opus only where a rule of router-v1 escalates; it is born CHALLENGER, runs in shadow in the "
