@@ -164,6 +164,48 @@ describe("1 · Hoy en las ligas sugeridas", () => {
   });
 });
 
+describe("a failed refresh keeps what was already on the page (plan Inicio, 1.4)", () => {
+  /** The last answer is still there, and the refresh after it failed. */
+  function stale(today: Today): TodayQuery {
+    return {
+      ...loaded(today),
+      isError: true,
+      error: new LiveApiError("down", 503, "unavailable", "req-456"),
+    } as unknown as TodayQuery;
+  }
+
+  test("the matches stay, with a small notice and a retry - no error card", async () => {
+    const today = board([m({ at: NOW + 2 * H })]);
+    const markup = await html(<TodayBlock query={stale(today)} now={NOW} />);
+    const page = text(markup);
+    expect(markup).toContain('data-testid="stale-note"');
+    expect(page).toContain("No se pudo actualizar");
+    expect(page).toContain("Reintentar");
+    expect(page).not.toContain("req-456");
+    expect(markup).not.toContain('role="alert"');
+    expect(markup).toContain('data-testid="home-today"');
+  });
+
+  test("the results stay too", async () => {
+    const done = m({
+      at: NOW - 5 * H,
+      status_group: "finished",
+      status: "FT",
+      goals_home: 2,
+      goals_away: 1,
+    });
+    const markup = await html(<ResultsBlock query={stale(board([done]))} now={NOW} />);
+    expect(markup).toContain('data-testid="stale-note"');
+    expect(markup).not.toContain('role="alert"');
+    expect(markup).not.toContain("results-empty");
+  });
+
+  test("an answer that is fine carries no notice", async () => {
+    const markup = await html(<TodayBlock query={loaded(board([m({ at: NOW + H })]))} now={NOW} />);
+    expect(markup).not.toContain('data-testid="stale-note"');
+  });
+});
+
 describe("3 · Partidos relevantes and 5 · Qué se juega", () => {
   test("out of the page with nothing to show", async () => {
     const quiet = loaded(board([m({ at: NOW + H })]));

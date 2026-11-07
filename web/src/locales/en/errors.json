@@ -2,6 +2,7 @@
   "generic": "Something went wrong. Please try again.",
   "unreachable": "Cannot reach the PrediGol server.",
   "loadFailed": "This could not be loaded.",
+  "refreshFailed": "Could not refresh. You are seeing the latest we have.",
   "notFound": "We could not find that.",
   "pageNotFound": "Page not found",
   "pageNotFoundBody": "The page you are looking for does not exist or has moved.",
