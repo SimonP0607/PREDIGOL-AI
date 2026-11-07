@@ -3,7 +3,8 @@
 Each check is one query whose rows are the contradictions, with the total count
 carried on every row (``count(*) OVER ()``) so a check that finds ten thousand of
 something reports ten thousand and keeps a few hundred examples. They run in a
-read-only transaction; nothing here writes.
+read-only transaction; nothing here writes. The one file read is the raw store's (``fbi.truth.venues``: a ground's
+city against the provider's newest stored record of it), when the caller passes it.
 """
 
 from __future__ import annotations
@@ -16,7 +17,9 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from fbi.storage.payload_store import PayloadStore
 from fbi.truth.findings import FINDINGS_KEPT_PER_KIND, Finding, Kind, Severity, Tally
+from fbi.truth.venues import venue_places
 
 GROUP_OF_SQL = """CASE upper({col})
     WHEN 'TBD' THEN 'scheduled' WHEN 'NS' THEN 'scheduled'
@@ -483,8 +486,10 @@ def player_profiles(conn: psycopg.Connection, at: datetime, tally: Tally) -> Non
                                  note="the provider's profile does not have it: asked, nothing to store"))
 
 
-def run_internal(conn: psycopg.Connection, *, at: datetime) -> dict[str, Tally]:
-    """Every internal check, grouped by the dataset it is about."""
+def run_internal(conn: psycopg.Connection, *, at: datetime, store: PayloadStore | None = None) -> dict[str, Tally]:
+    """Every internal check, grouped by the dataset it is about. ``store``: the raw store, read (never written) by the
+    venue control to compare a ground's city with the provider's newest stored record of it; without it that one
+    comparison is skipped and said so."""
     tallies: dict[str, Tally] = {}
 
     def tally(name: str) -> Tally:
@@ -496,4 +501,5 @@ def run_internal(conn: psycopg.Connection, *, at: datetime) -> dict[str, Tally]:
     standings_played(conn, tally("standings"))
     elo_coverage(conn, tally("elo"))
     player_profiles(conn, at, tally("players"))
+    venue_places(conn, tally("venues"), store)
     return tallies
