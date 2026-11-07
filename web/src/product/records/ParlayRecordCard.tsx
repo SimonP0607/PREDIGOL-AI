@@ -12,7 +12,8 @@ import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtInt, fmtOdds, fmtPct, toNumber } from "@/lib/i18n/format";
+import { fmtOdds, fmtPct, toNumber } from "@/lib/i18n/format";
+import { countLegs } from "./model";
 import { formatKickoff, formatRelative } from "@/lib/time";
 import type { ParlayRecord, ParlayRecordLeg, RecordKind } from "@/lib/api/v1/types_records";
 import { TeamLogo } from "@/components/football/Logos";
@@ -75,7 +76,13 @@ const STAT_LABEL = "text-label leading-tight text-subtle-foreground";
 function Summary({ parlay }: { parlay: ParlayRecord }) {
   const p = toNumber(parlay.p_all_low);
   const settled = ["WON", "LOST", "VOID", "PARTIAL_VOID"].includes(parlay.status);
-  const won = parlay.legs.filter((l) => l.status === "WIN" || l.status === "HALF_WIN").length;
+  const legs = countLegs(parlay.legs);
+  const standing = [
+    legs.won > 0 ? t("records.parlay.legsWon", { count: legs.won }) : null,
+    legs.lost > 0 ? t("records.parlay.legsLost", { count: legs.lost }) : null,
+    legs.pending > 0 ? t("records.parlay.legsPending", { count: legs.pending }) : null,
+    legs.void > 0 ? t("records.parlay.legsVoid", { count: legs.void }) : null,
+  ].filter((x): x is string => x !== null);
   return (
     <div
       className="border-t border-gold/20 bg-gold-soft/30 px-4 py-4 sm:px-5"
@@ -105,12 +112,12 @@ function Summary({ parlay }: { parlay: ParlayRecord }) {
             <ParlayOutcomeBadge status={parlay.status} progress={parlay.progress} />
             {settled ? <Units value={parlay.profit_units} className="text-sm" /> : null}
           </dd>
-          {parlay.legs.some((l) => l.status !== "PENDING") ? (
-            <dd className="mt-1 text-caption text-muted-foreground">
-              {t("records.parlay.legsResult", {
-                won: fmtInt(won),
-                total: fmtInt(parlay.legs.length),
-              })}
+          {legs.pending < legs.total ? (
+            <dd
+              className="mt-1 text-caption text-muted-foreground"
+              data-testid="parlay-legs-standing"
+            >
+              {standing.join(" · ")}
             </dd>
           ) : null}
         </div>
