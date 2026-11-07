@@ -12,6 +12,24 @@ import type {
   ResultStatus,
 } from "@/lib/api/v1/types_records";
 
+/**
+ * How firm a pick of the day reads (plan de Inicio, D3): "high" when even the prudent estimate (the low end of the
+ * model's interval) is above the market's probability, "medium" when only the central one is. Numbers the card already
+ * has; without either of them, no level at all.
+ */
+export type PickLevel = "high" | "medium";
+
+export function pickLevel(
+  pLow: string | number | null | undefined,
+  pMarket: string | number | null | undefined,
+): PickLevel | null {
+  if (pLow === null || pLow === undefined || pMarket === null || pMarket === undefined) return null;
+  const low = Number(pLow);
+  const market = Number(pMarket);
+  if (!Number.isFinite(low) || !Number.isFinite(market)) return null;
+  return low > market ? "high" : "medium";
+}
+
 export const MAX_SLIP_LEGS = 10;
 export const MIN_SLIP_LEGS = 2;
 export const HISTORY_GROUPS: readonly HistoryGroupKey[] = [
