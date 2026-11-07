@@ -2,8 +2,10 @@
 verified outside the numbers (``ai.evidence``, read only), as cards - PrediGol's own summary, the source and its standing,
 the time, the relevance for the match, the status the server decided and the link to the original.
 
-Reading only: no search is made for a reader, no model is called, nothing is written and no status is raised or lowered here -
-the status of every item is the one ``fbi.ai.evidence`` decided (that module is neither imported nor touched). Only the
+Reading only: no search is made for a reader, no model is called, nothing is written and no status is raised here - the status of
+every item is the one ``fbi.ai.evidence`` decided (that module is neither imported nor touched). The one exception is Home's summary
+(``digest``, plan de Inicio 3.3): a «confirmed» there needs an official source or two distinct outlets, and shows as «probable»
+when it has neither. Only the
 match's own items reach a reader: ``fixture_id`` is the match, never another one of the same teams, and never generic news to
 fill the space.
 
@@ -71,7 +73,6 @@ from fbi.api.services.follows import Follows, follow_reason
 from fbi.api.services.reading import narrative_mode
 from fbi.api.switches import user_switch
 from fbi.core.clock import now
-from fbi.core.suggestions import SUGGESTED_LEAGUES, SUGGESTED_TEAM
 
 USERS_SWITCH: Final = "FBI_NEWS_USERS"
 """Every signed-in account sees the news: on since plan UX A10, ``FBI_NEWS_USERS=0`` hides them again without a deploy (the
@@ -96,8 +97,15 @@ URL: Final = re.compile(r"^https?://[^\s\"'<>]+$")
 TODAY_BEFORE: Final = timedelta(hours=3)
 TODAY_AFTER: Final = timedelta(hours=36)
 TODAY_PER_MATCH: Final = 3
-TODAY_MAX: Final = 30
-HOME_STATUSES: Final = frozenset({"CONFIRMED", "PROBABLE"})
+HOME_STATUSES: Final = frozenset({"CONFIRMED", "PROBABLE", "RUMOR"})
+"""What Home may carry from a match: a rumour only as the one labelled exception (``digest``)."""
+GENERAL_NEWS_MAX: Final = 3
+"""Inicio's general «Noticias» (plan de Inicio, 3.3): a summary of three at most, the same for everyone."""
+OWN_NEWS_MAX: Final = 2
+"""The news of the reader's own teams and leagues («Para ti»): two at most."""
+RUMORS_MAX: Final = 1
+PER_MATCH_MAX: Final = 2
+"""A match fills no more than two of the summary's places, so one busy match does not become the whole block."""
 """Home's block 4 shows only what is confirmed or probable (plan section 24)."""
 
 # ── does a summary read as Spanish? ──────────────────────────────────────────────────────────────────────────────────
@@ -326,6 +334,72 @@ def cards(rows: Iterable[Row], teams: Mapping[int, NewsTeam]) -> list[NewsItem]:
     return sorted(out, key=_order)
 
 
+# ── Home's summary (plan de Inicio, 3.3) ─────────────────────────────────────────────────────────────────────────────
+
+COMPOUND: Final = frozenset({"com", "co", "org", "net", "gov", "edu", "ac"})
+"""Second-level labels that make a country's suffix two labels long (``marca.com.co``, ``bbc.co.uk``)."""
+OUTLETS: Final = frozenset({"official", "competition", "club", "journalist", "media"})
+"""The standings that count as an outlet: an aggregator, a social post or an unknown site never corroborates."""
+
+
+def outlet_key(source: NewsSource) -> str:
+    """The outlet behind a source, so two pages of one site - or its subdomains - are one outlet (pure): the address's
+    registered name (``es.marca.com`` and ``www.marca.com`` are ``marca.com``), else the name the search gave."""
+    host = source.name.lower()
+    if source.url and URL.match(source.url):
+        host = re.sub(r"^https?://", "", source.url).split("/", 1)[0].split(":", 1)[0].lower()
+    host = host.removeprefix("www.")
+    labels = [x for x in host.split(".") if x]
+    if len(labels) < 2:
+        return host
+    keep = 3 if len(labels) >= 3 and labels[-2] in COMPOUND and len(labels[-1]) == 2 else 2
+    return ".".join(labels[-keep:])
+
+
+def corroborated(item: NewsItem) -> bool:
+    """Whether Home may say «confirmed» (pure): an official source, or two distinct outlets - never one outlet twice, an
+    aggregator or a social post. Each claim of the item is read on its own (a contradiction is never confirmed here)."""
+    if item.status != "CONFIRMED" or len(item.claims) != 1:
+        return False
+    sources = [s for s in item.claims[0].sources if s.tier in OUTLETS]
+    return any(s.tier == "official" for s in sources) or len({outlet_key(s) for s in sources}) >= 2
+
+
+def for_home(item: NewsItem) -> NewsItem:
+    """The item as Home shows it: a «confirmed» nobody corroborated reads as «probable»."""
+    if item.status == "CONFIRMED" and not corroborated(item):
+        return item.model_copy(update={"status": "PROBABLE"})
+    return item
+
+
+def digest(items: Sequence[TodayNewsItem], limit: int) -> list[TodayNewsItem]:
+    """Home's summary of the news of several matches (pure), at most ``limit``: confirmed - by the rule above - first, then
+    probable, each the most relevant and the newest first; at most two from one match; and, only if there is room left, one
+    rumour (never one of low relevance) - the web labels it «Rumor»."""
+    shaped = [TodayNewsItem(match=i.match, item=for_home(i.item)) for i in items if i.item.status in HOME_STATUSES]
+
+    def rank(i: TodayNewsItem) -> tuple[int, int, float, int, str]:
+        moment = i.item.published_at or i.item.seen_at
+        return (STATUS_ORDER.index(i.item.status), RELEVANCE_ORDER.index(i.item.relevance), -moment.timestamp(),
+                i.match.fixture_id, i.item.id)
+
+    ordered = sorted(shaped, key=rank)
+    firm = [i for i in ordered if i.item.status != "RUMOR"]
+    rumors = [i for i in ordered if i.item.status == "RUMOR" and i.item.relevance != "low"]
+    chosen: list[TodayNewsItem] = []
+    per_match: dict[int, int] = defaultdict(int)
+    for i in firm:
+        if len(chosen) == limit:
+            break
+        if per_match[i.match.fixture_id] < PER_MATCH_MAX:
+            per_match[i.match.fixture_id] += 1
+            chosen.append(i)
+    for i in rumors[:RUMORS_MAX]:
+        if len(chosen) < limit and per_match[i.match.fixture_id] < PER_MATCH_MAX:
+            chosen.append(i)
+    return chosen
+
+
 def counts(items: Sequence[NewsItem]) -> dict[NewsStatus, int]:
     found: dict[NewsStatus, int] = dict.fromkeys(STATUS_ORDER, 0)
     for item in items:
@@ -367,23 +441,6 @@ WHERE x.n <= %(limit)s
 """Only the web's items of the matches asked for (the data provider's reports and the owner's notes stay out), as of a moment -
 and the claims of research v2 (``subject_type``) only while it is ``on`` (``fbi.ai.gates.typed_visible``, the IA plan's phase 2): in
 ``off`` and ``shadow`` they are written for the comparison and no reader sees them."""
-
-TODAY_MATCHES_SQL = """
-SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, th.name AS home_name, f.away_team_id, ta.name AS away_name,
-       c.name AS competition
-  FROM core.fixtures f
-  JOIN core.teams th ON th.id = f.home_team_id
-  JOIN core.teams ta ON ta.id = f.away_team_id
-  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-  JOIN core.competitions c ON c.id = cs.competition_id
- WHERE c.is_tracked AND f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s
-   AND f.status_group IN ('scheduled', 'live')
-   AND (c.provider_league_id = ANY(%(leagues)s)
-        OR (th.is_national AND th.name = %(team)s) OR (ta.is_national AND ta.name = %(team)s))
- ORDER BY f.kickoff_at, f.id
-"""
-"""The suggested matches not yet over (Home's block 4, until the reader's favourites arrive with A13)."""
-
 
 FOLLOWED_MATCHES_SQL = """
 SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, th.name AS home_name, f.away_team_id, ta.name AS away_name,
@@ -490,10 +547,10 @@ def match_news(conn: Conn, fixture_id: int, *, at: datetime | None = None) -> En
 
 @shared(120)
 def news_for(conn: Conn, follows: Follows, *, at: datetime | None = None) -> Envelope[TodayNews | None]:
-    """Home's «Noticias» for a reader (plan UX, B2; section 27: «desde B2, las de sus equipos favoritos»): the newest
-    confirmed or probable news of the matches of the leagues and teams they follow - the suggested ones while they chose
-    none or FBI_PERSONALIZATION=0 - not yet over, each match saying why it is theirs. Kept two minutes per set of
-    favourites: every reader who follows the same shares it. The items are the same for every reader who sees them."""
+    """Home's «Noticias» as a summary (plan UX, B2; plan de Inicio, 3.3): the best few confirmed or probable news - and, with
+    room left, one rumour - of the matches of the leagues and teams ``follows`` names, not yet over, each match saying why it
+    is theirs: three for the general layer (``follows.suggested``, the same for everyone), two for the reader's own («Para ti»).
+    Kept two minutes per set of favourites; the items are the same for every reader who sees them."""
     if not users_may_see():
         return unavailable(None, "The news are not shown to users at the moment.")
     moment = at or now()
@@ -511,38 +568,9 @@ def news_for(conn: Conn, follows: Follows, *, at: datetime | None = None) -> Env
                                home=f["home_name"], away=f["away_name"], competition=f["competition"], followed=reason)
         shown = [c for c in cards(rows[fid], _teams(f)) if c.status in HOME_STATUSES][:TODAY_PER_MATCH]
         items.extend(TodayNewsItem(match=match, item=c) for c in shown)
-        if len(items) >= TODAY_MAX:
-            break
-    body = TodayNews(items=items[:TODAY_MAX], suggested=follows.suggested)
+    body = TodayNews(items=digest(items, GENERAL_NEWS_MAX if follows.suggested else OWN_NEWS_MAX),
+                     suggested=follows.suggested)
     if not body.items:
         return unavailable(body, "No confirmed or probable news of the reader's matches.", status=DataStatus.EMPTY,
-                           count=0)
-    return ok(body, count=len(body.items), data_as_of=max(i.item.seen_at for i in body.items))
-
-
-@shared(120)
-def today_news(conn: Conn, *, at: datetime | None = None) -> Envelope[TodayNews | None]:
-    """Home's «Noticias»: the newest confirmed or probable news of the suggested matches not yet over. One board for every
-    reader, kept two minutes."""
-    if not users_may_see():
-        return unavailable(None, "The news are not shown to users at the moment.")
-    moment = at or now()
-    fixtures = fetch_all(conn, TODAY_MATCHES_SQL, {"since": moment - TODAY_BEFORE, "until": moment + TODAY_AFTER,
-                                                   "leagues": list(SUGGESTED_LEAGUES), "team": SUGGESTED_TEAM})
-    rows = _read(conn, [int(f["id"]) for f in fixtures], moment)
-    items: list[TodayNewsItem] = []
-    for f in fixtures:
-        fid = int(f["id"])
-        if fid not in rows:
-            continue
-        match = TodayNewsMatch(fixture_id=fid, kickoff_at=f["kickoff_at"], status_group=str(f["status_group"]),
-                               home=f["home_name"], away=f["away_name"], competition=f["competition"])
-        shown = [c for c in cards(rows[fid], _teams(f)) if c.status in HOME_STATUSES][:TODAY_PER_MATCH]
-        items.extend(TodayNewsItem(match=match, item=c) for c in shown)
-        if len(items) >= TODAY_MAX:
-            break
-    body = TodayNews(items=items[:TODAY_MAX])
-    if not body.items:
-        return unavailable(body, "No confirmed or probable news of the suggested matches.", status=DataStatus.EMPTY,
                            count=0)
     return ok(body, count=len(body.items), data_as_of=max(i.item.seen_at for i in body.items))

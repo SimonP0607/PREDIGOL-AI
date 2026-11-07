@@ -163,7 +163,7 @@ def test_a_match_without_news_says_so_and_the_owner_can_turn_them_off(
     assert off.get("/api/v1/today/news").json()["status"] == "not_available"
 
 
-def test_home_news_are_the_confirmed_or_probable_of_the_suggested_matches_not_yet_over(
+def test_home_news_are_a_summary_of_the_suggested_matches_not_yet_over(
         db: psycopg.Connection[Any], seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:
     db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
     home = seed.home_team_id
@@ -189,14 +189,39 @@ def test_home_news_are_the_confirmed_or_probable_of_the_suggested_matches_not_ye
     evidence(db, elsewhere, home, status="CONFIRMED", player="Elsewhere",
              claim="Según Sport, Elsewhere es baja por lesión para este partido.")
 
+    official = fixture(db, seed, NOW + timedelta(hours=6))
+    evidence(db, official, home, status="CONFIRMED", player="Official", tier="official", source="premierleague.com",
+             url="https://www.premierleague.com/news/1", claim="Según el club, Official es baja por lesión para este partido.")
+
     body = client(db, monkeypatch).get("/api/v1/today/news").json()
     assert body["status"] == "ok"
     items = body["data"]["items"]
-    assert {i["match"]["fixture_id"] for i in items} == {soon}, "only the suggested matches not over, inside the window"
-    assert [i["item"]["status"] for i in items] == ["CONFIRMED", "PROBABLE", "PROBABLE"], "three at most, no rumour"
-    match = items[0]["match"]
+    assert {i["match"]["fixture_id"] for i in items} == {soon, official}, "only the matches not over, inside the window"
+    assert [(i["match"]["fixture_id"], i["item"]["status"]) for i in items] == [
+        (official, "CONFIRMED"), (soon, "PROBABLE"), (soon, "PROBABLE")], (
+        "three at most, two per match; the confirmed one by an official source first, the one-outlet «confirmed» as probable, "
+        "no room for the rumour")
+    match = items[1]["match"]
     assert (match["home"], match["away"], match["competition"], match["status_group"]) == (
         "Manchester United", "Liverpool", "Premier League", "scheduled")
+
+
+def test_home_news_say_one_rumour_when_there_is_room_and_scope_general_is_the_suggested_ones(
+        db: psycopg.Connection[Any], seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:
+    db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
+    soon = fixture(db, seed, NOW + timedelta(hours=4))
+    evidence(db, soon, seed.home_team_id, status="PROBABLE", player="Uno",
+             claim="Según Sport, Uno es baja por lesión para este partido.")
+    for name in ("Dos", "Tres"):
+        evidence(db, soon, seed.home_team_id, status="RUMOR", player=name, tier="aggregator", source="besoccer.com",
+                 url=f"https://besoccer.com/{name}", claim=f"Según un agregador, {name} sería baja por lesión.")
+    for scope in ("mine", "general"):
+        body = client(db, monkeypatch).get("/api/v1/today/news", params={"scope": scope}).json()
+        assert body["status"] == "ok", scope
+        assert [i["item"]["status"] for i in body["data"]["items"]] == ["PROBABLE", "RUMOR"], (
+            f"{scope}: the probable, then one rumour of the two")
+        assert body["data"]["suggested"] is True, scope
+    assert client(db, monkeypatch).get("/api/v1/today/news", params={"scope": "other"}).status_code == 422
 
 
 INTELLIGENCE = ("picks", "intel", "models", "ai", "market", "core", "raw")

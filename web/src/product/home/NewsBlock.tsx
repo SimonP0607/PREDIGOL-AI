@@ -1,15 +1,16 @@
 /**
- * Inicio's block 4, «Noticias» (plan UX, A10; section 24): the newest confirmed or probable news of the reader's matches of
- * today - their leagues and teams (B2; the suggested ones, labelled, until they pick theirs) -, each card with its seven
- * elements, why its match is theirs («Sigues a Nacional», «Tu liga») and the way to the match's Noticias. Like «Partidos
- * relevantes» and «Qué se juega», the block only shows with content: nothing while it loads, if it cannot be read, when the
- * owner turned the news off or when there is none - the page never fills it with generic news.
+ * Inicio's «Noticias» as a summary (plan UX, A10; plan de Inicio, 3.3): the server's best few - three in the general layer,
+ * two for the reader's own teams and leagues («Para ti», `mine`) -, each card with its seven elements, the way to the match's
+ * Noticias and, in «Para ti», why the match is theirs («Sigues a Nacional», «Tu liga»). «Confirmado» is the server's word: an
+ * official source or two distinct outlets. A rumour, at most one, wears its «Rumor» chip like on the match's page. Like
+ * «Partidos relevantes» and «Qué se juega», the block only shows with content: nothing while it loads, if it cannot be read,
+ * when the owner turned the news off or when there is none - the page never fills it with generic news.
  */
 import { Link } from "@tanstack/react-router";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ChevronRight, Newspaper } from "lucide-react";
 import { t } from "@/lib/i18n";
-import { formatTime, getTimeZone } from "@/lib/time";
+import { formatTime } from "@/lib/time";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { TodayNews } from "@/lib/api/v1/types_news";
 import { WhyChip } from "@/product/favorites/WhyChip";
@@ -19,15 +20,24 @@ import { SectionHeader } from "@/product/shared/States";
 
 export type TodayNewsQuery = UseQueryResult<Envelope<TodayNews | null>>;
 
-export function NewsBlock({ query, now }: { query: TodayNewsQuery; now: number }) {
+export function NewsBlock({
+  query,
+  now,
+  mine = false,
+}: {
+  query: TodayNewsQuery;
+  now: number;
+  /** «Para ti»: the reader's own news (two). Otherwise the general layer's (three). */
+  mine?: boolean;
+}) {
   const body = query.data;
   if (!body || body.status !== "ok" || !body.data) return null;
-  const shown = homeNews(body.data.items, getTimeZone(), now);
+  const shown = homeNews(body.data.items, mine ? 2 : 3);
   if (shown.length === 0) return null;
   // An API from before B2 says nothing: those were the suggested ones.
   const suggested = body.data.suggested ?? true;
   return (
-    <section data-testid="home-news">
+    <section data-testid={mine ? "home-news-mine" : "home-news"}>
       <SectionHeader
         title={t("home.news.title")}
         subtitle={t(suggested ? "home.news.subtitle" : "home.news.subtitleMine")}

@@ -114,9 +114,11 @@ class TodayNewsItem(Contract):
 
 
 class TodayNews(Contract):
-    items: list[TodayNewsItem] = Field(description="Home's «Noticias» (plan section 24, block 4): confirmed or probable news "
-                                                   "of the reader's matches not yet over - their leagues and teams (B2), the "
-                                                   "suggested ones while they chose none - from three hours ago to 36 hours "
-                                                   "ahead, kick-off order, at most three per match.")
+    items: list[TodayNewsItem] = Field(description="Home's «Noticias» as a summary (plan de Inicio, 3.3): the best confirmed or "
+                                                   "probable news of the matches not yet over - and, with room left, one "
+                                                   "rumour (status RUMOR, the web labels it) - from three hours ago to 36 hours "
+                                                   "ahead. Two at most for the reader's own leagues and teams, three for the "
+                                                   "suggested ones; at most two per match. «CONFIRMED» means an official source "
+                                                   "or two distinct outlets; any other reads PROBABLE.")
     suggested: bool = Field(default=True, description="The matches are the suggested ones for Colombia (the reader chose "
                                                       "none, or FBI_PERSONALIZATION=0): labelled so.")

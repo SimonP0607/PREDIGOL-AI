@@ -43,7 +43,6 @@ import {
   statusHelp,
   statusLabel,
   summary,
-  todayOnly,
   whenText,
 } from "./news";
 import { NewsView } from "./NewsTab";
@@ -290,33 +289,28 @@ describe("the order and where else they show", () => {
     ]);
   });
 
-  test("Inicio: today's matches in the reader's zone or in play, confirmed first, four at most", () => {
-    const at = (kickoff: string, status: NewsStatus, group = "scheduled"): TodayNewsItem => ({
+  test("Inicio keeps the server's summary: confirmed, probable, then the one rumour, three at most", () => {
+    const at = (status: NewsStatus, kickoff = "2026-10-26T01:00:00Z"): TodayNewsItem => ({
       match: {
         fixture_id: next++,
         kickoff_at: kickoff,
-        status_group: group,
+        status_group: "scheduled",
         home: "Nacional",
         away: "Millonarios",
         competition: "Liga BetPlay",
       },
       item: item({ status }),
     });
-    const tonight = "2026-10-26T01:00:00Z"; // 20:00 in Bogotá, still the 25th
-    const tomorrow = "2026-10-26T18:00:00Z";
     const list = [
-      at(tonight, "PROBABLE"),
-      at(tomorrow, "CONFIRMED"),
-      at("2026-10-25T17:00:00Z", "PROBABLE", "live"),
-      at(tonight, "CONFIRMED"),
-      at(tonight, "PROBABLE"),
-      at(tonight, "PROBABLE"),
+      at("RUMOR"),
+      at("PROBABLE"),
+      at("CONFIRMED", "2026-10-27T18:00:00Z"),
+      at("PROBABLE"),
     ];
-    const shown = homeNews(list, "America/Bogota", NOW);
-    expect(shown).toHaveLength(4);
-    expect(shown[0]!.item.status).toBe("CONFIRMED");
-    expect(shown.every((i) => i.match.kickoff_at !== tomorrow)).toBe(true);
-    expect(todayOnly(list, "UTC", NOW).some((i) => i.match.kickoff_at === tonight)).toBe(false);
+    const shown = homeNews(list);
+    expect(shown.map((i) => i.item.status)).toEqual(["CONFIRMED", "PROBABLE", "PROBABLE"]);
+    expect(homeNews(list, 2)).toHaveLength(2);
+    expect(homeNews(list.slice(0, 2)).map((i) => i.item.status)).toEqual(["PROBABLE", "RUMOR"]);
   });
 });
 
@@ -542,13 +536,15 @@ describe("what the section says", () => {
 });
 
 describe("Home's news are the reader's (plan UX, B2)", () => {
-  async function page(news: TodayNews): Promise<string> {
+  async function page(news: TodayNews, mine = false): Promise<string> {
     const query = {
       data: { status: "ok", data: news, reason: null, meta: {} },
       dataUpdatedAt: NOW,
     } as unknown as TodayNewsQuery;
     const router = createRouter({
-      routeTree: createRootRoute({ component: () => <NewsBlock query={query} now={NOW} /> }),
+      routeTree: createRootRoute({
+        component: () => <NewsBlock query={query} now={NOW} mine={mine} />,
+      }),
       history: createMemoryHistory({ initialEntries: ["/"] }),
     });
     await router.load();
@@ -582,6 +578,25 @@ describe("Home's news are the reader's (plan UX, B2)", () => {
     expect(shown).toContain("Sigues a Atlético Nacional");
     expect(shown).toContain("Tu liga");
     expect(markup.match(/data-testid="home-news-why"/g)).toHaveLength(2);
+  });
+
+  test("«Para ti» shows two at most and has its own landmark; the general one shows three", async () => {
+    setLocale("es");
+    const items = [1, 2, 3, 4].map((n) => entry(n, { kind: "league", names: ["Liga BetPlay"] }));
+    const own = await page({ items, suggested: false }, true);
+    expect(own.match(/data-testid="home-news-match"/g)).toHaveLength(2);
+    expect(own).toContain('data-testid="home-news-mine"');
+    const general = await page({ items, suggested: true });
+    expect(general.match(/data-testid="home-news-match"/g)).toHaveLength(3);
+    expect(general).toContain('data-testid="home-news"');
+  });
+
+  test("a rumour wears its «Rumor» chip", async () => {
+    setLocale("es");
+    const rumor: TodayNewsItem = { ...entry(7, null), item: item({ status: "RUMOR" }) };
+    const markup = await page({ items: [entry(8, null), rumor] });
+    expect(markup).toContain('data-status="RUMOR"');
+    expect(text(markup)).toContain("Rumor");
   });
 
   test("the suggested ones (or an API from before B2): said once in the subtitle, no chip on each", async () => {

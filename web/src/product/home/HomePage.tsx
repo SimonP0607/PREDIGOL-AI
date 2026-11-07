@@ -13,7 +13,7 @@
  *                                     title / Europe / relegation / promotion, a comeback) - only when there are some
  *     4  Qué se juega                 the matches of the next 36 hours with something at stake, one sentence each (only
  *                                     with content)
- *     5  Noticias                     the confirmed or probable news of today's suggested matches (only with content)
+ *     5  Noticias                     a summary of three (confirmed or probable, one labelled rumour at most; only with content)
  *     6  En vivo, Últimos resultados  what else is in play, and the last 24 hours' results
  *
  *   «Hoy en las ligas sugeridas» is no longer in this layer (plan de Inicio, D2): it is the same for everyone, so it starts at the
@@ -202,6 +202,9 @@ export function HomePage() {
   const layers = layersOf(me.data, today.data?.data);
   const teams = layers.mine && (today.data?.data?.following?.teams.length ?? 0) > 0;
   const common = { query: today, now } as const;
+  // The general layer's news are the suggested matches' whatever the reader follows: with favourites they are a second
+  // request (the first, «mine», feeds «Para ti»); without, the one request is already the general one.
+  const general = useQuery({ ...live.todayNewsGeneral, ...ON_RETURN, enabled: layers.mine });
   return (
     <div className="space-y-9 sm:space-y-10" data-testid="home-page">
       <HomeHeader freshness={home.data?.data?.data_freshness ?? null} loading={home.isPending} />
@@ -216,7 +219,7 @@ export function HomePage() {
           {layers.mine ? (
             <TodayBlock {...common} suggestion={<SuggestionCard />} choose={false} />
           ) : null}
-          {layers.mine ? <NewsBlock query={news} now={now} /> : null}
+          {layers.mine ? <NewsBlock mine query={news} now={now} /> : null}
           <ForYouPart part="players" query={me} board={board} teams={teams} now={now} />
           {layers.mine ? <ContextBlock {...common} /> : null}
           <ForYouPart part="picks" query={me} board={board} teams={teams} now={now} />
@@ -245,7 +248,7 @@ export function HomePage() {
         <HomeParlays board={board} />
         <RelevantNowBlock query={home} />
         <AtStakeBlock query={home} now={now} />
-        {layers.mine ? null : <NewsBlock query={news} now={now} />}
+        <NewsBlock query={layers.mine ? general : news} now={now} />
         <LiveNow query={home} />
         <ResultsBlock query={home} now={now} />
       </Layer>

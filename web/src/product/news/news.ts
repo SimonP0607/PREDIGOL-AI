@@ -197,26 +197,24 @@ export function pressAbsences(items: NewsItem[]): NewsItem[] {
   );
 }
 
-/** Home's block 4: the news of the matches the reader has today (in play, or kicking off today in their zone). */
-export function todayOnly<T extends { match: { kickoff_at: string; status_group: string } }>(
-  items: T[],
-  tz: string = getTimeZone(),
-  now: number = Date.now(),
-): T[] {
-  return items.filter(
-    (i) => i.match.status_group === "live" || relativeDay(i.match.kickoff_at, tz, now) === "today",
-  );
-}
+/** The summary the server sends (3 for everyone, 2 for the reader's own); the web keeps that cap if it were ever sent more. */
+export const HOME_NEWS = 3;
 
-export const HOME_NEWS = 4;
-
-const STATUS_RANK: Readonly<Partial<Record<NewsStatus, number>>> = { CONFIRMED: 0, PROBABLE: 1 };
+const STATUS_RANK: Readonly<Partial<Record<NewsStatus, number>>> = {
+  CONFIRMED: 0,
+  PROBABLE: 1,
+  RUMOR: 2,
+};
 const RELEVANCE_RANK = { high: 0, medium: 1, low: 2 } as const;
 
-/** Today's (in the reader's zone) or in play, confirmed first, the most relevant, then the newest: four at most. */
-export function homeNews<T extends TodayNewsItem>(items: T[], tz: string, now: number): T[] {
+/**
+ * Inicio's «Noticias» (plan de Inicio, 3.3): the server already chose them - confirmed only with an official source or two
+ * distinct outlets, at most one rumour - so the web keeps its order (confirmed, probable, then the one rumour; the most
+ * relevant, then the newest) and its cap, and adds nothing of its own.
+ */
+export function homeNews<T extends TodayNewsItem>(items: T[], limit: number = HOME_NEWS): T[] {
   const when = (i: T) => Date.parse(i.item.published_at ?? i.item.seen_at);
-  return todayOnly(items, tz, now)
+  return items
     .slice()
     .sort(
       (a, b) =>
@@ -224,5 +222,5 @@ export function homeNews<T extends TodayNewsItem>(items: T[], tz: string, now: n
         RELEVANCE_RANK[a.item.relevance] - RELEVANCE_RANK[b.item.relevance] ||
         when(b) - when(a),
     )
-    .slice(0, HOME_NEWS);
+    .slice(0, limit);
 }
