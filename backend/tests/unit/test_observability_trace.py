@@ -83,7 +83,7 @@ def full() -> list[t.Span]:
 
 
 def test_a_trace_with_every_mandatory_span_is_complete_and_optional_spans_do_not_matter() -> None:
-    spans = [*full(), span("agent_run", t.MISSING), span("cycle", t.NOT_READ), span("postmortem", t.NOT_READ)]
+    spans = [*full(), span("agent_run", t.MISSING), span("cycle", t.NOT_READ), span("match_postmortem", t.MISSING)]
     c = t.completeness(trace_with(spans))
     assert c.complete and c.missing == () and set(c.present) == set(t.MANDATORY)
 
@@ -101,12 +101,37 @@ def test_one_missing_review_among_found_ones_makes_the_trace_incomplete() -> Non
     assert not c.complete and c.missing == ("review",)
 
 
-def test_the_evidence_cited_is_listed_with_who_cites_it_and_never_claimed_to_resolve() -> None:
-    spans = t.cited_evidence({7: ["review 2", "decision 1", "decision 1"], 3: ["agent run 5"]})
-    assert [(s.row_ids, s.status, s.payload["cited_by"]) for s in spans] == [
-        (("3",), t.NOT_READ, ["agent run 5"]), (("7",), t.NOT_READ, ["decision 1", "review 2"])]
-    assert "evidence" not in t.MANDATORY and all("test_ia_fase2_docs" in s.note for s in spans)
-    assert [s.status for s in t.cited_evidence({})] == [t.NOT_APPLICABLE]
+def test_the_post_mortem_is_due_only_once_settled_studied_and_after_a_step() -> None:
+    step = NOW + timedelta(hours=5)
+    assert t.postmortem_reason(final=True, step_at=step, studied=True) is None
+    assert "no final result" in str(t.postmortem_reason(final=False, step_at=step, studied=True))
+    assert "no post-mortem step" in str(t.postmortem_reason(final=True, step_at=None, studied=True))
+    assert "not a selection the post-mortem studies" in str(t.postmortem_reason(final=True, step_at=step, studied=False))
+
+
+def test_the_window_and_bounds_of_a_post_mortem_step_are_the_ones_study_uses() -> None:
+    from fbi.intel import postmortem as pm
+
+    kickoff = datetime(2026, 11, 5, 20, tzinfo=UTC)  # 15:00 in Bogotá, 5 Nov
+    after, before = t.postmortem_window(kickoff)
+    assert after == kickoff + pm.SETTLE_DELAY
+    assert before == datetime(2026, 11, 6, 5, tzinfo=UTC) + pm.LOOKBACK, "until the start of the day after, Bogotá time, plus the look-back"
+    since, until = t.study_bounds(kickoff, kickoff + timedelta(hours=4))
+    assert since == datetime(2026, 11, 5, 5, tzinfo=UTC) and until == kickoff + timedelta(hours=4) - pm.SETTLE_DELAY
+    assert t.study_bounds(kickoff, kickoff + timedelta(days=2))[1] == datetime(2026, 11, 6, 5, tzinfo=UTC), "the day whole once it is over"
+
+
+def test_the_attribution_step_covers_its_day_and_the_day_before() -> None:
+    kickoff = datetime(2026, 11, 5, 20, tzinfo=UTC)
+    assert t.attribution_step_covers(kickoff, [datetime(2026, 11, 5, 23, tzinfo=UTC)])
+    assert t.attribution_step_covers(kickoff, [datetime(2026, 11, 6, 12, tzinfo=UTC)])
+    assert not t.attribution_step_covers(kickoff, [datetime(2026, 11, 7, 12, tzinfo=UTC)]), "two days later it attributes other days"
+    assert not t.attribution_step_covers(kickoff, [])
+    assert t.attribution_reason(postmortem=True, shadow_reviewed=True, step_covers=True) is None
+    assert "no post-mortem" in str(t.attribution_reason(postmortem=False, shadow_reviewed=True, step_covers=True))
+    assert "no shadow engine" in str(t.attribution_reason(postmortem=True, shadow_reviewed=False, step_covers=True))
+    assert "has not run" in str(t.attribution_reason(postmortem=True, shadow_reviewed=True, step_covers=False))
+    assert {"evidence", "postmortem", "attribution"} <= set(t.MANDATORY) and set(t.NOT_READ_SPANS) == {"cycle"}
 
 
 def test_a_mandatory_kind_nobody_mentioned_is_missing() -> None:

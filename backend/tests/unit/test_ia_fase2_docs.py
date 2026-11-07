@@ -131,7 +131,7 @@ REPLAY_SRC = (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")
 # ── reading the documents ─────────────────────────────────────────────────────────────────────────────────────────
 
 WORDS = {"un": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10,
-         "once": 11, "doce": 12, "trece": 13, "catorce": 14, "quince": 15}
+         "once": 11, "doce": 12, "trece": 13, "catorce": 14, "quince": 15, "dieciséis": 16}
 """The numbers the guide writes in words."""
 
 
@@ -338,7 +338,7 @@ def test_the_pieces_of_the_guide_are_files_scripts_and_migrations_that_exist() -
         for name in names:
             assert exists(name), f"{name!r} (piece {row[0]!r}) is not in the repository"
     readers = next(r for r in rows if r[0] == "Lectores")
-    assert all_ticked(readers[2]) == ["ai/packet.py", "picks/daily.py", "intel/decision.py"] and "y otros nueve (sección 5)" in readers[2]
+    assert all_ticked(readers[2]) == ["ai/packet.py", "picks/daily.py", "intel/decision.py"] and "y otros diez (sección 5)" in readers[2]
     assert {r[0]: all_ticked(r[2]) for r in rows} == {
         "Caché por entidad y tema": ["ai/cache.py"],
         "Evidencias tipadas": ["ai/evidence.py", "0114"],
@@ -1187,13 +1187,15 @@ def test_who_reads_the_evidence_table_is_what_the_guide_counts_and_the_structura
                       flags=re.S)
     assert words
     counted = tuple(WORDS[w.lower()] for w in words.groups())
-    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (15, 3, 12, 5)
+    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (16, 3, 13, 5)
     assert set(all_ticked(readers.split("Los otros")[0].split("Tres la leen a propósito")[1])) == own
     assert others == {"ai/packet.py", "picks/daily.py", "intel/decision.py", "intel/match_review.py", "intel/report.py", "ai/learning.py",
                       "intel/leakage.py", "api/services/ai_layer.py", "api/services/ai_v2.py", "api/services/intelligence.py",
-                      "api/services/news.py", "narrative/job.py"}  # the IA's ten, and the readers' news and narrative of the UX plan (A10, A11)
-    assert "y otros nueve (sección 5)" in section(1) and len(others) - 3 == 9
-    assert "quince módulos, doce de ellos ajenos a v2" in section(11) and "el paquete, los picks del día, la decisión, la revisión del partido" in section(11)
+                      "api/services/news.py", "narrative/job.py", "observability/trace.py"}
+    # the IA's ten, the readers' news and narrative of the UX plan (A10, A11) and the end-to-end trace of P0 (read-only, for observability)
+    assert "y otros diez (sección 5)" in section(1) and len(others) - 3 == 10
+    assert "`observability/trace.py`" in readers and "nunca en el camino de una decisión" in readers
+    assert "dieciséis módulos, trece de ellos ajenos a v2" in section(11) and "el paquete, los picks del día, la decisión, la revisión del partido" in section(11)
     assert "(`subject_type IS NULL OR` lo que diga `gates.typed_visible`: v2 en `on` **y** la fila más nueva del gate en `PASA`)" in readers
     assert "ai_replay.py" in readers
     assert "PacketBuilder(conn, typed_evidence=typed_visible(conn))" in (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")

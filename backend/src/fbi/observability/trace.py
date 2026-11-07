@@ -30,23 +30,25 @@ gives it (``known_at``, ``at``, ``created_at`` ... as the table has it), the ver
     agent_task    ai.agent_tasks                      the questions put to the agents (fixture level)
     agent_run     ai.agent_runs                       each answer: model, prompt and agent versions, tokens, cost, latency, status
     packet        ai.match_packets                    the packets the reviews and the passes cite (by id)
-    evidence      (the citing rows)                   every evidence id a decision, a review or an agent run cites, with who cites it -
-                                                      listed, not looked up (see below)
+    evidence      ai.evidence                         every evidence id a decision, a review or an agent run cites, looked up by id, with its
+                                                      kind, when it was known (``retrieved_at``) and who cites it
     pick          picks.picks                         the pick(s) the decisions name
     publication   picks.daily_set_items,              the picks of the day the selection was part of
                   intel.day_selections
     settlement    picks.pick_results                  the result of each pick
     outcome       intel.decision_outcomes             what became of each decision (profit, CLV)
+    postmortem    intel.selection_postmortems         the post-mortem of the selection (pm-v6 and the history the view carries), with its verdict
+    match_postmortem intel.match_postmortems          the post-mortem of the match as a whole (optional)
+    attribution   intel.agent_attributions            which agent, in which version, was right or wrong about the selection (attr-v1, shadow)
+
+This module is a reader the guards name on purpose - ``tests/unit/test_postmortem_isolation.py``, ``tests/unit/test_attribution_readers.py`` and
+the count of the readers of the evidence in the owner's guide of phase 2 (``docs/owner/IA_FASE2.md``, held by ``tests/unit/test_ia_fase2_docs.py``):
+a read-only trace for observability, never on a decision path (nothing that decides, publishes or shows imports it, and a test holds that).
 
 WHAT IS NOT READ, and why (status ``not_read``, never ``missing``):
 
     cycle         ``ai.cycles`` carries no fixture, run or review id: tying a cycle to a selection would mean guessing it by its time window.
-    postmortem    the post-mortem tables may be named only by the modules ``tests/unit/test_postmortem_isolation.py`` lists, with the reason;
-                  this module is not among them, and adding it is a decision for the owner, not for a reader.
-    attribution   the same for the attribution of the shadow (``tests/unit/test_attribution_readers.py``).
-    evidence      the readers of the evidence table are counted, one by one, in the owner's guide of phase 2 (section 5 of IA_FASE2, held by
-                  ``tests/unit/test_ia_fase2_docs.py``): a new reader is a line of that guide. Until the owner adds this one, the ids a trace
-                  shows are the ones the citing rows recorded - whether each still resolves is not checked here.
+                  (Whether a step of a cycle has run since a moment - a fact about the cycle, not a link - is read: see the post-mortem.)
 
 The page's forecast (the product's probability of the match) is not read either: ``tests/unit/test_forecast_isolation.py`` keeps its table
 apart from everything that decides, and the decision does not rest on it - the pick's own prediction (``forecast`` above) is what it rests on.
@@ -58,8 +60,15 @@ MANDATORY SPANS (``MANDATORY``) and when one does not apply - always from what a
     forecast                         whenever there is a pick; a pick that names no prediction is ``missing``
     price                            whenever a decision recorded a price or the pick names its consensus and snapshot
     review                           whenever a decision cites one (no decision citing a review: its ``context_status`` says why)
+    evidence                         whenever anything in the trace cites an id; each id cited and not found is ``missing``
     settlement                       once the match is finished
     outcome                          once a pick of the selection has a final result (every decision gets one: ``fbi.intel.outcomes``)
+    postmortem                       once the pick has a final result, the selection is one the post-mortem studies (``fbi.intel.postmortem.
+                                     universe``: the decision layer or the AI looked at it) and a post-mortem step has run since it could be
+                                     studied (``SETTLE_DELAY`` after kick-off: the nightly's ``postmortems`` step or the learning cycle's)
+    attribution                      once the post-mortem is there, a shadow engine reviewed the selection before kick-off and the
+                                     attribution step of the learning cycle has run since, on a day that covers the match (it attributes the
+                                     matches of its day and the day before, ``fbi.ai.cycle``)
 
 ``completeness`` says which are present; ``coverage`` gives, for one (Bogotá) day, the share of the selections decided that day - and of
 the ones published that day - whose trace is complete, and the spans most often missing. That share is the P0 metric.
@@ -73,15 +82,17 @@ import uuid
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final
 
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.ai.calendar import day_bounds
+from fbi.ai.calendar import day_bounds, day_start, local_day
+from fbi.ai.gates import typed_visible
 from fbi.core.decision_versions import DECISION_CORE, DECISION_FAMILIES
+from fbi.intel import postmortem as pm
 
 VERSION: Final = "trace-v1"
 NAMESPACE: Final = uuid.UUID("12b38101-0116-532d-8e9e-4ceac6609737")
@@ -98,20 +109,18 @@ NOT_READ: Final = "not_read"
 STATUSES: Final = (PRESENT, MISSING, NOT_APPLICABLE, NOT_READ)
 
 STAGES: Final = ("fixture", "data_quality", "model", "forecast", "price", "decision", "review", "match_run", "agent_task", "agent_run",
-                 "packet", "evidence", "pick", "publication", "settlement", "outcome", "cycle", "postmortem", "attribution")
+                 "packet", "evidence", "pick", "publication", "settlement", "outcome", "postmortem", "match_postmortem", "attribution", "cycle")
 """The kinds of span, in the order the pipeline writes them: a trace lists its spans in this order, and by time within a kind."""
-MANDATORY: Final = ("fixture", "data_quality", "model", "forecast", "price", "decision", "review", "pick", "settlement", "outcome")
+MANDATORY: Final = ("fixture", "data_quality", "model", "forecast", "price", "decision", "review", "evidence", "pick", "settlement", "outcome",
+                    "postmortem", "attribution")
 """What a selection's trace must have (or say, from a row, why it does not apply) to be complete."""
 MANDATORY_MATCH: Final = ("fixture", "data_quality")
 """What a match's trace (a fixture without a selection) must have."""
 NOT_READ_SPANS: Final[Mapping[str, tuple[str, str]]] = {
     "cycle": ("ai.cycles", "the table carries no fixture, run or review id: tying a cycle to this selection would be a guess by time"),
-    "postmortem": ("post-mortem tables", "guarded: only the readers tests/unit/test_postmortem_isolation.py lists may read them"),
-    "attribution": ("intel.agent_attributions", "guarded: only the readers tests/unit/test_attribution_readers.py lists may read it"),
 }
-
-EVIDENCE_NOTE: Final = ("cited by the rows listed; not looked up: the readers of ai.evidence are the ones the owner's guide of phase 2 counts "
-                         "(tests/unit/test_ia_fase2_docs.py)")
+SHADOW_REVIEW_MODE: Final = "shadow"
+"""What the attribution reads of a shadow review (``fbi.ai.agents.attribution.SHADOW_REVIEWS_SQL``): mode ``shadow``, status ``ok``, before kick-off."""
 TEXT_CUT: Final = 160
 """A string in a payload is cut to this many characters: a trace is a map, the rows are where the whole text lives."""
 
@@ -291,6 +300,50 @@ def settlement_expected(status_group: str | None) -> bool:
 def outcome_expected(result_status: str | None) -> bool:
     """Every decision gets an outcome once its pick has a final result (``fbi.intel.outcomes``); a pending result has none to give."""
     return result_status is not None and result_status != "pending"
+
+
+def postmortem_window(kickoff: datetime) -> tuple[datetime, datetime]:
+    """The moments a post-mortem step may study a match in: from ``SETTLE_DELAY`` after its kick-off until its Bogotá day leaves the step's
+    look-back (``study`` reads from the start of the day ``LOOKBACK`` before its own moment)."""
+    return kickoff + pm.SETTLE_DELAY, day_start(local_day(kickoff) + timedelta(days=1)) + pm.LOOKBACK
+
+
+def study_bounds(kickoff: datetime, step_at: datetime) -> tuple[datetime, datetime]:
+    """The part of the window ``study`` reads at ``step_at`` that holds the match's Bogotá day: the day whole when the step ran after it ended,
+    up to ``step_at - SETTLE_DELAY`` otherwise - the same selections, ranked the same way (the twenty best INVESTIGACION of a day are ranked
+    within the day), as the step itself saw."""
+    day = local_day(kickoff)
+    return day_start(day), min(step_at - pm.SETTLE_DELAY, day_start(day + timedelta(days=1)))
+
+
+def postmortem_reason(*, final: bool, step_at: datetime | None, studied: bool) -> str | None:
+    """None when the selection's post-mortem is due; otherwise why it does not apply yet (pure)."""
+    if not final:
+        return "the pick has no final result yet: nothing to study"
+    if step_at is None:
+        return "no post-mortem step has run since the match could be studied (kick-off + SETTLE_DELAY, within the look-back)"
+    if not studied:
+        return ("not a selection the post-mortem studies (fbi.intel.postmortem.universe: no decision of CAUTELA or better, not among the "
+                "day's best INVESTIGACION, not a pick of the day, a parlay leg or a selection the AI reviewed)")
+    return None
+
+
+def attribution_step_covers(kickoff: datetime, started: Iterable[datetime]) -> bool:
+    """Whether one of the attribution steps that started at ``started`` attributed the match: each attributes the Bogotá day it runs on and the
+    day before (``fbi.ai.cycle._attributions``)."""
+    day = local_day(kickoff)
+    return any(local_day(s) in (day, day + timedelta(days=1)) for s in started)
+
+
+def attribution_reason(*, postmortem: bool, shadow_reviewed: bool, step_covers: bool) -> str | None:
+    """None when the selection's attribution is due; otherwise why it does not apply yet (pure)."""
+    if not postmortem:
+        return "no post-mortem of the selection yet: the attribution reads it (its result, its CLV)"
+    if not shadow_reviewed:
+        return "no shadow engine reviewed the selection before kick-off (status ok, mode shadow): there is nothing to attribute"
+    if not step_covers:
+        return "the attribution step has not run since the post-mortem on a day that covers the match"
+    return None
 
 
 def order(spans: Iterable[Span]) -> tuple[Span, ...]:
@@ -473,6 +526,41 @@ PACKETS_SQL: Final = """
 SELECT id, fixture_id, packet_version, as_of, built_at, packet_hash, missing, approx_tokens
   FROM ai.match_packets WHERE id = ANY(%(ids)s)
 """
+EVIDENCE_SQL: Final = """
+SELECT id, fixture_id, kind, origin, source_tier, source_domain, status, confidence, retrieved_at, published_at, claim, subject_type
+  FROM ai.evidence WHERE id = ANY(%(ids)s) AND (subject_type IS NULL OR %(typed)s)
+"""
+"""The evidence cited, by id, with the one question every reader asks about research v2's claims (``typed``: ``gates.typed_visible`` unless
+the caller says): while v2 is not ``on`` nothing cites a claim of it, so a cited id hidden by the filter is reported ``missing`` and said so."""
+
+POSTMORTEMS_SQL: Final = """
+SELECT id, version, created_at, decision_id, roles, review_id, review_decision, review_verdict, outcome, settled, decision_quality, verdict,
+       loss_class, odds, close_odds, clv
+  FROM intel.selection_postmortems
+ WHERE fixture_id = %(fixture)s AND market_key = %(market)s AND selection = %(selection)s AND line = %(line)s
+ ORDER BY created_at, id
+"""
+"""The newest post-mortem of the selection: the view the readers use (``intel.selection_postmortems``, one row per selection)."""
+MATCH_POSTMORTEMS_SQL: Final = "SELECT id, version, created_at FROM intel.match_postmortems WHERE fixture_id = %(fixture)s ORDER BY created_at, id"
+POSTMORTEM_STEP_SQL: Final = """
+SELECT max(started_at) AS at FROM (
+    SELECT started_at FROM intel.runs WHERE job = 'nightly' AND counts ? 'postmortems'
+    UNION ALL
+    SELECT started_at FROM ai.cycles WHERE counts ? 'pick_postmortems') s
+ WHERE started_at >= %(after)s AND started_at < %(before)s
+"""
+"""The newest post-mortem step that could study the match (``postmortem_window``): the nightly's ``postmortems`` step (its count is recorded
+only when it succeeded) or the learning cycle's (``pick_postmortems``, written only after ``study`` returned)."""
+ATTRIBUTIONS_SQL: Final = """
+SELECT id, attribution_version, classified_by, engine, agent, agent_version, signal, stance, outcome, error_class, settled, toward_close,
+       calibration, clv, review_id, run_id, postmortem_id, source, computed_at
+  FROM intel.agent_attributions
+ WHERE fixture_id = %(fixture)s AND market_key = %(market)s AND selection = %(selection)s AND line = %(line)s
+ ORDER BY computed_at, id
+"""
+ATTRIBUTION_STEP_SQL: Final = "SELECT started_at FROM ai.cycles WHERE counts ? 'attributions' AND started_at >= %(after)s ORDER BY started_at"
+"""The learning cycles whose attribution step ran after ``after`` (the count is written only once the step returned)."""
+
 DAY_SELECTIONS_OF_DAY_SQL: Final = """
 SELECT DISTINCT d.fixture_id, d.market_key, d.selection, d.line
   FROM intel.decisions d
@@ -543,11 +631,12 @@ def _resolve(conn: psycopg.Connection[Any], *, pick_id: int | None, decision_id:
 
 def trace_of(conn: psycopg.Connection[Any], *, pick_id: int | None = None, decision_id: int | None = None, fixture_id: int | None = None,
              market_key: str | None = None, selection: str | None = None, line: Decimal | float | int | str | None = None,
-             decision_version: str = DECISION_CORE) -> Trace:
+             decision_version: str = DECISION_CORE, typed: bool | None = None) -> Trace:
     """The trace of a pick, of a decision, of a selection (fixture + market + selection [+ line, 0 by default]) or of a match (fixture alone).
 
     A pick and a decision are traced as their selection: every checkpoint, every pick and every review of it. ``decision_version`` is the
-    layer read for a pick or a fixture (a decision brings its own). Read-only: SELECTs on the caller's connection, nothing committed."""
+    layer read for a pick or a fixture (a decision brings its own). ``typed`` answers the filter on research v2's claims for the evidence cited
+    (``EVIDENCE_SQL``); by default ``gates.typed_visible``, the answer every reader of the evidence asks. Read-only: SELECTs on the caller's connection, nothing committed."""
     anchor, sel, version, absent = _resolve(conn, pick_id=pick_id, decision_id=decision_id, fixture_id=fixture_id, market_key=market_key,
                                             selection=selection, line=line, decision_version=decision_version)
     if sel is None:
@@ -555,10 +644,10 @@ def trace_of(conn: psycopg.Connection[Any], *, pick_id: int | None = None, decis
         spans = [absent] + [Span(k, MISSING, "", note=f"the anchor {anchor} was not found: nothing to follow") for k in MANDATORY
                             if k != absent.kind]
         return Trace(VERSION, anchor, "selection", None, None, None, None, None, None, version, order(spans))
-    return _assemble(conn, anchor, sel, version)
+    return _assemble(conn, anchor, sel, version, typed=typed_visible(conn) if typed is None else typed)
 
 
-def _assemble(conn: psycopg.Connection[Any], anchor: str, sel: _Selection, version: str) -> Trace:
+def _assemble(conn: psycopg.Connection[Any], anchor: str, sel: _Selection, version: str, *, typed: bool) -> Trace:
     scope = "match" if sel.market_key is None else "selection"
     families = version == DECISION_FAMILIES
     spans: list[Span] = []
@@ -638,7 +727,7 @@ def _assemble(conn: psycopg.Connection[Any], anchor: str, sel: _Selection, versi
     for run in runs:
         for e in run["evidence_ids"] or ():
             cited.setdefault(int(e), []).append(f"agent run {run['id']}")
-    spans.extend(cited_evidence(cited))
+    spans.extend(_evidence(conn, cited, typed=typed))
 
     # publication, settlement, outcome
     spans.extend(_publication(conn, pick_ids, _ids(d["id"] for d in decisions)))
@@ -646,6 +735,11 @@ def _assemble(conn: psycopg.Connection[Any], anchor: str, sel: _Selection, versi
         results = {int(r["pick_id"]): r for r in _all(conn, PICK_RESULTS_SQL, {"ids": pick_ids})} if pick_ids else {}
         spans.extend(_settlement(fx, pick_ids, results))
         spans.extend(_outcomes(conn, decisions, results, version))
+        final = any(outcome_expected(r["result_status"]) for r in results.values())
+        pm_spans, pm_rows = _postmortems(conn, fx, key, final=final)
+        spans.extend(pm_spans)
+        spans.extend(_attributions(conn, fx, key, reviews, pm_rows))
+    spans.extend(_match_postmortems(conn, fid))
 
     for kind, (source, note) in NOT_READ_SPANS.items():
         spans.append(Span(kind, NOT_READ, source, note=note))
@@ -841,13 +935,82 @@ def _packets(conn: psycopg.Connection[Any], ids: Sequence[int]) -> list[Span]:
             if i in found else Span("packet", MISSING, "ai.match_packets", (str(i),), note="cited, not found") for i in ids]
 
 
-def cited_evidence(cited: Mapping[int, Sequence[str]]) -> list[Span]:
-    """The evidence the trace's rows cite, one span per id with who cites it, ``not_read``: the table itself is not this module's to read
-    (see the module), so nothing here says whether an id still resolves."""
+def _evidence(conn: psycopg.Connection[Any], cited: Mapping[int, Sequence[str]], *, typed: bool) -> list[Span]:
+    """One span per evidence id cited, with who cites it: ``present`` with its kind and when it was known, or ``missing``."""
     if not cited:
         return [Span("evidence", NOT_APPLICABLE, "ai.evidence", note="nothing in the trace cites evidence")]
-    return [Span("evidence", NOT_READ, "ai.evidence", (str(eid),), payload={"cited_by": sorted(set(cited[eid]))},
-                 note=EVIDENCE_NOTE) for eid in sorted(cited)]
+    found = {int(r["id"]): r for r in _all(conn, EVIDENCE_SQL, {"ids": sorted(cited), "typed": typed})}
+    spans = []
+    for eid in sorted(cited):
+        users = sorted(set(cited[eid]))
+        r = found.get(eid)
+        if r is None:
+            spans.append(Span("evidence", MISSING, "ai.evidence", (str(eid),), payload={"cited_by": users},
+                              note="cited, not found" + ("" if typed else " (or a claim of research v2, which typed=false hides)")))
+        else:
+            spans.append(Span("evidence", PRESENT, "ai.evidence", (str(eid),), r["retrieved_at"], payload=compact(
+                r, ("kind", "origin", "source_tier", "source_domain", "status", "confidence", "published_at", "subject_type", "claim"))
+                | {"known_at": plain(r["retrieved_at"]), "cited_by": users}))
+    return spans
+
+
+def _postmortems(conn: psycopg.Connection[Any], fx: Mapping[str, Any] | None, key: Mapping[str, Any], *,
+                 final: bool) -> tuple[list[Span], list[dict[str, Any]]]:
+    """The post-mortems of the selection, or why there is none to expect (see ``postmortem_reason``)."""
+    rows = _all(conn, POSTMORTEMS_SQL, key)
+    if rows:
+        return [Span("postmortem", PRESENT, "intel.selection_postmortems", (str(r["id"]),), r["created_at"], {"postmortem": str(r["version"])},
+                     compact(r, ("decision_id", "roles", "outcome", "settled", "decision_quality", "verdict", "loss_class", "review_id",
+                                 "review_decision", "review_verdict", "odds", "close_odds", "clv"))) for r in rows], rows
+    if fx is None:
+        return [Span("postmortem", NOT_APPLICABLE, "intel.selection_postmortems", note="no fixture")], rows
+    step_at = None
+    studied = False
+    if final:
+        after, before = postmortem_window(fx["kickoff_at"])
+        step = _one(conn, POSTMORTEM_STEP_SQL, {"after": after, "before": before})
+        step_at = None if step is None else step["at"]
+        if step_at is not None:
+            since, until = study_bounds(fx["kickoff_at"], step_at)
+            wanted = (int(key["fixture"]), str(key["market"]), str(key["selection"]), Decimal(key["line"]))
+            studied = wanted in pm.universe(conn, since=since, until=until)
+    reason = postmortem_reason(final=final, step_at=step_at, studied=studied)
+    if reason is not None:
+        return [Span("postmortem", NOT_APPLICABLE, "intel.selection_postmortems", note=reason)], rows
+    return [Span("postmortem", MISSING, "intel.selection_postmortems", at=step_at, payload={"step_at": plain(step_at)},
+                 note="a post-mortem step that studies this selection has run and wrote no post-mortem of it")], rows
+
+
+def _match_postmortems(conn: psycopg.Connection[Any], fixture_id: int) -> list[Span]:
+    rows = _all(conn, MATCH_POSTMORTEMS_SQL, {"fixture": fixture_id})
+    if not rows:
+        return [Span("match_postmortem", MISSING, "intel.match_postmortems", note="no post-mortem of the match (optional span)")]
+    return [Span("match_postmortem", PRESENT, "intel.match_postmortems", (str(r["id"]),), r["created_at"], {"postmortem": str(r["version"])})
+            for r in rows]
+
+
+def _attributions(conn: psycopg.Connection[Any], fx: Mapping[str, Any] | None, key: Mapping[str, Any], reviews: Sequence[Mapping[str, Any]],
+                  postmortems: Sequence[Mapping[str, Any]]) -> list[Span]:
+    """The attribution rows of the selection, or why there is none to expect (see ``attribution_reason``)."""
+    rows = _all(conn, ATTRIBUTIONS_SQL, key)
+    if rows:
+        return [Span("attribution", PRESENT, "intel.agent_attributions", (str(r["id"]),), r["computed_at"],
+                     _versions(r, {"attribution": "attribution_version", "agent": "agent_version"}),
+                     compact(r, ("engine", "agent", "signal", "stance", "outcome", "error_class", "settled", "toward_close", "calibration", "clv",
+                                 "classified_by", "source", "review_id", "run_id", "postmortem_id"))) for r in rows]
+    kickoff = None if fx is None else fx["kickoff_at"]
+    shadow = kickoff is not None and any(
+        str(r["engine"]) in SHADOW_ENGINE_NAMES and r["mode"] == SHADOW_REVIEW_MODE and r["status"] == "ok" and r["reviewed_at"] < kickoff
+        for r in reviews)
+    covers = False
+    if postmortems and shadow and kickoff is not None:
+        first = min(r["created_at"] for r in postmortems)
+        covers = attribution_step_covers(kickoff, (r["started_at"] for r in _all(conn, ATTRIBUTION_STEP_SQL, {"after": first})))
+    reason = attribution_reason(postmortem=bool(postmortems), shadow_reviewed=shadow, step_covers=covers)
+    if reason is not None:
+        return [Span("attribution", NOT_APPLICABLE, "intel.agent_attributions", note=reason)]
+    return [Span("attribution", MISSING, "intel.agent_attributions",
+                 note="the attribution step has run on a day that covers the match since its post-mortem, and wrote no row of it")]
 
 
 def _publication(conn: psycopg.Connection[Any], pick_ids: Sequence[int], decision_ids: Sequence[int]) -> list[Span]:
@@ -920,10 +1083,11 @@ def unit_of(population: str, traces: Sequence[Trace]) -> CoverageUnit:
                         tuple(incomplete[:SAMPLE]))
 
 
-def coverage(conn: psycopg.Connection[Any], day: date, *, decision_version: str = DECISION_CORE) -> Coverage:
+def coverage(conn: psycopg.Connection[Any], day: date, *, decision_version: str = DECISION_CORE, typed: bool | None = None) -> Coverage:
     """The P0 metric for one day (Bogotá, ``fbi.ai.calendar``): the share of the selections decided that day, and of the ones published that
     day, whose trace is complete. Each selection is traced once, whichever population it is in."""
     start, end = day_bounds(day)
+    seen = typed_visible(conn) if typed is None else typed
     decided = _all(conn, DAY_SELECTIONS_OF_DAY_SQL, {"start": start, "end": end, "version": decision_version})
     published = _all(conn, PUBLISHED_OF_DAY_SQL, {"day": day, "version": decision_version})
     cache: dict[tuple[int, str, str, str], Trace] = {}
@@ -933,7 +1097,8 @@ def coverage(conn: psycopg.Connection[Any], day: date, *, decision_version: str 
         for r in rows:
             k = (int(r["fixture_id"]), str(r["market_key"]), str(r["selection"]), spell_line(r["line"]))
             if k not in cache:
-                cache[k] = trace_of(conn, fixture_id=k[0], market_key=k[1], selection=k[2], line=k[3], decision_version=decision_version)
+                cache[k] = trace_of(conn, fixture_id=k[0], market_key=k[1], selection=k[2], line=k[3], decision_version=decision_version,
+                                    typed=seen)
             out.append(cache[k])
         return out
 

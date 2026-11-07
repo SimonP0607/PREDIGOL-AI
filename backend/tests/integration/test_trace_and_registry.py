@@ -2,12 +2,17 @@
 
 THE WORLD: the seed's match (1001, kick-off 2026-09-15 19:00 UTC), finished, of a competition whose data class is MODEL_READY.
 
+A nightly run whose post-mortem step succeeded five hours after kick-off, and a learning cycle whose attribution step ran six hours after it.
+
 * 1X2 Home - complete: a prediction, its candidate and its pick; the Shin consensus the decisions priced against and the snapshot the pick took
   its odds from; two checkpoints of the decision layer citing the combined review and one item of evidence; a shadow review (ma-v1); an
-  agent run; the pick of the day; the pick settled and both decisions with their outcome.
-* 1X2 Away - incomplete: its decision cites a review that does not exist and a price no consensus row holds, and the pick of the finished match
-  has no result. The trace must say exactly those three spans are missing, and invent none of them. (It also cites an evidence id that does not
-  exist: the trace lists it with who cites it, ``not_read`` - the evidence table is not the trace's to read, ``fbi.observability.trace``.)
+  agent run; the pick of the day; the pick settled and both decisions with their outcome; its post-mortem, the match's, and the attribution.
+* 1X2 Away - incomplete: its decision cites a review and an evidence id that do not exist and a price no consensus row holds, and the pick of the
+  finished match has no result. The trace must say exactly those four spans are missing, and invent none of them; with no final result its
+  post-mortem and attribution do not apply yet.
+* 1X2 Draw - settled, a CAUTELA decision the post-mortem studies, and the post-mortem step has run: its missing post-mortem is ``missing``.
+* DC 1X - settled, with its post-mortem and a shadow review, and the attribution step has run on the day of the match: its missing
+  attribution is ``missing``.
 
 The transaction is rolled back afterwards; nothing here is committed.
 """
@@ -64,19 +69,19 @@ class World:
             "competition_season_id": seed.season_id, "computed_at": KO - timedelta(days=3), "rule_version": "data-score-v1", "class": "MODEL_READY",
             "score": Decimal("0.91"), "finished": 40, "approved": 40, "quarantined": 0, "components": Jsonb({})}, returning=False)
 
-    def pick(self, selection: str, *, odds: str = "2.10") -> tuple[int, int]:
+    def pick(self, selection: str, *, odds: str = "2.10", market: str = "1X2") -> tuple[int, int]:
         db, s = self.db, self.seed
         cutoff = SNAP_AT - timedelta(hours=2)
         prediction = put(db, "models.predictions", {
-            "fixture_id": s.fixture_id, "model_version_id": s.model_version_id, "market_key": "1X2", "selection": selection, "line": 0,
+            "fixture_id": s.fixture_id, "model_version_id": s.model_version_id, "market_key": market, "selection": selection, "line": 0,
             "p_raw": Decimal("0.52"), "p_calibrated": Decimal("0.52"), "p_lo": Decimal("0.47"), "p_hi": Decimal("0.57"), "feature_set_hash": "fh",
             "data_cutoff_ts": cutoff})
         candidate = put(db, "picks.pick_candidates", {
-            "run_id": s.run_id, "fixture_id": s.fixture_id, "prediction_id": prediction, "market_key": "1X2", "selection": selection, "line": 0,
+            "run_id": s.run_id, "fixture_id": s.fixture_id, "prediction_id": prediction, "market_key": market, "selection": selection, "line": 0,
             "bookmaker_id": s.bookmaker_id, "market_odds": Decimal(odds), "p_calibrated": Decimal("0.52"), "p_market_fair": Decimal("0.47"),
             "decision": "selected"})
         pick = put(db, "picks.picks", {
-            "candidate_id": candidate, "fixture_id": s.fixture_id, "market_key": "1X2", "selection": selection, "line": 0,
+            "candidate_id": candidate, "fixture_id": s.fixture_id, "market_key": market, "selection": selection, "line": 0,
             "model_version_id": s.model_version_id, "feature_set_hash": "fh", "data_cutoff_ts": cutoff, "decision_rule_version": "shadow-rule-v2",
             "code_version": "abc", "bookmaker_id": s.bookmaker_id, "market_odds": Decimal(odds), "odds_captured_at": SNAP_AT,
             "p_model": Decimal("0.52"), "p_calibrated": Decimal("0.52"), "p_market_fair": Decimal("0.47"), "fair_odds": Decimal("1.92"),
@@ -86,15 +91,15 @@ class World:
         assert prediction is not None and pick is not None
         return pick, prediction
 
-    def consensus(self, selection: str, as_of: datetime) -> None:
+    def consensus(self, selection: str, as_of: datetime, market: str = "1X2") -> None:
         put(self.db, "market.market_consensus", {
-            "fixture_id": self.seed.fixture_id, "market_key": "1X2", "selection": selection, "line": 0, "as_of": as_of, "devig_method": "shin",
+            "fixture_id": self.seed.fixture_id, "market_key": market, "selection": selection, "line": 0, "as_of": as_of, "devig_method": "shin",
             "p_fair": Decimal("0.47"), "n_bookmakers": 6, "overround": Decimal("0.05"), "best_odds": Decimal("2.10"),
             "best_bookmaker_id": self.seed.bookmaker_id}, returning=False)
 
-    def snapshot(self, selection: str) -> None:
+    def snapshot(self, selection: str, market: str = "1X2") -> None:
         put(self.db, "market.odds_snapshots", {
-            "fixture_id": self.seed.fixture_id, "bookmaker_id": self.seed.bookmaker_id, "market_key": "1X2", "selection": selection, "line": 0,
+            "fixture_id": self.seed.fixture_id, "bookmaker_id": self.seed.bookmaker_id, "market_key": market, "selection": selection, "line": 0,
             "odds_decimal": Decimal("2.10"), "captured_at": SNAP_AT, "minutes_to_ko": int((KO - SNAP_AT).total_seconds() // 60),
             "source": "prematch", "payload_hash": self.seed.payload_hash}, returning=False)
 
@@ -107,9 +112,9 @@ class World:
         assert e is not None
         return e
 
-    def review(self, selection: str, engine: str, *, evidence: list[int], pick: int | None) -> int:
+    def review(self, selection: str, engine: str, *, evidence: list[int], pick: int | None, market: str = "1X2") -> int:
         r = put(self.db, "ai.pick_reviews", {
-            "reviewed_at": T24 - timedelta(minutes=30), "fixture_id": self.seed.fixture_id, "pick_id": pick, "market_key": "1X2",
+            "reviewed_at": T24 - timedelta(minutes=30), "fixture_id": self.seed.fixture_id, "pick_id": pick, "market_key": market,
             "selection": selection, "line": 0, "engine": engine, "engine_version": f"{engine}-review", "input_hash": HASH,
             "decision": "APPROVE", "confidence": Decimal("0.7"), "output": Jsonb({}), "mode": "shadow", "status": "ok",
             "evidence_ids": evidence, "cost_usd": Decimal("0.004")})
@@ -117,26 +122,48 @@ class World:
         return r
 
     def decision(self, selection: str, at: datetime, checkpoint: str, *, pick: int, review: int | None, evidence: list[int],
-                 price_at: datetime | None) -> int:
+                 price_at: datetime | None, market: str = "1X2", state: str = "INVESTIGACION") -> int:
         d = put(self.db, "intel.decisions", {
             "decision_version": DECISION_CORE, "known_at": at, "checkpoint": checkpoint, "fixture_id": self.seed.fixture_id, "kickoff_at": KO,
-            "market_key": "1X2", "selection": selection, "line": 0, "pick_id": pick, "model_name": "dixon_coles",
+            "market_key": market, "selection": selection, "line": 0, "pick_id": pick, "model_name": "dixon_coles",
             "model_version_id": self.seed.model_version_id, "odds": Decimal("2.10"), "bookmaker_id": self.seed.bookmaker_id, "price_at": price_at,
             "n_bookmakers": 6, "p_model": Decimal("0.52"), "p_market": Decimal("0.47"),
             "filters": Jsonb([{"n": 1, "key": "data", "ok": True, "why": "datos MODEL_READY"}, {"n": 10, "key": "final", "ok": False,
                                                                                                "why": "edge no validado", "effect": "INVESTIGACION"}]),
-            "state": "INVESTIGACION", "reasons": ["edge no validado"], "context_status": "FULL", "review_id": review, "evidence_ids": evidence,
-            "input_hash": f"{selection}{checkpoint}".ljust(32, "0")[:32], "code_version": "abc"})
+            "state": state, "reasons": ["edge no validado"], "context_status": "FULL", "review_id": review, "evidence_ids": evidence,
+            "input_hash": f"{market}{selection}{checkpoint}".ljust(32, "0")[:32], "code_version": "abc"})
         assert d is not None
         return d
 
-    def settle(self, pick: int, decisions: list[int]) -> None:
-        put(self.db, "picks.pick_results", {"pick_id": pick, "result_status": "win", "profit_units": Decimal("1.1"), "settled_at": KO + timedelta(hours=2),
+    def settle(self, pick: int, decisions: list[int], result: str = "win") -> None:
+        put(self.db, "picks.pick_results", {"pick_id": pick, "result_status": result, "profit_units": Decimal("1.1"), "settled_at": KO + timedelta(hours=2),
                                             "settlement_basis": "regulation_90", "rule_version": "settle-v3"}, returning=False)
         for d in decisions:
-            put(self.db, "intel.decision_outcomes", {"decision_id": d, "settled_at": KO + timedelta(hours=2), "result_status": "win",
+            put(self.db, "intel.decision_outcomes", {"decision_id": d, "settled_at": KO + timedelta(hours=2), "result_status": result,
                                                      "profit_flat": Decimal("1.1"), "profit_staked": Decimal(0), "version": OUTCOME_CORE,
                                                      "computed_at": KO + timedelta(hours=3), "clv": Decimal("0.02")}, returning=False)
+
+    def postmortem(self, selection: str, decision: int, *, market: str = "1X2") -> int:
+        return put_id(self.db, "intel.postmortems", {
+            "decision_id": decision, "fixture_id": self.seed.fixture_id, "created_at": KO + timedelta(hours=5, minutes=10), "version": "pm-v6",
+            "outcome": "won", "decision_quality": "GOOD", "verdict": "MERECIDO", "causes": Jsonb([]), "answers": Jsonb({}), "evidence": Jsonb({}),
+            "market_key": market, "selection": selection, "line": 0, "roles": ["decision"], "clv": Decimal("0.02")})
+
+    def attribution(self, selection: str, *, review: int, postmortem: int) -> int:
+        return put_id(self.db, "intel.agent_attributions", {
+            "attribution_version": "attr-v1", "classified_by": "code", "fixture_id": self.seed.fixture_id, "market_key": "1X2", "selection": selection,
+            "line": 0, "engine": "ma-v1", "agent": "council", "agent_version": "council-v1", "signal": "VERDICT", "stance": "APPROVE",
+            "outcome": "HIT", "error_class": "NONE", "settled": "win", "review_id": review, "postmortem_id": postmortem, "source": "live",
+            "computed_at": KO + timedelta(hours=6, minutes=5)})
+
+    def steps(self) -> None:
+        """The match's result, a nightly whose post-mortem step succeeded and a learning cycle whose attribution step ran."""
+        put(self.db, "core.fixture_results", {"fixture_id": self.seed.fixture_id, "goals_home": 2, "goals_away": 1, "ft_goals_home": 2,
+                                              "ft_goals_away": 1}, returning=False)
+        put(self.db, "intel.runs", {"job": "nightly", "started_at": KO + timedelta(hours=5), "finished_at": KO + timedelta(hours=5, minutes=20),
+                                    "status": "ok", "counts": Jsonb({"postmortems": {"selections": 3}, "postmortems_ms": 900})})
+        put(self.db, "ai.cycles", {"kind": "learning", "started_at": KO + timedelta(hours=6), "finished_at": KO + timedelta(hours=6, minutes=3),
+                                   "status": "ok", "mode": "shadow", "budget_state": "ok", "counts": Jsonb({"attributions": 1})})
 
     def publish(self, pick: int) -> None:
         set_id = put(self.db, "picks.daily_sets", {"day": DAY, "timezone": "America/Bogota", "source": "qualified", "rule_version": "daily-set-v7",
@@ -166,12 +193,33 @@ def world(db: psycopg.Connection[Any], seed: Seed) -> dict[str, Any]:
     w.publish(home_pick)
     run = put(db, "ai.agent_runs", run_values(seed, 7, started_at=T24 - timedelta(hours=1), finished_at=T24 - timedelta(minutes=59),
                                               known_at=T24 - timedelta(hours=2), latency_ms=1800))
+    w.steps()
+    home_pm = w.postmortem("Home", d2)
+    put(db, "intel.match_postmortems", {"fixture_id": seed.fixture_id, "created_at": KO + timedelta(hours=5, minutes=12), "version": "mr-v1",
+                                        "outcome": Jsonb({}), "findings": Jsonb({})}, returning=False)
+    home_attribution = w.attribution("Home", review=shadow, postmortem=home_pm)
+
+    draw_pick, _ = w.pick("Draw", odds="3.30")
+    w.snapshot("Draw")
+    w.consensus("Draw", SNAP_AT)
+    w.consensus("Draw", PRICE_AT)
+    draw = w.decision("Draw", T6, "T-6h", pick=draw_pick, review=None, evidence=[], price_at=PRICE_AT, state="CAUTELA")
+    w.settle(draw_pick, [draw], result="loss")
+
+    dc_pick, _ = w.pick("1X", odds="1.40", market="DC")
+    w.snapshot("1X", market="DC")
+    w.consensus("1X", SNAP_AT, market="DC")
+    w.consensus("1X", PRICE_AT, market="DC")
+    dc = w.decision("1X", T6, "T-6h", pick=dc_pick, review=None, evidence=[], price_at=PRICE_AT, market="DC", state="CAUTELA")
+    w.settle(dc_pick, [dc])
+    w.review("1X", "ma-v1", evidence=[], pick=None, market="DC")
+    w.postmortem("1X", dc, market="DC")
 
     away_pick, _ = w.pick("Away", odds="3.40")
     w.snapshot("Away")
     w.consensus("Away", SNAP_AT)
     away = w.decision("Away", T6, "T-6h", pick=away_pick, review=987654321, evidence=[987654321], price_at=PRICE_AT)
-    return {"home_pick": home_pick, "home_prediction": home_prediction, "evidence": evidence, "combined": combined, "shadow": shadow,
+    return {"home_pm": home_pm, "home_attribution": home_attribution, "draw_pick": draw_pick, "dc_pick": dc_pick, "home_pick": home_pick, "home_prediction": home_prediction, "evidence": evidence, "combined": combined, "shadow": shadow,
             "home_decisions": [d1, d2], "run": run, "away_pick": away_pick, "away_decision": away}
 
 
@@ -207,10 +255,18 @@ def test_a_complete_trace_follows_the_pick_from_the_data_to_its_outcome(db: psyc
     assert t.of_kind("data_quality")[0].payload["class"] == "MODEL_READY"
     assert {s.source for s in t.of_kind("publication")} == {"picks.daily_set_items"}
     assert [s.row_ids for s in t.of_kind("outcome")] == [(str(d),) for d in world["home_decisions"]]
-    assert kinds(t, tr.NOT_READ) == {"cycle", "postmortem", "attribution", "evidence"}
+    assert kinds(t, tr.NOT_READ) == {"cycle"}
     (evidence,) = t.of_kind("evidence")
-    assert evidence.row_ids == (str(world["evidence"]),)
+    assert evidence.status == tr.PRESENT and evidence.row_ids == (str(world["evidence"]),) and evidence.payload["kind"] == "lineup"
+    assert evidence.at == T24 - timedelta(hours=2) and evidence.payload["known_at"] == (T24 - timedelta(hours=2)).isoformat()
     assert evidence.payload["cited_by"] == sorted([f"decision {d}" for d in world["home_decisions"]] + [f"review {world['combined']}"])
+    (postmortem,) = t.of_kind("postmortem")
+    assert postmortem.row_ids == (str(world["home_pm"]),) and postmortem.versions == {"postmortem": "pm-v6"}
+    assert postmortem.payload["verdict"] == "MERECIDO" and postmortem.source == "intel.selection_postmortems"
+    (attribution,) = t.of_kind("attribution")
+    assert attribution.row_ids == (str(world["home_attribution"]),) and attribution.versions == {"attribution": "attr-v1", "agent": "council-v1"}
+    assert attribution.payload["outcome"] == "HIT" and attribution.payload["postmortem_id"] == world["home_pm"]
+    assert [s.status for s in t.of_kind("match_postmortem")] == [tr.PRESENT]
     assert [s.kind for s in t.spans] == sorted((s.kind for s in t.spans), key=tr.STAGES.index), "pipeline order"
 
 
@@ -226,14 +282,42 @@ def test_a_trace_with_gaps_says_which_and_invents_none(db: psycopg.Connection[An
     t = tr.trace_of(db, pick_id=world["away_pick"])
     c = tr.completeness(t)
     assert not c.complete
-    assert set(c.missing) == {"price", "review", "settlement"}
-    assert c.not_applicable == ("outcome",), "no final result: no outcome is due"
+    assert set(c.missing) == {"price", "review", "evidence", "settlement"}
+    assert c.not_applicable == ("outcome", "postmortem", "attribution"), "no final result: no outcome, post-mortem or attribution is due"
+    assert "no final result" in t.of_kind("postmortem")[0].note
     missing_review = [s for s in t.of_kind("review") if s.status == tr.MISSING]
     assert [s.row_ids for s in missing_review] == [("987654321",)] and "not found" in missing_review[0].note
-    assert [(s.row_ids, s.status) for s in t.of_kind("evidence")] == [(("987654321",), tr.NOT_READ)], "listed, never said to resolve"
+    assert [(s.row_ids, s.status) for s in t.of_kind("evidence")] == [(("987654321",), tr.MISSING)]
+    assert t.of_kind("evidence")[0].payload["cited_by"] == [f"decision {world['away_decision']}"]
     missing_price = [s for s in t.of_kind("price") if s.status == tr.MISSING]
     assert [s.source for s in missing_price] == ["market.market_consensus"] and missing_price[0].at == PRICE_AT
     assert not [s for s in t.of_kind("review") if s.status == tr.PRESENT and s.row_ids == ("987654321",)]
+
+
+def test_a_post_mortem_due_and_not_written_is_missing(db: psycopg.Connection[Any], world: dict[str, Any]) -> None:
+    t = tr.trace_of(db, pick_id=world["draw_pick"])
+    c = tr.completeness(t)
+    assert c.missing == ("postmortem",), c
+    (span,) = t.of_kind("postmortem")
+    assert span.at == KO + timedelta(hours=5) and "wrote no post-mortem" in span.note
+    assert "no post-mortem of the selection yet" in t.of_kind("attribution")[0].note and c.not_applicable == ("review", "evidence", "attribution")
+
+
+def test_an_attribution_due_and_not_written_is_missing(db: psycopg.Connection[Any], world: dict[str, Any]) -> None:
+    t = tr.trace_of(db, pick_id=world["dc_pick"])
+    c = tr.completeness(t)
+    assert c.missing == ("attribution",), c
+    assert t.of_kind("postmortem")[0].status == tr.PRESENT and "wrote no row" in t.of_kind("attribution")[0].note
+
+
+def test_post_mortem_and_attribution_wait_for_their_steps(db: psycopg.Connection[Any], world: dict[str, Any]) -> None:
+    """Without the steps having run, a missing post-mortem or attribution is not yet due: the same selections say why instead."""
+    db.execute("DELETE FROM intel.runs WHERE job = 'nightly'")
+    db.execute("DELETE FROM ai.cycles WHERE kind = 'learning'")
+    draw = tr.trace_of(db, pick_id=world["draw_pick"])
+    assert tr.completeness(draw).complete and "no post-mortem step has run" in draw.of_kind("postmortem")[0].note
+    dc = tr.trace_of(db, pick_id=world["dc_pick"])
+    assert tr.completeness(dc).complete and "has not run" in dc.of_kind("attribution")[0].note
 
 
 def test_an_anchor_that_does_not_exist_is_missing_not_guessed(db: psycopg.Connection[Any]) -> None:
@@ -246,15 +330,16 @@ def test_an_anchor_that_does_not_exist_is_missing_not_guessed(db: psycopg.Connec
 def test_the_trace_of_the_match(db: psycopg.Connection[Any], seed: Seed, world: dict[str, Any]) -> None:
     t = tr.trace_of(db, fixture_id=seed.fixture_id)
     assert t.scope == "match" and t.trace_id == tr.match_trace_id(seed.fixture_id) and tr.completeness(t).complete
-    assert len(t.of_kind("decision")) == 3
+    assert len(t.of_kind("decision")) == 5
     assert {s.payload["selection_trace_id"] for s in t.of_kind("decision")} == {
-        str(tr.selection_trace_id(seed.fixture_id, "1X2", sel, 0)) for sel in ("Home", "Away")}
+        str(tr.selection_trace_id(seed.fixture_id, m, sel, 0)) for m, sel in (("1X2", "Home"), ("1X2", "Away"), ("1X2", "Draw"), ("DC", "1X"))}
+    assert [s.status for s in t.of_kind("match_postmortem")] == [tr.PRESENT]
 
 
 def test_the_coverage_of_a_day(db: psycopg.Connection[Any], world: dict[str, Any]) -> None:
     cov = tr.coverage(db, DAY)
-    assert (cov.selections.total, cov.selections.complete) == (2, 1) and cov.selections.share == pytest.approx(0.5)
-    assert dict(cov.selections.missing) == {"price": 1, "review": 1, "settlement": 1}
+    assert (cov.selections.total, cov.selections.complete) == (4, 1) and cov.selections.share == pytest.approx(0.25)
+    assert dict(cov.selections.missing) == {"price": 1, "review": 1, "evidence": 1, "settlement": 1, "postmortem": 1, "attribution": 1}
     assert (cov.published.total, cov.published.complete) == (1, 1)
     before = tr.coverage(db, DAY - timedelta(days=1))
     assert (before.selections.total, before.selections.complete) == (1, 1), "only Home was decided on the 14th (T-24h)"
