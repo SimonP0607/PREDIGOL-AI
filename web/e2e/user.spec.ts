@@ -251,7 +251,7 @@ test("Home: today in the suggested leagues, the day's picks or why there are non
   }
   // the blocks in the order of section 24
   const order = await page.$$eval(
-    '[data-testid="home-today"], [data-testid="daily-set"], [data-testid="home-relevant"], [data-testid="home-news"], [data-testid="home-context"], [data-testid="home-results"]',
+    '[data-testid="home-today"], [data-testid="daily-set"], [data-testid="home-relevant"], [data-testid="home-news"], [data-testid="home-at-stake"], [data-testid="home-results"]',
     (els) => els.map((e) => e.getAttribute("data-testid") ?? ""),
   );
   const seen = order.filter((x, i) => order.indexOf(x) === i);
@@ -260,7 +260,7 @@ test("Home: today in the suggested leagues, the day's picks or why there are non
     "daily-set",
     "home-relevant",
     "home-news",
-    "home-context",
+    "home-at-stake",
     "home-results",
   ];
   expect(seen).toEqual(SECTION_24.filter((x) => seen.includes(x)));

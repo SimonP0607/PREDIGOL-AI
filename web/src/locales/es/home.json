@@ -55,7 +55,7 @@
   },
   "relevant": {
     "title": "Partidos relevantes",
-    "subtitle": "De otras competiciones que seguimos, con análisis de PrediGol"
+    "subtitle": "En juego ahora, con el motivo por el que vale la pena mirarlos"
   },
   "context": {
     "title": "Qué se juega",
@@ -133,5 +133,31 @@
     "bell": "{minutes} · {when}",
     "more_one": "Y {count} aviso más, en tus partidos.",
     "more_other": "Y {count} avisos más, en tus partidos."
+  },
+  "atStake": {
+    "title": "Qué se juega",
+    "subtitle": "Los próximos partidos con algo en juego, en las próximas 36 horas"
+  },
+  "reason": {
+    "final": "Es una final.",
+    "tieAhead": "{team} va por delante en el global: {lead}-{trail}.",
+    "tieLevel": "El global está igualado a {goals}.",
+    "firstLeg": "Vuelta de la eliminatoria. En la ida: {home} {firstHome}, {away} {firstAway}.",
+    "pressure": {
+      "title": "{team} pelea el título",
+      "europe": "{team} pelea plazas internacionales",
+      "relegation": "{team} pelea por no descender",
+      "promotion": "{team} pelea el ascenso"
+    },
+    "state": {
+      "ahead": "y ahora gana",
+      "level": "y ahora empata",
+      "behind": "y ahora pierde"
+    },
+    "both": "{first} y {second}",
+    "comebackLevel_one": "{team} iba perdiendo por {count} gol y ya empata.",
+    "comebackLevel_other": "{team} iba perdiendo por {count} goles y ya empata.",
+    "comebackAhead_one": "{team} iba perdiendo por {count} gol y ya gana.",
+    "comebackAhead_other": "{team} iba perdiendo por {count} goles y ya gana."
   }
 }

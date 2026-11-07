@@ -10,14 +10,12 @@ import type { NextFixture, Today, TodayMatch } from "@/lib/api/v1/types_today";
 import {
   CONTEXT_MATCHES,
   NEXT_FAVOURITES,
-  RELEVANT_ROWS,
   contextAhead,
   followedOf,
   mineToday,
   nextOfFavourites,
   phaseOf,
   pickContext,
-  relevantToday,
   suggestedView,
 } from "./today";
 
@@ -135,26 +133,6 @@ describe("block 1 · today in the reader's leagues", () => {
   });
 });
 
-describe("block 3 · relevant matches", () => {
-  test("the other competitions' matches of today with a reading, at most five", () => {
-    const rows = [
-      ...Array.from({ length: 7 }, (_, i) =>
-        m({ at: NOW + (i + 1) * 0.5 * H, suggested: false, has_reading: true }),
-      ),
-      m({ at: NOW + H, suggested: false, has_reading: false }),
-      m({ at: NOW + H, suggested: true, has_reading: true }),
-      over(NOW - 2 * H, { suggested: false, has_reading: true }),
-    ];
-    const relevant = relevantToday(rows, TZ, NOW);
-    expect(relevant).toHaveLength(RELEVANT_ROWS);
-    expect(relevant.every((x) => !x.suggested && x.has_reading)).toBe(true);
-  });
-
-  test("none with a reading: the block has nothing (it is left out of the page)", () => {
-    expect(relevantToday([m({ at: NOW + H, suggested: false })], TZ, NOW)).toEqual([]);
-  });
-});
-
 describe("block 5 · what is at stake", () => {
   const stake = {
     code: "stakes_pressure",
@@ -214,10 +192,6 @@ describe("A13 · the reader's own matches, as the API marks them", () => {
     const byLeague = m({ at: NOW + 3 * H, suggested: false, followed: league });
     const rows = mineToday([theirs, notTheirs, byLeague], TZ, NOW).rows;
     expect(rows.map((x) => x.fixture_id)).toEqual([theirs.fixture_id, byLeague.fixture_id]);
-    const withReading = { ...notTheirs, has_reading: true };
-    expect(relevantToday([theirs, withReading], TZ, NOW).map((x) => x.fixture_id)).toEqual([
-      withReading.fixture_id,
-    ]);
   });
 
   test("an API from before A13 (no mark at all): the suggested ones count as the reader's, by their league", () => {

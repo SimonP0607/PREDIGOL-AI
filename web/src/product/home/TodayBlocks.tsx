@@ -1,25 +1,16 @@
 /**
- * Inicio's blocks fed by GET /today (plan UX, A9 and A13; section 24): «Hoy en tus ligas» (1), «Partidos relevantes» (3),
- * «Qué se juega» (5) and «Resultados» (6). One board for every reader, cut in the reader's day and zone (./today.ts), with
+ * Inicio's blocks fed by GET /today (plan UX, A9 and A13; section 24): «Hoy en tus ligas» (1) and the reader's own «Qué se
+ * juega» (5). «Partidos relevantes» and the general «Qué se juega» are GET /home's now (./HomeStakes). One board for every reader, cut in the reader's day and zone (./today.ts), with
  * the reader's own part on top: their leagues and teams - while they chose none, the ones suggested for Colombia, labelled
  * as such with the way to choose - and on each of their matches why it is theirs. Each block says when it was updated, and
  * the page reads it again when the reader comes back to it.
  *
- * A failure shows in the blocks that always show (1 and 6) with its reference and a retry - never as an empty list; the two
- * blocks that only show with content (3 and 5) stay out until the board loads.
+ * A failure shows in the block that always shows (1) with its reference and a retry - never as an empty list; the block that
+ * only shows with content (5) stays out until the board loads.
  */
 import { Link } from "@tanstack/react-router";
 import type { UseQueryResult } from "@tanstack/react-query";
-import {
-  CalendarDays,
-  ChevronRight,
-  Compass,
-  Flag,
-  History,
-  Pencil,
-  Sparkles,
-  Star,
-} from "lucide-react";
+import { CalendarDays, ChevronRight, Flag, History, Pencil, Sparkles, Star } from "lucide-react";
 import type { ReactNode } from "react";
 import { CompetitionTag, Matchup, TeamLogo } from "@/components/football/Logos";
 import { t } from "@/lib/i18n";
@@ -35,7 +26,6 @@ import {
   mineToday,
   nextOfFavourites,
   pickContext,
-  relevantToday,
   suggestedView,
 } from "./today";
 import { TodayRow } from "./TodayRow";
@@ -362,31 +352,6 @@ export function TodayBlock({
       {today && personal && choose ? <ChooseLink chosen={!suggested} /> : null}
       {today && personal ? suggestion : null}
       {body}
-    </section>
-  );
-}
-
-/** 3 · Partidos relevantes: from 3 to 5 of today's other matches with a reading; out of the page when there are none. */
-export function RelevantBlock({ query, now }: { query: TodayQuery; now: number }) {
-  const today = query.data?.data;
-  if (!today) return null;
-  const rows = relevantToday(today.matches.data, getTimeZone(), now);
-  if (rows.length === 0) return null;
-  return (
-    <section data-testid="home-relevant">
-      <SectionHeader
-        title={t("home.relevant.title")}
-        subtitle={t("home.relevant.subtitle")}
-        icon={<Compass aria-hidden className="h-4 w-4 shrink-0 text-primary" />}
-      />
-      <Updated query={query} />
-      <Rows count={rows.length} testId="relevant-list">
-        {rows.map((m) => (
-          <li key={m.fixture_id} className="bg-card">
-            <TodayRow m={m} now={now} />
-          </li>
-        ))}
-      </Rows>
     </section>
   );
 }
