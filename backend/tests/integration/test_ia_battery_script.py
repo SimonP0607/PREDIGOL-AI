@@ -17,7 +17,7 @@ from typing import Any
 import pytest
 from scripts import ia_battery
 
-from fbi.ai.battery import TARGETS, run
+from fbi.ai.battery import TARGETS, VERSION, run
 from tests.unit.battery_model import Obeys
 
 from .conftest import TEST_DB, _dsn
@@ -26,6 +26,9 @@ from .test_battery_run import rig as rig
 from .test_lab import AT, cfg
 
 KEYS = ("sk-test-lab-key", "sk-test-production-key")
+
+ROUND = 55 * len(TARGETS)
+"""The first round of the whole battery: every base five times clean and every case once, for each of the six targets."""
 
 
 def command(rig: Rig, name: str, settings: Any = None, **kw: Any) -> tuple[dict[str, Any], int]:
@@ -43,7 +46,7 @@ def silent(report: dict[str, Any]) -> None:
 
 def test_the_plan_is_ok_says_what_a_round_costs_and_sends_nothing(rig: Rig) -> None:
     report, code = command(rig, "plan")
-    assert code == ia_battery.OK and report["asks"] == 165 and report["dry_run"] is True and report["submitted"] == 0
+    assert code == ia_battery.OK and report["asks"] == ROUND and report["dry_run"] is True and report["submitted"] == 0
     assert Decimal("0.05") < Decimal(report["estimate_usd"]) < Decimal(2) and Decimal(report["lab_remaining_usd"]) == 15
     assert rig.fake.created == [] and rig.one("SELECT count(*) FROM ai.batch_items") == 0
     silent(report)
@@ -67,7 +70,7 @@ def test_a_lab_that_cannot_pay_for_the_round_is_exit_two_and_nothing_is_sent(rig
 
 def test_submit_sends_the_round_once_and_asking_again_is_still_ok_and_pays_nothing(rig: Rig) -> None:
     sent, code = command(rig, "submit")
-    assert code == ia_battery.OK and sent["submitted"] == 165 and sent["states"] == {"queued": 165} and len(rig.fake.created) == 1
+    assert code == ia_battery.OK and sent["submitted"] == ROUND and sent["states"] == {"queued": ROUND} and len(rig.fake.created) == 1
     silent(sent)
     again, code = command(rig, "submit", at=AT + timedelta(minutes=5))
     assert code == ia_battery.OK and again["nothing_due"] is True and again["submitted"] == 0 and len(rig.fake.created) == 1
@@ -76,11 +79,11 @@ def test_submit_sends_the_round_once_and_asking_again_is_still_ok_and_pays_nothi
 def test_a_round_the_provider_would_not_take_is_exit_one_and_can_be_sent_again_whole(rig: Rig) -> None:
     rig.fake.fail_create = "timeout"
     report, code = command(rig, "submit")
-    assert code == ia_battery.NO and report["submitted"] == 0 and report["failed"] == 165 and report["error"]
+    assert code == ia_battery.NO and report["submitted"] == 0 and report["failed"] == ROUND and report["error"]
     assert rig.one("SELECT count(*) FROM ai.usage") == 0 and rig.fake.created == []
     rig.fake.fail_create = None
     report, code = command(rig, "submit", at=AT + timedelta(minutes=10))
-    assert code == ia_battery.OK and report["submitted"] == 165 and len(rig.fake.created) == 1
+    assert code == ia_battery.OK and report["submitted"] == ROUND and len(rig.fake.created) == 1
 
 
 # ── collect ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -93,7 +96,7 @@ def test_collecting_before_anything_was_sent_is_exit_two_and_says_to_submit_firs
 def test_asks_still_on_their_way_are_exit_three_and_nothing_is_decided(rig: Rig) -> None:
     command(rig, "submit")
     report, code = command(rig, "collect", at=LATER)
-    assert code == ia_battery.WAITING and report["state"] == "waiting" and report["open"] == 165 and "verdict" not in report
+    assert code == ia_battery.WAITING and report["state"] == "waiting" and report["open"] == ROUND and "verdict" not in report
     assert rig.gate_rows() == []
 
 
@@ -143,7 +146,7 @@ def test_the_native_route_and_a_suffix_are_other_measurements(rig: Rig) -> None:
     command(rig, "submit")
     command(rig, "submit", native=True)
     command(rig, "submit", suffix="2")
-    assert len(rig.fake.created) == 3 and rig.one("SELECT count(*) FROM ai.batch_items") == 495
+    assert len(rig.fake.created) == 3 and rig.one("SELECT count(*) FROM ai.batch_items") == 3 * ROUND
     rig.end()
     native, code = command(rig, "collect", at=LATER, native=True)
     assert code == ia_battery.OK and native["runs"]["review"] == run.run_id("review", native=True)
@@ -155,7 +158,7 @@ def test_the_native_route_and_a_suffix_are_other_measurements(rig: Rig) -> None:
 def test_status_only_reads_and_says_when_nothing_has_been_measured(rig: Rig) -> None:
     report, code = command(rig, "status", at=LATER)
     assert code == ia_battery.OK and report["fresh"] is False and report["stale"] == ["no measurement has been recorded"]
-    assert report["gate"]["passed"] is False and report["version"] == "battery-v2"
+    assert report["gate"]["passed"] is False and report["version"] == VERSION == "battery-v3"
     assert rig.fake.created == [] and rig.one("SELECT count(*) FROM ai.batch_items") == 0
 
 
@@ -165,7 +168,7 @@ def test_status_after_a_passing_run_says_the_evidence_speaks_for_the_corpus_in_f
     command(rig, "collect", at=LATER)
     report, code = command(rig, "status", at=LATER)
     assert code == ia_battery.OK and report["fresh"] is True and report["stale"] == [] and report["gate"]["passed"] is True
-    assert {t: r["asks"] for t, r in report["runs"].items()} == {"review": 55, "extract": 55, "claims": 55}
+    assert {t: r["asks"] for t, r in report["runs"].items()} == dict.fromkeys(TARGETS, 55)
     silent(report)
 
 
@@ -175,7 +178,7 @@ def test_main_runs_a_command_against_the_database_it_is_given_and_prints_json(
         capsys: pytest.CaptureFixture[str], rig: Rig) -> None:
     code = ia_battery.main(["status", "--dsn", _dsn(TEST_DB)])
     printed = json.loads(capsys.readouterr().out)
-    assert code == ia_battery.OK and printed["version"] == "battery-v2" and set(printed["runs"]) == set(TARGETS)
+    assert code == ia_battery.OK and printed["version"] == VERSION and set(printed["runs"]) == set(TARGETS)
     assert printed["gate"]["gate"] == "battery"
 
 

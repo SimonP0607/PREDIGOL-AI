@@ -95,6 +95,8 @@ NAMES_IT: dict[str, str] = {
                           "owner's command; it writes nothing and no decision path imports it",
     "familydecisions/memory.py": "the memory of the families (memory-fam-v1, F11, shadow): the only writer of intel.family_memory, and the reader of the "
                                  "post-mortems of the families it adds up",
+    "observability/trace.py": "the end-to-end trace (trace-v1, Plan Maestro IA, P0): reads the post-mortem of a settled selection and of its match to show "
+                              "them as spans of the trace; read-only, for observability, never on a decision path (nothing that decides imports it)",
 }
 """Every file under ``src/fbi``, ``scripts`` and ``apps`` that names the objects and sits after a kick-off, with why."""
 
@@ -114,6 +116,8 @@ IMPORTS: dict[str, dict[str, str]] = {
         "scripts/postmortems.py": "the owner's command: build (a dry run until --apply), status, coverage and closes",
         "familydecisions/postmortem.py": "the post-mortem of a family is judged by the pipeline's own definitions - the quality of a price, the verdict, "
                                          "the causes and the queries of the events, the statistics and the referee's average - not by copies of them",
+        "observability/trace.py": "the trace asks the post-mortem's own rules (universe, SETTLE_DELAY, LOOKBACK) whether a selection's post-mortem is due, "
+                                  "instead of copying them; it reads, it never calls study",
     },
     "fbi.intel.match_review": {
         "intel/cycle.py": "the nightly: the post-mortems step reviews the matches after the selections",
@@ -222,7 +226,7 @@ WRITERS: dict[str, set[str]] = {
 players, prices, picks, settlements - and never into them (``ai.source_stats`` is the day's tally of the sources the notes quote)."""
 
 READ_ONLY = ("api/services/intelligence.py", "api/services/ai_v2.py", "api/services/match_memory.py", "api/services/families.py", "api/services/postmatch.py", "scripts/postmortems.py",
-             "scripts/memory.py")
+             "scripts/memory.py", "observability/trace.py")
 """The pages and commands that look at the post-mortem and the memory write nothing themselves: what a command builds, the builders write."""
 
 CYCLES: dict[str, dict[str, set[str]]] = {

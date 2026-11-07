@@ -40,13 +40,15 @@ from fbi.ai.battery import (
     FAMILIES,
     MIN_CASES,
     PER_FAMILY,
-    TARGETS,
+    PROMPT_TARGETS,
     corpus,
     evaluate,
     offline,
     run,
 )
-from fbi.ai.battery import VERSION as BATTERY_VERSION
+from fbi.ai.battery import TARGETS as EVERY_TARGET
+from fbi.ai.battery import VERSION as BATTERY_IN_FORCE
+from fbi.ai.battery.model import CANARY_SEED
 from fbi.ai.config import AiSettings, TierModel
 from fbi.ai.contracts import assessment, base, claim, council, learning, mcp, postmatch
 from fbi.ai.contracts.mcp import PassKind
@@ -81,6 +83,11 @@ def read_doc(*parts: str) -> str:
 
 
 GUIDE = read_doc("owner", "IA_FASE1.md")
+BATTERY_VERSION = CANARY_SEED
+"""The battery this guide documents: ``battery-v2``, the three prompts. ``battery-v3`` (IA-010) adds the agents' targets and the command
+``simulate`` and keeps those three byte for byte (``test_battery_corpus``), so every figure the guide gives of them is still the code's."""
+TARGETS = PROMPT_TARGETS
+GUIDE_COMMANDS = tuple(c for c in ia_battery.COMMANDS if c != "simulate")
 PHASE_0 = read_doc("owner", "IA_FASE0.md")
 ACTIONS = read_doc("owner", "IA_ACCIONES_MANUALES.md")
 BASELINE = read_doc("owner", "IA_BASELINE_F0.md")
@@ -772,14 +779,14 @@ def test_the_commands_and_the_options_of_the_guide_are_the_ones_of_the_script() 
     sec = section(13)
     parser = ia_battery.build_parser()
     found = commands(sec, "ia_battery")
-    assert [c[0] for c in found] == list(ia_battery.COMMANDS)
+    assert [c[0] for c in found] == list(GUIDE_COMMANDS)
     for args in found:
         assert parser.parse_args(args).command == args[0]
     options = paragraph(sec, "Opciones:")
     named = set(re.findall(r"`(--[a-z-]+)", options))
     assert named == options_of(parser) - {"-h", "--help"}
     assert parser.parse_args(["collect", "--no-record"]).no_record and parser.parse_args(["plan", "--suffix", "2"]).suffix == "2"
-    assert parser.parse_args(["plan"]).targets == list(TARGETS) and "por defecto los tres" in options
+    assert parser.parse_args(["plan"]).targets == list(EVERY_TARGET) and EVERY_TARGET[:3] == TARGETS and "por defecto los tres" in options
     assert "`python -m scripts.ia_battery <comando>`" in sec
 
 
@@ -803,7 +810,7 @@ def code_of(monkeypatch: pytest.MonkeyPatch, command: str, report: dict[str, Any
 def test_the_exit_statuses_of_the_guide_are_the_ones_each_command_can_give(monkeypatch: pytest.MonkeyPatch) -> None:
     sec = section(13)
     rows = {ticked(r[0]): r[1:] for r in table(sec, "| Comando")}
-    assert list(rows) == list(ia_battery.COMMANDS)
+    assert list(rows) == list(GUIDE_COMMANDS)
     scenarios: dict[str, list[tuple[dict[str, Any], bool]]] = {
         "offline": [({}, True), ({}, False)],
         "plan": [({}, True), ({"blockers": ["x"]}, True)],
@@ -897,7 +904,7 @@ EXAMPLE_ONLY = "aa-v2"
 
 def versions_the_code_holds() -> set[str]:
     in_force = {base.MCP, *base.OUTPUTS, router.VERSION, idempotency.VERSION, package.VERSION, package.FAMILY_VERSION, PACKET_VERSION,
-                leakage.VERSION, match_runs.STATE_VERSION, BATTERY_VERSION, REVIEW_VERSION, EXTRACT_VERSION, POSTMORTEM_VERSION,
+                leakage.VERSION, match_runs.STATE_VERSION, BATTERY_VERSION, BATTERY_IN_FORCE, REVIEW_VERSION, EXTRACT_VERSION, POSTMORTEM_VERSION,
                 BRIEF_VERSION, PICK_PM_VERSION, LEARNING_VERSION, EXTRACT_V2_VERSION, registry.FINGERPRINT_VERSION}
     planned = {p.version for p in registry.REGISTRY.planned} | {t.prompt_version for p in registry.REGISTRY.planned for t in p.tasks}
     built = {r.version for r in registry.REGISTRY.ledger} | set(registry.live_prompt_versions().values())  # the agents of the plan, once built

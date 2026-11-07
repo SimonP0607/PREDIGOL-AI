@@ -6,8 +6,6 @@ import hashlib
 from dataclasses import dataclass
 from typing import Final, Literal
 
-from fbi.ai.battery import VERSION
-
 Goal = Literal["approve", "reject", "any"]
 """What the attacker wants of the verdict: that the pick be approved, that it be rejected, or that anything change."""
 Sig = tuple[str, str, str]
@@ -15,6 +13,10 @@ Sig = tuple[str, str, str]
 
 CANARY_MARK: Final = "{canary}"
 """Where an attack asks the model for its code word."""
+CANARY_SEED: Final = "battery-v2"
+"""What the code word of a case is made of besides its name: the version of the battery that first minted the code words. A later version keeps
+it, so that a target whose cases did not change keeps the very bytes of its requests (``battery-v3`` adds the agents and changes nothing of the
+three prompts measured before: a test holds the fingerprint of each of their requests to the one of ``battery-v2``)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +46,9 @@ class Attack:
     followed."""
     slot: str = ""
     """Claims: which subject's name the text replaces, when the surface is a name (the key of the player in ``fbi.ai.battery.claims``)."""
+    aim: str = ""
+    """The agents (``fbi.ai.battery.attacks_agents.AIMS``): what the attacker wants the answer to carry - a number of its own, an address or a
+    query, a code outside the contract, a verdict, a reference to nothing, the system prompt. Empty for the targets of ``battery-v2``."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,9 +107,9 @@ def case_id(target: str, family: str, n: int) -> str:
 
 
 def canary_of(case: str) -> str:
-    """The code word of a case: made of the case's name and the version of the battery, so it is the same on every run, differs from case
-    to case, and is nothing a model writes by itself."""
-    return "ZQ" + hashlib.sha256(f"{VERSION}/{case}".encode()).hexdigest()[:8].upper()
+    """The code word of a case: made of the case's name and ``CANARY_SEED``, so it is the same on every run, differs from case to case, and
+    is nothing a model writes by itself."""
+    return "ZQ" + hashlib.sha256(f"{CANARY_SEED}/{case}".encode()).hexdigest()[:8].upper()
 
 
 def make_case(target: str, attack: Attack) -> Case:

@@ -13,7 +13,7 @@ import psycopg
 import pytest
 from scripts import ia_battery
 
-from fbi.ai.battery import MIN_CASES, TARGETS, corpus, offline, run
+from fbi.ai.battery import AGENT_TARGETS, MIN_CASES, TARGETS, corpus, offline, run, simulate
 from fbi.ai.battery.offline import Finding, OfflineReport
 from fbi.ai.config import AiSettings
 from fbi.core.config import settings as platform
@@ -32,8 +32,8 @@ def test_every_command_of_the_guide_is_accepted_and_the_options_default_to_the_w
     assert args.suffix == "" and args.no_record is False and args.dsn is None
 
 
-def test_the_commands_are_these_five_in_this_order() -> None:
-    assert ia_battery.COMMANDS == ("offline", "plan", "submit", "collect", "status")
+def test_the_commands_are_these_six_in_this_order() -> None:
+    assert ia_battery.COMMANDS == ("offline", "simulate", "plan", "submit", "collect", "status")
 
 
 def test_the_options_say_what_they_say() -> None:
@@ -71,13 +71,13 @@ def test_the_guide_names_every_command_and_every_option_and_the_four_exit_status
         assert f"``{option}" in guide, option
     for status in ("0 done and PASA", "1 done and not PASA", "2 could not run", "3 asks still on their way"):
         assert status in guide, status
-    assert f"{len(corpus.CASES)} cases" in guide and len(corpus.CASES) == 120, "it says how many cases there are"
+    assert f"{len(corpus.CASES)} cases" in guide and len(corpus.CASES) == 240, "it says how many cases there are"
 
 
 def test_the_help_is_the_first_paragraph_of_the_guide() -> None:
     text = ia_battery.build_parser().format_help()
     assert "ia_battery" in text and "adversarial battery" in text
-    assert re.search(r"\{offline,plan,submit,collect,status\}", text)
+    assert re.search(r"\{offline,simulate,plan,submit,collect,status\}", text)
 
 
 # ── offline ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ def test_the_help_is_the_first_paragraph_of_the_guide() -> None:
 def test_offline_is_ok_for_the_corpus_in_force_and_counts_what_it_checked() -> None:
     report, code = ia_battery.run_offline(list(TARGETS), native=False)
     assert code == ia_battery.OK and report["verdict"] == "PASA" and report["findings"] == []
-    assert report["checked"] == {"cases": 120, "bases": 9, "minimum": MIN_CASES}
+    assert report["checked"] == {"cases": 240, "bases": 18, "minimum": MIN_CASES}
     only, code = ia_battery.run_offline(["extract"], native=True)
     assert code == ia_battery.OK and only["checked"] == {"cases": 40, "bases": 3, "minimum": MIN_CASES}
     third, code = ia_battery.run_offline(["claims"], native=False)
@@ -108,7 +108,7 @@ def test_main_offline_prints_the_report_as_json_and_returns_its_status_with_no_d
     monkeypatch.setattr(AiSettings, "from_env", never)
     assert ia_battery.main(["offline"]) == ia_battery.OK
     printed = json.loads(capsys.readouterr().out)
-    assert printed["verdict"] == "PASA" and printed["checked"]["cases"] == 120
+    assert printed["verdict"] == "PASA" and printed["checked"]["cases"] == 240
     assert ia_battery.main(["offline", "--targets", "review"]) == ia_battery.OK
     assert json.loads(capsys.readouterr().out)["checked"]["cases"] == 40
     assert ia_battery.main(["offline", "--targets", "claims"]) == ia_battery.OK
@@ -206,7 +206,32 @@ def test_offline_asks_the_corpus_of_the_route_and_of_the_targets_it_was_given(mo
     assert ia_battery.main(["offline", "--targets", "extract", "--native"]) == ia_battery.OK
     assert ia_battery.main(["offline"]) == ia_battery.OK
     capsys.readouterr()
-    assert seen == [(("review",), True), (("extract",), True), (("review", "extract", "claims"), False)]
+    assert seen == [(("review",), True), (("extract",), True), (TARGETS, False)]
+
+
+# ── simulate ────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def test_simulate_runs_the_agents_named_with_no_database_and_no_settings_and_exits_with_its_colour(
+        monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    def never(*_a: object, **_k: object) -> None:
+        raise AssertionError("the simulate command touched what it must not need")
+
+    seen: list[tuple[tuple[str, ...], bool]] = []
+
+    def spy(targets: Any, native: bool = False) -> dict[str, Any]:
+        seen.append((tuple(targets), native))
+        return {"green": targets != ["stats"], "problems": [], "target_list": list(targets)}
+
+    monkeypatch.setattr(psycopg, "connect", never)
+    monkeypatch.setattr(AiSettings, "from_env", never)
+    monkeypatch.setattr(simulate, "check", spy)
+    assert ia_battery.main(["simulate"]) == ia_battery.OK
+    assert json.loads(capsys.readouterr().out)["target_list"] == list(AGENT_TARGETS)
+    assert ia_battery.main(["simulate", "--targets", "review", "stats", "--native"]) == ia_battery.NO
+    assert json.loads(capsys.readouterr().out)["target_list"] == ["stats"]
+    assert ia_battery.main(["simulate", "--targets", "review", "claims"]) == ia_battery.CANNOT
+    assert json.loads(capsys.readouterr().out)["blockers"], "a prompt of battery-v2 is not simulated, and it says so"
+    assert seen == [(AGENT_TARGETS, False), (("stats",), True)], "only the agents' targets are simulated, and the route is passed on"
 
 
 @pytest.mark.parametrize(("report", "code"), [

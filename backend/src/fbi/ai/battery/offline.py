@@ -87,6 +87,12 @@ def documents(request: JsonRequest) -> list[Any]:
     return [json.loads(t) for t in texts]
 
 
+def documents_of(name: str, request: JsonRequest) -> list[Any]:
+    """The JSON documents of a request of a target: its own reader's (an agent reads two documents on two lines), or ``documents``."""
+    reader = target(name).reader
+    return documents(request) if reader is None else reader(request)
+
+
 def check_text(case: Case) -> list[Finding]:
     """What ``fbi.ai.untrusted`` does to the text of a case."""
     found: list[Finding] = []
@@ -114,7 +120,7 @@ def check_request(case: Case, *, native: bool = False) -> list[Finding]:
     attacked = request_for(case.target, case.base, case, native=native)
     found: list[Finding] = []
     try:
-        docs, base_docs = documents(attacked), documents(clean)
+        docs, base_docs = documents_of(case.target, attacked), documents_of(case.target, clean)
     except ValueError:
         return [Finding(case.id, "not_json", "the user message of the request is not JSON")]
     if len(docs) != len(base_docs):
@@ -125,7 +131,8 @@ def check_request(case: Case, *, native: bool = False) -> list[Finding]:
             found.append(Finding(case.id, "text_not_whole", "the text is not found, whole, in one string of the request"))
     else:
         found += [Finding(case.id, check, detail) for check, detail in door(case, attacked, clean)]
-    extra = sorted({"/".join(p) for d, b in zip(docs, base_docs, strict=True) for p in set(key_paths(d)) - set(key_paths(b))})
+    may_add = target(case.target).may_add
+    extra = sorted({"/".join(p) for d, b in zip(docs, base_docs, strict=True) for p in set(key_paths(d)) - set(key_paths(b))} - may_add)
     if extra:
         found.append(Finding(case.id, "keys_added", f"the request has keys the clean one has not: {extra[:6]}"))
     if (attacked.system, attacked.schema, attacked.schema_name) != (clean.system, clean.schema, clean.schema_name):
@@ -138,7 +145,7 @@ def check_bases(names: Sequence[str], *, native: bool = False) -> list[Finding]:
     found: list[Finding] = []
     for name in names:
         for base in target(name).bases:
-            for doc in documents(request_for(name, base, native=native)):
+            for doc in documents_of(name, request_for(name, base, native=native)):
                 for leaf in leaves(doc):
                     flags = set(sanitize(leaf, origin="battery", max_chars=max(len(leaf), 1)).flags) & CLEAN_FLAGS
                     if flags:

@@ -818,7 +818,8 @@ def test_gate_b_asks_what_the_plan_asks_and_says_what_is_not_built() -> None:
                          "batería adversaria en verde", "Research v2 con ≥ 95 % de las evidencias de v1"):
             assert fragment in line
     assert "no tiene hoy un comando que lo evalúe" in sec
-    assert not list((BACKEND / "scripts").glob("*gate_b*")) and not list((BACKEND / "scripts").glob("ia_gate_b*"))
+    # the guide says what was true when it was written; IA-010 builds the command (gate-b-v1, read only), as code in one place
+    assert (BACKEND / "scripts" / "ia_gate_b.py").is_file() and (SRC / "ai" / "gate_b.py").is_file()
     # unique index of paid runs: no duplicated payment
     assert "ai_agent_runs_paid_once" in sec and "ai_agent_runs_paid_once" in (next((BACKEND / "migrations" / "versions").glob("0111_*.py"))).read_text(encoding="utf-8")
     # the attribution of settled matches was not built when this guide was written; phase 5 builds it (docs/owner/IA_FASE5.md), as code in one place
@@ -863,8 +864,10 @@ def test_the_deviations_are_eight_and_each_one_is_shown_by_the_code() -> None:
     assert "the month's allocation" in (SRC / "ai" / "budget_v3.py").read_text(encoding="utf-8") or "What the LAB may spend this month" in (SRC / "ai" / "budget_v3.py").read_text(encoding="utf-8")
     assert "Haiku 30 %, Council 65 %, Opus 30 % en la sombra" in rows[4][1]
     assert router.PARAMS["share"]["simple"] == "0.30" and router.PARAMS["share"]["council"] == "0.65" and router.PARAMS["share"]["opus"]["shadow"] == "0.30"
-    # D6: the battery has three targets and none is the Match Agent or the Council
-    assert TARGETS == ("review", "extract", "claims") and "(`review`, `extract`, `claims`)" in rows[5][1]
+    # D6: the guide says the battery had three targets and none was the Match Agent or the Council - true of battery-v2, which phase 3 measured;
+    # IA-010 (battery-v3) closes it: the three are still the first targets, and the agents follow them
+    assert TARGETS[:3] == ("review", "extract", "claims") and "(`review`, `extract`, `claims`)" in rows[5][1]
+    assert {"match", "council"} <= set(TARGETS), "D6 is closed by battery-v3"
     # D7: a single instance, no queue to share; the second writer of a pass keeps nothing
     assert "max_instances=1" in SCHEDULER_SRC and "SKIP LOCKED" not in ORCH_SRC + STORE_SRC
     # D8: attribution (phase 5) is not built

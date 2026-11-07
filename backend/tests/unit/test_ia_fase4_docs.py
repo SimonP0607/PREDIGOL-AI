@@ -342,9 +342,9 @@ def test_the_deviations_are_what_the_code_shows() -> None:
     assert "def escalation_naming" in ORCH_SRC
     # D6: the state keeps all the slices of the package
     assert "for name in SLICE_NAMES if name in p.slices" in ORCH_SRC
-    # D7: the battery has no target for the new prompt
-    from fbi.ai.battery import TARGETS
-    assert not any("stats" in str(t) for t in TARGETS) and "`stats-assess-v2`" in rows["D7"][1]
+    # D7: the guide says the battery had no target for the new prompt - true of battery-v2; IA-010 (battery-v3) closes it
+    from fbi.ai.battery import TARGETS, corpus
+    assert "`stats-assess-v2`" in rows["D7"][1] and "stats" in TARGETS and corpus.target("stats").prompts == ("stats-assess-v2",)
     # D8: the Batch keeps the flag it was queued with
     assert "p.stats_on" in ORCH_SRC and "stats_wanted" in ORCH_SRC
 

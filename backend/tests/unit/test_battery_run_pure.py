@@ -109,7 +109,7 @@ def test_the_task_of_an_ask_is_the_labs_and_reserves_the_output_its_prompt_write
     for ask in (run.first_round(target)[0], run.first_round(target)[-1]):
         task = run.task_of(ask, rid)
         assert task.purpose == "other" and task.lab is True and task.prompt_version == VERSION
-        assert task.tier == spec.tier and task.typical_output == spec.typical_output > 0
+        assert task.tier == spec.tier_of(ask.base) and task.typical_output == spec.typical_output > 0
         assert task.request == corpus.request_for(target, ask.base, ask.case)
         assert task.context == {"lab": "battery", "run": rid, "target": target, "base": ask.base,
                                 "case": None if ask.case is None else ask.case.id, "ask": ask.key, "stage": ask.stage}
@@ -130,12 +130,19 @@ def test_the_input_of_every_ask_is_its_own_and_does_not_change_between_calls() -
             h = run.task_of(ask, rid).input_hash
             assert h == run.task_of(ask, rid).input_hash and re.fullmatch(r"[0-9a-f]{64}", h)
             hashes[f"{target}/{ask.key}"] = h
-    assert len(set(hashes.values())) == len(hashes) == 165, "five clean asks of a base are five asks"
+    assert len(set(hashes.values())) == len(hashes) == 330, "five clean asks of a base are five asks"
     ask = run.first_round("review")[0]
     assert run.task_of(ask, run.run_id("review")).input_hash != run.task_of(ask, run.run_id("review", suffix="2")).input_hash
 
 
 # ── what the ledger says of a run ─────────────────────────────────────────────────────────────────────────────────
+
+def test_the_escalation_of_the_council_is_asked_of_opus_and_every_other_ask_with_its_targets_tier() -> None:
+    rid = run.run_id("council")
+    tiers = {ask.base: run.task_of(ask, rid).tier for ask in run.first_round("council")}
+    assert tiers == {"k_reject": "analysis", "k_approve": "analysis", "k_escalated": "final"}
+    assert {run.task_of(a, "a run").tier for t in ("match", "stats") for a in run.first_round(t)} == {"bulk"}
+
 
 @pytest.mark.parametrize("status", ["succeeded", "late", "invalid"])
 def test_an_item_closed_with_a_summary_is_the_outcome_that_summary_says(status: str) -> None:

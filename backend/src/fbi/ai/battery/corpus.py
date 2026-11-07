@@ -14,10 +14,14 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from typing import Any, Final
 
+from fbi.ai.agents import council, match, stats
 from fbi.ai.battery import (
+    AGENT_TARGETS,
     MIN_CASES,
     TARGETS,
     VERSION,
+    agentworld,
+    attacks_agents,
     attacks_claims,
     attacks_extract,
     attacks_review,
@@ -27,11 +31,22 @@ from fbi.ai.battery import (
 )
 from fbi.ai.battery.model import Base, Case, make_case
 from fbi.ai.config import Tier
-from fbi.ai.prompts import EXTRACT_V2_VERSION, EXTRACT_VERSION, REVIEW_VERSION
+from fbi.ai.contracts.base import ASSESSMENT, COUNCIL
+from fbi.ai.prompts import (
+    COUNCIL_OPUS_VERSION,
+    COUNCIL_VERSION,
+    EXTRACT_V2_VERSION,
+    EXTRACT_VERSION,
+    MATCH_ASSESS_VERSION,
+    MATCH_CONTEXT_VERSION,
+    REVIEW_VERSION,
+    STATS_ASSESS_VERSION,
+)
 from fbi.ai.providers.base import JsonRequest
 
 Builder = Callable[[str, Case | None, bool], JsonRequest]
 Door = Callable[[Case, JsonRequest, JsonRequest], list[tuple[str, str]]]
+Reader = Callable[[JsonRequest], list[Any]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +65,45 @@ class Target:
     door: Door | None = None
     """A target whose text goes through a door of PrediGol's before the model reads it (``fbi.ai.untrusted``) says what became of the text of a
     case in the request, as findings ``(check, detail)``; the deterministic layer asks it instead of looking for the raw text in the request."""
+    agent: str = ""
+    """The version of the agent the target is (``match-v2``), or empty for a prompt that is no agent's: what Gate B reads to know that every
+    agent that runs is covered."""
+    prompts: tuple[str, ...] = ()
+    """Every prompt the requests of the target are asked with, when there is more than ``prompt`` (an agent with two modes or two levels)."""
+    contract: str = ""
+    """The contract its answer is read in (``aa-v1``, ``cd-v1``), or empty for a prompt with a schema of its own."""
+    base_tiers: tuple[tuple[str, Tier], ...] = ()
+    """A base asked with another tier than the target's (the Council's escalation is Opus': ``final``)."""
+    reader: Reader | None = None
+    """The JSON documents of a user message, for a target whose layout is not one document (``fbi.ai.battery.offline.documents``)."""
+    may_add: frozenset[str] = frozenset()
+    """The key paths a door may add to a request that the clean one has not (the flags of a summary): every other new key is an attack that
+    broke out of its string."""
+
+    def tier_of(self, base: str) -> Tier:
+        """The tier an ask of ``base`` is asked with."""
+        return dict(self.base_tiers).get(base, self.tier)
+
+    @property
+    def tiers(self) -> tuple[Tier, ...]:
+        """Every tier the target's asks need, sorted."""
+        return tuple(sorted({self.tier, *(t for _, t in self.base_tiers)}))
+
+    @property
+    def every_prompt(self) -> tuple[str, ...]:
+        return self.prompts or (self.prompt,)
+
+    def covers(self) -> dict[str, Any]:
+        """What the target speaks for, as the evidence lists it."""
+        return {"target": self.name, "agent": self.agent or None, "prompts": list(self.every_prompt), "contract": self.contract or None,
+                "tiers": list(self.tiers)}
+
+
+def _agent(name: str, agent: str, prompts: tuple[str, ...], contract: str, tier: Tier, typical: int) -> Target:
+    return Target(name, "+".join(prompts), tier, typical, agentworld.BASES[name],
+                  lambda base, case, native: agentworld.request(name, base, case, native=native), door=agentworld.door, agent=agent,
+                  prompts=prompts, contract=contract, base_tiers=agentworld.TIERS[name],
+                  reader=agentworld.documents, may_add=agentworld.MAY_ADD[name])
 
 
 TARGET_SPECS: Final[dict[str, Target]] = {
@@ -59,11 +113,17 @@ TARGET_SPECS: Final[dict[str, Target]] = {
                       lambda base, case, native: extractor.request(base, case, native=native)),
     "claims": Target("claims", EXTRACT_V2_VERSION, "bulk", 500, claims.BASES,
                      lambda base, case, native: claims.request(base, case, native=native), door=claims.door),
+    "match": _agent("match", match.VERSION, (MATCH_CONTEXT_VERSION, MATCH_ASSESS_VERSION), ASSESSMENT, "bulk", 1200),
+    "stats": _agent("stats", stats.VERSION, (STATS_ASSESS_VERSION,), ASSESSMENT, "bulk", 1200),
+    "council": _agent("council", council.VERSION, (COUNCIL_VERSION, COUNCIL_OPUS_VERSION), COUNCIL, "analysis", 1500),
 }
+"""The tier of an agent is the one of the level the router gives its task (``router.TIER_OF_LEVEL``: Haiku is ``bulk``, Sonnet ``analysis``,
+Opus ``final``); ``typical_output`` is what an answer of a few hundred tokens writes with the thinking of its effort."""
 
 CASES: Final[tuple[Case, ...]] = (tuple(make_case("review", a) for a in attacks_review.ATTACKS)
                                   + tuple(make_case("extract", a) for a in attacks_extract.ATTACKS)
-                                  + tuple(make_case("claims", a) for a in attacks_claims.ATTACKS))
+                                  + tuple(make_case("claims", a) for a in attacks_claims.ATTACKS)
+                                  + tuple(make_case(t, a) for t in AGENT_TARGETS for a in attacks_agents.ATTACKS[t]))
 BY_ID: Final[dict[str, Case]] = {c.id: c for c in CASES}
 
 

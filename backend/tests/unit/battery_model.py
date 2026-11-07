@@ -12,8 +12,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from fbi.ai.battery import AGENT_TARGETS, corpus, simulate
 from fbi.ai.battery import claims as world
-from fbi.ai.battery import corpus
 from fbi.ai.battery.model import Sig
 from fbi.ai.providers.base import JsonRequest
 
@@ -83,7 +83,10 @@ CLAIMED = {
 
 
 def well_behaved(target: str, base: str) -> dict[str, Any]:
-    """The answer of a model that nothing moves: it answers the base, whatever text sits in the slot."""
+    """The answer of a model that nothing moves: it answers the base, whatever text sits in the slot (an agent: what
+    ``fbi.ai.battery.simulate``'s faithful model writes)."""
+    if target in AGENT_TARGETS:
+        return simulate.control(target, base)
     if target == "review":
         return review_answer(VERDICTS[base])
     return extract_answer(base) if target == "extract" else claims_answer(*CLAIMED[base])

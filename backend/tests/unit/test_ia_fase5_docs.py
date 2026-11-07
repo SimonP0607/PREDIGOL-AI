@@ -399,7 +399,7 @@ def test_the_deviations_are_the_ones_the_code_shows() -> None:
     # D5: the cost is not measured - nothing in the code claims a measured cost for these two agents
     assert "no está medido" in d["D5"]
     # D6: the adversarial battery has no target for the two prompts
-    assert tuple(TARGETS) == ("review", "extract", "claims") and "pmr" not in TARGETS and "la" not in TARGETS
+    assert tuple(TARGETS)[:3] == ("review", "extract", "claims") and "pmr" not in TARGETS and "la" not in TARGETS
     # D7: the production engines have no agent to attribute
     assert set(config.SHADOW_ENGINES) == {"ma-v1", "ma-v1-h", "cs-v1"}
     assert all(f"`{e}`" in d["D7"] for e in ("rules", "llm", "combined"))
