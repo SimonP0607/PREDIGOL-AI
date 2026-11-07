@@ -11,6 +11,7 @@ import psycopg
 import pytest
 from psycopg.types.json import Jsonb
 
+from fbi.api.contracts.product import HomeRelevant
 from fbi.api.services import center, home_board, product
 from tests.integration.conftest import Seed
 from tests.integration.neutral_world import World, add_fixture, make_world
@@ -60,12 +61,12 @@ def packet(db: psycopg.Connection[Any], fid: int, *, final: bool = False, first_
                (fid, NOW - timedelta(hours=1), NOW - timedelta(minutes=59), "a" * 64, Jsonb(content), []))
 
 
-def relevant(db: psycopg.Connection[Any]) -> list[home_board.HomeRelevant]:
+def relevant(db: psycopg.Connection[Any]) -> list[HomeRelevant]:
     board = center.live_board(db, at=NOW).data
     return [] if board is None else home_board.relevant(db, list(board.matches), at=NOW)
 
 
-def ids(found: list[home_board.HomeRelevant]) -> list[int]:
+def ids(found: list[HomeRelevant]) -> list[int]:
     return [x.match.fixture_id for x in found]
 
 
