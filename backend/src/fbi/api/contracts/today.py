@@ -37,6 +37,9 @@ class TodayMatch(Contract):
     status_group: str = Field(description="scheduled, live, finished, postponed, cancelled... as the data says it.")
     status: str | None = Field(description="The provider's short status (1H, HT, FT, PST...).")
     elapsed: int | None = Field(description="The minute, while it is live.")
+    extra: int | None = Field(default=None, description="The stoppage time added to the minute («45+2'»), while it is live.")
+    pens_home: int | None = Field(default=None, description="The shoot-out, home goals: only once it is over and had one.")
+    pens_away: int | None = Field(default=None, description="The shoot-out, away goals: only once it is over and had one.")
     goals_home: int | None = Field(description="Live: the score now; finished: the final score; otherwise null.")
     goals_away: int | None
     competition: CompetitionBadge

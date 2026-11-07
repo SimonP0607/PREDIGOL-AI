@@ -1,5 +1,5 @@
 """SQL for the product's own endpoints: picks re-priced now, picks as taken once their match started, best
-prices, upcoming."""
+prices."""
 
 from __future__ import annotations
 
@@ -122,25 +122,6 @@ SELECT lc.fixture_id, lc.market_key, lc.selection, lc.line, lc.p_fair, lc.best_o
  ORDER BY f.kickoff_at, f.id, lc.market_key, lc.line, lc.selection
 """
 
-UPCOMING = """
-WITH nxt AS (
-    SELECT f.id FROM core.fixtures f
-      JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-      JOIN core.competitions c ON c.id = cs.competition_id
-     WHERE c.is_tracked AND f.status_group = 'scheduled' AND f.kickoff_at >= %(now)s AND f.kickoff_at < %(until)s
-     ORDER BY f.kickoff_at, f.id LIMIT 120
-)
-SELECT f.id AS fixture_id, """ + _BADGES + """, COALESCE(o.bookmakers, 0)::int AS bookmakers
-  FROM nxt JOIN core.fixtures f ON f.id = nxt.id
-""" + _BADGE_JOINS + """
-  LEFT JOIN LATERAL (
-      SELECT count(DISTINCT s.bookmaker_id) AS bookmakers FROM market.odds_snapshots s
-       WHERE s.fixture_id = f.id AND s.captured_at > %(now)s - interval '2 days'
-  ) o ON true
- ORDER BY COALESCE(o.bookmakers, 0) = 0, c.tier NULLS LAST, f.kickoff_at, f.id
- LIMIT %(limit)s
-"""
-
 LIVE_FRESHNESS = """
 SELECT (SELECT max(observed_at) FROM core.fixture_live_states
          WHERE observed_at > %(now)s - interval '1 day') AS live_at
@@ -166,10 +147,6 @@ def best_prices(conn: Conn, *, now: datetime, until: datetime, since: datetime,
                 markets: tuple[str, ...] = POPULAR_MARKETS) -> list[Row]:
     return fetch_all(conn, BEST_PRICES, {"now": now, "until": until, "since": since, "markets": list(markets),
                                          "method": CONSENSUS_METHOD})
-
-
-def upcoming(conn: Conn, *, now: datetime, until: datetime, limit: int) -> list[Row]:
-    return fetch_all(conn, UPCOMING, {"now": now, "until": until, "limit": limit})
 
 
 def live_freshness(conn: Conn, *, now: datetime) -> datetime | None:

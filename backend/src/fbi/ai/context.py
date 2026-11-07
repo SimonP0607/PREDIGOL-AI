@@ -143,26 +143,53 @@ class Stakes:
                 "max_gain": self.max_gain, "settled": self.settled, "pressure": self.pressure, "rule": STAKES_RULE}
 
 
-STAKES_RULE = "stakes-v2"
+STAKES_RULE = "stakes-v3"
 NEAR_POINTS = 6
 """stakes-v2 (13 Oct 2026): a zone boundary presses a team outside the zones when it is within two wins and still
 reachable. stakes-v1 pressed on any reachable boundary: at round 10 of 38 every team of a 20-team table read as
 fighting relegation - the 8th, level on points with the play-off places, too - and a narrative wrote that both
-teams "were in the relegation zone"."""
+teams "were in the relegation zone".
+
+stakes-v3 (7 Nov 2026): the kind of a zone also depends on the table's level and on the rank. In a first division
+(a table with a relegation zone AND continental places) the provider's "Play-offs" (Serie A, 6th) and "Qualifying"
+(Bundesliga, 6th) are international places, never a promotion; "title" is only the first place - the other places of
+the "Champions League league stage" are international places - and a league that words the same places as "Promotion
+- Champions League (League phase)" (LaLiga) reads the same as one that does not. Before, "Frosinone (6th) is in the
+promotion zone" and "Dortmund (2nd) is in the title zone" were written about first-division tables. Other tables
+(second divisions, cups, groups) keep the stakes-v2 reading."""
+
+CONTINENTAL = ("champions", "europa", "conference", "libertadores", "sudamericana", "concacaf", "afc")
+"""The names of the continental competitions a first-division table sends teams to."""
 
 
-def zone_kind(description: str | None) -> str | None:
+def is_top_flight(descriptions: Iterable[str | None]) -> bool:
+    """A first-division table: it has a relegation zone and places in a continental competition. A second division sends
+    teams up to another league, a cup or a group table sends nobody down, and neither is read as a first division."""
+    texts = [d.lower() for d in descriptions if d]
+    return (any("relegation" in d or "descenso" in d for d in texts)
+            and any(name in d for d in texts for name in CONTINENTAL))
+
+
+def zone_kind(description: str | None, rank: int | None = None, *, top_flight: bool = False) -> str | None:
+    """The kind of the zone a provider description names: relegation, title, europe (international places), promotion
+    or other. ``top_flight`` and ``rank`` apply the first-division reading (stakes-v3); without them the reading is
+    the one of stakes-v2."""
     if not description:
         return None
     d = description.lower()
     if "relegation" in d or "descenso" in d:
         return "relegation"
-    if "promotion" in d and ("champions" in d or "europa" in d or "conference" in d or "libertadores" in d
-                             or "sudamericana" in d or "concacaf" in d or "afc" in d):
+    continental = any(name in d for name in CONTINENTAL)
+    if top_flight and rank is not None and rank == 1 and (
+            "champions" in d or "libertadores" in d or "title" in d or "winner" in d):
+        return "title"
+    if "promotion" in d and continental:
         return "europe"
     if "champions" in d or "libertadores" in d or "title" in d or "winner" in d:
-        return "title"
+        return "europe" if top_flight and (rank is None or rank != 1) else "title"
     if "europa" in d or "conference" in d or "sudamericana" in d:
+        return "europe"
+    if top_flight and ("play-off" in d or "playoff" in d or "qualif" in d) and "promotion" not in d:
         return "europe"
     if "promotion" in d or "play-off" in d or "playoff" in d or "qualification" in d or "next round" in d:
         return "promotion"
@@ -177,7 +204,8 @@ def stakes(table: Sequence[TableRow], team_id: int, remaining: int | None) -> St
     me = next((r for r in rows if r.team_id == team_id), None)
     if me is None:
         return None
-    zone = zone_kind(me.description)
+    top_flight = is_top_flight(r.description for r in rows)
+    zone = zone_kind(me.description, me.rank, top_flight=top_flight)
     above = [r for r in rows if r.rank < me.rank and r.description and r.description != me.description]
     below = [r for r in rows if r.rank > me.rank and r.description and r.description != me.description]
     gap_up = (above[-1].points - me.points) if above else None
@@ -191,8 +219,8 @@ def stakes(table: Sequence[TableRow], team_id: int, remaining: int | None) -> St
         up_closed = gap_up is None or gap_up > max_gain
         down_closed = gap_down is None or gap_down > max_gain
         settled = up_closed and down_closed
-    zone_above = zone_kind(above[-1].description) if above else None
-    zone_below = zone_kind(below[0].description) if below else None
+    zone_above = zone_kind(above[-1].description, above[-1].rank, top_flight=top_flight) if above else None
+    zone_below = zone_kind(below[0].description, below[0].rank, top_flight=top_flight) if below else None
     if settled:
         pressure = "settled"
     elif zone in ("title", "europe", "relegation", "promotion"):

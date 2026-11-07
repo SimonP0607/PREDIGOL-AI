@@ -145,5 +145,10 @@
     },
     "more": "More on:"
   },
-  "whatIsParlay": "What is a parlay?"
+  "whatIsParlay": "What is a parlay?",
+  "kindSwitch": {
+    "label": "Parlay type",
+    "daily": "Daily",
+    "multiday": "Multi-day"
+  }
 }
