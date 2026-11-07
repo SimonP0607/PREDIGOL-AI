@@ -221,7 +221,7 @@ def test_home_carries_what_is_in_play_and_nothing_the_other_routes_own(as_role: 
     home = data(as_role("USER"), "/api/v1/home")
     assert home["source"] == "qualified"
     assert home["live"]["status"] == "empty" and home["live"]["reason"] == "no_live_matches"
-    assert set(home) == {"source", "data_freshness", "live", "results"}
+    assert set(home) == {"source", "data_freshness", "relevant", "at_stake", "live", "results"}
     assert set(home["data_freshness"]) == {"live_at"}
     # what ended in the last 24 hours (plan Inicio, 3.1): a list - its rules are tested in test_home_results
     assert isinstance(home["results"]["data"], list) and len(home["results"]["data"]) <= 6

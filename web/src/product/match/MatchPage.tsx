@@ -29,8 +29,8 @@ import { StatsTab } from "./StatsTab";
 import { SummaryTab } from "./SummaryTab";
 import { tabsFor, useMatchTab } from "./useMatchTab";
 import { originOf, track } from "@/lib/track";
-import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
 import { openedFromList } from "@/product/matches/backToList";
+import { useGuideScreen } from "@/product/guides/context";
 
 /**
  * «‹ Partidos»: back through the history when the match was opened from the list (plan Partidos, P4), so the list
@@ -162,6 +162,7 @@ function TabBar({
       <div
         ref={listRef}
         role="tablist"
+        data-guide="match-tabs"
         aria-label={t("match.tabs.label")}
         onKeyDown={onKeyDown}
         // scroll-strip + useScrollCue: on a phone the edge fades where more tabs wait ("Alineaciones" at 390 px).
@@ -214,6 +215,7 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
     enabled: valid,
     refetchInterval: (q) => (q.state.data?.data.match.status_group === "finished" ? false : 60_000),
   });
+  useGuideScreen("match", { ready: valid && !view.isPending });
   const center = useQuery({
     ...live.center(fixtureId),
     enabled: valid,
@@ -312,7 +314,6 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
     <div className="space-y-4" data-testid="match-center" data-phase={phase}>
       <BackLink />
       <MatchHeader ctx={ctx} />
-      <FirstVisitHint hint="match" />
       <div id="match-tabs-anchor" aria-hidden className="mb-0" />
       <TabBar tabs={tabs} active={tab} onSelect={openSection} live={phase === "live"} />
       <div

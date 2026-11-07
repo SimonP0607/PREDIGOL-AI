@@ -250,9 +250,46 @@ class HomeResult(Contract):
     pens_away: int | None = None
 
 
+class HomeReason(Contract):
+    """Why a match is on Inicio's «Partidos relevantes» or «Qué se juega» (plan de Inicio, 3.1b): a code and the values its sentence
+    fills in, both chosen on the server from facts PrediGol Intelligence stored or from the match's own score - the web only
+    words it. ``final`` (a final), ``tie`` (a tie's second leg: the aggregate now), ``first_leg`` (a second leg still to be
+    played: how the first ended), ``stakes`` (a side fights for ``pressure``: title, europe, relegation or promotion; live,
+    with ``state`` - ahead, level or behind) and ``comeback`` (a side was behind and is now level or ahead)."""
+
+    code: Literal["final", "tie", "first_leg", "stakes", "comeback"]
+    params: dict[str, str | int | float | bool | None]
+
+
+class HomeRelevant(Contract):
+    """A match in play that has a reason to be looked at now: the live match and why (one or two reasons, the strongest first)."""
+
+    match: LiveMatch
+    reasons: list[HomeReason]
+
+
+class HomeAtStake(Contract):
+    """A match still to be played in the next 36 hours with something at stake: one reason, one sentence."""
+
+    fixture_id: int
+    kickoff_at: datetime
+    competition: CompetitionBadge
+    home: TeamBadge
+    away: TeamBadge
+    reason: HomeReason
+
+
 class Home(Contract):
     source: Source
     data_freshness: DataFreshness
-    live: Section[list[LiveMatch]]
+    relevant: Section[list[HomeRelevant]] = Field(description=(
+        "The matches in play that have a reason (a final, a second leg and how the tie goes, a fight for the title, Europe, "
+        "relegation or promotion, a comeback), by competition priority, four at most (``home_board.relevant``). A match "
+        "with no reason is not here."))
+    at_stake: Section[list[HomeAtStake]] = Field(description=(
+        "The matches not yet started in the next 36 hours with something at stake, by competition priority, four at most "
+        "(``home_board.at_stake``)."))
+    live: Section[list[LiveMatch]] = Field(description=(
+        "What else is in play: the matches of ``relevant`` are not repeated here; six at most."))
     results: Section[list[HomeResult]] = Field(description=(
         "The matches that ended in the last 24 hours, the most recent first, six at most (``home_board.results``)."))

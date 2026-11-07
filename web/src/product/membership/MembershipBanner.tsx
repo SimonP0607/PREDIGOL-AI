@@ -37,7 +37,9 @@ export function MembershipBanner() {
         data-testid="membership-banner-action"
         className="tap-y relative font-medium text-primary underline-offset-2 hover:underline"
       >
-        {t("profile.membership.banner.action")}
+        {m.state === "none"
+          ? t("profile.membership.banner.noneAction")
+          : t("profile.membership.banner.action")}
       </Link>
     </div>
   );

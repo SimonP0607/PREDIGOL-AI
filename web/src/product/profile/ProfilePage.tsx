@@ -46,6 +46,7 @@ import { MembershipCard } from "@/product/membership/MembershipCard";
 import { PrivacyPanel } from "./PrivacyPanel";
 import { FootballPanel } from "@/product/favorites/FootballPanel";
 import { AccountPanel } from "./AccountPanel";
+import { useGuideScreen } from "@/product/guides/context";
 import { Block } from "./Block";
 import { HelpPanel } from "./HelpPanel";
 import { BLOCKS, blockOfHash, blockSummary, startsOpen, type BlockKey } from "./centre";
@@ -335,6 +336,7 @@ export function ProfilePage() {
   const summary = useQuery({ ...live.account, enabled: Boolean(user) });
   const [open, setOpen] = useState<OpenState>(initialOpen);
   useNamedBlock(Boolean(user), setOpen);
+  useGuideScreen("profile", { ready: Boolean(user) });
   const toggle = useCallback(
     (key: BlockKey) => {
       setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -354,7 +356,11 @@ export function ProfilePage() {
   });
   return (
     <div className="mx-auto max-w-3xl space-y-3" data-testid="account-centre">
-      <PageTitle title={t("profile.title")} subtitle={t("profile.centre.subtitle")} />
+      <PageTitle
+        guide="profile"
+        title={t("profile.title")}
+        subtitle={t("profile.centre.subtitle")}
+      />
       {summary.isError ? (
         <div
           role="alert"

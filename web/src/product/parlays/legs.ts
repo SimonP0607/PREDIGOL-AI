@@ -5,6 +5,7 @@
 import type { Dec } from "@/lib/api/v1/types";
 import type { BuilderLeg } from "@/lib/api/v1/types_builder";
 import type { CompetitionBadge, TeamBadge } from "@/lib/api/v1/types_product";
+import type { ReadingFact } from "@/lib/api/v1/types_reading";
 import type { MarketKey, ParlayRecordLeg } from "@/lib/api/v1/types_records";
 import type { Pickable } from "@/product/records/pickable";
 import { selectionLabel } from "@/product/shared/markets";
@@ -26,6 +27,8 @@ export interface LegView {
   bookmaker: string | null;
   pick_id?: number | null | undefined;
   why: WhyNumbers;
+  /** A fact of the match's reading that stands behind the leg (a recorded parlay's, plan de Inicio 2.4b); none: no line. */
+  fact?: ReadingFact | null | undefined;
   /** PrediGol's recorded parlay: the price it was taken at. */
   frozen: boolean;
 }
@@ -87,6 +90,7 @@ export function viewOfRecord(leg: ParlayRecordLeg): LegView {
       ev: leg.ev,
       ai: leg.ai ?? null,
     },
+    fact: leg.why ?? null,
     frozen: true,
   };
 }

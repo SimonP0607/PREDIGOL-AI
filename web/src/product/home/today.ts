@@ -18,8 +18,6 @@ import { matchPhaseOf } from "@/product/matches/status";
 
 /** Rows of block 1 before «Ver todos los partidos». */
 export const TODAY_ROWS = 8;
-/** Block 3 shows from 3 to 5 matches - fewer when fewer have a reading, none hides it. */
-export const RELEVANT_ROWS = 5;
 /** Block 5: the next matches with something at stake, and the lines told of each. */
 export const CONTEXT_MATCHES = 4;
 export const CONTEXT_FACTS = 3;
@@ -125,21 +123,6 @@ export function nextOfFavourites(today: Today, now: number): NextFixture[] {
     .sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at) || a.fixture_id - b.fixture_id)
     .filter((n) => (seen.has(n.fixture_id) ? false : (seen.add(n.fixture_id), true)))
     .slice(0, NEXT_FAVOURITES);
-}
-
-/** Block 3: today's matches of the other followed competitions with a reading, still to finish. */
-export function relevantToday(
-  matches: readonly TodayMatch[],
-  tz: string,
-  now: number,
-): TodayMatch[] {
-  return matches
-    .filter(
-      (m) =>
-        !isMine(m) && m.has_reading && (isToday(m, tz, now) || inPlay(m, now)) && !played(m, now),
-    )
-    .sort(liveFirst(now))
-    .slice(0, RELEVANT_ROWS);
 }
 
 /** Block 5: the reader's next matches with something to tell of their context, in kick-off order. */

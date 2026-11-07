@@ -54,10 +54,10 @@ import {
   type PickFilters,
 } from "./filters";
 import { FilterSheet } from "@/product/shared/FilterSheet";
-import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
 import { followSet, reasonOf, whyOf, type FollowSet, type Scope } from "@/product/favorites/follow";
 import { ScopeSwitch } from "@/product/favorites/ScopeSwitch";
 import { WhyChip } from "@/product/favorites/WhyChip";
+import { useGuideScreen } from "@/product/guides/context";
 
 const DAY_ZONE = "America/Bogota";
 
@@ -75,6 +75,7 @@ export function PicksPage() {
   // Plan UX, A9: today's empty set says why (the published set's own funnel); another day's does not.
   const reason = useQuery({ ...live.noPick, enabled: day === today });
   const list = useQuery({ ...live.productPicks(q, preview), placeholderData: keepPreviousData });
+  useGuideScreen("picks", { ready: !list.isPending });
   // Plan UX, B2: the selections of the reader's leagues and teams first, every one a tap away (the day's set above is
   // PrediGol's own, the same for everyone, and is never filtered or reordered).
   const reader = auth.user?.role === "USER";
@@ -89,6 +90,7 @@ export function PicksPage() {
   return (
     <div className="space-y-8">
       <PageTitle
+        guide="picks"
         title={t("nav.picks")}
         subtitle={
           <>
@@ -97,7 +99,6 @@ export function PicksPage() {
         }
         right={auth.showAdmin ? <ShadowToggle /> : undefined}
       />
-      <FirstVisitHint hint="picks" />
       <DailySetBlock
         query={daily}
         nav={{ day, today, onDay: setDay }}
@@ -443,6 +444,7 @@ function AllPicks({
         <div
           aria-busy={refreshing}
           data-testid="picks-list"
+          data-guide="picks-list"
           className={cn(
             "grid grid-cols-1 gap-3 transition-opacity sm:grid-cols-2 xl:grid-cols-3",
             refreshing && "opacity-60",
@@ -632,6 +634,7 @@ function PicksFilters(props: {
     <div
       className="hidden rounded-xl border border-border bg-card p-3 sm:p-4 lg:block"
       data-testid="picks-filters"
+      data-guide="picks-filters"
     >
       <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
         <PicksFilterFields {...props} />

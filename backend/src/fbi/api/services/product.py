@@ -263,10 +263,10 @@ downgrades or rejects them (UX-002, «solo verde»)."""
 
 def recommendable_rows(rows: list[Row], *, applied: Applied) -> tuple[list[Row], int]:
     """The candidates a reader's parlay may hold as legs (UX-002, «solo verde»): every leg passes the value gate (the engine's own
-    rule) and must be RECOMMENDED there - so, while the AI's review is applied, a selection it downgrades or rejects is left out
-    before the engine chooses, never shown as a leg. Returns (the rows kept, how many were left out). Free while the review is
-    not applied (production since the AI layer exists): nothing is left out."""
-    if not applied.enforced:
+    rule) and must be RECOMMENDED there - so a selection the AI's review downgrades or rejects (applied or in shadow, D1) is left out
+    before the engine chooses, never shown as a leg. Returns (the rows kept, how many were left out). Free when the review has
+    decided nothing on these rows: nothing is left out."""
+    if not applied.decisions:
         return rows, 0
     kept = [r for r in rows if user_status.for_readers(applied.shown(
         pick_status=r["pick_status"], value=True, fixture_id=int(r["fixture_id"]), market_key=r["market_key"],
@@ -491,11 +491,17 @@ def home(conn: Conn, *, include_shadow: bool, at: datetime | None = None) -> Env
     any more."""
     moment = at or clock_now()
     live_env = center.live_board(conn, at=moment)
-    live = list(live_env.data.matches[:6])
+    in_play = list(live_env.data.matches)
+    flagged = home_board.relevant(conn, in_play, at=moment)
+    shown = {x.match.fixture_id for x in flagged}
+    live = [m for m in in_play if m.fixture_id not in shown][:6]
+    stakes = home_board.at_stake(conn, at=moment)
     done = home_board.results(conn, at=moment)
     body = Home(
         source=_source(include_shadow),
         data_freshness=DataFreshness(live_at=repo.live_freshness(conn, now=moment)),
+        relevant=section(flagged) if flagged else section(flagged, status=DataStatus.EMPTY, reason="no_relevant_matches"),
+        at_stake=section(stakes) if stakes else section(stakes, status=DataStatus.EMPTY, reason="nothing_at_stake"),
         live=section(live) if live else section(live, status=DataStatus.EMPTY, reason="no_live_matches"),
         results=section(done) if done else section(done, status=DataStatus.EMPTY, reason="no_recent_results"),
     )
