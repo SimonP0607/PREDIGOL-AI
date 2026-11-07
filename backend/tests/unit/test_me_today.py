@@ -104,3 +104,23 @@ def test_a_reader_whose_favourites_are_in_none_of_the_days_picks_gets_none_and_a
     empty = ok(DailyBoard.model_construct(day=date(2026, 11, 5), set=None))
     got = related_with(monkeypatch, empty, Follows(leagues=(UNO[0],), teams=(), suggested=False))
     assert (got.published, got.items) == (0, []), "a day without a published set: nothing is theirs, whatever they follow"
+
+
+def test_the_days_set_is_asked_exactly_as_home_asks_it_so_the_shared_cache_answers_it(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """The cache keys on the arguments (``fbi.api.cache``): a moving ``at`` made every reader recompute the set (plan Inicio 1.5)."""
+    asked: list[dict[str, Any]] = []
+
+    def fake(*_a: Any, **k: Any) -> Any:
+        asked.append(k)
+        return board()
+
+    monkeypatch.setattr(records, "daily_board", fake)
+    follows = Follows(leagues=(), teams=(), suggested=False)
+    me_today.related(object(), follows, ())  # type: ignore[arg-type]
+    me_today.related(object(), follows, ())  # type: ignore[arg-type]
+    assert asked == [{"day": None, "include_shadow": False}] * 2, "no moving argument: the same key every time"
+
+    moment = datetime(2026, 11, 5, 12, tzinfo=UTC)
+    me_today.related(object(), follows, (), at=moment)  # type: ignore[arg-type]
+    assert asked[-1] == {"day": None, "include_shadow": False, "at": moment}, "an explicit moment is still honoured"

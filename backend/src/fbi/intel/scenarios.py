@@ -30,7 +30,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, Final
 
-from fbi.ai.context import TableRow, zone_kind
+from fbi.ai.context import TableRow, is_top_flight, zone_kind
 from fbi.competitions.context import TieAsOf
 
 VERSION: Final = "scenarios-v1"
@@ -54,14 +54,18 @@ def _best_worst(points: int, others: Sequence[int]) -> tuple[int, int]:
     return 1 + sum(1 for q in others if q > points), 1 + sum(1 for q in others if q >= points)
 
 
-def _zones(zone_at: dict[int, str | None], best: int, worst: int) -> list[dict[str, str | None]]:
-    """The zones the places best..worst belong to, in order, without repeats: the provider's description and its kind."""
+def _zones(zone_at: dict[int, str | None], best: int, worst: int, *,
+           top_flight: bool = False) -> list[dict[str, str | None]]:
+    """The zones the places best..worst belong to, in order, without repeats: the provider's description and its kind
+    (read at the best place the zone covers inside the interval: the title is only the first place)."""
     seen: list[str | None] = []
+    first: dict[str | None, int] = {}
     for rank in range(best, worst + 1):
         d = zone_at.get(rank)
         if d not in seen:
             seen.append(d)
-    return [{"description": d, "kind": zone_kind(d) if d else None} for d in seen]
+            first[d] = rank
+    return [{"description": d, "kind": zone_kind(d, first[d], top_flight=top_flight) if d else None} for d in seen]
 
 
 def table_effect(table: Sequence[TableRow], home: int, away: int, *, snapshot_at: datetime | None = None,
@@ -75,6 +79,7 @@ def table_effect(table: Sequence[TableRow], home: int, away: int, *, snapshot_at
     if home == away or home not in rows or away not in rows:
         return None
     zone_at: dict[int, str | None] = {r.rank: r.description for r in table}
+    top_flight = is_top_flight(r.description for r in table)
     others_now = [r.points for r in table if r.team_id not in (home, away)]
     for me, other in ((rows[home], rows[away]), (rows[away], rows[home])):
         best, worst = _best_worst(me.points, [*others_now, other.points])
@@ -96,7 +101,7 @@ def table_effect(table: Sequence[TableRow], home: int, away: int, *, snapshot_at
         for key, points, versus in (("home", hp, ap), ("away", ap, hp)):
             best, worst = _best_worst(points, [*others_now, versus])
             entry[key] = {"points": points, "rank_best": best, "rank_worst": worst,
-                          "zones": _zones(zone_at, best, worst)}
+                          "zones": _zones(zone_at, best, worst, top_flight=top_flight)}
         out["after"][result] = entry
     return out
 

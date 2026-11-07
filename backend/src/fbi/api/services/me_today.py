@@ -206,7 +206,10 @@ def related(conn: Conn, follows: Follows, markets: Sequence[str], *, at: datetim
     own, never the suggested) or its market is one they follow. The day's set is the one Home shows - kept 30 seconds, the same
     for every reader - and only its order and its picks' match and market are read."""
     moment = at or now()
-    board = records.daily_board(conn, day=None, include_shadow=False, at=moment).data
+    # Without an explicit ``at`` the call is exactly the one of GET /daily (day=None, include_shadow=False): the shared cache
+    # keys on the arguments, and a fresh ``at=now()`` on every call made each reader recompute the day's set.
+    held = {} if at is None else {"at": at}
+    board = records.daily_board(conn, day=None, include_shadow=False, **held).data
     items = board.set.items if board is not None and board.set is not None else []
     mine: list[RelatedPick] = []
     for item in items:

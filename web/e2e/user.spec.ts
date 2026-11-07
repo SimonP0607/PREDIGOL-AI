@@ -142,7 +142,7 @@ function sameDay(iso: string, zone: string): boolean {
   return day(new Date(iso)) === day(new Date());
 }
 
-test("Home: today in the suggested leagues, the day's picks or why there are none, the parlays, results, live, best odds", async ({
+test("Home: today in the suggested leagues, the day's picks or why there are none, the parlays, results, live", async ({
   page,
 }) => {
   // Plan UX, A9 (section 24): with or without picks, Inicio says what there is today - in that order.
@@ -206,14 +206,14 @@ test("Home: today in the suggested leagues, the day's picks or why there are non
     await expectParlay(page.getByTestId("home-parlay-multiday"), body.data.multiday_parlay);
   }
 
-  // 6 · Resultados, then what is in play everywhere and the best prices
+  // 6 · Resultados, then what is in play everywhere (Mejores cuotas left Inicio, plan Inicio 2.1)
   const results = page.getByTestId("home-results");
   await expect(results.getByRole("heading", { name: t.home.results.title })).toBeVisible();
   await expect(
     results.getByTestId("results-list").or(results.getByTestId("results-empty")),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: t.home.live.title })).toBeVisible();
-  await expect(page.getByRole("heading", { name: t.home.best.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mejores cuotas" })).toHaveCount(0);
   // 4 · Noticias (A10): the confirmed or probable news of today's suggested matches - only with content
   const news = await getJson<{ status: string; data: TodayNewsBody | null }>(
     page.request,
