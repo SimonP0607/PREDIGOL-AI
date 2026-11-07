@@ -1,6 +1,9 @@
 """The trace of a selection end to end (trace-v1) and the single registry of promotions (registry-v1), on the real schema.
 
-THE WORLD: the seed's match (1001, kick-off 2026-09-15 19:00 UTC), finished, of a competition whose data class is MODEL_READY.
+THE WORLD: a match of its own (kick-off 2026-09-15 19:00 UTC), finished, of a competition and season of its own whose data class is
+MODEL_READY. Not the seed's match: the session's tests share it, and one that commits a change of its kick-off (the CI run of 6 Nov 2026 found
+it moved to 2026-09-22 16:00, scheduled) moves every window the trace reads by the kick-off - the post-mortem's and the attribution's. The seed
+is used only for what nothing here depends on the state of: the bookmaker, the model version, the ingestion run and its payload.
 
 A nightly run whose post-mortem step succeeded five hours after kick-off, and a learning cycle whose attribution step ran six hours after it.
 
@@ -64,24 +67,30 @@ def put_id(db: psycopg.Connection[Any], table: str, values: dict[str, Any]) -> i
 class World:
     def __init__(self, db: psycopg.Connection[Any], seed: Seed) -> None:
         self.db, self.seed = db, seed
-        db.execute("UPDATE core.fixtures SET status_short = 'FT', status_group = 'finished' WHERE id = %s", (seed.fixture_id,))
+        competition = put_id(db, "core.competitions", {"provider_league_id": 997001, "name": "Trace League", "type": "league", "entity_scope": "club",
+                                                       "competition_type": "domestic_league"})
+        self.season = put_id(db, "core.competition_seasons", {"competition_id": competition, "season": 2026})
+        home = put_id(db, "core.teams", {"provider_team_id": 997001, "name": "Trace Home"})
+        away = put_id(db, "core.teams", {"provider_team_id": 997002, "name": "Trace Away"})
+        self.fixture = put_id(db, "core.fixtures", {"provider_fixture_id": 9970001, "competition_season_id": self.season, "home_team_id": home,
+                                                    "away_team_id": away, "kickoff_at": KO, "status_short": "FT", "status_group": "finished"})
         put(db, "analytics.competition_data_scores", {
-            "competition_season_id": seed.season_id, "computed_at": KO - timedelta(days=3), "rule_version": "data-score-v1", "class": "MODEL_READY",
+            "competition_season_id": self.season, "computed_at": KO - timedelta(days=3), "rule_version": "data-score-v1", "class": "MODEL_READY",
             "score": Decimal("0.91"), "finished": 40, "approved": 40, "quarantined": 0, "components": Jsonb({})}, returning=False)
 
     def pick(self, selection: str, *, odds: str = "2.10", market: str = "1X2") -> tuple[int, int]:
         db, s = self.db, self.seed
         cutoff = SNAP_AT - timedelta(hours=2)
         prediction = put(db, "models.predictions", {
-            "fixture_id": s.fixture_id, "model_version_id": s.model_version_id, "market_key": market, "selection": selection, "line": 0,
+            "fixture_id": self.fixture, "model_version_id": s.model_version_id, "market_key": market, "selection": selection, "line": 0,
             "p_raw": Decimal("0.52"), "p_calibrated": Decimal("0.52"), "p_lo": Decimal("0.47"), "p_hi": Decimal("0.57"), "feature_set_hash": "fh",
             "data_cutoff_ts": cutoff})
         candidate = put(db, "picks.pick_candidates", {
-            "run_id": s.run_id, "fixture_id": s.fixture_id, "prediction_id": prediction, "market_key": market, "selection": selection, "line": 0,
+            "run_id": s.run_id, "fixture_id": self.fixture, "prediction_id": prediction, "market_key": market, "selection": selection, "line": 0,
             "bookmaker_id": s.bookmaker_id, "market_odds": Decimal(odds), "p_calibrated": Decimal("0.52"), "p_market_fair": Decimal("0.47"),
             "decision": "selected"})
         pick = put(db, "picks.picks", {
-            "candidate_id": candidate, "fixture_id": s.fixture_id, "market_key": market, "selection": selection, "line": 0,
+            "candidate_id": candidate, "fixture_id": self.fixture, "market_key": market, "selection": selection, "line": 0,
             "model_version_id": s.model_version_id, "feature_set_hash": "fh", "data_cutoff_ts": cutoff, "decision_rule_version": "shadow-rule-v2",
             "code_version": "abc", "bookmaker_id": s.bookmaker_id, "market_odds": Decimal(odds), "odds_captured_at": SNAP_AT,
             "p_model": Decimal("0.52"), "p_calibrated": Decimal("0.52"), "p_market_fair": Decimal("0.47"), "fair_odds": Decimal("1.92"),
@@ -93,19 +102,19 @@ class World:
 
     def consensus(self, selection: str, as_of: datetime, market: str = "1X2") -> None:
         put(self.db, "market.market_consensus", {
-            "fixture_id": self.seed.fixture_id, "market_key": market, "selection": selection, "line": 0, "as_of": as_of, "devig_method": "shin",
+            "fixture_id": self.fixture, "market_key": market, "selection": selection, "line": 0, "as_of": as_of, "devig_method": "shin",
             "p_fair": Decimal("0.47"), "n_bookmakers": 6, "overround": Decimal("0.05"), "best_odds": Decimal("2.10"),
             "best_bookmaker_id": self.seed.bookmaker_id}, returning=False)
 
     def snapshot(self, selection: str, market: str = "1X2") -> None:
         put(self.db, "market.odds_snapshots", {
-            "fixture_id": self.seed.fixture_id, "bookmaker_id": self.seed.bookmaker_id, "market_key": market, "selection": selection, "line": 0,
+            "fixture_id": self.fixture, "bookmaker_id": self.seed.bookmaker_id, "market_key": market, "selection": selection, "line": 0,
             "odds_decimal": Decimal("2.10"), "captured_at": SNAP_AT, "minutes_to_ko": int((KO - SNAP_AT).total_seconds() // 60),
             "source": "prematch", "payload_hash": self.seed.payload_hash}, returning=False)
 
     def evidence(self) -> int:
         e = put(self.db, "ai.evidence", {
-            "fixture_id": self.seed.fixture_id, "kind": "lineup", "claim": "The home side confirmed its usual eleven.", "origin": "provider",
+            "fixture_id": self.fixture, "kind": "lineup", "claim": "The home side confirmed its usual eleven.", "origin": "provider",
             "source_name": "provider", "source_tier": "provider", "retrieved_at": T24 - timedelta(hours=2), "story_key": "trace-story-1",
             "content_hash": HASH, "confidence": Decimal("0.9"), "relevance": Decimal("0.8"), "status": "CONFIRMED", "status_reason": "provider",
             "status_changed_at": T24 - timedelta(hours=2)})
@@ -114,7 +123,7 @@ class World:
 
     def review(self, selection: str, engine: str, *, evidence: list[int], pick: int | None, market: str = "1X2") -> int:
         r = put(self.db, "ai.pick_reviews", {
-            "reviewed_at": T24 - timedelta(minutes=30), "fixture_id": self.seed.fixture_id, "pick_id": pick, "market_key": market,
+            "reviewed_at": T24 - timedelta(minutes=30), "fixture_id": self.fixture, "pick_id": pick, "market_key": market,
             "selection": selection, "line": 0, "engine": engine, "engine_version": f"{engine}-review", "input_hash": HASH,
             "decision": "APPROVE", "confidence": Decimal("0.7"), "output": Jsonb({}), "mode": "shadow", "status": "ok",
             "evidence_ids": evidence, "cost_usd": Decimal("0.004")})
@@ -124,7 +133,7 @@ class World:
     def decision(self, selection: str, at: datetime, checkpoint: str, *, pick: int, review: int | None, evidence: list[int],
                  price_at: datetime | None, market: str = "1X2", state: str = "INVESTIGACION") -> int:
         d = put(self.db, "intel.decisions", {
-            "decision_version": DECISION_CORE, "known_at": at, "checkpoint": checkpoint, "fixture_id": self.seed.fixture_id, "kickoff_at": KO,
+            "decision_version": DECISION_CORE, "known_at": at, "checkpoint": checkpoint, "fixture_id": self.fixture, "kickoff_at": KO,
             "market_key": market, "selection": selection, "line": 0, "pick_id": pick, "model_name": "dixon_coles",
             "model_version_id": self.seed.model_version_id, "odds": Decimal("2.10"), "bookmaker_id": self.seed.bookmaker_id, "price_at": price_at,
             "n_bookmakers": 6, "p_model": Decimal("0.52"), "p_market": Decimal("0.47"),
@@ -145,20 +154,20 @@ class World:
 
     def postmortem(self, selection: str, decision: int, *, market: str = "1X2") -> int:
         return put_id(self.db, "intel.postmortems", {
-            "decision_id": decision, "fixture_id": self.seed.fixture_id, "created_at": KO + timedelta(hours=5, minutes=10), "version": "pm-v6",
+            "decision_id": decision, "fixture_id": self.fixture, "created_at": KO + timedelta(hours=5, minutes=10), "version": "pm-v6",
             "outcome": "won", "decision_quality": "GOOD", "verdict": "MERECIDO", "causes": Jsonb([]), "answers": Jsonb({}), "evidence": Jsonb({}),
             "market_key": market, "selection": selection, "line": 0, "roles": ["decision"], "clv": Decimal("0.02")})
 
     def attribution(self, selection: str, *, review: int, postmortem: int) -> int:
         return put_id(self.db, "intel.agent_attributions", {
-            "attribution_version": "attr-v1", "classified_by": "code", "fixture_id": self.seed.fixture_id, "market_key": "1X2", "selection": selection,
+            "attribution_version": "attr-v1", "classified_by": "code", "fixture_id": self.fixture, "market_key": "1X2", "selection": selection,
             "line": 0, "engine": "ma-v1", "agent": "council", "agent_version": "council-v1", "signal": "VERDICT", "stance": "APPROVE",
             "outcome": "HIT", "error_class": "NONE", "settled": "win", "review_id": review, "postmortem_id": postmortem, "source": "live",
             "computed_at": KO + timedelta(hours=6, minutes=5)})
 
     def steps(self) -> None:
         """The match's result, a nightly whose post-mortem step succeeded and a learning cycle whose attribution step ran."""
-        put(self.db, "core.fixture_results", {"fixture_id": self.seed.fixture_id, "goals_home": 2, "goals_away": 1, "ft_goals_home": 2,
+        put(self.db, "core.fixture_results", {"fixture_id": self.fixture, "goals_home": 2, "goals_away": 1, "ft_goals_home": 2,
                                               "ft_goals_away": 1}, returning=False)
         put(self.db, "intel.runs", {"job": "nightly", "started_at": KO + timedelta(hours=5), "finished_at": KO + timedelta(hours=5, minutes=20),
                                     "status": "ok", "counts": Jsonb({"postmortems": {"selections": 3}, "postmortems_ms": 900})})
@@ -169,7 +178,7 @@ class World:
         set_id = put(self.db, "picks.daily_sets", {"day": DAY, "timezone": "America/Bogota", "source": "qualified", "rule_version": "daily-set-v7",
                                                    "status": "SETTLED", "created_at": T6, "updated_at": KO + timedelta(hours=2)})
         put(self.db, "picks.daily_set_items", {
-            "set_id": set_id, "rank": 1, "pick_id": pick, "fixture_id": self.seed.fixture_id, "market_key": "1X2", "selection": "Home", "line": 0,
+            "set_id": set_id, "rank": 1, "pick_id": pick, "fixture_id": self.fixture, "market_key": "1X2", "selection": "Home", "line": 0,
             "stage": "T-6h", "selected_at": T6, "odds": Decimal("2.10"), "bookmaker_id": self.seed.bookmaker_id, "price_at": PRICE_AT,
             "p_model": Decimal("0.52"), "p_low": Decimal("0.47"), "p_push": 0, "p_market": Decimal("0.47"), "ev": Decimal("0.09"),
             "model_version_id": self.seed.model_version_id, "inputs": Jsonb({}), "status": "WIN", "profit_units": Decimal("1.1"),
@@ -191,11 +200,11 @@ def world(db: psycopg.Connection[Any], seed: Seed) -> dict[str, Any]:
     d2 = w.decision("Home", T6, "T-6h", pick=home_pick, review=combined, evidence=[evidence], price_at=PRICE_AT)
     w.settle(home_pick, [d1, d2])
     w.publish(home_pick)
-    run = put(db, "ai.agent_runs", run_values(seed, 7, started_at=T24 - timedelta(hours=1), finished_at=T24 - timedelta(minutes=59),
+    run = put(db, "ai.agent_runs", run_values(seed, 7, fixture_id=w.fixture, started_at=T24 - timedelta(hours=1), finished_at=T24 - timedelta(minutes=59),
                                               known_at=T24 - timedelta(hours=2), latency_ms=1800))
     w.steps()
     home_pm = w.postmortem("Home", d2)
-    put(db, "intel.match_postmortems", {"fixture_id": seed.fixture_id, "created_at": KO + timedelta(hours=5, minutes=12), "version": "mr-v1",
+    put(db, "intel.match_postmortems", {"fixture_id": w.fixture, "created_at": KO + timedelta(hours=5, minutes=12), "version": "mr-v1",
                                         "outcome": Jsonb({}), "findings": Jsonb({})}, returning=False)
     home_attribution = w.attribution("Home", review=shadow, postmortem=home_pm)
 
@@ -219,7 +228,7 @@ def world(db: psycopg.Connection[Any], seed: Seed) -> dict[str, Any]:
     w.snapshot("Away")
     w.consensus("Away", SNAP_AT)
     away = w.decision("Away", T6, "T-6h", pick=away_pick, review=987654321, evidence=[987654321], price_at=PRICE_AT)
-    return {"home_pm": home_pm, "home_attribution": home_attribution, "draw_pick": draw_pick, "dc_pick": dc_pick, "home_pick": home_pick, "home_prediction": home_prediction, "evidence": evidence, "combined": combined, "shadow": shadow,
+    return {"fixture": w.fixture, "home_pm": home_pm, "home_attribution": home_attribution, "draw_pick": draw_pick, "dc_pick": dc_pick, "home_pick": home_pick, "home_prediction": home_prediction, "evidence": evidence, "combined": combined, "shadow": shadow,
             "home_decisions": [d1, d2], "run": run, "away_pick": away_pick, "away_decision": away}
 
 
@@ -232,7 +241,7 @@ def test_a_complete_trace_follows_the_pick_from_the_data_to_its_outcome(db: psyc
     c = tr.completeness(t)
     assert c.complete, c
     assert set(c.present) == set(tr.MANDATORY) and c.not_applicable == ()
-    assert t.trace_id == tr.selection_trace_id(seed.fixture_id, "1X2", "Home", 0) and t.match_trace_id == tr.match_trace_id(seed.fixture_id)
+    assert t.trace_id == tr.selection_trace_id(world["fixture"], "1X2", "Home", 0) and t.match_trace_id == tr.match_trace_id(world["fixture"])
 
     decisions = t.of_kind("decision")
     assert [s.row_ids for s in decisions] == [(str(world["home_decisions"][0]),), (str(world["home_decisions"][1]),)]
@@ -273,7 +282,7 @@ def test_a_complete_trace_follows_the_pick_from_the_data_to_its_outcome(db: psyc
 def test_every_anchor_of_one_selection_is_the_same_trace(db: psycopg.Connection[Any], seed: Seed, world: dict[str, Any]) -> None:
     by_pick = tr.trace_of(db, pick_id=world["home_pick"])
     by_decision = tr.trace_of(db, decision_id=world["home_decisions"][0])
-    by_key = tr.trace_of(db, fixture_id=seed.fixture_id, market_key="1X2", selection="Home", line="0.00")
+    by_key = tr.trace_of(db, fixture_id=world["fixture"], market_key="1X2", selection="Home", line="0.00")
     assert by_pick.trace_id == by_decision.trace_id == by_key.trace_id
     assert [s.row_ids for s in by_pick.spans] == [s.row_ids for s in by_decision.spans] == [s.row_ids for s in by_key.spans]
 
@@ -328,11 +337,11 @@ def test_an_anchor_that_does_not_exist_is_missing_not_guessed(db: psycopg.Connec
 
 
 def test_the_trace_of_the_match(db: psycopg.Connection[Any], seed: Seed, world: dict[str, Any]) -> None:
-    t = tr.trace_of(db, fixture_id=seed.fixture_id)
-    assert t.scope == "match" and t.trace_id == tr.match_trace_id(seed.fixture_id) and tr.completeness(t).complete
+    t = tr.trace_of(db, fixture_id=world["fixture"])
+    assert t.scope == "match" and t.trace_id == tr.match_trace_id(world["fixture"]) and tr.completeness(t).complete
     assert len(t.of_kind("decision")) == 5
     assert {s.payload["selection_trace_id"] for s in t.of_kind("decision")} == {
-        str(tr.selection_trace_id(seed.fixture_id, m, sel, 0)) for m, sel in (("1X2", "Home"), ("1X2", "Away"), ("1X2", "Draw"), ("DC", "1X"))}
+        str(tr.selection_trace_id(world["fixture"], m, sel, 0)) for m, sel in (("1X2", "Home"), ("1X2", "Away"), ("1X2", "Draw"), ("DC", "1X"))}
     assert [s.status for s in t.of_kind("match_postmortem")] == [tr.PRESENT]
 
 
