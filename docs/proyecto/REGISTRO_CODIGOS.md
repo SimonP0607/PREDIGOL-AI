@@ -63,6 +63,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-024 | Novedades del cierre de la UX (plan de cierre, fase 6): siete entradas nuevas, en español e inglés y en la copia del servidor, de lo que el lector ya ve desplegado: Inicio «Para ti», Resumen para entender, el porqué en una línea, más competiciones, seguir jugadores y mercados, puntos clave y «Por qué hay valor», y «Cómo funciona PrediGol». Sin migración ni interruptor | en curso | este PR | — |
 | UX-025 | La crónica de cada partido (plan de cierre UX, 2.4): la narrativa con IA pasa a ser una crónica corta y fluida, en español e inglés, con una entrada, un párrafo por equipo (últimos resultados con marcador y rival, bajas con su motivo, rachas, goleador, noticias verificadas), el historial directo, «Qué puede salir mal» y «Fuentes». Largo según los datos, nunca inventado; sin pronóstico ni picks (siguen aparte, con sus plantillas); atada a la historia del partido y no al paquete; presupuesto aparte de 20 US$ al mes. Nace apagada (`FBI_USER_NARRATIVE`, presupuesto 0). No cambia modelos, umbrales ni picks; sin migración (`backend/docs/owner/CRONICA_UX_025.md`) | desplegado (6-nov-2026; encendida en sombra con el OK del dueño) | #55 | — |
 | UX-026 | La crónica v3 (ajuste tras la primera muestra en sombra): el prompt deja de llamar «racha» a los últimos partidos en general y de adornar con lo que los datos no dicen (orgullo, presión, «la principal duda»), distingue los nombres de los códigos de las referencias y no escribe cuentas con letra que ningún dato cite. Solo cambia el texto del prompt y su versión (`user-narrative-v3`); mismos controles, mismo presupuesto, sigue en sombra. No cambia modelos, umbrales ni picks; sin migración (`backend/docs/owner/CRONICA_UX_025.md` §11) | en curso | este PR | — |
+| UX-031 | Inicio, paso 1.2 (plan de Inicio): las zonas de la tabla de una primera división se leen por nivel y posición (regla `stakes-v3`). «Play-offs» (Serie A) y «Qualifying» (Bundesliga) son plazas internacionales y no ascenso, «título» es solo el primer puesto y las mismas plazas se leen igual sea cual sea la redacción del proveedor (Serie A, Bundesliga, LaLiga, Premier). Las segundas divisiones, copas y grupos mantienen su lectura. Cambia el texto que lee la IA, no los modelos (guarda de modelos: UNCHANGED); sin migración | en curso | este PR | — |
 
 ## BE — backend
 
@@ -78,4 +79,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-015 · UX-027 · BE-004 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-015 · UX-032 · BE-004 · FE-001 · OPS-001 · DOC-001
