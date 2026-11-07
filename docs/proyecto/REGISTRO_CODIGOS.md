@@ -76,7 +76,6 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | BE-001 | La prueba del seudónimo de Sentry ya no falla al azar (una vez de cada catorce) | en curso | este PR | — |
 | BE-002 | Se siguen las eliminatorias mundialistas de África (29) y Oceanía (33) y la Copa Asiática (7): tanda 2 de la expansión (nivel 6), comprobación de nombre y país contra el proveedor en `expand_leagues` y negativa de `manage_competitions apply` a apagar más de 5 competiciones | en curso | este PR | P3 tanda 2 |
 | BE-003 | El pick del día da prioridad a la Champions, las ligas grandes, las copas continentales e intercontinentales y los torneos de selecciones (solo ordena a los ya elegibles; `daily-set-v7`, `comp-priority-v1`) | en curso | este PR | — |
-| BE-005 | Control de estadios (plan Partidos y Match Center, F6): la auditoría de verdad marca los estadios cuya ciudad o país no cuadran con su competición, el proveedor o los demás partidos del estadio (el caso de Mestalla en «Valdivia»), sin corregir nada; script `scripts/repair_venue_city.py` en seco, con `--apply` y registro en `audit.data_repairs`; guía `docs/owner/ESTADIOS_CIUDAD_BE005.md`. Sin migración | en curso | este PR | Plan Partidos F6 |
 
 ## Otras áreas
 
@@ -84,4 +83,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-015 · UX-037 · BE-006 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-015 · UX-037 · BE-004 · FE-001 · OPS-001 · DOC-001
