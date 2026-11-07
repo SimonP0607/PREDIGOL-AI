@@ -18,6 +18,7 @@ import {
   ErrorState,
   SectionHeader,
   SkeletonBlock,
+  StaleNote,
 } from "@/product/shared/States";
 import { EvaluationBadge } from "./Badges";
 import { DailyItemCard } from "./DailyItemCard";
@@ -84,7 +85,7 @@ export function DailySetBlock({
   let body: ReactNode;
   if (query.isPending) {
     body = <Skeleton count={3} />;
-  } else if (query.isError) {
+  } else if (query.isError && !board) {
     body = (
       <Card>
         <ErrorState error={query.error} onRetry={() => void query.refetch()} />
@@ -192,6 +193,7 @@ export function DailySetBlock({
       {nav ? <DayNav day={nav.day} today={nav.today} onDay={nav.onDay} items={items} /> : null}
       {variant === "page" ? <FunnelLine /> : null}
       {evaluation ? <EvaluationNote /> : null}
+      {query.isError && board ? <StaleNote onRetry={() => void query.refetch()} /> : null}
       {body}
     </section>
   );
