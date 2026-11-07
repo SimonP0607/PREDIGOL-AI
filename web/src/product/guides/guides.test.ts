@@ -4,7 +4,7 @@
  * launch, the offline queue, the page's copy of the server's rules, the walk through the cards, where the card is put, and the
  * texts in both languages.
  */
-import { beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import enGuides from "@/locales/en/guides.json";
 import esGuides from "@/locales/es/guides.json";
 import type { GuideIn, GuideKey, GuideState } from "@/lib/api/v1/types_guides";
@@ -151,6 +151,14 @@ describe("what stands in the way", () => {
 
 describe("the queue of what could not be sent", () => {
   const store = new Map<string, string>();
+  // The page is stubbed here and given back as it was: a later test file must find no window left behind (the rows of
+  // «Más» read window.location when there is a window at all).
+  const scope = globalThis as { window?: unknown };
+  const realWindow = scope.window;
+  afterAll(() => {
+    if (realWindow === undefined) delete scope.window;
+    else scope.window = realWindow;
+  });
   beforeEach(() => {
     store.clear();
     Object.assign(globalThis, {
