@@ -107,8 +107,8 @@
     "none": "Todavía no hay cuotas para este partido.",
     "noPrice": "Sin precio",
     "ou25": "Más/Menos {line} goles",
-    "bestOf_one": "Mejor precio entre {count} casa",
-    "bestOf_other": "Mejor precio entre {count} casas",
+    "bestOf_one": "Mejor precio de la única casa que consulta PrediGol; no es todo el mercado",
+    "bestOf_other": "Mejor precio entre las {count} casas que consulta PrediGol; no es todo el mercado",
     "allMarkets": "Todos los mercados"
   },
   "markets": {
@@ -398,7 +398,14 @@
   },
   "advanced": {
     "note": "Solo administradores: modelos y predicciones, capturas, linaje y auditoría de este partido.",
-    "marketsTitle": "Mercados: capturas de cuotas"
+    "marketsTitle": "Mercados: capturas de cuotas",
+    "analysisNote": "Vista de evaluación de PrediGol Intelligence: las tarjetas por mercado, la lectura del día de la IA y las selecciones en evaluación. Un lector no la ve: su Resumen muestra la lectura y los picks publicados."
+  },
+  "intelligence": {
+    "subtitle": "La lectura de PrediGol para este partido",
+    "risksLead": "Qué puede salir mal:",
+    "picks": "Picks publicados",
+    "picksShadow": "Picks en evaluación"
   },
   "priceStatus": {
     "title": "Sin cuota de casas",
@@ -1125,7 +1132,21 @@
     "note": "Lo que PrediGol encontró en la prensa sobre este partido, con su fuente y su estado. El resumen es nuestro; el artículo está en el enlace.",
     "count_one": "{count} noticia",
     "count_other": "{count} noticias",
-    "empty": "No encontramos noticias verificadas relevantes para este partido.",
+    "empty": "No encontramos noticias relevantes para este partido.",
+    "emptyNotSearched": "Aún no se ha buscado ninguna noticia de este partido. Buscamos el día del partido.",
+    "emptySearched": "Buscamos el {date} y no encontramos noticias relevantes para este partido.",
+    "search": {
+      "never": "Aún no se ha buscado",
+      "last": "Última búsqueda {when}",
+      "read_one": "{count} fuente leída",
+      "read_other": "{count} fuentes leídas"
+    },
+    "relation": {
+      "home": "{topic} · equipo local",
+      "away": "{topic} · equipo visitante",
+      "match": "{topic} · el partido"
+    },
+    "relationHelp": "Qué relación tiene con el partido: de qué trata y a qué equipo afecta.",
     "unavailable": "Las noticias no están disponibles en este momento.",
     "group": {
       "verified": "Confirmadas y probables",

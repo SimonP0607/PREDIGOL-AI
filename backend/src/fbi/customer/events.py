@@ -1,7 +1,7 @@
 """Product analytics (plan UX, A6 and section 39): the events of a closed catalog, their daily aggregate, their purge
 and the owner's view of them.
 
-* **The catalog** (``events_catalog.json``, the same in ``web/src/lib/track.ts``): 36 events, each with the only
+* **The catalog** (``events_catalog.json``, the same in ``web/src/lib/track.ts``): 40 events, each with the only
   properties it may carry - an enumeration, a bounded integer, a boolean, a slug or an id. Anything else is refused:
   an unknown event, an unknown property, a value out of its kind. No free text, no address, no IP.
 * **Who:** a pseudonym (``fbi.auth.crypto.product_id``: an HMAC of the account's id under its own key), never the id.

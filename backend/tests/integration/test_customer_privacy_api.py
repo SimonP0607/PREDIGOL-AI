@@ -455,7 +455,9 @@ def test_no_table_of_the_customer_schema_has_room_for_an_ip_a_card_a_token_or_an
                                        "announcements", "announcement_log",
                                        # tramo 1 (UX-027): a reader's «ya pagué» - the amount, the day, the last four
                                        # characters of the reference and its HMAC; never an account or a full number
-                                       "payment_requests"}
+                                       "payment_requests",
+                                       # UX-032: which guide a reader saw, its version, step and dates - no word of theirs
+                                       "guide_progress"}
     offending = [(t, c) for t, c in columns if any(c == f or c.startswith(f + "_") or c.endswith("_" + f)
                                                    for f in forbidden)]
     assert not offending, offending

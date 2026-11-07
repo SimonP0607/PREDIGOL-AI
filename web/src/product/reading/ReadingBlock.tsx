@@ -15,8 +15,11 @@
  * not validate.
  *
  * THE DERIVED SECTIONS (UX-011). Besides the six, the API sends key_points, value and factors, written from the same facts
- * with no AI. This block is the six and only the six (the derived ones repeat what the six say); the Resumen's highlights
- * are where the key points and «Por qué hay valor» are read.
+ * with no AI. This block is the six and only the six (the derived ones repeat what the six say).
+ *
+ * THE RESUMEN'S ONE READING (plan Partidos y Match Center, R2: `ReadingLeadView`, inside PrediGol Intelligence). The
+ * chronicle's first stretch when there is one; otherwise the structured reading as a short running text - the summary with
+ * its key points, how the sides arrive, the key absences, what could go wrong and the conclusion. Never both.
  */
 import { useId, type ReactNode } from "react";
 import { BookOpenText, ChevronRight, Sparkles, TriangleAlert } from "lucide-react";
@@ -431,138 +434,205 @@ export function ReadingBlock({ ctx }: { ctx: MatchCtx }) {
 }
 
 /** Whether a fact is already among others (the same code from the same place). */
-function isIn(fact: ReadingFact, others: ReadingFact[]): boolean {
+function isIn(fact: ReadingFact, others: readonly ReadingFact[]): boolean {
   return others.some((o) => o.code === fact.code && o.ref === fact.ref);
 }
 
-function HighlightBlock({
-  title,
-  testId,
-  children,
-}: {
-  title: string;
-  testId: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="mt-3 first:mt-0" data-testid={testId}>
-      <h3 className="text-caption font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        {title}
-      </h3>
-      <div className="mt-1 space-y-1">{children}</div>
-    </div>
-  );
+/** «Por qué hay valor» belongs to a published pick: the pick's own card, under the reading, says it. */
+const PICK_CODES: ReadonlySet<string> = new Set(["value_pick", "value_price"]);
+/** How the sides arrive and what they play for. */
+const ARRIVAL_CODES: ReadonlySet<string> = new Set([
+  "stakes_zone",
+  "stakes_gap_up",
+  "stakes_gap_down",
+  "stakes_pressure",
+  "first_leg",
+  "tie_outlook",
+  "form",
+  "streak_unbeaten",
+  "streak_winless",
+]);
+/** The verified news of the match: its key absences. */
+const NEWS_CODES: ReadonlySet<string> = new Set(["key_absences"]);
+/** A short text: at most this many sentences on how the sides arrive, and the two main risks. */
+const MAX_ARRIVAL = 4;
+const MAX_RISKS = 2;
+
+type LeadParagraphKey = "summary" | "arrival" | "news" | "risks" | "conclusion";
+
+interface LeadParagraph {
+  key: LeadParagraphKey;
+  facts: ReadingFact[];
 }
 
 /**
- * The top of the Resumen (plan section 25; UX-011): what the match is, the key points, why there is value when PrediGol
- * published a pick and the two main risks, with the way to the whole analysis. Each only when it has something to say; a
- * sentence is said once (the summary leaves out what the key points carry, the key points leave out the pick that «Por qué
- * hay valor» explains right under them). Nothing while the owner has turned the reading off; its own states otherwise (a
- * skeleton, an error with a retry).
+ * The structured reading as a short running text (plan Partidos y Match Center, R2): what the match is with its key points,
+ * how the sides arrive and what they play for, the verified news (key absences), what could go wrong (two risks at most) and
+ * PrediGol's conclusion - each paragraph only when it has a sentence, and each sentence said once.
  */
-export function ReadingHighlightsView({
-  load,
-  onMore,
-  afterMatch,
-}: {
-  load: ReadingLoad;
-  onMore: () => void;
-  afterMatch?: (() => void) | undefined;
-}) {
+function leadParagraphs(reading: MatchReading): LeadParagraph[] {
+  const said: ReadingFact[] = [];
+  const take = (facts: readonly ReadingFact[], max = Infinity): ReadingFact[] => {
+    const out: ReadingFact[] = [];
+    for (const { fact } of sentences([...facts])) {
+      if (out.length >= max || isIn(fact, said)) continue;
+      said.push(fact);
+      out.push(fact);
+    }
+    return out;
+  };
+  const keyPoints = factsOf(reading, "key_points").filter(
+    (f) => !PICK_CODES.has(f.code) && !NEWS_CODES.has(f.code),
+  );
+  const context = [...factsOf(reading, "context"), ...factsOf(reading, "data")];
+  const paragraphs: LeadParagraph[] = [
+    { key: "summary", facts: take([...factsOf(reading, "summary"), ...keyPoints]) },
+    {
+      key: "arrival",
+      facts: take(
+        context.filter((f) => ARRIVAL_CODES.has(f.code)),
+        MAX_ARRIVAL,
+      ),
+    },
+    { key: "news", facts: take(context.filter((f) => NEWS_CODES.has(f.code))) },
+    { key: "risks", facts: take(factsOf(reading, "risks"), MAX_RISKS) },
+    {
+      key: "conclusion",
+      // the result PrediGol expects, once: the summary already said it
+      facts: take(
+        factsOf(reading, "conclusion").filter(
+          (f) =>
+            !PICK_CODES.has(f.code) &&
+            !(
+              f.code === "likely" &&
+              said.some((x) => x.code === "expected_result" && x.ref === f.ref)
+            ),
+        ),
+      ),
+    },
+  ];
+  return paragraphs.filter((p) => p.facts.length > 0);
+}
+
+/** The facts of a paragraph flowing together, each sentence keeping its code and the place it comes from. */
+function FactParagraph({ facts, lead }: { facts: ReadingFact[]; lead?: ReactNode }) {
+  return (
+    <p className="break-words text-sm leading-relaxed text-foreground/90">
+      {lead ? <strong className="font-semibold text-foreground">{lead} </strong> : null}
+      {sentences(facts).map(({ fact, text }, i) => (
+        <span
+          key={`${fact.code}-${i}`}
+          data-testid="reading-fact"
+          data-code={fact.code}
+          data-ref={fact.ref}
+        >
+          {i > 0 ? " " : ""}
+          {text}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+/** The chronicle's first stretch: its lead, or the first section it has. */
+function chronicleLead(narrative: ReadingNarrative): NarrativeSection | null {
+  const sections = getLocale() === "es" ? narrative.es : narrative.en;
+  for (const key of CHRONICLE_KEYS) {
+    const found = sections.find((s) => s.key === key && s.sentences.length > 0);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * ONE reading of the match, for PrediGol Intelligence in the Resumen (plan Partidos y Match Center, R2): the chronicle's
+ * first stretch when the API sends one (written for the story in force: `FBI_USER_NARRATIVE` on, or the owner's preview),
+ * with the time of its data; otherwise the structured reading as a short running text (`leadParagraphs`). Never both:
+ * the whole of either is in Análisis. Its own states: a skeleton, an error with a retry, the owner having turned it off.
+ */
+export function ReadingLeadView({ load }: { load: ReadingLoad }) {
   if (load.status === "pending") {
     return (
       <div
         aria-busy="true"
         aria-label={t("common.loading")}
         className="space-y-2"
-        data-testid="reading-highlights"
+        data-testid="reading-lead"
+        data-kind="loading"
       >
         <SkeletonBlock className="h-4 w-3/4" />
+        <SkeletonBlock className="h-4 w-2/3" />
         <SkeletonBlock className="h-4 w-1/2" />
       </div>
     );
   }
   if (load.status === "error") {
     return (
-      <div
-        className="rounded-xl border border-border bg-card px-4"
-        data-testid="reading-highlights"
-      >
+      <div data-testid="reading-lead" data-kind="error">
         <ErrorState error={load.error} onRetry={load.retry} className="py-4" />
       </div>
     );
   }
   const reading = load.envelope.data;
-  if (load.envelope.status !== "ok" || !reading) return null;
-  const keyPoints = factsOf(reading, "key_points");
-  const value = sentences(factsOf(reading, "value"));
-  const summary = factsOf(reading, "summary").filter((f) => !isIn(f, keyPoints));
-  const points = sentences(
-    keyPoints.filter((f) => !(value.length > 0 && f.code === "value_pick")),
-  ).map((line) => line.fact);
-  const risks = sentences(factsOf(reading, "risks")).slice(0, 2);
-  const lead = sentences(summary);
-  if (lead.length === 0 && points.length === 0 && value.length === 0 && risks.length === 0)
-    return null;
-  return (
-    <section
-      className="min-w-0 rounded-xl border border-border bg-card px-4 py-3.5"
-      data-testid="reading-highlights"
-    >
-      {lead.length ? (
-        <FactList facts={lead.map((l) => l.fact)} testId="reading-highlights-summary" />
-      ) : null}
-      {points.length ? (
-        <HighlightBlock title={t("match.understand.keyPointsTitle")} testId="reading-key-points">
-          <FactList facts={points} />
-        </HighlightBlock>
-      ) : null}
-      {value.length ? (
-        <HighlightBlock title={t("match.understand.valueTitle")} testId="reading-value">
-          <FactList facts={value.map((v) => v.fact)} />
-          <Note>{t("match.understand.valueNote")}</Note>
-        </HighlightBlock>
-      ) : null}
-      {risks.length ? (
-        <HighlightBlock title={t("match.readingBlock.risksTitle")} testId="reading-risks">
-          <ul className="space-y-1" data-testid="reading-highlights-risks">
-            {risks.map(({ fact, text }, i) => (
-              <li
-                key={`${fact.code}-${i}`}
-                data-code={fact.code}
-                className="text-sm text-foreground/90"
-              >
-                {text}
-              </li>
-            ))}
-          </ul>
-        </HighlightBlock>
-      ) : null}
-      <button
-        type="button"
-        onClick={onMore}
-        data-testid="reading-see-all"
-        className="tap-y relative mt-3 inline-flex min-h-9 items-center gap-1 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+  if (load.envelope.status !== "ok" || !reading) {
+    return (
+      <p
+        className="text-sm text-muted-foreground"
+        data-empty-state
+        data-testid="reading-lead"
+        data-kind="unavailable"
       >
-        {t("match.readingBlock.seeAll")}
-        <ChevronRight aria-hidden className="h-4 w-4" />
-      </button>
-      {afterMatch ? (
-        <div>
-          <ToPostmatch onClick={afterMatch} />
+        {t("match.readingBlock.unavailable")}
+      </p>
+    );
+  }
+  const narrative = reading.narrative ?? null;
+  const lead = narrative ? chronicleLead(narrative) : null;
+  if (narrative && lead) {
+    return (
+      <div className="space-y-2" data-testid="reading-lead" data-kind="narrative">
+        <p
+          className="inline-flex items-start gap-1 text-caption text-muted-foreground"
+          data-testid="reading-label"
+        >
+          <Sparkles aria-hidden className="mt-0.5 h-3 w-3 shrink-0" />
+          {t("match.readingBlock.narrative.label")}
+        </p>
+        <div data-testid="reading-narrative-lead" data-section={lead.key}>
+          <Paragraph section={lead} />
         </div>
-      ) : null}
-    </section>
-  );
-}
-
-export function ReadingHighlights({ ctx }: { ctx: MatchCtx }) {
+        <Note testId="reading-data-at">{writtenAt(narrative.data_at)}</Note>
+      </div>
+    );
+  }
+  const paragraphs = leadParagraphs(reading);
+  const when = reading.data_at ?? reading.forecast_at;
   return (
-    <ReadingHighlightsView
-      load={useReading(ctx)}
-      onMore={() => ctx.goTo("analysis")}
-      afterMatch={ctx.phase === "finished" ? () => ctx.goTo("postmatch") : undefined}
-    />
+    <div className="space-y-2.5" data-testid="reading-lead" data-kind="facts">
+      <p className="text-caption text-muted-foreground" data-testid="reading-label">
+        {t("match.readingBlock.label")}
+      </p>
+      {!reading.complete ? (
+        <p
+          className="flex items-start gap-2 rounded-lg border border-border bg-elevated/40 px-3 py-2 text-xs text-muted-foreground"
+          data-testid="reading-partial"
+        >
+          <TriangleAlert aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          {t("match.readingBlock.incomplete")}
+        </p>
+      ) : null}
+      {paragraphs.map((p) => (
+        <div key={p.key} data-testid={`reading-lead-${p.key}`}>
+          <FactParagraph
+            facts={p.facts}
+            lead={p.key === "risks" ? t("match.intelligence.risksLead") : undefined}
+          />
+        </div>
+      ))}
+      {paragraphs.some((p) => p.key === "conclusion") ? (
+        <Note testId="reading-caveat">{t("match.readingBlock.caveat")}</Note>
+      ) : null}
+      {when ? <Note testId="reading-data-at">{dataAt(when)}</Note> : null}
+    </div>
   );
 }

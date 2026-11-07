@@ -17,6 +17,7 @@ import type { Envelope } from "@/lib/api/v1/types";
 import type {
   MatchNews,
   NewsItem,
+  NewsSearch,
   NewsStatus,
   TodayNews,
   TodayNewsItem,
@@ -30,10 +31,13 @@ import {
 import { NewsBlock, type TodayNewsQuery } from "@/product/home/NewsBlock";
 import type { FollowReason } from "@/lib/api/v1/types_today";
 import {
+  emptyText,
   groups,
   headline,
   homeNews,
   pressAbsences,
+  relation,
+  searchLine,
   shownInSpanish,
   summaryLang,
   statusHelp,
@@ -99,13 +103,14 @@ function text(html: string): string {
     .trim();
 }
 
-function ok(items: NewsItem[]): Envelope<MatchNews | null> {
+function ok(items: NewsItem[], search?: NewsSearch | null): Envelope<MatchNews | null> {
   return {
     status: items.length ? "ok" : "empty",
     data: {
       fixture_id: 7,
       items,
       counts: { CONFIRMED: 0, PROBABLE: 0, CONTRADICTORY: 0, RUMOR: 0, OUTDATED: 0 },
+      ...(search === undefined ? {} : { search }),
     },
     reason: items.length ? null : "No verified news relevant to this match.",
     meta: {},
@@ -329,6 +334,7 @@ describe("what the section says", () => {
     expect(page).toContain("Publicada hace 3 h"); // time
     expect(page).toContain("Según Sport, Baba Diocou es baja por lesión para este partido."); // own summary
     expect(page).toContain("Relevancia alta"); // relevance
+    expect(page).toContain("Lesión · equipo local"); // its relation with the match (IA-016)
     expect(page).toContain("Confirmado"); // status
     expect(page).toContain("Leer en la fuente"); // link
     expect(html).toContain('href="https://www.sport.es/es/noticias/1"');
@@ -411,10 +417,36 @@ describe("what the section says", () => {
     expect(rumours).toMatch(/<section[^>]*data-testid="news-group-rumor"/);
   });
 
-  test("no coverage: the plan's sentence, word for word; the owner's switch: said; a failure: its retry", () => {
-    expect(
-      text(renderToStaticMarkup(<NewsView load={{ status: "success", envelope: ok([]) }} />)),
-    ).toContain("No encontramos noticias verificadas relevantes para este partido.");
+  test("no coverage: not searched yet, searched with nothing found, or (unknown) nothing found; the owner's switch: said; a failure: its retry", () => {
+    const unknown = text(
+      renderToStaticMarkup(<NewsView load={{ status: "success", envelope: ok([]) }} />),
+    );
+    expect(unknown).toContain("No encontramos noticias relevantes para este partido.");
+    expect(unknown).not.toContain("verificadas");
+    const never = renderToStaticMarkup(
+      <NewsView load={{ status: "success", envelope: ok([], { searched: "no" }) }} now={NOW} />,
+    );
+    expect(text(never)).toContain("Aún no se ha buscado ninguna noticia de este partido.");
+    expect(never).toContain('data-searched="no"');
+    expect(text(never)).not.toContain("No encontramos");
+    const searched = renderToStaticMarkup(
+      <NewsView
+        load={{
+          status: "success",
+          envelope: ok([], {
+            searched: "yes",
+            last_searched_at: "2026-10-25T15:00:00Z",
+            searches: 2,
+            sources_read: 6,
+          }),
+        }}
+        now={NOW}
+      />,
+    );
+    expect(text(searched)).toContain(
+      "Buscamos el 25 oct 10:00 y no encontramos noticias relevantes para este partido.",
+    );
+    expect(text(searched)).toContain("Última búsqueda hace 3 h · 6 fuentes leídas");
     const off = {
       status: "not_available",
       data: null,
@@ -431,6 +463,68 @@ describe("what the section says", () => {
     );
     expect(failed).toContain("Reintentar");
     expect(failed).not.toContain("No encontramos noticias");
+  });
+
+  test("the header says when the match was last searched and how many pages were read (IA-016)", () => {
+    const html = renderToStaticMarkup(
+      <NewsView
+        load={{
+          status: "success",
+          envelope: ok([item({ status: "RUMOR" })], {
+            searched: "yes",
+            last_searched_at: "2026-10-25T17:00:00Z",
+            searches: 1,
+            sources_read: 1,
+          }),
+        }}
+        now={NOW}
+      />,
+    );
+    expect(html).toContain('data-testid="news-search"');
+    expect(text(html)).toContain("Última búsqueda hace 1 h · 1 fuente leída");
+    expect(text(html)).not.toContain("verificad");
+    expect(
+      searchLine(
+        { searched: "yes", last_searched_at: "2026-10-25T17:00:00Z", sources_read: null },
+        NOW,
+      ),
+    ).toBe("Última búsqueda hace 1 h");
+    expect(searchLine({ searched: "no" }, NOW)).toBe("Aún no se ha buscado");
+    expect(searchLine({ searched: "unknown" }, NOW)).toBeNull();
+    expect(searchLine(undefined, NOW)).toBeNull();
+    const before = renderToStaticMarkup(
+      <NewsView load={{ status: "success", envelope: ok([item()]) }} now={NOW} />,
+    );
+    expect(before).not.toContain('data-testid="news-search"'); // an API from before IA-016
+    setLocale("en");
+    expect(
+      searchLine(
+        { searched: "yes", last_searched_at: "2026-10-25T17:00:00Z", sources_read: 3 },
+        NOW,
+      ),
+    ).toContain("3 sources read");
+    expect(emptyText({ searched: "no" })).toBe(
+      "This match has not been searched for news yet. We search on match day.",
+    );
+    expect(emptyText(null)).toBe("We found no news relevant to this match.");
+  });
+
+  test("each card says its relation with the match: what it is about and the side it touches (IA-016)", () => {
+    expect(
+      relation({ kind: "suspension", team: { id: 2, name: "Real Madrid", side: "away" } }),
+    ).toBe("Sanción · equipo visitante");
+    expect(relation({ kind: "lineup", team: { id: 1, name: "Valencia", side: "home" } })).toBe(
+      "Alineación · equipo local",
+    );
+    expect(relation({ kind: "news", team: null })).toBe("Noticia · el partido");
+    const html = renderToStaticMarkup(
+      <NewsView load={{ status: "success", envelope: ok([item()]) }} now={NOW} />,
+    );
+    expect(html).toContain('data-testid="news-relation"');
+    setLocale("en");
+    expect(
+      relation({ kind: "suspension", team: { id: 2, name: "Real Madrid", side: "away" } }),
+    ).toBe("Suspension · away side");
   });
 
   test("no word of certainty or of betting in what the news say", () => {

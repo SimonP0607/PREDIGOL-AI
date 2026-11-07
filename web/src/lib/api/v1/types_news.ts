@@ -78,10 +78,26 @@ export interface NewsItem {
   seen_at: Iso;
 }
 
+/**
+ * Whether PrediGol Intelligence searched the web for the match (IA-016): «not searched yet» and «searched, nothing found» are not the same.
+ * yes - searched (a search paid for it, or a pass answered by one still fresh); no - no search recorded; unknown - the record was not read.
+ */
+export interface NewsSearch {
+  searched: "yes" | "no" | "unknown";
+  /** The newest search; null unless searched is yes. */
+  last_searched_at?: Iso | null;
+  /** Web searches paid for the match; null when unknown. */
+  searches?: number | null;
+  /** Pages read for the match, each once; null when unknown (a pass that did not count them). */
+  sources_read?: number | null;
+}
+
 export interface MatchNews {
   fixture_id: number;
   items: NewsItem[];
   counts: Record<NewsStatus, number>;
+  /** Whether and when the web was searched (IA-016); absent from an older API. */
+  search?: NewsSearch | null;
 }
 
 export interface TodayNewsMatch {

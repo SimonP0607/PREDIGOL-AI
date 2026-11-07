@@ -21,6 +21,7 @@
  */
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { ChevronRight, Layers, Radio } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ import type { Home } from "@/lib/api/v1/types_product";
 import type { DailyBoard, ParlayRecord, RecordKind } from "@/lib/api/v1/types_records";
 import { Card, ErrorState, SectionHeader, SkeletonBlock } from "@/product/shared/States";
 import { PARLAY_ICON, parlayTitle } from "@/product/parlays/parlayText";
+import { KindSwitch, kindVisibility } from "@/product/parlays/KindSwitch";
 import { DailySetBlock } from "@/product/records/DailySetBlock";
 import { noPickLoad } from "@/product/records/noPick";
 import { ParlayRecordCard } from "@/product/records/ParlayRecordCard";
@@ -46,11 +48,20 @@ import { ChoosePrompt, ForYouEdit, ForYouPart, Layer } from "./ParaTi";
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
 type HomeQuery = UseQueryResult<Envelope<Home>>;
 
-function ParlayBlock({ kind, board }: { kind: RecordKind; board: BoardQuery }) {
+function ParlayBlock({
+  kind,
+  board,
+  active,
+}: {
+  kind: RecordKind;
+  board: BoardQuery;
+  /** The kind a phone has open (./KindSwitch): the other one waits, hidden, and shows from md up. */
+  active: RecordKind;
+}) {
   const Icon = PARLAY_ICON[kind];
   const data = board.data?.data;
   return (
-    <section data-testid={`home-parlay-${kind}`}>
+    <section data-testid={`home-parlay-${kind}`} className={kindVisibility(kind, active)}>
       <SectionHeader
         title={parlayTitle(kind)}
         icon={<Icon aria-hidden className="h-4 w-4 shrink-0 text-gold" />}
@@ -86,6 +97,7 @@ function built(p: ParlayRecord | null | undefined): boolean {
  */
 function HomeParlays({ board }: { board: BoardQuery }) {
   const data = board.data?.data;
+  const [active, setActive] = useState<RecordKind>("daily");
   if (data && !built(data.daily_parlay) && !built(data.multiday_parlay)) {
     return (
       <p
@@ -109,8 +121,9 @@ function HomeParlays({ board }: { board: BoardQuery }) {
   }
   return (
     <div className="grid grid-cols-1 items-start gap-9 sm:gap-10 lg:grid-cols-2 lg:gap-6">
-      <ParlayBlock kind="daily" board={board} />
-      <ParlayBlock kind="multiday" board={board} />
+      <KindSwitch active={active} onChange={setActive} className="-mb-5" />
+      <ParlayBlock kind="daily" board={board} active={active} />
+      <ParlayBlock kind="multiday" board={board} active={active} />
     </div>
   );
 }

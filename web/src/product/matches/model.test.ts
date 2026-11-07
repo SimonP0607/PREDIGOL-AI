@@ -133,12 +133,15 @@ describe("status", () => {
   test("a short live label: the minute when known, the state when it is a break", () => {
     expect(liveLabel("2H", 52, null)).toBe("52'");
     expect(liveLabel("2H", 90, 4)).toBe("90+4'");
-    expect(liveLabel("Halftime", 45, null)).toBe("Desc.");
+    expect(liveLabel("Halftime", 45, null)).toBe("Descanso");
+    expect(liveLabel("P", 120, null)).toBe("Penales");
+    expect(liveLabel("SUSP", 60, null)).toBe("Suspendido");
+    expect(liveLabel("ET", 105, 2)).toBe("105+2'");
     expect(liveLabel("1H", null, null)).toBe("1T");
     expect(liveLabel("1H", 0, null)).toBe("1T");
     expect(liveLabel("?", null, null)).toBe("Vivo");
     setLocale("en");
-    expect(liveLabel("Halftime", 45, null)).toBe("HT");
+    expect(liveLabel("Halftime", 45, null)).toBe("Half-time");
     expect(liveLabel("2H", null, null)).toBe("2H");
   });
 

@@ -13,6 +13,7 @@ import type {
   NewsClaim,
   NewsItem,
   NewsKind,
+  NewsSearch,
   NewsSource,
   NewsStatus,
   TodayNewsItem,
@@ -53,6 +54,43 @@ export function headline(item: NewsItem): string {
       : kindLabel(item.kind, first.assertion);
   const about = who(item);
   return about ? `${label} · ${about}` : label;
+}
+
+/**
+ * How the card relates to the match (IA-016), from what it already carries: what it is about and whom it touches - «Sanción · equipo
+ * visitante», «Alineación · equipo local», «Noticia · el partido».
+ */
+export function relation(item: Pick<NewsItem, "kind" | "team">): string {
+  const topic = topicLabel(item.kind);
+  return t(`match.news.relation.${item.team?.side ?? "match"}`, { topic });
+}
+
+/**
+ * The header's line about the search (IA-016): «Última búsqueda hace 3 h · 6 fuentes leídas», «Aún no se ha buscado» - nothing when it is
+ * not known (an older API, or a record that could not be read).
+ */
+export function searchLine(
+  search: NewsSearch | null | undefined,
+  now: number = Date.now(),
+): string | null {
+  if (!search) return null;
+  if (search.searched === "no") return t("match.news.search.never");
+  if (search.searched !== "yes" || !search.last_searched_at) return null;
+  const when = t("match.news.search.last", { when: formatRelative(search.last_searched_at, now) });
+  return typeof search.sources_read === "number"
+    ? `${when} · ${t("match.news.search.read", { count: search.sources_read })}`
+    : when;
+}
+
+/** What an empty list says (IA-016): not searched yet, searched on a date with nothing found, or - not known - nothing found. */
+export function emptyText(search: NewsSearch | null | undefined): string {
+  if (search?.searched === "no") return t("match.news.emptyNotSearched");
+  if (search?.searched === "yes" && search.last_searched_at) {
+    return t("match.news.emptySearched", {
+      date: formatDateTime(search.last_searched_at, getTimeZone()),
+    });
+  }
+  return t("match.news.empty");
 }
 
 export function statusLabel(status: NewsStatus): string {
