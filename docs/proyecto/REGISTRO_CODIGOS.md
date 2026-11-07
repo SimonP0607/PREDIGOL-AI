@@ -75,6 +75,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-037 | Inicio, paso 2.2 (plan de Inicio): un solo reloj de partido. Las filas de Inicio ganan lo que les faltaba (el tiempo añadido, «90+4'», y la tanda de penales de un resultado, «Final (pen.)» con «pen. 4-3»), y todas las pantallas dicen lo mismo del mismo momento: «Descanso» (no «Desc.»), «Pausa», «Penales», «Prórroga», «Interrumpido» y «Suspendido». `/today` añade `extra`, `pens_home` y `pens_away` (campos nuevos, opcionales). No toca modelos, picks ni IA; sin migración | en curso | este PR | — |
 | UX-041 | Inicio, paso 2.4a (plan de Inicio): el parlay multi-día se distingue a la vista — el rango de fechas junto a su número de selecciones y las piernas agrupadas bajo el día en que se juegan — y en el móvil un selector «Del día / Multi-día» sustituye a dos tarjetas largas seguidas (desde `md` se ven las dos, sin selector). Solo web; sin cambio de contrato ni de modelos. |
 | UX-040 | Inicio, paso 2.3 (plan de Inicio): la tarjeta del pick del día lleva solo lo que un lector necesita — liga y hora, equipos, mercado y selección, cuota de referencia sin casa de apuestas, «PrediGol 52 % · mercado 39 %», nivel Alto/Medio (Alto si hasta la estimación prudente supera al mercado), estado, dos frases de por qué y «Más sobre este pick». Modelo, revisión, VE, etapa, hora de elección y casa quedan en «Auditoría», solo para el dueño en evaluación. «Más sobre este pick» abre `/matches/{id}?s=resumen&pick={id}`: el partido baja hasta ese pick, lo marca y abre su explicación (`?pick=` se lee de la dirección). Solo web; sin cambio de contrato ni de modelos. |
+| UX-044 | Inicio, paso 2.4b (plan de Inicio): cada pierna de un parlay lleva una línea de por qué — un hecho de la lectura del partido que respalda al lado que la pierna elige (una racha de cuatro o más sin perder, jugadores clave del rival que no están, una racha del rival sin ganar o lo que el equipo se juega) con las mismas plantillas de la lectura — y ninguna línea cuando no hay hecho: nunca se inventa. Se lee del paquete conocido antes del saque inicial, solo para lo que respalda a un lado (victoria local o visitante, doble oportunidad 1X o X2). `ParlayRecordLeg.why` en el contrato y la web en el mismo cambio, en Inicio (compacto) y en Parlays; sin cambio de modelos. |
 
 ## BE — backend
 
@@ -90,4 +91,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-015 · UX-041 · BE-004 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-015 · UX-045 · BE-004 · FE-001 · OPS-001 · DOC-001

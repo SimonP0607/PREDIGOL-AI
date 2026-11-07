@@ -39,6 +39,10 @@
   {
    "date": "2026-11-07",
    "reason": "Inicio 2.1: /home deja Mejores cuotas, los picks, los parlays y los proximos; solo trae lo que esta en juego y su frescura"
+  },
+  {
+   "date": "2026-11-07",
+   "reason": "UX-044: ParlayRecordLeg.why (plan de Inicio 2.4b)"
   }
  ],
  "routes": {
@@ -1188,6 +1192,17 @@
        ],
        "title": "Status",
        "type": "string"
+      },
+      "why": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/ReadingFact"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "One line of why this leg: a fact of the match's reading that stands behind the side the leg backs (a run without defeat, a key player out for the other side, a run without a win of the other, what the side plays for), as the reading itself words it. None when the match has no such fact, the leg backs no side or readers do not see the reading: nothing is made up. Known before kick-off (plan de Inicio, 2.4b)."
       }
      },
      "required": [
@@ -1206,6 +1221,57 @@
       "status"
      ],
      "title": "ParlayRecordLeg",
+     "type": "object"
+    },
+    "ReadingFact": {
+     "properties": {
+      "code": {
+       "description": "What the fact says, as a stable name the web has a template for (e.g. ``form``, ``stakes_pressure``, ``likely``).",
+       "title": "Code",
+       "type": "string"
+      },
+      "params": {
+       "additionalProperties": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "integer"
+         },
+         {
+          "type": "number"
+         },
+         {
+          "type": "boolean"
+         },
+         {
+          "items": {
+           "type": "string"
+          },
+          "type": "array"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "description": "The values the template fills in: names, counts, probabilities as shares of one (0.523).",
+       "title": "Params",
+       "type": "object"
+      },
+      "ref": {
+       "description": "Where it comes from: ``packet:<block>`` (the match packet PrediGol Intelligence stored), ``forecast:<market>`` (PrediGol's forecast) or ``pick:<id>`` (a pick PrediGol published, with the numbers it was frozen with) - every figure has one.",
+       "title": "Ref",
+       "type": "string"
+      }
+     },
+     "required": [
+      "code",
+      "params",
+      "ref"
+     ],
+     "title": "ReadingFact",
      "type": "object"
     },
     "ResultCorrection": {

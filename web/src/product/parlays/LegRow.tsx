@@ -11,6 +11,7 @@ import { EvBadge, Kickoff, OddsPill } from "@/product/shared/Bits";
 import { marketName } from "@/product/shared/markets";
 import { SelectablePrice } from "@/product/odds/SelectablePrice";
 import { hasStarted } from "@/product/records/model";
+import { LegFact } from "./LegFact";
 import { LegWhy } from "./LegWhy";
 import { legLabel, pickableOfView, type LegView } from "./legs";
 
@@ -98,6 +99,7 @@ export function LegRow({
             </span>
           ) : null}
         </div>
+        <LegFact fact={leg.fact} className="col-span-2 mt-1" />
         <LegWhy why={leg.why} frozen={leg.frozen} className="col-span-2 mt-1" />
       </div>
     </li>
