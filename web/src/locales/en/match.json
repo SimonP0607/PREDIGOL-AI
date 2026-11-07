@@ -1124,7 +1124,21 @@
     "note": "What PrediGol found in the press about this match, with its source and status. The summary is ours; the article is at the link.",
     "count_one": "{count} item",
     "count_other": "{count} items",
-    "empty": "We found no verified news relevant to this match.",
+    "empty": "We found no news relevant to this match.",
+    "emptyNotSearched": "This match has not been searched for news yet. We search on match day.",
+    "emptySearched": "We searched on {date} and found no news relevant to this match.",
+    "search": {
+      "never": "Not searched yet",
+      "last": "Last searched {when}",
+      "read_one": "{count} source read",
+      "read_other": "{count} sources read"
+    },
+    "relation": {
+      "home": "{topic} · home side",
+      "away": "{topic} · away side",
+      "match": "{topic} · the match"
+    },
+    "relationHelp": "How it relates to the match: what it is about and which side it affects.",
     "unavailable": "The news are not available at the moment.",
     "group": {
       "verified": "Confirmed and probable",

@@ -1124,7 +1124,21 @@
     "note": "Lo que PrediGol encontró en la prensa sobre este partido, con su fuente y su estado. El resumen es nuestro; el artículo está en el enlace.",
     "count_one": "{count} noticia",
     "count_other": "{count} noticias",
-    "empty": "No encontramos noticias verificadas relevantes para este partido.",
+    "empty": "No encontramos noticias relevantes para este partido.",
+    "emptyNotSearched": "Aún no se ha buscado ninguna noticia de este partido. Buscamos el día del partido.",
+    "emptySearched": "Buscamos el {date} y no encontramos noticias relevantes para este partido.",
+    "search": {
+      "never": "Aún no se ha buscado",
+      "last": "Última búsqueda {when}",
+      "read_one": "{count} fuente leída",
+      "read_other": "{count} fuentes leídas"
+    },
+    "relation": {
+      "home": "{topic} · equipo local",
+      "away": "{topic} · equipo visitante",
+      "match": "{topic} · el partido"
+    },
+    "relationHelp": "Qué relación tiene con el partido: de qué trata y a qué equipo afecta.",
     "unavailable": "Las noticias no están disponibles en este momento.",
     "group": {
       "verified": "Confirmadas y probables",

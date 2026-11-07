@@ -32,6 +32,12 @@ from a request, never sent to a client.
     FBI_AI_MAX_WEB_FIRST        default 20 - matches searched on the web in the first pass of the day
     FBI_AI_MAX_WEB_PRE          default 12 - matches searched again before kick-off (only escalated ones)
     FBI_AI_MAX_WATCH_PER_DAY    default 8 - intermediate reviews of escalated matches without a candidate
+    FBI_AI_NEWS_PRIORITY        on (default) | 0 - the news coverage of the owner's priority competitions (IA-016,
+                                ``news-coverage-v1``): every match of the day of groups 1-3 of ``fbi.intel.day_priority`` is
+                                searched at its first and its pre pass even without a candidate - outside the two caps above,
+                                which keep counting the other matches -, with one more search (press conference, squad) in
+                                the competition's language: at most two searches per match and pass, and never once Exa's
+                                own envelope is spent. ``0`` goes back to the caps alone (restart the worker)
     FBI_AI_MULTIMODAL           off (default) | on - images only for selected matches, each one logged
     FBI_AI_HORIZON_HOURS        default 96 - how far ahead the free part (packets, rules, analyses) looks
     FBI_AI_SEARCH               exa | brave | tavily | none (default exa when EXA_API_KEY is set, else none)
@@ -237,6 +243,9 @@ class AiSettings:
     max_web_first: int = 20
     max_web_pre: int = 12
     max_watch_per_day: int = 8
+    news_priority: bool = True
+    """IA-016: the matches of the owner's priority competitions (groups 1-3) are searched at their first and pre passes outside the web caps
+    (``FBI_AI_NEWS_PRIORITY``, on unless it says ``0``/``off``/``false``/``no``)."""
     multimodal: bool = False
     horizon_hours: int = 96
     search: str | None = None
@@ -309,6 +318,7 @@ class AiSettings:
             max_web_first=_int("FBI_AI_MAX_WEB_FIRST", 20, env),
             max_web_pre=_int("FBI_AI_MAX_WEB_PRE", 12, env),
             max_watch_per_day=_int("FBI_AI_MAX_WATCH_PER_DAY", 8, env),
+            news_priority=(env.get("FBI_AI_NEWS_PRIORITY") or "1").strip().lower() not in ("0", "off", "false", "no"),
             multimodal=(env.get("FBI_AI_MULTIMODAL") or "").strip().lower() in ("1", "on", "true", "yes"),
             horizon_hours=max(1, _int("FBI_AI_HORIZON_HOURS", 96, env)),
             search=None if search_raw in ("", "none", "off") else search_raw,
@@ -392,6 +402,7 @@ class AiSettings:
             "max_web_first": self.max_web_first,
             "max_web_pre": self.max_web_pre,
             "max_watch_per_day": self.max_watch_per_day,
+            "news_priority": self.news_priority,
             "multimodal": self.multimodal,
             "horizon_hours": self.horizon_hours,
             "search": self.search,
