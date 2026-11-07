@@ -127,7 +127,7 @@ describe("the reading's states", () => {
 });
 
 const NARRATIVE: MatchReading["narrative"] = {
-  version: "user-narrative-v2",
+  version: "user-narrative-v3",
   written_at: "2026-10-25T10:40:00Z",
   data_at: "2026-10-25T10:30:00Z",
   es: [

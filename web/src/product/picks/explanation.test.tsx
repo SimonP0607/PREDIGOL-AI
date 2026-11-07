@@ -134,7 +134,7 @@ describe("the five layers' lines", () => {
     ]);
     const narrated = explanation({
       narrative: {
-        version: "user-narrative-v2",
+        version: "user-narrative-v3",
         written_at: "2031-06-16T11:55:00Z",
         data_at: "2031-06-16T11:50:00Z",
         es: [

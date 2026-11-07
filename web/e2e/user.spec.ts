@@ -867,7 +867,7 @@ test("A match's chronicle written with AI (A11, UX-025): a paragraph for each si
   }
   const reading = (await readingOf(page, withNarrative)).data!;
   const narrative = reading.narrative!;
-  expect(narrative.version).toBe("user-narrative-v2");
+  expect(narrative.version).toBe("user-narrative-v3");
   const sections = narrative[lang()];
   expect(sections.map((x) => x.key)).toEqual(narrative.es.map((x) => x.key));
   await open(page, w, `/matches/${withNarrative}?s=analisis`);
