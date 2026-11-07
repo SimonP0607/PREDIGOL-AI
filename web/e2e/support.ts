@@ -41,6 +41,7 @@ const NAMESPACES = [
   "support",
   "push",
   "explain",
+  "guides",
 ] as const;
 interface Catalogs {
   admin: typeof import("../src/locales/es/admin.json");
@@ -68,6 +69,7 @@ interface Catalogs {
   support: typeof import("../src/locales/es/support.json");
   push: typeof import("../src/locales/es/push.json");
   explain: typeof import("../src/locales/es/explain.json");
+  guides: typeof import("../src/locales/es/guides.json");
 }
 
 function catalogs(lang: "es" | "en"): Catalogs {
@@ -190,13 +192,44 @@ export async function sendJson<T>(
  * A new account's welcome (plan UX, A13), recorded as done through the API - for the tests that are not about it: the
  * gate then sends the account where the test goes, once the page loads again.
  */
-export async function skipWelcome(request: APIRequestContext): Promise<void> {
+export async function skipWelcome(
+  request: APIRequestContext,
+  options: { guides?: "quiet" | "keep" } = {},
+): Promise<void> {
   const r = await request.fetch("/api/v1/me/onboarding", {
     method: "POST",
     headers: { "x-requested-with": "predigol", "content-type": "application/json" },
     data: {},
   });
   expect(r.status(), "the welcome recorded as done").toBe(200);
+  // The guides (plan UX-051 to UX-053) come up by themselves on a reader's first visits: a test that is not about them
+  // records them as done, as a reader who had seen them would - the guides' own tests ask to keep them (guides: "keep").
+  if (options.guides !== "keep") await quietGuides(request);
+}
+
+export const GUIDE_KEYS = [
+  "general",
+  "home",
+  "matches",
+  "live",
+  "match",
+  "picks",
+  "parlays",
+  "odds",
+  "my_picks",
+  "profile",
+] as const;
+
+/** Every guide recorded as completed for the signed-in account (version 1). */
+export async function quietGuides(request: APIRequestContext): Promise<void> {
+  for (const guide of GUIDE_KEYS) {
+    const r = await request.fetch(`/api/v1/me/guides/${guide}`, {
+      method: "PUT",
+      headers: { "x-requested-with": "predigol", "content-type": "application/json" },
+      data: { version: 1, status: "completed", step: 0 },
+    });
+    expect(r.status(), `${guide} recorded as seen`).toBe(200);
+  }
 }
 
 export async function getJson<T>(

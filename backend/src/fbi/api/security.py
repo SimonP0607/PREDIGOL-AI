@@ -155,16 +155,19 @@ MEMBERSHIP_READS = frozenset({"/api/v1/me/picks", "/api/v1/me/parlays", "/api/v1
 def membership_required(request: Request, conn: Db, principal: Annotated[Principal, Depends(current_principal)],
                         ) -> None:
     """The product with a membership in force (plan UX, A8). Off until FBI_MEMBERSHIP_ENFORCE says otherwise; the owner
-    and the synthetic journey's account are exempt, and so is an account without any period (it says so in the
-    console). An ended membership - after its 3 days of grace - or a suspended one reads only its own records: 403
-    ``membership_expired`` / ``membership_suspended`` elsewhere, and the page shows what it can do and how to renew."""
+    and the synthetic journey's account are exempt. An account without any period (UX-063: a person who registered
+    and has not been given access), an ended membership - after its 3 days of grace - or a suspended one reads only its
+    own records: 403 ``membership_required`` / ``membership_expired`` / ``membership_suspended`` elsewhere, and the
+    page shows what it can do and how to get access or renew."""
     if not membership.enforced() or consents.exempt(principal.email, super_admin=principal.is_super_admin):
         return
     m = membership.gate_cached(conn, principal.user_id, email=principal.email, super_admin=principal.is_super_admin)
     if not m.limited or (request.method in SAFE_METHODS and request.url.path in MEMBERSHIP_READS):
         return
-    code = "membership_suspended" if m.state == "suspended" else "membership_expired"
-    raise ApiError(403, code, "this membership has ended: renew to use the product")
+    code = {"suspended": "membership_suspended", "none": "membership_required"}.get(m.state, "membership_expired")
+    message = ("this account has no access yet" if m.state == "none"
+               else "this membership has ended: renew to use the product")
+    raise ApiError(403, code, message)
 
 
 require_app = require(Permission.APP)

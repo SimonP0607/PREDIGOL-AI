@@ -53,8 +53,8 @@ import { PicksFilters, PicksSearch } from "./PicksFilters";
 import { PicksSummaryBlock } from "./PicksSummary";
 import { lineValueText } from "./picksText";
 import { track } from "@/lib/track";
-import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
 import { useUsefulMoment } from "@/product/feedback/moments";
+import { useGuideScreen } from "@/product/guides/context";
 
 const PERIODS: readonly HistoryPeriod[] = ["today", "7d", "30d", "all"];
 
@@ -150,7 +150,7 @@ function Results() {
   const q = useQuery(live.history(period, preview));
   const history = q.data?.data;
   return (
-    <section className="space-y-3" data-testid="my-results">
+    <section className="space-y-3" data-testid="my-results" data-guide="mine-results">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <SectionHeader
           title={t("records.mine.results.title")}
@@ -523,7 +523,7 @@ function SavedPicks() {
   const options = summary.data?.data.options;
   const everything = (options?.markets.length ?? 0) > 0 || filtered || picks.length > 0;
   return (
-    <section className="space-y-3" data-testid="saved-picks">
+    <section className="space-y-3" data-testid="saved-picks" data-guide="mine-saved">
       <SectionHeader
         title={t("records.mine.picks.title")}
         subtitle={picks.length > 0 ? t("records.mine.picks.settlesAt") : undefined}
@@ -777,7 +777,12 @@ function MyParlays() {
     </button>
   );
   return (
-    <section id="my-parlays" className="scroll-mt-24 space-y-3" data-testid="my-parlays">
+    <section
+      id="my-parlays"
+      className="scroll-mt-24 space-y-3"
+      data-testid="my-parlays"
+      data-guide="mine-parlays"
+    >
       <div className="flex flex-wrap items-end justify-between gap-2">
         <SectionHeader
           title={t("records.mine.parlays.title")}
@@ -839,10 +844,14 @@ function MyParlays() {
 
 export function MyPicksPage() {
   const readOnly = useReadOnly();
+  useGuideScreen("my_picks", { ready: true });
   return (
     <div className="space-y-9" data-testid="my-picks-page">
-      <PageTitle title={t("records.mine.title")} subtitle={t("records.mine.subtitle")} />
-      <FirstVisitHint hint="my_picks" />
+      <PageTitle
+        guide="my_picks"
+        title={t("records.mine.title")}
+        subtitle={t("records.mine.subtitle")}
+      />
       {readOnly ? (
         <p className="text-xs text-muted-foreground" data-testid="my-picks-read-only">
           {t("profile.membership.limited.readOnly")}

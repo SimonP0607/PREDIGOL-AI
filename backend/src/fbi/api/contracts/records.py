@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from fbi.api.contracts.common import Contract, MatchPhase, StatusReason, UserStatus
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
+from fbi.api.contracts.reading import ReadingFact
 
 ResultStatus = Literal["PENDING", "WIN", "LOSS", "PUSH", "VOID", "HALF_WIN", "HALF_LOSS"]
 ParlayStatus = Literal["BUILDING", "READY", "ACTIVE", "WON", "LOST", "VOID", "PARTIAL_VOID"]
@@ -147,6 +148,11 @@ class ParlayRecordLeg(Contract):
     status: ResultStatus
     ai: ItemAi | None = None
     ai_latest: AiLatest | None = None
+    why: ReadingFact | None = Field(default=None, description=(
+        "One line of why this leg: a fact of the match's reading that stands behind the side the leg backs (a run without "
+        "defeat, a key player out for the other side, a run without a win of the other, what the side plays for), as the reading "
+        "itself words it. None when the match has no such fact, the leg backs no side or readers do not see the reading: "
+        "nothing is made up. Known before kick-off (plan de Inicio, 2.4b)."))
 
 
 class ParlayRecord(Contract):

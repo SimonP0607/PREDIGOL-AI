@@ -7,6 +7,8 @@ import { t, translateOr } from "@/lib/i18n";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { markTrouble } from "@/lib/feedback/session";
 import { track } from "@/lib/track";
+import type { GuideKey } from "@/lib/api/v1/types_guides";
+import { GuideButton } from "@/product/guides/GuideButton";
 import { reportShownApiError } from "@/lib/observability";
 import { useReportProblem } from "@/product/support/report";
 import { StillFailing } from "@/product/support/StillFailing";
@@ -235,12 +237,15 @@ export function PageTitle({
   title,
   subtitle,
   right,
+  guide,
   className,
 }: {
   title: string;
   /** Text, or text with a glossary term in it (plan UX, A3: «¿Qué es un pick?»). */
   subtitle?: ReactNode;
   right?: ReactNode;
+  /** The screen's guide: its «?» goes at the end of the header (plan UX-052). */
+  guide?: GuideKey;
   className?: string | undefined;
 }) {
   return (
@@ -251,7 +256,12 @@ export function PageTitle({
         </h1>
         {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
       </div>
-      {right ? <div className="flex flex-wrap items-center gap-2">{right}</div> : null}
+      {right || guide ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {right}
+          {guide ? <GuideButton guide={guide} /> : null}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -48,6 +48,7 @@ import { AtStakeBlock, RelevantNowBlock } from "./HomeStakes";
 import { ResultsBlock } from "./ResultsBlock";
 import { layersOf } from "./layers";
 import { ChoosePrompt, ForYouEdit, ForYouPart, Layer } from "./ParaTi";
+import { useGuideScreen } from "@/product/guides/context";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
 type HomeQuery = UseQueryResult<Envelope<Home>>;
@@ -202,6 +203,10 @@ export function HomePage() {
   const layers = layersOf(me.data, today.data?.data);
   const teams = layers.mine && (today.data?.data?.following?.teams.length ?? 0) > 0;
   const common = { query: today, now } as const;
+  // The screen's guide (plan UX-051) may launch once Inicio has what it draws.
+  useGuideScreen("home", {
+    ready: !home.isPending && !today.isPending && (!reader || !me.isPending),
+  });
   return (
     <div className="space-y-9 sm:space-y-10" data-testid="home-page">
       <HomeHeader freshness={home.data?.data?.data_freshness ?? null} loading={home.isPending} />

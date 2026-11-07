@@ -82,6 +82,7 @@ import {
   type MatchesSearch,
   type MatchesView,
 } from "./viewState";
+import { useGuideScreen } from "@/product/guides/context";
 
 const NO_ROWS: MatchSummary[] = [];
 const NO_LIVE: LiveMatch[] = [];
@@ -310,6 +311,7 @@ export function MatchesPage() {
   const [draft, setDraft] = useSearchDraft(view.query, commitQuery);
 
   const matches = useQuery(dayMatchesQuery(view.day));
+  useGuideScreen("matches", { ready: !matches.isPending });
   const rows = matches.data?.rows ?? NO_ROWS;
   const needsBoard = useMemo(() => wantsLiveBoard(rows, Date.now()), [rows]);
   const board = useQuery({ ...live.liveBoard, enabled: needsBoard });
@@ -470,7 +472,12 @@ export function MatchesPage() {
     );
   } else {
     body = (
-      <div className="space-y-3" data-testid="matches-list" onClickCapture={onListClick}>
+      <div
+        className="space-y-3"
+        data-testid="matches-list"
+        data-guide="matches-list"
+        onClickCapture={onListClick}
+      >
         {groups.map((g) => (
           <CompetitionSection
             key={g.id}
@@ -570,7 +577,7 @@ export function MatchesPage() {
 
   return (
     <div ref={page} className="space-y-4">
-      <PageTitle title={t("nav.matches")} subtitle={dayTitle(view.day, today)} />
+      <PageTitle guide="matches" title={t("nav.matches")} subtitle={dayTitle(view.day, today)} />
 
       {follow ? (
         <ScopeSwitch
