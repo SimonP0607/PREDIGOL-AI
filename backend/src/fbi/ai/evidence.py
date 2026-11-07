@@ -44,7 +44,16 @@ AVAILABILITY = frozenset({"injury", "suspension", "doubtful", "lineup"})
 STALE_AFTER = timedelta(days=10)
 """A report about who plays, published this long before the match, is too old to stand on its own."""
 CHECK_MARGIN = timedelta(hours=2)
+"""Only for a caller that does not say what the provider's latest report lists (``classify(provider_listed=None)``): a report of the provider
+retrieved this long before the latest check of the season's list is taken for one that list no longer names."""
 SEEN_EVERY = timedelta(hours=1)
+
+ProviderListing = tuple[int | None, int | None, str | None, str | None]
+"""One entry of the provider's injury report as an item of the provider keeps it: (match, provider player id, absence type, reason)."""
+
+
+def provider_listing(fixture_id: int | None, player_id: int | None, absence_type: Any, reason: Any) -> ProviderListing:
+    return (fixture_id, player_id, None if absence_type is None else str(absence_type), None if reason is None else str(reason))
 
 LEAGUES = frozenset({"premierleague.com", "efl.com", "laliga.com", "legaseriea.it", "bundesliga.com", "ligue1.com",
                      "dimayor.com.co", "ligamx.net", "mlssoccer.com", "ligaportugal.pt", "eredivisie.nl", "spfl.co.uk",
@@ -130,6 +139,45 @@ SOURCES_V2: dict[str, str] = {
 }
 
 
+SOURCES_V3: dict[str, str] = {
+    # News coverage (IA-016, 7 Nov 2026): the official sites of the clubs and leagues of the owner's group 1 (Champions League and the top leagues
+    # of Spain, England, Italy, Germany, France and Portugal, ``fbi.intel.day_priority``) and their national press - the club announces the squad,
+    # the medical report and the suspension first, and a national outlet alone is PROBABLE, not a RUMOR. Only addresses known to be the club's or
+    # the outlet's own; a club already listed keeps its row. Like every seed, a domain already in ``ai.sources`` keeps the tier the owner gave it.
+    # leagues
+    "dfl.de": "competition", "lfp.fr": "competition",
+    # Spain
+    "valenciacf.com": "club", "sevillafc.es": "club", "realbetisbalompie.es": "club", "villarrealcf.es": "club",
+    "athletic-club.eus": "club", "realsociedad.eus": "club", "rccelta.es": "club", "getafecf.com": "club", "rayovallecano.es": "club",
+    "osasuna.es": "club", "rcdmallorca.es": "club", "gironafc.cat": "club", "deportivoalaves.com": "club", "rcdespanyol.com": "club",
+    "elchecf.es": "club", "levanteud.com": "club", "realoviedo.es": "club",
+    # England
+    "avfc.co.uk": "club", "newcastleunited.com": "club", "evertonfc.com": "club", "whufc.com": "club", "nottinghamforest.co.uk": "club",
+    "brightonandhovealbion.com": "club", "wolves.co.uk": "club", "cpfc.co.uk": "club", "fulhamfc.com": "club", "brentfordfc.com": "club",
+    "afcb.co.uk": "club", "leedsunited.com": "club", "burnleyfootballclub.com": "club", "safc.com": "club",
+    # Italy
+    "asroma.com": "club", "sslazio.it": "club", "sscnapoli.it": "club", "atalanta.it": "club", "acffiorentina.com": "club",
+    "torinofc.it": "club", "bolognafc.it": "club", "udinese.it": "club", "genoacfc.it": "club", "cagliaricalcio.com": "club",
+    "hellasverona.it": "club", "sassuolocalcio.it": "club",
+    # Germany
+    "bayer04.de": "club", "rbleipzig.com": "club", "vfb.de": "club", "borussia.de": "club", "vfl-wolfsburg.de": "club",
+    "scfreiburg.com": "club", "tsg-hoffenheim.de": "club", "fc-union-berlin.de": "club", "werder.de": "club", "fcaugsburg.de": "club",
+    "mainz05.de": "club", "fcstpauli.com": "club", "hsv.de": "club", "fc.de": "club",
+    # France
+    "om.fr": "club", "ol.fr": "club", "losc.fr": "club", "asmonaco.com": "club", "ogcnice.com": "club", "staderennais.com": "club",
+    "rclens.fr": "club", "fcnantes.com": "club", "rcstrasbourgalsace.fr": "club", "toulousefc.com": "club",
+    # Portugal
+    "slbenfica.pt": "club", "fcporto.pt": "club", "sporting.pt": "club", "scbraga.pt": "club",
+    # national press (Spain - and VAVEL, national -, England, Italy, Germany, France, Portugal) not listed yet
+    "vavel.com": "media", "cadenaser.com": "media", "cope.es": "media", "rtve.es": "media", "ondacero.es": "media",
+    "elconfidencial.com": "media", "superdeporte.es": "media", "levante-emv.com": "media", "lasprovincias.es": "media",
+    "thetimes.co.uk": "media", "thetimes.com": "media",
+    "repubblica.it": "media", "corriere.it": "media", "sportmediaset.mediaset.it": "media",
+    "sueddeutsche.de": "media", "t-online.de": "media", "ran.de": "media",
+    "francefootball.fr": "media", "lefigaro.fr": "media", "leparisien.fr": "media", "20minutes.fr": "media",
+    "publico.pt": "media", "rtp.pt": "media", "sicnoticias.pt": "media",
+}
+
 def seed_rows() -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = [("api-football.com", "provider")]
     rows += [(d, "official") for d in sorted(FEDERATIONS)]
@@ -141,6 +189,8 @@ def seed_rows() -> list[tuple[str, str]]:
     rows += [(d, "social") for d in sorted(SOCIAL)]
     seeded = {d for d, _ in rows}
     rows += [(d, t) for d, t in sorted(SOURCES_V2.items()) if d not in seeded]
+    seeded = {d for d, _ in rows}
+    rows += [(d, t) for d, t in sorted(SOURCES_V3.items()) if d not in seeded]
     return rows
 
 
@@ -372,9 +422,17 @@ def _too_old(r: Row, kickoff: datetime | None) -> bool:
 
 
 def classify(rows: list[Row], *, kickoff: datetime | None, at: datetime, lineup_starters: dict[int, set[int]],
-             absences_checked_at: datetime | None, across_scopes: bool = False, lineups: Sequence[Lineup] = ()) -> dict[int, tuple[Status, str]]:
+             absences_checked_at: datetime | None, across_scopes: bool = False, lineups: Sequence[Lineup] = (),
+             provider_listed: Collection[ProviderListing] | None = None) -> dict[int, tuple[Status, str]]:
     """The status of every item, decided together (a newer item can outdate an older one, two items can
     contradict each other). ``lineup_starters``: team id -> provider ids of the confirmed starters.
+
+    ``provider_listed``: what the provider's latest injury report as of ``at`` (the one of ``absences_checked_at``) lists, entry by entry
+    (``provider_listing``). An item of that report is outdated when the report no longer lists it - the player was cleared, or is listed
+    with another type or reason - and keeps its status while it does, however long ago it was first listed: the history of the report
+    (``core.player_availability_obs``) writes only what changes, so the date of an item is when the entry was FIRST seen, not the last
+    time it was. Left ``None`` (a caller that does not know the list), an item retrieved more than ``CHECK_MARGIN`` before the latest
+    check is taken for one the list no longer names, as before.
 
     ``across_scopes`` and ``lineups`` are research v2's (``refresh_typed_statuses``); left alone, the rules are the ones v1 always had.
     ``across_scopes``: the same player of the same team is one subject whatever match his items are tied to, because a claim that belongs to
@@ -434,10 +492,15 @@ def classify(rows: list[Row], *, kickoff: datetime | None, at: datetime, lineup_
             # reaches CONFIRMED - the claims v1 wrote keep the rule they always had)
             out[r.id] = ("CONFIRMED", "absent from the confirmed starting line-up")
             continue
-        if r.origin == "provider" and r.kind in ("injury", "suspension", "doubtful") and absences_checked_at is not None \
-                and r.retrieved_at < absences_checked_at - CHECK_MARGIN:
-            out[r.id] = ("OUTDATED", "no longer in the provider's latest injury report")
-            continue
+        if r.origin == "provider" and r.kind in ("injury", "suspension", "doubtful") and absences_checked_at is not None:
+            if provider_listed is not None:
+                dropped = provider_listing(r.fixture_id, r.player_id, r.attributes.get("absence_type"),
+                                           r.attributes.get("reason")) not in provider_listed
+            else:
+                dropped = r.retrieved_at < absences_checked_at - CHECK_MARGIN
+            if dropped:
+                out[r.id] = ("OUTDATED", "no longer in the provider's latest injury report")
+                continue
         if _too_old(r, kickoff):
             out[r.id] = ("OUTDATED", "published more than ten days before the match")
     return out
@@ -485,7 +548,8 @@ that has become too old is marked so before it stops being looked at. The packet
 
 def _decide(conn: psycopg.Connection[Any], raw: list[dict[str, Any]], *, at: datetime, kickoff: datetime | None,
             lineup_starters: dict[int, set[int]], absences_checked_at: datetime | None, across_scopes: bool = False,
-            lineups: Sequence[Lineup] = (), read_only: Collection[int] = ()) -> dict[str, int]:
+            lineups: Sequence[Lineup] = (), read_only: Collection[int] = (),
+            provider_listed: Collection[ProviderListing] | None = None) -> dict[str, int]:
     """Decide the status of every row together and write only the statuses that changed (the trigger keeps the history). ``read_only``: rows
     that take part in the decision but are never written (what v1 and the provider say, when the claims of research v2 are decided)."""
     typed_hosts = [r["source_domain"] for r in raw if r.get("subject_type") is not None]
@@ -497,7 +561,8 @@ def _decide(conn: psycopg.Connection[Any], raw: list[dict[str, Any]], *, at: dat
                 typed=r.get("subject_type") is not None,
                 outlet=outlets.get(r["source_domain"]) if r.get("subject_type") is not None and r["source_domain"] else None) for r in raw]
     decided = classify(rows, kickoff=kickoff, at=at, lineup_starters=lineup_starters,
-                       absences_checked_at=absences_checked_at, across_scopes=across_scopes, lineups=lineups)
+                       absences_checked_at=absences_checked_at, across_scopes=across_scopes, lineups=lineups,
+                       provider_listed=provider_listed)
     skip = set(read_only)
     counts: dict[str, int] = defaultdict(int)
     current = {int(r["id"]): (r["status"], r["status_reason"]) for r in raw}
@@ -513,13 +578,16 @@ def _decide(conn: psycopg.Connection[Any], raw: list[dict[str, Any]], *, at: dat
 
 
 def refresh_statuses(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, kickoff: datetime | None,
-                     lineup_starters: dict[int, set[int]], absences_checked_at: datetime | None) -> dict[str, int]:
+                     lineup_starters: dict[int, set[int]], absences_checked_at: datetime | None,
+                     provider_listed: Collection[ProviderListing] | None = None) -> dict[str, int]:
     """Re-decide every item of a match; write only the statuses that changed (the trigger keeps the
-    history). Returns the count per status."""
+    history). Returns the count per status. ``provider_listed``: what the provider's latest injury report as of ``at``
+    lists (``classify``)."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(LOAD_SQL, {"fixture": fixture_id, "at": at})
         raw = [dict(r) for r in cur.fetchall()]
-    return _decide(conn, raw, at=at, kickoff=kickoff, lineup_starters=lineup_starters, absences_checked_at=absences_checked_at)
+    return _decide(conn, raw, at=at, kickoff=kickoff, lineup_starters=lineup_starters, absences_checked_at=absences_checked_at,
+                   provider_listed=provider_listed)
 
 
 def refresh_typed_statuses(conn: psycopg.Connection[Any], fixture_id: int, team_ids: Sequence[int], *, at: datetime, kickoff: datetime | None,

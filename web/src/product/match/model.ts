@@ -21,6 +21,7 @@ import type {
 import { intlTag, t, translateOr } from "@/lib/i18n";
 import { fmtPct, toNumber } from "@/lib/i18n/format";
 import { MARKETS, selectionLabel } from "@/product/shared/markets";
+import { countryFromEnglish } from "@/product/matches/country";
 
 // ── Phase ───────────────────────────────────────────────────────────────────
 
@@ -355,6 +356,33 @@ export function latestCapture(quotes: readonly MarketQuote[], source: MarketQuot
       q.source === source && (acc === null || q.captured_at > acc) ? q.captured_at : acc,
     null,
   );
+}
+
+/**
+ * How far a quote's capture may be from the newest one of its source and still be current: the quotes of one capture share
+ * almost the same `captured_at` (a capture takes seconds to a few minutes), and the next capture is further away than this.
+ */
+export const CURRENT_CAPTURE_TOLERANCE_MS = 10 * 60_000;
+
+/**
+ * The quotes still in force (plan Partidos y Match Center, R5): those of the source's newest capture, within
+ * `CURRENT_CAPTURE_TOLERANCE_MS` of it. A bookmaker that withdrew a price is absent from the newest capture, so its last
+ * (older) quote is left out instead of standing as the best price. Nothing is filled in: a market with no current quote
+ * is simply not among them.
+ */
+export function currentQuotes(
+  quotes: readonly MarketQuote[],
+  source: MarketQuote["source"],
+): MarketQuote[] {
+  const latest = latestCapture(quotes, source);
+  const newest = latest === null ? NaN : Date.parse(latest);
+  if (!Number.isFinite(newest)) return [];
+  const from = newest - CURRENT_CAPTURE_TOLERANCE_MS;
+  return quotes.filter((q) => {
+    if (q.source !== source) return false;
+    const at = Date.parse(q.captured_at);
+    return Number.isFinite(at) && at >= from;
+  });
 }
 
 // ── In-play prices (one source, no bookmaker dimension) ─────────────────────
@@ -885,6 +913,13 @@ function slug(s: string): string {
 function stageLabel(s: string): string {
   const known = translateOr(`match.round.stage.${slug(s)}`, "");
   if (known) return known;
+  // «Round of 128» is the round with 128 teams left: «1/64 de final» in Spanish, as «Round of 16» is «Octavos de final».
+  const roundOf = /^Round\s+of\s+(\d+)$/i.exec(s);
+  if (roundOf?.[1]) {
+    const teams = Number(roundOf[1]);
+    if (teams >= 2 && teams % 2 === 0)
+      return t("match.round.roundOf", { n: teams, half: teams / 2 });
+  }
   const patterns: Array<[RegExp, string, string]> = [
     [/^Group\s+(.+)$/i, "match.round.group", "name"],
     [/^League\s+([A-Z])$/i, "match.round.league", "name"],
@@ -911,6 +946,17 @@ export function roundLabel(round: string | null): string | null {
     return `${stageLabel(staged[1])} · ${t("match.round.matchday", { n: staged[2] })}`;
   }
   return stageLabel(r);
+}
+
+/**
+ * «Árbitro: J. Hernández Maeso (España)»: the referee's country in the reader's language (plan Partidos y Match Center,
+ * C3). The provider names it in English only; a country that cannot be named with certainty is left out rather than shown
+ * in English.
+ */
+export function refereeText(name: string, country: string | null | undefined): string {
+  const local = countryFromEnglish(country);
+  const who = t("match.header.referee", { name });
+  return local ? `${who} (${local})` : who;
 }
 
 /** How a selection is named in a tile: team names for 1X2, short forms where a title says the rest. */

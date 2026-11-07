@@ -15,6 +15,7 @@ import { priceChooser, type Choose } from "./choose";
 import type { MatchCtx } from "./context";
 import {
   ageLevel,
+  currentQuotes,
   latestCapture,
   liveMarkets,
   marketBoards,
@@ -71,10 +72,13 @@ export function PriceInline({
   price,
   prefix,
   choose,
+  note,
 }: {
   price: BestPrice | null;
   prefix?: ReactNode;
   choose?: Choose | undefined;
+  /** A line under the bookmaker: how old the price is. */
+  note?: ReactNode;
 }) {
   if (!price) return <span className="numeric text-sm text-subtle-foreground">—</span>;
   return (
@@ -90,6 +94,7 @@ export function PriceInline({
       <span className="max-w-full truncate text-micro text-subtle-foreground">
         {price.bookmaker} · {t("match.markets.books", { count: price.books })}
       </span>
+      {note ? <span className="max-w-full text-micro text-subtle-foreground">{note}</span> : null}
     </div>
   );
 }
@@ -163,19 +168,24 @@ function TileRow({ title, children, cols }: { title: string; children: ReactNode
   );
 }
 
-/** Before kick-off on the summary: 1X2, over/under 2.5 and both-teams-score at their best price. */
+/**
+ * Before kick-off, at the end of the summary: 1X2, over/under 2.5 and both-teams-score at their best CURRENT price - the
+ * quotes of the newest pre-match capture (plan Partidos y Match Center, R5), so a bookmaker that withdrew its price is never
+ * the best one. A market left without a current quote is not shown. The note says what the best price is among: the
+ * bookmakers PrediGol reads, not the whole market.
+ */
 export function QuickPricesBlock({ ctx }: { ctx: MatchCtx }) {
   const { markets, match: m } = ctx;
   const choose = priceChooser(ctx);
   const sides = { home: m.home.name, away: m.away.name };
   const quotes = markets.status === "ok" ? markets.data : [];
-  const boards = marketBoards(quotes, "prematch");
+  const current = currentQuotes(quotes, "prematch");
+  const boards = marketBoards(current, "prematch");
   const one = boards.find((b) => b.market === "1X2")?.rows[0];
   const ou = boards.find((b) => b.market === "OU")?.rows.find((r) => r.line === 2.5);
   const btts = boards.find((b) => b.market === "BTTS")?.rows[0];
-  const updated = latestCapture(quotes, "prematch");
-  const books = new Set(quotes.filter((q) => q.source === "prematch").map((q) => q.bookmaker_id))
-    .size;
+  const updated = latestCapture(current, "prematch");
+  const books = new Set(current.map((q) => q.bookmaker_id)).size;
   const nothing = !one && !ou && !btts;
 
   return (

@@ -39,7 +39,7 @@ Los secretos (claves de Resend, de Sentry, VAPID, tokens) se escriben en el serv
 
 ## Los que nacen encendidos (se apagan con `=0`, sin desplegar)
 
-`FBI_ONBOARDING` y `FBI_PERSONALIZATION` (A13) · `FBI_SUPPORT` (A14) · `FBI_FEEDBACK` (B6) · `FBI_PUSH` (B7, sin efecto sin clave) ·
+`FBI_ONBOARDING` y `FBI_PERSONALIZATION` (A13) · `FBI_GUIDES` (UX-032, el recorrido y las guías de cada pantalla) · `FBI_SUPPORT` (A14) · `FBI_FEEDBACK` (B6) · `FBI_PUSH` (B7, sin efecto sin clave) ·
 `FBI_EXPLAIN` (B9) · `FBI_LIFECYCLE` (B11) · `FBI_FORECAST_USERS`, `FBI_CALENDAR_USERS`, `FBI_KNOWLEDGE_USERS`,
 `FBI_READING_USERS`, `FBI_NEWS_USERS` (A9, A10).
 

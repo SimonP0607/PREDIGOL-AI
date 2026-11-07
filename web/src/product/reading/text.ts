@@ -13,6 +13,7 @@
 import { hasKey, t } from "@/lib/i18n";
 import { fmtOdds, fmtPct, localFixed } from "@/lib/i18n/format";
 import type { ReadingFact, ReadingParam } from "@/lib/api/v1/types_reading";
+import { roundLabel } from "@/product/match/model";
 import { selectionLabel } from "@/product/shared/markets";
 import CODES from "./codes.json";
 
@@ -40,6 +41,19 @@ function list(p: P, key: string): string[] {
 /** A word of a closed list (a zone, a pressure, a block): null for a value the templates do not know. */
 function known(key: string): string | null {
   return hasKey(key) ? t(key) : null;
+}
+
+/**
+ * A number with its noun in the reader's grammar - «1 partido», «2 partidos», «1 empate» - so a sentence never reads
+ * «1 partidos» (plan Partidos y Match Center, A1). The nouns are match.facts.count, plural by `count` as the catalogs do.
+ */
+function counted(noun: string, n: number): string {
+  return t(`match.facts.count.${noun}`, { count: n });
+}
+
+/** Days, whole or with one decimal, singular only for exactly 1: «1 día», «3,5 días». */
+function dayCount(key: string, d: number): string {
+  return t(key, { count: d, days: localFixed(d, d % 1 === 0 ? 0 : 1) });
 }
 
 function joinAnd(items: string[]): string {
@@ -170,7 +184,8 @@ function writers(): Record<string, (p: P) => string | null> {
     match_intro: (p) => {
       const competition = str(p, "competition");
       if (!competition) return null;
-      const round = str(p, "round");
+      // The provider's own words («Regular Season - 12») read as the header reads them («Jornada 12»).
+      const round = roundLabel(str(p, "round"));
       const base = round
         ? t("match.facts.match_intro.round", { competition, round })
         : t("match.facts.match_intro.plain", { competition });
@@ -239,7 +254,7 @@ function writers(): Record<string, (p: P) => string | null> {
       return t(key, {
         home,
         away,
-        home_points: hp,
+        home_points: counted("points", hp),
         away_points: ap,
         home_places: hPlaces,
         away_places: aPlaces,
@@ -249,22 +264,24 @@ function writers(): Record<string, (p: P) => string | null> {
       const team = str(p, "team");
       const d = int(p, "days");
       if (!team || d === null) return null;
-      const days = t(
+      const days = dayCount(
         p["at_most"] === true ? "match.facts.days.at_most" : "match.facts.days.exact",
-        {
-          days: localFixed(d, d % 1 === 0 ? 0 : 1),
-        },
+        d,
       );
       const matches = int(p, "matches_14d");
       return matches === null
         ? t("match.facts.rest_days", { team, days })
-        : t("match.facts.rest_days_matches", { team, days, matches });
+        : t("match.facts.rest_days_matches", {
+            team,
+            days,
+            matches: counted("matches", matches),
+          });
     },
     next_match: (p) => {
       const team = str(p, "team");
       const d = int(p, "days");
       if (!team || d === null) return null;
-      const days = localFixed(d, d % 1 === 0 ? 0 : 1);
+      const days = dayCount("match.facts.count.days", d);
       const competition = str(p, "competition");
       return competition
         ? t("match.facts.next_match_comp", { team, days, competition })
@@ -278,7 +295,7 @@ function writers(): Record<string, (p: P) => string | null> {
       return t("match.facts.form", {
         team,
         sequence: letters(sequence),
-        n,
+        last: t("match.facts.count.last_matches", { count: n }),
         ppg: localFixed(int(p, "ppg") ?? 0, 2),
         gf: localFixed(int(p, "goals_for") ?? 0, 1),
         ga: localFixed(int(p, "goals_against") ?? 0, 1),
@@ -291,7 +308,7 @@ function writers(): Record<string, (p: P) => string | null> {
       if (!team || (side !== "home" && side !== "away") || n === null) return null;
       return t(`match.facts.venue_record.${side}`, {
         team,
-        n,
+        matches: counted("matches", n),
         w: int(p, "wins") ?? 0,
         d: int(p, "draws") ?? 0,
         l: int(p, "losses") ?? 0,
@@ -304,7 +321,9 @@ function writers(): Record<string, (p: P) => string | null> {
       if (!team || xf === null || xa === null) return null;
       const n = int(p, "n");
       const vars = { team, xg_for: localFixed(xf, 2), xg_against: localFixed(xa, 2) };
-      return n === null ? t("match.facts.xg_plain", vars) : t("match.facts.xg", { ...vars, n });
+      return n === null
+        ? t("match.facts.xg_plain", vars)
+        : t("match.facts.xg", { ...vars, matches: counted("matches", n) });
     },
     streak_unbeaten: (p) => streak(p, "streak_unbeaten"),
     streak_winless: (p) => streak(p, "streak_winless"),
@@ -313,14 +332,14 @@ function writers(): Record<string, (p: P) => string | null> {
       const home = str(p, "home");
       const away = str(p, "away");
       if (n === null || !home || !away) return null;
+      // The effective number of meetings (`n_effective`, older ones weigh less) stays in the API: it is not the reader's word.
       return t("match.facts.h2h", {
-        n,
+        meetings: counted("meetings", n),
         home,
         away,
-        home_wins: int(p, "home_wins") ?? 0,
-        draws: int(p, "draws") ?? 0,
+        home_wins: counted("wins", int(p, "home_wins") ?? 0),
+        draws: counted("draws", int(p, "draws") ?? 0),
         away_wins: int(p, "away_wins") ?? 0,
-        n_effective: localFixed(int(p, "n_effective") ?? 0, 1),
       });
     },
     top_scorer: (p) => {
@@ -329,9 +348,15 @@ function writers(): Record<string, (p: P) => string | null> {
       const goals = int(p, "goals");
       if (!team || !player || goals === null) return null;
       const minutes = int(p, "minutes");
+      const scored = counted("goals", goals);
       return minutes === null
-        ? t("match.facts.top_scorer", { team, player, goals })
-        : t("match.facts.top_scorer_minutes", { team, player, goals, minutes });
+        ? t("match.facts.top_scorer", { team, player, goals: scored })
+        : t("match.facts.top_scorer_minutes", {
+            team,
+            player,
+            goals: scored,
+            minutes: counted("minutes", minutes),
+          });
     },
     key_absences: (p) => {
       const team = str(p, "team");
@@ -351,7 +376,11 @@ function writers(): Record<string, (p: P) => string | null> {
       const books = int(p, "bookmakers");
       return books === null
         ? t("match.facts.market_favourite", { outcome: o, pct: v })
-        : t("match.facts.market_favourite_books", { outcome: o, pct: v, books });
+        : t("match.facts.market_favourite_books", {
+            outcome: o,
+            pct: v,
+            books: counted("books", books),
+          });
     },
     market_moved: (p) => {
       const o = outcome(p);
@@ -370,16 +399,13 @@ function writers(): Record<string, (p: P) => string | null> {
     lineups_unconfirmed: () => t("match.facts.lineups_unconfirmed"),
     short_rest: (p) => withTeam(p, "match.facts.short_rest"),
     rest_disadvantage: (p) => withTeam(p, "match.facts.rest_disadvantage"),
-    contradictory_news: (p) => counted(p, "match.facts.contradictory_news"),
-    rumours: (p) => counted(p, "match.facts.rumours"),
+    contradictory_news: (p) => howMany(p, "match.facts.contradictory_news"),
+    rumours: (p) => howMany(p, "match.facts.rumours"),
     no_external_info: () => t("match.facts.no_external_info"),
     h2h_weak: (p) => {
       const n = int(p, "n");
       if (n === null) return null;
-      return t("match.facts.h2h_weak", {
-        n,
-        n_effective: localFixed(int(p, "n_effective") ?? 0, 1),
-      });
+      return t("match.facts.h2h_weak", { meetings: counted("meetings", n) });
     },
     data_not_fit: () => t("match.facts.data_not_fit"),
     not_checked: (p) => {
@@ -438,7 +464,9 @@ function gap(p: P, code: "stakes_gap_up" | "stakes_gap_down"): string | null {
 function streak(p: P, code: "streak_unbeaten" | "streak_winless"): string | null {
   const team = str(p, "team");
   const n = int(p, "n");
-  return team && n !== null ? t(`match.facts.${code}`, { team, n }) : null;
+  return team && n !== null
+    ? t(`match.facts.${code}`, { team, matches: counted("matches", n) })
+    : null;
 }
 
 function withTeam(p: P, key: string): string | null {
@@ -446,7 +474,7 @@ function withTeam(p: P, key: string): string | null {
   return team ? t(key, { team }) : null;
 }
 
-function counted(p: P, key: string): string | null {
+function howMany(p: P, key: string): string | null {
   const count = int(p, "count");
   return count === null || count <= 0 ? null : t(key, { count });
 }

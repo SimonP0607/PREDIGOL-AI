@@ -1,18 +1,18 @@
 /**
  * Resumen, by the match's state (plan UX, A9; section 25: what matters first):
- * before kick-off - to UNDERSTAND the match (plan de cierre UX, 2.2): the reading's summary, key points, why there is value
- *                   and its two main risks (with the way to the whole Análisis), PrediGol's forecast labelled, the picks
- *                   PrediGol published for the match with their state (or that it published none), whether a market is well
- *                   paid and the best prices; then, folded under «Profundizar», what is read to go deeper - form, table and
- *                   head to head, rest and calendar in every competition, absences and line-ups. Nothing is dropped: it
- *                   is ordered, and what another tab shows in full links to it;
+ * before kick-off - four blocks, full width, none empty (plan Partidos y Match Center, R1-R3): PrediGol Intelligence - ONE
+ *                   reading of the match (the chronicle's first stretch, or the structured reading as a short text), the
+ *                   picks PrediGol published only when there are some, and the way to the whole Análisis; PrediGol's
+ *                   forecast; then, folded under «Profundizar», what is read to go deeper - form, table and head to head,
+ *                   rest and calendar, absences and line-ups; and the best current prices last. The analysed markets'
+ *                   cards and the AI's reading of the day are the owner's, in Avanzado;
  * in play        - the match events first, then the day's reading as it was written before kick-off, the picks as they
  *                  were taken with what the match is doing, key figures and in-play prices; the context folded away;
  * after          - result, events, the pre-match reading and key figures; the context folded away (what happened put
  *                  together, the forecast against the result and how the picks ended are the Postpartido's);
  * not played     - what happened (postponed, cancelled, abandoned, awarded) and the picks.
  */
-import { useId, useState, type ReactNode } from "react";
+import { Fragment, useId, useState, type ReactNode } from "react";
 import { BarChart3, CalendarX2, ChevronDown, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
@@ -23,9 +23,9 @@ import type { MatchCtx } from "./context";
 import { AbsencesBlock, FormBlock, H2HBlock, LineupsTeaser, StandingsBlock } from "./ContextBlocks";
 import { EventsBlock } from "./EventsTimeline";
 import { ForecastBlock } from "./ForecastBlock";
+import { IntelligenceBlock } from "./IntelligenceBlock";
 import { KEY_STATS, statRows } from "./model";
 import { PicksTab } from "./PicksTab";
-import { ReadingHighlights } from "@/product/reading/ReadingBlock";
 import { LiveOddsBlock, QuickPricesBlock } from "./prices";
 import { Block, CenterSection, MoreButton, StatBars, TeamsLegend } from "./ui";
 
@@ -96,13 +96,39 @@ function KeyStatsBlock({ ctx }: { ctx: MatchCtx }) {
 
 // ── Context ─────────────────────────────────────────────────────────────────
 
+/**
+ * Form, table and head to head side by side (plan Partidos y Match Center, D1): aligned at the top and each as tall as what it
+ * holds (`items-start`), never stretched to the tallest with half a card empty. Three columns on a desktop; two on a
+ * tablet, the head to head then taking the whole second row; one on a phone.
+ */
+export function ContextRow({
+  form,
+  table,
+  h2h,
+}: {
+  form: ReactNode;
+  table: ReactNode;
+  h2h: ReactNode;
+}) {
+  return (
+    <div
+      className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3"
+      data-testid="deepen-row-context"
+    >
+      <div className="min-w-0">{form}</div>
+      <div className="min-w-0">{table}</div>
+      <div className="min-w-0 md:col-span-2 lg:col-span-1">{h2h}</div>
+    </div>
+  );
+}
+
 function ContextGrid({ ctx }: { ctx: MatchCtx }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      <FormBlock ctx={ctx} />
-      <StandingsBlock ctx={ctx} />
-      <H2HBlock ctx={ctx} />
-    </div>
+    <ContextRow
+      form={<FormBlock ctx={ctx} />}
+      table={<StandingsBlock ctx={ctx} />}
+      h2h={<H2HBlock ctx={ctx} />}
+    />
   );
 }
 
@@ -167,6 +193,36 @@ function ContextSection({ ctx, open }: { ctx: MatchCtx; open?: boolean }) {
   );
 }
 
+/** What «Profundizar» holds, by row. */
+export interface DeepenBlocks {
+  form: ReactNode;
+  table: ReactNode;
+  h2h: ReactNode;
+  calendar: ReactNode;
+  absences: ReactNode;
+  lineups: ReactNode;
+}
+
+/**
+ * «Profundizar» opened, in three rows with no gaps (plan Partidos y Match Center, D1): 1) form, table and head to head,
+ * aligned at the top; 2) rest and calendar across the whole width, a team in each column; 3) absences and line-ups in two
+ * columns. On a tablet two columns, on a phone one. Apart from the blocks so that a test can check the rows.
+ */
+export function DeepenLayout({ blocks }: { blocks: DeepenBlocks }) {
+  return (
+    <div className="min-w-0 space-y-4" data-testid="deepen-layout">
+      <ContextRow form={blocks.form} table={blocks.table} h2h={blocks.h2h} />
+      <div className="min-w-0" data-testid="deepen-row-calendar">
+        {blocks.calendar}
+      </div>
+      <div className="grid items-start gap-4 md:grid-cols-2" data-testid="deepen-row-squads">
+        <div className="min-w-0">{blocks.absences}</div>
+        <div className="min-w-0">{blocks.lineups}</div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * «Profundizar», before kick-off (plan de cierre UX, 2.2): everything that is read to go deeper once the match is
  * understood - form, table and head to head, then rest and calendar, absences and the line-ups - folded, closed until the
@@ -179,14 +235,16 @@ export function DeepenSection({ ctx }: { ctx: MatchCtx }) {
       subtitle={t("match.deepen.subtitle")}
       testId="match-deepen"
     >
-      <div className="space-y-4">
-        <ContextGrid ctx={ctx} />
-        <div className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <CalendarBlock ctx={ctx} />
-          <AbsencesBlock ctx={ctx} />
-          <LineupsTeaser ctx={ctx} />
-        </div>
-      </div>
+      <DeepenLayout
+        blocks={{
+          form: <FormBlock ctx={ctx} />,
+          table: <StandingsBlock ctx={ctx} />,
+          h2h: <H2HBlock ctx={ctx} />,
+          calendar: <CalendarBlock ctx={ctx} />,
+          absences: <AbsencesBlock ctx={ctx} />,
+          lineups: <LineupsTeaser ctx={ctx} />,
+        }}
+      />
     </Fold>
   );
 }
@@ -195,24 +253,36 @@ export function DeepenSection({ ctx }: { ctx: MatchCtx }) {
 
 const TWO_COLUMNS = "grid items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]";
 
+/** The Resumen before kick-off, in the order it is read (plan Partidos y Match Center, R1). */
+export const BEFORE_KICKOFF_ORDER = ["intelligence", "forecast", "deepen", "prices"] as const;
+export type BeforeKickoffBlock = (typeof BEFORE_KICKOFF_ORDER)[number];
+
+/**
+ * Before kick-off, four blocks, each full width and none empty (plan Partidos y Match Center, R1-R3): PrediGol Intelligence
+ * (one reading, the published picks only when there are some, the way to Análisis), PrediGol's forecast, «Profundizar»
+ * folded, and the best current prices last. The analysed markets' cards are the owner's, in Avanzado. Apart from the
+ * blocks so that a test can check the order.
+ */
+export function BeforeKickoffLayout({ blocks }: { blocks: Record<BeforeKickoffBlock, ReactNode> }) {
+  return (
+    <div className="space-y-4" data-testid="summary-before">
+      {BEFORE_KICKOFF_ORDER.map((key) => (
+        <Fragment key={key}>{blocks[key]}</Fragment>
+      ))}
+    </div>
+  );
+}
+
 function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
   return (
-    <div className="space-y-4">
-      {/* To understand the match, in the order of use (plan de cierre UX, 2.2): the reading's summary, key points, why there
-          is value and main risks (A9, UX-011) beside what PrediGol expects (F5); then what it published (the picks), whether
-          a market is well paid (the analysis) and the best prices. */}
-      <div className={TWO_COLUMNS}>
-        <ReadingHighlights ctx={ctx} />
-        <ForecastBlock ctx={ctx} />
-      </div>
-      <PicksTab ctx={ctx} />
-      <AnalysisBlock ctx={ctx} />
-      <div className="lg:max-w-3xl">
-        <QuickPricesBlock ctx={ctx} />
-      </div>
-      {/* To go deeper: folded, and everything still there. */}
-      <DeepenSection ctx={ctx} />
-    </div>
+    <BeforeKickoffLayout
+      blocks={{
+        intelligence: <IntelligenceBlock ctx={ctx} />,
+        forecast: <ForecastBlock ctx={ctx} />,
+        deepen: <DeepenSection ctx={ctx} />,
+        prices: <QuickPricesBlock ctx={ctx} />,
+      }}
+    />
   );
 }
 

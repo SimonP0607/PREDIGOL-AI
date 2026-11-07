@@ -749,6 +749,42 @@ describe("the words and the bar", () => {
     expect(out).not.toContain("left:");
   });
 
+  test("an interval whose two ends read the same percentage is no range: said, and no line drawn (R4)", () => {
+    // production: «entre 9 % y 9 %»
+    expect(intervalText({ low: "0.0912", high: "0.0948" })).toBe("sin rango medido");
+    expect(intervalSpan({ low: "0.0912", high: "0.0948" })).toBeNull();
+    expect(intervalText({ low: "0.0900", high: "0.0900" })).toBe("sin rango medido");
+    expect(intervalSpan({ low: "0.0900", high: "0.0900" })).toBeNull();
+    // one point apart on screen is still a range
+    expect(intervalText({ low: "0.0900", high: "0.1000" })).toMatch(/^entre 9\s% y 10\s%$/);
+    expect(intervalSpan({ low: "0.0900", high: "0.1000" })).toEqual({ left: 9, right: 10 });
+    const flat: ForecastMarket = market("BTTS", "0.00", "UNCALIBRATED", "no_champion", [
+      outcome("Yes", 0.09, 0.0912, 0.0948, false),
+      outcome("No", 0.91, 0.9052, 0.9088, true),
+    ]);
+    const out = render({ status: "success", envelope: envelope(forecast([flat], false)) }, false);
+    expect(out).toContain("sin rango medido");
+    expect(out).not.toMatch(/entre 9\s% y 9\s%/);
+    expect(out).not.toContain("left:");
+    setLocale("en");
+    expect(intervalText({ low: "0.0912", high: "0.0948" })).toBe("no range measured");
+    setLocale("es");
+  });
+
+  test("its markets side by side on a wide screen - up to three - with the same numbers", () => {
+    const one = render(
+      { status: "success", envelope: envelope(forecast([threeMarkets()[0]!], false)) },
+      false,
+    );
+    expect(one).not.toContain("lg:grid-cols-3");
+    const all = render(
+      { status: "success", envelope: envelope(forecast(threeMarkets(), false)) },
+      false,
+    );
+    expect(all).toContain('data-testid="forecast-markets"');
+    expect(all).toContain("lg:grid-cols-3");
+  });
+
   test("a basis this page does not know is blank, a model it does not know is named as it is", () => {
     expect(basisNote("some_future_basis")).toBe("");
     expect(basisNote("champion").length).toBeGreaterThan(10);

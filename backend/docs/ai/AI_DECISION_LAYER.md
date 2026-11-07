@@ -212,9 +212,15 @@ precio bajo el nombre «clv»; sus informes guardados se conservan tal cual y la
 `FBI_AI_KEY_<PROVEEDOR>` · `FBI_AI_MONTHLY_BUDGET_USD` (20; portátil 150) · `FBI_AI_DAILY_TARGET_USD` (mes/30;
 antes `FBI_AI_DAILY_BUDGET_USD`) · `FBI_AI_DAILY_MAX_FACTOR` (2) · `FBI_AI_MAX_LLM_REVIEWS_PER_DAY` (60) ·
 `FBI_AI_MAX_DEEP_PER_DAY` (10) · `FBI_AI_MAX_WEB_FIRST` (20) · `FBI_AI_MAX_WEB_PRE` (12) ·
-`FBI_AI_MAX_WATCH_PER_DAY` (8) · `FBI_AI_SEARCH` (exa | brave | tavily | none) · `FBI_AI_HORIZON_HOURS` (96) ·
+`FBI_AI_MAX_WATCH_PER_DAY` (8) · `FBI_AI_NEWS_PRIORITY` (on; `0` lo apaga) · `FBI_AI_SEARCH` (exa | brave | tavily | none) · `FBI_AI_HORIZON_HOURS` (96) ·
 `FBI_AI_CYCLE_MINUTES` (15) · `FBI_AI_MULTIMODAL` (off). Un modelo solo se activa con su
 `FBI_AI_MODEL_*`: la configuración antigua del analista no enciende esta capa.
+
+`FBI_AI_NEWS_PRIORITY` (IA-016, `news-coverage-v1`): los partidos del día de las competiciones de los grupos 1-3 de
+`fbi.intel.day_priority` (Champions y las seis grandes ligas; copas continentales; selecciones) se buscan en su pasada
+`first` y en su `pre` aunque no tengan candidato, fuera de los cupos `FBI_AI_MAX_WEB_FIRST`/`FBI_AI_MAX_WEB_PRE` (que
+siguen contando solo el resto), con una segunda consulta de rueda de prensa y convocatoria en el idioma del país: como
+mucho dos búsquedas por partido y pasada, y ninguna con el sobre de Exa agotado. `0` vuelve a los cupos solos.
 
 Se leen del entorno del proceso **y** del `.env` del backend (`fbi.core.env`: el proceso gana), como el resto de
 la configuración; en el portátil (`scripts/dev-up`) nada exporta el `.env`. Cada ciclo relee el archivo: una clave

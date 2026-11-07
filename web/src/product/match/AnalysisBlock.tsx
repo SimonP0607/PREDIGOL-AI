@@ -603,15 +603,22 @@ function Footer({ a, updatedAt }: { a: MatchAnalysis; updatedAt: string | null }
  * `variant="reference"` once the match is under way or over (REVIEW PREDIGOL, point 4): PrediGol Intelligence
  * no longer heads the page - the events do - and below them it reads as what it is, the day's reading written
  * before kick-off, with the analysed markets folded away.
+ *
+ * `variant="audit"` in Avanzado / Auditoría (SUPER_ADMIN only; plan Partidos y Match Center, section 5): the evaluation
+ * view, always - every card per market, the AI's «Lectura del día», the selections in evaluation and the note that the
+ * context review is not applied yet. It asks the API for `preview=shadow`, which the API answers to a SUPER_ADMIN alone
+ * (403 for anyone else). Before kick-off the Resumen no longer draws this block: PrediGol Intelligence there is
+ * `IntelligenceBlock`, which carries the anchor; the audit view carries none.
  */
 export function AnalysisBlock({
   ctx,
   variant = "full",
 }: {
-  ctx: MatchCtx;
-  variant?: "full" | "reference";
+  ctx: Pick<MatchCtx, "fixtureId" | "match">;
+  variant?: "full" | "reference" | "audit";
 }) {
-  const preview = usePreviewParam();
+  const userPreview = usePreviewParam();
+  const preview = variant === "audit" ? "shadow" : userPreview;
   const q = useQuery(live.matchAnalysis(ctx.fixtureId, preview));
   const [showCards, setShowCards] = useState(false);
   const reference = variant === "reference";
@@ -627,13 +634,14 @@ export function AnalysisBlock({
   const updatedAt = a ? analysisUpdatedAt(a) : null;
   // Line-ups come about an hour before kick-off and an unpriced market has its own cards: neither is a gap.
   const gaps = (a?.missing ?? []).filter((m) => m !== "lineups" && m !== "market");
-  const titleId = `${INTELLIGENCE_ID}-title`;
+  const audit = variant === "audit";
+  const titleId = audit ? `${INTELLIGENCE_ID}-audit-title` : `${INTELLIGENCE_ID}-title`;
   // Under the events, nothing to read is no block at all: an empty card there is only noise.
   if (reference && q.isSuccess && (!a || (!a.brief && a.cards.length === 0))) return null;
   const cardsShown = !reference || showCards;
   return (
     <section
-      id={INTELLIGENCE_ID}
+      id={audit ? undefined : INTELLIGENCE_ID}
       aria-labelledby={titleId}
       data-testid="analysis-block"
       data-variant={variant}
