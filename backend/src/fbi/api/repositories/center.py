@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from fbi.core import match_state
+
 FIXTURE = """
 SELECT f.id, f.kickoff_at, f.status_group, f.round, f.competition_season_id, f.home_team_id, f.away_team_id,
        th.name AS home, ta.name AS away, th.provider_team_id AS home_pid, ta.provider_team_id AS away_pid,
@@ -233,7 +235,11 @@ not a series (revision 0068)."""
 
 # ── Live board ─────────────────────────────────────────────────────────────
 
-LIVE_BOARD = """
+CLOSED = ", ".join(f"'{code}'" for code in sorted(match_state.OVER | match_state.POSTPONED))
+"""The fixture feed's closing statuses (finished, cancelled, abandoned, not played, postponed): once the feed says one
+of them the match is not in play, whatever the odds feed still lists for a few minutes."""
+
+LIVE_BOARD = f"""
 WITH feed AS (
     SELECT DISTINCT ON (fixture_id) fixture_id, observed_at AS at, status_short AS status, elapsed, extra,
            goals_home, goals_away
@@ -246,7 +252,13 @@ WITH feed AS (
 ), live AS (
     SELECT fixture_id FROM feed WHERE status IN ('1H','HT','2H','ET','BT','P','LIVE','INT','SUSP')
     UNION
-    SELECT fixture_id FROM odds WHERE NOT COALESCE(is_finished, false) AND at > %(at)s - interval '5 minutes'
+    SELECT o.fixture_id
+      FROM odds o
+      JOIN core.fixtures fx ON fx.id = o.fixture_id
+      LEFT JOIN feed fd ON fd.fixture_id = o.fixture_id
+     WHERE NOT COALESCE(o.is_finished, false) AND o.at > %(at)s - interval '5 minutes'
+       AND fx.kickoff_at <= %(at)s
+       AND COALESCE(fd.status, '') <> ALL (ARRAY[{CLOSED}])
 )
 SELECT f.id AS fixture_id, f.kickoff_at, c.name AS competition, c.country, c.country_code,
        c.id AS competition_id, c.logo_url AS competition_logo, c.flag_url AS competition_flag,
