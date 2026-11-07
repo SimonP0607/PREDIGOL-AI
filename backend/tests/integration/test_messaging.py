@@ -782,7 +782,7 @@ def invited(conn: psycopg.Connection[Any], email: str, *, sent_hours_ago: float 
     """An invited account and its invitation: sent that long ago (``None``: the e-mail has not left yet)."""
     from fbi.auth import passwords, store, tokens
 
-    row = store.insert_user(conn, email=email, display_name="Invitada", password_hash=passwords.unusable_hash(),
+    row = store.insert_user(conn, email=email, display_name=f"Invitada {email}", password_hash=passwords.unusable_hash(),
                             role="USER", language="es", timezone="America/Bogota", status="invited")
     uid = int(row["id"])
     grant = tokens.issue(conn, uid, "invite")
