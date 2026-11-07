@@ -1,30 +1,33 @@
 /**
- * Every market we price for the match: the best price per selection and line across
- * bookmakers before kick-off, and the in-play prices in their own group while it is played.
+ * Every market we price for the match: before kick-off by category (plan Partidos y Match Center, F4b: M1-M4), and the
+ * in-play prices in their own group while it is played (unchanged).
  *
- * REVIEW PREDIGOL, point 10: every captured price is here - each bookmaker's, with where it
- * opened - and the captures carry the Cronología's own numbers, pick filter or not. Point 6:
- * a price is chosen the Cuotas way (tap: in or out of "Mi parlay"), the bookmark saves it.
+ * Before kick-off: a header with the bookmakers and the last update - never the captures, which are the owner's, in
+ * Avanzado / Auditoría -; chips for «Destacados» (1X2, over/under 2.5, both teams score: the match's own prices, loaded with
+ * it) and each category the catalogue has prices in force for, read when its chip is opened and never in the match's
+ * 60-second poll; one fold per market, the first one open. The five settled markets are chosen the Cuotas way (REVIEW
+ * PREDIGOL, point 6: a tap in or out of "Mi parlay", the bookmark saves it); the catalogue's other markets are shown only.
  */
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowDownRight, ArrowUpRight, ChevronRight, LineChart, Radar } from "lucide-react";
+import { ChevronRight, LineChart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtLine, fmtOdds, toNumber } from "@/lib/i18n/format";
+import { fmtLine } from "@/lib/i18n/format";
 import { v1 } from "@/lib/api/v1/client";
 import { live as queries } from "@/lib/api/v1/queries";
 import type { MarketOrder } from "@/lib/api/v1/types_personal";
-import type { MatchMarkets, SelectionQuotes } from "@/lib/api/v1/types_profile";
+import type { CatalogCategory } from "@/lib/api/v1/types_market_catalog";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hintProps } from "@/components/system/tapHint";
 import { track } from "@/lib/track";
 import { formatDateTime } from "@/lib/time";
 import { GlossaryLink, GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { marketName } from "@/product/shared/markets";
-import { ErrorState } from "@/product/shared/States";
+import { ErrorState, SkeletonBlock } from "@/product/shared/States";
+import { ChipGroup } from "@/product/picks/Controls";
 import type { MatchCtx } from "./context";
 import {
   ageLevel,
@@ -42,7 +45,17 @@ import {
 } from "./model";
 import { priceChooser, type Choose } from "./choose";
 import { LiveOdds, LiveTile, PriceInline, PriceTile } from "./prices";
-import { bookRows, captureLabel, openingNote } from "./books";
+import {
+  boardView,
+  catalogView,
+  FEATURED_OU_LINE,
+  featuredBoards,
+  headerBooks,
+  later,
+  type MarketsView,
+  type MarketView,
+} from "./marketCatalog";
+import { MarketFold } from "./MarketFold";
 import { Block, CenterSection, FreshnessLabel, MoreButton, SectionNote } from "./ui";
 import { FollowMarket } from "@/product/favorites/FollowExtras";
 import { followableMarket } from "@/product/favorites/model";
@@ -173,23 +186,10 @@ function LinesTable<T>({
   );
 }
 
-function BookCard({
-  board,
-  sides,
-  choose,
-  all,
-}: {
-  board: MarketBoard;
-  sides: Sides;
-  /** Before kick-off: what choosing a price saves or adds to the parlay. */
-  choose?: Choose | undefined;
-  /** Every bookmaker's price, newest and first (GET /matches/{id}/markets), when loaded. */
-  all: MatchMarkets | null;
-}) {
-  const [open, setOpen] = useState(false);
+/** A market's best in-play prices across bookmakers (the live group: unchanged). */
+function BookCard({ board, sides }: { board: MarketBoard; sides: Sides }) {
   const sels = SELECTIONS[board.market] ?? [];
   const row = board.rows[0];
-  const selections = all?.selections.filter((x) => x.market_key === board.market) ?? [];
   return (
     <Block
       level={3}
@@ -207,188 +207,21 @@ function BookCard({
           rows={board.rows}
           main={board.main}
           sides={sides}
-          cell={(p, prefix) => <PriceInline price={p} prefix={prefix} choose={choose} />}
+          cell={(p, prefix) => <PriceInline price={p} prefix={prefix} />}
         />
       ) : (
         <div className={cn("grid gap-2", sels.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
-          {sels.map((sel, i) => {
-            const best = row?.cells[i] ?? null;
-            return (
-              <PriceTile
-                key={sel}
-                label={tileLabel(board.market, sel, null, sides)}
-                price={best}
-                showBooks
-                choose={choose}
-                note={best ? openingNote(selections, sel, 0, best.odds) : null}
-              />
-            );
-          })}
+          {sels.map((sel, i) => (
+            <PriceTile
+              key={sel}
+              label={tileLabel(board.market, sel, null, sides)}
+              price={row?.cells[i] ?? null}
+              showBooks
+            />
+          ))}
         </div>
       )}
-      {selections.length ? (
-        <div className="mt-2 border-t border-border/60 pt-1">
-          <MoreButton expanded={open} onClick={() => setOpen((v) => !v)}>
-            {open ? t("match.books.hide") : t("match.books.show", { count: board.books })}
-          </MoreButton>
-          {open ? (
-            <BooksPanel market={board.market} board={board} selections={selections} sides={sides} />
-          ) : null}
-        </div>
-      ) : null}
     </Block>
-  );
-}
-
-/** One arrow and the first price, when a bookmaker moved since we first captured it. */
-function Moved({ now, opening }: { now: string; opening: string }) {
-  const a = toNumber(now);
-  const b = toNumber(opening);
-  if (a === null || b === null || a === b) return null;
-  const up = a > b;
-  const Icon = up ? ArrowUpRight : ArrowDownRight;
-  return (
-    <span
-      className="numeric inline-flex items-center gap-0.5 text-micro text-subtle-foreground"
-      title={
-        up
-          ? t("match.books.movedUp", { odds: fmtOdds(opening) })
-          : t("match.books.movedDown", { odds: fmtOdds(opening) })
-      }
-    >
-      <Icon aria-hidden className="h-3 w-3" />
-      {fmtOdds(opening)}
-    </span>
-  );
-}
-
-/**
- * Every bookmaker's newest price for each selection of a market (one line at a time for over/under and
- * handicaps), with where it opened: the prices behind the best one above - all of them, not only the ones
- * a pick rule would keep.
- */
-function BooksPanel({
-  market,
-  board,
-  selections,
-  sides,
-}: {
-  market: string;
-  board: MarketBoard;
-  selections: SelectionQuotes[];
-  sides: Sides;
-}) {
-  const lines = board.rows.map((r) => r.line ?? 0);
-  const [line, setLine] = useState<number>(board.rows[board.main]?.line ?? 0);
-  const sels = SELECTIONS[market] ?? [];
-  const table = bookRows(market, selections, LINE_MARKETS.has(market) ? line : 0);
-  const header = (sel: string) =>
-    market === "OU"
-      ? sel === "Over"
-        ? t("match.markets.over")
-        : t("match.markets.under")
-      : tileLabel(market, sel, null, sides);
-  return (
-    <div className="mt-2 space-y-2" data-testid="books-panel">
-      {LINE_MARKETS.has(market) ? (
-        <label className="flex items-center gap-2 text-caption text-muted-foreground">
-          {t("match.books.lineLabel")}
-          <select
-            value={String(line)}
-            onChange={(e) => setLine(Number(e.target.value))}
-            className="numeric h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:h-11 pointer-coarse:px-3"
-          >
-            {lines.map((l) => (
-              <option key={l} value={String(l)}>
-                {fmtLine(l, market === "AH")}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-0 text-xs">
-          <thead>
-            <tr className="text-caption text-subtle-foreground">
-              <th scope="col" className="pb-1 pr-2 text-left font-medium">
-                {t("match.books.bookmaker")}
-              </th>
-              {sels.map((sel) => (
-                <th key={sel} scope="col" className="pb-1 pl-2 text-right font-medium">
-                  {/* The whole selection ("New England Revolution o empate"), on two lines if need be. */}
-                  <span className="block break-words leading-tight">{header(sel)}</span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/50">
-            {table.map((r) => (
-              <tr key={r.bookmaker}>
-                <th
-                  scope="row"
-                  className="max-w-[9rem] break-words py-1.5 pr-2 text-left font-normal"
-                >
-                  {r.bookmaker}
-                </th>
-                {r.cells.map((c, i) => (
-                  <td key={sels[i] ?? i} className="py-1.5 pl-2 text-right">
-                    {c ? (
-                      <span className="inline-flex flex-col items-end">
-                        <span className={cn("numeric", c.best && "font-semibold text-gold-strong")}>
-                          {fmtOdds(c.odds)}
-                        </span>
-                        <Moved now={c.odds} opening={c.opening_odds} />
-                      </span>
-                    ) : (
-                      <span className="text-subtle-foreground">—</span>
-                    )}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-/** The captures behind these prices: when, how far from kick-off, how many quotes - the Cronología's numbers. */
-function CapturesStrip({ all }: { all: MatchMarkets }) {
-  const prematch = all.captures.filter((c) => c.source === "prematch");
-  const books = new Set(all.selections.flatMap((s) => s.books.map((b) => b.bookmaker_id))).size;
-  if (all.captures.length === 0) return null;
-  return (
-    <div
-      className="space-y-2 rounded-lg border border-border bg-card/60 px-3 py-2.5"
-      data-testid="captures-strip"
-    >
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-        <Radar aria-hidden className="h-3.5 w-3.5 text-primary" />
-        <span className="font-medium">{t("match.captures.title")}</span>
-        <span className="numeric text-muted-foreground">
-          {t("match.captures.summary", {
-            captures: all.captures.length,
-            quotes: all.quotes,
-            books,
-          })}
-        </span>
-      </p>
-      <ul className="flex flex-wrap gap-1.5">
-        {prematch.map((c) => (
-          <li
-            key={c.captured_at}
-            className="numeric rounded-full border border-border-strong bg-elevated px-2 py-0.5 text-micro text-muted-foreground"
-            title={Object.entries(c.by_market)
-              .map(([m, n]) => `${marketName(m)}: ${n}`)
-              .join(" · ")}
-          >
-            {t("match.captures.chip", { when: captureLabel(c.minutes_to_ko), quotes: c.quotes })}
-          </li>
-        ))}
-      </ul>
-      <p className="text-caption text-subtle-foreground">{t("match.captures.help")}</p>
-    </div>
   );
 }
 
@@ -583,7 +416,7 @@ function LiveGroup({
           items={books.map((b) => ({
             key: b.market,
             lines: LINE_MARKETS.has(b.market),
-            node: <BookCard board={b} sides={sides} all={null} />,
+            node: <BookCard board={b} sides={sides} />,
           }))}
           onConsult={onConsult}
         />
@@ -618,82 +451,263 @@ function LiveGroup({
   );
 }
 
-export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
+/**
+ * A list of folds, the first one open. A tap on a price, its bookmakers or its lines of one of the five is that market
+ * consulted (plan UX, B2); opening or closing a fold is not.
+ */
+type Follow = (market: string) => ReactNode;
+
+const followBoard: Follow = (market) => <FollowBoard market={market} />;
+
+function FoldList({
+  views,
+  choose,
+  onConsult,
+  follow,
+  testId,
+}: {
+  views: MarketView[];
+  choose?: Choose | undefined;
+  onConsult?: ((market: string) => void) | undefined;
+  follow: Follow;
+  testId: string;
+}) {
+  return (
+    <div className="grid items-start gap-3 lg:grid-cols-2" data-testid={testId}>
+      {views.map((v, i) => (
+        <div
+          key={v.id}
+          className="min-w-0"
+          data-market={v.id}
+          onClickCapture={
+            onConsult && v.parlay
+              ? (e) => {
+                  const el = e.target instanceof Element ? e.target : null;
+                  if (el?.closest("button, a, select") && !el.closest("[data-fold-toggle]"))
+                    onConsult(v.parlay ?? v.id);
+                }
+              : undefined
+          }
+        >
+          <MarketFold
+            view={v}
+            choose={choose}
+            defaultOpen={i === 0}
+            follow={v.parlay ? follow(v.parlay) : null}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** One category of the catalogue, read when its chip is opened (cached by the query afterwards). */
+export function CategoryPanel({
+  ctx,
+  category,
+  sides,
+  choose,
+  onConsult,
+  follow,
+}: {
+  ctx: MatchCtx;
+  category: CatalogCategory;
+  sides: Sides;
+  choose: Choose | undefined;
+  onConsult: (market: string) => void;
+  follow: Follow;
+}) {
+  const q = useQuery(queries.matchMarketCatalog(ctx.fixtureId, category));
+  if (q.isPending) {
+    return (
+      <div className="space-y-3" aria-busy="true" aria-label={t("match.catalog.loading")}>
+        <SkeletonBlock className="h-14" />
+        <SkeletonBlock className="h-14" />
+      </div>
+    );
+  }
+  if (q.isError) {
+    return (
+      <div className="rounded-xl border border-border bg-card" data-testid="markets-category-error">
+        <p className="px-4 pt-3 text-xs text-muted-foreground">{t("match.catalog.error")}</p>
+        <ErrorState error={q.error} onRetry={() => void q.refetch()} className="py-3" />
+      </div>
+    );
+  }
+  const views = (q.data?.data?.markets ?? []).map((m) => catalogView(m, sides));
+  if (views.length === 0)
+    return <SectionNote status="empty">{t("match.catalog.empty")}</SectionNote>;
+  const shownOnly = views.some((v) => v.parlay === null);
+  return (
+    <>
+      {shownOnly ? (
+        <p className="mb-3 text-xs text-muted-foreground" data-testid="markets-shown-only">
+          {t("match.catalog.shownOnly")}
+        </p>
+      ) : null}
+      <FoldList
+        views={views}
+        choose={choose}
+        onConsult={onConsult}
+        follow={follow}
+        testId="markets-category"
+      />
+    </>
+  );
+}
+
+/**
+ * The prices before kick-off (shown in every phase: «Cuotas antes del inicio» once it has started). `order`, `first` and
+ * `onConsult` are the reader's market order and what records a market consulted (useMarketOrder).
+ */
+export function PrematchMarkets({
+  ctx,
+  order,
+  first,
+  onConsult: consult,
+  follow = followBoard,
+}: {
+  ctx: MatchCtx;
+  order: MarketOrder | null;
+  first: readonly string[];
+  onConsult: (market: string) => void;
+  /** «Seguir» beside each of the five; it reads the reader's account (a test draws none). */
+  follow?: Follow;
+}) {
   const { markets, phase, match: m } = ctx;
   const sides = { home: m.home.name, away: m.away.name };
   const quotes = markets.status === "ok" ? markets.data : [];
-  const { order, first, consult } = useMarketOrder(ctx.fixtureId);
-  const boards = orderBoards(marketBoards(quotes, "prematch"), first);
-  const updated = latestCapture(quotes, "prematch");
   const before = phase === "scheduled";
   const choose = priceChooser(ctx);
+  // Every bookmaker's price of the five («Ver todas las casas» of the highlights): its own query, not the match's poll.
   const allQ = useQuery(queries.matchMarkets(ctx.fixtureId));
-  const all = allQ.data?.data ?? null;
+  const all = allQ.data?.data?.selections ?? null;
+  // The categories with prices in force (no markets): when the tab opens, never in the match's poll.
+  const catalogQ = useQuery(queries.matchMarketCatalog(ctx.fixtureId));
+  const categories = catalogQ.data?.data?.categories ?? null;
+  const resultInCatalog = catalogQ.isError
+    ? false
+    : categories
+      ? categories.some((c) => c.key === "result")
+      : null;
+  const prematch = orderBoards(marketBoards(quotes, "prematch"), first);
+  const featured = featuredBoards(prematch, resultInCatalog).map((b) =>
+    boardView(b, all, sides, b.market === "OU" ? FEATURED_OU_LINE : undefined),
+  );
+  const matchBooks = new Set(
+    quotes.filter((q) => q.source === "prematch").map((q) => q.bookmaker_id),
+  ).size;
+  const books = headerBooks(matchBooks, categories);
+  const updated = later(latestCapture(quotes, "prematch"), catalogQ.data?.data?.checked_at);
+  const views: MarketsView[] = [
+    ...(featured.length > 0 ? (["featured"] as const) : []),
+    ...(categories ?? []).map((c) => c.key),
+  ];
+  const [picked, setPicked] = useState<MarketsView>("featured");
+  const view = views.includes(picked) ? picked : (views[0] ?? "featured");
 
   return (
+    <section aria-labelledby="markets-pre">
+      <GroupHeader
+        id="markets-pre"
+        title={before ? t("match.markets.prematch") : t("match.markets.prematchPlayed")}
+        right={
+          views.length > 0 ? (
+            <span
+              className="flex flex-wrap items-center gap-x-2 text-caption text-muted-foreground"
+              data-testid="markets-header"
+            >
+              {books > 0 ? <Books count={books} /> : null}
+              {updated ? (
+                before ? (
+                  <FreshnessLabel at={updated} level={ageLevel(updated, 60, 360)} />
+                ) : (
+                  <span>{t("match.markets.lastCapture", { when: formatDateTime(updated) })}</span>
+                )
+              ) : null}
+            </span>
+          ) : null
+        }
+      />
+      {views.length > 0 ? (
+        <>
+          <p className="-mt-1.5 mb-3 text-xs text-muted-foreground">
+            {t("match.markets.bestHelp")} <GlossaryLink term="bestOdds" />{" "}
+            {before ? t("match.markets.chooseHelp") : null}
+          </p>
+          <ChipGroup<MarketsView>
+            label={t("match.catalog.categories")}
+            value={view}
+            onChange={setPicked}
+            testId="markets-categories"
+            className="mb-4"
+            options={views.map((v) => ({
+              value: v,
+              label:
+                v === "featured" ? t("match.catalog.featured") : t(`match.catalog.category.${v}`),
+            }))}
+          />
+          {view === "featured" ? (
+            <>
+              {/* Plan UX, A9: every bookmaker's prices failing to load is said, with its reference and a retry - the
+                    best prices come from the match itself and stay. */}
+              {allQ.isError ? (
+                <div
+                  className="mb-3 rounded-xl border border-border bg-card"
+                  data-testid="markets-all-error"
+                >
+                  <p className="px-4 pt-3 text-xs text-muted-foreground">
+                    {t("match.markets.allError")}
+                  </p>
+                  <ErrorState
+                    error={allQ.error}
+                    onRetry={() => void allQ.refetch()}
+                    className="py-3"
+                  />
+                </div>
+              ) : null}
+              {order ? <MarketOrderNote order={order} /> : null}
+              <FoldList
+                views={featured}
+                choose={choose}
+                onConsult={consult}
+                follow={follow}
+                testId="markets-grid"
+              />
+            </>
+          ) : (
+            <CategoryPanel
+              key={view}
+              ctx={ctx}
+              category={view}
+              sides={sides}
+              choose={choose}
+              onConsult={consult}
+              follow={follow}
+            />
+          )}
+        </>
+      ) : catalogQ.isPending ? (
+        <SkeletonBlock className="h-24" />
+      ) : (
+        <SectionNote status={markets.status === "ok" ? "empty" : markets.status}>
+          {t("match.markets.none")}
+        </SectionNote>
+      )}
+    </section>
+  );
+}
+
+export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
+  const sides = { home: ctx.match.home.name, away: ctx.match.away.name };
+  const { order, first, consult } = useMarketOrder(ctx.fixtureId);
+  return (
     <div className="space-y-8">
-      {phase === "live" ? (
+      {ctx.phase === "live" ? (
         <LiveGroup ctx={ctx} sides={sides} first={first} onConsult={consult} />
       ) : null}
 
-      <section aria-labelledby="markets-pre">
-        <GroupHeader
-          id="markets-pre"
-          title={before ? t("match.markets.prematch") : t("match.markets.prematchPlayed")}
-          right={
-            updated ? (
-              before ? (
-                <FreshnessLabel at={updated} level={ageLevel(updated, 60, 360)} />
-              ) : (
-                <span className="text-caption text-muted-foreground">
-                  {t("match.markets.lastCapture", { when: formatDateTime(updated) })}
-                </span>
-              )
-            ) : null
-          }
-        />
-        {boards.length > 0 ? (
-          <>
-            <p className="-mt-1.5 mb-3 text-xs text-muted-foreground">
-              {t("match.markets.bestHelp")} <GlossaryLink term="bestOdds" />{" "}
-              {before ? t("match.markets.chooseHelp") : null}
-            </p>
-            {all ? <CapturesStrip all={all} /> : null}
-            {/* Plan UX, A9: every bookmaker's prices failing to load is said, with its reference and a retry - the
-                best prices above come from the match itself and stay. */}
-            {allQ.isError ? (
-              <div
-                className="mt-3 rounded-xl border border-border bg-card"
-                data-testid="markets-all-error"
-              >
-                <p className="px-4 pt-3 text-xs text-muted-foreground">
-                  {t("match.markets.allError")}
-                </p>
-                <ErrorState
-                  error={allQ.error}
-                  onRetry={() => void allQ.refetch()}
-                  className="py-3"
-                />
-              </div>
-            ) : null}
-            <div className="mt-3">
-              {order ? <MarketOrderNote order={order} /> : null}
-              <CardGrid
-                items={boards.map((b) => ({
-                  key: b.market,
-                  lines: LINE_MARKETS.has(b.market),
-                  node: <BookCard board={b} sides={sides} choose={choose} all={all} />,
-                }))}
-                onConsult={consult}
-              />
-            </div>
-          </>
-        ) : (
-          <SectionNote status={markets.status === "ok" ? "empty" : markets.status}>
-            {t("match.markets.none")}
-          </SectionNote>
-        )}
-      </section>
+      <PrematchMarkets ctx={ctx} order={order} first={first} onConsult={consult} />
 
       <div className="flex justify-center">
         <Link

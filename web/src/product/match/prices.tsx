@@ -71,10 +71,13 @@ export function PriceInline({
   price,
   prefix,
   choose,
+  note,
 }: {
   price: BestPrice | null;
   prefix?: ReactNode;
   choose?: Choose | undefined;
+  /** A line under the bookmaker: how old the price is. */
+  note?: ReactNode;
 }) {
   if (!price) return <span className="numeric text-sm text-subtle-foreground">—</span>;
   return (
@@ -90,6 +93,7 @@ export function PriceInline({
       <span className="max-w-full truncate text-micro text-subtle-foreground">
         {price.bookmaker} · {t("match.markets.books", { count: price.books })}
       </span>
+      {note ? <span className="max-w-full text-micro text-subtle-foreground">{note}</span> : null}
     </div>
   );
 }

@@ -397,7 +397,8 @@
     "not_playedBody": "The result was awarded (technical loss or walkover), not played. Bets on it wait for a decision."
   },
   "advanced": {
-    "note": "Admins only: models and predictions, captures, lineage and the audit trail for this match."
+    "note": "Admins only: models and predictions, captures, lineage and the audit trail for this match.",
+    "marketsTitle": "Markets: price captures"
   },
   "priceStatus": {
     "title": "Without a bookmaker price",
@@ -845,7 +846,7 @@
     "hide": "Hide the bookmakers",
     "lineLabel": "Line",
     "bookmaker": "Bookmaker",
-    "opened": "opened {odds}",
+    "opened": "first seen {odds}",
     "movedUp": "Up from {odds}",
     "movedDown": "Down from {odds}",
     "loading": "Loading the bookmakers…"
@@ -1279,6 +1280,99 @@
       "title": "Absences in the press",
       "note": "What the outlets say about who will not play or is in doubt, with its status; the details and the link are in News.",
       "more": "See in News"
+    }
+  },
+  "catalog": {
+    "featured": "Highlights",
+    "categories": "Market categories",
+    "category": {
+      "result": "Result",
+      "goals": "Goals",
+      "goals_half": "Halves",
+      "corners": "Corners",
+      "cards": "Cards",
+      "shots": "Shots"
+    },
+    "loading": "Loading the markets…",
+    "error": "We could not load the markets in this category.",
+    "empty": "No odds in force in this category.",
+    "shownOnly": "Only the usual five markets (1X2, goals, both teams to score, Asian handicap and double chance) can go in a parlay; the others are for reference.",
+    "moreLines_one": "See {count} more line",
+    "moreLines_other": "See {count} more lines",
+    "mainLineOnly": "Main line only",
+    "market": {
+      "result_1x2": "Match result (1X2)",
+      "result_asian_handicap": "Asian handicap",
+      "result_double_chance": "Double chance",
+      "result_draw_no_bet": "Draw no bet",
+      "goals_over_under": "Goals over/under",
+      "goals_btts": "Both teams to score",
+      "goals_odd_even": "Goals: odd or even",
+      "half_time_full_time": "Half time/full time",
+      "highest_scoring_half": "Highest scoring half",
+      "corners_over_under": "Corners over/under",
+      "corners_1x2": "Most corners (1X2)",
+      "corners_double_chance": "Most corners: double chance",
+      "cards_over_under": "Cards over/under",
+      "yellow_cards_over_under": "Yellow cards over/under",
+      "yellow_cards_double_chance": "Most yellow cards: double chance",
+      "yellow_cards_1x2": "Most yellow cards (1X2)",
+      "red_cards_over_under": "Red cards over/under",
+      "shots_over_under": "Shots over/under",
+      "shots_on_target_over_under": "Shots on target over/under",
+      "shots_1x2": "Most shots (1X2)",
+      "shots_on_target_1x2": "Most shots on target (1X2)",
+      "other": "Other market"
+    },
+    "period": {
+      "FT": "90'",
+      "1H": "1st half",
+      "2H": "2nd half",
+      "other": "Other period"
+    },
+    "subject": {
+      "home": "{team} (home)",
+      "away": "{team} (away)"
+    },
+    "selection": {
+      "one_x_two": {
+        "Home": "{home}",
+        "Draw": "Draw",
+        "Away": "{away}"
+      },
+      "draw_no_bet": {
+        "Home": "{home}",
+        "Away": "{away}"
+      },
+      "double_chance": {
+        "1X": "{home} or draw",
+        "12": "{home} or {away}",
+        "X2": "Draw or {away}"
+      },
+      "both_teams_score": {
+        "Yes": "Yes",
+        "No": "No"
+      },
+      "odd_even": {
+        "Odd": "Odd",
+        "Even": "Even"
+      },
+      "over_under": {
+        "Over": "Over {line}",
+        "Under": "Under {line}"
+      },
+      "asian_handicap": {
+        "Home": "{home} {line}",
+        "Away": "{away} {line}"
+      },
+      "highest_scoring_half": {
+        "1st Half": "1st half",
+        "2nd Half": "2nd half",
+        "Draw": "Both the same",
+        "X": "Both the same"
+      },
+      "htft": "{ht} / {ft}",
+      "other": "Option {n}"
     }
   }
 }
