@@ -25,6 +25,7 @@ from fbi.api.contracts.auth import (
     RequiredPasswordIn,
     SessionInfo,
 )
+from fbi.api.contracts.guides import GuideState
 from fbi.api.contracts.membership import MembershipSummary
 from fbi.api.deps import get_db
 from fbi.api.security import (
@@ -41,7 +42,8 @@ from fbi.auth import crypto, service
 from fbi.auth.roles import Role
 from fbi.auth.service import Principal
 from fbi.auth.settings import session_settings
-from fbi.customer import consents, favorites, membership, support
+from fbi.core.clock import now
+from fbi.customer import consents, favorites, guides, membership, support
 
 public_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
 session_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
@@ -83,6 +85,11 @@ def with_consents(who: Me, principal: Principal, conn: psycopg.Connection[Any]) 
     # the welcome and the hints (plan UX, A13): the page opens /welcome once the consents are done
     prefs = favorites.preferences(conn, principal.user_id)
     update["hints_seen"] = list(prefs.hints_seen)
+    # the welcome tour and the guides of each screen (UX-032)
+    update["guides"] = [GuideState(**{f: getattr(g, f) for f in GuideState.model_fields})
+                        for g in guides.progress(conn, principal.user_id)]
+    update["guides_on"] = guides.guides_on()
+    update["guides_auto"] = guides.auto(conn, principal.user_id)
     if favorites.welcome_due(conn, principal.user_id, reader=principal.role == Role.USER):
         update["welcome_due"] = True
         update["welcome_steps"] = list(favorites.welcome_steps(conn, principal.user_id))
@@ -164,6 +171,9 @@ def set_required_password(body: RequiredPasswordIn, request: Request, response: 
 def update_preferences(body: PreferencesIn, principal: App, conn: Db) -> Me:
     row = service.update_preferences(principal, language=body.language, timezone=body.timezone,
                                      display_name=body.display_name)
+    if body.guides_auto is not None:
+        guides.set_auto(principal.user_id, body.guides_auto, at=now())
+        conn.rollback()  # the connection's snapshot is older than this write: Me reads it again
     return with_consents(me_of(principal, row), principal, conn)
 
 

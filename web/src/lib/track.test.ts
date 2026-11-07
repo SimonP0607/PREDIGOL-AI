@@ -16,6 +16,7 @@ import {
   screenOf,
   validEvent,
 } from "./track";
+import { GUIDE_KEYS } from "./api/v1/types_guides";
 
 const BACKEND = join(
   import.meta.dir,
@@ -30,12 +31,12 @@ const BACKEND = join(
 );
 
 describe("the catalog of product events", () => {
-  test("is the backend's: the same 36 events, groups, sources and properties", () => {
+  test("is the backend's: the same 40 events, groups, sources and properties", () => {
     const backend = JSON.parse(readFileSync(BACKEND, "utf8")) as {
       events: Record<string, { group: string; source: string; props: Record<string, unknown> }>;
     };
     expect(Object.keys(EVENTS).sort()).toEqual(Object.keys(backend.events).sort());
-    expect(Object.keys(EVENTS)).toHaveLength(36);
+    expect(Object.keys(EVENTS)).toHaveLength(40);
     for (const [name, spec] of Object.entries(backend.events)) {
       const mine = (EVENTS as Record<string, { group: string; source: string; props: unknown }>)[
         name
@@ -44,6 +45,36 @@ describe("the catalog of product events", () => {
       expect(mine?.source, name).toBe(spec.source);
       expect(JSON.parse(JSON.stringify(mine?.props)), name).toEqual(spec.props);
     }
+  });
+
+  test("the guide events carry exactly the closed list of guides (UX-032)", () => {
+    for (const name of [
+      "guide_started",
+      "guide_completed",
+      "guide_skipped",
+      "guide_paused",
+    ] as const) {
+      expect([...EVENTS[name].props.guide.enum], name).toEqual([...GUIDE_KEYS]);
+    }
+    const guides = readFileSync(
+      join(import.meta.dir, "..", "..", "..", "backend", "src", "fbi", "customer", "guides.py"),
+      "utf8",
+    );
+    const declared = /GuideKey = Literal\[([^\]]+)\]/.exec(guides)?.[1] ?? "";
+    expect(declared.match(/"([a-z_]+)"/g)?.map((g) => g.replaceAll('"', ""))).toEqual([
+      ...GUIDE_KEYS,
+    ]);
+    expect(
+      validEvent("guide_skipped", { guide: "profile", version: 1, step: 2, method: "escape" }),
+    ).toEqual({
+      guide: "profile",
+      version: 1,
+      step: 2,
+      method: "escape",
+    });
+    expect(validEvent("guide_started", { guide: "nothing", version: 1 })).toBeNull();
+    expect(validEvent("guide_started", { guide: "picks", version: 100 })).toBeNull();
+    expect(validEvent("guide_paused", { guide: "picks", version: 1, step: 10 })).toBeNull();
   });
 
   test("sends only what the catalog allows, and never a server's event", () => {

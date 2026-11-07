@@ -1,5 +1,5 @@
 /**
- * Product analytics (plan UX, A6 and section 39): the closed catalog of 36 events - the same as the backend's
+ * Product analytics (plan UX, A6 and section 39): the closed catalog of 40 events - the same as the backend's
  * (backend/src/fbi/customer/events_catalog.json; a test checks the parity) - and track(), which queues an event and
  * sends the queue in the background: every few seconds, at 20 events, and when the page is hidden. It never blocks
  * the interface, never retries, and an answer that is not 200 empties the queue. A property is an enumeration, a
@@ -26,6 +26,94 @@ export const EVENTS = {
   onboarding_started: { group: "entry", source: "web", props: {} },
   onboarding_completed: { group: "entry", source: "web", props: { skipped: { int: [0, 20] } } },
   onboarding_step_skipped: { group: "entry", source: "web", props: { step: { slug: true } } },
+  guide_started: {
+    group: "entry",
+    source: "web",
+    props: {
+      guide: {
+        enum: [
+          "general",
+          "home",
+          "matches",
+          "live",
+          "match",
+          "picks",
+          "parlays",
+          "odds",
+          "my_picks",
+          "profile",
+        ],
+      },
+      version: { int: [1, 99] },
+      trigger: { enum: ["auto", "replay", "resume"] },
+    },
+  },
+  guide_completed: {
+    group: "entry",
+    source: "web",
+    props: {
+      guide: {
+        enum: [
+          "general",
+          "home",
+          "matches",
+          "live",
+          "match",
+          "picks",
+          "parlays",
+          "odds",
+          "my_picks",
+          "profile",
+        ],
+      },
+      version: { int: [1, 99] },
+    },
+  },
+  guide_skipped: {
+    group: "entry",
+    source: "web",
+    props: {
+      guide: {
+        enum: [
+          "general",
+          "home",
+          "matches",
+          "live",
+          "match",
+          "picks",
+          "parlays",
+          "odds",
+          "my_picks",
+          "profile",
+        ],
+      },
+      version: { int: [1, 99] },
+      step: { int: [0, 9] },
+      method: { enum: ["button", "escape", "navigate"] },
+    },
+  },
+  guide_paused: {
+    group: "entry",
+    source: "web",
+    props: {
+      guide: {
+        enum: [
+          "general",
+          "home",
+          "matches",
+          "live",
+          "match",
+          "picks",
+          "parlays",
+          "odds",
+          "my_picks",
+          "profile",
+        ],
+      },
+      version: { int: [1, 99] },
+      step: { int: [0, 9] },
+    },
+  },
   favorite_added: {
     group: "entry",
     source: "web",

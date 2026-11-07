@@ -127,6 +127,9 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "customer.preferences", "INSERT", True),
     ("predigol_api", "customer.preferences", "UPDATE", True),
     ("predigol_api", "customer.preferences", "DELETE", True),     # A7: anonymising an account removes them
+    ("predigol_api", "customer.guide_progress", "INSERT", True),   # UX-032: the guides a reader saw
+    ("predigol_api", "customer.guide_progress", "UPDATE", True),
+    ("predigol_api", "customer.guide_progress", "DELETE", True),   # anonymising an account removes them
     ("predigol_api", "audit.notifications", "INSERT", True),
     ("predigol_api", "audit.notifications", "UPDATE", False),
     ("predigol_api", "audit.notifications", "DELETE", False),
