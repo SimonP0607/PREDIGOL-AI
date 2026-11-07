@@ -421,6 +421,25 @@ def test_confirming_with_the_chosen_password_activates_signs_in_and_gives_no_acc
                        ).status_code == 200
 
 
+def test_a_confirmed_registration_is_limited_until_it_has_a_period(fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """No trial for the self-service door: the account signs in, reads its own records and is told the product
+    waits for the owner. With the membership not enforced nothing changes for anybody."""
+    link = registered(fresh)
+    c = anon()
+    assert c.post("/api/v1/auth/verify", json={"token": link, "password": CHOSEN}).status_code == 200
+    m = c.get("/api/v1/auth/me").json()["membership"]
+    assert (m["state"], m["limited"], m["ends_at"]) == ("none", True, None)
+    refused = c.get("/api/v1/home")
+    assert refused.status_code == 403 and error(refused) == "membership_required"
+    for path in ("/api/v1/me/picks", "/api/v1/me/history", "/api/v1/me/membership", "/api/v1/me/consents",
+                 "/api/v1/me/preferences", "/api/v1/auth/me"):
+        assert c.get(path).status_code == 200, path
+    assert no_membership(fresh, user(fresh)["id"]), "being limited writes nothing"
+    monkeypatch.delenv(membership.SWITCH)
+    membership.forget()
+    assert c.get("/api/v1/home").status_code == 200, "the switch off limits nobody"
+
+
 def test_a_wrong_password_does_not_confirm_and_the_link_stays_good(fresh: str) -> None:
     link = registered(fresh)
     r = anon().post("/api/v1/auth/verify", json={"token": link, "password": "Not-the-one-2026-zzz"})
