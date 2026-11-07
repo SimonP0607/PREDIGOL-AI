@@ -54,6 +54,8 @@ NAMES_IT = {
     "api/routers/knowledge.py": "the route of the page: GET /matches/{id}/knowledge, which calls the service",
     "apps/worker/scheduler.py": "the clock: the pass every half hour and the daily sweep, switched off with FBI_MATCH_KNOWLEDGE=0",
     "scripts/match_knowledge.py": "the owner's command: build (a dry run until --apply), coverage, audit and show",
+    # read-only knowledge store, never on a decision path
+    "knowledge/store.py": "the Knowledge Store (ks-v1, shadow): reads the newest build made by a moment, as of it, and writes nothing",
 }
 """Every file under ``src/fbi``, ``scripts`` and ``apps`` that names the objects, with why."""
 
@@ -63,6 +65,8 @@ IMPORTS: dict[str, dict[str, str]] = {
                                      "before a match is put together) - it imports nothing that writes",
         "ingestion/match_knowledge.py": "the worker's job: a pass of the builder as a run of the ledger",
         "scripts/match_knowledge.py": "the owner's command: it builds (a dry run until --apply), counts, audits and shows",
+        # read-only knowledge store, never on a decision path
+        "scripts/ia_knowledge.py": "the owner's command of the Knowledge Store (ks-v1, shadow): about, episode, relations, coverage; it writes nothing",
     },
     "fbi.ingestion.match_knowledge": {
         "apps/worker/scheduler.py": "the clock: the pass every half hour and the daily sweep (imported inside the function the clock runs)",

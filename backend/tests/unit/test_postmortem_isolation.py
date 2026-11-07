@@ -90,6 +90,9 @@ NAMES_IT: dict[str, str] = {
                                      "post-mortems, the memory and the notes among them (their first and last day); it reads none of their content",
     "familydecisions/postmortem.py": "the post-mortem of the families (pm-fam-v1, F11, shadow): the only writer of intel.family_postmortems; it names the "
                                      "pipeline's tables only to say why it is kept apart from them",
+    # read-only knowledge store, never on a decision path
+    "knowledge/store.py": "the Knowledge Store (ks-v1, shadow): reads the post-mortems, the four memories and the AI's events as of a moment for the "
+                          "owner's command; it writes nothing and no decision path imports it",
     "familydecisions/memory.py": "the memory of the families (memory-fam-v1, F11, shadow): the only writer of intel.family_memory, and the reader of the "
                                  "post-mortems of the families it adds up",
     "observability/trace.py": "the end-to-end trace (trace-v1, Plan Maestro IA, P0): reads the post-mortem of a settled selection and of its match to show "
