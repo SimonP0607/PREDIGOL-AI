@@ -49,7 +49,7 @@ class NarrativeSource(Contract):
 
 
 class ReadingNarrative(Contract):
-    version: str = Field(description="The prompt and the checks that wrote it: user-narrative-v2 (the chronicle).")
+    version: str = Field(description="The prompt and the checks that wrote it: user-narrative-v3 (the chronicle).")
     written_at: datetime = Field(description="When PrediGol's AI wrote it.")
     data_at: datetime = Field(description="The moment of the data it was written from: «Escrito con datos de las 12:30».")
     es: list[NarrativeSection] = Field(description="The sections in Spanish, in order: summary, home, away, h2h, risks - each only "

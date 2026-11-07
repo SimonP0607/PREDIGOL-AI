@@ -278,7 +278,7 @@ def test_a_validated_chronicle_is_stored_and_shown_only_while_its_story_is_the_s
         assert never not in sent, never
     row = db.execute("SELECT status, packet_id, data_at, content, cost_usd, usage_ids, reading_hash, version "
                      "FROM ai.user_narratives WHERE fixture_id = %s", (fid,)).fetchone()
-    assert row is not None and row[0] == "ok" and row[1] == packet and row[2] == AT and row[7] == "user-narrative-v2"
+    assert row is not None and row[0] == "ok" and row[1] == packet and row[2] == AT and row[7] == "user-narrative-v3"
     assert [s["key"] for s in row[3]["es"]] == list(un.SECTIONS) and row[4] > 0 and len(row[5]) == 1
     assert row[3]["sources"] == [{"name": "sport.es"}, {"name": "marca.com"}, {"name": "rumours.example"}]
     basis = reading_service.reading_basis(db, fid, at=RUN_AT)
@@ -291,7 +291,7 @@ def test_a_validated_chronicle_is_stored_and_shown_only_while_its_story_is_the_s
     assert langs == [("en", 3), ("es", 3)]
 
     shown = narrative(db, monkeypatch, fid, mode="on")
-    assert shown is not None and shown["version"] == "user-narrative-v2"
+    assert shown is not None and shown["version"] == "user-narrative-v3"
     assert [s["key"] for s in shown["es"]] == list(un.SECTIONS) and [s["key"] for s in shown["en"]] == list(un.SECTIONS)
     assert len(shown["es"][1]["sentences"]) == 5 and shown["es"][1]["sentences"][0]["refs"][0] == "P:results.home.1"
     assert shown["sources"] == [{"name": "sport.es"}, {"name": "marca.com"}, {"name": "rumours.example"}]

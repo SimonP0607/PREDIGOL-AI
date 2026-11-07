@@ -102,7 +102,11 @@ dos veces.
 ## 8. Lo que tienes que saber
 
 - **Hoy no hay picks recomendados** (todos están en sombra): la parte «por qué hay valor» no aparecerá hasta que haya un pick que un lector
-  pueda ver; la crónica en sí funciona para todos los partidos con datos.
+  pueda ver; la crónica en sí funciona para los partidos que PrediGol Intelligence ya analizó y que tienen datos.
+- **Cobertura: la marca Intelligence.** La crónica solo se escribe de partidos que Intelligence analizó (§5). Medido el 6-nov-2026 al
+  encenderla en sombra: 15 de los 313 partidos que empiezan en las próximas 26 h tenían análisis; la segunda pasada ya los había hecho todos
+  y la tercera no tuvo nada que hacer. La muestra de 50 se junta con los días, no en una hora. Ampliarla a partidos con datos pero sin
+  análisis sería una decisión de alcance y de coste del dueño, no un ajuste.
 - **Largas solo donde hay datos.** Un partido con solo resultados tiene una crónica corta; sin resultados, ninguna. No se rellena con
   inventos.
 - **Declaraciones y curiosidades**: solo las que una noticia verificada traiga (el servidor no puede comprobar una cita palabra por palabra:
@@ -112,12 +116,12 @@ dos veces.
 
 ## 9. Aislamiento y vuelta atrás
 
-- Versión del prompt `user-narrative-v2`; la API solo enseña esa versión y solo cuando el hash de la historia coincide.
+- Versión del prompt `user-narrative-v3`; la API solo enseña esa versión y solo cuando el hash de la historia coincide.
 - El trabajo `user_narrative` del worker escribe únicamente `ai.user_narratives`, `ai.evidence_translations` y `ai.user_usage` (una prueba
   de integración vigila qué tablas escribe una pasada); la API no tiene claves de IA; una prueba estática impide que cualquier módulo de
   Intelligence nombre esas tablas.
 - **Sin migración nueva** (usa las de A11, la 0100). Se despliega apagada y con presupuesto 0. La vuelta atrás es el interruptor; la
-  completa, la imagen anterior (que no conoce la v2 y no la muestra).
+  completa, la imagen anterior (que solo conoce la v2 y no muestra la v3).
 
 ## 10. Pruebas
 
@@ -129,3 +133,22 @@ dos veces.
   rechazo con motivos y sin pagar dos veces; fallo del proveedor reintentado; sin presupuesto no gasta; el presupuesto de Intelligence
   idéntico; una pasada solo escribe las tablas de lectores.
 - Web: `ReadingBlock.test.tsx`, `explanation.test.tsx`; e2e `user.spec.ts` y `responsive.spec.ts` (contra staging).
+
+## 11. Versión v3: el ajuste tras la primera muestra (UX-026)
+
+La primera pasada en sombra (6-nov-2026, 23:18 y 23:28 UTC) escribió 15 crónicas: 10 aprobadas por los controles y 5 rechazadas, por 0,039 US$
+(unas 24 llamadas, ≈0,0016 US$ cada una). Los datos citados eran los suyos (marcadores, rivales, bajas con su motivo, goleador, historial), pero
+al leer cuatro aprobadas se vio lo que los controles no miden (miden cifras, referencias y palabras, no la lógica del relato):
+
+- Llamaba «racha» a los últimos partidos en general y se contradecía: «lleva cuatro partidos sin ganar… su única victoria de la racha»,
+  «llega tras una victoria… pero ha perdido sus dos últimos partidos».
+- Añadía adornos que ningún dato dice: «el partido gira en torno a la forma y el orgullo», «la principal duda sobre su forma».
+- Entre los rechazos: referencias inventadas con el nombre de un código (`P:streak_winless`) y cuentas escritas con letra («cinco»,
+  «tres») que ningún dato citaba.
+
+La v3 solo cambia el texto del prompt (y su versión): «racha» solo para lo que dice un hecho de racha y con su número; los resultados se cuentan
+uno a uno, el último primero; sin sentimientos ni necesidades del equipo que no estén en lo que se juega; no calificar los hechos, contarlos; los
+nombres de los códigos no son referencias; ninguna cuenta con letra sin un dato que la cite. Mismos controles, mismo presupuesto, mismo interruptor
+(sigue en sombra). Como la versión cambia, las crónicas de la v2 dejan de ser válidas para la API y el worker vuelve a escribir las suyas (cada
+partido, cuando se cumpla su espera de 2 horas y su tope de 3 intentos al día). **Que el defecto se haya corregido se comprueba en la muestra
+nueva, no se da por hecho.**

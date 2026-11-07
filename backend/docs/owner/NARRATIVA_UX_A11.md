@@ -1,7 +1,7 @@
 # A11 · Narrativa ES/EN con IA, validada y con presupuesto propio
 
 > **Actualizado por UX-025 (la crónica).** Lo visible y la forma de escribir cambiaron: ahora es una crónica (entrada, un párrafo por equipo,
-> historial directo, riesgos y fuentes), con el prompt `user-narrative-v2`, atada a la **historia** del partido y no al paquete, para
+> historial directo, riesgos y fuentes), con el prompt `user-narrative-v3`, atada a la **historia** del partido y no al paquete, para
 > cualquier pasada de Intelligence, con 20 US$ al mes. Lo de los apartados 1, 2, 3 (los apartados y la atadura a la lectura), 5 (valores) y
 > 10 describe la v1; la v2 está en `CRONICA_UX_025.md`. Siguen vigentes el presupuesto aparte (4), el aislamiento (6), la migración 0100 (7) y la
 > vuelta atrás.

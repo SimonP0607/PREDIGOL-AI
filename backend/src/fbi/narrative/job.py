@@ -22,7 +22,7 @@ written from), ``ai.evidence_translations`` (each news item's own headline in bo
 ``ai.user_usage`` (what each call cost, ``fbi.ai.user_budget``). Nothing of PrediGol Intelligence: no prompt of it, no
 threshold, no decision, no packet, no state (the integration test watches the tables a run writes).
 
-HOW. One JSON call, prompt ``user-narrative-v2`` on the bulk tier (Haiku), Spanish and English together; each sentence carries
+HOW. One JSON call, prompt ``user-narrative-v3`` on the bulk tier (Haiku), Spanish and English together; each sentence carries
 its references - ``P:<fact>`` for a fact of the story, ``E:<id>`` for a news item - and the news items to translate travel in
 the same call. The chronicle does not know of a pick, a price or the forecast: the reader sees them beside it, written from
 templates (the reading's «por qué hay valor»).
@@ -237,13 +237,23 @@ SYSTEM: Final = (
     "en casa», «empató 0-0 como visitante»), the player and the cause of an absence, the length of a run. No exclamations, no "
     "selling words, no «ALERTA», no emoji. Spanish: natural, neutral, with a decimal comma. Do not repeat a fact the lead "
     "already told.\n\n"
+    "RUNS AND MOTIVES. Say racha / run only for what a streak fact states (streak_unbeaten or streak_winless, with its n): "
+    "«lleva cuatro partidos sin ganar». The last results are told one by one, latest first («ganó 2-1 al X; antes empató 0-0 "
+    "con Y»), never as «la racha»; never call a result «de la racha» or «de ese tramo» unless it is inside the n matches of the "
+    "streak, and never say a team «ganó» inside a winless run or «perdió» inside an unbeaten one. A record such as «2 wins, 1 "
+    "draw and 3 defeats in the last 6» is a record, not a run. Do not tell what a team feels or needs (pride, pressure, "
+    "momentum, nerves, «necesita ganar») unless a stakes fact says what it plays for; when the stakes say nothing is left in "
+    "the table (settled), say just that. Never grade the facts («la principal duda», «preocupante», «destacado»): tell them.\n\n"
     "EACH SENTENCE is {\"text\", \"refs\"}.\n"
     "- refs: 1 to 4 refs copied exactly from the facts (P:...) and the news (E:...) it rests on. Never a ref you were not "
-    "given. A result, an absence and a meeting are cited by their OWN ref (P:results.home.2, P:absences.away.1, "
-    "P:h2h.meeting.1), never by their block.\n"
+    "given: the names of the codes below (form, streak_unbeaten, top_scorer...) are NOT refs; a ref is only the string in the "
+    "ref field of a fact (P:form.home, P:dossier.teams.home...). A result, an absence and a meeting are cited by their OWN ref "
+    "(P:results.home.2, P:absences.away.1, P:h2h.meeting.1), never by their block.\n"
     "- text: one plain sentence. Nothing of the system inside it: no ref (P:, E:), no code (W/D/L, out, doubtful, "
     "home_win...), no link, no markdown, no emoji.\n"
     "- A number may appear only if it is in the params of a fact the sentence cites or in the claim of a news item it cites. "
+    "That includes numbers in words and counts of matches: «cinco partidos» or «tres derrotas» need a cited param with that "
+    "number; without it say «en sus últimos partidos» and no count. "
     "Copy it with digits (a score is its two goals: 2-1); a probability (a share such as 0.523) may be written as a "
     "percentage. Never compute a number (no sum, difference or average), never write a date, a time, odds or a year; a "
     "meeting is told as «hace N meses» from its months_ago.\n"
