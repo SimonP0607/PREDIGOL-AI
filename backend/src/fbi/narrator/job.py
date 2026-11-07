@@ -5,7 +5,7 @@ SWITCH. ``FBI_NARRATOR``: ``shadow`` - the job builds the facts, calls the model
 behaves as ``shadow`` and a reader sees nothing; anything else, the line absent included - off: nothing is read, nothing is
 called, nothing is spent.
 
-STORAGE: NONE (no migration). The readers' table ``ai.user_narratives`` is the chronicle's, one row per MATCH: the chronicle's job
+STORAGE: NONE (no migration). The readers' table the chronicle's readers table (UX-025) is the chronicle's, one row per MATCH: the chronicle's job
 counts every row of a fixture for its two-hour wait and its three tries a day, whatever the version, so a pick's narrative written
 there would hold the chronicle back. Its schema does not fit, and a table of its own is a migration - a later step, with the owner's
 OK. Until then the narrative lives in the report (``RunReport.as_json``) and in the log line ``narrator.pick``.
