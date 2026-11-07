@@ -255,7 +255,7 @@ class Rig:
         self.runner = orchestrator._Runner(object(), cfg or settings(), at=AT, limit=20, max_seconds=240.0, provider=provider, transport=None, ledger=None,  # type: ignore[arg-type]
                                            slots=self.slots, circuit=self.circuit, monotonic=self.clock, sleep=self.slept.append)
         work = Work(fixture_id=5, pass_kind="pre", packet_id=9, known_at=AT - timedelta(hours=1), kickoff_at=kickoff, passed_at=AT)
-        self.p = SimpleNamespace(work=work, asked={}, stats_on=False, tiers_ok=tiers or {"bulk": True, "analysis": True, "final": True})
+        self.p = SimpleNamespace(work=work, asked={}, stats_on=False, counts=None, tiers_ok=tiers or {"bulk": True, "analysis": True, "final": True})
         self.n = 0
 
     def ask(self, *, model: str = SONNET, level: str = "complex", call: bool = True, est: str = "0.02", timeout_s: float = 60.0, key: str | None = None) -> Asked:

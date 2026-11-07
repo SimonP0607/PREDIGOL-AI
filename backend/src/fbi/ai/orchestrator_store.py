@@ -48,6 +48,7 @@ from fbi.ai.contracts.mcp import PassKind
 from fbi.ai.idempotency import TaskIdentity
 from fbi.ai.packet import Packet
 from fbi.ai.review import Candidate
+from fbi.core.decision_versions import DECISION_FAMILIES
 
 STATE_VERSION: Final = "orch-v1"
 """The rule that writes a row of ``ai.match_runs`` for the shadow (``state_version``)."""
@@ -293,6 +294,90 @@ def reviewed(conn: psycopg.Connection[Any], work: Work) -> Reviewed:
             r["minimum_playable_odds"],
         )
     return Reviewed(tuple(candidates), scores)
+
+
+COUNTS_SOURCE_VERSION: Final = "fam-counts-v1"
+"""Where the Statistics Agent's candidates come from (IA-014): the decisions of the FAMILIES (``decision-fam-v1``) of the match as of the moment of the
+pass, beside the selections production reviewed. Production never reviews a corner or a card (``ai.pick_reviews`` of ``rules`` are the picks of
+``picks.picks``: goals and result), so a pass named from ``reviewed`` alone had no count to ask about, and the agent ran 0 times from 6 Nov 2026
+(``model_status.stats.note = 'no_count_to_assess'``). A pass written before this source existed has no ``model_status.stats.counts`` and, in the
+Batch calendar, no ``route.counts``: it is a pass whose counts came from ``reviewed`` alone, and it is resumed as one. Changing what is read, or how a
+decision becomes a candidate, is a new name here, never an edit."""
+COUNT_MARKETS: Final[dict[str, tuple[str, str]]] = {
+    "CORNERS_OU": ("CORNERS", "corners_ft@v1"),
+    "CORNERS_OU_HOME": ("CORNERS", "corners_ft@v1"),
+    "CORNERS_OU_AWAY": ("CORNERS", "corners_ft@v1"),
+    "CORNERS_1X2": ("CORNERS", "corners_ft@v1"),
+    "CARDS_OU": ("CARDS", "cards_lines_ft@v1"),
+    "CARDS_OU_HOME": ("CARDS", "cards_lines_ft@v1"),
+    "CARDS_OU_AWAY": ("CARDS", "cards_lines_ft@v1"),
+    "CARDS_1X2": ("CARDS", "cards_lines_ft@v1"),
+}
+"""``fam-counts-v1``: the markets of a family's decision that are a candidate of the Statistics Agent, with the agent's family (``contracts.base.COUNTS``)
+and the settlement rule of the catalogue that grades it (``agents.stats.SETTLEMENT``; a test holds the three together). Only the WHOLE match: a key of
+a half is never here (the catalogue cannot grade the corners of a half, and no convention exists for the cards of one), nor the yellow cards
+(``yellow_ft`` is not the rule of the CARDS family), nor the goals of the halves (no agent reads them)."""
+
+FAMILY_COUNTS_SQL: Final = """
+SELECT DISTINCT ON (d.market_key, d.model_name)
+       d.id, d.known_at, d.market_key, d.selection, d.line, d.model_name, d.odds, d.bookmaker_id, b.name AS bookmaker, d.price_at, d.n_bookmakers,
+       d.p_model, d.p_low, d.p_high, d.p_push, d.p_market, d.ev_raw, d.kickoff_at
+  FROM intel.decisions d
+  LEFT JOIN market.bookmakers b ON b.id = d.bookmaker_id
+ WHERE d.decision_version = %(version)s AND d.fixture_id = %(fixture)s AND d.market_key = ANY(%(markets)s)
+   AND d.known_at <= %(at)s AND d.known_at < d.kickoff_at
+ ORDER BY d.market_key, d.model_name, d.known_at DESC, d.id DESC
+"""
+"""The newest decision of each market of the families (per model) known by the moment of the pass. A family decides the best line of each market of
+a match at each of its passes (``fbi.familydecisions.decide.candidates``) and writes only what is news, so the newest row of a market is the selection it
+last chose there; an older line of the same market is one it moved away from. Read-only, and strictly as of ``at``: a decision written later is
+never read, so the same pass reads the same candidates whenever it is derived again (the audit, a resumed pass of the Batch)."""
+
+
+@dataclass(frozen=True, slots=True)
+class FamilyCounts:
+    """The count candidates of a match from the families' decisions, with the id of the decision each one comes from (in the same order)."""
+
+    candidates: tuple[Candidate, ...] = ()
+    decision_ids: tuple[int, ...] = ()
+    source: str = COUNTS_SOURCE_VERSION
+
+    def decision_of(self, c: Candidate) -> int | None:
+        """The decision ``c`` is (the very candidate read here, not one of the same selection that came from elsewhere), or None."""
+        return next((d for x, d in zip(self.candidates, self.decision_ids, strict=True) if x == c), None)
+
+
+def family_counts(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, version: str = DECISION_FAMILIES) -> FamilyCounts:
+    """The full-time corners and cards the families decided for a match by ``at`` (``FAMILY_COUNTS_SQL``), rebuilt as ``review.Candidate`` with the
+    numbers the decision holds and nothing more: the model's probability and interval, the best price, its book and moment, the market's fair
+    probability and the raw expected value. No pick stands behind them (``pick_id`` is None). Ordered by market, selection and line."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(FAMILY_COUNTS_SQL, {"version": version, "fixture": fixture_id, "markets": sorted(COUNT_MARKETS), "at": at})
+        rows = cur.fetchall()
+    pairs: list[tuple[Candidate, int]] = []
+    for r in rows:
+        c = Candidate(
+            fixture_id=fixture_id,
+            market_key=str(r["market_key"]),
+            selection=str(r["selection"]),
+            line=Decimal(r["line"]),
+            p_model=Decimal(r["p_model"]),
+            kickoff_at=r["kickoff_at"],
+            odds=r["odds"],
+            bookmaker_id=r["bookmaker_id"],
+            bookmaker=r["bookmaker"],
+            p_low=r["p_low"],
+            p_high=r["p_high"],
+            p_push=r["p_push"],
+            p_market=r["p_market"],
+            ev=r["ev_raw"],
+            model=r["model_name"],
+            n_bookmakers=r["n_bookmakers"],
+            price_at=r["price_at"],
+        )
+        pairs.append((c, int(r["id"])))
+    pairs.sort(key=lambda pair: (pair[0].market_key, pair[0].selection, pair[0].line, pair[1]))
+    return FamilyCounts(tuple(c for c, _ in pairs), tuple(i for _, i in pairs))
 
 
 @dataclass(frozen=True, slots=True)
