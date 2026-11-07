@@ -33,6 +33,7 @@ import esGlossary from "@/locales/es/glossary.json";
 import esLegal from "@/locales/es/legal.json";
 import esTransparency from "@/locales/es/transparency.json";
 import esOnboarding from "@/locales/es/onboarding.json";
+import esGuides from "@/locales/es/guides.json";
 import esSupport from "@/locales/es/support.json";
 import esPush from "@/locales/es/push.json";
 import esExplain from "@/locales/es/explain.json";
@@ -69,6 +70,7 @@ import enGlossary from "@/locales/en/glossary.json";
 import enLegal from "@/locales/en/legal.json";
 import enTransparency from "@/locales/en/transparency.json";
 import enOnboarding from "@/locales/en/onboarding.json";
+import enGuides from "@/locales/en/guides.json";
 import enSupport from "@/locales/en/support.json";
 import enPush from "@/locales/en/push.json";
 import enExplain from "@/locales/en/explain.json";
@@ -114,6 +116,7 @@ export const CATALOGS: Record<Locale, Catalog> = {
     legal: esLegal,
     transparency: esTransparency,
     onboarding: esOnboarding,
+    guides: esGuides,
     support: esSupport,
     push: esPush,
     explain: esExplain,
@@ -152,6 +155,7 @@ export const CATALOGS: Record<Locale, Catalog> = {
     legal: enLegal,
     transparency: enTransparency,
     onboarding: enOnboarding,
+    guides: enGuides,
     support: enSupport,
     push: enPush,
     explain: enExplain,

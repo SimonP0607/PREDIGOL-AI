@@ -37,7 +37,7 @@ import {
 } from "@/product/favorites/model";
 import { useOnboardingState, welcomeSteps } from "@/product/favorites/onboarding";
 import { HOW_PATH } from "@/product/help/howItWorks";
-import { useTour } from "@/product/tour/steps";
+import { useGuides } from "@/product/guides/context";
 import { afterWelcome } from "./next";
 
 const PRIMARY =
@@ -235,7 +235,7 @@ function About({
 export function WelcomePage() {
   const auth = useAuth();
   const navigate = useNavigate();
-  const tour = useTour();
+  const guides = useGuides();
   const record = useOnboardingState();
   const searchStr = useRouterState({ select: (s) => s.location.searchStr });
   const steps = welcomeSteps(auth.user);
@@ -268,7 +268,7 @@ export function WelcomePage() {
       const state = await v1.completeOnboarding();
       track("onboarding_completed", { skipped: skipped.current });
       record(state);
-      if (then === "tour") tour.start();
+      if (then === "tour") guides.request("general", 1);
       else
         void navigate({
           to: (then === "transparency"

@@ -1,6 +1,6 @@
 """What each reader has seen of the welcome tour and of the guides of each screen (plan UX-032; PLAN_BIENVENIDA_RECORRIDO).
 
-One engine of guides in the page (UX-033 to UX-035): an optional general tour, an optional first-visit guide for each screen
+One engine of guides in the page (UX-051 to UX-054): an optional general tour, an optional first-visit guide for each screen
 and the first guide of Perfil, which is owed once. This module is only their memory - what the reader has seen, per guide and
 per version of the content - and the rules that keep it coherent. It decides nothing about what the guides say, never changes
 a pick, a model or a market, and is never used for analytics.

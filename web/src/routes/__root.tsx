@@ -44,7 +44,7 @@ import { LimitedAccess } from "@/product/membership/LimitedAccess";
 import { noteLocation, noteNoticeLanding, screenOf, startSession, track } from "@/lib/track";
 import { eventCategory, withoutNoticeMark } from "@/lib/push";
 import { markTrouble } from "@/lib/feedback/session";
-import { TourProvider } from "@/product/tour/Tour";
+import { GuideProvider } from "@/product/guides/GuideProvider";
 import { ReportProblemProvider } from "@/product/support/ReportProblem";
 
 function NotFoundComponent() {
@@ -198,11 +198,11 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Localized>
-          <TourProvider>
+          <GuideProvider>
             <ReportProblemProvider>
               <Gate />
             </ReportProblemProvider>
-          </TourProvider>
+          </GuideProvider>
           <UpdateToast />
           <TitleTap />
         </Localized>
