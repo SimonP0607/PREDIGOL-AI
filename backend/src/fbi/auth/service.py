@@ -231,6 +231,12 @@ def login(email: str, password: str, *, ip: str | None, user_agent: str | None) 
                 refusal = _count_failure(conn, state, cfg, address=address, user_id=int(user["id"]), ip=ip,
                                          action="login.failed", detail={"reason": "wrong_password"})
                 counted = True
+            elif user["status"] == "pending":
+                # Registered and the address not yet confirmed (tramo 1, UX-038): the password was right, so saying
+                # what is missing tells a stranger nothing - the page offers a new confirmation link.
+                store.record_event(conn, "login.refused", target_user_id=user["id"], email=address, ip=ip,
+                                   detail={"reason": "email_not_verified"})
+                refusal = AuthError(403, "email_not_verified")
             elif user["status"] != "active":
                 store.record_event(conn, "login.refused", target_user_id=user["id"], email=address, ip=ip,
                                    detail={"reason": "disabled"})

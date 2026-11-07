@@ -1,8 +1,8 @@
 /**
- * One competition of the day: a header that stays under the app bar while its matches
- * scroll past (tap to fold it away), then its matches by kick-off. A league the reader
- * follows says so on its header («Tu liga» / «Sugerida»), and a match shown because of a
- * team they follow says so on its row (plan UX, B2).
+ * One competition of the day: a header that stays under the app bar and the list's bar of days
+ * and states while its matches scroll past (tap to fold it away; the fold is kept for the tab),
+ * then its matches by kick-off. A league the reader follows says so on its header («Tu liga» /
+ * «Sugerida»), and a match shown because of a team they follow says so on its row (plan UX, B2).
  */
 import { ChevronDown } from "lucide-react";
 import { CompetitionLogo, CountryFlag } from "@/components/football/Logos";
@@ -42,7 +42,8 @@ export function CompetitionSection({
       <h2
         id={headingId}
         className={cn(
-          "top-sticky sticky z-10 rounded-t-xl bg-card font-sans",
+          // Under the app bar and under the list's own sticky bar of days and states (its height: --matches-bar-h).
+          "sticky top-[calc(var(--app-sticky-top)+var(--matches-bar-h,0px))] z-10 rounded-t-xl bg-card font-sans",
           collapsed ? "rounded-b-xl" : "border-b border-border/70",
         )}
       >
@@ -95,7 +96,7 @@ export function CompetitionSection({
         </button>
       </h2>
       {collapsed ? null : (
-        <ul id={listId} className="divide-y divide-border/60 [&>li:last-child>a]:rounded-b-xl">
+        <ul id={listId} className="divide-y divide-border/60 [&>li:last-child>div]:rounded-b-xl">
           {group.items.map((item) => (
             <li key={item.match.id}>
               <MatchRow item={item} why={rowWhy ? rowWhy(item) : null} />

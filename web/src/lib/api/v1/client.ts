@@ -2,6 +2,7 @@ import { reportApiFailure } from "@/lib/observability";
 import { API_BASE_URL } from "@/lib/api/mode";
 import { markTrouble } from "@/lib/feedback/session";
 import type { MatchMarkets, MatchProfile } from "./types_profile";
+import type { CatalogCategory, MarketCatalog } from "./types_market_catalog";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
 import type { AgentsOverview, MatchState } from "./types_ai_agents";
@@ -9,6 +10,7 @@ import type { AttributionOverview } from "./types_ai_attribution";
 import type { EntityResearchOverview } from "./types_ai_research";
 import type {
   AdminPrivacyRequest,
+  ConsentPurpose,
   ConsentState,
   ConsentsIn,
   ExportDocument,
@@ -257,6 +259,9 @@ import type {
   ResetInfo,
   SelfServiceState,
   SessionInfo,
+  SignupIn,
+  VerifyInfo,
+  VerifyIn,
 } from "./types_auth";
 import type {
   CompetitionScoreRow,
@@ -558,6 +563,13 @@ export const v1 = {
   checkInvitation: (token: string) => postJson<ActivationInfo>("/auth/activate/check", { token }),
   activate: (body: ActivateIn) => postJson<Me>("/auth/activate", body),
   renewInvitation: (token: string) => postJson<Accepted>("/auth/activate/renew", { token }),
+  // a person opens their own account (UX-038): public, only while the registration is open
+  signupConsents: (lang: "es" | "en") =>
+    getJson<{ purposes: ConsentPurpose[] }>("/auth/signup/consents", { lang }),
+  signup: (body: SignupIn) => postJson<Accepted>("/auth/signup", body),
+  checkVerification: (token: string) => postJson<VerifyInfo>("/auth/verify/check", { token }),
+  verifyEmail: (body: VerifyIn) => postJson<Me>("/auth/verify", body),
+  resendVerification: (email: string) => postJson<Accepted>("/auth/verify/resend", { email }),
   forgotPassword: (email: string) => postJson<Accepted>("/auth/password/forgot", { email }),
   checkReset: (token: string) => postJson<ResetInfo>("/auth/password/reset/check", { token }),
   resetPassword: (body: ResetIn) => postJson<void>("/auth/password/reset", body),
@@ -739,6 +751,12 @@ export const v1 = {
   /** Every price captured for the match, with the Cronología's numbers (REVIEW pt 10). */
   matchMarkets: (id: number | string) =>
     getJson<Envelope<MatchMarkets | null>>(`/matches/${id}/markets`),
+  /**
+   * The structured markets by category, each price the one IN FORCE (plan Partidos y Match Center, F4a). Without
+   * `category`, only the categories that have prices; with it, that category's markets. Read when a category is opened.
+   */
+  matchMarketCatalog: (id: number | string, category?: CatalogCategory) =>
+    getJson<Envelope<MarketCatalog>>(`/matches/${id}/markets/catalog`, { category }),
   /** ANÁLISIS PREDIGOL: up to three cards, computed once per match by the worker and read by everyone. */
   matchAnalysis: (id: number | string, q: Preview = {}) =>
     getJson<Envelope<MatchAnalysis | null>>(`/matches/${id}/analysis`, q),

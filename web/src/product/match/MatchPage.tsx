@@ -5,7 +5,7 @@
  * the match, with what matters first. SUPER_ADMIN also gets "Avanzado / Auditoría", the research view.
  */
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useParams, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, SearchX, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,11 +30,33 @@ import { SummaryTab } from "./SummaryTab";
 import { tabsFor, useMatchTab } from "./useMatchTab";
 import { originOf, track } from "@/lib/track";
 import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
+import { openedFromList } from "@/product/matches/backToList";
 
+/**
+ * «‹ Partidos»: back through the history when the match was opened from the list (plan Partidos, P4), so the list
+ * comes back with its filters and its scroll; a link to the list otherwise.
+ */
 function BackLink() {
+  const router = useRouter();
+  const { fixtureId } = useParams({ strict: false });
   return (
     <Link
       to="/matches"
+      onClick={(e) => {
+        const id = Number(fixtureId);
+        if (
+          e.defaultPrevented ||
+          e.button !== 0 ||
+          e.metaKey ||
+          e.ctrlKey ||
+          e.shiftKey ||
+          e.altKey
+        )
+          return;
+        if (!Number.isSafeInteger(id) || !openedFromList(id)) return;
+        e.preventDefault();
+        router.history.back();
+      }}
       className="tap-y relative inline-flex min-h-9 items-center gap-1 rounded-md pr-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <ChevronLeft aria-hidden className="h-4 w-4" />

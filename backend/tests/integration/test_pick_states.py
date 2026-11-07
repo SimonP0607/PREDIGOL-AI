@@ -4,13 +4,14 @@ the transaction rolled back.
     A  +3h  published, value now          review APPROVE     in the day's set (frozen: DOWNGRADE, applied then)
     B  +4h  published, value now          review DOWNGRADE
     C  +5h  published, value now          review REJECT
-    D  +6h  published, value now          no review          in the day's set (frozen: REJECT, not applied then)
+    D  +6h  published, value now          no review          in the day's set (frozen: APPROVE in shadow, not applied then)
     E  +7h  published, price 1.70         -> no value now
     S  +8h  shadow pick (its model has not beaten the market)  in the evaluation set
     K  -1h  published, its match already kicked off
 
 «Criterio de terminado: cada estado visible equivale a uno interno ... todo pick publicado responde «¿por qué?»». The AI's review
-changes a state only while it is applied: the owner's switch (FBI_AI_MODE=enforce) AND a passed shadow gate.
+rejects or downgrades a pick for a reader in any mode (D1 of the plan de Inicio, UX-039: the pick stays recorded and counted); it
+approves one, or says nothing, only while it is applied: the owner's switch (FBI_AI_MODE=enforce) AND a passed shadow gate.
 
 «Solo verde» (UX-002): a reader is shown RECOMMENDED picks only - in a list, on its match, in the match's analysis, in the day's set
 and as a parlay's legs; CAUTION and NOT_RECOMMENDED are counted, never shown. The owner's preview shows every state, labelled.
@@ -127,7 +128,7 @@ def world(db: psycopg.Connection[Any], seed: Seed, monkeypatch: pytest.MonkeyPat
                     "negative_evidence": [{"text": f"En contra ({review})"}]})))
     day = product_day(NOW)
     for source, items in (("qualified", (("A", {"decision": "DOWNGRADE", "enforced": True, "mode": "enforce"}, "2.20"),
-                                         ("D", {"decision": "REJECT", "enforced": False, "mode": "shadow"}, "2.25"))),
+                                         ("D", {"decision": "APPROVE", "enforced": False, "mode": "shadow"}, "2.25"))),
                           ("evaluation", (("S", {"decision": None, "enforced": False, "mode": "shadow"}, "2.30"),))):
         set_id = scalar(db.execute(
             "INSERT INTO picks.daily_sets (day, timezone, source, rule_version, status, created_at, updated_at) VALUES "
@@ -167,13 +168,16 @@ def states(cards: list[dict[str, Any]], picks: dict[str, int]) -> dict[str, tupl
 # ── the list of picks ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-def test_in_shadow_every_published_pick_with_value_is_recommended_and_says_its_review_is_pending(world: World) -> None:
+def test_in_shadow_a_pick_the_review_rejects_or_downgrades_is_kept_from_a_reader(world: World) -> None:
+    """D1 (UX-039): the review is not applied, yet B (DOWNGRADE) and C (REJECT) are not shown; A (APPROVE) and D (no review) are
+    recommended by the value rule alone and say their review is pending."""
     board = data(client(world.db), "/api/v1/picks")
-    assert states(board["picks"], world.picks) == dict.fromkeys("ABCD", ("RECOMMENDED", "value", True)), \
-        "a review that is not applied changes nothing - not even C's REJECT"
-    assert board["withheld"] == 1, "E has no value at the best price now: on its match, never in the list"
+    assert states(board["picks"], world.picks) == dict.fromkeys("AD", ("RECOMMENDED", "value", True))
+    assert board["withheld"] == 3, "B (downgraded), C (rejected) and E (no value) are counted, never shown"
     preview = data(client(world.db, "SUPER_ADMIN"), "/api/v1/picks", preview="shadow")
     got = states(preview["picks"], world.picks)
+    assert (got["B"], got["C"]) == (("CAUTION", "downgraded", False), ("NOT_RECOMMENDED", "rejected", False)), \
+        "the owner's preview labels them: the pick stays recorded"
     assert got["S"] == ("EVALUATION", "evaluation", False), "a shadow pick is never a recommendation, not even in the preview"
     assert got["E"] == ("NOT_RECOMMENDED", "no_value_now", False) and preview["withheld"] == 0
 
@@ -241,10 +245,11 @@ def test_a_list_that_keeps_every_pick_on_its_match_says_why_truthfully(world: Wo
 
 
 def test_the_switch_alone_applies_nothing_without_a_passed_gate(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Not applied: no approval is read (A and D say «value»), but a rejection or a downgrade still keeps B and C back (D1)."""
     for gate in (None, "fail"):
         world.enforce(monkeypatch, gate=gate)
         board = data(client(world.db), "/api/v1/picks")
-        assert states(board["picks"], world.picks) == dict.fromkeys("ABCD", ("RECOMMENDED", "value", True)), gate
+        assert states(board["picks"], world.picks) == dict.fromkeys("AD", ("RECOMMENDED", "value", True)), gate
 
 
 def test_the_days_set_shows_a_reader_the_picks_that_entered_green(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -255,6 +260,22 @@ def test_the_days_set_shows_a_reader_the_picks_that_entered_green(world: World, 
     world.enforce(monkeypatch)
     assert states(data(client(world.db), "/api/v1/daily")["set"]["items"], world.picks) == {
         "D": ("RECOMMENDED", "value", True)}, "a record keeps the state it entered with"
+    preview = data(client(world.db, "SUPER_ADMIN"), "/api/v1/daily", preview="shadow")["set"]["items"]
+    assert states(preview, world.picks) == {"S": ("EVALUATION", "evaluation", False)}
+
+
+def test_a_pick_the_review_rejected_in_shadow_is_not_shown_in_the_days_set(world: World) -> None:
+    """D1 (UX-039): D entered the set with the review's REJECT, which was not applied then (shadow): a reader is still not shown it,
+    and the owner's evaluation set is untouched."""
+    world.db.execute(  # an item is frozen once taken: the same item, taken with the review's rejection instead
+        "WITH gone AS (DELETE FROM picks.daily_set_items WHERE pick_id = %s RETURNING *) "
+        "INSERT INTO picks.daily_set_items (set_id, rank, pick_id, fixture_id, market_key, selection, line, stage, selected_at, "
+        "odds, bookmaker_id, price_at, p_model, p_low, p_push, p_market, ev, model_version_id, inputs) "
+        "SELECT set_id, rank, pick_id, fixture_id, market_key, selection, line, stage, selected_at, odds, bookmaker_id, price_at, "
+        "p_model, p_low, p_push, p_market, ev, model_version_id, %s FROM gone",
+        (world.picks["D"], Jsonb({"ai": {"decision": "REJECT", "enforced": False, "mode": "shadow"}})))
+    board = data(client(world.db), "/api/v1/daily")
+    assert board["set"] is None or board["set"]["items"] == []
     preview = data(client(world.db, "SUPER_ADMIN"), "/api/v1/daily", preview="shadow")["set"]["items"]
     assert states(preview, world.picks) == {"S": ("EVALUATION", "evaluation", False)}
 
@@ -287,7 +308,7 @@ def stored_parlay(world: World, kind: str, legs: dict[str, dict[str, Any]]) -> N
 def test_a_reader_is_never_shown_a_stored_parlay_with_a_leg_that_is_not_green(world: World) -> None:
     stored_parlay(world, "daily", {"A": {"decision": "DOWNGRADE", "enforced": True, "mode": "enforce"},
                                    "D": {"decision": None, "enforced": False, "mode": "shadow"}})
-    stored_parlay(world, "multiday", {"D": {"decision": "REJECT", "enforced": False, "mode": "shadow"},
+    stored_parlay(world, "multiday", {"D": {"decision": "APPROVE", "enforced": False, "mode": "shadow"},
                                       "K": {"decision": "APPROVE", "enforced": True, "mode": "enforce"}})
     board = data(client(world.db), "/api/v1/daily")
     assert board["daily_parlay"] is None, "A entered it in caution: the whole parlay is not shown"
@@ -305,10 +326,10 @@ def test_a_readers_parlay_never_holds_a_caution_or_a_rejected_leg(world: World, 
         p = product.parlay(rows, one_leg, include_shadow=owner, moment=NOW, applied=applied)
         return [leg.pick_id for leg in p.legs]
 
-    assert {n: built(n, owner=False) for n in "ABC"} == {n: [world.picks[n]] for n in "ABC"}, \
-        "the review is not applied: every published pick with value may be a leg"
+    assert {n: built(n, owner=False) for n in "ABC"} == {"A": [world.picks["A"]], "B": [], "C": []}, \
+        "the review is not applied, yet B (caution) and C (rejected) are never a reader's legs (D1)"
     reader = data(client(world.db), "/api/v1/parlays/daily")
-    assert "not_recommended" not in reader["rejections"]
+    assert reader["rejections"]["not_recommended"] == 2
     world.enforce(monkeypatch)
     assert {n: built(n, owner=False) for n in "ABC"} == {"A": [world.picks["A"]], "B": [], "C": []}, \
         "B (caution) and C (rejected) are never a reader's legs"
@@ -344,10 +365,11 @@ def test_a_matchs_analysis_says_each_cards_state(world: World, monkeypatch: pyte
             analysis_card("BTTS", "Yes", "evaluated", "not_recommended", qualified=False, pick_id=None, decision=None)])))
     url = f"/api/v1/matches/{fid}/analysis"
     shadow = data(client(world.db), url)
-    [card] = shadow["cards"]
-    assert (card["user_status"], card["status_reason"], card["context_pending"]) == ("RECOMMENDED", "value", True)
-    assert card["verdict"] == "recommended" and card["ai"] is None and card["pick_id"] == world.picks["B"]
-    assert shadow["withheld"] == 2, "the two cards in evaluation"
+    assert shadow["cards"] == [] and shadow["withheld"] == 2, \
+        "in shadow too (D1) the card the review downgrades is not shown to a reader; withheld counts the two in evaluation"
+    in_shadow = data(client(world.db, "SUPER_ADMIN"), url, preview="shadow")["cards"][0]
+    assert (in_shadow["user_status"], in_shadow["status_reason"], in_shadow["context_pending"]) == (
+        "CAUTION", "downgraded", False), "the owner's preview labels it"
     world.enforce(monkeypatch)
     reader = data(client(world.db), url)
     assert reader["cards"] == [] and reader["withheld"] == 2, \
@@ -357,7 +379,7 @@ def test_a_matchs_analysis_says_each_cards_state(world: World, monkeypatch: pyte
         ("value", "CAUTION"), ("value", "EVALUATION"), ("evaluated", "NOT_RECOMMENDED")]
     assert (owner[0]["status_reason"], owner[0]["verdict"]) == ("downgraded", "caution")
     verdict_of = {"RECOMMENDED": "recommended", "CAUTION": "caution", "NOT_RECOMMENDED": "not_recommended"}
-    for c in (owner[0], *shadow["cards"]):
+    for c in (owner[0], in_shadow):
         assert verdict_of[c["user_status"]] == c["verdict"], "what is shown agrees with the card's own verdict"
 
 
@@ -407,7 +429,8 @@ def test_every_published_pick_answers_why_in_five_layers(world: World) -> None:
     assert e["review"] is None and e["narrative"] is None, "the review is not applied: nothing it decided is shown"
     every = {n: explanation(client(world.db), world.picks[n]) for n in "BCDE"}
     assert {n: x["user_status"] for n, x in every.items()} == {
-        "B": "RECOMMENDED", "C": "RECOMMENDED", "D": "RECOMMENDED", "E": "NOT_RECOMMENDED"}
+        "B": "CAUTION", "C": "NOT_RECOMMENDED", "D": "RECOMMENDED", "E": "NOT_RECOMMENDED"}, \
+        "B and C are kept back by the review even in shadow (D1); the explanation still answers for them"
     assert every["B"]["day"] is None and Decimal(every["B"]["market"]["published_odds"]) == Decimal("2.30")
     assert every["E"]["market"]["value_now"] is False and every["E"]["status_reason"] == "no_value_now"
 

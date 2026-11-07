@@ -96,13 +96,39 @@ function KeyStatsBlock({ ctx }: { ctx: MatchCtx }) {
 
 // ── Context ─────────────────────────────────────────────────────────────────
 
+/**
+ * Form, table and head to head side by side (plan Partidos y Match Center, D1): aligned at the top and each as tall as what it
+ * holds (`items-start`), never stretched to the tallest with half a card empty. Three columns on a desktop; two on a
+ * tablet, the head to head then taking the whole second row; one on a phone.
+ */
+export function ContextRow({
+  form,
+  table,
+  h2h,
+}: {
+  form: ReactNode;
+  table: ReactNode;
+  h2h: ReactNode;
+}) {
+  return (
+    <div
+      className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3"
+      data-testid="deepen-row-context"
+    >
+      <div className="min-w-0">{form}</div>
+      <div className="min-w-0">{table}</div>
+      <div className="min-w-0 md:col-span-2 lg:col-span-1">{h2h}</div>
+    </div>
+  );
+}
+
 function ContextGrid({ ctx }: { ctx: MatchCtx }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      <FormBlock ctx={ctx} />
-      <StandingsBlock ctx={ctx} />
-      <H2HBlock ctx={ctx} />
-    </div>
+    <ContextRow
+      form={<FormBlock ctx={ctx} />}
+      table={<StandingsBlock ctx={ctx} />}
+      h2h={<H2HBlock ctx={ctx} />}
+    />
   );
 }
 
@@ -167,6 +193,36 @@ function ContextSection({ ctx, open }: { ctx: MatchCtx; open?: boolean }) {
   );
 }
 
+/** What «Profundizar» holds, by row. */
+export interface DeepenBlocks {
+  form: ReactNode;
+  table: ReactNode;
+  h2h: ReactNode;
+  calendar: ReactNode;
+  absences: ReactNode;
+  lineups: ReactNode;
+}
+
+/**
+ * «Profundizar» opened, in three rows with no gaps (plan Partidos y Match Center, D1): 1) form, table and head to head,
+ * aligned at the top; 2) rest and calendar across the whole width, a team in each column; 3) absences and line-ups in two
+ * columns. On a tablet two columns, on a phone one. Apart from the blocks so that a test can check the rows.
+ */
+export function DeepenLayout({ blocks }: { blocks: DeepenBlocks }) {
+  return (
+    <div className="min-w-0 space-y-4" data-testid="deepen-layout">
+      <ContextRow form={blocks.form} table={blocks.table} h2h={blocks.h2h} />
+      <div className="min-w-0" data-testid="deepen-row-calendar">
+        {blocks.calendar}
+      </div>
+      <div className="grid items-start gap-4 md:grid-cols-2" data-testid="deepen-row-squads">
+        <div className="min-w-0">{blocks.absences}</div>
+        <div className="min-w-0">{blocks.lineups}</div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * «Profundizar», before kick-off (plan de cierre UX, 2.2): everything that is read to go deeper once the match is
  * understood - form, table and head to head, then rest and calendar, absences and the line-ups - folded, closed until the
@@ -179,14 +235,16 @@ export function DeepenSection({ ctx }: { ctx: MatchCtx }) {
       subtitle={t("match.deepen.subtitle")}
       testId="match-deepen"
     >
-      <div className="space-y-4">
-        <ContextGrid ctx={ctx} />
-        <div className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <CalendarBlock ctx={ctx} />
-          <AbsencesBlock ctx={ctx} />
-          <LineupsTeaser ctx={ctx} />
-        </div>
-      </div>
+      <DeepenLayout
+        blocks={{
+          form: <FormBlock ctx={ctx} />,
+          table: <StandingsBlock ctx={ctx} />,
+          h2h: <H2HBlock ctx={ctx} />,
+          calendar: <CalendarBlock ctx={ctx} />,
+          absences: <AbsencesBlock ctx={ctx} />,
+          lineups: <LineupsTeaser ctx={ctx} />,
+        }}
+      />
     </Fold>
   );
 }

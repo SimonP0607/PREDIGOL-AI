@@ -21,7 +21,8 @@ from fbi.customer import push
 from fbi.messaging import outbox
 
 Change = Literal["password", "password_reset", "password_admin", "mfa_on", "mfa_off", "mfa_reset", "recovery_codes"]
-LINK_TEMPLATES: dict[str, str] = {"invite": "invitation", "reset": "password_reset", "unlock": "account_unlock"}
+LINK_TEMPLATES: dict[str, str] = {"invite": "invitation", "reset": "password_reset", "unlock": "account_unlock",
+                                  "verify": "email_verification"}
 KNOWN_DEVICE_DAYS = 90
 """A device seen in a completed sign-in within this long is known (sessions are kept 90 days after they end)."""
 

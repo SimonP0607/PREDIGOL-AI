@@ -31,7 +31,7 @@ from typing import Any
 import psycopg
 import structlog
 
-from fbi.auth import tokens
+from fbi.auth import signup, tokens
 from fbi.core.clock import now
 from fbi.core.logging import error_summary
 from fbi.customer import events, feedback, membership
@@ -89,6 +89,7 @@ class CycleTotals:
     rollup: int = 0
     purge: events.PurgeReport | None = None
     links_purge: tuple[str, int] | None = None
+    signup_purge: tuple[str, int] | None = None
     """The accounts' one-use links past their 30 days (plan UX, A7): the mode and how many."""
     feedback_purge: feedback.PurgeReport | None = None
     """The readers' answers past their 24 months (plan UX, B6), under the analytics' purge switch."""
@@ -133,6 +134,8 @@ class CycleTotals:
                  if self.purge is not None else "")
         if self.links_purge is not None:
             purge += f"; links purge {self.links_purge[0]}: {self.links_purge[1]}"
+        if self.signup_purge is not None:
+            purge += f"; unconfirmed accounts {self.signup_purge[0]}: {self.signup_purge[1]}"
         if self.feedback_purge is not None:
             purge += f"; feedback purge {self.feedback_purge.mode}: {self.feedback_purge.rows}"
         if self.lifecycle_purge is not None:
@@ -214,6 +217,13 @@ def start_of_cycle(conn: psycopg.Connection[Any], totals: CycleTotals, *, sendin
         conn.rollback()
         totals.errors.append(f"links: {error_summary(exc)}"[:300])
         log.error("messenger.links_purge_failed", error=error_summary(exc))
+    try:
+        totals.signup_purge = signup.purge_unconfirmed(conn, at=now())
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        totals.errors.append(f"signup: {error_summary(exc)}"[:300])
+        log.error("messenger.signup_purge_failed", error=error_summary(exc))
     # the notices on devices (plan UX, B7): the jobs write what is owed; the ticks send it
     jobs = push_jobs.collect(conn, at=now())
     totals.push_queued += jobs.total

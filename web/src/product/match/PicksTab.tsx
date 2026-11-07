@@ -100,6 +100,12 @@ export function UpcomingPicksView({
       {shadow ? null : (
         <p className="text-caption text-muted-foreground">{t("match.picksTab.intro")}</p>
       )}
+      {/* The two probabilities (plan Partidos y Match Center, decision 4): a pick's probability comes from the decision
+          layer's model and the forecast's from its own, so the same selection can carry two numbers on one page; each
+          says where it comes from instead of looking like a mistake. */}
+      <p className="text-caption text-muted-foreground" data-testid="match-picks-origin">
+        {t("match.intelligence.picksOrigin")}
+      </p>
       <div className="grid gap-3 md:grid-cols-2">
         {paged.items.map((p) => (
           <PickAnchor key={p.pick_id} pickId={p.pick_id} focused={focused === p.pick_id}>
