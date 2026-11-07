@@ -8,6 +8,7 @@ import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { HOW_CARD_IDS } from "@/product/help/howItWorks";
+import { setLocale, translate } from "@/lib/i18n";
 import enGuides from "@/locales/en/guides.json";
 import esGuides from "@/locales/es/guides.json";
 import type { GuideIn, GuideKey, GuideState } from "@/lib/api/v1/types_guides";
@@ -15,6 +16,7 @@ import type { Me } from "@/lib/api/v1/types_auth";
 import { placeCard, resolvable } from "./anchors";
 import { MAX_SKIPS, blockedBy, owed, type Facts } from "./eligibility";
 import { cardsOf, firstFrom, neighbour, numbered } from "./navigation";
+import { PROFILE_STEPS, profileParts, profileTitle, type ProfileFacts } from "./profileText";
 import { dequeue, enqueue, flush, readQueue } from "./queue";
 import { GUIDES, GUIDE_LIST, guideOfScreen, launchable, stepCount } from "./registry";
 import { applied, seenOf, withGuide } from "./state";
@@ -78,8 +80,8 @@ describe("the registry", () => {
     expect(GUIDES.home.coveredBy).toBe("general");
     expect(guideOfScreen("home")?.key).toBe("general");
     expect(guideOfScreen("odds")?.key).toBe("odds");
-    expect(guideOfScreen("profile")).toBeNull();
-    expect(launchable(GUIDES.profile)).toBe(false);
+    expect(guideOfScreen("profile")?.key).toBe("profile");
+    expect(guideOfScreen("live")?.key).toBe("live");
   });
 });
 
@@ -96,8 +98,10 @@ describe("who is owed what", () => {
     expect(owed(general, seen("in_progress", 0))).toBe("start");
   });
 
-  test("a guide not built owes nothing", () => {
-    expect(owed(GUIDES.profile, undefined)).toBeNull();
+  test("a guide without steps (not built) owes nothing and is not launchable", () => {
+    const empty = { ...GUIDES.odds, steps: [] };
+    expect(owed(empty, undefined)).toBeNull();
+    expect(launchable(empty)).toBe(false);
   });
 
   test("an earlier version than the one to show again starts over, whatever it was", () => {
@@ -271,9 +275,11 @@ describe("the page's copy of the server's rules", () => {
 });
 
 describe("the guides of the screens", () => {
-  const screens = GUIDE_LIST.filter((g) => g.key !== "general" && launchable(g));
+  const screens = GUIDE_LIST.filter(
+    (g) => g.key !== "general" && g.key !== "profile" && launchable(g),
+  );
 
-  test("seven screens and Inicio are built, each with two or three steps (Perfil comes later)", () => {
+  test("seven screens and Inicio are built, each with two or three steps", () => {
     expect(screens.map((g) => g.key)).toEqual([
       "home",
       "matches",
@@ -318,13 +324,82 @@ describe("the guides of the screens", () => {
     ]
       .map(src)
       .join("\n");
+    // the blocks of Perfil carry data-guide={`profile-${id}`}, one per block
+    expect(src("profile/Block.tsx")).toContain("data-guide={`profile-${id}`}");
     const dynamic = ["layer-for-you", "layer-predigol", "nav-home", "nav-matches", "nav-picks"];
     for (const g of GUIDE_LIST.filter(launchable))
       for (const step of g.steps)
         for (const anchor of step.anchors) {
-          if (dynamic.includes(anchor) || anchor.startsWith("nav-")) continue;
+          if (dynamic.includes(anchor) || /^(nav|profile)-/.test(anchor)) continue;
           expect(code, `${g.key}/${step.id}: ${anchor}`).toContain(`data-guide="${anchor}"`);
         }
+  });
+});
+
+describe("the guide of Perfil", () => {
+  const all: ProfileFacts = {
+    digest: true,
+    device: true,
+    whatsapp: true,
+    membership: true,
+    desk: false,
+  };
+  const none: ProfileFacts = {
+    digest: false,
+    device: false,
+    whatsapp: false,
+    membership: false,
+    desk: true,
+  };
+
+  test("six steps, owed, with no welcome, on the page's blocks", () => {
+    const g = GUIDES.profile;
+    expect(g.mandatory).toBe(true);
+    expect(g.welcome).toBe(false);
+    expect(g.steps.map((s) => s.id)).toEqual([...PROFILE_STEPS]);
+    expect(stepCount(g)).toBe(6);
+    expect(g.steps.flatMap((s) => s.anchors).every((a) => a.startsWith("profile-"))).toBe(true);
+  });
+
+  test("it asks for no «¿Seguimos?» and cannot be skipped, only paused", () => {
+    const g = GUIDES.profile;
+    expect(owed(g, { status: "in_progress", step: 3, version: 1 })).toBe("resume");
+    expect(blockedBy(g, { ...FREE, consentsDue: true })).toBe("consents-due");
+    expect(blockedBy(g, { ...FREE, auto: false, skipsInARow: 5 })).toBeNull();
+  });
+
+  test("the words are built from what exists for the account, never naming what is off", () => {
+    expect(profileParts("notifications", none)).toEqual(["guides.profile.notifications.body"]);
+    expect(profileParts("notifications", all)).toEqual([
+      "guides.profile.notifications.body",
+      "guides.profile.notifications.digest",
+      "guides.profile.notifications.device",
+    ]);
+    expect(profileParts("last", none)).toEqual(["guides.profile.last.help"]);
+    expect(profileParts("last", all)).toEqual([
+      "guides.profile.last.membership",
+      "guides.profile.last.help",
+      "guides.profile.last.whatsapp",
+    ]);
+    expect(profileParts("account", all)).toContain("guides.profile.account.tap");
+    expect(profileParts("account", none)).not.toContain("guides.profile.account.tap");
+    expect(profileTitle("last", { membership: false })).toBe("guides.profile.last.titleHelp");
+    expect(profileTitle("last", { membership: true })).toBe("guides.profile.last.title");
+  });
+
+  test("every part of every step exists in both languages and stays short", () => {
+    for (const lang of ["es", "en"] as const) {
+      setLocale(lang);
+      for (const step of PROFILE_STEPS) {
+        for (const key of profileParts(step, all)) {
+          const text = translate(key);
+          expect(text, `${lang} ${key}`).not.toBe(key);
+          expect(text.length, `${lang} ${key}`).toBeLessThanOrEqual(190);
+        }
+        expect(translate(profileTitle(step, none))).not.toContain("guides.profile");
+      }
+    }
+    setLocale("es");
   });
 });
 

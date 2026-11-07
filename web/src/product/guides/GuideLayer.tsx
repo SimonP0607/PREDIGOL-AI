@@ -15,6 +15,7 @@ import { HOW_PATH, cardAnchor } from "@/product/help/howItWorks";
 import { findAnchor, placeCard, type Box } from "./anchors";
 import { useGuides } from "./context";
 import { cardsOf, numbered } from "./navigation";
+import { ProfileBody, ProfileTitle } from "./ProfileBody";
 import { GUIDES } from "./registry";
 
 const BUTTON =
@@ -101,7 +102,14 @@ export function GuideLayer() {
   const last = !welcome && active.index === lastShown;
   const first = shown[0] === active.index;
   const base = `guides.${def.key}.${step.id}`;
-  const heading = resuming ? t("guides.resume.title") : t(`${base}.title`);
+  const own = def.key === "profile" && !resuming; // the guide of Perfil builds its words from the account
+  const heading = resuming ? (
+    t("guides.resume.title")
+  ) : own ? (
+    <ProfileTitle step={step.id} />
+  ) : (
+    t(`${base}.title`)
+  );
 
   const docked = desk && place ? { top: place.top, left: place.left } : undefined;
 
@@ -180,6 +188,8 @@ export function GuideLayer() {
                   <p>{t("onboarding.welcome.about.picks")}</p>
                   <p>{t(`${base}.body`)}</p>
                 </>
+              ) : own ? (
+                <ProfileBody step={step.id} />
               ) : (
                 <p>{t(`${base}.body`)}</p>
               )}

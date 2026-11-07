@@ -137,7 +137,23 @@ export const GUIDES: Readonly<Record<GuideKey, GuideDef>> = {
     ["saved", "mine-saved"],
     ["parlays", "mine-parlays"],
   ]),
-  profile: none("profile", "profile", "/profile", { mandatory: true }),
+  profile: {
+    key: "profile",
+    version: 1,
+    reshowFrom: 1,
+    mandatory: true,
+    screen: "profile",
+    path: "/profile",
+    welcome: false,
+    steps: [
+      { id: "account", anchors: ["profile-account"] },
+      { id: "football", anchors: ["profile-football", "profile-region"] },
+      { id: "notifications", anchors: ["profile-notifications"] },
+      { id: "privacy", anchors: ["profile-privacy"] },
+      { id: "security", anchors: ["profile-security"] },
+      { id: "last", anchors: ["profile-membership", "profile-help"] },
+    ],
+  },
 };
 
 /** The guides in the order the API keeps them. */
