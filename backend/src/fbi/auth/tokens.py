@@ -51,13 +51,13 @@ def same(a: str, b: str) -> bool:
 
 # ── an account's one-use links ────────────────────────────────────────────────────────
 
-Purpose = Literal["invite", "reset", "unlock"]
+Purpose = Literal["invite", "reset", "unlock", "verify"]
 LIFETIME: dict[str, timedelta] = {"invite": timedelta(days=7), "reset": timedelta(minutes=30),
-                                  "unlock": timedelta(hours=1)}
-"""How long a link works, counted from when its e-mail left: an invitation 7 days and an unlock 1 hour (plan UX, A7),
+                                  "unlock": timedelta(hours=1), "verify": timedelta(hours=24)}
+"""How long a link works, counted from when its e-mail left: an invitation 7 days, an unlock 1 hour (plan UX, A7) and the confirmation of an address given at registration 24 hours (tramo 1, UX-038),
 a password reset 30 minutes (R25 of the security plan, stricter than the UX plan's hour: the phase that comes first
 meets both)."""
-STATUS_FOR: dict[str, str] = {"invite": "invited", "reset": "active", "unlock": "active"}
+STATUS_FOR: dict[str, str] = {"invite": "invited", "reset": "active", "unlock": "active", "verify": "pending"}
 """The state the account must be in for a link of each kind to leave and to work."""
 PER_HOUR = 3
 """Links of one kind an account may be sent in an hour (plan UX, section 19: «un límite de 3 por hora»)."""

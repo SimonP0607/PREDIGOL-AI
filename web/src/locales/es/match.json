@@ -26,6 +26,7 @@
     "preliminary": "Ronda preliminar {n}",
     "round": "Ronda {n}",
     "fraction": "1/{n} de final",
+    "roundOf": "1/{half} de final",
     "stage": {
       "regular_season": "Fase regular",
       "group_stage": "Fase de grupos",
@@ -41,7 +42,9 @@
       "championship_round": "Ronda por el título",
       "qualifying_round": "Ronda previa",
       "preliminary_round": "Ronda preliminar",
-      "3rd_place_final": "Tercer puesto"
+      "3rd_place_final": "Tercer puesto",
+      "league_stage": "Fase liga",
+      "knockout_round_play_offs": "Play-offs de eliminatoria"
     }
   },
   "header": {
@@ -398,13 +401,15 @@
   },
   "advanced": {
     "note": "Solo administradores: modelos y predicciones, capturas, linaje y auditoría de este partido.",
+    "marketsTitle": "Mercados: capturas de cuotas",
     "analysisNote": "Vista de evaluación de PrediGol Intelligence: las tarjetas por mercado, la lectura del día de la IA y las selecciones en evaluación. Un lector no la ve: su Resumen muestra la lectura y los picks publicados."
   },
   "intelligence": {
     "subtitle": "La lectura de PrediGol para este partido",
     "risksLead": "Qué puede salir mal:",
     "picks": "Picks publicados",
-    "picksShadow": "Picks en evaluación"
+    "picksShadow": "Picks en evaluación",
+    "picksOrigin": "La probabilidad de cada pick es la del modelo con el que PrediGol decide sus picks. El Pronóstico usa su propio modelo (lo dice en cada mercado), así que la misma selección puede tener dos cifras distintas."
   },
   "priceStatus": {
     "title": "Sin cuota de casas",
@@ -852,7 +857,7 @@
     "hide": "Ocultar las casas",
     "lineLabel": "Línea",
     "bookmaker": "Casa",
-    "opened": "abrió {odds}",
+    "opened": "primera cuota vista {odds}",
     "movedUp": "Subió desde {odds}",
     "movedDown": "Bajó desde {odds}",
     "loading": "Cargando las casas…"
@@ -984,41 +989,65 @@
       "range": "puestos {best}.º a {worst}.º"
     },
     "table_after": {
-      "home_win": "Si gana {home}: {home} sumaría {home_points} puntos ({home_places}) y {away}, {away_points} ({away_places}).",
-      "draw": "Si empatan: {home} sumaría {home_points} puntos ({home_places}) y {away}, {away_points} ({away_places}).",
-      "away_win": "Si gana {away}: {home} sumaría {home_points} puntos ({home_places}) y {away}, {away_points} ({away_places})."
+      "home_win": "Si gana {home}: {home} sumaría {home_points} ({home_places}) y {away}, {away_points} ({away_places}).",
+      "draw": "Si empatan: {home} sumaría {home_points} ({home_places}) y {away}, {away_points} ({away_places}).",
+      "away_win": "Si gana {away}: {home} sumaría {home_points} ({home_places}) y {away}, {away_points} ({away_places})."
     },
     "tableNote": "Con los demás equipos en sus puntos de hoy: un puesto es un intervalo.",
     "days": {
-      "exact": "{days} días",
-      "at_most": "a lo sumo {days} días"
+      "exact_one": "{days} día",
+      "exact_other": "{days} días",
+      "at_most_one": "a lo sumo {days} día",
+      "at_most_other": "a lo sumo {days} días"
+    },
+    "count": {
+      "matches_one": "{count} partido",
+      "matches_other": "{count} partidos",
+      "meetings_one": "{count} partido",
+      "meetings_other": "{count} partidos",
+      "wins_one": "{count} victoria",
+      "wins_other": "{count} victorias",
+      "draws_one": "{count} empate",
+      "draws_other": "{count} empates",
+      "goals_one": "{count} gol",
+      "goals_other": "{count} goles",
+      "minutes_one": "{count} minuto",
+      "minutes_other": "{count} minutos",
+      "points_one": "{count} punto",
+      "points_other": "{count} puntos",
+      "books_one": "{count} casa",
+      "books_other": "{count} casas",
+      "days_one": "{days} día",
+      "days_other": "{days} días",
+      "last_matches_one": "en su último partido",
+      "last_matches_other": "en sus últimos {count} partidos"
     },
     "rest_days": "{team} llega con {days} de descanso.",
-    "rest_days_matches": "{team} llega con {days} de descanso y {matches} partidos en los últimos 14 días.",
-    "next_match": "{team} vuelve a jugar en {days} días.",
-    "next_match_comp": "{team} vuelve a jugar en {days} días ({competition}).",
-    "form": "{team}: {sequence} en sus últimos {n} partidos ({ppg} puntos por partido; {gf} goles a favor y {ga} en contra por partido).",
+    "rest_days_matches": "{team} llega con {days} de descanso y {matches} en los últimos 14 días.",
+    "next_match": "{team} vuelve a jugar en {days}.",
+    "next_match_comp": "{team} vuelve a jugar en {days} ({competition}).",
+    "form": "{team}: {sequence} {last} ({ppg} puntos por partido; {gf} goles a favor y {ga} en contra por partido).",
     "formLetters": {
       "W": "G",
       "D": "E",
       "L": "P"
     },
     "venue_record": {
-      "home": "{team} en casa: {w}G {d}E {l}P en {n} partidos.",
-      "away": "{team} fuera: {w}G {d}E {l}P en {n} partidos."
+      "home": "{team} en casa: {w}G {d}E {l}P en {matches}.",
+      "away": "{team} fuera: {w}G {d}E {l}P en {matches}."
     },
-    "xg": "{team} genera {xg_for} xG y concede {xg_against} (en {n} partidos con estadísticas).",
+    "xg": "{team} genera {xg_for} xG y concede {xg_against} (en {matches} con estadísticas).",
     "xg_plain": "{team} genera {xg_for} xG y concede {xg_against}.",
-    "streak_unbeaten": "{team} suma {n} partidos sin perder.",
-    "streak_winless": "{team} lleva {n} partidos sin ganar.",
-    "h2h": "Cara a cara (90 minutos): {n} partidos, {home_wins} victorias de {home}, {draws} empates y {away_wins} de {away} ({n_effective} efectivos).",
-    "top_scorer": "{team}: {player} lleva {goals} goles.",
-    "top_scorer_minutes": "{team}: {player} lleva {goals} goles en {minutes} minutos.",
+    "streak_unbeaten": "{team} suma {matches} sin perder.",
+    "streak_winless": "{team} lleva {matches} sin ganar.",
+    "h2h": "Cara a cara (90 minutos): {meetings}, {home_wins} de {home}, {draws} y {away_wins} de {away}.",
+    "top_scorer": "{team}: {player} lleva {goals}.",
+    "top_scorer_minutes": "{team}: {player} lleva {goals} en {minutes}.",
     "key_absences": "Bajas importantes de {team}: {players}.",
     "key_absences_more": "Bajas importantes de {team}: {players} y {more} más.",
     "market_unpriced": "Todavía no hay cuotas para este partido.",
     "market_favourite": "El mercado da {pct} a {outcome}.",
-    "market_favourite_books": "El mercado da {pct} a {outcome} ({books} casas).",
+    "market_favourite_books": "El mercado da {pct} a {outcome} ({books}).",
     "market_moved": "Desde la apertura, {outcome} pasó de {opening} a {now} en el mercado.",
     "total": {
       "over": "más de {line} goles",
@@ -1034,7 +1063,7 @@
     "rumours_one": "Hay {count} rumor sin confirmar: no cuenta como hecho.",
     "rumours_other": "Hay {count} rumores sin confirmar: no cuentan como hechos.",
     "no_external_info": "No encontramos información externa del partido (noticias o bajas confirmadas por una fuente).",
-    "h2h_weak": "El cara a cara dice poco: {n} partidos, {n_effective} efectivos.",
+    "h2h_weak": "El cara a cara dice poco: {meetings}, con poco peso para este partido.",
     "data_not_fit": "Los datos de esta competición no son aptos para modelos: esta lectura es solo descripción.",
     "not_checked": "No pudimos comprobar: {blocks}.",
     "blocks": {
@@ -1300,6 +1329,99 @@
       "title": "Bajas en la prensa",
       "note": "Lo que dicen los medios sobre quién no juega o está en duda, con su estado; los detalles y el enlace, en Noticias.",
       "more": "Ver en Noticias"
+    }
+  },
+  "catalog": {
+    "featured": "Destacados",
+    "categories": "Categorías de mercados",
+    "category": {
+      "result": "Resultado",
+      "goals": "Goles",
+      "goals_half": "Mitades",
+      "corners": "Córners",
+      "cards": "Tarjetas",
+      "shots": "Tiros"
+    },
+    "loading": "Cargando los mercados…",
+    "error": "No pudimos cargar los mercados de esta categoría.",
+    "empty": "No hay cuotas vigentes en esta categoría.",
+    "shownOnly": "Solo los cinco mercados de siempre (1X2, goles, ambos marcan, hándicap asiático y doble oportunidad) se pueden añadir al parlay; los demás son para consultar.",
+    "moreLines_one": "Ver {count} línea más",
+    "moreLines_other": "Ver {count} líneas más",
+    "mainLineOnly": "Ver solo la línea principal",
+    "market": {
+      "result_1x2": "Resultado final (1X2)",
+      "result_asian_handicap": "Hándicap asiático",
+      "result_double_chance": "Doble oportunidad",
+      "result_draw_no_bet": "Empate no válido",
+      "goals_over_under": "Más/menos goles",
+      "goals_btts": "Ambos marcan",
+      "goals_odd_even": "Goles: par o impar",
+      "half_time_full_time": "Descanso/final",
+      "highest_scoring_half": "Mitad con más goles",
+      "corners_over_under": "Más/menos córners",
+      "corners_1x2": "Más córners (1X2)",
+      "corners_double_chance": "Más córners: doble oportunidad",
+      "cards_over_under": "Más/menos tarjetas",
+      "yellow_cards_over_under": "Más/menos amarillas",
+      "yellow_cards_double_chance": "Más amarillas: doble oportunidad",
+      "yellow_cards_1x2": "Más amarillas (1X2)",
+      "red_cards_over_under": "Más/menos rojas",
+      "shots_over_under": "Más/menos tiros",
+      "shots_on_target_over_under": "Más/menos tiros a puerta",
+      "shots_1x2": "Más tiros (1X2)",
+      "shots_on_target_1x2": "Más tiros a puerta (1X2)",
+      "other": "Otro mercado"
+    },
+    "period": {
+      "FT": "90'",
+      "1H": "1.ª parte",
+      "2H": "2.ª parte",
+      "other": "Otro período"
+    },
+    "subject": {
+      "home": "{team} (local)",
+      "away": "{team} (visitante)"
+    },
+    "selection": {
+      "one_x_two": {
+        "Home": "{home}",
+        "Draw": "Empate",
+        "Away": "{away}"
+      },
+      "draw_no_bet": {
+        "Home": "{home}",
+        "Away": "{away}"
+      },
+      "double_chance": {
+        "1X": "{home} o empate",
+        "12": "{home} o {away}",
+        "X2": "Empate o {away}"
+      },
+      "both_teams_score": {
+        "Yes": "Sí",
+        "No": "No"
+      },
+      "odd_even": {
+        "Odd": "Impar",
+        "Even": "Par"
+      },
+      "over_under": {
+        "Over": "Más de {line}",
+        "Under": "Menos de {line}"
+      },
+      "asian_handicap": {
+        "Home": "{home} {line}",
+        "Away": "{away} {line}"
+      },
+      "highest_scoring_half": {
+        "1st Half": "1.ª parte",
+        "2nd Half": "2.ª parte",
+        "Draw": "Igual en las dos",
+        "X": "Igual en las dos"
+      },
+      "htft": "{ht} / {ft}",
+      "other": "Opción {n}"
     }
   }
 }

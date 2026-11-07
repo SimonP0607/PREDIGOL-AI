@@ -16,7 +16,6 @@ import {
 } from "@tanstack/react-router";
 import { setLocale, translate } from "@/lib/i18n";
 import { isTerm, termName, termShort } from "@/lib/glossary";
-import { stepPath, TOUR_STEPS } from "@/product/tour/steps";
 import { HowItWorksPage } from "./HowItWorksPage";
 import { HOW_CARDS, HOW_CARD_IDS, HOW_PATH, cardAnchor } from "./howItWorks";
 
@@ -137,18 +136,10 @@ describe("the page", () => {
   });
 });
 
-describe("the tour", () => {
-  test("five steps, the parlay between the pick and Mis picks, each on its page", () => {
-    expect([...TOUR_STEPS]).toEqual(["home", "match", "pick", "parlay", "myPicks"]);
-    expect(stepPath("parlay", null)).toBe("/parlays");
-    expect(stepPath("pick", null)).toBe("/picks");
-  });
-
-  test("its words say five steps and the picks the reader sees", () => {
-    expect(translate("onboarding.tour.startHelp")).toContain("Cinco pasos");
+describe("the welcome tour's words", () => {
+  test("its entry points say five steps", () => {
     expect(translate("onboarding.welcome.about.tour")).toContain("5 pasos");
     expect(translate("support.help.more.tour")).toContain("5 pasos");
-    expect(translate("onboarding.tour.pick.body")).toContain("solo lo que PrediGol recomienda");
-    expect(translate("onboarding.tour.parlay.body")).toContain("nunca los rellena");
+    expect(translate("guides.general.welcome.start")).toContain("5 pasos");
   });
 });

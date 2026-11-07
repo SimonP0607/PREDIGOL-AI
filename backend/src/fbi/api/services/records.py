@@ -16,6 +16,7 @@ from typing import Any
 
 from fbi.api.cache import shared
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
+from fbi.api.contracts.reading import ReadingFact
 from fbi.api.contracts.records import (
     AiLatest,
     DailyBoard,
@@ -36,7 +37,7 @@ from fbi.api.contracts.records import (
 )
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, unavailable
 from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
-from fbi.api.services import pick_filter, transparency
+from fbi.api.services import pick_filter, reading, transparency
 from fbi.core import match_state
 from fbi.core.clock import now as clock_now
 from fbi.market import closing_value
@@ -242,11 +243,13 @@ def _parlay(conn: Conn, kind: str, day: date, source: SetSource) -> ParlayRecord
     ai = ai_items(conn, rows, reveal=source == "evaluation")
     latest = ai_latest(conn, rows, reveal=source == "evaluation")
     trail = corrections(conn, {0: parlay_trail("parlay", int(p["id"]), [int(r["leg_no"]) for r in rows])})
+    why = reading.leg_reasons(conn, [(int(r["fixture_id"]), r["market_key"], r["selection"]) for r in rows])
     legs = [ParlayRecordLeg(
         leg_no=r["leg_no"], pick_id=r["pick_id"], match=match_of(r), market_key=r["market_key"],
         selection=r["selection"], line=r["line"], odds=r["odds"], bookmaker=r["bookmaker"], p_model=r["p_model"],
         p_low=r["p_low"], p_market=r["p_market"], ev=r["ev"], status=r["status"], ai=ai.get(i),
-        ai_latest=latest.get(i))
+        ai_latest=latest.get(i),
+        why=None if i not in why else ReadingFact(code=why[i].code, params=why[i].params, ref=why[i].ref))
         for i, r in enumerate(rows)]
     statuses = [str(r["status"]) for r in rows]
     return ParlayRecord(

@@ -75,6 +75,12 @@ export interface CompetitionRef {
   logo_url?: string | null;
   flag_url?: string | null;
   country_code?: string | null;
+  /**
+   * The owner's priority group of the competition (comp-priority-v1, fbi.intel.day_priority): 1 the Champions League
+   * and the top leagues, 2 continental and intercontinental club cups, 3 national-team tournaments and World Cup
+   * qualifiers, 4 everything else. An ordering hint for lists. Absent from an API older than UX-029: read as 4.
+   */
+  priority_group?: number;
 }
 
 /** Where a match is played or a team plays. `id` is null when the provider named the stadium without identifying

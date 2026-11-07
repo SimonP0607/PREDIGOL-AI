@@ -491,6 +491,79 @@ def glances(conn: Conn, fixture_ids: list[int], *, at: datetime | None = None) -
             for r in fetch_all(conn, GLANCES_SQL, {"ids": fixture_ids, "at": at or now()})}
 
 
+LEG_SQL = """
+SELECT w.id AS fixture_id, p.fixture, p.stakes, p.absences, p.dossier
+  FROM unnest(%(ids)s::bigint[]) AS w(id)
+  JOIN core.fixtures f ON f.id = w.id
+  CROSS JOIN LATERAL (
+    SELECT p.content->'fixture' AS fixture, p.content->'stakes' AS stakes, p.content->'absences' AS absences,
+           jsonb_build_object('teams', p.content->'dossier'->'teams') AS dossier
+      FROM ai.match_packets p
+     WHERE p.fixture_id = w.id AND p.as_of <= LEAST(%(at)s, f.kickoff_at)
+     ORDER BY p.as_of DESC, p.id DESC
+     LIMIT 1) p
+"""
+"""The newest packet of each match known before its kick-off (a parlay's leg is explained with what was known when the match
+started, never with a rebuilt packet), only the blocks a leg's line uses: one per match through the packets' index."""
+
+LEG_CODES: Final = ("streak_unbeaten", "key_absences", "streak_winless", "stakes_pressure")
+"""The facts a leg may be explained with, in this order: a run without defeat of the side the leg is on, the key players the
+other side is missing, a run without a win of the other side, and what the side the leg is on is playing for."""
+LEG_STAKES: Final = frozenset({"title", "europe", "relegation", "promotion"})
+
+
+def selected_side(market_key: str, selection: str) -> str | None:
+    """The side of the match a selection backs: the home or the away win, or the double chance that holds it with the draw
+    («1X», «X2»). None for every other selection - a draw, a total, both teams to score, «12» -: no side is backed, and
+    nothing is said about one."""
+    if market_key == "1X2":
+        return {"Home": "home", "Away": "away"}.get(selection)
+    if market_key == "DC":
+        return {"1X": "home", "X2": "away"}.get(selection)
+    return None
+
+
+def leg_reason(content: Mapping[str, Any], market_key: str, selection: str) -> Fact | None:
+    """One fact of the match's reading that stands behind a parlay leg, or None: the reading is not asked to say more than it
+    knows. For a selection that backs a side - see ``selected_side`` -, the first of: a run of four or more matches without
+    defeat of that side; a key player out for the other side; a run without a win of the other side; what the side plays
+    for (title, Europe, relegation or promotion). The facts are the reading's own, with its own rules and templates."""
+    side = selected_side(market_key, selection)
+    if side is None:
+        return None
+    other = "away" if side == "home" else "home"
+    r = Reading()
+    data(r, content)
+    context(r, content)
+    found = [f for section in ("data", "context") for f in r.sections[section]]
+    wanted = (("streak_unbeaten", side), ("key_absences", other), ("streak_winless", other), ("stakes_pressure", side))
+    for code, who in wanted:
+        for f in found:
+            if f.code != code or f.params.get("side") != who:
+                continue
+            if code == "stakes_pressure" and f.params.get("pressure") not in LEG_STAKES:
+                continue
+            return f
+    return None
+
+
+def leg_reasons(conn: Conn, legs: Sequence[tuple[int, str, str]], *, at: datetime | None = None) -> dict[int, Fact]:
+    """The line of why of each parlay leg (fixture id, market, selection), keyed by its position in ``legs``: only the legs for
+    which the match's reading has a fact. Empty while readers do not see the reading."""
+    if not legs or not users_may_see():
+        return {}
+    ids = sorted({fixture_id for fixture_id, _, _ in legs})
+    packets = {int(r["fixture_id"]): {k: r[k] for k in ("fixture", "stakes", "absences", "dossier") if r.get(k) is not None}
+               for r in fetch_all(conn, LEG_SQL, {"ids": ids, "at": at or now()})}
+    out: dict[int, Fact] = {}
+    for i, (fixture_id, market_key, selection) in enumerate(legs):
+        content = packets.get(fixture_id)
+        fact = None if content is None else leg_reason(content, market_key, selection)
+        if fact is not None:
+            out[i] = fact
+    return out
+
+
 def _forecast(conn: Conn, fixture_id: int, at: datetime | None) -> tuple[list[ForecastMarket], str | None, datetime | None]:
     """The forecast as a reader may see it (never the preview): its markets, or why there are none, and when it was said."""
     env = forecast_service.match_forecast(conn, fixture_id, preview=False, at=at)

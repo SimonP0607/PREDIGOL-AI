@@ -12,6 +12,7 @@ import type { FindingsQuery, ScoresQuery } from "./types_truth";
 import type { MemoryFilters } from "./types_ai_layer";
 import type { AgentRunsQuery, ContraCode } from "./types_ai_shadow";
 import type { PairStatus } from "./types_referees";
+import type { CatalogCategory } from "./types_market_catalog";
 
 export const AUDIT_PAGE = 100;
 const MINUTE = 60_000;
@@ -225,6 +226,15 @@ export const live = {
     queryKey: ["v1", "match-markets", id],
     queryFn: () => v1.matchMarkets(id),
     refetchInterval: 2 * MINUTE,
+  }),
+  /**
+   * The market catalogue (F4a): loaded when Mercados or one of its categories opens, never in the match's poll. The API
+   * keeps each answer 60 s, so a minute is as fresh as it gets.
+   */
+  matchMarketCatalog: (id: string, category?: CatalogCategory) => ({
+    queryKey: ["v1", "match-market-catalog", id, category ?? "categories"],
+    queryFn: () => v1.matchMarketCatalog(id, category),
+    staleTime: MINUTE,
   }),
   matchAnalysis: (id: string, preview: Preview) => ({
     queryKey: ["v1", "match-analysis", id, preview ?? "qualified"],

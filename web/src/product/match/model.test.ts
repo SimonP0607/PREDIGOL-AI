@@ -552,6 +552,19 @@ describe("labels", () => {
     expect(roundLabel(null)).toBeNull();
   });
 
+  test("cup rounds by the teams left, and the league stage of the continental cups", () => {
+    setLocale("es");
+    expect(roundLabel("Round of 128")).toBe("1/64 de final");
+    expect(roundLabel("Round of 64")).toBe("1/32 de final");
+    expect(roundLabel("Round of 16")).toBe("Octavos de final");
+    expect(roundLabel("League Stage - 4")).toBe("Fase liga · Jornada 4");
+    expect(roundLabel("Knockout Round Play-offs")).toBe("Play-offs de eliminatoria");
+    setLocale("en");
+    expect(roundLabel("Round of 128")).toBe("Round of 128");
+    expect(roundLabel("League Stage - 4")).toBe("League stage · Matchday 4");
+    setLocale("es");
+  });
+
   test("absence reasons fall into a few plain categories", () => {
     expect(absenceReason("Knee Injury")).toBe("injury");
     expect(absenceReason("Suspended")).toBe("suspension");

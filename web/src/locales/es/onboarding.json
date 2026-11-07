@@ -70,43 +70,6 @@
     "saved": "Guardamos tus ligas y equipos.",
     "failed": "No pudimos guardar tus ligas y equipos. Inténtalo de nuevo."
   },
-  "hint": {
-    "label": "Pista",
-    "dismiss": "Entendido",
-    "picks": "Un pick sale solo cuando medimos ventaja frente al precio del mercado. Toca cualquier término para ver qué significa.",
-    "match": "Aquí está todo el partido: el pronóstico, el contexto, el mercado y, cuando lo hay, el pick con su estado real.",
-    "parlay": "En un parlay las cuotas se multiplican, y basta que una selección falle para perderlo.",
-    "my_picks": "Tus picks guardados se liquidan con el resultado oficial; tus cifras cuentan solo los que tienen cuota."
-  },
-  "tour": {
-    "start": "Hacer el recorrido",
-    "startHelp": "Cinco pasos por lo esencial: Inicio, un partido, un pick, los parlays y Mis picks.",
-    "step": "Recorrido · {n} de {total}",
-    "next": "Siguiente",
-    "done": "Terminar",
-    "close": "Cerrar el recorrido",
-    "more": "Cómo funciona todo, con ejemplos",
-    "home": {
-      "title": "Inicio",
-      "body": "Responde qué hay hoy para ti: tus ligas primero, los picks del día —o por qué no hay— y los resultados."
-    },
-    "match": {
-      "title": "Centro de partido",
-      "body": "Cada partido tiene su centro: el pronóstico, el contexto, el mercado y, al terminar, el postpartido."
-    },
-    "pick": {
-      "title": "Picks",
-      "body": "En Picks ves solo lo que PrediGol recomienda ahora: selecciones con valor frente al mercado, cada una con su cuota y el porqué. Si ninguna cumple las reglas, hoy no hay picks."
-    },
-    "parlay": {
-      "title": "Parlays",
-      "body": "PrediGol arma el parlay del día y el multi-día solo con selecciones que pasan todas sus reglas, y nunca los rellena. También puedes armar el tuyo."
-    },
-    "myPicks": {
-      "title": "Mis picks",
-      "body": "Lo que guardas se liquida solo con el resultado oficial, y tus cifras salen de ahí."
-    }
-  },
   "follow": {
     "add": "Seguir a {team}",
     "remove": "Dejar de seguir a {team}",

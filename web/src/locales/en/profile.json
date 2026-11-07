@@ -165,19 +165,23 @@
       "grace": "Your membership has ended: until {date} you keep full access.",
       "expired": "Limited access: your membership has ended. Renewing brings everything back.",
       "suspended": "Your account is suspended: write to us.",
-      "action": "How to renew"
+      "none": "Your account is created, but it does not have access to PrediGol yet.",
+      "action": "How to renew",
+      "noneAction": "See my account"
     },
     "limited": {
       "expiredTitle": "Your membership has ended",
       "expiredBody": "Your data stays here. You can see your profile, your saved picks, the help and the legal texts, and download your data. Renewing brings everything back.",
       "suspendedTitle": "Your account is suspended",
       "suspendedBody": "You can see your profile, your saved picks, the help and the legal texts, and download your data. Write to us to know more.",
+      "noneTitle": "Your account is created",
+      "noneBody": "It does not have access to PrediGol yet. Meanwhile you can see your profile, the help and the legal texts, and download your data.",
       "myPicks": "My saved picks",
       "profile": "My profile and membership",
       "help": "Help",
       "legal": "Legal texts",
       "export": "Download my data",
-      "readOnly": "Read-only while the membership has ended."
+      "readOnly": "Read only while your access is limited."
     },
     "plan": {
       "title": "The plan",
