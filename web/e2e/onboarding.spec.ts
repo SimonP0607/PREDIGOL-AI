@@ -287,16 +287,12 @@ test("an account from before: one screen of favourites; skipping keeps the sugge
     await expect(page.getByTestId("welcome")).toContainText(o.welcome.football.introOlder);
     await page.getByTestId("welcome-skip").click();
     await expect(page).toHaveURL(/\/home$/);
-    const block = page.getByTestId("home-today");
-    await expect(block).toHaveAttribute("data-view", "suggested");
-    await expect(block.getByRole("heading", { name: t.home.today.title })).toBeVisible();
-    // two layers (closing plan 3.2): with no favourites there is no «Para ti» - the suggested leagues are PrediGol's - and one
-    // discreet card to choose them
+    // two layers (closing plan 3.2): with no favourites there is no «Para ti», and «Hoy en las ligas sugeridas» is not in the
+    // general layer any more (plan de Inicio, D2): one discreet line to choose favourites, then PrediGol
     await expect(page.getByTestId("layer-for-you")).toHaveCount(0);
-    await expect(page.getByTestId("layer-predigol").getByTestId("home-today")).toBeVisible();
+    await expect(page.getByTestId("home-today")).toHaveCount(0);
     const prompt = page.getByTestId("choose-prompt");
     await expect(prompt).toContainText(t.home.choose.title);
-    await expect(block.getByTestId("today-choose")).toHaveCount(0);
     await prompt.getByTestId("choose-prompt-link").click();
     await expect(page).toHaveURL(/\/profile#football$/);
     await expect(page.getByTestId("football-current")).toHaveAttribute("data-suggested", "true");
@@ -529,10 +525,8 @@ test("the markets a reader reads are chosen in their profile, kept by a save tha
     await expect(forYou).toBeVisible();
     await expect(forYou.getByTestId("home-related")).toBeVisible();
     await expect(forYou.getByTestId("home-today")).toHaveCount(0);
-    await expect(page.getByTestId("layer-predigol").getByTestId("home-today")).toHaveAttribute(
-      "data-view",
-      "suggested",
-    );
+    // «Hoy en las ligas sugeridas» is not in the general layer any more (plan de Inicio, D2)
+    await expect(page.getByTestId("layer-predigol").getByTestId("home-today")).toHaveCount(0);
     await expect(page.getByTestId("choose-prompt")).toHaveCount(0);
     // a market PrediGol does not read, and an amount: never
     expect((await put({ leagues: [], teams: [], markets: ["CS"] })).status()).toBe(422);

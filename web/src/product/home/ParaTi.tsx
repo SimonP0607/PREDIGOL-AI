@@ -11,8 +11,8 @@
  */
 import { Link } from "@tanstack/react-router";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { Bell, Pencil, Star, Target, User } from "lucide-react";
-import type { ReactNode } from "react";
+import { Bell, Pencil, Star, Target, User, X } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { TeamLogo } from "@/components/football/Logos";
 import { t } from "@/lib/i18n";
 import { formatKickoff, formatTime, getTimeZone, relativeDay } from "@/lib/time";
@@ -95,26 +95,58 @@ export function ForYouEdit() {
   return <EditLink label={t("home.layers.edit")} testId="layer-edit" />;
 }
 
-/** Without favourites: one discreet card to choose them - the product is whole without them. */
+/** Where a reader's «cerrar» of the line is kept (this browser only): it is a convenience, never state that matters. */
+export const CHOOSE_CLOSED_KEY = "predigol.home.chooseClosed";
+
+/**
+ * Without favourites: one discreet line to choose them (plan de Inicio, 3.2) - the product is whole without them, so it can be
+ * closed, and stays closed on this browser. It shows from the first paint and goes away once the reader's choice is read.
+ */
 export function ChoosePrompt() {
+  const [closed, setClosed] = useState(false);
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(CHOOSE_CLOSED_KEY) === "1") setClosed(true);
+    } catch {
+      /* storage unavailable: the line shows */
+    }
+  }, []);
+  if (closed) return null;
+  const close = () => {
+    setClosed(true);
+    try {
+      window.localStorage.setItem(CHOOSE_CLOSED_KEY, "1");
+    } catch {
+      /* storage unavailable: it closes for this visit only */
+    }
+  };
   return (
     <aside
       data-testid="choose-prompt"
-      className="flex items-start gap-3 rounded-xl border border-dashed border-border-strong px-4 py-3"
+      className="flex items-center gap-2.5 rounded-xl border border-dashed border-border-strong py-1 pl-3.5 pr-1"
     >
-      <Star aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="text-sm font-semibold">{t("home.choose.title")}</p>
-        <p className="text-xs text-muted-foreground">{t("home.choose.body")}</p>
-        <Link
-          to="/profile"
-          hash="football"
-          data-testid="choose-prompt-link"
-          className="tap-y relative inline-flex min-h-9 items-center gap-1 text-sm font-medium text-primary hover:underline"
-        >
-          {t("home.choose.action")}
-        </Link>
-      </div>
+      <Star aria-hidden className="h-4 w-4 shrink-0 text-primary" />
+      <p className="min-w-0 flex-1 text-sm leading-snug">
+        <span className="font-semibold">{t("home.choose.title")}</span>
+        <span className="hidden text-muted-foreground sm:inline"> · {t("home.choose.body")}</span>
+      </p>
+      <Link
+        to="/profile"
+        hash="football"
+        data-testid="choose-prompt-link"
+        className="tap-y relative inline-flex min-h-9 shrink-0 items-center rounded-md px-1.5 text-sm font-medium text-primary hover:underline"
+      >
+        {t("home.choose.action")}
+      </Link>
+      <button
+        type="button"
+        onClick={close}
+        data-testid="choose-prompt-close"
+        aria-label={t("common.close")}
+        className="tap-y relative flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-elevated hover:text-foreground"
+      >
+        <X aria-hidden className="h-4 w-4" />
+      </button>
     </aside>
   );
 }

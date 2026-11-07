@@ -91,12 +91,12 @@
     "forYou": "For you",
     "forYouHint": "What you chose to follow",
     "predigol": "PrediGol",
-    "predigolHint": "The same for everyone: the day's picks and the parlays",
+    "predigolHint": "The same for everyone: the day's picks, the parlays and what is happening now",
     "edit": "Change favourites"
   },
   "choose": {
     "title": "Choose your favourites",
-    "body": "With leagues, teams, players or markets, Home shows what is yours first. The picks do not change: they are the same for everyone.",
+    "body": "Home shows what is yours first; the picks are the same for everyone.",
     "action": "Choose favourites"
   },
   "players": {

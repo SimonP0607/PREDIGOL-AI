@@ -91,7 +91,7 @@ async function signIn(page: Page, email: string, password = PASSWORD): Promise<v
   await page.goto("/home");
   const gate = page.getByTestId("consent-gate");
   // the consents first when QA's gate is on (drafts), else straight into the product
-  await expect(gate.or(page.getByTestId("home-today"))).toBeVisible({ timeout: 30_000 });
+  await expect(gate.or(page.getByTestId("home-page"))).toBeVisible({ timeout: 30_000 });
   if (await gate.isVisible()) {
     for (const kind of ["terms", "privacy", "age_18", "risk_notice"])
       await gate.getByTestId(`consent-${kind}`).check();

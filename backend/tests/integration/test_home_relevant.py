@@ -182,3 +182,25 @@ def test_at_stake_is_by_priority_and_four_at_most_and_not_for_matches_already_st
     found = [x.fixture_id for x in home_board.at_stake(db, at=NOW)]
     assert found == [cup, *league[:3]]
     assert started not in found
+
+
+# ── PrediGol's order of competitions ────────────────────────────────────────────────────────────────────────────────
+
+def test_the_competition_group_goes_before_the_tier(db: psycopg.Connection[Any], world: World, seed: Seed) -> None:
+    """The cup has the better tier; the league is Colombia's Primera A (group 2) and the cup is in no group (4): the league goes
+    first - in «Partidos relevantes», in «Qué se juega» and in what is left for «En vivo»."""
+    db.execute("UPDATE core.competitions SET provider_league_id = 239 WHERE id = "
+               "(SELECT competition_id FROM core.competition_seasons WHERE id = %s)", (world.league_season,))
+    league = match(db, seed, world, "Blues", "Reds", minutes_in=10)
+    cup = match(db, seed, world, "Greens", "Yellows", minutes_in=80, season=world.cup_season)
+    packet(db, league, final=True)
+    packet(db, cup, final=True, home_name="Greens", away_name="Yellows")
+    assert ids(relevant(db)) == [league, cup]
+    board = center.live_board(db, at=NOW).data
+    assert board is not None
+    assert [m.fixture_id for m in home_board.by_priority(db, list(board.matches))] == [league, cup]
+    league_next = upcoming(db, world, "Blues", "Greens", 9)
+    packet(db, league_next, final=True)
+    cup_next = upcoming(db, world, "Reds", "Yellows", 2, season=world.cup_season)
+    packet(db, cup_next, final=True, home_name="Reds", away_name="Yellows")
+    assert [x.fixture_id for x in home_board.at_stake(db, at=NOW)] == [league_next, cup_next]

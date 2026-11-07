@@ -130,3 +130,21 @@ def test_when_both_sides_fight_for_something_both_are_named() -> None:
 def test_a_second_leg_without_its_first_leg_falls_back_to_the_table() -> None:
     assert stake(glance(kind="second_leg", home="europe")).code == "stakes"
     assert stake(glance(kind="second_leg")) is None
+
+
+# ── PrediGol's order of competitions ────────────────────────────────────────────────────────────────────────────────
+
+def test_the_board_groups_follow_the_picks_priority_with_colombias_primera_a_raised() -> None:
+    assert home_board.board_group(2) == 1, "the Champions League"
+    assert home_board.board_group(39) == 1, "the Premier League"
+    assert home_board.board_group(13) == 2, "the Libertadores"
+    assert home_board.board_group(239) == 2, "Primera A, raised from the rest"
+    assert home_board.board_group(1) == 3, "the World Cup"
+    assert home_board.board_group(98701) == 4 and home_board.board_group(None) == 4
+
+
+def test_the_query_groups_hold_every_listed_league_once() -> None:
+    groups = home_board.board_groups()
+    assert 2 in groups["g1"] and 239 in groups["g2"] and 13 in groups["g2"] and 1 in groups["g3"]
+    everything = groups["g1"] + groups["g2"] + groups["g3"]
+    assert len(everything) == len(set(everything))

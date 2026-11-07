@@ -91,12 +91,12 @@
     "forYou": "Para ti",
     "forYouHint": "Lo que elegiste seguir",
     "predigol": "PrediGol",
-    "predigolHint": "Lo mismo para todos: los picks del día y los parlays",
+    "predigolHint": "Lo mismo para todos: los picks del día, los parlays y lo que pasa ahora",
     "edit": "Cambiar favoritos"
   },
   "choose": {
     "title": "Elige tus favoritos",
-    "body": "Con ligas, equipos, jugadores o mercados, Inicio te muestra primero lo tuyo. Los picks no cambian: son los mismos para todos.",
+    "body": "Inicio te muestra primero lo tuyo; los picks son los mismos para todos.",
     "action": "Elegir favoritos"
   },
   "players": {
