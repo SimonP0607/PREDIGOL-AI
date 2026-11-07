@@ -1,7 +1,8 @@
 """Deleting an account as anonymisation (plan UX, A7 and section 23), on a reader's deletion request and only with the
 owner's confirmation - the account's address typed again in the console.
 
-What goes: the reader's preferences and favourites (A13), their survey answers and «¿Te sirvió?» (B6), what they saved (picks and parlays), their sessions, their second factor and
+What goes: the reader's first and last name and mobile (tramo 1, UX-027), the payer's name and the note of their payment requests,
+their preferences and favourites (A13), their survey answers and «¿Te sirvió?» (B6), what they saved (picks and parlays), their sessions, their second factor and
 recovery codes, and every link of theirs that could still work. The account's row stays - its address masked
 (``deleted-<id>@deleted.invalid``, which the e-mail queue never sends to), its name replaced, a random password hash
 nobody knows, status ``deleted`` - and so does the address typed in the sign-in trail, masked the same way. What
@@ -70,6 +71,12 @@ def anonymise(actor: Principal, user_id: int, *, confirm: str, ip: str | None) -
         # request's does.
         tickets = conn.execute("UPDATE customer.support_tickets SET status = 'closed', closed_at = now() "
                                "WHERE user_id = %s AND kind = 'support' AND status <> 'closed'", (user_id,)).rowcount
+        # A request for access still open is withdrawn (nobody is left to decide it); the payer's name and the note of
+        # any request are blanked. What the reader declared and accepted stays, as a payment's record does.
+        conn.execute("UPDATE customer.payment_requests SET status = 'cancelled', decided_at = now() "
+                     "WHERE user_id = %s AND status = 'submitted'", (user_id,))
+        conn.execute("UPDATE customer.payment_requests SET payer_name = NULL, note = NULL "
+                     "WHERE user_id = %s AND (payer_name IS NOT NULL OR note IS NOT NULL)", (user_id,))
         sessions = conn.execute("DELETE FROM auth.sessions WHERE user_id = %s", (user_id,)).rowcount
         store.clear_totp(conn, user_id)  # the second factor's secret and the recovery codes
         tokens.revoke_open(conn, user_id, tuple(tokens.LIFETIME), "account_closed")
@@ -82,6 +89,7 @@ def anonymise(actor: Principal, user_id: int, *, confirm: str, ip: str | None) -
         conn.execute("""
             UPDATE auth.users
                SET email = %s, display_name = %s, password_hash = %s, status = 'deleted', timezone = 'UTC',
+                   first_name = NULL, last_name = NULL, phone_e164 = NULL, email_verified_at = NULL,
                    must_change_password = false, mfa_required = false, failed_logins = 0, locked_until = NULL,
                    updated_at = now()
              WHERE id = %s

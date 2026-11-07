@@ -129,6 +129,10 @@ BEGIN
     -- the owner's communiqués (fbi.customer.announcements, plan UX, 4.3): written and published from the console, hidden again
     -- (never deleted: a trigger refuses it); what was done to each is a line of the record, append-only
     'customer.announcements:INSERT, UPDATE', 'customer.announcement_log:INSERT',
+    -- a reader's request for access, «ya pagué» (plan del flujo de usuario, tramo 1, UX-027): made by the reader, decided by the
+    -- owner (status, decision), blanked of the payer's name and note when the account is anonymised; never deleted (a trigger
+    -- refuses it) and never edited once decided
+    'customer.payment_requests:INSERT, UPDATE',
     -- a user's own records (fbi.userdata)
     'picks.user_picks:INSERT, UPDATE, DELETE', 'picks.user_parlays:INSERT, UPDATE, DELETE',
     'picks.user_parlay_legs:INSERT, UPDATE, DELETE',
