@@ -932,10 +932,38 @@ def _attributions(conn: psycopg.Connection[Any], report: CycleReport, *, at: dat
         report.counts["attributions"] = report.counts.get("attributions", 0) + r.written
     conn.commit()
     sent = pmr.run(conn, settings, at=at, ledger=ledger, transport=transport)
-    for key, value in sent.items():
-        if isinstance(value, int):
-            report.counts[f"pmr_{key}"] = value
+    report.counts.update(pmr_counts(sent))
+    log.info("ai.learning.pmr", **{k: v for k, v in sent.items() if k != "estimate_usd"})
     conn.commit()
+
+
+def _slug(text: str) -> str:
+    return "".join(c if c.isalnum() else "_" for c in text.lower()).strip("_")[:48] or "unknown"
+
+
+def pmr_counts(sent: dict[str, Any]) -> dict[str, int]:
+    """The Post-Match Reviewer's report as the integers ``ai.cycles.counts`` keeps (IA-014): its counts as they are, and WHY it asked nothing as
+    counts of their own - ``pmr_stopped_<reason>`` (a LAB without key or envelope, a day without room...), ``pmr_blockers`` (how many) and
+    ``pmr_refused_<reason>`` (a model the router does not name). Before, only the integers were kept and a reviewer that asked nothing left no
+    word of why."""
+    out: dict[str, int] = {}
+    for key, value in sent.items():
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, int):
+            out[f"pmr_{key}"] = value
+    stopped = sent.get("stopped")
+    if isinstance(stopped, str) and stopped:
+        out[f"pmr_stopped_{_slug(stopped)}"] = 1
+    blockers = sent.get("blockers")
+    if isinstance(blockers, list) and blockers:
+        out["pmr_blockers"] = len(blockers)
+    refused = sent.get("refused")
+    if isinstance(refused, dict):
+        for reason, n in refused.items():
+            if isinstance(n, int) and not isinstance(n, bool):
+                out[f"pmr_refused_{_slug(str(reason))}"] = n
+    return out
 
 
 def _postmortems(conn: psycopg.Connection[Any], report: CycleReport, *, at: datetime, settings: AiSettings,
