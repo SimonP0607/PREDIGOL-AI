@@ -55,7 +55,7 @@
   },
   "relevant": {
     "title": "Matches worth a look",
-    "subtitle": "From other competitions we follow, with PrediGol's analysis"
+    "subtitle": "In play now, with the reason they are worth watching"
   },
   "context": {
     "title": "What is at stake",
@@ -133,5 +133,31 @@
     "bell": "{minutes} · {when}",
     "more_one": "And {count} more notice, on your matches.",
     "more_other": "And {count} more notices, on your matches."
+  },
+  "atStake": {
+    "title": "What is at stake",
+    "subtitle": "The next matches with something on the line, in the next 36 hours"
+  },
+  "reason": {
+    "final": "It is a final.",
+    "tieAhead": "{team} lead on aggregate: {lead}-{trail}.",
+    "tieLevel": "The tie is level on aggregate at {goals}.",
+    "firstLeg": "Second leg of the tie. First leg: {home} {firstHome}, {away} {firstAway}.",
+    "pressure": {
+      "title": "{team} are fighting for the title",
+      "europe": "{team} are fighting for a European place",
+      "relegation": "{team} are fighting to avoid relegation",
+      "promotion": "{team} are fighting for promotion"
+    },
+    "state": {
+      "ahead": "and are winning now",
+      "level": "and are level now",
+      "behind": "and are losing now"
+    },
+    "both": "{first} and {second}",
+    "comebackLevel_one": "{team} were {count} goal down and are now level.",
+    "comebackLevel_other": "{team} were {count} goals down and are now level.",
+    "comebackAhead_one": "{team} were {count} goal down and are now ahead.",
+    "comebackAhead_other": "{team} were {count} goals down and are now ahead."
   }
 }

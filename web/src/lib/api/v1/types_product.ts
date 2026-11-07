@@ -257,9 +257,40 @@ export interface HomeResult {
   pens_away?: number | null;
 }
 
+/**
+ * Why a match is on «Partidos relevantes» or «Qué se juega» (plan de Inicio, 3.1b): a code and the values its sentence fills in,
+ * chosen on the server. ``final``; ``tie`` (a second leg in play: the aggregate now); ``first_leg`` (a second leg still to be
+ * played: how the first ended); ``stakes`` (a side fights for ``pressure``; in play with ``state``); ``comeback``.
+ */
+export interface HomeReason {
+  code: "final" | "tie" | "first_leg" | "stakes" | "comeback";
+  params: Record<string, string | number | boolean | null>;
+}
+
+/** A match in play with a reason to look at it now (one or two reasons, the strongest first). */
+export interface HomeRelevant {
+  match: LiveMatch;
+  reasons: HomeReason[];
+}
+
+/** A match of the next 36 hours with something at stake: one reason. */
+export interface HomeAtStake {
+  fixture_id: number;
+  kickoff_at: Iso;
+  competition: CompetitionBadge;
+  home: TeamBadge;
+  away: TeamBadge;
+  reason: HomeReason;
+}
+
 export interface Home {
   source: ProductSource;
   data_freshness: { live_at: Iso | null };
+  /** In play with a reason, by competition priority, four at most. Absent from an API older than 3.1b. */
+  relevant?: Section<HomeRelevant[]>;
+  /** Not started, next 36 hours, something at stake, four at most. Absent from an API older than 3.1b. */
+  at_stake?: Section<HomeAtStake[]>;
+  /** What else is in play: the matches of ``relevant`` are not repeated here. */
   live: Section<LiveMatch[]>;
   /** What ended in the last 24 hours, newest first, six at most. Absent from an API older than 3.1. */
   results?: Section<HomeResult[]>;

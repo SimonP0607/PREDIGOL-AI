@@ -157,16 +157,22 @@ def _line(m: ForecastMarket) -> str | None:
 
 # ── the sections ──────────────────────────────────────────────────────────────────────────────────────────────────
 
+def match_kind(content: Mapping[str, Any]) -> str | None:
+    """What sort of match the dossier says it is: a final, the second leg of a tie, a knockout, a derby or a friendly (the first
+    that applies, in that order); None for an ordinary league match."""
+    ctx = _obj(_obj(content.get("dossier")).get("context"))
+    return ("final" if ctx.get("final") else "second_leg" if ctx.get("second_leg") else
+            "knockout" if ctx.get("knockout") else "derby" if ctx.get("derby") else
+            "friendly" if ctx.get("friendly") else None)
+
+
 def summary(r: Reading, content: Mapping[str, Any], markets: Sequence[ForecastMarket], forecast_code: str | None) -> None:
     fixture = _obj(content.get("fixture"))
     if fixture.get("competition"):
         r.add("summary", "match_intro", "packet:fixture", competition=str(fixture["competition"]),
               round=str(fixture["round"]) if fixture.get("round") else None,
               neutral=bool(fixture.get("neutral")) or None)
-    ctx = _obj(_obj(content.get("dossier")).get("context"))
-    kind = ("final" if ctx.get("final") else "second_leg" if ctx.get("second_leg") else
-            "knockout" if ctx.get("knockout") else "derby" if ctx.get("derby") else
-            "friendly" if ctx.get("friendly") else None)
+    kind = match_kind(content)
     if kind is not None:
         r.add("summary", "match_kind", "packet:dossier.context", kind=kind)
     result = next((m for m in markets if m.market == "1X2"), None)
@@ -407,13 +413,15 @@ class Glance:
 
     headline: Fact | None
     context: list[Fact]
+    kind: str | None = None
+    """``match_kind``: a final, a second leg, a knockout, a derby, a friendly (None: an ordinary match)."""
 
 
 def glance(content: Mapping[str, Any]) -> Glance:
     r = Reading()
     context(r, content)
     facts = sorted((f for f in r.sections["context"] if f.code in GLANCE_CONTEXT), key=lambda f: GLANCE_CONTEXT.index(f.code))
-    return Glance(headline(content), facts)
+    return Glance(headline(content), facts, match_kind(content))
 
 
 # ── reading it from the database ──────────────────────────────────────────────────────────────────────────────────

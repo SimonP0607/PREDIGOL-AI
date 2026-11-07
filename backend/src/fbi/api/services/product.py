@@ -491,11 +491,17 @@ def home(conn: Conn, *, include_shadow: bool, at: datetime | None = None) -> Env
     any more."""
     moment = at or clock_now()
     live_env = center.live_board(conn, at=moment)
-    live = list(live_env.data.matches[:6])
+    in_play = list(live_env.data.matches)
+    flagged = home_board.relevant(conn, in_play, at=moment)
+    shown = {x.match.fixture_id for x in flagged}
+    live = [m for m in in_play if m.fixture_id not in shown][:6]
+    stakes = home_board.at_stake(conn, at=moment)
     done = home_board.results(conn, at=moment)
     body = Home(
         source=_source(include_shadow),
         data_freshness=DataFreshness(live_at=repo.live_freshness(conn, now=moment)),
+        relevant=section(flagged) if flagged else section(flagged, status=DataStatus.EMPTY, reason="no_relevant_matches"),
+        at_stake=section(stakes) if stakes else section(stakes, status=DataStatus.EMPTY, reason="nothing_at_stake"),
         live=section(live) if live else section(live, status=DataStatus.EMPTY, reason="no_live_matches"),
         results=section(done) if done else section(done, status=DataStatus.EMPTY, reason="no_recent_results"),
     )
