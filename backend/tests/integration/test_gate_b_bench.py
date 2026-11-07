@@ -105,10 +105,13 @@ def gate_row(db: psycopg.Connection[Any], gate: str, at: datetime, passed: bool,
                (gate, at, passed, Jsonb(evidence), "c" * 64))
 
 
-def battery_evidence(targets: tuple[str, ...] = ("match", "council")) -> dict[str, Any]:
+def battery_evidence(targets: tuple[str, ...] = ("match", "stats", "council")) -> dict[str, Any]:
     """The evidence of a battery measured over the corpus IN FORCE (its own hashes), with the agents' targets beside the corpus's."""
-    measured: dict[str, Any] = {t: {"prompt": corpus.target(t).prompt, "requests_hash": corpus.requests_hash(t, native=False)} for t in TARGETS}
-    measured |= {t: {"prompt": f"{t}-prompt"} for t in targets}
+    agent_targets = {t for t in TARGETS if corpus.target(t).agent}  # battery-v3: the agents' own targets (match, stats, council)
+    measured: dict[str, Any] = {t: {"prompt": corpus.target(t).prompt, "agent": corpus.target(t).agent or None,
+                                    "prompts": list(corpus.target(t).every_prompt), "requests_hash": corpus.requests_hash(t, native=False)}
+                                for t in TARGETS if t not in agent_targets or t in targets}
+    measured |= {t: {"prompt": f"{t}-prompt"} for t in targets if t not in TARGETS}
     return {"battery": BATTERY_VERSION, "native": False, "corpus_hash": corpus.corpus_hash(), "targets": measured}
 
 
