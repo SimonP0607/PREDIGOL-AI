@@ -8,6 +8,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from fbi.api.contracts.common import Contract
+from fbi.api.contracts.guides import GuideState
 from fbi.api.contracts.membership import MembershipSummary
 
 Language = Literal["es", "en"]
@@ -58,6 +59,11 @@ class Me(Contract):
                                                                        "about («Qué es PrediGol»).")
     hints_seen: list[str] = Field(default_factory=list, description="The first-visit hints the reader dismissed (picks, match, "
                                                                     "parlay, my_picks): never shown again.")
+    guides: list[GuideState] = Field(default_factory=list, description="What the reader has seen of the welcome tour and of "
+                                                                       "the guides of each screen (UX-027): one entry per "
+                                                                       "guide they have a row for.")
+    guides_on: bool = Field(default=True, description="FBI_GUIDES: the page shows guides (on unless the owner turned it off).")
+    guides_auto: bool = Field(default=True, description="The reader's own switch: the guide of each screen on the first visit.")
     transparency: bool = Field(default=False, description="«Cómo le va a PrediGol» is open to readers (plan UX, A12; "
                                                           "FBI_TRANSPARENCY, off until the owner reviewed it): the page "
                                                           "links to it only then.")
@@ -75,6 +81,7 @@ class PreferencesIn(BaseModel):
     language: Language | None = None
     timezone: str | None = Field(default=None, min_length=1, max_length=64)
     display_name: str | None = Field(default=None, min_length=1, max_length=80)
+    guides_auto: bool | None = Field(default=None, description="Show the guide of each screen on the first visit (UX-027).")
 
 
 class PasswordChangeIn(BaseModel):

@@ -258,7 +258,13 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         LEFT JOIN core.players p ON p.id = f.player_id
         WHERE f.user_id = %s ORDER BY f.created_at, f.ref_id NULLS LAST, f.market_key
     """, (user_id,))
-    welcome = _all(conn, "SELECT onboarded_at, hints_seen FROM customer.preferences WHERE user_id = %s", (user_id,))
+    welcome = _all(conn, "SELECT onboarded_at, hints_seen, guides_auto FROM customer.preferences WHERE user_id = %s",
+                   (user_id,))
+    # What they saw of the welcome tour and of the guides of each screen (UX-027).
+    guide_rows = _all(conn, """
+        SELECT guide, version, status, step, first_seen_at, started_at, completed_at, skipped_at
+        FROM customer.guide_progress WHERE user_id = %s ORDER BY guide
+    """, (user_id,))
     # The product events kept under the reader's pseudonym and their daily aggregate (plan UX, A6).
     analytics = events.events_of(conn, user_id)
     # The membership: its periods, the payments recorded and its events (plan UX, A8).
@@ -285,6 +291,7 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         "notification_preferences": notification_prefs[0] if notification_prefs else None,
         "favorites": favourite_rows,
         "welcome": welcome[0] if welcome else None,
+        "guides": guide_rows,
         "product_events": analytics["product_events"],
         "activity_daily": analytics["activity_daily"],
         "membership_periods": member["membership_periods"],

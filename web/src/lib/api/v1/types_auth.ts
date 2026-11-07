@@ -1,5 +1,6 @@
 /** Types for /api/v1/auth/* and /api/v1/admin/{users,audit}. Mirrors fbi.api.contracts.auth. */
 import type { Iso } from "./types";
+import type { GuideState } from "./types_guides";
 import type { MembershipSummary } from "./types_membership";
 
 export type Language = "es" | "en";
@@ -47,6 +48,12 @@ export interface Me {
   welcome_steps?: string[];
   /** The first-visit hints the reader dismissed (picks, match, parlay, my_picks): never shown again. */
   hints_seen?: string[];
+  /** What the reader has seen of the welcome tour and of the guides of each screen (UX-027). */
+  guides?: GuideState[];
+  /** FBI_GUIDES: the page shows guides (on unless the owner turned it off). */
+  guides_on?: boolean;
+  /** The reader's own switch: the guide of each screen on the first visit (on until they turn it off). */
+  guides_auto?: boolean;
   /** A reader can write to PrediGol from the page (plan UX, A14; FBI_SUPPORT): «Reportar un problema». */
   support?: boolean;
   /** «Explícame» answers the frequent questions of a match, a pick and the parlay (plan UX, B9; FBI_EXPLAIN): its buttons only then. */
@@ -93,6 +100,8 @@ export interface PreferencesIn {
   language?: Language;
   timezone?: string;
   display_name?: string;
+  /** Show the guide of each screen on the first visit (UX-027). */
+  guides_auto?: boolean;
 }
 
 /**

@@ -158,6 +158,7 @@ import type {
   HintKey,
   OnboardingState,
 } from "./types_favorites";
+import type { GuideIn, GuideKey, GuideState } from "./types_guides";
 import type { PublishedPick, Transparency } from "./types_transparency";
 import type { AccountSummary } from "./types_account";
 import type { PersonalView, Suggestion } from "./types_personal";
@@ -594,6 +595,11 @@ export const v1 = {
   completeOnboarding: () => postJson<OnboardingState>("/me/onboarding", {}),
   /** A first-visit hint dismissed: it never comes back. */
   dismissHint: (hint: HintKey) => postJson<OnboardingState>("/me/hints", { hint }),
+  /**
+   * What the reader did with a guide (UX-027): idempotent; within a version the status never goes down; 422 outside the closed
+   * lists; 409 guide_mandatory for skipping the first guide of Perfil before it is done.
+   */
+  saveGuide: (guide: GuideKey, body: GuideIn) => putJson<GuideState>(`/me/guides/${guide}`, body),
 
   // ── what readers think of PrediGol (plan UX, B6) ──────────────────────────
   /** Whether the monthly survey is owed now (once every 30 days from the last answer or skip). */

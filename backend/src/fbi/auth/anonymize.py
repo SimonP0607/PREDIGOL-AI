@@ -61,6 +61,7 @@ def anonymise(actor: Principal, user_id: int, *, confirm: str, ip: str | None) -
         address, masked = str(target["email"]), masked_address(user_id)
         parlays = conn.execute("DELETE FROM picks.user_parlays WHERE user_id = %s", (user_id,)).rowcount
         picks = conn.execute("DELETE FROM picks.user_picks WHERE user_id = %s", (user_id,)).rowcount
+        conn.execute("DELETE FROM customer.guide_progress WHERE user_id = %s", (user_id,))  # the guides seen (UX-027)
         conn.execute("DELETE FROM customer.preferences WHERE user_id = %s", (user_id,))
         conn.execute("DELETE FROM customer.favorites WHERE user_id = %s", (user_id,))
         conn.execute("DELETE FROM customer.feedback WHERE user_id = %s", (user_id,))  # the survey and «¿Te sirvió?» (B6)
