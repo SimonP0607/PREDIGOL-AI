@@ -1,0 +1,58 @@
+{
+  "region": "Guía de PrediGol",
+  "progress": "Paso {n} de {total}",
+  "next": "Siguiente",
+  "back": "Atrás",
+  "skip": "Saltar",
+  "finish": "Finalizar",
+  "resume": {
+    "title": "¿Seguimos?",
+    "body": "Ibas por el paso {n} de {total} del recorrido de bienvenida.",
+    "yes": "Seguir",
+    "no": "No, gracias"
+  },
+  "names": {
+    "general": "Recorrido de bienvenida"
+  },
+  "general": {
+    "welcome": {
+      "title": "Bienvenido a PrediGol",
+      "body": "¿Te mostramos dónde está cada cosa?",
+      "start": "Empezar (5 pasos)"
+    },
+    "home": {
+      "title": "Inicio",
+      "body": "Lo de hoy para ti: tus partidos primero, los picks del día —o por qué no hay— y tus resultados."
+    },
+    "matches": {
+      "title": "Partidos",
+      "body": "Todos los partidos del día por liga, con su pronóstico. Desde la pestaña Partidos entras a En vivo y al análisis de cada partido."
+    },
+    "picks": {
+      "title": "Picks",
+      "body": "Solo los picks que PrediGol recomienda, con su cuota y el porqué. Guárdalos o agrégalos a tu parlay."
+    },
+    "myPicks": {
+      "title": "Mis picks",
+      "body": "Lo que guardas se liquida solo con el resultado oficial, y ves cómo te va."
+    },
+    "more": {
+      "title": "Más",
+      "body": "En Más están Parlays, Cuotas, tu Perfil y la Ayuda, donde puedes repetir esta guía cuando quieras."
+    }
+  },
+  "panel": {
+    "title": "Guías",
+    "intro": "Recorridos cortos para conocer PrediGol. Puedes verlos de nuevo cuando quieras.",
+    "auto": "Mostrar la guía la primera vez que abro una pantalla",
+    "autoFailed": "No pudimos guardar este ajuste. Inténtalo de nuevo.",
+    "view": "Ver",
+    "repeat": "Repetir",
+    "state": {
+      "pending": "Sin ver",
+      "in_progress": "A medias",
+      "completed": "Completada",
+      "skipped": "Saltada"
+    }
+  }
+}

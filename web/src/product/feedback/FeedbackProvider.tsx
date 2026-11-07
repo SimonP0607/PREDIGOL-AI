@@ -5,7 +5,7 @@
  * A page says a useful moment happened (`useUsefulMoment`): a match's analysis read, a result seen. A little later
  * (OFFER_AFTER_MS, the page on the screen) the provider asks the server whether the survey is owed - on, and no answer
  * or close in the last 30 days - and offers it once in this visit, unless something failed in it (session.ts), the
- * optional tour's card is up, or the account is the owner's. Ignored, it leaves on the next page and may come back
+ * a guide is up, or the account is the owner's. Ignored, it leaves on the next page and may come back
  * another visit; answered or closed, the server keeps it away for 30 days. Nothing is asked before a useful moment, so
  * signing in never brings it.
  */
@@ -21,7 +21,7 @@ import {
   mayOffer,
   wasOffered,
 } from "@/lib/feedback/session";
-import { useTour } from "@/product/tour/steps";
+import { useGuides } from "@/product/guides/context";
 import { CsatPrompt } from "./CsatPrompt";
 import { FeedbackContext, useFeedbackReader, type FeedbackValue } from "./moments";
 
@@ -34,15 +34,15 @@ interface Offer {
 
 export function FeedbackProvider({ children }: { children: ReactNode }) {
   const reader = useFeedbackReader();
-  const tour = useTour();
+  const guides = useGuides();
   const qc = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [offer, setOffer] = useState<Offer | null>(null);
   const [touched, setTouched] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // what the timer reads when it fires: the values of that moment, not of the render that scheduled it
-  const now = useRef({ reader, tour: Boolean(tour.step), pathname });
-  now.current = { reader, tour: Boolean(tour.step), pathname };
+  const now = useRef({ reader, tour: Boolean(guides.active), pathname });
+  now.current = { reader, tour: Boolean(guides.active), pathname };
 
   const present = useCallback(
     async (trigger: FeedbackTrigger, route: string): Promise<void> => {

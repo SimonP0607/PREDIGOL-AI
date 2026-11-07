@@ -34,6 +34,7 @@ export function TopNav({
             key={item.to}
             to={item.to}
             data-testid={`nav-${item.to.slice(1)}`}
+            data-guide={`nav-${item.to.slice(1)}`}
             aria-current={active ? "page" : undefined}
             className={cn(
               "tap-y relative rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
@@ -103,6 +104,7 @@ export function BottomBar({
               <Link
                 to={item.to}
                 data-testid={`tab-${item.to.slice(1)}`}
+                data-guide={`nav-${item.to.slice(1)}`}
                 aria-current={active ? "page" : undefined}
                 className={cn(CELL, active ? "text-gold" : "text-muted-foreground")}
               >
@@ -123,6 +125,7 @@ export function BottomBar({
             aria-haspopup="dialog"
             aria-expanded={moreOpen}
             data-testid="tab-more"
+            data-guide="nav-more"
             className={cn(
               CELL,
               "w-full",

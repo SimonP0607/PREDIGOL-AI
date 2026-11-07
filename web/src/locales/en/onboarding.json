@@ -78,35 +78,6 @@
     "parlay": "In a parlay the odds multiply, and one selection that fails is enough to lose it.",
     "my_picks": "Your saved picks settle with the official result; your figures count only those with a price."
   },
-  "tour": {
-    "start": "Take the tour",
-    "startHelp": "Five steps through the essentials: Home, a match, a pick, parlays and My picks.",
-    "step": "Tour · {n} of {total}",
-    "next": "Next",
-    "done": "Finish",
-    "close": "Close the tour",
-    "more": "How everything works, with examples",
-    "home": {
-      "title": "Home",
-      "body": "It answers what is on today for you: your leagues first, the day's picks —or why there are none— and the results."
-    },
-    "match": {
-      "title": "Match centre",
-      "body": "Every match has its centre: the forecast, the context, the market and, once it is over, the post-match."
-    },
-    "pick": {
-      "title": "Picks",
-      "body": "In Picks you see only what PrediGol recommends now: selections with value against the market, each with its odds and the reason. If none passes the rules, there are no picks today."
-    },
-    "parlay": {
-      "title": "Parlays",
-      "body": "PrediGol builds the daily and the multi-day parlay only from selections that pass every rule, and never pads them. You can also build your own."
-    },
-    "myPicks": {
-      "title": "My picks",
-      "body": "What you save settles by itself with the official result, and your figures come from there."
-    }
-  },
   "follow": {
     "add": "Follow {team}",
     "remove": "Unfollow {team}",

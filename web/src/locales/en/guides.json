@@ -1,0 +1,58 @@
+{
+  "region": "PrediGol guide",
+  "progress": "Step {n} of {total}",
+  "next": "Next",
+  "back": "Back",
+  "skip": "Skip",
+  "finish": "Finish",
+  "resume": {
+    "title": "Shall we go on?",
+    "body": "You were on step {n} of {total} of the welcome tour.",
+    "yes": "Continue",
+    "no": "No, thanks"
+  },
+  "names": {
+    "general": "Welcome tour"
+  },
+  "general": {
+    "welcome": {
+      "title": "Welcome to PrediGol",
+      "body": "Shall we show you where everything is?",
+      "start": "Start (5 steps)"
+    },
+    "home": {
+      "title": "Home",
+      "body": "Today, for you: your matches first, the day's picks —or why there are none— and your results."
+    },
+    "matches": {
+      "title": "Matches",
+      "body": "All of the day's matches by league, with their forecast. From the Matches tab you reach Live and each match's analysis."
+    },
+    "picks": {
+      "title": "Picks",
+      "body": "Only the picks PrediGol recommends, with their odds and the reason. Save them or add them to your parlay."
+    },
+    "myPicks": {
+      "title": "My picks",
+      "body": "What you save is settled by the official result alone, and you see how you are doing."
+    },
+    "more": {
+      "title": "More",
+      "body": "More holds Parlays, Odds, your Profile and Help, where you can repeat this guide whenever you like."
+    }
+  },
+  "panel": {
+    "title": "Guides",
+    "intro": "Short tours to get to know PrediGol. You can watch them again whenever you like.",
+    "auto": "Show the guide the first time I open a screen",
+    "autoFailed": "We could not save this setting. Please try again.",
+    "view": "View",
+    "repeat": "Repeat",
+    "state": {
+      "pending": "Not seen",
+      "in_progress": "Half way",
+      "completed": "Completed",
+      "skipped": "Skipped"
+    }
+  }
+}

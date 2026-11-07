@@ -10,7 +10,8 @@
  *   keeps the suggested ones, labelled, with the way to choose;
  * * the picker on a 320 px phone: nothing sideways, every control in a finger's reach - and by keyboard alone;
  * * a first-visit hint on Picks, a match, the parlays and Mis picks: dismissed with a tap, never again, after a reload too;
- * * the optional tour from the help: four steps, each on its page;
+ * * the welcome tour (plan UX-051): from Ayuda > Guías it goes through its steps and is remembered; on a phone it comes up by
+ *   itself on the first visit to Inicio, above the tab bar, and Escape skips it for good;
  * * the star in a match's header follows the team; Inicio then says why its match is there;
  * * the markets a reader reads (closing plan 3.1): chosen in the profile, kept by a save that leaves them out; a market alone
  *   makes Inicio's «Para ti» (closing plan 3.2), and clearing it takes the layer away.
@@ -407,7 +408,7 @@ test("a first-visit hint on Picks, a match, the parlays and Mis picks: dismissed
   }
 });
 
-test("the optional tour from the help: five steps, each on its page, closed at the end", async ({
+test("the welcome tour from Ayuda > Guías: starts, goes through its steps, finishes and is remembered", async ({
   page,
 }) => {
   test.setTimeout(150_000);
@@ -419,25 +420,59 @@ test("the optional tour from the help: five steps, each on its page, closed at t
     await skipWelcome(page.request);
     await consents(page);
     await page.goto("/help");
-    await page.getByTestId("tour-start").click();
-    const card = page.getByTestId("tour-card");
-    const steps: Array<[string, RegExp]> = [
-      ["home", /\/home$/],
-      ["match", /\/matches(\/\d+)?$/],
-      ["pick", /\/picks$/],
-      ["parlay", /\/parlays$/],
-      ["myPicks", /\/my-picks$/],
-    ];
-    for (const [i, [step, url]] of steps.entries()) {
-      await expect(page).toHaveURL(url);
-      await expect(card).toHaveAttribute("data-step", step);
-      await expect(card).toContainText(
-        o.tour.step.replace("{n}", String(i + 1)).replace("{total}", "5"),
-      );
-      await card.getByTestId("tour-next").click();
+    await page.getByTestId("guide-open-general").click();
+    await expect(page).toHaveURL(/\/home$/);
+    const card = page.getByTestId("guide-card");
+    await expect(card).toBeVisible();
+    // the welcome card, then the steps of the tour: Siguiente on each, Finalizar on the last
+    await card.getByTestId("guide-start").click();
+    for (let i = 0; i < 8 && (await card.count()) > 0; i++) {
+      await expect(card).toContainText(t.guides.progress.split("{")[0] ?? "");
+      const finish = card.getByTestId("guide-finish");
+      if (await finish.count()) {
+        await finish.click();
+        break;
+      }
+      await card.getByTestId("guide-next").click();
     }
     await expect(card).toHaveCount(0);
     await settle(page);
+    const me = await (await page.request.get("/api/v1/auth/me")).json();
+    expect(JSON.stringify(me)).toContain('"guide":"general"');
+    await assertClean(page, w);
+  } finally {
+    await remove(admin, id, email);
+    await admin.dispose();
+  }
+});
+
+test("the welcome tour comes up by itself once, on a phone above the tab bar; Escape skips it for good", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  const admin = await owner();
+  const { id, email } = await account(admin, "tourauto");
+  try {
+    const w = watch(page, { expect401: true, expectStatus: [403] });
+    await page.setViewportSize({ width: 390, height: 780 });
+    await signIn(page, email);
+    await skipWelcome(page.request);
+    await consents(page);
+    await page.goto("/home");
+    const card = page.getByTestId("guide-card");
+    await expect(card).toBeVisible();
+    const box = await card.boundingBox();
+    const bar = await page
+      .getByRole("navigation", { name: t.nav.mainNavigation })
+      .last()
+      .boundingBox();
+    expect(box && bar && box.y + box.height <= bar.y).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(card).toHaveCount(0);
+    await settle(page);
+    await page.reload();
+    await settle(page);
+    await expect(page.getByTestId("guide-card")).toHaveCount(0);
     await assertClean(page, w);
   } finally {
     await remove(admin, id, email);
