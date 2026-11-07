@@ -171,5 +171,38 @@
       "title": "Your parlays",
       "body": "The parlays you build stay here; they settle the same way, with the official result."
     }
+  },
+  "profile": {
+    "account": {
+      "title": "Your account",
+      "body": "Here are your alias (how PrediGol greets you), your e-mail —which is not changed here— and your account's status.",
+      "tap": "Tap a block to open it."
+    },
+    "football": {
+      "title": "Your football, language and zone",
+      "body": "The leagues, teams, players and markets you follow set what you see; they never change a pick, a probability or odds.",
+      "region": "In Language and zone you choose Spanish or English and your time zone: every time is shown in your zone."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "body": "Account, security, privacy and legal-change e-mails always arrive. Membership reminders, support replies and service notices are up to you.",
+      "digest": "You can also ask for the weekly summary by e-mail.",
+      "device": "And turn on notices on this device."
+    },
+    "privacy": {
+      "title": "Privacy",
+      "body": "What you accepted and when, usage statistics (off unless you turn them on), a copy of your data and how to make enquiries, claims or delete your account."
+    },
+    "security": {
+      "title": "Security",
+      "body": "Change your password, turn on two-step verification, close sessions you do not recognise and check your recent activity."
+    },
+    "last": {
+      "title": "Membership and Help",
+      "titleHelp": "Help",
+      "membership": "Your membership: its status, the days left and how to renew.",
+      "help": "In Help: the frequent questions, “Report a problem”, your messages and the guides.",
+      "whatsapp": "There is also a WhatsApp number to write to us."
+    }
   }
 }

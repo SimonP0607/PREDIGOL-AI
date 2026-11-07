@@ -171,5 +171,38 @@
       "title": "Tus parlays",
       "body": "Aquí quedan los parlays que armas; se liquidan igual, con el resultado oficial."
     }
+  },
+  "profile": {
+    "account": {
+      "title": "Tu cuenta",
+      "body": "Aquí están tu alias (así te saluda PrediGol), tu correo —que no se cambia aquí— y el estado de tu cuenta.",
+      "tap": "Toca un bloque para abrirlo."
+    },
+    "football": {
+      "title": "Tu fútbol, idioma y zona",
+      "body": "Las ligas, equipos, jugadores y mercados que sigues ordenan lo que ves; nunca cambian un pick, una probabilidad ni una cuota.",
+      "region": "En Idioma y zona eliges español o inglés y tu zona horaria: todas las horas salen en tu zona."
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "body": "Los correos de cuenta, seguridad, privacidad y cambios legales llegan siempre. Los recordatorios de membresía, las respuestas de soporte y los avisos del servicio los eliges tú.",
+      "digest": "También puedes pedir el resumen semanal por correo.",
+      "device": "Y activar los avisos en este dispositivo."
+    },
+    "privacy": {
+      "title": "Privacidad",
+      "body": "Qué aceptaste y cuándo, las estadísticas de uso (apagadas salvo que las actives), una copia de tus datos y cómo hacer consultas, reclamos o borrar tu cuenta."
+    },
+    "security": {
+      "title": "Seguridad",
+      "body": "Cambia tu contraseña, activa la verificación en dos pasos, cierra las sesiones que no reconozcas y revisa tu actividad reciente."
+    },
+    "last": {
+      "title": "Membresía y Ayuda",
+      "titleHelp": "Ayuda",
+      "membership": "Tu membresía: su estado, los días que quedan y cómo renovar.",
+      "help": "En Ayuda: las preguntas frecuentes, «Reportar un problema», tus mensajes y las guías.",
+      "whatsapp": "También hay un número de WhatsApp para escribirnos."
+    }
   }
 }

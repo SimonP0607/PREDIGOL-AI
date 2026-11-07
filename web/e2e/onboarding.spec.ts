@@ -13,6 +13,8 @@
  *   after a reload, and the «?» of the header brings it back;
  * * the welcome tour (plan UX-051): from Ayuda > Guías it goes through its steps and is remembered; on a phone it comes up by
  *   itself on the first visit to Inicio, above the tab bar, and Escape skips it for good;
+ * * the guide of Perfil (plan UX-053): owed, with no Saltar and no cross; Escape pauses it, it goes on from the same step, and
+ *   once finished it does not come back;
  * * the star in a match's header follows the team; Inicio then says why its match is there;
  * * the markets a reader reads (closing plan 3.1): chosen in the profile, kept by a save that leaves them out; a market alone
  *   makes Inicio's «Para ti» (closing plan 3.2), and clearing it takes the layer away.
@@ -29,6 +31,7 @@ import {
   getJson,
   sendJson,
   settle,
+  quietGuides,
   skipWelcome,
   smallTargets,
   watch,
@@ -191,6 +194,7 @@ test("a new account: from its first entry to «Hoy en tus ligas» with its favou
       ({ id, email } = await account(admin, "new"));
       started = Date.now();
       await signIn(page, email);
+      await quietGuides(page.request); // not about the guides
     }
     await consents(page);
 
@@ -280,6 +284,7 @@ test("an account from before: one screen of favourites; skipping keeps the sugge
     );
     const w = watch(page, { expect401: true, expectStatus: [403] });
     await signIn(page, email);
+    await quietGuides(page.request); // not about the guides
     await consents(page);
     await expect(page).toHaveURL(/\/welcome$/);
     await expect(page.getByTestId("welcome")).toHaveAttribute("data-step", "football");
@@ -320,6 +325,7 @@ test("the picker on a 320 px phone: nothing sideways, every control in a finger'
     await page.setViewportSize(PHONE);
     const w = watch(page, { expect401: true, expectStatus: [403] });
     await signIn(page, email);
+    await quietGuides(page.request); // not about the guides
     await consents(page);
     await expect(page).toHaveURL(/\/welcome$/);
     await expect(page.getByTestId("fav-league").first()).toBeVisible();
@@ -380,7 +386,7 @@ test("the guide of Picks, a match, the parlays and Mis picks: once on the first 
   try {
     const w = watch(page, { expect401: true, expectStatus: [403] });
     await signIn(page, email);
-    await skipWelcome(page.request);
+    await skipWelcome(page.request, { guides: "keep" });
     await consents(page);
     const team = await todaysTeam(page.request);
     const pages: Array<[string, string]> = [
@@ -422,7 +428,7 @@ test("the welcome tour from Ayuda > Guías: starts, goes through its steps, fini
   try {
     const w = watch(page, { expect401: true, expectStatus: [403] });
     await signIn(page, email);
-    await skipWelcome(page.request);
+    await skipWelcome(page.request, { guides: "keep" });
     await consents(page);
     await page.goto("/help");
     await page.getByTestId("guide-open-general").click();
@@ -461,7 +467,7 @@ test("the welcome tour comes up by itself once, on a phone above the tab bar; Es
     const w = watch(page, { expect401: true, expectStatus: [403] });
     await page.setViewportSize({ width: 390, height: 780 });
     await signIn(page, email);
-    await skipWelcome(page.request);
+    await skipWelcome(page.request, { guides: "keep" });
     await consents(page);
     await page.goto("/home");
     const card = page.getByTestId("guide-card");
@@ -473,6 +479,51 @@ test("the welcome tour comes up by itself once, on a phone above the tab bar; Es
       .boundingBox();
     expect(box && bar && box.y + box.height <= bar.y).toBe(true);
     await page.keyboard.press("Escape");
+    await expect(card).toHaveCount(0);
+    await settle(page);
+    await page.reload();
+    await settle(page);
+    await expect(page.getByTestId("guide-card")).toHaveCount(0);
+    await assertClean(page, w);
+  } finally {
+    await remove(admin, id, email);
+    await admin.dispose();
+  }
+});
+
+test("the guide of Perfil is owed: no Saltar and no cross, Escape pauses it, it goes on from the same step and is done once", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const admin = await owner();
+  const { id, email } = await account(admin, "profileguide");
+  try {
+    const w = watch(page, { expect401: true, expectStatus: [403] });
+    await signIn(page, email);
+    await skipWelcome(page.request, { guides: "keep" });
+    await consents(page);
+    await page.goto("/profile");
+    const card = page.getByTestId("guide-card");
+    await expect(card).toHaveAttribute("data-guide-key", "profile");
+    await expect(card).toContainText(/1\D+6/);
+    await expect(card.getByTestId("guide-skip")).toHaveCount(0);
+    await expect(card.getByRole("button", { name: /cerrar|close/i })).toHaveCount(0);
+    await card.getByTestId("guide-next").click();
+    await expect(card).toContainText(/2\D+6/);
+    // Escape pauses it: the next entry to Perfil goes on from step 2
+    await page.keyboard.press("Escape");
+    await expect(card).toHaveCount(0);
+    await settle(page);
+    await page.reload();
+    await expect(page.getByTestId("guide-card")).toContainText(/2\D+6/);
+    for (let i = 0; i < 6 && (await card.count()) > 0; i++) {
+      const finish = card.getByTestId("guide-finish");
+      if (await finish.count()) {
+        await finish.click();
+        break;
+      }
+      await card.getByTestId("guide-next").click();
+    }
     await expect(card).toHaveCount(0);
     await settle(page);
     await page.reload();

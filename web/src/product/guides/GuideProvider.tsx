@@ -34,6 +34,13 @@ import { applied, seenOf, withGuide } from "./state";
 
 const ME_KEY = ["auth", "me"] as const;
 
+/** The address named a block of Perfil (#privacy): when the guide ends, that block comes back into view. */
+function toNamedBlock(): void {
+  const id = window.location.hash.slice(1);
+  if (!id) return;
+  requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "start" }));
+}
+
 /** Where «Ver» takes the reader for the guide of a match: the first match of today's board, else the list. */
 function matchPath(qc: QueryClient): string {
   const today = qc.getQueryData<Envelope<Today>>(["v1", "today"])?.data;
@@ -172,6 +179,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
     track("guide_completed", { guide: def.key, version: def.version });
     skips.current = 0;
     close();
+    if (def.key === "profile") toNamedBlock();
   }, [persist, close]);
   const finishRef = useRef(finish);
   finishRef.current = finish;
@@ -202,6 +210,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
     persist(def.key, { version: def.version, status: "in_progress", step: current.index });
     track("guide_paused", { guide: def.key, version: def.version, step: current.index });
     close();
+    if (def.key === "profile") toNamedBlock();
   }, [persist, close]);
 
   const dismiss = useCallback(
@@ -291,7 +300,13 @@ export function GuideProvider({ children }: { children: ReactNode }) {
             returnTo.current =
               document.activeElement instanceof HTMLElement ? document.activeElement : null;
             activePath.current = path;
-            setActive({ key: def.key, index, mode: "resume", trigger: "resume" });
+            // the owed guide does not ask «¿Seguimos?» (there is no «No»): it goes on from the step it was left at
+            if (def.mandatory) {
+              setActive({ key: def.key, index, mode: "step", trigger: "resume" });
+              track("guide_started", { guide: def.key, version: def.version, trigger: "resume" });
+            } else {
+              setActive({ key: def.key, index, mode: "resume", trigger: "resume" });
+            }
           } else {
             start(def.key, "auto", 0);
           }
