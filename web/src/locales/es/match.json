@@ -107,8 +107,8 @@
     "none": "Todavía no hay cuotas para este partido.",
     "noPrice": "Sin precio",
     "ou25": "Más/Menos {line} goles",
-    "bestOf_one": "Mejor precio entre {count} casa",
-    "bestOf_other": "Mejor precio entre {count} casas",
+    "bestOf_one": "Mejor precio de la única casa que consulta PrediGol; no es todo el mercado",
+    "bestOf_other": "Mejor precio entre las {count} casas que consulta PrediGol; no es todo el mercado",
     "allMarkets": "Todos los mercados"
   },
   "markets": {
@@ -397,7 +397,14 @@
     "not_playedBody": "El resultado fue adjudicado (pérdida técnica o W.O.), no jugado. Las apuestas sobre él esperan una decisión."
   },
   "advanced": {
-    "note": "Solo administradores: modelos y predicciones, capturas, linaje y auditoría de este partido."
+    "note": "Solo administradores: modelos y predicciones, capturas, linaje y auditoría de este partido.",
+    "analysisNote": "Vista de evaluación de PrediGol Intelligence: las tarjetas por mercado, la lectura del día de la IA y las selecciones en evaluación. Un lector no la ve: su Resumen muestra la lectura y los picks publicados."
+  },
+  "intelligence": {
+    "subtitle": "La lectura de PrediGol para este partido",
+    "risksLead": "Qué puede salir mal:",
+    "picks": "Picks publicados",
+    "picksShadow": "Picks en evaluación"
   },
   "priceStatus": {
     "title": "Sin cuota de casas",

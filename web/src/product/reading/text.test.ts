@@ -173,6 +173,18 @@ describe("every code has its sentence", () => {
 });
 
 describe("what the sentences say", () => {
+  test("the round of the match intro reads as the header reads it, never the provider's English", () => {
+    const intro = f("match_intro", { competition: "La Liga", round: "Regular Season - 12" });
+    expect(factText(intro)).toBe("Partido de La Liga (Jornada 12).");
+    expect(factText(intro)).not.toContain("Regular Season");
+    expect(
+      factText(f("match_intro", { competition: "Liga BetPlay", round: "Clausura - 11" })),
+    ).toBe("Partido de Liga BetPlay (Clausura · Jornada 11).");
+    expect(factText(f("match_intro", { competition: "La Liga" }))).toBe("Partido de La Liga.");
+    setLocale("en");
+    expect(factText(intro)).toBe("A La Liga match (Matchday 12).");
+  });
+
   test("the result PrediGol expects, labelled when uncalibrated", () => {
     expect(factText(SAMPLES[2]!)).toBe(
       "PrediGol ve como resultado más probable la victoria de Millonarios (52 %, sin calibrar).",
