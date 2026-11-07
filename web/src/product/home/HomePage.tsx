@@ -149,15 +149,24 @@ function LiveNow({ query }: { query: HomeQuery }) {
   );
 }
 
+/**
+ * Coming back to the app (a PWA from the background, a tab left open) reloads what Inicio shows once it is older than the
+ * client's 15 s (plan Inicio, 1.4, F9): the router turns focus reloads off for the rest of the app, Inicio asks for them.
+ */
+const ON_RETURN = { refetchOnWindowFocus: true } as const;
+
 export function HomePage() {
   const preview = usePreviewParam();
   const reader = useAuth().user?.role === "USER";
-  const home = useQuery(live.home(preview));
-  const today = useQuery(live.today);
-  const news = useQuery(live.todayNews);
-  const me = useQuery({ ...live.meToday, enabled: reader });
-  const board = useQuery(live.daily(preview));
-  const yesterday = useQuery(live.daily(preview, shiftDay(todayKey("America/Bogota"), -1)));
+  const home = useQuery({ ...live.home(preview), ...ON_RETURN });
+  const today = useQuery({ ...live.today, ...ON_RETURN });
+  const news = useQuery({ ...live.todayNews, ...ON_RETURN });
+  const me = useQuery({ ...live.meToday, ...ON_RETURN, enabled: reader });
+  const board = useQuery({ ...live.daily(preview), ...ON_RETURN });
+  const yesterday = useQuery({
+    ...live.daily(preview, shiftDay(todayKey("America/Bogota"), -1)),
+    ...ON_RETURN,
+  });
   const now = Date.now();
   // Yesterday's picks do not vanish at midnight while one of them is still to finish or settle.
   const openYesterday = (yesterday.data?.data?.set?.items ?? []).some(
