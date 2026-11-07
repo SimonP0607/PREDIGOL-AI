@@ -12,7 +12,7 @@ from typing import Any
 import pytest
 
 from fbi.ai.batch import Resolved
-from fbi.ai.battery import TARGETS, claims, corpus, settle
+from fbi.ai.battery import EVERY_TARGET, claims, corpus, settle
 from fbi.ai.battery.evaluate import Outcome
 from fbi.ai.battery.model import Case
 from fbi.ai.battery.settle import (
@@ -541,7 +541,7 @@ def test_what_is_kept_of_a_quote_is_its_first_hundred_and_twenty_characters() ->
 # ── the summary of an answer ───────────────────────────────────────────────────────────────────────────────────────
 
 def test_every_target_has_a_reducer_and_only_the_targets_do() -> None:
-    assert set(REDUCERS) == set(TARGETS) and REDUCERS["review"] is review_outcome and REDUCERS["extract"] is extract_outcome
+    assert set(REDUCERS) == set(EVERY_TARGET) and REDUCERS["review"] is review_outcome and REDUCERS["extract"] is extract_outcome
     assert REDUCERS["claims"] is claims_outcome
 
 

@@ -195,7 +195,7 @@ def test_the_vocabularies_are_the_ones_of_the_router_and_the_contracts() -> None
     assert set(ik.WORKSPACES) == {"production", "lab"}
     for level, model in router.MODELS.items():
         assert another(model=model).key, level  # every model the router can name is a model the key can carry
-    assert another(input_version=pk.VERSION).input_version == "package-v1"
+    assert another(input_version=pk.VERSION).input_version == "package-v2"
 
 
 # ---- with the real slices of a package --------------------------------------------------------------------------------------------------

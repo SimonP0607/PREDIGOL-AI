@@ -31,10 +31,25 @@ def pair(w: decision.World, p: dict[str, Any], ident: int, *, known_at: Any = AT
     return r, "core", engine.decide(w, core({MODEL: p}))
 
 
+def before_ia017(p: replay.Pair, **fields: Any) -> replay.Pair:
+    """The pair with its row as decision-v1 recorded it before IA-017 (``decision.RULES``): those rows stay in ``intel.decisions`` under
+    ``decision-v1``, and the replay still reads them."""
+    r, family, d = p
+    return dict(r) | fields, family, d
+
+
+def lifted_row(ident: int) -> replay.Pair:
+    """A review DOWNGRADE on a market with no validated edge: decision-v1 recorded CAUTELA before IA-017 (the context raised the state),
+    decision-v2 says ABSTAIN - and so does decision-v1 since."""
+    p = pair(world(edge=False, review="DOWNGRADE"), pick(), ident)
+    assert (p[0]["state"], p[2] and p[2].state) == ("INVESTIGACION", "ABSTAIN"), "the two agree today"
+    return before_ia017(p, state="CAUTELA", reasons=["ai_downgrade"])
+
+
 def test_an_agreement_counts_and_a_disagreement_is_put_down_to_its_stage() -> None:
     agree = pair(world(), pick(), 1)
     stale = pair(world(), pick(price_age=timedelta(hours=4)), 2)
-    lifted = pair(world(edge=False, review="DOWNGRADE"), pick(), 3)  # decision-v1 CAUTELA, decision-v2 ABSTAIN
+    lifted = lifted_row(3)  # decision-v1 CAUTELA (before IA-017), decision-v2 ABSTAIN
     gone = (dict(agree[0]) | {"id": 4}, "core", None)
     out = replay.compare([lifted, gone, stale, agree], families=[f.name for f in FAMILIES])
     assert out["agreement"] == {"n": 4, "agree": 2, "rate": 0.5, "unmatched": 1, "correlation_ties": 0}
@@ -51,17 +66,24 @@ def test_an_agreement_counts_and_a_disagreement_is_put_down_to_its_stage() -> No
 
 
 def test_a_disagreement_of_correlation_on_a_tie_of_scores_says_so() -> None:
-    """decision-v1 breaks a tie of scores on the order the database returned its candidates in; decision-v2 on the selection. When they
-    chose differently the replay says it was a tie."""
+    """Before IA-017 decision-v1 broke a tie of scores on the order the database returned its candidates in; decision-v2 breaks it on the
+    selection, and decision-v1 now does too. On its old rows, where the two chose differently, the replay says it was a tie."""
     k2: decision.Key = (77, "1X2", "Away", Decimal("0.00"))
     w = world()
     a, b = pick(), pick(selection="Away")
     [da, db_] = engine.decide_all(w, [core({MODEL: a}), core({MODEL: b}, k2)])
     assert da.score == db_.score and da.verdict("correlation").data["tie"] is True
     assert (da.state, db_.state) == ("CAUTION", "RECOMMENDED"), "on a tie, the selection decides: Away before Home"
-    ea, eb = decision.evaluate(w, KEY, {MODEL: a}), decision.evaluate(w, k2, {MODEL: b})
-    decision.correlate([ea, eb])  # decision-v1 keeps the first it was given
-    rows = [as_row(e) | {"id": i, "known_at": AT, "model_name": MODEL} for i, e in enumerate((ea, eb), 1)]
+    for order in ((0, 1), (1, 0)):
+        ea, eb = decision.evaluate(w, KEY, {MODEL: a}), decision.evaluate(w, k2, {MODEL: b})
+        decision.correlate([(ea, eb)[i] for i in order])
+        rows = [as_row(e) | {"id": i, "known_at": AT, "model_name": MODEL} for i, e in enumerate((ea, eb), 1)]
+        now = replay.compare([(rows[0], "core", da), (rows[1], "core", db_)], families=["core"])
+        assert now["agreement"]["agree"] == 2 and not now["disagreements"], ("decision-v1 keeps Away whatever the order", order)
+    # the rows decision-v1 wrote before IA-017 when it kept the first it was given (Home)
+    assert (ea.state, eb.state) == ("CAUTELA", "CANDIDATO_PARLAY")
+    rows = [as_row(ea) | {"id": 1, "known_at": AT, "model_name": MODEL, "state": eb.state, "reasons": []},
+            as_row(eb) | {"id": 2, "known_at": AT, "model_name": MODEL, "state": "CAUTELA", "reasons": ["correlated_same_match"]}]
     out = replay.compare([(rows[0], "core", da), (rows[1], "core", db_)], families=["core"])
     assert out["agreement"]["correlation_ties"] == 2 and {d["tie"] for d in out["disagreements"]} == {True}
     assert {d["stage"] for d in out["disagreements"]} == {"correlation"}
@@ -121,7 +143,7 @@ def test_the_sql_of_the_replay_names_the_layer_it_reads() -> None:
 # -- the command ----------------------------------------------------------------------------------------------------------------------
 
 def doc() -> dict[str, Any]:
-    out = replay.compare([pair(world(), pick(), 1), pair(world(edge=False, review="DOWNGRADE"), pick(), 2)], families=[f.name for f in FAMILIES])
+    out = replay.compare([pair(world(), pick(), 1), lifted_row(2)], families=[f.name for f in FAMILIES])
     return {"version": engine.VERSION, "replay": replay.VERSION, "day": "2026-11-05", "versions": ["decision-fam-v1", "decision-v1"],
             "inputs": {"council": None, "signals": False}, "rows": 2, "moments": 1, "skipped": {"selection_copies": 0, "unclaimed": 0},
             "unclaimed_rows": []} | out

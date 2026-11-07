@@ -42,19 +42,33 @@ Blocking = Literal["PRODUCT_ONLY", "INSUFFICIENT", "QUARANTINED"]
 to the quantitative one - the same ``NOT_FIT`` of ``fbi.ai.brief`` and ``fbi.ai.review``."""
 NOT_FIT: Final = frozenset({"PRODUCT_ONLY", "INSUFFICIENT"})
 
-SliceName = Literal["match", "stats"]
-SLICE_NAMES: Final = get_args(SliceName)
+SliceName = Literal["match", "stats", "player"]
+ALL_SLICE_NAMES: Final[tuple[SliceName, ...]] = get_args(SliceName)
+"""Every slice the code can cut (what a reader may name in the registry)."""
+SLICES_V1: Final = "slices-v1"
+SLICES_V2: Final = "slices-v2"
+SLICE_SETS: Final[dict[str, tuple[SliceName, ...]]] = {SLICES_V1: ("match", "stats"), SLICES_V2: ("match", "stats", "player")}
+"""The SET of slices a state of a match (``ai.match_runs.slices``) records, by version (IA-017). ``slices-v1`` is every row written before the
+Player Agent and every row written with it off - byte for byte what was written before; ``slices-v2`` adds the ``player`` slice, and only a row
+whose pass had the Player Agent on is written with it, saying so (``model_status.slices``). A row that names no set is ``slices-v1``: the leak audit
+(``fbi.intel.leakage.slice_known``) derives again exactly the set the row says, so the old rows still verify and the new ones verify too. A
+change to which slices a set holds is a new set here, never an edit."""
+DEFAULT_SLICE_SET: Final = SLICES_V1
+SLICE_NAMES: Final[tuple[SliceName, ...]] = SLICE_SETS[DEFAULT_SLICE_SET]
+"""The slices of the default set, in their order: what every state of a match records unless it says otherwise."""
 
 BLOCKS: Final = ("header", "shared", "market", "models", "families", "evidence")
 """The blocks of a package, in the order a prompt reads them: what does not change first (the cache reads a prefix), what changes last."""
 SLICE_BLOCKS: Final[dict[str, tuple[str, ...]]] = {
     "match": ("header", "shared", "market", "models", "evidence"),
     "stats": ("header", "shared", "families", "evidence"),
+    "player": ("header", "shared", "evidence"),
 }
 """What each reader gets. The Council's view (phase 3: the summaries of the assessments, the models, the market and the evidence index) and the
 Research Service's (phase 2: a cited page and the entities of the match) are added with the code that fills them."""
-SLICE_FAMILIES: Final[dict[str, tuple[str, ...]]] = {"match": GOALS_RESULT, "stats": COUNTS}
-"""The families of markets each slice may carry: the Match Agent's five and the Statistics Agent's two."""
+SLICE_FAMILIES: Final[dict[str, tuple[str, ...]]] = {"match": GOALS_RESULT, "stats": COUNTS, "player": GOALS_RESULT}
+"""The families of markets each slice may carry: the Match Agent's five and the Statistics Agent's two. The Player Agent's slice carries no market
+and no model at all (IA-017): its candidates are those of goals and result, named in the request without a number."""
 
 _EXACT: Final[dict[str, Family]] = {"1X2": "1X2", "DC": "DC", "AH": "AH", "OU": "OU", "BTTS": "BTTS"}
 _PREFIX: Final[dict[str, Family]] = {"CORNERS_": "CORNERS", "CARDS_": "CARDS"}
@@ -120,6 +134,9 @@ AVAILABILITY_KINDS: Final = frozenset({"injury", "suspension", "doubtful", "line
 """Who can play. The evidence of these kinds is never trimmed away (section 16: absences and line-ups are not cut)."""
 STATS_EXCLUDED_KINDS: Final = frozenset({"transfer"})
 """What the Statistics Agent does not read: who owns whom has nothing to say about corners and cards."""
+PLAYER_KINDS: Final = AVAILABILITY_KINDS | frozenset({"coach", "news", "transfer"})
+"""What the Player Agent reads of the evidence (IA-017): who can play, what the coach said, the news and the transfers - never the weather, the
+trip, the calendar, the motivation or anything else."""
 
 
 class UntrustedText(Contract):

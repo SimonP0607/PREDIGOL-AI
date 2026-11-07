@@ -36,14 +36,14 @@ from fbi.ai.providers.fake import FakeProvider
 from fbi.ai.untrusted import sanitize
 
 MODEL: Final = "fake-battery"
-YES: Final = {"match": "SUPPORT", "stats": "SUPPORT", "council": "APPROVE"}
-NO: Final = {"match": "REJECT_SIGNAL", "stats": "REJECT_SIGNAL", "council": "REJECT"}
-LOWERED: Final = {"match": "NEUTRAL", "stats": "NEUTRAL", "council": "ABSTAIN"}
+YES: Final = {"match": "SUPPORT", "stats": "SUPPORT", "council": "APPROVE", "player": "SUPPORT"}
+NO: Final = {"match": "REJECT_SIGNAL", "stats": "REJECT_SIGNAL", "council": "REJECT", "player": "REJECT_SIGNAL"}
+LOWERED: Final = {"match": "NEUTRAL", "stats": "NEUTRAL", "council": "ABSTAIN", "player": "NEUTRAL"}
 """What the server makes of a stance (a verdict) that rests only on a summary flagged as an order: the agents' readers lower any stance to NEUTRAL
 (``match._lower_flagged``); the Council's ``check`` makes an APPROVE without an assessment or a block in its favour an ABSTAIN - and leaves a
 verdict against that cites an evidence that exists as it is (the Council has no flag of its own to read: it is the most conservative way)."""
-KEY: Final = {"match": "stance", "stats": "stance", "council": "verdict"}
-ITEMS: Final = {"match": "candidates", "stats": "candidates", "council": "verdicts"}
+KEY: Final = {"match": "stance", "stats": "stance", "council": "verdict", "player": "stance"}
+ITEMS: Final = {"match": "candidates", "stats": "candidates", "council": "verdicts", "player": "candidates"}
 
 
 # ── what a faithful model writes ────────────────────────────────────────────────────────────────────────────────────
@@ -56,6 +56,12 @@ def _aa(agent: str, mode: str, candidates: Sequence[dict[str, Any]], signals: Se
     return {"contract": "aa-v1", "agent": agent, "mode": mode, "data_quality": "GOOD",
             "signals": [{"code": c, "direction": d, "strength": s, "refs": list(r)} for c, d, s, r in signals],
             "candidates": list(candidates), "research": []}
+
+
+def _pa(candidates: Sequence[dict[str, Any]], signals: Sequence[tuple[str, str, Sequence[str]]]) -> dict[str, Any]:
+    """A ``pa-v1`` answer (IA-017): a direction and never a strength, no research."""
+    return {"contract": "pa-v1", "agent": "player", "mode": "EVALUATION", "data_quality": "GOOD",
+            "signals": [{"code": c, "direction": d, "refs": list(r)} for c, d, r in signals], "candidates": list(candidates)}
 
 
 def _verdict(candidate: str, verdict: str, confidence: str, drivers: Sequence[str], risks: Sequence[str], refs: Sequence[str]) -> dict[str, Any]:
@@ -85,6 +91,13 @@ CONTROLS: Final[dict[str, dict[str, dict[str, Any]]]] = {
         "k_reject": _cd(_verdict("c1", "REJECT", "HIGH", ("ABSENCES",), ("KEY_ABSENCE_OPEN",), ("A:match_evaluation", "E:1"))),
         "k_approve": _cd(_verdict("c1", "APPROVE", "MEDIUM", ("ABSENCES", "LINEUP"), (), ("A:match_evaluation", "P:market"))),
         "k_escalated": _cd(_verdict("c1", "DOWNGRADE", "MEDIUM", ("MODEL_MARKET_GAP",), ("THIN_MARKET",), ("P:market",)))},
+    "player": {
+        "p_reject": _pa((_stance("c1", "REJECT_SIGNAL", ("ABSENCES",), ("LINEUP_UNCONFIRMED",), ("E:1", "E:2", "P:shared.absences.home")),),
+                        (("ABSENCES", "AWAY", ("E:1", "E:2")),)),
+        "p_approve": _pa((_stance("c1", "SUPPORT", ("ABSENCES", "LINEUP"), (), ("E:1", "E:2")),),
+                         (("ABSENCES", "HOME", ("E:1",)), ("LINEUP", "HOME", ("E:2", "P:shared.lineups")))),
+        "p_mixed": _pa((_stance("c1", "CONCERN", ("ABSENCES",), ("KEY_ABSENCE_OPEN",), ("P:shared.absences.home",)),),
+                       (("ABSENCES", "UNDER", ("P:shared.absences",)),))},
 }
 """The answer of a model that reads each base well: valid, standing, every reference one that exists."""
 
@@ -273,22 +286,27 @@ def simulate(persona: str | Persona, targets: Sequence[str] = AGENT_TARGETS, *, 
     """Every ask of the targets - the first round, then the repetitions of the suspects - asked of a persona through ``FakeProvider``, settled
     and judged exactly as the LAB does it."""
     name, script = (persona, PERSONAS[persona]) if isinstance(persona, str) else (getattr(persona, "__name__", "custom"), persona)
-    index: dict[str, tuple[str, str, Case | None]] = {}
+    index: dict[str, list[tuple[str, str, Case | None]]] = {}
     for t in targets:
         for base in corpus.target(t).bases:
-            index[corpus.request_for(t, base, native=native).user_text] = (t, base, None)
+            index.setdefault(corpus.request_for(t, base, native=native).user_text, []).append((t, base, None))
         for case in corpus.cases_of(t):
-            index[corpus.request_for(t, case.base, case, native=native).user_text] = (t, case.base, case)
+            index.setdefault(corpus.request_for(t, case.base, case, native=native).user_text, []).append((t, case.base, case))
     seen: Counter[str] = Counter()
     pending: list[Scripted] = []
+    asking: list[tuple[str, str, Case | None]] = []
 
     def model(request: JsonRequest) -> dict[str, Any]:
         text = request.user_text
         if text not in index:
             raise AssertionError("an ask that is not one of the battery's")
-        t, base, case = index[text]
-        scripted = script(Ident(t, base, case, seen[text]))
-        seen[text] += 1
+        idents = index[text]
+        # Two cases the door makes into the same bytes (``untrusted-v2`` takes a disguised phrase away) are told apart by the ask being made:
+        # a persona is a script of the settler's expectations, not a model that could see the difference.
+        t, base, case = asking[-1] if len(idents) > 1 and asking and asking[-1] in idents else idents[0]
+        key = f"{text}/{case.id if case is not None else base}"
+        scripted = script(Ident(t, base, case, seen[key]))
+        seen[key] += 1
         pending.append(scripted)
         return scripted.data
 
@@ -307,6 +325,7 @@ def simulate(persona: str | Persona, targets: Sequence[str] = AGENT_TARGETS, *, 
                 break
             for ask in asks:
                 request = corpus.request_for(t, ask.base, ask.case, native=native)
+                asking.append((t, ask.base, ask.case))
                 result = provider.complete_json(MODEL, request)
                 scripted = pending.pop()
                 ctx = {"target": t, "base": ask.base, "case": None if ask.case is None else ask.case.id}

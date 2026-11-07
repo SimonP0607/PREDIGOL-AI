@@ -323,7 +323,7 @@ def test_what_the_page_says_the_rule_of_the_job_is_the_rule_of_the_code(db: psyc
     rule = ai_agents.package_stats(db, at=AT).rule
     assert rule == {"state_version": match_runs.STATE_VERSION, "package_version": package.VERSION, "window_days": match_runs.WINDOW.days,
                     "limit": match_runs.LIMIT, "max_seconds": match_runs.MAX_SECONDS}
-    assert rule["state_version"] == "ms-v1" and rule["package_version"] == "package-v1" and (rule["window_days"], rule["limit"]) == (4, 200)
+    assert rule["state_version"] == "ms-v1" and rule["package_version"] == "package-v2" and (rule["window_days"], rule["limit"]) == (4, 200)
 
 
 # ── the queue ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -576,7 +576,7 @@ def test_the_overview_puts_the_parts_together_for_the_window_it_is_asked(db: psy
     seven = ai_agents.overview(db, at=AT)
     assert seven.status is DataStatus.OK
     o = seven.data
-    assert o.problems == [] and {v.status for v in o.registry} == {"built", "postponed"}
+    assert o.problems == [] and {v.status for v in o.registry} == {"built"}, "IA-017 built the Player Agent: nothing is postponed"
     assert [f.family for f in o.families] == list(FAMILIES) and o.decisions == []
     assert (o.package.days, o.package.states) == (7, 1) and o.queue.days == 7 and o.queue.open == 0
     assert [a.rule for a in o.audit] == list(ai_agents.AUDIT_RULES)

@@ -198,7 +198,12 @@ def council_outcome(r: Resolved, base: str, case: Case | None) -> dict[str, Any]
     return agent_outcome(r, base, case, target="council")
 
 
+def player_outcome(r: Resolved, base: str, case: Case | None) -> dict[str, Any]:
+    return agent_outcome(r, base, case, target="player")
+
+
 REDUCERS = {"review": review_outcome, "extract": extract_outcome, "claims": claims_outcome, "match": match_outcome, "stats": stats_outcome,
+            "player": player_outcome,
             "council": council_outcome}
 
 

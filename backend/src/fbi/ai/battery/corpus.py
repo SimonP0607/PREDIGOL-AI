@@ -14,10 +14,12 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from typing import Any, Final
 
-from fbi.ai.agents import council, match, stats
+from fbi.ai.agents import council, match, player, stats
 from fbi.ai.battery import (
     AGENT_TARGETS,
+    EVERY_TARGET,
     MIN_CASES,
+    SHADOW_TARGETS,
     TARGETS,
     VERSION,
     agentworld,
@@ -31,7 +33,7 @@ from fbi.ai.battery import (
 )
 from fbi.ai.battery.model import Base, Case, make_case
 from fbi.ai.config import Tier
-from fbi.ai.contracts.base import ASSESSMENT, COUNCIL
+from fbi.ai.contracts.base import ASSESSMENT, COUNCIL, PLAYER_ASSESSMENT
 from fbi.ai.prompts import (
     COUNCIL_OPUS_VERSION,
     COUNCIL_VERSION,
@@ -39,6 +41,7 @@ from fbi.ai.prompts import (
     EXTRACT_VERSION,
     MATCH_ASSESS_VERSION,
     MATCH_CONTEXT_VERSION,
+    PLAYER_ASSESS_VERSION,
     REVIEW_VERSION,
     STATS_ASSESS_VERSION,
 )
@@ -116,6 +119,7 @@ TARGET_SPECS: Final[dict[str, Target]] = {
     "match": _agent("match", match.VERSION, (MATCH_CONTEXT_VERSION, MATCH_ASSESS_VERSION), ASSESSMENT, "bulk", 1200),
     "stats": _agent("stats", stats.VERSION, (STATS_ASSESS_VERSION,), ASSESSMENT, "bulk", 1200),
     "council": _agent("council", council.VERSION, (COUNCIL_VERSION, COUNCIL_OPUS_VERSION), COUNCIL, "analysis", 1500),
+    "player": _agent("player", player.VERSION, (PLAYER_ASSESS_VERSION,), PLAYER_ASSESSMENT, "bulk", 1000),
 }
 """The tier of an agent is the one of the level the router gives its task (``router.TIER_OF_LEVEL``: Haiku is ``bulk``, Sonnet ``analysis``,
 Opus ``final``); ``typical_output`` is what an answer of a few hundred tokens writes with the thinking of its effort."""
@@ -124,19 +128,23 @@ CASES: Final[tuple[Case, ...]] = (tuple(make_case("review", a) for a in attacks_
                                   + tuple(make_case("extract", a) for a in attacks_extract.ATTACKS)
                                   + tuple(make_case("claims", a) for a in attacks_claims.ATTACKS)
                                   + tuple(make_case(t, a) for t in AGENT_TARGETS for a in attacks_agents.ATTACKS[t]))
-BY_ID: Final[dict[str, Case]] = {c.id: c for c in CASES}
+"""The corpus of ``battery-v3``: what ``corpus_hash`` and the evidence of the gate speak for."""
+SHADOW_CASES: Final[tuple[Case, ...]] = tuple(make_case(t, a) for t in SHADOW_TARGETS for a in attacks_agents.ATTACKS[t])
+"""IA-017: the cases of the targets of agents born OFF (``SHADOW_TARGETS``), outside the corpus of the gate while their agent is off."""
+EVERY_CASE: Final[tuple[Case, ...]] = CASES + SHADOW_CASES
+BY_ID: Final[dict[str, Case]] = {c.id: c for c in EVERY_CASE}
 
 
 def target(name: str) -> Target:
     try:
         return TARGET_SPECS[name]
     except KeyError:
-        raise ValueError(f"unknown target {name!r} (the targets are {', '.join(TARGETS)})") from None
+        raise ValueError(f"unknown target {name!r} (the targets are {', '.join(EVERY_TARGET)})") from None
 
 
 def cases_of(name: str) -> tuple[Case, ...]:
     target(name)
-    return tuple(c for c in CASES if c.target == name)
+    return tuple(c for c in (*CASES, *SHADOW_CASES) if c.target == name)  # read when asked: a test may put another corpus in their place
 
 
 def case_of(case_id: str) -> Case:
@@ -182,4 +190,4 @@ def corpus_hash() -> str:
 
 def check_sizes() -> list[str]:
     """What is wrong with the size of the corpus - the plan's «≥ 40 casos» of each target - or nothing."""
-    return [f"{t}: {n} cases, {MIN_CASES} needed" for t in TARGETS if (n := len(cases_of(t))) < MIN_CASES]
+    return [f"{t}: {n} cases, {MIN_CASES} needed" for t in EVERY_TARGET if (n := len(cases_of(t))) < MIN_CASES]

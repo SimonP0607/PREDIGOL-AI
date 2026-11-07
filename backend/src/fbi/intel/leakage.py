@@ -92,9 +92,14 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              was written and whose moment (``as_of``) is the row's ``known_at``, and that moment is before the kick-off;
                              and the package and EACH of its slices, derived again from that stored packet with the code of today, are
                              byte for byte the ones the row recorded (the hash of the package and the hash of every slice, in the order
-                             of the slices) - so a slice is a part of the package, the package is a part of the packet, and none of them
+                             of the slices; IA-017: the slices of the SET the row names in ``model_status.slices``, ``slices-v1`` when it
+                             names none - so the rows of before the Player Agent, and those written with it off, verify as they always did,
+                             and a row of a pass with it on verifies its ``player`` slice too) - so a slice is a part of the package, the
+                             package is a part of the packet, and none of them
                              carries a moment later than the pass (``PackageLeakError`` is a violation too). A row whose package version
-                             this code cannot derive again is a violation: the audit is taught a new version when the code is. One check
+                             this code cannot derive again is a violation: the audit is taught a new version when the code is - each row
+                             is derived again with the version it names (``package.DERIVABLE``: ``package-v1`` with the door
+                             ``untrusted-v1``, ``package-v2`` with ``untrusted-v2``), never with today's door over an old row. One check
                              per row. Examples are the ids of the rows. The one rule that is not a statement: it reads the packets one
                              at a time, but only those of the rows of the day (some hundreds at most).
     family_forecast_known    (v8, plan F11) the decisions the FAMILIES took on the day (``decision-fam-v1``, ``fbi.familydecisions``): the
@@ -155,7 +160,7 @@ from psycopg.types.json import Jsonb
 from fbi.ai import package as mcp_package
 from fbi.ai.calendar import day_bounds
 from fbi.ai.contracts.base import parse_ref
-from fbi.ai.contracts.mcp import SLICE_NAMES
+from fbi.ai.contracts.mcp import DEFAULT_SLICE_SET, SLICE_SETS
 from fbi.core import match_state
 from fbi.core.decision_versions import DECISION_CORE, DECISION_FAMILIES
 from fbi.intel import factors, h2h, tactics
@@ -605,7 +610,7 @@ RULES: dict[str, str] = {
 
 SLICE_ROWS = """
 SELECT r.id, r.fixture_id, r.pass_kind, r.known_at, r.created_at, r.package_version, r.package_hash, r.packet_id, r.slices,
-       r.model_status ->> 'code' AS model_code, p.fixture_id AS packet_fixture, p.built_at AS packet_built_at, f.kickoff_at
+       r.model_status ->> 'code' AS model_code, r.model_status ->> 'slices' AS slice_set, p.fixture_id AS packet_fixture, p.built_at AS packet_built_at, f.kickoff_at
   FROM ai.match_runs r
   LEFT JOIN ai.match_packets p ON p.id = r.packet_id
   LEFT JOIN core.fixtures f ON f.id = r.fixture_id
@@ -620,15 +625,19 @@ def _slice_row_honest(conn: psycopg.Connection[Any], row: dict[str, Any]) -> boo
         return False
     if row["packet_built_at"] > row["created_at"] or row["known_at"] >= row["kickoff_at"]:
         return False
-    if row["package_version"] != mcp_package.VERSION:
+    if row["package_version"] not in mcp_package.DERIVABLE:
         return False
     try:
-        rebuilt = mcp_package.derive(conn, int(row["packet_id"]), pass_kind=row["pass_kind"], model_code=row["model_code"] or "")
+        rebuilt = mcp_package.derive(conn, int(row["packet_id"]), pass_kind=row["pass_kind"], model_code=row["model_code"] or "",
+                                     version=row["package_version"])
         if rebuilt is None or rebuilt.hash != row["package_hash"] or rebuilt.known_at != row["known_at"]:
             return False
-        made = mcp_package.slices_of(rebuilt)
+        names = SLICE_SETS.get(row.get("slice_set") or DEFAULT_SLICE_SET)
+        if names is None:
+            return False  # a set of slices this code does not know cannot be derived again: a violation, until the audit is taught it
+        made = mcp_package.slices_of(rebuilt, names)
         stored = [(str(s.get("name")), str(s.get("hash"))) for s in row["slices"] if isinstance(s, dict)]
-        return stored == [(name, made[name].hash) for name in SLICE_NAMES]
+        return stored == [(name, made[name].hash) for name in names]
     except psycopg.Error:
         raise  # a database that fails is not a verdict about the row, and the transaction is no longer usable
     except Exception:  # a packet written by hand can fail the rule - a package that cannot be derived is a violation - and never stop the audit
