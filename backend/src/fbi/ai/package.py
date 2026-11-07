@@ -67,11 +67,19 @@ from fbi.ai.contracts.mcp import (
 from fbi.ai.evidence import domain_of
 from fbi.ai.packet import Packet, canonical, content_hash
 from fbi.ai.pricing import approx_tokens
+from fbi.ai.untrusted import VERSION_1 as UNTRUSTED_V1
+from fbi.ai.untrusted import VERSION_2 as UNTRUSTED_V2
 from fbi.ai.untrusted import sanitize
 
-VERSION: Final = "package-v1"
+VERSION: Final = "package-v2"
 """The code that derives a package. It is part of the idempotency key (``fbi.ai.idempotency``): a change here is a new derivation of the
-same packet, never a silent rewrite of an old one."""
+same packet, never a silent rewrite of an old one. ``package-v2`` (IA-018) is ``package-v1`` with the door ``untrusted-v2``: the same
+blocks, the same cuts, the outside text cleaned by the newer door."""
+DOOR: Final[dict[str, str]] = {"package-v1": UNTRUSTED_V1, VERSION: UNTRUSTED_V2}
+"""The door (``fbi.ai.untrusted``) each version of the package cleans the outside text with. The packet stores the RAW text (a name, a
+note, the claim of an evidence) and the package cleans it when it is derived, so a package is derived again - by the leak audit,
+``slice_known`` - with the door of the version its row names, and an old row is checked byte for byte against the code that made it."""
+DERIVABLE: Final = tuple(DOOR)
 
 REAL_PER_APPROX: Final = Decimal("2.34")
 """Real tokens per approximate token (characters / 4) of a canonical package, as measured against the provider's own count in F6:
@@ -191,19 +199,20 @@ def paths_in(document: object, prefix: str = "") -> set[str]:
 
 # ── cleaning the text that came from outside ────────────────────────────────────────────────────────────────────────
 
-def _clean(node: Any, path: str, flags: list[str]) -> Any:
-    """Every text of a block through ``fbi.ai.untrusted``: normalised, stripped of links and invisible characters, cut. A text that reads
-    like an order to a model is replaced and its place recorded - a name or a reason is never an instruction, and never worth the risk."""
+def _clean(node: Any, path: str, flags: list[str], door: str = UNTRUSTED_V2) -> Any:
+    """Every text of a block through ``fbi.ai.untrusted`` (the ``door`` of the version being derived): normalised, stripped of links and
+    invisible characters, cut. A text that reads like an order to a model is replaced and its place recorded - a name or a reason is never
+    an instruction, and never worth the risk."""
     if isinstance(node, str):
-        cleaned = sanitize(node, origin="provider", max_chars=STRING_MAX)
+        cleaned = sanitize(node, origin="provider", max_chars=STRING_MAX, version=door)
         if cleaned.instruction_like:
             flags.append(f"{path}:instruction_like")
             return REMOVED
         return cleaned.text
     if isinstance(node, dict):
-        return {k: _clean(v, f"{path}.{k}", flags) for k, v in node.items()}
+        return {k: _clean(v, f"{path}.{k}", flags, door) for k, v in node.items()}
     if isinstance(node, list):
-        return [_clean(v, path, flags) for v in node]
+        return [_clean(v, path, flags, door) for v in node]
     return node
 
 
@@ -301,7 +310,7 @@ def _models(content: Mapping[str, Any], sources: list[dict[str, Any]], model_cod
     return out
 
 
-def _evidence(rows: list[dict[str, Any]], known_at: datetime, flags: list[str]) -> tuple[list[EvidenceItem], Counter[str]]:
+def _evidence(rows: list[dict[str, Any]], known_at: datetime, flags: list[str], door: str = UNTRUSTED_V2) -> tuple[list[EvidenceItem], Counter[str]]:
     items: list[EvidenceItem] = []
     dropped: Counter[str] = Counter()
     if len(rows) > EVIDENCE_MAX:
@@ -319,7 +328,7 @@ def _evidence(rows: list[dict[str, Any]], known_at: datetime, flags: list[str]) 
             dropped["evidence_published_after_the_moment"] += 1
             continue
         domain = domain_of(row.get("url")) or ""
-        text = sanitize(row.get("claim"), origin=domain or str(row.get("source") or "provider"), max_chars=SUMMARY_MAX)
+        text = sanitize(row.get("claim"), origin=domain or str(row.get("source") or "provider"), max_chars=SUMMARY_MAX, version=door)
         if not text.text:
             dropped["evidence_without_text"] += 1
             continue
@@ -353,6 +362,8 @@ class Package:
     flags: tuple[str, ...]
     dropped: dict[str, int] = field(default_factory=dict)
     elapsed_ms: int = 0
+    version: str = VERSION
+    """The version it was derived with (``DOOR`` says which door cleaned its outside text)."""
 
     @property
     def tokens(self) -> int:
@@ -379,19 +390,23 @@ def _compact(document: dict[str, Any]) -> dict[str, Any]:
 
 
 def package_from_packet(packet: Packet, *, pass_kind: PassKind, families: dict[str, Any] | None = None, model_code: str = "",
-                        packet_id: int | None = None, source_hash: str | None = None) -> Package:
-    """The ``mcp-v1`` package of a packet. Pure: the same packet, families and code give the same package, byte for byte."""
+                        packet_id: int | None = None, source_hash: str | None = None, version: str = VERSION) -> Package:
+    """The ``mcp-v1`` package of a packet, derived as ``version`` derives it (``DERIVABLE``; the one in force by default). Pure: the same
+    packet, families, code and version give the same package, byte for byte."""
+    if version not in DOOR:
+        raise ValueError(f"unknown version of the package: {version!r} (this code derives {', '.join(DERIVABLE)})")
+    door = DOOR[version]
     started = time.perf_counter()
     content: dict[str, Any] = json.loads(canonical(packet.content))
     known_at = packet.as_of
     flags: list[str] = []
     shared, blocking = _shared(content, known_at)
-    evidence, dropped = _evidence(content.get("evidence") or [], known_at, flags)
+    evidence, dropped = _evidence(content.get("evidence") or [], known_at, flags, door)
     package = McpPackage(
         contract=MCP, fixture_id=packet.fixture_id, pass_kind=pass_kind, known_at=known_at,
         source=PacketRef(id=packet_id, version=packet.version, hash=source_hash or packet.hash),
-        header=_clean(_without(_header(content), PROSE_KEYS), "header", flags),
-        shared=_clean(shared, "shared", flags),
+        header=_clean(_without(_header(content), PROSE_KEYS), "header", flags, door),
+        shared=_clean(shared, "shared", flags, door),
         market=_market(content), models=_models(content, packet.sources, model_code),
         families=families or {}, evidence=evidence, missing=sorted(set(packet.missing)), blocking=blocking, flags=flags[:20])
     document = _compact(package.model_dump(mode="json"))
@@ -401,7 +416,7 @@ def package_from_packet(packet: Packet, *, pass_kind: PassKind, families: dict[s
     return Package(
         fixture_id=packet.fixture_id, pass_kind=pass_kind, known_at=known_at, source=package.source, document=document,
         hash=content_hash(document), blocking=tuple(blocking), flags=tuple(flags), dropped=dict(dropped),
-        elapsed_ms=int((time.perf_counter() - started) * 1000))
+        elapsed_ms=int((time.perf_counter() - started) * 1000), version=version)
 
 
 # ── the slices ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -680,13 +695,14 @@ def load_stored(conn: psycopg.Connection[Any], packet_id: int) -> tuple[Packet, 
     return packet, str(row["packet_hash"])
 
 
-def derive(conn: psycopg.Connection[Any], packet_id: int, *, pass_kind: PassKind, model_code: str = "") -> Package | None:
+def derive(conn: psycopg.Connection[Any], packet_id: int, *, pass_kind: PassKind, model_code: str = "",
+           version: str = VERSION) -> Package | None:
     """The package of the pass that read stored packet ``packet_id``: the packet, one as-of read of the forecasts of the counts, and the
-    pure function. None when the packet does not exist."""
+    pure function, as ``version`` derives it. None when the packet does not exist."""
     stored = load_stored(conn, packet_id)
     if stored is None:
         return None
     packet, stored_hash = stored
     families = read_families(conn, packet.fixture_id, at=packet.as_of)
     return package_from_packet(packet, pass_kind=pass_kind, families=families, model_code=model_code, packet_id=packet_id,
-                               source_hash=stored_hash)
+                               source_hash=stored_hash, version=version)

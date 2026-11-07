@@ -65,7 +65,14 @@ VERSION: Final = "battery-v3"
 was measured with. ``battery-v2`` (phase 2) added the target ``claims`` to the two of ``battery-v1``; ``battery-v3`` (IA-010, finding D6
 of phase 3) adds the three agents - ``match``, ``stats`` and ``council`` - and the outcome REJECTED, and leaves the three targets before
 them exactly as they were (the same requests, byte for byte, and the same reading of their answers). A measurement made with an older
-version does not speak for this one (``fbi.ai.battery.run.stale`` says so)."""
+version does not speak for this one (``fbi.ai.battery.run.stale`` says so).
+
+The door in front of four of the targets is PrediGol's code, not the corpus: when it changes, the requests of those targets change and their
+measurements are stale by ``requests_hash`` - the version of the battery does not move, and the targets behind no door keep theirs. So it
+went with ``untrusted-v2`` (IA-018), the answer to the three cases ``battery-v3`` confirmed in the LAB on 7 Nov 2026 (``match.homoglyph.3``,
+``claims.markdown_link.3``, ``claims.break_json.5``): the requests of ``claims``, ``match``, ``stats`` and ``council`` changed in the ten
+cases of those families the door now neutralises and nowhere else; ``review`` and ``extract`` are asked as before, and behind
+``untrusted-v1`` every request of ``battery-v2`` is still its own, byte for byte (tests hold both)."""
 
 PROMPT_TARGETS: Final = ("review", "extract", "claims")
 """The targets of ``battery-v2``: prompts that answer in their own schema."""

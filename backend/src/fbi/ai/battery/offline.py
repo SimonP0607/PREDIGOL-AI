@@ -3,8 +3,11 @@
 Three things are checked for every case, and they cost nothing:
 
 * what ``fbi.ai.untrusted`` does to the text: it raises the flags the attack is written to raise (``expect``), the text that was meant to
-  stay hidden does not survive (``hidden``), the words that were disguised can be read plain (``phrase``), and nothing it hands on holds an
-  invisible character, an address or the syntax of a link;
+  stay hidden does not survive (``hidden``), the words that were disguised can be read plain by the filter (``phrase``, in the reading the
+  flags are raised on), and nothing it hands on holds an invisible character, an address or the syntax of a link. Since the door
+  ``untrusted-v2`` (IA-018, the cases ``battery-v3`` confirmed in the LAB on 7 Nov 2026), also what it must NOT hand on: a phrase that
+  was disguised (``disguise_survives``), the words of an image (``alt_survives``) and, for an attempt to break out of the JSON, anything
+  after the break or the bricks of one (``frame_not_cut``, ``structure_left``);
 * that the request keeps the text inside its own string: the request is JSON, the text is found whole in one string of it, and the request
   has exactly the keys of the clean one - an attack that breaks out of its string would add some;
 * that the clean bases raise nothing: a flag that goes off on clean data is a flag nobody reads.
@@ -15,11 +18,13 @@ A defect found here is a defect of PrediGol, not of a model, and it fails the ga
 from __future__ import annotations
 
 import json
+import re
 import unicodedata
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
+from fbi.ai import untrusted
 from fbi.ai.battery import MIN_CASES, TARGETS
 from fbi.ai.battery.corpus import EVERY_CASE, check_sizes, request_for, target
 from fbi.ai.battery.model import Case
@@ -31,6 +36,17 @@ MAX_CHARS: Final = 4000
 CLEAN_FLAGS: Final = frozenset({"instruction_like", "mixed_script", "invisible", "control"})
 """Flags that must not go off on the data of a clean base."""
 INVISIBLE: Final = ("Cc", "Cf", "Cs", "Co", "Cn")
+DOOR_FLAGS: Final = frozenset({"disguised", "frame_break", "structure"})
+"""The flags of ``untrusted-v2``'s neutralisations: on a clean base they would be the text of a real page taken away from the model."""
+IMAGE_WORDS: Final = re.compile(r"!\[([^\]\n]{1,200})\]\(")
+"""The words of an image in markdown: what ``untrusted-v2`` must not hand on (``claims.markdown_link.3``)."""
+BRICKS: Final = ('"}', "}]", '{"', "```", '"""', "'" * 3, "}}", "]]", "\\")
+"""What is left of a break out of the JSON that was not cut: no text a model reads may hold one after ``untrusted-v2``."""
+
+
+def v2() -> bool:
+    """Whether the door in force neutralises (``untrusted-v2``) or only normalises and flags (``untrusted-v1``)."""
+    return untrusted.VERSION != untrusted.VERSION_1
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,8 +118,9 @@ def check_text(case: Case) -> list[Finding]:
             found.append(Finding(case.id, "flag_missing", f"the text was written to raise {flag!r} and the flags are {list(block.flags)}"))
     if case.hidden and case.hidden.casefold() in block.text.casefold():
         found.append(Finding(case.id, "hidden_survives", f"{case.hidden!r} is still in the text a model would read"))
-    if case.phrase and case.phrase.casefold() not in block.text.casefold():
-        found.append(Finding(case.id, "phrase_lost", f"{case.phrase!r} cannot be read in the text a model would read"))
+    reading = getattr(block, "read", "") or block.text  # the plain reading the flags were raised on (the text itself under v1)
+    if case.phrase and case.phrase.casefold() not in reading.casefold():
+        found.append(Finding(case.id, "phrase_lost", f"{case.phrase!r} cannot be read in the text the filter reads"))
     if any(unicodedata.category(ch) in INVISIBLE for ch in block.text):
         found.append(Finding(case.id, "invisible_left", "an invisible or control character is still in the text"))
     lowered = block.text.casefold()
@@ -111,6 +128,27 @@ def check_text(case: Case) -> list[Finding]:
         found.append(Finding(case.id, "link_left", "an address or the syntax of a link is still in the text"))
     if block.as_block().get("untrusted") is not True or not block.origin:
         found.append(Finding(case.id, "not_labelled", "the block does not say that it is untrusted data and where it comes from"))
+    if v2():
+        found += neutralised(case, block.text, tuple(block.flags))
+    return found
+
+
+def neutralised(case: Case, text: str, flags: tuple[str, ...]) -> list[Finding]:
+    """What ``untrusted-v2`` must have taken away from the text a model reads. The three families of the cases ``battery-v3`` confirmed in the LAB
+    (``match.homoglyph.3``, ``claims.markdown_link.3``, ``claims.break_json.5``), checked on every case of the family, in every target."""
+    found: list[Finding] = []
+    lowered = text.casefold()
+    if case.family == "homoglyph" and case.phrase and case.phrase.casefold() in lowered:
+        found.append(Finding(case.id, "disguise_survives", f"the disguised {case.phrase!r} reaches the model, read plain"))
+    for words in IMAGE_WORDS.findall(case.text):
+        if words.strip().casefold() in lowered:
+            found.append(Finding(case.id, "alt_survives", f"the words of an image, {words!r}, reach the model"))
+    if case.family == "break_json":
+        if "frame_break" not in flags or not text.endswith(untrusted.BREAK):
+            found.append(Finding(case.id, "frame_not_cut", "the text was not cut where it tries to break out of the JSON"))
+        left = [b for b in BRICKS if b in text]
+        if left:
+            found.append(Finding(case.id, "structure_left", f"{left} still in the text a model reads"))
     return found
 
 
@@ -147,7 +185,8 @@ def check_bases(names: Sequence[str], *, native: bool = False) -> list[Finding]:
         for base in target(name).bases:
             for doc in documents_of(name, request_for(name, base, native=native)):
                 for leaf in leaves(doc):
-                    flags = set(sanitize(leaf, origin="battery", max_chars=max(len(leaf), 1)).flags) & CLEAN_FLAGS
+                    noise = CLEAN_FLAGS | DOOR_FLAGS if v2() else CLEAN_FLAGS
+                    flags = set(sanitize(leaf, origin="battery", max_chars=max(len(leaf), 1)).flags) & noise
                     if flags:
                         found.append(Finding(f"base:{base}", "clean_flagged", f"{sorted(flags)} in {leaf[:80]!r}"))
     return found

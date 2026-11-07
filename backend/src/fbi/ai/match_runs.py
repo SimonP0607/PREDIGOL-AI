@@ -127,7 +127,7 @@ def record(conn: psycopg.Connection[Any], item: Pending, *, model_code: str, at:
         raise LookupError(f"the packet {item.packet_id} is not there")
     made = mcp_package.slices_of(package)
     values = {"fixture": package.fixture_id, "pass_kind": item.pass_kind, "known_at": package.known_at, "created_at": max(at, package.known_at),
-              "state": STATE_VERSION, "package_version": mcp_package.VERSION, "package_hash": package.hash, "packet": item.packet_id,
+              "state": STATE_VERSION, "package_version": package.version, "package_hash": package.hash, "packet": item.packet_id,
               "elapsed_ms": package.elapsed_ms, "slices": Jsonb([made[name].measures() for name in SLICE_NAMES]),
               "blocking": list(package.blocking), "flags": list(package.flags),
               "model_status": Jsonb({"code": model_code} if model_code else {})}

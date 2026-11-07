@@ -2214,7 +2214,7 @@ class _Runner:
         state = StateRecord(
             work=w,
             created_at=now,
-            package_version=mcp_package.VERSION,
+            package_version=p.package.version,
             package_hash=p.package.hash,
             elapsed_ms=int((now - p.started).total_seconds() * 1000),
             slices=self.slices_of(p),
@@ -2265,7 +2265,7 @@ class _Runner:
         state = StateRecord(
             work=w,
             created_at=now,
-            package_version=mcp_package.VERSION,
+            package_version=p.package.version,
             package_hash=p.package.hash,
             elapsed_ms=0,
             slices=self.slices_of(p),

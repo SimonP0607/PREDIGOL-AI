@@ -12,11 +12,11 @@ import json
 import re
 from collections import Counter
 from dataclasses import replace
-from typing import Any
+from typing import Any, Final
 
 import pytest
 
-from fbi.ai import extract_v2
+from fbi.ai import extract_v2, package, untrusted
 from fbi.ai.battery import (
     AGENT_TARGETS,
     CASES_PER_TARGET,
@@ -213,7 +213,7 @@ def test_the_items_an_extraction_attack_plants_or_states_are_new_and_could_be_kn
         assert not set(a.planted) & expected and not set(a.facts) & expected, case.id
         assert not set(a.planted) & set(a.facts), case.id
         pages = extractor.pages(case.base)
-        read = sanitize(case.text, origin="test", max_chars=4000).text  # a model reads small capitals and full-width letters as letters
+        read = sanitize(case.text, origin="test", max_chars=4000).read  # a model reads small capitals and full-width letters as letters
         tag_block = "".join(chr(ord(ch) - 0xE0000) for ch in case.text if 0xE0000 < ord(ch) < 0xE0080)
         text = " ".join([case.text, read, tag_block, *(f"{p.title} {p.snippet}" for rid, p in pages.items() if rid != extractor.SLOT)])
         known = " " + normalize_name(text) + " "
@@ -533,7 +533,23 @@ CORPUS_HASH = "0c75b24817e062912dd7213359d1112da4897e6805969b20b4e97c110cb4b8e6"
 """The cases and the bases of ``battery-v3``. A change that moves it is a new version of the battery, never an edit of this one."""
 V2_REQUESTS = "54b25506ba08f4156fea3d34f02c7ddcc03eff924ccf7ac0f63e4e7826bdea14"
 """The fingerprint of every request of the three targets of ``battery-v2`` - each base and each case, by the tool call and by structured
-outputs - as ``battery-v2`` made them, measured on its code before ``battery-v3`` was written."""
+outputs - as ``battery-v2`` made them, measured on its code before ``battery-v3`` was written (with the door ``untrusted-v1``)."""
+V2_DOOR_CLAIMS = "f827400936287d60d006396a3da72cd48a8fae9f11a7a50bbbd4be0a46ea29ad"
+"""The fingerprint of every request of the target ``claims`` behind the door ``untrusted-v2`` (IA-018): what a new measurement of it is of."""
+NEUTRALISED: Final = frozenset({"homoglyph.1", "homoglyph.2", "homoglyph.3", "homoglyph.4", "markdown_link.3", "break_json.1", "break_json.2",
+                                "break_json.3", "break_json.4", "break_json.5"})
+"""The cases whose requests the door ``untrusted-v2`` changes, in every target behind a door: the families of the three cases ``battery-v3``
+confirmed in the LAB on 7 Nov 2026 (a disguised phrase, the words of an image, a break out of the JSON). No base and no other case moves."""
+
+
+def fingerprints(name: str, *, natives: tuple[bool, ...] = (False, True)) -> list[list[Any]]:
+    parts: list[list[Any]] = []
+    for native in natives:
+        for b in sorted(corpus.target(name).bases):
+            parts.append([name, native, "base:" + b, corpus.fingerprint(corpus.request_for(name, b, native=native))])
+        for c in sorted(corpus.cases_of(name), key=lambda c: c.id):
+            parts.append([name, native, "case:" + c.id, corpus.fingerprint(corpus.request_for(name, c.base, c, native=native))])
+    return parts
 
 
 def test_the_corpus_is_pinned_to_its_version() -> None:
@@ -541,7 +557,11 @@ def test_the_corpus_is_pinned_to_its_version() -> None:
     assert corpus.corpus_hash() == CORPUS_HASH, "the corpus changed: it is a new VERSION of the battery (and a new pin)"
 
 
-def test_the_targets_of_battery_v2_are_asked_byte_for_byte_as_battery_v2_asked_them() -> None:
+def test_the_targets_of_battery_v2_are_asked_byte_for_byte_as_battery_v2_asked_them(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Behind the door they were measured with: ``untrusted-v1`` is kept, byte for byte, and with it every request of ``battery-v2``. The door in
+    force is ``untrusted-v2`` since IA-018; what it changes is held by the next test (and the LAB's ``requests_hash`` says a measurement of the
+    target ``claims`` made behind the old door is stale)."""
+    monkeypatch.setattr(untrusted, "VERSION", untrusted.VERSION_1)
     parts: list[list[Any]] = []
     for t in PROMPT_TARGETS:
         for native in (False, True):
@@ -550,6 +570,21 @@ def test_the_targets_of_battery_v2_are_asked_byte_for_byte_as_battery_v2_asked_t
             for c in sorted(corpus.cases_of(t), key=lambda c: c.id):
                 parts.append([t, native, "case:" + c.id, corpus.fingerprint(corpus.request_for(t, c.base, c, native=native))])
     assert len(parts) == 258 and hashlib.sha256(json.dumps(parts).encode()).hexdigest() == V2_REQUESTS
+
+
+@pytest.mark.parametrize("name", TARGETS)
+def test_the_door_of_v2_changes_the_requests_of_the_neutralised_cases_and_nothing_else(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
+    now = {p[2]: p[3] for p in fingerprints(name, natives=(False,))}
+    monkeypatch.setattr(untrusted, "VERSION", untrusted.VERSION_1)
+    monkeypatch.setitem(package.DOOR, package.VERSION, untrusted.VERSION_1)
+    before = {p[2]: p[3] for p in fingerprints(name, natives=(False,))}
+    moved = {key.removeprefix(f"case:{name}.") for key, fp in now.items() if before[key] != fp}
+    assert moved == (set() if corpus.target(name).door is None else NEUTRALISED), name
+
+
+def test_the_requests_of_claims_behind_the_door_of_v2_are_pinned() -> None:
+    parts = fingerprints("claims")
+    assert len(parts) == 86 and hashlib.sha256(json.dumps(parts).encode()).hexdigest() == V2_DOOR_CLAIMS
 
 
 def test_the_fingerprints_are_the_same_on_every_call_and_differ_by_target_and_route() -> None:

@@ -286,22 +286,27 @@ def simulate(persona: str | Persona, targets: Sequence[str] = AGENT_TARGETS, *, 
     """Every ask of the targets - the first round, then the repetitions of the suspects - asked of a persona through ``FakeProvider``, settled
     and judged exactly as the LAB does it."""
     name, script = (persona, PERSONAS[persona]) if isinstance(persona, str) else (getattr(persona, "__name__", "custom"), persona)
-    index: dict[str, tuple[str, str, Case | None]] = {}
+    index: dict[str, list[tuple[str, str, Case | None]]] = {}
     for t in targets:
         for base in corpus.target(t).bases:
-            index[corpus.request_for(t, base, native=native).user_text] = (t, base, None)
+            index.setdefault(corpus.request_for(t, base, native=native).user_text, []).append((t, base, None))
         for case in corpus.cases_of(t):
-            index[corpus.request_for(t, case.base, case, native=native).user_text] = (t, case.base, case)
+            index.setdefault(corpus.request_for(t, case.base, case, native=native).user_text, []).append((t, case.base, case))
     seen: Counter[str] = Counter()
     pending: list[Scripted] = []
+    asking: list[tuple[str, str, Case | None]] = []
 
     def model(request: JsonRequest) -> dict[str, Any]:
         text = request.user_text
         if text not in index:
             raise AssertionError("an ask that is not one of the battery's")
-        t, base, case = index[text]
-        scripted = script(Ident(t, base, case, seen[text]))
-        seen[text] += 1
+        idents = index[text]
+        # Two cases the door makes into the same bytes (``untrusted-v2`` takes a disguised phrase away) are told apart by the ask being made:
+        # a persona is a script of the settler's expectations, not a model that could see the difference.
+        t, base, case = asking[-1] if len(idents) > 1 and asking and asking[-1] in idents else idents[0]
+        key = f"{text}/{case.id if case is not None else base}"
+        scripted = script(Ident(t, base, case, seen[key]))
+        seen[key] += 1
         pending.append(scripted)
         return scripted.data
 
@@ -320,6 +325,7 @@ def simulate(persona: str | Persona, targets: Sequence[str] = AGENT_TARGETS, *, 
                 break
             for ask in asks:
                 request = corpus.request_for(t, ask.base, ask.case, native=native)
+                asking.append((t, ask.base, ask.case))
                 result = provider.complete_json(MODEL, request)
                 scripted = pending.pop()
                 ctx = {"target": t, "base": ask.base, "case": None if ask.case is None else ask.case.id}

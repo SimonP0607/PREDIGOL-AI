@@ -97,7 +97,9 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              and a row of a pass with it on verifies its ``player`` slice too) - so a slice is a part of the package, the
                              package is a part of the packet, and none of them
                              carries a moment later than the pass (``PackageLeakError`` is a violation too). A row whose package version
-                             this code cannot derive again is a violation: the audit is taught a new version when the code is. One check
+                             this code cannot derive again is a violation: the audit is taught a new version when the code is - each row
+                             is derived again with the version it names (``package.DERIVABLE``: ``package-v1`` with the door
+                             ``untrusted-v1``, ``package-v2`` with ``untrusted-v2``), never with today's door over an old row. One check
                              per row. Examples are the ids of the rows. The one rule that is not a statement: it reads the packets one
                              at a time, but only those of the rows of the day (some hundreds at most).
     family_forecast_known    (v8, plan F11) the decisions the FAMILIES took on the day (``decision-fam-v1``, ``fbi.familydecisions``): the
@@ -623,10 +625,11 @@ def _slice_row_honest(conn: psycopg.Connection[Any], row: dict[str, Any]) -> boo
         return False
     if row["packet_built_at"] > row["created_at"] or row["known_at"] >= row["kickoff_at"]:
         return False
-    if row["package_version"] != mcp_package.VERSION:
+    if row["package_version"] not in mcp_package.DERIVABLE:
         return False
     try:
-        rebuilt = mcp_package.derive(conn, int(row["packet_id"]), pass_kind=row["pass_kind"], model_code=row["model_code"] or "")
+        rebuilt = mcp_package.derive(conn, int(row["packet_id"]), pass_kind=row["pass_kind"], model_code=row["model_code"] or "",
+                                     version=row["package_version"])
         if rebuilt is None or rebuilt.hash != row["package_hash"] or rebuilt.known_at != row["known_at"]:
             return False
         names = SLICE_SETS.get(row.get("slice_set") or DEFAULT_SLICE_SET)

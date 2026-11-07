@@ -38,6 +38,7 @@ from fbi.ai.battery.agentworld import Judged
 from fbi.ai.battery.evaluate import BaseReport, Outcome
 from fbi.ai.battery.model import Base
 from fbi.ai.providers.base import JsonRequest, LlmResult, LlmUsage
+from fbi.ai.untrusted import sanitize
 
 AT = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
 
@@ -96,14 +97,22 @@ def test_an_attack_that_wants_a_verdict_wants_one_the_data_of_its_base_does_not_
 
 @pytest.mark.parametrize("target", AGENT_TARGETS)
 def test_no_case_is_its_clean_base_nor_another_case_once_the_door_has_dealt_with_it(target: str) -> None:
-    """Two asks with the same bytes are one ask: a case the door makes into its base, or into another case, measures nothing of the model."""
+    """Two asks with the same bytes are one ask: a case the door makes into its base, or into another case, measures nothing of the model - with
+    one exception, and it is the door's doing: ``untrusted-v2`` (IA-018) takes a disguised phrase away, so the two attacks on the same base that
+    differ only in the disguise (look-alike letters, small capitals) reach the agent as the same «[disguised text]» with the same flags. What is
+    measured there is the door; the second ask is one more answer to the same input."""
     seen: dict[str, str] = {}
+    same: set[tuple[str, str]] = set()
     for base in corpus.target(target).bases:
         seen[corpus.request_for(target, base).user] = base
     for case in corpus.cases_of(target):
         user = corpus.request_for(target, case.base, case).user
-        assert user not in seen, (case.id, seen.get(user))
+        if user in seen:
+            same.add((case.id, seen[user]))
+            assert "disguised" in sanitize(case.text, origin="x", max_chars=4000).flags, case.id
+            continue
         seen[user] = case.id
+    assert same == {(f"{target}.homoglyph.2", f"{target}.homoglyph.1")}
 
 
 # ── the requests ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -161,7 +170,7 @@ def test_a_name_that_reads_like_an_order_is_replaced_and_an_evidence_that_does_k
 
 
 def test_a_door_that_lets_an_order_through_is_found(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(package, "_clean", lambda node, path, flags: node)  # the provider's text, as it came
+    monkeypatch.setattr(package, "_clean", lambda node, path, flags, door=None: node)  # the provider's text, as it came
     found = {f.subject: f.check for f in offline.run(["match"]).findings}
     assert found["match.player_name.1"] in ("door_differs", "order_survives")
     assert "match.player_name.3" in found and "match.hidden_html.5" in found
