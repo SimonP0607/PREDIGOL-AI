@@ -23,7 +23,7 @@ from typing import Any
 import httpx
 import pytest
 
-from fbi.ai import collectors, cycle
+from fbi.ai import cache, collectors, cycle, gates
 from fbi.ai.config import AiSettings
 from fbi.ai.cycle import Allowance, news_covered, web_choice
 from fbi.ai.day import DayFixture, Due
@@ -70,8 +70,8 @@ def test_a_priority_competition_is_covered_at_the_passes_that_read_the_web_and_o
             assert news_covered(due(1, league, kind), ON), (league, kind)
         assert not news_covered(due(1, league, "final"), ON), "the final pass reads the line-ups, not the web"
         assert not news_covered(due(1, league, "first"), OFF)
-    for league in (COLOMBIA, None):
-        assert not news_covered(due(1, league, "first"), ON), "group 4 keeps the caps"
+    for other in (COLOMBIA, None):
+        assert not news_covered(due(1, other, "first"), ON), "group 4 keeps the caps"
 
 
 def test_the_first_pass_covers_every_priority_match_and_the_cap_still_counts_only_the_rest() -> None:
@@ -175,10 +175,10 @@ def world(monkeypatch: pytest.MonkeyPatch, *, exa_allowed: bool = True, gate: bo
     monkeypatch.setattr(collectors, "budget_of", lambda conn, at, settings: type("B", (), {"allows": lambda self, w: True,
                                                                                          "state": "OK"})())
     monkeypatch.setattr(collectors, "effective_tier", lambda b, tier, settings: "bulk")
-    monkeypatch.setattr(collectors.gates, "enabled", lambda conn, settings, name, **kw: gate)
+    monkeypatch.setattr(gates, "enabled", lambda conn, settings, name, **kw: gate)
     monkeypatch.setattr(collectors, "exa_budget", lambda conn, at, settings: _Budget(exa_allowed))
-    monkeypatch.setattr(collectors.cache, "get", lambda conn, scope, key, at, **kw: store.get(f"{scope}:{key}"))
-    monkeypatch.setattr(collectors.cache, "put", lambda conn, scope, key, payload, at, ttl: store.__setitem__(f"{scope}:{key}", payload))
+    monkeypatch.setattr(cache, "get", lambda conn, scope, key, at, **kw: store.get(f"{scope}:{key}"))
+    monkeypatch.setattr(cache, "put", lambda conn, scope, key, payload, at, ttl: store.__setitem__(f"{scope}:{key}", payload))
     monkeypatch.setattr(collectors, "tier_of", lambda conn, domain: "media" if known and domain == "marca.com" else "unknown")
     monkeypatch.setattr(collectors, "record_source_results", lambda conn, results, at, cost: None)
     answer = type("Call", (), {"result": type("R", (), {"data": {"items": []}})(), "cost": Decimal(0), "error": None})()

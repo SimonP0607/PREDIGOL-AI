@@ -19,6 +19,7 @@ from fbi.ai.config import AiSettings
 from fbi.ai.cycle import _allowance
 from fbi.ai.day import universe
 from fbi.api.app import create_app
+from fbi.api.contracts.news import NewsSearch
 from fbi.api.deps import get_db
 from fbi.api.services import news as service
 from tests.integration.conftest import Seed
@@ -78,7 +79,7 @@ def test_a_matchs_news_say_whether_it_was_searched(db: psycopg.Connection[Any], 
     body = api.get(f"/api/v1/matches/{never}/news").json()
     assert body["status"] == "empty" and body["data"]["items"] == []
     assert body["data"]["search"] == {"searched": "no", "last_searched_at": None, "searches": 0, "sources_read": 0}
-    assert body["reason"] == service.empty_reason(service.NewsSearch(searched="no"))
+    assert body["reason"] == service.empty_reason(NewsSearch(searched="no"))
 
     searched = fixture(db, seed, NOW + timedelta(hours=6))
     paid_at, cached_at = NOW - timedelta(hours=4), NOW - timedelta(hours=1)
