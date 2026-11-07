@@ -26,6 +26,7 @@ import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import { matchPicks, outcomeCounts, useMatchPicks } from "./picks";
 import { Block, SectionNote } from "./ui";
+import { PickAnchor, useFocusedPick } from "./pickFocus";
 
 function Upcoming({ ctx }: { ctx: MatchCtx }) {
   const q = useMatchPicks(ctx);
@@ -33,6 +34,7 @@ function Upcoming({ ctx }: { ctx: MatchCtx }) {
   const shadow = board?.source === "shadow_preview";
   const picks = matchPicks(board, Number(ctx.fixtureId));
   const rankOf = new Map((board?.top ?? []).map((p, i) => [p.pick_id, i + 1]));
+  const focused = useFocusedPick();
   const paged = usePaged(picks, `${ctx.fixtureId}|${shadow}`);
   return (
     <Block
@@ -52,13 +54,15 @@ function Upcoming({ ctx }: { ctx: MatchCtx }) {
           <p className="text-caption text-muted-foreground">{t("match.picksTab.intro")}</p>
           <div className="grid gap-3 md:grid-cols-2">
             {paged.items.map((p) => (
-              <PickCard
-                key={p.pick_id}
-                pick={p}
-                rank={rankOf.get(p.pick_id)}
-                shadow={shadow}
-                actions={<SelectablePriceRow sel={pickableOfCard(p)} />}
-              />
+              <PickAnchor key={p.pick_id} pickId={p.pick_id} focused={focused === p.pick_id}>
+                <PickCard
+                  pick={p}
+                  rank={rankOf.get(p.pick_id)}
+                  shadow={shadow}
+                  autoOpenWhy={focused === p.pick_id}
+                  actions={<SelectablePriceRow sel={pickableOfCard(p)} />}
+                />
+              </PickAnchor>
             ))}
           </div>
           <Pager paged={paged} />
@@ -73,6 +77,7 @@ function Taken({ ctx, why }: { ctx: MatchCtx; why?: ((pickId: number) => ReactNo
   const board = q.data?.data;
   const shadow = board?.source === "shadow_preview";
   const picks = (board?.started ?? []).filter((p) => p.fixture_id === Number(ctx.fixtureId));
+  const focused = useFocusedPick();
   const paged = usePaged(picks, `${ctx.fixtureId}|${shadow}`);
   const c = outcomeCounts(picks);
   return (
@@ -96,7 +101,14 @@ function Taken({ ctx, why }: { ctx: MatchCtx; why?: ((pickId: number) => ReactNo
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             {paged.items.map((p) => (
-              <StartedPickCard key={p.pick_id} pick={p} shadow={shadow} footer={why?.(p.pick_id)} />
+              <PickAnchor key={p.pick_id} pickId={p.pick_id} focused={focused === p.pick_id}>
+                <StartedPickCard
+                  pick={p}
+                  shadow={shadow}
+                  autoOpenWhy={focused === p.pick_id}
+                  footer={why?.(p.pick_id)}
+                />
+              </PickAnchor>
             ))}
           </div>
           <Pager paged={paged} />
