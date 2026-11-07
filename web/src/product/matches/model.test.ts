@@ -9,10 +9,13 @@ import type { Envelope, MatchSummary } from "@/lib/api/v1/types";
 import type { LiveMatch } from "@/lib/api/v1/types_center";
 import { hasKey, setLocale } from "@/lib/i18n";
 import { countryLabel } from "./country";
+import { followFirst, type FollowSet } from "@/product/favorites/follow";
 import {
   competitionOptions,
   groupByCompetition,
   matchesText,
+  priorityOf,
+  sameItem,
   rowScore,
   rowWinner,
   statusCounts,
@@ -264,7 +267,7 @@ describe("winner", () => {
 });
 
 describe("grouping and search", () => {
-  test("live competitions first, then tracked, then by name; kick-off order inside", () => {
+  test("live competitions first, then by name within a priority group; kick-off order inside", () => {
     const items = toItems(
       [
         match({ id: 1, comp: { id: 3, name: "Zeta League", is_tracked: true } }),
@@ -289,6 +292,8 @@ describe("grouping and search", () => {
       [],
     );
     const groups = groupByCompetition(items, "es-ES");
+    // no priority sent (an API older than the field): every competition is in group 4 - after what is in play, the
+    // tracked ones first, then by name
     expect(groups.map((g) => g.competition.name)).toEqual([
       "Omega League",
       "Beta League",
@@ -297,6 +302,87 @@ describe("grouping and search", () => {
     ]);
     expect(groups[1]?.items.map((i) => i.match.id)).toEqual([4, 3]);
     expect(groups[0]?.live).toBe(1);
+  });
+
+  test("the owner's priority (plan Partidos, P1): LaLiga and the Champions League before «1. Division»", () => {
+    const items = toItems(
+      [
+        match({ id: 1, comp: { id: 318, name: "1. Division", priority_group: 4 } }),
+        match({ id: 2, comp: { id: 140, name: "La Liga", priority_group: 1 } }),
+        match({ id: 3, comp: { id: 2, name: "UEFA Champions League", priority_group: 1 } }),
+        match({ id: 4, comp: { id: 3, name: "UEFA Europa League", priority_group: 2 } }),
+        match({
+          id: 5,
+          comp: { id: 32, name: "World Cup - Qualification Europe", priority_group: 3 },
+        }),
+        match({ id: 6, comp: { id: 203, name: "1. Lig", priority_group: 4 } }),
+        match({
+          id: 7,
+          status_group: "live",
+          status_short: "2H",
+          comp: { id: 79, name: "2. Bundesliga", priority_group: 4 },
+        }),
+      ],
+      [],
+    );
+    const names = groupByCompetition(items, "es-ES").map((g) => g.competition.name);
+    expect(names).toEqual([
+      "2. Bundesliga", // in play: still first
+      "La Liga",
+      "UEFA Champions League",
+      "UEFA Europa League",
+      "World Cup - Qualification Europe",
+      "1. Division",
+      "1. Lig",
+    ]);
+    expect(names.indexOf("La Liga")).toBeLessThan(names.indexOf("1. Division"));
+  });
+
+  test("the reader's own leagues go before the priority groups, after what is in play", () => {
+    const items = toItems(
+      [
+        match({ id: 1, comp: { id: 140, name: "La Liga", priority_group: 1 } }),
+        match({ id: 2, comp: { id: 239, name: "Primera A", priority_group: 4 } }),
+        match({
+          id: 3,
+          status_group: "live",
+          status_short: "1H",
+          comp: { id: 79, name: "2. Bundesliga", priority_group: 4 },
+        }),
+      ],
+      [],
+    );
+    const mine: FollowSet = { leagues: new Map([[239, 0]]), teams: new Set(), suggested: false };
+    const names = followFirst(groupByCompetition(items, "es-ES"), mine).map(
+      (g) => g.competition.name,
+    );
+    expect(names).toEqual(["2. Bundesliga", "Primera A", "La Liga"]);
+  });
+
+  test("a priority the page cannot read is group 4", () => {
+    expect(priorityOf({ priority_group: 1 })).toBe(1);
+    expect(priorityOf({ priority_group: 3 })).toBe(3);
+    expect(priorityOf({})).toBe(4);
+    expect(priorityOf({ priority_group: 0 })).toBe(4);
+    expect(priorityOf({ priority_group: 9 })).toBe(4);
+    expect(priorityOf({ priority_group: 1.5 })).toBe(4);
+  });
+
+  test("a row draws the same while its match, state, score and minute stay put (plan Partidos, P5)", () => {
+    const row = match({ id: 70, status_group: "live", status_short: "2H" });
+    const first = toItems([row], [follow({ fixture_id: 70 })]);
+    // the next poll: new objects, new events and statistics, the same score and minute
+    const again = toItems([row], [{ ...follow({ fixture_id: 70 }), state_age_seconds: 3 }]);
+    const goal = toItems([row], [follow({ fixture_id: 70, goals_home: 2 })]);
+    const minute = toItems([row], [follow({ fixture_id: 70, elapsed: 53 })]);
+    const [a, b, c, d] = [first[0], again[0], goal[0], minute[0]];
+    if (!a || !b || !c || !d) throw new Error("no items");
+    expect(a).not.toBe(b);
+    expect(sameItem(a, b)).toBe(true);
+    expect(sameItem(a, c)).toBe(false);
+    expect(sameItem(a, d)).toBe(false);
+    // a new answer of the day for this row: drawn again
+    expect(sameItem(a, { ...a, match: { ...row } })).toBe(false);
   });
 
   test("search ignores accents and case, across teams and competition", () => {
