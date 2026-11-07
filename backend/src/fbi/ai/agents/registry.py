@@ -439,6 +439,16 @@ LEDGER: Final[tuple[Registration, ...]] = (
                  fingerprint="ag7b031b5901",
                  parts={"context": Part("match-context-v3", "b63b15a78ecf", "aa-v1", "ab5f098304ef"),
                         "evaluation": Part("match-assess-v3", "6eb32492e520", "aa-v1", "ab5f098304ef")}),
+    Registration(agent="match", version="match-v4", registered_at=datetime(2026, 11, 7, 20, 0, tzinfo=UTC), decided_by="owner", phase="IA-018",
+                 reason="IA-018: battery-v3 with real models (7 Nov 2026) found the base m_context unstable - 1 of its 5 clean answers was not valid "
+                        "- while the EVALUATION bases were stable. The CONTEXT mode is the one whose verdict is the research ask, and aa-v1 writes the "
+                        "same word in two cases in one answer (the direction HOME, the side home) while the v3 checklist used the word topic for two "
+                        "things. Only the CONTEXT prompt changes (match-context-v4: the words of the ask are lower case and are not directions or codes); "
+                        "match-assess-v3, the contract, the reader, the model and the effort do not. It is born CHALLENGER and runs in shadow in place "
+                        "of match-v3; it reaches a decision only by a row the owner signs in intel.promotions.",
+                 fingerprint="agee9427a3be",
+                 parts={"context": Part("match-context-v4", "bc0f3bdc2158", "aa-v1", "ab5f098304ef"),
+                        "evaluation": Part("match-assess-v3", "6eb32492e520", "aa-v1", "ab5f098304ef")}),
     Registration(agent="council", version="council-v1", registered_at=datetime(2026, 11, 3, 11, 0, tzinfo=UTC), decided_by="owner", phase="IA-3",
                  reason="Built under the Plan Maestro IA the owner approved in full (phase 3, section 11): the Council gives the one verdict per selection "
                         "in cd-v1, Sonnet for every match and Opus only where a rule of router-v1 escalates; it is born CHALLENGER, runs in shadow in the "
@@ -468,6 +478,17 @@ LEDGER: Final[tuple[Registration, ...]] = (
                         "only inside the shadow arms and reaches no decision; props of a player still wait for F-Player and a row the owner signs.",
                  fingerprint="ag83d95ed106",
                  parts={"evaluation": Part("player-assess-v1", "38b01626cd10", "pa-v1", "a38c75eb4ee0")}),
+    Registration(agent="stats", version="stats-v3", registered_at=datetime(2026, 11, 7, 20, 1, tzinfo=UTC), decided_by="owner", phase="IA-018",
+                 reason="IA-018: battery-v3 with real models (7 Nov 2026) found the three clean bases of stats unstable because the clean answers were "
+                        "invalid (s_high 1 of 5 valid, s_low 2 of 5, s_mixed 1 of 5), and production refused a stats-v2 answer for a risk code out of "
+                        "the list. The two families share the signal codes (two RATE OVER are a pair written twice), the market gap was said to come "
+                        "from the second object, and the reasons of a REJECT_SIGNAL had no risk code. The message now lists the references of the "
+                        "package (written by the server) and the closed checklist (stats-assess-v3) gives the exact signal and risk codes, which code a "
+                        "subject and a reason take, a signal code never a risk, and one signal per code and direction for both families. The contract, "
+                        "the reader, the model and the effort do not change. It is born CHALLENGER and runs in shadow in place of stats-v2; it reaches "
+                        "a decision only by a row the owner signs in intel.promotions.",
+                 fingerprint="ag1f2b037ec5",
+                 parts={"evaluation": Part("stats-assess-v3", "fa146d716144", "aa-v1", "ab5f098304ef")}),
     Registration(agent="pmr", version="pmr-v1", registered_at=datetime(2026, 11, 3, 13, 0, tzinfo=UTC), decided_by="owner", phase="IA-5",
                  reason="Built under the Plan Maestro IA the owner approved in full (phase 5, section 12): after the result, the class of the misses the "
                         "attribution of the code left UNKNOWN and a short narrative, in pmr-v1, Haiku for the narrative and Sonnet for the losses worth "

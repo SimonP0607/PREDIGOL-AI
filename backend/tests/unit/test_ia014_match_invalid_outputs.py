@@ -113,12 +113,13 @@ def test_the_v3_checklist_says_where_the_references_are_and_what_broke_v2(checkl
     assert ("A risk code is never a signal code" in checklist) == (mode == "EVALUATION"), "the CONTEXT mode names no risk"
 
 
-def test_the_statistics_agent_keeps_its_checklist_byte_for_byte_and_its_version() -> None:
-    assert prompts.output_checklist(
-        agent="stats", mode="EVALUATION", signal_codes=prompts.STATS_SIGNAL_CODES, directions=prompts.STATS_DIRECTIONS, research=False) == prompts.STATS_ASSESS_CHECKLIST
-    assert "citable" not in prompts.STATS_ASSESS_SYSTEM and prompts.STATS_ASSESS_VERSION == "stats-assess-v2" and stats.VERSION == "stats-v2"
-    assert rg.live_fingerprint(rg.REGISTRY.spec("stats")) == rg.REGISTRY.in_force("stats").fingerprint == "aga044ea3270"
-    assert "citable" not in stats.NOTE, "its message is the one of IA-009"
+def test_the_checklist_of_ia009_is_still_what_the_builder_makes_without_citable() -> None:
+    plain = prompts.output_checklist(agent="stats", mode="EVALUATION", signal_codes=prompts.STATS_SIGNAL_CODES, directions=prompts.STATS_DIRECTIONS,
+                                     research=False)
+    assert "citable" not in plain and "One signal per pair" not in plain and plain != prompts.STATS_ASSESS_CHECKLIST
+    v2 = next(e for e in rg.REGISTRY.history("stats") if e.version == "stats-v2")
+    assert v2.fingerprint == "aga044ea3270" and v2.parts["evaluation"].prompt_version == "stats-assess-v2", "the ledger keeps what v2 was"
+    assert stats.VERSION == "stats-v3", "IA-018 gave the Statistics Agent the closed checklist of v3 (test_ia018_stats_validity.py)"
 
 
 def test_the_second_object_keys_are_the_ones_the_requests_write() -> None:
@@ -131,7 +132,7 @@ def test_the_second_object_keys_are_the_ones_the_requests_write() -> None:
 # -- the words a key of the model's own is named by ------------------------------------------------------------------------------------
 
 def test_the_list_of_named_keys_grew_with_plain_words_and_lost_none() -> None:
-    assert common.NAMED_EXTRA_KEYS == common.NAMED_EXTRA_KEYS_IA009 | common.NAMED_EXTRA_KEYS_IA014
+    assert common.NAMED_EXTRA_KEYS == common.NAMED_EXTRA_KEYS_IA009 | common.NAMED_EXTRA_KEYS_IA014 | common.NAMED_EXTRA_KEYS_IA018
     assert len(common.NAMED_EXTRA_KEYS_IA014) >= 40 and not common.NAMED_EXTRA_KEYS_IA009 & common.NAMED_EXTRA_KEYS_IA014
     assert all(re.fullmatch(r"[a-z][a-z_]{1,29}", w) for w in common.NAMED_EXTRA_KEYS)
     assert set(prompts.NEVER_KEYS) <= common.NAMED_EXTRA_KEYS
@@ -224,11 +225,11 @@ def test_the_reader_is_not_more_tolerant_a_named_or_explained_answer_is_still_re
 # -- the versions ------------------------------------------------------------------------------------------------------------------------
 
 def test_match_v3_is_a_new_version_born_a_challenger_and_nothing_is_promoted() -> None:
-    assert (match.VERSION, prompts.MATCH_CONTEXT_VERSION, prompts.MATCH_ASSESS_VERSION) == ("match-v3", "match-context-v3", "match-assess-v3")
-    entry = rg.REGISTRY.in_force("match")
+    assert prompts.MATCH_ASSESS_VERSION == "match-assess-v3", "IA-018 changed only the CONTEXT prompt (match-context-v4)"
+    entry = next(e for e in rg.REGISTRY.history("match") if e.version == "match-v3")
     assert (entry.version, entry.phase, entry.born_as, entry.baseline, entry.decided_by) == ("match-v3", "IA-014", "CHALLENGER", False, "owner")
-    assert rg.live_fingerprint(rg.REGISTRY.spec("match")) == entry.fingerprint and not rg.REGISTRY.problems()
-    v2 = rg.REGISTRY.history("match")[-2]
+    assert entry.parts["evaluation"] == rg.live_parts(rg.REGISTRY.spec("match"))["evaluation"] and not rg.REGISTRY.problems()
+    v2 = next(e for e in rg.REGISTRY.history("match") if e.version == "match-v2")
     assert v2.version == "match-v2" and {p.schema_sha for p in v2.parts.values()} == {p.schema_sha for p in entry.parts.values()}, "aa-v1 is the same"
     assert {t: p.prompt_version for t, p in entry.parts.items()} == {"context": "match-context-v3", "evaluation": "match-assess-v3"}
     assert "8.0 %" in entry.reason and "CHALLENGER" in entry.reason
@@ -237,6 +238,6 @@ def test_match_v3_is_a_new_version_born_a_challenger_and_nothing_is_promoted() -
 def test_a_question_of_v3_never_shares_a_key_with_one_of_v2() -> None:
     for task in ("context", "evaluation"):
         now = rg.REGISTRY.identity_for("match", task, workspace="lab", input_version="mcp-v1", input_hash="a" * 64, pass_kind="pre", fixture_id=7)
-        v2 = rg.REGISTRY.history("match")[-2]
+        v2 = next(e for e in rg.REGISTRY.history("match") if e.version == "match-v2")
         then = replace(now, agent_version=v2.version, prompt_version=v2.parts[task].prompt_version)
-        assert now.agent_version == "match-v3" and now.key != then.key
+        assert now.agent_version == match.VERSION and now.key != then.key

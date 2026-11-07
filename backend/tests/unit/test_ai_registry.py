@@ -81,8 +81,8 @@ def test_the_agents_of_the_old_route_run_at_the_effort_its_guard_gives_their_tie
                 assert TIER_EFFORT[t.tier] == t.effort, f"{spec.agent}/{t.task}: the tier {t.tier} is asked at {TIER_EFFORT[t.tier]}"
 
 
-APART = {"stats": {"stats-assess-v2"}, "player": {"player-assess-v1"}}
-"""The agents whose version (``stats-v2``) is not the label of their one prompt (``stats-assess-v2``): phase 4's Statistics Agent and IA-017's Player
+APART = {"stats": {"stats-assess-v3"}, "player": {"player-assess-v1"}}
+"""The agents whose version (``stats-v3``) is not the label of their one prompt (``stats-assess-v3``): phase 4's Statistics Agent and IA-017's Player
 Agent (``player-v1``, ``player-assess-v1``)."""
 OWN_PROMPTS = {"council": ("council-opus-v1",)}
 """The agents whose version is the label of their main prompt and that run one more task with a prompt of its own (the Council's Opus)."""
@@ -175,8 +175,9 @@ def test_an_agent_built_after_the_baseline_is_born_a_challenger_with_a_reason_an
         for later in REGISTRY.history(agent)[1:]:  # a later version is born the same way: a challenger, never promoted by the code
             assert not later.baseline and later.born_as == "CHALLENGER" and len(later.reason) >= rg.MIN_REASON
     assert {a: [r.version for r in REGISTRY.history(a)] for a in built if len(REGISTRY.history(a)) > 1} == {
-        "match": ["match-v1", "match-v2", "match-v3"], "stats": ["stats-v1", "stats-v2"]}, (
-        "IA-009: the prompts of aa-v1 with their output checklist; IA-014: the Match Agent's v3 with the references of the package")
+        "match": ["match-v1", "match-v2", "match-v3", "match-v4"], "stats": ["stats-v1", "stats-v2", "stats-v3"]}, (
+        "IA-009: the prompts of aa-v1 with their output checklist; IA-014: the Match Agent's v3 with the references of the package; IA-018: the "
+        "Statistics Agent's v3 with the closed checklist and the Match Agent's CONTEXT prompt v4")
     assert {s.agent: s.replaces for s in AGENTS if s.replaces} == {
         "claim_extractor": "extractor", "pmr": "post_match_reviewer", "la": "learning_analyst"}
     assert (REGISTRY.in_force("pmr").version, REGISTRY.in_force("la").version) == ("pmr-v1", "la-v1")

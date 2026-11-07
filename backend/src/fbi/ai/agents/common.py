@@ -277,7 +277,17 @@ NAMED_EXTRA_KEYS_IA014: Final = frozenset({
 """The words of IA-014 (7 Nov 2026): with ``match-v2`` 8 of 20 invalid answers still had a key at the top level whose name was none of IA-009's, so
 it was cut and nobody knows it. These are the words a model is likely to write there - prose about the answer, a wrapper or the schema echoed back,
 a key of the message copied into the answer, a field in the singular - so that the next measurement names them."""
-NAMED_EXTRA_KEYS: Final = NAMED_EXTRA_KEYS_IA009 | NAMED_EXTRA_KEYS_IA014
+NAMED_EXTRA_KEYS_IA018: Final = frozenset({
+    # the keys of the Statistics Agent's second object copied into the answer
+    "settlement", "descriptive_relations", "relations",
+    # what the counts are about, written as a key of the model's own
+    "families", "family", "rates", "corners", "cards", "fouls", "referee", "markets", "selection", "line", "lines",
+    # the closed lists named as keys
+    "risk_codes", "signal_codes"})
+"""The words of IA-018 (7 Nov 2026): the Statistics Agent's answers (stats-v2) were refused in battery-v3 and in production, and its second object has
+two keys of its own (``settlement``, ``descriptive_relations``) that no list named. Harmless fixed words, as the others. A number the model is told
+never to write (a probability, odds) stays unnamed on purpose: the tests of the Match Agent hold that no such word reaches a code."""
+NAMED_EXTRA_KEYS: Final = NAMED_EXTRA_KEYS_IA009 | NAMED_EXTRA_KEYS_IA014 | NAMED_EXTRA_KEYS_IA018
 """The harmless English words a model is likely to add as a key of its own (IA-009, widened by IA-014). Where an answer has a key the contract does
 not have, the problem names it ONLY when it is one of these (or a field of the contract): what is written is then this list's own word, never the
 model's text. Any other name is cut, as before. The list is fixed here and grows only by a change of code."""

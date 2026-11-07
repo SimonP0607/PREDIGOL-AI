@@ -1,4 +1,4 @@
-"""The Match Agent (``match-v3``; Plan Maestro IA, phase 3, section 9): what it is asked and what the server makes of what it answers.
+"""The Match Agent (``match-v4``; Plan Maestro IA, phase 3, section 9): what it is asked and what the server makes of what it answers.
 
 One agent, one contract (``aa-v1``, ``fbi.ai.contracts.assessment``), two tasks that share a base prompt (``fbi.ai.prompts.MATCH_RULES``):
 
@@ -17,7 +17,8 @@ and, in an evaluation, the candidates BY THEIR NAME with the numbers the server 
 contradiction detector; and, from v3 (IA-014), the references the model may cite (``citable``: ``common.citable_refs`` of the slice, the ids of its
 evidence and the paths of its blocks, written by code). The text that came from outside is already inside ``untrusted`` blocks of the slice (``fbi.ai.package``) and the
 system prompts say it is data. Nothing the model could read as a market, a selection or a price is invented here: it is the slice's or the
-candidate's own.
+candidate's own. v4 (IA-018) changes only the CONTEXT prompt (``match-context-v4``: the words of the ask are lower case and are not directions);
+the message and the EVALUATION prompt (``match-assess-v3``) are those of v3.
 
 What the server makes of the answer (``read``). The contract refuses what is not ``aa-v1`` (``extra="forbid"``: a probability, a price, a
 URL or a sentence has no field to go in); ``contracts.assessment.check`` turns into NEUTRAL a stance that rests on nothing and refuses as a
@@ -39,7 +40,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -91,7 +92,7 @@ from fbi.ai.packet import canonical
 from fbi.ai.providers.base import JsonRequest
 
 AGENT: Final = "match"
-VERSION: Final = "match-v3"
+VERSION: Final = "match-v4"
 SCHEMA_NAME: Final = "submit_assessment"
 """The name of the tool (or of the structured output) the answer is asked through."""
 LINED: Final = frozenset({"AH", "OU"})
@@ -398,10 +399,12 @@ def _why_schema(body: Mapping[str, Any], problems: Sequence[str]) -> tuple[str, 
     return tuple(dict.fromkeys(found))
 
 
-def _why_refs(unknown: Sequence[str], document: Mapping[str, Any]) -> tuple[str, ...]:
-    """What the references of an answer that the package does not have are (``REF_CLASSES``), as ``why:refs:<class>``, each class once."""
+def _why_refs(unknown: Sequence[str], document: Mapping[str, Any], *, second: Collection[str] | None = None) -> tuple[str, ...]:
+    """What the references of an answer that the package does not have are (``REF_CLASSES``), as ``why:refs:<class>``, each class once. ``second``
+    is the keys of the agent's second object (the Match Agent's by default; the Statistics Agent gives its own, IA-018)."""
     _, paths = known_refs(document)
-    second = {k for keys in prompts.SECOND_OBJECT_KEYS.values() for k in keys} - set(document)
+    keys = {k for ks in prompts.SECOND_OBJECT_KEYS.values() for k in ks} if second is None else set(second)
+    second = keys - set(document)
     found: set[str] = set()
     for text in unknown:
         ref = parse_ref(text)
