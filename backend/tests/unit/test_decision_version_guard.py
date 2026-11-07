@@ -209,6 +209,8 @@ PACKAGE = "fbi.familydecisions"
 MAY_IMPORT_THE_PACKAGE = {
     "apps/worker/scheduler.py": "the clock hands the steps of the families to the intelligence jobs",
     "scripts/families.py": "the owner's command: the decision of the families, read-only until asked",
+    "decision/families.py": "decision-v2 in shadow (IA-012) reads the families' candidates as decision-fam-v1 does; nothing that decides "
+                            "imports it (tests/unit/test_decision_v2_isolation.py)",
 }
 """The files outside ``fbi.familydecisions`` that import it (and why). ``fbi.intel`` must not: the package sits above it and above ``fbi.families``
 (``tests/unit/test_architecture.py`` holds the import cycle at its size) and the pipeline's code has no business calling research. Nor may ``fbi.families``:

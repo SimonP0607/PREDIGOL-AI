@@ -104,6 +104,8 @@ def forget_memberships(conn: psycopg.Connection) -> None:
         conn.execute("SET LOCAL fbi.customer_maintenance = 'on'")
         if conn.execute("SELECT to_regclass('customer.lifecycle_snapshots')").fetchone() != (None,):
             conn.execute("DELETE FROM customer.lifecycle_snapshots")  # the states of their days (B11, from the 0106)
+        if conn.execute("SELECT to_regclass('customer.payment_requests')").fetchone() != (None,):
+            conn.execute("DELETE FROM customer.payment_requests")  # a reader's «ya pagué» (tramo 1, from the 0125)
         for table in ("customer.membership_events", "customer.membership_periods", "customer.payments"):
             conn.execute(f"DELETE FROM {table}")
         if conn.execute("SELECT to_regclass('customer.coupons')").fetchone() != (None,):

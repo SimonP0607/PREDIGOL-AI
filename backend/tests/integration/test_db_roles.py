@@ -224,6 +224,11 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "customer.announcement_log", "DELETE", False),
     ("predigol_worker", "customer.announcements", "SELECT", False),
     ("predigol_worker", "customer.coupon_redemptions", "SELECT", False),
+    # a reader's request for access (tramo 1, UX-027): the API inserts and decides it, never deletes; the worker reads none
+    ("predigol_api", "customer.payment_requests", "INSERT", True),
+    ("predigol_api", "customer.payment_requests", "UPDATE", True),
+    ("predigol_api", "customer.payment_requests", "DELETE", False),
+    ("predigol_worker", "customer.payment_requests", "SELECT", False),
 ])
 def test_each_role_gets_exactly_what_it_uses(granted: str, role: str, table: str, privilege: str,
                                             expected: bool) -> None:
