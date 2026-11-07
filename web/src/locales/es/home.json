@@ -1,6 +1,6 @@
 {
-  "oddsUpdated": "Cuotas actualizadas {when}",
-  "oddsNone": "Aún no hay cuotas capturadas",
+  "liveUpdated": "Datos en vivo actualizados {when}",
+  "liveNone": "Sin datos en vivo recientes",
   "picks": {
     "seeAll": "Ver todos",
     "allTile": "Ver todos los picks"
@@ -14,13 +14,6 @@
     "empty": "No hay partidos en juego ahora mismo.",
     "notStarted": "Por empezar",
     "finished": "Final"
-  },
-  "best": {
-    "title": "Mejores cuotas",
-    "subtitle": "Cuotas por encima de la cuota justa del mercado",
-    "seeAll": "Ver todas",
-    "overFair": "{pct} sobre la cuota justa",
-    "empty": "Todavía no hay precios por encima del mercado."
   },
   "today": {
     "title": "Hoy en las ligas sugeridas",
@@ -71,12 +64,9 @@
     "subtitleMine": "Los próximos partidos de tus ligas y equipos: tabla o eliminatoria, descanso y próximo partido"
   },
   "results": {
-    "title": "Resultados",
-    "subtitle": "Ligas sugeridas · últimas 48 horas",
-    "empty": "Sin resultados recientes en las ligas sugeridas.",
-    "postmatch": "Postpartido",
-    "subtitleMine": "Tus ligas y equipos · últimas 48 horas",
-    "emptyMine": "Sin resultados recientes de tus equipos."
+    "title": "Últimos resultados",
+    "subtitle": "Partidos terminados en las últimas 24 horas",
+    "empty": "Hoy todavía no hay resultados de las últimas 24 horas."
   },
   "parlaysNone": "Hoy todavía no hay parlays de PrediGol: solo se arman con selecciones que pasan todas sus reglas, y nunca los rellenamos.",
   "parlaysLink": "Ver parlays",
@@ -101,7 +91,7 @@
     "forYou": "Para ti",
     "forYouHint": "Lo que elegiste seguir",
     "predigol": "PrediGol",
-    "predigolHint": "Lo mismo para todos: los picks del día, los parlays y los mejores precios",
+    "predigolHint": "Lo mismo para todos: los picks del día y los parlays",
     "edit": "Cambiar favoritos"
   },
   "choose": {

@@ -142,7 +142,7 @@ function sameDay(iso: string, zone: string): boolean {
   return day(new Date(iso)) === day(new Date());
 }
 
-test("Home: today in the suggested leagues, the day's picks or why there are none, the parlays, results, live, best odds", async ({
+test("Home: today in the suggested leagues, the day's picks or why there are none, the parlays, results, live", async ({
   page,
 }) => {
   // Plan UX, A9 (section 24): with or without picks, Inicio says what there is today - in that order.
@@ -206,14 +206,14 @@ test("Home: today in the suggested leagues, the day's picks or why there are non
     await expectParlay(page.getByTestId("home-parlay-multiday"), body.data.multiday_parlay);
   }
 
-  // 6 · Resultados, then what is in play everywhere and the best prices
+  // 6 · Resultados, then what is in play everywhere (Mejores cuotas left Inicio, plan Inicio 2.1)
   const results = page.getByTestId("home-results");
   await expect(results.getByRole("heading", { name: t.home.results.title })).toBeVisible();
   await expect(
     results.getByTestId("results-list").or(results.getByTestId("results-empty")),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: t.home.live.title })).toBeVisible();
-  await expect(page.getByRole("heading", { name: t.home.best.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mejores cuotas" })).toHaveCount(0);
   // 4 · Noticias (A10): the confirmed or probable news of today's suggested matches - only with content
   const news = await getJson<{ status: string; data: TodayNewsBody | null }>(
     page.request,
@@ -684,13 +684,13 @@ test("A match's PrediGol analysis: only what a user may see, never value without
     return;
   }
   await open(page, w, `/matches/${found.id}`);
+  // Before kick-off, PrediGol Intelligence is one reading and the published picks (plan Partidos y Match Center, R2-R3):
+  // the analysed markets' cards, their footer and the notice of selections in evaluation are the owner's, in Avanzado.
   await expect(page.getByRole("heading", { name: t.match.analysis.title })).toBeVisible();
-  if (found.cards.length) {
-    await expect(page.getByTestId("analysis-card").first()).toBeVisible();
-    if (found.cards.some((c) => c.verdict === "no_market"))
-      await expect(page.getByText(t.match.analysis.noMarketBanner).first()).toBeVisible();
-  }
-  await expect(page.getByTestId("analysis-footer")).toBeVisible();
+  await expect(page.getByTestId("intelligence-block")).toBeVisible();
+  await expect(page.getByTestId("analysis-card")).toHaveCount(0);
+  await expect(page.getByTestId("analysis-footer")).toHaveCount(0);
+  await expect(page.getByText(t.match.analysis.shadowNote)).toHaveCount(0);
   note(
     test.info(),
     `analysis of ${found.id}: ${found.cards.length} cards, ${found.withheld} in evaluation`,
@@ -820,11 +820,12 @@ test("A match's Análisis PrediGol: six sections of facts with their references,
   );
   await page.keyboard.press("End");
   await expect(page.getByRole("tab").last()).toHaveAttribute("aria-selected", "true");
-  // the Resumen opens with the reading's summary and its two main risks, and the way to the whole analysis
+  // the Resumen opens with PrediGol Intelligence - one reading - and the way to the whole analysis
   await page.getByRole("tab", { name: t.match.tabs.summary }).click();
-  const highlights = page.getByTestId("reading-highlights");
-  await expect(highlights).toBeVisible();
-  await highlights.getByTestId("reading-see-all").click();
+  const intelligence = page.getByTestId("intelligence-block");
+  await expect(intelligence).toBeVisible();
+  await expect(intelligence.getByTestId("reading-lead")).toHaveCount(1);
+  await intelligence.getByTestId("reading-see-all").click();
   await expect(tab).toHaveAttribute("aria-selected", "true");
   await assertClean(page, w);
 });
@@ -914,6 +915,11 @@ test("A match's chronicle written with AI (A11, UX-025): a paragraph for each si
   expect(words, "no certainty, no «valor»").not.toMatch(VETOED[lang()]);
   const other = lang() === "es" ? narrative.en : narrative.es;
   expect(words, "only the reader's language").not.toContain(other[0]!.sentences[0]!.text);
+  // the Resumen reads ONE of them (plan Partidos y Match Center, R2): the chronicle's first stretch, never the facts as well
+  await page.getByRole("tab", { name: t.match.tabs.summary }).click();
+  const intelligence = page.getByTestId("intelligence-block");
+  await expect(intelligence.getByTestId("reading-narrative-lead")).toBeVisible();
+  await expect(intelligence.getByTestId("reading-fact")).toHaveCount(0);
   // a match whose reading has no chronicle shows its facts, as A9 does
   if (withFacts !== null) {
     await open(page, w, `/matches/${withFacts}?s=analisis`);

@@ -26,6 +26,7 @@
     "preliminary": "Preliminary round {n}",
     "round": "Round {n}",
     "fraction": "1/{n} finals",
+    "roundOf": "Round of {n}",
     "stage": {
       "regular_season": "Regular season",
       "group_stage": "Group stage",
@@ -41,7 +42,9 @@
       "championship_round": "Championship round",
       "qualifying_round": "Qualifying round",
       "preliminary_round": "Preliminary round",
-      "3rd_place_final": "Third place"
+      "3rd_place_final": "Third place",
+      "league_stage": "League stage",
+      "knockout_round_play_offs": "Knockout round play-offs"
     }
   },
   "header": {
@@ -107,8 +110,8 @@
     "none": "No odds for this match yet.",
     "noPrice": "No price",
     "ou25": "Over/Under {line} goals",
-    "bestOf_one": "Best price across {count} bookmaker",
-    "bestOf_other": "Best price across {count} bookmakers",
+    "bestOf_one": "Best price from the one bookmaker PrediGol checks; not the whole market",
+    "bestOf_other": "Best price among the {count} bookmakers PrediGol checks; not the whole market",
     "allMarkets": "All markets"
   },
   "markets": {
@@ -397,7 +400,16 @@
     "not_playedBody": "The result was awarded (technical loss or walkover), not played. Bets on it wait for a decision."
   },
   "advanced": {
-    "note": "Admins only: models and predictions, captures, lineage and the audit trail for this match."
+    "note": "Admins only: models and predictions, captures, lineage and the audit trail for this match.",
+    "marketsTitle": "Markets: price captures",
+    "analysisNote": "PrediGol Intelligence's evaluation view: the cards per market, the AI's reading of the day and the selections in evaluation. A reader never sees it: their Summary shows the reading and the published picks."
+  },
+  "intelligence": {
+    "subtitle": "PrediGol's reading of this match",
+    "risksLead": "What could go wrong:",
+    "picks": "Published picks",
+    "picksShadow": "Picks in evaluation",
+    "picksOrigin": "Each pick's probability is the one from the model PrediGol uses to choose its picks. The Forecast uses its own model (named on each market), so the same selection can show two different numbers."
   },
   "priceStatus": {
     "title": "Without a bookmaker price",
@@ -845,7 +857,7 @@
     "hide": "Hide the bookmakers",
     "lineLabel": "Line",
     "bookmaker": "Bookmaker",
-    "opened": "opened {odds}",
+    "opened": "first seen {odds}",
     "movedUp": "Up from {odds}",
     "movedDown": "Down from {odds}",
     "loading": "Loading the bookmakers…"
@@ -977,41 +989,65 @@
       "range": "places {best} to {worst}"
     },
     "table_after": {
-      "home_win": "If {home} win: {home} would have {home_points} points ({home_places}) and {away} {away_points} ({away_places}).",
-      "draw": "If it is a draw: {home} would have {home_points} points ({home_places}) and {away} {away_points} ({away_places}).",
-      "away_win": "If {away} win: {home} would have {home_points} points ({home_places}) and {away} {away_points} ({away_places})."
+      "home_win": "If {home} win: {home} would have {home_points} ({home_places}) and {away} {away_points} ({away_places}).",
+      "draw": "If it is a draw: {home} would have {home_points} ({home_places}) and {away} {away_points} ({away_places}).",
+      "away_win": "If {away} win: {home} would have {home_points} ({home_places}) and {away} {away_points} ({away_places})."
     },
     "tableNote": "With the other teams on today's points: a place is a range.",
     "days": {
-      "exact": "{days} days",
-      "at_most": "at most {days} days"
+      "exact_one": "{days} day",
+      "exact_other": "{days} days",
+      "at_most_one": "at most {days} day",
+      "at_most_other": "at most {days} days"
+    },
+    "count": {
+      "matches_one": "{count} match",
+      "matches_other": "{count} matches",
+      "meetings_one": "{count} meeting",
+      "meetings_other": "{count} meetings",
+      "wins_one": "{count} win",
+      "wins_other": "{count} wins",
+      "draws_one": "{count} draw",
+      "draws_other": "{count} draws",
+      "goals_one": "{count} goal",
+      "goals_other": "{count} goals",
+      "minutes_one": "{count} minute",
+      "minutes_other": "{count} minutes",
+      "points_one": "{count} point",
+      "points_other": "{count} points",
+      "books_one": "{count} bookmaker",
+      "books_other": "{count} bookmakers",
+      "days_one": "{days} day",
+      "days_other": "{days} days",
+      "last_matches_one": "in the last match",
+      "last_matches_other": "in the last {count} matches"
     },
     "rest_days": "{team} comes in with {days} of rest.",
-    "rest_days_matches": "{team} comes in with {days} of rest and {matches} matches in the last 14 days.",
-    "next_match": "{team} plays again in {days} days.",
-    "next_match_comp": "{team} plays again in {days} days ({competition}).",
-    "form": "{team}: {sequence} in the last {n} matches ({ppg} points a match; {gf} goals scored and {ga} conceded a match).",
+    "rest_days_matches": "{team} comes in with {days} of rest and {matches} in the last 14 days.",
+    "next_match": "{team} plays again in {days}.",
+    "next_match_comp": "{team} plays again in {days} ({competition}).",
+    "form": "{team}: {sequence} {last} ({ppg} points a match; {gf} goals scored and {ga} conceded a match).",
     "formLetters": {
       "W": "W",
       "D": "D",
       "L": "L"
     },
     "venue_record": {
-      "home": "{team} at home: {w}W {d}D {l}L in {n} matches.",
-      "away": "{team} away: {w}W {d}D {l}L in {n} matches."
+      "home": "{team} at home: {w}W {d}D {l}L in {matches}.",
+      "away": "{team} away: {w}W {d}D {l}L in {matches}."
     },
-    "xg": "{team} creates {xg_for} xG and concedes {xg_against} (in {n} matches with statistics).",
+    "xg": "{team} creates {xg_for} xG and concedes {xg_against} (in {matches} with statistics).",
     "xg_plain": "{team} creates {xg_for} xG and concedes {xg_against}.",
-    "streak_unbeaten": "{team} is unbeaten in {n} matches.",
-    "streak_winless": "{team} has gone {n} matches without a win.",
-    "h2h": "Head to head (90 minutes): {n} meetings, {home_wins} wins for {home}, {draws} draws and {away_wins} for {away} ({n_effective} effective).",
-    "top_scorer": "{team}: {player} has {goals} goals.",
-    "top_scorer_minutes": "{team}: {player} has {goals} goals in {minutes} minutes.",
+    "streak_unbeaten": "{team} is unbeaten in {matches}.",
+    "streak_winless": "{team} has gone {matches} without a win.",
+    "h2h": "Head to head (90 minutes): {meetings}, {home_wins} for {home}, {draws} and {away_wins} for {away}.",
+    "top_scorer": "{team}: {player} has {goals}.",
+    "top_scorer_minutes": "{team}: {player} has {goals} in {minutes}.",
     "key_absences": "Key absences for {team}: {players}.",
     "key_absences_more": "Key absences for {team}: {players} and {more} more.",
     "market_unpriced": "There are no odds for this match yet.",
     "market_favourite": "The market gives {outcome} {pct}.",
-    "market_favourite_books": "The market gives {outcome} {pct} ({books} bookmakers).",
+    "market_favourite_books": "The market gives {outcome} {pct} ({books}).",
     "market_moved": "Since the opening, {outcome} has moved from {opening} to {now} in the market.",
     "total": {
       "over": "over {line} goals",
@@ -1027,7 +1063,7 @@
     "rumours_one": "There is {count} unconfirmed rumour: it does not count as a fact.",
     "rumours_other": "There are {count} unconfirmed rumours: they do not count as facts.",
     "no_external_info": "We found no outside information about the match (news or absences a source confirmed).",
-    "h2h_weak": "The head to head says little: {n} meetings, {n_effective} effective.",
+    "h2h_weak": "The head to head says little: {meetings}, with little weight for this match.",
     "data_not_fit": "This competition's data is not fit for models: this reading is description only.",
     "not_checked": "We could not check: {blocks}.",
     "blocks": {
@@ -1124,7 +1160,21 @@
     "note": "What PrediGol found in the press about this match, with its source and status. The summary is ours; the article is at the link.",
     "count_one": "{count} item",
     "count_other": "{count} items",
-    "empty": "We found no verified news relevant to this match.",
+    "empty": "We found no news relevant to this match.",
+    "emptyNotSearched": "This match has not been searched for news yet. We search on match day.",
+    "emptySearched": "We searched on {date} and found no news relevant to this match.",
+    "search": {
+      "never": "Not searched yet",
+      "last": "Last searched {when}",
+      "read_one": "{count} source read",
+      "read_other": "{count} sources read"
+    },
+    "relation": {
+      "home": "{topic} · home side",
+      "away": "{topic} · away side",
+      "match": "{topic} · the match"
+    },
+    "relationHelp": "How it relates to the match: what it is about and which side it affects.",
     "unavailable": "The news are not available at the moment.",
     "group": {
       "verified": "Confirmed and probable",
@@ -1279,6 +1329,99 @@
       "title": "Absences in the press",
       "note": "What the outlets say about who will not play or is in doubt, with its status; the details and the link are in News.",
       "more": "See in News"
+    }
+  },
+  "catalog": {
+    "featured": "Highlights",
+    "categories": "Market categories",
+    "category": {
+      "result": "Result",
+      "goals": "Goals",
+      "goals_half": "Halves",
+      "corners": "Corners",
+      "cards": "Cards",
+      "shots": "Shots"
+    },
+    "loading": "Loading the markets…",
+    "error": "We could not load the markets in this category.",
+    "empty": "No odds in force in this category.",
+    "shownOnly": "Only the usual five markets (1X2, goals, both teams to score, Asian handicap and double chance) can go in a parlay; the others are for reference.",
+    "moreLines_one": "See {count} more line",
+    "moreLines_other": "See {count} more lines",
+    "mainLineOnly": "Main line only",
+    "market": {
+      "result_1x2": "Match result (1X2)",
+      "result_asian_handicap": "Asian handicap",
+      "result_double_chance": "Double chance",
+      "result_draw_no_bet": "Draw no bet",
+      "goals_over_under": "Goals over/under",
+      "goals_btts": "Both teams to score",
+      "goals_odd_even": "Goals: odd or even",
+      "half_time_full_time": "Half time/full time",
+      "highest_scoring_half": "Highest scoring half",
+      "corners_over_under": "Corners over/under",
+      "corners_1x2": "Most corners (1X2)",
+      "corners_double_chance": "Most corners: double chance",
+      "cards_over_under": "Cards over/under",
+      "yellow_cards_over_under": "Yellow cards over/under",
+      "yellow_cards_double_chance": "Most yellow cards: double chance",
+      "yellow_cards_1x2": "Most yellow cards (1X2)",
+      "red_cards_over_under": "Red cards over/under",
+      "shots_over_under": "Shots over/under",
+      "shots_on_target_over_under": "Shots on target over/under",
+      "shots_1x2": "Most shots (1X2)",
+      "shots_on_target_1x2": "Most shots on target (1X2)",
+      "other": "Other market"
+    },
+    "period": {
+      "FT": "90'",
+      "1H": "1st half",
+      "2H": "2nd half",
+      "other": "Other period"
+    },
+    "subject": {
+      "home": "{team} (home)",
+      "away": "{team} (away)"
+    },
+    "selection": {
+      "one_x_two": {
+        "Home": "{home}",
+        "Draw": "Draw",
+        "Away": "{away}"
+      },
+      "draw_no_bet": {
+        "Home": "{home}",
+        "Away": "{away}"
+      },
+      "double_chance": {
+        "1X": "{home} or draw",
+        "12": "{home} or {away}",
+        "X2": "Draw or {away}"
+      },
+      "both_teams_score": {
+        "Yes": "Yes",
+        "No": "No"
+      },
+      "odd_even": {
+        "Odd": "Odd",
+        "Even": "Even"
+      },
+      "over_under": {
+        "Over": "Over {line}",
+        "Under": "Under {line}"
+      },
+      "asian_handicap": {
+        "Home": "{home} {line}",
+        "Away": "{away} {line}"
+      },
+      "highest_scoring_half": {
+        "1st Half": "1st half",
+        "2nd Half": "2nd half",
+        "Draw": "Both the same",
+        "X": "Both the same"
+      },
+      "htft": "{ht} / {ft}",
+      "other": "Option {n}"
     }
   }
 }

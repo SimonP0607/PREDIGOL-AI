@@ -16,6 +16,7 @@ import type {
 import {
   absenceReason,
   bestPrices,
+  currentQuotes,
   eventKind,
   goalCredit,
   h2hSummary,
@@ -204,6 +205,96 @@ describe("phase and live state", () => {
     expect(shownScore({ score }, null, "finished")).toEqual({ home: 2, away: 1 });
     expect(shownScore({ score: null }, null, "live")).toBeNull();
     expect(shownScore({ score }, live, "scheduled")).toBeNull();
+  });
+});
+
+describe("current quotes: the newest capture only (R5)", () => {
+  const NOW = "2026-10-03T17:00:00Z";
+  const quotes = [
+    // the newest capture: its quotes a few seconds to a few minutes apart
+    quote({
+      bookmaker_id: 1,
+      bookmaker: "A",
+      selection: "Home",
+      odds_decimal: "2.10",
+      captured_at: NOW,
+    }),
+    quote({
+      bookmaker_id: 2,
+      bookmaker: "B",
+      selection: "Home",
+      odds_decimal: "2.20",
+      captured_at: "2026-10-03T16:56:30Z",
+    }),
+    quote({
+      bookmaker_id: 2,
+      bookmaker: "B",
+      selection: "Draw",
+      odds_decimal: "3.30",
+      captured_at: "2026-10-03T16:50:00Z",
+    }),
+    // C withdrew its price: its last quote is older, and higher - it must not win
+    quote({
+      bookmaker_id: 3,
+      bookmaker: "C",
+      selection: "Home",
+      odds_decimal: "2.80",
+      captured_at: "2026-10-03T15:00:00Z",
+    }),
+    // a market only an old capture priced
+    quote({
+      bookmaker_id: 3,
+      bookmaker: "C",
+      market_key: "BTTS",
+      selection: "Yes",
+      odds_decimal: "1.90",
+      captured_at: "2026-10-03T15:00:00Z",
+    }),
+    // in play: another source, never mixed in, and never the newest of the pre-match ones
+    quote({
+      bookmaker_id: 9,
+      bookmaker: "Z",
+      selection: "Home",
+      odds_decimal: "9.00",
+      source: "live",
+      captured_at: "2026-10-03T19:00:00Z",
+    }),
+  ];
+
+  test("an older, higher quote of a bookmaker that withdrew does not stand as the best price", () => {
+    const current = currentQuotes(quotes, "prematch");
+    expect(current.map((q) => q.bookmaker).sort()).toEqual(["A", "B", "B"]);
+    const home = bestPrices(current, "prematch").find((p) => p.selection === "Home");
+    expect(home?.odds).toBe("2.20");
+    expect(home?.bookmaker).toBe("B");
+    expect(home?.books).toBe(2);
+    // without the filter, the withdrawn price would have won
+    expect(bestPrices(quotes, "prematch").find((p) => p.selection === "Home")?.odds).toBe("2.80");
+  });
+
+  test("ten minutes from the newest capture is still current; a second more is not", () => {
+    const edge = [
+      quote({ bookmaker_id: 1, captured_at: NOW }),
+      quote({ bookmaker_id: 2, captured_at: "2026-10-03T16:50:00Z" }),
+      quote({ bookmaker_id: 3, captured_at: "2026-10-03T16:49:59Z" }),
+    ];
+    expect(currentQuotes(edge, "prematch").map((q) => q.bookmaker_id)).toEqual([1, 2]);
+  });
+
+  test("a market left without a current quote is not made up: it is not on any board", () => {
+    const boards = marketBoards(currentQuotes(quotes, "prematch"), "prematch");
+    expect(boards.map((b) => b.market)).toEqual(["1X2"]);
+  });
+
+  test("nothing to read: nothing current", () => {
+    expect(currentQuotes([], "prematch")).toEqual([]);
+    expect(
+      currentQuotes(
+        quotes.filter((q) => q.source === "live"),
+        "prematch",
+      ),
+    ).toEqual([]);
+    expect(currentQuotes(quotes, "live").map((q) => q.bookmaker)).toEqual(["Z"]);
   });
 });
 
@@ -459,6 +550,19 @@ describe("labels", () => {
     expect(roundLabel("Regular Season - 9")).toBe("Matchday 9");
     expect(roundLabel("Something New")).toBe("Something New");
     expect(roundLabel(null)).toBeNull();
+  });
+
+  test("cup rounds by the teams left, and the league stage of the continental cups", () => {
+    setLocale("es");
+    expect(roundLabel("Round of 128")).toBe("1/64 de final");
+    expect(roundLabel("Round of 64")).toBe("1/32 de final");
+    expect(roundLabel("Round of 16")).toBe("Octavos de final");
+    expect(roundLabel("League Stage - 4")).toBe("Fase liga · Jornada 4");
+    expect(roundLabel("Knockout Round Play-offs")).toBe("Play-offs de eliminatoria");
+    setLocale("en");
+    expect(roundLabel("Round of 128")).toBe("Round of 128");
+    expect(roundLabel("League Stage - 4")).toBe("League stage · Matchday 4");
+    setLocale("es");
   });
 
   test("absence reasons fall into a few plain categories", () => {

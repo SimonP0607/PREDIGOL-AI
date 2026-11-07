@@ -241,24 +241,28 @@ export interface BestOddsBoard {
   source: ProductSource;
 }
 
-export interface UpcomingMatch {
+/** A match that ended in the last 24 hours (plan de Inicio, 3.1). */
+export interface HomeResult {
   fixture_id: number;
   kickoff_at: Iso;
   competition: CompetitionBadge;
   home: TeamBadge;
   away: TeamBadge;
-  bookmakers: number;
+  /** Over after 90 minutes, after extra time or after the shoot-out. */
+  status: "FT" | "AET" | "PEN";
+  goals_home: number;
+  goals_away: number;
+  /** The shoot-out's score, when there was one. */
+  pens_home?: number | null;
+  pens_away?: number | null;
 }
 
 export interface Home {
   source: ProductSource;
-  data_freshness: { odds_at: Iso | null; live_at: Iso | null };
-  top_picks: Section<PickCard[]>;
-  daily_parlay: Parlay;
-  multiday_parlay: Parlay;
+  data_freshness: { live_at: Iso | null };
   live: Section<LiveMatch[]>;
-  best_prices: Section<BestHighlight[]>;
-  upcoming: Section<UpcomingMatch[]>;
+  /** What ended in the last 24 hours, newest first, six at most. Absent from an API older than 3.1. */
+  results?: Section<HomeResult[]>;
 }
 
 export interface PicksQuery {

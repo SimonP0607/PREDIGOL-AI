@@ -231,26 +231,28 @@ class BestOddsBoard(Contract):
     source: Source
 
 
-class UpcomingMatch(Contract):
+class DataFreshness(Contract):
+    live_at: datetime | None
+
+
+class HomeResult(Contract):
+    """A match that ended in the last 24 hours (plan de Inicio, 3.1): who, where, the score and how it ended."""
+
     fixture_id: int
     kickoff_at: datetime
     competition: CompetitionBadge
     home: TeamBadge
     away: TeamBadge
-    bookmakers: int
-
-
-class DataFreshness(Contract):
-    odds_at: datetime | None
-    live_at: datetime | None
+    status: Literal["FT", "AET", "PEN"] = Field(description="Over after 90 minutes, after extra time or after the shoot-out.")
+    goals_home: int
+    goals_away: int
+    pens_home: int | None = Field(default=None, description="The shoot-out's score, when there was one.")
+    pens_away: int | None = None
 
 
 class Home(Contract):
     source: Source
     data_freshness: DataFreshness
-    top_picks: Section[list[PickCard]]
-    daily_parlay: Parlay
-    multiday_parlay: Parlay
     live: Section[list[LiveMatch]]
-    best_prices: Section[list[BestHighlight]]
-    upcoming: Section[list[UpcomingMatch]]
+    results: Section[list[HomeResult]] = Field(description=(
+        "The matches that ended in the last 24 hours, the most recent first, six at most (``home_board.results``)."))

@@ -69,11 +69,18 @@
     "yesterdayOpen": "Ayer · aún por terminar"
   },
   "parlay": {
-    "pAllLow": "Prob. prudente de acertar todas",
-    "pAllLowHelp": "Producto de la probabilidad prudente de cada selección: el extremo bajo del intervalo del modelo.",
+    "pAllLow": "Probabilidad de acertar todas",
+    "pAllLowHelp": "Producto de la probabilidad prudente de cada selección (el extremo bajo del intervalo del modelo): una estimación cauta, no una promesa.",
     "builtAt": "Armado {when}",
     "settledAt": "Liquidado {when}",
-    "legsResult": "{won} de {total} acertadas",
+    "legsWon_one": "{count} acertada",
+    "legsWon_other": "{count} acertadas",
+    "legsLost_one": "{count} fallada",
+    "legsLost_other": "{count} falladas",
+    "legsPending_one": "{count} pendiente",
+    "legsPending_other": "{count} pendientes",
+    "legsVoid_one": "{count} anulada",
+    "legsVoid_other": "{count} anuladas",
     "building": {
       "title": "Buscando el parlay",
       "body": "Hay selecciones que pasan las reglas, pero ninguna combinación de {min} o más crece con su probabilidad prudente."
@@ -413,7 +420,9 @@
     "zone": "Días de picks en {zone}"
   },
   "outcome": {
+    "scheduled": "Por empezar",
     "playing": "En juego",
+    "winning": "Va ganando",
     "won": "Ganado",
     "lost": "Perdido",
     "void": "Anulado",
@@ -519,5 +528,23 @@
     "inconclusive_other": "±{pts} puntos sobre {n} liquidados: la muestra todavía no permite concluir.",
     "conclusive_one": "±{pts} puntos sobre {n} liquidado.",
     "conclusive_other": "±{pts} puntos sobre {n} liquidados."
+  },
+  "card": {
+    "referenceOdds": "Cuota de referencia",
+    "probs": "PrediGol {model} · mercado {market}",
+    "level": {
+      "label": "Nivel",
+      "high": "Alto",
+      "medium": "Medio"
+    },
+    "levelHelp": {
+      "high": "Hasta la estimación prudente de PrediGol supera la probabilidad del mercado.",
+      "medium": "La estimación central de PrediGol supera al mercado; la prudente, no."
+    },
+    "whyValue": "PrediGol ve este resultado más probable que el mercado.",
+    "whyHigh": "Incluso su estimación prudente queda por encima del mercado.",
+    "whyMedium": "Su estimación central supera al mercado; la prudente, no.",
+    "more": "Más sobre este pick",
+    "audit": "Auditoría"
   }
 }

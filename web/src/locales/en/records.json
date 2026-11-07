@@ -69,11 +69,18 @@
     "yesterdayOpen": "Yesterday · still to finish"
   },
   "parlay": {
-    "pAllLow": "Cautious chance all win",
-    "pAllLowHelp": "Product of each selection's cautious probability: the low end of the model's interval.",
+    "pAllLow": "Chance all legs win",
+    "pAllLowHelp": "Product of each selection's cautious probability (the low end of the model's interval): a careful estimate, not a promise.",
     "builtAt": "Built {when}",
     "settledAt": "Settled {when}",
-    "legsResult": "{won} of {total} won",
+    "legsWon_one": "{count} won",
+    "legsWon_other": "{count} won",
+    "legsLost_one": "{count} lost",
+    "legsLost_other": "{count} lost",
+    "legsPending_one": "{count} pending",
+    "legsPending_other": "{count} pending",
+    "legsVoid_one": "{count} void",
+    "legsVoid_other": "{count} void",
     "building": {
       "title": "Looking for the parlay",
       "body": "Some selections pass the rules, but no combination of {min} or more grows at their cautious probability."
@@ -413,7 +420,9 @@
     "zone": "Pick days in {zone}"
   },
   "outcome": {
+    "scheduled": "Not started",
     "playing": "In play",
+    "winning": "Winning",
     "won": "Won",
     "lost": "Lost",
     "void": "Void",
@@ -519,5 +528,23 @@
     "inconclusive_other": "±{pts} points over {n} settled: the sample does not allow a conclusion yet.",
     "conclusive_one": "±{pts} points over {n} settled.",
     "conclusive_other": "±{pts} points over {n} settled."
+  },
+  "card": {
+    "referenceOdds": "Reference odds",
+    "probs": "PrediGol {model} · market {market}",
+    "level": {
+      "label": "Level",
+      "high": "High",
+      "medium": "Medium"
+    },
+    "levelHelp": {
+      "high": "Even PrediGol's prudent estimate is above the market's probability.",
+      "medium": "PrediGol's central estimate is above the market; its prudent one is not."
+    },
+    "whyValue": "PrediGol sees this result as likelier than the market does.",
+    "whyHigh": "Even its prudent estimate stays above the market.",
+    "whyMedium": "Its central estimate is above the market; its prudent one is not.",
+    "more": "More about this pick",
+    "audit": "Audit"
   }
 }

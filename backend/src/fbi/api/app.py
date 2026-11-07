@@ -34,6 +34,7 @@ from fbi.api.routers import (
     feedback,
     football,
     forecast,
+    guides,
     intelligence,
     knowledge,
     market,
@@ -222,8 +223,8 @@ def create_app() -> FastAPI:
     # preferences) and their questions to PrediGol (A14): never behind the gates - a limited reader still sees why, how
     # to renew, and reaches Ayuda. Novedades read (B6) is the reader's own state, like a dismissed hint; so are the reader's
     # devices and categories of notices (B7) - a limited reader is still told their membership ends.
-    for r in (auth.router, customer.router, messaging.router, membership.router, favorites.router, support.router,
-              feedback.updates_router, push.router):
+    for r in (auth.router, customer.router, messaging.router, membership.router, favorites.router, guides.router,
+              support.router, feedback.updates_router, push.router):
         app.include_router(r, prefix="/api/v1", dependencies=app_tier)
     # The product's own analytics (A6), behind the consent gate only: a reader who has not accepted the processing is
     # not measured; a limited one is (what they open while limited is part of renewing). What the reader's own use orders

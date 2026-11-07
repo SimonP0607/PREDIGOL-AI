@@ -77,12 +77,24 @@ export function outcomeLabel(
   );
 }
 
-/** "entre 41 % y 59 %", or that none was measured: a missing interval is said, not drawn as a point. */
-export function intervalText(outcome: Pick<ForecastOutcome, "low" | "high">): string {
+/**
+ * The interval's two ends as the reader sees them (whole percentages), or null when none was measured - or when both read the
+ * same: «entre 9 % y 9 %» is no range at all (plan Partidos y Match Center, R4).
+ */
+function shownInterval(
+  outcome: Pick<ForecastOutcome, "low" | "high">,
+): { low: string; high: string } | null {
   const low = toNumber(outcome.low);
   const high = toNumber(outcome.high);
-  if (low === null || high === null) return t("match.forecast.rangeNone");
-  return t("match.forecast.range", { low: fmtPct(low, 0), high: fmtPct(high, 0) });
+  if (low === null || high === null) return null;
+  const shown = { low: fmtPct(low, 0), high: fmtPct(high, 0) };
+  return shown.low === shown.high ? null : shown;
+}
+
+/** "entre 41 % y 59 %", or that none was measured: a missing (or zero-width) interval is said, not drawn as a point. */
+export function intervalText(outcome: Pick<ForecastOutcome, "low" | "high">): string {
+  const shown = shownInterval(outcome);
+  return shown ? t("match.forecast.range", shown) : t("match.forecast.rangeNone");
 }
 
 export function calibrationLabel(calibration: ForecastCalibration): string {
@@ -157,11 +169,14 @@ export function barPercent(value: string | number | null | undefined): number {
   return Math.min(100, Math.max(0, Math.round(n * 1000) / 10));
 }
 
-/** Where the interval's two ends sit on the track, or null when none was measured (or it is not an interval). */
+/**
+ * Where the interval's two ends sit on the track, or null when none was measured, it is not an interval, or its ends read the
+ * same percentage (the text then says «sin rango medido», and no line is drawn).
+ */
 export function intervalSpan(
   outcome: Pick<ForecastOutcome, "low" | "high">,
 ): { left: number; right: number } | null {
-  if (toNumber(outcome.low) === null || toNumber(outcome.high) === null) return null;
+  if (shownInterval(outcome) === null) return null;
   const left = barPercent(outcome.low);
   const right = barPercent(outcome.high);
   return right < left ? null : { left, right };

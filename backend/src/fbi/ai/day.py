@@ -52,7 +52,7 @@ PASSES: tuple[PassKind, ...] = ("first", "pre", "final")
 
 UNIVERSE_SQL = """
 SELECT f.id, f.kickoff_at, c.id AS competition_id, c.name AS competition, c.country, c.tier, c.competition_type,
-       th.name AS home, ta.name AS away, m.odds_at, m.n_bookmakers
+       c.provider_league_id, th.name AS home, ta.name AS away, m.odds_at, m.n_bookmakers
   FROM core.fixtures f
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id
   JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
@@ -89,6 +89,8 @@ class DayFixture:
     n_bookmakers: int | None
     priority: float
     important: bool
+    provider_league_id: int | None = None
+    """The competition's API-Football id: its priority group for the news coverage (``fbi.intel.day_priority.group_of``, IA-016)."""
 
     def as_json(self, *, at: datetime) -> dict[str, Any]:
         d = asdict(self)
@@ -126,7 +128,8 @@ def universe(conn: psycopg.Connection[Any], *, day: date, at: datetime,
             None if r["tier"] is None else int(r["tier"]), str(r["home"]), str(r["away"]), has_market, r["odds_at"], n,
             priority_of(r["tier"], n, r["competition_type"]),
             has_market and (r["tier"] == 1 or (r["competition_type"] or "") not in ("domestic_league", "domestic_cup"))
-            and (n or 0) >= IMPORTANT_BOOKMAKERS))
+            and (n or 0) >= IMPORTANT_BOOKMAKERS,
+            None if r.get("provider_league_id") is None else int(r["provider_league_id"])))
     return out
 
 

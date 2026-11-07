@@ -98,6 +98,9 @@ BEGIN
     -- a reader's choices; deleted with the rest of what the reader keeps when their account is anonymised at their
     -- request, with the owner's confirmation (fbi.auth.anonymize, plan UX, A7)
     'customer.preferences:INSERT, UPDATE, DELETE',
+    -- what a reader has seen of the welcome tour and the guides (fbi.customer.guides, UX-032): deleted with the rest of
+    -- what the reader keeps when their account is anonymised
+    'customer.guide_progress:INSERT, UPDATE, DELETE',
     'audit.notifications:INSERT', 'raw.ingestion_runs:INSERT, UPDATE',
     -- product analytics (fbi.customer.events, plan UX, A6): the API records a reader's events; the messenger
     -- recomputes the daily aggregate and, once the owner switches the purge on, deletes what is past its retention

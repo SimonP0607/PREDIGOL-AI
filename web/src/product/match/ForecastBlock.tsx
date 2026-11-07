@@ -495,14 +495,24 @@ export function ForecastView({
         ) : null}
         {screen.kind === "forecast" ? (
           <>
-            {screen.markets.map((m) => (
-              <MarketView
-                key={`${m.market}-${m.line}`}
-                market={m}
-                sides={sides}
-                preview={preview}
-              />
-            ))}
+            {/* Full width in the Resumen (plan Partidos y Match Center, R1): the markets side by side, up to three. */}
+            <div
+              data-testid="forecast-markets"
+              className={cn(
+                "grid items-start gap-3",
+                screen.markets.length >= 2 && "md:grid-cols-2",
+                screen.markets.length >= 3 && "lg:grid-cols-3",
+              )}
+            >
+              {screen.markets.map((m) => (
+                <MarketView
+                  key={`${m.market}-${m.line}`}
+                  market={m}
+                  sides={sides}
+                  preview={preview}
+                />
+              ))}
+            </div>
             {/* forecast ≠ value ≠ pick (plan UX, A3): where the three answers are told apart */}
             <ExplainLayers compact />
           </>

@@ -12,8 +12,9 @@ import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtInt, fmtOdds, fmtPct, toNumber } from "@/lib/i18n/format";
-import { formatKickoff, formatRelative } from "@/lib/time";
+import { fmtOdds, fmtPct, toNumber } from "@/lib/i18n/format";
+import { countLegs } from "./model";
+import { formatDate, formatKickoff, formatRelative } from "@/lib/time";
 import type { ParlayRecord, ParlayRecordLeg, RecordKind } from "@/lib/api/v1/types_records";
 import { TeamLogo } from "@/components/football/Logos";
 import { PARLAY_ICON, parlayTitle } from "@/product/parlays/parlayText";
@@ -21,6 +22,7 @@ import { LegNumber, LegPrice, LegRow } from "@/product/parlays/LegRow";
 import { legLabel, viewOfRecord } from "@/product/parlays/legs";
 import { EvaluationBadge, ParlayOutcomeBadge, RecordState, Units } from "./Badges";
 import { CorrectionNote } from "./CorrectionNote";
+import { dayRange, groupByDay } from "./parlayDays";
 
 type Variant = "compact" | "full";
 
@@ -75,7 +77,13 @@ const STAT_LABEL = "text-label leading-tight text-subtle-foreground";
 function Summary({ parlay }: { parlay: ParlayRecord }) {
   const p = toNumber(parlay.p_all_low);
   const settled = ["WON", "LOST", "VOID", "PARTIAL_VOID"].includes(parlay.status);
-  const won = parlay.legs.filter((l) => l.status === "WIN" || l.status === "HALF_WIN").length;
+  const legs = countLegs(parlay.legs);
+  const standing = [
+    legs.won > 0 ? t("records.parlay.legsWon", { count: legs.won }) : null,
+    legs.lost > 0 ? t("records.parlay.legsLost", { count: legs.lost }) : null,
+    legs.pending > 0 ? t("records.parlay.legsPending", { count: legs.pending }) : null,
+    legs.void > 0 ? t("records.parlay.legsVoid", { count: legs.void }) : null,
+  ].filter((x): x is string => x !== null);
   return (
     <div
       className="border-t border-gold/20 bg-gold-soft/30 px-4 py-4 sm:px-5"
@@ -105,12 +113,12 @@ function Summary({ parlay }: { parlay: ParlayRecord }) {
             <ParlayOutcomeBadge status={parlay.status} progress={parlay.progress} />
             {settled ? <Units value={parlay.profit_units} className="text-sm" /> : null}
           </dd>
-          {parlay.legs.some((l) => l.status !== "PENDING") ? (
-            <dd className="mt-1 text-caption text-muted-foreground">
-              {t("records.parlay.legsResult", {
-                won: fmtInt(won),
-                total: fmtInt(parlay.legs.length),
-              })}
+          {legs.pending < legs.total ? (
+            <dd
+              className="mt-1 text-caption text-muted-foreground"
+              data-testid="parlay-legs-standing"
+            >
+              {standing.join(" · ")}
             </dd>
           ) : null}
         </div>
@@ -163,10 +171,30 @@ function NoParlay({ state, min }: { state: "none" | "building" | "void"; min: nu
 }
 
 function scope(parlay: ParlayRecord | null, kind: RecordKind): string {
-  if (parlay && parlay.legs.length > 0) return t("parlays.legs", { count: parlay.legs.length });
+  if (parlay && parlay.legs.length > 0) {
+    const count = t("parlays.legs", { count: parlay.legs.length });
+    // A multi-day parlay says its span before anything else (plan de Inicio, 2.4).
+    const span = kind === "multiday" ? dayRange(groupByDay(parlay.legs)) : null;
+    return span ? `${count} · ${span}` : count;
+  }
   const min = parlay?.min_legs ?? (kind === "daily" ? 2 : 3);
   const max = parlay?.max_legs ?? (kind === "daily" ? 5 : 7);
   return t("parlays.legsRange", { min, max });
+}
+
+/** The day a run of legs is played, over them, in a multi-day parlay. */
+function DayHeading({ at, count }: { at: string; count: number }) {
+  return (
+    <li
+      data-testid="parlay-day"
+      className="flex items-center justify-between gap-2 bg-elevated/50 px-4 py-1.5 sm:px-5"
+    >
+      <h3 className="text-label text-subtle-foreground">{formatDate(at)}</h3>
+      <span className="numeric text-caption text-subtle-foreground">
+        {t("parlays.legs", { count })}
+      </span>
+    </li>
+  );
 }
 
 export function ParlayRecordCard({
@@ -228,18 +256,26 @@ export function ParlayRecordCard({
             aria-label={t("parlays.legsList")}
             className="mt-3 flex-1 divide-y divide-border/60 border-t border-border/60"
           >
-            {parlay.legs.map((leg) =>
-              variant === "compact" ? (
-                <CompactLeg key={leg.leg_no} leg={leg} />
-              ) : (
-                <LegRow
-                  key={leg.leg_no}
-                  leg={viewOfRecord(leg)}
-                  status={leg.status}
-                  state={<RecordState status={leg.status} match={leg.match} />}
-                />
+            {(kind === "multiday"
+              ? groupByDay(parlay.legs)
+              : [{ day: "", at: "", legs: parlay.legs }]
+            ).flatMap((group) => [
+              kind === "multiday" ? (
+                <DayHeading key={`day-${group.day}`} at={group.at} count={group.legs.length} />
+              ) : null,
+              ...group.legs.map((leg) =>
+                variant === "compact" ? (
+                  <CompactLeg key={leg.leg_no} leg={leg} />
+                ) : (
+                  <LegRow
+                    key={leg.leg_no}
+                    leg={viewOfRecord(leg)}
+                    status={leg.status}
+                    state={<RecordState status={leg.status} match={leg.match} />}
+                  />
+                ),
               ),
-            )}
+            ])}
           </ol>
           <Summary parlay={parlay} />
         </>

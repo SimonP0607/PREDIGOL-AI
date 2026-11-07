@@ -20,7 +20,7 @@
     "search": "Buscar por nombre del equipo",
     "searchPlaceholder": "Nombre del equipo",
     "clearSearch": "Borrar búsqueda",
-    "clear": "Quitar filtros",
+    "clear": "Limpiar",
     "country": "País",
     "allCountries": "Todos los países",
     "international": "Internacional",
@@ -28,7 +28,13 @@
     "allCategories": "Todas las categorías",
     "show_one": "Ver {count} partido",
     "show_other": "Ver {count} partidos",
-    "team": "Equipo"
+    "team": "Equipo",
+    "searchAny": "Buscar equipo o competición",
+    "searchAnyPlaceholder": "Equipo o competición",
+    "teamOrCompetition": "Equipo o competición",
+    "applied": "Filtros aplicados",
+    "remove": "Quitar filtro: {name}",
+    "query": "«{query}»"
   },
   "group": {
     "live_one": "{count} en vivo",
@@ -40,7 +46,7 @@
     "1H": "1T",
     "2H": "2T",
     "HT": "Desc.",
-    "ET": "Prór.",
+    "ET": "Prórroga",
     "BT": "Pausa",
     "P": "Pen.",
     "INT": "Int.",
@@ -63,14 +69,15 @@
     "bookmakers_one": "{count} casa",
     "bookmakers_other": "{count} casas",
     "oddsHelp_one": "Cuotas de {count} casa de apuestas",
-    "oddsHelp_other": "Cuotas de {count} casas de apuestas"
+    "oddsHelp_other": "Cuotas de {count} casas de apuestas",
+    "oddsOpen": "Ver sus cuotas en Mercados"
   },
   "empty": {
     "dayTitle": "No hay partidos este día",
     "dayBody": "Prueba con otra fecha.",
     "goToday": "Ver los partidos de hoy",
     "filtersTitle": "Ningún partido coincide con estos filtros",
-    "filtersBody": "Cambia el estado, la competición o la búsqueda."
+    "filtersBody": "Cambia el estado, el país, la categoría, la competición o la búsqueda."
   },
   "country": {
     "GB-ENG": "Inglaterra",
@@ -106,5 +113,8 @@
     "others_other": "Hay {count} partidos de otras ligas.",
     "seeAll": "Ver todos los partidos",
     "next": "Tus próximos partidos"
+  },
+  "bar": {
+    "label": "Día y estado de los partidos"
   }
 }

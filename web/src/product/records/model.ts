@@ -12,6 +12,24 @@ import type {
   ResultStatus,
 } from "@/lib/api/v1/types_records";
 
+/**
+ * How firm a pick of the day reads (plan de Inicio, D3): "high" when even the prudent estimate (the low end of the
+ * model's interval) is above the market's probability, "medium" when only the central one is. Numbers the card already
+ * has; without either of them, no level at all.
+ */
+export type PickLevel = "high" | "medium";
+
+export function pickLevel(
+  pLow: string | number | null | undefined,
+  pMarket: string | number | null | undefined,
+): PickLevel | null {
+  if (pLow === null || pLow === undefined || pMarket === null || pMarket === undefined) return null;
+  const low = Number(pLow);
+  const market = Number(pMarket);
+  if (!Number.isFinite(low) || !Number.isFinite(market)) return null;
+  return low > market ? "high" : "medium";
+}
+
 export const MAX_SLIP_LEGS = 10;
 export const MIN_SLIP_LEGS = 2;
 export const HISTORY_GROUPS: readonly HistoryGroupKey[] = [
@@ -53,11 +71,14 @@ export function resultTone(status: ResultStatus): Tone {
   return "pending";
 }
 
-export type ParlayOutcome = "playing" | "won" | "lost" | "void" | "building";
+export type ParlayOutcome =
+  "scheduled" | "playing" | "winning" | "won" | "lost" | "void" | "building";
 
 /**
- * One state for a parlay's result (REVIEW PREDIGOL, point 2): En juego, Ganado or Perdido - plus Anulado
- * when it happens. A lost leg decides it at once, even with legs still to play.
+ * One state for a parlay's result (plan Inicio 1.3): Por empezar (built, no leg has kicked off), En juego (a leg has
+ * kicked off and nothing is decided), Va ganando (legs won, none lost, some still to play), Ganado, Perdido - plus
+ * Anulado when it happens. A lost leg decides it at once, even with legs still to play. The state only turns ACTIVE
+ * at the first kick-off (``picks/product_settlement.py``), so READY is never "en juego".
  */
 export function parlayOutcome(
   status: ParlayStatus,
@@ -69,7 +90,29 @@ export function parlayOutcome(
   if (status === "BUILDING") return "building";
   if (progress === "LOST" || progress === "PARTIAL_LOST") return "lost";
   if (progress === "WON") return "won";
+  if (status === "READY") return "scheduled";
+  if (progress === "PARTIAL_WON") return "winning";
   return "playing";
+}
+
+export interface LegsCount {
+  won: number;
+  lost: number;
+  pending: number;
+  void: number;
+  total: number;
+}
+
+/** How the legs stand, counted from their own results (a half win counts as won, a half loss as lost). */
+export function countLegs(legs: ReadonlyArray<{ status: ResultStatus }>): LegsCount {
+  const c: LegsCount = { won: 0, lost: 0, pending: 0, void: 0, total: legs.length };
+  for (const l of legs) {
+    if (l.status === "WIN" || l.status === "HALF_WIN") c.won += 1;
+    else if (l.status === "LOSS" || l.status === "HALF_LOSS") c.lost += 1;
+    else if (l.status === "PUSH" || l.status === "VOID") c.void += 1;
+    else c.pending += 1;
+  }
+  return c;
 }
 
 export function parlayTone(status: ParlayStatus): Tone {

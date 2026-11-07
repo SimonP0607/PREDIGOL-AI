@@ -23,6 +23,9 @@ from fbi.core.env import environment
 
 EXA_URL = "https://api.exa.ai/search"
 MAX_RESULTS = 8
+TEXT_CHARS = 2000
+"""Characters of each page's text asked of Exa (IA-016; 600 until then): a team-news page names its absences after the
+introduction, and Exa bills the text by page, not by length - the longer text costs only the extraction's tokens."""
 
 
 class SearchNotConfiguredError(RuntimeError):
@@ -55,7 +58,7 @@ def search(query: str, *, at: datetime, days: int = 7, transport: httpx.BaseTran
     since = at.timestamp() - days * 86400
     body = {"query": query[:300], "numResults": MAX_RESULTS, "type": "auto",
             "startPublishedDate": datetime.fromtimestamp(since, tz=at.tzinfo).isoformat(),
-            "contents": {"text": {"maxCharacters": 600}}}
+            "contents": {"text": {"maxCharacters": TEXT_CHARS}}}
     with httpx.Client(timeout=20.0, transport=transport) as client:
         r = client.post(EXA_URL, headers={"x-api-key": key, "content-type": "application/json"}, json=body)
     if r.status_code != 200:
@@ -66,5 +69,5 @@ def search(query: str, *, at: datetime, days: int = 7, transport: httpx.BaseTran
         if not url.startswith(("http://", "https://")):
             continue
         out.append(SearchResult(url, str(item.get("title") or "")[:200], urlparse(url).netloc,
-                                item.get("publishedDate"), at.isoformat(), str(item.get("text") or "")[:600]))
+                                item.get("publishedDate"), at.isoformat(), str(item.get("text") or "")[:TEXT_CHARS]))
     return out

@@ -2,6 +2,7 @@ import { reportApiFailure } from "@/lib/observability";
 import { API_BASE_URL } from "@/lib/api/mode";
 import { markTrouble } from "@/lib/feedback/session";
 import type { MatchMarkets, MatchProfile } from "./types_profile";
+import type { CatalogCategory, MarketCatalog } from "./types_market_catalog";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
 import type { AgentsOverview, MatchState } from "./types_ai_agents";
@@ -158,6 +159,7 @@ import type {
   HintKey,
   OnboardingState,
 } from "./types_favorites";
+import type { GuideIn, GuideKey, GuideState } from "./types_guides";
 import type { PublishedPick, Transparency } from "./types_transparency";
 import type { AccountSummary } from "./types_account";
 import type { PersonalView, Suggestion } from "./types_personal";
@@ -594,6 +596,11 @@ export const v1 = {
   completeOnboarding: () => postJson<OnboardingState>("/me/onboarding", {}),
   /** A first-visit hint dismissed: it never comes back. */
   dismissHint: (hint: HintKey) => postJson<OnboardingState>("/me/hints", { hint }),
+  /**
+   * What the reader did with a guide (UX-032): idempotent; within a version the status never goes down; 422 outside the closed
+   * lists; 409 guide_mandatory for skipping the first guide of Perfil before it is done.
+   */
+  saveGuide: (guide: GuideKey, body: GuideIn) => putJson<GuideState>(`/me/guides/${guide}`, body),
 
   // ── what readers think of PrediGol (plan UX, B6) ──────────────────────────
   /** Whether the monthly survey is owed now (once every 30 days from the last answer or skip). */
@@ -733,6 +740,12 @@ export const v1 = {
   /** Every price captured for the match, with the Cronología's numbers (REVIEW pt 10). */
   matchMarkets: (id: number | string) =>
     getJson<Envelope<MatchMarkets | null>>(`/matches/${id}/markets`),
+  /**
+   * The structured markets by category, each price the one IN FORCE (plan Partidos y Match Center, F4a). Without
+   * `category`, only the categories that have prices; with it, that category's markets. Read when a category is opened.
+   */
+  matchMarketCatalog: (id: number | string, category?: CatalogCategory) =>
+    getJson<Envelope<MarketCatalog>>(`/matches/${id}/markets/catalog`, { category }),
   /** ANÁLISIS PREDIGOL: up to three cards, computed once per match by the worker and read by everyone. */
   matchAnalysis: (id: number | string, q: Preview = {}) =>
     getJson<Envelope<MatchAnalysis | null>>(`/matches/${id}/analysis`, q),

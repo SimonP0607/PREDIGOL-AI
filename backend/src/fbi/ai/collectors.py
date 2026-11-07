@@ -36,6 +36,7 @@ from fbi.ai.evidence import (
     EvidenceIn,
     domain_of,
     normalize_name,
+    provider_listing,
     refresh_statuses,
     store,
     tier_of,
@@ -88,6 +89,12 @@ class Collected:
     cost_usd: float = 0.0
     skipped: str | None = None
     levels_tried: int = 0
+    asked: int = 0
+    """Searches answered for the match in this pass: paid now, or by an answer still fresh in the cache (IA-016: «was it searched?»)."""
+    read: int = 0
+    """Pages the extraction read for the match in this pass - new ones only: a page already read for it is never read again (IA-016)."""
+    press: bool = False
+    """The press-conference search of a priority competition was asked (``press_query``, IA-016)."""
 
 
 def collect_provider(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime) -> Collected:
@@ -138,8 +145,10 @@ def collect_provider(conn: psycopg.Connection[Any], fixture_id: int, *, at: date
         _, created = store(conn, item, at=at)
         out.created += int(created)
         out.seen += 1
+    # what the latest report lists decides whether an item of the provider still stands, not when it was first listed (IA-015)
+    listed = {provider_listing(fixture_id, a["provider_player_id"], a["absence_type"], a["reason"]) for a in absences}
     out.statuses = refresh_statuses(conn, fixture_id, at=at, kickoff=f["kickoff_at"], lineup_starters=starters,
-                                    absences_checked_at=checked_at)
+                                    absences_checked_at=checked_at, provider_listed=listed)
     return out
 
 
@@ -230,6 +239,27 @@ OFFICIAL = {
     "en": "{home} {away} {competition} official squad press conference {when}",
 }
 PREVIEW = "{home} vs {away} {competition} preview predicted lineups {when}"
+PRESS = {
+    "es": "{home} {away} rueda de prensa convocatoria bajas sanción {when}",
+    "pt": "{home} {away} conferência de imprensa convocados baixas castigo {when}",
+    "it": "{home} {away} conferenza stampa convocati indisponibili squalifica {when}",
+    "fr": "{home} {away} conférence de presse groupe convoqué absents suspension {when}",
+    "de": "{home} {away} Pressekonferenz Kader Ausfälle Sperre {when}",
+    "nl": "{home} {away} persconferentie selectie afwezigen schorsing {when}",
+    "tr": "{home} {away} basin toplantisi kadro eksikler ceza {when}",
+    "en": "{home} vs {away} press conference squad absentees suspension {when}",
+}
+"""The second search of a match of the owner's priority competitions (IA-016, ``news-coverage-v1``): what the coaches said the day before and
+the squad they called, in the competition's language - where the absences, the suspensions and the squad list are first published."""
+PRESS_LEVEL = 4
+"""The press search's own slot in the cache key (``search_key``) and in the ledger: never the key of levels 1-3."""
+MAX_PRIORITY_SEARCHES = 2
+"""A match of a priority competition is searched at most this many times per pass: level 1 and the press search."""
+
+
+def press_query(home: str, away: str, kickoff: datetime, country: str | None) -> str:
+    """The press-conference and squad search of a priority competition's match, in the competition's language (IA-016)."""
+    return PRESS[language_of(country)].format(home=home, away=away, when=f"{kickoff:%Y-%m-%d}")
 
 
 def query_for(home: str, away: str, kickoff: datetime, country: str | None) -> str:
@@ -358,11 +388,17 @@ KNOWN_STANDING = TIER_RANK["media"]
 def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id: int, *, at: datetime,
                 ledger: UsageLedger | None = None, search: SearchFn | None = None,
                 provider: tuple[LlmProvider, str] | None = None,
-                transport: httpx.BaseTransport | None = None, levels: int | Sequence[int] = 1) -> Collected:
+                transport: httpx.BaseTransport | None = None, levels: int | Sequence[int] = 1,
+                priority: bool = False) -> Collected:
     """Team news for one match from the web, when a search API and a model are configured and the budget
     allows - otherwise nothing is fetched and the reason is returned. A search whose cached answer is fresh is not
     asked again; a page already read for this match is not read again; a search that fails costs nothing and is
-    recorded."""
+    recorded.
+
+    ``priority`` (IA-016): the match belongs to one of the owner's priority competitions and is searched outside the web caps. Exa's own
+    envelope is then checked whatever the ``budget_v3`` switch says (a spent envelope means no search), and a match read with level 1 alone
+    also asks the press-conference search (``press_query``) - never more than ``MAX_PRIORITY_SEARCHES`` searches. A match with more levels
+    (a candidate, the topics a brief asked for) keeps exactly the levels it had."""
     out = Collected()
     search = search or default_search(settings, transport)
     if search is None:
@@ -382,15 +418,22 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
         out.skipped = "no such fixture"
         return out
     ledger = ledger or UsageLedger()
-    exa_envelope = gates.enabled(conn, settings, "budget_v3")
+    exa_envelope = priority or gates.enabled(conn, settings, "budget_v3")
     late = f["kickoff_at"] - at <= LATE_WINDOW
     bucket = "late" if late else "early"
     wanted = levels_wanted(levels)
     queries = queries_for(f["home_name"], f["away_name"], f["kickoff_at"], f.get("country"), f.get("competition"),
                           levels=wanted)
+    steps: list[tuple[int, str]] = list(zip(wanted, queries, strict=True))
+    press = priority and len(wanted) < MAX_PRIORITY_SEARCHES
+    if press:  # the press search right after level 1, never stopped by what level 1 found: two searches at most
+        steps.append((PRESS_LEVEL, press_query(f["home_name"], f["away_name"], f["kickoff_at"], f.get("country"))))
     gathered: list[dict[str, Any]] = []
-    for tried, (level, query) in enumerate(zip(wanted, queries, strict=True), start=1):
-        out.levels_tried = tried
+    for tried, (level, query) in enumerate(steps, start=1):
+        if level != PRESS_LEVEL:
+            out.levels_tried = tried
+        else:
+            out.press = True
         key = search_key(query, bucket, level)
         cached = cache.get(conn, "search", key, at=at)
         if cached is None:
@@ -422,9 +465,12 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
         else:
             level_payload = cached
             out.skipped = "cached"
+        out.asked += 1
         level_results: list[dict[str, Any]] = [hit for hit in (level_payload.get("results") or [])
                                                if isinstance(hit, dict)]
         gathered.extend(level_results)
+        if press and level == wanted[0]:
+            continue  # the press search is asked whatever level 1 found
         if any(TIER_RANK.get(tier_of(conn, domain_of(str(hit.get("url") or ""))), 8) <= KNOWN_STANDING
                for hit in level_results):
             break
@@ -444,6 +490,7 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
         return out
     fresh.sort(key=lambda r: TIER_RANK.get(tier_of(conn, domain_of(r.url)), 8))  # the most authoritative first
     fresh = fresh[:MAX_READ]
+    out.read = len(fresh)
     numbered = {f"R{i}": r for i, r in enumerate(fresh, start=1)}
     user = extract_user({"home": f["home_name"], "away": f["away_name"], "kickoff_at": f["kickoff_at"].isoformat(),
                          "competition": f["competition"]}, numbered)

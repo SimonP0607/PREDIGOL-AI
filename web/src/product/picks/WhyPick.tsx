@@ -7,7 +7,7 @@
  *
  * Opening it records `pick_explanation_opened` (once per opening); nothing is asked of the API until it opens.
  */
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, CircleHelp } from "lucide-react";
@@ -55,13 +55,24 @@ export function WhyPickButton({
   pickId,
   testId = "why-pick",
   className,
+  autoOpen = false,
 }: {
   pickId: number;
   testId?: string;
   className?: string | undefined;
+  /** Opens the sheet once, after the page is up: «Más sobre este pick» arrives from Inicio with the pick named in the link. */
+  autoOpen?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [side, setSide] = useState<"bottom" | "right">("bottom");
+  useEffect(() => {
+    if (!autoOpen) return;
+    setSide(fromBottom() ? "bottom" : "right");
+    setOpen(true);
+    track("pick_explanation_opened", { pick_id: pickId });
+    // once, when the link brought the reader here
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen]);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {/* The sheet's own trigger: it opens it, says so (aria-haspopup, aria-expanded) and gets the focus back on close. */}

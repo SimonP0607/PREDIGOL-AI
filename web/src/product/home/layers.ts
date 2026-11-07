@@ -1,7 +1,7 @@
 /**
  * Inicio in two layers (closing plan 3.2; plan UX, section 24 and 38). **Para ti** is what the reader chose to follow -
  * and only when they chose something; **PrediGol** is the same for everyone: the day's picks, the parlays, the featured
- * matches, the best prices. Nothing is hidden: a reader with no favourites sees the whole of PrediGol, and the leagues and the
+ * matches. Nothing is hidden: a reader with no favourites sees the whole of PrediGol, and the leagues and the
  * team PrediGol suggests until they choose are PrediGol's - never «tuyas».
  *
  * Where the blocks that read the common board go depends on what the reader's leagues and teams are: theirs (they chose some)

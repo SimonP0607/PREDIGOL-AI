@@ -14,13 +14,14 @@
  *     5  Qué se juega                 table or tie, rest and next match of the next suggested matches (only with content)
  *     6  Resultados                   the suggested leagues' last 48 hours
  *
- *   then what is in play everywhere and the best prices. Blocks 1, 4, 5 and 6 are the reader's own - and sit in «Para ti» - once
+ *   then what is in play everywhere. Blocks 1, 4, 5 and 6 are the reader's own - and sit in «Para ti» - once
  *   they chose leagues or teams; the suggested ones are PrediGol's and are never called «tuyas». Without favourites, a discreet
  *   «Elige tus favoritos» opens the PrediGol layer. Every block loads, fails and retries on its own: a failure never reads as
  *   an empty list, and an empty block says why in plain words. Nothing here calls the AI.
  */
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { ChevronRight, Layers, Radio } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -32,26 +33,36 @@ import type { Home } from "@/lib/api/v1/types_product";
 import type { DailyBoard, ParlayRecord, RecordKind } from "@/lib/api/v1/types_records";
 import { Card, ErrorState, SectionHeader, SkeletonBlock } from "@/product/shared/States";
 import { PARLAY_ICON, parlayTitle } from "@/product/parlays/parlayText";
+import { KindSwitch, kindVisibility } from "@/product/parlays/KindSwitch";
 import { DailySetBlock } from "@/product/records/DailySetBlock";
 import { noPickLoad } from "@/product/records/noPick";
 import { ParlayRecordCard } from "@/product/records/ParlayRecordCard";
-import { BestPrices } from "./BestPrices";
 import { HomeHeader } from "./HomeHeader";
 import { LiveTiles } from "./LiveTiles";
 import { NewsBlock } from "./NewsBlock";
 import { SuggestionCard } from "@/product/favorites/SuggestionCard";
-import { ContextBlock, RelevantBlock, ResultsBlock, TodayBlock } from "./TodayBlocks";
+import { ContextBlock, RelevantBlock, TodayBlock } from "./TodayBlocks";
+import { ResultsBlock } from "./ResultsBlock";
 import { layersOf } from "./layers";
 import { ChoosePrompt, ForYouEdit, ForYouPart, Layer } from "./ParaTi";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
 type HomeQuery = UseQueryResult<Envelope<Home>>;
 
-function ParlayBlock({ kind, board }: { kind: RecordKind; board: BoardQuery }) {
+function ParlayBlock({
+  kind,
+  board,
+  active,
+}: {
+  kind: RecordKind;
+  board: BoardQuery;
+  /** The kind a phone has open (./KindSwitch): the other one waits, hidden, and shows from md up. */
+  active: RecordKind;
+}) {
   const Icon = PARLAY_ICON[kind];
   const data = board.data?.data;
   return (
-    <section data-testid={`home-parlay-${kind}`}>
+    <section data-testid={`home-parlay-${kind}`} className={kindVisibility(kind, active)}>
       <SectionHeader
         title={parlayTitle(kind)}
         icon={<Icon aria-hidden className="h-4 w-4 shrink-0 text-gold" />}
@@ -87,6 +98,7 @@ function built(p: ParlayRecord | null | undefined): boolean {
  */
 function HomeParlays({ board }: { board: BoardQuery }) {
   const data = board.data?.data;
+  const [active, setActive] = useState<RecordKind>("daily");
   if (data && !built(data.daily_parlay) && !built(data.multiday_parlay)) {
     return (
       <p
@@ -110,23 +122,17 @@ function HomeParlays({ board }: { board: BoardQuery }) {
   }
   return (
     <div className="grid grid-cols-1 items-start gap-9 sm:gap-10 lg:grid-cols-2 lg:gap-6">
-      <ParlayBlock kind="daily" board={board} />
-      <ParlayBlock kind="multiday" board={board} />
+      <KindSwitch active={active} onChange={setActive} className="-mb-5" />
+      <ParlayBlock kind="daily" board={board} active={active} />
+      <ParlayBlock kind="multiday" board={board} active={active} />
     </div>
   );
 }
 
-/** What is in play everywhere and the best prices (GET /home), with their own loading and failure. */
-function LiveAndPrices({ query }: { query: HomeQuery }) {
+/** What is in play everywhere (GET /home), with its own loading and failure. */
+function LiveNow({ query }: { query: HomeQuery }) {
   const home = query.data?.data;
-  if (home) {
-    return (
-      <>
-        <LiveTiles section={home.live} liveAt={home.data_freshness.live_at} />
-        <BestPrices section={home.best_prices} />
-      </>
-    );
-  }
+  if (home) return <LiveTiles section={home.live} liveAt={home.data_freshness.live_at} />;
   return (
     <section data-testid="home-live">
       <SectionHeader
@@ -157,15 +163,24 @@ function LiveAndPrices({ query }: { query: HomeQuery }) {
   );
 }
 
+/**
+ * Coming back to the app (a PWA from the background, a tab left open) reloads what Inicio shows once it is older than the
+ * client's 15 s (plan Inicio, 1.4, F9): the router turns focus reloads off for the rest of the app, Inicio asks for them.
+ */
+const ON_RETURN = { refetchOnWindowFocus: true } as const;
+
 export function HomePage() {
   const preview = usePreviewParam();
   const reader = useAuth().user?.role === "USER";
-  const home = useQuery(live.home(preview));
-  const today = useQuery(live.today);
-  const news = useQuery(live.todayNews);
-  const me = useQuery({ ...live.meToday, enabled: reader });
-  const board = useQuery(live.daily(preview));
-  const yesterday = useQuery(live.daily(preview, shiftDay(todayKey("America/Bogota"), -1)));
+  const home = useQuery({ ...live.home(preview), ...ON_RETURN });
+  const today = useQuery({ ...live.today, ...ON_RETURN });
+  const news = useQuery({ ...live.todayNews, ...ON_RETURN });
+  const me = useQuery({ ...live.meToday, ...ON_RETURN, enabled: reader });
+  const board = useQuery({ ...live.daily(preview), ...ON_RETURN });
+  const yesterday = useQuery({
+    ...live.daily(preview, shiftDay(todayKey("America/Bogota"), -1)),
+    ...ON_RETURN,
+  });
   const now = Date.now();
   // Yesterday's picks do not vanish at midnight while one of them is still to finish or settle.
   const openYesterday = (yesterday.data?.data?.set?.items ?? []).some(
@@ -195,7 +210,6 @@ export function HomePage() {
           {layers.mine ? <ContextBlock {...common} /> : null}
           <ForYouPart part="picks" query={me} board={board} teams={teams} now={now} />
           <ForYouPart part="notices" query={me} board={board} teams={teams} now={now} />
-          {layers.mine ? <ResultsBlock {...common} /> : null}
         </Layer>
       ) : null}
       <Layer
@@ -230,10 +244,10 @@ export function HomePage() {
           <>
             <NewsBlock query={news} now={now} />
             <ContextBlock {...common} />
-            <ResultsBlock {...common} />
           </>
         )}
-        <LiveAndPrices query={home} />
+        <LiveNow query={home} />
+        <ResultsBlock query={home} now={now} />
       </Layer>
     </div>
   );

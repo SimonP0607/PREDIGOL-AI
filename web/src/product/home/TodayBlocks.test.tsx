@@ -18,13 +18,7 @@ import { setLocale } from "@/lib/i18n";
 import { setTimeZone } from "@/lib/time";
 import { LiveApiError } from "@/lib/api/v1/client";
 import type { Following, Today, TodayMatch } from "@/lib/api/v1/types_today";
-import {
-  ContextBlock,
-  RelevantBlock,
-  ResultsBlock,
-  TodayBlock,
-  type TodayQuery,
-} from "./TodayBlocks";
+import { ContextBlock, RelevantBlock, TodayBlock, type TodayQuery } from "./TodayBlocks";
 
 setLocale("es");
 beforeEach(() => setTimeZone("America/Bogota"));
@@ -164,6 +158,56 @@ describe("1 · Hoy en las ligas sugeridas", () => {
   });
 });
 
+describe("a failed refresh keeps what was already on the page (plan Inicio, 1.4)", () => {
+  /** The last answer is still there, and the refresh after it failed. */
+  function stale(today: Today): TodayQuery {
+    return {
+      ...loaded(today),
+      isError: true,
+      error: new LiveApiError("down", 503, "unavailable", "req-456"),
+    } as unknown as TodayQuery;
+  }
+
+  test("the matches stay, with a small notice and a retry - no error card", async () => {
+    const today = board([m({ at: NOW + 2 * H })]);
+    const markup = await html(<TodayBlock query={stale(today)} now={NOW} />);
+    const page = text(markup);
+    expect(markup).toContain('data-testid="stale-note"');
+    expect(page).toContain("No se pudo actualizar");
+    expect(page).toContain("Reintentar");
+    expect(page).not.toContain("req-456");
+    expect(markup).not.toContain('role="alert"');
+    expect(markup).toContain('data-testid="home-today"');
+  });
+
+  test("an answer that is fine carries no notice", async () => {
+    const markup = await html(<TodayBlock query={loaded(board([m({ at: NOW + H })]))} now={NOW} />);
+    expect(markup).not.toContain('data-testid="stale-note"');
+  });
+});
+
+describe("one clock for every row (plan Inicio, 2.2)", () => {
+  const live = (over: Partial<TodayMatch>) =>
+    m({ at: NOW - 50 * 60_000, status_group: "live", goals_home: 1, goals_away: 0, ...over });
+
+  test("the minute carries its stoppage time", async () => {
+    const row = live({ status: "2H", elapsed: 90, extra: 4 });
+    const page = text(await html(<TodayBlock query={loaded(board([row]))} now={NOW} />));
+    expect(page).toContain("90+4'");
+  });
+
+  test("a break says its word, the same as the live list", async () => {
+    const half = live({ status: "HT", elapsed: 45 });
+    const page = text(await html(<TodayBlock query={loaded(board([half]))} now={NOW} />));
+    expect(page).toContain("Descanso");
+    expect(page).not.toContain("Desc.");
+    const pens = live({ status: "P", elapsed: 120 });
+    expect(text(await html(<TodayBlock query={loaded(board([pens]))} now={NOW} />))).toContain(
+      "Penales",
+    );
+  });
+});
+
 describe("3 · Partidos relevantes and 5 · Qué se juega", () => {
   test("out of the page with nothing to show", async () => {
     const quiet = loaded(board([m({ at: NOW + H })]));
@@ -194,23 +238,6 @@ describe("3 · Partidos relevantes and 5 · Qué se juega", () => {
     expect(markup).toContain('data-ref="packet:schedule.away"');
     expect(markup).not.toContain("a_code_from_the_future");
     expect(text(markup)).toContain("Millonarios llega con 3 días de descanso");
-  });
-});
-
-describe("6 · Resultados", () => {
-  test("a result opens its Postpartido; none says so", async () => {
-    const done = m({
-      at: NOW - 5 * H,
-      status_group: "finished",
-      status: "FT",
-      goals_home: 2,
-      goals_away: 1,
-    });
-    const markup = await html(<ResultsBlock query={loaded(board([done]))} now={NOW} />);
-    expect(markup).toContain(`href="/matches/${done.fixture_id}#postmatch"`);
-    expect(text(markup)).toContain("Final");
-    const empty = text(await html(<ResultsBlock query={loaded(board([]))} now={NOW} />));
-    expect(empty).toContain("Sin resultados recientes en las ligas sugeridas.");
   });
 });
 
@@ -316,7 +343,7 @@ describe("A13 · Hoy en tus ligas", () => {
     expect(off).not.toContain('data-testid="slot"');
   });
 
-  test("Qué se juega and Resultados follow the reader's own too", async () => {
+  test("Qué se juega follows the reader's own too", async () => {
     const stake = {
       code: "stakes_pressure",
       params: { pressure: "title", team: "Santa Fe", side: "home" },
@@ -328,22 +355,8 @@ describe("A13 · Hoy en tus ligas", () => {
       followed: { kind: "team", names: ["Santa Fe"] },
       context: [stake],
     });
-    const done = m({
-      at: NOW - 5 * H,
-      status_group: "finished",
-      status: "FT",
-      goals_home: 1,
-      goals_away: 0,
-      suggested: false,
-      followed: { kind: "team", names: ["Santa Fe"] },
-    });
-    const today = mine([ahead, done], following());
+    const today = mine([ahead], following());
     const context = text(await html(<ContextBlock query={loaded(today)} now={NOW} />));
     expect(context).toContain("tus ligas y equipos");
-    const results = await html(<ResultsBlock query={loaded(today)} now={NOW} />);
-    expect(text(results)).toContain("Tus ligas y equipos · últimas 48 horas");
-    expect(results).toContain(`data-fixture="${done.fixture_id}"`);
-    const none = text(await html(<ResultsBlock query={loaded(mine([], following()))} now={NOW} />));
-    expect(none).toContain("Sin resultados recientes de tus equipos.");
   });
 });

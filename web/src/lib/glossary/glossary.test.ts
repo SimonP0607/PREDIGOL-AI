@@ -143,8 +143,6 @@ describe("«cuota justa» means the market's fair price on every reader's screen
     "odds.filters.aboveFair": "only prices above the market's fair odds",
     "odds.filters.sortEdge": "order by price_edge",
     "odds.filters.emptyBody": "names the filter «Solo por encima de la justa»",
-    "home.best.subtitle": "BestHighlight against the market's fair odds",
-    "home.best.overFair": "price_edge",
     "parlays.why.price": "builder leg: fair_odds = 1 / p_market",
     "match.understand.price.both":
       "value_price: fair_market = 1 / p_market (the market's fair odds), fair_model = 1 / p_model (PrediGol's, named as such)",

@@ -1,6 +1,6 @@
 {
-  "oddsUpdated": "Odds updated {when}",
-  "oddsNone": "No odds captured yet",
+  "liveUpdated": "Live data updated {when}",
+  "liveNone": "No recent live data",
   "picks": {
     "seeAll": "See all",
     "allTile": "See all picks"
@@ -14,13 +14,6 @@
     "empty": "No match is being played right now.",
     "notStarted": "Starting soon",
     "finished": "Full time"
-  },
-  "best": {
-    "title": "Best odds",
-    "subtitle": "Odds above the market's fair odds",
-    "seeAll": "See all",
-    "overFair": "{pct} over the fair odds",
-    "empty": "No price above the market yet."
   },
   "today": {
     "title": "Today in the suggested leagues",
@@ -71,12 +64,9 @@
     "subtitleMine": "The next matches of your leagues and teams: table or tie, rest and next match"
   },
   "results": {
-    "title": "Results",
-    "subtitle": "Suggested leagues · last 48 hours",
-    "empty": "No recent results in the suggested leagues.",
-    "postmatch": "Post-match",
-    "subtitleMine": "Your leagues and teams · last 48 hours",
-    "emptyMine": "No recent results of your teams."
+    "title": "Latest results",
+    "subtitle": "Matches that ended in the last 24 hours",
+    "empty": "No results from the last 24 hours yet."
   },
   "parlaysNone": "No PrediGol parlays yet today: they are only built from selections that pass all its rules, and we never pad them.",
   "parlaysLink": "See parlays",
@@ -101,7 +91,7 @@
     "forYou": "For you",
     "forYouHint": "What you chose to follow",
     "predigol": "PrediGol",
-    "predigolHint": "The same for everyone: the day's picks, the parlays and the best prices",
+    "predigolHint": "The same for everyone: the day's picks and the parlays",
     "edit": "Change favourites"
   },
   "choose": {

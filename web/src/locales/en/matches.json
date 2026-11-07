@@ -20,7 +20,7 @@
     "search": "Search by team name",
     "searchPlaceholder": "Team name",
     "clearSearch": "Clear search",
-    "clear": "Clear filters",
+    "clear": "Clear",
     "country": "Country",
     "allCountries": "All countries",
     "international": "International",
@@ -28,7 +28,13 @@
     "allCategories": "All categories",
     "show_one": "Show {count} match",
     "show_other": "Show {count} matches",
-    "team": "Team"
+    "team": "Team",
+    "searchAny": "Search a team or competition",
+    "searchAnyPlaceholder": "Team or competition",
+    "teamOrCompetition": "Team or competition",
+    "applied": "Filters on",
+    "remove": "Remove filter: {name}",
+    "query": "“{query}”"
   },
   "group": {
     "live_one": "{count} live",
@@ -40,7 +46,7 @@
     "1H": "1H",
     "2H": "2H",
     "HT": "HT",
-    "ET": "ET",
+    "ET": "Extra time",
     "BT": "Break",
     "P": "Pens",
     "INT": "Int.",
@@ -63,14 +69,15 @@
     "bookmakers_one": "{count} book",
     "bookmakers_other": "{count} books",
     "oddsHelp_one": "Odds from {count} bookmaker",
-    "oddsHelp_other": "Odds from {count} bookmakers"
+    "oddsHelp_other": "Odds from {count} bookmakers",
+    "oddsOpen": "See its odds in Markets"
   },
   "empty": {
     "dayTitle": "No matches on this day",
     "dayBody": "Try another date.",
     "goToday": "See today's matches",
     "filtersTitle": "No match fits these filters",
-    "filtersBody": "Change the status, the competition or the search."
+    "filtersBody": "Change the status, country, category, competition or search."
   },
   "country": {
     "GB-ENG": "England",
@@ -106,5 +113,8 @@
     "others_other": "There are {count} matches of other leagues.",
     "seeAll": "See all matches",
     "next": "Your next matches"
+  },
+  "bar": {
+    "label": "Day and status of the matches"
   }
 }
