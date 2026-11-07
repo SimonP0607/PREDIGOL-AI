@@ -8,6 +8,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from fbi.api.contracts.common import Contract
+from fbi.api.contracts.customer import ConsentPurpose
 from fbi.api.contracts.membership import MembershipSummary
 
 Language = Literal["es", "en"]
@@ -161,8 +162,8 @@ class AdminUser(Contract):
     email: str
     display_name: str
     role: str
-    status: Literal["active", "disabled", "invited", "deleted"] = Field(
-        description="invited: created by an invitation, not activated yet; deleted: anonymised at the reader's "
+    status: Literal["active", "disabled", "invited", "deleted", "pending"] = Field(
+        description="pending: registered by the person, the address not yet confirmed (UX-038); invited: created by an invitation, not activated yet; deleted: anonymised at the reader's "
                     "request (plan UX, A7) - its address is masked and nothing about it changes any more.")
     language: Language
     timezone: str
@@ -231,6 +232,8 @@ class AuditEvent(Contract):
 class AccountOptions(Contract):
     self_service: bool = Field(description="Invitations, password recovery and unlocking by e-mail are on "
                                            "(FBI_SELF_SERVICE). Off, the owner gives accounts a temporary password.")
+    signup: bool = Field(default=False, description="A person may create their own account (FBI_SIGNUP on and every "
+                                                    "lock behind it closed): the sign-in page offers «Crear cuenta».")
 
 
 class TokenIn(BaseModel):
@@ -253,6 +256,48 @@ class ActivateIn(TokenIn):
     password: str = Field(min_length=1, max_length=256)
     language: Language
     timezone: str = Field(min_length=1, max_length=64)
+
+
+class SignupConsentIn(BaseModel):
+    """One consent ticked on the registration form, with the version of the text the person was shown."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["terms", "privacy", "age_18", "risk_notice", "marketing_email", "analytics"]
+    granted: bool
+    version: str = Field(min_length=10, max_length=34)
+
+
+class SignupConsents(Contract):
+    """The boxes of the registration form: the required consents with their exact sentences and current versions."""
+
+    purposes: list[ConsentPurpose]
+
+
+class SignupIn(BaseModel):
+    """The registration form (tramo 1, UX-038). The four required consents travel with it, each with its version."""
+
+    model_config = ConfigDict(extra="forbid")
+    first_name: str = Field(max_length=120)
+    last_name: str = Field(max_length=120)
+    email: str = Field(min_length=1, max_length=254)
+    phone: str = Field(max_length=40, description="A mobile number; without a country code, Colombian.")
+    nickname: str = Field(max_length=60, description="Unique, 3 to 24 characters.")
+    password: str = Field(min_length=1, max_length=256)
+    language: str = Field(max_length=8, description="es or en: refused with invalid_language otherwise.")
+    timezone: str = Field(default="America/Bogota", max_length=64)
+    consents: list[SignupConsentIn] = Field(max_length=6)
+
+
+class VerifyInfo(Contract):
+    email: str
+    display_name: str
+    language: Language
+
+
+class VerifyIn(TokenIn):
+    """The confirmation link's token and the password the person chose when registering."""
+
+    password: str = Field(min_length=1, max_length=256)
 
 
 class EmailIn(BaseModel):
