@@ -132,7 +132,7 @@ export function EditFavorites() {
         <button
           type="button"
           data-testid="layer-edit"
-          className="tap-y relative inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10"
+          className="relative inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2.5 text-sm font-medium text-primary hover:bg-primary/10"
         >
           <Pencil aria-hidden className="h-3.5 w-3.5" />
           {t("home.layers.edit")}

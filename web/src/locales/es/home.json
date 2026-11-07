@@ -184,5 +184,9 @@
     "retry": "Reintentar",
     "profile": "Más ajustes en tu perfil",
     "close": "Cerrar favoritos"
-  }
+  },
+  "fold": {
+    "more": "Ver {count} más"
+  },
+  "offline": "Sin conexión: te enseñamos lo último que se cargó. Se actualiza solo al volver."
 }

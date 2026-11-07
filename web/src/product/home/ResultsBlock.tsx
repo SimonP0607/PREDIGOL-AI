@@ -10,10 +10,12 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { History } from "lucide-react";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { Home, HomeResult } from "@/lib/api/v1/types_product";
 import { formatDate, formatTime, relativeDay } from "@/lib/time";
 import { Card, ErrorState, SectionHeader, SkeletonBlock, StaleNote } from "@/product/shared/States";
+import { useFold } from "./fold";
 
 export type HomeQuery = UseQueryResult<Envelope<Home>>;
 
@@ -83,6 +85,8 @@ function ResultRow({ r, now }: { r: HomeResult; now: number }) {
 export function ResultsBlock({ query, now }: { query: HomeQuery; now: number }) {
   const home = query.data?.data ?? null;
   const rows = home?.results?.data ?? [];
+  // A phone keeps four of the six (plan de Inicio, 4.1).
+  const fold = useFold(rows.length, 4);
   let body;
   if (query.isPending) {
     body = (
@@ -113,19 +117,22 @@ export function ResultsBlock({ query, now }: { query: HomeQuery; now: number }) 
     );
   } else {
     body = (
-      <Card className="mt-3 overflow-hidden">
-        <ul
-          className="grid grid-cols-1 gap-px bg-border/70 lg:grid-cols-2"
-          data-testid="results-list"
-        >
-          {rows.map((r) => (
-            <li key={r.fixture_id} className="bg-card">
-              <ResultRow r={r} now={now} />
-            </li>
-          ))}
-          {rows.length % 2 === 1 ? <li aria-hidden className="hidden bg-card lg:block" /> : null}
-        </ul>
-      </Card>
+      <>
+        <Card className="mt-3 overflow-hidden">
+          <ul
+            className="grid grid-cols-1 gap-px bg-border/70 lg:grid-cols-2"
+            data-testid="results-list"
+          >
+            {rows.map((r, i) => (
+              <li key={r.fixture_id} className={cn("bg-card", fold.row(i))}>
+                <ResultRow r={r} now={now} />
+              </li>
+            ))}
+            {rows.length % 2 === 1 ? <li aria-hidden className="hidden bg-card lg:block" /> : null}
+          </ul>
+        </Card>
+        {fold.more}
+      </>
     );
   }
   return (

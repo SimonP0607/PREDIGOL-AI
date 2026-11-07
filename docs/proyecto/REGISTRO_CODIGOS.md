@@ -81,6 +81,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-046 | Inicio, paso 3.3 (plan de Inicio): «Noticias» pasa a ser un resumen — tres como máximo en la capa general (lo mismo para todos), dos en «Para ti» (tus equipos y ligas), como mucho dos de un mismo partido — con lo confirmado y probable primero y, solo si queda sitio, un rumor rotulado «Rumor». «Confirmado» exige fuente oficial o dos medios distintos (dos páginas o subdominios de un mismo sitio, agregadores y redes sociales no cuentan); si no, se muestra como «Probable». `GET /today/news` gana `?scope=general` (por defecto, el del lector); se retira el código muerto `today_news`. Sin migración ni cambio de modelos |
 | UX-047 | Inicio, paso 3.4a (plan de Inicio): «Para ti» deja de repetir las tarjetas de los picks — dice «N picks de hoy coinciden con tus favoritos» y cada línea baja a su tarjeta en PrediGol y la resalta un momento —, y la tarjeta general lleva un chip «Tu equipo», «Tu jugador», «Tu liga» o «Tu mercado» cuando un favorito está en ese pick. `GET /me/today`: los picks relacionados también cuentan por jugador (el pick del próximo partido de un jugador que sigues; campo nuevo `players`, opcional) y un lector que solo sigue jugadores ya recibe `picks`. Sin migración ni cambio de modelos |
 | UX-048 | Inicio, paso 3.4b (plan de Inicio): «Editar favoritos» abre una hoja lateral en escritorio y desde abajo en móvil con el mismo selector de la bienvenida y del perfil (sin tocarlo). Cada cambio se guarda al instante, de uno en uno y con el último ganando, y Inicio se actualiza detrás sin recargar ni cambiar de página; un fallo conserva el cambio y ofrece reintentar. Solo web; sin cambio de contrato ni de modelos |
+| UX-049 | Inicio, paso 4.1 (plan de Inicio): la pasada móvil y PWA. En el móvil, «Para ti» (jugadores), «Partidos relevantes», «Qué se juega» y «Últimos resultados» enseñan sus primeras filas (3, 3, 3 y 4) con «Ver N más»; «Noticias» enseña los dos mejores titulares; «En vivo» pasa a una fila deslizable de mosaicos de ancho fijo; los esqueletos de picks y de en vivo tienen la forma de lo que llega; las acciones principales miden 44 px reales; sin conexión, una línea avisa y Inicio conserva lo último que cargó. Desde la tableta todo se ve como antes. Solo web; sin cambio de contrato ni de modelos |
 
 ## BE — backend
 
@@ -96,4 +97,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-015 · UX-049 · BE-004 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-015 · UX-050 · BE-004 · FE-001 · OPS-001 · DOC-001
