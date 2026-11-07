@@ -561,8 +561,8 @@ def test_two_readers_with_different_favourites_get_the_same_picks_forecasts_and_
     readers = []
     for email in ("uno.a13@example.org", "dos.a13@example.org"):
         readers.append(int(scalar(db.execute(
-            "INSERT INTO auth.users (email, display_name, password_hash, role) VALUES (%s, 'R', '$argon2id$x', 'USER') "
-            "RETURNING id", (email,)))))
+            "INSERT INTO auth.users (email, display_name, password_hash, role) VALUES (%s, %s, '$argon2id$x', 'USER') "
+            "RETURNING id", (email, email)))))
     first, second = readers
     db.execute("INSERT INTO customer.favorites (user_id, kind, ref_id, league_id) VALUES (%s, 'league', %s, %s)",
                (first, world.competition, world.competition))
@@ -702,8 +702,8 @@ def test_para_ti_marks_which_of_todays_picks_are_the_readers_and_their_bells(
     users = {}
     for key in ("team", "league", "market", "elsewhere", "player"):
         users[key] = int(scalar(db.execute(
-            "INSERT INTO auth.users (email, display_name, password_hash, role) VALUES (%s, 'R', '$argon2id$x', 'USER') "
-            "RETURNING id", (f"{key}.p32@example.org",))))
+            "INSERT INTO auth.users (email, display_name, password_hash, role) VALUES (%s, %s, '$argon2id$x', 'USER') "
+            "RETURNING id", (f"{key}.p32@example.org", f"{key}.p32@example.org"))))
 
     def follow(who: str, kind: str, ref: int | None, market: str | None = None) -> None:
         db.execute("INSERT INTO customer.favorites (user_id, kind, ref_id, league_id, team_id, player_id, market_key) "
