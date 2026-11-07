@@ -70,14 +70,6 @@
     "saved": "Your leagues and teams are saved.",
     "failed": "We could not save your leagues and teams. Try again."
   },
-  "hint": {
-    "label": "Tip",
-    "dismiss": "Got it",
-    "picks": "A pick comes out only when we measure an edge over the market's price. Tap any term to see what it means.",
-    "match": "The whole match is here: the forecast, the context, the market and, when there is one, the pick with its real state.",
-    "parlay": "In a parlay the odds multiply, and one selection that fails is enough to lose it.",
-    "my_picks": "Your saved picks settle with the official result; your figures count only those with a price."
-  },
   "follow": {
     "add": "Follow {team}",
     "remove": "Unfollow {team}",

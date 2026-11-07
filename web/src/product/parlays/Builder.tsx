@@ -56,6 +56,7 @@ export function ParlayBuilder() {
     <section
       aria-labelledby="parlay-builder-title"
       data-testid="parlay-builder"
+      data-guide="parlays-builder"
       className="overflow-hidden rounded-xl border border-gold/30 bg-card"
     >
       <header className="px-4 pt-4 sm:px-5">

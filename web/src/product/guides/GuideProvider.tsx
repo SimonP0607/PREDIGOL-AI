@@ -8,10 +8,12 @@
  * the next time. The survey and the offer of notices wait while a guide is up (`active`).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { v1 } from "@/lib/api/v1/client";
 import type { Me } from "@/lib/api/v1/types_auth";
+import type { Envelope } from "@/lib/api/v1/types";
+import type { Today } from "@/lib/api/v1/types_today";
 import type { GuideIn, GuideKey } from "@/lib/api/v1/types_guides";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { originOf, track } from "@/lib/track";
@@ -31,6 +33,13 @@ import { GUIDES, GUIDE_LIST, launchable } from "./registry";
 import { applied, seenOf, withGuide } from "./state";
 
 const ME_KEY = ["auth", "me"] as const;
+
+/** Where «Ver» takes the reader for the guide of a match: the first match of today's board, else the list. */
+function matchPath(qc: QueryClient): string {
+  const today = qc.getQueryData<Envelope<Today>>(["v1", "today"])?.data;
+  const first = today?.matches?.data?.[0]?.fixture_id;
+  return first ? `/matches/${first}` : "/matches";
+}
 
 export function GuideProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
@@ -297,15 +306,17 @@ export function GuideProvider({ children }: { children: ReactNode }) {
     (guide: GuideKey, from = 0) => {
       const def = GUIDES[guide];
       if (!launchable(def)) return;
+      // the guide of a match opens on the first match of today's board (as the old tour did), else the list of matches
+      const path = guide === "match" ? matchPath(qc) : def.path;
       requested.current = { guide, from };
-      if (now.current.pathname === def.path && readyScreen.current === def.screen) {
+      if (now.current.pathname === path && readyScreen.current === def.screen) {
         requested.current = null;
         start(guide, "replay", from);
         return;
       }
-      void navigate({ to: def.path as never });
+      void navigate({ to: path as never });
     },
-    [navigate, start],
+    [navigate, qc, start],
   );
 
   const value = useMemo<GuidesValue>(

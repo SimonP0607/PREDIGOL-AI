@@ -41,6 +41,7 @@ import { LiveCard } from "./LiveCard";
 import { LiveRow } from "./LiveRow";
 import { boardSummary, levelOf } from "./model";
 import { useNow } from "./useNow";
+import { useGuideScreen } from "@/product/guides/context";
 
 const NO_MATCHES: LiveMatch[] = [];
 
@@ -81,6 +82,7 @@ function PicksBadge({ count }: { count: number }) {
 
 export function LivePage() {
   const q = useQuery(live.liveBoard);
+  useGuideScreen("live", { ready: !q.isPending });
   const preview = usePreviewParam();
   const started = useQuery(live.startedPicks(preview));
   const now = useNow(15_000);
@@ -266,7 +268,11 @@ export function LivePage() {
         ) : null}
 
         {cards.length > 0 ? (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="live-cards">
+          <div
+            className="grid gap-3 md:grid-cols-2 xl:grid-cols-3"
+            data-testid="live-cards"
+            data-guide="live-cards"
+          >
             {cards.map((m) => (
               <div key={m.fixture_id} className="relative min-w-0">
                 {picks.get(m.fixture_id) ? (
@@ -284,7 +290,11 @@ export function LivePage() {
           <section aria-label={t("live.lessInfo")} className="space-y-2.5">
             <SectionHeader title={t("live.lessInfo")} subtitle={t("live.lessInfoHint")} />
             <Card as="div" className="overflow-hidden">
-              <ul className="divide-y divide-border/60" data-testid="live-rows">
+              <ul
+                className="divide-y divide-border/60"
+                data-testid="live-rows"
+                data-guide="live-rows"
+              >
                 {rows.map((m) => (
                   <li key={m.fixture_id}>
                     <LiveRow m={m} picks={picks.get(m.fixture_id) ?? 0} />
@@ -310,6 +320,7 @@ export function LivePage() {
         {t("live.backToMatches")}
       </Link>
       <PageTitle
+        guide="live"
         title={t("nav.live")}
         subtitle={subtitle}
         right={
@@ -320,7 +331,7 @@ export function LivePage() {
         }
       />
       {all.length > 0 ? (
-        <div className="space-y-2.5" data-testid="live-filters">
+        <div className="space-y-2.5" data-testid="live-filters" data-guide="live-filters">
           {/* From 1024 px in a row; below it in the «Filtros» sheet (plan UX, A15). */}
           <div className="hidden gap-2 lg:flex lg:flex-wrap">
             {searchBox}

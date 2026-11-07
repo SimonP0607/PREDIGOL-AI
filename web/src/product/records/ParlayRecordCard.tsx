@@ -223,6 +223,7 @@ export function ParlayRecordCard({
     <article
       aria-label={title}
       data-testid={`parlay-record-${kind}`}
+      data-guide="parlays-official"
       data-status={parlay?.status ?? "NONE"}
       className={cn(
         "@container flex flex-col overflow-hidden rounded-xl border",

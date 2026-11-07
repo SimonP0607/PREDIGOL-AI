@@ -7,12 +7,21 @@
   "finish": "Finalizar",
   "resume": {
     "title": "¿Seguimos?",
-    "body": "Ibas por el paso {n} de {total} del recorrido de bienvenida.",
+    "body": "Ibas por el paso {n} de {total} de la guía «{name}».",
     "yes": "Seguir",
     "no": "No, gracias"
   },
   "names": {
-    "general": "Recorrido de bienvenida"
+    "general": "Recorrido de bienvenida",
+    "home": "Inicio",
+    "matches": "Partidos",
+    "live": "En vivo",
+    "match": "Centro de partido",
+    "picks": "Picks",
+    "parlays": "Parlays",
+    "odds": "Cuotas",
+    "my_picks": "Mis picks",
+    "profile": "Perfil"
   },
   "general": {
     "welcome": {
@@ -53,6 +62,114 @@
       "in_progress": "A medias",
       "completed": "Completada",
       "skipped": "Saltada"
+    }
+  },
+  "more": "Más detalle",
+  "help": {
+    "label": "Ver la guía de esta pantalla"
+  },
+  "home": {
+    "layers": {
+      "title": "Tus partidos primero",
+      "body": "«Para ti» reúne tus ligas y equipos; «PrediGol» es igual para todos. Aquí empieza tu día."
+    },
+    "today": {
+      "title": "Hoy en tus ligas",
+      "body": "Toca un partido para ver su análisis: el pronóstico, el contexto y, cuando lo hay, el pick con su estado real."
+    },
+    "results": {
+      "title": "Resultados",
+      "body": "Aquí ves cómo salieron los partidos y los picks recientes, siempre con el resultado oficial."
+    }
+  },
+  "matches": {
+    "days": {
+      "title": "Elige el día",
+      "body": "Pasa entre Hoy, Mañana y otros días, y filtra por país, liga o equipo."
+    },
+    "list": {
+      "title": "Por competición",
+      "body": "Primero van tus ligas y lo que se está jugando. Toca un partido para ver su análisis."
+    },
+    "live": {
+      "title": "Cuándo se juega",
+      "body": "Estos filtros separan lo que se juega ahora (En vivo), lo que viene y lo que ya terminó."
+    }
+  },
+  "live": {
+    "filters": {
+      "title": "Filtra lo que importa",
+      "body": "Elige liga y activa «solo con picks» para ver primero los partidos que tienen un pick."
+    },
+    "cards": {
+      "title": "Se actualizan solas",
+      "body": "Las tarjetas se refrescan cada 15 segundos. Toca una para abrir el partido."
+    }
+  },
+  "match": {
+    "header": {
+      "title": "El partido",
+      "body": "La hora en tu zona, el marcador y la estrella para seguir al equipo."
+    },
+    "tabs": {
+      "title": "Las pestañas",
+      "body": "Empieza por Resumen; luego Análisis, Estadísticas, Mercados, Alineaciones, Noticias y Postpartido."
+    },
+    "forecast": {
+      "title": "El pronóstico",
+      "body": "Toca cualquier término para ver qué significa. Un pronóstico nunca garantiza un resultado."
+    }
+  },
+  "picks": {
+    "list": {
+      "title": "Solo lo recomendado",
+      "body": "Un pick sale solo cuando medimos ventaja frente al precio del mercado. Si nada cumple, hoy no hay picks."
+    },
+    "filters": {
+      "title": "Filtros",
+      "body": "Filtra por competición o por los que ya empezaron hoy. En cada pick puedes guardarlo o agregarlo a tu parlay."
+    }
+  },
+  "parlays": {
+    "official": {
+      "title": "Parlays de PrediGol",
+      "body": "El del día y el multi-día solo llevan selecciones que pasan todas las reglas, y nunca se rellenan."
+    },
+    "builder": {
+      "title": "Armador automático",
+      "body": "Dices qué buscas y PrediGol lo arma con sus reglas, o te dice que no hay uno que valga la pena."
+    },
+    "own": {
+      "title": "Arma el tuyo",
+      "body": "Agrega selecciones desde Picks, Cuotas o un partido. Las cuotas se multiplican: basta una que falle para perderlo."
+    }
+  },
+  "odds": {
+    "tabs": {
+      "title": "Un mercado a la vez",
+      "body": "Cambia entre 1X2, goles, ambos marcan y más. Cada tablero muestra la mejor cuota de cada selección."
+    },
+    "fair": {
+      "title": "¿Qué es la cuota justa?",
+      "body": "Es la cuota sin el margen de la casa. Sirve para ver si la mejor cuota paga más de lo que vale."
+    },
+    "above": {
+      "title": "Solo por encima de la justa",
+      "body": "Filtra lo que paga más que la cuota justa. Toca una cuota para agregarla a tu parlay."
+    }
+  },
+  "my_picks": {
+    "results": {
+      "title": "Tus resultados",
+      "body": "Hoy, 7 y 30 días, en unidades: PrediGol no maneja dinero. Cuentan solo los picks con cuota."
+    },
+    "saved": {
+      "title": "Picks guardados",
+      "body": "Se liquidan solos con el resultado oficial. En cada uno puedes anotar la cuota que tomaste."
+    },
+    "parlays": {
+      "title": "Tus parlays",
+      "body": "Aquí quedan los parlays que armas; se liquidan igual, con el resultado oficial."
     }
   }
 }

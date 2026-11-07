@@ -10,6 +10,7 @@
  * A step without anchors is a card of its own (the welcome). The texts are in the catalog (locales/{es,en}/guides.json) under
  * `guides.<key>.<step>.title|body`.
  */
+import type { HowCardId } from "@/product/help/howItWorks";
 import type { GuideKey } from "@/lib/api/v1/types_guides";
 
 export interface StepDef {
@@ -33,6 +34,8 @@ export interface GuideDef {
   readonly coveredBy?: GuideKey;
   /** Opens with a card of its own (a welcome) before the numbered steps. */
   readonly welcome: boolean;
+  /** The card of «Cómo funciona» the last step links to («Más detalle»). */
+  readonly more?: HowCardId;
   readonly steps: readonly StepDef[];
 }
 
@@ -53,6 +56,26 @@ const none = (
   ...extra,
 });
 
+/** A guide of a screen (the screen is named as the guide is): its steps as [id, ...anchors] and the card of «Cómo funciona» it links to. */
+const built = (
+  key: GuideKey,
+  path: string,
+  more: HowCardId,
+  steps: ReadonlyArray<readonly [string, ...string[]]>,
+  extra: Partial<GuideDef> = {},
+): GuideDef => ({
+  key,
+  version: 1,
+  reshowFrom: 1,
+  mandatory: false,
+  screen: key,
+  path,
+  welcome: false,
+  more,
+  steps: steps.map(([id, ...anchors]) => ({ id, anchors })),
+  ...extra,
+});
+
 export const GUIDES: Readonly<Record<GuideKey, GuideDef>> = {
   general: {
     key: "general",
@@ -70,14 +93,50 @@ export const GUIDES: Readonly<Record<GuideKey, GuideDef>> = {
       { id: "more", anchors: ["nav-more"] },
     ],
   },
-  home: none("home", "home", "/home", { coveredBy: "general" }),
-  matches: none("matches", "matches", "/matches"),
-  live: none("live", "live", "/live"),
-  match: none("match", "match", "/matches"),
-  picks: none("picks", "picks", "/picks"),
-  parlays: none("parlays", "parlays", "/parlays"),
-  odds: none("odds", "odds", "/odds"),
-  my_picks: none("my_picks", "my_picks", "/my-picks"),
+  home: built(
+    "home",
+    "/home",
+    "home",
+    [
+      ["layers", "layer-for-you", "layer-predigol"],
+      ["today", "home-today"],
+      ["results", "home-results"],
+    ],
+    { coveredBy: "general" },
+  ),
+  matches: built("matches", "/matches", "matches", [
+    ["days", "matches-days"],
+    ["list", "matches-list"],
+    ["live", "matches-status"],
+  ]),
+  live: built("live", "/live", "matches", [
+    ["filters", "live-filters"],
+    ["cards", "live-cards", "live-rows"],
+  ]),
+  match: built("match", "/matches", "analysis", [
+    ["header", "match-header"],
+    ["tabs", "match-tabs"],
+    ["forecast", "match-forecast"],
+  ]),
+  picks: built("picks", "/picks", "picks", [
+    ["list", "picks-list"],
+    ["filters", "picks-filters"],
+  ]),
+  parlays: built("parlays", "/parlays", "parlays", [
+    ["official", "parlays-official"],
+    ["builder", "parlays-builder"],
+    ["own", "parlays-own"],
+  ]),
+  odds: built("odds", "/odds", "odds", [
+    ["tabs", "odds-tabs"],
+    ["fair", "odds-fair"],
+    ["above", "odds-above"],
+  ]),
+  my_picks: built("my_picks", "/my-picks", "myPicks", [
+    ["results", "mine-results"],
+    ["saved", "mine-saved"],
+    ["parlays", "mine-parlays"],
+  ]),
   profile: none("profile", "profile", "/profile", { mandatory: true }),
 };
 

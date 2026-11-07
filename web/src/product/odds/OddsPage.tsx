@@ -31,6 +31,7 @@ import {
   type OddsFilters,
   type OddsSort,
 } from "./filters";
+import { useGuideScreen } from "@/product/guides/context";
 
 /** REVIEW point 17: the board opens on the next 24 h. */
 const DEFAULT_HOURS = 24;
@@ -59,6 +60,7 @@ function FairExplainer() {
       <details
         className="group rounded-xl border border-border bg-card text-xs text-muted-foreground md:hidden"
         data-testid="odds-fair-explainer-toggle"
+        data-guide="odds-fair"
       >
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-2 font-medium text-foreground [&::-webkit-details-marker]:hidden">
           <Scale aria-hidden className="h-4 w-4 shrink-0 text-primary" />
@@ -96,6 +98,7 @@ export function OddsPage() {
     ...live.bestOdds({ market, hours, picks: false }, preview),
     placeholderData: keepPreviousData,
   });
+  useGuideScreen("odds", { ready: !query.isPending });
   const board = query.data?.data;
   // While another tab loads, the previous board stays on screen (dimmed), drawn with the
   // market it was fetched for: a board asked for one market lists exactly that one.
@@ -192,6 +195,7 @@ export function OddsPage() {
       aria-pressed={filters.aboveFair}
       onClick={() => update({ aboveFair: !filters.aboveFair })}
       data-testid="odds-above-fair"
+      data-guide="odds-above"
       className={cn(
         "tap-y relative inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         filters.aboveFair
@@ -282,6 +286,7 @@ export function OddsPage() {
   return (
     <div className="space-y-6">
       <PageTitle
+        guide="odds"
         title={t("nav.odds")}
         subtitle={t("odds.subtitle")}
         right={auth.showAdmin ? <ShadowToggle /> : undefined}
@@ -427,6 +432,7 @@ function MarketTabs({
       aria-label={t("odds.marketsLabel")}
       onKeyDown={onKeyDown}
       data-testid="odds-market-tabs"
+      data-guide="odds-tabs"
       className={cn(
         "flex gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         more && "[mask-image:linear-gradient(to_right,#000_calc(100%_-_3rem),transparent)]",

@@ -143,6 +143,7 @@ export function DayNav({
       aria-label={t("matches.day.label")}
       className="flex min-w-0 items-center gap-1.5"
       data-testid="day-nav"
+      data-guide="matches-days"
     >
       <ArrowButton
         direction="prev"
@@ -229,6 +230,7 @@ export function StatusChips({
         className,
       )}
       data-testid="status-chips"
+      data-guide="matches-status"
     >
       {filters.map((f) => (
         <button

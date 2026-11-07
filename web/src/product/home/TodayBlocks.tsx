@@ -335,7 +335,11 @@ export function TodayBlock({
   // The personalisation switched off (FBI_PERSONALIZATION=0): the common view, without the way to choose.
   const personal = today?.following?.personalization ?? false;
   return (
-    <section data-testid="home-today" data-view={suggested ? "suggested" : "mine"}>
+    <section
+      data-testid="home-today"
+      data-guide="home-today"
+      data-view={suggested ? "suggested" : "mine"}
+    >
       <SectionHeader
         title={t(suggested ? "home.today.title" : "home.today.titleMine")}
         subtitle={t(suggested ? "home.today.subtitle" : "home.today.subtitleMine")}

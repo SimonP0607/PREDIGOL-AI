@@ -7,9 +7,11 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
+import { Link } from "@tanstack/react-router";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/lib/useMediaQuery";
+import { HOW_PATH, cardAnchor } from "@/product/help/howItWorks";
 import { findAnchor, placeCard, type Box } from "./anchors";
 import { useGuides } from "./context";
 import { cardsOf, numbered } from "./navigation";
@@ -166,7 +168,13 @@ export function GuideLayer() {
               className="mt-1 space-y-1.5 text-sm leading-relaxed text-foreground/90"
             >
               {resuming ? (
-                <p>{t("guides.resume.body", { n: Math.max(position, 1), total: shown.length })}</p>
+                <p>
+                  {t("guides.resume.body", {
+                    n: Math.max(position, 1),
+                    total: shown.length,
+                    name: t(`guides.names.${def.key}`),
+                  })}
+                </p>
               ) : welcome ? (
                 <>
                   <p>{t("onboarding.welcome.about.picks")}</p>
@@ -175,6 +183,19 @@ export function GuideLayer() {
               ) : (
                 <p>{t(`${base}.body`)}</p>
               )}
+              {last && def.more && !resuming ? (
+                <p>
+                  <Link
+                    to={HOW_PATH}
+                    hash={cardAnchor(def.more)}
+                    onClick={guides.finish}
+                    data-testid="guide-more"
+                    className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    {t("guides.more")}
+                  </Link>
+                </p>
+              ) : null}
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
               {resuming ? (
