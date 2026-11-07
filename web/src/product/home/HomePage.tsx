@@ -41,7 +41,8 @@ import { HomeHeader } from "./HomeHeader";
 import { LiveTiles } from "./LiveTiles";
 import { NewsBlock } from "./NewsBlock";
 import { SuggestionCard } from "@/product/favorites/SuggestionCard";
-import { ContextBlock, RelevantBlock, ResultsBlock, TodayBlock } from "./TodayBlocks";
+import { ContextBlock, RelevantBlock, TodayBlock } from "./TodayBlocks";
+import { ResultsBlock } from "./ResultsBlock";
 import { layersOf } from "./layers";
 import { ChoosePrompt, ForYouEdit, ForYouPart, Layer } from "./ParaTi";
 
@@ -209,7 +210,6 @@ export function HomePage() {
           {layers.mine ? <ContextBlock {...common} /> : null}
           <ForYouPart part="picks" query={me} board={board} teams={teams} now={now} />
           <ForYouPart part="notices" query={me} board={board} teams={teams} now={now} />
-          {layers.mine ? <ResultsBlock {...common} /> : null}
         </Layer>
       ) : null}
       <Layer
@@ -244,10 +244,10 @@ export function HomePage() {
           <>
             <NewsBlock query={news} now={now} />
             <ContextBlock {...common} />
-            <ResultsBlock {...common} />
           </>
         )}
         <LiveNow query={home} />
+        <ResultsBlock query={home} now={now} />
       </Layer>
     </div>
   );
