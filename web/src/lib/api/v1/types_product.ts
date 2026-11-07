@@ -241,10 +241,28 @@ export interface BestOddsBoard {
   source: ProductSource;
 }
 
+/** A match that ended in the last 24 hours (plan de Inicio, 3.1). */
+export interface HomeResult {
+  fixture_id: number;
+  kickoff_at: Iso;
+  competition: CompetitionBadge;
+  home: TeamBadge;
+  away: TeamBadge;
+  /** Over after 90 minutes, after extra time or after the shoot-out. */
+  status: "FT" | "AET" | "PEN";
+  goals_home: number;
+  goals_away: number;
+  /** The shoot-out's score, when there was one. */
+  pens_home?: number | null;
+  pens_away?: number | null;
+}
+
 export interface Home {
   source: ProductSource;
   data_freshness: { live_at: Iso | null };
   live: Section<LiveMatch[]>;
+  /** What ended in the last 24 hours, newest first, six at most. Absent from an API older than 3.1. */
+  results?: Section<HomeResult[]>;
 }
 
 export interface PicksQuery {

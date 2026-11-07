@@ -35,7 +35,6 @@ import {
   mineToday,
   nextOfFavourites,
   pickContext,
-  recentResults,
   relevantToday,
   suggestedView,
 } from "./today";
@@ -448,43 +447,6 @@ export function ContextBlock({ query, now }: { query: TodayQuery; now: number })
           </li>
         ))}
       </Rows>
-    </section>
-  );
-}
-
-/** 6 · Resultados: the reader's results of the last 48 hours, each to its Postpartido. */
-export function ResultsBlock({ query, now }: { query: TodayQuery; now: number }) {
-  const today = query.data?.data ?? null;
-  const suggested = today ? suggestedView(today) : true;
-  let body: ReactNode;
-  if (query.isPending) body = <Pending rows={2} />;
-  else if (!today) body = <Failed query={query} />;
-  else {
-    const rows = recentResults(today.matches.data, now);
-    body =
-      rows.length === 0 ? (
-        <Note testId="results-empty">
-          {t(suggested ? "home.results.empty" : "home.results.emptyMine")}
-        </Note>
-      ) : (
-        <Rows count={rows.length} testId="results-list">
-          {rows.map((m) => (
-            <li key={m.fixture_id} className="bg-card">
-              <TodayRow m={m} now={now} reading={false} forecast={false} tab="postmatch" />
-            </li>
-          ))}
-        </Rows>
-      );
-  }
-  return (
-    <section data-testid="home-results">
-      <SectionHeader
-        title={t("home.results.title")}
-        subtitle={t(suggested ? "home.results.subtitle" : "home.results.subtitleMine")}
-        icon={<History aria-hidden className="h-4 w-4 shrink-0 text-primary" />}
-      />
-      <Updated query={query} />
-      {body}
     </section>
   );
 }

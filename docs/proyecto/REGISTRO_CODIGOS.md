@@ -75,6 +75,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-037 | Inicio, paso 2.2 (plan de Inicio): un solo reloj de partido. Las filas de Inicio ganan lo que les faltaba (el tiempo añadido, «90+4'», y la tanda de penales de un resultado, «Final (pen.)» con «pen. 4-3»), y todas las pantallas dicen lo mismo del mismo momento: «Descanso» (no «Desc.»), «Pausa», «Penales», «Prórroga», «Interrumpido» y «Suspendido». `/today` añade `extra`, `pens_home` y `pens_away` (campos nuevos, opcionales). No toca modelos, picks ni IA; sin migración | en curso | este PR | — |
 | UX-041 | Inicio, paso 2.4a (plan de Inicio): el parlay multi-día se distingue a la vista — el rango de fechas junto a su número de selecciones y las piernas agrupadas bajo el día en que se juegan — y en el móvil un selector «Del día / Multi-día» sustituye a dos tarjetas largas seguidas (desde `md` se ven las dos, sin selector). Solo web; sin cambio de contrato ni de modelos. |
 | UX-040 | Inicio, paso 2.3 (plan de Inicio): la tarjeta del pick del día lleva solo lo que un lector necesita — liga y hora, equipos, mercado y selección, cuota de referencia sin casa de apuestas, «PrediGol 52 % · mercado 39 %», nivel Alto/Medio (Alto si hasta la estimación prudente supera al mercado), estado, dos frases de por qué y «Más sobre este pick». Modelo, revisión, VE, etapa, hora de elección y casa quedan en «Auditoría», solo para el dueño en evaluación. «Más sobre este pick» abre `/matches/{id}?s=resumen&pick={id}`: el partido baja hasta ese pick, lo marca y abre su explicación (`?pick=` se lee de la dirección). Solo web; sin cambio de contrato ni de modelos. |
+| UX-042 | Inicio, paso 3.1a (plan de Inicio): «Últimos resultados» sale de `/home` — los partidos terminados en las últimas 24 horas, el más reciente arriba, seis como máximo, con «Final», «Final (prór.)» o «Final (pen.)» y la tanda — y pasa a la capa general, después de «En vivo». Un partido es resultado cuando el feed de partidos lo da por terminado o, al instante, cuando el feed de fixtures dice FT, AET o PEN, para que el que sale del tablero en vivo no quede en ninguno de los dos bloques. «Para ti» deja de llevar resultados. Contrato: `Home.results` (instantánea de formas actualizada). Sin migración ni cambio de modelos. |
 
 ## BE — backend
 
@@ -90,4 +91,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-015 · UX-041 · BE-004 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-015 · UX-043 · BE-004 · FE-001 · OPS-001 · DOC-001
