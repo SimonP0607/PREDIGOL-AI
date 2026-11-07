@@ -735,7 +735,9 @@ def test_para_ti_marks_which_of_todays_picks_are_the_readers_and_their_bells(
     assert picks("league") == [(1, over, "league", False), (2, home, "league", False)]
     assert picks("market") == [(2, home, None, True)], "a market alone: the pick of that market, and why"
     assert picks("elsewhere") == [], "none of today's two picks is theirs - the day has them, they are not the reader's"
-    assert answer("player")["picks"] is None, "a player alone follows no match and no market"
+    alone = answer("player")["picks"]
+    assert alone is not None and alone["published"] == 2 and alone["items"] == [], (
+        "a player without a match to come: the day's picks are not his, and it says so")
     assert [p["name"] for p in answer("player")["players"]] == ["Jugador P32"]
     assert answer("player")["players"][0]["state"] == "no_match"
 

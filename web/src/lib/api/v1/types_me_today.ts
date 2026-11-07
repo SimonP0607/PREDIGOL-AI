@@ -46,6 +46,8 @@ export interface RelatedPick {
   /** Why its match is the reader's; null when only its market is. */
   followed: FollowReason | null;
   market_followed: boolean;
+  /** The players the reader follows whose next match is this pick's (plan de Inicio, 3.4); an API from before says nothing. */
+  players?: string[];
 }
 
 export interface RelatedPicks {

@@ -6,7 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import type { RelatedPick, RelatedPicks } from "@/lib/api/v1/types_me_today";
 import type { DailyItem } from "@/lib/api/v1/types_records";
-import { relatedCards } from "./related";
+import { mineByRank, mineReasons, pickAnchor, relatedCards } from "./related";
 
 const card = (rank: number, fixture: number): DailyItem =>
   ({ rank, match: { fixture_id: fixture } }) as unknown as DailyItem;
@@ -47,5 +47,36 @@ describe("relatedCards", () => {
   test("nothing related, or no set yet: nothing", () => {
     expect(relatedCards(picks([]), set)).toEqual([]);
     expect(relatedCards(picks([pick(1, 100)]), [])).toEqual([]);
+  });
+});
+
+describe("why a pick is the reader's", () => {
+  test("team, player, league, market - in that order, each with what it names", () => {
+    const all = pick(1, 100, {
+      followed: { kind: "team", names: ["Nacional"] },
+      players: ["Jugador Uno"],
+      market_followed: true,
+    });
+    expect(mineReasons(all, "1X2")).toEqual([
+      { kind: "team", names: ["Nacional"] },
+      { kind: "player", names: ["Jugador Uno"] },
+      { kind: "market", names: ["1X2"] },
+    ]);
+    const league = pick(2, 101, { followed: { kind: "league", names: ["Liga BetPlay"] } });
+    expect(mineReasons(league, "1X2")).toEqual([{ kind: "league", names: ["Liga BetPlay"] }]);
+  });
+
+  test("an API from before the players says nothing of them; a pick with no reason has none", () => {
+    expect(mineReasons(pick(1, 100), "1X2")).toEqual([]);
+    expect(mineReasons(pick(1, 100, { market_followed: true }), "OU")).toEqual([
+      { kind: "market", names: ["OU"] },
+    ]);
+  });
+
+  test("by rank, and an anchor per pick", () => {
+    const map = mineByRank(picks([pick(2, 101), pick(5, 104)]));
+    expect([...map.keys()]).toEqual([2, 5]);
+    expect(mineByRank(null).size).toBe(0);
+    expect(pickAnchor(3)).toBe("pick-3");
   });
 });

@@ -47,6 +47,7 @@ import { ContextBlock, TodayBlock } from "./TodayBlocks";
 import { AtStakeBlock, RelevantNowBlock } from "./HomeStakes";
 import { ResultsBlock } from "./ResultsBlock";
 import { layersOf } from "./layers";
+import { mineByRank } from "./related";
 import { ChoosePrompt, ForYouEdit, ForYouPart, Layer } from "./ParaTi";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
@@ -244,6 +245,7 @@ export function HomePage() {
           query={board}
           variant="home"
           noPick={noPickLoad(today, (d) => d.no_pick.data)}
+          mine={layers.forYou ? mineByRank(me.data?.picks) : undefined}
         />
         <HomeParlays board={board} />
         <RelevantNowBlock query={home} />
