@@ -77,19 +77,11 @@ def v2_view(d: engine.Decision2) -> tuple[str, set[str], str, str | None]:
     return d.state, set(d.codes), d.checkpoint, d.label
 
 
-CONTEXT_CODES = frozenset({"key_absence_reported", "ai_reject", "ai_downgrade"})
-"""decision-v1's context codes whose effect is CAUTELA."""
-
-
 def v1_view(e: decision.Evaluated, row: dict[str, Any], w: decision.World) -> tuple[str, set[str], str, str | None]:
-    """What decision-v2 must say, read off decision-v1: its state through state-v2, its reasons, its checkpoint, its label - and the one
-    place decision-v2 is stricter by design: a CAUTELA that only the context gave, on a market whose edge is not validated, is the
-    context lifting an INVESTIGACION (decision-v1 gates only an APROBADO); decision-v2 keeps it ABSTAIN with the edge gate's code."""
+    """What decision-v2 must say, read off decision-v1: its state through state-v2, its reasons, its checkpoint, its label. Since IA-017
+    (``decision.RULES``) decision-v1 gates the edge on the state without the context, as decision-v2 does: there is no exception left."""
     state, _ = state_v2.classify(row)
     codes = {r for r in e.reasons if r not in {fd.REASON_RESEARCH}}
-    edge = bool(w.cal.edge.get((e.key[1], e.row["model_used"])))
-    if state == "CAUTION" and codes and codes <= CONTEXT_CODES and not edge:
-        return "ABSTAIN", codes | {"edge_not_validated"}, e.checkpoint, None
     return state, codes, e.checkpoint, state_v2.label_of(row)
 
 
@@ -128,11 +120,8 @@ def test_decision_v2_agrees_with_decision_v1_on_two_thousand_selections_state_re
         e, row = v1(w, {MODEL: p})
         d = engine.decide(w, core({MODEL: p}))
         got, want = v2_view(d), v1_view(e, row, w)
-        # decision-v2 also records the edge gate behind a context that rejected or held the selection (decision-v1 stops before it)
-        assert (got[0], got[1] - {"edge_not_validated"}, *got[2:]) == (want[0], want[1] - {"edge_not_validated"}, *want[2:]), c
-        assert ("edge_not_validated" in want[1]) <= ("edge_not_validated" in got[1]), c
-        assert got[1] - want[1] <= {"edge_not_validated"} and (got[1] == want[1] or set(e.reasons) & (CONTEXT_CODES | {"context_stop",
-                                                                                                                   "key_absence_confirmed"})), c
+        # since IA-017 both record the edge gate behind a context that rejected or held the selection: state, codes, checkpoint, label agree
+        assert got == want, c
         seen.add(d.state)
     assert seen == set(state_v2.STATES), "the grid reaches every state"
 
@@ -181,10 +170,10 @@ def test_each_stage_records_its_verdict_its_code_and_its_effect(stage: str, w: d
 
 
 def test_a_negative_context_does_not_lift_a_selection_past_the_edge_gate() -> None:
-    """decision-v1: no validated edge -> INVESTIGACION, but the same with a review DOWNGRADE -> CAUTELA (the context raised it). decision-v2:
-    ABSTAIN both times."""
+    """No validated edge -> INVESTIGACION, and the same with a review DOWNGRADE stays there: ABSTAIN both times, in decision-v2 and (since
+    IA-017; before it decision-v1 said CAUTELA, the context raising the state) in decision-v1."""
     w0, w1, p = world(edge=False), world(edge=False, review="DOWNGRADE"), pick()
-    assert [state_v2.classify(v1(w, {MODEL: p})[1])[0] for w in (w0, w1)] == ["ABSTAIN", "CAUTION"]
+    assert [state_v2.classify(v1(w, {MODEL: p})[1])[0] for w in (w0, w1)] == ["ABSTAIN", "ABSTAIN"]
     d0, d1 = (engine.decide(w, core({MODEL: p})) for w in (w0, w1))
     assert (d0.state, d1.state) == ("ABSTAIN", "ABSTAIN") and {"ai_downgrade", "edge_not_validated"} <= set(d1.codes)
     assert d1.reason == "edge_not_validated" and d1.verdict("final").ok is False

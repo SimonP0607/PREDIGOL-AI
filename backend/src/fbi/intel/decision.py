@@ -30,10 +30,27 @@ THE TEN FILTERS (each recorded with its verdict and why):
                      market's and the pick type's closing-line value positive) or CANDIDATO_PARLAY (odds 1.25-2.20,
                      calibrated p >= 0.5). PICK_DEL_DIA is chosen later (``select_day``).
 
-Precedence: RECHAZADO > INVESTIGACION > CAUTELA > APROBADO. A row is written when the selection is first seen, when its
-checkpoint, state, calibrator or context changes, or when its price moves more than 3 %; a RECHAZADO selection is
-written again only if its state changes. The same input twice writes nothing (``input_hash``).
-"""
+Precedence: RECHAZADO > INVESTIGACION > CAUTELA > APROBADO, applied AFTER the context: the edge gate (10) reads the
+state the other filters give WITHOUT the context, and the state is the more severe of that and the context's effect, so
+a context can only lower a state, never raise it (``final_state``). A row is written when the selection is first seen,
+when its checkpoint, state, calibrator or context changes, or when its price moves more than 3 %; a RECHAZADO selection
+is written again only if its state changes. The same input twice writes nothing (``input_hash``).
+
+RULES (``RULES``, IA-017, 7 Nov 2026: ``decision-v1.1``). Two defects decision-v2 (``fbi.decision.engine``) found in
+shadow, fixed so that the two agree:
+
+* correlation (8) broke a tie of scores on the order PostgreSQL returned the candidates in (a query without ORDER BY):
+  two runs over the same data could keep different selections. A tie now breaks on (market, selection, line), as
+  decision-v2 breaks it, the candidates are read in that order (``CANDIDATES_SQL``) and the filter says it was a tie;
+* a negative context (a key absence reported, a review REJECT or DOWNGRADE) on a selection without a validated edge
+  ended as CAUTELA: the edge gate only stood before an APROBADO, so the context took the selection from INVESTIGACION up
+  to the less severe CAUTELA. It now stays INVESTIGACION (``edge_not_validated`` with the context's own reason), or
+  RECHAZADO where the context rejects; a risk (7) or a stale final price (9) is still a CAUTELA whatever the edge.
+
+``decision_version`` stays ``decision-v1``: it is the LAYER every reader binds (``fbi.core.decision_versions``), so the
+rows before and after the change stay one series that every page, the memory, the post-mortems and the leak audit read
+alike. What tells them apart is the commit in ``code_version`` and the rules' label, which each row carries in its
+filter 10 (``data.rules``) and in its ``input_hash``; a row written before has neither and keeps what it recorded."""
 
 from __future__ import annotations
 
@@ -41,10 +58,11 @@ import hashlib
 import json
 import math
 from collections import defaultdict
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, Final
 
 import psycopg
 from psycopg.rows import dict_row
@@ -61,6 +79,9 @@ from fbi.intel import stake as staking
 from fbi.intel.calibration import CalibrationState, calibration_state
 
 VERSION = DECISION_CORE
+RULES: Final = "decision-v1.1"
+"""The revision of the layer's rules (IA-017): a deterministic tie in correlation, and a context that never raises a state. The rows
+written before it carry no label (they are ``decision-v1`` as first written); ``decision_version`` does not change."""
 HORIZON = timedelta(hours=36)
 CONSENSUS_LOOKBACK = timedelta(hours=36)
 MIN_MINUTES = 10
@@ -84,6 +105,7 @@ NOT_FIT = frozenset({"PRODUCT_ONLY", "INSUFFICIENT"})
 BAD_STATUS = frozenset({"PST", "CANC", "ABD", "SUSP", "AWD", "WO", "INT"})
 APPROVED = frozenset({"APROBADO", "CANDIDATO_PARLAY", "PICK_PREMIUM", "PICK_DEL_DIA"})
 RANK = {"RECHAZADO": 0, "INVESTIGACION": 1, "CAUTELA": 2, "APROBADO": 3}
+STATE_OF = {v: s for s, v in RANK.items()}
 FINAL_CHECKPOINTS = frozenset({"T-90m", "lineups", "T-60m", "T-15m"})
 STOP_CODES = frozenset({"fixture_not_playable", "fixture_quarantined", "data_not_model_ready"})
 
@@ -107,6 +129,27 @@ def checkpoint_of(minutes: float, *, important: bool, lineups: bool) -> str:
 def ev_of(p: float, odds: float, p_push: float = 0.0) -> float:
     """Expected value per unit staked: (1 - p_push)(p * odds - 1), p conditional on the bet settling."""
     return (1.0 - p_push) * (p * odds - 1.0)
+
+
+def worst_state(states: Iterable[str]) -> str:
+    """The most severe of ``states`` by the precedence (``RANK``); APROBADO when there is none."""
+    return STATE_OF[min((RANK[s] for s in states), default=RANK["APROBADO"])]
+
+
+def final_state(others: Sequence[str], context: Sequence[str], *, edge_ok: bool) -> tuple[str, bool]:
+    """(state, gated): the state of a selection from the effects of every filter but the context (``others``) and the context's (6),
+    and whether the edge gate (10) parked it. The gate reads the state WITHOUT the context: a selection the other filters approve on a
+    market whose edge is not validated is INVESTIGACION, and the context can only take it lower (RECHAZADO), never up to CAUTELA. The
+    state is the more severe of the two: no context ever raises a state (IA-017; before it the gate read the state after the context,
+    and a CAUTELA from the context lifted an INVESTIGACION)."""
+    gated = worst_state(others) == "APROBADO" and not edge_ok
+    return worst_state([*others, *(["INVESTIGACION"] if gated else []), *context]), gated
+
+
+def correlation_order(e: Evaluated) -> tuple[float, str, str, Decimal]:
+    """The total order of filter 8 (IA-017): the best score first, a tie broken on (market, selection, line) - decision-v2's own rule
+    (``fbi.decision.engine.decide_all``), never the order the rows came in."""
+    return -(e.score.total if e.score else 0.0), e.key[1], e.key[2], e.key[3]
 
 
 # ── reading what is known at ``at`` ──────────────────────────────────────────────────────────────────────────────
@@ -147,7 +190,9 @@ SELECT lp.*, f.kickoff_at, f.status_short, f.status_group, f.home_team_id, f.awa
   JOIN core.teams ta ON ta.id = f.away_team_id
   LEFT JOIN lc ON lc.fixture_id = lp.fixture_id AND lc.market_key = lp.market_key AND lc.selection = lp.selection
               AND lc.line = lp.line
+ ORDER BY lp.fixture_id, lp.market_key, lp.selection, lp.line, lp.model_name
 """
+"""In a total order (IA-017): a run's candidates, and so its decisions, come in the same order whatever plan the database chose."""
 
 QUALITY_SQL = """
 SELECT f.id AS fixture_id, s.class AS data_class, (v.state = 'QUARANTINED') AS quarantined
@@ -522,7 +567,8 @@ def evaluate(world: World, key: Key, models: dict[str, dict[str, Any]]) -> Evalu
                           f"(crudo {ev_raw:+.1%})", "RECHAZADO", 5, ev_cal=ev_cal, edge_cal=edge_cal, ev_raw=ev_raw))
         stop("RECHAZADO", "ev_cal_below")
 
-    # 6 context
+    # 6 context (its effects are kept apart: the edge gate reads the state without them, see ``final_state``)
+    context_from = len(effects)
     hard = [c for c, s in ctx.rules_codes.items() if s == "hard"]
     soft = [c for c, s in ctx.rules_codes.items() if s == "soft"]
     review_decision = None if ctx.review is None else str(ctx.review["decision"])
@@ -546,9 +592,8 @@ def evaluate(world: World, key: Key, models: dict[str, dict[str, Any]]) -> Evalu
                  "AI_OFF": "capa de IA apagada"}.get(ctx.status, f"contexto {ctx.status}")
         filters.append(_f("context", True, label + (f"; revisión {review_decision}" if review_decision else ""),
                           n=6, context_status=ctx.status))
-    if ctx.status == "LIMITED":
-        # recorded, never a rejection by itself
-        pass
+    # LIMITED is recorded, never a rejection by itself
+    context_to = len(effects)
 
     # 7 risk
     risks = []
@@ -598,24 +643,24 @@ def evaluate(world: World, key: Key, models: dict[str, dict[str, Any]]) -> Evalu
 
     # 10 final
     edge_ok = bool(world.cal.edge.get((market, model)))
-    worst = min((RANK[s] for s, _ in effects), default=RANK["APROBADO"])
-    state = next(s for s, v in RANK.items() if v == worst)
+    in_context = [s for s, _ in effects[context_from:context_to]]
+    state, gated = final_state([s for s, _ in effects[:context_from] + effects[context_to:]], in_context, edge_ok=edge_ok)
     reasons = [why for s, why in effects]
     premium = parlay = False
-    if state == "APROBADO" and not edge_ok:
-        state = "INVESTIGACION"
+    if gated:
         reasons.append("edge_not_validated")
         filters.append(_f("final", False, "el mercado no tiene edge validado fuera de muestra (edge-gate-v1): se mide "
-                          "en investigación", "INVESTIGACION", 10))
+                          "en investigación" + ("" if state == "INVESTIGACION" else f"; el contexto la deja en {state}"),
+                          "INVESTIGACION", 10, rules=RULES))
     elif state == "APROBADO":
         tc = world.type_clv.get((market, key[2], odds_band(odds or 0)))
         premium = bool(sc is not None and sc.total >= PREMIUM_SCORE and (_num(wf.get("rule_clv")) or 0) > 0
                        and tc is not None and tc[0] > 0)
         parlay = odds is not None and PARLAY_ODDS[0] <= odds <= PARLAY_ODDS[1] and (p_cal or 0) >= PARLAY_MIN_P
         state = "PICK_PREMIUM" if premium else "CANDIDATO_PARLAY" if parlay else "APROBADO"
-        filters.append(_f("final", True, f"aprobado ({state})", n=10))
+        filters.append(_f("final", True, f"aprobado ({state})", n=10, rules=RULES))
     else:
-        filters.append(_f("final", False, f"{state}: " + ", ".join(reasons), state, 10))
+        filters.append(_f("final", False, f"{state}: " + ", ".join(reasons), state, 10, rules=RULES))
     st = staking.stake_for(state, p_cal, odds, p_push)
     return Evaluated(key, r | {"model_used": model}, cp, state, reasons, sorted(filters, key=lambda f: f["n"]), p_cal,
                      None if calibrator is None else calibrator.id, None if calibrator is None else calibrator.role,
@@ -632,7 +677,8 @@ def _num(x: Any) -> float | None:
 
 def correlate(evaluated: list[Evaluated]) -> None:
     """Filter 8: one selection per match. Among a match's approved selections the best score stays; the others
-    become CAUTELA (``correlated_same_match``)."""
+    become CAUTELA (``correlated_same_match``). A tie of scores breaks on (market, selection, line)
+    (``correlation_order``), whatever order ``evaluated`` is in, and the filter says it was a tie."""
     by_fixture: dict[int, list[Evaluated]] = defaultdict(list)
     for e in evaluated:
         if e.state in APPROVED:
@@ -640,13 +686,20 @@ def correlate(evaluated: list[Evaluated]) -> None:
     for xs in by_fixture.values():
         if len(xs) < 2:
             continue
-        xs.sort(key=lambda e: -(e.score.total if e.score else 0))
+        xs.sort(key=correlation_order)
+        top = correlation_order(xs[0])[0]
+        tied = any(correlation_order(e)[0] == top for e in xs[1:])
+        xs[0].filters.append(_f("correlation", True, "la mejor selección aprobable del partido"
+                                + (" (empate de score: decide la selección)" if tied else ""), n=8, tie=tied))
+        xs[0].filters.sort(key=lambda f: f["n"])
         for e in xs[1:]:
+            tie = correlation_order(e)[0] == top
             e.state = "CAUTELA"
             e.premium = e.parlay_eligible = False
             e.reasons.append("correlated_same_match")
             e.filters.append(_f("correlation", False, f"otra selección del mismo partido tiene mejor score "
-                                f"({xs[0].key[1]} {xs[0].key[2]})", "CAUTELA", 8))
+                                f"({xs[0].key[1]} {xs[0].key[2]})" + (" (empate de score: decide la selección)" if tie else ""),
+                                "CAUTELA", 8, best=[xs[0].key[1], xs[0].key[2], str(xs[0].key[3])], tie=tie))
             e.stake = staking.stake_for("CAUTELA", e.p_cal, None if e.row.get("best_odds") is None
                                         else float(e.row["best_odds"]), float(e.row.get("p_push") or 0))
             e.filters.sort(key=lambda f: f["n"])
@@ -659,7 +712,7 @@ def correlate(evaluated: list[Evaluated]) -> None:
 def input_hash(e: Evaluated, *, version: str = VERSION) -> str:
     """What the decision was made from, in a digest. A selection with no pick (a family's) names the forecast it rests on in its place."""
     odds = e.row.get("best_odds")
-    payload = {"v": version, "cp": e.checkpoint, "state": e.state,
+    payload = {"v": version, "rules": RULES, "cp": e.checkpoint, "state": e.state,
                "odds": None if odds is None else round(float(odds), 2),
                "p_model": round(float(e.row["p_model"]), 4), "p_cal": None if e.p_cal is None else round(e.p_cal, 4),
                "cal": e.calibrator_id, "p_mkt": None if e.row.get("p_fair") is None else round(float(e.row["p_fair"]), 4),
