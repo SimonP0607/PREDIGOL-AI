@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from fbi.api.contracts.me_today import PlayerState
+from fbi.api.contracts.me_today import PlayerMatch, PlayerState, WatchedPlayer
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
 from fbi.api.contracts.records import DailyBoard, DailyItem, DailySet, MatchRef
 from fbi.api.envelope import ok
@@ -110,8 +110,8 @@ def test_a_pick_is_also_the_readers_when_it_is_the_next_match_of_a_player_they_f
 
 def test_the_matches_the_players_play_next_by_fixture_in_the_order_chosen() -> None:
     def watched(name: str, fixture: int | None) -> Any:
-        nxt = None if fixture is None else me_today.PlayerMatch.model_construct(fixture_id=fixture)
-        return me_today.WatchedPlayer.model_construct(name=name, next=nxt)
+        nxt = None if fixture is None else PlayerMatch.model_construct(fixture_id=fixture)
+        return WatchedPlayer.model_construct(name=name, next=nxt)
 
     got = me_today.player_fixtures([watched("A", 5), watched("B", None), watched("C", 5), watched("D", 6)])
     assert got == {5: ["A", "C"], 6: ["D"]}
