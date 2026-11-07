@@ -70,14 +70,6 @@
     "saved": "Guardamos tus ligas y equipos.",
     "failed": "No pudimos guardar tus ligas y equipos. Inténtalo de nuevo."
   },
-  "hint": {
-    "label": "Pista",
-    "dismiss": "Entendido",
-    "picks": "Un pick sale solo cuando medimos ventaja frente al precio del mercado. Toca cualquier término para ver qué significa.",
-    "match": "Aquí está todo el partido: el pronóstico, el contexto, el mercado y, cuando lo hay, el pick con su estado real.",
-    "parlay": "En un parlay las cuotas se multiplican, y basta que una selección falle para perderlo.",
-    "my_picks": "Tus picks guardados se liquidan con el resultado oficial; tus cifras cuentan solo los que tienen cuota."
-  },
   "follow": {
     "add": "Seguir a {team}",
     "remove": "Dejar de seguir a {team}",

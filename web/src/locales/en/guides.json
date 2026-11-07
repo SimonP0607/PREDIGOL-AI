@@ -7,12 +7,21 @@
   "finish": "Finish",
   "resume": {
     "title": "Shall we go on?",
-    "body": "You were on step {n} of {total} of the welcome tour.",
+    "body": "You were on step {n} of {total} of the “{name}” guide.",
     "yes": "Continue",
     "no": "No, thanks"
   },
   "names": {
-    "general": "Welcome tour"
+    "general": "Welcome tour",
+    "home": "Home",
+    "matches": "Matches",
+    "live": "Live",
+    "match": "Match center",
+    "picks": "Picks",
+    "parlays": "Parlays",
+    "odds": "Odds",
+    "my_picks": "My picks",
+    "profile": "Profile"
   },
   "general": {
     "welcome": {
@@ -53,6 +62,114 @@
       "in_progress": "Half way",
       "completed": "Completed",
       "skipped": "Skipped"
+    }
+  },
+  "more": "More detail",
+  "help": {
+    "label": "Show this screen's guide"
+  },
+  "home": {
+    "layers": {
+      "title": "Your matches first",
+      "body": "“For you” gathers your leagues and teams; “PrediGol” is the same for everyone. Your day starts here."
+    },
+    "today": {
+      "title": "Today in your leagues",
+      "body": "Tap a match to see its analysis: the forecast, the context and, when there is one, the pick with its real status."
+    },
+    "results": {
+      "title": "Results",
+      "body": "Here you see how recent matches and picks ended, always with the official result."
+    }
+  },
+  "matches": {
+    "days": {
+      "title": "Pick the day",
+      "body": "Move between Today, Tomorrow and other days, and filter by country, league or team."
+    },
+    "list": {
+      "title": "By competition",
+      "body": "Your leagues come first, then what is being played. Tap a match to see its analysis."
+    },
+    "live": {
+      "title": "When it is played",
+      "body": "These filters split what is being played now (Live), what is coming and what has finished."
+    }
+  },
+  "live": {
+    "filters": {
+      "title": "Filter what matters",
+      "body": "Pick a league and turn on “only with picks” to see the matches that have a pick first."
+    },
+    "cards": {
+      "title": "They update by themselves",
+      "body": "The cards refresh every 15 seconds. Tap one to open the match."
+    }
+  },
+  "match": {
+    "header": {
+      "title": "The match",
+      "body": "The time in your zone, the score and the star to follow the team."
+    },
+    "tabs": {
+      "title": "The tabs",
+      "body": "Start with Summary; then Analysis, Statistics, Markets, Line-ups, News and Post-match."
+    },
+    "forecast": {
+      "title": "The forecast",
+      "body": "Tap any term to see what it means. A forecast never guarantees a result."
+    }
+  },
+  "picks": {
+    "list": {
+      "title": "Only what is recommended",
+      "body": "A pick appears only when we measure an edge over the market price. If none qualifies, there are no picks today."
+    },
+    "filters": {
+      "title": "Filters",
+      "body": "Filter by competition or by those already started today. On each pick you can save it or add it to your parlay."
+    }
+  },
+  "parlays": {
+    "official": {
+      "title": "PrediGol's parlays",
+      "body": "The daily and the multi-day parlay only hold selections that pass every rule, and are never padded."
+    },
+    "builder": {
+      "title": "Automatic builder",
+      "body": "Tell it what you want and PrediGol builds it with its rules, or says there is none worth making."
+    },
+    "own": {
+      "title": "Build your own",
+      "body": "Add selections from Picks, Odds or a match. Odds multiply: one selection failing is enough to lose it."
+    }
+  },
+  "odds": {
+    "tabs": {
+      "title": "One market at a time",
+      "body": "Switch between 1X2, goals, both teams to score and more. Each board shows the best odds for each selection."
+    },
+    "fair": {
+      "title": "What are fair odds?",
+      "body": "They are the odds without the bookmaker's margin. They show whether the best odds pay more than they are worth."
+    },
+    "above": {
+      "title": "Only above fair",
+      "body": "Filters what pays more than the fair odds. Tap odds to add them to your parlay."
+    }
+  },
+  "my_picks": {
+    "results": {
+      "title": "Your results",
+      "body": "Today, 7 and 30 days, in units: PrediGol does not handle money. Only picks with odds count."
+    },
+    "saved": {
+      "title": "Saved picks",
+      "body": "They settle by themselves with the official result. On each one you can note the odds you took."
+    },
+    "parlays": {
+      "title": "Your parlays",
+      "body": "The parlays you build stay here; they settle the same way, with the official result."
     }
   }
 }

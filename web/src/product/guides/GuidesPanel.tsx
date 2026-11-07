@@ -21,7 +21,7 @@ export function GuidesPanel({ className }: { className?: string }) {
   const labelId = useId();
   const [failed, setFailed] = useState(false);
   if (!guides.available || !user || user.role !== "USER" || user.guides_on === false) return null;
-  const list = GUIDE_LIST.filter(launchable);
+  const list = GUIDE_LIST.filter((g) => launchable(g) && !g.coveredBy);
   if (list.length === 0) return null;
   // the switch only means something when there is a guide of a screen to show by itself
   const hasScreenGuides = list.some((g) => g.key !== "general" && !g.mandatory);

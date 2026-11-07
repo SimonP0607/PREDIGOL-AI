@@ -9,7 +9,8 @@
  * * an account from before A13 (E2E_DATABASE_URL moves its creation back a month) sees one screen of favourites; skipping
  *   keeps the suggested ones, labelled, with the way to choose;
  * * the picker on a 320 px phone: nothing sideways, every control in a finger's reach - and by keyboard alone;
- * * a first-visit hint on Picks, a match, the parlays and Mis picks: dismissed with a tap, never again, after a reload too;
+ * * the guide of Picks, a match, the parlays and Mis picks (plan UX-052): once on the first visit, Escape skips it, never again
+ *   after a reload, and the «?» of the header brings it back;
  * * the welcome tour (plan UX-051): from Ayuda > Guías it goes through its steps and is remembered; on a phone it comes up by
  *   itself on the first visit to Inicio, above the tab bar, and Escape skips it for good;
  * * the star in a match's header follows the team; Inicio then says why its match is there;
@@ -370,37 +371,41 @@ test("the picker on a 320 px phone: nothing sideways, every control in a finger'
   }
 });
 
-test("a first-visit hint on Picks, a match, the parlays and Mis picks: dismissed with a tap, never again", async ({
+test("the guide of Picks, a match, the parlays and Mis picks: once on the first visit, skipped with Escape, never again, and «?» brings it back", async ({
   page,
 }) => {
   test.setTimeout(240_000);
   const admin = await owner();
-  const { id, email } = await account(admin, "hints");
+  const { id, email } = await account(admin, "guides");
   try {
     const w = watch(page, { expect401: true, expectStatus: [403] });
     await signIn(page, email);
     await skipWelcome(page.request);
     await consents(page);
     const team = await todaysTeam(page.request);
-    const pages: Array<[string, "picks" | "match" | "parlay" | "my_picks"]> = [
+    const pages: Array<[string, string]> = [
       ["/picks", "picks"],
       [`/matches/${team.fixture}`, "match"],
-      ["/parlays", "parlay"],
+      ["/parlays", "parlays"],
       ["/my-picks", "my_picks"],
     ];
-    for (const [path, hint] of pages) {
+    for (const [path, guide] of pages) {
       await page.goto(path);
-      const card = page.getByTestId("first-visit-hint");
-      await expect(card).toHaveAttribute("data-hint", hint);
-      await expect(card).toContainText(o.hint[hint]);
-      await card.getByTestId("hint-dismiss").click();
+      const card = page.getByTestId("guide-card");
+      await expect(card, `${path}: first visit`).toHaveAttribute("data-guide-key", guide);
+      await page.keyboard.press("Escape");
       await expect(card).toHaveCount(0);
+      await settle(page);
       await page.reload();
       await settle(page);
-      await expect(page.getByTestId("first-visit-hint"), `${path}: never again`).toHaveCount(0);
+      await expect(page.getByTestId("guide-card"), `${path}: never again`).toHaveCount(0);
+      await page.getByTestId("guide-help").click();
+      await expect(page.getByTestId("guide-card"), `${path}: «?»`).toHaveAttribute(
+        "data-guide-key",
+        guide,
+      );
+      await page.keyboard.press("Escape");
     }
-    const state = await getJson<{ hints_seen: string[] }>(page.request, "/api/v1/me/onboarding");
-    expect([...state.body.hints_seen].sort()).toEqual(["match", "my_picks", "parlay", "picks"]);
     await assertClean(page, w);
   } finally {
     await remove(admin, id, email);

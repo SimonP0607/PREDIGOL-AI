@@ -5,6 +5,9 @@
  * texts in both languages.
  */
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { HOW_CARD_IDS } from "@/product/help/howItWorks";
 import enGuides from "@/locales/en/guides.json";
 import esGuides from "@/locales/es/guides.json";
 import type { GuideIn, GuideKey, GuideState } from "@/lib/api/v1/types_guides";
@@ -74,8 +77,9 @@ describe("the registry", () => {
   test("Inicio's own guide is covered by the general tour, and a screen finds the guide built for it", () => {
     expect(GUIDES.home.coveredBy).toBe("general");
     expect(guideOfScreen("home")?.key).toBe("general");
-    expect(guideOfScreen("odds")).toBeNull();
-    expect(launchable(GUIDES.odds)).toBe(false);
+    expect(guideOfScreen("odds")?.key).toBe("odds");
+    expect(guideOfScreen("profile")).toBeNull();
+    expect(launchable(GUIDES.profile)).toBe(false);
   });
 });
 
@@ -93,7 +97,7 @@ describe("who is owed what", () => {
   });
 
   test("a guide not built owes nothing", () => {
-    expect(owed(GUIDES.odds, undefined)).toBeNull();
+    expect(owed(GUIDES.profile, undefined)).toBeNull();
   });
 
   test("an earlier version than the one to show again starts over, whatever it was", () => {
@@ -266,6 +270,64 @@ describe("the page's copy of the server's rules", () => {
   });
 });
 
+describe("the guides of the screens", () => {
+  const screens = GUIDE_LIST.filter((g) => g.key !== "general" && launchable(g));
+
+  test("seven screens and Inicio are built, each with two or three steps (Perfil comes later)", () => {
+    expect(screens.map((g) => g.key)).toEqual([
+      "home",
+      "matches",
+      "live",
+      "match",
+      "picks",
+      "parlays",
+      "odds",
+      "my_picks",
+    ]);
+    for (const g of screens) {
+      expect(g.steps.length).toBeGreaterThanOrEqual(2);
+      expect(g.steps.length).toBeLessThanOrEqual(3);
+      expect(g.welcome).toBe(false);
+    }
+  });
+
+  test("each links its last step to a card of «Cómo funciona» that exists", () => {
+    for (const g of screens) expect(HOW_CARD_IDS).toContain(g.more as never);
+  });
+
+  test("every anchor a step rests on is drawn by the code (data-guide) on some screen", () => {
+    const src = (file: string) => readFileSync(join(import.meta.dir, "..", file), "utf8");
+    const code = [
+      "home/TodayBlocks.tsx",
+      "home/ParaTi.tsx",
+      "home/ResultsBlock.tsx",
+      "matches/Filters.tsx",
+      "matches/MatchesPage.tsx",
+      "live/LivePage.tsx",
+      "match/MatchHeader.tsx",
+      "match/MatchPage.tsx",
+      "match/ForecastBlock.tsx",
+      "picks/PicksPage.tsx",
+      "parlays/Builder.tsx",
+      "parlays/ParlaysPage.tsx",
+      "records/ParlayRecordCard.tsx",
+      "odds/OddsPage.tsx",
+      "records/MyPicksPage.tsx",
+      "../components/layout/Bars.tsx",
+      "../components/layout/MoreSheet.tsx",
+    ]
+      .map(src)
+      .join("\n");
+    const dynamic = ["layer-for-you", "layer-predigol", "nav-home", "nav-matches", "nav-picks"];
+    for (const g of GUIDE_LIST.filter(launchable))
+      for (const step of g.steps)
+        for (const anchor of step.anchors) {
+          if (dynamic.includes(anchor) || anchor.startsWith("nav-")) continue;
+          expect(code, `${g.key}/${step.id}: ${anchor}`).toContain(`data-guide="${anchor}"`);
+        }
+  });
+});
+
 describe("the walk through the cards", () => {
   const def = GUIDES.general;
 
@@ -329,7 +391,7 @@ describe("where the card goes", () => {
 
 describe("the texts", () => {
   type Cards = Record<string, { title: string; body: string }>;
-  const NAMES = ["general"] as const;
+  const BUILT = GUIDE_LIST.filter(launchable).map((g) => g.key);
 
   test("both languages carry the same keys, in every namespace", () => {
     const keys = (o: unknown, prefix = ""): string[] =>
@@ -341,8 +403,8 @@ describe("the texts", () => {
 
   test("every card of every built guide has a title and a short body in both languages", () => {
     for (const lang of [esGuides, enGuides]) {
-      for (const key of NAMES) {
-        const texts = lang[key] as unknown as Cards;
+      for (const key of BUILT) {
+        const texts = (lang as unknown as Record<string, Cards>)[key] ?? {};
         for (const card of cardsOf(GUIDES[key])) {
           const id = card.id;
           const entry = texts[id];
