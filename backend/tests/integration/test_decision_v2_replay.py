@@ -60,7 +60,7 @@ def core_scene(db: psycopg.Connection[Any], seed: Seed) -> tuple[IntelWorld, int
     made = AT - timedelta(hours=1)
     for fid, market, selection, line, p, fair, odds, as_of in (
             (a, "OU", "Over", "2.5", 0.60, 0.48, 2.05, AT - timedelta(minutes=20)),     # approved, a parlay candidate
-            (a, "OU", "Under", "3.5", 0.66, 0.55, 1.78, AT - timedelta(minutes=20)),    # approved too: the same match, the lower score
+            (a, "OU", "Under", "3.5", 0.585, 0.565, 1.76, AT - timedelta(minutes=20)),  # approved too, with less value: the lower score
             (a, "BTTS", "Yes", "0", 0.58, 0.50, 2.02, AT - timedelta(minutes=20)),      # no calibrator: abstain
             (a, "OU", "Over", "3.5", 0.30, 0.38, 2.50, AT - timedelta(minutes=20)),     # below the value floor: rejected
             (b, "1X2", "Home", "0", 0.55, 0.45, 2.15, AT - timedelta(minutes=20)),      # no validated edge: abstain
@@ -79,6 +79,9 @@ def writes(db: psycopg.Connection[Any]) -> int:
 def test_decision_v2_agrees_with_decision_v1_on_every_row_of_the_day(db: psycopg.Connection[Any], seed: Seed) -> None:
     w, a, b = core_scene(db, seed)
     _, first = decision.decide(db, at=AT)
+    scores = {e.key[1:3]: e.score.total for e in first if e.key[0] == a and e.score is not None and e.state in decision.APPROVED | {"CAUTELA"}}
+    assert scores[("OU", "Over")] > scores[("OU", "Under")], (
+        "the two approvals of the match must not tie: decision-v1 breaks a tie on the order of its rows, which no query fixes")
     assert {(e.key[0], e.key[1], e.key[2], str(e.key[3])): e.state for e in first} == {
         (a, "OU", "Over", "2.50"): "CANDIDATO_PARLAY", (a, "OU", "Under", "3.50"): "CAUTELA", (a, "BTTS", "Yes", "0.00"): "INVESTIGACION",
         (a, "OU", "Over", "3.50"): "RECHAZADO", (b, "1X2", "Home", "0.00"): "INVESTIGACION", (b, "OU", "Over", "2.50"): "INVESTIGACION"}
@@ -95,7 +98,8 @@ def test_decision_v2_agrees_with_decision_v1_on_every_row_of_the_day(db: psycopg
 
     v1_rows = db.execute("SELECT count(*) FROM intel.decisions WHERE decision_version = %s AND checkpoint <> 'selection'",
                          (decision.VERSION,)).fetchone()
-    assert v1_rows is not None and out["agreement"] == {"n": v1_rows[0], "agree": v1_rows[0], "rate": 1.0, "unmatched": 0}, out["disagreements"]
+    assert v1_rows is not None and out["agreement"] == {"n": v1_rows[0], "agree": v1_rows[0], "rate": 1.0, "unmatched": 0,
+                                                     "correlation_ties": 0}, out["disagreements"]
     assert out["moments"] == 2 and out["skipped"]["selection_copies"] >= 1, "the picks of the day are labels, not decisions"
     core = out["families"]["core"]
     assert core["rate"] == 1.0 and core["unmatched"] == 0 and not out["disagreements"]

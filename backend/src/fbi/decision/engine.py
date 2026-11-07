@@ -507,7 +507,8 @@ def decide_all(world: decision.World, candidates: Sequence[Candidate], *, adjust
                markets: Mapping[Ident, MarketRisk] | None = None) -> list[Decision2]:
     """The candidates of one moment: each through the stages, then correlation (8) - among the selections of a match that compete
     (``Assessed.competes``), the best score stays and the others are CAUTION. Ties break on (market, selection, line, family, model), never on the order
-    of the rows. Returned in the order of ``candidates``."""
+    of the rows, and the verdicts say so (``tie``): decision-v1 breaks them on the order the database returns its candidates in, which no
+    query fixes, so a tie is where the two may disagree with neither being wrong. Returned in the order of ``candidates``."""
     assessed = [assess(world, c, adjustment=(adjustments or {}).get(c.key), market=(markets or {}).get(c.ident)) for c in candidates]
     by_fixture: dict[int, list[int]] = defaultdict(list)
     for i, a in enumerate(assessed):
@@ -520,9 +521,12 @@ def decide_all(world: decision.World, candidates: Sequence[Candidate], *, adjust
         idx.sort(key=lambda i: (-(assessed[i].score or 0.0), assessed[i].candidate.key[1:], assessed[i].candidate.family.name,
                                 assessed[i].candidate.model_hint or ""))
         best = assessed[idx[0]].candidate
-        verdicts[idx[0]] = _v("correlation", True, "la mejor selección aprobable del partido")
+        top = assessed[idx[0]].score or 0.0
+        tied = [i for i in idx[1:] if (assessed[i].score or 0.0) == top]
+        verdicts[idx[0]] = _v("correlation", True, "la mejor selección aprobable del partido", tie=bool(tied))
         for i in idx[1:]:
-            verdicts[i] = _v("correlation", False, f"otra selección del mismo partido tiene mejor score ({best.key[1]} {best.key[2]})",
-                             _e("correlated_same_match"), best=[best.key[1], best.key[2], str(best.key[3])])
+            verdicts[i] = _v("correlation", False, f"otra selección del mismo partido tiene mejor score ({best.key[1]} {best.key[2]})"
+                             + (" (empate de score: decide la selección)" if i in tied else ""),
+                             _e("correlated_same_match"), best=[best.key[1], best.key[2], str(best.key[3])], tie=i in tied)
     return [finish(a, verdicts.get(i) or alone(a)) for i, a in enumerate(assessed)]
 

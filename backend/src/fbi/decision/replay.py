@@ -15,7 +15,8 @@ For every row decision-v1 or decision-fam-v1 wrote during the day (Bogotá, ``fb
 
 Then each row is compared with the decision of the same selection: decision-v1's state read through state-v2 (``state_v2.classify``)
 against decision-v2's. The report: the agreement per family (and per market), the confusion table, the labels and checkpoints that
-agree, every disagreement with the stage that caused it (the first stage, in order, whose reason codes differ), and every row whose
+agree, every disagreement with the stage that caused it (the first stage, in order, whose reason codes differ; ``tie`` when it is
+correlation deciding between equal scores, which decision-v1 breaks on the order of its rows), and every row whose
 candidate the replay could not find. The PICKS DEL DÍA copies (checkpoint ``selection``) are counted and skipped: they are a label on a
 decision, not a decision.
 """
@@ -134,6 +135,8 @@ class _Acc:
     labels_agree: int = 0
     checkpoints_agree: int = 0
     reasons_differ: int = 0
+    ties: int = 0
+    """Disagreements of correlation on a tie of scores: decision-v1 breaks a tie on the order of its rows, decision-v2 on the selection."""
     confusion: dict[str, Counter[str]] = dataclasses.field(default_factory=lambda: defaultdict(Counter))
     by_market: dict[str, list[int]] = dataclasses.field(default_factory=lambda: defaultdict(lambda: [0, 0]))
 
@@ -143,7 +146,7 @@ class _Acc:
                 "by_market": {m: {"n": v[0], "agree": v[1], "rate": _rate(v[1], v[0])} for m, v in sorted(self.by_market.items())},
                 "labels": {"n": self.labels_n, "agree": self.labels_agree},
                 "checkpoints": {"n": self.n - self.unmatched, "agree": self.checkpoints_agree},
-                "same_state_other_reasons": self.reasons_differ}
+                "same_state_other_reasons": self.reasons_differ, "correlation_ties": self.ties}
 
 
 Pair = tuple[Mapping[str, Any], str, engine.Decision2 | None]
@@ -181,11 +184,15 @@ def compare(pairs: Sequence[Pair], *, families: Sequence[str]) -> dict[str, Any]
                 acc.labels_agree += d.label == state_v2.label_of(row)
         if not agree:
             stage = cause(row, d)
-            disagreements.append(_where(row, family) | {
+            tie = stage == "correlation" and bool(d.verdict("correlation").data.get("tie"))
+            for acc in accs:
+                acc.ties += tie
+            disagreements.append(_where(row, family) | {"tie": tie} | {
                 "v1_state": row["state"], "v1_state2": v1_state, "v1_reason": v1_reason, "v1_codes": v1_codes(row),
                 "v2_state": d.state, "v2_reason": d.reason, "v2_codes": list(d.codes), "stage": stage,
                 "v1_why": _v1_why(row, stage), "v2_why": d.verdict(stage).why if stage in engine.NUMBER else None})
-    return {"agreement": {"n": total.n, "agree": total.agree, "rate": _rate(total.agree, total.n), "unmatched": total.unmatched},
+    return {"agreement": {"n": total.n, "agree": total.agree, "rate": _rate(total.agree, total.n), "unmatched": total.unmatched,
+                          "correlation_ties": total.ties},
             "confusion": total.as_json()["confusion"], "families": {f: a.as_json() for f, a in sorted(per.items())},
             "disagreements": disagreements, "unmatched": unmatched}
 
