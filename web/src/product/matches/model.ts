@@ -6,6 +6,7 @@
 import type { CompetitionRef, MatchSummary, StatusGroup } from "@/lib/api/v1/types";
 import type { LiveMatch } from "@/lib/api/v1/types_center";
 import { countryLabel } from "./country";
+import { matchesTeamOrCompetition } from "./facets";
 import { isInPlay, isOffPhase, matchPhaseOf, shortStatus } from "./status";
 
 /** A row's state for the reader: the stored group, unless the live follow knows better. */
@@ -95,20 +96,9 @@ export function fold(text: string): string {
   return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
+/** A team, or the competition by its name or country (facets.matchesTeamOrCompetition). */
 export function matchesText(item: MatchItem, query: string): boolean {
-  const q = fold(query.trim());
-  if (!q) return true;
-  const { home, away, competition } = item.match;
-  const haystack = fold(
-    [
-      home.name,
-      away.name,
-      competition.name,
-      competition.country ?? "",
-      countryLabel(competition.country, competition.country_code) ?? "",
-    ].join(" "),
-  );
-  return q.split(/\s+/).every((word) => haystack.includes(word));
+  return matchesTeamOrCompetition(item.match, query);
 }
 
 export interface CompetitionOption {
@@ -148,7 +138,21 @@ function kickoffOrder(a: MatchItem, b: MatchItem): number {
   return Date.parse(a.match.kickoff_at) - Date.parse(b.match.kickoff_at) || a.match.id - b.match.id;
 }
 
-/** Competitions with a match in play first, then the tracked ones, then by name; kick-off inside. */
+/**
+ * The owner's priority group of a competition (comp-priority-v1, sent by GET /matches): 1 the Champions League and
+ * the top leagues, 2 the continental club cups, 3 the national teams' tournaments, 4 the rest. An API older than the
+ * field sends none: every competition is then in group 4 and the list is ordered by name, as before.
+ */
+export function priorityOf(c: Pick<CompetitionRef, "priority_group">): number {
+  const g = c.priority_group;
+  return typeof g === "number" && Number.isInteger(g) && g >= 1 && g <= 4 ? g : 4;
+}
+
+/**
+ * Competitions with a match in play first, then the owner's priority groups 1, 2 and 3, then the rest (group 4);
+ * the tracked ones first and then by name within a group, kick-off inside (plan Partidos, P1). The reader's own leagues go before the groups
+ * (followFirst, applied after this). LaLiga or the Champions League no longer fall under «1. Division» (Cyprus).
+ */
 export function groupByCompetition(
   items: readonly MatchItem[],
   locale: string,
@@ -169,11 +173,33 @@ export function groupByCompetition(
   return groups.sort(
     (a, b) =>
       Number(b.live > 0) - Number(a.live > 0) ||
+      priorityOf(a.competition) - priorityOf(b.competition) ||
       Number(b.competition.is_tracked) - Number(a.competition.is_tracked) ||
       a.competition.name.localeCompare(b.competition.name, locale) ||
       (a.competition.country ?? "").localeCompare(b.competition.country ?? "", locale) ||
       a.id - b.id,
   );
+}
+
+function sameLive(a: LiveMatch | null, b: LiveMatch | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.status === b.status &&
+    a.elapsed === b.elapsed &&
+    a.extra === b.extra &&
+    a.goals_home === b.goals_home &&
+    a.goals_away === b.goals_away
+  );
+}
+
+/**
+ * Whether a list row would draw the same (plan Partidos, P5): every poll of /live builds new items, but a row reads
+ * only its stored match (the same object while the day's answer has not changed it), its state, and the live
+ * score and minute - the events, statistics and prices of the live follow do not show in the list.
+ */
+export function sameItem(a: MatchItem, b: MatchItem): boolean {
+  return a.match === b.match && a.group === b.group && sameLive(a.live, b.live);
 }
 
 /** Goals to show for a row: the live follow while in play, the stored result once over. */

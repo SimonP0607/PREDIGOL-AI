@@ -64,12 +64,9 @@
     "subtitleMine": "Los próximos partidos de tus ligas y equipos: tabla o eliminatoria, descanso y próximo partido"
   },
   "results": {
-    "title": "Resultados",
-    "subtitle": "Ligas sugeridas · últimas 48 horas",
-    "empty": "Sin resultados recientes en las ligas sugeridas.",
-    "postmatch": "Postpartido",
-    "subtitleMine": "Tus ligas y equipos · últimas 48 horas",
-    "emptyMine": "Sin resultados recientes de tus equipos."
+    "title": "Últimos resultados",
+    "subtitle": "Partidos terminados en las últimas 24 horas",
+    "empty": "Hoy todavía no hay resultados de las últimas 24 horas."
   },
   "parlaysNone": "Hoy todavía no hay parlays de PrediGol: solo se arman con selecciones que pasan todas sus reglas, y nunca los rellenamos.",
   "parlaysLink": "Ver parlays",

@@ -39,6 +39,7 @@ from fbi.core.version import code_version
 from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.providers.api_football.normalize import iter_odds
 from fbi.providers.base import RawResponse
+from fbi.storage.payload_store import PayloadStore
 from fbi.truth import compare
 from fbi.truth.findings import SEVERITY_ORDER, Finding, Kind, Severity, Tally
 from fbi.truth.freshness import DatasetFreshness, measure
@@ -281,15 +282,19 @@ def db_latest_odds(conn: psycopg.Connection, provider_fixture_id: int) -> list[d
     return rows
 
 
+def _raw_store() -> PayloadStore:
+    """The raw store the settings name (read only: the venue control compares cities with the stored payloads)."""
+    from fbi.core.config import settings
+
+    root = Path(settings.runtime.raw_store_dir)
+    return PayloadStore(root if root.is_absolute() else Path.cwd() / root)
+
+
 def payload_update_stamps(conn: psycopg.Connection, hashes: set[str]) -> dict[str, datetime | None]:
     """The provider's ``update`` stamp inside each stored /odds answer (None when the file cannot be read)."""
-    from fbi.core.config import settings
-    from fbi.storage.payload_store import PayloadStore
-
     if not hashes:
         return {}
-    root = Path(settings.runtime.raw_store_dir)
-    store = PayloadStore(root if root.is_absolute() else Path.cwd() / root)
+    store = _raw_store()
     out: dict[str, datetime | None] = {}
     for r in _rows(conn, "SELECT hash, file_path FROM raw.ingestion_payloads WHERE hash = ANY(%s)", (sorted(hashes),)):
         stamp = None
@@ -632,7 +637,7 @@ async def run_audit(conn: psycopg.Connection, client: Any, *, at: datetime, seed
                 continue
             log.info("truth_audit.step", step=name, requests=result.requests)
             await step()
-        internal = run_internal(conn, at=at)
+        internal = run_internal(conn, at=at, store=_raw_store())
         for name, t in internal.items():
             merge_internal(result.tallies.setdefault(name, Tally(name)), t)
         if "elo" not in result.sides:

@@ -17,7 +17,6 @@ import {
   nextOfFavourites,
   phaseOf,
   pickContext,
-  recentResults,
   relevantToday,
   suggestedView,
 } from "./today";
@@ -177,20 +176,6 @@ describe("block 5 · what is at stake", () => {
   });
 });
 
-describe("block 6 · results", () => {
-  test("the suggested leagues' matches over in the last 48 hours, newest first", () => {
-    const a = over(NOW - 3 * H);
-    const b = over(NOW - 30 * H);
-    const old = over(NOW - 50 * H);
-    const elsewhere = over(NOW - 5 * H, { suggested: false });
-    const noScore = m({ at: NOW - 6 * H, status_group: "finished", status: "FT" });
-    const postponed = m({ at: NOW - 6 * H, status_group: "postponed", status: "PST" });
-    expect(
-      recentResults([b, old, a, elsewhere, noScore, postponed], NOW).map((x) => x.fixture_id),
-    ).toEqual([a.fixture_id, b.fixture_id]);
-  });
-});
-
 describe("block 5 · the lines told of a match", () => {
   const f = (code: string, ref: string) => ({ code, params: {}, ref });
   const facts = [
@@ -232,11 +217,6 @@ describe("A13 · the reader's own matches, as the API marks them", () => {
     const withReading = { ...notTheirs, has_reading: true };
     expect(relevantToday([theirs, withReading], TZ, NOW).map((x) => x.fixture_id)).toEqual([
       withReading.fixture_id,
-    ]);
-    const done = over(NOW - 3 * H, { suggested: false, followed: team });
-    const doneElsewhere = over(NOW - 2 * H, { suggested: true, followed: null });
-    expect(recentResults([done, doneElsewhere], NOW).map((x) => x.fixture_id)).toEqual([
-      done.fixture_id,
     ]);
   });
 

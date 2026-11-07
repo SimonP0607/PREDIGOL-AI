@@ -49,7 +49,7 @@ from fbi.api.contracts.records import ItemAi
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, section
 from fbi.api.repositories import Conn, Row
 from fbi.api.repositories import product as repo
-from fbi.api.services import center, pick_status
+from fbi.api.services import center, home_board, pick_status
 from fbi.api.services.pick_status import Applied
 from fbi.api.services.records import ai_items
 from fbi.core import match_state
@@ -486,14 +486,17 @@ def best_odds_board(conn: Conn, *, hours: int, market: str | None, include_shado
 
 @shared(30)
 def home(conn: Conn, *, include_shadow: bool, at: datetime | None = None) -> Envelope[Home]:
-    """What is in play, and how fresh that is (plan Inicio, 2.1). The day's picks and parlays come from ``/daily``; the best
-    prices live on the Cuotas page and in each pick - none of them is computed here any more."""
+    """What is in play, what ended in the last 24 hours, and how fresh that is (plan Inicio, 2.1 and 3.1). The day's picks
+    and parlays come from ``/daily``; the best prices live on the Cuotas page and in each pick - none of them is computed here
+    any more."""
     moment = at or clock_now()
     live_env = center.live_board(conn, at=moment)
     live = list(live_env.data.matches[:6])
+    done = home_board.results(conn, at=moment)
     body = Home(
         source=_source(include_shadow),
         data_freshness=DataFreshness(live_at=repo.live_freshness(conn, now=moment)),
         live=section(live) if live else section(live, status=DataStatus.EMPTY, reason="no_live_matches"),
+        results=section(done) if done else section(done, status=DataStatus.EMPTY, reason="no_recent_results"),
     )
     return ok(body, data_as_of=body.data_freshness.live_at)

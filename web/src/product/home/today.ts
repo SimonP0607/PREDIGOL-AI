@@ -7,7 +7,6 @@
  *                             the next match of each favourite
  *   3  Partidos relevantes    3 to 5 of today's matches of the other followed competitions with a reading
  *   5  Qué se juega           what is at stake in the reader's next matches: table or tie, rest, next match
- *   6  Resultados             the reader's results of the last 48 hours
  *
  * Pure: the clock and the zone are arguments, so a test fixes them.
  */
@@ -24,9 +23,6 @@ export const RELEVANT_ROWS = 5;
 /** Block 5: the next matches with something at stake, and the lines told of each. */
 export const CONTEXT_MATCHES = 4;
 export const CONTEXT_FACTS = 3;
-/** Block 6: the last 48 hours (the API's own window), newest first. */
-export const RESULTS_HOURS = 48;
-export const RESULTS_ROWS = 6;
 /** When the suggested leagues do not play today: their next matches inside the API's window. */
 export const NEXT_ROWS = 3;
 /** When the reader's leagues do not play today: the next match of each favourite, at most this many. */
@@ -158,15 +154,6 @@ export function contextAhead(matches: readonly TodayMatch[], now: number): Today
     )
     .sort(byKickoff)
     .slice(0, CONTEXT_MATCHES);
-}
-
-/** Block 6: the reader's matches over in the last 48 hours, newest first. */
-export function recentResults(matches: readonly TodayMatch[], now: number): TodayMatch[] {
-  const since = now - RESULTS_HOURS * 3_600_000;
-  return matches
-    .filter((m) => isMine(m) && played(m, now) && Date.parse(m.kickoff_at) >= since)
-    .sort((a, b) => byKickoff(b, a))
-    .slice(0, RESULTS_ROWS);
 }
 
 const STAKES: ReadonlySet<string> = new Set([

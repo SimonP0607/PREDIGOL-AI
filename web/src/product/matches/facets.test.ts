@@ -1,5 +1,6 @@
 /// <reference types="bun" />
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
+import { setLocale } from "@/lib/i18n";
 import {
   categoriesOf,
   countryKey,
@@ -7,8 +8,12 @@ import {
   genderOf,
   inFacets,
   matchesTeam,
+  matchesTeamOrCompetition,
+  playing,
   WORLD,
 } from "./facets";
+
+afterAll(() => setLocale("es"));
 
 const comp = (over: Record<string, unknown>) =>
   ({
@@ -65,12 +70,51 @@ describe("country, category and team (REVIEW points 3 and 11)", () => {
 
   test("all facets together", () => {
     const m = {
-      competition: comp({ name: "Liga F", country: "Spain", country_code: "ES" }),
+      competition: comp({ id: 9, name: "Liga F", country: "Spain", country_code: "ES" }),
       home: { name: "Barcelona" },
       away: { name: "Levante" },
     } as never;
-    expect(inFacets(m, { country: "ES", category: "women", team: "barce" })).toBe(true);
-    expect(inFacets(m, { country: "CO", category: null, team: "" })).toBe(false);
-    expect(inFacets(m, { country: null, category: "cup", team: "" })).toBe(false);
+    const none = { country: null, category: null, competition: null, query: "" };
+    expect(inFacets(m, { ...none, country: "ES", category: "women", query: "barce" })).toBe(true);
+    expect(inFacets(m, { ...none, country: "CO" })).toBe(false);
+    expect(inFacets(m, { ...none, category: "cup" })).toBe(false);
+    expect(inFacets(m, { ...none, competition: 9 })).toBe(true);
+    expect(inFacets(m, { ...none, competition: 10 })).toBe(false);
+  });
+});
+
+describe("one search box for a team or a competition (plan Partidos, P6)", () => {
+  const m = {
+    competition: comp({ name: "La Liga", country: "Spain", country_code: "ES" }),
+    home: { name: "Real Betis" },
+    away: { name: "Atlético de Madrid" },
+  } as never;
+
+  test("a team, a competition by its name, or by its country in either language", () => {
+    setLocale("es");
+    expect(matchesTeamOrCompetition(m, "betis")).toBe(true);
+    expect(matchesTeamOrCompetition(m, "atletico")).toBe(true);
+    expect(matchesTeamOrCompetition(m, "la liga")).toBe(true);
+    expect(matchesTeamOrCompetition(m, "españa")).toBe(true);
+    expect(matchesTeamOrCompetition(m, "spain")).toBe(true);
+    expect(matchesTeamOrCompetition(m, "liga betis")).toBe(true);
+    expect(matchesTeamOrCompetition(m, "")).toBe(true);
+    expect(matchesTeamOrCompetition(m, "bundesliga")).toBe(false);
+    expect(matchesTeamOrCompetition(m, "betis bundesliga")).toBe(false);
+  });
+
+  test("En vivo keeps its team-only search", () => {
+    expect(matchesTeam(m, "la liga")).toBe(false);
+  });
+});
+
+describe("a facet that does not play that day is ignored (plan Partidos, P2)", () => {
+  test("kept while it is among the day's options, dropped otherwise", () => {
+    const options = [{ key: "league" }, { key: "cup" }];
+    expect(playing("cup", options)).toBe("cup");
+    expect(playing("women", options)).toBeNull();
+    expect(playing(null, options)).toBeNull();
+    expect(playing(7, [{ key: 7 }])).toBe(7);
+    expect(playing(8, [{ key: 7 }])).toBeNull();
   });
 });

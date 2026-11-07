@@ -35,6 +35,7 @@ from fbi.api.repositories import fixtures as repo
 from fbi.core import match_state
 from fbi.core.clock import now
 from fbi.core.config import settings
+from fbi.intel.day_priority import group_of
 from fbi.market.price_status import market_prices
 from fbi.ops.heartbeat import latest_heartbeat
 from fbi.picks import no_price
@@ -92,6 +93,7 @@ def summary(row: Row, at: datetime | None = None, *, healthy: bool = True) -> Ma
             competition_type=row["competition_type"], is_tracked=row["is_tracked"],
             logo_url=row.get("competition_logo"), flag_url=row.get("competition_flag"),
             country_code=row.get("competition_country_code"),
+            priority_group=group_of(row["provider_league_id"]),
         ),
         home=TeamRef(id=row["home_id"], name=row["home_name"], provider_team_id=row["home_provider_id"],
                      logo_url=row.get("home_logo")),

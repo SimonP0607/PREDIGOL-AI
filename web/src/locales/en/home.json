@@ -64,12 +64,9 @@
     "subtitleMine": "The next matches of your leagues and teams: table or tie, rest and next match"
   },
   "results": {
-    "title": "Results",
-    "subtitle": "Suggested leagues · last 48 hours",
-    "empty": "No recent results in the suggested leagues.",
-    "postmatch": "Post-match",
-    "subtitleMine": "Your leagues and teams · last 48 hours",
-    "emptyMine": "No recent results of your teams."
+    "title": "Latest results",
+    "subtitle": "Matches that ended in the last 24 hours",
+    "empty": "No results from the last 24 hours yet."
   },
   "parlaysNone": "No PrediGol parlays yet today: they are only built from selections that pass all its rules, and we never pad them.",
   "parlaysLink": "See parlays",
