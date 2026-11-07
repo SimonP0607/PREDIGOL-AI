@@ -69,11 +69,18 @@
     "yesterdayOpen": "Ayer · aún por terminar"
   },
   "parlay": {
-    "pAllLow": "Prob. prudente de acertar todas",
-    "pAllLowHelp": "Producto de la probabilidad prudente de cada selección: el extremo bajo del intervalo del modelo.",
+    "pAllLow": "Probabilidad de acertar todas",
+    "pAllLowHelp": "Producto de la probabilidad prudente de cada selección (el extremo bajo del intervalo del modelo): una estimación cauta, no una promesa.",
     "builtAt": "Armado {when}",
     "settledAt": "Liquidado {when}",
-    "legsResult": "{won} de {total} acertadas",
+    "legsWon_one": "{count} acertada",
+    "legsWon_other": "{count} acertadas",
+    "legsLost_one": "{count} fallada",
+    "legsLost_other": "{count} falladas",
+    "legsPending_one": "{count} pendiente",
+    "legsPending_other": "{count} pendientes",
+    "legsVoid_one": "{count} anulada",
+    "legsVoid_other": "{count} anuladas",
     "building": {
       "title": "Buscando el parlay",
       "body": "Hay selecciones que pasan las reglas, pero ninguna combinación de {min} o más crece con su probabilidad prudente."
@@ -413,7 +420,9 @@
     "zone": "Días de picks en {zone}"
   },
   "outcome": {
+    "scheduled": "Por empezar",
     "playing": "En juego",
+    "winning": "Va ganando",
     "won": "Ganado",
     "lost": "Perdido",
     "void": "Anulado",
