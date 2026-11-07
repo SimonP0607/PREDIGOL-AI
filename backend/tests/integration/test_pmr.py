@@ -284,6 +284,32 @@ def test_switched_on_the_daily_step_attributes_the_day_and_a_failure_of_the_revi
     assert len(attributions(db)) == 3, "and the model, which was not reachable, left them as the code made them"
 
 
+@pytest.mark.parametrize(("over", "expected"), [
+    ({"lab_keys": {}}, {"pmr_stopped_lab_blocked": 1}),
+    ({"lab_monthly_budget": 0}, {"pmr_stopped_lab_blocked": 1}),
+    ({"tiers": {"bulk": ("anthropic", "claude-haiku-4-5"), "analysis": ("anthropic", "claude-sonnet-4-5")}}, {"pmr_refused_model_not_configured": 2}),
+])
+def test_why_the_reviewer_asked_nothing_is_kept_in_the_counts_of_the_cycle(db: psycopg.Connection[Any], seed: Seed, over: dict[str, Any],
+                                                                            expected: dict[str, int]) -> None:
+    """IA-014: the cycle kept only the integer counts of the reviewer, so a LAB without key or envelope, or a model the router does not name, left
+    ``pmr_queued = 0`` in ``ai.cycles.counts`` and no word of why. The reason is now a count of its own."""
+    from fbi.ai.config import TierModel
+
+    if "tiers" in over:
+        over = {"tiers": {t: TierModel(*pm) for t, pm in over["tiers"].items()}}
+    two_cases(db, seed)
+    report = cycle.run_learning_cycle(savepoints(db), at=AFTER + dt.timedelta(hours=-6), settings=conf(**over), ledger=Gear(db).ledger,
+                                      transport=httpx.MockTransport(lambda request: httpx.Response(503)), provider=None)
+    assert report.counts.get("pmr_due") == 2 and report.counts.get("pmr_queued") == 0
+    for key, value in expected.items():
+        assert report.counts.get(key) == value, (key, dict(report.counts))
+    assert not [e for e in report.errors if "attributions" in e or "pmr" in e], report.errors
+    if "pmr_stopped_lab_blocked" in expected:
+        assert report.counts.get("pmr_blockers", 0) >= 1
+    stored = db.execute("SELECT counts FROM ai.cycles WHERE id = %s", (report.cycle_id,)).fetchone()
+    assert stored is not None and all(stored[0].get(k) == v for k, v in expected.items()), "and ai.cycles keeps it"
+
+
 def test_the_daily_step_changes_no_table_of_production_but_the_attribution_and_the_batch(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = two_cases(db, seed)
     before = fingerprint(db)

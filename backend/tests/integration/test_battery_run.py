@@ -281,7 +281,7 @@ def test_a_model_that_nothing_moves_passes_and_the_gate_is_recorded_with_all_it_
     assert set(evidence["targets"]) == set(TARGETS) and evidence["offline"]["verdict"] == "PASA"
     assert evidence["target_list"] == list(TARGETS), "the evidence says, in a list, every target it speaks for"
     assert [(c["target"], c["agent"], c["contract"]) for c in evidence["covers"]] == [
-        ("review", None, None), ("extract", None, None), ("claims", None, None), ("match", "match-v2", "aa-v1"), ("stats", "stats-v2", "aa-v1"),
+        ("review", None, None), ("extract", None, None), ("claims", None, None), ("match", "match-v3", "aa-v1"), ("stats", "stats-v2", "aa-v1"),
         ("council", "council-v1", "cd-v1")]
     assert evidence["targets"]["council"]["prompts"] == ["council-v1", "council-opus-v1"]
     for target in TARGETS:

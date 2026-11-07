@@ -349,7 +349,7 @@ LEARNING_SCHEMA: dict[str, Any] = {
 
 # ── phase 3: the Match Agent (``fbi.ai.agents.match``) ──────────────────────────────────────────────────────────────
 
-MATCH_CONTEXT_VERSION = "match-context-v2"
+MATCH_CONTEXT_VERSION = "match-context-v3"
 """Plan Maestro IA, phase 3, section 9: the Match Agent reads the ``match`` slice of the package (``mcp-v1``) and writes an assessment in
 ``aa-v1`` - codes of closed lists, never a sentence, a number or a probability. In mode CONTEXT it writes the signals of the match and, when
 something is missing, one request for the server to look into a topic of the closed list (``fbi.ai.research``). It is born CHALLENGER and
@@ -358,12 +358,19 @@ v2 (IA-009, 6 Nov 2026, 66 shadow runs of match-v1 measured since 3 Nov, 28 inva
 an OUTPUT CHECKLIST (``output_checklist``) - the exact keys of the answer and of each object, the signal codes that are this agent's, and
 the caps of every list - written FROM the contract's own enums and limits, so that the prompt can never name a code or a key aa-v1 does not
 have. The answers were refused for a key aa-v1 does not have at the top level (most of them), a signal code out of the list (RATE or one of
-the model's own) and lists of more than 8 refs. The contract and the reader did not change: an answer that breaks aa-v1 is still invalid."""
-MATCH_ASSESS_VERSION = "match-assess-v2"
+the model's own) and lists of more than 8 refs. The contract and the reader did not change: an answer that breaks aa-v1 is still invalid.
+v3 (IA-014, 7 Nov 2026, 250 answered shadow runs of match-v2 measured from 6 Nov 16:55 to 7 Nov 15:00 UTC, 20 invalid - 8.0 %): the same rules,
+task and checklist, and the checklist now also says (``output_checklist(citable=True)``) that every reference is copied from the list "citable" of
+the second object - the ids of the evidence and the blocks of THIS package, written by the server from the package (``common.citable_refs``) -,
+that a (code, direction) pair is one signal, which code a topic with no code of its own takes, and that no key of the second object is copied into
+the answer. The answers were refused for a key at the top level (8), a reference the package does not have (4), a signal code out of the list (3),
+a rule of the contract (2: a pair twice, most likely) and nine refs (1). The contract and the reader did not change."""
+MATCH_ASSESS_VERSION = "match-assess-v3"
 """The same agent in mode EVALUATION: one stance (SUPPORT, NEUTRAL, CONCERN or REJECT_SIGNAL) for each candidate the server names (``c1``,
 ``c2``...), with the signals it rests on and the risks it sees. It describes; the server decides what is value and the Council decides the
 verdict. The base of the two prompts is the same text (the plan: «el mismo prompt base»); each adds its own task.
-v2 (IA-009): the same text with the OUTPUT CHECKLIST of its mode at the end, as ``match-context-v2``."""
+v2 (IA-009): the same text with the OUTPUT CHECKLIST of its mode at the end, as ``match-context-v2``.
+v3 (IA-014): the same text with the checklist of v3 at the end, as ``match-context-v3``."""
 
 MATCH_RULES = """You are the Match Agent of PrediGol, a private football analytics platform. You read the package of ONE match and write an
 assessment of it in the contract aa-v1, and nothing else. An assessment is made of CODES from closed lists: it has no sentence, no number
@@ -454,30 +461,56 @@ def _quoted(values: Sequence[str]) -> str:
     return ", ".join(f'"{v}"' for v in values)
 
 
+CITABLE_KEY: Final = "citable"
+"""The key of the second object of a Match Agent's message (from v3, IA-014) that lists the references the model may cite: written by the server
+from the package (``fbi.ai.agents.common.citable_refs``), never by a model."""
+SECOND_OBJECT_KEYS: Final[dict[str, tuple[str, ...]]] = {
+    "CONTEXT": ("mode", "now", "minutes_to_kickoff", "package_age_minutes", CITABLE_KEY, "note"),
+    "EVALUATION": ("mode", "now", "minutes_to_kickoff", "package_age_minutes", "candidates", "contradictions", CITABLE_KEY, "note")}
+"""Every key the second object of a Match Agent's message may have, by mode (``fbi.ai.agents.match``, held equal by a test). The ones that are not
+keys of the answer as well are named in the v3 checklist as keys never to copy."""
+TOPIC_CODES: Final = (("injuries and suspensions", "ABSENCES"), ("standings, elo, ratings and statistics", "FORM"),
+                      ("rest, congestion and the calendar", "SCHEDULE"), ("travel and the ground", "VENUE"), ("what a side plays for", "STAKES"),
+                      ("a report about something else", "NEWS"), ("gaps in the data", "DATA_QUALITY"))
+"""Which code a topic with no code of its own takes (v3): the blocks ``MATCH_RULES`` already gives each code, said as topics."""
+
+
 def output_checklist(*, agent: str, mode: str, signal_codes: Sequence[str], directions: Sequence[str], not_mine: Sequence[str] = (),
-                     research: bool = True) -> str:
+                     research: bool = True, citable: bool = False) -> str:
     """The checklist an aa-v1 prompt ends with: every key, code and cap comes from the contract (``fbi.ai.contracts.assessment``,
     ``fbi.ai.contracts.base``), so the prompt cannot drift from what the server accepts. ``signal_codes`` and ``directions`` are the agent's own
-    (a part of the enums its rules describe); a CONTEXT checklist asks for no candidate, so it names no stance and no risk code."""
+    (a part of the enums its rules describe); a CONTEXT checklist asks for no candidate, so it names no stance and no risk code.
+
+    ``citable`` (IA-014, the Match Agent's v3): the message's second object lists the references of the package (``CITABLE_KEY``), and the
+    checklist says that every reference is copied from it, that no key of the second object is copied into the answer, that a (code, direction)
+    pair is one signal and which code a topic with no code of its own takes. Without it the text is, byte for byte, the checklist of IA-009."""
     evaluation = mode == "EVALUATION"
     never = [k for k in NEVER_KEYS if evaluation or k != "contradictions"]
     inside = ["a signal", *(["a candidate"] if evaluation else []), *(["an ask"] if research else [])]
     where = "at the top level, " + ", ".join(f"inside {i}" for i in inside[:-1]) + f" or inside {inside[-1]}"
+    copied = [k for k in SECOND_OBJECT_KEYS.get(mode, ()) if k not in OUTPUT_KEYS] if citable else []
     lines = [
         "OUTPUT CHECKLIST. Before you submit, check the answer against every line below; an answer that breaks one is thrown away whole.",
         f"- The answer is ONE JSON object with EXACTLY these {len(OUTPUT_KEYS)} keys and no other: {_one_of(OUTPUT_KEYS)}. Never add a key of your "
-        f"own - not {', '.join(never[:-1])} or {never[-1]}, nor any other - {where}. Your thinking is never written in the answer.",
+        f"own - not {', '.join(never[:-1])} or {never[-1]}, nor any other - {where}. Your thinking is never written in the answer."
+        + (f" The second object is what you are asked, not a part of the answer: never copy its keys ({_one_of(copied)}) into it." if copied else ""),
         f'- contract is "{ASSESSMENT}", agent is "{agent}", mode is "{mode}". data_quality is one of: {_one_of(QUALITIES)}.',
         f"- signals: at most {SIGNALS_MAX}. Each signal is an object with EXACTLY the keys {_one_of(SIGNAL_KEYS)}. code is one of: "
         f"{_one_of(signal_codes)}." + (f" Never {_one_of(not_mine)}: it is not yours." if not_mine else "")
         + " A code that is not in this list is not yours to write."
         f" direction is one of: {_one_of(directions)}. strength is one of: {_one_of(LEVELS)}.",
     ]
+    if citable:
+        lines.append(
+            "- One signal per pair of code and direction: two signals never have both the same code and the same direction - what points the same way "
+            "on the same topic is ONE signal, with the refs of both. A topic with no code of its own takes the code of its block: "
+            + "; ".join(f"{topic} {code}" for topic, code in TOPIC_CODES if code in signal_codes)
+            + ". Any other word is not a code.")
     if evaluation:
         lines.append(
             f"- candidates: one object for each name you were asked about and for no other (at most {CANDIDATES_MAX}), each with EXACTLY the keys "
             f"{_one_of(CANDIDATE_KEYS)}. stance is one of: {_one_of(STANCES)}. drivers: at most {DRIVERS_MAX} signal codes of the list above. "
-            f"risks: at most {RISKS_MAX}, each one of: {_one_of(RISK_CODES)}.")
+            f"risks: at most {RISKS_MAX}, each one of: {_one_of(RISK_CODES)}." + (" A risk code is never a signal code, nor a driver." if citable else ""))
     else:
         lines.append("- candidates is [].")
     if research:
@@ -487,14 +520,20 @@ def output_checklist(*, agent: str, mode: str, signal_codes: Sequence[str], dire
         lines.append("- research is [].")
     lines.append(f"- refs: every list of refs - {', '.join(f'of {i}' for i in inside)} - has at most {REFS_MAX} references. "
                  f"When more would apply, cite the block that holds them (P:shared.absences, not each item of it) or keep the {REFS_MAX} that "
-                 f"matter most: never one more.")
+                 f"matter most: never one more." + (f" Count them before you submit: {REFS_MAX + 1} is too many." if citable else ""))
+    if citable:
+        lines.append(
+            f'- Every reference is copied EXACTLY from the list "{CITABLE_KEY}" of the second object: the E:<id> of the evidence this package has '
+            "and the P:<path> of its blocks. Nothing else is a reference: not an id or a path that is not in that list, not an element of a list "
+            "(P:evidence.0), not a key of the second object, never an A: reference. When the block you would cite is not in the list, cite the "
+            "block above it that is; when none is, leave that signal out.")
     return "\n".join(lines)
 
 
 MATCH_CONTEXT_CHECKLIST: Final = output_checklist(agent="match", mode="CONTEXT", signal_codes=MATCH_SIGNAL_CODES, directions=DIRECTIONS,
-                                                  not_mine=MATCH_NOT_MINE)
+                                                  not_mine=MATCH_NOT_MINE, citable=True)
 MATCH_ASSESS_CHECKLIST: Final = output_checklist(agent="match", mode="EVALUATION", signal_codes=MATCH_SIGNAL_CODES, directions=DIRECTIONS,
-                                                 not_mine=MATCH_NOT_MINE)
+                                                 not_mine=MATCH_NOT_MINE, citable=True)
 STATS_ASSESS_CHECKLIST: Final = output_checklist(agent="stats", mode="EVALUATION", signal_codes=STATS_SIGNAL_CODES, directions=STATS_DIRECTIONS,
                                                  research=False)
 

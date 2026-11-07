@@ -166,7 +166,7 @@ class Rig:
                                                                            deadline_at=KICKOFF, state="queued", status="skipped", started_at=AT, finished_at=AT, known_at=AT - timedelta(hours=1),
                                                                            package_hash="p" * 64, slice_hash="s" * 64))
         work = Work(fixture_id=5, pass_kind="pre", packet_id=9, known_at=AT - timedelta(hours=1), kickoff_at=kickoff, passed_at=AT)
-        self.p = SimpleNamespace(work=work, asked={}, batch=BatchRun(queue=self.queue, active=("ma-v1",)), too_late=False, engines=("ma-v1",), stats_on=False)  # type: ignore[arg-type]
+        self.p = SimpleNamespace(work=work, asked={}, batch=BatchRun(queue=self.queue, active=("ma-v1",)), too_late=False, engines=("ma-v1",), stats_on=False, counts=None)  # type: ignore[arg-type]
         self.n = 0
 
     def ask(self, *, model: str = SONNET, level: str = "complex", call: bool = True, key: str | None = None, stage: int = 1) -> Asked:

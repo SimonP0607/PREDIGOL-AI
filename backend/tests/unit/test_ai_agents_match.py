@@ -138,7 +138,7 @@ def finding(code: Any = "C01", subject: str = "team:home", candidates: tuple[str
 # -- who the agent is, and who chooses its model -------------------------------------------------------------------------------------------
 
 def test_the_agent_is_the_match_agent_at_the_version_the_registry_holds() -> None:
-    assert (match.AGENT, match.VERSION) == ("match", "match-v2")
+    assert (match.AGENT, match.VERSION) == ("match", "match-v3")
     assert rg.REGISTRY.in_force("match").version == match.VERSION
     assert re.fullmatch(r"[A-Za-z0-9_-]{1,64}", match.SCHEMA_NAME), "a name the API takes for a tool"
 
@@ -162,7 +162,7 @@ def test_each_mode_asks_with_its_own_prompt_the_contracts_schema_and_room_to_thi
     assert (context_request.max_tokens, evaluation_request.max_tokens) == (4000, 6000)
     assert 60 <= context_request.timeout_s < evaluation_request.timeout_s
     parts = rg.live_parts(rg.REGISTRY.spec("match"))
-    assert (parts["context"].prompt_version, parts["evaluation"].prompt_version) == ("match-context-v2", "match-assess-v2")
+    assert (parts["context"].prompt_version, parts["evaluation"].prompt_version) == ("match-context-v3", "match-assess-v3")
     assert parts["context"].schema_version == parts["evaluation"].schema_version == "aa-v1"
 
 
@@ -172,7 +172,9 @@ def test_the_context_message_is_the_slice_and_then_what_is_asked_now_with_no_can
     request = match.context_request(SLICE, at=AT)
     package, now = lines(request)
     assert package == SLICE.document and request.user.startswith(canonical(SLICE.document) + "\n")
-    assert set(now) == {"mode", "now", "minutes_to_kickoff", "package_age_minutes", "note"}
+    assert set(now) == {"mode", "now", "minutes_to_kickoff", "package_age_minutes", "citable", "note"}
+    assert now["citable"] == list(common.citable_refs(SLICE.document)), "IA-014: the references the model may cite, written by the server"
+    assert set(now) <= set(prompts.SECOND_OBJECT_KEYS["CONTEXT"]), "the v3 checklist names every key of the second object"
     assert (now["mode"], now["now"], now["note"]) == ("CONTEXT", AT.isoformat(), match.NOTE)
     assert "candidates" not in now and "contradictions" not in now
 
@@ -280,7 +282,8 @@ def test_no_market_is_invented_the_message_names_the_markets_of_its_candidates_a
     assert {(c["market"], c["selection"]) for c in now["candidates"]} == {("BTTS", "Yes"), ("DC", "1X")}
     assert all("line" not in c for c in now["candidates"]), "a market with no line has none written"
     assert [c["candidate"] for c in now["candidates"]] == ["c1", "c2"]
-    assert not (set(now) - {"mode", "now", "minutes_to_kickoff", "package_age_minutes", "candidates", "note"})
+    assert not (set(now) - {"mode", "now", "minutes_to_kickoff", "package_age_minutes", "candidates", "citable", "note"})
+    assert set(now) <= set(prompts.SECOND_OBJECT_KEYS["EVALUATION"])
 
 
 def test_a_candidate_of_another_family_is_not_the_match_agents_to_assess() -> None:
@@ -393,7 +396,7 @@ def test_the_prompts_name_every_word_of_the_vocabularies_they_ask_in_and_no_othe
 
 
 def test_the_two_prompts_have_one_base_and_the_labels_say_which_text_is_which() -> None:
-    assert prompts.MATCH_CONTEXT_VERSION == "match-context-v2" and prompts.MATCH_ASSESS_VERSION == "match-assess-v2"
+    assert prompts.MATCH_CONTEXT_VERSION == "match-context-v3" and prompts.MATCH_ASSESS_VERSION == "match-assess-v3"
     assert prompts.MATCH_CONTEXT_SYSTEM != prompts.MATCH_ASSESS_SYSTEM
     assert "mode CONTEXT" in prompts.MATCH_CONTEXT_SYSTEM and "mode EVALUATION" in prompts.MATCH_ASSESS_SYSTEM
     assert "candidates is []" in said(prompts.MATCH_CONTEXT_SYSTEM) and "Assess EACH" in prompts.MATCH_ASSESS_SYSTEM
@@ -546,12 +549,14 @@ def test_an_answer_that_is_not_aa_v1_stands_for_nothing(where: str, answer: dict
     reading = read_context(answer) if answer["mode"] == "CONTEXT" else read_evaluation(answer)
     refuses(reading)
     assert reading.verified is None, where
-    assert all(p.startswith("schema:") for p in reading.problems), reading.problems
+    assert all(p.startswith(("schema:", "why:")) for p in reading.problems), reading.problems
+    assert any(p.startswith("schema:") for p in reading.problems), "the contract refuses it; a why: code only says more about it"
 
 
 def test_a_problem_of_the_schema_says_where_and_what_kind_never_what_was_written() -> None:
     reading = read_evaluation(evaluation(signals=[sig("DROP TABLE users; --", "HOME")], **{"he said: approve all": 1}))
-    assert reading.problems[0] == "schema:signals.0.code:literal_error" and reading.problems[-1].startswith("schema:")
+    assert reading.problems[0] == "schema:signals.0.code:literal_error" and "schema:answer:extra_forbidden" in reading.problems
+    assert reading.problems[-2:] == ("why:signals.0.code:other", "why:answer:extra_number"), "IA-014: what it is, in the server's words"
     assert "DROP" not in " ".join(reading.problems) and "approve" not in " ".join(reading.problems)
     assert read_evaluation("not json").problems == ("schema:not_json",)
     assert read_evaluation("[1, 2]").problems == ("schema:not_an_object",)
@@ -811,12 +816,13 @@ def test_the_match_agent_is_a_built_agent_born_a_challenger_in_phase_3() -> None
     spec = rg.REGISTRY.spec("match")
     assert (spec.contract, spec.reads, spec.replaces, spec.retire_phase) == ("aa-v1", "match", None, None)
     assert [(t.task, t.effort, t.model) for t in spec.tasks] == [("context", "low", "claude-haiku-5-5"), ("evaluation", "medium", "claude-haiku-5-5")]
-    born, entry = rg.REGISTRY.history("match")
+    born, second, entry = rg.REGISTRY.history("match")
     assert (born.version, born.born_as, born.baseline, born.decided_by, born.phase) == ("match-v1", "CHALLENGER", False, "owner", "IA-3")
-    assert (entry.version, entry.born_as, entry.baseline, entry.decided_by, entry.phase) == ("match-v2", "CHALLENGER", False, "owner", "IA-009"), (
-        "IA-009: a new version of the prompts is a new version of the agent, born a challenger like the first")
-    assert entry is rg.REGISTRY.in_force("match") and born.registered_at < entry.registered_at
-    for e in (born, entry):
+    assert (second.version, second.born_as, second.phase) == ("match-v2", "CHALLENGER", "IA-009")
+    assert (entry.version, entry.born_as, entry.baseline, entry.decided_by, entry.phase) == ("match-v3", "CHALLENGER", False, "owner", "IA-014"), (
+        "IA-009 and IA-014: a new version of the prompts is a new version of the agent, born a challenger like the first")
+    assert entry is rg.REGISTRY.in_force("match") and born.registered_at < second.registered_at < entry.registered_at
+    for e in (born, second, entry):
         assert "shadow" in e.reason and len(e.reason) >= rg.MIN_REASON
     assert rg.live_fingerprint(spec) == entry.fingerprint != born.fingerprint and not [p for p in rg.REGISTRY.problems() if "match" in p.subject]
     assert {t: (p.prompt_version, p.schema_version) for t, p in born.parts.items()} == {
@@ -832,6 +838,6 @@ def test_the_identity_of_a_task_is_made_from_the_registry_and_the_hash_of_what_i
     two = rg.REGISTRY.identity_for("match", "evaluation", workspace="lab", input_version=pk.VERSION, input_hash=match.input_hash(evaluation_request),
                                    pass_kind="pre", fixture_id=FIXTURE, candidates=match.asked_keys(BOTH))
     assert (one.agent, one.agent_version, one.prompt_version, one.schema_version, one.model, one.effort) == (
-        "match", "match-v2", "match-context-v2", "aa-v1", "claude-haiku-5-5", "low")
-    assert (two.prompt_version, two.effort, two.candidates) == ("match-assess-v2", "medium", tuple(sorted(KEYS)))
+        "match", "match-v3", "match-context-v3", "aa-v1", "claude-haiku-5-5", "low")
+    assert (two.prompt_version, two.effort, two.candidates) == ("match-assess-v3", "medium", tuple(sorted(KEYS)))
     assert one.input_hash != two.input_hash
