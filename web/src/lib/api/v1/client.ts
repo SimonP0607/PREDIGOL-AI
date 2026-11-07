@@ -334,7 +334,7 @@ export class LiveApiError extends Error {
 export const UNAUTHENTICATED_EVENT = "predigol:unauthenticated";
 /**
  * Fired when the API says a step of signing in is still owed, that the current consents are (plan UX, A4), or that
- * the membership has ended or is suspended (A8); the auth layer asks /auth/me which.
+ * the membership has ended, is suspended or was never given (A8); the auth layer asks /auth/me which.
  */
 export const STAGE_EVENT = "predigol:stage";
 const STAGE_CODES = new Set([
@@ -344,6 +344,7 @@ const STAGE_CODES = new Set([
   "consent_required",
   "membership_expired",
   "membership_suspended",
+  "membership_required",
 ]);
 
 /** How long the last error's request id rides along with a report (plan UX, A14): an older one is not «the» error. */

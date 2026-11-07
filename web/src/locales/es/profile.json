@@ -165,19 +165,23 @@
       "grace": "Tu membresía terminó: hasta el {date} sigues con acceso completo.",
       "expired": "Acceso limitado: tu membresía terminó. Al renovar vuelve todo.",
       "suspended": "Tu cuenta está suspendida: escríbenos.",
-      "action": "Cómo renovar"
+      "none": "Tu cuenta está creada, pero aún no tiene el acceso a PrediGol activado.",
+      "action": "Cómo renovar",
+      "noneAction": "Ver mi cuenta"
     },
     "limited": {
       "expiredTitle": "Tu membresía terminó",
       "expiredBody": "Tus datos siguen aquí. Puedes ver tu perfil, tus picks guardados, la ayuda y los textos legales, y descargar tus datos. Al renovar vuelve todo.",
       "suspendedTitle": "Tu cuenta está suspendida",
       "suspendedBody": "Puedes ver tu perfil, tus picks guardados, la ayuda y los textos legales, y descargar tus datos. Escríbenos para saber más.",
+      "noneTitle": "Tu cuenta está creada",
+      "noneBody": "Todavía no tiene el acceso a PrediGol activado. Mientras tanto puedes ver tu perfil, la ayuda y los textos legales, y descargar tus datos.",
       "myPicks": "Mis picks guardados",
       "profile": "Mi perfil y mi membresía",
       "help": "Ayuda",
       "legal": "Textos legales",
       "export": "Descargar mis datos",
-      "readOnly": "Solo lectura mientras la membresía está terminada."
+      "readOnly": "Solo lectura mientras tu acceso esté limitado."
     },
     "plan": {
       "title": "El plan",
