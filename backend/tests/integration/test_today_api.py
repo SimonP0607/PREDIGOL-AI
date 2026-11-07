@@ -131,6 +131,28 @@ def test_home_reads_the_newest_packet_of_each_match(db: psycopg.Connection[Any],
     assert up["headline"]["params"]["pressure"] == "relegation", "the newest packet known now, not a later one"
 
 
+def test_a_live_match_carries_its_stoppage_time_and_a_shootout_result_its_shootout(
+        db: psycopg.Connection[Any], world: World, seed: Seed,  # noqa: F811
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan Inicio, 2.2: the row says «90+4'» and «Final (pen.)» with the shoot-out, from the same data every screen has."""
+    db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
+    now = datetime.now(UTC)
+    playing = world.fixture(now - timedelta(minutes=100))
+    db.execute("UPDATE core.fixtures SET status_short = '2H', status_group = 'live' WHERE id = %s", (playing,))
+    db.execute("INSERT INTO core.fixture_live_states (fixture_id, observed_at, status_short, elapsed, extra, goals_home, "
+               "goals_away, payload_hash) VALUES (%s, %s, '2H', 90, 4, 1, 0, %s)",
+               (playing, now - timedelta(seconds=30), seed.payload_hash))
+    done = world.fixture(now - timedelta(hours=5))
+    db.execute("UPDATE core.fixtures SET status_short = 'PEN', status_group = 'finished' WHERE id = %s", (done,))
+    db.execute("INSERT INTO core.fixture_results (fixture_id, goals_home, goals_away, et_goals_home, et_goals_away, "
+               "pen_home, pen_away) VALUES (%s, 1, 1, 0, 0, 4, 3)", (done,))
+    matches = {m["fixture_id"]: m for m in client(db, monkeypatch).get("/api/v1/today").json()["data"]["matches"]["data"]}
+    assert (matches[playing]["elapsed"], matches[playing]["extra"]) == (90, 4)
+    assert matches[playing]["pens_home"] is None
+    assert (matches[done]["status"], matches[done]["pens_home"], matches[done]["pens_away"]) == ("PEN", 4, 3)
+    assert matches[done]["extra"] is None
+
+
 def test_a_weekend_of_matches_never_cuts_today_off(db: psycopg.Connection[Any], seed: Seed,
                                                   monkeypatch: pytest.MonkeyPatch) -> None:
     """Plan UX, A13's baseline (26 Oct 2026, 10:15 UTC): 607 matches of the followed competitions in the window on a Monday.

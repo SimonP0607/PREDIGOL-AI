@@ -30,6 +30,11 @@ export interface TodayMatch {
   status_group: string;
   status: string | null;
   elapsed: number | null;
+  /** The stoppage time added to the minute («45+2'»), while it is live. */
+  extra?: number | null;
+  /** The shoot-out, once the match is over and had one. */
+  pens_home?: number | null;
+  pens_away?: number | null;
   goals_home: number | null;
   goals_away: number | null;
   competition: CompetitionBadge;

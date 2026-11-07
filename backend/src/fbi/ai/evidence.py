@@ -130,6 +130,45 @@ SOURCES_V2: dict[str, str] = {
 }
 
 
+SOURCES_V3: dict[str, str] = {
+    # News coverage (IA-016, 7 Nov 2026): the official sites of the clubs and leagues of the owner's group 1 (Champions League and the top leagues
+    # of Spain, England, Italy, Germany, France and Portugal, ``fbi.intel.day_priority``) and their national press - the club announces the squad,
+    # the medical report and the suspension first, and a national outlet alone is PROBABLE, not a RUMOR. Only addresses known to be the club's or
+    # the outlet's own; a club already listed keeps its row. Like every seed, a domain already in ``ai.sources`` keeps the tier the owner gave it.
+    # leagues
+    "dfl.de": "competition", "lfp.fr": "competition",
+    # Spain
+    "valenciacf.com": "club", "sevillafc.es": "club", "realbetisbalompie.es": "club", "villarrealcf.es": "club",
+    "athletic-club.eus": "club", "realsociedad.eus": "club", "rccelta.es": "club", "getafecf.com": "club", "rayovallecano.es": "club",
+    "osasuna.es": "club", "rcdmallorca.es": "club", "gironafc.cat": "club", "deportivoalaves.com": "club", "rcdespanyol.com": "club",
+    "elchecf.es": "club", "levanteud.com": "club", "realoviedo.es": "club",
+    # England
+    "avfc.co.uk": "club", "newcastleunited.com": "club", "evertonfc.com": "club", "whufc.com": "club", "nottinghamforest.co.uk": "club",
+    "brightonandhovealbion.com": "club", "wolves.co.uk": "club", "cpfc.co.uk": "club", "fulhamfc.com": "club", "brentfordfc.com": "club",
+    "afcb.co.uk": "club", "leedsunited.com": "club", "burnleyfootballclub.com": "club", "safc.com": "club",
+    # Italy
+    "asroma.com": "club", "sslazio.it": "club", "sscnapoli.it": "club", "atalanta.it": "club", "acffiorentina.com": "club",
+    "torinofc.it": "club", "bolognafc.it": "club", "udinese.it": "club", "genoacfc.it": "club", "cagliaricalcio.com": "club",
+    "hellasverona.it": "club", "sassuolocalcio.it": "club",
+    # Germany
+    "bayer04.de": "club", "rbleipzig.com": "club", "vfb.de": "club", "borussia.de": "club", "vfl-wolfsburg.de": "club",
+    "scfreiburg.com": "club", "tsg-hoffenheim.de": "club", "fc-union-berlin.de": "club", "werder.de": "club", "fcaugsburg.de": "club",
+    "mainz05.de": "club", "fcstpauli.com": "club", "hsv.de": "club", "fc.de": "club",
+    # France
+    "om.fr": "club", "ol.fr": "club", "losc.fr": "club", "asmonaco.com": "club", "ogcnice.com": "club", "staderennais.com": "club",
+    "rclens.fr": "club", "fcnantes.com": "club", "rcstrasbourgalsace.fr": "club", "toulousefc.com": "club",
+    # Portugal
+    "slbenfica.pt": "club", "fcporto.pt": "club", "sporting.pt": "club", "scbraga.pt": "club",
+    # national press (Spain - and VAVEL, national -, England, Italy, Germany, France, Portugal) not listed yet
+    "vavel.com": "media", "cadenaser.com": "media", "cope.es": "media", "rtve.es": "media", "ondacero.es": "media",
+    "elconfidencial.com": "media", "superdeporte.es": "media", "levante-emv.com": "media", "lasprovincias.es": "media",
+    "thetimes.co.uk": "media", "thetimes.com": "media",
+    "repubblica.it": "media", "corriere.it": "media", "sportmediaset.mediaset.it": "media",
+    "sueddeutsche.de": "media", "t-online.de": "media", "ran.de": "media",
+    "francefootball.fr": "media", "lefigaro.fr": "media", "leparisien.fr": "media", "20minutes.fr": "media",
+    "publico.pt": "media", "rtp.pt": "media", "sicnoticias.pt": "media",
+}
+
 def seed_rows() -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = [("api-football.com", "provider")]
     rows += [(d, "official") for d in sorted(FEDERATIONS)]
@@ -141,6 +180,8 @@ def seed_rows() -> list[tuple[str, str]]:
     rows += [(d, "social") for d in sorted(SOCIAL)]
     seeded = {d for d, _ in rows}
     rows += [(d, t) for d, t in sorted(SOURCES_V2.items()) if d not in seeded]
+    seeded = {d for d, _ in rows}
+    rows += [(d, t) for d, t in sorted(SOURCES_V3.items()) if d not in seeded]
     return rows
 
 

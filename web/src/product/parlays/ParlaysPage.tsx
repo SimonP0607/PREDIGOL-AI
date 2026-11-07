@@ -5,10 +5,12 @@
  * and how they are chosen. With too few selections worth combining there is no parlay: never a
  * padded one.
  */
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BadgeCheck, Check, ChevronDown, Info, Layers, ListX, Sigma, Unlink } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { live } from "@/lib/api/v1/queries";
 import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import type { RecordKind } from "@/lib/api/v1/types_records";
@@ -19,6 +21,7 @@ import { EvaluationNote } from "@/product/records/DailySetBlock";
 import { ParlayRecordCard } from "@/product/records/ParlayRecordCard";
 import { useSlip } from "@/product/records/slipContext";
 import { ParlayBuilder } from "./Builder";
+import { KindSwitch, kindVisibility } from "./KindSwitch";
 import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
 
 function RuleGroup({
@@ -134,6 +137,7 @@ export function ParlaysPage() {
   const preview = usePreviewParam();
   const board = useQuery(live.daily(preview));
   const data = board.data?.data;
+  const [active, setActive] = useState<RecordKind>("daily");
   const adminToggle = auth.showAdmin && auth.can("admin.shadow_preview");
   return (
     <div className="space-y-6" data-testid="parlays-page">
@@ -149,6 +153,7 @@ export function ParlaysPage() {
       />
       <FirstVisitHint hint="parlay" />
       {data?.evaluation_mode ? <EvaluationNote /> : null}
+      <KindSwitch active={active} onChange={setActive} />
       {KINDS.map((kind) =>
         data ? (
           <ParlayRecordCard
@@ -156,13 +161,17 @@ export function ParlaysPage() {
             kind={kind}
             parlay={kind === "daily" ? data.daily_parlay : data.multiday_parlay}
             evaluation={data.evaluation_mode}
+            className={kindVisibility(kind, active)}
           />
         ) : board.isError ? (
-          <Card key={kind}>
+          <Card key={kind} className={kindVisibility(kind, active)}>
             <ErrorState error={board.error} onRetry={() => void board.refetch()} />
           </Card>
         ) : (
-          <SkeletonBlock key={kind} className="h-80 rounded-xl" />
+          <SkeletonBlock
+            key={kind}
+            className={cn("h-80 rounded-xl", kindVisibility(kind, active))}
+          />
         ),
       )}
       <ParlayBuilder />
