@@ -28,7 +28,7 @@ from fbi.customer import legal
 from fbi.customer.db import CustomerError, write_connection
 
 GATE_ENV = "FBI_CONSENT_GATE"
-Source = Literal["gate", "profile", "activation", "email"]
+Source = Literal["gate", "profile", "activation", "email", "signup"]
 LOCK_KEY = 0x434F4E53
 """``pg_advisory_xact_lock(LOCK_KEY, user_id)``: one reader's decisions are written one transaction at a time."""
 
@@ -137,9 +137,9 @@ def forget(user_id: int) -> None:
         _clear.pop(user_id, None)
 
 
-def record(user_id: int, decisions: Sequence[Decision], *, locale: legal.Locale, source: Source) -> list[Consent]:
-    """Writes the reader's decisions, each with the version, the sha256 and the sentence of the text shown, and
-    returns their whole history. A decision equal to the current answer on the same text adds nothing."""
+def check_decisions(decisions: Sequence[Decision]) -> None:
+    """Whether these decisions may be written: at least one, one per purpose, known, withdrawable if a withdrawal and
+    on the text in force. Raises CustomerError."""
     if not decisions:
         raise CustomerError(422, "no_decision", "nothing to record")
     if len({d.kind for d in decisions}) != len(decisions):
@@ -152,22 +152,36 @@ def record(user_id: int, decisions: Sequence[Decision], *, locale: legal.Locale,
             raise CustomerError(422, "not_withdrawable", f"{d.kind} ends with the account, not with a withdrawal")
         if d.version != legal.current(purpose.document).version:
             raise CustomerError(409, "legal_text_changed", f"{purpose.document} has a newer version")
+
+
+def write_decisions(conn: psycopg.Connection[Any], user_id: int, decisions: Sequence[Decision], *,
+                    locale: legal.Locale, source: Source) -> None:
+    """The rows of these decisions, in the caller's transaction and under the reader's lock (``record`` and the
+    registration, which writes the account and its consents together, both use it). The caller has run
+    ``check_decisions`` and calls ``forget(user_id)`` after it commits."""
+    conn.execute("SELECT pg_advisory_xact_lock(%s, %s)", (LOCK_KEY, user_id))
+    before = latest(conn, user_id)
+    for d in decisions:
+        doc, sentence = legal.statement(d.kind, locale)
+        prev = before.get(d.kind)
+        if prev is not None and prev.granted == d.granted and prev.version == doc.version and (
+                prev.sha256 == doc.sha256):
+            continue
+        conn.execute("""
+            INSERT INTO customer.consents (user_id, kind, granted, document, version, sha256, locale, statement,
+                                           source, replaces_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (user_id, d.kind, d.granted, doc.document, doc.version, doc.sha256, locale, sentence, source,
+              prev.id if prev is not None else None))
+
+
+def record(user_id: int, decisions: Sequence[Decision], *, locale: legal.Locale, source: Source) -> list[Consent]:
+    """Writes the reader's decisions, each with the version, the sha256 and the sentence of the text shown, and
+    returns their whole history. A decision equal to the current answer on the same text adds nothing."""
+    check_decisions(decisions)
     forget(user_id)
     with write_connection() as conn:
-        conn.execute("SELECT pg_advisory_xact_lock(%s, %s)", (LOCK_KEY, user_id))
-        before = latest(conn, user_id)
-        for d in decisions:
-            doc, sentence = legal.statement(d.kind, locale)
-            prev = before.get(d.kind)
-            if prev is not None and prev.granted == d.granted and prev.version == doc.version and (
-                    prev.sha256 == doc.sha256):
-                continue
-            conn.execute("""
-                INSERT INTO customer.consents (user_id, kind, granted, document, version, sha256, locale, statement,
-                                               source, replaces_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (user_id, d.kind, d.granted, doc.document, doc.version, doc.sha256, locale, sentence, source,
-                  prev.id if prev is not None else None))
+        write_decisions(conn, user_id, decisions, locale=locale, source=source)
         rows = history(conn, user_id)
     forget(user_id)
     return rows
