@@ -586,7 +586,8 @@ def covered_by(agent: str, prompts: Iterable[str], targets: Mapping[str, Mapping
     """The battery's targets that speak for an agent: one named as the agent (or whose evidence names it), or one whose prompt is a prompt the
     agent ran with. Generic on purpose: a target added to the battery is read from its evidence, not from a list kept here."""
     ps = set(prompts)
-    return sorted(name for name, t in targets.items() if name == agent or t.get("agent") == agent or t.get("prompt") in ps)
+    return sorted(name for name, t in targets.items()
+                  if name == agent or t.get("agent") == agent or t.get("prompt") in ps or bool(ps & set(t.get("prompts") or ())))
 
 
 def judge_battery(row: BatteryRow | None, *, since: datetime, running: Mapping[str, Sequence[str]], stale: Sequence[str]) -> Check:

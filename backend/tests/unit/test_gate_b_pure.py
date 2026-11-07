@@ -281,3 +281,11 @@ def test_the_script_exits_0_on_a_pass_1_on_a_failure_and_3_on_either_pending() -
 
     assert [ia_gate_b.exit_code(v) for v in (g.PASS, g.FAIL, g.PENDING_TIME, g.PENDING_ACTIONS)] == [0, 1, 3, 3]
     assert ia_gate_b.build_parser().parse_args(["evaluate", "--changed-on", "2032-09-20", "--json"]).changed_on == ["2032-09-20"]
+
+
+def test_battery_v3_target_covers_an_agent_by_any_of_its_prompts() -> None:
+    """battery-v3 names a multi-prompt target by its joined prompts and lists each one in ``prompts``: any of them covers the agent."""
+    targets = {"council-target": {"prompt": "council-v1+council-opus-v1", "agent": "council-v1",
+                                  "prompts": ["council-v1", "council-opus-v1"]}}
+    assert g.covered_by("council", ["council-opus-v1"], targets) == ["council-target"]
+    assert g.covered_by("stats", ["stats-assess-v2"], targets) == []
