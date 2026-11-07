@@ -22,7 +22,7 @@ import { ParlayRecordCard } from "@/product/records/ParlayRecordCard";
 import { useSlip } from "@/product/records/slipContext";
 import { ParlayBuilder } from "./Builder";
 import { KindSwitch, kindVisibility } from "./KindSwitch";
-import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
+import { useGuideScreen } from "@/product/guides/context";
 
 function RuleGroup({
   icon: Icon,
@@ -121,6 +121,7 @@ function BuildYourOwn() {
         type="button"
         onClick={() => slip.setOpen(true)}
         data-testid="parlays-build-own"
+        data-guide="parlays-own"
         className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-gold/50 bg-gold-soft px-4 text-sm font-semibold text-gold-strong transition-colors hover:bg-gold-soft/70 pointer-coarse:min-h-11"
       >
         <Layers aria-hidden className="h-4 w-4" />
@@ -136,12 +137,14 @@ export function ParlaysPage() {
   const auth = useAuth();
   const preview = usePreviewParam();
   const board = useQuery(live.daily(preview));
+  useGuideScreen("parlays", { ready: !board.isPending });
   const data = board.data?.data;
   const [active, setActive] = useState<RecordKind>("daily");
   const adminToggle = auth.showAdmin && auth.can("admin.shadow_preview");
   return (
     <div className="space-y-6" data-testid="parlays-page">
       <PageTitle
+        guide="parlays"
         title={t("nav.parlays")}
         subtitle={
           <>
@@ -151,7 +154,6 @@ export function ParlaysPage() {
         }
         right={adminToggle ? <ShadowToggle /> : undefined}
       />
-      <FirstVisitHint hint="parlay" />
       {data?.evaluation_mode ? <EvaluationNote /> : null}
       <KindSwitch active={active} onChange={setActive} />
       {KINDS.map((kind) =>

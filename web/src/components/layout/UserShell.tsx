@@ -19,7 +19,6 @@ import { SlipProvider } from "@/product/records/slip";
 import { SlipButton, SlipSheet } from "@/product/records/SlipSheet";
 import { AnnouncementBanner } from "@/product/announcements/AnnouncementBanner";
 import { MembershipBanner } from "@/product/membership/MembershipBanner";
-import { TourCard } from "@/product/tour/Tour";
 import { FeedbackProvider } from "@/product/feedback/FeedbackProvider";
 import { PushProvider } from "@/product/push/PushProvider";
 import { useMediaQuery } from "@/lib/useMediaQuery";
@@ -93,9 +92,6 @@ export function UserShell({ children }: { children: ReactNode }) {
               <main className="px-safe mx-auto w-full max-w-6xl pb-6 pt-5 lg:pb-12">
                 {children}
               </main>
-              {/* The optional tour (plan UX, A13), when the reader started it: one card over the page's foot. */}
-              <TourCard />
-
               {/* The disclaimer (+18, no guarantee) on every screen; on a phone it also keeps the page's end clear of
               the tab bar and the parlay button. */}
               <footer className="px-safe mx-auto max-w-6xl pb-[calc(8rem+env(safe-area-inset-bottom))] text-center text-caption text-subtle-foreground short:pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-8">

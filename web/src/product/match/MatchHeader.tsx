@@ -19,6 +19,7 @@ import {
   capitalize,
   FINISHED_CODES,
   notPlayed,
+  refereeText,
   roundLabel,
   scorerName,
   scorers,
@@ -256,7 +257,7 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
       : null;
 
   return (
-    <Card className="pitch-glow overflow-hidden">
+    <Card className="pitch-glow overflow-hidden" data-guide="match-header">
       <h1 className="sr-only">{t("match.title", { home: m.home.name, away: m.away.name })}</h1>
       <div className="flex min-w-0 items-center gap-1.5 px-4 pt-3.5 text-caption text-muted-foreground sm:px-5">
         <CompetitionTag
@@ -320,8 +321,7 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
           <span className="inline-flex min-w-0 items-center gap-1.5" data-testid="match-referee">
             <UserRound aria-hidden className="h-3.5 w-3.5 shrink-0 text-subtle-foreground" />
             <span className="min-w-0 break-words">
-              {t("match.header.referee", { name: center.facts.referee })}
-              {center.facts.referee_country ? ` (${center.facts.referee_country})` : ""}
+              {refereeText(center.facts.referee, center.facts.referee_country)}
             </span>
           </span>
         ) : null}

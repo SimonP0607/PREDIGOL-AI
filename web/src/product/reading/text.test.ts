@@ -204,6 +204,98 @@ describe("what the sentences say", () => {
     expect(factText(SAMPLES[13]!)).toContain("WWDLW in the last 5 matches");
   });
 
+  test("a count of one reads in the singular, never «1 partidos» or «1 empates» (plan Partidos y Match Center, A1)", () => {
+    const one = [
+      f("rest_days", { side: "home", team: "Nacional", days: 1, matches_14d: 1 }),
+      f("h2h", {
+        n: 1,
+        n_effective: 0.4,
+        home: "Nacional",
+        home_wins: 1,
+        draws: 1,
+        away: "Millonarios",
+        away_wins: 0,
+      }),
+      f("next_match", { side: "home", team: "Nacional", days: 1 }),
+      f("form", { team: "Nacional", sequence: "W", n: 1, ppg: 3, goals_for: 2, goals_against: 0 }),
+      f("venue_record", { side: "away", team: "Nacional", n: 1, wins: 1, draws: 0, losses: 0 }),
+      f("xg", { team: "Nacional", xg_for: 1.2, xg_against: 0.8, n: 1 }),
+      f("streak_unbeaten", { team: "Nacional", n: 1 }),
+      f("top_scorer", { team: "Nacional", player: "Dorlan Pabón", goals: 1, minutes: 1 }),
+      f("market_favourite", { outcome: "home", team: "Nacional", probability: 0.4, bookmakers: 1 }),
+      f("h2h_weak", { n: 1, n_effective: 0.2 }),
+      f("table_after", {
+        result: "home_win",
+        home: "Nacional",
+        home_points: 1,
+        home_best: 1,
+        home_worst: 1,
+        away: "Millonarios",
+        away_points: 0,
+        away_best: 2,
+        away_worst: 2,
+      }),
+    ].map(factText);
+    expect(one).toEqual([
+      "Nacional llega con 1 día de descanso y 1 partido en los últimos 14 días.",
+      "Cara a cara (90 minutos): 1 partido, 1 victoria de Nacional, 1 empate y 0 de Millonarios.",
+      "Nacional vuelve a jugar en 1 día.",
+      "Nacional: G en su último partido (3,00 puntos por partido; 2,0 goles a favor y 0,0 en contra por partido).",
+      "Nacional fuera: 1G 0E 0P en 1 partido.",
+      "Nacional genera 1,20 xG y concede 0,80 (en 1 partido con estadísticas).",
+      "Nacional suma 1 partido sin perder.",
+      "Nacional: Dorlan Pabón lleva 1 gol en 1 minuto.",
+      "El mercado da 40 % a la victoria de Nacional (1 casa).",
+      "El cara a cara dice poco: 1 partido, con poco peso para este partido.",
+      "Si gana Nacional: Nacional sumaría 1 punto (puesto 1.º) y Millonarios, 0 (puesto 2.º).",
+    ]);
+    for (const text of one) {
+      expect(text ?? "").not.toMatch(
+        /\b1 (partidos|empates|victorias|días|goles|minutos|casas|puntos)\b/,
+      );
+    }
+    setLocale("en");
+    expect(factText(f("rest_days", { team: "Nacional", days: 1, matches_14d: 1 }))).toBe(
+      "Nacional comes in with 1 day of rest and 1 match in the last 14 days.",
+    );
+    expect(
+      factText(
+        f("h2h", {
+          n: 1,
+          home: "Nacional",
+          home_wins: 1,
+          draws: 0,
+          away: "Millonarios",
+          away_wins: 0,
+        }),
+      ),
+    ).toBe(
+      "Head to head (90 minutes): 1 meeting, 1 win for Nacional, 0 draws and 0 for Millonarios.",
+    );
+  });
+
+  test("and the plural stays the plural, with decimals for days", () => {
+    expect(factText(SAMPLES[12]!)).toBe("Nacional vuelve a jugar en 3,5 días (Copa Libertadores).");
+    expect(factText(SAMPLES[18]!)).toBe(
+      "Cara a cara (90 minutos): 8 partidos, 2 victorias de Nacional, 3 empates y 3 de Millonarios.",
+    );
+    expect(factText(SAMPLES[19]!)).toBe("Nacional: Dorlan Pabón lleva 7 goles en 900 minutos.");
+  });
+
+  test("the head to head has no «efectivos» for the reader: the effective count stays in the API", () => {
+    for (const locale of ["es", "en"] as const) {
+      setLocale(locale);
+      expect(SAMPLES[32]!.code).toBe("h2h_weak");
+      for (const text of [factText(SAMPLES[18]!), factText(SAMPLES[32]!)]) {
+        expect(text ?? "").not.toMatch(/efectiv|effective|2,4|2\.4|0,8|0\.8/);
+      }
+    }
+    for (const s of strings({ es: esMatch.facts, en: enMatch.facts })) {
+      expect(s).not.toContain("n_effective");
+      expect(s).not.toMatch(/efectivos|effective\)/);
+    }
+  });
+
   test("the market: implied probability, its move, never a price or a bookmaker", () => {
     expect(factText(SAMPLES[22]!)).toBe("El mercado da 41 % a la victoria de Nacional (11 casas).");
     expect(factText(SAMPLES[23]!)).toBe(

@@ -14,7 +14,7 @@ Nada de esto cambia picks, modelos, IA, mercados ni la lógica deportiva.
 
 ## Lo que esta entrega (UX-032) deja hecho
 
-Solo la memoria de lo visto; no hay pantalla nueva todavía (la traen UX-033 a UX-035).
+Solo la memoria de lo visto; no hay pantalla nueva todavía (la traen UX-051 a UX-054).
 
 - **Tabla `customer.guide_progress`** (migración 0126): una fila por lector y guía, con la versión del contenido que vio, el estado (`pending`, `in_progress`, `completed`, `skipped`), el último paso y cuándo se visitó, empezó, completó o saltó.
 - **`customer.preferences.guides_auto`**: el interruptor personal del lector «mostrar guías al entrar a cada pantalla» (encendido por defecto).

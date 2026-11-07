@@ -11,9 +11,24 @@
  * list in their order, after what is in play; each of their competitions and each match of a
  * team they follow says why. A day without theirs says so and shows their next matches.
  * FBI_PERSONALIZATION=0: the common list.
+ *
+ * Plan Partidos, F1 (UX-029): the competitions in the owner's priority after what is in play and the reader's own
+ * (P1); a category that does not play that day is ignored, as a country is (P2); the state counts read the other
+ * filters (P3); the day and the filters in the URL, the folds in the tab, and «‹ Partidos» back to the same place (P4);
+ * one search box for a team or a competition, the filters on as chips, the bar of days and states kept in sight (P3,
+ * P6); a search that waits 200 ms and rows drawn again only when they change (P5).
  */
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarX2, ChevronRight, Globe2, Layers, RadioTower, SearchX } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
@@ -30,35 +45,54 @@ import {
   reasonOf,
   whyOf,
   type FollowSet,
+  type Scope,
 } from "@/product/favorites/follow";
 import { ScopeSwitch } from "@/product/favorites/ScopeSwitch";
 import { NextRow } from "@/product/home/TodayBlocks";
 import type { Why } from "@/product/home/why";
 import { CompetitionSection } from "./CompetitionSection";
+import { rememberOpened } from "./backToList";
+import type { Category } from "./facets";
 import {
-  CATEGORIES,
-  categoriesOf,
-  countryKey,
-  countryOptions,
-  inFacets,
-  type Category,
-} from "./facets";
-import { CompetitionPicker, DayNav, FacetPicker, SearchBox, StatusChips } from "./Filters";
+  AppliedFilters,
+  CompetitionPicker,
+  DayNav,
+  FacetPicker,
+  SearchBox,
+  StatusChips,
+  type AppliedFilter,
+} from "./Filters";
 import {
-  competitionOptions,
   groupByCompetition,
-  inStatus,
-  statusCounts,
   toItems,
   wantsLiveBoard,
   type MatchItem,
   type StatusFilter,
 } from "./model";
+import { narrowDay } from "./narrow";
 import { dayMatchesQuery } from "./query";
-import { readView, writeView, type MatchesView } from "./viewState";
+import {
+  hasFilters,
+  readCollapsed,
+  readView,
+  searchOf,
+  viewOf,
+  writeCollapsed,
+  writeView,
+  type MatchesSearch,
+  type MatchesView,
+} from "./viewState";
+import { useGuideScreen } from "@/product/guides/context";
 
 const NO_ROWS: MatchSummary[] = [];
 const NO_LIVE: LiveMatch[] = [];
+/** The search waits this long after the last keystroke before the list follows (plan Partidos, P5). */
+export const SEARCH_WAIT_MS = 200;
+/** A filter change rewrites the list's own entry of the history: no new entry, no jump to the top, no cross-fade. */
+const IN_PLACE = { replace: true, resetScroll: false, viewTransition: false } as const;
+/** The buttons of the empty states: 44 px tall, like every control a thumb reaches (plan UX, A15). */
+const EMPTY_ACTION =
+  "min-h-11 rounded-md border border-border-strong px-4 text-sm font-medium transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function dayTitle(day: string, today: string): string {
   const long = formatDateLong(zonedInstant(day, 12));
@@ -161,19 +195,123 @@ function NextOfMine() {
   );
 }
 
+/**
+ * The search as it is typed, and the search the list follows: the list follows 200 ms after the last keystroke, and a
+ * cleared box at once. A change from outside (Limpiar, a chip's «×», the back button) replaces what is typed - unless
+ * it is only what is typed without its trailing space.
+ */
+function useSearchDraft(committed: string, commit: (query: string) => void) {
+  const [draft, setDraft] = useState(committed);
+  const [seen, setSeen] = useState(committed);
+  if (committed !== seen) {
+    setSeen(committed);
+    if (committed !== draft.trim()) setDraft(committed);
+  }
+  useEffect(() => {
+    if (draft.trim() === committed) return;
+    if (!draft.trim()) {
+      commit("");
+      return;
+    }
+    const id = window.setTimeout(() => commit(draft), SEARCH_WAIT_MS);
+    return () => window.clearTimeout(id);
+  }, [draft, committed, commit]);
+  return [draft, setDraft] as const;
+}
+
+/**
+ * The bar of days and states sticks under the app bar; the competitions' headers stick under it. Its height goes to
+ * --matches-bar-h on the page, measured as it changes (a wrapped row, a rotated phone) - and 0 where it does not stick
+ * (a phone held sideways, where the app bar scrolls away too).
+ */
+function useStickyHeight(
+  page: RefObject<HTMLDivElement | null>,
+  bar: RefObject<HTMLDivElement | null>,
+) {
+  useEffect(() => {
+    const root = page.current;
+    const el = bar.current;
+    if (!root || !el || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const sticky = getComputedStyle(el).position === "sticky";
+      root.style.setProperty("--matches-bar-h", `${sticky ? el.offsetHeight : 0}px`);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [page, bar]);
+}
+
 export function MatchesPage() {
   const { locale } = useI18n();
-  const [view, setView] = useState<MatchesView>(readView);
-  const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(() => new Set());
+  const today = todayKey();
+  const search: MatchesSearch = useSearch({ from: "/matches/" });
+  const navigate = useNavigate({ from: "/matches/" });
+
+  // Plan Partidos, P4: the URL says the view. A bare /matches (the menu's link) opens on the view kept for this tab,
+  // written into the URL at once; from then on the URL alone decides, so «Limpiar» leaves it bare.
+  const [stored] = useState(readView);
+  const [scopeChoice, setScopeChoice] = useState<Scope | null>(stored.scope);
+  const [restore, setRestore] = useState<MatchesSearch | null>(() => {
+    if (hasFilters(search)) return null;
+    const saved = searchOf(stored, today);
+    return hasFilters(saved) ? saved : null;
+  });
+  if (restore !== null && hasFilters(search)) setRestore(null);
+  useEffect(() => {
+    if (restore) void navigate({ search: restore, ...IN_PLACE });
+  }, [restore, navigate]);
+  const effective = restore ?? search;
+  const view = useMemo(
+    () => viewOf(effective, today, scopeChoice),
+    [effective, today, scopeChoice],
+  );
   useEffect(() => writeView(view), [view]);
 
-  const today = todayKey();
   const update = useCallback(
-    (patch: Partial<MatchesView>) => setView((v) => ({ ...v, ...patch })),
+    (patch: Partial<MatchesView>) => {
+      const { scope, ...filters } = patch;
+      if (scope !== undefined) setScopeChoice(scope);
+      if (Object.keys(filters).length === 0) return;
+      void navigate({
+        search: (prev: MatchesSearch) =>
+          searchOf({ ...viewOf(prev, today, null), ...filters }, today),
+        ...IN_PLACE,
+      });
+    },
+    [navigate, today],
+  );
+
+  const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(readCollapsed);
+  useEffect(() => writeCollapsed(collapsed), [collapsed]);
+  const toggle = useCallback(
+    (id: number) =>
+      setCollapsed((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      }),
     [],
   );
 
+  const commitQuery = useCallback(
+    (query: string) => {
+      // A search shows every hit: folded competitions open again.
+      if (query.trim()) setCollapsed((prev) => (prev.size === 0 ? prev : new Set()));
+      update({ query });
+    },
+    [update],
+  );
+  const [draft, setDraft] = useSearchDraft(view.query, commitQuery);
+
   const matches = useQuery(dayMatchesQuery(view.day));
+  useGuideScreen("matches", { ready: !matches.isPending });
   const rows = matches.data?.rows ?? NO_ROWS;
   const needsBoard = useMemo(() => wantsLiveBoard(rows, Date.now()), [rows]);
   const board = useQuery({ ...live.liveBoard, enabled: needsBoard });
@@ -195,78 +333,67 @@ export function MatchesPage() {
     [allItems, follow],
   );
   const items = scope === "mine" ? ownItems : allItems;
-  const counts = useMemo(() => statusCounts(items), [items]);
-  const countries = useMemo(
+  // A country, category or competition that does not play this day is ignored (plan Partidos, P2); the state chips
+  // count with every other filter on (P3).
+  const day = useMemo(
     () =>
-      countryOptions(
-        items.map((i) => i.match),
+      narrowDay(
+        items,
+        {
+          status: view.status,
+          country: view.country,
+          category: view.category,
+          competition: view.competition,
+          query: view.query,
+        },
         locale,
-        t("matches.filters.international"),
+        {
+          international: t("matches.filters.international"),
+          category: (key) => t(`matches.category.${key}`),
+        },
       ),
-    [items, locale],
+    [items, view.status, view.country, view.category, view.competition, view.query, locale],
   );
-  // A country or category picked on another day may not play today: the list then shows them all.
-  const country =
-    view.country !== null && countries.some((c) => c.key === view.country) ? view.country : null;
-  const inScope = useMemo(
-    () =>
-      items.filter(
-        (it) =>
-          (country === null || countryKey(it.match.competition) === country) &&
-          (view.category === null || categoriesOf(it.match.competition).includes(view.category)),
-      ),
-    [items, country, view.category],
+  const { countries, categories, options, country, category, competition, query, counts } = day;
+  const searching = query.length > 0;
+  const groups = useMemo(
+    () => followFirst(groupByCompetition(day.visible, locale), follow),
+    [day.visible, locale, follow],
   );
-  const categories = useMemo(
-    () =>
-      CATEGORIES.map((key) => ({
-        key,
-        label: t(`matches.category.${key}`),
-        count: items.filter(
-          (it) =>
-            (country === null || countryKey(it.match.competition) === country) &&
-            categoriesOf(it.match.competition).includes(key),
-        ).length,
-      })).filter((c) => c.count > 0),
-    [items, country],
-  );
-  const options = useMemo(() => competitionOptions(inScope, locale), [inScope, locale]);
-  const competition =
-    view.competition !== null && options.some((o) => o.id === view.competition)
-      ? view.competition
-      : null;
-  const searching = view.query.trim().length > 0;
-  const search = (query: string) => {
-    // A search shows every hit: folded competitions open again.
-    if (query.trim()) setCollapsed(new Set());
-    update({ query });
-  };
-
-  const groups = useMemo(() => {
-    const visible = items.filter(
-      (it) =>
-        inStatus(it.group, view.status) &&
-        (competition === null || it.match.competition.id === competition) &&
-        inFacets(it.match, { country, category: view.category, team: view.query }),
-    );
-    return followFirst(groupByCompetition(visible, locale), follow);
-  }, [items, view.status, view.query, view.category, country, competition, locale, follow]);
 
   const filtered =
     view.status !== "all" ||
     competition !== null ||
     searching ||
     country !== null ||
-    view.category !== null;
-  const clearFilters = () =>
+    category !== null;
+  const clearFilters = useCallback(() => {
+    setDraft("");
     update({ status: "all", competition: null, query: "", country: null, category: null });
-  const toggle = (id: number) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  }, [update, setDraft]);
+  const resetFacets = useCallback(() => {
+    setDraft("");
+    update({ competition: null, query: "", country: null, category: null });
+  }, [update, setDraft]);
+  const onSearch = useCallback(
+    (next: string) => {
+      setDraft(next);
+      // the box's «×»: the whole day back at once
+      if (!next.trim()) commitQuery("");
+    },
+    [setDraft, commitQuery],
+  );
+
+  // A row opened from here: «‹ Partidos» on the match goes back to this very entry (filters and scroll).
+  const onListClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    const target = e.target instanceof Element ? e.target.closest("a[data-fixture-id]") : null;
+    const id = Number(target?.getAttribute("data-fixture-id"));
+    if (Number.isSafeInteger(id) && id > 0) rememberOpened(id);
+  }, []);
+
+  const page = useRef<HTMLDivElement>(null);
+  const bar = useRef<HTMLDivElement>(null);
+  useStickyHeight(page, bar);
 
   let body: ReactNode;
   if (matches.isPending) {
@@ -286,11 +413,7 @@ export function MatchesPage() {
           body={t("matches.empty.dayBody")}
           action={
             view.day !== today ? (
-              <button
-                type="button"
-                onClick={() => update({ day: today })}
-                className="rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
-              >
+              <button type="button" onClick={() => update({ day: today })} className={EMPTY_ACTION}>
                 {t("matches.empty.goToday")}
               </button>
             ) : null
@@ -321,7 +444,7 @@ export function MatchesPage() {
                   type="button"
                   onClick={() => update({ scope: "all" })}
                   data-testid="matches-mine-see-all"
-                  className="tap-y relative rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
+                  className={EMPTY_ACTION}
                 >
                   {t("matches.mine.seeAll")}
                 </button>
@@ -340,11 +463,7 @@ export function MatchesPage() {
           title={t("matches.empty.filtersTitle")}
           body={t("matches.empty.filtersBody")}
           action={
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
-            >
+            <button type="button" onClick={clearFilters} className={EMPTY_ACTION}>
               {t("matches.filters.clear")}
             </button>
           }
@@ -353,7 +472,12 @@ export function MatchesPage() {
     );
   } else {
     body = (
-      <div className="space-y-3" data-testid="matches-list">
+      <div
+        className="space-y-3"
+        data-testid="matches-list"
+        data-guide="matches-list"
+        onClickCapture={onListClick}
+      >
         {groups.map((g) => (
           <CompetitionSection
             key={g.id}
@@ -368,14 +492,46 @@ export function MatchesPage() {
     );
   }
 
-  // The four facets - a team's name, the country, the category, the competition: in a row from 1024 px, in the
+  // The four facets - a team or a competition, the country, the category, the competition: in a row from 1024 px, in the
   // «Filtros» sheet below it (plan UX, A15); the day and the state chips (En vivo among them) stay on the page.
   const facetsOn =
     (country !== null ? 1 : 0) +
-    (view.category !== null ? 1 : 0) +
+    (category !== null ? 1 : 0) +
     (competition !== null ? 1 : 0) +
     (searching ? 1 : 0);
   const shown = groups.reduce((n, g) => n + g.items.length, 0);
+  const applied: AppliedFilter[] = [];
+  if (country !== null) {
+    applied.push({
+      key: "country",
+      label: countries.find((c) => c.key === country)?.label ?? country,
+      onRemove: () => update({ country: null }),
+    });
+  }
+  if (category !== null) {
+    applied.push({
+      key: "category",
+      label: t(`matches.category.${category}`),
+      onRemove: () => update({ category: null }),
+    });
+  }
+  if (competition !== null) {
+    applied.push({
+      key: "competition",
+      label: options.find((o) => o.id === competition)?.name ?? String(competition),
+      onRemove: () => update({ competition: null }),
+    });
+  }
+  if (searching) {
+    applied.push({
+      key: "query",
+      label: t("matches.filters.query", { query }),
+      onRemove: () => {
+        setDraft("");
+        update({ query: "" });
+      },
+    });
+  }
   // The same pickers in the desk's row and in the sheet, where their name is written above them: there, while nothing
   // is chosen, they say «Todos los países» instead of repeating «País».
   const countryPicker = (sheet: boolean) => (
@@ -395,7 +551,7 @@ export function MatchesPage() {
       label={t("matches.filters.category")}
       anyLabel={t("matches.filters.allCategories")}
       emptyText={sheet ? t("matches.filters.allCategories") : undefined}
-      value={view.category}
+      value={category}
       options={categories}
       onChange={(c) => update({ category: c, competition: null })}
       icon={<Layers />}
@@ -410,24 +566,39 @@ export function MatchesPage() {
       emptyText={sheet ? t("matches.filters.allCompetitions") : undefined}
     />
   );
-  const searchBox = <SearchBox value={view.query} onChange={search} />;
+  const searchBox = (
+    <SearchBox
+      value={draft}
+      onChange={onSearch}
+      placeholder={t("matches.filters.searchAnyPlaceholder")}
+      label={t("matches.filters.searchAny")}
+    />
+  );
 
   return (
-    <div className="space-y-4">
-      <PageTitle title={t("nav.matches")} subtitle={dayTitle(view.day, today)} />
+    <div ref={page} className="space-y-4">
+      <PageTitle guide="matches" title={t("nav.matches")} subtitle={dayTitle(view.day, today)} />
 
-      <div className="space-y-3">
-        {follow ? (
-          <ScopeSwitch
-            value={scope}
-            onChange={(next) => update({ scope: next })}
-            mine={ownItems.length}
-            all={allItems.length}
-            suggested={follow.suggested}
-            ns="matches"
-            testId="matches-scope"
-          />
-        ) : null}
+      {follow ? (
+        <ScopeSwitch
+          value={scope}
+          onChange={(next) => update({ scope: next })}
+          mine={ownItems.length}
+          all={allItems.length}
+          suggested={follow.suggested}
+          ns="matches"
+          testId="matches-scope"
+        />
+      ) : null}
+      {/* The days and the states stay in sight while the list scrolls (plan Partidos, P3); held sideways, a phone
+          keeps its little height for the list. */}
+      <div
+        ref={bar}
+        role="region"
+        aria-label={t("matches.bar.label")}
+        data-testid="matches-bar"
+        className="top-sticky sticky z-20 -mx-4 space-y-2 bg-background/95 px-4 py-2 backdrop-blur short:static"
+      >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <DayNav day={view.day} today={today} onChange={(day) => update({ day })} />
           <div
@@ -453,27 +624,21 @@ export function MatchesPage() {
           <FilterSheet
             testId="matches-filters"
             active={facetsOn}
-            onReset={() => update({ competition: null, query: "", country: null, category: null })}
+            onReset={resetFacets}
             showLabel={matches.data ? t("matches.filters.show", { count: shown }) : undefined}
           >
-            <SheetField label={t("matches.filters.team")}>{searchBox}</SheetField>
+            <SheetField label={t("matches.filters.teamOrCompetition")}>{searchBox}</SheetField>
             <SheetField label={t("matches.filters.country")}>{countryPicker(true)}</SheetField>
             <SheetField label={t("matches.filters.category")}>{categoryPicker(true)}</SheetField>
             <SheetField label={t("matches.filters.competition")}>
               {competitionPicker(true)}
             </SheetField>
           </FilterSheet>
-          {filtered && rows.length > 0 ? (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="tap-y relative ml-auto hidden min-h-9 shrink-0 items-center text-xs font-medium text-primary hover:underline lg:inline-flex"
-            >
-              {t("matches.filters.clear")}
-            </button>
-          ) : null}
         </div>
       </div>
+      {rows.length > 0 ? (
+        <AppliedFilters filters={applied} onClear={clearFilters} showClear={filtered} />
+      ) : null}
 
       {view.status === "live" && view.day === today && counts.live > 0 ? <LiveBoardLink /> : null}
       {body}

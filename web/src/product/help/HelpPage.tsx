@@ -30,7 +30,7 @@ import { WhatsappLink } from "@/product/support/WhatsappLink";
 import { Card, PageTitle } from "@/product/shared/States";
 import { usePush } from "@/product/push/usePush";
 import { useReportProblem } from "@/product/support/report";
-import { TourStart } from "@/product/tour/Tour";
+import { GuidesPanel } from "@/product/guides/GuidesPanel";
 import { HOW_PATH } from "./howItWorks";
 import {
   FAQ_GROUPS,
@@ -275,8 +275,8 @@ function MoreHelp() {
           body={t("support.help.more.privacyBody")}
         />
       </div>
-      {/* Plan UX, A13: the optional five-step tour starts from the help. */}
-      <TourStart />
+      {/* Plan UX-051: the guides (the welcome tour, the screens'), to see again, and the reader's own switch. */}
+      <GuidesPanel className="mt-2" />
     </section>
   );
 }

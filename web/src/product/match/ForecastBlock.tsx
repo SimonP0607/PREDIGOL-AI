@@ -172,6 +172,7 @@ function MarketView({
       data-testid="forecast-market"
       data-market={market.market}
       data-calibration={market.calibration}
+      data-guide="match-forecast"
       className="min-w-0 space-y-3 rounded-lg border border-border/70 bg-elevated/30 p-3"
     >
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
