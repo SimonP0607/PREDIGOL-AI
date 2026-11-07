@@ -203,6 +203,8 @@ describe("a failed refresh keeps what was already on the page (plan Inicio, 1.4)
   test("an answer that is fine carries no notice", async () => {
     const markup = await html(<TodayBlock query={loaded(board([m({ at: NOW + H })]))} now={NOW} />);
     expect(markup).not.toContain('data-testid="stale-note"');
+  });
+});
 
 describe("one clock for every row (plan Inicio, 2.2)", () => {
   const live = (over: Partial<TodayMatch>) =>
