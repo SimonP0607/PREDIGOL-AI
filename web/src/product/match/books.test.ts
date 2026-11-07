@@ -45,8 +45,8 @@ describe("every bookmaker's price (REVIEW point 10)", () => {
 
   test("where the best price opened, only when it moved", () => {
     setLocale("es");
-    expect(openingNote(sels.slice(0, 2), "Home", 0, "2.05")).toBe("abrió 2,10");
-    expect(openingNote(sels.slice(0, 2), "Away", 0, "4.00")).toBe("abrió 3,80");
+    expect(openingNote(sels.slice(0, 2), "Home", 0, "2.05")).toBe("primera cuota vista 2,10");
+    expect(openingNote(sels.slice(0, 2), "Away", 0, "4.00")).toBe("primera cuota vista 3,80");
     expect(openingNote(sels.slice(0, 1), "Home", 0, "2.10")).toBeNull();
   });
 

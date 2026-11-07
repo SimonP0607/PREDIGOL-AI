@@ -18,6 +18,10 @@ Two PrediGol faults found on 5 Oct 2026 while completing /venues:
 
 Every value changed is one ``audit.data_repairs`` row (before, after, why, the evidence). Nothing is deleted, RAW is
 only read.
+
+A city the venue control (``fbi.truth.venues``) flags - stored, or named by one fixture, against the newest provider
+record of the venue, its matches and the other grounds - is repaired by the sibling ``scripts.repair_venue_city``
+(7 Nov 2026, Mestalla shown in Valdivia).
 """
 
 from __future__ import annotations
@@ -35,6 +39,7 @@ from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.core.version import code_version
 from fbi.storage.payload_store import PayloadStore, body_hash
+from fbi.truth.venues import venue_in
 
 RULE_ZERO = "venue_id_zero"
 RULE_NAME = "venue_name_from_source"
@@ -71,17 +76,6 @@ class Report:
 
 def _text(v: Any) -> str | None:
     return v.strip() if isinstance(v, str) and v.strip() else None
-
-
-def venue_in(body: dict[str, Any], provider_venue_id: int) -> dict[str, Any] | None:
-    """The venue block with this id in a /teams answer (``{"team", "venue"}`` entries) or a /venues one."""
-    for entry in body.get("response") or []:
-        if not isinstance(entry, dict):
-            continue
-        block = entry.get("venue") if isinstance(entry.get("venue"), dict) else entry
-        if isinstance(block, dict) and block.get("id") == provider_venue_id:
-            return block
-    return None
 
 
 def repair(conn: psycopg.Connection[Any], raw_root: Path, *, apply: bool) -> Report:

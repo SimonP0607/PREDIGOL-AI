@@ -40,6 +40,12 @@ class CompetitionRef(Contract):
     logo_url: str | None = Field(default=None, description="The provider's league logo URL. Null: not stored.")
     flag_url: str | None = Field(default=None, description="The country's flag as the provider published it.")
     country_code: str | None = None
+    priority_group: int = Field(
+        default=4, ge=1, le=4,
+        description=("The owner's priority group of the competition (comp-priority-v1, fbi.intel.day_priority): 1 the "
+                     "Champions League and the top leagues, 2 continental and intercontinental club cups, 3 national-team "
+                     "tournaments and World Cup qualifiers, 4 everything else. An ordering hint for lists; it decides "
+                     "nothing else."))
 
 
 class VenueRef(Contract):
