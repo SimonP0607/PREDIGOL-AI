@@ -15,7 +15,9 @@ APPS = ROOT / "apps"
 
 MODULE = "fbi.market.signals"
 FORBIDDEN = ("intel/decision.py", "picks/", "familydecisions/", "api/")
-ALLOWED = {"scripts/ia_market_signals.py": "the command that prints the signals (read-only)"}
+ALLOWED = {"scripts/ia_market_signals.py": "the command that prints the signals (read-only)",
+           "decision/market_inputs.py": "decision-v2 in shadow (IA-012): the signals as risk inputs of an engine nothing that decides "
+                                        "imports (tests/unit/test_decision_v2_isolation.py)"}
 
 
 def imports_signals(path: Path) -> bool:
