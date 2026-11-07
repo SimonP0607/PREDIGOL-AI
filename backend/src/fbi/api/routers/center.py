@@ -17,10 +17,11 @@ from fbi.api.contracts.center import (
     PlayerSummary,
     ProviderPredictionView,
 )
+from fbi.api.contracts.market_catalog import CatalogCategory, MarketCatalog
 from fbi.api.contracts.profile import MatchMarkets, MatchProfile
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
-from fbi.api.services import center, profile
+from fbi.api.services import center, market_catalog, profile
 
 router = APIRouter(tags=["match center, live, players"])
 admin_router = APIRouter(tags=["admin: system"])
@@ -45,6 +46,19 @@ def get_match_markets(conn: Db, fixture_id: Annotated[int, Path(ge=1)]) -> Envel
     """Every price captured for the match: the captures (the numbers the Cronología shows) and each pre-match
     selection with every bookmaker's newest and first price, whether or not it passed a pick rule."""
     return profile.match_markets(conn, fixture_id)
+
+
+@router.get("/matches/{fixture_id}/markets/catalog", response_model=Envelope[MarketCatalog])
+def get_match_market_catalog(
+    conn: Db,
+    fixture_id: Annotated[int, Path(ge=1)],
+    category: Annotated[CatalogCategory | None, Query(description="result, goals, goals_half, corners, cards or "
+                                                                  "shots: the markets of this category.")] = None,
+) -> Envelope[MarketCatalog]:
+    """The structured markets of the match by category, each selection with its price IN FORCE: the provider's last
+    answer before kick-off (a price that went A -> B -> A reads A), the best bookmaker, since when, and every bookmaker.
+    Without ``category``, only the categories that have prices and what each holds."""
+    return market_catalog.match_market_catalog(conn, fixture_id, category)
 
 
 @router.get("/live", response_model=Envelope[LiveBoard])
