@@ -32,6 +32,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | IA-010 | P0 de la arquitectura objetivo (consolidar sin tocar producción): evaluador del Gate B `gate-b-v1`, banco de evaluación de agentes `eval-bench-v1`, batería adversaria `battery-v3` con objetivos Match, Statistics y Council, traza de punta a punta `trace-v1`, registro único de promociones `registry-v1` (lectura), contrato Council → decisión `ctx-adj-v1` y estados `state-v2` (WATCH/ABSTAIN), todo de solo lectura o en sombra; sin migración | en curso | este PR | p0 (arquitectura objetivo) |
 | IA-011 | P1 en sombra de la arquitectura objetivo: servicio de mercado `market-signals-v1` (movimiento de línea, velocidad, dispersión, CLV; sin referencia sharp hasta que el dueño la habilite) y Knowledge Store unificado de lectura `ks-v1` sobre las cuatro memorias; nada de la decisión los importa; sin migración | en curso | este PR | p1 (arquitectura objetivo) |
 | IA-014 | La sombra funciona de verdad: el Statistics Agent recibe los candidatos de córners y tarjetas de las familias (`fam-counts-v1`; llevaba 0 ejecuciones), Match Agent `match-v3` contra las salidas inválidas (8 % medido con `match-v2`: referencias citables generadas por código y lista de palabras inofensivas ampliada) y el ciclo de aprendizaje registra por qué el Revisor posterior no pregunta; sin migración | en curso | este PR | — |
+| IA-015 | Una baja del proveedor solo pasa a OUTDATED cuando el último parte ya no la lista: antes caducaba 2 h después de verse por primera vez, porque el historial solo guarda cambios, y salía del paquete de la IA y de la lectura. No cambia modelos, umbrales ni picks; sin migración | en curso | este PR | Plan Partidos F5a |
 
 ## UX — experiencia de usuario y diseño de la web
 
@@ -78,4 +79,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-015 · UX-027 · BE-004 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-016 · UX-027 · BE-004 · FE-001 · OPS-001 · DOC-001
