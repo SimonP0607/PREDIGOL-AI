@@ -864,8 +864,10 @@ def test_the_deviations_are_eight_and_each_one_is_shown_by_the_code() -> None:
     assert "the month's allocation" in (SRC / "ai" / "budget_v3.py").read_text(encoding="utf-8") or "What the LAB may spend this month" in (SRC / "ai" / "budget_v3.py").read_text(encoding="utf-8")
     assert "Haiku 30 %, Council 65 %, Opus 30 % en la sombra" in rows[4][1]
     assert router.PARAMS["share"]["simple"] == "0.30" and router.PARAMS["share"]["council"] == "0.65" and router.PARAMS["share"]["opus"]["shadow"] == "0.30"
-    # D6: the battery has three targets and none is the Match Agent or the Council
-    assert TARGETS == ("review", "extract", "claims") and "(`review`, `extract`, `claims`)" in rows[5][1]
+    # D6: the guide says the battery had three targets and none was the Match Agent or the Council - true of battery-v2, which phase 3 measured;
+    # IA-010 (battery-v3) closes it: the three are still the first targets, and the agents follow them
+    assert TARGETS[:3] == ("review", "extract", "claims") and "(`review`, `extract`, `claims`)" in rows[5][1]
+    assert {"match", "council"} <= set(TARGETS), "D6 is closed by battery-v3"
     # D7: a single instance, no queue to share; the second writer of a pass keeps nothing
     assert "max_instances=1" in SCHEDULER_SRC and "SKIP LOCKED" not in ORCH_SRC + STORE_SRC
     # D8: attribution (phase 5) is not built

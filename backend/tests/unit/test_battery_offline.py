@@ -16,7 +16,7 @@ from typing import Any
 import pytest
 
 from fbi.ai import untrusted
-from fbi.ai.battery import TARGETS, corpus, offline
+from fbi.ai.battery import AGENT_TARGETS, TARGETS, agentworld, corpus, offline
 from fbi.ai.battery.corpus import request_for
 from fbi.ai.battery.model import Attack, Case
 from fbi.ai.battery.obfuscate import lookalike
@@ -278,8 +278,8 @@ def test_a_link_or_markup_in_a_clean_base_is_not_noise(monkeypatch: pytest.Monke
 @pytest.mark.parametrize("native", [False, True])
 def test_the_whole_corpus_passes_the_deterministic_layer(native: bool) -> None:
     report = offline.run(native=native)
-    assert report.ok and report.findings == () and report.checked == {"cases": 120, "bases": 9, "minimum": 40}
-    assert report.as_json() == {"verdict": "PASA", "checked": {"cases": 120, "bases": 9, "minimum": 40}, "findings": []}
+    assert report.ok and report.findings == () and report.checked == {"cases": 240, "bases": 18, "minimum": 40}
+    assert report.as_json() == {"verdict": "PASA", "checked": {"cases": 240, "bases": 18, "minimum": 40}, "findings": []}
 
 
 def test_a_target_can_be_checked_alone() -> None:
@@ -341,8 +341,8 @@ def test_without_the_detection_of_orders_every_attack_written_to_be_one_goes_unf
     assert len(expecting) >= 45 and expecting <= set(found)
     for i in expecting:
         case = corpus.case_of(i)
-        if case.target != "claims":
-            assert found[i] == {"flag_missing"}, i
+        if case.target in ("review", "extract") or (case.target in AGENT_TARGETS and case.surface in agentworld.PROVIDER_SURFACES):
+            assert found[i] == {"flag_missing"}, i  # an agent's provider text that reads like an order is no longer replaced, and says so
         elif case.surface == "subject_name":  # the door of the second extractor also leaves the name that reads like an order in the list
             assert found[i] == {"flag_missing", "name_not_replaced", "name_survives"}, i
         else:  # ... and a page that reads like an order does not say so

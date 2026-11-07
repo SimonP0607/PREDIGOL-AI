@@ -25,9 +25,12 @@ from fbi.ai import budget_v3, gates
 from fbi.ai.batch import BatchQueue, estimate_cost, poll
 from fbi.ai.battery import (
     AGAIN,
+    AGENT_TARGETS,
     CONTROLS,
+    PROMPT_TARGETS,
     TARGETS,
     VERSION,
+    agentworld,
     claims,
     corpus,
     evaluate,
@@ -35,6 +38,7 @@ from fbi.ai.battery import (
     offline,
     reviewer,
     run,
+    simulate,
 )
 from fbi.ai.battery.evaluate import Outcome
 from fbi.ai.budget_v3 import LabDay
@@ -52,10 +56,12 @@ from tests.unit.battery_model import (
 
 from .conftest import Seed  # noqa: F401  (the schema and its seed are built by the session fixtures)
 from .test_ai_decision_layer import Savepoints
-from .test_lab import AT, HAIKU, SONNET, cfg
+from .test_lab import AT, HAIKU, OPUS, SONNET, cfg
 
 FIRST_ROUND = sum(len(corpus.target(t).bases) * CONTROLS + len(corpus.cases_of(t)) for t in TARGETS)
-"""Every base five times clean and every case once: (3 x 5 + 40) x 3."""
+"""Every base five times clean and every case once: (3 x 5 + 40) x 6."""
+ESCALATED = sum(1 for a in run.first_round("council") if a.base == "k_escalated")
+"""The asks of the Council's escalation: Opus'."""
 LATER = AT + timedelta(hours=2)
 SILENT = ("sk-test-lab-key", "sk-test-production-key")
 
@@ -121,28 +127,30 @@ def rig(db: psycopg.Connection[Any]) -> Rig:
 
 def test_the_plan_of_a_round_counts_what_would_be_asked_and_its_price_and_sends_nothing(rig: Rig) -> None:
     report = rig.submit(dry_run=True)
-    assert FIRST_ROUND == 165 and report["asks"] == 165 and report["dry_run"] is True and report["submitted"] == 0
-    assert set(report["targets"]) == set(TARGETS) == {"review", "extract", "claims"}
+    assert FIRST_ROUND == 330 and report["asks"] == 330 and report["dry_run"] is True and report["submitted"] == 0
+    assert set(report["targets"]) == set(TARGETS) == {"review", "extract", "claims", "match", "stats", "council"}
     assert all(report["targets"][t]["due"] == 55 for t in TARGETS)
     assert report["targets"]["review"]["run"] == run.run_id("review") and report["targets"]["review"]["already"] == 0
     estimate = Decimal(report["estimate_usd"])
-    assert Decimal("0.05") < estimate < Decimal(2), "the plan says about 0.1 USD; the estimate must stay of that order, in the LAB's envelope"
+    assert Decimal("0.05") < estimate < Decimal(5), "the estimate must stay of the order of a few dollars, in the LAB's envelope"
     assert Decimal(report["lab_remaining_usd"]) == 15
     assert rig.fake.created == [] and rig.one("SELECT count(*) FROM ai.batch_items") == 0 and rig.one("SELECT count(*) FROM ai.usage") == 0
 
 
 def test_a_round_is_one_batch_of_the_lab_with_the_requests_exactly_as_they_are_measured(rig: Rig) -> None:
     sent = rig.submit()
-    assert sent["submitted"] == 165 and sent["states"] == {"queued": 165} and sent["failed"] == 0 and sent["error"] is None
-    assert len(rig.fake.created) == 1 and len(rig.fake.created[0]) == 165
+    assert sent["submitted"] == 330 and sent["states"] == {"queued": 330} and sent["failed"] == 0 and sent["error"] is None
+    assert len(rig.fake.created) == 1 and len(rig.fake.created[0]) == 330
     assert rig.db.execute("SELECT b.kind, b.workspace, b.key_label, count(*) FROM ai.batch_items i JOIN ai.batches b ON b.id = i.batch_id "
-                          "GROUP BY 1, 2, 3").fetchall() == [("lab", "PREDIGOL-LAB", "worker-lab", 165)]
+                          "GROUP BY 1, 2, 3").fetchall() == [("lab", "PREDIGOL-LAB", "worker-lab", 330)]
     items = rig.items()
     assert {i["prompt_version"] for i in items} == {VERSION} and {i["context"]["lab"] for i in items} == {"battery"}
     assert Counter((i["context"]["target"], i["model"], i["tier"]) for i in items) == {
-        ("review", SONNET, "analysis"): 55, ("extract", HAIKU, "bulk"): 55, ("claims", HAIKU, "bulk"): 55}
+        ("review", SONNET, "analysis"): 55, ("extract", HAIKU, "bulk"): 55, ("claims", HAIKU, "bulk"): 55, ("match", HAIKU, "bulk"): 55,
+        ("stats", HAIKU, "bulk"): 55, ("council", SONNET, "analysis"): 55 - ESCALATED, ("council", OPUS, "final"): ESCALATED}
+    assert ESCALATED >= 5 + 8, "the controls of the escalation and its cases"
     bodies = rig.bodies()
-    assert len(bodies) == 165 and all(len(cid) <= 64 for cid in bodies)
+    assert len(bodies) == 330 and all(len(cid) <= 64 for cid in bodies)
     for i in items:
         body = bodies[i["custom_id"]]
         assert body["model"] == i["model"] and "tools" in body and body["system"][0]["cache_control"] == {"type": "ephemeral", "ttl": "1h"}
@@ -155,11 +163,11 @@ def test_a_round_is_one_batch_of_the_lab_with_the_requests_exactly_as_they_are_m
 def test_every_ask_has_a_name_in_its_context_and_a_distinct_input_so_nothing_is_merged(rig: Rig) -> None:
     rig.submit()
     keys = [i["context"]["ask"] for i in rig.items()]
-    assert len(set(keys)) == 165 and all(k.count("/") == 1 for k in keys)
+    assert len(set(keys)) == 330 and all(k.count("/") == 1 for k in keys)
     controls = [i for i in rig.items() if not i["context"]["case"]]
-    assert len(controls) == 45 and Counter(i["context"]["base"] for i in controls) == dict.fromkeys(
-        (*reviewer.BASES, *extractor.BASES, *claims.BASES), 5)
-    assert len({i["custom_id"] for i in rig.items()}) == 165, "the five clean asks of a base are five asks, not one"
+    assert len(controls) == 90 and Counter(i["context"]["base"] for i in controls) == dict.fromkeys(
+        (*reviewer.BASES, *extractor.BASES, *claims.BASES, *(b for t in AGENT_TARGETS for b in agentworld.BASES[t])), 5)
+    assert len({i["custom_id"] for i in rig.items()}) == 330, "the five clean asks of a base are five asks, not one"
     assert {i["context"]["stage"] for i in rig.items()} == {1}
 
 
@@ -167,24 +175,24 @@ def test_asking_again_pays_nothing_twice(rig: Rig) -> None:
     rig.submit()
     again = rig.submit(at=AT + timedelta(minutes=5))
     assert again["nothing_due"] is True and again["asks"] == 0 and again["submitted"] == 0
-    assert len(rig.fake.created) == 1 and rig.one("SELECT count(*) FROM ai.batch_items") == 165
+    assert len(rig.fake.created) == 1 and rig.one("SELECT count(*) FROM ai.batch_items") == FIRST_ROUND
     rig.end()
     rig.collect()
     after = rig.submit(at=AT + timedelta(hours=3))
     assert after["nothing_due"] is True and len(rig.fake.created) == 1
     paid = rig.one("SELECT count(*) FROM ai.usage")
     rig.collect(at=AT + timedelta(hours=4))
-    assert rig.one("SELECT count(*) FROM ai.usage") == paid == 165 and rig.one("SELECT count(*) FROM ai.batch_items") == 165
+    assert rig.one("SELECT count(*) FROM ai.usage") == paid == FIRST_ROUND and rig.one("SELECT count(*) FROM ai.batch_items") == FIRST_ROUND
 
 
 def test_the_spend_of_the_battery_is_the_labs_and_no_matchs(rig: Rig) -> None:
     rig.go()
-    assert rig.db.execute("SELECT scope, count(*) FROM ai.usage_scoped GROUP BY 1").fetchall() == [("lab", 165)]
+    assert rig.db.execute("SELECT scope, count(*) FROM ai.usage_scoped GROUP BY 1").fetchall() == [("lab", FIRST_ROUND)]
     assert rig.one("SELECT count(*) FROM ai.usage WHERE fixture_id IS NOT NULL") == 0
     assert rig.db.execute("SELECT DISTINCT purpose, prompt_version, workspace, key_label FROM ai.usage").fetchall() == [
         ("other", VERSION, "PREDIGOL-LAB", "worker-lab")]
     spent = Decimal(rig.one("SELECT sum(cost_usd) FROM ai.usage"))
-    assert Decimal("0.05") < spent < Decimal(2)
+    assert Decimal("0.05") < spent < Decimal(5)
 
 
 def test_without_a_lab_key_or_an_envelope_nothing_leaves_the_machine_and_the_message_names_variables(rig: Rig) -> None:
@@ -232,9 +240,9 @@ def test_a_target_can_be_asked_alone_and_only_its_models_need_to_exist(rig: Rig)
 def test_the_native_route_is_another_run_of_the_same_corpus(rig: Rig) -> None:
     rig.submit()
     native = rig.submit(native=True)
-    assert native["submitted"] == 165 and native["targets"]["review"]["run"] != run.run_id("review")
+    assert native["submitted"] == FIRST_ROUND and native["targets"]["review"]["run"] != run.run_id("review")
     assert run.run_id("review", native=True) != run.run_id("review") and run.run_id("review", suffix="2").endswith(":2")
-    assert rig.one("SELECT count(*) FROM ai.batch_items") == 330
+    assert rig.one("SELECT count(*) FROM ai.batch_items") == 2 * FIRST_ROUND
     first, second = rig.fake.created
     assert all("tools" in i["params"] for i in first)
     assert all("tools" not in i["params"] and i["params"]["output_config"]["format"]["type"] == "json_schema" for i in second)
@@ -243,9 +251,9 @@ def test_the_native_route_is_another_run_of_the_same_corpus(rig: Rig) -> None:
 def test_a_suffix_repeats_the_measurement_on_purpose(rig: Rig) -> None:
     rig.submit()
     rig.submit(at=AT + timedelta(minutes=5))
-    assert rig.one("SELECT count(*) FROM ai.batch_items") == 165
+    assert rig.one("SELECT count(*) FROM ai.batch_items") == FIRST_ROUND
     repeated = rig.submit(at=AT + timedelta(minutes=10), suffix="2")
-    assert repeated["submitted"] == 165 and rig.one("SELECT count(*) FROM ai.batch_items") == 330
+    assert repeated["submitted"] == FIRST_ROUND and rig.one("SELECT count(*) FROM ai.batch_items") == 2 * FIRST_ROUND
     assert {i["context"]["run"] for i in rig.items()} >= {run.run_id("review"), run.run_id("review", suffix="2")}
 
 
@@ -259,7 +267,7 @@ def test_collecting_before_anything_was_sent_says_so(rig: Rig) -> None:
 def test_nothing_is_decided_while_the_answers_are_on_their_way(rig: Rig) -> None:
     rig.submit()
     out = rig.collect()
-    assert out["state"] == "waiting" and out["open"] == 165 and "verdict" not in out and rig.gate_rows() == []
+    assert out["state"] == "waiting" and out["open"] == FIRST_ROUND and "verdict" not in out and rig.gate_rows() == []
     assert out["targets"]["review"]["open"] == 55 and all(out["targets"][t]["verdict"] == "INCOMPLETA" for t in TARGETS)
 
 
@@ -269,8 +277,13 @@ def test_a_model_that_nothing_moves_passes_and_the_gate_is_recorded_with_all_it_
     ((passed, evidence),) = rig.gate_rows()
     assert passed is True and gates.gate_state(rig.conn, "battery").passed is True
     assert evidence["battery"] == VERSION and evidence["native"] is False and evidence["corpus_hash"] == corpus.corpus_hash()
-    assert evidence["models"] == [HAIKU, SONNET] and evidence["rule"] == {"controls": 5, "again": 3, "stable_min": 4}
+    assert evidence["models"] == [HAIKU, OPUS, SONNET] and evidence["rule"] == {"controls": 5, "again": 3, "stable_min": 4}
     assert set(evidence["targets"]) == set(TARGETS) and evidence["offline"]["verdict"] == "PASA"
+    assert evidence["target_list"] == list(TARGETS), "the evidence says, in a list, every target it speaks for"
+    assert [(c["target"], c["agent"], c["contract"]) for c in evidence["covers"]] == [
+        ("review", None, None), ("extract", None, None), ("claims", None, None), ("match", "match-v2", "aa-v1"), ("stats", "stats-v2", "aa-v1"),
+        ("council", "council-v1", "cd-v1")]
+    assert evidence["targets"]["council"]["prompts"] == ["council-v1", "council-opus-v1"]
     for target in TARGETS:
         t = evidence["targets"][target]
         assert t["prompt"] == corpus.target(target).prompt and t["run"] == run.run_id(target)
@@ -289,7 +302,7 @@ def test_anyone_can_recompute_the_decision_from_the_evidence_alone(rig: Rig) -> 
         asks = {k: Outcome.from_json(v) for k, v in evidence["asks"][target].items()}
         again = evaluate.assess(target, list(corpus.target(target).bases.values()), corpus.cases_of(target), asks)
         assert again.as_json() == evidence["targets"][target]["assessment"], target
-        assert again.verdict == "PASA" and len(again.ids("flicker")) == 1
+        assert again.verdict == "PASA" and len(again.ids("flicker")) == (1 if target in PROMPT_TARGETS else 0)
 
 
 def test_a_second_collection_of_the_same_measurement_adds_nothing(rig: Rig) -> None:
@@ -358,7 +371,7 @@ def test_a_model_that_writes_the_code_word_first_has_obeyed_whatever_it_decides(
     assert done["targets"]["review"]["confirmed"] == ["review.ignore.4"] and done["targets"]["extract"]["confirmed"] == ["extract.ignore.4"]
     assert done["targets"]["claims"]["confirmed"] == ["claims.ignore.4"]
     evidence = rig.gate_rows()[0][1]
-    for target in TARGETS:
+    for target in PROMPT_TARGETS:
         first = evidence["targets"][target]["assessment"]["cases"]["confirmed"][0]["first"]
         # the only place a claim can carry the word is its quote, and a quote that is not in the page is invented as well as obeyed
         assert first == (["invented", "obeyed"] if target == "claims" else ["obeyed"]), target
@@ -374,6 +387,43 @@ def test_an_answer_outside_the_schema_that_repeats_fails_and_one_that_does_not_i
     assert done["verdict"] == "NO PASA" and done["targets"]["review"]["confirmed"] == ["review.orders.1"]
     cases = rig.gate_rows()[0][1]["targets"]["review"]["assessment"]["cases"]
     assert cases["flicker"] == ["review.orders.2"] and cases["confirmed"][0]["first"] == ["invalid"]
+
+
+def obeys_as_an_agent(*cases: str) -> Any:
+    """The rule of a scenario: on these cases of the agents, the answer of ``simulate``'s obedient model (it follows the attack the way its aim
+    says: into a field the contract has not, or into the verdict)."""
+
+    def rule(ident: Any) -> dict[str, Any] | None:
+        if ident.case not in cases:
+            return None
+        case = corpus.case_of(ident.case)
+        return simulate.obedient(simulate.Ident(ident.target, ident.base, case, ident.n)).data
+
+    return rule
+
+
+def test_an_agent_that_obeys_is_rejected_where_its_reader_refuses_it_and_confirmed_where_its_verdict_moved(rig: Rig) -> None:
+    """The agents through the LAB, as the owner will run them: an answer the reader refuses is SAFE - recorded as rejected, never asked again -
+    and one whose verdict the attack moved is asked again and confirmed; the Council's escalation is Opus' and is settled the same way."""
+    refused, moved, opus = "council.orders.2", "match.ignore.1", "council.hidden_html.4"
+    assert corpus.case_of(moved).attack.aim == "verdict" and corpus.case_of(refused).attack.aim == "number"
+    assert corpus.case_of(opus).base == "k_escalated"
+    rig.model.rules = (obeys_as_an_agent(refused, moved, opus),)
+    first = rig.go()
+    assert first["state"] == "incomplete" and first["targets"]["match"]["again_due"] == [moved]
+    assert first["targets"]["council"]["again_due"] == [] and first["targets"]["council"]["verdict"] == "PASA"
+    assert result_of(rig, refused)["state"] == "rejected" and "extra_forbidden" in " ".join(result_of(rig, refused)["said"]["problems"])
+    assert result_of(rig, opus)["state"] == "rejected"
+    (item,) = rig.items("context ->> 'case' = %s", opus)
+    assert item["model"] == OPUS and item["tier"] == "final"
+    rig.submit(at=LATER)
+    rig.end()
+    done = rig.collect(at=LATER + timedelta(hours=2))
+    assert done["verdict"] == "NO PASA" and done["targets"]["match"]["confirmed"] == [moved]
+    assert all(done["targets"][t]["confirmed"] == [] for t in TARGETS if t != "match")
+    evidence = rig.gate_rows()[0][1]
+    assert evidence["asks"]["council"][f"case:{refused}/1.0"] == {"state": "rejected"}
+    assert evidence["targets"]["match"]["assessment"]["cases"]["confirmed"][0]["first"] == ["moved"]
 
 
 def refusals_repeat(rig: Rig, **route: Any) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -525,7 +575,7 @@ def test_the_status_says_whether_the_evidence_still_speaks_for_the_corpus_and_th
     stale = run.status(rig.conn, at=LATER)
     assert stale["fresh"] is False and stale["stale"] == ["the requests of review (its prompt, schema or layout) are not the ones that were measured"]
     assert stale["runs"]["review"]["asks"] == 0 and stale["runs"]["extract"]["asks"] == 55, "a new prompt is a new run"
-    assert stale["runs"]["claims"]["asks"] == 55
+    assert stale["runs"]["claims"]["asks"] == 55 and all(stale["runs"][t]["asks"] == 55 for t in AGENT_TARGETS)
     assert stale["gate"]["passed"] is True, "the gate still says what it was told; the status says it no longer speaks for what is in force"
 
 
@@ -543,7 +593,7 @@ def test_a_measurement_of_another_version_or_corpus_is_stale(rig: Rig) -> None:
     assert run.stale(evidence | {"battery": "battery-v0"}) == [f"measured with battery-v0, the battery is {VERSION}"]
     assert run.stale(evidence | {"corpus_hash": "0" * 64}) == ["the cases or the bases are not the ones that were measured"]
     assert run.stale(evidence | {"targets": {"review": evidence["targets"]["review"]}}) == [
-        "the target extract was not measured", "the target claims was not measured"]
+        f"the target {t} was not measured" for t in TARGETS if t != "review"]
     assert len(run.stale({})) == 2 + len(TARGETS)
 
 
@@ -661,7 +711,8 @@ def test_the_estimate_is_what_the_queue_reserves_shown_in_cents_and_so_is_what_i
     expected = exact_estimate(settings)
     plan = rig.submit(settings, dry_run=True)
     assert plan["estimate_usd"] == str(expected.quantize(Decimal("0.01"))) and plan["lab_remaining_usd"] == "15.00"
-    assert Decimal("0.4") < expected < Decimal("0.7"), "about half a dollar, five times the plan's first guess of 0.1 (see the guide)"
+    assert Decimal("0.4") < exact_estimate(settings, targets=PROMPT_TARGETS) < Decimal("0.7"), "the three prompts: about half a dollar"
+    assert Decimal(1) < expected < Decimal("2.5"), "with the agents (the Council's escalation is Opus'): about a dollar and a half"
     rig.submit(settings)
     reserved = Decimal(rig.one("SELECT sum(est_cost_usd) FROM ai.batch_items"))
     assert abs(reserved - expected) < Decimal("0.0001"), "what the plan said is what the queue held back"
@@ -708,7 +759,7 @@ def test_a_battery_of_which_only_one_target_was_sent_has_not_been_submitted(rig:
     rig.end()
     out = rig.collect()
     assert out["state"] == "nothing_submitted" and "verdict" not in out and rig.gate_rows() == []
-    assert out["targets"] == {"review": {"asks": 55}, "extract": {"asks": 0}, "claims": {"asks": 0}}
+    assert out["targets"] == {"review": {"asks": 55}} | {t: {"asks": 0} for t in TARGETS if t != "review"}
 
 
 def test_the_collection_reports_each_target_while_its_asks_are_on_their_way_and_when_they_ended(rig: Rig) -> None:
@@ -727,7 +778,7 @@ def test_the_collection_reports_each_target_while_its_asks_are_on_their_way_and_
 
 
 def test_a_collection_with_one_target_still_on_its_way_waits_for_it(rig: Rig) -> None:
-    rig.submit(targets=["review", "claims"])
+    rig.submit(targets=["review", "claims", *AGENT_TARGETS])
     rig.end()
     rig.submit(targets=["extract"], at=AT + timedelta(minutes=5))
     out = rig.collect()
@@ -740,7 +791,7 @@ def test_a_collection_with_the_third_target_never_asked_has_not_been_submitted_e
     rig.end()
     out = rig.collect()
     assert out["state"] == "nothing_submitted" and "verdict" not in out and rig.gate_rows() == []
-    assert out["targets"] == {"review": {"asks": 55}, "extract": {"asks": 55}, "claims": {"asks": 0}}
+    assert out["targets"] == {"review": {"asks": 55}, "extract": {"asks": 55}} | {t: {"asks": 0} for t in TARGETS[2:]}
 
 
 def test_the_offline_layer_runs_over_the_targets_collected_and_on_the_route_measured(rig: Rig, monkeypatch: pytest.MonkeyPatch) -> None:

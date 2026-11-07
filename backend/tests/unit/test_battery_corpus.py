@@ -18,12 +18,15 @@ import pytest
 
 from fbi.ai import extract_v2
 from fbi.ai.battery import (
+    AGENT_TARGETS,
     CASES_PER_TARGET,
     FAMILIES,
     MIN_CASES,
     PER_FAMILY,
+    PROMPT_TARGETS,
     TARGETS,
     VERSION,
+    agentworld,
     attacks_claims,
     attacks_extract,
     attacks_review,
@@ -32,16 +35,21 @@ from fbi.ai.battery import (
     extractor,
     reviewer,
 )
-from fbi.ai.battery.model import CANARY_MARK, Attack, Base, Case
+from fbi.ai.battery.model import CANARY_MARK, CANARY_SEED, Attack, Base, Case
 from fbi.ai.collectors import extract_request, extract_user
 from fbi.ai.evidence import normalize_name
 from fbi.ai.prompts import (
+    COUNCIL_OPUS_VERSION,
+    COUNCIL_VERSION,
     EXTRACT_SCHEMA,
     EXTRACT_SYSTEM,
     EXTRACT_V2_SYSTEM,
     EXTRACT_V2_VERSION,
     EXTRACT_VERSION,
+    MATCH_ASSESS_VERSION,
+    MATCH_CONTEXT_VERSION,
     REVIEW_VERSION,
+    STATS_ASSESS_VERSION,
 )
 from fbi.ai.review import review_request, signals_for
 from fbi.ai.untrusted import sanitize
@@ -95,7 +103,7 @@ def by_target(name: str) -> tuple[Case, ...]:
     return tuple(c for c in corpus.CASES if c.target == name)
 
 
-SURFACES = {"review": reviewer.SURFACES, "extract": extractor.SURFACES, "claims": claims.SURFACES}
+SURFACES = {"review": reviewer.SURFACES, "extract": extractor.SURFACES, "claims": claims.SURFACES, **agentworld.SURFACES_OF}
 """Where an attack on each prompt may put its text."""
 WITH_DOOR = tuple(t for t in TARGETS if corpus.target(t).door is not None)
 """The prompts whose text goes through ``fbi.ai.untrusted`` before the model reads it: the text of a case is not found whole in their requests."""
@@ -104,12 +112,13 @@ WITHOUT_DOOR = tuple(t for t in TARGETS if corpus.target(t).door is None)
 
 # ── the size the plan asks for ─────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_plan_asks_for_forty_cases_of_each_prompt_and_the_corpus_has_a_hundred_and_twenty() -> None:
-    assert MIN_CASES == 40 and TARGETS == ("review", "extract", "claims")
+def test_the_plan_asks_for_forty_cases_of_each_target_and_the_corpus_has_two_hundred_and_forty() -> None:
+    assert MIN_CASES == 40 and PROMPT_TARGETS == ("review", "extract", "claims") and AGENT_TARGETS == ("match", "stats", "council")
+    assert TARGETS == PROMPT_TARGETS + AGENT_TARGETS
     assert CASES_PER_TARGET == len(FAMILIES) * PER_FAMILY == 40
-    assert len(corpus.CASES) == 120 and corpus.check_sizes() == []
-    assert {t: len(corpus.cases_of(t)) for t in TARGETS} == {"review": 40, "extract": 40, "claims": 40}
-    assert (WITH_DOOR, WITHOUT_DOOR) == (("claims",), ("review", "extract"))
+    assert len(corpus.CASES) == 240 and corpus.check_sizes() == []
+    assert {t: len(corpus.cases_of(t)) for t in TARGETS} == dict.fromkeys(TARGETS, 40)
+    assert (WITH_DOOR, WITHOUT_DOOR) == (("claims", "match", "stats", "council"), ("review", "extract"))
 
 
 def test_eight_families_of_section_31_five_attacks_each_for_each_prompt() -> None:
@@ -127,7 +136,9 @@ def test_ids_are_unique_and_every_lookup_agrees() -> None:
         assert corpus.case_of(case.id) is case and case in corpus.cases_of(case.target)
     assert [c.id for c in corpus.cases_of("review")] == [c.id for c in corpus.CASES[:40]]
     assert [c.id for c in corpus.cases_of("extract")] == [c.id for c in corpus.CASES[40:80]]
-    assert [c.id for c in corpus.cases_of("claims")] == [c.id for c in corpus.CASES[80:]]
+    assert [c.id for c in corpus.cases_of("claims")] == [c.id for c in corpus.CASES[80:120]]
+    for i, target in enumerate(AGENT_TARGETS):
+        assert [c.id for c in corpus.cases_of(target)] == [c.id for c in corpus.CASES[120 + 40 * i:160 + 40 * i]]
 
 
 def test_a_size_below_the_plans_is_reported_with_the_target_that_lacks_it(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -235,7 +246,7 @@ def test_the_facts_a_claims_attack_plants_or_states_are_new_and_could_be_known()
 
 def test_the_code_word_is_the_cases_own_and_only_where_an_attack_asks_for_it() -> None:
     with_word = [c for c in corpus.CASES if c.canary]
-    assert len(with_word) == 21
+    assert len(with_word) == 21 + 3 * 6
     assert {c.id for c in with_word if c.target == "claims"} == {f"claims.{f}.4" for f in (
         "ignore", "hidden_html", "homoglyph", "markdown_link", "break_json", "orders", "player_name")}
     assert [c.id for c in with_word if CANARY_MARK not in c.attack.text] == []
@@ -251,10 +262,12 @@ def test_the_code_word_is_the_cases_own_and_only_where_an_attack_asks_for_it() -
         assert CANARY_MARK not in case.text
 
 
-def test_a_code_word_is_the_same_on_every_run_and_the_battery_version_is_in_it() -> None:
+def test_a_code_word_is_the_same_on_every_run_and_the_version_that_minted_it_is_in_it() -> None:
     first = {c.id: c.canary for c in corpus.CASES}
     assert first == {c.id: c.canary for c in corpus.CASES}
-    assert corpus.case_of("review.ignore.4").canary == "ZQ" + hashlib.sha256(f"{VERSION}/review.ignore.4".encode()).hexdigest()[:8].upper()
+    assert CANARY_SEED == "battery-v2" != VERSION, "battery-v3 keeps the code words of battery-v2, and with them the bytes of its requests"
+    assert corpus.case_of("review.ignore.4").canary == "ZQ" + hashlib.sha256(f"{CANARY_SEED}/review.ignore.4".encode()).hexdigest()[:8].upper()
+    assert corpus.case_of("review.ignore.4").canary == "ZQ3C78680C", "the code word battery-v2 asked for"
     assert len({corpus.case_of(f"{t}.ignore.4").canary for t in TARGETS}) == len(TARGETS)
 
 
@@ -374,12 +387,19 @@ def test_the_prompts_under_test_are_the_ones_in_force() -> None:
     assert corpus.target("review").prompt == REVIEW_VERSION == "review-v2"
     assert corpus.target("extract").prompt == EXTRACT_VERSION == "extract-v1"
     assert corpus.target("claims").prompt == EXTRACT_V2_VERSION == "extract-v2"
-    assert [corpus.target(t).tier for t in TARGETS] == ["analysis", "bulk", "bulk"], "the tier production asks them with"
+    assert corpus.target("match").prompts == (MATCH_CONTEXT_VERSION, MATCH_ASSESS_VERSION) == ("match-context-v2", "match-assess-v2")
+    assert corpus.target("stats").prompts == (STATS_ASSESS_VERSION,) == ("stats-assess-v2",)
+    assert corpus.target("council").prompts == (COUNCIL_VERSION, COUNCIL_OPUS_VERSION) == ("council-v1", "council-opus-v1")
+    assert [corpus.target(t).agent for t in TARGETS] == ["", "", "", "match-v2", "stats-v2", "council-v1"]
+    assert [corpus.target(t).contract for t in TARGETS] == ["", "", "", "aa-v1", "aa-v1", "cd-v1"]
+    assert [corpus.target(t).tier for t in TARGETS] == ["analysis", "bulk", "bulk", "bulk", "bulk", "analysis"], "the tier production asks them with"
+    assert corpus.target("council").tier_of("k_escalated") == "final" and corpus.target("council").tiers == ("analysis", "final")
     assert [corpus.target(t).name for t in TARGETS] == list(TARGETS), "each is called by the word it is filed under"
 
 
 def test_each_target_reserves_of_the_envelope_what_an_answer_of_it_is_expected_to_write() -> None:
-    assert {t: corpus.target(t).typical_output for t in TARGETS} == {"review": 1000, "extract": 400, "claims": 500}
+    assert {t: corpus.target(t).typical_output for t in TARGETS} == {"review": 1000, "extract": 400, "claims": 500, "match": 1200,
+                                                                     "stats": 1200, "council": 1500}
     for t in TARGETS:
         asked = corpus.request_for(t, next(iter(corpus.target(t).bases)))
         assert 0 < corpus.target(t).typical_output <= asked.max_tokens, "an answer cannot be expected to write more than it is allowed to"
@@ -509,18 +529,32 @@ def test_what_must_not_survive_is_in_the_text_and_what_must_be_readable_is_dress
 
 # ── the fingerprints ─────────────────────────────────────────────────────────────────────────────────────────────
 
-CORPUS_HASH = "99fc10a1d8c02a74c8c6b9d6d39100380dae65da0472448a8b220a6ed1d1fb66"
-"""The cases and the bases of ``battery-v2``. A change that moves it is a new version of the battery, never an edit of this one."""
+CORPUS_HASH = "0c75b24817e062912dd7213359d1112da4897e6805969b20b4e97c110cb4b8e6"
+"""The cases and the bases of ``battery-v3``. A change that moves it is a new version of the battery, never an edit of this one."""
+V2_REQUESTS = "54b25506ba08f4156fea3d34f02c7ddcc03eff924ccf7ac0f63e4e7826bdea14"
+"""The fingerprint of every request of the three targets of ``battery-v2`` - each base and each case, by the tool call and by structured
+outputs - as ``battery-v2`` made them, measured on its code before ``battery-v3`` was written."""
 
 
 def test_the_corpus_is_pinned_to_its_version() -> None:
-    assert VERSION == "battery-v2"
+    assert VERSION == "battery-v3"
     assert corpus.corpus_hash() == CORPUS_HASH, "the corpus changed: it is a new VERSION of the battery (and a new pin)"
+
+
+def test_the_targets_of_battery_v2_are_asked_byte_for_byte_as_battery_v2_asked_them() -> None:
+    parts: list[list[Any]] = []
+    for t in PROMPT_TARGETS:
+        for native in (False, True):
+            for b in sorted(corpus.target(t).bases):
+                parts.append([t, native, "base:" + b, corpus.fingerprint(corpus.request_for(t, b, native=native))])
+            for c in sorted(corpus.cases_of(t), key=lambda c: c.id):
+                parts.append([t, native, "case:" + c.id, corpus.fingerprint(corpus.request_for(t, c.base, c, native=native))])
+    assert len(parts) == 258 and hashlib.sha256(json.dumps(parts).encode()).hexdigest() == V2_REQUESTS
 
 
 def test_the_fingerprints_are_the_same_on_every_call_and_differ_by_target_and_route() -> None:
     hashes = {(t, n): corpus.requests_hash(t, native=n) for t in TARGETS for n in (False, True)}
-    assert len(set(hashes.values())) == 6 and hashes == {(t, n): corpus.requests_hash(t, native=n) for t in TARGETS for n in (False, True)}
+    assert len(set(hashes.values())) == 12 and hashes == {(t, n): corpus.requests_hash(t, native=n) for t in TARGETS for n in (False, True)}
     assert corpus.corpus_hash() == corpus.corpus_hash() and len(corpus.corpus_hash()) == 64
 
 
@@ -549,14 +583,19 @@ def test_a_changed_case_a_changed_base_or_a_changed_prompt_changes_the_fingerpri
         assert corpus.requests_hash("claims") == before_claims
         assert corpus.corpus_hash() == before_corpus, "the prompt is not the corpus: the two fingerprints say different things"
     assert corpus.requests_hash("review") == before_review
-    last = corpus.CASES[-1]
-    assert last.target == "claims"
+    at = len(attacks_review.ATTACKS) + len(attacks_extract.ATTACKS) + len(attacks_claims.ATTACKS) - 1
+    last = corpus.CASES[at]
+    assert last.target == "claims" and corpus.CASES[at + 1].target == "match"
+
+    def with_last(text: str) -> tuple[Case, ...]:
+        return (*corpus.CASES[:at], replace(last, attack=replace(last.attack, text=text)), *corpus.CASES[at + 1:])
+
     with monkeypatch.context() as m:
-        m.setattr(corpus, "CASES", (*corpus.CASES[:-1], replace(last, attack=replace(last.attack, text=last.attack.text + " again"))))
+        m.setattr(corpus, "CASES", with_last(last.attack.text + " again"))
         assert corpus.requests_hash("claims") != before_claims and corpus.corpus_hash() != before_corpus
         assert corpus.requests_hash("review") == before_review and corpus.requests_hash("extract") == before_extract
     with monkeypatch.context() as m:  # the door makes the same of a trailing space: the model reads the same, the corpus is another
-        m.setattr(corpus, "CASES", (*corpus.CASES[:-1], replace(last, attack=replace(last.attack, text=last.attack.text + " "))))
+        m.setattr(corpus, "CASES", with_last(last.attack.text + " "))
         assert corpus.requests_hash("claims") == before_claims and corpus.corpus_hash() != before_corpus
     real_subject = extract_v2.subject
 

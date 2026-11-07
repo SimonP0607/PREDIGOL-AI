@@ -9,9 +9,9 @@ import unicodedata
 
 import pytest
 
-from fbi.ai.battery import VERSION
 from fbi.ai.battery.model import (
     CANARY_MARK,
+    CANARY_SEED,
     Attack,
     Case,
     canary_of,
@@ -46,7 +46,7 @@ def test_an_item_of_an_extraction_is_one_string_and_a_case_is_named_by_its_place
 
 
 def test_the_code_word_is_made_of_the_case_and_the_version_so_it_is_stable_and_nobodys_guess() -> None:
-    expected = "ZQ" + hashlib.sha256(f"{VERSION}/review.ignore.4".encode()).hexdigest()[:8].upper()
+    expected = "ZQ" + hashlib.sha256(f"{CANARY_SEED}/review.ignore.4".encode()).hexdigest()[:8].upper()
     assert canary_of("review.ignore.4") == expected == canary_of("review.ignore.4")
     assert canary_of("review.ignore.4") != canary_of("review.ignore.5") != canary_of("extract.ignore.5")
     assert len(expected) == 10 and expected.isalnum()

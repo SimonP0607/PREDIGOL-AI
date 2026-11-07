@@ -81,7 +81,7 @@ def repetitions(target: str, case_ids: Sequence[str], *, again: int = AGAIN) -> 
 def task_of(ask: Ask, run: str, *, native: bool = False) -> Task:
     spec = corpus.target(ask.target)
     return Task(
-        purpose="other", tier=spec.tier, request=corpus.request_for(ask.target, ask.base, ask.case, native=native),
+        purpose="other", tier=spec.tier_of(ask.base), request=corpus.request_for(ask.target, ask.base, ask.case, native=native),
         prompt_version=VERSION, input_hash=_h(VERSION, run, ask.key), lab=True, typical_output=spec.typical_output,
         context={"lab": "battery", "run": run, "target": ask.target, "base": ask.base, "case": None if ask.case is None else ask.case.id,
                  "ask": ask.key, "stage": ask.stage})
@@ -160,7 +160,7 @@ def submit(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetime,
     """Send what is due of the battery as ONE batch of the LAB, all or nothing: the whole cost is estimated first and compared with what
     the LAB may still spend, and nothing is sent if it does not fit - or if the queue refuses any ask."""
     specs = [corpus.target(t) for t in targets]
-    stop = lab.blockers(settings, sorted({s.tier for s in specs}))
+    stop = lab.blockers(settings, sorted({tier for s in specs for tier in s.tiers}))
     if stop:
         return {"submitted": 0, "blockers": stop}
     tasks: list[Task] = []
@@ -207,12 +207,16 @@ def submit(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetime,
 def evidence_of(assessments: Mapping[str, Assessment], helds: Mapping[str, Held], runs: Mapping[str, str], offline_report: offline.OfflineReport,
                 *, native: bool) -> dict[str, Any]:
     """The evidence of the gate: the measurement itself - every ask's outcome - with what it was measured on, so that anyone can
-    recompute the decision (``evaluate.assess`` over ``asks``, with the corpus of ``corpus_hash``)."""
+    recompute the decision (``evaluate.assess`` over ``asks``, with the corpus of ``corpus_hash``). ``target_list`` and ``covers`` say
+    explicitly what it speaks for - every target, and the agent, the prompts and the contract of each - so that Gate B can check that
+    every agent that runs is covered without knowing the battery's own names."""
     return {
         "battery": VERSION, "native": native, "corpus_hash": corpus.corpus_hash(),
+        "target_list": list(assessments), "covers": [corpus.target(t).covers() for t in assessments],
         "models": sorted({m for h in helds.values() for m in h.models}),
         "rule": {"controls": CONTROLS, "again": AGAIN, "stable_min": evaluate.stable_min(CONTROLS)},
-        "targets": {t: {"prompt": corpus.target(t).prompt, "run": runs[t], "requests_hash": corpus.requests_hash(t, native=native),
+        "targets": {t: {"prompt": corpus.target(t).prompt, "agent": corpus.target(t).agent or None,
+                        "prompts": list(corpus.target(t).every_prompt), "contract": corpus.target(t).contract or None, "run": runs[t], "requests_hash": corpus.requests_hash(t, native=native),
                         "models": list(helds[t].models), "cost_usd": str(helds[t].cost), "assessment": assessments[t].as_json()}
                     for t in assessments},
         "offline": offline_report.as_json(),
@@ -288,4 +292,5 @@ def status(conn: psycopg.Connection[Any], *, at: datetime, native: bool = False,
             counts[o.state] = counts.get(o.state, 0) + 1
         runs[t] = {"run": rid, "asks": held.items, "open": len(held.open), "by_state": counts, "cost_usd": str(held.cost)}
     return {"at": at.isoformat(), "gate": state.as_json(), "fresh": not reasons, "stale": reasons, "runs": runs,
-            "corpus_hash": corpus.corpus_hash(), "version": VERSION}
+            "corpus_hash": corpus.corpus_hash(), "version": VERSION, "target_list": list(TARGETS),
+            "covers": [corpus.target(t).covers() for t in TARGETS]}

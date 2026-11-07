@@ -67,13 +67,15 @@ from fbi.ai.battery import (
     FAMILIES,
     MIN_CASES,
     PER_FAMILY,
-    TARGETS,
+    PROMPT_TARGETS,
     corpus,
     run,
 )
-from fbi.ai.battery import VERSION as BATTERY_VERSION
+from fbi.ai.battery import TARGETS as EVERY_TARGET
+from fbi.ai.battery import VERSION as BATTERY_IN_FORCE
 from fbi.ai.battery import claims as claims_target
 from fbi.ai.battery import extractor as extractor_target
+from fbi.ai.battery.model import CANARY_SEED
 from fbi.ai.calendar import day_start, local_day
 from fbi.ai.config import AiSettings, TierModel
 from fbi.ai.contracts import base, claim, mcp
@@ -107,6 +109,11 @@ def read_doc(*parts: str) -> str:
 
 
 GUIDE = read_doc("owner", "IA_FASE2.md")
+BATTERY_VERSION = CANARY_SEED
+"""The battery this guide documents: ``battery-v2``, the three prompts. ``battery-v3`` (IA-010) adds the agents' targets after them and keeps
+those three byte for byte (``test_battery_corpus``): what the guide says of them is still the code's, and a measurement of ``battery-v2`` no
+longer speaks for the battery in force."""
+TARGETS = PROMPT_TARGETS
 PHASE_0 = read_doc("owner", "IA_FASE0.md")
 PHASE_1 = read_doc("owner", "IA_FASE1.md")
 ACTIONS = read_doc("owner", "IA_ACCIONES_MANUALES.md")
@@ -1928,7 +1935,7 @@ def test_the_battery_gets_its_third_target_with_the_cases_the_bases_and_the_surf
     sec = section(9)
     assert "La regla de la batería (sección 12 de `IA_FASE1.md`) pide al menos 40 casos por cada prompt que lee texto ajeno" in sec
     assert "al menos 40 casos" in phase_1_section(12).replace("**", "") and MIN_CASES == 40
-    assert TARGETS == ("review", "extract", "claims") and "`extract-v2` es el tercero" in sec
+    assert TARGETS == ("review", "extract", "claims") == EVERY_TARGET[:3] and "`extract-v2` es el tercero" in sec
     assert corpus.target("claims").bases and claims_target.NOTES and extract_v2.request(extract_v2.user_message(
         extract_v2.match_block(7001, "Home FC", "Away CF", KICKOFF.isoformat(), "La Liga"), SUBJECTS, [one_page()])).system == prompts.EXTRACT_V2_SYSTEM
     said(r"Son (\d+) casos, (\d+) peticiones en la primera ronda", sec, len(corpus.cases_of("claims")), len(run.first_round("claims")))
@@ -1978,12 +1985,15 @@ def test_a_measurement_of_the_old_battery_does_not_speak_for_the_new_one_and_the
     sec = section(9)
     assert "La versión de la batería es `battery-v2`, y una medición hecha con `battery-v1` no habla de ella" in sec
     assert BATTERY_VERSION == "battery-v2" and "`battery-v1`" in inspect.getsource(importlib.import_module("fbi.ai.battery"))
-    evidence_now: dict[str, Any] = {"battery": BATTERY_VERSION, "corpus_hash": corpus.corpus_hash(),
-                    "targets": {t: {"requests_hash": corpus.requests_hash(t, native=False)} for t in TARGETS}}
+    assert BATTERY_IN_FORCE == "battery-v3", "IA-010 added the agents: the battery in force is the next version"
+    evidence_now: dict[str, Any] = {"battery": BATTERY_IN_FORCE, "corpus_hash": corpus.corpus_hash(),
+                    "targets": {t: {"requests_hash": corpus.requests_hash(t, native=False)} for t in EVERY_TARGET}}
     assert run.stale(evidence_now) == [], "a measurement of this battery speaks for it"
-    old = run.stale(evidence_now | {"battery": "battery-v1"})
-    assert old and old[0] == "measured with battery-v1, the battery is battery-v2"
-    assert run.stale(evidence_now | {"targets": {t: evidence_now["targets"][t] for t in ("review", "extract")}}) == ["the target claims was not measured"]
+    for older in ("battery-v1", BATTERY_VERSION):
+        old = run.stale(evidence_now | {"battery": older})
+        assert old and old[0] == f"measured with {older}, the battery is {BATTERY_IN_FORCE}"
+    assert run.stale(evidence_now | {"targets": {t: evidence_now["targets"][t] for t in EVERY_TARGET if t != "claims"}}) == [
+        "the target claims was not measured"]
     assert "**La batería real todavía no se ha lanzado**: necesita la clave y el sobre del LAB (tus acciones 5 y 7)" in sec
     assert re.search(r"^## Acción 5 · La clave `worker-lab`$", ACTIONS, flags=re.M)
     assert re.search(r"^## Acción 7 · La clave del LAB y los tres sobres$", ACTIONS, flags=re.M)
@@ -2298,7 +2308,7 @@ PREVIOUS_BATTERY = "battery-v1"
 def test_every_version_the_guide_names_is_a_version_of_the_code() -> None:
     named = VERSION_TOKEN.findall(GUIDE)
     assert len(named) >= 20, "the pattern no longer finds the versions of the guide"
-    in_force = {EXTRACT_V2_VERSION, base.CLAIM, base.MCP, cache.KEY_VERSION, BATTERY_VERSION}
+    in_force = {EXTRACT_V2_VERSION, base.CLAIM, base.MCP, cache.KEY_VERSION, BATTERY_VERSION, BATTERY_IN_FORCE}
     unknown = sorted(set(named) - in_force - {PREVIOUS_BATTERY})
     assert not unknown, f"the guide names versions that the code does not have: {unknown}"
     assert named.count(PREVIOUS_BATTERY) == 1 and "una medición hecha con `battery-v1` no habla de ella" in GUIDE
