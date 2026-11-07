@@ -21,6 +21,7 @@ import type {
 import { intlTag, t, translateOr } from "@/lib/i18n";
 import { fmtPct, toNumber } from "@/lib/i18n/format";
 import { MARKETS, selectionLabel } from "@/product/shared/markets";
+import { countryFromEnglish } from "@/product/matches/country";
 
 // ── Phase ───────────────────────────────────────────────────────────────────
 
@@ -912,6 +913,13 @@ function slug(s: string): string {
 function stageLabel(s: string): string {
   const known = translateOr(`match.round.stage.${slug(s)}`, "");
   if (known) return known;
+  // «Round of 128» is the round with 128 teams left: «1/64 de final» in Spanish, as «Round of 16» is «Octavos de final».
+  const roundOf = /^Round\s+of\s+(\d+)$/i.exec(s);
+  if (roundOf?.[1]) {
+    const teams = Number(roundOf[1]);
+    if (teams >= 2 && teams % 2 === 0)
+      return t("match.round.roundOf", { n: teams, half: teams / 2 });
+  }
   const patterns: Array<[RegExp, string, string]> = [
     [/^Group\s+(.+)$/i, "match.round.group", "name"],
     [/^League\s+([A-Z])$/i, "match.round.league", "name"],
@@ -938,6 +946,17 @@ export function roundLabel(round: string | null): string | null {
     return `${stageLabel(staged[1])} · ${t("match.round.matchday", { n: staged[2] })}`;
   }
   return stageLabel(r);
+}
+
+/**
+ * «Árbitro: J. Hernández Maeso (España)»: the referee's country in the reader's language (plan Partidos y Match Center,
+ * C3). The provider names it in English only; a country that cannot be named with certainty is left out rather than shown
+ * in English.
+ */
+export function refereeText(name: string, country: string | null | undefined): string {
+  const local = countryFromEnglish(country);
+  const who = t("match.header.referee", { name });
+  return local ? `${who} (${local})` : who;
 }
 
 /** How a selection is named in a tile: team names for 1X2, short forms where a title says the rest. */

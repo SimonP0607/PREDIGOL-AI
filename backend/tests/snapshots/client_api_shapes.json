@@ -42,6 +42,10 @@
   },
   {
    "date": "2026-11-07",
+   "reason": "Inicio 3.1a: /home trae los resultados de las últimas 24 h (results)"
+  },
+  {
+   "date": "2026-11-07",
    "reason": "UX-044: ParlayRecordLeg.why (plan de Inicio 2.4b)"
   }
  ],
@@ -1452,6 +1456,60 @@
     }
    ],
    "schemas": {
+    "CompetitionBadge": {
+     "properties": {
+      "country": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Country"
+      },
+      "flag_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Flag Url"
+      },
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "logo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Logo Url"
+      },
+      "name": {
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "name",
+      "country",
+      "logo_url",
+      "flag_url"
+     ],
+     "title": "CompetitionBadge",
+     "type": "object"
+    },
     "DataFreshness": {
      "properties": {
       "live_at": {
@@ -1521,6 +1579,10 @@
       "live": {
        "$ref": "#/components/schemas/Section_list_LiveMatch__"
       },
+      "results": {
+       "$ref": "#/components/schemas/Section_list_HomeResult__",
+       "description": "The matches that ended in the last 24 hours, the most recent first, six at most (``home_board.results``)."
+      },
       "source": {
        "enum": [
         "qualified",
@@ -1533,9 +1595,86 @@
      "required": [
       "source",
       "data_freshness",
-      "live"
+      "live",
+      "results"
      ],
      "title": "Home",
+     "type": "object"
+    },
+    "HomeResult": {
+     "description": "A match that ended in the last 24 hours (plan de Inicio, 3.1): who, where, the score and how it ended.",
+     "properties": {
+      "away": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "competition": {
+       "$ref": "#/components/schemas/CompetitionBadge"
+      },
+      "fixture_id": {
+       "title": "Fixture Id",
+       "type": "integer"
+      },
+      "goals_away": {
+       "title": "Goals Away",
+       "type": "integer"
+      },
+      "goals_home": {
+       "title": "Goals Home",
+       "type": "integer"
+      },
+      "home": {
+       "$ref": "#/components/schemas/TeamBadge"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "pens_away": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Pens Away"
+      },
+      "pens_home": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The shoot-out's score, when there was one.",
+       "title": "Pens Home"
+      },
+      "status": {
+       "description": "Over after 90 minutes, after extra time or after the shoot-out.",
+       "enum": [
+        "FT",
+        "AET",
+        "PEN"
+       ],
+       "title": "Status",
+       "type": "string"
+      }
+     },
+     "required": [
+      "fixture_id",
+      "kickoff_at",
+      "competition",
+      "home",
+      "away",
+      "status",
+      "goals_home",
+      "goals_away"
+     ],
+     "title": "HomeResult",
      "type": "object"
     },
     "LiveCompleteness": {
@@ -2137,6 +2276,48 @@
      "title": "Meta",
      "type": "object"
     },
+    "Section_list_HomeResult__": {
+     "properties": {
+      "code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Code"
+      },
+      "data": {
+       "items": {
+        "$ref": "#/components/schemas/HomeResult"
+       },
+       "title": "Data",
+       "type": "array"
+      },
+      "reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Reason"
+      },
+      "status": {
+       "$ref": "#/components/schemas/DataStatus"
+      }
+     },
+     "required": [
+      "status",
+      "data"
+     ],
+     "title": "Section[list[HomeResult]]",
+     "type": "object"
+    },
     "Section_list_LiveMatch__": {
      "properties": {
       "code": {
@@ -2177,6 +2358,36 @@
       "data"
      ],
      "title": "Section[list[LiveMatch]]",
+     "type": "object"
+    },
+    "TeamBadge": {
+     "properties": {
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "logo_url": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Logo Url"
+      },
+      "name": {
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "name",
+      "logo_url"
+     ],
+     "title": "TeamBadge",
      "type": "object"
     },
     "TeamStatLine": {
