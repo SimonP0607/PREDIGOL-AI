@@ -62,6 +62,19 @@ class LifecycleMetrics(Contract):
     retention_d30: LifecycleRate = Field(description="Accounts of 37-90 days active between their day 30 and 36.")
 
 
+class GuideRow(Contract):
+    guide: str = Field(description="The guide (general, home, matches, ..., profile).")
+    version: int
+    started: int = Field(description="Readers who started it in 30 days (a line stands only with min_subjects).")
+    completed: int
+    skipped: int
+    skipped_first: int = Field(description="Readers who skipped it on its first card.")
+    paused: int = Field(description="Readers who left it half way (Escape or back) to come back later.")
+    top_skip_step: int | None = Field(description="The step (0-based) where most readers skipped, if any did.")
+    top_skip_readers: int
+    review: bool = Field(description="One to look at again: descriptive and self-selected, there is no control group.")
+
+
 class ProductOverview(Contract):
     mode: Literal["off", "on", "consent"] = Field(description="FBI_PRODUCT_EVENTS: off records nothing.")
     purge: Literal["off", "dry", "on"] = Field(description="FBI_EVENTS_PURGE: dry counts, on deletes (the owner's OK).")
@@ -84,4 +97,6 @@ class ProductOverview(Contract):
                                                                            "from nothing.")
     teams: list[BreakdownRow] = Field(default_factory=list, description="Teams of the matches opened in 30 days: "
                                                                          "worked out from the match.")
+    guides: list[GuideRow] = Field(default_factory=list, description="What came of each guide and version in 30 days "
+                                                                    "(UX-054): groups only, never one reader.")
     lifecycle: LifecycleMetrics | None = Field(default=None, description="The customers' lifecycle (B11).")
