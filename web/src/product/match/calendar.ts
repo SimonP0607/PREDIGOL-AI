@@ -16,6 +16,7 @@ import type {
   MatchCalendar,
   TeamCalendar,
 } from "@/lib/api/v1/types_calendar";
+import { roundLabel } from "./model";
 
 /** The block's anchor. */
 export const CALENDAR_ID = "team-calendar";
@@ -110,9 +111,13 @@ export function incompleteNote(
   );
 }
 
-/** The team's matches of the page, one line each: where it stands before or after the match, the competition, the rival. */
+/**
+ * The team's matches of the page, one line each: the competition and its round as the header names it («La Liga · Jornada
+ * 11», «Copa del Rey · 1/64 de final»), never the provider's English («Regular Season - 11»).
+ */
 export function matchTitle(match: Pick<CalendarMatch, "competition" | "round">): string {
-  return match.round ? `${match.competition} · ${match.round}` : match.competition;
+  const round = roundLabel(match.round);
+  return round ? `${match.competition} · ${round}` : match.competition;
 }
 
 /** "vs Other FC (local)": who it was against and where; nothing when the provider did not name the rival. */
