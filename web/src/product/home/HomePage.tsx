@@ -9,13 +9,15 @@
  *
  *     1  Hoy en las ligas sugeridas   today's matches, in play first, with the forecast labelled and a line of the reading
  *     2  Picks del día                the published set with its real state - or why there is none - and PrediGol's parlays
- *     3  Partidos relevantes          today's other matches with a reading (only when there are some)
+ *     3  Partidos relevantes          the matches in play with a reason the server chose (final, second leg, a fight for the
+ *                                     title / Europe / relegation / promotion, a comeback) - only when there are some
  *     4  Noticias                     the confirmed or probable news of today's suggested matches (only with content)
- *     5  Qué se juega                 table or tie, rest and next match of the next suggested matches (only with content)
- *     6  Resultados                   the suggested leagues' last 48 hours
+ *     5  Qué se juega                 the matches of the next 36 hours with something at stake, one sentence each (only
+ *                                     with content)
+ *     6  En vivo, Últimos resultados  what else is in play, and the last 24 hours' results
  *
- *   then what is in play everywhere. Blocks 1, 4, 5 and 6 are the reader's own - and sit in «Para ti» - once
- *   they chose leagues or teams; the suggested ones are PrediGol's and are never called «tuyas». Without favourites, a discreet
+ *   Blocks 1 and 4 are the reader's own - and sit in «Para ti», with their own «Qué se juega» - once they chose leagues or
+ *   teams; the suggested ones are PrediGol's and are never called «tuyas». Without favourites, a discreet
  *   «Elige tus favoritos» opens the PrediGol layer. Every block loads, fails and retries on its own: a failure never reads as
  *   an empty list, and an empty block says why in plain words. Nothing here calls the AI.
  */
@@ -41,7 +43,8 @@ import { HomeHeader } from "./HomeHeader";
 import { LiveTiles } from "./LiveTiles";
 import { NewsBlock } from "./NewsBlock";
 import { SuggestionCard } from "@/product/favorites/SuggestionCard";
-import { ContextBlock, RelevantBlock, TodayBlock } from "./TodayBlocks";
+import { ContextBlock, TodayBlock } from "./TodayBlocks";
+import { AtStakeBlock, RelevantNowBlock } from "./HomeStakes";
 import { ResultsBlock } from "./ResultsBlock";
 import { layersOf } from "./layers";
 import { ChoosePrompt, ForYouEdit, ForYouPart, Layer } from "./ParaTi";
@@ -132,7 +135,15 @@ function HomeParlays({ board }: { board: BoardQuery }) {
 /** What is in play everywhere (GET /home), with its own loading and failure. */
 function LiveNow({ query }: { query: HomeQuery }) {
   const home = query.data?.data;
-  if (home) return <LiveTiles section={home.live} liveAt={home.data_freshness.live_at} />;
+  if (home) {
+    return (
+      <LiveTiles
+        section={home.live}
+        liveAt={home.data_freshness.live_at}
+        elsewhere={(home.relevant?.data.length ?? 0) > 0}
+      />
+    );
+  }
   return (
     <section data-testid="home-live">
       <SectionHeader
@@ -239,13 +250,9 @@ export function HomePage() {
           noPick={noPickLoad(today, (d) => d.no_pick.data)}
         />
         <HomeParlays board={board} />
-        <RelevantBlock {...common} />
-        {layers.mine ? null : (
-          <>
-            <NewsBlock query={news} now={now} />
-            <ContextBlock {...common} />
-          </>
-        )}
+        <RelevantNowBlock query={home} />
+        {layers.mine ? null : <NewsBlock query={news} now={now} />}
+        <AtStakeBlock query={home} now={now} />
         <LiveNow query={home} />
         <ResultsBlock query={home} now={now} />
       </Layer>

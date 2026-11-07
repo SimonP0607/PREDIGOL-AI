@@ -1,11 +1,12 @@
 """The visible state of the picks a page shows (plan UX, B3): the one table of ``fbi/picks/user_status.py``, fed with what the page
 already read and - only while the AI's review acts on picks - with the review's newest decision on each selection.
 
-Read only, and free while the review is not applied (production since the AI layer exists: ``FBI_AI_MODE=shadow``): the mode is a
-setting, so no query is made at all. In enforce mode it reads the shadow gate's newest report (``fbi.ai.gating.enforcement``)
-and the newest combined review of each selection made in the 12 hours before the moment asked about - the review the day's set
-reads (``fbi.ai.review.latest_reviews``; ``REVIEWS_SQL`` repeats its query so that a client's request never loads the module that
-calls the language models, and ``tests/unit/test_pick_status.py`` holds the two together).
+Read only. The review's rejections and downgrades keep a pick from a reader even while the review is not applied (shadow; UX-039,
+decision D1 of the plan de Inicio), so the newest combined review of each selection made in the 12 hours before the moment asked
+about is read in every mode but ``off`` - the review the day's set reads (``fbi.ai.review.latest_reviews``; ``REVIEWS_SQL`` repeats
+its query so that a client's request never loads the module that calls the language models, and ``tests/unit/test_pick_status.py``
+holds the two together). In enforce mode it also reads the shadow gate's newest report (``fbi.ai.gating.enforcement``), and only
+then do an approval, or its absence, count.
 """
 
 from __future__ import annotations
@@ -36,13 +37,14 @@ SELECT DISTINCT ON (r.fixture_id, r.market_key, r.selection, r.line)
 
 @dataclass(frozen=True)
 class Applied:
-    """Whether the AI's review acts on picks at a moment and, when it does, its newest decision on each selection."""
+    """Whether the AI's review acts on picks at a moment (``enforced``) and its newest decision on each selection, which keeps a
+    rejected or downgraded pick from a reader in any mode (D1)."""
 
     enforced: bool = False
     decisions: Mapping[SelectionKey, str] = field(default_factory=dict)
 
     def decision(self, fixture_id: int, market_key: str, selection: str, line: Decimal) -> str | None:
-        return self.decisions.get((int(fixture_id), market_key, selection, Decimal(line))) if self.enforced else None
+        return self.decisions.get((int(fixture_id), market_key, selection, Decimal(line)))
 
     def shown(self, *, pick_status: str | None, value: bool, fixture_id: int, market_key: str, selection: str,
               line: Decimal) -> user_status.Shown:
@@ -56,13 +58,15 @@ NOT_APPLIED: Final = Applied()
 
 
 def applied_now(conn: Conn, fixture_ids: Iterable[int], *, at: datetime) -> Applied:
-    """The AI's review as it stands at ``at`` for these matches: not applied (no query) unless the owner's switch is on AND the
-    shadow gate passed."""
-    if not enforcement(conn, AiSettings.from_env()).enforced:
+    """The AI's review as it stands at ``at`` for these matches: applied only when the owner's switch is on AND the shadow gate
+    passed; its decisions are read in every mode but ``off`` (no review is made then, so no query is)."""
+    settings = AiSettings.from_env()
+    enforced = enforcement(conn, settings).enforced
+    if settings.mode == "off":
         return NOT_APPLIED
     fixtures = sorted({int(f) for f in fixture_ids})
     if not fixtures:
-        return Applied(True)
+        return Applied(enforced)
     rows = fetch_all(conn, REVIEWS_SQL, {"fixtures": fixtures, "at": at, "hours": REVIEW_WINDOW_HOURS})
-    return Applied(True, {(int(r["fixture_id"]), r["market_key"], r["selection"], Decimal(r["line"])): str(r["decision"])
-                          for r in rows})
+    return Applied(enforced, {(int(r["fixture_id"]), r["market_key"], r["selection"], Decimal(r["line"])): str(r["decision"])
+                              for r in rows})

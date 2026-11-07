@@ -18,7 +18,7 @@ import { setLocale } from "@/lib/i18n";
 import { setTimeZone } from "@/lib/time";
 import { LiveApiError } from "@/lib/api/v1/client";
 import type { Following, Today, TodayMatch } from "@/lib/api/v1/types_today";
-import { ContextBlock, RelevantBlock, TodayBlock, type TodayQuery } from "./TodayBlocks";
+import { ContextBlock, TodayBlock, type TodayQuery } from "./TodayBlocks";
 
 setLocale("es");
 beforeEach(() => setTimeZone("America/Bogota"));
@@ -208,10 +208,9 @@ describe("one clock for every row (plan Inicio, 2.2)", () => {
   });
 });
 
-describe("3 · Partidos relevantes and 5 · Qué se juega", () => {
+describe("5 · Qué se juega (the reader's own, in «Para ti»)", () => {
   test("out of the page with nothing to show", async () => {
     const quiet = loaded(board([m({ at: NOW + H })]));
-    expect(await html(<RelevantBlock query={quiet} now={NOW} />)).toBe("");
     expect(await html(<ContextBlock query={quiet} now={NOW} />)).toBe("");
   });
 

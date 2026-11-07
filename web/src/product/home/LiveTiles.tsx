@@ -113,11 +113,15 @@ function LiveTile({ m }: { m: LiveMatch }) {
 export function LiveTiles({
   section,
   liveAt,
+  elsewhere = false,
 }: {
   section: Section<LiveMatch[]>;
   liveAt: string | null | undefined;
+  /** «Partidos relevantes» already shows matches in play: an empty «En vivo» then is not «nothing in play» and stays out. */
+  elsewhere?: boolean;
 }) {
   const matches = section.data.slice(0, 6);
+  if (matches.length === 0 && elsewhere) return null;
   return (
     <section data-testid="home-live">
       <SectionHeader
