@@ -81,6 +81,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-040 | Inicio, paso 2.3 (plan de Inicio): la tarjeta del pick del día lleva solo lo que un lector necesita — liga y hora, equipos, mercado y selección, cuota de referencia sin casa de apuestas, «PrediGol 52 % · mercado 39 %», nivel Alto/Medio (Alto si hasta la estimación prudente supera al mercado), estado, dos frases de por qué y «Más sobre este pick». Modelo, revisión, VE, etapa, hora de elección y casa quedan en «Auditoría», solo para el dueño en evaluación. «Más sobre este pick» abre `/matches/{id}?s=resumen&pick={id}`: el partido baja hasta ese pick, lo marca y abre su explicación (`?pick=` se lee de la dirección). Solo web; sin cambio de contrato ni de modelos. |
 | UX-050 | Profundizar en tres filas (plan Partidos y Match Center, F3): forma, tabla y cara a cara arriba sin huecos (dos en tableta, uno en móvil), el calendario solo a todo lo ancho y bajas con alineaciones abajo; ronda traducida («Octavos», «Fase liga»), país del árbitro con su nombre, plurales corregidos y fuera «efectivos». Solo presentación: no cambia datos, Estadísticas ni Alineaciones; sin migración | hecho | #85 | Plan Partidos F3 |
 | UX-060 | Mercados por categoría (plan Partidos y Match Center, F4b): la pestaña Mercados muestra Destacados y las categorías del catálogo (BE-004) con sus cuotas vigentes, cada mercado plegable con su línea principal, «Ver N líneas más», «Ver todas las casas» y la antigüedad del precio; los 5 mercados de siempre siguen yendo al parlay y los nuevos se consultan sin botón; las capturas técnicas pasan a Avanzado (solo dueño). Solo web; no cambia modelos, picks ni liquidación; sin migración | en curso | este PR | Plan Partidos F4b |
+| UX-061 | Origen de cada probabilidad (plan Partidos y Match Center, R6, decisión 4): junto a los picks publicados del partido, una línea dice que su probabilidad es la del modelo con el que PrediGol decide sus picks y que el Pronóstico usa el suyo (nombrado en cada mercado), para que dos cifras de la misma selección no parezcan un error. Solo texto en la web; la unificación de modelos queda en el roadmap de Intelligence; sin migración | en curso | este PR | Plan Partidos R6 |
 
 ## BE — backend
 
@@ -98,4 +99,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-017 · UX-061 · BE-006 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-017 · UX-062 · BE-006 · FE-001 · OPS-001 · DOC-001

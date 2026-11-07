@@ -408,7 +408,8 @@
     "subtitle": "La lectura de PrediGol para este partido",
     "risksLead": "Qué puede salir mal:",
     "picks": "Picks publicados",
-    "picksShadow": "Picks en evaluación"
+    "picksShadow": "Picks en evaluación",
+    "picksOrigin": "La probabilidad de cada pick es la del modelo con el que PrediGol decide sus picks. El Pronóstico usa su propio modelo (lo dice en cada mercado), así que la misma selección puede tener dos cifras distintas."
   },
   "priceStatus": {
     "title": "Sin cuota de casas",
