@@ -53,9 +53,10 @@ def test_a_link_is_derived_from_its_row_and_its_nonce_under_the_servers_key(monk
 
 
 def test_the_lifetimes_and_the_states_each_link_is_for() -> None:
-    lifetimes = {"invite": timedelta(days=7), "reset": timedelta(minutes=30), "unlock": timedelta(hours=1)}
+    lifetimes = {"invite": timedelta(days=7), "reset": timedelta(minutes=30), "unlock": timedelta(hours=1),
+                 "verify": timedelta(hours=24)}
     assert lifetimes == tokens.LIFETIME
-    assert tokens.STATUS_FOR == {"invite": "invited", "reset": "active", "unlock": "active"}
+    assert tokens.STATUS_FOR == {"invite": "invited", "reset": "active", "unlock": "active", "verify": "pending"}
     assert tokens.PER_HOUR == 3 and tokens.KEEP_DAYS == 30 and tokens.NONCE_BYTES == 32
     assert {t.grant for t in LINK_TEMPLATES.values()} == set(tokens.LIFETIME)
     assert {TEMPLATES[name].grant for name in account_mail.LINK_TEMPLATES.values()} == set(tokens.LIFETIME)
@@ -93,7 +94,8 @@ def test_the_purge_is_born_dry(monkeypatch: pytest.MonkeyPatch, raw: str | None,
 # ── the e-mails ───────────────────────────────────────────────────────────────────────
 
 def test_a_link_goes_only_in_the_buttons_address_and_the_queue_keeps_only_its_rows_number() -> None:
-    assert set(LINK_TEMPLATES) == {"invitation", "password_reset", "account_unlock", "activation_reminder"}
+    assert set(LINK_TEMPLATES) == {"invitation", "password_reset", "account_unlock", "activation_reminder",
+                                   "email_verification"}
     for t in LINK_TEMPLATES.values():
         assert t.params == ("grant",), t.name
         assert t.path is not None and t.path.endswith("#t={link}"), "in the fragment: never sent to a server"

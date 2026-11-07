@@ -18,6 +18,7 @@ import { formatDate, formatKickoff, formatRelative } from "@/lib/time";
 import type { ParlayRecord, ParlayRecordLeg, RecordKind } from "@/lib/api/v1/types_records";
 import { TeamLogo } from "@/components/football/Logos";
 import { PARLAY_ICON, parlayTitle } from "@/product/parlays/parlayText";
+import { LegFact } from "@/product/parlays/LegFact";
 import { LegNumber, LegPrice, LegRow } from "@/product/parlays/LegRow";
 import { legLabel, viewOfRecord } from "@/product/parlays/legs";
 import { EvaluationBadge, ParlayOutcomeBadge, RecordState, Units } from "./Badges";
@@ -62,6 +63,7 @@ function CompactLeg({ leg }: { leg: ParlayRecordLeg }) {
               {m.home.name} – {m.away.name}
             </span>
           </div>
+          <LegFact fact={leg.why} className="mt-1" />
         </div>
       </Link>
       <div className="flex shrink-0 flex-col items-end gap-1">
@@ -223,6 +225,7 @@ export function ParlayRecordCard({
     <article
       aria-label={title}
       data-testid={`parlay-record-${kind}`}
+      data-guide="parlays-official"
       data-status={parlay?.status ?? "NONE"}
       className={cn(
         "@container flex flex-col overflow-hidden rounded-xl border",

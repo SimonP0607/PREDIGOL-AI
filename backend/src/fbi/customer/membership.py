@@ -19,12 +19,15 @@ new period starts at the end of the one in force, or now when that one has ended
 Suspending is not disabling: a disabled account cannot sign in (a security measure that ends its sessions); a suspended
 one signs in and reads what a limited account reads.
 
-Two more states the reader never sees as a membership: ``none`` - no period at all (accounts from before A8 until the
-owner gives them one): full access, flagged in the console -, and ``exempt`` - the owner (SUPER_ADMIN) and the
-synthetic journey's account, never limited and never told.
+Two more states the reader never sees as a membership: ``none`` - no period at all: the account of a person who
+registered on their own and has not been given access yet (UX-063), or one from before A8 the owner has not given a
+period -, flagged in the console, limited like an ended one once the membership is enforced; and ``exempt`` - the owner
+(SUPER_ADMIN) and the synthetic journey's account, never limited and never told. Registering gives no trial: a trial
+is for an invitation, a courtesy or a coupon.
 
-FBI_MEMBERSHIP_ENFORCE (born off): only when it is on does ``expired`` or ``suspended`` limit anything; off, every
-account has full access and the states are still shown as they are. Nothing of PrediGol Intelligence is read or
+FBI_MEMBERSHIP_ENFORCE (born off): only when it is on does ``none``, ``expired`` or ``suspended`` limit anything; off,
+every account has full access and the states are still shown as they are. Before turning it on, give every live
+account its period: the console lists who has none. Nothing of PrediGol Intelligence is read or
 written here: a membership decides what a reader may open, never what the system computes.
 """
 
@@ -55,7 +58,7 @@ State = Literal["trial", "active", "expiring", "grace", "expired", "renewed", "s
 Kind = Literal["trial", "paid", "courtesy"]
 Milestone = Literal["before", "due", "grace_end"]
 
-LIMITED: frozenset[str] = frozenset({"expired", "suspended"})
+LIMITED: frozenset[str] = frozenset({"none", "expired", "suspended"})
 TRIAL_WARN = timedelta(days=3)
 WARN = timedelta(days=7)
 GRACE = timedelta(days=3)

@@ -15,7 +15,6 @@ import type { PlayerBadge } from "@/lib/api/v1/types_favorites";
 import type { CompetitionBadge, TeamBadge } from "@/lib/api/v1/types_product";
 import type { Today } from "@/lib/api/v1/types_today";
 import { whyText } from "@/product/home/why";
-import { stepPath } from "@/product/tour/steps";
 import { afterWelcome } from "@/product/welcome/next";
 import { FavoritesPicker } from "./FavoritesPicker";
 import { validEvent } from "@/lib/track";
@@ -181,19 +180,7 @@ describe("the welcome and the hints", () => {
   });
 });
 
-describe("the tour and the reasons", () => {
-  test("each step's page; the match is the first of today's board, else the list of matches", () => {
-    const today = { matches: { data: [{ fixture_id: 42 }] } } as unknown as Today;
-    expect([stepPath("home", today), stepPath("match", today), stepPath("pick", today)]).toEqual([
-      "/home",
-      "/matches/42",
-      "/picks",
-    ]);
-    expect(stepPath("parlay", today)).toBe("/parlays");
-    expect(stepPath("myPicks", null)).toBe("/my-picks");
-    expect(stepPath("match", null)).toBe("/matches");
-  });
-
+describe("the reasons", () => {
   test("why a match shows, in both languages", () => {
     expect(whyText({ kind: "team", names: ["Nacional", "Millonarios"] }).label).toBe(
       "Sigues a Nacional y Millonarios",

@@ -89,9 +89,16 @@ def test_a_suspension_limits_until_it_is_lifted_and_will_not_renew_is_remembered
     assert not compute([paid], intent, T0 + 3 * DAY, enforce=True).will_not_renew
 
 
-def test_without_a_period_nothing_is_limited() -> None:
+def test_without_a_period_nothing_is_limited_until_the_membership_is_enforced() -> None:
+    free = compute([], [], T0, enforce=False)
+    assert (free.state, free.limited, free.ends_at, free.days_left(T0)) == ("none", False, None, None)
+
+
+def test_without_a_period_the_account_is_limited_once_the_membership_is_enforced() -> None:
+    """A registered reader has no trial: until a period is recorded for it, it reads its own records only."""
     m = compute([], [], T0, enforce=True)
-    assert (m.state, m.limited, m.ends_at, m.days_left(T0)) == ("none", False, None, None)
+    assert (m.state, m.limited, m.ends_at, m.days_left(T0)) == ("none", True, None, None)
+    assert "none" in ms.LIMITED
 
 
 def test_days_left_round_up_and_end_at_zero() -> None:

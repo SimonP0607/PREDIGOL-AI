@@ -8,6 +8,7 @@ import { expect, request, test as setup } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { ACCOUNTS, credentials, statePath, totpSecret, type AccountName } from "./accounts";
+import { quietGuides } from "./support";
 import { nextCode } from "./totp";
 
 const BASE = process.env["E2E_BASE_URL"] ?? "http://127.0.0.1:5173";
@@ -60,6 +61,9 @@ for (const name of Object.keys(ACCOUNTS) as AccountName[]) {
       });
       expect(accepted.status(), `${name} accepts the current texts`).toBe(200);
     }
+    // The guides come up by themselves on a reader's first visits (plan UX-051 to UX-053): the shared QA readers have
+    // seen them, so the suite reads the product, not the guides. Their own tests make accounts that have not.
+    if (me.role === "USER") await quietGuides(ctx);
     mkdirSync(dirname(statePath(name)), { recursive: true });
     await ctx.storageState({ path: statePath(name) });
     await ctx.dispose();

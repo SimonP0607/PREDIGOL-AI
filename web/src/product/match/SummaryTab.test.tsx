@@ -12,7 +12,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { setLocale } from "@/lib/i18n";
 import type { MatchCtx } from "./context";
 import { readFileSync } from "node:fs";
-import { BEFORE_KICKOFF_ORDER, BeforeKickoffLayout, DeepenSection } from "./SummaryTab";
+import {
+  BEFORE_KICKOFF_ORDER,
+  BeforeKickoffLayout,
+  DeepenLayout,
+  DeepenSection,
+} from "./SummaryTab";
 
 setLocale("es");
 afterEach(() => setLocale("es"));
@@ -47,6 +52,71 @@ describe("«Profundizar»", () => {
     expect(html).toContain("Go deeper");
     expect(html).toContain("Form, table, head to head, calendar, absences and line-ups");
     expect(html).not.toContain("Profundizar");
+  });
+});
+
+describe("«Profundizar» opened: three rows with no gaps (plan Partidos y Match Center, D1)", () => {
+  const stub = (id: string) => <section data-testid={`stub-${id}`} />;
+  const html = renderToStaticMarkup(
+    <DeepenLayout
+      blocks={{
+        form: stub("form"),
+        table: stub("table"),
+        h2h: stub("h2h"),
+        calendar: stub("calendar"),
+        absences: stub("absences"),
+        lineups: stub("lineups"),
+      }}
+    />,
+  );
+  /** The class of the row with that test id, and the stubs it holds, in order. */
+  function row(id: string): { cls: string; holds: string[] } {
+    const start = html.indexOf(`data-testid="${id}"`);
+    expect(start).toBeGreaterThan(-1);
+    const open = html.lastIndexOf("<div", start);
+    const cls = /class="([^"]*)"/.exec(html.slice(open, start))?.[1] ?? "";
+    const next = ["deepen-row-context", "deepen-row-calendar", "deepen-row-squads"]
+      .map((r) => html.indexOf(`data-testid="${r}"`))
+      .filter((i) => i > start)
+      .sort((a, b) => a - b)[0];
+    const body = html.slice(start, next ?? html.length);
+    return { cls, holds: [...body.matchAll(/data-testid="stub-(\w+)"/g)].map((m) => m[1] ?? "") };
+  }
+
+  test("row 1: form, table and head to head, aligned at the top and never stretched; two on a tablet, one on a phone", () => {
+    const r = row("deepen-row-context");
+    expect(r.holds).toEqual(["form", "table", "h2h"]);
+    expect(r.cls.split(" ")).toEqual(
+      expect.arrayContaining(["grid", "items-start", "md:grid-cols-2", "lg:grid-cols-3"]),
+    );
+    expect(r.cls.split(" ")).not.toContain("grid-cols-2");
+    // on a tablet the head to head takes the second row whole, not half of it
+    expect(html).toContain('class="min-w-0 md:col-span-2 lg:col-span-1"');
+  });
+
+  test("row 2: the calendar alone, across the whole width", () => {
+    const r = row("deepen-row-calendar");
+    expect(r.holds).toEqual(["calendar"]);
+    expect(r.cls).not.toContain("grid");
+  });
+
+  test("row 3: absences and line-ups in two columns, aligned at the top", () => {
+    const r = row("deepen-row-squads");
+    expect(r.holds).toEqual(["absences", "lineups"]);
+    expect(r.cls.split(" ")).toEqual(
+      expect.arrayContaining(["grid", "items-start", "md:grid-cols-2"]),
+    );
+    expect(r.cls).not.toContain("lg:grid-cols-3");
+  });
+
+  test("every cell may shrink below its content's width: nothing pushes the page sideways at 320 px", () => {
+    const cells = [
+      ...html.matchAll(
+        /<div class="([^"]*)"(?: data-testid="[^"]*")?><section data-testid="stub-/g,
+      ),
+    ].map((m) => m[1] ?? "");
+    expect(cells.length).toBe(6);
+    for (const cls of cells) expect(cls.split(" ")).toContain("min-w-0");
   });
 });
 

@@ -140,6 +140,14 @@ describe("PrediGol Intelligence, before kick-off", () => {
     expect(html).toContain("Picks publicados");
     expect(html).toContain('data-shadow="false"');
     expect(html).not.toContain("MODO EVALUACIÓN");
+    // decision 4 of the plan: the pick's probability says which model it comes from, apart from the forecast's
+    expect(html).toContain('data-testid="match-picks-origin"');
+    expect(html).toContain("modelo con el que PrediGol decide sus picks");
+  });
+
+  test("no published pick, no word about where a pick's probability comes from", () => {
+    const html = render({ status: "success", picks: [], shadow: false, top: [] });
+    expect(html).not.toContain('data-testid="match-picks-origin"');
   });
 
   test("the owner's preview: the picks in evaluation, each labelled - and an empty one says so", () => {

@@ -217,7 +217,7 @@ def test_off_the_routes_do_not_exist_the_owner_cannot_invite_and_nothing_is_queu
         fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(tokens.SWITCH, "0")
     c = anon()
-    assert c.get("/api/v1/auth/options").json() == {"self_service": False}
+    assert c.get("/api/v1/auth/options").json() == {"self_service": False, "signup": False}
     link = secrets.token_urlsafe(32)
     for path, body in (("/api/v1/auth/password/forgot", {"email": f"x@{DOMAIN}"}),
                        ("/api/v1/auth/unlock/request", {"email": f"x@{DOMAIN}"}),
@@ -736,7 +736,7 @@ def test_old_links_are_counted_and_deleted_only_once_the_owner_says_so(fresh: st
 
 
 def test_the_options_say_whether_recovery_by_email_works(fresh: str) -> None:
-    assert anon().get("/api/v1/auth/options").json() == {"self_service": True}
+    assert anon().get("/api/v1/auth/options").json() == {"self_service": True, "signup": False}
     owner = signed_in(OWNER)
     assert owner.get("/api/v1/admin/users/self-service").json() == {"self_service": True, "email_sending": False}
     assert anon().get("/api/v1/admin/users/self-service").status_code == 401

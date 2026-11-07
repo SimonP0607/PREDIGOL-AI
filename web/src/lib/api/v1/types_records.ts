@@ -5,6 +5,7 @@
  */
 import type { Dec, Iso, MatchPhase } from "./types";
 import type { CompetitionBadge, StatusReason, TeamBadge, UserStatus } from "./types_product";
+import type { ReadingFact } from "./types_reading";
 
 export type ResultStatus = "PENDING" | "WIN" | "LOSS" | "PUSH" | "VOID" | "HALF_WIN" | "HALF_LOSS";
 export type ParlayStatus =
@@ -144,6 +145,11 @@ export interface ParlayRecordLeg {
   status: ResultStatus;
   ai?: ItemAi | null;
   ai_latest?: AiLatest | null;
+  /**
+   * One line of why this leg: a fact of the match's reading that stands behind the side the leg backs, as the reading words
+   * it. Null when the match has none (nothing is made up). Absent from an API older than 2.4b.
+   */
+  why?: ReadingFact | null;
 }
 
 export type RecordKind = "daily" | "multiday";

@@ -66,6 +66,15 @@ describe("the membership in words", () => {
     expect(bannerText(m({ state: "expired", limited: true }))).toContain("Acceso limitado");
     expect(bannerText(m({ state: "expired", limited: false }))).not.toContain("Acceso limitado");
     expect(bannerText(m({ state: "suspended", limited: true }))).toContain("suspendida");
+    // a registered account has no trial: enforced, it waits for its first period and says so
+    expect(bannerText(m({ state: "none", ends_at: null, limited: true }))).toContain(
+      "aún no tiene el acceso",
+    );
+    setLocale("en");
+    expect(bannerText(m({ state: "none", ends_at: null, limited: true }))).toContain(
+      "does not have access to PrediGol yet",
+    );
+    setLocale("es");
   });
 
   test("days left are said only while the cover runs", () => {

@@ -9,7 +9,7 @@ import { localDecimalText, localInt } from "@/lib/i18n/format";
 import { formatDateLong } from "@/lib/time";
 
 /** What a limited account still opens: its profile (with its membership and its data), its saved picks, the help and
- * the legal texts. The server refuses the rest of the product (403 membership_expired / membership_suspended). */
+ * the legal texts. The server refuses the rest of the product (403 membership_expired / membership_suspended / membership_required). */
 export function isLimitedPath(path: string): boolean {
   const p = path.replace(/\/+$/, "") || "/";
   return (
@@ -75,6 +75,9 @@ export function bannerText(m: MembershipSummary): string | null {
         : t("profile.membership.line.expired");
     case "suspended":
       return t("profile.membership.banner.suspended");
+    case "none":
+      // A registered account has no trial: while the membership is enforced it waits for its first period.
+      return m.limited ? t("profile.membership.banner.none") : null;
     default:
       return null;
   }

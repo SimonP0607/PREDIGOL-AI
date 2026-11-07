@@ -15,9 +15,17 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { setLocale } from "@/lib/i18n";
-import type { StandingLine, TableRow } from "@/lib/api/v1/types_center";
+import type { H2HMatch, StandingLine, TableRow } from "@/lib/api/v1/types_center";
 import type { MatchCtx } from "./context";
-import { FormBlock, FullTable, StandingsBlock } from "./ContextBlocks";
+import {
+  AbsencesBlock,
+  FormBlock,
+  FullTable,
+  H2HBlock,
+  LineupsTeaser,
+  StandingsBlock,
+} from "./ContextBlocks";
+import { DeepenLayout } from "./SummaryTab";
 
 setLocale("es");
 
@@ -154,5 +162,85 @@ describe("the full table names its columns", () => {
     } finally {
       setLocale("es");
     }
+  });
+});
+
+/** One meeting of the two teams, a draw. */
+function meeting(): H2HMatch {
+  return {
+    fixture_id: 9001,
+    kickoff_at: "2025-04-12T15:00:00Z",
+    competition: "Premier League",
+    home: "Livyi Bereh",
+    away: "Zorya Luhansk",
+    goals_home: 1,
+    goals_away: 1,
+    regulation_goals_home: 1,
+    regulation_goals_away: 1,
+    after_extra_time: false,
+    penalties_home: null,
+    penalties_away: null,
+    scope: "same_competition",
+    home_side_was: "home",
+  } as H2HMatch;
+}
+
+describe("«Profundizar» opened, with its own blocks (plan Partidos y Match Center, D1)", () => {
+  const full = {
+    ...ctx,
+    center: {
+      ...ctx.center,
+      data: {
+        ...ctx.center.data,
+        h2h: { status: "ok", data: [meeting()], reason: null },
+        absences: { status: "empty", data: [], reason: null },
+        lineups: { status: "empty", data: [], reason: null },
+      },
+    },
+  } as unknown as MatchCtx;
+
+  async function opened(): Promise<string> {
+    return html(
+      <DeepenLayout
+        blocks={{
+          form: <FormBlock ctx={full} />,
+          table: <StandingsBlock ctx={full} />,
+          h2h: <H2HBlock ctx={full} />,
+          calendar: <section data-testid="calendar-stub" />,
+          absences: <AbsencesBlock ctx={full} />,
+          lineups: <LineupsTeaser ctx={full} />,
+        }}
+      />,
+    );
+  }
+
+  test("the same blocks, in reading order: form, table, head to head, calendar, absences, line-ups", async () => {
+    const out = await opened();
+    const at = [
+      "Forma reciente",
+      "Tabla de posiciones",
+      "Enfrentamientos directos",
+      "calendar-stub",
+      "Bajas",
+      "Alineaciones",
+    ].map((x) => out.indexOf(x));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+  });
+
+  test("each block's card may shrink to its column (min-w-0), and the names in it still wrap", async () => {
+    const out = await opened();
+    const cards = [...out.matchAll(/<div class="min-w-0[^"]*"><section class="([^"]*)"/g)].map(
+      (m) => m[1] ?? "",
+    );
+    expect(cards.length).toBe(5);
+    for (const cls of cards) expect(cls.split(" ")).toContain("min-w-0");
+    expect(out).toContain("Zorya Luhansk");
+  });
+
+  test("one meeting is «1 partido», never «1 partidos»", async () => {
+    const out = await opened();
+    expect(out).toContain(">1 partido<");
+    expect(out).not.toContain("1 partidos");
   });
 });
