@@ -203,6 +203,41 @@ describe("a failed refresh keeps what was already on the page (plan Inicio, 1.4)
   test("an answer that is fine carries no notice", async () => {
     const markup = await html(<TodayBlock query={loaded(board([m({ at: NOW + H })]))} now={NOW} />);
     expect(markup).not.toContain('data-testid="stale-note"');
+
+describe("one clock for every row (plan Inicio, 2.2)", () => {
+  const live = (over: Partial<TodayMatch>) =>
+    m({ at: NOW - 50 * 60_000, status_group: "live", goals_home: 1, goals_away: 0, ...over });
+
+  test("the minute carries its stoppage time", async () => {
+    const row = live({ status: "2H", elapsed: 90, extra: 4 });
+    const page = text(await html(<TodayBlock query={loaded(board([row]))} now={NOW} />));
+    expect(page).toContain("90+4'");
+  });
+
+  test("a break says its word, the same as the live list", async () => {
+    const half = live({ status: "HT", elapsed: 45 });
+    const page = text(await html(<TodayBlock query={loaded(board([half]))} now={NOW} />));
+    expect(page).toContain("Descanso");
+    expect(page).not.toContain("Desc.");
+    const pens = live({ status: "P", elapsed: 120 });
+    expect(text(await html(<TodayBlock query={loaded(board([pens]))} now={NOW} />))).toContain(
+      "Penales",
+    );
+  });
+
+  test("a result after a shoot-out says so, with the shoot-out", async () => {
+    const done = m({
+      at: NOW - 5 * H,
+      status_group: "finished",
+      status: "PEN",
+      goals_home: 1,
+      goals_away: 1,
+      pens_home: 4,
+      pens_away: 3,
+    });
+    const page = text(await html(<ResultsBlock query={loaded(board([done]))} now={NOW} />));
+    expect(page).toContain("Final (pen.)");
+    expect(page).toContain("pen. 4-3");
   });
 });
 

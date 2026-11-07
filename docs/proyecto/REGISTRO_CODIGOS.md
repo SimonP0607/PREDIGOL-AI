@@ -68,6 +68,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-028 | Inicio, paso 1.1 (plan de Inicio): el tablero «En vivo» solo lista partidos que se juegan. Un cierre del feed de partidos (FT, AET, PEN, aplazado, cancelado…) gana sobre el feed de cuotas rezagado, y una fila que solo trae el feed de cuotas exige un inicio ya pasado (un «Not Started» ya no sale como en vivo). Solo cambia la consulta del tablero; no toca modelos, picks ni IA; sin migración | en curso | este PR | — |
 | UX-034 | Inicio, paso 1.3 (plan de Inicio): los parlays dicen su estado real. «Por empezar» mientras ninguna pierna ha empezado (antes salía «En juego»), «En juego» con una pierna en curso, «Va ganando» con piernas ganadas y ninguna fallada, y el resumen cuenta como están las piernas («1 fallada · 5 pendientes» en vez de «0 de 6 acertadas»). La probabilidad pasa a llamarse «Probabilidad de acertar todas» y lo de «prudente» queda en su ayuda. Solo web; no toca modelos, picks ni IA; sin migración | en curso | este PR | — |
 | UX-035 | Inicio, paso 1.4 (plan de Inicio): un fallo de recarga ya no borra lo que se veía (Hoy, Resultados, picks del día y los picks de tus partidos mantienen sus datos con un aviso pequeño «No se pudo actualizar» y «Reintentar»), Inicio recarga al volver a la app cuando sus datos tienen más de 15 s, y «Para ti» del dueño deja de mostrar un esqueleto que nunca se llena. Solo web; no toca modelos, picks ni IA; sin migración | en curso | este PR | — |
+| UX-037 | Inicio, paso 2.2 (plan de Inicio): un solo reloj de partido. Las filas de Inicio ganan lo que les faltaba (el tiempo añadido, «90+4'», y la tanda de penales de un resultado, «Final (pen.)» con «pen. 4-3»), y todas las pantallas dicen lo mismo del mismo momento: «Descanso» (no «Desc.»), «Pausa», «Penales», «Prórroga», «Interrumpido» y «Suspendido». `/today` añade `extra`, `pens_home` y `pens_away` (campos nuevos, opcionales). No toca modelos, picks ni IA; sin migración | en curso | este PR | — |
 
 ## BE — backend
 
@@ -83,4 +84,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-015 · UX-037 · BE-004 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-015 · UX-038 · BE-004 · FE-001 · OPS-001 · DOC-001

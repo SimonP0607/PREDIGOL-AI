@@ -70,7 +70,7 @@ NEXT_DAYS: Final = 120
 
 MATCHES_SQL = """
 SELECT f.id AS fixture_id, f.kickoff_at, f.status_group, f.status_short, r.goals_home AS final_home,
-       r.goals_away AS final_away, c.provider_league_id, c.tier,
+       r.goals_away AS final_away, r.pen_home, r.pen_away, c.provider_league_id, c.tier,
        f.home_team_id, th.name AS home_name, th.logo_url AS home_logo, th.is_national AS home_national,
        f.away_team_id, ta.name AS away_name, ta.logo_url AS away_logo, ta.is_national AS away_national,
        c.id AS competition_id, c.name AS competition_name, c.country AS competition_country,
@@ -259,6 +259,9 @@ def today(conn: Conn, *, at: datetime | None = None) -> Envelope[Today]:
             fixture_id=fid, kickoff_at=r["kickoff_at"], status_group=str(r["status_group"]),
             status=state.status if state is not None else r["status_short"],
             elapsed=state.elapsed if state is not None else None,
+            extra=state.extra if state is not None else None,
+            pens_home=int(r["pen_home"]) if finished and r["pen_home"] is not None else None,
+            pens_away=int(r["pen_away"]) if finished and r["pen_away"] is not None else None,
             goals_home=state.goals_home if state is not None else (int(r["final_home"]) if finished else None),
             goals_away=state.goals_away if state is not None else (int(r["final_away"]) if finished else None),
             competition=_competition(r),

@@ -132,7 +132,11 @@ export function minuteText(
   return `${elapsed}${extra ? `+${extra}` : ""}'`;
 }
 
-/** A short label for a narrow column: 67', 45+2' - or Desc. / HT, 1T / 1H... when no minute fits. */
+/**
+ * The one clock of a match for every row, tile and card (plan Inicio, 2.2): the minute with its stoppage time («67'»,
+ * «45+2'») while the ball rolls; the state in a word - «Descanso», «Pausa», «Penales», «Interrumpido», «Suspendido» - when
+ * there is no minute to show; «1T» / «Vivo» when the minute is not known yet.
+ */
 export function liveLabel(
   status: string | null | undefined,
   elapsed: number | null | undefined,
@@ -141,7 +145,9 @@ export function liveLabel(
   const short = shortStatus(status);
   const phase = phaseOf(short);
   const clock = translateOr(`matches.clock.${short}`, t("matches.clock.LIVE"));
-  if (phase === "pause" || phase === "pens" || phase === "stopped") return clock;
+  if (phase === "pause" || phase === "pens" || phase === "stopped") {
+    return short === "HT" ? t("common.status.halftime") : translateOr(`live.clock.${short}`, clock);
+  }
   return minuteText(elapsed, extra) ?? clock;
 }
 
