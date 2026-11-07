@@ -319,7 +319,7 @@ def test_stakes_press_only_within_two_wins() -> None:
     late = ctx.stakes(table, 3, remaining=2)
     assert late is not None and late.pressure == "promotion"
     assert ctx.stakes(table, 6, remaining=29).pressure == "relegation"  # type: ignore[union-attr]  # in the zone
-    assert eighth.as_json()["rule"] == "stakes-v2"
+    assert eighth.as_json()["rule"] == "stakes-v3"
 
 
 def test_importance_and_absence_weight() -> None:
