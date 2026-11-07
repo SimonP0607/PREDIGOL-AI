@@ -357,6 +357,33 @@ export function latestCapture(quotes: readonly MarketQuote[], source: MarketQuot
   );
 }
 
+/**
+ * How far a quote's capture may be from the newest one of its source and still be current: the quotes of one capture share
+ * almost the same `captured_at` (a capture takes seconds to a few minutes), and the next capture is further away than this.
+ */
+export const CURRENT_CAPTURE_TOLERANCE_MS = 10 * 60_000;
+
+/**
+ * The quotes still in force (plan Partidos y Match Center, R5): those of the source's newest capture, within
+ * `CURRENT_CAPTURE_TOLERANCE_MS` of it. A bookmaker that withdrew a price is absent from the newest capture, so its last
+ * (older) quote is left out instead of standing as the best price. Nothing is filled in: a market with no current quote
+ * is simply not among them.
+ */
+export function currentQuotes(
+  quotes: readonly MarketQuote[],
+  source: MarketQuote["source"],
+): MarketQuote[] {
+  const latest = latestCapture(quotes, source);
+  const newest = latest === null ? NaN : Date.parse(latest);
+  if (!Number.isFinite(newest)) return [];
+  const from = newest - CURRENT_CAPTURE_TOLERANCE_MS;
+  return quotes.filter((q) => {
+    if (q.source !== source) return false;
+    const at = Date.parse(q.captured_at);
+    return Number.isFinite(at) && at >= from;
+  });
+}
+
 // ── In-play prices (one source, no bookmaker dimension) ─────────────────────
 
 export interface LivePrice {
