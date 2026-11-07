@@ -3,6 +3,8 @@
  * the press about the match, as cards with their seven elements - confirmed and probable first, then contradictions, rumours
  * and the outdated, each group named. No coverage is said with the plan's exact sentence; the owner having turned the news off
  * is said too, never hidden; a failure shows its reference and a retry. Reading only: no visit searches the web or calls an AI.
+ * From IA-016 the header says when the match was last searched and how many pages were read, and an empty list tells «not searched yet»
+ * from «searched, nothing found».
  */
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { ChevronRight, Newspaper } from "lucide-react";
@@ -11,10 +13,18 @@ import { track } from "@/lib/track";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "@/product/match/context";
 import { NewsCard } from "./NewsCard";
-import { groups } from "./news";
+import { emptyText, groups, searchLine } from "./news";
 import { useNews, type NewsLoad } from "./useNews";
 
-function Frame({ children, count }: { children: ReactNode; count?: number }) {
+function Frame({
+  children,
+  count,
+  search,
+}: {
+  children: ReactNode;
+  count?: number;
+  search?: string | null;
+}) {
   const id = useId();
   return (
     <section
@@ -32,6 +42,11 @@ function Frame({ children, count }: { children: ReactNode; count?: number }) {
             <span className="min-w-0 break-words">{t("match.news.title")}</span>
           </h2>
           <p className="mt-0.5 text-xs text-muted-foreground">{t("match.news.note")}</p>
+          {search ? (
+            <p className="mt-0.5 text-caption text-subtle-foreground" data-testid="news-search">
+              {search}
+            </p>
+          ) : null}
         </div>
         {count ? (
           <span className="shrink-0 text-caption text-subtle-foreground" data-testid="news-count">
@@ -78,11 +93,18 @@ export function NewsView({ load, now }: { load: NewsLoad; now?: number | undefin
     );
   }
   const items = envelope.data.items;
+  const search = envelope.data.search;
+  const searched = searchLine(search, now);
   if (!items.length) {
     return (
-      <Frame>
-        <p className="text-sm text-muted-foreground" data-empty-state data-testid="news-empty">
-          {t("match.news.empty")}
+      <Frame search={search?.searched === "yes" ? searched : null}>
+        <p
+          className="text-sm text-muted-foreground"
+          data-empty-state
+          data-testid="news-empty"
+          data-searched={search?.searched ?? "unknown"}
+        >
+          {emptyText(search)}
         </p>
       </Frame>
     );
@@ -91,7 +113,7 @@ export function NewsView({ load, now }: { load: NewsLoad; now?: number | undefin
   // page opens on what is confirmed or probable; open when they are all there is (a page of folded groups reads as empty).
   const folded = items.some((i) => i.status !== "RUMOR" && i.status !== "OUTDATED");
   return (
-    <Frame count={items.length}>
+    <Frame count={items.length} search={searched}>
       {groups(items).map(({ group, items: shown }, i) => {
         const cards = (
           <>

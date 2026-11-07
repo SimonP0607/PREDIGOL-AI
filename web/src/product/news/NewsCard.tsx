@@ -2,7 +2,8 @@
  * One news card (plan UX, A10; section 27) with its seven elements: the headline (kind and protagonist), the source and its
  * standing in words, the time in the reader's zone, PrediGol's own summary (never the article), the relevance for the match,
  * the status - in words, never only a colour, its explanation on a tap - and the link to the original in a new tab
- * (`rel="noopener noreferrer"`). A contradiction is one card with each claim and its own sources.
+ * (`rel="noopener noreferrer"`). A contradiction is one card with each claim and its own sources. From IA-016 it also says its relation
+ * with the match: what it is about and which side it touches.
  */
 import { useId } from "react";
 import {
@@ -15,6 +16,7 @@ import {
   SignalHigh,
   SignalLow,
   SignalMedium,
+  Tag,
 } from "lucide-react";
 import { hintProps } from "@/components/system/tapHint";
 import { t } from "@/lib/i18n";
@@ -24,6 +26,7 @@ import type { NewsClaim, NewsItem, NewsRelevance, NewsStatus } from "@/lib/api/v
 import {
   headline,
   kindLabel,
+  relation,
   shownInSpanish,
   summaryLang,
   sourceLine,
@@ -84,6 +87,23 @@ export function RelevanceChip({ relevance }: { relevance: NewsRelevance }) {
     >
       <Icon aria-hidden className="h-3 w-3 shrink-0" />
       {t(`match.news.relevance.${relevance}`)}
+      <span className="sr-only">: {help}</span>
+    </span>
+  );
+}
+
+/** What the card has to do with the match (IA-016): its topic and the side it touches, from what the card already carries. */
+export function RelationChip({ item }: { item: Pick<NewsItem, "kind" | "team"> }) {
+  const help = t("match.news.relationHelp");
+  return (
+    <span
+      {...hintProps(help)}
+      data-testid="news-relation"
+      data-kind={item.kind}
+      className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-micro font-medium text-muted-foreground"
+    >
+      <Tag aria-hidden className="h-3 w-3 shrink-0" />
+      {relation(item)}
       <span className="sr-only">: {help}</span>
     </span>
   );
@@ -178,6 +198,7 @@ export function NewsCard({ item, now }: { item: NewsItem; now?: number | undefin
       <div className="flex flex-wrap items-center gap-1.5">
         <StatusChip status={item.status} />
         <RelevanceChip relevance={item.relevance} />
+        <RelationChip item={item} />
         <time
           dateTime={item.published_at ?? item.seen_at}
           {...hintProps(whenTitle(item))}

@@ -24,6 +24,10 @@ or the team's eleven); medium - the same without a name, or the coach; low - the
 **A contradiction is shown as such, with both sources**: the items of one subject (the same player of the same team) that
 contradict each other become one card with each claim and its own sources.
 
+**Whether it was searched** (IA-016): the match's answer says whether PrediGol Intelligence searched the web for it, when it last did, how
+many searches it paid and how many pages it read - from the ledger (``ai.usage``) and the passes of the day (``ai.fixture_passes``), read
+only - so «not searched yet» is never said as «nothing found».
+
 ``FBI_NEWS_USERS`` (on since A10; ``=0`` hides the news again without a deploy, ``fbi.api.switches``).
 
 **The other language** (plan UX, A11): an item's own headline in Spanish and English and its summary in English, written by the
@@ -41,6 +45,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
 from typing import Any, Final, Literal, cast
 
+import psycopg
+
 from fbi.ai.gates import typed_visible
 from fbi.api.cache import shared
 from fbi.api.contracts.news import (
@@ -49,6 +55,7 @@ from fbi.api.contracts.news import (
     NewsClaim,
     NewsItem,
     NewsKind,
+    NewsSearch,
     NewsSource,
     NewsStatus,
     NewsTeam,
@@ -394,6 +401,57 @@ SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, th.name AS home_name,
 """The reader's matches not yet over (plan UX, B2): their leagues and teams, as ids - the suggested ones while they chose none."""
 
 
+SEARCH_SQL = """
+SELECT (SELECT max(u.at) FROM ai.usage u
+         WHERE u.fixture_id = %(f)s AND u.purpose = 'web_search' AND u.status = 'ok' AND u.at <= %(at)s) AS paid_at,
+       (SELECT count(*) FROM ai.usage u
+         WHERE u.fixture_id = %(f)s AND u.purpose = 'web_search' AND u.status = 'ok' AND u.at <= %(at)s) AS searches,
+       (SELECT max(p.finished_at) FROM ai.fixture_passes p
+         WHERE p.fixture_id = %(f)s AND p.finished_at <= %(at)s
+           AND (COALESCE((p.counts->>'web_asked')::int, 0) > 0 OR COALESCE((p.counts->>'web_searches')::int, 0) > 0)) AS pass_at,
+       (SELECT sum((p.counts->>'web_read')::int) FROM ai.fixture_passes p
+         WHERE p.fixture_id = %(f)s AND p.finished_at <= %(at)s AND p.counts ? 'web_read') AS sources_read,
+       (SELECT count(*) FROM ai.fixture_passes p
+         WHERE p.fixture_id = %(f)s AND p.finished_at <= %(at)s AND COALESCE((p.counts->>'web_searches')::int, 0) > 0
+           AND NOT p.counts ? 'web_read') AS untracked
+"""
+"""What the cycle recorded about searching one match, as of a moment (IA-016): the searches paid for it (``ai.usage``, one row per search,
+with the match), the newest pass that read the web - a search paid now, or answered by the cache (``web_asked``) - and the pages read
+(``web_read``), with the passes that searched before that count existed (``untracked``: then the number of pages is not known)."""
+
+
+def search_state(row: Mapping[str, Any] | None) -> NewsSearch:
+    """Whether the match was searched, from ``SEARCH_SQL``'s row (pure). Searched when a search was paid for it or a pass read the web; the
+    newest of the two is the last search. The pages read are said only when every pass that searched counted them."""
+    if row is None:
+        return NewsSearch(searched="unknown")
+    moments = [m for m in (row.get("paid_at"), row.get("pass_at")) if m is not None]
+    searches = int(row.get("searches") or 0)
+    if not moments:
+        return NewsSearch(searched="no", searches=searches, sources_read=0)
+    read = row.get("sources_read")
+    known = None if read is None or int(row.get("untracked") or 0) else int(read)
+    return NewsSearch(searched="yes", last_searched_at=max(moments), searches=searches, sources_read=known)
+
+
+def _search(conn: Conn, fixture_id: int, at: datetime) -> NewsSearch:
+    """The match's search state; ``unknown`` when the record cannot be read (in a savepoint: a failure here never breaks the news)."""
+    try:
+        with conn.transaction():
+            return search_state(fetch_one(conn, SEARCH_SQL, {"f": fixture_id, "at": at}))
+    except psycopg.Error:
+        return NewsSearch(searched="unknown")
+
+
+def empty_reason(search: NewsSearch) -> str:
+    """What an empty answer says (pure): not searched yet is not the same as nothing found."""
+    if search.searched == "no":
+        return "This match has not been searched for news yet."
+    if search.searched == "yes":
+        return "The web was searched for this match and no relevant news was found."
+    return "No news relevant to this match."
+
+
 def _teams(f: Mapping[str, Any]) -> dict[int, NewsTeam]:
     return {int(f["home_team_id"]): NewsTeam(id=int(f["home_team_id"]), name=f["home_name"], side="home"),
             int(f["away_team_id"]): NewsTeam(id=int(f["away_team_id"]), name=f["away_name"], side="away")}
@@ -423,9 +481,10 @@ def match_news(conn: Conn, fixture_id: int, *, at: datetime | None = None) -> En
         return unavailable(None, "The news are not shown to users at the moment.")
     moment = at or now()
     items = cards(_read(conn, [fixture_id], moment).get(fixture_id, []), _teams(fixture))
-    body = MatchNews(fixture_id=fixture_id, items=items, counts=counts(items))
+    search = _search(conn, fixture_id, moment)
+    body = MatchNews(fixture_id=fixture_id, items=items, counts=counts(items), search=search)
     if not items:
-        return unavailable(body, "No verified news relevant to this match.", status=DataStatus.EMPTY, count=0)
+        return unavailable(body, empty_reason(search), status=DataStatus.EMPTY, count=0)
     return ok(body, count=len(items), data_as_of=max(i.seen_at for i in items))
 
 

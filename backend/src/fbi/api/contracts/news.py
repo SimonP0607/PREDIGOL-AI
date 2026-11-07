@@ -75,11 +75,25 @@ class NewsItem(Contract):
     seen_at: datetime = Field(description="When PrediGol last read it.")
 
 
+class NewsSearch(Contract):
+    """Whether PrediGol Intelligence searched the web for this match's news, and when (IA-016): «not searched yet» and «searched, nothing
+    found» are not the same answer."""
+    searched: Literal["yes", "no", "unknown"] = Field(description=(
+        "yes: the web was searched for this match (a search paid for it, or a pass answered by a search still fresh); no: no search for it "
+        "is recorded - a match is searched only on its day, and only with a market; unknown: the record could not be read."))
+    last_searched_at: datetime | None = Field(default=None, description="The newest search of this match; null unless searched is yes.")
+    searches: int | None = Field(default=None, description="Web searches paid for this match; null when unknown.")
+    sources_read: int | None = Field(default=None, description=(
+        "Pages PrediGol read for this match (each one once). Null when unknown - a pass recorded before this count existed, or research "
+        "that does not count it."))
+
+
 class MatchNews(Contract):
     fixture_id: int
     items: list[NewsItem] = Field(description="Confirmed and most relevant first, then probable, contradictions, rumours and "
                                               "the outdated last.")
     counts: dict[NewsStatus, int] = Field(description="How many items of each status.")
+    search: NewsSearch | None = Field(default=None, description="Whether and when the web was searched for this match (IA-016).")
 
 
 class TodayNewsMatch(Contract):
