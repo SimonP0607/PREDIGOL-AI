@@ -263,10 +263,10 @@ downgrades or rejects them (UX-002, «solo verde»)."""
 
 def recommendable_rows(rows: list[Row], *, applied: Applied) -> tuple[list[Row], int]:
     """The candidates a reader's parlay may hold as legs (UX-002, «solo verde»): every leg passes the value gate (the engine's own
-    rule) and must be RECOMMENDED there - so, while the AI's review is applied, a selection it downgrades or rejects is left out
-    before the engine chooses, never shown as a leg. Returns (the rows kept, how many were left out). Free while the review is
-    not applied (production since the AI layer exists): nothing is left out."""
-    if not applied.enforced:
+    rule) and must be RECOMMENDED there - so a selection the AI's review downgrades or rejects (applied or in shadow, D1) is left out
+    before the engine chooses, never shown as a leg. Returns (the rows kept, how many were left out). Free when the review has
+    decided nothing on these rows: nothing is left out."""
+    if not applied.decisions:
         return rows, 0
     kept = [r for r in rows if user_status.for_readers(applied.shown(
         pick_status=r["pick_status"], value=True, fixture_id=int(r["fixture_id"]), market_key=r["market_key"],
