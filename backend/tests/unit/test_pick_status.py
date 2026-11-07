@@ -1,5 +1,5 @@
 """The visible state of the picks a page shows (plan UX, B3; ``fbi.api.services.pick_status``): the review it reads is the day's
-set's, and while the review is not applied it reads nothing at all."""
+set's; a rejection or a downgrade keep a pick from a reader even while the review is not applied (D1, UX-039)."""
 
 from __future__ import annotations
 
@@ -36,11 +36,16 @@ def test_the_review_read_is_the_one_the_days_set_reads() -> None:
     assert "r.reviewed_at >= %(at)s - %(window)s::interval" in theirs
 
 
-def test_a_review_that_is_not_applied_is_never_read() -> None:
-    applied = Applied(False, {KEY: "REJECT"})
-    assert applied.decision(*KEY) is None
-    s = applied.shown(pick_status="qualified", value=True, fixture_id=7, market_key="OU", selection="Over", line=Decimal("2.5"))
-    assert (s.status, s.reason, s.context_pending) == ("RECOMMENDED", "value", True)
+def test_a_review_that_is_not_applied_still_keeps_back_what_it_rejects_or_downgrades() -> None:
+    for decision, expected in (("REJECT", ("NOT_RECOMMENDED", "rejected", False)),
+                               ("DOWNGRADE", ("CAUTION", "downgraded", False)),
+                               ("APPROVE", ("RECOMMENDED", "value", True)),
+                               ("ABSTAIN", ("RECOMMENDED", "value", True))):
+        applied = Applied(False, {KEY: decision})
+        assert applied.decision(*KEY) == decision
+        s = applied.shown(pick_status="qualified", value=True, fixture_id=7, market_key="OU", selection="Over",
+                          line=Decimal("2.5"))
+        assert (s.status, s.reason, s.context_pending) == expected, decision
 
 
 def test_an_applied_review_decides_through_the_table() -> None:
@@ -58,11 +63,11 @@ def test_an_applied_review_decides_through_the_table() -> None:
 
 class NoDatabase:
     def cursor(self, *args: Any, **kwargs: Any) -> Any:
-        raise AssertionError("no query may be made while the review is not applied")
+        raise AssertionError("no query may be made while the AI is off")
 
 
-@pytest.mark.parametrize("mode", ["shadow", "off", "", "anything"])
-def test_while_the_review_is_not_applied_nothing_is_asked_of_the_database(monkeypatch: pytest.MonkeyPatch, mode: str) -> None:
+@pytest.mark.parametrize("mode", ["off", " OFF "])
+def test_while_the_ai_is_off_nothing_is_asked_of_the_database(monkeypatch: pytest.MonkeyPatch, mode: str) -> None:
     monkeypatch.setenv("FBI_AI_MODE", mode)
     got = pick_status.applied_now(NoDatabase(), [1, 2, 3], at=datetime(2026, 10, 27, tzinfo=UTC))  # type: ignore[arg-type]
     assert got is pick_status.NOT_APPLIED and not got.enforced

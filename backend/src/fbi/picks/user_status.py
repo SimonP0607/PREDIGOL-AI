@@ -4,16 +4,16 @@ analysis and «¿Por qué este pick?» all ask here, and ``tests/unit/test_user_
 
     visible           equals                                                                where a reader sees it
     RECOMMENDED       a published pick (qualified or published) that passes the value       Picks, Inicio, the Top 5, the
-                      rule at its price and, with the AI's review applied, was approved.    match, the day's set and the
-                      While that review is not applied (``FBI_AI_MODE`` shadow or off, its  parlays: the only state a
-                      gate not passed) - or applied but without a decision on this pick -   reader is ever shown
-                      the state carries ``context_pending``: «revisión de contexto aún no
-                      aplicada»
-    CAUTION           the review is applied and downgrades it (DOWNGRADE -> caution)         nowhere: only counted
-                                                                                            (``withheld``); the owner's
+                      rule at its price and the AI's review neither rejects nor             match, the day's set and the
+                      downgrades it: approved when the review is applied. While that        parlays: the only state a
+                      review is not applied (``FBI_AI_MODE`` shadow, its gate not passed)   reader is ever shown
+                      - or applied but without a decision on this pick - the state
+                      carries ``context_pending``: «revisión de contexto aún no aplicada»
+    CAUTION           the review downgrades it (DOWNGRADE -> caution), applied or not        nowhere: only counted
+                      (UX-039, decision D1 of the plan de Inicio)                            (``withheld``); the owner's
                                                                                             preview labels it
-    NOT_RECOMMENDED   no value at its price, or the applied review rejects it                nowhere: only counted
-                      (REJECT -> not_recommended)                                            (``withheld``); the owner's
+    NOT_RECOMMENDED   no value at its price, or the review rejects it (REJECT ->             nowhere: only counted
+                      not_recommended), applied or not (UX-039, D1)                          (``withheld``); the owner's
                                                                                             preview labels it
     EVALUATION        a candidate of a model that has not beaten the market yet (a shadow    only counted (Transparencia);
                       pick)                                                                  the owner's preview labels it
@@ -22,8 +22,10 @@ analysis and «¿Por qué este pick?» all ask here, and ``tests/unit/test_user_
 (``SHOWN_TO_READERS``) - in a list, on its match, in the day's set or as a leg of a parlay. The match's own forecast
 («pronóstico», ``FBI_FORECAST_USERS``) is not a pick and is shown apart, untouched by this table.
 
-Precedence: EVALUATION > NOT_RECOMMENDED (no value) > the applied review > RECOMMENDED. A review that is not applied changes
-nothing here, exactly as it changes nothing in the picks (``fbi.picks.daily.AiView.apply``).
+Precedence: EVALUATION > NOT_RECOMMENDED (no value) > the review's rejection or downgrade > RECOMMENDED. A review that is not applied
+(shadow) still keeps a pick it rejects or downgrades from a reader (UX-039, decision D1 of the plan de Inicio): the pick stays recorded
+and counted - it is only not shown - and the selection, the models and the settlement are untouched (``fbi.picks.daily.AiView.apply``
+still changes nothing while the review is not applied). Only «approved» needs the review to be applied.
 
 It only reads what it is given: the pick's publication state (``picks.picks.status``), whether it passes the value rule at its
 price (the engine's verdict, computed elsewhere), the AI's newest decision on it and whether that decision is applied
@@ -36,17 +38,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final, Literal
 
-VERSION: Final = "user-status-v1"
+VERSION: Final = "user-status-v2"
 
 UserStatus = Literal["RECOMMENDED", "CAUTION", "NOT_RECOMMENDED", "EVALUATION"]
 StatusReason = Literal["approved", "value", "not_reviewed", "downgraded", "rejected", "no_value_now", "evaluation"]
 """Why the state is the one it is, as a code the web words:
 
 approved      the applied review approved it
-value         the value rule alone: the review is not applied (shadow, off or its gate not passed)
+value         the value rule alone: the review is not applied (shadow, off or its gate not passed) and does not reject or downgrade it
 not_reviewed  the review is applied but has no decision on this pick (none yet, or it abstained)
-downgraded    the applied review downgrades it
-rejected      the applied review rejects it
+downgraded    the review downgrades it (applied or in shadow)
+rejected      the review rejects it (applied or in shadow)
 no_value_now  it does not pass the value rule at its price
 evaluation    its model has not beaten the market yet: never a recommendation"""
 
@@ -80,16 +82,17 @@ def shown(*, published: bool, value: bool, review: str | None, applied: bool) ->
     ``published``: its pick is qualified or published - not a shadow pick of a model that has not beaten the market.
     ``value``: it passes the value rule at its price (the best price now, or the price a record froze).
     ``review``: the AI's newest combined decision on it (APPROVE, DOWNGRADE, REJECT, ABSTAIN), or None.
-    ``applied``: that review acts on picks (enforce mode with its gate passed); otherwise it is ignored here."""
+    ``applied``: that review acts on picks (enforce mode with its gate passed). A rejection or a downgrade keeps the pick from a
+    reader either way (D1); an approval, or its absence, only counts as such while the review is applied."""
     if not published:
         return Shown("EVALUATION", "evaluation", False)
     if not value:
         return Shown("NOT_RECOMMENDED", "no_value_now", False)
+    if review == "REJECT":
+        return Shown("NOT_RECOMMENDED", "rejected", False)
+    if review == "DOWNGRADE":
+        return Shown("CAUTION", "downgraded", False)
     if applied:
-        if review == "REJECT":
-            return Shown("NOT_RECOMMENDED", "rejected", False)
-        if review == "DOWNGRADE":
-            return Shown("CAUTION", "downgraded", False)
         if review == "APPROVE":
             return Shown("RECOMMENDED", "approved", False)
         return Shown("RECOMMENDED", "not_reviewed", True)

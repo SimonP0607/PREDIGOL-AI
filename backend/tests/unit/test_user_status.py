@@ -25,8 +25,8 @@ PUBLISHED_WITH_VALUE = {
     (True, True, "ABSTAIN", True): ("RECOMMENDED", "not_reviewed", True),
     (True, True, None, True): ("RECOMMENDED", "not_reviewed", True),
     (True, True, "APPROVE", False): ("RECOMMENDED", "value", True),
-    (True, True, "DOWNGRADE", False): ("RECOMMENDED", "value", True),
-    (True, True, "REJECT", False): ("RECOMMENDED", "value", True),
+    (True, True, "DOWNGRADE", False): ("CAUTION", "downgraded", False),  # D1 (UX-039): hidden in shadow too
+    (True, True, "REJECT", False): ("NOT_RECOMMENDED", "rejected", False),
     (True, True, "ABSTAIN", False): ("RECOMMENDED", "value", True),
     (True, True, None, False): ("RECOMMENDED", "value", True),
 }
@@ -55,10 +55,15 @@ def test_every_state_and_every_reason_is_reachable_and_nothing_else() -> None:
     assert {v[1] for v in TABLE.values()} == set(us.REASONS)
 
 
-def test_a_review_that_is_not_applied_changes_nothing() -> None:
+def test_a_review_that_is_not_applied_only_keeps_back_what_it_rejects_or_downgrades() -> None:
+    """D1 (UX-039): in shadow an approval, an abstention or no decision change nothing; a rejection or a downgrade still keep the
+    pick from a reader - the pick itself, its selection and its settlement are untouched."""
     for published, value, review in itertools.product((True, False), (True, False), REVIEWS):
-        assert us.shown(published=published, value=value, review=review, applied=False) == us.shown(
-            published=published, value=value, review=None, applied=False)
+        got = us.shown(published=published, value=value, review=review, applied=False)
+        if review in ("REJECT", "DOWNGRADE") and published and value:
+            assert got.status in ("NOT_RECOMMENDED", "CAUTION") and not got.context_pending
+        else:
+            assert got == us.shown(published=published, value=value, review=None, applied=False)
 
 
 def test_only_a_recommendation_says_its_context_review_is_pending() -> None:
@@ -71,9 +76,9 @@ def test_a_reader_is_shown_green_picks_only() -> None:
     or an evaluation pick, in a list, on its match, in the day's set or as a parlay's leg."""
     assert {"RECOMMENDED"} == us.SHOWN_TO_READERS
     for key, (state, _, _) in TABLE.items():
-        published, value, review, applied = key
+        published, value, review, _ = key
         assert us.for_readers(state) == (  # type: ignore[arg-type]
-            published and value and not (applied and review in ("REJECT", "DOWNGRADE"))), key
+            published and value and review not in ("REJECT", "DOWNGRADE")), key
     hidden: tuple[us.UserStatus | None, ...] = ("CAUTION", "NOT_RECOMMENDED", "EVALUATION", None)
     for other in hidden:
         assert not us.for_readers(other), other
@@ -84,7 +89,7 @@ def test_no_analysis_card_a_reader_may_be_shown_is_downgraded_or_rejected() -> N
     for kind, qualified, review, applied in itertools.product(CARD_KINDS, (True, False), REVIEWS, (True, False)):
         got = us.of_card(kind=kind, qualified=qualified, review=review, applied=applied)
         if got is not None and us.for_readers(got.status):
-            assert kind == "value" and qualified and not (applied and review in ("REJECT", "DOWNGRADE"))
+            assert kind == "value" and qualified and review not in ("REJECT", "DOWNGRADE")
 
 
 def test_publication_states() -> None:
