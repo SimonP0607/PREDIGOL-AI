@@ -79,11 +79,11 @@ def test_0125_is_additive_strict_and_goes_back_only_while_unused(migrated_databa
                       (first, b"\x00" * 32))
         command.upgrade(_cfg(), "0125")
         with psycopg.connect(dsn, autocommit=True) as c:
-            names = dict(c.execute("SELECT id, display_name FROM auth.users").fetchall())
+            names: dict[int, str] = dict(c.execute("SELECT id, display_name FROM auth.users").fetchall())
             assert names[first] == "Carlos", "the oldest account keeps its nickname"
             assert names[second] == f"carlos-{second}", "the repeated one is made distinct, not lost"
             assert names[gone] == "Carlos" and names[owner] == "Dueño"
-            origins = dict(c.execute("SELECT id, origin FROM auth.users").fetchall())
+            origins: dict[int, str] = dict(c.execute("SELECT id, origin FROM auth.users").fetchall())
             assert origins[first] == "invite" and origins[second] == "admin" and origins[owner] == "admin"
             assert c.execute("SELECT count(*) FROM auth.users WHERE email_verified_at IS NOT NULL").fetchone() == (0,)
 
