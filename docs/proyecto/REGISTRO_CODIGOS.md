@@ -72,6 +72,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-031 | Inicio, paso 1.2 (plan de Inicio): las zonas de la tabla de una primera división se leen por nivel y posición (regla `stakes-v3`). «Play-offs» (Serie A) y «Qualifying» (Bundesliga) son plazas internacionales y no ascenso, «título» es solo el primer puesto y las mismas plazas se leen igual sea cual sea la redacción del proveedor (Serie A, Bundesliga, LaLiga, Premier). Las segundas divisiones, copas y grupos mantienen su lectura. Cambia el texto que lee la IA, no los modelos (guarda de modelos: UNCHANGED); sin migración | en curso | este PR | — |
 | UX-035 | Inicio, paso 1.4 (plan de Inicio): un fallo de recarga ya no borra lo que se veía (Hoy, Resultados, picks del día y los picks de tus partidos mantienen sus datos con un aviso pequeño «No se pudo actualizar» y «Reintentar»), Inicio recarga al volver a la app cuando sus datos tienen más de 15 s, y «Para ti» del dueño deja de mostrar un esqueleto que nunca se llena. Solo web; no toca modelos, picks ni IA; sin migración | en curso | este PR | — |
 | UX-041 | Inicio, paso 2.4a (plan de Inicio): el parlay multi-día se distingue a la vista — el rango de fechas junto a su número de selecciones y las piernas agrupadas bajo el día en que se juegan — y en el móvil un selector «Del día / Multi-día» sustituye a dos tarjetas largas seguidas (desde `md` se ven las dos, sin selector). Solo web; sin cambio de contrato ni de modelos. |
+| UX-040 | Inicio, paso 2.3 (plan de Inicio): la tarjeta del pick del día lleva solo lo que un lector necesita — liga y hora, equipos, mercado y selección, cuota de referencia sin casa de apuestas, «PrediGol 52 % · mercado 39 %», nivel Alto/Medio (Alto si hasta la estimación prudente supera al mercado), estado, dos frases de por qué y «Más sobre este pick». Modelo, revisión, VE, etapa, hora de elección y casa quedan en «Auditoría», solo para el dueño en evaluación. «Más sobre este pick» abre `/matches/{id}?s=resumen&pick={id}`: el partido baja hasta ese pick, lo marca y abre su explicación (`?pick=` se lee de la dirección). Solo web; sin cambio de contrato ni de modelos. |
 
 ## BE — backend
 
@@ -87,4 +88,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-011 · SEG-001 · IA-015 · UX-042 · BE-004 · FE-001 · OPS-001 · DOC-001
+CI-011 · SEG-001 · IA-015 · UX-041 · BE-004 · FE-001 · OPS-001 · DOC-001
