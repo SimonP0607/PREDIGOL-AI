@@ -73,14 +73,16 @@ export function ParlayStatusBadge({
 }
 
 const OUTCOME_TONE: Record<ParlayOutcome, Tone> = {
+  scheduled: "pending",
   playing: "live",
+  winning: "win",
   won: "win",
   lost: "loss",
   void: "neutral",
   building: "pending",
 };
 
-/** A parlay's result in one word (REVIEW point 2): En juego, Ganado, Perdido - or Anulado. */
+/** A parlay's result in one word: Por empezar, En juego, Va ganando, Ganado, Perdido - or Anulado. */
 export function ParlayOutcomeBadge({
   status,
   progress,

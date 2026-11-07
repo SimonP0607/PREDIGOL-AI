@@ -404,8 +404,8 @@ def test_two_readers_with_different_favourites_and_habits_get_the_same_picks_pri
         "INSERT INTO core.competitions (provider_league_id, name, type, entity_scope, competition_type, is_tracked) "
         "VALUES (7714901, 'Otra Liga B2', 'league', 'club', 'domestic_league', true) RETURNING id")))
     readers = [int(scalar(db.execute(
-        "INSERT INTO auth.users (email, display_name, password_hash, role) VALUES (%s, 'R', '$argon2id$x', 'USER') "
-        "RETURNING id", (email,)))) for email in ("uno.b2@example.org", "dos.b2@example.org")]
+        "INSERT INTO auth.users (email, display_name, password_hash, role) VALUES (%s, %s, '$argon2id$x', 'USER') "
+        "RETURNING id", (email, email)))) for email in ("uno.b2@example.org", "dos.b2@example.org")]
     first, other = readers
     db.execute("INSERT INTO customer.favorites (user_id, kind, ref_id, league_id) VALUES (%s, 'league', %s, %s)",
                (first, world.competition, world.competition))
