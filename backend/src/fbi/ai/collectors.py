@@ -36,6 +36,7 @@ from fbi.ai.evidence import (
     EvidenceIn,
     domain_of,
     normalize_name,
+    provider_listing,
     refresh_statuses,
     store,
     tier_of,
@@ -144,8 +145,10 @@ def collect_provider(conn: psycopg.Connection[Any], fixture_id: int, *, at: date
         _, created = store(conn, item, at=at)
         out.created += int(created)
         out.seen += 1
+    # what the latest report lists decides whether an item of the provider still stands, not when it was first listed (IA-015)
+    listed = {provider_listing(fixture_id, a["provider_player_id"], a["absence_type"], a["reason"]) for a in absences}
     out.statuses = refresh_statuses(conn, fixture_id, at=at, kickoff=f["kickoff_at"], lineup_starters=starters,
-                                    absences_checked_at=checked_at)
+                                    absences_checked_at=checked_at, provider_listed=listed)
     return out
 
 
