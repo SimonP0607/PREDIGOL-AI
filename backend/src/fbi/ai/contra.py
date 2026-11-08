@@ -125,7 +125,7 @@ OUT_KINDS: Final = frozenset({"injury", "suspension"})
 """The kinds of evidence that say a player is out (``doubtful`` is a doubt, ``lineup`` is not about absence)."""
 STANDING: Final = frozenset({"CONFIRMED", "PROBABLE"})
 """The states of evidence that may say it; a RUMOR is nothing and a CONTRADICTORY pair is C07's."""
-PRESSURES: Final = frozenset({"title", "europe", "relegation", "promotion", "mid_table", "settled"})
+PRESSURES: Final = frozenset({"title", "europe", "relegation", "promotion", "playoff", "mid_table", "settled"})
 """The ``pressure`` codes of ``fbi.ai.context.stakes`` that say something (``unknown`` does not)."""
 _KINDS: Final = frozenset(get_args(EvidenceKind))
 _EVIDENCE_SIDES: Final = frozenset({"home", "away", "match"})
