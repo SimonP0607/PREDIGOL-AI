@@ -415,7 +415,20 @@
     "today": "Hoy",
     "yesterday": "Ayer",
     "jump": "Ir a",
-    "summary": "{count} picks · {won} ganados · {lost} perdidos · {open} por jugar o en juego",
+    "parts": {
+      "picks_one": "{count} pick",
+      "picks_other": "{count} picks",
+      "won_one": "{count} ganado",
+      "won_other": "{count} ganados",
+      "lost_one": "{count} perdido",
+      "lost_other": "{count} perdidos",
+      "voids_one": "{count} nulo o devuelto",
+      "voids_other": "{count} nulos o devueltos",
+      "open_one": "{count} por jugar o en juego",
+      "open_other": "{count} por jugar o en juego",
+      "halves_one": "({count} a medias)",
+      "halves_other": "({count} a medias)"
+    },
     "units": "{units} u",
     "zone": "Días de picks en {zone}"
   },

@@ -415,7 +415,20 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "jump": "Go to",
-    "summary": "{count} picks · {won} won · {lost} lost · {open} to play or in play",
+    "parts": {
+      "picks_one": "{count} pick",
+      "picks_other": "{count} picks",
+      "won_one": "{count} won",
+      "won_other": "{count} won",
+      "lost_one": "{count} lost",
+      "lost_other": "{count} lost",
+      "voids_one": "{count} void or pushed",
+      "voids_other": "{count} void or pushed",
+      "open_one": "{count} to play or in play",
+      "open_other": "{count} to play or in play",
+      "halves_one": "({count} half result)",
+      "halves_other": "({count} half results)"
+    },
     "units": "{units} u",
     "zone": "Pick days in {zone}"
   },

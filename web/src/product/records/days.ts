@@ -2,6 +2,7 @@
 import type { DailyItem } from "@/lib/api/v1/types_records";
 import { toNumber } from "@/lib/i18n/format";
 import { shiftDay } from "@/lib/time";
+import { t } from "@/lib/i18n";
 
 /** Today and the six days before it, newest first: the days a reader jumps to. */
 export function recentDays(today: string, count = 7): string[] {
@@ -10,9 +11,15 @@ export function recentDays(today: string, count = 7): string[] {
 
 export interface DaySummary {
   count: number;
+  /** Won, half wins included (they are also counted in ``halves``). */
   won: number;
+  /** Lost, half losses included (they are also counted in ``halves``). */
   lost: number;
+  /** Pushes and voids: the stake came back. */
+  voids: number;
   open: number;
+  /** Half wins and half losses (a quarter line): already inside ``won`` and ``lost``. */
+  halves: number;
   /** Profit in units over the settled picks; null while none is settled. */
   units: number | null;
 }
@@ -23,14 +30,34 @@ export function daySummary(
 ): DaySummary {
   let won = 0;
   let lost = 0;
+  let voids = 0;
   let open = 0;
+  let halves = 0;
   let units: number | null = null;
   for (const i of items) {
     if (i.status === "WIN" || i.status === "HALF_WIN") won += 1;
     else if (i.status === "LOSS" || i.status === "HALF_LOSS") lost += 1;
-    else if (i.status === "PENDING") open += 1;
+    else if (i.status === "PUSH" || i.status === "VOID") voids += 1;
+    else open += 1;
+    if (i.status === "HALF_WIN" || i.status === "HALF_LOSS") halves += 1;
     const p = toNumber(i.profit_units);
     if (i.status !== "PENDING" && p !== null) units = (units ?? 0) + p;
   }
-  return { count: items.length, won, lost, open, units };
+  // Every pick counts once: won + lost + voids + open = count (plan PICKS, D3).
+  return { count: items.length, won, lost, voids, open, halves, units };
+}
+
+/** The day in words: every pick once, nulls and voids apart, half results noted (plan PICKS, D3). */
+export function summaryText(sum: DaySummary): string {
+  const parts = [
+    t("records.dayNav.parts.picks", { count: sum.count }),
+    t("records.dayNav.parts.won", { count: sum.won }),
+    t("records.dayNav.parts.lost", { count: sum.lost }),
+    ...(sum.voids > 0 ? [t("records.dayNav.parts.voids", { count: sum.voids })] : []),
+    t("records.dayNav.parts.open", { count: sum.open }),
+  ];
+  const text = parts.join(" · ");
+  return sum.halves > 0
+    ? `${text} ${t("records.dayNav.parts.halves", { count: sum.halves })}`
+    : text;
 }
