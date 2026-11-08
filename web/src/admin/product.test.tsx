@@ -9,7 +9,7 @@ import { setLocale } from "@/lib/i18n";
 import { CATALOGS } from "@/lib/i18n/catalogs";
 import { EVENTS } from "@/lib/track";
 import type { ProductOverview } from "@/lib/api/v1/types_events";
-import { Breakdowns, SwitchState } from "./ProductPage";
+import { Breakdowns, GuidesCard, SwitchState } from "./ProductPage";
 
 const base: ProductOverview = {
   mode: "off",
@@ -28,6 +28,7 @@ const base: ProductOverview = {
   markets: [],
   leagues: [],
   teams: [],
+  guides: [],
   lifecycle: null,
 };
 
@@ -65,6 +66,57 @@ describe("the console's Product page", () => {
     expect(en).toContain("My picks");
     expect(en).toContain("Both teams score");
     expect(en).toContain("at least 20 readers");
+    setLocale("es");
+  });
+
+  test("the guides are listed by version, with the one to review marked and the limits of the figures said", () => {
+    const o: ProductOverview = {
+      ...base,
+      status: "ok",
+      guides: [
+        {
+          guide: "picks",
+          version: 1,
+          started: 40,
+          completed: 10,
+          skipped: 25,
+          skipped_first: 24,
+          paused: 3,
+          top_skip_step: 0,
+          top_skip_readers: 24,
+          review: true,
+        },
+        {
+          guide: "odds",
+          version: 1,
+          started: 22,
+          completed: 18,
+          skipped: 0,
+          skipped_first: 0,
+          paused: 0,
+          top_skip_step: null,
+          top_skip_readers: 0,
+          review: false,
+        },
+      ],
+    };
+    setLocale("es");
+    const es = renderToStaticMarkup(<GuidesCard o={o} />);
+    expect(es).toContain("Picks");
+    expect(es).toContain("Cuotas");
+    expect(es).toContain("Más saltos: paso 1 (24 lectores)");
+    expect(es).toContain("Nadie la saltó");
+    expect(es).toContain("al menos 20 lectores");
+    expect(es).toContain("no hay grupo de control");
+    expect(es.match(/>Revisar</g)?.length).toBe(1);
+    setLocale("en");
+    const en = renderToStaticMarkup(<GuidesCard o={o} />);
+    expect(en).toContain("Most skips: step 1 (24 readers)");
+    expect(en).toContain("there is no control group");
+    expect(en.match(/>Review</g)?.length).toBe(1);
+    expect(renderToStaticMarkup(<GuidesCard o={{ ...o, guides: [] }} />)).toContain(
+      "No guide reaches the minimum of readers.",
+    );
     setLocale("es");
   });
 
