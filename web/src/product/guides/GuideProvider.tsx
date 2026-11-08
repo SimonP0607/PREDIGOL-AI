@@ -4,8 +4,9 @@
  * Replaces the optional tour and the first-visit hints of A13. A screen says it has its data (`useGuideScreen`); the guide that
  * opens on it launches by itself once, unless something stands in its way (eligibility.ts: the rules against fatigue) or the
  * reader asked for it ("?", Ayuda). Everything the reader does is recorded: at once in the account the page holds, then in the
- * API (one write at a time per guide, in order) - a write that cannot be sent waits in this device's queue (queue.ts) and goes
- * the next time. The survey and the offer of notices wait while a guide is up (`active`).
+ * API (one write at a time per guide, in order) - a write that cannot be sent waits in this device's queue (queue.ts), one per
+ * account, and goes the next time; meanwhile the page counts it, so the guide does not come back. The survey and the offer of
+ * notices wait while a guide is up (`active`).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
@@ -14,7 +15,8 @@ import { v1 } from "@/lib/api/v1/client";
 import type { Me } from "@/lib/api/v1/types_auth";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { Today } from "@/lib/api/v1/types_today";
-import type { GuideIn, GuideKey } from "@/lib/api/v1/types_guides";
+import type { GuideIn, GuideKey, GuideState } from "@/lib/api/v1/types_guides";
+import { live } from "@/lib/api/v1/queries";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { originOf, track } from "@/lib/track";
 import { anotherLayerOpen, findAnchor } from "./anchors";
@@ -28,7 +30,7 @@ import {
 } from "./context";
 import { blockedBy, owed, type Facts } from "./eligibility";
 import { firstFrom, neighbour } from "./navigation";
-import { dequeue, enqueue, flush } from "./queue";
+import { dequeue, dropLegacy, enqueue, flush, readQueue, refused, type Owner } from "./queue";
 import { GUIDES, GUIDE_LIST, launchable } from "./registry";
 import { applied, seenOf, withGuide } from "./state";
 
@@ -41,12 +43,40 @@ function toNamedBlock(): void {
   requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "start" }));
 }
 
-/** Where «Ver» takes the reader for the guide of a match: the first match of today's board, else the list. */
-function matchPath(qc: QueryClient): string {
-  const today = qc.getQueryData<Envelope<Today>>(["v1", "today"])?.data;
-  const first = today?.matches?.data?.[0]?.fixture_id;
+/** Where «Ver» takes the reader for the guide of a match: the first match of today's board (asked for when the page does not
+ * have it yet: Ayuda opened directly), else the list. */
+async function matchPath(qc: QueryClient): Promise<string> {
+  const firstOf = (board: Envelope<Today> | undefined) =>
+    board?.data?.matches?.data?.[0]?.fixture_id;
+  let first = firstOf(qc.getQueryData<Envelope<Today>>(["v1", "today"]));
+  if (!first) {
+    try {
+      first = firstOf(await qc.fetchQuery({ ...live.today, staleTime: 60_000 }));
+    } catch {
+      // no board: the list
+    }
+  }
   return first ? `/matches/${first}` : "/matches";
 }
+
+/** A match's own page (its tabs are in the search, never in the path). */
+const MATCH_PAGE = /^\/matches\/\d+\/?$/;
+
+/** Who may be shown a guide at all: a reader's account, with the guides on (FBI_GUIDES). */
+function showsGuides(me: Me | null): me is Me {
+  return Boolean(me && me.role === "USER" && me.guides_on !== false);
+}
+
+/** The rules of a write put over a state (the server's own: within a version the status never goes down). */
+function over(state: GuideState | undefined, guide: GuideKey, body: GuideIn | undefined) {
+  return body ? applied(state, guide, body, new Date().toISOString()) : state;
+}
+
+const asWrite = (state: GuideState): GuideIn => ({
+  version: state.version,
+  status: state.status,
+  step: state.step,
+});
 
 export function GuideProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
@@ -71,43 +101,107 @@ export function GuideProvider({ children }: { children: ReactNode }) {
   // ready - the page's effect runs before this provider's, so no effect of ours could reset it in time).
   const visit = useRef("");
 
-  const seen = useCallback((guide: GuideKey) => seenOf(now.current.user as Me | null, guide), []);
+  // What this page wrote for the account, folded by the server's rules (UX-070). The account the page holds can lag behind:
+  // an answer, or a reading of /auth/me that left before the write, may come after the screen asks what is owed. A guide
+  // the reader already skipped or finished here must not come back for that.
+  const wrote = useRef<{ owner: Owner | undefined; states: Partial<Record<GuideKey, GuideState>> }>(
+    {
+      owner: undefined,
+      states: {},
+    },
+  );
+  const remember = useCallback((owner: Owner, guide: GuideKey, body: GuideIn) => {
+    if (wrote.current.owner !== owner) wrote.current = { owner, states: {} };
+    wrote.current.states[guide] = applied(
+      wrote.current.states[guide],
+      guide,
+      body,
+      new Date().toISOString(),
+    );
+  }, []);
+
+  /**
+   * What the page knows of a guide for the account: the API's state, with what this page wrote and what still waits in the
+   * device's queue applied (UX-070) - a write not yet answered, or one that could not be sent, never brings the guide back,
+   * on the next visit or after a reload.
+   */
+  const seenNow = useCallback((me: Me | null, guide: GuideKey): GuideState | undefined => {
+    const recorded = seenOf(me, guide);
+    if (!me) return recorded;
+    const queued = over(recorded, guide, readQueue(me.id)[guide]);
+    const mine = wrote.current.owner === me.id ? wrote.current.states[guide] : undefined;
+    return mine ? over(queued, guide, asWrite(mine)) : queued;
+  }, []);
+
+  const seen = useCallback((guide: GuideKey) => seenNow(now.current.user, guide), [seenNow]);
+
+  /** A write for one account, its answer put in the page's account only while that account is still the one signed in. */
+  const sendFor = useCallback(
+    (owner: Owner) => (g: GuideKey, b: GuideIn) => {
+      remember(owner, g, b);
+      return v1.saveGuide(g, b).then((state) => {
+        qc.setQueryData<Me | null>(ME_KEY, (me) =>
+          me && me.id === owner ? withGuide(me, state) : me,
+        );
+        return state;
+      });
+    },
+    [qc, remember],
+  );
 
   /** At once in the page's account; then to the API in order; kept for later when it cannot be sent. */
   const persist = useCallback(
     (guide: GuideKey, body: GuideIn) => {
+      // the account that did it: its write, its queue - whoever is signed in when the answer comes (UX-070)
+      const owner = now.current.user?.id;
+      if (owner === undefined) return;
+      remember(owner, guide, body);
       const at = new Date().toISOString();
       qc.setQueryData<Me | null>(ME_KEY, (me) =>
-        me ? withGuide(me, applied(seenOf(me, guide), guide, body, at)) : me,
+        me && me.id === owner ? withGuide(me, applied(seenOf(me, guide), guide, body, at)) : me,
       );
-      const send = (g: GuideKey, b: GuideIn) =>
-        v1.saveGuide(g, b).then((state) => {
-          qc.setQueryData<Me | null>(ME_KEY, (me) => (me ? withGuide(me, state) : me));
-          return state;
-        });
+      const send = sendFor(owner);
       const before = chain.current[guide] ?? Promise.resolve();
       chain.current[guide] = before.then(() =>
         send(guide, body).then(
           () => {
-            dequeue(guide);
-            void flush(send);
+            dequeue(owner, guide);
+            void flush(owner, send);
           },
-          () => enqueue(guide, body),
+          (err: unknown) => {
+            // a write the API turned down for good is not kept: sent again it would only fail again
+            if (!refused(err)) enqueue(owner, guide, body);
+          },
         ),
       );
     },
-    [qc],
+    [qc, remember, sendFor],
   );
 
-  // What waited for a connection goes when the account is signed in and the device is back online.
+  // What waited for a connection goes when its own account is signed in and the device is back online.
+  const userId = user?.id;
   useEffect(() => {
-    if (auth.status !== "signed-in") return;
-    const send = (g: GuideKey, b: GuideIn) => v1.saveGuide(g, b);
-    void flush(send);
-    const online = () => void flush(send);
+    if (auth.status !== "signed-in" || userId === undefined) return;
+    dropLegacy();
+    const send = sendFor(userId);
+    void flush(userId, send);
+    const online = () => void flush(userId, send);
     window.addEventListener("online", online);
     return () => window.removeEventListener("online", online);
-  }, [auth.status]);
+  }, [auth.status, userId, sendFor]);
+
+  // The account signed out (or another took its place): what this session counted and asked for was that account's.
+  const lastUser = useRef(userId);
+  useEffect(() => {
+    const before = lastUser.current;
+    lastUser.current = userId;
+    if (before === undefined || before === userId) return;
+    skips.current = 0;
+    requested.current = null;
+    launchedVisit.current = false;
+    activePath.current = null;
+    setActive(null);
+  }, [userId]);
 
   const close = useCallback(() => {
     setActive(null);
@@ -121,7 +215,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
   const start = useCallback(
     (guide: GuideKey, trigger: Trigger = "replay", from = 0) => {
       const def = GUIDES[guide];
-      if (!launchable(def) || now.current.active) return;
+      if (!launchable(def) || now.current.active || !showsGuides(now.current.user)) return;
       const index = firstFrom(def, from);
       if (index === null) return;
       const resume = trigger === "resume" && from > 0;
@@ -246,6 +340,38 @@ export function GuideProvider({ children }: { children: ReactNode }) {
     }
   }, [pathname, active, dismiss]);
 
+  // A guide that waited only because another layer was open goes on once the layer is closed, on the same page (UX-070).
+  const readyRef = useRef<(screen: string) => void>(() => undefined);
+  const layerWatch = useRef<MutationObserver | null>(null);
+  const stopWatch = useCallback(() => {
+    layerWatch.current?.disconnect();
+    layerWatch.current = null;
+  }, []);
+  const watchLayers = useCallback(
+    (screen: string, path: string) => {
+      if (layerWatch.current || typeof MutationObserver === "undefined") return;
+      const observer = new MutationObserver(() => {
+        if (now.current.pathname !== path) {
+          stopWatch();
+          return;
+        }
+        if (anotherLayerOpen()) return;
+        stopWatch();
+        readyRef.current(screen);
+      });
+      observer.observe(document.body, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ["data-state"],
+      });
+      layerWatch.current = observer;
+    },
+    [stopWatch],
+  );
+  // another page: what the last one waited for is gone with it
+  useEffect(() => stopWatch, [pathname, stopWatch]);
+
   const screenReady = useCallback(
     (screen: string) => {
       const { user: me, active: up, pathname: path } = now.current;
@@ -258,23 +384,25 @@ export function GuideProvider({ children }: { children: ReactNode }) {
       const ask = requested.current;
       const candidates = GUIDE_LIST.filter((g) => g.screen === screen && launchable(g));
       if (ask) {
-        const wanted = GUIDES[ask.guide];
-        if (wanted.screen === screen) {
-          requested.current = null;
+        // a request is for the screen it led to: on any other it is gone, never left to come up later (UX-070)
+        requested.current = null;
+        if (GUIDES[ask.guide].screen === screen) {
           requestAnimationFrame(() => start(ask.guide, "replay", ask.from));
           return;
         }
       }
       if (up) return;
-      const meAccount = me as Me;
+      // the owner's account is shown no guide, and nothing of its visits is recorded for one
+      if (me.role !== "USER") return;
       // the first visit to a screen with a guide is recorded even when the guide waits (nothing is shown)
       for (const def of candidates) {
-        if (def.key !== "general" && !seenOf(meAccount, def.key)) {
+        if (def.key !== "general" && !seenNow(me, def.key)) {
           persist(def.key, { version: def.version, status: "pending", step: 0 });
         }
       }
+      let layerOpen = false;
       for (const def of candidates) {
-        const state = seenOf(meAccount, def.key);
+        const state = seenNow(me, def.key);
         const due = owed(def, state);
         if (!due) continue;
         const facts: Facts = {
@@ -290,7 +418,9 @@ export function GuideProvider({ children }: { children: ReactNode }) {
           launchedThisVisit: launchedVisit.current,
           skipsInARow: skips.current,
         };
-        if (blockedBy(def, facts) !== null) continue;
+        const reason = blockedBy(def, facts);
+        if (reason === "layer-open") layerOpen = true;
+        if (reason !== null) continue;
         launchedVisit.current = true;
         requestAnimationFrame(() => {
           if (now.current.pathname !== path || now.current.active) return;
@@ -313,23 +443,46 @@ export function GuideProvider({ children }: { children: ReactNode }) {
         });
         return;
       }
+      if (layerOpen) watchLayers(screen, path);
     },
-    [persist, start],
+    [persist, seenNow, start, watchLayers],
   );
+  readyRef.current = screenReady;
 
   const request = useCallback(
     (guide: GuideKey, from = 0) => {
       const def = GUIDES[guide];
       if (!launchable(def)) return;
-      // the guide of a match opens on the first match of today's board (as the old tour did), else the list of matches
-      const path = guide === "match" ? matchPath(qc) : def.path;
-      requested.current = { guide, from };
-      if (now.current.pathname === path && readyScreen.current === def.screen) {
-        requested.current = null;
+      if (!showsGuides(now.current.user)) {
+        // no guide for this account (the owner's, FBI_GUIDES=0): the reader still goes where they asked to
+        if (now.current.pathname !== def.path) void navigate({ to: def.path as never });
+        return;
+      }
+      if (
+        guide === "match" &&
+        readyScreen.current === "match" &&
+        MATCH_PAGE.test(now.current.pathname)
+      ) {
         start(guide, "replay", from);
         return;
       }
-      void navigate({ to: path as never });
+      void (async () => {
+        // the guide of a match opens on the first match of today's board (as the old tour did); with no match, the list of
+        // matches - and nothing is left waiting to come up on a match opened later (UX-070)
+        const path = guide === "match" ? await matchPath(qc) : def.path;
+        if (guide === "match" && !MATCH_PAGE.test(path)) {
+          requested.current = null;
+          void navigate({ to: path as never });
+          return;
+        }
+        requested.current = { guide, from };
+        if (now.current.pathname === path && readyScreen.current === def.screen) {
+          requested.current = null;
+          start(guide, "replay", from);
+          return;
+        }
+        void navigate({ to: path as never });
+      })();
     },
     [navigate, qc, start],
   );

@@ -190,6 +190,7 @@
       "leg_count": "Un parlay necesita entre {min} y {max} selecciones.",
       "invalid_selection": "Selección {leg}: no es una selección que liquidemos.",
       "quarter_line": "Selección {leg}: las líneas de cuarto (.25 / .75) no se admiten en un parlay.",
+      "outlier_price": "Selección {leg}: su mejor precio es atípico (muy por encima del mercado) y no se admite en un parlay.",
       "unknown_fixture": "Selección {leg}: ese partido no existe.",
       "started": "Selección {leg}: el partido ya empezó.",
       "same_fixture": "Selecciones {with} y {leg}: son del mismo partido."

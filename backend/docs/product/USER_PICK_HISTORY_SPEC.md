@@ -48,6 +48,7 @@ storing):
 | 2 to 10 legs | `leg_count` | error |
 | a selection we settle | `invalid_selection` | error |
 | no quarter lines | `quarter_line` | error |
+| the leg's current best price is not an outlier (more than 25% above its fair price) | `outlier_price` | error |
 | the match exists and is still to start | `unknown_fixture`, `started` | error |
 | one leg per match | `same_fixture` | error |
 | a team in two legs | `shared_team` | warning: allowed, the user is told the legs are linked |

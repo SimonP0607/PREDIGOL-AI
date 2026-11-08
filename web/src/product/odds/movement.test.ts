@@ -83,6 +83,22 @@ describe("bestPriceLines", () => {
     expect(lines[1]?.points).toEqual([]);
   });
 
+  test("an Asian handicap's away side moves at its own line, the opposite of the row's home line", () => {
+    const lines = bestPriceLines(
+      [
+        series("A", "Home", [[T1, "1.67"]], { market: "AH", line: "-0.25" }),
+        series("A", "Away", [[T1, "2.30"]], { market: "AH", line: "0.25" }),
+        // the away side of the OTHER bet (Home +0.25): not this row's
+        series("A", "Away", [[T1, "3.48"]], { market: "AH", line: "-0.25" }),
+      ],
+      { market: "AH", line: "-0.25", selections: ["Home", "Away"] },
+    );
+    expect(lines.map((l) => [l.selection, l.points.map((p) => p.odds)])).toEqual([
+      ["Home", [1.67]],
+      ["Away", [2.3]],
+    ]);
+  });
+
   test("books stored milliseconds apart in one capture are the same instant", () => {
     const lines = bestPriceLines(
       [

@@ -13,11 +13,11 @@ import enGuides from "@/locales/en/guides.json";
 import esGuides from "@/locales/es/guides.json";
 import type { GuideIn, GuideKey, GuideState } from "@/lib/api/v1/types_guides";
 import type { Me } from "@/lib/api/v1/types_auth";
-import { placeCard, resolvable } from "./anchors";
+import { anotherLayerOpen, placeCard, resolvable } from "./anchors";
 import { MAX_SKIPS, blockedBy, owed, type Facts } from "./eligibility";
 import { cardsOf, firstFrom, neighbour, numbered } from "./navigation";
 import { PROFILE_STEPS, profileParts, profileTitle, type ProfileFacts } from "./profileText";
-import { dequeue, enqueue, flush, readQueue } from "./queue";
+import { dequeue, dropLegacy, enqueue, flush, readQueue, refused } from "./queue";
 import { GUIDES, GUIDE_LIST, guideOfScreen, launchable, stepCount } from "./registry";
 import { applied, seenOf, withGuide } from "./state";
 
@@ -181,36 +181,81 @@ describe("the queue of what could not be sent", () => {
   });
   const body = (status: GuideIn["status"], step = 0): GuideIn => ({ version: 1, status, step });
 
+  const A = 11;
+  const B = 12;
+
   test("keeps the last thing per guide and forgets what was sent", () => {
-    enqueue("general", body("in_progress", 1));
-    enqueue("general", body("completed", 5));
-    enqueue("picks", body("skipped", 0));
-    expect(readQueue().general).toEqual(body("completed", 5));
-    dequeue("general");
-    expect(Object.keys(readQueue())).toEqual(["picks"]);
-    dequeue("picks");
+    enqueue(A, "general", body("in_progress", 1));
+    enqueue(A, "general", body("completed", 5));
+    enqueue(A, "picks", body("skipped", 0));
+    expect(readQueue(A).general).toEqual(body("completed", 5));
+    dequeue(A, "general");
+    expect(Object.keys(readQueue(A))).toEqual(["picks"]);
+    dequeue(A, "picks");
     expect(store.size).toBe(0);
   });
 
-  test("flush sends each guide once and stops at the first that fails, keeping the rest", async () => {
-    enqueue("general", body("completed", 5));
-    enqueue("picks", body("skipped", 0));
+  test("each account has its own queue: what one reader left is never another's (UX-070)", async () => {
+    enqueue(A, "odds", body("skipped", 0));
+    enqueue(A, "profile", body("completed", 5));
+    expect(readQueue(B)).toEqual({});
     const sent: string[] = [];
-    await flush((guide) => {
+    await flush(B, (guide) => {
+      sent.push(guide);
+      return Promise.resolve();
+    });
+    expect(sent).toEqual([]);
+    expect(Object.keys(readQueue(A)).sort()).toEqual(["odds", "profile"]);
+  });
+
+  test("the device-wide queue of before, whose owner is unknown, is dropped and never sent", () => {
+    store.set("predigol.guides.queue.v1", JSON.stringify({ profile: body("completed", 5) }));
+    expect(readQueue(A)).toEqual({});
+    dropLegacy();
+    expect(store.has("predigol.guides.queue.v1")).toBe(false);
+  });
+
+  test("flush sends each guide once and stops at the first that fails, keeping the rest", async () => {
+    enqueue(A, "general", body("completed", 5));
+    enqueue(A, "picks", body("skipped", 0));
+    const sent: string[] = [];
+    await flush(A, (guide) => {
       if (guide === "picks") return Promise.reject(new Error("offline"));
       sent.push(guide);
       return Promise.resolve();
     });
     expect(sent).toEqual(["general"]);
-    expect(Object.keys(readQueue())).toEqual(["picks"]);
+    expect(Object.keys(readQueue(A))).toEqual(["picks"]);
+  });
+
+  test("a write the API turned down for good is dropped; a lost connection or an ended session waits", async () => {
+    const error = (status: number) => Object.assign(new Error(String(status)), { status });
+    expect(refused(error(422))).toBe(true);
+    expect(refused(error(409))).toBe(true);
+    for (const status of [0, 401, 403, 408, 429, 500, 503])
+      expect(refused(error(status))).toBe(false);
+    expect(refused(new Error("offline"))).toBe(false);
+    enqueue(A, "general", body("completed", 5));
+    enqueue(A, "picks", body("skipped", 0));
+    const sent: string[] = [];
+    await flush(A, (guide) => {
+      if (guide === "general") return Promise.reject(error(422));
+      sent.push(guide);
+      return Promise.resolve();
+    });
+    expect(sent).toEqual(["picks"]);
+    expect(readQueue(A)).toEqual({});
   });
 
   test("a damaged or missing storage is an empty queue, never an error", () => {
-    store.set("predigol.guides.queue.v1", "{not json");
-    expect(readQueue()).toEqual({});
+    store.set("predigol.guides.queue.v2:11", "{not json");
+    expect(readQueue(A)).toEqual({});
+    store.set("predigol.guides.queue.v2:11", "[1,2]");
+    expect(readQueue(A)).toEqual({});
     Object.assign(globalThis, { window: {} });
-    expect(readQueue()).toEqual({});
-    expect(() => enqueue("general", body("pending"))).not.toThrow();
+    expect(readQueue(A)).toEqual({});
+    expect(() => enqueue(A, "general", body("pending"))).not.toThrow();
+    expect(() => dropLegacy()).not.toThrow();
   });
 });
 
@@ -436,6 +481,29 @@ describe("the walk through the cards", () => {
   test("a card without anchors always can be shown", () => {
     expect(resolvable({ id: "welcome", anchors: [] }, nowhere)).toBe(true);
     expect(resolvable({ id: "x", anchors: ["a"] }, nowhere)).toBe(false);
+  });
+});
+
+describe("another layer over the page", () => {
+  type Fake = { getAttribute: (name: string) => string | null; firstElementChild: Fake | null };
+  const el = (state: string | null, child: Fake | null = null): Fake => ({
+    getAttribute: (name) => (name === "data-state" ? state : null),
+    firstElementChild: child,
+  });
+  const page = (...layers: Fake[]) => ({ querySelectorAll: () => layers }) as unknown as ParentNode;
+
+  test("an open sheet, dialog or menu holds the guide back", () => {
+    expect(anotherLayerOpen(page(el("open")))).toBe(true);
+    expect(anotherLayerOpen(page(el(null, el("open"))))).toBe(true);
+    expect(anotherLayerOpen(page(el(null)))).toBe(true);
+  });
+
+  test("a layer that is closing does not: «Más» stays in the page for its exit while the next screen is there (UX-070)", () => {
+    expect(anotherLayerOpen(page())).toBe(false);
+    expect(anotherLayerOpen(page(el("closed")))).toBe(false);
+    // the menu's popper wrapper carries no state of its own: its content does
+    expect(anotherLayerOpen(page(el(null, el("closed"))))).toBe(false);
+    expect(anotherLayerOpen(page(el("closed"), el("open")))).toBe(true);
   });
 });
 

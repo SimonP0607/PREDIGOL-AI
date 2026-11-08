@@ -6,15 +6,19 @@ Las cifras se rellenan **con la corrida en producción**. Hasta entonces, los re
 
 ## Cómo se corre
 
+En el servidor, dentro del contenedor del worker (la herramienta abre su conexión en solo lectura):
+
 ```
-python -m scripts.research_picks_calibration                # todas las selecciones liquidadas
-python -m scripts.research_picks_calibration --days 60      # solo los últimos 60 días
-python -m scripts.research_picks_calibration --json > f2.json
+docker exec -w /app predigol-worker python -m scripts.research_picks_calibration                # todas las selecciones liquidadas
+docker exec -w /app predigol-worker python -m scripts.research_picks_calibration --days 60      # solo los últimos 60 días
+docker exec -w /app predigol-worker python -m scripts.research_picks_calibration --json > picks_f2.json
 ```
 
 ## La muestra
 
 Las selecciones en sombra ya liquidadas, una por selección y modelo: el **último pick antes del inicio** de cada partido, mercado, lado, línea y modelo, ganado o perdido (sin nulos, devueltos ni medios resultados). Es la misma población que usa Intelligence para calibrar.
+
+Q2 tiene además su propia muestra: **todos los partidos terminados** con pronóstico y mercado, no solo los que el modelo señaló, porque un pick señalado siempre tiene al modelo por encima del mercado. Para «menos de 2,5» y «ambos marcan: no» se toman el último pronóstico real de cada modelo antes del inicio (sin backtests), el último consenso del mercado antes del inicio con el método del motor (Shin) y el resultado a los 90 minutos.
 
 ## La probabilidad calibrada, fuera de muestra
 
@@ -29,10 +33,10 @@ Las selecciones en sombra ya liquidadas, una por selección y modelo: el **últi
 | Pregunta | Qué mide | Qué se propone si se cumple |
 | --- | --- | --- |
 | Q1 (C1, C2) | Por mercado: probabilidad cruda y calibrada frente al acierto (media y ECE), y el rendimiento de las dos reglas: la del tablero (VE crudo ≥ 5 %, ventaja ≥ 2 pp, cuota 1,50 a 5,00) y la de Intelligence (VE calibrado ≥ 2 %) | Mostrar la calibrada donde su ECE sea menor que la de la cruda. Una regla cuyo intervalo quede entero por debajo de 0 no publica |
-| Q2 (C4) | En goles y ambos marcan: cuánto se señala el lado bajo («menos de», «no») y cuánto se inclina el modelo frente al mercado, por competición y con los recién llegados aparte | Una inclinación de 3 pp o más en una competición con 300 selecciones o más se informa como sesgo a corregir en el modelo, siempre a través de su puerta |
+| Q2 (C4) | El síntoma: cuánto del lado bajo («menos de», «no») hay entre lo señalado. El diagnóstico, sobre todos los partidos: cuánto se inclina el modelo frente al mercado (media de modelo menos mercado), qué pasó de verdad y quién quedó más cerca, por competición y con los recién llegados aparte | Una inclinación de 3 pp o más hacia cualquier lado, con 300 partidos o más, un intervalo que no incluye el 0 y el modelo más lejos que el mercado de lo que pasó, se informa como sesgo a corregir en el modelo, siempre a través de su puerta. Si el modelo se inclina y acierta, no es un sesgo que corregir |
 | Q3 (C3, S3) | El tope de cuota con la probabilidad calibrada: cada tramo por separado, fuera de muestra | El tope de 3,00 sube hasta el techo de un tramo solo si ese tramo tiene 300 selecciones o más, un intervalo entero por encima de 0 y un valor de línea medio de 0 o más |
 | Q4 (C3) | Los grandes desacuerdos (modelo 15 pp o más por encima del mercado) según cómo se movió el mercado después (valor de línea; fuerte si es del 10 % o más) | Un desacuerdo con el mercado moviéndose fuerte en contra pasa a riesgo visible si su intervalo queda entero por debajo del de los demás |
-| Q5 (C5) | El rendimiento de la regla calibrada al precio tomado frente al precio justo del mercado (1 / probabilidad del mercado) | La tarjeta dice qué parte del valor es solo el precio |
+| Q5 (C5) | El rendimiento de la regla calibrada al precio tomado frente al precio justo del mercado (1 / probabilidad del mercado), y la diferencia en puntos | La tarjeta dice cuántos puntos del rendimiento vienen solo del precio. Se da en puntos y no como parte del rendimiento, porque esa parte cambia de sentido cuando el rendimiento es negativo |
 
 «Recién llegado»: un equipo que juega esta temporada en una competición que tuvo temporada anterior registrada y en la que ese equipo no jugó (ascendidos, entre otros).
 

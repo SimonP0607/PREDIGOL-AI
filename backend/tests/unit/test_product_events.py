@@ -137,3 +137,18 @@ def test_a_guide_is_one_to_review_only_with_enough_readers_and_when_many_skip_it
     assert not review(40, 0, 10), "exactly a quarter at one step is not more than a quarter"
     assert review(40, 0, 11)
     assert not review(100, 3, 5)
+
+
+def test_the_first_card_answers_to_its_half_and_only_later_steps_to_the_quarter() -> None:
+    """UX-070: 30 % of the readers leaving on the first card was counted as «one step losing a quarter», so the half of the
+    first card never decided anything. The step most readers skip at is still shown, the first card included."""
+    row = {"guide": "odds", "version": 1, "started": 40, "completed": 20, "skipped": 12, "skipped_first": 12,
+           "paused": 0}
+    line = events.guide_line(row, {0: 12})
+    assert line["top_skip_step"] == 0 and line["top_skip_readers"] == 12, "the first card is the step most skip at"
+    assert not line["review"], "12 of 40 on the first card is under half: not one to review"
+    assert events.guide_line({**row, "skipped_first": 21, "skipped": 21}, {0: 21})["review"], "21 of 40 is over half"
+    assert not events.guide_line({**row, "skipped": 22}, {0: 12, 2: 10})["review"], "10 of 40 at a later step: a quarter"
+    later = events.guide_line({**row, "skipped": 23}, {0: 12, 2: 11})
+    assert later["review"] and later["top_skip_step"] == 0, "11 of 40 at step 2 is over a quarter"
+    assert events.guide_line(row, {})["top_skip_step"] is None

@@ -238,3 +238,29 @@ def test_the_best_odds_board_sets_each_price_against_the_fair_one(as_role: Any, 
     prices = data(as_role("USER"), "/api/v1/odds/best?market=1X2&picks=false")
     assert prices["value"] == [], "the Cuotas page: prices only, whatever the picks (REVIEW point 17)"
     assert [f["fixture_id"] for f in prices["fixtures"]] == [f["fixture_id"] for f in board["fixtures"]]
+
+
+def test_an_asian_handicap_row_is_one_bet(as_role: Any, dataset: dict[str, Any], migrated_database: str,
+                                          seed: Seed) -> None:
+    """Plan Cuotas, ola 0 (E1): the consensus stores each side of a handicap bet at its own line, Home at h and Away at -h,
+    and the board shows them together under the home line - never Home -0.25 beside Away -0.25 (fixture 7819 in production:
+    1.67 beside 3.48, the away side of the bet at +0.25). A highlight names its selection at its own line."""
+    fid = dataset["fixtures"]["F2"]
+    with psycopg.connect(migrated_database, autocommit=True) as conn:
+        for sel, line, p_fair, odds, books in (("Home", "-0.25", "0.585", "1.67", 8), ("Away", "0.25", "0.415", "2.45", 8),
+                                               ("Home", "0.25", "0.735", "1.32", 6), ("Away", "-0.25", "0.265", "3.48", 6)):
+            conn.execute("INSERT INTO market.market_consensus (fixture_id,market_key,selection,line,as_of,devig_method,"
+                         "p_fair,n_bookmakers,overround,best_odds,best_bookmaker_id) VALUES (%s,'AH',%s,%s,%s,'shin',%s,%s,"
+                         "0.04,%s,%s)", (fid, sel, line, NOW - timedelta(minutes=30), p_fair, books, odds, seed.bookmaker_id))
+    try:
+        board = data(as_role("USER"), "/api/v1/odds/best?market=AH&picks=false")
+        [ah] = next(f for f in board["fixtures"] if f["fixture_id"] == fid)["markets"]
+        assert Decimal(ah["line"]) == Decimal("-0.25"), "the home side's line"
+        prices = {s["selection"]: Decimal(s["best_odds"]) for s in ah["selections"]}
+        assert prices == {"Home": Decimal("1.67"), "Away": Decimal("2.45")}, "Away +0.25, the other side of Home -0.25"
+        assert sum(Decimal(s["p_fair"]) for s in ah["selections"]) == 1
+        [h] = [h for h in board["highlights"] if h["fixture_id"] == fid]
+        assert (h["price"]["selection"], Decimal(h["line"])) == ("Away", Decimal("0.25"))
+    finally:
+        with psycopg.connect(migrated_database, autocommit=True) as conn:
+            conn.execute("DELETE FROM market.market_consensus WHERE fixture_id = %s AND market_key = 'AH'", (fid,))
