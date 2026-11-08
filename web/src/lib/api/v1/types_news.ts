@@ -4,7 +4,7 @@
  * match, the status the server decided and the link to the original - and, from A11, the card's own headline in Spanish and
  * English and the summary in English, checked one by one where they were written (null while there are none).
  */
-import type { Iso } from "./types";
+import type { Dec, Iso } from "./types";
 import type { FollowReason } from "./types_today";
 
 export type NewsStatus = "CONFIRMED" | "PROBABLE" | "CONTRADICTORY" | "RUMOR" | "OUTDATED";
@@ -120,4 +120,114 @@ export interface TodayNews {
   items: TodayNewsItem[];
   /** The matches are the suggested ones for Colombia (none chosen, or FBI_PERSONALIZATION=0): labelled so. */
   suggested?: boolean;
+}
+
+// ── the owner's diagnosis of a match's news (IA-018; SUPER_ADMIN only) ───────────────────────────────────────────────
+
+export type DiagnosisPassKind = "first" | "pre" | "final";
+export type DiagnosisCode =
+  | "searched"
+  | "not_tracked"
+  | "no_market"
+  | "kicked_off"
+  | "day_not_open"
+  | "exa_spent"
+  | "first_pending"
+  | "near_budget"
+  | "covered_not_searched"
+  | "not_covered";
+
+export interface DiagnosisMatch {
+  fixture_id: number;
+  kickoff_at: Iso;
+  status_group: string;
+  home: string;
+  away: string;
+  competition: string;
+  provider_league_id: number | null;
+  /** The owner's priority group of the competition: 1 to 4. */
+  priority_group: number;
+  tracked: boolean;
+}
+
+export interface DiagnosisCoverage {
+  /** Searched at its first and pre passes whatever the day's caps say (IA-016). */
+  covered: boolean;
+  switch_on: boolean;
+  groups: number[];
+}
+
+export interface DiagnosisDay {
+  /** The match's day for the AI (America/Bogota). */
+  day: string;
+  opens_at: Iso;
+  opened: boolean;
+  /** null: the match is not in the AI's day (its competition is not followed). */
+  has_market: boolean | null;
+  odds_at?: Iso | null;
+}
+
+export interface DiagnosisPass {
+  kind: DiagnosisPassKind;
+  day: string;
+  started_at: Iso;
+  finished_at: Iso;
+  status: string;
+  /** Every web_* count the pass recorded. */
+  web: Record<string, number>;
+  near_budget: boolean;
+}
+
+export interface DiagnosisNextPass {
+  kind: DiagnosisPassKind;
+  window_from: Iso;
+  window_until: Iso;
+  /** The final pass: without confirmed line-ups it waits until then. */
+  lineups_until?: Iso | null;
+  due_now: boolean;
+}
+
+export interface DiagnosisSearches {
+  searches: number;
+  failed: number;
+  first_at?: Iso | null;
+  last_at?: Iso | null;
+  cost_usd: Dec;
+  /** null: a pass that searched did not count its pages. */
+  sources_read?: number | null;
+}
+
+export interface DiagnosisExa {
+  allowed: boolean;
+  reason: string;
+  budget_usd: Dec;
+  spent_month_usd: Dec;
+  spent_today_usd: Dec;
+  daily_cap_usd: Dec;
+}
+
+export interface DiagnosisVerdict {
+  code: DiagnosisCode;
+  at?: Iso | null;
+  searches?: number | null;
+  pages?: number | null;
+  items?: number | null;
+  next_pass?: DiagnosisPassKind | null;
+  next_at?: Iso | null;
+  exa_reason?: string | null;
+}
+
+export interface NewsDiagnosis {
+  as_of: Iso;
+  match: DiagnosisMatch;
+  coverage: DiagnosisCoverage;
+  day: DiagnosisDay;
+  passes: DiagnosisPass[];
+  next_pass: DiagnosisNextPass | null;
+  searches: DiagnosisSearches;
+  /** null when the envelope could not be read. */
+  exa: DiagnosisExa | null;
+  evidence: Record<NewsStatus, number>;
+  evidence_newest_at?: Iso | null;
+  verdict: DiagnosisVerdict;
 }

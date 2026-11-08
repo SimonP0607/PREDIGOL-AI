@@ -6,6 +6,8 @@
  * It also holds what left the reader's Resumen (plan Partidos y Match Center, section 5): PrediGol Intelligence's
  * evaluation view - the cards per market, the AI's «Lectura del día», the selections in evaluation and the note on the
  * context review - read with `preview=shadow`, which the API grants a SUPER_ADMIN alone.
+ *
+ * And the diagnosis of the match's news (IA-018): why it has news or not, from an `/admin` route a reader is refused.
  */
 import { useQuery } from "@tanstack/react-query";
 import { ShieldCheck } from "lucide-react";
@@ -16,6 +18,7 @@ import { MatchCenterLive } from "@/live/MatchCenterLive";
 import { AnalysisBlock } from "./AnalysisBlock";
 import { ProviderPredictionPanel } from "./ProviderPredictionPanel";
 import { MatchCaptures } from "./CapturesStrip";
+import { NewsDiagnosisPanel } from "./NewsDiagnosisPanel";
 
 /** PrediGol Intelligence's evaluation view, once the match it belongs to is known (the page's own query, from its cache). */
 function IntelligenceAudit({ fixtureId }: { fixtureId: string }) {
@@ -40,6 +43,7 @@ export function AdvancedTab({ fixtureId }: { fixtureId: string }) {
       </p>
       <IntelligenceAudit fixtureId={fixtureId} />
       <ProviderPredictionPanel fixtureId={fixtureId} />
+      {showAdmin ? <NewsDiagnosisPanel fixtureId={fixtureId} /> : null}
       {showAdmin ? (
         <section aria-label={t("match.advanced.marketsTitle")} data-testid="advanced-captures">
           <h2 className="mb-2 font-display text-base font-semibold tracking-tight">

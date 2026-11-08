@@ -530,6 +530,11 @@ def _read(conn: Conn, fixtures: Sequence[int], at: datetime) -> dict[int, list[R
     return found
 
 
+def stored_items(conn: Conn, fixture_id: int, *, at: datetime) -> list[Row]:
+    """The web's items of one match exactly as its news read them (``EVIDENCE_SQL``): what the owner's diagnosis (IA-018) counts by status."""
+    return _read(conn, [fixture_id], at).get(fixture_id, [])
+
+
 def match_news(conn: Conn, fixture_id: int, *, at: datetime | None = None) -> Envelope[MatchNews | None]:
     fixture = fetch_one(conn, FIXTURE_SQL, {"f": fixture_id})
     if fixture is None:

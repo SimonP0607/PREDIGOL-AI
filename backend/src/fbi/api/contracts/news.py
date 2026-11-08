@@ -4,7 +4,8 @@ the server decided and the link to the original. Never an article's text, title 
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import Field
@@ -122,3 +123,101 @@ class TodayNews(Contract):
                                                    "or two distinct outlets; any other reads PROBABLE.")
     suggested: bool = Field(default=True, description="The matches are the suggested ones for Colombia (the reader chose "
                                                       "none, or FBI_PERSONALIZATION=0): labelled so.")
+
+
+# ── the owner's diagnosis of a match's news (IA-018) ─────────────────────────────────────────────────────────────────
+
+PassKind = Literal["first", "pre", "final"]
+DiagnosisCode = Literal["searched", "not_tracked", "no_market", "kicked_off", "day_not_open", "exa_spent", "first_pending",
+                        "near_budget", "covered_not_searched", "not_covered"]
+
+
+class DiagnosisMatch(Contract):
+    fixture_id: int
+    kickoff_at: datetime
+    status_group: str
+    home: str
+    away: str
+    competition: str
+    provider_league_id: int | None = Field(description="The competition's API-Football id: what decides its priority group.")
+    priority_group: int = Field(description="The owner's priority group of the competition (``fbi.intel.day_priority``): 1 to 4.")
+    tracked: bool = Field(description="The competition is one PrediGol follows: only those enter the AI's day.")
+
+
+class DiagnosisCoverage(Contract):
+    covered: bool = Field(description="Searched at its first and pre passes whatever the day's caps say (IA-016): the switch on and a "
+                                      "competition of the guaranteed groups.")
+    switch_on: bool = Field(description="FBI_AI_NEWS_PRIORITY.")
+    groups: list[int] = Field(description="The priority groups the guaranteed coverage takes.")
+
+
+class DiagnosisDay(Contract):
+    day: date = Field(description="The match's day for the AI (America/Bogota).")
+    opens_at: datetime = Field(description="When that day opens for the AI: 00:05 in Bogotá.")
+    opened: bool
+    has_market: bool | None = Field(description="Whether the match has a market by the AI's own rule (a consensus price of the last 36 "
+                                                "hours). Null: the match is not in the AI's day (its competition is not followed).")
+    odds_at: datetime | None = Field(default=None, description="The newest consensus price the rule saw.")
+
+
+class DiagnosisPass(Contract):
+    kind: PassKind
+    day: date
+    started_at: datetime
+    finished_at: datetime
+    status: str = Field(description="ok, partial, skipped or failed, as the pass recorded it.")
+    web: dict[str, int] = Field(description="The pass's web counts (every ``web_*`` key it recorded): web_asked, web_searches, "
+                                            "web_priority, web_read, web_items, web_new, web_press...")
+    near_budget: bool = Field(description="The pass saved its paid depth near the budget (``marginal_saved``): no web for it.")
+
+
+class DiagnosisNextPass(Contract):
+    kind: PassKind
+    window_from: datetime = Field(description="The earliest moment the pass may run (the worker looks every 15 minutes).")
+    window_until: datetime = Field(description="The last moment it may run.")
+    lineups_until: datetime | None = Field(default=None, description="The final pass: without confirmed line-ups it waits until then.")
+    due_now: bool = Field(description="The window has opened: the next cycle runs it.")
+
+
+class DiagnosisSearches(Contract):
+    searches: int = Field(description="Web searches paid for this match (``ai.usage``, purpose web_search, status ok).")
+    failed: int = Field(description="Searches tried that did not answer (never paid).")
+    first_at: datetime | None = None
+    last_at: datetime | None = None
+    cost_usd: Decimal
+    sources_read: int | None = Field(default=None, description="Pages read across the passes; null when a pass did not count them.")
+
+
+class DiagnosisExa(Contract):
+    allowed: bool = Field(description="Exa's envelope still allows a search now.")
+    reason: str = Field(description="ok, month_spent, day_cap or no_envelope.")
+    budget_usd: Decimal = Field(description="FBI_AI_EXA_MONTHLY_BUDGET_USD.")
+    spent_month_usd: Decimal
+    spent_today_usd: Decimal
+    daily_cap_usd: Decimal
+
+
+class DiagnosisVerdict(Contract):
+    code: DiagnosisCode = Field(description="Why the match has news or not, the first reason that applies.")
+    at: datetime | None = Field(default=None, description="searched: the newest search.")
+    searches: int | None = None
+    pages: int | None = Field(default=None, description="searched: pages read; null when not known.")
+    items: int | None = Field(default=None, description="searched: web items kept for the match.")
+    next_pass: PassKind | None = None
+    next_at: datetime | None = Field(default=None, description="When the next pass may run, when there is one.")
+    exa_reason: str | None = None
+
+
+class NewsDiagnosis(Contract):
+    """Why a match has news or not (IA-018), for the owner alone: what the AI's day, its passes, the ledger and Exa's envelope say."""
+    as_of: datetime
+    match: DiagnosisMatch
+    coverage: DiagnosisCoverage
+    day: DiagnosisDay
+    passes: list[DiagnosisPass] = Field(description="Every pass of the match, oldest first.")
+    next_pass: DiagnosisNextPass | None = Field(description="The pass the match is waiting for; null when none is left or it has no market.")
+    searches: DiagnosisSearches
+    exa: DiagnosisExa | None = Field(description="Null when the envelope could not be read.")
+    evidence: dict[NewsStatus, int] = Field(description="The web items kept for the match (``ai.evidence``, origin web), by status.")
+    evidence_newest_at: datetime | None = None
+    verdict: DiagnosisVerdict

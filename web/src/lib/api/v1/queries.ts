@@ -212,6 +212,12 @@ export const live = {
     queryKey: ["v1", "admin", "provider-prediction", id],
     queryFn: () => v1.providerPrediction(id),
   }),
+  /** The owner's diagnosis of a match's news (IA-018): read when the Advanced tab opens, again every five minutes. */
+  newsDiagnosis: (id: string) => ({
+    queryKey: ["v1", "admin", "news-diagnosis", id],
+    queryFn: () => v1.newsDiagnosis(id),
+    refetchInterval: 5 * MINUTE,
+  }),
   center: (id: string) => ({
     queryKey: ["v1", "center", id],
     queryFn: () => v1.center(id),

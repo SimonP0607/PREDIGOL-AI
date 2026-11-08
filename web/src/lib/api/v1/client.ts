@@ -150,7 +150,7 @@ import type {
 import type { MatchReading } from "./types_reading";
 import type { ExplainIntent, Explanation, SlipLegBody } from "./types_explain";
 import type { PickExplanation } from "./types_explanation";
-import type { MatchNews, TodayNews } from "./types_news";
+import type { MatchNews, NewsDiagnosis, TodayNews } from "./types_news";
 import type { NoPick, Today } from "./types_today";
 import type { MeToday } from "./types_me_today";
 import type {
@@ -883,6 +883,9 @@ export const v1 = {
   audit: (id: number | string) => getJson<Envelope<MatchAudit>>(`/admin/matches/${id}/audit`),
   providerPrediction: (id: number | string) =>
     getJson<Envelope<ProviderPredictionView | null>>(`/admin/matches/${id}/provider-prediction`),
+  /** Why a match has news or not (IA-018): the owner's diagnosis in «Avanzado / Auditoría». */
+  newsDiagnosis: (id: number | string) =>
+    getJson<Envelope<NewsDiagnosis>>(`/admin/matches/${id}/news/diagnostics`),
   oddsIntelligence: () => getJson<Envelope<OddsIntelligence>>("/admin/odds/intelligence"),
   analyst: () => getJson<Envelope<AnalystStatus>>("/admin/analyst"),
   analystTool: (name: string, args: Record<string, string | number | undefined>) =>
