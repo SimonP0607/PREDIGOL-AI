@@ -33,6 +33,10 @@ process that happens to evaluate (``fbi.ai.gate_a``). The three words of the sha
 once the owner moves them from their default (``shadow_words``): the day they are switched on is a day the configuration changed, and the day the
 code that knows them is deployed is not.
 
+The gate ``gate_b`` (migration 0127) is the verdict of Gate B (``fbi.ai.gate_b``), ``PASA`` or ``NO PASA`` only, written by
+``scripts/ia_gate_b.py evaluate --record``. ``lab_plan`` (0127) is not a gate either: it is the owner's plan of the LAB - how many days the shadow
+may exclude - written only by the owner (``scripts/ia_gate_b.py set-lab-plan ... --confirm-owner``, ``decided_by = 'owner'``) and read by Gate B.
+
 Nothing here reads a key and nothing changes a probability, a threshold or a pick."""
 
 from __future__ import annotations
@@ -50,7 +54,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.config import SWITCH_ENV, TIERS, AiSettings, ResearchMode
 
-GATES = ("batch", "native_schema", "cache_layout", "gate_a", "battery", "research_v2", "switches")
+GATES = ("batch", "native_schema", "cache_layout", "gate_a", "battery", "research_v2", "switches", "gate_b", "lab_plan")
 AUTO_WITHOUT_EVIDENCE: dict[str, bool] = {"cache": True, "brief_material": True, "budget_v3": True, "batch": False,
                                           "native_schema": False}
 """What ``auto`` means for each switch when no gate is needed (True) or one is (False)."""
@@ -112,6 +116,10 @@ def record_gate(conn: psycopg.Connection[Any], *, gate: str, passed: bool, evide
 
 
 SWITCHES = "switches"
+LAB_PLAN = "lab_plan"
+"""The owner's plan of the LAB (Gate B): not a gate, nothing waits for it."""
+NOT_GATES = (SWITCHES, LAB_PLAN)
+"""Words of the vocabulary of the evidence that are records, not gates: the panel does not show them as gates."""
 WORDS_KIND = "switch-words-v1"
 LEDGER_SQL = "SELECT id, at, evidence FROM ai.feature_gates WHERE gate = 'switches' ORDER BY at, id"
 NEWEST_WORDS_SQL = "SELECT id, evidence FROM ai.feature_gates WHERE gate = 'switches' ORDER BY at DESC, id DESC LIMIT 1"
@@ -253,7 +261,7 @@ def layout_shared(conn: psycopg.Connection[Any], settings: AiSettings, *, model:
 
 def describe(conn: psycopg.Connection[Any], settings: AiSettings) -> dict[str, Any]:
     """What each optimisation is doing and why - for the admin panel and the run reports. Names and states only."""
-    states = {g: gate_state(conn, g) for g in GATES if g != SWITCHES}  # the ledger of the owner's words is not a gate: nothing waits for it
+    states = {g: gate_state(conn, g) for g in GATES if g not in NOT_GATES}  # the owner's words and plan are not gates: nothing waits for them
     out: dict[str, Any] = {}
     for name in SWITCH_ENV:
         mode = settings.switch(name)

@@ -11,7 +11,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src" / "fbi"
 PACKAGE = "fbi.decision"
-ALLOWED = {"scripts/ia_decision_v2.py": "the command that prints the replay (read-only)"}
+ALLOWED = {"scripts/ia_decision_v2.py": "the command that prints the replay (read-only)",
+           "plugins/family.py": "the plug-in families (IA-018, shadow) compose the MarketFamily protocol",
+           "plugins/registry.py": "the registry of plug-in families hands decision-v2 its families (shadow)",
+           "plugins/_template/family.py": "the example plug-in's decision-v2 adapter (shadow, never active, not installed)"}
 SERVING = ("intel/", "picks/", "familydecisions/", "api/", "parlays/", "customer/", "notify/", "messaging/", "narrative/", "knowledge/",
            "apps/")
 """What decides (``intel``, ``picks``, ``familydecisions``), stakes and combines (``parlays``), publishes or serves users."""

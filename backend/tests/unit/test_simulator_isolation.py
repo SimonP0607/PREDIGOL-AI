@@ -19,7 +19,8 @@ SCRIPTS = ROOT / "scripts"
 APPS = ROOT / "apps"
 
 MODULE = "fbi.simulator"
-ALLOWED = {"scripts/ia_simulator.py": "the command that prints the check against the models in force (read-only)"}
+ALLOWED = {"scripts/ia_simulator.py": "the command that prints the check against the models in force (read-only)",
+           "plugins/_template/family.py": "the example plug-in family (IA-018): team totals summed over the joint (shadow, not installed)"}
 DECIDES = ("intel/", "picks/", "familydecisions/", "decision/", "api/", "parlays/", "predictions/", "forecasting/", "families/",
            "ai/", "narrative/", "messaging/", "notify/", "customer/", "models/", "features/", "backtesting/", "domain/")
 """What decides a state, a pick or a stake, what writes a forecast, what serves or tells a user, and the model code itself."""

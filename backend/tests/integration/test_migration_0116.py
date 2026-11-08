@@ -31,6 +31,9 @@ from tests.integration.test_migration_0111 import _cfg, scratch_at
 pytestmark = pytest.mark.integration
 
 OLD_GATES = ("batch", "native_schema", "cache_layout", "gate_a", "battery", "research_v2")
+GATES_0116 = (*OLD_GATES, "switches")
+"""The words 0116 leaves. The code knows them all; that it knows no word the database does not is held at the head by the last migration of the
+vocabulary (``test_migration_0127``)."""
 NOON = datetime(2026, 10, 26, 12, 0, tzinfo=UTC)
 CONSTRAINT = "feature_gates_gate_check"
 
@@ -94,11 +97,12 @@ def test_0116_keeps_what_was_written_accepts_the_new_gate_and_moves_nothing_else
             assert evidence(c) == before, "every row written before is as it was: same ids, same content"
             assert [r[0] for r in before] == written
             new_def, validated = gate_check(c)
-            assert validated and gates_of(new_def) == [*OLD_GATES, "switches"] == list(gates.GATES) and " OR " not in new_def, new_def
+            assert validated and gates_of(new_def) == list(GATES_0116) and " OR " not in new_def, new_def
+            assert set(GATES_0116) <= set(gates.GATES)
             assert other_rules(c) == rules, "no other constraint, no index and no trigger of the evidence moved"
             ok = gate_row(c, "switches", passed=True, evidence={"kind": "switch-words-v1", "words": {"mode": "shadow"}})
             assert c.execute("SELECT gate, passed, decided_by FROM ai.feature_gates WHERE id = %s", (ok,)).fetchone() == ("switches", True, "script")
-            for gate in gates.GATES:
+            for gate in GATES_0116:
                 gate_row(c, gate, at=NOON + timedelta(days=1))  # every gate is accepted, the old ones as before
             for nonsense in ("switch", "Switches", "switches ", "", "gate_b", "SWITCHES", "switches_v1", "switch-ledger", "words"):
                 with refuses(c, psycopg.errors.CheckViolation, constraint=CONSTRAINT):
@@ -115,11 +119,11 @@ def test_0116_keeps_what_was_written_accepts_the_new_gate_and_moves_nothing_else
 
 
 def test_0116_the_words_of_the_database_are_the_words_of_the_code() -> None:
-    """A gate added to ``gates.GATES`` without a migration, or the other way round, fails here instead of failing on the day the gate is
-    first recorded."""
+    """At 0116 the database knows ``GATES_0116`` and the code knows every one of them (a gate removed from ``gates.GATES`` fails here). That
+    the code knows no gate the database does not is held at the head by ``test_migration_0127``."""
     with scratch_at("0116") as dsn, psycopg.connect(dsn) as c:
-        assert gates_of(gate_check(c)[0]) == list(gates.GATES)
-        for gate in gates.GATES:
+        assert gates_of(gate_check(c)[0]) == list(GATES_0116) and set(GATES_0116) <= set(gates.GATES)
+        for gate in GATES_0116:
             gate_row(c, gate)
         c.rollback()
 

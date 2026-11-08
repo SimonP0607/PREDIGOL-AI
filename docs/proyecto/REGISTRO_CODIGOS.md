@@ -38,6 +38,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | IA-015 | Las bajas vigentes no caducan (plan Partidos y Match Center, F5a): una baja que el proveedor sigue listando en su último informe del partido no se marca como desactualizada por su fecha; solo caduca cuando deja de aparecer. No cambia modelos, umbrales ni picks; sin migración | hecho | #66 | Plan Partidos F5a |
 | IA-016 | Noticias con cobertura (plan Partidos y Match Center, F5b; `news-coverage-v1`): los partidos de las competiciones prioritarias (grupos 1-3 de `comp-priority-v1`) se buscan en las pasadas first y pre aunque no tengan candidato, fuera de los cupos y dentro del sobre de Exa (`FBI_AI_NEWS_PRIORITY`, encendido por defecto); Exa lee 2.000 caracteres por página; una consulta de rueda de prensa y convocatoria; más clubes y prensa nacional con nivel; `/news` dice si se buscó y cuándo, y la web lo distingue de «no hay noticias». No amplía los tipos que entran a la decisión; no cambia modelos ni picks; sin migración | hecho | #76 | Plan Partidos F5b |
 | IA-017 | P2 en sombra: motor de jugador `player-engine-v1` (titularidad, minutos, tasas por 90 y props, cada prop su familia en SOMBRA), Player Intelligence Agent `player-v1` con contrato `pa-v1` y corte `player` (`slices-v2`), apagado por defecto, Narrator del pick escrito solo desde la traza `narrator-v1` (apagado, sin tabla), y dos arreglos de `decision-v1` (desempate determinista de la correlación y el contexto ya no suaviza un estado, `decision-v1.1`); integra los arreglos de IA-018 (hallazgos de battery-v3): `stats-v3` (`stats-assess-v3`, checklist cerrada y referencias citables) y `match-v4` (`match-context-v4`), ambos RETADORES en el libro del registro, y la puerta `untrusted-v2` con `package-v2` (`package-v1` sigue derivable; la auditoría re-deriva cada fila con su versión de paquete y su juego de cortes); sin migración | en curso | este PR | p2 (arquitectura objetivo) |
+| IA-018 | P3 en sombra o apagado: el Gate B se puede grabar y el dueño fija los días del LAB previstos (migración 0127, reversible), presupuesto por valor de la información `voi-v1`, alertas de deriva y de coste `drift-v1`/`cost-alerts-v1`, política de promoción automática acotada y firmada `autopromo-v1` (apagada, sin escritor) y familia de mercado como plug-in `family-plugin-v1` con una familia de ejemplo en sombra | en curso | este PR | p3 (arquitectura objetivo) |
 
 ## UX — experiencia de usuario y diseño de la web
 
@@ -118,4 +119,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-012 · SEG-001 · IA-018 · UX-064 · BE-006 · FE-001 · OPS-001 · DOC-001
+CI-012 · SEG-001 · IA-019 · UX-064 · BE-006 · FE-001 · OPS-001 · DOC-001

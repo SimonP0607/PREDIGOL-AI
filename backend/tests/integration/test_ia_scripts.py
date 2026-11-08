@@ -54,7 +54,8 @@ def test_status_says_what_is_missing_by_name_and_sends_nothing(box: Lab) -> None
     text = " ".join(report["blockers"])
     assert "FBI_AI_KEY_ANTHROPIC_LAB" in text and "FBI_AI_LAB_MONTHLY_BUDGET_USD" in text
     assert "owner actions 5 and 7" in text and "owner action 7" in text, "the owner is told which actions unblock it"
-    assert set(report["optimisations"]["gates"]) == {"batch", "native_schema", "cache_layout", "gate_a", "battery", "research_v2"}
+    assert set(report["optimisations"]["gates"]) == {"batch", "native_schema", "cache_layout", "gate_a", "battery", "research_v2",
+                                                       "gate_b"}
     silent(report)
 
 
