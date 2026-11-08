@@ -402,7 +402,125 @@
   "advanced": {
     "note": "Admins only: models and predictions, captures, lineage and the audit trail for this match.",
     "marketsTitle": "Markets: price captures",
-    "analysisNote": "PrediGol Intelligence's evaluation view: the cards per market, the AI's reading of the day and the selections in evaluation. A reader never sees it: their Summary shows the reading and the published picks."
+    "analysisNote": "PrediGol Intelligence's evaluation view: the cards per market, the AI's reading of the day and the selections in evaluation. A reader never sees it: their Summary shows the reading and the published picks.",
+    "news": {
+      "title": "News diagnosis",
+      "intro": "Why this match has news or not: the coverage, the market, the AI's passes, the paid searches and the Exa budget. Bogotá times.",
+      "atTime": "at {time}",
+      "onDay": "on {when}",
+      "verdict": {
+        "searched": "Searched {when}: {figures}.",
+        "not_tracked": "Competition not followed: the AI neither analyses this match nor searches its news.",
+        "no_market": "No market: not analysed and not searched. It joins the AI's day once it has odds.",
+        "kicked_off": "Not searched, and the match has started or is less than 10 minutes away: no pass is left.",
+        "day_not_open": "Not yet: the AI's day opens at 00:05 Bogotá time.",
+        "day_not_open_at": "Not yet: the AI's day opens at 00:05 Bogotá time; first pass expected {when}.",
+        "exa_spent": "Exa budget spent ({reason}): no new searches are made.",
+        "first_pending": "The first pass has not run yet: it goes in the next cycle (every 15 minutes).",
+        "near_budget": "Close to the budget limit: the passes kept the search for matches with a candidate.",
+        "covered_not_searched": "It is in the guaranteed coverage, but its passes did not search (the day's or the pass's budget).",
+        "not_covered": "Outside the guaranteed coverage and without a place among the day's searches: not searched."
+      },
+      "nextHint": "Next pass: {pass}, {when}.",
+      "count": {
+        "searches_one": "{count} search",
+        "searches_other": "{count} searches",
+        "pages_one": "{count} page",
+        "pages_other": "{count} pages",
+        "pagesUnknown": "pages not counted",
+        "items_one": "{count} news item",
+        "items_other": "{count} news items"
+      },
+      "pass": {
+        "first": "first",
+        "pre": "pre-match",
+        "final": "final"
+      },
+      "passStatus": {
+        "ok": "complete",
+        "partial": "partial",
+        "skipped": "skipped",
+        "failed": "failed"
+      },
+      "label": {
+        "competition": "Competition",
+        "coverage": "Guaranteed coverage",
+        "market": "Market",
+        "day": "AI day",
+        "next": "Next pass",
+        "searches": "Paid searches",
+        "exa": "Exa budget this month",
+        "evidence": "Stored news",
+        "passes": "Passes"
+      },
+      "competitionLine": "{competition} · priority group {group}",
+      "coverage": {
+        "yes": "Yes: group {group}, searched at the first and pre-match passes even without a candidate.",
+        "no": "No: group {group}. Searched only with a candidate or within the day's quota.",
+        "off": "Turned off by the owner (group {group}): searched only within the day's quota."
+      },
+      "market": {
+        "yes": "Yes",
+        "yesAt": "Yes: latest consensus price {when}",
+        "no": "No: no consensus prices in the last 36 hours",
+        "untracked": "Competition not followed: not part of the AI's day"
+      },
+      "day": {
+        "opened": "Open: opened {when}",
+        "opens": "Opens {when}"
+      },
+      "nextLine": "{pass}, from {from} to {until}.",
+      "lineupsUntil": "Without confirmed line-ups it waits until {time}.",
+      "dueNow": "Due now: the next cycle runs it.",
+      "noNextPass": "None: no passes left, or no market.",
+      "searches": {
+        "none": "None",
+        "failed_one": "{count} failed",
+        "failed_other": "{count} failed",
+        "first": "first {when}",
+        "last": "last {when}"
+      },
+      "exaLine": "{spent} of {budget} this month · today {today} of {cap} · {state}",
+      "exaUnknown": "Could not be read.",
+      "exaReason": {
+        "ok": "searching allowed",
+        "month_spent": "this month's is spent",
+        "day_cap": "today's cap reached",
+        "no_envelope": "no budget set"
+      },
+      "evidence": {
+        "none": "None",
+        "CONFIRMED_one": "{count} confirmed",
+        "CONFIRMED_other": "{count} confirmed",
+        "PROBABLE_one": "{count} probable",
+        "PROBABLE_other": "{count} probable",
+        "CONTRADICTORY_one": "{count} contradictory",
+        "CONTRADICTORY_other": "{count} contradictory",
+        "RUMOR_one": "{count} rumour",
+        "RUMOR_other": "{count} rumours",
+        "OUTDATED_one": "{count} outdated",
+        "OUTDATED_other": "{count} outdated"
+      },
+      "web": {
+        "web_searches_one": "{count} paid search",
+        "web_searches_other": "{count} paid searches",
+        "web_asked_one": "{count} query answered",
+        "web_asked_other": "{count} queries answered",
+        "web_read_one": "{count} page read",
+        "web_read_other": "{count} pages read",
+        "web_items_one": "{count} item extracted",
+        "web_items_other": "{count} items extracted",
+        "web_new_one": "{count} new",
+        "web_new_other": "{count} new",
+        "web_priority": "through the guaranteed coverage",
+        "web_press": "with the press search",
+        "nearBudget": "no search, close to the budget limit",
+        "none": "did not read the web"
+      },
+      "passRow": "{pass} · {when} · {status}",
+      "empty": "No passes recorded.",
+      "error": "The diagnosis could not be read."
+    }
   },
   "intelligence": {
     "subtitle": "PrediGol's reading of this match",

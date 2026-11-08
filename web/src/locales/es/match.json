@@ -402,7 +402,125 @@
   "advanced": {
     "note": "Solo administradores: modelos y predicciones, capturas, linaje y auditoría de este partido.",
     "marketsTitle": "Mercados: capturas de cuotas",
-    "analysisNote": "Vista de evaluación de PrediGol Intelligence: las tarjetas por mercado, la lectura del día de la IA y las selecciones en evaluación. Un lector no la ve: su Resumen muestra la lectura y los picks publicados."
+    "analysisNote": "Vista de evaluación de PrediGol Intelligence: las tarjetas por mercado, la lectura del día de la IA y las selecciones en evaluación. Un lector no la ve: su Resumen muestra la lectura y los picks publicados.",
+    "news": {
+      "title": "Diagnóstico de noticias",
+      "intro": "Por qué este partido tiene noticias o no: la cobertura, el mercado, las pasadas de la IA, las búsquedas pagadas y el presupuesto de Exa. Horas de Bogotá.",
+      "atTime": "a las {time}",
+      "onDay": "el {when}",
+      "verdict": {
+        "searched": "Se buscó {when}: {figures}.",
+        "not_tracked": "Competición no seguida: la IA no analiza este partido ni busca sus noticias.",
+        "no_market": "Sin mercado: no se analiza ni se busca. Entra en el día de la IA cuando tenga cuotas.",
+        "kicked_off": "No se buscó y el partido ya empezó o faltan menos de 10 minutos: no le queda ninguna pasada.",
+        "day_not_open": "Aún no: el día de la IA abre a las 00:05 de Bogotá.",
+        "day_not_open_at": "Aún no: el día de la IA abre a las 00:05 de Bogotá; primera pasada prevista {when}.",
+        "exa_spent": "Sobre de Exa agotado ({reason}): no se hacen búsquedas nuevas.",
+        "first_pending": "La primera pasada todavía no ha corrido: entra en el próximo ciclo (cada 15 minutos).",
+        "near_budget": "Cerca del límite del presupuesto: las pasadas guardaron la búsqueda para los partidos con candidato.",
+        "covered_not_searched": "Está en la cobertura garantizada, pero sus pasadas no buscaron (presupuesto del día o de la pasada).",
+        "not_covered": "Fuera de la cobertura garantizada y sin plaza entre las búsquedas del día: no se buscó."
+      },
+      "nextHint": "Próxima pasada: {pass}, {when}.",
+      "count": {
+        "searches_one": "{count} búsqueda",
+        "searches_other": "{count} búsquedas",
+        "pages_one": "{count} página",
+        "pages_other": "{count} páginas",
+        "pagesUnknown": "páginas sin contar",
+        "items_one": "{count} noticia",
+        "items_other": "{count} noticias"
+      },
+      "pass": {
+        "first": "primera",
+        "pre": "previa",
+        "final": "final"
+      },
+      "passStatus": {
+        "ok": "completa",
+        "partial": "parcial",
+        "skipped": "saltada",
+        "failed": "fallida"
+      },
+      "label": {
+        "competition": "Competición",
+        "coverage": "Cobertura garantizada",
+        "market": "Mercado",
+        "day": "Día de la IA",
+        "next": "Próxima pasada",
+        "searches": "Búsquedas pagadas",
+        "exa": "Sobre de Exa del mes",
+        "evidence": "Noticias guardadas",
+        "passes": "Pasadas"
+      },
+      "competitionLine": "{competition} · grupo de prioridad {group}",
+      "coverage": {
+        "yes": "Sí: grupo {group}, se busca en la primera y en la previa aunque no haya candidato.",
+        "no": "No: grupo {group}. Solo se busca si tiene candidato o entra en el cupo del día.",
+        "off": "Desactivada por el dueño (grupo {group}): se busca solo con el cupo del día."
+      },
+      "market": {
+        "yes": "Sí",
+        "yesAt": "Sí: última cuota de consenso {when}",
+        "no": "No: sin cuotas de consenso en las últimas 36 horas",
+        "untracked": "Competición no seguida: no entra en el día de la IA"
+      },
+      "day": {
+        "opened": "Abierto: abrió {when}",
+        "opens": "Abre {when}"
+      },
+      "nextLine": "{pass}, de {from} a {until}.",
+      "lineupsUntil": "Sin alineaciones confirmadas espera hasta las {time}.",
+      "dueNow": "Toca ya: la corre el próximo ciclo.",
+      "noNextPass": "Ninguna: no le quedan pasadas o no tiene mercado.",
+      "searches": {
+        "none": "Ninguna",
+        "failed_one": "{count} fallida",
+        "failed_other": "{count} fallidas",
+        "first": "primera {when}",
+        "last": "última {when}"
+      },
+      "exaLine": "{spent} de {budget} este mes · hoy {today} de {cap} · {state}",
+      "exaUnknown": "No se pudo leer.",
+      "exaReason": {
+        "ok": "permite buscar",
+        "month_spent": "gastado el del mes",
+        "day_cap": "tope del día alcanzado",
+        "no_envelope": "sin sobre asignado"
+      },
+      "evidence": {
+        "none": "Ninguna",
+        "CONFIRMED_one": "{count} confirmada",
+        "CONFIRMED_other": "{count} confirmadas",
+        "PROBABLE_one": "{count} probable",
+        "PROBABLE_other": "{count} probables",
+        "CONTRADICTORY_one": "{count} contradictoria",
+        "CONTRADICTORY_other": "{count} contradictorias",
+        "RUMOR_one": "{count} rumor",
+        "RUMOR_other": "{count} rumores",
+        "OUTDATED_one": "{count} desactualizada",
+        "OUTDATED_other": "{count} desactualizadas"
+      },
+      "web": {
+        "web_searches_one": "{count} búsqueda pagada",
+        "web_searches_other": "{count} búsquedas pagadas",
+        "web_asked_one": "{count} consulta respondida",
+        "web_asked_other": "{count} consultas respondidas",
+        "web_read_one": "{count} página leída",
+        "web_read_other": "{count} páginas leídas",
+        "web_items_one": "{count} noticia extraída",
+        "web_items_other": "{count} noticias extraídas",
+        "web_new_one": "{count} nueva",
+        "web_new_other": "{count} nuevas",
+        "web_priority": "por cobertura garantizada",
+        "web_press": "con búsqueda de prensa",
+        "nearBudget": "sin búsqueda por estar cerca del límite del presupuesto",
+        "none": "no leyó la web"
+      },
+      "passRow": "{pass} · {when} · {status}",
+      "empty": "Sin pasadas registradas.",
+      "error": "No se pudo leer el diagnóstico."
+    }
   },
   "intelligence": {
     "subtitle": "La lectura de PrediGol para este partido",

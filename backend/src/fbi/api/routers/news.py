@@ -11,6 +11,10 @@
 
 Both answer ``not_available`` while the owner keeps them off (``FBI_NEWS_USERS=0``). No route here searches the web, calls an
 AI, sends an article's text or changes an item.
+
+* ``GET /admin/matches/{fixture_id}/news/diagnostics`` (SUPER_ADMIN only, IA-019) - why a match has news or not: its competition's
+  priority group and the guaranteed coverage, the market and the AI's day, the passes and the next one, the searches paid, Exa's
+  envelope of the month, the web items by status and one verdict. Reading only, like the rest.
 """
 
 from __future__ import annotations
@@ -20,14 +24,15 @@ from typing import Annotated, Any, Literal
 import psycopg
 from fastapi import APIRouter, Depends, Path, Query
 
-from fbi.api.contracts.news import MatchNews, TodayNews
+from fbi.api.contracts.news import MatchNews, NewsDiagnosis, TodayNews
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.routers.today import follows_of, general_follows
 from fbi.api.security import App
-from fbi.api.services import news
+from fbi.api.services import news, news_diagnosis
 
 router = APIRouter(tags=["news"])
+admin_router = APIRouter(tags=["admin: news"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 FixtureId = Annotated[int, Path(ge=1, le=2**62)]
 
@@ -50,3 +55,12 @@ def get_today_news(
     none or FBI_PERSONALIZATION=0). ``scope=general``: the suggested matches, three at most, the same for everyone."""
     follows = general_follows(conn) if scope == "general" else follows_of(conn, principal.user_id)
     return news.news_for(conn, follows)
+
+
+@admin_router.get("/matches/{fixture_id}/news/diagnostics", response_model=Envelope[NewsDiagnosis])
+def get_news_diagnosis(conn: Db, fixture_id: FixtureId) -> Envelope[NewsDiagnosis]:
+    """Why a match has news or not (IA-019), for the owner's «Avanzado / Auditoría»: the competition's priority group and whether the
+    guaranteed coverage takes it, whether it has a market and its AI day (America/Bogota, from 00:05) has opened, its passes with their
+    web counts and the pass it waits for, the searches paid for it, Exa's envelope of the month, the web items kept by status and one
+    verdict - the first reason that applies. Reading only: nothing is searched, paid or written."""
+    return news_diagnosis.diagnosis(conn, fixture_id)
