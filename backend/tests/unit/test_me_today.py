@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from fbi.api.contracts.me_today import PlayerState
+from fbi.api.contracts.me_today import PlayerMatch, PlayerState, WatchedPlayer
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
 from fbi.api.contracts.records import DailyBoard, DailyItem, DailySet, MatchRef
 from fbi.api.envelope import ok
@@ -93,6 +93,28 @@ def test_a_pick_is_the_readers_when_a_team_a_league_or_a_market_they_follow_is_i
     got = related_with(monkeypatch, day, Follows(leagues=(UNO[0],), teams=(C[0],), suggested=False), markets=("OU",))
     assert [p.rank for p in got.items] == [1, 2, 3], "the set's own order, each once"
     assert [p.market_followed for p in got.items] == [False, True, False]
+
+
+def test_a_pick_is_also_the_readers_when_it_is_the_next_match_of_a_player_they_follow(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    day = board(item(1, "1X2", match(100, A, B, UNO)), item(2, "OU", match(101, C, D, DOS)))
+    monkeypatch.setattr(records, "daily_board", lambda *a, **k: day)
+    got = me_today.related(object(), Follows(leagues=(), teams=(), suggested=False), (),  # type: ignore[arg-type]
+                           {101: ["Jugador Uno", "Jugador Dos"]})
+    assert [(p.rank, p.followed, p.market_followed, p.players) for p in got.items] == [
+        (2, None, False, ["Jugador Uno", "Jugador Dos"])], "a player alone, both names"
+    both = me_today.related(object(), Follows(leagues=(UNO[0],), teams=(), suggested=False), (),  # type: ignore[arg-type]
+                            {101: ["Jugador Uno"]})
+    assert [(p.rank, p.players) for p in both.items] == [(1, []), (2, ["Jugador Uno"])], "each pick once, with its own"
+
+
+def test_the_matches_the_players_play_next_by_fixture_in_the_order_chosen() -> None:
+    def watched(name: str, fixture: int | None) -> Any:
+        nxt = None if fixture is None else PlayerMatch.model_construct(fixture_id=fixture)
+        return WatchedPlayer.model_construct(name=name, next=nxt)
+
+    got = me_today.player_fixtures([watched("A", 5), watched("B", None), watched("C", 5), watched("D", 6)])
+    assert got == {5: ["A", "C"], 6: ["D"]}
 
 
 def test_a_reader_whose_favourites_are_in_none_of_the_days_picks_gets_none_and_a_day_without_picks_says_so(

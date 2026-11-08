@@ -11,7 +11,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { Bell, Pencil, Star, Target, User, X } from "lucide-react";
+import { ArrowDown, Bell, Pencil, Star, Target, User, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { TeamLogo } from "@/components/football/Logos";
 import { t } from "@/lib/i18n";
@@ -21,11 +21,9 @@ import type { Envelope } from "@/lib/api/v1/types";
 import type { MeToday, PlayerState, RelatedPick, WatchedPlayer } from "@/lib/api/v1/types_me_today";
 import type { DailyBoard, DailyItem } from "@/lib/api/v1/types_records";
 import { positionLabel } from "@/live/labels";
-import { WhyChip } from "@/product/favorites/WhyChip";
-import { DailyItemCard } from "@/product/records/DailyItemCard";
 import { marketName } from "@/product/shared/markets";
 import { stateText } from "./playerState";
-import { relatedCards } from "./related";
+import { goToPick, mineReasons, pickAnchor, relatedCards } from "./related";
 import { Card, ErrorState, SectionHeader, SkeletonBlock, StaleNote } from "@/product/shared/States";
 
 export type MeQuery = UseQueryResult<MeToday>;
@@ -267,28 +265,41 @@ function Note({ children, testId }: { children: ReactNode; testId: string }) {
   );
 }
 
-/** The card of a pick of the day and why it is the reader's: their team or league, or a market they follow. */
-function RelatedPickCard({ related, item }: { related: RelatedPick; item: DailyItem }) {
+/**
+ * One pick of the day that is the reader's, as a line - never a second card, which would repeat what PrediGol's layer already
+ * shows: the match, why it is theirs, and a tap that takes them to the card below and marks it (plan de Inicio, 3.4).
+ */
+function CoincidenceRow({ related, item }: { related: RelatedPick; item: DailyItem }) {
+  const m = item.match;
+  const match = `${m.home.name} – ${m.away.name}`;
+  const reasons = mineReasons(related, marketName(related.market_key));
   return (
-    <li
-      data-testid="related-pick"
-      data-rank={related.rank}
-      className="min-w-0 space-y-1.5 text-caption"
-    >
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-        {related.followed ? (
-          <WhyChip why={related.followed} testId="related-why" className="max-w-full text-micro" />
-        ) : null}
-        {related.market_followed ? (
-          <span
-            data-testid="related-market"
-            className="min-w-0 max-w-full truncate rounded-full border border-primary/30 bg-primary/10 px-2 py-px text-micro font-medium text-primary"
-          >
-            {t("home.related.market", { market: marketName(related.market_key) })}
-          </span>
-        ) : null}
-      </div>
-      <DailyItemCard item={item} compact />
+    <li data-testid="related-pick" data-rank={related.rank} className="min-w-0">
+      <a
+        href={`#${pickAnchor(related.rank)}`}
+        data-testid="related-go"
+        aria-label={t("home.related.go", { match })}
+        onClick={(e) => {
+          e.preventDefault();
+          goToPick(related.rank);
+        }}
+        className="tap-y relative flex min-w-0 items-center gap-2 rounded-lg px-1 py-1.5 text-sm hover:bg-elevated/60 focus-visible:bg-elevated/60 focus-visible:outline-none"
+      >
+        <span className="min-w-0 flex-1 truncate font-medium">{match}</span>
+        <span className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+          {reasons.map((r) => (
+            <span
+              key={r.kind}
+              data-testid="related-why"
+              data-kind={r.kind}
+              className="rounded-full border border-primary/30 bg-primary/10 px-2 py-px text-micro font-medium text-primary"
+            >
+              {t(`home.mine.${r.kind}`)}
+            </span>
+          ))}
+        </span>
+        <ArrowDown aria-hidden className="h-3.5 w-3.5 shrink-0 text-subtle-foreground" />
+      </a>
     </li>
   );
 }
@@ -319,14 +330,19 @@ export function RelatedPicksBlock({ me, board }: { me: MeToday; board: BoardQuer
       shown.length === 0 ? (
         <Note testId="related-none">{t("home.related.none", { count: picks.published })}</Note>
       ) : (
-        <ul
-          data-testid="related-list"
-          className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
-        >
-          {shown.map(({ related, item }) => (
-            <RelatedPickCard key={related.rank} related={related} item={item} />
-          ))}
-        </ul>
+        <Card className="mt-3 px-3 py-2.5 sm:px-4" data-testid="related-notice">
+          <p className="text-sm font-medium">
+            {t("home.related.coincide", { count: shown.length })}
+          </p>
+          <ul data-testid="related-list" className="mt-1 divide-y divide-border/60">
+            {shown.map(({ related, item }) => (
+              <CoincidenceRow key={related.rank} related={related} item={item} />
+            ))}
+          </ul>
+          <p className="mt-1.5 text-caption text-subtle-foreground">
+            {t("home.related.coincideHint")}
+          </p>
+        </Card>
       );
   }
   return (

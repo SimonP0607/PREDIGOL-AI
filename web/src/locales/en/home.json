@@ -116,11 +116,16 @@
   },
   "related": {
     "title": "Picks of your matches",
-    "subtitle": "Today's published picks that are of your teams, leagues or markets",
+    "subtitle": "Today's published picks that match your teams, leagues, players or markets",
     "market": "A market you follow: {market}",
-    "none_one": "Today's published pick is not of your teams, leagues or markets. It is in PrediGol, below.",
-    "none_other": "None of today's {count} published picks is of your teams, leagues or markets. They are in PrediGol, below.",
-    "noDay": "There are no published picks today, whatever you follow. The reason is in PrediGol, below."
+    "none_one": "Today's published pick is not of your teams, leagues, players or markets. It is in PrediGol, below.",
+    "none_other": "None of today's {count} published picks is of your teams, leagues, players or markets. They are in PrediGol, below.",
+    "noDay": "There are no published picks today, whatever you follow. The reason is in PrediGol, below.",
+    "coincide_one": "1 of today's picks matches your favourites",
+    "coincide_other": "{count} of today's picks match your favourites",
+    "coincideHint": "Tap one to go down to its card, in PrediGol; it is not repeated here.",
+    "go": "Go to the pick of {match}",
+    "player": "{players} plays"
   },
   "notices": {
     "title": "Your notices",
@@ -159,5 +164,15 @@
     "comebackLevel_other": "{team} were {count} goals down and are now level.",
     "comebackAhead_one": "{team} were {count} goal down and are now ahead.",
     "comebackAhead_other": "{team} were {count} goals down and are now ahead."
+  },
+  "mine": {
+    "team": "Your team",
+    "player": "Your player",
+    "league": "Your league",
+    "market": "Your market",
+    "teamHelp": "A pick of a match of {names}, whom you follow.",
+    "playerHelp": "A pick of the next match of {names}, whom you follow.",
+    "leagueHelp": "A pick of {names}, a league you follow.",
+    "marketHelp": "A pick of the {names} market, which you follow."
   }
 }

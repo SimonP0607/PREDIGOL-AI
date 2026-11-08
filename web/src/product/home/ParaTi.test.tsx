@@ -185,7 +185,7 @@ describe("Picks de tus partidos", () => {
     const page = text(markup);
     expect(page).toContain("Picks de tus partidos");
     expect(page).toContain(
-      "Ninguno de los 3 picks publicados hoy es de tus equipos, ligas ni mercados",
+      "Ninguno de los 3 picks publicados hoy es de tus equipos, ligas, jugadores ni mercados",
     );
     expect(markup).toContain('data-testid="related-none"');
   });
@@ -194,7 +194,9 @@ describe("Picks de tus partidos", () => {
     const page = text(
       await html(<RelatedPicksBlock me={me({ picks: picks({ published: 1 }) })} board={board} />),
     );
-    expect(page).toContain("El pick publicado hoy no es de tus equipos, ligas ni mercados");
+    expect(page).toContain(
+      "El pick publicado hoy no es de tus equipos, ligas, jugadores ni mercados",
+    );
   });
 
   test("a day without published picks says so, whatever they follow", async () => {
@@ -209,6 +211,61 @@ describe("Picks de tus partidos", () => {
 
   test("a reader who follows no team, league or market has no such block", async () => {
     expect(text(await html(<RelatedPicksBlock me={me({ picks: null })} board={board} />))).toBe("");
+  });
+
+  test("their picks are one notice with a line each that goes to the card below - never a second card", async () => {
+    const loaded = {
+      data: {
+        status: "ok",
+        data: {
+          set: {
+            items: [
+              {
+                rank: 1,
+                match: { fixture_id: 5, home: { name: "Nacional" }, away: { name: "Junior" } },
+              },
+              {
+                rank: 2,
+                match: { fixture_id: 6, home: { name: "Cali" }, away: { name: "Pasto" } },
+              },
+            ],
+          },
+        },
+      },
+    } as unknown as Parameters<typeof RelatedPicksBlock>[0]["board"];
+    const two = picks({
+      items: [
+        {
+          rank: 1,
+          fixture_id: 5,
+          market_key: "OU",
+          followed: { kind: "team", names: ["Nacional"] },
+          market_followed: false,
+        },
+        {
+          rank: 2,
+          fixture_id: 6,
+          market_key: "1X2",
+          followed: null,
+          market_followed: true,
+          players: ["Uno"],
+        },
+      ],
+    });
+    const markup = await html(<RelatedPicksBlock me={me({ picks: two })} board={loaded} />);
+    const page = text(markup);
+    expect(page).toContain("2 picks de hoy coinciden con tus favoritos");
+    expect(page).toContain("Nacional – Junior");
+    expect(page).toContain("Tu equipo");
+    expect(page).toContain("Tu jugador");
+    expect(page).toContain("Tu mercado");
+    expect(markup).toContain('href="#pick-1"');
+    expect(markup).toContain('href="#pick-2"');
+    expect(markup).not.toContain('data-testid="daily-item"');
+    const one = await html(
+      <RelatedPicksBlock me={me({ picks: picks({ items: [two.items[0]!] }) })} board={loaded} />,
+    );
+    expect(text(one)).toContain("1 pick de hoy coincide con tus favoritos");
   });
 
   test("their picks wait for the day's cards: a skeleton, never an empty list", async () => {

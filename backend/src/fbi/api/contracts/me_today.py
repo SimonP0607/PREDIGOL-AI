@@ -7,8 +7,8 @@ from ``GET /today`` (the matches and why each is theirs, what is at stake) and `
 a real fact of the reader's own favourites and never a number of PrediGol's:
 
 * the players they follow - starter, on the bench, left out, missing or doubtful, or nothing yet - for the next match of his team;
-* which of the day's published picks are of their matches or in a market they follow (the picks themselves are the day's, said
-  once: here only which they are), or that none is;
+* which of the day's published picks are of their matches - a team or a league they follow, or the next match of a player they
+  follow - or in a market they follow (the picks themselves are the day's, said once: here only which they are), or that none is;
 * their notices: the bells they rang for the matches to come and whether the line-ups of their teams can reach them.
 
 Nothing here computes a probability, prices a selection, chooses a pick or changes one. The favourites order and label.
@@ -60,6 +60,9 @@ class RelatedPick(Contract):
     followed: FollowReason | None = Field(description="Why its match is the reader's (a team or a league they follow); null "
                                                       "when only its market is.")
     market_followed: bool = Field(description="Its market is one the reader follows.")
+    players: list[str] = Field(default_factory=list, description=(
+        "The players the reader follows whose next match is this pick's match (plan de Inicio, 3.4: «Tu jugador»), by name, in the "
+        "order chosen; empty when none is."))
 
 
 class RelatedPicks(Contract):
@@ -95,5 +98,5 @@ class MeToday(Contract):
         "PrediGol suggests until they choose never make it true."))
     players: list[WatchedPlayer] = Field(description="The players the reader follows, in the order chosen.")
     markets: list[MarketKey] = Field(description="The markets the reader follows, in the order chosen.")
-    picks: RelatedPicks | None = Field(description="Null while the reader follows no league, team or market.")
+    picks: RelatedPicks | None = Field(description="Null while the reader follows no league, team, player or market.")
     notices: Notices | None = Field(description="Null while the reader has chosen nothing (Home shows no «Para ti»).")

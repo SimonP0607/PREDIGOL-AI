@@ -74,8 +74,8 @@ def get_me_today(conn: Db, principal: App) -> MeToday:
     """PARA TI: the reader's own layer of Home. ``chosen`` is true only when they chose a league, a team, a player or a market
     (the suggested leagues never make it so) and personalisation is on - and it is for readers: the owner's console account
     has none. Then: the players they follow with the state of the next match of his team (starter, bench, left out, missing,
-    doubtful, or waiting for the line-up), which of the day's published picks are of their matches or markets - or that none
-    is - and their notices (the bells they rang and whether their devices can receive the line-ups). Every reader gets the same
+    doubtful, or waiting for the line-up), which of the day's published picks are of their matches (a team, a league or the next match of a player they
+    follow) or markets - or that none is - and their notices (the bells they rang and whether their devices can receive the line-ups). Every reader gets the same
     picks: only which are theirs differs."""
     on = favorites.personalization_on()
     mine = favorites.chosen(conn, principal.user_id) if on and principal.role == Role.USER else None
@@ -84,11 +84,13 @@ def get_me_today(conn: Db, principal: App) -> MeToday:
         return MeToday(personalization=on, chosen=False, players=[], markets=[], picks=None, notices=None)
     at = now()
     follows = Follows(leagues=mine.leagues if mine else (), teams=mine.teams if mine else (), suggested=False)
-    picks = me_today.related(conn, follows, more.markets, at=at) if mine or more.markets else None
+    watching = me_today.watched(conn, more.players, at=at)
+    picks = (me_today.related(conn, follows, more.markets, me_today.player_fixtures(watching), at=at)
+             if mine or more.markets or more.players else None)
     state = push.state(conn, principal.user_id)
     rung = [(b.fixture_id, int(b.minutes_before or 0)) for b in push.bells(conn, principal.user_id, at)]
     return MeToday(
-        personalization=on, chosen=True, players=me_today.watched(conn, more.players, at=at),
+        personalization=on, chosen=True, players=watching,
         markets=list(more.markets),  # type: ignore[arg-type]
         picks=picks,
         notices=Notices(available=state.available, devices=len(state.devices), lineup=state.categories["lineup"],

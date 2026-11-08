@@ -116,11 +116,16 @@
   },
   "related": {
     "title": "Picks de tus partidos",
-    "subtitle": "Los picks publicados hoy que son de tus equipos, ligas o mercados",
+    "subtitle": "Los picks publicados hoy que coinciden con tus equipos, ligas, jugadores o mercados",
     "market": "Mercado que sigues: {market}",
-    "none_one": "El pick publicado hoy no es de tus equipos, ligas ni mercados. Está en PrediGol, más abajo.",
-    "none_other": "Ninguno de los {count} picks publicados hoy es de tus equipos, ligas ni mercados. Están en PrediGol, más abajo.",
-    "noDay": "Hoy no hay picks publicados, tengas lo que tengas en favoritos. En PrediGol, más abajo, está el motivo."
+    "none_one": "El pick publicado hoy no es de tus equipos, ligas, jugadores ni mercados. Está en PrediGol, más abajo.",
+    "none_other": "Ninguno de los {count} picks publicados hoy es de tus equipos, ligas, jugadores ni mercados. Están en PrediGol, más abajo.",
+    "noDay": "Hoy no hay picks publicados, tengas lo que tengas en favoritos. En PrediGol, más abajo, está el motivo.",
+    "coincide_one": "1 pick de hoy coincide con tus favoritos",
+    "coincide_other": "{count} picks de hoy coinciden con tus favoritos",
+    "coincideHint": "Tocas uno y bajas a su tarjeta, en PrediGol; no se repite aquí.",
+    "go": "Ir al pick de {match}",
+    "player": "Juega {players}"
   },
   "notices": {
     "title": "Tus avisos",
@@ -159,5 +164,15 @@
     "comebackLevel_other": "{team} iba perdiendo por {count} goles y ya empata.",
     "comebackAhead_one": "{team} iba perdiendo por {count} gol y ya gana.",
     "comebackAhead_other": "{team} iba perdiendo por {count} goles y ya gana."
+  },
+  "mine": {
+    "team": "Tu equipo",
+    "player": "Tu jugador",
+    "league": "Tu liga",
+    "market": "Tu mercado",
+    "teamHelp": "Es un pick de un partido de {names}, que sigues.",
+    "playerHelp": "Es un pick del próximo partido de {names}, que sigues.",
+    "leagueHelp": "Es un pick de {names}, una liga que sigues.",
+    "marketHelp": "Es un pick del mercado {names}, que sigues."
   }
 }

@@ -11,7 +11,10 @@ import { Link } from "@tanstack/react-router";
 import { t } from "@/lib/i18n";
 import { formatDateLong, formatTime } from "@/lib/time";
 import type { Envelope } from "@/lib/api/v1/types";
+import type { RelatedPick } from "@/lib/api/v1/types_me_today";
 import type { DailyBoard } from "@/lib/api/v1/types_records";
+import { MineChips } from "@/product/home/MineChips";
+import { pickAnchor } from "@/product/home/related";
 import {
   Card,
   EmptyState,
@@ -67,6 +70,7 @@ export function DailySetBlock({
   title,
   nav,
   noPick,
+  mine,
 }: {
   query: BoardQuery;
   variant?: "page" | "home";
@@ -76,6 +80,11 @@ export function DailySetBlock({
   nav?: { day: string; today: string; onDay: (day: string) => void } | undefined;
   /** Today's set: why it is empty (GET /today). Not for another day, never for the evaluation records. */
   noPick?: NoPickLoad | undefined;
+  /**
+   * Home, with favourites (plan de Inicio, 3.4): which of these picks are the reader's, by rank. Each gets its chip and the
+   * anchor «Para ti» takes the reader to; the card itself is the same for everyone.
+   */
+  mine?: ReadonlyMap<number, RelatedPick> | undefined;
 }) {
   const board = query.data?.data;
   const items = board?.set?.items ?? [];
@@ -110,14 +119,21 @@ export function DailySetBlock({
         data-testid="daily-list"
         className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:mx-0 md:grid md:grid-cols-2 md:gap-4 md:overflow-visible md:px-0 md:pb-0 xl:grid-cols-3 [&::-webkit-scrollbar]:hidden"
       >
-        {items.map((item) => (
-          <li
-            key={item.rank}
-            className="w-[88%] max-w-[23rem] shrink-0 snap-start text-caption md:w-auto md:max-w-none"
-          >
-            <DailyItemCard item={item} compact evaluation={evaluation} />
-          </li>
-        ))}
+        {items.map((item) => {
+          const own = mine?.get(item.rank);
+          const ours = own && own.fixture_id === item.match.fixture_id ? own : undefined;
+          return (
+            <li
+              key={item.rank}
+              id={ours ? pickAnchor(item.rank) : undefined}
+              data-mine={ours ? "true" : undefined}
+              className="w-[88%] max-w-[23rem] shrink-0 snap-start rounded-xl text-caption transition-shadow data-[highlight=true]:ring-2 data-[highlight=true]:ring-primary md:w-auto md:max-w-none"
+            >
+              {ours ? <MineChips related={ours} /> : null}
+              <DailyItemCard item={item} compact evaluation={evaluation} />
+            </li>
+          );
+        })}
         <li className="w-40 shrink-0 snap-start md:w-auto">
           <Link
             to="/picks"

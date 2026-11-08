@@ -201,9 +201,11 @@ def watched(conn: Conn, ids: Sequence[int], *, at: datetime | None = None) -> li
     return out
 
 
-def related(conn: Conn, follows: Follows, markets: Sequence[str], *, at: datetime | None = None) -> RelatedPicks:
+def related(conn: Conn, follows: Follows, markets: Sequence[str], players: Mapping[int, Sequence[str]] | None = None, *,
+            at: datetime | None = None) -> RelatedPicks:
     """Which of the day's published picks are the reader's: their match has a team or a league they follow (``follows``: their
-    own, never the suggested) or its market is one they follow. The day's set is the one Home shows - kept 30 seconds, the same
+    own, never the suggested), is the next match of a player they follow (``players``: fixture id → the names, from ``watched``)
+    or its market is one they follow. The day's set is the one Home shows - kept 30 seconds, the same
     for every reader - and only its order and its picks' match and market are read."""
     moment = at or now()
     # Without an explicit ``at`` the call is exactly the one of GET /daily (day=None, include_shadow=False): the shared cache
@@ -217,10 +219,20 @@ def related(conn: Conn, follows: Follows, markets: Sequence[str], *, at: datetim
         why = follow_reason((m.home.id, m.home.name), (m.away.id, m.away.name), (m.competition.id, m.competition.name),
                             follows)
         followed_market = item.market_key in markets
-        if why is not None or followed_market:
+        names = list((players or {}).get(m.fixture_id, ()))
+        if why is not None or followed_market or names:
             mine.append(RelatedPick(rank=item.rank, fixture_id=m.fixture_id, market_key=item.market_key,  # type: ignore[arg-type]
-                                    followed=why, market_followed=followed_market))
+                                    followed=why, market_followed=followed_market, players=names))
     return RelatedPicks(day=board.day if board is not None else product_day(moment), published=len(items), items=mine)
+
+
+def player_fixtures(watching: Sequence[WatchedPlayer]) -> dict[int, list[str]]:
+    """The matches the reader's players play next (pure): fixture id → their names, in the order chosen."""
+    found: dict[int, list[str]] = {}
+    for p in watching:
+        if p.next is not None:
+            found.setdefault(p.next.fixture_id, []).append(p.name)
+    return found
 
 
 def bells(conn: Conn, rung: Sequence[tuple[int, int]]) -> list[MatchBell]:
