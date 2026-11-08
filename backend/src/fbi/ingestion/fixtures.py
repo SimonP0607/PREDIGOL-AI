@@ -159,6 +159,16 @@ MONOTONIC_SQL = """
 """
 
 
+KEEP_REPAIRED_CITY_SQL = """
+SELECT 1 FROM audit.data_repairs d
+ WHERE d.entity = 'core.fixtures' AND d.entity_id = core.fixtures.id AND d.field = 'venue_city'
+   AND d.rule = 'fixture_venue_city' AND d.before_value = EXCLUDED.venue_city AND d.after_value = core.fixtures.venue_city
+"""
+"""A city the owner's repair already corrected (``scripts.repair_venue_city``, rule ``fixture_venue_city``, BE-005) is not written
+back by the next sync when the provider's payload repeats the very value it replaced (BE-008: Mestalla's «Valdivia» came back
+two hours after the repair). Any other city the provider sends - a real change - is taken as before."""
+
+
 class FixtureRepository:
     def __init__(self, conn: psycopg.Connection) -> None:
         self._conn = conn
@@ -275,7 +285,8 @@ class FixtureRepository:
                       round = COALESCE(EXCLUDED.round, core.fixtures.round),
                       venue_id = COALESCE(EXCLUDED.venue_id, core.fixtures.venue_id),
                       venue_name = COALESCE(EXCLUDED.venue_name, core.fixtures.venue_name),
-                      venue_city = COALESCE(EXCLUDED.venue_city, core.fixtures.venue_city),
+                      venue_city = CASE WHEN EXISTS (""" + KEEP_REPAIRED_CITY_SQL + """) THEN core.fixtures.venue_city
+                                        ELSE COALESCE(EXCLUDED.venue_city, core.fixtures.venue_city) END,
                       source_payload_hash = EXCLUDED.source_payload_hash,
                       source_fetched_at = EXCLUDED.source_fetched_at,
                       updated_at = now()
