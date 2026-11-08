@@ -166,7 +166,13 @@ if [ -r "$ENV_FILE" ]; then
       else printf "%s=%s\n", n, v
     }' "$ENV_FILE" | sort
   MODE_NOW=$(awk -F= '$1 == "FBI_AI_MODE" { v = $2; gsub(/["\047 \t\r]/, "", v); print v }' "$ENV_FILE" | tail -n 1)
-  verdict "${MODE_NOW:-shadow}" "shadow" "FBI_AI_MODE (the layer stays in shadow; empty means shadow)"
+  # shadow (empty means shadow) or enforce, the owner's word (8-nov-2026, CI-012): with enforce the AI's decisions reach users only while the
+  # latest shadow report of ``combined`` says pass (fbi.ai.gating); until then it behaves as shadow. Any other word is refused.
+  case "${MODE_NOW:-shadow}" in
+    shadow) good "FBI_AI_MODE (the layer stays in shadow; empty means shadow) = shadow" ;;
+    enforce) good "FBI_AI_MODE = enforce (the owner's word: applied to users only while the shadow gate of combined passes, fbi.ai.gating)" ;;
+    *) bad "FBI_AI_MODE = $MODE_NOW, expected shadow or enforce" ;;
+  esac
   echo "the variables the running worker has (names only):"
   docker exec predigol-worker sh -c "env | cut -d= -f1 | grep -E '^(FBI_AI_|FBI_ANALYST_|EXA_API_KEY)' | sort" < /dev/null || bad "the worker's variable names could not be read"
 else

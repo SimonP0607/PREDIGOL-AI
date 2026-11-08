@@ -19,6 +19,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | CI-009 | El CI vuelve a pasar con ruff 0.17.4: se junta un `if` anidado del revisor posterior en una sola condición (misma lógica, ahora con prueba) | en curso | este PR | — |
 | CI-010 | El despliegue automático (CI-007) no llegaba al servidor: GitHub no podía leer la llave SSH del entorno `production-auto` («error in libcrypto»). `ci_ssh_setup.sh` ahora endereza la llave (BOM, CRLF, un solo renglón, tabuladores, sangrías) y, si aun así no carga, se detiene ahí diciendo qué le pasa (cabecera, pie, renglones) sin imprimirla; con pruebas sobre una llave real. No toca la inteligencia ni el servidor | en curso | este PR | — |
 | CI-011 | El trabajo `pytest (PostgreSQL 16)` del CI del backend pasa de 45 a 60 minutos: la batería tarda 30-39 min y, con varias ejecuciones a la vez, superó los 45 y se canceló al 97 % (main `cf1ed4e8` y #103, 8-nov-2026), lo que además detenía el despliegue automático. No cambia pruebas, código ni el servidor | en curso | este PR | — |
+| CI-012 | El precheck del lanzamiento acepta `FBI_AI_MODE=enforce` además de `shadow` (palabra del dueño, 8-nov-2026: «Encender con control»); cualquier otra palabra sigue siendo NOT OK. Con `enforce`, la IA solo llega a los usuarios mientras el último informe de sombra de `combined` diga `pass` (`fbi.ai.gating`). Sin esto, encender `enforce` bloqueaba todos los despliegues | en curso | este PR | — |
 
 ## IA — capa de inteligencia artificial
 
@@ -119,4 +120,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-012 · SEG-001 · IA-019 · UX-064 · BE-006 · FE-001 · OPS-001 · DOC-001
+CI-013 · SEG-001 · IA-019 · UX-064 · BE-006 · FE-001 · OPS-001 · DOC-001
