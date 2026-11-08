@@ -128,4 +128,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-013 · SEG-001 · IA-020 · UX-066 · BE-009 · FE-001 · OPS-001 · DOC-001
+CI-013 · SEG-001 · IA-020 · UX-067 · BE-009 · FE-001 · OPS-001 · DOC-001
