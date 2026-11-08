@@ -356,10 +356,25 @@ GUIDE_REVIEW_STEP = 0.25
 
 def guide_needs_review(started: int, skipped_first: int, top_step_skipped: int) -> bool:
     """A guide to look at again: with enough readers behind it, more than half of them skip it on its first card, or one
-    step alone loses more than a quarter of those who started it. Descriptive and self-selected: no control group."""
+    later step alone loses more than a quarter of those who started it (``top_step_skipped`` counts the steps after the
+    first card: the first one answers to its own half). Descriptive and self-selected: no control group."""
     if started < GUIDE_REVIEW_STARTS:
         return False
     return skipped_first / started > GUIDE_REVIEW_FIRST or top_step_skipped / started > GUIDE_REVIEW_STEP
+
+
+def guide_line(row: dict[str, Any], steps: dict[int, int]) -> dict[str, Any]:
+    """One guide and version: its counts, the step most readers skipped it at (the first card counts there) and whether it
+    is one to review - where a later step is held to the quarter and the first card only to its half (UX-070: 30 % of the
+    readers leaving on the first card is not a step that «loses a quarter»)."""
+    top = max(steps.items(), key=lambda kv: (kv[1], -kv[0]), default=None)
+    later = max((n for step, n in steps.items() if step > 0), default=0)
+    started, skipped_first = int(row["started"]), int(row["skipped_first"])
+    return {"guide": str(row["guide"]), "version": int(row["version"]), "started": started,
+            "completed": int(row["completed"]), "skipped": int(row["skipped"]), "skipped_first": skipped_first,
+            "paused": int(row["paused"]), "top_skip_step": top[0] if top else None,
+            "top_skip_readers": top[1] if top else 0,
+            "review": guide_needs_review(started, skipped_first, later)}
 
 
 def guide_rows(conn: psycopg.Connection[Any], window: dict[str, Any]) -> list[dict[str, Any]]:
@@ -373,17 +388,7 @@ def guide_rows(conn: psycopg.Connection[Any], window: dict[str, Any]) -> list[di
         for r in cur.fetchall():
             by_step.setdefault((str(r["guide"]), int(r["version"])), {})[int(r["step"])] = int(r["skipped"])
     order = {g: i for i, g in enumerate(GUIDE_KEYS)}
-    out: list[dict[str, Any]] = []
-    for r in found:
-        key = (str(r["guide"]), int(r["version"]))
-        steps = by_step.get(key, {})
-        top = max(steps.items(), key=lambda kv: (kv[1], -kv[0]), default=None)
-        started = int(r["started"])
-        out.append({"guide": key[0], "version": key[1], "started": started, "completed": int(r["completed"]),
-                    "skipped": int(r["skipped"]), "skipped_first": int(r["skipped_first"]),
-                    "paused": int(r["paused"]), "top_skip_step": top[0] if top else None,
-                    "top_skip_readers": top[1] if top else 0,
-                    "review": guide_needs_review(started, int(r["skipped_first"]), top[1] if top else 0)})
+    out = [guide_line(r, by_step.get((str(r["guide"]), int(r["version"])), {})) for r in found]
     out.sort(key=lambda g: (order.get(g["guide"], 99), -g["version"]))
     return out
 

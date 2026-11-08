@@ -2,6 +2,7 @@
 import { Clock } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { formatDateLong, formatRelative } from "@/lib/time";
+import { GuideButton } from "@/product/guides/GuideButton";
 import { SkeletonBlock } from "@/product/shared/States";
 import { ShadowToggle } from "@/product/shared/ShadowToggle";
 
@@ -39,7 +40,11 @@ export function HomeHeader({
           </p>
         ) : null}
       </div>
-      <ShadowToggle />
+      {/* The «?» of Inicio (UX-070): its own guide again, at the end of the header as on every screen with a guide. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <ShadowToggle />
+        <GuideButton guide="home" />
+      </div>
     </header>
   );
 }

@@ -77,6 +77,7 @@ function FairExplainer() {
       <p
         className="hidden items-start gap-2 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground md:flex"
         data-testid="odds-fair-explainer"
+        data-guide="odds-fair"
       >
         <Scale aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <span>
@@ -335,6 +336,7 @@ export function OddsPage() {
         <div className="flex items-center gap-3 lg:hidden">
           <FilterSheet
             testId="odds-filters"
+            guide="odds-above"
             active={
               (effective.query.trim() !== "" ? 1 : 0) +
               (country !== null ? 1 : 0) +
