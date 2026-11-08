@@ -1,0 +1,56 @@
+# PICKS: línea base y liquidación recalculada (plan PICKS, F1 y F6)
+
+Dos lecturas de solo lectura para medir el punto de partida del módulo PICKS y comprobar lo ya liquidado. Ninguna escribe en la base: la conexión la abre el servidor en modo `READ ONLY` y cualquier `INSERT` o `UPDATE` falla. No llaman al proveedor.
+
+Las cifras de este documento se rellenan **con la corrida en producción**. Hasta entonces, las secciones de resultados dicen «pendiente» y no se adelanta ningún número.
+
+## Cómo se corren
+
+En el servidor, desde una sesión con acceso a la base de solo lectura:
+
+```
+python -m scripts.audit_picks_module --hours 24          # línea base (F1)
+python -m scripts.audit_picks_module --hours 24 --json   # las mismas cifras, para guardarlas
+python -m scripts.audit_settlement --days 30             # liquidación recalculada (F6)
+python -m scripts.audit_settlement --days 30 --json
+```
+
+`audit_settlement` termina con código 1 si encuentra un cambio sin explicar o un día cuyo resumen no cuadra, y con 0 si todo cuadra.
+
+## Qué mide `audit_picks_module` (F1)
+
+Llama a los mismos servicios que responde la API en la vista previa del dueño (`picks_board`, `started_board` y `daily_board`), así que cuenta lo mismo que se ve en pantalla:
+
+| Hallazgo | Qué cuenta |
+| --- | --- |
+| Motor | Precios evaluados, picks en sombra, calificados, publicados (deben ser 0) y liquidados |
+| S1 | Tarjetas que hoy no pasan la regla de valor, y por qué (precio viejo, partido no programado, pocas casas, VE no positivo) |
+| S2 | Tarjetas que repiten la misma idea en otra línea (mismo partido, mercado y lado); tarjetas por partido: mediana y máximo |
+| S3 | Tarjetas con cuota por encima de 3,00 |
+| C4 | En goles, «menos de» frente a «más de»; en ambos marcan, «no» frente a «sí» |
+| C5 | Edad del precio de cada tarjeta: menos de 1 h, de 1 a 3 h, más de 3 h, sin precio; y la del más nuevo |
+| L2 | «Ya empezaron hoy»: candidatos, partidos y el máximo en un partido |
+| D1 | Los dos «picks del día»: el de la página (con su regla y sus estados) e Intelligence (último estado de cada selección del día de Bogotá y su set) |
+
+## Qué mide `audit_settlement` (F6)
+
+Para cada registro liquidado sobre un marcador de los partidos de los últimos N días (picks en sombra, picks del día, patas de las combinadas de PrediGol, picks y combinadas de los lectores), lo vuelve a liquidar con las mismas reglas (`settle-v4`) y la misma lectura que la reliquidación, y lo compara con lo guardado:
+
+| Resultado | Significado |
+| --- | --- |
+| Igual | Lo guardado es lo que dan hoy las reglas |
+| Retenido | Una diferencia que las reglas dejan a una persona: un nulo por regla, o un partido que ya no se liquida |
+| Cambio con corrección registrada | El resultado del partido se corrigió y la reliquidación aún no lo aplicó |
+| **Sin explicar** | El criterio del plan es **cero** |
+
+Después comprueba en los datos que el resumen de cada día cuadra (ganados + perdidos + nulos o devueltos + por jugar = tamaño del set) y mide cuánto tardan las dos consultas de la consola de rendimiento (R1).
+
+Si aparece algo sin explicar, **no se corrige desde aquí**: se usa `python -m scripts.resettle`, que deja rastro, con tu visto bueno.
+
+## Resultados
+
+| Lectura | Fecha | Resultado |
+| --- | --- | --- |
+| Línea base (F1) | pendiente | pendiente de la corrida en producción |
+| Liquidación, 30 días (F6) | pendiente | pendiente de la corrida en producción |
+| Consola de rendimiento (R1) | pendiente | pendiente de la corrida en producción |
