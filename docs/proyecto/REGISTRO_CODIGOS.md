@@ -120,6 +120,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | BE-005 | Control de estadios (plan Partidos y Match Center, F6): la auditoría de verdad marca los estadios cuya ciudad o país no cuadran con su competición, el proveedor o los demás partidos del estadio (el caso de Mestalla en «Valdivia»), sin corregir nada; script `scripts/repair_venue_city.py` en seco, con `--apply` y registro en `audit.data_repairs`; guía `docs/owner/ESTADIOS_CIUDAD_BE005.md`. Sin migración | hecho | #77 | Plan Partidos F6 |
 | BE-006 | La consola de rendimiento vuelve a responder con muestra real (plan PICKS, R1): `GET /admin/performance` respondió 500 el 7-nov-2026 y sus pruebas solo cubrían la rama de muestra corta. Las porciones se agrupan en una pasada (grouping sets, sin copiar cinco veces las apuestas: 2,2 s → 1,0 s con 176.000 picks sintéticos, cifras idénticas), solo esta petición puede pasar de los 10 s de la API (60 s, como Competiciones en octubre) y su respuesta se guarda 5 minutos. Pruebas con 40 apuestas liquidadas al céntimo. Solo lectura; no cambia picks, modelos ni liquidación; sin migración | en curso | este PR | Plan PICKS R1 |
 | BE-007 | Plan PICKS, Ola 1 (F1, F2 y F6), tres lecturas de solo lectura y sus guías: `scripts/audit_picks_module.py` mide la línea base del módulo con los mismos servicios de la API (S1, S2, S3, C4, C5, L2, D1); `scripts/audit_settlement.py` vuelve a liquidar en papel 30 días de registros con las reglas y la lectura de la reliquidación y separa iguales, retenidos, cambios con corrección y sin explicar, comprueba que el resumen de cada día cuadra y cronometra la consola de rendimiento; `scripts/research_picks_calibration.py` responde C1 a C5 con la calibrada fuera de muestra, 300 selecciones por grupo e IC 95 % por bootstrap de partidos, criterios fijados antes de mirar. Guías `PICKS_LINEA_BASE.md` y `PICKS_F2_EVIDENCIA.md` con las cifras pendientes de la corrida en producción. No escribe en la base ni llama al proveedor; sin migración | en curso | este PR | Plan PICKS F1, F2, F6 |
+| BE-008 | Una ciudad de partido reparada no vuelve (plan Partidos y Match Center, decisión 7): la sincronización de partidos no reescribe `venue_city` con el mismo valor que la reparación de BE-005 ya corrigió (`audit.data_repairs`, regla `fixture_venue_city`); una ciudad nueva del proveedor se toma como siempre. Prueba de integración; sin migración | en curso | este PR | Plan Partidos, decisión 7 |
 
 ## Otras áreas
 
@@ -127,4 +128,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-013 · SEG-001 · IA-020 · UX-067 · BE-008 · FE-001 · OPS-001 · DOC-001
+CI-013 · SEG-001 · IA-020 · UX-066 · BE-009 · FE-001 · OPS-001 · DOC-001
