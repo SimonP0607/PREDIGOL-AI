@@ -11,15 +11,17 @@ export function recentDays(today: string, count = 7): string[] {
 
 export interface DaySummary {
   count: number;
-  /** Won, half wins included (they are also counted in ``halves``). */
+  /** Won, half wins included (they are also counted in ``halfWon``). */
   won: number;
-  /** Lost, half losses included (they are also counted in ``halves``). */
+  /** Lost, half losses included (they are also counted in ``halfLost``). */
   lost: number;
   /** Pushes and voids: the stake came back. */
   voids: number;
   open: number;
-  /** Half wins and half losses (a quarter line): already inside ``won`` and ``lost``. */
-  halves: number;
+  /** Half wins (a quarter line): already inside ``won``. */
+  halfWon: number;
+  /** Half losses (a quarter line): already inside ``lost``. */
+  halfLost: number;
   /** Profit in units over the settled picks; null while none is settled. */
   units: number | null;
 }
@@ -32,32 +34,35 @@ export function daySummary(
   let lost = 0;
   let voids = 0;
   let open = 0;
-  let halves = 0;
+  let halfWon = 0;
+  let halfLost = 0;
   let units: number | null = null;
   for (const i of items) {
     if (i.status === "WIN" || i.status === "HALF_WIN") won += 1;
     else if (i.status === "LOSS" || i.status === "HALF_LOSS") lost += 1;
     else if (i.status === "PUSH" || i.status === "VOID") voids += 1;
     else open += 1;
-    if (i.status === "HALF_WIN" || i.status === "HALF_LOSS") halves += 1;
+    if (i.status === "HALF_WIN") halfWon += 1;
+    if (i.status === "HALF_LOSS") halfLost += 1;
     const p = toNumber(i.profit_units);
     if (i.status !== "PENDING" && p !== null) units = (units ?? 0) + p;
   }
   // Every pick counts once: won + lost + voids + open = count (plan PICKS, D3).
-  return { count: items.length, won, lost, voids, open, halves, units };
+  return { count: items.length, won, lost, voids, open, halfWon, halfLost, units };
 }
 
-/** The day in words: every pick once, nulls and voids apart, half results noted (plan PICKS, D3). */
+/** «1 ganado (1 a medias)»: a half result is said beside its own side, never at the end of the sentence. */
+function withHalves(part: string, halves: number): string {
+  return halves > 0 ? `${part} ${t("records.dayNav.parts.halves", { count: halves })}` : part;
+}
+
+/** The day in words: every pick once, nulls and voids apart, half results beside their side (plan PICKS, D3). */
 export function summaryText(sum: DaySummary): string {
-  const parts = [
+  return [
     t("records.dayNav.parts.picks", { count: sum.count }),
-    t("records.dayNav.parts.won", { count: sum.won }),
-    t("records.dayNav.parts.lost", { count: sum.lost }),
+    withHalves(t("records.dayNav.parts.won", { count: sum.won }), sum.halfWon),
+    withHalves(t("records.dayNav.parts.lost", { count: sum.lost }), sum.halfLost),
     ...(sum.voids > 0 ? [t("records.dayNav.parts.voids", { count: sum.voids })] : []),
     t("records.dayNav.parts.open", { count: sum.open }),
-  ];
-  const text = parts.join(" · ");
-  return sum.halves > 0
-    ? `${text} ${t("records.dayNav.parts.halves", { count: sum.halves })}`
-    : text;
+  ].join(" · ");
 }
