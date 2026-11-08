@@ -628,8 +628,7 @@ class PacketBuilder:
             if own:
                 left = [x["round"] for x in _rows(self.conn, REMAINING_SQL, {
                     "season": f["season_id"], "team": team, "kickoff": f["kickoff_at"]})]
-                st = ctx.stakes(table, team, sum(1 for x in left if stage_of(x) == stage),
-                                league=ctx.league_of(str(group)))
+                st = ctx.stakes(table, team, sum(1 for x in left if stage_of(x) == stage))
             out[side] = {"rank": r["rank"], "points": r["points"], "played": r["played"], "goals_diff": r["goals_diff"],
                          "form": r["form"], "description": r["description"], "group": group, "teams": len(table),
                          "stage": stage, "selection": found.choice.reason,
