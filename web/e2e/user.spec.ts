@@ -136,12 +136,6 @@ interface TodayNewsBody {
   }>;
 }
 
-/** Whether an instant falls on today in a time zone (the reader's own day). */
-function sameDay(iso: string, zone: string): boolean {
-  const day = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: zone });
-  return day(new Date(iso)) === day(new Date());
-}
-
 test("Home: today in the suggested leagues, the day's picks or why there are none, the parlays, results, live", async ({
   page,
 }) => {
@@ -205,28 +199,26 @@ test("Home: today in the suggested leagues, the day's picks or why there are non
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: t.home.live.title })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Mejores cuotas" })).toHaveCount(0);
-  // 4 · Noticias (A10): the confirmed or probable news of today's suggested matches - only with content
+  // 4 · Noticias (plan de Inicio, 3.3): a summary of three at most - confirmed or probable, and one labelled rumour at most
   const news = await getJson<{ status: string; data: TodayNewsBody | null }>(
     page.request,
     "/api/v1/today/news",
   );
   expect(news.status).toBe(200);
-  const me = await getJson<{ timezone: string }>(page.request, "/api/v1/auth/me");
-  const zone = me.body.timezone; // the page cuts the reader's day in the account's own zone
-  const todays = (news.body.data?.items ?? []).filter(
-    (i) => i.match.status_group === "live" || sameDay(i.match.kickoff_at, zone),
-  );
+  const todays = news.body.data?.items ?? [];
+  expect(todays.length).toBeLessThanOrEqual(3);
+  expect(todays.filter((i) => i.item.status === "RUMOR").length).toBeLessThanOrEqual(1);
   const block4 = page.getByTestId("home-news");
   if (news.body.status === "ok" && todays.length > 0) {
     await expect(block4.getByRole("heading", { name: t.home.news.title })).toBeVisible();
     const cards = block4.getByTestId("news-card");
-    await expect(cards).toHaveCount(Math.min(todays.length, 4));
+    await expect(cards).toHaveCount(todays.length);
     for (const status of await cards.evaluateAll((els) =>
       els.map((e) => e.getAttribute("data-status")),
     )) {
       expect(
-        ["CONFIRMED", "PROBABLE"],
-        "Inicio shows only what is confirmed or probable",
+        ["CONFIRMED", "PROBABLE", "RUMOR"],
+        "Inicio shows what is confirmed or probable, and one rumour at most - labelled",
       ).toContain(status);
     }
     await expect(block4.getByTestId("home-news-match").first()).toHaveAttribute(

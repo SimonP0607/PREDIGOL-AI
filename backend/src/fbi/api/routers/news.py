@@ -4,9 +4,10 @@
   PrediGol's own summary, the sources with their standing, the time, the relevance for the match, the status the server decided
   and the link to the original; confirmed first, rumours and the outdated last; a contradiction as one card with both sources.
   ``empty`` when there is none (the web says «No encontramos noticias verificadas relevantes para este partido.»).
-* ``GET /today/news`` (product) - Home's «Noticias»: the newest confirmed or probable news of the reader's matches not yet
-  over - their leagues and teams (B2), the suggested ones while they chose none - each saying why it is theirs. Kept two
-  minutes per set of favourites; the items are the same for every reader who sees them.
+* ``GET /today/news`` (product) - Home's «Noticias» as a summary (plan de Inicio, 3.3): the best few confirmed or probable news
+  not yet over - and, with room left, one rumour - of the reader's own leagues and teams (two at most; the suggested ones,
+  three, while they chose none) or, with ``scope=general``, of the suggested matches whatever they follow (three at most, the
+  same for everyone). «Confirmed» needs an official source or two distinct outlets. Kept two minutes per set of favourites.
 
 Both answer ``not_available`` while the owner keeps them off (``FBI_NEWS_USERS=0``). No route here searches the web, calls an
 AI, sends an article's text or changes an item.
@@ -14,15 +15,15 @@ AI, sends an article's text or changes an item.
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import psycopg
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.news import MatchNews, TodayNews
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
-from fbi.api.routers.today import follows_of
+from fbi.api.routers.today import follows_of, general_follows
 from fbi.api.security import App
 from fbi.api.services import news
 
@@ -40,8 +41,12 @@ def get_match_news(conn: Db, _: App, fixture_id: FixtureId) -> Envelope[MatchNew
 
 
 @router.get("/today/news", response_model=Envelope[TodayNews | None])
-def get_today_news(conn: Db, principal: App) -> Envelope[TodayNews | None]:
-    """Home's NOTICIAS: the confirmed or probable news of the reader's matches - their leagues and teams (B2), the suggested
-    ones while they chose none or FBI_PERSONALIZATION=0 - from three hours ago to 36 hours ahead that are not over, kick-off
-    order, at most three per match, each match saying why it is theirs."""
-    return news.news_for(conn, follows_of(conn, principal.user_id))
+def get_today_news(
+    conn: Db, principal: App, scope: Annotated[Literal["mine", "general"], Query()] = "mine"
+) -> Envelope[TodayNews | None]:
+    """Home's NOTICIAS as a summary: confirmed - with an official source or two distinct outlets - or probable news, and at
+    most one labelled rumour, of the matches not over from three hours ago to 36 hours ahead. ``scope=mine`` (default): the
+    reader's leagues and teams, two at most, each match saying why it is theirs (the suggested ones, three, while they chose
+    none or FBI_PERSONALIZATION=0). ``scope=general``: the suggested matches, three at most, the same for everyone."""
+    follows = general_follows(conn) if scope == "general" else follows_of(conn, principal.user_id)
+    return news.news_for(conn, follows)

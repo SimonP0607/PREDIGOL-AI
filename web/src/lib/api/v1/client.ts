@@ -803,8 +803,14 @@ export const v1 = {
   noPick: () => getJson<Envelope<NoPick>>("/today/no-pick"),
   /** NOTICIAS (plan UX, A10): the match's verified news, confirmed first, rumours and the outdated last. */
   matchNews: (id: string) => getJson<Envelope<MatchNews | null>>(`/matches/${id}/news`),
-  /** Home's «Noticias»: the confirmed or probable news of the suggested matches not yet over. */
-  todayNews: () => getJson<Envelope<TodayNews | null>>("/today/news"),
+  /**
+   * Home's «Noticias» as a summary (plan de Inicio, 3.3): the reader's own - two at most - or, with `general`, the suggested
+   * matches' - three at most, the same for everyone.
+   */
+  todayNews: (scope: "mine" | "general" = "mine") =>
+    getJson<Envelope<TodayNews | null>>(
+      scope === "general" ? "/today/news?scope=general" : "/today/news",
+    ),
   /**
    * CÓMO LE VA A PREDIGOL (plan UX, A12): the published picks and how they went, the days without picks and why, the line
    * value, the forecast's calibration and what is in evaluation - always with its sample. Null data with `not_available`:

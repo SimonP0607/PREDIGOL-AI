@@ -305,7 +305,13 @@ export const live = {
   /** Home's «Noticias»: the server keeps it two minutes. */
   todayNews: {
     queryKey: ["v1", "today", "news"],
-    queryFn: v1.todayNews,
+    queryFn: () => v1.todayNews("mine"),
+    refetchInterval: 5 * MINUTE,
+  },
+  /** The general layer's: the suggested matches' news, the same for everyone. */
+  todayNewsGeneral: {
+    queryKey: ["v1", "today", "news", "general"],
+    queryFn: () => v1.todayNews("general"),
     refetchInterval: 5 * MINUTE,
   },
   liveBoard: { queryKey: ["v1", "live"], queryFn: v1.liveBoard, refetchInterval: 15_000 },

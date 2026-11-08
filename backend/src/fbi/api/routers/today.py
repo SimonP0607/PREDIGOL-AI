@@ -44,6 +44,12 @@ def follows_of(conn: psycopg.Connection[Any], user_id: int) -> Follows:
     return Follows(leagues=shown.leagues, teams=shown.teams, suggested=mine is None, personalization=on)
 
 
+def general_follows(conn: psycopg.Connection[Any]) -> Follows:
+    """What the general layer follows whatever the reader chose: the leagues and the team suggested for Colombia."""
+    shown = favorites.suggested(conn)
+    return Follows(leagues=shown.leagues, teams=shown.teams, suggested=True, personalization=favorites.personalization_on())
+
+
 @router.get("/today", response_model=Envelope[Today])
 def get_today(conn: Db, principal: App) -> Envelope[Today]:
     """HOY: the matches around today (live, to come and the last 48 hours' results) of the followed competitions, each with
