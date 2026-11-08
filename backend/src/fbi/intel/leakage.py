@@ -99,7 +99,8 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              carries a moment later than the pass (``PackageLeakError`` is a violation too). A row whose package version
                              this code cannot derive again is a violation: the audit is taught a new version when the code is - each row
                              is derived again with the version it names (``package.DERIVABLE``: ``package-v1`` with the door
-                             ``untrusted-v1``, ``package-v2`` with ``untrusted-v2``), never with today's door over an old row. One check
+                             ``untrusted-v1``, ``package-v2`` with ``untrusted-v2``, ``package-v3`` with ``untrusted-v3``), never with
+                             today's door over an old row. One check
                              per row. Examples are the ids of the rows. The one rule that is not a statement: it reads the packets one
                              at a time, but only those of the rows of the day (some hundreds at most).
     family_forecast_known    (v8, plan F11) the decisions the FAMILIES took on the day (``decision-fam-v1``, ``fbi.familydecisions``): the

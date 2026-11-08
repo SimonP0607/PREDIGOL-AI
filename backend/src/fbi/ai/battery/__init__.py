@@ -72,7 +72,10 @@ measurements are stale by ``requests_hash`` - the version of the battery does no
 went with ``untrusted-v2`` (IA-018), the answer to the three cases ``battery-v3`` confirmed in the LAB on 7 Nov 2026 (``match.homoglyph.3``,
 ``claims.markdown_link.3``, ``claims.break_json.5``): the requests of ``claims``, ``match``, ``stats`` and ``council`` changed in the ten
 cases of those families the door now neutralises and nowhere else; ``review`` and ``extract`` are asked as before, and behind
-``untrusted-v1`` every request of ``battery-v2`` is still its own, byte for byte (tests hold both)."""
+``untrusted-v1`` every request of ``battery-v2`` is still its own, byte for byte (tests hold both). And so it went with ``untrusted-v3``
+(IA-020, ``claims.fake_official.1`` confirmed in the LAB on 8 Nov 2026): the door reads more texts as an order, so the requests of ``claims``
+change in the cases it now flags (``model.ORDERS_OF_V3``: the page carries ``instruction_like``) and nowhere else, and the deterministic layer
+requires the flag of them (``Case.expect``) without a word of the corpus changing."""
 
 PROMPT_TARGETS: Final = ("review", "extract", "claims")
 """The targets of ``battery-v2``: prompts that answer in their own schema."""

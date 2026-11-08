@@ -323,7 +323,7 @@ def test_what_the_page_says_the_rule_of_the_job_is_the_rule_of_the_code(db: psyc
     rule = ai_agents.package_stats(db, at=AT).rule
     assert rule == {"state_version": match_runs.STATE_VERSION, "package_version": package.VERSION, "window_days": match_runs.WINDOW.days,
                     "limit": match_runs.LIMIT, "max_seconds": match_runs.MAX_SECONDS}
-    assert rule["state_version"] == "ms-v1" and rule["package_version"] == "package-v2" and (rule["window_days"], rule["limit"]) == (4, 200)
+    assert rule["state_version"] == "ms-v1" and rule["package_version"] == "package-v3" and (rule["window_days"], rule["limit"]) == (4, 200)
 
 
 # ── the queue ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
