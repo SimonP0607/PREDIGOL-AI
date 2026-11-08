@@ -67,9 +67,11 @@ export function PickCard({
         onClick={() => track("pick_opened", { pick_id: pick.pick_id })}
         className="block flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
+        {/* The league keeps a readable width; the time and the badge drop below it when they do not fit
+            (plan PICKS, U1: the name broke letter by letter beside «SHADOW»). */}
         <div
           className={cn(
-            "flex items-center justify-between gap-2 px-4",
+            "flex flex-wrap items-center gap-x-2 gap-y-1 px-4",
             compact ? "pt-3" : "pt-3.5",
           )}
         >
@@ -78,9 +80,9 @@ export function PickCard({
             logo={pick.competition.logo_url}
             flag={pick.competition.flag_url}
             country={pick.competition.country}
-            className="min-w-0"
+            className="min-w-[9rem] flex-1"
           />
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
             {shadow ? <ShadowBadge compact /> : null}
             <Kickoff at={pick.kickoff_at} />
           </div>

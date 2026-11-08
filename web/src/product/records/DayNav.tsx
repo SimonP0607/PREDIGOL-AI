@@ -18,13 +18,18 @@ import {
   zoneName,
 } from "@/lib/time";
 import type { DailyItem } from "@/lib/api/v1/types_records";
-import { daySummary, recentDays } from "./days";
+import { daySummary, recentDays, summaryText } from "./days";
 
 const ZONE = "America/Bogota";
 
 function at(day: string): string {
   return `${day}T12:00:00Z`;
 }
+
+/**
+ * «5 picks · 2 ganados · 2 perdidos · 1 nulo · 0 por jugar (1 a medias)»: every pick counts once, so the parts add up to
+ * the total (plan PICKS, D3); voids and half results are said only when there are some.
+ */
 
 function word(day: string, today: string): string | null {
   if (day === today) return t("records.dayNav.today");
@@ -120,14 +125,7 @@ export function DayNav({
           className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs tabular-nums text-muted-foreground"
           data-testid="daily-summary"
         >
-          <span>
-            {t("records.dayNav.summary", {
-              count: sum.count,
-              won: sum.won,
-              lost: sum.lost,
-              open: sum.open,
-            })}
-          </span>
+          <span>{summaryText(sum)}</span>
           {sum.units !== null ? (
             <span
               className={cn(
