@@ -1,7 +1,7 @@
 """The six contracts of PrediGol Intelligence and the one door through which an answer of a model comes in (``parse``).
 
 ``base`` holds the closed values and the machinery (the wire schema, the typed references); ``claim``, ``assessment``, ``council``,
-``postmatch`` and ``learning`` are the five outputs; ``mcp`` is the package a model reads. See ``base`` for what an output can never carry.
+``postmatch``, ``learning`` and (IA-017) ``player`` are the six outputs; ``mcp`` is the package a model reads. See ``base`` for what an output can never carry.
 
 A model's answer is DATA until ``parse`` says otherwise: JSON that is not JSON, a contract name nobody accepts, a field that is not in
 the schema, a value that is not in the list - every one is a ``problem``, none raises, and none echoes the text that caused it (the answer
@@ -25,6 +25,7 @@ from fbi.ai.contracts.base import (
     LEARNING,
     MCP,
     OUTPUTS,
+    PLAYER_ASSESSMENT,
     POST_MATCH,
     Contract,
     wire_schema,
@@ -32,14 +33,17 @@ from fbi.ai.contracts.base import (
 from fbi.ai.contracts.claim import ClaimsOut
 from fbi.ai.contracts.council import CouncilOut
 from fbi.ai.contracts.learning import LearningOut
+from fbi.ai.contracts.player import PlayerAssessmentOut
 from fbi.ai.contracts.postmatch import PostMatchOut
 
 CONTRACTS: Final[dict[str, type[Contract]]] = {
-    CLAIM: ClaimsOut, ASSESSMENT: AssessmentOut, COUNCIL: CouncilOut, POST_MATCH: PostMatchOut, LEARNING: LearningOut}
+    CLAIM: ClaimsOut, ASSESSMENT: AssessmentOut, COUNCIL: CouncilOut, POST_MATCH: PostMatchOut, LEARNING: LearningOut,
+    PLAYER_ASSESSMENT: PlayerAssessmentOut}
 """Every output contract by its name (the ``contract`` field of an answer)."""
 
 WRITERS: Final[dict[str, str]] = {
-    CLAIM: "extractor", ASSESSMENT: "match, stats", COUNCIL: "council", POST_MATCH: "post-match reviewer", LEARNING: "learning analyst"}
+    CLAIM: "extractor", ASSESSMENT: "match, stats", COUNCIL: "council", POST_MATCH: "post-match reviewer", LEARNING: "learning analyst",
+    PLAYER_ASSESSMENT: "player"}
 
 ACCEPTS: Final[dict[str, tuple[str, ...]]] = {name: (name,) for name in OUTPUTS}
 """The versions a reader takes for each contract. An incompatible change is a NEW name (``aa-v2``) and both are listed here until the old

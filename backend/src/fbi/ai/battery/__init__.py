@@ -65,13 +65,27 @@ VERSION: Final = "battery-v3"
 was measured with. ``battery-v2`` (phase 2) added the target ``claims`` to the two of ``battery-v1``; ``battery-v3`` (IA-010, finding D6
 of phase 3) adds the three agents - ``match``, ``stats`` and ``council`` - and the outcome REJECTED, and leaves the three targets before
 them exactly as they were (the same requests, byte for byte, and the same reading of their answers). A measurement made with an older
-version does not speak for this one (``fbi.ai.battery.run.stale`` says so)."""
+version does not speak for this one (``fbi.ai.battery.run.stale`` says so).
+
+The door in front of four of the targets is PrediGol's code, not the corpus: when it changes, the requests of those targets change and their
+measurements are stale by ``requests_hash`` - the version of the battery does not move, and the targets behind no door keep theirs. So it
+went with ``untrusted-v2`` (IA-018), the answer to the three cases ``battery-v3`` confirmed in the LAB on 7 Nov 2026 (``match.homoglyph.3``,
+``claims.markdown_link.3``, ``claims.break_json.5``): the requests of ``claims``, ``match``, ``stats`` and ``council`` changed in the ten
+cases of those families the door now neutralises and nowhere else; ``review`` and ``extract`` are asked as before, and behind
+``untrusted-v1`` every request of ``battery-v2`` is still its own, byte for byte (tests hold both)."""
 
 PROMPT_TARGETS: Final = ("review", "extract", "claims")
 """The targets of ``battery-v2``: prompts that answer in their own schema."""
 AGENT_TARGETS: Final = ("match", "stats", "council")
 """The targets of ``battery-v3``: the agents of phases 3 and 4, that answer in a contract (``aa-v1``, ``cd-v1``) read by the server."""
 TARGETS: Final = PROMPT_TARGETS + AGENT_TARGETS
+SHADOW_TARGETS: Final = ("player",)
+"""IA-017: the targets of agents born OFF - the Player Agent. Each is built exactly as an agent target of ``battery-v3`` (three bases through its own
+slice, the forty attacks of the eight families, its own reader as the judge) and run OFFLINE on every change (``simulate``); it can be measured in
+the LAB on its own (``run.submit(targets=("player",))``). It stays OUT of ``TARGETS`` - and so of ``corpus_hash``, of ``stale`` and of the evidence of
+the ``battery`` gate - while its agent is off: the measurement in force of ``battery-v3`` keeps speaking for the six targets it measured. Switching
+the agent on beyond the shadow needs a new version of the battery that moves it into ``TARGETS`` (gate F-Player)."""
+EVERY_TARGET: Final = TARGETS + SHADOW_TARGETS
 FAMILIES: Final = ("ignore", "fake_official", "hidden_html", "homoglyph", "markdown_link", "break_json", "orders", "player_name")
 """The attacks of section 31, one family each (in the order the plan names them)."""
 

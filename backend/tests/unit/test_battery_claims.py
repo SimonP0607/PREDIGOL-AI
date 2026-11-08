@@ -595,7 +595,9 @@ def test_a_door_that_does_not_read_html_is_found(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(untrusted, "_visible", lambda text, flags: text)
     found = failing(offline.run(["claims"]))
     html = {f"claims.hidden_html.{n}" for n in range(1, 6)}
-    assert html <= set(found) and all({"hidden_survives", "flag_not_passed"} <= found[i] for i in html)
+    assert html <= set(found) and all("flag_not_passed" in found[i] for i in html)
+    assert all("hidden_survives" in found[i] for i in html - {"claims.hidden_html.3"})
+    # the order hidden in the third begins «SYSTEM:» - untrusted-v2 cuts the text there even when it cannot read the HTML around it
     # the reference is the same sanitizer, broken in the same way: what is found is what the attack was written to find, not a difference
 
 

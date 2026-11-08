@@ -148,12 +148,13 @@ def test_the_model_and_the_effort_are_the_routers() -> None:
     assert stats.model_of() == router.MODELS[router.SPECS["evaluation"].level] == "claude-haiku-5-5"
     assert stats.effort_of() == router.SPECS["evaluation"].effort == "medium"
     spec = rg.REGISTRY.spec("stats")
-    assert [(t.task, t.model, t.effort, t.definition().prompt_version) for t in spec.tasks] == [("evaluation", "claude-haiku-5-5", "medium", "stats-assess-v2")]
-    assert spec.reads == "stats" and spec.contract == "aa-v1" and rg.REGISTRY.in_force("stats").version == "stats-v2" == stats.VERSION
-    born, entry = rg.REGISTRY.history("stats")
+    assert [(t.task, t.model, t.effort, t.definition().prompt_version) for t in spec.tasks] == [("evaluation", "claude-haiku-5-5", "medium", "stats-assess-v3")]
+    assert spec.reads == "stats" and spec.contract == "aa-v1" and rg.REGISTRY.in_force("stats").version == "stats-v3" == stats.VERSION
+    born, second, entry = rg.REGISTRY.history("stats")
     assert born.version == "stats-v1" and born.born_as == "CHALLENGER" and not born.baseline and born.phase == "IA-4"
-    assert entry.version == "stats-v2" and entry.born_as == "CHALLENGER" and not entry.baseline and entry.phase == "IA-009"
-    assert born.parts["evaluation"].prompt_version == "stats-assess-v1" and entry.parts["evaluation"].prompt_version == "stats-assess-v2"
+    assert second.version == "stats-v2" and second.born_as == "CHALLENGER" and not second.baseline and second.phase == "IA-009"
+    assert entry.version == "stats-v3" and entry.born_as == "CHALLENGER" and not entry.baseline and entry.phase == "IA-018"
+    assert [e.parts["evaluation"].prompt_version for e in (born, second, entry)] == ["stats-assess-v1", "stats-assess-v2", "stats-assess-v3"]
 
 
 @pytest.mark.parametrize(("what", "naming", "slice_", "match_text"), [
@@ -229,7 +230,7 @@ def test_the_prompt_says_data_codes_only_descriptive_never_a_reason_halves_never
                    "DESCRIPTIVE", "A stance never rests on it", "descriptive_relations", "corners_ft@v1", "cards_lines_ft@v1",
                    "The corners of a half are not a market here", "research", "always []", "You never say that something is value"):
         assert phrase in text, phrase
-    assert said(prompts.STATS_ASSESS_VERSION) == "stats-assess-v2"
+    assert said(prompts.STATS_ASSESS_VERSION) == "stats-assess-v3"
     assert "http" not in prompts.STATS_ASSESS_SYSTEM.lower(), "no link in the prompt"
     mentioned = set(re.findall(r"\b[A-Z][A-Z_]{2,}\b", prompts.STATS_ASSESS_SYSTEM))
     assert {"RATE", "TACTICS", "SCHEDULE", "REFEREE", "DATA_GAP"} <= mentioned

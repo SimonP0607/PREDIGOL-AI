@@ -40,7 +40,7 @@ def test_the_engines_the_owner_can_name_are_these_five_in_this_order() -> None:
 
 
 def test_the_agents_the_owner_can_name_are_one_list() -> None:
-    assert AGENTS == ("match", "council", "stats"), "phase 4 added the statistics agent here, and nowhere else"
+    assert AGENTS == ("match", "council", "stats", "player"), "phase 4 added the statistics agent here and IA-017 the player agent, and nowhere else"
     assert set(config.ORCHESTRATOR_AGENTS) <= set(AGENTS)
 
 

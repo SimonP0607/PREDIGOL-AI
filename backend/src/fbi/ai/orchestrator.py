@@ -95,13 +95,13 @@ import psycopg
 from fbi.ai import arms, contra, gates, router, runtime, stats_factors, usage
 from fbi.ai import package as mcp_package
 from fbi.ai import prompts as prompt_labels
-from fbi.ai.agents import council, match, stats
+from fbi.ai.agents import council, match, player, stats
 from fbi.ai.agents.common import Assessed, Contradiction, Naming, name_candidates, name_with_counts
 from fbi.ai.agents.registry import REGISTRY
 from fbi.ai.batch import BatchClient, BatchQueue, Task, estimate_cost
 from fbi.ai.config import AiSettings, Tier
 from fbi.ai.contracts.base import GOALS_RESULT, parse_ref
-from fbi.ai.contracts.mcp import SLICE_NAMES
+from fbi.ai.contracts.mcp import DEFAULT_SLICE_SET, SLICE_SETS, SLICES_V2
 from fbi.ai.idempotency import TaskIdentity
 from fbi.ai.orchestrator_store import (
     ABANDON_BEFORE,
@@ -176,12 +176,19 @@ STATS_PART: Final = f"+{stats.VERSION}"
 Council read the assessments of the Statistics Agent or not. With ``stats`` off the versions are exactly those above."""
 
 
-def engine_version(engine: str, *, with_stats: bool) -> str:
-    """``ENGINE_VERSION`` of an engine, with the Statistics Agent's version after the Match Agent's when the engine reads its assessments."""
+PLAYER_PART: Final = f"+{player.VERSION}"
+"""What the engines that read the assessments add to their ``engine_version`` when the Player Agent is on (IA-017), after the Statistics Agent's part.
+With ``player`` off the versions are exactly those of before."""
+
+
+def engine_version(engine: str, *, with_stats: bool, with_player: bool = False) -> str:
+    """``ENGINE_VERSION`` of an engine, with the Statistics Agent's version (and the Player Agent's, IA-017) after the Match Agent's when the engine
+    reads its assessments."""
     base = ENGINE_VERSION[engine]
-    if with_stats and engine in WITH_MATCH:
-        return base.replace(f"+{match.VERSION}", f"+{match.VERSION}{STATS_PART}", 1)
-    return base
+    if engine not in WITH_MATCH or not (with_stats or with_player):
+        return base
+    parts = (STATS_PART if with_stats else "") + (PLAYER_PART if with_player else "")
+    return base.replace(f"+{match.VERSION}", f"+{match.VERSION}{parts}", 1)
 
 
 EXPECTED: Final = timedelta(minutes=3)
@@ -630,6 +637,16 @@ class _Pass:
     counts: FamilyCounts | None = None
     """The count candidates read from the families' decisions as of the pass (``fam-counts-v1``), when the pass reads them; None for a pass that does
     not (the agent off, or a pass of the Batch calendar that started before the source existed)."""
+    player_on: bool = False
+    """The Player Agent is on for this pass (IA-017): the package is cut with the set ``slices-v2`` and the arms that read assessments are given its
+    own. The names of the candidates do not change: it assesses those of goals and result as they are."""
+    player_slice: mcp_package.Slice | None = None
+    player_note: str | None = None
+    """Why the Player Agent was not asked (a code), when it was on and nothing was asked of it."""
+    player_asked: tuple[str, ...] = ()
+    """The candidates the Player Agent was asked about in this pass (empty when it was not asked)."""
+    slice_set: str = DEFAULT_SLICE_SET
+    """The set of slices the state of the match records (``contracts.mcp.SLICE_SETS``): ``slices-v2`` only with the Player Agent on."""
 
     @property
     def at(self) -> datetime:
@@ -817,7 +834,9 @@ class _Runner:
         )
         if package is None or package.fixture_id != w.fixture_id:
             raise LookupError(f"the packet {w.packet_id} is not the match's")
-        slices = mcp_package.slices_of(package)
+        player_on = self.player_wanted(stored)
+        slice_set = SLICES_V2 if player_on else DEFAULT_SLICE_SET
+        slices = mcp_package.slices_of(package) if slice_set == DEFAULT_SLICE_SET else mcp_package.slices_of(package, SLICE_SETS[slice_set])
         slice_ = slices["match"]
         packet = load_packet(self.conn, w.packet_id)
         if packet is None:
@@ -844,6 +863,9 @@ class _Runner:
             stats_on=stats_on,
             stats_slice=slices.get("stats") if stats_on else None,
             counts=counts,
+            player_on=player_on,
+            player_slice=slices.get("player") if player_on else None,
+            slice_set=slice_set,
         )
 
         reason: str | None = None
@@ -904,6 +926,13 @@ class _Runner:
         if stored:
             return stored[0].route.get("stats") is True
         return stats.AGENT in self.settings.agents
+
+    def player_wanted(self, stored: Sequence[StoredTask]) -> bool:
+        """Whether the Player Agent is on for this pass (IA-017): a new pass follows ``FBI_AI_AGENTS`` (off unless it names ``player``); a pass of the
+        Batch calendar keeps what its first run decided (``route.player``), and one stored before IA-017 has no such word and is a pass without it."""
+        if stored:
+            return stored[0].route.get("player") is True
+        return player.AGENT in self.settings.agents
 
     @staticmethod
     def counts_wanted(stored: Sequence[StoredTask], *, stats_on: bool) -> bool:
@@ -983,6 +1012,8 @@ class _Runner:
                 )
             if not self.exhausted:
                 self.stats_task(p, contra0)
+            if not self.exhausted:
+                self.player_task(p, contra0)
             match_waits = any(a.pending for a in p.match_users)
             if not match_waits:
                 contra1 = contra.detect(
@@ -1049,6 +1080,7 @@ class _Runner:
                 batch=batch,
             )
             total += self.stats_estimate(p, contra0, batch=batch)
+            total += self.player_estimate(p, contra0, batch=batch)
         view = council.council_view(p.slice_, p.naming, assessments=(), contradictions=contra0)
         if view.fits:
             for engine in p.engines:
@@ -1073,6 +1105,8 @@ class _Runner:
                 models.append(match.model_of("CONTEXT"))
                 if p.stats_on and p.stats_slice is not None and stats.model_of() not in models:
                     models.append(stats.model_of())
+                if getattr(p, "player_on", False) and player.model_of() not in models:
+                    models.append(player.model_of())
             states = {m: self.circuit.state(m, now) for m in models}
             answers, invalid = store_arm_today(self.conn, engine, now)
             reasons = runtime.arm_pause(
@@ -1101,6 +1135,8 @@ class _Runner:
             )
         if not self.exhausted:
             self.stats_task(p, contra0)
+        if not self.exhausted:
+            self.player_task(p, contra0)
         return contra.detect(p.package.document, naming=p.naming, assessments=p.assessed, at=p.at)
 
     def match_task(self, p: _Pass, mode: str, request: JsonRequest) -> Asked:
@@ -1111,7 +1147,7 @@ class _Runner:
             "match",
             task,
             workspace="lab",
-            input_version=mcp_package.VERSION,
+            input_version=p.package.version,
             input_hash=p.slice_.hash,
             pass_kind=p.work.pass_kind,
             fixture_id=p.work.fixture_id,
@@ -1183,8 +1219,9 @@ class _Runner:
         if got is not None and reading.assessment is not None:
             p.assessed.append(got)
             p.stances[got.label] = {c.candidate: c.stance for c in got.out.candidates}
-            if got.out.research:
-                p.ignored_asks.extend(r.topic for r in got.out.research)
+            research = getattr(got.out, "research", ())
+            if research:
+                p.ignored_asks.extend(r.topic for r in research)
 
     # -- the Statistics Agent --------------------------------------------------------------------------------------------------------
 
@@ -1213,7 +1250,7 @@ class _Runner:
             stats.AGENT,
             stats.TASK,
             workspace="lab",
-            input_version=mcp_package.VERSION,
+            input_version=p.package.version,
             input_hash=stats_slice.hash,
             pass_kind=p.work.pass_kind,
             fixture_id=p.work.fixture_id,
@@ -1255,6 +1292,96 @@ class _Runner:
             reading = stats.read(asked.data, slice_=stats_slice, naming=p.naming)
             self.finish_match(p, asked, reading, stats.MODE, agent=stats.AGENT)
         return asked
+
+    # -- the Player Agent (IA-017) -----------------------------------------------------------------------------------------------------
+
+    def player_estimate(self, p: _Pass, contra0: Sequence[Contradiction], *, batch: bool) -> Decimal:
+        """What the Player Agent's task will cost, for the plan of the pass: nothing when it is off or will not be asked."""
+        if not p.player_on or player.wanted(p.player_slice, p.naming) is not None or p.player_slice is None:
+            return Decimal(0)
+        try:
+            request = player.evaluation_request(p.player_slice, p.naming, at=p.at, contradictions=contra0)
+        except ValueError:
+            return Decimal(0)
+        return self.estimate(player.model_of(), request, batch=batch)
+
+    def player_task(self, p: _Pass, contra0: Sequence[Contradiction]) -> Asked | None:
+        """The Player Agent's task: a position on each candidate of goals and result over the ``player`` slice (Haiku, the router's ``evaluation``).
+        Nothing is asked - no task, no cost - when it is off, when its slice has no player or when there is no candidate of goals and result. A slice
+        that cannot be read leaves the task SKIPPED with the code, and an answer that does not stand abstains: fail open."""
+        player_slice = p.player_slice
+        if not p.player_on or player_slice is None:
+            return None
+        why_not = player.wanted(player_slice, p.naming)
+        if why_not is not None:
+            p.player_note = why_not
+            return None
+        keys = player.asked_keys(p.naming)
+        p.player_asked = keys
+        identity = REGISTRY.identity_for(
+            player.AGENT,
+            player.TASK,
+            workspace="lab",
+            input_version=p.package.version,
+            input_hash=player_slice.hash,
+            pass_kind=p.work.pass_kind,
+            fixture_id=p.work.fixture_id,
+            candidates=keys,
+        )
+        try:
+            request = player.evaluation_request(player_slice, p.naming, at=p.at, contradictions=contra0)
+        except ValueError:
+            why = "player_slice_over_its_cap" if not player_slice.fits else "player_request_refused"
+            p.player_note = why
+            skipped = self.skipped_task(p, identity, player.TASK, why, Decimal("0.000001"))
+            p.match_users.append(skipped)
+            return skipped
+        decision = router.route(
+            router.Signals(
+                task=player.TASK,
+                day=self.day(self.room()),
+                budget_state="NORMAL",
+                pass_kind=p.work.pass_kind,
+                blocking=(),
+            )
+        )
+        asked = self.ask(
+            p,
+            identity=identity,
+            task_kind=player.TASK,
+            level="simple",
+            request=request,
+            purpose="match_analysis",
+            prompt_version=prompt_labels.PLAYER_ASSESS_VERSION,
+            input_hash=player.input_hash(request),
+            decision=decision,
+            model=player.model_of(),
+            agent=player.AGENT,
+            stage=1,
+        )
+        p.match_users.append(asked)
+        if asked.data is not None and asked.error is None:
+            self.finish_player(p, asked, player.read(asked.data, slice_=player_slice, naming=p.naming))
+        return asked
+
+    def finish_player(self, p: _Pass, asked: Asked, reading: player.Reading) -> None:
+        """Complete the Player Agent's task (``finish_match`` for ``pa-v1``) and keep its position under ``A:player_evaluation`` when it stands."""
+        if asked.reused:
+            pass  # stored and paid before: nothing of it is written again
+        elif reading.ok and reading.assessment is not None:
+            out = reading.assessment
+            asked.status, asked.state = "ok", "done"
+            asked.output = out.model_dump(mode="json")
+            asked.verdict = verdict_string([c.stance for c in out.candidates]) or None
+            asked.evidence_ids, asked.data_refs = self.refs(asked.output)
+        else:
+            asked.status, asked.state, asked.error = "invalid", "done", ",".join(reading.problems)[:2000] or "invalid_output"
+            self.tally.invalid += 1
+            asked.data = None
+        got = player.assessed(reading)
+        if got is not None:
+            p.assessed.append(got)
+            p.stances[got.label] = {c.candidate: c.stance for c in got.out.candidates}
 
     @staticmethod
     def refs(output: dict[str, Any]) -> tuple[tuple[int, ...], tuple[str, ...]]:
@@ -1849,7 +1976,7 @@ class _Runner:
             "stats": p.stats_on,
             "counts": None if p.counts is None else p.counts.source,
             "adm": adm.status,
-        } | dict(route_extra)
+        } | ({"player": True} if getattr(p, "player_on", False) else {}) | dict(route_extra)
         rec = self.record(p, asked)
         rec = replace(
             rec,
@@ -1985,6 +2112,8 @@ class _Runner:
             package_hash=p.package.hash,
             slice_hash=p.stats_slice.hash
             if asked.identity.agent == stats.AGENT and p.stats_slice is not None
+            else player_slice.hash
+            if asked.identity.agent == player.AGENT and (player_slice := getattr(p, "player_slice", None)) is not None
             else p.slice_.hash,
             model=asked.model,
             attempts=asked.calls,
@@ -2085,7 +2214,7 @@ class _Runner:
         state = StateRecord(
             work=w,
             created_at=now,
-            package_version=mcp_package.VERSION,
+            package_version=p.package.version,
             package_hash=p.package.hash,
             elapsed_ms=int((now - p.started).total_seconds() * 1000),
             slices=self.slices_of(p),
@@ -2136,7 +2265,7 @@ class _Runner:
         state = StateRecord(
             work=w,
             created_at=now,
-            package_version=mcp_package.VERSION,
+            package_version=p.package.version,
             package_hash=p.package.hash,
             elapsed_ms=0,
             slices=self.slices_of(p),
@@ -2170,13 +2299,17 @@ class _Runner:
         counted that as a violation of every state of the shadow (found in phase 4, with the Statistics Agent's slice stored beside it)."""
         if not p.slices:
             return [p.slice_.measures()]
-        return [p.slices[name].measures() for name in SLICE_NAMES if name in p.slices]
+        return [p.slices[name].measures() for name in SLICE_SETS[p.slice_set] if name in p.slices]
 
     @staticmethod
     def model_status(p: _Pass, contra1: Sequence[Contradiction]) -> dict[str, Any]:
         """``ai.match_runs.model_status``: the code version and the orchestrator's, and - with the Statistics Agent on - what it was asked and what the
         detector found for corners and cards, apart from goals and result (the figures Gate B reads about C05 and C08 per family)."""
         out: dict[str, Any] = {"code": model_code_version(), "orchestrator": VERSION}
+        if p.slice_set != DEFAULT_SLICE_SET:
+            out["slices"] = p.slice_set  # the set the audit derives again (``slice_known``); a row that names none is ``slices-v1``
+        if p.player_on:
+            out["player"] = {"version": player.VERSION, "asked": list(p.player_asked), "note": p.player_note}
         if p.stats_on:
             asked = stats.asked_keys(p.naming)
             out["stats"] = {
@@ -2319,7 +2452,9 @@ class _Runner:
         }
         if p.stats_on:
             labels["stats_assess"] = prompt_labels.STATS_ASSESS_VERSION
-        version = engine_version(arm.engine, with_stats=p.stats_on)
+        if p.player_on:
+            labels["player_assess"] = prompt_labels.PLAYER_ASSESS_VERSION
+        version = engine_version(arm.engine, with_stats=p.stats_on, with_player=p.player_on)
         for share, n in zip(shares, named, strict=True):
             c = n.candidate
             scores = p.candidates.scores.get(c.key, Scores())
