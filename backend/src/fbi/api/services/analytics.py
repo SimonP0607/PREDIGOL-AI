@@ -5,6 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+from fbi.api.cache import shared
 from fbi.api.contracts.analytics import (
     BacktestMetrics,
     BacktestSessionSummary,
@@ -173,7 +174,17 @@ def picks(conn: Conn, *, limit: int, offset: int, public: bool = False) -> Envel
     return ok(body, limit=limit, offset=offset)
 
 
+PERFORMANCE_TIMEOUT = "60s"
+"""The console reads every shadow bet ever made, twice (the totals and the slices). It answered 500 on 7 Nov 2026
+(plan PICKS, R1) and its tests had only ever run the small-sample branch; the likeliest cause is the API's ten seconds,
+as for Admin > Analytics > Competitions on 9-10 Oct: 176,000 synthetic picks took 2.7 s warm on a fast machine with
+the old slices. The slices now group once instead of copying the bets five times (2.2 s -> 1.0 s there), only this
+request may take longer, and its answer is kept five minutes."""
+
+
+@shared(300)
 def performance(conn: Conn) -> Envelope[PerformanceSummary]:
+    conn.execute(f"SET LOCAL statement_timeout = '{PERFORMANCE_TIMEOUT}'")
     s = repo.settled_summary(conn)
     settled, pending = int(s["settled"] or 0), int(s["pending"] or 0)
     staked = Decimal(s["staked"]) if s["staked"] is not None else None
