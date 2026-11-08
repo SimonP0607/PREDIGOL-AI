@@ -111,6 +111,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | BE-003 | El pick del día da prioridad a la Champions, las ligas grandes, las copas continentales e intercontinentales y los torneos de selecciones (solo ordena a los ya elegibles; `daily-set-v7`, `comp-priority-v1`) | en curso | este PR | — |
 | BE-004 | Catálogo de mercados (plan Partidos y Match Center, F4a): `GET /matches/{id}/markets/catalog` da por categoría los 50 tipos de apuesta ya guardados y los 5 de siempre, cada selección con su cuota vigente leída de la última respuesta del proveedor antes del inicio (A → B → A lee A) y los tipos 307 y 339 unificados; tipos y consulta en la web, sin pantalla. No cambia el extractor, parlays ni liquidación; sin migración | hecho | #65 | Plan Partidos F4a |
 | BE-005 | Control de estadios (plan Partidos y Match Center, F6): la auditoría de verdad marca los estadios cuya ciudad o país no cuadran con su competición, el proveedor o los demás partidos del estadio (el caso de Mestalla en «Valdivia»), sin corregir nada; script `scripts/repair_venue_city.py` en seco, con `--apply` y registro en `audit.data_repairs`; guía `docs/owner/ESTADIOS_CIUDAD_BE005.md`. Sin migración | hecho | #77 | Plan Partidos F6 |
+| BE-006 | La consola de rendimiento vuelve a responder con muestra real (plan PICKS, R1): `GET /admin/performance` respondió 500 el 7-nov-2026 y sus pruebas solo cubrían la rama de muestra corta. Las porciones se agrupan en una pasada (grouping sets, sin copiar cinco veces las apuestas: 2,2 s → 1,0 s con 176.000 picks sintéticos, cifras idénticas), solo esta petición puede pasar de los 10 s de la API (60 s, como Competiciones en octubre) y su respuesta se guarda 5 minutos. Pruebas con 40 apuestas liquidadas al céntimo. Solo lectura; no cambia picks, modelos ni liquidación; sin migración | en curso | este PR | Plan PICKS R1 |
 
 ## Otras áreas
 
@@ -118,4 +119,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-012 · SEG-001 · IA-018 · UX-064 · BE-006 · FE-001 · OPS-001 · DOC-001
+CI-012 · SEG-001 · IA-018 · UX-064 · BE-007 · FE-001 · OPS-001 · DOC-001
