@@ -6,14 +6,16 @@ Las cifras de este documento se rellenan **con la corrida en producción**. Hast
 
 ## Cómo se corren
 
-En el servidor, desde una sesión con acceso a la base de solo lectura:
+En el servidor, dentro del contenedor del worker, como las demás herramientas de las guías. Usa la conexión del worker, pero cada herramienta la abre en solo lectura:
 
 ```
-python -m scripts.audit_picks_module --hours 24          # línea base (F1)
-python -m scripts.audit_picks_module --hours 24 --json   # las mismas cifras, para guardarlas
-python -m scripts.audit_settlement --days 30             # liquidación recalculada (F6)
-python -m scripts.audit_settlement --days 30 --json
+docker exec -w /app predigol-worker python -m scripts.audit_picks_module --hours 24                  # línea base (F1)
+docker exec -w /app predigol-worker python -m scripts.audit_picks_module --hours 24 --json > picks_f1.json
+docker exec -w /app predigol-worker python -m scripts.audit_settlement --days 30                     # liquidación recalculada (F6)
+docker exec -w /app predigol-worker python -m scripts.audit_settlement --days 30 --json > picks_f6.json
 ```
+
+El `> archivo.json` guarda el resultado en la carpeta del servidor desde la que se lanza, fuera del contenedor. Las herramientas existen en el servidor desde el despliegue que incluye BE-007.
 
 `audit_settlement` termina con código 1 si encuentra un cambio sin explicar o un día cuyo resumen no cuadra, y con 0 si todo cuadra.
 
@@ -43,9 +45,9 @@ Para cada registro liquidado sobre un marcador de los partidos de los últimos N
 | Cambio con corrección registrada | El resultado del partido se corrigió y la reliquidación aún no lo aplicó |
 | **Sin explicar** | El criterio del plan es **cero** |
 
-Después comprueba en los datos que el resumen de cada día cuadra (ganados + perdidos + nulos o devueltos + por jugar = tamaño del set) y mide cuánto tardan las dos consultas de la consola de rendimiento (R1).
+Después comprueba en los datos que el resumen de cada día cuadra (ganados + perdidos + nulos o devueltos + por jugar = tamaño del set) y mide cuánto tardan las dos consultas de la consola de rendimiento (R1). La base ya impide un estado fuera de esa lista, así que hoy esa suma no puede fallar: queda como guarda por si algún día se añade un estado. Lo que sí puede fallar es la liquidación de cada pick del día, y esa se comprueba arriba, registro a registro.
 
-Si aparece algo sin explicar, **no se corrige desde aquí**: se usa `python -m scripts.resettle`, que deja rastro, con tu visto bueno.
+Si aparece algo sin explicar, **no se corrige desde aquí**: se usa la reliquidación (`docker exec -w /app predigol-worker python -m scripts.resettle`), que deja rastro, con tu visto bueno.
 
 ## Resultados
 
