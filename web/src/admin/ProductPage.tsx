@@ -107,6 +107,83 @@ export function Breakdowns({ o }: { o: ProductOverview }) {
   );
 }
 
+/** What came of each guide and version (UX-054): descriptive, self-selected, and only with enough readers behind it. */
+export function GuidesCard({ o }: { o: ProductOverview }) {
+  return (
+    <section aria-labelledby="product-guides" data-testid="product-guides" className="space-y-3">
+      <h3 id="product-guides" className="text-sm font-semibold">
+        {t("admin.product.guides.title")}
+      </h3>
+      <p className="text-caption text-muted-foreground">
+        {t("admin.product.guides.note", { min: o.min_subjects })}
+      </p>
+      {o.guides.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("admin.product.guides.none")}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[34rem] text-sm">
+            <thead>
+              <tr className="text-left text-caption text-muted-foreground">
+                <th className="py-1 pr-3 font-medium">{t("admin.product.event")}</th>
+                <th className="py-1 pr-3 text-right font-medium">
+                  {t("admin.product.guides.started")}
+                </th>
+                <th className="py-1 pr-3 text-right font-medium">
+                  {t("admin.product.guides.completed")}
+                </th>
+                <th className="py-1 pr-3 text-right font-medium">
+                  {t("admin.product.guides.skipped")}
+                </th>
+                <th className="py-1 pr-3 text-right font-medium">
+                  {t("admin.product.guides.paused")}
+                </th>
+                <th className="py-1 font-medium" />
+              </tr>
+            </thead>
+            <tbody>
+              {o.guides.map((g) => (
+                <tr
+                  key={`${g.guide}-${g.version}`}
+                  className="border-t border-border align-top"
+                  data-guide-row={`${g.guide}-${g.version}`}
+                >
+                  <td className="py-1 pr-3">
+                    <span className="font-medium">
+                      {translateOr(`guides.names.${g.guide}`, g.guide)}
+                    </span>{" "}
+                    <span className="text-caption text-muted-foreground">
+                      {t("admin.product.guides.version", { n: g.version })}
+                    </span>
+                    <p className="text-caption text-muted-foreground">
+                      {g.top_skip_step === null || g.top_skip_readers === 0
+                        ? t("admin.product.guides.noSkips")
+                        : t("admin.product.guides.topStep", {
+                            step: g.top_skip_step + 1,
+                            n: fmtInt(g.top_skip_readers),
+                          })}
+                    </p>
+                  </td>
+                  <td className="numeric py-1 pr-3 text-right">{fmtInt(g.started)}</td>
+                  <td className="numeric py-1 pr-3 text-right">{fmtInt(g.completed)}</td>
+                  <td className="numeric py-1 pr-3 text-right">{fmtInt(g.skipped)}</td>
+                  <td className="numeric py-1 pr-3 text-right">{fmtInt(g.paused)}</td>
+                  <td className="py-1">
+                    {g.review ? (
+                      <span className="rounded-full border border-warning/40 bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning">
+                        {t("admin.product.guides.review")}
+                      </span>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function SwitchState({ o }: { o: ProductOverview }) {
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="product-state">
@@ -199,6 +276,7 @@ function Body({ o }: { o: ProductOverview }) {
         </div>
       </section>
       <Breakdowns o={o} />
+      <GuidesCard o={o} />
       <p className="text-caption text-muted-foreground">{t("admin.product.antiMetrics")}</p>
     </div>
   );

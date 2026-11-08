@@ -22,6 +22,7 @@ ALLOWED = {
     "src/fbi/ai/eval_bench.py",  # the evaluation bench (IA-010) reads the precision of each agent version: reading only
     "src/fbi/observability/trace.py",  # the end-to-end trace (trace-v1, P0): reading only, for observability, never on a decision path
     "src/fbi/council/weights.py",  # the Council v2 protocol (IA-012) weighs the specialists by their record: reading only, in shadow, decides nothing
+    "src/fbi/budgeting/replay.py",  # voi-v1 (IA-018) prices a useful signal by depth in its replay: reading only, in shadow, nothing imports it
 }
 
 

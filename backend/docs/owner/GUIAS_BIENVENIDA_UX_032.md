@@ -1,4 +1,4 @@
-# El recorrido de bienvenida y las guías de cada pantalla (UX-032 a UX-031)
+# El recorrido de bienvenida y las guías de cada pantalla (UX-032 y UX-051 a UX-054)
 
 Plan: `PLAN_BIENVENIDA_RECORRIDO_PREDIGOL` (en el Project). Este archivo cuenta lo que el dueño puede tocar y dónde queda guardado lo que cada lector ha visto.
 
@@ -21,6 +21,15 @@ Solo la memoria de lo visto; no hay pantalla nueva todavía (la traen UX-051 a U
 - **API**: `GET /auth/me` añade `guides`, `guides_on` y `guides_auto`; `PUT /me/guides/{guide}` guarda `{version, status, step}`; `PATCH /auth/me/preferences` acepta `guides_auto`. `POST /me/hints` se mantiene (una PWA abierta con una versión anterior puede seguir llamándolo).
 - **Reglas del servidor**: lista cerrada de guías, versiones (1 a 99), estados y pasos (422 si no); dentro de una versión el estado no retrocede (`completed` no se borra por una repetición saltada); una versión menor que la guardada no cambia nada; la guía de `profile` no acepta `skipped` mientras no esté completada (409 `guide_mandatory`); cada lector solo toca lo suyo.
 - **Cuatro eventos** en el catálogo cerrado (de 36 a 40): `guide_started`, `guide_completed`, `guide_skipped`, `guide_paused`. Solo se registran con consentimiento (`FBI_PRODUCT_EVENTS=consent`) y con propiedades cerradas.
+
+## Qué ves como dueño (UX-054)
+
+En Admin > Producto, bajo «Qué miran los lectores», la tarjeta **Qué pasa con las guías (30 días)** lista cada guía y versión con cuántos lectores la empezaron, la terminaron, la saltaron y la pausaron, y el paso donde más la saltaron.
+
+- Solo aparece una línea si al menos `FBI_PRODUCT_MIN_SUBJECTS` lectores (20 por defecto) la empezaron, y siempre en grupos, nunca un lector.
+- Sale de los cuatro eventos de guías, así que solo cuentan los lectores que aceptaron la medición.
+- **«Revisar»** marca una guía con al menos 30 lectores que empezaron, cuando más de la mitad la salta en la primera tarjeta o un solo paso pierde a más de un cuarto. Es una señal descriptiva de quienes eligieron verla: no hay grupo de control y no prueba que la guía cause nada.
+- Cuando cambie el texto de una guía se sube su versión y aparece como línea nueva; la anterior se compara a simple vista.
 
 ## Interruptor
 

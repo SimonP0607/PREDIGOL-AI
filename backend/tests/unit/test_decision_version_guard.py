@@ -211,6 +211,8 @@ MAY_IMPORT_THE_PACKAGE = {
     "scripts/families.py": "the owner's command: the decision of the families, read-only until asked",
     "decision/families.py": "decision-v2 in shadow (IA-012) reads the families' candidates as decision-fam-v1 does; nothing that decides "
                             "imports it (tests/unit/test_decision_v2_isolation.py)",
+    "plugins/_template/family.py": "the example plug-in family (IA-018, SHADOW, never ACTIVE) reuses decision-fam-v1's candidate rule; nothing that "
+                                   "decides imports the plug-ins (tests/unit/test_family_plugin_isolation.py)",
 }
 """The files outside ``fbi.familydecisions`` that import it (and why). ``fbi.intel`` must not: the package sits above it and above ``fbi.families``
 (``tests/unit/test_architecture.py`` holds the import cycle at its size) and the pipeline's code has no business calling research. Nor may ``fbi.families``:

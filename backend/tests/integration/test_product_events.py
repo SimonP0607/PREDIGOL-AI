@@ -328,6 +328,50 @@ def test_the_owners_breakdowns_name_screens_markets_leagues_and_teams_only_with_
     assert {r["label"] for r in body["teams"]} == {"Manchester United", "Liverpool"}
 
 
+def test_the_owner_sees_what_came_of_each_guide_by_version_only_with_enough_readers(
+        fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """UX-054: readers who started, finished, skipped (and where) and paused, per guide and version; a line only with
+    the floor of readers who started it; one to review when most skip it on its first card."""
+    now = datetime.now(UTC)
+    at = max(now - timedelta(minutes=5), events.day_bounds(events.bogota_day(now))[0])
+    readers = [f"{c}" * 20 for c in "0123456789"]
+    with psycopg.connect(fresh) as conn:
+        for i, subject in enumerate(readers):
+            put(conn, subject, "session_started", at, {"device": "phone", "width": 390, "client": "browser", "lang": "es"})
+            put(conn, subject, "guide_started", at, {"guide": "picks", "version": 1, "trigger": "auto"})
+            if i < 6:   # six skip it on the first card (twice for one: still one reader)
+                put(conn, subject, "guide_skipped", at, {"guide": "picks", "version": 1, "step": 0, "method": "button"})
+            if i == 0:
+                put(conn, subject, "guide_skipped", at, {"guide": "picks", "version": 1, "step": 0, "method": "button"})
+            elif i < 8:
+                put(conn, subject, "guide_completed", at, {"guide": "picks", "version": 1})
+            if i == 9:
+                put(conn, subject, "guide_paused", at, {"guide": "picks", "version": 1, "step": 1})
+            if i < 3:   # another guide with three readers: under the floor of four
+                put(conn, subject, "guide_started", at, {"guide": "odds", "version": 1, "trigger": "menu"})
+            if i < 5:   # a newer version of the guide
+                put(conn, subject, "guide_started", at, {"guide": "picks", "version": 2, "trigger": "auto"})
+                put(conn, subject, "guide_completed", at, {"guide": "picks", "version": 2})
+        conn.commit()
+        monkeypatch.setenv("FBI_PRODUCT_MIN_SUBJECTS", "4")
+        full = events.overview(conn, at=now)
+        monkeypatch.setenv("FBI_PRODUCT_MIN_SUBJECTS", "11")
+        thin = events.overview(conn, at=now)
+    assert [(g["guide"], g["version"]) for g in full.guides] == [("picks", 2), ("picks", 1)], \
+        "odds has three readers: not listed; the newer version first"
+    v1 = next(g for g in full.guides if g["version"] == 1)
+    assert (v1["started"], v1["completed"], v1["skipped"], v1["skipped_first"], v1["paused"]) == (10, 7, 6, 6, 1)
+    assert (v1["top_skip_step"], v1["top_skip_readers"]) == (0, 6)
+    assert v1["review"] is False, "under 30 readers started it: no verdict"
+    v2 = next(g for g in full.guides if g["version"] == 2)
+    assert (v2["started"], v2["completed"], v2["skipped"], v2["top_skip_step"], v2["top_skip_readers"]) == (5, 5, 0, None, 0)
+    assert thin.status == "insufficient_data" and thin.guides == []
+    monkeypatch.setenv("FBI_PRODUCT_MIN_SUBJECTS", "4")
+    body = client(OWNER).get("/api/v1/admin/product").json()
+    assert [(g["guide"], g["version"]) for g in body["guides"]] == [("picks", 2), ("picks", 1)]
+    assert client(READER).get("/api/v1/admin/product").status_code == 403
+
+
 def test_a_server_event_is_recorded_in_the_callers_transaction(fresh: str) -> None:
     with psycopg.connect(fresh) as conn:
         assert events.record_server(conn, user_id(conn, READER), "account_activated")

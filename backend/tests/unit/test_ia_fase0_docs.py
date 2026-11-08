@@ -201,10 +201,10 @@ def test_the_variables_of_the_guide_change_the_settings_they_say(monkeypatch: py
 
 # ── 3. the gates ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-LATER_GATES = ("research_v2", "switches")
+LATER_GATES = ("research_v2", "switches", "gate_b", "lab_plan")
 """The words a later phase added to the evidence after the guide of phase 0 was written: the guide of THEIR phase lists them (``IA_FASE2.md`` for
-research v2; section 10 of this one for ``switches``, which is a ledger and not a gate) and the test of that guide holds them to the code. They
-come last in ``gates.GATES``."""
+research v2; section 10 of this one for ``switches``, which is a ledger and not a gate; ``docs/owner/IA_010_P0.md`` for Gate B and the owner's
+plan of the LAB, migration 0127) and the test of that guide holds them to the code. They come last in ``gates.GATES``."""
 
 
 def test_the_gates_of_the_guide_are_the_gates_of_the_code() -> None:
@@ -488,7 +488,8 @@ def test_the_ledger_of_the_switches_in_the_guide_is_the_job_the_migration_and_th
     said(r"\(cada (\d+) minutos, y al minuto de arrancar\)", text, int(minutes.group(1)))
     assert f"gate `{gates.SWITCHES}`" in text and "migración `0116`" in text
     assert (BACKEND / "migrations" / "versions" / "0116_ia_switches_ledger.py").is_file()
-    assert gates.GATES[-1] == gates.SWITCHES, "the ledger is the last word of the vocabulary of the evidence"
+    assert gates.GATES[-3:] == (gates.SWITCHES, "gate_b", gates.LAB_PLAN), \
+        "the ledger is the last word 0116 added; Gate B and the owner's plan of the LAB (0127) come after it"
     # what it holds is what the guide lists, five switches and three envelopes, and nothing that is a secret
     words = gates.switch_words(AiSettings())
     assert set(words) == {"mode", "package", "research_v2", "switches", "models", "budgets_usd"}
