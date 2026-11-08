@@ -92,7 +92,7 @@
     "forYouHint": "What you chose to follow",
     "predigol": "PrediGol",
     "predigolHint": "The same for everyone: the day's picks, the parlays and what is happening now",
-    "edit": "Change favourites"
+    "edit": "Edit favourites"
   },
   "choose": {
     "title": "Choose your favourites",
@@ -174,5 +174,15 @@
     "playerHelp": "A pick of the next match of {names}, whom you follow.",
     "leagueHelp": "A pick of {names}, a league you follow.",
     "marketHelp": "A pick of the {names} market, which you follow."
+  },
+  "editFavorites": {
+    "title": "Your favourites",
+    "description": "Each change is saved at once and Home updates behind it, without reloading the page. They never change a pick, a probability or a price.",
+    "saving": "Saving…",
+    "saved": "Saved. Home already uses them.",
+    "failed": "We could not save the last change.",
+    "retry": "Retry",
+    "profile": "More settings in your profile",
+    "close": "Close favourites"
   }
 }

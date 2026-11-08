@@ -11,7 +11,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { ArrowDown, Bell, Pencil, Star, Target, User, X } from "lucide-react";
+import { ArrowDown, Bell, Star, Target, User, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { TeamLogo } from "@/components/football/Logos";
 import { t } from "@/lib/i18n";
@@ -23,26 +23,12 @@ import type { DailyBoard, DailyItem } from "@/lib/api/v1/types_records";
 import { positionLabel } from "@/live/labels";
 import { marketName } from "@/product/shared/markets";
 import { stateText } from "./playerState";
+
 import { goToPick, mineReasons, pickAnchor, relatedCards } from "./related";
 import { Card, ErrorState, SectionHeader, SkeletonBlock, StaleNote } from "@/product/shared/States";
 
 export type MeQuery = UseQueryResult<MeToday>;
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
-
-/** The favourites page: «Tu fútbol» in the profile. */
-function EditLink({ label, testId }: { label: string; testId: string }) {
-  return (
-    <Link
-      to="/profile"
-      hash="football"
-      data-testid={testId}
-      className="tap-y relative inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10"
-    >
-      <Pencil aria-hidden className="h-3.5 w-3.5" />
-      {label}
-    </Link>
-  );
-}
 
 /**
  * One of Inicio's two layers: a landmark named by its band (the blocks inside keep their own headings). «Para ti» carries the
@@ -90,10 +76,6 @@ export function Layer({
       {children}
     </section>
   );
-}
-
-export function ForYouEdit() {
-  return <EditLink label={t("home.layers.edit")} testId="layer-edit" />;
 }
 
 /** Where a reader's «cerrar» of the line is kept (this browser only): it is a convenience, never state that matters. */
