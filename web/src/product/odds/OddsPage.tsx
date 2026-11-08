@@ -8,18 +8,26 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronDown, Clock, Globe2, Scale, SearchX, Trophy } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
-import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import { t, useI18n } from "@/lib/i18n";
 import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { GlossaryLink } from "@/components/system/GlossaryTerm";
-import { Card, EmptyState, ErrorState, PageTitle, SkeletonBlock } from "@/product/shared/States";
+import {
+  Card,
+  EmptyState,
+  ErrorState,
+  PageTitle,
+  SkeletonBlock,
+  StaleNote,
+} from "@/product/shared/States";
 import { MARKETS, marketShort, type MarketKey } from "@/product/shared/markets";
+import { prefersReducedMotion } from "@/product/shared/motion";
 import { Pager } from "@/product/shared/Pager";
 import { usePaged } from "@/product/shared/paging";
-import { ChipGroup, ShadowToggle, type ChipOption } from "@/product/picks/Controls";
+import { ChipGroup, type ChipOption } from "@/product/picks/Controls";
 import { FacetPicker, SearchBox } from "@/product/matches/Filters";
 import { FilterSheet, SheetField } from "@/product/shared/FilterSheet";
+import { priceAges } from "./board";
 import { Highlights } from "./Highlights";
 import { OddsBoard } from "./OddsBoard";
 import {
@@ -37,6 +45,23 @@ import { useGuideScreen } from "@/product/guides/context";
 const DEFAULT_HOURS = 24;
 const WIDEST = 72;
 const WINDOWS: readonly number[] = [24, 48, WIDEST];
+
+/** A smooth scroll, unless the reader asked their system for reduced motion: then it jumps. */
+function scrollBehavior(): ScrollBehavior {
+  return prefersReducedMotion() ? "auto" : "smooth";
+}
+
+/**
+ * How old the prices on show are, from the newest row to the oldest (each row as old as its oldest price): «Precios de hace
+ * 14 min a hace 2 h»; one age when they all read the same.
+ */
+function agesText(ages: { newest: string; oldest: string }): string {
+  const from = formatRelative(ages.newest);
+  const to = formatRelative(ages.oldest);
+  return from === to
+    ? t("odds.pricesUpdated", { when: from })
+    : t("odds.pricesRange", { from, to });
+}
 
 function tabLabel(market: MarketKey): string {
   switch (market) {
@@ -74,6 +99,7 @@ function FairExplainer() {
           {t("odds.fairExplainer")} <GlossaryLink term="fairOdds" />
         </p>
       </details>
+      {/* The guide's «¿Qué es la cuota justa?» rests on whichever of the two is on the screen. */}
       <p
         className="hidden items-start gap-2 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground md:flex"
         data-testid="odds-fair-explainer"
@@ -89,14 +115,13 @@ function FairExplainer() {
 }
 
 export function OddsPage() {
-  const auth = useAuth();
-  const preview = usePreviewParam();
   const { locale } = useI18n();
   const [market, setMarket] = useState<MarketKey>("1X2");
   const [hours, setHours] = useState<number>(DEFAULT_HOURS);
   const [filters, setFilters] = useState<OddsFilters>(NO_ODDS_FILTERS);
+  // Prices only, never picks: the evaluation preview changes nothing here, so the page neither offers nor asks for it.
   const query = useQuery({
-    ...live.bestOdds({ market, hours, picks: false }, preview),
+    ...live.bestOdds({ market, hours, picks: false }, undefined),
     placeholderData: keepPreviousData,
   });
   useGuideScreen("odds", { ready: !query.isPending });
@@ -105,7 +130,8 @@ export function OddsPage() {
   // market it was fetched for: a board asked for one market lists exactly that one.
   const shownMarket = board?.markets.length === 1 && board.markets[0] ? board.markets[0] : market;
   const refreshing = query.isPlaceholderData;
-  const asOf = query.data?.meta.data_as_of ?? null;
+  // A refresh that failed keeps the board it had and says so in a line (plan Cuotas, E4).
+  const stale = query.isError && !!board;
   const update = (patch: Partial<OddsFilters>) => setFilters((f) => ({ ...f, ...patch }));
 
   const fixtures = useMemo(() => board?.fixtures ?? [], [board]);
@@ -141,6 +167,8 @@ export function OddsPage() {
   );
   const keptIds = useMemo(() => new Set(kept.map((f) => f.fixture_id)), [kept]);
   const paged = usePaged(kept, `${shownMarket}|${hours}|${JSON.stringify(effective)}`);
+  // How old the rows on show are - not the newest price of the whole board (plan Cuotas, E3).
+  const ages = priceAges(paged.items, shownMarket);
   const filtered =
     effective.query.trim() !== "" ||
     country !== null ||
@@ -229,20 +257,17 @@ export function OddsPage() {
   let content;
   if (query.isPending) {
     content = <OddsSkeleton />;
-  } else if (query.isError) {
-    content = (
-      <Card>
-        <ErrorState error={query.error} onRetry={() => void query.refetch()} />
-      </Card>
-    );
   } else if (board) {
+    // A failed refresh lands here too, with the board it had: that stays, and a line above says so (`stale`).
     const nothing = board.fixtures.length === 0 && board.highlights.length === 0;
     const highlights = filtered
       ? board.highlights.filter((h) => keptIds.has(h.fixture_id))
       : board.highlights;
     content = (
       <>
-        {nothing ? null : <Highlights items={highlights} />}
+        {nothing ? null : (
+          <Highlights items={highlights} filteredOut={filtered && board.highlights.length > 0} />
+        )}
         {filtered && kept.length === 0 && !nothing ? (
           <Card>
             <EmptyState
@@ -274,7 +299,7 @@ export function OddsPage() {
                 onChange={() =>
                   document
                     .getElementById("odds-panel")
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                    ?.scrollIntoView({ behavior: scrollBehavior(), block: "start" })
                 }
               />
             }
@@ -282,16 +307,18 @@ export function OddsPage() {
         )}
       </>
     );
+  } else if (query.isError) {
+    // Nothing loaded to keep on the screen: the error, with a retry.
+    content = (
+      <Card>
+        <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+      </Card>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <PageTitle
-        guide="odds"
-        title={t("nav.odds")}
-        subtitle={t("odds.subtitle")}
-        right={auth.showAdmin ? <ShadowToggle /> : undefined}
-      />
+      <PageTitle guide="odds" title={t("nav.odds")} subtitle={t("odds.subtitle")} />
       <FairExplainer />
 
       <div className="space-y-3">
@@ -309,13 +336,17 @@ export function OddsPage() {
               testId="odds-window"
             />
           </div>
-          {asOf ? (
-            <span className="inline-flex items-center gap-1 text-caption text-muted-foreground">
+          {ages ? (
+            <span
+              className="inline-flex items-center gap-1 text-caption text-muted-foreground"
+              data-testid="odds-prices-age"
+            >
               <Clock aria-hidden className="h-3 w-3" />
-              {t("odds.pricesUpdated", { when: formatRelative(asOf) })}
+              {agesText(ages)}
             </span>
           ) : null}
         </div>
+        {stale ? <StaleNote onRetry={() => void query.refetch()} /> : null}
         {/* From 1024 px the filters sit in two rows of the page; below it, in the «Filtros» sheet (plan UX, A15). The
             market and the window stay on the page. */}
         <div className="hidden gap-2 lg:flex lg:flex-wrap lg:items-center">
@@ -402,7 +433,7 @@ function MarketTabs({
     if (!m) return;
     onChange(m);
     if (focus) el?.focus();
-    el?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+    el?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: scrollBehavior() });
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {

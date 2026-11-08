@@ -197,7 +197,9 @@ class BestPrice(Contract):
 
 class BestMarket(Contract):
     market_key: str
-    line: Decimal
+    line: Decimal = Field(description=(
+        "The line of the market's prices. An Asian handicap's is the HOME side's handicap h: its two prices are one bet, "
+        "Home at h and Away at -h (each side is quoted at its own line)."))
     selections: list[BestPrice]
 
 
@@ -218,7 +220,8 @@ class BestHighlight(Contract):
     home: TeamBadge
     away: TeamBadge
     market_key: str
-    line: Decimal
+    line: Decimal = Field(description=(
+        "The highlighted selection's own line: an Asian handicap's away side at -h, the opposite of its market's line."))
     price: BestPrice
 
 

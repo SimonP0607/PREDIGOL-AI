@@ -4,6 +4,7 @@
  */
 import type { OddsSeries } from "@/lib/api/v1/types";
 import { toNumber } from "@/lib/i18n/format";
+import { selectionLine } from "./board";
 
 export interface MovePoint {
   /** The capture instant, to the minute (ms since epoch). */
@@ -22,8 +23,9 @@ const MINUTE = 60_000;
 
 /**
  * For every capture instant, the highest prematch price any bookmaker quoted for each
- * selection of the market at that line. Captures are matched to the minute, so books
- * stored a few milliseconds apart in one capture count as the same instant.
+ * selection of the market at that line - each selection at its own (an Asian handicap's
+ * away side at the opposite of the row's home line: `selectionLine`). Captures are matched
+ * to the minute, so books stored a few milliseconds apart in one capture count as the same instant.
  */
 export function bestPriceLines(
   series: readonly OddsSeries[],
@@ -33,7 +35,7 @@ export function bestPriceLines(
   const bySelection = new Map<string, Map<number, MovePoint>>();
   for (const s of series) {
     if (s.market_key !== q.market || !q.selections.includes(s.selection)) continue;
-    if (line !== null && toNumber(s.line) !== line) continue;
+    if (line !== null && toNumber(s.line) !== selectionLine(q.market, s.selection, line)) continue;
     let byInstant = bySelection.get(s.selection);
     if (!byInstant) {
       byInstant = new Map();

@@ -51,6 +51,10 @@
   {
    "date": "2026-11-07",
    "reason": "UX-044: ParlayRecordLeg.why (plan de Inicio 2.4b)"
+  },
+  {
+   "date": "2026-11-08",
+   "reason": "UX-067: /odds/best documenta la línea del hándicap asiático: BestMarket.line es la del local y BestHighlight.line la de su selección (plan Cuotas, ola 0, E1)"
   }
  ],
  "routes": {
@@ -6494,6 +6498,7 @@
        "type": "string"
       },
       "line": {
+       "description": "The highlighted selection's own line: an Asian handicap's away side at -h, the opposite of its market's line.",
        "title": "Line",
        "type": "string"
       },
@@ -6521,6 +6526,7 @@
     "BestMarket": {
      "properties": {
       "line": {
+       "description": "The line of the market's prices. An Asian handicap's is the HOME side's handicap h: its two prices are one bet, Home at h and Away at -h (each side is quoted at its own line).",
        "title": "Line",
        "type": "string"
       },

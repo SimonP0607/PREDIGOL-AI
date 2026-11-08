@@ -143,6 +143,37 @@ def test_after_kickoff_a_pick_and_a_parlay_are_history(world: dict[str, Any]) ->
     assert later.delete(f"/api/v1/me/parlays/{parlay_id}").status_code == 422
 
 
+def test_a_leg_at_an_outlier_price_is_refused(world: dict[str, Any], migrated_database: str, seed: Seed) -> None:
+    """Plan Cuotas, ola 0 (E2): a best price more than 25% above its fair price (the value gate's ``max_price_edge``; «atípico»
+    on the Cuotas page) is one book's stale or mistaken quote, so the server refuses it as a leg - judged on the newest
+    consensus, whatever odds the request brings - and takes the leg again once the price comes back."""
+    c = client_for(world["user"])
+    f1, f2 = world["fixtures"]
+    legs = [{"fixture_id": f1, "market_key": "1X2", "selection": "Home"},
+            {"fixture_id": f2, "market_key": "1X2", "selection": "Away", "odds": "3.40"}]
+
+    def priced(odds: str, minutes_ago: int) -> None:
+        with psycopg.connect(migrated_database, autocommit=True) as conn:
+            conn.execute("INSERT INTO market.market_consensus (fixture_id, market_key, selection, line, as_of, devig_method, "
+                         "p_fair, n_bookmakers, overround, best_odds, best_bookmaker_id) VALUES "
+                         "(%s, '1X2', 'Away', 0, %s, 'shin', 0.33, 4, 0.05, %s, %s)",
+                         (f2, NOW - timedelta(minutes=minutes_ago), odds, seed.bookmaker_id))
+
+    priced("4.00", 10)  # 4.00 x 0.33 - 1 = +32 %: past the 25 % an honest price reaches
+    check = c.post("/api/v1/me/parlays/validate", json={"legs": legs}).json()["data"]
+    assert check["ok"] is False and check["errors"] == [{"code": "outlier_price", "leg": 2}]
+    assert check["legs"][1]["price"]["odds"] == "4.000", "the leg still says which price was refused"
+    built = c.post("/api/v1/me/parlays", json={"legs": legs})
+    assert built.status_code == 422 and built.json()["error"]["code"] == "invalid_parlay", built.text
+    assert "outlier_price" in built.json()["error"]["message"]
+    assert c.get("/api/v1/me/parlays").json()["data"] == [], "nothing stored"
+
+    priced("3.75", 5)  # 3.75 x 0.33 - 1 = +23.75 %: high, but under the limit
+    check = c.post("/api/v1/me/parlays/validate", json={"legs": legs}).json()["data"]
+    assert check["ok"] is True and check["errors"] == []
+    assert c.post("/api/v1/me/parlays", json={"legs": legs}).status_code == 201
+
+
 def test_writes_need_the_same_site_header_and_touch_only_the_users_own(world: dict[str, Any]) -> None:
     bare = client_for(world["user"], headers={})
     f1 = world["fixtures"][0]
