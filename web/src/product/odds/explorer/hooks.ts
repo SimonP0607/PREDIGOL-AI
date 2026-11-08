@@ -2,7 +2,10 @@
  * The explorer's small pieces of state: which prices moved since the last update, the last market of each tab, the
  * competitions and bookmakers the loaded pages named, and what a screen reader was last told.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { SlipLeg } from "@/product/records/model";
+import { SlipContext } from "@/product/records/slipContext";
+import { slipAnnouncement } from "./legs";
 import type { CompetitionBadge, OddsBoardPage, OddsBoardRow } from "./model";
 import { priceMap, priceMoves, type Move } from "./rows";
 import { readMemory, rememberMarket, type MarketMemory, type TabKey } from "./tabs";
@@ -107,4 +110,22 @@ export function useAnnouncer(): [string, (message: string) => void] {
     [],
   );
   return [said.text, announce];
+}
+
+const NO_LEGS: readonly SlipLeg[] = [];
+
+/**
+ * Every leg in or out of the slip said through `announce` (the explorer's live region), with the leg's words and the new
+ * count. The way back to the slip is the product's own button (records/SlipSheet), the same on every screen: a bar of the
+ * explorer's own on a phone would be a second «Mi parlay · N» over the first.
+ */
+export function useSlipAnnouncer(announce: (message: string) => void): void {
+  const slip = useContext(SlipContext);
+  const legs = slip?.legs ?? NO_LEGS;
+  const before = useRef(legs);
+  useEffect(() => {
+    const message = slipAnnouncement(before.current, legs);
+    before.current = legs;
+    if (message) announce(message);
+  }, [legs, announce]);
 }

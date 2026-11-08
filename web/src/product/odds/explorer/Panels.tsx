@@ -224,8 +224,9 @@ export function MovementPanel({
     body = <p className="mt-2 text-xs text-muted-foreground">{t("explorer.movement.empty")}</p>;
   } else {
     const titled = lines.map((l) => ({
-      key: `${l.series.selection}|${l.series.player ?? ""}|${l.series.line ?? ""}`,
-      title: selectionLabel(env.info, l.series, row.line, sides),
+      key: `${l.series.selection}|${l.series.line ?? ""}`,
+      // the history has no player props (only the classic markets and the extracted types keep one)
+      title: selectionLabel(env.info, { ...l.series, player: null }, row.line, sides),
       points: l.points,
     }));
     body = (

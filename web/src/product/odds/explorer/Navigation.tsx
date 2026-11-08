@@ -69,6 +69,7 @@ export function FamilyTabs({
       aria-label={t("explorer.tabsLabel")}
       onKeyDown={onKeyDown}
       data-testid="explorer-tabs"
+      data-guide="odds-tabs"
       className="scroll-strip flex gap-1 rounded-xl border border-border bg-card p-1"
     >
       {tabs.map((tab, i) => {

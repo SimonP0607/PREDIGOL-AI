@@ -163,20 +163,18 @@ export interface OddsHealth {
 
 // ── GET /odds/fixtures/{id}/movement ────────────────────────────────────────────────────────────────────────────────
 
-/**
- * The spec fixes the endpoint («series of the best odds per selection over the stored history, outliers excluded;
- * `available: false` for types without history») but not the field names: these are the explorer's reading of it, to be
- * matched (or mapped in the hook) when BE-011 publishes its contract.
- */
+/** The best price of one selection at one capture (outliers left out by the API). */
 export interface OddsMovementPoint {
-  captured_at: Iso;
+  /** The capture's instant. */
+  at: Iso;
   best_odds: Dec;
   bookmaker_id: number;
+  n_books: number;
 }
 
 export interface OddsMovementSeries {
   selection: string;
-  player: string | null;
+  /** The selection's own line (an Asian handicap's away side: -h). */
   line: Dec | null;
   points: OddsMovementPoint[];
 }
@@ -185,9 +183,12 @@ export interface OddsMovement {
   fixture_id: number;
   market: string;
   period: string;
+  /** The line followed (the market's main line when none was asked for). */
   line: Dec | null;
   /** False for a type without stored history: nothing to draw. */
   available: boolean;
+  /** Where the history comes from: the five classic markets' snapshots, or the extracted types' quotes. */
+  source: "snapshots" | "quotes" | null;
   series: OddsMovementSeries[];
   bookmakers: BookmakerRef[];
 }

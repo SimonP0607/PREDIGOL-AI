@@ -3,8 +3,8 @@
  * The explorer as a reader gets it, rendered with the in-memory data: the family tabs and market chips, the period and line
  * of the card, an Asian handicap's two sides at their own lines, a stale row dimmed and out of the parlay, a market only to
  * look at, a long market's first eight with «Ver todas», «Comparar casas» with every bookmaker's margin, «Movimiento» with
- * its arrows and words while its chart loads, the loading / failed refresh / empty states, «Pausar actualizaciones», «Mi
- * parlay · N», and the motion that only runs without «reduce motion».
+ * its arrows and words while its chart loads, the loading / failed refresh / empty states, «Pausar actualizaciones», a
+ * selection in the slip, and the motion that only runs without «reduce motion».
  */
 import { afterAll, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
 import type { ReactNode } from "react";
@@ -244,7 +244,7 @@ describe("an Asian handicap and the parlay", () => {
     expect(count(arsenal, 'data-testid="odds-add-to-parlay"')).toBe(2);
   });
 
-  test("a selection in the slip: pressed, «Quitar de mi parlay»; the phone's bar says «Mi parlay · 1»", async () => {
+  test("a selection in the slip: pressed, «Quitar de mi parlay»; no second «Mi parlay» bar over the product's button", async () => {
     const rows = fakeRows("result.1x2", "FT", "main");
     const madrid = rows.find((r) => r.fixture_id === 7820)!;
     const leg: SlipLeg = {
@@ -262,10 +262,9 @@ describe("an Asian handicap and the parlay", () => {
     const { markup } = await explorer({ tab: "main", market: "result.1x2" }, {}, [leg]);
     expect(rowOf(markup, 7820)).toContain('data-in-slip="true"');
     expect(rowOf(markup, 7820)).toContain("Quitar de mi parlay");
-    expect(markup).toContain('data-testid="explorer-parlay-bar"');
-    expect(markup).toContain("Mi parlay · 1");
-    const none = await explorer({ tab: "main", market: "result.1x2" });
-    expect(none.markup).not.toContain('data-testid="explorer-parlay-bar"');
+    // the way back to the slip is the product's own button (records/SlipSheet), the same on every screen
+    expect(markup).not.toContain('data-testid="explorer-parlay-bar"');
+    expect(markup).not.toContain("Mi parlay · 1");
   });
 });
 
