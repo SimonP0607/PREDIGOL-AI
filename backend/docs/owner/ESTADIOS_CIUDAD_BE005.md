@@ -76,6 +76,9 @@ paso 1; no escribas SQL a mano en la base viva.
 
 * No sabemos todavía de dónde salió «Valdivia» (del proveedor o de un bloque de partido antiguo): lo dirá la línea del
   seco del estadio 80. Si sale `UNDECIDED ... the provider's own record says the same`, el fallo es del proveedor.
-* Si el payload de un partido del proveedor repite la ciudad equivocada, la próxima sincronización de partidos la
-  vuelve a escribir en ese partido; el control lo volverá a marcar.
+* Si el payload de un partido del proveedor repite la ciudad equivocada, la sincronización de partidos ya no la vuelve a
+  escribir (BE-008, 8-nov-2026): antes de cambiar `venue_city`, mira en `audit.data_repairs` si esa misma ciudad fue la que
+  corrigió la reparación (`fixture_venue_city`) y, si es así, deja la reparada. Una ciudad distinta que mande el proveedor
+  se toma como siempre. El 8-nov la ficha de Valencia–Real Madrid volvió a «Valdivia» dos horas después de reparar: tras
+  desplegar BE-008 basta con repetir el paso 3 una vez.
 * Una ciudad con el mismo nombre en dos países (Córdoba, Mérida, León) solo se marca si sus partidos no la confirman.
