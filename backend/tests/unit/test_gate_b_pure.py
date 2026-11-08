@@ -146,9 +146,35 @@ def months(spent: str = "40") -> list[g.LabMonth]:
     return [g.LabMonth(date(2032, 9, 1), date(2032, 9, 29), D(spent), D(55))]
 
 
-def test_the_planned_excluded_days_are_stored_nowhere_so_the_lab_is_pending_by_manual_action() -> None:
+def test_without_the_owners_plan_the_lab_is_pending_by_manual_action_and_says_how_to_write_it() -> None:
     c = g.judge_lab(months(), {}, planned=None, cycles=300, envelope_source="ledger")
-    assert c.verdict == g.PENDING_ACTIONS and "not stored anywhere" in c.reasons[0]
+    assert c.verdict == g.PENDING_ACTIONS and "the owner has not written" in c.reasons[0] and "set-lab-plan" in c.reasons[0]
+    assert c.detail["plan"] is None and c.detail["planned_excluded_days"] is None
+
+
+def test_the_owners_plan_is_shown_beside_the_figure_it_gives() -> None:
+    plan = g.LabPlan(7, NOW, 2, "two match days of the World Cup qualifiers", "a" * 64)
+    c = g.judge_lab(months(), {}, planned=plan.days, cycles=300, envelope_source="ledger", plan=plan.as_json())
+    assert c.verdict == g.PASS and c.detail["planned_excluded_days"] == 2
+    assert c.detail["plan"] == {"row": 7, "at": NOW.isoformat(), "planned_excluded_days": 2, "decided_by": "owner",
+                                "reason": "two match days of the World Cup qualifiers", "evidence_hash": "a" * 64}
+
+
+def test_a_plan_is_a_whole_number_of_days_within_a_window_with_its_reason() -> None:
+    ev = g.lab_plan_evidence(days=3, reason="  Copa América  ", shadow_started_on=date(2032, 9, 15))
+    assert ev == {"kind": "lab-plan-v1", "planned_excluded_days": 3, "reason": "Copa América", "shadow_started_on": "2032-09-15",
+                  "note": ev["note"]}
+    assert g.lab_plan_evidence(days=0, reason="none", shadow_started_on=None)["shadow_started_on"] is None
+    for days in (-1, g.WINDOW_DAYS + 1, True, 2.5):
+        with pytest.raises(ValueError, match="whole number"):
+            g.lab_plan_evidence(days=days, reason="x", shadow_started_on=None)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="reason"):
+        g.lab_plan_evidence(days=1, reason="   ", shadow_started_on=None)
+
+
+def test_the_plan_is_never_written_without_the_owners_confirmation() -> None:
+    with pytest.raises(PermissionError, match="owner"):
+        g.record_lab_plan(None, days=1, reason="x", at=NOW, confirmed_by_owner=False)  # type: ignore[arg-type]  # refused before any query
 
 
 def test_a_month_over_its_envelope_fails_even_without_the_plan() -> None:
@@ -269,12 +295,17 @@ def test_research_v2() -> None:
 
 # ── the report ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_report_says_it_is_not_recorded_and_lists_what_fails() -> None:
+def test_the_report_lists_what_fails_and_only_a_pass_or_a_failure_is_recordable() -> None:
     w = g.window_from(today=TODAY, through=None, first_shadow=date(2032, 9, 1), events=[])
     r = g.GateReport(g.FAIL, NOW, w, (g.judge_duplicates(10, [("a" * 64, 2, [1, 2])]),))
     doc = r.as_json()
-    assert doc["method"] == "gate-b-v1" and doc["recorded"] is False and doc["failing_now"] == ["duplicate_payments"]
+    assert doc["method"] == "gate-b-v1" and doc["recorded_only_if"] == "PASA or NO PASA" and doc["failing_now"] == ["duplicate_payments"]
+    assert "recorded" not in doc, "the report no longer says it cannot be recorded"
     assert r.lines()[0] == "GATE B · NO PASA"
+    assert r.recordable and g.GateReport(g.PASS, NOW, w).recordable
+    assert not g.GateReport(g.PENDING_TIME, NOW, w).recordable and not g.GateReport(g.PENDING_ACTIONS, NOW, w).recordable
+    assert not g.GateReport(g.FAIL, NOW, w, preview=True).recordable, "a preview is not evidence, whatever it shows"
+    assert g.record(None, g.GateReport(g.PENDING_ACTIONS, NOW, w)) is None  # type: ignore[arg-type]  # writes nothing, touches no connection
 
 
 def test_the_script_exits_0_on_a_pass_1_on_a_failure_and_3_on_either_pending() -> None:
@@ -282,6 +313,28 @@ def test_the_script_exits_0_on_a_pass_1_on_a_failure_and_3_on_either_pending() -
 
     assert [ia_gate_b.exit_code(v) for v in (g.PASS, g.FAIL, g.PENDING_TIME, g.PENDING_ACTIONS)] == [0, 1, 3, 3]
     assert ia_gate_b.build_parser().parse_args(["evaluate", "--changed-on", "2032-09-20", "--json"]).changed_on == ["2032-09-20"]
+    assert ia_gate_b.build_parser().parse_args(["evaluate", "--record"]).record is True
+    plan = ia_gate_b.build_parser().parse_args(["set-lab-plan", "--days", "2", "--reason", "qualifiers", "--confirm-owner"])
+    assert (plan.command, plan.days, plan.reason, plan.confirm_owner) == ("set-lab-plan", 2, "qualifiers", True)
+
+
+def test_set_lab_plan_without_confirm_owner_writes_nothing_and_never_connects(capsys: pytest.CaptureFixture[str]) -> None:
+    from scripts import ia_gate_b
+
+    assert ia_gate_b.main(["set-lab-plan", "--days", "2", "--reason", "x", "--dsn", "postgresql://nobody@256.0.0.1/none"]) == ia_gate_b.CANNOT
+    assert "--confirm-owner" in capsys.readouterr().err
+    doc, code = ia_gate_b.set_lab_plan(None, days=2, reason="x", confirm_owner=False, at=NOW)  # type: ignore[arg-type]
+    assert code == ia_gate_b.CANNOT and "nothing was written" in doc["error"]
+
+
+@pytest.mark.parametrize("argv", [["evaluate", "--days", "2"], ["evaluate", "--confirm-owner"], ["set-lab-plan", "--record", "--confirm-owner"],
+                                  ["set-lab-plan", "--through", "2032-09-20", "--confirm-owner"]])
+def test_the_options_of_one_command_are_refused_on_the_other(argv: list[str]) -> None:
+    from scripts import ia_gate_b
+
+    with pytest.raises(SystemExit) as exc:
+        ia_gate_b.main(argv)
+    assert exc.value.code == 2
 
 
 def test_battery_v3_target_covers_an_agent_by_any_of_its_prompts() -> None:
@@ -290,3 +343,14 @@ def test_battery_v3_target_covers_an_agent_by_any_of_its_prompts() -> None:
                                   "prompts": ["council-v1", "council-opus-v1"]}}
     assert g.covered_by("council", ["council-opus-v1"], targets) == ["council-target"]
     assert g.covered_by("stats", ["stats-assess-v2"], targets) == []
+
+
+def test_the_owners_guide_names_both_commands_and_the_migration() -> None:
+    from pathlib import Path
+
+    from scripts import ia_gate_b
+
+    text = (Path(__file__).resolve().parents[2] / "docs" / "owner" / "IA_010_P0.md").read_text(encoding="utf-8")
+    assert "python -m scripts.ia_gate_b evaluate --record" in text and "`0127`" in text
+    assert 'python -m scripts.ia_gate_b set-lab-plan --days N --reason "..." --confirm-owner' in text and "acción del dueño" in text
+    assert set(ia_gate_b.COMMANDS) == {"evaluate", "set-lab-plan"}

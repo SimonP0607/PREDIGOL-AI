@@ -16,6 +16,7 @@ from fbi.api.contracts.events import (
     EventsIn,
     EventsRecorded,
     FunnelStep,
+    GuideRow,
     LifecycleMetrics,
     LifecycleRate,
     ProductOverview,
@@ -66,6 +67,7 @@ def product_overview(conn: Db) -> ProductOverview:
                            markets=[BreakdownRow.model_validate(r) for r in o.markets],
                            leagues=[BreakdownRow.model_validate(r) for r in o.leagues],
                            teams=[BreakdownRow.model_validate(r) for r in o.teams],
+                           guides=[GuideRow.model_validate(r) for r in o.guides],
                            lifecycle=LifecycleMetrics(
                                day=m.day, states=m.states, renewal_30d=LifecycleRate(**asdict(m.renewal_30d)),
                                activation_7d=LifecycleRate(**asdict(m.activation_7d)),

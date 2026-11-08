@@ -6,10 +6,11 @@ yet, the verdict is ``PENDIENTE POR TIEMPO REAL``; with evidence that someone ha
 ``PENDIENTE POR ACCIONES MANUALES``; only a complete case is ``PASA`` or ``NO PASA``. The verdict of the report is the worst of its checks, in
 this order: NO PASA > PENDIENTE POR ACCIONES MANUALES > PENDIENTE POR TIEMPO REAL > PASA. A pending check is never read as a pass.
 
-NOT RECORDED. ``ai.feature_gates.gate`` is held by a CHECK (``feature_gates_gate_check``, last widened by migration 0116: ``batch``,
-``native_schema``, ``cache_layout``, ``gate_a``, ``battery``, ``research_v2``, ``switches``) that does not know ``gate_b``, and phase P0 ships with
-no migration. So this module only READS: there is no ``record``, and writing the verdict of Gate B needs a migration that widens that CHECK in a
-later PR. Nothing here writes, switches, publishes or changes what production decides.
+RECORDED, PASA OR NO PASA ONLY. Migration 0127 widened the CHECK that names the gates of ``ai.feature_gates`` (``feature_gates_gate_check``)
+with ``gate_b`` and ``lab_plan``. ``record`` appends the verdict of the window that ended yesterday (``scripts/ia_gate_b.py evaluate --record``,
+``decided_by = 'script'``, the evidence is the whole report with its hash as ``gates.record_gate`` writes it); a pending verdict is not evidence
+and writes nothing. ``record_lab_plan`` appends the OWNER's plan of the LAB (``set-lab-plan ... --confirm-owner``, ``decided_by = 'owner'``):
+the code never calls it on its own. Nothing here switches, publishes or changes what production decides.
 
 THE WINDOW. The fourteen Bogotá days that ended yesterday (or ``through``), all after the ANCHOR: the day after the latest of (a) the first day
 the Orchestrator wrote a run of the shadow (``ai.agent_runs``, ``run_kind = 'shadow'``), (b) a change of an optimisation gate
@@ -38,9 +39,9 @@ THE CHECKS (each with its figures, its threshold and its own verdict):
     lab_envelope        the LAB's spend of every month the window touches, up to the window's last day, within the LAB envelope the worker
                         ran with (the newest ``budgets_usd.lab`` of the ledger of the owner's words, else this process's
                         ``FBI_AI_LAB_MONTHLY_BUDGET_USD``), AND the days excluded (a day an orchestrate cycle reported a ``budget_stop``
-                        or an arm ``paused``) not more than the ones planned at the start. The planned number is STORED NOWHERE (no table,
-                        no gate row, no setting): this part is PENDIENTE POR ACCIONES MANUALES until the owner's plan is written where the
-                        code can read it; it is never invented. A month over its envelope fails all the same
+                        or an arm ``paused``) not more than the ones planned at the start: the newest ``lab_plan`` row the OWNER wrote
+                        (``decided_by = 'owner'``, ``set-lab-plan``) by the time of the evaluation. Without one this part is PENDIENTE
+                        POR ACCIONES MANUALES; the figure is never invented. A month over its envelope fails all the same
     attribution         ``intel.agent_attributions`` for >= 95 % of the settled matches with runs: the matches played to a result
                         (``status_group = 'finished'``) with kick-off in the window and at least one ``ok`` run of the shadow. Read it after
                         the daily ``ai_learn`` (07:35 Bogotá), which attributes the day before. No such match is PENDIENTE POR TIEMPO REAL
@@ -56,7 +57,7 @@ THE CHECKS (each with its figures, its threshold and its own verdict):
     research_v2         the newest ``research_v2`` gate row says PASA (the 95 % of v1's evidences is that gate's own check,
                         ``fbi.ai.gate_research``); never evaluated is PENDIENTE POR TIEMPO REAL
 
-Everything here reads; nothing is written."""
+Everything here reads, except ``record`` and ``record_lab_plan`` (the caller commits)."""
 
 from __future__ import annotations
 
@@ -79,7 +80,10 @@ from fbi.intel import leakage
 METHOD: Final = "gate-b-v1"
 """The rule of this module. Any change to a check, a threshold or a window is a new version, never an edit."""
 GATE: Final = "gate_b"
-"""The name the gate would have in ``ai.feature_gates`` - which does not accept it without a migration (see the module's docstring)."""
+"""The name of the gate in ``ai.feature_gates`` (accepted since migration 0127)."""
+LAB_PLAN: Final = gates.LAB_PLAN
+"""The owner's plan of the LAB in ``ai.feature_gates`` (0127): the number of excluded days planned at the start of the shadow."""
+LAB_PLAN_KIND: Final = "lab-plan-v1"
 PASS: Final = "PASA"
 FAIL: Final = "NO PASA"
 PENDING_TIME: Final = "PENDIENTE POR TIEMPO REAL"
@@ -164,11 +168,15 @@ class GateReport:
     preview: bool = False
     """True when the window is not complete: the checks are what the would-be window shows, NOT evidence of the gate."""
 
+    @property
+    def recordable(self) -> bool:
+        """Only a complete case is evidence: ``PASA`` or ``NO PASA`` over a complete window, never a pending verdict or a preview."""
+        return self.verdict in (PASS, FAIL) and not self.preview
+
     def as_json(self) -> dict[str, Any]:
         return {"gate": GATE, "method": METHOD, "verdict": self.verdict, "at": self.at.isoformat(), "window": self.window.as_json(),
                 "checks": [c.as_json() for c in self.checks], "pending": list(self.pending), "preview": self.preview,
-                "failing_now": [c.id for c in self.checks if c.verdict == FAIL],
-                "recorded": False, "recorded_note": "ai.feature_gates does not accept gate_b without a migration: nothing is written"}
+                "failing_now": [c.id for c in self.checks if c.verdict == FAIL], "recorded_only_if": "PASA or NO PASA"}
 
     def lines(self) -> list[str]:
         w = self.window
@@ -444,22 +452,81 @@ def excluded_days(cycles: Iterable[tuple[date, Mapping[str, Any]]]) -> dict[date
     return {d: sorted(v) for d, v in sorted(out.items())}
 
 
+@dataclass(frozen=True)
+class LabPlan:
+    """The owner's plan of the LAB: a ``lab_plan`` row of ``ai.feature_gates`` written by the owner (``set-lab-plan``)."""
+
+    row: int
+    at: datetime
+    days: int
+    reason: str
+    evidence_hash: str
+
+    def as_json(self) -> dict[str, Any]:
+        return {"row": self.row, "at": self.at.isoformat(), "planned_excluded_days": self.days, "reason": self.reason,
+                "evidence_hash": self.evidence_hash, "decided_by": "owner"}
+
+
+LAB_PLAN_SQL: Final = """
+SELECT id, at, evidence, evidence_hash FROM ai.feature_gates
+ WHERE gate = 'lab_plan' AND decided_by = 'owner' AND at <= %(at)s ORDER BY at DESC, id DESC LIMIT 1
+"""
+
+
+def lab_plan(conn: psycopg.Connection[Any], at: datetime) -> LabPlan | None:
+    """The newest plan the OWNER wrote by ``at``; None when there is none (or its evidence holds no whole number of days: never guessed)."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(LAB_PLAN_SQL, {"at": at})
+        r = cur.fetchone()
+    if r is None or not isinstance(r["evidence"], dict):
+        return None
+    days = r["evidence"].get("planned_excluded_days")
+    if not isinstance(days, int) or isinstance(days, bool) or days < 0:
+        return None
+    return LabPlan(int(r["id"]), r["at"], days, str(r["evidence"].get("reason") or ""), str(r["evidence_hash"]))
+
+
+def lab_plan_evidence(*, days: int, reason: str, shadow_started_on: date | None) -> dict[str, Any]:
+    """What a ``lab_plan`` row holds. Refuses a figure that is not a whole number of days within a window, or a plan without its reason."""
+    if not isinstance(days, int) or isinstance(days, bool) or not 0 <= days <= WINDOW_DAYS:
+        raise ValueError(f"the planned excluded days must be a whole number from 0 to {WINDOW_DAYS}, not {days!r}")
+    reason = reason.strip()
+    if not reason:
+        raise ValueError("the plan needs its reason (--reason)")
+    return {"kind": LAB_PLAN_KIND, "planned_excluded_days": days, "reason": reason,
+            "shadow_started_on": None if shadow_started_on is None else shadow_started_on.isoformat(),
+            "note": "the owner's plan of the LAB, read by Gate B: not a gate, passed is always true and nothing waits for it"}
+
+
+def record_lab_plan(conn: psycopg.Connection[Any], *, days: int, reason: str, at: datetime, confirmed_by_owner: bool,
+                    code_version: str | None = None) -> int:
+    """Append the OWNER's plan (``decided_by = 'owner'``; the caller commits). Only ``scripts/ia_gate_b.py set-lab-plan --confirm-owner`` calls it:
+    without the owner's explicit confirmation it refuses, and no other code writes it."""
+    if not confirmed_by_owner:
+        raise PermissionError("the plan of the LAB is the owner's to write: it needs the owner's explicit confirmation (--confirm-owner)")
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(FIRST_SHADOW_SQL)
+        row = cur.fetchone()
+    evidence = lab_plan_evidence(days=days, reason=reason, shadow_started_on=None if row is None else row[0])
+    return gates.record_gate(conn, gate=LAB_PLAN, passed=True, evidence=evidence, at=at, decided_by="owner", code_version=code_version)
+
+
 def judge_lab(months: Sequence[LabMonth], excluded: Mapping[date, Sequence[str]], *, planned: int | None, cycles: int,
-              envelope_source: str) -> Check:
+              envelope_source: str, plan: Mapping[str, Any] | None = None) -> Check:
     findings: list[tuple[str, str]] = []
     for m in months:
         if m.spent > m.envelope:
             findings.append((FAIL, f"the LAB spent {m.spent.quantize(Decimal('0.01'))} USD in {m.month:%Y-%m}, over its envelope of {m.envelope}"))
     if planned is None:
-        findings.append((PENDING_ACTIONS, "the number of excluded days planned at the start of the shadow is not stored anywhere the code can "
-                                          "read: it must be written down by the owner before this part can be judged"))
+        findings.append((PENDING_ACTIONS, "the owner has not written the number of excluded days planned at the start of the shadow "
+                                          "(python -m scripts.ia_gate_b set-lab-plan --days N --reason \"...\" --confirm-owner)"))
     elif len(excluded) > planned:
         findings.append((FAIL, f"{len(excluded)} day(s) excluded, more than the {planned} planned"))
     if cycles == 0:
         findings.append((PENDING_TIME, "no orchestrate cycle in the window: the excluded days cannot be read"))
     return check("lab_envelope", "LAB dentro de su sobre, con los días excluidos ≤ los previstos al arrancar", findings,
                  {"months": [m.as_json() for m in months], "envelope_source": envelope_source, "orchestrate_cycles": cycles,
-                  "excluded_days": len(excluded), "planned_excluded_days": planned,
+                  "excluded_days": len(excluded), "planned_excluded_days": planned, "plan": None if plan is None else dict(plan),
                   "excluded": {d.isoformat(): list(v) for d, v in excluded.items()}})
 
 
@@ -674,9 +741,9 @@ def verdict_of(window: Window, checks: Sequence[Check]) -> str:
 
 
 def evaluate(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetime, through: date | None = None,
-             changes: Sequence[date] = (), planned_excluded_days: int | None = None) -> GateReport:
-    """Gate B over the window that ends yesterday (or ``through``). ``planned_excluded_days`` exists for the day the owner's plan is stored
-    somewhere the code reads; until then the caller passes nothing and that part is PENDIENTE POR ACCIONES MANUALES."""
+             changes: Sequence[date] = ()) -> GateReport:
+    """Gate B over the window that ends yesterday (or ``through``). The excluded days planned for the LAB are the newest ``lab_plan`` row the
+    owner wrote by ``at`` (``lab_plan``); without one that part is PENDIENTE POR ACCIONES MANUALES."""
     w = window_of(conn, at=at, through=through, changes=changes)
     if w.anchor is None:
         return GateReport(PENDING_TIME, at, w, pending=("the Orchestrator has not written a run of the shadow yet: nothing to measure",))
@@ -685,12 +752,13 @@ def evaluate(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetim
     settled, attributed, missing = attribution_of(conn, w)
     envelope, source = lab_envelope(conn, settings, w)
     battery, running = battery_of(conn, w)
+    plan = lab_plan(conn, at)
     checks = (
         judge_final(final_times(conn, w, cycles)),
         judge_invalid(agent_tallies(conn, w)),
         judge_duplicates(paid, dups),
-        judge_lab(lab_months(conn, w, envelope), excluded_days(cycles), planned=planned_excluded_days, cycles=len(cycles),
-                  envelope_source=source),
+        judge_lab(lab_months(conn, w, envelope), excluded_days(cycles), planned=None if plan is None else plan.days, cycles=len(cycles),
+                  envelope_source=source, plan=None if plan is None else plan.as_json()),
         judge_attribution(settled, attributed, missing),
         judge_audit(days_of(w), audit_rows(conn, w)),
         judge_battery(battery, since=day_start(w.first), running=running,
@@ -703,3 +771,12 @@ def evaluate(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetim
                        f"el primer día evaluable es {w.eligible_on}")
     pending += [f"{c.title}: {'; '.join(c.reasons)}" for c in checks if c.verdict in (PENDING_TIME, PENDING_ACTIONS)]
     return GateReport(verdict_of(w, checks), at, w, checks, tuple(pending), preview=not w.complete)
+
+
+def record(conn: psycopg.Connection[Any], report: GateReport, *, code_version: str | None = None) -> int | None:
+    """Append the gate's row - ``PASA`` or ``NO PASA`` only, ``decided_by = 'script'``, the whole report as evidence with its hash; a pending
+    report is not evidence and writes nothing. The caller commits. Returns the row's id, None when nothing was written."""
+    if not report.recordable:
+        return None
+    return gates.record_gate(conn, gate=GATE, passed=report.verdict == PASS, evidence=report.as_json(), at=report.at, decided_by="script",
+                             code_version=code_version)

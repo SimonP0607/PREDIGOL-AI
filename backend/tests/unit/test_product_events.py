@@ -125,3 +125,15 @@ def test_the_market_of_a_pick_or_a_leg_is_one_of_the_five_markets_predigol_reads
     for name in ("pick_saved", "slip_leg_added"):
         market = events.catalog()[name].props["market"]
         assert market.kind == "enum" and market.values == ("1X2", "OU", "BTTS", "AH", "DC"), name
+
+
+def test_a_guide_is_one_to_review_only_with_enough_readers_and_when_many_skip_it_at_once() -> None:
+    """UX-054: descriptive and self-selected, so the rule is cautious: 30 readers started it at least, and either more
+    than half skip it on its first card or one step alone loses more than a quarter of them."""
+    review = events.guide_needs_review
+    assert not review(29, 29, 29), "under 30 readers started it: only counts, no verdict"
+    assert not review(30, 15, 0), "exactly half on the first card is not more than half"
+    assert review(30, 16, 0)
+    assert not review(40, 0, 10), "exactly a quarter at one step is not more than a quarter"
+    assert review(40, 0, 11)
+    assert not review(100, 3, 5)
