@@ -27,6 +27,7 @@ from fbi.ai.contracts.base import (
     GOALS_RESULT,
     LEARNING,
     OUTPUTS,
+    PLAYER_ASSESSMENT,
     POST_MATCH,
     RISK_CODES,
     SIGNAL_CODES,
@@ -76,13 +77,18 @@ LEARNING_OK: dict[str, Any] = {
                     "attribution_ids": [3, 9],
                     "experiment": {"design": "SHADOW_ARM", "metric": "CLV", "family": "OU", "varies": "PROMPT",
                                    "required_sample": 300}}]}
-EXAMPLES = {CLAIM: CLAIMS_OK, ASSESSMENT: ASSESSMENT_OK, COUNCIL: COUNCIL_OK, POST_MATCH: POST_MATCH_OK, LEARNING: LEARNING_OK}
+PLAYER_OK: dict[str, Any] = {
+    "contract": "pa-v1", "agent": "player", "mode": "EVALUATION", "data_quality": "FAIR",
+    "signals": [{"code": "ABSENCES", "direction": "AWAY", "refs": ["E:12", "P:shared.absences.home"]}],
+    "candidates": [{"candidate": "c1", "stance": "CONCERN", "drivers": ["ABSENCES"], "risks": ["KEY_ABSENCE_OPEN"], "refs": ["E:12"]}]}
+EXAMPLES = {CLAIM: CLAIMS_OK, ASSESSMENT: ASSESSMENT_OK, COUNCIL: COUNCIL_OK, POST_MATCH: POST_MATCH_OK, LEARNING: LEARNING_OK,
+            PLAYER_ASSESSMENT: PLAYER_OK}
 
 
 # ── the schemas ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_the_five_outputs_are_registered_and_the_reader_accepts_each_by_name() -> None:
-    assert set(CONTRACTS) == set(OUTPUTS) == {"claim-v1", "aa-v1", "cd-v1", "pmr-v1", "la-v1"}
+    assert set(CONTRACTS) == set(OUTPUTS) == {"claim-v1", "aa-v1", "cd-v1", "pmr-v1", "la-v1", "pa-v1"}
     assert dict(ACCEPTS) == {name: (name,) for name in OUTPUTS}
     assert set(EXAMPLES) == set(OUTPUTS)
 

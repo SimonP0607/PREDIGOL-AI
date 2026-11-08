@@ -57,10 +57,11 @@ from fbi.ai.agents.common import (
     known_refs,
 )
 from fbi.ai.contracts import parse, schema_of
-from fbi.ai.contracts.assessment import ResearchAsk
+from fbi.ai.contracts.assessment import CandidateAssessment, ResearchAsk
 from fbi.ai.contracts.base import COUNCIL, Level, Verdict, parse_ref
 from fbi.ai.contracts.council import CouncilOut, SelectionVerdict, Verified, check
 from fbi.ai.contracts.mcp import AVAILABILITY_KINDS
+from fbi.ai.contracts.player import PlayerPosition
 from fbi.ai.package import SUMMARY_SHORT, SUMMARY_TINY, Slice, real_tokens
 from fbi.ai.packet import canonical, content_hash
 from fbi.ai.providers.base import JsonRequest
@@ -291,14 +292,18 @@ def _assessment(a: Assessed, names: Collection[str]) -> dict[str, Any]:
     row: dict[str, Any] = {"label": a.label, "agent": out.agent, "mode": out.mode, "data_quality": out.data_quality}
     signals: list[dict[str, Any]] = []
     for s in out.signals:
-        signal: dict[str, Any] = {"code": s.code, "direction": s.direction, "strength": s.strength}
+        signal: dict[str, Any] = {"code": s.code, "direction": s.direction}
+        strength = getattr(s, "strength", None)  # pa-v1 (the Player Agent) has a direction and never a magnitude
+        if strength is not None:
+            signal["strength"] = strength
         if s.refs:
             signal["refs"] = list(s.refs)
         signals.append(signal)
     if signals:
         row["signals"] = signals
     stances: dict[str, Any] = {}
-    for c in sorted(out.candidates, key=lambda x: (len(x.candidate), x.candidate)):
+    positions: Sequence[CandidateAssessment | PlayerPosition] = out.candidates
+    for c in sorted(positions, key=lambda x: (len(x.candidate), x.candidate)):
         if c.candidate not in names:
             continue
         stance: dict[str, Any] = {"stance": c.stance}
@@ -311,7 +316,7 @@ def _assessment(a: Assessed, names: Collection[str]) -> dict[str, Any]:
         stances[c.candidate] = stance
     if stances:
         row["candidates"] = stances
-    asks = [{"topic": r.topic, "side": r.side, **({"refs": list(r.refs)} if r.refs else {})} for r in out.research]
+    asks = [{"topic": r.topic, "side": r.side, **({"refs": list(r.refs)} if r.refs else {})} for r in getattr(out, "research", ())]
     if asks:
         row["research"] = asks
     return row
