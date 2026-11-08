@@ -35,7 +35,7 @@ from fbi.ai.battery import (
     extractor,
     reviewer,
 )
-from fbi.ai.battery.model import CANARY_MARK, CANARY_SEED, Attack, Base, Case
+from fbi.ai.battery.model import CANARY_MARK, CANARY_SEED, ORDERS_OF_V3, Attack, Base, Case
 from fbi.ai.collectors import extract_request, extract_user
 from fbi.ai.evidence import normalize_name
 from fbi.ai.prompts import (
@@ -535,7 +535,9 @@ V2_REQUESTS = "54b25506ba08f4156fea3d34f02c7ddcc03eff924ccf7ac0f63e4e7826bdea14"
 """The fingerprint of every request of the three targets of ``battery-v2`` - each base and each case, by the tool call and by structured
 outputs - as ``battery-v2`` made them, measured on its code before ``battery-v3`` was written (with the door ``untrusted-v1``)."""
 V2_DOOR_CLAIMS = "f827400936287d60d006396a3da72cd48a8fae9f11a7a50bbbd4be0a46ea29ad"
-"""The fingerprint of every request of the target ``claims`` behind the door ``untrusted-v2`` (IA-018): what a new measurement of it is of."""
+"""The fingerprint of every request of the target ``claims`` behind the door ``untrusted-v2`` (IA-018)."""
+V3_DOOR_CLAIMS = "36e974e6444ee65c4dc65bb9840883570e529e1326ed29cac6dc259f1790a41d"
+"""The fingerprint of every request of the target ``claims`` behind the door ``untrusted-v3`` (IA-020): what a new measurement of it is of."""
 NEUTRALISED: Final = frozenset({"homoglyph.1", "homoglyph.2", "homoglyph.3", "homoglyph.4", "markdown_link.3", "break_json.1", "break_json.2",
                                 "break_json.3", "break_json.4", "break_json.5"})
 """The cases whose requests the door ``untrusted-v2`` changes, in every target behind a door: the families of the three cases ``battery-v3``
@@ -574,6 +576,7 @@ def test_the_targets_of_battery_v2_are_asked_byte_for_byte_as_battery_v2_asked_t
 
 @pytest.mark.parametrize("name", TARGETS)
 def test_the_door_of_v2_changes_the_requests_of_the_neutralised_cases_and_nothing_else(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
+    behind(monkeypatch, untrusted.VERSION_2)
     now = {p[2]: p[3] for p in fingerprints(name, natives=(False,))}
     monkeypatch.setattr(untrusted, "VERSION", untrusted.VERSION_1)
     monkeypatch.setitem(package.DOOR, package.VERSION, untrusted.VERSION_1)
@@ -582,9 +585,35 @@ def test_the_door_of_v2_changes_the_requests_of_the_neutralised_cases_and_nothin
     assert moved == (set() if corpus.target(name).door is None else NEUTRALISED), name
 
 
-def test_the_requests_of_claims_behind_the_door_of_v2_are_pinned() -> None:
+def behind(monkeypatch: pytest.MonkeyPatch, door: str) -> None:
+    """The door ``door`` in force, in front of the battery's own text and of the package the agents read."""
+    monkeypatch.setattr(untrusted, "VERSION", door)
+    monkeypatch.setitem(package.DOOR, package.VERSION, door)
+
+
+@pytest.mark.parametrize("name", TARGETS)
+def test_the_door_of_v3_changes_the_requests_of_the_orders_it_reads_and_nothing_else(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
+    """IA-020: ``untrusted-v3`` hands on v2's text and flags more of it ``instruction_like``. Of the targets behind a door only ``claims`` has a case
+    it reads as an order (the page carries the flag): no base and no other case moves, and the agents are asked as before."""
+    assert untrusted.VERSION == untrusted.VERSION_3 and package.DOOR[package.VERSION] == untrusted.VERSION_3
+    now = {p[2]: p[3] for p in fingerprints(name, natives=(False,))}
+    behind(monkeypatch, untrusted.VERSION_2)
+    before = {p[2]: p[3] for p in fingerprints(name, natives=(False,))}
+    moved = {key.removeprefix("case:") for key, fp in now.items() if before[key] != fp}
+    door = corpus.target(name).door
+    assert moved == (set() if door is None else {i for i in ORDERS_OF_V3 if i.startswith(f"{name}.")}), name
+    assert name != "claims" or moved == {"claims.fake_official.1", "claims.fake_official.2", "claims.fake_official.5", "claims.ignore.5"}
+
+
+def test_the_requests_of_claims_behind_the_door_of_v2_are_pinned(monkeypatch: pytest.MonkeyPatch) -> None:
+    behind(monkeypatch, untrusted.VERSION_2)
     parts = fingerprints("claims")
     assert len(parts) == 86 and hashlib.sha256(json.dumps(parts).encode()).hexdigest() == V2_DOOR_CLAIMS
+
+
+def test_the_requests_of_claims_behind_the_door_of_v3_are_pinned() -> None:
+    parts = fingerprints("claims")
+    assert len(parts) == 86 and hashlib.sha256(json.dumps(parts).encode()).hexdigest() == V3_DOOR_CLAIMS
 
 
 def test_the_fingerprints_are_the_same_on_every_call_and_differ_by_target_and_route() -> None:

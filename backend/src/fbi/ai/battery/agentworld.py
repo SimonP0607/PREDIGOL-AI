@@ -536,7 +536,7 @@ def door(case: Case, attacked: JsonRequest, clean: JsonRequest) -> list[tuple[st
         made = sanitize(case.text, origin=summary.get("origin", ""), max_chars=SUMMARY_MAX)
         if summary.get("text") != made.text:
             found.append(("door_differs", "the summary of the evidence is not what fbi.ai.untrusted makes of the attack"))
-        missing = sorted((set(case.attack.expect) | set(made.flags)) - set(summary.get("flags") or ()))
+        missing = sorted((set(case.expect) | set(made.flags)) - set(summary.get("flags") or ()))
         if missing:
             found.append(("flag_not_passed", f"the summary does not carry the flags {missing}"))
     else:
