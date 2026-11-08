@@ -74,6 +74,9 @@ class Me(Contract):
     explain: bool = Field(default=False, description="«Explícame» answers the frequent questions of a match, a pick and "
                                                      "the parlay being built (plan UX, B9; FBI_EXPLAIN, on unless the "
                                                      "owner turned it off): the page shows its buttons only then.")
+    odds_explorer: bool = Field(default=False, description="The new Cuotas explorer (plan Cuotas, BE-011/UX-068; "
+                                                           "FBI_ODDS_EXPLORER, off until the owner verified it): the page "
+                                                           "shows it only then, and the current Cuotas page otherwise.")
 
 
 class PreferencesIn(BaseModel):

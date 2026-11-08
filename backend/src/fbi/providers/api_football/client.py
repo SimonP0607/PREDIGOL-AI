@@ -9,12 +9,19 @@ Rules that are not negotiable:
   * Every log record passes through ``sanitize`` first.
   * A 429 is not a transient error to hammer: it consumes the retry budget and
     honours ``Retry-After`` when the provider sends one.
+
+What the provider says of our quota in each answer's headers (``x-ratelimit-requests-*`` for the
+day, ``X-RateLimit-*`` for the minute) is read on every answer (``reported_quota``) and, when the
+client was given a reporter (``build_client`` gives the persistent one), kept at most every
+``REPORT_EVERY_SECONDS`` and once more on close - plan Cuotas, BE-011 (E18: nobody read them).
 """
 
 from __future__ import annotations
 
 import asyncio
 import random
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -25,11 +32,15 @@ import structlog
 from fbi.core.clock import now
 from fbi.core.config.providers import ApiFootballSettings
 from fbi.core.errors import ProviderError, ProviderPayloadError, RateLimitError
+from fbi.providers.quota import ReportedQuota, parse_reported
 from fbi.storage.payload_store import PayloadStore, StoredPayload, sanitize
 
 log = structlog.get_logger(__name__)
 
 RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
+REPORT_EVERY_SECONDS = 30.0
+"""The provider's count is kept at most this often per client (and once more when it closes): one small write, not one per
+request."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +79,8 @@ class ApiFootballClient:
         breaker: Any = None,
         transport: httpx.AsyncBaseTransport | None = None,
         sleep: Any = None,
+        quota_reporter: Callable[[ReportedQuota], None] | None = None,
+        report_every: float = REPORT_EVERY_SECONDS,
     ) -> None:
         from fbi.providers.circuit import CircuitBreaker
         from fbi.providers.ratelimit import DailyQuota, TokenBucket
@@ -75,6 +88,11 @@ class ApiFootballClient:
         self._settings = settings
         self._store = store
         self._sleep = sleep or asyncio.sleep
+        self._reporter = quota_reporter
+        self._report_every = report_every
+        self._reported: ReportedQuota | None = None
+        self._reported_kept_at: float | None = None
+        self._report_pending = False
         # A margin below the published limit: being throttled costs more than
         # the handful of calls this leaves on the table.
         self._bucket = rate_limiter or TokenBucket(max(1, int(settings.per_minute_limit * 0.9)))
@@ -108,7 +126,34 @@ class ApiFootballClient:
     def quota_remaining(self) -> int:
         return self._quota.remaining
 
+    @property
+    def reported_quota(self) -> ReportedQuota | None:
+        """The provider's own count of our quota in the newest answer that carried it (None before any)."""
+        return self._reported
+
+    def _observe(self, response: httpx.Response) -> None:
+        """Read the quota headers of an answer, whatever its status; keep them through the reporter, throttled."""
+        reported = parse_reported(response.headers, at=now())
+        if reported is None:
+            return
+        self._reported = reported
+        self._report_pending = True
+        moment = time.monotonic()
+        if self._reported_kept_at is None or moment - self._reported_kept_at >= self._report_every:
+            self._keep_reported(moment)
+
+    def _keep_reported(self, moment: float) -> None:
+        if self._reporter is None or self._reported is None or not self._report_pending:
+            return
+        self._reported_kept_at = moment
+        self._report_pending = False
+        try:
+            self._reporter(self._reported)
+        except Exception as exc:  # a header that could not be kept never costs the request that brought it
+            log.warning("provider.quota_report_failed", error=type(exc).__name__)
+
     async def aclose(self) -> None:
+        self._keep_reported(time.monotonic())
         await self._client.aclose()
 
     async def __aenter__(self) -> ApiFootballClient:
@@ -151,6 +196,7 @@ class ApiFootballClient:
                     error=exc.__class__.__name__,
                 )
             else:
+                self._observe(response)
                 if response.status_code in RETRYABLE_STATUS:
                     self._breaker.record_failure()
                     retry_after = _retry_after(response)
