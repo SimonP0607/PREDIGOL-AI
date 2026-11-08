@@ -44,6 +44,28 @@ def test_a_fixture_whose_sides_the_provider_corrects_follows_it_and_says_so(conn
     assert repair is not None and repair[0] == "fixture_sides" and repair[1] != repair[2]
 
 
+def test_a_repaired_city_is_not_written_back_by_the_payload_it_replaced(conn: psycopg.Connection, seed: Seed) -> None:
+    """BE-008: the owner's repair (``scripts.repair_venue_city``) set «Valencia» where the payload said «Valdivia»; the next sync
+    brings the same «Valdivia» and keeps the repair, while a city the provider really changes is still taken."""
+    repo = FixtureRepository(conn)
+    kickoff = datetime(2026, 9, 15, 19, 0, tzinfo=UTC)
+
+    def sync(city: str, at: datetime) -> str | None:
+        ref = FixtureRef(1001, 39, 2025, kickoff, 33, 40, "NS", venue_name="Estadio de Mestalla", venue_city=city)
+        teams = repo.ensure_teams([ref], {33: "Manchester United", 40: "Liverpool"})
+        repo.upsert_fixtures([ref], {(39, 2025): seed.season_id}, teams, lineage=PayloadLineage(seed.payload_hash, at))
+        row = conn.execute("SELECT venue_city FROM core.fixtures WHERE id = %s", (seed.fixture_id,)).fetchone()
+        return None if row is None else row[0]
+
+    assert sync("Valdivia", NOW) == "Valdivia"
+    conn.execute("UPDATE core.fixtures SET venue_city = 'Valencia' WHERE id = %s", (seed.fixture_id,))
+    conn.execute("INSERT INTO audit.data_repairs (rule, entity, entity_id, field, before_value, after_value, reason) "
+                 "VALUES ('fixture_venue_city', 'core.fixtures', %s, 'venue_city', 'Valdivia', 'Valencia', 'test')",
+                 (seed.fixture_id,))
+    assert sync("Valdivia", NOW + timedelta(hours=2)) == "Valencia", "the payload's old value does not undo the repair"
+    assert sync("Paterna", NOW + timedelta(hours=4)) == "Paterna", "a city the provider really changes is still taken"
+
+
 def test_a_fixture_the_provider_moves_to_another_tracked_season_goes_with_it_and_says_so(
         conn: psycopg.Connection, seed: Seed) -> None:
     repo = FixtureRepository(conn)
