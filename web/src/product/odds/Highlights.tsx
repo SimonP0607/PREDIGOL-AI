@@ -1,6 +1,7 @@
 /**
  * "Mejores precios frente al mercado": the best prices that pay above the fair price. A card opens its match;
- * its price is a toggle that adds the selection to "Mi parlay" (or takes it out).
+ * its price is a toggle that adds the selection to "Mi parlay" (or takes it out). A card names its selection
+ * at its own line (an Asian handicap's away side at -h: `BestHighlight.line`).
  */
 import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
@@ -17,7 +18,14 @@ import { blockedText, isToggleable, useParlayLeg } from "./useParlayLeg";
 
 const MAX = 6;
 
-export function Highlights({ items }: { items: BestHighlight[] }) {
+export function Highlights({
+  items,
+  filteredOut = false,
+}: {
+  items: BestHighlight[];
+  /** The board has highlights and the reader's filters leave out every one: say so, not that there are none. */
+  filteredOut?: boolean;
+}) {
   const shown = items.slice(0, MAX);
   return (
     <section className="space-y-3" data-testid="odds-highlights">
@@ -27,7 +35,9 @@ export function Highlights({ items }: { items: BestHighlight[] }) {
         icon={<Sparkles aria-hidden className="h-4 w-4 text-gold" />}
       />
       {shown.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{emptyReason("no_best_prices")}</p>
+        <p className="text-xs text-muted-foreground" data-testid="odds-highlights-empty">
+          {filteredOut ? t("odds.highlights.noneFiltered") : emptyReason("no_best_prices")}
+        </p>
       ) : (
         // A swipeable strip on a phone (bleeding to the screen edges), a grid from tablet up.
         <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 [&::-webkit-scrollbar]:hidden">
@@ -55,7 +65,7 @@ function HighlightCard({ h }: { h: BestHighlight }) {
   });
   const match = `${h.home.name} ${t("common.vs")} ${h.away.name}`;
   const bookmaker = h.price.bookmaker ?? "—";
-  const parlay = useParlayLeg(highlightLeg(h));
+  const parlay = useParlayLeg(highlightLeg(h), null, { outlier: h.price.outlier });
   const blocked = blockedText(parlay);
   const pill = <PricePill odds={h.price.best_odds} best state={parlay} />;
   return (

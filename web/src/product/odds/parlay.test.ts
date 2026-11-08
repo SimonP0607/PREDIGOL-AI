@@ -6,7 +6,7 @@ import { setLocale } from "@/lib/i18n";
 import { selectionKey, slipReduce, type SlipLeg } from "@/product/records/model";
 import { priceSlots } from "./board";
 import { highlightLeg, parlayBlock, slotLeg, type NewLeg } from "./parlay";
-import { blockedText, isToggleable, type ParlayLegState } from "./useParlayLeg";
+import { blockedText, isToggleable, parlayActionText, type ParlayLegState } from "./useParlayLeg";
 
 const NOW = Date.parse("2026-10-08T12:00:00Z");
 const LATER = "2026-10-08T20:00:00Z";
@@ -57,6 +57,12 @@ describe("parlayBlock: the 'can add to parlay' rule", () => {
     expect(parlayBlock({ ...ok, market_key: "OU", line: "2.75" }, NOW)).toBe("quarter");
   });
 
+  test("never an outlier price: one book's stale or mistaken quote (plan Cuotas, E2)", () => {
+    expect(parlayBlock({ ...ok, outlier: true }, NOW)).toBe("outlier");
+    expect(parlayBlock({ ...ok, outlier: false }, NOW)).toBe(null);
+    expect(parlayBlock({ ...ok, outlier: null }, NOW)).toBe(null);
+  });
+
   test("nothing after kick-off", () => {
     expect(parlayBlock({ ...ok, kickoff_at: EARLIER }, NOW)).toBe("started");
     expect(parlayBlock({ ...ok, status_group: "live" }, NOW)).toBe("started");
@@ -80,8 +86,9 @@ describe("parlayBlock: the 'can add to parlay' rule", () => {
     // In the slip already: it can always be taken out.
     expect(isToggleable(state("started", true))).toBe(true);
 
-    // And when it cannot be added, the reader is told why (a quarter line, kicked off).
+    // And when it cannot be added, the reader is told why (an outlier price, a quarter line, kicked off).
     setLocale("es");
+    expect(blockedText(state("outlier", false))).toBe("Los precios atípicos no van en un parlay");
     expect(blockedText(state("quarter", false))).toBe(
       "Las líneas de cuarto (.25 / .75) no van en un parlay",
     );
@@ -89,6 +96,24 @@ describe("parlayBlock: the 'can add to parlay' rule", () => {
     expect(blockedText(state("started", true))).toBe(null);
     expect(blockedText(state("market", false))).toBe(null);
     expect(blockedText(null)).toBe(null);
+    // An outlier already in the slip can still be taken out.
+    expect(isToggleable(state("outlier", false))).toBe(false);
+    expect(isToggleable(state("outlier", true))).toBe(true);
+    setLocale("en");
+    expect(blockedText(state("outlier", false))).toBe("Unusual prices cannot go in a parlay");
+    setLocale("es");
+  });
+
+  test("a tap is named for what it does now: «Quitar de mi parlay» once it is in (plan Cuotas, E7)", () => {
+    setLocale("es");
+    expect(parlayActionText({ inSlip: true, replaces: false })).toBe("Quitar de mi parlay");
+    expect(parlayActionText({ inSlip: false, replaces: false })).toBe("Agregar a mi parlay");
+    expect(parlayActionText({ inSlip: false, replaces: true })).toBe(
+      "Reemplaza la otra selección de este partido en tu parlay: una por partido",
+    );
+    setLocale("en");
+    expect(parlayActionText({ inSlip: true, replaces: false })).toBe("Remove from my parlay");
+    setLocale("es");
   });
 });
 
@@ -112,6 +137,21 @@ describe("legs from the Odds page", () => {
       bookmaker: "Betplay",
       p_model: null,
     });
+  });
+
+  test("an Asian handicap's away price goes in at its own line, the opposite of the row's home line (plan Cuotas, E1)", () => {
+    const market = {
+      market_key: "AH",
+      line: "-0.25",
+      selections: [price("Home", "1.67"), price("Away", "2.45")],
+    };
+    const [home, away] = priceSlots(market).map((s) => slotLeg(fixture, market, s));
+    expect([home?.selection, home?.line, home?.odds]).toEqual(["Home", "-0.25", "1.67"]);
+    expect([away?.selection, away?.line, away?.odds]).toEqual(["Away", "0.25", "2.45"]);
+    // the slip knows it as the selection the server prices: Away at +0.25
+    expect(selectionKey(away as NewLeg)).toBe("812|AH|Away|0.25");
+    const level = { ...market, line: "0.00" };
+    expect(slotLeg(fixture, level, priceSlots(level)[1]!)?.line).toBe("0");
   });
 
   test("nothing for an empty slot or an unknown market", () => {
@@ -142,6 +182,10 @@ describe("legs from the Odds page", () => {
       odds: "2.40",
     });
     expect(highlightLeg({ ...h, market_key: "CORNERS" })).toBe(null);
+    // a handicap highlight names its selection at its own line: the leg keeps it
+    expect(
+      highlightLeg({ ...h, market_key: "AH", line: "0.25", price: price("Away", "2.45") }),
+    ).toMatchObject({ selection: "Away", line: "0.25", odds: "2.45" });
   });
 
   test("one leg per match: a second price of the same match replaces the first, a tap again removes it", () => {

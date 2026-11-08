@@ -13,16 +13,12 @@
     "hours": "{count} h"
   },
   "pricesUpdated": "Prices updated {when}",
+  "pricesRange": "Prices from {from} to {to}",
   "highlights": {
     "title": "Best prices against the market",
     "subtitle": "Odds that pay more than the fair odds right now.",
-    "vsFair": "{edge} vs fair"
-  },
-  "value": {
-    "title": "Value opportunities",
-    "subtitle": "Selections that pass PrediGol's rule and have value at today's best price.",
-    "seeAll": "See picks",
-    "none": "Right now no selection in this market passes the rule with value."
+    "vsFair": "{edge} vs fair",
+    "noneFiltered": "No highlight matches these filters."
   },
   "board": {
     "summary_one": "{count} match in the next {hours} h",
@@ -40,7 +36,8 @@
     "emptyBody": "Once bookmakers publish prices for the upcoming matches, they will show up here.",
     "widen": "Show the next {hours} h",
     "outlier": "Unusual price",
-    "outlierHelp": "Far above the fair odds: most likely one bookmaker's stale or mistaken quote."
+    "outlierHelp": "Far above the fair odds: most likely one bookmaker's stale or mistaken quote.",
+    "lookupOnly": "View only"
   },
   "movement": {
     "toggle": "Movement",
@@ -57,7 +54,8 @@
     "help": "Tap a price to add it to your parlay, or to remove it.",
     "add": "Add to my parlay",
     "remove": "Remove from my parlay",
-    "replaces": "Replaces the other selection of this match in your parlay: one per match"
+    "replaces": "Replaces the other selection of this match in your parlay: one per match",
+    "outlier": "Unusual prices cannot go in a parlay"
   },
   "fairExplainer": "Fair odds: what each selection would pay if bookmakers took no margin (1 divided by the market probability without its margin). In green, how much the best odds pay above fair; “outlier”, a price from a single bookmaker that is most likely stale or a mistake.",
   "fairExplainerToggle": "What are fair odds?",

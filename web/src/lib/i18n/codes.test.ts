@@ -58,6 +58,7 @@ const SLIP_ERRORS = [
   "leg_count",
   "invalid_selection",
   "quarter_line",
+  "outlier_price",
   "same_fixture",
   "started",
   "unknown_fixture",
