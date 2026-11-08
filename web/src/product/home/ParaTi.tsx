@@ -22,6 +22,7 @@ import type { MeToday, PlayerState, RelatedPick, WatchedPlayer } from "@/lib/api
 import type { DailyBoard, DailyItem } from "@/lib/api/v1/types_records";
 import { positionLabel } from "@/live/labels";
 import { marketName } from "@/product/shared/markets";
+import { useFold } from "./fold";
 import { stateText } from "./playerState";
 
 import { goToPick, mineReasons, pickAnchor, relatedCards } from "./related";
@@ -117,7 +118,7 @@ export function ChoosePrompt() {
         to="/profile"
         hash="football"
         data-testid="choose-prompt-link"
-        className="tap-y relative inline-flex min-h-9 shrink-0 items-center rounded-md px-1.5 text-sm font-medium text-primary hover:underline"
+        className="relative inline-flex min-h-11 shrink-0 items-center rounded-md px-1.5 text-sm font-medium text-primary hover:underline"
       >
         {t("home.choose.action")}
       </Link>
@@ -126,7 +127,7 @@ export function ChoosePrompt() {
         onClick={close}
         data-testid="choose-prompt-close"
         aria-label={t("common.close")}
-        className="tap-y relative flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-elevated hover:text-foreground"
+        className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-elevated hover:text-foreground"
       >
         <X aria-hidden className="h-4 w-4" />
       </button>
@@ -211,6 +212,8 @@ function PlayerRow({ p, now }: { p: WatchedPlayer; now: number }) {
 
 /** Tus jugadores: the players the reader follows, in the order they chose them, each with what his next match says. */
 export function PlayersBlock({ players, now }: { players: WatchedPlayer[]; now: number }) {
+  // A phone keeps three before «Ver más» (plan de Inicio, 4.1).
+  const fold = useFold(players.length, 3);
   if (players.length === 0) return null;
   return (
     <section data-testid="home-players">
@@ -221,14 +224,15 @@ export function PlayersBlock({ players, now }: { players: WatchedPlayer[]; now: 
       />
       <Card className="mt-3 overflow-hidden">
         <ul className="grid grid-cols-1 gap-px bg-border/70 lg:grid-cols-2">
-          {players.map((p) => (
-            <li key={p.id} className="bg-card">
+          {players.map((p, i) => (
+            <li key={p.id} className={cn("bg-card", fold.row(i))}>
               <PlayerRow p={p} now={now} />
             </li>
           ))}
           {players.length % 2 === 1 ? <li aria-hidden className="hidden bg-card lg:block" /> : null}
         </ul>
       </Card>
+      {fold.more}
       <p className="mt-2 text-caption text-subtle-foreground">{t("home.players.note")}</p>
     </section>
   );
@@ -265,7 +269,7 @@ function CoincidenceRow({ related, item }: { related: RelatedPick; item: DailyIt
           e.preventDefault();
           goToPick(related.rank);
         }}
-        className="tap-y relative flex min-w-0 items-center gap-2 rounded-lg px-1 py-1.5 text-sm hover:bg-elevated/60 focus-visible:bg-elevated/60 focus-visible:outline-none"
+        className="tap-y relative flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-1 py-1.5 text-sm hover:bg-elevated/60 focus-visible:bg-elevated/60 focus-visible:outline-none"
       >
         <span className="min-w-0 flex-1 truncate font-medium">{match}</span>
         <span className="flex shrink-0 flex-wrap items-center justify-end gap-1">

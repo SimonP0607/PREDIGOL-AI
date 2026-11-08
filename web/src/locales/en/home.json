@@ -184,5 +184,9 @@
     "retry": "Retry",
     "profile": "More settings in your profile",
     "close": "Close favourites"
-  }
+  },
+  "fold": {
+    "more": "Show {count} more"
+  },
+  "offline": "No connection: showing what loaded last. It updates by itself when you are back."
 }

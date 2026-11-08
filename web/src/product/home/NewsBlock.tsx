@@ -10,6 +10,7 @@ import { Link } from "@tanstack/react-router";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ChevronRight, Newspaper } from "lucide-react";
 import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/time";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { TodayNews } from "@/lib/api/v1/types_news";
@@ -49,8 +50,12 @@ export function NewsBlock({
         </p>
       ) : null}
       <ul className="mt-3 grid grid-cols-1 gap-2.5 lg:grid-cols-2" data-testid="home-news-list">
-        {shown.map(({ match, item }) => (
-          <li key={`${match.fixture_id}-${item.id}`} className="min-w-0 space-y-1.5">
+        {shown.map(({ match, item }, i) => (
+          <li
+            key={`${match.fixture_id}-${item.id}`}
+            // A phone shows the two best headlines (plan de Inicio, 4.1); the third is for the tablet and up.
+            className={cn("min-w-0 space-y-1.5", i >= 2 && "max-sm:hidden")}
+          >
             <div className="flex min-w-0 items-center gap-2">
               <Link
                 to="/matches/$fixtureId"

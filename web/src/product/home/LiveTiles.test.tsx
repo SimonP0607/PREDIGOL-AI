@@ -63,11 +63,12 @@ const tiles = (matches: LiveMatch[]) =>
   );
 
 describe("Home's live tiles", () => {
-  test("one tile a row on a phone, two from 640 px, three on a laptop", async () => {
+  test("a sliding row of whole tiles on a phone, two from 640 px, three on a laptop (plan de Inicio, 4.1)", async () => {
     const out = await tiles([m(1, "2H", 67), m(2, "1H", 12)]);
     expect(out).toMatch(
-      /<ul class="[^"]*\bgrid-cols-1\b[^"]*\bsm:grid-cols-2\b[^"]*\blg:grid-cols-3\b/,
+      /<ul [^>]*data-testid="live-tiles" class="[^"]*\bflex\b[^"]*\bsnap-x\b[^"]*\boverflow-x-auto\b[^"]*\bsm:grid-cols-2\b[^"]*\blg:grid-cols-3\b/,
     );
+    expect(out).toContain("shrink-0 snap-start sm:w-auto");
   });
 
   test("every team name whole: it wraps, it is never truncated", async () => {
