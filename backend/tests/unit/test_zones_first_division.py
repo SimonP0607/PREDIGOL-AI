@@ -12,7 +12,7 @@ from collections.abc import Mapping, Sequence
 
 import pytest
 
-from fbi.ai.context import STAKES_RULE, TableRow, is_top_flight, league_of, stakes, zone_kind
+from fbi.ai.context import STAKES_RULE, TableRow, is_top_flight, stakes, table_zones, zone_kind
 from fbi.intel.scenarios import table_effect
 
 SERIE_A = {**dict.fromkeys(range(1, 5), "Champions League league stage"), 5: "Europa League league stage",
@@ -68,9 +68,9 @@ def test_dortmund_second_is_in_international_places_not_the_title_zone() -> None
 
 
 def test_the_rule_version_says_the_reading_changed() -> None:
-    assert STAKES_RULE == "stakes-v4"
+    assert STAKES_RULE == "stakes-v5"
     first = stakes(table(SERIE_A), 3, 28)
-    assert first is not None and first.as_json()["rule"] == "stakes-v4"
+    assert first is not None and first.as_json()["rule"] == "stakes-v5"
 
 
 def test_a_second_division_keeps_its_promotion_zones() -> None:
@@ -108,32 +108,30 @@ def test_the_scenarios_name_the_same_zones(zones: Mapping[int, str | None]) -> N
     assert "promotion" not in seen
 
 
-# The Liga MX table of 7 Nov 2026 (stakes-v4, UX-065): the provider words the first eight places
+# The Liga MX table of 7 Nov 2026 (UX-064; read with stakes-v5 since UX-071): the provider words the first eight places
 # "Promotion - Liga MX (Apertura - Play Offs: Quarter-finals)" - the liguilla of the same league, not a promotion.
 LIGA_MX_ZONE = "Promotion - Liga MX (Apertura - Play Offs: Quarter-finals)"
 LIGA_MX = {**dict.fromkeys(range(1, 9), LIGA_MX_ZONE), **dict.fromkeys(range(9, 19))}
 
 
 def test_the_liguilla_of_the_liga_mx_is_a_playoff_never_a_promotion() -> None:
-    assert zone_kind(LIGA_MX_ZONE, 3, league="Liga MX") == "playoff"
-    assert zone_kind(LIGA_MX_ZONE, 3) == "promotion", "without the league the reading is the one of before"
-    assert zone_kind("Promotion - Liga MX (Apertura - Play Offs: Quarter-finals)", 3, league="Serie A") == "promotion"
+    zones = table_zones(LIGA_MX.values())
+    assert not zones.sends_up and not zones.relegation
+    assert zone_kind(LIGA_MX_ZONE, 3, table=zones) == "playoff"
+    assert zone_kind(LIGA_MX_ZONE, 3) == "promotion", "without the table the reading is the one of stakes-v3"
 
 
 def test_pumas_eleventh_do_not_fight_for_promotion() -> None:
-    pumas = stakes(table(LIGA_MX), 11, 4, league="Liga MX")
+    pumas = stakes(table(LIGA_MX), 11, 4)
     assert pumas is not None
     assert pumas.zone is None and pumas.zone_above == "playoff"
     assert pumas.pressure != "promotion"
-    leader = stakes(table(LIGA_MX), 1, 4, league="Liga MX")
+    leader = stakes(table(LIGA_MX), 1, 4)
     assert leader is not None and leader.zone == "playoff" and leader.pressure in ("playoff", "settled")
 
 
-def test_the_league_is_the_name_of_the_group_before_the_colon() -> None:
-    assert league_of("Liga MX: Apertura") == "Liga MX"
-    assert league_of("Serie A") == "Serie A"
-    assert league_of(None) is None and league_of("") is None
-
-
-def test_a_second_division_still_promotes_when_it_names_another_league() -> None:
-    assert zone_kind("Promotion - Serie A (Play-offs)", 5, league="Serie B") == "promotion"
+def test_a_second_division_still_promotes_through_its_own_play_offs() -> None:
+    zones = table_zones(SERIE_B.values())
+    assert zones.sends_up
+    assert zone_kind("Promotion - Serie A (Play-offs)", 5, table=zones) == "promotion"
+    assert zone_kind("Promotion - Serie B (Play Offs: Quarter-finals)", 5, table=zones) == "promotion"
