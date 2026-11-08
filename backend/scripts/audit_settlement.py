@@ -11,8 +11,8 @@ legs, a reader's picks and parlay legs - it reads the record and its match exact
 
 * ``same``: what is stored is what the rules give now;
 * ``held``: a difference the rules leave to a person (a void by rule, a match that no longer settles);
-* ``change`` explained by a correction of the result the trail already holds (``core.fixture_result_revisions``)
-  that the resettlement has not applied yet;
+* ``change`` explained by a correction of the result the trail already holds (``core.fixture_result_revisions``),
+  recorded AFTER the record was settled, that the resettlement has not applied yet;
 * ``change`` UNEXPLAINED: the plan's criterion is zero of these.
 
 Then the days of the picks of the day: won + lost + void + open must be the set's size (D3, in the data), and how
@@ -79,8 +79,14 @@ def verdict(kind: resettlement.Kind, row: Mapping[str, Any], at: datetime) -> re
                               upper=kind.upper, status_short=row["status_short"])
 
 
+def corrected_after(revision: resettlement.Revision | None, settled_at: datetime | None) -> bool:
+    """A difference is explained by a correction only if the result was corrected AFTER the record was settled: one
+    corrected before it should already be in what was stored."""
+    return revision is not None and (settled_at is None or revision.observed_at > settled_at)
+
+
 def tally(kind: resettlement.Kind, rows: Iterable[Mapping[str, Any]], at: datetime,
-          revised: set[int]) -> dict[str, Any]:
+          revisions: Mapping[int, resettlement.Revision]) -> dict[str, Any]:
     """One kind of record: how many agree, are held (by code), changed with a recorded correction, or unexplained."""
     out: dict[str, Any] = {"examined": 0, "same": 0, "held": Counter(), "explained": 0, "unexplained": 0,
                            "examples": []}
@@ -91,7 +97,7 @@ def tally(kind: resettlement.Kind, rows: Iterable[Mapping[str, Any]], at: dateti
             out["same"] += 1
         elif v.action == "held":
             out["held"][v.code] += 1
-        elif int(row["fixture_id"]) in revised:
+        elif corrected_after(revisions.get(int(row["fixture_id"])), row["settled_at"]):
             out["explained"] += 1
         else:
             out["unexplained"] += 1
@@ -131,14 +137,14 @@ def performance_timing(conn: psycopg.Connection[Any]) -> dict[str, float]:
 def collect(conn: psycopg.Connection[Any], *, days: int, at: datetime, timing: bool) -> dict[str, Any]:
     since = at - timedelta(days=days)
     fixtures = [int(r["id"]) for r in conn.execute(FIXTURES_SQL, {"since": since, "until": at})]
-    revised = set(resettlement.latest_revisions(conn, fixtures)) if fixtures else set()
+    revisions = resettlement.latest_revisions(conn, fixtures) if fixtures else {}
     kinds: dict[str, Any] = {}
     for kind in resettlement.SINGLES:
         rows = conn.execute(kind.select, {"fixtures": fixtures}).fetchall() if fixtures else []
-        kinds[kind.name] = tally(kind, rows, at, revised)
+        kinds[kind.name] = tally(kind, rows, at, revisions)
     sets = day_sums(conn.execute(SETS_SQL, {"since": since}).fetchall())
     out: dict[str, Any] = {"at": at.isoformat(), "days": days, "fixtures": len(fixtures),
-                           "fixtures_with_corrections": len(revised), "kinds": kinds, "daily_sets": sets}
+                           "fixtures_with_corrections": len(revisions), "kinds": kinds, "daily_sets": sets}
     if timing:
         out["performance_seconds"] = performance_timing(conn)
     return out
