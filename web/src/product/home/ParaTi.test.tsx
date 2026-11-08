@@ -26,7 +26,6 @@ import type {
 } from "@/lib/api/v1/types_me_today";
 import {
   ChoosePrompt,
-  ForYouEdit,
   ForYouPart,
   Layer,
   NoticesBlock,
@@ -34,6 +33,7 @@ import {
   RelatedPicksBlock,
   type MeQuery,
 } from "./ParaTi";
+import { EditFavorites } from "./EditFavorites";
 import { stateText } from "./playerState";
 
 setLocale("es");
@@ -376,7 +376,7 @@ describe("the layers", () => {
           title="Para ti"
           hint="Lo que elegiste seguir"
           tone="primary"
-          action={<ForYouEdit />}
+          action={<EditFavorites />}
         >
           <p>uno</p>
         </Layer>
@@ -387,9 +387,9 @@ describe("the layers", () => {
     );
     expect(markup).toContain('aria-labelledby="layer-for-you"');
     expect(markup).toContain('id="layer-predigol"');
-    expect(text(markup)).toContain("Cambiar favoritos");
+    expect(text(markup)).toContain("Editar favoritos");
     expect(markup.match(/data-testid="layer-edit"/g)?.length).toBe(1);
-    expect(markup).toContain('href="/profile#football"');
+    expect(markup).not.toContain('href="/profile#football"');
   });
 
   test("without favourites: one discreet line to choose them, that can be closed", async () => {

@@ -143,11 +143,17 @@ export function LiveTiles({
           {emptyReason(section.reason) || t("home.live.empty")}
         </p>
       ) : (
-        // One tile a row on a phone: two side by side squeezed the competition into a column of single letters
-        // ("M / a / j / o / r…") at 320 px and cut every team name up to 430 px.
-        <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+        // A row that slides on a phone (plan de Inicio, 4.1), each tile wide enough for the whole of both names - two side by
+        // side squeezed the competition into a column of letters at 320 px - and a grid from the tablet up.
+        <ul
+          data-testid="live-tiles"
+          className="-mx-4 mt-3 flex snap-x snap-mandatory scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 [&::-webkit-scrollbar]:hidden"
+        >
           {matches.map((m) => (
-            <li key={m.fixture_id}>
+            <li
+              key={m.fixture_id}
+              className="w-[82%] max-w-[19rem] shrink-0 snap-start sm:w-auto sm:max-w-none"
+            >
               <LiveTile m={m} />
             </li>
           ))}

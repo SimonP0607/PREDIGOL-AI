@@ -21,6 +21,8 @@ import { countryLabel } from "@/product/matches/country";
 import { MatchClock } from "@/product/live/LiveCard";
 import { Card, SectionHeader } from "@/product/shared/States";
 import type { UseQueryResult } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
+import { useFold } from "./fold";
 import { reasonText } from "./homeReason";
 
 type HomeQuery = UseQueryResult<Envelope<Home>>;
@@ -28,14 +30,30 @@ type HomeQuery = UseQueryResult<Envelope<Home>>;
 const ROW =
   "flex h-full items-start gap-3 px-4 py-3 transition-colors hover:bg-elevated/50 focus-visible:bg-elevated/60 focus-visible:outline-none sm:px-5";
 
-function Rows({ children, count, testId }: { children: ReactNode; count: number; testId: string }) {
+/** What a phone keeps of each list before «Ver más» (plan de Inicio, 4.1). */
+const KEEP = 3;
+
+function Rows({
+  children,
+  count,
+  testId,
+  more,
+}: {
+  children: ReactNode;
+  count: number;
+  testId: string;
+  more: ReactNode;
+}) {
   return (
-    <Card className="mt-3 overflow-hidden">
-      <ul className="grid grid-cols-1 gap-px bg-border/70 lg:grid-cols-2" data-testid={testId}>
-        {children}
-        {count % 2 === 1 ? <li aria-hidden className="hidden bg-card lg:block" /> : null}
-      </ul>
-    </Card>
+    <>
+      <Card className="mt-3 overflow-hidden">
+        <ul className="grid grid-cols-1 gap-px bg-border/70 lg:grid-cols-2" data-testid={testId}>
+          {children}
+          {count % 2 === 1 ? <li aria-hidden className="hidden bg-card lg:block" /> : null}
+        </ul>
+      </Card>
+      {more}
+    </>
   );
 }
 
@@ -98,6 +116,7 @@ function RelevantRow({ x }: { x: HomeRelevant }) {
 /** Partidos relevantes: the matches in play with a reason; out of the page when there are none. */
 export function RelevantNowBlock({ query }: { query: HomeQuery }) {
   const rows = query.data?.data?.relevant?.data ?? [];
+  const fold = useFold(rows.length, KEEP);
   if (rows.length === 0) return null;
   return (
     <section data-testid="home-relevant">
@@ -107,9 +126,9 @@ export function RelevantNowBlock({ query }: { query: HomeQuery }) {
         icon={<Compass aria-hidden className="h-4 w-4 shrink-0 text-primary" />}
         action={{ label: t("common.seeAll"), to: "/live" }}
       />
-      <Rows count={rows.length} testId="relevant-list">
-        {rows.map((x) => (
-          <li key={x.match.fixture_id} className="bg-card">
+      <Rows count={rows.length} testId="relevant-list" more={fold.more}>
+        {rows.map((x, i) => (
+          <li key={x.match.fixture_id} className={cn("bg-card", fold.row(i))}>
             <RelevantRow x={x} />
           </li>
         ))}
@@ -170,6 +189,7 @@ function AtStakeRow({ x, now }: { x: HomeAtStake; now: number }) {
 /** Qué se juega: the matches of the next 36 hours with something at stake; out of the page when there are none. */
 export function AtStakeBlock({ query, now }: { query: HomeQuery; now: number }) {
   const rows = query.data?.data?.at_stake?.data ?? [];
+  const fold = useFold(rows.length, KEEP);
   if (rows.length === 0) return null;
   return (
     <section data-testid="home-at-stake">
@@ -178,9 +198,9 @@ export function AtStakeBlock({ query, now }: { query: HomeQuery; now: number }) 
         subtitle={t("home.atStake.subtitle")}
         icon={<Scale aria-hidden className="h-4 w-4 shrink-0 text-primary" />}
       />
-      <Rows count={rows.length} testId="at-stake-list">
-        {rows.map((x) => (
-          <li key={x.fixture_id} className="bg-card">
+      <Rows count={rows.length} testId="at-stake-list" more={fold.more}>
+        {rows.map((x, i) => (
+          <li key={x.fixture_id} className={cn("bg-card", fold.row(i))}>
             <AtStakeRow x={x} now={now} />
           </li>
         ))}

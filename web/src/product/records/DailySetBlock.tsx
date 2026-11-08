@@ -50,15 +50,23 @@ export function EvaluationNote() {
   );
 }
 
-function Skeleton({ count }: { count: number }) {
+/** The shape of what comes: Home's picks are a sliding row on a phone (a card and the edge of the next), the page's a grid. */
+function Skeleton({ count, home = false }: { count: number; home?: boolean }) {
   return (
     <div
       aria-busy="true"
       aria-label={t("common.loading")}
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+      className={
+        home
+          ? "-mx-4 flex gap-3 overflow-hidden px-4 md:mx-0 md:grid md:grid-cols-2 md:gap-4 md:px-0 xl:grid-cols-3"
+          : "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+      }
     >
       {Array.from({ length: count }, (_, i) => (
-        <SkeletonBlock key={i} className="h-72" />
+        <SkeletonBlock
+          key={i}
+          className={home ? "h-72 w-[88%] max-w-[23rem] shrink-0 md:w-auto md:max-w-none" : "h-72"}
+        />
       ))}
     </div>
   );
@@ -93,7 +101,7 @@ export function DailySetBlock({
 
   let body: ReactNode;
   if (query.isPending) {
-    body = <Skeleton count={3} />;
+    body = <Skeleton count={3} home={variant === "home"} />;
   } else if (query.isError && !board) {
     body = (
       <Card>

@@ -92,7 +92,7 @@
     "forYouHint": "Lo que elegiste seguir",
     "predigol": "PrediGol",
     "predigolHint": "Lo mismo para todos: los picks del día, los parlays y lo que pasa ahora",
-    "edit": "Cambiar favoritos"
+    "edit": "Editar favoritos"
   },
   "choose": {
     "title": "Elige tus favoritos",
@@ -174,5 +174,19 @@
     "playerHelp": "Es un pick del próximo partido de {names}, que sigues.",
     "leagueHelp": "Es un pick de {names}, una liga que sigues.",
     "marketHelp": "Es un pick del mercado {names}, que sigues."
-  }
+  },
+  "editFavorites": {
+    "title": "Tus favoritos",
+    "description": "Cada cambio se guarda al instante y Inicio se actualiza detrás, sin recargar la página. Nunca cambian un pick, una probabilidad ni una cuota.",
+    "saving": "Guardando…",
+    "saved": "Guardado. Inicio ya los usa.",
+    "failed": "No pudimos guardar el último cambio.",
+    "retry": "Reintentar",
+    "profile": "Más ajustes en tu perfil",
+    "close": "Cerrar favoritos"
+  },
+  "fold": {
+    "more": "Ver {count} más"
+  },
+  "offline": "Sin conexión: te enseñamos lo último que se cargó. Se actualiza solo al volver."
 }

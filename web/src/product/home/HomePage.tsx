@@ -41,6 +41,7 @@ import { noPickLoad } from "@/product/records/noPick";
 import { ParlayRecordCard } from "@/product/records/ParlayRecordCard";
 import { HomeHeader } from "./HomeHeader";
 import { LiveTiles } from "./LiveTiles";
+import { OfflineNote } from "./offline";
 import { NewsBlock } from "./NewsBlock";
 import { SuggestionCard } from "@/product/favorites/SuggestionCard";
 import { ContextBlock, TodayBlock } from "./TodayBlocks";
@@ -48,7 +49,8 @@ import { AtStakeBlock, RelevantNowBlock } from "./HomeStakes";
 import { ResultsBlock } from "./ResultsBlock";
 import { layersOf } from "./layers";
 import { mineByRank } from "./related";
-import { ChoosePrompt, ForYouEdit, ForYouPart, Layer } from "./ParaTi";
+import { EditFavorites } from "./EditFavorites";
+import { ChoosePrompt, ForYouPart, Layer } from "./ParaTi";
 import { useGuideScreen } from "@/product/guides/context";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
@@ -158,16 +160,19 @@ function LiveNow({ query }: { query: HomeQuery }) {
           <ErrorState error={query.error} onRetry={() => void query.refetch()} />
         </Card>
       ) : (
-        // As the live tiles lay out: one a row on a phone (three of them stand for the list there).
+        // As the live tiles lay out: a sliding row on a phone, a grid from the tablet up.
         <div
           aria-busy="true"
           aria-label={t("common.loading")}
-          className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3"
+          className="-mx-4 mt-3 flex gap-2.5 overflow-hidden px-4 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-3 sm:px-0 lg:grid-cols-3"
         >
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <SkeletonBlock
               key={i}
-              className={cn("h-[5.5rem] rounded-xl", i >= 3 && "hidden sm:block")}
+              className={cn(
+                "h-[5.5rem] w-[82%] max-w-[19rem] shrink-0 rounded-xl sm:w-auto sm:max-w-none",
+                i >= 3 && "hidden sm:block",
+              )}
             />
           ))}
         </div>
@@ -214,13 +219,14 @@ export function HomePage() {
   return (
     <div className="space-y-9 sm:space-y-10" data-testid="home-page">
       <HomeHeader freshness={home.data?.data?.data_freshness ?? null} loading={home.isPending} />
+      <OfflineNote />
       {layers.forYou ? (
         <Layer
           id="for-you"
           title={t("home.layers.forYou")}
           hint={t("home.layers.forYouHint")}
           tone="primary"
-          action={<ForYouEdit />}
+          action={<EditFavorites />}
         >
           {layers.mine ? (
             <TodayBlock {...common} suggestion={<SuggestionCard />} choose={false} />
