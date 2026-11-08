@@ -22,6 +22,25 @@ export interface BreakdownRow {
   subjects_30d: number;
 }
 
+export interface GuideRow {
+  /** The guide (general, home, matches, ..., profile). */
+  guide: string;
+  version: number;
+  /** Readers who started it in 30 days (a line stands only with min_subjects). */
+  started: number;
+  completed: number;
+  skipped: number;
+  /** Readers who skipped it on its first card. */
+  skipped_first: number;
+  /** Readers who left it half way (Escape or back) to come back later. */
+  paused: number;
+  /** The step (0-based) where most readers skipped, if any did. */
+  top_skip_step: number | null;
+  top_skip_readers: number;
+  /** One to look at again: descriptive and self-selected, there is no control group. */
+  review: boolean;
+}
+
 export interface FunnelStep {
   step: "activated" | "onboarding_started" | "onboarding_completed" | "first_value";
   subjects: number;
@@ -71,6 +90,8 @@ export interface ProductOverview {
   leagues: BreakdownRow[];
   /** Teams of the matches opened in 30 days: worked out from the match. */
   teams: BreakdownRow[];
+  /** What came of each guide and version in 30 days (UX-054): groups only, never one reader. */
+  guides: GuideRow[];
   /** The customers' lifecycle (B11). */
   lifecycle: LifecycleMetrics | null;
 }
