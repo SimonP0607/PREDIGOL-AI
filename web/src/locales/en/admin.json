@@ -305,6 +305,19 @@
       "views": "Views",
       "readers": "Readers"
     },
+    "guides": {
+      "title": "What happens with the guides (30 days)",
+      "note": "By guide and version, in groups and never one by one: a line only shows with at least {min} readers who started it. The figures are descriptive and come from people who chose to see the guide: there is no control group, so they do not show that the guide causes anything. “Review” marks a guide many skip on its first card or that loses many at a single step.",
+      "none": "No guide reaches the minimum of readers.",
+      "version": "v{n}",
+      "started": "Started",
+      "completed": "Finished",
+      "skipped": "Skipped",
+      "paused": "Paused",
+      "topStep": "Most skips: step {step} ({n} readers)",
+      "noSkips": "Nobody skipped it",
+      "review": "Review"
+    },
     "screen": {
       "home": "Home",
       "matches": "Matches (list)",
