@@ -271,8 +271,22 @@ def _reading(row: Mapping[str, Any]) -> Reading:
                    fetched_at=row["fetched_at"])
 
 
-def read_in_force(conn: psycopg.Connection[Any], fixture_id: int) -> CurrentBook | None:
-    """The match's prices in force, in the structured families. None when the match does not exist."""
+@dataclass(frozen=True, slots=True)
+class Located:
+    """Which answer of a match is in force, and the RAW body behind every ledger row the choice looked at."""
+
+    fixture_id: int
+    provider_fixture_id: int
+    kickoff_at: datetime
+    in_force: InForce
+    payload_hashes: Mapping[int, str]
+    """extraction id -> payload hash, for every reading ``choose_in_force`` was given (the bodies in force among them)."""
+
+
+def locate_in_force(conn: psycopg.Connection[Any], fixture_id: int) -> Located | None:
+    """The answer in force of a match (``choose_in_force`` over its asks and the extractor's ledger). None when the match does
+    not exist. Database only; nothing written. ``read_in_force`` and the current-price book (``fbi.odds.book``) both read the
+    prices in force through this one function, so the two cannot disagree about which answer that is."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(FIXTURE_SQL, {"f": fixture_id})
         fixture = cur.fetchone()
@@ -290,7 +304,19 @@ def read_in_force(conn: psycopg.Connection[Any], fixture_id: int) -> CurrentBook
             readings = {r.payload_hash: r for r in map(_reading, cur.fetchall())}
             cur.execute(LATER_PAGES_SQL, {"f": fixture_id, "lo": lo, "ko": kickoff})
             later = [_reading(r) for r in cur.fetchall()]
-        in_force = choose_in_force(asks, readings, fixture_id=fixture_id, kickoff_at=kickoff, later_pages=later)
+    in_force = choose_in_force(asks, readings, fixture_id=fixture_id, kickoff_at=kickoff, later_pages=later)
+    payload_hashes = {r.extraction_id: r.payload_hash for r in (*readings.values(), *later)}
+    return Located(fixture_id=fixture_id, provider_fixture_id=int(fixture["provider_fixture_id"]), kickoff_at=kickoff,
+                   in_force=in_force, payload_hashes=payload_hashes)
+
+
+def read_in_force(conn: psycopg.Connection[Any], fixture_id: int) -> CurrentBook | None:
+    """The match's prices in force, in the structured families. None when the match does not exist."""
+    located = locate_in_force(conn, fixture_id)
+    if located is None:
+        return None
+    kickoff, in_force = located.kickoff_at, located.in_force
+    with conn.cursor(row_factory=dict_row) as cur:
         quotes: list[CurrentQuote] = []
         if in_force.bodies:
             since = {b.extraction_id: b.since for b in in_force.bodies}

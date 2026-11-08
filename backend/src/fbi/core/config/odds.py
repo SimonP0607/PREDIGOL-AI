@@ -44,6 +44,15 @@ class OddsCaptureSettings(BaseSettings):
     platform is for rather than a cadence setting."""
     odds_window_tolerance: int = Field(default=45, ge=1)
     odds_markets: str = Field(default="")  # empty = capture every market the provider returns
+    odds_book: str = Field(default="0")
+    """``FBI_ODDS_BOOK``: whether the worker builds the current-price book (``market.book_current``, plan Cuotas BE-010).
+    OFF by default: anything but 1/on/true/yes is off, so a typo can never stop the worker or switch the book on. The book
+    asks the provider nothing and writes nothing the models, the picks or the parlay read; the worker needs a restart to
+    read it."""
+
+    @property
+    def book_enabled(self) -> bool:
+        return self.odds_book.strip().lower() in {"1", "on", "true", "yes"}
 
     @field_validator("odds_prematch_windows")
     @classmethod
