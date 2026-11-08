@@ -21,9 +21,13 @@ together; 1,000 resamples, seed 20261108). A proposal follows only from the inte
                  the two rules - the board's (raw EV >= 5 %, edge >= 2 pp, odds 1.50-5.00) and Intelligence's
                  (calibrated EV >= 2 %). Proposal: show the calibrated probability where its ECE is lower than the raw
                  one's; a rule whose interval lies wholly below 0 does not publish.
-    Q2 (C4)      goals and both-teams-score: the share of «under» / «no» flagged, and the model's lean against the market
-                 (mean p_model - p_market) by competition, newcomers apart. Proposal: a lean of 3 pp or more in a
-                 competition with >= 300 selections is reported as a bias to correct in the model, through its gate.
+    Q2 (C4)      goals and both-teams-score. The symptom: the share of «under» / «no» among the flagged selections. The
+                 diagnosis, on EVERY production forecast of a finished match, not only the flagged ones (a flagged pick
+                 has p_model > p_market by construction): the last forecast of each model before kick-off for «under
+                 2.5» and «no» against the last de-vigged consensus before kick-off and what the match did, by
+                 competition, newcomers apart. Proposal: a lean (mean p_model - p_market) of 3 pp or more either way,
+                 with >= 300 matches, an interval that excludes 0 and the model further from what happened than the
+                 market, is reported as a bias to correct in the model, through its gate.
     Q3 (C3, S3)  the odds cap with the calibrated probability: each band of odds alone, out of sample. Proposal: the cap
                  of 3.00 rises to a band's top only if that band has >= 300 selections, an interval wholly above 0 and a
                  mean closing-line value >= 0.
@@ -31,7 +35,8 @@ together; 1,000 resamples, seed 20261108). A proposal follows only from the inte
                  (closing-line value, strong when |CLV| >= 10 %). Proposal: a disagreement the market moved against
                  strongly becomes a visible risk if its interval lies wholly below that of the others.
     Q5 (C5)      the price: the return at the price taken against the return at the market's fair price (1 / p_market)
-                 on the calibrated rule. Proposal: the card says how much of the value is the price alone.
+                 on the calibrated rule, and the difference in points. Proposal: the card says how many points of the
+                 return come from the price alone (a share of the return would flip its meaning when it is negative).
 
 It changes nothing and needs no provider call. Its figures go to docs/owner/PICKS_F2_EVIDENCIA.md.
 """
@@ -67,6 +72,23 @@ BIG_GAP = 0.15
 STRONG_MOVE = 0.10
 LEAN = 0.03
 
+NEWCOMERS = """seasons AS (
+    -- the teams of each competition and season, to tell a newcomer (absent from the season before)
+    SELECT DISTINCT cs.competition_id, cs.season, t.team_id
+      FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+     CROSS JOIN LATERAL (VALUES (f.home_team_id), (f.away_team_id)) t(team_id)
+     WHERE cs.competition_id IN (SELECT DISTINCT cid FROM {source})
+), newcomers AS (
+    SELECT s.competition_id, s.season, s.team_id
+      FROM seasons s
+      JOIN (SELECT DISTINCT competition_id, season FROM seasons) prev
+        ON prev.competition_id = s.competition_id AND prev.season = s.season - 1
+      LEFT JOIN seasons was
+        ON was.competition_id = s.competition_id AND was.season = s.season - 1 AND was.team_id = s.team_id
+     WHERE was.team_id IS NULL
+)"""
+"""A team that plays this season in a competition whose previous season is recorded, and did not play that one."""
+
 SQL = """
 WITH last AS (
     SELECT DISTINCT ON (p.fixture_id, p.market_key, p.selection, p.line, r.name)
@@ -86,28 +108,61 @@ WITH last AS (
      WHERE f.kickoff_at >= %(since)s AND f.kickoff_at < %(cutoff)s
        AND p.created_at < f.kickoff_at AND pr.settled_at IS NOT NULL AND pr.settled_at < %(cutoff)s
      ORDER BY p.fixture_id, p.market_key, p.selection, p.line, r.name, p.created_at DESC, p.id DESC
-), seasons AS (
-    -- the teams of each competition and season, to tell a newcomer (absent from the season before)
-    SELECT DISTINCT cs.competition_id, cs.season, t.team_id
-      FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-     CROSS JOIN LATERAL (VALUES (f.home_team_id), (f.away_team_id)) t(team_id)
-     WHERE cs.competition_id IN (SELECT DISTINCT cid FROM last)
-), newcomers AS (
-    SELECT s.competition_id, s.season, s.team_id
-      FROM seasons s
-      JOIN (SELECT DISTINCT competition_id, season FROM seasons) prev
-        ON prev.competition_id = s.competition_id AND prev.season = s.season - 1
-      LEFT JOIN seasons was
-        ON was.competition_id = s.competition_id AND was.season = s.season - 1 AND was.team_id = s.team_id
-     WHERE was.team_id IS NULL
-)
+), {newcomers}
 SELECT l.*, (nh.team_id IS NOT NULL OR na.team_id IS NOT NULL) AS newcomer
   FROM last l
   LEFT JOIN newcomers nh ON nh.competition_id = l.cid AND nh.season = l.season AND nh.team_id = l.home_team_id
   LEFT JOIN newcomers na ON na.competition_id = l.cid AND na.season = l.season AND na.team_id = l.away_team_id
  WHERE l.result_status IN ('win', 'loss') AND l.p_market > 0 AND l.p_market < 1 AND l.p_model > 0 AND l.p_model < 1
  ORDER BY l.kickoff_at, l.pick_id
-"""
+""".replace("{newcomers}", NEWCOMERS.format(source="last"))
+
+GOALS_SQL = """
+WITH f AS (
+    SELECT f.id AS fixture_id, f.kickoff_at, c.name AS competition, cs.competition_id AS cid, cs.season,
+           f.home_team_id, f.away_team_id, r.reg_goals_home, r.reg_goals_away
+      FROM core.fixtures f
+      JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+      JOIN core.competitions c ON c.id = cs.competition_id
+      JOIN core.fixture_results r ON r.fixture_id = f.id
+     WHERE f.kickoff_at >= %(since)s AND f.kickoff_at < %(cutoff)s AND upper(f.status_short) IN ('FT', 'AET', 'PEN')
+       AND r.reg_goals_home IS NOT NULL AND r.reg_goals_away IS NOT NULL
+), sides(market_key, selection, line) AS (
+    VALUES ('OU', 'Under', 2.5::numeric), ('BTTS', 'No', 0::numeric)
+), model AS (
+    -- each model's last real-time forecast before kick-off (the engine's own reading: p_calibrated, no backtest)
+    SELECT DISTINCT ON (p.fixture_id, v.model_id, p.market_key)
+           p.fixture_id, mr.name AS model_name, p.market_key, p.p_calibrated::float8 AS p_model
+      FROM f
+      JOIN models.predictions p ON p.fixture_id = f.fixture_id
+      JOIN sides s ON s.market_key = p.market_key AND s.selection = p.selection AND s.line = p.line
+      JOIN models.model_versions v ON v.id = p.model_version_id
+      JOIN models.model_registry mr ON mr.id = v.model_id
+     WHERE p.backtest_session_id IS NULL AND p.data_cutoff_ts < f.kickoff_at AND p.created_at < f.kickoff_at
+     ORDER BY p.fixture_id, v.model_id, p.market_key, p.data_cutoff_ts DESC, p.id DESC
+), market AS (
+    -- the last de-vigged consensus before kick-off, with the engine's method
+    SELECT f.fixture_id, s.market_key, k.p_market
+      FROM f CROSS JOIN sides s
+     CROSS JOIN LATERAL (
+        SELECT mc.p_fair::float8 AS p_market FROM market.market_consensus mc
+         WHERE mc.fixture_id = f.fixture_id AND mc.market_key = s.market_key AND mc.selection = s.selection
+           AND mc.line = s.line AND mc.devig_method = %(devig)s AND mc.as_of < f.kickoff_at
+         ORDER BY mc.as_of DESC LIMIT 1) k
+), {newcomers}
+SELECT m.fixture_id, m.model_name, m.market_key, f.competition, m.p_model, k.p_market,
+       CASE WHEN m.market_key = 'OU' THEN f.reg_goals_home + f.reg_goals_away < 2.5
+            ELSE NOT (f.reg_goals_home > 0 AND f.reg_goals_away > 0) END AS low,
+       (nh.team_id IS NOT NULL OR na.team_id IS NOT NULL) AS newcomer
+  FROM model m
+  JOIN market k ON k.fixture_id = m.fixture_id AND k.market_key = m.market_key
+  JOIN f ON f.fixture_id = m.fixture_id
+  LEFT JOIN newcomers nh ON nh.competition_id = f.cid AND nh.season = f.season AND nh.team_id = f.home_team_id
+  LEFT JOIN newcomers na ON na.competition_id = f.cid AND na.season = f.season AND na.team_id = f.away_team_id
+ WHERE m.p_model > 0 AND m.p_model < 1 AND k.p_market > 0 AND k.p_market < 1
+ ORDER BY m.fixture_id, m.market_key, m.model_name
+""".replace("{newcomers}", NEWCOMERS.format(source="f"))
+"""Q2's diagnosis: every finished match with a forecast and a market for «under 2.5» and «no» (both teams to score)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -234,25 +289,66 @@ def q1_probabilities(sels: Sequence[Sel]) -> dict[str, Any]:
     return out
 
 
-def q2_direction(sels: Sequence[Sel]) -> dict[str, Any]:
+@dataclass(frozen=True, slots=True)
+class Forecast:
+    """One model's last forecast before kick-off of «under 2.5» or «no» (both teams to score), its market and the match."""
+
+    fixture_id: int
+    market_key: str
+    model_name: str
+    competition: str
+    newcomer: bool
+    p_model: float
+    p_market: float
+    low: bool
+
+
+def to_forecasts(rows: Sequence[Mapping[str, Any]]) -> list[Forecast]:
+    return [Forecast(int(r["fixture_id"]), str(r["market_key"]), str(r["model_name"]), str(r["competition"]),
+                     bool(r["newcomer"]), float(r["p_model"]), float(r["p_market"]), bool(r["low"])) for r in rows]
+
+
+def lean(group: Sequence[Forecast]) -> dict[str, Any]:
+    """How far the model leans from the market toward the low side (+) or the high side (-), and who is closer to what
+    the matches did. A bias needs ``MIN_N`` matches, a lean of ``LEAN`` or more whose interval excludes 0, and the
+    model further from the observed frequency than the market."""
+    n = len(group)
+    diffs = np.array([f.p_model - f.p_market for f in group], dtype=np.float64)
+    observed = float(np.mean([1.0 if f.low else 0.0 for f in group]))
+    p_model = float(np.mean([f.p_model for f in group]))
+    p_market = float(np.mean([f.p_market for f in group]))
+    ci = cluster_ci(diffs, np.array([f.fixture_id for f in group])) if n >= MIN_N else None
+    lean_pp = 100 * float(diffs.mean())
+    model_gap, market_gap = p_model - observed, p_market - observed
+    bias = (n >= MIN_N and abs(lean_pp) >= 100 * LEAN and ci is not None and (ci[0] > 0 or ci[1] < 0)
+            and abs(model_gap) > abs(market_gap))
+    return {"n": n, "enough": n >= MIN_N, "p_model": round(p_model, 4), "p_market": round(p_market, 4),
+            "observed": round(observed, 4), "lean_pp": round(lean_pp, 2),
+            "lean_ci_pp": None if ci is None else [round(100 * ci[0], 2), round(100 * ci[1], 2)],
+            "model_gap_pp": round(100 * model_gap, 2), "market_gap_pp": round(100 * market_gap, 2),
+            "direction": "low" if lean_pp > 0 else "high", "bias": bias}
+
+
+def q2_direction(sels: Sequence[Sel], forecasts: Sequence[Forecast]) -> dict[str, Any]:
+    """The symptom on the flagged selections, and the diagnosis on every forecast (see the module's note)."""
     low = {"OU": "Under", "BTTS": "No"}
-    out: dict[str, Any] = {}
+    flagged: dict[str, Any] = {}
     for market, side in low.items():
-        group = [s for s in sels if s.obs.market_key == market]
-        if not group:
-            continue
-        by_comp: dict[tuple[str, bool], list[Sel]] = defaultdict(list)
-        for s in group:
-            by_comp[(s.competition, s.newcomer)].append(s)
-        rows = []
-        for (comp, newcomer), g in sorted(by_comp.items(), key=lambda kv: -len(kv[1])):
-            lean = float(np.mean([(s.obs.p_model - s.obs.p_market) * (1 if s.selection == side else -1) for s in g]))
-            rows.append({"competition": comp, "newcomer": newcomer, "n": len(g), "enough": len(g) >= MIN_N,
-                         "share_low": round(sum(1 for s in g if s.selection == side) / len(g), 4),
-                         "lean_low_pp": round(100 * lean, 2), "bias": len(g) >= MIN_N and lean >= LEAN})
-        out[market] = {"n": len(group), "share_low": round(sum(1 for s in group if s.selection == side) / len(group), 4),
-                       "by_competition": rows}
-    return out
+        picked = [s for s in sels if s.obs.market_key == market]
+        if picked:
+            flagged[market] = {"n": len(picked),
+                               "share_low": round(sum(1 for s in picked if s.selection == side) / len(picked), 4)}
+    diagnosis: dict[str, Any] = {}
+    for market in low:
+        for model in sorted({fc.model_name for fc in forecasts if fc.market_key == market}):
+            mine = [fc for fc in forecasts if fc.market_key == market and fc.model_name == model]
+            by_comp: dict[tuple[str, bool], list[Forecast]] = defaultdict(list)
+            for fc in mine:
+                by_comp[(fc.competition, fc.newcomer)].append(fc)
+            rows = [{"competition": comp, "newcomer": newcomer, **lean(g)}
+                    for (comp, newcomer), g in sorted(by_comp.items(), key=lambda kv: -len(kv[1]))]
+            diagnosis[f"{market}/{model}"] = {"overall": lean(mine), "by_competition": rows}
+    return {"flagged": flagged, "forecasts": diagnosis}
 
 
 def q3_bands(sels: Sequence[Sel]) -> list[dict[str, Any]]:
@@ -278,18 +374,19 @@ def q4_moves(sels: Sequence[Sel]) -> dict[str, Any]:
 def q5_price(sels: Sequence[Sel]) -> dict[str, Any]:
     taken = [s for s in sels if cal_rule(s)]
     at_price, at_fair = roi(taken), roi(taken, lambda s: s.pnl_fair)
-    share = None
-    if at_price.get("roi") is not None and at_fair.get("roi") is not None and at_price["roi"] != 0:
-        share = round((at_price["roi"] - at_fair["roi"]) / abs(at_price["roi"]), 4)
-    return {"at_price_taken": at_price, "at_fair_price": at_fair, "price_part_of_return": share}
+    gain = None
+    if at_price.get("roi") is not None and at_fair.get("roi") is not None:
+        gain = round(100 * (at_price["roi"] - at_fair["roi"]), 2)
+    return {"at_price_taken": at_price, "at_fair_price": at_fair, "price_gain_pp": gain}
 
 
-def research(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+def research(rows: Sequence[Mapping[str, Any]], goals_rows: Sequence[Mapping[str, Any]] = ()) -> dict[str, Any]:
     sels = calibrate_out_of_sample(rows)
     scored = [s for s in sels if s.p_cal is not None]
-    return {"selections": len(sels), "scored_out_of_sample": len(scored), "min_n": MIN_N, "reps": REPS, "seed": SEED,
-            "q1": q1_probabilities(sels), "q2": q2_direction(sels), "q3": q3_bands(scored), "q4": q4_moves(sels),
-            "q5": q5_price(scored)}
+    forecasts = to_forecasts(goals_rows)
+    return {"selections": len(sels), "scored_out_of_sample": len(scored), "forecasts": len(forecasts), "min_n": MIN_N,
+            "reps": REPS, "seed": SEED, "q1": q1_probabilities(sels), "q2": q2_direction(sels, forecasts),
+            "q3": q3_bands(scored), "q4": q4_moves(sels), "q5": q5_price(scored)}
 
 
 def _r(r: Mapping[str, Any]) -> str:
@@ -299,6 +396,14 @@ def _r(r: Mapping[str, Any]) -> str:
     band = f" [{ci[0]:+.1%}, {ci[1]:+.1%}]" if ci else " (muestra corta)"
     clv = f" CLV {r['clv']:+.1%}" if r.get("clv") is not None else ""
     return f"n={r['n']:,} ROI {r['roi']:+.1%}{band}{clv}"
+
+
+def _lean(q: Mapping[str, Any]) -> str:
+    ci = q.get("lean_ci_pp")
+    band = f" [{ci[0]:+.1f}, {ci[1]:+.1f}]" if ci else " (muestra corta)"
+    flag = " SESGO" if q["bias"] else ""
+    return (f"n={q['n']:,} modelo {q['p_model']:.1%} · mercado {q['p_market']:.1%} · real {q['observed']:.1%} · "
+            f"inclinación {q['lean_pp']:+.1f} pp{band}{flag}")
 
 
 def report(f: Mapping[str, Any]) -> None:
@@ -311,12 +416,13 @@ def report(f: Mapping[str, Any]) -> None:
         print(f"        regla del tablero {_r(q['board_rule'])} · regla calibrada {_r(q['calibrated_rule'])}")
         print(f"        propuesta {q['proposal']}")
     print("\nQ2 · dirección en goles y ambos marcan")
-    for m, q in f["q2"].items():
-        print(f"  {m}: {q['share_low']:.0%} del lado bajo")
+    for m, q in f["q2"]["flagged"].items():
+        print(f"  señaladas {m}: {q['share_low']:.0%} del lado bajo (n={q['n']:,})")
+    for key, q in f["q2"]["forecasts"].items():
+        print(f"  {key}: {_lean(q['overall'])}")
         for c in q["by_competition"][:15]:
-            flag = " SESGO" if c["bias"] else ""
-            print(f"    {c['competition'][:32]:32} {'recién llegados' if c['newcomer'] else '':16} n={c['n']:5,} "
-                  f"lado bajo {c['share_low']:.0%} inclinación {c['lean_low_pp']:+.1f} pp{flag}")
+            who = "recién llegados" if c["newcomer"] else ""
+            print(f"    {c['competition'][:32]:32} {who:16} {_lean(c)}")
     print("\nQ3 · tramos de cuota con la regla calibrada (fuera de muestra)")
     for b in f["q3"]:
         flag = " -> sube el tope" if b["raise_cap_here"] else ""
@@ -327,11 +433,18 @@ def report(f: Mapping[str, Any]) -> None:
           f"riesgo visible: {q4['becomes_visible_risk']}")
     q5 = f["q5"]
     print(f"\nQ5 · regla calibrada al precio tomado {_r(q5['at_price_taken'])} · al precio justo "
-          f"{_r(q5['at_fair_price'])} · parte del rendimiento que es solo precio: {q5['price_part_of_return']}")
+          f"{_r(q5['at_fair_price'])} · puntos que vienen solo del precio: {q5['price_gain_pp']}")
 
 
 def load(conn: psycopg.Connection[Any], *, since: datetime, cutoff: datetime) -> list[dict[str, Any]]:
     return list(conn.execute(SQL, {"since": since, "cutoff": cutoff}).fetchall())
+
+
+def load_goals(conn: psycopg.Connection[Any], *, since: datetime, cutoff: datetime) -> list[dict[str, Any]]:
+    from fbi.picks.engine import CONSENSUS_METHOD
+
+    return list(conn.execute(GOALS_SQL, {"since": since, "cutoff": cutoff,
+                                         "devig": CONSENSUS_METHOD.value}).fetchall())
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -345,7 +458,8 @@ def main(argv: list[str] | None = None) -> int:
     since = cutoff - timedelta(days=args.days) if args.days else datetime(2000, 1, 1, tzinfo=cutoff.tzinfo)
     with psycopg.connect(settings.database.psycopg_url, options=READ_ONLY, row_factory=dict_row) as conn:
         rows = load(conn, since=since, cutoff=cutoff)
-    figures = research(rows)
+        goals = load_goals(conn, since=since, cutoff=cutoff)
+    figures = research(rows, goals)
     if args.json:
         print(json.dumps(figures, ensure_ascii=False, indent=2,
                          default=lambda x: None if isinstance(x, float) and math.isnan(x) else str(x)))

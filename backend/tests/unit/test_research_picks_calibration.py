@@ -8,9 +8,12 @@ from typing import Any
 
 import numpy as np
 from scripts.research_picks_calibration import (
+    Forecast,
     calibrate_out_of_sample,
     cluster_ci,
+    lean,
     q2_direction,
+    q5_price,
     research,
 )
 
@@ -61,13 +64,53 @@ def test_the_overconfident_model_is_caught_and_its_rule_does_not_publish() -> No
     assert not any(b["raise_cap_here"] for b in f["q3"]), "no band is paid in a world without value"
 
 
-def test_the_lean_toward_under_is_reported_by_competition_and_newcomers_apart() -> None:
+def forecasts(n: int, *, lean_pp: float, truth: str, competition: str = "Liga A", newcomer: bool = False,
+              seed: int = 5, start: int = 0) -> list[Forecast]:
+    """``n`` matches whose «under 2.5» the model sees ``lean_pp`` points above the market. ``truth``: who is right -
+    ``market`` (the matches go under at the market's rate) or ``model`` (at the model's)."""
+    rng = random.Random(seed)
+    out = []
+    for i in range(n):
+        p_market = rng.uniform(0.40, 0.60)
+        p_model = p_market + lean_pp / 100
+        p_true = p_market if truth == "market" else p_model
+        out.append(Forecast(start + i, "OU", "dixon_coles", competition, newcomer, p_model, p_market,
+                            rng.random() < p_true))
+    return out
+
+
+def test_the_lean_is_a_bias_only_when_the_matches_side_with_the_market() -> None:
+    wrong = lean(forecasts(2000, lean_pp=6, truth="market"))
+    assert wrong["bias"] and wrong["direction"] == "low" and wrong["lean_ci_pp"][0] > 0
+    assert abs(wrong["model_gap_pp"]) > abs(wrong["market_gap_pp"])
+    right = lean(forecasts(2000, lean_pp=6, truth="model"))
+    assert not right["bias"], "a model that leans and is right is not a bias to correct"
+    small = lean(forecasts(2000, lean_pp=1, truth="market"))
+    assert not small["bias"], "under 3 points it is not reported"
+    few = lean(forecasts(120, lean_pp=8, truth="market"))
+    assert not few["bias"] and few["lean_ci_pp"] is None and not few["enough"]
+
+
+def test_the_symptom_is_on_the_flagged_picks_and_the_diagnosis_on_every_forecast() -> None:
     sels = calibrate_out_of_sample(world(), min_train=200)
-    ou = q2_direction(sels)["OU"]
-    assert 0.75 < ou["share_low"] < 0.85
-    rows = {(r["competition"], r["newcomer"]): r for r in ou["by_competition"]}
-    assert rows[("Liga A", False)]["bias"] and rows[("Liga A", False)]["lean_low_pp"] > 3
-    assert ("Liga A", True) in rows
+    all_forecasts = (forecasts(1500, lean_pp=6, truth="market")
+                     + forecasts(400, lean_pp=6, truth="market", newcomer=True, seed=9, start=10_000))
+    q = q2_direction(sels, all_forecasts)
+    assert 0.75 < q["flagged"]["OU"]["share_low"] < 0.85, "the share of «under» among the flagged picks"
+    d = q["forecasts"]["OU/dixon_coles"]
+    assert d["overall"]["n"] == 1900 and d["overall"]["bias"]
+    rows = {(r["competition"], r["newcomer"]): r for r in d["by_competition"]}
+    assert rows[("Liga A", False)]["n"] == 1500 and rows[("Liga A", True)]["n"] == 400
+
+
+def test_the_price_is_said_in_points_whatever_the_sign_of_the_return() -> None:
+    f = research(world())
+    q5 = q5_price([])
+    assert q5["price_gain_pp"] is None
+    gain = f["q5"]["price_gain_pp"]
+    at_price, at_fair = f["q5"]["at_price_taken"]["roi"], f["q5"]["at_fair_price"]["roi"]
+    assert gain == round(100 * (at_price - at_fair), 2)
+    assert at_price < 0 and gain < 0, "a margin below the fair price costs points even when the return is negative"
 
 
 def test_the_interval_resamples_matches_not_selections() -> None:
