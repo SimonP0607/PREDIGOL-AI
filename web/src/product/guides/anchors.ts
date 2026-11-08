@@ -27,13 +27,21 @@ export function resolvable(
   return step.anchors.length === 0 || Boolean(find(step.anchors));
 }
 
-/** Another layer is open over the page (a sheet, the slip, «Explícame», a dialog): a guide never goes over it. */
+const LAYERS =
+  '[role="dialog"]:not([data-guide-card]), [role="alertdialog"], [data-radix-popper-content-wrapper]';
+
+/**
+ * Another layer is open over the page (a sheet, the slip, «Explícame», a dialog): a guide never goes over it. A layer that is
+ * closing does not count (UX-070): «Más» stays in the page for its exit animation (`data-state="closed"`) while the screen it
+ * opened is already there, and that screen's guide must not wait for a sheet the reader already closed.
+ */
 export function anotherLayerOpen(root: ParentNode = document): boolean {
-  return Boolean(
-    root.querySelector(
-      '[role="dialog"]:not([data-guide-card]), [role="alertdialog"], [data-radix-popper-content-wrapper]',
-    ),
-  );
+  for (const layer of Array.from(root.querySelectorAll<HTMLElement>(LAYERS))) {
+    const state =
+      layer.getAttribute("data-state") ?? layer.firstElementChild?.getAttribute("data-state");
+    if (state !== "closed") return true;
+  }
+  return false;
 }
 
 /** Where the card goes (plan UX-051, section 8): a box in the viewport's pixels, kept clear of the edges. */

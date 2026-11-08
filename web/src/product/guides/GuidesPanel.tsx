@@ -21,7 +21,8 @@ export function GuidesPanel({ className }: { className?: string }) {
   const labelId = useId();
   const [failed, setFailed] = useState(false);
   if (!guides.available || !user || user.role !== "USER" || user.guides_on === false) return null;
-  const list = GUIDE_LIST.filter((g) => launchable(g) && !g.coveredBy);
+  // every guide, Inicio's own too (UX-070): the general tour covers it only for what comes up by itself
+  const list = GUIDE_LIST.filter(launchable);
   if (list.length === 0) return null;
   // the switch only means something when there is a guide of a screen to show by itself
   const hasScreenGuides = list.some((g) => g.key !== "general" && !g.mandatory);

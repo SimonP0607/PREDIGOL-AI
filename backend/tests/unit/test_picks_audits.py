@@ -60,19 +60,26 @@ def row(status: str, profit: str | None, home: int | None, away: int | None, *, 
             "et_goals_away": None, "ft_goals_home": None, "ft_goals_away": None, "taken_kickoff": NOW}
 
 
+def revision(at: datetime) -> resettlement.Revision:
+    return resettlement.Revision(1, "score", {"reg_goals_home": 0}, {"reg_goals_home": 2}, ["reg_goals_home"], at)
+
+
 def test_a_stored_result_is_same_held_explained_or_unexplained() -> None:
     pick = next(k for k in resettlement.SINGLES if k.name == "pick")
     rows = [
         row("win", "1.1000", 2, 0),                    # same
         row("loss", "-1.0000", 2, 0, fixture=11),      # the score says win, no correction recorded: unexplained
-        row("loss", "-1.0000", 2, 0, fixture=12),      # the same, but the result was corrected: explained
+        row("loss", "-1.0000", 2, 0, fixture=12),      # the same, corrected after it was settled: explained
+        row("loss", "-1.0000", 2, 0, fixture=13),      # corrected BEFORE it was settled: still unexplained
         row("win", "1.1000", None, None, short="PST"),  # the match no longer settles: held
     ]
-    t = tally(pick, rows, NOW + timedelta(hours=3), revised={12})
-    assert (t["examined"], t["same"], t["explained"], t["unexplained"]) == (4, 1, 1, 1)
+    revisions = {12: revision(NOW + timedelta(hours=1)), 13: revision(NOW - timedelta(hours=1))}
+    t = tally(pick, rows, NOW + timedelta(hours=3), revisions)
+    assert (t["examined"], t["same"], t["explained"], t["unexplained"]) == (5, 1, 1, 2)
     assert t["held"] == {"no_longer_settles": 1}
-    (e,) = t["examples"]
-    assert e["fixture_id"] == 11 and e["stored"] == ["loss", "-1.0000"] and e["now"][0] == "win"
+    assert [e["fixture_id"] for e in t["examples"]] == [11, 13]
+    e = t["examples"][0]
+    assert e["stored"] == ["loss", "-1.0000"] and e["now"][0] == "win"
 
 
 def test_a_day_adds_up_when_every_item_counts_once() -> None:

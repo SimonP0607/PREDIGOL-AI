@@ -28,6 +28,7 @@ export function FilterSheet({
   testId,
   title,
   className,
+  guide,
   children,
 }: {
   /** How many filters are on (shown on the button and in the sheet). */
@@ -40,6 +41,8 @@ export function FilterSheet({
   testId: string;
   title?: string | undefined;
   className?: string | undefined;
+  /** Where a screen's guide rests below 1024 px, when what it points at is inside this sheet (`data-guide`, UX-070). */
+  guide?: string | undefined;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -52,6 +55,7 @@ export function FilterSheet({
         <button
           type="button"
           data-testid={`${testId}-open`}
+          data-guide={guide}
           className={cn(
             "tap-y relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden",
             on

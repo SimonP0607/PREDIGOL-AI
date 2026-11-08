@@ -365,29 +365,24 @@ export function OddsPage() {
           {filtered ? clearButton : null}
         </div>
         <div className="flex items-center gap-3 lg:hidden">
-          {/* Below 1024 px «Solo por encima de la justa» lives in this sheet, closed: the guide's step on it rests on the
-              button that opens it (a step on a hidden element is left out). */}
-          <span className="inline-flex" data-guide="odds-above">
-            <FilterSheet
-              testId="odds-filters"
-              active={
-                (effective.query.trim() !== "" ? 1 : 0) +
-                (country !== null ? 1 : 0) +
-                (competition !== null ? 1 : 0) +
-                (effective.aboveFair ? 1 : 0)
-              }
-              onReset={() => setFilters({ ...NO_ODDS_FILTERS, sort: filters.sort })}
-              showLabel={board ? t("odds.filters.show", { count: kept.length }) : undefined}
-            >
-              <SheetField label={t("odds.filters.search")}>{searchBox}</SheetField>
-              <SheetField label={t("odds.filters.country")}>{countryPicker(true)}</SheetField>
-              <SheetField label={t("odds.filters.competition")}>
-                {competitionPicker(true)}
-              </SheetField>
-              <div>{aboveFairChip}</div>
-              <SheetField label={t("odds.filters.sort")}>{sortChips}</SheetField>
-            </FilterSheet>
-          </span>
+          <FilterSheet
+            testId="odds-filters"
+            guide="odds-above"
+            active={
+              (effective.query.trim() !== "" ? 1 : 0) +
+              (country !== null ? 1 : 0) +
+              (competition !== null ? 1 : 0) +
+              (effective.aboveFair ? 1 : 0)
+            }
+            onReset={() => setFilters({ ...NO_ODDS_FILTERS, sort: filters.sort })}
+            showLabel={board ? t("odds.filters.show", { count: kept.length }) : undefined}
+          >
+            <SheetField label={t("odds.filters.search")}>{searchBox}</SheetField>
+            <SheetField label={t("odds.filters.country")}>{countryPicker(true)}</SheetField>
+            <SheetField label={t("odds.filters.competition")}>{competitionPicker(true)}</SheetField>
+            <div>{aboveFairChip}</div>
+            <SheetField label={t("odds.filters.sort")}>{sortChips}</SheetField>
+          </FilterSheet>
           {filtered ? clearButton : null}
         </div>
       </div>
