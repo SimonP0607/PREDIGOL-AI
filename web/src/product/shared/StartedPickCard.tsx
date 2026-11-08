@@ -57,9 +57,15 @@ export function StartedPickCard({
   });
   const result = pick.result_status ? RESULTS[pick.result_status] : undefined;
   const live = isLivePhase(pick.phase);
-  // Before the whistle the badge has nothing to show: say so, never an empty «Estado actual» (plan PICKS, U4).
+  // The badge has nothing to show before the whistle or when the provider's code is not one we know: say which, never
+  // an empty «Estado actual» (plan PICKS, U4) - and never «Esperando el inicio» for a state nobody knows.
   const phaseNow = matchPhaseOf(pick.status_short, pick.kickoff_at, Date.now(), pick.phase);
-  const waiting = phaseNow === "scheduled" || phaseNow === "unknown";
+  const quiet =
+    phaseNow === "scheduled"
+      ? t("picks.waitingKickoff")
+      : phaseNow === "unknown"
+        ? t("common.status.unknown")
+        : null;
   const score =
     pick.score_home !== null && pick.score_away !== null
       ? { home: pick.score_home, away: pick.score_away }
@@ -165,9 +171,13 @@ export function StartedPickCard({
               <ResultBadge status={result} />
               <Units value={pick.profit_units} className="text-xs" />
             </>
-          ) : waiting ? (
-            <span className="text-caption text-muted-foreground" data-testid="started-pick-waiting">
-              {t("picks.waitingKickoff")}
+          ) : quiet ? (
+            <span
+              className="text-caption text-muted-foreground"
+              data-testid="started-pick-quiet"
+              data-phase={phaseNow}
+            >
+              {quiet}
             </span>
           ) : (
             <MatchStateBadge match={pick} />
