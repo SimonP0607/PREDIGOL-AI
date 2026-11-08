@@ -209,30 +209,30 @@ WITH bets AS (
       LEFT JOIN picks.pick_results pr ON pr.pick_id = p.id
      ORDER BY v.model_id, p.fixture_id, p.market_key, p.selection, p.line, p.odds_captured_at,
               p.decision_rule_version, p.id
-), settled AS (
-    SELECT * FROM bets WHERE result_status IS NOT NULL AND result_status NOT IN ('pending')
-), keyed AS (
-    SELECT 'market' AS dimension, market AS key, * FROM settled
-    UNION ALL SELECT 'model', model, * FROM settled
-    UNION ALL SELECT 'rule', rule, * FROM settled
-    UNION ALL SELECT 'month', month, * FROM settled
-    UNION ALL SELECT 'odds_band', odds_band, * FROM settled
 ), per_fixture AS (
-    SELECT dimension, key, fixture_id, sum(profit_units) AS profit FROM keyed GROUP BY 1, 2, 3
-), clusters AS (
-    SELECT dimension, key, count(*)::int AS fixtures, stddev_samp(profit) AS fixture_profit_sd
-      FROM per_fixture GROUP BY 1, 2
+    -- One row per slice and match, in one pass over the settled bets (grouping sets, not five copies of them).
+    SELECT CASE WHEN GROUPING(market) = 0 THEN 'market' WHEN GROUPING(model) = 0 THEN 'model'
+                WHEN GROUPING(rule) = 0 THEN 'rule' WHEN GROUPING(month) = 0 THEN 'month'
+                ELSE 'odds_band' END AS dimension,
+           CASE WHEN GROUPING(market) = 0 THEN market WHEN GROUPING(model) = 0 THEN model
+                WHEN GROUPING(rule) = 0 THEN rule WHEN GROUPING(month) = 0 THEN month
+                ELSE odds_band END AS key,
+           count(*) AS n,
+           sum(stake_units) FILTER (WHERE result_status <> 'void') AS staked,
+           sum(profit_units) AS profit,
+           count(*) FILTER (WHERE result_status IN ('win', 'half_win')) AS wins,
+           sum(market_odds) AS odds_sum,
+           sum(ev * stake_units) FILTER (WHERE result_status <> 'void') AS expected
+      FROM bets
+     WHERE result_status IS NOT NULL AND result_status NOT IN ('pending')
+     GROUP BY GROUPING SETS ((market, fixture_id), (model, fixture_id), (rule, fixture_id), (month, fixture_id),
+                             (odds_band, fixture_id))
 )
-SELECT k.dimension, k.key, count(*)::int AS settled,
-       sum(k.stake_units) FILTER (WHERE k.result_status <> 'void') AS staked,
-       sum(k.profit_units) AS profit,
-       stddev_samp(k.profit_units) AS profit_sd,
-       c.fixtures, c.fixture_profit_sd,
-       count(*) FILTER (WHERE k.result_status IN ('win', 'half_win'))::int AS wins,
-       avg(k.market_odds) AS mean_odds,
-       sum(k.ev * k.stake_units) FILTER (WHERE k.result_status <> 'void') AS expected_profit
-  FROM keyed k JOIN clusters c ON c.dimension = k.dimension AND c.key = k.key
- GROUP BY k.dimension, k.key, c.fixtures, c.fixture_profit_sd ORDER BY k.dimension, k.key
+SELECT dimension, key, sum(n)::int AS settled, sum(staked) AS staked, sum(profit) AS profit,
+       count(*)::int AS fixtures, stddev_samp(profit) AS fixture_profit_sd, sum(wins)::int AS wins,
+       sum(odds_sum) / sum(n) AS mean_odds, sum(expected) AS expected_profit
+  FROM per_fixture
+ GROUP BY dimension, key ORDER BY dimension, key
 """
 """The interval is clustered by fixture: several picks on one match (lines of one total, both models) win or lose
 together, so 1,500 picks on 100 matches carry the information of about 100 bets, not 1,500. Until 5 Oct 2026 the

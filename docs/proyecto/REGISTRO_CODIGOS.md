@@ -19,6 +19,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | CI-009 | El CI vuelve a pasar con ruff 0.17.4: se junta un `if` anidado del revisor posterior en una sola condición (misma lógica, ahora con prueba) | en curso | este PR | — |
 | CI-010 | El despliegue automático (CI-007) no llegaba al servidor: GitHub no podía leer la llave SSH del entorno `production-auto` («error in libcrypto»). `ci_ssh_setup.sh` ahora endereza la llave (BOM, CRLF, un solo renglón, tabuladores, sangrías) y, si aun así no carga, se detiene ahí diciendo qué le pasa (cabecera, pie, renglones) sin imprimirla; con pruebas sobre una llave real. No toca la inteligencia ni el servidor | en curso | este PR | — |
 | CI-011 | El trabajo `pytest (PostgreSQL 16)` del CI del backend pasa de 45 a 60 minutos: la batería tarda 30-39 min y, con varias ejecuciones a la vez, superó los 45 y se canceló al 97 % (main `cf1ed4e8` y #103, 8-nov-2026), lo que además detenía el despliegue automático. No cambia pruebas, código ni el servidor | en curso | este PR | — |
+| CI-012 | El precheck del lanzamiento acepta `FBI_AI_MODE=enforce` además de `shadow` (palabra del dueño, 8-nov-2026: «Encender con control»); cualquier otra palabra sigue siendo NOT OK. Con `enforce`, la IA solo llega a los usuarios mientras el último informe de sombra de `combined` diga `pass` (`fbi.ai.gating`). Sin esto, encender `enforce` bloqueaba todos los despliegues | en curso | este PR | — |
 
 ## IA — capa de inteligencia artificial
 
@@ -115,6 +116,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | BE-003 | El pick del día da prioridad a la Champions, las ligas grandes, las copas continentales e intercontinentales y los torneos de selecciones (solo ordena a los ya elegibles; `daily-set-v7`, `comp-priority-v1`) | en curso | este PR | — |
 | BE-004 | Catálogo de mercados (plan Partidos y Match Center, F4a): `GET /matches/{id}/markets/catalog` da por categoría los 50 tipos de apuesta ya guardados y los 5 de siempre, cada selección con su cuota vigente leída de la última respuesta del proveedor antes del inicio (A → B → A lee A) y los tipos 307 y 339 unificados; tipos y consulta en la web, sin pantalla. No cambia el extractor, parlays ni liquidación; sin migración | hecho | #65 | Plan Partidos F4a |
 | BE-005 | Control de estadios (plan Partidos y Match Center, F6): la auditoría de verdad marca los estadios cuya ciudad o país no cuadran con su competición, el proveedor o los demás partidos del estadio (el caso de Mestalla en «Valdivia»), sin corregir nada; script `scripts/repair_venue_city.py` en seco, con `--apply` y registro en `audit.data_repairs`; guía `docs/owner/ESTADIOS_CIUDAD_BE005.md`. Sin migración | hecho | #77 | Plan Partidos F6 |
+| BE-006 | La consola de rendimiento vuelve a responder con muestra real (plan PICKS, R1): `GET /admin/performance` respondió 500 el 7-nov-2026 y sus pruebas solo cubrían la rama de muestra corta. Las porciones se agrupan en una pasada (grouping sets, sin copiar cinco veces las apuestas: 2,2 s → 1,0 s con 176.000 picks sintéticos, cifras idénticas), solo esta petición puede pasar de los 10 s de la API (60 s, como Competiciones en octubre) y su respuesta se guarda 5 minutos. Pruebas con 40 apuestas liquidadas al céntimo. Solo lectura; no cambia picks, modelos ni liquidación; sin migración | en curso | este PR | Plan PICKS R1 |
 
 ## Otras áreas
 
@@ -122,4 +124,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-012 · SEG-001 · IA-020 · UX-066 · BE-008 · FE-001 · OPS-001 · DOC-001
+CI-013 · SEG-001 · IA-020 · UX-066 · BE-008 · FE-001 · OPS-001 · DOC-001
