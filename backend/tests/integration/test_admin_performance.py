@@ -137,8 +137,8 @@ def test_each_slice_counts_its_own_bets(owner: TestClient) -> None:
     by_key = {(s["dimension"], s["key"]): s for s in d["slices"]}
     for month, ns in (("2032-01", range(12)), ("2032-02", range(12, N))):
         rows = [OUTCOMES[n % len(OUTCOMES)] for n in ns]
-        staked = sum(1 for status, _ in rows if status != "void")
-        profit = sum(Decimal(p) for _, p in rows)
+        staked = Decimal(sum(1 for status, _ in rows if status != "void"))
+        profit = sum((Decimal(p) for _, p in rows), Decimal(0))
         s = by_key[("month", month)]
         assert s["settled"] == len(rows) and s["fixtures"] == len(rows)
         assert Decimal(s["staked_units"]) == staked and Decimal(s["profit_units"]) == profit
@@ -146,5 +146,5 @@ def test_each_slice_counts_its_own_bets(owner: TestClient) -> None:
         wins = sum(1 for status, _ in rows if status in ("win", "half_win"))
         assert Decimal(s["hit_rate"]) == (Decimal(wins) / len(rows) * 100).quantize(Decimal("0.01"))
         odds = [Decimal("2.30") if n % 2 == 0 else Decimal("1.60") for n in ns]
-        assert Decimal(s["mean_odds"]) == (sum(odds) / len(odds)).quantize(Decimal("0.01"))
+        assert Decimal(s["mean_odds"]) == (sum(odds, Decimal(0)) / len(odds)).quantize(Decimal("0.01"))
         assert Decimal(s["expected_profit_units"]) == (Decimal("0.15") * staked).quantize(Decimal("0.01"))

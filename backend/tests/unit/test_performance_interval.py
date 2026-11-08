@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import pytest
+
 from fbi.api.services.analytics import _clustered_ci
 
 
@@ -15,9 +17,10 @@ def test_the_interval_grows_with_the_spread_of_match_profits_not_with_the_number
     assert _clustered_ci(100, None, Decimal(1500)) is None and _clustered_ci(100, 3.0, None) is None
 
 
-def test_the_console_may_take_longer_than_the_boards_and_builds_every_slice(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_the_console_may_take_longer_than_the_boards_and_builds_every_slice(monkeypatch: pytest.MonkeyPatch) -> None:
     """Plan PICKS, R1: the console answered 500 with a real sample. Only this request lifts the API's ten seconds,
     inside its own transaction, and the full branch (not only the small-sample one) builds its slices."""
+    from fbi.api.repositories import analytics as repo
     from fbi.api.services import analytics
 
     executed: list[str] = []
@@ -31,8 +34,8 @@ def test_the_console_may_take_longer_than_the_boards_and_builds_every_slice(monk
     row = {"dimension": "odds_band", "key": "2: 1.70-2.49", "settled": 20, "staked": Decimal(19),
            "profit": Decimal("1.00"), "fixtures": 20, "fixture_profit_sd": Decimal("1.1"), "wins": 9,
            "mean_odds": Decimal("2.3"), "expected_profit": Decimal("2.85")}
-    monkeypatch.setattr(analytics.repo, "settled_summary", lambda _c: summary)
-    monkeypatch.setattr(analytics.repo, "performance_slices", lambda _c: [row])
+    monkeypatch.setattr(repo, "settled_summary", lambda _c: summary)
+    monkeypatch.setattr(repo, "performance_slices", lambda _c: [row])
     env = analytics.performance(Conn())  # type: ignore[arg-type]
     assert executed == [f"SET LOCAL statement_timeout = '{analytics.PERFORMANCE_TIMEOUT}'"]
     assert env.data is not None and env.data.roi_pct == Decimal("-3.95") and env.data.roi_ci95_pct is not None
