@@ -10,7 +10,7 @@ El objetivo del plan para esta fase es que **exista y esté probado todo lo que 
 
 | Pieza | Qué hace | Dónde está |
 | --- | --- | --- |
-| Contratos | el paquete que lee un modelo y las cinco salidas que puede escribir, todos cerrados | `ai/contracts/` |
+| Contratos | el paquete que lee un modelo y las salidas que puede escribir (cinco; IA-017 añadió la sexta), todos cerrados | `ai/contracts/` |
 | Texto de otros | limpia una sola vez lo que escribió alguien que no es PrediGol | `ai/untrusted.py` |
 | Paquete | el documento de un partido y una porción por agente, derivado sin modelo | `ai/package.py` |
 | Router | qué modelo lee qué, o ninguno, como función pura con sus razones | `ai/router.py` |
@@ -26,7 +26,7 @@ El objetivo del plan para esta fase es que **exista y esté probado todo lo que 
 
 ## 2. Los seis contratos
 
-Un **contrato** es el esquema cerrado de lo que entra en un modelo o de lo que puede salir de él. Hay seis (`ai/contracts/`): el paquete que escribe el servidor y las cinco salidas que un modelo puede devolver. Una salida es a la vez un modelo de Pydantic y su esquema JSON, y ese esquema es el que aceptan las salidas estructuradas de Anthropic: valores cerrados, todos los campos obligatorios y `additionalProperties: false` en cada objeto.
+Un **contrato** es el esquema cerrado de lo que entra en un modelo o de lo que puede salir de él. Hay siete (`ai/contracts/`): el paquete que escribe el servidor y las seis salidas que un modelo puede devolver (la sexta, `pa-v1` del Player Agent, la añadió IA-017). Una salida es a la vez un modelo de Pydantic y su esquema JSON, y ese esquema es el que aceptan las salidas estructuradas de Anthropic: valores cerrados, todos los campos obligatorios y `additionalProperties: false` en cada objeto.
 
 | Contrato | Quién lo escribe | Qué dice |
 | --- | --- | --- |
@@ -36,6 +36,7 @@ Un **contrato** es el esquema cerrado de lo que entra en un modelo o de lo que p
 | `cd-v1` | Council | un veredicto por selección, con sus motivos y riesgos en códigos |
 | `pmr-v1` | Post-Match Reviewer | qué señal de qué agente acertó, la clase del error y una narrativa |
 | `la-v1` | Learning Analyst | hasta cinco hipótesis a la semana, cada una con su evidencia |
+| `pa-v1` | Player Agent | una postura por candidato de goles y resultado según quién juega, en códigos: una dirección y nunca una magnitud (IA-017) |
 
 **Lo que una salida nunca puede llevar** lo impone la construcción, no una instrucción: ningún campo de ninguna salida puede llamarse probabilidad, precio, cuota, stake, edge, URL, consulta ni SQL (una prueba lee el nombre de cada campo). Las señales (14) y los riesgos (12) son códigos de una lista cerrada, no frases: cuanto menos texto libre puede escribir un agente, menos puede decir por él una página envenenada. Las dos salidas que sí llevan prosa, la narrativa del Post-Match Reviewer y las hipótesis del Learning Analyst, son texto no fiable: se muestran al dueño, nunca son una orden y nunca se miden. Las referencias son tipadas: `E:<n>` una evidencia, `P:<ruta>` una ruta del paquete y `A:<id>` una evaluación de otro agente.
 
@@ -75,7 +76,9 @@ Un modelo lee tres clases de texto: el de PrediGol (las reglas, el esquema, las 
 6. tiene una longitud máxima, y dice que se cortó (la marca de la orden se pone antes, sobre el texto entero: una orden que queda más allá del corte también se marca);
 7. viaja como un bloque que dice de dónde viene: `{"untrusted": true, "origin": "<dominio>", "text": …, "truncated": …, "flags": […]}`, dentro de un JSON, de modo que cada comilla y cada corchete del texto queda escapado, y el prompt de cada agente dice que un bloque así es dato.
 
-De un texto solo se mira hasta 20 veces la longitud máxima de salida (`MAX_INPUT_FACTOR`): una página de un megabyte cuesta lo que una de diez kilobytes. Las marcas posibles son ocho:
+**Desde IA-018 la puerta en vigor es `untrusted-v2`.** La batería `battery-v3` confirmó en el LAB, el 7 de noviembre de 2026, tres casos que movieron un veredicto: una orden escrita con letras de ancho completo que el paso 1 dejaba legible para el Match Agent (`match.homoglyph.3`), las palabras de una imagen en markdown que el paso 4 conservaba (`claims.markdown_link.3`) y un texto que finge que los datos se acaban y da otra orden (`claims.break_json.5`). La v2 levanta las mismas marcas que la v1, sobre la misma lectura llana del texto, pero al modelo le entrega menos: una frase **disfrazada** (dos o más palabras cercanas escritas con formas de compatibilidad, versalitas, letras de otro alfabeto mezcladas en una palabra latina o uniones invisibles entre letras latinas) se cambia por `[disguised text]` (una sola palabra disfrazada se resuelve como en la v1; los nombres con tildes y las palabras de otro alfabeto no se tocan); una imagen pasa a `[image]`, sin sus palabras; y el texto se **corta** en la primera ruptura de marco (una etiqueta de sección de un prompt como `</pages>`, una secuencia que cierra o abre un JSON, una valla de código o comillas triples, un rótulo en mayúsculas como `END OF DATA`, un marcador de rol al empezar una frase como `SYSTEM:` o «you are now talking to»), y lo que sigue se cambia por `[cut]`; de lo que queda se quitan llaves, barras invertidas, acentos graves y rachas de comillas y de corchetes. La `untrusted-v1` se conserva byte a byte: el paquete se deriva otra vez con la puerta de la versión que nombra su fila.
+
+De un texto solo se mira hasta 20 veces la longitud máxima de salida (`MAX_INPUT_FACTOR`): una página de un megabyte cuesta lo que una de diez kilobytes. Las marcas posibles son once:
 
 | Marca | Cuándo se pone |
 | --- | --- |
@@ -87,12 +90,15 @@ De un texto solo se mira hasta 20 veces la longitud máxima de salida (`MAX_INPU
 | `link` | había un enlace o una dirección: queda sin destino |
 | `instruction_like` | se parece a una orden a un modelo (patrones en inglés y en español) |
 | `truncated` | pasaba del máximo y se cortó: acaba en «…» |
+| `disguised` | (v2) había una frase disfrazada: al modelo le llega `[disguised text]` |
+| `frame_break` | (v2) el texto intentaba cerrar los datos y abrir otra cosa: se corta ahí y acaba en `[cut]` |
+| `structure` | (v2) quedaban llaves, barras invertidas, acentos graves o rachas de comillas o corchetes: se quitan |
 
 **Esto no hace inmune a un modelo, y no lo pretende.** La garantía es estructural: la respuesta de un agente está hecha de códigos y de referencias que el servidor comprueba, no tiene herramientas, ni memoria, ni credenciales, ni salida, y lo peor que puede hacer un texto envenenado es bajar un pick o dejar una frase equivocada en una narrativa que nadie sigue. Este módulo hace el ataque más fácil de ver y más caro de hacer; la sección 12 mide si funciona.
 
 ## 4. El paquete y sus porciones
 
-El backend escribe, **una vez por pasada y sin ningún modelo**, un documento sobre el partido (`mcp-v1`, `ai/package.py`) y da a cada agente su **porción**. Se deriva con una función pura del paquete de datos `packet-v8` que la pasada ya guardó (el mismo que leyó el brief de esa pasada) y de una lectura, a fecha de ese momento, de los pronósticos de córners y tarjetas (`family-v1`). Nada se estima y nada se lee que se haya registrado después del momento del paquete. La versión del código que lo deriva es `package-v1`, y entra en la clave de idempotencia (sección 6): cambiarla es otra derivación del mismo paquete, nunca una reescritura silenciosa de una vieja.
+El backend escribe, **una vez por pasada y sin ningún modelo**, un documento sobre el partido (`mcp-v1`, `ai/package.py`) y da a cada agente su **porción**. Se deriva con una función pura del paquete de datos `packet-v8` que la pasada ya guardó (el mismo que leyó el brief de esa pasada) y de una lectura, a fecha de ese momento, de los pronósticos de córners y tarjetas (`family-v1`). Nada se estima y nada se lee que se haya registrado después del momento del paquete. La versión del código que lo deriva es `package-v2` (IA-018: la de `package-v1` con la puerta `untrusted-v2`), y entra en la clave de idempotencia (sección 6): cambiarla es otra derivación del mismo paquete, nunca una reescritura silenciosa de una vieja. El paquete de datos guarda el texto de fuera tal como llegó y el paquete lo limpia al derivarse, así que la auditoría de fugas (`slice_known`) deriva cada fila otra vez con la versión que nombra: `package-v1` con `untrusted-v1`, `package-v2` con `untrusted-v2`.
 
 | Porción | La lee | Bloques | Familias |
 | --- | --- | --- | --- |
@@ -214,7 +220,7 @@ Un **agente** es sus prompts, el contrato de su respuesta, su modelo y su esfuer
 | `post_match_reviewer` | `pmr-v1` | 5 | `pmr-v1` |
 | `learning_analyst` | `la-v1` | 5 | `la-v1` |
 
-* **Lo pospuesto (`POSTPONED`).** El Player Agent: ni un token ni una línea de código hasta su gate F-Player (un mercado con modelo validado, regla de liquidación y precio de referencia).
+* **Lo pospuesto (`POSTPONED`).** Vacío desde IA-017. El Player Agent esperó aquí a su gate F-Player (un mercado con modelo validado, regla de liquidación y precio de referencia); hoy está construido (`player-v1`), **apagado por defecto** y en sombra (`docs/owner/IA_017_PLAYER_AGENT.md`). Lo que F-Player sigue reteniendo son los props de un jugador: ningún mercado de jugador se le nombra y nada de lo que dice llega a una decisión.
 
 **Una etiqueta de prompt nunca nombra dos textos.** El libro guarda, para cada tarea de cada versión, la etiqueta y un hash del texto y del esquema; una etiqueta cuyo texto ha cambiado desde entonces es una edición en el sitio (lo único que `ai/prompts.py` dice que no se hace nunca) y falla. **Si falla**, el mensaje con el que falla es la entrada que hay que añadir al libro. El registro guarda la **identidad** de un agente, no su autoridad: si un agente corre, para qué partidos y con qué modelo lo deciden el router y el Orquestador; si sus respuestas cuentan lo decides tú, con una fila en `intel.promotions`.
 

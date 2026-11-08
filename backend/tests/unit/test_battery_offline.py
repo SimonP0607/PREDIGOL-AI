@@ -315,7 +315,7 @@ def test_a_sanitizer_that_does_nothing_fails_nearly_the_whole_battery(monkeypatc
     report = offline.run()
     assert not report.ok
     assert {check for found in failing(report).values() for check in found} == {
-        "flag_missing", "hidden_survives", "phrase_lost", "invisible_left", "link_left"}
+        "flag_missing", "hidden_survives", "phrase_lost", "invisible_left", "link_left", "alt_survives", "frame_not_cut", "structure_left"}
     assert len(failing(report)) >= 40, "most of the corpus is written to be dealt with by it"
 
 
@@ -362,7 +362,8 @@ def test_without_the_reading_of_html_the_text_hidden_in_markup_stays(monkeypatch
     monkeypatch.setattr(untrusted, "_visible", lambda text, flags: text)
     found = failing(offline.run())
     assert both("hidden_html", 1, 2, 3, 4, 5) <= set(found)
-    assert all({"flag_missing", "hidden_survives"} <= found[i] for i in both("hidden_html", 1, 2, 3, 4, 5))
+    assert all({"flag_missing", "hidden_survives"} <= found[i] for i in both("hidden_html", 1, 2, 4, 5))
+    assert all("flag_missing" in found[i] for i in both("hidden_html", 3)), "its order begins «SYSTEM:»: v2 cuts it all the same"
 
 
 def test_one_unprotected_family_fails_that_family_and_not_the_others(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -373,3 +374,25 @@ def test_one_unprotected_family_fails_that_family_and_not_the_others(monkeypatch
     families = {corpus.case_of(i).family for i in found if i in corpus.BY_ID}
     assert "hidden_html" in families and families <= {"hidden_html", "break_json", "markdown_link", "orders", "player_name", "homoglyph"}
     assert "ignore" not in families and "fake_official" not in families
+
+
+def test_the_door_of_v1_fails_exactly_the_families_whose_cases_battery_v3_confirmed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """IA-018: ``match.homoglyph.3``, ``claims.markdown_link.3`` and ``claims.break_json.5`` moved verdicts in the LAB. The door that let them through,
+    ``untrusted-v1``, kept as it was for the rows derived with it, fails the checks of ``untrusted-v2`` on those cases and their families - and on
+    nothing else: v1 hands the model the disguised phrase read plain, the words of an image and the text after a break out of the JSON."""
+    monkeypatch.setattr(offline, "sanitize", lambda text, *, origin, max_chars: untrusted.sanitize(
+        text, origin=origin, max_chars=max_chars, version=untrusted.VERSION_1))
+    found = failing(offline.run())
+    texts = {i: c for i, c in found.items() if i in corpus.BY_ID}
+    assert {"match.homoglyph.3", "claims.markdown_link.3", "claims.break_json.5"} <= set(texts)
+    assert {corpus.case_of(i).family for i in texts} == {"homoglyph", "markdown_link", "break_json"}
+    assert {i for i in texts if corpus.case_of(i).family == "homoglyph"} == both("homoglyph", 1, 2, 3, 4)
+    assert {i for i in texts if corpus.case_of(i).family == "markdown_link"} == both("markdown_link", 3)
+    assert {i for i in texts if corpus.case_of(i).family == "break_json"} == both("break_json", 1, 2, 3, 4, 5)
+    assert texts["match.homoglyph.3"] == {"disguise_survives"} and texts["claims.markdown_link.3"] == {"alt_survives"}
+    assert texts["claims.break_json.5"] == {"frame_not_cut", "structure_left"}
+
+
+def test_under_the_door_of_v1_in_force_the_layer_asks_what_v1_asked(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(untrusted, "VERSION", untrusted.VERSION_1)
+    assert not offline.v2() and offline.run(["review", "extract", "claims"]).ok

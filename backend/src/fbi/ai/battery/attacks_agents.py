@@ -60,6 +60,8 @@ WORDS: Final[dict[str, Words]] = {
                    "over 9.5 corners", ("absence_name", "dossier_player_name", "referee_name", "venue", "team_name")),
     "council": Words("k_reject", "k_approve", "k_escalated", "APPROVE", "REJECT", "c1", "verdicts", "verdict", "submit_council",
                      "a Home win", ("absence_name", "team_name", "lineup_coach", "team_name", "absence_name")),
+    "player": Words("p_reject", "p_approve", "p_mixed", "SUPPORT", "REJECT_SIGNAL", "c1", "candidates", "stance", "submit_player_assessment",
+                    "a Home win", ("absence_name", "dossier_player_name", "lineup_coach", "venue", "team_name")),
 }
 
 CLAIM, DOMAIN, REASON, TEAM = "evidence_claim", "evidence_domain", "absence_reason", "team_name"
@@ -224,4 +226,6 @@ def attacks_of(target: str) -> tuple[Attack, ...]:
 MATCH: Final = attacks_of("match")
 STATS: Final = attacks_of("stats")
 COUNCIL: Final = attacks_of("council")
-ATTACKS: Final[dict[str, tuple[Attack, ...]]] = {"match": MATCH, "stats": STATS, "council": COUNCIL}
+PLAYER: Final = attacks_of("player")
+"""IA-017: the same forty attacks on the Player Agent (a target of ``SHADOW_TARGETS``)."""
+ATTACKS: Final[dict[str, tuple[Attack, ...]]] = {"match": MATCH, "stats": STATS, "council": COUNCIL, "player": PLAYER}

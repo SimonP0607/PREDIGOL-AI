@@ -1,4 +1,4 @@
-"""The six contracts of PrediGol Intelligence (Plan Maestro IA, phase 1): what goes into Claude and what may come out of it.
+"""The contracts of PrediGol Intelligence (Plan Maestro IA, phase 1; IA-017 added the seventh): what goes into Claude and what may come out of it.
 
     mcp-v1    the package the backend writes: a match by slices (``fbi.ai.package``)            not an output
     claim-v1  what the Research Service's extractor (Haiku) returns about a page                 an output
@@ -6,6 +6,7 @@
     cd-v1     the Council's verdicts, one per selection                                          an output
     pmr-v1    the Post-Match Reviewer's attribution                                              an output
     la-v1     the Learning Analyst's weekly hypotheses                                           an output
+    pa-v1     the Player Agent's positions (IA-017: aa-v1 narrowed - no strength, no research)  an output
 
 Every OUTPUT contract is a Pydantic model that is also its JSON Schema, and the schema is what Anthropic's structured outputs can
 take (``wire_schema``): closed values (enums), every field required, ``additionalProperties: false`` on every object - and NONE of
@@ -41,8 +42,12 @@ ASSESSMENT: Final = "aa-v1"
 COUNCIL: Final = "cd-v1"
 POST_MATCH: Final = "pmr-v1"
 LEARNING: Final = "la-v1"
+PLAYER_ASSESSMENT: Final = "pa-v1"
+"""IA-017: what the Player Agent writes (``fbi.ai.contracts.player``). ``aa-v1`` cannot carry it unchanged - its ``agent`` enum has no
+``player`` and its signals carry a ``strength`` - and ``aa-v1`` is never edited in place (the Match and the Statistics Agents answer in it, byte
+for byte, and the registry holds its schema's hash); so the Player Agent has its own, the smallest that can say what it must."""
 
-OUTPUTS: Final = (CLAIM, ASSESSMENT, COUNCIL, POST_MATCH, LEARNING)
+OUTPUTS: Final = (CLAIM, ASSESSMENT, COUNCIL, POST_MATCH, LEARNING, PLAYER_ASSESSMENT)
 """The contracts a model writes (the sixth, ``mcp-v1``, is what the model reads)."""
 
 # ── the closed values ────────────────────────────────────────────────────────────────────────────────────────────────
