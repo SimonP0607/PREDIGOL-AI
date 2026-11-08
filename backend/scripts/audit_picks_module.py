@@ -34,6 +34,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.core.config import settings
+from fbi.core.decision_versions import DECISION_CORE
 
 BOG = ZoneInfo("America/Bogota")
 ODDS_CAP = Decimal("3.00")
@@ -51,7 +52,7 @@ INTEL_DAY_SQL = """
 SELECT state, count(*)::int AS n FROM (
   SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line) d.state
     FROM intel.decisions d
-   WHERE d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s
+   WHERE d.decision_version = %(version)s AND d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s
    ORDER BY d.fixture_id, d.market_key, d.selection, d.line, d.known_at DESC, d.id DESC) last
  GROUP BY state ORDER BY state
 """
@@ -136,7 +137,7 @@ def collect(conn: psycopg.Connection[Any], *, hours: int, now: datetime) -> dict
     out["daily_page"] = {"rule": the_set.rule_version if the_set else None, "items": len(items),
                          "statuses": dict(Counter(str(i.status) for i in items))}
     out["intelligence_day"] = {
-        "by_state": {r["state"]: r["n"] for r in conn.execute(INTEL_DAY_SQL, {"start": start, "end": end})},
+        "by_state": {r["state"]: r["n"] for r in conn.execute(INTEL_DAY_SQL, {"start": start, "end": end, "version": DECISION_CORE})},
         "day_set": {r["rule_version"]: r["n"] for r in conn.execute(INTEL_SET_SQL, {"day": start.date()})},
     }
     return out
