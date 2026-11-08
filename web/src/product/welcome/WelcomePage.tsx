@@ -149,7 +149,8 @@ function About({
   onEnter: (skipped: boolean) => void;
   onTransparency: () => void;
   onHow: () => void;
-  onTour: () => void;
+  /** Absent when the account is shown no guide (FBI_GUIDES=0): the button is not offered. */
+  onTour?: (() => void) | undefined;
 }) {
   return (
     <>
@@ -208,16 +209,18 @@ function About({
           {busy ? <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> : null}
           {t("onboarding.welcome.about.enter")}
         </button>
-        <button
-          type="button"
-          onClick={onTour}
-          disabled={busy}
-          data-testid="welcome-tour"
-          className={SECONDARY}
-        >
-          <Compass aria-hidden className="mr-2 h-4 w-4 text-gold" />
-          {t("onboarding.welcome.about.tour")}
-        </button>
+        {onTour ? (
+          <button
+            type="button"
+            onClick={onTour}
+            disabled={busy}
+            data-testid="welcome-tour"
+            className={SECONDARY}
+          >
+            <Compass aria-hidden className="mr-2 h-4 w-4 text-gold" />
+            {t("onboarding.welcome.about.tour")}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => onEnter(true)}
@@ -334,7 +337,7 @@ export function WelcomePage() {
               }}
               onTransparency={() => void finish("transparency")}
               onHow={() => void finish("how")}
-              onTour={() => void finish("tour")}
+              onTour={auth.user?.guides_on === false ? undefined : () => void finish("tour")}
             />
           )}
           {failure ? <ErrorState error={failure} onRetry={() => void finish("next")} /> : null}

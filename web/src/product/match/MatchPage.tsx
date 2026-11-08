@@ -30,6 +30,7 @@ import { SummaryTab } from "./SummaryTab";
 import { tabsFor, useMatchTab } from "./useMatchTab";
 import { originOf, track } from "@/lib/track";
 import { openedFromList } from "@/product/matches/backToList";
+import { GuideButton } from "@/product/guides/GuideButton";
 import { useGuideScreen } from "@/product/guides/context";
 
 /**
@@ -312,7 +313,11 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
 
   return (
     <div className="space-y-4" data-testid="match-center" data-phase={phase}>
-      <BackLink />
+      {/* The «?» of the match (UX-070): the guide of the match again, at the top right as on every screen with one. */}
+      <div className="flex items-center justify-between gap-3">
+        <BackLink />
+        <GuideButton guide="match" />
+      </div>
       <MatchHeader ctx={ctx} />
       <div id="match-tabs-anchor" aria-hidden className="mb-0" />
       <TabBar tabs={tabs} active={tab} onSelect={openSection} live={phase === "live"} />
