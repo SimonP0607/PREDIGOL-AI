@@ -1,0 +1,348 @@
+{
+  "subtitle": "Todos los mercados con precio, partido a partido: la mejor cuota de cada selección y su casa.",
+  "fairLine": "Justa del mercado: la cuota sin el margen de las casas, calculada con sus mismos precios. No es una predicción de PrediGol.",
+  "tabsLabel": "Familias de mercados",
+  "tab": {
+    "main": "Principales",
+    "goals": "Goles",
+    "halves": "Mitades",
+    "handicaps": "Hándicaps",
+    "corners": "Córners",
+    "cards": "Tarjetas",
+    "players": "Jugadores",
+    "more": "Más"
+  },
+  "tabCount_one": "{count} partido",
+  "tabCount_other": "{count} partidos",
+  "marketsLabel": "Mercados de {tab}",
+  "family": {
+    "result": "Resultado",
+    "goals": "Goles",
+    "goals_half": "Mitades",
+    "corners": "Córners",
+    "cards": "Tarjetas",
+    "shots": "Tiros",
+    "players": "Jugadores",
+    "saves": "Porteros",
+    "offsides": "Fueras de juego",
+    "tackles": "Entradas",
+    "fouls": "Faltas",
+    "special": "Especiales",
+    "timing": "Tiempos y secuencias",
+    "advance": "Clasificación",
+    "other": "Otros"
+  },
+  "marketUnknown": "Otro mercado",
+  "subject": {
+    "home": "Local",
+    "away": "Visitante"
+  },
+  "interval": "{from}–{to} min",
+  "market": {
+    "result": {
+      "draw_no_bet": "Empate no válido",
+      "european_handicap": "Hándicap europeo"
+    },
+    "advance": {
+      "to_qualify": "Pasa de ronda"
+    },
+    "goals": {
+      "correct_score": "Marcador exacto",
+      "odd_even": "Goles: par o impar",
+      "result_btts": "Resultado y ambos marcan",
+      "result_total": "Resultado y total de goles",
+      "clean_sheet": "Portería a cero",
+      "win_to_nil": "Gana sin encajar",
+      "exact_total": "Número exacto de goles",
+      "team_scores": "Marca gol",
+      "winning_margin": "Por cuántos goles gana",
+      "total_btts": "Total de goles y ambos marcan",
+      "goal_line": "Línea de goles",
+      "score_draw": "Empate con goles",
+      "total_bands": "Goles en el partido (tramos)",
+      "first_team_to_score": "Primero en marcar",
+      "last_team_to_score": "Último en marcar"
+    },
+    "halves": {
+      "ht_ft": "Descanso/final",
+      "highest_scoring": "Parte con más goles",
+      "win_both": "Gana las dos partes",
+      "win_either": "Gana alguna parte",
+      "score_both": "Marca en las dos partes",
+      "btts_both": "Ambos marcan en las dos partes",
+      "goal_both": "Gol en las dos partes"
+    },
+    "corners": {
+      "total": "Córners: más/menos",
+      "1x2": "Córners: 1X2",
+      "asian_handicap": "Córners: hándicap asiático",
+      "total_3way": "Córners: total a 3 vías",
+      "european_handicap": "Córners: hándicap europeo",
+      "total_bands": "Córners: tramos",
+      "odd_even": "Córners: par o impar",
+      "double_chance": "Córners: doble oportunidad",
+      "multicorners": "Multicórners",
+      "race": "Carrera de córners"
+    },
+    "cards": {
+      "total": "Tarjetas: más/menos",
+      "asian_handicap": "Tarjetas: hándicap asiático",
+      "european_handicap": "Tarjetas: hándicap europeo",
+      "first_card": "Primera tarjeta"
+    },
+    "shots": {
+      "on_target": "Tiros a puerta: más/menos",
+      "total": "Tiros: más/menos",
+      "on_target_1x2": "Tiros a puerta: 1X2",
+      "1x2": "Tiros: 1X2"
+    },
+    "offsides": {
+      "total": "Fueras de juego: más/menos"
+    },
+    "tackles": {
+      "total": "Entradas: más/menos"
+    },
+    "keeper": {
+      "saves": "Paradas del portero"
+    },
+    "player": {
+      "anytime_scorer": "Goleador en cualquier momento",
+      "first_scorer": "Primer goleador",
+      "last_scorer": "Último goleador",
+      "score_or_assist": "Marca o asiste",
+      "shots": "Tiros del jugador",
+      "fouls": "Faltas del jugador",
+      "shots_on_target": "Tiros a puerta del jugador",
+      "header_goal": "Gol de cabeza",
+      "outside_box_goal": "Gol desde fuera del área"
+    },
+    "special": {
+      "own_goal": "Gol en propia puerta",
+      "first_goal_method": "Cómo llega el primer gol",
+      "penalty_scored": "Marca un penalti",
+      "penalty_missed": "Falla un penalti",
+      "win_from_behind": "Gana remontando",
+      "decided_by_penalties": "Se decide en los penaltis",
+      "decided_in_extra_time": "Se decide en la prórroga",
+      "method_of_victory": "Cómo gana"
+    }
+  },
+  "chip": {
+    "result": {
+      "1x2": "1X2"
+    },
+    "goals": {
+      "total": "Más/menos",
+      "odd_even": "Par o impar"
+    },
+    "corners": {
+      "total": "Más/menos",
+      "1x2": "1X2",
+      "asian_handicap": "Hándicap asiático",
+      "total_3way": "Total a 3 vías",
+      "european_handicap": "Hándicap europeo",
+      "total_bands": "Tramos",
+      "odd_even": "Par o impar",
+      "double_chance": "Doble oportunidad"
+    },
+    "cards": {
+      "total": "Más/menos",
+      "asian_handicap": "Hándicap asiático",
+      "european_handicap": "Hándicap europeo"
+    }
+  },
+  "period": {
+    "label": "Periodo",
+    "FT": "Partido",
+    "1H": "1.ª parte",
+    "2H": "2.ª parte",
+    "INTERVAL": "Por minutos"
+  },
+  "line": {
+    "label": "Línea",
+    "main": "Principal",
+    "home": "Hándicap del local {line}",
+    "more_one": "{count} línea más",
+    "more_other": "{count} líneas más",
+    "fewer": "Menos líneas",
+    "backToMain": "Volver a la línea principal"
+  },
+  "sel": {
+    "home": "Local",
+    "away": "Visitante",
+    "draw": "Empate",
+    "over": "Más",
+    "under": "Menos",
+    "exactly": "Exactamente",
+    "yes": "Sí",
+    "no": "No",
+    "odd": "Impar",
+    "even": "Par",
+    "noGoal": "Sin goles",
+    "firstHalf": "1.ª parte",
+    "secondHalf": "2.ª parte",
+    "scoreDraw": "Empate con goles",
+    "shot": "Disparo",
+    "header": "Cabeza",
+    "penalty": "Penalti",
+    "freeKick": "Falta directa",
+    "ownGoal": "En propia",
+    "noGoalscorer": "Sin goleador",
+    "noCard": "Ninguno",
+    "tie": "Igual",
+    "dc1X": "{home} o empate",
+    "dc12": "{home} o {away}",
+    "dcX2": "Empate o {away}",
+    "byGoals": "{team} por {n}",
+    "drawAt": "Empate ({line})",
+    "raceFirst": "{team} primero a {n}",
+    "raceNone": "Nadie llega a {n}",
+    "atLeast": "{name} · {n}+"
+  },
+  "price": {
+    "best": "Mejor cuota",
+    "bookmaker": "Casa",
+    "books_one": "{bookmaker} · {count} casa",
+    "books_other": "{bookmaker} · {count} casas",
+    "fairShort": "justa {odds}",
+    "overFair": "{pct} sobre la justa",
+    "underFair": "{pct} bajo la justa",
+    "evenWithFair": "Igual a la justa",
+    "sr_one": "{selection}: mejor cuota {odds} en {bookmaker}, la única casa que la cotiza.",
+    "sr_other": "{selection}: mejor cuota {odds} en {bookmaker}, entre {count} casas.",
+    "srFair": "Justa del mercado {fair}.",
+    "outlier": "Precio atípico",
+    "outlierHelp": "Muy por encima de la justa del mercado: probablemente una cuota desactualizada o errónea de una sola casa.",
+    "moved": {
+      "up": "Subió en la última actualización",
+      "down": "Bajó en la última actualización"
+    }
+  },
+  "fresh": {
+    "stale": "Antiguo · {age}",
+    "captured": "Capturado a las {time}",
+    "provider": "el proveedor lo cambió a las {time}",
+    "staleHelp": "se saltó una captura prevista: puede no ser el precio de ahora"
+  },
+  "parlay": {
+    "lookup": "Solo consulta",
+    "stale": "Antiguo · no entra al parlay",
+    "legAt": "{label} a {odds}",
+    "count_one": "Mi parlay: {count} selección.",
+    "count_other": "Mi parlay: {count} selecciones.",
+    "added": "Agregada: {leg}.",
+    "replaced": "Agregada: {leg}, en lugar de la otra selección de ese partido.",
+    "removed": "Quitada: {leg}.",
+    "open": "Abrir"
+  },
+  "compare": {
+    "toggle": "Comparar casas",
+    "toggleLabel": "Comparar casas: {match}",
+    "title": "Todas las casas",
+    "help": "Margen: lo que cobra cada casa en esta línea.",
+    "margin": "Margen",
+    "region": "Precios de cada casa: {match}",
+    "caption": "Precio de cada casa por selección y su margen: {match}",
+    "best": "(mejor cuota)",
+    "noPrice": "Sin precio",
+    "empty": "Ninguna casa tiene precios de esta línea en el libro vigente.",
+    "single": "1 casa"
+  },
+  "movement": {
+    "toggle": "Movimiento",
+    "toggleLabel": "Movimiento: {match}",
+    "title": "Movimiento de la mejor cuota",
+    "help": "La mejor cuota en cada captura, sin precios atípicos.",
+    "up": "sube desde {odds} · {change}",
+    "down": "baja desde {odds} · {change}",
+    "flat": "sin cambios desde {odds}",
+    "none": "Este mercado no guarda historia de precios.",
+    "empty": "Todavía no hay capturas suficientes para ver el movimiento.",
+    "time": "Hora"
+  },
+  "long": {
+    "all": "Ver todas ({count})",
+    "fewer": "Ver menos",
+    "search": "Buscar una selección: {match}",
+    "placeholder": "Buscar jugador o marcador",
+    "none": "Ninguna selección coincide."
+  },
+  "openMatch": "Abrir partido",
+  "openMatchLabel": "Abrir partido: {match}",
+  "search": {
+    "label": "Buscar equipo, competición o mercado",
+    "placeholder": "Equipo, liga o mercado",
+    "markets": "Mercados que coinciden",
+    "goTo": "Ir a:",
+    "jumped": "Mercado: {market}"
+  },
+  "filters": {
+    "title": "Filtros",
+    "open": "Filtros",
+    "description": "Elige y pulsa «Aplicar».",
+    "active_one": "{count} filtro activo",
+    "active_other": "{count} filtros activos",
+    "apply": "Aplicar",
+    "clear": "Borrar filtros",
+    "window": "Empiezan en",
+    "today": "Hoy",
+    "hours": "{count} h",
+    "country": "País",
+    "allCountries": "Todos los países",
+    "international": "Internacional",
+    "competition": "Competición",
+    "allCompetitions": "Todas las competiciones",
+    "bookmaker": "Casa",
+    "allBookmakers": "Todas las casas",
+    "minBooks": "Mínimo de casas",
+    "anyBooks": "Cualquier número de casas",
+    "booksAtLeast_one": "{count} casa o más",
+    "booksAtLeast_other": "{count} casas o más",
+    "range": "Rango de cuota",
+    "from": "Desde",
+    "to": "Hasta",
+    "fairOnly": "Solo con cuota justa",
+    "mine": "Mis equipos y ligas"
+  },
+  "sort": {
+    "label": "Orden",
+    "time": "Por hora",
+    "competition": "Por competición",
+    "edge": "Mayor diferencia con la justa"
+  },
+  "note": {
+    "figures": "Cuota grande: la mejor entre las casas y su casa. En gris, la justa del mercado y la diferencia con ella.",
+    "noFair": "Este mercado no tiene cuota justa: sus selecciones no cubren todos los resultados o lo cotizan pocas casas.",
+    "single": "1 casa: sin comparación ni cuota justa.",
+    "lookupOnly": "Solo consulta: este mercado no entra en Mi parlay.",
+    "tap": "Toca una cuota para agregarla a tu parlay o quitarla.",
+    "edge": "Ordenado por la diferencia entre la mejor cuota y la justa del mercado, que sale de estas mismas casas: compara precios, no predice resultados."
+  },
+  "count_one": "{count} partido",
+  "count_other": "{count} partidos",
+  "shown": "{shown} de {total}",
+  "loadMore": "Cargar más",
+  "empty": {
+    "windowTitle": "No hay cuotas en esta ventana",
+    "windowBody": "Cuando las casas publiquen precios para los próximos partidos, aparecerán aquí.",
+    "offTitle": "El explorador todavía no tiene precios",
+    "offBody": "El libro de cuotas no está encendido. Vuelve más tarde.",
+    "marketTitle": "Ningún partido con este mercado",
+    "marketBody": "En esta ventana ninguna casa cotiza este mercado.",
+    "filteredTitle": "Ningún partido coincide con tus filtros",
+    "filteredBody": "Prueba con otro nombre, otra casa u otro rango de cuota.",
+    "lineTitle": "Ningún partido tiene esta línea",
+    "lineBody": "Vuelve a la línea principal de cada partido.",
+    "notLoadedBody": "Ninguno de los partidos cargados coincide: «Cargar más» trae los siguientes.",
+    "widen": "Ver las próximas 72 h"
+  },
+  "status": {
+    "updated": "Actualizado {time}",
+    "pause": "Pausar actualizaciones",
+    "resume": "Reanudar actualizaciones",
+    "paused": "Actualizaciones en pausa.",
+    "resumed": "Actualizaciones reanudadas.",
+    "results_one": "{count} partido con estos criterios.",
+    "results_other": "{count} partidos con estos criterios."
+  }
+}
