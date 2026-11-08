@@ -1249,7 +1249,8 @@ def test_migration_0115_adds_the_gate_and_both_migrations_wait_at_most_ten_secon
     rows = table(section(6), "| Migración")
     m0115 = migration("0115")
     up, down = parts_of(migration_source("0115"))
-    assert (*m0115.GATES, gate_research.GATE, gates.SWITCHES) == gates.GATES, "0115's list plus the ledger of the owner's words (0116) is the list of the code"
+    assert (*m0115.GATES, gate_research.GATE, gates.SWITCHES, "gate_b", gates.LAB_PLAN) == gates.GATES, \
+        "0115's list plus the ledger of the owner's words (0116), Gate B and the owner's plan of the LAB (0127) is the list of the code"
     assert "'research_v2'" in up and rows[1][1] == "`research_v2` en la lista de gates de `ai.feature_gates`"
     assert not WRITES.search(up) and not WRITES.search(down)
     sec = section(6)
@@ -2492,7 +2493,7 @@ def test_the_migrations_only_add_to_the_guard_and_to_the_list_of_gates_so_the_co
     assert columns(before) == list(m0114.CONTENT) and columns(now) == [*m0114.CONTENT, *m0114.NEW_CONTENT], "the guard holds what it held and five more"
     assert shape(before) == shape(now), "the rest of the guard - the deletion rule and the history of the statuses - is the one of 0072"
     # the list of gates: the new one is added and none of the old ones is taken away
-    assert set(m0115.GATES) < set(gates.GATES) and set(gates.GATES) - set(m0115.GATES) == {"research_v2", gates.SWITCHES}
+    assert set(m0115.GATES) < set(gates.GATES) and set(gates.GATES) - set(m0115.GATES) == {"research_v2", gates.SWITCHES, "gate_b", gates.LAB_PLAN}
     assert set(m0114.OLD_SCOPES) < set(cache.SCOPES) and set(cache.SCOPES) - set(m0114.OLD_SCOPES) == {"entity"}
 
 

@@ -79,8 +79,8 @@ def test_two_changes_are_two_lines_in_a_stable_order() -> None:
     assert gates.words_diff(old, new) == ["mode: shadow -> enforce", "research_v2: off -> shadow"]
 
 
-def test_switches_is_a_gate_of_the_vocabulary_and_the_last_one() -> None:
-    assert gates.GATES[-1] == gates.SWITCHES == "switches"
+def test_switches_is_a_gate_of_the_vocabulary_and_the_last_one_before_gate_b() -> None:
+    assert gates.GATES[-3:] == (gates.SWITCHES, "gate_b", gates.LAB_PLAN) and gates.SWITCHES == "switches"
     assert len(set(gates.GATES)) == len(gates.GATES)
 
 

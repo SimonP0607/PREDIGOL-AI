@@ -19,12 +19,13 @@ import psycopg
 from psycopg.types.json import Jsonb
 from scripts import ia_eval_bench, ia_gate_b
 
-from fbi.ai import eval_bench, gate_b
+from fbi.ai import eval_bench, gate_b, gates
 from fbi.ai.battery import TARGETS, corpus
 from fbi.ai.battery import VERSION as BATTERY_VERSION
 from fbi.ai.config import AiSettings
 
 from .conftest import Seed
+from .test_ai_decision_layer import Savepoints
 
 D = Decimal
 NOW = datetime(2032, 9, 30, 17, 0, tzinfo=UTC)  # 12:00 in Bogotá
@@ -145,6 +146,17 @@ def build(db: psycopg.Connection[Any], seed: Seed) -> list[int]:
     return fixtures
 
 
+def plan(db: psycopg.Connection[Any], days: int, *, at: datetime | None = None, reason: str = "the plan") -> int:
+    """The owner's plan of the LAB, as ``set-lab-plan --confirm-owner`` writes it (by default before the shadow's first run)."""
+    when = at_noon(SHADOW_FROM) - timedelta(hours=2) if at is None else at
+    return gate_b.record_lab_plan(db, days=days, reason=reason, at=when, confirmed_by_owner=True, code_version="test")
+
+
+def gate_b_rows(db: psycopg.Connection[Any]) -> list[tuple[Any, ...]]:
+    return db.execute("SELECT passed, decided_by, evidence, evidence_hash, code_version FROM ai.feature_gates WHERE gate = 'gate_b' "
+                      "ORDER BY id").fetchall()
+
+
 def evaluate(db: psycopg.Connection[Any], **kw: Any) -> gate_b.GateReport:
     return gate_b.evaluate(db, AiSettings(lab_monthly_budget=D(55)), at=NOW, **kw)
 
@@ -176,16 +188,20 @@ def test_a_healthy_fortnight_waits_only_for_the_owners_planned_days_and_passes_w
     assert c["lab_envelope"].detail["months"][0]["spent_usd"] == "18.00"  # the 15th and the fourteen days, 1.20 each
     assert c["attribution"].detail["rate_pct"] == "100.00"
     assert c["research_v2"].detail["row"]["coverage_pct"] == "97.10"
-    assert evaluate(db, planned_excluded_days=0).verdict == gate_b.PENDING_TIME  # 56 answers per agent: under the minimum of 100
+    plan(db, 0)
+    assert evaluate(db).verdict == gate_b.PENDING_TIME  # 56 answers per agent: under the minimum of 100
 
 
 def test_with_enough_answers_and_the_planned_days_known_the_gate_passes(db: psycopg.Connection[Any], seed: Seed, monkeypatch: Any) -> None:
     build(db, seed)
     monkeypatch.setattr(gate_b, "MIN_RUNS_PER_AGENT", 50)
-    report = evaluate(db, planned_excluded_days=0)
+    doc, code = ia_gate_b.run(db, AiSettings(lab_monthly_budget=D(55)), at=NOW)
+    assert code == ia_gate_b.PENDING and "recorded_row" not in doc  # no plan of the owner yet: pending by manual action
+    plan(db, 0)
+    report = evaluate(db)
     assert report.verdict == gate_b.PASS, [(c.id, c.verdict, c.reasons) for c in report.checks]
     doc, code = ia_gate_b.run(db, AiSettings(lab_monthly_budget=D(55)), at=NOW)
-    assert code == ia_gate_b.PENDING and doc["recorded"] is False  # the script knows no planned days: pending by manual action
+    assert code == ia_gate_b.OK and doc["verdict"] == gate_b.PASS and "recorded_row" not in doc and gate_b_rows(db) == [], "asking is not recording"
 
 
 def test_a_final_pass_written_after_t_minus_15_fails(db: psycopg.Connection[Any], seed: Seed) -> None:
@@ -251,8 +267,95 @@ def test_a_new_version_inside_the_window_restarts_the_clock(db: psycopg.Connecti
     fixtures = build(db, seed)
     run(db, fixtures[-1], ("match", "match-v3", "match-assess-v3", "evaluation"), started=at_noon(date(2032, 9, 24)),
         deadline=at_noon(date(2032, 9, 25)), pass_kind="pre")
-    report = evaluate(db, planned_excluded_days=0)
+    plan(db, 0)
+    report = evaluate(db)
     assert report.verdict == gate_b.PENDING_TIME and report.preview and report.window.anchor == date(2032, 9, 25)
+
+
+# ── recording Gate B and the owner's plan of the LAB (migration 0127) ──────────────────────────────────────────────
+
+def test_the_newest_plan_the_owner_wrote_by_the_evaluation_is_the_one_read(db: psycopg.Connection[Any], seed: Seed) -> None:
+    build(db, seed)
+    assert gate_b.lab_plan(db, NOW) is None
+    first = plan(db, 1, reason="one day of the qualifiers")
+    newest = plan(db, 3, at=at_noon(SHADOW_FROM) - timedelta(hours=1), reason="  three days: the qualifiers and the cup  ")
+    plan(db, 9, at=NOW + timedelta(hours=1), reason="written after the evaluation")  # the future does not speak for the past
+    db.execute("INSERT INTO ai.feature_gates (gate, at, passed, evidence, evidence_hash, decided_by) VALUES ('lab_plan', %s, true, %s, %s, 'script')",
+               (NOW - timedelta(minutes=1), Jsonb({"kind": "lab-plan-v1", "planned_excluded_days": 14}), "d" * 64))  # not the owner's: ignored
+    read = gate_b.lab_plan(db, NOW)
+    assert read is not None and (read.row, read.days, read.reason) == (newest, 3, "three days: the qualifiers and the cup") and read.row != first
+    row = db.execute("SELECT decided_by, passed, evidence, evidence_hash, code_version FROM ai.feature_gates WHERE id = %s", (newest,)).fetchone()
+    assert row is not None and row[0] == "owner" and row[1] is True and row[4] == "test"
+    assert row[2]["shadow_started_on"] == SHADOW_FROM.isoformat() and row[3] == gates.evidence_hash(row[2]) == read.evidence_hash
+    c = by_id(evaluate(db))["lab_envelope"]
+    assert c.detail["planned_excluded_days"] == 3 and c.detail["plan"]["row"] == newest and c.verdict == gate_b.PASS
+
+
+def test_a_malformed_plan_is_never_guessed(db: psycopg.Connection[Any], seed: Seed) -> None:
+    build(db, seed)
+    db.execute("INSERT INTO ai.feature_gates (gate, at, passed, evidence, evidence_hash, decided_by) VALUES ('lab_plan', %s, true, %s, %s, 'owner')",
+               (NOW - timedelta(days=1), Jsonb({"kind": "lab-plan-v1", "planned_excluded_days": "two"}), "e" * 64))
+    assert gate_b.lab_plan(db, NOW) is None
+    assert by_id(evaluate(db))["lab_envelope"].verdict == gate_b.PENDING_ACTIONS
+
+
+def test_more_excluded_days_than_the_owner_planned_fail(db: psycopg.Connection[Any], seed: Seed) -> None:
+    build(db, seed)
+    plan(db, 0)
+    db.execute("UPDATE ai.cycles SET counts = %s WHERE kind = 'orchestrate' AND started_at = %s",
+               (Jsonb({"too_late": 0, "paused": [], "budget_stop": "lab_yielded"}), at_noon(date(2032, 9, 24))))
+    c = by_id(evaluate(db))["lab_envelope"]
+    assert c.verdict == gate_b.FAIL and c.detail["excluded_days"] == 1 and "more than the 0 planned" in c.reasons[0]
+
+
+def test_record_appends_only_a_pass_or_a_failure_with_its_evidence_and_hash(db: psycopg.Connection[Any], seed: Seed, monkeypatch: Any) -> None:
+    build(db, seed)
+    conn: Any = Savepoints(db)
+    settings = AiSettings(lab_monthly_budget=D(55))
+    doc, code = ia_gate_b.run(conn, settings, at=NOW, record=True, version="test")  # no plan: PENDIENTE POR ACCIONES MANUALES
+    assert code == ia_gate_b.PENDING and doc["recorded_row"] is None and "nothing was written" in doc["recorded_note"] and gate_b_rows(db) == []
+    plan(db, 0)
+    doc, code = ia_gate_b.run(conn, settings, at=NOW, record=True)  # under the minimum of answers: PENDIENTE POR TIEMPO REAL
+    assert code == ia_gate_b.PENDING and doc["verdict"] == gate_b.PENDING_TIME and doc["recorded_row"] is None and gate_b_rows(db) == []
+    monkeypatch.setattr(gate_b, "MIN_RUNS_PER_AGENT", 50)
+    doc, code = ia_gate_b.run(conn, settings, at=NOW, record=True, version="test")
+    assert code == ia_gate_b.OK and isinstance(doc["recorded_row"], int)
+    [(passed, decided_by, evidence, digest, version)] = gate_b_rows(db)
+    assert passed is True and decided_by == "script" and version == "test"
+    assert evidence["verdict"] == gate_b.PASS and evidence["method"] == "gate-b-v1" and digest == gates.evidence_hash(evidence)
+    assert gates.gate_state(db, "gate_b").passed is True
+    kickoff = at_noon(date(2032, 9, 26)) + timedelta(hours=6)
+    started = kickoff - timedelta(minutes=10)
+    run(db, fixture(db, seed, kickoff), AGENTS[0], started=started, deadline=started)  # a call that started after T-15
+    doc, code = ia_gate_b.run(conn, settings, at=NOW + timedelta(minutes=5), record=True, version="test")  # a call out of time: NO PASA
+    assert code == ia_gate_b.NO and isinstance(doc["recorded_row"], int)
+    assert [r[0] for r in gate_b_rows(db)] == [True, False] and gates.gate_state(db, "gate_b").passed is False, "the newest row decides"
+    assert gates.gate_state(db, "lab_plan").passed is True and "gate_b" in gates.describe(db, settings)["gates"]
+    assert "lab_plan" not in gates.describe(db, settings)["gates"], "the owner's plan is not a gate"
+
+
+def test_record_refuses_a_window_looked_at_from_the_past(db: psycopg.Connection[Any], seed: Seed) -> None:
+    build(db, seed)
+    plan(db, 0)
+    doc, code = ia_gate_b.run(Savepoints(db), AiSettings(lab_monthly_budget=D(55)), at=NOW, through=LAST, record=True)  # type: ignore[arg-type]
+    assert code == ia_gate_b.CANNOT and "not recorded" in doc["error"] and gate_b_rows(db) == []
+
+
+def test_set_lab_plan_is_the_owners_and_gate_b_reads_it(db: psycopg.Connection[Any], seed: Seed) -> None:
+    build(db, seed)
+    conn: Any = Savepoints(db)
+    count = "SELECT count(*) FROM ai.feature_gates WHERE gate = 'lab_plan'"
+    doc, code = ia_gate_b.set_lab_plan(conn, days=2, reason="qualifiers", confirm_owner=False, at=NOW)
+    assert code == ia_gate_b.CANNOT and db.execute(count).fetchone() == (0,)
+    for days, reason in ((2, None), (None, "x"), (-1, "x"), (gate_b.WINDOW_DAYS + 1, "x"), (2, "  ")):
+        doc, code = ia_gate_b.set_lab_plan(conn, days=days, reason=reason, confirm_owner=True, at=NOW)
+        assert code == ia_gate_b.CANNOT and "nothing was written" in doc["error"], (days, reason)
+    assert db.execute(count).fetchone() == (0,)
+    doc, code = ia_gate_b.set_lab_plan(conn, days=2, reason="qualifiers", confirm_owner=True, at=NOW - timedelta(days=20), version="test")
+    assert code == ia_gate_b.OK and doc["plan"]["planned_excluded_days"] == 2 and doc["plan"]["decided_by"] == "owner"
+    assert db.execute("SELECT decided_by FROM ai.feature_gates WHERE id = %s", (doc["recorded_row"],)).fetchone() == ("owner",)
+    c = by_id(evaluate(db))["lab_envelope"]
+    assert c.detail["planned_excluded_days"] == 2 and c.verdict == gate_b.PASS
 
 
 # ── the bench ────────────────────────────────────────────────────────────────────────────────────────────────────
