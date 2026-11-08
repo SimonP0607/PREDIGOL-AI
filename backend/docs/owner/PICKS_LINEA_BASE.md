@@ -42,7 +42,7 @@ Para cada registro liquidado sobre un marcador de los partidos de los últimos N
 | --- | --- |
 | Igual | Lo guardado es lo que dan hoy las reglas |
 | Retenido | Una diferencia que las reglas dejan a una persona: un nulo por regla, o un partido que ya no se liquida |
-| Cambio con corrección registrada | El resultado del partido se corrigió y la reliquidación aún no lo aplicó |
+| Cambio con corrección registrada | El resultado del partido se corrigió después de liquidarse el registro y la reliquidación aún no lo aplicó. Una corrección anterior a la liquidación no explica nada: ya debía estar en lo guardado |
 | **Sin explicar** | El criterio del plan es **cero** |
 
 Después comprueba en los datos que el resumen de cada día cuadra (ganados + perdidos + nulos o devueltos + por jugar = tamaño del set) y mide cuánto tardan las dos consultas de la consola de rendimiento (R1). La base ya impide un estado fuera de esa lista, así que hoy esa suma no puede fallar: queda como guarda por si algún día se añade un estado. Lo que sí puede fallar es la liquidación de cada pick del día, y esa se comprueba arriba, registro a registro.
