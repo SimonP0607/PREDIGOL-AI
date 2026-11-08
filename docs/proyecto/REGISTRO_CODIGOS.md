@@ -111,6 +111,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | BE-003 | El pick del día da prioridad a la Champions, las ligas grandes, las copas continentales e intercontinentales y los torneos de selecciones (solo ordena a los ya elegibles; `daily-set-v7`, `comp-priority-v1`) | en curso | este PR | — |
 | BE-004 | Catálogo de mercados (plan Partidos y Match Center, F4a): `GET /matches/{id}/markets/catalog` da por categoría los 50 tipos de apuesta ya guardados y los 5 de siempre, cada selección con su cuota vigente leída de la última respuesta del proveedor antes del inicio (A → B → A lee A) y los tipos 307 y 339 unificados; tipos y consulta en la web, sin pantalla. No cambia el extractor, parlays ni liquidación; sin migración | hecho | #65 | Plan Partidos F4a |
 | BE-005 | Control de estadios (plan Partidos y Match Center, F6): la auditoría de verdad marca los estadios cuya ciudad o país no cuadran con su competición, el proveedor o los demás partidos del estadio (el caso de Mestalla en «Valdivia»), sin corregir nada; script `scripts/repair_venue_city.py` en seco, con `--apply` y registro en `audit.data_repairs`; guía `docs/owner/ESTADIOS_CIUDAD_BE005.md`. Sin migración | hecho | #77 | Plan Partidos F6 |
+| BE-007 | Plan PICKS, Ola 1 (F1, F2 y F6), tres lecturas de solo lectura y sus guías: `scripts/audit_picks_module.py` mide la línea base del módulo con los mismos servicios de la API (S1, S2, S3, C4, C5, L2, D1); `scripts/audit_settlement.py` vuelve a liquidar en papel 30 días de registros con las reglas y la lectura de la reliquidación y separa iguales, retenidos, cambios con corrección y sin explicar, comprueba que el resumen de cada día cuadra y cronometra la consola de rendimiento; `scripts/research_picks_calibration.py` responde C1 a C5 con la calibrada fuera de muestra, 300 selecciones por grupo e IC 95 % por bootstrap de partidos, criterios fijados antes de mirar. Guías `PICKS_LINEA_BASE.md` y `PICKS_F2_EVIDENCIA.md` con las cifras pendientes de la corrida en producción. No escribe en la base ni llama al proveedor; sin migración | en curso | este PR | Plan PICKS F1, F2, F6 |
 
 ## Otras áreas
 
@@ -118,4 +119,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-012 · SEG-001 · IA-018 · UX-064 · BE-006 · FE-001 · OPS-001 · DOC-001
+CI-012 · SEG-001 · IA-018 · UX-064 · BE-008 · FE-001 · OPS-001 · DOC-001
