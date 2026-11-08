@@ -398,26 +398,28 @@ function AllPicks({
         </button>
       ) : undefined;
     body = (
-      <Card>
-        <EmptyState
-          compact
-          icon={<ListFilter aria-hidden className="h-5 w-5" />}
-          title={emptyReason(board?.reason ?? "no_qualified_picks")}
-          body={
-            withheld > 0
-              ? t("picks.withheld", { count: withheld })
-              : filtered
-                ? undefined
-                : t("picks.all.emptyBody")
-          }
-          action={filtered ? reset : widen}
-        />
-      </Card>
+      <div data-guide="picks-empty">
+        <Card>
+          <EmptyState
+            compact
+            icon={<ListFilter aria-hidden className="h-5 w-5" />}
+            title={emptyReason(board?.reason ?? "no_qualified_picks")}
+            body={
+              withheld > 0
+                ? t("picks.withheld", { count: withheld })
+                : filtered
+                  ? undefined
+                  : t("picks.all.emptyBody")
+            }
+            action={filtered ? reset : widen}
+          />
+        </Card>
+      </div>
     );
   } else if (mineOnly && own.length === 0) {
     // Never «no picks» while there are some: the others are counted and one tap away.
     body = (
-      <div data-testid="picks-mine-empty">
+      <div data-testid="picks-mine-empty" data-guide="picks-empty">
         <Card>
           <EmptyState
             compact
@@ -495,6 +497,7 @@ function AllPicks({
           <div className="flex lg:hidden">
             <FilterSheet
               testId="picks-filters-sheet"
+              guide="picks-filters"
               active={activeCount(filters)}
               onReset={() => onChange(DEFAULT_FILTERS)}
               showLabel={loaded ? t("picks.filters.show", { count: shown.length }) : undefined}

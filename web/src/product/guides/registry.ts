@@ -119,7 +119,7 @@ export const GUIDES: Readonly<Record<GuideKey, GuideDef>> = {
     ["forecast", "match-forecast"],
   ]),
   picks: built("picks", "/picks", "picks", [
-    ["list", "picks-list"],
+    ["list", "picks-list", "picks-empty"],
     ["filters", "picks-filters"],
   ]),
   parlays: built("parlays", "/parlays", "parlays", [
