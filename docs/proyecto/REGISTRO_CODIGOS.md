@@ -121,4 +121,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-012 · SEG-001 · IA-019 · UX-064 · BE-006 · FE-001 · OPS-001 · DOC-001
+CI-012 · SEG-001 · IA-019 · UX-065 · BE-006 · FE-001 · OPS-001 · DOC-001
