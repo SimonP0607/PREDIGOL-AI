@@ -190,6 +190,7 @@
       "leg_count": "A parlay needs between {min} and {max} selections.",
       "invalid_selection": "Selection {leg}: not a selection we settle.",
       "quarter_line": "Selection {leg}: quarter lines (.25 / .75) are not allowed in a parlay.",
+      "outlier_price": "Selection {leg}: its best price is unusual (far above the market) and is not allowed in a parlay.",
       "unknown_fixture": "Selection {leg}: that match does not exist.",
       "started": "Selection {leg}: the match has started.",
       "same_fixture": "Selections {with} and {leg}: they are the same match."

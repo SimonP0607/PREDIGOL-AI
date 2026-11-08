@@ -207,6 +207,10 @@ export interface BestPrice {
 
 export interface BestMarket {
   market_key: string;
+  /**
+   * The line of the market's prices. An Asian handicap's is the HOME side's handicap h: its two prices are one bet, Home at
+   * h and Away at -h (each side is quoted at its own line: `selectionLine` in product/odds/board.ts).
+   */
   line: Dec;
   selections: BestPrice[];
 }
@@ -228,6 +232,7 @@ export interface BestHighlight {
   home: TeamBadge;
   away: TeamBadge;
   market_key: string;
+  /** The highlighted selection's own line: an Asian handicap's away side at -h, the opposite of its market's line. */
   line: Dec;
   price: BestPrice;
 }

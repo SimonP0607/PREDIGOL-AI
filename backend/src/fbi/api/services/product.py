@@ -54,6 +54,7 @@ from fbi.api.services.pick_status import Applied
 from fbi.api.services.records import ai_items
 from fbi.core import match_state
 from fbi.core.clock import now as clock_now
+from fbi.market.consensus import OPPOSITE_LINE
 from fbi.parlays import builder, engine
 from fbi.parlays import correlation as corr
 from fbi.parlays.engine import Candidate, GateConfig, Leg, Reject
@@ -406,9 +407,26 @@ def _price(r: Row) -> BestPrice:
                      n_bookmakers=int(r["n_bookmakers"]), as_of=r["as_of"])
 
 
+HANDICAP_HOME, HANDICAP_AWAY = OPPOSITE_LINE["AH"]
+"""An Asian handicap's two sides (``fbi.market.consensus``): one bet is (Home, h) with (Away, -h), and the consensus stores each
+side at the line it is quoted at."""
+
+
+def pair_line(market_key: str, selection: str, line: Decimal) -> Decimal:
+    """The line a board groups a price under: its own, except an Asian handicap's away side, quoted at -h for the bet whose home
+    side is at h - it goes under h, beside its true counterpart. Grouped by the stored line, Home -0.25 at 1.67 sat beside
+    Away -0.25 at 3.48 (fixture 7819, plan Cuotas E1): the away side of the other bet, two prices that make no book together."""
+    if market_key == "AH" and selection == HANDICAP_AWAY and line:
+        return -line
+    return line
+
+
 def main_line(market_key: str, lines: dict[Decimal, list[Row]]) -> Decimal:
     """The line a board shows for a market with several: Over/Under 2.5 when it is quoted; otherwise
-    the most widely quoted line, and among those the most balanced (prices closest to even)."""
+    the most widely quoted line, and among those the most balanced (prices closest to even).
+
+    ``lines`` holds the rows by ``pair_line``, so an Asian handicap's line is a pair - Home at h and Away at -h, the two
+    sides of one bet, their fair probabilities summing to 1 - and its balance is the balance of that bet."""
     if market_key == "OU" and Decimal("2.5") in lines:
         return Decimal("2.5")
 
@@ -434,18 +452,22 @@ def best_odds(rows: list[Row], *, moment: datetime) -> tuple[list[BestOddsFixtur
             mrows = [r for r in frows if r["market_key"] == market_key]
             if not mrows:
                 continue
+            # An Asian handicap's row is a pair, under its home line: Home at h beside Away at -h (pair_line).
             lines: dict[Decimal, list[Row]] = defaultdict(list)
             for r in mrows:
-                lines[Decimal(r["line"])].append(r)
+                lines[pair_line(market_key, r["selection"], Decimal(r["line"]))].append(r)
             line = main_line(market_key, lines)
-            prices = [_price(r) for r in lines[line]]
+            shown = lines[line]
+            prices = [_price(r) for r in shown]
             markets.append(BestMarket(market_key=market_key, line=line, selections=prices))
-            for p in prices:
+            for r, p in zip(shown, prices, strict=True):
                 if (p.n_bookmakers >= HIGHLIGHT_MIN_BOOKS and p.price_edge > 0 and not p.outlier
                         and moment - p.as_of <= HIGHLIGHT_MAX_AGE):
+                    # The highlight names one selection: at its own line (an Asian handicap's away side at -h).
                     highlights.append(BestHighlight(
                         fixture_id=fid, kickoff_at=first["kickoff_at"], competition=_competition(first),
-                        home=_home(first), away=_away(first), market_key=market_key, line=line, price=p))
+                        home=_home(first), away=_away(first), market_key=market_key, line=Decimal(r["line"]),
+                        price=p))
         if markets:
             fixtures.append(BestOddsFixture(
                 fixture_id=fid, kickoff_at=first["kickoff_at"], competition=_competition(first), home=_home(first),

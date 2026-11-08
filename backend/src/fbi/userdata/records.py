@@ -7,8 +7,9 @@
   A pick can be removed until its match starts; after that it is history.
 * A user's parlay is validated before it is stored: 2 to 10 legs, one leg per match (two
   selections on one match are dependent), no quarter lines (a half-won leg has no clean
-  meaning inside a parlay), every match still to start. A team appearing in two legs is
-  allowed with a warning: two matches of one team share its news.
+  meaning inside a parlay), no leg whose current best price is an outlier (more than 25%
+  above its fair price: one book's stale or mistaken quote), every match still to start. A
+  team appearing in two legs is allowed with a warning: two matches of one team share its news.
 * A parlay being built is also MEASURED (no AI call - everything is already stored): the combined odds,
   the probability every leg wins by the de-vigged market (the best estimate there is, and the one shown as
   "estimated"), the PrediGol model's own estimate where it has one (labelled evaluation: no model has beaten
@@ -32,10 +33,15 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from fbi.parlays.engine import GateConfig
 from fbi.picks.settlement import market_outcome
 
 MIN_LEGS, MAX_LEGS = 2, 10
 SNAPSHOT_LOOKBACK = timedelta(hours=36)
+OUTLIER_EDGE = GateConfig().max_price_edge
+"""A best price more than this above its fair price (best_odds x p_fair - 1) is an outlier: one book's stale or mistaken quote.
+The value gate refuses it (``fbi.parlays.engine``) and the Cuotas page flags it (``fbi.api.services.product.OUTLIER_EDGE``);
+a user's parlay never takes it as a leg either."""
 Period = Literal["today", "7d", "30d", "all"]
 
 
@@ -57,6 +63,13 @@ def valid_selection(market_key: str, selection: str, line: Decimal) -> bool:
 
 def quarter_line(line: Decimal) -> bool:
     return abs(line * 4) % 2 == 1
+
+
+def outlier_price(price: dict[str, Any]) -> bool:
+    """The best price of a consensus row (``PRICE_SQL``) is an outlier: more than ``OUTLIER_EDGE`` above its fair price."""
+    if price.get("best_odds") is None or price.get("p_fair") is None:
+        return False
+    return Decimal(price["best_odds"]) * Decimal(price["p_fair"]) - 1 > OUTLIER_EDGE
 
 
 FIXTURE_SQL = """
@@ -238,6 +251,9 @@ def validate_parlay(conn: psycopg.Connection[Any], legs: list[LegIn], *, at: dat
             teams.setdefault(team, n)
         price = _snapshot(conn, fixture_id=leg.fixture_id, market_key=leg.market_key, selection=leg.selection,
                           line=leg.line, at=at)
+        if price is not None and outlier_price(price):
+            # Judged on the newest consensus (the price we would show now), whatever odds the request brings.
+            v.errors.append({"code": "outlier_price", "leg": n})
         odds = leg.odds if leg.odds is not None else (Decimal(price["best_odds"]) if price else None)
         entry.update({"odds": None if odds is None else str(odds), "kickoff_at": f["kickoff_at"].isoformat(),
                       "price": None if price is None else {"odds": str(price["best_odds"]),

@@ -13,16 +13,12 @@
     "hours": "{count} h"
   },
   "pricesUpdated": "Precios actualizados {when}",
+  "pricesRange": "Precios de {from} a {to}",
   "highlights": {
     "title": "Mejores precios frente al mercado",
     "subtitle": "Cuotas que ahora mismo pagan más que la cuota justa.",
-    "vsFair": "{edge} vs justa"
-  },
-  "value": {
-    "title": "Oportunidades de valor",
-    "subtitle": "Selecciones que cumplen la regla de PrediGol y tienen valor al mejor precio de ahora.",
-    "seeAll": "Ver picks",
-    "none": "Ahora mismo ninguna selección de este mercado cumple la regla con valor."
+    "vsFair": "{edge} vs justa",
+    "noneFiltered": "Ningún destacado con estos filtros."
   },
   "board": {
     "summary_one": "{count} partido en las próximas {hours} h",
@@ -40,7 +36,8 @@
     "emptyBody": "Cuando las casas publiquen precios para los próximos partidos, aparecerán aquí.",
     "widen": "Ver las próximas {hours} h",
     "outlier": "Precio atípico",
-    "outlierHelp": "Muy por encima de la cuota justa: probablemente una cuota desactualizada o errónea de una sola casa."
+    "outlierHelp": "Muy por encima de la cuota justa: probablemente una cuota desactualizada o errónea de una sola casa.",
+    "lookupOnly": "Solo consulta"
   },
   "movement": {
     "toggle": "Movimiento",
@@ -57,7 +54,8 @@
     "help": "Toca una cuota para agregarla a tu parlay o quitarla.",
     "add": "Agregar a mi parlay",
     "remove": "Quitar de mi parlay",
-    "replaces": "Reemplaza la otra selección de este partido en tu parlay: una por partido"
+    "replaces": "Reemplaza la otra selección de este partido en tu parlay: una por partido",
+    "outlier": "Los precios atípicos no van en un parlay"
   },
   "fairExplainer": "Cuota justa: la que pagaría cada selección si las casas no cobraran margen (1 entre la probabilidad del mercado sin su margen). En verde, cuánto paga la mejor cuota por encima de la justa; «atípico», un precio de una sola casa probablemente desactualizado o erróneo.",
   "fairExplainerToggle": "¿Qué es la cuota justa?",

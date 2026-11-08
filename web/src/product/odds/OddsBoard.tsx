@@ -1,7 +1,8 @@
 /**
  * The board: one row per upcoming fixture with the best price of every selection of the
  * chosen market, next to its fair price. A table on desktop, stacked cards on a phone.
- * A price is a toggle: a tap adds its selection to "Mi parlay", another takes it out.
+ * A price is a toggle: a tap adds its selection to "Mi parlay", another takes it out - except
+ * on a quarter line, a row only to look at («Solo consulta»), and on an outlier price.
  */
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -15,7 +16,15 @@ import { CompetitionTag, TeamName } from "@/components/football/Logos";
 import { Freshness } from "@/product/shared/Bits";
 import { Card, EmptyState, SectionHeader } from "@/product/shared/States";
 import { marketName, selectionLabel } from "@/product/shared/markets";
-import { groupByDay, priceFreshness, priceSlots, type PriceSlot } from "./board";
+import {
+  groupByDay,
+  lookupOnly,
+  priceFreshness,
+  priceSlots,
+  rowAsOf,
+  selectionLine,
+  type PriceSlot,
+} from "./board";
 import { MovementPanel } from "./MovementPanel";
 import { slotLeg } from "./parlay";
 import { ParlayToggle, PricePill } from "./ParlayPrice";
@@ -48,13 +57,20 @@ export function OddsBoard({
       ? [{ key: "all", first: rows[0]!.kickoff_at, items: rows }]
       : [];
   const count = total ?? rows.length;
+  // «Toca una cuota…» only where a tap adds something: not over rows that are all quarter lines.
+  const addable = rows.some((f) => {
+    const m = f.markets.find((x) => x.market_key === market);
+    return !!m && !lookupOnly(m);
+  });
   return (
     <section className="space-y-4" data-testid="odds-board">
       <SectionHeader
         title={marketName(market)}
         subtitle={
           rows.length
-            ? `${t("odds.board.summary", { count, hours })} · ${t("odds.parlay.help")}`
+            ? addable
+              ? `${t("odds.board.summary", { count, hours })} · ${t("odds.parlay.help")}`
+              : t("odds.board.summary", { count, hours })
             : undefined
         }
         icon={<TrendingUp aria-hidden className="h-4 w-4 text-primary" />}
@@ -137,6 +153,8 @@ function FixtureRow({
   if (!priced) return null;
   const panelId = `odds-move-${fixture.fixture_id}`;
   const match = `${fixture.home.name} ${t("common.vs")} ${fixture.away.name}`;
+  // The row is as current as the oldest price it shows (plan Cuotas, E3).
+  const asOf = rowAsOf(priced);
   return (
     <li className="px-3 py-3 sm:px-4" data-testid="odds-fixture">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-5">
@@ -155,11 +173,18 @@ function FixtureRow({
                 className="min-w-0"
               />
             </div>
-            <Freshness
-              at={fixture.as_of}
-              level={priceFreshness(fixture.as_of)}
-              className="shrink-0"
-            />
+            <div className="flex shrink-0 items-center gap-2">
+              {lookupOnly(priced) ? (
+                <span
+                  data-testid="odds-lookup-only"
+                  title={t("records.actions.quarterLine")}
+                  className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-micro font-medium text-subtle-foreground"
+                >
+                  {t("odds.board.lookupOnly")}
+                </span>
+              ) : null}
+              <Freshness at={asOf} level={priceFreshness(asOf)} />
+            </div>
           </div>
           <div className="mt-2 grid gap-1.5 text-sm">
             <TeamName
@@ -277,7 +302,8 @@ function PriceCell({
   const q = {
     market_key: market.market_key,
     selection: slot.selection,
-    line: market.line,
+    // Each selection at its own line: an Asian handicap's "1 −0,25" beside "2 +0,25".
+    line: selectionLine(market.market_key, slot.selection, market.line),
     home: fixture.home.name,
     away: fixture.away.name,
   };
@@ -285,7 +311,7 @@ function PriceCell({
   const full = selectionLabel(q);
   const p = slot.price;
   // Null without a price, or outside the slip (nothing to add then).
-  const parlay = useParlayLeg(slotLeg(fixture, market, slot));
+  const parlay = useParlayLeg(slotLeg(fixture, market, slot), null, { outlier: p?.outlier });
 
   if (!p) {
     return (
@@ -310,7 +336,7 @@ function PriceCell({
     fair: fmtOdds(p.fair_odds),
     edge: fmtSignedPct(p.price_edge),
   })}${slot.best ? ` ${t("odds.board.bestSr")}` : ""}`;
-  // A quarter line never goes in a parlay; nothing is added once the match has kicked off.
+  // An outlier price or a quarter line never goes in a parlay; nothing is added once the match has kicked off.
   const blocked = blockedText(parlay);
   const inSlip = !!parlay?.inSlip;
   const cell = cn(

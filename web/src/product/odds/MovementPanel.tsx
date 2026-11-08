@@ -26,7 +26,7 @@ import { dayKey, formatDate, formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import { selectionLabel } from "@/product/shared/markets";
-import { boardSelections } from "./board";
+import { boardSelections, selectionLine } from "./board";
 import { bestPriceLines, oddsDomain, oddsTicks, timeExtent, type MovePoint } from "./movement";
 
 /** One series per chart, so one hue for all of them; the caption names the selection. */
@@ -88,7 +88,7 @@ export function MovementPanel({
             title={selectionLabel({
               market_key: market.market_key,
               selection: l.selection,
-              line: market.line,
+              line: selectionLine(market.market_key, l.selection, market.line),
               home: home.name,
               away: away.name,
             })}

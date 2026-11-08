@@ -5,9 +5,8 @@
 import type { ReactNode } from "react";
 import { Check, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { t } from "@/lib/i18n";
 import { fmtOdds } from "@/lib/i18n/format";
-import { isToggleable, type ParlayLegState } from "./useParlayLeg";
+import { isToggleable, parlayActionText, type ParlayLegState } from "./useParlayLeg";
 
 /** The board's price pill, with the parlay's "+" / "✓" when a tap toggles it. */
 export function PricePill({
@@ -52,7 +51,10 @@ export function PricePill({
   );
 }
 
-/** The button around a price (or a whole board cell): pressed while the selection is in the parlay. */
+/**
+ * The button around a price (or a whole board cell): pressed while the selection is in the parlay. Its name, for a screen
+ * reader as for a pointer's title, says what a tap does now - «Quitar de mi parlay» once it is in.
+ */
 export function ParlayToggle({
   state,
   srLabel,
@@ -65,18 +67,13 @@ export function ParlayToggle({
   className?: string | undefined;
   children: ReactNode;
 }) {
+  const action = parlayActionText(state);
   return (
     <button
       type="button"
       data-testid="odds-add-to-parlay"
       aria-pressed={state.inSlip}
-      title={
-        state.inSlip
-          ? t("odds.parlay.remove")
-          : state.replaces
-            ? t("odds.parlay.replaces")
-            : t("odds.parlay.add")
-      }
+      title={action}
       onClick={state.toggle}
       className={cn(
         // tap: a price pill is 30 px tall; on a touch screen it answers 44 px around it.
@@ -84,7 +81,7 @@ export function ParlayToggle({
         className,
       )}
     >
-      <span className="sr-only">{`${srLabel} ${t("odds.parlay.add")}`}</span>
+      <span className="sr-only">{`${srLabel} ${action}`}</span>
       {children}
     </button>
   );
