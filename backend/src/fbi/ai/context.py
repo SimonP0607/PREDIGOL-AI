@@ -130,7 +130,7 @@ class Stakes:
     settled: bool | None
     """No zone boundary reachable either way any more; None when the remaining games are unknown."""
     pressure: str
-    """title | europe | relegation | promotion | mid_table | settled | unknown - an inference: the zone the team is in,
+    """title | europe | relegation | promotion | playoff | mid_table | settled | unknown - an inference: the zone the team is in,
     or the nearest zone boundary within ``NEAR_POINTS`` that it can still reach."""
     zone_above: str | None = None
     """The kind of the nearest better zone (the one ``gap_up`` measures to)."""
@@ -143,7 +143,7 @@ class Stakes:
                 "max_gain": self.max_gain, "settled": self.settled, "pressure": self.pressure, "rule": STAKES_RULE}
 
 
-STAKES_RULE = "stakes-v3"
+STAKES_RULE = "stakes-v4"
 NEAR_POINTS = 6
 """stakes-v2 (13 Oct 2026): a zone boundary presses a team outside the zones when it is within two wins and still
 reachable. stakes-v1 pressed on any reachable boundary: at round 10 of 38 every team of a 20-team table read as
@@ -156,7 +156,12 @@ stakes-v3 (7 Nov 2026): the kind of a zone also depends on the table's level and
 the "Champions League league stage" are international places - and a league that words the same places as "Promotion
 - Champions League (League phase)" (LaLiga) reads the same as one that does not. Before, "Frosinone (6th) is in the
 promotion zone" and "Dortmund (2nd) is in the title zone" were written about first-division tables. Other tables
-(second divisions, cups, groups) keep the stakes-v2 reading."""
+(second divisions, cups, groups) keep the stakes-v2 reading.
+
+stakes-v4 (8 Nov 2026): a zone the provider words "Promotion - <the table's own league> (...)" is the league's own next
+phase, not a promotion: the liguilla of the Liga MX ("Promotion - Liga MX (Apertura - Play Offs: Quarter-finals)", the first
+eight places) is a "playoff". Before, "Pumas (11th) fights for promotion" was written about a league with no promotion. The
+league is the name of the table's group before the colon ("Liga MX: Apertura"); without it the reading is the one of v3."""
 
 CONTINENTAL = ("champions", "europa", "conference", "libertadores", "sudamericana", "concacaf", "afc")
 """The names of the continental competitions a first-division table sends teams to."""
@@ -170,15 +175,33 @@ def is_top_flight(descriptions: Iterable[str | None]) -> bool:
             and any(name in d for d in texts for name in CONTINENTAL))
 
 
-def zone_kind(description: str | None, rank: int | None = None, *, top_flight: bool = False) -> str | None:
-    """The kind of the zone a provider description names: relegation, title, europe (international places), promotion
-    or other. ``top_flight`` and ``rank`` apply the first-division reading (stakes-v3); without them the reading is
-    the one of stakes-v2."""
+def own_league_phase(description: str, league: str | None) -> bool:
+    """«Promotion - Liga MX (Apertura - Play Offs: Quarter-finals)» in the table of the Liga MX: the target the provider names
+    is the table's own league, so the zone is that league's next phase and goes nowhere else."""
+    if not league:
+        return False
+    target = description.lower().partition(" - ")
+    return target[0].strip() == "promotion" and target[2].partition("(")[0].strip() == league.strip().lower()
+
+
+def league_of(group: str | None) -> str | None:
+    """The league a table's group key names: «Liga MX: Apertura» is the Liga MX; a key without a colon is the league itself."""
+    name = (group or "").partition(":")[0].strip()
+    return name or None
+
+
+def zone_kind(description: str | None, rank: int | None = None, *, top_flight: bool = False,
+              league: str | None = None) -> str | None:
+    """The kind of the zone a provider description names: relegation, title, europe (international places), playoff (the
+    own league's next phase), promotion or other. ``top_flight`` and ``rank`` apply the first-division reading
+    (stakes-v3) and ``league`` the own-league one (stakes-v4); without them the reading is the one of stakes-v2."""
     if not description:
         return None
     d = description.lower()
     if "relegation" in d or "descenso" in d:
         return "relegation"
+    if own_league_phase(description, league):
+        return "playoff"
     continental = any(name in d for name in CONTINENTAL)
     if top_flight and rank is not None and rank == 1 and (
             "champions" in d or "libertadores" in d or "title" in d or "winner" in d):
@@ -196,7 +219,7 @@ def zone_kind(description: str | None, rank: int | None = None, *, top_flight: b
     return "other"
 
 
-def stakes(table: Sequence[TableRow], team_id: int, remaining: int | None) -> Stakes | None:
+def stakes(table: Sequence[TableRow], team_id: int, remaining: int | None, league: str | None = None) -> Stakes | None:
     """The team's position against the zones of its table. A zone is a run of ranks sharing the
     provider's description; the boundary above is the last rank of the nearest better zone, the
     boundary below the first rank of the nearest worse one."""
@@ -205,7 +228,7 @@ def stakes(table: Sequence[TableRow], team_id: int, remaining: int | None) -> St
     if me is None:
         return None
     top_flight = is_top_flight(r.description for r in rows)
-    zone = zone_kind(me.description, me.rank, top_flight=top_flight)
+    zone = zone_kind(me.description, me.rank, top_flight=top_flight, league=league)
     above = [r for r in rows if r.rank < me.rank and r.description and r.description != me.description]
     below = [r for r in rows if r.rank > me.rank and r.description and r.description != me.description]
     gap_up = (above[-1].points - me.points) if above else None
@@ -219,11 +242,13 @@ def stakes(table: Sequence[TableRow], team_id: int, remaining: int | None) -> St
         up_closed = gap_up is None or gap_up > max_gain
         down_closed = gap_down is None or gap_down > max_gain
         settled = up_closed and down_closed
-    zone_above = zone_kind(above[-1].description, above[-1].rank, top_flight=top_flight) if above else None
-    zone_below = zone_kind(below[0].description, below[0].rank, top_flight=top_flight) if below else None
+    zone_above = (zone_kind(above[-1].description, above[-1].rank, top_flight=top_flight, league=league)
+                  if above else None)
+    zone_below = (zone_kind(below[0].description, below[0].rank, top_flight=top_flight, league=league)
+                  if below else None)
     if settled:
         pressure = "settled"
-    elif zone in ("title", "europe", "relegation", "promotion"):
+    elif zone in ("title", "europe", "relegation", "promotion", "playoff"):
         pressure = zone
     elif max_gain is None:
         pressure = "unknown"
