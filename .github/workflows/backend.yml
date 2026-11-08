@@ -57,7 +57,9 @@ jobs:
   tests:
     name: pytest (PostgreSQL 16)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # The suite takes 30-39 min on a free runner; with several runs at once it passed 45 and was cancelled at 97 %
+    # (main cf1ed4e8 and PR #103, 8-nov-2026), which also stops the automatic deploy. 60 leaves room without hiding a hang.
+    timeout-minutes: 60
     services:
       postgres:
         image: postgres:16
