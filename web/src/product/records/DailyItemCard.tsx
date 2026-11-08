@@ -113,15 +113,15 @@ export function DailyItemCard({
         onClick={open}
         className="block flex-1 rounded-t-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <div className="flex items-center justify-between gap-2 px-4 pt-3.5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pt-3.5">
           <CompetitionTag
             name={m.competition.name}
             logo={m.competition.logo_url}
             flag={m.competition.flag_url}
             country={m.competition.country}
-            className="min-w-0"
+            className="min-w-[9rem] flex-1"
           />
-          <Kickoff at={m.kickoff_at} className="shrink-0" />
+          <Kickoff at={m.kickoff_at} className="ml-auto shrink-0" />
         </div>
         {/* Home above away, every name whole, the goals on the right (mobile UX audit: one line cut
             "Gainare Tot…" even at desktop widths). */}

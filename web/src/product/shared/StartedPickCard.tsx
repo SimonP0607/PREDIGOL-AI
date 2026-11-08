@@ -18,7 +18,7 @@ import type { StartedPick } from "@/lib/api/v1/types_product";
 import type { ResultStatus } from "@/lib/api/v1/types_records";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { MatchStateBadge, ResultBadge, Units } from "@/product/records/Badges";
-import { isLivePhase } from "@/product/matches/status";
+import { isLivePhase, matchPhaseOf } from "@/product/matches/status";
 import { EvBadge, Kickoff, OddsPill, ProbCompare, ShadowBadge } from "./Bits";
 import { WhyPickButton } from "@/product/picks/WhyPick";
 import { marketName, selectionLabel } from "./markets";
@@ -57,6 +57,9 @@ export function StartedPickCard({
   });
   const result = pick.result_status ? RESULTS[pick.result_status] : undefined;
   const live = isLivePhase(pick.phase);
+  // Before the whistle the badge has nothing to show: say so, never an empty «Estado actual» (plan PICKS, U4).
+  const phaseNow = matchPhaseOf(pick.status_short, pick.kickoff_at, Date.now(), pick.phase);
+  const waiting = phaseNow === "scheduled" || phaseNow === "unknown";
   const score =
     pick.score_home !== null && pick.score_away !== null
       ? { home: pick.score_home, away: pick.score_away }
@@ -75,15 +78,15 @@ export function StartedPickCard({
         params={{ fixtureId: String(pick.fixture_id) }}
         className="block flex-1 rounded-t-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <div className="flex items-center justify-between gap-2 px-4 pt-3.5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pt-3.5">
           <CompetitionTag
             name={pick.competition.name}
             logo={pick.competition.logo_url}
             flag={pick.competition.flag_url}
             country={pick.competition.country}
-            className="min-w-0"
+            className="min-w-[9rem] flex-1"
           />
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
             {shadow ? <ShadowBadge compact /> : null}
             <Kickoff at={pick.kickoff_at} />
           </div>
@@ -162,6 +165,10 @@ export function StartedPickCard({
               <ResultBadge status={result} />
               <Units value={pick.profit_units} className="text-xs" />
             </>
+          ) : waiting ? (
+            <span className="text-caption text-muted-foreground" data-testid="started-pick-waiting">
+              {t("picks.waitingKickoff")}
+            </span>
           ) : (
             <MatchStateBadge match={pick} />
           )}
