@@ -13,7 +13,8 @@
     "odds": "Odds coverage",
     "validation": "Validation",
     "audit_v2": "Audit V2",
-    "datasets": "Datasets"
+    "datasets": "Datasets",
+    "odds_health": "Odds health"
   },
   "cards": {
     "lastAudit": "Last audit",
@@ -599,5 +600,52 @@
     "squads": "Every team of a current season had its squad read in the last 8 days (weekly round of /players/squads).",
     "coaches": "A profile (birth date or nationality; /coachs weekly per tracked team) exists for every coach in a line-up in the last 365 days.",
     "coverage": "The provider's coverage flags for each current season read in the last 8 days."
+  },
+  "oddsHealth": {
+    "subtitle": "The Odds explorer's current-price book and what feeds it: the prices' age by time to kick-off, the extractor's lag, the quota and the size of the series. Read-only; the API measures it and keeps it a minute.",
+    "cards": {
+      "quota": "Today's quota",
+      "quotaHint": "{share} of our daily budget of {limit} (the plan asks to stay under 45 %). The provider says {remaining} remain.",
+      "quotaHintNoProvider": "{share} of our daily budget of {limit} (the plan asks to stay under 45 %). The provider has not said today how many remain.",
+      "lag": "Extractor lag",
+      "lagCaughtUp": "Caught up",
+      "lagHint": "Age of the oldest /odds answer of the last day the extractor has not read yet.",
+      "lagNone": "No /odds answer in the last day.",
+      "book": "Current-price book",
+      "bookValue": "{rows} rows",
+      "bookHint": "{mb} MB. Rebuilt every 10 min with FBI_ODDS_BOOK on; empty with the switch off.",
+      "quotes": "odds_quotes against its brake",
+      "quotesHint": "The extractor stops when it reaches the brake (FBI_QUOTES_MAX_TABLE_GB)."
+    },
+    "horizon": {
+      "title": "Age by time to kick-off",
+      "subtitle": "Followed matches with odds that kick off in each band. A price is stale when a scheduled capture or refresh was missed.",
+      "target": "The plan's target: in the 6 h before kick-off, a median of 70 min or less since our capture."
+    },
+    "col": {
+      "horizon": "Kick off in",
+      "fixtures": "Matches",
+      "withBook": "With a book",
+      "age": "Median age",
+      "stale": "Stale prices"
+    },
+    "horizons": {
+      "0-6h": "0 to 6 h",
+      "6-24h": "6 to 24 h",
+      "24-72h": "24 to 72 h"
+    },
+    "staleNone": "None",
+    "staleSome_one": "{count} match",
+    "staleSome_other": "{count} matches",
+    "partitions": {
+      "title": "DEFAULT partitions",
+      "none": "No row in the DEFAULT partitions of the odds series.",
+      "some": "{rows} rows in the DEFAULT partitions: a partition is missing and must be created."
+    },
+    "age": {
+      "minutes": "{n} min",
+      "hours": "{n} h",
+      "hoursMinutes": "{h} h {m} min"
+    }
   }
 }
