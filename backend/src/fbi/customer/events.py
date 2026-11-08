@@ -43,6 +43,7 @@ from psycopg.types.json import Json
 from fbi.auth import crypto
 from fbi.customer import consents
 from fbi.customer.db import CustomerError, write_connection
+from fbi.customer.guides import GUIDES as GUIDE_KEYS
 
 log = structlog.get_logger(__name__)
 
@@ -287,6 +288,7 @@ class Overview:
     markets: list[dict[str, Any]] = field(default_factory=list)
     leagues: list[dict[str, Any]] = field(default_factory=list)
     teams: list[dict[str, Any]] = field(default_factory=list)
+    guides: list[dict[str, Any]] = field(default_factory=list)
 
 
 FUNNEL: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -327,6 +329,65 @@ SELECT t.id::text AS key, t.name AS label, count(*) AS events_30d, count(DISTINC
  WHERE e.at >= %(s30)s AND e.name = 'match_opened' AND e.props ? 'match_id'
  GROUP BY t.id, t.name HAVING count(DISTINCT e.subject) >= %(floor)s ORDER BY count(*) DESC, t.name LIMIT %(rows)s
 """
+GUIDES_SQL = """
+SELECT props->>'guide' AS guide, (props->>'version')::int AS version,
+       count(DISTINCT subject) FILTER (WHERE name = 'guide_started') AS started,
+       count(DISTINCT subject) FILTER (WHERE name = 'guide_completed') AS completed,
+       count(DISTINCT subject) FILTER (WHERE name = 'guide_skipped') AS skipped,
+       count(DISTINCT subject) FILTER (WHERE name = 'guide_skipped' AND (props->>'step')::int = 0) AS skipped_first,
+       count(DISTINCT subject) FILTER (WHERE name = 'guide_paused') AS paused
+  FROM customer.product_events
+ WHERE at >= %(s30)s AND name IN ('guide_started', 'guide_completed', 'guide_skipped', 'guide_paused')
+   AND props ? 'guide' AND props ? 'version'
+ GROUP BY 1, 2 HAVING count(DISTINCT subject) FILTER (WHERE name = 'guide_started') >= %(floor)s
+"""
+GUIDE_STEPS_SQL = """
+SELECT props->>'guide' AS guide, (props->>'version')::int AS version, (props->>'step')::int AS step,
+       count(DISTINCT subject) AS skipped
+  FROM customer.product_events
+ WHERE at >= %(s30)s AND name = 'guide_skipped' AND props ? 'guide' AND props ? 'version' AND props ? 'step'
+ GROUP BY 1, 2, 3
+"""
+GUIDE_REVIEW_STARTS = 30
+"""With this many readers started on a guide (30 days) its figures are worth a look; below it they only say how many."""
+GUIDE_REVIEW_FIRST = 0.5
+GUIDE_REVIEW_STEP = 0.25
+
+
+def guide_needs_review(started: int, skipped_first: int, top_step_skipped: int) -> bool:
+    """A guide to look at again: with enough readers behind it, more than half of them skip it on its first card, or one
+    step alone loses more than a quarter of those who started it. Descriptive and self-selected: no control group."""
+    if started < GUIDE_REVIEW_STARTS:
+        return False
+    return skipped_first / started > GUIDE_REVIEW_FIRST or top_step_skipped / started > GUIDE_REVIEW_STEP
+
+
+def guide_rows(conn: psycopg.Connection[Any], window: dict[str, Any]) -> list[dict[str, Any]]:
+    """What came of each guide and version in 30 days: readers who started, finished, skipped (and where), paused. A line
+    stands only with ``min_subjects`` readers who started it, and says whether it is one to review."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(GUIDES_SQL, window)
+        found = cur.fetchall()
+        cur.execute(GUIDE_STEPS_SQL, window)
+        by_step: dict[tuple[str, int], dict[int, int]] = {}
+        for r in cur.fetchall():
+            by_step.setdefault((str(r["guide"]), int(r["version"])), {})[int(r["step"])] = int(r["skipped"])
+    order = {g: i for i, g in enumerate(GUIDE_KEYS)}
+    out: list[dict[str, Any]] = []
+    for r in found:
+        key = (str(r["guide"]), int(r["version"]))
+        steps = by_step.get(key, {})
+        top = max(steps.items(), key=lambda kv: (kv[1], -kv[0]), default=None)
+        started = int(r["started"])
+        out.append({"guide": key[0], "version": key[1], "started": started, "completed": int(r["completed"]),
+                    "skipped": int(r["skipped"]), "skipped_first": int(r["skipped_first"]),
+                    "paused": int(r["paused"]), "top_skip_step": top[0] if top else None,
+                    "top_skip_readers": top[1] if top else 0,
+                    "review": guide_needs_review(started, int(r["skipped_first"]), top[1] if top else 0)})
+    out.sort(key=lambda g: (order.get(g["guide"], 99), -g["version"]))
+    return out
+
+
 """What the readers look at, in groups and never one by one: a line stands only with ``min_subjects`` readers behind it.
 The leagues and the teams come from the match a reader opened (its ``match_id``), looked up when the owner reads them."""
 
@@ -388,6 +449,7 @@ def overview(conn: psycopg.Connection[Any], *, at: datetime) -> Overview:
             cur.execute(sql, window)
             setattr(base, attr, [{"key": str(r["key"]), "label": r["label"], "events_30d": int(r["events_30d"]),
                                   "subjects_30d": int(r["subjects_30d"])} for r in cur.fetchall()])
+    base.guides = guide_rows(conn, window)
     return base
 
 
