@@ -31,8 +31,8 @@ reads the other kinds and ignores this one).
 
 from alembic import op
 
-revision = "0132"
-down_revision = "0131"
+revision = "0131"
+down_revision = "0130"
 branch_labels = None
 depends_on = None
 
