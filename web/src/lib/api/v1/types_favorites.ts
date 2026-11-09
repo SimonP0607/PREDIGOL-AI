@@ -23,12 +23,18 @@ export interface FavoritesView {
   players: PlayerBadge[];
   /** The markets the reader follows (the ones they read most), in the order chosen. */
   markets: MarketKey[];
+  /**
+   * The markets of a match's catalogue the reader follows (`corners_over_under.FT.match`: code, period, subject), in the
+   * order chosen (CUOTAS, BE-025). Apart from `markets`, the five classic ones. Absent from an older API.
+   */
+  catalog_markets?: string[];
   /** True while the reader has chosen none: the ones suggested for Colombia, labelled as suggested. */
   suggested: boolean;
   max_leagues: number;
   max_teams: number;
   max_players: number;
   max_markets: number;
+  max_catalog_markets?: number;
   /** FBI_PERSONALIZATION: false gives every reader the common view (Home without «Hoy en tus ligas»). */
   personalization: boolean;
 }
@@ -40,6 +46,8 @@ export interface FavoritesIn {
   players?: number[];
   /** Left out: the markets the reader follows stay; [] clears them. */
   markets?: MarketKey[];
+  /** Left out: the catalogue markets the reader follows stay (a page from before BE-025 never clears them); [] clears them. */
+  catalog_markets?: string[];
 }
 
 export interface FavoriteOptions {
