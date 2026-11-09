@@ -113,5 +113,17 @@ jobs:
           alembic upgrade head
           alembic downgrade -1
           alembic upgrade head
-      - name: pytest
-        run: pytest -q -p no:randomly --durations=15
+      - name: PostgreSQL de prueba sin esperas de disco
+        # El contenedor es desechable: sin fsync ni escritura sincrónica las escrituras de la batería (miles de migraciones y semillas) no esperan al disco.
+        # Es un ajuste de la sesión de este contenedor; nunca toca los servidores del proyecto.
+        run: |
+          psql -h localhost -U fbi -d postgres -v ON_ERROR_STOP=1 \
+            -c "ALTER SYSTEM SET fsync = off" -c "ALTER SYSTEM SET synchronous_commit = off" -c "ALTER SYSTEM SET full_page_writes = off" \
+            -c "SELECT pg_reload_conf()"
+      - name: pytest (4 procesos, una base de datos por proceso)
+        # CI-014. pytest-xdist solo se instala aquí (no es una librería de la imagen: constraints.txt y pyproject.toml no cambian).
+        # `--dist loadfile`: todas las pruebas de un archivo van al mismo proceso, porque muchos archivos crean y borran su propia base «fbi_test_<algo>».
+        # Cada proceso migra su propia `fbi_test_gwN` (ver tests/integration/conftest.py).
+        run: |
+          pip install --no-cache-dir 'pytest-xdist==3.8.0'
+          pytest -q -p no:randomly -n 4 --dist loadfile --durations=15

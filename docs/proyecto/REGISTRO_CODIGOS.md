@@ -22,6 +22,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | CI-012 | El precheck del lanzamiento acepta `FBI_AI_MODE=enforce` además de `shadow` (palabra del dueño, 8-nov-2026: «Encender con control»); cualquier otra palabra sigue siendo NOT OK. Con `enforce`, la IA solo llega a los usuarios mientras el último informe de sombra de `combined` diga `pass` (`fbi.ai.gating`). Sin esto, encender `enforce` bloqueaba todos los despliegues | en curso | este PR | — |
 | CI-013 | `actionlint` y `zizmor` revisan los workflows en cada cambio de `.github/` (versiones fijadas, `actionlint` con su suma de control); todas las acciones de terceros quedan fijadas por SHA de commit y ningún checkout deja el token en el espacio de trabajo; Dependabot espera 7 días antes de proponer una versión nueva (cooldown). Prueba `test_workflows_supply_chain.py` impide volver atrás. Los dos avisos que quedan son intencionados y llevan su razón en el propio workflow (`workflow_run` y `GITHUB_ENV` de `deploy-auto.yml`) | en curso | este PR | — |
 | SEG-001 | Funciones de seguridad de GitHub activadas en el repositorio público (9-nov-2026): CodeQL (configuración predeterminada: Python, JavaScript/TypeScript y Actions), secret scanning, push protection y actualizaciones de seguridad de Dependabot con alertas. La única alerta inicial (vector de prueba público de Svix en `test_messaging_webhooks.py`) se cerró como «usado en pruebas» | hecho (9-nov-2026) | ajustes del repositorio | — |
+| CI-014 | La batería del backend corre en paralelo en el CI: `pytest-xdist` (4 procesos, `--dist loadfile`), una base de datos de prueba por proceso (`fbi_test_gw0`…) y el PostgreSQL de prueba sin esperas de disco (`fsync` y escritura sincrónica apagados en el contenedor desechable). `pytest-xdist` se instala solo en el CI: no entra en `pyproject.toml` ni en `constraints.txt` (la imagen no cambia). Antes la batería tardaba 29-44 min | en curso | este PR | — |
 
 ## IA — capa de inteligencia artificial
 
@@ -142,4 +143,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-014 · SEG-002 · IA-021 · UX-075 · BE-014 · FE-001 · OPS-001 · DOC-001
+CI-015 · SEG-002 · IA-021 · UX-075 · BE-014 · FE-001 · OPS-001 · DOC-001

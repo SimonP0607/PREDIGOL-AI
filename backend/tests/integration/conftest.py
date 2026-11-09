@@ -57,7 +57,13 @@ def _admin_url() -> str:
 
 
 ADMIN_URL = _admin_url()
-TEST_DB = os.environ.get("FBI_TEST_DB", "fbi_test")
+def database_name_for(base: str, worker: str | None) -> str:
+    """CI-014: under pytest-xdist every worker process gets its own database (``fbi_test_gw0``, ``fbi_test_gw1`` ...), because the session
+    fixture below DROPs and recreates it. Without xdist (``worker`` empty) the name is the base one, as before."""
+    return f"{base}_{worker}" if worker else base
+
+
+TEST_DB = database_name_for(os.environ.get("FBI_TEST_DB", "fbi_test"), os.environ.get("PYTEST_XDIST_WORKER"))
 
 
 def _dsn(database: str) -> str:
