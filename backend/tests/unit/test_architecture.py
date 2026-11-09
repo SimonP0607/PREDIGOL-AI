@@ -15,9 +15,10 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parents[2] / "src" / "fbi"
 
 # Known inversions (the domain reaching into the API layer), kept visible so they can be removed, never added to.
-MAY_IMPORT_API = {"api", "analyst", "picks", "narrative"}
+MAY_IMPORT_API = {"api", "analyst", "picks", "narrative", "chronicle"}
 """``narrative``: the readers' narrative (plan UX, A11) is written from the API's own structured reading, so it never says more than
-a reader is shown; nothing of PrediGol Intelligence imports it (tests/unit/test_user_layer_isolation.py)."""
+a reader is shown; nothing of PrediGol Intelligence imports it (tests/unit/test_user_layer_isolation.py). ``chronicle``: the post-match review of that
+chronicle (IA-022) reads the facts a reference pointed to with the same functions the chronicle was written with (``api.services.story``)."""
 MAX_CYCLE = 8
 
 
