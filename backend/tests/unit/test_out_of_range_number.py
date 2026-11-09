@@ -28,6 +28,11 @@ def test_a_number_the_database_cannot_hold_is_422_invalid_and_carries_no_sql() -
     assert "SELECT" not in r.text and "bigint" not in r.text
 
 
+def test_a_text_with_a_nul_byte_is_422_invalid_too() -> None:
+    r = app_that_raises(psycopg.DataError("PostgreSQL text fields cannot contain NUL (0x00) bytes")).get("/boom")
+    assert r.status_code == 422 and r.json()["error"]["code"] == "invalid" and "NUL" not in r.text
+
+
 def test_any_other_database_error_is_still_a_500_without_details() -> None:
     r = app_that_raises(psycopg.errors.UndefinedTable("relation x does not exist")).get("/boom")
     assert r.status_code == 500 and r.json()["error"]["code"] == "internal" and "relation" not in r.text
