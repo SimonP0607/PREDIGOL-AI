@@ -21,8 +21,8 @@ Downgrade: drops the table; the next run writes the reviews again from the chron
 
 from alembic import op
 
-revision = "0131"
-down_revision = "0130"
+revision = "0132"
+down_revision = "0131"
 branch_labels = None
 depends_on = None
 
