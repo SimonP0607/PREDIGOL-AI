@@ -67,6 +67,10 @@
   {
    "date": "2026-11-09",
    "reason": "BE-016: Ya empezaron suma user_status, status_reason, context_pending y decision"
+  },
+  {
+   "date": "2026-11-09",
+   "reason": "UX-077: /daily dice si el día anterior tiene un pick abierto (previous_day_open), plan Inicio P4"
   }
  ],
  "routes": {
@@ -257,6 +261,12 @@
          "type": "null"
         }
        ]
+      },
+      "previous_day_open": {
+       "default": false,
+       "description": "The set of the day before (same source, what a reader of it is shown) still has a pick to finish or settle: only then does Inicio ask for that day (plan Inicio, P4).",
+       "title": "Previous Day Open",
+       "type": "boolean"
       },
       "reason": {
        "anyOf": [

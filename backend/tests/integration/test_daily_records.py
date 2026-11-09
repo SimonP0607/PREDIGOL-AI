@@ -22,6 +22,7 @@ import psycopg
 import pytest
 from psycopg.types.json import Jsonb
 
+from fbi.api.services.records import daily_board
 from fbi.parlays.persist import build_parlays
 from fbi.picks.daily import build_daily_sets, product_day
 from fbi.picks.product_settlement import settle_products
@@ -290,3 +291,20 @@ def test_the_preview_history_reads_the_evaluation_records_alone(db: psycopg.Conn
                                include_evaluation=True)
     assert as_user["predigol_picks"].total == 2
     assert preview["predigol_picks"].total == 5, "the evaluation set alone: the qualified items are not added again"
+
+
+def test_the_board_says_when_the_day_before_still_has_a_pick_to_settle(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """Plan Inicio, P4: Inicio asks for yesterday's set only while one of its picks is still to finish or settle."""
+    w = World(db, seed)
+    w.review_all()
+    build_daily_sets(db, at=AT)
+    next_day, later = product_day(AT) + timedelta(days=1), AT + timedelta(days=1)
+    board = daily_board(db, day=next_day, include_shadow=False, at=later).data
+    assert board is not None and board.previous_day_open, "F1 and F3 are still to play"
+    w.result("F1", 2, 0)
+    w.result("F3", 1, 1)
+    settle_products(db, at=AT + timedelta(hours=9))
+    settled = daily_board(db, day=next_day, include_shadow=False, at=later).data
+    assert settled is not None and not settled.previous_day_open, "both settled: nothing left of the day before"
+    first = daily_board(db, day=product_day(AT), include_shadow=False, at=AT).data
+    assert first is not None and not first.previous_day_open, "no set the day before"
