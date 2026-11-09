@@ -4,7 +4,7 @@
  * applies them), the two the client keeps («Hoy», «Mis equipos y ligas»), the groups, the lines on offer and the prices that
  * moved between two updates.
  */
-import { afterAll, afterEach, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { setLocale } from "@/lib/i18n";
 import { formatRelative, setTimeZone } from "@/lib/time";
 import { COMPETITIONS, FAKE_NOW, fakeRows } from "./fake";
@@ -27,6 +27,8 @@ import { NO_FILTERS } from "./state";
 
 setLocale("es");
 afterAll(() => setLocale("es"));
+// the clock times these tests read are UTC; another file may have left the zone elsewhere
+beforeAll(() => setTimeZone("UTC"));
 afterEach(() => setTimeZone("UTC"));
 
 const HOUR = 3_600_000;

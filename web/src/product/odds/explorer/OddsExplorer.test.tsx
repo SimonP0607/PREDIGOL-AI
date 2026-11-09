@@ -6,7 +6,7 @@
  * its arrows and words while its chart loads, the loading / failed refresh / empty states, «Pausar actualizaciones», «Mi
  * parlay · N», and the motion that only runs without «reduce motion».
  */
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -16,6 +16,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { setLocale } from "@/lib/i18n";
+import { setTimeZone } from "@/lib/time";
 import type { SlipLeg } from "@/product/records/model";
 import { SlipContext, type SlipValue } from "@/product/records/slipContext";
 import type { RowEnv } from "./env";
@@ -28,6 +29,8 @@ import { BOOKMAKERS, COMPETITIONS } from "./fake";
 
 setLocale("es");
 afterAll(() => setLocale("es"));
+// the clock times these tests read are UTC; another file may have left the zone elsewhere
+beforeAll(() => setTimeZone("UTC"));
 
 function slip(legs: SlipLeg[] = []): SlipValue {
   return {
