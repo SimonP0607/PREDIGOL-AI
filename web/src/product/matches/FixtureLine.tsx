@@ -3,7 +3,9 @@
  *
  * Phone: one team per line with its goals on the right; a long name wraps rather than being cut.
  * From `sm`: one line, "Home [crest] 1 – 0 [crest] Away", the score in a fixed centre
- * column so crests and scores line up from row to row.
+ * column so crests and scores line up from row to row. A name is cut with an ellipsis only from `md`:
+ * between `sm` and `md` (a phone held sideways, a folding phone) each side is about 120 px wide and
+ * "Club Sp. San Lorenzo" does not fit, so it wraps there as it does on a phone (UX-076).
  */
 import { GoalDigit } from "@/product/shared/GoalDigit";
 import { TeamLogo } from "@/components/football/Logos";
@@ -37,7 +39,7 @@ function Team({
       {/* A phone: one team per line and the whole name, on two lines if need be (mobile UX audit: "Omonia …"). */}
       <span
         className={cn(
-          "min-w-0 break-words leading-snug [overflow-wrap:anywhere] sm:truncate",
+          "min-w-0 break-words leading-snug [overflow-wrap:anywhere] md:truncate",
           outcome === "win" && "font-semibold text-foreground",
           outcome === "lose" && "text-muted-foreground",
         )}
