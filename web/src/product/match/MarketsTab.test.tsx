@@ -225,16 +225,20 @@ function client(base: MarketCatalog | null): QueryClient {
 }
 
 /** The help line links to the glossary: rendered inside a router. */
-async function inRouter(node: ReactNode): Promise<string> {
+async function inRouter(node: ReactNode, entry = "/"): Promise<string> {
   const router = createRouter({
     routeTree: createRootRoute({ component: () => node }),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
+    history: createMemoryHistory({ initialEntries: [entry] }),
   });
   await router.load();
   return renderToStaticMarkup(<RouterProvider router={router} />);
 }
 
-function prematch(qc: QueryClient, phase: MatchCtx["phase"] = "scheduled"): Promise<string> {
+function prematch(
+  qc: QueryClient,
+  phase: MatchCtx["phase"] = "scheduled",
+  entry = "/",
+): Promise<string> {
   return inRouter(
     <QueryClientProvider client={qc}>
       <PrematchMarkets
@@ -245,15 +249,17 @@ function prematch(qc: QueryClient, phase: MatchCtx["phase"] = "scheduled"): Prom
         follow={() => null}
       />
     </QueryClientProvider>,
+    entry,
   );
 }
 
-function category(qc: QueryClient, key: "corners" | "goals"): string {
+function category(qc: QueryClient, key: "corners" | "goals", target?: string): string {
   return renderToStaticMarkup(
     <QueryClientProvider client={qc}>
       <CategoryPanel
         ctx={ctx()}
         category={key}
+        target={target}
         sides={{ home: "Valencia", away: "Real Madrid" }}
         choose={(p) => ({
           fixture_id: 7,
@@ -397,6 +403,47 @@ describe("a category of the catalogue", () => {
       envelope(catalog({ category: "corners", markets: [] })),
     );
     expect(category(qc, "corners")).toContain("No hay cuotas vigentes en esta categoría.");
+  });
+});
+
+describe("a link from Cuotas names a market", () => {
+  const withCorners = () => {
+    const qc = client(catalog({}));
+    qc.setQueryData(
+      ["v1", "match-market-catalog", ID, "corners"],
+      envelope(catalog({ category: "corners", markets: [CORNERS, CORNERS_1X2] })),
+    );
+    return qc;
+  };
+
+  test("the named market is the open fold, marked and scrolled to; the first one closes", () => {
+    const html = category(withCorners(), "corners", "corners_1x2.FT.match");
+    const toggles = [...html.matchAll(/aria-expanded="(true|false)"/g)].map((m) => m[1]);
+    expect(toggles[0]).toBe("false");
+    expect(toggles[1]).toBe("true");
+    expect(html.match(/data-target="true"/g)).toHaveLength(1);
+    expect(html).toContain("scroll-mt-28");
+  });
+
+  test("a key the category does not hold changes nothing: the first fold stays open", () => {
+    const html = category(withCorners(), "corners", "corners_over_under.1H.match");
+    const toggles = [...html.matchAll(/aria-expanded="(true|false)"/g)].map((m) => m[1]);
+    expect(toggles[0]).toBe("true");
+    expect(html).not.toContain('data-target="true"');
+  });
+
+  test("«Mercados» opens on the category of the named market instead of «Destacados»", async () => {
+    const html = await prematch(withCorners(), "scheduled", "/?m=corners_1x2.FT.match");
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Córners</);
+    expect(html).toContain('data-target="true"');
+  });
+
+  test("an address with no market, or one the catalogue does not know, opens «Destacados»", async () => {
+    for (const entry of ["/", "/?m=made_up.FT.match"]) {
+      const html = await prematch(withCorners(), "scheduled", entry);
+      expect(html).not.toContain('data-target="true"');
+      expect(html).toContain('data-market="1X2"');
+    }
   });
 });
 

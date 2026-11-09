@@ -212,7 +212,7 @@ function Cumulative({ r, animate }: { r: RecapData; animate: boolean }) {
           <ReferenceLine y={0} stroke="var(--color-border-strong)" />
           <Tooltip
             {...TOOLTIP}
-            formatter={(v: number) => [units(v), t("records.recap.cumulative.total")]}
+            formatter={(v) => [units(Number(v)), t("records.recap.cumulative.total")]}
           />
           <Area
             type="monotone"
@@ -261,8 +261,8 @@ function PerDay({ r, animate }: { r: RecapData; animate: boolean }) {
           <ReferenceLine y={0} stroke="var(--color-border-strong)" />
           <Tooltip
             {...TOOLTIP}
-            formatter={(v: number, _n: string, item: { payload?: { count?: number } }) => [
-              `${units(v)} · ${t("records.recap.daily.count", { count: item.payload?.count ?? 0 })}`,
+            formatter={(v, _n, item) => [
+              `${units(Number(v))} · ${t("records.recap.daily.count", { count: item.payload?.count ?? 0 })}`,
               t("records.recap.daily.profit"),
             ]}
           />

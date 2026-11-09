@@ -15,7 +15,6 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  type TooltipProps,
 } from "recharts";
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
@@ -221,8 +220,8 @@ function SelectionChart({
 }
 
 interface TickProps {
-  x?: number;
-  y?: number;
+  x?: number | string;
+  y?: number | string;
   payload?: { value: number };
 }
 
@@ -257,7 +256,7 @@ interface DotRenderProps {
   cx?: number | undefined;
   cy?: number | undefined;
   index?: number | undefined;
-  key?: string | undefined;
+  key?: import("react").Key | null | undefined;
 }
 
 /** A marker with a ring of the card colour, so it stays legible on the line. */
@@ -275,7 +274,14 @@ function Dot({
 }
 
 /** The price leads; where and when follow. */
-function MoveTooltip({ active, payload }: TooltipProps<number, string>) {
+/** Recharts 3 hands the content element `active` and `payload` (they are no longer part of `TooltipProps`). */
+function MoveTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: readonly { payload?: unknown }[];
+}) {
   const point = payload?.[0]?.payload as MovePoint | undefined;
   if (!active || !point) return null;
   return (

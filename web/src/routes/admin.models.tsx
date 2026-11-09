@@ -314,7 +314,7 @@ function ModelsPage() {
                             borderRadius: 8,
                             fontSize: 12,
                           }}
-                          formatter={(v: number) => pct(v, 1)}
+                          formatter={(v) => pct(Number(v), 1)}
                         />
                         <Line
                           type="linear"
