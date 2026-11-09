@@ -69,13 +69,16 @@ from fbi.ai.packet import Packet, canonical, content_hash
 from fbi.ai.pricing import approx_tokens
 from fbi.ai.untrusted import VERSION_1 as UNTRUSTED_V1
 from fbi.ai.untrusted import VERSION_2 as UNTRUSTED_V2
+from fbi.ai.untrusted import VERSION_3 as UNTRUSTED_V3
 from fbi.ai.untrusted import sanitize
 
-VERSION: Final = "package-v2"
+VERSION: Final = "package-v3"
 """The code that derives a package. It is part of the idempotency key (``fbi.ai.idempotency``): a change here is a new derivation of the
 same packet, never a silent rewrite of an old one. ``package-v2`` (IA-018) is ``package-v1`` with the door ``untrusted-v2``: the same
-blocks, the same cuts, the outside text cleaned by the newer door."""
-DOOR: Final[dict[str, str]] = {"package-v1": UNTRUSTED_V1, VERSION: UNTRUSTED_V2}
+blocks, the same cuts, the outside text cleaned by the newer door. ``package-v3`` (IA-020) is ``package-v2`` with the door ``untrusted-v3``:
+the same text, more of it flagged ``instruction_like`` (a false statement that orders the other reports out of the answer), so a name or a
+reason that says so is replaced and an evidence that says so carries the flag."""
+DOOR: Final[dict[str, str]] = {"package-v1": UNTRUSTED_V1, "package-v2": UNTRUSTED_V2, "package-v3": UNTRUSTED_V3}
 """The door (``fbi.ai.untrusted``) each version of the package cleans the outside text with. The packet stores the RAW text (a name, a
 note, the claim of an evidence) and the package cleans it when it is derived, so a package is derived again - by the leak audit,
 ``slice_known`` - with the door of the version its row names, and an old row is checked byte for byte against the code that made it."""
@@ -199,7 +202,7 @@ def paths_in(document: object, prefix: str = "") -> set[str]:
 
 # ── cleaning the text that came from outside ────────────────────────────────────────────────────────────────────────
 
-def _clean(node: Any, path: str, flags: list[str], door: str = UNTRUSTED_V2) -> Any:
+def _clean(node: Any, path: str, flags: list[str], door: str = UNTRUSTED_V3) -> Any:
     """Every text of a block through ``fbi.ai.untrusted`` (the ``door`` of the version being derived): normalised, stripped of links and
     invisible characters, cut. A text that reads like an order to a model is replaced and its place recorded - a name or a reason is never
     an instruction, and never worth the risk."""
@@ -310,7 +313,7 @@ def _models(content: Mapping[str, Any], sources: list[dict[str, Any]], model_cod
     return out
 
 
-def _evidence(rows: list[dict[str, Any]], known_at: datetime, flags: list[str], door: str = UNTRUSTED_V2) -> tuple[list[EvidenceItem], Counter[str]]:
+def _evidence(rows: list[dict[str, Any]], known_at: datetime, flags: list[str], door: str = UNTRUSTED_V3) -> tuple[list[EvidenceItem], Counter[str]]:
     items: list[EvidenceItem] = []
     dropped: Counter[str] = Counter()
     if len(rows) > EVIDENCE_MAX:

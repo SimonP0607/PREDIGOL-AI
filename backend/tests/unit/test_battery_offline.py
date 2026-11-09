@@ -15,10 +15,10 @@ from typing import Any
 
 import pytest
 
-from fbi.ai import untrusted
+from fbi.ai import package, untrusted
 from fbi.ai.battery import AGENT_TARGETS, TARGETS, agentworld, corpus, offline
 from fbi.ai.battery.corpus import request_for
-from fbi.ai.battery.model import Attack, Case
+from fbi.ai.battery.model import ORDERS_OF_V3, Attack, Case
 from fbi.ai.battery.obfuscate import lookalike
 from fbi.ai.providers.base import JsonRequest
 
@@ -336,9 +336,10 @@ def test_without_the_resolution_of_look_alike_letters_the_words_they_dressed_can
 
 def test_without_the_detection_of_orders_every_attack_written_to_be_one_goes_unflagged(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(untrusted, "_INSTRUCTIONS", ())
+    monkeypatch.setattr(untrusted, "_INSTRUCTIONS_V3", ())
     found = failing(offline.run())
-    expecting = {c.id for c in corpus.CASES if "instruction_like" in c.attack.expect}
-    assert len(expecting) >= 45 and expecting <= set(found)
+    expecting = {c.id for c in corpus.CASES if "instruction_like" in c.expect}
+    assert len(expecting) >= 53 and expecting <= set(found) and expecting >= ORDERS_OF_V3
     for i in expecting:
         case = corpus.case_of(i)
         if case.target in ("review", "extract") or (case.target in AGENT_TARGETS and case.surface in agentworld.PROVIDER_SURFACES):
@@ -385,12 +386,32 @@ def test_the_door_of_v1_fails_exactly_the_families_whose_cases_battery_v3_confir
     found = failing(offline.run())
     texts = {i: c for i, c in found.items() if i in corpus.BY_ID}
     assert {"match.homoglyph.3", "claims.markdown_link.3", "claims.break_json.5"} <= set(texts)
+    orders = {i: texts.pop(i) for i in ORDERS_OF_V3}  # and the orders that only the door in force, v3, reads as such (next test)
+    assert all(checks == {"flag_missing"} for checks in orders.values()), orders
     assert {corpus.case_of(i).family for i in texts} == {"homoglyph", "markdown_link", "break_json"}
     assert {i for i in texts if corpus.case_of(i).family == "homoglyph"} == both("homoglyph", 1, 2, 3, 4)
     assert {i for i in texts if corpus.case_of(i).family == "markdown_link"} == both("markdown_link", 3)
     assert {i for i in texts if corpus.case_of(i).family == "break_json"} == both("break_json", 1, 2, 3, 4, 5)
     assert texts["match.homoglyph.3"] == {"disguise_survives"} and texts["claims.markdown_link.3"] == {"alt_survives"}
     assert texts["claims.break_json.5"] == {"frame_not_cut", "structure_left"}
+
+
+def test_the_door_of_v2_fails_exactly_the_orders_that_battery_v3_confirmed_on_8_nov(monkeypatch: pytest.MonkeyPatch) -> None:
+    """IA-020: ``claims.fake_official.1`` moved the extractor's answer in the LAB. ``untrusted-v2``, kept as it was for the rows derived with it,
+    does not read it - nor its twins in Spanish and in the first extractor's words, nor a note addressed to «the AI model reading this» - as an
+    order: behind it they fail the one check of ``untrusted-v3``, the flag, and nothing else."""
+    monkeypatch.setattr(offline, "sanitize", lambda text, *, origin, max_chars: untrusted.sanitize(
+        text, origin=origin, max_chars=max_chars, version=untrusted.VERSION_2))
+    found = failing(offline.run())
+    texts = {i: c for i, c in found.items() if i in corpus.BY_ID}
+    assert set(texts) == ORDERS_OF_V3 and all(checks == {"flag_missing"} for checks in texts.values()), texts
+    assert "claims.fake_official.1" in texts and not set(found) - set(texts), "no base, no other case"
+
+
+def test_under_the_door_of_v2_in_force_the_layer_asks_what_v2_asked(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(untrusted, "VERSION", untrusted.VERSION_2)
+    monkeypatch.setitem(package.DOOR, package.VERSION, untrusted.VERSION_2)
+    assert offline.run().ok and all(corpus.case_of(i).expect == corpus.case_of(i).attack.expect for i in ORDERS_OF_V3)
 
 
 def test_under_the_door_of_v1_in_force_the_layer_asks_what_v1_asked(monkeypatch: pytest.MonkeyPatch) -> None:

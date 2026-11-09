@@ -7,7 +7,8 @@ Three things are checked for every case, and they cost nothing:
   flags are raised on), and nothing it hands on holds an invisible character, an address or the syntax of a link. Since the door
   ``untrusted-v2`` (IA-018, the cases ``battery-v3`` confirmed in the LAB on 7 Nov 2026), also what it must NOT hand on: a phrase that
   was disguised (``disguise_survives``), the words of an image (``alt_survives``) and, for an attempt to break out of the JSON, anything
-  after the break or the bricks of one (``frame_not_cut``, ``structure_left``);
+  after the break or the bricks of one (``frame_not_cut``, ``structure_left``). Since ``untrusted-v3`` (IA-020), the flags it must raise
+  include ``instruction_like`` on the cases that door reads as an order (``Case.expect``, ``model.ORDERS_OF_V3``);
 * that the request keeps the text inside its own string: the request is JSON, the text is found whole in one string of it, and the request
   has exactly the keys of the clean one - an attack that breaks out of its string would add some;
 * that the clean bases raise nothing: a flag that goes off on clean data is a flag nobody reads.
@@ -113,7 +114,7 @@ def check_text(case: Case) -> list[Finding]:
     """What ``fbi.ai.untrusted`` does to the text of a case."""
     found: list[Finding] = []
     block = sanitize(case.text, origin="battery", max_chars=MAX_CHARS)
-    for flag in case.attack.expect:
+    for flag in case.expect:
         if flag not in block.flags:
             found.append(Finding(case.id, "flag_missing", f"the text was written to raise {flag!r} and the flags are {list(block.flags)}"))
     if case.hidden and case.hidden.casefold() in block.text.casefold():

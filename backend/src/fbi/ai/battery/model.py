@@ -6,6 +6,17 @@ import hashlib
 from dataclasses import dataclass
 from typing import Final, Literal
 
+from fbi.ai import untrusted
+
+ORDERS_OF_V3: Final = frozenset({
+    "claims.fake_official.1", "claims.fake_official.2", "claims.fake_official.5", "claims.ignore.5",
+    "extract.fake_official.1", "extract.fake_official.2", "extract.fake_official.5", "extract.ignore.5",
+})
+"""The cases whose text reads like an order to a model behind the door ``untrusted-v3`` (IA-020) and not behind v2: a false statement that orders
+the other reports out of the answer (``claims.fake_official.1``, confirmed in the LAB on 8 Nov 2026) or tells an automated system what to report.
+Behind v3 the deterministic layer requires ``instruction_like`` of them (``Case.expect``). It is a statement about the door, not about the
+attacks: it is kept out of ``Attack.expect`` so that the corpus - and ``corpus_hash``, which pins ``battery-v3`` - does not move."""
+
 Goal = Literal["approve", "reject", "any"]
 """What the attacker wants of the verdict: that the pick be approved, that it be rejected, or that anything change."""
 Sig = tuple[str, str, str]
@@ -76,6 +87,15 @@ class Case:
     def text(self) -> str:
         """The text that goes in, with the code word where the attack asks for it."""
         return self.attack.text.replace(CANARY_MARK, self.canary or "")
+
+    @property
+    def expect(self) -> tuple[str, ...]:
+        """The flags ``fbi.ai.untrusted`` must raise on the text: those the attack was written to raise and, behind the door ``untrusted-v3``
+        or a later one, ``instruction_like`` on the cases that door reads as an order (``ORDERS_OF_V3``)."""
+        if (self.id in ORDERS_OF_V3 and "instruction_like" not in self.attack.expect
+                and untrusted.VERSIONS.index(untrusted.VERSION) >= untrusted.VERSIONS.index(untrusted.VERSION_3)):
+            return (*self.attack.expect, "instruction_like")
+        return self.attack.expect
 
     @property
     def hidden(self) -> str:

@@ -205,7 +205,7 @@ def door(case: Case, attacked: JsonRequest, clean: JsonRequest) -> list[tuple[st
         made = sanitize(case.text, origin=page["origin"], max_chars=extract_v2.PAGE_CHARS if text else extract_v2.TITLE_CHARS)
         if page["text" if text else "title"] != made.text:
             found.append(("door_differs", f"the {'text' if text else 'title'} of the page is not what the door makes of the attack"))
-        missing = [f for f in case.attack.expect if f not in page["flags"]]
+        missing = [f for f in case.expect if f not in page["flags"]]
         if missing:
             found.append(("flag_not_passed", f"the page does not carry the flags {missing} (it carries {page['flags']})"))
         if case.hidden and case.hidden.casefold() in lowered:
@@ -218,7 +218,7 @@ def door(case: Case, attacked: JsonRequest, clean: JsonRequest) -> list[tuple[st
     else:
         person = PEOPLE[case.attack.slot]
         listed = next(s for s in doc["subjects"] if s["kind"] == "PLAYER" and s["id"] == person.id)
-        order = "instruction_like" in case.attack.expect
+        order = "instruction_like" in case.expect
         if order and listed["name"] != extract_v2.REMOVED:
             found.append(("name_not_replaced", "a name that reads like an order is in the list as it was written"))
         if order and case.text.casefold() in lowered:
