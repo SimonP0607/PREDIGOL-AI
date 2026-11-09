@@ -55,6 +55,10 @@
   {
    "date": "2026-11-08",
    "reason": "UX-067: /odds/best documenta la línea del hándicap asiático: BestMarket.line es la del local y BestHighlight.line la de su selección (plan Cuotas, ola 0, E1)"
+  },
+  {
+   "date": "2026-11-09",
+   "reason": "UX-073: /daily dice si el día anterior tiene un pick abierto (previous_day_open), plan Inicio P4"
   }
  ],
  "routes": {
@@ -245,6 +249,12 @@
          "type": "null"
         }
        ]
+      },
+      "previous_day_open": {
+       "default": false,
+       "description": "The set of the day before (same source, what a reader of it is shown) still has a pick to finish or settle: only then does Inicio ask for that day (plan Inicio, P4).",
+       "title": "Previous Day Open",
+       "type": "boolean"
       },
       "reason": {
        "anyOf": [
