@@ -363,6 +363,8 @@ describe("the guides of the screens", () => {
       "parlays/ParlaysPage.tsx",
       "records/ParlayRecordCard.tsx",
       "odds/OddsPage.tsx",
+      "odds/explorer/Navigation.tsx",
+      "odds/explorer/OddsExplorer.tsx",
       "records/MyPicksPage.tsx",
       "../components/layout/Bars.tsx",
       "../components/layout/MoreSheet.tsx",

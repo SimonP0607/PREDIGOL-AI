@@ -40,6 +40,7 @@ import esExplain from "@/locales/es/explain.json";
 import esFamilies from "@/locales/es/families.json";
 import esStorage from "@/locales/es/storage.json";
 import esNotices from "@/locales/es/notices.json";
+import esExplorer from "@/locales/es/explorer.json";
 import enAdmin from "@/locales/en/admin.json";
 import enAuth from "@/locales/en/auth.json";
 import enCommon from "@/locales/en/common.json";
@@ -77,6 +78,7 @@ import enExplain from "@/locales/en/explain.json";
 import enFamilies from "@/locales/en/families.json";
 import enStorage from "@/locales/en/storage.json";
 import enNotices from "@/locales/en/notices.json";
+import enExplorer from "@/locales/en/explorer.json";
 
 export type Locale = "es" | "en";
 
@@ -123,6 +125,7 @@ export const CATALOGS: Record<Locale, Catalog> = {
     families: esFamilies,
     storage: esStorage,
     notices: esNotices,
+    explorer: esExplorer,
   },
   en: {
     admin: enAdmin,
@@ -162,5 +165,6 @@ export const CATALOGS: Record<Locale, Catalog> = {
     families: enFamilies,
     storage: enStorage,
     notices: enNotices,
+    explorer: enExplorer,
   },
 };

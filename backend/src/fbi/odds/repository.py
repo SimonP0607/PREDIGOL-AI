@@ -201,7 +201,9 @@ class OddsRepository:
 
         Read from market.odds_asks, which records every request. The RAW index is read too, for asks made before
         that table existed - but alone it cannot answer: it keeps one row per distinct answer, so an empty answer
-        repeated left the first ask as the "last" one and the fixture was asked again on every tick (5 Oct 2026)."""
+        repeated left the first ask as the "last" one and the fixture was asked again on every tick (5 Oct 2026).
+        A payload of the explorer's book refreshes (job ``odds_book_refresh``, BE-011) is not an ask of the capture: it
+        is left out, so the catch-up decides exactly as it would without them."""
         if not provider_fixture_ids:
             return {}
         with self._conn.cursor(row_factory=tuple_row) as cur:
@@ -210,9 +212,11 @@ class OddsRepository:
                 "  SELECT provider_fixture_id AS fid, asked_at AS at FROM market.odds_asks "
                 "   WHERE asked_at >= %(since)s AND provider_fixture_id = ANY(%(ids)s) "
                 "  UNION ALL "
-                "  SELECT (params->>'fixture')::bigint, fetched_at FROM raw.ingestion_payloads "
+                "  SELECT (params->>'fixture')::bigint, fetched_at FROM raw.ingestion_payloads p "
                 "   WHERE endpoint = '/odds' AND fetched_at >= %(since)s AND params ? 'fixture' "
-                "     AND params->>'fixture' = ANY(%(texts)s)) x GROUP BY 1",
+                "     AND params->>'fixture' = ANY(%(texts)s) "
+                "     AND NOT EXISTS (SELECT 1 FROM raw.ingestion_runs r "
+                "                      WHERE r.id = p.run_id AND r.job_type = 'odds_book_refresh')) x GROUP BY 1",
                 {"since": since, "ids": list(provider_fixture_ids), "texts": [str(i) for i in provider_fixture_ids]},
             )
             return {int(a): b for a, b in cur.fetchall()}

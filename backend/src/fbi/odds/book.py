@@ -6,9 +6,13 @@ it is not touched here. The explorer needs the present instead: for each upcomin
 bookmakers quote it and, where it means something, the fair price. This module builds that, one row per (match, type), into
 ``market.book_current`` (migration 0128).
 
-* WHICH ANSWER: ``fbi.odds.quote_current.locate_in_force`` - the function the Match Center reads through - so the book and the
-  Match Center cannot disagree: the newest pre-match ask decides (A -> B -> A reads A), an empty answer withdraws every price and
-  the match's rows are deleted, an answer the extractor has not read yet waits (the older one stands in, ``newer_pending``).
+* WHICH ANSWER: the newest pre-match ask, of the capture (``market.odds_asks``) or of a book refresh (``market.book_asks``,
+  BE-011), with the rule of ``fbi.odds.quote_current.choose_in_force`` - the one the Match Center reads through: A -> B -> A reads
+  A, an empty answer withdraws every price and the match's rows are deleted. A body a capture brought is read once the extractor
+  has read it (until then the older one stands in, ``newer_pending``); a body a refresh brought is never extracted
+  (``quote_extract`` skips it), so its RAW index row stands for the extractor's. While the refreshes are off there is no book ask
+  and the answer is exactly ``locate_in_force``'s: the book and the Match Center cannot disagree. With them on, the book is the
+  newer of the two by design (``locate_book_in_force``).
 * WHAT IS IN IT: the body is read back from RAW (re-hashed: a file that does not give its hash is not read) and every bookmaker's
   values are read by ``tax-v3`` (``fbi.odds.book_parse``). A value that cannot be read HIDES its type for that match, and so does
   a renamed bet or a bookmaker whose values contradict each other: shown wrong is worse than not shown.
@@ -21,17 +25,21 @@ bookmakers quote it and, where it means something, the fair price. This module b
   ``edge = best * p - 1``; an edge above 0.25 is flagged ``outlier`` (plan E2: such a price is suspect, not a bargain).
 * BEST PRICE: the highest odds among ALL the bookmakers in force for the selection (one definition, plan E12), the lowest
   provider bookmaker id on a tie.
+* THE MAIN LINE (``summary.main``, layout 2): the line the explorer shows first - 2.5 for the match's goals when quoted (as
+  ``/odds/best``), otherwise the line most bookmakers quote, then the two-way one, the most balanced, the nearest to 0.
 
 A cache, never a source: idempotent (a second build writes nothing; a row is rewritten only when what it says changed) and
 deterministic (the same rows from the same database and RAW). The worker's job (``run_book_job``, ``odds_book_build``) runs only
-while ``FBI_ODDS_BOOK`` is on, builds the matches whose asks or extractions changed since its last pass and deletes the rows of
-matches that kicked off more than 6 hours ago. It asks the provider nothing. ``python -m scripts.rebuild_odds_book`` rebuilds by
-hand (dry run by default).
+while ``FBI_ODDS_BOOK`` is on, builds the matches whose asks (of either table) or extractions changed since its last pass and
+deletes the rows of matches that kicked off more than 6 hours ago. It asks the provider nothing; the book refreshes
+(``fbi.odds.book_refresh``) ask and then build the matches they asked for at once. ``python -m scripts.rebuild_odds_book``
+rebuilds by hand (dry run by default).
 """
 
 from __future__ import annotations
 
 import json
+import math
 import statistics
 import time
 from collections import Counter, defaultdict
@@ -63,7 +71,18 @@ from fbi.odds.book_parse import (
     ways_of,
 )
 from fbi.odds.book_taxonomy import BOOK_TAXONOMY_VERSION, BookSpec, book_spec
-from fbi.odds.quote_current import LOOKBACK, Located, locate_in_force
+from fbi.odds.quote_current import (
+    ASKS_SQL,
+    FIXTURE_SQL,
+    LATER_PAGES_SQL,
+    LOOKBACK,
+    MAX_ASKS,
+    READINGS_SQL,
+    Ask,
+    Located,
+    Reading,
+    choose_in_force,
+)
 from fbi.odds.quote_extract import load_body
 from fbi.odds.quote_parse import parse_odds
 from fbi.odds.quote_taxonomy import PROVIDER, SCOPE, same_name
@@ -71,9 +90,14 @@ from fbi.storage.payload_store import PayloadStore
 
 log = structlog.get_logger(__name__)
 
-BUILDER_VERSION = f"bk-1/{BOOK_TAXONOMY_VERSION}"
-"""Moves when the way a row is built changes (this module, the readers or the taxonomy): the job then rebuilds every row."""
-SUMMARY_LAYOUT = 1
+BUILDER_VERSION = f"bk-2/{BOOK_TAXONOMY_VERSION}"
+"""Moves when the way a row is built changes (this module, the readers or the taxonomy): the job then rebuilds every row.
+bk-2 (BE-011): the answer in force across the capture's and the refreshes' asks, ``summary.main`` and the ``books`` column."""
+SUMMARY_LAYOUT = 2
+"""1: lines, selections, books. 2 (BE-011): and ``main``, the line shown first."""
+MAIN_TOTAL_KEY = "goals.total.ft"
+MAIN_TOTAL_LINE = 2.5
+"""The match's goals over/under shows 2.5 first when it is quoted, as ``/odds/best`` does (``api.services.product.main_line``)."""
 JOB = "odds_book_build"
 LOCK_KEY = "fbi.odds_book_build"
 PURGE_AFTER = timedelta(hours=6)
@@ -306,7 +330,29 @@ def summarize(spec: BookSpec, prices: Sequence[tuple[int, Read, Decimal]]) -> di
         if ways == 3 and spec.reader == "line":
             entry["ways"] = 3
         groups.append(entry)
-    return {"v": SUMMARY_LAYOUT, "books": len({b for b, _, _ in prices}), "lines": groups}
+    return {"v": SUMMARY_LAYOUT, "books": len({b for b, _, _ in prices}), "lines": groups, "main": main_line(spec, groups)}
+
+
+def main_line(spec: BookSpec, groups: Sequence[Mapping[str, Any]]) -> float | None:
+    """The line the explorer shows first (None for a type without lines): 2.5 for the match's goals when quoted, as the board
+    of ``/odds/best``; otherwise the line most bookmakers quote, then a two-way one before a three-way one at the same number,
+    then the most balanced (the closest best prices), then the nearest to 0 and the lowest. Deterministic."""
+    lined = [g for g in groups if g["line"] is not None]
+    if not lined:
+        return None
+    if spec.key == MAIN_TOTAL_KEY and any(g["line"] == MAIN_TOTAL_LINE and "ways" not in g for g in lined):
+        return MAIN_TOTAL_LINE
+
+    def books(group: Mapping[str, Any]) -> int:
+        return len({b for s in group["sels"] for b in s["odds"]})
+
+    def spread(group: Mapping[str, Any]) -> float:
+        bests = [float(s["best"]) for s in group["sels"]]
+        return max(bests) - min(bests) if len(bests) > 1 else math.inf
+
+    chosen = min(lined, key=lambda g: (-books(g), "ways" in g, spread(g), abs(g["line"]), g["line"]))
+    line: float = chosen["line"]
+    return line
 
 
 def summary_json(summary: Mapping[str, Any]) -> str:
@@ -382,6 +428,10 @@ class BookRow:
     summary: dict[str, Any]
     text: str
 
+    @property
+    def books(self) -> int:
+        return int(self.summary["books"])
+
 
 @dataclass(frozen=True, slots=True)
 class FixtureBook:
@@ -404,27 +454,38 @@ DEFINITIONS_SQL = "SELECT provider_bet_id, id FROM market.market_definitions WHE
 
 UPSERT_SQL = """
 INSERT INTO market.book_current AS b (fixture_id, definition_id, kickoff_at, captured_at, provider_update_at, checked_at,
-       in_force_since, newer_pending, payload_hash, builder_version, summary, built_at)
-SELECT %(f)s, t.d, %(ko)s, %(cap)s, %(upd)s, %(chk)s, %(since)s, %(pending)s, %(hash)s, %(ver)s, t.s::jsonb, %(at)s
-  FROM unnest(%(defs)s::int[], %(sums)s::text[]) AS t(d, s)
+       in_force_since, newer_pending, payload_hash, builder_version, summary, books, built_at)
+SELECT %(f)s, t.d, %(ko)s, %(cap)s, %(upd)s, %(chk)s, %(since)s, %(pending)s, %(hash)s, %(ver)s, t.s::jsonb, t.n, %(at)s
+  FROM unnest(%(defs)s::int[], %(sums)s::text[], %(books)s::smallint[]) AS t(d, s, n)
 ON CONFLICT (fixture_id, definition_id) DO UPDATE SET
        kickoff_at = EXCLUDED.kickoff_at, captured_at = EXCLUDED.captured_at, provider_update_at = EXCLUDED.provider_update_at,
        checked_at = EXCLUDED.checked_at, in_force_since = EXCLUDED.in_force_since, newer_pending = EXCLUDED.newer_pending,
        payload_hash = EXCLUDED.payload_hash, builder_version = EXCLUDED.builder_version, summary = EXCLUDED.summary,
-       built_at = EXCLUDED.built_at
+       books = EXCLUDED.books, built_at = EXCLUDED.built_at
  WHERE (b.kickoff_at, b.captured_at, b.provider_update_at, b.checked_at, b.in_force_since, b.newer_pending, b.payload_hash,
-        b.builder_version, b.summary)
+        b.builder_version, b.summary, b.books)
        IS DISTINCT FROM
        (EXCLUDED.kickoff_at, EXCLUDED.captured_at, EXCLUDED.provider_update_at, EXCLUDED.checked_at, EXCLUDED.in_force_since,
-        EXCLUDED.newer_pending, EXCLUDED.payload_hash, EXCLUDED.builder_version, EXCLUDED.summary)
+        EXCLUDED.newer_pending, EXCLUDED.payload_hash, EXCLUDED.builder_version, EXCLUDED.summary, EXCLUDED.books)
 RETURNING (xmax = 0) AS inserted
 """
 """A row is rewritten only when what it says changed: a second build leaves every row, and its ``built_at``, as it was."""
 
 EXISTING_SQL = """
 SELECT definition_id, kickoff_at, captured_at, provider_update_at, checked_at, in_force_since, newer_pending, payload_hash,
-       builder_version, summary
+       builder_version, summary, books
   FROM market.book_current WHERE fixture_id = %(f)s
+"""
+
+BOOK_ASKS_SQL = """
+SELECT asked_at, results, payload_hash FROM market.book_asks
+ WHERE provider_fixture_id = %(pid)s AND asked_at >= %(lo)s AND asked_at < %(ko)s
+ ORDER BY asked_at DESC LIMIT %(limit)s
+"""
+"""The book refreshes' asks of a match (BE-011): the primary key (provider_fixture_id, asked_at) serves it."""
+
+RAW_READINGS_SQL = """
+SELECT hash, fetched_at, params, http_status, results_count FROM raw.ingestion_payloads WHERE hash = ANY(%(hashes)s)
 """
 
 
@@ -459,6 +520,77 @@ def _entries_for(body: Mapping[str, Any], provider_fixture_id: int, params_fixtu
     return out
 
 
+def _ask(row: Mapping[str, Any]) -> Ask:
+    return Ask(row["asked_at"], int(row["results"]), row["payload_hash"])
+
+
+def _extraction(row: Mapping[str, Any]) -> Reading:
+    return Reading(extraction_id=int(row["id"]), payload_hash=str(row["payload_hash"]), status=str(row["status"]),
+                   fixture_id=int(row["fixture_id"]) if row["fixture_id"] is not None else None,
+                   captured_at=row["captured_at"], stamped_by=str(row["stamped_by"]), page=int(row["page"] or 1),
+                   fetched_at=row["fetched_at"])
+
+
+def _raw_reading(row: Mapping[str, Any], reading_id: int, *, fixture_id: int, provider_fixture_id: int,
+                 first_asked: datetime) -> Reading:
+    """A body a book refresh brought, read from its RAW index row (the extractor never reads it): readable when the provider
+    answered this match with entries. It has been held since its first ask - which a later job's claim of the index row
+    (``RunLedger.record_payloads``) does not move."""
+    params = row["params"] if isinstance(row["params"], dict) else {}
+    readable = (int(row["http_status"]) == 200 and int(row["results_count"] or 0) > 0
+                and _params_fixture(params) == provider_fixture_id)
+    try:
+        page = int(params.get("page") or 1)
+    except (TypeError, ValueError):
+        page = 1
+    fetched: datetime = row["fetched_at"]
+    return Reading(extraction_id=reading_id, payload_hash=str(row["hash"]), status="ok" if readable else "unreadable",
+                   fixture_id=fixture_id if readable else None, captured_at=min(fetched, first_asked), stamped_by="fetch",
+                   page=page, fetched_at=fetched)
+
+
+def locate_book_in_force(conn: psycopg.Connection[Any], fixture_id: int) -> Located | None:
+    """The answer in force of a match for the book: ``choose_in_force`` over the capture's asks AND the book refreshes' (BE-011).
+    A body a capture asked is read through the extractor's ledger, as ``quote_current.locate_in_force`` reads it; a body a refresh
+    asked through its RAW index row (a negative reading id stands for the extraction it never has). Without a book ask this is
+    ``locate_in_force`` query for query. None when the match does not exist. Nothing written."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(FIXTURE_SQL, {"f": fixture_id})
+        fixture = cur.fetchone()
+        if fixture is None:
+            return None
+        kickoff: datetime = fixture["kickoff_at"]
+        provider_fixture_id = int(fixture["provider_fixture_id"])
+        lo = kickoff - LOOKBACK
+        window = {"pid": provider_fixture_id, "lo": lo, "ko": kickoff, "limit": MAX_ASKS}
+        cur.execute(ASKS_SQL, window)
+        captures = [_ask(r) for r in cur.fetchall()]
+        cur.execute(BOOK_ASKS_SQL, window)
+        refreshes = [_ask(r) for r in cur.fetchall()]
+        refreshed = {a.payload_hash for a in refreshes if a.payload_hash}
+        captured = {a.payload_hash for a in captures if a.payload_hash}
+        readings: dict[str, Reading] = {}
+        later: list[Reading] = []
+        if captured:
+            extracted = sorted(captured - refreshed)
+            if extracted:
+                cur.execute(READINGS_SQL, {"hashes": extracted})
+                readings = {r.payload_hash: r for r in map(_extraction, cur.fetchall())}
+            cur.execute(LATER_PAGES_SQL, {"f": fixture_id, "lo": lo, "ko": kickoff})
+            later = [_extraction(r) for r in cur.fetchall()]
+        if refreshed:
+            first_asked = {h: min(a.asked_at for a in (*captures, *refreshes) if a.payload_hash == h) for h in refreshed}
+            cur.execute(RAW_READINGS_SQL, {"hashes": sorted(refreshed)})
+            for index, row in enumerate(sorted(cur.fetchall(), key=lambda r: str(r["hash"]))):
+                readings[str(row["hash"])] = _raw_reading(row, -(index + 1), fixture_id=fixture_id,
+                                                          provider_fixture_id=provider_fixture_id,
+                                                          first_asked=first_asked[str(row["hash"])])
+    in_force = choose_in_force([*captures, *refreshes], readings, fixture_id=fixture_id, kickoff_at=kickoff, later_pages=later)
+    payload_hashes = {r.extraction_id: r.payload_hash for r in (*readings.values(), *later)}
+    return Located(fixture_id=fixture_id, provider_fixture_id=provider_fixture_id, kickoff_at=kickoff, in_force=in_force,
+                   payload_hashes=payload_hashes)
+
+
 def definition_ids(conn: psycopg.Connection[Any]) -> dict[int, int]:
     """provider bet id -> ``market.market_definitions.id`` (pre-match). The book never writes a definition: ``tax-v2`` (the
     extractor) registers every bet it sees, so every bet of an answer it has read has one."""
@@ -470,7 +602,7 @@ def definition_ids(conn: psycopg.Connection[Any]) -> dict[int, int]:
 def read_fixture(conn: psycopg.Connection[Any], store: PayloadStore, fixture_id: int, definitions: Mapping[int, int],
                  report: BookReport, *, verify_hashes: bool = True) -> FixtureBook | None:
     """The book of one match from the database and RAW. Writes nothing. None when the match does not exist."""
-    located = locate_in_force(conn, fixture_id)
+    located = locate_book_in_force(conn, fixture_id)
     if located is None:
         return None
     report.fixtures_seen += 1
@@ -561,7 +693,8 @@ def write_fixture(conn: psycopg.Connection[Any], book: FixtureBook, report: Book
         cur.execute(UPSERT_SQL, {
             "f": book.fixture_id, "ko": book.kickoff_at, "cap": book.captured_at, "upd": book.provider_update_at,
             "chk": book.checked_at, "since": book.in_force_since, "pending": book.newer_pending, "hash": book.payload_hash,
-            "ver": BUILDER_VERSION, "at": at, "defs": keep, "sums": [r.text for r in book.rows]})
+            "ver": BUILDER_VERSION, "at": at, "defs": keep, "sums": [r.text for r in book.rows],
+            "books": [r.books for r in book.rows]})
         changed = [bool(r[0]) for r in cur.fetchall()]
     inserted = sum(changed)
     report.rows_inserted += inserted
@@ -584,7 +717,7 @@ def compare_fixture(conn: psycopg.Connection[Any], book: FixtureBook, report: Bo
             continue
         stored = (held["kickoff_at"], held["captured_at"], held["provider_update_at"], held["checked_at"],
                   held["in_force_since"], held["newer_pending"], held["payload_hash"], held["builder_version"])
-        if stored != columns or held["summary"] != json.loads(row.text):
+        if stored != columns or held["summary"] != json.loads(row.text) or held["books"] != row.books:
             report.rows_updated += 1
         else:
             report.rows_unchanged += 1
@@ -675,6 +808,9 @@ WITH changed AS (
     SELECT f.id FROM market.odds_asks a JOIN core.fixtures f ON f.provider_fixture_id = a.provider_fixture_id
      WHERE a.asked_at >= %(since)s
     UNION
+    SELECT f.id FROM market.book_asks a JOIN core.fixtures f ON f.provider_fixture_id = a.provider_fixture_id
+     WHERE a.asked_at >= %(since)s
+    UNION
     SELECT x.fixture_id FROM market.odds_extractions x
      WHERE x.fetched_at >= %(fetched_from)s AND x.extracted_at >= %(since)s AND x.fixture_id IS NOT NULL
     UNION
@@ -685,14 +821,17 @@ SELECT f.id FROM core.fixtures f JOIN changed c ON c.id = f.id
  WHERE f.kickoff_at > %(keep_from)s
  ORDER BY f.kickoff_at, f.id
 """
-"""The matches whose asks or extractions moved since ``since``, plus those whose rows an older builder wrote or whose kick-off
-was moved. ``odds_asks_asked_at`` and ``odds_extractions_fetched_idx`` serve it."""
+"""The matches whose asks (the capture's or the refreshes') or extractions moved since ``since``, plus those whose rows an older
+builder wrote or whose kick-off was moved. ``odds_asks_asked_at``, ``book_asks_asked_at`` and ``odds_extractions_fetched_idx``
+serve it."""
 
 HELD_SQL = """
 SELECT f.id FROM core.fixtures f
  WHERE f.kickoff_at > %(from)s AND (%(until)s::timestamptz IS NULL OR f.kickoff_at < %(until)s)
    AND (EXISTS (SELECT 1 FROM market.odds_asks a WHERE a.provider_fixture_id = f.provider_fixture_id
                    AND a.asked_at >= f.kickoff_at - %(lookback)s AND a.asked_at < f.kickoff_at)
+        OR EXISTS (SELECT 1 FROM market.book_asks a WHERE a.provider_fixture_id = f.provider_fixture_id
+                      AND a.asked_at >= f.kickoff_at - %(lookback)s AND a.asked_at < f.kickoff_at)
         OR EXISTS (SELECT 1 FROM market.book_current b WHERE b.fixture_id = f.id))
  ORDER BY f.kickoff_at, f.id
 """

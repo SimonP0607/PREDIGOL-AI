@@ -36,9 +36,9 @@ from __future__ import annotations
 
 import asyncio
 import random
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import psycopg
 import structlog
@@ -49,6 +49,105 @@ from fbi.core.errors import QuotaExhaustedError
 log = structlog.get_logger(__name__)
 
 DEFAULT_PROVIDER = "api_football"
+
+# ── what the provider itself says (plan Cuotas, BE-011; E18 of the plan) ─────────────────────────────────────────
+
+DAY_LIMIT_HEADER = "x-ratelimit-requests-limit"
+DAY_REMAINING_HEADER = "x-ratelimit-requests-remaining"
+MINUTE_LIMIT_HEADER = "x-ratelimit-limit"
+MINUTE_REMAINING_HEADER = "x-ratelimit-remaining"
+"""API-Football's quota headers: the day (``x-ratelimit-requests-*``) and the minute (``X-RateLimit-*``). Names are read
+case-insensitively (HTTP headers are)."""
+
+
+@dataclass(frozen=True, slots=True)
+class ReportedQuota:
+    """What one answer's headers said of our quota; None for a header the provider did not send."""
+
+    observed_at: datetime
+    requests_limit: int | None
+    requests_remaining: int | None
+    minute_limit: int | None
+    minute_remaining: int | None
+
+
+def _header_int(headers: Mapping[str, str], name: str) -> int | None:
+    value = headers.get(name)
+    if value is None:
+        return None
+    try:
+        return int(str(value).strip())
+    except ValueError:
+        return None
+
+
+def parse_reported(headers: Mapping[str, str], *, at: datetime) -> ReportedQuota | None:
+    """The provider's own count of our quota in one answer's headers (``httpx.Headers`` reads names in any case), or None when
+    the answer carried none of them."""
+    reported = ReportedQuota(observed_at=at, requests_limit=_header_int(headers, DAY_LIMIT_HEADER),
+                             requests_remaining=_header_int(headers, DAY_REMAINING_HEADER),
+                             minute_limit=_header_int(headers, MINUTE_LIMIT_HEADER),
+                             minute_remaining=_header_int(headers, MINUTE_REMAINING_HEADER))
+    known = (reported.requests_limit, reported.requests_remaining, reported.minute_limit, reported.minute_remaining)
+    return reported if any(v is not None for v in known) else None
+
+
+_REPORTED_UPSERT = """
+INSERT INTO raw.provider_reported_quota AS q (provider, quota_date, observed_at, requests_limit, requests_remaining,
+       minute_limit, minute_remaining)
+VALUES (%(provider)s, %(day)s, %(at)s, %(rl)s, %(rr)s, %(ml)s, %(mr)s)
+ON CONFLICT (provider, quota_date) DO UPDATE SET
+       observed_at = EXCLUDED.observed_at,
+       requests_limit = coalesce(EXCLUDED.requests_limit, q.requests_limit),
+       requests_remaining = coalesce(EXCLUDED.requests_remaining, q.requests_remaining),
+       minute_limit = coalesce(EXCLUDED.minute_limit, q.minute_limit),
+       minute_remaining = coalesce(EXCLUDED.minute_remaining, q.minute_remaining)
+ WHERE q.observed_at < EXCLUDED.observed_at
+"""
+"""The day's row holds the newest observation: an older one, arriving late from another process, changes nothing."""
+
+_REPORTED_READ = """
+SELECT quota_date, observed_at, requests_limit, requests_remaining, minute_limit, minute_remaining
+  FROM raw.provider_reported_quota WHERE provider = %(provider)s AND quota_date = %(day)s
+"""
+
+
+def record_reported(conn: psycopg.Connection, reported: ReportedQuota, *, provider: str = DEFAULT_PROVIDER) -> None:
+    """Keep the provider's count (``raw.provider_reported_quota``, migration 0129), on a connection the caller owns."""
+    with conn.cursor() as cur:
+        cur.execute(_REPORTED_UPSERT, {
+            "provider": provider, "day": reported.observed_at.date(), "at": reported.observed_at,
+            "rl": reported.requests_limit, "rr": reported.requests_remaining, "ml": reported.minute_limit,
+            "mr": reported.minute_remaining})
+
+
+def read_reported(conn: psycopg.Connection, *, provider: str = DEFAULT_PROVIDER,
+                  day: date | None = None) -> ReportedQuota | None:
+    """The provider's newest count of today (UTC), as its headers said it; None when no answer of the day carried one. Read only."""
+    with conn.cursor() as cur:
+        cur.execute(_REPORTED_READ, {"provider": provider, "day": day or now().date()})
+        row = cur.fetchone()
+    if row is None:
+        return None
+    return ReportedQuota(observed_at=row[1], requests_limit=row[2], requests_remaining=row[3], minute_limit=row[4],
+                         minute_remaining=row[5])
+
+
+class PersistentReportedQuota:
+    """The client's sink for the provider's count: each observation is written on a short autocommit connection of its own,
+    like the daily budget, so it never joins - nor waits on - the caller's transaction. A failure is logged, never raised: a
+    header that could not be kept must not cost the request that brought it."""
+
+    def __init__(self, *, connect: Callable[[], psycopg.Connection], provider: str = DEFAULT_PROVIDER) -> None:
+        self._connect = connect
+        self._provider = provider
+
+    def __call__(self, reported: ReportedQuota) -> None:
+        try:
+            with self._connect() as conn:
+                record_reported(conn, reported, provider=self._provider)
+        except psycopg.Error as exc:
+            log.warning("quota.reported_not_kept", error=type(exc).__name__)
 
 _ENSURE_ROW = """
 INSERT INTO raw.provider_quota (provider, quota_date, spent, budget)

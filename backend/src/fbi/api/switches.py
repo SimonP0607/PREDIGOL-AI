@@ -27,6 +27,12 @@ EXPLAIN: Final = "FBI_EXPLAIN"
 nothing - and ``=0`` takes the buttons and their routes away (the API recreated)."""
 
 
+ODDS_EXPLORER: Final = "FBI_ODDS_EXPLORER"
+"""The new Cuotas explorer (plan Cuotas, BE-011 exposes it, UX-068 reads it): OFF while the line is absent - the explorer is
+deployed off and switched on once it is verified in production (decision 8 of the plan) - and ``=1`` shows it instead of the
+current Cuotas page (the API recreated). The explorer's endpoints answer either way: the switch decides what the page shows."""
+
+
 def user_switch(name: str, *, default: bool) -> bool:
     """Whether the switch ``name`` is on: ``default`` while the line is absent or empty, off for a value it cannot read."""
     raw = environment().get(name)
@@ -43,3 +49,8 @@ def transparency_open() -> bool:
 def explain_on() -> bool:
     """Whether readers get «Explícame» (``FBI_EXPLAIN``, on by default)."""
     return user_switch(EXPLAIN, default=True)
+
+
+def odds_explorer_on() -> bool:
+    """Whether the page shows the new Cuotas explorer (``FBI_ODDS_EXPLORER``, off by default)."""
+    return user_switch(ODDS_EXPLORER, default=False)
