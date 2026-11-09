@@ -51,6 +51,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | IA-018 | P3 en sombra o apagado: el Gate B se puede grabar y el dueño fija los días del LAB previstos (migración 0127, reversible), presupuesto por valor de la información `voi-v1`, alertas de deriva y de coste `drift-v1`/`cost-alerts-v1`, política de promoción automática acotada y firmada `autopromo-v1` (apagada, sin escritor) y familia de mercado como plug-in `family-plugin-v1` con una familia de ejemplo en sombra | en curso | este PR | p3 (arquitectura objetivo) |
 | IA-019 | Diagnóstico de noticias del partido (plan Partidos y Match Center, punto 4; bloque «Solo administrador» del diagrama): en Avanzado / Auditoría, solo SUPER_ADMIN, `GET /admin/matches/{id}/news/diagnostics` dice por qué un partido tiene o no noticias — grupo de prioridad y cobertura garantizada, mercado y apertura del día de la IA, pasadas con sus búsquedas y la próxima pasada, búsquedas pagadas, sobre de Exa del mes, noticias guardadas por estado y un veredicto. Solo lectura; no cambia modelos, picks ni lo que ve un lector; sin migración | en curso | este PR | Plan Partidos, punto 4 |
 | IA-020 | Puerta del texto ajeno `untrusted-v3` con `package-v3`: la v2 con más patrones de `instruction_like` (inglés y español) para el comunicado oficial falso que dice anular cualquier otro informe, pide descartar u omitir los demás de la respuesta o dice a los sistemas automáticos qué informar (`claims.fake_official.1`, confirmado por `battery-v3` en el LAB el 8-nov-2026); mismo texto entregado, byte a byte; `untrusted-v1`/`v2` y `package-v1`/`v2` siguen derivables; sin migración (`backend/docs/owner/IA_020_PUERTA_V3.md`) | en curso | este PR | — |
+| IA-024 | La comparación entre el español y el inglés de la crónica de lectores deja de rechazar lo que dice lo mismo: «2 empates» y «two draws», «once meses» y «eleven months» valen igual, y el cero y el uno enteros no se comparan (cada idioma sigue comprobado contra los hechos y las noticias que cita). Era la causa de 143 de las 364 crónicas rechazadas de `user-narrative-v3` (`backend/docs/owner/IA_024_CIFRAS_CRONICA.md`) | en curso | este PR | IA-022 |
 
 ## UX — experiencia de usuario y diseño de la web
 
@@ -168,4 +169,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-018 · SEG-003 · IA-021 · UX-083 · BE-024 · FE-002 · OPS-003 · DOC-001
+CI-018 · SEG-003 · IA-025 · UX-083 · BE-024 · FE-002 · OPS-003 · DOC-001

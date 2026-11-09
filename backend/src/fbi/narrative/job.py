@@ -714,8 +714,25 @@ def check_sentence(s: SentenceOut, *, lang: str, section: str, inp: NarrativeInp
     return None
 
 
+CROSS_WORDS: Final[dict[str, dict[str, int]]] = {
+    "es": {"dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10, "once": 11, "doce": 12,
+           "trece": 13, "catorce": 14, "quince": 15, "dieciseis": 16, "diecisiete": 17, "dieciocho": 18, "diecinueve": 19, "veinte": 20},
+    "en": {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11,
+           "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19,
+           "twenty": 20},
+}
+"""IA-024. Quantities from two to twenty as a word, for COMPARING the Spanish with the English only: a chronicle that writes «2 empates»
+in one language and «two draws» in the other says the same thing. Each language's own numbers are still checked against the facts and
+the news the sentence cites (``check_sentence``, with ``SPELLED``); this table is not used there."""
+
+
 def _numbers_key(text: str, lang: str) -> Counter[float]:
-    return Counter(round(f.value, 3) for f in figures(text, lang))
+    """The numbers a sentence states, as the Spanish and the English are compared (the same ones in both, in whatever form). Whole zero and
+    one are not compared: «a win» is «una victoria» and «goalless» is «0-0» without a digit in one of them, and the sentence's own language
+    already checked each of them against the facts. A quantity from two to twenty counts the same as a digit or as a word."""
+    found = [f.value for f in figures(text, lang) if f.raw[:1].isdigit() or f.raw[:1] in "-+\u2212"]
+    found += [float(CROSS_WORDS[lang][w]) for w in re.findall(r"[a-z]+", fold(text)) if w in CROSS_WORDS[lang]]
+    return Counter(round(v, 3) for v in found if v >= 2 or v != int(v))
 
 
 def check_translation(item: NewsOut, source: NewsItem) -> tuple[Translation | None, list[Problem]]:
