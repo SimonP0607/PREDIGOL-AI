@@ -253,11 +253,16 @@
         "data": "Datos válidos",
         "market": "Mercado",
         "model": "Modelo",
-        "calibration": "Calibración",
+        "calibration": "Intervalo medido",
         "value": "Valor",
         "risk": "Riesgo",
         "context": "PrediGol Intelligence",
+        "contextOff": "Intelligence (no filtra)",
         "selection": "Selección"
+      },
+      "stageNote": {
+        "calibration": "Solo comprueba que la selección tenga un intervalo medido; no recalibra ni cambia su probabilidad.",
+        "contextOff": "La revisión de Intelligence se anota en cada candidato pero no se aplica: este paso no deja fuera a nadie por ella."
       },
       "reason": {
         "not_scheduled": "partido no programado",

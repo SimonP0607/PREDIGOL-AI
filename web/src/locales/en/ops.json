@@ -253,11 +253,16 @@
         "data": "Valid data",
         "market": "Market",
         "model": "Model",
-        "calibration": "Calibration",
+        "calibration": "Interval measured",
         "value": "Value",
         "risk": "Risk",
         "context": "PrediGol Intelligence",
+        "contextOff": "Intelligence (does not filter)",
         "selection": "Selection"
+      },
+      "stageNote": {
+        "calibration": "It only checks that the selection has a measured interval; it does not recalibrate or change its probability.",
+        "contextOff": "Intelligence's review is noted on each candidate but not applied: this step leaves no one out because of it."
       },
       "reason": {
         "not_scheduled": "match not scheduled",
