@@ -7,10 +7,12 @@ created by hand, so a migration that does not apply cleanly fails the suite.
 
 from __future__ import annotations
 
+import hashlib
 import os
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import psycopg
 import pytest
@@ -23,6 +25,23 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 HERE = Path(__file__).resolve().parent
 
 
+# CI-014: files that cannot share a pytest-xdist run. (1) Files whose assertions count rows that the rest of the suite also writes to the
+# shared test database (the day's quota ledger, the owner's product-event breakdowns, the player page aggregates): alone on a fresh
+# database they pass, after another file they fail, and under xdist "after which file" depends on the timing of the run. (2) Files that
+# make and drop ROLES (``predigol_worker``, ``predigol_api``, ``predigol_learning`` ...): a role belongs to the whole cluster, not to the
+# database of one worker, so two workers dropping and granting the same role break each other. They run first, in one process, with
+# ``-m serial``; the rest runs in parallel with ``-m "not serial"``.
+SERIAL_FILES = frozenset({
+    "test_persistent_quota.py", "test_product_events.py", "test_endpoints_p1.py",
+    "test_db_roles.py", "test_incident_register_grants.py", "test_learning_role.py", "test_promotions_policy_0111.py", "test_result_revisions.py",
+})
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Registers the ``serial`` mark here and not in pyproject.toml: a change to that file rebuilds the dependency layer of the image."""
+    config.addinivalue_line("markers", "serial: depends on the rows the rest of the suite leaves in the shared test database; run alone first (CI-014)")
+
+
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Every test of this package needs PostgreSQL, so every one carries the ``integration`` mark, whether or not its file
     says so (on 25 Oct 2026 about 147 of the 219 files did not). ``pytest -m "not integration"`` is then the unit suite
@@ -31,6 +50,8 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     for item in items:
         if HERE in Path(str(item.path)).resolve().parents:
             item.add_marker(pytest.mark.integration)
+            if item.path.name in SERIAL_FILES:
+                item.add_marker(pytest.mark.serial)
 
 
 def _admin_url() -> str:
@@ -57,7 +78,13 @@ def _admin_url() -> str:
 
 
 ADMIN_URL = _admin_url()
-TEST_DB = os.environ.get("FBI_TEST_DB", "fbi_test")
+def database_name_for(base: str, worker: str | None) -> str:
+    """CI-014: under pytest-xdist every worker process gets its own database (``fbi_test_gw0``, ``fbi_test_gw1`` ...), because the session
+    fixture below DROPs and recreates it. Without xdist (``worker`` empty) the name is the base one, as before."""
+    return f"{base}_{worker}" if worker else base
+
+
+TEST_DB = database_name_for(os.environ.get("FBI_TEST_DB", "fbi_test"), os.environ.get("PYTEST_XDIST_WORKER"))
 
 
 def _dsn(database: str) -> str:
@@ -65,24 +92,97 @@ def _dsn(database: str) -> str:
     return f"{head}/{database}"
 
 
-@pytest.fixture(scope="session")
-def migrated_database() -> Iterator[str]:
-    """Drop, recreate and migrate the test database. Yields its DSN."""
-    with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
-        conn.execute(
-            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
-            "WHERE datname = %s AND pid <> pg_backend_pid()",
-            (TEST_DB,),
-        )
-        conn.execute(f'DROP DATABASE IF EXISTS "{TEST_DB}"')
-        conn.execute(f'CREATE DATABASE "{TEST_DB}"')
+XDIST_WORKER = os.environ.get("PYTEST_XDIST_WORKER")
+"""Set in every pytest-xdist worker, absent in a plain run (CI-014)."""
 
-    dsn = _dsn(TEST_DB)
+
+def module_database_name(base: str, module: str) -> str:
+    """CI-014: the name of the database of ONE test file under xdist: ``<base>_<10 hex digits of the module's name>``. A hash and not the
+    name itself because PostgreSQL cuts identifiers at 63 characters, and two long names would then be the same database."""
+    return f"{base}_{hashlib.sha1(module.encode()).hexdigest()[:10]}"
+
+
+def _database_scope(fixture_name: str, config: pytest.Config) -> Literal["session", "module"]:
+    """A plain run has ONE database for the whole session, as it always had. Under xdist every test FILE gets its own, a copy of a migrated
+    template: a file then never sees the rows another file left behind (what made 34 and then 12 tests fail in the first parallel runs), and
+    no list of «files that depend on the order» has to be kept."""
+    return "module" if XDIST_WORKER else "session"
+
+
+def _drop_database(conn: psycopg.Connection, name: str) -> None:
+    conn.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s AND pid <> pg_backend_pid()", (name,))
+    conn.execute(f'DROP DATABASE IF EXISTS "{name}"')
+
+
+def _migrate(database: str) -> None:
+    os.environ["FBI_DATABASE_URL"] = _dsn(database).replace("postgresql://", "postgresql+psycopg://")
     cfg = Config(os.path.join(REPO_ROOT, "alembic.ini"))
     cfg.set_main_option("script_location", os.path.join(REPO_ROOT, "migrations"))
-    os.environ["FBI_DATABASE_URL"] = dsn.replace("postgresql://", "postgresql+psycopg://")
     command.upgrade(cfg, "head")
-    yield dsn
+
+
+_TEMPLATE_READY = False
+
+
+def _ensure_template() -> str:
+    """Once per worker: ``<TEST_DB>_tpl``, migrated to head and left with nobody connected (CREATE DATABASE ... TEMPLATE needs that)."""
+    global _TEMPLATE_READY
+    template = f"{TEST_DB}_tpl"
+    if not _TEMPLATE_READY:
+        with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
+            _drop_database(conn, template)
+            conn.execute(f'CREATE DATABASE "{template}"')
+        _migrate(template)
+        _TEMPLATE_READY = True
+    with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
+        conn.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s AND pid <> pg_backend_pid()", (template,))
+    return template
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _no_database_roles_left_behind() -> Iterator[None]:
+    """CI-014: a plain run (the ``-m serial`` step) ends with the cluster as it found it. Some tests make the roles of the server
+    (``predigol_worker``, ``predigol_learning`` ...) and a role belongs to the CLUSTER: one left behind is seen by every later test file of
+    every worker, and the analyst (which writes under ``predigol_learning`` when the cluster has it) then fails for lack of its grants."""
+    yield
+    if XDIST_WORKER:
+        return
+    try:
+        with psycopg.connect(_dsn(TEST_DB), autocommit=True) as conn:
+            conn.execute(
+                "DO $$ DECLARE r text; BEGIN FOR r IN SELECT rolname FROM pg_roles WHERE rolname LIKE 'predigol\\_%' LOOP "
+                "EXECUTE format('DROP OWNED BY %I', r); EXECUTE format('DROP ROLE %I', r); END LOOP; END $$"
+            )
+    except psycopg.Error:
+        pass  # no database yet, or a cluster without the rights: nothing was left that this run could remove
+
+
+@pytest.fixture(scope=_database_scope)
+def migrated_database(request: pytest.FixtureRequest) -> Iterator[str]:
+    """The test database, migrated to head. Yields its DSN. One for the whole session in a plain run (dropped and recreated at the start);
+    under xdist, one per test file, cloned from the worker's template and dropped when the file ends."""
+    if not XDIST_WORKER:
+        with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
+            _drop_database(conn, TEST_DB)
+            conn.execute(f'CREATE DATABASE "{TEST_DB}"')
+        _migrate(TEST_DB)
+        yield _dsn(TEST_DB)
+        return
+
+    from fbi.core.config import reset_cache
+
+    template = _ensure_template()
+    name = module_database_name(TEST_DB, request.module.__name__)
+    with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
+        _drop_database(conn, name)
+        conn.execute(f'CREATE DATABASE "{name}" TEMPLATE "{template}"')
+    os.environ["FBI_DATABASE_URL"] = _dsn(name).replace("postgresql://", "postgresql+psycopg://")
+    reset_cache()  # the settings of the project are cached: without this the code under test would keep reading the previous file's database
+    try:
+        yield _dsn(name)
+    finally:
+        with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
+            _drop_database(conn, name)
 
 
 @dataclass(frozen=True)
@@ -100,7 +200,7 @@ class Seed:
     model_version_id: int
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope=_database_scope)
 def seed(migrated_database: str) -> Seed:
     """Insert the minimal graph every invariant test needs. Committed once."""
     with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:

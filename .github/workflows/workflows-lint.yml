@@ -36,7 +36,7 @@ jobs:
           SHELLCHECK_OPTS: '--severity=warning'
         run: |
           set -euo pipefail
-          curl -sSfL -o "$RUNNER_TEMP/actionlint.tgz" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -sSfL --retry 5 --retry-delay 10 --retry-all-errors -o "$RUNNER_TEMP/actionlint.tgz" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
           echo "${ACTIONLINT_SHA256}  $RUNNER_TEMP/actionlint.tgz" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/al"
           tar -xzf "$RUNNER_TEMP/actionlint.tgz" -C "$RUNNER_TEMP/al" actionlint

@@ -151,9 +151,18 @@ describe("the board", () => {
     expect(markup).toContain("Cuota grande: la mejor entre las casas y su casa.");
   });
 
-  test("«Abrir partido» leads to the match's markets", async () => {
+  test("«Abrir partido» leads to the match's markets, on the market the reader was looking at", async () => {
     const { markup } = await explorer();
-    expect(markup).toContain('href="/matches/7819#markets"');
+    expect(markup).toContain('href="/matches/7819?m=result_1x2.FT.match#markets"');
+  });
+
+  test("«Abrir partido» of the goals total names the catalogue's over/under", async () => {
+    const { markup } = await explorer({ tab: "main", market: "goals.total", line: "4.5" });
+    const hrefs = [...markup.matchAll(/data-testid="explorer-open-match"[^>]*href="([^"]+)"/g)].map(
+      (m) => m[1],
+    );
+    expect(hrefs.length).toBeGreaterThan(0);
+    for (const h of hrefs) expect(h).toMatch(/\?m=goals_over_under\.FT\.match#markets$/);
   });
 });
 
