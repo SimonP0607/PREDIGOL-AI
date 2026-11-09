@@ -200,23 +200,57 @@ def started_since(moment: datetime) -> datetime:
     return min(day_start, moment - STARTED_AT_LEAST)
 
 
-def started_pick(r: Row, moment: datetime) -> StartedPick:
+STARTED_REVIEW_HOURS = 36
+"""How far back the review of a pick that already started still counts: a match may have kicked off a product day ago and its
+review was made hours before that (``started_since`` keeps the whole product day)."""
+
+
+def started_pick(r: Row, moment: datetime, *, applied: Applied | None = None, from_intelligence: bool = False) -> StartedPick:
+    """A started pick with the state a reader is shown for it, read as it was taken (plan PICKS, L1): the one table of
+    ``fbi.picks.user_status`` fed with the pick's publication and the applied review, and - while the board reads Intelligence
+    (F3) - merged with Intelligence's last decision before kick-off, whose calibrated probability then gives ``p_model``,
+    ``edge`` and ``ev`` at the price taken."""
     phase = match_state.phase(r["status_short"], r["kickoff_at"], moment)
     playing = phase in (match_state.Phase.LIVE, match_state.Phase.SUSPENDED)
+    shown = (applied or Applied()).shown(pick_status=r["pick_status"], value=True, fixture_id=int(r["fixture_id"]),
+                                         market_key=r["market_key"], selection=r["selection"], line=Decimal(r["line"]))
+    status, reason, pending = shown.status, shown.reason, shown.context_pending
+    p_model, edge, ev = Decimal(r["p_model"]), Decimal(r["edge"]), Decimal(r["ev"])
+    decision = None
+    if from_intelligence:
+        decision = r.get(picks_decision.DECISION_MARK)
+        status, reason, pending = picks_decision.merged(status, reason, pending, decision, best_odds=Decimal(r["odds_taken"]))
+        if picks_decision.judged_value(decision):
+            p_market = Decimal(r["p_market"])
+            p_push = Decimal(r["p_push"]) if r.get("p_push") is not None else None
+            edge = (p_model - p_market).quantize(Q6, ROUND_HALF_UP)
+            ev = engine.expected_value(p_model, p_push, Decimal(r["odds_taken"]))[0].quantize(Q6, ROUND_HALF_UP)
     return StartedPick(
         pick_id=int(r["pick_id"]), fixture_id=int(r["fixture_id"]), kickoff_at=r["kickoff_at"],
         competition=_competition(r), home=_home(r), away=_away(r), market_key=r["market_key"],
         selection=r["selection"], line=Decimal(r["line"]), status=r["pick_status"], model=r["model"],
         created_at=r["created_at"], taken_at=r["taken_at"], odds_taken=Decimal(r["odds_taken"]),
-        bookmaker=r.get("bookmaker"), p_model=Decimal(r["p_model"]), p_market=Decimal(r["p_market"]),
-        fair_odds=Decimal(r["fair_odds"]), edge=Decimal(r["edge"]), ev=Decimal(r["ev"]),
+        bookmaker=r.get("bookmaker"), p_model=p_model, p_market=Decimal(r["p_market"]),
+        fair_odds=Decimal(r["fair_odds"]), edge=edge, ev=ev,
         evaluations=int(r["evaluations"]), phase=phase.value, status_short=r["status_short"],
         live_minute=r["live_minute"] if playing else None, live_extra=r["live_extra"] if playing else None,
         live_home=r["live_home"] if playing else None, live_away=r["live_away"] if playing else None,
         score_home=r["score_home"], score_away=r["score_away"], result_status=r["result_status"],
         profit_units=r["profit_units"], settled_at=r["settled_at"], review_reason=r["review_reason"],
         near_close_odds=r["near_close_odds"], line_value=r["line_value"],
+        user_status=status, status_reason=reason, context_pending=pending, decision=decision,
     )
+
+
+def started_picks(conn: Conn, rows: list[Row], moment: datetime, *, include_shadow: bool) -> list[StartedPick]:
+    """The started picks of these rows, each with its state. A reader is shown the RECOMMENDED ones only, as before kick-off
+    (plan PICKS, L1: «solo verde» also holds after it); the owner's preview shows every one, labelled."""
+    if not rows:
+        return []
+    applied = pick_status.applied_now(conn, (int(r["fixture_id"]) for r in rows), at=moment, hours=STARTED_REVIEW_HOURS)
+    read, from_intelligence = _read_intelligence(conn, rows, moment)
+    out = [started_pick(r, moment, applied=applied, from_intelligence=from_intelligence) for r in read]
+    return out if include_shadow else [p for p in out if user_status.for_readers(p.user_status)]
 
 
 def _read_intelligence(conn: Conn, rows: list[Row], moment: datetime) -> tuple[list[Row], bool]:
@@ -237,10 +271,10 @@ def picks_board(conn: Conn, *, include_shadow: bool, competition_id: int | None,
     rows = repo.pick_candidates(conn, now=moment, until=moment + timedelta(hours=hours),
                                 since=moment - CONSENSUS_LOOKBACK, include_shadow=include_shadow,
                                 fixture_id=fixture_id)
-    started = [started_pick(r, moment) for r in repo.started_picks(
+    started = started_picks(conn, [r for r in repo.started_picks(
         conn, now=moment, since=started_since(moment), include_shadow=include_shadow, fixture_id=fixture_id)
         if (competition_id is None or int(r["competition_id"]) == competition_id)
-        and (market is None or r["market_key"] == market)]
+        and (market is None or r["market_key"] == market)], moment, include_shadow=include_shadow)
     competitions = {int(r["competition_id"]): _competition(r) for r in rows}
     markets = sorted({r["market_key"] for r in rows})
     kept = [r for r in rows
@@ -279,7 +313,7 @@ def started_board(conn: Conn, *, include_shadow: bool, at: datetime | None = Non
     itself, apart from the list of the matches still to come (REVIEW 11 Oct 2026, point 14)."""
     moment = at or clock_now()
     rows = repo.started_picks(conn, now=moment, since=started_since(moment), include_shadow=include_shadow)
-    return listing([started_pick(r, moment) for r in rows],
+    return listing(started_picks(conn, rows, moment, include_shadow=include_shadow),
                    empty_reason="no_shadow_picks" if include_shadow else "no_started_picks")
 
 

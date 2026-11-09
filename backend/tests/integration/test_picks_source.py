@@ -13,7 +13,7 @@ The switch ``FBI_PICKS_SOURCE`` is off by default: the board is then what it was
 # ruff: noqa: F811  (pytest fixtures imported from test_pick_states are used by name as parameters)
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -27,7 +27,8 @@ pytestmark = pytest.mark.integration
 P_CAL = Decimal("0.48")
 
 
-def decide(world: World, name: str, state: str, reasons: list[str], *, p_cal: Decimal | None = P_CAL) -> None:
+def decide(world: World, name: str, state: str, reasons: list[str], *, p_cal: Decimal | None = P_CAL,
+           known_at: datetime | None = None) -> None:
     fid = world.fixtures[name]
     ko = scalar(world.db.execute("SELECT kickoff_at FROM core.fixtures WHERE id = %s", (fid,)))
     stake = 0 if state in ("RECHAZADO", "INVESTIGACION") else 1
@@ -37,7 +38,7 @@ def decide(world: World, name: str, state: str, reasons: list[str], *, p_cal: De
         "pick_id, model_name, odds, price_at, p_model, p_cal, p_market, ev_cal, edge_cal, stake_units, filters, state, reasons, "
         "context_status, input_hash) VALUES ('decision-v1', %s, 'T-3h', %s, %s, '1X2', 'Home', 0, %s, 'dixon_coles', 2.30, %s, 0.50, "
         "%s, 0.43, %s, %s, %s, '[]', %s, %s, 'PENDING', %s)",
-        (NOW - timedelta(hours=1), fid, ko, world.picks[name], NOW - timedelta(hours=1), p_cal, ev,
+        (known_at or NOW - timedelta(hours=1), fid, ko, world.picks[name], NOW - timedelta(hours=1), p_cal, ev,
          None if p_cal is None else p_cal - Decimal("0.43"), stake, state, reasons, f"src-{name}-{state}"))
 
 

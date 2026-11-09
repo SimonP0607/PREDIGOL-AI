@@ -88,7 +88,7 @@ WITH fx AS (
 SELECT p.id AS pick_id, p.fixture_id, """ + _BADGES + """,
        f.status_short, p.market_key, p.selection, p.line, p.was AS pick_status, m.name AS model,
        p.created_at, p.odds_captured_at AS taken_at, p.market_odds AS odds_taken, b.name AS bookmaker,
-       p.p_calibrated AS p_model, p.p_market_fair AS p_market, p.fair_odds, p.edge, p.ev, p.evaluations,
+       p.p_calibrated AS p_model, p.p_push, p.p_market_fair AS p_market, p.fair_odds, p.edge, p.ev, p.evaluations,
        ls.elapsed AS live_minute, ls.extra AS live_extra, ls.goals_home AS live_home, ls.goals_away AS live_away,
        r.reg_goals_home AS score_home, r.reg_goals_away AS score_away,
        pr.result_status, pr.profit_units, pr.settled_at, pr.review_reason,
@@ -161,7 +161,9 @@ def best_prices(conn: Conn, *, now: datetime, until: datetime, since: datetime,
 
 def intel_decisions(conn: Conn, *, fixture_ids: list[int], now: datetime) -> list[Row]:
     """PrediGol Intelligence's newest decision (``decision-v1``, the pipeline's layer) on each selection of these matches as of
-    ``now``, whatever its checkpoint: the calibrated probability, EV and edge, the state and the reasons (plan PICKS, F3)."""
+    ``now``, whatever its checkpoint: the calibrated probability, EV and edge, the state and the reasons (plan PICKS, F3). The
+    pipeline decides before kick-off only (``intel.decisions`` refuses a ``known_at`` after it), so for a match that has started
+    it is the decision it had at the whistle."""
     if not fixture_ids:
         return []
     return fetch_all(conn, INTEL_DECISIONS, {"version": DECISION_CORE, "fixtures": sorted(set(fixture_ids)), "now": now})
