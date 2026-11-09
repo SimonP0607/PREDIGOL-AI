@@ -16,6 +16,7 @@ import { fmtPct } from "@/lib/i18n/format";
 import type { DailyItem } from "@/lib/api/v1/types_records";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { EvBadge, Kickoff, OddsPill } from "@/product/shared/Bits";
+import { PriceNowLine } from "@/product/shared/PriceNowLine";
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { AiNote } from "./AiNote";
 import { CorrectionNote } from "./CorrectionNote";
@@ -153,6 +154,7 @@ export function DailyItemCard({
               >
                 {t("records.card.referenceOdds")}
               </span>
+              <PriceNowLine now={item.price_now} />
             </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
