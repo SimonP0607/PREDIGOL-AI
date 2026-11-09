@@ -6,7 +6,7 @@
  * its arrows and words while its chart loads, the loading / failed refresh / empty states, «Pausar actualizaciones», «Mi
  * parlay · N», and the motion that only runs without «reduce motion».
  */
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -29,8 +29,13 @@ import { BOOKMAKERS, COMPETITIONS } from "./fake";
 
 setLocale("es");
 afterAll(() => setLocale("es"));
-// the clock times these tests read are UTC; another file may have left the zone elsewhere
-beforeAll(() => setTimeZone("UTC"));
+// Clock times here are UTC (another file may leave the zone elsewhere). The fake matches kick off on the fake day and
+// the parlay asks the real clock whether a match has started, so the clock stands at FAKE_NOW.
+beforeAll(() => {
+  setTimeZone("UTC");
+  setSystemTime(FAKE_NOW);
+});
+afterAll(() => setSystemTime());
 
 function slip(legs: SlipLeg[] = []): SlipValue {
   return {
