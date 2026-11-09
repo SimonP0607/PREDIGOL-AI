@@ -37,6 +37,7 @@ import { formatDateTime, formatRelative } from "@/lib/time";
 import { EmptyState, ErrorState } from "@/product/shared/States";
 import { DatasetsTab } from "./DatasetsTab";
 import { OddsCoverageTab } from "./OddsCoverageTab";
+import { OddsHealthTab } from "./OddsHealthTab";
 import { TruthV2Tab } from "./TruthV2Tab";
 import { ValidationTab } from "./ValidationTab";
 import { useUrlTab } from "@/lib/useUrlTab";
@@ -50,6 +51,7 @@ const TABS = [
   "gate",
   "validation",
   "odds",
+  "odds_health",
   "findings",
   "repairs",
   "runs",
@@ -244,6 +246,7 @@ export function DataTruthPage() {
       ) : null}
       {tab === "validation" ? <ValidationTab /> : null}
       {tab === "odds" ? <OddsCoverageTab /> : null}
+      {tab === "odds_health" ? <OddsHealthTab /> : null}
       {tab === "findings" ? <FindingsTab summary={summary} /> : null}
       {tab === "repairs" ? <RepairsTab /> : null}
       {tab === "runs" ? <RunsTab /> : null}

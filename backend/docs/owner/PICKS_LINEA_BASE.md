@@ -51,7 +51,7 @@ Si aparece algo sin explicar, **no se corrige desde aquí**: se usa la reliquida
 
 ## Resultados
 
-Corrida del 9-nov-2026, 00:50 UTC (19:50 del 8-nov en Bogotá), con la llave de solo lectura (SEG-001).
+Corrida del 9-nov-2026, 00:50 UTC (19:50 del 8-nov en Bogotá), con la llave de solo lectura (SEG-002).
 
 ### Línea base (F1), ventana de 24 h
 

@@ -1,0 +1,347 @@
+{
+  "subtitle": "Every market with prices, match by match: the best price of each selection and its bookmaker.",
+  "fairLine": "Market fair price: the price without the bookmakers' margin, worked out from their own prices. It is not a PrediGol forecast.",
+  "tabsLabel": "Market families",
+  "tab": {
+    "main": "Main",
+    "goals": "Goals",
+    "halves": "Halves",
+    "handicaps": "Handicaps",
+    "corners": "Corners",
+    "cards": "Cards",
+    "players": "Players",
+    "more": "More"
+  },
+  "tabCount_one": "{count} match",
+  "tabCount_other": "{count} matches",
+  "marketsLabel": "{tab} markets",
+  "family": {
+    "result": "Result",
+    "goals": "Goals",
+    "goals_half": "Halves",
+    "corners": "Corners",
+    "cards": "Cards",
+    "shots": "Shots",
+    "players": "Players",
+    "saves": "Goalkeepers",
+    "offsides": "Offsides",
+    "tackles": "Tackles",
+    "fouls": "Fouls",
+    "special": "Specials",
+    "timing": "Timing and sequences",
+    "advance": "Qualification",
+    "other": "Others"
+  },
+  "marketUnknown": "Another market",
+  "subject": {
+    "home": "Home",
+    "away": "Away"
+  },
+  "interval": "{from}–{to} min",
+  "market": {
+    "result": {
+      "draw_no_bet": "Draw no bet",
+      "european_handicap": "European handicap"
+    },
+    "advance": {
+      "to_qualify": "To qualify"
+    },
+    "goals": {
+      "correct_score": "Correct score",
+      "odd_even": "Goals: odd or even",
+      "result_btts": "Result and both teams to score",
+      "result_total": "Result and total goals",
+      "clean_sheet": "Clean sheet",
+      "win_to_nil": "Win to nil",
+      "exact_total": "Exact number of goals",
+      "team_scores": "To score",
+      "winning_margin": "Winning by how many goals",
+      "total_btts": "Total goals and both teams to score",
+      "goal_line": "Goal line",
+      "score_draw": "Score draw",
+      "total_bands": "Goals in the match (bands)",
+      "first_team_to_score": "First team to score",
+      "last_team_to_score": "Last team to score"
+    },
+    "halves": {
+      "ht_ft": "Half time/full time",
+      "highest_scoring": "Highest scoring half",
+      "win_both": "Win both halves",
+      "win_either": "Win either half",
+      "score_both": "Score in both halves",
+      "btts_both": "Both teams to score in both halves",
+      "goal_both": "A goal in both halves"
+    },
+    "corners": {
+      "total": "Corners: over/under",
+      "1x2": "Corners: 1X2",
+      "asian_handicap": "Corners: Asian handicap",
+      "total_3way": "Corners: three-way total",
+      "european_handicap": "Corners: European handicap",
+      "total_bands": "Corners: bands",
+      "odd_even": "Corners: odd or even",
+      "double_chance": "Corners: double chance",
+      "multicorners": "Multicorners",
+      "race": "Race to corners"
+    },
+    "cards": {
+      "total": "Cards: over/under",
+      "asian_handicap": "Cards: Asian handicap",
+      "european_handicap": "Cards: European handicap",
+      "first_card": "First card"
+    },
+    "shots": {
+      "on_target": "Shots on target: over/under",
+      "total": "Shots: over/under",
+      "on_target_1x2": "Shots on target: 1X2",
+      "1x2": "Shots: 1X2"
+    },
+    "offsides": {
+      "total": "Offsides: over/under"
+    },
+    "tackles": {
+      "total": "Tackles: over/under"
+    },
+    "keeper": {
+      "saves": "Goalkeeper saves"
+    },
+    "player": {
+      "anytime_scorer": "Anytime goalscorer",
+      "first_scorer": "First goalscorer",
+      "last_scorer": "Last goalscorer",
+      "score_or_assist": "To score or assist",
+      "shots": "Player shots",
+      "fouls": "Player fouls",
+      "shots_on_target": "Player shots on target",
+      "header_goal": "Headed goal",
+      "outside_box_goal": "Goal from outside the box"
+    },
+    "special": {
+      "own_goal": "Own goal",
+      "first_goal_method": "First goal method",
+      "penalty_scored": "To score a penalty",
+      "penalty_missed": "To miss a penalty",
+      "win_from_behind": "To win from behind",
+      "decided_by_penalties": "Decided on penalties",
+      "decided_in_extra_time": "Decided in extra time",
+      "method_of_victory": "Method of victory"
+    }
+  },
+  "chip": {
+    "result": {
+      "1x2": "1X2"
+    },
+    "goals": {
+      "total": "Over/under",
+      "odd_even": "Odd or even"
+    },
+    "corners": {
+      "total": "Over/under",
+      "1x2": "1X2",
+      "asian_handicap": "Asian handicap",
+      "total_3way": "Three-way total",
+      "european_handicap": "European handicap",
+      "total_bands": "Bands",
+      "odd_even": "Odd or even",
+      "double_chance": "Double chance"
+    },
+    "cards": {
+      "total": "Over/under",
+      "asian_handicap": "Asian handicap",
+      "european_handicap": "European handicap"
+    }
+  },
+  "period": {
+    "label": "Period",
+    "FT": "Match",
+    "1H": "1st half",
+    "2H": "2nd half",
+    "INTERVAL": "By minutes"
+  },
+  "line": {
+    "label": "Line",
+    "main": "Main",
+    "home": "Home handicap {line}",
+    "more_one": "{count} more line",
+    "more_other": "{count} more lines",
+    "fewer": "Fewer lines",
+    "backToMain": "Back to the main line"
+  },
+  "sel": {
+    "home": "Home",
+    "away": "Away",
+    "draw": "Draw",
+    "over": "Over",
+    "under": "Under",
+    "exactly": "Exactly",
+    "yes": "Yes",
+    "no": "No",
+    "odd": "Odd",
+    "even": "Even",
+    "noGoal": "No goal",
+    "firstHalf": "1st half",
+    "secondHalf": "2nd half",
+    "scoreDraw": "Score draw",
+    "shot": "Shot",
+    "header": "Header",
+    "penalty": "Penalty",
+    "freeKick": "Free kick",
+    "ownGoal": "Own goal",
+    "noGoalscorer": "No goalscorer",
+    "noCard": "Neither",
+    "tie": "Equal",
+    "dc1X": "{home} or draw",
+    "dc12": "{home} or {away}",
+    "dcX2": "Draw or {away}",
+    "byGoals": "{team} by {n}",
+    "drawAt": "Draw ({line})",
+    "raceFirst": "{team} first to {n}",
+    "raceNone": "Neither reaches {n}",
+    "atLeast": "{name} · {n}+"
+  },
+  "price": {
+    "best": "Best price",
+    "bookmaker": "Bookmaker",
+    "books_one": "{bookmaker} · {count} bookmaker",
+    "books_other": "{bookmaker} · {count} bookmakers",
+    "fairShort": "fair {odds}",
+    "overFair": "{pct} over the fair price",
+    "underFair": "{pct} under the fair price",
+    "evenWithFair": "Level with the fair price",
+    "sr_one": "{selection}: best price {odds} at {bookmaker}, the only bookmaker quoting it.",
+    "sr_other": "{selection}: best price {odds} at {bookmaker}, among {count} bookmakers.",
+    "srFair": "Market fair price {fair}.",
+    "outlier": "Outlier price",
+    "outlierHelp": "Far above the market's fair price: most likely one bookmaker's out-of-date or mistaken price.",
+    "moved": {
+      "up": "Went up in the last update",
+      "down": "Went down in the last update"
+    }
+  },
+  "fresh": {
+    "stale": "Old · {age}",
+    "captured": "Captured at {time}",
+    "provider": "the provider changed it at {time}",
+    "staleHelp": "a scheduled capture was missed: it may not be the price now"
+  },
+  "parlay": {
+    "lookup": "Lookup only",
+    "stale": "Old · not for the parlay",
+    "legAt": "{label} at {odds}",
+    "count_one": "My parlay: {count} selection.",
+    "count_other": "My parlay: {count} selections.",
+    "added": "Added: {leg}.",
+    "replaced": "Added: {leg}, instead of the other selection of that match.",
+    "removed": "Removed: {leg}."
+  },
+  "compare": {
+    "toggle": "Compare bookmakers",
+    "toggleLabel": "Compare bookmakers: {match}",
+    "title": "Every bookmaker",
+    "help": "Margin: what each bookmaker charges on this line.",
+    "margin": "Margin",
+    "region": "Every bookmaker's prices: {match}",
+    "caption": "Each bookmaker's price per selection and its margin: {match}",
+    "best": "(best price)",
+    "noPrice": "No price",
+    "empty": "No bookmaker has prices for this line in the current book.",
+    "single": "1 bookmaker"
+  },
+  "movement": {
+    "toggle": "Movement",
+    "toggleLabel": "Movement: {match}",
+    "title": "Movement of the best price",
+    "help": "The best price at each capture, outliers left out.",
+    "up": "up from {odds} · {change}",
+    "down": "down from {odds} · {change}",
+    "flat": "unchanged since {odds}",
+    "none": "This market keeps no price history.",
+    "empty": "There are not enough captures yet to show the movement.",
+    "time": "Time"
+  },
+  "long": {
+    "all": "See all ({count})",
+    "fewer": "See fewer",
+    "search": "Find a selection: {match}",
+    "placeholder": "Find a player or a score",
+    "none": "No selection matches."
+  },
+  "openMatch": "Open match",
+  "openMatchLabel": "Open match: {match}",
+  "search": {
+    "label": "Search a team, competition or market",
+    "placeholder": "Team, league or market",
+    "markets": "Matching markets",
+    "goTo": "Go to:",
+    "jumped": "Market: {market}"
+  },
+  "filters": {
+    "title": "Filters",
+    "open": "Filters",
+    "description": "Choose, then tap «Apply».",
+    "active_one": "{count} filter on",
+    "active_other": "{count} filters on",
+    "apply": "Apply",
+    "clear": "Clear filters",
+    "window": "Starting within",
+    "today": "Today",
+    "hours": "{count} h",
+    "country": "Country",
+    "allCountries": "All countries",
+    "international": "International",
+    "competition": "Competition",
+    "allCompetitions": "All competitions",
+    "bookmaker": "Bookmaker",
+    "allBookmakers": "All bookmakers",
+    "minBooks": "Minimum bookmakers",
+    "anyBooks": "Any number of bookmakers",
+    "booksAtLeast_one": "{count} bookmaker or more",
+    "booksAtLeast_other": "{count} bookmakers or more",
+    "range": "Price range",
+    "from": "From",
+    "to": "To",
+    "fairOnly": "Only with a fair price",
+    "mine": "My teams and leagues"
+  },
+  "sort": {
+    "label": "Order",
+    "time": "By kick-off",
+    "competition": "By competition",
+    "edge": "Widest gap to the fair price"
+  },
+  "note": {
+    "figures": "Large price: the best among the bookmakers, and its bookmaker. In grey, the market's fair price and the gap to it.",
+    "noFair": "This market has no fair price: its selections do not cover every outcome, or few bookmakers quote it.",
+    "single": "1 bookmaker: no comparison and no fair price.",
+    "lookupOnly": "Lookup only: this market does not go in My parlay.",
+    "tap": "Tap a price to add it to your parlay or take it out.",
+    "edge": "Ordered by the gap between the best price and the market's fair price, which comes from these same bookmakers: it compares prices, it does not predict results."
+  },
+  "count_one": "{count} match",
+  "count_other": "{count} matches",
+  "shown": "{shown} of {total}",
+  "loadMore": "Load more",
+  "empty": {
+    "windowTitle": "No prices in this window",
+    "windowBody": "When the bookmakers publish prices for the next matches, they will show here.",
+    "offTitle": "The explorer has no prices yet",
+    "offBody": "The odds book is not switched on. Come back later.",
+    "marketTitle": "No match with this market",
+    "marketBody": "No bookmaker quotes this market in this window.",
+    "filteredTitle": "No match fits your filters",
+    "filteredBody": "Try another name, another bookmaker or another price range.",
+    "lineTitle": "No match has this line",
+    "lineBody": "Go back to each match's main line.",
+    "notLoadedBody": "None of the matches loaded fits: «Load more» brings the next ones.",
+    "widen": "See the next 72 h"
+  },
+  "status": {
+    "updated": "Updated {time}",
+    "pause": "Pause updates",
+    "resume": "Resume updates",
+    "paused": "Updates paused.",
+    "resumed": "Updates resumed.",
+    "results_one": "{count} match with these settings.",
+    "results_other": "{count} matches with these settings."
+  }
+}

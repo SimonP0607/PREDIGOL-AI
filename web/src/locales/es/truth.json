@@ -13,7 +13,8 @@
     "odds": "Cobertura de cuotas",
     "validation": "Validación",
     "audit_v2": "Auditoría V2",
-    "datasets": "Datasets"
+    "datasets": "Datasets",
+    "odds_health": "Salud de cuotas"
   },
   "cards": {
     "lastAudit": "Última auditoría",
@@ -599,5 +600,52 @@
     "squads": "Cada equipo de una temporada en curso tiene su plantilla leída en los últimos 8 días (ronda semanal de /players/squads).",
     "coaches": "Existe un perfil (fecha de nacimiento o nacionalidad; /coachs semanal por equipo seguido) para cada entrenador que apareció en una alineación en los últimos 365 días.",
     "coverage": "Las marcas de cobertura del proveedor para cada temporada en curso, leídas en los últimos 8 días."
+  },
+  "oddsHealth": {
+    "subtitle": "El libro vigente del explorador de Cuotas y lo que lo alimenta: antigüedad de los precios según lo que falta para el inicio, retraso del extractor, cupo y tamaño de las series. Solo lectura; la API lo mide y lo guarda un minuto.",
+    "cards": {
+      "quota": "Cupo de hoy",
+      "quotaHint": "{share} de nuestro tope diario de {limit} (el plan pide quedarse por debajo del 45 %). El proveedor dice que quedan {remaining}.",
+      "quotaHintNoProvider": "{share} de nuestro tope diario de {limit} (el plan pide quedarse por debajo del 45 %). El proveedor aún no ha dicho hoy cuántas quedan.",
+      "lag": "Retraso del extractor",
+      "lagCaughtUp": "Al día",
+      "lagHint": "Antigüedad de la respuesta de /odds más antigua del último día que el extractor aún no ha leído.",
+      "lagNone": "Ninguna respuesta de /odds en el último día.",
+      "book": "Libro vigente",
+      "bookValue": "{rows} filas",
+      "bookHint": "{mb} MB. Se reconstruye cada 10 min con FBI_ODDS_BOOK encendido; vacío con el interruptor apagado.",
+      "quotes": "odds_quotes frente a su freno",
+      "quotesHint": "El extractor se detiene al llegar al freno (FBI_QUOTES_MAX_TABLE_GB)."
+    },
+    "horizon": {
+      "title": "Antigüedad por distancia al inicio",
+      "subtitle": "Partidos seguidos con cuotas que empiezan en cada tramo. Un precio es antiguo si se saltó una captura o un refresco previsto.",
+      "target": "Objetivo del plan: en las 6 h previas al inicio, una mediana de 70 min o menos desde nuestra captura."
+    },
+    "col": {
+      "horizon": "Empiezan en",
+      "fixtures": "Partidos",
+      "withBook": "Con libro",
+      "age": "Antigüedad mediana",
+      "stale": "Precios antiguos"
+    },
+    "horizons": {
+      "0-6h": "0 a 6 h",
+      "6-24h": "6 a 24 h",
+      "24-72h": "24 a 72 h"
+    },
+    "staleNone": "Ninguno",
+    "staleSome_one": "{count} partido",
+    "staleSome_other": "{count} partidos",
+    "partitions": {
+      "title": "Particiones DEFAULT",
+      "none": "Ninguna fila en las particiones DEFAULT de las series de cuotas.",
+      "some": "{rows} filas en las particiones DEFAULT: falta una partición y hay que crearla."
+    },
+    "age": {
+      "minutes": "{n} min",
+      "hours": "{n} h",
+      "hoursMinutes": "{h} h {m} min"
+    }
   }
 }
