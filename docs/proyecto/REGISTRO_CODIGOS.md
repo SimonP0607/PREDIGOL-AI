@@ -149,4 +149,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-018 · SEG-002 · IA-021 · UX-075 · BE-014 · FE-002 · OPS-001 · DOC-001
+CI-018 · SEG-002 · IA-021 · UX-077 · BE-014 · FE-002 · OPS-001 · DOC-001
