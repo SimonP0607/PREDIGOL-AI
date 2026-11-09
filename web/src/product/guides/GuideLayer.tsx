@@ -54,7 +54,7 @@ export function GuideLayer() {
   const card = useRef<HTMLDivElement>(null);
   const [target, setTarget] = useState<Box | null>(null);
   const [place, setPlace] = useState<{ top: number; left: number } | null>(null);
-  // Below 1024 px: the room the page gets at its foot, so an element near the end can still go up above the card (UX-073)
+  // Below 1024 px: the room the page gets at its foot, so an element near the end can still go up above the card (UX-074)
   const [room, setRoom] = useState(0);
   // ...and where the card is docked: 8 px above the tab bar or the parlay button, whichever is higher (null: the CSS's own)
   const [dock, setDock] = useState<number | null>(null);
@@ -114,7 +114,7 @@ export function GuideLayer() {
         return;
       }
       // Below 1024 px the card is docked at the bottom: the element goes into the free band between the header and the
-      // card (centred when it fits, from the top of the band when it does not), so the card never hides it (UX-073).
+      // card (centred when it fits, from the top of the band when it does not), so the card never hides it (UX-074).
       const bottom = dockBottom();
       const cardTop = !c
         ? window.innerHeight * 0.6

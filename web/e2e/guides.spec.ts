@@ -5,7 +5,7 @@
  * * the welcome tour's four buttons (Empezar, Siguiente, Atrás, Finalizar), and that it does not come back - not on a
  *   reload and not in another browser of the same account;
  * * «Saltar» on the welcome card leaves Inicio's own guide (the one the tour covers) skipped too: the reader who said no
- *   once is not asked again on the next visit (UX-073);
+ *   once is not asked again on the next visit (UX-074);
  * * two skips in a row stop the automatic guides of that session; the «?» still brings any back;
  * * every guide, step by step, at the sizes of the plan (320x568, 390x844, 768x1024, 1024x768, 1440x900, 844x390, and
  *   the iPhone 13 in WebKit): the card inside the screen, not over its element, the tab bar or the parlay button, no
