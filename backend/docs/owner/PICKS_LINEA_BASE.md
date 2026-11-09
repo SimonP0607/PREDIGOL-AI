@@ -87,7 +87,9 @@ Los 30 sets del día cuadran.
 - 101 son de partidos del 10 al 12 de octubre. Los 20 que muestra la herramienta son todos de Gwangju FC 4–3 Ulsan Hyundai (K League 1, 11-oct, partido 21562): están liquidados como si hubiera acabado en empate con dos goles o menos («empate» ganado, «menos de 2,5» ganado, «local» perdido). También es de ese partido el pick del día n.º 2 del set 8, guardado como perdido cuando hoy sería ganado.
 - 55 son de partidos de los últimos 27 días; entre ellos, los partidos 21497 y 21389.
 
-Lo siguiente es averiguar por qué esos resultados cambiaron sin dejar rastro en `core.fixture_result_revisions`, y reliquidarlos con `scripts.resettle`, que deja rastro, con el visto bueno del dueño.
+**Causa (9-nov, solo lectura).** Todos son de partidos anteriores al 24-oct, es decir, de antes de que existiera el rastro de correcciones (migración 0080, 23-oct): hasta entonces el resultado se sobrescribía en el sitio y la liquidación corría con la primera lectura de «final», sin dejar nada en `core.fixture_result_revisions`. La misma auditoría con `--days 16` da **0 sin explicar** sobre 181.164 picks, 76 picks del día y 122 patas de combinadas (2.198 partidos, 22 con correcciones registradas), y los sets del día cuadran. No es un defecto nuevo ni sigue creciendo.
+
+Lo que queda es reliquidar esos 157 con `scripts.resettle --all`, que deja rastro, con el visto bueno del dueño (primero el simulacro, sin `--apply`, y luego `--apply --by <nombre>`).
 
 ### Consola de rendimiento (R1)
 
