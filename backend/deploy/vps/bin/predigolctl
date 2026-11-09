@@ -23,6 +23,7 @@
 #   predigolctl maint              the owner's daily maintenance: partitions ahead, retention (scripts/db_maintenance)
 #   predigolctl import FOLDER      ONCE, on a fresh server: the old machine's export (deploy/cutover/export.sh)
 #   predigolctl psql               a read-only psql session
+#   predigolctl pgstat status|enable|top [N]|reset   the queries that cost the most (pg_stat_statements; bin/pgstat.sh)
 #   predigolctl create-user --email E [--role USER|SUPER_ADMIN] ...   an account; its password goes to a 0600 file
 #   predigolctl accounts ...       scripts/accounts.py: list, disable --domain, revoke-sessions --all, unlock, ...
 #   predigolctl bench              measure THIS machine (CPU, steal, disk, fsync, network) against the minimums
@@ -158,7 +159,8 @@ case "${1:-}" in
   cloudflare) shift; exec "$BIN/cloudflare-ips.sh" "$@" ;;
   accounts) shift; ops python -m scripts.accounts "$@" ;;
   grants) apply_grants && log "grants applied" ;;
+  pgstat) shift; exec "$BIN/pgstat.sh" "$@" ;;
   psql) compose exec -e PGOPTIONS="-c default_transaction_read_only=on" postgres psql -U fbi -d fbi ;;
   create-user) shift; cmd_create_user "$@" ;;
-  *) sed -n '2,32p' "$0"; exit 2 ;;
+  *) sed -n '2,33p' "$0"; exit 2 ;;
 esac
