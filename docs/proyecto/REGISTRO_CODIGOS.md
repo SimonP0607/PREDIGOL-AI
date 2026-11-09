@@ -26,6 +26,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | SEG-001 | Funciones de seguridad de GitHub activadas en el repositorio público (9-nov-2026): CodeQL (configuración predeterminada: Python, JavaScript/TypeScript y Actions), secret scanning, push protection y actualizaciones de seguridad de Dependabot con alertas. La única alerta inicial (vector de prueba público de Svix en `test_messaging_webhooks.py`) se cerró como «usado en pruebas» | hecho (9-nov-2026) | ajustes del repositorio | — |
 | CI-014 | La batería del backend corre en paralelo en el CI: `pytest-xdist` (4 procesos, `--dist loadfile`), una base de datos de prueba por proceso (`fbi_test_gw0`…) y el PostgreSQL de prueba sin esperas de disco (`fsync` y escritura sincrónica apagados en el contenedor desechable). `pytest-xdist` se instala solo en el CI: no entra en `pyproject.toml` ni en `constraints.txt` (la imagen no cambia). Antes la batería tardaba 29-44 min | en curso | este PR | — |
 | CI-015 | `squawk` 2.72.0 (versión fijada, descarga verificada) revisa las migraciones de Alembic que un PR AÑADE: cada revisión nueva se pasa a SQL sin base de datos (`alembic upgrade <desde>:<hasta> --sql`) y se lee en busca de bloqueos largos, columnas NOT NULL sin valor, restricciones sin NOT VALID, etc. Es informativo (no bloquea) hasta que dé varios PR sin falsos avisos; las reglas que no encajan con el estilo del proyecto están nombradas en `backend/.squawk.toml`. `alembic check` no se usa: el esquema es SQL a mano y `target_metadata` es `None`, así que no tendría nada que comparar | en curso | este PR | — |
+| OPS-001 | Qué consultas cuestan más: PostgreSQL carga `pg_stat_statements` (qué consultas suman más tiempo, solo su forma, nunca los valores) y `auto_explain` (escribe el plan de las que pasan de 5 s, sin ANALYZE); `predigolctl pgstat status/enable/top/reset`. Cambia el `command` de PostgreSQL en `docker-compose.yml`: el despliegue lo RECREA una vez (≈1 min; API y worker se reconectan solos) tras la copia y su prueba de restauración; después, `predigolctl pgstat enable` una vez | en curso | este PR | — |
 
 ## IA — capa de inteligencia artificial
 
@@ -146,4 +147,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-018 · SEG-002 · IA-021 · UX-075 · BE-014 · FE-001 · OPS-001 · DOC-001
+CI-018 · SEG-002 · IA-021 · UX-075 · BE-014 · FE-001 · OPS-002 · DOC-001
