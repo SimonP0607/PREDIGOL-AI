@@ -74,5 +74,10 @@ eq "$(run 'auto_explain' 0 top)" 1 "4 top without the library: exit 1"
 eq "$(run 'auto_explain' 0 reset)" 1 "5 reset without the library: exit 1"; sql_hasnt "pg_stat_statements_reset" "5 nothing was reset"
 eq "$(run 'pg_stat_statements' 1 reset)" 0 "5 reset: exit 0"; sql_has "pg_stat_statements_reset()" "5 the counters were emptied"; has "the counters are empty" "5 it says so"
 
+# 6. OPS-002: the role. fbi cannot read shared_preload_libraries, create the extension or see other roles' statements; the superuser can
+run 'pg_stat_statements,auto_explain' 1 status > /dev/null; sql_has "psql -U postgres -d fbi" "6 status connects as the superuser of the container"; sql_hasnt "-U fbi" "6 status does not connect as fbi"
+run 'pg_stat_statements,auto_explain' 0 enable > /dev/null; sql_has "psql -U postgres -d fbi" "6 enable connects as the superuser"; sql_hasnt "-U fbi" "6 enable does not connect as fbi"
+run 'pg_stat_statements' 1 top 3 > /dev/null; sql_has "psql -U postgres -d fbi" "6 top connects as the superuser"; sql_hasnt "-U fbi" "6 top does not connect as fbi"
+
 echo "RESULT: $PASS ok, $FAIL failed"
 [[ $FAIL -eq 0 ]]
