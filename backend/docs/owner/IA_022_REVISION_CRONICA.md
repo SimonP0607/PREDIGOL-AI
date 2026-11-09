@@ -12,7 +12,7 @@ Un nombre que las alineaciones no colocan, pero que se parece al de alguien de l
 
 **Qué no hace.** No llama a ningún modelo, no gasta dinero, no afirma causas («la crónica acertó» no significa que la crónica provocara nada), no modifica modelos, umbrales ni picks, y ninguna pieza de Intelligence la lee (`tests/unit/test_user_layer_isolation.py` lo comprueba: el módulo está en la lista de los que pueden nombrar la tabla de las crónicas, con su razón).
 
-**Dónde queda.** `ai.chronicle_reviews` (migración 0132, solo anexar, sin claves foráneas a tablas vivas): una fila por crónica y versión, con `items` (cada frase con su veredicto y el de cada referencia), `summary` (conteos), `outcome` (marcador y qué datos había), `picks` y el `trace_id` del partido. Solo lectura del dueño.
+**Dónde queda.** `ai.chronicle_reviews` (migración 0131, solo anexar, sin claves foráneas a tablas vivas): una fila por crónica y versión, con `items` (cada frase con su veredicto y el de cada referencia), `summary` (conteos), `outcome` (marcador y qué datos había), `picks` y el `trace_id` del partido. Solo lectura del dueño.
 
 **Cómo se usa.**
 

@@ -1,7 +1,7 @@
-"""Migration 0132 (IA-022): ``ai.chronicle_reviews`` - additive, append-only, reversible, and nothing else moves.
+"""Migration 0131 (IA-022): ``ai.chronicle_reviews`` - additive, append-only, reversible, and nothing else moves.
 
 The upgrade adds one table with its unique index and its trigger; it has no foreign key to a table the worker writes all the time (the lesson
-of 0076, 0100 and 0110). The downgrade drops it and goes up again. Its own scratch database (``<FBI_TEST_DB>_m0132``)."""
+of 0076, 0100 and 0110). The downgrade drops it and goes up again. Its own scratch database (``<FBI_TEST_DB>_m0131``)."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from tests.integration.test_migration_0111 import _cfg
 
 pytestmark = pytest.mark.integration
 
-SCRATCH = f"{TEST_DB}_m0132"
+SCRATCH = f"{TEST_DB}_m0131"
 
 
 def _drop(name: str) -> None:
@@ -57,11 +57,11 @@ def schema(c: psycopg.Connection[Any]) -> dict[str, list[Any]]:
     return {"columns": columns, "constraints": constraints}
 
 
-def test_0132_adds_one_table_without_foreign_keys_and_goes_down_and_up_again() -> None:
-    with scratch_at("0131") as dsn:
+def test_0131_adds_one_table_without_foreign_keys_and_goes_down_and_up_again() -> None:
+    with scratch_at("0130") as dsn:
         with psycopg.connect(dsn) as c:
             before = schema(c)
-        command.upgrade(_cfg(), "0132")
+        command.upgrade(_cfg(), "0131")
         with psycopg.connect(dsn) as c:
             after = schema(c)
             added = {t for _, t, *_ in after["columns"]} - {t for _, t, *_ in before["columns"]}
@@ -69,21 +69,21 @@ def test_0132_adds_one_table_without_foreign_keys_and_goes_down_and_up_again() -
             assert [r for r in after["columns"] if r[1] != "chronicle_reviews"] == before["columns"], "no column of another table moved"
             assert set(before["constraints"]) <= set(after["constraints"]), "no constraint was dropped or rewritten"
             assert not [r for r in after["constraints"] if r[0] == "ai.chronicle_reviews" and "FOREIGN KEY" in r[2]]
-            assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0132",)
+            assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0131",)
             assert c.execute("SELECT count(*) FROM pg_trigger WHERE tgrelid = 'ai.chronicle_reviews'::regclass AND NOT tgisinternal").fetchone() == (1,)
-        command.downgrade(_cfg(), "0131")
+        command.downgrade(_cfg(), "0130")
         with psycopg.connect(dsn) as c:
             assert schema(c) == before
             assert c.execute("SELECT to_regclass('ai.chronicle_reviews')").fetchone() == (None,)
-        command.upgrade(_cfg(), "0132")
+        command.upgrade(_cfg(), "0131")
         with psycopg.connect(dsn) as c:
             assert schema(c) == after
 
 
-def test_the_chain_of_the_revisions_has_this_migration_after_0131_and_one_head() -> None:
+def test_the_chain_of_the_revisions_has_this_migration_after_0130_and_one_head() -> None:
     script = ScriptDirectory.from_config(_cfg())
-    revision = script.get_revision("0132")
-    assert revision is not None and revision.down_revision == "0131" and re.fullmatch(r"\d{4}", revision.revision)
+    revision = script.get_revision("0131")
+    assert revision is not None and revision.down_revision == "0130" and re.fullmatch(r"\d{4}", revision.revision)
     heads = script.get_heads()
     assert len(heads) == 1, heads
-    assert "0132" in {r.revision for r in script.walk_revisions(base="base", head=heads[0])}, heads
+    assert "0131" in {r.revision for r in script.walk_revisions(base="base", head=heads[0])}, heads
