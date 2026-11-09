@@ -1,6 +1,6 @@
 # BE-025 · «Seguir» en todos los mercados del catálogo
 
-Plan Cuotas, fase 6. **Una migración (0132), sin interruptor nuevo, sin IA y sin servicios externos.** Hasta ahora el lector podía seguir
+Plan Cuotas, fase 6. **Una migración (0131), sin interruptor nuevo, sin IA y sin servicios externos.** Hasta ahora el lector podía seguir
 cinco mercados (1X2, más/menos, ambos marcan, hándicap y doble oportunidad). El catálogo de «Mercados» de un partido trae muchos más
 (córners, tarjetas, tiros, las mitades). Ahora cada mercado del catálogo tiene su «Seguir», y los que el lector sigue salen primero en su
 categoría. Es un favorito como los demás: **solo cambia el orden en que el lector ve los mercados**; no cambia un pick, una probabilidad,
@@ -36,14 +36,14 @@ mercado que el lector lee. Los favoritos se borran al anonimizar la cuenta (A7) 
 ## 4. Pruebas
 
 Unitarias: toda clave que el catálogo puede mostrar se puede seguir; lo que no es clave se rechaza. Integración: orden del lector,
-conservación al omitir, `[]`, límites, claves inválidas, favorito antiguo que no bloquea, exportación y anonimización. Migración 0132 en
+conservación al omitir, `[]`, límites, claves inválidas, favorito antiguo que no bloquea, exportación y anonimización. Migración 0131 en
 una base de prueba desde la 0130: forma de cada tipo, duplicados, bajada rechazada mientras alguien siga un mercado del catálogo y
 restitución del índice y la restricción anteriores. Web: reglas del selector, orden, nombre en palabras del lector, el botón por mercado
 y que los cinco clásicos no cambian.
 
 ## 5. Despliegue y vuelta atrás
 
-Migración **0132** (encima de la 0131): se aplica con `lock_timeout = '10s'` sobre una tabla pequeña. API y web salen en la misma versión:
+Migración **0131** (encima de la 0130): se aplica con `lock_timeout = '10s'` sobre una tabla pequeña. API y web salen en la misma versión:
 **una web nueva con una API vieja recibe 422 al guardar** (la API vieja no conoce `catalog_markets`), así que no se despliega la web sola.
 Una web vieja con la API nueva funciona. Vuelta atrás: revertir el PR; la migración baja solo mientras nadie siga un mercado del catálogo
 (con ellos, el código vuelve y la columna se queda: el código viejo ignora el tipo nuevo).

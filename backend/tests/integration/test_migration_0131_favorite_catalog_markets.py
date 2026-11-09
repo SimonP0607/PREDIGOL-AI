@@ -1,10 +1,10 @@
-"""Migration 0132 (a reader follows markets of the catalogue, CUOTAS BE-025): ``customer.favorites`` widens, nothing else.
+"""Migration 0131 (a reader follows markets of the catalogue, CUOTAS BE-025): ``customer.favorites`` widens, nothing else.
 
-Deploying must change nothing the system already stores: 0132 touches ``customer.favorites`` alone; the league, team, player
+Deploying must change nothing the system already stores: 0131 touches ``customer.favorites`` alone; the league, team, player
 and classic market rows keep working as they did. The table takes a ``catalog`` row (its own key and nothing else), refuses a
 row that points at two things, the same catalogue market twice and a key of a silly length, and keeps one row per reader and
 favourite for the older kinds. Going back is refused while a reader follows a catalogue market, and once none does it puts the
-older constraint and index back. Run on a scratch database at revision 0131, the way production does."""
+older constraint and index back. Run on a scratch database at revision 0130, the way production does."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from alembic.config import Config
 from tests.integration.conftest import ADMIN_URL, REPO_ROOT, _dsn
 
 pytestmark = pytest.mark.integration
-SCRATCH = "fbi_test_m0132"
+SCRATCH = "fbi_test_m0131"
 
 
 def _cfg() -> Config:
@@ -51,7 +51,7 @@ ROW = ("INSERT INTO customer.favorites (user_id, kind, ref_id, league_id, team_i
        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)")
 
 
-def test_0132_widens_the_favourites_and_goes_back_only_while_no_catalogue_market_is_followed(
+def test_0131_widens_the_favourites_and_goes_back_only_while_no_catalogue_market_is_followed(
         migrated_database: str) -> None:
     previous = os.environ.get("FBI_DATABASE_URL")
     _drop()
@@ -60,7 +60,7 @@ def test_0132_widens_the_favourites_and_goes_back_only_while_no_catalogue_market
     dsn = _dsn(SCRATCH)
     os.environ["FBI_DATABASE_URL"] = dsn.replace("postgresql://", "postgresql+psycopg://")
     try:
-        command.upgrade(_cfg(), "0131")
+        command.upgrade(_cfg(), "0130")
         with psycopg.connect(dsn, autocommit=True) as c:
             before = _shape(c)
             user = c.execute("INSERT INTO auth.users (email, display_name, password_hash, role) VALUES "
@@ -70,11 +70,11 @@ def test_0132_widens_the_favourites_and_goes_back_only_while_no_catalogue_market
                              "RETURNING id").fetchone()
             assert user and comp
             u, league = user[0], comp[0]
-            # What a reader already follows at 0131 must survive the revision untouched.
+            # What a reader already follows at 0130 must survive the revision untouched.
             c.execute("INSERT INTO customer.favorites (user_id, kind, ref_id, league_id) VALUES (%s, 'league', %s, %s)",
                       (u, league, league))
             c.execute("INSERT INTO customer.favorites (user_id, kind, market_key) VALUES (%s, 'market', 'OU')", (u,))
-        command.upgrade(_cfg(), "0132")
+        command.upgrade(_cfg(), "0131")
         with psycopg.connect(dsn, autocommit=True) as c:
             assert _shape(c) == before, "not a column more or less in any other table"
             assert c.execute("SELECT kind, ref_id, market_key, catalog_key FROM customer.favorites ORDER BY kind"
@@ -95,12 +95,12 @@ def test_0132_widens_the_favourites_and_goes_back_only_while_no_catalogue_market
             assert other
             c.execute(ROW, (other[0], "catalog", None, None, None, None, None, "corners_over_under.FT.match"))
         with pytest.raises(Exception, match="catalogue markets"):
-            command.downgrade(_cfg(), "0131")
+            command.downgrade(_cfg(), "0130")
         with psycopg.connect(dsn, autocommit=True) as c:
             assert c.execute("SELECT count(*) FROM customer.favorites WHERE user_id = %s", (u,)).fetchone() == (4,), (
                 "the favourites are kept")
             c.execute("DELETE FROM customer.favorites WHERE kind = 'catalog'")
-        command.downgrade(_cfg(), "0131")
+        command.downgrade(_cfg(), "0130")
         with psycopg.connect(dsn, autocommit=True) as c:
             assert c.execute("SELECT kind, ref_id, market_key FROM customer.favorites ORDER BY kind").fetchall() == [
                 ("league", league, None), ("market", None, "OU")], "the league and the market are still there"
