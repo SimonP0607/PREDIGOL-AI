@@ -3,7 +3,8 @@
 Two real cases put a match that was not in play on the board: a match the fixture feed had already closed (FT) while
 the odds feed still listed it for a few minutes, and a match the odds feed listed as "Not Started" before its kick-off.
 Both read as "En vivo" on Inicio. The fixture feed's final word wins, and an odds-feed-only row needs a kick-off that
-has already come. Every test runs in a transaction that is rolled back."""
+has already come. A third case (UX-080): the fixture itself is postponed (PST in ``core.fixtures``) with no live state
+at all while the odds feed still prices it - the provider's fixture data wins over the odds feed. Every test runs in a transaction that is rolled back."""
 
 from __future__ import annotations
 
@@ -108,3 +109,20 @@ def test_a_match_the_odds_feed_marks_finished_is_off_the_board(
     fid = fixture_at(db, world, "Blues", "Yellows", NOW - timedelta(minutes=100))
     odds_say(db, seed, fid, "Finished", finished=True, minute=90)
     assert on_the_board(db) == set()
+
+
+@pytest.mark.parametrize("status,group", [("PST", "postponed"), ("CANC", "cancelled"), ("ABD", "cancelled"),
+                                          ("FT", "finished")])
+def test_a_fixture_the_provider_data_calls_closed_is_off_the_board_though_the_odds_feed_prices_it(
+        db: psycopg.Connection[Any], world: World, seed: Seed, status: str, group: str) -> None:
+    fid = fixture_at(db, world, "Blues", "Reds", NOW - timedelta(minutes=20))
+    db.execute("UPDATE core.fixtures SET status_short = %s, status_group = %s WHERE id = %s", (status, group, fid))
+    odds_say(db, seed, fid, "First Half", minute=20, minutes_ago=0.5)
+    assert on_the_board(db) == set(), "no live state, but the fixture is closed: the provider's data wins"
+
+
+def test_a_scheduled_fixture_the_odds_feed_prices_in_play_stays_on_the_board(
+        db: psycopg.Connection[Any], world: World, seed: Seed) -> None:
+    fid = fixture_at(db, world, "Blues", "Reds", NOW - timedelta(minutes=20))
+    odds_say(db, seed, fid, "First Half", minute=20, minutes_ago=0.5)
+    assert on_the_board(db) == {fid}, "NS in core.fixtures is not a closing status"

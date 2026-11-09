@@ -237,7 +237,9 @@ not a series (revision 0068)."""
 
 CLOSED = ", ".join(f"'{code}'" for code in sorted(match_state.OVER | match_state.POSTPONED))
 """The fixture feed's closing statuses (finished, cancelled, abandoned, not played, postponed): once the feed says one
-of them the match is not in play, whatever the odds feed still lists for a few minutes."""
+of them the match is not in play, whatever the odds feed still lists for a few minutes. The same codes on the
+fixture itself (``core.fixtures.status_short``, e.g. PST) close it too: the provider's fixture data is the source that
+wins over the odds feed, which keeps pricing a match the provider has already postponed (UX-080)."""
 
 LIVE_BOARD = f"""
 WITH feed AS (
@@ -259,6 +261,7 @@ WITH feed AS (
      WHERE NOT COALESCE(o.is_finished, false) AND o.at > %(at)s - interval '5 minutes'
        AND fx.kickoff_at <= %(at)s
        AND COALESCE(fd.status, '') <> ALL (ARRAY[{CLOSED}])
+       AND COALESCE(fx.status_short, '') <> ALL (ARRAY[{CLOSED}])
 )
 SELECT f.id AS fixture_id, f.kickoff_at, c.name AS competition, c.country, c.country_code,
        c.id AS competition_id, c.logo_url AS competition_logo, c.flag_url AS competition_flag,
