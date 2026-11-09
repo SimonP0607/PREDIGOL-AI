@@ -22,12 +22,25 @@ every one of those writes for as long as the build takes. That statement cannot 
 alembic's for the builds and comes back (``autocommit_block``). A build that was interrupted leaves an INVALID index of the same name;
 the revision drops it first, so running it again is safe. No table is rewritten and no row changes; the rollback drops the indexes.
 
+WHAT THE FIRST PRODUCTION TRY TAUGHT (OPS-003, 2026-11-09)
+-----------------------------------------------------------
+The first try, with ``lock_timeout = '10s'``, failed on the production server: ``CREATE INDEX CONCURRENTLY`` waits for every
+transaction that holds a write lock on the table when it starts and when it finishes, and something kept a write lock on the table for more than 10 s
+(the worker's batches, most likely), so it timed out and left an INVALID index. The next tries failed at the cleanup, a plain ``DROP INDEX``: it takes an ACCESS EXCLUSIVE
+lock, waits behind the same writers, and while it waits every new writer queues behind IT - the migration was stopping the worker's
+writes for the whole timeout. The deploy stopped before touching the services (nothing was lost), but no release could go out.
+
+Now: the leftover is dropped with ``DROP INDEX CONCURRENTLY`` (it waits like the build, and blocks nobody), and the wait is 90 s per
+statement instead of 10 s; the deploy script still repeats the revision up to five times, and every repeat starts by dropping what the
+last one left.
+
 Revision ID: 0130
 Revises: 0129
 """
 
 from __future__ import annotations
 
+import sqlalchemy as sa
 from alembic import op
 
 revision = "0130"
@@ -41,20 +54,29 @@ INDEXES = (
 )
 
 
+# How long one statement may wait for the transactions that write to the table (a worker batch can outlast the first try's 10 s).
+LOCK_WAIT = "90s"
+
+
+def _left_invalid(schema: str, name: str) -> bool:
+    """True when an index of this name exists and the planner ignores it (a build that was interrupted)."""
+    found = op.get_bind().execute(
+        sa.text("SELECT EXISTS (SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid "
+                "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                "WHERE n.nspname = :schema AND c.relname = :name AND NOT i.indisvalid)"),
+        {"schema": schema, "name": name},
+    ).scalar()
+    return bool(found)
+
+
 def upgrade() -> None:
     with op.get_context().autocommit_block():
-        op.execute("SET lock_timeout = '10s'")
+        op.execute(f"SET lock_timeout = '{LOCK_WAIT}'")
         for schema, table, name, column in INDEXES:
-            # an index left INVALID by a build that was interrupted is not used and blocks the name
-            op.execute(f"""
-                DO $$
-                BEGIN
-                    IF EXISTS (SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
-                                 JOIN pg_namespace n ON n.oid = c.relnamespace
-                                WHERE n.nspname = '{schema}' AND c.relname = '{name}' AND NOT i.indisvalid) THEN
-                        DROP INDEX {schema}.{name};
-                    END IF;
-                END $$""")
+            # an index left INVALID by a build that was interrupted is not used and blocks the name; CONCURRENTLY, so that the
+            # drop waits like the build does and never makes the worker's writes queue behind an ACCESS EXCLUSIVE request
+            if _left_invalid(schema, name):
+                op.execute(f"DROP INDEX CONCURRENTLY IF EXISTS {schema}.{name}")
             op.execute(f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {name} ON {schema}.{table} USING BRIN ({column})")
         op.execute("RESET lock_timeout")
     for schema, table, name, column in INDEXES:
