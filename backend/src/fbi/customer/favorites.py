@@ -30,8 +30,7 @@ read, not the picks they take).
 
 from __future__ import annotations
 
-import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Final, Literal
@@ -41,8 +40,6 @@ import psycopg
 from fbi.core.env import environment
 from fbi.core.suggestions import SUGGESTED_LEAGUES, SUGGESTED_TEAM
 from fbi.customer.db import CustomerError, write_connection
-from fbi.odds.quote_current import MARKET_CODES
-from fbi.odds.quote_taxonomy import PERIODS, SUBJECTS, known_bet_ids
 
 MAX_LEAGUES: Final = 10
 MAX_TEAMS: Final = 20
@@ -52,22 +49,6 @@ MAX_CATALOG: Final = 10
 """Markets of the catalogue a reader may follow besides the five classic ones (widens without a migration)."""
 FOLLOWABLE_MARKETS: Final = ("1X2", "OU", "BTTS", "AH", "DC")
 """The markets PrediGol reads and a reader may follow (the product's MarketKey: a test keeps both lists the same)."""
-_CATALOG_CODES: Final = frozenset(MARKET_CODES.values())
-_CATALOG_KEY: Final = re.compile(r"^([a-z0-9_]+)\.([A-Z0-9]+)\.([a-z]+)$")
-
-
-def catalog_key_ok(key: str) -> bool:
-    """Whether ``key`` is the key of a market the catalogue can show (``code.period.subject``): a code of the taxonomy (or
-    ``bet_<id>`` of a bet it knows), a period and a subject it has. The code decides, not the database: a key the taxonomy
-    stops producing simply never shows a «Seguir»."""
-    if len(key) > 80 or (m := _CATALOG_KEY.match(key)) is None:
-        return False
-    code, period, subject = m.groups()
-    known_code = code in _CATALOG_CODES or (
-        code.startswith("bet_") and code[4:].isdigit() and int(code[4:]) in known_bet_ids())
-    return known_code and period in PERIODS and subject in SUBJECTS
-
-
 HINTS: Final = ("picks", "match", "parlay", "my_picks")
 """The pages with a first-visit hint (plan section 20)."""
 ONBOARDING_SWITCH: Final = "FBI_ONBOARDING"
@@ -231,7 +212,8 @@ def extras(conn: psycopg.Connection[Any], user_id: int) -> Extras:
 
 
 def validate_extras(conn: psycopg.Connection[Any], players: Sequence[int], markets: Sequence[str],
-                    *, already: Extras | None = None, catalog: Sequence[str] = ()) -> Extras:
+                    *, already: Extras | None = None, catalog: Sequence[str] = (),
+                    catalog_valid: Callable[[str], bool] | None = None) -> Extras:
     """The players and markets a reader may keep: within the limits, players who appeared in a line-up of a league
     PrediGol follows, markets PrediGol reads. One the reader already follows is kept without asking again (a player ages out
     of the window; a favourite never blocks a save). Refuses (422) rather than trims."""
@@ -240,7 +222,7 @@ def validate_extras(conn: psycopg.Connection[Any], players: Sequence[int], marke
     if len(want_catalog) > MAX_CATALOG:
         raise CustomerError(422, "too_many_catalog_markets", f"at most {MAX_CATALOG} catalogue markets")
     kept_catalog = already.catalog if already else ()
-    if unknown_key := [k for k in want_catalog if k not in kept_catalog and not catalog_key_ok(k)]:
+    if unknown_key := [k for k in want_catalog if k not in kept_catalog and not (catalog_valid and catalog_valid(k))]:
         raise CustomerError(422, "unknown_catalog_market", f"not a market of the catalogue: {unknown_key[0]}")
     if len(want_players) > MAX_PLAYERS:
         raise CustomerError(422, "too_many_players", f"at most {MAX_PLAYERS} players")
@@ -267,9 +249,11 @@ INSERT_SQL = (
 
 def replace(user_id: int, leagues: Sequence[int], teams: Sequence[int], *, at: datetime,
             players: Sequence[int] | None = None, markets: Sequence[str] | None = None,
-            catalog: Sequence[str] | None = None) -> Saved:
+            catalog: Sequence[str] | None = None, catalog_valid: Callable[[str], bool] | None = None) -> Saved:
     """The reader's favourites become exactly these (idempotent). ``players`` / ``markets`` / ``catalog`` left out (None)
-    keep what the reader has - a page from before 3.1 (or from before BE-025) never clears them. Returns what they are now,
+    keep what the reader has - a page from before 3.1 (or from before BE-025) never clears them. ``catalog_valid`` says
+    whether a NEW catalogue key is one the catalogue can show: the API passes it (the taxonomy lives in PrediGol Intelligence's
+    packages, which this layer never loads); without it no new key is accepted. Returns what they are now,
     what was added and what was removed - the page records each as an event (favorite_added / favorite_removed)."""
     with write_connection() as conn:
         want = validate(conn, leagues, teams)
@@ -280,7 +264,8 @@ def replace(user_id: int, leagues: Sequence[int], teams: Sequence[int], *, at: d
                        validate_extras(conn, before_extras.players if players is None else players,
                                        before_extras.markets if markets is None else markets,
                                        already=before_extras,
-                                       catalog=before_extras.catalog if catalog is None else catalog))
+                                       catalog=before_extras.catalog if catalog is None else catalog,
+                                       catalog_valid=catalog_valid))
         removed = Chosen(leagues=tuple(i for i in before.leagues if i not in want.leagues),
                          teams=tuple(i for i in before.teams if i not in want.teams))
         added = Chosen(leagues=tuple(i for i in want.leagues if i not in before.leagues),

@@ -33,6 +33,7 @@ from fbi.api.contracts.product import CompetitionBadge, TeamBadge
 from fbi.api.deps import get_db
 from fbi.api.errors import ApiError
 from fbi.api.security import App, same_site_only
+from fbi.api.services.catalog_keys import catalog_key_ok
 from fbi.auth.roles import Role
 from fbi.auth.service import Principal
 from fbi.core.clock import now
@@ -165,7 +166,7 @@ def put_favorites(body: FavoritesIn, conn: Db, principal: App) -> FavoritesView:
     and catalogue markets left out stay as they were."""
     try:
         favorites.replace(principal.user_id, body.leagues, body.teams, at=now(), players=body.players,
-                          markets=body.markets, catalog=body.catalog_markets)
+                          markets=body.markets, catalog=body.catalog_markets, catalog_valid=catalog_key_ok)
     except CustomerError as exc:
         raise _refused(exc) from exc
     conn.rollback()  # a fresh snapshot: written by another connection
