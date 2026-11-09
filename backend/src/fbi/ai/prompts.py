@@ -48,7 +48,7 @@ REVIEW_VERSION = "review-v2"
 """v2 (8 Oct 2026): the same prompt asked with a set effort and room for thinking - on Claude 5.5 every v1 answer was
 cut at max_tokens by the thinking before it. A last review of an older version does not hold off a new one."""
 EXTRACT_VERSION = "extract-v1"
-EXTRACT_V2_VERSION = "extract-v2"
+EXTRACT_V2_VERSION = "extract-v3"
 """v2 (plan, phase 2, Research Service v2): the extractor answers in ``claim-v1`` - typed claims about SUBJECTS the server listed, each with a
 short quote of the page, the page's id and the date the page states - and not in free items with names. It reads pages found for an
 entity and a topic, and a page is read once for every subject it is read for, whatever match asked. v1 stays in force beside it until the owner
@@ -171,6 +171,9 @@ Rules you never break:
   general injury report).
 - quote is copied from the page, character for character, the shortest passage that says the fact (300 characters at most). Never paraphrase it,
   translate it or join two passages. A claim whose quote is not in its page is thrown away.
+- A claim about a PLAYER needs a quote that names him: the quote must contain his name, or his surname, as the page writes it. If the sentence that
+  states the fact only says "he", "him" or "his", copy the passage that names him together with it (300 characters at most, still one passage, never
+  two joined). If no single passage both names him and says the fact, write no claim about him. A quote that does not name the player is thrown away.
 - page_id is the id of the page the quote is in. published_on is the date the page itself states, as YYYY-MM-DD, or "" when it states none. Never
   guess a date and never use today's.
 - A rumour, a doubt or a denial is a claim like any other, with the type its words support: how far to believe a source is the server's decision,

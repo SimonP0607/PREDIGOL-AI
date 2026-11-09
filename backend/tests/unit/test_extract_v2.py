@@ -144,7 +144,7 @@ def test_the_request_is_the_prompt_of_extract_v2_and_the_schema_of_claim_v1() ->
     assert req.system == EXTRACT_V2_SYSTEM and req.user == "{}" and req.schema == schema_of(CLAIM) and req.schema_name == x.TOOL
     assert req.max_tokens == x.MAX_TOKENS
     assert x.input_hash("{}") != x.input_hash("{ }") and len(x.input_hash("{}")) == 64
-    assert x.input_hash("{}") == x.input_hash("{}") and EXTRACT_V2_VERSION == "extract-v2"
+    assert x.input_hash("{}") == x.input_hash("{}") and EXTRACT_V2_VERSION == "extract-v3"
 
 
 # ── the answer ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -462,7 +462,7 @@ def test_a_claim_about_this_match_becomes_the_evidence_of_this_match() -> None:
     assert item.source_name == "example.com" and item.published_at == datetime(2026, 10, 25, 8, 0, tzinfo=UTC)
     assert item.event_at == KICKOFF and (item.confidence, item.relevance) == (0.5, 0.6)
     assert item.story_key == f"w2:f{MATCH}:PLAYER:{PLAYER}:OUT"
-    assert item.attributes == {"extract_version": "extract-v2", "claim_type": "OUT", "applies_to": "THIS_MATCH", "result_title": "Team news",
+    assert item.attributes == {"extract_version": "extract-v3", "claim_type": "OUT", "applies_to": "THIS_MATCH", "result_title": "Team news",
                                "player_name": "Juan Pérez"}
     assert item.fresh_until == AT + timedelta(hours=24), "a day: the kick-off is twenty hours away"
 
