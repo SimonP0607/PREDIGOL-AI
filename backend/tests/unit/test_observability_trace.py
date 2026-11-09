@@ -232,6 +232,7 @@ def test_nothing_that_decides_imports_the_trace() -> None:
     """The trace observes production; production must not come to depend on it."""
     importers = []
     readers = {
+        "src/fbi/chronicle/review.py",  # the post-match review of the chronicle (IA-022) carries the match's trace id; it decides nothing
         "src/fbi/narrator/job.py",  # the Narrator (narrator-v1, IA-017) explains a pick AFTER its decision from its trace; it decides nothing
     }
     for path in (ROOT / "src/fbi").rglob("*.py"):
