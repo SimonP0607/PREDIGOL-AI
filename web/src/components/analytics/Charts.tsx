@@ -111,9 +111,9 @@ export function LineMovementChart({
           key={s.bookmaker}
           type="monotone"
           dataKey={s.bookmaker}
-          stroke={seriesColors[i % seriesColors.length]}
+          stroke={seriesColors[i % seriesColors.length] ?? "var(--color-border-strong)"}
           strokeWidth={s.bookmaker === "Consensus" ? 2 : 1.4}
-          strokeDasharray={s.bookmaker === "Consensus" ? "4 3" : undefined}
+          {...(s.bookmaker === "Consensus" ? { strokeDasharray: "4 3" } : {})}
           dot={false}
           isAnimationActive={false}
         />
