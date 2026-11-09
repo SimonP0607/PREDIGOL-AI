@@ -155,7 +155,7 @@ def test_the_book_of_a_match_is_its_answer_in_force_read_back_from_raw(db: psyco
     assert one["kickoff_at"] == KO and one["builder_version"] == BUILDER_VERSION and one["newer_pending"] is False
     assert one["provider_update_at"] == KO - timedelta(days=1, hours=2)
     assert one["summary"]["books"] == 10 and len(odds_of(one, "Home")) == 10
-    assert all(r["summary"]["v"] == 1 for r in book.values())
+    assert all(r["summary"]["v"] == 2 and r["books"] == r["summary"]["books"] for r in book.values())
     assert {r["definition_id"] for r in book.values()} == {
         scalar(db.execute("SELECT id FROM market.market_definitions WHERE provider_bet_id = %s AND scope = 'prematch'", (b,)))
         for b in book}

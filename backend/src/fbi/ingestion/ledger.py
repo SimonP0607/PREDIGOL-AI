@@ -8,6 +8,7 @@ error, and how long it took.
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -23,6 +24,23 @@ from fbi.core.logging import bind_run_id
 from fbi.providers.base import RawResponse
 
 log = structlog.get_logger(__name__)
+
+BOOK_REFRESH_JOB = "odds_book_refresh"
+"""The book refreshes' job (``fbi.odds.book_refresh``, plan Cuotas BE-011): the one job whose RAW index rows another job may
+claim (``RunLedger.record_payloads``)."""
+
+_CLAIM_SQL = """
+UPDATE raw.ingestion_payloads p
+   SET run_id = v.run_id, provider = v.provider, endpoint = v.endpoint, params = v.params::jsonb, fetched_at = v.fetched_at,
+       http_status = v.http_status, results_count = v.results_count, file_path = v.file_path, bytes = v.bytes
+  FROM unnest(%(hashes)s::text[], %(runs)s::bigint[], %(providers)s::text[], %(endpoints)s::text[], %(params)s::text[],
+              %(fetched)s::timestamptz[], %(statuses)s::int[], %(counts)s::int[], %(paths)s::text[], %(bytes)s::bigint[])
+       AS v(hash, run_id, provider, endpoint, params, fetched_at, http_status, results_count, file_path, bytes),
+       raw.ingestion_runs owner
+ WHERE p.hash = v.hash AND owner.id = p.run_id AND owner.job_type = %(job)s
+   AND NOT EXISTS (SELECT 1 FROM raw.ingestion_runs me WHERE me.id = v.run_id AND me.job_type = %(job)s)
+"""
+"""A body a book refresh indexed first, now received by another job: the row becomes that job's, at its own fetch time."""
 
 
 @dataclass
@@ -115,7 +133,14 @@ class RunLedger:
         from: market.odds_snapshots.payload_hash references this table.
 
         An ephemeral response (``RawResponse.persisted`` False: hashed, never written) has no file, and an index row
-        for it would be a reference to nothing - the RAW integrity audit would call it missing. It is refused."""
+        for it would be a reference to nothing - the RAW integrity audit would call it missing. It is refused.
+
+        The index keeps a body once, under the first run that fetched it - with one exception (plan Cuotas, BE-011). A
+        book refresh (``BOOK_REFRESH_JOB``) asks ``/odds`` only for the explorer's book, and what it fetched must not
+        change what any other job leaves behind: when another run fetches a body a refresh indexed first, the row becomes
+        that run's, at its own fetch time and path - the row it would have written had the refresh never asked. The
+        extractor (which skips the refreshes' payloads) then reads it as it always would have. A refresh never claims a
+        row, and nothing else moves: the claim costs one indexed UPDATE, and only for ``/odds`` bodies."""
         if not raws:
             return 0
         ephemeral = [r.endpoint for r in raws if not getattr(r, "persisted", True)]
@@ -133,6 +158,16 @@ class RunLedger:
                 ],
                 returning=False,
             )
+            odds = [r for r in raws if r.endpoint == "/odds"]
+            if odds:
+                cur.execute(_CLAIM_SQL, {
+                    "hashes": [r.payload_hash for r in odds], "runs": [run_id] * len(odds), "providers": [provider] * len(odds),
+                    "endpoints": [r.endpoint for r in odds], "params": [json.dumps(dict(r.params)) for r in odds],
+                    "fetched": [r.fetched_at for r in odds], "statuses": [r.http_status for r in odds],
+                    "counts": [r.results_count for r in odds], "paths": [r.file_path for r in odds],
+                    "bytes": [r.bytes_written for r in odds], "job": BOOK_REFRESH_JOB})
+                if cur.rowcount and cur.rowcount > 0:
+                    log.info("payloads.claimed_from_book_refresh", run_id=run_id, payloads=cur.rowcount)
             cur.execute("UPDATE raw.ingestion_runs SET heartbeat_at = %s WHERE id = %s", (now(), run_id))
         return len(raws)
 

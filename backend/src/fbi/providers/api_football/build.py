@@ -20,6 +20,7 @@ from fbi.providers.quota import (
     MINUTE_SHARE,
     PersistentDailyQuota,
     PersistentMinuteLimiter,
+    PersistentReportedQuota,
     RunCappedQuota,
 )
 from fbi.storage.payload_store import PayloadStore
@@ -57,6 +58,8 @@ def build_client(max_requests: int | None = None) -> ApiFootballClient:
         PayloadStore(settings.runtime.raw_store_dir),
         quota=quota,
         rate_limiter=build_minute_limiter(),
+        # What the provider says of our quota (its headers), kept in raw.provider_reported_quota (plan Cuotas, BE-011).
+        quota_reporter=PersistentReportedQuota(connect=_connect),
     )
 
 
