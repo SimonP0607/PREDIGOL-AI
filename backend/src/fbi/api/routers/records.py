@@ -180,7 +180,8 @@ def set_my_odds(body: UserOddsIn, principal: App, record_id: Annotated[int, Path
 
 def _legs(body: ParlayIn) -> list[userdata.LegIn]:
     return [userdata.LegIn(fixture_id=leg.fixture_id, market_key=leg.market_key, selection=leg.selection,
-                           line=leg.line, odds=leg.odds) for leg in body.legs]
+                           line=leg.line, odds=leg.odds, odds_captured_at=leg.odds_captured_at)
+            for leg in body.legs]
 
 
 @router.post("/me/parlays/validate", response_model=Envelope[ParlayValidation])
