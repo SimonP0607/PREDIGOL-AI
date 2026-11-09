@@ -121,7 +121,7 @@ def upgrade() -> None:
     for schema, table, name, column in INDEXES:
         op.execute(f"COMMENT ON INDEX {schema}.{name} IS "
                    f"'The admin overview counts {table} by {column} over the last 24 hours (UX-081): BRIN, because the column is written in "
-                   "time order. Built in one pass, holding back the writers of the table for the scan (0130, corrected by BE-025).'")
+                   "time order. Built in one pass, holding back the writers of the table for the scan (0130, corrected by BE-027).'")
 
 
 def downgrade() -> None:

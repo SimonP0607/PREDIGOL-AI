@@ -1,4 +1,4 @@
-"""Migration 0130 (UX-081, corrected by BE-025): two BRIN indexes by date, for the admin overview's 24-hour counts - additive, reversible, and nothing else moves.
+"""Migration 0130 (UX-081, corrected by BE-027): two BRIN indexes by date, for the admin overview's 24-hour counts - additive, reversible, and nothing else moves.
 
 The upgrade builds ``models.predictions (created_at)`` and ``picks.pick_candidates (evaluated_at)`` as BRIN indexes, valid; the
 downgrade drops them and goes up again; running the upgrade's statements twice is harmless (``IF NOT EXISTS`` and the INVALID

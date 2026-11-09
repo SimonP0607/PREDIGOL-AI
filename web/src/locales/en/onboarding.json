@@ -87,6 +87,9 @@
     "marketAdded": "You now follow {market}.",
     "marketRemoved": "You no longer follow {market}.",
     "marketFull": "You already follow {max} markets: remove one in your profile to follow {market}.",
+    "catalogSideHome": "home",
+    "catalogSideAway": "away",
+    "catalogFull": "You already follow {max} catalogue markets: remove one in your profile to follow {market}.",
     "follow": "Follow",
     "following": "Following"
   }

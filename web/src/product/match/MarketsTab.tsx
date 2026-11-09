@@ -57,8 +57,9 @@ import {
 } from "./marketCatalog";
 import { MarketFold } from "./MarketFold";
 import { Block, CenterSection, FreshnessLabel, MoreButton, SectionNote } from "./ui";
-import { FollowMarket } from "@/product/favorites/FollowExtras";
-import { followableMarket } from "@/product/favorites/model";
+import { FollowCatalogMarket, FollowMarket } from "@/product/favorites/FollowExtras";
+import { useFollowedCatalog } from "@/product/favorites/useFollowedCatalog";
+import { followableMarket, followedFirst } from "@/product/favorites/model";
 import { orderBoards, orderSentence } from "./marketOrder";
 import { useMarketTarget } from "./useMarketTarget";
 import { prefersReducedMotion } from "@/product/shared/motion";
@@ -71,6 +72,11 @@ const LINE_MARKETS = new Set(["OU", "AH"]);
 function FollowBoard({ market }: { market: string }) {
   const key = followableMarket(market);
   return key ? <FollowMarket market={key} /> : null;
+}
+
+/** «Seguir» beside a market of the catalogue that is not one of the five (CUOTAS, BE-025), by the catalogue's own key. */
+function FollowCatalog({ catalogKey }: { catalogKey: string }) {
+  return <FollowCatalogMarket catalogKey={catalogKey} />;
 }
 
 function Books({ count }: { count: number }) {
@@ -457,9 +463,10 @@ function LiveGroup({
  * A list of folds, the first one open. A tap on a price, its bookmakers or its lines of one of the five is that market
  * consulted (plan UX, B2); opening or closing a fold is not.
  */
-type Follow = (market: string) => ReactNode;
+type Follow = (market: string, scope?: "catalog") => ReactNode;
 
-const followBoard: Follow = (market) => <FollowBoard market={market} />;
+const followBoard: Follow = (market, scope) =>
+  scope === "catalog" ? <FollowCatalog catalogKey={market} /> : <FollowBoard market={market} />;
 
 /** Brings the element it sits in into view, once (a smooth scroll, unless the reader asked for reduced motion). */
 function ScrollIntoView() {
@@ -515,7 +522,7 @@ function FoldList({
             view={v}
             choose={choose}
             defaultOpen={named ? v.key === target : i === 0}
-            follow={v.parlay ? follow(v.parlay) : null}
+            follow={v.parlay ? follow(v.parlay) : v.key ? follow(v.key, "catalog") : null}
           />
           {named && v.key === target ? <ScrollIntoView /> : null}
         </div>
@@ -533,6 +540,7 @@ export function CategoryPanel({
   onConsult,
   follow,
   target,
+  followed = [],
 }: {
   ctx: MatchCtx;
   category: CatalogCategory;
@@ -542,6 +550,8 @@ export function CategoryPanel({
   follow: Follow;
   /** The catalogue key a link names, when it is in this category. */
   target?: string | undefined;
+  /** The catalogue markets the reader follows, in their order: they go first (only the order changes). */
+  followed?: readonly string[];
 }) {
   const q = useQuery(queries.matchMarketCatalog(ctx.fixtureId, category));
   if (q.isPending) {
@@ -560,7 +570,10 @@ export function CategoryPanel({
       </div>
     );
   }
-  const views = (q.data?.data?.markets ?? []).map((m) => catalogView(m, sides));
+  const views = followedFirst(
+    (q.data?.data?.markets ?? []).map((m) => catalogView(m, sides)),
+    followed,
+  );
   if (views.length === 0)
     return <SectionNote status="empty">{t("match.catalog.empty")}</SectionNote>;
   const shownOnly = views.some((v) => v.parlay === null);
@@ -593,6 +606,7 @@ export function PrematchMarkets({
   first,
   onConsult: consult,
   follow = followBoard,
+  followed = [],
 }: {
   ctx: MatchCtx;
   order: MarketOrder | null;
@@ -600,6 +614,8 @@ export function PrematchMarkets({
   onConsult: (market: string) => void;
   /** «Seguir» beside each of the five; it reads the reader's account (a test draws none). */
   follow?: Follow;
+  /** The catalogue markets the reader follows, in their order (they go first in a category). */
+  followed?: readonly string[];
 }) {
   const { markets, phase, match: m } = ctx;
   const sides = { home: m.home.name, away: m.away.name };
@@ -714,6 +730,7 @@ export function PrematchMarkets({
               choose={choose}
               onConsult={consult}
               follow={follow}
+              followed={followed}
               target={picked === null && linked?.category === view ? linked.key : undefined}
             />
           )}
@@ -732,13 +749,20 @@ export function PrematchMarkets({
 export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
   const sides = { home: ctx.match.home.name, away: ctx.match.away.name };
   const { order, first, consult } = useMarketOrder(ctx.fixtureId);
+  const followed = useFollowedCatalog();
   return (
     <div className="space-y-8">
       {ctx.phase === "live" ? (
         <LiveGroup ctx={ctx} sides={sides} first={first} onConsult={consult} />
       ) : null}
 
-      <PrematchMarkets ctx={ctx} order={order} first={first} onConsult={consult} />
+      <PrematchMarkets
+        ctx={ctx}
+        order={order}
+        first={first}
+        onConsult={consult}
+        followed={followed}
+      />
 
       <div className="flex justify-center">
         <Link

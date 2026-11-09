@@ -95,6 +95,8 @@ NAMES_IT: dict[str, str] = {
                           "owner's command; it writes nothing and no decision path imports it",
     "familydecisions/memory.py": "the memory of the families (memory-fam-v1, F11, shadow): the only writer of intel.family_memory, and the reader of the "
                                  "post-mortems of the families it adds up",
+    "chronicle/review.py": "the post-match review of the chronicle (IA-022): lists beside it the post-mortems of the match's selections, read-only and "
+                           "after the match; nothing that decides imports it",
     "observability/trace.py": "the end-to-end trace (trace-v1, Plan Maestro IA, P0): reads the post-mortem of a settled selection and of its match to show "
                               "them as spans of the trace; read-only, for observability, never on a decision path (nothing that decides imports it)",
 }

@@ -484,7 +484,8 @@ def test_the_favourites_are_in_the_export_and_go_when_the_account_is_anonymised(
     f = fresh.ids
     reader = client(OTHER)
     reader.put("/api/v1/me/favorites", json={"leagues": [f["uno"]], "teams": [f["nacional"]],
-                                             "players": [players["james"]], "markets": ["BTTS"]})
+                                             "players": [players["james"]], "markets": ["BTTS"],
+                                             "catalog_markets": [CORNERS]})
     reader.post("/api/v1/me/hints", json={"hint": "parlay"})
     reader.post("/api/v1/me/onboarding")
     other_id, owner_id = uid(database, OTHER), uid(database, OWNER)
@@ -492,7 +493,8 @@ def test_the_favourites_are_in_the_export_and_go_when_the_account_is_anonymised(
         document = privacy.export(conn, other_id)
     assert [(x["kind"], x["id"], x["market"], x["name"]) for x in document["favorites"]] == [
         ("league", f["uno"], None, "Liga Uno"), ("team", f["nacional"], None, "Atlético Nacional"),
-        ("player", players["james"], None, "James Rodríguez"), ("market", None, "BTTS", None)], (
+        ("player", players["james"], None, "James Rodríguez"), ("market", None, "BTTS", None),
+        ("catalog", None, CORNERS, None)], (
         "a market has no id, only its key")
     assert document["welcome"]["hints_seen"] == ["parlay"] and document["welcome"]["onboarded_at"] is not None
     anonymize.anonymise(principal("SUPER_ADMIN", user_id=owner_id), other_id, confirm=OTHER, ip=None)
@@ -750,3 +752,65 @@ def test_para_ti_marks_which_of_todays_picks_are_the_readers_and_their_bells(
     shown = reader_app(db, users["team"]).get("/api/v1/daily").json()["data"]["set"]["items"]
     assert [(i["rank"], i["match"]["fixture_id"]) for i in shown] == [(1, over), (2, home)], (
         "the picks themselves are the day's, whoever reads: «Para ti» only says which are theirs")
+
+
+# ── markets of the catalogue (CUOTAS, BE-025) ─────────────────────────────────────────────────────────────────────────
+
+CORNERS, CARDS, BTTS_1H = "corners_over_under.FT.match", "yellow_cards_1x2.FT.home", "goals_btts.1H.match"
+
+
+def test_markets_of_the_catalogue_are_followed_apart_from_the_five_classic_ones(
+        fresh: Football, database: str) -> None:
+    f, reader = fresh.ids, client(READER)
+    base = {"leagues": [f["uno"]], "teams": []}
+    first = reader.put("/api/v1/me/favorites", json={**base, "markets": ["OU"], "catalog_markets": [CORNERS, CARDS]})
+    assert first.status_code == 200, first.text
+    view = first.json()
+    assert view["catalog_markets"] == [CORNERS, CARDS] and view["markets"] == ["OU"], "two lists, never mixed"
+    assert (view["max_markets"], view["max_catalog_markets"]) == (5, 10)
+    assert reader.put("/api/v1/me/favorites", json={**base, "markets": ["OU"],
+                                                    "catalog_markets": [CORNERS, CARDS]}).json() == view, "idempotent"
+    with psycopg.connect(database) as conn:
+        rows = conn.execute("SELECT kind, market_key, catalog_key FROM customer.favorites WHERE user_id = %s "
+                            "AND kind IN ('market', 'catalog') ORDER BY created_at, ref_id NULLS LAST",
+                            (uid(database, READER),)).fetchall()
+    assert rows == [("market", "OU", None), ("catalog", None, CORNERS), ("catalog", None, CARDS)]
+    # a page from before BE-025 sends no catalogue markets: they stay; [] clears them and leaves the classic market
+    stale = reader.put("/api/v1/me/favorites", json={**base, "markets": ["OU", "BTTS"]}).json()
+    assert stale["catalog_markets"] == [CORNERS, CARDS] and stale["markets"] == ["OU", "BTTS"]
+    swapped = reader.put("/api/v1/me/favorites", json={**base, "catalog_markets": [CARDS, BTTS_1H]}).json()
+    assert swapped["catalog_markets"] == [CARDS, BTTS_1H] and swapped["markets"] == ["OU", "BTTS"]
+    cleared = reader.put("/api/v1/me/favorites", json={**base, "catalog_markets": []}).json()
+    assert cleared["catalog_markets"] == [] and cleared["markets"] == ["OU", "BTTS"]
+
+
+def test_a_catalogue_market_must_be_one_the_taxonomy_names_within_the_limit(fresh: Football) -> None:
+    f, reader = fresh.ids, client(READER)
+    base = {"leagues": [f["uno"]], "teams": []}
+    assert reader.put("/api/v1/me/favorites", json={**base, "catalog_markets": [CORNERS]}).status_code == 200
+    for key in ("FOO", "corners_over_under.FT", "corners_over_under.XX.match", "corners_over_under.FT.coach",
+                "nonsense_market.FT.match", "bet_999999999.FT.match", "Corners_Over_Under.FT.match",
+                "corners_over_under.FT.match; DROP TABLE x", "a" * 90):
+        r = reader.put("/api/v1/me/favorites", json={**base, "catalog_markets": [key]})
+        assert (r.status_code, code(r)) == (422, "unknown_catalog_market"), key
+    keys = [f"{c}.{p}.match" for c in ("corners_over_under", "goals_btts", "result_1x2") for p in ("FT", "1H", "2H")]
+    many = reader.put("/api/v1/me/favorites", json={**base, "catalog_markets": [*keys, "goals_odd_even.FT.match", "cards_over_under.FT.match"]})
+    assert (many.status_code, code(many)) == (422, "too_many_catalog_markets")
+    assert reader.put("/api/v1/me/favorites", json={**base, "catalog_markets": keys + ["x"] * 12}).status_code == 422
+    assert reader.put("/api/v1/me/favorites", json={**base, "catalog_markets": [CORNERS], "stake": 10}).status_code == 422
+    after = reader.get("/api/v1/me/favorites").json()
+    assert after["catalog_markets"] == [CORNERS], "nothing changed"
+
+
+def test_a_followed_catalogue_market_never_blocks_a_save_when_the_taxonomy_forgets_it(
+        fresh: Football, database: str) -> None:
+    f, reader = fresh.ids, client(READER)
+    with psycopg.connect(database, autocommit=True) as conn:  # followed when the taxonomy had it
+        conn.execute("INSERT INTO customer.favorites (user_id, kind, catalog_key) VALUES (%s, 'catalog', 'retired_market.FT.match')",
+                     (uid(database, READER),))
+    r = reader.put("/api/v1/me/favorites", json={"leagues": [f["uno"]], "teams": [],
+                                                 "catalog_markets": ["retired_market.FT.match", CORNERS]})
+    assert r.status_code == 200, r.text
+    assert r.json()["catalog_markets"] == ["retired_market.FT.match", CORNERS]
+    only_new = reader.put("/api/v1/me/favorites", json={"leagues": [f["uno"]], "teams": [], "catalog_markets": ["other_retired.FT.match"]})
+    assert (only_new.status_code, code(only_new)) == (422, "unknown_catalog_market"), "a new one still has to be valid"
