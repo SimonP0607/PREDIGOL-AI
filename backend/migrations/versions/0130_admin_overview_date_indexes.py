@@ -59,7 +59,11 @@ LOCK_WAIT = "90s"
 
 
 def _left_invalid(schema: str, name: str) -> bool:
-    """True when an index of this name exists and the planner ignores it (a build that was interrupted)."""
+    """True when an index of this name exists and the planner ignores it (a build that was interrupted).
+
+    Offline (``--sql``) there is no database to ask: a script for a database without the index has nothing to clean."""
+    if op.get_context().as_sql:
+        return False
     found = op.get_bind().execute(
         sa.text("SELECT EXISTS (SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid "
                 "JOIN pg_namespace n ON n.oid = c.relnamespace "
