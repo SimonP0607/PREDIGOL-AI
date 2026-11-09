@@ -239,6 +239,31 @@ function dedupe(legs: SlipLeg[]): SlipLeg[] {
   return legs.filter((l) => (seen.has(l.fixture_id) ? false : (seen.add(l.fixture_id), true)));
 }
 
+/** What the server answered for a selection: the odds it priced and when it captured them. */
+export interface SeenLeg {
+  odds?: string | null | undefined;
+  odds_captured_at?: string | null | undefined;
+}
+
+/**
+ * What is saved: each selection with the exact odds the screen showed and when the server captured them (plan CUOTAS,
+ * phase 6). A selection the server has not priced goes without odds, so the server keeps its own newest price.
+ */
+export function savedBody(legs: readonly SlipLeg[], server: ReadonlyMap<string, SeenLeg>) {
+  return legs.map((l) => {
+    const seen = server.get(l.key);
+    const odds = seen?.odds ?? null;
+    const at = seen?.odds_captured_at ?? null;
+    return {
+      fixture_id: l.fixture_id,
+      market_key: l.market_key,
+      selection: l.selection,
+      line: l.line,
+      ...(odds && at ? { odds, odds_captured_at: at } : {}),
+    };
+  });
+}
+
 /** The combined price of the legs that have one; null when any leg has none. */
 export function slipOdds(legs: readonly SlipLeg[]): number | null {
   if (legs.length === 0) return null;
