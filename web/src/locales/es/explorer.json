@@ -232,8 +232,7 @@
     "count_other": "Mi parlay: {count} selecciones.",
     "added": "Agregada: {leg}.",
     "replaced": "Agregada: {leg}, en lugar de la otra selección de ese partido.",
-    "removed": "Quitada: {leg}.",
-    "open": "Abrir"
+    "removed": "Quitada: {leg}."
   },
   "compare": {
     "toggle": "Comparar casas",

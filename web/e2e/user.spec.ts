@@ -492,11 +492,39 @@ test("One figure: over 30 days and over everything, the recap's profit and retur
   await assertClean(page, w);
 });
 
-test("Odds: the best-odds board per market", async ({ page }) => {
+test("Odds: the best-odds board per market, or the explorer by families once it is on", async ({
+  page,
+}) => {
   const w = watch(page);
   const t = L[lang()];
+  const { body: me } = await getJson<{ odds_explorer?: boolean }>(page.request, "/api/v1/auth/me");
   await open(page, w, "/odds");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(t.nav.odds);
+  if (me?.odds_explorer === true) {
+    // Plan Cuotas, UX-069 (FBI_ODDS_EXPLORER): the family tabs, the choice in the URL, the comparison of every bookmaker,
+    // and the product's own way back to the slip - never a second «Mi parlay» bar.
+    await expect(page.getByTestId("odds-explorer")).toBeVisible();
+    const families = page.getByTestId("explorer-tabs").getByRole("tab");
+    if ((await families.count()) === 0) {
+      note(test.info(), "no family with prices in the window");
+      return;
+    }
+    if ((await families.count()) > 1) {
+      await families.nth(1).click();
+      await expect(page).toHaveURL(/[?&]f=/);
+      await settle(page);
+      await assertClean(page, w);
+    }
+    const rows = page.getByTestId("explorer-row");
+    if ((await rows.count()) === 0) note(test.info(), "no match with prices for the market");
+    else {
+      await rows.first().getByTestId("explorer-compare-toggle").click();
+      await settle(page);
+      await assertClean(page, w);
+    }
+    await expect(page.getByTestId("explorer-parlay-bar")).toHaveCount(0);
+    return;
+  }
   const tabs = page.getByTestId("odds-market-tabs");
   await tabs.getByRole("tab", { name: t.odds.tabs.OU }).click();
   await settle(page);

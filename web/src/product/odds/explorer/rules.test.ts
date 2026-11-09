@@ -83,14 +83,14 @@ describe("the explorer's code", () => {
     for (const { name, text } of sources) {
       expect(text, name).not.toMatch(/Sparkles/);
       expect(text, name).not.toMatch(/text-positive/);
-      // Gold is Mi Parlay's colour in the product: only its bar uses it here
-      if (name !== "Status.tsx") expect(text, name).not.toMatch(/\bgold\b|-gold/);
+      // Gold is Mi Parlay's colour in the product: the explorer has none (its way to the slip is the product's button)
+      expect(text, name).not.toMatch(/\bgold\b|-gold/);
     }
   });
 
-  test("the UI never imports the API layer; nothing but the tests imports the in-memory data", () => {
+  test("only the data layer on the API imports the API layer; nothing but the tests imports the in-memory data", () => {
     for (const { name, text } of sources) {
-      expect(text, name).not.toMatch(/from "@\/lib\/api/);
+      if (name !== "apiData.ts") expect(text, name).not.toMatch(/from "@\/lib\/api/);
       if (name !== "fake.ts") expect(text, name).not.toMatch(/from "\.\/fake"/);
     }
   });

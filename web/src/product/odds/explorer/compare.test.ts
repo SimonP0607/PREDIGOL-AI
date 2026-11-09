@@ -68,17 +68,17 @@ describe("the movement", () => {
       period: "FT",
       line: "2.5",
       available: true,
+      source: "quotes",
       bookmakers: [{ id: 8, name: "Bet365" }],
       series: [
         {
           selection: "Over",
-          player: null,
           line: "2.5",
           points: [
-            { captured_at: "2026-11-08T10:00:20Z", best_odds: "1.90", bookmaker_id: 8 },
-            { captured_at: "2026-11-08T10:00:40Z", best_odds: "1.95", bookmaker_id: 8 },
-            { captured_at: "2026-11-08T08:00:00Z", best_odds: "2.00", bookmaker_id: 8 },
-            { captured_at: "nope", best_odds: "2.00", bookmaker_id: 8 },
+            { at: "2026-11-08T10:00:20Z", best_odds: "1.90", bookmaker_id: 8, n_books: 6 },
+            { at: "2026-11-08T10:00:40Z", best_odds: "1.95", bookmaker_id: 8, n_books: 6 },
+            { at: "2026-11-08T08:00:00Z", best_odds: "2.00", bookmaker_id: 8, n_books: 5 },
+            { at: "nope", best_odds: "2.00", bookmaker_id: 8, n_books: 5 },
           ],
         },
       ],

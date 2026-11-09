@@ -20,7 +20,7 @@ export function movementLines(movement: OddsMovement | undefined): Array<
   return movement.series.map((series) => {
     const byMinute = new Map<number, MovePoint>();
     for (const p of series.points) {
-      const at = Date.parse(p.captured_at);
+      const at = Date.parse(p.at);
       const odds = toNumber(p.best_odds);
       if (!Number.isFinite(at) || odds === null || odds <= 1) continue;
       const t = Math.floor(at / MINUTE) * MINUTE;

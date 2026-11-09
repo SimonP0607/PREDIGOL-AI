@@ -232,8 +232,7 @@
     "count_other": "My parlay: {count} selections.",
     "added": "Added: {leg}.",
     "replaced": "Added: {leg}, instead of the other selection of that match.",
-    "removed": "Removed: {leg}.",
-    "open": "Open"
+    "removed": "Removed: {leg}."
   },
   "compare": {
     "toggle": "Compare bookmakers",

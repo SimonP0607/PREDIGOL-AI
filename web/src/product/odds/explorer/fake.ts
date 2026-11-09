@@ -442,15 +442,16 @@ export function fakeMovement(fixtureId: number, q: MovementQuery): OddsMovement 
     period: q.period,
     line: q.line,
     available,
+    source: available ? (q.market === "result.1x2" ? "snapshots" : "quotes") : null,
     series: available
       ? (row?.selections ?? []).map((s, i) => ({
           selection: s.selection,
-          player: s.player,
           line: s.line,
           points: [24, 12, 6, 2].map((h, k) => ({
-            captured_at: new Date(FAKE_NOW - h * HOUR).toISOString(),
+            at: new Date(FAKE_NOW - h * HOUR).toISOString(),
             best_odds: odds(Number(s.best_odds) * (1 + (i === 0 ? 0.03 : -0.03) * (3 - k))),
             bookmaker_id: s.bookmaker_id,
+            n_books: s.n_books,
           })),
         }))
       : [],

@@ -4,17 +4,19 @@
  * each match the best price of every selection with its bookmaker - the market's fair price and the difference with it only
  * where there is one, small and grey -, the comparison of every bookmaker and the movement on demand.
  *
- * Not wired yet: the route parses its search with `parseExplorerSearch`, hands the state in, and writes back what
- * `onStateChange` gives (`serializeExplorerState`); the data comes through `ExplorerData` (one hook per endpoint).
+ * The route (`product/odds/ExplorerScreen.tsx`, while `odds_explorer` is on) parses its search with `parseExplorerSearch`,
+ * hands the state in and writes back what `onStateChange` gives (`serializeExplorerState`); the data comes through
+ * `ExplorerData`, one hook per endpoint (`apiData.ts` on the API, `fake.ts` in the tests).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "@/lib/i18n";
 import { GlossaryLink } from "@/components/system/GlossaryTerm";
+import { useGuideScreen } from "@/product/guides/context";
 import { Card, EmptyState, ErrorState, PageTitle, StaleNote } from "@/product/shared/States";
 import type { RowEnv } from "./env";
 import { filterOptions } from "./filterOptions";
 import { ExplorerSearch, FiltersRow, FiltersSheet } from "./Filters";
-import { useAnnouncer, useMarketMemory, usePriceMoves, useSeen } from "./hooks";
+import { useAnnouncer, useMarketMemory, usePriceMoves, useSeen, useSlipAnnouncer } from "./hooks";
 import { MarketCard } from "./MarketCard";
 import type { BoardSort, ExplorerData } from "./model";
 import { MOTION } from "./motion";
@@ -35,7 +37,7 @@ import {
   type ExplorerFilters,
   type ExplorerState,
 } from "./state";
-import { ParlayBar, StatusBar } from "./Status";
+import { StatusBar } from "./Status";
 import {
   buildTabs,
   familyFor,
@@ -59,8 +61,8 @@ export interface OddsExplorerProps {
   state: ExplorerState;
   /** A choice changed it: the route writes `serializeExplorerState(next)` to the URL. */
   onStateChange: (next: ExplorerState, how?: StateChange) => void;
-  /** The phone's «Mi parlay · N» bar (default on). Off where the page keeps the product's own slip button. */
-  parlayBar?: boolean;
+  /** The screen's guide: its «?» in the header, and the screen said ready for its steps. The route's; none in the tests. */
+  guide?: boolean;
   /** A fixed clock (tests); the real one otherwise. */
   now?: number;
 }
@@ -71,16 +73,18 @@ export function OddsExplorer({
   data,
   state,
   onStateChange,
-  parlayBar = true,
+  guide,
   now: fixedNow,
 }: OddsExplorerProps) {
   const now = fixedNow ?? Date.now();
   const [paused, setPaused] = useState(false);
   const [memory, remember] = useMarketMemory();
   const [said, announce] = useAnnouncer();
+  useSlipAnnouncer(announce);
   const follow = data.useFollow();
 
   const families = data.useFamilies(familiesQuery(state), { paused, enabled: true });
+  useGuideScreen("odds", { ready: guide === true && !families.isPending });
   const tabs = useMemo(() => buildTabs(families.data?.families), [families.data]);
   const view = useMemo(
     () =>
@@ -279,6 +283,7 @@ export function OddsExplorer({
   return (
     <div className="space-y-4" data-testid="odds-explorer">
       <PageTitle
+        {...(guide ? { guide: "odds" as const } : {})}
         title={t("nav.odds")}
         subtitle={t("explorer.subtitle")}
         right={
@@ -291,7 +296,7 @@ export function OddsExplorer({
           />
         }
       />
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-muted-foreground" data-guide="odds-fair">
         {t("explorer.fairLine")} <GlossaryLink term="fairOdds" />
       </p>
       <div className="flex items-start gap-2">
@@ -304,7 +309,6 @@ export function OddsExplorer({
         />
       </div>
       {content}
-      {parlayBar ? <ParlayBar announce={announce} /> : null}
       <p aria-live="polite" aria-atomic="true" className="sr-only" data-testid="explorer-live">
         {said}
       </p>
