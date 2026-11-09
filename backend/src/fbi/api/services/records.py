@@ -479,9 +479,11 @@ def user_parlays(conn: Conn, *, user_id: int, limit: int, cursor: str | None = N
     legs: dict[int, list[UserParlayLeg]] = defaultdict(list)
     if parlays:
         for r in fetch_all(conn, USER_LEGS_SQL, {"ids": [p["id"] for p in parlays]}):
+            kept = r.get("snapshot") or {}
             legs[int(r["user_parlay_id"])].append(UserParlayLeg(
                 leg_no=r["leg_no"], match=match_of(r), market_key=r["market_key"], selection=r["selection"],
-                line=r["line"], odds=r["odds"], status=r["status"]))
+                line=r["line"], odds=r["odds"], status=r["status"], odds_source=kept.get("odds_source"),
+                odds_captured_at=kept.get("odds_captured_at")))
     trail = corrections(conn, {p["id"]: parlay_trail("user_parlay", int(p["id"]), [x.leg_no for x in legs[int(p["id"])]])
                                for p in parlays})
     out = [UserParlay(

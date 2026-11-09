@@ -7,7 +7,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field
 
 from fbi.api.contracts.common import Contract, MatchPhase, StatusReason, UserStatus
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
@@ -264,6 +264,9 @@ class LegInBody(BaseModel):
     selection: str = Field(min_length=1, max_length=12)
     line: Decimal = Field(default=Decimal(0), ge=-20, le=20)
     odds: Decimal | None = Field(default=None, gt=1, lt=1000)
+    odds_captured_at: AwareDatetime | None = Field(default=None, description=(
+        "When the odds the user was shown were captured. With ``odds``: kept as given (it cannot be in the future); "
+        "without ``odds`` the newest consensus price is taken and its own time is kept."))
 
 
 class ParlayIn(BaseModel):
@@ -298,6 +301,11 @@ class UserParlayLeg(Contract):
     line: Decimal
     odds: Decimal | None
     status: ResultStatus
+    odds_source: Literal["shown", "current"] | None = Field(default=None, description=(
+        "shown: the odds the user was shown; current: the newest consensus price at saving. None: saved before this "
+        "was kept."))
+    odds_captured_at: datetime | None = Field(default=None, description=(
+        "When those odds were captured. None: saved before this was kept; never an invented time."))
 
 
 class UserParlay(Contract):

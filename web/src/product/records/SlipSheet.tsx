@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { useJustChanged } from "@/product/shared/motion";
 import { t, translateOr } from "@/lib/i18n";
 import { DASH, fmtOdds, fmtPct, fmtSignedPct, localFixed, toNumber } from "@/lib/i18n/format";
-import { formatKickoff } from "@/lib/time";
+import { formatKickoff, formatRelative } from "@/lib/time";
 import { v1 } from "@/lib/api/v1/client";
 import type { ParlayValidation, ValidationIssue } from "@/lib/api/v1/types_records";
 import {
@@ -53,6 +53,7 @@ import {
   hasStarted,
   selectionKey,
   slipEstimate,
+  savedBody,
   slipOdds,
   toProbability,
   type DependencyLevel,
@@ -120,6 +121,7 @@ function LegRow({
   leg,
   n,
   price,
+  priceAt,
   probability,
   onRemove,
   onLeave,
@@ -127,6 +129,7 @@ function LegRow({
   leg: SlipLeg;
   n: number;
   price: string | null;
+  priceAt: string | null;
   probability: number | null;
   onRemove: () => void;
   onLeave: () => void;
@@ -189,6 +192,15 @@ function LegRow({
           ) : (
             <span className="text-caption text-subtle-foreground">{t("records.slip.noPrice")}</span>
           )}
+          {price && priceAt ? (
+            <span
+              className="numeric whitespace-nowrap text-micro text-subtle-foreground"
+              data-testid="slip-leg-price-at"
+              title={formatKickoff(priceAt)}
+            >
+              {t("records.slip.priceAt", { when: formatRelative(priceAt) })}
+            </span>
+          ) : null}
           <span
             className="inline-flex items-baseline gap-1 whitespace-nowrap"
             title={t("records.slip.legProbabilityHelp")}
@@ -642,6 +654,8 @@ export function SlipSheet() {
     return {
       leg,
       price: server?.odds ?? leg.odds,
+      // When that price was captured: the server's, else unknown (the price we showed when it was added has no time).
+      priceAt: server?.odds ? (server.odds_captured_at ?? null) : null,
       // PrediGol's probability: the one it carried when added, else the server's.
       probability: toProbability(leg.p_model) ?? toProbability(server?.p_model),
     };
@@ -656,7 +670,8 @@ export function SlipSheet() {
     : slipOdds(shown.map(({ leg, price }) => ({ ...leg, odds: price })));
 
   const create = useMutation({
-    mutationFn: () => v1.createParlay({ name: name.trim() || null, legs: legsBody(legs) }),
+    mutationFn: () =>
+      v1.createParlay({ name: name.trim() || null, legs: savedBody(legs, serverLegs) }),
     onSuccess: () => {
       track("parlay_created", { legs: Math.min(Math.max(legs.length, 1), 30) });
       toast.success(t("records.toast.parlaySaved"), {
@@ -722,12 +737,13 @@ export function SlipSheet() {
           ) : (
             <>
               <ol className="divide-y divide-border/60">
-                {shown.map(({ leg, price, probability }, i) => (
+                {shown.map(({ leg, price, priceAt, probability }, i) => (
                   <LegRow
                     key={leg.key}
                     leg={leg}
                     n={i + 1}
                     price={price}
+                    priceAt={priceAt}
                     probability={probability}
                     onRemove={() => slip.remove(leg.key)}
                     onLeave={leave}
