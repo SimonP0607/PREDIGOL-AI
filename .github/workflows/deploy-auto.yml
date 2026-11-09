@@ -10,7 +10,7 @@ name: Deploy automático
 # aprobaciones. Solo corre para ejecuciones `push` del propio repositorio sobre `main` (nunca de forks ni de pull requests).
 
 on:
-  workflow_run:
+  workflow_run: # zizmor: ignore[dangerous-triggers] -- intencional: solo `push` de este repo sobre main con CI verde (ver `if:` del job)
     workflows: ["Backend CI", "Web CI"]
     types: [completed]
     branches: [main]
@@ -36,9 +36,10 @@ jobs:
     outputs:
       ready: ${{ steps.gate.outputs.ready }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: gate.sh (Backend CI y Web CI verdes para estos árboles)
         id: gate
         env:
@@ -59,9 +60,10 @@ jobs:
     timeout-minutes: 240
     environment: production-auto
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Llave de despliegue y huella del servidor
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -81,7 +83,7 @@ jobs:
         if: steps.what.outputs.parts != 'none'
         env:
           PARTS: ${{ steps.what.outputs.parts }}
-        run: |
+        run: | # zizmor: ignore[github-env] -- la ruta la genera nuestro script bajo RUNNER_TEMP, sin entrada externa
           set -euo pipefail
           rel="auto-${GITHUB_SHA:0:7}"
           bash backend/deploy/release/build_kit.sh --rel "$rel" --head "$GITHUB_SHA" --from-server predigol-gh --parts "$PARTS" --out "$RUNNER_TEMP/kits"
