@@ -163,3 +163,28 @@ Poisson, «más de 2,5», último pronóstico antes del inicio, partidos termina
 | Sin calibrar (pronóstico marcado «sin calibrar») | 114 | 54,9 % | 61,4 % |
 
 El sesgo hacia pocos goles está en la probabilidad **cruda** (−3,6 puntos en «más de»), que es lo que el tablero usaba antes de F3. El pronóstico calibrado que ve el producto queda a +1,3 puntos del real: del orden de un error estándar de la muestra (1,1 puntos), por lo que no hay evidencia de un sesgo que corregir allí. **Conclusión: no se toca ningún modelo.** Si se quisiera corregir la cruda en su origen (un factor sobre el total de goles esperado), sería un candidato nuevo en la línea de modelos y tendría que superar su propia puerta estadística antes de promoverse.
+
+### Misma probabilidad para la misma selección (F3), medida en producción el 9-nov-2026
+
+Corrida de las 18:39 UTC con `compare_probabilities` de solo lectura. El lote desplegado ese día (`62d46780`) es anterior a la herramienta, así que se copió el archivo a `/tmp` del contenedor del worker y se ejecutó desde allí (solo importa la biblioteca estándar, `psycopg` y la configuración; no tocó la imagen, el código desplegado ni los datos).
+
+Diferencia, en puntos, entre dos lecturas de la misma selección:
+
+| Par | Ventana | Selecciones | Mediana | p90 | Máximo | Por encima de 0,5 pp |
+| --- | --- | --- | --- | --- | --- | --- |
+| Tablero (cruda) / Intelligence | 24 h | 150 | 9,4 | 17,6 | 53,2 | 150 (100 %) |
+| Tablero (cruda) / Intelligence | 72 h | 206 | 9,5 | 19,3 | 53,2 | 206 (100 %) |
+| Tablero (con el interruptor) / Intelligence | 24 h y 72 h | 150 y 206 | 0,0 | 0,0 | 0,0 | 0 |
+| Match Center / Intelligence | 24 h | 25 | 2,3 | 3,8 | 4,1 | 20 (80 %) |
+| Match Center / Intelligence | 72 h | 73 | 4,8 | 15,2 | 26,6 | 66 (90 %) |
+| Match Center / tablero (con el interruptor) | 72 h | 90 | 4,2 | 15,2 | 26,6 | 80 (89 %) |
+
+**Veredicto: NO SE CUMPLE.** Con el interruptor, el tablero y Intelligence coinciden en todas las selecciones (0 diferencias de más de 0,5 pp), pero el Match Center sigue mostrando otro número: 20 de 25 selecciones a 24 h y 80 de 90 a 72 h pasan de 0,5 pp. Sin el interruptor, el tablero difiere de Intelligence en todas.
+
+Lo que explica la diferencia, según los datos de esa corrida:
+
+- El Match Center (`forecast-v1`) y Intelligence (`decision-v1`) calibran por caminos distintos y no usan el mismo momento de referencia. Las lecturas de Intelligence vienen de puntos de control entre T-36 h y T-90 min, con una edad mediana de 22 h y una máxima de 300 h (una lectura vieja de un partido lejano).
+- Las diferencias más anchas de las últimas 24 h están en «más de/menos de 2,5» y «ambos anotan», con hasta 4,1 pp.
+- Intelligence no tiene aún selecciones aprobadas, así que no hay nada que publicar desde allí por ahora.
+
+**Decisión:** `FBI_PICKS_SOURCE` sigue apagado y no se publican picks experimentales. Para que el criterio se cumpla hace falta que el Match Center lea la misma probabilidad calibrada y el mismo punto de control (el último disponible antes del inicio) que Intelligence; es un cambio de contrato y de la web, y se hace detrás del interruptor y con esta misma herramienta como prueba de salida.
