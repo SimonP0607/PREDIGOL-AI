@@ -71,6 +71,19 @@ Después comprueba en los datos que el resumen de cada día cuadra (ganados + pe
 
 Si aparece algo sin explicar, **no se corrige desde aquí**: se usa la reliquidación (`docker exec -w /app predigol-worker python -m scripts.resettle`), que deja rastro, con tu visto bueno.
 
+## Misma probabilidad para la misma selección (F3)
+
+Antes de encender `FBI_PICKS_SOURCE=intelligence` hay que comprobar, fila a fila, que un lector ve el mismo número en Picks y en el Match Center. `compare_probabilities` es de solo lectura (la conexión la abre el servidor en `READ ONLY`, con dos minutos de límite), no llama al proveedor y no cambia nada:
+
+```
+docker exec -w /app predigol-worker python -m scripts.compare_probabilities --hours 24 --top 15
+docker exec -w /app predigol-worker python -m scripts.compare_probabilities --hours 72 --json > picks_f3.json
+```
+
+Para cada selección (partido, mercado, lado y línea) de la ventana pone lado a lado cuatro lecturas: la cruda del motor de picks (lo que mostraba el tablero antes de F3), la del tablero con el interruptor, la calibrada de Intelligence (`decision-v1`, último punto de control) y la del pronóstico del Match Center (`forecast-v1`). De cada par da cuántas selecciones se comparan, la mediana, el percentil 90 y el máximo de la diferencia en puntos, y cuántas pasan de 0,5 puntos. También cuenta de qué punto de control viene cada lectura de Intelligence y qué edad tiene (el momento de referencia) y lista las diferencias más anchas entre el Match Center y el tablero.
+
+El veredicto **SE CUMPLE** solo si hay selecciones comparables y no hay ninguna diferencia de más de 0,5 puntos entre el tablero con el interruptor e Intelligence, ni entre el Match Center y el tablero. Si no hay lecturas de Intelligence todavía, dice que no hay selecciones comparables: no es un cumplimiento. **No se enciende el interruptor mientras el veredicto sea «NO SE CUMPLE» o «no comparables».**
+
 ## Resultados
 
 Corrida del 9-nov-2026, 00:50 UTC (19:50 del 8-nov en Bogotá), con la llave de solo lectura (SEG-002).
