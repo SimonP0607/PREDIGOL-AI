@@ -172,4 +172,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-018 · SEG-003 · IA-021 · UX-084 · BE-025 · FE-002 · OPS-003 · DOC-001
+CI-018 · SEG-003 · IA-025 · UX-084 · BE-025 · FE-002 · OPS-003 · DOC-001
