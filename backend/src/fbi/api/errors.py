@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 
+import psycopg.errors
 import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -73,6 +74,16 @@ def install(app: FastAPI) -> None:
             for e in exc.errors()
         )
         return JSONResponse(body("invalid", problems or "invalid request", request_id(request)), status_code=422)
+
+    @app.exception_handler(psycopg.errors.DataError)
+    async def _out_of_range(request: Request, exc: psycopg.errors.DataError) -> JSONResponse:
+        """BE-018: a value the column cannot hold (a number past 9223372036854775807, a text with a NUL byte) is the caller's mistake, not ours.
+
+        Schemathesis found it on eleven GET endpoints (numbers) and on match-memory (a NUL byte in a text filter): the query validated, the database refused it, the answer was a 500.
+        Logged as a warning with the path, so a real overflow inside the service would still show in the log."""
+        rid = request_id(request)
+        log.warning("api.value_refused_by_database", request_id=rid, path=request.url.path)
+        return JSONResponse(body("invalid", "a value is outside what this field accepts", rid), status_code=422)
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:

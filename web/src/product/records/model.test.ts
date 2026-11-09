@@ -8,7 +8,6 @@ import {
   normLine,
   parlayTone,
   parseSlip,
-  pickLevel,
   resultTone,
   selectionKey,
   sharedTeamHint,
@@ -330,19 +329,5 @@ describe("what the slip adds up to", () => {
     for (const key of keys) {
       expect([key, hasKey(key, "es"), hasKey(key, "en")]).toEqual([key, true, true]);
     }
-  });
-});
-
-describe("the level of a pick of the day (plan de Inicio, D3)", () => {
-  test("Alto when even the prudent estimate beats the market, Medio when only the central one does", () => {
-    expect(pickLevel("0.46", "0.39")).toBe("high");
-    expect(pickLevel("0.38", "0.39")).toBe("medium");
-    expect(pickLevel(0.39, "0.39")).toBe("medium");
-  });
-
-  test("no number, no level: never a guess", () => {
-    expect(pickLevel(null, "0.39")).toBeNull();
-    expect(pickLevel("0.46", undefined)).toBeNull();
-    expect(pickLevel("abc", "0.39")).toBeNull();
   });
 });

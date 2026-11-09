@@ -1,7 +1,7 @@
 /** The Picks page filters and the API query they make. Pure: no React here. */
 import type { PicksQuery } from "@/lib/api/v1/types_product";
 
-export type OddsRange = "all" | "1.5-2" | "2-3" | "3+";
+export type OddsRange = "all" | "1.5-2" | "2-3";
 
 export interface PickFilters {
   /** The name is kept so the choice still reads right if the window no longer has that competition. */
@@ -28,10 +28,9 @@ export const ODDS_RANGES: Record<OddsRange, { min?: number; max?: number }> = {
   all: {},
   "1.5-2": { min: 1.5, max: 2 },
   "2-3": { min: 2, max: 3 },
-  "3+": { min: 3 },
 };
 
-export const ODDS_RANGE_KEYS: readonly OddsRange[] = ["all", "1.5-2", "2-3", "3+"];
+export const ODDS_RANGE_KEYS: readonly OddsRange[] = ["all", "1.5-2", "2-3"];
 
 /** Kick-off windows in hours: 24 h, 48 h, 72 h and 7 days. */
 export const WINDOWS: readonly number[] = [24, 48, 72, 168];

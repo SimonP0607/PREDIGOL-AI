@@ -8,7 +8,7 @@
  * 60-second poll; one fold per market, the first one open. The five settled markets are chosen the Cuotas way (REVIEW
  * PREDIGOL, point 6: a tap in or out of "Mi parlay", the bookmark saves it); the catalogue's other markets are shown only.
  */
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -60,6 +60,8 @@ import { Block, CenterSection, FreshnessLabel, MoreButton, SectionNote } from ".
 import { FollowMarket } from "@/product/favorites/FollowExtras";
 import { followableMarket } from "@/product/favorites/model";
 import { orderBoards, orderSentence } from "./marketOrder";
+import { useMarketTarget } from "./useMarketTarget";
+import { prefersReducedMotion } from "@/product/shared/motion";
 
 type Sides = { home: string; away: string };
 
@@ -459,26 +461,46 @@ type Follow = (market: string) => ReactNode;
 
 const followBoard: Follow = (market) => <FollowBoard market={market} />;
 
+/** Brings the element it sits in into view, once (a smooth scroll, unless the reader asked for reduced motion). */
+function ScrollIntoView() {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    ref.current?.parentElement?.scrollIntoView({
+      block: "start",
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+    });
+  }, []);
+  return <span ref={ref} hidden />;
+}
+
 function FoldList({
   views,
   choose,
   onConsult,
   follow,
   testId,
+  target,
 }: {
   views: MarketView[];
   choose?: Choose | undefined;
   onConsult?: ((market: string) => void) | undefined;
   follow: Follow;
   testId: string;
+  /** The catalogue key a link from Cuotas names: that market is open and in view; the first one only without it. */
+  target?: string | undefined;
 }) {
+  const named = target !== undefined && views.some((v) => v.key === target);
   return (
     <div className="grid items-start gap-3 lg:grid-cols-2" data-testid={testId}>
       {views.map((v, i) => (
         <div
           key={v.id}
-          className="min-w-0"
+          className={cn(
+            "min-w-0 scroll-mt-28",
+            named && v.key === target && "rounded-xl ring-1 ring-primary/40",
+          )}
           data-market={v.id}
+          data-target={named && v.key === target ? "true" : undefined}
           onClickCapture={
             onConsult && v.parlay
               ? (e) => {
@@ -492,9 +514,10 @@ function FoldList({
           <MarketFold
             view={v}
             choose={choose}
-            defaultOpen={i === 0}
+            defaultOpen={named ? v.key === target : i === 0}
             follow={v.parlay ? follow(v.parlay) : null}
           />
+          {named && v.key === target ? <ScrollIntoView /> : null}
         </div>
       ))}
     </div>
@@ -509,6 +532,7 @@ export function CategoryPanel({
   choose,
   onConsult,
   follow,
+  target,
 }: {
   ctx: MatchCtx;
   category: CatalogCategory;
@@ -516,6 +540,8 @@ export function CategoryPanel({
   choose: Choose | undefined;
   onConsult: (market: string) => void;
   follow: Follow;
+  /** The catalogue key a link names, when it is in this category. */
+  target?: string | undefined;
 }) {
   const q = useQuery(queries.matchMarketCatalog(ctx.fixtureId, category));
   if (q.isPending) {
@@ -551,6 +577,7 @@ export function CategoryPanel({
         onConsult={onConsult}
         follow={follow}
         testId="markets-category"
+        target={target}
       />
     </>
   );
@@ -603,8 +630,11 @@ export function PrematchMarkets({
     ...(featured.length > 0 ? (["featured"] as const) : []),
     ...(categories ?? []).map((c) => c.key),
   ];
-  const [picked, setPicked] = useState<MarketsView>("featured");
-  const view = views.includes(picked) ? picked : (views[0] ?? "featured");
+  // A link from Cuotas names a market: its category opens first, unless the reader picks another chip.
+  const linked = useMarketTarget();
+  const [picked, setPicked] = useState<MarketsView | null>(null);
+  const wanted: MarketsView = picked ?? linked?.category ?? "featured";
+  const view = views.includes(wanted) ? wanted : (views[0] ?? "featured");
 
   return (
     <section aria-labelledby="markets-pre">
@@ -684,6 +714,7 @@ export function PrematchMarkets({
               choose={choose}
               onConsult={consult}
               follow={follow}
+              target={picked === null && linked?.category === view ? linked.key : undefined}
             />
           )}
         </>

@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
+from fbi.core.decision_versions import DECISION_CORE
 
 CONSENSUS_METHOD = "shin"
 """The de-vigging the pick engine compares against (fbi.picks.engine.CONSENSUS_METHOD)."""
@@ -122,6 +123,15 @@ SELECT lc.fixture_id, lc.market_key, lc.selection, lc.line, lc.p_fair, lc.best_o
  ORDER BY f.kickoff_at, f.id, lc.market_key, lc.line, lc.selection
 """
 
+INTEL_DECISIONS = """
+SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line)
+       d.id, d.fixture_id, d.market_key, d.selection, d.line, d.known_at, d.checkpoint, d.state, d.reasons, d.filters,
+       d.odds, d.price_at, d.p_model, d.p_cal, d.p_market, d.ev_cal, d.edge_cal
+  FROM intel.decisions d
+ WHERE d.decision_version = %(version)s AND d.fixture_id = ANY(%(fixtures)s) AND d.known_at <= %(now)s
+ ORDER BY d.fixture_id, d.market_key, d.selection, d.line, d.known_at DESC, d.id DESC
+"""
+
 LIVE_FRESHNESS = """
 SELECT (SELECT max(observed_at) FROM core.fixture_live_states
          WHERE observed_at > %(now)s - interval '1 day') AS live_at
@@ -147,6 +157,14 @@ def best_prices(conn: Conn, *, now: datetime, until: datetime, since: datetime,
                 markets: tuple[str, ...] = POPULAR_MARKETS) -> list[Row]:
     return fetch_all(conn, BEST_PRICES, {"now": now, "until": until, "since": since, "markets": list(markets),
                                          "method": CONSENSUS_METHOD})
+
+
+def intel_decisions(conn: Conn, *, fixture_ids: list[int], now: datetime) -> list[Row]:
+    """PrediGol Intelligence's newest decision (``decision-v1``, the pipeline's layer) on each selection of these matches as of
+    ``now``, whatever its checkpoint: the calibrated probability, EV and edge, the state and the reasons (plan PICKS, F3)."""
+    if not fixture_ids:
+        return []
+    return fetch_all(conn, INTEL_DECISIONS, {"version": DECISION_CORE, "fixtures": sorted(set(fixture_ids)), "now": now})
 
 
 def live_freshness(conn: Conn, *, now: datetime) -> datetime | None:

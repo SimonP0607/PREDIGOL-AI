@@ -32,11 +32,12 @@ from tests.integration.agent_tables import (
     shaped,
     task_values,
 )
-from tests.integration.conftest import ADMIN_URL, REPO_ROOT, Seed, _dsn
+from tests.integration.conftest import ADMIN_URL, REPO_ROOT, Seed, _dsn, database_name_for
 
 pytestmark = pytest.mark.integration
-SCRATCH = "fbi_test_m0111"
-RESTORED = "fbi_test_m0111_restored"
+# CI-014: nine later migration tests borrow this scratch database (``scratch_at``); under pytest-xdist each worker gets its own name
+SCRATCH = database_name_for("fbi_test_m0111", os.environ.get("PYTEST_XDIST_WORKER"))
+RESTORED = database_name_for("fbi_test_m0111_restored", os.environ.get("PYTEST_XDIST_WORKER"))
 SEED = cast(Seed, SimpleNamespace(fixture_id=777))  # the new tables hold no foreign key to the fixtures: only the id is read
 
 

@@ -15,20 +15,8 @@ function item(ai: DailyItem["ai"] = null): DailyItem {
 }
 
 describe("the why lines of a pick of the day", () => {
-  test("without a review: the value in one line and the level's in the other", () => {
-    expect(whyLines(item(), "high")).toEqual([
-      "PrediGol ve este resultado más probable que el mercado.",
-      "Incluso su estimación prudente queda por encima del mercado.",
-    ]);
-    expect(whyLines(item(), "medium")[1]).toBe(
-      "Su estimación central supera al mercado; la prudente, no.",
-    );
-  });
-
-  test("no level, one line: the second is never filled with something else", () => {
-    expect(whyLines(item(), null)).toEqual([
-      "PrediGol ve este resultado más probable que el mercado.",
-    ]);
+  test("without a review: the value in one line, never filled with something else", () => {
+    expect(whyLines(item())).toEqual(["PrediGol ve este resultado más probable que el mercado."]);
   });
 
   test("a review with a decision lends its first positive and its first risk", () => {
@@ -39,7 +27,7 @@ describe("the why lines of a pick of the day", () => {
       positives: ["Llega con cinco partidos sin perder", "Otra"],
       risks: ["Baja del delantero titular", "Otra"],
     };
-    expect(whyLines(item(ai), "high")).toEqual([
+    expect(whyLines(item(ai))).toEqual([
       "Llega con cinco partidos sin perder",
       "Baja del delantero titular",
     ]);
@@ -53,8 +41,6 @@ describe("the why lines of a pick of the day", () => {
       positives: ["No debería verse"],
       risks: ["Tampoco"],
     };
-    expect(whyLines(item(ai), "medium")[0]).toBe(
-      "PrediGol ve este resultado más probable que el mercado.",
-    );
+    expect(whyLines(item(ai))).toEqual(["PrediGol ve este resultado más probable que el mercado."]);
   });
 });

@@ -55,6 +55,10 @@
   {
    "date": "2026-11-08",
    "reason": "UX-067: /odds/best documenta la línea del hándicap asiático: BestMarket.line es la del local y BestHighlight.line la de su selección (plan Cuotas, ola 0, E1)"
+  },
+  {
+   "date": "2026-11-09",
+   "reason": "BE-014 (plan PICKS, F3): PickCard.decision y PicksBoard.decision_source, aditivos y opcionales: lo que Intelligence decidió sobre la selección"
   }
  ],
  "routes": {
@@ -6931,6 +6935,17 @@
        "title": "Context Pending",
        "type": "boolean"
       },
+      "decision": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/PickDecision"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "PrediGol Intelligence's decision on this selection, when the board reads it (``decision_source`` of the board is ``intelligence``, plan PICKS F3); null otherwise, and null when Intelligence has not decided this selection."
+      },
       "edge": {
        "anyOf": [
         {
@@ -7118,6 +7133,114 @@
       "context_pending"
      ],
      "title": "PickCard",
+     "type": "object"
+    },
+    "PickDecision": {
+     "description": "What PrediGol Intelligence decided about this selection (``decision-v1``, its newest row; ``fbi.intel.state_v2`` words it).\n\nPresent only while the board reads Intelligence (``FBI_PICKS_SOURCE=intelligence``, plan PICKS F3). The card's ``p_model``\nstays the pick engine's raw probability then; the calibrated one, the EV and the edge computed with it are here and in the\ncard's own ``ev`` and ``edge``.",
+     "properties": {
+      "checkpoint": {
+       "title": "Checkpoint",
+       "type": "string"
+      },
+      "edge_calibrated": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Edge Calibrated"
+      },
+      "ev_calibrated": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Ev Calibrated"
+      },
+      "known_at": {
+       "format": "date-time",
+       "title": "Known At",
+       "type": "string"
+      },
+      "odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The price Intelligence judged at known_at.",
+       "title": "Odds"
+      },
+      "p_calibrated": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Calibrated probability (cal-logit2-v1); null while the market has no champion calibrator.",
+       "title": "P Calibrated"
+      },
+      "p_raw": {
+       "description": "The model's probability before calibrating: what the board showed before F3, kept as «sin calibrar».",
+       "title": "P Raw",
+       "type": "string"
+      },
+      "price_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Price At"
+      },
+      "reason": {
+       "description": "The reason code state-v2 gives (``approved``, ``risk``, ``price_stale``, ``edge_not_validated``...).",
+       "title": "Reason",
+       "type": "string"
+      },
+      "state": {
+       "description": "state-v2 of the decision: RECOMMENDED, CAUTION, WATCH (waiting for something that clears before kick-off), ABSTAIN (no opinion today) or REJECTED.",
+       "enum": [
+        "RECOMMENDED",
+        "CAUTION",
+        "WATCH",
+        "ABSTAIN",
+        "REJECTED"
+       ],
+       "title": "State",
+       "type": "string"
+      }
+     },
+     "required": [
+      "state",
+      "reason",
+      "known_at",
+      "checkpoint",
+      "p_calibrated",
+      "p_raw",
+      "ev_calibrated",
+      "edge_calibrated",
+      "odds",
+      "price_at"
+     ],
+     "title": "PickDecision",
      "type": "object"
     },
     "TeamBadge": {
@@ -7500,6 +7623,17 @@
        "title": "Context Pending",
        "type": "boolean"
       },
+      "decision": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/PickDecision"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "PrediGol Intelligence's decision on this selection, when the board reads it (``decision_source`` of the board is ``intelligence``, plan PICKS F3); null otherwise, and null when Intelligence has not decided this selection."
+      },
       "edge": {
        "anyOf": [
         {
@@ -7689,6 +7823,114 @@
      "title": "PickCard",
      "type": "object"
     },
+    "PickDecision": {
+     "description": "What PrediGol Intelligence decided about this selection (``decision-v1``, its newest row; ``fbi.intel.state_v2`` words it).\n\nPresent only while the board reads Intelligence (``FBI_PICKS_SOURCE=intelligence``, plan PICKS F3). The card's ``p_model``\nstays the pick engine's raw probability then; the calibrated one, the EV and the edge computed with it are here and in the\ncard's own ``ev`` and ``edge``.",
+     "properties": {
+      "checkpoint": {
+       "title": "Checkpoint",
+       "type": "string"
+      },
+      "edge_calibrated": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Edge Calibrated"
+      },
+      "ev_calibrated": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Ev Calibrated"
+      },
+      "known_at": {
+       "format": "date-time",
+       "title": "Known At",
+       "type": "string"
+      },
+      "odds": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The price Intelligence judged at known_at.",
+       "title": "Odds"
+      },
+      "p_calibrated": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Calibrated probability (cal-logit2-v1); null while the market has no champion calibrator.",
+       "title": "P Calibrated"
+      },
+      "p_raw": {
+       "description": "The model's probability before calibrating: what the board showed before F3, kept as «sin calibrar».",
+       "title": "P Raw",
+       "type": "string"
+      },
+      "price_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Price At"
+      },
+      "reason": {
+       "description": "The reason code state-v2 gives (``approved``, ``risk``, ``price_stale``, ``edge_not_validated``...).",
+       "title": "Reason",
+       "type": "string"
+      },
+      "state": {
+       "description": "state-v2 of the decision: RECOMMENDED, CAUTION, WATCH (waiting for something that clears before kick-off), ABSTAIN (no opinion today) or REJECTED.",
+       "enum": [
+        "RECOMMENDED",
+        "CAUTION",
+        "WATCH",
+        "ABSTAIN",
+        "REJECTED"
+       ],
+       "title": "State",
+       "type": "string"
+      }
+     },
+     "required": [
+      "state",
+      "reason",
+      "known_at",
+      "checkpoint",
+      "p_calibrated",
+      "p_raw",
+      "ev_calibrated",
+      "edge_calibrated",
+      "odds",
+      "price_at"
+     ],
+     "title": "PickDecision",
+     "type": "object"
+    },
     "PicksBoard": {
      "properties": {
       "competitions": {
@@ -7697,6 +7939,16 @@
        },
        "title": "Competitions",
        "type": "array"
+      },
+      "decision_source": {
+       "default": "legacy",
+       "description": "Where the cards' numbers and states come from: ``legacy`` (the pick engine's own, raw probability) or ``intelligence`` (PrediGol Intelligence's newest decision: calibrated probability, EV and edge, and its state; ``FBI_PICKS_SOURCE``, plan PICKS F3).",
+       "enum": [
+        "legacy",
+        "intelligence"
+       ],
+       "title": "Decision Source",
+       "type": "string"
       },
       "markets": {
        "items": {

@@ -1,0 +1,7 @@
+# CI-015. squawk reads this file from backend/. PostgreSQL 16 is what production runs.
+# Left out on purpose (they do not fit how this project writes migrations; decided 9-nov-2026):
+#  - prefer-bigint-over-int / prefer-bigint-over-smallint: INTEGER and SMALLINT columns are chosen on purpose for counters, minutes and small codes.
+#  - require-statement-timeout: every revision sets `SET LOCAL lock_timeout` (the rule of 0076, 0111, 0112, 0115, 0119); a statement timeout would cut
+#    legitimate backfills of the live database.
+pg_version = "16"
+excluded_rules = ["prefer-bigint-over-int", "prefer-bigint-over-smallint", "require-statement-timeout"]

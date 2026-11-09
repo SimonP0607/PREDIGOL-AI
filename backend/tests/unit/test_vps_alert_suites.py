@@ -43,9 +43,17 @@ EXPECTED = {
         198,
     ),
     "test_incident_pen.sh": ("incident.sh: the owner's pen", 64),
+    "test_pgstat.sh": (
+        "pgstat.sh: the queries that cost the most, from pg_stat_statements (OPS-001)",
+        45,
+    ),
     "test_gh_deploy_gate.sh": (
         "predigol-gh-deploy: the forced command of the GitHub deploy key (CI/CD C4)",
         60,
+    ),
+    "test_audits_gate.sh": (
+        "predigol-audits: the forced command of the read-only audits key (plan PICKS, F1/F2/F6)",
+        37,
     ),
 }
 
