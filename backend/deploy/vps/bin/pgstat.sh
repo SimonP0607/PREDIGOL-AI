@@ -12,7 +12,11 @@ set -Eeuo pipefail
 # shellcheck source=bin/lib.sh
 . "$(dirname "$0")/lib.sh"
 
-q() { compose exec -T postgres psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qAtX "$@" < /dev/null; }
+# OPS-002: as the database SUPERUSER of the container (local socket, no password), not as the owner role fbi. fbi cannot read
+# shared_preload_libraries (needs pg_read_all_settings), cannot CREATE EXTENSION pg_stat_statements (not a trusted extension) and, as it is
+# not pg_read_all_stats, would only see ITS OWN queries in the view, none of the API's or the worker's roles. Everything here is read-only except the
+# two commands that exist to write (enable, reset); the SQL sent is fixed in this file, never typed by anyone.
+q() { compose exec -T postgres psql -U postgres -d fbi -v ON_ERROR_STOP=1 -qAtX "$@" < /dev/null; }
 loaded() { q -c "SELECT current_setting('shared_preload_libraries')" | tr -d ' ' | tr ',' '\n' | grep -qx 'pg_stat_statements'; }
 need_loaded() { loaded || { log "pgstat: pg_stat_statements is not in shared_preload_libraries: PostgreSQL has not started with the compose of OPS-001 yet"; exit 1; }; }
 
