@@ -195,9 +195,11 @@ export function HomePage() {
   const news = useQuery({ ...live.todayNews, ...ON_RETURN });
   const me = useQuery({ ...live.meToday, ...ON_RETURN, enabled: reader });
   const board = useQuery({ ...live.daily(preview), ...ON_RETURN });
+  // Yesterday's set is asked for only while today's board says one of its picks is still open (plan Inicio, P4).
   const yesterday = useQuery({
     ...live.daily(preview, shiftDay(todayKey("America/Bogota"), -1)),
     ...ON_RETURN,
+    enabled: board.data?.data?.previous_day_open === true,
   });
   const now = Date.now();
   // Yesterday's picks do not vanish at midnight while one of them is still to finish or settle.
