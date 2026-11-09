@@ -19,6 +19,28 @@ El `> archivo.json` guarda el resultado en la carpeta del servidor desde la que 
 
 `audit_settlement` termina con código 1 si encuentra un cambio sin explicar o un día cuyo resumen no cuadra, y con 0 si todo cuadra.
 
+## Llave de solo lectura para las auditorías
+
+Para que Claude (u otra persona) lance estas herramientas sin tener la llave de root, hay una llave aparte que solo puede hacer eso. Su orden forzada, `predigol-audits` (en el repositorio: `backend/deploy/release/templates/gate/predigol-audits`), acepta solo:
+
+```
+audit_picks_module [--hours N] [--json]              N de 1 a 168
+audit_settlement [--days N] [--no-timing] [--json]   N de 1 a 90
+research_picks_calibration [--days N] [--json]       N de 1 a 400
+help
+```
+
+Cualquier otra cosa se rechaza: una consola, otro script, `;`, `|`, `$( )`, una ruta o una opción que la herramienta no tiene. Cada llamada, permitida o rechazada, queda en `/var/log/predigol-audits.log` con la dirección del cliente. `restrict` quita además la terminal, los reenvíos y el agente.
+
+**Instalarla (una vez, como root en el servidor):**
+
+1. Copiar la orden forzada: `install -m 755 -o root -g root predigol-audits /usr/local/sbin/predigol-audits`.
+2. Añadir a `/root/.ssh/authorized_keys` una línea con la llave **pública** nueva (nunca la privada):
+   `command="/usr/local/sbin/predigol-audits",restrict ssh-ed25519 AAAA… predigol-audits`
+3. Probar desde el equipo que tiene la llave: `ssh predigol-audits help` debe listar las tres herramientas, y `ssh predigol-audits id` debe responder `refused`.
+
+**Quitarla:** borrar esa línea de `authorized_keys`. La llave de root y la del despliegue no se tocan.
+
 ## Qué mide `audit_picks_module` (F1)
 
 Llama a los mismos servicios que responde la API en la vista previa del dueño (`picks_board`, `started_board` y `daily_board`), así que cuenta lo mismo que se ve en pantalla:

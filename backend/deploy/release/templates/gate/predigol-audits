@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# The FORCED COMMAND of the read-only audits key (plan PICKS, F1, F2 and F6). In /root/.ssh/authorized_keys the key reads
+#   command="/usr/local/sbin/predigol-audits",restrict ssh-ed25519 AAAA... predigol-audits
+# so whatever the client asks for arrives here in $SSH_ORIGINAL_COMMAND and this script decides. It is the only thing that key can do:
+#   audit_picks_module [--hours N] [--json]                      the module's baseline (F1), N from 1 to 168
+#   audit_settlement [--days N] [--no-timing] [--json]           settlement recomputed on paper (F6), N from 1 to 90
+#   research_picks_calibration [--days N] [--json]               the evidence of F2, N from 1 to 400
+#   help                                                         this list
+# each one run as `docker exec -w /app predigol-worker python -m scripts.<tool>`. The three tools open their own connection with
+# default_transaction_read_only=on, so the database refuses any write; they call no provider. No shell, no other command, no file is
+# offered (`restrict` in authorized_keys also takes away the terminal, forwarding and the agent). Every call, allowed or refused, is
+# written to the log with the client's address.
+set -uo pipefail
+LOGF="${PREDIGOL_AUDITS_LOG:-/var/log/predigol-audits.log}"
+CONTAINER="${PREDIGOL_AUDITS_CONTAINER:-predigol-worker}"
+WHO="${SSH_CLIENT%% *}"
+
+log() { printf '%s %s client=%s %s\n' "$(date -u +%FT%TZ)" "$1" "${WHO:-local}" "${2:-}" >> "$LOGF" 2> /dev/null || true; }
+refuse() { log REFUSED "$*"; echo "predigol-audits: refused: $*" >&2; exit 126; }
+usage() {
+  cat << 'EOF'
+predigol-audits: read-only tools of plan PICKS
+  audit_picks_module [--hours N] [--json]              N 1-168
+  audit_settlement [--days N] [--no-timing] [--json]   N 1-90
+  research_picks_calibration [--days N] [--json]       N 1-400
+EOF
+}
+
+CMD="${SSH_ORIGINAL_COMMAND:-}"
+[[ -n "$CMD" ]] || refuse "no command (an interactive shell is not offered)"
+# only lower-case letters, digits, space, _ and -: no shell metacharacter, no path, no quote
+[[ "$CMD" =~ ^[a-z0-9_\ -]+$ ]] || refuse "characters that are not allowed in: ${CMD:0:80}"
+(( ${#CMD} <= 120 )) || refuse "command too long"
+read -r -a W <<< "$CMD"
+TOOL="${W[0]}"
+ARGS=("${W[@]:1}")
+
+case "$TOOL" in
+  help) log OK help; usage; exit 0 ;;
+  audit_picks_module) NUM_FLAG="--hours"; NUM_MAX=168; FLAGS=" --json " ;;
+  audit_settlement) NUM_FLAG="--days"; NUM_MAX=90; FLAGS=" --json --no-timing " ;;
+  research_picks_calibration) NUM_FLAG="--days"; NUM_MAX=400; FLAGS=" --json " ;;
+  *) refuse "unknown tool '${TOOL:0:40}'" ;;
+esac
+
+seen=" "
+i=0
+while (( i < ${#ARGS[@]} )); do
+  a="${ARGS[$i]}"
+  [[ "$seen" != *" $a "* ]] || refuse "$a given twice"
+  seen+="$a "
+  if [[ "$a" == "$NUM_FLAG" ]]; then
+    v="${ARGS[$((i + 1))]:-}"
+    [[ "$v" =~ ^[0-9]{1,3}$ ]] && (( 10#$v >= 1 && 10#$v <= NUM_MAX )) || refuse "$NUM_FLAG needs a number from 1 to $NUM_MAX"
+    i=$((i + 2))
+  elif [[ "$FLAGS" == *" $a "* ]]; then
+    i=$((i + 1))
+  else
+    refuse "option '${a:0:30}' is not allowed for $TOOL"
+  fi
+done
+
+log OK "$CMD"
+exec docker exec -w /app "$CONTAINER" python -m "scripts.$TOOL" "${ARGS[@]}"

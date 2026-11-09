@@ -128,10 +128,16 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | BE-009 | Revisión de BE-007 (plan PICKS, F2 y guías): Q2 mide el sesgo de goles sobre todos los partidos terminados con pronóstico y mercado (el último pronóstico real de cada modelo antes del inicio, el último consenso Shin antes del inicio y el resultado a 90 minutos), no solo sobre los picks señalados, que por construcción tienen al modelo por encima del mercado; un sesgo pide además que el modelo quede más lejos que el mercado de lo que pasó. Q5 da en puntos lo que viene del precio, en vez de una parte del rendimiento que cambia de sentido cuando es negativo. La liquidación recalculada (F6) solo da por explicada una diferencia si el resultado se corrigió después de liquidarse el registro. Las guías dan la orden exacta del servidor (`docker exec -w /app predigol-worker …`) y dicen que la suma del día ya la garantiza la base. Prueba de integración de la consulta nueva. Sin corrida en producción todavía: los criterios siguen fijados antes de mirar. Solo lectura; sin migración | en curso | este PR | Plan PICKS F2 |
 | BE-010 | Libro vigente de cuotas (plan Cuotas, ola 1: fases 2 y 3). Taxonomía `tax-v3` para los 137 tipos que llegaron en 14 días: clave estable, familia, periodo, sujeto, lector validado con cuatro respuestas reales, método de justa, si cubre todos los resultados y si va al parlay (solo los 5 de siempre); 127 se muestran y 10 quedan ocultos con su motivo (nombres opacos, valores que no cuadran con el nombre, sin muestra). Tabla nueva `market.book_current` (migración 0128): una fila por partido y tipo de la respuesta vigente (la regla A → B → A de `quote_current`; una respuesta vacía borra el partido), leída desde RAW, con las cuotas por casa, la mejor y su casa, el número de casas y la justa solo con 3 casas completas (Shin por casa; hándicap asiático Local h con Visitante −h); trabajo `odds_book_build` cada 10 min y `scripts/rebuild_odds_book.py` en seco por defecto; borra las filas de partidos empezados hace más de 6 h. Apagado tras `FBI_ODDS_BOOK`; no pide nada al proveedor ni cambia `odds_snapshots`, `market_consensus`, `odds_quotes`, modelos, picks ni parlay. Guía `docs/owner/CUOTAS_LIBRO_VIGENTE_BE010.md` | en curso | este PR | Plan Cuotas, ola 1 |
 
+## SEG — seguridad
+
+| Código | Qué es | Estado | PR | Fase o nombre anterior |
+| --- | --- | --- | --- | --- |
+| SEG-001 | Llave de solo lectura para las auditorías del plan PICKS (F1, F2, F6): orden forzada `predigol-audits` (`backend/deploy/release/templates/gate/`) que solo deja lanzar `audit_picks_module`, `audit_settlement` y `research_picks_calibration` con sus opciones numéricas acotadas, dentro del worker y con su conexión `READ ONLY`; rechaza consola, otros scripts, metacaracteres y opciones ajenas, y registra cada llamada en `/var/log/predigol-audits.log`. Pasos para instalarla y quitarla en `PICKS_LINEA_BASE.md`. Suite `test_audits_gate.sh` (37 comprobaciones). No toca la llave de root ni la del despliegue; sin migración | en curso | este PR | Plan PICKS F1, F2, F6 |
+
 ## Otras áreas
 
 Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identifica por su fase: F11 (familias), S1 a S4 (seguridad), UX A1 y siguientes.
 
 ## Siguiente número libre
 
-CI-013 · SEG-001 · IA-021 · UX-072 · BE-011 · FE-001 · OPS-001 · DOC-001
+CI-013 · SEG-002 · IA-021 · UX-072 · BE-011 · FE-001 · OPS-001 · DOC-001

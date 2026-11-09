@@ -47,6 +47,10 @@ EXPECTED = {
         "predigol-gh-deploy: the forced command of the GitHub deploy key (CI/CD C4)",
         60,
     ),
+    "test_audits_gate.sh": (
+        "predigol-audits: the forced command of the read-only audits key (plan PICKS, F1/F2/F6)",
+        37,
+    ),
 }
 
 needs_tools = pytest.mark.skipif(
