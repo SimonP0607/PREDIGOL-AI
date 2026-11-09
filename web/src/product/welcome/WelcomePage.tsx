@@ -38,7 +38,7 @@ import {
 import { useOnboardingState, welcomeSteps } from "@/product/favorites/onboarding";
 import { HOW_PATH } from "@/product/help/howItWorks";
 import { useGuides } from "@/product/guides/context";
-import { afterWelcome } from "./next";
+import { afterWelcome, welcomeExit } from "./next";
 
 const PRIMARY =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50";
@@ -245,6 +245,8 @@ export function WelcomePage() {
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<unknown>(null);
+  // where to go once the account itself says the welcome is done (UX-081): not at the API's answer, a moment before the gate knows
+  const [leaving, setLeaving] = useState<string | null>(null);
   const skipped = useRef(0);
   const started = useRef(false);
   const finishing = useRef(false);
@@ -259,6 +261,11 @@ export function WelcomePage() {
   useEffect(() => {
     if (!due && !finishing.current) void navigate({ to: "/home", replace: true });
   }, [due, navigate]);
+  // The welcome was recorded as done: leave it once the account the gate reads agrees (same render), never before.
+  const exit = welcomeExit(due, leaving);
+  useEffect(() => {
+    if (exit !== null) void navigate({ to: exit as never, replace: true });
+  }, [exit, navigate]);
 
   const step: WelcomeStep = steps[index] ?? "football";
   const last = index >= steps.length - 1;
@@ -273,14 +280,13 @@ export function WelcomePage() {
       record(state);
       if (then === "tour") guides.request("general", 1);
       else
-        void navigate({
-          to: (then === "transparency"
+        setLeaving(
+          then === "transparency"
             ? "/transparency"
             : then === "how"
               ? HOW_PATH
-              : afterWelcome(searchStr)) as never,
-          replace: true,
-        });
+              : afterWelcome(searchStr),
+        );
     } catch (err) {
       finishing.current = false;
       setFailure(err);
