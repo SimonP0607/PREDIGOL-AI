@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 
+import psycopg.errors
 import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -73,6 +74,16 @@ def install(app: FastAPI) -> None:
             for e in exc.errors()
         )
         return JSONResponse(body("invalid", problems or "invalid request", request_id(request)), status_code=422)
+
+    @app.exception_handler(psycopg.errors.NumericValueOutOfRange)
+    async def _out_of_range(request: Request, exc: psycopg.errors.NumericValueOutOfRange) -> JSONResponse:
+        """BE-015: a number the column cannot hold (an id or an offset past 9223372036854775807) is the caller's mistake, not ours.
+
+        Schemathesis found it on eleven GET endpoints: the query validated as an integer, the database refused it, the answer was a 500.
+        Logged as a warning with the path, so a real overflow inside the service would still show in the log."""
+        rid = request_id(request)
+        log.warning("api.number_out_of_range", request_id=rid, path=request.url.path)
+        return JSONResponse(body("invalid", "a number is outside the range this field accepts", rid), status_code=422)
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
