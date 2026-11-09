@@ -35,6 +35,8 @@ NAMES_THE_TABLE = {
     "research/trace.py": "the trace of the model code's promotions (F12): counts the stored forecasts per model version to say which code production used; read-only, never an input",
     "api/services/transparency.py": "«Cómo le va a PrediGol» (plan UX, A12): the forecast's calibration after the matches - the last forecast before kick-off against the result; read-only, never an input",
     "scripts/transparency_check.py": "the contrast of that page (A12): the same calibration counted by an independent query at each deploy; read-only",
+    "scripts/compare_probabilities.py": "PICKS F3 (BE-021): puts the page's forecast beside the board's and Intelligence's probability, selection by selection, over a READ ONLY connection; "
+                                        "a measure of whether the two agree, printed for a person - never an input of a pick or a decision",
 }
 
 IMPORTS_THE_WRITER = {
