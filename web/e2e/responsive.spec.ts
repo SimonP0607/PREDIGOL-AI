@@ -163,6 +163,24 @@ test("team names are whole in the cards of a 320 px phone", async ({ page }) => 
   }
 });
 
+// Between `sm` (640 px) and `md` (768 px) - a phone held sideways, a folding phone, the narrowest browser window of a
+// laptop - each side of a match row is about 120 px wide and "Club Sp. San Lorenzo" does not fit, so a team name wraps
+// there as it does on a phone and is cut with an ellipsis only from `md` (UX-076). A test per width, for the reason
+// given above.
+for (const width of [640, 658, 700, 767]) {
+  test(`team names are whole in the match rows of a ${width} px window`, async ({ page }) => {
+    test.setTimeout(120_000);
+    const w = watch(page);
+    await page.setViewportSize({ width, height: 900 });
+    for (const path of ["/matches", "/live"]) {
+      await page.goto(path);
+      await settle(page);
+      expect(await cutNames(page), `team names cut on ${path} at ${width} px`).toEqual([]);
+      await assertClean(page, w);
+    }
+  });
+}
+
 // Tablets in both orientations and a phone held sideways - a test per screen, for the reason given above.
 const SCREENS: Array<[number, number]> = [
   [768, 1024],
