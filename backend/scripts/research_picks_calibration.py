@@ -447,6 +447,13 @@ def load_goals(conn: psycopg.Connection[Any], *, since: datetime, cutoff: dateti
                                          "devig": CONSENSUS_METHOD.value}).fetchall())
 
 
+def goals_since(rows: Sequence[Mapping[str, Any]], since: datetime) -> datetime:
+    """Q2 looks at the same period as the picks: from the first settled pick's kick-off (or ``since``, if later). Every
+    finished match since 2000 joined to the forecasts took more than the ten minutes of the statement on 9 Nov 2026."""
+    first = min((r["kickoff_at"] for r in rows), default=None)
+    return since if first is None else max(since, first)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--days", type=int, default=None, help="only matches of the last N days (default: all)")
@@ -458,7 +465,7 @@ def main(argv: list[str] | None = None) -> int:
     since = cutoff - timedelta(days=args.days) if args.days else datetime(2000, 1, 1, tzinfo=cutoff.tzinfo)
     with psycopg.connect(settings.database.psycopg_url, options=READ_ONLY, row_factory=dict_row) as conn:
         rows = load(conn, since=since, cutoff=cutoff)
-        goals = load_goals(conn, since=since, cutoff=cutoff)
+        goals = load_goals(conn, since=goals_since(rows, since), cutoff=cutoff)
     figures = research(rows, goals)
     if args.json:
         print(json.dumps(figures, ensure_ascii=False, indent=2,
