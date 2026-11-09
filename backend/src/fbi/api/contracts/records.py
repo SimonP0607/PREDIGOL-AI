@@ -19,6 +19,21 @@ ParlayProgress = Literal["OPEN", "PARTIAL_WON", "PARTIAL_LOST", "WON", "LOST", "
 SetSource = Literal["qualified", "evaluation"]
 
 
+class PriceNow(Contract):
+    """The price of a selection now, beside the one it was taken at (plan CUOTAS, phase 6): the best price of the newest
+    consensus capture, with its own hour and how fresh it is. A move of the price, never a verdict: it carries no probability,
+    value or state, and no bookmaker (a price is a reference, not an offer)."""
+
+    odds: Decimal
+    as_of: datetime = Field(description="When that price was captured.")
+    freshness: Literal["fresh", "aging", "stale"] = Field(description=(
+        "By the picks board's limits: up to one hour fresh, up to three aging, older stale - a stale price is shown as old, "
+        "never as the current one."))
+    change: Decimal | None = Field(default=None, description=(
+        "odds now / the price taken - 1: -0.0652 is a price that fell 6.52 %, positive a better one. Null without a price "
+        "taken."))
+
+
 class ItemAi(Contract):
     """The AI decision layer's review of a selection, frozen when the selection entered the set or parlay.
     In shadow mode it is shown and recorded but changed nothing; only with enforcement on (the owner's switch AND
@@ -120,6 +135,9 @@ class DailyItem(Contract):
     status_reason: StatusReason
     context_pending: bool = Field(description="RECOMMENDED by the value rule alone: «revisión de contexto aún no "
                                               "aplicada» is said beside it.")
+    price_now: PriceNow | None = Field(default=None, description=(
+        "The price now of the same selection against ``odds``, only while the match is still to be played and a capture "
+        "exists in the last 36 hours. Null: no price now (started, finished or never priced). Changes nothing about the pick."))
 
 
 class DailySet(Contract):
@@ -229,6 +247,9 @@ class UserPick(Contract):
     snapshot: dict[str, Any]
     corrections: list[ResultCorrection] = Field(default_factory=list, description=(
         "Settled again after the provider corrected the match; oldest first. Empty: never."))
+    price_now: PriceNow | None = Field(default=None, description=(
+        "The price now of the same selection against the price the reader counts (``user_odds`` when given, else ``odds``), "
+        "only while the match is still to be played and a capture exists in the last 36 hours. Null: none."))
     p_close: Decimal | None = Field(default=None, description=(
         "Once the match started: the de-vigged (Shin) consensus probability of the selection at the last capture before "
         "kick-off - the closing reference (plan UX, B5; clv-v1). Null before kick-off or without a capture."))
