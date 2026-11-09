@@ -18,6 +18,7 @@ import { fold } from "@/product/matches/model";
 import { ParlayToggle, PricePill } from "../ParlayPrice";
 import { useParlayLeg } from "../useParlayLeg";
 import { LONG_MARKET, type RowEnv } from "./env";
+import { catalogTarget } from "@/product/match/marketLink";
 import { blockText, explorerLeg, priceBlock } from "./legs";
 import type { OddsBoardRow, OddsSelectionPrice } from "./model";
 import { MOTION } from "./motion";
@@ -149,6 +150,8 @@ export function FixtureRow({
   const sides: Sides = { home: row.home.name, away: row.away.name };
   const competition = env.competitions.get(row.competition_id);
   const fresh = rowFreshness(row, env.now);
+  // «Abrir partido» lands on the market the reader was looking at, when the match's catalogue structures it.
+  const openTarget = catalogTarget(env.info.key, env.period);
   const match = `${row.home.name} ${t("common.vs")} ${row.away.name}`;
   const long = row.selections.length > LONG_MARKET;
   const query = fold(find.trim());
@@ -299,6 +302,7 @@ export function FixtureRow({
             to="/matches/$fixtureId"
             params={{ fixtureId: String(row.fixture_id) }}
             hash="markets"
+            search={openTarget ? { m: openTarget.key } : {}}
             aria-label={t("explorer.openMatchLabel", { match })}
             data-testid="explorer-open-match"
             className="tap-y relative inline-flex h-9 items-center justify-center gap-1 rounded-lg px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
