@@ -25,6 +25,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, request, test, type APIRequestContext, type Page } from "@playwright/test";
 import { statePath } from "./accounts";
+import { account, consents, owner, remove, signIn, todaysTeam, PASSWORD } from "./readers";
 import {
   L,
   assertClean,
@@ -43,7 +44,6 @@ const DB = (process.env["E2E_DATABASE_URL"] ?? "").replace(
   "postgresql+psycopg://",
   "postgresql://",
 );
-const PASSWORD = "Mi-primer-partido-2026"; // gitleaks:allow - a QA account's password, made and deleted here
 const CHOSEN = "La-tarde-del-clasico-26"; // gitleaks:allow - the password an invited QA reader chooses
 const SAME_SITE = { "x-requested-with": "predigol" };
 const PHONE = { width: 320, height: 720 };
@@ -53,57 +53,11 @@ const o = t.onboarding;
 /** Plan UX, section 19 and gate G8: from the activation to the first value, timed. */
 const LIMIT_MS = 90_000;
 
-async function owner(): Promise<APIRequestContext> {
-  return request.newContext({ baseURL: BASE, storageState: statePath("admin") });
-}
-
 async function selfService(): Promise<boolean> {
   const api = await request.newContext({ baseURL: BASE, extraHTTPHeaders: SAME_SITE });
   const r = await getJson<{ self_service: boolean }>(api, "/api/v1/auth/options");
   await api.dispose();
   return r.body.self_service;
-}
-
-async function account(
-  admin: APIRequestContext,
-  kind: string,
-): Promise<{ id: number; email: string }> {
-  const email = `e2e.welcome.${kind}.${Date.now()}@predigol.local`;
-  const created = await sendJson<{ data: { id: number } }>(admin, "POST", "/api/v1/admin/users", {
-    email,
-    password: PASSWORD,
-    role: "USER",
-    language: "es",
-    timezone: "America/Bogota",
-    must_change_password: false,
-  });
-  expect(created.status, "the owner creates the test's account").toBe(201);
-  return { id: created.body.data.id, email };
-}
-
-async function remove(admin: APIRequestContext, id: number, email: string): Promise<void> {
-  if (!id) return;
-  const r = await sendJson(admin, "POST", `/api/v1/admin/users/${id}/anonymise`, {
-    confirm: email,
-  });
-  expect([200, 409], `the test's account ${id} is deleted`).toContain(r.status);
-}
-
-async function signIn(page: Page, email: string, password = PASSWORD): Promise<void> {
-  await page.goto("/login");
-  await page.locator('input[name="email"]').fill(email);
-  await page.locator('input[name="password"]').fill(password);
-  await page.getByTestId("login-submit").click();
-  await expect(page).not.toHaveURL(/\/login/);
-}
-
-async function consents(page: Page): Promise<void> {
-  const gate = page.getByTestId("consent-gate");
-  await expect(gate).toBeVisible();
-  for (const kind of ["terms", "privacy", "age_18", "risk_notice"])
-    await gate.getByTestId(`consent-${kind}`).check();
-  await gate.getByTestId("consent-submit").click();
-  await expect(gate).toHaveCount(0);
 }
 
 interface Mail {
@@ -126,34 +80,6 @@ async function invitationLink(to: string, since: number): Promise<string> {
   const m = /https?:\/\/\S+?\/activate#t=([A-Za-z0-9_-]{43})\b/.exec(found?.text ?? "");
   expect(m, "the e-mail carries its /activate link").toBeTruthy();
   return `/activate#t=${m?.[1] ?? ""}`;
-}
-
-interface TodayBody {
-  data: {
-    matches: {
-      data: Array<{
-        fixture_id: number;
-        status_group: string;
-        competition: { name: string };
-        home: { id: number; name: string };
-      }>;
-    };
-  };
-}
-
-/**
- * A team that plays later today: the home side of the QA seed's match of «QA Primera A» (seed_a9.py: «QA Bahía - QA Llano»,
- * later today in Bogotá, in a suggested league) - its name to search, its match to open.
- */
-async function todaysTeam(
-  api: APIRequestContext,
-): Promise<{ fixture: number; id: number; name: string }> {
-  const today = await getJson<TodayBody>(api, "/api/v1/today");
-  expect(today.status).toBe(200);
-  const scheduled = today.body.data.matches.data.filter((m) => m.status_group === "scheduled");
-  const match = scheduled.find((m) => m.competition.name === "QA Primera A") ?? scheduled[0];
-  expect(match, "the QA seed puts a match later today on the board (seed_a9.py)").toBeTruthy();
-  return { fixture: match?.fixture_id ?? 0, id: match?.home.id ?? 0, name: match?.home.name ?? "" };
 }
 
 test("a new account: from its first entry to «Hoy en tus ligas» with its favourites in under 90 seconds, and never again", async ({
@@ -469,8 +395,9 @@ test("the welcome tour comes up by itself once, on a phone above the tab bar; Es
     const card = page.getByTestId("guide-card");
     await expect(card).toBeVisible();
     const box = await card.boundingBox();
+    // the open card is modal, so the page behind it is aria-hidden: find the bar by its label, not by its role
     const bar = await page
-      .getByRole("navigation", { name: t.nav.mainNavigation })
+      .locator(`nav[aria-label="${t.nav.mainNavigation}"]`)
       .last()
       .boundingBox();
     expect(box && bar && box.y + box.height <= bar.y).toBe(true);
@@ -587,7 +514,10 @@ test("the markets a reader reads are chosen in their profile, kept by a save tha
     await skipWelcome(page.request);
     await consents(page);
     await page.goto("/profile");
-    await page.getByTestId("profile-toggle-football").click();
+    // the blocks are open at a desk and folded on a phone: open it only when it is folded
+    const head = page.getByTestId("profile-toggle-football");
+    await expect(head).toHaveAttribute("aria-expanded", /true|false/);
+    if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
     await page.getByTestId("football-edit").click();
     const market = page.getByTestId("fav-market").filter({ hasText: t.markets.name.BTTS });
     await expect(market).toHaveAttribute("aria-pressed", "false");

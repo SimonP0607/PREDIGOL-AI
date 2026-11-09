@@ -6,6 +6,7 @@
  * No timers and no animation: with "reduce motion" the page does not even scroll smoothly.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link } from "@tanstack/react-router";
 import { t } from "@/lib/i18n";
@@ -29,6 +30,16 @@ function box(el: HTMLElement): Box {
   return { top: r.top, left: r.left, width: r.width, height: r.height };
 }
 
+/** Below 1024 px: how far above the foot of the screen the card sits - 8 px over the highest fixed bar or parlay button. */
+function dockBottom(): number | null {
+  const tops = Array.from(document.querySelectorAll<HTMLElement>('nav, [data-testid="slip-open"]'))
+    .filter((e) => getComputedStyle(e).position === "fixed")
+    .map((e) => e.getBoundingClientRect())
+    .filter((r) => r.width > 0 && r.height > 0 && r.top >= window.innerHeight / 2)
+    .map((r) => r.top);
+  return tops.length > 0 ? Math.round(window.innerHeight - Math.min(...tops) + 8) : null;
+}
+
 function prefersReducedMotion(): boolean {
   return (
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -43,6 +54,10 @@ export function GuideLayer() {
   const card = useRef<HTMLDivElement>(null);
   const [target, setTarget] = useState<Box | null>(null);
   const [place, setPlace] = useState<{ top: number; left: number } | null>(null);
+  // Below 1024 px: the room the page gets at its foot, so an element near the end can still go up above the card (UX-073)
+  const [room, setRoom] = useState(0);
+  // ...and where the card is docked: 8 px above the tab bar or the parlay button, whichever is higher (null: the CSS's own)
+  const [dock, setDock] = useState<number | null>(null);
 
   const def = active ? GUIDES[active.key] : null;
   const step = def && active ? cardsOf(def)[active.index] : undefined;
@@ -52,6 +67,12 @@ export function GuideLayer() {
     const el = anchors && anchors.length > 0 ? findAnchor(anchors) : null;
     const found = el ? box(el) : null;
     setTarget(found);
+    if (!desk) setDock(dockBottom());
+    if (!desk && card.current) {
+      setRoom(
+        Math.max(0, Math.round(window.innerHeight - card.current.getBoundingClientRect().top)),
+      );
+    }
     if (desk && card.current) {
       const c = card.current.getBoundingClientRect();
       setPlace(
@@ -69,9 +90,46 @@ export function GuideLayer() {
   // Bring the element into view (the bars are fixed and need nothing), then follow it while the page moves.
   useLayoutEffect(() => {
     const el = anchors && anchors.length > 0 ? findAnchor(anchors) : null;
-    if (el && !el.closest("nav, header")) {
-      el.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
-    }
+    const bring = () => {
+      if (!el || el.closest("nav, header")) return;
+      const behavior = prefersReducedMotion() ? "auto" : "smooth";
+      // the header may be hidden (a phone held sideways): only what is on the screen counts
+      const head = Math.max(
+        0,
+        document.querySelector("header")?.getBoundingClientRect().bottom ?? 0,
+      );
+      const c = card.current?.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      if (desk) {
+        if (!c) {
+          el.scrollIntoView({ block: "center", behavior });
+          return;
+        }
+        // the card goes below the element or above it: both together are centred when they fit on the screen, else the
+        // element is shown from its top and the card lies over its lower part
+        const need = r.height + 12 + c.height;
+        const avail = window.innerHeight - head - 24;
+        const want = need <= avail ? head + 8 + (avail - need) / 2 : head + 8;
+        window.scrollBy({ top: r.top - want, behavior });
+        return;
+      }
+      // Below 1024 px the card is docked at the bottom: the element goes into the free band between the header and the
+      // card (centred when it fits, from the top of the band when it does not), so the card never hides it (UX-073).
+      const bottom = dockBottom();
+      const cardTop = !c
+        ? window.innerHeight * 0.6
+        : bottom !== null
+          ? window.innerHeight - bottom - c.height
+          : c.top;
+      const top = head + 8;
+      const free = cardTop - 8 - top;
+      const want = r.height <= free ? top + (free - r.height) / 2 : top;
+      window.scrollBy({ top: r.top - want, behavior });
+    };
+    // the card mounts a frame after the layer: the first time its height is not known yet
+    let placing = 0;
+    if (card.current) bring();
+    else placing = requestAnimationFrame(bring);
     measure();
     let frame = 0;
     const again = () => {
@@ -84,13 +142,14 @@ export function GuideLayer() {
     const observer = el && typeof ResizeObserver !== "undefined" ? new ResizeObserver(again) : null;
     if (el) observer?.observe(el);
     return () => {
+      cancelAnimationFrame(placing);
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", again);
       window.removeEventListener("scroll", again, true);
       window.visualViewport?.removeEventListener("resize", again);
       observer?.disconnect();
     };
-  }, [anchors, measure, active?.index, active?.mode]);
+  }, [anchors, measure, desk, active?.index, active?.mode]);
 
   if (!active || !def || !step) return null;
 
@@ -113,8 +172,20 @@ export function GuideLayer() {
 
   const docked = desk && place ? { top: place.top, left: place.left } : undefined;
 
+  const spaced = !desk && !resuming && anchors !== undefined && anchors.length > 0;
+
   return (
     <>
+      {spaced
+        ? createPortal(
+            <div
+              aria-hidden
+              data-testid="guide-room"
+              style={{ height: room > 0 ? room : Math.round(window.innerHeight * 0.7) }}
+            />,
+            document.body,
+          )
+        : null}
       {target && !resuming ? (
         <div
           aria-hidden
@@ -149,7 +220,7 @@ export function GuideLayer() {
               guides.dismiss("escape");
             }}
             onInteractOutside={(e) => e.preventDefault()}
-            style={docked}
+            style={docked ?? (dock !== null ? { bottom: dock } : undefined)}
             className={cn(
               "fixed z-[70] rounded-xl border border-gold/40 bg-card p-4 shadow-lg focus:outline-none",
               "inset-x-3 mx-auto max-w-md bottom-[calc(8.5rem+env(safe-area-inset-bottom))] short:bottom-[calc(7rem+env(safe-area-inset-bottom))] short:max-h-[calc(100dvh-8rem)] short:overflow-y-auto",
