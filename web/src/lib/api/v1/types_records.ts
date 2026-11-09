@@ -85,6 +85,18 @@ export interface MatchRef {
   live_at?: Iso | null;
 }
 
+/**
+ * The price of a selection now, beside the one it was taken at (plan CUOTAS, phase 6): the best price of the newest consensus
+ * capture with its own hour and freshness. A move of the price, never a verdict; no bookmaker (a reference, not an offer).
+ */
+export interface PriceNow {
+  odds: Dec;
+  as_of: Iso;
+  freshness: "fresh" | "aging" | "stale";
+  /** odds now / the price taken − 1: −0.0652 fell 6.52 %. Null without a price taken. */
+  change: Dec | null;
+}
+
 export interface DailyItem {
   rank: number;
   pick_id: number;
@@ -117,6 +129,8 @@ export interface DailyItem {
   user_status: UserStatus;
   status_reason: StatusReason;
   context_pending: boolean;
+  /** The price now against `odds`, only while the match is still to be played; null otherwise (older answers omit it). */
+  price_now?: PriceNow | null;
 }
 
 export interface DailySet {
@@ -253,6 +267,8 @@ export interface UserPick {
   p_close?: Dec | null;
   /** clv-v1: the price the reader counts (theirs when they gave it) at p_close, odds × p_close − 1, a share. */
   line_value?: Dec | null;
+  /** The price now against the one the reader counts, only while the match is still to be played; null otherwise. */
+  price_now?: PriceNow | null;
 }
 
 export interface LegIn {
@@ -261,6 +277,8 @@ export interface LegIn {
   selection: string;
   line?: string | number;
   odds?: string | number | null;
+  /** When `odds` were captured (the time of the price the user was shown); never later than now. */
+  odds_captured_at?: string | null;
 }
 
 export interface ParlayIn {
@@ -294,6 +312,8 @@ export interface ParlayValidation {
     selection: string;
     line: string;
     odds?: string | null;
+    odds_source?: "shown" | "current" | null;
+    odds_captured_at?: string | null;
     kickoff_at?: string;
     price?: { odds: string; bookmaker: string | null; as_of: string } | null;
     p_fair?: string | null;
@@ -327,6 +347,10 @@ export interface UserParlayLeg {
   line: Dec;
   odds: Dec | null;
   status: ResultStatus;
+  /** shown: the odds the user was shown; current: the newest price at saving; null: saved before this was kept. */
+  odds_source?: "shown" | "current" | null;
+  /** When those odds were captured; null: not kept (never an invented time). */
+  odds_captured_at?: Iso | null;
 }
 
 export interface UserParlay {

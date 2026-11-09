@@ -114,6 +114,10 @@
     "oddsSaved": "Cuota guardada",
     "oddsCleared": "Cuota quitada"
   },
+  "priceNow": {
+    "now": "Ahora {odds}",
+    "stale": "precio antiguo"
+  },
   "slip": {
     "title": "Mi parlay",
     "subtitle": "Una selección por partido, de {min} a {max}.",
@@ -133,6 +137,7 @@
     "openMatchLabel": "Abrir el partido {match}",
     "viewAnalysis": "Ver análisis",
     "viewAnalysisLabel": "Ver el análisis de {match}",
+    "priceAt": "Cuota de {when}",
     "legProbability": "PrediGol",
     "legProbabilityHelp": "Probabilidad de PrediGol para esta selección",
     "combined": "Cuota combinada",
@@ -277,6 +282,7 @@
       "emptyBody": "Agrega selecciones a tu parlay desde los partidos o los picks.",
       "build": "Armar un parlay",
       "remove": "Eliminar",
+      "oddsAt": "Cuota de {when}",
       "createdAt": "Creado {when}",
       "unnamed": "Parlay sin nombre",
       "more": "Ver más",

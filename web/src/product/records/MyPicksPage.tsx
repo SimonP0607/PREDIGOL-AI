@@ -29,6 +29,7 @@ import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { OddsPill } from "@/product/shared/Bits";
+import { PriceNowLine } from "@/product/shared/PriceNowLine";
 import {
   Card,
   EmptyState,
@@ -404,6 +405,7 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
               <span className="numeric font-semibold">{fmtOdds(pick.user_odds)}</span>
             </span>
           ) : null}
+          <PriceNowLine now={pick.price_now} />
         </div>
       </div>
       <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
@@ -715,7 +717,19 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
                   {leg.match.home.name} – {leg.match.away.name}
                 </div>
               </div>
-              <OddsPill odds={leg.odds} size="sm" />
+              <div className="flex shrink-0 flex-col items-end gap-0.5">
+                <OddsPill odds={leg.odds} size="sm" />
+                {leg.odds_captured_at ? (
+                  <span
+                    className="numeric whitespace-nowrap text-micro text-subtle-foreground"
+                    data-testid="parlay-leg-odds-at"
+                  >
+                    {t("records.mine.parlays.oddsAt", {
+                      when: formatKickoff(leg.odds_captured_at),
+                    })}
+                  </span>
+                ) : null}
+              </div>
               <RecordState status={leg.status} match={leg.match} hidePending />
             </li>
           ))}
