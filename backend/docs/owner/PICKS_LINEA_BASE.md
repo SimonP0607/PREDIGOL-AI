@@ -188,3 +188,24 @@ Lo que explica la diferencia, según los datos de esa corrida:
 - Intelligence no tiene aún selecciones aprobadas, así que no hay nada que publicar desde allí por ahora.
 
 **Decisión:** `FBI_PICKS_SOURCE` sigue apagado y no se publican picks experimentales. Para que el criterio se cumpla hace falta que el Match Center lea la misma probabilidad calibrada y el mismo punto de control (el último disponible antes del inicio) que Intelligence; es un cambio de contrato y de la web, y se hace detrás del interruptor y con esta misma herramienta como prueba de salida.
+
+#### Por qué el Match Center no puede, por ahora, leer el número de Intelligence (9-nov-2026, 23:12 UTC)
+
+La herramienta ya está desplegada (BE-021 entró en el despliegue de las 22:03 UTC) y la comparación oficial se repitió con ella: **sigue sin cumplirse.** A 24 h, con 119 selecciones de 25 partidos, el tablero con el interruptor y Intelligence coinciden en todas (0 de más de 0,5 pp), pero el Match Center difiere de Intelligence en 46 de 58 selecciones (mediana 2,2 pp, máximo 10,2 pp). A 72 h, 47 de 59 contra Intelligence y 101 de 114 contra el tablero con el interruptor (máximo 28,8 pp).
+
+La salida obvia, que el Match Center muestre la probabilidad calibrada de Intelligence, tiene un obstáculo de calidad de datos que se midió con una lectura de solo lectura sobre los partidos de las próximas 72 h (y de las últimas 3 h):
+
+| Mercado | Mercados con lectura de Intelligence | Resultados por mercado (promedio) | Suma de las probabilidades (mínimo–máximo) | Mercados en los que Intelligence no tiene todos los resultados |
+| --- | --- | --- | --- | --- |
+| 1X2 | 19 | 1,5 de 3 | 0,18–1,04 | 17 de 19 |
+| Más/menos (OU) | 55 | 1,0 de 2 | 0,14–0,63 | 55 de 55 |
+| Ambos anotan (BTTS) | 21 | 1,0 de 2 | 0,38–0,58 | 21 de 21 |
+
+El pronóstico del Match Center (`forecast-v1`) cubre 70 mercados 1X2 y 62 de OU y de BTTS en la misma ventana, completos, con todos los resultados y sumando 1,0000. Intelligence solo guarda la probabilidad calibrada de lo que evaluó con un precio (una selección por mercado, casi siempre), así que no es una distribución: sustituir el número del Match Center por el suyo dejaría tablas incompletas que no suman 100 % y, además, descartaría el intervalo medido (que corresponde al número del modelo, no al calibrado de Intelligence).
+
+**Lo que sí se puede hacer sin romper nada** (para decidir con el dueño, no se hizo):
+
+1. Que Picks y Match Center no se contradigan donde coinciden: la tarjeta de un pick en el Match Center puede mostrar la misma probabilidad que la del tablero (la de la decisión), con su etiqueta, sin tocar el resto del mercado.
+2. O al revés: que Intelligence calibre con el mismo modelo y el mismo momento (la probabilidad del Match Center al último punto de control) para todos los resultados de un mercado; es un cambio de la línea de modelos y tiene que pasar su propia puerta estadística.
+
+Mientras tanto el criterio de «0 diferencias de más de 0,5 pp» solo es medible sobre las selecciones que ambos tienen, y hoy no se cumple. `FBI_PICKS_SOURCE` sigue apagado.
