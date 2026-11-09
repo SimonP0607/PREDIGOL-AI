@@ -10,6 +10,7 @@ from typing import Any
 
 import httpx
 import pytest
+import structlog
 from pydantic import SecretStr, ValidationError
 from structlog.testing import capture_logs
 
@@ -22,6 +23,7 @@ from fbi.core.errors import (
     RateLimitError,
 )
 from fbi.domain.market_probability import DevigMethod
+from fbi.providers.the_odds_api import client as client_module
 from fbi.providers.the_odds_api.client import MemoryCreditStore, TheOddsApiClient
 from fbi.providers.the_odds_api.identity import KnownFixture, match_fixture
 from fbi.providers.the_odds_api.parse import parse_events, reference_fair
@@ -204,7 +206,10 @@ async def test_a_transport_error_leaves_no_url_behind() -> None:
     assert KEY not in str(caught.value) and caught.value.__cause__ is None and caught.value.__suppress_context__
 
 
-async def test_no_log_line_carries_the_key_or_the_url() -> None:
+async def test_no_log_line_carries_the_key_or_the_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The module logger caches its processors at first use; another test in the same pytest-xdist worker may have used it already, so give the
+    # client a fresh logger for this test (capture_logs only reaches loggers that have not cached their chain yet).
+    monkeypatch.setattr(client_module, "log", structlog.get_logger("the_odds_api_test"))
     client = TheOddsApiClient(settings(), http=http_with(lambda r: answer([event(book("pinnacle", 2.1, 3.5, 3.6))])))
     with capture_logs() as logs:
         await client.fetch_h2h("soccer_epl")
