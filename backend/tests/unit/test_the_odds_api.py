@@ -12,7 +12,7 @@ import httpx
 import pytest
 import structlog
 from pydantic import SecretStr, ValidationError
-from structlog.testing import capture_logs
+from structlog.testing import LogCapture
 
 from fbi.core.clock import now
 from fbi.core.errors import (
@@ -207,12 +207,14 @@ async def test_a_transport_error_leaves_no_url_behind() -> None:
 
 
 async def test_no_log_line_carries_the_key_or_the_url(monkeypatch: pytest.MonkeyPatch) -> None:
-    # The module logger caches its processors at first use; another test in the same pytest-xdist worker may have used it already, so give the
-    # client a fresh logger for this test (capture_logs only reaches loggers that have not cached their chain yet).
-    monkeypatch.setattr(client_module, "log", structlog.get_logger("the_odds_api_test"))
+    # The client gets a logger of its own with its own processor (a LogCapture): structlog's global configuration is shared by every test of the
+    # pytest-xdist worker (another test may have configured it, cached the module logger or raised its level), so capture_logs() on the global one
+    # sometimes saw nothing. Nothing global is read or changed here.
+    capture = LogCapture()
+    monkeypatch.setattr(client_module, "log", structlog.wrap_logger(structlog.PrintLogger(), processors=[capture], wrapper_class=structlog.BoundLogger))
     client = TheOddsApiClient(settings(), http=http_with(lambda r: answer([event(book("pinnacle", 2.1, 3.5, 3.6))])))
-    with capture_logs() as logs:
-        await client.fetch_h2h("soccer_epl")
+    await client.fetch_h2h("soccer_epl")
+    logs = capture.entries
     assert logs and KEY not in json.dumps(logs, default=str) and "apiKey" not in json.dumps(logs, default=str)
 
 
