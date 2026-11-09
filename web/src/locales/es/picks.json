@@ -46,6 +46,10 @@
     },
     "show_one": "Ver {count} pick",
     "show_other": "Ver {count} picks",
+    "matches_one": "{count} partido",
+    "matches_other": "{count} partidos",
+    "inMatch_one": "{count} pick en este partido",
+    "inMatch_other": "{count} picks en este partido",
     "filtersTitle": "Filtros de los picks que ya empezaron"
   },
   "priceHelp": "Toca la cuota para agregarla a tu parlay; el marcador la guarda.",
