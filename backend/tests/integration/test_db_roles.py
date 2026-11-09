@@ -50,6 +50,12 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_worker", "raw.ingestion_payloads", "DELETE", True),
     ("predigol_worker", "public.alembic_version", "SELECT", True),
     ("predigol_worker", "public.alembic_version", "UPDATE", False),
+    # the current-price book (BE-010): the worker builds it and purges it, the API reads it
+    ("predigol_worker", "market.book_current", "INSERT", True),
+    ("predigol_worker", "market.book_current", "UPDATE", True),
+    ("predigol_worker", "market.book_current", "DELETE", True),
+    ("predigol_api", "market.book_current", "SELECT", True),
+    ("predigol_api", "market.book_current", "INSERT", False),
     ("predigol_api", "core.fixtures", "SELECT", True),
     ("predigol_api", "core.fixtures", "INSERT", False),
     ("predigol_api", "market.odds_snapshots", "UPDATE", False),
