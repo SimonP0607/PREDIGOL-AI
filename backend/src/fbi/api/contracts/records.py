@@ -191,6 +191,9 @@ class DailyBoard(Contract):
     daily_parlay: ParlayRecord | None
     multiday_parlay: ParlayRecord | None
     reason: str | None = None
+    previous_day_open: bool = Field(default=False, description=(
+        "The set of the day before (same source, what a reader of it is shown) still has a pick to finish or settle: only "
+        "then does Inicio ask for that day (plan Inicio, P4)."))
 
 
 class SavePickIn(BaseModel):

@@ -10,7 +10,7 @@ import base64
 import re
 from collections import defaultdict
 from collections.abc import Hashable, Mapping, Sequence
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -309,8 +309,19 @@ def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datet
         day=the_day, timezone=str(DAY_TZ), source=source, evaluation_mode=include_shadow, set=daily_set,
         daily_parlay=_parlay(conn, "daily", the_day, source), multiday_parlay=_parlay(conn, "multiday", the_day, source),
         reason=None if daily_set and daily_set.items else (
-            "no_shadow_picks" if include_shadow else "no_qualified_picks"))
+            "no_shadow_picks" if include_shadow else "no_qualified_picks"),
+        previous_day_open=_previous_day_open(conn, the_day, source))
     return ok(board)
+
+
+def _previous_day_open(conn: Conn, the_day: date, source: SetSource) -> bool:
+    """The day before still has a pick of its set to finish or settle, among those a reader of it is shown (plan Inicio,
+    P4): Inicio asks for that day only then, instead of every two minutes."""
+    s = fetch_one(conn, SET_SQL, {"day": the_day - timedelta(days=1), "source": source})
+    if s is None:
+        return False
+    rows = fetch_all(conn, ITEMS_SQL, {"set": s["id"]})
+    return any(seen and r["status"] == "PENDING" for r, seen in zip(rows, readers_see(rows, source), strict=True))
 
 
 # A user's own lists are read page by page (plan UX, A1: "Todo" was cut at 500 picks and 200 parlays and called

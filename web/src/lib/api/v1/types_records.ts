@@ -191,6 +191,8 @@ export interface DailyBoard {
   multiday_parlay: ParlayRecord | null;
   /** no_qualified_picks | no_shadow_picks, when the set has no item. */
   reason: string | null;
+  /** The day before still has a pick to finish or settle: only then does Inicio ask for that day (plan Inicio, P4). */
+  previous_day_open?: boolean;
 }
 
 export type MarketKey = "1X2" | "OU" | "BTTS" | "AH" | "DC";
