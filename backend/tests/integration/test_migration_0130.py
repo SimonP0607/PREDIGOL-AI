@@ -2,7 +2,10 @@
 
 The upgrade builds ``models.predictions (created_at)`` and ``picks.pick_candidates (evaluated_at)`` as BRIN indexes, valid; the
 downgrade drops them and goes up again; running the upgrade's statements twice is harmless (``IF NOT EXISTS`` and the INVALID
-index cleanup); and it waits for the worker's long write transactions instead of giving up (BE-025). Its own scratch database (``<FBI_TEST_DB>_m0130``), so it never collides with the other migration tests."""
+index cleanup). What the first production attempt (2026-11-09) taught is tested too: the build finds a gap between the worker's
+writers instead of giving up, and it does not wait for a session that stays idle inside a transaction (CONCURRENTLY does, for as
+long as the worker's longest one). Its own scratch database (``<FBI_TEST_DB>_m0130``), so it never collides with the other migration
+tests."""
 
 from __future__ import annotations
 
@@ -81,6 +84,38 @@ def writer_inside(dsn: str, seconds: float = HOLD) -> Iterator[None]:
         raise errors[0]
 
 
+@contextmanager
+def idle_reader(dsn: str, at_most: float = 40) -> Iterator[None]:
+    """A session that has read ``models.predictions`` and stays idle inside its (repeatable read) transaction - what the worker does
+    for ten minutes and more while it reads odds. It holds a lock on the table and an old snapshot; it is released on leaving the
+    block, or after ``at_most`` seconds so that a regression ends in a failed assertion instead of a hang."""
+    held = threading.Event()
+    release = threading.Event()
+    errors: list[BaseException] = []
+
+    def hold() -> None:
+        try:
+            with psycopg.connect(dsn) as c:
+                c.isolation_level = psycopg.IsolationLevel.REPEATABLE_READ
+                c.execute("SELECT count(*) FROM models.predictions").fetchone()
+                held.set()
+                release.wait(at_most)
+        except BaseException as exc:
+            errors.append(exc)
+            held.set()
+
+    thread = threading.Thread(target=hold)
+    thread.start()
+    try:
+        assert held.wait(30), "the reader never took its snapshot"
+        yield
+    finally:
+        release.set()
+        thread.join()
+    if errors:
+        raise errors[0]
+
+
 def _indexes(c: psycopg.Connection) -> dict[str, tuple[str, bool]]:
     """name -> (access method, valid) of the two indexes, for those that exist."""
     rows = c.execute("SELECT c.relname, am.amname, i.indisvalid FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid "
@@ -128,9 +163,9 @@ def _leave_an_invalid_index(c: psycopg.Connection) -> bool:
     return True
 
 
-def test_0130_waits_for_a_writer_that_stays_in_the_table_longer_than_ten_seconds() -> None:
-    """The first production attempt (2026-11-09) cancelled itself after 10 s: CONCURRENTLY waits for the transactions already writing to
-    the table, and the worker's last tens of seconds. Here a writer holds the table for 12 s while the upgrade runs."""
+def test_0130_finds_a_gap_between_writers_instead_of_giving_up_after_ten_seconds() -> None:
+    """The first production attempt (2026-11-09) cancelled itself after 10 s of waiting for the worker's writers. Here a writer holds
+    the table for 12 s while the upgrade runs: the build tries again until the table is free."""
     with scratch_at("0129") as dsn:
         with writer_inside(dsn):
             started = time.monotonic()
@@ -142,9 +177,23 @@ def test_0130_waits_for_a_writer_that_stays_in_the_table_longer_than_ten_seconds
             assert _indexes(c) == dict.fromkeys(NAMES, ("brin", True))
 
 
-def test_0130_replaces_an_invalid_index_without_asking_for_the_table_exclusively() -> None:
-    """The second production attempt failed in the cleanup: a plain DROP INDEX asks for an ACCESS EXCLUSIVE lock on the table, behind the
-    worker's writers, and gave up after 10 s. The cleanup now waits the way the build does."""
+def test_0130_does_not_wait_for_a_session_that_stays_idle_inside_a_transaction() -> None:
+    """CREATE INDEX CONCURRENTLY waits for every transaction that holds a lock on the table or an old snapshot, and the worker keeps
+    sessions like that for ten minutes and more. The plain build only conflicts with writers, so a reader that never lets go does not
+    hold the upgrade (a regression would wait for the reader's 40 s and fail here)."""
+    with scratch_at("0129") as dsn:
+        with idle_reader(dsn):
+            started = time.monotonic()
+            command.upgrade(_cfg(), "0130")
+            waited = time.monotonic() - started
+        assert waited < 25, f"the upgrade waited for the idle reader ({waited:.1f} s)"
+        with psycopg.connect(dsn) as c:
+            assert _indexes(c) == dict.fromkeys(NAMES, ("brin", True))
+
+
+def test_0130_replaces_an_invalid_index_even_with_a_writer_inside_the_table() -> None:
+    """The second production attempt failed in the cleanup: a plain DROP INDEX asks for an ACCESS EXCLUSIVE lock on the table, behind
+    the worker's writers, and gave up after 10 s. The cleanup now waits (CONCURRENTLY, holding nobody back) as long as it takes."""
     with scratch_at("0129") as dsn:
         with psycopg.connect(dsn, autocommit=True) as c:
             if not _leave_an_invalid_index(c):
