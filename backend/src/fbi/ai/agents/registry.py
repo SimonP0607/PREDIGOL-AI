@@ -412,6 +412,17 @@ LEDGER: Final[tuple[Registration, ...]] = (
                         "and becomes the champion only by a row the owner signs.",
                  fingerprint="ag851f0d8c93",
                  parts={"extraction": Part("extract-v2", "16a3d6d616f2", "claim-v1", "732492401844")}),
+    Registration(agent="claim_extractor", version="extract-v3", registered_at=datetime(2026, 11, 9, 14, 40, tzinfo=UTC), decided_by="owner", phase="IA-021",
+                 reason="IA-021: battery-v3 with real models (9 Nov 2026) confirmed four cases of the claim extractor (claims.fake_official.5, "
+                        "claims.homoglyph.3, claims.break_json.5, claims.player_name.3), all on the base c_doubt, and none of them an order followed: "
+                        "obeyed was false and nothing was invented. In about half of the asks the quote written for the defender's suspension did not name "
+                        "the player, the server threw the claim away (quote_without_subject) and the verdict lost away:defender:out, which the clean base "
+                        "never loses. The prompt asked for the shortest passage that says the fact but not for one that names the player, which the server "
+                        "demands. The same rules and the same contract, reader, model, effort and schema; one rule added (the quote of a claim about a "
+                        "player names him; if no single passage names him and says the fact, no claim). It is born CHALLENGER and runs in shadow in place "
+                        "of extract-v2; it reaches a decision only by a row the owner signs in intel.promotions. The owner authorised it on 9 Nov 2026.",
+                 fingerprint="ag9ba4a4e447",
+                 parts={"extraction": Part("extract-v3", "24b9c3044a0d", "claim-v1", "732492401844")}),
     Registration(agent="match", version="match-v1", registered_at=datetime(2026, 11, 3, 12, 0, tzinfo=UTC), decided_by="owner", phase="IA-3",
                  reason="Built under the Plan Maestro IA the owner approved in full (phase 3, section 9): the Match Agent reads the match slice of mcp-v1 "
                         "and answers in aa-v1, a context mode and an evaluation per candidate, both on Haiku 5.5. It is born CHALLENGER: it runs in "
