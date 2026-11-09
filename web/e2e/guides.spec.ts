@@ -383,6 +383,109 @@ test("when a guide closes, the focus goes back to the «?» that opened it, or t
   }
 });
 
+test("the welcome tour by keyboard alone, with reduced motion: the focus stays in the card and goes back to the page at the end (UX-083)", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  const admin = await owner();
+  const { id, email } = await account(admin, "gkeys");
+  try {
+    const w = watch(page, { expect401: true, expectStatus: [403] });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await signIn(page, email);
+    await skipWelcome(page.request, { guides: "keep" });
+    await consents(page);
+    await page.goto("/home");
+    const open = card(page);
+    await expect(open).toHaveAttribute("data-guide-key", "general");
+    // the focus is in the card from the first moment, and Tab goes round its buttons without leaving it
+    const inside = () =>
+      page.evaluate(() => Boolean(document.activeElement?.closest('[data-testid="guide-card"]')));
+    await expect.poll(inside).toBe(true);
+    for (let i = 0; i < 6; i++) {
+      await page.keyboard.press("Tab");
+      expect(await inside(), `Tab ${i + 1} stays in the card`).toBe(true);
+    }
+    for (let i = 0; i < 6; i++) {
+      await page.keyboard.press("Shift+Tab");
+      expect(await inside(), `Shift+Tab ${i + 1} stays in the card`).toBe(true);
+    }
+    // Empezar and every Siguiente by keyboard, up to Finalizar
+    const press = async (testid: string) => {
+      const button = open.getByTestId(testid);
+      await button.focus();
+      await expect(button).toBeFocused();
+      await page.keyboard.press("Enter");
+    };
+    await press("guide-start");
+    for (let i = 0; i < 9 && (await open.getByTestId("guide-finish").count()) === 0; i++) {
+      const at = await open.getAttribute("data-step");
+      await press("guide-next");
+      await expect(open).not.toHaveAttribute("data-step", at ?? "");
+    }
+    await press("guide-finish");
+    await expect(open).toHaveCount(0);
+    // the tour is over: the focus is on the page, not on nothing
+    await expect
+      .poll(() => page.evaluate(() => document.activeElement === document.body))
+      .toBe(false);
+    await assertClean(page, w);
+  } finally {
+    await remove(admin, id, email);
+    await admin.dispose();
+  }
+});
+
+test("without a connection: a guide skipped offline does not come back, and the API learns of it when the connection returns (UX-083)", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(150_000);
+  const admin = await owner();
+  const { id, email } = await account(admin, "goff");
+  try {
+    // offline, the browser's own failed requests are expected: only what the page throws counts
+    const thrown: string[] = [];
+    page.on("pageerror", (err) => thrown.push(err.message.slice(0, 300)));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page, email);
+    await skipWelcome(page.request, { guides: "keep" });
+    await consents(page);
+    await page.goto("/home");
+    await expect(card(page)).toHaveAttribute("data-guide-key", "general");
+    // the connection goes while the card is up: Saltar still works, and the page counts it
+    await context.setOffline(true);
+    await card(page).getByTestId("guide-skip").click();
+    await expect(card(page)).toHaveCount(0);
+    // the same page does not bring it back, by its own account of what was done
+    await page.waitForTimeout(500);
+    await expect(card(page)).toHaveCount(0);
+    await context.setOffline(false);
+    // back online the page tells the API (what waited in the device's queue goes on the «online» event)
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    await expect
+      .poll(
+        async () => {
+          const me = await page.request.get("/api/v1/auth/me");
+          const body = (await me.json()) as {
+            guides?: Array<{ guide: string; status: string }>;
+          };
+          return body.guides?.find((g) => g.guide === "general")?.status;
+        },
+        { timeout: 20_000 },
+      )
+      .toBe("skipped");
+    await page.reload();
+    await settle(page);
+    await expect(card(page), "after a reload: not again").toHaveCount(0);
+    expect(thrown, "the page threw nothing").toEqual([]);
+  } finally {
+    await remove(admin, id, email);
+    await admin.dispose();
+  }
+});
+
 const SIZES: Array<[number, number]> = [
   [320, 568],
   [390, 844],
