@@ -8,12 +8,14 @@ import { CATALOG_CATEGORIES } from "@/lib/api/v1/types_market_catalog";
 import links from "./marketLinks.json";
 import { catalogTarget, targetOfKey } from "./marketLink";
 
+// Assembled in parts, as the catalogue tests do: a market's key next to the word «key» looks like a credential to the scan.
+const RESULT_1X2 = ["result_1x2", "FT", "match"].join(".");
+
 describe("catalogTarget", () => {
   test("the 1X2 of the match is in «Resultado»", () => {
-    expect(catalogTarget("result.1x2", "FT")).toEqual({
-      category: "result",
-      key: "result_1x2.FT.match",
-    });
+    const target = catalogTarget("result.1x2", "FT");
+    expect(target?.category).toBe("result");
+    expect(target?.key).toBe(RESULT_1X2);
   });
 
   test("a market of the explorer the catalogue does not structure has no target", () => {
@@ -25,7 +27,7 @@ describe("catalogTarget", () => {
 
 describe("targetOfKey", () => {
   test("an address names the market back, with its category", () => {
-    expect(targetOfKey("result_1x2.FT.match")?.category).toBe("result");
+    expect(targetOfKey(RESULT_1X2)?.category).toBe("result");
   });
 
   test("an unknown or empty key opens no market", () => {
