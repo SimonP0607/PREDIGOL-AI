@@ -1027,6 +1027,11 @@ async def _synthetic() -> None:
 
 USER_NARRATIVE_MINUTES = int(os.environ.get("FBI_USER_NARRATIVE_MINUTES", "10"))
 
+CHRONICLE_REVIEW_MINUTES = int(os.environ.get("FBI_CHRONICLE_REVIEW_MINUTES", "60"))
+CHRONICLE_REVIEW_ENABLED = os.environ.get("FBI_CHRONICLE_REVIEW", "1").strip().lower() not in {"0", "off", "false", "no"}
+"""IA-022/023: the post-match review of the chronicle (``fbi.chronicle.review``). It calls no model and spends nothing; it reads what the match
+showed and appends a row to ``ai.chronicle_reviews``. ``FBI_CHRONICLE_REVIEW=0`` switches it off without a deploy (the rows stay)."""
+
 
 def _user_narrative_now() -> None:
     """The readers' narrative (plan UX, A11): one pass with its ledger row. Never raises: the readers' AI must never stop the
@@ -1044,6 +1049,24 @@ def _user_narrative_now() -> None:
 async def _user_narrative() -> None:
     new_run_id()
     await asyncio.to_thread(_user_narrative_now)
+
+
+def _chronicle_review_now() -> None:
+    """The chronicle's post-match review (IA-022): one pass with its ledger row. Never raises: a review must never stop the worker, and it
+    changes no model, threshold or pick."""
+    from fbi.chronicle.job import run_job
+
+    try:
+        with _connect() as conn:
+            r = run_job(conn, at=now())
+        log.info("chronicle_review.run", due=r.due, written=r.written, waiting=r.waiting, firm=r.firm, contradicted=r.contradicted)
+    except Exception as exc:
+        log.error("chronicle_review.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _chronicle_review() -> None:
+    new_run_id()
+    await asyncio.to_thread(_chronicle_review_now)
 
 
 def _notify_now() -> None:
@@ -1528,7 +1551,7 @@ WORKER_JOB_TYPES = frozenset({
     "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
-    "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh",
+    "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1844,6 +1867,12 @@ async def main() -> None:
     else:
         log.info("worker.user_narrative_off",
                  hint="FBI_USER_NARRATIVE unset or off: the readers keep the structured reading, nothing is spent")
+    if CHRONICLE_REVIEW_ENABLED:
+        scheduler.add_job(_deadline("chronicle_review", "chronicle_review", _chronicle_review), "interval",
+                          minutes=CHRONICLE_REVIEW_MINUTES, id="chronicle_review", max_instances=1, coalesce=True,
+                          misfire_grace_time=CHRONICLE_REVIEW_MINUTES * 60, next_run_time=moment + timedelta(minutes=37))
+    else:
+        log.info("worker.chronicle_review_off", hint="FBI_CHRONICLE_REVIEW=0: the chronicles are not being compared with what happened")
     scheduler.add_job(_ai_report, "interval", minutes=AI_CHECK_MINUTES, id="ai_daily_report",
                       max_instances=1, coalesce=True, misfire_grace_time=AI_CHECK_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=9))

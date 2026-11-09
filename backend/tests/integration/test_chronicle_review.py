@@ -237,3 +237,17 @@ def test_the_command_previews_one_match_or_what_is_due_and_run_needs_the_owner(d
     assert cli.preview(db, 424_242) == ([], 1), "a match with no chronicle"
     assert cli.main(["run"]) == 2 and "--confirm-owner" in capsys.readouterr().err
     assert scalar(db.execute("SELECT count(*) FROM ai.chronicle_reviews")) == 0
+
+
+def test_the_scheduled_job_leaves_a_ledger_row_only_when_it_wrote(db: psycopg.Connection[Any], seed: Seed) -> None:
+    from fbi.chronicle.job import JOB, run_job
+
+    def runs() -> int:
+        return int(scalar(db.execute("SELECT count(*) FROM raw.ingestion_runs WHERE job_type = %s", (JOB,))))
+
+    assert run_job(db, at=NOW).due == 0 and runs() == 0, "a quiet pass leaves nothing"
+    world(db, seed)
+    assert run_job(db, at=NOW).written == 1 and runs() == 1
+    assert run_job(db, at=NOW).written == 0 and runs() == 1, "the second pass finds it reviewed and leaves no new row"
+    notes = str(scalar(db.execute("SELECT notes FROM raw.ingestion_runs WHERE job_type = %s", (JOB,))))
+    assert '"written": 1' in notes and review.VERSION in notes

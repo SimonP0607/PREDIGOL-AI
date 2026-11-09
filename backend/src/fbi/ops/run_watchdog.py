@@ -71,6 +71,8 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "synthetic_journey": timedelta(minutes=5),
     # The readers' narrative (plan UX, A11): at most twelve matches a run, no new one after eight minutes, a call 90 s at most.
     "user_narrative": timedelta(minutes=30),
+    # The post-match review of the chronicle (IA-022): no model, at most `LIMIT` matches a run, every row one small query set.
+    "chronicle_review": timedelta(minutes=20),
     # The messenger (plan UX, A5): a cycle of five minutes with a heartbeat every 15 seconds.
     "messenger_cycle": timedelta(minutes=15),
 }
