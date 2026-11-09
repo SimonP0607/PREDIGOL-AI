@@ -101,6 +101,9 @@ const ChartTooltipContent = React.forwardRef<
       indicator?: "line" | "dot" | "dashed";
       nameKey?: string;
       labelKey?: string;
+      // Recharts 3 no longer puts the tooltip's payload and label in TooltipProps: Recharts hands them to the cloned content element.
+      payload?: RechartsPrimitive.TooltipPayloadEntry[];
+      label?: string | number;
     }
 >(
   (
@@ -174,7 +177,7 @@ const ChartTooltipContent = React.forwardRef<
 
               return (
                 <div
-                  key={item.dataKey}
+                  key={typeof item.dataKey === "function" ? index : (item.dataKey ?? index)}
                   className={cn(
                     "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
                     indicator === "dot" && "items-center",
@@ -243,7 +246,8 @@ const ChartLegend = RechartsPrimitive.Legend;
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> &
-    Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+    Pick<RechartsPrimitive.LegendProps, "verticalAlign"> & {
+      payload?: readonly RechartsPrimitive.LegendPayload[];
       hideIcon?: boolean;
       nameKey?: string;
     }
