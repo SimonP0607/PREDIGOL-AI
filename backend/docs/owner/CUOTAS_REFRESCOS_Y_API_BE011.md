@@ -40,6 +40,12 @@ por diferencia con la justa.
 respuesta y guarda la última del día en `raw.provider_reported_quota` (tabla nueva). `raw.provider_quota` sigue siendo nuestro
 contador.
 
+**«Mercados» del partido y Cuotas dicen lo mismo (BE-020).** Con `FBI_ODDS_BOOK_REFRESH` encendido, el libro cuenta también
+las respuestas de los refrescos, que el extractor nunca lee; para que el mismo partido no enseñe un precio en Cuotas y otro en
+«Mercados», la ruta `/matches/{id}/markets/catalog` lee entonces el libro (los mismos mercados, claves y números; «desde cuándo»
+es el de la respuesta vigente, como siempre). Con los refrescos apagados, o si el libro aún no tiene filas de ese partido, lee
+como siempre. Sin cambio de datos ni de migración; se deshace apagando `FBI_ODDS_BOOK_REFRESH` y recreando la API.
+
 ## Comprobarlo sin tocar nada
 
 Con `predigolctl psql` (solo lectura):

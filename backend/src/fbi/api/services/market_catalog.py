@@ -31,6 +31,8 @@ from fbi.api.contracts.market_catalog import (
 )
 from fbi.api.envelope import DataStatus, Envelope, ok, unavailable
 from fbi.api.repositories import Conn
+from fbi.core.config import settings
+from fbi.odds.book_catalog import read_book_in_force
 from fbi.odds.quote_current import (
     CATALOG_FAMILIES,
     CurrentQuote,
@@ -137,7 +139,9 @@ def build(fixture_id: int, kickoff_at: datetime, in_force: InForce, quotes: Sequ
 @shared(CACHE_SECONDS)
 def match_market_catalog(conn: Conn, fixture_id: int, category: CatalogCategory | None = None) -> Envelope[MarketCatalog]:
     """GET /matches/{id}/markets/catalog: the categories with prices in force, and the markets of ``category``."""
-    book = read_in_force(conn, fixture_id)
+    # With the book refreshes on, Cuotas shows the newer answer of the two tables (BE-011); this tab reads the book then, so the same
+    # match shows the same price on both screens (BE-020). No row in the book for the match: the reading it always had.
+    book = (read_book_in_force(conn, fixture_id) if settings.odds.book_refresh_enabled else None) or read_in_force(conn, fixture_id)
     if book is None:
         raise HTTPException(status_code=404, detail=f"fixture {fixture_id} not found")
     view = build(fixture_id, book.kickoff_at, book.in_force, book.quotes, category)
