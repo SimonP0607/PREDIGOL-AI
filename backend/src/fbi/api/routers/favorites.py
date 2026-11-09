@@ -3,8 +3,8 @@
 * ``GET /me/favorites`` - the leagues and teams the reader follows, or the suggested ones for Colombia (labelled) while they
   have chosen none; and the players and markets they follow.
 * ``PUT /me/favorites`` - they become exactly these: up to 10 leagues PrediGol follows, 20 teams that play in them, 20 players
-  of their line-ups and 5 of the markets PrediGol reads (422 beyond, never trimmed). Players and markets left out of the body
-  stay as they were.
+  of their line-ups, 5 of the markets PrediGol reads and 10 of a match's catalogue (422 beyond, never trimmed). Players and
+  markets left out of the body stay as they were.
 * ``GET /me/favorites/options`` - every league PrediGol follows, and the teams and players whose name matches a search.
 * ``GET /me/onboarding`` / ``POST /me/onboarding`` - whether the welcome is owed and its steps; done (or skipped), once.
 * ``POST /me/hints`` - a first-visit hint dismissed: it never comes back.
@@ -133,8 +133,10 @@ def favorites_view(conn: psycopg.Connection[Any], user_id: int) -> FavoritesView
     more = favorites.extras(conn, user_id)
     return FavoritesView(leagues=_leagues(conn, shown.leagues), teams=_teams(conn, shown.teams),
                          players=_players(conn, more.players), markets=list(more.markets),  # type: ignore[arg-type]
+                         catalog_markets=list(more.catalog),
                          suggested=mine is None, max_leagues=favorites.MAX_LEAGUES, max_teams=favorites.MAX_TEAMS,
                          max_players=favorites.MAX_PLAYERS, max_markets=favorites.MAX_MARKETS,
+                         max_catalog_markets=favorites.MAX_CATALOG,
                          personalization=favorites.personalization_on())
 
 
@@ -158,11 +160,12 @@ def get_favorites(conn: Db, principal: App) -> FavoritesView:
 @router.put("/favorites", response_model=FavoritesView)
 def put_favorites(body: FavoritesIn, conn: Db, principal: App) -> FavoritesView:
     """The reader's favourites become exactly these (idempotent): 422 ``too_many_leagues`` / ``too_many_teams`` /
-    ``too_many_players`` / ``too_many_markets`` beyond the limits, ``unknown_league`` / ``unknown_team`` /
-    ``unknown_player`` for one PrediGol does not follow. Players and markets left out stay as they were."""
+    ``too_many_players`` / ``too_many_markets`` / ``too_many_catalog_markets`` beyond the limits, ``unknown_league`` /
+    ``unknown_team`` / ``unknown_player`` / ``unknown_catalog_market`` for one PrediGol does not follow. Players, markets
+    and catalogue markets left out stay as they were."""
     try:
         favorites.replace(principal.user_id, body.leagues, body.teams, at=now(), players=body.players,
-                          markets=body.markets)
+                          markets=body.markets, catalog=body.catalog_markets)
     except CustomerError as exc:
         raise _refused(exc) from exc
     conn.rollback()  # a fresh snapshot: written by another connection

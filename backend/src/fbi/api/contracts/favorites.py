@@ -30,12 +30,16 @@ class FavoritesView(Contract):
     teams: list[TeamBadge]
     players: list[PlayerBadge] = Field(description="The players the reader follows, in the order chosen (3.1).")
     markets: list[MarketKey] = Field(description="The markets the reader follows, in the order chosen (3.1).")
+    catalog_markets: list[str] = Field(default_factory=list, description="The markets of a match's catalogue the reader "
+                                       "follows (``corners_over_under.FT.match``: code, period, subject), in the order "
+                                       "chosen (CUOTAS, BE-025). Apart from ``markets``, the five classic ones.")
     suggested: bool = Field(description="True while the reader has chosen none: these are the ones suggested for Colombia, "
                                         "labelled as suggested.")
     max_leagues: int
     max_teams: int
     max_players: int
     max_markets: int
+    max_catalog_markets: int = Field(default=10, description="How many catalogue markets a reader may follow.")
     personalization: bool = Field(description="FBI_PERSONALIZATION: false gives every reader the common view (Home "
                                               "without «Hoy en tus ligas»).")
 
@@ -49,6 +53,9 @@ class FavoritesIn(BaseModel):
                                       "stay (a page from before 3.1 never clears them); [] clears them.")
     markets: list[MarketKey] | None = Field(default=None, max_length=10, description="Left out: the markets the reader "
                                             "follows stay; [] clears them.")
+    catalog_markets: list[str] | None = Field(default=None, max_length=20, description="Left out: the catalogue markets "
+                                              "the reader follows stay (a page from before BE-025 never clears them); "
+                                              "[] clears them.")
 
 
 class FavoriteOptions(Contract):
