@@ -19,6 +19,32 @@ export type UserStatus = "RECOMMENDED" | "CAUTION" | "NOT_RECOMMENDED" | "EVALUA
 export type StatusReason =
   "approved" | "value" | "not_reviewed" | "downgraded" | "rejected" | "no_value_now" | "evaluation";
 
+/** state-v2 of PrediGol Intelligence's decision on a selection (fbi/intel/state_v2.py). */
+export type DecisionState = "RECOMMENDED" | "CAUTION" | "WATCH" | "ABSTAIN" | "REJECTED";
+/** Where the Picks board takes its numbers and states from (FBI_PICKS_SOURCE, plan PICKS F3). */
+export type DecisionSource = "legacy" | "intelligence";
+
+/**
+ * What PrediGol Intelligence decided about a selection (`decision-v1`, its newest row). Present only while the board reads
+ * Intelligence (`decision_source` is "intelligence"). The card's `p_model` is the calibrated probability then; `p_raw` is the
+ * model's own before calibrating, to be shown as «sin calibrar».
+ */
+export interface PickDecision {
+  state: DecisionState;
+  /** The reason code state-v2 gives (approved, risk, price_stale, edge_not_validated, ...). */
+  reason: string;
+  known_at: Iso;
+  checkpoint: string;
+  /** Null while the market has no champion calibrator. */
+  p_calibrated: Dec | null;
+  p_raw: Dec;
+  ev_calibrated: Dec | null;
+  edge_calibrated: Dec | null;
+  /** The price Intelligence judged at known_at. */
+  odds: Dec | null;
+  price_at: Iso | null;
+}
+
 /** The state a reader is shown, as every pick that has one carries it. */
 export interface PickState {
   user_status: UserStatus;
@@ -72,6 +98,8 @@ export interface PickCard {
   user_status: UserStatus;
   status_reason: StatusReason;
   context_pending: boolean;
+  /** Intelligence's decision on this selection; null when the board does not read it, or it has not decided it. */
+  decision?: PickDecision | null;
 }
 
 /**
@@ -141,6 +169,8 @@ export interface PicksBoard {
   withheld?: number;
   /** Pre-match picks whose match kicked off today (or every one of fixture_id), as taken. */
   started?: StartedPick[];
+  /** Where the cards' numbers and states come from; "legacy" when absent. */
+  decision_source?: DecisionSource;
 }
 
 export interface ParlayLeg {

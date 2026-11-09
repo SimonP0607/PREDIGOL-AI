@@ -20,6 +20,8 @@ from fbi.api.envelope import Section
 
 Source = Literal["qualified", "shadow_preview"]
 Freshness = Literal["fresh", "aging", "stale", "none"]
+DecisionState = Literal["RECOMMENDED", "CAUTION", "WATCH", "ABSTAIN", "REJECTED"]
+DecisionSource = Literal["legacy", "intelligence"]
 
 
 class TeamBadge(Contract):
@@ -34,6 +36,26 @@ class CompetitionBadge(Contract):
     country: str | None
     logo_url: str | None
     flag_url: str | None
+
+
+class PickDecision(Contract):
+    """What PrediGol Intelligence decided about this selection (``decision-v1``, its newest row; ``fbi.intel.state_v2`` words it).
+
+    Present only while the board reads Intelligence (``FBI_PICKS_SOURCE=intelligence``, plan PICKS F3). The card's ``p_model``
+    stays the pick engine's raw probability then; the calibrated one, the EV and the edge computed with it are here and in the
+    card's own ``ev`` and ``edge``."""
+
+    state: DecisionState = Field(description="state-v2 of the decision: RECOMMENDED, CAUTION, WATCH (waiting for something that "
+                                             "clears before kick-off), ABSTAIN (no opinion today) or REJECTED.")
+    reason: str = Field(description="The reason code state-v2 gives (``approved``, ``risk``, ``price_stale``, ``edge_not_validated``...).")
+    known_at: datetime
+    checkpoint: str
+    p_calibrated: Decimal | None = Field(description="Calibrated probability (cal-logit2-v1); null while the market has no champion calibrator.")
+    p_raw: Decimal = Field(description="The model's probability before calibrating: what the board showed before F3, kept as «sin calibrar».")
+    ev_calibrated: Decimal | None
+    edge_calibrated: Decimal | None
+    odds: Decimal | None = Field(description="The price Intelligence judged at known_at.")
+    price_at: datetime | None
 
 
 class PickCard(Contract):
@@ -71,6 +93,9 @@ class PickCard(Contract):
     context_pending: bool = Field(description="RECOMMENDED by the value rule alone: «revisión de contexto aún no aplicada» "
                                               "is said beside it (the AI's review does not act on picks, or has no "
                                               "decision on this one).")
+    decision: PickDecision | None = Field(default=None, description=(
+        "PrediGol Intelligence's decision on this selection, when the board reads it (``decision_source`` of the board is "
+        "``intelligence``, plan PICKS F3); null otherwise, and null when Intelligence has not decided this selection."))
 
 
 class StartedPick(Contract):
@@ -138,6 +163,10 @@ class PicksBoard(Contract):
         default_factory=list,
         description="Pre-match picks whose match has kicked off (today's, or every one of ``fixture_id``): they "
                     "stay, with the price taken, the state of the match and the result.")
+    decision_source: DecisionSource = Field(default="legacy", description=(
+        "Where the cards' numbers and states come from: ``legacy`` (the pick engine's own, raw probability) or "
+        "``intelligence`` (PrediGol Intelligence's newest decision: calibrated probability, EV and edge, and its state; "
+        "``FBI_PICKS_SOURCE``, plan PICKS F3)."))
 
 
 class ParlayLeg(Contract):
