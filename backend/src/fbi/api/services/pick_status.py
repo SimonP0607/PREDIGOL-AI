@@ -57,9 +57,10 @@ class Applied:
 NOT_APPLIED: Final = Applied()
 
 
-def applied_now(conn: Conn, fixture_ids: Iterable[int], *, at: datetime) -> Applied:
+def applied_now(conn: Conn, fixture_ids: Iterable[int], *, at: datetime, hours: int = REVIEW_WINDOW_HOURS) -> Applied:
     """The AI's review as it stands at ``at`` for these matches: applied only when the owner's switch is on AND the shadow gate
-    passed; its decisions are read in every mode but ``off`` (no review is made then, so no query is)."""
+    passed; its decisions are read in every mode but ``off`` (no review is made then, so no query is). ``hours`` is how far back a
+    review still counts: the matches that already kicked off keep the review they had, up to a product day and a half ago."""
     settings = AiSettings.from_env()
     enforced = enforcement(conn, settings).enforced
     if settings.mode == "off":
@@ -67,6 +68,6 @@ def applied_now(conn: Conn, fixture_ids: Iterable[int], *, at: datetime) -> Appl
     fixtures = sorted({int(f) for f in fixture_ids})
     if not fixtures:
         return Applied(enforced)
-    rows = fetch_all(conn, REVIEWS_SQL, {"fixtures": fixtures, "at": at, "hours": REVIEW_WINDOW_HOURS})
+    rows = fetch_all(conn, REVIEWS_SQL, {"fixtures": fixtures, "at": at, "hours": hours})
     return Applied(enforced, {(int(r["fixture_id"]), r["market_key"], r["selection"], Decimal(r["line"])): str(r["decision"])
                               for r in rows})

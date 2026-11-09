@@ -151,6 +151,12 @@ export interface StartedPick {
    */
   near_close_odds: Dec | null;
   line_value: Dec | null;
+  /** The state a reader is shown for it, read as it was taken (plan PICKS, L1: «solo verde» also after kick-off). */
+  user_status?: UserStatus;
+  status_reason?: StatusReason;
+  context_pending?: boolean;
+  /** Intelligence's last decision before kick-off, while the board reads it; `p_model`, `edge` and `ev` use its calibrated p. */
+  decision?: PickDecision | null;
 }
 
 export interface PicksBoard {
