@@ -59,6 +59,17 @@ async function matchPath(qc: QueryClient): Promise<string> {
   return first ? `/matches/${first}` : "/matches";
 }
 
+/** The start of the page: its main landmark takes the focus (made focusable on the way), so a keyboard reader goes on from there. */
+function focusPageStart(): void {
+  // something else already holds the focus (a field the page focused itself): it stays there
+  const held = document.activeElement;
+  if (held && held !== document.body && held !== document.documentElement) return;
+  const main = document.querySelector<HTMLElement>("main, [role='main']");
+  if (!main) return;
+  if (!main.hasAttribute("tabindex")) main.setAttribute("tabindex", "-1");
+  main.focus({ preventScroll: true });
+}
+
 /** A match's own page (its tabs are in the search, never in the path). */
 const MATCH_PAGE = /^\/matches\/\d+\/?$/;
 
@@ -94,7 +105,14 @@ export function GuideProvider({ children }: { children: ReactNode }) {
   const skips = useRef(0);
   const launchedVisit = useRef(false);
   const requested = useRef<{ guide: GuideKey; from: number } | null>(null);
-  const readyScreen = useRef<string | null>(null);
+  // the screen that said it has its data, and the page it said it on (UX-083): during a change of route the page that is
+  // leaving is still on the screen and its «?» still answers, but pathname is already the next page's
+  const readyScreen = useRef<{ screen: string; path: string } | null>(null);
+  const readyOn = useCallback(
+    (screen: string) =>
+      readyScreen.current?.screen === screen && readyScreen.current.path === now.current.pathname,
+    [],
+  );
   const returnTo = useRef<HTMLElement | null>(null);
 
   // The page a visit began on: a visit to another page lets one guide launch by itself again (checked where a screen says it is
@@ -208,8 +226,16 @@ export function GuideProvider({ children }: { children: ReactNode }) {
     activePath.current = null;
     const back = returnTo.current;
     returnTo.current = null;
-    // the focus goes back to where it was; the dialog's own return is unreliable when the card was opened by the page
-    if (back && back.isConnected) setTimeout(() => back.focus({ preventScroll: true }), 0);
+    // the focus goes back to where it was; the dialog's own return is unreliable when the card was opened by the page.
+    // A guide that opened by itself has no such place (the focus was on the page's body), and the page may be another one by
+    // now: the focus then goes to the page's own start, never to nothing (UX-083)
+    setTimeout(() => {
+      if (back && back.isConnected && back !== document.body) {
+        back.focus({ preventScroll: true });
+        if (document.activeElement === back) return;
+      }
+      focusPageStart();
+    }, 0);
   }, []);
 
   const start = useCallback(
@@ -218,6 +244,10 @@ export function GuideProvider({ children }: { children: ReactNode }) {
       if (!launchable(def) || now.current.active || !showsGuides(now.current.user)) return;
       const index = firstFrom(def, from);
       if (index === null) return;
+      // Asked by a «?» of a page that is leaving, or of one still waiting for its data, while a change of route is under way:
+      // the guide would open with none of its elements - «Paso 0 de 0». A guide asked for belongs to the page that has said it
+      // is ready (UX-083).
+      if (trigger === "replay" && !readyOn(def.screen)) return;
       const resume = trigger === "resume" && from > 0;
       returnTo.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -230,7 +260,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
         trigger: resume ? "resume" : trigger,
       });
     },
-    [persist],
+    [persist, readyOn],
   );
 
   const go = useCallback(
@@ -385,7 +415,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
         visit.current = path;
         launchedVisit.current = false;
       }
-      readyScreen.current = screen;
+      readyScreen.current = { screen, path };
       if (!me) return;
       const ask = requested.current;
       const candidates = GUIDE_LIST.filter((g) => g.screen === screen && launchable(g));
@@ -464,11 +494,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
         if (now.current.pathname !== def.path) void navigate({ to: def.path as never });
         return;
       }
-      if (
-        guide === "match" &&
-        readyScreen.current === "match" &&
-        MATCH_PAGE.test(now.current.pathname)
-      ) {
+      if (guide === "match" && readyOn("match") && MATCH_PAGE.test(now.current.pathname)) {
         start(guide, "replay", from);
         return;
       }
@@ -482,7 +508,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
           return;
         }
         requested.current = { guide, from };
-        if (now.current.pathname === path && readyScreen.current === def.screen) {
+        if (now.current.pathname === path && readyOn(def.screen)) {
           requested.current = null;
           start(guide, "replay", from);
           return;
@@ -490,7 +516,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
         void navigate({ to: path as never });
       })();
     },
-    [navigate, qc, start],
+    [navigate, qc, readyOn, start],
   );
 
   const value = useMemo<GuidesValue>(
