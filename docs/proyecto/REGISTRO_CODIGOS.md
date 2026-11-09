@@ -20,6 +20,8 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | CI-010 | El despliegue automático (CI-007) no llegaba al servidor: GitHub no podía leer la llave SSH del entorno `production-auto` («error in libcrypto»). `ci_ssh_setup.sh` ahora endereza la llave (BOM, CRLF, un solo renglón, tabuladores, sangrías) y, si aun así no carga, se detiene ahí diciendo qué le pasa (cabecera, pie, renglones) sin imprimirla; con pruebas sobre una llave real. No toca la inteligencia ni el servidor | en curso | este PR | — |
 | CI-011 | El trabajo `pytest (PostgreSQL 16)` del CI del backend pasa de 45 a 60 minutos: la batería tarda 30-39 min y, con varias ejecuciones a la vez, superó los 45 y se canceló al 97 % (main `cf1ed4e8` y #103, 8-nov-2026), lo que además detenía el despliegue automático. No cambia pruebas, código ni el servidor | en curso | este PR | — |
 | CI-012 | El precheck del lanzamiento acepta `FBI_AI_MODE=enforce` además de `shadow` (palabra del dueño, 8-nov-2026: «Encender con control»); cualquier otra palabra sigue siendo NOT OK. Con `enforce`, la IA solo llega a los usuarios mientras el último informe de sombra de `combined` diga `pass` (`fbi.ai.gating`). Sin esto, encender `enforce` bloqueaba todos los despliegues | en curso | este PR | — |
+| CI-013 | `actionlint` y `zizmor` revisan los workflows en cada cambio de `.github/` (versiones fijadas, `actionlint` con su suma de control); todas las acciones de terceros quedan fijadas por SHA de commit y ningún checkout deja el token en el espacio de trabajo; Dependabot espera 7 días antes de proponer una versión nueva (cooldown). Prueba `test_workflows_supply_chain.py` impide volver atrás. Los dos avisos que quedan son intencionados y llevan su razón en el propio workflow (`workflow_run` y `GITHUB_ENV` de `deploy-auto.yml`) | en curso | este PR | — |
+| SEG-001 | Funciones de seguridad de GitHub activadas en el repositorio público (9-nov-2026): CodeQL (configuración predeterminada: Python, JavaScript/TypeScript y Actions), secret scanning, push protection y actualizaciones de seguridad de Dependabot con alertas. La única alerta inicial (vector de prueba público de Svix en `test_messaging_webhooks.py`) se cerró como «usado en pruebas» | hecho (9-nov-2026) | ajustes del repositorio | — |
 
 ## IA — capa de inteligencia artificial
 
@@ -138,4 +140,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-013 · SEG-001 · IA-021 · UX-073 · BE-012 · FE-001 · OPS-001 · DOC-001
+CI-014 · SEG-002 · IA-021 · UX-073 · BE-012 · FE-001 · OPS-001 · DOC-001

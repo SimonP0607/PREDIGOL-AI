@@ -3,6 +3,7 @@ updates:
   - package-ecosystem: pip
     directory: /backend
     schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
     open-pull-requests-limit: 3
     commit-message:
       prefix: "chore(deps)"
@@ -10,6 +11,7 @@ updates:
   - package-ecosystem: bun
     directory: /web
     schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
     open-pull-requests-limit: 3
     commit-message:
       prefix: "chore(deps)"
@@ -17,6 +19,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: monthly }
+    cooldown: { default-days: 7 }
     commit-message:
       prefix: "chore(deps)"
     labels: ["dependencies", "github_actions", "area:CI", "tipo:chore"]
