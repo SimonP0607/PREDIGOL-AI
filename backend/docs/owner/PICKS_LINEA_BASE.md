@@ -73,8 +73,44 @@ Si aparece algo sin explicar, **no se corrige desde aquí**: se usa la reliquida
 
 ## Resultados
 
-| Lectura | Fecha | Resultado |
-| --- | --- | --- |
-| Línea base (F1) | pendiente | pendiente de la corrida en producción |
-| Liquidación, 30 días (F6) | pendiente | pendiente de la corrida en producción |
-| Consola de rendimiento (R1) | pendiente | pendiente de la corrida en producción |
+Corrida del 9-nov-2026, 00:50 UTC (19:50 del 8-nov en Bogotá), con la llave de solo lectura (SEG-002).
+
+### Línea base (F1), ventana de 24 h
+
+| Hallazgo | Cifra |
+| --- | --- |
+| Motor | 2.330.675 precios evaluados · 337.227 picks en sombra · 0 calificados · 0 publicados · 335.103 liquidados |
+| Tablero | 155 tarjetas de 15 partidos (de noche: menos partidos que en la lectura del 7-nov) |
+| S1 fuera de la regla ahora | 91 (59 %): 82 por precio viejo y 9 por VE no positivo |
+| S2 misma idea en otra línea | 107 (69 %); por partido, mediana 10 y máximo 24 |
+| S3 por encima de 3,00 | 55 (35 %) |
+| C4 dirección | goles: 42 «menos de» frente a 9 «más de» (82 %); ambos marcan: 6 «no» frente a 0 «sí» |
+| C5 edad del precio | menos de 1 h: 20 · de 1 a 3 h: 53 · más de 3 h: 82 (53 %) · el más nuevo, hace 17 min |
+| L2 «Ya empezaron» | 2.701 candidatos de 206 partidos; hasta 22 en uno |
+| D1 picks del día de la página | `daily-set-v5`: 5 picks del 8-nov, los 5 perdidos |
+| D1 Intelligence (día de Bogotá) | 2.722 selecciones: 0 aprobadas, 40 en cautela, 6 en investigación, 2.676 rechazadas; su set del día, vacío |
+
+### Liquidación recalculada (F6), 30 días
+
+3.804 partidos (28 con correcciones registradas del resultado).
+
+| Registro | Examinados | Iguales | Retenidos | Con corrección | **Sin explicar** |
+| --- | --- | --- | --- | --- | --- |
+| Picks en sombra | 313.714 | 312.612 | 946 (nulos por regla que se mantienen) | 0 | **156** |
+| Picks del día | 146 | 145 | 0 | 0 | **1** |
+| Patas de combinadas | 243 | 243 | 0 | 0 | 0 |
+| Picks de lectores | 0 | 0 | 0 | 0 | 0 |
+| Patas de combinadas de lectores | 52 | 52 | 0 | 0 | 0 |
+
+Los 30 sets del día cuadran.
+
+**El criterio (0 sin explicar) no se cumple.** 157 registros están liquidados con un marcador distinto del que hoy tiene su partido, y ninguna corrección registrada lo explica:
+
+- 101 son de partidos del 10 al 12 de octubre. Los 20 que muestra la herramienta son todos de Gwangju FC 4–3 Ulsan Hyundai (K League 1, 11-oct, partido 21562): están liquidados como si hubiera acabado en empate con dos goles o menos («empate» ganado, «menos de 2,5» ganado, «local» perdido). También es de ese partido el pick del día n.º 2 del set 8, guardado como perdido cuando hoy sería ganado.
+- 55 son de partidos de los últimos 27 días; entre ellos, los partidos 21497 y 21389.
+
+Lo siguiente es averiguar por qué esos resultados cambiaron sin dejar rastro en `core.fixture_result_revisions`, y reliquidarlos con `scripts.resettle`, que deja rastro, con el visto bueno del dueño.
+
+### Consola de rendimiento (R1)
+
+Totales: 3,3 s · porciones: 7,0 s, corriendo a la vez que las otras dos auditorías. La consola responde desde BE-006, y el navegador la midió en 11,2 s el 8-nov.
