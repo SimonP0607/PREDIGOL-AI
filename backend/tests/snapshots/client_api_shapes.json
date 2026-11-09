@@ -63,6 +63,10 @@
   {
    "date": "2026-11-09",
    "reason": "BE-016 (plan PICKS, L1): StartedPick.user_status, status_reason, context_pending y decision, aditivos con valor por defecto: el estado que ve el lector tras el inicio"
+  },
+  {
+   "date": "2026-11-09",
+   "reason": "BE-016: Ya empezaron suma user_status, status_reason, context_pending y decision"
   }
  ],
  "routes": {
@@ -7140,7 +7144,7 @@
      "type": "object"
     },
     "PickDecision": {
-     "description": "What PrediGol Intelligence decided about this selection (``decision-v1``, its newest row; ``fbi.intel.state_v2`` words it).\n\nPresent only while the board reads Intelligence (``FBI_PICKS_SOURCE=intelligence``, plan PICKS F3). The card's ``p_model``\nstays the pick engine's raw probability then; the calibrated one, the EV and the edge computed with it are here and in the\ncard's own ``ev`` and ``edge``.",
+     "description": "What PrediGol Intelligence decided about this selection (``decision-v1``, its newest row; ``fbi.intel.state_v2`` words it).\n\nPresent only while the board reads Intelligence (``FBI_PICKS_SOURCE=intelligence``, plan PICKS F3). The card's ``p_model`` is\nthe calibrated probability then, and its ``ev`` and ``edge`` are computed with it; the pick engine's raw one is ``p_raw`` here\n(«sin calibrar»).",
      "properties": {
       "checkpoint": {
        "title": "Checkpoint",
@@ -7828,7 +7832,7 @@
      "type": "object"
     },
     "PickDecision": {
-     "description": "What PrediGol Intelligence decided about this selection (``decision-v1``, its newest row; ``fbi.intel.state_v2`` words it).\n\nPresent only while the board reads Intelligence (``FBI_PICKS_SOURCE=intelligence``, plan PICKS F3). The card's ``p_model``\nstays the pick engine's raw probability then; the calibrated one, the EV and the edge computed with it are here and in the\ncard's own ``ev`` and ``edge``.",
+     "description": "What PrediGol Intelligence decided about this selection (``decision-v1``, its newest row; ``fbi.intel.state_v2`` words it).\n\nPresent only while the board reads Intelligence (``FBI_PICKS_SOURCE=intelligence``, plan PICKS F3). The card's ``p_model`` is\nthe calibrated probability then, and its ``ev`` and ``edge`` are computed with it; the pick engine's raw one is ``p_raw`` here\n(«sin calibrar»).",
      "properties": {
       "checkpoint": {
        "title": "Checkpoint",
