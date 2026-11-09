@@ -17,6 +17,7 @@ import type { Today } from "@/lib/api/v1/types_today";
 import { whyText } from "@/product/home/why";
 import { afterWelcome } from "@/product/welcome/next";
 import { FavoritesPicker } from "./FavoritesPicker";
+import { catalogKeyName } from "./catalogName";
 import { validEvent } from "@/lib/track";
 import type { FavoritesView } from "@/lib/api/v1/types_favorites";
 import {
@@ -30,13 +31,16 @@ import {
   extrasBody,
   fold,
   followableMarket,
+  followedFirst,
   full,
+  hasCatalog,
   hasMarket,
   hasPlayer,
   leagueMatches,
   limitsOf,
   playerSearchable,
   searchable,
+  toggleCatalog,
   toggleLeague,
   toggleMarket,
   togglePlayer,
@@ -60,14 +64,14 @@ const league = (
   flag_url: null,
 });
 const team = (id: number, name: string): TeamBadge => ({ id, name, logo_url: null });
-const LIMITS = { leagues: 2, teams: 2, players: 2, markets: 2 };
+const LIMITS = { leagues: 2, teams: 2, players: 2, markets: 2, catalog: 2 };
 const player = (id: number, name: string): PlayerBadge => ({
   id,
   name,
   position: "Midfielder",
   team: "Millonarios",
 });
-const EMPTY: Choice = { leagues: [], teams: [], players: [], markets: [] };
+const EMPTY: Choice = { leagues: [], teams: [], players: [], markets: [], catalog: [] };
 
 describe("the picker's rules", () => {
   test("added at the end (the reader's order), taken away with a tap, nothing added at a limit", () => {
@@ -80,6 +84,7 @@ describe("the picker's rules", () => {
       teams: false,
       players: false,
       markets: false,
+      catalog: false,
     });
     expect(toggleLeague(c, league(3, "C"), LIMITS).leagues.map((l) => l.id)).toEqual([2, 1]);
     expect(toggleLeague(c, league(2, "B"), LIMITS).leagues.map((l) => l.id)).toEqual([1]);
@@ -198,7 +203,7 @@ describe("the reasons", () => {
 describe("the picker as it renders", () => {
   function render(
     choice: Choice,
-    limits = { leagues: 10, teams: 20, players: 20, markets: 5 },
+    limits = { leagues: 10, teams: 20, players: 20, markets: 5, catalog: 10 },
   ): string {
     const qc = new QueryClient();
     qc.setQueryData(["me", "favorite-options", ""], {
@@ -232,7 +237,7 @@ describe("the picker as it renders", () => {
   test("at the limit: said before the reader tries, the rest disabled", () => {
     const html = render(
       { ...EMPTY, leagues: [league(1, "Liga BetPlay")] },
-      { leagues: 1, teams: 20, players: 20, markets: 5 },
+      { leagues: 1, teams: 20, players: 20, markets: 5, catalog: 10 },
     );
     expect(html).toContain("Llegaste a 1 ligas");
     expect(html).toMatch(/aria-pressed="false" disabled=""/);
@@ -283,11 +288,61 @@ describe("players and markets (closing plan 3.1)", () => {
     expect(followableMarket("")).toBeNull();
   });
 
+  test("a catalogue market is added at the end, taken away with a tap, nothing added at the limit", () => {
+    let c = toggleCatalog(EMPTY, "corners_over_under.FT.match", LIMITS);
+    c = toggleCatalog(c, "goals_btts.1H.match", LIMITS);
+    expect(c.catalog).toEqual(["corners_over_under.FT.match", "goals_btts.1H.match"]);
+    expect(full(c, LIMITS).catalog).toBe(true);
+    expect(toggleCatalog(c, "cards_over_under.FT.match", LIMITS).catalog).toEqual(c.catalog);
+    expect(toggleCatalog(c, "corners_over_under.FT.match", LIMITS).catalog).toEqual([
+      "goals_btts.1H.match",
+    ]);
+    expect(hasCatalog(c, "goals_btts.1H.match")).toBe(true);
+    expect(hasCatalog(c, "nope")).toBe(false);
+    expect(c.markets).toEqual([]);
+  });
+
+  test("the catalogue markets the reader follows go first, the rest keep the usual order", () => {
+    const views = ["a", "b", "c", "d"].map((key) => ({ key }));
+    expect(followedFirst(views, []).map((v) => v.key)).toEqual(["a", "b", "c", "d"]);
+    expect(followedFirst(views, ["d", "b"]).map((v) => v.key)).toEqual(["d", "b", "a", "c"]);
+    expect(followedFirst(views, ["x"]).map((v) => v.key)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  test("a save with catalogue markets sends them, and an older answer reads as none", () => {
+    const v = view({ catalog_markets: ["corners_over_under.FT.match"], max_catalog_markets: 3 });
+    expect(bodyOf(choiceOf(v)).catalog_markets).toEqual(["corners_over_under.FT.match"]);
+    expect(limitsOf(v).catalog).toBe(3);
+    expect(choiceOf(view()).catalog).toEqual([]);
+    expect(limitsOf(view()).catalog).toBe(10);
+    // a catalogue market is not announced to the product's analytics (the event names the five classic ones alone)
+    const only = { ...EMPTY, catalog: ["corners_over_under.FT.match"] };
+    expect(changes(EMPTY, only)).toEqual({ added: [], removed: [] });
+  });
+
   test("what is sent holds everything the reader follows, in their order", () => {
     const c = choiceOf(view());
-    expect(bodyOf(c)).toEqual({ leagues: [1], teams: [7], players: [50], markets: ["OU"] });
-    expect(limitsOf(view())).toEqual({ leagues: 10, teams: 20, players: 2, markets: 2 });
-    expect(limitsOf(undefined)).toEqual({ leagues: 10, teams: 20, players: 20, markets: 5 });
+    expect(bodyOf(c)).toEqual({
+      leagues: [1],
+      teams: [7],
+      players: [50],
+      markets: ["OU"],
+      catalog_markets: [],
+    });
+    expect(limitsOf(view())).toEqual({
+      leagues: 10,
+      teams: 20,
+      players: 2,
+      markets: 2,
+      catalog: 10,
+    });
+    expect(limitsOf(undefined)).toEqual({
+      leagues: 10,
+      teams: 20,
+      players: 20,
+      markets: 5,
+      catalog: 10,
+    });
   });
 
   test("a tap on a player never makes the suggested leagues and teams the reader's", () => {
@@ -298,6 +353,7 @@ describe("players and markets (closing plan 3.1)", () => {
       teams: [],
       players: [50, 51],
       markets: ["OU"],
+      catalog_markets: [],
     });
     const own = view();
     expect(extrasBody(own, next).leagues).toEqual([1]);
@@ -374,7 +430,7 @@ describe("the picker shows players and markets", () => {
       <QueryClientProvider client={qc}>
         <FavoritesPicker
           choice={choice}
-          limits={{ leagues: 10, teams: 20, players: 2, markets: 2 }}
+          limits={{ leagues: 10, teams: 20, players: 2, markets: 2, catalog: 10 }}
           onChange={() => undefined}
         />
       </QueryClientProvider>,
@@ -401,6 +457,20 @@ describe("the picker shows players and markets", () => {
     );
   });
 
+  test("a followed catalogue market is a chip that removes, named in the reader's words", () => {
+    const html = render({
+      ...EMPTY,
+      markets: ["OU"],
+      catalog: ["corners_over_under.FT.match", "goals_btts.1H.match", "yellow_cards_1x2.FT.home"],
+    });
+    expect(html).toContain('data-kind="catalog"');
+    expect(html).toContain('data-id="corners_over_under.FT.match"');
+    expect(html).toContain('aria-label="Quitar Más/menos córners"');
+    expect(html).toContain("1.ª parte");
+    expect(html).toContain("local");
+    expect(html).not.toContain("corners_over_under</span>");
+  });
+
   test("with no league or team the reader is still told the suggested ones will show", () => {
     const html = render({ ...EMPTY, players: [player(50, "James Rodríguez")] });
     expect(html).toContain("Aún no eliges ninguna liga ni equipo");
@@ -410,5 +480,16 @@ describe("the picker shows players and markets", () => {
   test("a full list of players says so before the reader tries", () => {
     const html = render({ ...EMPTY, players: [player(1, "A"), player(2, "B")] });
     expect(html).toContain("Llegaste a 2 jugadores");
+  });
+});
+
+describe("a catalogue market in the reader's words", () => {
+  test("its name, the side of a team's market and the period of a half; an unknown code is never shown raw", () => {
+    expect(catalogKeyName("corners_over_under.FT.match")).toBe("Más/menos córners");
+    expect(catalogKeyName("yellow_cards_1x2.FT.home")).toContain("local");
+    expect(catalogKeyName("yellow_cards_1x2.FT.away")).toContain("visitante");
+    expect(catalogKeyName("goals_btts.1H.match")).toContain("1.ª parte");
+    const strange = catalogKeyName("bet_999.FT.match");
+    expect(strange).not.toContain("bet_999");
   });
 });

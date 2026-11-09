@@ -50,6 +50,9 @@ BY_ID = (
     ("src/fbi/intel/leakage.py", "FROM ai.evidence ev WHERE ev.id = ANY(%(ids)s)", r"\bev\.id\s*=\s*ANY\(",
      "the audit of the evidence an agent run or a review of the shadow CITED (``agent_known``, ``shadow_review_known``), by id - it measures what "
      "was cited, whatever it was"),
+    ("src/fbi/chronicle/review.py", "FROM ai.evidence WHERE id = ANY(%(ids)s)", r"\bid\s*=\s*ANY\(",
+     "after the match, the news items a chronicle a reader was shown CITED, by id (IA-022): it measures what the chronicle said against who played, "
+     "whatever it was"),
     ("src/fbi/ai/evidence.py", "FROM ai.evidence WHERE story_key = %s AND content_hash = %s", r"story_key\s*=\s*%s\s+AND\s+content_hash\s*=\s*%s",
      "the deduplication of ``store``: the row that already has the identity (story, content hash) of the item being written - the hash of a "
      "typed claim is another one, so a claim of research v2 is never found for an item of v1"),

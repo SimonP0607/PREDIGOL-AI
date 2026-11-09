@@ -537,7 +537,7 @@ def test_the_agents_of_today_are_the_baseline_of_the_ledger() -> None:
     assert all(r.born_as == "CHAMPION" and re.fullmatch(r"ag[0-9a-f]{10}", r.fingerprint) for r in baseline)
     # what the plan has built since is another sentence of the bullet: born CHALLENGER, never a baseline
     since = [r for r in ledger if not r.baseline]
-    assert [(r.agent, r.version) for r in since] == [("claim_extractor", EXTRACT_V2_VERSION), ("match", "match-v1")]
+    assert [(r.agent, r.version) for r in since] == [("claim_extractor", "extract-v2"), ("match", "match-v1")]
     assert {r.agent: r.replaces for r in registry.REGISTRY.agents if r.agent in ("pmr", "la")} == {"pmr": "post_match_reviewer", "la": "learning_analyst"}
     assert all(r.born_as == "CHALLENGER" and re.fullmatch(r"ag[0-9a-f]{10}", r.fingerprint) for r in since)
     assert "Desde la fase 2 hay un séptimo**, `claim_extractor` (`extract-v2`)" in bullet and "**nace CHALLENGER**" in bullet

@@ -38,6 +38,7 @@ import {
   leagueMatches,
   playerSearchable,
   searchable,
+  toggleCatalog,
   toggleLeague,
   toggleMarket,
   togglePlayer,
@@ -45,6 +46,7 @@ import {
   type Choice,
   type Limits,
 } from "./model";
+import { catalogKeyName } from "./catalogName";
 
 function useDebounced<T>(value: T, ms: number): T {
   const [settled, setSettled] = useState(value);
@@ -143,7 +145,9 @@ interface Props {
 /** The reader's choice: chips that remove with a tap, the counts against the limits. */
 function Chosen({ choice, limits, onChange }: Props) {
   const noneYet = choice.leagues.length + choice.teams.length === 0;
-  const any = noneYet ? choice.players.length + choice.markets.length > 0 : true;
+  const any = noneYet
+    ? choice.players.length + choice.markets.length + choice.catalog.length > 0
+    : true;
   const at = full(choice, limits);
   return (
     <section aria-labelledby="fav-chosen" data-testid="fav-chosen">
@@ -219,6 +223,22 @@ function Chosen({ choice, limits, onChange }: Props) {
                 className={cn(TOGGLE, "border-primary/40 bg-primary/10 text-foreground")}
               >
                 <span className="min-w-0 truncate">{p.name}</span>
+                <X aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            </li>
+          ))}
+          {choice.catalog.map((k) => (
+            <li key={`c${k}`} className="max-w-full">
+              <button
+                type="button"
+                aria-label={t("onboarding.picker.remove", { name: catalogKeyName(k) })}
+                onClick={() => onChange(toggleCatalog(choice, k, limits))}
+                data-testid="fav-chip"
+                data-kind="catalog"
+                data-id={k}
+                className={cn(TOGGLE, "border-primary/40 bg-primary/10 text-foreground")}
+              >
+                <span className="min-w-0 truncate">{catalogKeyName(k)}</span>
                 <X aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
               </button>
             </li>

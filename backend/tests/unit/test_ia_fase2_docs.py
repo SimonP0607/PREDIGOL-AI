@@ -131,7 +131,7 @@ REPLAY_SRC = (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")
 # ── reading the documents ─────────────────────────────────────────────────────────────────────────────────────────
 
 WORDS = {"un": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10,
-         "once": 11, "doce": 12, "trece": 13, "catorce": 14, "quince": 15, "dieciséis": 16, "diecisiete": 17}
+         "once": 11, "doce": 12, "trece": 13, "catorce": 14, "quince": 15, "dieciséis": 16, "diecisiete": 17, "dieciocho": 18}
 """The numbers the guide writes in words."""
 
 
@@ -338,7 +338,7 @@ def test_the_pieces_of_the_guide_are_files_scripts_and_migrations_that_exist() -
         for name in names:
             assert exists(name), f"{name!r} (piece {row[0]!r}) is not in the repository"
     readers = next(r for r in rows if r[0] == "Lectores")
-    assert all_ticked(readers[2]) == ["ai/packet.py", "picks/daily.py", "intel/decision.py"] and "y otros diez (sección 5)" in readers[2]
+    assert all_ticked(readers[2]) == ["ai/packet.py", "picks/daily.py", "intel/decision.py"] and "y otros once (sección 5)" in readers[2]
     assert {r[0]: all_ticked(r[2]) for r in rows} == {
         "Caché por entidad y tema": ["ai/cache.py"],
         "Evidencias tipadas": ["ai/evidence.py", "0114"],
@@ -646,7 +646,7 @@ def test_the_claim_extractor_is_a_challenger_beside_the_extractor_of_today() -> 
     assert spec.contract == base.CLAIM == "claim-v1" and spec.replaces == "extractor"
     assert [t.tier for t in spec.tasks] == ["bulk"] and [t.task for t in spec.tasks] == ["extraction"]
     entry = next(r for r in registry.REGISTRY.ledger if r.agent == "claim_extractor")
-    assert entry.version == EXTRACT_V2_VERSION == "extract-v2" and entry.born_as == "CHALLENGER" and not entry.baseline
+    assert entry.version == "extract-v2" and EXTRACT_V2_VERSION == "extract-v3" and entry.born_as == "CHALLENGER" and not entry.baseline
     assert next(a for a in registry.REGISTRY.agents if a.agent == "extractor").replaces is None
     for text in ("(Haiku, escalón `bulk`)", "su prompt `extract-v2`", "nace CHALLENGER", "(`replaces=extractor`)", "El nombre del agente es `claim_extractor`",
                  "solo lo sustituye una fila que firmas tú"):
@@ -1187,15 +1187,15 @@ def test_who_reads_the_evidence_table_is_what_the_guide_counts_and_the_structura
                       flags=re.S)
     assert words
     counted = tuple(WORDS[w.lower()] for w in words.groups())
-    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (17, 4, 13, 5)
+    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (18, 4, 14, 6)
     assert set(all_ticked(readers.split("Los otros")[0].split("Cuatro la leen a propósito")[1])) == own
     assert others == {"ai/packet.py", "picks/daily.py", "intel/decision.py", "intel/match_review.py", "intel/report.py", "ai/learning.py",
                       "intel/leakage.py", "api/services/ai_layer.py", "api/services/ai_v2.py", "api/services/intelligence.py",
-                      "api/services/news.py", "narrative/job.py", "observability/trace.py"}
+                      "api/services/news.py", "narrative/job.py", "observability/trace.py", "chronicle/review.py"}
     # the IA's ten, the readers' news and narrative of the UX plan (A10, A11) and the end-to-end trace of P0 (read-only, for observability)
-    assert "y otros diez (sección 5)" in section(1) and len(others) - 3 == 10
+    assert "y otros once (sección 5)" in section(1) and len(others) - 3 == 11
     assert "`observability/trace.py`" in readers and "nunca en el camino de una decisión" in readers
-    assert "diecisiete módulos, trece de ellos ajenos a v2" in section(11) and "el paquete, los picks del día, la decisión, la revisión del partido" in section(11)
+    assert "dieciocho módulos, catorce de ellos ajenos a v2" in section(11) and "el paquete, los picks del día, la decisión, la revisión del partido" in section(11)
     assert "(`subject_type IS NULL OR` lo que diga `gates.typed_visible`: v2 en `on` **y** la fila más nueva del gate en `PASA`)" in readers
     assert "ai_replay.py" in readers
     assert "PacketBuilder(conn, typed_evidence=typed_visible(conn))" in (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")
@@ -2308,11 +2308,15 @@ PREVIOUS_BATTERY = "battery-v1"
 """The one version the guide names that is no longer in force: the battery before its third target, to say a measurement of it does not count."""
 
 
+BORN_EXTRACTOR = "extract-v2"
+"""The prompt the claim extractor was born with (phase 2); IA-021 put ``extract-v3`` in force and the guide still says which one it was born with."""
+
+
 def test_every_version_the_guide_names_is_a_version_of_the_code() -> None:
     named = VERSION_TOKEN.findall(GUIDE)
     assert len(named) >= 20, "the pattern no longer finds the versions of the guide"
     in_force = {EXTRACT_V2_VERSION, base.CLAIM, base.MCP, cache.KEY_VERSION, BATTERY_VERSION, BATTERY_IN_FORCE}
-    unknown = sorted(set(named) - in_force - {PREVIOUS_BATTERY})
+    unknown = sorted(set(named) - in_force - {PREVIOUS_BATTERY, BORN_EXTRACTOR})
     assert not unknown, f"the guide names versions that the code does not have: {unknown}"
     assert named.count(PREVIOUS_BATTERY) == 1 and "una medición hecha con `battery-v1` no habla de ella" in GUIDE
     assert {EXTRACT_V2_VERSION, base.CLAIM, cache.KEY_VERSION, BATTERY_VERSION, base.MCP} <= set(named), "the guide names each version of the phase"

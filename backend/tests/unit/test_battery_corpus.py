@@ -386,7 +386,7 @@ def test_the_claims_are_asked_the_way_production_asks_them_and_pinned_for_the_la
 def test_the_prompts_under_test_are_the_ones_in_force() -> None:
     assert corpus.target("review").prompt == REVIEW_VERSION == "review-v2"
     assert corpus.target("extract").prompt == EXTRACT_VERSION == "extract-v1"
-    assert corpus.target("claims").prompt == EXTRACT_V2_VERSION == "extract-v2"
+    assert corpus.target("claims").prompt == EXTRACT_V2_VERSION == "extract-v3"
     assert corpus.target("match").prompts == (MATCH_CONTEXT_VERSION, MATCH_ASSESS_VERSION) == ("match-context-v4", "match-assess-v3")
     assert corpus.target("stats").prompts == (STATS_ASSESS_VERSION,) == ("stats-assess-v3",)
     assert corpus.target("council").prompts == (COUNCIL_VERSION, COUNCIL_OPUS_VERSION) == ("council-v1", "council-opus-v1")
@@ -531,12 +531,13 @@ def test_what_must_not_survive_is_in_the_text_and_what_must_be_readable_is_dress
 
 CORPUS_HASH = "0c75b24817e062912dd7213359d1112da4897e6805969b20b4e97c110cb4b8e6"
 """The cases and the bases of ``battery-v3``. A change that moves it is a new version of the battery, never an edit of this one."""
-V2_REQUESTS = "54b25506ba08f4156fea3d34f02c7ddcc03eff924ccf7ac0f63e4e7826bdea14"
+V2_REQUESTS = "4ada589dd5a9753030da9696871cec062d3f08be0cdfaaf724cae024f27fd1a7"
 """The fingerprint of every request of the three targets of ``battery-v2`` - each base and each case, by the tool call and by structured
-outputs - as ``battery-v2`` made them, measured on its code before ``battery-v3`` was written (with the door ``untrusted-v1``)."""
-V2_DOOR_CLAIMS = "f827400936287d60d006396a3da72cd48a8fae9f11a7a50bbbd4be0a46ea29ad"
+outputs - as ``battery-v2`` made them, measured on its code before ``battery-v3`` was written (with the door ``untrusted-v1``). IA-021 re-pinned it: the prompt of the target ``claims``
+gained one rule (``extract-v3``), so its requests are asked with that text; the other two targets did not move."""
+V2_DOOR_CLAIMS = "e0474aeba98068cf4ebfb8ac5f15c24d327a76c64bafa65f098b90e494c9cca8"
 """The fingerprint of every request of the target ``claims`` behind the door ``untrusted-v2`` (IA-018)."""
-V3_DOOR_CLAIMS = "36e974e6444ee65c4dc65bb9840883570e529e1326ed29cac6dc259f1790a41d"
+V3_DOOR_CLAIMS = "bc8378b997afee277927e2b983f53b5490e9c1a005e7bfefff31db5c661cb19f"
 """The fingerprint of every request of the target ``claims`` behind the door ``untrusted-v3`` (IA-020): what a new measurement of it is of."""
 NEUTRALISED: Final = frozenset({"homoglyph.1", "homoglyph.2", "homoglyph.3", "homoglyph.4", "markdown_link.3", "break_json.1", "break_json.2",
                                 "break_json.3", "break_json.4", "break_json.5"})

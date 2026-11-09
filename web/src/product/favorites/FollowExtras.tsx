@@ -18,14 +18,17 @@ import { cn } from "@/lib/utils";
 import { useJustChanged } from "@/product/shared/motion";
 import { marketName } from "@/product/shared/markets";
 import { trackChanges } from "./analytics";
+import { catalogKeyName } from "./catalogName";
 import {
   beforeOf,
   changes,
   choiceOf,
   extrasBody,
+  hasCatalog,
   hasMarket,
   hasPlayer,
   limitsOf,
+  toggleCatalog,
   toggleMarket,
   togglePlayer,
   type Choice,
@@ -172,6 +175,45 @@ export function FollowMarket({ market }: { market: MarketKey }) {
       onClick={flip}
       testId="follow-market"
       data={market}
+    />
+  );
+}
+
+/**
+ * «Seguir» in a market of the catalogue that is not one of the five (CUOTAS, BE-025): the key the catalogue gives it is
+ * what is kept. Only the reader's order of the markets they see changes; never a price.
+ */
+export function FollowCatalogMarket({ catalogKey }: { catalogKey: string }) {
+  const { view, busy, save } = useFollowing();
+  if (!view) return null;
+  const before = choiceOf(view);
+  const following = hasCatalog(before, catalogKey);
+  const limits = limitsOf(view);
+  const name = catalogKeyName(catalogKey);
+
+  function flip() {
+    if (!following && before.catalog.length >= limits.catalog) {
+      toast(t("onboarding.follow.catalogFull", { max: limits.catalog, market: name }));
+      return;
+    }
+    void save(
+      toggleCatalog(before, catalogKey, limits),
+      t(following ? "onboarding.follow.marketRemoved" : "onboarding.follow.marketAdded", {
+        market: name,
+      }),
+    );
+  }
+
+  return (
+    <FollowButton
+      following={following}
+      busy={busy}
+      label={t(following ? "onboarding.follow.marketRemove" : "onboarding.follow.marketAdd", {
+        market: name,
+      })}
+      onClick={flip}
+      testId="follow-catalog-market"
+      data={catalogKey}
     />
   );
 }

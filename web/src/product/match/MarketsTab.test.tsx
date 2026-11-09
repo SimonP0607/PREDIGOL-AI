@@ -455,3 +455,58 @@ describe("the captures, for the owner", () => {
     expect(html).toContain("T-72 h · 397");
   });
 });
+
+describe("«Seguir» in a market of the catalogue (CUOTAS, BE-025)", () => {
+  function followed(qc: QueryClient, key: "corners" | "goals", keys: readonly string[]): string {
+    return renderToStaticMarkup(
+      <QueryClientProvider client={qc}>
+        <CategoryPanel
+          ctx={ctx()}
+          category={key}
+          sides={{ home: "Valencia", away: "Real Madrid" }}
+          choose={undefined}
+          onConsult={() => {}}
+          follow={(market, scope) => <i data-follow={`${scope ?? "classic"}:${market}`} />}
+          followed={keys}
+        />
+      </QueryClientProvider>,
+    );
+  }
+  const corners = () => {
+    const qc = client(catalog({}));
+    qc.setQueryData(
+      ["v1", "match-market-catalog", ID, "corners"],
+      envelope(catalog({ category: "corners", markets: [CORNERS, CORNERS_1X2] })),
+    );
+    return qc;
+  };
+
+  test("a market that is not one of the five is followed by the catalogue's key", () => {
+    const html = followed(corners(), "corners", []);
+    expect(html).toContain('data-follow="catalog:corners_over_under.FT.match"');
+    expect(html).toContain('data-follow="catalog:corners_1x2.FT.match"');
+    expect(html).not.toContain('data-follow="classic:');
+  });
+
+  test("one of the five keeps its own follow, as before", () => {
+    const qc = client(catalog({}));
+    qc.setQueryData(
+      ["v1", "match-market-catalog", ID, "goals"],
+      envelope(catalog({ category: "goals", markets: [BTTS] })),
+    );
+    const html = followed(qc, "goals", []);
+    expect(html).toContain('data-follow="classic:BTTS"');
+    expect(html).not.toContain('data-follow="catalog:');
+  });
+
+  test("the markets the reader follows come first; the rest keep the usual order", () => {
+    const html = followed(corners(), "corners", ["corners_1x2.FT.match"]);
+    expect(html.indexOf("catalog:corners_1x2.FT.match")).toBeLessThan(
+      html.indexOf("catalog:corners_over_under.FT.match"),
+    );
+    const usual = followed(corners(), "corners", []);
+    expect(usual.indexOf("catalog:corners_over_under.FT.match")).toBeLessThan(
+      usual.indexOf("catalog:corners_1x2.FT.match"),
+    );
+  });
+});

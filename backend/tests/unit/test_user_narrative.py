@@ -436,3 +436,17 @@ def test_the_checks_never_read_a_flag_the_model_could_set() -> None:
     data = good()
     a, b = verdict(data), verdict(copy.deepcopy(data))
     assert a.ok and b.ok and a.content == b.content
+
+
+def test_a_quantity_is_the_same_whether_it_is_a_digit_or_a_word_in_either_language() -> None:
+    """IA-024: «2 empates» and «two draws», «once meses» and «eleven months» say the same; a different number still does not."""
+    key = un._numbers_key
+    assert key("Hubo 2 empates y tres victorias hace once meses.", "es") == key("There were two draws and 3 wins eleven months ago.", "en")
+    assert key("Ganó 2-1 en casa.", "es") == key("It won 2-1 at home.", "en")
+    assert key("Empató 0-0 ante el Brighton.", "es") == key("A goalless draw against Brighton.", "en"), "zero and one are not compared"
+    assert key("Una victoria en seis partidos.", "es") == key("One win in its last 6 matches.", "en")
+    assert key("Lleva diecisiete partidos.", "es") == key("It has played 17 matches.", "en")
+    assert key("Lleva cuatro partidos.", "es") != key("It has played five matches.", "en"), "a different quantity is still refused"
+    assert key("Ganó 3-1 en casa.", "es") != key("It won 3-2 at home.", "en"), "a different score is still refused"
+    assert key("Suma 1,8 puntos por partido.", "es") != key("It takes 1.9 points per game.", "en"), "a decimal is still compared"
+    assert key("Suma 1,8 puntos por partido.", "es") == key("It takes 1.8 points per game.", "en")

@@ -247,7 +247,7 @@ export function MarketFold({
   follow,
 }: {
   view: MarketView;
-  /** «Seguir» beside one of the five (drawn by the page: it reads the reader's account). */
+  /** «Seguir» beside the market (drawn by the page: it reads the reader's account): the classic five or a catalogue market. */
   follow?: ReactNode;
   /** Before kick-off: what choosing a price saves or adds to the parlay (the five settled markets only). */
   choose?: Choose | undefined;
@@ -320,7 +320,7 @@ export function MarketFold({
             ) : null}
           </button>
         </h3>
-        {view.parlay ? follow : null}
+        {follow}
         <span className="shrink-0 text-caption text-subtle-foreground">
           {t("match.markets.books", { count: view.books })}
         </span>
