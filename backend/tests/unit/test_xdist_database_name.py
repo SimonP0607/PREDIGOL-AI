@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
-from tests.integration.conftest import database_name_for
+from tests.integration.conftest import SERIAL_FILES, database_name_for
 
 
 @pytest.mark.parametrize(
@@ -18,3 +20,8 @@ def test_database_name_per_xdist_worker(base: str, worker: str | None, expected:
 def test_two_workers_never_share_a_database() -> None:
     names = {database_name_for("fbi_test", f"gw{n}") for n in range(8)}
     assert len(names) == 8 and "fbi_test" not in names
+
+
+def test_every_serial_file_exists_so_a_rename_cannot_silently_send_it_to_the_parallel_run() -> None:
+    folder = Path(__file__).resolve().parents[1] / "integration"
+    assert SERIAL_FILES and all((folder / name).is_file() for name in SERIAL_FILES)
