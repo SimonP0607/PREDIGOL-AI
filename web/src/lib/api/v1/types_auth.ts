@@ -58,6 +58,8 @@ export interface Me {
   support?: boolean;
   /** «Explícame» answers the frequent questions of a match, a pick and the parlay (plan UX, B9; FBI_EXPLAIN): its buttons only then. */
   explain?: boolean;
+  /** The new Cuotas explorer (plan Cuotas, BE-011/UX-068; FBI_ODDS_EXPLORER, off until verified): shown only then. */
+  odds_explorer?: boolean;
 }
 
 export interface MfaEnrollment {

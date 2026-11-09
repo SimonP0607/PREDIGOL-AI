@@ -1,5 +1,5 @@
 /** TanStack Query option factories for the live API. */
-import { infiniteQueryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { filterParams, v1, type BestOddsQuery, type MatchQuery } from "./client";
 import type { MyPicksFilter } from "./types_mypicks";
 import type { FeedbackSubject } from "./types_feedback";
@@ -13,6 +13,7 @@ import type { MemoryFilters } from "./types_ai_layer";
 import type { AgentRunsQuery, ContraCode } from "./types_ai_shadow";
 import type { PairStatus } from "./types_referees";
 import type { CatalogCategory } from "./types_market_catalog";
+import type { OddsBoardQuery, OddsFamiliesQuery, OddsMovementQuery } from "./types_odds_explorer";
 
 export const AUDIT_PAGE = 100;
 const MINUTE = 60_000;
@@ -149,6 +150,43 @@ export const live = {
     queryFn: () => v1.bestOdds({ ...q, preview }),
     refetchInterval: 2 * MINUTE,
   }),
+
+  // ── the odds explorer (plan Cuotas, BE-011) ─────────────────────────────────
+  // The same answer for every reader, kept a minute on the server (the movement five): never polled here - the page
+  // decides when to read again (the next scheduled capture), each parameter set its own cache entry.
+  /** The families and markets with prices in the window. */
+  oddsFamilies: (q: OddsFamiliesQuery = {}) => ({
+    queryKey: ["v1", "odds-families", q],
+    queryFn: () => v1.oddsFamilies(q),
+    staleTime: MINUTE,
+  }),
+  /** One market's board, a page at a time: the next page from the page's own `next_cursor`. */
+  oddsBoardPages: (q: OddsBoardQuery) =>
+    infiniteQueryOptions({
+      queryKey: ["v1", "odds-board", q],
+      queryFn: ({ pageParam }) => v1.oddsBoard({ ...q, cursor: pageParam }),
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last) => last.data.next_cursor ?? undefined,
+      staleTime: MINUTE,
+    }),
+  /** A match's book in force: every family, or one (`family`). */
+  matchOddsBook: (id: number | string, family?: string) => ({
+    queryKey: ["v1", "match-odds-book", String(id), family ?? "all"],
+    queryFn: () => v1.matchOddsBook(id, family ? { family } : {}),
+    staleTime: MINUTE,
+  }),
+  /** The movement of one line: read when the reader opens it (the hook's `enabled`). */
+  oddsMovement: (id: number | string, q: OddsMovementQuery) => ({
+    queryKey: ["v1", "odds-movement", String(id), q],
+    queryFn: () => v1.oddsMovement(id, q),
+    staleTime: 5 * MINUTE,
+  }),
+  /** The owner's «Salud de cuotas». */
+  adminOddsHealth: {
+    queryKey: ["v1", "admin", "odds-health"],
+    queryFn: v1.adminOddsHealth,
+    staleTime: MINUTE,
+  },
   daily: (preview: Preview, day?: string) => ({
     queryKey: ["v1", "daily", day ?? "today", preview ?? "qualified"],
     queryFn: () => v1.daily({ day, preview }),
@@ -723,3 +761,30 @@ export const live = {
     staleTime: MINUTE,
   }),
 } as const;
+
+// ── the odds explorer's hooks (plan Cuotas, BE-011; the page of UX-068 reads through them) ──────────────────────────
+
+/** The families and markets with prices in the window (`hours`, `country`, `competition`). */
+export function useOddsFamilies(q: OddsFamiliesQuery = {}) {
+  return useQuery(live.oddsFamilies(q));
+}
+
+/** One market's board, page after page (`fetchNextPage` asks for the next one while `hasNextPage`). */
+export function useOddsBoard(q: OddsBoardQuery) {
+  return useInfiniteQuery(live.oddsBoardPages(q));
+}
+
+/** A match's book in force, every family or one. */
+export function useMatchOddsBook(id: number | string, family?: string) {
+  return useQuery(live.matchOddsBook(id, family));
+}
+
+/** The movement of one line, asked for only once the reader opens it. */
+export function useOddsMovement(id: number | string, q: OddsMovementQuery, enabled: boolean) {
+  return useQuery({ ...live.oddsMovement(id, q), enabled });
+}
+
+/** The owner's «Salud de cuotas» (SUPER_ADMIN). */
+export function useAdminOddsHealth() {
+  return useQuery(live.adminOddsHealth);
+}

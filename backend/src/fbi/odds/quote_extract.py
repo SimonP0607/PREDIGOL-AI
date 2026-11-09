@@ -21,6 +21,11 @@ one a later reschedule left in ``core.fixtures``.
 What is NOT in the series, by construction: RAW stores identical bodies once, so a body that comes back after a different one
 (A, B, A) has one row for A. ``market.odds_asks`` (since revision 0064) knows every ask and the payload that answered it, which
 is how a reader recovers "what was in force at the third ask".
+
+Nor what the explorer's book refreshes ask (plan Cuotas, BE-011): a payload indexed under a run of ``odds_book_refresh``
+(``fbi.odds.book_refresh``) is never read here, so the series - and ``odds_snapshots``, ``market_consensus`` and
+``quote_current``, which never see those asks either - hold exactly what the capture's windows brought. A body a refresh fetched
+first and a capture fetched again is the capture's (``RunLedger.record_payloads`` gives it the row) and is read as always.
 """
 
 from __future__ import annotations
@@ -61,6 +66,8 @@ EXTRACTOR_VERSION = f"qx-1/{TAXONOMY_VERSION}"
 """Moves when the way a payload is read changes (this module, the parser or the taxonomy)."""
 
 ENDPOINT = "/odds"
+SKIPPED_JOB = "odds_book_refresh"
+"""The ledger job whose payloads are never structured: the book refreshes (BE-011), for the explorer's book only."""
 LOCK_KEY = "fbi.odds_quotes_extract"
 RETRY_AFTER = timedelta(hours=2)
 RETRY_WINDOW = timedelta(days=14)
@@ -371,11 +378,15 @@ def load_registry(conn: psycopg.Connection) -> Registry:
     return Registry(extract=extract, known=frozenset(known))
 
 
+_NOT_REFRESHED = ("NOT EXISTS (SELECT 1 FROM raw.ingestion_runs r WHERE r.id = p.run_id AND r.job_type = %(skipped)s)")
+"""A payload a book refresh indexed is not the extractor's (BE-011); the runs' primary key answers it."""
+
 _PENDING_FROM = (
     "FROM raw.ingestion_payloads p LEFT JOIN market.odds_extractions x ON x.payload_hash = p.hash "
     "WHERE p.endpoint = %(endpoint)s AND p.http_status = 200 AND p.results_count > 0 "
     "  AND (%(since)s::timestamptz IS NULL OR p.fetched_at >= %(since)s) "
     "  AND (%(until)s::timestamptz IS NULL OR p.fetched_at < %(until)s) "
+    "  AND " + _NOT_REFRESHED + " "
 )
 
 
@@ -395,7 +406,8 @@ def pending_payloads(conn: psycopg.Connection, *, limit: int, since: datetime | 
             "           AND p.fetched_at > %(window_start)s)) "
             "ORDER BY (x.id IS NOT NULL), p.fetched_at, p.hash LIMIT %(limit)s",
             {"endpoint": ENDPOINT, "since": since, "until": until, "version": version,
-             "retry_before": moment - RETRY_AFTER, "window_start": moment - RETRY_WINDOW, "limit": limit},
+             "retry_before": moment - RETRY_AFTER, "window_start": moment - RETRY_WINDOW, "limit": limit,
+             "skipped": SKIPPED_JOB},
         )
         return [dict(r) for r in cur.fetchall()]
 
@@ -406,7 +418,7 @@ def backlog(conn: psycopg.Connection, *, version: str = EXTRACTOR_VERSION) -> in
         cur.execute(
             "SELECT count(*) " + _PENDING_FROM +
             "  AND (x.id IS NULL OR x.extractor_version <> %(version)s OR x.status IN ('no_fixture', 'error'))",
-            {"endpoint": ENDPOINT, "since": None, "until": None, "version": version},
+            {"endpoint": ENDPOINT, "since": None, "until": None, "version": version, "skipped": SKIPPED_JOB},
         )
         row = cur.fetchone()
     return int(row[0]) if row else 0
@@ -768,10 +780,11 @@ def sample_extraction(conn: psycopg.Connection, raw_root: Path | str, *, sample:
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             "SELECT p.hash, p.params, p.fetched_at, p.file_path, p.results_count FROM raw.ingestion_payloads p "
-            "WHERE p.endpoint = %s AND p.http_status = 200 AND p.results_count > 0 "
-            "  AND (%s::timestamptz IS NULL OR p.fetched_at >= %s) AND (%s::timestamptz IS NULL OR p.fetched_at < %s) "
-            "ORDER BY p.fetched_at DESC, p.hash LIMIT %s",
-            (ENDPOINT, since, since, until, until, sample))
+            "WHERE p.endpoint = %(endpoint)s AND p.http_status = 200 AND p.results_count > 0 "
+            "  AND (%(since)s::timestamptz IS NULL OR p.fetched_at >= %(since)s) "
+            "  AND (%(until)s::timestamptz IS NULL OR p.fetched_at < %(until)s) AND " + _NOT_REFRESHED + " "
+            "ORDER BY p.fetched_at DESC, p.hash LIMIT %(limit)s",
+            {"endpoint": ENDPOINT, "since": since, "until": until, "limit": sample, "skipped": SKIPPED_JOB})
         rows = [dict(r) for r in cur.fetchall()]
     store = PayloadStore(raw_root)
     for row in rows:

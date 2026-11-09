@@ -118,7 +118,7 @@ def test_a_placeholder_price_is_dropped_and_the_selection_kept_from_the_others()
 
 def test_the_summary_layout() -> None:
     s = summary_of(answer(), 1)
-    assert s["v"] == 1 and s["books"] == 10 and len(s["lines"]) == 1
+    assert s["v"] == 2 and s["books"] == 10 and len(s["lines"]) == 1 and s["main"] is None
     g = s["lines"][0]
     assert g["line"] is None and [x["sel"] for x in g["sels"]] == ["Home", "Draw", "Away"]
     home = g["sels"][0]
@@ -126,6 +126,20 @@ def test_the_summary_layout() -> None:
     assert home["n"] == len(home["odds"]) == 10 and home["best"] == max(home["odds"].values())
     assert home["odds"][str(home["best_bk"])] == home["best"]
     assert BUILDER_VERSION.endswith(f"/{BOOK_TAXONOMY_VERSION}") and PURGE_AFTER.total_seconds() == 6 * 3600
+
+
+def test_the_main_line_is_two_and_a_half_goals_when_quoted_else_the_most_quoted_and_most_balanced() -> None:
+    """``summary.main`` (layout 2, BE-011): the line the explorer shows first, decided once by the builder."""
+    s = summary_of(answer(), 5)
+    assert s["main"] == 2.5 and any(g["line"] == 2.5 for g in s["lines"])
+    two_lines = one_book_answer(bet(80, "Cards Over/Under", ("Over 3.5", "1.50"), ("Under 3.5", "2.50"),
+                                    ("Over 4.5", "1.95"), ("Under 4.5", "1.85")), books=(8, 2))
+    assert summary_of(two_lines, 80)["main"] == 4.5, "both quoted by two books: the balanced line"
+    wider = one_book_answer(bet(80, "Cards Over/Under", ("Over 3.5", "1.50"), ("Under 3.5", "2.50")), books=(3, 7))
+    wider["bookmakers"].extend(two_lines["bookmakers"])
+    assert summary_of(wider, 80)["main"] == 3.5, "four books against two: the most quoted line"
+    ah = summary_of(answer(), 4)
+    assert ah["main"] in {g["line"] for g in ah["lines"]}
 
 
 def test_the_best_price_is_the_highest_of_all_bookmakers_and_the_lowest_id_on_a_tie() -> None:

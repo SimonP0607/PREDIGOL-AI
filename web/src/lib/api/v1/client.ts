@@ -3,6 +3,17 @@ import { API_BASE_URL } from "@/lib/api/mode";
 import { markTrouble } from "@/lib/feedback/session";
 import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type { CatalogCategory, MarketCatalog } from "./types_market_catalog";
+import type {
+  MatchOddsBook,
+  MatchOddsBookQuery,
+  OddsBoardPage,
+  OddsBoardQuery,
+  OddsFamilies,
+  OddsFamiliesQuery,
+  OddsHealth,
+  OddsMovement,
+  OddsMovementQuery,
+} from "./types_odds_explorer";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
 import type { AgentsOverview, MatchState } from "./types_ai_agents";
@@ -687,6 +698,21 @@ export const v1 = {
   /** `picks: false` - prices only (the Cuotas page, REVIEW pt 17): no picks are read. */
   bestOdds: (q: BestOddsQuery & Preview = {}) =>
     getJson<Envelope<BestOddsBoard>>("/odds/best", q as Params),
+  // ── the odds explorer (plan Cuotas, BE-011): the current-price book, shared by every reader ──
+  /** The families and markets with prices in the window (60 s on the server). */
+  oddsFamilies: (q: OddsFamiliesQuery = {}) =>
+    getJson<Envelope<OddsFamilies>>("/odds/families", q as Params),
+  /** One market's board: a row per match, filtered, ordered and paged on the server (`cursor` from `next_cursor`). */
+  oddsBoard: (q: OddsBoardQuery & { cursor?: string | undefined }) =>
+    getJson<Envelope<OddsBoardPage>>("/odds/board", q as unknown as Params),
+  /** A match's whole book in force, or one family of it. */
+  matchOddsBook: (fixtureId: number | string, q: MatchOddsBookQuery = {}) =>
+    getJson<Envelope<MatchOddsBook>>(`/matches/${fixtureId}/odds-book`, q as Params),
+  /** The best price of each selection of one line over the stored history (`available: false` without one). */
+  oddsMovement: (fixtureId: number | string, q: OddsMovementQuery) =>
+    getJson<Envelope<OddsMovement>>(`/odds/fixtures/${fixtureId}/movement`, q as unknown as Params),
+  /** The owner's «Salud de cuotas» (SUPER_ADMIN). */
+  adminOddsHealth: () => getJson<Envelope<OddsHealth>>("/admin/odds/health"),
 
   // ── records: the day as persisted, and the user's own ──────────────────────
   daily: (q: { day?: string | undefined } & Preview = {}) =>

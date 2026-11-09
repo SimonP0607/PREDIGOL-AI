@@ -43,6 +43,7 @@ from fbi.api.routers import (
     messaging,
     monitoring,
     news,
+    odds_explorer,
     personal,
     postmatch,
     product,
@@ -238,7 +239,8 @@ def create_app() -> FastAPI:
     product_tier = [*measured_tier, Depends(membership_required)]
     for r in (product.router, records.router, football.router, market.router, center.router,
               ai_layer.router, forecast.router, match_calendar.router, knowledge.router, postmatch.router,
-              reading.router, today.router, news.router, transparency.router, push.alerts_router, explain.router):
+              reading.router, today.router, news.router, transparency.router, push.alerts_router, explain.router,
+              odds_explorer.router):
         app.include_router(r, prefix="/api/v1", dependencies=product_tier)
     admin_tier = [Depends(same_site_only), Depends(require_admin), Depends(observe_principal)]
     for r in (system.admin_router, football.admin_router, market.admin_router,
@@ -246,7 +248,7 @@ def create_app() -> FastAPI:
               evolution.router, ai_layer.admin_router, intelligence.router, referees.router,
               monitoring.admin_router, announcements.admin_router, admin_customers.router, admin_customers.audit_router, customer.admin_router, messaging.admin_router, events.admin_router,
               membership.admin_router, membership.coupons_router, support.admin_router, feedback.admin_router, push.admin_router,
-              news.admin_router):
+              news.admin_router, odds_explorer.admin_router):
         app.include_router(r, prefix="/api/v1/admin", dependencies=admin_tier)
     # The original unversioned health endpoint stays where monitors expect it.
     app.add_api_route("/health", system.get_health, methods=["GET"], include_in_schema=False)

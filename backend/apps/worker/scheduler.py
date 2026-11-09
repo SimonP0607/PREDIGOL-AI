@@ -64,6 +64,11 @@ at worst, and a duplicated tick costs nothing at all.
     current-price book (``fbi.odds.book``, plan Cuotas BE-010) of the matches whose asks or extractions changed, read back from
     RAW for every bet type tax-v3 can read, and the rows of matches that kicked off more than 6 h ago deleted. Database and RAW
     only - no request to the provider, and nothing the models, the picks or the parlay read.
+  * ``odds_book_refresh``  every 5 min (``FBI_ODDS_BOOK_REFRESH_MINUTES``), only while ``FBI_ODDS_BOOK_REFRESH`` and
+    ``FBI_ODDS_BOOK`` are on (both off by default): ``/odds`` asked again for the book between the model windows (every 3 h to
+    T-6 h, hourly to T-1 h, T-30 and T-10 min; ``fbi.odds.book_refresh``, plan Cuotas BE-011), then the book of those matches built.
+    Its own daily budget (``FBI_ODDS_BOOK_DAILY_BUDGET``, 8,000) inside the shared quota, cut before any other job; its asks go
+    to ``market.book_asks`` and RAW only - the extractor skips them, so the models, the picks and the parlay see nothing of it.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
     trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
@@ -238,6 +243,12 @@ BOOK_PER_RUN = int(os.environ.get("FBI_ODDS_BOOK_PER_RUN", "1500"))
 BOOK_RUN_SECONDS = float(os.environ.get("FBI_ODDS_BOOK_RUN_SECONDS", "240"))
 """The current-price book (plan Cuotas, BE-010): ``FBI_ODDS_BOOK`` (``settings.odds.book_enabled``, off by default) decides whether
 the job is scheduled at all; these are its cadence and its budget. Database and the RAW files only - no request to the provider."""
+BOOK_REFRESH_MINUTES = int(os.environ.get("FBI_ODDS_BOOK_REFRESH_MINUTES", "5"))
+BOOK_REFRESH_PER_RUN = int(os.environ.get("FBI_ODDS_BOOK_REFRESH_PER_RUN", "400"))
+BOOK_REFRESH_RUN_SECONDS = float(os.environ.get("FBI_ODDS_BOOK_REFRESH_RUN_SECONDS", "240"))
+"""The book refreshes (plan Cuotas, BE-011): ``FBI_ODDS_BOOK_REFRESH`` with ``FBI_ODDS_BOOK`` (``settings.odds.book_refresh_enabled``,
+off by default) decides whether the job is scheduled; these are its tick, its most asks a pass and its time a pass. Its daily budget
+and its floor are ``FBI_ODDS_BOOK_DAILY_BUDGET`` / ``FBI_ODDS_BOOK_RESERVE`` (``fbi.odds.book_refresh``)."""
 STRUCTURE_MINUTES = int(os.environ.get("FBI_COMPETITION_STRUCTURE_MINUTES", "15"))
 STRUCTURE_PER_RUN = int(os.environ.get("FBI_COMPETITION_STRUCTURE_PER_RUN", "400"))
 STRUCTURE_RUN_SECONDS = float(os.environ.get("FBI_COMPETITION_STRUCTURE_RUN_SECONDS", "240"))
@@ -873,6 +884,18 @@ def _odds_book_now() -> None:
         run_book_job(conn, settings.runtime.raw_store_dir, limit=BOOK_PER_RUN, max_seconds=BOOK_RUN_SECONDS)
 
 
+async def _odds_book_refresh() -> None:
+    """The book refreshes (plan Cuotas, BE-011): /odds asked again for the explorer's book at the refresh points that are not
+    model windows, within their own budget and cut first, then the book of those matches built. On a loop of its own
+    (OWN_LOOP_JOBS): its database work never holds the live jobs. The job re-reads its switches and does nothing while off."""
+    from fbi.odds.book_refresh import run_refresh_job
+
+    new_run_id()
+    with _connect() as conn:
+        await run_refresh_job(conn, settings.runtime.raw_store_dir, per_run=BOOK_REFRESH_PER_RUN,
+                              max_seconds=BOOK_REFRESH_RUN_SECONDS)
+
+
 async def _odds_book() -> None:
     """The current-price book (plan Cuotas, BE-010): the matches whose asks or extractions changed, rebuilt from RAW into
     market.book_current, and the rows of matches long started deleted. Writes nothing else; in a thread so the live jobs keep
@@ -1505,7 +1528,7 @@ WORKER_JOB_TYPES = frozenset({
     "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
-    "synthetic_journey", "user_narrative", "odds_book_build",
+    "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1525,7 +1548,8 @@ async def _run_watchdog() -> None:
 
 
 OWN_LOOP_JOBS = frozenset({"fixtures_sync", "results_sync", "historical_backfill", "reference_refresh",
-                           "catalogue_refresh", "final_prematch", "context_refresh", "context_due", "results_repair"})
+                           "catalogue_refresh", "final_prematch", "context_refresh", "context_due", "results_repair",
+                           "odds_book_refresh"})
 """Jobs run on an event loop of their own, in a thread (fbi.core.deadline.run_in_own_loop): their blocking database
 work - a season of 8,327 club friendlies, a page of 40,000 transfers - must not hold the loop the in-play capture
 runs on. The live jobs and the pre-match tick stay on the scheduler's loop."""
@@ -1742,6 +1766,16 @@ async def main() -> None:
                           misfire_grace_time=BOOK_MINUTES * 60, next_run_time=moment + timedelta(minutes=15))
     else:
         log.info("worker.odds_book_off", hint="FBI_ODDS_BOOK off: the current-price book (market.book_current) is not built")
+    if settings.odds.book_refresh_enabled:
+        # After the book's first pass; on a loop of its own (OWN_LOOP_JOBS) so its provider calls never hold the live jobs.
+        scheduler.add_job(_deadline("odds_book_refresh", "odds_book_refresh", _odds_book_refresh), "interval",
+                          minutes=BOOK_REFRESH_MINUTES, id="odds_book_refresh", max_instances=1, coalesce=True,
+                          misfire_grace_time=BOOK_REFRESH_MINUTES * 60, next_run_time=moment + timedelta(minutes=16))
+    elif settings.odds.odds_book_refresh.strip().lower() in {"1", "on", "true", "yes"}:
+        log.warning("worker.odds_book_refresh_needs_book",
+                    hint="FBI_ODDS_BOOK_REFRESH is on but FBI_ODDS_BOOK is off: no refresh is asked without a book to build")
+    else:
+        log.info("worker.odds_book_refresh_off", hint="FBI_ODDS_BOOK_REFRESH off: the book is refreshed at the model windows only")
     if STRUCTURE_ENABLED:
         # The first pass waits for the quotes clock's, and a person's historical build (python -m scripts.competition_stages)
         # may have gone first: whatever it built is left as it is.
