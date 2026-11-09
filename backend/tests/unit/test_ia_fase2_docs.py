@@ -646,7 +646,7 @@ def test_the_claim_extractor_is_a_challenger_beside_the_extractor_of_today() -> 
     assert spec.contract == base.CLAIM == "claim-v1" and spec.replaces == "extractor"
     assert [t.tier for t in spec.tasks] == ["bulk"] and [t.task for t in spec.tasks] == ["extraction"]
     entry = next(r for r in registry.REGISTRY.ledger if r.agent == "claim_extractor")
-    assert entry.version == EXTRACT_V2_VERSION == "extract-v2" and entry.born_as == "CHALLENGER" and not entry.baseline
+    assert entry.version == "extract-v2" and EXTRACT_V2_VERSION == "extract-v3" and entry.born_as == "CHALLENGER" and not entry.baseline
     assert next(a for a in registry.REGISTRY.agents if a.agent == "extractor").replaces is None
     for text in ("(Haiku, escalón `bulk`)", "su prompt `extract-v2`", "nace CHALLENGER", "(`replaces=extractor`)", "El nombre del agente es `claim_extractor`",
                  "solo lo sustituye una fila que firmas tú"):
@@ -2308,11 +2308,15 @@ PREVIOUS_BATTERY = "battery-v1"
 """The one version the guide names that is no longer in force: the battery before its third target, to say a measurement of it does not count."""
 
 
+BORN_EXTRACTOR = "extract-v2"
+"""The prompt the claim extractor was born with (phase 2); IA-021 put ``extract-v3`` in force and the guide still says which one it was born with."""
+
+
 def test_every_version_the_guide_names_is_a_version_of_the_code() -> None:
     named = VERSION_TOKEN.findall(GUIDE)
     assert len(named) >= 20, "the pattern no longer finds the versions of the guide"
     in_force = {EXTRACT_V2_VERSION, base.CLAIM, base.MCP, cache.KEY_VERSION, BATTERY_VERSION, BATTERY_IN_FORCE}
-    unknown = sorted(set(named) - in_force - {PREVIOUS_BATTERY})
+    unknown = sorted(set(named) - in_force - {PREVIOUS_BATTERY, BORN_EXTRACTOR})
     assert not unknown, f"the guide names versions that the code does not have: {unknown}"
     assert named.count(PREVIOUS_BATTERY) == 1 and "una medición hecha con `battery-v1` no habla de ella" in GUIDE
     assert {EXTRACT_V2_VERSION, base.CLAIM, cache.KEY_VERSION, BATTERY_VERSION, base.MCP} <= set(named), "the guide names each version of the phase"
