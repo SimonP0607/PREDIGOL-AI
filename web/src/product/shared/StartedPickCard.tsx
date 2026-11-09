@@ -21,6 +21,7 @@ import { MatchStateBadge, ResultBadge, Units } from "@/product/records/Badges";
 import { isLivePhase, matchPhaseOf } from "@/product/matches/status";
 import { EvBadge, Kickoff, OddsPill, ProbCompare, ShadowBadge } from "./Bits";
 import { WhyPickButton } from "@/product/picks/WhyPick";
+import { startedScore } from "@/product/picks/started";
 import { marketName, selectionLabel } from "./markets";
 
 const RESULTS: Record<string, ResultStatus> = {
@@ -38,6 +39,7 @@ export function StartedPickCard({
   className,
   footer,
   autoOpenWhy = false,
+  hideMatch = false,
 }: {
   pick: StartedPick;
   /** From the admin's shadow preview: labelled, never a recommendation. */
@@ -47,6 +49,8 @@ export function StartedPickCard({
   footer?: ReactNode;
   /** The explanation opens by itself: the reader came from «Más sobre este pick» (plan de Inicio, 2.3). */
   autoOpenWhy?: boolean;
+  /** Inside a match's group the teams, competition and kick-off are said once, by the group (plan PICKS, F6). */
+  hideMatch?: boolean;
 }) {
   const label = selectionLabel({
     market_key: pick.market_key,
@@ -66,12 +70,7 @@ export function StartedPickCard({
       : phaseNow === "unknown"
         ? t("common.status.unknown")
         : null;
-  const score =
-    pick.score_home !== null && pick.score_away !== null
-      ? { home: pick.score_home, away: pick.score_away }
-      : live && pick.live_home !== null && pick.live_away !== null
-        ? { home: pick.live_home, away: pick.live_away }
-        : null;
+  const score = startedScore(pick);
   return (
     <article
       data-testid="started-pick"
@@ -84,29 +83,33 @@ export function StartedPickCard({
         params={{ fixtureId: String(pick.fixture_id) }}
         className="block flex-1 rounded-t-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pt-3.5">
-          <CompetitionTag
-            name={pick.competition.name}
-            logo={pick.competition.logo_url}
-            flag={pick.competition.flag_url}
-            country={pick.competition.country}
-            className="min-w-[9rem] flex-1"
-          />
-          <div className="ml-auto flex shrink-0 items-center gap-1.5">
-            {shadow ? <ShadowBadge compact /> : null}
-            <Kickoff at={pick.kickoff_at} />
-          </div>
-        </div>
-        {/* Home above away, every name whole, the goals on the right (mobile UX audit). */}
-        <Matchup
-          home={{ name: pick.home.name, logo: pick.home.logo_url }}
-          away={{ name: pick.away.name, logo: pick.away.logo_url }}
-          score={score}
-          live={live}
-          className="px-4 pt-2.5"
-        />
+        {hideMatch ? null : (
+          <>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pt-3.5">
+              <CompetitionTag
+                name={pick.competition.name}
+                logo={pick.competition.logo_url}
+                flag={pick.competition.flag_url}
+                country={pick.competition.country}
+                className="min-w-[9rem] flex-1"
+              />
+              <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                {shadow ? <ShadowBadge compact /> : null}
+                <Kickoff at={pick.kickoff_at} />
+              </div>
+            </div>
+            {/* Home above away, every name whole, the goals on the right (mobile UX audit). */}
+            <Matchup
+              home={{ name: pick.home.name, logo: pick.home.logo_url }}
+              away={{ name: pick.away.name, logo: pick.away.logo_url }}
+              score={score}
+              live={live}
+              className="px-4 pt-2.5"
+            />
+          </>
+        )}
 
-        <div className="mt-3 border-t border-border/70 px-4 pb-2.5 pt-3">
+        <div className={cn("border-border/70 px-4 pb-2.5 pt-3", hideMatch ? "" : "mt-3 border-t")}>
           <div
             className="flex flex-wrap items-center gap-x-2 gap-y-1 text-micro font-semibold uppercase tracking-wider text-gold"
             {...hintProps(t("match.picks.prematchHelp"))}
