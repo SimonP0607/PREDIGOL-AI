@@ -153,4 +153,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-018 · SEG-003 · IA-021 · UX-075 · BE-019 · FE-002 · OPS-002 · DOC-001
+CI-018 · SEG-003 · IA-021 · UX-077 · BE-019 · FE-002 · OPS-002 · DOC-001
