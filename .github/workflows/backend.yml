@@ -130,6 +130,6 @@ jobs:
       - name: pytest (4 procesos, una base de datos por proceso)
         # pytest-xdist solo se instala aqui (no es una libreria de la imagen: constraints.txt y pyproject.toml no cambian).
         # `--dist loadfile`: todas las pruebas de un archivo van al mismo proceso, porque muchos archivos crean y borran su propia base «fbi_test_<algo>».
-        # Cada proceso migra su propia `fbi_test_gwN` (ver tests/integration/conftest.py).
+        # Cada proceso migra una plantilla `fbi_test_gwN_tpl` una vez y cada archivo de pruebas trabaja en un clon propio (ver tests/integration/conftest.py).
         run: |
           pytest -q -p no:randomly -n 4 --dist loadfile -m "not serial" --durations=15

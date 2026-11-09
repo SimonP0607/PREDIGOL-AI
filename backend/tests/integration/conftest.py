@@ -7,10 +7,12 @@ created by hand, so a migration that does not apply cleanly fails the suite.
 
 from __future__ import annotations
 
+import hashlib
 import os
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import psycopg
 import pytest
@@ -90,24 +92,97 @@ def _dsn(database: str) -> str:
     return f"{head}/{database}"
 
 
-@pytest.fixture(scope="session")
-def migrated_database() -> Iterator[str]:
-    """Drop, recreate and migrate the test database. Yields its DSN."""
-    with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
-        conn.execute(
-            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
-            "WHERE datname = %s AND pid <> pg_backend_pid()",
-            (TEST_DB,),
-        )
-        conn.execute(f'DROP DATABASE IF EXISTS "{TEST_DB}"')
-        conn.execute(f'CREATE DATABASE "{TEST_DB}"')
+XDIST_WORKER = os.environ.get("PYTEST_XDIST_WORKER")
+"""Set in every pytest-xdist worker, absent in a plain run (CI-014)."""
 
-    dsn = _dsn(TEST_DB)
+
+def module_database_name(base: str, module: str) -> str:
+    """CI-014: the name of the database of ONE test file under xdist: ``<base>_<10 hex digits of the module's name>``. A hash and not the
+    name itself because PostgreSQL cuts identifiers at 63 characters, and two long names would then be the same database."""
+    return f"{base}_{hashlib.sha1(module.encode()).hexdigest()[:10]}"
+
+
+def _database_scope(fixture_name: str, config: pytest.Config) -> Literal["session", "module"]:
+    """A plain run has ONE database for the whole session, as it always had. Under xdist every test FILE gets its own, a copy of a migrated
+    template: a file then never sees the rows another file left behind (what made 34 and then 12 tests fail in the first parallel runs), and
+    no list of «files that depend on the order» has to be kept."""
+    return "module" if XDIST_WORKER else "session"
+
+
+def _drop_database(conn: psycopg.Connection, name: str) -> None:
+    conn.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s AND pid <> pg_backend_pid()", (name,))
+    conn.execute(f'DROP DATABASE IF EXISTS "{name}"')
+
+
+def _migrate(database: str) -> None:
+    os.environ["FBI_DATABASE_URL"] = _dsn(database).replace("postgresql://", "postgresql+psycopg://")
     cfg = Config(os.path.join(REPO_ROOT, "alembic.ini"))
     cfg.set_main_option("script_location", os.path.join(REPO_ROOT, "migrations"))
-    os.environ["FBI_DATABASE_URL"] = dsn.replace("postgresql://", "postgresql+psycopg://")
     command.upgrade(cfg, "head")
-    yield dsn
+
+
+_TEMPLATE_READY = False
+
+
+def _ensure_template() -> str:
+    """Once per worker: ``<TEST_DB>_tpl``, migrated to head and left with nobody connected (CREATE DATABASE ... TEMPLATE needs that)."""
+    global _TEMPLATE_READY
+    template = f"{TEST_DB}_tpl"
+    if not _TEMPLATE_READY:
+        with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
+            _drop_database(conn, template)
+            conn.execute(f'CREATE DATABASE "{template}"')
+        _migrate(template)
+        _TEMPLATE_READY = True
+    with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
+        conn.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s AND pid <> pg_backend_pid()", (template,))
+    return template
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _no_database_roles_left_behind() -> Iterator[None]:
+    """CI-014: a plain run (the ``-m serial`` step) ends with the cluster as it found it. Some tests make the roles of the server
+    (``predigol_worker``, ``predigol_learning`` ...) and a role belongs to the CLUSTER: one left behind is seen by every later test file of
+    every worker, and the analyst (which writes under ``predigol_learning`` when the cluster has it) then fails for lack of its grants."""
+    yield
+    if XDIST_WORKER:
+        return
+    try:
+        with psycopg.connect(_dsn(TEST_DB), autocommit=True) as conn:
+            conn.execute(
+                "DO $$ DECLARE r text; BEGIN FOR r IN SELECT rolname FROM pg_roles WHERE rolname LIKE 'predigol\\_%' LOOP "
+                "EXECUTE format('DROP OWNED BY %I', r); EXECUTE format('DROP ROLE %I', r); END LOOP; END $$"
+            )
+    except psycopg.Error:
+        pass  # no database yet, or a cluster without the rights: nothing was left that this run could remove
+
+
+@pytest.fixture(scope=_database_scope)
+def migrated_database(request: pytest.FixtureRequest) -> Iterator[str]:
+    """The test database, migrated to head. Yields its DSN. One for the whole session in a plain run (dropped and recreated at the start);
+    under xdist, one per test file, cloned from the worker's template and dropped when the file ends."""
+    if not XDIST_WORKER:
+        with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
+            _drop_database(conn, TEST_DB)
+            conn.execute(f'CREATE DATABASE "{TEST_DB}"')
+        _migrate(TEST_DB)
+        yield _dsn(TEST_DB)
+        return
+
+    from fbi.core.config import reset_cache
+
+    template = _ensure_template()
+    name = module_database_name(TEST_DB, request.module.__name__)
+    with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
+        _drop_database(conn, name)
+        conn.execute(f'CREATE DATABASE "{name}" TEMPLATE "{template}"')
+    os.environ["FBI_DATABASE_URL"] = _dsn(name).replace("postgresql://", "postgresql+psycopg://")
+    reset_cache()  # the settings of the project are cached: without this the code under test would keep reading the previous file's database
+    try:
+        yield _dsn(name)
+    finally:
+        with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
+            _drop_database(conn, name)
 
 
 @dataclass(frozen=True)
@@ -125,7 +200,7 @@ class Seed:
     model_version_id: int
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope=_database_scope)
 def seed(migrated_database: str) -> Seed:
     """Insert the minimal graph every invariant test needs. Committed once."""
     with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:

@@ -25,3 +25,13 @@ def test_two_workers_never_share_a_database() -> None:
 def test_every_serial_file_exists_so_a_rename_cannot_silently_send_it_to_the_parallel_run() -> None:
     folder = Path(__file__).resolve().parents[1] / "integration"
     assert SERIAL_FILES and all((folder / name).is_file() for name in SERIAL_FILES)
+
+
+def test_a_database_per_test_file_has_a_name_postgresql_keeps_whole() -> None:
+    from tests.integration.conftest import module_database_name
+
+    long_a = "tests.integration." + "a" * 80
+    long_b = "tests.integration." + "a" * 79 + "b"
+    names = {module_database_name("fbi_test_gw0", m) for m in (long_a, long_b, "tests.integration.test_x", "tests.integration.test_y")}
+    assert len(names) == 4 and all(len(n) <= 63 for n in names) and all(n.startswith("fbi_test_gw0_") for n in names)
+    assert module_database_name("fbi_test_gw0", "tests.integration.test_x") == module_database_name("fbi_test_gw0", "tests.integration.test_x")
