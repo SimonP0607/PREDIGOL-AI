@@ -30,15 +30,17 @@ def run_job(conn: psycopg.Connection[Any], *, at: datetime, commit: bool = True)
     report = review.run(conn, at=at)
     if commit:
         conn.commit()
-    if not report.written:
+    if not report.written and not report.failed:
         return report
     ledger = RunLedger(conn)
     run_id = ledger.open(JOB, params={"version": review.VERSION, "limit": review.LIMIT})
     counters = RunCounters()
     counters.rows_inserted = report.written
+    counters.errors = report.failures[:5]
     counters.rows_normalized = report.due
     ledger.close(run_id, counters, notes=json.dumps({"due": report.due, "written": report.written, "waiting": report.waiting,
                                                      "firm": report.firm, "contradicted": report.contradicted,
+                                                     "failed": report.failed, "failures": report.failures[:3],
                                                      "version": review.VERSION})[:NOTES_LIMIT])
     if commit:
         conn.commit()

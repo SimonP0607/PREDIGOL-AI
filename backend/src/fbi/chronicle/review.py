@@ -346,7 +346,7 @@ def review_one(conn: psycopg.Connection[Any], due: Mapping[str, Any]) -> Review 
     evidence = {int(r["id"]): r for r in rows_of(conn, EVIDENCE_SQL, {"ids": news_ids(content)})}
     items = review_items(content, absences=absences, evidence=evidence, squad=squad, home=int(due["home_team_id"]),
                          away=int(due["away_team_id"]))
-    picks = [{"decision_id": int(r["decision_id"]), "postmortem_version": r["version"], "market": r["market_key"],
+    picks = [{"decision_id": None if r["decision_id"] is None else int(r["decision_id"]), "postmortem_version": r["version"], "market": r["market_key"],
               "selection": r["selection"], "line": r["line"], "outcome": r["outcome"], "decision_quality": r["decision_quality"],
               "verdict": r["verdict"]} for r in rows_of(conn, PICKS_SQL, {"fixture": fixture})]
     return Review(fixture, int(due["narrative_id"]), str(due["narrative_version"]), int(due["packet_id"]), status,
@@ -374,7 +374,9 @@ class RunReport:
     waiting: int = 0
     firm: int = 0
     contradicted: int = 0
+    failed: int = 0
     ids: list[int] = field(default_factory=list)
+    failures: list[str] = field(default_factory=list)
 
 
 def run(conn: psycopg.Connection[Any], *, at: datetime, apply: bool = True, lookback: timedelta = LOOKBACK,
@@ -386,17 +388,25 @@ def run(conn: psycopg.Connection[Any], *, at: datetime, apply: bool = True, look
     due = rows_of(conn, DUE_SQL, {"since": at - lookback - SETTLE, "until": at - SETTLE, "version": VERSION, "limit": limit})
     report.due = len(due)
     for row in due:
-        review = review_one(conn, row)
+        conn.execute("SAVEPOINT chronicle_one")  # explicit: ``conn.transaction()`` would commit the caller's open transaction
+        try:
+            review = review_one(conn, row)
+            stored = store(conn, review, at=at) if (review is not None and apply) else None
+            conn.execute("RELEASE SAVEPOINT chronicle_one")
+        except Exception as exc:  # one chronicle that cannot be judged leaves nothing behind, holds back no other, and is counted
+            conn.execute("ROLLBACK TO SAVEPOINT chronicle_one")
+            conn.execute("RELEASE SAVEPOINT chronicle_one")
+            report.failed += 1
+            report.failures.append(f"narrative {row.get('narrative_id')}: {type(exc).__name__}: {exc}"[:300])
+            continue
         if review is None:
             report.waiting += 1
             continue
         report.firm += int(review.summary["firm_claims"])
         report.contradicted += int(review.summary["contradicted"])
-        if apply:
-            stored = store(conn, review, at=at)
-            if stored is not None:
-                report.written += 1
-                report.ids.append(stored)
-        else:
+        if not apply:
             report.written += 1
+        elif stored is not None:
+            report.written += 1
+            report.ids.append(stored)
     return report

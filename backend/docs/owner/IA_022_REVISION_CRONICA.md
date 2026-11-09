@@ -25,3 +25,5 @@ El trabajo programado del worker (`chronicle_review`, IA-023) la ejecuta cada ho
 **Cobertura hoy.** 246 partidos terminados tienen crónica `ok`; 206 tienen minutos del partido. Como la mayor parte de una crónica es historia, el número de afirmaciones firmes por partido es pequeño (las bajas y las noticias de jugadores); la revisión lo dice tal cual en `summary`, no lo maquilla.
 
 **Vuelta atrás.** Revertir el cambio; la migración se baja con `DROP TABLE` (las revisiones se escriben de nuevo desde las crónicas, que nunca se borran).
+
+**Una crónica que no se sabe juzgar (IA-025).** Cada crónica se revisa dentro de un punto de guardado: si una falla, no deja nada, se cuenta en `failed` (con sus primeras causas en las notas de la ejecución `chronicle_review`) y las demás siguen. Un hueco real que lo motivó: `decision_id` de un post-mortem puede ser nulo; la selección se lista con `decision_id` vacío.

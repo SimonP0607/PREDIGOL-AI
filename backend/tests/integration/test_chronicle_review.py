@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from itertools import count
-from typing import Any
+from typing import Any, ClassVar
 
 import psycopg
 import pytest
@@ -239,15 +239,76 @@ def test_the_command_previews_one_match_or_what_is_due_and_run_needs_the_owner(d
     assert scalar(db.execute("SELECT count(*) FROM ai.chronicle_reviews")) == 0
 
 
-def test_the_scheduled_job_leaves_a_ledger_row_only_when_it_wrote(db: psycopg.Connection[Any], seed: Seed) -> None:
+class FakeLedger:
+    """The real ledger commits the connection it is given, which would keep the rows of the test; the job only needs open and close."""
+
+    calls: ClassVar[list[tuple[str, Any, Any]]] = []
+
+    def __init__(self, _conn: Any) -> None:
+        pass
+
+    def open(self, job: str, params: Any = None) -> int:
+        FakeLedger.calls.append(("open", job, params))
+        return len(FakeLedger.calls)
+
+    def close(self, _run_id: int, counters: Any, notes: str | None = None) -> None:
+        FakeLedger.calls.append(("close", counters, notes))
+
+
+@pytest.fixture()
+def ledger(monkeypatch: pytest.MonkeyPatch) -> type[FakeLedger]:
+    import fbi.ingestion.ledger as real
+
+    FakeLedger.calls = []
+    monkeypatch.setattr(real, "RunLedger", FakeLedger)
+    return FakeLedger
+
+
+def test_the_scheduled_job_leaves_a_ledger_row_only_when_it_wrote(db: psycopg.Connection[Any], seed: Seed, ledger: type[FakeLedger]) -> None:
     from fbi.chronicle.job import JOB, run_job
 
     def runs() -> int:
-        return int(scalar(db.execute("SELECT count(*) FROM raw.ingestion_runs WHERE job_type = %s", (JOB,))))
+        return len([c for c in ledger.calls if c[0] == "open" and c[1] == JOB])
 
-    assert run_job(db, at=NOW).due == 0 and runs() == 0, "a quiet pass leaves nothing"
+    assert run_job(db, at=NOW, commit=False).due == 0 and runs() == 0, "a quiet pass leaves nothing"
     world(db, seed)
-    assert run_job(db, at=NOW).written == 1 and runs() == 1
-    assert run_job(db, at=NOW).written == 0 and runs() == 1, "the second pass finds it reviewed and leaves no new row"
-    notes = str(scalar(db.execute("SELECT notes FROM raw.ingestion_runs WHERE job_type = %s", (JOB,))))
+    assert run_job(db, at=NOW, commit=False).written == 1 and runs() == 1
+    assert run_job(db, at=NOW, commit=False).written == 0 and runs() == 1, "the second pass finds it reviewed and leaves no new row"
+    notes = str(next(c[2] for c in ledger.calls if c[0] == "close"))
     assert '"written": 1' in notes and review.VERSION in notes
+
+
+def test_a_selection_whose_postmortem_has_no_decision_is_listed_with_an_empty_decision(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """Found on the real data: ``intel.postmortems.decision_id`` is optional since 0116, and ``int(None)`` stopped every review."""
+    fid, _pk, _nid = world(db, seed)
+    db.execute("INSERT INTO intel.postmortems (fixture_id, created_at, version, outcome, decision_quality, verdict, answers, market_key, "
+               "selection, line, roles, review_verdict, loss_class) VALUES (%s, %s, 'pm-v6', 'lost', 'UNKNOWN', 'SIN_DATOS', '{}'::jsonb, "
+               "'BTTS', 'Yes', 0, '{llm}', 'approved_lost', 'MODEL_ERROR')", (fid, KICKOFF + timedelta(hours=20)))
+    assert review.run(db, at=NOW).written == 1
+    [row] = rows(db)
+    assert [(p["decision_id"], p["market"], p["selection"], p["outcome"]) for p in row["picks"]] == [(None, "BTTS", "Yes", "lost")]
+
+
+def test_a_chronicle_that_cannot_be_judged_is_counted_and_holds_back_no_other(db: psycopg.Connection[Any], seed: Seed,
+                                                                              monkeypatch: pytest.MonkeyPatch, ledger: type[FakeLedger]) -> None:
+    from fbi.chronicle.job import run_job
+
+    world(db, seed)
+    other = match(db, seed, kickoff=KICKOFF + timedelta(hours=1))
+    chronicle(db, other, packet(db, other), news(db, other, seed))
+    squad(db, other, seed)
+    real = review.review_one
+    calls: list[int] = []
+
+    def flaky(conn: psycopg.Connection[Any], due: Any) -> Any:
+        calls.append(int(due["narrative_id"]))
+        if len(calls) == 1:
+            raise ValueError("boom")
+        return real(conn, due)
+
+    monkeypatch.setattr(review, "review_one", flaky)
+    report = run_job(db, at=NOW + timedelta(hours=2), commit=False)
+    assert (report.due, report.failed, report.written) == (2, 1, 1) and "ValueError: boom" in report.failures[0]
+    assert len(rows(db)) == 1
+    notes = str(next(c[2] for c in ledger.calls if c[0] == "close"))
+    assert '"failed": 1' in notes
