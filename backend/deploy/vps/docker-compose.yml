@@ -117,6 +117,21 @@ services:
       - checkpoint_completion_target=0.9
       - -c
       - log_min_duration_statement=2000
+      # OPS-001. Which queries cost the most (pg_stat_statements) and the plan of the ones that are slow (auto_explain). Both need a start of
+      # PostgreSQL to load; the extension itself is created once with `predigolctl pgstat enable`. auto_explain only LOGS plans of statements over 5 s
+      # and does not ANALYZE them (no cost on the others); pg_stat_statements keeps the SHAPE of a query, never the values in it.
+      - -c
+      - shared_preload_libraries=pg_stat_statements,auto_explain
+      - -c
+      - compute_query_id=on
+      - -c
+      - pg_stat_statements.max=5000
+      - -c
+      - pg_stat_statements.track=top
+      - -c
+      - auto_explain.log_min_duration=5s
+      - -c
+      - auto_explain.log_analyze=off
       - -c
       - log_timezone=UTC
       - -c
