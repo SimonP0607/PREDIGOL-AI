@@ -141,3 +141,63 @@ def test_the_repair_is_dry_first_then_logged_and_idempotent(migrated_database: s
         after = run_internal(conn, at=NOW, store=mestalla["store"])
         assert _mine(after, venue) == [], "once corrected, the control has nothing to say"
         conn.rollback()
+
+
+def test_a_restored_city_is_given_back_with_its_audit_row_and_the_repair_does_not_redo_it(
+        migrated_database: str, mestalla: dict[str, Any]) -> None:
+    """BE-029: when a person checks that a repaired city was wrong, ``restore_venue_city`` gives the provider's value back
+    (one audit row each, only where the city is still the repaired one) and ``repair_venue_city`` leaves it alone."""
+    from scripts.repair_venue_city import RULE_FIXTURE, repair
+    from scripts.restore_venue_city import RULE_RESTORED, restore
+
+    venue, root = mestalla["venue"], mestalla["root"]
+    with psycopg.connect(migrated_database) as conn:
+        repair(conn, root, apply=True, venue_ids=[venue])
+        city = "SELECT venue_city FROM core.fixtures WHERE provider_fixture_id = %s"
+        assert conn.execute(city, (ODD,)).fetchone() == ("Valencia",)
+
+        dry = restore(conn, [venue], reason="test", apply=False)
+        assert [(r.provider_fixture_id, r.current, r.restored) for r in dry.restores] == [(ODD, "Valencia", "Valdivia")]
+        assert dry.written == 0 and conn.execute(city, (ODD,)).fetchone() == ("Valencia",), "a dry run writes nothing"
+
+        done = restore(conn, [venue], reason="the stadium is in Valdivia in this test", apply=True)
+        assert done.written == 1 and not done.problems
+        assert conn.execute(city, (ODD,)).fetchone() == ("Valdivia",)
+        row = conn.execute("SELECT rule, provider_ref, field, before_value, after_value, reason, evidence "
+                           "FROM audit.data_repairs WHERE rule = %s AND entity_id = ANY(%s)",
+                           (RULE_RESTORED, mestalla["fixtures"])).fetchone()
+        assert row is not None and row[:5] == (RULE_RESTORED, ODD, "venue_city", "Valencia", "Valdivia")
+        assert row[5] == "the stadium is in Valdivia in this test" and "undoes audit.data_repairs id" in (row[6] or "")
+        assert conn.execute("SELECT count(*) FROM audit.data_repairs WHERE rule = %s AND entity_id = ANY(%s)",
+                            (RULE_FIXTURE, mestalla["fixtures"])).fetchone() == (1,), "the repair row it undoes stays"
+
+        assert restore(conn, [venue], reason="again", apply=True).restores == [], "idempotent"
+
+        after = repair(conn, root, apply=False, venue_ids=[venue])
+        assert after.fixtures == [] and after.reviewed == 1, "the rule does not repair a restored match again"
+        assert conn.execute(city, (ODD,)).fetchone() == ("Valdivia",)
+
+        conn.execute("UPDATE core.fixtures SET venue_city = 'Paterna' WHERE provider_fixture_id = %s", (ODD,))
+        conn.commit()
+        changed = repair(conn, root, apply=False, venue_ids=[venue])
+        assert [(f.provider_fixture_id, f.before) for f in changed.fixtures] == [(ODD, "Paterna")], \
+            "a city changed after the restoration is judged as before"
+        assert restore(conn, [venue], reason="x", apply=False).restores == []
+
+
+def test_restoring_leaves_alone_a_city_changed_since_the_repair_and_other_venues(
+        migrated_database: str, mestalla: dict[str, Any]) -> None:
+    from scripts.repair_venue_city import repair
+    from scripts.restore_venue_city import restore
+
+    venue, root = mestalla["venue"], mestalla["root"]
+    with psycopg.connect(migrated_database) as conn:
+        repair(conn, root, apply=True, venue_ids=[venue])
+        other = venue + 100000
+        assert restore(conn, [other], reason="x", apply=True).restores == [], "only the venues asked"
+        conn.execute("UPDATE core.fixtures SET venue_city = 'Paterna' WHERE provider_fixture_id = %s", (ODD,))
+        plan = restore(conn, [venue], reason="x", apply=True)
+        assert plan.restores == [] and plan.written == 0
+        assert any(str(ODD) in s and "no longer" in s for s in plan.skipped)
+        assert conn.execute("SELECT venue_city FROM core.fixtures WHERE provider_fixture_id = %s",
+                            (ODD,)).fetchone() == ("Paterna",)

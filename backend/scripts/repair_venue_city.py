@@ -14,7 +14,9 @@ this script proposes, and with ``--apply`` writes, the correction that evidence 
    that name the ground contradict that record as well: then it is listed as undecided and nothing is written.
 2. ``fixture_venue_city`` - ``core.fixtures.venue_city`` of a home match the control flags (its payload names the
    club's ground in a city fewer of the club's home matches there give than give the ground's city): the city those
-   matches give. The match page shows a fixture's own city first, so the venue's alone would not change it.
+   matches give. The match page shows a fixture's own city first, so the venue's alone would not change it. Not a
+   match whose city a person gave back with ``scripts.restore_venue_city`` (BE-029): the majority can be wrong about
+   a ground, and that decision is not undone by the next run.
 
 Undecided grounds are printed with their evidence: the provider's own record says the stored city (to be reported to
 the provider: correcting it by hand would be undone by the next /venues or /teams refresh), or no stored payload names
@@ -41,6 +43,8 @@ from fbi.truth.venues import CityVerdict, Ground, collect, judge_city, odd_fixtu
 
 RULE_VENUE = "venue_city_from_provider"
 RULE_FIXTURE = "fixture_venue_city"
+RULE_RESTORED = "fixture_venue_city_restored"
+"""``scripts.restore_venue_city``: a person checked the repair was wrong and gave the provider's city back (BE-029)."""
 REPO = Path(__file__).resolve().parents[1]
 
 INSERT_REPAIR = (
@@ -69,6 +73,8 @@ class FixtureFix:
 
 @dataclass
 class Plan:
+    reviewed: int = 0
+    """Matches left as they are because a person restored their city (``scripts.restore_venue_city``)."""
     grounds: int = 0
     flagged: int = 0
     venues: list[VenueFix] = field(default_factory=list)
@@ -110,11 +116,33 @@ def plan_ground(g: Ground, verdict_city: CityVerdict, plan: Plan) -> None:
             + (f"; the provider's record of the venue: {p.source()}" if p is not None else "")))
 
 
+REVIEWED_SQL = """
+SELECT DISTINCT provider_ref, after_value FROM audit.data_repairs
+ WHERE rule = %(rule)s AND entity = 'core.fixtures' AND field = 'venue_city' AND provider_ref = ANY(%(ids)s)
+"""
+"""The matches (provider id) a person gave a city back (``scripts.restore_venue_city``) and the city they got."""
+
+
+def skip_reviewed(conn: psycopg.Connection[Any], plan: Plan) -> None:
+    """Drop from the plan the matches whose city a person restored after checking the repair was wrong (BE-029): the
+    majority of the club's other matches at a ground can be wrong about it (Pasching and Linz share a stadium name,
+    the provider puts Sangolquí's ground in Quito), so the rule would repair them again on its next run. Only while
+    the city is still the restored one: a city the provider changes later is judged as before."""
+    if not plan.fixtures:
+        return
+    rows = conn.execute(REVIEWED_SQL, {"rule": RULE_RESTORED, "ids": [f.provider_fixture_id for f in plan.fixtures]})
+    held = {(int(pid), after) for pid, after in rows.fetchall()}
+    kept = [f for f in plan.fixtures if (f.provider_fixture_id, f.before) not in held]
+    plan.reviewed = len(plan.fixtures) - len(kept)
+    plan.fixtures = kept
+
+
 def build_plan(conn: psycopg.Connection[Any], store: PayloadStore, venue_ids: list[int] | None = None) -> Plan:
     got = collect(conn, store, venue_ids=venue_ids)
     plan = Plan(grounds=len(got.grounds), problems=list(got.problems))
     for g in got.grounds:
         plan_ground(g, judge_city(g, got.atlas), plan)
+    skip_reviewed(conn, plan)
     return plan
 
 
@@ -172,7 +200,8 @@ def main(argv: list[str] | None = None) -> int:
     with psycopg.connect(settings.database.psycopg_url) as conn:
         r = repair(conn, root, apply=args.apply, venue_ids=args.venue)
     print(f"grounds checked: {r.grounds}; city contradicted: {r.flagged}; venue cities to restore: {len(r.venues)}; "
-          f"fixture cities to set: {len(r.fixtures)}; undecided: {len(r.undecided)}")
+          f"fixture cities to set: {len(r.fixtures)}; kept as restored by a person: {r.reviewed}; "
+          f"undecided: {len(r.undecided)}")
     for v in r.venues:
         print(f"  VENUE   {v.label}: city {_show(v.before)} -> '{v.after}'  [{v.evidence}]")
     for f in r.fixtures:
