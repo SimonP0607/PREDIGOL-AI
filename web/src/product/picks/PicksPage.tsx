@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { ShadowBadge } from "@/product/shared/Bits";
 import { PickCard } from "@/product/shared/PickCard";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
-import { StartedPickCard } from "@/product/shared/StartedPickCard";
+import { StartedMatchGroupCard } from "@/product/shared/StartedMatchGroup";
 import {
   Card,
   EmptyState,
@@ -40,7 +40,7 @@ import { pickableOfCard, type Pickable } from "@/product/records/pickable";
 import { SelectablePriceRow } from "@/product/odds/SelectablePrice";
 import { Pager } from "@/product/shared/Pager";
 import { usePaged } from "@/product/shared/paging";
-import { startedState, type StartedState } from "./started";
+import { groupByMatch, startedState, type StartedState } from "./started";
 import { ChipGroup, ShadowToggle, type ChipOption } from "./Controls";
 import {
   DEFAULT_FILTERS,
@@ -144,7 +144,9 @@ function StartedPicks() {
       (market === null || p.market_key === market) &&
       (state === "all" || startedState(p) === state),
   );
-  const paged = usePaged(shown, `${competition}|${market}|${state}|${all.length}`);
+  // Pages are of matches, not of cards: a match is never split between two pages (plan PICKS, F6 / L2).
+  const groups = groupByMatch(shown);
+  const paged = usePaged(groups, `${competition}|${market}|${state}|${all.length}`);
   if (q.isSuccess && all.length === 0) return null;
   const filtered = competition !== null || market !== null || state !== "all";
   const fields = (
@@ -223,7 +225,8 @@ function StartedPicks() {
             </FilterSheet>
           </div>
           <p className="text-sm font-semibold" data-testid="started-count" aria-live="polite">
-            {t("picks.started.count", { count: shown.length })}
+            {t("picks.started.count", { count: shown.length })} ·{" "}
+            {t("picks.started.matches", { count: groups.length })}
           </p>
           {shown.length === 0 ? (
             <Card>
@@ -234,9 +237,9 @@ function StartedPicks() {
               />
             </Card>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {paged.items.map((p) => (
-                <StartedPickCard key={p.pick_id} pick={p} shadow={shadow} />
+            <div className="grid grid-cols-1 gap-3">
+              {paged.items.map((g) => (
+                <StartedMatchGroupCard key={g.fixtureId} group={g} shadow={shadow} />
               ))}
             </div>
           )}

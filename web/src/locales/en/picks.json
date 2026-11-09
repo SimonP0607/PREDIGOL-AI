@@ -46,6 +46,10 @@
     },
     "show_one": "Show {count} pick",
     "show_other": "Show {count} picks",
+    "matches_one": "{count} match",
+    "matches_other": "{count} matches",
+    "inMatch_one": "{count} pick on this match",
+    "inMatch_other": "{count} picks on this match",
     "filtersTitle": "Filters of the picks that have started"
   },
   "priceHelp": "Tap the price to add it to your parlay; the bookmark saves it.",
