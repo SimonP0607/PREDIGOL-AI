@@ -546,18 +546,7 @@
   "card": {
     "referenceOdds": "Cuota de referencia",
     "probs": "PrediGol {model} · mercado {market}",
-    "level": {
-      "label": "Nivel",
-      "high": "Alto",
-      "medium": "Medio"
-    },
-    "levelHelp": {
-      "high": "Hasta la estimación prudente de PrediGol supera la probabilidad del mercado.",
-      "medium": "La estimación central de PrediGol supera al mercado; la prudente, no."
-    },
     "whyValue": "PrediGol ve este resultado más probable que el mercado.",
-    "whyHigh": "Incluso su estimación prudente queda por encima del mercado.",
-    "whyMedium": "Su estimación central supera al mercado; la prudente, no.",
     "more": "Más sobre este pick",
     "audit": "Auditoría"
   }

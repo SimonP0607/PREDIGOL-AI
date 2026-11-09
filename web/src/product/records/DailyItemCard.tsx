@@ -1,15 +1,15 @@
 /**
  * One of the day's picks as PrediGol recorded it, the way a reader sees it (plan de Inicio, 2.3), top to bottom: league and
  * time, the teams, the market and the selection, the reference odds (no bookmaker: they are a reference, not an offer), what
- * PrediGol and the market give it, its level (Alto when even the prudent estimate beats the market, Medio otherwise), its
- * state and result, two lines of why, and «Más sobre este pick», which opens the match on that pick. It stays on the page
+ * PrediGol and the market give it, its
+ * state and result, the lines of why (no «Nivel»: plan PICKS, D4), and «Más sobre este pick», which opens the match on that pick. It stays on the page
  * after kick-off. The model, the review, the expected value, the stage and the time it was chosen are the match's and the
  * owner's: in the evaluation set the owner finds them folded under «Auditoría».
  */
 import { Hint } from "@/components/system/Hint";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { Link } from "@tanstack/react-router";
-import { ChevronRight, Gauge, Snowflake } from "lucide-react";
+import { ChevronRight, Snowflake } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { fmtPct } from "@/lib/i18n/format";
@@ -23,7 +23,7 @@ import { DecisionChain } from "./DecisionChain";
 import { formatTime } from "@/lib/time";
 import { isLivePhase, matchPhaseOf } from "@/product/matches/status";
 import { MatchStateBadge, OriginLabel, ResultBadge, Units } from "./Badges";
-import { hasStarted, pickLevel, type PickLevel } from "./model";
+import { hasStarted } from "./model";
 import { whyLines } from "./cardWhy";
 import { pickableOfItem } from "./pickable";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -38,26 +38,6 @@ export function MatchScore({ home, away }: { home: number | null; away: number |
     <span className="numeric rounded-md border border-border-strong bg-elevated px-1.5 py-0.5 text-xs font-semibold">
       {home}–{away}
     </span>
-  );
-}
-
-function Level({ level }: { level: PickLevel }) {
-  return (
-    <Hint text={t(`records.card.levelHelp.${level}`)} className="no-underline">
-      <span
-        data-testid="pick-level"
-        data-level={level}
-        className={cn(
-          "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-semibold",
-          level === "high"
-            ? "border-positive/40 bg-positive-soft text-positive"
-            : "border-border-strong bg-elevated text-muted-foreground",
-        )}
-      >
-        <Gauge aria-hidden className="h-3 w-3" />
-        {t("records.card.level.label")}: {t(`records.card.level.${level}`)}
-      </span>
-    </Hint>
   );
 }
 
@@ -89,8 +69,7 @@ export function DailyItemCard({
     isLivePhase(phase) && m.live_home != null && m.live_away != null
       ? { home: m.live_home, away: m.live_away }
       : null;
-  const level = pickLevel(item.p_low, item.p_market);
-  const why = whyLines(item, level);
+  const why = whyLines(item);
   const model = Number(item.p_model);
   const market = Number(item.p_market);
   const search = { s: "resumen", pick: item.pick_id } as const;
@@ -182,7 +161,6 @@ export function DailyItemCard({
                 {t("records.card.probs", { model: fmtPct(model, 0), market: fmtPct(market, 0) })}
               </p>
             ) : null}
-            {level ? <Level level={level} /> : null}
           </div>
           <ul className="mt-2 space-y-1" data-testid="pick-why-lines">
             {why.map((line) => (
