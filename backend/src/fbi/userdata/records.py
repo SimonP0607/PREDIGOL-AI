@@ -197,6 +197,9 @@ class LegIn:
     selection: str
     line: Decimal
     odds: Decimal | None = None
+    odds_captured_at: datetime | None = None
+    """When the odds the user saw were captured (tz-aware). Only meaningful with ``odds``; without it the price
+    taken is the newest consensus and its own time is stored."""
 
 
 @dataclass
@@ -255,7 +258,20 @@ def validate_parlay(conn: psycopg.Connection[Any], legs: list[LegIn], *, at: dat
             # Judged on the newest consensus (the price we would show now), whatever odds the request brings.
             v.errors.append({"code": "outlier_price", "leg": n})
         odds = leg.odds if leg.odds is not None else (Decimal(price["best_odds"]) if price else None)
-        entry.update({"odds": None if odds is None else str(odds), "kickoff_at": f["kickoff_at"].isoformat(),
+        # The exact odds kept and when they were captured (plan CUOTAS, phase 6): the ones the user was shown (with
+        # their own time, never later than now) or, without any, the newest consensus price and its own time.
+        source: str | None
+        if leg.odds is not None:
+            source = "shown"
+            captured_at = leg.odds_captured_at
+            if captured_at is not None and captured_at > at:
+                v.errors.append({"code": "odds_time_in_future", "leg": n})
+        else:
+            source = "current" if price else None
+            captured_at = price["as_of"] if price else None
+        entry.update({"odds": None if odds is None else str(odds), "odds_source": source,
+                      "odds_captured_at": None if captured_at is None else captured_at.isoformat(),
+                      "kickoff_at": f["kickoff_at"].isoformat(),
                       "price": None if price is None else {"odds": str(price["best_odds"]),
                                                            "bookmaker": price["bookmaker"],
                                                            "as_of": price["as_of"].isoformat()}})
