@@ -102,8 +102,8 @@
       "body": "Elige liga y activa «solo con picks» para ver primero los partidos que tienen un pick."
     },
     "cards": {
-      "title": "Se actualizan solas",
-      "body": "Las tarjetas se refrescan cada 15 segundos. Toca una para abrir el partido."
+      "title": "Se actualiza sola",
+      "body": "Se refresca cada 15 segundos. Cuando hay partidos en juego, toca su tarjeta para abrirlo."
     }
   },
   "match": {

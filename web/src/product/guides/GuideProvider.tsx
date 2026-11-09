@@ -285,6 +285,12 @@ export function GuideProvider({ children }: { children: ReactNode }) {
       const def = GUIDES[current.key];
       if (def.mandatory) return; // owed: it is paused, never skipped
       persist(def.key, { version: def.version, status: "skipped", step: current.index });
+      // whoever says no to the general tour does not get the guide it covers (Inicio) on the next visit either
+      for (const other of GUIDE_LIST) {
+        if (other.coveredBy === def.key) {
+          persist(other.key, { version: other.version, status: "skipped", step: 0 });
+        }
+      }
       track("guide_skipped", {
         guide: def.key,
         version: def.version,

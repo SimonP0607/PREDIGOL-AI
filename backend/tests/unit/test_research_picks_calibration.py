@@ -11,6 +11,7 @@ from scripts.research_picks_calibration import (
     Forecast,
     calibrate_out_of_sample,
     cluster_ci,
+    goals_since,
     lean,
     q2_direction,
     q5_price,
@@ -119,3 +120,11 @@ def test_the_interval_resamples_matches_not_selections() -> None:
     lo, hi = cluster_ci(values, same_match)
     lo1, hi1 = cluster_ci(values, np.arange(400))
     assert lo < 0 < hi and (hi - lo) > (hi1 - lo1), "correlated selections widen the interval"
+
+
+def test_the_goals_diagnosis_reads_the_period_of_the_picks() -> None:
+    old = datetime(2000, 1, 1, tzinfo=UTC)
+    rows = [{"kickoff_at": START + timedelta(days=3)}, {"kickoff_at": START}]
+    assert goals_since(rows, old) == START, "from the first settled pick, not from 2000"
+    assert goals_since(rows, START + timedelta(days=10)) == START + timedelta(days=10), "--days still narrows it"
+    assert goals_since([], old) == old
