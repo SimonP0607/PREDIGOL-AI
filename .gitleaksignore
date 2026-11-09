@@ -34,3 +34,7 @@ b38b556c4e81af7bf093ade5a13d7df6089eed90:backend/tests/unit/test_contain_trace.p
 # `FBI_TELEGRAM_WEBHOOK_SECRET=` con el valor vacío en la plantilla de entorno (UX-022): la regla genérica tomó como «valor» el nombre de la línea
 # siguiente (FBI_ANNOUNCE_DAILY_CAP), no una credencial. La plantilla ya quedó reordenada para que no vuelva a pasar; el commit publicado no se reescribe.
 4248d1217ade63ec5e0869e20a2268ce217143a3:backend/deploy/vps/app.env.example:generic-api-key:32
+
+# `key: "result_1x2.FT.match"` en la prueba de UX-073 (rama del PR #140): la etiqueta de un mercado del catálogo, no una credencial; la regla genérica la toma por llevar «key:» y tener
+# entropía alta. Solo el commit publicado en esa rama; al fusionar el PR, la línea de la prueba lleva `# gitleaks:allow` con el motivo (security/README.md, «Si Gitleaks marca algo», 4).
+2ab99987367740cb0c7cd344659eef6feab77877:web/src/product/match/marketLink.test.ts:generic-api-key:15
