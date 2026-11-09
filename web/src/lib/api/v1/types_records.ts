@@ -261,6 +261,8 @@ export interface LegIn {
   selection: string;
   line?: string | number;
   odds?: string | number | null;
+  /** When `odds` were captured (the time of the price the user was shown); never later than now. */
+  odds_captured_at?: string | null;
 }
 
 export interface ParlayIn {
@@ -294,6 +296,8 @@ export interface ParlayValidation {
     selection: string;
     line: string;
     odds?: string | null;
+    odds_source?: "shown" | "current" | null;
+    odds_captured_at?: string | null;
     kickoff_at?: string;
     price?: { odds: string; bookmaker: string | null; as_of: string } | null;
     p_fair?: string | null;
@@ -327,6 +331,10 @@ export interface UserParlayLeg {
   line: Dec;
   odds: Dec | null;
   status: ResultStatus;
+  /** shown: the odds the user was shown; current: the newest price at saving; null: saved before this was kept. */
+  odds_source?: "shown" | "current" | null;
+  /** When those odds were captured; null: not kept (never an invented time). */
+  odds_captured_at?: Iso | null;
 }
 
 export interface UserParlay {
