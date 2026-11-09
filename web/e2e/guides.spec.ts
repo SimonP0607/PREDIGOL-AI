@@ -71,11 +71,7 @@ async function problems(page: Page, label: string): Promise<string[]> {
           `the card leaves the screen (${[c.left, c.top, c.right, c.bottom].map(Math.round)} in ${vw}x${vh})`,
         );
       const ring = box(document.querySelector('[data-testid="guide-ring"]'));
-      // a phone held sideways (390 px high) has no room for both: the card may brush the foot of the ringed block, by 24 px
-      // at most (its text stays whole; the ring has 4 px of margin of its own)
-      const brush =
-        vh < 500 && Math.min(c.bottom, ring?.bottom ?? 0) - Math.max(c.top, ring?.top ?? 0) <= 24;
-      if (ring && meet(c, ring) && !brush) {
+      if (ring && meet(c, ring)) {
         // docked below 1024 px: an element taller than the free band above the card is shown from its top, the card over
         // its lower part; any other is wholly above the card. From 1024 px the card sits beside the element.
         const head = Math.max(0, box(document.querySelector("header"))?.bottom ?? 0);
@@ -272,6 +268,106 @@ test("two skips in a row stop the automatic guides of the session; «?» still b
     await page.getByTestId("guide-help").click();
     await expect(card(page), "«?» still works").toHaveAttribute("data-guide-key", "matches");
     await page.keyboard.press("Escape");
+    await assertClean(page, w);
+  } finally {
+    await remove(admin, id, email);
+    await admin.dispose();
+  }
+});
+
+test("«?» pressed while the page changes never opens a guide without its elements (UX-083)", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  const admin = await owner();
+  const { id, email } = await account(admin, "grace");
+  try {
+    const w = watch(page, { expect401: true, expectStatus: [403] });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page, email);
+    await skipWelcome(page.request, { guides: "keep" });
+    await guidesDone(page.request, ["general", "home", "profile", "picks", "matches", "my_picks"]);
+    await consents(page);
+    await page.goto("/home");
+    await settle(page);
+    // a watcher in the page: every progress line a card shows, and the «?» pressed on every frame while the route changes
+    await page.evaluate(() => {
+      const seen: string[] = [];
+      (window as unknown as { __cards: string[] }).__cards = seen;
+      new MutationObserver(() => {
+        for (const p of Array.from(document.querySelectorAll('[data-testid="guide-card"] p'))) {
+          const text = p.textContent ?? "";
+          if (/\d+\D+\d+/.test(text)) seen.push(text.trim());
+        }
+      }).observe(document.body, { subtree: true, childList: true, characterData: true });
+    });
+    for (const href of ["/matches", "/picks", "/my-picks", "/home"]) {
+      await page.evaluate(
+        ([to, label]) => {
+          document
+            .querySelector<HTMLAnchorElement>(`nav[aria-label="${label}"] a[href="${to}"]`)
+            ?.click();
+          let frames = 0;
+          const press = () => {
+            document.querySelector<HTMLButtonElement>('[data-testid="guide-help"]')?.click();
+            if (++frames < 60) requestAnimationFrame(press);
+          };
+          requestAnimationFrame(press);
+        },
+        [href, t.nav.mainNavigation],
+      );
+      await page.waitForTimeout(1500);
+      // whatever is up now is closed (Escape skips a guide that is not owed)
+      await page.keyboard.press("Escape");
+      await expect(card(page)).toHaveCount(0);
+    }
+    const cards = await page.evaluate(() => (window as unknown as { __cards: string[] }).__cards);
+    expect(
+      cards.filter((c) => /\bde 0\b/.test(c)),
+      "no «Paso n de 0» was ever shown",
+    ).toEqual([]);
+    await assertClean(page, w);
+  } finally {
+    await remove(admin, id, email);
+    await admin.dispose();
+  }
+});
+
+test("when a guide closes, the focus goes back to the «?» that opened it, or to the page's start for one that opened by itself (UX-083)", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  const admin = await owner();
+  const { id, email } = await account(admin, "gfocus");
+  try {
+    const w = watch(page, { expect401: true, expectStatus: [403] });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await signIn(page, email);
+    await skipWelcome(page.request, { guides: "keep" });
+    await guidesDone(page.request, ["general", "home", "profile", "matches", "my_picks"]);
+    await consents(page);
+    await page.goto("/home");
+    await settle(page);
+    // by keyboard: Tab to «?», Enter opens, Escape closes - and the focus is back on the «?»
+    const help = page.getByTestId("guide-help");
+    await help.focus();
+    await page.keyboard.press("Enter");
+    await expect(card(page)).toBeVisible();
+    await expect(card(page).getByRole("heading")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(card(page)).toHaveCount(0);
+    await expect(help, "back on the «?»").toBeFocused();
+    // opened by itself (Picks was not seen): closed, the focus is not left on nothing
+    await page
+      .locator(`nav[aria-label="${t.nav.mainNavigation}"] a[href="/picks"]:visible`)
+      .first()
+      .click();
+    await expect(card(page)).toHaveAttribute("data-guide-key", "picks");
+    await page.keyboard.press("Escape");
+    await expect(card(page)).toHaveCount(0);
+    await expect
+      .poll(() => page.evaluate(() => document.activeElement === document.body))
+      .toBe(false);
     await assertClean(page, w);
   } finally {
     await remove(admin, id, email);

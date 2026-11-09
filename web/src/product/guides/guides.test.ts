@@ -109,6 +109,20 @@ describe("who is owed what", () => {
     expect(owed(later, seen("completed", 5, 1))).toBe("start");
     expect(owed(later, seen("completed", 5, 2))).toBeNull();
   });
+
+  test("a version that changed text only is not shown again to whoever finished or skipped the last one", () => {
+    const edited = { ...general, version: 3, reshowFrom: 1 };
+    expect(owed(edited, seen("completed", 5, 2))).toBeNull();
+    expect(owed(edited, seen("skipped", 1, 2))).toBeNull();
+  });
+
+  test("left half way in an earlier version, it starts over; in this one, it goes on from the step (UX-083)", () => {
+    const edited = { ...general, version: 2, reshowFrom: 1 };
+    expect(owed(edited, seen("in_progress", 3, 1))).toBe("start");
+    expect(owed(edited, seen("in_progress", 3, 2))).toBe("resume");
+    const mandatory = { ...GUIDES.profile, version: 2, reshowFrom: 1 };
+    expect(owed(mandatory, seen("in_progress", 3, 1))).toBe("start");
+  });
 });
 
 describe("what stands in the way", () => {
