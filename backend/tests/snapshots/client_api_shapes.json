@@ -71,6 +71,10 @@
   {
    "date": "2026-11-09",
    "reason": "UX-077: /daily dice si el día anterior tiene un pick abierto (previous_day_open), plan Inicio P4"
+  },
+  {
+   "date": "2026-11-09",
+   "reason": "BE-024 (plan Cuotas, fase 6): DailyItem gains price_now, the price now beside the price taken (additive, null when it does not apply)"
   }
  ],
  "routes": {
@@ -411,6 +415,17 @@
        "format": "date-time",
        "title": "Price At",
        "type": "string"
+      },
+      "price_now": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/PriceNow"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The price now of the same selection against ``odds``, only while the match is still to be played and a capture exists in the last 36 hours. Null: no price now (started, finished or never priced). Changes nothing about the pick."
       },
       "profit_units": {
        "anyOf": [
@@ -1255,6 +1270,50 @@
       "status"
      ],
      "title": "ParlayRecordLeg",
+     "type": "object"
+    },
+    "PriceNow": {
+     "description": "The price of a selection now, beside the one it was taken at (plan CUOTAS, phase 6): the best price of the newest\nconsensus capture, with its own hour and how fresh it is. A move of the price, never a verdict: it carries no probability,\nvalue or state, and no bookmaker (a price is a reference, not an offer).",
+     "properties": {
+      "as_of": {
+       "description": "When that price was captured.",
+       "format": "date-time",
+       "title": "As Of",
+       "type": "string"
+      },
+      "change": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "odds now / the price taken - 1: -0.0652 is a price that fell 6.52 %, positive a better one. Null without a price taken.",
+       "title": "Change"
+      },
+      "freshness": {
+       "description": "By the picks board's limits: up to one hour fresh, up to three aging, older stale - a stale price is shown as old, never as the current one.",
+       "enum": [
+        "fresh",
+        "aging",
+        "stale"
+       ],
+       "title": "Freshness",
+       "type": "string"
+      },
+      "odds": {
+       "title": "Odds",
+       "type": "string"
+      }
+     },
+     "required": [
+      "odds",
+      "as_of",
+      "freshness"
+     ],
+     "title": "PriceNow",
      "type": "object"
     },
     "ReadingFact": {

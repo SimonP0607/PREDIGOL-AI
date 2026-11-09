@@ -114,6 +114,10 @@
     "oddsSaved": "Cuota guardada",
     "oddsCleared": "Cuota quitada"
   },
+  "priceNow": {
+    "now": "Ahora {odds}",
+    "stale": "precio antiguo"
+  },
   "slip": {
     "title": "Mi parlay",
     "subtitle": "Una selección por partido, de {min} a {max}.",
