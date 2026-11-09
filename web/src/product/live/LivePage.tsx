@@ -213,40 +213,44 @@ export function LivePage() {
     );
   } else if (all.length > 0 && matches.length === 0) {
     body = (
-      <Card>
-        <EmptyState
-          icon={<RadioTower aria-hidden className="h-6 w-6" />}
-          title={t("live.filters.emptyTitle")}
-          body={t("live.filters.emptyBody")}
-          action={
-            <button
-              type="button"
-              onClick={() => setFilters(NO_FILTERS)}
-              className="tap-y relative inline-flex rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
-            >
-              {t("live.filters.clear")}
-            </button>
-          }
-        />
-      </Card>
+      <div data-guide="live-cards">
+        <Card>
+          <EmptyState
+            icon={<RadioTower aria-hidden className="h-6 w-6" />}
+            title={t("live.filters.emptyTitle")}
+            body={t("live.filters.emptyBody")}
+            action={
+              <button
+                type="button"
+                onClick={() => setFilters(NO_FILTERS)}
+                className="tap-y relative inline-flex rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
+              >
+                {t("live.filters.clear")}
+              </button>
+            }
+          />
+        </Card>
+      </div>
     );
   } else if (matches.length === 0) {
     body = (
-      <Card>
-        <EmptyState
-          icon={<RadioTower aria-hidden className="h-6 w-6" />}
-          title={emptyReason("no_live_matches")}
-          body={t("live.emptyBody")}
-          action={
-            <Link
-              to="/matches"
-              className="tap-y relative inline-flex rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
-            >
-              {t("live.seeMatches")}
-            </Link>
-          }
-        />
-      </Card>
+      <div data-guide="live-cards">
+        <Card>
+          <EmptyState
+            icon={<RadioTower aria-hidden className="h-6 w-6" />}
+            title={emptyReason("no_live_matches")}
+            body={t("live.emptyBody")}
+            action={
+              <Link
+                to="/matches"
+                className="tap-y relative inline-flex rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
+              >
+                {t("live.seeMatches")}
+              </Link>
+            }
+          />
+        </Card>
+      </div>
     );
   } else {
     body = (
