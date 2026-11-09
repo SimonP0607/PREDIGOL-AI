@@ -148,4 +148,22 @@ describe("the owner's selection funnel (REVIEW B1)", () => {
     expect(waiting).toContain("9 PrediGol Intelligence aún no lee el día completo");
     expect(waiting.match(/pasada del día/g)).toHaveLength(1); // the day's note only: no "pasada del día" badge
   });
+
+  test("the chain names no step that is not applied (plan PICKS, D2)", async () => {
+    const withCalibration: SelectionFunnel = {
+      ...funnel,
+      stages: [{ key: "calibration", entered: 975, passed: 975, reasons: {} }, ...funnel.stages],
+    };
+    const off = await render(<FunnelBody d={withCalibration} />);
+    // "Calibración" is only an interval check, and says so; Intelligence does not filter while its review is not applied.
+    expect(off).toContain("Intervalo medido");
+    expect(off).toContain("no recalibra ni cambia su probabilidad");
+    expect(off).not.toContain("Calibración");
+    expect(off).toContain("Intelligence (no filtra)");
+    expect(off).toContain("no se aplica: este paso no deja fuera a nadie por ella");
+    const on = await render(<FunnelBody d={{ ...withCalibration, ai_enforced: true }} />);
+    expect(on).not.toContain("Intelligence (no filtra)");
+    expect(on).toContain("PrediGol Intelligence 9 → 0");
+    expect(on).toContain("Intervalo medido");
+  });
 });

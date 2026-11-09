@@ -35,12 +35,44 @@ function reasonText(code: string): string {
   return translateOr(`ops.picks.funnel.reason.${code}`, code.replace(/_/g, " "));
 }
 
-function StageRow({ s, top }: { s: FunnelStage; top: number }) {
+/**
+ * What a step is called and what it does not do (plan PICKS, D2): "calibration" only checks that an interval exists,
+ * and "PrediGol Intelligence" filters only when its review is applied - the chain names no step that is not applied.
+ */
+function stageLabel(
+  key: FunnelStage["key"],
+  enforced: boolean,
+): { name: string; note: string | null } {
+  if (key === "calibration")
+    return {
+      name: t("ops.picks.funnel.stage.calibration"),
+      note: t("ops.picks.funnel.stageNote.calibration"),
+    };
+  if (key === "context" && !enforced)
+    return {
+      name: t("ops.picks.funnel.stage.contextOff"),
+      note: t("ops.picks.funnel.stageNote.contextOff"),
+    };
+  return { name: t(`ops.picks.funnel.stage.${key}`), note: null };
+}
+
+function StageRow({ s, top, enforced }: { s: FunnelStage; top: number; enforced: boolean }) {
+  const label = stageLabel(s.key, enforced);
   const width = top > 0 ? Math.max(2, Math.round((s.passed / top) * 100)) : 0;
   const stopped = Object.entries(s.reasons).filter(([, n]) => n > 0);
   return (
     <li className="grid gap-1 py-2 sm:grid-cols-[11rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-      <div className="text-sm font-medium">{t(`ops.picks.funnel.stage.${s.key}`)}</div>
+      <div>
+        <div className="text-sm font-medium">{label.name}</div>
+        {label.note ? (
+          <p
+            className="text-caption text-muted-foreground"
+            data-testid={`funnel-stage-note-${s.key}`}
+          >
+            {label.note}
+          </p>
+        ) : null}
+      </div>
       <div className="min-w-0 space-y-1">
         <div className="flex items-center gap-2">
           <span className="relative h-2 flex-1 overflow-hidden rounded-full bg-muted">
@@ -183,7 +215,7 @@ export function FunnelBody({ d }: { d: SelectionFunnel }) {
       </div>
       <ol className="divide-y divide-border/70" data-testid="funnel-stages">
         {d.stages.map((s) => (
-          <StageRow key={s.key} s={s} top={top} />
+          <StageRow key={s.key} s={s} top={top} enforced={d.ai_enforced} />
         ))}
       </ol>
       <div>
