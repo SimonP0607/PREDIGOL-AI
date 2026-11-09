@@ -1,0 +1,256 @@
+{
+  "links": [
+    {
+      "key": "result.1x2",
+      "period": "FT",
+      "category": "result",
+      "catalog": "result_1x2.FT.match"
+    },
+    {
+      "key": "result.asian_handicap",
+      "period": "FT",
+      "category": "result",
+      "catalog": "result_asian_handicap.FT.match"
+    },
+    {
+      "key": "result.double_chance",
+      "period": "FT",
+      "category": "result",
+      "catalog": "result_double_chance.FT.match"
+    },
+    {
+      "key": "result.draw_no_bet",
+      "period": "FT",
+      "category": "result",
+      "catalog": "result_draw_no_bet.FT.match"
+    },
+    {
+      "key": "goals.btts",
+      "period": "FT",
+      "category": "goals",
+      "catalog": "goals_btts.FT.match"
+    },
+    {
+      "key": "goals.total",
+      "period": "FT",
+      "category": "goals",
+      "catalog": "goals_over_under.FT.match"
+    },
+    {
+      "key": "goals.total.away",
+      "period": "FT",
+      "category": "goals",
+      "catalog": "goals_over_under.FT.away"
+    },
+    {
+      "key": "goals.total.home",
+      "period": "FT",
+      "category": "goals",
+      "catalog": "goals_over_under.FT.home"
+    },
+    {
+      "key": "goals.btts",
+      "period": "1H",
+      "category": "goals_half",
+      "catalog": "goals_btts.1H.match"
+    },
+    {
+      "key": "goals.btts",
+      "period": "2H",
+      "category": "goals_half",
+      "catalog": "goals_btts.2H.match"
+    },
+    {
+      "key": "goals.odd_even",
+      "period": "1H",
+      "category": "goals_half",
+      "catalog": "goals_odd_even.1H.match"
+    },
+    {
+      "key": "goals.odd_even",
+      "period": "2H",
+      "category": "goals_half",
+      "catalog": "goals_odd_even.2H.match"
+    },
+    {
+      "key": "goals.total",
+      "period": "1H",
+      "category": "goals_half",
+      "catalog": "goals_over_under.1H.match"
+    },
+    {
+      "key": "goals.total",
+      "period": "2H",
+      "category": "goals_half",
+      "catalog": "goals_over_under.2H.match"
+    },
+    {
+      "key": "goals.total.away",
+      "period": "1H",
+      "category": "goals_half",
+      "catalog": "goals_over_under.1H.away"
+    },
+    {
+      "key": "goals.total.away",
+      "period": "2H",
+      "category": "goals_half",
+      "catalog": "goals_over_under.2H.away"
+    },
+    {
+      "key": "goals.total.home",
+      "period": "1H",
+      "category": "goals_half",
+      "catalog": "goals_over_under.1H.home"
+    },
+    {
+      "key": "goals.total.home",
+      "period": "2H",
+      "category": "goals_half",
+      "catalog": "goals_over_under.2H.home"
+    },
+    {
+      "key": "halves.highest_scoring",
+      "period": "FT",
+      "category": "goals_half",
+      "catalog": "highest_scoring_half.FT.match"
+    },
+    {
+      "key": "halves.highest_scoring.away",
+      "period": "FT",
+      "category": "goals_half",
+      "catalog": "highest_scoring_half.FT.away"
+    },
+    {
+      "key": "halves.highest_scoring.home",
+      "period": "FT",
+      "category": "goals_half",
+      "catalog": "highest_scoring_half.FT.home"
+    },
+    {
+      "key": "halves.ht_ft",
+      "period": "FT",
+      "category": "goals_half",
+      "catalog": "half_time_full_time.FT.match"
+    },
+    {
+      "key": "result.1x2",
+      "period": "1H",
+      "category": "goals_half",
+      "catalog": "result_1x2.1H.match"
+    },
+    {
+      "key": "result.1x2",
+      "period": "2H",
+      "category": "goals_half",
+      "catalog": "result_1x2.2H.match"
+    },
+    {
+      "key": "result.asian_handicap",
+      "period": "1H",
+      "category": "goals_half",
+      "catalog": "result_asian_handicap.1H.match"
+    },
+    {
+      "key": "result.asian_handicap",
+      "period": "2H",
+      "category": "goals_half",
+      "catalog": "result_asian_handicap.2H.match"
+    },
+    {
+      "key": "result.double_chance",
+      "period": "1H",
+      "category": "goals_half",
+      "catalog": "result_double_chance.1H.match"
+    },
+    {
+      "key": "result.double_chance",
+      "period": "2H",
+      "category": "goals_half",
+      "catalog": "result_double_chance.2H.match"
+    },
+    {
+      "key": "result.draw_no_bet",
+      "period": "1H",
+      "category": "goals_half",
+      "catalog": "result_draw_no_bet.1H.match"
+    },
+    {
+      "key": "result.draw_no_bet",
+      "period": "2H",
+      "category": "goals_half",
+      "catalog": "result_draw_no_bet.2H.match"
+    },
+    {
+      "key": "corners.1x2",
+      "period": "FT",
+      "category": "corners",
+      "catalog": "corners_1x2.FT.match"
+    },
+    {
+      "key": "corners.double_chance",
+      "period": "FT",
+      "category": "corners",
+      "catalog": "corners_double_chance.FT.match"
+    },
+    {
+      "key": "corners.total",
+      "period": "FT",
+      "category": "corners",
+      "catalog": "corners_over_under.FT.match"
+    },
+    {
+      "key": "corners.total.away",
+      "period": "FT",
+      "category": "corners",
+      "catalog": "corners_over_under.FT.away"
+    },
+    {
+      "key": "corners.total.home",
+      "period": "FT",
+      "category": "corners",
+      "catalog": "corners_over_under.FT.home"
+    },
+    {
+      "key": "cards.total",
+      "period": "FT",
+      "category": "cards",
+      "catalog": "cards_over_under.FT.match"
+    },
+    {
+      "key": "cards.total.away",
+      "period": "FT",
+      "category": "cards",
+      "catalog": "cards_over_under.FT.away"
+    },
+    {
+      "key": "cards.total.home",
+      "period": "FT",
+      "category": "cards",
+      "catalog": "cards_over_under.FT.home"
+    },
+    {
+      "key": "shots.1x2",
+      "period": "FT",
+      "category": "shots",
+      "catalog": "shots_1x2.FT.match"
+    },
+    {
+      "key": "shots.on_target",
+      "period": "FT",
+      "category": "shots",
+      "catalog": "shots_on_target_over_under.FT.match"
+    },
+    {
+      "key": "shots.on_target_1x2",
+      "period": "FT",
+      "category": "shots",
+      "catalog": "shots_on_target_1x2.FT.match"
+    },
+    {
+      "key": "shots.total",
+      "period": "FT",
+      "category": "shots",
+      "catalog": "shots_over_under.FT.match"
+    }
+  ]
+}

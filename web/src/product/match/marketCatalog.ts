@@ -72,6 +72,8 @@ export interface ViewColumn {
 export interface MarketView {
   /** The market's identity on the page: 1X2, OU... for the five; the catalogue's key for the others. */
   id: string;
+  /** The catalogue's key (`code.period.subject`): what a link from Cuotas names. Empty for the match's own highlights. */
+  key: string;
   title: string;
   /** 90', 1.ª parte, 2.ª parte (the catalogue's markets). */
   period: string | null;
@@ -189,6 +191,7 @@ export function boardView(
     mainLine === undefined ? -1 : board.rows.findIndex((r) => same(r.line ?? NaN, mainLine));
   return {
     id: market,
+    key: "",
     title: marketName(market),
     period: null,
     parlay: market,
@@ -298,6 +301,7 @@ export function catalogView(m: MarketCatalogMarket, sides: Sides): MarketView {
   const parlay = m.market_key && FIVE.has(m.market_key) ? m.market_key : null;
   return {
     id: parlay ?? m.key,
+    key: m.key,
     title: catalogTitle(m, sides),
     period: periodLabel(m.period),
     parlay,
