@@ -23,6 +23,23 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 HERE = Path(__file__).resolve().parent
 
 
+# CI-014: files that cannot share a pytest-xdist run. (1) Files whose assertions count rows that the rest of the suite also writes to the
+# shared test database (the day's quota ledger, the owner's product-event breakdowns, the player page aggregates): alone on a fresh
+# database they pass, after another file they fail, and under xdist "after which file" depends on the timing of the run. (2) Files that
+# make and drop ROLES (``predigol_worker``, ``predigol_api``, ``predigol_learning`` ...): a role belongs to the whole cluster, not to the
+# database of one worker, so two workers dropping and granting the same role break each other. They run first, in one process, with
+# ``-m serial``; the rest runs in parallel with ``-m "not serial"``.
+SERIAL_FILES = frozenset({
+    "test_persistent_quota.py", "test_product_events.py", "test_endpoints_p1.py",
+    "test_db_roles.py", "test_incident_register_grants.py", "test_learning_role.py", "test_promotions_policy_0111.py", "test_result_revisions.py",
+})
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Registers the ``serial`` mark here and not in pyproject.toml: a change to that file rebuilds the dependency layer of the image."""
+    config.addinivalue_line("markers", "serial: depends on the rows the rest of the suite leaves in the shared test database; run alone first (CI-014)")
+
+
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Every test of this package needs PostgreSQL, so every one carries the ``integration`` mark, whether or not its file
     says so (on 25 Oct 2026 about 147 of the 219 files did not). ``pytest -m "not integration"`` is then the unit suite
@@ -31,6 +48,8 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     for item in items:
         if HERE in Path(str(item.path)).resolve().parents:
             item.add_marker(pytest.mark.integration)
+            if item.path.name in SERIAL_FILES:
+                item.add_marker(pytest.mark.serial)
 
 
 def _admin_url() -> str:
