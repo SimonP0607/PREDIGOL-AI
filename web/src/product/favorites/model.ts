@@ -15,6 +15,8 @@ export interface Choice {
   teams: TeamBadge[];
   players: PlayerBadge[];
   markets: MarketKey[];
+  /** Markets of a match's catalogue, by the catalogue's own key (CUOTAS, BE-025): apart from the five classic `markets`. */
+  catalog: string[];
 }
 
 export interface Limits {
@@ -22,10 +24,17 @@ export interface Limits {
   teams: number;
   players: number;
   markets: number;
+  catalog: number;
 }
 
 /** The API's own limits (fbi/customer/favorites.py) while its answer is not here yet. */
-export const DEFAULT_LIMITS: Limits = { leagues: 10, teams: 20, players: 20, markets: 5 };
+export const DEFAULT_LIMITS: Limits = {
+  leagues: 10,
+  teams: 20,
+  players: 20,
+  markets: 5,
+  catalog: 10,
+};
 
 /** The markets a reader can follow, in the order the product lists them (fbi.customer.favorites.FOLLOWABLE_MARKETS). */
 export const MARKETS: readonly MarketKey[] = ["1X2", "OU", "BTTS", "AH", "DC"];
@@ -41,6 +50,7 @@ export function choiceOf(view: FavoritesView): Choice {
     teams: [...view.teams],
     players: [...(view.players ?? [])],
     markets: [...(view.markets ?? [])],
+    catalog: [...(view.catalog_markets ?? [])],
   };
 }
 
@@ -60,6 +70,7 @@ export function limitsOf(view: FavoritesView | undefined): Limits {
         teams: view.max_teams,
         players: view.max_players ?? DEFAULT_LIMITS.players,
         markets: view.max_markets ?? DEFAULT_LIMITS.markets,
+        catalog: view.max_catalog_markets ?? DEFAULT_LIMITS.catalog,
       }
     : DEFAULT_LIMITS;
 }
@@ -107,15 +118,40 @@ export function hasMarket(choice: Choice, market: MarketKey): boolean {
   return choice.markets.includes(market);
 }
 
+/** Adds the catalogue market (at the end: the reader's order) or takes it away; at the limit nothing is added. */
+export function toggleCatalog(choice: Choice, key: string, limits: Limits): Choice {
+  if (choice.catalog.includes(key))
+    return { ...choice, catalog: choice.catalog.filter((k) => k !== key) };
+  if (choice.catalog.length >= limits.catalog) return { ...choice, catalog: [...choice.catalog] };
+  return { ...choice, catalog: [...choice.catalog, key] };
+}
+
+export function hasCatalog(choice: Choice, key: string): boolean {
+  return choice.catalog.includes(key);
+}
+
+/** The reader's followed catalogue markets first, in their order; the rest as they came. Stable; only the order changes. */
+export function followedFirst<V extends { key: string }>(
+  views: readonly V[],
+  followed: readonly string[],
+): V[] {
+  if (followed.length === 0) return [...views];
+  const rank = new Map(followed.map((k, i) => [k, i]));
+  return [...views].sort(
+    (a, b) => (rank.get(a.key) ?? followed.length) - (rank.get(b.key) ?? followed.length),
+  );
+}
+
 export function full(
   choice: Choice,
   limits: Limits,
-): { leagues: boolean; teams: boolean; players: boolean; markets: boolean } {
+): { leagues: boolean; teams: boolean; players: boolean; markets: boolean; catalog: boolean } {
   return {
     leagues: choice.leagues.length >= limits.leagues,
     teams: choice.teams.length >= limits.teams,
     players: choice.players.length >= limits.players,
     markets: choice.markets.length >= limits.markets,
+    catalog: choice.catalog.length >= limits.catalog,
   };
 }
 
@@ -141,12 +177,14 @@ export function bodyOf(choice: Choice): {
   teams: number[];
   players: number[];
   markets: MarketKey[];
+  catalog_markets: string[];
 } {
   return {
     leagues: choice.leagues.map((l) => l.id),
     teams: choice.teams.map((tm) => tm.id),
     players: choice.players.map((p) => p.id),
     markets: [...choice.markets],
+    catalog_markets: [...choice.catalog],
   };
 }
 
@@ -172,7 +210,13 @@ export function changes(
   before: Choice | null,
   after: Choice,
 ): { added: Change[]; removed: Change[] } {
-  const was: Choice = before ?? { leagues: [], teams: [], players: [], markets: [] };
+  const was: Choice = before ?? {
+    leagues: [],
+    teams: [],
+    players: [],
+    markets: [],
+    catalog: [],
+  };
   const ids = (xs: readonly { id: number }[]) => new Set(xs.map((x) => x.id));
   /** What `to` holds that `from` does not. */
   const newer = (from: Choice, to: Choice): Change[] => {

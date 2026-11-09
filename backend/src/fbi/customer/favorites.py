@@ -13,6 +13,10 @@ shared and cached, and the page applies the reader's favourites on top. Every pe
                  TEAM_WINDOW_DAYS: seen in a line-up or searched by name. One already followed stays even when it ages out.
     markets      (3.1) up to MAX_MARKETS of the markets PrediGol reads (FOLLOWABLE_MARKETS): the ones the reader reads most.
                  A market is followed for what it is - a name - never for what the reader stakes on it.
+    catalog      (CUOTAS, BE-025) up to MAX_CATALOG markets of a match's catalogue («Mercados»: corners, cards, shots, the
+                 halves...) by the key the catalogue gives them (``corners_over_under.FT.match``). Apart from ``markets``:
+                 the five classic ones keep their own list, limit and meaning. Only the reader's order of the markets they
+                 see changes; no pick, probability or price.
     welcome      once per account, after the consents: «Tu fútbol» (the favourites, the suggested already ticked; skipping
                  keeps them) and «Qué es PrediGol» - then Home. ``customer.preferences.onboarded_at`` records it; existing
                  accounts see the one screen of favourites too, and never the rest again. FBI_ONBOARDING=0 sends every
@@ -26,7 +30,7 @@ read, not the picks they take).
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Final, Literal
@@ -41,6 +45,8 @@ MAX_LEAGUES: Final = 10
 MAX_TEAMS: Final = 20
 MAX_PLAYERS: Final = 20
 MAX_MARKETS: Final = 5
+MAX_CATALOG: Final = 10
+"""Markets of the catalogue a reader may follow besides the five classic ones (widens without a migration)."""
 FOLLOWABLE_MARKETS: Final = ("1X2", "OU", "BTTS", "AH", "DC")
 """The markets PrediGol reads and a reader may follow (the product's MarketKey: a test keeps both lists the same)."""
 HINTS: Final = ("picks", "match", "parlay", "my_picks")
@@ -92,6 +98,7 @@ class Extras:
 
     players: tuple[int, ...] = ()
     markets: tuple[str, ...] = ()
+    catalog: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -112,8 +119,8 @@ CHOSEN_SQL = (
 )
 
 EXTRAS_SQL = (
-    "SELECT kind, ref_id, market_key FROM customer.favorites WHERE user_id = %s AND kind IN ('player', 'market') "
-    "ORDER BY created_at, ref_id NULLS LAST, market_key"
+    "SELECT kind, ref_id, COALESCE(market_key, catalog_key) FROM customer.favorites WHERE user_id = %s "
+    "AND kind IN ('player', 'market', 'catalog') ORDER BY created_at, ref_id NULLS LAST, market_key, catalog_key"
 )
 
 SUGGESTED_SQL = """
@@ -200,15 +207,23 @@ def extras(conn: psycopg.Connection[Any], user_id: int) -> Extras:
     """The players and markets the reader follows, in the order chosen (none while they follow none)."""
     rows = conn.execute(EXTRAS_SQL, (user_id,)).fetchall()
     return Extras(players=tuple(int(r[1]) for r in rows if r[0] == "player"),
-                  markets=tuple(str(r[2]) for r in rows if r[0] == "market"))
+                  markets=tuple(str(r[2]) for r in rows if r[0] == "market"),
+                  catalog=tuple(str(r[2]) for r in rows if r[0] == "catalog"))
 
 
 def validate_extras(conn: psycopg.Connection[Any], players: Sequence[int], markets: Sequence[str],
-                    *, already: Extras | None = None) -> Extras:
+                    *, already: Extras | None = None, catalog: Sequence[str] = (),
+                    catalog_valid: Callable[[str], bool] | None = None) -> Extras:
     """The players and markets a reader may keep: within the limits, players who appeared in a line-up of a league
     PrediGol follows, markets PrediGol reads. One the reader already follows is kept without asking again (a player ages out
     of the window; a favourite never blocks a save). Refuses (422) rather than trims."""
     want_players, want_markets = _unique(players), _unique([str(m) for m in markets])
+    want_catalog = _unique([str(k) for k in catalog])
+    if len(want_catalog) > MAX_CATALOG:
+        raise CustomerError(422, "too_many_catalog_markets", f"at most {MAX_CATALOG} catalogue markets")
+    kept_catalog = already.catalog if already else ()
+    if unknown_key := [k for k in want_catalog if k not in kept_catalog and not (catalog_valid and catalog_valid(k))]:
+        raise CustomerError(422, "unknown_catalog_market", f"not a market of the catalogue: {unknown_key[0]}")
     if len(want_players) > MAX_PLAYERS:
         raise CustomerError(422, "too_many_players", f"at most {MAX_PLAYERS} players")
     if len(want_markets) > MAX_MARKETS:
@@ -223,37 +238,44 @@ def validate_extras(conn: psycopg.Connection[Any], players: Sequence[int], marke
         if missing := [i for i in new if i not in known]:
             raise CustomerError(422, "unknown_player",
                                 f"not a player of a league PrediGol follows: {missing[0]}")
-    return Extras(players=tuple(want_players), markets=tuple(want_markets))
+    return Extras(players=tuple(want_players), markets=tuple(want_markets), catalog=tuple(want_catalog))
 
 
 INSERT_SQL = (
-    "INSERT INTO customer.favorites (user_id, kind, ref_id, league_id, team_id, player_id, market_key, created_at) "
-    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING"
+    "INSERT INTO customer.favorites (user_id, kind, ref_id, league_id, team_id, player_id, market_key, catalog_key, "
+    "created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING"
 )
 
 
 def replace(user_id: int, leagues: Sequence[int], teams: Sequence[int], *, at: datetime,
-            players: Sequence[int] | None = None, markets: Sequence[str] | None = None) -> Saved:
-    """The reader's favourites become exactly these (idempotent). ``players`` / ``markets`` left out (None) keep what the
-    reader has - a page from before 3.1 that sends leagues and teams alone never clears them. Returns what they are now,
+            players: Sequence[int] | None = None, markets: Sequence[str] | None = None,
+            catalog: Sequence[str] | None = None, catalog_valid: Callable[[str], bool] | None = None) -> Saved:
+    """The reader's favourites become exactly these (idempotent). ``players`` / ``markets`` / ``catalog`` left out (None)
+    keep what the reader has - a page from before 3.1 (or from before BE-025) never clears them. ``catalog_valid`` says
+    whether a NEW catalogue key is one the catalogue can show: the API passes it (the taxonomy lives in PrediGol Intelligence's
+    packages, which this layer never loads); without it no new key is accepted. Returns what they are now,
     what was added and what was removed - the page records each as an event (favorite_added / favorite_removed)."""
     with write_connection() as conn:
         want = validate(conn, leagues, teams)
         conn.execute("SELECT pg_advisory_xact_lock(hashtext('customer.favorites'), %s)", (user_id % 2**31,))
         before = chosen(conn, user_id) or Chosen((), ())
         before_extras = extras(conn, user_id)
-        want_extras = (before_extras if players is None and markets is None else
+        want_extras = (before_extras if players is None and markets is None and catalog is None else
                        validate_extras(conn, before_extras.players if players is None else players,
                                        before_extras.markets if markets is None else markets,
-                                       already=before_extras))
+                                       already=before_extras,
+                                       catalog=before_extras.catalog if catalog is None else catalog,
+                                       catalog_valid=catalog_valid))
         removed = Chosen(leagues=tuple(i for i in before.leagues if i not in want.leagues),
                          teams=tuple(i for i in before.teams if i not in want.teams))
         added = Chosen(leagues=tuple(i for i in want.leagues if i not in before.leagues),
                        teams=tuple(i for i in want.teams if i not in before.teams))
         extras_removed = Extras(players=tuple(i for i in before_extras.players if i not in want_extras.players),
-                                markets=tuple(m for m in before_extras.markets if m not in want_extras.markets))
+                                markets=tuple(m for m in before_extras.markets if m not in want_extras.markets),
+                                catalog=tuple(k for k in before_extras.catalog if k not in want_extras.catalog))
         extras_added = Extras(players=tuple(i for i in want_extras.players if i not in before_extras.players),
-                              markets=tuple(m for m in want_extras.markets if m not in before_extras.markets))
+                              markets=tuple(m for m in want_extras.markets if m not in before_extras.markets),
+                              catalog=tuple(k for k in want_extras.catalog if k not in before_extras.catalog))
         for kind, ids in (("league", removed.leagues), ("team", removed.teams), ("player", extras_removed.players)):
             if ids:
                 conn.execute("DELETE FROM customer.favorites WHERE user_id = %s AND kind = %s AND ref_id = ANY(%s)",
@@ -261,17 +283,25 @@ def replace(user_id: int, leagues: Sequence[int], teams: Sequence[int], *, at: d
         if extras_removed.markets:
             conn.execute("DELETE FROM customer.favorites WHERE user_id = %s AND kind = 'market' "
                          "AND market_key = ANY(%s)", (user_id, list(extras_removed.markets)))
+        if extras_removed.catalog:
+            conn.execute("DELETE FROM customer.favorites WHERE user_id = %s AND kind = 'catalog' "
+                         "AND catalog_key = ANY(%s)", (user_id, list(extras_removed.catalog)))
         # The reader's order: a favourite is listed by when it was chosen, and the ones of one save a microsecond apart in
         # the order sent (leagues, teams, players, then markets) - so the list reads back as the reader put it.
         step = 0
         for kind, ids in (("league", added.leagues), ("team", added.teams), ("player", extras_added.players)):
             for ref in ids:
                 conn.execute(INSERT_SQL, (user_id, kind, ref, ref if kind == "league" else None,
-                                          ref if kind == "team" else None, ref if kind == "player" else None, None,
+                                          ref if kind == "team" else None, ref if kind == "player" else None, None, None,
                                           at + timedelta(microseconds=step)))
                 step += 1
         for key in extras_added.markets:
-            conn.execute(INSERT_SQL, (user_id, "market", None, None, None, None, key, at + timedelta(microseconds=step)))
+            conn.execute(INSERT_SQL, (user_id, "market", None, None, None, None, key, None,
+                                      at + timedelta(microseconds=step)))
+            step += 1
+        for key in extras_added.catalog:
+            conn.execute(INSERT_SQL, (user_id, "catalog", None, None, None, None, None, key,
+                                      at + timedelta(microseconds=step)))
             step += 1
     return Saved(now=want, added=added, removed=removed, extras=want_extras, extras_added=extras_added,
                  extras_removed=extras_removed)
