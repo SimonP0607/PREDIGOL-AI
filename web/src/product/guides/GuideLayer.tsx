@@ -172,7 +172,9 @@ export function GuideLayer() {
 
   const docked = desk && place ? { top: place.top, left: place.left } : undefined;
 
-  const spaced = !desk && !resuming && anchors !== undefined && anchors.length > 0;
+  // the page gets room at its foot while a guide points at something (UX-074; at a desk too, UX-083: an element near the end
+  // of a short page could not be centred with its card, and the card lay over it)
+  const spaced = !resuming && anchors !== undefined && anchors.length > 0;
 
   return (
     <>

@@ -262,7 +262,7 @@ test("two skips in a row stop the automatic guides of the session; «?» still b
     await expect(card(page)).toHaveCount(0);
     await go("/matches");
     // the page itself, not the one on its way out, carries the «?» that is pressed next
-    await expect(page.getByTestId("matches-days")).toBeVisible();
+    await expect(page.locator('[data-guide="matches-days"]')).toBeVisible();
     await settle(page);
     await expect(card(page), "after two skips: nothing by itself").toHaveCount(0);
     await page.getByTestId("guide-help").click();
@@ -308,15 +308,23 @@ test("«?» pressed while the page changes never opens a guide without its eleme
             .querySelector<HTMLAnchorElement>(`nav[aria-label="${label}"] a[href="${to}"]`)
             ?.click();
           let frames = 0;
+          const w = window as unknown as { __pressing: boolean };
+          w.__pressing = true;
           const press = () => {
             document.querySelector<HTMLButtonElement>('[data-testid="guide-help"]')?.click();
             if (++frames < 60) requestAnimationFrame(press);
+            else w.__pressing = false;
           };
           requestAnimationFrame(press);
         },
         [href, t.nav.mainNavigation],
       );
-      await page.waitForTimeout(1500);
+      await page.waitForFunction(
+        () => !(window as unknown as { __pressing: boolean }).__pressing,
+        undefined,
+        { timeout: 30_000 },
+      );
+      await page.waitForTimeout(1000);
       // whatever is up now is closed (Escape skips a guide that is not owed)
       await page.keyboard.press("Escape");
       await expect(card(page)).toHaveCount(0);
