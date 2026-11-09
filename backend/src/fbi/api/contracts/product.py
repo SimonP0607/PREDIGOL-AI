@@ -41,9 +41,9 @@ class CompetitionBadge(Contract):
 class PickDecision(Contract):
     """What PrediGol Intelligence decided about this selection (``decision-v1``, its newest row; ``fbi.intel.state_v2`` words it).
 
-    Present only while the board reads Intelligence (``FBI_PICKS_SOURCE=intelligence``, plan PICKS F3). The card's ``p_model``
-    stays the pick engine's raw probability then; the calibrated one, the EV and the edge computed with it are here and in the
-    card's own ``ev`` and ``edge``."""
+    Present only while the board reads Intelligence (``FBI_PICKS_SOURCE=intelligence``, plan PICKS F3). The card's ``p_model`` is
+    the calibrated probability then, and its ``ev`` and ``edge`` are computed with it; the pick engine's raw one is ``p_raw`` here
+    («sin calibrar»)."""
 
     state: DecisionState = Field(description="state-v2 of the decision: RECOMMENDED, CAUTION, WATCH (waiting for something that "
                                              "clears before kick-off), ABSTAIN (no opinion today) or REJECTED.")
@@ -142,6 +142,16 @@ class StartedPick(Contract):
     near_close_odds: Decimal | None = Field(default=None, description="The same bookmaker's last pre-match price.")
     line_value: Decimal | None = Field(default=None, description="odds_taken / near_close_odds - 1: value against "
                                                                  "a near-close price, not validated as the close.")
+    user_status: UserStatus = Field(default="EVALUATION", description=(
+        "The state a reader is shown for this pick (the one table, ``fbi/picks/user_status.py``), read as it was taken: a reader "
+        "is shown it only while RECOMMENDED (plan PICKS, L1: «solo verde» holds after kick-off too). Merged with Intelligence's "
+        "decision while ``FBI_PICKS_SOURCE=intelligence``."))
+    status_reason: StatusReason = Field(default="evaluation", description="Why ``user_status`` is the one it is.")
+    context_pending: bool = Field(default=False, description="The review of context was not yet applied when it was taken.")
+    decision: PickDecision | None = Field(default=None, description=(
+        "PrediGol Intelligence's last decision before kick-off on this selection, while the board reads it "
+        "(``FBI_PICKS_SOURCE=intelligence``); null otherwise. ``p_model``, ``edge`` and ``ev`` are then computed with its "
+        "calibrated probability at the price taken."))
 
 
 class PicksBoard(Contract):

@@ -59,6 +59,14 @@
   {
    "date": "2026-11-09",
    "reason": "BE-014 (plan PICKS, F3): PickCard.decision y PicksBoard.decision_source, aditivos y opcionales: lo que Intelligence decidió sobre la selección"
+  },
+  {
+   "date": "2026-11-09",
+   "reason": "BE-016 (plan PICKS, L1): StartedPick.user_status, status_reason, context_pending y decision, aditivos con valor por defecto: el estado que ve el lector tras el inicio"
+  },
+  {
+   "date": "2026-11-09",
+   "reason": "BE-016: Ya empezaron suma user_status, status_reason, context_pending y decision"
   }
  ],
  "routes": {
@@ -7136,7 +7144,7 @@
      "type": "object"
     },
     "PickDecision": {
-     "description": "What PrediGol Intelligence decided about this selection (``decision-v1``, its newest row; ``fbi.intel.state_v2`` words it).\n\nPresent only while the board reads Intelligence (``FBI_PICKS_SOURCE=intelligence``, plan PICKS F3). The card's ``p_model``\nstays the pick engine's raw probability then; the calibrated one, the EV and the edge computed with it are here and in the\ncard's own ``ev`` and ``edge``.",
+     "description": "What PrediGol Intelligence decided about this selection (``decision-v1``, its newest row; ``fbi.intel.state_v2`` words it).\n\nPresent only while the board reads Intelligence (``FBI_PICKS_SOURCE=intelligence``, plan PICKS F3). The card's ``p_model`` is\nthe calibrated probability then, and its ``ev`` and ``edge`` are computed with it; the pick engine's raw one is ``p_raw`` here\n(«sin calibrar»).",
      "properties": {
       "checkpoint": {
        "title": "Checkpoint",
@@ -7824,7 +7832,7 @@
      "type": "object"
     },
     "PickDecision": {
-     "description": "What PrediGol Intelligence decided about this selection (``decision-v1``, its newest row; ``fbi.intel.state_v2`` words it).\n\nPresent only while the board reads Intelligence (``FBI_PICKS_SOURCE=intelligence``, plan PICKS F3). The card's ``p_model``\nstays the pick engine's raw probability then; the calibrated one, the EV and the edge computed with it are here and in the\ncard's own ``ev`` and ``edge``.",
+     "description": "What PrediGol Intelligence decided about this selection (``decision-v1``, its newest row; ``fbi.intel.state_v2`` words it).\n\nPresent only while the board reads Intelligence (``FBI_PICKS_SOURCE=intelligence``, plan PICKS F3). The card's ``p_model`` is\nthe calibrated probability then, and its ``ev`` and ``edge`` are computed with it; the pick engine's raw one is ``p_raw`` here\n(«sin calibrar»).",
      "properties": {
       "checkpoint": {
        "title": "Checkpoint",
@@ -8044,11 +8052,28 @@
       "competition": {
        "$ref": "#/components/schemas/CompetitionBadge"
       },
+      "context_pending": {
+       "default": false,
+       "description": "The review of context was not yet applied when it was taken.",
+       "title": "Context Pending",
+       "type": "boolean"
+      },
       "created_at": {
        "description": "When the pick was made.",
        "format": "date-time",
        "title": "Created At",
        "type": "string"
+      },
+      "decision": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/PickDecision"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "PrediGol Intelligence's last decision before kick-off on this selection, while the board reads it (``FBI_PICKS_SOURCE=intelligence``); null otherwise. ``p_model``, ``edge`` and ``ev`` are then computed with its calibrated probability at the price taken."
       },
       "edge": {
        "title": "Edge",
@@ -8277,6 +8302,21 @@
        "title": "Status",
        "type": "string"
       },
+      "status_reason": {
+       "default": "evaluation",
+       "description": "Why ``user_status`` is the one it is.",
+       "enum": [
+        "approved",
+        "value",
+        "not_reviewed",
+        "downgraded",
+        "rejected",
+        "no_value_now",
+        "evaluation"
+       ],
+       "title": "Status Reason",
+       "type": "string"
+      },
       "status_short": {
        "anyOf": [
         {
@@ -8292,6 +8332,18 @@
        "description": "When the price was captured.",
        "format": "date-time",
        "title": "Taken At",
+       "type": "string"
+      },
+      "user_status": {
+       "default": "EVALUATION",
+       "description": "The state a reader is shown for this pick (the one table, ``fbi/picks/user_status.py``), read as it was taken: a reader is shown it only while RECOMMENDED (plan PICKS, L1: «solo verde» holds after kick-off too). Merged with Intelligence's decision while ``FBI_PICKS_SOURCE=intelligence``.",
+       "enum": [
+        "RECOMMENDED",
+        "CAUTION",
+        "NOT_RECOMMENDED",
+        "EVALUATION"
+       ],
+       "title": "User Status",
        "type": "string"
       }
      },
