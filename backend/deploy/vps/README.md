@@ -179,6 +179,7 @@ devuelve el DNS. El servidor se vacía y se repite.
 | `predigolctl alert-drill --list\|KEY\|--all\|--healthchecks NAME\|--evidence` | un simulacro: el mensaje de un aviso (o de todos) a tu Telegram por el bot de verdad, sin que el problema sea cierto; lo lanza la sesión en la ventana y tú miras el teléfono (`docs/owner/SIMULACROS_AVISOS.md`) |
 | `predigolctl sentry-drill` | UN error inventado a Sentry, con los ajustes de la API, para ver llegar el aviso de «excepción nueva»; no imprime el DSN |
 | `predigolctl config-baseline [--status]` | toma la línea base del aviso «cambió la configuración» (solo huellas; imprime los nombres de los ficheros que mueve); `--status` no cambia nada |
+| `predigolctl pgstat status\|enable\|top [N]\|reset` | las consultas que más cuestan, de `pg_stat_statements`: `enable` crea la extensión una vez (tras el reinicio de PostgreSQL que carga la biblioteca), `top` lista las N de mayor tiempo total (solo la forma de la consulta, nunca los valores), `reset` pone los contadores a cero; `status` dice qué falta |
 | `predigolctl incident list\|show\|note\|severity\|open\|close …` | el registro de incidentes: la causa, los usuarios afectados, el cierre (`docs/owner/GUIAS_RESPUESTA_INCIDENTES.md`) |
 | `predigolctl accounts list\|unlock\|mfa-reset\|revoke-sessions …` | cuentas, desde la terminal |
 | `predigolctl maint` | particiones por delante y retención de restos, con copia verificada |
@@ -483,6 +484,7 @@ Resultados completos: `docs/owner/BETA_DEPLOY_REPORT_2026-10-07.md`.
 | `bin/healthcheck.sh`, `post-boot.sh` | monitor y comprobación tras arrancar |
 | `bin/alerts_lib.sh`, `alerts_checks.sh` | los avisos de S3: la máquina de estados (un mensaje por cambio, recordatorio de SEV1, «recuperado», registro de incidentes) y las comprobaciones que el monitor no tenía |
 | `bin/config-baseline.sh` | la línea base del aviso «cambió la configuración»: la toman el despliegue y la vuelta atrás; también `predigolctl config-baseline` |
+| `bin/pgstat.sh` | `predigolctl pgstat`: las consultas más costosas (`pg_stat_statements`); el plan de las que pasan de 5 s lo escribe `auto_explain` en el registro de PostgreSQL |
 | `bin/security-alerts.sh`, `security_alerts_sql.sh` | avisos de seguridad que salen de la auditoría de la aplicación y del registro de Caddy; las consultas solo cuentan y listan ids, nunca correos ni direcciones |
 | `bin/weekly-summary.sh` | el resumen de los lunes: incidentes de 7 días por gravedad, el más largo, lo que sigue abierto |
 | `bin/incident.sh`, `incident-dump.sh` | el registro de incidentes: la pluma del dueño (`predigolctl incident`) y su copia a la base cada 10 minutos |
