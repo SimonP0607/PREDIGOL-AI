@@ -555,7 +555,7 @@ function CalibrationView({ model }: { model: ModelVersionSummary }) {
                   borderRadius: 8,
                   fontSize: 12,
                 }}
-                formatter={(v: number, name: string) => (name === "n" ? int(v) : localPct(v, 1))}
+                formatter={(v, name) => (name === "n" ? int(Number(v)) : localPct(Number(v), 1))}
               />
               <Line
                 type="linear"
@@ -682,7 +682,7 @@ function MonthlyView({ model }: { model: ModelVersionSummary }) {
                 borderRadius: 8,
                 fontSize: 12,
               }}
-              formatter={(v: number, name: string) => (name === "n" ? int(v) : (signed(v) ?? ""))}
+              formatter={(v, name) => (name === "n" ? int(Number(v)) : (signed(Number(v)) ?? ""))}
             />
             <Line
               type="monotone"
