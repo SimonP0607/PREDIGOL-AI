@@ -113,5 +113,23 @@ jobs:
           alembic upgrade head
           alembic downgrade -1
           alembic upgrade head
-      - name: pytest
-        run: pytest -q -p no:randomly --durations=15
+      - name: PostgreSQL de prueba sin esperas de disco
+        # El contenedor es desechable: sin fsync ni escritura sincrónica las escrituras de la batería (miles de migraciones y semillas) no esperan al disco.
+        # Es un ajuste de la sesión de este contenedor; nunca toca los servidores del proyecto.
+        run: |
+          psql -h localhost -U fbi -d postgres -v ON_ERROR_STOP=1 \
+            -c "ALTER SYSTEM SET fsync = off" -c "ALTER SYSTEM SET synchronous_commit = off" -c "ALTER SYSTEM SET full_page_writes = off" \
+            -c "SELECT pg_reload_conf()"
+      - name: pytest (primero en serie los archivos que dependen del orden)
+        # CI-014. Ocho archivos no pueden compartir una corrida paralela: tres cuentan filas que el resto de la bateria tambien escribe (cuota
+        # del dia, eventos de producto, pagina de jugador) y cinco crean y borran ROLES, que son del cluster y no de la base de cada proceso.
+        # Marca `serial` (tests/integration/conftest.py). Tardan unos minutos.
+        run: |
+          pip install --no-cache-dir 'pytest-xdist==3.8.0'
+          pytest -q -p no:randomly -m serial
+      - name: pytest (4 procesos, una base de datos por proceso)
+        # pytest-xdist solo se instala aqui (no es una libreria de la imagen: constraints.txt y pyproject.toml no cambian).
+        # `--dist loadfile`: todas las pruebas de un archivo van al mismo proceso, porque muchos archivos crean y borran su propia base «fbi_test_<algo>».
+        # Cada proceso migra una plantilla `fbi_test_gwN_tpl` una vez y cada archivo de pruebas trabaja en un clon propio (ver tests/integration/conftest.py).
+        run: |
+          pytest -q -p no:randomly -n 4 --dist loadfile -m "not serial" --durations=15

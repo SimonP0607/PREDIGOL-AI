@@ -11,7 +11,6 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  type TooltipProps,
 } from "recharts";
 import { t } from "@/lib/i18n";
 import { fmtOdds } from "@/lib/i18n/format";
@@ -120,7 +119,13 @@ export default function MovementChart({
   );
 }
 
-function PointTip({ active, payload }: TooltipProps<number, string>) {
+function PointTip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: readonly { payload?: unknown }[];
+}) {
   const point = payload?.[0]?.payload as MovePoint | undefined;
   if (!active || !point) return null;
   return (

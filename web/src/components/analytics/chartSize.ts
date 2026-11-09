@@ -1,8 +1,8 @@
 /**
- * ResponsiveContainer (recharts 2) sizes its DIRECT child by cloning it with
- * width and height. A chart written as a wrapper component must take those
- * two props and hand them to the recharts root - without them the chart
- * renders nothing at all.
+ * ResponsiveContainer (recharts 2) sized its DIRECT child by cloning it with
+ * width and height; recharts 3 hands the size down through context instead, so a
+ * wrapper component renders in both. The two props stay optional and are passed
+ * on when they are given (FE-001 checked the charts render the same in 3.10).
  */
 export interface ChartSize {
   width?: number | undefined;

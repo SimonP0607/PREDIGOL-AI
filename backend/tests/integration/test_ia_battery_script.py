@@ -20,7 +20,7 @@ from scripts import ia_battery
 from fbi.ai.battery import TARGETS, VERSION, run
 from tests.unit.battery_model import Obeys
 
-from .conftest import TEST_DB, _dsn
+from .conftest import _dsn
 from .test_battery_run import LATER, Rig
 from .test_battery_run import rig as rig
 from .test_lab import AT, cfg
@@ -176,7 +176,7 @@ def test_status_after_a_passing_run_says_the_evidence_speaks_for_the_corpus_in_f
 
 def test_main_runs_a_command_against_the_database_it_is_given_and_prints_json(
         capsys: pytest.CaptureFixture[str], rig: Rig) -> None:
-    code = ia_battery.main(["status", "--dsn", _dsn(TEST_DB)])
+    code = ia_battery.main(["status", "--dsn", _dsn(rig.db.info.dbname)])
     printed = json.loads(capsys.readouterr().out)
     assert code == ia_battery.OK and printed["version"] == VERSION and set(printed["runs"]) == set(TARGETS)
     assert printed["gate"]["gate"] == "battery"
