@@ -102,8 +102,8 @@
       "body": "Pick a league and turn on “only with picks” to see the matches that have a pick first."
     },
     "cards": {
-      "title": "They update by themselves",
-      "body": "The cards refresh every 15 seconds. Tap one to open the match."
+      "title": "It updates by itself",
+      "body": "It refreshes every 15 seconds. When matches are on, tap a card to open it."
     }
   },
   "match": {

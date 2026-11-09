@@ -28,7 +28,7 @@ jobs:
         run: |
           set -euo pipefail
           . security/GITLEAKS_VERSION
-          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz"
+          curl -sSfL --retry 5 --retry-delay 10 --retry-all-errors -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz"
           echo "${linux_x64_sha256}  gitleaks.tgz" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/gl"
           tar -xzf gitleaks.tgz -C "$RUNNER_TEMP/gl" gitleaks

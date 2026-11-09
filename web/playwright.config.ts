@@ -103,6 +103,22 @@ export default defineConfig({
       dependencies: ["setup"],
     },
     {
+      // The guides (plan UX-050 to UX-054): the welcome tour's buttons, what skipping leaves, the two-skip rule, and every
+      // guide step by step at the plan's sizes with axe - on accounts the test makes. guides-webkit: the iPhone's engine.
+      name: "guides",
+      testMatch: /guides\.spec\.ts/,
+      grepInvert: /WebKit/,
+      use: desktop,
+      dependencies: ["setup"],
+    },
+    {
+      name: "guides-webkit",
+      testMatch: /guides\.spec\.ts/,
+      grep: /WebKit/,
+      use: { ...devices["iPhone 13"], viewport: { width: 390, height: 844 } },
+      dependencies: ["setup"],
+    },
+    {
       name: "admin",
       // observability.spec.ts: the console's error-reporting tests (plan UX, A2), skipped without E2E_SENTRY_SINK;
       // customers.spec.ts: the customer's card and the audit page's fixes (plan UX, B10)
