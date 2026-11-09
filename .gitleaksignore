@@ -38,3 +38,9 @@ b38b556c4e81af7bf093ade5a13d7df6089eed90:backend/tests/unit/test_contain_trace.p
 # Clave de un mercado del catálogo del partido (`result_1x2.FT.match`) en una prueba de UX-073: la regla genérica la tomó por una credencial por ir
 # junto a la palabra «key». Es un identificador público del catálogo, no un valor secreto. El fuente ya la arma por partes; el commit publicado no se reescribe.
 2ab99987367740cb0c7cd344659eef6feab77877:web/src/product/match/marketLink.test.ts:generic-api-key:15
+
+# Las dos coincidencias del commit del PR #148 (SEG-003): son los comentarios con que ese PR explica la huella anterior (una de ellas cita la línea de la
+# prueba de UX-073 con su etiqueta de mercado) y la fila SEG-003 del registro. El escaneo del historial mira todas las ramas abiertas, así que esas citas
+# paran el escaneo de cualquier otro PR. Ninguna es una credencial, solo texto que nombra la etiqueta pública de un mercado del catálogo.
+d700de3b2e05514b6dc1d66859d7b384af533c04:.gitleaksignore:generic-api-key:38
+d700de3b2e05514b6dc1d66859d7b384af533c04:docs/proyecto/REGISTRO_CODIGOS.md:generic-api-key:25
