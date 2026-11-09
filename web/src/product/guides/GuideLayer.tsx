@@ -172,7 +172,9 @@ export function GuideLayer() {
 
   const docked = desk && place ? { top: place.top, left: place.left } : undefined;
 
-  const spaced = !desk && !resuming && anchors !== undefined && anchors.length > 0;
+  // the page gets room at its foot while a guide points at something (UX-074; at a desk too, UX-083: an element near the end
+  // of a short page could not be centred with its card, and the card lay over it)
+  const spaced = !resuming && anchors !== undefined && anchors.length > 0;
 
   return (
     <>
@@ -222,7 +224,7 @@ export function GuideLayer() {
             onInteractOutside={(e) => e.preventDefault()}
             style={docked ?? (dock !== null ? { bottom: dock } : undefined)}
             className={cn(
-              "fixed z-[70] rounded-xl border border-gold/40 bg-card p-4 shadow-lg focus:outline-none",
+              "fixed z-[70] rounded-xl border border-gold/40 bg-card p-4 shadow-lg focus:outline-none short:p-3",
               "inset-x-3 mx-auto max-w-md bottom-[calc(8.5rem+env(safe-area-inset-bottom))] short:bottom-[calc(7rem+env(safe-area-inset-bottom))] short:max-h-[calc(100dvh-8rem)] short:overflow-y-auto",
               "lg:inset-x-auto lg:bottom-auto lg:mx-0 lg:w-[26rem] lg:max-w-[calc(100vw-1.5rem)]",
               !docked && "lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2",
@@ -244,7 +246,7 @@ export function GuideLayer() {
             </Dialog.Title>
             <div
               id="guide-body"
-              className="mt-1 space-y-1.5 text-sm leading-relaxed text-foreground/90"
+              className="mt-1 space-y-1.5 text-sm leading-relaxed text-foreground/90 short:space-y-1 short:leading-snug"
             >
               {resuming ? (
                 <p>
@@ -278,7 +280,7 @@ export function GuideLayer() {
                 </p>
               ) : null}
             </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 short:mt-1.5">
               {resuming ? (
                 <>
                   <button
