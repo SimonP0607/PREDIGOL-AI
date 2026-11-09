@@ -124,8 +124,67 @@ Los 30 sets del día cuadran.
 
 **Causa (9-nov, solo lectura).** Todos son de partidos anteriores al 24-oct, es decir, de antes de que existiera el rastro de correcciones (migración 0080, 23-oct): hasta entonces el resultado se sobrescribía en el sitio y la liquidación corría con la primera lectura de «final», sin dejar nada en `core.fixture_result_revisions`. La misma auditoría con `--days 16` da **0 sin explicar** sobre 181.164 picks, 76 picks del día y 122 patas de combinadas (2.198 partidos, 22 con correcciones registradas), y los sets del día cuadran. No es un defecto nuevo ni sigue creciendo.
 
-Lo que queda es reliquidar esos 157 con `scripts.resettle --all`, que deja rastro, con el visto bueno del dueño (primero el simulacro, sin `--apply`, y luego `--apply --by <nombre>`).
+### Reliquidación de los 157 (F6), aplicada el 9-nov-2026
+
+Con el visto bueno del dueño y en este orden:
+
+1. **Simulacro** (`scripts.resettle --all`, sin `--apply`, que escribe dentro de una transacción que se revierte): 157 registros de 3 partidos (21562 Gwangju FC 4–3 Ulsan Hyundai, 21497 Debreceni 3–0 Zalaegerszegi, 21389 Barcelona SC 1–1 U. Católica) y 1.027 retenidos para una persona (todos nulos «por regla» que se mantienen: no se tocaron).
+2. **Verificación aparte** de las 156 de picks en sombra: cada una se recalculó fuera de la herramienta con el marcador que dan los eventos de gol de su partido (127 de goles, 20 de 1X2, 9 de hándicap asiático). Las 156 coinciden con lo que proponía la herramienta; 0 discrepancias. El pick del día restante (partido 21562) pasa de pérdida a acierto, en línea con el 4–3; no se recalculó aparte.
+3. **Copia de seguridad y prueba de restauración** antes de escribir: `predigol-20261109T152018Z-pre-resettle-20261109`, restauración aprobada en 1.600 s. Marcha atrás: restaurar esa copia; el rastro queda en `picks.resettlements` con el motivo «manual run by Simon».
+4. **Aplicado** con `--apply --by Simon`: 157 registros, 3 partidos, 0 conflictos.
+5. **Comprobación posterior**: el simulacro vuelve a dar 0 cambios y `audit_settlement --days 30` da **0 sin explicar** (295.451 picks examinados, 142 picks del día, 237 patas de combinadas, 52 patas de lectores; los 31 sets del día cuadran).
+
+Lo derivado no se reescribe, se conserva con su historial y se reconstruye en F8: `ai.pick_postmortems` 4, `ai.postmortems` 3, `intel.decision_outcomes` 64, `intel.match_postmortems` 3, `intel.postmortems` 4. Los 1.027 retenidos siguen esperando a una persona.
 
 ### Consola de rendimiento (R1)
 
 Totales: 3,3 s · porciones: 7,0 s, corriendo a la vez que las otras dos auditorías. La consola responde desde BE-006, y el navegador la midió en 11,2 s el 8-nov.
+
+### Peso de las respuestas (U5), medido el 9-nov-2026
+
+Medido con los mismos servicios que responden a la API (JSON con alias, en solo lectura), sobre la vista previa del dueño de las próximas 24 h:
+
+| Respuesta | Tamaño | Elementos | Por elemento | Página de 15 |
+| --- | --- | --- | --- | --- |
+| Tablero de evaluación | 193,8 KB | 171 tarjetas | 1,16 KB | 17,0 KB |
+| «Ya empezaron» (evaluación) | 37,2 KB | 32 | 1,19 KB | 17,4 KB |
+| Pick del día (evaluación) | 14,3 KB | 5 | 2,93 KB | 42,9 KB |
+
+El criterio del plan (menos de 300 KB por página) se cumple incluso pidiendo el tablero entero (el 7-nov pesaba 4,9 MB; bajó con la regla de valor y la antigüedad del precio). El margen es de unas 258 tarjetas: **no hace falta paginar en el servidor ahora**; hay que volver a medir en un día de mucha carga. Es una sola medición, a una hora concreta, y no cuenta la compresión del servidor web.
+
+### Sesgo de goles (Q2), medido el 9-nov-2026
+
+Poisson, «más de 2,5», último pronóstico antes del inicio, partidos terminados de octubre y noviembre de 2026:
+
+| Lectura | Partidos | Probabilidad media | Frecuencia real de «más de 2,5» |
+| --- | --- | --- | --- |
+| Pronóstico del producto (`forecast-v1`, calibrado por el campeón) | 2.029 | 57,2 % | 55,9 % |
+| El mismo modelo sin calibrar (`p_model`) | 2.029 | 52,3 % | 55,9 % |
+| Sin calibrar (pronóstico marcado «sin calibrar») | 114 | 54,9 % | 61,4 % |
+
+El sesgo hacia pocos goles está en la probabilidad **cruda** (−3,6 puntos en «más de»), que es lo que el tablero usaba antes de F3. El pronóstico calibrado que ve el producto queda a +1,3 puntos del real: del orden de un error estándar de la muestra (1,1 puntos), por lo que no hay evidencia de un sesgo que corregir allí. **Conclusión: no se toca ningún modelo.** Si se quisiera corregir la cruda en su origen (un factor sobre el total de goles esperado), sería un candidato nuevo en la línea de modelos y tendría que superar su propia puerta estadística antes de promoverse.
+
+### Misma probabilidad para la misma selección (F3), medida en producción el 9-nov-2026
+
+Corrida de las 18:39 UTC con `compare_probabilities` de solo lectura. El lote desplegado ese día (`62d46780`) es anterior a la herramienta, así que se copió el archivo a `/tmp` del contenedor del worker y se ejecutó desde allí (solo importa la biblioteca estándar, `psycopg` y la configuración; no tocó la imagen, el código desplegado ni los datos).
+
+Diferencia, en puntos, entre dos lecturas de la misma selección:
+
+| Par | Ventana | Selecciones | Mediana | p90 | Máximo | Por encima de 0,5 pp |
+| --- | --- | --- | --- | --- | --- | --- |
+| Tablero (cruda) / Intelligence | 24 h | 150 | 9,4 | 17,6 | 53,2 | 150 (100 %) |
+| Tablero (cruda) / Intelligence | 72 h | 206 | 9,5 | 19,3 | 53,2 | 206 (100 %) |
+| Tablero (con el interruptor) / Intelligence | 24 h y 72 h | 150 y 206 | 0,0 | 0,0 | 0,0 | 0 |
+| Match Center / Intelligence | 24 h | 25 | 2,3 | 3,8 | 4,1 | 20 (80 %) |
+| Match Center / Intelligence | 72 h | 73 | 4,8 | 15,2 | 26,6 | 66 (90 %) |
+| Match Center / tablero (con el interruptor) | 72 h | 90 | 4,2 | 15,2 | 26,6 | 80 (89 %) |
+
+**Veredicto: NO SE CUMPLE.** Con el interruptor, el tablero y Intelligence coinciden en todas las selecciones (0 diferencias de más de 0,5 pp), pero el Match Center sigue mostrando otro número: 20 de 25 selecciones a 24 h y 80 de 90 a 72 h pasan de 0,5 pp. Sin el interruptor, el tablero difiere de Intelligence en todas.
+
+Lo que explica la diferencia, según los datos de esa corrida:
+
+- El Match Center (`forecast-v1`) y Intelligence (`decision-v1`) calibran por caminos distintos y no usan el mismo momento de referencia. Las lecturas de Intelligence vienen de puntos de control entre T-36 h y T-90 min, con una edad mediana de 22 h y una máxima de 300 h (una lectura vieja de un partido lejano).
+- Las diferencias más anchas de las últimas 24 h están repartidas entre 1X2, «más/menos de 2,5» y «ambos anotan», con un máximo de 4,1 pp; a 72 h llegan a 26,6 pp.
+- Intelligence no tiene aún selecciones aprobadas, así que no hay nada que publicar desde allí por ahora.
+
+**Decisión:** `FBI_PICKS_SOURCE` sigue apagado y no se publican picks experimentales. Para que el criterio se cumpla hace falta que el Match Center lea la misma probabilidad calibrada y el mismo punto de control (el último disponible antes del inicio) que Intelligence; es un cambio de contrato y de la web, y se hace detrás del interruptor y con esta misma herramienta como prueba de salida.
