@@ -1,6 +1,6 @@
 /**
  * A pre-match pick whose match has kicked off, as PrediGol took it: "PICK PREPARTIDO", the
- * time the price was taken, the price and the bookmaker, the model and the market at that
+ * time the price was taken, the price (no bookmaker: a reference), the model and the market at that
  * moment - frozen, never re-priced - and beside it, never mixed in, what the match is doing
  * now (minute and score), its result and its value against the last pre-match price (a
  * near-close price, not validated as the closing line - so the label says so).
@@ -131,11 +131,7 @@ export function StartedPickCard({
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               <OddsPill odds={pick.odds_taken} best={false} size="md" />
-              {pick.bookmaker ? (
-                <span className="max-w-[8rem] truncate text-caption text-muted-foreground">
-                  {pick.bookmaker}
-                </span>
-              ) : null}
+              {/* Reference odds: no bookmaker for a reader (plan PICKS, D6); the owner finds it in the audit. */}
             </div>
           </div>
           <ProbCompare model={pick.p_model} market={pick.p_market} className="mt-3" />

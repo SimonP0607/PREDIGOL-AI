@@ -49,11 +49,12 @@ from fbi.api.contracts.records import ItemAi
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, section
 from fbi.api.repositories import Conn, Row
 from fbi.api.repositories import product as repo
-from fbi.api.services import center, home_board, pick_status
+from fbi.api.services import center, home_board, pick_status, picks_decision
 from fbi.api.services.pick_status import Applied
 from fbi.api.services.records import ai_items
 from fbi.core import match_state
 from fbi.core.clock import now as clock_now
+from fbi.core.config.picks import PicksSourceSettings
 from fbi.market.consensus import OPPOSITE_LINE
 from fbi.parlays import builder, engine
 from fbi.parlays import correlation as corr
@@ -132,16 +133,30 @@ def card(r: Row, verdict: Leg | Reject, moment: datetime, cfg: GateConfig, *, ap
         ev = None
     state = applied.shown(pick_status=r["pick_status"], value=isinstance(verdict, Leg), fixture_id=c.fixture_id,
                           market_key=c.market_key, selection=c.selection, line=c.line)
+    edge = (c.p_model - p_market).quantize(Q6, ROUND_HALF_UP) if p_market is not None else None
+    freshness = freshness_of(c.price_at, moment, cfg)
+    value_now = isinstance(verdict, Leg)
+    value_reason = None if isinstance(verdict, Leg) else verdict.value
+    status, reason, pending = state.status, state.reason, state.context_pending
+    decision = None
+    p_model = c.p_model
+    if picks_decision.RAW_MARK in r:
+        # The board reads PrediGol Intelligence (plan PICKS, F3): the value gate, the EV and the edge above were computed with
+        # its calibrated probability; the state is the merge of the board's and Intelligence's (``picks_decision``).
+        decision = r[picks_decision.DECISION_MARK]
+        status, reason, pending = picks_decision.merged(status, reason, pending, decision, best_odds=c.price)
+        if not picks_decision.judged_value(decision):
+            ev, edge, value_now, value_reason = None, None, False, picks_decision.NO_CALIBRATED
+        elif freshness in ("stale", "none"):
+            ev, edge = None, None  # C5: a price that old shows no EV; the card says how old it is
     return PickCard(
         pick_id=c.pick_id, fixture_id=c.fixture_id, kickoff_at=c.kickoff_at, competition=_competition(r),
         home=_home(r), away=_away(r), market_key=c.market_key, selection=c.selection, line=c.line,
         status=r["pick_status"], model=r["model"], best_odds=c.price, bookmaker=r.get("bookmaker"),
-        price_at=c.price_at, p_model=c.p_model, p_market=p_market,
+        price_at=c.price_at, p_model=p_model, p_market=p_market,
         fair_odds=(Decimal(1) / p_market).quantize(Q3, ROUND_HALF_UP) if p_market else None,
-        edge=(c.p_model - p_market).quantize(Q6, ROUND_HALF_UP) if p_market is not None else None,
-        ev=ev, freshness=freshness_of(c.price_at, moment, cfg), value_now=isinstance(verdict, Leg),
-        value_reason=None if isinstance(verdict, Leg) else verdict.value,
-        user_status=state.status, status_reason=state.reason, context_pending=state.context_pending,
+        edge=edge, ev=ev, freshness=freshness, value_now=value_now, value_reason=value_reason,
+        user_status=status, status_reason=reason, context_pending=pending, decision=decision,
     )
 
 
@@ -204,6 +219,15 @@ def started_pick(r: Row, moment: datetime) -> StartedPick:
     )
 
 
+def _read_intelligence(conn: Conn, rows: list[Row], moment: datetime) -> tuple[list[Row], bool]:
+    """The candidate rows with PrediGol Intelligence's decision read into each when ``FBI_PICKS_SOURCE=intelligence`` (plan PICKS,
+    F3), else the rows untouched. Returns (rows, whether Intelligence is the source)."""
+    if not PicksSourceSettings().from_intelligence:
+        return rows, False
+    decisions = repo.intel_decisions(conn, fixture_ids=[int(r["fixture_id"]) for r in rows], now=moment)
+    return picks_decision.attach(rows, decisions), True
+
+
 @shared(30)
 def picks_board(conn: Conn, *, include_shadow: bool, competition_id: int | None, market: str | None,
                 min_odds: Decimal | None, max_odds: Decimal | None, hours: int,
@@ -225,6 +249,7 @@ def picks_board(conn: Conn, *, include_shadow: bool, competition_id: int | None,
             and (min_odds is None or (r["best_odds"] is not None and Decimal(r["best_odds"]) >= min_odds))
             and (max_odds is None or (r["best_odds"] is not None and Decimal(r["best_odds"]) <= max_odds))]
     applied = pick_status.applied_now(conn, (int(r["fixture_id"]) for r in kept), at=moment)
+    kept, from_intelligence = _read_intelligence(conn, kept, moment)
     all_cards = cards(kept, moment, cfg, applied=applied)
     # A list and one match (its Picks tab) alike show a reader the RECOMMENDED picks only (UX-002, «solo verde»), and the Top 5
     # is always such a list; the owner's preview shows every pick with its state.
@@ -243,7 +268,8 @@ def picks_board(conn: Conn, *, include_shadow: bool, competition_id: int | None,
         reason = "no_value_now"
     board = PicksBoard(source=_source(include_shadow), top=top, picks=shown,
                        competitions=sorted(competitions.values(), key=lambda c: c.name), markets=markets,
-                       window_hours=hours, reason=reason, withheld=len(all_cards) - len(shown), started=started)
+                       window_hours=hours, reason=reason, withheld=len(all_cards) - len(shown), started=started,
+                       decision_source="intelligence" if from_intelligence else "legacy")
     newest = max((p.price_at for p in shown if p.price_at), default=None)
     return ok(board, count=len(shown), data_as_of=newest)
 
@@ -494,6 +520,7 @@ def best_odds_board(conn: Conn, *, hours: int, market: str | None, include_shado
         pick_rows = repo.pick_candidates(conn, now=moment, until=moment + timedelta(hours=hours),
                                          since=moment - CONSENSUS_LOOKBACK, include_shadow=include_shadow)
         applied = pick_status.applied_now(conn, (int(r["fixture_id"]) for r in pick_rows), at=moment)
+        pick_rows, _ = _read_intelligence(conn, pick_rows, moment)
         value = [p for p in listed(cards(pick_rows, moment, GateConfig(allow_unqualified=include_shadow), applied=applied),
                                    include_shadow=include_shadow) if p.value_now]
         if market:

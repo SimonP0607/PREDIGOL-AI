@@ -546,18 +546,7 @@
   "card": {
     "referenceOdds": "Reference odds",
     "probs": "PrediGol {model} · market {market}",
-    "level": {
-      "label": "Level",
-      "high": "High",
-      "medium": "Medium"
-    },
-    "levelHelp": {
-      "high": "Even PrediGol's prudent estimate is above the market's probability.",
-      "medium": "PrediGol's central estimate is above the market; its prudent one is not."
-    },
     "whyValue": "PrediGol sees this result as likelier than the market does.",
-    "whyHigh": "Even its prudent estimate stays above the market.",
-    "whyMedium": "Its central estimate is above the market; its prudent one is not.",
     "more": "More about this pick",
     "audit": "Audit"
   }

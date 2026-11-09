@@ -131,11 +131,7 @@ export function PickCard({
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               <OddsPill odds={pick.best_odds} best={pick.value_now} size={compact ? "md" : "lg"} />
-              {pick.bookmaker ? (
-                <span className="max-w-[8rem] truncate text-caption text-muted-foreground">
-                  {pick.bookmaker}
-                </span>
-              ) : null}
+              {/* Reference odds: no bookmaker for a reader (plan PICKS, D6); the owner finds it in the audit. */}
             </div>
           </div>
 

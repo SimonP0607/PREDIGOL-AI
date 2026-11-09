@@ -1,7 +1,14 @@
 /// <reference types="bun" />
 /** Filters become the API query; the API's own defaults stay out of it. */
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_FILTERS, activeCount, isDefault, toQuery } from "./filters";
+import {
+  DEFAULT_FILTERS,
+  ODDS_RANGES,
+  ODDS_RANGE_KEYS,
+  activeCount,
+  isDefault,
+  toQuery,
+} from "./filters";
 
 describe("toQuery", () => {
   test("the page opens on the next 24 hours (REVIEW point 13), asked as such", () => {
@@ -25,8 +32,10 @@ describe("toQuery", () => {
     expect(isDefault({ ...DEFAULT_FILTERS, hours: 72 })).toBe(false);
   });
 
-  test("an open-ended odds range has no maximum", () => {
-    expect(toQuery({ ...DEFAULT_FILTERS, odds: "3+" })).toEqual({ min_odds: 3, hours: 24 });
+  test("no range goes past the 3.00 ceiling (plan PICKS, D3): none is open-ended", () => {
+    for (const key of ODDS_RANGE_KEYS.filter((k) => k !== "all")) {
+      expect(ODDS_RANGES[key].max ?? Infinity).toBeLessThanOrEqual(3);
+    }
   });
 });
 
@@ -43,8 +52,8 @@ describe("activeCount (plan UX, A15: the number on the phone's «Filtros» butto
       }),
     ).toBe(4);
     // the count agrees with isDefault: zero exactly when nothing is chosen
-    expect(activeCount({ ...DEFAULT_FILTERS, odds: "3+" }) > 0).toBe(
-      !isDefault({ ...DEFAULT_FILTERS, odds: "3+" }),
+    expect(activeCount({ ...DEFAULT_FILTERS, odds: "2-3" }) > 0).toBe(
+      !isDefault({ ...DEFAULT_FILTERS, odds: "2-3" }),
     );
   });
 });
