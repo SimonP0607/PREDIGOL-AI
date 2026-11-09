@@ -174,6 +174,63 @@ def test_nothing_is_recorded_switched_off_for_the_owner_the_robot_or_without_con
     assert reader.post("/api/v1/events", json={"events": JOURNEY[:1]}).json() == {"recorded": 1}
 
 
+GUIDES_EVENTS = [
+    {"name": "guide_started", "props": {"guide": "general", "version": 1, "trigger": "auto"}},
+    {"name": "guide_skipped", "props": {"guide": "general", "version": 1, "step": 0, "method": "button"}},
+    {"name": "guide_started", "props": {"guide": "profile", "version": 1, "trigger": "resume"}},
+    {"name": "guide_paused", "props": {"guide": "profile", "version": 1, "step": 2}},
+    {"name": "guide_completed", "props": {"guide": "matches", "version": 1}},
+]
+
+
+def analytics_decision(dsn: str, email: str, granted: bool, at: datetime) -> None:
+    with psycopg.connect(dsn) as conn:
+        conn.execute("""
+            INSERT INTO customer.consents (user_id, kind, granted, document, version, sha256, locale, statement,
+                                           source, at)
+            VALUES (%s, 'analytics', %s, 'privacy', '2026-10-25-draft1', %s, 'es', 'Estadísticas de uso', 'profile', %s)
+        """, (user_id(conn, email), granted, "0" * 64, at))
+
+
+def test_the_tours_events_follow_the_consent_in_consent_mode_and_stop_when_it_is_withdrawn(
+        fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """FBI_PRODUCT_EVENTS=consent (plan Bienvenida, phase 5): the guides' events (started, skipped, paused, completed) are
+    kept only for a reader whose latest decision on the analytics consent is a grant - never before it, never after its
+    withdrawal, never for the owner or the robot, and never one that leaves the catalog."""
+    monkeypatch.setenv("FBI_PRODUCT_EVENTS", "consent")
+    reader = client(READER)
+    other = client(OTHER)
+    # no decision yet: nothing is recorded, and no error either (the reader's tour goes on)
+    assert reader.post("/api/v1/events", json={"events": GUIDES_EVENTS}).json() == {"recorded": 0}
+    assert rows(fresh) == []
+    # a grant by READER only: theirs are recorded, the other reader's still are not
+    now = datetime.now(UTC)
+    analytics_decision(fresh, READER, True, now - timedelta(minutes=10))
+    consents._clear.clear()
+    assert reader.post("/api/v1/events", json={"events": GUIDES_EVENTS}).json() == {"recorded": 5}
+    assert other.post("/api/v1/events", json={"events": GUIDES_EVENTS}).json() == {"recorded": 0}
+    with psycopg.connect(fresh) as conn:
+        pseudonym = crypto.product_id(user_id(conn, READER))
+    found = rows(fresh)
+    assert [(s, n) for s, n, _ in found] == [(pseudonym, e["name"]) for e in GUIDES_EVENTS]
+    assert [p for _, _, p in found] == [e["props"] for e in GUIDES_EVENTS]
+    # the owner and the robot are never recorded, whatever they decided
+    for email in (OWNER, ROBOT):
+        analytics_decision(fresh, email, True, now - timedelta(minutes=10))
+    consents._clear.clear()
+    for email in (OWNER, ROBOT):
+        assert client(email).post("/api/v1/events", json={"events": GUIDES_EVENTS}).json() == {"recorded": 0}
+    assert len(rows(fresh)) == 5
+    # the withdrawal is the latest decision: from then on, nothing
+    analytics_decision(fresh, READER, False, now - timedelta(minutes=1))
+    consents._clear.clear()
+    assert reader.post("/api/v1/events", json={"events": GUIDES_EVENTS}).json() == {"recorded": 0}
+    assert len(rows(fresh)) == 5
+    # a guide that is not in the catalog is refused whole, with or without consent
+    bad = {"name": "guide_started", "props": {"guide": "made_up", "version": 1, "trigger": "auto"}}
+    assert reader.post("/api/v1/events", json={"events": [bad]}).status_code == 422
+
+
 def test_only_a_session_of_this_site_may_send(fresh: str) -> None:
     from fbi.api.app import create_app
 

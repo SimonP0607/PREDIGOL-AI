@@ -20,6 +20,9 @@ export function owed(def: GuideDef, seen: Seen | undefined): "start" | "resume" 
     case "skipped":
       return null;
     case "in_progress":
+      // left half way in a version that has changed since: the card it stopped at may not be the same one now (steps added,
+      // taken out or moved), so it starts over rather than going on from a position that no longer means the same
+      if (seen.version < def.version) return "start";
       return seen.step > 0 ? "resume" : "start";
     default:
       return "start";
