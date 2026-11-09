@@ -87,7 +87,8 @@ ODDS_SOURCES: tuple[OddsSourceProfile, ...] = (
         "closing and pre-closing columns; Pinnacle columns unreliable after 23 Jul 2025 and absent in 2026/27 files",
         "free for private individuals; no automated bots/scrapers/AI for commercial or data-training products",
         "historical backtests only (already imported); no Colombian league; ask the owner before automating "
-        "downloads",
+        "downloads. 9 Nov 2026 review: its terms forbid commercial use and training, so it leaves the target "
+        "architecture; nothing new is downloaded from it and the owner decides about what is already stored",
         ("https://www.football-data.co.uk/data.php", "https://www.football-data.co.uk/notes.txt")),
     OddsSourceProfile(
         "the_odds_api", "The Odds API", Kind.LIVE_API, Access.FREE_NEEDS_OWNER,
@@ -95,9 +96,12 @@ ODDS_SOURCES: tuple[OddsSourceProfile, ...] = (
         "1xBet; UK region includes Betano UK",
         (),
         "historical snapshots on paid plans only",
-        "free tier 500 credits/month (an account in the owner's name); paid from USD 30/month",
-        "candidate for a free second opinion on European prices; no Colombian league or book - not pursued "
-        "without the owner",
+        "free tier 500 credits/month (an account in the owner's name); paid from USD 30/month; terms of 31 Aug 2026 "
+        "allow commercial use",
+        "candidate for a free second opinion on European prices; no Colombian league or book. The connector is "
+        "written and switched off (fbi.providers.the_odds_api, BE-012): free plan only, no key, nothing scheduled; "
+        "the account, the key and any paid plan are the owner's (docs/proyecto/GUIA_THE_ODDS_API.md). Prices are an "
+        "internal yardstick, never shown or linked as an operator",
         ("https://the-odds-api.com/", "https://the-odds-api.com/sports-odds-data/bookmaker-apis.html")),
     OddsSourceProfile(
         "odds_api_io", "Odds-API.io", Kind.LIVE_API, Access.PAYMENT_REQUIRED,
