@@ -175,15 +175,16 @@ def test_an_agent_built_after_the_baseline_is_born_a_challenger_with_a_reason_an
         for later in REGISTRY.history(agent)[1:]:  # a later version is born the same way: a challenger, never promoted by the code
             assert not later.baseline and later.born_as == "CHALLENGER" and len(later.reason) >= rg.MIN_REASON
     assert {a: [r.version for r in REGISTRY.history(a)] for a in built if len(REGISTRY.history(a)) > 1} == {
-        "match": ["match-v1", "match-v2", "match-v3", "match-v4"], "stats": ["stats-v1", "stats-v2", "stats-v3"]}, (
+        "match": ["match-v1", "match-v2", "match-v3", "match-v4"], "stats": ["stats-v1", "stats-v2", "stats-v3"],
+        "claim_extractor": ["extract-v2", "extract-v3"]}, (
         "IA-009: the prompts of aa-v1 with their output checklist; IA-014: the Match Agent's v3 with the references of the package; IA-018: the "
-        "Statistics Agent's v3 with the closed checklist and the Match Agent's CONTEXT prompt v4")
+        "Statistics Agent's v3 with the closed checklist and the Match Agent's CONTEXT prompt v4; IA-021: the Claim Extractor's v3 names the player in his quote")
     assert {s.agent: s.replaces for s in AGENTS if s.replaces} == {
         "claim_extractor": "extractor", "pmr": "post_match_reviewer", "la": "learning_analyst"}
     assert (REGISTRY.in_force("pmr").version, REGISTRY.in_force("la").version) == ("pmr-v1", "la-v1")
     assert (REGISTRY.in_force("post_match_reviewer").version, REGISTRY.in_force("learning_analyst").version) == ("pick-postmortem-v4", "learning-v2")
     assert REGISTRY.spec("claim_extractor").contract == "claim-v1"
-    assert REGISTRY.in_force("claim_extractor").version == "extract-v2" and REGISTRY.in_force("extractor").version == "extract-v1"
+    assert REGISTRY.in_force("claim_extractor").version == "extract-v3" and REGISTRY.in_force("extractor").version == "extract-v1"
 
 
 # -- the fingerprint ------------------------------------------------------------------------------------------------------------------

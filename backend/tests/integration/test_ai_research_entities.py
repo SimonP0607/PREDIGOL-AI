@@ -209,7 +209,7 @@ def test_what_a_pass_paid_is_in_the_ledger_under_the_names_the_report_counts(wor
     assert len(searches) == 1 and searches[0][1] == "ok" and str(searches[0][2]).startswith("rk-v2:") and searches[0][5] == world.a
     assert str(searches[0][2]) == "rk-v2:" + collectors.search_key(joint(world), "early", 1)
     reads = ledger_rows(world.db, purpose="evidence_extraction")
-    assert len(reads) == 1 and reads[0][1] == "ok" and reads[0][3] == "claim_extractor" and reads[0][4] == "extract-v2" and reads[0][5] == world.a
+    assert len(reads) == 1 and reads[0][1] == "ok" and reads[0][3] == "claim_extractor" and reads[0][4] == "extract-v3" and reads[0][5] == world.a
 
 
 def test_a_team_with_two_matches_inside_the_freshness_of_a_topic_is_searched_once_and_again_when_it_is_over(world: World) -> None:
