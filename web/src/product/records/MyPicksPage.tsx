@@ -29,6 +29,7 @@ import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { OddsPill } from "@/product/shared/Bits";
+import { PriceNowLine } from "@/product/shared/PriceNowLine";
 import {
   Card,
   EmptyState,
@@ -404,6 +405,7 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
               <span className="numeric font-semibold">{fmtOdds(pick.user_odds)}</span>
             </span>
           ) : null}
+          <PriceNowLine now={pick.price_now} />
         </div>
       </div>
       <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">

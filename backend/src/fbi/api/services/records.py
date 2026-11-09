@@ -37,7 +37,7 @@ from fbi.api.contracts.records import (
 )
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, unavailable
 from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
-from fbi.api.services import pick_filter, reading, transparency
+from fbi.api.services import pick_filter, price_now, reading, transparency
 from fbi.core import match_state
 from fbi.core.clock import now as clock_now
 from fbi.market import closing_value
@@ -294,6 +294,11 @@ def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datet
         latest = ai_latest(conn, rows, reveal=include_shadow)
         trail = corrections(conn, {r["rank"]: [("daily_item", f"{s['id']}/{r['rank']}")] for r in rows})
         states = [item_state(r, source) for r in rows]
+        now_prices = price_now.read(conn, {
+            i: ((int(r["fixture_id"]), r["market_key"], r["selection"], Decimal(r["line"])), r["odds"])
+            for i, r in enumerate(rows)
+            if r["status"] == "PENDING" and price_now.has_price_now(r.get("m_status_short"), r["m_kickoff_at"], moment)},
+            at=moment)
         items = [DailyItem(
             rank=r["rank"], pick_id=r["pick_id"], match=match_of(r, moment), market_key=r["market_key"],
             selection=r["selection"], line=r["line"], stage=r["stage"], selected_at=r["selected_at"], odds=r["odds"],
@@ -301,7 +306,7 @@ def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datet
             p_market=r["p_market"], ev=r["ev"], model=r["model"], status=r["status"],
             profit_units=r["profit_units"], settled_at=r["settled_at"], ai=ai.get(i), ai_latest=latest.get(i),
             corrections=trail.get(r["rank"], []), user_status=states[i].status, status_reason=states[i].reason,
-            context_pending=states[i].context_pending)
+            context_pending=states[i].context_pending, price_now=now_prices.get(i))
             for i, r in enumerate(rows)]
         daily_set = DailySet(id=s["id"], day=s["day"], timezone=s["timezone"], source=s["source"],
                              rule_version=s["rule_version"], status=s["status"], items=items)
@@ -400,19 +405,27 @@ def line_value(r: Row) -> Decimal | None:
     return closing_value.clv(Decimal(price), Decimal(p_close)).quantize(Decimal("0.0001"))
 
 
-def _user_picks_of(conn: Conn, rows: list[Row]) -> list[UserPick]:
+def _user_picks_of(conn: Conn, rows: list[Row], at: datetime | None = None) -> list[UserPick]:
     trail = corrections(conn, {r["id"]: [("user_pick", str(r["id"]))] for r in rows})
+    moment = at or clock_now()
+    now_prices = price_now.read(conn, {
+        i: ((int(r["fixture_id"]), r["market_key"], r["selection"], Decimal(r["line"])),
+            r["user_odds"] if r["user_odds"] is not None else r["odds"])
+        for i, r in enumerate(rows)
+        if r["status"] == "PENDING" and price_now.has_price_now(r.get("m_status_short"), r["m_kickoff_at"], moment)},
+        at=moment)
     return [UserPick(
         id=r["id"], match=match_of(r), market_key=r["market_key"], selection=r["selection"], line=r["line"],
         origin=r["origin"], pick_id=r["pick_id"], odds=r["odds"], bookmaker=r["bookmaker"], price_at=r["price_at"],
         user_odds=r["user_odds"], saved_at=r["saved_at"], status=r["status"], profit_units=r["profit_units"],
         settled_at=r["settled_at"], snapshot=r["snapshot"], corrections=trail.get(r["id"], []),
-        p_close=r.get("p_close"), line_value=line_value(r)) for r in rows]
+        p_close=r.get("p_close"), line_value=line_value(r), price_now=now_prices.get(i))
+        for i, r in enumerate(rows)]
 
 
-def user_picks_of_fixture(conn: Conn, *, user_id: int, fixture_id: int) -> list[UserPick]:
+def user_picks_of_fixture(conn: Conn, *, user_id: int, fixture_id: int, at: datetime | None = None) -> list[UserPick]:
     """Every pick one reader saved on one match, oldest first, with its result and corrections (the same as Mis picks shows)."""
-    return _user_picks_of(conn, fetch_all(conn, USER_PICKS_OF_FIXTURE_SQL, {"user": user_id, "fixture": fixture_id}))
+    return _user_picks_of(conn, fetch_all(conn, USER_PICKS_OF_FIXTURE_SQL, {"user": user_id, "fixture": fixture_id}), at)
 
 
 def user_picks(conn: Conn, *, user_id: int, status: str | None, limit: int, cursor: str | None = None,
@@ -427,7 +440,7 @@ def user_picks(conn: Conn, *, user_id: int, status: str | None, limit: int, curs
     more = len(rows) > limit
     rows = rows[:limit]
     total = fetch_one(conn, USER_PICKS_TOTAL_SQL, {"user": user_id, "status": status, **filtered})
-    out = _user_picks_of(conn, rows)
+    out = _user_picks_of(conn, rows, at)
     next_cursor = encode_cursor("p", rows[-1]["m_kickoff_at"], int(rows[-1]["id"])) if more else None
     n = int(total["n"]) if total else 0
     # An empty page past the last one is not an empty list (review of A1): it says so.

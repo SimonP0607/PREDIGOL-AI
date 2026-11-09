@@ -114,6 +114,10 @@
     "oddsSaved": "Price saved",
     "oddsCleared": "Price removed"
   },
+  "priceNow": {
+    "now": "Now {odds}",
+    "stale": "old price"
+  },
   "slip": {
     "title": "My parlay",
     "subtitle": "One selection per match, {min} to {max}.",
