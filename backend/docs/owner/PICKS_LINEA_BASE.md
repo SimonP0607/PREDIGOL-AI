@@ -184,7 +184,7 @@ Diferencia, en puntos, entre dos lecturas de la misma selección:
 Lo que explica la diferencia, según los datos de esa corrida:
 
 - El Match Center (`forecast-v1`) y Intelligence (`decision-v1`) calibran por caminos distintos y no usan el mismo momento de referencia. Las lecturas de Intelligence vienen de puntos de control entre T-36 h y T-90 min, con una edad mediana de 22 h y una máxima de 300 h (una lectura vieja de un partido lejano).
-- Las diferencias más anchas de las últimas 24 h están en «más de/menos de 2,5» y «ambos anotan», con hasta 4,1 pp.
+- Las diferencias más anchas de las últimas 24 h están repartidas entre 1X2, «más/menos de 2,5» y «ambos anotan», con un máximo de 4,1 pp; a 72 h llegan a 26,6 pp.
 - Intelligence no tiene aún selecciones aprobadas, así que no hay nada que publicar desde allí por ahora.
 
 **Decisión:** `FBI_PICKS_SOURCE` sigue apagado y no se publican picks experimentales. Para que el criterio se cumpla hace falta que el Match Center lea la misma probabilidad calibrada y el mismo punto de control (el último disponible antes del inicio) que Intelligence; es un cambio de contrato y de la web, y se hace detrás del interruptor y con esta misma herramienta como prueba de salida.
