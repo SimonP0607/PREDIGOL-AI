@@ -644,6 +644,7 @@ WITH last AS (
     SELECT market_key, line, max(known_at) AS k
       FROM models.match_forecasts
      WHERE fixture_id = %(fixture)s AND version = %(version)s AND family = ANY(%(families)s) AND known_at <= %(at)s
+       AND NOT (known_at = ANY(%(unseen)s::timestamptz[]))
      GROUP BY 1, 2
 )
 SELECT x.family, x.market_key, x.line, x.model_name, x.calibration, x.basis, x.known_at, x.data_cutoff_ts, x.code_version,
@@ -658,11 +659,16 @@ def _p(value: Any) -> float | None:
     return None if value is None else round(float(value), 3)
 
 
-def read_families(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime) -> dict[str, Any]:
+def read_families(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, unseen: Sequence[datetime] = ()) -> dict[str, Any]:
     """What PrediGol stated by ``at`` about the corners and the cards of the match (``family-v1``): the newest set of each market written at
-    or before the moment. Empty when there is none (a match whose data is not fit has no forecast, and that is no error)."""
+    or before the moment. Empty when there is none (a match whose data is not fit has no forecast, and that is no error).
+
+    ``unseen`` is for the audit alone (``fbi.intel.leakage.slice_known``): the moments of sets that were stamped by ``at`` but were not yet
+    visible when the packet was built (the families stamp a set with the start of their pass and commit it at its end), read as if absent.
+    A pass of the worker never passes it."""
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(FAMILIES_SQL, {"fixture": fixture_id, "version": FAMILY_VERSION, "families": list(FAMILY_ORDER), "at": at})
+        cur.execute(FAMILIES_SQL, {"fixture": fixture_id, "version": FAMILY_VERSION, "families": list(FAMILY_ORDER), "at": at,
+                                   "unseen": list(unseen)})
         rows = [dict(r) for r in cur.fetchall()]
     if not rows:
         return {}
@@ -699,13 +705,13 @@ def load_stored(conn: psycopg.Connection[Any], packet_id: int) -> tuple[Packet, 
 
 
 def derive(conn: psycopg.Connection[Any], packet_id: int, *, pass_kind: PassKind, model_code: str = "",
-           version: str = VERSION) -> Package | None:
+           version: str = VERSION, unseen_families: Sequence[datetime] = ()) -> Package | None:
     """The package of the pass that read stored packet ``packet_id``: the packet, one as-of read of the forecasts of the counts, and the
     pure function, as ``version`` derives it. None when the packet does not exist."""
     stored = load_stored(conn, packet_id)
     if stored is None:
         return None
     packet, stored_hash = stored
-    families = read_families(conn, packet.fixture_id, at=packet.as_of)
+    families = read_families(conn, packet.fixture_id, at=packet.as_of, unseen=unseen_families)
     return package_from_packet(packet, pass_kind=pass_kind, families=families, model_code=model_code, packet_id=packet_id,
                                source_hash=stored_hash, version=version)

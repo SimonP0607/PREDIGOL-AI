@@ -62,6 +62,8 @@ Cada fila es un lanzamiento (varias fases salieron juntas). Fechas en UTC.
 
 *Anotado el 25 de octubre de 2026, fuera del registro de arriba (una fila es un lanzamiento y esto aún no ha salido).* El Plan Maestro IA, fase 1, sube la auditoría a `leak-audit-v7` y le añade la regla `slice_known`: cada estado de un partido (`ai.match_runs`) que nombra un paquete `mcp-v1` sale de un paquete guardado del mismo partido, y el paquete y cada una de sus porciones, derivados de nuevo con el código de hoy, tienen el hash que la fila anotó. Está escrita y probada (con filas honestas y manipuladas y con mutaciones) en la rama de la fase 1 y recibirá su fila aquí cuando esa fase se lance.
 
+*Anotado el 10 de noviembre de 2026 (IA-026).* La auditoría pasa a `leak-audit-v9`, 22 reglas (las mismas de la v8): `slice_known` deja de contar como violación el pronóstico de conteos que la familia estampa con el inicio de su pase y confirma al final, cuando el paquete se construyó durante ese pase (el paquete leyó el conjunto anterior). La fila se deriva otra vez sin esos conjuntos y solo es honrada si coincide byte por byte; nada posterior al momento del paquete puede entrar. Casos reales que lo motivaron: 31-oct (fila 3502) y 7-nov (fila 5828), ambos en la porción `stats`.
+
 ## 4. Registro por fase (B): worker, restauración, despliegue, shadow, dueño
 
 | Fase | 5 Reinicio del worker | 6 Restauración | 7 Despliegue | 8 Shadow ≥ 2 sem. | 9 Dueño |

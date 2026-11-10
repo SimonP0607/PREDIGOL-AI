@@ -1,4 +1,4 @@
-"""Data-leakage audit - ``leak-audit-v8``: did any decision use something that was not known at its ``known_at``?
+"""Data-leakage audit - ``leak-audit-v9``: did any decision use something that was not known at its ``known_at``?
 
 Run every night over the decisions taken on a Bogotá day, and in the tests. One row per rule
 (``intel.audit_checks``): how many decisions were checked and how many violate it, with examples. The rules:
@@ -100,7 +100,13 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              this code cannot derive again is a violation: the audit is taught a new version when the code is - each row
                              is derived again with the version it names (``package.DERIVABLE``: ``package-v1`` with the door
                              ``untrusted-v1``, ``package-v2`` with ``untrusted-v2``, ``package-v3`` with ``untrusted-v3``), never with
-                             today's door over an old row. One check
+                             today's door over an old row. (v9) The forecasts of the counts are read as of the packet's moment, and the
+                             families stamp a set with the START of their pass and commit it at its END: a packet built during that pass
+                             read the set before, and the audit, reading later, sees a set stamped earlier than the packet. So when the
+                             plain derivation differs, the row is derived once more without the sets whose pass (the first run of
+                             ``family_forecasts`` in the ledger that ended at or after the stamp) ended after the packet was built - and is
+                             honest only if that derivation is byte for byte the row's. Nothing later than the packet's moment can enter
+                             either way; a set whose pass left no row in the ledger is never set aside. One check
                              per row. Examples are the ids of the rows. The one rule that is not a statement: it reads the packets one
                              at a time, but only those of the rows of the day (some hundreds at most).
     family_forecast_known    (v8, plan F11) the decisions the FAMILIES took on the day (``decision-fam-v1``, ``fbi.familydecisions``): the
@@ -166,7 +172,7 @@ from fbi.core import match_state
 from fbi.core.decision_versions import DECISION_CORE, DECISION_FAMILIES
 from fbi.intel import factors, h2h, tactics
 
-VERSION = "leak-audit-v8"
+VERSION = "leak-audit-v9"
 
 FINISHED = "ARRAY[" + ", ".join(f"'{code}'" for code in sorted(match_state.FINISHED)) + "]"
 """The stored states of a match played to a result, as a SQL array (constants of ``fbi.core.match_state``, not user input)."""
@@ -620,6 +626,45 @@ SELECT r.id, r.fixture_id, r.pass_kind, r.known_at, r.created_at, r.package_vers
 """
 
 
+FAMILY_JOB: Final = "family_forecasts"
+"""The job of the worker that writes the forecasts of the counts (``fbi.families.job.JOB``; a test holds the two equal: the audit does not
+import the worker's)."""
+
+UNSEEN_FAMILIES = """
+SELECT DISTINCT x.known_at
+  FROM models.match_forecasts x
+ WHERE x.fixture_id = %(fixture)s AND x.version = %(version)s AND x.family = ANY(%(families)s) AND x.known_at <= %(at)s
+   AND (SELECT min(r.finished_at) FROM raw.ingestion_runs r
+         WHERE r.job_type = %(job)s AND r.finished_at >= x.known_at) > %(built)s
+ ORDER BY 1
+"""
+"""The moments of the sets of the counts a packet built at ``built`` could not have seen although they are stamped by its moment ``at``: the
+families stamp a set with the START of their pass and commit it at its END, so a packet built during the pass read the set before; the first
+pass of the job that ended at or after the stamp is the one that wrote it, and it ended after the packet was built. A set whose pass left no
+row in the ledger is never in this list (the rule stays strict where nothing proves the set was invisible)."""
+
+
+def _slice_row_matches(conn: psycopg.Connection[Any], row: dict[str, Any], unseen: list[datetime]) -> bool:
+    rebuilt = mcp_package.derive(conn, int(row["packet_id"]), pass_kind=row["pass_kind"], model_code=row["model_code"] or "",
+                                 version=row["package_version"], unseen_families=unseen)
+    if rebuilt is None or rebuilt.hash != row["package_hash"] or rebuilt.known_at != row["known_at"]:
+        return False
+    names = SLICE_SETS.get(row.get("slice_set") or DEFAULT_SLICE_SET)
+    if names is None:
+        return False  # a set of slices this code does not know cannot be derived again: a violation, until the audit is taught it
+    made = mcp_package.slices_of(rebuilt, names)
+    stored = [(str(s.get("name")), str(s.get("hash"))) for s in row["slices"] if isinstance(s, dict)]
+    return stored == [(name, made[name].hash) for name in names]
+
+
+def _unseen_families(conn: psycopg.Connection[Any], row: dict[str, Any]) -> list[datetime]:
+    with conn.cursor() as cur:
+        cur.execute(UNSEEN_FAMILIES, {"fixture": row["fixture_id"], "version": mcp_package.FAMILY_VERSION,
+                                      "families": list(mcp_package.FAMILY_ORDER), "at": row["known_at"], "job": FAMILY_JOB,
+                                      "built": row["packet_built_at"]})
+        return [r[0] for r in cur.fetchall()]
+
+
 def _slice_row_honest(conn: psycopg.Connection[Any], row: dict[str, Any]) -> bool:
     """One row of ``ai.match_runs`` against the packet it says it came from: see ``slice_known`` in the module's text."""
     if row["packet_fixture"] != row["fixture_id"]:  # the join found no packet (none is named, or it is not there) or found another match's
@@ -629,16 +674,10 @@ def _slice_row_honest(conn: psycopg.Connection[Any], row: dict[str, Any]) -> boo
     if row["package_version"] not in mcp_package.DERIVABLE:
         return False
     try:
-        rebuilt = mcp_package.derive(conn, int(row["packet_id"]), pass_kind=row["pass_kind"], model_code=row["model_code"] or "",
-                                     version=row["package_version"])
-        if rebuilt is None or rebuilt.hash != row["package_hash"] or rebuilt.known_at != row["known_at"]:
-            return False
-        names = SLICE_SETS.get(row.get("slice_set") or DEFAULT_SLICE_SET)
-        if names is None:
-            return False  # a set of slices this code does not know cannot be derived again: a violation, until the audit is taught it
-        made = mcp_package.slices_of(rebuilt, names)
-        stored = [(str(s.get("name")), str(s.get("hash"))) for s in row["slices"] if isinstance(s, dict)]
-        return stored == [(name, made[name].hash) for name in names]
+        if _slice_row_matches(conn, row, []):
+            return True
+        unseen = _unseen_families(conn, row)  # v9: only when the plain derivation differs, and only sets that provably were not visible
+        return bool(unseen) and _slice_row_matches(conn, row, unseen)
     except psycopg.Error:
         raise  # a database that fails is not a verdict about the row, and the transaction is no longer usable
     except Exception:  # a packet written by hand can fail the rule - a package that cannot be derived is a violation - and never stop the audit
