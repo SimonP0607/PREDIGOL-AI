@@ -327,9 +327,15 @@ def check(link: str, *, ip: str | None) -> dict[str, Any]:
     return {k: row[k] for k in ("email", "display_name", "language")}
 
 
-def confirm(link: str, *, password: str, ip: str | None, user_agent: str | None) -> tuple[str, Principal]:
+def confirm(link: str, *, password: str, ip: str | None, user_agent: str | None,
+            replace_password: bool = False) -> tuple[str, Principal]:
     """The address is proven and the password is given again: the account becomes active and signed in. It has no
-    membership: what it can see is decided by the membership's rules, not by this."""
+    membership: what it can see is decided by the membership's rules, not by this.
+
+    ``replace_password`` is for the person who no longer remembers the one chosen when registering (UX-084): the link
+    is the proof of the mailbox, exactly as for a reset, so the password given now REPLACES the stored one - judged by
+    the same rules as a new password and written in the same transaction that confirms the address. Whoever registered
+    somebody else's address with a password of their own is left with nothing: the stored one is overwritten."""
     accept_link(ip)
     cfg = auth_settings()
     refusal: AuthError | None = None
@@ -346,18 +352,27 @@ def confirm(link: str, *, password: str, ip: str | None, user_agent: str | None)
             assert user is not None
             state = store.address_streak(conn, address)
             wait = _wait(state, cfg)
-            if wait:
+            problems = (passwords.password_problems(password, email=address, name=str(user["display_name"]))
+                        if replace_password else [])
+            if wait and not replace_password:  # nothing is guessed when the password is replaced: the lock does not apply
                 refusal = AuthError(429, "too_many_attempts", retry_after=wait)
-            elif not passwords.verify_password(user["password_hash"], password):
+            elif replace_password and problems:
+                refusal = AuthError(422, "weak_password", problems=problems)
+            elif not replace_password and not passwords.verify_password(user["password_hash"], password):
                 refusal = _count_failure(conn, state, cfg, address=address, user_id=user_id, ip=ip,
                                          action="login.failed", detail={"reason": "wrong_password", "for": "verify"})
             else:
-                store.update_user(conn, user_id, {"status": "active"})
+                changes: dict[str, Any] = {"status": "active"}
+                if replace_password:
+                    changes["password_hash"] = passwords.hash_password(password)
+                store.update_user(conn, user_id, changes)
+                if replace_password:
+                    store.unlock(conn, user_id)  # the failed tries with the forgotten password end with it
                 conn.execute("UPDATE auth.users SET email_verified_at = now() WHERE id = %s", (user_id,))
                 tokens.use(conn, int(row["token_id"]))
                 tokens.revoke_open(conn, user_id, ("verify",), "superseded")
                 store.record_event(conn, "user.email_verified", actor_user_id=user_id, target_user_id=user_id,
-                                   email=address, ip=ip)
+                                   email=address, ip=ip, detail={"password_replaced": True} if replace_password else None)
                 fresh = store.user_by_id(conn, user_id)
                 assert fresh is not None
                 result = _open_session(conn, fresh, stage=_next_stage(fresh, mfa_done=False), ip=ip,
