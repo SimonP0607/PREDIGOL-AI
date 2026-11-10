@@ -1058,7 +1058,10 @@
     "flag": {
       "amount": "The amount reported is not the one due. Compare with what reached your account.",
       "duplicate": "Other notices carry the same reference. Check it is not the same payment.",
-      "overdue": "The business day to verify this payment has passed."
+      "overdue": "The business day to verify this payment has passed.",
+      "refused_before": "This person already had notices refused. See their history on the profile.",
+      "new_account": "The account was made less than a day ago. Check with more care that the money arrived.",
+      "shared_phone": "Their mobile number is on another account too. Check on the profile that it is not one person with several accounts."
     },
     "fact": {
       "declared": "Amount reported",

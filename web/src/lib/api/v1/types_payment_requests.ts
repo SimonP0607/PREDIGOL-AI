@@ -95,9 +95,17 @@ export interface AdminPaymentRequest extends PaymentRequestView {
   display_name: string;
   first_name: string | null;
   last_name: string | null;
+  /** The mobile number the person gave (E.164), for the owner's own records. */
+  phone: string | null;
   coupon_code: string | null;
   /** Other notices carrying the same reference. */
   same_reference: number;
+  /** Notices of this person that were refused before this one. */
+  previous_rejections: number;
+  /** The account was made less than a day before the notice. */
+  new_account: boolean;
+  /** Other accounts that carry the same mobile number. */
+  phone_elsewhere: number;
   amount_matches: boolean;
   overdue: boolean;
 }

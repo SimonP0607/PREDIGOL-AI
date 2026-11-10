@@ -1,8 +1,9 @@
 """A reader's rights over their data (plan UX, A4; plan de seguridad, section 23; Ley 1581 de 2012, arts. 8, 14, 15).
 
-* **Export:** a copy of everything PrediGol keeps about the reader - the account, its sessions and access history,
-  the consents, the privacy requests, the picks and parlays they saved - as one JSON document, read only with their
-  own id (never a join that could bring another account's row). The API asks for the password first and allows
+* **Export:** a copy of everything PrediGol keeps about the reader - the account (the name, the nickname and the mobile
+  they gave when they registered included), its sessions and access history, the consents, the privacy requests, the
+  picks and parlays they saved, the membership and the payment notices they sent - as one JSON document, read only
+  with their own id (never a join that could bring another account's row). The API asks for the password first and allows
   ``EXPORTS_PER_DAY`` a day.
 * **Requests:** a query (10 business days, extendable by 5), a claim - a correction or an update - or a deletion
   (15, extendable by 8), as a ticket of ``customer.support_tickets`` with its legal deadline in Colombian business
@@ -23,7 +24,17 @@ from zoneinfo import ZoneInfo
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.customer import consents, events, feedback, lifecycle, membership, push, support, workdays
+from fbi.customer import (
+    consents,
+    events,
+    feedback,
+    lifecycle,
+    membership,
+    payment_requests,
+    push,
+    support,
+    workdays,
+)
 from fbi.customer.db import CustomerError, write_connection
 from fbi.messaging import outbox
 
@@ -188,7 +199,8 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
     """Everything PrediGol keeps about one reader, read by their id alone. Never the password's hash, the second
     factor's secret, a session's token, the account's role (plan UX, A1) or what another person did with their IP."""
     account = _all(conn, """
-        SELECT id, email, display_name, status, language, timezone, created_at, last_login_at, password_changed_at,
+        SELECT id, email, display_name, first_name, last_name, phone_e164, status, origin, email_verified_at, language,
+               timezone, created_at, last_login_at, password_changed_at,
                totp_enabled_at IS NOT NULL AS second_factor, totp_enabled_at AS second_factor_since
         FROM auth.users WHERE id = %s
     """, (user_id,))
@@ -270,6 +282,8 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
     analytics = events.events_of(conn, user_id)
     # The membership: its periods, the payments recorded and its events (plan UX, A8).
     member = membership.export_rows(conn, user_id)
+    # Their «ya pagué» notices and what the owner decided on each (UX-099).
+    notices = payment_requests.export_rows(conn, user_id)
     # Their questions to PrediGol, with the context attached and the answers (plan UX, A14).
     support_rows = support.export_rows(conn, user_id)
     # What they told PrediGol: the monthly survey and «¿Te sirvió?» (plan UX, B6).
@@ -297,6 +311,7 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         "activity_daily": analytics["activity_daily"],
         "membership_periods": member["membership_periods"],
         "payments": member["payments"],
+        "payment_requests": notices,
         "membership_events": member["membership_events"],
         "coupon_redemptions": member["coupon_redemptions"],
         "support_tickets": support_rows,

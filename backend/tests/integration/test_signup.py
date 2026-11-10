@@ -2,7 +2,7 @@
 with the e-mail provider simulated.
 
 * The switch and its locks: born off, the routes do not exist; on, it opens only with the e-mail working, the consent
-  gate final and the membership enforced.
+  gate final, the membership enforced and the payment ready (the owner's details, a price, the final terms: UX-099).
 * Registering: a pending account that cannot sign in, with no membership and no trial, its four consents written with
   the account, and a confirmation link that exists only in the e-mail.
 * The same answer whatever the address (new, awaiting its link, already registered); the nickname first, and unique.
@@ -18,6 +18,7 @@ from __future__ import annotations
 import re
 import uuid
 from collections.abc import Iterator
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -26,10 +27,10 @@ import pytest
 from fastapi.testclient import TestClient
 from psycopg.rows import dict_row
 
-from fbi.auth import recovery, service, signup, throttle, tokens
+from fbi.auth import crypto, recovery, service, signup, throttle, tokens
 from fbi.auth.settings import reset as reset_auth_settings
 from fbi.core.config import reset_cache
-from fbi.customer import consents, legal, membership
+from fbi.customer import consents, legal, membership, payment_requests
 from fbi.messaging import outbox
 from fbi.messaging.provider import Outgoing
 from tests.integration.helpers import forget_memberships, forget_sign_in_failures
@@ -86,7 +87,8 @@ def database(migrated_database: str) -> Iterator[str]:
 
 @pytest.fixture()
 def fresh(database: str, monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
-    """The door open: the switch on and every lock behind it closed (the legal texts are made final)."""
+    """The door open: the switch on and every lock behind it closed (the legal texts are made final and the owner's
+    payment details and the price are set)."""
     wipe(database)
     throttle.reset_all()
     recovery.reset_all()
@@ -97,10 +99,20 @@ def fresh(database: str, monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
     monkeypatch.setenv(tokens.SWITCH, "1")
     monkeypatch.setenv(consents.GATE_ENV, "1")
     monkeypatch.setenv(membership.SWITCH, "1")
+    monkeypatch.setenv("FBI_PAYMENT_HOLDER", "Titular de Prueba")
+    monkeypatch.setenv("FBI_PAYMENT_BREB_KEY", "@predigol-prueba")
+    monkeypatch.setenv("FBI_MEMBERSHIP_PRICE_COP", "150000")
+    monkeypatch.delenv("FBI_PAYMENT_QR_FILE", raising=False)
     monkeypatch.delenv(signup.DAILY_CAP_ENV, raising=False)
     monkeypatch.delenv(signup.PURGE_ENV, raising=False)
     monkeypatch.delenv("FBI_EMAIL_SEND", raising=False)
     monkeypatch.setattr(legal, "any_draft", lambda: False)
+    real_current = legal.current
+
+    def final(document: str) -> Any:
+        return replace(real_current(document), draft=False)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(legal, "current", final)
     yield database
     consents._clear.clear()
 
@@ -219,7 +231,9 @@ def test_born_off_the_routes_do_not_exist_and_the_options_say_so(
 
 @pytest.mark.parametrize(("break_it", "missing"), [
     ("email", "email_off"), ("gate", "consent_gate_not_final"), ("draft", "consent_gate_not_final"),
-    ("membership", "membership_not_enforced")])
+    ("membership", "membership_not_enforced"),
+    ("holder", "payment_not_configured"), ("key_and_qr", "payment_not_configured"), ("price", "price_not_set"),
+    ("terms", "terms_draft"), ("secret", "key_unavailable")])
 def test_each_lock_keeps_the_door_shut_and_names_what_is_missing(
         fresh: str, monkeypatch: pytest.MonkeyPatch, break_it: str, missing: str) -> None:
     assert signup.locks() == [] and signup.is_open()
@@ -229,12 +243,52 @@ def test_each_lock_keeps_the_door_shut_and_names_what_is_missing(
         monkeypatch.delenv(consents.GATE_ENV)
     elif break_it == "draft":
         monkeypatch.setattr(legal, "any_draft", lambda: True)
-    else:
+    elif break_it == "membership":
         monkeypatch.delenv(membership.SWITCH)
+    elif break_it == "holder":
+        monkeypatch.delenv("FBI_PAYMENT_HOLDER")
+    elif break_it == "key_and_qr":
+        monkeypatch.delenv("FBI_PAYMENT_BREB_KEY")  # a holder alone is not a way to pay
+    elif break_it == "price":
+        monkeypatch.setenv("FBI_MEMBERSHIP_PRICE_COP", "off")
+    elif break_it == "terms":
+        real = legal.current
+        monkeypatch.setattr(legal, "current", lambda document: replace(real(document), draft=document == "terms"))
+    else:
+        monkeypatch.setattr(crypto, "key_available", lambda: False)
     assert signup.locks() == [missing] and not signup.is_open()
     c = anon()
     assert c.get("/api/v1/auth/options").json()["signup"] is False
     closed_routes(c)
+    assert rows(fresh, "SELECT 1 FROM auth.users WHERE email = %s", (f"maria@{DOMAIN}",)) == []
+
+
+def test_the_payment_lock_is_the_one_that_keeps_the_reader_s_notice_closed(
+        fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Nobody may register where nobody could then say «ya pagué»: the registration's lock is the notice's own."""
+    assert payment_requests.locks() == [] and signup.locks() == []
+    for name in ("FBI_PAYMENT_HOLDER", "FBI_PAYMENT_BREB_KEY"):
+        monkeypatch.delenv(name)
+    monkeypatch.setenv("FBI_MEMBERSHIP_PRICE_COP", "off")
+    assert payment_requests.locks() == ["payment_not_configured", "price_not_set"]
+    assert signup.locks() == payment_requests.locks(), "the same names, in the same order, after the other locks"
+    assert not signup.is_open() and anon().get("/api/v1/auth/options").json()["signup"] is False
+
+
+def test_with_nothing_in_place_every_lock_is_named_in_order(fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(tokens.SWITCH, "0")
+    monkeypatch.delenv(consents.GATE_ENV)
+    monkeypatch.delenv(membership.SWITCH)
+    for name in ("FBI_PAYMENT_HOLDER", "FBI_PAYMENT_BREB_KEY"):
+        monkeypatch.delenv(name)
+    monkeypatch.setenv("FBI_MEMBERSHIP_PRICE_COP", "off")
+    real = legal.current
+    monkeypatch.setattr(legal, "current", lambda document: replace(real(document), draft=True))
+    monkeypatch.setattr(legal, "any_draft", lambda: True)
+    monkeypatch.setattr(crypto, "key_available", lambda: False)
+    assert signup.locks() == ["email_off", "consent_gate_not_final", "membership_not_enforced",
+                              "payment_not_configured", "price_not_set", "terms_draft", "key_unavailable"]
+    assert not signup.is_open()
 
 
 def test_open_the_options_offer_the_registration(fresh: str) -> None:
@@ -438,6 +492,28 @@ def test_a_confirmed_registration_is_limited_until_it_has_a_period(fresh: str, m
     monkeypatch.delenv(membership.SWITCH)
     membership.forget()
     assert c.get("/api/v1/home").status_code == 200, "the switch off limits nobody"
+
+
+def test_the_data_export_of_a_registered_reader_holds_what_they_gave_and_agreed_to(fresh: str) -> None:
+    """Habeas data (Ley 1581, art. 8): the copy a reader asks for holds the name and the mobile they gave when they
+    registered, their nickname, when they proved the address and the four consents ticked on the form (UX-099)."""
+    link = registered(fresh)
+    c = anon()
+    assert c.post("/api/v1/auth/verify", json={"token": link, "password": CHOSEN}).status_code == 200
+    r = c.post("/api/v1/me/export", json={"password": CHOSEN})
+    assert r.status_code == 200, r.text
+    data = r.json()
+    account = data["account"]
+    assert (account["first_name"], account["last_name"], account["phone_e164"], account["display_name"]) == (
+        "María José", "Pérez-Gómez", "+573001234567", "Maria10")
+    assert (account["origin"], account["status"], account["email"]) == ("signup", "active", f"maria@{DOMAIN}")
+    assert account["email_verified_at"] is not None
+    given = {x["kind"]: x for x in data["consents"] if x["source"] == "signup"}
+    assert set(REQUIRED) <= set(given) and all(given[k]["granted"] for k in REQUIRED)
+    assert all(given[k]["version"] and len(given[k]["sha256"]) == 64 and given[k]["statement"] for k in REQUIRED)
+    assert data["payment_requests"] == [], "none sent yet: the key is there, empty"
+    for secret in (link, "token_hash", "code_hash", "password_hash", CHOSEN):
+        assert secret not in r.text, secret
 
 
 def test_a_wrong_password_does_not_confirm_and_the_link_stays_good(fresh: str) -> None:

@@ -1,17 +1,32 @@
 /** The owner's queue of payment notices (UX-092): the flags that make him look twice and the checks before a decision. */
 import type { AdminPaymentRequest } from "@/lib/api/v1/types_payment_requests";
 
-export type Flag = "amount" | "duplicate" | "overdue";
+export type Flag =
+  "amount" | "duplicate" | "overdue" | "refused_before" | "new_account" | "shared_phone";
 
-/** What deserves a second look before approving: a different amount, the same reference on other notices, a late check. */
+/** What deserves a second look before approving: a different amount, the same reference on other notices, a late check,
+ * and about the person: notices of theirs refused before, an account made the day before, a mobile other accounts carry.
+ * Only the first two ask for his tick; the rest are information. */
 export function flagsOf(
-  r: Pick<AdminPaymentRequest, "amount_matches" | "same_reference" | "overdue" | "status">,
+  r: Pick<
+    AdminPaymentRequest,
+    | "amount_matches"
+    | "same_reference"
+    | "overdue"
+    | "status"
+    | "previous_rejections"
+    | "new_account"
+    | "phone_elsewhere"
+  >,
 ): Flag[] {
   if (r.status !== "submitted") return [];
   const found: Flag[] = [];
   if (!r.amount_matches) found.push("amount");
   if (r.same_reference > 0) found.push("duplicate");
   if (r.overdue) found.push("overdue");
+  if (r.previous_rejections > 0) found.push("refused_before");
+  if (r.new_account) found.push("new_account");
+  if (r.phone_elsewhere > 0) found.push("shared_phone");
   return found;
 }
 
