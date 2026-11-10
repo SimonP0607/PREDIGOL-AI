@@ -499,6 +499,64 @@ def start_trial_by_owner(actor: int, user_id: int, *, days: int) -> Period:
 
 
 @dataclass(frozen=True, slots=True)
+class TrialOutcome:
+    user_id: int
+    email: str
+    result: str
+    """``granted`` / ``would_grant`` (dry run), or why the account was left as it is: ``exempt``, ``has_period``,
+    ``had_trial``."""
+    ends_at: datetime | None = None
+
+
+def grant_existing_trials(*, days: int, reason: str, apply: bool, at: datetime | None = None,
+                          notify: bool = False) -> list[TrialOutcome]:
+    """The temporary free trial for the accounts that exist and have no period at all (UX, tramo 1: with the membership
+    enforced, an account created before the registration has nothing and is limited).
+
+    Only live reader accounts (``active``, role USER) are looked at; the owner, the robot and the exempt addresses are
+    left as they are, and so is every account that has any period or ever had a trial - nothing is extended, replaced
+    or duplicated, so running it twice grants nothing the second time. The trial is the ordinary one (kind ``trial``,
+    ``days`` explicit, between 7 and 20): when it ends the account is in the ordinary flow (grace, then limited) and
+    keeps its data; nothing is removed but the benefit, by the calendar. Everything is written in one transaction,
+    with the reason in the access trail; ``apply`` False only counts. No e-mail leaves unless ``notify``."""
+    if not TRIAL_DAYS_MIN <= days <= TRIAL_DAYS_MAX:
+        raise CustomerError(422, "invalid_trial_days", f"a trial of {TRIAL_DAYS_MIN} to {TRIAL_DAYS_MAX} days")
+    text = _clean_reason(reason, required=True)
+    moment = at or datetime.now(UTC)
+    out: list[TrialOutcome] = []
+    with write_connection() as conn:
+        rows = conn.execute("SELECT id, email FROM auth.users WHERE status = 'active' AND role = 'USER' "
+                            "ORDER BY id").fetchall()
+        loaded = load(conn, [int(r[0]) for r in rows]) if rows else {}
+        for user_id, address in ((int(r[0]), str(r[1])) for r in rows):
+            if consents.exempt(address, super_admin=False):
+                out.append(TrialOutcome(user_id, address, "exempt"))
+                continue
+            periods, events_ = loaded[user_id]
+            if periods:
+                out.append(TrialOutcome(user_id, address, "has_period"))
+                continue
+            if any(e.kind == "trial_started" for e in events_):
+                out.append(TrialOutcome(user_id, address, "had_trial"))
+                continue
+            if not apply:
+                out.append(TrialOutcome(user_id, address, "would_grant", moment + timedelta(days=days)))
+                continue
+            period = start_trial(conn, user_id, at=moment, days=days, actor=None)
+            if period is None:
+                out.append(TrialOutcome(user_id, address, "had_trial"))
+                continue
+            _audit(conn, "trial_started", actor=None, user_id=user_id,
+                   detail={"days": days, "source": "existing_accounts", "reason": text})
+            if notify:
+                tell(conn, user_id, "trial_started", f"trial_started:{period.id}", period)
+            out.append(TrialOutcome(user_id, address, "granted", period.ends_at))
+    if apply:
+        forget()
+    return out
+
+
+@dataclass(frozen=True, slots=True)
 class Recorded:
     payment_id: int
     period: Period
