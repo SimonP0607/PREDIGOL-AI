@@ -45,6 +45,8 @@ export function VerifyEmailPage() {
   const state = stateOf(info.error, info.isPending && !!token, token);
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
+  // Forgot the password chosen when registering: the link proves the mailbox, so a new one replaces it (UX-084).
+  const [replace, setReplace] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [linkGone, setLinkGone] = useState(false);
@@ -68,7 +70,9 @@ export function VerifyEmailPage() {
     setBusy(true);
     setFailure(null);
     try {
-      const who = await v1.verifyEmail({ token, password });
+      const who = await v1.verifyEmail(
+        replace ? { token, password, replace_password: true } : { token, password },
+      );
       setDone(true);
       auth.completeStep(who);
     } catch (err) {
@@ -181,13 +185,13 @@ export function VerifyEmailPage() {
         />
         <label className="block">
           <span className="text-xs font-medium text-muted-foreground">
-            {t("auth.verify.password")}
+            {replace ? t("auth.verify.newPassword") : t("auth.verify.password")}
           </span>
           <span className="relative mt-1 block">
             <input
               type={show ? "text" : "password"}
               name="password"
-              autoComplete="current-password"
+              autoComplete={replace ? "new-password" : "current-password"}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -204,6 +208,11 @@ export function VerifyEmailPage() {
             </button>
           </span>
         </label>
+        {replace ? (
+          <p className="text-xs text-muted-foreground" data-testid="verify-replace-help">
+            {t("auth.verify.newPasswordHelp")}
+          </p>
+        ) : null}
         {failure ? (
           <Notice tone="error" testId="verify-error">
             {failure}
@@ -217,6 +226,18 @@ export function VerifyEmailPage() {
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MailCheck className="h-4 w-4" />}
           {busy ? t("auth.verify.submitting") : t("auth.verify.submit")}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setReplace((v) => !v);
+            setPassword("");
+            setFailure(null);
+          }}
+          className="tap-y relative block w-full text-center text-xs font-medium text-primary underline-offset-2 hover:underline"
+          data-testid="verify-toggle-replace"
+        >
+          {replace ? t("auth.verify.useChosen") : t("auth.verify.forgot")}
         </button>
       </form>
     </AccountShell>
