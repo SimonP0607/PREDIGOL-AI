@@ -69,7 +69,8 @@ def test_a_disagreement_is_read_at_the_price_of_the_engine_that_kept_it() -> Non
 
 
 def test_the_outcome_is_the_settlements_at_a_flat_stake() -> None:
-    assert r4.settle("1X2", "Home", Decimal(0), 2, 1, Decimal("2.10")) == ("win", pytest.approx(1.1))
+    outcome, gain = r4.settle("1X2", "Home", Decimal(0), 2, 1, Decimal("2.10"))
+    assert outcome == "win" and gain == pytest.approx(1.1)
     assert r4.settle("1X2", "Home", Decimal(0), 0, 1, Decimal("2.10")) == ("loss", -1.0)
     assert r4.settle("1X2", "Home", Decimal(0), None, None, Decimal("2.10")) == (None, None), "not settled yet"
     assert r4.settle("1X2", "Home", Decimal(0), 2, 1, None) == (None, None), "no price, no profit"

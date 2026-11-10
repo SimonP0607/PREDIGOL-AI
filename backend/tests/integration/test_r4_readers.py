@@ -36,7 +36,7 @@ def test_the_readers_pair_the_newest_pre_match_review_of_each_engine(db: psycopg
     by = r4_compare.newest(got)
     assert {e: len(v) for e, v in by.items()} == {"llm": 1, "ma-v1": 2, "cs-v1": 1}
     [llm] = by["llm"].values()
-    assert (llm.decision, llm.outcome, llm.profit) == ("REJECT", "win", pytest.approx(1.1)), "Home won 2-1 at 2.10"
+    assert (llm.decision, llm.outcome) == ("REJECT", "win") and llm.profit == pytest.approx(1.1), "Home won 2-1 at 2.10"
     rep = r4_compare.report(got, r4_readers.usage(db, since=KICK - timedelta(days=2), until=KICK + timedelta(days=2)))
     pair = rep["pairs"]["llm_vs_ma-v1"]
     assert pair["common"] == 1 and pair["matrix"] == {"REJECT|APPROVE": 1}
