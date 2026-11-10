@@ -72,60 +72,7 @@ sale como `PROBLEM`. Una segunda pasada no encuentra nada que hacer.
 Los valores anteriores están en `audit.data_repairs` (`before_value`). La vuelta segura es restaurar la copia del
 paso 1; no escribas SQL a mano en la base viva.
 
-## 5. Restituir una reparación que se equivocó (BE-029)
-
-La regla `fixture_venue_city` pone a un partido la ciudad que dan los demás partidos del club «en ese estadio». Si el
-proveedor usa un mismo nombre para dos estadios de ciudades distintas (la Raiffeisen Arena de Pasching y la de Linz, el
-Estadio Banco Guayaquil de Sangolquí, el Jawaharlal Nehru de Margao y el de Chennai), la mayoría puede ser la ciudad
-equivocada. Una persona comprueba con fuentes que el valor del proveedor era el bueno y, solo entonces:
-
-```
-docker exec -w /app predigol-worker python -m scripts.restore_venue_city --venue 5094 --reason "motivo y fuente"          # en seco
-docker exec -w /app predigol-worker python -m scripts.restore_venue_city --venue 5094 --reason "motivo y fuente" --apply  # escribe
-```
-
-* `--venue` es el id de `core.venues` (se puede repetir). Solo se tocan los partidos de esos estadios y solo los que
-  siguen con la ciudad que puso la reparación: una ciudad cambiada después (por el proveedor o a mano) se deja.
-* Cada partido deja una fila `audit.data_repairs` con la regla `fixture_venue_city_restored`: la ciudad que tenía, la que
-  recibe, el motivo y la fila de reparación que deshace. Las filas originales no se borran.
-* `repair_venue_city` y el control diario (BE-031) respetan lo restituido mientras el partido conserve esa ciudad.
-* Ejecútalo en el contenedor del **worker** (el de la API no escribe en `core.fixtures`), con una copia de restauración
-  probada y sin un despliegue en curso. Una segunda pasada no encuentra nada que hacer.
-
-## 6. Reasociar partidos al estadio donde se jugaron (BE-037)
-
-El proveedor guarda a veces **un mismo id de estadio para dos estadios distintos**: el id 143 es la Raiffeisen Arena de
-Linz (abierta en 2023) y también el estadio del LASK en Pasching hasta 2022; el id 2276, los dos Jawaharlal Nehru.
-`core.venues` ya tiene un registro por estadio, pero los partidos antiguos quedaron asociados al que lleva ese id y la
-ficha mezclaba el nombre y la ciudad del partido con la capacidad y la dirección del otro estadio. No se crea ningún
-registro: se reasocian los partidos.
-
-```
-docker exec -w /app predigol-worker python -m scripts.reassign_fixture_venue --from-venue 1334 --to-venue 9875 --city Pasching --reason "motivo y fuente"          # en seco
-docker exec -w /app predigol-worker python -m scripts.reassign_fixture_venue --from-venue 1334 --to-venue 9875 --city Pasching --reason "motivo y fuente" --apply  # escribe
-```
-
-* Mueve solo los partidos del estadio de origen (`--from-venue`) cuyo propio campo ciudad es `--city`; el resto se queda.
-  El en seco cuenta los que se moverían y los que se quedan.
-* Se niega, sin escribir nada, si el estadio de origen no está demostrablemente en otra ciudad, si el de destino no está
-  en la pedida o si alguno de los dos no existe. El id del proveedor, por sí solo, no es prueba suficiente.
-* Una fila `audit.data_repairs` por partido con la regla `fixture_venue_reassigned` (`before_value`: el id de estadio que
-  tenía; `after_value`: el nuevo). No cambia el nombre ni la ciudad del partido ni toca los estadios.
-* La sincronización de partidos conserva el estadio nuevo mientras el proveedor siga mandando el id viejo (solo si hay
-  fila de auditoría de ese partido); un id distinto se toma como siempre. El control diario no cuenta como diferencia de
-  estadio un partido reasociado a propósito.
-* La ficha de un partido reasociado enseña el nombre y la ciudad que dio el proveedor y adjunta capacidad y dirección solo
-  si el nombre coincide con el del registro nuevo.
-* Una segunda pasada no encuentra nada que hacer. Para deshacerlo, la vuelta segura es la copia previa; las filas de
-  auditoría dicen qué partidos cambiaron y desde qué id de estadio (`before_value`).
-
-**Aplicado el 10-nov-2026, 22:41 UTC** (ya desplegado BE-037 y con la copia de restauración probada del lanzamiento
-`20261110T1608Z-auto-f544296`): 88 partidos de liga del LASK (51) y del LASK Juniors (37), de 2019 a 2022, pasaron del
-estadio de Linz (`core.venues` 1334) al de Pasching (9875). Linz conserva sus 71 partidos, Pasching tiene 88, hay 88 filas
-`fixture_venue_reassigned` y la segunda pasada no encontró nada que hacer. La ficha de esos partidos dice
-«Raiffeisen Arena, Pasching» sin la capacidad ni la dirección del estadio de Linz.
-
-## 7. Lo que queda abierto
+## 5. Lo que queda abierto
 
 * No sabemos todavía de dónde salió «Valdivia» (del proveedor o de un bloque de partido antiguo): lo dirá la línea del
   seco del estadio 80. Si sale `UNDECIDED ... the provider's own record says the same`, el fallo es del proveedor.
