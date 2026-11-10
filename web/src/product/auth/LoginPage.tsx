@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Eye, EyeOff, Loader2, LogIn, Mail } from "lucide-react";
 import { BrandCrest } from "@/components/brand/Brand";
 import { LanguageSwitch } from "@/components/layout/HeaderControls";
+import { AccountTopBar } from "@/product/auth/AccountShell";
 import { Disclaimer } from "@/components/system/Disclaimer";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { LiveApiError, v1 } from "@/lib/api/v1/client";
@@ -85,9 +86,9 @@ export function LoginPage({ expired }: { expired: boolean }) {
 
   return (
     <div className="pitch-glow relative flex min-h-screen flex-col bg-background">
-      <div className="flex justify-end p-4">
+      <AccountTopBar>
         <LanguageSwitch />
-      </div>
+      </AccountTopBar>
       <AnnouncementBanner />
       <main className="flex flex-1 items-center justify-center px-4 pb-16">
         <div className="w-full max-w-sm">

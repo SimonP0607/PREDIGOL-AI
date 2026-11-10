@@ -20,3 +20,6 @@ export interface RowEnv {
 
 /** Long markets (exact score, scorers) show this many selections, then «Ver todas» and a search. */
 export const LONG_MARKET = 8;
+
+/** ...and a phone only the first four of them until «Ver todas» (UX-087). */
+export const PHONE_PREVIEW = 4;
