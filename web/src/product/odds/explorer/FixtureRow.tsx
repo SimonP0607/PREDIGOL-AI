@@ -97,7 +97,9 @@ export function PriceCell({
         )}
       </div>
       <span aria-hidden className="flex min-w-0 flex-col text-micro leading-4">
-        <span className="truncate text-muted-foreground">
+        {/* The bookmaker with the best price, whole (mobile UX plan, UX-095): cut with «…» a phone showed «William
+        Hill · 9 ca…» and only a hover text, which a phone never shows, had the rest. Two lines where it must. */}
+        <span className="break-words text-muted-foreground [text-wrap:balance]">
           {t("explorer.price.books", { bookmaker, count: sel.n_books })}
         </span>
         {sel.outlier ? (
