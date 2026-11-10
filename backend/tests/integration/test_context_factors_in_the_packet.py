@@ -179,7 +179,7 @@ def test_the_scenarios_of_a_match_are_validated_when_the_scenarios_factor_is(db:
 
 
 def test_the_rule_is_in_the_audit_and_the_version_says_so() -> None:
-    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v8" and RULE in (leakage.__doc__ or "")
+    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v9" and RULE in (leakage.__doc__ or "")
 
 
 def test_an_honest_packet_passes_one_check_per_factor_and_one_per_block_that_states_its_status(world: World,
@@ -187,7 +187,7 @@ def test_an_honest_packet_passes_one_check_per_factor_and_one_per_block_that_sta
     store_packet(db, packet(db, world), built_at=AT)
     assert audited(db, AT) == {"checked": 6, "violations": 0, "examples": []}, "4 factors; the head-to-head and the tactics (no scenarios here)"
     rows = db.execute("SELECT version, n_violations FROM intel.audit_checks WHERE rule = %s", (RULE,)).fetchall()
-    assert rows and all(v == "leak-audit-v8" and bad == 0 for v, bad in rows)
+    assert rows and all(v == "leak-audit-v9" and bad == 0 for v, bad in rows)
 
 
 def test_honest_packets_pass_whatever_the_registry_said_when_they_were_built(world: World, db: psycopg.Connection[Any]) -> None:

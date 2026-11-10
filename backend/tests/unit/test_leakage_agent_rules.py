@@ -59,7 +59,7 @@ def test_both_rules_are_rules_that_run_code_after_slice_known_and_the_text_names
 
 
 def test_the_version_is_not_bumped_by_two_rules_that_read_nothing_of_the_decisions() -> None:
-    assert leakage.VERSION == "leak-audit-v8"
+    assert leakage.VERSION == "leak-audit-v9"
 
 
 def test_the_console_audits_the_plans_four_rules_and_leaves_memory_known_unaudited() -> None:
