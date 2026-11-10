@@ -57,6 +57,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | IA-023 | El trabajo programado de la revisión de crónica (etapa A del flujo único): `chronicle_review` en el worker (cada hora, apagable con `FBI_CHRONICLE_REVIEW=0`), con su plazo de 20 minutos en el vigilante y una fila en el libro de trabajos solo cuando escribe; llama a `fbi.chronicle.review` de IA-022, sin modelo ni coste y sin tocar modelos ni picks (`backend/docs/owner/IA_022_REVISION_CRONICA.md`) | en curso | este PR | IA-022 |
 | IA-024 | La comparación entre el español y el inglés de la crónica de lectores deja de rechazar lo que dice lo mismo: «2 empates» y «two draws», «once meses» y «eleven months» valen igual, y el cero y el uno enteros no se comparan (cada idioma sigue comprobado contra los hechos y las noticias que cita). Era la causa de 143 de las 364 crónicas rechazadas de `user-narrative-v3` (`backend/docs/owner/IA_024_CIFRAS_CRONICA.md`) | en curso | este PR | IA-022 |
 | IA-025 | La revisión de la crónica no se detiene por un partido que no sabe juzgar: la vista previa sobre producción (solo lectura) halló que `intel.postmortems.decision_id` puede ser nulo (opcional desde la 0116) y `int(None)` paraba todas las revisiones. Ahora una selección sin decisión se lista con `decision_id` vacío, y cada crónica se juzga dentro de un punto de guardado: la que falla se cuenta (`failed`, y sus primeras causas en las notas del registro de ejecuciones) y no retiene a las demás. Pruebas del trabajo sin tocar el libro real (el libro confirma la conexión) | en curso | este PR | IA-022, IA-023 |
+| IA-029 | La revisión de producción frente al Council de la sombra (R4 de la auditoría del 10-nov): `fbi.ai.r4_compare` (`r4-compare-v1`, aritmética pura), `fbi.ai.r4_readers` (solo lectura; producción y sombra en dos consultas que nombran sus motores) y `scripts/ia_r4_compare.py`. Sobre las selecciones que dos motores revisaron antes del saque: acuerdo, matriz, desacuerdos al rechazar con su resultado a stake plano y su CLV (al precio de quien la guardó), guardadas frente a rechazadas por motor, coste y gasto de la ventana; cada tasa con su IC95. Informa y no decide: no retira `review-v2` ni `brief-v8` antes de P2 ni cambia el enrutado. Guía `backend/docs/owner/IA_029_R4_REVISION_VS_COUNCIL.md` | en curso | este PR | IA-010, IA-027 |
 
 ## UX — experiencia de usuario y diseño de la web
 
@@ -187,4 +188,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-018 · SEG-003 · IA-026 · UX-090 · BE-031 · FE-002 · OPS-004 · DOC-001
+CI-018 · SEG-003 · IA-030 · UX-090 · BE-031 · FE-002 · OPS-004 · DOC-001
