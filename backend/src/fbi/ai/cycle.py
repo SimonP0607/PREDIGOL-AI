@@ -38,9 +38,9 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, Final
 
 import httpx
 import psycopg
@@ -977,7 +977,7 @@ def _attributions(conn: psycopg.Connection[Any], report: CycleReport, *, at: dat
     from fbi.ai.agents import attribution, pmr
 
     today = local_day(at)
-    for d in (today - timedelta(days=1), today):
+    for d in attribution_days(today):
         r = attribution.attribute_day(conn, day=d, at=at)
         report.counts["attributions"] = report.counts.get("attributions", 0) + r.written
     conn.commit()
@@ -985,6 +985,18 @@ def _attributions(conn: psycopg.Connection[Any], report: CycleReport, *, at: dat
     report.counts.update(pmr_counts(sent))
     log.info("ai.learning.pmr", **{k: v for k, v in sent.items() if k != "estimate_usd"})
     conn.commit()
+
+
+ATTRIBUTION_LOOKBACK_DAYS: Final = 7
+"""How many Bogotá days before today the daily attribution looks at again (IA-031). A selection is attributed once its post-mortem exists, and the
+post-mortems of a day's matches can arrive a day or more later: with only yesterday and today, the matches of 7 Nov 2026 whose post-mortems came on
+the 8th and 9th were never attributed (23 of 60), and Gate B's attribution fell to 68 %. The rule is idempotent (the unique key writes nothing twice),
+so looking again costs a read; a match that settles later than this is the recomputation's (``scripts.ia_attribution recompute``)."""
+
+
+def attribution_days(today: date) -> list[date]:
+    """The days the daily attribution step reads, oldest first: the last ``ATTRIBUTION_LOOKBACK_DAYS`` days and today."""
+    return [today - timedelta(days=k) for k in range(ATTRIBUTION_LOOKBACK_DAYS, -1, -1)]
 
 
 def _slug(text: str) -> str:
