@@ -7,7 +7,7 @@
 import { describe, expect, test } from "bun:test";
 import type { MeToday } from "@/lib/api/v1/types_me_today";
 import type { Following, Today } from "@/lib/api/v1/types_today";
-import { layersOf } from "./layers";
+import { holdsLayers, LAYERS_HOLD_MS, layersOf } from "./layers";
 
 const me = (over: Partial<MeToday> = {}): MeToday => ({
   personalization: true,
@@ -94,5 +94,52 @@ describe("layersOf", () => {
       mine: false,
       prompt: true,
     });
+  });
+});
+
+describe("holdsLayers", () => {
+  const waiting = {
+    reader: true,
+    mePending: true,
+    todayPending: true,
+    homePending: true,
+    boardPending: true,
+    expired: false,
+  };
+  const answered = {
+    ...waiting,
+    mePending: false,
+    todayPending: false,
+    homePending: false,
+    boardPending: false,
+  };
+
+  test("a reader whose page is not known yet is held: nothing of PrediGol is painted to be pushed down later", () => {
+    expect(holdsLayers(waiting)).toBe(true);
+  });
+
+  test("any answer missing holds it: /today decides whose the board's blocks are, /me/today whether to ask for favourites", () => {
+    expect(holdsLayers({ ...answered, mePending: true })).toBe(true);
+    expect(holdsLayers({ ...answered, todayPending: true })).toBe(true);
+  });
+
+  test("the day's picks and the board hold it too: their skeletons are taller than their empty states, and what is under climbs", () => {
+    expect(holdsLayers({ ...answered, boardPending: true })).toBe(true);
+    expect(holdsLayers({ ...answered, homePending: true })).toBe(true);
+  });
+
+  test("all answered (or failed): the page is painted at once", () => {
+    expect(holdsLayers(answered)).toBe(false);
+  });
+
+  test("never longer than the hold: a slow answer does not keep the page empty", () => {
+    expect(holdsLayers({ ...waiting, expired: true })).toBe(false);
+    expect(LAYERS_HOLD_MS).toBeGreaterThanOrEqual(1000);
+    expect(LAYERS_HOLD_MS).toBeLessThanOrEqual(2000);
+  });
+
+  test("the owner is never held: no /me/today to wait for, the page paints as it always did", () => {
+    expect(holdsLayers({ ...waiting, reader: false })).toBe(false);
+    expect(holdsLayers({ ...waiting, reader: false, mePending: false })).toBe(false);
   });
 });

@@ -28,6 +28,7 @@ import {
   ChoosePrompt,
   ForYouPart,
   Layer,
+  LayersHold,
   NoticesBlock,
   PlayersBlock,
   RelatedPicksBlock,
@@ -401,6 +402,20 @@ describe("the layers", () => {
     expect(markup).toContain('href="/profile#football"');
     expect(markup).toContain('data-testid="choose-prompt-close"');
     expect(markup).toContain('aria-label="Cerrar"');
+  });
+});
+
+describe("LayersHold", () => {
+  test("while the page learns its layers: one busy block as tall as the screen, so nothing below it is pushed", async () => {
+    const markup = await html(<LayersHold />);
+    expect(markup).toContain('data-testid="home-layers-hold"');
+    expect(markup).toContain('aria-busy="true"');
+    expect(markup).toContain('aria-label="Cargando…"');
+    expect(markup).toContain("min-h-svh");
+    // placeholders only: no text, no layer, no prompt - nothing that would be painted twice
+    expect(text(markup)).toBe("");
+    expect(markup).not.toContain('data-testid="layer-');
+    expect(markup).not.toContain("choose-prompt");
   });
 });
 
