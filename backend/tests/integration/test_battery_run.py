@@ -59,6 +59,8 @@ from .test_ai_decision_layer import Savepoints
 from .test_lab import AT, HAIKU, OPUS, SONNET, cfg
 
 FIRST_ROUND = sum(len(corpus.target(t).bases) * CONTROLS + len(corpus.cases_of(t)) for t in TARGETS)
+ASK_NATIVELY = ("match", "stats")
+"""The targets whose agent asks with structured outputs itself (IA-028): one route, one run."""
 """Every base five times clean and every case once: (3 x 5 + 40) x 6."""
 ESCALATED = sum(1 for a in run.first_round("council") if a.base == "k_escalated")
 """The asks of the Council's escalation: Opus'."""
@@ -153,7 +155,9 @@ def test_a_round_is_one_batch_of_the_lab_with_the_requests_exactly_as_they_are_m
     assert len(bodies) == 330 and all(len(cid) <= 64 for cid in bodies)
     for i in items:
         body = bodies[i["custom_id"]]
-        assert body["model"] == i["model"] and "tools" in body and body["system"][0]["cache_control"] == {"type": "ephemeral", "ttl": "1h"}
+        native = i["context"]["target"] in ASK_NATIVELY  # IA-028: the Match Agent's v5 and the Statistics Agent's v4 ask so themselves
+        assert body["model"] == i["model"] and ("tools" in body) is not native and body["system"][0]["cache_control"] == {"type": "ephemeral", "ttl": "1h"}
+        assert native is ("output_config" in body and "format" in body["output_config"])
         request = corpus.request_for(i["context"]["target"], i["context"]["base"],
                                      None if not i["context"]["case"] else corpus.case_of(i["context"]["case"]))
         assert read_by_the_model(body) == request.user_text, "what the model reads is what the corpus holds, byte for byte"
@@ -240,11 +244,13 @@ def test_a_target_can_be_asked_alone_and_only_its_models_need_to_exist(rig: Rig)
 def test_the_native_route_is_another_run_of_the_same_corpus(rig: Rig) -> None:
     rig.submit()
     native = rig.submit(native=True)
-    assert native["submitted"] == FIRST_ROUND and native["targets"]["review"]["run"] != run.run_id("review")
+    # IA-028: the agents that ask natively themselves have one route, already measured by the first round
+    assert native["submitted"] == FIRST_ROUND - 55 * len(ASK_NATIVELY) and native["targets"]["review"]["run"] != run.run_id("review")
+    assert all(native["targets"][t]["due"] == 0 and native["targets"][t]["run"] == run.run_id(t) for t in ASK_NATIVELY)
     assert run.run_id("review", native=True) != run.run_id("review") and run.run_id("review", suffix="2").endswith(":2")
-    assert rig.one("SELECT count(*) FROM ai.batch_items") == 2 * FIRST_ROUND
+    assert rig.one("SELECT count(*) FROM ai.batch_items") == 2 * FIRST_ROUND - 55 * len(ASK_NATIVELY)
     first, second = rig.fake.created
-    assert all("tools" in i["params"] for i in first)
+    assert sum("tools" in i["params"] for i in first) == FIRST_ROUND - 55 * len(ASK_NATIVELY)
     assert all("tools" not in i["params"] and i["params"]["output_config"]["format"]["type"] == "json_schema" for i in second)
 
 
@@ -281,7 +287,7 @@ def test_a_model_that_nothing_moves_passes_and_the_gate_is_recorded_with_all_it_
     assert set(evidence["targets"]) == set(TARGETS) and evidence["offline"]["verdict"] == "PASA"
     assert evidence["target_list"] == list(TARGETS), "the evidence says, in a list, every target it speaks for"
     assert [(c["target"], c["agent"], c["contract"]) for c in evidence["covers"]] == [
-        ("review", None, None), ("extract", None, None), ("claims", None, None), ("match", "match-v4", "aa-v1"), ("stats", "stats-v3", "aa-v1"),
+        ("review", None, None), ("extract", None, None), ("claims", None, None), ("match", "match-v5", "aa-v1"), ("stats", "stats-v4", "aa-v1"),
         ("council", "council-v1", "cd-v1")]
     assert evidence["targets"]["council"]["prompts"] == ["council-v1", "council-opus-v1"]
     for target in TARGETS:
@@ -876,4 +882,5 @@ def test_the_status_of_a_run_is_the_status_of_its_suffix_and_its_route_and_count
         for target in TARGETS:
             assert runs[target] == {"run": run.run_id(target, **route), "asks": 55, "open": 55, "by_state": {}, "cost_usd": "0"}
     plain = run.status(rig.conn, at=LATER)["runs"]
-    assert all(plain[t]["asks"] == 0 and plain[t]["open"] == 0 for t in TARGETS), "the plain measurement was never made"
+    assert all(plain[t]["asks"] == 0 and plain[t]["open"] == 0 for t in TARGETS if t not in ASK_NATIVELY), "the plain measurement was never made"
+    assert all(plain[t]["asks"] == 55 for t in ASK_NATIVELY), "IA-028: for an agent that asks natively the plain run IS the native one"

@@ -1,4 +1,4 @@
-"""The Match Agent (``match-v4``; Plan Maestro IA, phase 3, section 9): what it is asked and what the server makes of what it answers.
+"""The Match Agent (``match-v5``; Plan Maestro IA, phase 3, section 9): what it is asked and what the server makes of what it answers.
 
 One agent, one contract (``aa-v1``, ``fbi.ai.contracts.assessment``), two tasks that share a base prompt (``fbi.ai.prompts.MATCH_RULES``):
 
@@ -18,7 +18,10 @@ contradiction detector; and, from v3 (IA-014), the references the model may cite
 evidence and the paths of its blocks, written by code). The text that came from outside is already inside ``untrusted`` blocks of the slice (``fbi.ai.package``) and the
 system prompts say it is data. Nothing the model could read as a market, a selection or a price is invented here: it is the slice's or the
 candidate's own. v4 (IA-018) changes only the CONTEXT prompt (``match-context-v4``: the words of the ask are lower case and are not directions);
-the message and the EVALUATION prompt (``match-assess-v3``) are those of v3.
+the message and the EVALUATION prompt (``match-assess-v3``) are those of v3. v5 (IA-028) changes neither a prompt nor the contract: it asks
+for the answer with structured outputs (``NATIVE``; the API holds the model to the schema ``fbi.ai.providers.structured.accepted`` writes from ``aa-v1``)
+instead of the forced tool call, because battery-v3 with the real model (10 Nov 2026) refused 6 of 55 answers asked through the tool and none
+of 55 asked natively. The reader is the same: the contract and ``check`` still judge the whole answer.
 
 What the server makes of the answer (``read``). The contract refuses what is not ``aa-v1`` (``extra="forbid"``: a probability, a price, a
 URL or a sentence has no field to go in); ``contracts.assessment.check`` turns into NEUTRAL a stance that rests on nothing and refuses as a
@@ -92,9 +95,12 @@ from fbi.ai.packet import canonical
 from fbi.ai.providers.base import JsonRequest
 
 AGENT: Final = "match"
-VERSION: Final = "match-v4"
+VERSION: Final = "match-v5"
 SCHEMA_NAME: Final = "submit_assessment"
 """The name of the tool (or of the structured output) the answer is asked through."""
+NATIVE: Final = True
+"""The answer is asked with structured outputs (IA-028), never the forced tool call. Part of the agent's identity: the registry reads it
+(``fbi.ai.agents.registry``), and changing it is a new version."""
 LINED: Final = frozenset({"AH", "OU"})
 """The families whose selection has a line; for the others the line of a candidate is a zero that says nothing."""
 
@@ -237,7 +243,8 @@ def _request(mode: Mode, slice_: Slice, *, at: datetime, more: Mapping[str, Any]
     shared = canonical(slice_.document) + "\n"
     variable = canonical(ask)
     return JsonRequest(system=SYSTEM[mode], user=shared + variable, schema=copy.deepcopy(schema_of(ASSESSMENT)), schema_name=SCHEMA_NAME,
-                       max_tokens=MAX_TOKENS[mode], timeout_s=TIMEOUT_S[mode], effort=effort_of(mode), split=(shared, variable))
+                       max_tokens=MAX_TOKENS[mode], timeout_s=TIMEOUT_S[mode], effort=effort_of(mode), split=(shared, variable),
+                       native_schema=NATIVE)
 
 
 def context_request(slice_: Slice, *, at: datetime) -> JsonRequest:

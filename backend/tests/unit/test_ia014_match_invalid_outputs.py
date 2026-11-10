@@ -119,7 +119,8 @@ def test_the_checklist_of_ia009_is_still_what_the_builder_makes_without_citable(
     assert "citable" not in plain and "One signal per pair" not in plain and plain != prompts.STATS_ASSESS_CHECKLIST
     v2 = next(e for e in rg.REGISTRY.history("stats") if e.version == "stats-v2")
     assert v2.fingerprint == "aga044ea3270" and v2.parts["evaluation"].prompt_version == "stats-assess-v2", "the ledger keeps what v2 was"
-    assert stats.VERSION == "stats-v3", "IA-018 gave the Statistics Agent the closed checklist of v3 (test_ia018_stats_validity.py)"
+    assert stats.VERSION == "stats-v4" and prompts.STATS_ASSESS_VERSION == "stats-assess-v3", (
+        "IA-018 gave the Statistics Agent the closed checklist of v3 (test_ia018_stats_validity.py); IA-028 asks it natively as stats-v4")
 
 
 def test_the_second_object_keys_are_the_ones_the_requests_write() -> None:
@@ -228,7 +229,9 @@ def test_match_v3_is_a_new_version_born_a_challenger_and_nothing_is_promoted() -
     assert prompts.MATCH_ASSESS_VERSION == "match-assess-v3", "IA-018 changed only the CONTEXT prompt (match-context-v4)"
     entry = next(e for e in rg.REGISTRY.history("match") if e.version == "match-v3")
     assert (entry.version, entry.phase, entry.born_as, entry.baseline, entry.decided_by) == ("match-v3", "IA-014", "CHALLENGER", False, "owner")
-    assert entry.parts["evaluation"] == rg.live_parts(rg.REGISTRY.spec("match"))["evaluation"] and not rg.REGISTRY.problems()
+    live = rg.live_parts(rg.REGISTRY.spec("match"))["evaluation"]
+    assert entry.parts["evaluation"] == replace(live, native=False) and live.native and not rg.REGISTRY.problems(), (
+        "v3's EVALUATION prompt is still the one in force; IA-028 asks it natively")
     v2 = next(e for e in rg.REGISTRY.history("match") if e.version == "match-v2")
     assert v2.version == "match-v2" and {p.schema_sha for p in v2.parts.values()} == {p.schema_sha for p in entry.parts.values()}, "aa-v1 is the same"
     assert {t: p.prompt_version for t, p in entry.parts.items()} == {"context": "match-context-v3", "evaluation": "match-assess-v3"}

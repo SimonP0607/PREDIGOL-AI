@@ -149,12 +149,15 @@ def test_the_model_and_the_effort_are_the_routers() -> None:
     assert stats.effort_of() == router.SPECS["evaluation"].effort == "medium"
     spec = rg.REGISTRY.spec("stats")
     assert [(t.task, t.model, t.effort, t.definition().prompt_version) for t in spec.tasks] == [("evaluation", "claude-haiku-5-5", "medium", "stats-assess-v3")]
-    assert spec.reads == "stats" and spec.contract == "aa-v1" and rg.REGISTRY.in_force("stats").version == "stats-v3" == stats.VERSION
-    born, second, entry = rg.REGISTRY.history("stats")
+    assert spec.reads == "stats" and spec.contract == "aa-v1" and rg.REGISTRY.in_force("stats").version == "stats-v4" == stats.VERSION
+    born, second, third, entry = rg.REGISTRY.history("stats")
     assert born.version == "stats-v1" and born.born_as == "CHALLENGER" and not born.baseline and born.phase == "IA-4"
     assert second.version == "stats-v2" and second.born_as == "CHALLENGER" and not second.baseline and second.phase == "IA-009"
-    assert entry.version == "stats-v3" and entry.born_as == "CHALLENGER" and not entry.baseline and entry.phase == "IA-018"
-    assert [e.parts["evaluation"].prompt_version for e in (born, second, entry)] == ["stats-assess-v1", "stats-assess-v2", "stats-assess-v3"]
+    assert third.version == "stats-v3" and third.born_as == "CHALLENGER" and not third.baseline and third.phase == "IA-018"
+    assert entry.version == "stats-v4" and entry.born_as == "CHALLENGER" and not entry.baseline and entry.phase == "IA-028"
+    assert [e.parts["evaluation"].prompt_version for e in (born, second, third, entry)] == [
+        "stats-assess-v1", "stats-assess-v2", "stats-assess-v3", "stats-assess-v3"], "IA-028: v4 is v3's prompt, asked with structured outputs"
+    assert [e.parts["evaluation"].native for e in (born, second, third, entry)] == [False, False, False, True] and stats.NATIVE is True
 
 
 @pytest.mark.parametrize(("what", "naming", "slice_", "match_text"), [
