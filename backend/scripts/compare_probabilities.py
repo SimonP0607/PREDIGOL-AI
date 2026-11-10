@@ -35,6 +35,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.core.config import settings
+from fbi.core.decision_versions import DECISION_CORE
 
 READ_ONLY: Final = "-c default_transaction_read_only=on -c statement_timeout=120000 -c TimeZone=UTC"
 TOLERANCE_PP: Final = Decimal("0.5")
@@ -60,7 +61,7 @@ SELECT x.fixture_id, x.market_key, x.selection, x.line, x.p, x.known_at, x.calib
  WHERE x.version = %(version)s
 """
 FORECAST_VERSION: Final = "forecast-v1"
-MODELS_SQL = "SELECT id, model_name FROM intel.decisions WHERE id = ANY(%(ids)s)"
+MODELS_SQL = "SELECT id, model_name FROM intel.decisions WHERE decision_version = %(version)s AND id = ANY(%(ids)s)"
 
 Key = tuple[int, str, str, Decimal]
 
@@ -210,7 +211,7 @@ def collect(conn: psycopg.Connection[Any], *, hours: int, top: int, now: datetim
     forecasts = fetch_all(conn, FORECAST_SQL, {"fixtures": fixtures or [0], "version": FORECAST_VERSION, "now": now})
     table = build_table(attached, decisions, forecasts)
     ids = [int(d["id"]) for d in decisions]
-    models = {int(r["id"]): str(r["model_name"]) for r in fetch_all(conn, MODELS_SQL, {"ids": ids or [0]})}
+    models = {int(r["id"]): str(r["model_name"]) for r in fetch_all(conn, MODELS_SQL, {"ids": ids or [0], "version": DECISION_CORE})}
     summaries = {f"{a}~{b}": summarize(gaps(table, a, b)) for a, b in PAIRS}
     return {
         "at": now.isoformat(), "hours": hours, "fixtures": len(fixtures), "selections": len(table),
