@@ -30,7 +30,7 @@ V1_ONLY = re.compile(r"\bsubject_type\s+IS\s+NULL\b(?!\s+OR)", re.IGNORECASE)
 TYPED_ONLY = re.compile(r"\bsubject_type\s+IS\s+NOT\s+NULL\b", re.IGNORECASE)
 
 OWN_READERS = {"src/fbi/ai/evidence.py", "src/fbi/ai/gate_research.py", "src/fbi/api/services/ai_research.py",
-               "src/fbi/evidence/engine.py"}
+               "src/fbi/evidence/engine.py", "src/fbi/ai/label_bank_readers.py"}
 """The modules that read one kind on purpose. ``fbi.ai.evidence`` decides the statuses of v1's items (``LOAD_SQL``: untyped only) and those of
 research v2's claims (``TYPED_SQL``: typed only) apart from each other; ``fbi.ai.gate_research`` is the measure of the week in which both ran side by
 side: it counts what v1 found (untyped) against what research v2 found (typed) and what reviews and decisions cite of the second. It writes only its own
@@ -38,7 +38,9 @@ row of ``ai.feature_gates``; nothing it reads reaches a packet, a card or a pick
 in the Admin Console: it counts the claims research v2 wrote (class of source, type, status) and reads nothing else of ``ai.evidence``; it writes
 nothing and what it shows goes nowhere but to that page. ``fbi.evidence.engine`` is the Evidence Engine of IA-012, in shadow: it reads v1's items and
 research v2's claims, each kind by its own statement, to compute tiers, statuses, confidence and validity; it writes nothing and nothing that decides,
-publishes or serves a user imports it (``tests/unit/test_evidence_engine_isolation.py``)."""
+publishes or serves a user imports it (``tests/unit/test_evidence_engine_isolation.py``). ``fbi.ai.label_bank_readers`` is the labelled bank of
+IA-030: it reads v1's items and research v2's claims, each kind by its own statement, so that a person can label each extractor against the page it
+cites; it writes nothing, and what it reads goes to a sheet, never to a packet, a decision or a pick."""
 
 BY_ID = (
     ("src/fbi/api/services/intelligence.py", "FROM ai.evidence WHERE id = ANY(%(ids)s)", r"\bid\s*=\s*ANY\(",
