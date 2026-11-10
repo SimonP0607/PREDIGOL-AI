@@ -141,15 +141,25 @@ def board_groups() -> dict[str, list[int]]:
 TIERS_SQL = "SELECT id, tier, provider_league_id FROM core.competitions WHERE id = ANY(%(ids)s)"
 
 TRAILED_SQL = """
-SELECT s.fixture_id,
-       COALESCE(max(s.goals_away - s.goals_home), 0) AS home_down_by,
-       COALESCE(max(s.goals_home - s.goals_away), 0) AS away_down_by
-  FROM core.fixture_live_states s
- WHERE s.fixture_id = ANY(%(ids)s) AND s.observed_at >= %(since)s
-   AND s.goals_home IS NOT NULL AND s.goals_away IS NOT NULL
- GROUP BY s.fixture_id
+WITH states AS (
+    SELECT s.fixture_id, s.goals_home, s.goals_away,
+           min(s.goals_home) OVER later AS later_home, min(s.goals_away) OVER later AS later_away
+      FROM core.fixture_live_states s
+     WHERE s.fixture_id = ANY(%(ids)s) AND s.observed_at >= %(since)s
+       AND s.goals_home IS NOT NULL AND s.goals_away IS NOT NULL
+    WINDOW later AS (PARTITION BY s.fixture_id ORDER BY s.observed_at DESC ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)
+)
+SELECT fixture_id,
+       COALESCE(max(goals_away - goals_home), 0) AS home_down_by,
+       COALESCE(max(goals_home - goals_away), 0) AS away_down_by
+  FROM states
+ WHERE goals_home <= COALESCE(later_home, goals_home) AND goals_away <= COALESCE(later_away, goals_away)
+ GROUP BY fixture_id
 """
-"""The most each side was behind in the match so far, from the fixture feed's states."""
+"""The most each side was behind in the match so far, from the fixture feed's states that stood: one whose goals no later state took
+back. The feed gives a goal when it is scored and takes it back when the referee or the VAR annuls it (0-1, then 0-0), and a
+deficit that was taken back was never one - without this, «iba perdiendo por 1 gol y ya empata» was said of a match that never
+had a goal (UX-098). Of the 23 finished matches read on 10-nov-2026, 8 had a state the feed later took back."""
 
 AT_STAKE_SQL = """
 SELECT f.id AS fixture_id, f.kickoff_at,
