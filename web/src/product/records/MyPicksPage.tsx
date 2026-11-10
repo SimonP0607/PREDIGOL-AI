@@ -698,11 +698,17 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
         </header>
         <ol className="mt-3 divide-y divide-border/60 border-t border-border/60">
           {parlay.legs.map((leg) => (
-            <li key={leg.leg_no} className="flex items-center gap-3 px-4 py-2.5 sm:px-5">
+            // The selection keeps 11 rem (UX-094): when the odds, their time and the state do not fit beside it, they
+            // wrap to a line of their own under it. Beside it they left the selection 66 px on a 320 px phone («Gana
+            // Sandefjord» a few letters a line) and 26 px on a desk next to «Terminado · liquidando».
+            <li
+              key={leg.leg_no}
+              className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 sm:px-5"
+            >
               <span className="numeric flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft text-micro font-semibold text-gold-strong">
                 {leg.leg_no}
               </span>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-[min(100%,11rem)] flex-1 basis-0">
                 <div className="break-words text-sm font-semibold leading-snug">
                   {selectionLabel({
                     market_key: leg.market_key,
@@ -717,20 +723,22 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
                   {leg.match.home.name} – {leg.match.away.name}
                 </div>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-0.5">
-                <OddsPill odds={leg.odds} size="sm" />
-                {leg.odds_captured_at ? (
-                  <span
-                    className="numeric whitespace-nowrap text-micro text-subtle-foreground"
-                    data-testid="parlay-leg-odds-at"
-                  >
-                    {t("records.mine.parlays.oddsAt", {
-                      when: formatKickoff(leg.odds_captured_at),
-                    })}
-                  </span>
-                ) : null}
+              <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                <div className="flex shrink-0 flex-col items-end gap-0.5">
+                  <OddsPill odds={leg.odds} size="sm" />
+                  {leg.odds_captured_at ? (
+                    <span
+                      className="numeric whitespace-nowrap text-micro text-subtle-foreground"
+                      data-testid="parlay-leg-odds-at"
+                    >
+                      {t("records.mine.parlays.oddsAt", {
+                        when: formatKickoff(leg.odds_captured_at),
+                      })}
+                    </span>
+                  ) : null}
+                </div>
+                <RecordState status={leg.status} match={leg.match} hidePending />
               </div>
-              <RecordState status={leg.status} match={leg.match} hidePending />
             </li>
           ))}
         </ol>
