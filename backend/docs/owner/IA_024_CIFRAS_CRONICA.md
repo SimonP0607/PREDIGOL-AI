@@ -13,3 +13,13 @@
 **Lo que queda para la crónica v4 (etapa C del flujo único).** Las otras razones son de prompt: frases con más de cuatro referencias, rumores contados fuera de «riesgos», secciones vacías o que el relato no tiene. Se atacan en `user-narrative-v4` con batería de calidad y en sombra al lado de v3, no aquí.
 
 **Vuelta atrás.** Revertir el cambio; no hay migración ni interruptor.
+
+## IA-032 · Lo que IA-024 dejó (10-nov)
+
+**Qué se midió** (solo lectura, 10-nov). Tras desplegar IA-024 (9-nov 20:16 UTC), de 23 crónicas rechazadas **16** seguían rechazadas por «el inglés dice otras cifras que el español», **4 solo por eso**. Los textos rechazados son frases correctas: «the two sides have met twice» (en español «dos veces»), «no table position for either side» («ninguno de los dos»), «could keep the side» («repetir el once», el once titular). Al contar «dos», «once»… como cantidades, IA-024 también hizo que «dos veces» frente a «twice» o «el once» frente a «the side» dejaran de coincidir.
+
+**Qué cambia.** Solo la comparación entre idiomas (`_numbers_key`): «twice» cuenta como dos; antes de comparar se quitan «ninguno/ninguna de los/las dos», «neither/either/none of the two» y el once titular («el/un/su/mismo/ese/este/aquel once», «once inicial/titular/tipo»). «ambos» y «both» **no** cuentan.
+
+**Cómo se eligió, con datos.** Se repitió la comparación sobre las 309 crónicas aprobadas (4.264 pares de frases): con la regla de IA-024, 139 pares no coinciden; con esta, 63 (76 arreglados) y **ninguna crónica aprobada pasaría a rechazarse**. Contar también «ambos»/«both» arreglaba 93 pares pero rechazaba 11 crónicas aprobadas que dicen lo mismo («entre ambos» / «between them»), así que se dejó fuera: la comparación se equivoca hacia rechazar, nunca hacia aceptar una cifra distinta.
+
+**Qué no cambia.** Igual que IA-024: cada idioma se sigue comprobando contra los hechos y las noticias citadas; una cantidad distinta entre idiomas se sigue rechazando.
