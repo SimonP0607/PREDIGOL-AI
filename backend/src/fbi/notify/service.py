@@ -50,7 +50,7 @@ KINDS = ("shadow_pick", "pick_settled", "first_capture", "capture_failed", "work
          "outbox_failing", "membership_due", "ticket_new", "privacy_due", "synthetic_failed", "ai_user_budget",
          # The customers' morning count (plan UX, B11; revision 0106): counts and a link, never names.
          "lifecycle_daily",
-         # A reader's «ya pagué» waiting for the owner (revision 0125; UX-087): a count and a link, never a name.
+         # A reader's «ya pagué» waiting for the owner (revision 0125; UX-090): a count and a link, never a name.
          "payment_request_new")
 
 

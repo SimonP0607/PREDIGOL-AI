@@ -572,7 +572,7 @@ export const v1 = {
   myMembership: () => getJson<MyMembership>("/me/membership"),
   /** The reader holds a coupon by its code (UX-005). */
   redeemCoupon: (code: string) => postJson<CouponRedeemed>("/me/membership/coupon", { code }),
-  /** The reader's «ya pagué» (UX-087): whether a notice can be sent, how to pay, the price and their notices. */
+  /** The reader's «ya pagué» (UX-090): whether a notice can be sent, how to pay, the price and their notices. */
   myPaymentRequests: () => getJson<MyPaymentRequests>("/me/payment-request"),
   sendPaymentRequest: (body: PaymentRequestIn) =>
     postJson<PaymentRequestView>("/me/payment-request", body),
@@ -1190,7 +1190,7 @@ export const v1 = {
     postJson<Envelope<AdminUser>>(`/admin/users/${id}/invitation`, {}),
   // the membership (plan UX, A8): the owner records; every answer is the account's membership as the console reads it
   adminMembership: (id: number) => getJson<AdminMembership>(`/admin/users/${id}/membership`),
-  // the notices of payment «ya pagué» (UX-087): the owner verifies and decides; every answer is the notice as the queue reads it
+  // the notices of payment «ya pagué» (UX-090): the owner verifies and decides; every answer is the notice as the queue reads it
   adminPaymentRequests: (status: "submitted" | "all" = "submitted") =>
     getJson<AdminPaymentRequests>("/admin/payment-requests", { status }),
   approvePaymentRequest: (id: number, body: ApproveIn = {}) =>

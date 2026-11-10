@@ -1,4 +1,4 @@
-/** The manual payment request, «ya pagué» (UX-087; backend fbi/api/contracts/payment_requests.py). */
+/** The manual payment request, «ya pagué» (UX-090; backend fbi/api/contracts/payment_requests.py). */
 import type { Iso } from "./types";
 
 export type RequestStatus = "submitted" | "approved" | "rejected" | "cancelled";

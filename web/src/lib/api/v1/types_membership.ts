@@ -160,7 +160,7 @@ export interface AdminPeriod {
   discount_percent: number | null;
   discount_kind: DiscountKind | null;
   coupon_code: string | null;
-  /** The owner annulled this period (UX-087): it no longer counts. */
+  /** The owner annulled this period (UX-090): it no longer counts. */
   annulled?: boolean;
 }
 

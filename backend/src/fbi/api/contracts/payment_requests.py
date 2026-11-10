@@ -1,4 +1,4 @@
-"""The manual payment request, «ya pagué» (UX-087): the reader's side and the owner's queue."""
+"""The manual payment request, «ya pagué» (UX-090): the reader's side and the owner's queue."""
 
 from __future__ import annotations
 

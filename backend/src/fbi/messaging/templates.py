@@ -91,7 +91,7 @@ DECISION_REASONS: dict[str, dict[Locale, str]] = {
                    "en": "we could not read or validate the details you sent"},
     "other": {"es": "hay un dato que no pudimos validar", "en": "there is a detail we could not validate"},
 }
-"""Why a payment request was refused (UX-087: customer.payment_requests.decision_code), as the reader reads it."""
+"""Why a payment request was refused (UX-090: customer.payment_requests.decision_code), as the reader reads it."""
 
 LEGAL_SLUGS: dict[str, str] = {"terms": "terms", "privacy": "privacy", "responsible_gaming": "responsible-gaming"}
 """The address of each legal text (web/src/product/legal/links.ts)."""
@@ -766,7 +766,7 @@ TEMPLATES: dict[str, Template] = {t.name: t for t in (
                 "See my membership"),
         values=_ends_on, sample=(("ends", "2026-12-25T15:00:00+00:00"),), stale_after=timedelta(days=3),
     ),
-    # A reader's «ya pagué» (UX-087): the acknowledgement at once, the refusal with its reason, and the annulment of an
+    # A reader's «ya pagué» (UX-090): the acknowledgement at once, the refusal with its reason, and the annulment of an
     # approval that was a mistake. Never an amount, a reference or a name of the payer.
     Template(
         "payment_request_received", "account", ("due",), "/profile#membership",

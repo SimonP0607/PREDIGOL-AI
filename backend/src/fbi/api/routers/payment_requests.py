@@ -1,4 +1,4 @@
-"""The manual payment request (UX-087): the reader's «ya pagué» and the owner's queue. Never behind the membership gate:
+"""The manual payment request (UX-090): the reader's «ya pagué» and the owner's queue. Never behind the membership gate:
 a limited reader is exactly who asks for access. Every decision is the owner's; each leaves an event and a line of the
 access trail (``membership.payment_request*``)."""
 

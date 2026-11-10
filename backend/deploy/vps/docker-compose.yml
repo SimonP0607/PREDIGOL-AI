@@ -183,7 +183,7 @@ services:
       - ${PREDIGOL_DATA:-/srv/predigol}/raw:/app/data/raw:ro
       - ${PREDIGOL_DATA:-/srv/predigol}/backups/db:/backups:ro
       - ${PREDIGOL_DATA:-/srv/predigol}/state/storage:/storage:ro
-      # The Nequi QR the owner publishes to be paid (UX-087): one image he puts here; FBI_PAYMENT_QR_FILE names it.
+      # The Nequi QR the owner publishes to be paid (UX-090): one image he puts here; FBI_PAYMENT_QR_FILE names it.
       - ${PREDIGOL_DATA:-/srv/predigol}/payment:/app/data/payment:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=5)"]

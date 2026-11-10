@@ -1,4 +1,4 @@
-"""The manual payment request «ya pagué» against PostgreSQL and the API (UX-087): closed until the owner's details, the
+"""The manual payment request «ya pagué» against PostgreSQL and the API (UX-090): closed until the owner's details, the
 price and the final terms are in place; one open notice per reader; the owner's approval makes the payment and the period
 in one step, once; a refusal tells the reader; an approval that was a mistake is annulled without deleting anything; a
 reference is never kept whole. The state is computed from dates, so what each step does to access is read from the

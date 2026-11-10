@@ -99,7 +99,7 @@ def unsubscribe_mac(payload: str) -> str:
 
 
 def payment_reference_mac(normalized: str) -> str | None:
-    """A payment's reference, never stored whole (UX-087): the HMAC (hex) of its normalised form under its own subkey,
+    """A payment's reference, never stored whole (UX-090): the HMAC (hex) of its normalised form under its own subkey,
     so the same reference sent twice is recognised without anyone keeping it. None without the key."""
     try:
         key = _subkey(b"payment-reference")

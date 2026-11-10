@@ -1,4 +1,4 @@
-"""The manual payment request, «ya pagué» (plan del flujo de usuario, tramo 1; UX-087).
+"""The manual payment request, «ya pagué» (plan del flujo de usuario, tramo 1; UX-090).
 
 PrediGol has no payment gateway. A reader pays outside it - a Nequi QR or a Bre-B key the owner publishes - and tells us:
 the amount, the day, the way and, if they want, the last digits of the reference. The owner looks at his own account and

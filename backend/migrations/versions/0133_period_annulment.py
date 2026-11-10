@@ -1,4 +1,4 @@
-"""A period the owner annuls (UX-087): a new kind of membership event, nothing else.
+"""A period the owner annuls (UX-090): a new kind of membership event, nothing else.
 
 An approval of a payment request that was a mistake (the payment never arrived, the amount was another) cannot be
 undone by editing or deleting - periods and payments are append-only, tax records. It is undone by a fact that is

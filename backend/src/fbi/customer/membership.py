@@ -604,7 +604,7 @@ def record_payment(actor: int, user_id: int, *, amount: str | int | float | Deci
 def record_payment_in(conn: psycopg.Connection[Any], actor: int, user_id: int, *, amount: str | int | float | Decimal,
                       currency_code: str, method: str, reference: str, months: int, idempotency_key: str,
                       apply_discount: bool = False, at: datetime | None = None) -> Recorded:
-    """``record_payment`` in the caller's transaction (UX-087: the approval of a payment request records the payment and
+    """``record_payment`` in the caller's transaction (UX-090: the approval of a payment request records the payment and
     closes the request in one). The caller commits and then calls ``forget(user_id)``."""
     value = _amount(amount)
     code = currency_code.strip().upper()
