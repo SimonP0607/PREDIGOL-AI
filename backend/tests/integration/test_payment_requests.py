@@ -17,6 +17,7 @@ from fbi.customer import legal, membership, payment_requests
 from tests.integration import test_membership as membership_tests
 from tests.integration.test_membership import (
     OWNER,
+    PASSWORD,
     account,
     client,
     error,
@@ -287,15 +288,112 @@ def test_the_queue_flags_a_reference_seen_before_and_an_overdue_notice(opened: s
     del uid
 
 
-def test_the_reader_export_carries_the_notices_and_never_the_reference(opened: str) -> None:
-    c, uid = reader()
-    c.post(URL, json=body())
-    from fbi.customer.db import write_connection
+def test_the_queue_shows_the_mobile_and_warns_of_a_refusal_before_a_new_account_and_a_shared_number(
+        opened: str) -> None:
+    """The plan's «avisos» of the owner's queue beyond the amount, the reference and the deadline (UX-099): the person's
+    mobile, notices of theirs refused before, an account made less than a day before the notice and a mobile number that
+    another account carries too. They are warnings for him to look twice: none of them decides anything."""
+    import psycopg
 
-    with write_connection() as conn:
-        exported = payment_requests.export_rows(conn, uid)
-    assert exported[0]["reference_last4"] == "4567" and "reference_hmac" not in exported[0]
+    c, uid = reader()
+    other = account("segundo@a8.test")
+    with psycopg.connect(opened) as conn:
+        conn.execute("UPDATE auth.users SET first_name = 'Ana', last_name = 'Pérez', phone_e164 = '+573001234567' "
+                     "WHERE id = %s", (uid,))
+        conn.execute("UPDATE auth.users SET phone_e164 = '+573001234567' WHERE id = %s", (other,))
+    owner = signed_in(OWNER)
+    first = c.post(URL, json=body(reference="PRIMERO1234")).json()
+    queue = owner.get(ADMIN).json()["requests"]
+    assert [q["id"] for q in queue] == [first["id"]]
+    only = queue[0]
+    assert (only["phone"], only["previous_rejections"], only["new_account"], only["phone_elsewhere"]) == (
+        "+573001234567", 0, True, 1), "a new account, a number shared with one other, nothing refused yet"
+    assert owner.post(f"{ADMIN}/{first['id']}/reject", json={"code": "not_received", "note": "no aparece"}
+                      ).status_code == 200
+    # the account is older than a day when it tries again, and it was refused once
+    with psycopg.connect(opened) as conn:
+        conn.execute("UPDATE auth.users SET created_at = now() - interval '3 days' WHERE id = %s", (uid,))
+    second = c.post(URL, json=body(reference="SEGUNDO5678")).json()
+    everything = {q["id"]: q for q in owner.get(f"{ADMIN}?status=all").json()["requests"]}
+    again = everything[second["id"]]
+    assert (again["previous_rejections"], again["new_account"], again["phone_elsewhere"]) == (1, False, 1)
+    assert everything[first["id"]]["previous_rejections"] == 0, "only what came before: the first had nothing"
+    # a person without a mobile on file, and a number nobody else carries, raise nothing
+    with psycopg.connect(opened) as conn:
+        conn.execute("UPDATE auth.users SET phone_e164 = NULL WHERE id = %s", (other,))
+    waiting = {q["id"]: q for q in owner.get(ADMIN).json()["requests"]}[second["id"]]
+    assert waiting["phone_elsewhere"] == 0 and waiting["phone"] == "+573001234567"
+    third = signed_in("segundo@a8.test").post(URL, json=body(reference="TERCERO9012")).json()
+    mine = {q["id"]: q for q in owner.get(ADMIN).json()["requests"]}[third["id"]]
+    assert (mine["phone"], mine["phone_elsewhere"], mine["previous_rejections"]) == (None, 0, 0)
+    # warnings are information: the decision still takes the same body
+    assert owner.post(f"{ADMIN}/{second['id']}/approve", json={}).status_code == 200
+
+
+def test_the_reader_export_carries_the_notices_and_never_the_reference(opened: str) -> None:
+    """The copy of their data that the reader asks for (``POST /me/export``, with their password) holds each notice
+    with what they wrote, what the owner decided and whether an approval was annulled; never the whole reference, its
+    HMAC, who decided, the payment's id or another reader's notice (UX-099: it was left out of the export)."""
+    c, uid = reader()
+    first = c.post(URL, json=body(payer_name="Ana Pérez", note="Pagué desde mi Nequi")).json()
+    owner = signed_in(OWNER)
+    assert owner.post(f"{ADMIN}/{first['id']}/reject", json={"code": "not_received", "note": "no aparece en Nequi"}
+                      ).status_code == 200
+    second = c.post(URL, json=body(reference="N7654321", payer_name="Ana P.")).json()
+    assert owner.post(f"{ADMIN}/{second['id']}/approve", json={}).status_code == 200
+    account("otro@a8.test")
+    stranger = signed_in("otro@a8.test")
+    assert stranger.post(URL, json=body(reference="OTRO55555", payer_name="Otra Persona")).status_code == 201
+
+    assert c.post("/api/v1/me/export", json={"password": "not-my-password"}).status_code == 403
+    r = c.post("/api/v1/me/export", json={"password": PASSWORD})
+    assert r.status_code == 200, r.text
+    notices = r.json()["payment_requests"]
+    assert [n["status"] for n in notices] == ["approved", "rejected"], "the newest first, only this reader's"
+    approved, rejected = notices
+    assert rejected["id"] == first["id"] and approved["id"] == second["id"]
+    assert (rejected["payer_name"], rejected["note"]) == ("Ana Pérez", "Pagué desde mi Nequi")
+    assert (rejected["decision_code"], rejected["decision_note"]) == ("not_received", "no aparece en Nequi")
+    assert (rejected["reference_last4"], approved["reference_last4"]) == ("4567", "4321")
+    assert rejected["declared_amount"] == "150000.00" and rejected["expected_amount"] == "150000.00"
+    assert rejected["currency"] == "COP" and rejected["method"] == "nequi" and rejected["declared_paid_on"]
+    assert rejected["terms_version"] == legal.load("terms", "es").version
+    assert rejected["terms_sha256"] == legal.load("terms", "es").sha256
+    assert (approved["decided_at"] is not None and approved["annulled"] is False
+            and rejected["annulled"] is False)
+    for hidden in ("M1234567", "N7654321", "OTRO55555", "Otra Persona", "reference_hmac", "decided_by", "payment_id"):
+        assert hidden not in r.text, hidden
+
+    # the owner annuls the approval: the reader's copy says so, and the notice is still there
+    assert owner.post(f"{ADMIN}/{second['id']}/annul", json={"reason": "el dinero nunca llegó"}).status_code == 200
+    again = c.post("/api/v1/me/export", json={"password": PASSWORD}).json()
+    assert [(n["status"], n["annulled"]) for n in again["payment_requests"]] == [("approved", True),
+                                                                              ("rejected", False)]
+    with_member = {e["kind"] for e in again["membership_events"]}
+    assert {"payment_requested", "payment_request_rejected", "payment_request_approved", "period_annulled"} <= with_member
     assert uid_of(EMAIL, opened) == uid
+
+
+def test_anonymising_a_reader_whose_notices_were_decided_blanks_the_names_and_keeps_the_record(opened: str) -> None:
+    """A deletion request (A7) on an account with a refused and an approved notice: the payer's name and the note go
+    even though a decided notice is never edited; what was declared, the decision and the money's record stay."""
+    c, uid = reader()
+    first = c.post(URL, json=body(payer_name="Ana Pérez", note="Pagué desde mi Nequi")).json()
+    owner = signed_in(OWNER)
+    assert owner.post(f"{ADMIN}/{first['id']}/reject", json={"code": "not_received", "note": "no aparece en Nequi"}
+                      ).status_code == 200
+    second = c.post(URL, json=body(reference="N7654321", payer_name="Ana P.", note="segundo intento")).json()
+    assert owner.post(f"{ADMIN}/{second['id']}/approve", json={}).status_code == 200
+    r = owner.post(f"/api/v1/admin/users/{uid}/anonymise", json={"confirm": EMAIL})
+    assert r.status_code == 200, r.text
+    after = rows(opened, "SELECT status, payer_name, note, declared_amount, decision_code, decision_note, payment_id, "
+                         "reference_last4 FROM customer.payment_requests WHERE user_id = %s ORDER BY id", (uid,))
+    assert [a["status"] for a in after] == ["rejected", "approved"]
+    assert all(a["payer_name"] is None and a["note"] is None for a in after)
+    assert (after[0]["decision_code"], after[0]["decision_note"]) == ("not_received", "no aparece en Nequi")
+    assert after[1]["payment_id"] is not None and {a["declared_amount"] for a in after} == {150000}
+    assert len(rows(opened, "SELECT id FROM customer.payments")) == 1, "the record of the money stays"
+    assert one(opened, "SELECT status FROM auth.users WHERE id = %s", (uid,))["status"] == "deleted"
 
 
 def test_two_simultaneous_approvals_make_one_payment_and_one_period(opened: str) -> None:

@@ -1058,7 +1058,10 @@
     "flag": {
       "amount": "El valor avisado no es el que debía pagar. Compara con lo que llegó a tu cuenta.",
       "duplicate": "Otros avisos traen la misma referencia. Revisa que no sea el mismo pago.",
-      "overdue": "Pasó el día hábil para verificar este pago."
+      "overdue": "Pasó el día hábil para verificar este pago.",
+      "refused_before": "Esta persona ya tuvo avisos rechazados antes. Mira su historial en la ficha.",
+      "new_account": "La cuenta se creó hace menos de un día. Confirma con más cuidado que el dinero llegó.",
+      "shared_phone": "Su celular también está en otra cuenta. Revisa en la ficha que no sea la misma persona con varias cuentas."
     },
     "fact": {
       "declared": "Valor avisado",
