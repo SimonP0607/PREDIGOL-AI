@@ -343,7 +343,11 @@ export function WelcomePage() {
               }}
               onTransparency={() => void finish("transparency")}
               onHow={() => void finish("how")}
-              onTour={auth.user?.guides_on === false ? undefined : () => void finish("tour")}
+              onTour={
+                auth.user?.guides_on === false || auth.user?.membership?.limited
+                  ? undefined
+                  : () => void finish("tour")
+              }
             />
           )}
           {failure ? <ErrorState error={failure} onRetry={() => void finish("next")} /> : null}
