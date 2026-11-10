@@ -17,7 +17,7 @@ from typing import Any
 from scripts import ia_decision_v2 as cli
 
 from fbi.decision import engine, replay
-from fbi.decision.families import CORE, FAMILIES
+from fbi.decision.families import CORE, FAMILIES, Candidate
 from fbi.intel import decision
 
 from .test_decision_v2_engine import AT, KEY, MODEL, as_row, core, pick, v1, world
@@ -195,7 +195,7 @@ def test_a_moment_after_the_kick_off_or_a_row_without_one_is_left_alone() -> Non
 def test_the_candidates_carry_the_status_as_of_the_moment() -> None:
     at = AT
     row = {"kickoff_at": at + timedelta(hours=3), "status_short": "FT", "status_group": "finished", "x": 1}
-    cand = replay.Candidate(CORE, KEY, {MODEL: row})
+    cand = Candidate(CORE, KEY, {MODEL: row})
     [out] = replay.candidates_as_of([cand], at)
     assert out.models[MODEL]["status_short"] == "NS" and out.models[MODEL]["x"] == 1 and out.key == KEY
     assert cand.models[MODEL]["status_short"] == "FT", "the original candidate is untouched"
