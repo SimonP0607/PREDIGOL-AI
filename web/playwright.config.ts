@@ -15,6 +15,8 @@
  *   prefs     language and time-zone changes, serially, on their own account
  *   mobile    the product at 390 px, and the glossary under a finger (its own reader, "phone")
  *   mobile-webkit  the phone checks at 320, 390 and 430 px in WebKit, the engine of every iPhone browser
+ *   safearea  the app installed on a phone: nothing under the status bar or the notch, simulated, at ten widths
+ *             (safearea-webkit: the same in WebKit; E2E_SAFEAREA_PUBLIC=1 the pages before the product only)
  *   membership  the trial, the owner's renewal and the limit of an ended membership (plan UX, A8)
  *   account   getting in without the owner (plan UX, A7): invitation, activation, recovery, unlocking. With the QA
  *             API's self-service off it checks that nothing is offered; on (QA_SELF_SERVICE=1 QA_MESSENGER=1), the
@@ -233,6 +235,21 @@ export default defineConfig({
         storageState: statePath("phone"),
       },
       dependencies: ["setup"],
+    },
+    {
+      // The app installed on a phone (mobile UX plan, UX-090): the status bar, the notch and the rounded corners,
+      // simulated, at the plan's ten widths; Android's engine here, an iPhone's in safearea-webkit.
+      // E2E_SAFEAREA_PUBLIC=1: only the pages before the product, no account (safe against production).
+      name: "safearea",
+      testMatch: /safearea\.spec\.ts/,
+      use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
+      dependencies: process.env["E2E_SAFEAREA_PUBLIC"] ? [] : ["setup"],
+    },
+    {
+      name: "safearea-webkit",
+      testMatch: /safearea\.spec\.ts/,
+      use: { ...devices["iPhone 13"], viewport: { width: 390, height: 844 } },
+      dependencies: process.env["E2E_SAFEAREA_PUBLIC"] ? [] : ["setup"],
     },
     ...(process.env["E2E_PROD_SMOKE"]
       ? [
