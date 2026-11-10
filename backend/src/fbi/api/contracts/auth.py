@@ -305,9 +305,11 @@ class VerifyInfo(Contract):
 
 
 class VerifyIn(TokenIn):
-    """The confirmation link's token and the password the person chose when registering."""
+    """The confirmation link's token and the password the person chose when registering - or, with
+    ``replace_password``, a NEW one that replaces it (the person no longer remembers the first)."""
 
     password: str = Field(min_length=1, max_length=256)
+    replace_password: bool = False
 
 
 class EmailIn(BaseModel):

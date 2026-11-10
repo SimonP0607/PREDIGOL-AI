@@ -225,7 +225,7 @@ Se miró de dónde sale la diferencia entre el Match Center e Intelligence con l
 
 La salida que se sigue (opción B aprobada por el dueño) es una **vista común de probabilidades**, una función pura en un módulo neutral que lean el Match Center y `decision-v2` (en sombra): el mismo modelo, el mismo momento de referencia (el último punto de control antes del inicio) y, solo si hay un precio fresco, la misma calibración; sin precio fresco, los dos dicen «sin calibrar». `decision-v1` no se toca y sus puertas estadísticas siguen igual. No se declara superado el criterio hasta que `compare_probabilities` lo mida.
 
-#### La vista común de probabilidades en sombra (BE-033)
+#### La vista común de probabilidades en sombra (BE-034)
 
 Qué existe ahora, sin cambiar lo que ve ningún usuario ni lo que decide ningún motor:
 
