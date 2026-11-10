@@ -5,16 +5,16 @@ undone by editing or deleting - periods and payments are append-only, tax record
 added: the event ``period_annulled`` (with the period, the reason and the actor). A period with that event stops
 counting for the membership's state; the period, its payment and the event stay forever.
 
-Revision ID: 0133
-Revises: 0132
+Revision ID: 0134
+Revises: 0133
 
 Downgrade: only while no period was annulled; otherwise the code goes back and the schema stays.
 """
 
 from alembic import op
 
-revision = "0133"
-down_revision = "0132"
+revision = "0134"
+down_revision = "0133"
 branch_labels = None
 depends_on = None
 
