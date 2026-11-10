@@ -48,6 +48,7 @@ import { ContextBlock, TodayBlock } from "./TodayBlocks";
 import { AtStakeBlock, RelevantNowBlock } from "./HomeStakes";
 import { ResultsBlock } from "./ResultsBlock";
 import { layersOf } from "./layers";
+import { wantsYesterday } from "./yesterday";
 import { mineByRank } from "./related";
 import { EditFavorites } from "./EditFavorites";
 import { ChoosePrompt, ForYouPart, Layer } from "./ParaTi";
@@ -199,7 +200,7 @@ export function HomePage() {
   const yesterday = useQuery({
     ...live.daily(preview, shiftDay(todayKey("America/Bogota"), -1)),
     ...ON_RETURN,
-    enabled: board.data?.data?.previous_day_open === true,
+    enabled: wantsYesterday(board.data?.data),
   });
   const now = Date.now();
   // Yesterday's picks do not vanish at midnight while one of them is still to finish or settle.
