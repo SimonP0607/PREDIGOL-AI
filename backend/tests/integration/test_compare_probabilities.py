@@ -38,6 +38,9 @@ def test_the_comparison_reads_the_four_numbers_and_says_whether_the_criterion_ho
     assert f["verdict"]["comparable"] is True and f["verdict"]["holds"] is False
     assert f["widest"][0]["selection"] == "Home" and f["widest"][0]["gap_pp"] == 12.0
     assert f["checkpoints"]["by_checkpoint"] == {"T-3h": 5}
+    a = f["attribution"]  # the two forecasts above are the model's own number (no champion): that is what the report says explains them
+    assert a["compared"] == 2 and a["forecast_basis"] == {"no_champion": 2}
+    assert sum(v["selections"] for v in a["causes"].values()) == 2
 
 
 def test_when_the_match_center_agrees_everywhere_the_criterion_holds(decided: World) -> None:
