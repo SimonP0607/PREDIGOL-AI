@@ -53,7 +53,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.forecasting.market_reader import read_consensus, read_sources
-from fbi.forecasting.market_view import (  # noqa: F401  (the view's names stay reachable from here: the writer and its readers use them)
+from fbi.forecasting.market_view import (
     BASIS_CHAMPION,
     BASIS_NEEDS_PRICE,
     BASIS_NO_CHAMPION,
@@ -73,6 +73,25 @@ from fbi.forecasting.market_view import (  # noqa: F401  (the view's names stay 
 )
 from fbi.intel.calibration import calibration_state
 from fbi.predictions.forecast import HORIZON, upcoming
+
+__all__ = [  # the view's names stay reachable from here: the writer and its readers use them
+    "BASIS_CHAMPION",
+    "BASIS_NEEDS_PRICE",
+    "BASIS_NOT_APPLICABLE",
+    "BASIS_NO_CHAMPION",
+    "CALIBRATED",
+    "FAMILIES",
+    "MARKETS",
+    "MAX_MARKET_AGE",
+    "UNCALIBRATED",
+    "VERSION",
+    "MarketForecast",
+    "Outcome",
+    "Row",
+    "Source",
+    "forecast_market",
+    "most_likely",
+]
 
 MATERIAL_CHANGE: Final = Decimal("0.005")
 """A market is written again when any outcome moved by at least this (0.5 points) - or when its provenance changed."""

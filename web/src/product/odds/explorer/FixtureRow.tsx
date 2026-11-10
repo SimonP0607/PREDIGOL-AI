@@ -2,8 +2,9 @@
  * One match of the board (plan Cuotas, section 5): time, competition and teams; for each selection the best price in large
  * type with its bookmaker and how many bookmakers quote it - and, small and grey, only where there is one, the market's fair
  * price and the difference with it -; how old the row's prices are; «Comparar casas», «Movimiento» and «Abrir partido».
- * A stale row is dimmed and says it does not go in the parlay; a long market (scores, scorers) shows eight selections, «Ver
- * todas» and a search of its own.
+ * A stale row is dimmed and says it does not go in the parlay; a long market (scores, scorers) shows its most likely
+ * selections first - eight on a desk, four on a phone -, and «Ver todas» opens the rest with a search of its own.
+ * From 1024 px the actions sit in one line under the teams, so a match is as tall as its prices (UX-087).
  */
 import { useId, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -17,7 +18,7 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { fold } from "@/product/matches/model";
 import { ParlayToggle, PricePill } from "../ParlayPrice";
 import { useParlayLeg } from "../useParlayLeg";
-import { LONG_MARKET, type RowEnv } from "./env";
+import { LONG_MARKET, PHONE_PREVIEW, type RowEnv } from "./env";
 import { catalogTarget } from "@/product/match/marketLink";
 import { blockText, explorerLeg, priceBlock } from "./legs";
 import type { OddsBoardRow, OddsSelectionPrice } from "./model";
@@ -33,11 +34,13 @@ export function PriceCell({
   sel,
   env,
   sides,
+  className,
 }: {
   row: OddsBoardRow;
   sel: OddsSelectionPrice;
   env: RowEnv;
   sides: Sides;
+  className?: string | undefined;
 }) {
   const label = selectionLabel(env.info, sel, row.line, sides);
   const full = selectionLabel(env.info, sel, row.line, sides, "full");
@@ -68,7 +71,7 @@ export function PriceCell({
       data-selection={sel.selection}
       data-in-slip={parlay?.inSlip || undefined}
       data-block={tappable ? undefined : (block ?? "none")}
-      className="flex min-w-0 flex-col gap-1"
+      className={cn("flex min-w-0 flex-col gap-1", className)}
     >
       <span aria-hidden className="flex min-w-0 items-center justify-between gap-1">
         <span className="truncate text-xs font-semibold text-foreground" title={full}>
@@ -160,10 +163,56 @@ export function FixtureRow({
         fold(selectionLabel(env.info, s, row.line, sides, "full")).includes(query),
       )
     : row.selections;
-  const shown = long && !all && !query ? found.slice(0, LONG_MARKET) : found;
+  // Collapsed, a long market shows its most likely selections (the lowest prices) first; «Ver todas» shows every one, in
+  // the market's own order.
+  const preview = long && !all && !query;
+  const shown = preview ? byPrice(found).slice(0, LONG_MARKET) : found;
   const single = row.selections.every((s) => s.n_books <= 1);
   const compareId = `${id}-compare`;
   const movementId = `${id}-movement`;
+
+  const actions = (
+    <div className="flex flex-wrap items-center gap-2 lg:col-start-1 lg:row-start-2 lg:self-start">
+      {single ? (
+        <span className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-xs text-subtle-foreground">
+          {t("explorer.compare.single")}
+        </span>
+      ) : (
+        <PanelToggle
+          open={compare}
+          onToggle={() => setCompare((v) => !v)}
+          controls={compareId}
+          label={t("explorer.compare.toggleLabel", { match })}
+          icon={<Columns3 aria-hidden className="h-3.5 w-3.5" />}
+          testId="explorer-compare-toggle"
+        >
+          <Short short={t("explorer.compare.short")} full={t("explorer.compare.toggle")} />
+        </PanelToggle>
+      )}
+      <PanelToggle
+        open={movement}
+        onToggle={() => setMovement((v) => !v)}
+        controls={movementId}
+        label={t("explorer.movement.toggleLabel", { match })}
+        icon={<ChartLine aria-hidden className="h-3.5 w-3.5" />}
+        testId="explorer-movement-toggle"
+      >
+        {t("explorer.movement.toggle")}
+      </PanelToggle>
+      <Link
+        to="/matches/$fixtureId"
+        params={{ fixtureId: String(row.fixture_id) }}
+        hash="markets"
+        search={openTarget ? { m: openTarget.key } : {}}
+        aria-label={t("explorer.openMatchLabel", { match })}
+        data-testid="explorer-open-match"
+        className="tap-y relative inline-flex h-9 items-center justify-center gap-1 rounded-lg px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <Short short={t("explorer.openMatchShort")} full={t("explorer.openMatch")} />
+        <ChevronRight aria-hidden className="h-3.5 w-3.5" />
+      </Link>
+    </div>
+  );
 
   return (
     <li
@@ -172,10 +221,11 @@ export function FixtureRow({
       data-fixture={row.fixture_id}
       data-stale={fresh.stale || undefined}
     >
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5">
-        <div className="min-w-0 lg:flex-1">
-          {/* The age goes to its own line when the competition needs the room. */}
-          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-caption">
+      {/* A phone reads down: the match, its prices, its actions. From 1024 px the prices take the right and the actions
+          the free room under the teams. */}
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-5 lg:gap-y-2">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+          <div className="flex items-center justify-between gap-2 text-caption">
             <div className="flex min-w-0 items-center gap-2">
               <span className="numeric shrink-0 text-sm font-semibold">
                 {env.withDay ? formatKickoff(row.kickoff_at) : formatTime(row.kickoff_at)}
@@ -190,14 +240,15 @@ export function FixtureRow({
                 />
               ) : null}
             </div>
+            {/* How old the prices are: quiet text while they are fresh, a warning chip once they are old. */}
             <span
               data-testid="explorer-freshness"
               title={fresh.title}
               // Not through cn(): tailwind-merge takes `text-micro` for a colour and would drop it beside one.
-              className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-micro font-medium ${
+              className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-micro font-medium ${
                 fresh.stale
-                  ? "border-warning/40 text-warning"
-                  : "border-border text-muted-foreground"
+                  ? "rounded-full border border-warning/40 px-2 py-0.5 text-warning"
+                  : "text-muted-foreground"
               }`}
             >
               <Clock aria-hidden className="h-3 w-3" />
@@ -221,13 +272,13 @@ export function FixtureRow({
 
         <div
           className={cn(
-            "min-w-0 lg:flex-none",
+            "min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1",
             // a long market keeps its width while its search finds nothing
             long && "lg:w-[35.5rem]",
             fresh.stale && "opacity-60",
           )}
         >
-          {long ? (
+          {long && (all || find) ? (
             <label className="relative mb-2 block">
               <span className="sr-only">{t("explorer.long.search", { match })}</span>
               <Search
@@ -248,17 +299,28 @@ export function FixtureRow({
           ) : null}
           {shown.length ? (
             <div className={cn("grid gap-2", gridClass(long ? 4 : shown.length))}>
-              {shown.map((s) => (
-                <PriceCell key={priceKey(row, s)} row={row} sel={s} env={env} sides={sides} />
+              {shown.map((s, i) => (
+                <PriceCell
+                  key={priceKey(row, s)}
+                  row={row}
+                  sel={s}
+                  env={env}
+                  sides={sides}
+                  // a phone shows the first four of a long market until «Ver todas»
+                  className={preview && i >= PHONE_PREVIEW ? "max-sm:hidden" : undefined}
+                />
               ))}
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">{t("explorer.long.none")}</p>
           )}
-          {long && !query && found.length > LONG_MARKET ? (
+          {long && !query && found.length > PHONE_PREVIEW ? (
             <button
               type="button"
-              onClick={() => setAll((v) => !v)}
+              onClick={() => {
+                setAll((v) => !v);
+                setFind("");
+              }}
               aria-expanded={all}
               data-testid="explorer-see-all"
               className="tap-y relative mt-2 inline-flex min-h-9 items-center gap-1 rounded-md px-2 text-xs font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -271,46 +333,7 @@ export function FixtureRow({
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 lg:w-40 lg:shrink-0 lg:flex-col lg:items-stretch">
-          {single ? (
-            <span className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-xs text-subtle-foreground">
-              {t("explorer.compare.single")}
-            </span>
-          ) : (
-            <PanelToggle
-              open={compare}
-              onToggle={() => setCompare((v) => !v)}
-              controls={compareId}
-              label={t("explorer.compare.toggleLabel", { match })}
-              icon={<Columns3 aria-hidden className="h-3.5 w-3.5" />}
-              testId="explorer-compare-toggle"
-            >
-              {t("explorer.compare.toggle")}
-            </PanelToggle>
-          )}
-          <PanelToggle
-            open={movement}
-            onToggle={() => setMovement((v) => !v)}
-            controls={movementId}
-            label={t("explorer.movement.toggleLabel", { match })}
-            icon={<ChartLine aria-hidden className="h-3.5 w-3.5" />}
-            testId="explorer-movement-toggle"
-          >
-            {t("explorer.movement.toggle")}
-          </PanelToggle>
-          <Link
-            to="/matches/$fixtureId"
-            params={{ fixtureId: String(row.fixture_id) }}
-            hash="markets"
-            search={openTarget ? { m: openTarget.key } : {}}
-            aria-label={t("explorer.openMatchLabel", { match })}
-            data-testid="explorer-open-match"
-            className="tap-y relative inline-flex h-9 items-center justify-center gap-1 rounded-lg px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {t("explorer.openMatch")}
-            <ChevronRight aria-hidden className="h-3.5 w-3.5" />
-          </Link>
-        </div>
+        {actions}
       </div>
 
       <Collapsible open={compare}>
@@ -329,6 +352,22 @@ export function FixtureRow({
       </Collapsible>
     </li>
   );
+}
+
+/** A label short on a phone and whole from 640 px (the control's aria-label always says it whole). */
+function Short({ short, full }: { short: string; full: string }) {
+  return (
+    <>
+      <span className="sm:hidden">{short}</span>
+      <span className="hidden sm:inline">{full}</span>
+    </>
+  );
+}
+
+/** The selections by best price, lowest first (the most likely); a price that does not read goes last. */
+function byPrice(selections: readonly OddsSelectionPrice[]): OddsSelectionPrice[] {
+  const price = (s: OddsSelectionPrice) => toNumber(s.best_odds) ?? Number.POSITIVE_INFINITY;
+  return [...selections].sort((a, b) => price(a) - price(b));
 }
 
 function PanelToggle({

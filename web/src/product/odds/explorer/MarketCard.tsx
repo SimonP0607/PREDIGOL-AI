@@ -281,21 +281,29 @@ export function MarketCard({
         {info.has_line ? (
           <LineChips key={view.line} view={view} rows={rows} onLine={onLine} />
         ) : null}
-        <div className="space-y-1 text-caption text-subtle-foreground">
-          {single ? (
-            <p>{t("explorer.note.single")}</p>
-          ) : info.fair ? (
-            <p>
-              {t("explorer.note.figures")} <GlossaryLink term="fairOdds" />
-            </p>
-          ) : (
-            <p>{t("explorer.note.noFair")}</p>
-          )}
-          {!takes ? (
-            <p data-testid="explorer-lookup-only">{t("explorer.note.lookupOnly")}</p>
-          ) : tappable ? (
-            <p>{t("explorer.note.tap")}</p>
-          ) : null}
+        {/* One legend for the figures (and what a tap does): the page says it once, here, beside the prices it explains. */}
+        <div className="space-y-1 text-caption text-subtle-foreground" data-guide="odds-fair">
+          <p>
+            {single
+              ? t("explorer.note.single")
+              : info.fair
+                ? t("explorer.note.figures")
+                : t("explorer.note.noFair")}
+            {!takes ? (
+              <>
+                {" "}
+                <span data-testid="explorer-lookup-only">{t("explorer.note.lookupOnly")}</span>
+              </>
+            ) : tappable ? (
+              <> {t("explorer.note.tap")}</>
+            ) : null}
+            {!single && info.fair ? (
+              <>
+                {" "}
+                <GlossaryLink term="fairOdds" />
+              </>
+            ) : null}
+          </p>
           {sort === "edge" ? (
             <p data-testid="explorer-edge-caveat">{t("explorer.note.edge")}</p>
           ) : null}

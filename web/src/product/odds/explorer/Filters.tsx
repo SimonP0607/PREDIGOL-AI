@@ -97,7 +97,8 @@ export function ExplorerSearch({
   }
 
   return (
-    <div className="min-w-0 flex-1 space-y-1.5">
+    // From 1024 px the search keeps its width and «Filtros» stays beside it.
+    <div className="min-w-0 flex-1 space-y-1.5 lg:max-w-96">
       <form role="search" onSubmit={submit} className="flex min-w-0">
         <SearchBox
           value={draft}
@@ -181,13 +182,14 @@ function OddsField({
   );
 }
 
-function FilterFields({
+export function FilterFields({
   value,
   sort,
   options,
   onChange,
   onSort,
   sheet = false,
+  basic = false,
 }: {
   value: ExplorerFilters;
   sort: BoardSort;
@@ -195,13 +197,16 @@ function FilterFields({
   onChange: (patch: Partial<ExplorerFilters>) => void;
   onSort: (sort: BoardSort) => void;
   sheet?: boolean;
+  /** The page's own row: only «Empiezan en» and the order; everything else is in «Filtros». */
+  basic?: boolean;
 }) {
   const competitions = options.competitions.filter(
     (c) => value.country === null || c.country === value.country,
   );
-  const field = (label: string, control: ReactNode) =>
+  // In the sheet each field has its name above; from 640 px two columns, the strips across both.
+  const field = (label: string, control: ReactNode, wide = false) =>
     sheet ? (
-      <div className="grid min-w-0 gap-1.5">
+      <div className={cn("grid min-w-0 content-start gap-1.5", wide && "sm:col-span-2")}>
         <span aria-hidden className="text-sm font-medium text-muted-foreground">
           {label}
         </span>
@@ -226,101 +231,106 @@ function FilterFields({
             </Chip>
           ))}
         </Strip>,
+        true,
       )}
-      {field(
-        t("explorer.filters.country"),
-        <FacetPicker<string>
-          label={t("explorer.filters.country")}
-          anyLabel={t("explorer.filters.allCountries")}
-          emptyText={sheet ? t("explorer.filters.allCountries") : undefined}
-          value={value.country}
-          options={options.countries}
-          onChange={(country) => onChange({ country, competition: null })}
-          icon={<Globe2 />}
-          testId="explorer-country"
-        />,
+      {basic ? null : (
+        <>
+          {field(
+            t("explorer.filters.country"),
+            <FacetPicker<string>
+              label={t("explorer.filters.country")}
+              anyLabel={t("explorer.filters.allCountries")}
+              emptyText={sheet ? t("explorer.filters.allCountries") : undefined}
+              value={value.country}
+              options={options.countries}
+              onChange={(country) => onChange({ country, competition: null })}
+              icon={<Globe2 />}
+              testId="explorer-country"
+            />,
+          )}
+          {field(
+            t("explorer.filters.competition"),
+            <FacetPicker<string>
+              label={t("explorer.filters.competition")}
+              anyLabel={t("explorer.filters.allCompetitions")}
+              emptyText={sheet ? t("explorer.filters.allCompetitions") : undefined}
+              value={value.competition === null ? null : String(value.competition)}
+              options={competitions}
+              onChange={(c) => onChange({ competition: c === null ? null : Number(c) })}
+              icon={<Trophy />}
+              testId="explorer-competition"
+            />,
+          )}
+          {field(
+            t("explorer.filters.bookmaker"),
+            <FacetPicker<string>
+              label={t("explorer.filters.bookmaker")}
+              anyLabel={t("explorer.filters.allBookmakers")}
+              emptyText={sheet ? t("explorer.filters.allBookmakers") : undefined}
+              value={value.bookmaker === null ? null : String(value.bookmaker)}
+              options={options.bookmakers}
+              onChange={(b) => onChange({ bookmaker: b === null ? null : Number(b) })}
+              icon={<BookOpen />}
+              testId="explorer-bookmaker"
+            />,
+          )}
+          {field(
+            t("explorer.filters.minBooks"),
+            <FacetPicker<string>
+              label={t("explorer.filters.minBooks")}
+              anyLabel={t("explorer.filters.anyBooks")}
+              emptyText={sheet ? t("explorer.filters.anyBooks") : undefined}
+              value={value.minBooks === null ? null : String(value.minBooks)}
+              options={MIN_BOOKS.map((n) => ({
+                key: String(n),
+                label: t("explorer.filters.booksAtLeast", { count: n }),
+              }))}
+              onChange={(n) => onChange({ minBooks: n === null ? null : Number(n) })}
+              icon={<Layers3 />}
+              testId="explorer-min-books"
+            />,
+          )}
+          {field(
+            t("explorer.filters.range"),
+            <div
+              role="group"
+              aria-label={t("explorer.filters.range")}
+              className="flex items-center gap-2"
+            >
+              <OddsField
+                label={t("explorer.filters.from")}
+                value={value.oddsMin}
+                onCommit={(oddsMin) => onChange({ oddsMin })}
+                testId="explorer-odds-min"
+              />
+              <OddsField
+                label={t("explorer.filters.to")}
+                value={value.oddsMax}
+                onCommit={(oddsMax) => onChange({ oddsMax })}
+                testId="explorer-odds-max"
+              />
+            </div>,
+          )}
+          <div className={cn("flex flex-wrap items-center gap-2", sheet && "sm:col-span-2")}>
+            <ToggleChip
+              on={value.fairOnly}
+              onChange={(fairOnly) => onChange({ fairOnly })}
+              testId="explorer-fair-only"
+            >
+              {t("explorer.filters.fairOnly")}
+            </ToggleChip>
+            {options.follow ? (
+              <ToggleChip
+                on={value.mine}
+                onChange={(mine) => onChange({ mine })}
+                testId="explorer-mine"
+              >
+                {t("explorer.filters.mine")}
+              </ToggleChip>
+            ) : null}
+          </div>
+        </>
       )}
-      {field(
-        t("explorer.filters.competition"),
-        <FacetPicker<string>
-          label={t("explorer.filters.competition")}
-          anyLabel={t("explorer.filters.allCompetitions")}
-          emptyText={sheet ? t("explorer.filters.allCompetitions") : undefined}
-          value={value.competition === null ? null : String(value.competition)}
-          options={competitions}
-          onChange={(c) => onChange({ competition: c === null ? null : Number(c) })}
-          icon={<Trophy />}
-          testId="explorer-competition"
-        />,
-      )}
-      {field(
-        t("explorer.filters.bookmaker"),
-        <FacetPicker<string>
-          label={t("explorer.filters.bookmaker")}
-          anyLabel={t("explorer.filters.allBookmakers")}
-          emptyText={sheet ? t("explorer.filters.allBookmakers") : undefined}
-          value={value.bookmaker === null ? null : String(value.bookmaker)}
-          options={options.bookmakers}
-          onChange={(b) => onChange({ bookmaker: b === null ? null : Number(b) })}
-          icon={<BookOpen />}
-          testId="explorer-bookmaker"
-        />,
-      )}
-      {field(
-        t("explorer.filters.minBooks"),
-        <FacetPicker<string>
-          label={t("explorer.filters.minBooks")}
-          anyLabel={t("explorer.filters.anyBooks")}
-          emptyText={sheet ? t("explorer.filters.anyBooks") : undefined}
-          value={value.minBooks === null ? null : String(value.minBooks)}
-          options={MIN_BOOKS.map((n) => ({
-            key: String(n),
-            label: t("explorer.filters.booksAtLeast", { count: n }),
-          }))}
-          onChange={(n) => onChange({ minBooks: n === null ? null : Number(n) })}
-          icon={<Layers3 />}
-          testId="explorer-min-books"
-        />,
-      )}
-      {field(
-        t("explorer.filters.range"),
-        <div
-          role="group"
-          aria-label={t("explorer.filters.range")}
-          className="flex items-center gap-2"
-        >
-          <OddsField
-            label={t("explorer.filters.from")}
-            value={value.oddsMin}
-            onCommit={(oddsMin) => onChange({ oddsMin })}
-            testId="explorer-odds-min"
-          />
-          <OddsField
-            label={t("explorer.filters.to")}
-            value={value.oddsMax}
-            onCommit={(oddsMax) => onChange({ oddsMax })}
-            testId="explorer-odds-max"
-          />
-        </div>,
-      )}
-      <div className="flex flex-wrap items-center gap-2">
-        <ToggleChip
-          on={value.fairOnly}
-          onChange={(fairOnly) => onChange({ fairOnly })}
-          testId="explorer-fair-only"
-        >
-          {t("explorer.filters.fairOnly")}
-        </ToggleChip>
-        {options.follow ? (
-          <ToggleChip
-            on={value.mine}
-            onChange={(mine) => onChange({ mine })}
-            testId="explorer-mine"
-          >
-            {t("explorer.filters.mine")}
-          </ToggleChip>
-        ) : null}
-      </div>
       {field(
         t("explorer.sort.label"),
         <Strip label={t("explorer.sort.label")} testId="explorer-sort">
@@ -335,12 +345,16 @@ function FilterFields({
             </Chip>
           ))}
         </Strip>,
+        true,
       )}
     </>
   );
 }
 
-/** From 640 px: the filters in the page's own row; each change applies at once. */
+/**
+ * From 640 px: «Empiezan en» and the order in the page's own row (each change applies at once); the other filters wait in
+ * «Filtros», so the board starts close to the top (UX-087).
+ */
 export function FiltersRow({
   value,
   sort,
@@ -367,6 +381,7 @@ export function FiltersRow({
         options={options}
         onChange={onChange}
         onSort={onSort}
+        basic
       />
       {activeFilters(value) > 0 ? (
         <button
@@ -383,8 +398,9 @@ export function FiltersRow({
 }
 
 /**
- * A phone: «Filtros» opens a sheet from the bottom with every filter and the order; nothing changes behind it until
- * «Aplicar» (the board would reload under the reader's thumb at each tap otherwise).
+ * «Filtros» opens a sheet from the bottom with every filter and the order (at every width since UX-087: on a desk too, the
+ * country, competition, bookmaker, number of bookmakers, price range and toggles stay out of the way until asked for); nothing
+ * changes behind it until «Aplicar» (the board would reload under the reader's thumb at each tap otherwise).
  */
 export function FiltersSheet({
   value,
@@ -416,7 +432,7 @@ export function FiltersSheet({
           type="button"
           data-testid="explorer-filters-open"
           className={cn(
-            "tap-y relative inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden",
+            "tap-y relative inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             active > 0
               ? "border-primary/45 bg-primary/12 text-primary"
               : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",
@@ -451,7 +467,7 @@ export function FiltersSheet({
               : t("explorer.filters.description")}
           </SheetDescription>
         </SheetHeader>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3">
+        <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-4 py-3 sm:grid-cols-2">
           <FilterFields
             value={draft}
             sort={draftSort}

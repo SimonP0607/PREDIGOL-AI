@@ -24,7 +24,9 @@ import { FAKE_NOW, fakeExplorerData, fakeRows, MARKETS, type FakeOptions } from 
 import { FixtureRow, PriceCell } from "./FixtureRow";
 import type { OddsBoardRow } from "./model";
 import { OddsExplorer } from "./OddsExplorer";
-import { DEFAULT_EXPLORER_STATE, type ExplorerState } from "./state";
+import { DEFAULT_EXPLORER_STATE, NO_FILTERS, type ExplorerState } from "./state";
+import { FilterFields } from "./Filters";
+import { filterOptions } from "./filterOptions";
 import { BOOKMAKERS, COMPETITIONS } from "./fake";
 
 setLocale("es");
@@ -237,7 +239,8 @@ describe("an Asian handicap and the parlay", () => {
     const { markup } = await explorer({ tab: "main", market: "result.1x2" });
     const stale = rowOf(markup, 7821);
     expect(stale.startsWith(' data-fixture="7821" data-stale="true"')).toBe(true);
-    expect(stale).toContain('class="min-w-0 lg:flex-none opacity-60"');
+    // the prices' block is dimmed (the match and its actions are not)
+    expect(stale).toMatch(/<div class="min-w-0 lg:col-start-2[^"]* opacity-60">/);
     expect(stale).toContain('data-testid="explorer-stale-note"');
     expect(stale).toContain("Antiguo · no entra al parlay");
     expect(stale).toContain("Antiguo · hace 7 h");
@@ -278,12 +281,21 @@ describe("an Asian handicap and the parlay", () => {
 });
 
 describe("long markets", () => {
-  test("eight selections, «Ver todas» and a search of its own", async () => {
+  test("eight selections, the most likely first, four of them on a phone; «Ver todas» opens the rest and its search", async () => {
     const { markup } = await explorer({ tab: "goals", market: "goals.correct_score" });
     const row = rowOf(markup, 7819);
     expect(count(row, 'data-testid="explorer-price"')).toBe(8);
+    // the lowest prices first
+    const prices = [...row.matchAll(/mejor cuota (\d+),(\d+)/g)].map((m) =>
+      Number(`${m[1]}.${m[2]}`),
+    );
+    expect(prices).toHaveLength(8);
+    expect(prices).toEqual([...prices].sort((a, b) => a - b));
+    // a phone hides the last four until «Ver todas»
+    expect(count(row, 'class="flex min-w-0 flex-col gap-1 max-sm:hidden"')).toBe(4);
     expect(row).toContain("Ver todas (12)");
-    expect(row).toContain('data-testid="explorer-long-search"');
+    // the search of its own comes with «Ver todas», not before
+    expect(row).not.toContain('data-testid="explorer-long-search"');
     expect(markup).toContain("Este mercado no tiene cuota justa");
   });
 
@@ -454,7 +466,7 @@ describe("loading, failing, empty", () => {
 });
 
 describe("controls", () => {
-  test("«Pausar actualizaciones» beside «Actualizado hh:mm»; the filters in a row and in a phone's sheet", async () => {
+  test("«Pausar actualizaciones» beside «Actualizado hh:mm»; «Empiezan en» and the order in a row, the rest in «Filtros»", async () => {
     const { markup } = await explorer();
     expect(markup).toContain('data-testid="explorer-pause"');
     expect(markup).toContain("Pausar actualizaciones");
@@ -466,22 +478,51 @@ describe("controls", () => {
       "24 h",
       "48 h",
       "72 h",
+      "Por hora",
+      "Mayor diferencia con la justa",
+    ]) {
+      expect(markup).toContain(word);
+    }
+    // the other filters wait in the sheet, at every width (UX-087)
+    for (const id of [
+      "explorer-country",
+      "explorer-competition",
+      "explorer-bookmaker",
+      "explorer-fair-only",
+    ]) {
+      expect(markup).not.toContain(`data-testid="${id}"`);
+    }
+    expect(markup).not.toMatch(/data-testid="explorer-filters-open"[^>]*sm:hidden/);
+  });
+
+  test("the sheet: every filter and the order; «Mis equipos y ligas» only when the reader's teams and leagues are known", async () => {
+    const options = filterOptions(new Map(COMPETITIONS.map((c) => [c.id, c])), new Map(), false);
+    const fields = (follow: boolean) =>
+      html(
+        <FilterFields
+          value={NO_FILTERS}
+          sort="time"
+          options={{ ...options, follow }}
+          onChange={() => {}}
+          onSort={() => {}}
+          sheet
+        />,
+      );
+    const markup = await fields(false);
+    for (const word of [
+      "Hoy",
       "País",
       "Competición",
       "Casa",
       "Mínimo de casas",
       "Rango de cuota",
       "Solo con cuota justa",
+      "Por competición",
     ]) {
       expect(markup).toContain(word);
     }
-    // «Mis equipos y ligas» only when the reader's teams and leagues are known
     expect(markup).not.toContain("Mis equipos y ligas");
-    const mine = await explorer(
-      {},
-      { follow: { teams: new Set([541]), leagues: new Set<number>() } },
-    );
-    expect(mine.markup).toContain("Mis equipos y ligas");
+    expect(await fields(true)).toContain("Mis equipos y ligas");
   });
 
   test("the widest difference with the fair price: its caveat, the matches in one list", async () => {

@@ -10,7 +10,6 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "@/lib/i18n";
-import { GlossaryLink } from "@/components/system/GlossaryTerm";
 import { useGuideScreen } from "@/product/guides/context";
 import { Card, EmptyState, ErrorState, PageTitle, StaleNote } from "@/product/shared/States";
 import type { RowEnv } from "./env";
@@ -296,9 +295,6 @@ export function OddsExplorer({
           />
         }
       />
-      <p className="text-xs text-muted-foreground" data-guide="odds-fair">
-        {t("explorer.fairLine")} <GlossaryLink term="fairOdds" />
-      </p>
       <div className="flex items-start gap-2">
         <ExplorerSearch value={state.q} tabs={tabs} onQuery={onQuery} onJump={jump} />
         <FiltersSheet
