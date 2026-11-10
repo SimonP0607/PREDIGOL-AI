@@ -57,6 +57,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | IA-023 | El trabajo programado de la revisión de crónica (etapa A del flujo único): `chronicle_review` en el worker (cada hora, apagable con `FBI_CHRONICLE_REVIEW=0`), con su plazo de 20 minutos en el vigilante y una fila en el libro de trabajos solo cuando escribe; llama a `fbi.chronicle.review` de IA-022, sin modelo ni coste y sin tocar modelos ni picks (`backend/docs/owner/IA_022_REVISION_CRONICA.md`) | en curso | este PR | IA-022 |
 | IA-024 | La comparación entre el español y el inglés de la crónica de lectores deja de rechazar lo que dice lo mismo: «2 empates» y «two draws», «once meses» y «eleven months» valen igual, y el cero y el uno enteros no se comparan (cada idioma sigue comprobado contra los hechos y las noticias que cita). Era la causa de 143 de las 364 crónicas rechazadas de `user-narrative-v3` (`backend/docs/owner/IA_024_CIFRAS_CRONICA.md`) | en curso | este PR | IA-022 |
 | IA-025 | La revisión de la crónica no se detiene por un partido que no sabe juzgar: la vista previa sobre producción (solo lectura) halló que `intel.postmortems.decision_id` puede ser nulo (opcional desde la 0116) y `int(None)` paraba todas las revisiones. Ahora una selección sin decisión se lista con `decision_id` vacío, y cada crónica se juzga dentro de un punto de guardado: la que falla se cuenta (`failed`, y sus primeras causas en las notas del registro de ejecuciones) y no retiene a las demás. Pruebas del trabajo sin tocar el libro real (el libro confirma la conexión) | en curso | este PR | IA-022, IA-023 |
+| IA-026 | La auditoría de fugas pasa a `leak-audit-v9`: `slice_known` ya no cuenta como violación el pronóstico de conteos que la familia estampa con el inicio de su pase y confirma al final cuando el paquete se construyó durante ese pase (el paquete leyó el conjunto anterior). La fila se deriva otra vez sin los conjuntos cuyo pase terminó después de construirse el paquete y solo es honrada si coincide byte por byte; nada posterior al momento del paquete puede entrar y un conjunto sin fila en el libro nunca se aparta. Motivo: las violaciones del 31-oct (fila 3502) y del 7-nov (fila 5828), diagnosticadas en solo lectura; no eran fugas y harían fallar la puerta B | en curso | este PR | IA-022 |
 
 ## UX — experiencia de usuario y diseño de la web
 
@@ -183,4 +184,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-018 · SEG-003 · IA-026 · UX-084 · BE-031 · FE-002 · OPS-004 · DOC-001
+CI-018 · SEG-003 · IA-027 · UX-084 · BE-031 · FE-002 · OPS-004 · DOC-001
