@@ -55,12 +55,9 @@ from fbi.families.fit import (
     known_at,
 )
 from fbi.families.versioning import ensure_version
+from fbi.forecasting.market_view import BASIS_NO_CHAMPION, UNCALIBRATED, MarketForecast, Outcome
 from fbi.forecasting.match_forecast import (
-    BASIS_NO_CHAMPION,
     STORED_SQL,
-    UNCALIBRATED,
-    MarketForecast,
-    Outcome,
     Stored,
     fit_fixtures,
     says_something_new,

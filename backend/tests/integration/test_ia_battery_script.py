@@ -28,6 +28,8 @@ from .test_lab import AT, cfg
 KEYS = ("sk-test-lab-key", "sk-test-production-key")
 
 ROUND = 55 * len(TARGETS)
+ASK_NATIVELY = ("match", "stats")
+"""The targets whose agent asks with structured outputs itself (IA-028): one route, one run."""
 """The first round of the whole battery: every base five times clean and every case once, for each of the six targets."""
 
 
@@ -146,7 +148,8 @@ def test_the_native_route_and_a_suffix_are_other_measurements(rig: Rig) -> None:
     command(rig, "submit")
     command(rig, "submit", native=True)
     command(rig, "submit", suffix="2")
-    assert len(rig.fake.created) == 3 and rig.one("SELECT count(*) FROM ai.batch_items") == 3 * ROUND
+    # IA-028: the Match Agent's v5 and the Statistics Agent's v4 ask natively themselves: their native route is the plain run, measured already
+    assert len(rig.fake.created) == 3 and rig.one("SELECT count(*) FROM ai.batch_items") == 3 * ROUND - 55 * len(ASK_NATIVELY)
     rig.end()
     native, code = command(rig, "collect", at=LATER, native=True)
     assert code == ia_battery.OK and native["runs"]["review"] == run.run_id("review", native=True)
@@ -225,5 +228,6 @@ def test_status_of_the_native_route_and_of_a_suffix_speaks_of_those_runs_and_not
     suffixed, code = command(rig, "status", at=LATER, suffix="2")
     assert code == ia_battery.OK and suffixed["runs"]["extract"]["run"] == run.run_id("extract", suffix="2") and suffixed["runs"]["extract"]["asks"] == 55
     plain, _code = command(rig, "status", at=LATER)
-    assert all(plain["runs"][t]["asks"] == 0 for t in TARGETS)
+    assert all(plain["runs"][t]["asks"] == 0 for t in TARGETS if t not in ASK_NATIVELY)
+    assert all(plain["runs"][t]["asks"] == 55 for t in ASK_NATIVELY), "IA-028: for an agent that asks natively the plain run IS the native one"
     assert suffixed["runs"]["claims"]["run"] == run.run_id("claims", suffix="2") and suffixed["runs"]["claims"]["asks"] == 55

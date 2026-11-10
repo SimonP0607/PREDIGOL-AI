@@ -296,3 +296,32 @@ def test_the_reader_export_carries_the_notices_and_never_the_reference(opened: s
         exported = payment_requests.export_rows(conn, uid)
     assert exported[0]["reference_last4"] == "4567" and "reference_hmac" not in exported[0]
     assert uid_of(EMAIL, opened) == uid
+
+
+def test_two_simultaneous_approvals_make_one_payment_and_one_period(opened: str) -> None:
+    """Two owners' tabs (or a double click that outruns the screen) approve the same notice at once: the account is
+    locked first, the first decides, the second is told it was decided, and money is recorded once."""
+    import threading
+
+    c, uid = reader()
+    sent = c.post(URL, json=body()).json()
+    actor = uid_of(OWNER, opened)
+    outcomes: list[str] = []
+    gate = threading.Barrier(2)
+
+    def press() -> None:
+        gate.wait()
+        try:
+            payment_requests.approve(actor, int(sent["id"]))
+            outcomes.append("approved")
+        except Exception as exc:  # the loser's refusal is a CustomerError with the 409 code
+            outcomes.append(getattr(exc, "code", type(exc).__name__))
+
+    threads = [threading.Thread(target=press) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert sorted(outcomes) == ["approved", "request_decided"], outcomes
+    assert len(rows(opened, "SELECT id FROM customer.payments")) == 1
+    assert len(rows(opened, "SELECT id FROM customer.membership_periods WHERE user_id = %s", (uid,))) == 1

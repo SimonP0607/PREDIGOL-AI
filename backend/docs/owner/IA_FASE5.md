@@ -27,7 +27,7 @@ Los dos están **apagados de serie**. Cada palabra se valida como las demás del
 
 | Variable | De serie | Qué enciende | Dónde corre | Vuelta atrás |
 | --- | --- | --- | --- | --- |
-| `FBI_AI_PM_REVIEWER` | apagada | la atribución mecánica y el Revisor posterior | el paso diario `ai_learn` (07:35 de Bogotá): atribuye ayer y hoy; después manda los casos al lote del LAB | `0` |
+| `FBI_AI_PM_REVIEWER` | apagada | la atribución mecánica y el Revisor posterior | el paso diario `ai_learn` (07:35 de Bogotá): atribuye los siete días anteriores y hoy (desde IA-031: un post-mortem que llega tarde ya no deja el partido sin atribuir; la regla no escribe dos veces); después manda los casos al lote del LAB | `0` |
 | `FBI_AI_LEARNING_ANALYST` | apagada | el Analista de aprendizaje | el paso semanal `intel_weekly` (lunes), antes de la matriz | `0` |
 
 El Revisor y el Analista son independientes: se puede encender la atribución sola y mirarla en la Consola antes de gastar nada en un modelo (sin clave ni sobre del LAB, el Revisor no pregunta y la atribución queda igual). Las dos palabras entran en el libro de palabras del propietario (`ai.feature_gates`, gate `switches`) solo cuando están encendidas: apagadas son el valor de serie, y un valor de serie no es un día en que cambió la configuración.
@@ -36,7 +36,7 @@ El Revisor y el Analista son independientes: se puede encender la atribución so
 
 1. Desplegar la fase apagada (sección 3) y comprobar que la migración 0120 está aplicada.
 2. Si quieres que el Analista escriba como el rol que no puede promover nada (sección 6), que el operador haya ejecutado `deploy/vps/db/roles.sql` y `grants.sql`.
-3. Con una copia fechada de `app.env`, poner `FBI_AI_PM_REVIEWER=1` y reiniciar el worker. La primera mañana atribuye ayer y hoy. Para los días anteriores, `ia_attribution recompute` (sección 8).
+3. Con una copia fechada de `app.env`, poner `FBI_AI_PM_REVIEWER=1` y reiniciar el worker. La primera mañana atribuye los siete días anteriores y hoy. Para los días anteriores, `ia_attribution recompute` (sección 8).
 4. Para el Revisor, que el LAB tenga clave y sobre (`FBI_AI_KEY_ANTHROPIC_LAB`, `FBI_AI_LAB_MONTHLY_BUDGET_USD`) y que los modelos de los niveles sean los del router: si el modelo configurado de un nivel no es el del router, esa tarea no se pregunta.
 5. Cuando haya atribuciones de varios días y al menos 30 posturas en una semana, `FBI_AI_LEARNING_ANALYST=1` y reiniciar el worker. El primer lunes manda la semana al lote; las hipótesis se escriben cuando el sondeo trae la respuesta.
 

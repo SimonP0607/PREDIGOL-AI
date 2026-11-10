@@ -54,7 +54,8 @@ def test_a_suffix_is_a_last_part_and_the_native_route_is_another_digest(target: 
     assert run.run_id(target, suffix="2") == f"{base}:2"
     assert run.run_id(target, suffix="") == base
     native = run.run_id(target, native=True)
-    assert re.fullmatch(rf"{re.escape(VERSION)}:{target}:[0-9a-f]{{12}}", native) and native != base
+    # IA-028: an agent that asks natively itself (the Match Agent's v5, the Statistics Agent's v4) has one route, and so one run
+    assert re.fullmatch(rf"{re.escape(VERSION)}:{target}:[0-9a-f]{{12}}", native) and (native == base) is (target in ("match", "stats"))
     assert native.split(":")[2] == corpus.requests_hash(target, native=True)[:12]
 
 

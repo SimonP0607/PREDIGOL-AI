@@ -4,6 +4,7 @@
     python -m scripts.ia_decision_v2 replay --day 2026-11-05 --json
     python -m scripts.ia_decision_v2 replay --day 2026-11-05 --council ma-v1    # plus the Council's typed adjustment (ctx-adj-v1)
     python -m scripts.ia_decision_v2 replay --day 2026-11-05 --signals          # plus the market's signals as risk inputs
+    python -m scripts.ia_decision_v2 replay --day 2026-11-05 --view             # plus how far each probability is from the common view
 
 The agreement per family, the confusion table (decision-v1's state read through state-v2 against decision-v2's), and every disagreement with
 the stage that caused it (``fbi.decision.replay``). Without ``--council`` and ``--signals`` it is the equivalence of the engine: the evidence of
@@ -43,13 +44,14 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--json", action="store_true", dest="as_json", help="print the report as JSON")
     ap.add_argument("--council", choices=ENGINES, help="give the context stage the Council's typed adjustment of this engine")
     ap.add_argument("--signals", action="store_true", help="give the risk stage the market's signals")
+    ap.add_argument("--view", action="store_true", help="measure each probability against the common probability view (shadow)")
     ap.add_argument("--dsn", help="the database (default: the worker's own)")
     return ap
 
 
-def run(conn: psycopg.Connection[Any], *, day: date, council: str | None = None, signals: bool = False) -> tuple[dict[str, Any], int]:
+def run(conn: psycopg.Connection[Any], *, day: date, council: str | None = None, signals: bool = False, view: bool = False) -> tuple[dict[str, Any], int]:
     """The report (JSON-ready) and the exit status. The connection is the caller's; nothing is written."""
-    return replay.replay_day(conn, day=day, council=council, signals=signals), OK
+    return replay.replay_day(conn, day=day, council=council, signals=signals, view=view), OK
 
 
 def render(doc: dict[str, Any]) -> str:
@@ -71,6 +73,13 @@ def render(doc: dict[str, Any]) -> str:
         lines.append(f"    #{d['decision_id']} {d['family']} {d['known_at']} {d['checkpoint']} fixture {d['fixture_id']} {d['market_key']} "
                      f"{d['selection']} {d['line']}: v1 {d['v1_state']} ({d['v1_state2']}) v2 {d['v2_state']} - stage {d['stage']}: "
                      f"{d['v2_why']}")
+    if "common_view" in doc:
+        c = doc["common_view"]
+        lines.append(f"  common view: {c['with_view']}/{c['rows']} rows have a reading; of {c['with_v1_probability']} with a calibrated probability in "
+                     f"decision-v1, {c['within_tolerance']} within {c['tolerance_pp']} pp (median {c['median_pp']}, p90 {c['p90_pp']}, max {c['max_pp']}); "
+                     f"view calibration {c['view_calibration']}")
+        for cause, v in c["causes"].items():
+            lines.append(f"    {cause:18s} {v['selections']:5d} selections, median {v['median_pp']}, max {v['max_pp']}, over tolerance {v['over_tolerance']}")
     for u in doc["unmatched"]:
         lines.append(f"    #{u['decision_id']} {u['family']} {u['known_at']} fixture {u['fixture_id']} {u['market_key']} {u['selection']} "
                      f"{u['line']}: not rebuilt")
@@ -88,7 +97,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     with psycopg.connect(args.dsn or platform.database.psycopg_url,
                          options="-c TimeZone=UTC -c default_transaction_read_only=on") as conn:
-        doc, code = run(conn, day=day, council=args.council, signals=args.signals)
+        doc, code = run(conn, day=day, council=args.council, signals=args.signals, view=args.view)
     sys.stdout.write(json.dumps(doc, indent=1, default=str, ensure_ascii=False, sort_keys=True) + "\n" if args.as_json else render(doc))
     return code
 

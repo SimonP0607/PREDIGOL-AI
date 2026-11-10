@@ -390,7 +390,7 @@ def test_the_prompts_under_test_are_the_ones_in_force() -> None:
     assert corpus.target("match").prompts == (MATCH_CONTEXT_VERSION, MATCH_ASSESS_VERSION) == ("match-context-v4", "match-assess-v3")
     assert corpus.target("stats").prompts == (STATS_ASSESS_VERSION,) == ("stats-assess-v3",)
     assert corpus.target("council").prompts == (COUNCIL_VERSION, COUNCIL_OPUS_VERSION) == ("council-v1", "council-opus-v1")
-    assert [corpus.target(t).agent for t in TARGETS] == ["", "", "", "match-v4", "stats-v3", "council-v1"]
+    assert [corpus.target(t).agent for t in TARGETS] == ["", "", "", "match-v5", "stats-v4", "council-v1"]
     assert [corpus.target(t).contract for t in TARGETS] == ["", "", "", "aa-v1", "aa-v1", "cd-v1"]
     assert [corpus.target(t).tier for t in TARGETS] == ["analysis", "bulk", "bulk", "bulk", "bulk", "analysis"], "the tier production asks them with"
     assert corpus.target("council").tier_of("k_escalated") == "final" and corpus.target("council").tiers == ("analysis", "final")
@@ -619,7 +619,9 @@ def test_the_requests_of_claims_behind_the_door_of_v3_are_pinned() -> None:
 
 def test_the_fingerprints_are_the_same_on_every_call_and_differ_by_target_and_route() -> None:
     hashes = {(t, n): corpus.requests_hash(t, native=n) for t in TARGETS for n in (False, True)}
-    assert len(set(hashes.values())) == 12 and hashes == {(t, n): corpus.requests_hash(t, native=n) for t in TARGETS for n in (False, True)}
+    assert hashes == {(t, n): corpus.requests_hash(t, native=n) for t in TARGETS for n in (False, True)}
+    # IA-028: the Match Agent's v5 and the Statistics Agent's v4 ask natively themselves, so their two routes are one; the other four differ
+    assert {t for t in TARGETS if hashes[(t, False)] == hashes[(t, True)]} == {"match", "stats"} and len(set(hashes.values())) == 10
     assert corpus.corpus_hash() == corpus.corpus_hash() and len(corpus.corpus_hash()) == 64
 
 

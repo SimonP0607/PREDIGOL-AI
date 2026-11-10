@@ -90,6 +90,9 @@ class Definition:
     schema: Mapping[str, Any]
     """The schema the answer is read against: a contract's wire schema, or - for the AI that runs today, which versions its schema with its
     prompt - the dictionary ``fbi.ai.prompts`` keeps next to it."""
+    native: bool = False
+    """How the answer is asked (IA-028): True with structured outputs - the API holds the model to the schema as ``structured.accepted`` writes
+    it, and the reader still checks the whole contract - False with the forced tool call. Read from the agent's own module, never written here."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +103,8 @@ class Part:
     prompt_sha: str
     schema_version: str
     schema_sha: str
+    native: bool = False
+    """Asked with structured outputs (``Definition.native``)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,7 +213,8 @@ def sha12(text: str) -> str:
 
 
 def part_of(definition: Definition) -> Part:
-    return Part(definition.prompt_version, sha12(definition.prompt), definition.schema_version, sha12(canonical(definition.schema)))
+    return Part(definition.prompt_version, sha12(definition.prompt), definition.schema_version, sha12(canonical(definition.schema)),
+                native=definition.native)
 
 
 def live_parts(spec: AgentSpec) -> dict[str, Part]:
@@ -218,11 +224,14 @@ def live_parts(spec: AgentSpec) -> dict[str, Part]:
 
 def fingerprint_body(spec: AgentSpec, parts: Mapping[str, Part]) -> dict[str, Any]:
     """Everything that makes the agent what it is: the contract it answers in, what it reads, and for each task its model or tier, its effort, and the
-    labels and the hashes of its prompt and schema. Not its purpose, not when the plan retires it, not the order of its tasks."""
+    labels and the hashes of its prompt and schema - and, for a task asked with structured outputs, ``native`` (IA-028). Not its purpose, not when
+    the plan retires it, not the order of its tasks. A task asked with the forced tool call carries no ``native`` key, so that every fingerprint
+    written before IA-028 is the same with this method (the golden value of the tests holds it)."""
     return {"method": FINGERPRINT_VERSION, "agent": spec.agent, "contract": spec.contract, "reads": spec.reads,
             "tasks": {t.task: {"model": t.model, "tier": t.tier, "effort": t.effort,
                                "prompt": [parts[t.task].prompt_version, parts[t.task].prompt_sha],
-                               "schema": [parts[t.task].schema_version, parts[t.task].schema_sha]} for t in spec.tasks}}
+                               "schema": [parts[t.task].schema_version, parts[t.task].schema_sha]}
+                      | ({"native": True} if parts[t.task].native else {}) for t in spec.tasks}}
 
 
 def fingerprint_of(spec: AgentSpec, parts: Mapping[str, Part]) -> str:
@@ -247,7 +256,8 @@ def stub(spec: AgentSpec, version: str) -> str:
              '             reason="why this is a new version, in a sentence a person can look back on",',
              f'             fingerprint="{fingerprint_of(spec, parts)}",', "             parts={"]
     for task, p in sorted(parts.items()):
-        lines.append(f'                 "{task}": Part("{p.prompt_version}", "{p.prompt_sha}", "{p.schema_version}", "{p.schema_sha}"),')
+        native = ", native=True" if p.native else ""
+        lines.append(f'                 "{task}": Part("{p.prompt_version}", "{p.prompt_sha}", "{p.schema_version}", "{p.schema_sha}"{native}),')
     lines.append("             }),")
     return "\n".join(lines)
 
@@ -270,16 +280,23 @@ def _extract_v2() -> Definition:
     return Definition(prompts.EXTRACT_V2_VERSION, prompts.EXTRACT_V2_SYSTEM, CLAIM, schema_of(CLAIM))
 
 
+def _native(agent: str) -> bool:
+    """How the agent's own module asks (``NATIVE``), read when the definition is: the agents import the router and the prompts, not the registry."""
+    from fbi.ai.agents import match, stats
+
+    return bool({"match": match.NATIVE, "stats": stats.NATIVE}[agent])
+
+
 def _match_context() -> Definition:
-    return Definition(prompts.MATCH_CONTEXT_VERSION, prompts.MATCH_CONTEXT_SYSTEM, ASSESSMENT, schema_of(ASSESSMENT))
+    return Definition(prompts.MATCH_CONTEXT_VERSION, prompts.MATCH_CONTEXT_SYSTEM, ASSESSMENT, schema_of(ASSESSMENT), native=_native("match"))
 
 
 def _match_assess() -> Definition:
-    return Definition(prompts.MATCH_ASSESS_VERSION, prompts.MATCH_ASSESS_SYSTEM, ASSESSMENT, schema_of(ASSESSMENT))
+    return Definition(prompts.MATCH_ASSESS_VERSION, prompts.MATCH_ASSESS_SYSTEM, ASSESSMENT, schema_of(ASSESSMENT), native=_native("match"))
 
 
 def _stats_assess() -> Definition:
-    return Definition(prompts.STATS_ASSESS_VERSION, prompts.STATS_ASSESS_SYSTEM, ASSESSMENT, schema_of(ASSESSMENT))
+    return Definition(prompts.STATS_ASSESS_VERSION, prompts.STATS_ASSESS_SYSTEM, ASSESSMENT, schema_of(ASSESSMENT), native=_native("stats"))
 
 
 def _player_assess() -> Definition:
@@ -513,6 +530,25 @@ LEDGER: Final[tuple[Registration, ...]] = (
                         "proposes; it is born CHALLENGER and takes over from learning-v2 only by a row the owner signs.",
                  fingerprint="agcf22e218b2",
                  parts={"analyst": Part("la-v1", "e3746420c593", "la-v1", "1daff1cc3c97")}),
+    Registration(agent="match", version="match-v5", registered_at=datetime(2026, 11, 10, 5, 0, tzinfo=UTC), decided_by="owner", phase="IA-028",
+                 reason="IA-028 (R1 of the audit of 10 Nov 2026, approved by the owner that night): 9 of the 116 answered shadow runs of match-v4 "
+                        "(7.8 %, Wilson 95 % 4.1-14.1 %, wholly above gate B's 3 %) were refused by aa-v1 or its checks, and battery-v3 with the real "
+                        "model refused 6 of 55 answers asked through the forced tool call and none of 55 asked with structured outputs, same prompts, "
+                        "same corpus, same model. The prompts (match-context-v4, match-assess-v3), the contract, the reader, the model and the effort "
+                        "do not change; the answer is asked with structured outputs (native). It is born CHALLENGER and runs in shadow in place of "
+                        "match-v4; it reaches a decision only by a row the owner signs in intel.promotions.",
+                 fingerprint="age7a60bb9db",
+                 parts={"context": Part("match-context-v4", "bc0f3bdc2158", "aa-v1", "ab5f098304ef", native=True),
+                        "evaluation": Part("match-assess-v3", "6eb32492e520", "aa-v1", "ab5f098304ef", native=True)}),
+    Registration(agent="stats", version="stats-v4", registered_at=datetime(2026, 11, 10, 5, 1, tzinfo=UTC), decided_by="owner", phase="IA-028",
+                 reason="IA-028 (R1 of the audit of 10 Nov 2026, approved by the owner that night): stats-v3 had 9.1 % of its answered shadow runs "
+                        "refused (4 of 44, Wilson 95 % 3.6-21.2 %, wholly above gate B's 3 %), and battery-v3 with the real model refused 7 of 55 answers "
+                        "asked through the forced tool call and none of 55 asked with structured outputs, same prompt, same corpus, same model. The "
+                        "prompt (stats-assess-v3), the contract, the reader, the model and the effort do not change; the answer is asked with "
+                        "structured outputs (native). It is born CHALLENGER and runs in shadow in place of stats-v3; it reaches a decision only by a "
+                        "row the owner signs in intel.promotions.",
+                 fingerprint="age708d2144e",
+                 parts={"evaluation": Part("stats-assess-v3", "fa146d716144", "aa-v1", "ab5f098304ef", native=True)}),
 )
 """Oldest first, by agent; the last entry of an agent is its version in force. To change an agent - a prompt, a schema, a model, an effort - change
 it, add the entry below the last one of the agent and bump the label of the prompt that changed, in the same commit."""

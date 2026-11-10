@@ -81,9 +81,20 @@ SELECT id, name, city, country FROM core.venues
 """
 """Every ground with a city and a country: which countries a city name is the city of."""
 
+RESTORED_RULE = "fixture_venue_city_restored"
+"""``scripts.restore_venue_city`` (BE-029): a person checked a repaired city was wrong and gave the provider's back."""
+
+NOT_RESTORED = f"""NOT EXISTS (SELECT 1 FROM audit.data_repairs d
+                         WHERE d.rule = '{RESTORED_RULE}' AND d.entity = 'core.fixtures' AND d.entity_id = f.id
+                           AND d.field = 'venue_city' AND d.after_value = f.venue_city)"""
+"""This very match (not its club, not its ground) has an audit row that restored the city it has now: a decision a
+person took with evidence. Once the provider (or anyone) changes the city again, the row no longer matches and the
+match is judged as any other."""
+
 FIXTURE_CITIES_SQL = f"""
 SELECT f.venue_id, f.home_team_id, f.venue_name, f.venue_city, count(*) AS n,
-       (array_agg(f.provider_fixture_id ORDER BY f.kickoff_at DESC))[1:{FIXTURES_LISTED}] AS fixtures
+       (array_agg(f.provider_fixture_id ORDER BY f.kickoff_at DESC)
+            FILTER (WHERE {{listed}}))[1:{FIXTURES_LISTED}] AS fixtures
   FROM core.fixtures f
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
@@ -91,7 +102,8 @@ SELECT f.venue_id, f.home_team_id, f.venue_name, f.venue_city, count(*) AS n,
    AND f.venue_name IS NOT NULL AND f.venue_city IS NOT NULL AND f.status_group <> 'cancelled'
  GROUP BY 1, 2, 3, 4
 """
-"""What the fixture payloads called each ground, every season of the tracked domestic leagues."""
+"""What the fixture payloads called each ground, every season of the tracked domestic leagues. ``{listed}`` picks which
+matches may be named as odd (see ``collect(skip_restored=...)``); every match still counts as evidence."""
 
 PAYLOADS_SQL = """
 SELECT v.id AS venue_id, p.hash, p.endpoint, p.fetched_at, p.file_path
@@ -399,9 +411,12 @@ class Collected:
 
 
 def collect(conn: psycopg.Connection[Any], store: PayloadStore | None = None, *,
-            venue_ids: Sequence[int] | None = None) -> Collected:
+            venue_ids: Sequence[int] | None = None, skip_restored: bool = False) -> Collected:
     """Every ground in scope with its evidence. ``store`` None: the provider's stored payloads are not read (the
-    first city signal is then silent). ``venue_ids``: only these core.venues ids (still only if in scope)."""
+    first city signal is then silent). ``venue_ids``: only these core.venues ids (still only if in scope).
+    ``skip_restored`` (the daily control): a match whose city a person restored (``RESTORED_RULE``, BE-029) is not
+    named as an odd match while it keeps that city; it still counts in the ground's evidence, and every other match
+    is judged as before."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(SCOPE_SQL)
         scope = cur.fetchall()
@@ -422,7 +437,7 @@ def collect(conn: psycopg.Connection[Any], store: PayloadStore | None = None, *,
         venues = {int(r["id"]): dict(r) for r in cur.fetchall()}
         cur.execute(ATLAS_SQL)
         atlas = Atlas.of(cur.fetchall())
-        cur.execute(FIXTURE_CITIES_SQL, {"ids": ids})
+        cur.execute(FIXTURE_CITIES_SQL.replace("{listed}", NOT_RESTORED if skip_restored else "true"), {"ids": ids})
         groups = cur.fetchall()
     problems: list[str] = []
     provider = provider_venues(conn, store, venues, problems) if store is not None else {}
@@ -444,7 +459,7 @@ def collect(conn: psycopg.Connection[Any], store: PayloadStore | None = None, *,
 
 def venue_places(conn: psycopg.Connection[Any], tally: Tally, store: PayloadStore | None = None) -> Collected:
     """The control: one finding per contradiction, into the ``venues`` tally (``audit.truth_findings``)."""
-    got = collect(conn, store)
+    got = collect(conn, store, skip_restored=True)
     flagged = 0
     for g in got.grounds:
         tally.compared()

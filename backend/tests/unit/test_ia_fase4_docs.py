@@ -207,7 +207,7 @@ def test_there_is_no_migration_of_phase_4() -> None:
 def test_the_agent_table_says_what_the_router_and_the_registry_say() -> None:
     [row] = table(section(4), "| Quién")
     assert row[0] == "Agente de Estadísticas" and row[1] == "evaluación"
-    assert stats.TASK == "evaluation" and stats.MODE == "EVALUATION" and stats.AGENT == "stats" and stats.VERSION == "stats-v3"
+    assert stats.TASK == "evaluation" and stats.MODE == "EVALUATION" and stats.AGENT == "stats" and stats.VERSION == "stats-v4"
     assert row[2] == f"Haiku (`{stats.model_of()}`)" and stats.model_of() == "claude-haiku-5-5"
     assert row[3].strip("`") == stats.effort_of() == "medium"
     assert row[4].strip("`") == prompts.STATS_ASSESS_VERSION == "stats-assess-v3" and row[5].strip("`") == "aa-v1"
@@ -215,10 +215,11 @@ def test_the_agent_table_says_what_the_router_and_the_registry_say() -> None:
     spec = next(s for s in agent_registry.AGENTS if s.agent == "stats")
     assert spec.contract == "aa-v1" and spec.reads == "stats"
     assert prompts.STATS_ASSESS_SYSTEM and "DATA" in prompts.STATS_ASSESS_SYSTEM
-    [born, second, entry] = [e for e in agent_registry.LEDGER if e.agent == "stats"]
+    [born, second, third, entry] = [e for e in agent_registry.LEDGER if e.agent == "stats"]
     assert born.version == "stats-v1" and born.phase == "IA-4" and born.decided_by == "owner"
     assert second.version == "stats-v2" and second.phase == "IA-009" and second.decided_by == "owner" and second.born_as == "CHALLENGER"
-    assert entry.version == "stats-v3" and entry.phase == "IA-018" and entry.decided_by == "owner" and entry.born_as == "CHALLENGER"
+    assert third.version == "stats-v3" and third.phase == "IA-018" and third.decided_by == "owner" and third.born_as == "CHALLENGER"
+    assert entry.version == "stats-v4" and entry.phase == "IA-028" and entry.decided_by == "owner" and entry.born_as == "CHALLENGER"
     sec = section(4)
     assert f"{mcp_package.CAPS['stats']:,}".replace(",", ".") in sec and "tope de 18.000 tokens" in sec
     assert "`stats_slice_over_its_cap`" in sec and "stats_slice_over_its_cap" in ORCH_SRC
@@ -267,9 +268,9 @@ def test_the_descriptive_factors_are_the_ones_of_the_code() -> None:
 def test_the_engines_that_read_the_agent_and_their_versions() -> None:
     sec = section(7)
     assert set(orchestrator.WITH_MATCH) == {"ma-v1", "ma-v1-h"} and "cs-v1" not in orchestrator.WITH_MATCH
-    assert orchestrator.STATS_PART == "+stats-v3"
-    assert orchestrator.engine_version("ma-v1", with_stats=True) == "ma-v1+match-v4+stats-v3+council-v1+contra-v1+router-v1"
-    assert "`ma-v1+match-v4+stats-v3+council-v1+contra-v1+router-v1`" in sec
+    assert orchestrator.STATS_PART == "+stats-v4"
+    assert orchestrator.engine_version("ma-v1", with_stats=True) == "ma-v1+match-v5+stats-v4+council-v1+contra-v1+router-v1"
+    assert "`ma-v1+match-v5+stats-v4+council-v1+contra-v1+router-v1`" in sec
     assert orchestrator.engine_version("ma-v1", with_stats=False) == orchestrator.ENGINE_VERSION["ma-v1"]
     assert orchestrator.engine_version("cs-v1", with_stats=True) == orchestrator.ENGINE_VERSION["cs-v1"]
     assert "`A:stats_evaluation`" in sec and "route.stats" in sec.replace("`", "") and '"stats": p.stats_on' in ORCH_SRC

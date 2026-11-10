@@ -241,21 +241,22 @@ def test_an_ask_written_in_the_words_of_a_direction_or_a_code_is_refused_and_sai
 
 @pytest.mark.parametrize(("agent", "version", "previous"), [("stats", "stats-v3", "stats-v2"), ("match", "match-v4", "match-v3")])
 def test_each_change_is_a_new_version_born_a_challenger_and_nothing_is_promoted(agent: str, version: str, previous: str) -> None:
-    entry = rg.REGISTRY.in_force(agent)
+    entry = next(e for e in rg.REGISTRY.history(agent) if e.version == version)  # IA-028 put match-v5 and stats-v4 in force after them
     before = next(e for e in rg.REGISTRY.history(agent) if e.version == previous)
     assert (entry.version, entry.phase, entry.born_as, entry.baseline, entry.decided_by) == (version, "IA-018", "CHALLENGER", False, "owner")
-    assert rg.live_fingerprint(rg.REGISTRY.spec(agent)) == entry.fingerprint != before.fingerprint and not rg.REGISTRY.problems()
+    assert entry.fingerprint != before.fingerprint and not rg.REGISTRY.problems()
     assert {p.schema_sha for p in entry.parts.values()} == {p.schema_sha for p in before.parts.values()}, "aa-v1 is the same"
     assert "CHALLENGER" in entry.reason and "battery-v3" in entry.reason
     for task in entry.parts:
         now = rg.REGISTRY.identity_for(agent, task, workspace="lab", input_version="mcp-v1", input_hash="a" * 64, pass_kind="pre", fixture_id=7)
+        mine = replace(now, agent_version=version, prompt_version=entry.parts[task].prompt_version)
         then = replace(now, agent_version=previous, prompt_version=before.parts[task].prompt_version)
-        assert now.agent_version == version and now.key != then.key, (agent, task)
+        assert mine.key != then.key, (agent, task)
 
 
 def test_the_parts_and_versions_are_the_ones_the_code_has_and_the_battery_asks() -> None:
-    assert (stats.VERSION, prompts.STATS_ASSESS_VERSION) == ("stats-v3", "stats-assess-v3")
-    assert (match.VERSION, prompts.MATCH_CONTEXT_VERSION, prompts.MATCH_ASSESS_VERSION) == ("match-v4", "match-context-v4", "match-assess-v3")
+    assert (stats.VERSION, prompts.STATS_ASSESS_VERSION) == ("stats-v4", "stats-assess-v3"), "IA-028: v3's prompt, asked natively"
+    assert (match.VERSION, prompts.MATCH_CONTEXT_VERSION, prompts.MATCH_ASSESS_VERSION) == ("match-v5", "match-context-v4", "match-assess-v3")
     assert corpus.target("stats").agent == stats.VERSION and corpus.target("stats").prompts == (prompts.STATS_ASSESS_VERSION,)
     assert corpus.target("match").agent == match.VERSION and corpus.target("match").prompts == (prompts.MATCH_CONTEXT_VERSION, prompts.MATCH_ASSESS_VERSION)
     assert corpus.request_for("stats", "s_high").system == prompts.STATS_ASSESS_SYSTEM
