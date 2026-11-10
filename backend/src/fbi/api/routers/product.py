@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 import psycopg
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Path, Query, Request, Response
 
 from fbi.api.contracts.builder import BuiltParlay
 from fbi.api.contracts.explanation import PickExplanation
@@ -21,7 +21,7 @@ from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.errors import ApiError
 from fbi.api.security import App
-from fbi.api.services import explanation, product
+from fbi.api.services import deprecated, explanation, product
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
 from fbi.parlays import builder
@@ -128,6 +128,9 @@ def get_parlay(conn: Db, principal: App, kind: Literal["daily", "multiday"], pre
 def get_best_odds(
     conn: Db,
     principal: App,
+    request: Request,
+    response: Response,
+    background: BackgroundTasks,
     preview: Preview = None,
     market: Market = None,
     hours: Annotated[int, Query(ge=1, le=168)] = 48,
@@ -135,6 +138,13 @@ def get_best_odds(
                                              "every selection's best price with its fair price, whatever the picks "
                                              "(REVIEW 11 Oct 2026, point 17).")] = True,
 ) -> Envelope[BestOddsBoard]:
-    """The best price per selection for upcoming fixtures, next to the market's fair (de-vigged) price."""
+    """The best price per selection for upcoming fixtures, next to the market's fair (de-vigged) price.
+
+    On its way out (plan Cuotas, BE-033): the explorer's ``/odds/board`` replaces it. Every call is counted per day and kind of
+    caller (``audit.deprecated_api_use``) after the answer has gone, and the answer says so in its headers."""
+    response.headers["Deprecation"] = "true"
+    response.headers["Link"] = f'<{deprecated.SUCCESSORS["/odds/best"]}>; rel="successor-version"'
+    background.add_task(deprecated.record_use, "/odds/best",
+                        deprecated.caller_kind(request.headers.get("user-agent")), principal.role)
     return product.best_odds_board(conn, hours=hours, market=market, include_shadow=_shadow(preview, principal),
                                    with_picks=picks)

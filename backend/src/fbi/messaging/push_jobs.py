@@ -223,8 +223,8 @@ def digest(conn: psycopg.Connection[Any], *, at: datetime) -> int:
 MEMBERSHIP_SQL = f"""
 SELECT a.id, a.email, a.role, a.language, a.timezone FROM auth.users a
  WHERE a.status = 'active' AND {_for('a.id')}
-   AND (SELECT max(ends_at) FROM customer.membership_periods p WHERE p.user_id = a.id) > %(at)s
-   AND (SELECT max(ends_at) FROM customer.membership_periods p WHERE p.user_id = a.id) <= %(until)s
+   AND (SELECT max(ends_at) FROM customer.live_membership_periods p WHERE p.user_id = a.id) > %(at)s
+   AND (SELECT max(ends_at) FROM customer.live_membership_periods p WHERE p.user_id = a.id) <= %(until)s
 """
 
 
