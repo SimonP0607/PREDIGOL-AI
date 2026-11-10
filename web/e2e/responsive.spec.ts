@@ -13,6 +13,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { statePath } from "./accounts";
 import { assertClean, getJson, L, note, sendJson, settle, smallTargets, watch } from "./support";
+import { lengthenNames, splitWords } from "./textfit";
 
 const PAGES = [
   "/home",
@@ -163,10 +164,9 @@ test("team names are whole in the cards of a 320 px phone", async ({ page }) => 
   }
 });
 
-// Between `sm` (640 px) and `md` (768 px) - a phone held sideways, a folding phone, the narrowest browser window of a
-// laptop - each side of a match row is about 120 px wide and "Club Sp. San Lorenzo" does not fit, so a team name wraps
-// there as it does on a phone and is cut with an ellipsis only from `md` (UX-076). A test per width, for the reason
-// given above.
+// Between 640 and 767 px - a phone held sideways, a folding phone, the narrowest browser window of a laptop - a match
+// row's line has under 30 rem, so its teams go one per line as on a phone (UX-094; UX-076 wrapped them there), and a
+// name is cut with an ellipsis only where its side has 240 px. A test per width, for the reason given above.
 for (const width of [640, 658, 700, 767]) {
   test(`team names are whole in the match rows of a ${width} px window`, async ({ page }) => {
     test.setTimeout(120_000);
@@ -176,6 +176,29 @@ for (const width of [640, 658, 700, 767]) {
       await page.goto(path);
       await settle(page);
       expect(await cutNames(page), `team names cut on ${path} at ${width} px`).toEqual([]);
+      await assertClean(page, w);
+    }
+  });
+}
+
+// No word broken between its letters (mobile UX plan, UX-094), with production's long names: a row squeezed by the odds,
+// a state or the bookmakers beside it left a team 66 px on a 320 px phone («Gana Sandefjord» a few letters a line in
+// Mis parlays, «Berkhamsted» in two halves in Partidos) and 114 px a side at 640 px («Mönchengladbach» cut in two). The
+// QA data's names are shorter than production's, so the page gets long real ones before it is measured. The ten widths
+// of the plan, a test per width for the reason given above.
+for (const width of [320, 360, 375, 390, 430, 600, 640, 768, 820, 1024]) {
+  test(`no word is broken between its letters at ${width} px, even with long team names`, async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    const w = watch(page);
+    await page.setViewportSize({ width, height: 900 });
+    for (const path of ["/home", "/matches", "/live", "/picks", "/parlays", "/my-picks"]) {
+      await page.goto(path);
+      await settle(page);
+      expect(await splitWords(page), `${path} at ${width} px, as served`).toEqual([]);
+      await lengthenNames(page);
+      expect(await splitWords(page), `${path} at ${width} px, long names`).toEqual([]);
       await assertClean(page, w);
     }
   });
