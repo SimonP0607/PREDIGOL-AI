@@ -55,6 +55,7 @@ from psycopg.rows import dict_row, tuple_row
 
 from fbi.ai.agents.attribution import VERSION as ATTRIBUTION_VERSION
 from fbi.ai.calendar import day_start, local_day
+from fbi.ai.intervals import Proportion
 
 METHOD: Final = "eval-bench-v1"
 """The definitions of this module. A change to any of them is a new version, never an edit."""
@@ -118,6 +119,7 @@ class Cell:
         out: dict[str, Any] = {
             "runs": self.runs, "by_status": dict(sorted(self.by_status.items())), "first_attempts": self.first_attempts,
             "valid_first_attempt_pct": _pct(self.valid_first_attempt), "invalid_by_code": dict(sorted(self.invalid_by_code.items())),
+            "valid_first_attempt_interval": Proportion(self.first_valid, self.first_attempts).as_json(),
             "retries": self.retries, "cost_usd": str(self.cost.quantize(Decimal("0.000001"))),
             "tokens": {"input": self.input_tokens, "output": self.output_tokens, "cache_read": self.cached_tokens,
                        "cache_write": self.cache_write_tokens, "thinking": self.thinking_tokens}}
@@ -224,9 +226,11 @@ class Signals:
 
     def as_json(self, cost: Decimal) -> dict[str, Any]:
         per = self.cost_per_useful(cost)
-        return {"signals": {"hit": self.hit, "miss": self.miss, "void": self.void, "precision_pct": _pct(self.precision)},
+        return {"signals": {"hit": self.hit, "miss": self.miss, "void": self.void, "precision_pct": _pct(self.precision),
+                            "interval": Proportion(self.hit, self.hit + self.miss).as_json()},
                 "verdict": {"hit": self.verdict_hit, "miss": self.verdict_miss, "void": self.verdict_void,
-                            "precision_pct": _pct(self.verdict_precision)},
+                            "precision_pct": _pct(self.verdict_precision),
+                            "interval": Proportion(self.verdict_hit, self.verdict_hit + self.verdict_miss).as_json()},
                 "useful_signals": self.useful, "cost_per_useful_signal_usd": None if per is None else str(per)}
 
 
@@ -312,7 +316,8 @@ class AgentBench:
                                "totals": self.totals.as_json(latency=latency)}
         if self.coverage is not None:
             covered, eligible = self.coverage
-            out["coverage"] = {"matches_covered": covered, "matches_eligible": eligible, "rate_pct": _pct(_rate(covered, eligible))}
+            out["coverage"] = {"matches_covered": covered, "matches_eligible": eligible, "rate_pct": _pct(_rate(covered, eligible)),
+                               "interval": Proportion(covered, eligible).as_json()}
         if self.stability is not None and self.stability.repeats:
             out["stability"] = self.stability.as_json()
         if self.signals is not None:
@@ -366,6 +371,7 @@ class BenchReport:
             lat = (f" · p50 {percentile(t.latencies, 0.5)} ms · p95 {percentile(t.latencies, 0.95)} ms" if t.latencies else "")
             out.append(f"{a.agent} {a.version}: {t.runs} ejecuciones · válidas al primer intento {_pct(t.valid_first_attempt) or '-'} % · "
                        f"inválidas {t.by_status.get('invalid', 0)} · reintentos {t.retries} · {t.cost.quantize(Decimal('0.0001'))} USD{lat}")
+            out.append(f"  válidas al primer intento: {Proportion(t.first_valid, t.first_attempts).text()}")
             for c in a.days:
                 out.append(f"  {c.day}: {c.runs} · válidas {_pct(c.valid_first_attempt) or '-'} % · inválidas {c.by_status.get('invalid', 0)}"
                            f" · {c.cost.quantize(Decimal('0.0001'))} USD")

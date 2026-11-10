@@ -60,6 +60,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | IA-024 | La comparación entre el español y el inglés de la crónica de lectores deja de rechazar lo que dice lo mismo: «2 empates» y «two draws», «once meses» y «eleven months» valen igual, y el cero y el uno enteros no se comparan (cada idioma sigue comprobado contra los hechos y las noticias que cita). Era la causa de 143 de las 364 crónicas rechazadas de `user-narrative-v3` (`backend/docs/owner/IA_024_CIFRAS_CRONICA.md`) | en curso | este PR | IA-022 |
 | IA-025 | La revisión de la crónica no se detiene por un partido que no sabe juzgar: la vista previa sobre producción (solo lectura) halló que `intel.postmortems.decision_id` puede ser nulo (opcional desde la 0116) y `int(None)` paraba todas las revisiones. Ahora una selección sin decisión se lista con `decision_id` vacío, y cada crónica se juzga dentro de un punto de guardado: la que falla se cuenta (`failed`, y sus primeras causas en las notas del registro de ejecuciones) y no retiene a las demás. Pruebas del trabajo sin tocar el libro real (el libro confirma la conexión) | en curso | este PR | IA-022, IA-023 |
 | IA-026 | La auditoría de fugas pasa a `leak-audit-v9`: `slice_known` ya no cuenta como violación el pronóstico de conteos que la familia estampa con el inicio de su pase y confirma al final cuando el paquete se construyó durante ese pase (el paquete leyó el conjunto anterior). La fila se deriva otra vez sin los conjuntos cuyo pase terminó después de construirse el paquete y solo es honrada si coincide byte por byte; nada posterior al momento del paquete puede entrar y un conjunto sin fila en el libro nunca se aparta. Motivo: las violaciones del 31-oct (fila 3502) y del 7-nov (fila 5828), diagnosticadas en solo lectura; no eran fugas y harían fallar la puerta B | en curso | este PR | IA-022 |
+| IA-027 | Cada tasa de los informes lleva sus casos y su intervalo (R3 de la auditoría del 10-nov): `fbi.ai.intervals` (Wilson y Clopper-Pearson, aritmética pura) y las tasas del Gate B (inválidas por agente y versión, atribución), del gate de Research v2 (cobertura de hechos y de jugadores) y del banco de evaluación (válidas al primer intento, señales, veredicto, cobertura) dicen cuántos casos se juzgaron, cuántos de cada tipo, la tasa, su IC95 y dónde queda frente al umbral. Informa y no decide (`decides: false`): veredictos, umbrales y versiones no cambian, el ancla del Gate B no se mueve. Guía `backend/docs/owner/IA_027_INTERVALOS.md` | en curso | este PR | IA-010, IA-018 |
 
 ## UX — experiencia de usuario y diseño de la web
 
@@ -203,6 +204,6 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 CI-019 · SEG-003 · UX-097 · BE-036 · FE-002 · OPS-005 · DOC-001
 
-IA-027
+IA-028
 
 (El número de IA va en su propia línea desde el 10-nov-2026: así un PR de IA, que tarda en pasar el CI del backend, no choca con la línea común cada vez que se fusiona un PR de otra área.)
