@@ -8,8 +8,10 @@ request, UX-037 onwards). Four things stay apart: registered, e-mail confirmed, 
 
 * **A switch with locks.** ``FBI_SIGNUP``, born off: off, these routes do not exist (404). On, it opens only if what
   must stand behind an open door stands: the e-mail works (``FBI_SELF_SERVICE``), the consent gate is on with no text
-  in draft, and the membership is enforced - otherwise an account without a period would see everything. ``locks()``
-  names what is missing; the sign-in page asks ``is_open()``.
+  in draft, the membership is enforced - otherwise an account without a period would see everything - and the payment
+  is ready: the owner's details, a price and final terms, the same locks that keep the reader's «ya pagué» closed
+  (``payment_requests.locks()``) - otherwise a person would register and find no way to pay. ``locks()`` names what is
+  missing; the sign-in page asks ``is_open()``.
 * **The same answer whatever the address.** Registering answers 202 whether the address is new, awaits confirmation
   or already has an account: a new one is created and sent its link, one awaiting confirmation is sent a new link, and
   an active one is told by e-mail that it already has an account. The nickname is checked first, for every address, so
@@ -53,7 +55,7 @@ from fbi.auth.service import (
     valid_timezone,
 )
 from fbi.auth.settings import auth_settings
-from fbi.customer import consents, legal, membership
+from fbi.customer import consents, legal, membership, payment_requests
 from fbi.customer.db import CustomerError
 from fbi.messaging import outbox
 
@@ -101,6 +103,7 @@ def locks() -> list[str]:
         missing.append("consent_gate_not_final")
     if not membership.enforced():
         missing.append("membership_not_enforced")
+    missing.extend(payment_requests.locks())
     return missing
 
 

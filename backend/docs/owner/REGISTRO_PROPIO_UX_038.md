@@ -12,7 +12,7 @@ Primer paso visible del tramo 1 del flujo del usuario: una persona crea su cuent
 
 ## Candados del interruptor
 
-`FBI_SIGNUP=on` solo abre si además: el correo está encendido (`FBI_SELF_SERVICE`), la puerta de consentimientos está en `on` sin textos en borrador y la membresía está exigida. Si falta uno, las rutas responden 404, `GET /auth/options` dice `signup: false` y el acceso no ofrece «Crear cuenta». El orden de encendido está en `claude/PLAN_FLUJO_USUARIO_TRAMO1.md` (proyecto).
+`FBI_SIGNUP=on` solo abre si además: el correo está encendido (`FBI_SELF_SERVICE`), la puerta de consentimientos está en `on` sin textos en borrador, la membresía está exigida y el pago está listo (los datos para pagar —titular y llave Bre-B o QR—, un precio y los términos de compra sin borrador: los mismos candados que mantienen cerrado el «ya pagué», UX-099; así nadie se registra donde luego no podría avisar su pago). Si falta uno, las rutas responden 404, `GET /auth/options` dice `signup: false` y el acceso no ofrece «Crear cuenta». El orden de encendido está en `claude/PLAN_FLUJO_USUARIO_TRAMO1.md` (proyecto).
 
 ## Límites
 

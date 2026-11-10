@@ -353,6 +353,11 @@ function Row({ r }: { r: AdminPaymentRequest }) {
             {who(r)}
           </Link>
           <p className="break-all text-xs text-muted-foreground">{r.email}</p>
+          {r.phone ? (
+            <p className="break-all text-xs text-muted-foreground" data-testid="payment-phone">
+              {r.phone}
+            </p>
+          ) : null}
         </div>
         <span
           data-testid="payment-status"

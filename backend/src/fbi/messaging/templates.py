@@ -93,6 +93,15 @@ DECISION_REASONS: dict[str, dict[Locale, str]] = {
 }
 """Why a payment request was refused (UX-090: customer.payment_requests.decision_code), as the reader reads it."""
 
+NEVER_ASKS: dict[Locale, str] = {
+    "es": "PrediGol nunca te pide la clave de tu Nequi, códigos de verificación ni datos de tu cuenta bancaria. "
+          "No los compartas con nadie.",
+    "en": "PrediGol never asks for your Nequi password, verification codes or bank account details. "
+          "Do not share them with anyone.",
+}
+"""The line every e-mail about a payment notice carries (plan del flujo, «Antifraude»; UX-099): a message that asks for
+those is not ours."""
+
 LEGAL_SLUGS: dict[str, str] = {"terms": "terms", "privacy": "privacy", "responsible_gaming": "responsible-gaming"}
 """The address of each legal text (web/src/product/legal/links.ts)."""
 
@@ -775,14 +784,16 @@ TEMPLATES: dict[str, Template] = {t.name: t for t in (
                  "Recibimos tu aviso de pago. Verificamos que el dinero haya llegado antes del cierre del {date} "
                  "(un día hábil) y, en cuanto lo confirmemos, activamos tu acceso y te escribimos.",
                  "Mientras tanto no tienes que hacer nada más ni volver a pagar. Si te equivocaste de dato, puedes "
-                 "cancelar el aviso en tu perfil, en «Membresía», y enviar otro."),
+                 "cancelar el aviso en tu perfil, en «Membresía», y enviar otro.",
+                 NEVER_ASKS["es"]),
                 "Ver el estado de mi pago"),
         en=Copy("We received your payment notice",
                 ("Hello, {name}.",
                  "We received your payment notice. We check that the money arrived before the end of {date} (one "
                  "business day) and, as soon as we confirm it, we open your access and write to you.",
                  "Meanwhile you do not have to do anything else or pay again. If you got a detail wrong, you can cancel "
-                 "the notice in your profile, under “Membership”, and send another."),
+                 "the notice in your profile, under “Membership”, and send another.",
+                 NEVER_ASKS["en"]),
                 "See the state of my payment"),
         values=lambda params, locale, _zone: {"date": long_date(params["due"], locale)},
         sample=(("due", "2026-11-11"),), stale_after=timedelta(days=3),
@@ -793,13 +804,15 @@ TEMPLATES: dict[str, Template] = {t.name: t for t in (
                 ("Hola, {name}.",
                  "No pudimos confirmar tu pago: {reason}.",
                  "Revisa los datos en tu perfil, en «Membresía». Si ya pagaste, puedes enviar un nuevo aviso con los "
-                 "datos correctos o escribirnos por WhatsApp o desde Ayuda."),
+                 "datos correctos o escribirnos por WhatsApp o desde Ayuda.",
+                 NEVER_ASKS["es"]),
                 "Ver mi membresía"),
         en=Copy("We could not confirm your payment",
                 ("Hello, {name}.",
                  "We could not confirm your payment: {reason}.",
                  "Check the details in your profile, under “Membership”. If you already paid, you can send a new "
-                 "notice with the right details or write to us on WhatsApp or from Help."),
+                 "notice with the right details or write to us on WhatsApp or from Help.",
+                 NEVER_ASKS["en"]),
                 "See my membership"),
         values=lambda params, locale, _zone: {"reason": _word(DECISION_REASONS, params["reason"], locale, "reason")},
         sample=(("reason", "not_received"),), stale_after=timedelta(days=3),
@@ -810,13 +823,15 @@ TEMPLATES: dict[str, Template] = {t.name: t for t in (
                 ("Hola, {name}.",
                  "Corregimos el registro de tu pago: el periodo que habíamos activado se anuló porque el pago no pudo "
                  "confirmarse del todo.",
-                 "Escríbenos por WhatsApp o desde Ayuda y lo resolvemos contigo."),
+                 "Escríbenos por WhatsApp o desde Ayuda y lo resolvemos contigo.",
+                 NEVER_ASKS["es"]),
                 "Ver mi membresía"),
         en=Copy("We corrected the record of your payment",
                 ("Hello, {name}.",
                  "We corrected the record of your payment: the period we had opened was annulled because the payment "
                  "could not be fully confirmed.",
-                 "Write to us on WhatsApp or from Help and we will sort it out with you."),
+                 "Write to us on WhatsApp or from Help and we will sort it out with you.",
+                 NEVER_ASKS["en"]),
                 "See my membership"),
         values=_nothing, stale_after=timedelta(days=3),
     ),
