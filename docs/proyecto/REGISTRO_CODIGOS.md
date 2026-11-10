@@ -192,4 +192,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-018 · SEG-003 · IA-026 · UX-097 · BE-031 · FE-002 · OPS-004 · DOC-001
+CI-018 · SEG-003 · IA-031 · UX-097 · BE-031 · FE-002 · OPS-004 · DOC-001
