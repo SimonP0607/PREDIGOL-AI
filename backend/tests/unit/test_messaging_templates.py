@@ -76,6 +76,24 @@ def test_every_template_renders_with_its_sample(name: str, locale: str) -> None:
     assert out.text.endswith("\n") and footer in out.text
 
 
+PAYMENT_NOTICE_MAILS = ("payment_request_received", "payment_request_rejected", "payment_request_annulled")
+
+
+@pytest.mark.parametrize("name", PAYMENT_NOTICE_MAILS)
+@pytest.mark.parametrize("locale", ["es", "en"])
+def test_every_mail_about_a_payment_notice_says_the_house_never_asks_for_nequi_keys(name: str, locale: str) -> None:
+    """Plan del flujo, «Antifraude» (UX-098): the e-mails say that PrediGol never asks for the Nequi password, a code or the
+    bank account - a message that does is not ours - and they carry no amount, no reference and no address."""
+    out = render(name, locale, sample(name), {"name": "Ana"})  # type: ignore[arg-type]
+    line = templates.NEVER_ASKS[locale]  # type: ignore[index]
+    assert line in out.text and line in out.html
+    assert "Nequi" in line and ("clave" in line or "password" in line) and ("código" in line or "code" in line)
+    raw = out.subject + "\n" + out.text
+    for word in ("COP", "USD", "$", "@"):
+        assert word not in raw, f"{name}/{locale} carries {word!r}"
+    assert len(TEMPLATES[name].es.paragraphs) == len(TEMPLATES[name].en.paragraphs)
+
+
 def test_the_page_is_one_column_with_a_44px_button_and_nothing_external() -> None:
     out = render("privacy_request_received", "es", sample("privacy_request_received"), {"name": "Ana"})
     assert "max-width:560px" in out.html and "min-height:44px" in out.html and "font-size:16px" in out.html

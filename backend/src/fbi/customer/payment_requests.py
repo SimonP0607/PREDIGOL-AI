@@ -59,6 +59,9 @@ QR_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".
 REFERENCE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._-]{2,39}$")
 NOTE_MAX = 300
 NAME_MAX = 80
+NEW_ACCOUNT_HOURS = 24
+"""An account created less than this long before its notice is flagged in the owner's queue (a notice from a brand-new
+account deserves a second look at his own bank)."""
 
 
 # ── the owner's payment details ───────────────────────────────────────────────────────
@@ -441,8 +444,10 @@ def cancel(user_id: int, request_id: int, *, at: datetime | None = None) -> dict
 def queue(conn: psycopg.Connection[Any], *, status: str = "submitted", limit: int = 100,
           at: datetime | None = None) -> dict[str, Any]:
     """The requests for the console, oldest first when open (the one waiting longest first) and newest first otherwise,
-    each with the account that sent it, whether the amount matches, how many other requests carry the same reference and
-    whether its deadline passed."""
+    each with the account that sent it (its name, address and mobile), whether the amount matches, how many other
+    requests carry the same reference, whether its deadline passed and what makes the owner look twice at the person
+    (UX-098, the plan's «avisos» of the queue): notices of theirs refused before, an account made less than a day
+    before the notice, and a mobile number that other accounts carry too."""
     moment = at or datetime.now(UTC)
     if status not in ("submitted", "all"):
         raise CustomerError(422, "invalid_status", "submitted or all")
@@ -450,11 +455,17 @@ def queue(conn: psycopg.Connection[Any], *, status: str = "submitted", limit: in
     order = "r.created_at, r.id" if status == "submitted" else "r.created_at DESC, r.id DESC"
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(f"""
-            SELECT {_COLUMNS}, u.email, u.display_name, u.first_name, u.last_name,
+            SELECT {_COLUMNS}, u.email, u.display_name, u.first_name, u.last_name, u.phone_e164 AS phone,
                    (SELECT c.code FROM customer.coupons c WHERE c.id = r.coupon_id) AS coupon_code,
                    (SELECT count(*) FROM customer.payment_requests o
                      WHERE o.reference_hmac IS NOT NULL AND o.reference_hmac = r.reference_hmac AND o.id <> r.id)
-                       AS same_reference
+                       AS same_reference,
+                   (SELECT count(*) FROM customer.payment_requests o
+                     WHERE o.user_id = r.user_id AND o.status = 'rejected' AND o.id < r.id) AS previous_rejections,
+                   (r.created_at - u.created_at) < make_interval(hours => {NEW_ACCOUNT_HOURS}) AS new_account,
+                   (SELECT count(*) FROM auth.users o
+                     WHERE u.phone_e164 IS NOT NULL AND o.phone_e164 = u.phone_e164 AND o.id <> u.id
+                       AND o.status <> 'deleted') AS phone_elsewhere
               FROM customer.payment_requests r JOIN auth.users u ON u.id = r.user_id
               {where} ORDER BY {order} LIMIT %s
         """, (max(1, min(limit, 200)),))
@@ -464,8 +475,8 @@ def queue(conn: psycopg.Connection[Any], *, status: str = "submitted", limit: in
     annulled = _annulled_ids(conn, [int(r["payment_id"]) for r in rows if r["payment_id"] is not None])
     items: list[dict[str, Any]] = []
     for r in rows:
-        extra = {k: r.pop(k) for k in ("email", "display_name", "first_name", "last_name", "coupon_code",
-                                       "same_reference")}
+        extra = {k: r.pop(k) for k in ("email", "display_name", "first_name", "last_name", "phone", "coupon_code",
+                                       "same_reference", "previous_rejections", "new_account", "phone_elsewhere")}
         item = _shape(r, annulled=r["payment_id"] in annulled)
         item.update(extra)
         item["amount_matches"] = Decimal(item["declared_amount"]) == Decimal(item["expected_amount"])
@@ -586,12 +597,24 @@ def annul(actor: int, request_id: int, *, reason: str, at: datetime | None = Non
 
 
 def export_rows(conn: psycopg.Connection[Any], user_id: int) -> list[dict[str, Any]]:
-    """The reader's own notices for their export (what they declared and what was decided, never the reference)."""
+    """The reader's own notices for their export (UX-098): all that they see of each - what they declared (the amount,
+    the day, the way, the payer's name, their note, the last four of the reference), the discount and the terms they
+    accepted, what the owner decided (the code and the note) and whether an approval was annulled later. Never the
+    whole reference nor its HMAC, and never who in the console decided or the payment's own id."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("""
-            SELECT status, expected_amount, currency, declared_amount, declared_paid_on, method, reference_last4,
-                   terms_version, accepted_at, created_at, decided_at, decision_code
+            SELECT id, status, expected_amount, currency, discount_percent, declared_amount, declared_paid_on, method,
+                   reference_last4, payer_name, note, terms_version, terms_sha256, accepted_at, created_at, decided_at,
+                   decision_code, decision_note, payment_id
               FROM customer.payment_requests WHERE user_id = %s ORDER BY created_at DESC, id DESC
         """, (user_id,))
-        return [{**r, "expected_amount": str(r["expected_amount"]), "declared_amount": str(r["declared_amount"])}
-                for r in cur.fetchall()]
+        found = cur.fetchall()
+    annulled = _annulled_ids(conn, [int(r["payment_id"]) for r in found if r["payment_id"] is not None])
+    out: list[dict[str, Any]] = []
+    for r in found:
+        row = {k: v for k, v in r.items() if k != "payment_id"}
+        row["expected_amount"] = str(r["expected_amount"])
+        row["declared_amount"] = str(r["declared_amount"])
+        row["annulled"] = r["payment_id"] is not None and int(r["payment_id"]) in annulled
+        out.append(row)
+    return out

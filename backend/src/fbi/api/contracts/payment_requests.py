@@ -91,8 +91,12 @@ class AdminPaymentRequest(PaymentRequestView):
     display_name: str
     first_name: str | None
     last_name: str | None
+    phone: str | None = Field(description="The mobile number the person gave (E.164), for the owner's own records.")
     coupon_code: str | None
     same_reference: int = Field(description="Other notices carrying the same reference.")
+    previous_rejections: int = Field(description="Notices of this person that were refused before this one.")
+    new_account: bool = Field(description="The account was made less than a day before the notice.")
+    phone_elsewhere: int = Field(description="Other accounts that carry the same mobile number.")
     amount_matches: bool
     overdue: bool
 

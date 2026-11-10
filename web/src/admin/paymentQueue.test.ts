@@ -5,6 +5,9 @@ const base = {
   amount_matches: true,
   same_reference: 0,
   overdue: false,
+  previous_rejections: 0,
+  new_account: false,
+  phone_elsewhere: 0,
   status: "submitted" as const,
 };
 
@@ -20,13 +23,29 @@ describe("the queue's flags", () => {
       "overdue",
     ]);
   });
+  test("the person's own signs: a refusal before, a day-old account, a mobile shared (UX-098)", () => {
+    expect(flagsOf({ ...base, previous_rejections: 1 })).toEqual(["refused_before"]);
+    expect(flagsOf({ ...base, new_account: true })).toEqual(["new_account"]);
+    expect(flagsOf({ ...base, phone_elsewhere: 2 })).toEqual(["shared_phone"]);
+    expect(
+      flagsOf({ ...base, previous_rejections: 3, new_account: true, phone_elsewhere: 1 }),
+    ).toEqual(["refused_before", "new_account", "shared_phone"]);
+    expect(flagsOf({ ...base, same_reference: 1, new_account: true })).toEqual([
+      "duplicate",
+      "new_account",
+    ]);
+  });
   test("a decided notice raises nothing", () => {
     expect(flagsOf({ ...base, status: "approved", amount_matches: false })).toEqual([]);
+    expect(
+      flagsOf({ ...base, status: "rejected", previous_rejections: 2, new_account: true }),
+    ).toEqual([]);
   });
-  test("amount and duplicate ask for a tick, lateness does not", () => {
+  test("amount and duplicate ask for a tick; lateness and the person's signs do not", () => {
     expect(needsTick(["amount"])).toBe(true);
     expect(needsTick(["duplicate"])).toBe(true);
     expect(needsTick(["overdue"])).toBe(false);
+    expect(needsTick(["refused_before", "new_account", "shared_phone"])).toBe(false);
     expect(needsTick([])).toBe(false);
   });
 });
