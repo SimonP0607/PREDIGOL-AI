@@ -43,10 +43,7 @@ of them predicts. Do not move it back (``tests/unit/test_model_code_version.py``
 
 from __future__ import annotations
 
-import hashlib
-import json
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -55,102 +52,33 @@ from typing import Any, Final
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.intel.calibration import CalibrationState, Calibrator, calibration_state
-from fbi.models.scoring import MARKET_ROWS
+from fbi.forecasting.market_reader import read_consensus, read_sources
+from fbi.forecasting.market_view import (  # noqa: F401  (the view's names stay reachable from here: the writer and its readers use them)
+    BASIS_CHAMPION,
+    BASIS_NEEDS_PRICE,
+    BASIS_NO_CHAMPION,
+    BASIS_NOT_APPLICABLE,
+    CALIBRATED,
+    FAMILIES,
+    MARKETS,
+    MAX_MARKET_AGE,
+    UNCALIBRATED,
+    VERSION,
+    MarketForecast,
+    Outcome,
+    Row,
+    Source,
+    forecast_market,
+    most_likely,
+)
+from fbi.intel.calibration import calibration_state
 from fbi.predictions.forecast import HORIZON, upcoming
 
-VERSION: Final = "forecast-v1"
-
-MAX_MARKET_AGE: Final = timedelta(hours=6)
-"""A calibrator that takes the market's probability as an input gets the newest de-vigged consensus no older than this."""
 MATERIAL_CHANGE: Final = Decimal("0.005")
 """A market is written again when any outcome moved by at least this (0.5 points) - or when its provenance changed."""
 
 NOT_FIT: Final = frozenset({"PRODUCT_ONLY", "INSUFFICIENT"})
 """The competition data classes that are not fit for a model (the decision layer's ``NOT_FIT``; a test holds them equal)."""
-
-FAMILIES: Final = {"1X2": "RESULT", "OU": "TOTAL_GOALS", "BTTS": "BOTH_TEAMS_SCORE"}
-"""The forecast family of each market PrediGol forecasts. F10 adds goals by half, corners and cards."""
-
-CALIBRATED: Final = "CALIBRATED"
-UNCALIBRATED: Final = "UNCALIBRATED"
-
-BASIS_CHAMPION: Final = "champion"
-BASIS_NO_CHAMPION: Final = "no_champion"
-BASIS_NEEDS_PRICE: Final = "needs_price"
-BASIS_NOT_APPLICABLE: Final = "not_applicable"
-
-_LO: Final = 1e-6
-
-
-def _market_rows() -> dict[tuple[str, Decimal], tuple[str, ...]]:
-    """(market, line) -> its outcomes, in the order the models price them."""
-    out: dict[tuple[str, Decimal], list[str]] = defaultdict(list)
-    for market, selection, line in MARKET_ROWS:
-        out[(market, Decimal(str(line)))].append(selection)
-    missing = {m for m, _ in out} - set(FAMILIES)
-    assert not missing, f"a market the models price has no forecast family: {sorted(missing)}"
-    return {k: tuple(v) for k, v in out.items()}
-
-
-MARKETS: Final = _market_rows()
-"""What is forecast: (market, line) -> outcomes. Derived from what the goal models price, so the two cannot drift apart."""
-
-
-@dataclass(frozen=True, slots=True)
-class Source:
-    """One model's number for one outcome (a row of ``models.predictions``)."""
-
-    model: str
-    model_version_id: int
-    data_cutoff_ts: datetime
-    feature_set_hash: str
-    p: float
-    lo: float | None
-    hi: float | None
-    push: float
-
-
-@dataclass(frozen=True, slots=True)
-class Row:
-    """A ``models.predictions`` row of the core markets, as the forecast reads it."""
-
-    selection: str
-    source: Source
-
-
-@dataclass(frozen=True, slots=True)
-class Outcome:
-    selection: str
-    p_model: float
-    p: float
-    lo: float | None
-    hi: float | None
-    push: float
-    p_market: float | None = None
-    market_as_of: datetime | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class MarketForecast:
-    """PrediGol's forecast of one market of one match: the outcomes (one model, one cut-off) and how they were calibrated."""
-
-    fixture_id: int
-    market_key: str
-    line: Decimal
-    model: str
-    model_version_id: int
-    data_cutoff_ts: datetime
-    outcomes: tuple[Outcome, ...]
-    calibration: str
-    basis: str
-    calibrator_id: int | None
-    input_hash: str
-
-    @property
-    def family(self) -> str:
-        return FAMILIES[self.market_key]
-
 
 @dataclass(frozen=True, slots=True)
 class Stored:
@@ -161,89 +89,6 @@ class Stored:
     calibration: str
     calibrator_id: int | None
     p: dict[str, Decimal]
-
-
-# ── the pure part ────────────────────────────────────────────────────────────────────────────────────────────────
-
-def _clip(x: float) -> float:
-    return min(max(x, _LO), 1 - _LO)
-
-
-def _hash(parts: Sequence[object]) -> str:
-    return hashlib.sha256(json.dumps(parts, sort_keys=True, default=str, separators=(",", ":")).encode()).hexdigest()
-
-
-def _calibrate(champion: Calibrator, outcomes: Sequence[Outcome]) -> tuple[list[Outcome], str] | None:
-    """The champion applied to every outcome, the market scaled to add up to one. None when it cannot be applied."""
-    cal: list[float] = []
-    for o in outcomes:
-        p = champion.apply(o.p_model, o.p_market)
-        if p is None:
-            return None
-        cal.append(p)
-    total = sum(cal)
-    if total <= 0:
-        return None
-    out: list[Outcome] = []
-    for o, p in zip(outcomes, cal, strict=True):
-        ps = p / total
-        lo = hi = None
-        if o.lo is not None and o.hi is not None:
-            cl = champion.apply(_clip(o.lo), o.p_market)
-            ch = champion.apply(_clip(o.hi), o.p_market)
-            if cl is not None and ch is not None:
-                # a calibrator is monotone in the model's probability, but nothing here relies on the sign of its slope
-                lo, hi = min(cl, ch) / total, max(cl, ch) / total
-                lo, hi = min(lo, ps), max(hi, ps)
-        out.append(Outcome(o.selection, o.p_model, ps, lo, hi, o.push, o.p_market, o.market_as_of))
-    return out, BASIS_CHAMPION
-
-
-def forecast_market(fixture_id: int, market_key: str, line: Decimal, models: dict[str, list[Row]],
-                         cal: CalibrationState, market: dict[str, tuple[float, datetime]]) -> MarketForecast | None:
-    """The forecast of one market, or None when no model priced every outcome of it.
-
-    ``models``: model -> its rows for this market (every outcome, one cut-off); ``market``: outcome -> the newest de-vigged
-    consensus probability and when it was captured, used only by a champion that takes the market as an input.
-    """
-    selections = MARKETS[(market_key, line)]
-    complete: dict[str, list[Row]] = {}
-    for name, rows in models.items():
-        if sorted(r.selection for r in rows) != sorted(selections):
-            continue
-        # one version and one cut-off: the outcomes of a market are a set that adds up to one
-        if len({(r.source.model_version_id, r.source.data_cutoff_ts) for r in rows}) != 1:
-            continue
-        complete[name] = rows
-    if not complete:
-        return None
-    name = cal.primary_model(market_key, sorted(complete)) or sorted(complete)[0]
-    by_sel = {r.selection: r.source for r in complete[name]}
-    first = by_sel[selections[0]]
-    raw = [Outcome(s, by_sel[s].p, by_sel[s].p, by_sel[s].lo, by_sel[s].hi, by_sel[s].push,
-                   market.get(s, (None, None))[0], market.get(s, (None, None))[1]) for s in selections]
-    champion = cal.champions.get((market_key, name))
-    outcomes: tuple[Outcome, ...] = tuple(raw)
-    calibration, basis, calibrator_id = UNCALIBRATED, BASIS_NO_CHAMPION, None
-    if champion is not None:
-        needs_market = champion.method == "logit2"
-        if needs_market and any(o.p_market is None for o in raw):
-            basis = BASIS_NEEDS_PRICE
-        else:
-            applied = _calibrate(champion, raw)
-            if applied is None:
-                basis = BASIS_NOT_APPLICABLE
-            else:
-                outcomes, basis = tuple(applied[0]), applied[1]
-                calibration, calibrator_id = CALIBRATED, champion.id
-    if calibration == UNCALIBRATED:
-        # the market's probability is not part of an uncalibrated forecast: it is not stated, so it is not kept
-        outcomes = tuple(Outcome(o.selection, o.p_model, o.p_model, o.lo, o.hi, o.push) for o in raw)
-    digest = _hash([VERSION, fixture_id, market_key, str(line), name, first.model_version_id, first.data_cutoff_ts,
-                    sorted((s, by_sel[s].feature_set_hash) for s in selections), calibrator_id, basis,
-                    sorted((o.selection, None if o.p_market is None else round(o.p_market, 6)) for o in outcomes)])
-    return MarketForecast(fixture_id, market_key, line, name, first.model_version_id, first.data_cutoff_ts, outcomes,
-                          calibration, basis, calibrator_id, digest)
 
 
 def says_something_new(previous: Stored | None, new: MarketForecast) -> bool:
@@ -258,45 +103,7 @@ def says_something_new(previous: Stored | None, new: MarketForecast) -> bool:
     return any(abs(previous.p[o.selection] - Decimal(str(round(o.p, 6)))) >= MATERIAL_CHANGE for o in new.outcomes)
 
 
-def most_likely(outcomes: Iterable[Outcome]) -> str | None:
-    """The outcome with the highest probability (the first of them in the models' order if two tie)."""
-    best: Outcome | None = None
-    for o in outcomes:
-        if best is None or o.p > best.p:
-            best = o
-    return None if best is None else best.selection
-
-
 # ── reading and writing ──────────────────────────────────────────────────────────────────────────────────────────
-
-SOURCES_SQL = """
-WITH newest AS (
-    SELECT DISTINCT ON (p.fixture_id, r.name) p.fixture_id, r.name AS model, p.model_version_id, p.data_cutoff_ts
-      FROM models.predictions p JOIN models.model_versions v ON v.id = p.model_version_id
-      JOIN models.model_registry r ON r.id = v.model_id
-     WHERE p.fixture_id = ANY(%(ids)s) AND p.backtest_session_id IS NULL AND p.data_cutoff_ts <= %(at)s
-     ORDER BY p.fixture_id, r.name, p.data_cutoff_ts DESC, p.model_version_id DESC
-)
-SELECT n.model, p.fixture_id, p.model_version_id, p.data_cutoff_ts, p.market_key, p.selection, p.line,
-       p.p_raw::float8 AS p, p.p_lo::float8 AS lo, p.p_hi::float8 AS hi, COALESCE(p.p_push, 0)::float8 AS push,
-       p.feature_set_hash
-  FROM models.predictions p JOIN newest n ON n.fixture_id = p.fixture_id AND n.model_version_id = p.model_version_id
-       AND n.data_cutoff_ts = p.data_cutoff_ts
- WHERE p.fixture_id = ANY(%(ids)s) AND p.backtest_session_id IS NULL
-   AND (p.market_key, p.line) IN (SELECT c.m, c.l FROM unnest(%(core_markets)s::text[], %(core_lines)s::numeric[]) AS c(m, l))
-"""
-"""The newest real-time forecast of each model for each match, restricted to the core markets. ``p_raw`` is the model's own
-number: ``p_calibrated`` is the same today, but ``p_raw`` is the one that means it."""
-
-CONSENSUS_SQL = """
-SELECT DISTINCT ON (m.fixture_id, m.market_key, m.selection, m.line)
-       m.fixture_id, m.market_key, m.selection, m.line, m.p_fair::float8 AS p_fair, m.as_of
-  FROM market.market_consensus m
- WHERE m.fixture_id = ANY(%(ids)s) AND m.devig_method = 'shin' AND m.as_of <= %(at)s AND m.as_of >= %(since)s
-   AND m.p_fair > 0 AND m.p_fair < 1
-   AND (m.market_key, m.line) IN (SELECT c.m, c.l FROM unnest(%(core_markets)s::text[], %(core_lines)s::numeric[]) AS c(m, l))
- ORDER BY m.fixture_id, m.market_key, m.selection, m.line, m.as_of DESC
-"""
 
 QUALITY_SQL = """
 SELECT f.id AS fixture_id,
@@ -350,40 +157,6 @@ class MatchForecastReport:
         return (f"match forecasts {self.markets_written} markets written ({self.rows_written} rows)/{self.unchanged} unchanged "
                 f"for {self.with_model} of {self.targets} fixtures ({self.not_fit} not fit); calibrated {self.calibrated}, "
                 f"uncalibrated: {un}")
-
-
-def _core() -> dict[str, list[Any]]:
-    """The markets that are forecast, as the two parallel arrays the queries unnest (a row list cannot be a parameter)."""
-    keys = sorted(MARKETS)
-    return {"core_markets": [m for m, _ in keys], "core_lines": [line for _, line in keys]}
-
-
-def _read_sources(conn: psycopg.Connection[Any], ids: list[int], at: datetime
-                  ) -> dict[tuple[int, str, Decimal], dict[str, list[Row]]]:
-    out: dict[tuple[int, str, Decimal], dict[str, list[Row]]] = defaultdict(lambda: defaultdict(list))
-    with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(SOURCES_SQL, {"ids": ids, "at": at, **_core()})
-        for r in cur.fetchall():
-            line = Decimal(r["line"])
-            if (str(r["market_key"]), line) not in MARKETS:
-                continue
-            out[(int(r["fixture_id"]), str(r["market_key"]), line)][str(r["model"])].append(Row(
-                str(r["selection"]),
-                Source(str(r["model"]), int(r["model_version_id"]), r["data_cutoff_ts"], str(r["feature_set_hash"]),
-                       float(r["p"]), None if r["lo"] is None else float(r["lo"]),
-                       None if r["hi"] is None else float(r["hi"]), float(r["push"]))))
-    return out
-
-
-def _read_consensus(conn: psycopg.Connection[Any], ids: list[int], at: datetime
-                    ) -> dict[tuple[int, str, Decimal], dict[str, tuple[float, datetime]]]:
-    out: dict[tuple[int, str, Decimal], dict[str, tuple[float, datetime]]] = defaultdict(dict)
-    with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(CONSENSUS_SQL, {"ids": ids, "at": at, "since": at - MAX_MARKET_AGE, **_core()})
-        for r in cur.fetchall():
-            out[(int(r["fixture_id"]), str(r["market_key"]), Decimal(r["line"]))][str(r["selection"])] = (
-                float(r["p_fair"]), r["as_of"])
-    return out
 
 
 def _read_stored(conn: psycopg.Connection[Any], ids: list[int], at: datetime) -> dict[tuple[int, str, Decimal], Stored]:
@@ -451,8 +224,8 @@ def write_match_forecasts(conn: psycopg.Connection[Any], *, at: datetime, code_v
     if not ids:
         return report
     cal = calibration_state(conn, at=at)
-    sources = _read_sources(conn, ids, at)
-    consensus = _read_consensus(conn, ids, at)
+    sources = read_sources(conn, ids, at)
+    consensus = read_consensus(conn, ids, at)
     stored = _read_stored(conn, ids, at)
     covered: set[int] = set()
     for key in sorted(sources):

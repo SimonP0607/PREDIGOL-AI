@@ -46,7 +46,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Any, Final
 
@@ -116,6 +116,36 @@ class MarketRisk:
     @property
     def steam_against(self) -> bool:
         return self.steam and self.side == "against"
+
+
+@dataclass(frozen=True, slots=True)
+class CommonView:
+    """The probability view of a selection (``fbi.forecasting.market_view``, as of the decision's moment): what a reader of the Match Center
+    would see, for the model it chose. SHADOW, a measurement: no stage reads it - the state is decided as before, from ``Prediction`` -
+    and it is carried so that the replay can say, selection by selection, how far decision-v2's own number is from the common one.
+    Built by ``fbi.decision.view``."""
+
+    p: float
+    """The probability of the selection in the view: its market adds up to one."""
+    p_model: float
+    model: str
+    calibration: str
+    """``CALIBRATED`` (a champion applied with a fresh price) or ``UNCALIBRATED`` (the model's own number: ``basis`` says why)."""
+    basis: str
+    calibrator_id: int | None
+    low: float | None
+    high: float | None
+    cutoff: datetime
+    """The data cut-off of the model's numbers."""
+    market_as_of: datetime | None
+    """When the price that calibrated it was captured (None for an uncalibrated view)."""
+    version: str
+
+    def as_json(self) -> dict[str, Any]:
+        return {"p": self.p, "p_model": self.p_model, "model": self.model, "calibration": self.calibration, "basis": self.basis,
+                "calibrator_id": self.calibrator_id, "interval": None if self.low is None or self.high is None else [self.low, self.high],
+                "cutoff": self.cutoff.isoformat(), "market_as_of": None if self.market_as_of is None else self.market_as_of.isoformat(),
+                "version": self.version}
 
 
 @dataclass(frozen=True, slots=True)
@@ -202,6 +232,8 @@ class Decision2:
     market: MarketRisk | None
     score: float | None
     version: str = VERSION
+    common: CommonView | None = None
+    """The common probability view of the selection (a measurement in shadow; see ``CommonView``), None when none was given."""
 
     @property
     def ident(self) -> tuple[str, Key, str | None]:
@@ -224,6 +256,7 @@ class Decision2:
             "context": {"status": self.context_status, "adjustment": self.adjustment},
             "market": None if self.market is None else {"status": self.market.status, "side": self.market.side, "steam": self.market.steam,
                                                         "movement_points": self.market.movement_points, "stale": self.market.stale},
+            "common": None if self.common is None else self.common.as_json(),
             "stages": [v.as_json() for v in self.verdicts]}
 
 
@@ -504,11 +537,11 @@ Ident = tuple[str, Key, str | None]
 
 
 def decide_all(world: decision.World, candidates: Sequence[Candidate], *, adjustments: Mapping[Key, ContextAdjustment] | None = None,
-               markets: Mapping[Ident, MarketRisk] | None = None) -> list[Decision2]:
+               markets: Mapping[Ident, MarketRisk] | None = None, views: Mapping[Key, CommonView] | None = None) -> list[Decision2]:
     """The candidates of one moment: each through the stages, then correlation (8) - among the selections of a match that compete
     (``Assessed.competes``), the best score stays and the others are CAUTION. Ties break on (market, selection, line, family, model), never on the order
     of the rows, and the verdicts say so (``tie``): decision-v1 breaks them on the order the database returns its candidates in, which no
-    query fixes, so a tie is where the two may disagree with neither being wrong. Returned in the order of ``candidates``."""
+    query fixes, so a tie is where the two may disagree with neither being wrong. Returned in the order of ``candidates``. ``views`` (selection -> its common view) is only carried onto the decisions, as a measurement."""
     assessed = [assess(world, c, adjustment=(adjustments or {}).get(c.key), market=(markets or {}).get(c.ident)) for c in candidates]
     by_fixture: dict[int, list[int]] = defaultdict(list)
     for i, a in enumerate(assessed):
@@ -528,5 +561,8 @@ def decide_all(world: decision.World, candidates: Sequence[Candidate], *, adjust
             verdicts[i] = _v("correlation", False, f"otra selección del mismo partido tiene mejor score ({best.key[1]} {best.key[2]})"
                              + (" (empate de score: decide la selección)" if i in tied else ""),
                              _e("correlated_same_match"), best=[best.key[1], best.key[2], str(best.key[3])], tie=i in tied)
-    return [finish(a, verdicts.get(i) or alone(a)) for i, a in enumerate(assessed)]
+    decided = [finish(a, verdicts.get(i) or alone(a)) for i, a in enumerate(assessed)]
+    if not views:
+        return decided
+    return [replace(d, common=views.get(d.key)) for d in decided]  # a measurement carried along: nothing above read it
 

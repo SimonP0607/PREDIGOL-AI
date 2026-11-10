@@ -177,6 +177,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | BE-029 | Partidos y Match Center, estadios dudosos de la reparación de ciudades: la regla `fixture_venue_city` (BE-005) dio la ciudad de 97 partidos antiguos por la mayoría de los demás partidos del club «en ese estadio», y se equivocó en dos (51 del LASK 2019-2022 en la «Raiffeisen Arena» de Pasching, que no es la de Linz de 2023, y 46 del Independiente del Valle en Sangolquí, que el proveedor pone en Quito). Nuevo `scripts.restore_venue_city` (ensayo por defecto, solo los estadios pedidos, solo donde la ciudad sigue siendo la reparada, una fila de auditoría `fixture_venue_city_restored` por partido) y `repair_venue_city` ya no rehace un partido restituido. No escribe nada en producción por sí mismo: la restitución la autoriza y ejecuta el dueño | en curso | este PR | Plan Partidos y Match Center |
 | BE-030 | Solo documentación (plan PICKS, F3): la comparación fila a fila repetida con la herramienta ya desplegada (sigue sin cumplirse) y por qué el Match Center no puede mostrar hoy la probabilidad calibrada de Intelligence: esta solo existe para las selecciones con precio evaluado (1X2 1,5 de 3 resultados por mercado; Más/menos y Ambos anotan 1 de 2) y no suma 100 %, mientras el pronóstico del Match Center cubre mercados completos que suman 1,0000. Se dejan dos salidas para decidir con el dueño; `FBI_PICKS_SOURCE` sigue apagado | en curso | este PR | Plan PICKS |
 | BE-032 | Herramienta de comparación de probabilidades (plan PICKS, F3, opción B): `compare_probabilities` dice ahora por qué difieren el Match Center e Intelligence en cada selección (otro modelo, pronóstico sin calibrar, momento distinto o calibración), de solo lectura y sin tocar `decision-v1` ni el pronóstico; y la guía deja escrita la causa raíz medida en producción. Es la vara con la que se medirá la vista común de probabilidades | en curso | este PR | Plan PICKS |
+| BE-033 | Vista común de probabilidades (plan PICKS, F3, opción B): la parte pura del pronóstico del Match Center pasa a un módulo neutral (`market_view`, sin cambiar un número) y `decision-v2`, solo en sombra, la lleva junto a cada decisión sin que ninguna etapa la lea; la repetición del día (`ia_decision_v2 replay --view`) mide cuánto se aleja la probabilidad de `decision-v1` de la vista común y por qué. No cambia ningún estado, pick ni lo que ve un usuario; `FBI_PICKS_SOURCE` sigue apagado | en curso | este PR | Plan PICKS |
 
 ## Otras áreas
 
@@ -184,4 +185,4 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-018 · SEG-003 · IA-026 · UX-084 · BE-033 · FE-002 · OPS-004 · DOC-001
+CI-018 · SEG-003 · IA-026 · UX-084 · BE-034 · FE-002 · OPS-004 · DOC-001

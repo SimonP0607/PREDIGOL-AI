@@ -96,3 +96,16 @@ def test_the_decision_layer_and_the_pick_engine_do_not_read_it() -> None:
             assert not TABLE.search(text), name
             continue
         assert "match_forecast" not in text, f"{name} must not take PrediGol's forecast as an input: a forecast is not a value"
+
+
+def test_the_probability_view_is_pure_and_reads_neither_the_forecast_nor_the_writer() -> None:
+    """``market_view`` (the computation the forecast is written from, and decision-v2 measures against) takes rows and reads nothing; ``market_reader``
+    reads the models' numbers and the market's consensus, never the stored forecast. Neither imports the writer (that would let a decision reach it)."""
+    for name in ("market_view", "market_reader"):
+        path = SRC / "forecasting" / f"{name}.py"
+        text = path.read_text(encoding="utf-8")
+        assert not TABLE.search(text), f"{name} must not name the forecast table"
+        assert not [i for i in imports_of(path) if "match_forecast" in i], f"{name} must not import the writer"
+    pure = imports_of(SRC / "forecasting" / "market_view.py")
+    assert not [i for i in pure if i.startswith(("psycopg", "fbi.api", "fbi.picks", "fbi.db"))], "the view takes rows: it opens no connection"
+    assert "execute" not in (SRC / "forecasting" / "market_view.py").read_text(encoding="utf-8")

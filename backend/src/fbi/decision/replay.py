@@ -35,6 +35,7 @@ from psycopg.rows import dict_row
 
 from fbi.ai.calendar import day_bounds
 from fbi.decision import engine, market_inputs
+from fbi.decision import view as common_view
 from fbi.decision.families import FAMILIES, INFO_CODES, Candidate, MarketFamily, family_of
 from fbi.intel import context_adjustment as ctx_adj
 from fbi.intel import decision, state_v2
@@ -48,7 +49,7 @@ NOT_FOUND: Final = "candidate"
 
 DAY_SQL: Final = """
 SELECT d.id, d.decision_version, d.known_at, d.checkpoint, d.fixture_id, d.market_key, d.selection, d.line, d.model_name, d.state,
-       d.reasons, d.filters, d.context_status
+       d.reasons, d.filters, d.context_status, d.p_cal::float8 AS p_cal
   FROM intel.decisions d
  WHERE d.decision_version = ANY(%(versions)s) AND d.known_at >= %(start)s AND d.known_at < %(end)s
  ORDER BY d.known_at, d.id
@@ -197,6 +198,61 @@ def compare(pairs: Sequence[Pair], *, families: Sequence[str]) -> dict[str, Any]
             "disagreements": disagreements, "unmatched": unmatched}
 
 
+# -- the common view ------------------------------------------------------------------------------------------------------------------
+
+TOLERANCE_PP: Final = 0.5
+"""The gap, in points, under which two readings of one selection are the same number (the criterion of plan PICKS, F3)."""
+CAUSES: Final = ("different_model", "view_uncalibrated", "calibration")
+"""Why decision-v1's calibrated probability and the common view differ, the first that applies: another model; the view is the model's own number
+(it only calibrates with a champion and a fresh price, where decision-v1 also shows the best fit); or the calibration itself (the view scales
+the whole market to one)."""
+
+
+def _percentile(sorted_gaps: Sequence[float], q: float) -> float | None:
+    return None if not sorted_gaps else round(sorted_gaps[min(len(sorted_gaps) - 1, int(q * len(sorted_gaps)))], 3)
+
+
+def common_cause(row: Mapping[str, Any], view: engine.CommonView) -> str:
+    model = row.get("model_name")
+    if model is not None and str(model) != view.model:
+        return "different_model"
+    if view.calibration != "CALIBRATED":
+        return "view_uncalibrated"
+    return "calibration"
+
+
+def common_summary(items: Sequence[tuple[Mapping[str, Any], engine.CommonView | None, float | None]]) -> dict[str, Any]:
+    """How far decision-v1's calibrated probability (the row) and decision-v2's own (``p_cal``) are from the common view, in points, and why.
+    ``items``: (the row decision-v1 wrote, the view of its selection as of its moment or None, decision-v2's own calibrated probability).
+    Pure. A selection counts where the row has a calibrated probability and the view has the selection."""
+    gaps: list[float] = []
+    own: list[float] = []
+    by_cause: dict[str, list[float]] = {c: [] for c in CAUSES}
+    calibration: Counter[str] = Counter()
+    with_view = with_p = 0
+    for row, view, p2 in items:
+        if view is None:
+            continue
+        with_view += 1
+        calibration[view.calibration] += 1
+        if row.get("p_cal") is None:
+            continue
+        with_p += 1
+        g = abs(view.p - float(row["p_cal"])) * 100
+        gaps.append(g)
+        by_cause[common_cause(row, view)].append(g)
+        if p2 is not None:
+            own.append(abs(view.p - p2) * 100)
+    gaps.sort()
+    own.sort()
+    causes = {c: {"selections": len(v), "median_pp": round(sorted(v)[len(v) // 2], 3) if v else None, "max_pp": round(max(v), 3) if v else None,
+                  "over_tolerance": sum(1 for x in v if x > TOLERANCE_PP)} for c, v in by_cause.items()}
+    return {"rows": len(items), "with_view": with_view, "with_v1_probability": with_p, "within_tolerance": sum(1 for g in gaps if g <= TOLERANCE_PP),
+            "tolerance_pp": TOLERANCE_PP, "median_pp": _percentile(gaps, 0.5), "p90_pp": _percentile(gaps, 0.9), "max_pp": _percentile(gaps, 1.0),
+            "v2_own_vs_view_median_pp": _percentile(own, 0.5), "v2_own_vs_view_max_pp": _percentile(own, 1.0),
+            "view_calibration": dict(calibration.most_common()), "causes": causes}
+
+
 # -- the replay -----------------------------------------------------------------------------------------------------------------------
 
 def _primary_p(world: decision.World, c: Candidate) -> float | None:
@@ -207,7 +263,7 @@ def _primary_p(world: decision.World, c: Candidate) -> float | None:
 
 
 def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[MarketFamily] = FAMILIES, council: str | None = None,
-               signals: bool = False) -> dict[str, Any]:
+               signals: bool = False, view: bool = False) -> dict[str, Any]:
     """decision-v2 over every row decision-v1 and decision-fam-v1 wrote during ``day``, compared. Read-only."""
     if council is not None and council not in ctx_adj.ENGINES:
         raise ValueError(f"council must be one of {ctx_adj.ENGINES}")
@@ -225,6 +281,7 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
             continue
         groups[(r["known_at"], fam.params.decision_version)].append((r, fam))
     pairs: list[Pair] = []
+    measured: list[tuple[Mapping[str, Any], engine.CommonView | None, float | None]] = []
     for (at, _), items in sorted(groups.items()):
         fams = [f for f in families if any(f is g for _, g in items)]
         fixtures = sorted({int(r["fixture_id"]) for r, _ in items})
@@ -240,13 +297,16 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
                 found = market_inputs.read(conn, c.key, at=at, p_model=_primary_p(world, c))
                 if found is not None:
                     markets[c.ident] = found
-        index = {d.ident: d for d in engine.decide_all(world, cands, adjustments=adjustments, markets=markets)}
+        views = common_view.read(conn, fixtures, at=at, cal=world.cal) if view else {}
+        index = {d.ident: d for d in engine.decide_all(world, cands, adjustments=adjustments, markets=markets, views=views)}
         for r, fam in items:
             k = key_of(r)
             d = index.get((fam.name, k, str(r.get("model_name")))) or index.get((fam.name, k, None))
             pairs.append((r, fam.name, d))
+            # the view of the row's selection counts whether or not decision-v2 rebuilt its candidate: it is a measurement of the view
+            measured.append((r, views.get(k), None if d is None else d.prediction.p_cal))
     out = compare(pairs, families=[f.name for f in families])
     return {"version": engine.VERSION, "replay": VERSION, "day": day.isoformat(), "versions": versions,
-            "inputs": {"council": council, "signals": signals, "previous": "strictly before known_at", "ai_mode": "as the rows recorded it"},
+            "inputs": {"council": council, "signals": signals, "view": view, "previous": "strictly before known_at", "ai_mode": "as the rows recorded it"},
             "rows": len(rows), "moments": len(groups), "skipped": {"selection_copies": skipped_selection, "unclaimed": len(unclaimed)},
-            "unclaimed_rows": unclaimed} | out
+            "unclaimed_rows": unclaimed} | out | ({"common_view": common_summary(measured)} if view else {})

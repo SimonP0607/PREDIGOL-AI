@@ -121,6 +121,23 @@ def test_the_new_inputs_change_nothing_when_there_is_nothing_to_say(db: psycopg.
         replay.replay_day(db, day=local_day(AT), council="cs-v1")
 
 
+def test_measuring_against_the_common_view_changes_no_decision_and_writes_nothing(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """``view=True`` only adds a measurement (plan PICKS, F3): the agreement is what it was, the report says how many rows had a reading, and the
+    database is as it was."""
+    core_scene(db, seed)
+    decision.decide(db, at=AT)
+    plain = replay.replay_day(db, day=local_day(AT))
+    before = writes(db)
+    measured = replay.replay_day(db, day=local_day(AT), view=True)
+    assert writes(db) == before
+    assert "common_view" not in plain and measured["inputs"]["view"] is True
+    assert measured["agreement"] == plain["agreement"] and measured["disagreements"] == plain["disagreements"]
+    c = measured["common_view"]
+    assert c["rows"] == measured["rows"] - measured["skipped"]["selection_copies"] - measured["skipped"]["unclaimed"]
+    assert c["with_view"] <= c["rows"] and c["with_v1_probability"] <= c["with_view"] and c["within_tolerance"] <= c["with_v1_probability"]
+    assert set(c["causes"]) == set(replay.CAUSES)
+
+
 def test_decision_v2_agrees_with_decision_fam_v1_on_a_familys_rows(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
     fid, market, (over, _) = scene(db, w)
