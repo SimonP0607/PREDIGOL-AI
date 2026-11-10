@@ -13,7 +13,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { statePath } from "./accounts";
 import { assertClean, getJson, L, note, sendJson, settle, smallTargets, watch } from "./support";
-import { lengthenNames, splitWords } from "./textfit";
+import { ellipsized, lengthenNames, splitWords } from "./textfit";
 
 const PAGES = [
   "/home",
@@ -199,6 +199,30 @@ for (const width of [320, 360, 375, 390, 430, 600, 640, 768, 820, 1024]) {
       expect(await splitWords(page), `${path} at ${width} px, as served`).toEqual([]);
       await lengthenNames(page);
       expect(await splitWords(page), `${path} at ${width} px, long names`).toEqual([]);
+      await assertClean(page, w);
+    }
+  });
+}
+
+// Nothing a reader needs cut with «…» (mobile UX plan, UX-095): a section's title («Todas las selecciones que cumplen
+// la regla» on a 320 px phone), the bookmaker with the best price in Cuotas («William Hill · 9 ca…» up to 390 px) and
+// the logo's tagline. The ten widths of the plan, a test per width.
+for (const width of [320, 360, 375, 390, 430, 600, 640, 768, 820, 1024]) {
+  test(`titles, bookmakers and the logo are whole at ${width} px`, async ({ page }) => {
+    test.setTimeout(150_000);
+    const w = watch(page);
+    await page.setViewportSize({ width, height: 900 });
+    for (const path of ["/home", "/picks", "/odds", "/parlays", "/my-picks"]) {
+      await page.goto(path);
+      await settle(page);
+      expect(await ellipsized(page, "main h2"), `${path}: a title cut at ${width} px`).toEqual([]);
+      expect(
+        await ellipsized(page, '[data-testid="explorer-price"]'),
+        `${path}: a bookmaker cut at ${width} px`,
+      ).toEqual([]);
+      expect(await ellipsized(page, "header"), `${path}: the top bar cut at ${width} px`).toEqual(
+        [],
+      );
       await assertClean(page, w);
     }
   });
