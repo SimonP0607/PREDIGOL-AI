@@ -34,12 +34,12 @@ function CompactLeg({ leg }: { leg: ParlayRecordLeg }) {
     <li
       data-testid="parlay-leg"
       data-status={leg.status}
-      className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-elevated/40 sm:px-5 pointer-coarse:py-1.5"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 transition-colors hover:bg-elevated/40 sm:px-5 pointer-coarse:py-1.5"
     >
       <Link
         to="/matches/$fixtureId"
         params={{ fixtureId: String(m.fixture_id) }}
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:min-h-11"
+        className="flex min-w-0 flex-1 basis-48 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:min-h-11"
       >
         <LegNumber n={leg.leg_no} />
         <div className="min-w-0 flex-1">
@@ -66,7 +66,10 @@ function CompactLeg({ leg }: { leg: ParlayRecordLeg }) {
           <LegFact fact={leg.why} className="mt-1" />
         </div>
       </Link>
-      <div className="flex shrink-0 flex-col items-end gap-1">
+      {/* The price and the match's state go under the leg, to the right, when there is no room beside it: «En juego · 63' · 1–0»
+          is wider than what a phone leaves next to the text and, in a row that could not wrap, it squeezed the leg to a few
+          letters per line (UX-100). */}
+      <div className="ml-auto flex shrink-0 flex-col items-end gap-1">
         <LegPrice leg={view} size="sm" />
         <RecordState status={leg.status} match={m} hidePending />
       </div>
