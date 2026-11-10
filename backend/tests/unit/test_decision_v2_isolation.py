@@ -64,6 +64,17 @@ def test_the_package_reaches_the_signals_and_the_families_through_one_module_eac
                                                       for n in names if n.startswith("fbi."))]
 
 
+def test_the_package_reaches_the_probability_view_through_one_module_and_never_the_forecast_writer() -> None:
+    """The common probability view is read as a measurement (``decision/view.py``): the same function the Match Center's forecast is written from,
+    never the writer nor the stored forecast - a forecast is not an input of a decision."""
+    own = {rel(p): imported(p) for p in files(SRC / "decision")}
+    forecasting = {f for f, names in own.items() if any(n == "fbi.forecasting" or n.startswith("fbi.forecasting.") for n in names)}
+    assert forecasting == {"decision/view.py"}, forecasting
+    reached = {n for n in own["decision/view.py"] if n.startswith("fbi.forecasting")}
+    assert all(n.startswith(("fbi.forecasting.market_reader", "fbi.forecasting.market_view")) for n in reached), reached
+    assert not [f for f, names in own.items() if any("match_forecast" in n for n in names)]
+
+
 def test_the_scan_sees_every_way_of_importing_it(tmp_path: Path) -> None:
     for text in ("import fbi.decision", "import fbi.decision.engine", "from fbi.decision import engine",
                  "from fbi.decision.replay import replay_day", "def f():\n    from fbi.decision import families\n"):
