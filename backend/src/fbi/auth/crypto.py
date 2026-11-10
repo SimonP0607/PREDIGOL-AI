@@ -98,6 +98,16 @@ def unsubscribe_mac(payload: str) -> str:
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")[:22]
 
 
+def payment_reference_mac(normalized: str) -> str | None:
+    """A payment's reference, never stored whole (UX-090): the HMAC (hex) of its normalised form under its own subkey,
+    so the same reference sent twice is recognised without anyone keeping it. None without the key."""
+    try:
+        key = _subkey(b"payment-reference")
+    except KeyUnavailableError:
+        return None
+    return hmac.new(key, normalized.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
 def new_key_b64() -> str:
     """A fresh FBI_AUTH_SECRET_KEY value (for install scripts)."""
     return base64.b64encode(os.urandom(32)).decode("ascii")

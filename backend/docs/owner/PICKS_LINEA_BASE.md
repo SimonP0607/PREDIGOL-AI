@@ -84,6 +84,9 @@ Para cada selección (partido, mercado, lado y línea) de la ventana pone lado a
 
 El veredicto **SE CUMPLE** solo si hay selecciones comparables y no hay ninguna diferencia de más de 0,5 puntos entre el tablero con el interruptor e Intelligence, ni entre el Match Center y el tablero. Si no hay lecturas de Intelligence todavía, dice que no hay selecciones comparables: no es un cumplimiento. **No se enciende el interruptor mientras el veredicto sea «NO SE CUMPLE» o «no comparables».**
 
+`--json` y el informe traen además un apartado **«Por qué difieren»** (`attribution`): para las selecciones que tienen a la vez lectura de Intelligence y del Match Center, cuenta cada diferencia una sola vez, bajo la primera causa que se aplica: `different_model` (los dos usaron modelos distintos), `forecast_uncalibrated` (el pronóstico del Match Center es el número crudo del modelo, sin precio fresco con el que calibrarlo), `different_moment` (las dos lecturas están a más de 6 h una de otra) o `calibration` (mismo modelo, mismo momento y pronóstico calibrado: solo queda la calibración). De cada causa da cuántas selecciones, la mediana y el máximo en puntos y cuántas pasan de 0,5 pp; también cuenta con qué base se calibró cada pronóstico. Sirve para medir cada mejora contra la causa que ataca.
+
+
 ## Resultados
 
 Corrida del 9-nov-2026, 00:50 UTC (19:50 del 8-nov en Bogotá), con la llave de solo lectura (SEG-002).
@@ -209,3 +212,15 @@ El pronóstico del Match Center (`forecast-v1`) cubre 70 mercados 1X2 y 62 de OU
 2. O al revés: que Intelligence calibre con el mismo modelo y el mismo momento (la probabilidad del Match Center al último punto de control) para todos los resultados de un mercado; es un cambio de la línea de modelos y tiene que pasar su propia puerta estadística.
 
 Mientras tanto el criterio de «0 diferencias de más de 0,5 pp» solo es medible sobre las selecciones que ambos tienen, y hoy no se cumple. `FBI_PICKS_SOURCE` sigue apagado.
+
+#### Causa raíz de la diferencia, medida en producción (9-nov-2026, solo lectura)
+
+Se miró de dónde sale la diferencia entre el Match Center e Intelligence con los partidos de las próximas horas y con las lecturas de `intel.decisions` y `models.match_forecasts`. Muestras (tamaños explícitos):
+
+- **El pronóstico del Match Center no está calibrado casi nunca.** De 160 mercados de partidos próximos, 155 salen sin calibrar (base `needs_price`: no hay un consenso Shin de las últimas 6 h con el que calibrarlos) y solo 5 salen calibrados con el campeón. Es decir, en esos 155 el Match Center muestra el número crudo del modelo, y el de Intelligence está calibrado.
+- **Las dos lecturas no son del mismo momento.** Las filas de Intelligence que se comparan son entre 27 y 34 h más antiguas, en promedio, que el pronóstico del Match Center, y se calibraron con el precio que había entonces.
+- **A veces ni siquiera es el mismo modelo.** Con las 55 selecciones que se pudieron comparar con su modelo, 9 (16 %) usan modelos distintos en uno y otro lado.
+- **Con el mismo modelo, el número crudo es el mismo.** La mediana de la diferencia entre los dos números crudos es 0,0 pp: el motor no cambia de un lado al otro; lo que cambia es el modelo elegido, el momento y si se calibró.
+- **Por eso no se puede, sin más, copiar el número de Intelligence en el Match Center** (ver arriba): Intelligence solo guarda la probabilidad calibrada de las selecciones con precio evaluado y no suma 100 %.
+
+La salida que se sigue (opción B aprobada por el dueño) es una **vista común de probabilidades**, una función pura en un módulo neutral que lean el Match Center y `decision-v2` (en sombra): el mismo modelo, el mismo momento de referencia (el último punto de control antes del inicio) y, solo si hay un precio fresco, la misma calibración; sin precio fresco, los dos dicen «sin calibrar». `decision-v1` no se toca y sus puertas estadísticas siguen igual. No se declara superado el criterio hasta que `compare_probabilities` lo mida.

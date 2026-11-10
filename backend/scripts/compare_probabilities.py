@@ -35,6 +35,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.core.config import settings
+from fbi.core.decision_versions import DECISION_CORE
 
 READ_ONLY: Final = "-c default_transaction_read_only=on -c statement_timeout=120000 -c TimeZone=UTC"
 TOLERANCE_PP: Final = Decimal("0.5")
@@ -54,12 +55,13 @@ WITH last AS (
      WHERE fixture_id = ANY(%(fixtures)s) AND version = %(version)s AND known_at <= %(now)s
      GROUP BY 1, 2, 3
 )
-SELECT x.fixture_id, x.market_key, x.selection, x.line, x.p, x.known_at, x.calibration
+SELECT x.fixture_id, x.market_key, x.selection, x.line, x.p, x.known_at, x.calibration, x.basis, x.model_name
   FROM models.match_forecasts x
   JOIN last l ON l.fixture_id = x.fixture_id AND l.market_key = x.market_key AND l.line = x.line AND l.k = x.known_at
  WHERE x.version = %(version)s
 """
 FORECAST_VERSION: Final = "forecast-v1"
+MODELS_SQL = "SELECT id, model_name FROM intel.decisions WHERE decision_version = %(version)s AND id = ANY(%(ids)s)"
 
 Key = tuple[int, str, str, Decimal]
 
@@ -143,6 +145,49 @@ def worst(table: Mapping[Key, Mapping[str, Decimal | None]], *, top: int) -> lis
     return rows
 
 
+CAUSES: Final[tuple[str, ...]] = ("different_model", "forecast_uncalibrated", "different_moment", "calibration")
+"""Why the Match Center and Intelligence disagree on a selection, in the order they are told apart (the first that applies)."""
+MOMENT_GAP_HOURS: Final = 6.0
+"""Two readings more than this far apart in time are not the same moment (the forecast's own market-price limit, ``MAX_MARKET_AGE``)."""
+
+
+def cause_of(forecast: Mapping[str, Any], decision: Mapping[str, Any], decision_model: str | None) -> str:
+    """The first reason that explains a gap between the Match Center's number and Intelligence's, from what the two rows say of themselves:
+    another model; a forecast that was not calibrated (it is the model's own number: ``needs_price``); readings of different moments; or,
+    with the same model, the same moment and a calibrated forecast, a different calibration."""
+    if decision_model is not None and str(forecast.get("model_name")) != decision_model:
+        return "different_model"
+    if str(forecast.get("calibration")) != "CALIBRATED":
+        return "forecast_uncalibrated"
+    hours = abs((forecast["known_at"] - decision["known_at"]).total_seconds()) / 3600
+    if hours > MOMENT_GAP_HOURS:
+        return "different_moment"
+    return "calibration"
+
+
+def attribution(forecasts: Iterable[Mapping[str, Any]], decisions: Iterable[Mapping[str, Any]],
+                models: Mapping[int, str], table: Mapping[Key, Mapping[str, Decimal | None]]) -> dict[str, Any]:
+    """For the selections both have, how many gaps each cause explains and how wide they are, and how the forecasts are calibrated.
+    Pure: the rows are the ones ``collect`` read. The causes are exclusive (each gap counts once, under the first that applies)."""
+    by_forecast = {key_of(f): f for f in forecasts}
+    by_decision = {key_of(d): d for d in decisions}
+    gaps_by_cause: dict[str, list[float]] = {c: [] for c in CAUSES}
+    calibration: Counter[str] = Counter()
+    for k, v in table.items():
+        f, d = by_forecast.get(k), by_decision.get(k)
+        if f is None or d is None or v.get("forecast") is None or v.get("intel") is None:
+            continue
+        calibration[str(f.get("basis") or f.get("calibration"))] += 1
+        gaps_by_cause[cause_of(f, d, models.get(int(d["id"])))].append(float(_pp(v["forecast"], v["intel"])))  # type: ignore[arg-type]
+    total = sum(len(g) for g in gaps_by_cause.values())
+    causes = {}
+    for c, g in gaps_by_cause.items():
+        g.sort()
+        causes[c] = {"selections": len(g), "median_pp": round(statistics.median(g), 3) if g else None,
+                     "max_pp": round(g[-1], 3) if g else None, "over_tolerance": sum(1 for x in g if x > float(TOLERANCE_PP))}
+    return {"compared": total, "causes": causes, "forecast_basis": dict(calibration.most_common())}
+
+
 def verdict(summaries: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
     """Whether the criterion holds: the switch makes the board agree with Intelligence AND with the Match Center."""
     board = summaries["board_switch~intel"]
@@ -165,6 +210,8 @@ def collect(conn: psycopg.Connection[Any], *, hours: int, top: int, now: datetim
     attached = picks_decision.attach(list(rows), list(decisions))
     forecasts = fetch_all(conn, FORECAST_SQL, {"fixtures": fixtures or [0], "version": FORECAST_VERSION, "now": now})
     table = build_table(attached, decisions, forecasts)
+    ids = [int(d["id"]) for d in decisions]
+    models = {int(r["id"]): str(r["model_name"]) for r in fetch_all(conn, MODELS_SQL, {"ids": ids or [0], "version": DECISION_CORE})}
     summaries = {f"{a}~{b}": summarize(gaps(table, a, b)) for a, b in PAIRS}
     return {
         "at": now.isoformat(), "hours": hours, "fixtures": len(fixtures), "selections": len(table),
@@ -172,6 +219,7 @@ def collect(conn: psycopg.Connection[Any], *, hours: int, top: int, now: datetim
         "with_forecast": sum(1 for v in table.values() if v["forecast"] is not None),
         "pairs": summaries, "checkpoints": checkpoint_figures(decisions, now),
         "verdict": verdict(summaries), "widest": worst(table, top=top),
+        "attribution": attribution(forecasts, decisions, models, table),
     }
 
 
@@ -199,6 +247,17 @@ def report(f: Mapping[str, Any]) -> None:
         word = "SE CUMPLE" if v["holds"] else "NO SE CUMPLE"
         print(f"\nVEREDICTO: {word} el criterio de 0 diferencias de más de {v['tolerance_pp']} pp "
               f"(tablero con interruptor vs Intelligence: {v['board_vs_intelligence_over']}; Match Center vs tablero: {v['match_center_vs_board_over']}).")
+    a = f["attribution"]
+    if a["compared"]:
+        words = {"different_model": "modelo distinto", "forecast_uncalibrated": "pronóstico sin calibrar (falta un precio de menos de 6 h)",
+                 "different_moment": f"momento distinto (más de {MOMENT_GAP_HOURS:g} h entre las dos lecturas)",
+                 "calibration": "misma base, otra calibración"}
+        print(f"\nPor qué difieren el Match Center e Intelligence ({a['compared']:,} selecciones con las dos lecturas; cada una cuenta en la primera causa que aplica):")
+        for c in CAUSES:
+            x = a["causes"][c]
+            if x["selections"]:
+                print(f"  {words[c]}: {x['selections']:,} · mediana {x['median_pp']} pp · máximo {x['max_pp']} pp · por encima de {float(TOLERANCE_PP)} pp: {x['over_tolerance']:,}")
+        print(f"  base de los pronósticos: {a['forecast_basis']}")
     if f["widest"]:
         print("\nLas diferencias más anchas entre el Match Center y el tablero con el interruptor:")
         for w in f["widest"]:

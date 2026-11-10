@@ -111,7 +111,7 @@ def paid_months(conn: psycopg.Connection[Any], user_id: int) -> int:
     """The months the owner recorded payments for: a trial or a courtesy is not a month paid."""
     row = conn.execute(
         "SELECT coalesce(sum((detail->>'months')::int), 0) FROM customer.membership_events "
-        "WHERE user_id = %s AND kind = 'payment_recorded'", (user_id,)).fetchone()
+        "WHERE user_id = %s AND kind = 'payment_recorded' AND NOT EXISTS (SELECT 1 FROM customer.membership_events a WHERE a.kind = 'period_annulled' AND a.period_id = membership_events.period_id)", (user_id,)).fetchone()
     return int(row[0]) if row else 0
 
 
