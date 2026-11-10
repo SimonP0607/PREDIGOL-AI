@@ -194,4 +194,8 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-018 · SEG-003 · IA-026 · UX-097 · BE-035 · FE-002 · OPS-004 · DOC-001
+CI-018 · SEG-003 · UX-097 · BE-035 · FE-002 · OPS-004 · DOC-001
+
+IA-027
+
+(El número de IA va en su propia línea desde el 10-nov-2026: así un PR de IA, que tarda en pasar el CI del backend, no choca con la línea común cada vez que se fusiona un PR de otra área.)
