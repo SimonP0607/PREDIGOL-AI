@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime
 import pytest
 
 from fbi.customer import payment_requests as pr
+from fbi.customer.db import CustomerError
 
 
 def test_holidays_of_2026_follow_the_emiliani_law_and_easter() -> None:
@@ -36,7 +37,7 @@ def test_the_day_is_counted_in_bogota_not_in_utc() -> None:
 
 @pytest.mark.parametrize("text", ["4111 1111 1111 1111", "4111-1111-1111-1111", "4111111111111111"])
 def test_a_card_number_is_not_a_reference(text: str) -> None:
-    with pytest.raises(pr.CustomerError) as err:
+    with pytest.raises(CustomerError) as err:
         pr.clean_reference(text)
     assert err.value.code == "reference_has_number"
 
@@ -48,5 +49,5 @@ def test_a_reference_is_kept_only_as_its_last_four_and_a_mac() -> None:
     again = pr.clean_reference("M12345678")
     assert again == (last4, mac), "the same reference, however it is spaced or capitalised"
     for bad in ("ab", "a" * 41, "<script>"):
-        with pytest.raises(pr.CustomerError):
+        with pytest.raises(CustomerError):
             pr.clean_reference(bad)
