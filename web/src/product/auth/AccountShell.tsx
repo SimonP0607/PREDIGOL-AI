@@ -17,6 +17,23 @@ export const accountInput =
 export const accountButton =
   "flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60";
 
+/**
+ * The language switch at the top of the pages before the product (sign-in, account pages, two-step verification).
+ * Installed on an iPhone the page runs under the status bar (black-translucent, viewport-fit=cover): the bar keeps its
+ * 16 px below the clock and clear of the notch held sideways, and stays exactly 16 px in a browser, where the insets
+ * are 0 (mobile UX plan, UX-093).
+ */
+export function AccountTopBar({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="flex justify-end pb-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[calc(1rem+env(safe-area-inset-top))]"
+      data-testid="account-top-bar"
+    >
+      {children}
+    </div>
+  );
+}
+
 export function AccountShell({
   title,
   subtitle,
@@ -33,9 +50,9 @@ export function AccountShell({
       className="pitch-glow relative flex min-h-screen flex-col bg-background"
       data-testid={testId}
     >
-      <div className="flex justify-end p-4">
+      <AccountTopBar>
         <LanguageSwitch />
-      </div>
+      </AccountTopBar>
       <main className="flex flex-1 items-center justify-center px-4 pb-16">
         <div className="w-full max-w-sm">
           <div className="flex flex-col items-center text-center">

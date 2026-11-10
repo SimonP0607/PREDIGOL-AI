@@ -71,14 +71,14 @@ def squad(world: World) -> Squad:  # noqa: F811
 
 
 def test_the_rule_is_in_the_audit_and_the_version_says_so() -> None:
-    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v8" and "national_known" in (leakage.__doc__ or "")
+    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v9" and "national_known" in (leakage.__doc__ or "")
 
 
 def test_a_packet_built_by_the_builder_cites_only_what_was_known(squad: Squad) -> None:
     honest(squad)
     assert audited(squad.w) == {"checked": HONEST_CHECKS, "violations": 0, "examples": []}
     rows = squad.w.db.execute("SELECT version, n_checked, n_violations FROM intel.audit_checks WHERE rule = %s", (RULE,)).fetchall()
-    assert rows == [("leak-audit-v8", HONEST_CHECKS, 0)]
+    assert rows == [("leak-audit-v9", HONEST_CHECKS, 0)]
 
 
 def test_the_previous_match_that_stands_in_for_the_call_up_is_checked_too(squad: Squad) -> None:

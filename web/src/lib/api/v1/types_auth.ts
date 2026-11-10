@@ -204,8 +204,10 @@ export interface VerifyInfo {
 
 export interface VerifyIn {
   token: string;
-  /** The password chosen when registering: confirming the address also proves it. */
+  /** The password chosen when registering: confirming the address also proves it - or, with `replace_password`, the NEW one. */
   password: string;
+  /** The person no longer remembers the first password: the link proves the mailbox and this one replaces it (UX-084). */
+  replace_password?: boolean;
 }
 
 /** An invitation link that works: whose, to fill the page (and for the password manager to save under it). */

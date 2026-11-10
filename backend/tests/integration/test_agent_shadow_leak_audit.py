@@ -260,4 +260,4 @@ def test_the_night_keeps_one_row_per_rule_and_gate_b_reads_n_from_it(db: psycopg
         assert n == 2, "one row per rule per run, both runs kept"
     kept = db.execute("SELECT version, n_checked, n_violations, examples FROM intel.audit_checks WHERE rule = 'shadow_review_known' "
                       "AND checked_at = %s", (RAN + H,)).fetchall()
-    assert kept == [("leak-audit-v8", 2, 1, [bad])]
+    assert kept == [("leak-audit-v9", 2, 1, [bad])]

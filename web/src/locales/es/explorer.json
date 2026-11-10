@@ -1,6 +1,5 @@
 {
   "subtitle": "Todos los mercados con precio, partido a partido: la mejor cuota de cada selección y su casa.",
-  "fairLine": "Justa del mercado: la cuota sin el margen de las casas, calculada con sus mismos precios. No es una predicción de PrediGol.",
   "tabsLabel": "Familias de mercados",
   "tab": {
     "main": "Principales",
@@ -245,7 +244,8 @@
     "best": "(mejor cuota)",
     "noPrice": "Sin precio",
     "empty": "Ninguna casa tiene precios de esta línea en el libro vigente.",
-    "single": "1 casa"
+    "single": "1 casa",
+    "short": "Casas"
   },
   "movement": {
     "toggle": "Movimiento",
@@ -310,7 +310,7 @@
     "edge": "Mayor diferencia con la justa"
   },
   "note": {
-    "figures": "Cuota grande: la mejor entre las casas y su casa. En gris, la justa del mercado y la diferencia con ella.",
+    "figures": "Cuota grande: la mejor entre las casas y su casa. En gris, la justa del mercado (sin el margen de las casas; no es una predicción de PrediGol) y la diferencia con ella.",
     "noFair": "Este mercado no tiene cuota justa: sus selecciones no cubren todos los resultados o lo cotizan pocas casas.",
     "single": "1 casa: sin comparación ni cuota justa.",
     "lookupOnly": "Solo consulta: este mercado no entra en Mi parlay.",
@@ -343,5 +343,6 @@
     "resumed": "Actualizaciones reanudadas.",
     "results_one": "{count} partido con estos criterios.",
     "results_other": "{count} partidos con estos criterios."
-  }
+  },
+  "openMatchShort": "Partido"
 }

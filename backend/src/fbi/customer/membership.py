@@ -254,7 +254,7 @@ def load(conn: psycopg.Connection[Any], user_ids: Sequence[int]) -> dict[int, tu
     if not user_ids:
         return out
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(f"SELECT {_PERIOD_COLUMNS} FROM customer.membership_periods WHERE user_id = ANY(%s)",
+        cur.execute(f"SELECT {_PERIOD_COLUMNS} FROM customer.live_membership_periods WHERE user_id = ANY(%s)",
                     (list(user_ids),))
         for r in cur.fetchall():
             uid = int(r.pop("user_id"))
@@ -342,7 +342,7 @@ def mine(conn: psycopg.Connection[Any], user_id: int, *, email: str, super_admin
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("""
             SELECT p.kind, p.starts_at, p.ends_at, pay.amount, pay.currency, pay.method, pay.discount_percent
-              FROM customer.membership_periods p
+              FROM customer.live_membership_periods p
               LEFT JOIN customer.payments pay ON pay.id = p.payment_id
              WHERE p.user_id = %s ORDER BY p.ends_at DESC, p.id DESC LIMIT 50
         """, (user_id,))
@@ -403,7 +403,7 @@ def _account(conn: psycopg.Connection[Any], user_id: int) -> dict[str, Any]:
 
 
 def _cover_end(conn: psycopg.Connection[Any], user_id: int) -> datetime | None:
-    row = conn.execute("SELECT max(ends_at) FROM customer.membership_periods WHERE user_id = %s",
+    row = conn.execute("SELECT max(ends_at) FROM customer.live_membership_periods WHERE user_id = %s",
                        (user_id,)).fetchone()
     return row[0] if row else None
 
@@ -499,6 +499,64 @@ def start_trial_by_owner(actor: int, user_id: int, *, days: int) -> Period:
 
 
 @dataclass(frozen=True, slots=True)
+class TrialOutcome:
+    user_id: int
+    email: str
+    result: str
+    """``granted`` / ``would_grant`` (dry run), or why the account was left as it is: ``exempt``, ``has_period``,
+    ``had_trial``."""
+    ends_at: datetime | None = None
+
+
+def grant_existing_trials(*, days: int, reason: str, apply: bool, at: datetime | None = None,
+                          notify: bool = False) -> list[TrialOutcome]:
+    """The temporary free trial for the accounts that exist and have no period at all (UX, tramo 1: with the membership
+    enforced, an account created before the registration has nothing and is limited).
+
+    Only live reader accounts (``active``, role USER) are looked at; the owner, the robot and the exempt addresses are
+    left as they are, and so is every account that has any period or ever had a trial - nothing is extended, replaced
+    or duplicated, so running it twice grants nothing the second time. The trial is the ordinary one (kind ``trial``,
+    ``days`` explicit, between 7 and 20): when it ends the account is in the ordinary flow (grace, then limited) and
+    keeps its data; nothing is removed but the benefit, by the calendar. Everything is written in one transaction,
+    with the reason in the access trail; ``apply`` False only counts. No e-mail leaves unless ``notify``."""
+    if not TRIAL_DAYS_MIN <= days <= TRIAL_DAYS_MAX:
+        raise CustomerError(422, "invalid_trial_days", f"a trial of {TRIAL_DAYS_MIN} to {TRIAL_DAYS_MAX} days")
+    text = _clean_reason(reason, required=True)
+    moment = at or datetime.now(UTC)
+    out: list[TrialOutcome] = []
+    with write_connection() as conn:
+        rows = conn.execute("SELECT id, email FROM auth.users WHERE status = 'active' AND role = 'USER' "
+                            "ORDER BY id").fetchall()
+        loaded = load(conn, [int(r[0]) for r in rows]) if rows else {}
+        for user_id, address in ((int(r[0]), str(r[1])) for r in rows):
+            if consents.exempt(address, super_admin=False):
+                out.append(TrialOutcome(user_id, address, "exempt"))
+                continue
+            periods, events_ = loaded[user_id]
+            if periods:
+                out.append(TrialOutcome(user_id, address, "has_period"))
+                continue
+            if any(e.kind == "trial_started" for e in events_):
+                out.append(TrialOutcome(user_id, address, "had_trial"))
+                continue
+            if not apply:
+                out.append(TrialOutcome(user_id, address, "would_grant", moment + timedelta(days=days)))
+                continue
+            period = start_trial(conn, user_id, at=moment, days=days, actor=None)
+            if period is None:
+                out.append(TrialOutcome(user_id, address, "had_trial"))
+                continue
+            _audit(conn, "trial_started", actor=None, user_id=user_id,
+                   detail={"days": days, "source": "existing_accounts", "reason": text})
+            if notify:
+                tell(conn, user_id, "trial_started", f"trial_started:{period.id}", period)
+            out.append(TrialOutcome(user_id, address, "granted", period.ends_at))
+    if apply:
+        forget()
+    return out
+
+
+@dataclass(frozen=True, slots=True)
 class Recorded:
     payment_id: int
     period: Period
@@ -535,6 +593,19 @@ def record_payment(actor: int, user_id: int, *, amount: str | int | float | Deci
     ``apply_discount`` the payment keeps the discount the reader's next payment is offered at this moment (UX-005: the
     larger of the loyalty one and the best coupon they hold; a coupon is then used) - the amount is what the owner
     received, the discount is what the payment says it carried; 409 ``no_discount`` when there is none."""
+    with write_connection() as conn:
+        recorded = record_payment_in(conn, actor, user_id, amount=amount, currency_code=currency_code, method=method,
+                                     reference=reference, months=months, idempotency_key=idempotency_key,
+                                     apply_discount=apply_discount, at=at)
+    forget(user_id)
+    return recorded
+
+
+def record_payment_in(conn: psycopg.Connection[Any], actor: int, user_id: int, *, amount: str | int | float | Decimal,
+                      currency_code: str, method: str, reference: str, months: int, idempotency_key: str,
+                      apply_discount: bool = False, at: datetime | None = None) -> Recorded:
+    """``record_payment`` in the caller's transaction (UX-090: the approval of a payment request records the payment and
+    closes the request in one). The caller commits and then calls ``forget(user_id)``."""
     value = _amount(amount)
     code = currency_code.strip().upper()
     if not re.fullmatch(r"[A-Z]{3}", code):
@@ -547,47 +618,45 @@ def record_payment(actor: int, user_id: int, *, amount: str | int | float | Deci
     if not IDEMPOTENCY_KEY.match(idempotency_key):
         raise CustomerError(422, "invalid_idempotency_key", "8 to 80 letters, digits, - or _")
     moment = at or datetime.now(UTC)
-    with write_connection() as conn:
-        _account(conn, user_id)
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute("SELECT id, user_id FROM customer.payments WHERE idempotency_key = %s", (idempotency_key,))
-            seen = cur.fetchone()
-            if seen is not None:
-                if int(seen["user_id"]) != user_id:
-                    raise CustomerError(409, "idempotency_conflict", "this key recorded another account's payment")
-                cur.execute(f"SELECT {_PERIOD_COLUMNS} FROM customer.membership_periods WHERE payment_id = %s",
-                            (seen["id"],))
-                row = cur.fetchone()
-                assert row is not None
-                row.pop("user_id")
-                return Recorded(int(seen["id"]), Period(**row), created=False)
-        periods, _ = load(conn, [user_id])[user_id]
-        end = _cover_end(conn, user_id)
-        start = max(moment, end) if end is not None else moment
-        carried = discounts.offer(conn, user_id) if apply_discount else None
-        if apply_discount and carried is None:
-            raise CustomerError(409, "no_discount", "this account has no discount to apply")
-        payment = conn.execute("""
-            INSERT INTO customer.payments (user_id, provider, amount, currency, method, reference, idempotency_key,
-                                           recorded_by, recorded_at, discount_percent, discount_kind, coupon_id)
-            VALUES (%s, 'manual', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-        """, (user_id, value, code, method, text, idempotency_key, actor, moment,
-              carried.percent if carried else None, carried.kind if carried else None,
-              carried.coupon_id if carried else None)).fetchone()
-        assert payment is not None
-        period = _insert_period(conn, user_id, "paid", start, add_months(start, months), payment_id=int(payment[0]),
-                                actor=actor)
-        renewal = _follows_paid(period, [*periods, period])
-        detail: dict[str, Any] = {"amount": str(value), "currency": code, "method": method, "months": months,
-                                  "renewal": renewal}
-        if carried is not None:
-            detail["discount"] = {"kind": carried.kind, "percent": carried.percent}
-        _event(conn, user_id, "payment_recorded", period_id=period.id, detail=detail, actor=actor)
-        _audit(conn, "payment_recorded", actor=actor, user_id=user_id, detail=detail)
-        events.record_server(conn, user_id, "membership_renewed")
-        if period.ends_at > moment:
-            tell(conn, user_id, "payment_recorded", f"payment_recorded:{payment[0]}", period)
-    forget(user_id)
+    _account(conn, user_id)
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute("SELECT id, user_id FROM customer.payments WHERE idempotency_key = %s", (idempotency_key,))
+        seen = cur.fetchone()
+        if seen is not None:
+            if int(seen["user_id"]) != user_id:
+                raise CustomerError(409, "idempotency_conflict", "this key recorded another account's payment")
+            cur.execute(f"SELECT {_PERIOD_COLUMNS} FROM customer.membership_periods WHERE payment_id = %s",
+                        (seen["id"],))
+            row = cur.fetchone()
+            assert row is not None
+            row.pop("user_id")
+            return Recorded(int(seen["id"]), Period(**row), created=False)
+    periods, _ = load(conn, [user_id])[user_id]
+    end = _cover_end(conn, user_id)
+    start = max(moment, end) if end is not None else moment
+    carried = discounts.offer(conn, user_id) if apply_discount else None
+    if apply_discount and carried is None:
+        raise CustomerError(409, "no_discount", "this account has no discount to apply")
+    payment = conn.execute("""
+        INSERT INTO customer.payments (user_id, provider, amount, currency, method, reference, idempotency_key,
+                                       recorded_by, recorded_at, discount_percent, discount_kind, coupon_id)
+        VALUES (%s, 'manual', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+    """, (user_id, value, code, method, text, idempotency_key, actor, moment,
+          carried.percent if carried else None, carried.kind if carried else None,
+          carried.coupon_id if carried else None)).fetchone()
+    assert payment is not None
+    period = _insert_period(conn, user_id, "paid", start, add_months(start, months), payment_id=int(payment[0]),
+                            actor=actor)
+    renewal = _follows_paid(period, [*periods, period])
+    detail: dict[str, Any] = {"amount": str(value), "currency": code, "method": method, "months": months,
+                              "renewal": renewal}
+    if carried is not None:
+        detail["discount"] = {"kind": carried.kind, "percent": carried.percent}
+    _event(conn, user_id, "payment_recorded", period_id=period.id, detail=detail, actor=actor)
+    _audit(conn, "payment_recorded", actor=actor, user_id=user_id, detail=detail)
+    events.record_server(conn, user_id, "membership_renewed")
+    if period.ends_at > moment:
+        tell(conn, user_id, "payment_recorded", f"payment_recorded:{payment[0]}", period)
     log.info("membership.payment_recorded", user_id=user_id, months=months, renewal=renewal)
     return Recorded(int(payment[0]), period, created=True)
 
@@ -660,7 +729,9 @@ def history(conn: psycopg.Connection[Any], user_id: int) -> dict[str, Any]:
         cur.execute("""
             SELECT p.id, p.kind, p.starts_at, p.ends_at, p.reason, p.created_at,
                    pay.amount, pay.currency, pay.method, pay.reference, pay.provider,
-                   pay.discount_percent, pay.discount_kind, cp.code AS coupon_code
+                   pay.discount_percent, pay.discount_kind, cp.code AS coupon_code,
+                   EXISTS (SELECT 1 FROM customer.membership_events a
+                            WHERE a.kind = 'period_annulled' AND a.period_id = p.id) AS annulled
               FROM customer.membership_periods p
               LEFT JOIN customer.payments pay ON pay.id = p.payment_id
               LEFT JOIN customer.coupons cp ON cp.id = pay.coupon_id
@@ -749,8 +820,8 @@ def remind(conn: psycopg.Connection[Any], *, at: datetime) -> int:
         cur.execute("""
             SELECT u.id, u.email, u.role FROM auth.users u
              WHERE u.status = 'active'
-               AND EXISTS (SELECT 1 FROM customer.membership_periods p WHERE p.user_id = u.id)
-               AND (SELECT max(ends_at) FROM customer.membership_periods p WHERE p.user_id = u.id)
+               AND EXISTS (SELECT 1 FROM customer.live_membership_periods p WHERE p.user_id = u.id)
+               AND (SELECT max(ends_at) FROM customer.live_membership_periods p WHERE p.user_id = u.id)
                    BETWEEN %s AND %s
         """, (at - GRACE - timedelta(days=7), at + WARN))
         users = cur.fetchall()
@@ -784,7 +855,7 @@ def owner_counts(conn: psycopg.Connection[Any], *, at: datetime, today_bounds: t
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("""
             SELECT u.id, u.email, u.role FROM auth.users u
-             WHERE u.status = 'active' AND EXISTS (SELECT 1 FROM customer.membership_periods p WHERE p.user_id = u.id)
+             WHERE u.status = 'active' AND EXISTS (SELECT 1 FROM customer.live_membership_periods p WHERE p.user_id = u.id)
         """)
         users = cur.fetchall()
     counts = {"ending_today": 0, "in_grace": 0, "expired_today": 0, "will_not_renew": 0}

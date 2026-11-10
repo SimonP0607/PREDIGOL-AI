@@ -30,11 +30,12 @@ export function Wordmark({
         <span className="text-gold">Gol</span>
       </span>
       {tagline ? (
-        // Under 375 px the tagline gives its room to the header's controls (touch-sized on a phone). It is part of the
-        // logo (its link is named «PrediGol»), so the 12 px minimum of a reader's text does not apply (plan UX, A15).
+        // Under 400 px the tagline gives its room to the header's controls (touch-sized on a phone): at 375 px it was cut
+        // with «…» (UX-095; it was hidden only under 375). It is part of the logo (its link is named «PrediGol»), so the
+        // 12 px minimum of a reader's text does not apply (plan UX, A15).
         <span
           data-brand-tagline
-          className="mt-1 truncate text-[0.625rem] font-medium uppercase tracking-[0.14em] text-subtle-foreground max-[374px]:hidden"
+          className="mt-1 truncate text-[0.625rem] font-medium uppercase tracking-[0.14em] text-subtle-foreground max-[399px]:hidden"
         >
           {tagline}
         </span>
