@@ -141,15 +141,24 @@ def board_groups() -> dict[str, list[int]]:
 TIERS_SQL = "SELECT id, tier, provider_league_id FROM core.competitions WHERE id = ANY(%(ids)s)"
 
 TRAILED_SQL = """
-SELECT s.fixture_id,
-       COALESCE(max(s.goals_away - s.goals_home), 0) AS home_down_by,
-       COALESCE(max(s.goals_home - s.goals_away), 0) AS away_down_by
-  FROM core.fixture_live_states s
- WHERE s.fixture_id = ANY(%(ids)s) AND s.observed_at >= %(since)s
-   AND s.goals_home IS NOT NULL AND s.goals_away IS NOT NULL
- GROUP BY s.fixture_id
+WITH states AS (
+    SELECT s.fixture_id, s.goals_home, s.goals_away,
+           lag(s.goals_home) OVER w AS before_home, lag(s.goals_away) OVER w AS before_away
+      FROM core.fixture_live_states s
+     WHERE s.fixture_id = ANY(%(ids)s) AND s.observed_at >= %(since)s
+       AND s.goals_home IS NOT NULL AND s.goals_away IS NOT NULL
+    WINDOW w AS (PARTITION BY s.fixture_id ORDER BY s.observed_at)
+)
+SELECT fixture_id,
+       COALESCE(bool_or(goals_home < before_home OR goals_away < before_away), false) AS corrected,
+       COALESCE(max(goals_away - goals_home), 0) AS home_down_by,
+       COALESCE(max(goals_home - goals_away), 0) AS away_down_by
+  FROM states
+ GROUP BY fixture_id
 """
-"""The most each side was behind in the match so far, from the fixture feed's states."""
+"""The most each side was behind in the match so far, from the fixture feed's states, and whether the score ever went down
+(``corrected``): a goal the referee or the VAR took back, or a correction of the feed. A goal that was taken back leaves a deficit
+that never stood - 0-1, then 0-0 - and reading it as a comeback says what did not happen."""
 
 AT_STAKE_SQL = """
 SELECT f.id AS fixture_id, f.kickoff_at,
@@ -197,7 +206,8 @@ def live_reasons(g: reading.Glance | None, *, home: str, away: str, goals: tuple
                  behind_by: dict[str, int]) -> list[HomeReason]:
     """Why a match in play is worth looking at now, the strongest first and two at most; none when there is no reason.
 
-    ``behind_by``: the most each side ("home", "away") was behind so far. Without a score nothing about the score is said."""
+    ``behind_by``: the most each side ("home", "away") was behind so far - empty when the score ever went down, because then no
+    deficit is known to have stood. Without a score nothing about the score is said."""
     if g is not None and g.kind == "friendly":
         return []
     out: list[HomeReason] = []
@@ -273,7 +283,7 @@ def relevant(conn: Conn, live: list[LiveMatch], *, at: datetime) -> list[HomeRel
         return []
     ids = [m.fixture_id for m in live]
     seen = reading.glances(conn, ids, at=at)
-    trailed = {int(r["fixture_id"]): {"home": int(r["home_down_by"]), "away": int(r["away_down_by"])}
+    trailed = {int(r["fixture_id"]): {} if r["corrected"] else {"home": int(r["home_down_by"]), "away": int(r["away_down_by"])}
                for r in fetch_all(conn, TRAILED_SQL, {"ids": ids, "since": at - HISTORY_WINDOW})}
     order = _priority(conn, live)
     found: list[HomeRelevant] = []
