@@ -17,7 +17,7 @@ from typing import Any
 from scripts import ia_decision_v2 as cli
 
 from fbi.decision import engine, replay
-from fbi.decision.families import CORE, FAMILIES
+from fbi.decision.families import CORE, FAMILIES, Candidate
 from fbi.intel import decision
 
 from .test_decision_v2_engine import AT, KEY, MODEL, as_row, core, pick, v1, world
@@ -163,3 +163,39 @@ def test_the_command_parses_its_options() -> None:
 
 def test_the_core_family_is_the_first_one_the_replay_tries() -> None:
     assert FAMILIES[0] is CORE
+
+
+# -- the status of a match as of the moment, not as of today ----------------------------------------------------------------------------
+
+def test_a_status_that_only_comes_after_the_whistle_is_read_as_it_was_before_it() -> None:
+    """The candidates come from today's fixtures: a match already played is ``FT`` there, which would reject every row of a past day."""
+    at = AT
+    played = {"kickoff_at": at + timedelta(hours=5), "status_short": "FT", "status_group": "finished"}
+    out = replay.as_of_status(played, at)
+    assert (out["status_short"], out["status_group"]) == ("NS", "scheduled") and played["status_short"] == "FT", "a copy, never the row"
+    for live in sorted(replay.STARTED_STATUS):
+        assert replay.as_of_status(played | {"status_short": live}, at)["status_short"] == "NS", live
+
+
+def test_a_status_that_may_have_been_true_before_kick_off_is_left_alone() -> None:
+    at = AT
+    for status in ("PST", "CANC", "ABD", "SUSP", "AWD", "WO", "INT", "NS", "TBD"):
+        row = {"kickoff_at": at + timedelta(hours=5), "status_short": status, "status_group": "x"}
+        assert replay.as_of_status(row, at) is row, status
+
+
+def test_a_moment_after_the_kick_off_or_a_row_without_one_is_left_alone() -> None:
+    at = AT
+    after = {"kickoff_at": at - timedelta(minutes=1), "status_short": "FT", "status_group": "finished"}
+    assert replay.as_of_status(after, at) is after
+    no_kickoff = {"status_short": "FT", "status_group": "finished"}
+    assert replay.as_of_status(no_kickoff, at) is no_kickoff
+
+
+def test_the_candidates_carry_the_status_as_of_the_moment() -> None:
+    at = AT
+    row = {"kickoff_at": at + timedelta(hours=3), "status_short": "FT", "status_group": "finished", "x": 1}
+    cand = Candidate(CORE, KEY, {MODEL: row})
+    [out] = replay.candidates_as_of([cand], at)
+    assert out.models[MODEL]["status_short"] == "NS" and out.models[MODEL]["x"] == 1 and out.key == KEY
+    assert cand.models[MODEL]["status_short"] == "FT", "the original candidate is untouched"
