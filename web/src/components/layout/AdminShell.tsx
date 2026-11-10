@@ -19,6 +19,7 @@ import {
   searchEmpty,
   useEntitySearch,
 } from "@/components/system/CommandPalette";
+import { StatusBarSpace } from "@/components/layout/StatusBarSpace";
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -234,8 +235,8 @@ function Topbar({
   onOpenPalette: () => void;
 }) {
   return (
-    // box-content: 56 px of bar below the status bar of an installed tablet app (safe-top).
-    <header className="safe-top sticky top-0 z-30 box-content flex h-14 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur">
+    // 56 px of bar, stuck just below the status bar of an installed tablet app (StatusBarSpace, UX-093).
+    <header className="sticky top-[env(safe-area-inset-top)] z-30 box-content flex h-14 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur">
       <button
         type="button"
         onClick={onOpenMenu}
@@ -298,6 +299,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <DataSourcesProvider>
       <div className="min-h-screen bg-background" data-shell="admin">
+        {/* The page starts below the installed app's status bar, the preview's notice too (UX-093). */}
+        <StatusBarSpace className="lg:left-60" />
         <PreviewBanner />
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
         <aside className="safe-top fixed inset-y-0 left-0 hidden w-60 border-r border-sidebar-border bg-sidebar lg:block">
