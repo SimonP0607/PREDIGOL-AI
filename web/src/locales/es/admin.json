@@ -34,7 +34,8 @@
     "support": "Soporte",
     "customers": "Clientes",
     "storage": "Almacenamiento",
-    "announcements": "Comunicados"
+    "announcements": "Comunicados",
+    "payments": "Avisos de pago"
   },
   "pages": {
     "overview": {
@@ -1036,5 +1037,73 @@
     "yes": "Sí, apagar",
     "no": "No",
     "percentValue": "{percent}%"
+  },
+  "payments": {
+    "title": "Avisos de pago",
+    "description": "Quien pagó por fuera avisa aquí. Revisa que el dinero llegó a tu cuenta y decide cada aviso una sola vez: al aprobar se crean el pago y el periodo juntos.",
+    "scope": {
+      "waiting": "Por revisar ({count})",
+      "all": "Todos"
+    },
+    "emptyWaiting": "No hay avisos por revisar.",
+    "emptyAll": "Todavía no hay avisos de pago.",
+    "back": "Volver",
+    "status": {
+      "submitted": "En verificación",
+      "approved": "Aprobado",
+      "rejected": "Rechazado",
+      "cancelled": "Cancelado por el lector",
+      "annulled": "Aprobación anulada"
+    },
+    "flag": {
+      "amount": "El valor avisado no es el que debía pagar. Compara con lo que llegó a tu cuenta.",
+      "duplicate": "Otros avisos traen la misma referencia. Revisa que no sea el mismo pago.",
+      "overdue": "Pasó el día hábil para verificar este pago."
+    },
+    "fact": {
+      "declared": "Valor avisado",
+      "expected": "Valor esperado",
+      "paidOn": "Día del pago",
+      "method": "Medio",
+      "reference": "Referencia",
+      "payer": "Pagó",
+      "sent": "Enviado",
+      "due": "Verificar hasta",
+      "discount": "Descuento",
+      "discountValue": "{percent} % {coupon}",
+      "terms": "Condiciones aceptadas",
+      "none": "Sin dato"
+    },
+    "decided": "Decidido {when}. {reason} {note}",
+    "approve": {
+      "open": "Aprobar",
+      "received": "Valor que recibiste ({currency})",
+      "receivedHelp": "Escribe el valor sin puntos ni comas de miles. Por defecto, el avisado.",
+      "months": "Meses que cubre",
+      "monthsOption_one": "{count} mes",
+      "monthsOption_other": "{count} meses",
+      "tick": "Verifiqué en mi cuenta que el dinero llegó y quiero aprobar aunque haya diferencias.",
+      "confirm": "Aprobar y abrir acceso"
+    },
+    "reject": {
+      "open": "Rechazar",
+      "code": "Motivo",
+      "note": "Mensaje para el lector",
+      "noteHelp": "Entre 3 y 200 caracteres. El lector lo ve y lo recibe por correo.",
+      "confirm": "Rechazar aviso",
+      "codes": {
+        "amount_mismatch": "El valor no coincide",
+        "not_received": "Todavía no vemos el dinero",
+        "duplicate": "Ya estaba registrado",
+        "unreadable": "No se entiende el comprobante",
+        "other": "Otro motivo"
+      }
+    },
+    "annul": {
+      "open": "Anular aprobación",
+      "warning": "Anular deja el pago y el periodo en el historial pero el periodo deja de contar: la persona vuelve a tener el acceso limitado y recibe un correo.",
+      "reason": "Motivo de la anulación",
+      "confirm": "Anular aprobación"
+    }
   }
 }
