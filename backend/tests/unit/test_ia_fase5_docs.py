@@ -196,7 +196,8 @@ def test_the_daily_step_attributes_only_when_the_word_is_on_and_the_weekly_one_a
     weekly = (SRC / "intel" / "cycle.py").read_text(encoding="utf-8")
     assert "if not settings.learning_analyst:" in weekly and '("learning_analyst", _learning_analyst)' in weekly
     assert weekly.index('("learning_analyst", _learning_analyst)') < weekly.index('("matrix", _matrix)'), "before the matrix, as the guide says"
-    assert "ayer y hoy" in section(2) and "antes de la matriz" in section(2)
+    assert "los siete días anteriores y hoy" in section(2) and "antes de la matriz" in section(2), "IA-031: the step looks a week back"
+    assert "attribution_days(today)" in cycle and "ATTRIBUTION_LOOKBACK_DAYS: Final = 7" in cycle
 
 
 # ── section 3: the migration ──────────────────────────────────────────────────────────────────────────────────────
