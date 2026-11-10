@@ -21,6 +21,7 @@ from fbi.auth import recovery, service, store, throttle, tokens
 from fbi.auth.settings import reset as reset_auth_settings
 from fbi.core.config import reset_cache
 from fbi.customer import consents, membership
+from fbi.customer.db import CustomerError
 from fbi.messaging import notices, outbox
 from fbi.messaging.templates import check_params, render
 from tests.integration.helpers import forget_memberships, forget_sign_in_failures
@@ -497,3 +498,82 @@ def test_the_access_trail_names_the_owners_membership_actions(fresh: str) -> Non
     actions = [r["action"] for r in rows(fresh, "SELECT action FROM auth.audit_events WHERE target_user_id = %s",
                                          (reader,))]
     assert "membership.trial_started" in actions
+
+
+# ── the temporary trial for the accounts that exist (tramo 1) ───────────────────────────
+
+def test_the_existing_accounts_get_a_temporary_trial_and_nothing_else_moves(fresh: str,
+                                                                            monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(membership.SWITCH, "1")
+    bare = account(f"bare@{DOMAIN}")
+    paid = account(f"paid@{DOMAIN}")
+    on_trial = account(f"trial@{DOMAIN}")
+    gone = account(f"gone@{DOMAIN}")
+    owner_id = uid_of(OWNER, fresh)
+    assert pay(signed_in(OWNER), paid).status_code == 200
+    backdated(fresh, on_trial, "trial", ended_days_ago=-5)
+    with psycopg.connect(fresh) as conn:
+        conn.execute("UPDATE auth.users SET status = 'disabled' WHERE id = %s", (gone,))
+    before = {r["user_id"]: r["n"] for r in rows(fresh, "SELECT user_id, count(*) n FROM customer.membership_periods "
+                                                       "GROUP BY 1")}
+    # the day before the trial: the account is limited, the enforced membership gives it nothing
+    waiting = signed_in(f"bare@{DOMAIN}")
+    assert error(waiting.get("/api/v1/home")) == "membership_required"
+
+    dry = {o.user_id: o for o in membership.grant_existing_trials(days=20, reason="account before the registration",
+                                                                  apply=False)}
+    assert dry[bare].result == "would_grant" and dry[paid].result == "has_period"
+    assert dry[on_trial].result == "has_period" and owner_id not in dry and gone not in dry
+    assert dry[uid_of(ROBOT, fresh)].result == "exempt"
+    assert rows(fresh, "SELECT 1 FROM customer.membership_periods WHERE user_id = %s", (bare,)) == [], "a count writes nothing"
+
+    done = {o.user_id: o for o in membership.grant_existing_trials(days=20, reason="account before the registration",
+                                                                   apply=True)}
+    assert done[bare].result == "granted" and done[paid].result == "has_period"
+    period = one(fresh, "SELECT * FROM customer.membership_periods WHERE user_id = %s", (bare,))
+    assert period["kind"] == "trial" and period["ends_at"] - period["starts_at"] == timedelta(days=20)
+    assert abs((period["starts_at"] - datetime.now(UTC)).total_seconds()) < 60
+    audit = one(fresh, "SELECT * FROM auth.audit_events WHERE action = 'membership.trial_started' AND target_user_id = %s",
+                (bare,))
+    assert audit["actor_user_id"] is None
+    assert audit["detail"] == {"days": 20, "source": "existing_accounts", "reason": "account before the registration"}
+    assert waiting.get("/api/v1/home").status_code == 200, "the door opens at once"
+    assert waiting.get("/api/v1/auth/me").json()["membership"]["state"] == "trial"
+    # nothing else moved: the paid and the running trial keep their only period, the disabled one has none, no e-mail left
+    after = {r["user_id"]: r["n"] for r in rows(fresh, "SELECT user_id, count(*) n FROM customer.membership_periods "
+                                                      "GROUP BY 1")}
+    assert after == {**before, bare: 1}
+    assert rows(fresh, "SELECT 1 FROM customer.messages_outbox WHERE user_id = %s AND template = 'trial_started'",
+                (bare,)) == []
+    # twice grants nothing
+    again = membership.grant_existing_trials(days=20, reason="again", apply=True)
+    assert [o.result for o in again if o.user_id == bare] == ["has_period"]
+    assert len(rows(fresh, "SELECT 1 FROM customer.membership_periods WHERE user_id = %s", (bare,))) == 1
+
+
+def test_when_the_temporary_trial_ends_only_the_benefit_goes(fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(membership.SWITCH, "1")
+    bare = account(f"ends@{DOMAIN}")
+    # granted 12 days ago for 7: the week passed and the 3 days of grace too (periods are append-only: the past is
+    # written as the past, never edited)
+    membership.grant_existing_trials(days=7, reason="temporary", apply=True, at=datetime.now(UTC) - timedelta(days=12))
+    c = signed_in(f"ends@{DOMAIN}")
+    membership.forget()
+    refused = c.get("/api/v1/home")
+    assert refused.status_code == 403 and error(refused) == "membership_expired"
+    me = c.get("/api/v1/auth/me")
+    assert me.status_code == 200 and me.json()["membership"]["state"] == "expired", "the account and its data stay"
+    assert one(fresh, "SELECT status FROM auth.users WHERE id = %s", (bare,))["status"] == "active"
+    # the normal flow now: the owner records a payment and the door opens
+    assert pay(signed_in(OWNER), bare).status_code == 200
+    assert c.get("/api/v1/home").status_code == 200
+
+
+def test_the_temporary_trial_asks_for_an_explicit_length_and_a_reason(fresh: str) -> None:
+    for days in (0, 6, 21):
+        with pytest.raises(CustomerError) as err:
+            membership.grant_existing_trials(days=days, reason="x", apply=False)
+        assert err.value.code == "invalid_trial_days"
+    with pytest.raises(CustomerError) as err2:
+        membership.grant_existing_trials(days=14, reason="  ", apply=False)
+    assert err2.value.status == 422
