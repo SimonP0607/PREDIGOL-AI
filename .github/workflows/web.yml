@@ -52,3 +52,22 @@ jobs:
           VITE_DATA_MODE: live
       - name: bundle budget (plan de cierre UX, 5.2)
         run: bun scripts/bundle-budget.ts
+
+  image:
+    # The server builds web/Dockerfile, which the job above never touches: on 10 Nov 2026 a Dockerfile whose build step had
+    # become part of a comment passed every check here and failed only on the server (OPS-003, fixed by OPS-004). This job builds
+    # the same image (no push, no deploy) and checks that the output the final stage copies exists.
+    name: imagen Docker de la web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: build web/Dockerfile
+        run: docker build --build-arg VITE_API_BASE_URL=https://predigol.example --build-arg VITE_APP_VERSION=ci -t predigol-web:ci web
+      - name: the image carries the server and the service worker
+        run: docker run --rm --entrypoint sh predigol-web:ci -c 'test -f .output/server/index.mjs && test -f .output/public/sw.js'

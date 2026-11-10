@@ -10,6 +10,7 @@
  */
 import {
   Activity,
+  Banknote,
   BarChart3,
   BookOpen,
   Bookmark,
@@ -177,6 +178,7 @@ export const adminNav: Array<{ label: string; items: NavItem[] }> = [
       { to: "/admin/users", label: "admin.nav.users", icon: UserRound },
       { to: "/admin/messages", label: "admin.nav.messages", icon: Mail },
       { to: "/admin/announcements", label: "admin.nav.announcements", icon: Megaphone },
+      { to: "/admin/payments", label: "admin.nav.payments", icon: Banknote },
       { to: "/admin/product", label: "admin.nav.product", icon: BarChart3 },
       { to: "/admin/audit", label: "admin.nav.audit", icon: ScrollText },
       { to: "/admin/settings", label: "admin.nav.settings", icon: Settings },

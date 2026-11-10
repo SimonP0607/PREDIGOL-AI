@@ -13,6 +13,7 @@ import { ErrorState, SkeletonCards } from "@/product/shared/States";
 import { membershipLine, showsDaysLeft } from "./membership";
 import { MembershipDiscounts } from "./MembershipDiscounts";
 import { MembershipPlan } from "./MembershipPlan";
+import { PaymentRequestPanel } from "./PaymentRequestPanel";
 import { RenewOptions } from "./RenewOptions";
 
 function amountOf(p: MyPeriod): string | null {
@@ -68,6 +69,7 @@ export function MembershipCard() {
       ) : null}
       <MembershipPlan plan={plan} />
       <MembershipDiscounts discounts={discounts} />
+      <PaymentRequestPanel state={m.state} />
       {m.state !== "none" ? (
         <div className="space-y-2 rounded-md border border-border p-3">
           <h3 className="text-sm font-semibold">{t("profile.membership.howToRenew")}</h3>

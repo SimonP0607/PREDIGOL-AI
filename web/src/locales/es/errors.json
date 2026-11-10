@@ -141,7 +141,17 @@
     "invalid_phone": "Escribe un celular válido. Si es colombiano, de 10 dígitos y empieza por 3.",
     "invalid_nickname": "El apodo debe tener de 3 a 24 caracteres, sin @, y no puede ser un nombre reservado.",
     "signup_paused": "Hoy ya recibimos muchos registros. Vuelve a intentarlo más tarde.",
-    "consents_required": "Marca las cuatro casillas para crear tu cuenta."
+    "consents_required": "Marca las cuatro casillas para crear tu cuenta.",
+    "payment_not_configured": "El pago por Nequi o Bre-B todavía no está habilitado.",
+    "price_not_set": "El precio de la membresía todavía no está definido.",
+    "terms_draft": "Las condiciones de compra todavía no están definitivas.",
+    "key_unavailable": "No podemos guardar el aviso con seguridad ahora. Escríbenos.",
+    "terms_changed": "Las condiciones de compra cambiaron: léelas de nuevo.",
+    "terms_not_accepted": "Tienes que aceptar las condiciones de compra.",
+    "reference_used": "Ese pago ya estaba registrado.",
+    "invalid_paid_on": "El día del pago no es válido.",
+    "request_decided": "Ese aviso ya fue decidido.",
+    "request_not_found": "No encontramos ese aviso."
   },
   "problem": {
     "password_too_short": "Mínimo 15 caracteres, o 12 si usas la verificación en dos pasos.",
