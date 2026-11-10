@@ -52,6 +52,15 @@ import type {
   PaymentRecorded,
 } from "./types_membership";
 import type {
+  AdminPaymentRequest,
+  AdminPaymentRequests,
+  ApproveIn,
+  MyPaymentRequests,
+  PaymentRequestIn,
+  PaymentRequestView,
+  RejectIn,
+} from "./types_payment_requests";
+import type {
   AgentRuns,
   AgentRunsQuery,
   ContraCode,
@@ -563,6 +572,12 @@ export const v1 = {
   myMembership: () => getJson<MyMembership>("/me/membership"),
   /** The reader holds a coupon by its code (UX-005). */
   redeemCoupon: (code: string) => postJson<CouponRedeemed>("/me/membership/coupon", { code }),
+  /** The reader's «ya pagué» (UX-087): whether a notice can be sent, how to pay, the price and their notices. */
+  myPaymentRequests: () => getJson<MyPaymentRequests>("/me/payment-request"),
+  sendPaymentRequest: (body: PaymentRequestIn) =>
+    postJson<PaymentRequestView>("/me/payment-request", body),
+  cancelPaymentRequest: (id: number) =>
+    postJson<PaymentRequestView>(`/me/payment-request/${id}/cancel`, {}),
   /** The profile's eight blocks, folded: one read of the reader's own account (plan UX, B1). */
   myAccount: () => getJson<AccountSummary>("/me/account"),
   // ── what the reader's own use orders and suggests (plan UX, B2) ─────
@@ -1175,6 +1190,15 @@ export const v1 = {
     postJson<Envelope<AdminUser>>(`/admin/users/${id}/invitation`, {}),
   // the membership (plan UX, A8): the owner records; every answer is the account's membership as the console reads it
   adminMembership: (id: number) => getJson<AdminMembership>(`/admin/users/${id}/membership`),
+  // the notices of payment «ya pagué» (UX-087): the owner verifies and decides; every answer is the notice as the queue reads it
+  adminPaymentRequests: (status: "submitted" | "all" = "submitted") =>
+    getJson<AdminPaymentRequests>("/admin/payment-requests", { status }),
+  approvePaymentRequest: (id: number, body: ApproveIn = {}) =>
+    postJson<AdminPaymentRequest>(`/admin/payment-requests/${id}/approve`, body),
+  rejectPaymentRequest: (id: number, body: RejectIn) =>
+    postJson<AdminPaymentRequest>(`/admin/payment-requests/${id}/reject`, body),
+  annulPaymentRequest: (id: number, reason: string) =>
+    postJson<AdminPaymentRequest>(`/admin/payment-requests/${id}/annul`, { reason }),
   // the coupons of the membership (UX-005): the owner creates one when he wants and may disable it
   adminCoupons: () => getJson<AdminCoupons>("/admin/coupons"),
   createCoupon: (body: CouponCreateIn) => postJson<AdminCoupon>("/admin/coupons", body),
