@@ -146,6 +146,9 @@ FIXTURE_COLUMNS = """
 SELECT f.id, f.provider_fixture_id, c.provider_league_id, cs.season, f.kickoff_at, f.status_short, f.status_group,
        f.round, th.provider_team_id AS home_provider_id, ta.provider_team_id AS away_provider_id,
        v.provider_venue_id AS venue_provider_id, f.updated_at, f.source_fetched_at,
+       EXISTS (SELECT 1 FROM audit.data_repairs d WHERE d.rule = 'fixture_venue_reassigned'
+                  AND d.entity = 'core.fixtures' AND d.entity_id = f.id
+                  AND d.after_value = f.venue_id::text) AS venue_reassigned,
        r.fixture_id IS NOT NULL AS has_result, r.goals_home, r.goals_away, r.ht_goals_home, r.ht_goals_away,
        r.ft_goals_home, r.ft_goals_away, r.et_goals_home, r.et_goals_away, r.pen_home, r.pen_away
   FROM core.fixtures f

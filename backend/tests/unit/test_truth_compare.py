@@ -46,6 +46,24 @@ def test_agreement_is_counted_not_reported() -> None:
     assert (results.checked, results.matched, results.total_findings) == (1, 1, 0)
 
 
+def test_a_match_a_person_pointed_at_another_ground_is_not_a_venue_difference() -> None:
+    """BE-037: the provider files two grounds under one id; a match pointed at the right one holds another venue than
+    its payload's on purpose, and only while the audit row says so."""
+    other = db_fixture() | {"venue_provider_id": 19623}
+    plain = Tally("fixtures")
+    compare.compare_fixture(api_fixture(), other, now=NOW, tally=plain)
+    [f] = plain.findings
+    assert (f.field, f.kind, f.severity) == ("venue", Kind.MISMATCH, Severity.LOW), "a plain difference is reported"
+
+    reviewed = Tally("fixtures")
+    compare.compare_fixture(api_fixture(), other | {"venue_reassigned": True}, now=NOW, tally=reviewed)
+    assert (reviewed.checked, reviewed.matched, reviewed.total_findings) == (1, 1, 0)
+
+    not_any_more = Tally("fixtures")
+    compare.compare_fixture(api_fixture(), other | {"venue_reassigned": False}, now=NOW, tally=not_any_more)
+    assert [x.field for x in not_any_more.findings] == ["venue"], "the flag is false once the match holds another venue"
+
+
 def test_a_cancelled_match_stored_as_scheduled_is_a_stale_status() -> None:
     fixtures = Tally("fixtures")
     compare.compare_fixture(api_fixture("Canc", (None, None)), db_fixture("Canc", "scheduled", None), now=NOW,
