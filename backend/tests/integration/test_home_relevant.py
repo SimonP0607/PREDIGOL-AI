@@ -125,14 +125,27 @@ def test_a_goal_the_feed_took_back_is_not_a_comeback(db: psycopg.Connection[Any]
     assert ids(relevant(db)) == [came_back], "the real comeback next to it is still said"
 
 
-def test_a_match_whose_score_went_down_says_nothing_of_comebacks_even_a_true_one(
+def test_a_comeback_that_stood_is_still_said_beside_a_goal_the_feed_took_back(
         db: psycopg.Connection[Any], world: World, seed: Seed) -> None:
-    """0-1, 1-1, then a 2-1 taken back: the comeback was real, but a history that was corrected cannot vouch for it, and a line
-    that is not backed is not said."""
-    corrected = match(db, seed, world, "Blues", "Reds", goals=(1, 1))
-    for goals, minutes_ago in (((0, 1), 40), ((1, 1), 30), ((2, 1), 10)):
-        earlier_score(db, seed, corrected, goals, minutes_ago)
-    assert relevant(db) == []
+    """1-0 and then 0-0 (annulled), 0-1 at the 40th minute and 1-1 at the end: the home side did come back, and only the home side.
+    Of 23 finished matches read on 10-nov-2026, 8 had a goal the feed took back, 3 of them with a comeback that was real."""
+    fid = match(db, seed, world, "Blues", "Reds", goals=(1, 1))
+    for goals, minutes_ago in (((0, 0), 50), ((1, 0), 49), ((0, 0), 48), ((0, 1), 40)):
+        earlier_score(db, seed, fid, goals, minutes_ago)
+    (found,) = relevant(db)
+    assert [(r.code, r.params["team"], r.params["down_by"], r.params["state"]) for r in found.reasons] == [
+        ("comeback", "Blues", 1, "level")]
+
+
+def test_a_goal_taken_back_does_not_make_the_deficit_bigger(db: psycopg.Connection[Any], world: World, seed: Seed) -> None:
+    """1-0, then 2-0 that was annulled (back to 1-0), 1-1 and 1-2: the away side was one goal down, not two."""
+    fid = match(db, seed, world, "Blues", "Reds", goals=(1, 2))
+    for goals, minutes_ago in (((1, 0), 50), ((2, 0), 45), ((1, 0), 44), ((1, 1), 30)):
+        earlier_score(db, seed, fid, goals, minutes_ago)
+    (found,) = relevant(db)
+    (reason,) = found.reasons
+    assert (reason.code, reason.params["team"], reason.params["down_by"], reason.params["state"]) == (
+        "comeback", "Reds", 1, "ahead")
 
 
 def test_by_competition_priority_then_kickoff_and_four_at_most(db: psycopg.Connection[Any], world: World, seed: Seed) -> None:
