@@ -1,6 +1,5 @@
 {
   "subtitle": "Every market with prices, match by match: the best price of each selection and its bookmaker.",
-  "fairLine": "Market fair price: the price without the bookmakers' margin, worked out from their own prices. It is not a PrediGol forecast.",
   "tabsLabel": "Market families",
   "tab": {
     "main": "Main",
@@ -245,7 +244,8 @@
     "best": "(best price)",
     "noPrice": "No price",
     "empty": "No bookmaker has prices for this line in the current book.",
-    "single": "1 bookmaker"
+    "single": "1 bookmaker",
+    "short": "Prices"
   },
   "movement": {
     "toggle": "Movement",
@@ -310,7 +310,7 @@
     "edge": "Widest gap to the fair price"
   },
   "note": {
-    "figures": "Large price: the best among the bookmakers, and its bookmaker. In grey, the market's fair price and the gap to it.",
+    "figures": "Large price: the best among the bookmakers, and its bookmaker. In grey, the market's fair price (without the bookmakers' margin; not a PrediGol forecast) and the gap to it.",
     "noFair": "This market has no fair price: its selections do not cover every outcome, or few bookmakers quote it.",
     "single": "1 bookmaker: no comparison and no fair price.",
     "lookupOnly": "Lookup only: this market does not go in My parlay.",
@@ -343,5 +343,6 @@
     "resumed": "Updates resumed.",
     "results_one": "{count} match with these settings.",
     "results_other": "{count} matches with these settings."
-  }
+  },
+  "openMatchShort": "Match"
 }
