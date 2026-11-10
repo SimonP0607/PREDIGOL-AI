@@ -21,7 +21,7 @@ ENV NITRO_PRESET=node-server \
     VITE_API_BASE_URL=${VITE_API_BASE_URL} \
     VITE_APP_VERSION=${VITE_APP_VERSION}
 RUN test -n "$VITE_API_BASE_URL" || { echo "VITE_API_BASE_URL is required (the public https:// origin)"; exit 1; }
-RUN bun run build && test -f .output/server/index.mjs && test -f .output/public/sw.js
+# A build that finishes its work and then never exits blocked a deploy for 1 h 46 min (9 Nov 2026). A normal build takes\n# under a minute: past 10 minutes the step fails (exit 143, or 137 if it ignores TERM) and the deploy stops with production untouched.\nRUN timeout -k 10 600 bun run build && test -f .output/server/index.mjs && test -f .output/public/sw.js
 
 FROM node:22-alpine
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
