@@ -1,5 +1,5 @@
 /**
- * The installed app's safe areas, simulated (mobile UX plan, UX-090). No browser engine Playwright drives reports the
+ * The installed app's safe areas, simulated (mobile UX plan, UX-093). No browser engine Playwright drives reports the
  * insets of an installed iPhone app: env(safe-area-inset-*) is 0 everywhere. So the page's own styles are rewritten
  * with the insets an iPhone gives an app installed from Safari (black-translucent status bar, viewport-fit=cover):
  * 59 px at the top in portrait (an iPhone with the Dynamic Island; 47 px with the notch), 34 px at the bottom, and

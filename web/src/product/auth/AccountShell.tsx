@@ -21,7 +21,7 @@ export const accountButton =
  * The language switch at the top of the pages before the product (sign-in, account pages, two-step verification).
  * Installed on an iPhone the page runs under the status bar (black-translucent, viewport-fit=cover): the bar keeps its
  * 16 px below the clock and clear of the notch held sideways, and stays exactly 16 px in a browser, where the insets
- * are 0 (mobile UX plan, UX-090).
+ * are 0 (mobile UX plan, UX-093).
  */
 export function AccountTopBar({ children }: { children: ReactNode }) {
   return (

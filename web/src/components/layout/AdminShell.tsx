@@ -235,7 +235,7 @@ function Topbar({
   onOpenPalette: () => void;
 }) {
   return (
-    // 56 px of bar, stuck just below the status bar of an installed tablet app (StatusBarSpace, UX-090).
+    // 56 px of bar, stuck just below the status bar of an installed tablet app (StatusBarSpace, UX-093).
     <header className="sticky top-[env(safe-area-inset-top)] z-30 box-content flex h-14 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur">
       <button
         type="button"
@@ -299,7 +299,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <DataSourcesProvider>
       <div className="min-h-screen bg-background" data-shell="admin">
-        {/* The page starts below the installed app's status bar, the preview's notice too (UX-090). */}
+        {/* The page starts below the installed app's status bar, the preview's notice too (UX-093). */}
         <StatusBarSpace className="lg:left-60" />
         <PreviewBanner />
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />

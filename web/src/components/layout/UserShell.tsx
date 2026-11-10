@@ -70,7 +70,7 @@ export function UserShell({ children }: { children: ReactNode }) {
         <FeedbackProvider>
           <PushProvider>
             <div className="min-h-screen bg-background">
-              {/* The page starts below the installed app's status bar: the notices above the bar too (UX-090). */}
+              {/* The page starts below the installed app's status bar: the notices above the bar too (UX-093). */}
               <StatusBarSpace />
               <PreviewBanner />
               <ShadowPreviewStrip />

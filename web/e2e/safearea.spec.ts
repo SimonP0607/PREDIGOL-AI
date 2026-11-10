@@ -1,9 +1,9 @@
 /**
- * The app installed on an iPhone (mobile UX plan, UX-090): the page runs under the status bar, so nothing a finger
+ * The app installed on an iPhone (mobile UX plan, UX-093): the page runs under the status bar, so nothing a finger
  * needs may sit under the clock, the Dynamic Island or the notch - in portrait and held sideways, at the ten widths of
  * the plan. The insets are simulated (./safearea.ts): no engine Playwright drives reports them.
  *
- * Before UX-090 the sign-in page's language switch sat 19 px from the top, under the status bar (59 px), at every
+ * Before UX-093 the sign-in page's language switch sat 19 px from the top, under the status bar (59 px), at every
  * width; and the owner's «Viendo como usuario» notice, drawn above the top bar, put its button under the clock.
  *
  * The pages before the product need no account: E2E_SAFEAREA_PUBLIC=1 runs only them, against any site (production

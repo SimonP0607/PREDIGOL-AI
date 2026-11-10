@@ -1,5 +1,5 @@
 /**
- * The status bar of the installed iPhone app (mobile UX plan, UX-090). With a black-translucent status bar and
+ * The status bar of the installed iPhone app (mobile UX plan, UX-093). With a black-translucent status bar and
  * viewport-fit=cover the page runs under the clock, so whatever is drawn first at the top must start below it: a
  * notice above the top bar (the owner's «Viendo como usuario», the shadow preview) sat under the clock with its button.
  *

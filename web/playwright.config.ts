@@ -237,7 +237,7 @@ export default defineConfig({
       dependencies: ["setup"],
     },
     {
-      // The app installed on a phone (mobile UX plan, UX-090): the status bar, the notch and the rounded corners,
+      // The app installed on a phone (mobile UX plan, UX-093): the status bar, the notch and the rounded corners,
       // simulated, at the plan's ten widths; Android's engine here, an iPhone's in safearea-webkit.
       // E2E_SAFEAREA_PUBLIC=1: only the pages before the product, no account (safe against production).
       name: "safearea",
