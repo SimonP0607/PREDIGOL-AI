@@ -450,3 +450,21 @@ def test_a_quantity_is_the_same_whether_it_is_a_digit_or_a_word_in_either_langua
     assert key("Ganó 3-1 en casa.", "es") != key("It won 3-2 at home.", "en"), "a different score is still refused"
     assert key("Suma 1,8 puntos por partido.", "es") != key("It takes 1.9 points per game.", "en"), "a decimal is still compared"
     assert key("Suma 1,8 puntos por partido.", "es") == key("It takes 1.8 points per game.", "en")
+
+
+def test_twice_and_what_only_looks_like_a_number_compare_as_they_mean_ia032() -> None:
+    """IA-032: «dos veces» is «twice»; «ninguno de los dos» has no two in English and «el once» is the starting XI. «ambos» and «both» are not
+    counted (counting them refused approved chronicles that say the same thing), so «los dos» beside «both» is still refused: the comparison errs
+    on the side of refusing. A different quantity is still refused, and each language's own figures are still checked against the facts."""
+    key = un._numbers_key
+    assert key("Los dos equipos se han enfrentado dos veces.", "es") == key("The two sides have met twice.", "en")
+    assert key("Se han enfrentado dos veces.", "es") == key("They have met twice.", "en")
+    assert key("No hay posición en la tabla para ninguno de los dos.", "es") == key("No table position is given for either side.", "en")
+    assert key("Ninguna de las dos aparece en la lista.", "es") == key("Neither of the two is on the list.", "en")
+    assert key("Leyton Orient podría repetir el once que goleó.", "es") == key("Leyton Orient could keep the side that won big.", "en")
+    assert key("Su once inicial no se conoce.", "es") == key("Its starting XI is not known.", "en")
+    assert key("Es el único precedente entre ambos.", "es") == key("It is the only meeting between them.", "en"), "«ambos» is not a count"
+    assert key("Ambos equipos pelean por el ascenso.", "es") == key("Both teams are chasing promotion.", "en")
+    assert key("Lleva once partidos sin perder.", "es") == key("It is eleven matches unbeaten.", "en"), "eleven of something is still eleven"
+    assert key("Notts County ganó los dos partidos.", "es") != key("Notts County have won both matches.", "en"), "still refused: errs on refusing"
+    assert key("Ganó los dos partidos.", "es") != key("It won all three matches.", "en"), "a different quantity is still refused"

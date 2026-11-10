@@ -141,7 +141,17 @@
     "invalid_phone": "Enter a valid mobile number. A Colombian one has 10 digits and starts with 3.",
     "invalid_nickname": "The nickname must be 3 to 24 characters, without @, and cannot be a reserved name.",
     "signup_paused": "We received many registrations today. Try again later.",
-    "consents_required": "Tick all four boxes to create your account."
+    "consents_required": "Tick all four boxes to create your account.",
+    "payment_not_configured": "Paying by Nequi or Bre-B is not enabled yet.",
+    "price_not_set": "The membership's price is not set yet.",
+    "terms_draft": "The purchase conditions are not final yet.",
+    "key_unavailable": "We cannot keep the notice safely right now. Write to us.",
+    "terms_changed": "The purchase conditions changed: read them again.",
+    "terms_not_accepted": "You have to accept the purchase conditions.",
+    "reference_used": "That payment was already recorded.",
+    "invalid_paid_on": "The day of the payment is not valid.",
+    "request_decided": "That notice was already decided.",
+    "request_not_found": "We could not find that notice."
   },
   "problem": {
     "password_too_short": "At least 15 characters, or 12 if you use two-step verification.",
