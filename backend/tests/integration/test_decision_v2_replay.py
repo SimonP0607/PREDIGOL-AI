@@ -109,6 +109,21 @@ def test_decision_v2_agrees_with_decision_v1_on_every_row_of_the_day(db: psycopg
     assert all(out["families"][f]["n"] == 0 for f in ("CORNERS", "CARDS", "YELLOW", "GOALS_HALF"))
 
 
+def test_a_day_whose_matches_have_since_been_played_replays_as_it_was_decided(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """The replay reads the matches from today's fixtures: once played they are ``FT``, and decision-v2 rejected every row of the day for
+    «estado FT» (measured in production on 7 and 8 Nov 2026: 52.9 % and 30.5 % of the core rows agreed). The pipeline decides before kick-off
+    only, so the status of the match is read as it was before the whistle."""
+    core_scene(db, seed)
+    decision.decide(db, at=AT)
+    before = replay.replay_day(db, day=local_day(AT))
+    assert before["agreement"]["rate"] == 1.0
+    db.execute("UPDATE core.fixtures SET status_short = 'FT', status_group = 'finished' "
+               "WHERE id IN (SELECT DISTINCT fixture_id FROM intel.decisions WHERE decision_version = %s)", (decision.VERSION,))
+    after = replay.replay_day(db, day=local_day(AT))
+    assert after["agreement"] == before["agreement"] and not after["disagreements"], after["disagreements"][:2]
+    assert after["families"]["core"]["confusion"] == before["families"]["core"]["confusion"]
+
+
 def test_the_new_inputs_change_nothing_when_there_is_nothing_to_say(db: psycopg.Connection[Any], seed: Seed) -> None:
     """With no Council verdict stored and no captured series, the Council's adjustment and the market's signals leave every state as it was."""
     core_scene(db, seed)

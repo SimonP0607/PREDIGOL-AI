@@ -89,6 +89,26 @@ def recorded_ai_mode(rows: Sequence[Mapping[str, Any]]) -> str:
     return "off" if any(r.get("context_status") == "AI_OFF" for r in rows) else "recorded"
 
 
+STARTED_STATUS: Final = frozenset({"1H", "HT", "2H", "ET", "BT", "P", "LIVE", "FT", "AET", "PEN"})
+"""The statuses a match can only have once it has kicked off: seen on a row read after the fact, they say nothing about the moment before."""
+
+
+def as_of_status(row: Mapping[str, Any], at: datetime) -> Mapping[str, Any]:
+    """The row as the moment ``at`` saw its match. The candidates are read from today's ``core.fixtures``, whose status of a match
+    already played is ``FT``: decision-v2's data stage would reject every row of a past day for «estado FT», a rejection the pipeline
+    never had (it decides before kick-off only). A status that can only come after the whistle is read as it was before it; the others
+    (postponed, cancelled, abandoned...) may have been true then and are left. Pure."""
+    kickoff = row.get("kickoff_at")
+    if kickoff is None or at >= kickoff or str(row.get("status_short") or "") not in STARTED_STATUS:
+        return row
+    return {**row, "status_short": "NS", "status_group": "scheduled"}
+
+
+def candidates_as_of(cands: Sequence[Candidate], at: datetime) -> list[Candidate]:
+    """The candidates with the status of their match as of ``at`` (see ``as_of_status``). Pure."""
+    return [dataclasses.replace(c, models={m: as_of_status(r, at) for m, r in c.models.items()}) for c in cands]
+
+
 def world_at(conn: psycopg.Connection[Any], family: MarketFamily, fixtures: Sequence[int], *, at: datetime,
              rows: Sequence[Mapping[str, Any]]) -> decision.World:
     version = family.params.decision_version
@@ -286,7 +306,7 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
         fams = [f for f in families if any(f is g for _, g in items)]
         fixtures = sorted({int(r["fixture_id"]) for r, _ in items})
         world = world_at(conn, fams[0], fixtures, at=at, rows=[r for r, _ in items])
-        cands = [c for f in fams for c in f.candidates(conn, at=at, fixtures=fixtures)]
+        cands = candidates_as_of([c for f in fams for c in f.candidates(conn, at=at, fixtures=fixtures)], at)
         adjustments: dict[Key, ctx_adj.ContextAdjustment] = {}
         if council is not None:
             seen = ctx_adj.adjustments_for(conn, at=at, fixture_ids=fixtures, engines=(council,))
