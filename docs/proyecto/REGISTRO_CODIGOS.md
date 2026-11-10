@@ -29,6 +29,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | OPS-001 | Qué consultas cuestan más: PostgreSQL carga `pg_stat_statements` (qué consultas suman más tiempo, solo su forma, nunca los valores) y `auto_explain` (escribe el plan de las que pasan de 5 s, sin ANALYZE); `predigolctl pgstat status/enable/top/reset`. Cambia el `command` de PostgreSQL en `docker-compose.yml`: el despliegue lo RECREA una vez (≈1 min; API y worker se reconectan solos) tras la copia y su prueba de restauración; después, `predigolctl pgstat enable` una vez | desplegado | #133 | — |
 | OPS-002 | `predigolctl pgstat` se conecta como el superusuario del contenedor (`-U postgres`) y no como el rol `fbi`: `fbi` no puede leer `shared_preload_libraries`, ni crear la extensión, ni ver las consultas de los demás roles (lo vimos al activar OPS-001 en producción) | desplegado | #165 | OPS-001 |
 | OPS-003 | La compilación de la web en el Dockerfile (un run build) tiene ahora un tiempo máximo de 10 minutos (	imeout -k 10 600): el 9-nov-2026 una compilación terminó su trabajo en 34 s y no salió durante 1 h 46 min, y bloqueó un despliegue. Pasado ese tiempo el paso falla y el despliegue se detiene con producción intacta; una compilación normal dura menos de un minuto | en curso | este PR | OPS-001 |
+| OPS-004 | El Dockerfile de la web vuelve a compilar la app: OPS-003 (#195) unió en una sola línea el comentario y el paso `RUN timeout … bun run build` con un salto escrito como texto (`\n`), Docker leyó toda la línea como comentario, la imagen salió sin `.output` y el despliegue del 10-nov (cadena `1c2c50c`, con UX-087 y UX-093 a UX-096) se detuvo en `COPY --from=build /app/.output` con producción intacta. Se separan las líneas y una prueba unitaria (`web/src/lib/dockerfile.test.ts`, la corre Web CI, que no construye este Dockerfile) exige que la compilación sea una instrucción propia y que ninguna línea lleve un salto escrito. Solo la receta de la imagen de la web | en curso | este PR | — |
 | SEG-002 | Llave de solo lectura para las auditorías del plan PICKS (F1, F2, F6): orden forzada `predigol-audits` (`backend/deploy/release/templates/gate/`) que solo deja lanzar `audit_picks_module`, `audit_settlement` y `research_picks_calibration` con sus opciones numéricas acotadas, dentro del worker y con su conexión `READ ONLY`; rechaza consola, otros scripts, metacaracteres y opciones ajenas, y registra cada llamada en `/var/log/predigol-audits.log`. Pasos para instalarla y quitarla en `PICKS_LINEA_BASE.md`. Suite `test_audits_gate.sh` (37 comprobaciones). No toca la llave de root ni la del despliegue; sin migración | en curso | este PR | Plan PICKS F1, F2, F6 |
 
 ## IA — capa de inteligencia artificial
@@ -196,7 +197,7 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-018 · SEG-003 · UX-097 · BE-036 · FE-002 · OPS-004 · DOC-001
+CI-018 · SEG-003 · UX-097 · BE-036 · FE-002 · OPS-005 · DOC-001
 
 IA-027
 
