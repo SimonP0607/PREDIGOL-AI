@@ -540,8 +540,9 @@ def test_the_confidence_is_a_fixed_map_and_the_engine_version_names_what_it_is_m
     sec = section(5)
     said(r"`LOW` ([\d,]+), `MEDIUM` ([\d,]+), `HIGH` ([\d,]+)", sec, *(orchestrator.CONFIDENCE[k] for k in ("LOW", "MEDIUM", "HIGH")))
     assert {"LOW": D("0.35"), "MEDIUM": D("0.60"), "HIGH": D("0.85")} == orchestrator.CONFIDENCE
-    assert orchestrator.ENGINE_VERSION["ma-v1"] == "ma-v1+match-v4+council-v1+contra-v1+router-v1" and "`ma-v1+match-v4+council-v1+contra-v1+router-v1`" in sec
+    assert orchestrator.ENGINE_VERSION["ma-v1"] == "ma-v1+match-v5+council-v1+contra-v1+router-v1" and "`ma-v1+match-v5+council-v1+contra-v1+router-v1`" in sec
     assert "hasta IA-009 el Match Agent era `match-v1`" in sec and "y hasta IA-014, `match-v2`" in sec and "y hasta IA-018, `match-v3`" in sec
+    assert "y hasta IA-028, `match-v4`" in sec
     assert orchestrator.ENGINE_VERSION["cs-v1"] == "cs-v1+council-v1+router-v1" and "`cs-v1+council-v1+router-v1`" in sec
     for status in (orchestrator.STATUS_OK, orchestrator.STATUS_FALLBACK, orchestrator.STATUS_INVALID, orchestrator.STATUS_FAILED, orchestrator.STATUS_OVER_BUDGET):
         assert f"`{status}`" in sec
@@ -590,10 +591,11 @@ def test_the_agents_are_born_challengers_in_the_registry() -> None:
     assert "nacen **RETADORES**" in sec and "`match-v1`, `council-v1`" in sec
     source = inspect.getsource(agent_registry)
     assert 'Registration(agent="match", version="match-v1"' in source and 'Registration(agent="council", version="council-v1"' in source
-    assert match.VERSION == "match-v4" and council.VERSION == "council-v1" and contra.VERSION == "contra-v1"
+    assert match.VERSION == "match-v5" and council.VERSION == "council-v1" and contra.VERSION == "contra-v1"
     assert 'Registration(agent="match", version="match-v2"' in source and "pasó a `match-v2`" in sec and "`IA_009_SALIDAS_INVALIDAS.md`" in sec
     assert 'Registration(agent="match", version="match-v3"' in source and "pasó a `match-v3`" in sec and "`IA_014_SALIDAS_INVALIDAS_MATCH.md`" in sec
     assert 'Registration(agent="match", version="match-v4"' in source and "pasó a `match-v4`" in sec and "`IA_018_VALIDEZ_STATS.md`" in sec
+    assert 'Registration(agent="match", version="match-v5"' in source and "pasó a `match-v5`" in sec and "`IA_028_SALIDA_NATIVA_MATCH_STATS.md`" in sec
     assert "It is born CHALLENGER" in source and "it is born CHALLENGER" in source
 
 

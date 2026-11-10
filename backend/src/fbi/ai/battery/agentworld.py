@@ -333,8 +333,11 @@ def request_of(world: Input) -> JsonRequest:
 
 def request(target: str, base: str, case: Case | None = None, *, native: bool = False) -> JsonRequest:
     """The request of an ask as the LAB makes it: the agent's own, with the system block marked for the cache, the tool call (or structured
-    outputs with ``native``) and the agent's own layout - and ``pinned``, so that nothing is added or taken away."""
-    return replace(request_of(build(target, base, case)), cache=True, pinned=True, native_schema=native)
+    outputs with ``native``, or when the agent itself asks with them: the Match Agent's v5 and the Statistics Agent's v4, IA-028) and the agent's
+    own layout - and ``pinned``, so that nothing is added or taken away. ``native`` never turns an agent that asks natively back to the tool
+    call: the battery measures the agent as production asks it."""
+    own = request_of(build(target, base, case))
+    return replace(own, cache=True, pinned=True, native_schema=native or own.native_schema)
 
 
 def documents(request: JsonRequest) -> list[Any]:

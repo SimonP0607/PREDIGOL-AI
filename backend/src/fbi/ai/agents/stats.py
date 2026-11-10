@@ -1,4 +1,4 @@
-"""The Statistics Agent (``stats-v3``; Plan Maestro IA, phase 4, section 10): what it is asked and what the server makes of what it answers.
+"""The Statistics Agent (``stats-v4``; Plan Maestro IA, phase 4, section 10): what it is asked and what the server makes of what it answers.
 
 One agent, one contract (``aa-v1``, ``fbi.ai.contracts.assessment``), ONE task: ``evaluation``, mode EVALUATION, Haiku 5.5 at effort medium (the router's
 task of that name, ``router-v1``; never this module's choice). It assesses the selections of CORNERS and CARDS the server names (``c4``, ``c5``... after
@@ -14,6 +14,9 @@ the forecasts of the families and the evidence) as canonical compact JSON; then,
 the time, the minutes to the kick-off, the candidates BY THEIR NAME with the numbers the server knows of each (the model writes none; the LINE is always
 there, because every count has one), the settlement rule of each family, the relations nobody has tested, the findings of the contradiction detector and,
 from v3 (IA-018), the references the model may cite (``citable``: ``common.citable_refs`` of what it reads, written by code, as the Match Agent's v3).
+v4 (IA-028) changes neither the prompt (``stats-assess-v3``) nor the contract: it asks for the answer with structured outputs (``NATIVE``, as the
+Match Agent's v5) instead of the forced tool call, because battery-v3 with the real model (10 Nov 2026) refused 7 of 55 answers asked through the tool
+and none of 55 asked natively. The reader is the same.
 
 The three things this agent is held to, by the server and not only by the prompt:
 
@@ -74,7 +77,9 @@ from fbi.ai.providers.base import JsonRequest
 from fbi.ai.stats_factors import RELATIONS, descriptive_blocks, under
 
 AGENT: Final = "stats"
-VERSION: Final = "stats-v3"
+VERSION: Final = "stats-v4"
+NATIVE: Final = True
+"""The answer is asked with structured outputs (IA-028), never the forced tool call: part of the agent's identity (the registry reads it)."""
 TASK: Final = "evaluation"
 """The task of the router (and of the registry) this agent runs: its only one."""
 MODE: Final[Mode] = "EVALUATION"
@@ -194,7 +199,7 @@ def evaluation_request(slice_: Slice, naming: Naming, *, at: datetime, contradic
     shared = canonical(visible) + "\n"
     variable = canonical(ask)
     return JsonRequest(system=prompts.STATS_ASSESS_SYSTEM, user=shared + variable, schema=copy.deepcopy(schema_of(ASSESSMENT)), schema_name=SCHEMA_NAME,
-                       max_tokens=MAX_TOKENS, timeout_s=TIMEOUT_S, effort=effort_of(), split=(shared, variable))
+                       max_tokens=MAX_TOKENS, timeout_s=TIMEOUT_S, effort=effort_of(), split=(shared, variable), native_schema=NATIVE)
 
 
 def input_hash(request: JsonRequest) -> str:

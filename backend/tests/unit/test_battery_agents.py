@@ -121,8 +121,11 @@ def test_the_requests_are_the_agents_own_made_pinned_for_the_lab() -> None:
     for target, base in (("match", "m_context"), ("match", "m_reject"), ("stats", "s_high"), ("council", "k_approve"), ("council", "k_escalated")):
         world = agentworld.build(target, base)
         ours = corpus.request_for(target, base)
-        assert ours == replace(agentworld.request_of(world), cache=True, pinned=True, native_schema=False)
+        own = agentworld.request_of(world)
+        assert ours == replace(own, cache=True, pinned=True)
         assert corpus.request_for(target, base, native=True) == replace(ours, native_schema=True)
+        # IA-028: the Match Agent's v5 and the Statistics Agent's v4 ask natively themselves, and the battery asks as they do; the Council does not
+        assert ours.native_schema is own.native_schema is (target != "council")
     assert corpus.request_for("match", "m_context").system == match.SYSTEM["CONTEXT"]
     assert corpus.request_for("match", "m_reject").system == match.SYSTEM["EVALUATION"]
     assert corpus.request_for("stats", "s_low").system == stats.evaluation_request(
@@ -317,7 +320,7 @@ def offline_battery() -> dict[str, Any]:
 def test_the_offline_battery_of_the_agents_is_green(offline_battery: dict[str, Any]) -> None:
     assert offline_battery["green"] is True and offline_battery["problems"] == []
     assert offline_battery["target_list"] == list(AGENT_TARGETS)
-    assert [c["agent"] for c in offline_battery["covers"]] == ["match-v4", "stats-v3", "council-v1"]
+    assert [c["agent"] for c in offline_battery["covers"]] == ["match-v5", "stats-v4", "council-v1"]
     assert offline_battery["covers"][2]["prompts"] == ["council-v1", "council-opus-v1"] and offline_battery["covers"][2]["contract"] == "cd-v1"
 
 
@@ -367,7 +370,7 @@ def test_the_evidence_of_the_gate_lists_every_target_with_its_agent_its_prompts_
     evidence = run.evidence_of(sim.assessments, helds, {t: run.run_id(t) for t in AGENT_TARGETS}, offline.run(AGENT_TARGETS), native=False)
     assert evidence["target_list"] == list(AGENT_TARGETS)
     assert evidence["covers"] == [corpus.target(t).covers() for t in AGENT_TARGETS]
-    assert evidence["targets"]["match"]["agent"] == "match-v4" and evidence["targets"]["match"]["contract"] == "aa-v1"
+    assert evidence["targets"]["match"]["agent"] == "match-v5" and evidence["targets"]["match"]["contract"] == "aa-v1"
     assert evidence["targets"]["council"]["prompts"] == ["council-v1", "council-opus-v1"]
     assert corpus.target("review").covers() == {"target": "review", "agent": None, "prompts": ["review-v2"], "contract": None, "tiers": ["analysis"]}
     assert [corpus.target(t).covers()["target"] for t in TARGETS] == list(TARGETS)

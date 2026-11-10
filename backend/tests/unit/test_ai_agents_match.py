@@ -138,7 +138,7 @@ def finding(code: Any = "C01", subject: str = "team:home", candidates: tuple[str
 # -- who the agent is, and who chooses its model -------------------------------------------------------------------------------------------
 
 def test_the_agent_is_the_match_agent_at_the_version_the_registry_holds() -> None:
-    assert (match.AGENT, match.VERSION) == ("match", "match-v4")
+    assert (match.AGENT, match.VERSION, match.NATIVE) == ("match", "match-v5", True), "IA-028: the answer is asked with structured outputs"
     assert rg.REGISTRY.in_force("match").version == match.VERSION
     assert re.fullmatch(r"[A-Za-z0-9_-]{1,64}", match.SCHEMA_NAME), "a name the API takes for a tool"
 
@@ -217,7 +217,8 @@ def test_a_slice_the_match_agent_may_not_read_is_refused_in_both_modes() -> None
 def test_the_request_offers_the_layout_of_the_cache_and_asks_for_no_cache_of_its_own() -> None:
     for mode in MODES:
         request = request_of(mode)
-        assert (request.cache, request.shared, request.pinned, request.native_schema) == (False, "", False, False), "the switches decide, not the agent"
+        assert (request.cache, request.shared, request.pinned) == (False, "", False), "the switches decide the cache, not the agent"
+        assert request.native_schema is True, "IA-028: v5 asks with structured outputs - its identity, not a switch's (match.NATIVE)"
         shared, variable = split_of(request)
         assert shared + variable == request.user == request.user_text, "the same facts, in either layout"
         assert shared == canonical(SLICE.document) + "\n" and json.loads(variable)["mode"] == mode
@@ -817,12 +818,16 @@ def test_the_match_agent_is_a_built_agent_born_a_challenger_in_phase_3() -> None
     spec = rg.REGISTRY.spec("match")
     assert (spec.contract, spec.reads, spec.replaces, spec.retire_phase) == ("aa-v1", "match", None, None)
     assert [(t.task, t.effort, t.model) for t in spec.tasks] == [("context", "low", "claude-haiku-5-5"), ("evaluation", "medium", "claude-haiku-5-5")]
-    born, second, third, entry = rg.REGISTRY.history("match")
+    born, second, third, fourth, entry = rg.REGISTRY.history("match")
     assert (born.version, born.born_as, born.baseline, born.decided_by, born.phase) == ("match-v1", "CHALLENGER", False, "owner", "IA-3")
     assert (second.version, second.born_as, second.phase) == ("match-v2", "CHALLENGER", "IA-009")
     assert (third.version, third.born_as, third.phase) == ("match-v3", "CHALLENGER", "IA-014")
-    assert (entry.version, entry.born_as, entry.baseline, entry.decided_by, entry.phase) == ("match-v4", "CHALLENGER", False, "owner", "IA-018"), (
-        "IA-009, IA-014 and IA-018: a new version of the prompts is a new version of the agent, born a challenger like the first")
+    assert (fourth.version, fourth.born_as, fourth.phase) == ("match-v4", "CHALLENGER", "IA-018")
+    assert (entry.version, entry.born_as, entry.baseline, entry.decided_by, entry.phase) == ("match-v5", "CHALLENGER", False, "owner", "IA-028"), (
+        "IA-009, IA-014 and IA-018: a new version of the prompts is a new version of the agent, born a challenger like the first; IA-028: so is "
+        "a new way of asking (structured outputs) with the same prompts")
+    assert {t: (p.prompt_version, p.prompt_sha, p.native) for t, p in entry.parts.items()} == {
+        t: (p.prompt_version, p.prompt_sha, True) for t, p in fourth.parts.items()}, "v5 is v4's prompts, asked natively"
     assert entry is rg.REGISTRY.in_force("match") and born.registered_at < second.registered_at < entry.registered_at
     for e in (born, second, entry):
         assert "shadow" in e.reason and len(e.reason) >= rg.MIN_REASON
@@ -840,6 +845,6 @@ def test_the_identity_of_a_task_is_made_from_the_registry_and_the_hash_of_what_i
     two = rg.REGISTRY.identity_for("match", "evaluation", workspace="lab", input_version=pk.VERSION, input_hash=match.input_hash(evaluation_request),
                                    pass_kind="pre", fixture_id=FIXTURE, candidates=match.asked_keys(BOTH))
     assert (one.agent, one.agent_version, one.prompt_version, one.schema_version, one.model, one.effort) == (
-        "match", "match-v4", "match-context-v4", "aa-v1", "claude-haiku-5-5", "low")
+        "match", "match-v5", "match-context-v4", "aa-v1", "claude-haiku-5-5", "low")
     assert (two.prompt_version, two.effort, two.candidates) == ("match-assess-v3", "medium", tuple(sorted(KEYS)))
     assert one.input_hash != two.input_hash

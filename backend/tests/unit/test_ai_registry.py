@@ -175,10 +175,11 @@ def test_an_agent_built_after_the_baseline_is_born_a_challenger_with_a_reason_an
         for later in REGISTRY.history(agent)[1:]:  # a later version is born the same way: a challenger, never promoted by the code
             assert not later.baseline and later.born_as == "CHALLENGER" and len(later.reason) >= rg.MIN_REASON
     assert {a: [r.version for r in REGISTRY.history(a)] for a in built if len(REGISTRY.history(a)) > 1} == {
-        "match": ["match-v1", "match-v2", "match-v3", "match-v4"], "stats": ["stats-v1", "stats-v2", "stats-v3"],
+        "match": ["match-v1", "match-v2", "match-v3", "match-v4", "match-v5"], "stats": ["stats-v1", "stats-v2", "stats-v3", "stats-v4"],
         "claim_extractor": ["extract-v2", "extract-v3"]}, (
         "IA-009: the prompts of aa-v1 with their output checklist; IA-014: the Match Agent's v3 with the references of the package; IA-018: the "
-        "Statistics Agent's v3 with the closed checklist and the Match Agent's CONTEXT prompt v4; IA-021: the Claim Extractor's v3 names the player in his quote")
+        "Statistics Agent's v3 with the closed checklist and the Match Agent's CONTEXT prompt v4; IA-021: the Claim Extractor's v3 names the player in his quote; IA-028: "
+        "the Match Agent's v5 and the Statistics Agent's v4 ask with structured outputs")
     assert {s.agent: s.replaces for s in AGENTS if s.replaces} == {
         "claim_extractor": "extractor", "pmr": "post_match_reviewer", "la": "learning_analyst"}
     assert (REGISTRY.in_force("pmr").version, REGISTRY.in_force("la").version) == ("pmr-v1", "la-v1")
@@ -189,8 +190,9 @@ def test_an_agent_built_after_the_baseline_is_born_a_challenger_with_a_reason_an
 
 # -- the fingerprint ------------------------------------------------------------------------------------------------------------------
 
-def definition(text: str = "the prompt", *, schema: dict[str, Any] | None = None, label: str = "x-v1", schema_label: str | None = None) -> Definition:
-    return Definition(label, text, schema_label or label, SCHEMA if schema is None else schema)
+def definition(text: str = "the prompt", *, schema: dict[str, Any] | None = None, label: str = "x-v1", schema_label: str | None = None,
+               native: bool = False) -> Definition:
+    return Definition(label, text, schema_label or label, SCHEMA if schema is None else schema, native=native)
 
 
 def agent(box: dict[str, Any] | None = None, **kw: Any) -> AgentSpec:
@@ -236,6 +238,7 @@ def test_the_fingerprint_follows_everything_that_makes_an_agent_what_it_is() -> 
         "the contract": agent(contract="aa-v1"),
         "what it reads": agent(reads="match"),
         "the name of the agent": agent(name="y"),
+        "asking with structured outputs (IA-028)": agent({"native": True}),
     }
     for what, spec in changed.items():
         assert rg.live_fingerprint(spec) != base, f"{what} must make a new fingerprint"
@@ -263,6 +266,19 @@ def test_the_method_of_the_fingerprint_has_a_golden_value() -> None:
     assert rg.FINGERPRINT_VERSION == "agent-fp-v1"
     assert rg.canonical(rg.fingerprint_body(spec, rg.live_parts(spec))) == GOLDEN_TEXT
     assert rg.live_fingerprint(spec) == GOLDEN, "ag + the first ten hex digits of the sha256 of the text above (checked with sha256sum)"
+
+
+def test_a_task_asked_with_the_forced_tool_call_hashes_as_before_ia028() -> None:
+    """IA-028 adds ``native`` to the body only for a task asked with structured outputs: every fingerprint written before is the same, and the
+    ledger says, part by part, how each version asks."""
+    forced = agent()
+    assert "native" not in rg.fingerprint_body(forced, rg.live_parts(forced))["tasks"]["t"]
+    native = agent({"native": True})
+    assert rg.fingerprint_body(native, rg.live_parts(native))["tasks"]["t"]["native"] is True
+    assert ', native=True),' in rg.stub(native, "x-v2") and "native" not in rg.stub(forced, "x-v2")
+    assert {a: [p.native for e in REGISTRY.history(a) for p in e.parts.values()] for a in ("match", "stats")} == {
+        "match": [False] * 8 + [True, True], "stats": [False, False, False, True]}
+    assert not [e for s in AGENTS if s.agent not in ("match", "stats") for e in REGISTRY.history(s.agent) if any(p.native for p in e.parts.values())]
 
 
 def test_a_text_is_hashed_as_utf8_in_twelve_hex_digits() -> None:
