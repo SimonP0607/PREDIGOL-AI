@@ -166,7 +166,7 @@ def audited(db: psycopg.Connection[Any], day_of: datetime = WRITTEN, *, ran: dat
 
 def test_the_rule_is_one_that_runs_code_and_the_version_and_the_text_say_so() -> None:
     assert RULE in leakage.PYTHON_RULES and RULE not in leakage.RULES and RULE in (leakage.__doc__ or "")
-    assert leakage.VERSION == "leak-audit-v8"
+    assert leakage.VERSION == "leak-audit-v9"
     assert (*leakage.RULES, *leakage.PYTHON_RULES) == leakage.RULE_NAMES and len(set(leakage.RULE_NAMES)) == len(leakage.RULE_NAMES)
     assert list(leakage.PYTHON_RULES) == [RULE, "agent_known", "shadow_review_known"], "the rules that run code, in the order they were added"
     assert leakage.RULE_NAMES[-3:] == tuple(leakage.PYTHON_RULES), "the statements run first, then the rules that run code"
@@ -182,7 +182,7 @@ def test_the_night_runs_every_rule_in_order_and_keeps_a_row_of_the_run(db: psyco
     assert list(out) == list(leakage.RULE_NAMES), "one entry per rule, the rules of code last"
     assert out[RULE] == {"checked": 2, "violations": 1, "examples": [bad_id]}
     kept = db.execute("SELECT version, n_checked, n_violations, examples FROM intel.audit_checks WHERE rule = %s", (RULE,)).fetchall()
-    assert kept == [("leak-audit-v8", 2, 1, [bad_id])], "the run is kept in the ledger of the audit with its version"
+    assert kept == [("leak-audit-v9", 2, 1, [bad_id])], "the run is kept in the ledger of the audit with its version"
     assert {r[0] for r in db.execute("SELECT rule FROM intel.audit_checks WHERE checked_at = %s", (RAN,)).fetchall()} == set(leakage.RULE_NAMES)
 
 
@@ -506,6 +506,58 @@ def test_a_package_that_ignored_what_had_been_stated_by_the_moment_of_the_packet
     bad = write(db, ignored)
     assert honest(db, s.packet, pass_kind="final")["package_hash"] != ignored["package_hash"], "the forecast changes the package"
     assert audited(db) == {"checked": 2, "violations": 1, "examples": [bad]}
+
+
+def family_pass(db: psycopg.Connection[Any], ended: datetime) -> None:
+    """The run of the families' job in the ledger: the pass that stamped its sets with its start ended (and committed them) at ``ended``."""
+    db.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, status, started_at, finished_at) VALUES (%s, %s, 'completed', %s, %s)",
+               (leakage.FAMILY_JOB, leakage.FAMILY_JOB, ended, ended))
+
+
+def test_a_set_stamped_before_the_packet_whose_pass_ended_after_it_was_built_was_not_visible_and_is_no_violation(
+        db: psycopg.Connection[Any], seed: Seed) -> None:
+    """v9, the case of the nights of 31 Oct and 7 Nov 2026: the pass of the families started half an hour before the packet's moment, the
+    packet was built a minute after that moment (and read the sets before), the pass committed four minutes later. Every other check holds."""
+    s = scene(db, seed)
+    read_then = honest(db, s.packet, pass_kind="final")  # what the pass read: the set was not committed yet
+    corners(db, seed, s.w, AT - 30 * MINUTE, over=0.55)
+    family_pass(db, STORED + 4 * MINUTE)
+    assert honest(db, s.packet, pass_kind="final")["package_hash"] != read_then["package_hash"], "the plain derivation sees the set"
+    write(db, read_then)
+    assert audited(db) == {"checked": 1, "violations": 0, "examples": []}
+
+
+def test_a_set_whose_pass_ended_before_the_packet_was_built_was_visible_and_ignoring_it_is_a_violation(
+        db: psycopg.Connection[Any], seed: Seed) -> None:
+    s = scene(db, seed)
+    ignored = honest(db, s.packet, pass_kind="final")
+    corners(db, seed, s.w, AT - 30 * MINUTE, over=0.55)
+    family_pass(db, STORED - MINUTE)  # committed before the packet was built: the pass could have read it
+    family_pass(db, STORED + H)       # a later pass of the job does not make the earlier set invisible
+    bad = write(db, ignored)
+    assert audited(db) == {"checked": 1, "violations": 1, "examples": [bad]}
+
+
+def test_setting_aside_an_invisible_set_never_lets_in_what_was_stated_after_the_packets_moment(db: psycopg.Connection[Any], seed: Seed) -> None:
+    s = scene(db, seed)
+    corners(db, seed, s.w, AT - 2 * H, over=0.55)
+    family_pass(db, AT - H)
+    corners(db, seed, s.w, AT - 30 * MINUTE, over=0.45)
+    family_pass(db, STORED + 4 * MINUTE)
+    made = mcp_package.derive(db, s.packet, pass_kind="pre", unseen_families=[AT - 30 * MINUTE])
+    assert made is not None
+    assert [m["known_at"] for m in made.document["families"]["markets"]] == [(AT - 2 * H).isoformat()], "the set before stands in"
+    seen_then = honest(db, s.packet, pass_kind="pre")  # a row that read the late set is honest too: nothing in it is later than AT
+    write(db, seen_then)
+    later = dict(seen_then, run_kind="shadow", package_hash=digest("a package with something later than its moment"))
+    bad = write(db, later)
+    assert audited(db) == {"checked": 2, "violations": 1, "examples": [bad]}
+
+
+def test_the_audit_names_the_job_of_the_families_as_the_worker_does() -> None:
+    from fbi.families.job import JOB
+
+    assert leakage.FAMILY_JOB == JOB
 
 
 # ── what is not the rule's business ──────────────────────────────────────────────────────────────────────────────
