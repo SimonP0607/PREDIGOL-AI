@@ -15,7 +15,12 @@ export function PublicShell({ children }: { children: ReactNode }) {
       <header className="safe-top sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur short:static">
         <div className="px-safe mx-auto flex h-14 max-w-6xl items-center gap-3 sm:gap-4">
           <a href="/login" aria-label="PrediGol" className="tap-y relative min-w-0">
-            <BrandLogo size={30} tagline={t("common.tagline")} />
+            {/* The sign-in button leaves the tagline no room under 480 px: hidden there, never cut with «…» (UX-095). */}
+            <BrandLogo
+              size={30}
+              tagline={t("common.tagline")}
+              className="[&_[data-brand-tagline]]:max-[479px]:hidden"
+            />
           </a>
           <div className="ml-auto flex items-center gap-2">
             <LanguageSwitch />
