@@ -45,6 +45,7 @@ from fbi.ai.config import AiSettings
 from fbi.ai.entity_research import AGENT, LEDGER_PREFIX
 from fbi.ai.evidence import STALE_AFTER, normalize_name
 from fbi.ai.gate_a import Check
+from fbi.ai.intervals import Proportion
 from fbi.core.decision_versions import DECISION_CORE
 
 GATE: Final = "research_v2"
@@ -326,7 +327,9 @@ class Coverage:
                 "facts_about_players_v1": len(self._players(self.v1)), "found_about_players": len(self._players(self.found)),
                 "coverage_players_pct": _pct(self.rate_players),
                 "facts_per_match_v1": self._per_match(self.v1), "facts_per_match_v2": self._per_match(self.v2),
-                "missed_examples": [list(f) for f in self.missed[:EXAMPLES]]}
+                "missed_examples": [list(f) for f in self.missed[:EXAMPLES]],
+                "interval": Proportion(len(self.found), len(self.v1), COVERAGE_MIN, "min").as_json(),
+                "interval_players": Proportion(len(self._players(self.found)), len(self._players(self.v1)), COVERAGE_MIN, "min").as_json()}
 
 
 def coverage(conn: psycopg.Connection[Any], first: date, last: date) -> Coverage:
@@ -392,7 +395,8 @@ def check_players(c: Coverage) -> Check:
     return Check("coverage_players", "... y ≥ 95 % de las que dicen quién puede jugar", ok,
                  {"facts_about_players_v1": len(players), "found_about_players": len(c._players(c.found)),
                   "coverage_players_pct": _pct(c.rate_players), "minimum_pct": _pct(COVERAGE_MIN),
-                  "missed_examples": [list(f) for f in c.missed if f[2] != "team"][:EXAMPLES]}, revert="FBI_AI_RESEARCH_V2")
+                  "missed_examples": [list(f) for f in c.missed if f[2] != "team"][:EXAMPLES],
+                  "interval": Proportion(len(c._players(c.found)), len(players), COVERAGE_MIN, "min").as_json()}, revert="FBI_AI_RESEARCH_V2")
 
 
 def check_sample(c: Coverage) -> Check:
@@ -450,7 +454,13 @@ class GateReport:
         out = [f"GATE DE RESEARCH V2 · {self.verdict}", f"Ventana: {w.first} a {w.last} (7 días completos, hora de Bogotá)",
                f"{w.stable_days} día(s) completo(s) de 7 con research v2 en sombra en todas las pasadas"
                + (f" (desde {w.anchor})" if w.anchor else "")]
-        out += [f"  [{c.mark}] {c.title}" for c in self.checks]
+        for c in self.checks:
+            out.append(f"  [{c.mark}] {c.title}")
+            i = c.detail.get("interval")
+            if i and i.get("cases"):
+                ci = i.get("ci95_wilson_pct") or ["-", "-"]
+                out.append(f"      {i['counted']}/{i['cases']} · {i['pct']} % · IC95 {ci[0]}-{ci[1]} % · umbral ≥ {i['threshold_pct']} % · "
+                           f"resultado del check: {c.mark}")
         out += [f"  Falta: {p}" for p in self.pending]
         if self.consequence:
             out.append(f"Consecuencia: {self.consequence}")
