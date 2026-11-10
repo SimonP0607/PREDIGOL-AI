@@ -335,7 +335,7 @@ vista por familia de lo mismo; ver `docs/owner/CATALOGO_MERCADOS_F9.md`.
 * Los tokens de respuestas inválidas se cuentan. Métricas: coste por partido, candidato, pick, investigación,
   post-mortem, día y proyección mensual. Los análisis son compartidos: ningún token por usuario.
 
-## 10. Fugas de datos (`leak-audit-v8`, diario y en tests)
+## 10. Fugas de datos (`leak-audit-v9`, diario y en tests)
 
 Para cada decisión: `known_at` < saque; `price_at` ≤ `known_at`; pick `data_cutoff_ts` y `created_at` ≤ `known_at`;
 calibrador `fitted_at` ≤ `known_at` y sus datos liquidados antes de `fitted_at`; revisión y paquete ≤ `known_at`;
@@ -354,6 +354,10 @@ dice el paquete de cada factor, la decisión que cita y el experimento son los d
 construido antes de escribirse la fila, con su `as_of` igual al `known_at` de la fila y anterior al saque; y el paquete y cada una de sus porciones, derivados de nuevo desde ese paquete con
 el código de hoy, tienen byte por byte el hash que la fila anotó -así una porción es parte del paquete, el paquete es parte del paquete guardado y ninguno lleva un momento posterior a la
 pasada-; una versión de paquete que el código no sabe derivar de nuevo es una violación). Es la única regla que no es una sola sentencia: lee uno a uno los paquetes de las filas del día.
+(v9, IA-026) Los pronósticos de conteos de la porción `stats` se leen a la hora del paquete, y las familias estampan cada conjunto con el INICIO de su pase y lo confirman al FINAL: un
+paquete construido durante ese pase leyó el conjunto anterior y la auditoría, que mira después, ve uno estampado antes que el paquete. Cuando la derivación simple difiere, la fila se deriva
+otra vez sin los conjuntos cuyo pase (la primera ejecución de `family_forecasts` en el libro que terminó en o después del sello) terminó después de construirse el paquete, y solo es honrada
+si esa derivación es byte por byte la de la fila. Nada posterior al momento del paquete puede entrar; un conjunto sin fila en el libro nunca se aparta (casos reales: 31-oct y 7-nov de 2026).
 Y (Plan Maestro IA, fase 3, la sombra del Orchestrator) dos reglas más de código: `agent_known` (cada ejecución de un agente de `ai.agent_runs` del día, salvo la batería: su `known_at` no es posterior a su comienzo ni al saque; el paquete que nombra es de ese partido y de ese momento, de un paquete guardado antes de que empezara; cada evidencia que cita -`evidence_ids`, los `E:<n>` de `data_refs` y los de su salida- existe y estaba recuperada, y publicada si tiene fecha, a ese momento; y la ejecución que lee, `parent_run_id` -la evaluación que lee el Council-, es del mismo partido y había terminado antes de que empezara esta) y `shadow_review_known` (cada revisión de `ma-v1`, `ma-v1-h` y `cs-v1` del día nombra un paquete guardado del mismo partido, con momento y guardado no posteriores a la revisión, la revisión es anterior al saque y solo cita evidencias que existían a la hora de su paquete). `review_known` no filtra por motor pero solo lee la revisión que enlaza una decisión, y la sombra no llega a ninguna: por eso existe la segunda. Es la única regla cuyo silencio importa: la puerta B exige n > 0, y la regla devuelve 0 cuando no hay filas (no es una violación) y deja ese 0 en `n_checked` de `intel.audit_checks`, que es lo que lee la puerta (`leakage.shadow_review_known_has_data` y `leakage.passes_gate`).
 Toda violación queda en `intel.audit_checks`.
 

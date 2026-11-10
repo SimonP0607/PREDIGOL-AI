@@ -147,7 +147,7 @@ def found(db: psycopg.Connection[Any], rule: str) -> dict[str, Any]:
 # ── what the rules are, and the honest decision ──────────────────────────────────────────────────────────────────
 
 def test_the_rules_are_in_the_audit_the_version_says_so_and_the_text_documents_them() -> None:
-    assert leakage.VERSION == "leak-audit-v8"
+    assert leakage.VERSION == "leak-audit-v9"
     for rule in (FORECAST_RULE, PRICE_RULE):
         assert rule in leakage.RULES and rule in (leakage.__doc__ or "")
         assert "%(families)s" in leakage.RULES[rule], "they read the layer of the families by the constant of the core"
@@ -166,7 +166,7 @@ def test_an_honest_decision_of_a_family_passes_every_rule_and_the_ledger_keeps_t
         assert out[rule] == NONE, f"a family has no pick, calibrator, review or evidence, and the consensus rule is the pipeline's: {rule}"
     assert not [r for r, v in out.items() if v["violations"]], "nothing in the day is a violation"
     ledger = db.execute("SELECT rule, version, n_checked, n_violations FROM intel.audit_checks WHERE rule LIKE 'family\\_%' ORDER BY rule").fetchall()
-    assert ledger == [(FORECAST_RULE, "leak-audit-v8", 1, 0), (PRICE_RULE, "leak-audit-v8", 1, 0)]
+    assert ledger == [(FORECAST_RULE, "leak-audit-v9", 1, 0), (PRICE_RULE, "leak-audit-v9", 1, 0)]
 
 
 def test_a_day_without_decisions_of_the_families_checks_nothing(db: psycopg.Connection[Any], w: World) -> None:

@@ -71,3 +71,26 @@ La huella de modelos: `python3 scripts/model_code_guard.py fingerprint dir=.` �
    vuelve a refrescarse solo con las 6 ventanas; lo ya guardado no molesta a nadie.
 2. Quitar las tablas: `alembic downgrade 0128`, con el respaldo habitual. Borra `market.book_asks`,
    `raw.provider_reported_quota` y la columna `book_current.books`; el crudo y todo lo demás quedan intactos.
+
+## Retirada de `/odds/best` y de la página antigua (BE-033)
+
+`/odds/best` y la página antigua de Cuotas (`OddsPage`, la que se ve con `FBI_ODDS_EXPLORER` apagado) siguen mientras el explorador
+se asienta. Desde BE-033 cada llamada se cuenta por día UTC, tipo de cliente y rol en `audit.deprecated_api_use` (migración
+**0133**; sin usuario, sesión ni dirección), y la respuesta lleva `Deprecation: true` y `Link: </api/v1/odds/board>;
+rel="successor-version"`. El tipo de cliente sale del User-Agent: `browser` (la página de un lector), `e2e` (Playwright),
+`testclient` (la instantánea de línea base de cada despliegue), `script` (curl, httpx, la prueba de carga) y `other`.
+
+**Comprobarlo** (con `predigolctl psql`, solo lectura):
+
+```sql
+SELECT day, caller, role, calls, last_at FROM audit.deprecated_api_use
+ WHERE endpoint = '/odds/best' AND day >= current_date - 7 ORDER BY day DESC, caller;
+```
+
+**Se retira cuando**: (1) hay **7 días seguidos sin filas `browser`**; (2) el dueño ha comprobado el explorador con su cuenta;
+(3) en la misma PR (backend y web a la vez) se quitan el endpoint, `OddsPage`, `bestOdds` del cliente y su consulta, su entrada de
+`PRODUCT_PREVIEW` (`fbi/ops/baseline.py`) y de `scripts/api_shapes.py` (instantánea regenerada con `--reason`), los usos en las
+E2E (`journey`, `personal`, `rbac`, `responsive`, `user`) y en las pruebas de integración (`test_product_endpoints`,
+`test_auth_rbac`, `test_pick_states`, `test_personalization`), y `FBI_ODDS_EXPLORER` deja de decidir (el explorador para todos).
+La prueba de carga (`deploy/vps/bin/loadtest.py`) ya pide el explorador. **Vuelta atrás**: revertir esa PR. La tabla se queda
+(es solo un recuento); `alembic downgrade 0132` la quita si se quiere.

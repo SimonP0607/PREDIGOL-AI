@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { BrandLogo } from "@/components/brand/Brand";
+import { StatusBarSpace } from "@/components/layout/StatusBarSpace";
 import { DataSourcesProvider } from "@/components/system/DataSources";
 import { Disclaimer } from "@/components/system/Disclaimer";
 import { Toaster } from "@/components/ui/sonner";
@@ -69,10 +70,12 @@ export function UserShell({ children }: { children: ReactNode }) {
         <FeedbackProvider>
           <PushProvider>
             <div className="min-h-screen bg-background">
+              {/* The page starts below the installed app's status bar: the notices above the bar too (UX-093). */}
+              <StatusBarSpace />
               <PreviewBanner />
               <ShadowPreviewStrip />
               {/* Sideways on a phone the bar scrolls away with the page: 56 px of a 390 px screen is too much. */}
-              <header className="safe-top sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur short:static">
+              <header className="sticky top-[env(safe-area-inset-top)] z-30 border-b border-border bg-background/85 backdrop-blur short:static">
                 <div className="px-safe mx-auto flex h-14 max-w-6xl items-center gap-3 sm:gap-4">
                   {/* min-w-0: on a 320 px phone the brand gives way to the controls instead of pushing them off. */}
                   <Link to="/home" aria-label="PrediGol" className="tap-y relative min-w-0">

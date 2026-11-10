@@ -102,6 +102,8 @@ BEGIN
     -- what the reader keeps when their account is anonymised
     'customer.guide_progress:INSERT, UPDATE, DELETE',
     'audit.notifications:INSERT', 'raw.ingestion_runs:INSERT, UPDATE',
+    -- the calls to endpoints on their way out, a count per day and kind of caller (fbi.api.services.deprecated, BE-033)
+    'audit.deprecated_api_use:INSERT, UPDATE',
     -- product analytics (fbi.customer.events, plan UX, A6): the API records a reader's events; the messenger
     -- recomputes the daily aggregate and, once the owner switches the purge on, deletes what is past its retention
     -- (raw events 90 days, aggregates 13 months)
