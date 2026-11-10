@@ -19,11 +19,13 @@
  *   «Hoy en las ligas sugeridas» is no longer in this layer (plan de Inicio, D2): it is the same for everyone, so it starts at the
  *   picks, ordered by PrediGol's competition priority. The reader's own matches and news sit in «Para ti» once they chose leagues
  *   or teams. Without favourites, one discreet line, «Elige tus favoritos» (it can be closed), sits on top of this layer. Every block loads, fails and retries on its own: a failure never reads as
- *   an empty list, and an empty block says why in plain words. Nothing here calls the AI.
+ *   an empty list, and an empty block says why in plain words. A reader's page is painted at once: until /me/today, /today, /home
+ *   and /daily answer (at most 1.5 s) it shows one block, so «Para ti», the line and the day's picks never push down what is
+ *   already painted. Nothing here calls the AI.
  */
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronRight, Layers, Radio } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -47,11 +49,11 @@ import { SuggestionCard } from "@/product/favorites/SuggestionCard";
 import { ContextBlock, TodayBlock } from "./TodayBlocks";
 import { AtStakeBlock, RelevantNowBlock } from "./HomeStakes";
 import { ResultsBlock } from "./ResultsBlock";
-import { layersOf } from "./layers";
+import { holdsLayers, LAYERS_HOLD_MS, layersOf } from "./layers";
 import { wantsYesterday } from "./yesterday";
 import { mineByRank } from "./related";
 import { EditFavorites } from "./EditFavorites";
-import { ChoosePrompt, ForYouPart, Layer } from "./ParaTi";
+import { ChoosePrompt, ForYouPart, Layer, LayersHold } from "./ParaTi";
 import { useGuideScreen } from "@/product/guides/context";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
@@ -210,6 +212,23 @@ export function HomePage() {
   // Two layers (closing plan 3.2): «Para ti» only once the reader chose something; PrediGol is the same for everyone. The
   // leagues and the team suggested until they choose are PrediGol's, labelled as suggested - never «tuyas».
   const layers = layersOf(me.data, today.data?.data);
+  // A reader's layers go on top of PrediGol, so they are painted together with it, not after it (they would push it down), and
+  // the day's picks and the board change height when they arrive: the page waits for /me/today, /today, /home and /daily - at
+  // most LAYERS_HOLD_MS - and shows one block meanwhile. The owner is never held.
+  const [holdExpired, setHoldExpired] = useState(false);
+  const hold = holdsLayers({
+    reader,
+    mePending: me.isPending,
+    todayPending: today.isPending,
+    homePending: home.isPending,
+    boardPending: board.isPending,
+    expired: holdExpired,
+  });
+  useEffect(() => {
+    if (!hold) return;
+    const timer = window.setTimeout(() => setHoldExpired(true), LAYERS_HOLD_MS);
+    return () => window.clearTimeout(timer);
+  }, [hold]);
   const teams = layers.mine && (today.data?.data?.following?.teams.length ?? 0) > 0;
   const common = { query: today, now } as const;
   // The general layer's news are the suggested matches' whatever the reader follows: with favourites they are a second
@@ -219,6 +238,15 @@ export function HomePage() {
   useGuideScreen("home", {
     ready: !home.isPending && !today.isPending && (!reader || !me.isPending),
   });
+  if (hold) {
+    return (
+      <div className="space-y-9 sm:space-y-10" data-testid="home-page">
+        <HomeHeader freshness={home.data?.data?.data_freshness ?? null} loading={home.isPending} />
+        <OfflineNote />
+        <LayersHold />
+      </div>
+    );
+  }
   return (
     <div className="space-y-9 sm:space-y-10" data-testid="home-page">
       <HomeHeader freshness={home.data?.data?.data_freshness ?? null} loading={home.isPending} />

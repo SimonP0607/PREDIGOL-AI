@@ -79,6 +79,24 @@ export function Layer({
   );
 }
 
+/**
+ * What a reader sees while the page waits to know its layers (./layers, `holdsLayers`): one block as tall as the screen, so
+ * nothing - the footer included - sits below it to be pushed when the layers appear together.
+ */
+export function LayersHold() {
+  return (
+    <div
+      data-testid="home-layers-hold"
+      aria-busy="true"
+      aria-label={t("common.loading")}
+      className="min-h-svh space-y-3"
+    >
+      <SkeletonBlock className="h-4 w-40" />
+      <SkeletonBlock className="h-72 rounded-xl" />
+    </div>
+  );
+}
+
 /** Where a reader's «cerrar» of the line is kept (this browser only): it is a convenience, never state that matters. */
 export const CHOOSE_CLOSED_KEY = "predigol.home.chooseClosed";
 
