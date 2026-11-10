@@ -305,12 +305,12 @@ def metrics(conn: psycopg.Connection[Any], *, at: datetime) -> Metrics:
 
     row = conn.execute("""
         WITH ended AS (
-            SELECT DISTINCT p.user_id, max(p.ends_at) AS ends_at FROM customer.membership_periods p
+            SELECT DISTINCT p.user_id, max(p.ends_at) AS ends_at FROM customer.live_membership_periods p
               JOIN auth.users u ON u.id = p.user_id AND u.role = 'USER' AND u.status <> 'deleted'
              WHERE p.ends_at > %(since)s AND p.ends_at <= %(at)s GROUP BY p.user_id
         )
         SELECT count(*), count(*) FILTER (WHERE EXISTS (
-                   SELECT 1 FROM customer.membership_periods n
+                   SELECT 1 FROM customer.live_membership_periods n
                     WHERE n.user_id = ended.user_id AND n.ends_at > ended.ends_at))
           FROM ended
     """, {"since": at - timedelta(days=30), "at": at}).fetchone()
