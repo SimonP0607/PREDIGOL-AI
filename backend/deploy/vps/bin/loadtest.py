@@ -149,8 +149,8 @@ def page_paths(page: str, cat: Catalog, rnd: random.Random) -> list[str]:
         if cat.teams:
             paths.append(f"{API}/teams/{rnd.choice(cat.teams)}")
         return paths
-    if page == "odds":
-        return [f"{API}/odds/best"]
+    if page == "odds":  # the explorer, as the Cuotas page asks for it (BE-011; /odds/best is on its way out, BE-033)
+        return [f"{API}/odds/families?hours=24", f"{API}/odds/board?" + urlencode({"market": "result.1x2", "hours": 24})]
     if page == "my_picks":
         return [f"{API}/me/picks?" + urlencode({"limit": 500}), f"{API}/me/history?period=30d"]
     if page == "search":

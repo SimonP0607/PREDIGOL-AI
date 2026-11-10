@@ -149,9 +149,12 @@ function MatchRowView({ item, why = null }: { item: MatchItem; why?: Why | null 
   );
   return (
     // The row's link reaches over the whole row (its ::after); the bookmakers' chip sits above it, a link of its own.
+    // A container (UX-094): under 21 rem of row (a phone under 375 px) the state and the bookmakers go under the
+    // teams instead of beside them, so the names keep about 140 px instead of 67 px («Tecnico Universitario» on three
+    // lines, «Berkhamsted» cut in two on a 320 px phone).
     <div
       className={cn(
-        "relative flex min-h-[3.25rem] items-center gap-2 px-3 py-2.5 transition-colors hover:bg-elevated/60 sm:min-h-11 sm:gap-3 sm:py-2",
+        "@container relative flex min-h-[3.25rem] flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2.5 transition-colors hover:bg-elevated/60 sm:min-h-11 sm:gap-x-3 sm:py-2",
         group === "live" && "shadow-[inset_2px_0_0_var(--color-primary)]",
       )}
     >
@@ -178,7 +181,14 @@ function MatchRowView({ item, why = null }: { item: MatchItem; why?: Why | null 
         )}
         {tag ? <span className="sr-only">{tag}</span> : null}
       </Link>
-      <span className="flex max-w-[4.5rem] shrink-0 flex-col items-end gap-1 sm:w-28 sm:max-w-none">
+      <span
+        className={cn(
+          // narrow: a line of its own under the teams, after the time's column (3.25 rem + the gap)
+          "flex basis-full flex-wrap items-center justify-end gap-1 empty:hidden",
+          // beside the teams once the row has the room
+          "@min-[21rem]:max-w-[4.5rem] @min-[21rem]:shrink-0 @min-[21rem]:basis-auto @min-[21rem]:flex-col @min-[21rem]:items-end sm:@min-[21rem]:w-28 sm:@min-[21rem]:max-w-none",
+        )}
+      >
         <StatusTag group={group} />
         {match.odds.bookmakers > 0 ? (
           <OddsChip fixtureId={match.id} count={match.odds.bookmakers} />

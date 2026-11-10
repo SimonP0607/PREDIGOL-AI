@@ -109,6 +109,7 @@ class AdminPeriod(Contract):
     discount_percent: int | None
     discount_kind: DiscountKind | None
     coupon_code: str | None
+    annulled: bool = Field(default=False, description="The owner annulled this period (UX-090): it no longer counts.")
 
 
 class AdminMembershipEvent(Contract):

@@ -76,7 +76,7 @@ def test_the_messenger_is_a_job_the_watchdog_knows_and_its_notices_are_kinds_the
     assert spec and spec.loader
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
-    assert set(m.KINDS_BEFORE + m.KINDS_NEW) == set(KINDS) - {"lifecycle_daily"}
+    assert set(m.KINDS_BEFORE + m.KINDS_NEW) == set(KINDS) - {"lifecycle_daily", "payment_request_new"}  # the last two came later (0106, 0125)
     source = Path(notices.__file__).read_text(encoding="utf-8")
     drafted = {k for k in m.KINDS_NEW if f'"{k}", f"' in source}
     assert drafted == {"ticket_new", "privacy_due", "outbox_failing", "synthetic_failed",
@@ -86,7 +86,7 @@ def test_the_messenger_is_a_job_the_watchdog_knows_and_its_notices_are_kinds_the
     assert spec and spec.loader
     m6 = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m6)
-    assert {*m6.KINDS_BEFORE, "lifecycle_daily"} == set(KINDS)
+    assert {*m6.KINDS_BEFORE, "lifecycle_daily", "payment_request_new"} == set(KINDS)  # the last: 0125
     assert '"lifecycle_daily", f"lifecycle_daily:' in source
 
 

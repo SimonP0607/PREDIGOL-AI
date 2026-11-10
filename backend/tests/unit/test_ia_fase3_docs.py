@@ -770,7 +770,7 @@ def test_the_two_rules_are_in_the_nightly_audit_and_only_the_second_needs_rows()
     assert frozenset({"shadow_review_known"}) == leakage.NEEDS_DATA and "**la única regla cuyo silencio significa algo**" in sec
     assert leakage.passes_gate("shadow_review_known", 0, 0) is False and leakage.passes_gate("shadow_review_known", 3, 0) is True
     assert leakage.passes_gate("shadow_review_known", 3, 1) is False and leakage.passes_gate("agent_known", 0, 0) is True
-    assert "intel.audit_checks.n_checked" in sec and "07:50 de Bogotá" in sec and leakage.VERSION == "leak-audit-v8"
+    assert "intel.audit_checks.n_checked" in sec and "07:50 de Bogotá" in sec and leakage.VERSION == "leak-audit-v9"
     assert (leakage.INTEL_NIGHTLY_HOUR if hasattr(leakage, "INTEL_NIGHTLY_HOUR") else 7) == scheduler.INTEL_NIGHTLY_HOUR == 7 and scheduler.INTEL_NIGHTLY_MINUTE == 50
     for shadow in config.SHADOW_ENGINES:
         assert shadow in leakage.SHADOW_REVIEWS

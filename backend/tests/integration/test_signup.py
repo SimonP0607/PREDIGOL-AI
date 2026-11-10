@@ -458,6 +458,60 @@ def test_repeated_wrong_passwords_slow_the_link_down_like_a_sign_in(fresh: str) 
     assert user(fresh)["status"] == "pending"
 
 
+NEW_ONE = "Fresh-start-2026-qwerty"  # gitleaks:allow - the password a test person chooses when she forgot the first
+
+
+def test_who_forgot_the_password_chooses_another_with_the_same_link(fresh: str) -> None:
+    link = registered(fresh)
+    c = anon()
+    old_hash = user(fresh)["password_hash"]
+    r = c.post("/api/v1/auth/verify", json={"token": link, "password": NEW_ONE, "replace_password": True})
+    assert r.status_code == 200, r.text
+    assert c.get("/api/v1/auth/me").status_code == 200, "signed in by the cookie"
+    u = user(fresh)
+    assert u["status"] == "active" and u["email_verified_at"] is not None and u["password_hash"] != old_hash
+    # the new one signs in; the one chosen when registering no longer does
+    assert anon().post("/api/v1/auth/login", json={"email": f"maria@{DOMAIN}", "password": NEW_ONE}).status_code == 200
+    assert anon().post("/api/v1/auth/login", json={"email": f"maria@{DOMAIN}", "password": CHOSEN}).status_code == 401
+    events = rows(fresh, "SELECT action, detail FROM auth.audit_events WHERE target_user_id = %s AND action = "
+                         "'user.email_verified'", (u["id"],))
+    assert len(events) == 1 and events[0]["detail"] == {"password_replaced": True}
+    # one use: the link is spent
+    again = anon().post("/api/v1/auth/verify", json={"token": link, "password": NEW_ONE, "replace_password": True})
+    assert again.status_code == 410 and error(again) == "link_invalid"
+
+
+def test_a_new_password_is_judged_like_any_new_password_and_the_link_stays_good(fresh: str) -> None:
+    link = registered(fresh)
+    for weak in ("short-1", f"maria@{DOMAIN}", "aaaaaaaaaaaaaaaaaaaaaaaa"):
+        r = anon().post("/api/v1/auth/verify", json={"token": link, "password": weak, "replace_password": True})
+        assert r.status_code == 422 and error(r) == "weak_password", (weak, r.text)
+    assert user(fresh)["status"] == "pending"
+    ok = anon().post("/api/v1/auth/verify", json={"token": link, "password": NEW_ONE, "replace_password": True})
+    assert ok.status_code == 200
+
+
+def test_replacing_the_password_does_not_open_the_door_to_whoever_registered_the_address(fresh: str) -> None:
+    """The attacker registered somebody else's address with a password of their own. The owner of the mailbox gets the
+    link, chooses another and the attacker's password is gone: it signs in nothing."""
+    link = registered(fresh)  # registered with CHOSEN, "by the attacker"
+    assert anon().post("/api/v1/auth/verify", json={"token": link, "password": NEW_ONE, "replace_password": True}
+                       ).status_code == 200
+    assert anon().post("/api/v1/auth/login", json={"email": f"maria@{DOMAIN}", "password": CHOSEN}).status_code == 401
+
+
+def test_the_lock_of_wrong_tries_does_not_stop_who_replaces_the_password(fresh: str) -> None:
+    link = registered(fresh)
+    c = anon()
+    last = None
+    for _ in range(6):
+        last = c.post("/api/v1/auth/verify", json={"token": link, "password": "Not-the-one-2026-zzz"})
+    assert last is not None and last.status_code == 429, "the guesses are slowed down"
+    r = c.post("/api/v1/auth/verify", json={"token": link, "password": NEW_ONE, "replace_password": True})
+    assert r.status_code == 200, r.text
+    assert anon().post("/api/v1/auth/login", json={"email": f"maria@{DOMAIN}", "password": NEW_ONE}).status_code == 200
+
+
 def test_a_link_that_does_not_work_gets_one_answer_whatever_the_reason(fresh: str) -> None:
     expired = registered(fresh)
     with psycopg.connect(fresh) as conn:

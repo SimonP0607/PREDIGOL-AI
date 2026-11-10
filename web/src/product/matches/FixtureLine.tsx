@@ -1,11 +1,13 @@
 /**
  * Two teams and the score, sized for a list row.
  *
- * Phone: one team per line with its goals on the right; a long name wraps rather than being cut.
- * From `sm`: one line, "Home [crest] 1 – 0 [crest] Away", the score in a fixed centre
- * column so crests and scores line up from row to row. A name is cut with an ellipsis only from `md`:
- * between `sm` and `md` (a phone held sideways, a folding phone) each side is about 120 px wide and
- * "Club Sp. San Lorenzo" does not fit, so it wraps there as it does on a phone (UX-076).
+ * It follows the room the row gives it, not the screen (mobile UX plan, UX-094): a container query on the line.
+ * Narrow (under 30 rem, 480 px - every phone, and a 640 px window whose row keeps the time and the bookmakers at its
+ * sides): one team per line with its goals on the right; a long name wraps rather than being cut.
+ * From 30 rem: one line, "Home [crest] 1 – 0 [crest] Away", the score in a fixed centre column so crests and scores
+ * line up from row to row; each side has 160 px or more. A name is cut with an ellipsis only from 40 rem (each side
+ * 240 px or more), where a cut is rare; below it a name wraps (UX-076). Before UX-094 the one-line layout started at
+ * the screen's `sm` (640 px) and left 114 px a side, so «Mönchengladbach» broke in the middle of the word.
  */
 import { GoalDigit } from "@/product/shared/GoalDigit";
 import { TeamLogo } from "@/components/football/Logos";
@@ -39,7 +41,7 @@ function Team({
       {/* A phone: one team per line and the whole name, on two lines if need be (mobile UX audit: "Omonia …"). */}
       <span
         className={cn(
-          "min-w-0 break-words leading-snug [overflow-wrap:anywhere] md:truncate",
+          "min-w-0 break-words leading-snug [overflow-wrap:anywhere] @min-[40rem]:truncate",
           outcome === "win" && "font-semibold text-foreground",
           outcome === "lose" && "text-muted-foreground",
         )}
@@ -94,59 +96,61 @@ export function FixtureLine({
   const homeTone = tone("home", winner);
   const awayTone = tone("away", winner);
   return (
-    <div
-      className={cn(
-        "grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 text-[0.8125rem]",
-        "sm:grid-cols-[minmax(0,1fr)_4.75rem_minmax(0,1fr)] sm:gap-x-2.5 sm:text-sm",
-        className,
-      )}
-    >
-      <Team
-        side={home}
-        outcome={homeTone}
-        className="col-start-1 row-start-1 sm:flex-row-reverse sm:text-right"
-      />
-      <Goals
-        value={score?.home ?? null}
-        outcome={homeTone}
-        live={live}
-        className="col-start-2 row-start-1 sm:hidden"
-      />
-      <span
+    // The container the line's layout asks (UX-094): the room the row leaves it, not the screen's width.
+    <div className={cn("@container min-w-0 flex-1", className)}>
+      <div
         className={cn(
-          "numeric hidden items-center justify-center gap-1.5 tabular-nums sm:col-start-2 sm:row-start-1 sm:flex",
-          live && "text-primary",
+          "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 text-[0.8125rem]",
+          "@min-[30rem]:grid-cols-[minmax(0,1fr)_4.75rem_minmax(0,1fr)] @min-[30rem]:gap-x-2.5 @min-[30rem]:text-sm",
         )}
       >
-        {score ? (
-          <>
-            <GoalDigit
-              value={score.home}
-              className={cn("font-semibold", homeTone === "win" && "font-bold")}
-            />
-            <span aria-hidden className="text-subtle-foreground">
-              –
-            </span>
-            <GoalDigit
-              value={score.away}
-              className={cn("font-semibold", awayTone === "win" && "font-bold")}
-            />
-          </>
-        ) : (
-          <span className="text-xs text-subtle-foreground">{t("common.vs")}</span>
-        )}
-      </span>
-      <Team
-        side={away}
-        outcome={awayTone}
-        className="col-start-1 row-start-2 sm:col-start-3 sm:row-start-1"
-      />
-      <Goals
-        value={score?.away ?? null}
-        outcome={awayTone}
-        live={live}
-        className="col-start-2 row-start-2 sm:hidden"
-      />
+        <Team
+          side={home}
+          outcome={homeTone}
+          className="col-start-1 row-start-1 @min-[30rem]:flex-row-reverse @min-[30rem]:text-right"
+        />
+        <Goals
+          value={score?.home ?? null}
+          outcome={homeTone}
+          live={live}
+          className="col-start-2 row-start-1 @min-[30rem]:hidden"
+        />
+        <span
+          className={cn(
+            "numeric hidden items-center justify-center gap-1.5 tabular-nums @min-[30rem]:col-start-2 @min-[30rem]:row-start-1 @min-[30rem]:flex",
+            live && "text-primary",
+          )}
+        >
+          {score ? (
+            <>
+              <GoalDigit
+                value={score.home}
+                className={cn("font-semibold", homeTone === "win" && "font-bold")}
+              />
+              <span aria-hidden className="text-subtle-foreground">
+                –
+              </span>
+              <GoalDigit
+                value={score.away}
+                className={cn("font-semibold", awayTone === "win" && "font-bold")}
+              />
+            </>
+          ) : (
+            <span className="text-xs text-subtle-foreground">{t("common.vs")}</span>
+          )}
+        </span>
+        <Team
+          side={away}
+          outcome={awayTone}
+          className="col-start-1 row-start-2 @min-[30rem]:col-start-3 @min-[30rem]:row-start-1"
+        />
+        <Goals
+          value={score?.away ?? null}
+          outcome={awayTone}
+          live={live}
+          className="col-start-2 row-start-2 @min-[30rem]:hidden"
+        />
+      </div>
     </div>
   );
 }

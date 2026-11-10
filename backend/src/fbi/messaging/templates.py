@@ -81,6 +81,18 @@ REQUESTS: dict[str, dict[Locale, str]] = {
     "privacy_deletion": {"es": "solicitud para borrar tus datos", "en": "request to delete your data"},
 }
 
+DECISION_REASONS: dict[str, dict[Locale, str]] = {
+    "amount_mismatch": {"es": "el monto recibido no coincide con el de la membresía",
+                        "en": "the amount received does not match the membership's price"},
+    "not_received": {"es": "todavía no vemos el dinero en nuestra cuenta",
+                     "en": "we do not see the money in our account yet"},
+    "duplicate": {"es": "ese pago ya estaba registrado", "en": "that payment was already recorded"},
+    "unreadable": {"es": "no pudimos leer o validar los datos que enviaste",
+                   "en": "we could not read or validate the details you sent"},
+    "other": {"es": "hay un dato que no pudimos validar", "en": "there is a detail we could not validate"},
+}
+"""Why a payment request was refused (UX-090: customer.payment_requests.decision_code), as the reader reads it."""
+
 LEGAL_SLUGS: dict[str, str] = {"terms": "terms", "privacy": "privacy", "responsible_gaming": "responsible-gaming"}
 """The address of each legal text (web/src/product/legal/links.ts)."""
 
@@ -753,6 +765,60 @@ TEMPLATES: dict[str, Template] = {t.name: t for t in (
                  "You see the detail in your profile, under “Membership”. Thank you for staying with us."),
                 "See my membership"),
         values=_ends_on, sample=(("ends", "2026-12-25T15:00:00+00:00"),), stale_after=timedelta(days=3),
+    ),
+    # A reader's «ya pagué» (UX-090): the acknowledgement at once, the refusal with its reason, and the annulment of an
+    # approval that was a mistake. Never an amount, a reference or a name of the payer.
+    Template(
+        "payment_request_received", "account", ("due",), "/profile#membership",
+        es=Copy("Recibimos tu aviso de pago",
+                ("Hola, {name}.",
+                 "Recibimos tu aviso de pago. Verificamos que el dinero haya llegado antes del cierre del {date} "
+                 "(un día hábil) y, en cuanto lo confirmemos, activamos tu acceso y te escribimos.",
+                 "Mientras tanto no tienes que hacer nada más ni volver a pagar. Si te equivocaste de dato, puedes "
+                 "cancelar el aviso en tu perfil, en «Membresía», y enviar otro."),
+                "Ver el estado de mi pago"),
+        en=Copy("We received your payment notice",
+                ("Hello, {name}.",
+                 "We received your payment notice. We check that the money arrived before the end of {date} (one "
+                 "business day) and, as soon as we confirm it, we open your access and write to you.",
+                 "Meanwhile you do not have to do anything else or pay again. If you got a detail wrong, you can cancel "
+                 "the notice in your profile, under “Membership”, and send another."),
+                "See the state of my payment"),
+        values=lambda params, locale, _zone: {"date": long_date(params["due"], locale)},
+        sample=(("due", "2026-11-11"),), stale_after=timedelta(days=3),
+    ),
+    Template(
+        "payment_request_rejected", "account", ("reason",), "/profile#membership",
+        es=Copy("No pudimos confirmar tu pago",
+                ("Hola, {name}.",
+                 "No pudimos confirmar tu pago: {reason}.",
+                 "Revisa los datos en tu perfil, en «Membresía». Si ya pagaste, puedes enviar un nuevo aviso con los "
+                 "datos correctos o escribirnos por WhatsApp o desde Ayuda."),
+                "Ver mi membresía"),
+        en=Copy("We could not confirm your payment",
+                ("Hello, {name}.",
+                 "We could not confirm your payment: {reason}.",
+                 "Check the details in your profile, under “Membership”. If you already paid, you can send a new "
+                 "notice with the right details or write to us on WhatsApp or from Help."),
+                "See my membership"),
+        values=lambda params, locale, _zone: {"reason": _word(DECISION_REASONS, params["reason"], locale, "reason")},
+        sample=(("reason", "not_received"),), stale_after=timedelta(days=3),
+    ),
+    Template(
+        "payment_request_annulled", "membership", (), "/profile#membership",
+        es=Copy("Corregimos el registro de tu pago",
+                ("Hola, {name}.",
+                 "Corregimos el registro de tu pago: el periodo que habíamos activado se anuló porque el pago no pudo "
+                 "confirmarse del todo.",
+                 "Escríbenos por WhatsApp o desde Ayuda y lo resolvemos contigo."),
+                "Ver mi membresía"),
+        en=Copy("We corrected the record of your payment",
+                ("Hello, {name}.",
+                 "We corrected the record of your payment: the period we had opened was annulled because the payment "
+                 "could not be fully confirmed.",
+                 "Write to us on WhatsApp or from Help and we will sort it out with you."),
+                "See my membership"),
+        values=_nothing, stale_after=timedelta(days=3),
     ),
     # Service notices (the category that can be switched off), for the console's communiqués (closing plan 4.3).
     Template(
