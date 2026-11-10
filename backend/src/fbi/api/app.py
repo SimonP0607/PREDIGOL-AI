@@ -44,6 +44,7 @@ from fbi.api.routers import (
     monitoring,
     news,
     odds_explorer,
+    payment_requests,
     personal,
     postmatch,
     product,
@@ -224,7 +225,7 @@ def create_app() -> FastAPI:
     # preferences) and their questions to PrediGol (A14): never behind the gates - a limited reader still sees why, how
     # to renew, and reaches Ayuda. Novedades read (B6) is the reader's own state, like a dismissed hint; so are the reader's
     # devices and categories of notices (B7) - a limited reader is still told their membership ends.
-    for r in (auth.router, customer.router, messaging.router, membership.router, favorites.router, guides.router,
+    for r in (auth.router, customer.router, messaging.router, membership.router, payment_requests.router, favorites.router, guides.router,
               support.router, feedback.updates_router, push.router):
         app.include_router(r, prefix="/api/v1", dependencies=app_tier)
     # The product's own analytics (A6), behind the consent gate only: a reader who has not accepted the processing is
@@ -247,7 +248,7 @@ def create_app() -> FastAPI:
               center.admin_router, explorer.router, analyst.router, admin_users.router, truth.router,
               evolution.router, ai_layer.admin_router, intelligence.router, referees.router,
               monitoring.admin_router, announcements.admin_router, admin_customers.router, admin_customers.audit_router, customer.admin_router, messaging.admin_router, events.admin_router,
-              membership.admin_router, membership.coupons_router, support.admin_router, feedback.admin_router, push.admin_router,
+              membership.admin_router, membership.coupons_router, payment_requests.admin_router, support.admin_router, feedback.admin_router, push.admin_router,
               news.admin_router, odds_explorer.admin_router):
         app.include_router(r, prefix="/api/v1/admin", dependencies=admin_tier)
     # The original unversioned health endpoint stays where monitors expect it.
