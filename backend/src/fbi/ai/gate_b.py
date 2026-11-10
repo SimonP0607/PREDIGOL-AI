@@ -75,6 +75,7 @@ from fbi.ai import budget_v3, gate_a, gates, runtime
 from fbi.ai.battery import run as battery_run
 from fbi.ai.calendar import day_start, local_day, month_start, next_month
 from fbi.ai.config import AiSettings
+from fbi.ai.intervals import Proportion
 from fbi.intel import leakage
 
 METHOD: Final = "gate-b-v1"
@@ -185,9 +186,31 @@ class GateReport:
             out.append(f"Configuración estable desde {w.anchor} ({w.anchored_by}); {w.stable_days} día(s) completo(s) de {WINDOW_DAYS}")
         if self.preview:
             out.append("Vista previa (NO es evidencia del gate): la ventana aún no está completa")
-        out += [f"  [{c.verdict}] {c.title}" + (f" — {'; '.join(c.reasons)}" if c.reasons else "") for c in self.checks]
+        for c in self.checks:
+            out.append(f"  [{c.verdict}] {c.title}" + (f" — {'; '.join(c.reasons)}" if c.reasons else ""))
+            out += [f"      {line}" for line in evidence_lines(c)]
         out += [f"  Falta: {p}" for p in self.pending]
         return out
+
+
+def evidence_lines(c: Check) -> list[str]:
+    """The cases behind a rate, as one line each (IA-027): judged, counted, the rate, its 95 % interval, the threshold and the verdict the
+    check gave. Only the checks whose detail carries an interval have them; the verdict is the check's own, never the interval's."""
+    rows: list[tuple[str, dict[str, Any]]] = []
+    if c.id == "invalid_outputs":
+        rows = [(f"{a['agent']} {a['agent_version']}", a["interval"]) for a in c.detail.get("agents", []) if "interval" in a]
+    elif "interval" in c.detail:
+        rows = [("atribuidos" if c.id == "attribution" else c.id, c.detail["interval"])]
+    out = []
+    for label, i in rows:
+        if not i.get("cases"):
+            out.append(f"{label}: 0 casos")
+            continue
+        w = i.get("ci95_wilson_pct") or ["-", "-"]
+        sign = "≤" if i.get("threshold_kind") == "max" else "≥"
+        out.append(f"{label}: {i['counted']}/{i['cases']} · {i['pct']} % · IC95 {w[0]}-{w[1]} % · umbral {sign} {i['threshold_pct']} % · "
+                   f"resultado del check: {c.verdict}")
+    return out
 
 
 def check(id_: str, title: str, verdicts: Sequence[tuple[str, str]], detail: dict[str, Any]) -> Check:
@@ -353,7 +376,12 @@ class AgentTally:
     def as_json(self) -> dict[str, Any]:
         return {"agent": self.agent, "agent_version": self.version, "runs": sum(self.by_status.values()), "n": self.answered,
                 "invalid": self.invalid, "rate_pct": _pct(self.rate), "by_status": dict(sorted(self.by_status.items())),
-                "invalid_by_code": dict(sorted(self.invalid_by_code.items()))}
+                "invalid_by_code": dict(sorted(self.invalid_by_code.items())), "interval": self.proportion.as_json()}
+
+    @property
+    def proportion(self) -> Proportion:
+        """The invalid answers against the plan's 3 %, with their interval (IA-027: information beside the rate, never the verdict)."""
+        return Proportion(self.invalid, self.answered, INVALID_MAX, "max")
 
 
 def tallies(rows: Iterable[tuple[str, str, str, str | None, int]]) -> list[AgentTally]:
@@ -572,7 +600,8 @@ def judge_attribution(settled: int, attributed: int, missing: Sequence[int]) -> 
         findings.append((FAIL, f"attribution in {_pct(rate)} % of {settled} settled matches with runs"))
     return check("attribution", "Atribución en ≥ 95 % de los partidos liquidados con ejecuciones", findings,
                  {"settled_with_runs": settled, "attributed": attributed, "rate_pct": _pct(rate), "minimum_pct": _pct(ATTRIBUTION_MIN),
-                  "missing_examples": list(missing[:EXAMPLES])})
+                  "missing_examples": list(missing[:EXAMPLES]),
+                  "interval": Proportion(attributed, settled, ATTRIBUTION_MIN, "min").as_json()})
 
 
 def attribution_of(conn: psycopg.Connection[Any], w: Window) -> tuple[int, int, list[int]]:

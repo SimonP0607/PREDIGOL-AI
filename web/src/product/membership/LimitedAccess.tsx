@@ -8,6 +8,7 @@ import { Download, FileText, LifeBuoy, ListChecks, UserRound } from "lucide-reac
 import type { MembershipSummary } from "@/lib/api/v1/types_membership";
 import { t } from "@/lib/i18n";
 import { Card } from "@/product/shared/States";
+import { PaymentRequestPanel } from "./PaymentRequestPanel";
 
 const item =
   "tap-y relative flex min-h-11 items-center gap-3 rounded-md border border-border px-3 text-sm font-medium hover:bg-elevated";
@@ -25,6 +26,7 @@ export function LimitedAccess({ membership }: { membership: MembershipSummary })
         <p className="text-sm text-muted-foreground">
           {t(`profile.membership.limited.${kind}Body`)}
         </p>
+        {kind === "suspended" ? null : <PaymentRequestPanel state={membership.state} />}
         <nav className="grid gap-2" aria-label={t("profile.membership.title")}>
           <Link to="/profile" hash="membership" className={item} data-testid="limited-profile">
             <UserRound aria-hidden className="h-4 w-4 text-primary" />
