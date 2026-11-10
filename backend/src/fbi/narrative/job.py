@@ -726,12 +726,27 @@ in one language and «two draws» in the other says the same thing. Each languag
 the news the sentence cites (``check_sentence``, with ``SPELLED``); this table is not used there."""
 
 
+CROSS_PAIRS: Final[dict[str, dict[str, int]]] = {"es": {}, "en": {"twice": 2}}
+"""IA-032. «twice» is «dos veces», whose «dos» the Spanish side already counts. Comparing only; never a figure a sentence may state. «both» and
+«ambos» are NOT here: replayed over the 309 approved chronicles (4.264 sentence pairs, 10 Nov 2026, read-only), counting them refused 11
+chronicles that say the same thing («entre ambos» / «between them»), and this table refuses none."""
+NOT_A_QUANTITY: Final[dict[str, re.Pattern[str]]] = {
+    "es": re.compile(r"\bningun[oa]s? de (?:los|las) dos\b|\b(?:el|un|su|mismo|ese|este|aquel) once\b|\bonce (?:inicial|titular|tipo)\b"),
+    "en": re.compile(r"\b(?:neither|either|none) of the two\b"),
+}
+"""IA-032. What reads as a number and is not one, taken out before comparing: «ninguno de los dos» is «neither side» (no two in the English),
+and «el once» or «el once inicial» is the starting XI, never eleven of something («repetir el once» / «keep the side»)."""
+
+
 def _numbers_key(text: str, lang: str) -> Counter[float]:
     """The numbers a sentence states, as the Spanish and the English are compared (the same ones in both, in whatever form). Whole zero and
     one are not compared: «a win» is «una victoria» and «goalless» is «0-0» without a digit in one of them, and the sentence's own language
-    already checked each of them against the facts. A quantity from two to twenty counts the same as a digit or as a word."""
+    already checked each of them against the facts. A quantity from two to twenty counts the same as a digit or as a word (IA-024), «twice»
+    counts as two, and what only looks like a number is left out (IA-032)."""
     found = [f.value for f in figures(text, lang) if f.raw[:1].isdigit() or f.raw[:1] in "-+\u2212"]
-    found += [float(CROSS_WORDS[lang][w]) for w in re.findall(r"[a-z]+", fold(text)) if w in CROSS_WORDS[lang]]
+    words = NOT_A_QUANTITY[lang].sub(" ", fold(text))
+    found += [float(CROSS_WORDS[lang].get(w) or CROSS_PAIRS[lang][w]) for w in re.findall(r"[a-z]+", words)
+              if w in CROSS_WORDS[lang] or w in CROSS_PAIRS[lang]]
     return Counter(round(v, 3) for v in found if v >= 2 or v != int(v))
 
 
