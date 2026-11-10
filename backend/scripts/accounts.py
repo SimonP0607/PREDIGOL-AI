@@ -11,6 +11,8 @@ phone with no other SUPER_ADMIN). Everything it changes is recorded in auth.audi
     python -m scripts.accounts mfa-reset --email owner@example.com         # a lost phone
     python -m scripts.accounts mfa-reset --all                            # after rotating FBI_AUTH_SECRET_KEY
     python -m scripts.accounts mfa-enroll --email qa.admin@predigol.local --secret-out ~/.fbi/qa-admin-totp.txt
+    python -m scripts.accounts grant-trial --days 20 --reason "..."            # dry run: who would get the free trial
+    python -m scripts.accounts grant-trial --days 20 --reason "..." --apply    # accounts with no period get the trial
 
 mfa-enroll is for TEST accounts (E2E against a server that requires a second factor): it writes the authenticator
 secret to a 0600 file. It refuses any address outside --test-domain (default predigol.local).
@@ -166,6 +168,22 @@ def cmd_mfa_enroll(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_grant_trial(args: argparse.Namespace) -> int:
+    """The temporary free trial for the live reader accounts that have no period (see membership.grant_existing_trials):
+    a count unless ``--apply``; one transaction; nothing for accounts that have a period or had a trial."""
+    from fbi.customer import membership
+
+    outcomes = membership.grant_existing_trials(days=args.days, reason=args.reason, apply=args.apply,
+                                                notify=args.notify)
+    print(f"{'id':>4}  {'email':28} {'result':12} ends_at")
+    for o in outcomes:
+        print(f"{o.user_id:>4}  {masked(o.email):28} {o.result:12} {o.ends_at.isoformat(timespec='minutes') if o.ends_at else '-'}")
+    changed = sum(1 for o in outcomes if o.result in ("granted", "would_grant"))
+    print(f"{changed} account(s) {'given' if args.apply else 'would be given'} a {args.days}-day trial"
+          + ("" if args.apply else " - nothing written; add --apply"))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="accounts", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -189,12 +207,17 @@ def main() -> int:
     p.add_argument("--secret-out", type=Path, required=True)
     p.add_argument("--test-domain", default="predigol.local")
     p.add_argument("--force", action="store_true")
+    p = sub.add_parser("grant-trial", help="a temporary free trial for the live accounts that have no period")
+    p.add_argument("--days", type=int, required=True, help="the trial's length, 7 to 20, always explicit")
+    p.add_argument("--reason", required=True, help="why, for the access trail")
+    p.add_argument("--apply", action="store_true", help="write it (without this, only count)")
+    p.add_argument("--notify", action="store_true", help="also queue the trial's e-mail (the messenger sends it)")
     args = parser.parse_args()
     if args.cmd in ("disable", "revoke-sessions") and not (args.email or args.domain or getattr(args, "all", False)):
         parser.error("name the accounts: --email, --domain" + (" or --all" if args.cmd == "revoke-sessions" else ""))
     handler = {"list": cmd_list, "disable": cmd_disable, "require-password-change": cmd_require_password_change,
                "revoke-sessions": cmd_revoke_sessions, "unlock": cmd_unlock, "mfa-reset": cmd_mfa_reset,
-               "mfa-enroll": cmd_mfa_enroll}[args.cmd]
+               "mfa-enroll": cmd_mfa_enroll, "grant-trial": cmd_grant_trial}[args.cmd]
     return handler(args)
 
 

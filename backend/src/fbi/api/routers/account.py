@@ -144,11 +144,11 @@ def check_verification(body: TokenIn, request: Request) -> VerifyInfo:
 
 @router.post("/verify", response_model=Me)
 def verify_email(body: VerifyIn, request: Request, response: Response, conn: Db) -> Me:
-    """The address is proven with its link and the password the person chose: the account becomes active and signed in.
-    It has no membership yet."""
+    """The address is proven with its link and the password the person chose (or, with ``replace_password``, a new one
+    that replaces it): the account becomes active and signed in. It has no membership yet."""
     signup.require_open()
     issued = signup.confirm(body.token, password=body.password, ip=client_ip(request),
-                            user_agent=request.headers.get("user-agent"))
+                            user_agent=request.headers.get("user-agent"), replace_password=body.replace_password)
     return _signed_in(response, issued, conn)
 
 
