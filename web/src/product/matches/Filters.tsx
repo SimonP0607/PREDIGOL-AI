@@ -116,7 +116,8 @@ function DatePicker({
             /* the browser opens its own picker */
           }
         }}
-        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        // 16 px, though nobody sees it: a field under 16 px makes an iPhone zoom in on focus (UX-096; it was 13 px).
+        className="absolute inset-0 h-full w-full cursor-pointer text-base opacity-0"
       />
     </label>
   );

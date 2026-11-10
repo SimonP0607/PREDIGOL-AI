@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { BrandCrest } from "@/components/brand/Brand";
 import { LanguageSwitch } from "@/components/layout/HeaderControls";
+import { AccountTopBar } from "@/product/auth/AccountShell";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { LiveApiError, v1 } from "@/lib/api/v1/client";
 import type { Me, MfaEnrollment } from "@/lib/api/v1/types_auth";
@@ -41,9 +42,9 @@ function Shell({
   const auth = useAuth();
   return (
     <div className="pitch-glow relative flex min-h-screen flex-col bg-background">
-      <div className="flex justify-end p-4">
+      <AccountTopBar>
         <LanguageSwitch />
-      </div>
+      </AccountTopBar>
       <main className="flex flex-1 items-center justify-center px-4 pb-16">
         <div className="w-full max-w-md">
           <div className="flex flex-col items-center text-center">

@@ -63,7 +63,9 @@ export function SectionHeader({
       <div className="min-w-0">
         <h2 className="flex items-center gap-2 font-display text-base font-semibold tracking-tight sm:text-lg">
           {icon}
-          <span className="truncate">{title}</span>
+          {/* The whole title, on two lines if need be (mobile UX plan, UX-095): cut with «…» it lost the end of
+          «Todas las selecciones que cumplen la regla» on a 320 px phone. */}
+          <span className="min-w-0 break-words">{title}</span>
         </h2>
         {subtitle ? <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p> : null}
       </div>
