@@ -169,6 +169,18 @@ back by the next sync when the provider's payload repeats the very value it repl
 two hours after the repair). Any other city the provider sends - a real change - is taken as before."""
 
 
+KEEP_REASSIGNED_VENUE_SQL = """
+SELECT 1 FROM audit.data_repairs d
+ WHERE d.entity = 'core.fixtures' AND d.entity_id = core.fixtures.id AND d.field = 'venue_id'
+   AND d.rule = 'fixture_venue_reassigned' AND d.before_value = EXCLUDED.venue_id::text
+   AND d.after_value = core.fixtures.venue_id::text
+"""
+"""A match a person pointed at the ground it was played at (``scripts.reassign_fixture_venue``, rule
+``fixture_venue_reassigned``, BE-037) keeps that venue while the provider's payload repeats the very id it was moved away
+from: the provider files two grounds under one id (143 is the Linz arena and the LASK's old ground at Pasching), so the id
+of every refresh points at the wrong one. Any other venue the provider sends - a real change - is taken as before."""
+
+
 class FixtureRepository:
     def __init__(self, conn: psycopg.Connection) -> None:
         self._conn = conn
@@ -283,7 +295,8 @@ class FixtureRepository:
                       kickoff_at = EXCLUDED.kickoff_at, status_short = EXCLUDED.status_short,
                       status_group = EXCLUDED.status_group,
                       round = COALESCE(EXCLUDED.round, core.fixtures.round),
-                      venue_id = COALESCE(EXCLUDED.venue_id, core.fixtures.venue_id),
+                      venue_id = CASE WHEN EXISTS (""" + KEEP_REASSIGNED_VENUE_SQL + """) THEN core.fixtures.venue_id
+                                      ELSE COALESCE(EXCLUDED.venue_id, core.fixtures.venue_id) END,
                       venue_name = COALESCE(EXCLUDED.venue_name, core.fixtures.venue_name),
                       venue_city = CASE WHEN EXISTS (""" + KEEP_REPAIRED_CITY_SQL + """) THEN core.fixtures.venue_city
                                         ELSE COALESCE(EXCLUDED.venue_city, core.fixtures.venue_city) END,

@@ -190,7 +190,9 @@ def compare_fixture(api: Mapping[str, Any], db: Mapping[str, Any] | None, *, now
         tally.add(Finding.of(ds, entity, "round", Kind.MISMATCH, Severity.LOW,
                              api=league.get("round"), db=db.get("round")))
     venue = _id(fx.get("venue"))
-    if venue is not None and db.get("venue_provider_id") not in (None, venue):
+    # A match a person pointed at the ground it was played at (BE-037: the provider files two grounds under one id) holds
+    # another venue than its payload's on purpose; the sync keeps it, so it is not a difference to report.
+    if venue is not None and db.get("venue_provider_id") not in (None, venue) and not db.get("venue_reassigned"):
         tally.add(Finding.of(ds, entity, "venue", Kind.MISMATCH, Severity.LOW,
                              api=venue, db=db.get("venue_provider_id")))
     if tally.total_findings == before:
