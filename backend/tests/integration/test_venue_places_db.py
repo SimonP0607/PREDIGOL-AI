@@ -201,3 +201,35 @@ def test_restoring_leaves_alone_a_city_changed_since_the_repair_and_other_venues
         assert any(str(ODD) in s and "no longer" in s for s in plan.skipped)
         assert conn.execute("SELECT venue_city FROM core.fixtures WHERE provider_fixture_id = %s",
                             (ODD,)).fetchone() == ("Paterna",)
+
+
+def test_the_control_does_not_flag_a_match_a_person_restored_but_flags_every_other_one(
+        migrated_database: str, mestalla: dict[str, Any]) -> None:
+    """BE-031: a match whose city ``restore_venue_city`` gave back (audit row ``fixture_venue_city_restored``) is not
+    named as odd by the daily control while it keeps that city; another match with the same city and a change of the
+    city afterwards are judged as before."""
+    from scripts.repair_venue_city import repair
+    from scripts.restore_venue_city import restore
+
+    venue, root = mestalla["venue"], mestalla["root"]
+    other = FIRST + 3  # a second match of the same club that names Mestalla in Valdivia, with no restoration
+
+    def odd_in_the_control() -> list[str]:
+        with psycopg.connect(migrated_database) as conn:
+            conn.read_only = True
+            found = _mine(run_internal(conn, at=NOW, store=mestalla["store"]), venue)
+        return sorted(f.entity.split(" at ")[0] for f in found if f.field == "venue_city")
+
+    assert odd_in_the_control() == [f"fixture {ODD}"]
+    with psycopg.connect(migrated_database) as conn:
+        repair(conn, root, apply=True, venue_ids=[venue])
+        assert restore(conn, [venue], reason="test", apply=True).written == 1
+        conn.execute("UPDATE core.fixtures SET venue_city = 'Valdivia' WHERE provider_fixture_id = %s", (other,))
+        conn.commit()
+    assert odd_in_the_control() == [f"fixture {other}"], "the restored one is not named, the unrestored one is"
+
+    with psycopg.connect(migrated_database) as conn:
+        conn.execute("UPDATE core.fixtures SET venue_city = 'Paterna' WHERE provider_fixture_id = %s", (ODD,))
+        conn.commit()
+    assert odd_in_the_control() == sorted([f"fixture {ODD}", f"fixture {other}"]), \
+        "a city changed after the restoration is judged as any other"
