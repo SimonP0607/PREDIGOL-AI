@@ -34,7 +34,8 @@
     "support": "Support",
     "customers": "Customers",
     "storage": "Storage",
-    "announcements": "Communiqués"
+    "announcements": "Communiqués",
+    "payments": "Payment notices"
   },
   "pages": {
     "overview": {
@@ -1036,5 +1037,73 @@
     "yes": "Yes, turn off",
     "no": "No",
     "percentValue": "{percent}%"
+  },
+  "payments": {
+    "title": "Payment notices",
+    "description": "People who paid outside send a notice here. Check the money reached your account and decide each notice only once: approving creates the payment and the period together.",
+    "scope": {
+      "waiting": "To review ({count})",
+      "all": "All"
+    },
+    "emptyWaiting": "No notices to review.",
+    "emptyAll": "No payment notices yet.",
+    "back": "Back",
+    "status": {
+      "submitted": "Being verified",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled by the reader",
+      "annulled": "Approval annulled"
+    },
+    "flag": {
+      "amount": "The amount reported is not the one due. Compare with what reached your account.",
+      "duplicate": "Other notices carry the same reference. Check it is not the same payment.",
+      "overdue": "The business day to verify this payment has passed."
+    },
+    "fact": {
+      "declared": "Amount reported",
+      "expected": "Amount due",
+      "paidOn": "Paid on",
+      "method": "Method",
+      "reference": "Reference",
+      "payer": "Paid by",
+      "sent": "Sent",
+      "due": "Verify by",
+      "discount": "Discount",
+      "discountValue": "{percent} % {coupon}",
+      "terms": "Terms accepted",
+      "none": "Not given"
+    },
+    "decided": "Decided {when}. {reason} {note}",
+    "approve": {
+      "open": "Approve",
+      "received": "Amount you received ({currency})",
+      "receivedHelp": "Type it without thousands separators. The reported amount by default.",
+      "months": "Months covered",
+      "monthsOption_one": "{count} month",
+      "monthsOption_other": "{count} months",
+      "tick": "I checked in my account that the money arrived and I want to approve despite the differences.",
+      "confirm": "Approve and open access"
+    },
+    "reject": {
+      "open": "Reject",
+      "code": "Reason",
+      "note": "Message for the reader",
+      "noteHelp": "3 to 200 characters. The reader sees it and gets it by e-mail.",
+      "confirm": "Reject notice",
+      "codes": {
+        "amount_mismatch": "The amount does not match",
+        "not_received": "We do not see the money yet",
+        "duplicate": "Already recorded",
+        "unreadable": "The receipt is unreadable",
+        "other": "Another reason"
+      }
+    },
+    "annul": {
+      "open": "Annul approval",
+      "warning": "Annulling keeps the payment and the period in the history but the period stops counting: the person goes back to limited access and gets an e-mail.",
+      "reason": "Reason for the annulment",
+      "confirm": "Annul approval"
+    }
   }
 }

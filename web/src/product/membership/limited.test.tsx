@@ -6,6 +6,7 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -24,7 +25,11 @@ async function routed(node: ReactNode): Promise<string> {
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
   await router.load();
-  return renderToStaticMarkup(<RouterProvider router={router} />);
+  return renderToStaticMarkup(
+    <QueryClientProvider client={new QueryClient()}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
 }
 
 function summary(state: MembershipSummary["state"]): MembershipSummary {

@@ -49,6 +49,7 @@ import { Route as AdminModelsRouteImport } from './routes/admin.models'
 import { Route as AdminOddsRouteImport } from './routes/admin.odds'
 import { Route as AdminOperationRouteImport } from './routes/admin.operation'
 import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
+import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
 import { Route as AdminPerformanceRouteImport } from './routes/admin.performance'
 import { Route as AdminPicksRouteImport } from './routes/admin.picks'
 import { Route as AdminProductRouteImport } from './routes/admin.product'
@@ -273,6 +274,11 @@ const AdminOverviewRoute = AdminOverviewRouteImport.update({
   path: '/overview',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminPerformanceRoute = AdminPerformanceRouteImport.update({
   id: '/performance',
   path: '/performance',
@@ -429,6 +435,7 @@ export interface FileRoutesByFullPath {
   '/admin/odds': typeof AdminOddsRoute
   '/admin/operation': typeof AdminOperationRoute
   '/admin/overview': typeof AdminOverviewRoute
+  '/admin/payments': typeof AdminPaymentsRoute
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/picks': typeof AdminPicksRoute
   '/admin/product': typeof AdminProductRoute
@@ -493,6 +500,7 @@ export interface FileRoutesByTo {
   '/admin/odds': typeof AdminOddsRoute
   '/admin/operation': typeof AdminOperationRoute
   '/admin/overview': typeof AdminOverviewRoute
+  '/admin/payments': typeof AdminPaymentsRoute
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/picks': typeof AdminPicksRoute
   '/admin/product': typeof AdminProductRoute
@@ -559,6 +567,7 @@ export interface FileRoutesById {
   '/admin/odds': typeof AdminOddsRoute
   '/admin/operation': typeof AdminOperationRoute
   '/admin/overview': typeof AdminOverviewRoute
+  '/admin/payments': typeof AdminPaymentsRoute
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/picks': typeof AdminPicksRoute
   '/admin/product': typeof AdminProductRoute
@@ -626,6 +635,7 @@ export interface FileRouteTypes {
     | '/admin/odds'
     | '/admin/operation'
     | '/admin/overview'
+    | '/admin/payments'
     | '/admin/performance'
     | '/admin/picks'
     | '/admin/product'
@@ -690,6 +700,7 @@ export interface FileRouteTypes {
     | '/admin/odds'
     | '/admin/operation'
     | '/admin/overview'
+    | '/admin/payments'
     | '/admin/performance'
     | '/admin/picks'
     | '/admin/product'
@@ -755,6 +766,7 @@ export interface FileRouteTypes {
     | '/admin/odds'
     | '/admin/operation'
     | '/admin/overview'
+    | '/admin/payments'
     | '/admin/performance'
     | '/admin/picks'
     | '/admin/product'
@@ -1093,6 +1105,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOverviewRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/payments': {
+      id: '/admin/payments'
+      path: '/payments'
+      fullPath: '/admin/payments'
+      preLoaderRoute: typeof AdminPaymentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/performance': {
       id: '/admin/performance'
       path: '/performance'
@@ -1277,6 +1296,7 @@ interface AdminRouteChildren {
   AdminOddsRoute: typeof AdminOddsRoute
   AdminOperationRoute: typeof AdminOperationRoute
   AdminOverviewRoute: typeof AdminOverviewRoute
+  AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminPerformanceRoute: typeof AdminPerformanceRoute
   AdminPicksRoute: typeof AdminPicksRoute
   AdminProductRoute: typeof AdminProductRoute
@@ -1316,6 +1336,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminOddsRoute: AdminOddsRoute,
   AdminOperationRoute: AdminOperationRoute,
   AdminOverviewRoute: AdminOverviewRoute,
+  AdminPaymentsRoute: AdminPaymentsRoute,
   AdminPerformanceRoute: AdminPerformanceRoute,
   AdminPicksRoute: AdminPicksRoute,
   AdminProductRoute: AdminProductRoute,
