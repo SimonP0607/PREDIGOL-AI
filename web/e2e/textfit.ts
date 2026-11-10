@@ -72,3 +72,25 @@ export async function lengthenNames(page: Page): Promise<number> {
     return changed;
   }, LONG_NAMES);
 }
+
+/**
+ * Text cut with «…» inside `scope` (mobile UX plan, UX-095): a section's title, the bookmaker with the best price, the
+ * logo's tagline. Their whole text was only in a hover hint, which a phone never shows.
+ */
+export async function ellipsized(page: Page, scope: string): Promise<string[]> {
+  return page.evaluate((scope) => {
+    const out: string[] = [];
+    for (const root of Array.from(document.querySelectorAll(scope))) {
+      for (const el of [root, ...Array.from(root.querySelectorAll("*"))]) {
+        const s = getComputedStyle(el);
+        if (s.textOverflow !== "ellipsis" || s.display === "none") continue;
+        if (el.getBoundingClientRect().width < 1) continue;
+        if (el.scrollWidth > el.clientWidth + 1)
+          out.push(
+            `«${(el.textContent ?? "").trim().slice(0, 50)}» ${el.clientWidth}/${el.scrollWidth} px`,
+          );
+      }
+    }
+    return out;
+  }, scope);
+}
