@@ -256,7 +256,7 @@ export function MoreSheet({
           event.preventDefault();
           returnFocus.current.focus();
         }}
-        className="mx-auto max-h-[88dvh] max-w-2xl overflow-y-auto rounded-t-2xl pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-4"
+        className="mx-auto max-h-[88dvh] max-w-2xl overflow-y-auto pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-4"
       >
         <SheetHeader className="px-2 pr-12 text-left">
           <SheetTitle className="font-display text-base">{t("nav.moreTitle")}</SheetTitle>

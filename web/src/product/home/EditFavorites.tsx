@@ -144,7 +144,7 @@ export function EditFavorites() {
         data-testid="edit-favorites"
         className={
           mobile
-            ? "max-h-[88dvh] overflow-y-auto rounded-t-2xl px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-5"
+            ? "max-h-[88dvh] overflow-y-auto px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-5"
             : "w-full overflow-y-auto sm:max-w-md"
         }
       >

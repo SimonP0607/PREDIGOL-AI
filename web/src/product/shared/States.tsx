@@ -1,8 +1,9 @@
 /** Cards, section headers and the honest empty / error / loading states of the product. */
 import { useEffect, type ReactNode } from "react";
 import { Link, type LinkProps } from "@tanstack/react-router";
-import { AlertTriangle, ChevronRight, Inbox } from "lucide-react";
+import { AlertTriangle, ChevronRight, Inbox, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { t, translateOr } from "@/lib/i18n";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { markTrouble } from "@/lib/feedback/session";
@@ -13,10 +14,15 @@ import { reportShownApiError } from "@/lib/observability";
 import { useReportProblem } from "@/product/support/report";
 import { StillFailing } from "@/product/support/StillFailing";
 
+/**
+ * The card of «Noche de partido» (plan maestro UX/UI 2026, wave 2). `premium`: the gold card of what PrediGol
+ * recommends; `lift`: one step higher, for a block inside a card or over a scene.
+ */
 export function Card({
   children,
   className,
   premium = false,
+  lift = false,
   as: Tag = "section",
   id,
   "data-testid": testId,
@@ -24,6 +30,7 @@ export function Card({
   children: ReactNode;
   className?: string | undefined;
   premium?: boolean;
+  lift?: boolean;
   as?: "section" | "article" | "div";
   /** An anchor a link can lead to (an e-mail's button: /profile#privacy). */
   id?: string | undefined;
@@ -35,8 +42,9 @@ export function Card({
       id={id}
       data-testid={testId}
       className={cn(
-        "rounded-xl border border-border bg-card",
-        premium && "gold-ring bg-gradient-to-b from-gold-soft/40 to-card",
+        "card-surface",
+        lift && "border-border-strong bg-elevated bg-none",
+        premium && "surface-gold hairline-gold rounded-feature",
         className,
       )}
     >
@@ -61,21 +69,21 @@ export function SectionHeader({
   return (
     <div className={cn("flex items-end justify-between gap-3", className)}>
       <div className="min-w-0">
-        <h2 className="flex items-center gap-2 font-display text-base font-semibold tracking-tight sm:text-lg">
+        <h2 className="flex items-center gap-2 text-heading">
           {icon}
           {/* The whole title, on two lines if need be (mobile UX plan, UX-095): cut with «…» it lost the end of
           «Todas las selecciones que cumplen la regla» on a 320 px phone. */}
           <span className="min-w-0 break-words">{title}</span>
         </h2>
-        {subtitle ? <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p> : null}
+        {subtitle ? <p className="mt-1 text-small text-muted-foreground">{subtitle}</p> : null}
       </div>
       {action ? (
         <Link
           to={action.to}
-          className="tap-y relative -my-2 flex min-h-9 shrink-0 items-center gap-0.5 rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10"
+          className="tap-y relative -my-2 flex min-h-9 shrink-0 items-center gap-0.5 rounded-chip px-2 text-sm font-semibold text-primary hover:bg-primary-soft"
         >
           {action.label}
-          <ChevronRight aria-hidden className="h-3.5 w-3.5" />
+          <ChevronRight aria-hidden className="h-4 w-4" />
         </Link>
       ) : null}
     </div>
@@ -102,15 +110,20 @@ export function EmptyState({
       data-empty-state
       className={cn(
         "flex flex-col items-center justify-center text-center",
-        compact ? "gap-1.5 px-4 py-6" : "gap-2 px-6 py-10",
+        compact ? "gap-1.5 px-4 py-6" : "gap-2 px-5 py-8",
         className,
       )}
     >
-      <div className="text-subtle-foreground">
-        {icon ?? <Inbox aria-hidden className="h-6 w-6" />}
+      <div
+        className={cn(
+          "flex items-center justify-center bg-foreground/[0.05] text-foreground-soft",
+          compact ? "h-8 w-8 rounded-[0.625rem]" : "mb-1 h-10 w-10 rounded-field",
+        )}
+      >
+        {icon ?? <Inbox aria-hidden className={compact ? "h-4 w-4" : "h-5 w-5"} />}
       </div>
-      <p className="font-display text-sm font-semibold text-foreground">{title}</p>
-      {body ? <div className="max-w-md text-xs text-muted-foreground">{body}</div> : null}
+      <p className={cn("text-foreground", compact ? "text-title" : "text-subheading")}>{title}</p>
+      {body ? <div className="max-w-md text-small text-muted-foreground">{body}</div> : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
   );
@@ -151,21 +164,20 @@ export function ErrorState({
       role="alert"
       className={cn("flex flex-col items-center gap-2 px-6 py-8 text-center", className)}
     >
-      <AlertTriangle aria-hidden className="h-5 w-5 text-warning" />
-      <p className="text-sm font-medium">{errorMessage(error)}</p>
+      <span className="mb-1 flex h-10 w-10 items-center justify-center rounded-field bg-warning/[0.14] text-warning">
+        <AlertTriangle aria-hidden className="h-5 w-5" />
+      </span>
+      <p className="text-subheading">{errorMessage(error)}</p>
       {rid ? (
         <p className="numeric text-caption text-subtle-foreground">
           {t("errors.requestId", { id: rid })}
         </p>
       ) : null}
       {onRetry ? (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="tap-y relative mt-1 rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated pointer-coarse:px-4"
-        >
+        <Button variant="secondary" size="sm" onClick={onRetry} className="mt-1">
+          <RefreshCw aria-hidden />
           {t("common.retry")}
-        </button>
+        </Button>
       ) : null}
       {report.available ? (
         <button
@@ -215,7 +227,16 @@ export function StaleNote({
 }
 
 export function SkeletonBlock({ className }: { className?: string | undefined }) {
-  return <div aria-hidden className={cn("animate-pulse rounded-lg bg-muted/70", className)} />;
+  // the outline of what is coming, in the system's two greys; «reduce motion» stills it (styles.css)
+  return (
+    <div
+      aria-hidden
+      className={cn(
+        "animate-pulse rounded-lg bg-linear-to-r from-elevated via-popover to-elevated",
+        className,
+      )}
+    />
+  );
 }
 
 export function SkeletonCards({
@@ -253,10 +274,9 @@ export function PageTitle({
   return (
     <div className={cn("flex flex-wrap items-end justify-between gap-3", className)}>
       <div className="min-w-0">
-        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[1.75rem]">
-          {title}
-        </h1>
-        {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
+        {/* a long title (a legal document's) on the narrowest phone: a step smaller, so it is three lines and not four */}
+        <h1 className="text-balance text-display max-[359px]:text-[1.625rem]">{title}</h1>
+        {subtitle ? <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p> : null}
       </div>
       {right || guide ? (
         <div className="flex flex-wrap items-center gap-2">

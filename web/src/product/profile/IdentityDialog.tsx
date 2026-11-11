@@ -74,14 +74,9 @@ export function IdentityDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent
-        className="w-[calc(100%-2rem)] max-w-md rounded-xl border-border bg-card"
-        data-testid="identity-dialog"
-      >
+      <DialogContent className="max-w-md" data-testid="identity-dialog">
         <DialogHeader>
-          <DialogTitle className="font-display">
-            {t("profile.securityPanel.identity.title")}
-          </DialogTitle>
+          <DialogTitle>{t("profile.securityPanel.identity.title")}</DialogTitle>
           <DialogDescription>{t("profile.securityPanel.identity.body")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={(e) => void submit(e)} className="space-y-3" noValidate>
