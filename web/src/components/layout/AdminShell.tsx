@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ArrowLeft, Eye, Menu, Search, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Eye, Menu, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { BrandMark } from "@/components/brand/Brand";
-import { adminNav, isActive } from "./nav";
+import {
+  adminGroupOf,
+  adminHome,
+  adminNav,
+  isActive,
+  readFoldedAdminGroups,
+  writeFoldedAdminGroups,
+  type NavItem,
+} from "./nav";
 import { AccountMenu, PreviewBanner } from "./HeaderControls";
 import { useQuery } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
@@ -21,8 +29,71 @@ import {
 } from "@/components/system/CommandPalette";
 import { StatusBarSpace } from "@/components/layout/StatusBarSpace";
 
+function AdminNavLink({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: NavItem;
+  pathname: string;
+  onNavigate?: (() => void) | undefined;
+}) {
+  const active = isActive(pathname, item.to, item.exact);
+  const Icon = item.icon;
+  return (
+    <Link
+      to={item.to}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      data-testid={`admin-nav-${item.to.split("/").pop() ?? ""}`}
+      className={cn(
+        "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors pointer-coarse:min-h-11",
+        active
+          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+      )}
+    >
+      <Icon
+        aria-hidden
+        className={cn("h-3.5 w-3.5", active ? "text-primary" : "text-subtle-foreground")}
+      />
+      {t(item.label)}
+    </Link>
+  );
+}
+
+function browserStore(): Storage | null {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const current = adminGroupOf(pathname);
+  // Folded groups are this browser's own: read after the first paint, so the server's page and the browser's agree.
+  const [folded, setFolded] = useState<ReadonlySet<string>>(() => new Set());
+  useEffect(() => setFolded(readFoldedAdminGroups(browserStore())), []);
+  // Arriving at a page of a folded group opens it: the page on show is never hidden behind a remembered fold.
+  useEffect(() => {
+    if (!current) return;
+    setFolded((prev) => {
+      if (!prev.has(current)) return prev;
+      const next = new Set(prev);
+      next.delete(current);
+      writeFoldedAdminGroups(browserStore(), next);
+      return next;
+    });
+  }, [current]);
+  const toggle = (key: string) => {
+    const next = new Set(folded);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setFolded(next);
+    writeFoldedAdminGroups(browserStore(), next);
+  };
   return (
     <div className="flex h-full flex-col">
       <Link
@@ -40,41 +111,46 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </Link>
 
       <nav aria-label={t("nav.adminNavigation")} className="flex-1 overflow-y-auto px-2 py-3">
-        {adminNav.map((group) => (
-          <div key={group.label} className="mb-4">
-            <div className="px-2 pb-1.5 text-label text-subtle-foreground">{t(group.label)}</div>
-            <ul className="space-y-0.5">
-              {group.items.map((item) => {
-                const active = isActive(pathname, item.to, item.exact);
-                const Icon = item.icon;
-                return (
+        {/* «Resumen» above the groups, then five groups that fold (plan maestro UX/UI 2026, decision 12). */}
+        <ul className="mb-3">
+          <li>
+            <AdminNavLink item={adminHome} pathname={pathname} onNavigate={onNavigate} />
+          </li>
+        </ul>
+        {adminNav.map((group) => {
+          const open = !folded.has(group.key);
+          const listId = `admin-nav-group-${group.key}`;
+          return (
+            <div key={group.key} className="mb-2" data-testid={`admin-nav-group-${group.key}`}>
+              <button
+                type="button"
+                aria-expanded={open}
+                aria-controls={listId}
+                onClick={() => toggle(group.key)}
+                className="tap-y relative flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-label text-subtle-foreground transition-colors hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="min-w-0 flex-1 truncate">{t(group.label)}</span>
+                {open ? null : (
+                  <span className="numeric text-micro font-semibold text-muted-foreground">
+                    {group.items.length}
+                  </span>
+                )}
+                {open ? (
+                  <ChevronDown aria-hidden className="h-3.5 w-3.5 shrink-0" />
+                ) : (
+                  <ChevronRight aria-hidden className="h-3.5 w-3.5 shrink-0" />
+                )}
+              </button>
+              <ul id={listId} hidden={!open} className="mt-0.5 space-y-0.5">
+                {group.items.map((item) => (
                   <li key={item.to}>
-                    <Link
-                      to={item.to}
-                      onClick={onNavigate}
-                      data-testid={`admin-nav-${item.to.split("/").pop() ?? ""}`}
-                      className={cn(
-                        "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors pointer-coarse:min-h-11",
-                        active
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-                      )}
-                    >
-                      <Icon
-                        aria-hidden
-                        className={cn(
-                          "h-3.5 w-3.5",
-                          active ? "text-primary" : "text-subtle-foreground",
-                        )}
-                      />
-                      {t(item.label)}
-                    </Link>
+                    <AdminNavLink item={item} pathname={pathname} onNavigate={onNavigate} />
                   </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+                ))}
+              </ul>
+            </div>
+          );
+        })}
       </nav>
 
       <div className="space-y-2 border-t border-sidebar-border px-3 py-3">

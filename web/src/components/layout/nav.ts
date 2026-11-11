@@ -146,19 +146,49 @@ export function moreItems(showTransparency: boolean): MoreItem[] {
 
 export const profileNav: NavItem = { to: "/profile", label: "nav.profile", icon: UserRound };
 
-export const adminNav: Array<{ label: string; items: NavItem[] }> = [
+/** The console's first screen, above the groups (plan maestro UX/UI 2026, decision 12). */
+export const adminHome: NavItem = {
+  to: "/admin/overview",
+  label: "admin.nav.overview",
+  icon: Gauge,
+};
+
+export interface AdminNavGroup {
+  /** Stable: the key the browser remembers a folded group by. */
+  key: "customers" | "market" | "intelligence" | "football" | "system";
+  label: string;
+  items: NavItem[];
+}
+
+/**
+ * The console's menu in five groups (decision 12): the same 28 destinations as before - «Resumen» above them - with
+ * the same routes and the same permissions. Only where each one is listed changes.
+ */
+export const adminNav: AdminNavGroup[] = [
   {
-    label: "admin.groups.operations",
+    key: "customers",
+    label: "admin.groups.customers",
     items: [
-      { to: "/admin/overview", label: "admin.nav.overview", icon: Gauge },
-      { to: "/admin/picks", label: "admin.nav.picks", icon: ListChecks },
-      { to: "/admin/performance", label: "admin.nav.performance", icon: LineChart },
-      { to: "/admin/odds", label: "admin.nav.odds", icon: TrendingUp },
-      { to: "/admin/customers", label: "admin.nav.customers", icon: Contact },
+      { to: "/admin/payments", label: "admin.nav.payments", icon: Banknote },
       { to: "/admin/support", label: "admin.nav.support", icon: LifeBuoy },
+      { to: "/admin/customers", label: "admin.nav.customers", icon: Contact },
+      { to: "/admin/announcements", label: "admin.nav.announcements", icon: Megaphone },
+      { to: "/admin/messages", label: "admin.nav.messages", icon: Mail },
+      { to: "/admin/users", label: "admin.nav.users", icon: UserRound },
+      { to: "/admin/product", label: "admin.nav.product", icon: BarChart3 },
     ],
   },
   {
+    key: "market",
+    label: "admin.groups.market",
+    items: [
+      { to: "/admin/picks", label: "admin.nav.picks", icon: ListChecks },
+      { to: "/admin/performance", label: "admin.nav.performance", icon: LineChart },
+      { to: "/admin/odds", label: "admin.nav.odds", icon: TrendingUp },
+    ],
+  },
+  {
+    key: "intelligence",
     label: "admin.groups.intelligence",
     items: [
       { to: "/admin/models", label: "admin.nav.models", icon: Cpu },
@@ -169,6 +199,7 @@ export const adminNav: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
   {
+    key: "football",
     label: "admin.groups.football",
     items: [
       { to: "/admin/competitions", label: "admin.nav.competitions", icon: Trophy },
@@ -179,23 +210,56 @@ export const adminNav: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
   {
+    key: "system",
     label: "admin.groups.system",
     items: [
+      { to: "/admin/system", label: "admin.nav.system", icon: ClipboardList },
       { to: "/admin/data-truth", label: "admin.nav.dataTruth", icon: ScanSearch },
       { to: "/admin/data-quality", label: "admin.nav.dataQuality", icon: Database },
-      { to: "/admin/system", label: "admin.nav.system", icon: ClipboardList },
       { to: "/admin/storage", label: "admin.nav.storage", icon: HardDrive },
       { to: "/admin/migration", label: "admin.nav.migration", icon: Workflow },
-      { to: "/admin/users", label: "admin.nav.users", icon: UserRound },
-      { to: "/admin/messages", label: "admin.nav.messages", icon: Mail },
-      { to: "/admin/announcements", label: "admin.nav.announcements", icon: Megaphone },
-      { to: "/admin/payments", label: "admin.nav.payments", icon: Banknote },
-      { to: "/admin/product", label: "admin.nav.product", icon: BarChart3 },
       { to: "/admin/audit", label: "admin.nav.audit", icon: ScrollText },
       { to: "/admin/settings", label: "admin.nav.settings", icon: Settings },
     ],
   },
 ];
+
+/** Every destination of the console's menu, «Resumen» first: 28. */
+export const adminDestinations: NavItem[] = [adminHome, ...adminNav.flatMap((g) => g.items)];
+
+const ADMIN_NAV_KEY = "predigol.admin.nav.folded";
+
+/** The groups this browser folded, by key. Storage can be missing or refuse: then nothing is folded. */
+export function readFoldedAdminGroups(store: Pick<Storage, "getItem"> | null): Set<string> {
+  try {
+    const raw = store?.getItem(ADMIN_NAV_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    const known = new Set<string>(adminNav.map((g) => g.key));
+    return new Set(
+      Array.isArray(parsed)
+        ? parsed.filter((k): k is string => typeof k === "string" && known.has(k))
+        : [],
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+export function writeFoldedAdminGroups(
+  store: Pick<Storage, "setItem"> | null,
+  folded: ReadonlySet<string>,
+): void {
+  try {
+    store?.setItem(ADMIN_NAV_KEY, JSON.stringify([...folded].sort()));
+  } catch {
+    // a browser that keeps nothing still folds and unfolds: it just forgets on the next visit
+  }
+}
+
+/** The group a path belongs to: it is shown open whatever the browser remembers, so the current page is never hidden. */
+export function adminGroupOf(pathname: string): AdminNavGroup["key"] | null {
+  return adminNav.find((g) => g.items.some((i) => isActive(pathname, i.to, i.exact)))?.key ?? null;
+}
 
 export function isActive(pathname: string, to: string, exact = false): boolean {
   return exact ? pathname === to : pathname === to || pathname.startsWith(`${to}/`);
