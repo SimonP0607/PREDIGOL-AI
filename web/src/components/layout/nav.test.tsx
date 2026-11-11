@@ -152,7 +152,10 @@ describe("the phone's bar", () => {
 
   test("on a page of «Más» its cell is lit; open, it says it is expanded", async () => {
     const out = await html(<BottomBar pathname="/odds" moreOpen onMore={() => {}} />);
-    expect(tag(out, "tab-more")).toContain("text-gold");
+    // lit: the label in the page's white and the pill behind its icon (never the colour alone: aria-expanded says it)
+    expect(tag(out, "tab-more")).toContain("data-active");
+    expect(tag(out, "tab-more")).toContain("text-foreground");
+    expect(out).toMatch(/data-testid="tab-more"[\s\S]*?bg-primary-soft/);
     expect(tag(out, "tab-more")).toContain('aria-expanded="true"');
     expect(out.match(/aria-current="page"/g) ?? []).toHaveLength(0);
   });
@@ -176,7 +179,8 @@ describe("the desk's top bar", () => {
     expect(out).not.toContain("nav-live");
     expect(out).not.toContain('data-testid="nav-parlays"');
     // Parlays is a page of «Más»: the menu's trigger carries the mark
-    expect(out).toMatch(/data-testid="nav-more"[\s\S]*bg-gold/);
+    expect(tag(out, "nav-more")).toContain("data-active");
+    expect(tag(out, "nav-more")).toContain("bg-primary-soft");
   });
 });
 
@@ -192,6 +196,27 @@ describe("«Más»", () => {
         onSignOut={() => {}}
       />,
     );
+
+  test("the language has a row of its own, before «Cerrar sesión», once it left the top bar - and none without it", async () => {
+    setLocale("es");
+    const out = await html(
+      <MoreList
+        items={moreItems(true)}
+        pathname="/home"
+        standalone={false}
+        platform="android"
+        onPick={() => {}}
+        onSignOut={() => {}}
+        language={<button type="button">ES</button>}
+      />,
+    );
+    const row = out.indexOf('data-testid="more-language"');
+    expect(row).toBeGreaterThan(out.indexOf('data-testid="more-updates"'));
+    expect(row).toBeLessThan(out.indexOf('data-testid="more-sign-out"'));
+    expect(out.slice(row, row + 600)).toContain("Idioma");
+    expect(tag(out, "more-language")).toContain("min-h-14");
+    expect(await list("/home")).not.toContain("more-language");
+  });
 
   test("its rows in the plan's order, each 56 px tall, the page's own marked", async () => {
     setLocale("es");

@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { t } from "@/lib/i18n";
+import { t, useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { BrandLogo } from "@/components/brand/Brand";
 import { StatusBarSpace } from "@/components/layout/StatusBarSpace";
@@ -24,7 +24,7 @@ import { FeedbackProvider } from "@/product/feedback/FeedbackProvider";
 import { PushProvider } from "@/product/push/PushProvider";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { BottomBar, TopNav } from "./Bars";
-import { AccountMenu, LanguageSwitch, PreviewBanner } from "./HeaderControls";
+import { AccountMenu, PreviewBanner } from "./HeaderControls";
 import { MoreSheet } from "./MoreSheet";
 import { UPDATES_PATH } from "./nav";
 import { useMoreItems } from "./useMoreItems";
@@ -52,6 +52,8 @@ function ShadowPreviewStrip() {
 }
 
 export function UserShell({ children }: { children: ReactNode }) {
+  const auth = useAuth();
+  const { locale } = useI18n();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // A phone shows one notice at a time: three stacked "added to your parlay" cover the top of the screen.
   const phone = useMediaQuery("(max-width: 639px)");
@@ -75,15 +77,21 @@ export function UserShell({ children }: { children: ReactNode }) {
               <PreviewBanner />
               <ShadowPreviewStrip />
               {/* Sideways on a phone the bar scrolls away with the page: 56 px of a 390 px screen is too much. */}
-              <header className="sticky top-[env(safe-area-inset-top)] z-30 border-b border-border bg-background/85 backdrop-blur short:static">
-                <div className="px-safe mx-auto flex h-14 max-w-6xl items-center gap-3 sm:gap-4">
+              <header className="sticky top-[env(safe-area-inset-top)] z-30 border-b border-foreground/[0.06] bg-background-deep/90 backdrop-blur-lg short:static">
+                <div className="px-safe mx-auto flex h-[var(--app-bar-h)] max-w-6xl items-center gap-3 sm:gap-4 lg:gap-5">
                   {/* min-w-0: on a 320 px phone the brand gives way to the controls instead of pushing them off. */}
-                  <Link to="/home" aria-label="PrediGol" className="tap-y relative min-w-0">
-                    <BrandLogo size={30} tagline={t("common.tagline")} />
+                  <Link to="/home" className="tap-y relative min-w-0">
+                    <BrandLogo size={34} tagline={t("common.tagline")} />
                   </Link>
-                  <TopNav pathname={pathname} items={items} unread={unread ? [UPDATES_PATH] : []} />
+                  <TopNav
+                    pathname={pathname}
+                    items={items}
+                    unread={unread ? [UPDATES_PATH] : []}
+                    language={{ locale, onChange: (next) => void auth.setLocale(next) }}
+                  />
+                  {/* The language left the bar (plan maestro UX/UI 2026, wave 3): it is in «Más» and in Perfil. The
+                  bell of Avisos takes this place when the inbox exists; nothing is drawn while it does not. */}
                   <div className="ml-auto flex items-center gap-2">
-                    <LanguageSwitch />
                     <AccountMenu />
                   </div>
                 </div>

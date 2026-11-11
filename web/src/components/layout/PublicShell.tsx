@@ -7,17 +7,18 @@ import { BrandLogo } from "@/components/brand/Brand";
 import { Disclaimer } from "@/components/system/Disclaimer";
 import { t } from "@/lib/i18n";
 import { AnnouncementBanner } from "@/product/announcements/AnnouncementBanner";
+import { buttonVariants } from "@/components/ui/button";
 import { LanguageSwitch } from "./HeaderControls";
 
 export function PublicShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
-      <header className="safe-top sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur short:static">
-        <div className="px-safe mx-auto flex h-14 max-w-6xl items-center gap-3 sm:gap-4">
-          <a href="/login" aria-label="PrediGol" className="tap-y relative min-w-0">
+      <header className="safe-top sticky top-0 z-30 border-b border-foreground/[0.06] bg-background-deep/90 backdrop-blur-lg short:static">
+        <div className="px-safe mx-auto flex h-[var(--app-bar-h)] max-w-6xl items-center gap-3 sm:gap-4">
+          <a href="/login" className="tap-y relative min-w-0">
             {/* The sign-in button leaves the tagline no room under 480 px: hidden there, never cut with «…» (UX-095). */}
             <BrandLogo
-              size={30}
+              size={34}
               tagline={t("common.tagline")}
               className="[&_[data-brand-tagline]]:max-[479px]:hidden"
             />
@@ -26,7 +27,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
             <LanguageSwitch />
             <a
               href="/login"
-              className="tap-y relative rounded-md border border-border-strong px-3 py-1.5 text-sm font-medium hover:bg-elevated"
+              className={buttonVariants({ variant: "secondary", size: "sm" })}
               data-testid="public-sign-in"
             >
               {t("legal.page.signIn")}

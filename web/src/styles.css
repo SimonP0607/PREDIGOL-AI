@@ -209,13 +209,20 @@
 }
 
 /*
- * The product's top bar: 56 px, plus the status bar of the installed iPhone app (black-translucent status bar and
- * viewport-fit=cover put the page under it). Bars that stick below it (the Match Center's tabs, a competition's
- * header) stick at --app-sticky-top; a phone held sideways lets the top bar scroll away, so they stick at the top.
+ * The product's top bar: 60 px on a phone and a tablet, 68 px at a desk («Noche de partido», the system's sheet 5), plus
+ * the status bar of the installed iPhone app (black-translucent status bar and viewport-fit=cover put the page under
+ * it). Bars that stick below it (the Match Center's tabs, a competition's header) stick at --app-sticky-top; a phone
+ * held sideways lets the top bar scroll away, so they stick at the top.
  */
 :root {
-  --app-header-h: calc(3.5rem + env(safe-area-inset-top));
+  --app-bar-h: 3.75rem;
+  --app-header-h: calc(var(--app-bar-h) + env(safe-area-inset-top));
   --app-sticky-top: var(--app-header-h);
+}
+@media (min-width: 64rem) {
+  :root {
+    --app-bar-h: 4.25rem;
+  }
 }
 @media (orientation: landscape) and (max-height: 32rem) {
   :root {

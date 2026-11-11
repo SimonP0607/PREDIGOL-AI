@@ -6,7 +6,7 @@ import { t } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { BrandMark } from "@/components/brand/Brand";
 import { adminNav, isActive } from "./nav";
-import { AccountMenu, LanguageSwitch, PreviewBanner } from "./HeaderControls";
+import { AccountMenu, PreviewBanner } from "./HeaderControls";
 import { useQuery } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
 import { DataSourcesProvider, PageDataModeBadge } from "@/components/system/DataSources";
@@ -145,7 +145,8 @@ function GlobalSearch({ onOpenPalette }: { onOpenPalette: () => void }) {
         <button
           type="button"
           onClick={onOpenPalette}
-          aria-label={t("admin.shell.openPalette")}
+          // what is on the key, then what it does: the name a voice user says is on the screen (WCAG 2.5.3)
+          aria-label={`⌘K, ${t("admin.shell.openPalette")}`}
           className="numeric tap absolute right-1.5 inline-flex min-h-6 min-w-6 items-center justify-center rounded border border-border px-1 py-0.5 text-caption text-subtle-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           ⌘K
@@ -266,8 +267,8 @@ function Topbar({
           <Search className="h-4 w-4" />
         </button>
         <PreviewButton />
-        <LanguageSwitch />
-        <AccountMenu />
+        {/* the language is in the account's menu (plan maestro UX/UI 2026, wave 3) */}
+        <AccountMenu language />
       </div>
     </header>
   );

@@ -1,14 +1,23 @@
 /** The PrediGol crest and wordmark. The crest is the brand's main asset (public/brand). */
 import { cn } from "@/lib/utils";
 
-export function BrandMark({ size = 32, className }: { size?: number; className?: string }) {
+export function BrandMark({
+  size = 32,
+  className,
+  alt = "PrediGol",
+}: {
+  size?: number;
+  className?: string;
+  /** Empty beside the wordmark, which already says the name. */
+  alt?: string;
+}) {
   return (
     <img
       src="/brand/predigol-mark-64.png"
       srcSet="/brand/predigol-mark-64.png 1x, /brand/predigol-mark-128.png 2x"
       width={size}
       height={size}
-      alt="PrediGol"
+      alt={alt}
       decoding="async"
       className={cn("shrink-0 select-none object-contain", className)}
       draggable={false}
@@ -25,7 +34,7 @@ export function Wordmark({
 }) {
   return (
     <span className={cn("flex min-w-0 flex-col leading-none", className)}>
-      <span className="font-display text-[1.05rem] font-bold tracking-tight">
+      <span className="font-display text-lg font-extrabold leading-none">
         <span className="text-foreground">Predi</span>
         <span className="text-gold">Gol</span>
       </span>
@@ -55,7 +64,9 @@ export function BrandLogo({
 }) {
   return (
     <span className={cn("flex min-w-0 items-center gap-2.5", className)}>
-      <BrandMark size={size} />
+      {/* the wordmark says the name: the crest beside it is decoration, and a link around the two is named by what
+      is on the screen (WCAG 2.5.3) */}
+      <BrandMark size={size} alt="" />
       <Wordmark tagline={tagline} />
     </span>
   );

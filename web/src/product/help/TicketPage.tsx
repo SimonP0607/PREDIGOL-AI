@@ -7,7 +7,7 @@
 import { useId, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
+import { ChevronLeft, CheckCircle2, Loader2 } from "lucide-react";
 import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { SupportState, SupportTicket } from "@/lib/api/v1/types_support";
@@ -18,6 +18,7 @@ import { Card, EmptyState, ErrorState, SkeletonCards, errorMessage } from "@/pro
 import { MAX_TEXT } from "@/product/support/report";
 import { ReportButton } from "./HelpPage";
 import { fieldVariants } from "@/components/ui/field";
+import { BACK_LINK } from "@/components/layout/nav";
 
 const EFFORT = [1, 2, 3, 4, 5] as const;
 
@@ -33,12 +34,8 @@ function useSaved() {
 export function TicketPage({ ticketId }: { ticketId: number }) {
   const q = useQuery(live.support);
   const back = (
-    <Link
-      to="/help"
-      className="tap-y relative inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-medium text-primary"
-      data-testid="ticket-back"
-    >
-      <ArrowLeft aria-hidden className="h-4 w-4" />
+    <Link to="/help" className={BACK_LINK} data-testid="ticket-back">
+      <ChevronLeft aria-hidden className="h-5 w-5" />
       {t("support.ticket.back")}
     </Link>
   );

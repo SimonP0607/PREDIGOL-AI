@@ -19,10 +19,18 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+/**
+ * The language, as a segmented pair («Noche de partido», the system's sheet 3). Before the product (sign-in, the
+ * account's pages, legal texts) it sits at the top; with a session it lives in «Más» and in Perfil, and in the
+ * console in the account's menu (plan maestro UX/UI 2026, wave 3). Each button says its code and, to a screen reader,
+ * the language's own name after it: the name a voice user says is the one on the screen (WCAG 2.5.3).
+ */
 export function LanguageSwitch({ className }: { className?: string | undefined }) {
   const auth = useAuth();
   const { locale } = useI18n();
@@ -30,30 +38,58 @@ export function LanguageSwitch({ className }: { className?: string | undefined }
     <div
       role="group"
       aria-label={t("common.language")}
-      className={cn("flex items-center rounded-md border border-border bg-card p-0.5", className)}
+      className={cn(
+        "inline-flex shrink-0 items-center rounded-full border border-border bg-card p-[3px]",
+        className,
+      )}
     >
       {LOCALES.map((l: Locale) => (
         <button
           key={l}
           type="button"
           aria-pressed={locale === l}
-          aria-label={LOCALE_NAMES[l]}
           title={LOCALE_NAMES[l]}
           lang={l}
           data-testid={`lang-${l}`}
           onClick={() => void auth.setLocale(l)}
           className={cn(
-            // Touch: wider and taller to the eye, and 44 px tall to the finger (tap-y: the two sit side by side).
-            "tap-y relative rounded px-1.5 py-0.5 text-[0.7rem] pointer-coarse:text-xs font-bold uppercase tracking-wider transition-colors pointer-coarse:min-w-11 pointer-coarse:px-2 pointer-coarse:py-1.5",
+            // 32 px to the eye and 44 px tall to the finger (tap-y: the two sit side by side)
+            "tap-y motion-press relative inline-flex h-8 min-w-[2.375rem] cursor-pointer items-center justify-center rounded-full px-2.5 font-display text-xs font-bold uppercase tracking-[0.04em] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary pointer-coarse:min-w-11",
             locale === l
-              ? "bg-primary text-primary-foreground"
+              ? "bg-primary-soft text-primary"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
           {l}
+          <span className="sr-only">{LOCALE_NAMES[l]}</span>
         </button>
       ))}
     </div>
+  );
+}
+
+/** The language inside a menu: one radio item per language, its own name in its own language. */
+export function LanguageRadios({
+  locale,
+  onChange,
+}: {
+  locale: Locale;
+  onChange: (next: Locale) => void;
+}) {
+  return (
+    <DropdownMenuRadioGroup value={locale} onValueChange={(next) => onChange(next as Locale)}>
+      {LOCALES.map((l: Locale) => (
+        <DropdownMenuRadioItem
+          key={l}
+          value={l}
+          lang={l}
+          data-testid={`lang-${l}`}
+          className="pointer-coarse:min-h-11"
+        >
+          {LOCALE_NAMES[l]}
+        </DropdownMenuRadioItem>
+      ))}
+    </DropdownMenuRadioGroup>
   );
 }
 
@@ -68,19 +104,27 @@ function initialsOf(name: string): string {
   );
 }
 
-export function AccountMenu() {
+export function AccountMenu({
+  language = false,
+}: {
+  /** The console's menu carries the language (the product's «Más» does, for a reader). */
+  language?: boolean;
+}) {
   const auth = useAuth();
+  const { locale } = useI18n();
   const navigate = useNavigate();
   const user = auth.user;
   if (!user) return null;
+  const initials = initialsOf(user.display_name);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label={t("common.account")}
+        // the initials on the screen open the name a screen reader says (WCAG 2.5.3)
+        aria-label={`${initials}, ${t("common.account")}`}
         data-testid="account-menu"
-        className="tap relative flex h-8 w-8 items-center justify-center rounded-full border border-border-strong bg-elevated text-xs font-bold text-foreground hover:border-gold/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:h-10 pointer-coarse:w-10"
+        className="tap motion-press relative flex h-[2.375rem] w-9 shrink-0 cursor-pointer items-center justify-center rounded-b-[1.125rem] rounded-t-[0.625rem] border border-gold/45 bg-linear-to-b from-accent to-elevated font-display text-xs font-extrabold text-gold-strong hover:border-gold/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
-        {initialsOf(user.display_name)}
+        {initials}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="space-y-0.5">
@@ -157,6 +201,15 @@ export function AccountMenu() {
             )}
             {auth.previewAsUser ? t("nav.exitPreview") : t("nav.previewAsUser")}
           </DropdownMenuItem>
+        ) : null}
+        {language ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-caption font-medium text-muted-foreground">
+              {t("common.language")}
+            </DropdownMenuLabel>
+            <LanguageRadios locale={locale} onChange={(next) => void auth.setLocale(next)} />
+          </>
         ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem
