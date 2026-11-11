@@ -98,6 +98,7 @@
   --color-info-soft: var(--info-soft);
   --color-neutral-state: var(--neutral-state);
   --color-gold: var(--gold);
+  --color-card-yellow: var(--card-yellow);
   --color-gold-strong: var(--gold-strong);
   --color-gold-soft: var(--gold-soft);
   --color-gold-foreground: var(--gold-foreground);
@@ -185,6 +186,8 @@
   --warning-soft: oklch(0.78 0.16 62 / 14%);
   /* PrediGol gold, sampled from the crest (#ECB73D). */
   --gold: oklch(0.81 0.14 82);
+  /* a yellow card: a card's own yellow (#F2C230), not the amber of a warning */
+  --card-yellow: oklch(0.836 0.158 91);
   --gold-strong: oklch(0.87 0.13 88);
   --gold-soft: oklch(0.81 0.14 82 / 13%);
   --gold-foreground: oklch(0.2 0.03 80);
