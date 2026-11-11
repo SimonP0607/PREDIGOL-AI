@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
+import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -145,3 +147,84 @@ def test_the_auto_workflow_holds_the_key_only_in_its_own_environment_and_never_i
     for verb in re.findall(r'ssh predigol-gh "(\w+)', text):
         assert verb in {"discard", "start", "status"}, verb
     assert "--owner-ok" not in text and "scp " not in text and "rsync" not in text
+
+
+# ---- the clock of the release job (CI-019) -------------------------------------------------------------------------------------------
+# A chain with its backup and its restore test outlasts four hours; GitHub cuts a job at six. The job has ONE clock: it waits for a busy
+# server, follows its chain until the clock runs out, and when it does it ends RED saying the chain goes on. It never calls that a deploy.
+
+GITHUB_JOB_LIMIT_MINUTES = 360
+
+
+def _release_steps() -> dict[str, dict[str, Any]]:
+    return {str(step.get("name")): step for step in _wf()["jobs"]["release"]["steps"]}
+
+
+def test_the_release_job_has_one_clock_that_fits_under_the_limit_of_github() -> None:
+    release = _wf()["jobs"]["release"]
+    steps = _release_steps()
+    names = list(steps)
+    clock = steps["Reloj del trabajo (hasta cuándo puede seguir la cadena)"]
+    found = re.search(r"\+ (\d+) \* 60 \)\)", clock["run"])
+    assert clock["id"] == "clock" and found, "the clock is one number of minutes from the start of the job"
+    minutes = int(found.group(1))
+    assert minutes + 10 <= release["timeout-minutes"] < GITHUB_JOB_LIMIT_MINUTES, "the job says why it stops before GitHub kills it"
+    assert names.index("Reloj del trabajo (hasta cuándo puede seguir la cadena)") < names.index("Llave de despliegue y huella del servidor")
+    follow = steps["Arrancar la cadena y seguirla"]
+    assert follow["env"]["DEADLINE"] == "${{ steps.clock.outputs.deadline }}" and "while (( $(date +%s) < DEADLINE ))" in follow["run"]
+    assert "seq 1" not in follow["run"], "a fixed count of minutes ignores what the precheck already waited"
+    waited = re.search(r'ci_precheck\.sh predigol-gh "\$KIT_NAME" (\d+) (\d+) ', next(s["run"] for n, s in steps.items() if n.startswith("Precheck")))
+    assert waited, "the precheck states how long it waits for a busy server"
+    tries, pause = int(waited.group(1)), int(waited.group(2))
+    assert 30 * 60 <= tries * pause < minutes * 60 // 2, "long enough for a backup to end, short enough to leave the chain most of the clock"
+
+
+def _follow(tmp_path: Path, statuses: list[str], deadline: str) -> tuple[subprocess.CompletedProcess[str], str, int]:
+    """Runs the step that starts and follows the chain against a `ssh` that answers `start` and then the n-th status; `sleep` is short."""
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    for i, text in enumerate(statuses, start=1):
+        (tmp_path / f"s{i}").write_text(text, encoding="utf-8")
+    (bindir / "ssh").write_text(
+        '#!/usr/bin/env bash\necho "$2" >> "$FAKE/calls"\ncase "$2" in start*) exit 0 ;; esac\n'
+        'n=$(cat "$FAKE/n" 2>/dev/null || echo 0); n=$((n + 1)); echo $n > "$FAKE/n"\n'
+        'f="$FAKE/s$n"; [ -f "$f" ] || f="$FAKE/s$(ls "$FAKE" | grep -c "^s[0-9]")"; cat "$f"\n',
+        encoding="utf-8",
+    )
+    (bindir / "sleep").write_text(f"#!/usr/bin/env bash\nexec {shutil.which('sleep')} 0.3\n", encoding="utf-8")
+    for tool in ("ssh", "sleep"):
+        (bindir / tool).chmod(0o755)
+    summary = tmp_path / "summary.md"
+    env = {"PATH": f"{bindir}:/usr/bin:/bin", "FAKE": str(tmp_path), "KIT": "20261111T1247Z-auto-10d637d", "DEADLINE": deadline,
+           "GITHUB_STEP_SUMMARY": str(summary)}
+    script = _release_steps()["Arrancar la cadena y seguirla"]["run"]
+    out = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True, check=False, timeout=60)
+    calls = (tmp_path / "calls").read_text(encoding="utf-8").splitlines() if (tmp_path / "calls").exists() else []
+    return out, summary.read_text(encoding="utf-8") if summary.exists() else "", len(calls)
+
+
+def _in(seconds: int) -> str:
+    return str(int(time.time()) + seconds)
+
+
+def test_the_job_is_green_only_when_it_saw_the_chain_deploy(tmp_path: Path) -> None:
+    out, summary, _ = _follow(tmp_path, ["STATE: running (step_backup)\n", "STATE: deployed 20261111T1247Z-auto-10d637d\nsmoke OK\n"], _in(30))
+    assert out.returncode == 0 and "### Desplegado" in summary and "sigue en marcha" not in summary
+
+
+def test_the_job_is_red_when_the_chain_stopped(tmp_path: Path) -> None:
+    out, summary, _ = _follow(tmp_path, ["STATE: stopped at step_restore_test\n"], _in(30))
+    assert out.returncode == 1 and "SE DETUVO" in summary and "### Desplegado" not in summary
+
+
+def test_when_the_clock_runs_out_the_job_is_red_and_says_the_chain_goes_on(tmp_path: Path) -> None:
+    out, summary, calls = _follow(tmp_path, ["STATE: running (step_backup)\n"], _in(2))
+    assert out.returncode == 1, "a job that did not see the end never claims a deploy"
+    assert "sigue en marcha" in out.stdout and "### La cadena sigue en marcha" in summary and "### Desplegado" not in summary
+    assert "chain.log" in summary and 2 <= calls <= 12, "it followed the chain until its clock, not for a fixed count"
+
+
+@pytest.mark.parametrize("bad", ["", "soon", "12", "1762870000; id"])
+def test_a_clock_that_is_not_a_time_starts_nothing(tmp_path: Path, bad: str) -> None:
+    out, _, calls = _follow(tmp_path, ["STATE: running\n"], bad)
+    assert out.returncode == 1 and "bad deadline" in out.stdout and calls == 0, "the chain is not started without a clock to follow it"
