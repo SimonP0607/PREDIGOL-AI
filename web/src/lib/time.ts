@@ -68,13 +68,31 @@ function guard(value: string | number | Date | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** 18:00 */
+/**
+ * How the clock is written. 24 hours («18:00») is the one way today; the reader's choice arrives with its setting
+ * (plan maestro UX/UI 2026, decision 8) - here, and nowhere else: it changes how an hour is written, never the hour, its
+ * zone or what is computed from it (offsetMinutes below keeps its own 24-hour clock: it calculates, it does not write).
+ */
+export type HourCycle = "h23";
+const HOUR_CYCLE: HourCycle = "h23";
+
+/** The clock every hour on a screen is written with. */
+export function hourCycle(): HourCycle {
+  return HOUR_CYCLE;
+}
+
+/**
+ * 18:00 - the one formatter of an hour (plan maestro UX/UI 2026, PR-10): every hour on a screen, alone or after a date
+ * (formatDateTime, formatKickoff), is written by it.
+ */
 export function formatTime(
   value: string | number | Date | null | undefined,
   tz: string = zone,
 ): string {
   const d = guard(value);
-  return d ? dtf({ hour: "2-digit", minute: "2-digit", hourCycle: "h23" }, tz).format(d) : DASH;
+  return d
+    ? dtf({ hour: "2-digit", minute: "2-digit", hourCycle: hourCycle() }, tz).format(d)
+    : DASH;
 }
 
 /** sáb 4 oct / Sat 4 Oct */
