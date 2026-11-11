@@ -4,30 +4,21 @@
  * 390 px phone, against WCAG 2.2 A and AA. Since the closing plan (5.2) it is a gate: a CRITICAL or SERIOUS violation
  * fails the test, naming the rule and the elements; moderate and minor ones are still written down. The counts by
  * impact go to the report as an annotation and the whole result to axe-<page>-<width>.json in the test's output folder.
+ * Since the 2026 redesign's wave 0 it reads every screen of e2e/inventory.ts: the pages before the product, a match's
+ * six sections and the Admin Console's menu too. E2E_A11Y_REPORT=1 writes the results down without failing: the
+ * baseline of a wave, taken before it changes anything.
  */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { writeFileSync } from "node:fs";
 import { statePath } from "./accounts";
+import { CONSOLE_PAGES, MATCH_TABS, PUBLIC_PAGES, READER_PAGES, firstMatchPath } from "./inventory";
 import { settle } from "./support";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
-const PRODUCT = [
-  "/home",
-  "/matches",
-  "/live",
-  "/picks",
-  "/parlays",
-  "/odds",
-  "/my-picks",
-  "/profile",
-  "/help/glossary",
-  "/help/how-it-works",
-  "/help",
-  // plan UX, A15: the pages of A4 and A12 the reader reaches from «Más» or a footer
-  "/transparency",
-  "/legal/terms",
-];
+const REPORT_ONLY = Boolean(process.env["E2E_A11Y_REPORT"]);
+// plan UX, A15: the pages of A4 and A12 the reader reaches from «Más» or a footer are read signed in as well
+const PRODUCT = [...READER_PAGES, "/legal/terms"];
 const WIDTHS: ReadonlyArray<readonly [number, number]> = [
   [1440, 900],
   [390, 844],
@@ -70,17 +61,22 @@ async function measure(page: Page, info: TestInfo, path: string, width: number):
       2,
     ),
   );
-  expect(blocking, `${path} @ ${width}px: axe`).toEqual([]);
+  if (!REPORT_ONLY) expect(blocking, `${path} @ ${width}px: axe`).toEqual([]);
 }
 
-for (const [width, height] of WIDTHS) {
-  test(`axe on the sign-in page at ${width} px`, async ({ page }, info) => {
-    await page.setViewportSize({ width, height });
-    await page.goto("/login");
-    await settle(page);
-    await measure(page, info, "/login", width);
-  });
-}
+test.describe("the pages before the product", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  for (const [width, height] of WIDTHS) {
+    for (const path of PUBLIC_PAGES) {
+      test(`axe on ${path} without a session at ${width} px`, async ({ page }, info) => {
+        await page.setViewportSize({ width, height });
+        await page.goto(path);
+        await settle(page);
+        await measure(page, info, path, width);
+      });
+    }
+  }
+});
 
 test.describe("the product, signed in", () => {
   test.use({ storageState: statePath("user") });
@@ -130,4 +126,36 @@ test.describe("the sheets of the phone, open", () => {
     await page.getByTestId("matches-filters-sheet").waitFor();
     await measure(page, info, "/matches+filters", 390);
   });
+});
+
+// The 2026 redesign's wave 0: a match's six sections, which the product's list above never opened.
+test.describe("a match, section by section", () => {
+  test.use({ storageState: statePath("user") });
+  for (const [width, height] of WIDTHS) {
+    test(`axe on a match's six sections at ${width} px`, async ({ page }, info) => {
+      test.setTimeout(150_000);
+      await page.setViewportSize({ width, height });
+      const match = await firstMatchPath(page);
+      test.skip(match === null, "no match on /matches today");
+      for (const tab of MATCH_TABS) {
+        await page.goto(`${match}#${tab}`);
+        await settle(page);
+        await measure(page, info, `/matches/:id#${tab}`, width);
+      }
+    });
+  }
+});
+
+// The Admin Console's menu at the owner's desk: measured since the 2026 redesign's wave 0 (its pages get the new
+// primitives in wave 15).
+test.describe("the Admin Console", () => {
+  test.use({ storageState: statePath("admin"), locale: "en-GB" });
+  for (const path of CONSOLE_PAGES) {
+    test(`axe on ${path} at 1440 px`, async ({ page }, info) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto(path);
+      await settle(page);
+      await measure(page, info, path, 1440);
+    });
+  }
 });
