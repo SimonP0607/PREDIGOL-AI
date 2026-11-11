@@ -216,7 +216,7 @@ function BooksTable({ view }: { view: MarketView }) {
                   <td key={view.columns[i]?.selection ?? i} className="py-1.5 pl-2 text-right">
                     {c ? (
                       <span className="inline-flex flex-col items-end">
-                        <span className={cn("numeric", c.best && "font-semibold text-gold-strong")}>
+                        <span className={cn("numeric", c.best && "font-bold text-primary")}>
                           {formatOdds(c.odds)}
                         </span>
                         {c.firstSeen ? <Moved now={c.odds} first={c.firstSeen} /> : null}

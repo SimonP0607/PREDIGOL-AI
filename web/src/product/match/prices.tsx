@@ -11,6 +11,7 @@ import type { MarketPriceStatus } from "@/lib/api/v1/types";
 import { SelectablePrice } from "@/product/odds/SelectablePrice";
 import { OddsPill } from "@/product/shared/Bits";
 import { marketName } from "@/product/shared/markets";
+import { priceVariants } from "@/product/shared/price";
 import { priceChooser, type Choose } from "./choose";
 import type { MatchCtx } from "./context";
 import {
@@ -114,10 +115,7 @@ export function LiveOdds({ price, size = "md" }: { price: LivePrice | null; size
     return (
       <span
         title={t("match.liveOdds.suspendedHelp")}
-        className={cn(
-          "numeric inline-flex items-center justify-center gap-1 rounded-md border border-warning/40 bg-warning-soft font-semibold text-warning",
-          size === "sm" ? "min-w-[3rem] px-1.5 py-0.5 text-xs" : "min-w-[3.5rem] px-2 py-1 text-sm",
-        )}
+        className={priceVariants({ size, tone: "locked" })}
       >
         <Lock aria-hidden className="h-3 w-3" />
         <span className="opacity-70">{formatOdds(price?.odds)}</span>
@@ -129,10 +127,8 @@ export function LiveOdds({ price, size = "md" }: { price: LivePrice | null; size
     <span
       title={t("match.liveOdds.withdrawnHelp")}
       className={cn(
-        "inline-flex items-center justify-center rounded-md border border-dashed border-border-strong text-subtle-foreground",
-        size === "sm"
-          ? "min-w-[3rem] px-1.5 py-0.5 text-micro"
-          : "min-w-[3.5rem] px-2 py-1 text-xs",
+        priceVariants({ size, tone: "none" }),
+        size === "sm" ? "text-micro" : "text-xs",
       )}
     >
       {t("match.liveOdds.withdrawn")}

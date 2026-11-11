@@ -21,7 +21,8 @@ export function PriceNowLine({
   return (
     <span
       className={cn(
-        "flex flex-col items-end gap-0.5 text-caption text-muted-foreground",
+        // never wider than 10rem: beside a pick's text, an old price's hour goes under it instead of squeezing the text
+        "flex max-w-[10rem] flex-col items-end gap-0.5 text-right text-caption text-muted-foreground",
         className,
       )}
       data-testid="price-now"
@@ -36,8 +37,8 @@ export function PriceNowLine({
           </>
         )}
       </span>
-      <span className="inline-flex items-center gap-1">
-        <Freshness at={now.as_of} level={now.freshness} hint={false} />
+      <span className="flex flex-wrap items-center justify-end gap-x-1 gap-y-0.5">
+        <Freshness at={now.as_of} level={now.freshness} hint={false} className="justify-end" />
         {stale ? <span className="text-warning">{t("records.priceNow.stale")}</span> : null}
       </span>
     </span>

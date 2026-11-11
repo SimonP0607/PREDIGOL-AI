@@ -3,13 +3,21 @@ import { Clock, FlaskConical, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { formatOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
-import { formatKickoff, formatRelative, formatTime } from "@/lib/time";
+import {
+  dayKey,
+  formatDateTime,
+  formatKickoff,
+  formatRelative,
+  formatTime,
+  todayKey,
+} from "@/lib/time";
 import type { PriceFreshness, ParlayRisk } from "@/lib/api/v1/types_product";
 import { termShort } from "@/lib/glossary";
 import { hintProps } from "@/components/system/tapHint";
 import { riskLabel } from "./markets";
+import { priceVariants } from "./price";
 
-/** A decimal price. `best` marks the selected value in PrediGol gold. */
+/** A decimal price, as the system's price chip. `best` marks the selected value in PrediGol gold. */
 export function OddsPill({
   odds,
   best = false,
@@ -22,18 +30,7 @@ export function OddsPill({
   className?: string | undefined;
 }) {
   return (
-    <span
-      className={cn(
-        "numeric inline-flex items-center justify-center rounded-md border font-semibold tabular-nums",
-        size === "sm" && "min-w-[3rem] px-1.5 py-0.5 text-xs",
-        size === "md" && "min-w-[3.5rem] px-2 py-1 text-sm",
-        size === "lg" && "min-w-[4.5rem] px-3 py-1.5 text-lg",
-        best
-          ? "border-gold/50 bg-gold-soft text-gold-strong"
-          : "border-border-strong bg-elevated text-foreground",
-        className,
-      )}
-    >
+    <span className={cn(priceVariants({ size, tone: best ? "gold" : "plain" }), className)}>
       {formatOdds(odds)}
     </span>
   );
@@ -73,7 +70,11 @@ export function EvBadge({
   );
 }
 
-/** Model probability against the market's, as two thin bars. */
+/**
+ * Model probability against the market's, as the system's probability bar (sheet 4): the bar is what PrediGol
+ * estimates, the mark is what the market pays. The two figures are written above it; the drawing adds nothing a
+ * screen reader needs.
+ */
 export function ProbCompare({
   model,
   market,
@@ -85,22 +86,34 @@ export function ProbCompare({
 }) {
   const m = toNumber(model);
   const k = toNumber(market);
-  const row = (label: string, v: number | null, tone: string) => (
-    <div className="flex items-center gap-2">
-      <span className="w-[5.5rem] shrink-0 text-caption text-muted-foreground">{label}</span>
-      <span className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-        <span
-          className={cn("absolute inset-y-0 left-0 rounded-full", tone)}
-          style={{ width: `${Math.max(0, Math.min(1, v ?? 0)) * 100}%` }}
-        />
-      </span>
-      <span className="numeric w-12 shrink-0 text-right text-xs">{fmtPct(v)}</span>
-    </div>
-  );
+  // to a tenth of a point: a position on the bar, not a figure anyone reads
+  const at = (v: number) => `${Math.round(Math.max(0, Math.min(1, v)) * 1000) / 10}%`;
   return (
-    <div className={cn("space-y-1", className)}>
-      {row(t("common.modelProbability"), m, "bg-primary")}
-      {row(t("common.marketProbability"), k, "bg-info")}
+    <div className={cn("space-y-2", className)} data-testid="prob-compare">
+      <div className="flex items-baseline justify-between gap-3 text-[0.8125rem] leading-tight text-muted-foreground">
+        <span>
+          {t("common.modelProbability")}{" "}
+          <b className="numeric font-bold text-foreground">{fmtPct(m)}</b>
+        </span>
+        <span className="text-right">
+          {t("common.marketProbability")}{" "}
+          <b className="numeric font-bold text-foreground">{fmtPct(k)}</b>
+        </span>
+      </div>
+      <div aria-hidden className="relative h-2.5 rounded-full bg-elevated">
+        {m === null ? null : (
+          <span
+            className="absolute inset-y-0 left-0 rounded-full bg-primary"
+            style={{ width: at(m) }}
+          />
+        )}
+        {k === null ? null : (
+          <span
+            className="absolute -bottom-1 -top-1 w-[2.5px] -translate-x-1/2 rounded-sm bg-foreground shadow-[0_0_0_2px_var(--card)]"
+            style={{ left: at(k) }}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -108,11 +121,14 @@ export function ProbCompare({
 const FRESH_TONE: Record<PriceFreshness, string> = {
   fresh: "bg-positive",
   aging: "bg-warning",
-  stale: "bg-negative",
+  stale: "bg-warning",
   none: "bg-subtle-foreground",
 };
 
-/** A dot and "hace 12 min" for when a price was captured; what the dot means shows to a mouse and a finger. */
+/**
+ * When a price was captured: a dot and «hace 12 min». An old price never passes as a current one (the system's rule):
+ * it carries a clock and its exact hour, in the warning colour. What the level means shows to a mouse and a finger.
+ */
 export function Freshness({
   at,
   level,
@@ -125,18 +141,34 @@ export function Freshness({
   hint?: boolean;
 }) {
   const lvl: PriceFreshness = level ?? (at ? "fresh" : "none");
+  const old = lvl === "stale" && !!at;
   return (
+    // Two pieces that never break inside: on a narrow column the hour goes under «hace 24 h», whole.
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 text-caption text-muted-foreground",
+        "inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-caption",
+        old ? "font-medium text-warning" : "text-muted-foreground",
         className,
       )}
+      data-freshness={lvl}
       {...(hint ? hintProps(t(`common.freshnessLevel.${lvl}`)) : {})}
     >
-      <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", FRESH_TONE[lvl])} />
-      {at ? formatRelative(at) : t("common.freshnessLevel.none")}
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+        {old ? (
+          <Clock aria-hidden className="h-3 w-3 shrink-0" />
+        ) : (
+          <span aria-hidden className={cn("h-1.5 w-1.5 shrink-0 rounded-full", FRESH_TONE[lvl])} />
+        )}
+        {at ? formatRelative(at) : t("common.freshnessLevel.none")}
+      </span>
+      {old ? <span className="numeric whitespace-nowrap">· {exactHour(at)}</span> : null}
     </span>
   );
+}
+
+/** The hour of a capture; with its date when it is not today's. */
+function exactHour(at: string): string {
+  return dayKey(at) === todayKey() ? formatTime(at) : formatDateTime(at);
 }
 
 const RISK_TONE: Record<ParlayRisk, string> = {

@@ -153,17 +153,17 @@ export function ProbabilityComparison({
 
 export function FormStrip({ form }: { form: Array<"W" | "D" | "L"> }) {
   const tone = {
-    W: "bg-positive-soft text-positive",
-    D: "bg-muted text-muted-foreground",
-    L: "bg-negative-soft text-negative",
+    W: "bg-primary/20 text-primary",
+    D: "bg-foreground/8 text-foreground-soft",
+    L: "bg-negative/18 text-negative",
   };
   return (
-    <div className="flex gap-1" aria-label={t("admin.ui.form", { form: form.join(" ") })}>
+    <div className="flex gap-[3px]" aria-label={t("admin.ui.form", { form: form.join(" ") })}>
       {form.map((r, i) => (
         <span
           key={i}
           className={cn(
-            "numeric flex h-5 w-5 items-center justify-center rounded text-micro font-semibold",
+            "numeric flex h-5 w-5 items-center justify-center rounded-[0.3125rem] text-[0.65625rem] font-extrabold leading-none",
             tone[r],
           )}
         >
