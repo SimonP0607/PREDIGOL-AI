@@ -281,7 +281,10 @@ function Localized({ children }: { children: ReactNode }) {
 
 function ConnectionProblem({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+    <div
+      data-testid="connection-problem"
+      className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center"
+    >
       <BrandMark size={64} />
       <WifiOff aria-hidden className="h-5 w-5 text-warning" />
       <p className="max-w-sm text-sm text-muted-foreground">{t("errors.unreachable")}</p>
