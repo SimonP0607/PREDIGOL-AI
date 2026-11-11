@@ -1,0 +1,572 @@
+#!/usr/bin/env python3
+"""IA-045 · INT-B09 · Estudio de eventos noticia → precio (LAB). Análisis puro sobre CSV: sin base de datos, sin red, sin reloj.
+
+Protocolo preregistrado ``proto-int-b09-v1`` (``fbi.research.protocol.B09``), huella
+2b8e49fb115f5cecbcb5e61f52d9ac11d8c8464ce7b3da97af62b3f9382e9232, registrado en GitHub en el commit 1d8c98d (PR #236) antes de mirar
+resultados. El protocolo va copiado abajo (``PROTOCOL``) y el script se niega a correr si su huella no es la registrada. Una sola
+evaluación con los datos disponibles; los segmentos son los preregistrados (tipo de fuente, tipo de hecho, ligas prioritarias frente al
+resto). Lo que no es un segmento preregistrado sale marcado como secundario o exploratorio y no cuenta para el veredicto.
+
+Uso:  python ia_lab_b09_eventos.py <carpeta con meta.csv, events.csv, prices.csv, importance.csv> [--inventory] [--out results.json]
+      --inventory  solo cuenta eventos, exclusiones y cobertura de precios; no calcula ningún movimiento de precio.
+
+Cómo se opera el protocolo (fijado antes de ejecutar la evaluación):
+* Evento: la primera afirmación por (partido, jugador, tema) entre todas las del proveedor y de Research v2; las siguientes son
+  repeticiones y no cuentan. Tema: baja, duda, sanción (dirección esperada: baja la probabilidad del equipo del jugador) y titularidad
+  (sin dirección: solo secundario).
+* known_at (hora en que PrediGol lo conoció): proveedor = la primera lectura registrada (core.player_availability_obs origin 'answer',
+  o la creación de la copia en ai.evidence si fuese anterior y posterior al inicio del historial); si el primer registro es la copia
+  inicial de la migración 0078 (origin 'snapshot') o una copia anterior al inicio del historial, la hora de primera lectura no se conoce
+  y el evento se excluye («sin hora conocida»). Research v2 = retrieved_at de la afirmación (la primera pasada que la leyó).
+* Precio: probabilidad sin margen (Shin) del equipo afectado en 1X2, market.market_consensus. Antes = la última cotización con
+  as_of < known_at; después = la última con as_of < saque, que además debe ser posterior a known_at.
+* Exclusiones, en este orden: sin partido o sin equipo; partido no jugado (estado distinto de finished/live); sin hora conocida;
+  a menos de 30 minutos del saque (o después); sin consenso antes; sin consenso después.
+* Cambio de un evento (pp): y = 100·(p_antes − p_después) para baja/duda/sanción: positivo = la probabilidad del equipo bajó.
+* Controles (placebo): los mismos partidos y equipos con horas barajadas: en cada una de R = 200 permutaciones (semilla 20261111) cada
+  evento toma la antelación al saque (saque − known_at) de otro evento del conjunto, nunca de su mismo partido, y se mide el mismo cambio
+  desde esa hora; el control del evento es la media de sus extracciones válidas (mismas reglas de precio).
+* Métrica principal: D = media(y) − media(c) sobre los eventos con control válido; intervalo del 95 % por bootstrap de partidos
+  (B = 10.000, percentiles, semilla 20261111).
+* Validez (pass_rule): ≥ 200 eventos con precio antes y después, intervalo agrupado por partido, intervalo de los controles con 0.
+  Veredicto (reject_rule): si en ningún segmento preregistrado el intervalo de D queda por encima de 0, el mercado ya tenía los hechos.
+* Secundario: anticipación = Σ(movimiento después del evento) / Σ(movimiento desde 24 h antes del evento hasta el saque), en la
+  dirección del hecho; titularidad: |cambio| frente a |cambio| de sus controles; por liga (ligas con ≥ 30 eventos).
+* Anotación (exploratoria, no cambia la métrica principal): importancia del jugador = titularidades en los últimos 5 partidos de su equipo
+  con alineación (≤ 120 días antes): habitual (≥ 60 %), ocasional (> 0 y < 60 %), no titular (0); sin datos con menos de 3 partidos.
+"""
+
+from __future__ import annotations
+
+import argparse
+import bisect
+import csv
+import hashlib
+import json
+import math
+import os
+import sys
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
+from statistics import NormalDist, median
+
+import numpy as np
+
+# ── el protocolo, copiado tal cual de fbi.research.protocol.B09 ───────────────────────────────────────────────────────────────────
+PROTOCOL: dict = {
+    "alternative": ("Después del momento en que PrediGol conoce el hecho, el precio del equipo afectado se mueve en la dirección del "
+                    "hecho más que en los controles."),
+    "data": ("Afirmaciones con hora conocida (proveedor y Research v2) y la probabilidad sin margen del equipo afectado en 1X2 "
+             "(consenso guardado) antes y después de esa hora, siempre antes del saque."),
+    "exclusions": ["Eventos a menos de 30 minutos del saque (sin precio posterior útil).",
+                   "Eventos sin hora conocida o sin consenso antes y después.",
+                   "Repeticiones de un mismo hecho: solo cuenta la primera afirmación por partido, jugador y tema."],
+    "key": "INT-B09",
+    "min_sample": "Al menos 200 eventos con precio antes y después; menos, «pendiente por muestra».",
+    "null": "El movimiento del precio después del momento en que PrediGol conoce el hecho no es mayor que el de los controles.",
+    "pass_rule": ("Informe válido si: hay al menos 200 eventos con precio antes y después, el intervalo está agrupado por partido y "
+                  "los controles barajados quedan cerca de 0 (su intervalo incluye 0)."),
+    "power_note": ("Con una desviación típica de unos 2 pp por evento, ver 0,5 pp pide unos 7,85·4/0,25 ≈ 126 eventos; se fijan 200 "
+                   "por la dependencia entre eventos del mismo partido. El informe da la diferencia mínima detectable alcanzada."),
+    "primary_metric": ("Cambio medio de la probabilidad sin margen del equipo afectado, en la dirección esperada del hecho, entre la "
+                       "última cotización anterior al evento y la última anterior al saque, menos el mismo cambio en controles (los "
+                       "mismos partidos con horas barajadas); intervalo del 95 % por bootstrap agrupado por partido."),
+    "question": ("Cuando PrediGol registra un hecho de disponibilidad de un jugador (baja, duda, sanción o titularidad), ¿el precio "
+                 "del mercado se mueve después (información que llegamos a tener antes) o ya se había movido (el mercado ya lo "
+                 "sabía)?"),
+    "registered_on": "2026-11-11",
+    "reject_rule": ("Si el movimiento posterior no supera a los controles en ningún segmento (intervalo que incluye 0 o por debajo), "
+                    "el mercado ya tenía los hechos y no se propone ninguna fuente nueva."),
+    "secondary": ["Anticipación: qué parte del movimiento total del día ocurre después del evento.",
+                  "Por tipo de fuente (proveedor, oficial, medio, rumor), por tipo de hecho y por liga."],
+    "seed": 20261111,
+    "segments": ["Tipo de fuente.", "Tipo de hecho.", "Ligas prioritarias frente al resto."],
+    "split": "No hay ajuste de modelo: cada evento se mide con los precios guardados alrededor de su hora.",
+    "stopping": "Una sola evaluación con los datos disponibles; los segmentos son los preregistrados.",
+    "title": "Estudio de eventos: noticia → precio",
+    "unit": ("Un evento: la primera afirmación de disponibilidad de un jugador para un partido, con la hora en que PrediGol la "
+             "conoció y su fuente."),
+    "version": "proto-int-b09-v1",
+}
+REGISTERED_FINGERPRINT = "2b8e49fb115f5cecbcb5e61f52d9ac11d8c8464ce7b3da97af62b3f9382e9232"
+FRAMEWORK = "lab-protocol-v1"
+SCRIPT_VERSION = "ia-lab-b09-eventos-v1"
+
+SEED = int(PROTOCOL["seed"])
+MIN_EVENTS = 200
+KICKOFF_MARGIN_S = 30 * 60
+DAY_S = 24 * 3600
+N_PERMUTATIONS = 200
+N_BOOT = 10_000
+BOOT_CHUNK = 500
+DIRECTIONAL = ("baja", "duda", "sancion")
+SOURCE_TYPES = ("proveedor", "oficial", "medio", "rumor")
+PLAYED = ("finished", "live")
+FAMILY_ORDER = {"provider": 0, "v2": 1}
+LEAGUE_MIN_EVENTS = 30
+Z_SUM = NormalDist().inv_cdf(0.975) + NormalDist().inv_cdf(0.80)  # 2,80: alfa 0,05 bilateral, potencia 0,80
+
+
+def fingerprint(p: dict) -> str:
+    canon = json.dumps(p, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(canon.encode("utf-8")).hexdigest()
+
+
+def stamp() -> dict:
+    fp = fingerprint(PROTOCOL)
+    if fp != REGISTERED_FINGERPRINT:
+        raise SystemExit(f"el protocolo copiado no es el registrado (huella {fp}): no se ejecuta")
+    out = {"protocol": PROTOCOL["key"], "version": PROTOCOL["version"], "fingerprint": fp, "framework": FRAMEWORK,
+           "script": SCRIPT_VERSION}
+    try:  # en la imagen del backend, si el protocolo ya está desplegado, se comprueba también contra el código
+        from fbi.research.protocol import stamp as code_stamp  # type: ignore[import-not-found]
+        s = code_stamp("INT-B09")
+        out["code_check"] = "igual" if s.get("fingerprint") == fp else f"DISTINTO: {s.get('fingerprint')}"
+    except Exception as exc:  # noqa: BLE001 - el script es puro: sin el paquete, se queda con su propia comprobación
+        out["code_check"] = f"no disponible ({type(exc).__name__})"
+    return out
+
+
+# ── lectura ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def read_csv(path: str) -> list[dict]:
+    with open(path, newline="", encoding="utf-8") as fh:
+        return list(csv.DictReader(fh))
+
+
+def num(x: str | None) -> float | None:
+    if x is None or x == "":
+        return None
+    return float(x)
+
+
+def iso(t: float | None) -> str | None:
+    return None if t is None else datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+
+class Prices:
+    """Las cotizaciones 1X2 sin margen de cada partido, ordenadas por hora."""
+
+    def __init__(self, rows: list[dict]) -> None:
+        series: dict[int, list[tuple[float, float, float]]] = defaultdict(list)
+        for r in rows:
+            ph, pa = num(r["p_home"]), num(r["p_away"])
+            if ph is None or pa is None:
+                continue
+            series[int(r["fixture_id"])].append((float(r["as_of"]), ph, pa))
+        self.t: dict[int, list[float]] = {}
+        self.p: dict[tuple[int, str], list[float]] = {}
+        for fx, pts in series.items():
+            pts.sort()
+            self.t[fx] = [a for a, _, _ in pts]
+            self.p[(fx, "home")] = [h for _, h, _ in pts]
+            self.p[(fx, "away")] = [a for _, _, a in pts]
+
+    def last_before(self, fx: int, side: str, at: float) -> tuple[float, float] | None:
+        """(as_of, p) de la última cotización con as_of < at."""
+        ts = self.t.get(fx)
+        if not ts:
+            return None
+        i = bisect.bisect_left(ts, at) - 1
+        if i < 0:
+            return None
+        return ts[i], self.p[(fx, side)][i]
+
+    def n_points(self, fx: int) -> int:
+        return len(self.t.get(fx, []))
+
+
+# ── eventos ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def build_claims(rows: list[dict], history_start: float) -> list[dict]:
+    claims = []
+    for r in rows:
+        fam = r["family"]
+        if fam == "provider":
+            times = [(num(r["t_answer"]), "answer"), (num(r["t_evidence"]), "evidence"), (num(r["t_snapshot"]), "snapshot")]
+            times = [(t, k) for t, k in times if t is not None]
+            if not times:
+                continue
+            t_first, first_kind = min(times)
+            known = t_first if first_kind == "answer" or (first_kind == "evidence" and t_first >= history_start) else None
+        else:
+            t_first = num(r["t_v2"])
+            if t_first is None:
+                continue
+            first_kind, known = "v2", t_first
+        claims.append({
+            "key": r["ev_key"], "family": fam, "fixture_id": int(r["fixture_id"]) if r["fixture_id"] else None,
+            "team_id": int(r["team_id"]) if r["team_id"] else None, "player_id": int(r["provider_player_id"]) if r["provider_player_id"] else None,
+            "topic": r["topic"], "t_first": t_first, "first_kind": first_kind, "known_at": known,
+            "source_type": r["source_type"], "source_tier": r["source_tier"], "source_domain": r["source_domain"],
+            "status": r["ev_status"], "mapping": r["mapping"], "player_name": r["player_name"], "detail": r["detail"],
+            "kickoff": num(r["kickoff"]), "status_group": r["status_group"], "side": r["side"],
+            "league_id": int(r["provider_league_id"]) if r["provider_league_id"] else None, "league": r["league"],
+            "priority": r["priority"] == "1",
+        })
+    return claims
+
+
+def first_claims(claims: list[dict]) -> tuple[list[dict], Counter]:
+    """Solo la primera afirmación por (partido, jugador, tema); empate: el proveedor primero (orden fijo)."""
+    groups: dict[tuple, list[dict]] = defaultdict(list)
+    loose = []
+    for c in claims:
+        if c["fixture_id"] is None or c["player_id"] is None:
+            loose.append(c)
+        else:
+            groups[(c["fixture_id"], c["player_id"], c["topic"])].append(c)
+    firsts, repeats = [], Counter()
+    for _, cs in groups.items():
+        cs.sort(key=lambda c: (c["t_first"], FAMILY_ORDER[c["family"]], c["key"]))
+        firsts.append(cs[0])
+        for c in cs[1:]:
+            repeats[(c["family"], c["source_type"], "after_" + cs[0]["family"])] += 1
+            c["repeat_of"] = cs[0]["key"]
+    return firsts + loose, repeats
+
+
+def exclude(events: list[dict], prices: Prices) -> tuple[list[dict], Counter]:
+    kept, why = [], Counter()
+    for e in events:
+        fx, side, ko, known = e["fixture_id"], e["side"], e["kickoff"], e["known_at"]
+        if fx is None or side not in ("home", "away") or ko is None:
+            reason = "sin_partido_o_equipo"
+        elif e["status_group"] not in PLAYED:
+            reason = "partido_no_jugado"
+        elif known is None:
+            reason = "sin_hora_conocida"
+        elif known > ko - KICKOFF_MARGIN_S:
+            reason = "menos_de_30_min_del_saque"
+        else:
+            before = prices.last_before(fx, side, known)
+            after = prices.last_before(fx, side, ko)
+            if before is None:
+                reason = "sin_consenso_antes"
+            elif after is None or after[0] <= known:
+                reason = "sin_consenso_despues"
+            else:
+                reason = ""
+                e["t_before"], e["p_before"] = before
+                e["t_after"], e["p_after"] = after
+        e["excluded"] = reason
+        if reason:
+            why[(e["topic"] in DIRECTIONAL, reason)] += 1
+        else:
+            kept.append(e)
+    return kept, why
+
+
+# ── cambios, controles, bootstrap ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+def signed_change(prices: Prices, fx: int, side: str, at: float, ko: float) -> float | None:
+    """100·(p_antes − p_después) desde la hora ``at``: positivo = bajó la probabilidad del equipo. None sin precio antes o después."""
+    before = prices.last_before(fx, side, at)
+    after = prices.last_before(fx, side, ko)
+    if before is None or after is None or after[0] <= at:
+        return None
+    return 100.0 * (before[1] - after[1])
+
+
+def placebo(events: list[dict], prices: Prices, rng: np.random.Generator, absolute: bool) -> tuple[np.ndarray, np.ndarray, dict]:
+    """Control de cada evento: la media del mismo cambio medido a horas barajadas (antelaciones de otros eventos, nunca de su mismo
+    partido). Devuelve (control, extracciones válidas, diagnóstico). El diagnóstico (no preregistrado; no cuenta para el veredicto)
+    separa las extracciones cuya hora barajada cae antes de la hora del evento de las que caen después: una ventana de control que
+    empieza antes del evento contiene el movimiento que el propio hecho pudiera provocar."""
+    n = len(events)
+    offsets = np.array([e["kickoff"] - e["known_at"] for e in events])
+    fxs = [e["fixture_id"] for e in events]
+    total = np.zeros(n)
+    count = np.zeros(n, dtype=int)
+    split = {"antes": (np.zeros(n), np.zeros(n, dtype=int)), "despues": (np.zeros(n), np.zeros(n, dtype=int))}
+    for _ in range(N_PERMUTATIONS):
+        perm = rng.permutation(n)
+        for i in range(n):
+            j = int(perm[i])
+            if fxs[j] == fxs[i]:
+                continue
+            e = events[i]
+            t_c = e["kickoff"] - float(offsets[j])
+            v = signed_change(prices, e["fixture_id"], e["side"], t_c, e["kickoff"])
+            if v is None:
+                continue
+            v = abs(v) if absolute else v
+            total[i] += v
+            count[i] += 1
+            s_tot, s_cnt = split["antes" if t_c < e["known_at"] else "despues"]
+            s_tot[i] += v
+            s_cnt[i] += 1
+    with np.errstate(invalid="ignore", divide="ignore"):
+        ctrl = np.where(count > 0, total / np.maximum(count, 1), np.nan)
+        diag = {k: np.where(cn > 0, tt / np.maximum(cn, 1), np.nan) for k, (tt, cn) in split.items()}
+    return ctrl, count, diag
+
+
+def ratio_boot(clusters: list, num_vals: dict[str, np.ndarray], den: np.ndarray, tag: int) -> dict[str, dict]:
+    """Bootstrap de partidos de varios cocientes Σnum/Σden con los mismos remuestreos. ``clusters`` es el partido de cada fila."""
+    labels = sorted(set(clusters))
+    index = {c: k for k, c in enumerate(labels)}
+    f = len(labels)
+    idx = np.array([index[c] for c in clusters])
+    den_c = np.bincount(idx, weights=den, minlength=f)
+    num_c = {k: np.bincount(idx, weights=v, minlength=f) for k, v in num_vals.items()}
+    point = {k: float(v.sum() / den_c.sum()) if den_c.sum() != 0 else float("nan") for k, v in num_c.items()}
+    rng = np.random.default_rng([SEED, tag])
+    draws = {k: [] for k in num_c}
+    pvals = np.full(f, 1.0 / f)
+    done = 0
+    while done < N_BOOT:
+        b = min(BOOT_CHUNK, N_BOOT - done)
+        w = rng.multinomial(f, pvals, size=b).astype(float)
+        d = w @ den_c
+        for k, v in num_c.items():
+            with np.errstate(invalid="ignore", divide="ignore"):
+                draws[k].append((w @ v) / d)
+        done += b
+    out = {}
+    for k in num_c:
+        arr = np.concatenate(draws[k])
+        arr = arr[np.isfinite(arr)]
+        lo, hi = (np.percentile(arr, [2.5, 97.5]) if arr.size else (float("nan"), float("nan")))
+        out[k] = {"est": point[k], "lo": float(lo), "hi": float(hi), "se": float(arr.std(ddof=1)) if arr.size > 1 else float("nan")}
+    return out
+
+
+def summarize(events: list[dict], y: np.ndarray, c: np.ndarray, tag: int) -> dict:
+    """D = media(y) − media(c) sobre los eventos con control válido, con su intervalo de partidos; y lo mismo para y y c solos."""
+    ok = np.isfinite(c)
+    rows = [k for k in range(len(events)) if ok[k]]
+    res = {"n_events": len(events), "n_fixtures": len({e["fixture_id"] for e in events}),
+           "n_with_control": len(rows), "n_fixtures_with_control": len({events[k]["fixture_id"] for k in rows})}
+    if not rows:
+        return res
+    yy, cc = y[rows], c[rows]
+    boot = ratio_boot([events[k]["fixture_id"] for k in rows], {"D": yy - cc, "event": yy, "control": cc},
+                      np.ones(len(rows)), tag)
+    res.update({"D_pp": boot["D"], "event_pp": boot["event"], "control_pp": boot["control"]})
+    if len(rows) > 1:
+        s = float(np.std(yy - cc, ddof=1))
+        res["sd_diff_pp"] = s
+        res["mde_naive_pp"] = Z_SUM * s / math.sqrt(len(rows))
+    res["mde_cluster_pp"] = Z_SUM * boot["D"]["se"]
+    res["share_event_positive"] = float(np.mean(yy > 0))
+    res["share_event_zero"] = float(np.mean(yy == 0))
+    return res
+
+
+def r3(x: float | None, k: int = 3) -> str:
+    return "—" if x is None or (isinstance(x, float) and not math.isfinite(x)) else f"{x:.{k}f}"
+
+
+def ci_txt(d: dict | None) -> str:
+    if not d:
+        return "—"
+    return f"{r3(d['est'])} [{r3(d['lo'])}; {r3(d['hi'])}]"
+
+
+# ── main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("folder")
+    ap.add_argument("--inventory", action="store_true")
+    ap.add_argument("--out", default=None)
+    args = ap.parse_args()
+
+    st = stamp()
+    print(f"SELLO {st['protocol']} {st['version']} huella={st['fingerprint']} marco={st['framework']} "
+          f"script={st['script']} comprobación_con_código={st['code_check']}")
+
+    meta = read_csv(os.path.join(args.folder, "meta.csv"))[0]
+    history_start = float(meta["answer_history_start"])
+    rows = read_csv(os.path.join(args.folder, "events.csv"))
+    prices = Prices(read_csv(os.path.join(args.folder, "prices.csv")))
+    imp_rows = read_csv(os.path.join(args.folder, "importance.csv")) if os.path.exists(os.path.join(args.folder, "importance.csv")) else []
+    importance = {(int(r["fixture_id"]), int(r["team_id"]), int(r["provider_player_id"])): (int(r["n_prev"]), int(r["starts"]))
+                  for r in imp_rows}
+
+    out: dict = {"stamp": st, "meta": {k: (iso(num(v)) if v else None) for k, v in meta.items()}}
+    claims = build_claims(rows, history_start)
+    firsts, repeats = first_claims(claims)
+    kept, why = exclude(firsts, prices)
+    directional = [e for e in kept if e["topic"] in DIRECTIONAL]
+    starters = [e for e in kept if e["topic"] == "titularidad"]
+
+    # ── inventario (sin movimientos de precio) ──
+    inv: dict = {"claims_by_family": dict(Counter(c["family"] for c in claims)),
+                 "first_claims": len(firsts), "repeats": {"|".join(k): v for k, v in sorted(repeats.items())},
+                 "first_kind": dict(Counter((c["family"] + ":" + c["first_kind"]) for c in firsts)),
+                 "excluded": {("direccional" if d else "titularidad") + "|" + r: n for (d, r), n in sorted(why.items())},
+                 "kept_directional": len(directional), "kept_titularidad": len(starters),
+                 "kept_by_source": dict(Counter(e["source_type"] for e in directional)),
+                 "kept_by_topic": dict(Counter(e["topic"] for e in directional)),
+                 "kept_by_priority": dict(Counter("prioritarias" if e["priority"] else "resto" for e in directional)),
+                 "kept_fixtures_directional": len({e["fixture_id"] for e in directional}),
+                 "kept_leagues_directional": len({e["league_id"] for e in directional})}
+    if directional:
+        lead_h = [(e["kickoff"] - e["known_at"]) / 3600 for e in directional]
+        gap_before_h = [(e["known_at"] - e["t_before"]) / 3600 for e in directional]
+        gap_after_ko_h = [(e["kickoff"] - e["t_after"]) / 3600 for e in directional]
+        inv["lead_hours_median"] = median(lead_h)
+        inv["lead_hours_quartiles"] = [float(q) for q in np.percentile(lead_h, [25, 50, 75])]
+        inv["hours_since_price_before_median"] = median(gap_before_h)
+        inv["hours_last_price_to_kickoff_median"] = median(gap_after_ko_h)
+        inv["known_at_range"] = [iso(min(e["known_at"] for e in directional)), iso(max(e["known_at"] for e in directional))]
+        inv["kickoff_range"] = [iso(min(e["kickoff"] for e in directional)), iso(max(e["kickoff"] for e in directional))]
+        inv["price_points_per_fixture_median"] = median(prices.n_points(fx) for fx in {e["fixture_id"] for e in directional})
+        inv["lead_hours_median_by_source"] = {s: median([(e["kickoff"] - e["known_at"]) / 3600 for e in directional
+                                                         if e["source_type"] == s])
+                                              for s in SOURCE_TYPES if any(e["source_type"] == s for e in directional)}
+    v2_dir = [c for c in claims if c["family"] == "v2" and c["topic"] in DIRECTIONAL]
+    inv["v2_directional_claims"] = len(v2_dir)
+    inv["v2_new_content"] = {
+        s: {"claims": sum(1 for c in v2_dir if c["source_type"] == s),
+            "first_for_match_player_topic": sum(1 for c in v2_dir if c["source_type"] == s and "repeat_of" not in c
+                                                and c["fixture_id"] is not None),
+            "already_known_from_provider": sum(1 for c in v2_dir if c["source_type"] == s and c.get("repeat_of", "").startswith("P:")),
+            "already_known_from_v2": sum(1 for c in v2_dir if c["source_type"] == s and c.get("repeat_of", "").startswith("W:")),
+            "no_match": sum(1 for c in v2_dir if c["source_type"] == s and c["fixture_id"] is None)}
+        for s in SOURCE_TYPES}
+    out["inventory"] = inv
+    print("INVENTARIO", json.dumps(inv, ensure_ascii=False, sort_keys=True))
+    if args.inventory:
+        if args.out:
+            with open(args.out, "w", encoding="utf-8") as fh:
+                json.dump(out, fh, ensure_ascii=False, indent=1, sort_keys=True)
+        return
+
+    # ── evaluación única ──
+    n_dir = len(directional)
+    rng = np.random.default_rng(SEED)
+    y = np.array([100.0 * (e["p_before"] - e["p_after"]) for e in directional])
+    c, draws, diag = placebo(directional, prices, rng, absolute=False) if n_dir else (np.array([]), np.array([]), {})
+    for k, e in enumerate(directional):
+        e["y"], e["c"] = float(y[k]), float(c[k])
+    out["controls"] = {"permutations": N_PERMUTATIONS, "events_without_valid_control": int(np.sum(~np.isfinite(c))) if n_dir else 0,
+                       "valid_draws_median": float(np.median(draws)) if n_dir else 0.0}
+
+    tag = 1
+    primary = summarize(directional, y, c, tag)
+    out["primary"] = primary
+    # diagnóstico no preregistrado de los controles: horas barajadas anteriores frente a posteriores a la hora del evento
+    for name, arr in diag.items():
+        tag += 1
+        ks = [k for k in range(n_dir) if np.isfinite(arr[k])]
+        if ks:
+            b = ratio_boot([directional[k]["fixture_id"] for k in ks], {"control": arr[ks]}, np.ones(len(ks)), tag)
+            out["controls"][f"diagnostic_{name}_del_evento"] = {"n_events": len(ks), "control_pp": b["control"]}
+    segments: dict[str, dict] = {}
+    seg_defs = ([("fuente", s, lambda e, s=s: e["source_type"] == s) for s in SOURCE_TYPES]
+                + [("hecho", t, lambda e, t=t: e["topic"] == t) for t in DIRECTIONAL]
+                + [("liga", "prioritarias", lambda e: e["priority"]), ("liga", "resto", lambda e: not e["priority"])])
+    for dim, name, pred in seg_defs:
+        tag += 1
+        ks = [k for k, e in enumerate(directional) if pred(e)]
+        segments[f"{dim}:{name}"] = summarize([directional[k] for k in ks], y[ks], c[ks], tag) if ks else {"n_events": 0}
+    out["segments"] = segments
+
+    # validez y veredicto según el protocolo
+    valid_n = n_dir >= MIN_EVENTS
+    ctrl = primary.get("control_pp")
+    controls_ok = bool(ctrl) and ctrl["lo"] <= 0.0 <= ctrl["hi"]
+    positive = [k for k, s in [("global", primary)] + list(segments.items()) if s.get("D_pp") and s["D_pp"]["lo"] > 0.0]
+    if not valid_n:
+        verdict = "PENDIENTE POR MUESTRA"
+    elif not controls_ok:
+        verdict = "INFORME NO VÁLIDO: el intervalo de los controles barajados no incluye 0"
+    elif not positive:
+        verdict = "RECHAZO: el movimiento posterior no supera a los controles en ningún segmento; el mercado ya tenía los hechos"
+    else:
+        verdict = "VENTANA POSITIVA en: " + ", ".join(positive)
+    out["verdict"] = {"valid_n": valid_n, "n_directional_with_prices": n_dir, "controls_include_zero": controls_ok,
+                      "positive_segments": positive, "text": verdict}
+
+    # ── secundario: anticipación ──
+    ant_rows, post, tot = [], [], []
+    for k, e in enumerate(directional):
+        p24 = prices.last_before(e["fixture_id"], e["side"], e["known_at"] - DAY_S)
+        if p24 is None:
+            continue
+        ant_rows.append(k)
+        post.append(y[k])
+        tot.append(100.0 * (p24[1] - e["p_after"]))
+    anticipation = {"n_events": len(ant_rows)}
+    if ant_rows:
+        tag += 1
+        b = ratio_boot([directional[k]["fixture_id"] for k in ant_rows], {"fraction_after": np.array(post)}, np.array(tot), tag)
+        tag += 1
+        parts = ratio_boot([directional[k]["fixture_id"] for k in ant_rows],
+                           {"pre_24h_pp": np.array(tot) - np.array(post), "post_pp": np.array(post), "total_pp": np.array(tot)},
+                           np.ones(len(ant_rows)), tag)
+        anticipation.update({"fraction_after": b["fraction_after"], "mean_total_move_pp": float(np.mean(tot)),
+                             "mean_post_move_pp": float(np.mean(post)), "components": parts,
+                             "share_total_in_expected_direction": float(np.mean(np.array(tot) > 0))})
+        by_src = {}
+        for s in SOURCE_TYPES:
+            ks = [i for i, k in enumerate(ant_rows) if directional[k]["source_type"] == s]
+            if len(ks) >= 2:
+                tag += 1
+                bb = ratio_boot([directional[ant_rows[i]]["fixture_id"] for i in ks], {"fraction_after": np.array(post)[ks]},
+                                np.array(tot)[ks], tag)
+                by_src[s] = {"n_events": len(ks), "fraction_after": bb["fraction_after"],
+                             "mean_total_move_pp": float(np.mean(np.array(tot)[ks]))}
+        anticipation["by_source"] = by_src
+    out["anticipation"] = anticipation
+
+    # ── secundario: titularidad (sin dirección) ──
+    tit = {"n_events": len(starters)}
+    if starters:
+        raw = np.array([abs(100.0 * (e["p_after"] - e["p_before"])) for e in starters])
+        rng_t = np.random.default_rng([SEED, 999])
+        ct, _, _ = placebo(starters, prices, rng_t, absolute=True)
+        tag += 1
+        tit.update(summarize(starters, raw, ct, tag))
+    out["titularidad_abs"] = tit
+
+    # ── secundario: por liga (≥ 30 eventos) ──
+    by_league = {}
+    counts = Counter(e["league_id"] for e in directional)
+    for lg, n in counts.most_common():
+        if n < LEAGUE_MIN_EVENTS:
+            continue
+        ks = [k for k, e in enumerate(directional) if e["league_id"] == lg]
+        tag += 1
+        s = summarize([directional[k] for k in ks], y[ks], c[ks], tag)
+        s["league"] = directional[ks[0]]["league"]
+        by_league[str(lg)] = s
+    out["by_league"] = by_league
+
+    # ── anotación exploratoria: importancia del jugador ──
+    def klass(e: dict) -> str:
+        v = importance.get((e["fixture_id"], e["team_id"], e["player_id"]))
+        if v is None or v[0] < 3:
+            return "sin_datos"
+        share = v[1] / v[0]
+        return "habitual" if share >= 0.6 else ("ocasional" if share > 0 else "no_titular")
+    imp = {}
+    for name in ("habitual", "ocasional", "no_titular", "sin_datos"):
+        ks = [k for k, e in enumerate(directional) if klass(e) == name]
+        tag += 1
+        imp[name] = summarize([directional[k] for k in ks], y[ks], c[ks], tag) if ks else {"n_events": 0}
+    out["importance_exploratory"] = imp
+
+    # ── salida legible ──
+    print(f"PRINCIPAL n={primary.get('n_events')} partidos={primary.get('n_fixtures')} con_control={primary.get('n_with_control')} "
+          f"D={ci_txt(primary.get('D_pp'))} evento={ci_txt(primary.get('event_pp'))} control={ci_txt(primary.get('control_pp'))} "
+          f"MDE_cluster={r3(primary.get('mde_cluster_pp'))} MDE_naive={r3(primary.get('mde_naive_pp'))}")
+    for k, s in segments.items():
+        print(f"SEGMENTO {k} n={s.get('n_events')} partidos={s.get('n_fixtures')} D={ci_txt(s.get('D_pp'))} "
+              f"evento={ci_txt(s.get('event_pp'))} control={ci_txt(s.get('control_pp'))}")
+    print("VEREDICTO", verdict)
+    print("CONTROLES", json.dumps(out["controls"], ensure_ascii=False, sort_keys=True))
+    print("ANTICIPACION", json.dumps(anticipation, ensure_ascii=False, sort_keys=True))
+    print("TITULARIDAD", json.dumps(tit, ensure_ascii=False, sort_keys=True))
+    print("LIGAS", json.dumps(by_league, ensure_ascii=False, sort_keys=True))
+    print("IMPORTANCIA", json.dumps(imp, ensure_ascii=False, sort_keys=True))
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as fh:
+            json.dump(out, fh, ensure_ascii=False, indent=1, sort_keys=True)
+
+
+if __name__ == "__main__":
+    main()
