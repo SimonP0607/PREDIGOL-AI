@@ -21,9 +21,9 @@ import { ErrorState } from "@/product/shared/States";
 import { deviceLabel } from "./device";
 import { IdentityDialog } from "./IdentityDialog";
 import { cn } from "@/lib/utils";
+import { fieldVariants } from "@/components/ui/field";
 
-const field =
-  "mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none pointer-coarse:h-11";
+const field = cn(fieldVariants({ size: "sm" }), "mt-1");
 const button =
   "tap-y relative inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium disabled:opacity-50";
 

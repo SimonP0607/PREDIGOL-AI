@@ -23,9 +23,9 @@ import { ErrorState, errorMessage, SkeletonCards } from "@/product/shared/States
 import { LEGAL_DOCUMENTS, dayOf, legalPath } from "@/product/legal/links";
 import { AnalyticsSection } from "./AnalyticsSection";
 import { latestOf, shownPurposes } from "./consents";
+import { fieldVariants } from "@/components/ui/field";
 
-const INPUT =
-  "mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none pointer-coarse:h-11";
+const INPUT = cn(fieldVariants({ size: "sm" }), "mt-1");
 const BUTTON =
   "tap-y relative inline-flex h-9 items-center gap-2 rounded-md px-4 text-sm font-semibold disabled:opacity-50 pointer-coarse:h-11";
 const KINDS: readonly PrivacyRequestKind[] = ["privacy_query", "privacy_claim", "privacy_deletion"];
@@ -466,7 +466,7 @@ function RequestsSection() {
             rows={3}
             data-testid="privacy-message"
             onChange={(e) => setMessage(e.target.value)}
-            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            className={cn(fieldVariants({ size: "area" }), "mt-1")}
           />
         </label>
         {deletion ? (

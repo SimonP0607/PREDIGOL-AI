@@ -15,6 +15,8 @@ import { fmtInt } from "@/lib/i18n/format";
 import { formatDateLong, formatDateTime } from "@/lib/time";
 import { errorMessage } from "@/product/shared/States";
 import { ALIAS_MAX, accountState, aliasProblem } from "./centre";
+import { fieldVariants } from "@/components/ui/field";
+import { cn } from "@/lib/utils";
 
 /** "7 días", "8 horas": how long a session may go unused. */
 function idleText(hours: number): string {
@@ -74,7 +76,7 @@ function AliasForm({ user }: { user: Me }) {
           aria-describedby="alias-help"
           aria-invalid={problem ? true : undefined}
           data-testid="alias-input"
-          className="mt-1 h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:border-primary focus:outline-none sm:text-sm"
+          className={cn(fieldVariants(), "mt-1")}
         />
       </label>
       <p id="alias-help" className="text-caption text-subtle-foreground">

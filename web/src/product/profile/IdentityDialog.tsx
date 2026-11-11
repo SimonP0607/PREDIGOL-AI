@@ -17,9 +17,9 @@ import type { IdentityIn } from "@/lib/api/v1/types_auth";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { stepError } from "@/product/auth/stepError";
+import { fieldVariants } from "@/components/ui/field";
 
-const input =
-  "mt-1 h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:border-primary focus:outline-none";
+const input = cn(fieldVariants(), "mt-1");
 
 export function IdentityDialog({
   open,

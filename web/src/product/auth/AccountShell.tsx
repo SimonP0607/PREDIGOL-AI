@@ -9,10 +9,10 @@ import { BrandCrest } from "@/components/brand/Brand";
 import { LanguageSwitch } from "@/components/layout/HeaderControls";
 import { Disclaimer } from "@/components/system/Disclaimer";
 import { cn } from "@/lib/utils";
+import { fieldVariants } from "@/components/ui/field";
 
 /** 16 px text and 44 px of height: a phone does not zoom in on a field it can focus. */
-export const accountInput =
-  "mt-1 h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+export const accountInput = cn(fieldVariants(), "mt-1");
 
 export const accountButton =
   "flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60";

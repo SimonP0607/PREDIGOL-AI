@@ -50,6 +50,7 @@ import { useGuideScreen } from "@/product/guides/context";
 import { Block } from "./Block";
 import { HelpPanel } from "./HelpPanel";
 import { BLOCKS, blockOfHash, blockSummary, startsOpen, type BlockKey } from "./centre";
+import { fieldVariants } from "@/components/ui/field";
 
 function TimeZonePicker() {
   const auth = useAuth();
@@ -111,7 +112,7 @@ function TimeZonePicker() {
         placeholder={t("profile.searchZone")}
         aria-label={t("profile.searchZone")}
         data-testid="timezone-search"
-        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none pointer-coarse:h-11"
+        className={fieldVariants({ size: "sm" })}
       />
       <ul
         className="max-h-64 overflow-y-auto rounded-md border border-border"
@@ -191,7 +192,7 @@ function PasswordForm() {
           autoComplete="current-password"
           value={current}
           onChange={(e) => setCurrent(e.target.value)}
-          className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none pointer-coarse:h-11"
+          className={cn(fieldVariants({ size: "sm" }), "mt-1")}
         />
       </label>
       <label className="block">
@@ -201,7 +202,7 @@ function PasswordForm() {
           autoComplete="new-password"
           value={next}
           onChange={(e) => setNext(e.target.value)}
-          className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none pointer-coarse:h-11"
+          className={cn(fieldVariants({ size: "sm" }), "mt-1")}
         />
       </label>
       <p className="text-caption text-subtle-foreground sm:col-span-2">

@@ -33,6 +33,7 @@ import {
   type ReportOptions,
   type ReportValue,
 } from "./report";
+import { fieldVariants } from "@/components/ui/field";
 
 /** A finger, or a screen too narrow for a side panel: the sheet comes up from the bottom. */
 const SHEET_QUERY = "(pointer: coarse), (max-width: 639px)";
@@ -244,7 +245,7 @@ function ReportForm({ options, onClose }: { options: ReportOptions; onClose: () 
           placeholder={t("support.report.textPlaceholder")}
           onChange={(e) => setText(e.target.value)}
           data-testid="report-text"
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-base focus:border-primary focus:outline-none sm:text-sm"
+          className={fieldVariants({ size: "area" })}
         />
         <p id={countId} className="text-right text-caption text-subtle-foreground numeric">
           {t("support.report.counter", { count: text.length, max: MAX_TEXT })}
