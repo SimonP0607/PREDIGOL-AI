@@ -24,9 +24,9 @@ import type { Me, MfaEnrollment } from "@/lib/api/v1/types_auth";
 import { t } from "@/lib/i18n";
 import { stepError } from "./stepError";
 import { cn } from "@/lib/utils";
+import { fieldVariants } from "@/components/ui/field";
 
-const field =
-  "mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+const field = cn(fieldVariants(), "mt-1");
 const primary =
   "flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60";
 

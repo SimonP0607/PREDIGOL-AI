@@ -12,6 +12,8 @@ import type { MyDiscounts } from "@/lib/api/v1/types_membership";
 import { t } from "@/lib/i18n";
 import { errorMessage } from "@/product/shared/States";
 import { offerSource, priceLine } from "./membership";
+import { fieldVariants } from "@/components/ui/field";
+import { cn } from "@/lib/utils";
 
 function couponError(e: unknown): string {
   if (e instanceof LiveApiError && e.code === "rate_limited")
@@ -116,7 +118,7 @@ export function MembershipDiscounts({ discounts }: { discounts: MyDiscounts }) {
             spellCheck={false}
             onChange={(e) => setCode(e.target.value)}
             placeholder={t("profile.membership.discount.placeholder")}
-            className="numeric h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-base uppercase focus:border-primary focus:outline-none sm:text-sm"
+            className={cn(fieldVariants({ size: "sm" }), "numeric flex-1 uppercase")}
             data-testid="coupon-code"
           />
           <button

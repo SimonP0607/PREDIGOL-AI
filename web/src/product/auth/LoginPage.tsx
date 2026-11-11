@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { AnnouncementBanner } from "@/product/announcements/AnnouncementBanner";
 import { LoginContact } from "@/product/support/LoginContact";
 import { tooManyAttempts } from "./wait";
+import { fieldVariants } from "@/components/ui/field";
 
 /** The refusal in the reader's words; a lock says the real wait, in minutes (plan UX, A1, defect F01). */
 function loginError(error: unknown): string {
@@ -194,7 +195,7 @@ export function LoginPage({ expired }: { expired: boolean }) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-base focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:h-11"
+                className={cn(fieldVariants(), "mt-1")}
               />
             </label>
             <label className="block">
@@ -209,7 +210,7 @@ export function LoginPage({ expired }: { expired: boolean }) {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 pr-10 text-base focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:h-11 pointer-coarse:pr-12"
+                  className={cn(fieldVariants(), "pr-10 pointer-coarse:pr-12")}
                 />
                 <button
                   type="button"

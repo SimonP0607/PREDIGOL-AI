@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { Card, EmptyState, ErrorState, SkeletonCards, errorMessage } from "@/product/shared/States";
 import { MAX_TEXT } from "@/product/support/report";
 import { ReportButton } from "./HelpPage";
+import { fieldVariants } from "@/components/ui/field";
 
 const EFFORT = [1, 2, 3, 4, 5] as const;
 
@@ -187,7 +188,7 @@ function Reply({ ticket }: { ticket: SupportTicket }) {
           maxLength={MAX_TEXT}
           onChange={(e) => setText(e.target.value)}
           data-testid="ticket-reply-text"
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-base focus:border-primary focus:outline-none sm:text-sm"
+          className={fieldVariants({ size: "area" })}
         />
         {failure ? (
           <p role="alert" className="text-sm text-negative">

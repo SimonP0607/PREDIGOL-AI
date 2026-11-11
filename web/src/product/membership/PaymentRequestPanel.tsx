@@ -30,9 +30,9 @@ import {
   type FormProblem,
   type PayForm,
 } from "./paymentRequest";
+import { fieldVariants } from "@/components/ui/field";
 
-const field =
-  "h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:border-primary focus:outline-none sm:text-sm";
+const field = fieldVariants();
 const button =
   "tap-y relative inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold disabled:opacity-50";
 const secondary = `${button} border border-border-strong hover:bg-elevated`;
