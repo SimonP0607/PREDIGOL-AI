@@ -214,6 +214,7 @@ MAY_NAME_USER_AI = {
     "fbi.api.services.news": "shows a reader an item's headline and English summary",
     "fbi.api.services.ai_layer": "the Admin Console's view of the readers' AI beside Intelligence's",
     "fbi.chronicle.review": "after the match, judges the chronicle a reader was shown against who played (IA-022); nothing of Intelligence reads it",
+    "fbi.ai.cost_paths_readers": "the owner's read-only report of the cost by path (IA-034) shows the readers' spend beside Intelligence's and never in its total; it decides nothing and nothing of Intelligence imports it",
 }
 """The only modules that may name those tables, each with its reason."""
 
