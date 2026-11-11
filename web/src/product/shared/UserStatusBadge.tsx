@@ -9,7 +9,7 @@
  *   EVALUATION       En evaluación    the owner's preview only: its model has not beaten the market yet
  */
 import { useJustChanged } from "./motion";
-import { Ban, CheckCircle2, FlaskConical, TriangleAlert, type LucideIcon } from "lucide-react";
+import { Ban, Crown, FlaskConical, TriangleAlert, type LucideIcon } from "lucide-react";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ import type { PickState, UserStatus } from "@/lib/api/v1/types_product";
 import { STATUS_TONE, statusText } from "./userStatus";
 
 const STATUS_ICON: Record<UserStatus, LucideIcon> = {
-  RECOMMENDED: CheckCircle2,
+  RECOMMENDED: Crown,
   CAUTION: TriangleAlert,
   NOT_RECOMMENDED: Ban,
   EVALUATION: FlaskConical,
@@ -54,7 +54,7 @@ export function UserStatusBadge({
       data-reason={state.status_reason}
     >
       <StatusBadge tone={STATUS_TONE[state.user_status]} dot={false}>
-        <Icon aria-hidden className="h-3 w-3 shrink-0" />
+        <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" />
         {statusText(state.user_status)}
       </StatusBadge>
       {pending ? (

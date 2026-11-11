@@ -458,7 +458,7 @@ describe("the matrix of markets", () => {
     expect(verdictBadge(d, "r")).toContain("text-positive");
     expect(verdictBadge(d, "result.1x2")).toContain("text-info");
     expect(verdictBadge(d, "goals_half.over_under")).toContain("text-warning");
-    expect(verdictBadge(d, "goals.team_total")).toContain("text-muted-foreground");
+    expect(verdictBadge(d, "goals.team_total")).toContain("text-foreground-soft");
   });
 
   test("the priority is shown next to POR INVESTIGAR and nowhere else", () => {

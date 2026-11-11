@@ -29,10 +29,10 @@ export function ToggleChip({
       onClick={() => onChange(!on)}
       data-testid={testId}
       className={cn(
-        "tap-y relative inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "tap-y relative inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-[0.8125rem] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         on
-          ? "border-primary/50 bg-primary/12 text-primary"
-          : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",
+          ? "border-primary/55 bg-primary-soft text-primary"
+          : "border-transparent bg-elevated text-foreground-soft hover:border-border-strong hover:text-foreground",
         className,
       )}
     >
@@ -93,10 +93,10 @@ export function Chip({
       onClick={onClick}
       data-testid={testId}
       className={cn(
-        "tap-y relative inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "tap-y relative inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-[0.8125rem] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         on
-          ? "border-primary/50 bg-primary/12 text-primary"
-          : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",
+          ? "border-primary/55 bg-primary-soft text-primary"
+          : "border-transparent bg-elevated text-foreground-soft hover:border-border-strong hover:text-foreground",
         className,
       )}
     >
