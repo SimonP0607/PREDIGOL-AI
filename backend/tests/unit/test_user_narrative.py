@@ -468,3 +468,138 @@ def test_twice_and_what_only_looks_like_a_number_compare_as_they_mean_ia032() ->
     assert key("Lleva once partidos sin perder.", "es") == key("It is eleven matches unbeaten.", "en"), "eleven of something is still eleven"
     assert key("Notts County ganó los dos partidos.", "es") != key("Notts County have won both matches.", "en"), "still refused: errs on refusing"
     assert key("Ganó los dos partidos.", "es") != key("It won all three matches.", "en"), "a different quantity is still refused"
+
+
+def _risk(text: str, lang: str = "es", section: str = "risks", refs: tuple[str, ...] = ("E:103",)) -> str | None:
+    return un.check_sentence(un.SentenceOut(text=text, refs=list(refs)), lang=lang, section=section, inp=inp())
+
+
+@pytest.mark.parametrize(("lang", "text"), [
+    ("es", "La noticia sobre el portero titular no está confirmada."),
+    ("es", "Las informaciones sobre el portero titular no han sido verificadas."),
+    ("es", "Según un medio de calidad no verificada, el portero titular no habría viajado."),
+    ("es", "Ninguna otra fuente lo confirma: el portero titular no habría viajado con el equipo."),
+    ("es", "El club no ha confirmado que el portero titular se quedara en casa."),
+    ("es", "Se habla del portero titular, sin confirmación oficial."),
+    ("en", "An unverified outlet says the first-choice goalkeeper did not travel."),
+    ("en", "The first-choice goalkeeper's absence has not been confirmed."),
+    ("en", "Reports about the first-choice goalkeeper come with no confirmation."),
+    ("en", "No other source confirms that the first-choice goalkeeper stayed at home."),
+    ("en", "Whether the first-choice goalkeeper travelled is yet to be confirmed."),
+    ("es", "La situación del portero titular no pudo verificarse."),
+    ("es", "La presencia del portero titular sigue sin confirmarse."),
+    ("es", "El portero titular sería duda, pero el club no lo ha confirmado."),
+    ("es", "Las informaciones no confirman el estado del portero titular."),
+    ("es", "La ausencia del portero titular es una previsión, no una baja confirmada."),
+    ("es", "No se ha publicado una alineación confirmada con el portero titular."),
+    ("es", "Las alineaciones con el portero titular son previsiones, no alineaciones oficiales."),
+    ("en", "The first-choice goalkeeper's fitness could not be verified."),
+    ("en", "The reports do not confirm the first-choice goalkeeper's status."),
+    ("en", "The goalkeeper's absence is a forecast, not a confirmed absence."),
+    ("en", "No confirmed line-up with the first-choice goalkeeper has been published."),
+    ("en", "The line-ups without the first-choice goalkeeper are forecasts, not official line-ups."),
+])
+def test_a_rumour_called_unconfirmed_in_other_words_is_called_one_ia048(lang: str, text: str) -> None:
+    """IA-048: refusals that were wrong - those of 10 Nov 2026 («no está confirmada», «no verificada», «ninguna otra fuente la confirma»,
+    «unverified», «no confirmation») and those the replay of every stored refusal found since 7 Nov («no pudo verificarse», «no lo ha confirmado»,
+    «no una baja confirmada», «could not be verified», «do not confirm», «not a confirmed absence», «not official line-ups»): the denial attached
+    to the confirmation, as «no confirmada» already was."""
+    assert _risk(text, lang) is None
+
+
+@pytest.mark.parametrize(("lang", "text"), [
+    ("es", "Las informaciones sobre el portero titular no coinciden."),
+    ("es", "Las fuentes difieren sobre el portero titular."),
+    ("es", "Un medio da de baja al portero titular, lo que contrasta con las informaciones del club."),
+    ("en", "Reports on the first-choice goalkeeper conflict: one says he is out, another that he travelled."),
+    ("en", "One outlet says the first-choice goalkeeper is out, which conflicts with reports that he travelled."),
+    ("en", "Sources differ on the first-choice goalkeeper."),
+    ("en", "The details that do not fully match the official list are about the first-choice goalkeeper."),
+    ("en", "Reports on Mohamed Salah conflict: one says he is out, another that he may play."),
+    ("es", "Las informaciones sobre el estado de Mohamed Salah no coinciden."),
+])
+def test_a_contradiction_named_with_its_reports_is_called_one_ia048(lang: str, text: str) -> None:
+    """IA-048, from the replay of every stored refusal: «reports conflict», «sources differ», «las informaciones no coinciden» name a contradiction
+    as «contradictorias» and «conflicting» already did - always together with the reports they are about, even when the check took out a name
+    that stood between them («Reports on Mohamed Salah conflict»)."""
+    contradictory = inp(news=(news(101, "CONFIRMED", INJURY, title=TITLE), news(102, "PROBABLE", DOUBT), news(104, "CONTRADICTORY", RUMOUR)))
+    assert un.check_sentence(un.SentenceOut(text=text, refs=["E:104"]), lang=lang, section="risks", inp=contradictory) is None
+    assert _risk(text, lang) is None, "a rumour is called one by the same words"
+
+
+@pytest.mark.parametrize(("lang", "text"), [
+    ("es", "El portero titular no viajó con el equipo."),
+    ("es", "El portero titular se lesionó y su disponibilidad es desconocida."),
+    ("es", "El portero titular se lesionó y su puesto queda por confirmar."),
+    ("es", "El club confirmó que el portero titular no viajó."),
+    ("en", "The first-choice goalkeeper is injured and his availability is unknown."),
+    ("en", "The first-choice goalkeeper's knee injury is still being assessed."),
+    ("en", "The club has confirmed that the first-choice goalkeeper did not travel."),
+    ("es", "La disponibilidad del portero titular no está clara: un reporte lo da como duda, mientras otras fuentes lo dan de baja."),
+    ("es", "Según un agregador, el portero titular se lesionó."),
+    ("es", "El portero titular se lesionó y los horarios del club no coinciden con los del partido."),
+    ("es", "El portero titular no viajó y su baja está confirmada."),
+    ("en", "The first-choice goalkeeper's availability is uncertain: he must be assessed and is a doubt."),
+    ("en", "Sky Sport lists the first-choice goalkeeper as injured or doubtful."),
+    ("en", "The first-choice goalkeeper is injured, which conflicts with the coach's plans."),
+    ("en", "The first-choice goalkeeper is injured, and his form and his rating do not match."),
+    ("en", "The first-choice goalkeeper did not travel, a confirmed absence."),
+    ("en", "Reports on the first-choice goalkeeper say he is injured; the conflict with the coach goes on."),
+])
+def test_a_rumour_told_as_a_fact_is_still_refused_ia048(lang: str, text: str) -> None:
+    """What only says that something else is unknown or uncertain, what only attributes, what confirms, what describes a clash without naming it,
+    and a «conflict» or a «do not match» about anything but the reports: each tells the item's content as a fact - still refused."""
+    assert _risk(text, lang) == "a rumour or a contradiction not called one"
+
+
+def test_a_rumour_is_still_told_only_among_the_risks_whatever_it_is_called_ia048() -> None:
+    assert "outside the risks" in (_risk("El portero titular no viajó, aunque no está confirmado.", section="home") or "")
+    assert "outside the risks" in (_risk("An unverified outlet says the goalkeeper did not travel.", "en", section="away") or "")
+
+
+def test_the_starting_eleven_is_no_number_but_eleven_of_something_still_is_ia048() -> None:
+    """IA-048: the English «starting eleven», «a changed eleven», «the eleven may differ» are the XI, as «el once titular» is (IA-032). «eleven
+    matches», «the first eleven minutes» and «the same eleven players» are still eleven of something, checked against what the sentence cites."""
+    def en(text: str, *refs: str) -> str | None:
+        return un.check_sentence(un.SentenceOut(text=text, refs=list(refs)), lang="en", section="home", inp=inp())
+
+    assert en("Manchester United could change its starting eleven after the 2-1 win over Fulham.", "P:results.home.1") is None
+    assert en("The eleven may differ from the one that beat Fulham 2-1 at home.", "P:results.home.1") is None
+    assert en("Manchester United fielded a heavily changed eleven against Fulham and won 2-1.", "P:results.home.1") is None
+    assert en("Manchester United have eleven matches unbeaten.", "P:form.home") == "numbers not in what it cites: eleven"
+    assert en("Manchester United scored in the first eleven minutes against Fulham.", "P:results.home.1") == \
+        "numbers not in what it cites: eleven"
+    assert en("The same eleven players beat Fulham 2-1.", "P:results.home.1") == "numbers not in what it cites: eleven"
+    key = un._numbers_key
+    assert key("Repetirá el once titular.", "es") == key("It will keep the same starting eleven.", "en")
+    assert key("André Silva podría salir del once de Porto.", "es") == key("André Silva may leave Porto's XI.", "en"), "«del once» is «el once»"
+    assert key("Su once inicial cambió tras ganar 2-1.", "es") == key("Its first eleven changed after the 2-1 win.", "en")
+    assert key("Lleva once partidos sin perder.", "es") == key("It is eleven matches unbeaten.", "en"), "eleven of something is eleven"
+    assert key("Lleva diez partidos sin perder.", "es") != key("It has gone eleven matches unbeaten.", "en")
+    item = un.NewsOut(id=101, headline_es=None, headline_en=None,
+                      claim_en="Oxford United fielded a heavily changed eleven; no lineup is confirmed for this match.")
+    kept, refused = un.check_translation(item, news(101, "PROBABLE", "Oxford United alineó un once muy cambiado."))
+    assert kept is not None and kept.claim_en is not None and not refused, "a translation that names the XI is kept"
+
+
+def test_a_name_is_no_number_when_the_two_languages_are_compared_ia048() -> None:
+    """IA-048: «League Two» and «Once Caldas» are names in both languages, as each language's own check already reads them; a different score in
+    the same competition is still refused."""
+    key = un._numbers_key
+    names = ("League Two", "Once Caldas", "Rotherham")
+    es, en = "Antes ganó 2-1 en casa al Rotherham en la League Two.", "Before that they beat Rotherham 2-1 at home in League Two."
+    assert key(es, "es") != key(en, "en"), "without the names, «Two» was read as a two (the refusals of 10 Nov 2026)"
+    assert key(es, "es", names) == key(en, "en", names)
+    assert key("Empató 1-1 con Once Caldas.", "es", names) == key("It drew 1-1 with Once Caldas.", "en", names)
+    assert key("Antes ganó 3-1 en casa al Rotherham en la League Two.", "es", names) != key(en, "en", names), "a different score is still refused"
+    schalke = ("FC Schalke 04",)  # replayed 11 Nov 2026: a name whole in one language and short in the other keeps its digits on both sides
+    assert key("Antes ganó 1-0 como visitante al Schalke 04.", "es", schalke) == key("Before that they won 1-0 away at FC Schalke 04.", "en", schalke)
+    league = inp(facts=tuple(story.Fact(f.ref, f.section, f.code, {**f.params, "competition": "League Two"}) if f.ref == "P:results.home.1"
+                             else f for f in FACTS))
+    data = good()
+    data["es"]["home"][0] = S("Manchester United llega tras ganar 2-1 al Fulham en casa en la League Two y empatar 0-0 con el Brighton fuera.",
+                              "P:results.home.1", "P:results.home.2")
+    data["en"]["home"][0] = S("Manchester United arrive after beating Fulham 2-1 at home in League Two and drawing 0-0 at Brighton.",
+                              "P:results.home.1", "P:results.home.2")
+    v = un.validate(un.NarrativeOut.model_validate(data), league)
+    assert v.ok, [p.as_json() for p in v.problems]
