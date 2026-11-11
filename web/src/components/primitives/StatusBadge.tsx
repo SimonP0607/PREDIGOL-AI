@@ -3,17 +3,23 @@ import { t, translateOr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { DataState, ModelStatus, PickStatus } from "@/types/domain";
 
+/**
+ * The tag of «Noche de partido» (plan maestro UX/UI 2026, wave 2): a 24 px pill that names a state, in the product and
+ * in the console. Its colour never informs alone: the word is the state, and most carry an icon or a dot.
+ */
 const badge = cva(
-  "inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 text-caption font-medium uppercase tracking-wider whitespace-nowrap",
+  "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-xs font-semibold",
   {
     variants: {
       tone: {
-        neutral: "border-border-strong bg-muted text-muted-foreground",
-        positive: "border-positive/35 bg-positive-soft text-positive",
-        negative: "border-negative/35 bg-negative-soft text-negative",
-        warning: "border-warning/35 bg-warning-soft text-warning",
-        info: "border-info/35 bg-info-soft text-info",
-        brand: "border-primary/35 bg-primary/12 text-primary",
+        neutral: "bg-foreground/[0.07] text-foreground-soft",
+        positive: "bg-positive-soft text-positive",
+        negative: "bg-negative-soft text-negative",
+        warning: "bg-warning-soft text-warning",
+        info: "bg-info-soft text-info",
+        brand: "bg-primary-soft text-primary",
+        // what PrediGol recommends, and the membership
+        gold: "bg-gold-soft text-gold-strong",
       },
     },
     defaultVariants: { tone: "neutral" },

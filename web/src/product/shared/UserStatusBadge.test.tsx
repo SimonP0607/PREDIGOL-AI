@@ -51,7 +51,9 @@ describe("the state of a pick", () => {
     const classes = USER_STATUSES.map((s) => {
       const html = renderToStaticMarkup(<UserStatusBadge state={state(s)} />);
       return (
-        /class="(inline-flex items-center gap-1\.5 rounded border[^"]*)"/.exec(html)?.[1] ?? ""
+        /class="(inline-flex h-6 items-center gap-1\.5 whitespace-nowrap rounded-full[^"]*)"/.exec(
+          html,
+        )?.[1] ?? ""
       );
     });
     expect(new Set(classes).size).toBe(4);

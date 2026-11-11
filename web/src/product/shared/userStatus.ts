@@ -14,7 +14,8 @@ export const USER_STATUSES: readonly UserStatus[] = [
 ];
 
 export const STATUS_TONE: Record<UserStatus, BadgeTone> = {
-  RECOMMENDED: "positive",
+  // gold is what PrediGol recommends («Noche de partido»); green stays for a result won
+  RECOMMENDED: "gold",
   CAUTION: "warning",
   NOT_RECOMMENDED: "negative",
   EVALUATION: "info",
