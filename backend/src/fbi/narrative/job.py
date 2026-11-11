@@ -482,10 +482,47 @@ CAUSAL: Final[dict[str, re.Pattern[str]]] = {
 }
 """Words that make a description a cause - refused in a sentence that cites a DESCRIPTIVE factor."""
 
+_REPORTS_ES: Final = r"(?:informaciones|fuentes|versiones|datos|noticias|medios|reportes|informes)"
+_REPORTS_EN: Final = r"(?:reports?|sources?|accounts?|versions?|claims?|stories|details|data|lists?|information|news)"
+_NOT_EN: Final = r"(?:\s+not|n['\u2019]t)"
 RUMOUR_WORDS: Final[dict[str, re.Pattern[str]]] = {
-    "es": _words([r"\brumor\w*", r"\bsin confirmar\b", r"\bno confirmad\w*", r"\bcontradic\w*", r"\bversiones\b"]),
-    "en": _words([r"\brumou?r\w*", r"\bunconfirmed\b", r"\bnot confirmed\b", r"\bcontradict\w*", r"\bconflicting\b"]),
+    "es": _words([r"\brumor\w*", r"\bsin confirmar(?:se)?\b", r"\bno confirmad\w*", r"\bcontradic\w*", r"\bversiones\b",
+                  r"\bno (?:esta|estan|ha sido|han sido|fue|fueron|ha|han|se ha|se han)(?: (?:aun|todavia|oficialmente))? "
+                  r"(?:confirmad|verificad)\w*",
+                  r"\bno verificad\w*", r"\bsin (?:verificar|confirmacion)\b",
+                  r"\bningun[oa]? (?:otr[oa] )?(?:fuente|medio)s? (?:lo |la |los |las )?confirma\w*",
+                  r"\bno (?:se )?(?:pudo|puede|pueden|pudieron|ha podido|han podido) (?:ser )?(?:confirm|verific)\w*",
+                  r"\bno (?:lo |la |los |las |le |les )?(?:(?:ha|han) )?"
+                  r"(?:confirma|confirman|confirmo|confirmaron|confirmado|verifica|verifican|verificado)\b",
+                  r"\bno (?:es |son )?(?:una? |unos |unas )?\w+ confirmad\w*",
+                  r"\bno (?:se )?(?:hay|ha publicado|han publicado)(?: (?:una?|ningun[oa]?))? \w+ confirmad\w*",
+                  r"\bno (?:son |es )?(?:una? |las |los )?(?:alineacion(?:es)?|convocatorias?) oficial(?:es)?\b",
+                  rf"\b{_REPORTS_ES}(?:\s+[\w-]+){{0,8}}?\s+(?:aun\s+|todavia\s+)?no\s+coincid\w*", rf"\b{_REPORTS_ES}\s+difier\w*",
+                  rf"\bcontrasta\w*\s+con\s+(?:las\s+|los\s+|otras\s+|otros\s+)?{_REPORTS_ES}\b"]),
+    "en": _words([r"\brumou?r\w*", r"\bunconfirmed\b", r"\bnot confirmed\b", r"\bcontradict\w*", r"\bconflicting\b",
+                  r"\bunverified\b", r"\bnot (?:(?:yet|be|been) ){0,3}(?:officially |independently )?(?:confirmed|verified)\b",
+                  r"\byet to be (?:officially )?(?:confirmed|verified)\b", r"\b(?:no|without(?: any)?) (?:official )?confirmation\b",
+                  r"\bno (?:other )?(?:source|outlet|report)s? (?:has |have )?confirm\w*",
+                  r"\bcannot be (?:officially |independently )?(?:confirmed|verified)\b",
+                  rf"\b(?:does|do|did|has|have|had){_NOT_EN}\s+(?:yet\s+)?(?:officially\s+)?confirm(?:ed)?\b",
+                  r"\bno confirmed\b", r"\bnot an? (?:[\w'-]+ )?confirmed\b",
+                  r"\bnot (?:the |an? )?official (?:line-?ups?|squads?|team news|elevens?)\b",
+                  rf"\b{_REPORTS_EN}(?:\s+[\w'\u2019-]+){{0,4}}?\s+conflict(?:s|ed)?\b",
+                  rf"\bconflicts?\s+with\s+(?:the\s+|other\s+|earlier\s+|later\s+)?(?:{_REPORTS_EN}|doubt)\b", rf"\b{_REPORTS_EN}\s+differ\b",
+                  rf"\b{_REPORTS_EN}\s+(?:that\s+)?(?:do|does|did){_NOT_EN}\s+(?:fully\s+|entirely\s+|quite\s+)?match\b"]),
 }
+"""How a sentence calls a rumour or a contradiction what it is. IA-048: the denial must be ATTACHED to the confirmation, as «no confirmada» already
+was - «no está confirmada», «no han sido verificadas», «de calidad no verificada», «sin confirmación», «sigue sin confirmarse», «no pudo
+verificarse», «el club no lo ha confirmado», «es una previsión, no una baja confirmada», «no se ha publicado una alineación confirmada», «son
+previsiones, no alineaciones oficiales», «ninguna otra fuente la confirma», «unverified», «has not been confirmed», «could not be verified», «the
+reports do not confirm his status», «no confirmed line-up», «not a confirmed absence», «not official line-ups», «no confirmation», «no other source
+confirms it»; and a contradiction NAMED together with the reports it is about - «las informaciones no coinciden», «las fuentes difieren», «contrasta
+con las informaciones», «reports conflict», «reports on X conflict», «which conflicts with reports», «sources differ», «details that do not match».
+What only says that something else is unknown or uncertain («su disponibilidad es desconocida», «queda por confirmar», «availability is
+uncertain», «still being assessed»), what only attributes («según un agregador», «Sky Sport lists him as doubtful») and what describes a clash
+without naming it («un reporte la da como duda, mientras otras fuentes la dan de baja») is not here: such a sentence tells the item's content as a
+fact, and it is still refused. Nor a «conflict» or a «do not match» about anything but the reports («which conflicts with the coach's plans»).
+The words between the reports and their verb may be a name the check took out («Reports on Dadashov conflict»): any run of spaces counts as one."""
 ATTRIBUTION: Final[dict[str, re.Pattern[str]]] = {
     "es": _words([r"\bsegun\b", r"\binforma\w*", r"\bapunta\w*", r"\bpublica\w*", r"\breport\w*", r"\bpodria\w*", r"\bprobabl\w*",
                   r"\bal parecer\b", r"\bse espera\b", r"\bmedios?\b", r"\bprensa\b"]),
@@ -525,6 +562,18 @@ SPELLED: Final[dict[str, dict[str, int]]] = {
 }
 """Quantities written in words are checked like digits (not «dos»/«two» - «los dos equipos» - nor «once», the starting eleven)."""
 NAME_KEYS: Final = ("team", "home", "away", "player", "players", "competition", "opponent")
+QUANTITY_NOUNS: Final = (r"minutes?|matches|games|goals|points|players|days|weeks|months|years|wins|victories|defeats|losses|draws|times|"
+                         r"seconds|shots|corners|cards|meetings|rounds|fixtures|starts|appearances")
+LINEUP: Final[dict[str, re.Pattern[str]]] = {
+    "es": re.compile(r"\b(?:el|del|al|un|su|mismo|ese|este|aquel) once\b|\bonce (?:inicial|titular|tipo)\b"),
+    "en": re.compile(r"\b(?:starting|first|same|usual|strongest|best|changed|unchanged|rotated|weakened|probable|predicted|likely|expected|"
+                     rf"preferred|regular|first-choice) eleven\b(?!\s+(?:{QUANTITY_NOUNS})\b)"
+                     r"|\bthe eleven\b(?=\s+(?:may|might|could|will|would|is|was|that|which|who)\b|\s*[.,;:!?)]|\s*$)"),
+}
+"""The starting XI, which reads as eleven and is no quantity: «el once», «once titular» (IA-032) and, IA-048, «salir del once» and the English
+«starting eleven», «a changed eleven», «the eleven may differ». Left out (on the folded text) before a sentence's figures are read and before the
+two languages are compared. «eleven matches», «the first eleven minutes» and «the same eleven players» are still eleven of something: still
+checked."""
 
 
 @dataclass(frozen=True)
@@ -544,7 +593,7 @@ def figures(text: str, lang: str) -> list[Figure]:
         except ValueError:
             continue
         out.append(Figure(raw, abs(value), len(n.split(".", 1)[1]) if "." in n else 0))
-    for word in re.findall(r"[a-z]+", fold(text)):
+    for word in re.findall(r"[a-z]+", LINEUP[lang].sub(" ", fold(text))):
         if word in SPELLED[lang]:
             out.append(Figure(word, float(SPELLED[lang][word]), 0))
     return out
@@ -731,20 +780,24 @@ CROSS_PAIRS: Final[dict[str, dict[str, int]]] = {"es": {}, "en": {"twice": 2}}
 «ambos» are NOT here: replayed over the 309 approved chronicles (4.264 sentence pairs, 10 Nov 2026, read-only), counting them refused 11
 chronicles that say the same thing («entre ambos» / «between them»), and this table refuses none."""
 NOT_A_QUANTITY: Final[dict[str, re.Pattern[str]]] = {
-    "es": re.compile(r"\bningun[oa]s? de (?:los|las) dos\b|\b(?:el|un|su|mismo|ese|este|aquel) once\b|\bonce (?:inicial|titular|tipo)\b"),
-    "en": re.compile(r"\b(?:neither|either|none) of the two\b"),
+    "es": re.compile(r"\bningun[oa]s? de (?:los|las) dos\b|" + LINEUP["es"].pattern),
+    "en": re.compile(r"\b(?:neither|either|none) of the two\b|" + LINEUP["en"].pattern),
 }
 """IA-032. What reads as a number and is not one, taken out before comparing: «ninguno de los dos» is «neither side» (no two in the English),
-and «el once» or «el once inicial» is the starting XI, never eleven of something («repetir el once» / «keep the side»)."""
+and «el once» or «el once inicial» is the starting XI, never eleven of something («repetir el once» / «keep the side»); IA-048, the English
+«starting eleven» too (``LINEUP``)."""
 
 
-def _numbers_key(text: str, lang: str) -> Counter[float]:
+def _numbers_key(text: str, lang: str, names: Iterable[str] = ()) -> Counter[float]:
     """The numbers a sentence states, as the Spanish and the English are compared (the same ones in both, in whatever form). Whole zero and
     one are not compared: «a win» is «una victoria» and «goalless» is «0-0» without a digit in one of them, and the sentence's own language
     already checked each of them against the facts. A quantity from two to twenty counts the same as a digit or as a word (IA-024), «twice»
-    counts as two, and what only looks like a number is left out (IA-032)."""
+    counts as two, and what only looks like a number is left out (IA-032). IA-048: a number WORD inside a name the facts carry is no
+    quantity - «League Two», «Once Caldas» - so the words are read once the names are taken out, as each language's own check already reads
+    them. Digits are read as written: they look the same in both languages, and a name written whole in one («FC Schalke 04») and short in
+    the other («Schalke 04») must not leave its «04» on one side only."""
     found = [f.value for f in figures(text, lang) if f.raw[:1].isdigit() or f.raw[:1] in "-+\u2212"]
-    words = NOT_A_QUANTITY[lang].sub(" ", fold(text))
+    words = NOT_A_QUANTITY[lang].sub(" ", fold(_strip_names(text, names)))
     found += [float(CROSS_WORDS[lang].get(w) or CROSS_PAIRS[lang][w]) for w in re.findall(r"[a-z]+", words)
               if w in CROSS_WORDS[lang] or w in CROSS_PAIRS[lang]]
     return Counter(round(v, 3) for v in found if v >= 2 or v != int(v))
@@ -817,7 +870,7 @@ def validate(out: NarrativeOut, inp: NarrativeInput) -> Verdict:
         for i, (a, b) in enumerate(zip(es, en, strict=True)):
             if {r.strip() for r in a.refs} != {r.strip() for r in b.refs}:
                 problems.append(Problem(f"{section}[{i}]", b.text, "the English cites other references than the Spanish"))
-            elif _numbers_key(a.text, "es") != _numbers_key(b.text, "en"):
+            elif _numbers_key(a.text, "es", inp.names) != _numbers_key(b.text, "en", inp.names):
                 problems.append(Problem(f"{section}[{i}]", b.text, "the English says other numbers than the Spanish"))
     translations: list[Translation] = []
     dropped: list[Problem] = []
