@@ -1,0 +1,38 @@
+r"""Turn extract.sql into a bash script of read-only \copy commands (one line per block), for the psq helper.
+Blocks marked @weekly run once per week of kick-off (Monday 00:00 UTC to the next), appended to one CSV."""
+import re, sys
+from datetime import date, timedelta
+src = open(sys.argv[1], encoding="utf-8").read()
+EV = "f.kickoff_at >= '2026-09-01' AND f.kickoff_at < now() - interval '3 hours'"
+blocks, cur = [], None
+for line in src.splitlines():
+    m = re.match(r"^--\s*@file\s+(\S+)(\s+@weekly)?", line)
+    if m:
+        if cur: blocks.append(cur)
+        cur = {"name": m.group(1), "weekly": bool(m.group(2)), "lines": []}
+        continue
+    if line.strip().startswith("--") or not line.strip():
+        continue
+    if cur: cur["lines"].append(line)
+if cur: blocks.append(cur)
+out = ["set -u", "mkdir -p /tmp/lab_a09", "cd /tmp/lab_a09"]
+weeks = []
+d = date(2026, 8, 31)  # the Monday before 1-sep-2026
+while d <= date(2026, 11, 16):
+    weeks.append((d, d + timedelta(days=7))); d += timedelta(days=7)
+for b in blocks:
+    sql = re.sub(r"\s+", " ", " ".join(b["lines"])).strip()
+    assert "$" not in sql and '"' not in sql and "`" not in sql and "--" not in sql, b["name"]
+    f = f"/tmp/lab_a09/{b['name']}"
+    out.append(f'echo "== {b["name"]} start $(date -u +%H:%M:%S)"')
+    if not b["weekly"]:
+        out.append(f'psq -q -c "\\copy ({sql}) to stdout with csv header" > {f}; echo "rc=$?"')
+    else:
+        assert sql.count(EV) == 1, b["name"]
+        out.append(f": > {f}")
+        for k, (lo, hi) in enumerate(weeks):
+            q = sql.replace(EV, f"{EV} AND f.kickoff_at >= '{lo.isoformat()}' AND f.kickoff_at < '{hi.isoformat()}'")
+            hdr = " header" if k == 0 else ""
+            out.append(f'psq -q -c "\\copy ({q}) to stdout with csv{hdr}" >> {f}; echo "week {lo} rc=$? $(date -u +%H:%M:%S)"')
+    out.append(f'wc -l {f}; md5sum {f}; head -c 300 {f}; echo')
+print("\n".join(out))
