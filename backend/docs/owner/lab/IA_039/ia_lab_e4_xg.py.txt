@@ -1,0 +1,732 @@
+#!/usr/bin/env python3
+r"""IA-039 — E4: tiros y xG en los ratings (LAB). Plan Maestro de Evolución de PrediGol Intelligence 2026, pieza INT-A09.
+
+Protocolo PREREGISTRADO proto-int-a09-v1 (fbi.research.protocol.A09, huella 400778f8…, commit 1d8c98d / PR #236).
+Análisis puro sobre los CSV de extract.sql: sin base de datos, sin red, sin reloj (las fechas salen de los datos).
+Toca nada: ningún modelo, pronóstico, calibración, pick, umbral ni agente.
+
+    python ia_lab_e4_xg.py --data DIR [--out result.json] [--dry-run]
+
+--dry-run comprueba datos, elegibilidad y la auditoría de fugas e imprime tamaños de muestra SIN calcular ninguna métrica
+de la evaluación. Sin --dry-run es LA evaluación: el protocolo permite una sola (regla de parada).
+
+RETADOR e4-xg-ratings-v1 (fijado antes de mirar resultados)
+  * Proceso por equipo y partido: xG del proveedor cuando los dos lados lo tienen; si no, un xG aproximado por tiros,
+    a·(tiros a puerta) + b·(resto de tiros), con (a, b) por mínimos cuadrados sin constante sobre partidos con xG jugados
+    antes del 1-mar-2026 (anteriores a todo el walk-forward). Objetivo del rating: y = β·goles + (1 − β)·proceso.
+  * Ratings de ataque y defensa por competición, ajustados por rival: punto fijo ponderado de Poisson (ajuste proporcional
+    iterativo, equivalente al máximo de verosimilitud del modelo de Maher sobre y) con pseudo-partidos k hacia el equipo
+    medio; pesos exp(−ln2·edad/H). λ local = goles medios del local en la competición × ataque local × defensa visitante;
+    λ visitante igual con los papeles cambiados (en campo neutral, la media de los dos). Poisson independiente 0–10 goles
+    → 1X2 y más/menos 2,5.
+  * Walk-forward por día de Bogotá (UTC−5): el día D usa solo partidos de la competición con saque + 3 h ≤ inicio de D y
+    saque ≥ inicio de D − 730 días, con tiros y tiros a puerta de los dos lados. Equipo elegible: ≥ 5 partidos así.
+  * Hiperparámetros (H, β, k) en la rejilla {90, 180, 365} × {0, 0,3, 0,6} × {3, 8}: para el día D, el punto con menor
+    log loss medio (1X2 + más/menos 2,5) del propio retador sobre los partidos de los 56 días anteriores a D, en las
+    competiciones donde el modelo actual pronosticó en la ventana de evaluación (la población que se juzga).
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import json
+import math
+import sys
+import time
+from collections import Counter, defaultdict
+from datetime import date, timedelta
+from statistics import NormalDist
+from typing import Any, Final
+
+import numpy as np
+
+# ── protocolo ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+PROTOCOL_KEY: Final = "INT-A09"
+PROTOCOL_VERSION: Final = "proto-int-a09-v1"
+FRAMEWORK: Final = "lab-protocol-v1"
+FINGERPRINT: Final = "400778f85de7acdfc59b1d9e265d7f4c4d5fe42abc4abf71cb5785b33604bd36"
+PROTOCOL_CANONICAL: Final = r'''{"alternative":"El retador baja el log loss del modelo actual y su peso frente al mercado en el pool es mayor que cero en al menos un segmento preregistrado.","data":"Estadísticas de partido del proveedor (tiros, tiros a puerta y xG cuando exista) solo de partidos terminados antes del momento de cada pronóstico; resultados y consenso sin margen como en INT-A02. Ligas con estadísticas guardadas.","exclusions":["Partidos de equipos con menos de 5 partidos anteriores con estadísticas en la ventana.","Partidos sin resultado liquidado o sin consenso de mercado."],"key":"INT-A09","min_sample":"Al menos 1.500 partidos fuera de muestra por segmento evaluado; un segmento con menos se informa como «pendiente por muestra».","null":"El retador no baja el log loss del modelo actual o su peso frente al mercado en el pool no es mayor que cero en ningún segmento preregistrado.","pass_rule":"En al menos un segmento preregistrado: el límite superior del intervalo de la diferencia es < 0, el límite inferior del intervalo del peso es > 0 y la auditoría de fugas sale limpia.","power_note":"Diferencia mínima detectable alcanzada = 2,80·s/√n, con s medida de la diferencia diaria.","primary_metric":"Diferencia pareada del log loss multiclase 1X2 (retador menos modelo actual) por día, con intervalo del 95 % por bootstrap de días; y el peso del retador frente al mercado en el pool logarítmico (fbi.research.blend), con su intervalo por bootstrap de días.","question":"¿Unos ratings de ataque y defensa que usan tiros, tiros a puerta y xG de los partidos anteriores pronostican mejor los goles que el modelo actual, y aportan algo que el mercado no tiene?","registered_on":"2026-11-11","reject_rule":"Falla cualquiera de las tres: el retador se archiva con su motivo y el modelo activo no cambia.","secondary":["Lo mismo en más/menos 2,5.","Cobertura de xG por liga y temporada; resultados sin xG (solo tiros) para las ligas que no lo tienen."],"seed":20261111,"segments":["Ligas prioritarias (Champions y cinco grandes).","El resto de ligas con estadísticas.","Mercados 1X2 y más/menos 2,5."],"split":"Walk-forward por día de Bogotá: los ratings y sus pesos del día D usan solo partidos terminados antes de D. Ninguna estadística del propio partido ni posterior a su saque.","stopping":"Una sola evaluación; ningún ajuste de rasgos tras ver resultados sin un protocolo v2 registrado antes.","title":"E4: tiros y xG en los ratings","unit":"Un partido: la distribución de goles de cada equipo y los mercados 1X2 y más/menos 2,5 que se derivan de ella.","version":"proto-int-a09-v1"}'''
+
+# ── diseño fijado antes de mirar resultados ────────────────────────────────────────────────────────────────────────
+CHALLENGER: Final = "e4-xg-ratings-v1"
+SEED: Final = 20261111
+PRIORITY: Final = {2: "UEFA Champions League", 39: "Premier League", 140: "La Liga", 135: "Serie A", 78: "Bundesliga",
+                   61: "Ligue 1"}
+COMPARATOR: Final = "poisson"
+CONTEXT_MODELS: Final = ("dixon_coles", "elo_ologit")
+MARKETS: Final = ("1X2", "OU")
+SELECTIONS: Final = {"1X2": ("Home", "Draw", "Away"), "OU": ("Over", "Under")}
+SEGMENTS: Final = ("prioritarias", "resto")
+DAY: Final = 86400
+BOGOTA_OFFSET: Final = 5 * 3600
+RESULT_AFTER: Final = 3 * 3600
+DECISION_LEAD: Final = 3 * 3600
+MARKET_MAX_AGE: Final = 6 * 3600
+HISTORY_DAYS: Final = 730
+MIN_PRIOR: Final = 5
+HALF_LIVES: Final = (90.0, 180.0, 365.0)
+BETAS: Final = (0.0, 0.3, 0.6)
+KS: Final = (3.0, 8.0)
+SETTINGS: Final = [(h, b, k) for h in HALF_LIVES for b in BETAS for k in KS]
+DEFAULT_SETTING: Final = SETTINGS.index((180.0, 0.3, 3.0))
+SELECT_WINDOW: Final = 56
+EVAL_FROM: Final = date(2026, 9, 1)
+PROXY_BEFORE: Final = date(2026, 3, 1)
+MIN_SEGMENT: Final = 1500
+MAX_GOALS: Final = 10
+EPS: Final = 1e-15
+TOL: Final = 1e-6
+MAX_IT: Final = 500
+DRAWS_DIFF: Final = 2000
+DRAWS_W: Final = 500
+LAMBDA_CLIP: Final = (0.05, 8.0)
+RATING_CLIP: Final = (0.1, 10.0)
+XG_SHARE_SPLIT: Final = 0.5
+Z_MDE: Final = NormalDist().inv_cdf(0.975) + NormalDist().inv_cdf(0.80)
+
+EPOCH: Final = date(1970, 1, 1)
+
+
+def day_index(d: date) -> int:
+    return (d - EPOCH).days
+
+
+def day_name(i: int) -> str:
+    return (EPOCH + timedelta(days=int(i))).isoformat()
+
+
+def bogota_day(ko: np.ndarray) -> np.ndarray:
+    return (ko - BOGOTA_OFFSET) // DAY
+
+
+def day_start(d: int) -> int:
+    return int(d) * DAY + BOGOTA_OFFSET
+
+
+# ── sello ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+def stamp() -> dict[str, Any]:
+    """The protocol this run follows; refuses to run if the embedded text is not the registered one."""
+    fp = hashlib.sha256(PROTOCOL_CANONICAL.encode("utf-8")).hexdigest()
+    if fp != FINGERPRINT:
+        raise SystemExit(f"el texto del protocolo no coincide con su huella registrada ({fp})")
+    proto = json.loads(PROTOCOL_CANONICAL)
+    if (proto["key"], proto["version"], proto["seed"]) != (PROTOCOL_KEY, PROTOCOL_VERSION, SEED):
+        raise SystemExit("clave, versión o semilla distintas de las del protocolo")
+    st: dict[str, Any] = {"protocol": PROTOCOL_KEY, "version": PROTOCOL_VERSION, "fingerprint": fp, "framework": FRAMEWORK}
+    try:
+        from fbi.research import protocol as registry  # the registry itself, when the package carries it
+        live = registry.stamp(PROTOCOL_KEY)
+        if live != st:
+            raise SystemExit(f"el registro del paquete dice otra cosa: {live}")
+        st["checked_against"] = "fbi.research.protocol (paquete instalado)"
+    except ImportError:
+        st["checked_against"] = "texto canónico incrustado (fbi.research.protocol no está en este entorno)"
+    st["registered_on"] = proto["registered_on"]
+    st["seed"] = proto["seed"]
+    return st
+
+
+# ── bootstrap y pool: las mismas reglas que fbi.models.metrics y fbi.research.blend ──────────────────────────────
+def block_bootstrap_ci(d: np.ndarray, blocks: np.ndarray, *, draws: int = DRAWS_DIFF, seed: int = SEED,
+                       level: float = 0.95) -> tuple[float, float, float, int]:
+    """fbi.models.metrics.block_bootstrap_ci: mean of d, percentile CI resampling whole blocks (days)."""
+    x = np.asarray(d, dtype=np.float64)
+    index: dict[Any, list[int]] = {}
+    for i, key in enumerate(blocks.tolist()):
+        index.setdefault(key, []).append(i)
+    groups = [np.asarray(v) for v in index.values()]
+    sums = np.array([x[g].sum() for g in groups])
+    sizes = np.array([len(g) for g in groups], dtype=np.float64)
+    rng = np.random.default_rng(seed)
+    pick = rng.integers(0, len(groups), size=(draws, len(groups)))
+    means = sums[pick].sum(axis=1) / sizes[pick].sum(axis=1)
+    q = (1 - level) / 2
+    return float(x.mean()), float(np.quantile(means, q)), float(np.quantile(means, 1 - q)), len(groups)
+
+
+def _local_blend() -> tuple[Any, str]:
+    try:
+        from fbi.research import blend as b  # the pool the protocol names
+        return b, "fbi.research.blend (paquete instalado)"
+    except ImportError:
+        pass
+    from scipy.optimize import minimize_scalar
+
+    class B:  # a line-for-line copy of fbi.research.blend's pool, fit_weight and weight_interval
+        W_BOUNDS = (-1.0, 2.0)
+
+        @staticmethod
+        def pool(q: np.ndarray, m: np.ndarray, w: float) -> np.ndarray:
+            logp = (1.0 - w) * np.log(np.clip(q, 1e-12, 1.0)) + w * np.log(np.clip(m, 1e-12, 1.0))
+            logp -= logp.max(axis=1, keepdims=True)
+            p = np.exp(logp)
+            return np.asarray(p / p.sum(axis=1, keepdims=True), dtype=np.float64)
+
+        @staticmethod
+        def fit_weight(q: np.ndarray, m: np.ndarray, y: np.ndarray) -> float:
+            res = minimize_scalar(lambda w: float(_ll(B.pool(q, m, w), y).mean()), bounds=B.W_BOUNDS, method="bounded",
+                                  options={"xatol": 1e-4})
+            return float(res.x)
+
+        @staticmethod
+        def weight_interval(q: np.ndarray, m: np.ndarray, y: np.ndarray, blocks: list[Any], *, draws: int = 500,
+                            seed: int = 23) -> tuple[float, float, float]:
+            w = B.fit_weight(q, m, y)
+            groups: dict[Any, list[int]] = {}
+            for i, b in enumerate(blocks):
+                groups.setdefault(b, []).append(i)
+            keys = list(groups)
+            rng = np.random.default_rng(seed)
+            ws = []
+            for _ in range(draws):
+                pick = rng.integers(0, len(keys), size=len(keys))
+                idx = np.concatenate([np.asarray(groups[keys[k]]) for k in pick])
+                ws.append(B.fit_weight(q[idx], m[idx], y[idx]))
+            return w, float(np.quantile(ws, 0.025)), float(np.quantile(ws, 0.975))
+
+    return B, "copia local de fbi.research.blend (paquete no disponible)"
+
+
+def _ll(p: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """fbi.models.metrics.per_match_log_loss."""
+    return np.asarray(-np.log(np.clip(p[np.arange(len(y)), y], EPS, 1.0)), dtype=np.float64)
+
+
+# ── carga ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+def _rows(path: str) -> list[dict[str, str]]:
+    with open(path, newline="", encoding="utf-8") as fh:
+        return [r for r in csv.DictReader(fh) if not str(next(iter(r.values()), "")).startswith("COPY")]
+
+
+def _f(v: str) -> float:
+    return float(v) if v not in ("", None) else math.nan
+
+
+def md5(path: str) -> str:
+    h = hashlib.md5()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+class Matches:
+    def __init__(self, rows: list[dict[str, str]]) -> None:
+        n = len(rows)
+        self.n = n
+        self.fid = np.array([int(r["fixture_id"]) for r in rows], dtype=np.int64)
+        self.ko = np.array([int(r["ko"]) for r in rows], dtype=np.int64)
+        self.comp = np.array([int(r["competition_id"]) for r in rows], dtype=np.int64)
+        self.league = np.array([int(r["provider_league_id"]) if r["provider_league_id"] else -1 for r in rows], dtype=np.int64)
+        self.ctype = [r["competition_type"] for r in rows]
+        self.season = np.array([int(r["season"]) for r in rows], dtype=np.int64)
+        self.home = np.array([int(r["home_team_id"]) for r in rows], dtype=np.int64)
+        self.away = np.array([int(r["away_team_id"]) for r in rows], dtype=np.int64)
+        self.gh = np.array([int(r["gh"]) for r in rows], dtype=np.float64)
+        self.ga = np.array([int(r["ga"]) for r in rows], dtype=np.float64)
+        self.neutral = np.array([r["neutral"] == "1" for r in rows], dtype=bool)
+        self.excluded = np.array([r["excluded"] == "1" for r in rows], dtype=bool)
+        self.src = [r["src"] for r in rows]
+        self.h_sh, self.h_sot = (np.array([_f(r[c]) for r in rows]) for c in ("h_sh", "h_sot"))
+        self.a_sh, self.a_sot = (np.array([_f(r[c]) for r in rows]) for c in ("a_sh", "a_sot"))
+        self.h_xg, self.a_xg = (np.array([_f(r[c]) for r in rows]) for c in ("h_xg", "a_xg"))
+        self.stats_ok = ~(np.isnan(self.h_sh) | np.isnan(self.h_sot) | np.isnan(self.a_sh) | np.isnan(self.a_sot))
+        self.xg_ok = self.stats_ok & ~(np.isnan(self.h_xg) | np.isnan(self.a_xg))
+        self.day = bogota_day(self.ko)
+        order = np.lexsort((self.fid, self.ko))
+        if not np.array_equal(order, np.arange(n)):
+            raise SystemExit("matches.csv debe venir ordenado por saque y partido")
+        if len(np.unique(self.fid)) != n:
+            raise SystemExit("matches.csv repite partidos")
+        self.row_of = {int(f): i for i, f in enumerate(self.fid.tolist())}
+
+
+# ── el retador ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+def fit_proxy(m: Matches) -> dict[str, float]:
+    """xG ≈ a·SoT + b·(shots − SoT), least squares without intercept, on matches with xG played before PROXY_BEFORE."""
+    cut = day_start(day_index(PROXY_BEFORE))
+    sel = m.xg_ok & ~m.excluded & (m.ko < cut)
+    x1 = np.concatenate([m.h_sot[sel], m.a_sot[sel]])
+    x2 = np.concatenate([m.h_sh[sel] - m.h_sot[sel], m.a_sh[sel] - m.a_sot[sel]])
+    yy = np.concatenate([m.h_xg[sel], m.a_xg[sel]])
+    if len(yy) < 1000:
+        raise SystemExit(f"muy pocos partidos con xG antes de {PROXY_BEFORE} para el xG aproximado: {len(yy)//2}")
+    X = np.column_stack([x1, x2])
+    coef, *_ = np.linalg.lstsq(X, yy, rcond=None)
+    resid = yy - X @ coef
+    r2 = 1.0 - float(resid @ resid) / float(((yy - yy.mean()) ** 2).sum())
+    return {"a_sot": float(coef[0]), "b_other_shots": float(coef[1]), "n_matches": int(sel.sum()), "r2": r2,
+            "max_kickoff_used": int(m.ko[sel].max())}
+
+
+def process_values(m: Matches, proxy: dict[str, float]) -> tuple[np.ndarray, np.ndarray]:
+    a, b = proxy["a_sot"], proxy["b_other_shots"]
+    ph = np.where(m.xg_ok, m.h_xg, a * m.h_sot + b * (m.h_sh - m.h_sot))
+    pa = np.where(m.xg_ok, m.a_xg, a * m.a_sot + b * (m.a_sh - m.a_sot))
+    return np.clip(ph, 0.0, None), np.clip(pa, 0.0, None)
+
+
+def fit_ratings(hh: np.ndarray, aa: np.ndarray, yh: np.ndarray, ya: np.ndarray, w: np.ndarray, n: int,
+                k: float) -> tuple[np.ndarray, np.ndarray, bool]:
+    """Opponent-adjusted attack and defence multipliers: the weighted Poisson fixed point (iterative proportional
+    fitting) of y_home ~ mu_h·A[h]·D[a], y_away ~ mu_a·A[a]·D[h], with k pseudo-matches at the average team."""
+    W = w.sum()
+    mu_h = float(w @ yh) / W
+    mu_a = float(w @ ya) / W
+    km = k * 0.5 * (mu_h + mu_a)
+    obs_for = np.bincount(hh, w * yh, n) + np.bincount(aa, w * ya, n)
+    obs_against = np.bincount(hh, w * ya, n) + np.bincount(aa, w * yh, n)
+    wh, wa = w * mu_h, w * mu_a
+    A = np.ones(n)
+    D = np.ones(n)
+    for _ in range(MAX_IT):
+        A_new = (obs_for + km) / (np.bincount(hh, wh * D[aa], n) + np.bincount(aa, wa * D[hh], n) + km)
+        D_new = (obs_against + km) / (np.bincount(hh, wa * A_new[aa], n) + np.bincount(aa, wh * A_new[hh], n) + km)
+        delta = max(float(np.abs(A_new - A).max()), float(np.abs(D_new - D).max()))
+        A, D = A_new, D_new
+        if delta < TOL:
+            return np.clip(A, *RATING_CLIP), np.clip(D, *RATING_CLIP), True
+    # Not stable: the unadjusted ratios (opponents taken as average), counted in the report.
+    A = (obs_for + km) / (np.bincount(hh, wh, n) + np.bincount(aa, wa, n) + km)
+    D = (obs_against + km) / (np.bincount(hh, wa, n) + np.bincount(aa, wh, n) + km)
+    return np.clip(A, *RATING_CLIP), np.clip(D, *RATING_CLIP), False
+
+
+_G = np.arange(MAX_GOALS + 1, dtype=np.float64)
+_LF = np.array([math.lgamma(g + 1.0) for g in _G])
+_TOTAL = _G[:, None] + _G[None, :]
+
+
+def outcome_probs(lh: np.ndarray, la: np.ndarray) -> np.ndarray:
+    """(n, 5): Home, Draw, Away, Over 2.5, Under 2.5 from independent Poisson goals, 0-10, renormalised
+    (fbi.models.scoring.from_matrix)."""
+    ph = np.exp(_G[None, :] * np.log(lh[:, None]) - lh[:, None] - _LF[None, :])
+    pa = np.exp(_G[None, :] * np.log(la[:, None]) - la[:, None] - _LF[None, :])
+    mat = ph[:, :, None] * pa[:, None, :]
+    mat /= mat.sum(axis=(1, 2), keepdims=True)
+    home = np.tril(mat, -1).sum(axis=(1, 2))
+    away = np.triu(mat, 1).sum(axis=(1, 2))
+    draw = np.trace(mat, axis1=1, axis2=2)
+    over = (mat * (_TOTAL > 2.5)[None]).sum(axis=(1, 2))
+    return np.column_stack([home, draw, away, over, 1.0 - over])
+
+
+class Audit:
+    def __init__(self) -> None:
+        self.c: Counter[str] = Counter()
+
+    def check(self, name: str, ok: bool | np.ndarray, n: int = 1) -> None:
+        bad = int(np.size(ok) - np.count_nonzero(ok)) if isinstance(ok, np.ndarray) else (0 if ok else n)
+        self.c[f"{name}: comprobados"] += int(np.size(ok)) if isinstance(ok, np.ndarray) else n
+        self.c[f"{name}: violaciones"] += bad
+
+    @property
+    def clean(self) -> bool:
+        return all(v == 0 for k, v in self.c.items() if k.endswith("violaciones"))
+
+
+def walk_forward(m: Matches, ph: np.ndarray, pa: np.ndarray, wf_from: int, last_day: int, audit: Audit,
+                 fit: bool, scope: set[int]) -> dict[str, Any]:
+    """Challenger forecasts for every match from wf_from on, under every setting; only data before each match's day.
+    Only the competitions in ``scope`` (those where the current model forecast in the evaluation window): the
+    hyper-parameters are chosen on the population they are judged on, never on friendlies the comparison never sees."""
+    in_scope = np.isin(m.comp, np.asarray(sorted(scope), dtype=np.int64))
+    targets_all = np.where(~m.excluded & in_scope & (m.day >= wf_from) & (m.day <= last_day))[0]
+    pred = np.full((len(SETTINGS), m.n, 5), np.nan) if fit else None
+    eligible = np.zeros(m.n, dtype=bool)
+    xg_share = np.full(m.n, np.nan)
+    hist_n = np.zeros(m.n, dtype=np.int64)
+    unstable = 0
+    fits = 0
+    hist_mask = m.stats_ok & ~m.excluded
+    by_comp: dict[int, np.ndarray] = defaultdict(lambda: np.zeros(0, dtype=np.int64))
+    for c in np.unique(m.comp[targets_all]).tolist():
+        by_comp[c] = np.where(hist_mask & (m.comp == c))[0]   # ascending kick-off
+    tgt_by: dict[tuple[int, int], list[int]] = defaultdict(list)
+    for i in targets_all.tolist():
+        tgt_by[(int(m.comp[i]), int(m.day[i]))].append(i)
+    lnh = [math.log(2.0) / h for h in HALF_LIVES]
+    for (c, d), tg in sorted(tgt_by.items(), key=lambda kv: (kv[0][1], kv[0][0])):
+        tg_arr = np.asarray(tg)
+        start = day_start(d)
+        hidx = by_comp[c]
+        ko_c = m.ko[hidx]
+        lo = int(np.searchsorted(ko_c, start - HISTORY_DAYS * DAY, side="left"))
+        hi = int(np.searchsorted(ko_c, start - RESULT_AFTER, side="right"))
+        hist = hidx[lo:hi]
+        audit.check("objetivo en su día (saque ≥ inicio del día D)", m.ko[tg_arr] >= start)
+        if len(hist) == 0:
+            continue
+        audit.check("historia terminada antes de D (saque + 3 h ≤ inicio de D)", m.ko[hist] + RESULT_AFTER <= start)
+        audit.check("historia anterior al saque del objetivo", m.ko[hist].max() < m.ko[tg_arr].min(), 1)
+        audit.check("el partido objetivo no está en su propia historia", ~np.isin(m.fid[tg_arr], m.fid[hist]))
+        teams, inv = np.unique(np.concatenate([m.home[hist], m.away[hist]]), return_inverse=True)
+        nh = len(hist)
+        hh, aa = inv[:nh], inv[nh:]
+        cnt = np.bincount(hh, minlength=len(teams)) + np.bincount(aa, minlength=len(teams))
+        pos_h = np.searchsorted(teams, m.home[tg_arr])
+        pos_a = np.searchsorted(teams, m.away[tg_arr])
+        known_h = (pos_h < len(teams)) & (teams[np.minimum(pos_h, len(teams) - 1)] == m.home[tg_arr])
+        known_a = (pos_a < len(teams)) & (teams[np.minimum(pos_a, len(teams) - 1)] == m.away[tg_arr])
+        ok = known_h & known_a
+        ok[ok] = (cnt[pos_h[ok]] >= MIN_PRIOR) & (cnt[pos_a[ok]] >= MIN_PRIOR)
+        if not ok.any():
+            continue
+        sel = tg_arr[ok]
+        eligible[sel] = True
+        xg_share[sel] = float(m.xg_ok[hist].mean())
+        hist_n[sel] = nh
+        if not fit:
+            continue
+        th, ta = pos_h[ok], pos_a[ok]
+        age = (start - m.ko[hist]) / DAY
+        gh, ga = m.gh[hist], m.ga[hist]
+        yph, ypa = ph[hist], pa[hist]
+        neutral = m.neutral[sel]
+        for s, (hl, beta, k) in enumerate(SETTINGS):
+            w = np.exp(-lnh[HALF_LIVES.index(hl)] * age)
+            yh = beta * gh + (1.0 - beta) * yph
+            ya = beta * ga + (1.0 - beta) * ypa
+            A, Dd, conv = fit_ratings(hh, aa, yh, ya, w, len(teams), k)
+            fits += 1
+            unstable += 0 if conv else 1
+            W = w.sum()
+            g_h, g_a = float(w @ gh) / W, float(w @ ga) / W
+            base_h = np.where(neutral, 0.5 * (g_h + g_a), g_h)
+            base_a = np.where(neutral, 0.5 * (g_h + g_a), g_a)
+            lh = np.clip(base_h * A[th] * Dd[ta], *LAMBDA_CLIP)
+            la = np.clip(base_a * A[ta] * Dd[th], *LAMBDA_CLIP)
+            pred[s, sel] = outcome_probs(lh, la)
+    return {"pred": pred, "eligible": eligible, "xg_share": xg_share, "hist_n": hist_n, "fits": fits,
+            "unstable": unstable, "targets": int(len(targets_all))}
+
+
+def outcomes(m: Matches) -> tuple[np.ndarray, np.ndarray]:
+    y1x2 = np.where(m.gh > m.ga, 0, np.where(m.gh == m.ga, 1, 2)).astype(np.int64)
+    you = np.where(m.gh + m.ga > 2.5, 0, 1).astype(np.int64)
+    return y1x2, you
+
+
+# ── modelo actual y mercado ───────────────────────────────────────────────────────────────────────────────────────
+def load_current(rows: list[dict[str, str]], m: Matches, audit: Audit) -> tuple[dict[tuple[int, str, str], dict[str, Any]], dict[str, int]]:
+    grouped: dict[tuple[int, str, str], dict[int, dict[str, Any]]] = defaultdict(dict)
+    for r in rows:
+        key = (int(r["fixture_id"]), r["model"], r["market_key"])
+        ver = int(r["model_version_id"])
+        g = grouped[key].setdefault(ver, {"p": {}, "cutoff": int(r["cutoff"]), "created": int(r["created"])})
+        g["p"][r["selection"]] = float(r["p_raw"])
+        g["created"] = max(g["created"], int(r["created"]))
+    out: dict[tuple[int, str, str], dict[str, Any]] = {}
+    stats = Counter()
+    for key, versions in grouped.items():
+        fid, model, mk = key
+        if len(versions) > 1:
+            stats["varias versiones en el mismo corte (se toma la mayor)"] += 1
+        ver = max(versions)
+        g = versions[ver]
+        sels = SELECTIONS[mk]
+        if any(s not in g["p"] for s in sels):
+            stats[f"{model} {mk}: mercado incompleto"] += 1
+            continue
+        p = np.array([g["p"][s] for s in sels], dtype=np.float64)
+        if np.any(p <= 0) or np.any(p >= 1):
+            stats[f"{model} {mk}: probabilidad fuera de (0, 1)"] += 1
+            continue
+        i = m.row_of.get(fid)
+        if i is None:
+            stats[f"{model} {mk}: partido fuera de matches.csv"] += 1
+            continue
+        t_ref = int(m.ko[i]) - DECISION_LEAD
+        audit.check("modelo actual: corte ≤ saque − 3 h", g["cutoff"] <= t_ref)
+        audit.check("modelo actual: guardado (created_at) ≤ saque − 3 h", g["created"] <= t_ref)
+        out[key] = {"p": p / p.sum(), "cutoff": g["cutoff"], "lead_h": (int(m.ko[i]) - g["cutoff"]) / 3600.0,
+                    "version": ver}
+    return out, dict(stats)
+
+
+def load_market(rows: list[dict[str, str]], m: Matches, audit: Audit) -> tuple[dict[tuple[int, str], dict[str, Any]], dict[str, int]]:
+    grouped: dict[tuple[int, str], dict[str, Any]] = defaultdict(lambda: {"p": {}, "as_of": None, "books": []})
+    for r in rows:
+        g = grouped[(int(r["fixture_id"]), r["market_key"])]
+        g["p"][r["selection"]] = float(r["p_fair"])
+        g["books"].append(int(r["n_bookmakers"]))
+        if g["as_of"] is not None and g["as_of"] != int(r["as_of"]):
+            raise SystemExit("market.csv mezcla instantes dentro de un mercado")
+        g["as_of"] = int(r["as_of"])
+    out: dict[tuple[int, str], dict[str, Any]] = {}
+    stats = Counter()
+    for (fid, mk), g in grouped.items():
+        sels = SELECTIONS[mk]
+        if any(s not in g["p"] for s in sels):
+            stats[f"{mk}: incompleto"] += 1
+            continue
+        i = m.row_of.get(fid)
+        if i is None:
+            stats[f"{mk}: partido fuera de matches.csv"] += 1
+            continue
+        t_ref = int(m.ko[i]) - DECISION_LEAD
+        audit.check("mercado: as_of ≤ saque − 3 h", g["as_of"] <= t_ref)
+        audit.check("mercado: antigüedad ≤ 6 h en saque − 3 h", t_ref - g["as_of"] <= MARKET_MAX_AGE)
+        p = np.array([g["p"][s] for s in sels], dtype=np.float64)
+        out[(fid, mk)] = {"p": p / p.sum(), "age_h": (t_ref - g["as_of"]) / 3600.0, "books": min(g["books"])}
+    return out, dict(stats)
+
+
+# ── evaluación ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+def segment_of(m: Matches, i: int) -> str:
+    return "prioritarias" if int(m.league[i]) in PRIORITY else "resto"
+
+
+def eval_sets(m: Matches, wf: dict[str, Any], cur: dict[tuple[int, str, str], dict[str, Any]],
+              mkt: dict[tuple[int, str], dict[str, Any]], eval_from: int, last_day: int) -> dict[tuple[str, str], list[int]]:
+    cells: dict[tuple[str, str], list[int]] = {(s, mk): [] for s in SEGMENTS for mk in MARKETS}
+    cand = np.where(~m.excluded & (m.day >= eval_from) & (m.day <= last_day))[0]
+    for i in cand.tolist():
+        fid = int(m.fid[i])
+        for mk in MARKETS:
+            if wf["eligible"][i] and (fid, COMPARATOR, mk) in cur and (fid, mk) in mkt:
+                cells[(segment_of(m, i), mk)].append(i)
+    return cells
+
+
+def exclusion_funnel(m: Matches, wf: dict[str, Any], cur: dict[tuple[int, str, str], dict[str, Any]],
+                     mkt: dict[tuple[int, str], dict[str, Any]], eval_from: int, last_day: int) -> dict[str, dict[str, int]]:
+    out: dict[str, dict[str, int]] = {}
+    base = np.where((m.day >= eval_from) & (m.day <= last_day))[0]
+    for seg in SEGMENTS:
+        idx = [i for i in base.tolist() if segment_of(m, i) == seg]
+        f: dict[str, int] = {"terminados con marcador (desde el 1-sep-2026)": len(idx)}
+        idx = [i for i in idx if not m.excluded[i]]
+        f["sin cuarentena de la validación histórica"] = len(idx)
+        for mk in MARKETS:
+            a = [i for i in idx if (int(m.fid[i]), COMPARATOR, mk) in cur]
+            b = [i for i in a if (int(m.fid[i]), mk) in mkt]
+            c = [i for i in b if wf["eligible"][i]]
+            f[f"{mk}: con predicción del modelo actual ≤ saque − 3 h"] = len(a)
+            f[f"{mk}: y consenso Shin ≤ 6 h"] = len(b)
+            f[f"{mk}: y los dos equipos con ≥ 5 partidos previos con estadísticas"] = len(c)
+        out[seg] = f
+    return out
+
+
+def select_settings(m: Matches, wf: dict[str, Any], y1: np.ndarray, yo: np.ndarray, eval_days: list[int],
+                    audit: Audit) -> dict[int, int]:
+    """Per eval day D: the setting with the lowest challenger log loss (1X2 + OU 2.5) on matches of the 56 days before D."""
+    pred = wf["pred"]
+    idx = np.where(wf["eligible"] & ~np.isnan(pred[0, :, 0]))[0]
+    days = m.day[idx]
+    loss = np.empty((len(SETTINGS), len(idx)))
+    for s in range(len(SETTINGS)):
+        p = pred[s, idx]
+        loss[s] = _ll(p[:, :3], y1[idx]) + _ll(p[:, 3:], yo[idx])
+    chosen: dict[int, int] = {}
+    for d in eval_days:
+        mask = (days >= d - SELECT_WINDOW) & (days < d)
+        audit.check("selección de hiperparámetros solo con días anteriores a D", days[mask] < d)
+        if mask.sum() == 0:
+            chosen[d] = DEFAULT_SETTING
+            continue
+        chosen[d] = int(np.argmin(loss[:, mask].mean(axis=1)))
+    return chosen
+
+
+def cell_metrics(m: Matches, idx: list[int], mk: str, ch: np.ndarray, cur_p: np.ndarray, mkt_p: np.ndarray,
+                 y: np.ndarray, blend: Any, extra: dict[str, tuple[np.ndarray, np.ndarray]]) -> dict[str, Any]:
+    n = len(idx)
+    days = m.day[np.asarray(idx)]
+    out: dict[str, Any] = {"n": n, "dias": int(len(np.unique(days))), "desde": day_name(int(days.min())),
+                           "hasta": day_name(int(days.max()))}
+    ll_ch, ll_cur, ll_mkt = _ll(ch, y), _ll(cur_p, y), _ll(mkt_p, y)
+    out["log_loss"] = {"retador": float(ll_ch.mean()), "modelo_actual": float(ll_cur.mean()),
+                       "mercado": float(ll_mkt.mean())}
+    context: dict[str, Any] = {}
+    for name, (mask, p) in extra.items():   # descriptive only: never part of the verdict
+        if mask.sum() < 30:
+            context[name] = {"n": int(mask.sum())}
+            continue
+        llx = _ll(p, y[mask])
+        cm, clo, chi, _ = block_bootstrap_ci(ll_ch[mask] - llx, days[mask])
+        context[name] = {"n": int(mask.sum()), "log_loss": float(llx.mean()),
+                         "log_loss_retador_mismos": float(ll_ch[mask].mean()),
+                         "log_loss_actual_mismos": float(ll_cur[mask].mean()),
+                         "dif_retador_menos_este": {"media": cm, "ic95": [clo, chi]}}
+    out["contexto_otros_modelos"] = context
+    d = ll_ch - ll_cur
+    mean, lo, hi, nb = block_bootstrap_ci(d, days)
+    daily = np.array([d[days == u].mean() for u in np.unique(days)])
+    s = float(daily.std(ddof=1)) if len(daily) > 1 else math.nan
+    out["dif_retador_menos_actual"] = {"media": mean, "ic95": [lo, hi], "bloques_dia": nb,
+                                       "sd_diaria": s, "dmd_alcanzada": Z_MDE * s / math.sqrt(len(daily))}
+    w, wlo, whi = blend.weight_interval(mkt_p, ch, y, days.tolist(), draws=DRAWS_W, seed=SEED)
+    out["peso_retador_vs_mercado"] = {"w": w, "ic95": [wlo, whi]}
+    wc, wclo, wchi = blend.weight_interval(mkt_p, cur_p, y, days.tolist(), draws=DRAWS_W, seed=SEED)
+    out["contexto_peso_actual_vs_mercado"] = {"w": wc, "ic95": [wclo, wchi]}
+    return out
+
+
+def verdict(cell: dict[str, Any], leak_clean: bool) -> tuple[str, list[str]]:
+    if cell["n"] < MIN_SEGMENT:
+        return "PENDIENTE POR MUESTRA", [f"{cell['n']} partidos fuera de muestra < {MIN_SEGMENT}"]
+    reasons = []
+    if not cell["dif_retador_menos_actual"]["ic95"][1] < 0:
+        reasons.append("el límite superior del IC95 de la diferencia de log loss no es < 0")
+    if not cell["peso_retador_vs_mercado"]["ic95"][0] > 0:
+        reasons.append("el límite inferior del IC95 del peso frente al mercado no es > 0")
+    if not leak_clean:
+        reasons.append("la auditoría de fugas no sale limpia")
+    return ("PASA" if not reasons else "RECHAZA"), reasons
+
+
+def coverage_summary(rows: list[dict[str, str]]) -> dict[str, Any]:
+    by_season: dict[int, list[int]] = defaultdict(lambda: [0, 0, 0])
+    prio: dict[str, dict[int, list[int]]] = defaultdict(lambda: defaultdict(lambda: [0, 0, 0]))
+    comp_season: list[tuple[int, int, str, int, int, int]] = []
+    for r in rows:
+        season, fin, sh, xg = int(r["season"]), int(r["finished"]), int(r["shots_sot2"]), int(r["xg2"])
+        for acc in (by_season[season],):
+            acc[0] += fin
+            acc[1] += sh
+            acc[2] += xg
+        lg = int(r["provider_league_id"]) if r["provider_league_id"] else -1
+        if lg in PRIORITY:
+            a = prio[PRIORITY[lg]][season]
+            a[0] += fin
+            a[1] += sh
+            a[2] += xg
+        comp_season.append((int(r["competition_id"]), season, r["name"], fin, sh, xg))
+    def pct(a: list[int]) -> dict[str, Any]:
+        return {"terminados": a[0], "con_tiros": a[1], "con_xg": a[2],
+                "pct_tiros": round(100 * a[1] / a[0], 1) if a[0] else None,
+                "pct_xg": round(100 * a[2] / a[0], 1) if a[0] else None}
+    bands: dict[int, Counter[str]] = defaultdict(Counter)
+    for _, season, _, fin, _, xg in comp_season:
+        if season < 2022 or fin < 20:
+            continue
+        share = xg / fin
+        bands[season]["≥ 80 %" if share >= 0.8 else "20–80 %" if share >= 0.2 else "1–20 %" if xg > 0 else "0 %"] += 1
+    return {"por_temporada": {s: pct(a) for s, a in sorted(by_season.items()) if s >= 2018},
+            "prioritarias": {lg: {s: pct(a) for s, a in sorted(v.items()) if s >= 2022} for lg, v in sorted(prio.items())},
+            "competiciones_por_cobertura_xg": {s: dict(c) for s, c in sorted(bands.items())}}
+
+
+def summarise(x: np.ndarray) -> dict[str, float]:
+    if len(x) == 0:
+        return {}
+    q = np.quantile(x, [0.1, 0.5, 0.9])
+    return {"p10": float(q[0]), "mediana": float(q[1]), "p90": float(q[2])}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--data", required=True)
+    ap.add_argument("--out", default=None)
+    ap.add_argument("--dry-run", action="store_true")
+    args = ap.parse_args()
+    t0 = time.time()
+    st = stamp()
+    print("SELLO", json.dumps(st, ensure_ascii=False))
+    files = {n: f"{args.data}/{n}.csv" for n in ("matches", "current", "market", "coverage")}
+    result: dict[str, Any] = {"sello": st, "retador": CHALLENGER, "modo": "dry-run" if args.dry_run else "evaluación",
+                              "ficheros_md5": {n: md5(p) for n, p in files.items()}}
+    m = Matches(_rows(files["matches"]))
+    audit = Audit()
+    last_day = int(m.day.max())
+    eval_from = day_index(EVAL_FROM)
+    wf_from = eval_from - SELECT_WINDOW
+    result["datos"] = {"partidos": m.n, "desde": day_name(int(m.day.min())), "hasta": day_name(last_day),
+                       "con_tiros_y_tiros_a_puerta": int(m.stats_ok.sum()), "con_xg": int(m.xg_ok.sum()),
+                       "fuente_api_football": int(sum(s == "api" for s in m.src)),
+                       "fuente_football_data": int(sum(s == "fd" for s in m.src)),
+                       "en_cuarentena": int(m.excluded.sum())}
+    result["cobertura"] = coverage_summary(_rows(files["coverage"]))
+    proxy = fit_proxy(m)
+    audit.check("xG aproximado ajustado antes del walk-forward", proxy["max_kickoff_used"] < day_start(wf_from), 1)
+    result["xg_aproximado"] = proxy
+    ph, pa = process_values(m, proxy)
+    y1, yo = outcomes(m)
+    cur, cur_stats = load_current(_rows(files["current"]), m, audit)
+    mkt, mkt_stats = load_market(_rows(files["market"]), m, audit)
+    result["descartes_modelo_actual"] = cur_stats
+    result["descartes_mercado"] = mkt_stats
+    scope = {int(m.comp[m.row_of[fid]]) for (fid, model, _) in cur if model == COMPARATOR}
+    result["competiciones_en_alcance"] = len(scope)
+    wf = walk_forward(m, ph, pa, wf_from, last_day, audit, fit=not args.dry_run, scope=scope)
+    cells = eval_sets(m, wf, cur, mkt, eval_from, last_day)
+    result["embudo"] = exclusion_funnel(m, wf, cur, mkt, eval_from, last_day)
+    result["muestra_por_celda"] = {f"{s}|{mk}": len(v) for (s, mk), v in cells.items()}
+    if args.dry_run:
+        result["auditoria_fugas"] = {"limpia": audit.clean, **dict(audit.c)}
+        result["segundos"] = round(time.time() - t0, 1)
+        print(json.dumps(result, ensure_ascii=False, indent=1, default=str))
+        return 0
+    eval_days = sorted({int(m.day[i]) for v in cells.values() for i in v})
+    chosen = select_settings(m, wf, y1, yo, eval_days, audit)
+    result["walk_forward"] = {"objetivos": wf["targets"], "elegibles": int(wf["eligible"].sum()), "ajustes": wf["fits"],
+                              "ajustes_sin_convergencia": wf["unstable"],
+                              "ajustes_por_rival_estables_pct": round(100 * (1 - wf["unstable"] / max(wf["fits"], 1)), 3),
+                              "hiperparametros_elegidos_por_dia": dict(Counter(
+                                  f"H={SETTINGS[s][0]:g} β={SETTINGS[s][1]:g} k={SETTINGS[s][2]:g}"
+                                  for s in chosen.values()).most_common())}
+    blend, blend_src = _local_blend()
+    result["pool"] = blend_src
+    leak_clean = audit.clean
+    result["auditoria_fugas"] = {"limpia": leak_clean, **dict(audit.c)}
+    cells_out: dict[str, Any] = {}
+    for (seg, mk), idx in cells.items():
+        key = f"{seg}|{mk}"
+        if not idx:
+            cells_out[key] = {"n": 0, "veredicto": "PENDIENTE POR MUESTRA"}
+            continue
+        ia = np.asarray(idx)
+        sl = slice(0, 3) if mk == "1X2" else slice(3, 5)
+        ch = np.array([wf["pred"][chosen[int(m.day[i])], i, sl] for i in idx])
+        ch = ch / ch.sum(axis=1, keepdims=True)
+        cur_p = np.array([cur[(int(m.fid[i]), COMPARATOR, mk)]["p"] for i in idx])
+        mkt_p = np.array([mkt[(int(m.fid[i]), mk)]["p"] for i in idx])
+        y = (y1 if mk == "1X2" else yo)[ia]
+        extra: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+        for cm in CONTEXT_MODELS:
+            mask = np.array([(int(m.fid[i]), cm, mk) in cur for i in idx], dtype=bool)
+            if mask.any():
+                extra[cm] = (mask, np.array([cur[(int(m.fid[i]), cm, mk)]["p"] for i, ok in zip(idx, mask) if ok]))
+        if len(idx) < 30:
+            cells_out[key] = {"n": len(idx), "veredicto": "PENDIENTE POR MUESTRA"}
+            continue
+        cm_ = cell_metrics(m, idx, mk, ch, cur_p, mkt_p, y, blend, extra)
+        v, why = verdict(cm_, leak_clean)
+        cm_["veredicto"], cm_["motivos"] = v, why
+        cm_["antelacion_modelo_h"] = summarise(np.array([cur[(int(m.fid[i]), COMPARATOR, mk)]["lead_h"] for i in idx]))
+        cm_["antiguedad_mercado_h"] = summarise(np.array([mkt[(int(m.fid[i]), mk)]["age_h"] for i in idx]))
+        share = wf["xg_share"][ia]
+        split = {}
+        for name, mask in (("historia con xG (≥ 50 %)", share >= XG_SHARE_SPLIT), ("solo tiros (< 50 % con xG)", share < XG_SHARE_SPLIT)):
+            if mask.sum() >= 30:
+                d = _ll(ch[mask], y[mask]) - _ll(cur_p[mask], y[mask])
+                mean, lo, hi, nb = block_bootstrap_ci(d, m.day[ia][mask])
+                split[name] = {"n": int(mask.sum()), "dif_media": mean, "ic95": [lo, hi], "dias": nb}
+            else:
+                split[name] = {"n": int(mask.sum())}
+        cm_["secundario_por_xg"] = split
+        cells_out[key] = cm_
+    result["celdas"] = cells_out
+    evaluable = {k: c for k, c in cells_out.items() if c.get("n", 0) >= MIN_SEGMENT}
+    if any(c["veredicto"] == "PASA" for c in evaluable.values()):
+        overall = "PASA"
+    elif evaluable:
+        overall = "RECHAZA"
+    else:
+        overall = "PENDIENTE POR MUESTRA"
+    result["veredicto"] = {"global": overall, "por_celda": {k: c.get("veredicto") for k, c in cells_out.items()}}
+    result["segundos"] = round(time.time() - t0, 1)
+    text = json.dumps(result, ensure_ascii=False, indent=1, default=str)
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as fh:
+            fh.write(text)
+    print(text)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

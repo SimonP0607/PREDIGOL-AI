@@ -1,0 +1,8 @@
+echo "== reltuples"
+psq -tc "select n.nspname||'.'||c.relname, c.reltuples::bigint from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind in ('r','p') and (n.nspname, c.relname) in (('core','fixture_team_stats'),('core','fixtures'),('core','fixture_results'),('core','fixture_detail_coverage'),('models','predictions'),('models','model_versions'),('models','model_registry'),('market','market_consensus'),('raw','league_coverage'),('core','competitions'),('core','competition_seasons'),('analytics','fixture_validation')) order by 1"
+echo "== team_stats columns"
+psq -tc "select column_name, data_type from information_schema.columns where table_schema='core' and table_name='fixture_team_stats' order by ordinal_position"
+echo "== indexes team_stats / predictions / consensus"
+psq -tc "select tablename, indexdef from pg_indexes where (schemaname,tablename) in (('core','fixture_team_stats'),('models','predictions'),('market','market_consensus'),('core','fixtures')) order by 1"
+echo "== registry"
+psq -tc "select r.id, r.name, r.family, count(v.id), sum((v.status='champion')::int), sum((v.status='shadow')::int), max(v.created_at)::date from models.model_registry r left join models.model_versions v on v.model_id=r.id group by 1,2,3 order by 1"

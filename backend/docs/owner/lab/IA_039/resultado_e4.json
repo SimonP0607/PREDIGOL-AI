@@ -1,0 +1,805 @@
+{
+ "sello": {
+  "protocol": "INT-A09",
+  "version": "proto-int-a09-v1",
+  "fingerprint": "400778f85de7acdfc59b1d9e265d7f4c4d5fe42abc4abf71cb5785b33604bd36",
+  "framework": "lab-protocol-v1",
+  "checked_against": "texto canónico incrustado (fbi.research.protocol no está en este entorno)",
+  "registered_on": "2026-11-11",
+  "seed": 20261111
+ },
+ "retador": "e4-xg-ratings-v1",
+ "modo": "evaluación",
+ "ficheros_md5": {
+  "matches": "173b8a9fc743f68e10de70ca8ab73627",
+  "current": "ae9bc01e8f5c87a6f676c93c71dd6d70",
+  "market": "741d090237be341d47b93169df8e8d96",
+  "coverage": "54e5ee17d1203b8133510ffc411ea944"
+ },
+ "datos": {
+  "partidos": 86587,
+  "desde": "2024-01-01",
+  "hasta": "2026-11-10",
+  "con_tiros_y_tiros_a_puerta": 61373,
+  "con_xg": 31753,
+  "fuente_api_football": 61372,
+  "fuente_football_data": 1,
+  "en_cuarentena": 13
+ },
+ "cobertura": {
+  "por_temporada": {
+   "2018": {
+    "terminados": 24832,
+    "con_tiros": 13625,
+    "con_xg": 0,
+    "pct_tiros": 54.9,
+    "pct_xg": 0.0
+   },
+   "2019": {
+    "terminados": 24533,
+    "con_tiros": 14170,
+    "con_xg": 0,
+    "pct_tiros": 57.8,
+    "pct_xg": 0.0
+   },
+   "2020": {
+    "terminados": 24962,
+    "con_tiros": 16891,
+    "con_xg": 0,
+    "pct_tiros": 67.7,
+    "pct_xg": 0.0
+   },
+   "2021": {
+    "terminados": 26265,
+    "con_tiros": 18169,
+    "con_xg": 0,
+    "pct_tiros": 69.2,
+    "pct_xg": 0.0
+   },
+   "2022": {
+    "terminados": 27695,
+    "con_tiros": 18503,
+    "con_xg": 1119,
+    "pct_tiros": 66.8,
+    "pct_xg": 4.0
+   },
+   "2023": {
+    "terminados": 27281,
+    "con_tiros": 21413,
+    "con_xg": 6955,
+    "pct_tiros": 78.5,
+    "pct_xg": 25.5
+   },
+   "2024": {
+    "terminados": 27337,
+    "con_tiros": 21352,
+    "con_xg": 8641,
+    "pct_tiros": 78.1,
+    "pct_xg": 31.6
+   },
+   "2025": {
+    "terminados": 27268,
+    "con_tiros": 20737,
+    "con_xg": 12938,
+    "pct_tiros": 76.0,
+    "pct_xg": 47.4
+   },
+   "2026": {
+    "terminados": 23168,
+    "con_tiros": 11442,
+    "con_xg": 7363,
+    "pct_tiros": 49.4,
+    "pct_xg": 31.8
+   },
+   "2027": {
+    "terminados": 156,
+    "con_tiros": 140,
+    "con_xg": 110,
+    "pct_tiros": 89.7,
+    "pct_xg": 70.5
+   }
+  },
+  "prioritarias": {
+   "Bundesliga": {
+    "2022": {
+     "terminados": 308,
+     "con_tiros": 308,
+     "con_xg": 171,
+     "pct_tiros": 100.0,
+     "pct_xg": 55.5
+    },
+    "2023": {
+     "terminados": 308,
+     "con_tiros": 308,
+     "con_xg": 306,
+     "pct_tiros": 100.0,
+     "pct_xg": 99.4
+    },
+    "2024": {
+     "terminados": 308,
+     "con_tiros": 308,
+     "con_xg": 306,
+     "pct_tiros": 100.0,
+     "pct_xg": 99.4
+    },
+    "2025": {
+     "terminados": 308,
+     "con_tiros": 308,
+     "con_xg": 306,
+     "pct_tiros": 100.0,
+     "pct_xg": 99.4
+    },
+    "2026": {
+     "terminados": 81,
+     "con_tiros": 81,
+     "con_xg": 73,
+     "pct_tiros": 100.0,
+     "pct_xg": 90.1
+    }
+   },
+   "La Liga": {
+    "2022": {
+     "terminados": 380,
+     "con_tiros": 380,
+     "con_xg": 211,
+     "pct_tiros": 100.0,
+     "pct_xg": 55.5
+    },
+    "2023": {
+     "terminados": 380,
+     "con_tiros": 380,
+     "con_xg": 380,
+     "pct_tiros": 100.0,
+     "pct_xg": 100.0
+    },
+    "2024": {
+     "terminados": 380,
+     "con_tiros": 380,
+     "con_xg": 380,
+     "pct_tiros": 100.0,
+     "pct_xg": 100.0
+    },
+    "2025": {
+     "terminados": 380,
+     "con_tiros": 380,
+     "con_xg": 380,
+     "pct_tiros": 100.0,
+     "pct_xg": 100.0
+    },
+    "2026": {
+     "terminados": 119,
+     "con_tiros": 119,
+     "con_xg": 119,
+     "pct_tiros": 100.0,
+     "pct_xg": 100.0
+    }
+   },
+   "Ligue 1": {
+    "2022": {
+     "terminados": 380,
+     "con_tiros": 380,
+     "con_xg": 190,
+     "pct_tiros": 100.0,
+     "pct_xg": 50.0
+    },
+    "2023": {
+     "terminados": 308,
+     "con_tiros": 308,
+     "con_xg": 306,
+     "pct_tiros": 100.0,
+     "pct_xg": 99.4
+    },
+    "2024": {
+     "terminados": 308,
+     "con_tiros": 308,
+     "con_xg": 306,
+     "pct_tiros": 100.0,
+     "pct_xg": 99.4
+    },
+    "2025": {
+     "terminados": 307,
+     "con_tiros": 307,
+     "con_xg": 305,
+     "pct_tiros": 100.0,
+     "pct_xg": 99.3
+    },
+    "2026": {
+     "terminados": 90,
+     "con_tiros": 90,
+     "con_xg": 89,
+     "pct_tiros": 100.0,
+     "pct_xg": 98.9
+    }
+   },
+   "Premier League": {
+    "2022": {
+     "terminados": 380,
+     "con_tiros": 380,
+     "con_xg": 193,
+     "pct_tiros": 100.0,
+     "pct_xg": 50.8
+    },
+    "2023": {
+     "terminados": 380,
+     "con_tiros": 380,
+     "con_xg": 380,
+     "pct_tiros": 100.0,
+     "pct_xg": 100.0
+    },
+    "2024": {
+     "terminados": 380,
+     "con_tiros": 380,
+     "con_xg": 380,
+     "pct_tiros": 100.0,
+     "pct_xg": 100.0
+    },
+    "2025": {
+     "terminados": 380,
+     "con_tiros": 380,
+     "con_xg": 380,
+     "pct_tiros": 100.0,
+     "pct_xg": 100.0
+    },
+    "2026": {
+     "terminados": 100,
+     "con_tiros": 100,
+     "con_xg": 98,
+     "pct_tiros": 100.0,
+     "pct_xg": 98.0
+    }
+   },
+   "Serie A": {
+    "2022": {
+     "terminados": 381,
+     "con_tiros": 381,
+     "con_xg": 201,
+     "pct_tiros": 100.0,
+     "pct_xg": 52.8
+    },
+    "2023": {
+     "terminados": 380,
+     "con_tiros": 380,
+     "con_xg": 380,
+     "pct_tiros": 100.0,
+     "pct_xg": 100.0
+    },
+    "2024": {
+     "terminados": 380,
+     "con_tiros": 380,
+     "con_xg": 379,
+     "pct_tiros": 100.0,
+     "pct_xg": 99.7
+    },
+    "2025": {
+     "terminados": 380,
+     "con_tiros": 380,
+     "con_xg": 380,
+     "pct_tiros": 100.0,
+     "pct_xg": 100.0
+    },
+    "2026": {
+     "terminados": 110,
+     "con_tiros": 110,
+     "con_xg": 110,
+     "pct_tiros": 100.0,
+     "pct_xg": 100.0
+    }
+   },
+   "UEFA Champions League": {
+    "2022": {
+     "terminados": 214,
+     "con_tiros": 163,
+     "con_xg": 29,
+     "pct_tiros": 76.2,
+     "pct_xg": 13.6
+    },
+    "2023": {
+     "terminados": 214,
+     "con_tiros": 182,
+     "con_xg": 125,
+     "pct_tiros": 85.0,
+     "pct_xg": 58.4
+    },
+    "2024": {
+     "terminados": 279,
+     "con_tiros": 215,
+     "con_xg": 189,
+     "pct_tiros": 77.1,
+     "pct_xg": 67.7
+    },
+    "2025": {
+     "terminados": 281,
+     "con_tiros": 226,
+     "con_xg": 189,
+     "pct_tiros": 80.4,
+     "pct_xg": 67.3
+    },
+    "2026": {
+     "terminados": 162,
+     "con_tiros": 113,
+     "con_xg": 62,
+     "pct_tiros": 69.8,
+     "pct_xg": 38.3
+    }
+   }
+  },
+  "competiciones_por_cobertura_xg": {
+   "2022": {
+    "20–80 %": 6,
+    "0 %": 102,
+    "1–20 %": 4
+   },
+   "2023": {
+    "≥ 80 %": 14,
+    "0 %": 76,
+    "20–80 %": 15,
+    "1–20 %": 7
+   },
+   "2024": {
+    "≥ 80 %": 19,
+    "20–80 %": 20,
+    "0 %": 71,
+    "1–20 %": 1
+   },
+   "2025": {
+    "≥ 80 %": 22,
+    "0 %": 35,
+    "20–80 %": 40,
+    "1–20 %": 14
+   },
+   "2026": {
+    "≥ 80 %": 35,
+    "20–80 %": 40,
+    "0 %": 28,
+    "1–20 %": 8
+   },
+   "2027": {
+    "20–80 %": 1
+   }
+  }
+ },
+ "xg_aproximado": {
+  "a_sot": 0.19705459536304537,
+  "b_other_shots": 0.06235313542632524,
+  "n_matches": 21297,
+  "r2": 0.5571408253665021,
+  "max_kickoff_used": 1772335800
+ },
+ "descartes_modelo_actual": {},
+ "descartes_mercado": {},
+ "competiciones_en_alcance": 101,
+ "embudo": {
+  "prioritarias": {
+   "terminados con marcador (desde el 1-sep-2026)": 475,
+   "sin cuarentena de la validación histórica": 475,
+   "1X2: con predicción del modelo actual ≤ saque − 3 h": 304,
+   "1X2: y consenso Shin ≤ 6 h": 302,
+   "1X2: y los dos equipos con ≥ 5 partidos previos con estadísticas": 281,
+   "OU: con predicción del modelo actual ≤ saque − 3 h": 304,
+   "OU: y consenso Shin ≤ 6 h": 302,
+   "OU: y los dos equipos con ≥ 5 partidos previos con estadísticas": 281
+  },
+  "resto": {
+   "terminados con marcador (desde el 1-sep-2026)": 7246,
+   "sin cuarentena de la validación histórica": 7244,
+   "1X2: con predicción del modelo actual ≤ saque − 3 h": 3755,
+   "1X2: y consenso Shin ≤ 6 h": 3364,
+   "1X2: y los dos equipos con ≥ 5 partidos previos con estadísticas": 2738,
+   "OU: con predicción del modelo actual ≤ saque − 3 h": 3755,
+   "OU: y consenso Shin ≤ 6 h": 3365,
+   "OU: y los dos equipos con ≥ 5 partidos previos con estadísticas": 2738
+  }
+ },
+ "muestra_por_celda": {
+  "prioritarias|1X2": 281,
+  "prioritarias|OU": 281,
+  "resto|1X2": 2738,
+  "resto|OU": 2738
+ },
+ "walk_forward": {
+  "objetivos": 10838,
+  "elegibles": 7439,
+  "ajustes": 52362,
+  "ajustes_sin_convergencia": 0,
+  "ajustes_por_rival_estables_pct": 100.0,
+  "hiperparametros_elegidos_por_dia": {
+   "H=365 β=0.3 k=3": 36,
+   "H=365 β=0.6 k=3": 3
+  }
+ },
+ "pool": "fbi.research.blend (paquete instalado)",
+ "auditoria_fugas": {
+  "limpia": true,
+  "xG aproximado ajustado antes del walk-forward: comprobados": 1,
+  "xG aproximado ajustado antes del walk-forward: violaciones": 0,
+  "modelo actual: corte ≤ saque − 3 h: comprobados": 20351,
+  "modelo actual: corte ≤ saque − 3 h: violaciones": 0,
+  "modelo actual: guardado (created_at) ≤ saque − 3 h: comprobados": 20351,
+  "modelo actual: guardado (created_at) ≤ saque − 3 h: violaciones": 0,
+  "mercado: as_of ≤ saque − 3 h: comprobados": 7687,
+  "mercado: as_of ≤ saque − 3 h: violaciones": 0,
+  "mercado: antigüedad ≤ 6 h en saque − 3 h: comprobados": 7687,
+  "mercado: antigüedad ≤ 6 h en saque − 3 h: violaciones": 0,
+  "objetivo en su día (saque ≥ inicio del día D): comprobados": 10838,
+  "objetivo en su día (saque ≥ inicio del día D): violaciones": 0,
+  "historia terminada antes de D (saque + 3 h ≤ inicio de D): comprobados": 1581876,
+  "historia terminada antes de D (saque + 3 h ≤ inicio de D): violaciones": 0,
+  "historia anterior al saque del objetivo: comprobados": 3188,
+  "historia anterior al saque del objetivo: violaciones": 0,
+  "el partido objetivo no está en su propia historia: comprobados": 10040,
+  "el partido objetivo no está en su propia historia: violaciones": 0,
+  "selección de hiperparámetros solo con días anteriores a D: comprobados": 143893,
+  "selección de hiperparámetros solo con días anteriores a D: violaciones": 0
+ },
+ "celdas": {
+  "prioritarias|1X2": {
+   "n": 281,
+   "dias": 27,
+   "desde": "2026-10-09",
+   "hasta": "2026-11-08",
+   "log_loss": {
+    "retador": 0.9307215932043201,
+    "modelo_actual": 0.9331465124336973,
+    "mercado": 0.8995096769823541
+   },
+   "contexto_otros_modelos": {
+    "dixon_coles": {
+     "n": 281,
+     "log_loss": 0.9343126135490598,
+     "log_loss_retador_mismos": 0.9307215932043201,
+     "log_loss_actual_mismos": 0.9331465124336973,
+     "dif_retador_menos_este": {
+      "media": -0.003591020344739674,
+      "ic95": [
+       -0.019814404414674733,
+       0.013323378304900104
+      ]
+     }
+    },
+    "elo_ologit": {
+     "n": 281,
+     "log_loss": 0.9268599921952033,
+     "log_loss_retador_mismos": 0.9307215932043201,
+     "log_loss_actual_mismos": 0.9331465124336973,
+     "dif_retador_menos_este": {
+      "media": 0.003861601009116829,
+      "ic95": [
+       -0.023316092299079248,
+       0.024026857614032587
+      ]
+     }
+    }
+   },
+   "dif_retador_menos_actual": {
+    "media": -0.002424919229377133,
+    "ic95": [
+     -0.01848048128460312,
+     0.014494632945401275
+    ],
+    "bloques_dia": 27,
+    "sd_diaria": 0.06735606828792795,
+    "dmd_alcanzada": 0.03631605655774285
+   },
+   "peso_retador_vs_mercado": {
+    "w": -0.22997402275352224,
+    "ic95": [
+     -0.845352539846802,
+     0.2645074655554149
+    ]
+   },
+   "contexto_peso_actual_vs_mercado": {
+    "w": 0.009437202746196966,
+    "ic95": [
+     -0.5238502096161938,
+     0.41170224588306703
+    ]
+   },
+   "veredicto": "PENDIENTE POR MUESTRA",
+   "motivos": [
+    "281 partidos fuera de muestra < 1500"
+   ],
+   "antelacion_modelo_h": {
+    "p10": 5.238611111111111,
+    "mediana": 18.177222222222223,
+    "p90": 95.3925
+   },
+   "antiguedad_mercado_h": {
+    "p10": 2.9130555555555557,
+    "mediana": 2.93,
+    "p90": 2.988888888888889
+   },
+   "secundario_por_xg": {
+    "historia con xG (≥ 50 %)": {
+     "n": 281,
+     "dif_media": -0.002424919229377133,
+     "ic95": [
+      -0.01848048128460312,
+      0.014494632945401275
+     ],
+     "dias": 27
+    },
+    "solo tiros (< 50 % con xG)": {
+     "n": 0
+    }
+   }
+  },
+  "prioritarias|OU": {
+   "n": 281,
+   "dias": 27,
+   "desde": "2026-10-09",
+   "hasta": "2026-11-08",
+   "log_loss": {
+    "retador": 0.6610344812832811,
+    "modelo_actual": 0.6738326421116599,
+    "mercado": 0.6589814997248438
+   },
+   "contexto_otros_modelos": {
+    "dixon_coles": {
+     "n": 281,
+     "log_loss": 0.6740920561866321,
+     "log_loss_retador_mismos": 0.6610344812832811,
+     "log_loss_actual_mismos": 0.6738326421116599,
+     "dif_retador_menos_este": {
+      "media": -0.013057574903351061,
+      "ic95": [
+       -0.028942326256770404,
+       0.001073476896964425
+      ]
+     }
+    }
+   },
+   "dif_retador_menos_actual": {
+    "media": -0.012798160828378839,
+    "ic95": [
+     -0.0289345594096646,
+     0.0016675627059353885
+    ],
+    "bloques_dia": 27,
+    "sd_diaria": 0.04812958852486641,
+    "dmd_alcanzada": 0.025949805316697907
+   },
+   "peso_retador_vs_mercado": {
+    "w": 0.4000393565468295,
+    "ic95": [
+     -0.5355870928789793,
+     1.1267027524621862
+    ]
+   },
+   "contexto_peso_actual_vs_mercado": {
+    "w": 0.17289967718553687,
+    "ic95": [
+     -0.49428560601274485,
+     0.6554310750357413
+    ]
+   },
+   "veredicto": "PENDIENTE POR MUESTRA",
+   "motivos": [
+    "281 partidos fuera de muestra < 1500"
+   ],
+   "antelacion_modelo_h": {
+    "p10": 5.238611111111111,
+    "mediana": 18.177222222222223,
+    "p90": 95.3925
+   },
+   "antiguedad_mercado_h": {
+    "p10": 2.9130555555555557,
+    "mediana": 2.93,
+    "p90": 2.988888888888889
+   },
+   "secundario_por_xg": {
+    "historia con xG (≥ 50 %)": {
+     "n": 281,
+     "dif_media": -0.012798160828378839,
+     "ic95": [
+      -0.0289345594096646,
+      0.0016675627059353885
+     ],
+     "dias": 27
+    },
+    "solo tiros (< 50 % con xG)": {
+     "n": 0
+    }
+   }
+  },
+  "resto|1X2": {
+   "n": 2738,
+   "dias": 39,
+   "desde": "2026-09-29",
+   "hasta": "2026-11-10",
+   "log_loss": {
+    "retador": 0.996575525765882,
+    "modelo_actual": 0.9904754400688478,
+    "mercado": 0.9655297204994268
+   },
+   "contexto_otros_modelos": {
+    "dixon_coles": {
+     "n": 2735,
+     "log_loss": 0.9923722522989676,
+     "log_loss_retador_mismos": 0.9972555745196201,
+     "log_loss_actual_mismos": 0.9913820540681049,
+     "dif_retador_menos_este": {
+      "media": 0.004883322220652404,
+      "ic95": [
+       -0.0017960737670804192,
+       0.011499868518972358
+      ]
+     }
+    },
+    "elo_ologit": {
+     "n": 2712,
+     "log_loss": 0.9908027514397594,
+     "log_loss_retador_mismos": 0.9984813859749212,
+     "log_loss_actual_mismos": 0.9921206989699847,
+     "dif_retador_menos_este": {
+      "media": 0.007678634535161614,
+      "ic95": [
+       -0.0010932005381860809,
+       0.01694133986310159
+      ]
+     }
+    }
+   },
+   "dif_retador_menos_actual": {
+    "media": 0.006100085697034147,
+    "ic95": [
+     -0.0006617544827275,
+     0.012684771161794612
+    ],
+    "bloques_dia": 39,
+    "sd_diaria": 0.029822658168172186,
+    "dmd_alcanzada": 0.013378822268672416
+   },
+   "peso_retador_vs_mercado": {
+    "w": -0.3779888538309693,
+    "ic95": [
+     -0.632033041734499,
+     -0.16438600719919774
+    ]
+   },
+   "contexto_peso_actual_vs_mercado": {
+    "w": -0.09821837107450763,
+    "ic95": [
+     -0.3077015142291877,
+     0.09710661446780401
+    ]
+   },
+   "veredicto": "RECHAZA",
+   "motivos": [
+    "el límite superior del IC95 de la diferencia de log loss no es < 0",
+    "el límite inferior del IC95 del peso frente al mercado no es > 0"
+   ],
+   "antelacion_modelo_h": {
+    "p10": 5.1258333333333335,
+    "mediana": 19.467222222222222,
+    "p90": 72.77888888888893
+   },
+   "antiguedad_mercado_h": {
+    "p10": 2.913611111111111,
+    "mediana": 2.930833333333333,
+    "p90": 2.9877777777777776
+   },
+   "secundario_por_xg": {
+    "historia con xG (≥ 50 %)": {
+     "n": 1286,
+     "dif_media": 0.007285293533095985,
+     "ic95": [
+      -0.0004847459131619924,
+      0.014541623707982206
+     ],
+     "dias": 37
+    },
+    "solo tiros (< 50 % con xG)": {
+     "n": 1452,
+     "dif_media": 0.0050503768284559615,
+     "ic95": [
+      -0.003850747617693058,
+      0.014444906987534506
+     ],
+     "dias": 39
+    }
+   }
+  },
+  "resto|OU": {
+   "n": 2738,
+   "dias": 39,
+   "desde": "2026-09-29",
+   "hasta": "2026-11-10",
+   "log_loss": {
+    "retador": 0.6785966758262604,
+    "modelo_actual": 0.6880115868503962,
+    "mercado": 0.669468316894326
+   },
+   "contexto_otros_modelos": {
+    "dixon_coles": {
+     "n": 2735,
+     "log_loss": 0.6884663681299054,
+     "log_loss_retador_mismos": 0.6791097424326356,
+     "log_loss_actual_mismos": 0.6886670569423181,
+     "dif_retador_menos_este": {
+      "media": -0.009356625697269838,
+      "ic95": [
+       -0.013960171200828321,
+       -0.005221987764396478
+      ]
+     }
+    }
+   },
+   "dif_retador_menos_actual": {
+    "media": -0.00941491102413581,
+    "ic95": [
+     -0.014017248141782762,
+     -0.005309876407141412
+    ],
+    "bloques_dia": 39,
+    "sd_diaria": 0.039324566794618106,
+    "dmd_alcanzada": 0.01764149885536437
+   },
+   "peso_retador_vs_mercado": {
+    "w": 0.06762012462871907,
+    "ic95": [
+     -0.19345017720656538,
+     0.32864455544396426
+    ]
+   },
+   "contexto_peso_actual_vs_mercado": {
+    "w": 0.03866805653783545,
+    "ic95": [
+     -0.12808057368424333,
+     0.19147112863649543
+    ]
+   },
+   "veredicto": "RECHAZA",
+   "motivos": [
+    "el límite inferior del IC95 del peso frente al mercado no es > 0"
+   ],
+   "antelacion_modelo_h": {
+    "p10": 5.1258333333333335,
+    "mediana": 19.467222222222222,
+    "p90": 72.77888888888893
+   },
+   "antiguedad_mercado_h": {
+    "p10": 2.913611111111111,
+    "mediana": 2.930833333333333,
+    "p90": 2.9877777777777776
+   },
+   "secundario_por_xg": {
+    "historia con xG (≥ 50 %)": {
+     "n": 1286,
+     "dif_media": -0.008183683831205366,
+     "ic95": [
+      -0.013780110154049967,
+      -0.0019428931056527704
+     ],
+     "dias": 37
+    },
+    "solo tiros (< 50 % con xG)": {
+     "n": 1452,
+     "dif_media": -0.010505378083439222,
+     "ic95": [
+      -0.01990884744316424,
+      -0.0018881023683971858
+     ],
+     "dias": 39
+    }
+   }
+  }
+ },
+ "veredicto": {
+  "global": "RECHAZA",
+  "por_celda": {
+   "prioritarias|1X2": "PENDIENTE POR MUESTRA",
+   "prioritarias|OU": "PENDIENTE POR MUESTRA",
+   "resto|1X2": "RECHAZA",
+   "resto|OU": "RECHAZA"
+  }
+ },
+ "segundos": 143.1,
+ "_procedencia": {
+  "fichero_servidor": "/tmp/lab_a09/eval.json (borrado tras copiarlo)",
+  "md5_fichero_servidor_completo": "957d39050c4bd55bba02c6340fc207c2",
+  "nota": "este JSON es ese fichero sin su primera línea (la línea «SELLO …» que imprime el script)",
+  "script_md5": "cd3dd7b018d69c9c5f08fe3e47a0e36a",
+  "imagen": "predigol-backend:5ae050a9c56a",
+  "ejecutado_utc": "2026-11-11 05:32–05:35"
+ }
+}
