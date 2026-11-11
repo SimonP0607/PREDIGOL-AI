@@ -8,10 +8,32 @@ import { extendTailwindMerge } from "tailwind-merge";
  * kept only the colour and the text rendered at body size. Registering them as font sizes
  * fixes every component at once.
  */
+/**
+ * The names of styles.css's own text sizes and radii. A size added there and not here is the bug of UX-100 again:
+ * `text-micro` was missing, so some 88 pills and counts lost it next to a colour and took the body's size.
+ * utils.test.ts reads styles.css and fails when the two lists differ.
+ */
+export const TEXT_SIZES = [
+  "display",
+  "heading",
+  "subheading",
+  "title",
+  "body",
+  "small",
+  "label",
+  "overline",
+  "micro",
+  "caption",
+  "figure",
+  "figure-xl",
+] as const;
+export const RADII = ["chip", "field", "control", "card", "feature", "sheet"] as const;
+
 const twMerge = extendTailwindMerge({
   extend: {
+    theme: { radius: [...RADII] },
     classGroups: {
-      "font-size": [{ text: ["caption", "label", "title", "heading", "display"] }],
+      "font-size": [{ text: [...TEXT_SIZES] }],
     },
   },
 });
