@@ -4,12 +4,16 @@
  * zone changes its clocks (DST), when a "day" has 23 or 25 hours.
  */
 import { afterEach, describe, expect, test } from "bun:test";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { setLocale } from "@/lib/i18n";
 import {
   dayBounds,
   dayKey,
+  formatDateTime,
   formatKickoff,
   formatTime,
+  hourCycle,
   isValidTimeZone,
   offsetMinutes,
   relativeDay,
@@ -137,5 +141,56 @@ describe("the zone in words (plan UX, A1, F09)", () => {
     expect(zoneName("UTC", "2026-01-15T12:00:00Z")).toBe("tiempo universal coordinado (GMT+0)");
     // a fixed offset has no name: "GMT-03:00 (GMT-3)" would say it twice
     expect(zoneName("Etc/GMT+3", "2026-01-15T12:00:00Z")).toBe("GMT-3");
+  });
+});
+
+// ── one formatter for an hour (plan maestro UX/UI 2026, PR-10) ─────────────────────
+
+describe("the hour on a screen", () => {
+  test("24 hours with two digits, in both languages, exactly as before", () => {
+    const cases: Array<[string, string, string]> = [
+      ["2026-10-03T00:05:00Z", "UTC", "00:05"],
+      ["2026-10-03T09:30:00Z", "UTC", "09:30"],
+      ["2026-10-03T12:00:00Z", "UTC", "12:00"],
+      ["2026-10-03T18:00:00Z", "America/Bogota", "13:00"],
+      ["2026-10-03T23:59:00Z", "UTC", "23:59"],
+      ["2026-10-04T04:59:00Z", "America/Bogota", "23:59"],
+    ];
+    for (const locale of ["es", "en"] as const) {
+      setLocale(locale);
+      for (const [iso, zone, clock] of cases) expect(formatTime(iso, zone)).toBe(clock);
+    }
+    expect(hourCycle()).toBe("h23");
+    expect(formatTime(null)).toBe("—");
+    expect(formatTime("not a date")).toBe("—");
+  });
+
+  test("a date with its hour and a kick-off end in the same clock", () => {
+    setLocale("es");
+    const iso = "2026-10-03T18:00:00Z";
+    expect(formatDateTime(iso, "UTC").endsWith(` ${formatTime(iso, "UTC")}`)).toBe(true);
+    expect(
+      formatKickoff(iso, "UTC", Date.parse("2026-10-01T00:00:00Z")).endsWith(
+        ` ${formatTime(iso, "UTC")}`,
+      ),
+    ).toBe(true);
+  });
+
+  test("it is the only one: no other file chooses a clock or writes an hour on its own", () => {
+    const root = join(import.meta.dir, "..");
+    const files = (dir: string): string[] =>
+      readdirSync(dir).flatMap((name) => {
+        const path = join(dir, name);
+        if (statSync(path).isDirectory()) return name === "locales" ? [] : files(path);
+        return /\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name) ? [path] : [];
+      });
+    const OWN_CLOCK = /hourCycle\s*:|hour12\s*:|\bhour\s*:\s*"|toLocaleTimeString\(/g;
+    const offenders: string[] = [];
+    for (const file of files(root)) {
+      if (file.endsWith(join("lib", "time.ts"))) continue;
+      for (const m of readFileSync(file, "utf8").matchAll(OWN_CLOCK))
+        offenders.push(`${file}: ${m[0]}`);
+    }
+    expect(offenders).toEqual([]);
   });
 });
