@@ -14,12 +14,15 @@ test("changing the language switches every label and is remembered", async ({ pa
   await settle(page);
   const nav = page.getByRole("navigation", { name: L.es.nav.mainNavigation }).first();
   await expect(nav.getByRole("link", { name: L.es.nav.home, exact: true })).toBeVisible();
+  // the language is in «Más» since it left the top bar (plan maestro UX/UI 2026, wave 3)
+  await page.getByTestId("nav-more").click();
   await page.getByTestId("lang-en").click();
   const navEn = page.getByRole("navigation", { name: L.en.nav.mainNavigation }).first();
   await expect(navEn.getByRole("link", { name: L.en.nav.home, exact: true })).toBeVisible();
   await page.reload();
   await settle(page);
   await expect(navEn.getByRole("link", { name: L.en.nav.matches, exact: true })).toBeVisible();
+  await page.getByTestId("nav-more").click();
   await page.getByTestId("lang-es").click();
   await expect(nav.getByRole("link", { name: L.es.nav.matches, exact: true })).toBeVisible();
   await assertClean(page, w);

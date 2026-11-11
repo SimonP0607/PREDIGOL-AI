@@ -73,9 +73,9 @@ describe("the segmented control", () => {
   test("a named radio group with one segment chosen and one stop of Tab", () => {
     const html = draw("en");
     expect(html).toMatch(/<div[^>]*role="radiogroup"[^>]*aria-label="Idioma"/);
-    // the visible label stays in the accessible name (WCAG 2.5.3): «EN, English», never an aria-label in its place
+    // the visible label stays in the accessible name (WCAG 2.5.3): «EN English», never an aria-label in its place
     expect(html).toMatch(
-      /role="radio"[^>]*aria-checked="true"[^>]*>EN<span class="sr-only">, English<\/span>/,
+      /role="radio"[^>]*aria-checked="true"[^>]*>EN<span class="sr-only">English<\/span>/,
     );
     expect(html).not.toContain('aria-label="English"');
     expect(html.match(/tabindex="0"/g)?.length).toBe(1);

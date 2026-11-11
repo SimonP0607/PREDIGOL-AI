@@ -821,13 +821,17 @@ for (const width of [320, 390]) {
       await expect(page.getByTestId("more-sheet")).toHaveCount(0);
       await settle(page);
       // the page of «Más» lights its cell
-      await expect(page.getByTestId("tab-more")).toHaveClass(/text-gold/);
+      await expect(page.getByTestId("tab-more")).toHaveAttribute("data-active", "");
     }
     // Transparencia waits for the owner: never offered while closed
     await page.goto("/home");
     await settle(page);
+    // the language left the top bar (plan maestro UX/UI 2026, wave 3): «Más» has it, in a row of its own
+    await expect(page.locator("header").getByTestId("lang-es")).toHaveCount(0);
     const sheet = await openMore(page);
     await expect(sheet.getByTestId("more-transparency")).toHaveCount(me.transparency ? 1 : 0);
+    await expect(sheet.getByTestId("more-language").getByTestId("lang-es")).toBeVisible();
+    await expect(sheet.getByTestId("more-language").getByTestId("lang-en")).toBeVisible();
     // the install steps (a browser tab, not the installed app), then «Cerrar sesión» last
     await sheet.getByTestId("more-install-toggle").click();
     await expect(sheet.getByTestId("more-install-steps")).toBeVisible();
@@ -983,7 +987,7 @@ test("from 1024 px the desk's top bar has the same groups and the filters sit in
   await settle(page);
   await page.setViewportSize({ width: 768, height: 1024 });
   await expect(page.getByTestId("tab-more")).toBeVisible();
-  await expect(page.getByTestId("tab-more")).toHaveClass(/text-gold/);
+  await expect(page.getByTestId("tab-more")).toHaveAttribute("data-active", "");
   await expect(page.getByTestId("odds-filters-open")).toBeVisible();
   await assertClean(page, w);
 });

@@ -55,6 +55,17 @@ export interface NavItem {
   also?: readonly string[];
 }
 
+/** A destination of the desk's bar: a 40 px pill, 44 px to the finger of a touch laptop. */
+export const NAV_PILL =
+  "tap-y motion-press relative inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
+/**
+ * The way back at the top of a page («Noche de partido», the system's sheet 5): it says where it goes («Partidos», never
+ * «Atrás»), 44 px tall, with a chevron (h-5 w-5) before the word.
+ */
+export const BACK_LINK =
+  "tap-y motion-press relative inline-flex min-h-11 items-center gap-0.5 self-start rounded-chip pr-2 text-sm font-semibold text-foreground hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
 /** The four addresses of the bar, before «Más». */
 export const userNav: NavItem[] = [
   { to: "/home", label: "nav.home", icon: House },

@@ -1350,7 +1350,7 @@
     "someSource": "una fuente",
     "theTeam": "el equipo",
     "read": "Leer en la fuente",
-    "readNamed": "Leer en {source} (se abre en una pestaña nueva)",
+    "readDetail": "{source}, se abre en una pestaña nueva",
     "noLink": "Sin enlace público",
     "inSpanish": "(en español)",
     "kind": {

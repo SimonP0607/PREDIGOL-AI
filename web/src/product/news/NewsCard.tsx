@@ -124,11 +124,12 @@ function SourceLink({ claim }: { claim: NewsClaim }) {
       target="_blank"
       rel="noopener noreferrer"
       data-testid="news-link"
-      aria-label={t("match.news.readNamed", { source: primary.name })}
       onClick={() => track("news_link_clicked")}
       className="tap-y relative inline-flex items-center gap-1 text-caption font-semibold text-primary underline-offset-2 hover:underline"
     >
       {t("match.news.read")}
+      {/* which source, and that it opens another tab: after the words on the screen, never in their place (WCAG 2.5.3) */}
+      <span className="sr-only">{t("match.news.readDetail", { source: primary.name })}</span>
       <ExternalLink aria-hidden className="h-3 w-3 shrink-0" />
     </a>
   );

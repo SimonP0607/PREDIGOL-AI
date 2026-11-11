@@ -11,7 +11,7 @@ export interface SegmentedOption<T extends string> {
   value: T;
   label: React.ReactNode;
   /**
-   * What a screen reader adds when the label is not words («ES» → «ES, Español»). Added after the label, never in its
+   * What a screen reader adds when the label is not words («ES» → «ES Español»). Added after the label, never in its
    * place: the name a voice user says is the one on the screen (WCAG 2.5.3, label in name).
    */
   name?: string | undefined;
@@ -92,7 +92,7 @@ export function Segmented<T extends string>({
             )}
           >
             {option.label}
-            {option.name ? <span className="sr-only">, {option.name}</span> : null}
+            {option.name ? <span className="sr-only">{option.name}</span> : null}
           </button>
         );
       })}

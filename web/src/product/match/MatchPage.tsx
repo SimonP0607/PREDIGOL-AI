@@ -32,6 +32,7 @@ import { originOf, track } from "@/lib/track";
 import { openedFromList } from "@/product/matches/backToList";
 import { GuideButton } from "@/product/guides/GuideButton";
 import { useGuideScreen } from "@/product/guides/context";
+import { BACK_LINK } from "@/components/layout/nav";
 
 /**
  * «‹ Partidos»: back through the history when the match was opened from the list (plan Partidos, P4), so the list
@@ -58,9 +59,9 @@ function BackLink() {
         e.preventDefault();
         router.history.back();
       }}
-      className="tap-y relative inline-flex min-h-9 items-center gap-1 rounded-md pr-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className={BACK_LINK}
     >
-      <ChevronLeft aria-hidden className="h-4 w-4" />
+      <ChevronLeft aria-hidden className="h-5 w-5" />
       {t("match.back")}
     </Link>
   );

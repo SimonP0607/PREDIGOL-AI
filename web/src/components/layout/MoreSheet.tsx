@@ -10,20 +10,22 @@
  * 1024 px) it is a menu under «Más». The list itself (MoreList) takes everything it shows as props, so it renders
  * without a session or a router's state.
  */
-import { useRef, useState, type RefObject } from "react";
+import { useRef, useState, type ReactNode, type RefObject } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ChevronDown,
   ChevronRight,
   Download,
+  Languages,
   LogOut,
   MessageCircle,
+  MoreHorizontal,
   Smartphone,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { live } from "@/lib/api/v1/queries";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { t } from "@/lib/i18n";
+import { t, type Locale } from "@/lib/i18n";
 import {
   installOrder,
   installPlatform,
@@ -36,6 +38,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -47,7 +51,8 @@ import {
 } from "@/components/ui/sheet";
 import { WhatsappLink } from "@/product/support/WhatsappLink";
 import { useInstallPrompt } from "@/product/push/useInstallPrompt";
-import { currentMore, UPDATES_PATH, type MoreItem } from "./nav";
+import { LanguageRadios, LanguageSwitch } from "./HeaderControls";
+import { currentMore, NAV_PILL, UPDATES_PATH, type MoreItem } from "./nav";
 import { useMoreItems } from "./useMoreItems";
 import { useUpdatesUnread } from "./useUpdatesUnread";
 
@@ -141,9 +146,12 @@ export function MoreList({
   onSignOut,
   unread = [],
   whatsapp = null,
+  language,
 }: {
   items: readonly MoreItem[];
   pathname: string;
+  /** The language's control, since it left the top bar (plan maestro UX/UI 2026, wave 3): a row of its own. */
+  language?: ReactNode;
   /** Already the installed app: nothing to install. */
   standalone: boolean;
   platform: InstallPlatform;
@@ -176,7 +184,10 @@ export function MoreList({
                 >
                   <Icon
                     aria-hidden
-                    className={cn("h-5 w-5 shrink-0", here ? "text-gold" : "text-muted-foreground")}
+                    className={cn(
+                      "h-5 w-5 shrink-0",
+                      here ? "text-primary" : "text-muted-foreground",
+                    )}
                   />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2 text-sm font-medium">
@@ -209,6 +220,18 @@ export function MoreList({
           <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-subtle-foreground" />
         </WhatsappLink>
         {standalone ? null : <InstallSteps platform={platform} />}
+        {language ? (
+          <div
+            className="flex min-h-14 items-center justify-between gap-3 px-3"
+            data-testid="more-language"
+          >
+            <span className="flex min-w-0 items-center gap-3 text-sm font-medium">
+              <Languages aria-hidden className="h-5 w-5 shrink-0 text-muted-foreground" />
+              {t("common.language")}
+            </span>
+            {language}
+          </div>
+        ) : null}
         <button
           type="button"
           data-testid="more-sign-out"
@@ -269,6 +292,7 @@ export function MoreSheet({
           platform={installPlatform()}
           unread={unread ? [UPDATES_PATH] : []}
           whatsapp={contact.data?.whatsapp ?? null}
+          language={<LanguageSwitch />}
           onPick={() => {
             picked.current = true;
             onOpenChange(false);
@@ -283,18 +307,23 @@ export function MoreSheet({
   );
 }
 
-/** «Más» in the desk's top bar: the same items as the sheet, in a menu (the account menu keeps «Cerrar sesión»). */
+/**
+ * «Más» in the desk's top bar: the same items as the sheet, in a menu (the account menu keeps «Cerrar sesión»), and
+ * the language below them since it left the bar.
+ */
 export function MoreMenu({
   items,
   pathname,
   active,
   unread = [],
+  language,
 }: {
   items: readonly MoreItem[];
   pathname: string;
   active: boolean;
   /** The rows with something the reader has not seen yet (Novedades, B6): a dot on them and on «Más». */
   unread?: readonly string[] | undefined;
+  language?: { locale: Locale; onChange: (next: Locale) => void } | undefined;
 }) {
   const current = currentMore(pathname, items);
   const marked = items.some((item) => unread.includes(item.to));
@@ -303,20 +332,16 @@ export function MoreMenu({
       <DropdownMenuTrigger
         data-testid="nav-more"
         data-guide="nav-more"
+        data-active={active ? "" : undefined}
         className={cn(
-          "tap-y relative flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+          NAV_PILL,
+          active ? "bg-primary-soft text-primary" : "text-muted-foreground hover:text-foreground",
         )}
       >
+        <MoreHorizontal aria-hidden className="h-[1.125rem] w-[1.125rem] shrink-0" />
         {t("nav.more")}
         {marked ? <UnreadDot label="nav.moreUnread" /> : null}
         <ChevronDown aria-hidden className="h-3.5 w-3.5" />
-        {active ? (
-          <span
-            aria-hidden
-            className="absolute inset-x-3 -bottom-[11px] h-0.5 rounded-full bg-gold"
-          />
-        ) : null}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-72" data-testid="nav-more-menu">
         {items.map((item) => {
@@ -345,6 +370,15 @@ export function MoreMenu({
             </DropdownMenuItem>
           );
         })}
+        {language ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-caption font-medium text-muted-foreground">
+              {t("common.language")}
+            </DropdownMenuLabel>
+            <LanguageRadios {...language} />
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

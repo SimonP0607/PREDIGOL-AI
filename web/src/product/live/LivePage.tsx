@@ -42,6 +42,7 @@ import { LiveRow } from "./LiveRow";
 import { boardSummary, levelOf } from "./model";
 import { useNow } from "./useNow";
 import { useGuideScreen } from "@/product/guides/context";
+import { BACK_LINK } from "@/components/layout/nav";
 
 const NO_MATCHES: LiveMatch[] = [];
 
@@ -315,12 +316,8 @@ export function LivePage() {
   return (
     <div className="space-y-5">
       {/* En vivo lives under Partidos (plan UX, A15): the way back, at the top, whatever brought the reader here. */}
-      <Link
-        to="/matches"
-        data-testid="live-back"
-        className="tap-y relative -mb-2 inline-flex min-h-9 items-center gap-1 text-sm font-medium text-primary hover:underline"
-      >
-        <ChevronLeft aria-hidden className="h-4 w-4" />
+      <Link to="/matches" data-testid="live-back" className={cn(BACK_LINK, "-mb-2")}>
+        <ChevronLeft aria-hidden className="h-5 w-5" />
         {t("live.backToMatches")}
       </Link>
       <PageTitle

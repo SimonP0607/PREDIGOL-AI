@@ -94,8 +94,9 @@ test.describe("served in the reader's language", () => {
     await page.goto("/login");
     await expect(page).toHaveTitle("Sign in · PrediGol");
     expect(await page.evaluate(() => document.documentElement.lang)).toBe("en");
-    await expect(page.getByTestId("lang-es")).toHaveAttribute("aria-label", "Español");
-    await expect(page.getByTestId("lang-en")).toHaveAttribute("aria-label", "English");
+    // the code on the screen, then the language's own name: what is seen is in what is said (WCAG 2.5.3)
+    await expect(page.getByTestId("lang-es")).toHaveAccessibleName("es Español");
+    await expect(page.getByTestId("lang-en")).toHaveAccessibleName("en English");
     // the reader's choice takes over the whole page: its text, lang and title
     await page.getByTestId("lang-es").click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(L.es.auth.title);

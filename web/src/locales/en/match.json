@@ -1350,7 +1350,7 @@
     "someSource": "a source",
     "theTeam": "the team",
     "read": "Read at the source",
-    "readNamed": "Read at {source} (opens in a new tab)",
+    "readDetail": "{source}, opens in a new tab",
     "noLink": "No public link",
     "inSpanish": "(in Spanish)",
     "kind": {
