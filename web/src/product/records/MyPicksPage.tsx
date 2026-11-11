@@ -11,7 +11,7 @@ import { Bookmark, Download, Layers, LineChart, Pencil, Trash2 } from "lucide-re
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { DASH, fmtInt, fmtOdds, fmtPct, localFixed } from "@/lib/i18n/format";
+import { DASH, fmtInt, formatOdds, fmtPct, localFixed } from "@/lib/i18n/format";
 import {
   dayKey,
   formatDateLong,
@@ -402,7 +402,7 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
           {pick.user_odds ? (
             <span className="text-caption text-primary" data-testid="saved-pick-user-odds">
               {t("records.mine.picks.yours")}{" "}
-              <span className="numeric font-semibold">{fmtOdds(pick.user_odds)}</span>
+              <span className="numeric font-semibold">{formatOdds(pick.user_odds)}</span>
             </span>
           ) : null}
           <PriceNowLine now={pick.price_now} />
@@ -751,7 +751,7 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
           <div className="flex items-center gap-3">
             <span className="text-label text-subtle-foreground">{t("parlays.combinedOdds")}</span>
             <span className="numeric text-lg font-semibold text-gold-strong">
-              {fmtOdds(parlay.combined_odds)}
+              {formatOdds(parlay.combined_odds)}
             </span>
             {settled ? <Units value={parlay.profit_units} className="text-sm" /> : null}
           </div>

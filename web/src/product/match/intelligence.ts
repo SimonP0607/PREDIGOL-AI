@@ -6,7 +6,7 @@
  * neither, so every card also has plain lines built from its numbers alone - never an invented reason.
  */
 import { intlTag, t, translateOr } from "@/lib/i18n";
-import { fmtLine, fmtOdds, fmtPct, toNumber } from "@/lib/i18n/format";
+import { fmtLine, formatOdds, fmtPct, toNumber } from "@/lib/i18n/format";
 import type { AiClaim, AnalysisCard, BriefView, MatchAnalysis } from "@/lib/api/v1/types_ai_layer";
 import { normLine } from "@/product/records/model";
 import { marketName, selectionLabel } from "@/product/shared/markets";
@@ -127,7 +127,7 @@ export function whyLines(card: AnalysisCard): string[] {
   }
   const minimum = toNumber(card.minimum_odds);
   if (card.kind === "no_market" && minimum !== null) {
-    out.push(t("match.analysis.why.minimum", { min: fmtOdds(minimum) }));
+    out.push(t("match.analysis.why.minimum", { min: formatOdds(minimum) }));
   }
   return out.length ? out : [t("match.analysis.why.none")];
 }

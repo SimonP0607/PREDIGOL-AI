@@ -19,11 +19,6 @@ export function signedPp(value: number | null | undefined, digits = 1): string {
   return fmtSignedPp(value, digits);
 }
 
-export function odds(value: number | null | undefined): string {
-  if (value === null || value === undefined) return EMPTY;
-  return localFixed(value, 2);
-}
-
 export function num(value: number | null | undefined, digits = 3): string {
   if (value === null || value === undefined) return EMPTY;
   return localFixed(value, digits);

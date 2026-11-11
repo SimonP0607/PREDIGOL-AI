@@ -20,7 +20,7 @@ import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
 import type { BestMarket, TeamBadge } from "@/lib/api/v1/types_product";
 import { t } from "@/lib/i18n";
-import { fmtOdds, fmtSignedPct } from "@/lib/i18n/format";
+import { formatOdds, fmtSignedPct } from "@/lib/i18n/format";
 import { dayKey, formatDate, formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
@@ -137,11 +137,11 @@ function SelectionChart({
       <figcaption className="flex items-start justify-between gap-2">
         <span className="min-w-0 truncate pt-0.5 text-xs font-semibold">{title}</span>
         <span className="flex shrink-0 flex-col items-end">
-          <span className="numeric text-sm font-semibold">{fmtOdds(last.odds)}</span>
+          <span className="numeric text-sm font-semibold">{formatOdds(last.odds)}</span>
           {change !== null ? (
             <span className="numeric inline-flex items-center gap-1 text-caption text-muted-foreground">
               <Trend aria-hidden className="h-3 w-3" />
-              {t("odds.movement.from", { odds: fmtOdds(first.odds) })} · {fmtSignedPct(change)}
+              {t("odds.movement.from", { odds: formatOdds(first.odds) })} · {fmtSignedPct(change)}
             </span>
           ) : null}
         </span>
@@ -171,7 +171,7 @@ function SelectionChart({
               width={38}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v: number) => fmtOdds(v)}
+              tickFormatter={(v: number) => formatOdds(v)}
               tick={{ fill: "var(--color-subtle-foreground)", fontSize: 10 }}
             />
             <Tooltip
@@ -209,7 +209,7 @@ function SelectionChart({
           {points.map((p) => (
             <tr key={p.t}>
               <td>{stamp(p.t)}</td>
-              <td>{fmtOdds(p.odds)}</td>
+              <td>{formatOdds(p.odds)}</td>
               <td>{p.bookmaker}</td>
             </tr>
           ))}
@@ -286,7 +286,7 @@ function MoveTooltip({
   if (!active || !point) return null;
   return (
     <div className="rounded-md border border-border-strong bg-popover px-2.5 py-1.5 shadow-lg">
-      <div className="numeric text-sm font-semibold text-foreground">{fmtOdds(point.odds)}</div>
+      <div className="numeric text-sm font-semibold text-foreground">{formatOdds(point.odds)}</div>
       <div className="text-caption text-muted-foreground">{point.bookmaker}</div>
       <div className="numeric text-caption text-subtle-foreground">{stamp(point.t)}</div>
     </div>

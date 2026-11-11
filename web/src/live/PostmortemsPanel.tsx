@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { t, translateOr } from "@/lib/i18n";
-import { fmtOdds } from "@/lib/i18n/format";
+import { formatOdds } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
 import { TableSkeleton } from "@/components/primitives/DataTable";
@@ -79,8 +79,8 @@ export function PostmortemCard({ pm }: { pm: PickPostmortem }) {
         ))}
       </div>
       <dl className="grid max-w-3xl grid-cols-3 gap-x-3 sm:grid-cols-6">
-        <Fact label={t("ai.research.postmortems.odds")} value={fmtOdds(pm.odds)} />
-        <Fact label={t("ai.research.postmortems.close")} value={fmtOdds(pm.close_odds)} />
+        <Fact label={t("ai.research.postmortems.odds")} value={formatOdds(pm.odds)} />
+        <Fact label={t("ai.research.postmortems.close")} value={formatOdds(pm.close_odds)} />
         <Fact
           label={t("ai.research.postmortems.priceMove")}
           value={

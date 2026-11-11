@@ -6,7 +6,7 @@
  * a pick, a model or a rule.
  */
 import { t, translateOr } from "@/lib/i18n";
-import { fmtSignedPct } from "@/lib/i18n/format";
+import { fmtSignedPct, formatOdds } from "@/lib/i18n/format";
 import { int } from "@/lib/format";
 import { formatDateTime } from "@/lib/time";
 import { Panel } from "@/components/primitives/Panel";
@@ -58,7 +58,7 @@ function PicksBlock({ p }: { p: DailyReviewPicks }) {
               <span className="text-muted-foreground">
                 {" "}
                 · {i.market} {i.selection}
-                {i.line ? ` ${i.line}` : ""} · {i.odds.toFixed(2)}
+                {i.line ? ` ${i.line}` : ""} · {formatOdds(i.odds)}
                 {i.model ? ` · ${i.model}` : ""}
               </span>
             </span>

@@ -16,7 +16,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import { t, translateOr } from "@/lib/i18n";
-import { fmtOdds, localInt } from "@/lib/i18n/format";
+import { formatOdds, localInt } from "@/lib/i18n/format";
 import { int } from "@/lib/format";
 import { shiftDay } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -308,7 +308,7 @@ function SelectionsBlock({ f }: { f: AiDayFixture }) {
                 </span>
               </div>
               <dl className="grid grid-cols-4 gap-x-2">
-                <Fact label={t("ai.research.today.odds")} value={fmtOdds(s.odds)} />
+                <Fact label={t("ai.research.today.odds")} value={formatOdds(s.odds)} />
                 <Fact label={t("ai.research.today.model")} value={probText(s.p_model)} />
                 <Fact label={t("ai.research.today.market")} value={probText(s.p_market)} />
                 <Fact

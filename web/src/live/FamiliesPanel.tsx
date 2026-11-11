@@ -18,7 +18,7 @@ import { t } from "@/lib/i18n";
 import {
   DASH,
   fmtLine,
-  fmtOdds,
+  formatOdds,
   fmtPct,
   fmtSignedPct,
   fmtSignedPp,
@@ -438,7 +438,7 @@ function ItemRow({
         </div>
       </TD>
       <TD align="right" className="numeric align-top">
-        {fmtOdds(x.odds)}
+        {formatOdds(x.odds)}
       </TD>
       <TD align="right" className="numeric align-top">
         {fmtPct(x.p_model)}

@@ -5,7 +5,7 @@
  * leg per match. Pure.
  */
 import { t } from "@/lib/i18n";
-import { fmtOdds, toNumber } from "@/lib/i18n/format";
+import { formatOdds, toNumber } from "@/lib/i18n/format";
 import { isQuarterLine, normLine, type SlipLeg } from "@/product/records/model";
 import { selectionLabel as classicLabel } from "@/product/shared/markets";
 import type { NewLeg } from "../parlay";
@@ -98,7 +98,7 @@ function legText(leg: SlipLeg): string {
     home: leg.home,
     away: leg.away,
   });
-  return leg.odds ? t("explorer.parlay.legAt", { label, odds: fmtOdds(leg.odds) }) : label;
+  return leg.odds ? t("explorer.parlay.legAt", { label, odds: formatOdds(leg.odds) }) : label;
 }
 
 /**

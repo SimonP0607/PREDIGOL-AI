@@ -9,7 +9,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2, Rows3 } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
-import { fmtOdds, fmtPct } from "@/lib/i18n/format";
+import { formatOdds, fmtPct } from "@/lib/i18n/format";
 import { t } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -81,7 +81,7 @@ export function PublishedPickRow({ pick }: { pick: PublishedPick }) {
         </span>
       </p>
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-4">
-        <Fact label={t("transparency.picks.odds")} value={fmtOdds(pick.odds)} />
+        <Fact label={t("transparency.picks.odds")} value={formatOdds(pick.odds)} />
         <Fact label={t("transparency.picks.said")} value={fmtPct(pick.p_model, 0)} />
         <Fact label={t("transparency.picks.market")} value={fmtPct(pick.p_market, 0)} />
         <Fact

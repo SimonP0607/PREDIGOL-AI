@@ -24,7 +24,7 @@ import {
 import { BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { intlTag, t } from "@/lib/i18n";
-import { DASH, fmtInt, fmtOdds, fmtPct, localFixed } from "@/lib/i18n/format";
+import { DASH, fmtInt, formatOdds, fmtPct, localFixed } from "@/lib/i18n/format";
 import { getTimeZone, zonedInstant } from "@/lib/time";
 import { live } from "@/lib/api/v1/queries";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
@@ -170,10 +170,10 @@ function Kpis({ r }: { r: RecapData }) {
       <Kpi
         label={t("records.recap.kpi.avgOdds")}
         testId="avg-odds"
-        value={<Counted value={r.avgOdds} format={(n) => fmtOdds(n)} />}
+        value={<Counted value={r.avgOdds} format={(n) => formatOdds(n)} />}
         hint={
           r.avgOddsWon !== null
-            ? t("records.recap.kpi.avgOddsWon", { odds: fmtOdds(r.avgOddsWon) })
+            ? t("records.recap.kpi.avgOddsWon", { odds: formatOdds(r.avgOddsWon) })
             : undefined
         }
       />

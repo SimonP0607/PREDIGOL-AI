@@ -6,7 +6,7 @@ import { lazy, Suspense, useMemo, useRef, type ReactNode } from "react";
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { useScrollCue } from "@/lib/scrollCue";
-import { fmtOdds, fmtPct, fmtSignedPct } from "@/lib/i18n/format";
+import { formatOdds, fmtPct, fmtSignedPct } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { GlossaryLink } from "@/components/system/GlossaryTerm";
 import { ErrorState } from "@/product/shared/States";
@@ -118,7 +118,7 @@ function CompareTable({
                     </>
                   ) : (
                     <span className={cn(c.best && "rounded px-1 py-0.5 ring-1 ring-border-strong")}>
-                      {fmtOdds(c.odds)}
+                      {formatOdds(c.odds)}
                       {c.best ? (
                         <span className="sr-only"> {t("explorer.compare.best")}</span>
                       ) : null}
@@ -238,9 +238,9 @@ export function MovementPanel({
             const Icon = TREND_ICON[s.trend];
             const words =
               s.trend === "flat"
-                ? t("explorer.movement.flat", { odds: fmtOdds(s.first) })
+                ? t("explorer.movement.flat", { odds: formatOdds(s.first) })
                 : t(`explorer.movement.${s.trend}`, {
-                    odds: fmtOdds(s.first),
+                    odds: formatOdds(s.first),
                     change: fmtSignedPct(s.change),
                   });
             return (
@@ -254,7 +254,7 @@ export function MovementPanel({
                 <span className="min-w-0 max-w-full truncate text-xs font-semibold">{l.title}</span>
                 <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-caption text-muted-foreground">
                   <span className="numeric text-sm font-semibold text-foreground">
-                    {fmtOdds(s.last)}
+                    {formatOdds(s.last)}
                   </span>
                   <Icon aria-hidden className="h-3.5 w-3.5" />
                   <span className="numeric whitespace-nowrap">{words}</span>

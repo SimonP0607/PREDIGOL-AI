@@ -9,7 +9,7 @@ import { Clock, Lock, RectangleVertical, Volleyball } from "lucide-react";
 import type { LiveMatch, LiveQuote, LiveTeam } from "@/lib/api/v1/types_center";
 import { CompetitionTag, TeamLogo } from "@/components/football/Logos";
 import { t, translateOr } from "@/lib/i18n";
-import { fmtInt, fmtOdds, fmtPct } from "@/lib/i18n/format";
+import { fmtInt, formatOdds, fmtPct } from "@/lib/i18n/format";
 import { formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { Freshness, LiveMinute } from "@/product/shared/Bits";
@@ -263,7 +263,7 @@ function QuoteCell({ label, quote }: { label: string; quote: LiveQuote | null })
         <Lock aria-hidden className="h-3 w-3 shrink-0 text-muted-foreground" />
       ) : (
         <span className="numeric shrink-0 text-[0.8125rem] font-semibold tabular-nums">
-          {missing ? "—" : fmtOdds(quote?.odds)}
+          {missing ? "—" : formatOdds(quote?.odds)}
         </span>
       )}
       {note ? <span className="sr-only">{note}</span> : null}

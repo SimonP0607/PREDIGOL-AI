@@ -10,7 +10,7 @@
  */
 import { useState, type ReactNode } from "react";
 import { t, translateOr } from "@/lib/i18n";
-import { fmtOdds, fmtPct, fmtSignedPct, localFixed, localInt } from "@/lib/i18n/format";
+import { formatOdds, fmtPct, fmtSignedPct, localFixed, localInt } from "@/lib/i18n/format";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, Panel } from "@/components/primitives/Panel";
 import { StatusBadge, type BadgeTone } from "@/components/primitives/StatusBadge";
@@ -214,7 +214,7 @@ export function DayView({ onOpen }: { onOpen: (id: number) => void }) {
                 {picks.map((p) => (
                   <TRow key={`p${p.rank}`} onClick={() => onOpen(p.decision_ids[0] ?? 0)}>
                     <TD>{p.rank}</TD>
-                    <TD align="right">{fmtOdds(p.odds)}</TD>
+                    <TD align="right">{formatOdds(p.odds)}</TD>
                     <TD align="right">{fmtPct(p.p_est)}</TD>
                     <TD align="right">{fmtSignedPct(p.ev)}</TD>
                     <TD align="right">{fixed(p.stake_units, 2)} u</TD>
@@ -243,7 +243,7 @@ export function DayView({ onOpen }: { onOpen: (id: number) => void }) {
                   <TRow key={x.rank}>
                     <TD className="max-w-[12rem] break-words">{x.match}</TD>
                     <TD>{selectionText(x.market_key, x.selection, x.line, x.match)}</TD>
-                    <TD align="right">{fmtOdds(x.odds)}</TD>
+                    <TD align="right">{formatOdds(x.odds)}</TD>
                     <TD>{x.status}</TD>
                   </TRow>
                 ))}
@@ -427,7 +427,7 @@ export function DecisionsView({ onOpen }: { onOpen: (id: number) => void }) {
                     </div>
                   </TD>
                   <TD>{selectionText(x.market_key, x.selection, x.line, x.match)}</TD>
-                  <TD align="right">{fmtOdds(x.odds)}</TD>
+                  <TD align="right">{formatOdds(x.odds)}</TD>
                   <TD align="right">{fmtPct(x.p_model)}</TD>
                   <TD align="right">{fmtPct(x.p_cal)}</TD>
                   <TD align="right">{fmtPct(x.p_market)}</TD>
@@ -532,7 +532,7 @@ export function DecisionDetail({
           <StatGrid className="lg:grid-cols-3">
             <Stat
               label={t("intel.cols.odds")}
-              value={fmtOdds(num(x["odds"]))}
+              value={formatOdds(num(x["odds"]))}
               hint={String(x["bookmaker"] ?? "")}
             />
             <Stat label={t("intel.cols.pModel")} value={fmtPct(num(x["p_model"]))} />
@@ -740,7 +740,7 @@ export function DecisionDetail({
                     <TD>
                       <StateBadge state={String(h["state"]) as IntelState} />
                     </TD>
-                    <TD align="right">{fmtOdds(num(h["odds"]))}</TD>
+                    <TD align="right">{formatOdds(num(h["odds"]))}</TD>
                     <TD align="right">{fmtSignedPct(num(h["ev_cal"]))}</TD>
                   </TRow>
                 ))}
@@ -1043,7 +1043,7 @@ export function MatchView({
                           num(x["line"]),
                         )}
                       </TD>
-                      <TD align="right">{fmtOdds(num(x["odds"]))}</TD>
+                      <TD align="right">{formatOdds(num(x["odds"]))}</TD>
                       <TD align="right">{fmtPct(num(x["p_cal"]))}</TD>
                       <TD align="right">{fmtSignedPct(num(x["ev_cal"]))}</TD>
                       <TD>

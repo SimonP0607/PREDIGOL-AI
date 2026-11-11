@@ -5,7 +5,7 @@
 import type { ReactNode } from "react";
 import { Check, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtOdds } from "@/lib/i18n/format";
+import { formatOdds } from "@/lib/i18n/format";
 import { isToggleable, parlayActionText, type ParlayLegState } from "./useParlayLeg";
 
 /** The board's price pill, with the parlay's "+" / "✓" when a tap toggles it. */
@@ -39,7 +39,7 @@ export function PricePill({
         className,
       )}
     >
-      {fmtOdds(odds)}
+      {formatOdds(odds)}
       {toggleable ? (
         inSlip ? (
           <Check aria-hidden className="h-3.5 w-3.5 shrink-0" />

@@ -28,6 +28,7 @@ import { queries } from "@/lib/api/resources";
 import { dateTimeOf, pct, signedPct, signedPp, timeOf } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { PickCandidate, PickStatus } from "@/types/domain";
+import { formatOdds } from "@/lib/i18n/format";
 
 export const Route = createFileRoute("/admin/picks")({
   head: () => ({
@@ -277,10 +278,10 @@ function PickDetail({ pick, onClose }: { pick: PickCandidate; onClose: () => voi
         <div>
           <div className="text-label text-subtle-foreground">Market</div>
           <KeyValue label="Market baseline" value="Consensus, overround removed" />
-          <KeyValue label="Fair odds" value={pick.fairOdds.toFixed(2)} />
+          <KeyValue label="Fair odds" value={formatOdds(pick.fairOdds)} />
           <KeyValue
             label="Available odds"
-            value={`${pick.bestOdds.toFixed(2)} · ${pick.bookmaker}`}
+            value={`${formatOdds(pick.bestOdds)} · ${pick.bookmaker}`}
           />
           <KeyValue label="Edge" value={signedPp(pick.edge, 2)} />
           <KeyValue label="Expected value" value={signedPct(pick.ev, 2)} />
