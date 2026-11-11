@@ -5,7 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Check, ListX } from "lucide-react";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n";
-import { fmtOdds, fmtPct, localDecimalText } from "@/lib/i18n/format";
+import { formatOdds, fmtPct, localDecimalText } from "@/lib/i18n/format";
 import { formatDate, formatRelative } from "@/lib/time";
 import { v1 } from "@/lib/api/v1/client";
 import type { BuiltParlay } from "@/lib/api/v1/types_builder";
@@ -36,7 +36,7 @@ function funnelText(body: BuiltParlay): string {
   return t("parlays.builder.result.funnel", {
     passing: f.passing,
     risk: f.risk,
-    max: fmtOdds(f.max_odds ?? null),
+    max: formatOdds(f.max_odds ?? null),
     reviewed: f.reviewed,
     matching: f.matching,
     combinable: f.combinable,
@@ -110,7 +110,7 @@ export function Result({ body }: { body: BuiltParlay }) {
               className="numeric text-[1.75rem] font-semibold leading-none tracking-tight text-gold-strong"
               data-testid="builder-combined-odds"
             >
-              {fmtOdds(body.combined_odds)}
+              {formatOdds(body.combined_odds)}
             </span>
           </Stat>
           <Stat
@@ -137,7 +137,9 @@ export function Result({ body }: { body: BuiltParlay }) {
           <ul className="space-y-1 text-caption text-muted-foreground">
             {[
               t("parlays.builder.result.why.gate"),
-              t("parlays.builder.result.why.risk", { max: fmtOdds(body.funnel.max_odds ?? null) }),
+              t("parlays.builder.result.why.risk", {
+                max: formatOdds(body.funnel.max_odds ?? null),
+              }),
               t("parlays.builder.result.why.context"),
               t("parlays.builder.result.why.independent"),
               t("parlays.builder.result.why.growth"),
@@ -197,7 +199,7 @@ export function NoParlay({ body }: { body: BuiltParlay }) {
           min: f.min_legs,
           hours: f.hours,
           cap: f.max_total_odds ? localDecimalText(String(Number(f.max_total_odds))) : "",
-          max: fmtOdds(body.funnel.max_odds ?? null),
+          max: formatOdds(body.funnel.max_odds ?? null),
         });
   return (
     <div

@@ -24,7 +24,8 @@ import { FilterBar, NumberFilter, SegmentedTabs, SelectFilter } from "@/componen
 import { ChartContainer, LineMovementChart } from "@/components/analytics/Charts";
 import { fixtureQueries, queries } from "@/lib/api/resources";
 import { fixtures } from "@/mock/data";
-import { EMPTY, num, odds as fmtOdds, pct, timeOf } from "@/lib/format";
+import { EMPTY, num, pct, timeOf } from "@/lib/format";
+import { formatOdds } from "@/lib/i18n/format";
 import { useSortable } from "@/hooks/useSortable";
 import type { ValueRow } from "@/types/domain";
 
@@ -300,8 +301,8 @@ function ValueScanner() {
                   fields={[
                     { label: "Model", value: pct(r.modelProbability) },
                     { label: "Market", value: pct(r.marketProbability) },
-                    { label: "Fair", value: fmtOdds(r.fairOdds) },
-                    { label: "Best", value: `${fmtOdds(r.bestOdds)} ${r.bookmaker}` },
+                    { label: "Fair", value: formatOdds(r.fairOdds) },
+                    { label: "Best", value: `${formatOdds(r.bestOdds)} ${r.bookmaker}` },
                     { label: "Edge", value: <EdgeIndicator value={r.edge} /> },
                     { label: "EV", value: <EVIndicator value={r.ev} /> },
                   ]}
@@ -356,7 +357,7 @@ function OddsExplorer({ fixtureId }: { fixtureId: string }) {
                     const cell = bookRows.find((r) => r.selection === s);
                     return (
                       <TD key={s} align="right">
-                        <Numeric>{fmtOdds(cell?.odds ?? null)}</Numeric>
+                        <Numeric>{formatOdds(cell?.odds ?? null)}</Numeric>
                         <div className="text-caption text-subtle-foreground">
                           {cell ? pct(cell.impliedProbability, 1) : EMPTY}
                         </div>
@@ -417,10 +418,10 @@ function LineMovement({ fixtureId }: { fixtureId: string }) {
                 <TRow key={s.bookmaker}>
                   <TD className="text-sm">{s.bookmaker}</TD>
                   <TD align="right">
-                    <Numeric muted>{fmtOdds(open)}</Numeric>
+                    <Numeric muted>{formatOdds(open)}</Numeric>
                   </TD>
                   <TD align="right">
-                    <Numeric>{fmtOdds(last)}</Numeric>
+                    <Numeric>{formatOdds(last)}</Numeric>
                   </TD>
                   <TD align="right">
                     <Numeric className={delta && delta < 0 ? "text-negative" : "text-positive"}>
@@ -481,7 +482,7 @@ function MarketConsensus({ fixtureId }: { fixtureId: string }) {
                   <OddsCell value={r.bestOdds} bookmaker={r.bestBookmaker} />
                 </TD>
                 <TD align="right">
-                  <Numeric muted>{fmtOdds(r.medianOdds)}</Numeric>
+                  <Numeric muted>{formatOdds(r.medianOdds)}</Numeric>
                 </TD>
                 <TD align="right">
                   <Numeric muted>{r.bookmakerCount}</Numeric>
@@ -550,11 +551,11 @@ function NearClose() {
                 <TD className="text-xs text-muted-foreground">{r.marketLabel}</TD>
                 <TD className="text-xs">{r.selection}</TD>
                 <TD align="right">
-                  <Numeric>{fmtOdds(r.snapshotOdds)}</Numeric>
+                  <Numeric>{formatOdds(r.snapshotOdds)}</Numeric>
                   <div className="text-caption text-subtle-foreground">{timeOf(r.capturedAt)}</div>
                 </TD>
                 <TD align="right">
-                  <Numeric muted>{fmtOdds(r.latestOdds)}</Numeric>
+                  <Numeric muted>{formatOdds(r.latestOdds)}</Numeric>
                 </TD>
                 <TD align="right">
                   <Numeric className={r.delta < 0 ? "text-negative" : "text-positive"}>

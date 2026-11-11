@@ -5,7 +5,7 @@
  */
 import type { PriceNow } from "@/lib/api/v1/types_records";
 import { t } from "@/lib/i18n";
-import { fmtOdds, fmtSignedPct } from "@/lib/i18n/format";
+import { formatOdds, fmtSignedPct } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { Freshness } from "./Bits";
 
@@ -28,7 +28,7 @@ export function PriceNowLine({
       data-freshness={now.freshness}
     >
       <span className="numeric">
-        {t("records.priceNow.now", { odds: fmtOdds(now.odds) })}
+        {t("records.priceNow.now", { odds: formatOdds(now.odds) })}
         {now.change === null ? null : (
           <>
             {" "}

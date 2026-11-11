@@ -17,7 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CircleCheck, Gauge } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
+import { formatOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import { formatRelative } from "@/lib/time";
 import { live } from "@/lib/api/v1/queries";
 import { usePreviewParam } from "@/lib/auth/AuthProvider";
@@ -143,7 +143,7 @@ function OutcomeRow({
         <GlossaryTerm term="range">{intervalText(outcome)}</GlossaryTerm>
         {fair ? (
           <span className="numeric">
-            · {t("match.forecast.admin.fairOdds", { odds: fmtOdds(fair) })}
+            · {t("match.forecast.admin.fairOdds", { odds: formatOdds(fair) })}
           </span>
         ) : null}
         {model ? (
@@ -246,7 +246,7 @@ function ValueList({ section, sides }: { section: Section<ForecastValueRow[]>; s
                 </p>
                 <p className="numeric mt-0.5 flex flex-wrap gap-x-3 text-caption text-muted-foreground">
                   <span>
-                    {t("match.forecast.admin.odds")} {fmtOdds(r.odds)}
+                    {t("match.forecast.admin.odds")} {formatOdds(r.odds)}
                   </span>
                   <span>
                     {t("match.forecast.admin.edge")} {edge ? `${edge.value} ${edge.unit}` : "—"}
@@ -298,7 +298,7 @@ function PickList({ section, sides }: { section: Section<ForecastPickRow[]>; sid
               </p>
               <p className="numeric mt-0.5 flex flex-wrap gap-x-3 text-caption text-muted-foreground">
                 <span>
-                  {t("match.forecast.admin.odds")} {fmtOdds(p.odds)}
+                  {t("match.forecast.admin.odds")} {formatOdds(p.odds)}
                 </span>
                 {toNumber(p.probability) !== null ? <span>{fmtPct(p.probability, 1)}</span> : null}
               </p>
@@ -369,9 +369,11 @@ function FamilyMarketView({ market, sides }: { market: FamilyMarket; sides: Side
               >
                 {familyOutcomeText(market, line, o, sides)} {familyPercent(o.probability)}
                 {o.fair_odds ? (
-                  <span title={t("match.forecast.admin.fairOdds", { odds: fmtOdds(o.fair_odds) })}>
+                  <span
+                    title={t("match.forecast.admin.fairOdds", { odds: formatOdds(o.fair_odds) })}
+                  >
                     {" "}
-                    ({fmtOdds(o.fair_odds)})
+                    ({formatOdds(o.fair_odds)})
                   </span>
                 ) : null}
               </span>

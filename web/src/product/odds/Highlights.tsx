@@ -7,7 +7,7 @@ import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import type { BestHighlight } from "@/lib/api/v1/types_product";
 import { t } from "@/lib/i18n";
-import { fmtOdds, fmtSignedPct } from "@/lib/i18n/format";
+import { formatOdds, fmtSignedPct } from "@/lib/i18n/format";
 import { formatKickoff } from "@/lib/time";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { SectionHeader } from "@/product/shared/States";
@@ -115,7 +115,7 @@ function HighlightCard({ h }: { h: BestHighlight }) {
           {parlay && isToggleable(parlay) ? (
             <ParlayToggle
               state={parlay}
-              srLabel={`${label}: ${t("records.actions.priceAt", { odds: fmtOdds(h.price.best_odds), bookmaker })}`}
+              srLabel={`${label}: ${t("records.actions.priceAt", { odds: formatOdds(h.price.best_odds), bookmaker })}`}
               className="rounded-md"
             >
               <span aria-hidden className="block">
@@ -132,7 +132,7 @@ function HighlightCard({ h }: { h: BestHighlight }) {
             {bookmaker}
           </span>
           <span className="sr-only">
-            {t("odds.board.fair", { odds: fmtOdds(h.price.fair_odds) })}
+            {t("odds.board.fair", { odds: formatOdds(h.price.fair_odds) })}
           </span>
         </div>
       </div>

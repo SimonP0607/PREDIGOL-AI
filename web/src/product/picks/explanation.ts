@@ -11,7 +11,7 @@
  *   5 how         the steps of «Cómo se decide» - the same as Transparencia - and whether it is a pick of the day
  */
 import { getLocale, t } from "@/lib/i18n";
-import { fmtOdds, fmtPct, toNumber } from "@/lib/i18n/format";
+import { formatOdds, fmtPct, toNumber } from "@/lib/i18n/format";
 import { formatDateTime, formatTime } from "@/lib/time";
 import type { PickExplanation } from "@/lib/api/v1/types_explanation";
 import type { NarrativeSectionKey } from "@/lib/api/v1/types_reading";
@@ -77,12 +77,12 @@ export function marketLines(e: PickExplanation): string[] {
   const m = e.market;
   const published = m.published_bookmaker
     ? t("picks.why.market.publishedAt", {
-        odds: fmtOdds(m.published_odds),
+        odds: formatOdds(m.published_odds),
         bookmaker: m.published_bookmaker,
         when: formatDateTime(m.published_at),
       })
     : t("picks.why.market.published", {
-        odds: fmtOdds(m.published_odds),
+        odds: formatOdds(m.published_odds),
         when: formatDateTime(m.published_at),
       });
   const out = [published];
@@ -93,8 +93,8 @@ export function marketLines(e: PickExplanation): string[] {
   if (m.odds_now !== null) {
     out.push(
       m.bookmaker_now
-        ? t("picks.why.market.nowAt", { odds: fmtOdds(m.odds_now), bookmaker: m.bookmaker_now })
-        : t("picks.why.market.now", { odds: fmtOdds(m.odds_now) }),
+        ? t("picks.why.market.nowAt", { odds: formatOdds(m.odds_now), bookmaker: m.bookmaker_now })
+        : t("picks.why.market.now", { odds: formatOdds(m.odds_now) }),
     );
   } else {
     out.push(t("picks.why.market.noPriceNow"));
@@ -137,7 +137,7 @@ export function howText(e: PickExplanation): string {
 export function dayText(e: PickExplanation): string | null {
   const day = e.day;
   if (!day) return null;
-  const vars = { rank: day.rank, time: formatTime(day.selected_at), odds: fmtOdds(day.odds) };
+  const vars = { rank: day.rank, time: formatTime(day.selected_at), odds: formatOdds(day.odds) };
   return day.user_status === "EVALUATION"
     ? t("picks.why.dayEvaluation", vars)
     : t("picks.why.day", vars);

@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { Lock, Radio, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtLine, fmtOdds, fmtPct } from "@/lib/i18n/format";
+import { fmtLine, formatOdds, fmtPct } from "@/lib/i18n/format";
 import type { MarketPriceStatus } from "@/lib/api/v1/types";
 import { SelectablePrice } from "@/product/odds/SelectablePrice";
 import { OddsPill } from "@/product/shared/Bits";
@@ -120,7 +120,7 @@ export function LiveOdds({ price, size = "md" }: { price: LivePrice | null; size
         )}
       >
         <Lock aria-hidden className="h-3 w-3" />
-        <span className="opacity-70">{fmtOdds(price?.odds)}</span>
+        <span className="opacity-70">{formatOdds(price?.odds)}</span>
         <span className="sr-only">{t("match.liveOdds.suspended")}</span>
       </span>
     );
@@ -301,10 +301,10 @@ export function PriceStatusNotes({ ctx }: { ctx: MatchCtx }) {
                     sides,
                   ),
                   probability: fmtPct(v.probability, 0),
-                  fair: fmtOdds(v.fair_odds),
+                  fair: formatOdds(v.fair_odds),
                 })}{" "}
                 {v.status === "MODEL_INTERESTING_NO_PRICE"
-                  ? t("match.priceStatus.minOdds", { min: fmtOdds(v.min_odds) })
+                  ? t("match.priceStatus.minOdds", { min: formatOdds(v.min_odds) })
                   : null}
               </p>
             ) : null}

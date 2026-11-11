@@ -13,7 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { t } from "@/lib/i18n";
-import { fmtOdds } from "@/lib/i18n/format";
+import { formatOdds } from "@/lib/i18n/format";
 import { dayKey, formatDate, formatTime } from "@/lib/time";
 import { oddsDomain, oddsTicks, type MovePoint } from "../movement";
 
@@ -72,7 +72,7 @@ export default function MovementChart({
                     width={38}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(v: number) => fmtOdds(v)}
+                    tickFormatter={(v: number) => formatOdds(v)}
                     tick={{ fill: "var(--color-subtle-foreground)", fontSize: 10 }}
                   />
                   <Tooltip
@@ -106,7 +106,7 @@ export default function MovementChart({
                 {l.points.map((p) => (
                   <tr key={p.t}>
                     <td>{stamp(p.t)}</td>
-                    <td>{fmtOdds(p.odds)}</td>
+                    <td>{formatOdds(p.odds)}</td>
                     <td>{p.bookmaker}</td>
                   </tr>
                 ))}
@@ -130,7 +130,7 @@ function PointTip({
   if (!active || !point) return null;
   return (
     <div className="rounded-md border border-border-strong bg-popover px-2.5 py-1.5 shadow-lg">
-      <div className="numeric text-sm font-semibold text-foreground">{fmtOdds(point.odds)}</div>
+      <div className="numeric text-sm font-semibold text-foreground">{formatOdds(point.odds)}</div>
       <div className="text-caption text-muted-foreground">{point.bookmaker}</div>
       <div className="numeric text-caption text-subtle-foreground">{stamp(point.t)}</div>
     </div>

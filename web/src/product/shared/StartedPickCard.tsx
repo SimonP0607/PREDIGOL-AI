@@ -12,7 +12,7 @@ import { Link } from "@tanstack/react-router";
 import { History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtOdds, fmtSignedPct, fmtSignedPp } from "@/lib/i18n/format";
+import { formatOdds, fmtSignedPct, fmtSignedPp } from "@/lib/i18n/format";
 import { formatTime } from "@/lib/time";
 import type { StartedPick } from "@/lib/api/v1/types_product";
 import type { ResultStatus } from "@/lib/api/v1/types_records";
@@ -187,7 +187,7 @@ export function StartedPickCard({
             className="numeric text-caption text-muted-foreground"
             data-testid="started-pick-line-value"
           >
-            {t("match.picks.closeOdds", { odds: fmtOdds(pick.near_close_odds) })} ·{" "}
+            {t("match.picks.closeOdds", { odds: formatOdds(pick.near_close_odds) })} ·{" "}
             {t("match.picks.clv", { value: fmtSignedPct(pick.line_value) })}
           </span>
         ) : null}

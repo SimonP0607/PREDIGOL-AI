@@ -7,7 +7,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { setLocale } from "./index";
-import { DASH, fmtSignedPct, fmtSignedPp } from "./format";
+import { DASH, fmtSignedPct, fmtSignedPp, formatOdds } from "./format";
 import { signedPp } from "@/lib/format";
 
 afterEach(() => setLocale("es"));
@@ -89,5 +89,61 @@ describe("the edge is a difference of probabilities", () => {
     ]) {
       expect([...fine.matchAll(PERCENT_OF_AN_EDGE)].length).toBe(0);
     }
+  });
+});
+
+// ── one formatter for a price (plan maestro UX/UI 2026, PR-09) ─────────────────────
+
+describe("formatOdds", () => {
+  /** What every price on a screen read before the single formatter, value by value: nothing may move. */
+  const AS_BEFORE: Array<[number | string | null | undefined, string, string]> = [
+    [1, "1,00", "1.00"],
+    [1.05, "1,05", "1.05"],
+    [2.1, "2,10", "2.10"],
+    ["2.10", "2,10", "2.10"],
+    [2.104, "2,10", "2.10"],
+    [2.106, "2,11", "2.11"],
+    [3.4, "3,40", "3.40"],
+    [12, "12,00", "12.00"],
+    [150.5, "150,50", "150.50"],
+    [1001, "1001,00", "1,001.00"],
+    [12500.5, "12.500,50", "12,500.50"],
+    [null, DASH, DASH],
+    [undefined, DASH, DASH],
+    ["", DASH, DASH],
+    ["nope", DASH, DASH],
+    [Number.NaN, DASH, DASH],
+  ];
+
+  test("decimal odds with two places, in the reader's language, exactly as before", () => {
+    for (const [value, es, en] of AS_BEFORE) {
+      setLocale("es");
+      expect(formatOdds(value)).toBe(es);
+      setLocale("en");
+      expect(formatOdds(value)).toBe(en);
+    }
+  });
+
+  test("decimal is the format when none is given: the format changes the writing, never the price", () => {
+    setLocale("es");
+    expect(formatOdds(2.1, "decimal")).toBe(formatOdds(2.1));
+  });
+
+  test("it is the only one: no file keeps the old names or writes a price with toFixed", () => {
+    const root = join(import.meta.dir, "..", "..");
+    const offenders: string[] = [];
+    // a price handed to toFixed: `x.odds.toFixed(`, `bestOdds.toFixed(`, `fair_odds).toFixed(`...
+    const RAW_PRICE = /\b[\w$.?]*(?:odds|Odds|price|Price)\)?\.toFixed\(/g;
+    for (const file of sourceFiles(root)) {
+      // the generators of example data build numbers, they do not write prices on a screen
+      if (/[\\/](mock|fake)[\\/.]|[\\/]fake\.ts$/.test(file)) continue;
+      const text = readFileSync(file, "utf8");
+      if (/\bfmtOdds\b/.test(text)) offenders.push(`${file}: fmtOdds`);
+      for (const m of text.matchAll(RAW_PRICE)) offenders.push(`${file}: ${m[0]}`);
+    }
+    expect(readFileSync(join(root, "lib", "format.ts"), "utf8")).not.toMatch(
+      /export function odds\b/,
+    );
+    expect(offenders).toEqual([]);
   });
 });

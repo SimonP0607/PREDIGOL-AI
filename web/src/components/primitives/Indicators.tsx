@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { EMPTY, odds as fmtOdds, pct, signedPct } from "@/lib/format";
+import { EMPTY, pct, signedPct } from "@/lib/format";
+import { formatOdds } from "@/lib/i18n/format";
 
 export function Numeric({
   children,
@@ -62,7 +63,7 @@ export function OddsCell({
   return (
     <span className="inline-flex flex-col leading-tight">
       <span className={cn("numeric text-sm", fair && "text-muted-foreground")}>
-        {fmtOdds(value)}
+        {formatOdds(value)}
       </span>
       {bookmaker ? <span className="text-caption text-subtle-foreground">{bookmaker}</span> : null}
     </span>

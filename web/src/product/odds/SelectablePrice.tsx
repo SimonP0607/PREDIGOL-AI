@@ -7,7 +7,7 @@
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtOdds } from "@/lib/i18n/format";
+import { formatOdds } from "@/lib/i18n/format";
 import { useSavedPicks } from "@/product/records/hooks";
 import { hasStarted, normLine, selectionKey } from "@/product/records/model";
 import type { Pickable } from "@/product/records/pickable";
@@ -43,7 +43,7 @@ export function SelectablePrice({
     away: sel.away,
   });
   const description = `${label} · ${t("records.actions.priceAt", {
-    odds: fmtOdds(sel.odds),
+    odds: formatOdds(sel.odds),
     bookmaker: sel.bookmaker ?? "—",
   })}`;
   const blocked = blockedText(parlay);

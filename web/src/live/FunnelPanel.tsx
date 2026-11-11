@@ -9,7 +9,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { t, translateOr } from "@/lib/i18n";
-import { fmtOdds, fmtPct } from "@/lib/i18n/format";
+import { formatOdds, fmtPct } from "@/lib/i18n/format";
 import { formatKickoff } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { Panel } from "@/components/primitives/Panel";
@@ -148,7 +148,7 @@ function ItemRow({ x }: { x: FunnelItem }) {
       <div className="min-w-0">
         <div className="truncate text-sm">
           <span className="text-subtle-foreground">{marketShort(x.market_key)}</span> {label}{" "}
-          <span className="numeric font-semibold">@{fmtOdds(x.odds)}</span>
+          <span className="numeric font-semibold">@{formatOdds(x.odds)}</span>
         </div>
         <div className="truncate text-caption text-muted-foreground">
           {t("ops.picks.funnel.probs", {
@@ -191,7 +191,7 @@ export function FunnelBody({ d }: { d: SelectionFunnel }) {
           {t("ops.picks.funnel.rule", {
             rule: d.rule_version,
             risk: d.risk_version,
-            max: fmtOdds(d.max_odds),
+            max: formatOdds(d.max_odds),
             context: d.context_version,
             mode: d.ai_mode,
             enforced: d.ai_enforced ? t("ops.picks.funnel.enforced") : "",

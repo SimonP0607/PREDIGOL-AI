@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import { BrainCircuit, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
+import { formatOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import type { Dec } from "@/lib/api/v1/types";
 import type { ItemAi } from "@/lib/api/v1/types_records";
 import { AiNote } from "@/product/records/AiNote";
@@ -69,8 +69,8 @@ export function LegWhy({
         {fair !== null ? (
           <Line>
             {t("parlays.why.price", {
-              odds: fmtOdds(why.odds),
-              fair: fmtOdds(fair),
+              odds: formatOdds(why.odds),
+              fair: formatOdds(fair),
               edge: fmtSignedPct(edge),
             })}
           </Line>

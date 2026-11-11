@@ -29,7 +29,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useJustChanged } from "@/product/shared/motion";
 import { t, translateOr } from "@/lib/i18n";
-import { DASH, fmtOdds, fmtPct, fmtSignedPct, localFixed, toNumber } from "@/lib/i18n/format";
+import { DASH, formatOdds, fmtPct, fmtSignedPct, localFixed, toNumber } from "@/lib/i18n/format";
 import { formatKickoff, formatRelative } from "@/lib/time";
 import { v1 } from "@/lib/api/v1/client";
 import type { ParlayValidation, ValidationIssue } from "@/lib/api/v1/types_records";
@@ -352,7 +352,7 @@ function Summary({
                 className="numeric text-2xl font-semibold text-gold-strong"
                 data-testid="slip-combined-odds"
               >
-                {fmtOdds(combined)}
+                {formatOdds(combined)}
               </span>
             ) : (
               <Value

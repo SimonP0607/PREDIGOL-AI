@@ -7,7 +7,7 @@
  * decision layer's picks and the post-mortems are in the row as stored, and that is the Admin Console's preview alone.
  */
 import { t, translateOr } from "@/lib/i18n";
-import { fmtInt, fmtOdds, fmtPct, toNumber } from "@/lib/i18n/format";
+import { fmtInt, formatOdds, fmtPct, toNumber } from "@/lib/i18n/format";
 import type { Envelope } from "@/lib/api/v1/types";
 import type {
   AfterMatch,
@@ -685,7 +685,7 @@ export function finalReads(after: AfterMatch): FinalRead[] {
             market,
             line: block.line ?? null,
             odds: Object.entries(block.final.odds)
-              .map(([selection, odds]) => `${selection} ${fmtOdds(odds)}`)
+              .map(([selection, odds]) => `${selection} ${formatOdds(odds)}`)
               .join(" · "),
             books: block.final.books,
             before: beforeKickoff(block.final.minutes_to_kickoff),

@@ -2,7 +2,7 @@
 import { Clock, FlaskConical, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
+import { formatOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import { formatKickoff, formatRelative, formatTime } from "@/lib/time";
 import type { PriceFreshness, ParlayRisk } from "@/lib/api/v1/types_product";
 import { termShort } from "@/lib/glossary";
@@ -34,7 +34,7 @@ export function OddsPill({
         className,
       )}
     >
-      {fmtOdds(odds)}
+      {formatOdds(odds)}
     </span>
   );
 }

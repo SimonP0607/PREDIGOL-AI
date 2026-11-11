@@ -12,7 +12,7 @@ import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtOdds, fmtPct, toNumber } from "@/lib/i18n/format";
+import { formatOdds, fmtPct, toNumber } from "@/lib/i18n/format";
 import { countLegs } from "./model";
 import { formatDate, formatKickoff, formatRelative } from "@/lib/time";
 import type { ParlayRecord, ParlayRecordLeg, RecordKind } from "@/lib/api/v1/types_records";
@@ -101,7 +101,7 @@ function Summary({ parlay }: { parlay: ParlayRecord }) {
             className="numeric mt-1.5 text-[2rem] font-semibold leading-none tracking-tight text-gold-strong"
             data-testid="parlay-combined-odds"
           >
-            {fmtOdds(parlay.combined_odds)}
+            {formatOdds(parlay.combined_odds)}
           </dd>
         </div>
         <div className="mt-3 sm:mt-0">

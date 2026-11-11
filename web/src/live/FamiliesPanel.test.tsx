@@ -12,7 +12,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { setLocale } from "@/lib/i18n";
-import { fmtOdds, fmtPct, fmtSignedPct } from "@/lib/i18n/format";
+import { formatOdds, fmtPct, fmtSignedPct } from "@/lib/i18n/format";
 import type {
   FamiliesCard,
   FamiliesItem,
@@ -481,7 +481,7 @@ describe("a family that completed the cycle", () => {
     expect(first).toContain("Córners · más/menos");
     expect(first).toContain("Más de 10,5");
     expect(first).toContain("Córners");
-    expect(first).toContain(norm(fmtOdds(1.95)));
+    expect(first).toContain(norm(formatOdds(1.95)));
     expect(first).toContain(norm(fmtPct(0.58)));
     expect(first).toContain(norm(fmtPct(0.5)));
     expect(first).toContain(norm(fmtSignedPct(0.131)));

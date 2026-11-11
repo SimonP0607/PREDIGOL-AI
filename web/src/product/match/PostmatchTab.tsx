@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BookmarkCheck, ChevronRight, Newspaper, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtOdds } from "@/lib/i18n/format";
+import { formatOdds } from "@/lib/i18n/format";
 import { formatDateTime } from "@/lib/time";
 import { live } from "@/lib/api/v1/queries";
 import { usePreviewParam } from "@/lib/auth/AuthProvider";
@@ -131,8 +131,8 @@ export function SavedOutcome({ pick, sides }: { pick: UserPick; sides: Sides }) 
         {price ? (
           <span className="numeric">
             {pick.user_odds
-              ? t("match.postmatch.saved.yourPrice", { odds: fmtOdds(pick.user_odds) })
-              : t("match.postmatch.saved.price", { odds: fmtOdds(price) })}
+              ? t("match.postmatch.saved.yourPrice", { odds: formatOdds(pick.user_odds) })
+              : t("match.postmatch.saved.price", { odds: formatOdds(price) })}
           </span>
         ) : null}
         {pick.status !== "PENDING" ? <Units value={pick.profit_units} /> : null}

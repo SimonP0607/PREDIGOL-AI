@@ -7,7 +7,7 @@
  * model figure anywhere.
  */
 import { t } from "@/lib/i18n";
-import { fmtLine, fmtOdds, fmtSignedPct, toNumber } from "@/lib/i18n/format";
+import { fmtLine, formatOdds, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import { parseMarketKey, shapeOf, type Shape } from "./markets";
 import type { Dec, OddsMarketInfo, OddsSelectionPrice } from "./model";
 
@@ -210,11 +210,11 @@ export function priceDescription(
 ): string {
   const head = t("explorer.price.sr", {
     selection: label,
-    odds: fmtOdds(sel.best_odds),
+    odds: formatOdds(sel.best_odds),
     bookmaker,
     count: sel.n_books,
   });
   const edge = edgeText(sel.price_edge);
   if (toNumber(sel.fair_odds) === null) return head;
-  return `${head} ${t("explorer.price.srFair", { fair: fmtOdds(sel.fair_odds) })}${edge ? ` ${edge}.` : ""}`;
+  return `${head} ${t("explorer.price.srFair", { fair: formatOdds(sel.fair_odds) })}${edge ? ` ${edge}.` : ""}`;
 }

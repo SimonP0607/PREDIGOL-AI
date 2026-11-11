@@ -11,7 +11,7 @@
  * certainty there either - so the guard of match.facts stays as strict as it was.
  */
 import { hasKey, t } from "@/lib/i18n";
-import { fmtOdds, fmtPct, localFixed } from "@/lib/i18n/format";
+import { formatOdds, fmtPct, localFixed } from "@/lib/i18n/format";
 import type { ReadingFact, ReadingParam } from "@/lib/api/v1/types_reading";
 import { roundLabel } from "@/product/match/model";
 import { selectionLabel } from "@/product/shared/markets";
@@ -123,14 +123,14 @@ function valuePrice(p: P): string | null {
     p["taken"] === true ? "match.understand.price.taken" : "match.understand.price.now",
     {
       selection: label,
-      odds: fmtOdds(odds),
+      odds: formatOdds(odds),
     },
   );
   const fairMarket = int(p, "fair_market");
   const fairModel = int(p, "fair_model");
   const vars = {
-    fair_market: fairMarket === null ? "" : fmtOdds(fairMarket),
-    fair_model: fairModel === null ? "" : fmtOdds(fairModel),
+    fair_market: fairMarket === null ? "" : formatOdds(fairMarket),
+    fair_model: fairModel === null ? "" : formatOdds(fairModel),
   };
   if (fairMarket !== null && fairModel !== null)
     return lead + t("match.understand.price.both", vars);

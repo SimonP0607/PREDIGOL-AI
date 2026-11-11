@@ -5,7 +5,7 @@
  */
 import type { SelectionQuotes } from "@/lib/api/v1/types_profile";
 import { t } from "@/lib/i18n";
-import { fmtOdds, toNumber } from "@/lib/i18n/format";
+import { formatOdds, toNumber } from "@/lib/i18n/format";
 import { SELECTIONS } from "./model";
 
 export interface BookCell {
@@ -74,7 +74,7 @@ export function openingNote(
   const opened = Math.max(...s.books.map((b) => toNumber(b.opening_odds) ?? 0));
   const now = toNumber(bestNow);
   if (!opened || now === null || same(opened, now)) return null;
-  return t("match.books.opened", { odds: fmtOdds(opened) });
+  return t("match.books.opened", { odds: formatOdds(opened) });
 }
 
 /** T-72 h, T-3 h, T-25 min: how far from kick-off a capture was taken. */

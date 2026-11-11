@@ -9,7 +9,7 @@ import { Link } from "@tanstack/react-router";
 import { ChartLine, ChevronDown, ChevronRight, TrendingUp } from "lucide-react";
 import type { BestMarket, BestOddsFixture } from "@/lib/api/v1/types_product";
 import { t } from "@/lib/i18n";
-import { fmtLine, fmtOdds, fmtSignedPct, toNumber } from "@/lib/i18n/format";
+import { fmtLine, formatOdds, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import { formatDate, formatKickoff, formatTime, relativeDay } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { CompetitionTag, TeamName } from "@/components/football/Logos";
@@ -331,9 +331,9 @@ function PriceCell({
   const bookmaker = p.bookmaker ?? "—";
   const description = `${t("odds.board.cell", {
     selection: full,
-    odds: fmtOdds(p.best_odds),
+    odds: formatOdds(p.best_odds),
     bookmaker,
-    fair: fmtOdds(p.fair_odds),
+    fair: formatOdds(p.fair_odds),
     edge: fmtSignedPct(p.price_edge),
   })}${slot.best ? ` ${t("odds.board.bestSr")}` : ""}`;
   // An outlier price or a quarter line never goes in a parlay; nothing is added once the match has kicked off.
@@ -390,7 +390,7 @@ function PriceCell({
         {bookmaker}
       </span>
       <span className="numeric max-w-full break-words text-micro leading-4 text-subtle-foreground">
-        {t("odds.board.fair", { odds: fmtOdds(p.fair_odds) })}
+        {t("odds.board.fair", { odds: formatOdds(p.fair_odds) })}
       </span>
     </span>
   );

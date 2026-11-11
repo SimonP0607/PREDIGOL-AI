@@ -10,7 +10,7 @@ import { useId, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChartLine, ChevronDown, ChevronRight, Clock, Columns3, Search } from "lucide-react";
 import { t } from "@/lib/i18n";
-import { fmtOdds, fmtSignedPct, toNumber } from "@/lib/i18n/format";
+import { formatOdds, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import { formatKickoff, formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { CompetitionTag, TeamName } from "@/components/football/Logos";
@@ -114,7 +114,7 @@ export function PriceCell({
           // Two pieces that never break inside: «justa 1,92» and «· +1,6 %» (its full words are the hint).
           <span className="numeric text-subtle-foreground" title={edge ?? undefined}>
             <span className="whitespace-nowrap">
-              {t("explorer.price.fairShort", { odds: fmtOdds(sel.fair_odds) })}
+              {t("explorer.price.fairShort", { odds: formatOdds(sel.fair_odds) })}
             </span>
             {edge ? (
               <>

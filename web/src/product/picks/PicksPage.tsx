@@ -18,7 +18,7 @@ import type { Envelope } from "@/lib/api/v1/types";
 import type { CompetitionBadge, PicksBoard, StartedPick } from "@/lib/api/v1/types_product";
 import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import { t } from "@/lib/i18n";
-import { fmtOdds } from "@/lib/i18n/format";
+import { formatOdds } from "@/lib/i18n/format";
 import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ShadowBadge } from "@/product/shared/Bits";
@@ -551,8 +551,8 @@ function AllPicks({
 function oddsLabel(key: OddsRange): string {
   const range = ODDS_RANGES[key];
   if (range.min === undefined) return t("picks.filters.oddsAll");
-  if (range.max === undefined) return t("picks.filters.oddsFrom", { min: fmtOdds(range.min) });
-  return t("picks.filters.oddsRange", { min: fmtOdds(range.min), max: fmtOdds(range.max) });
+  if (range.max === undefined) return t("picks.filters.oddsFrom", { min: formatOdds(range.min) });
+  return t("picks.filters.oddsRange", { min: formatOdds(range.min), max: formatOdds(range.max) });
 }
 
 function windowLabel(hours: number): string {

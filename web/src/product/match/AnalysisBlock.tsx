@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t, translateOr } from "@/lib/i18n";
-import { DASH, fmtOdds, fmtPct, toNumber } from "@/lib/i18n/format";
+import { DASH, formatOdds, fmtPct, toNumber } from "@/lib/i18n/format";
 import { formatRelative } from "@/lib/time";
 import { live } from "@/lib/api/v1/queries";
 import { usePreviewParam } from "@/lib/auth/AuthProvider";
@@ -151,11 +151,11 @@ function Figures({ card }: { card: AnalysisCard }) {
         <Figure
           label={t("match.analysis.figure.fair")}
           term="predigolOdds"
-          value={fmtOdds(card.fair_odds)}
+          value={formatOdds(card.fair_odds)}
         />
         <Figure
           label={t("match.analysis.figure.minimum")}
-          value={fmtOdds(card.minimum_odds)}
+          value={formatOdds(card.minimum_odds)}
           help={t("match.analysis.figure.minimumHelp")}
           tone="text-info"
         />
@@ -169,7 +169,7 @@ function Figures({ card }: { card: AnalysisCard }) {
       <Figure
         label={t("match.analysis.figure.bestOdds")}
         term="bestOdds"
-        value={fmtOdds(card.odds)}
+        value={formatOdds(card.odds)}
         sub={card.bookmaker}
         tone={card.verdict === "recommended" ? "text-gold-strong" : undefined}
       />
@@ -186,7 +186,7 @@ function Figures({ card }: { card: AnalysisCard }) {
       <Figure
         label={t("match.analysis.figure.fair")}
         term="predigolOdds"
-        value={fmtOdds(card.fair_odds)}
+        value={formatOdds(card.fair_odds)}
       />
       <Figure
         label={t("match.analysis.figure.edge")}
@@ -206,7 +206,7 @@ function Figures({ card }: { card: AnalysisCard }) {
       />
       <Figure
         label={t("match.analysis.figure.minimum")}
-        value={fmtOdds(card.minimum_odds)}
+        value={formatOdds(card.minimum_odds)}
         help={t("match.analysis.figure.minimumHelp")}
       />
     </dl>

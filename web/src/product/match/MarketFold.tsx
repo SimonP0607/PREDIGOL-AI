@@ -8,7 +8,7 @@ import { useId, useState, type ReactNode } from "react";
 import { ArrowDownRight, ArrowUpRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtLine, fmtOdds, toNumber } from "@/lib/i18n/format";
+import { fmtLine, formatOdds, toNumber } from "@/lib/i18n/format";
 import { formatDateTime, formatRelative } from "@/lib/time";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { Card } from "@/product/shared/States";
@@ -52,12 +52,12 @@ function Moved({ now, first }: { now: string; first: string }) {
       className="numeric inline-flex items-center gap-0.5 text-micro text-subtle-foreground"
       title={
         up
-          ? t("match.books.movedUp", { odds: fmtOdds(first) })
-          : t("match.books.movedDown", { odds: fmtOdds(first) })
+          ? t("match.books.movedUp", { odds: formatOdds(first) })
+          : t("match.books.movedDown", { odds: formatOdds(first) })
       }
     >
       <Icon aria-hidden className="h-3 w-3" />
-      {fmtOdds(first)}
+      {formatOdds(first)}
     </span>
   );
 }
@@ -217,7 +217,7 @@ function BooksTable({ view }: { view: MarketView }) {
                     {c ? (
                       <span className="inline-flex flex-col items-end">
                         <span className={cn("numeric", c.best && "font-semibold text-gold-strong")}>
-                          {fmtOdds(c.odds)}
+                          {formatOdds(c.odds)}
                         </span>
                         {c.firstSeen ? <Moved now={c.odds} first={c.firstSeen} /> : null}
                         {c.since ? (

@@ -20,10 +20,27 @@ function num(value: number | string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Decimal odds, two places: 2,10 in Spanish, 2.10 in English. */
-export function fmtOdds(value: number | string | null | undefined): string {
+/**
+ * How a price is written. Decimal odds are the one format today; the formats a reader may choose arrive with their
+ * setting (plan maestro UX/UI 2026, decision 8) - here, and nowhere else: a format changes how a price is written,
+ * never the price, its probability or anything computed from it.
+ */
+export type OddsFormat = "decimal";
+
+/**
+ * The one formatter of a price (plan maestro UX/UI 2026, PR-09): every price on a screen, of the product or of the
+ * console, is written by it. Decimal odds, two places: 2,10 in Spanish, 2.10 in English; «—» for no price.
+ */
+export function formatOdds(
+  value: number | string | null | undefined,
+  format: OddsFormat = "decimal",
+): string {
   const n = num(value);
-  return n === null ? DASH : nf({ minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+  if (n === null) return DASH;
+  switch (format) {
+    case "decimal":
+      return nf({ minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+  }
 }
 
 /** A probability or ratio as a percentage: 0.523 -> 52,3 %. */
