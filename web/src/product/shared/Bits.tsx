@@ -222,13 +222,14 @@ export function LiveMinute({
   return (
     <span
       className={cn(
-        "numeric inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary",
+        // «Noche de partido» (the system's sheet 4): the live pill - 26 px, the action's green, Archivo
+        "numeric inline-flex h-[1.625rem] items-center gap-1.5 whitespace-nowrap rounded-full bg-primary-soft px-2.5 text-[0.78125rem] font-extrabold leading-none text-primary",
         className,
       )}
     >
-      <span aria-hidden className="relative flex h-1.5 w-1.5">
+      <span aria-hidden className="relative flex h-2 w-2 shrink-0">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
       </span>
       {label}
     </span>

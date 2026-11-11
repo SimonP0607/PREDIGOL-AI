@@ -51,14 +51,14 @@ function StatePill({ tone = "neutral", children }: { tone?: Tone; children: Reac
 function ScoreLine({ score, home, away }: { score: Goals | null; home: string; away: string }) {
   if (!score) {
     return (
-      <p className="numeric text-4xl font-bold leading-none text-subtle-foreground sm:text-5xl">
+      <p className="numeric text-4xl font-extrabold leading-none text-subtle-foreground sm:text-5xl">
         <span className="sr-only">{t("match.header.noScore")}</span>
         <span aria-hidden>–:–</span>
       </p>
     );
   }
   return (
-    <p className="numeric flex items-center gap-2 text-4xl font-bold leading-none tabular-nums sm:gap-3 sm:text-5xl">
+    <p className="numeric flex items-center gap-2 text-4xl font-extrabold leading-none tabular-nums sm:gap-3 sm:text-5xl">
       <span className="sr-only">
         {t("match.header.scoreAria", { home, away, homeGoals: score.home, awayGoals: score.away })}
       </span>
@@ -83,7 +83,7 @@ function Center({ ctx }: { ctx: MatchCtx }) {
     return (
       <div className="flex flex-col items-center gap-1.5 pt-1 text-center">
         <span className="text-label text-muted-foreground">{day}</span>
-        <span className="numeric text-3xl font-semibold leading-none sm:text-[2.6rem]">
+        <span className="numeric text-3xl font-extrabold leading-none sm:text-[2.6rem]">
           {tbd ? "—" : formatTime(m.kickoff_at)}
         </span>
         {tbd ? (
@@ -213,7 +213,7 @@ function TeamSide({
       {/* Three lines at most, never "New England…": a 320 px phone gives a side about 95 px. */}
       <span
         className={cn(
-          "line-clamp-3 break-words font-display text-sm font-semibold leading-tight sm:text-lg short:text-base",
+          "line-clamp-3 break-words font-display text-[0.9375rem] font-bold leading-tight [font-stretch:92%] sm:text-lg short:text-base",
           dim && "text-muted-foreground",
         )}
         data-testid="team-name"
@@ -257,9 +257,12 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
       : null;
 
   return (
-    <Card className="pitch-glow overflow-hidden" data-guide="match-header">
+    // «Noche de partido» (the system's sheet 4): the scoreboard sits on the pitch - the centre circle and the halfway
+    // line in chalk under the floodlight, drawn with CSS behind the teams (decoration: no figure depends on it)
+    <Card className="surface-pitch relative overflow-hidden" data-guide="match-header">
+      <span aria-hidden className="scene scene-kickoff" style={{ height: "100%" }} />
       <h1 className="sr-only">{t("match.title", { home: m.home.name, away: m.away.name })}</h1>
-      <div className="flex min-w-0 items-center gap-1.5 px-4 pt-3.5 text-caption text-muted-foreground sm:px-5">
+      <div className="relative flex min-w-0 items-center gap-1.5 px-4 pt-3.5 text-caption text-muted-foreground sm:px-5">
         <CompetitionTag
           name={m.competition.name}
           logo={m.competition.logo_url}
@@ -287,7 +290,7 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
         ) : null}
       </div>
 
-      <div className="mx-auto grid max-w-3xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 px-3 pb-4 pt-3 sm:gap-6 sm:px-6 sm:pb-6 sm:pt-4 short:pb-3 short:pt-2">
+      <div className="relative mx-auto grid max-w-3xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 px-3 pb-4 pt-3 sm:gap-6 sm:px-6 sm:pb-6 sm:pt-4 short:pb-3 short:pt-2">
         <TeamSide team={m.home} goals={goals.home} dim={winner === "away"} />
         <div className="min-w-[6.25rem] sm:min-w-[9rem]">
           <Center ctx={ctx} />
@@ -296,7 +299,7 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
         <TeamSide team={m.away} goals={goals.away} dim={winner === "home"} />
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-border/70 px-4 py-2 text-caption text-muted-foreground sm:py-2.5">
+      <div className="relative flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-foreground/[0.08] bg-background-deep/40 px-4 py-2 text-caption text-muted-foreground sm:py-2.5">
         <span className="inline-flex items-center gap-1.5">
           <CalendarDays aria-hidden className="h-3.5 w-3.5 text-subtle-foreground" />
           {capitalize(formatDateLong(m.kickoff_at))}

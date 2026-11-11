@@ -37,13 +37,14 @@ function Team({
 }) {
   return (
     <span className={cn("flex min-w-0 items-center gap-2", className)}>
-      <TeamLogo src={side.logo} name={side.name} size={20} />
+      <TeamLogo src={side.logo} name={side.name} size={22} />
       {/* A phone: one team per line and the whole name, on two lines if need be (mobile UX audit: "Omonia …"). */}
       <span
         className={cn(
-          "min-w-0 break-words leading-snug [overflow-wrap:anywhere] @min-[40rem]:truncate",
-          outcome === "win" && "font-semibold text-foreground",
-          outcome === "lose" && "text-muted-foreground",
+          // «Noche de partido» (the system's sheet 4): a team's name in Archivo, a step narrower; the side that
+          // lost steps back in weight and in colour, never the winner in colour alone
+          "min-w-0 break-words font-display leading-snug [font-stretch:92%] [overflow-wrap:anywhere] @min-[40rem]:truncate",
+          outcome === "lose" ? "font-medium text-muted-foreground" : "font-bold text-foreground",
         )}
         data-testid="team-name"
       >
@@ -69,9 +70,8 @@ function Goals({
     <GoalDigit
       value={value}
       className={cn(
-        "numeric min-w-[1.25rem] text-right text-sm font-semibold tabular-nums",
+        "numeric min-w-[1.25rem] text-right text-lg font-extrabold leading-none tabular-nums",
         live ? "text-primary" : outcome === "lose" ? "text-muted-foreground" : "text-foreground",
-        outcome === "win" && "font-bold",
         className,
       )}
     />
@@ -100,8 +100,8 @@ export function FixtureLine({
     <div className={cn("@container min-w-0 flex-1", className)}>
       <div
         className={cn(
-          "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 text-[0.8125rem]",
-          "@min-[30rem]:grid-cols-[minmax(0,1fr)_4.75rem_minmax(0,1fr)] @min-[30rem]:gap-x-2.5 @min-[30rem]:text-sm",
+          "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 text-[0.9375rem]",
+          "@min-[30rem]:grid-cols-[minmax(0,1fr)_4.75rem_minmax(0,1fr)] @min-[30rem]:gap-x-2.5",
         )}
       >
         <Team
@@ -117,7 +117,7 @@ export function FixtureLine({
         />
         <span
           className={cn(
-            "numeric hidden items-center justify-center gap-1.5 tabular-nums @min-[30rem]:col-start-2 @min-[30rem]:row-start-1 @min-[30rem]:flex",
+            "numeric hidden items-center justify-center gap-1.5 text-lg font-extrabold leading-none tabular-nums @min-[30rem]:col-start-2 @min-[30rem]:row-start-1 @min-[30rem]:flex",
             live && "text-primary",
           )}
         >
@@ -125,18 +125,20 @@ export function FixtureLine({
             <>
               <GoalDigit
                 value={score.home}
-                className={cn("font-semibold", homeTone === "win" && "font-bold")}
+                className={cn(!live && homeTone === "lose" && "text-muted-foreground")}
               />
               <span aria-hidden className="text-subtle-foreground">
                 –
               </span>
               <GoalDigit
                 value={score.away}
-                className={cn("font-semibold", awayTone === "win" && "font-bold")}
+                className={cn(!live && awayTone === "lose" && "text-muted-foreground")}
               />
             </>
           ) : (
-            <span className="text-xs text-subtle-foreground">{t("common.vs")}</span>
+            <span className="font-sans text-xs font-normal text-subtle-foreground">
+              {t("common.vs")}
+            </span>
           )}
         </span>
         <Team

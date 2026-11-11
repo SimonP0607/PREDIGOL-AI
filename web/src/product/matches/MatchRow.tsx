@@ -54,7 +54,9 @@ function TimeCell({ item }: { item: MatchItem }) {
         : null;
     return (
       <span className="flex flex-col leading-tight">
-        <span className="text-xs font-medium text-muted-foreground">{t("matches.clock.FT")}</span>
+        <span className="font-display text-[0.8125rem] font-bold text-muted-foreground">
+          {t("matches.clock.FT")}
+        </span>
         {pens ? (
           <span className="numeric text-micro text-subtle-foreground">
             {t("matches.row.pens", pens)}
@@ -66,15 +68,22 @@ function TimeCell({ item }: { item: MatchItem }) {
     );
   }
   const off = group === "postponed" || group === "cancelled";
+  const tbd = match.status_short === "TBD";
   return (
     <span
       className={cn(
-        "numeric text-xs",
-        group === "scheduled" ? "font-medium text-foreground" : "text-subtle-foreground",
+        "numeric",
+        // «Noche de partido» (the system's sheet 4): the hour of a match to come, 15 px in Archivo; words («Por
+        // definir») and an hour that no longer holds stay small
+        group === "scheduled" && !tbd
+          ? "text-[0.9375rem] font-bold leading-tight text-foreground"
+          : "text-xs",
+        group === "scheduled" ? "text-foreground" : "text-subtle-foreground",
+        tbd && "font-medium",
         off && "line-through",
       )}
     >
-      {match.status_short === "TBD" ? t("matches.clock.TBD") : formatTime(match.kickoff_at)}
+      {tbd ? t("matches.clock.TBD") : formatTime(match.kickoff_at)}
     </span>
   );
 }
