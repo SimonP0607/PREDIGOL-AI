@@ -6,6 +6,10 @@ name: Deploy automático
 #            fabrica el kit SOLO de las partes que cambiaron, lo envía por la misma puerta restringida, hace el precheck y arranca la cadena del
 #            servidor (copia de seguridad + prueba de restauración, despliegue, humo, verificación) y la espera. Si algo falla, se detiene y el
 #            servidor no se toca más: nada se revierte solo (ver chain.log).
+# Tiempos (CI-019): GitHub corta un trabajo a las 6 horas. El trabajo `release` dura como mucho 355 minutos y reparte ese tiempo con un solo
+#   reloj: espera hasta unos 100 minutos a que el servidor quede libre (otra cadena, una copia) y sigue su propia cadena hasta agotar el reloj.
+#   Si el reloj se acaba con la cadena en marcha, el trabajo termina EN ROJO y lo dice: nunca da por desplegado lo que no vio terminar. La
+#   cadena sigue en el servidor (chain.log es la verdad) y el siguiente despliegue en cola espera a que termine.
 # Interruptor: la variable del repositorio AUTO_DEPLOY (true/false). Apagado, este flujo no hace nada; el botón manual (`Deploy`) sigue con sus dos
 # aprobaciones. Solo corre para ejecuciones `push` del propio repositorio sobre `main` (nunca de forks ni de pull requests).
 
@@ -57,13 +61,16 @@ jobs:
     needs: plan
     if: needs.plan.outputs.ready == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 355
     environment: production-auto
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Reloj del trabajo (hasta cuándo puede seguir la cadena)
+        id: clock
+        run: echo "deadline=$(( $(date +%s) + 340 * 60 ))" >> "$GITHUB_OUTPUT"
       - name: Llave de despliegue y huella del servidor
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -98,17 +105,23 @@ jobs:
         shell: bash   # bash explícito = -eo pipefail: un precheck que falla debe fallar el paso aunque pase por tee
         env:
           KIT_NAME: ${{ steps.build.outputs.kit }}
-        run: bash backend/deploy/release/ci_precheck.sh predigol-gh "$KIT_NAME" 2>&1 | tee "$RUNNER_TEMP/precheck.txt"
+        # 45 intentos con 60 s de pausa: unos 100 minutos de espera como mucho (cada precheck tarda algo más de un minuto). Solo espera por
+        # «el servidor está ocupado»; cualquier otra línea NOT OK falla al momento, como antes.
+        run: bash backend/deploy/release/ci_precheck.sh predigol-gh "$KIT_NAME" 45 60 2>&1 | tee "$RUNNER_TEMP/precheck.txt"
       - name: Arrancar la cadena y seguirla
         if: steps.build.outputs.kit != ''
         env:
           KIT: ${{ steps.build.outputs.kit }}
+          DEADLINE: ${{ steps.clock.outputs.deadline }}
         run: |
           set -uo pipefail
           [[ "$KIT" =~ ^[0-9]{8}T[0-9]{4}Z-[a-z0-9][a-z0-9-]*$ ]] || { echo "bad kit name"; exit 1; }
+          [[ "$DEADLINE" =~ ^[0-9]{10}$ ]] || { echo "bad deadline"; exit 1; }
           ssh predigol-gh "start $KIT" || exit 1
           bad=0
-          for i in $(seq 1 220); do
+          i=0
+          while (( $(date +%s) < DEADLINE )); do
+            i=$((i + 1))
             sleep 60
             if out="$(ssh predigol-gh "status $KIT" 2> /dev/null)"; then
               bad=0
@@ -123,7 +136,12 @@ jobs:
               [[ $bad -lt 10 ]] || { echo "el servidor no respondió 10 veces seguidas: mirarlo a mano (la cadena sigue allí)"; exit 1; }
             fi
           done
-          echo "sigue en marcha tras 220 minutos: mirarlo a mano (la cadena sigue allí)"; exit 1
+          {
+            echo "### La cadena sigue en marcha"
+            echo "El trabajo agotó su tiempo tras $i minutos de seguimiento (GitHub corta un trabajo a las 6 horas). La cadena \`$KIT\` continúa en el servidor:"
+            echo "su resultado está en \`chain.log\`. Este trabajo termina en rojo porque no vio el final; no significa que el despliegue fallara."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "sigue en marcha tras $i minutos de seguimiento: mirarlo en el servidor (la cadena sigue allí)"; exit 1
       - name: Descartar el kit si el trabajo falló antes de arrancar
         if: failure() && steps.build.outputs.kit != ''
         env:
