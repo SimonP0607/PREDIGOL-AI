@@ -1,0 +1,105 @@
+provider_league_id,league,country,season,flag_injuries,flag_lineups,flag_statistics_fixtures,flag_statistics_players,flag_odds,flag_predictions,fixtures_finished,fixtures_with_provider_absence_at_ko,absences_at_ko,fixtures_with_both_lineups_stored
+253,Major League Soccer,USA,2026,True,True,True,True,True,True,90,57,388,86
+45,FA Cup,England,2026,False,True,True,False,True,True,83,0,0,11
+40,Championship,England,2026,True,True,True,True,True,True,73,53,418,72
+128,Liga Profesional Argentina,Argentina,2026,False,True,True,True,True,True,64,0,0,56
+100,J3 League,Japan,2026,False,True,False,False,True,True,60,0,0,14
+99,J2 League,Japan,2026,False,True,False,False,True,True,60,0,0,20
+41,League One,England,2026,False,True,True,True,True,True,56,0,0,44
+239,Primera A,Colombia,2026,False,True,True,True,True,True,55,0,0,52
+2,UEFA Champions League,World,2026,True,True,True,True,True,True,54,46,313,54
+3,UEFA Europa League,World,2026,True,True,True,True,True,True,54,49,462,52
+848,UEFA Europa Conference League,World,2026,False,True,True,True,True,True,54,0,0,54
+135,Serie A,Italy,2026,True,True,True,True,True,True,52,50,339,52
+136,Serie B,Italy,2026,False,True,True,True,True,True,50,0,0,38
+42,League Two,England,2026,False,True,True,True,True,True,50,0,0,43
+98,J1 League,Japan,2027,False,True,True,True,True,True,50,0,0,49
+80,3. Liga,Germany,2026,False,True,True,True,True,True,50,0,0,40
+204,1. Lig,Turkey,2026,False,True,True,True,True,True,49,0,0,42
+18,AFC Champions League Two,World,2026,False,True,True,True,True,True,48,0,0,24
+17,AFC Champions League Elite,World,2026,False,True,True,True,True,True,47,0,0,34
+262,Liga MX,Mexico,2026,False,True,True,True,True,True,47,0,0,41
+143,Copa del Rey,Spain,2026,False,True,True,True,True,True,46,0,0,2
+141,Segunda División,Spain,2026,False,True,True,True,True,True,45,0,0,42
+72,Serie B,Brazil,2026,False,True,True,True,True,True,45,0,0,24
+281,Primera División,Peru,2026,False,True,True,True,True,True,45,0,0,37
+71,Serie A,Brazil,2026,True,True,True,True,True,True,43,38,323,40
+140,La Liga,Spain,2026,True,True,True,True,True,True,42,31,171,39
+113,Allsvenskan,Sweden,2026,True,True,True,True,True,True,42,31,142,37
+39,Premier League,England,2026,True,True,True,True,True,True,41,31,222,41
+255,USL Championship,USA,2026,False,True,False,False,True,True,41,0,0,8
+89,Eerste Divisie,Netherlands,2026,False,True,True,True,True,True,39,0,0,27
+106,Ekstraklasa,Poland,2026,False,True,True,True,True,True,38,0,0,35
+62,Ligue 2,France,2026,False,True,True,True,True,True,37,0,0,22
+203,Süper Lig,Turkey,2026,True,True,True,True,True,True,37,28,144,37
+61,Ligue 1,France,2026,True,True,True,True,True,True,36,26,145,35
+79,2. Bundesliga,Germany,2026,False,True,True,True,True,True,36,0,0,35
+88,Eredivisie,Netherlands,2026,True,True,True,True,True,True,36,24,142,36
+78,Bundesliga,Germany,2026,True,True,True,True,True,True,36,26,212,36
+206,Türkiye Kupası,Turkey,2026,False,False,False,False,False,True,35,0,0,0
+344,Primera División,Bolivia,2026,False,True,True,True,True,True,34,0,0,19
+283,Liga I,Romania,2026,False,True,True,True,True,True,34,0,0,32
+307,Pro League,Saudi-Arabia,2026,False,True,True,True,True,True,33,0,0,30
+114,Superettan,Sweden,2026,False,True,True,True,True,True,33,0,0,24
+103,Eliteserien,Norway,2026,True,True,True,True,True,True,33,23,144,32
+506,2. liga,Slovakia,2026,False,True,False,False,True,True,33,0,0,0
+242,Liga Pro,Ecuador,2026,False,True,True,True,True,True,32,0,0,24
+12,CAF Champions League,World,2026,False,True,True,False,False,True,32,0,0,0
+345,Czech Liga,Czech-Republic,2026,False,True,True,True,True,True,32,0,0,29
+219,2. Liga,Austria,2026,False,True,True,True,True,True,32,0,0,21
+235,Premier League,Russia,2026,True,True,True,True,True,True,32,17,81,32
+252,Division Profesional - Clausura,Paraguay,2026,False,True,True,True,True,True,32,0,0,24
+46,EFL Trophy,England,2026,False,True,True,True,True,True,31,0,0,11
+286,Super Liga,Serbia,2026,False,True,True,True,True,True,30,0,0,20
+296,Thai League 1,Thailand,2026,False,True,True,True,True,True,30,0,0,5
+318,1. Division,Cyprus,2026,False,True,True,True,True,True,29,0,0,24
+333,Premier League,Ukraine,2026,False,True,True,True,True,True,29,0,0,20
+383,Ligat Ha'al,Israel,2026,False,True,True,True,True,True,29,0,0,14
+44,FA WSL,England,2026,False,True,True,True,True,True,28,0,0,7
+95,Segunda Liga,Portugal,2026,False,True,True,True,True,True,28,0,0,13
+94,Primeira Liga,Portugal,2026,False,True,True,True,True,True,28,0,0,28
+20,CAF Confederation Cup,World,2026,False,True,True,False,False,True,28,0,0,0
+197,Super League 1,Greece,2026,False,True,True,True,True,True,28,0,0,25
+233,Premier League,Egypt,2026,False,True,True,True,False,True,28,0,0,11
+254,NWSL Women,USA,2026,False,True,True,True,True,True,28,0,0,22
+549,Damallsvenskan,Sweden,2026,False,True,True,True,True,True,28,0,0,8
+144,Jupiler Pro League,Belgium,2026,False,True,True,True,True,True,27,0,0,27
+179,Premiership,Scotland,2026,False,True,True,True,True,True,27,0,0,27
+96,Taça de Portugal,Portugal,2026,False,True,True,False,False,True,27,0,0,0
+332,Super Liga,Slovakia,2026,False,True,True,True,True,True,26,0,0,20
+90,KNVB Beker,Netherlands,2026,False,True,True,True,False,True,26,0,0,12
+265,Primera División,Chile,2026,False,True,True,True,True,True,26,0,0,20
+119,Superliga,Denmark,2026,True,True,True,True,True,True,25,16,99,21
+305,Stars League,Qatar,2026,False,True,True,True,True,True,24,0,0,13
+139,Serie A Women,Italy,2026,False,True,True,True,True,True,24,0,0,6
+323,Indian Super League,India,2026,False,True,True,True,True,True,24,0,0,22
+169,Super League,China,2026,False,True,True,True,True,True,24,0,0,24
+218,Bundesliga,Austria,2026,False,True,True,True,True,True,24,0,0,23
+271,NB I,Hungary,2026,False,True,True,True,True,True,24,0,0,16
+292,K League 1,South-Korea,2026,False,True,True,True,True,True,24,0,0,19
+188,A-League,Australia,2026,True,True,True,True,True,True,23,15,83,20
+64,Feminine Division 1,France,2026,False,True,True,True,True,True,22,0,0,0
+180,Championship,Scotland,2026,False,True,False,False,True,True,22,0,0,3
+172,First League,Bulgaria,2026,False,True,True,True,True,True,22,0,0,13
+244,Veikkausliiga,Finland,2026,False,True,True,True,True,True,22,0,0,17
+145,Challenger Pro League,Belgium,2026,False,True,True,True,True,True,21,0,0,14
+82,Frauen Bundesliga,Germany,2026,False,True,True,True,True,True,21,0,0,19
+183,League One,Scotland,2026,False,True,False,False,True,True,20,0,0,6
+210,HNL,Croatia,2026,False,True,True,True,True,True,20,0,0,19
+357,Premier Division,Ireland,2026,False,True,True,True,True,True,19,0,0,18
+207,Super League,Switzerland,2026,False,True,True,True,True,True,18,0,0,15
+714,Cup,Egypt,2026,False,False,False,False,True,True,16,0,0,0
+288,Premier Soccer League,South-Africa,2026,False,True,True,True,False,True,16,0,0,8
+81,DFB Pokal,Germany,2026,False,True,True,True,False,True,16,0,0,14
+525,UEFA Champions League Women,World,2026,False,True,True,False,True,True,14,0,0,5
+479,Canadian Premier League,Canada,2026,False,True,True,True,True,True,14,0,0,7
+301,Pro League,United-Arab-Emirates,2026,False,True,True,True,True,True,14,0,0,7
+48,League Cup,England,2026,False,True,True,True,False,True,8,0,0,7
+10,Friendlies,World,2026,False,True,True,True,True,True,6,0,0,0
+13,CONMEBOL Libertadores,World,2026,False,True,True,True,False,True,4,0,0,4
+11,CONMEBOL Sudamericana,World,2026,False,True,True,True,False,True,4,0,0,4
+73,Copa Do Brasil,Brazil,2026,False,True,True,True,True,True,4,0,0,4
+97,Taça da Liga,Portugal,2026,False,True,False,False,False,True,4,0,0,2
+66,Coupe de France,France,2026,False,False,False,False,False,True,3,0,0,0
+667,Friendlies Clubs,World,2026,False,True,False,False,True,True,2,0,0,0
+533,CAF Super Cup,World,2026,False,False,False,False,True,True,1,0,0,0
