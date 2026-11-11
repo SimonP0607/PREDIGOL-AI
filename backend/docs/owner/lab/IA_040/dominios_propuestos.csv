@@ -1,0 +1,589 @@
+dominio,categoria_propuesta,nivel_propuesto,items_30d,justificacion,tier_registro,excluir
+qiumiwu.com,agregador,D,189,"Portal chino «球迷屋» con listas de bajas en plantilla para cualquier liga, en 3 subdominios espejo (zht., m., mzht.); copia datos de terceros",aggregator,sí
+maxifoot.fr,medio general,C,46,"Portal francés de fútbol Maxifoot, con redacción propia y alineaciones probables",media,no
+btfnews.com,agregador,D,40,"Resúmenes diarios «Injuries and suspensions» de muchas ligas, recopilados de otras fuentes; identidad no verificada",aggregator,sí
+sina.cn,agregador,D,38,Portal móvil de Sina: autopublicación (k.sina.cn) e información para lotería deportiva (lotto.sina.cn),aggregator,sí
+alphanews.live,medio general,C,32,Web de noticias de Alpha TV Chipre (fútbol chipriota y griego),media,no
+thestatszone.com,página de pronósticos o apuestas,D,32,Previas «Team News & Prediction» orientadas a pronóstico,aggregator,sí
+whichbookie.co.uk,página de pronósticos o apuestas,D,31,Web de pronósticos y apuestas («Prediction & Betting Tips»),aggregator,sí
+onefootball.com,agregador,D,29,Agregador OneFootball: republica noticias de medios socios,aggregator,sí
+ysscores.com,agregador,D,26,Web árabe de resultados en directo (YSscores) con noticias reescritas,aggregator,sí
+spelkanalen.se,página de pronósticos o apuestas,D,25,"Pronósticos para quinielas suecas (Tipset, Topptipset)",aggregator,sí
+sport.ua,medio general,C,25,Portal deportivo ucraniano; las páginas leídas son previas con «прогноз» (pronóstico),media,no
+sondakika.com,agregador,D,24,Agregador turco de última hora que republica teletipos de agencias,aggregator,sí
+prosport.uz,medio general,C,21,Portal deportivo uzbeko Prosport.uz,media,no
+exa.ai,agregador,D,20,Páginas generadas por el propio buscador (exa.ai/library): no es fuente primaria,aggregator,sí
+friendsoffootballnz.com,otro,D,20,Organización de aficionados de Nueva Zelanda (Friends of Football) que publica noticias; no es prensa ni club,aggregator,no
+gong.bg,medio general,C,20,Portal deportivo búlgaro Gong.bg,media,no
+managingmadrid.com,otro,D,19,Blog de aficionados del Real Madrid (red SB Nation),aggregator,no
+swindonadvertiser.co.uk,medio general,C,19,Diario local Swindon Advertiser (Newsquest),media,no
+forzanec.nl,otro,D,18,Web de aficionados del NEC Nijmegen,aggregator,no
+parmalive.com,medio general,C,17,Diario digital dedicado al Parma (no oficial),media,no
+torreense.com,oficial (club),A,17,Sitio oficial del SCU Torreense («Site Oficial do Torreense»),club,no
+altziar.ro,medio general,C,16,Web rumana de noticias deportivas,media,no
+arenarete.com,otro,D,16,Web italiana dedicada a la Juventus; identidad no verificada,aggregator,no
+betfair.es,página de pronósticos o apuestas,D,16,Casa de apuestas Betfair (blog de pronósticos),aggregator,sí
+lilienblog.de,otro,D,16,Blog de aficionados del SV Darmstadt 98,aggregator,no
+northamptonchron.co.uk,medio general,C,15,Diario local Northampton Chronicle & Echo,media,no
+nw.de,medio general,C,15,"Neue Westfälische, diario regional (Bielefeld)",media,no
+pianetaserieb.it,medio general,C,15,Web especializada en la Serie B con redacción propia,media,no
+ukr.net,agregador,D,15,Agregador ucraniano de noticias UKR.NET,aggregator,sí
+ensonhaber.com,medio general,C,14,Portal turco de noticias En Son Haber,media,no
+gsp.ro,medio reputado,B,14,"Gazeta Sporturilor, diario deportivo nacional de Rumanía (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+roundtable.io,página de pronósticos o apuestas,D,14,Previas automáticas con pronóstico («Preview and Prediction»),aggregator,sí
+scores24.live,página de pronósticos o apuestas,D,14,"Resultados, estadísticas y pronósticos para apostar (Scores24)",aggregator,sí
+bristolpost.co.uk,medio general,C,13,Diario local Bristol Post (Reach),media,no
+dhnet.be,medio reputado,B,13,"La Dernière Heure, diario deportivo nacional de Bélgica (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+fussballtransfers.com,agregador,D,13,Portal de fichajes con fichas de partido de datos de terceros,aggregator,sí
+rizedeyiz.com,medio general,C,13,Web de noticias local de Rize,media,no
+star.com.tr,medio general,C,13,Diario turco Star,media,no
+ajansspor.com,medio general,C,12,Portal deportivo turco Ajansspor,media,no
+fakti.bg,medio general,C,12,Portal de noticias búlgaro Fakti.bg,media,no
+fotbollsbilagan.se,medio general,C,12,Web sueca de noticias de fútbol Fotbollsbilagan,media,no
+plovdivlive.bg,medio general,C,12,Web de noticias local de Plovdiv,media,no
+tuttofantacalcio.it,otro,D,12,Web de fútbol fantasía (alineaciones probables recopiladas),aggregator,no
+vietnam.vn,medio general,C,12,Portal nacional de noticias de Vietnam,media,no
+yahoo.com,agregador,D,12,Yahoo Sports: republica noticias de agencias y medios socios,aggregator,sí
+infobetting.com,página de pronósticos o apuestas,D,11,Web italiana de pronósticos y cuotas,aggregator,sí
+livescore.com,agregador,D,11,LiveScore: resultados en directo y noticias resumidas,aggregator,sí
+maghreb-foot.com,agregador,D,11,Páginas de horario y canal de TV del partido escritas para buscadores,aggregator,sí
+milanreports.com,otro,D,11,Web de aficionados del AC Milan,aggregator,no
+mygaziantep.com,medio general,C,11,Web de noticias local de Gaziantep,media,no
+plymouthfcnews.co.uk,agregador,D,11,Una de 8 webs «<club>news.co.uk» con titulares de plantilla idénticos (texto automático),aggregator,sí
+plymouthherald.co.uk,medio general,C,11,Diario local Plymouth Herald (Reach),media,no
+poker-parq.com,agregador,D,11,"Granja de contenido china en un dominio de póker, con listas de bajas copiadas",aggregator,sí
+poste.pt,otro,D,11,Web portuguesa de fútbol; identidad no verificada,aggregator,no
+udlaspalmas.net,otro,D,11,Web de aficionados de la UD Las Palmas (el sitio oficial es udlaspalmas.es),aggregator,no
+7tian.tv,agregador,D,10,Web china de retransmisiones («直播») con noticias copiadas,aggregator,sí
+fichajes.com,agregador,D,10,Portal de fichajes con fichas de partido en directo (datos de terceros),aggregator,sí
+ilnapolista.it,medio general,C,10,"Il Napolista, diario digital sobre el Napoli con redacción propia",media,no
+metropolitano.gal,medio general,C,10,Diario digital gallego Metropolitano,media,no
+newsedge.bet,página de pronósticos o apuestas,D,10,Señales para apostar en un dominio .bet,aggregator,sí
+opstellingvandaag.nl,agregador,D,10,Web de alineaciones recopiladas («opstelling vandaag»),aggregator,sí
+parlandodisport.it,medio general,C,10,Revista digital italiana de deportes,media,no
+ppsports.com,agregador,D,10,Plataforma china de vídeo PP Sports que aloja contenido de terceros,aggregator,sí
+skysportaustria.at,medio reputado,B,10,"Sky Sport Austria, televisión deportiva nacional (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+voetbalprimeur.be,medio general,C,10,Web belga de noticias de fútbol Voetbalprimeur,media,no
+aldawlanews.com,medio general,C,9,Diario egipcio Al Dawla News,media,no
+footballpredictions.net,página de pronósticos o apuestas,D,9,Web de pronósticos,aggregator,sí
+lecceprima.it,medio general,C,9,Diario digital local de Lecce,media,no
+lehavrenews.info,agregador,D,9,Web de noticias de club con titulares de plantilla; identidad no verificada,aggregator,sí
+one.co.il,medio general,C,9,"ONE, portal deportivo israelí",media,no
+ruhr24.de,medio general,C,9,Portal regional Ruhr24 (Ippen),media,no
+seko-note.com,otro,D,9,Blog japonés de análisis («せこノート»),aggregator,no
+sianstep.com,página de pronósticos o apuestas,D,9,Web tailandesa de análisis para apostar («วิเคราะห์บอล»),aggregator,sí
+sports.ru,medio general,C,9,"Sports.ru, gran portal deportivo ruso (redacción y blogs)",media,no
+thefootballfaithful.com,otro,D,9,Web de opinión y aficionados,aggregator,no
+360cn-douyu.com,agregador,D,8,Dominio que imita a Douyu (streaming chino) con listas de bajas copiadas,aggregator,sí
+african.football,otro,D,8,Web de noticias de fútbol africano; identidad no verificada,aggregator,no
+chad.co.uk,medio general,C,8,Diario local Chad (Mansfield),media,no
+flashscore.de,agregador,D,8,"Flashscore, resultados en directo (flashscore.com ya está como agregador)",aggregator,sí
+footybets.io,página de pronósticos o apuestas,D,8,Pronósticos y apuestas,aggregator,sí
+geekinco.com,página de pronósticos o apuestas,D,8,Previas con pronóstico («Preview & Predictions»),aggregator,sí
+getfootballnewsfrance.com,medio general,C,8,Web en inglés sobre fútbol francés con redacción propia,media,no
+gipedara.com,otro,D,8,Web en inglés sobre fútbol chipriota; identidad no verificada,aggregator,no
+ideal.es,medio general,C,8,"Diario Ideal (Granada, Vocento)",media,no
+ifeng.com,agregador,D,8,Portal chino Phoenix: plataforma de autopublicación («大风号»),aggregator,sí
+kerkida.net,medio general,C,8,Portal deportivo chipriota Kerkida,media,no
+lavozdeasturias.es,medio general,C,8,Diario La Voz de Asturias,media,no
+leicestermercury.co.uk,medio general,C,8,Diario local Leicester Mercury (Reach),media,no
+mangish.net,otro,D,8,Portal egipcio de noticias; identidad no verificada,aggregator,no
+muchacalidad.com,otro,D,8,Web española de opinión y aficionados; identidad no verificada,aggregator,no
+particle.news,agregador,D,8,Agregador de noticias con resúmenes por IA (Particle),aggregator,sí
+politika.rs,medio reputado,B,8,"Politika, diario nacional de Serbia (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+qinghemc.com,página de pronósticos o apuestas,D,8,Granja de contenido china «竞彩情报站» (información para lotería deportiva),aggregator,sí
+stade-rennais-online.com,otro,D,8,Web de aficionados del Stade Rennais,aggregator,no
+thetelegraphandargus.co.uk,medio general,C,8,Diario local Telegraph & Argus (Bradford),media,no
+vkmspor.com,medio general,C,8,Web deportiva local turca VKM Spor,media,no
+yascores.com,agregador,D,8,Web árabe de resultados en directo con noticias reescritas,aggregator,sí
+yeswelazio.it,otro,D,8,Web de aficionados de la Lazio,aggregator,no
+youm7.com,medio general,C,8,"Youm7, gran diario digital egipcio",media,no
+7m.com.cn,página de pronósticos o apuestas,D,7,Red 7M: datos y cuotas para apostar,aggregator,sí
+aa.com.tr,medio reputado,B,7,"Anadolu Ajansı, agencia nacional de noticias de Turquía (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+bolanarede.pt,medio general,C,7,Web portuguesa de noticias de fútbol Bola na Rede,media,no
+budnavarna.com,medio general,C,7,Web de noticias local de Varna,media,no
+centrasport.gr,medio general,C,7,Web deportiva griega Centra Sport (Creta),media,no
+fansagf.dk,otro,D,7,Web de aficionados del AGF,aggregator,no
+fcporto.ws,otro,D,7,Web de aficionados del FC Porto (el oficial es fcporto.pt),aggregator,no
+foot-sur7.fr,otro,D,7,Web francesa de noticias de fútbol reescritas,aggregator,no
+foradejogo.pt,medio general,C,7,Web portuguesa de noticias de fútbol Fora de Jogo,media,no
+gazianteppusula.com,medio general,C,7,Diario local Gaziantep Pusula,media,no
+leaguelane.com,página de pronósticos o apuestas,D,7,"Pronósticos y consejos de apuestas («Prediction, Betting Tips»)",aggregator,sí
+minutonoventa.com,medio general,C,7,Web gallega de noticias de fútbol,media,no
+oxfordmail.co.uk,medio general,C,7,Diario local Oxford Mail (Newsquest),media,no
+politis.com.cy,medio general,C,7,Diario chipriota Politis (sección Gipedo),media,no
+radiotimisoara.ro,medio general,C,7,"Radio Timișoara, emisora pública regional",media,no
+s-pulse-press.com,otro,D,7,Web de aficionados del Shimizu S-Pulse,aggregator,no
+sofoot.com,medio reputado,B,7,"So Foot, revista nacional de fútbol de Francia (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+sport1.bg,medio general,C,7,Portal deportivo búlgaro Sport1,media,no
+sportup.info,medio general,C,7,Portal deportivo croata Sportup,media,no
+sunderlandecho.com,medio general,C,7,Diario local Sunderland Echo,media,no
+tasnimnews.ir,medio general,C,7,Agencia iraní Tasnim (semioficial),media,no
+telegraphindia.com,medio general,C,7,Diario indio The Telegraph (Calcuta),media,no
+topics.or.jp,medio general,C,7,"Tokushima Shimbun, edición digital",media,no
+tuttonapoli.net,agregador,D,7,Red TuttoMercatoWeb (tuttomercatoweb.com ya es agregador en el registro),aggregator,sí
+unionrayo.es,otro,D,7,Web de aficionados del Rayo Vallecano,aggregator,no
+7mkr.com,página de pronósticos o apuestas,D,6,"Red 7M (datos y cuotas), edición coreana",aggregator,sí
+akdenizmanset.com.tr,medio general,C,6,Diario regional turco Akdeniz Manşet,media,no
+alwatan.com.sa,medio general,C,6,Diario saudí Al Watan,media,no
+athletiko.gr,medio general,C,6,Portal deportivo griego Athletiko,media,no
+comuniate.com,otro,D,6,Web de fútbol fantasía (Comunio) con noticias de convocatorias,aggregator,no
+diariodesevilla.es,medio general,C,6,Diario de Sevilla (Grupo Joly),media,no
+docomo.ne.jp,agregador,D,6,Portal dmenu de NTT Docomo: republica noticias de otros medios,aggregator,sí
+elheraldo.com.ec,medio general,C,6,"Diario El Heraldo (Ambato, Ecuador)",media,no
+f95.de,oficial (club),A,6,Sitio oficial del Fortuna Düsseldorf,club,no
+football-addict.com,otro,D,6,Web francesa de aficionados («notre compo probable»),aggregator,no
+footgolazo.fr,otro,D,6,Web francesa de noticias de fútbol; identidad no verificada,aggregator,no
+gettosport.com,agregador,D,6,Web que mezcla noticias reescritas de varias ligas; granja de contenido probable,aggregator,sí
+haberler.com,agregador,D,6,Agregador turco de noticias Haberler.com,aggregator,sí
+ilglobo.com,otro,D,6,Web italiana; identidad no verificada,aggregator,no
+infotbal.cz,medio general,C,6,Portal checo de fútbol inFotbal,media,no
+kayserihaber.com.tr,medio general,C,6,Diario local Kayseri Haber,media,no
+krone.at,medio general,C,6,"Kronen Zeitung, diario austriaco",media,no
+lavoixdunord.fr,medio general,C,6,Diario regional La Voix du Nord,media,no
+ligaportal.at,medio general,C,6,Portal austriaco de fútbol Ligaportal,media,no
+linterista.it,otro,D,6,Web de aficionados del Inter,aggregator,no
+metrosport.gr,medio general,C,6,Portal deportivo griego Metrosport,media,no
+mff.se,oficial (club),A,6,Sitio oficial del Malmö FF,club,no
+modenasportiva.it,medio general,C,6,Web local de deportes de Módena,media,no
+napolimagazine.com,otro,D,6,Revista digital de aficionados del Napoli,aggregator,no
+newsandstar.co.uk,medio general,C,6,Diario local News & Star (Carlisle),media,no
+scotsman.com,medio general,C,6,The Scotsman y Edinburgh Evening News,media,no
+soccerzz.com,página de pronósticos o apuestas,D,6,Previas con pronósticos («predictions»),aggregator,sí
+sport-fm.gr,medio general,C,6,"Sport FM, radio deportiva griega",media,no
+sportal.bg,medio general,C,6,Portal deportivo búlgaro Sportal,media,no
+stavka.tv,página de pronósticos o apuestas,D,6,Pronósticos de apuestas («СТАВКА ТВ»),aggregator,sí
+tipico.de,página de pronósticos o apuestas,D,6,Casa de apuestas Tipico,aggregator,sí
+walla.co.il,medio general,C,6,Portal israelí Walla! (deportes),media,no
+yenisafak.com,medio general,C,6,Diario turco Yeni Şafak,media,no
+zerozero.pt,agregador,D,6,Base de datos y estadísticas de fútbol zerozero,aggregator,sí
+724boluspor.com,otro,D,5,Web local de aficionados del Boluspor,aggregator,no
+aialysis.live,página de pronósticos o apuestas,D,5,Análisis y pronósticos generados por IA,aggregator,sí
+anderlecht-online.be,otro,D,5,Web de aficionados del Anderlecht,aggregator,no
+aspor.com.tr,medio general,C,5,"A Spor, canal deportivo turco",media,no
+bet365.it,página de pronósticos o apuestas,D,5,Casa de apuestas bet365 (sección de noticias),aggregator,sí
+bolavip.com,otro,D,5,Red de webs deportivas por club (SEO); sin redacción contrastable,aggregator,no
+cdnacional.pt,oficial (club),A,5,Sitio oficial del CD Nacional (Madeira),club,no
+chunichi.co.jp,medio general,C,5,Diario Chunichi Shimbun (Nagoya),media,no
+diariocorreo.pe,medio general,C,5,Diario Correo (Perú),media,no
+digiogp.com,medio general,C,5,Web de noticias local turca (Batman),media,no
+digisport.ro,medio general,C,5,"Digi Sport, canal deportivo rumano",media,no
+dolcesport.ro,medio general,C,5,"Dolce Sport, canal deportivo rumano",media,no
+elporvenir.mx,medio general,C,5,Diario El Porvenir (Monterrey),media,no
+fcseoulite.me,otro,D,5,Web de aficionados del FC Seoul,aggregator,no
+football24.ua,medio general,C,5,Portal ucraniano de fútbol Football24,media,no
+futbolduraklari.com,otro,D,5,Web turca de noticias de fútbol; identidad no verificada,aggregator,no
+gekisaka.jp,medio general,C,5,"Gekisaka, portal japonés de fútbol (Kodansha)",media,no
+gloucestershirelive.co.uk,medio general,C,5,Diario local Gloucestershire Live (Reach),media,no
+maariv.co.il,medio general,C,5,Diario israelí Maariv (deportes),media,no
+nottscountynews.co.uk,agregador,D,5,Una de 8 webs «<club>news.co.uk» con titulares de plantilla idénticos (texto automático),aggregator,sí
+republika.rs,medio general,C,5,Portal serbio Republika (Sportissimo),media,no
+southamptonfc.com,oficial (club),A,5,Sitio oficial del Southampton FC,club,no
+sport5.co.il,medio general,C,5,"Sport 5, canal deportivo israelí",media,no
+sydneyfc.com,oficial (club),A,5,Sitio oficial del Sydney FC,club,no
+telegraf.rs,medio general,C,5,Portal serbio Telegraf,media,no
+tvp.pl,medio reputado,B,5,"TVP Sport, televisión pública de Polonia (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+valencianoticias.com,medio general,C,5,Diario digital Valencia Noticias,media,no
+viaplaysportnews.dk,medio general,C,5,"Viaplay Sport Dinamarca, canal deportivo",media,no
+voetbalnieuws.nl,otro,D,5,Web neerlandesa de noticias de fútbol; identidad no verificada,aggregator,no
+yorkshirepost.co.uk,medio general,C,5,Diario regional Yorkshire Post,media,no
+90min.de,medio general,C,4,90min Alemania (90min.com ya está como medio),media,no
+aksam.com.tr,medio general,C,4,Diario turco Akşam,media,no
+almaidan.com,medio general,C,4,Web deportiva árabe Al Maidan,media,no
+balla.com.cy,medio general,C,4,Web deportiva chipriota Balla,media,no
+btclod.com,agregador,D,4,Dominio sin identidad clara que reescribe noticias de fútbol (granja de contenido),aggregator,sí
+chelsea.news,otro,D,4,Web de aficionados del Chelsea,aggregator,no
+cnnindonesia.com,medio general,C,4,CNN Indonesia,media,no
+corumhakimiyet.net,medio general,C,4,Diario local Çorum Hakimiyet,media,no
+counterpress.media,otro,D,4,"Red de webs de aficionados (The Moonraker, Swindon)",aggregator,no
+cyprustimes.com,medio general,C,4,Portal chipriota Cyprus Times,media,no
+detik.com,medio general,C,4,Portal indonesio Detik,media,no
+diariovasco.com,medio general,C,4,Diario Vasco (Vocento),media,no
+eldiariomontanes.es,medio general,C,4,El Diario Montañés (Vocento),media,no
+eurosport.it,medio general,C,4,Eurosport Italia (eurosport.com ya está como medio),media,no
+fclokomotivsofia.bg,oficial (club),A,4,Sitio oficial del Lokomotiv Sofia,club,no
+flashscore.pt,agregador,D,4,"Flashscore, resultados en directo",aggregator,sí
+flashscore.ro,agregador,D,4,"Flashscore, resultados en directo",aggregator,sí
+football365.fr,medio general,C,4,Football365 Francia (football365.com ya está como medio),media,no
+footballpark.com,página de pronósticos o apuestas,D,4,Pronósticos y apuestas,aggregator,sí
+footmarseille.com,otro,D,4,Web de aficionados del Olympique de Marsella,aggregator,no
+golim.co.il,otro,D,4,Web israelí de fútbol; identidad no verificada,aggregator,no
+ground.news,agregador,D,4,Agregador de noticias Ground News,aggregator,sí
+hsfo.dk,medio general,C,4,"Horsens Folkeblad, diario local",media,no
+indiansuperleague.com,oficial (liga),A,4,Sitio oficial de la Indian Super League,competition,no
+itromso.no,medio general,C,4,"iTromsø, diario local de Tromsø",media,no
+jordannews.jo,medio general,C,4,"Jordan News, diario jordano en inglés",media,no
+karlobag.eu,otro,D,4,Web de reventa de entradas; no es fuente informativa,aggregator,sí
+kuban24.tv,medio general,C,4,"Kuban 24, televisión regional rusa",media,no
+lensois.com,otro,D,4,Web de aficionados del RC Lens,aggregator,no
+lepetitlillois.com,otro,D,4,Web de aficionados del LOSC,aggregator,no
+lephoceen.fr,otro,D,4,Web de aficionados del Olympique de Marsella (Le Phocéen),aggregator,no
+milannews.it,agregador,D,4,Red TuttoMercatoWeb (dedicada al Milan),aggregator,sí
+mk.co.kr,medio general,C,4,Maeil Business Newspaper (Corea),media,no
+mopo.de,medio general,C,4,Hamburger Morgenpost,media,no
+novosti.rs,medio general,C,4,Diario serbio Večernje Novosti,media,no
+nrk.no,medio reputado,B,4,"NRK, radiotelevisión pública de Noruega (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+pamegipedo.com,medio general,C,4,Web deportiva chipriota Pame Gipedo,media,no
+polskapilka.net,medio general,C,4,Portal polaco de fútbol PolskaPiłka,media,no
+portalcadista.com,otro,D,4,Web de aficionados del Cádiz CF,aggregator,no
+predict.game,página de pronósticos o apuestas,D,4,Juego y web de predicciones,aggregator,sí
+pressing.net.ua,medio general,C,4,Web ucraniana de fútbol Pressing,media,no
+previaxi.com,página de pronósticos o apuestas,D,4,"Previas con pronóstico («Prediction, Preview & Team News»)",aggregator,sí
+pucelafichajes.com,otro,D,4,Web de aficionados del Real Valladolid,aggregator,no
+qsl.qa,oficial (liga),A,4,Sitio oficial de la Qatar Stars League,competition,no
+quotidiano.net,medio general,C,4,QN Quotidiano Nazionale,media,no
+r7.com,medio general,C,4,Portal brasileño R7 (Record),media,no
+readingfcnews.co.uk,agregador,D,4,Una de 8 webs «<club>news.co.uk» con titulares de plantilla idénticos (texto automático),aggregator,sí
+realracingclub.es,oficial (club),A,4,Sitio oficial del Real Racing Club,club,no
+regista.gr,medio general,C,4,Web deportiva griega Regista,media,no
+rp-online.de,medio general,C,4,Rheinische Post,media,no
+sassuolonews.net,otro,D,4,Web de noticias del Sassuolo (no oficial),aggregator,no
+serieagoal.it,otro,D,4,Web italiana de noticias de fútbol; identidad no verificada,aggregator,no
+soccernews.com,página de pronósticos o apuestas,D,4,Web de afiliación de apuestas con pronósticos («Prediction»),aggregator,sí
+southamptonfcnews.co.uk,agregador,D,4,Una de 8 webs «<club>news.co.uk» con titulares de plantilla idénticos (texto automático),aggregator,sí
+sportsadda.asia,otro,D,4,Web india de noticias deportivas; identidad no verificada,aggregator,no
+sportsdaily.ru,medio general,C,4,Portal deportivo ruso Sportsdaily,media,no
+t24.com.tr,medio general,C,4,"T24, diario digital turco",media,no
+tsv-hartberg-fussball.at,oficial (club),A,4,Sitio oficial del TSV Hartberg,club,no
+tuttofrosinone.com,otro,D,4,Web de noticias del Frosinone (no oficial),aggregator,no
+tv2.no,medio general,C,4,"TV 2 Noruega, canal nacional",media,no
+vfl-bochum.de,oficial (club),A,4,Sitio oficial del VfL Bochum,club,no
+waz.de,medio general,C,4,"WAZ, diario regional del Ruhr",media,no
+wettbasis.com,página de pronósticos o apuestas,D,4,Web alemana de pronósticos de apuestas,aggregator,sí
+wette.de,página de pronósticos o apuestas,D,4,Web alemana de apuestas,aggregator,sí
+yeniasir.com.tr,medio general,C,4,Diario regional Yeni Asır (Esmirna),media,no
+7dnisport.bg,medio general,C,3,"7 Dni Sport, diario deportivo búlgaro",media,no
+absolutfussball.com,otro,D,3,Blog alemán de fútbol,aggregator,no
+afcwimbledonnews.co.uk,agregador,D,3,Una de 8 webs «<club>news.co.uk» con titulares de plantilla idénticos (texto automático),aggregator,sí
+allmilan.it,otro,D,3,Web de aficionados del Milan,aggregator,no
+alquds.com,medio general,C,3,Diario palestino Al-Quds (deportes),media,no
+alsasports.fr,otro,D,3,Web deportiva de Alsacia; identidad no verificada,aggregator,no
+anandabazar.com,medio general,C,3,Diario indio Anandabazar Patrika,media,no
+arminia.de,oficial (club),A,3,Sitio oficial del DSC Arminia Bielefeld,club,no
+bankeela.info,página de pronósticos o apuestas,D,3,Web tailandesa de análisis para apostar,aggregator,sí
+bkhacken.se,oficial (club),A,3,Sitio oficial del BK Häcken,club,no
+blic.rs,medio general,C,3,Diario serbio Blic,media,no
+bongda24h.vn,medio general,C,3,Web vietnamita de noticias de fútbol Bóng Đá 24h,media,no
+botosaniexpres.ro,medio general,C,3,Diario local de Botoșani,media,no
+bottadiculo.it,otro,D,3,Web de aficionados del Catanzaro,aggregator,no
+brisbaneroar.com.au,oficial (club),A,3,Sitio oficial del Brisbane Roar,club,no
+bulinews.com,otro,D,3,Web en inglés sobre la Bundesliga (Bulinews),aggregator,no
+chiba-tv.com,medio general,C,3,"Chiba TV, televisión regional japonesa",media,no
+chroniclelive.co.uk,medio general,C,3,Diario Newcastle Chronicle (Reach),media,no
+clubdoria46.it,otro,D,3,Web de aficionados de la Sampdoria,aggregator,no
+crvenazvezdafk.com,oficial (club),A,3,Sitio oficial del Estrella Roja de Belgrado,club,no
+derbyshiretimes.co.uk,medio general,C,3,Diario local Derbyshire Times,media,no
+dha.com.tr,medio reputado,B,3,"Demirören Haber Ajansı, agencia nacional de Turquía (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+diariodecadiz.es,medio general,C,3,Diario de Cádiz (Grupo Joly),media,no
+diarioelpueblo.com.pe,medio general,C,3,Diario El Pueblo (Arequipa),media,no
+diariolalibertad.com,medio general,C,3,Diario La Libertad (Barranquilla),media,no
+dn.pt,medio general,C,3,Diário de Notícias (Portugal),media,no
+duzcedamla.com,medio general,C,3,Diario local Düzce Damla,media,no
+echodnia.eu,medio general,C,3,"Echo Dnia, diario regional polaco",media,no
+elcheahora.com,otro,D,3,Web local de noticias del Elche; identidad no verificada,aggregator,no
+eldiario.ec,medio general,C,3,"Diario El Diario (Manabí, Ecuador)",media,no
+ertsports.gr,medio reputado,B,3,"ERT Sports, radiotelevisión pública de Grecia (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+fanatik.ro,medio general,C,3,"Fanatik, diario deportivo rumano",media,no
+fartaknews.com,otro,D,3,Web iraní de noticias; identidad no verificada,aggregator,no
+fcdynamo.ru,oficial (club),A,3,Sitio oficial del FC Dynamo Moscú,club,no
+fcinternews.it,otro,D,3,Web de aficionados del Inter (FcInterNews),aggregator,no
+fckharkiv.com,otro,D,3,Posible sitio de club ucraniano; sin verificar que sea el oficial,aggregator,no
+fctokyo.co.jp,oficial (club),A,3,Sitio oficial del FC Tokyo,club,no
+foot-national.com,agregador,D,3,Web francesa de noticias de fútbol reescritas,aggregator,sí
+footafrica.net,otro,D,3,Web de noticias de futbolistas africanos; identidad no verificada,aggregator,no
+fotbalportal.cz,medio general,C,3,Portal checo de fútbol,media,no
+futbolfantasy.com,otro,D,3,Web de fútbol fantasía (alineaciones probables),aggregator,no
+gazetakrakowska.pl,medio general,C,3,"Gazeta Krakowska, diario regional",media,no
+gelderlander.nl,medio general,C,3,"De Gelderlander, diario regional",media,no
+gladbachtotal.de,otro,D,3,Web de aficionados del Borussia Mönchengladbach,aggregator,no
+glasgowtimes.co.uk,medio general,C,3,Diario Glasgow Times,media,no
+goldenpredictions.com,página de pronósticos o apuestas,D,3,Pronósticos,aggregator,sí
+golinrete.it,otro,D,3,Web italiana de fútbol; identidad no verificada,aggregator,no
+haber61.net,medio general,C,3,Web de noticias local de Trabzon,media,no
+habergo.com.tr,otro,D,3,Portal turco de noticias; identidad no verificada,aggregator,no
+haixing2.com,agregador,D,3,Web china «海星体育» con noticias copiadas,aggregator,sí
+hannover96.de,oficial (club),A,3,Sitio oficial del Hannover 96,club,no
+hurbra.se,medio general,C,3,Web de noticias local de Norrköping,media,no
+ifknorrkoping.se,oficial (club),A,3,Sitio oficial del IFK Norrköping,club,no
+ilmonzasiamonoi.it,otro,D,3,Web de aficionados del Monza,aggregator,no
+infoseek.co.jp,agregador,D,3,"Infoseek News, agregador japonés de noticias",aggregator,sí
+jutarnji.hr,medio general,C,3,"Jutarnji list, diario croata",media,no
+kartalix.com,otro,D,3,Web de aficionados del Beşiktaş,aggregator,no
+kayserihaber.com,medio general,C,3,Web de noticias local de Kayseri,media,no
+kocaelibarisgazetesi.com,medio general,C,3,Diario local Kocaeli Barış,media,no
+ladiagonale.net,otro,D,3,Web de aficionados («La Diagonale»),aggregator,no
+leaderlive.co.uk,medio general,C,3,Diario local The Leader (Wrexham),media,no
+lep.co.uk,medio general,C,3,Lancashire Evening Post,media,no
+levantenews.com,otro,D,3,Web de noticias del Levante UD (no oficial),aggregator,no
+liputan6.com,medio general,C,3,Portal indonesio Liputan6,media,no
+maincast.tv,otro,D,3,Web ucraniana de deportes y esports; identidad no verificada,aggregator,no
+mansfieldfcnews.co.uk,agregador,D,3,Una de 8 webs «<club>news.co.uk» con titulares de plantilla idénticos (texto automático),aggregator,sí
+matchtv.ru,medio reputado,B,3,"Match TV, televisión deportiva nacional de Rusia (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+maxsport.rs,medio general,C,3,Portal deportivo serbio Max Sport,media,no
+mdr.de,medio reputado,B,3,"MDR, radiotelevisión pública alemana (ARD) (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+mightytips.com,página de pronósticos o apuestas,D,3,Pronósticos y apuestas,aggregator,sí
+minutofutbol.com,otro,D,3,Web argentina de noticias de fútbol; identidad no verificada,aggregator,no
+miradiols.cl,medio general,C,3,"Mi Radio La Serena, emisora local (Chile)",media,no
+mkszaglebie.pl,otro,D,3,Posible sitio de club polaco; sin verificar que sea el oficial,aggregator,no
+mondo.rs,medio general,C,3,Portal serbio Mondo,media,no
+motherwellfc.co.uk,oficial (club),A,3,Sitio oficial del Motherwell FC,club,no
+mykhel.com,medio general,C,3,"MyKhel, portal deportivo indio",media,no
+mynet.com,agregador,D,3,Portal turco Mynet (agrega noticias),aggregator,sí
+ndr.de,medio reputado,B,3,"NDR, radiotelevisión pública alemana (ARD) (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+newcastleherald.com.au,medio general,C,3,Diario Newcastle Herald (Australia),media,no
+nicematin.com,medio general,C,3,"Nice-Matin, diario regional",media,no
+niceradio.com,medio general,C,3,"Nice Radio, emisora local",media,no
+nlsportnieuws.nl,página de pronósticos o apuestas,D,3,Previas con «voorspelling» (pronóstico),aggregator,sí
+nova.rs,medio general,C,3,Portal serbio Nova,media,no
+oddschecker.com,página de pronósticos o apuestas,D,3,Comparador de cuotas Oddschecker,aggregator,sí
+oficretefc.com,oficial (club),A,3,Sitio oficial del OFI Creta,club,no
+omonoianews.com,otro,D,3,Web de aficionados del Omonia,aggregator,no
+ondavasca.com,medio general,C,3,"Onda Vasca, radio",media,no
+padovagoal.it,otro,D,3,Web de noticias del Padova (no oficial),aggregator,no
+pancevac-online.rs,medio general,C,3,Diario local Pančevac,media,no
+pianetamilan.it,otro,D,3,Web de noticias del Milan (no oficial),aggregator,no
+qna.org.qa,medio reputado,B,3,"Qatar News Agency, agencia oficial de Catar (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+quotenticker.de,otro,D,3,Web alemana de audiencias y noticias de TV,aggregator,no
+radiomarcatenerife.com,medio general,C,3,"Radio Marca Tenerife, emisora local",media,no
+rbb24.de,medio reputado,B,3,"rbb24, radiotelevisión pública alemana (ARD) (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+readingchronicle.co.uk,medio general,C,3,Diario local Reading Chronicle (Newsquest),media,no
+real.gr,medio general,C,3,"Real News, portal griego",media,no
+scoop.my,medio general,C,3,"Scoop, medio digital de Malasia",media,no
+sledim.bg,medio general,C,3,Web búlgara de noticias Sledim,media,no
+sport-express.net,otro,D,3,No es sport-express.ru (ya registrado); identidad no verificada,aggregator,no
+sport.cz,medio general,C,3,"Sport.cz (Seznam), portal deportivo checo",media,no
+sportaran.com,medio general,C,3,Portal deportivo armenio Sportaran,media,no
+sportowy-poznan.pl,medio general,C,3,Web deportiva local de Poznań,media,no
+sports.kz,medio general,C,3,Portal deportivo kazajo Sports.kz,media,no
+sportslightmedia.com,otro,D,3,Web india de noticias de fútbol; identidad no verificada,aggregator,no
+sukhothai-fc.com,oficial (club),A,3,Sitio oficial del Sukhothai FC,club,no
+susunanpemain.id,agregador,D,3,Web de alineaciones recopiladas («susunan pemain»),aggregator,sí
+sv98.de,oficial (club),A,3,Sitio oficial del SV Darmstadt 98,club,no
+swr.de,medio reputado,B,3,"SWR, radiotelevisión pública alemana (ARD) (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+t1x2.net,página de pronósticos o apuestas,D,3,Información para apostar («betinfo»),aggregator,sí
+tahiamasr.com,medio general,C,3,Diario egipcio Tahia Masr,media,no
+thehindu.com,medio reputado,B,3,"The Hindu y Sportstar, diario nacional de la India (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+thepeninsulaqatar.com,medio general,C,3,"The Peninsula, diario de Catar",media,no
+tipsterio.de,página de pronósticos o apuestas,D,3,Pronósticos de apuestas («Tipp»),aggregator,sí
+tkrs.net,otro,D,3,Blog de aficionados del Omiya Ardija,aggregator,no
+topnovini.com,medio general,C,3,Web búlgara de noticias Top Novini,media,no
+tribalfootball.com,agregador,D,3,Tribal Football: reescribe noticias de otros medios,aggregator,sí
+tribuna.com,medio general,C,3,"Tribuna, plataforma de noticias deportivas (redacción y blogs)",media,no
+tuttocagliari.net,agregador,D,3,Red TuttoMercatoWeb (dedicada al Cagliari),aggregator,sí
+ukrfootball.ua,medio general,C,3,Portal ucraniano UkrFootball,media,no
+virgilio.it,agregador,D,3,Portal Virgilio (agrega noticias),aggregator,sí
+vivatsport.rs,otro,D,3,Web deportiva serbia; identidad no verificada,aggregator,no
+voetbalfocus.be,otro,D,3,Web belga de noticias de fútbol; identidad no verificada,aggregator,no
+world-soccer-portal.com,otro,D,3,Blog japonés de previas («スタメン予想»),aggregator,no
+wp.pl,medio general,C,3,WP SportoweFakty (Wirtualna Polska),media,no
+yenicaggazetesi.com,medio general,C,3,Diario turco Yeniçağ,media,no
+youlyou.com,otro,D,3,Web egipcia de noticias; identidad no verificada,aggregator,no
+11contro11.it,otro,D,2,Web italiana de noticias de fútbol; identidad no verificada,aggregator,no
+4allfootball.co.uk,agregador,D,2,Traducciones de noticias de otros medios (ruta «artikels»); identidad no verificada,aggregator,sí
+7msport.com,página de pronósticos o apuestas,D,2,Red 7M (datos y cuotas),aggregator,sí
+abcnyheter.no,medio general,C,2,ABC Nyheter (Noruega),media,no
+adapostasi.com,medio general,C,2,Diario local Adapostası (Sakarya),media,no
+adelaideunited.com.au,oficial (club),A,2,Sitio oficial del Adelaide United,club,no
+aksiyon.com.tr,medio general,C,2,Web turca de noticias Aksiyon,media,no
+al-watan.com,medio general,C,2,Diario Al-Watan (Catar),media,no
+alineacioneshoy.es,agregador,D,2,Web de alineaciones recopiladas,aggregator,sí
+almodrj.com,medio general,C,2,Web deportiva saudí Al Modrj,media,no
+analysefoot.com,otro,D,2,Web francesa de análisis de fútbol; identidad no verificada,aggregator,no
+anecdotarios.com,otro,D,2,Web ecuatoriana de noticias; identidad no verificada,aggregator,no
+annecy-actualite.fr,medio general,C,2,Medio local de Annecy,media,no
+ant1live.com,medio general,C,2,"ANT1 Chipre, televisión",media,no
+artisbrno.cz,oficial (club),A,2,Sitio oficial del SK Artis Brno,club,no
+as-eupen.be,oficial (club),A,2,Sitio oficial del KAS Eupen,club,no
+athletic.gr,medio general,C,2,Portal deportivo griego Athletic,media,no
+avfcservices.co.uk,oficial (club),A,2,Infraestructura web del Aston Villa (página «Team news» del club; avfc.co.uk ya es club),club,no
+bagabet.com,página de pronósticos o apuestas,D,2,Portal de apuestas con noticias,aggregator,sí
+bala.cy,otro,D,2,Web chipriota de previas; identidad no verificada,aggregator,no
+ballthai.com,medio general,C,2,Web tailandesa de noticias de fútbol,media,no
+barometern.se,medio general,C,2,"Barometern, diario local (Kalmar)",media,no
+batmanyon.com,medio general,C,2,Diario local Batman Yön,media,no
+bet365.es,página de pronósticos o apuestas,D,2,Casa de apuestas bet365,aggregator,sí
+bets.co.za,página de pronósticos o apuestas,D,2,Pronósticos y apuestas (Sudáfrica),aggregator,sí
+bettorboss.com,página de pronósticos o apuestas,D,2,Web de apuestas,aggregator,sí
+blitz.bg,medio general,C,2,Portal búlgaro Blitz,media,no
+bloger-hr.com,página de pronósticos o apuestas,D,2,Análisis para apostar («free analysis»),aggregator,sí
+bo.de,medio general,C,2,Baden Online (Offenburger Tageblatt),media,no
+boll-koll.se,agregador,D,2,"Web sueca de estadísticas (xG, tablas)",aggregator,sí
+botosaneanul.ro,medio general,C,2,Diario local Botoșăneanul,media,no
+braunschweiger-zeitung.de,medio general,C,2,Braunschweiger Zeitung,media,no
+bursahaber.com,medio general,C,2,Web de noticias local de Bursa,media,no
+bursasporluyuz.org,otro,D,2,Web de aficionados del Bursaspor,aggregator,no
+burtonfcnews.co.uk,agregador,D,2,Una de 8 webs «<club>news.co.uk» con titulares de plantilla idénticos (texto automático),aggregator,sí
+bwin.it,página de pronósticos o apuestas,D,2,Casa de apuestas bwin,aggregator,sí
+cairomubasher.com,medio general,C,2,Web egipcia de noticias Cairo Mubasher,media,no
+calciodangolo.com,otro,D,2,Web italiana de previas y consejos; identidad no verificada,aggregator,no
+ceroacero.com.co,agregador,D,2,Base de datos zerozero (edición Colombia),aggregator,sí
+chosun.com,medio reputado,B,2,"Chosun Ilbo, diario nacional de Corea del Sur (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+chugoku-np.co.jp,medio general,C,2,Chugoku Shimbun (Hiroshima),media,no
+clarosports.com,medio general,C,2,Claro Sports (México),media,no
+clubfokus.de,otro,D,2,Web de aficionados; identidad no verificada,aggregator,no
+congluan.vn,medio general,C,2,Diario vietnamita Công Luận,media,no
+cronicapuebla.com,medio general,C,2,Crónica Puebla,media,no
+dazn.com,medio general,C,2,"DAZN, sección de noticias",media,no
+deeppreviews.com,página de pronósticos o apuestas,D,2,Previas con pronóstico,aggregator,sí
+der-betze-brennt.de,otro,D,2,Web de aficionados del 1. FC Kaiserslautern,aggregator,no
+derstandard.at,medio reputado,B,2,"Der Standard, diario nacional de Austria (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+devonlive.com,medio general,C,2,Devon Live (Reach),media,no
+diariodevalladolid.es,medio general,C,2,Diario de Valladolid,media,no
+diyarbakir.net,medio general,C,2,Web de noticias local de Diyarbakır,media,no
+dnesinfo.com,medio general,C,2,Dnes Info (Bulgaria),media,no
+duma.bg,medio general,C,2,Diario búlgaro Duma,media,no
+eastfifefc.co.uk,oficial (club),A,2,Sitio oficial del East Fife FC,club,no
+egetelgraf.com,medio general,C,2,Diario local Ege Telgraf (Esmirna),media,no
+egyscores.com,agregador,D,2,Web egipcia de resultados en directo,aggregator,sí
+elmal3b.com,medio general,C,2,Web deportiva egipcia El Mal3b,media,no
+elnabaa.net,medio general,C,2,Diario egipcio El Nabaa,media,no
+ensondakika.com.tr,agregador,D,2,Agregador turco de última hora,aggregator,sí
+eskisehir.net,medio general,C,2,Web de noticias local de Eskişehir,media,no
+ess.fi,medio general,C,2,"Etelä-Suomen Sanomat, diario regional finlandés",media,no
+europesays.com,agregador,D,2,Agregador que reescribe noticias de otros medios,aggregator,sí
+fantacalcio.it,otro,D,2,Web de fútbol fantasía Fantacalcio,aggregator,no
+fas.org.sg,oficial (federación),A,2,Federación de Fútbol de Singapur,official,no
+fathailand.org,oficial (federación),A,2,Federación de Fútbol de Tailandia,official,no
+fckudrivka.com,oficial (club),A,2,Sitio del club FC Kudrivka (verificar que sea el oficial antes de activar),club,no
+fclm.ru,oficial (club),A,2,Sitio oficial del FC Lokomotiv Moscú,club,no
+fcvdendereh.be,oficial (club),A,2,Sitio oficial del FCV Dender EH,club,no
+fiorentinauno.com,otro,D,2,Web de aficionados de la Fiorentina,aggregator,no
+futbol.pl,medio general,C,2,Portal polaco de fútbol Futbol.pl,media,no
+gais.se,oficial (club),A,2,Sitio oficial del GAIS,club,no
+gamba-osaka.net,oficial (club),A,2,Sitio oficial del Gamba Osaka,club,no
+gasetten.se,otro,D,2,Web de aficionados del Malmö FF («Gasetten»),aggregator,no
+gazettelive.co.uk,medio general,C,2,Teesside Gazette (Reach),media,no
+gladbachnews.de,otro,D,2,Web de noticias sobre el Gladbach (no oficial),aggregator,no
+granadahoy.com,medio general,C,2,Granada Hoy (Grupo Joly),media,no
+greenocktelegraph.co.uk,medio general,C,2,Greenock Telegraph (Newsquest),media,no
+haaglandenvoetbal.nl,otro,D,2,Web regional de fútbol (La Haya),aggregator,no
+hakimiyet.com,medio general,C,2,Diario local Hakimiyet (Konya),media,no
+hammers.news,otro,D,2,Web de aficionados del West Ham,aggregator,no
+havadis.com,medio general,C,2,Web de noticias local turca,media,no
+headliner.nl,otro,D,2,Red de webs de aficionados por club (Headliner),aggregator,no
+hurriyet.com.tr,medio reputado,B,2,"Hürriyet, diario nacional de Turquía (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+indiatimes.com,medio reputado,B,2,"The Times of India, diario nacional de la India (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+inews.id,medio general,C,2,iNews Indonesia,media,no
+inews.sk,medio general,C,2,Web eslovaca de noticias iNews,media,no
+infocielo.com,medio general,C,2,"InfoCielo, medio local de La Plata",media,no
+informacion.es,medio general,C,2,Diario Información (Alicante),media,no
+it.com,agregador,D,2,Subdominio de it.com (sportsermon) que reescribe noticias; identidad no verificada,aggregator,sí
+jawapos.com,medio general,C,2,Jawa Pos (Indonesia),media,no
+juvenewslive.com,otro,D,2,Web de aficionados de la Juventus,aggregator,no
+ka-news.de,medio general,C,2,ka-news (Karlsruhe),media,no
+kaagent.be,oficial (club),A,2,Sitio oficial del KAA Gent,club,no
+kahoku.news,medio general,C,2,Kahoku Shimpo (Sendai),media,no
+kaizerchiefs.com,oficial (club),A,2,Sitio oficial de Kaizer Chiefs,club,no
+kbvnplus.com,otro,D,2,Web vietnamita; identidad no verificada,aggregator,no
+kentlocalnews.co.uk,otro,D,2,Web local de Kent con previas de plantilla; identidad no verificada,aggregator,no
+khelnow.com,medio general,C,2,"Khel Now, portal deportivo indio",media,no
+kicksider.de,otro,D,2,Web alemana de fútbol femenino; identidad no verificada,aggregator,no
+kladionica.biz,página de pronósticos o apuestas,D,2,Pronósticos de apuestas («kladionica»),aggregator,sí
+kurierlubelski.pl,medio general,C,2,"Kurier Lubelski, diario regional",media,no
+kyoto-np.co.jp,medio general,C,2,Kyoto Shimbun,media,no
+lalaziosiamonoi.it,otro,D,2,Web de aficionados de la Lazio,aggregator,no
+laprovence.com,medio general,C,2,"La Provence, diario regional",media,no
+lazionews.eu,otro,D,2,Web de aficionados de la Lazio,aggregator,no
+leijonat.com,otro,D,2,Web finlandesa; identidad no verificada,aggregator,no
+liga-zwei.de,otro,D,2,Web sobre la 2. Bundesliga (no oficial),aggregator,no
+livetipsportal.com,página de pronósticos o apuestas,D,2,Pronósticos de apuestas con IA,aggregator,sí
+localjournal.com.au,otro,D,2,Web local australiana; identidad no verificada,aggregator,no
+lr-online.de,medio general,C,2,Lausitzer Rundschau,media,no
+lunion.fr,medio general,C,2,"L'Union (Reims), diario regional",media,no
+lyonfoot.com,otro,D,2,Web de aficionados del Olympique de Lyon,aggregator,no
+magzter.com,agregador,D,2,Quiosco digital Magzter: republica diarios (p. ej. Huddersfield Examiner),aggregator,sí
+makanbola.com,otro,D,2,Web malasia de fútbol; identidad no verificada,aggregator,no
+masrtimes.com,medio general,C,2,Web egipcia de noticias Masr Times,media,no
+match-ce-soir.fr,agregador,D,2,Programación de TV y alineaciones probables recopiladas,aggregator,sí
+meczowo.com,otro,D,2,Web polaca de fútbol; identidad no verificada,aggregator,no
+midilibre.fr,medio general,C,2,"Midi Libre, diario regional",media,no
+millernton.de,otro,D,2,Blog de aficionados del FC St. Pauli,aggregator,no
+monitoruldegalati.ro,medio general,C,2,Diario local Monitorul de Galați,media,no
+mortonnews.co.uk,agregador,D,2,Una de 8 webs «<club>news.co.uk» con titulares de plantilla idénticos (texto automático),aggregator,sí
+mucadelegazetesi.com.tr,medio general,C,2,Diario local Mücadele,media,no
+nahaber.com,medio general,C,2,Web turca de noticias Na Haber,media,no
+nekodeportes.com,otro,D,2,Web de noticias deportivas; identidad no verificada,aggregator,no
+newcastleworld.com,medio general,C,2,Newcastle World (National World),media,no
+nklokomotiva.hr,oficial (club),A,2,Sitio oficial del NK Lokomotiva Zagreb,club,no
+noataque.com.br,otro,D,2,Web brasileña de fútbol; identidad no verificada,aggregator,no
+nordschleswiger.dk,medio general,C,2,"Der Nordschleswiger, diario de la minoría alemana en Dinamarca",media,no
+noticiasdenavarra.com,medio general,C,2,Noticias de Navarra,media,no
+novini247.com,medio general,C,2,Novini 24/7 (Bulgaria),media,no
+offsideeg.news,otro,D,2,Web egipcia de noticias de fútbol; identidad no verificada,aggregator,no
+orduolay.com,medio general,C,2,Diario local Ordu Olay,media,no
+orf.at,medio reputado,B,2,"ORF, radiotelevisión pública de Austria (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+ottopagine.it,medio general,C,2,"Ottopagine, diario regional (Campania)",media,no
+padovasport.tv,medio general,C,2,"Padova Sport TV, televisión local",media,no
+pamplonaactual.com,medio general,C,2,"Pamplona Actual, diario digital",media,no
+pazzidifanta.com,otro,D,2,Web de fútbol fantasía,aggregator,no
+plbold.dk,otro,D,2,Web danesa de fútbol; identidad no verificada,aggregator,no
+portaldogremista.com.br,otro,D,2,Web de aficionados del Grêmio,aggregator,no
+portimonensesad.pt,oficial (club),A,2,Sitio oficial del Portimonense SAD,club,no
+portsmouth.co.uk,medio general,C,2,The News Portsmouth (National World),media,no
+pronosticos.co,página de pronósticos o apuestas,D,2,Pronósticos de fútbol,aggregator,sí
+pulso-peru.com,medio general,C,2,Web peruana de noticias Pulso Perú,media,no
+radiofrankfurt.de,medio general,C,2,Radio Frankfurt,media,no
+radiomars.ma,medio general,C,2,"Radio Mars, emisora deportiva de Marruecos",media,no
+rblive.de,otro,D,2,Web de aficionados del RB Leipzig,aggregator,no
+rcdm.es,otro,D,2,Web de alineaciones de LaLiga; no es el sitio del RCD Mallorca (rcdmallorca.es); identidad no verificada,aggregator,no
+revistaforofos.com,otro,D,2,Revista digital de aficionados,aggregator,no
+riddlearena.com,agregador,D,2,Alineaciones y previas copiadas (subdominio «epic»),aggregator,sí
+riyadhticketsmap.com,otro,D,2,Web de entradas (Riad); no es fuente informativa,aggregator,sí
+rochdaleafc.co.uk,oficial (club),A,2,Sitio oficial del Rochdale AFC,club,no
+rsl.com,oficial (club),A,2,Sitio oficial del Real Salt Lake,club,no
+rts.rs,medio reputado,B,2,"RTS, radiotelevisión pública de Serbia (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+sat3.net,otro,D,2,Web deportiva árabe; identidad no verificada,aggregator,no
+sdeibar.com,oficial (club),A,2,Sitio oficial de la SD Eibar,club,no
+siyasinews.ir,otro,D,2,Web iraní de noticias; identidad no verificada,aggregator,no
+slasknet.com,otro,D,2,Web de aficionados del Śląsk Wrocław,aggregator,no
+snesports.co,otro,D,2,Web de noticias deportivas (Malasia); identidad no verificada,aggregator,no
+soccermonk.in,otro,D,2,Web india de noticias de fútbol; identidad no verificada,aggregator,no
+sosfanta.com,otro,D,2,Web de fútbol fantasía,aggregator,no
+sougremio.com.br,otro,D,2,Web de aficionados del Grêmio,aggregator,no
+sovsport.ru,medio general,C,2,"Sovetsky Sport, diario deportivo ruso",media,no
+spelcash.se,página de pronósticos o apuestas,D,2,Pronósticos de apuestas («Speltips»),aggregator,sí
+sporbursa.tr,medio general,C,2,Web deportiva local de Bursa,media,no
+sportklub.rs,medio general,C,2,"Sport Klub, canal deportivo",media,no
+sportnewsafrica.com,otro,D,2,Web de noticias deportivas africanas; identidad no verificada,aggregator,no
+sportsseoul.com,medio general,C,2,"Sports Seoul, diario deportivo coreano",media,no
+sportstonoto.gr,otro,D,2,Web deportiva griega; identidad no verificada,aggregator,no
+stade-de-reims.com,oficial (club),A,2,Sitio oficial del Stade de Reims,club,no
+stimme.de,medio general,C,2,Heilbronner Stimme,media,no
+stiridecluj.ro,medio general,C,2,"Știri de Cluj, medio local",media,no
+straitscore.com,agregador,D,2,Web de fútbol del sudeste asiático que reescribe a otros medios (cita a Stadium Astro),aggregator,sí
+telegraph.bg,medio general,C,2,Diario búlgaro Telegraph,media,no
+telemadrid.es,medio general,C,2,"Telemadrid, televisión pública autonómica",media,no
+thebp.co.il,otro,D,2,Web israelí de noticias; identidad no verificada,aggregator,no
+thehardtackle.com,otro,D,2,Web de opinión y previas con pronóstico,aggregator,no
+thesouthafrican.com,medio general,C,2,"The South African, medio digital",media,no
+thethaovanhoa.vn,medio general,C,2,Thể thao & Văn hóa (agencia VNA),media,no
+thetopbookies.com,página de pronósticos o apuestas,D,2,Pronósticos y casas de apuestas,aggregator,sí
+tk.no,medio general,C,2,"Tidens Krav, diario local (Kristiansund)",media,no
+trabzon.org,otro,D,2,Web local de Trabzon; identidad no verificada,aggregator,no
+ts.fi,medio general,C,2,"Turun Sanomat, diario regional finlandés",media,no
+ttb2b.com,agregador,D,2,Web china de streaming («9球直播») con noticias copiadas,aggregator,sí
+tudn.com,medio general,C,2,"TUDN (TelevisaUnivision), canal deportivo",media,no
+tuttoudinese.it,otro,D,2,Web de noticias del Udinese (no oficial),aggregator,no
+tvkampen.com,página de pronósticos o apuestas,D,2,Pronósticos («Oddstips») y guía de TV,aggregator,sí
+tvsarawak.my,medio general,C,2,TV Sarawak (Malasia),media,no
+tvsette.net,medio general,C,2,"TV7 Benevento, televisión local",media,no
+ua-football.com,medio general,C,2,Portal ucraniano UA-Football,media,no
+ultimahora.es,medio general,C,2,Última Hora (Mallorca),media,no
+uniaodeleiria.pt,oficial (club),A,2,Sitio oficial de la União de Leiria,club,no
+unosantafe.com.ar,medio general,C,2,"UNO Santa Fe, diario",media,no
+unt.se,medio general,C,2,Upsala Nya Tidning,media,no
+utusansarawak.com.my,medio general,C,2,"Utusan Sarawak, diario",media,no
+valerengastadion.com,otro,D,2,Web de aficionados del Vålerenga (no es el sitio oficial),aggregator,no
+vanekspres.com.tr,medio general,C,2,Diario local Van Ekspres,media,no
+vbr.ru,otro,D,2,Web rusa con sección deportiva; identidad no verificada,aggregator,no
+voetbalkrant.com,medio general,C,2,"Voetbalkrant, web belga de noticias de fútbol",media,no
+vtv.vn,medio reputado,B,2,"VTV, televisión pública de Vietnam (nivel B solo si se añade a REPUTABLE_DOMAINS en código; con la fila del registro queda en C)",media,no
+waz-online.de,medio general,C,2,Wolfsburger Allgemeine (WAZ-online),media,no
+weareterriers.com,otro,D,2,Web de aficionados del Huddersfield Town,aggregator,no
+westhamzone.com,otro,D,2,Web de aficionados del West Ham,aggregator,no
+wiltshiretimes.co.uk,medio general,C,2,Wiltshire Times (Newsquest),media,no
+wisla-plock.pl,oficial (club),A,2,Sitio oficial de la Wisła Płock (comunicado médico),club,no
+worldsoccertalk.com,agregador,D,2,Web que reescribe noticias de otros medios,aggregator,sí
+yamaga-fc.com,oficial (club),A,2,Sitio oficial del Matsumoto Yamaga FC,club,no
+zaglebie.com,oficial (club),A,2,Sitio oficial del KGHM Zagłębie Lubin,club,no
+zougla.gr,medio general,C,2,Portal griego de noticias Zougla,media,no
