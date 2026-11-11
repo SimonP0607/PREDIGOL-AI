@@ -349,53 +349,9 @@ export function StatBars({
   );
 }
 
-/** A football, drawn in the current colour. */
-export function BallIcon({ className }: { className?: string | undefined }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden
-      className={cn("h-4 w-4 shrink-0", className)}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="9.25" />
-      <path d="M12 7.7l3.5 2.5-1.3 4.1H9.8l-1.3-4.1z" fill="currentColor" stroke="none" />
-      <path d="M12 7.7V3M15.5 10.2l4.3-1.5M14.2 14.3l2.7 3.7M9.8 14.3L7.1 18M8.5 10.2L4.2 8.7" />
-    </svg>
-  );
-}
-
-/** A booking: yellow, red, or the second yellow that becomes red. */
-export function CardIcon({
-  tone,
-  className,
-}: {
-  tone: "yellow" | "red" | "second";
-  className?: string | undefined;
-}) {
-  if (tone === "second") {
-    return (
-      <span aria-hidden className={cn("relative inline-block h-4 w-3.5 shrink-0", className)}>
-        <span className="absolute left-0 top-0 h-3.5 w-2.5 rounded-[2px] bg-warning" />
-        <span className="absolute bottom-0 right-0 h-3.5 w-2.5 rounded-[2px] bg-negative ring-1 ring-card" />
-      </span>
-    );
-  }
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "inline-block h-3.5 w-2.5 shrink-0 rounded-[2px]",
-        tone === "yellow" ? "bg-warning" : "bg-negative",
-        className,
-      )}
-    />
-  );
-}
+// The ball and the cards are the system's football icons (plan maestro UX/UI 2026, PR-07): kept here by name for the
+// Match Center's files that already ask this module for them.
+export { BallIcon, CardIcon } from "@/components/icons/football";
 
 /** A player's 0-10 match rating; the best one of the match carries the gold edge. */
 export function RatingBadge({
