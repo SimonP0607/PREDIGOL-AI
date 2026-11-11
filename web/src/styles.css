@@ -3,12 +3,14 @@
 @import "tw-animate-css";
 /*
  * The three typefaces, served from PrediGol (plan UX, A4; plan de seguridad, S5): no request to Google - a visitor's
- * address went to fonts.googleapis.com on every page. Space Grotesk and IBM Plex Sans as variable fonts (one file per
+ * address went to fonts.googleapis.com on every page. Archivo and IBM Plex Sans as variable fonts (one file per
  * script for every weight, as Google served them: nine static weights were twice the fonts to decode per page);
  * IBM Plex Mono has no variable cut, so its three weights in use, Latin and Latin Extended. A browser fetches a file
  * only when a character in its range appears (unicode-range).
+ * Archivo («Noche de partido», plan maestro UX/UI 2026, wave 1) draws the titles and the figures; its file carries
+ * the width axis too (62 to 125): a screen's title is set wide and a long team name narrow, from the one file.
  */
-@import "@fontsource-variable/space-grotesk/wght.css";
+@import "@fontsource-variable/archivo/wdth.css";
 @import "@fontsource-variable/ibm-plex-sans/wght.css";
 @import "@fontsource/ibm-plex-mono/latin-400.css";
 @import "@fontsource/ibm-plex-mono/latin-ext-400.css";
@@ -45,7 +47,13 @@
   --radius-feature: 1.25rem; /* 20 px: a pick, a match's header */
   --radius-sheet: 1.5rem; /* 24 px: a sheet */
 
-  --font-display: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  /*
+   * Arial right after Archivo: until the file arrives a title is drawn in it, and Arial's bold runs as wide as Archivo's
+   * 700 (0.99) and its regular as Archivo's 400 to 500 (0.99 to 1.00) - measured on the product's own words - so
+   * the line does not break elsewhere when the font swaps.
+   */
+  --font-display:
+    "Archivo Variable", "Archivo", Arial, "Helvetica Neue", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "IBM Plex Sans Variable", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
@@ -255,36 +263,82 @@
   }
 }
 
-/* Typography scale utilities */
+/*
+ * The type scale of «Noche de partido» (plan maestro UX/UI 2026, wave 1; the system's sheet 2). Archivo for titles,
+ * figures and labels, IBM Plex Sans for what is read. A name added here goes into TEXT_SIZES of lib/utils.ts too, or
+ * cn() drops it next to a colour.
+ */
+/* Title 1: one per screen */
 @utility text-display {
   font-family: var(--font-display);
-  font-size: 1.75rem;
-  line-height: 2.1rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: 1.875rem;
+  line-height: 1.05;
+  font-weight: 800;
+  font-stretch: 118%;
+  letter-spacing: -0.01em;
 }
 
+/* Title 2: a section, a pick's selection */
 @utility text-heading {
   font-family: var(--font-display);
-  font-size: 1.15rem;
-  line-height: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-size: 1.25rem;
+  line-height: 1.15;
+  font-weight: 750;
+  letter-spacing: -0.01em;
 }
 
+/* Title 3: a card, a form's group */
+@utility text-subheading {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+/* Title 4: a row with weight, a team's name */
 @utility text-title {
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  line-height: 1.25;
+  font-weight: 700;
 }
 
+/* running text: 15 px, lines of 45 to 75 characters */
+@utility text-body {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  font-weight: 400;
+}
+
+/* supporting data */
+@utility text-small {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  font-weight: 400;
+}
+
+/* the header of a group or of a table's column */
 @utility text-label {
+  font-family: var(--font-display);
   font-size: 0.6875rem;
   line-height: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   /* Phones and tablets: 12 px, the plan's minimum on a reader's screen (plan UX, A15, section 36; 11 px on a desk). */
+  @media (max-width: 63.98rem), (pointer: coarse) {
+    font-size: 0.75rem;
+  }
+}
+
+/* the line over a title: the brand, the day */
+@utility text-overline {
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   @media (max-width: 63.98rem), (pointer: coarse) {
     font-size: 0.75rem;
   }
@@ -312,19 +366,36 @@
   }
 }
 
+/* A figure: Archivo, every digit as wide as the next, so a column of prices or a score never dances. */
 @utility numeric {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 @utility numeric-lg {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums lining-nums;
   font-size: 1.5rem;
   line-height: 1.8rem;
-  font-weight: 500;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* the figure of a block (a probability, a period's result) and the one figure of a screen (the score) */
+@utility text-figure {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 2.875rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+@utility text-figure-xl {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 4rem;
+  line-height: 1;
+  font-weight: 800;
   letter-spacing: -0.02em;
 }
 
