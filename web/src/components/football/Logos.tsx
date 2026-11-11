@@ -28,6 +28,14 @@ function hue(name: string): number {
   return h;
 }
 
+/**
+ * The initials are drawn by CSS from `data-initials`, not written as text (UX-114): the badge is decoration - it is
+ * `aria-hidden` and the name is always beside it or in the control's label - and written as text it still counted as
+ * the visible words of the button or link around it, so a control named «Quitar Liga Andina» read as mislabelled
+ * (WCAG 2.5.3, axe `label-content-name-mismatch`) and a copy of the row carried «LA» glued to the name.
+ */
+const INITIALS = "before:content-[attr(data-initials)]";
+
 function Fallback({
   name,
   size,
@@ -45,7 +53,9 @@ function Fallback({
       <span
         aria-hidden
         data-logo-fallback
+        data-initials={initials(name)}
         className={cn(
+          INITIALS,
           "inline-flex shrink-0 select-none items-center justify-center font-display font-extrabold leading-none text-white",
           className,
         )}
@@ -61,16 +71,16 @@ function Fallback({
             "linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0) 55%)",
           boxShadow: `inset 0 0 0 ${size >= 40 ? 2 : 1.5}px rgb(255 255 255 / 0.2)`,
         }}
-      >
-        {initials(name)}
-      </span>
+      />
     );
   }
   return (
     <span
       aria-hidden
       data-logo-fallback
+      data-initials={initials(name)}
       className={cn(
+        INITIALS,
         "inline-flex shrink-0 select-none items-center justify-center border border-border-strong font-display font-semibold text-foreground/85",
         shape === "round" ? "rounded-full" : "rounded-md",
         className,
@@ -81,9 +91,7 @@ function Fallback({
         fontSize: Math.max(8, Math.round(size * 0.38)),
         backgroundColor: `oklch(0.3 0.04 ${hue(name)})`,
       }}
-    >
-      {initials(name)}
-    </span>
+    />
   );
 }
 
