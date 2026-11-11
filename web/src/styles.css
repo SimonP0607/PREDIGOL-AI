@@ -34,13 +34,25 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+  /*
+   * «Noche de partido» (plan maestro UX/UI 2026, wave 1): a radius by what it rounds, so a card, a sheet and a chip
+   * each have theirs wherever they are drawn. The five above stay for what has not been redrawn yet.
+   */
+  --radius-chip: 0.5rem; /* 8 px: a price chip */
+  --radius-field: 0.75rem; /* 12 px: a field, a tile */
+  --radius-control: 0.875rem; /* 14 px: a button, a banner */
+  --radius-card: 1rem; /* 16 px: a card */
+  --radius-feature: 1.25rem; /* 20 px: a pick, a match's header */
+  --radius-sheet: 1.5rem; /* 24 px: a sheet */
 
   --font-display: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "IBM Plex Sans Variable", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
   --color-background: var(--background);
+  --color-background-deep: var(--background-deep);
   --color-foreground: var(--foreground);
+  --color-foreground-soft: var(--foreground-soft);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-elevated: var(--elevated);
@@ -50,6 +62,10 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-dim: var(--primary-dim);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-soft: var(--primary-soft);
+  --color-pitch: var(--pitch);
+  --color-pitch-deep: var(--pitch-deep);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -98,18 +114,35 @@
   --radius: 0.5rem;
 
   --background: oklch(0.168 0.012 168);
+  /* the deepest ground: the console's side menu and a page's foot (#070C0A) */
+  --background-deep: oklch(0.148 0.01 170);
   --foreground: oklch(0.968 0.004 160);
+  /* the second level of reading, between the text and the muted notes (#C9D1CD: 11.5:1 on a card) */
+  --foreground-soft: oklch(0.853 0.01 165);
 
   --card: oklch(0.203 0.013 168);
   --card-foreground: oklch(0.968 0.004 160);
   --elevated: oklch(0.245 0.013 168);
 
-  --popover: oklch(0.218 0.013 168);
+  /*
+   * Surface 3, what floats over a card: a menu, a tooltip, a short notice (#242E29). The muted text reads at 5.3:1 on
+   * it; the subtle one only at 4.0:1 - never use text-subtle-foreground for small text on a popover.
+   */
+  --popover: oklch(0.29 0.016 164);
   --popover-foreground: oklch(0.968 0.004 160);
 
   --primary: oklch(0.812 0.187 152);
   --primary-foreground: oklch(0.185 0.03 165);
   --primary-dim: oklch(0.62 0.13 154);
+  /* the action under a pointer (#5BEA92) and its tint: what is chosen or active */
+  --primary-strong: oklch(0.838 0.175 153);
+  --primary-soft: oklch(0.812 0.187 152 / 14%);
+  /* the pitch: the header of a match and of a featured block, from --pitch down to --pitch-deep (#143524, #0E2318) */
+  --pitch: oklch(0.298 0.05 159);
+  --pitch-deep: oklch(0.235 0.035 159);
+  /* the pitch's chalk in a scene's background: decoration, never information */
+  --pitch-line: oklch(0.89 0.09 160 / 9%);
+  --pitch-line-strong: oklch(0.89 0.09 160 / 12%);
 
   --secondary: oklch(0.262 0.013 168);
   --secondary-foreground: oklch(0.93 0.005 160);
@@ -128,7 +161,11 @@
 
   --border: oklch(0.288 0.012 168);
   --border-strong: oklch(0.365 0.014 168);
-  --input: oklch(0.288 0.012 168);
+  /*
+   * A field's edge (#5F6D66): 3.5:1 on the background and 3.3:1 on a card, so a field is told from what is around it
+   * (WCAG 1.4.11). It was the divider's colour, 1.35:1. Only fields use it; a button's edge is --border-strong.
+   */
+  --input: oklch(0.521 0.02 164);
   --ring: oklch(0.62 0.13 154);
 
   --positive: oklch(0.76 0.15 155);
@@ -322,6 +359,117 @@
       color-mix(in oklch, var(--color-gold) 9%, transparent),
       transparent 60%
     );
+}
+
+/*
+ * «Noche de partido»: the surfaces and the scenes. Drawn with CSS gradients only - no screen of data loads a picture
+ * for its background. A scene is a decorative layer behind the top of a page (absolute, aria-hidden, no pointer): the
+ * pitch's chalk and the floodlights, faded out before the content begins.
+ */
+@utility surface-pitch {
+  border: 1px solid color-mix(in oklch, var(--color-primary) 20%, transparent);
+  background-image:
+    radial-gradient(
+      15rem 10rem at 86% 0%,
+      color-mix(in oklch, var(--color-primary) 17%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      var(--color-pitch) 0%,
+      var(--color-pitch-deep) 62%,
+      color-mix(in oklch, var(--color-pitch-deep) 78%, var(--color-background)) 100%
+    );
+}
+
+/* the gold card of what PrediGol recommends: a pick, a parlay */
+@utility surface-gold {
+  border: 1px solid color-mix(in oklch, var(--color-gold) 42%, transparent);
+  background-image:
+    radial-gradient(
+      16rem 9.5rem at 10% 0%,
+      color-mix(in oklch, var(--color-gold) 17%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--color-gold) 7%, var(--color-card)) 0%,
+      var(--color-card) 55%
+    );
+}
+
+@utility scene {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 52%, transparent);
+  mask-image: linear-gradient(180deg, #000 52%, transparent);
+}
+
+/* kick-off: the centre circle under the floodlights - the pages before the product and the welcome */
+@utility scene-kickoff {
+  height: 40rem;
+  background:
+    radial-gradient(
+      20.5rem 23.75rem at 50% 4.375rem,
+      color-mix(in oklch, var(--color-primary) 20%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      circle at 50% 10.5rem,
+      color-mix(in oklch, var(--color-gold) 26%, transparent),
+      transparent 6rem
+    ),
+    radial-gradient(
+      circle at 50% 10.5rem,
+      transparent 94.5px,
+      var(--pitch-line-strong) 95.5px,
+      var(--pitch-line-strong) 97px,
+      transparent 98px
+    ),
+    linear-gradient(var(--pitch-line-strong), var(--pitch-line-strong)) 0 10.5rem / 100% 1.5px
+      no-repeat,
+    linear-gradient(var(--pitch-line), var(--pitch-line)) 18px 0 / 1.5px 100% no-repeat,
+    linear-gradient(var(--pitch-line), var(--pitch-line)) calc(100% - 18px) 0 / 1.5px 100% no-repeat;
+}
+
+/* the touchline: Inicio and the lists */
+@utility scene-touchline {
+  height: 23.75rem;
+  background:
+    radial-gradient(
+      22.5rem 15rem at 26% 0,
+      color-mix(in oklch, var(--color-primary) 17%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      circle at calc(100% - 60px) 40px,
+      transparent 108.5px,
+      var(--pitch-line) 109.5px,
+      var(--pitch-line) 111px,
+      transparent 112px
+    ),
+    linear-gradient(var(--pitch-line), var(--pitch-line)) calc(100% - 60px) 0 / 1.5px 100% no-repeat;
+}
+
+/* the floodlight alone: the inner pages and the forms; scene-light-gold for the membership and what is recommended */
+@utility scene-light {
+  height: 18.75rem;
+  background: radial-gradient(
+    22.5rem 13.75rem at 20% 0,
+    color-mix(in oklch, var(--color-primary) 13%, transparent),
+    transparent 72%
+  );
+}
+@utility scene-light-gold {
+  height: 18.75rem;
+  background: radial-gradient(
+    22.5rem 13.75rem at 20% 0,
+    color-mix(in oklch, var(--color-gold) 12%, transparent),
+    transparent 72%
+  );
 }
 
 @utility safe-bottom {
@@ -563,7 +711,11 @@
   animation-timing-function: var(--motion-ease);
 }
 
-/* «Reduce motion»: nothing slides, swells, flashes or fades; a spinner keeps turning because it says «loading». */
+/*
+ * «Reduce motion»: nothing slides, swells, flashes or fades; a spinner keeps turning because it says «loading». The
+ * system's setting first; below it, the same rules under data-motion="reduce" on <html>, for the reader who asks
+ * PrediGol itself to stay still (plan maestro UX/UI 2026, decision 8: nothing sets the attribute until that setting).
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -580,6 +732,25 @@
   ::view-transition-group(*),
   ::view-transition-old(*),
   ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+:root[data-motion="reduce"] {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-spin {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
+  }
+  &::view-transition-group(*),
+  &::view-transition-old(*),
+  &::view-transition-new(*) {
     animation: none !important;
   }
 }
