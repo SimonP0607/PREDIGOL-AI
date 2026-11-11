@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { Banner } from "@/components/ui/banner";
 import { EMPTY } from "@/lib/format";
 
 export function Panel({
@@ -98,12 +99,9 @@ export function EmptyState({
   );
 }
 
-const BANNER_TONE = {
-  warning: "border-warning/30 bg-warning-soft text-warning",
-  info: "border-info/30 bg-info-soft text-info",
-  negative: "border-negative/30 bg-negative-soft text-negative",
-} as const;
+const BANNER_TONE = { warning: "warning", info: "info", negative: "danger" } as const;
 
+/** The console's notice, on the system's banner (plan maestro UX/UI 2026, wave 2). */
 export function WarningBanner({
   children,
   tone = "warning",
@@ -113,18 +111,8 @@ export function WarningBanner({
   tone?: keyof typeof BANNER_TONE;
 }) {
   return (
-    <div
-      role={tone === "negative" ? "alert" : undefined}
-      data-tone={tone}
-      className={cn(
-        "flex items-start gap-2 rounded-md border px-3 py-2 text-xs",
-        BANNER_TONE[tone],
-      )}
-    >
-      <span aria-hidden className="mt-px">
-        ⚠
-      </span>
+    <Banner tone={BANNER_TONE[tone]} data-tone={tone} className="px-3 py-2 text-xs">
       <span className="text-foreground/85">{children}</span>
-    </div>
+    </Banner>
   );
 }

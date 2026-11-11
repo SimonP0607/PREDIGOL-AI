@@ -410,6 +410,45 @@
   background-size: 100% 2.25rem;
 }
 
+/*
+ * «Noche de partido»: the card every block of the product sits on - one step above the page, a hairline of light for a
+ * border and a faint sheen at its top. A component class, below the utilities: whatever a block adds (a colour, a
+ * border, a radius, a scene) wins without a fight.
+ */
+@layer components {
+  .card-surface {
+    border: 1px solid color-mix(in oklch, var(--color-foreground) 5.5%, transparent);
+    border-radius: var(--radius-card);
+    background-color: var(--color-card);
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--color-foreground) 2.4%, transparent),
+      transparent 44%
+    );
+  }
+}
+
+/* the thread of gold at the top of what PrediGol recommends (it needs a clipped, positioned box: both come with it) */
+@utility hairline-gold {
+  position: relative;
+  overflow: hidden;
+  &::before {
+    content: "";
+    position: absolute;
+    left: 1.125rem;
+    right: 1.125rem;
+    top: 0;
+    height: 1px;
+    pointer-events: none;
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--color-gold-strong) 90%, transparent),
+      transparent
+    );
+  }
+}
+
 /* PrediGol: the gold edge of premium blocks (parlays, the selected value). */
 @utility gold-ring {
   border-color: color-mix(in oklch, var(--color-gold) 45%, transparent);

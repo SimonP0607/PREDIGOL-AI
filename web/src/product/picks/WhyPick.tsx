@@ -100,7 +100,7 @@ export function WhyPickButton({
         className={cn(
           "overflow-y-auto",
           side === "bottom"
-            ? "max-h-[92dvh] rounded-t-2xl px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5"
+            ? "max-h-[92dvh] px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5"
             : "w-full px-5 py-5 sm:max-w-md",
         )}
       >

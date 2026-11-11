@@ -107,7 +107,7 @@ export function GlossaryTerm({
           side="bottom"
           closeLabel={t("glossary.ui.close")}
           data-testid="glossary-sheet"
-          className="max-h-[85dvh] overflow-y-auto rounded-t-2xl px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-5"
+          className="max-h-[85dvh] overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-5"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <SheetHeader className="pr-10 text-left">

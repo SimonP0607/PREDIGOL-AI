@@ -457,7 +457,7 @@ export function FiltersSheet({
         side="bottom"
         closeLabel={t("common.close")}
         data-testid="explorer-filters-sheet"
-        className="mx-auto flex max-h-[88dvh] max-w-2xl flex-col gap-0 rounded-t-2xl p-0 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+        className="mx-auto flex max-h-[88dvh] max-w-2xl flex-col gap-0 p-0 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
       >
         <SheetHeader className="px-4 pb-1 pr-14 pt-4 text-left">
           <SheetTitle className="font-display text-base">{t("explorer.filters.title")}</SheetTitle>

@@ -17,7 +17,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { t } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 
 export function ConfirmAction({
   trigger,
@@ -40,24 +39,22 @@ export function ConfirmAction({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
-      <AlertDialogContent
-        className="w-[calc(100%-2rem)] rounded-xl border-border bg-card"
-        data-testid={`confirm-${testId}`}
-      >
+      <AlertDialogContent data-testid={`confirm-${testId}`}>
         <AlertDialogHeader>
-          <AlertDialogTitle className="font-display">{title}</AlertDialogTitle>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{body}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="gap-2">
           <AlertDialogCancel
-            className={cn("mt-0 pointer-coarse:h-11")}
+            className="pointer-coarse:h-11"
             data-testid={`confirm-${testId}-cancel`}
           >
             {t("common.cancel")}
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className="bg-negative text-white hover:bg-negative/90 pointer-coarse:h-11"
+            variant="danger"
+            className="pointer-coarse:h-11"
             data-testid={`confirm-${testId}-ok`}
           >
             {confirm}

@@ -166,7 +166,7 @@ export function MatchBell({
         side="bottom"
         closeLabel={t("common.close")}
         data-testid="match-bell-sheet"
-        className="mx-auto flex max-h-[88dvh] max-w-lg flex-col gap-0 rounded-t-2xl p-0 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+        className="mx-auto flex max-h-[88dvh] max-w-lg flex-col gap-0 p-0 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
       >
         <SheetHeader className="px-4 pb-1 pr-14 pt-4 text-left">
           <SheetTitle className="font-display text-base">{t("push.bell.title")}</SheetTitle>
