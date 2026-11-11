@@ -32,20 +32,47 @@ function Fallback({
   name,
   size,
   className,
-  round,
+  shape = "square",
 }: {
   name: string;
   size: number;
   className?: string | undefined;
-  round?: boolean;
+  /** A team without a crest is a shield («Noche de partido», the system's sheet 4); a player, a circle. */
+  shape?: "shield" | "round" | "square";
 }) {
+  if (shape === "shield") {
+    return (
+      <span
+        aria-hidden
+        data-logo-fallback
+        className={cn(
+          "inline-flex shrink-0 select-none items-center justify-center font-display font-extrabold leading-none text-white",
+          className,
+        )}
+        style={{
+          width: size,
+          height: size,
+          fontSize: Math.max(7.5, Math.round(size * 0.34 * 2) / 2),
+          // a crest's outline: square shoulders, a round base
+          borderRadius: `${Math.round(size * 0.29)}px ${Math.round(size * 0.29)}px ${Math.round(size * 0.5)}px ${Math.round(size * 0.5)}px`,
+          // the team's own colour is not in the data: one drawn from its name, always the same for the same team
+          backgroundColor: `oklch(0.4 0.085 ${hue(name)})`,
+          backgroundImage:
+            "linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0) 55%)",
+          boxShadow: `inset 0 0 0 ${size >= 40 ? 2 : 1.5}px rgb(255 255 255 / 0.2)`,
+        }}
+      >
+        {initials(name)}
+      </span>
+    );
+  }
   return (
     <span
       aria-hidden
       data-logo-fallback
       className={cn(
         "inline-flex shrink-0 select-none items-center justify-center border border-border-strong font-display font-semibold text-foreground/85",
-        round ? "rounded-full" : "rounded-md",
+        shape === "round" ? "rounded-full" : "rounded-md",
         className,
       )}
       style={{
@@ -72,7 +99,8 @@ export function TeamLogo({
   className?: string | undefined;
 }) {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) return <Fallback name={name} size={size} className={className} round />;
+  if (!src || failed)
+    return <Fallback name={name} size={size} className={className} shape="shield" />;
   return (
     <img
       src={src}
@@ -106,7 +134,8 @@ export function PlayerPhoto({
   className?: string | undefined;
 }) {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) return <Fallback name={name} size={size} className={className} round />;
+  if (!src || failed)
+    return <Fallback name={name} size={size} className={className} shape="round" />;
   return (
     <img
       src={src}

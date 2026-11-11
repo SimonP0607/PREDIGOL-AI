@@ -6,7 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { setLocale } from "@/lib/i18n";
-import { CompetitionTag, Matchup, TeamName } from "./Logos";
+import { CompetitionTag, Matchup, PlayerPhoto, TeamLogo, TeamName } from "./Logos";
 
 setLocale("es");
 const home = { name: "Borussia Mönchengladbach", logo: null };
@@ -59,5 +59,33 @@ describe("TeamName and CompetitionTag", () => {
     const html = renderToStaticMarkup(<CompetitionTag name="AFC Champions League Elite" />);
     expect(html).toContain("AFC Champions League Elite");
     expect(html).not.toContain("truncate");
+  });
+});
+
+describe("a team without a crest («Noche de partido», the system's sheet 4)", () => {
+  const fallback = (html: string) => /<span[^>]*data-logo-fallback[^>]*>([^<]*)</.exec(html);
+
+  test("is a shield with its initials - square shoulders, a round base - in the box a crest would take", () => {
+    const html = renderToStaticMarkup(<TeamLogo src={null} name="Atlético Cordillera" size={28} />);
+    expect(fallback(html)?.[1]).toBe("AC");
+    expect(html).toContain("width:28px;height:28px");
+    expect(html).toContain("border-radius:8px 8px 14px 14px");
+    expect(html).not.toContain("rounded-full");
+    expect(html).toContain('aria-hidden="true"');
+  });
+
+  test("the same team has the same colour everywhere, and two teams rarely share one", () => {
+    const colour = (name: string) =>
+      /background-color:([^;"]+)/.exec(
+        renderToStaticMarkup(<TeamLogo src={null} name={name} />),
+      )?.[1];
+    expect(colour("Real Altiplano")).toBe(colour("Real Altiplano"));
+    expect(colour("Real Altiplano")).not.toBe(colour("Deportivo Laguna"));
+  });
+
+  test("a player without a photo stays a circle", () => {
+    const html = renderToStaticMarkup(<PlayerPhoto src={null} name="Juan Pérez" />);
+    expect(html).toContain("rounded-full");
+    expect(html).not.toContain("border-radius");
   });
 });
