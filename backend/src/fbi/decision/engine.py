@@ -10,10 +10,14 @@ THE STAGES (numbered as decision-v1's ten filters, whose thresholds are IMPORTED
      1 data         the match still to play, >= MIN_MINUTES away, its competition's data fit, not quarantined, the forecast not
                     older than the family's ``forecast_max_age``                                                      -> REJECTED
      2 model        the market's model gave a probability (with an interval where the family requires one)        -> REJECTED
+                    (the pick's own probability - decision-v1's - or, in the replay's measurement, the common probability view
+                    of the selection, ``PROBABILITY_SOURCES``, ``fbi.decision.view.judged``)
      3 market       a price from >= MIN_BOOKS books, not an outlier (MAX_PRICE_EDGE), not older than MAX_PRICE_AGE   -> REJECTED / WATCH
                     (the price the candidate carries: decision-v1's consensus of a capture, or the book's answer in force at the
                     moment - ``PRICE_SOURCES``, ``fbi.decision.book_price`` - with its age either way)
      4 calibration  a CHAMPION calibrator for (market, model); the best fit is shown, never approves                   -> ABSTAIN
+                    (with the common view: the view's own seal - calibrated by a champion with a fresh price, or «Sin
+                    calibrar» with its reason, and then no calibrated probability to judge the value with)
      5 value        calibrated EV >= EV_MIN and edge >= EDGE_MIN at the best price; no calibrated EV with a price      -> REJECTED / ABSTAIN
      6 context      hard rules (an unplayable or quarantined match; a key absence on the chosen side, confirmed by the
                     line-ups -> REJECTED, reported -> CAUTION), the review a decision-v1 reads (REJECT / DOWNGRADE ->
@@ -68,6 +72,18 @@ PRICE_SOURCES: Final = (CONSENSUS, BOOK)
 """Where the price of a selection comes from (``Price.source``). ``consensus``: decision-v1's own, the newest Shin consensus of a capture
 (the default, and the evidence of P1). ``book``: the answer in force in the odds book at the moment - a capture's or a book refresh's -
 priced the same way (``fbi.decision.book_price``, plan INT-A06). The stages read either alike: only the price and its age can differ."""
+
+OWN: Final = "own"
+COMMON: Final = "common"
+PROBABILITY_SOURCES: Final = (OWN, COMMON)
+"""Which probability the stages judge (``Prediction.source``). ``own``: the pick's, calibrated by stage 4's calibrator - decision-v1's own (the
+default, and the evidence of P1). ``common``: the common probability view of the selection (``fbi.forecasting.market_view``, ``forecast-v1``),
+the number the Match Center states - the same model, a market that adds up to one, calibrated only by a champion with a fresh price and
+otherwise «Sin calibrar» - set on the candidate by ``fbi.decision.view.judged`` (plan INT-A03). A selection the view does not cover is judged
+with its own probability and says why (``Prediction.missing``)."""
+VIEW_BASIS: Final[Mapping[str, str]] = {"no_champion": "sin calibrador campeón", "needs_price": "sin precio fresco",
+                                         "not_applicable": "el calibrador no se pudo aplicar"}
+"""Why the common view is «Sin calibrar» (``market_view.BASIS_*``; a test holds the keys to them)."""
 
 STAGES: Final = ("data", "model", "market", "calibration", "value", "context", "risk", "correlation", "price", "final")
 NUMBER: Final[Mapping[str, int]] = {s: i + 1 for i, s in enumerate(STAGES)}
@@ -149,12 +165,14 @@ class CommonView:
     market_as_of: datetime | None
     """When the price that calibrated it was captured (None for an uncalibrated view)."""
     version: str
+    model_version_id: int | None = None
+    """The version of the model whose numbers the view states."""
 
     def as_json(self) -> dict[str, Any]:
         return {"p": self.p, "p_model": self.p_model, "model": self.model, "calibration": self.calibration, "basis": self.basis,
                 "calibrator_id": self.calibrator_id, "interval": None if self.low is None or self.high is None else [self.low, self.high],
                 "cutoff": self.cutoff.isoformat(), "market_as_of": None if self.market_as_of is None else self.market_as_of.isoformat(),
-                "version": self.version}
+                "version": self.version, "model_version_id": self.model_version_id}
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,6 +216,46 @@ class Prediction:
     p_cal: float | None
     calibrator_id: int | None
     calibrator_role: str | None
+    source: str = OWN
+    """``PROBABILITY_SOURCES``: the pick's own probability or the common view's."""
+    calibration: str | None = None
+    """With the common view, its seal: ``CALIBRATED`` or ``UNCALIBRATED`` («Sin calibrar»); None with the pick's own."""
+    basis: str | None = None
+    """With the common view, why it is (not) calibrated (``champion``, ``no_champion``, ``needs_price``, ``not_applicable``)."""
+    version: str | None = None
+    """With the common view, its version (``forecast-v1``)."""
+    missing: str | None = None
+    """Why a selection asked to be judged by the common view was judged by its own probability (``fbi.decision.view``: the view does not
+    forecast its market, or had no reading of it at the moment); None otherwise."""
+
+
+@dataclass(frozen=True, slots=True)
+class _Number:
+    """The probability the stages judge, read off the candidate's row: the pick's own, or the common view's that ``view.judged`` set."""
+
+    source: str
+    model: str
+    model_version_id: int | None
+    p_model: float
+    low: float | None
+    high: float | None
+    cutoff: datetime | None
+    p_common: float | None
+    calibrated: bool
+    calibration: str | None
+    basis: str | None
+    calibrator_id: int | None
+    version: str | None
+    missing: str | None
+
+
+def _number(r: Mapping[str, Any], model: str) -> _Number:
+    if r.get("probability_source") == COMMON and r.get("common_p") is not None:
+        return _Number(COMMON, str(r["common_model"]), r.get("common_model_version_id"), float(r["common_p_model"]), _num(r.get("common_low")),
+                       _num(r.get("common_high")), r.get("common_cutoff"), float(r["common_p"]), bool(r.get("common_calibrated")),
+                       r.get("common_calibration"), r.get("common_basis"), r.get("common_calibrator_id"), r.get("common_version"), None)
+    return _Number(OWN, model, r.get("model_version_id"), float(r["p_model"]), _num(r.get("p_low")), _num(r.get("p_high")), r.get("data_cutoff_ts"),
+                   None, False, None, None, None, None, r.get("probability_missing"))
 
 
 @dataclass(frozen=True, slots=True)
@@ -296,7 +354,8 @@ class Decision2:
             "line": str(self.key[3]), "model": p.model, "checkpoint": self.checkpoint, "state": self.state, "reason": self.reason,
             "codes": list(self.codes), "label": self.label, "score": self.score,
             "prediction": {"p_model": p.p_model, "p_push": p.p_push, "interval": None if p.interval is None else list(p.interval),
-                           "p_cal": p.p_cal, "calibrator_id": p.calibrator_id, "calibrator_role": p.calibrator_role},
+                           "p_cal": p.p_cal, "calibrator_id": p.calibrator_id, "calibrator_role": p.calibrator_role, "source": p.source,
+                           "calibration": p.calibration, "basis": p.basis, "version": p.version, "missing": p.missing},
             "price": {"odds": pr.odds, "p_market": pr.p_market, "n_bookmakers": pr.n_bookmakers,
                       "price_at": None if pr.price_at is None else pr.price_at.isoformat(), "age_minutes": pr.age_minutes,
                       "source": pr.source, "confirmed_by": pr.confirmed_by,
@@ -360,8 +419,10 @@ def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAd
     key, models = candidate.key, candidate.models
     mkt = key[1]
     names = sorted(models)
-    model = world.cal.primary_model(mkt, names) or names[0]
-    r = models[model]
+    own = world.cal.primary_model(mkt, names) or names[0]
+    r = models[own]
+    number = _number(r, own)
+    model = number.model
     kickoff: datetime = r["kickoff_at"]
     minutes = (kickoff - at).total_seconds() / 60
     prev = world.previous.get(key)
@@ -374,7 +435,7 @@ def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAd
     # 1 data
     q = world.quality.get(key[0]) or {}
     data_class = q.get("data_class")
-    cutoff = r.get("data_cutoff_ts")
+    cutoff = number.cutoff
     forecast_age = at - cutoff if cutoff is not None else None
     problems = []
     if (r.get("status_short") or "") in decision.BAD_STATUS or r.get("status_group") not in (None, "scheduled"):
@@ -390,15 +451,17 @@ def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAd
     out.append(_v("data", not problems, "; ".join(problems) or f"datos {data_class or 'sin evaluar'}",
                   *((_e("data"),) if problems else ()), forecast_age_checked=params.forecast_max_age is not None))
 
-    # 2 model
-    p_model = float(r["p_model"])
+    # 2 model (the pick's own probability, or the common view's: ``number``)
+    p_model = number.p_model
     p_push = float(r.get("p_push") or 0)
-    has_interval = r.get("p_low") is not None and r.get("p_high") is not None
+    has_interval = number.low is not None and number.high is not None
     model_ok = (has_interval or not params.interval_required) and 0 < p_model < 1
-    out.append(_v("model", model_ok, f"{model}: p {p_model:.3f}" + ("" if has_interval else
+    common = number.source == COMMON
+    out.append(_v("model", model_ok, f"{model}: p {p_model:.3f}" + (f" (cifra única {number.version})" if common else "") + ("" if has_interval else
                   " sin intervalo" + ("" if params.interval_required else " (la familia no lo guarda: no se juzga su ancho)")),
-                  *((_e("model"),) if not model_ok else ()), model=model, model_version_id=r.get("model_version_id")))
-    width = (float(r["p_high"]) - float(r["p_low"])) if has_interval else None
+                  *((_e("model"),) if not model_ok else ()), model=model, model_version_id=number.model_version_id,
+                  **({"probability": COMMON} if common else {})))
+    width = (number.high - number.low) if number.high is not None and number.low is not None else None
 
     # 3 market (the price)
     odds = _num(r.get("best_odds"))
@@ -425,7 +488,20 @@ def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAd
     gate: GateStatus = candidate.family.gate(world, mkt, model)
     calibrator = gate.calibrator
     p_cal = None if calibrator is None else calibrator.apply(p_model, p_mkt)
-    if gate.champion is not None and p_cal is not None:
+    calibrator_id = None if calibrator is None else calibrator.id
+    calibrator_role = None if calibrator is None else calibrator.role
+    if common:
+        # the view's own seal: a champion applied with a fresh price, the market scaled to one - or «Sin calibrar», and no calibrated number
+        p_cal = number.p_common if number.calibrated else None
+        calibrator_id = number.calibrator_id if number.calibrated else None
+        calibrator_role = "CHAMPION" if number.calibrated else None
+        if number.calibrated:
+            out.append(_v("calibration", True, f"cifra única calibrada: calibrador #{number.calibrator_id} (champion), {number.version}",
+                          calibrator_id=number.calibrator_id, basis=number.basis))
+        else:
+            out.append(_v("calibration", False, f"cifra única «Sin calibrar» ({VIEW_BASIS.get(str(number.basis), number.basis)}): no aprueba",
+                          _e("not_calibrated"), calibrator_id=None, basis=number.basis))
+    elif gate.champion is not None and p_cal is not None:
         out.append(_v("calibration", True, f"calibrador {gate.champion.method} #{gate.champion.id} (champion)",
                       calibrator_id=gate.champion.id))
     else:
@@ -525,9 +601,10 @@ def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAd
                   edge_validated=gate.edge_validated, promoted=params.promoted))
     out.sort(key=lambda v: v.n)
     return Assessed(candidate, cp, tuple(out), state, competes, label,
-                    Prediction(model, r.get("model_version_id"), p_model, p_push,
-                               (float(r["p_low"]), float(r["p_high"])) if has_interval else None, p_cal,
-                               None if calibrator is None else calibrator.id, None if calibrator is None else calibrator.role),
+                    Prediction(model, number.model_version_id, p_model, p_push,
+                               (number.low, number.high) if number.low is not None and number.high is not None else None, p_cal,
+                               calibrator_id, calibrator_role, number.source, number.calibration, number.basis, number.version,
+                               None if number.missing is None else str(number.missing)),
                     Price(odds, p_mkt, n_books, price_at, None if price_age is None else round(price_age.total_seconds() / 60, 2), source,
                           None if price_at is None else (r.get("price_confirmed_by") or "capture"), r.get("provider_update_at"),
                           None if missing is None else str(missing)),
