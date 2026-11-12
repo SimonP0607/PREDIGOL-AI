@@ -417,6 +417,30 @@
     }
   },
   "audit": {
+    "families": {
+      "label": "Familia de acciones",
+      "all": "Todo",
+      "access": "Acceso",
+      "accounts": "Cuentas",
+      "membership": "Membresía",
+      "console": "Consola"
+    },
+    "today": {
+      "title": "Hoy en cifras",
+      "logins": "Inicios de sesión",
+      "failed": "Inicios fallidos",
+      "locked": "Cuentas bloqueadas",
+      "console": "Acciones en la consola",
+      "payments": "Pagos registrados",
+      "note": "Desde las 00:00 en tu zona horaria. Sale de las mismas filas de esta página."
+    },
+    "watch": {
+      "title": "Para mirar",
+      "locked_one": "Hoy se bloqueó {count} cuenta por intentos fallidos seguidos.",
+      "locked_other": "Hoy se bloquearon {count} cuentas por intentos fallidos seguidos.",
+      "see": "Ver los bloqueos",
+      "none": "Hoy no hay bloqueos de cuenta."
+    },
     "when": "Cuándo",
     "action": "Acción",
     "actor": "Quién",

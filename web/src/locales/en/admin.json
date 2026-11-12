@@ -417,6 +417,30 @@
     }
   },
   "audit": {
+    "families": {
+      "label": "Family of actions",
+      "all": "All",
+      "access": "Access",
+      "accounts": "Accounts",
+      "membership": "Membership",
+      "console": "Console"
+    },
+    "today": {
+      "title": "Today in figures",
+      "logins": "Sign-ins",
+      "failed": "Failed sign-ins",
+      "locked": "Accounts locked",
+      "console": "Console actions",
+      "payments": "Payments recorded",
+      "note": "Since 00:00 in your time zone. Counted from the same rows as this page."
+    },
+    "watch": {
+      "title": "Worth a look",
+      "locked_one": "{count} account was locked today after failed attempts in a row.",
+      "locked_other": "{count} accounts were locked today after failed attempts in a row.",
+      "see": "See the lockouts",
+      "none": "No account was locked today."
+    },
     "when": "When",
     "action": "Action",
     "actor": "Who",

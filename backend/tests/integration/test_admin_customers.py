@@ -305,6 +305,36 @@ def test_the_trails_filter_lists_every_kind_of_event(world: str) -> None:
         assert owner.get("/api/v1/admin/audit", params={"action": action}).status_code == 200
 
 
+def test_the_trail_reads_by_family_and_counts_from_an_instant(world: str) -> None:
+    """Decision 12 of the UX/UI plan: Acceso, Cuentas, Membresía and Consola are readings of the same trail."""
+    owner = client(OWNER)
+    reader = uid(world, QUIET)
+    owner.post(f"/api/v1/admin/customers/{reader}/notes", json={"note": "otra nota"})
+    everything = owner.get("/api/v1/admin/audit", params={"limit": 200}).json()
+    by_family = {}
+    for family, starts in (("access", ("login.", "logout", "mfa.", "password.", "session.", "signup.")),
+                           ("accounts", ("user.", "account.", "preferences.", "privacy.")),
+                           ("membership", ("membership.",)), ("console", ("admin.", "customer."))):
+        r = owner.get("/api/v1/admin/audit", params={"family": family, "limit": 200})
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert all(e["action"].startswith(starts) for e in body["data"]), family
+        assert body["meta"]["total"] == sum(1 for e in everything["data"] if e["action"].startswith(starts)), family
+        by_family[family] = body["meta"]["total"]
+    assert by_family["console"] >= 1 and by_family["access"] >= 1
+    assert sum(by_family.values()) <= everything["meta"]["total"], "a family never invents an event"
+    assert owner.get("/api/v1/admin/audit", params={"family": "everything"}).status_code == 422
+    # a family and an action together narrow, never widen
+    both = owner.get("/api/v1/admin/audit", params={"family": "access", "action": "customer.note"}).json()
+    assert both["meta"]["total"] == 0
+    total = {a["action"]: a["count"] for a in owner.get("/api/v1/admin/audit/actions").json()["data"]}
+    today = {a["action"]: a["count"] for a in owner.get(
+        "/api/v1/admin/audit/actions", params={"since": "2000-01-01T00:00:00Z"}).json()["data"]}
+    assert today == total, "from before everything: the same counts"
+    later = owner.get("/api/v1/admin/audit/actions", params={"since": "2999-01-01T00:00:00Z"}).json()
+    assert later["data"] == [], "from after everything: nothing"
+
+
 def test_the_support_module_still_serves_the_inbox(world: str) -> None:
     """The card reads the tickets through the module the inbox uses: one source of truth."""
     owner = client(OWNER)

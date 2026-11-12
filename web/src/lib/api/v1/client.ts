@@ -539,6 +539,9 @@ export interface MatchQuery {
 /** `preview: "shadow"` is the Admin Console's labelled preview; the API refuses it to a USER. */
 type Preview = { preview?: "shadow" | undefined };
 
+/** The families the console reads the audit trail by (plan maestro UX/UI 2026, decision 12). */
+export type AuditFamily = "access" | "accounts" | "membership" | "console";
+
 export const v1 = {
   // ── auth ──────────────────────────────────────────────────────────────────
   login: (email: string, password: string) => postJson<Me>("/auth/login", { email, password }),
@@ -1234,10 +1237,17 @@ export const v1 = {
     id: number,
     body: { role?: string; status?: "active" | "disabled"; mfa_required?: boolean },
   ) => patchJson<Envelope<AdminUser>>(`/admin/users/${id}`, body),
-  authAudit: (q: { action?: string | undefined; limit?: number; offset?: number } = {}) =>
-    getJson<Envelope<AuditEvent[]>>("/admin/audit", q as Params),
+  authAudit: (
+    q: {
+      action?: string | undefined;
+      family?: AuditFamily | undefined;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ) => getJson<Envelope<AuditEvent[]>>("/admin/audit", q as Params),
   /** Every kind of event the trail holds, with how many: the audit page's filter (plan UX, B10). */
-  authAuditActions: () => getJson<Envelope<AuditActionCount[]>>("/admin/audit/actions"),
+  authAuditActions: (since?: string) =>
+    getJson<Envelope<AuditActionCount[]>>("/admin/audit/actions", since ? { since } : undefined),
   /** One account's open sessions, for the owner: no cookie, only what names them (plan UX, B10). */
   userSessions: (id: number) => getJson<Envelope<SessionInfo[]>>(`/admin/users/${id}/sessions`),
 

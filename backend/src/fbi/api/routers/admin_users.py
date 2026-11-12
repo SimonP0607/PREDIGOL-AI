@@ -8,7 +8,7 @@ it and must then choose its own. An account is deleted only as anonymisation, wi
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import psycopg
 from fastapi import APIRouter, Depends, Path, Query, Request
@@ -151,9 +151,12 @@ def audit(
     _: UsersAdmin,
     action: Annotated[str | None, Query(max_length=40, pattern=r"^[a-z][a-z_.]+$")] = None,
     user_id: Annotated[int | None, Query(ge=1)] = None,
+    family: Annotated[Literal["access", "accounts", "membership", "console"] | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Envelope[list[AuditEvent]]:
-    rows, total = service.audit_events(conn, limit=limit, offset=offset, action=action, target_user_id=user_id)
+    """`family` narrows the same trail to a group of actions (decision 12): a reading, nothing recorded changes."""
+    rows, total = service.audit_events(conn, limit=limit, offset=offset, action=action, target_user_id=user_id,
+                                       family=family)
     events = [AuditEvent(**r) for r in rows]
     return listing(events, empty_reason="Nothing has been recorded yet.", total=total, limit=limit, offset=offset)

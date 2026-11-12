@@ -151,8 +151,17 @@ def export_customer(body: ReauthExportIn, request: Request, actor: UsersAdmin, u
 
 
 @audit_router.get("/audit/actions", response_model=Envelope[list[AuditActionCount]])
-def audit_actions(conn: Db, _: UsersAdmin) -> Envelope[list[AuditActionCount]]:
-    """Every kind of event the trail holds, with how many (the console's filter lists them all: B10)."""
-    rows = conn.execute("SELECT action, count(*) FROM auth.audit_events GROUP BY action ORDER BY action").fetchall()
+def audit_actions(
+    conn: Db,
+    _: UsersAdmin,
+    since: Annotated[datetime | None, Query()] = None,
+) -> Envelope[list[AuditActionCount]]:
+    """Every kind of event the trail holds, with how many (the console's filter lists them all: B10). With `since`,
+    only what was recorded from that instant on: «Hoy en cifras» (decision 12) counts the day with it."""
+    if since is not None and since.tzinfo is None:
+        since = since.replace(tzinfo=UTC)
+    rows = conn.execute(
+        "SELECT action, count(*) FROM auth.audit_events WHERE (%s::timestamptz IS NULL OR at >= %s) "
+        "GROUP BY action ORDER BY action", (since, since)).fetchall()
     return listing([AuditActionCount(action=str(r[0]), count=int(r[1])) for r in rows],
                    empty_reason="Nothing has been recorded yet.")
