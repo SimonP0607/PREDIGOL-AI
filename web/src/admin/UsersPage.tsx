@@ -3,10 +3,12 @@
  * opened by an invitation - an e-mail with a one-use link - while self-service is on; the temporary password stays as
  * the backup. An account is deleted only as anonymisation, its address typed again; the deleted ones hide by default.
  */
-import { useState, type FormEvent } from "react";
+import { Fragment, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ChevronUp,
   Copy,
+  Ellipsis,
   KeyRound,
   Loader2,
   Lock,
@@ -22,6 +24,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { buttonVariants } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { LiveApiError, v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
@@ -798,6 +801,15 @@ export function UsersPage() {
   const [creating, setCreating] = useState<"invite" | "password" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
+  // the accounts whose actions are open (sheet AD8: one button a row); several at once, each closes with its own button
+  const [opened, setOpened] = useState<ReadonlySet<number>>(new Set());
+  const toggleOpen = (id: number) =>
+    setOpened((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   // The owner's morning notice links here with ?membership=due (plan UX, A8): the accounts ending, in grace or ended.
   const [dueOnly, setDueOnly] = useState(() => {
     try {
@@ -933,58 +945,107 @@ export function UsersPage() {
                     <th className="px-3 py-2 font-medium">{t("admin.users.status")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.security")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.membership.column")}</th>
-                    <th className="px-3 py-2 font-medium">{t("admin.users.language")}</th>
-                    <th className="px-3 py-2 font-medium">{t("admin.users.timezone")}</th>
-                    <th className="px-3 py-2 font-medium">{t("admin.users.created")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.lastLogin")}</th>
-                    <th className="px-3 py-2 font-medium">{t("admin.users.actions")}</th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      {t("admin.users.sessions")}
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">{t("admin.users.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((u) => (
-                    <tr
-                      key={u.id}
-                      className="border-b border-border/60 align-top last:border-0"
-                      data-testid={`user-row-${u.id}`}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="font-medium">
-                          {u.display_name}
-                          {u.id === auth.user?.id ? (
-                            <span className="ml-1.5 text-caption text-gold">
-                              ({t("admin.users.you")})
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="text-caption text-muted-foreground">{u.email}</div>
-                      </td>
-                      <td className="px-3 py-3">
-                        <RoleBadge role={u.role} />
-                      </td>
-                      <td className="px-3 py-3">
-                        <StatusDot status={u.status} />
-                      </td>
-                      <td className="px-3 py-3">
-                        <SecurityBadges user={u} />
-                      </td>
-                      <td className="px-3 py-3">
-                        <MembershipCell user={u} />
-                      </td>
-                      <td className="px-3 py-3 text-xs uppercase">{u.language}</td>
-                      <td className="px-3 py-3 text-xs">{u.timezone}</td>
-                      <td className="numeric px-3 py-3 text-xs text-muted-foreground">
-                        {formatDateTime(u.created_at)}
-                      </td>
-                      <td className="numeric px-3 py-3 text-xs text-muted-foreground">
-                        {u.last_login_at ? formatRelative(u.last_login_at) : t("admin.users.never")}
-                      </td>
-                      <td className="space-y-2 px-3 py-3">
-                        <RowActions user={u} self={u.id === auth.user?.id} onNotice={setNotice} />
-                        <SecurityActions user={u} self={u.id === auth.user?.id} />
-                        <SessionsList user={u} />
-                      </td>
-                    </tr>
-                  ))}
+                  {users.map((u) => {
+                    const isOpen = opened.has(u.id);
+                    return (
+                      <Fragment key={u.id}>
+                        <tr
+                          className={cn(
+                            "align-middle",
+                            isOpen ? "bg-elevated/40" : "border-b border-border/60",
+                          )}
+                          data-testid={`user-row-${u.id}`}
+                        >
+                          <td className="px-4 py-3">
+                            <div className="font-medium">
+                              {u.display_name}
+                              {u.id === auth.user?.id ? (
+                                <span className="ml-1.5 text-caption text-gold">
+                                  ({t("admin.users.you")})
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="text-caption text-muted-foreground">{u.email}</div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <RoleBadge role={u.role} />
+                          </td>
+                          <td className="px-3 py-3">
+                            <StatusDot status={u.status} />
+                          </td>
+                          <td className="px-3 py-3">
+                            <SecurityBadges user={u} />
+                          </td>
+                          <td className="px-3 py-3">
+                            <MembershipCell user={u} />
+                          </td>
+                          <td className="numeric px-3 py-3 text-xs text-muted-foreground">
+                            {u.last_login_at
+                              ? formatRelative(u.last_login_at)
+                              : t("admin.users.never")}
+                          </td>
+                          <td className="numeric px-3 py-3 text-right text-xs">
+                            {u.active_sessions}
+                          </td>
+                          <td className="px-3 py-3 text-right">
+                            {/* one button a row (sheet AD8): what can be done to the account opens under it */}
+                            <button
+                              type="button"
+                              aria-expanded={isOpen}
+                              aria-controls={`user-panel-${u.id}`}
+                              aria-label={t("admin.users.actionsFor", { name: u.display_name })}
+                              onClick={() => toggleOpen(u.id)}
+                              data-testid={`user-actions-${u.id}`}
+                              className={buttonVariants({ variant: "secondary", size: "icon" })}
+                            >
+                              {isOpen ? <ChevronUp aria-hidden /> : <Ellipsis aria-hidden />}
+                            </button>
+                          </td>
+                        </tr>
+                        {isOpen ? (
+                          <tr
+                            id={`user-panel-${u.id}`}
+                            className="border-b border-border/60 bg-elevated/40"
+                            data-testid={`user-panel-${u.id}`}
+                          >
+                            <td colSpan={8} className="space-y-3 px-4 pb-4 pt-1">
+                              <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                <span>
+                                  {t("admin.users.language")}:{" "}
+                                  <span className="uppercase text-foreground">{u.language}</span>
+                                </span>
+                                <span>
+                                  {t("admin.users.timezone")}:{" "}
+                                  <span className="text-foreground">{u.timezone}</span>
+                                </span>
+                                <span>
+                                  {t("admin.users.createdOn")}:{" "}
+                                  <span className="numeric text-foreground">
+                                    {formatDateTime(u.created_at)}
+                                  </span>
+                                </span>
+                              </p>
+                              <RowActions
+                                user={u}
+                                self={u.id === auth.user?.id}
+                                onNotice={setNotice}
+                              />
+                              <SecurityActions user={u} self={u.id === auth.user?.id} />
+                              <SessionsList user={u} />
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

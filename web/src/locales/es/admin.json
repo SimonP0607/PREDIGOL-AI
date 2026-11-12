@@ -143,6 +143,7 @@
     "lastLogin": "Último acceso",
     "sessions": "Sesiones",
     "actions": "Acciones",
+    "actionsFor": "Acciones de {name}",
     "never": "Nunca",
     "active": "Activo",
     "disabled": "Desactivado",

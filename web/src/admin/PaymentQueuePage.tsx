@@ -10,6 +10,9 @@ import { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Banknote, Check, Loader2, Undo2, X } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { fieldVariants } from "@/components/ui/field";
+import { Segmented } from "@/components/ui/segmented";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { v1 } from "@/lib/api/v1/client";
 import type { AdminPaymentRequest, DecisionCode } from "@/lib/api/v1/types_payment_requests";
@@ -34,11 +37,11 @@ type Scope = "submitted" | "all";
 type Panel = "approve" | "reject" | "annul";
 
 const KEY = ["admin", "payment-requests"] as const;
-const FIELD = "w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm";
-const BUTTON =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border-strong px-3 text-sm font-medium hover:bg-elevated disabled:opacity-50";
-const PRIMARY =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50";
+// the system's pieces («Noche de partido», sheet 3): the dense field, the text area and the two small buttons
+const FIELD = fieldVariants({ size: "sm" });
+const AREA = fieldVariants({ size: "area" });
+const BUTTON = buttonVariants({ variant: "secondary", size: "sm" });
+const PRIMARY = buttonVariants({ variant: "primary", size: "sm" });
 
 function money(amount: string, currency: string): string {
   return priceText({ amount, currency });
@@ -206,7 +209,7 @@ function Reject({
         <span className="font-medium">{t("admin.payments.reject.note")}</span>
         <textarea
           data-testid="payment-reject-note"
-          className={FIELD}
+          className={AREA}
           rows={3}
           maxLength={NOTE_MAX}
           value={note}
@@ -261,7 +264,7 @@ function Annul({
         <span className="font-medium">{t("admin.payments.annul.reason")}</span>
         <textarea
           data-testid="payment-annul-reason"
-          className={FIELD}
+          className={AREA}
           rows={3}
           maxLength={NOTE_MAX}
           value={reason}
@@ -507,23 +510,19 @@ export function PaymentQueuePage() {
         description={t("admin.payments.description")}
         actions={<Banknote aria-hidden className="h-5 w-5 text-gold" />}
       />
-      <div role="tablist" className="flex gap-2">
-        {(["submitted", "all"] as const).map((s) => (
-          <button
-            key={s}
-            role="tab"
-            type="button"
-            aria-selected={scope === s}
-            data-testid={`payment-scope-${s}`}
-            onClick={() => setScope(s)}
-            className={cn(BUTTON, scope === s && "border-primary bg-elevated")}
-          >
-            {s === "submitted"
-              ? t("admin.payments.scope.waiting", { count: q.data?.waiting ?? 0 })
-              : t("admin.payments.scope.all")}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        value={scope}
+        onChange={setScope}
+        label={t("admin.payments.title")}
+        testId="payment-scope"
+        options={[
+          {
+            value: "submitted",
+            label: t("admin.payments.scope.waiting", { count: q.data?.waiting ?? 0 }),
+          },
+          { value: "all", label: t("admin.payments.scope.all") },
+        ]}
+      />
       {q.isPending ? <SkeletonCards count={2} /> : null}
       {q.isError ? <ErrorState error={q.error} onRetry={() => void q.refetch()} /> : null}
       {q.data && !q.data.requests.length ? (

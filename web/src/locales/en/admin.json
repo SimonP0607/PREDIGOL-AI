@@ -143,6 +143,7 @@
     "lastLogin": "Last login",
     "sessions": "Sessions",
     "actions": "Actions",
+    "actionsFor": "Actions for {name}",
     "never": "Never",
     "active": "Active",
     "disabled": "Disabled",

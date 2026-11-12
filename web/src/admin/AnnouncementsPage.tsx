@@ -7,6 +7,8 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { History, Loader2, Megaphone, Plus, Send, Undo2 } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { fieldVariants } from "@/components/ui/field";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { v1 } from "@/lib/api/v1/client";
 import type {
@@ -17,7 +19,7 @@ import type {
 import { t } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import { Card, ErrorState, SkeletonCards, errorMessage } from "@/product/shared/States";
+import { Card, EmptyState, ErrorState, SkeletonCards, errorMessage } from "@/product/shared/States";
 import {
   BODY_MAX,
   CRITICAL_KINDS,
@@ -33,11 +35,11 @@ import {
 } from "./announcements";
 
 const KEY = ["admin", "announcements"] as const;
-const FIELD = "w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm";
-const BUTTON =
-  "inline-flex min-h-11 items-center gap-2 rounded-md border border-border-strong px-3 text-sm font-medium hover:bg-elevated disabled:opacity-50";
-const PRIMARY =
-  "inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50";
+// the system's pieces («Noche de partido», sheet 3): the dense field, the text area and the two small buttons
+const FIELD = fieldVariants({ size: "sm" });
+const AREA = fieldVariants({ size: "area" });
+const BUTTON = buttonVariants({ variant: "secondary", size: "sm" });
+const PRIMARY = buttonVariants({ variant: "primary", size: "sm" });
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -106,7 +108,7 @@ function Editor({
   const canCritical = CRITICAL_KINDS.includes(form.kind);
   return (
     <form
-      className="space-y-3 rounded-xl border border-border bg-card p-4"
+      className="surface-panel space-y-3 p-4"
       data-testid="announcement-form"
       onSubmit={(e) => {
         e.preventDefault();
@@ -151,7 +153,7 @@ function Editor({
         <Field label={t("notices.admin.fields.bodyEs")}>
           <textarea
             data-testid="announcement-body-es"
-            className={cn(FIELD, "min-h-24")}
+            className={AREA}
             value={form.body_es}
             onChange={(e) => set("body_es", e.target.value)}
           />
@@ -160,7 +162,7 @@ function Editor({
         <Field label={t("notices.admin.fields.bodyEn")}>
           <textarea
             data-testid="announcement-body-en"
-            className={cn(FIELD, "min-h-24")}
+            className={AREA}
             value={form.body_en}
             onChange={(e) => set("body_en", e.target.value)}
           />
@@ -470,7 +472,7 @@ export function AnnouncementsPage() {
       {list.isPending ? <SkeletonCards count={2} /> : null}
       {list.isError ? <ErrorState error={list.error} onRetry={() => void list.refetch()} /> : null}
       {data ? (
-        <Card>
+        <Card className="p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground" data-testid="announcements-state">
               {t("notices.admin.today", { n: data.published_today, max: data.daily_cap })}{" "}
@@ -538,9 +540,7 @@ export function AnnouncementsPage() {
           }}
         />
       ) : null}
-      {data && data.items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("notices.admin.empty")}</p>
-      ) : null}
+      {data && data.items.length === 0 ? <EmptyState title={t("notices.admin.empty")} /> : null}
       {data && data.items.length > 0 ? (
         <ul className="space-y-2" data-testid="announcements-list">
           {data.items.map((item) => (
