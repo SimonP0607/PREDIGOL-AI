@@ -87,6 +87,11 @@
     "failed": "It could not be saved. Try again.",
     "added": "{name} is now among your favourites."
   },
+  "view": {
+    "label": "What to see on Home",
+    "all": "Everything",
+    "mineNote": "The picks are the same for everyone. «Everything» has the day\u2019s picks, the parlays and what is on now."
+  },
   "layers": {
     "forYou": "For you",
     "forYouHint": "What you chose to follow",

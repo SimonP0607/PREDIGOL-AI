@@ -7,7 +7,7 @@
 import { describe, expect, test } from "bun:test";
 import type { MeToday } from "@/lib/api/v1/types_me_today";
 import type { Following, Today } from "@/lib/api/v1/types_today";
-import { holdsLayers, LAYERS_HOLD_MS, layersOf } from "./layers";
+import { holdsLayers, LAYERS_HOLD_MS, layersOf, shownLayers } from "./layers";
 
 const me = (over: Partial<MeToday> = {}): MeToday => ({
   personalization: true,
@@ -141,5 +141,24 @@ describe("holdsLayers", () => {
   test("the owner is never held: no /me/today to wait for, the page paints as it always did", () => {
     expect(holdsLayers({ ...waiting, reader: false })).toBe(false);
     expect(holdsLayers({ ...waiting, reader: false, mePending: false })).toBe(false);
+  });
+});
+
+describe("«Para ti / Todo» (plan maestro UX/UI 2026, PR-14)", () => {
+  const none = { forYou: false, mine: false, prompt: true };
+  const own = { forYou: true, mine: true, prompt: false };
+
+  test("without a layer of their own there is no selector, and PrediGol always shows", () => {
+    for (const view of ["all", "mine"] as const) {
+      expect(shownLayers(view, none)).toEqual({ selector: false, forYou: false, predigol: true });
+    }
+  });
+
+  test("«Todo» is Inicio as it always was: the reader's layer on top of PrediGol's", () => {
+    expect(shownLayers("all", own)).toEqual({ selector: true, forYou: true, predigol: true });
+  });
+
+  test("«Para ti» keeps only what the reader follows", () => {
+    expect(shownLayers("mine", own)).toEqual({ selector: true, forYou: true, predigol: false });
   });
 });
