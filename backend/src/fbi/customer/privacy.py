@@ -264,14 +264,16 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
     # a market (or a market of the catalogue) has no id, only its key.
     favourite_rows = _all(conn, """
         SELECT f.kind, f.ref_id AS id, COALESCE(f.market_key, f.catalog_key) AS market,
-               COALESCE(c.name, t.name, p.name) AS name, f.created_at
+               COALESCE(c.name, t.name, p.name) AS name, f.created_at,
+               CASE WHEN f.kind = 'team' THEN f.notify END AS notify
         FROM customer.favorites f
         LEFT JOIN core.competitions c ON c.id = f.league_id
         LEFT JOIN core.teams t ON t.id = f.team_id
         LEFT JOIN core.players p ON p.id = f.player_id
         WHERE f.user_id = %s ORDER BY f.created_at, f.ref_id NULLS LAST, f.market_key, f.catalog_key
     """, (user_id,))
-    welcome = _all(conn, "SELECT onboarded_at, hints_seen, guides_auto FROM customer.preferences WHERE user_id = %s",
+    welcome = _all(conn, "SELECT onboarded_at, hints_seen, guides_auto, time_format, odds_format, reduce_motion, home_default "
+                   "FROM customer.preferences WHERE user_id = %s",
                    (user_id,))
     # What they saw of the welcome tour and of the guides of each screen (UX-032).
     guide_rows = _all(conn, """

@@ -382,6 +382,32 @@ def test_line_ups_of_a_followed_teams_match_the_bells_reminder_and_the_days_summ
     assert run_jobs(fresh, at + timedelta(minutes=40)).total == 0, "each once, the summary once a day"
 
 
+def test_a_followed_team_with_its_bell_off_gets_no_line_up_notice_and_stays_out_of_the_summary(
+        fresh: str, world: World) -> None:
+    """Decision 8 of the plan maestro UX/UI 2026 (BE-039): the bell of a followed team. The reminder a reader asked of a
+    match is theirs whatever the bell says."""
+    reader = client(READER)
+    me = uid(fresh, READER)
+    reader.post("/api/v1/me/push/devices", json=Browser().body())
+    with psycopg.connect(fresh, autocommit=True) as conn:
+        conn.execute("INSERT INTO customer.favorites (user_id, kind, ref_id, team_id, notify) "
+                     "VALUES (%s, 'team', %s, %s, false)", (me, world.ids["nacional"], world.ids["nacional"]))
+    at = datetime(2026, 11, 3, 14, 30, tzinfo=UTC)
+    soon = world.match("millonarios", "nacional", at + timedelta(hours=2))
+    other = world.match("santafe", "junior", at + timedelta(hours=1))
+    world.lineups(soon)
+    with psycopg.connect(fresh, autocommit=True) as conn:
+        conn.execute("INSERT INTO customer.match_alerts (user_id, fixture_id, minutes_before) VALUES (%s, %s, 30)",
+                     (me, other))
+    report = run_jobs(fresh, at)
+    assert (report.lineups, report.digests, report.errors) == (0, 0, []), "the bell is off: neither notice"
+    assert run_jobs(fresh, at + timedelta(minutes=22)).reminders == 1, "the reminder they asked for still goes"
+    with psycopg.connect(fresh, autocommit=True) as conn:
+        conn.execute("UPDATE customer.favorites SET notify = true WHERE user_id = %s", (me,))
+    again = run_jobs(fresh, at + timedelta(minutes=23))
+    assert again.lineups >= 1 and again.digests == 1, "on again: the notices come back"
+
+
 def test_the_summary_waits_for_09_00_and_the_membership_and_a_new_sign_in_are_the_accounts(fresh: str,
                                                                                            world: World) -> None:
     reader = client(READER)

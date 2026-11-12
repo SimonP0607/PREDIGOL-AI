@@ -23,6 +23,17 @@ class LoginIn(BaseModel):
     password: str = Field(min_length=1, max_length=256)
 
 
+class DisplayPrefs(BaseModel):
+    """How the reader wants PrediGol shown (plan maestro UX/UI 2026, decision 8). Presentation only."""
+
+    time_format: Literal["24h", "12h"] = "24h"
+    odds_format: Literal["decimal", "american", "fractional"] = Field(
+        default="decimal", description="How a price is written. What is stored, computed and sent stays decimal.")
+    reduce_motion: bool = Field(default=False, description="Fewer animations whatever the device says.")
+    home_default: Literal["mine", "all"] | None = Field(
+        default=None, description="The view Inicio opens on; null: «Para ti» for a reader who follows something.")
+
+
 class Me(Contract):
     id: int
     email: str
@@ -80,6 +91,9 @@ class Me(Contract):
     odds_status: bool = Field(default=False, description="«Estado de los precios» is open to readers (plan maestro UX/UI "
                                                          "2026, decision 4; FBI_ODDS_STATUS, off by default): the page "
                                                          "links to it only then.")
+    display: DisplayPrefs = Field(default_factory=DisplayPrefs, description="The reader's settings of presentation "
+                                                                            "(decision 8): clock, price format, "
+                                                                            "motion and Inicio's view.")
 
 
 class PreferencesIn(BaseModel):
@@ -89,6 +103,11 @@ class PreferencesIn(BaseModel):
     timezone: str | None = Field(default=None, min_length=1, max_length=64)
     display_name: str | None = Field(default=None, min_length=1, max_length=80)
     guides_auto: bool | None = Field(default=None, description="Show the guide of each screen on the first visit (UX-032).")
+    time_format: Literal["24h", "12h"] | None = None
+    odds_format: Literal["decimal", "american", "fractional"] | None = None
+    reduce_motion: bool | None = None
+    home_default: Literal["mine", "all", "auto"] | None = Field(
+        default=None, description="mine or all; auto goes back to the rule (mine for a reader who follows something).")
 
 
 class PasswordChangeIn(BaseModel):
