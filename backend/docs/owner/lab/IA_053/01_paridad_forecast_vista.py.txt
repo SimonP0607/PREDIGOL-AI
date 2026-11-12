@@ -1,0 +1,66 @@
+# IA-053 (INT-A03) · Paridad en producción entre lo que guardó el Match Center y lo que lee decision-v2 en el mismo momento. SOLO LECTURA.
+#
+# Para cada fila de models.match_forecasts (forecast-v1) escrita en las últimas H horas, recalcula la vista común tal como la lee decision-v2
+# (fbi.decision.view.read, con el estado de calibración de ese momento) y compara p, p del modelo, modelo, versión del modelo, sello, motivo y
+# calibrador; cuenta también los mercados guardados que suman 1 (a seis decimales). Lee como mucho N momentos distintos (repartidos).
+#
+#   docker exec -i -w /app -e PGOPTIONS='-c default_transaction_read_only=on -c statement_timeout=95000' predigol-worker \
+#       python - 24 120 < 01_paridad_forecast_vista.py.txt
+#
+# Una diferencia no es por fuerza un defecto: la vista se recalcula AHORA «como de» aquel momento, y una fila de models.predictions o de
+# market.market_consensus escrita después de ese momento con una hora anterior (un modelo o un consenso que tardaron) la ve la vista de
+# ahora y no la vio el escritor. Por eso se guardan ejemplos.
+import json
+import sys
+from collections import Counter
+from datetime import timedelta
+from decimal import Decimal
+
+import psycopg
+from psycopg.rows import dict_row
+
+from fbi.core.clock import now
+from fbi.core.config import settings as platform
+from fbi.decision import view as common
+from fbi.intel.calibration import calibration_state
+
+hours, cap = int(sys.argv[1]), int(sys.argv[2])
+OPTIONS = "-c TimeZone=UTC -c default_transaction_read_only=on -c statement_timeout=95000"
+SQL = ("SELECT fixture_id, known_at, market_key, line, selection, p, p_model, model_name, model_version_id, calibration, basis, calibrator_id "
+       "FROM models.match_forecasts WHERE version = 'forecast-v1' AND known_at >= %s AND known_at < %s "
+       "ORDER BY known_at, fixture_id, market_key, line, selection")
+until = now()
+with psycopg.connect(platform.database.psycopg_url, options=OPTIONS) as conn:
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(SQL, (until - timedelta(hours=hours), until))
+        rows = cur.fetchall()
+    moments = sorted({r["known_at"] for r in rows})
+    chosen = set(moments[:: max(1, -(-len(moments) // cap))])
+    stats, fields, sums, examples = Counter(), Counter(), Counter(), []
+    for k in sorted(chosen):
+        rs = [r for r in rows if r["known_at"] == k]
+        views = common.read(conn, sorted({int(r["fixture_id"]) for r in rs}), at=k, cal=calibration_state(conn, at=k))
+        markets: dict[tuple[int, str, Decimal], Decimal] = {}
+        for r in rs:
+            stats["rows"] += 1
+            key = (int(r["fixture_id"]), str(r["market_key"]), str(r["selection"]), Decimal(r["line"]).quantize(Decimal("0.01")))
+            markets[(key[0], key[1], key[3])] = markets.get((key[0], key[1], key[3]), Decimal(0)) + r["p"]
+            v = views.get(key)
+            if v is None:
+                stats["no_view"] += 1
+                continue
+            diff = [f for f, a, b in (("p", r["p"], Decimal(str(round(v.p, 6)))), ("p_model", r["p_model"], Decimal(str(round(v.p_model, 6)))),
+                                      ("model", r["model_name"], v.model), ("model_version_id", r["model_version_id"], v.model_version_id),
+                                      ("calibration", r["calibration"], v.calibration), ("basis", r["basis"], v.basis),
+                                      ("calibrator_id", r["calibrator_id"], v.calibrator_id)) if a != b]
+            stats["differ" if diff else "same"] += 1
+            fields.update(diff)
+            if diff and len(examples) < 12:
+                examples.append({"known_at": k.isoformat(), "key": [key[0], key[1], key[2], str(key[3])], "fields": diff,
+                                 "stored": [str(r["p"]), r["model_name"], r["calibration"], r["basis"]], "view": [round(v.p, 6), v.model, v.calibration, v.basis]})
+        for total in markets.values():
+            sums["markets"] += 1
+            sums["adds_up"] += abs(total - 1) <= Decimal("0.000002")
+    conn.rollback()
+print(json.dumps({"hours": hours, "rows_in_window": len(rows), "moments_in_window": len(moments), "moments_read": len(chosen), "stats": stats,
+                  "fields": fields, "sums": sums, "examples": examples}, default=str, sort_keys=True))

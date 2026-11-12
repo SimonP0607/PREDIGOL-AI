@@ -6,12 +6,15 @@
     python -m scripts.ia_decision_v2 replay --day 2026-11-05 --signals          # plus the market's signals as risk inputs
     python -m scripts.ia_decision_v2 replay --day 2026-11-05 --view             # plus how far each probability is from the common view
     python -m scripts.ia_decision_v2 replay --day 2026-11-10 --price book       # the core priced as the odds book held it at each moment
+    python -m scripts.ia_decision_v2 replay --day 2026-11-10 --probability common   # the core judged with the common probability view
 
 The agreement per family, the confusion table (decision-v1's state read through state-v2 against decision-v2's), every disagreement with
 the stage that caused it (``fbi.decision.replay``), and the price each decision was judged with and its age (G-PRECIO). Without ``--council``,
-``--signals`` and ``--price book`` it is the equivalence of the engine: the evidence of the P1 gate. ``--price book`` reads the bodies of the
-answers from the RAW store (``--raw``, by default the worker's own) and adds the book's last price before kick-off of every selection (for the
-CLV). The connection is read-only: nothing is written. Exit status: 0 a report, 2 it cannot run (a bad day or option).
+``--signals``, ``--price book`` and ``--probability common`` it is the equivalence of the engine: the evidence of the P1 gate. ``--price book``
+reads the bodies of the answers from the RAW store (``--raw``, by default the worker's own) and adds the book's last price before kick-off of
+every selection (for the CLV). ``--probability common`` judges the core with the number the Match Center states (the common probability view,
+with its seal «Sin calibrar» where there is no fresh price) and says what that changes against the pick's own probability (plan INT-A03). The
+connection is read-only: nothing is written. Exit status: 0 a report, 2 it cannot run (a bad day or option).
 """
 
 from __future__ import annotations
@@ -26,7 +29,7 @@ from typing import Any
 import psycopg
 
 from fbi.decision import replay
-from fbi.decision.engine import CONSENSUS, PRICE_SOURCES
+from fbi.decision.engine import CONSENSUS, OWN, PRICE_SOURCES, PROBABILITY_SOURCES
 from fbi.intel.context_adjustment import ENGINES
 from fbi.storage.payload_store import PayloadStore
 
@@ -56,14 +59,31 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--price", choices=PRICE_SOURCES, default=CONSENSUS,
                     help="the core's price: decision-v1's consensus of a capture (default) or the odds book's answer in force (shadow)")
     ap.add_argument("--raw", help="the RAW store the book's answers are read from (default: the worker's own)")
+    ap.add_argument("--probability", choices=PROBABILITY_SOURCES, default=OWN,
+                    help="the core's probability: the pick's own (default) or the common probability view's (shadow)")
     ap.add_argument("--dsn", help="the database (default: the worker's own)")
     return ap
 
 
 def run(conn: psycopg.Connection[Any], *, day: date, council: str | None = None, signals: bool = False, view: bool = False,
-        price: str = CONSENSUS, store: PayloadStore | None = None) -> tuple[dict[str, Any], int]:
+        price: str = CONSENSUS, store: PayloadStore | None = None, probability: str = OWN) -> tuple[dict[str, Any], int]:
     """The report (JSON-ready) and the exit status. The connection is the caller's; nothing is written."""
-    return replay.replay_day(conn, day=day, council=council, signals=signals, view=view, price=price, store=store), OK
+    return replay.replay_day(conn, day=day, council=council, signals=signals, view=view, price=price, store=store,
+                             probability=probability), OK
+
+
+def render_probability(p: dict[str, Any]) -> list[str]:
+    """The lines of the probability the stages judged with the common view, and what it changed against the pick's own."""
+    a = p["against_own"]
+    gap = a["p_cal_gap_pp"]
+    lines = [f"  probability: common view on {p['judged_with_common']}/{p['decisions']} decisions {p['seal']} {p['versions']}; kept their own "
+             f"{p['kept_own']}",
+             f"    against the own probability on {a['rows']} rows: {a['changed']} changed state {a['transitions']}, by stage {a['by_stage']}; "
+             f"calibrated p gap (pp) p50 {gap['p50']}, p90 {gap['p90']}, max {gap['max']}; {a['calibrated_lost']} lost their calibrated p"]
+    for e in a["examples"]:
+        lines.append(f"    #{e['decision_id']} {e['known_at']} fixture {e['fixture_id']} {e['market_key']} {e['selection']} {e['line']}: "
+                     f"own {e['own']} ({e['own_reason']}) -> common {e['common']} ({e['common_reason']}) - stage {e['stage']}: {e['why']}")
+    return lines
 
 
 def render_price(p: dict[str, Any]) -> list[str]:
@@ -91,7 +111,7 @@ def render(doc: dict[str, Any]) -> str:
     lines = [f"{doc['version']} replayed against {', '.join(doc['versions'])}, {doc['day']}: {doc['rows']} rows in {doc['moments']} moments "
              f"(skipped: {doc['skipped']['selection_copies']} copies of the day's picks, {doc['skipped']['unclaimed']} unclaimed)",
              f"  inputs: council {doc['inputs']['council'] or 'none'}, signals {'yes' if doc['inputs']['signals'] else 'no'}, "
-             f"price {doc['inputs'].get('price', CONSENSUS)}",
+             f"price {doc['inputs'].get('price', CONSENSUS)}, probability {doc['inputs'].get('probability', OWN)}",
              f"  agreement: {a['agree']}/{a['n']} ({overall}), {a['unmatched']} not rebuilt"]
     for name, f in doc["families"].items():
         rate = "-" if f["rate"] is None else f"{f['rate']:.2%}"
@@ -117,6 +137,8 @@ def render(doc: dict[str, Any]) -> str:
                      f"{u['line']}: not rebuilt")
     if "price" in doc:
         lines += render_price(doc["price"])
+    if "probability" in doc:
+        lines += render_probability(doc["probability"])
     return "\n".join(lines) + "\n"
 
 
@@ -132,7 +154,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     book = args.price != CONSENSUS
     store = PayloadStore(args.raw or platform.runtime.raw_store_dir) if book else None
     with psycopg.connect(args.dsn or platform.database.psycopg_url, options=f"{READ_ONLY} {BOOK_TIMEOUT}" if book else READ_ONLY) as conn:
-        doc, code = run(conn, day=day, council=args.council, signals=args.signals, view=args.view, price=args.price, store=store)
+        doc, code = run(conn, day=day, council=args.council, signals=args.signals, view=args.view, price=args.price, store=store,
+                        probability=args.probability)
     sys.stdout.write(json.dumps(doc, indent=1, default=str, ensure_ascii=False, sort_keys=True) + "\n" if args.as_json else render(doc))
     return code
 

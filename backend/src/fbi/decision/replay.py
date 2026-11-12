@@ -15,7 +15,11 @@ For every row decision-v1 or decision-fam-v1 wrote during the day (Bogotá, ``fb
     the price        the core candidates' price as decision-v1 read it (``price="consensus"``, the default: the newest consensus of a
                      capture) or as the odds book held it at the moment (``price="book"``, ``fbi.decision.book_price``: the answer in
                      force of a capture or of a book refresh, priced the same way, with its age and, as a measurement, the book's last
-                     price before kick-off for the CLV). The book is a separate measurement too: the evidence of P1 is the default.
+                     price before kick-off for the CLV). The book is a separate measurement too: the evidence of P1 is the default;
+    the probability  the core candidates' probability as decision-v1 judges it (``probability="own"``, the default: the pick's, calibrated
+                     by stage 4) or the common probability view's (``probability="common"``, ``fbi.decision.view.judged``: the number
+                     the Match Center states, with its seal and its version, plan INT-A03). With the view, the same candidates are also
+                     decided with their own probability, and the report says what the view changed and at which stage.
 
 Then each row is compared with the decision of the same selection: decision-v1's state read through state-v2 (``state_v2.classify``)
 against decision-v2's. The report: the agreement per family (and per market), the confusion table, the labels and checkpoints that
@@ -330,6 +334,49 @@ def price_summary(pairs: Sequence[Pair], *, source: str) -> dict[str, Any]:
     return out
 
 
+# -- the probability the stages judged -------------------------------------------------------------------------------------------------
+
+Against = tuple[Mapping[str, Any], str, engine.Decision2 | None, engine.Decision2 | None]
+"""A row, its family, decision-v2's decision of it judged with the common view, and the same decision judged with the pick's own probability."""
+EXAMPLES: Final = 20
+
+
+def changed_at(own: engine.Decision2, common: engine.Decision2) -> str:
+    """The stage that made the common view's decision differ from the own one: the first, in stage order, of the stages of the codes only one
+    of them gave; ``final`` when both gave the same codes."""
+    diff = set(own.codes) ^ set(common.codes)
+    stages = sorted({engine.CODE_STAGE.get(c, "final") for c in diff}, key=lambda s: engine.NUMBER[s])
+    return stages[0] if stages else "final"
+
+
+def probability_summary(items: Sequence[Against]) -> dict[str, Any]:
+    """What judging with the common view did (plan INT-A03): how many decisions it judged and with which seal, which kept their own probability
+    and why, and - against the same candidates judged with their own probability - how many states changed, from which to which, at which stage,
+    and how far the calibrated probabilities are. A measurement: nothing here changes a state. Pure; ordered by (known_at, id)."""
+    decided = [(r, f, d, o) for r, f, d, o in sorted(items, key=lambda x: (x[0]["known_at"], int(x[0]["id"]))) if d is not None]
+    judged = [d for _, _, d, _ in decided if d.prediction.source == engine.COMMON]
+    kept: Counter[str] = Counter("family" if f != CORE.name else str(d.prediction.missing) for _, f, d, _ in decided
+                                 if d.prediction.source != engine.COMMON)
+    both = [(r, d, o) for r, _, d, o in decided if o is not None]
+    changed = [(r, d, o) for r, d, o in both if d.state != o.state]
+    gaps = [abs(d.prediction.p_cal - o.prediction.p_cal) * 100 for _, d, o in both
+            if d.prediction.source == engine.COMMON and d.prediction.p_cal is not None and o.prediction.p_cal is not None]
+    lost = sum(1 for _, d, o in both if d.prediction.source == engine.COMMON and d.prediction.p_cal is None and o.prediction.p_cal is not None)
+    examples = [{"decision_id": int(r["id"]), "known_at": r["known_at"].isoformat(), "fixture_id": int(r["fixture_id"]), "market_key": r["market_key"],
+                 "selection": r["selection"], "line": str(key_of(r)[3]), "own": o.state, "own_reason": o.reason, "common": d.state,
+                 "common_reason": d.reason, "stage": (stage := changed_at(o, d)), "why": d.verdict(stage).why,
+                 "p_own": o.prediction.p_cal, "p_common": d.prediction.p_cal, "seal": d.prediction.calibration}
+                for r, d, o in changed[:EXAMPLES]]
+    return {"source": engine.COMMON, "decisions": len(decided), "judged_with_common": len(judged),
+            "seal": dict(sorted(Counter(f"{d.prediction.calibration} ({d.prediction.basis})" for d in judged).items())),
+            "versions": dict(sorted(Counter(str(d.prediction.version) for d in judged).items())),
+            "kept_own": dict(sorted(kept.items())),
+            "against_own": {"rows": len(both), "same_state": len(both) - len(changed), "changed": len(changed),
+                            "transitions": dict(sorted(Counter(f"{o.state} -> {d.state}" for _, d, o in changed).items())),
+                            "by_stage": dict(sorted(Counter(changed_at(o, d) for _, d, o in changed).items(), key=lambda kv: engine.NUMBER.get(kv[0], 99))),
+                            "p_cal_gap_pp": _spread(gaps), "calibrated_lost": lost, "examples": examples}}
+
+
 # -- the replay -----------------------------------------------------------------------------------------------------------------------
 
 def _primary_p(world: decision.World, c: Candidate) -> float | None:
@@ -340,14 +387,18 @@ def _primary_p(world: decision.World, c: Candidate) -> float | None:
 
 
 def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[MarketFamily] = FAMILIES, council: str | None = None,
-               signals: bool = False, view: bool = False, price: str = engine.CONSENSUS, store: PayloadStore | None = None) -> dict[str, Any]:
+               signals: bool = False, view: bool = False, price: str = engine.CONSENSUS, store: PayloadStore | None = None,
+               probability: str = engine.OWN) -> dict[str, Any]:
     """decision-v2 over every row decision-v1 and decision-fam-v1 wrote during ``day``, compared. ``price``: the core candidates' price as
     decision-v1 read it (``consensus``, the default) or as the odds book held it at each moment (``book``, which reads the bodies from the
-    RAW ``store``). Read-only."""
+    RAW ``store``). ``probability``: the core candidates' probability as decision-v1 judges it (``own``, the default) or the common view's
+    (``common``). Read-only."""
     if council is not None and council not in ctx_adj.ENGINES:
         raise ValueError(f"council must be one of {ctx_adj.ENGINES}")
     if price not in engine.PRICE_SOURCES:
         raise ValueError(f"price must be one of {engine.PRICE_SOURCES}")
+    if probability not in engine.PROBABILITY_SOURCES:
+        raise ValueError(f"probability must be one of {engine.PROBABILITY_SOURCES}")
     if price == engine.BOOK and store is None:
         raise ValueError("the book's price is read from the RAW store: give the store")
     versions = sorted({f.params.decision_version for f in families})
@@ -364,6 +415,7 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
             continue
         groups[(r["known_at"], fam.params.decision_version)].append((r, fam))
     pairs: list[Pair] = []
+    against: list[Against] = []
     measured: list[tuple[Mapping[str, Any], engine.CommonView | None, float | None]] = []
     book: book_price.BookReader | None = None
     closes: dict[Key, engine.Close] = {}
@@ -388,12 +440,18 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
                 found = market_inputs.read(conn, c.key, at=at, p_model=_primary_p(world, c))
                 if found is not None:
                     markets[c.ident] = found
-        views = common_view.read(conn, fixtures, at=at, cal=world.cal) if view else {}
-        index = {d.ident: d for d in engine.decide_all(world, cands, adjustments=adjustments, markets=markets, views=views, closes=closes)}
+        common = probability == engine.COMMON
+        views = common_view.read(conn, fixtures, at=at, cal=world.cal) if view or common else {}
+        judged = common_view.judged(cands, views, family=CORE.name) if common else cands
+        index = {d.ident: d for d in engine.decide_all(world, judged, adjustments=adjustments, markets=markets, views=views if view else None,
+                                                       closes=closes)}
+        own = {d.ident: d for d in engine.decide_all(world, cands, adjustments=adjustments, markets=markets, closes=closes)} if common else {}
         for r, fam in items:
             k = key_of(r)
             d = index.get((fam.name, k, str(r.get("model_name")))) or index.get((fam.name, k, None))
             pairs.append((r, fam.name, d))
+            if common:
+                against.append((r, fam.name, d, own.get((fam.name, k, str(r.get("model_name")))) or own.get((fam.name, k, None))))
             # the view of the row's selection counts whether or not decision-v2 rebuilt its candidate: it is a measurement of the view
             measured.append((r, views.get(k), None if d is None else d.prediction.p_cal))
     out = compare(pairs, families=[f.name for f in families])
@@ -402,7 +460,8 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
         prices |= {"reader": {"version": book_price.VERSION, "matches": len(book.fixtures), "bodies_read": len(book.bodies),
                               "unreadable": sum(1 for v in book.bodies.values() if v is None), "problems": book.problems[:5]}}
     return {"version": engine.VERSION, "replay": VERSION, "day": day.isoformat(), "versions": versions,
-            "inputs": {"council": council, "signals": signals, "view": view, "price": price, "previous": "strictly before known_at",
-                       "ai_mode": "as the rows recorded it"},
+            "inputs": {"council": council, "signals": signals, "view": view, "price": price, "probability": probability,
+                       "previous": "strictly before known_at", "ai_mode": "as the rows recorded it"},
             "rows": len(rows), "moments": len(groups), "skipped": {"selection_copies": skipped_selection, "unclaimed": len(unclaimed)},
-            "unclaimed_rows": unclaimed} | out | ({"common_view": common_summary(measured)} if view else {}) | {"price": prices}
+            "unclaimed_rows": unclaimed} | out | ({"common_view": common_summary(measured)} if view else {}) | {"price": prices} | (
+                {"probability": probability_summary(against)} if probability == engine.COMMON else {})
