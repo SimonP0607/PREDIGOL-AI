@@ -63,11 +63,11 @@ describe("TeamName and CompetitionTag", () => {
 });
 
 describe("a team without a crest («Noche de partido», the system's sheet 4)", () => {
-  const fallback = (html: string) => /<span[^>]*data-logo-fallback[^>]*>([^<]*)</.exec(html);
+  const fallback = (html: string) => /<span[^>]*data-logo-fallback[^>]*>/.exec(html)?.[0] ?? "";
 
   test("is a shield with its initials - square shoulders, a round base - in the box a crest would take", () => {
     const html = renderToStaticMarkup(<TeamLogo src={null} name="Atlético Cordillera" size={28} />);
-    expect(fallback(html)?.[1]).toBe("AC");
+    expect(fallback(html)).toContain('data-initials="AC"');
     expect(html).toContain("width:28px;height:28px");
     expect(html).toContain("border-radius:8px 8px 14px 14px");
     expect(html).not.toContain("rounded-full");
@@ -81,6 +81,27 @@ describe("a team without a crest («Noche de partido», the system's sheet 4)", 
       )?.[1];
     expect(colour("Real Altiplano")).toBe(colour("Real Altiplano"));
     expect(colour("Real Altiplano")).not.toBe(colour("Deportivo Laguna"));
+  });
+
+  test("the initials are drawn, not written: they are no part of the words of the control around them (UX-114)", () => {
+    for (const html of [
+      renderToStaticMarkup(<TeamLogo src={null} name="Atlético Cordillera" />),
+      renderToStaticMarkup(<PlayerPhoto src={null} name="Juan Pérez" />),
+    ]) {
+      // the badge is an empty element: no text node inside it
+      expect(html.endsWith("></span>")).toBe(true);
+      expect(fallback(html)).toContain("before:content-[attr(data-initials)]");
+      expect(fallback(html)).toContain('aria-hidden="true"');
+    }
+    const row = renderToStaticMarkup(
+      <button type="button" aria-label="Quitar Liga Andina">
+        <TeamLogo src={null} name="Liga Andina" />
+        <span>Liga Andina</span>
+      </button>,
+    );
+    expect(row).toContain('data-initials="LA"');
+    expect(row).not.toContain(">LA<");
+    expect(row).toContain("></span><span>Liga Andina</span></button>");
   });
 
   test("a player without a photo stays a circle", () => {
