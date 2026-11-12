@@ -101,7 +101,7 @@ Precios en US$ por millón de tokens (tabla de `pricing.py`). Escribir en la cac
 
 La escritura de 5 minutos vale 1,25 veces la entrada y la de 1 hora, 2 veces; la lectura vale 0,1 veces la entrada en Haiku y 0,05 en Sonnet y Opus. El mínimo cacheable de la plataforma es de unos 512 tokens por bloque (verificado el 24 oct 2026): las sondas del LAB usan bloques de unos 1.600, para que si no hay caché eso sea un hallazgo.
 
-**El ahorro se mide, no se supone.** El panel de costes (`costs_v3.py`) valora cada grupo del libro (día de Bogotá, modelo, tiempo real o Batch) dos veces con la misma tabla verificada: como se facturó y como si toda la entrada hubiera sido fresca. La diferencia es el ahorro de la caché. **Puede salir negativa** mientras una escritura aún no se ha leído, y entonces lo dice.
+**El ahorro se mide, no se supone.** El panel de costes (`costs_v3.py`) valora **cada llamada** del libro, sola y con su fecha, dos veces con la misma tabla verificada: como se facturó y como si toda la entrada hubiera sido fresca. La diferencia es el ahorro de la caché. **Puede salir negativa** mientras una escritura aún no se ha leído, y entonces lo dice. Hasta el 11 nov 2026 valoraba la suma de un día y un modelo como si fuera una sola llamada, y con Haiku (precio largo por encima de 100.000 tokens por prompt) inventaba ahorro: lo corrigió IA-051 (`IA_051_AHORRO_CACHE_HAIKU.md`).
 
 ## 6. Batch: a mitad de precio lo que puede esperar
 

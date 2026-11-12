@@ -1,0 +1,43 @@
+# IA-051 · salida de comprobacion_produccion.py.txt en producción (solo lectura), 11-nov-2026 14:06 UTC.
+# W = 28-oct 00:00 a 11-nov 00:00 UTC; W0 = la ventana de la primera corrida de IA-034 (28-oct 05:07:39 a 11-nov 05:07:39 UTC);
+# month = noviembre de Bogotá hasta la corrida. OLD = fbi.ai.costs_v3 desplegado (sha ea132756539d0041); NEW = el de IA-051 (a6fc2fabb15a1aed).
+# La primera línea es el md5 del paquete subido a /tmp/lab_ia051 del servidor (borrado al terminar: «cleaned»).
+
+fb971d7a61da6d89dd79510c1d6a3fde  /tmp/lab_ia051/v.b64
+new_sha a6fc2fabb15a1aed old_sha ea132756539d0041
+guards on 95s ('on', datetime.datetime(2026, 11, 11, 14, 6, 20, 516779, tzinfo=datetime.timezone.utc))
+W rows 7654 groups 64 fetched in 0.36s
+W claude-haiku-5-5 batch=False | OLD cache 59.7240 batch 0.0000 | NEW cache 1.7709 batch 0.0000 | calls 5025
+W claude-haiku-5-5 batch=True | OLD cache 4.5642 batch 5.4686 | NEW cache 0.1893 batch 1.0937 | calls 1141
+W claude-opus-5-5 batch=False | OLD cache 0.7378 batch 0.0000 | NEW cache 0.7378 batch 0.0000 | calls 197
+W claude-opus-5-5 batch=True | OLD cache 0.2461 batch 0.7000 | NEW cache 0.2461 batch 0.7000 | calls 36
+W claude-sonnet-5-5 batch=False | OLD cache 1.2103 batch 0.0000 | NEW cache 1.2103 batch 0.0000 | calls 446
+W claude-sonnet-5-5 batch=True | OLD cache 1.7006 batch 12.2986 | NEW cache 1.7006 batch 12.2986 | calls 809
+W model claude-haiku-5-5 | OLD cache 64.2882 batch 5.4686 total 69.7568 | NEW cache 1.9602 batch 1.0937 total 3.0539
+W model claude-opus-5-5 | OLD cache 0.9838 batch 0.7000 total 1.6838 | NEW cache 0.9838 batch 0.7000 total 1.6838
+W model claude-sonnet-5-5 | OLD cache 2.9109 batch 12.2986 total 15.2095 | NEW cache 2.9109 batch 12.2986 total 15.2095
+W OLD: cache 68.1830 batch 18.4672 total 86.6502 calls 7654 batch_calls 1986
+W NEW: cache 5.8550 batch 14.0923 total 19.9473 calls 7654 batch_calls 1986
+W json NEW {'cache_usd': '5.8550', 'batch_usd': '14.0923', 'total_usd': '19.9473', 'calls': 7654, 'batch_calls': 1986, 'batch_share': 0.2595, 'input_tokens': 114606897, 'cached_tokens': 28559932, 'write_tokens': 1760697, 'read_share': 0.2492}
+W json OLD {'cache_usd': '68.1830', 'batch_usd': '18.4672', 'total_usd': '86.6502', 'calls': 7654, 'batch_calls': 1986, 'batch_share': 0.2595, 'input_tokens': 114606897, 'cached_tokens': 28559932, 'write_tokens': 1760697, 'read_share': 0.2492}
+drift claude-haiku-5-5: calls 6166 cost_usd!=table 0 abs_diff 0.000000
+drift claude-opus-5-5: calls 233 cost_usd!=table 0 abs_diff 0.000000
+drift claude-sonnet-5-5: calls 1255 cost_usd!=table 0 abs_diff 0.000000
+oracle claude-haiku-5-5 batch=False calls 5025 unpriced 0 cache(fresh-billed) 1.770890 cache(formula) 1.770763 batch 0.000000
+oracle claude-haiku-5-5 batch=True calls 1141 unpriced 0 cache(fresh-billed) 0.189301 cache(formula) 0.189317 batch 1.093728
+oracle claude-opus-5-5 batch=False calls 197 unpriced 0 cache(fresh-billed) 0.737757 cache(formula) 0.737786 batch 0.000000
+oracle claude-opus-5-5 batch=True calls 36 unpriced 0 cache(fresh-billed) 0.246078 cache(formula) 0.246078 batch 0.700030
+oracle claude-sonnet-5-5 batch=False calls 446 unpriced 0 cache(fresh-billed) 1.210338 cache(formula) 1.210205 batch 0.000000
+oracle claude-sonnet-5-5 batch=True calls 809 unpriced 0 cache(fresh-billed) 1.700599 cache(formula) 1.700717 batch 12.298563
+oracle total cache(fresh-billed) 5.854962 cache(formula) 5.854865 batch 14.092321
+NEW cache unrounded 5.854976 vs oracle 5.854962: diff 0.000014
+brief W: calls 3686 cost 11.318290 input 75046891 max_input 32166 groups 14 min_group_input 953918 | OLD cache 53.2091 | NEW cache 1.5872 | 4C+5S 53.2092
+brief W0: calls 3580 cost 11.006670 input 72995695 max_input 32166 groups 14 min_group_input 953918 | OLD cache 51.7303 | NEW cache 1.5407 | 4C+5S 51.7302
+month to 2026-11-11T14:06:20.516779+00:00: rows 6093 groups 53 | new read+priced in 0.18s
+month OLD: cache 50.7164 batch 15.2925 total 66.0089 calls 6093 batch_calls 1826
+month NEW: cache 4.7425 batch 10.8584 total 15.6009 calls 6093 batch_calls 1826
+month model claude-haiku-5-5 | OLD cache 47.4150 batch 5.5426 | NEW cache 1.4411 batch 1.1085
+month model claude-opus-5-5 | OLD cache 0.7951 batch 0.7000 | NEW cache 0.7951 batch 0.7000
+month model claude-sonnet-5-5 | OLD cache 2.5063 batch 9.0499 | NEW cache 2.5063 batch 9.0499
+done, read only
+cleaned
