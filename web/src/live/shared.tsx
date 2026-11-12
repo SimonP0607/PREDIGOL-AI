@@ -124,7 +124,7 @@ export function FixtureLink({
       )}
     >
       <span className="truncate">{match.home.name}</span>
-      <span className="shrink-0 text-subtle-foreground">{t("common.vs")}</span>
+      <span className="shrink-0 text-muted-foreground">{t("common.vs")}</span>
       <span className="truncate">{match.away.name}</span>
     </Link>
   );

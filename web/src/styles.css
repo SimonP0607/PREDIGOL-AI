@@ -409,10 +409,17 @@
   letter-spacing: -0.02em;
 }
 
+/* The console's panel is the system's card («Noche de partido», plan maestro UX/UI 2026, PR-40): the same hairline of
+   light, the same faint sheen at its top and the card's radius, so the 20 pages without a sheet of their own inherit it. */
 @utility surface-panel {
   background-color: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--color-foreground) 2.4%, transparent),
+    transparent 44%
+  );
+  border: 1px solid color-mix(in oklch, var(--color-foreground) 5.5%, transparent);
+  border-radius: var(--radius-card);
 }
 
 @utility grid-hairline {
