@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { LiveApiError, v1 } from "@/lib/api/v1/client";
 import { t, translateOr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
 import { AnnouncementBanner } from "@/product/announcements/AnnouncementBanner";
 import { LoginContact } from "@/product/support/LoginContact";
 import { tooManyAttempts } from "./wait";
@@ -95,21 +96,19 @@ export function LoginPage({ expired }: { expired: boolean }) {
         <div className="w-full max-w-sm">
           <div className="flex flex-col items-center text-center">
             <BrandCrest size={152} />
-            <h1 className="mt-4 font-display text-2xl font-bold tracking-tight">
-              {t("auth.title")}
-            </h1>
+            <h1 className="mt-4 text-display text-balance">{t("auth.title")}</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">{t("auth.subtitle")}</p>
           </div>
 
           <form
             onSubmit={(e) => void submit(e)}
-            className="mt-6 space-y-4 rounded-xl border border-border bg-card/90 p-5 shadow-xl backdrop-blur"
+            className="card-surface mt-6 space-y-4 rounded-feature p-5 shadow-xl"
             noValidate
           >
             {expired && !error ? (
               <p
                 role="status"
-                className="rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-xs text-warning"
+                className="rounded-control border border-warning/40 bg-warning-soft px-3.5 py-2.5 text-[0.8125rem] leading-snug text-warning"
               >
                 {t("auth.sessionExpired")}
               </p>
@@ -118,7 +117,7 @@ export function LoginPage({ expired }: { expired: boolean }) {
               <p
                 role="alert"
                 data-testid="login-error"
-                className="rounded-md border border-negative/40 bg-negative-soft px-3 py-2 text-xs text-negative"
+                className="rounded-control border border-negative/40 bg-negative-soft px-3.5 py-2.5 text-[0.8125rem] leading-snug text-negative"
               >
                 {error}
               </p>
@@ -128,7 +127,7 @@ export function LoginPage({ expired }: { expired: boolean }) {
                 <p
                   role="status"
                   data-testid="confirmation-sent"
-                  className="rounded-md border border-positive/40 bg-positive-soft px-3 py-2 text-xs"
+                  className="rounded-control border border-positive/40 bg-positive-soft px-3.5 py-2.5 text-[0.8125rem] leading-snug"
                 >
                   {t("auth.resendConfirmationSent")}
                 </p>
@@ -159,7 +158,7 @@ export function LoginPage({ expired }: { expired: boolean }) {
                 <p
                   role="status"
                   data-testid="unlock-sent"
-                  className="rounded-md border border-positive/40 bg-positive-soft px-3 py-2 text-xs"
+                  className="rounded-control border border-positive/40 bg-positive-soft px-3.5 py-2.5 text-[0.8125rem] leading-snug"
                 >
                   {t("auth.account.unlockSent")}
                 </p>
@@ -236,7 +235,7 @@ export function LoginPage({ expired }: { expired: boolean }) {
               disabled={busy || !email || !password}
               data-testid="login-submit"
               className={cn(
-                "flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 pointer-coarse:h-11",
+                buttonVariants({ variant: "primary", size: "lg", block: true }),
                 (busy || !email || !password) && "cursor-not-allowed opacity-60",
               )}
             >

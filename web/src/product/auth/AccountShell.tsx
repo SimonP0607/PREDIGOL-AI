@@ -57,10 +57,10 @@ export function AccountShell({
         <div className="w-full max-w-sm">
           <div className="flex flex-col items-center text-center">
             <BrandCrest size={96} />
-            <h1 className="mt-4 font-display text-2xl font-bold tracking-tight">{title}</h1>
+            <h1 className="mt-4 text-display text-balance">{title}</h1>
             {subtitle ? <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p> : null}
           </div>
-          <div className="mt-6 space-y-4 rounded-xl border border-border bg-card/90 p-5 shadow-xl backdrop-blur">
+          <div className="card-surface mt-6 space-y-4 rounded-feature p-5 shadow-xl">
             {children}
           </div>
           <Disclaimer className="mt-6 text-center text-caption text-subtle-foreground" />
@@ -89,7 +89,8 @@ export function Notice({
     <p
       role={tone === "error" ? "alert" : "status"}
       data-testid={testId}
-      className={cn("rounded-md border px-3 py-2 text-sm leading-relaxed", style)}
+      // the system's banner (sheet 5): 14 px radius, a soft surface of its tone
+      className={cn("rounded-control border px-3.5 py-3 text-sm leading-snug", style)}
     >
       {children}
     </p>
