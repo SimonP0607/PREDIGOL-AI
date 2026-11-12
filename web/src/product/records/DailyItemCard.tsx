@@ -80,9 +80,11 @@ export function DailyItemCard({
       data-testid="daily-item"
       data-status={item.status}
       className={cn(
-        "flex h-full flex-col rounded-xl border bg-card transition-colors",
-        settled ? "border-border/70" : "border-border hover:border-border-strong",
-        item.rank === 1 && !settled && "gold-ring",
+        // «Noche de partido» (plan maestro UX/UI 2026, PR-13): the day's first pick, while it is open, on the gold card
+        "flex h-full flex-col rounded-feature transition-colors",
+        item.rank === 1 && !settled
+          ? "surface-gold hairline-gold"
+          : cn("card-surface rounded-feature", !settled && "hover:border-border-strong"),
         className,
       )}
     >
@@ -91,7 +93,7 @@ export function DailyItemCard({
         params={{ fixtureId: String(m.fixture_id) }}
         search={search}
         onClick={open}
-        className="block flex-1 rounded-t-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="block flex-1 rounded-t-feature focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pt-3.5">
           <CompetitionTag
@@ -134,13 +136,10 @@ export function DailyItemCard({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <OriginLabel origin="predigol" />
-              <div className="mt-1 text-caption uppercase tracking-wider text-subtle-foreground">
+              <div className="mt-1.5 text-overline text-muted-foreground">
                 {marketName(item.market_key)}
               </div>
-              <div
-                className="mt-0.5 break-words font-display text-[0.95rem] font-semibold leading-snug"
-                data-testid="pick-selection"
-              >
+              <div className="mt-1 break-words text-subheading" data-testid="pick-selection">
                 {label}
               </div>
               {/* Plan UX, B3: its state when it entered the set, in words (the one table). */}

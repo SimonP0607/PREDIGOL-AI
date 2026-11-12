@@ -19,7 +19,7 @@ import type { ResultStatus } from "@/lib/api/v1/types_records";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { MatchStateBadge, ResultBadge, Units } from "@/product/records/Badges";
 import { isLivePhase, matchPhaseOf } from "@/product/matches/status";
-import { EvBadge, Kickoff, OddsPill, ProbCompare, ShadowBadge } from "./Bits";
+import { ASK_BUTTON, EvBadge, Kickoff, OddsPill, ProbCompare, ShadowBadge, TAG } from "./Bits";
 import { WhyPickButton } from "@/product/picks/WhyPick";
 import { startedScore } from "@/product/picks/started";
 import { marketName, selectionLabel } from "./markets";
@@ -76,12 +76,12 @@ export function StartedPickCard({
       data-testid="started-pick"
       data-phase={pick.phase}
       data-result={pick.result_status ?? "open"}
-      className={cn("flex flex-col rounded-xl border border-border/80 bg-card", className)}
+      className={cn("card-surface flex flex-col rounded-feature", className)}
     >
       <Link
         to="/matches/$fixtureId"
         params={{ fixtureId: String(pick.fixture_id) }}
-        className="block flex-1 rounded-t-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="block flex-1 rounded-t-feature focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         {hideMatch ? null : (
           <>
@@ -122,13 +122,10 @@ export function StartedPickCard({
           </div>
           <div className="mt-1.5 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-caption uppercase tracking-wider text-subtle-foreground">
+              <div className="text-overline text-muted-foreground">
                 {marketName(pick.market_key)}
               </div>
-              <div
-                className="mt-0.5 break-words font-display text-[0.95rem] font-semibold leading-snug"
-                data-testid="pick-selection"
-              >
+              <div className="mt-1 break-words text-subheading" data-testid="pick-selection">
                 {label}
               </div>
             </div>
@@ -142,13 +139,13 @@ export function StartedPickCard({
       </Link>
       {/* The figures with their help, beside the link (plan UX, A1, defect F16). */}
       <div
-        className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pb-3"
+        className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-4 pb-3"
         data-testid="started-pick-figures"
       >
         <GlossaryTerm term="expectedValue" className="no-underline">
           <EvBadge ev={pick.ev} hint={false} />
         </GlossaryTerm>
-        <GlossaryTerm term="edge" className="numeric text-caption text-muted-foreground">
+        <GlossaryTerm term="edge" className={cn(TAG, "no-underline")}>
           {t("common.edge")} {fmtSignedPp(pick.edge)}
         </GlossaryTerm>
         {pick.evaluations > 1 ? (
@@ -159,7 +156,11 @@ export function StartedPickCard({
       </div>
 
       <div className="flex flex-wrap gap-2 px-4 pb-3">
-        <WhyPickButton pickId={pick.pick_id} autoOpen={autoOpenWhy} />
+        <WhyPickButton
+          pickId={pick.pick_id}
+          autoOpen={autoOpenWhy}
+          className={cn(ASK_BUTTON, "flex-none")}
+        />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 px-4 py-2.5">

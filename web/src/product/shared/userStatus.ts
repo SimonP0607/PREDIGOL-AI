@@ -30,3 +30,11 @@ export function statusText(status: UserStatus): string {
 export function reasonText(reason: StatusReason): string {
   return t(`picks.status.reason.${reason}`);
 }
+
+/**
+ * The gold card of «Noche de partido» (plan maestro UX/UI 2026, PR-13) is for what PrediGol recommends and still has
+ * value at the price of now. It follows the state the pick already brings: the card adds no rule of its own.
+ */
+export function onGoldCard(pick: { user_status: UserStatus; value_now: boolean }): boolean {
+  return pick.user_status === "RECOMMENDED" && pick.value_now;
+}
