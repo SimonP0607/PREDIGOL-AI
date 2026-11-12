@@ -2,7 +2,7 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { setLocale } from "@/lib/i18n";
-import { formatTime } from "@/lib/time";
+import { formatDateTime, formatTime } from "@/lib/time";
 import { Freshness, OddsPill, ProbCompare } from "./Bits";
 import { priceVariants } from "./price";
 
@@ -83,9 +83,17 @@ describe("how old a price is", () => {
     expect(html).toContain('data-freshness="stale"');
     expect(html).toContain("lucide-clock");
     expect(html).toContain("text-warning");
-    expect(words(<Freshness at={old} level="stale" hint={false} />)).toContain(
-      `· ${formatTime(old)}`,
-    );
+    // the hour is there whatever the day: five minutes ago is yesterday for the first minutes after midnight, and then
+    // the date goes before the hour (this test failed in CI at 00:01 in Bogotá while it asked for «· 23:56» alone)
+    const text = words(<Freshness at={old} level="stale" hint={false} />);
+    expect(text).toContain("· ");
+    expect(text.endsWith(formatTime(old))).toBe(true);
+  });
+
+  test("an old price of another day says its date with its hour", () => {
+    const days = new Date(Date.now() - 3 * 24 * 3_600_000).toISOString();
+    const text = words(<Freshness at={days} level="stale" hint={false} />);
+    expect(text).toContain(`· ${formatDateTime(days)}`);
   });
 
   test("no capture: it says so, with no clock and no hour", () => {
