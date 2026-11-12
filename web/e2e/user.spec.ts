@@ -552,6 +552,10 @@ test("Matches: today in the reader's zone, and a match opens its centre", async 
     await expect(page.getByRole("tab", { name: t.match.tabs[key] })).toBeVisible();
   }
   await expect(page.getByRole("tab", { name: t.match.tabs.advanced })).toHaveCount(0);
+  await expect(page.getByTestId("match-advanced"), "the research view is the owner's").toHaveCount(
+    0,
+  );
+  await expect(page.getByRole("tab")).toHaveCount(6);
   for (const key of ["stats", "markets", "lineups", "news"] as const) {
     await page.getByRole("tab", { name: t.match.tabs[key] }).click();
     await settle(page);
@@ -949,7 +953,7 @@ test("A finished match opens on its Postpartido: the result and what the forecas
     return;
   }
   await open(page, w, `/matches/${id}`);
-  await expect(page.getByRole("tab", { name: t.match.tabs.postmatch })).toHaveAttribute(
+  await expect(page.getByRole("tab", { name: t.match.tabs.summary })).toHaveAttribute(
     "aria-selected",
     "true",
   );
