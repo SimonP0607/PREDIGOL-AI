@@ -160,8 +160,10 @@ function FixtureRow({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-5">
         <div className="min-w-0 lg:flex-1">
           {/* text-caption here too: the shared tags inherit it whatever their own classes keep. */}
-          <div className="flex items-center justify-between gap-2 text-caption">
-            <div className="flex min-w-0 items-center gap-2">
+          {/* An old price carries its hour (plan maestro UX/UI 2026, PR-12): on a narrow phone it drops under the
+              league instead of squeezing its name. */}
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-caption">
+            <div className="flex min-w-[9rem] flex-1 items-center gap-2">
               <span className="numeric shrink-0 text-sm font-semibold">
                 {withDay ? formatKickoff(fixture.kickoff_at) : formatTime(fixture.kickoff_at)}
               </span>
@@ -173,7 +175,7 @@ function FixtureRow({
                 className="min-w-0"
               />
             </div>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="ml-auto flex shrink-0 items-center gap-2">
               {lookupOnly(priced) ? (
                 <span
                   data-testid="odds-lookup-only"
@@ -370,6 +372,7 @@ function PriceCell({
         odds={p.best_odds}
         best={slot.best}
         dim={!!p.outlier}
+        size="sm"
         state={parlay}
         className="w-full"
       />

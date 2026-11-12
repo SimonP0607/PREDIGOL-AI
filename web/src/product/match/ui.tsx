@@ -180,10 +180,11 @@ export function MoreButton({
   );
 }
 
+// «Noche de partido» (the system's sheet 4): the form squares - won in the action's green, drawn in neutral, lost in red.
 const RESULT_TONE: Record<ResultLetter, string> = {
-  W: "bg-positive-soft text-positive",
-  D: "bg-muted text-muted-foreground",
-  L: "bg-negative-soft text-negative",
+  W: "bg-primary/20 text-primary",
+  D: "bg-foreground/8 text-foreground-soft",
+  L: "bg-negative/18 text-negative",
 };
 
 function chipTitle(c: FormChip): string {
@@ -213,13 +214,13 @@ export function FormChips({
     results: chips.map((c) => t(`match.form.long.${c.result}`)).join(", "),
   });
   return (
-    <ol className={cn("flex items-center gap-1", className)} aria-label={label}>
+    <ol className={cn("flex items-center gap-[3px]", className)} aria-label={label}>
       {chips.map((c, i) => (
         <li key={`${c.fixtureId ?? "f"}-${i}`} title={chipTitle(c)}>
           <span
             aria-hidden
             className={cn(
-              "numeric flex h-6 w-6 items-center justify-center rounded-md text-micro font-bold",
+              "numeric flex h-5 w-5 items-center justify-center rounded-[0.3125rem] text-[0.65625rem] font-extrabold leading-none",
               RESULT_TONE[c.result],
               i === chips.length - 1 && "ring-1 ring-inset ring-foreground/35",
             )}
@@ -274,7 +275,7 @@ export function StatBars({
   className?: string | undefined;
 }) {
   return (
-    <ul className={cn("space-y-3.5", className)}>
+    <ul className={cn("space-y-4", className)}>
       {rows.map((r) => {
         // A side without the figure is "—" with a dashed track: never a zero bar, never a "win" for the other.
         const missing = r.home === null || r.away === null;
@@ -290,19 +291,23 @@ export function StatBars({
             <div className="flex items-baseline justify-between gap-2">
               <span
                 className={cn(
-                  "numeric w-14 shrink-0 text-sm",
-                  lead === "home" ? "font-semibold text-foreground" : "text-muted-foreground",
+                  "numeric w-14 shrink-0 text-[0.8125rem] leading-tight",
+                  lead === "home"
+                    ? "font-bold text-foreground"
+                    : "font-medium text-muted-foreground",
                 )}
               >
                 {fmtStat(r.home, r.format)}
               </span>
-              <span className="min-w-0 text-center text-xs leading-tight text-muted-foreground">
+              <span className="min-w-0 text-center text-[0.8125rem] leading-tight text-muted-foreground">
                 {label}
               </span>
               <span
                 className={cn(
-                  "numeric w-14 shrink-0 text-right text-sm",
-                  lead === "away" ? "font-semibold text-foreground" : "text-muted-foreground",
+                  "numeric w-14 shrink-0 text-right text-[0.8125rem] leading-tight",
+                  lead === "away"
+                    ? "font-bold text-foreground"
+                    : "font-medium text-muted-foreground",
                 )}
               >
                 {fmtStat(r.away, r.format)}
@@ -311,14 +316,14 @@ export function StatBars({
             <div aria-hidden className="mt-1.5 flex gap-1">
               <div
                 className={cn(
-                  "flex h-1.5 flex-1 justify-end overflow-hidden rounded-full",
-                  r.home === null ? "border border-dashed border-border-strong" : "bg-muted",
+                  "flex h-2 flex-1 justify-end overflow-hidden rounded-l-full",
+                  r.home === null ? "border border-dashed border-border-strong" : "bg-elevated",
                 )}
               >
                 {r.home === null ? null : (
                   <div
                     className={cn(
-                      "h-full rounded-full",
+                      "h-full rounded-l-full",
                       lead === "away" ? "bg-primary/45" : "bg-primary",
                     )}
                     style={{ width: `${hPct}%` }}
@@ -327,14 +332,14 @@ export function StatBars({
               </div>
               <div
                 className={cn(
-                  "flex h-1.5 flex-1 overflow-hidden rounded-full",
-                  r.away === null ? "border border-dashed border-border-strong" : "bg-muted",
+                  "flex h-2 flex-1 overflow-hidden rounded-r-full",
+                  r.away === null ? "border border-dashed border-border-strong" : "bg-elevated",
                 )}
               >
                 {r.away === null ? null : (
                   <div
                     className={cn(
-                      "h-full rounded-full",
+                      "h-full rounded-r-full",
                       lead === "home" ? "bg-info/45" : "bg-info",
                     )}
                     style={{ width: `${aPct}%` }}

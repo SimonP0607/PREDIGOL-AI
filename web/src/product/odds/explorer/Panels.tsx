@@ -108,7 +108,7 @@ function CompareTable({
                   key={i}
                   className={cn(
                     "numeric px-2.5 py-2 text-right tabular-nums",
-                    c.best ? "font-semibold text-foreground" : "text-muted-foreground",
+                    c.best ? "font-bold text-primary" : "text-foreground-soft",
                   )}
                 >
                   {c.odds === null ? (
@@ -117,7 +117,7 @@ function CompareTable({
                       <span className="sr-only">{t("explorer.compare.noPrice")}</span>
                     </>
                   ) : (
-                    <span className={cn(c.best && "rounded px-1 py-0.5 ring-1 ring-border-strong")}>
+                    <span className={cn(c.best && "rounded px-1 py-0.5 ring-1 ring-primary/45")}>
                       {formatOdds(c.odds)}
                       {c.best ? (
                         <span className="sr-only"> {t("explorer.compare.best")}</span>

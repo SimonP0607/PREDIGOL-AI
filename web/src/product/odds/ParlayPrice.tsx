@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { Check, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatOdds } from "@/lib/i18n/format";
+import { priceVariants, type PriceSize } from "@/product/shared/price";
 import { isToggleable, parlayActionText, type ParlayLegState } from "./useParlayLeg";
 
 /** The board's price pill, with the parlay's "+" / "✓" when a tap toggles it. */
@@ -13,6 +14,7 @@ export function PricePill({
   odds,
   best = false,
   dim = false,
+  size = "md",
   state,
   className,
 }: {
@@ -21,6 +23,7 @@ export function PricePill({
   best?: boolean;
   /** An outlier price: shown, never trusted. */
   dim?: boolean;
+  size?: PriceSize;
   state: ParlayLegState | null;
   className?: string | undefined;
 }) {
@@ -29,12 +32,7 @@ export function PricePill({
   return (
     <span
       className={cn(
-        "numeric inline-flex min-w-[3.5rem] items-center justify-center gap-1 rounded-md border px-2 py-1 text-sm font-semibold tabular-nums transition-colors",
-        inSlip
-          ? "border-gold bg-gold text-gold-foreground"
-          : best
-            ? "border-gold/50 bg-gold-soft text-gold-strong"
-            : "border-border-strong bg-elevated text-foreground",
+        priceVariants({ size, tone: inSlip ? "chosen" : best ? "gold" : "plain" }),
         dim && !inSlip && "opacity-60",
         className,
       )}
@@ -76,7 +74,7 @@ export function ParlayToggle({
       title={action}
       onClick={state.toggle}
       className={cn(
-        // tap: a price pill is 30 px tall; on a touch screen it answers 44 px around it.
+        // tap: a price chip is 32 or 40 px tall; on a touch screen it answers 44 px around it.
         "tap relative cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}

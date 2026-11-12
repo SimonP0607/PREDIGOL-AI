@@ -17,8 +17,6 @@ import { pickableLeg } from "./parlay";
 import { ParlayToggle, PricePill } from "./ParlayPrice";
 import { blockedText, isToggleable, useParlayLeg } from "./useParlayLeg";
 
-const SMALL = "min-w-[3rem] px-1.5 py-0.5 text-xs";
-
 export function SelectablePrice({
   sel,
   best = false,
@@ -51,8 +49,9 @@ export function SelectablePrice({
     <PricePill
       odds={sel.odds}
       best={best}
+      size={size}
       state={parlay}
-      className={cn(size === "sm" && SMALL, parlay?.inSlip && "animate-in zoom-in-90 duration-200")}
+      className={cn(parlay?.inSlip && "animate-in zoom-in-90 duration-200")}
     />
   );
   return (
@@ -65,7 +64,7 @@ export function SelectablePrice({
         <ParlayToggle
           state={parlay}
           srLabel={description}
-          className="rounded-md transition-transform active:scale-95"
+          className="rounded-[0.625rem] transition-transform active:scale-95"
         >
           {pill}
         </ParlayToggle>
