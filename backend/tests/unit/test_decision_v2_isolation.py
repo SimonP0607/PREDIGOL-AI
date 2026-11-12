@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src" / "fbi"
 PACKAGE = "fbi.decision"
 ALLOWED = {"scripts/ia_decision_v2.py": "the command that prints the replay (read-only)",
+           "scripts/ia_price_rule.py": "the command that prints the price rule's report, a yardstick never a pick (read-only, INT-A10)",
            "plugins/family.py": "the plug-in families (IA-018, shadow) compose the MarketFamily protocol",
            "plugins/registry.py": "the registry of plug-in families hands decision-v2 its families (shadow)",
            "plugins/_template/family.py": "the example plug-in's decision-v2 adapter (shadow, never active, not installed)"}
@@ -82,9 +83,10 @@ def test_the_package_reaches_the_odds_book_through_one_module_and_never_its_writ
     own = {rel(p): imported(p) for p in files(SRC / "decision")}
     roots = ("fbi.odds", "fbi.storage", "fbi.providers")
     reaching = {f for f, names in own.items() if any(n == r or n.startswith(r + ".") for n in names for r in roots)}
-    assert reaching == {"decision/book_price.py", "decision/replay.py"}, reaching
-    assert {n for n in own["decision/replay.py"] if n.startswith(roots)} == {"fbi.storage.payload_store", "fbi.storage.payload_store.PayloadStore"}, \
-        "the replay only names the RAW store it hands the book's reader"
+    assert reaching == {"decision/book_price.py", "decision/replay.py", "decision/price_rule.py"}, reaching
+    for f in ("decision/replay.py", "decision/price_rule.py"):
+        assert {n for n in own[f] if n.startswith(roots)} == {"fbi.storage.payload_store", "fbi.storage.payload_store.PayloadStore"}, \
+            f"{f} only names the RAW store it hands the book's reader"
     reached = {n for n in own["decision/book_price.py"] if n.startswith(roots)}
     allowed = {"fbi.odds.quote_current", "fbi.odds.quote_extract", "fbi.odds.quote_extract.load_body", "fbi.storage.payload_store",
                "fbi.storage.payload_store.PayloadStore", "fbi.providers.api_football.normalize", "fbi.providers.api_football.normalize.iter_odds"}
