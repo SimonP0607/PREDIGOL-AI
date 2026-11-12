@@ -17,7 +17,6 @@ import { Route as HomeRouteImport } from './routes/home'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyPicksRouteImport } from './routes/my-picks'
-import { Route as OddsRouteImport } from './routes/odds'
 import { Route as ParlaysRouteImport } from './routes/parlays'
 import { Route as PicksRouteImport } from './routes/picks'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -66,6 +65,8 @@ import { Route as HelpHowItWorksRouteImport } from './routes/help.how-it-works'
 import { Route as LegalDocRouteImport } from './routes/legal.$doc'
 import { Route as MatchesIndexRouteImport } from './routes/matches.index'
 import { Route as MatchesFixtureIdRouteImport } from './routes/matches.$fixtureId'
+import { Route as OddsIndexRouteImport } from './routes/odds.index'
+import { Route as OddsStatusRouteImport } from './routes/odds.status'
 import { Route as AdminCustomersIndexRouteImport } from './routes/admin.customers.index'
 import { Route as AdminCustomersUserIdRouteImport } from './routes/admin.customers.$userId'
 import { Route as AdminPlayersIndexRouteImport } from './routes/admin.players.index'
@@ -112,11 +113,6 @@ const LoginRoute = LoginRouteImport.update({
 const MyPicksRoute = MyPicksRouteImport.update({
   id: '/my-picks',
   path: '/my-picks',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OddsRoute = OddsRouteImport.update({
-  id: '/odds',
-  path: '/odds',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ParlaysRoute = ParlaysRouteImport.update({
@@ -359,6 +355,16 @@ const MatchesFixtureIdRoute = MatchesFixtureIdRouteImport.update({
   path: '/matches/$fixtureId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OddsIndexRoute = OddsIndexRouteImport.update({
+  id: '/odds/',
+  path: '/odds/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OddsStatusRoute = OddsStatusRouteImport.update({
+  id: '/odds/status',
+  path: '/odds/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCustomersIndexRoute = AdminCustomersIndexRouteImport.update({
   id: '/customers/',
   path: '/customers/',
@@ -404,7 +410,6 @@ export interface FileRoutesByFullPath {
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
   '/my-picks': typeof MyPicksRoute
-  '/odds': typeof OddsRoute
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
@@ -450,9 +455,11 @@ export interface FileRoutesByFullPath {
   '/help/how-it-works': typeof HelpHowItWorksRoute
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
+  '/odds/status': typeof OddsStatusRoute
   '/admin/': typeof AdminIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
+  '/odds/': typeof OddsIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
@@ -469,7 +476,6 @@ export interface FileRoutesByTo {
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
   '/my-picks': typeof MyPicksRoute
-  '/odds': typeof OddsRoute
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
@@ -515,9 +521,11 @@ export interface FileRoutesByTo {
   '/help/how-it-works': typeof HelpHowItWorksRoute
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
+  '/odds/status': typeof OddsStatusRoute
   '/admin': typeof AdminIndexRoute
   '/help': typeof HelpIndexRoute
   '/matches': typeof MatchesIndexRoute
+  '/odds': typeof OddsIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
@@ -536,7 +544,6 @@ export interface FileRoutesById {
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
   '/my-picks': typeof MyPicksRoute
-  '/odds': typeof OddsRoute
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
@@ -582,9 +589,11 @@ export interface FileRoutesById {
   '/help/how-it-works': typeof HelpHowItWorksRoute
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
+  '/odds/status': typeof OddsStatusRoute
   '/admin/': typeof AdminIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
+  '/odds/': typeof OddsIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
@@ -604,7 +613,6 @@ export interface FileRouteTypes {
     | '/live'
     | '/login'
     | '/my-picks'
-    | '/odds'
     | '/parlays'
     | '/picks'
     | '/profile'
@@ -650,9 +658,11 @@ export interface FileRouteTypes {
     | '/help/how-it-works'
     | '/legal/$doc'
     | '/matches/$fixtureId'
+    | '/odds/status'
     | '/admin/'
     | '/help/'
     | '/matches/'
+    | '/odds/'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
@@ -669,7 +679,6 @@ export interface FileRouteTypes {
     | '/live'
     | '/login'
     | '/my-picks'
-    | '/odds'
     | '/parlays'
     | '/picks'
     | '/profile'
@@ -715,9 +724,11 @@ export interface FileRouteTypes {
     | '/help/how-it-works'
     | '/legal/$doc'
     | '/matches/$fixtureId'
+    | '/odds/status'
     | '/admin'
     | '/help'
     | '/matches'
+    | '/odds'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
@@ -735,7 +746,6 @@ export interface FileRouteTypes {
     | '/live'
     | '/login'
     | '/my-picks'
-    | '/odds'
     | '/parlays'
     | '/picks'
     | '/profile'
@@ -781,9 +791,11 @@ export interface FileRouteTypes {
     | '/help/how-it-works'
     | '/legal/$doc'
     | '/matches/$fixtureId'
+    | '/odds/status'
     | '/admin/'
     | '/help/'
     | '/matches/'
+    | '/odds/'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
@@ -802,7 +814,6 @@ export interface RootRouteChildren {
   LiveRoute: typeof LiveRoute
   LoginRoute: typeof LoginRoute
   MyPicksRoute: typeof MyPicksRoute
-  OddsRoute: typeof OddsRoute
   ParlaysRoute: typeof ParlaysRoute
   PicksRoute: typeof PicksRoute
   ProfileRoute: typeof ProfileRoute
@@ -818,8 +829,10 @@ export interface RootRouteChildren {
   HelpHowItWorksRoute: typeof HelpHowItWorksRoute
   LegalDocRoute: typeof LegalDocRoute
   MatchesFixtureIdRoute: typeof MatchesFixtureIdRoute
+  OddsStatusRoute: typeof OddsStatusRoute
   HelpIndexRoute: typeof HelpIndexRoute
   MatchesIndexRoute: typeof MatchesIndexRoute
+  OddsIndexRoute: typeof OddsIndexRoute
   HelpMessagesTicketIdRoute: typeof HelpMessagesTicketIdRoute
 }
 
@@ -879,13 +892,6 @@ declare module '@tanstack/react-router' {
       path: '/my-picks'
       fullPath: '/my-picks'
       preLoaderRoute: typeof MyPicksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/odds': {
-      id: '/odds'
-      path: '/odds'
-      fullPath: '/odds'
-      preLoaderRoute: typeof OddsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/parlays': {
@@ -1224,6 +1230,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MatchesFixtureIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/odds/': {
+      id: '/odds/'
+      path: '/odds'
+      fullPath: '/odds/'
+      preLoaderRoute: typeof OddsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/odds/status': {
+      id: '/odds/status'
+      path: '/odds/status'
+      fullPath: '/odds/status'
+      preLoaderRoute: typeof OddsStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/customers/': {
       id: '/admin/customers/'
       path: '/customers'
@@ -1367,7 +1387,6 @@ const rootRouteChildren: RootRouteChildren = {
   LiveRoute: LiveRoute,
   LoginRoute: LoginRoute,
   MyPicksRoute: MyPicksRoute,
-  OddsRoute: OddsRoute,
   ParlaysRoute: ParlaysRoute,
   PicksRoute: PicksRoute,
   ProfileRoute: ProfileRoute,
@@ -1383,8 +1402,10 @@ const rootRouteChildren: RootRouteChildren = {
   HelpHowItWorksRoute: HelpHowItWorksRoute,
   LegalDocRoute: LegalDocRoute,
   MatchesFixtureIdRoute: MatchesFixtureIdRoute,
+  OddsStatusRoute: OddsStatusRoute,
   HelpIndexRoute: HelpIndexRoute,
   MatchesIndexRoute: MatchesIndexRoute,
+  OddsIndexRoute: OddsIndexRoute,
   HelpMessagesTicketIdRoute: HelpMessagesTicketIdRoute,
 }
 export const routeTree = rootRouteImport

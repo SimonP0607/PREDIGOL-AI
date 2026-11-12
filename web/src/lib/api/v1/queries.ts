@@ -187,6 +187,12 @@ export const live = {
     queryFn: v1.adminOddsHealth,
     staleTime: MINUTE,
   },
+  /** The reader's «Estado de los precios». */
+  oddsStatus: {
+    queryKey: ["v1", "odds-status"],
+    queryFn: v1.oddsStatus,
+    staleTime: MINUTE,
+  },
   daily: (preview: Preview, day?: string) => ({
     queryKey: ["v1", "daily", day ?? "today", preview ?? "qualified"],
     queryFn: () => v1.daily({ day, preview }),

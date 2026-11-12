@@ -179,10 +179,6 @@ export function ParlaysPage() {
       <ParlayBuilder />
       <BuildYourOwn />
       <HowWeBuild />
-      {/* Wide screens already carry it in the page footer. */}
-      <p className="text-center text-caption text-subtle-foreground lg:hidden">
-        {t("common.disclaimer")}
-      </p>
     </div>
   );
 }

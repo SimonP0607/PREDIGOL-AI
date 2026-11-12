@@ -11,6 +11,7 @@ import type {
   OddsFamilies,
   OddsFamiliesQuery,
   OddsHealth,
+  OddsStatus,
   OddsMovement,
   OddsMovementQuery,
 } from "./types_odds_explorer";
@@ -731,6 +732,7 @@ export const v1 = {
     getJson<Envelope<OddsMovement>>(`/odds/fixtures/${fixtureId}/movement`, q as unknown as Params),
   /** The owner's «Salud de cuotas» (SUPER_ADMIN). */
   adminOddsHealth: () => getJson<Envelope<OddsHealth>>("/admin/odds/health"),
+  oddsStatus: () => getJson<Envelope<OddsStatus>>("/odds/status"),
 
   // ── records: the day as persisted, and the user's own ──────────────────────
   daily: (q: { day?: string | undefined } & Preview = {}) =>

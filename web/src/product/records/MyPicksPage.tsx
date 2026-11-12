@@ -883,9 +883,6 @@ export function MyPicksPage() {
       <Recap />
       <SavedPicks />
       <MyParlays />
-      <p className="text-center text-caption text-subtle-foreground lg:hidden">
-        {t("common.disclaimer")}
-      </p>
     </div>
   );
 }

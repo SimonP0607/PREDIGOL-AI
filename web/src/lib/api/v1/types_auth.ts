@@ -60,6 +60,8 @@ export interface Me {
   explain?: boolean;
   /** The new Cuotas explorer (plan Cuotas, BE-011/UX-068; FBI_ODDS_EXPLORER, off until verified): shown only then. */
   odds_explorer?: boolean;
+  /** «Estado de los precios» is open to readers (FBI_ODDS_STATUS, off by default): the page links to it only then. */
+  odds_status?: boolean;
 }
 
 export interface MfaEnrollment {
