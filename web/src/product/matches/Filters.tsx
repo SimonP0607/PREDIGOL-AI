@@ -36,13 +36,47 @@ function shortDate(day: string): string {
   return f.format(new Date(zonedInstant(day, 12)));
 }
 
+/** The system's filter chip («Noche de partido», sheet 3): 36 px, a pill on surface 2, green when it is on. */
 function chipClass(active: boolean): string {
   return cn(
-    "tap-y relative inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+    "tap-y relative inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-[0.8125rem] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
     active
-      ? "border-primary/45 bg-primary/12 text-primary"
-      : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",
+      ? "border-primary/40 bg-primary-soft text-primary"
+      : "border-transparent bg-elevated text-foreground-soft hover:text-foreground",
   );
+}
+
+/**
+ * A day of the strip (plan maestro UX/UI 2026, PR-15, sheet P01): a tile with the day's word above its number. The
+ * same days as before - today, tomorrow, the day after and any other by the calendar - only drawn as the sheet does.
+ */
+function dayTile(active: boolean): string {
+  return cn(
+    "tap-y relative inline-flex h-[3.75rem] min-w-12 flex-1 shrink-0 flex-col items-center justify-center gap-1 rounded-control border px-2 text-xs font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:min-w-[4.25rem] sm:flex-none",
+    active
+      ? "border-primary/40 bg-primary-soft text-primary"
+      : "border-foreground/[0.055] bg-card text-muted-foreground hover:text-foreground",
+  );
+}
+
+const DAY_NUMBER = "numeric text-[1.0625rem] font-extrabold leading-none";
+
+const WEEKDAYS = new Map<string, Intl.DateTimeFormat>();
+
+function dayNumber(day: string): string {
+  return String(Number(day.slice(8, 10)));
+}
+
+function weekday(day: string): string {
+  const tag = intlTag();
+  const zone = getTimeZone();
+  const key = `${tag}|${zone}`;
+  let f = WEEKDAYS.get(key);
+  if (!f) {
+    f = new Intl.DateTimeFormat(tag, { timeZone: zone, weekday: "short" });
+    WEEKDAYS.set(key, f);
+  }
+  return f.format(new Date(zonedInstant(day, 12))).replace(/\.$/, "");
 }
 
 function ArrowButton({
@@ -61,7 +95,7 @@ function ArrowButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="tap relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className="tap relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-transparent bg-elevated text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <Icon aria-hidden className="h-4 w-4" />
     </button>
@@ -80,26 +114,25 @@ function DatePicker({
 }) {
   return (
     <label
-      className={cn(
-        chipClass(active),
-        "min-w-0 cursor-pointer focus-within:ring-1 focus-within:ring-ring sm:flex-none pointer-coarse:min-w-11",
-      )}
+      className={cn(dayTile(active), "cursor-pointer focus-within:ring-1 focus-within:ring-ring")}
     >
-      <CalendarDays aria-hidden className="h-3.5 w-3.5 shrink-0" />
       {active ? (
         <>
-          <span aria-hidden className="truncate sm:hidden">
-            {shortDate(day)}
+          <span aria-hidden className="first-letter:uppercase">
+            {weekday(day)}
           </span>
-          <span aria-hidden className="hidden truncate first-letter:uppercase sm:block">
-            {formatDate(zonedInstant(day, 12))}
+          <span aria-hidden className={DAY_NUMBER}>
+            {shortDate(day)}
           </span>
         </>
       ) : (
-        // On a phone the calendar alone (the picker keeps its label): Hoy, Mañana and the date after fit beside it.
-        <span aria-hidden className="hidden truncate sm:inline">
-          {t("matches.day.other")}
-        </span>
+        <>
+          <CalendarDays aria-hidden className="h-[1.125rem] w-[1.125rem] shrink-0" />
+          {/* On a phone the calendar alone (the picker keeps its label): the three days fit beside it. */}
+          <span aria-hidden className="hidden sm:inline">
+            {t("matches.day.other")}
+          </span>
+        </>
       )}
       <input
         type="date"
@@ -155,32 +188,41 @@ export function DayNav({
           edge fades where a chip waits beyond it; py-1 leaves room for the chips' 44 px reach on a touch screen. */}
       <div
         ref={strip}
-        className="scroll-strip -my-1 flex min-w-0 flex-1 items-center gap-1.5 py-1 sm:flex-none"
+        className="scroll-strip -my-1 flex min-w-0 flex-1 items-stretch gap-1.5 py-1 sm:flex-none"
       >
         <button
           type="button"
           aria-pressed={day === today}
           onClick={() => onChange(today)}
-          className={chipClass(day === today)}
+          className={dayTile(day === today)}
         >
           {t("common.day.today")}
+          <span className={DAY_NUMBER}>{dayNumber(today)}</span>
         </button>
         <button
           type="button"
           aria-pressed={day === tomorrow}
           onClick={() => onChange(tomorrow)}
-          className={chipClass(day === tomorrow)}
+          className={dayTile(day === tomorrow)}
         >
           {t("common.day.tomorrow")}
+          <span className={DAY_NUMBER}>{dayNumber(tomorrow)}</span>
         </button>
         <button
           type="button"
           aria-pressed={day === after}
           onClick={() => onChange(after)}
-          className={cn(chipClass(day === after), "first-letter:uppercase")}
+          className={dayTile(day === after)}
           data-testid="day-after-tomorrow"
         >
-          {formatDate(zonedInstant(after, 12))}
+          {/* its whole date for a screen reader; the tile draws the weekday and the number */}
+          <span className="sr-only">{formatDate(zonedInstant(after, 12))}</span>
+          <span aria-hidden className="first-letter:uppercase">
+            {weekday(after)}
+          </span>
+          <span aria-hidden className={DAY_NUMBER}>
+            {dayNumber(after)}
+          </span>
         </button>
         <DatePicker day={day} active={!quick} onChange={onChange} />
       </div>
@@ -251,8 +293,8 @@ export function StatusChips({
           {counts ? (
             <span
               className={cn(
-                "numeric rounded-full px-1.5 text-micro tabular-nums",
-                value === f ? "bg-primary/15" : "bg-elevated text-subtle-foreground",
+                "numeric rounded-full px-1.5 py-[3px] text-xs font-bold leading-none tabular-nums",
+                value === f ? "bg-primary/20" : "bg-foreground/8",
               )}
             >
               {counts[f]}

@@ -202,6 +202,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-114 | Las siglas del escudo de respaldo (equipo, liga o jugador sin imagen) las pinta el CSS desde `data-initials` y dejan de ser texto: escritas como texto contaban como palabras del botón o enlace que las contiene, y un control con `aria-label` («Quitar Liga Andina») incumplía WCAG 2.5.3 (axe `label-content-name-mismatch`; lo encontró `onboarding.spec.ts:240` en la bienvenida). Se ve igual | en curso | PR propio, tras UX-112 | UX-111, UX-107 |
 | UX-115 | Plan maestro UX/UI 2026, ola 15 (consola), PR-39, decisión 12: el menú de la consola en cinco grupos plegables — Clientes y pagos (7), Picks y mercado (3), Inteligencia (5), Fútbol (5) y Sistema (7) — con «Resumen» arriba. Los mismos 28 destinos, rutas y permisos. El navegador recuerda los grupos plegados; al llegar a una página de un grupo plegado, se abre. El buscador de la consola (⌘K) lista los mismos grupos | en curso | PR propio, tras UX-112 | UX-107 |
 | UX-116 | Plan maestro UX/UI 2026, ola 15 (consola), PR-40: las primitivas de la consola con el sistema. `surface-panel` es la tarjeta del sistema (borde de luz, brillo, radio de 16 px), `MetricCard` lleva la cifra de 28 px en Archivo, `KeyValue` y `EmptyState` siguen la lámina, y el «vs» de los enlaces de partido de la consola deja de incumplir el contraste (la violación de axe en `/admin/odds`). Las 20 páginas sin lámina heredan el estilo; mismos datos, acciones y permisos | en curso | PR propio, tras UX-112 | UX-105, UX-115 |
+| UX-117 | Plan maestro UX/UI 2026, ola 5 (Inicio y Partidos), PR-15: la lista de Partidos y sus filtros con el sistema (lámina P01). Los días son fichas con la palabra del día sobre su número (los mismos de antes: hoy, mañana, pasado mañana y el calendario); los filtros de estado usan la ficha del sistema con su contador; cada competición va en la tarjeta del sistema. El texto no baja de 12 px en teléfono. No cambia qué partidos se listan, su orden ni sus filtros | en curso | este PR | UX-111 |
 | FE-001 | Recharts 2.15 → 3.10 (el informe de herramientas gratuitas): los gráficos de analítica, del explorador de cuotas, de Resumen y de modelos, y el `chart.tsx` de shadcn. Cambios de tipos (en Recharts 3 `payload` y `label` ya no están en `TooltipProps`, `formatter` recibe `ValueType | undefined`, `dataKey` puede ser una función) sin cambiar lo que se dibuja: se comparó una página con los seis gráficos de analítica y el gráfico de movimiento del explorador (con su tooltip) renderizados con 2.15 y con 3.10, en Chromium, y salen iguales | en curso | este PR | — |
 
 ## BE — backend
@@ -251,7 +252,7 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-117 · BE-038 · FE-002 · OPS-005 · DOC-001
+CI-020 · SEG-003 · UX-118 · BE-038 · FE-002 · OPS-005 · DOC-001
 
 IA-053
 
