@@ -5,10 +5,15 @@ Claude of the production workspace, Claude of the LAB workspace and Exa are neve
 prompt cache and the Message Batches saved this month, how many briefs and reviews were reused instead of paid again, what the batches
 still open have reserved, and what each switch is doing and why (``fbi.ai.gates.describe``).
 
-THE SAVINGS ARE MEASURED, NOT ASSUMED. Each group of the ledger (a Bogotá day, a model, real time or Batch) is priced twice with the same
-verified table the ledger used: as it was billed (``ai.usage.cost_usd``) and as if every input token had been fresh. The difference
-is the cache's saving - it may be NEGATIVE while a cache write is not read yet, and then it says so. The Batch's saving is what the same
-fresh calls would have cost in real time less what they cost at half price. The two add up (no call is counted twice).
+THE SAVINGS ARE MEASURED, NOT ASSUMED. Each CALL of the ledger is priced twice, alone and at its own date, with the verified table the
+ledger billed it with: as it was billed (``ai.usage.cost_usd``) and as if every input token had been fresh. The difference is the cache's
+saving: a token read from the cache costs less than a fresh one, a token written to it costs more (so the saving may be NEGATIVE while a
+write is not read yet, and then it says so). The Batch's saving is what the same fresh call would have cost in real time less what it
+cost at half price. The two add up (no call is counted twice).
+
+Call by call, never over a sum of calls (IA-051, ``docs/owner/IA_051_AHORRO_CACHE_HAIKU.md``): a price that depends on the size of ONE
+prompt - Claude Haiku 5.5 pays five times more above 100,000 input tokens - applied to a day's sum of prompts lands on the long price that
+no call paid, and the difference shows up as a saving that does not exist. Until 11 Nov 2026 this panel priced a day's sum.
 
 Reading only: nothing here writes, and no key is read."""
 
@@ -16,7 +21,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -33,15 +38,13 @@ from fbi.ai.usage import budget as budget_of
 
 SERIES_DAYS = 14
 
-# ``cache_write_tokens`` is everything written to the cache; ``cache_write_1h_tokens`` is the part written for one hour. The rest is 5 minutes.
-TOKENS_SQL = """
-SELECT (at AT TIME ZONE 'America/Bogota')::date AS day, provider, model, (batch_id IS NOT NULL) AS batch,
-       count(*) AS calls, COALESCE(sum(input_tokens), 0) AS input_tokens, COALESCE(sum(output_tokens), 0) AS output_tokens,
-       COALESCE(sum(cached_tokens), 0) AS cached_tokens,
-       COALESCE(sum(cache_write_tokens), 0) - COALESCE(sum(cache_write_1h_tokens), 0) AS write_5m,
-       COALESCE(sum(cache_write_1h_tokens), 0) AS write_1h, COALESCE(sum(cost_usd), 0) AS cost
+# One row per call, NOT a sum (IA-051): a call is priced at its own size. ``cache_write_tokens`` is everything written to the cache;
+# ``cache_write_1h_tokens`` is the part written for one hour (both NULL before migration 0110). The rest is 5 minutes.
+CALLS_SQL = """
+SELECT at, provider, model, (batch_id IS NOT NULL) AS batch, input_tokens, output_tokens, cached_tokens,
+       COALESCE(cache_write_tokens, 0) - COALESCE(cache_write_1h_tokens, 0) AS write_5m,
+       COALESCE(cache_write_1h_tokens, 0) AS write_1h, cost_usd AS cost
   FROM ai.usage_scoped WHERE scope <> 'exa' AND (input_tokens > 0 OR output_tokens > 0) AND at >= %(since)s AND at < %(until)s
- GROUP BY 1, 2, 3, 4
 """
 
 REUSE_SQL = """
@@ -67,14 +70,15 @@ SELECT count(*) FILTER (WHERE status IN ('submitting', 'in_progress', 'canceling
 
 
 @dataclass(frozen=True, slots=True)
-class Group:
-    """One line of the ledger's token sums: a Bogotá day, a model, answered in real time or in a batch."""
+class Call:
+    """One call of the ledger with its tokens and what it was billed (``ai.usage``): the unit the savings are priced on. ``input_tokens`` is
+    ALL its input - fresh, read from the cache (``cached_tokens``) and written to it (``write_5m`` + ``write_1h``) - as the ledger keeps it."""
 
-    day: date
+    at: datetime
+    """When the call was made: the date its price is read at (a promotion's end), in UTC as the ledger priced it."""
     provider: str
     model: str
     batch: bool
-    calls: int
     input_tokens: int
     output_tokens: int
     cached_tokens: int
@@ -88,7 +92,7 @@ class Savings:
     cache_usd: Decimal
     """Fresh-input price as billed (Batch halved when it was a batch) less what the cache made it. Negative while writes are unread."""
     batch_usd: Decimal
-    """The same fresh calls in real time less at half price: only for the groups answered by a batch."""
+    """The same fresh calls in real time less at half price: only for the calls answered by a batch."""
     calls: int
     batch_calls: int
     input_tokens: int
@@ -109,38 +113,39 @@ class Savings:
         return round(self.batch_calls / self.calls, 4) if self.calls else None
 
 
-def savings(groups: Iterable[Group]) -> Savings:
-    """What the cache and the Batch saved over these groups. Unknown models are left out: their price is a guess."""
+def savings(calls: Iterable[Call]) -> Savings:
+    """What the cache and the Batch saved over these calls, EACH ONE PRICED ALONE at its own size and date with the function that billed it
+    (``fbi.ai.pricing.token_cost``): a sum of calls is never priced as if it were one. Unknown models are left out: their price is a guess."""
     cache = batch = Decimal(0)
-    calls = batch_calls = tokens_in = cached = writes = 0
-    for g in groups:
-        if not price_of(g.provider, g.model)[1]:
+    priced = batch_calls = tokens_in = cached = writes = 0
+    for c in calls:
+        if not price_of(c.provider, c.model)[1]:
             continue
-        calls += g.calls
-        batch_calls += g.calls if g.batch else 0
-        tokens_in += g.input_tokens
-        cached += g.cached_tokens
-        writes += g.write_5m + g.write_1h
-        fresh_as_billed = token_cost(g.provider, g.model, input_tokens=g.input_tokens, output_tokens=g.output_tokens,
-                                     batch=g.batch, at=g.day)
-        cache += fresh_as_billed - g.cost
-        if g.batch:
-            fresh_real_time = token_cost(g.provider, g.model, input_tokens=g.input_tokens, output_tokens=g.output_tokens,
-                                         at=g.day)
+        at = c.at.astimezone(UTC) if c.at.tzinfo is not None else c.at  # the ledger priced the call at its UTC date
+        priced += 1
+        batch_calls += 1 if c.batch else 0
+        tokens_in += c.input_tokens
+        cached += c.cached_tokens
+        writes += c.write_5m + c.write_1h
+        fresh_as_billed = token_cost(c.provider, c.model, input_tokens=c.input_tokens, output_tokens=c.output_tokens,
+                                     batch=c.batch, at=at)
+        cache += fresh_as_billed - c.cost
+        if c.batch:
+            fresh_real_time = token_cost(c.provider, c.model, input_tokens=c.input_tokens, output_tokens=c.output_tokens, at=at)
             batch += fresh_real_time - fresh_as_billed
-    return Savings(_money(cache), _money(batch), calls, batch_calls, tokens_in, cached, writes)
+    return Savings(_money(cache), _money(batch), priced, batch_calls, tokens_in, cached, writes)
 
 
 def share(spent: Decimal, envelope: Decimal) -> float | None:
     return round(float(spent / envelope), 4) if envelope > 0 else None
 
 
-def groups_of(conn: psycopg.Connection[Any], since: datetime, until: datetime) -> list[Group]:
+def calls_of(conn: psycopg.Connection[Any], since: datetime, until: datetime) -> list[Call]:
+    """The calls the savings price in ``[since, until)``: Claude's with tokens (Exa's searches have none), one row each."""
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(TOKENS_SQL, {"since": since, "until": until})
-        return [Group(r["day"], r["provider"], r["model"], bool(r["batch"]), int(r["calls"]), int(r["input_tokens"]),
-                      int(r["output_tokens"]), int(r["cached_tokens"]), int(r["write_5m"]), int(r["write_1h"]),
-                      Decimal(r["cost"])) for r in cur.fetchall()]
+        cur.execute(CALLS_SQL, {"since": since, "until": until})
+        return [Call(r["at"], r["provider"], r["model"], bool(r["batch"]), int(r["input_tokens"]), int(r["output_tokens"]),
+                     int(r["cached_tokens"]), int(r["write_5m"]), int(r["write_1h"]), Decimal(r["cost"])) for r in cur.fetchall()]
 
 
 def savings_json(s: Savings) -> dict[str, Any]:
@@ -170,7 +175,7 @@ def envelopes(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettin
     ceiling = settings.joint_ceiling
     held_prod = sum(reserved_by_day(conn, "production").values(), Decimal(0))
     held_lab = sum(reserved_by_day(conn, "lab").values(), Decimal(0))
-    month_groups = groups_of(conn, month_from, until)
+    month_calls = calls_of(conn, month_from, until)
     limit_prod = budget_v3.limit_state(conn, at=at, workspace=settings.workspace)
     limit_lab = budget_v3.limit_state(conn, at=at, workspace=settings.workspace_lab)
 
@@ -213,7 +218,7 @@ def envelopes(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettin
         "claude": {"spent_usd": str(_money(claude)), "ceiling_usd": str(ceiling), "share": share(claude, ceiling),
                    "projected_usd": str(_money(forecast.projected + lab_spent)),
                    "projection_share": share(forecast.projected + lab_spent, ceiling)},
-        "savings": {"month": savings_json(savings(month_groups))},
+        "savings": {"month": savings_json(savings(month_calls))},
         "reuse": {"briefs_paid": int(reuse.get("briefs_paid") or 0), "briefs_reused": int(reuse.get("briefs_reused") or 0),
                   "briefs_reused_material": int(reuse.get("briefs_reused_material") or 0),
                   "reviews_reused": int(reuse.get("reviews_reused") or 0),
@@ -229,4 +234,4 @@ def envelopes(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettin
     }
 
 
-__all__ = ["Group", "Savings", "envelopes", "groups_of", "savings", "savings_json", "share"]
+__all__ = ["Call", "Savings", "calls_of", "envelopes", "savings", "savings_json", "share"]

@@ -1,0 +1,151 @@
+# IA-051 · comprobación en producción del ahorro del panel (solo lectura). Se corrió el 11-nov-2026 a las 13:58 y a las 14:06 UTC (la segunda,
+# con el módulo del commit; mismas cifras en las ventanas cerradas) dentro de
+# predigol-worker por la entrada estándar (docker exec -i ... python -), sin copiar ficheros ni escribir nada:
+# __SRC_B64__ se sustituye por el módulo nuevo (backend/src/fbi/ai/costs_v3.py de la rama de IA-051) en base64; el script imprime su
+# sha256 y el del módulo desplegado (el antiguo). Su salida: resultado_20261111.txt.
+
+# Everything is read in ONE snapshot (REPEATABLE READ, read only, statement_timeout 95 s).
+import base64, hashlib, sys, time, types
+from collections import defaultdict
+from datetime import UTC, datetime
+from decimal import Decimal
+
+import psycopg
+from psycopg.rows import dict_row
+
+from fbi.ai import costs_v3 as old
+from fbi.ai.pricing import token_cost
+from fbi.core.config import settings
+
+SRC = base64.b64decode("__SRC_B64__").decode()
+new = types.ModuleType("costs_v3_ia051")
+sys.modules["costs_v3_ia051"] = new
+exec(compile(SRC, "costs_v3_ia051.py", "exec"), new.__dict__)
+import inspect
+print("new_sha", hashlib.sha256(SRC.encode()).hexdigest()[:16], "old_sha", hashlib.sha256(inspect.getsource(old).encode()).hexdigest()[:16])
+
+W = (datetime(2026, 10, 28, tzinfo=UTC), datetime(2026, 11, 11, tzinfo=UTC))
+W0 = (datetime(2026, 10, 28, 5, 7, 39, 51489, tzinfo=UTC), datetime(2026, 11, 11, 5, 7, 39, 51489, tzinfo=UTC))
+BRIEF = "(prompt_version LIKE 'brief-%%' OR (prompt_version IS NULL AND purpose = 'match_brief'))"
+
+conn = psycopg.connect(settings.database.psycopg_url, connect_timeout=5,
+                       options="-c default_transaction_read_only=on -c statement_timeout=95000 -c TimeZone=UTC")
+conn.isolation_level = psycopg.IsolationLevel.REPEATABLE_READ
+conn.read_only = True
+print("guards", conn.execute("SHOW default_transaction_read_only").fetchone()[0], conn.execute("SHOW statement_timeout").fetchone()[0],
+      conn.execute("SELECT current_setting('transaction_read_only'), now()").fetchone())
+
+
+def old_groups(sql, since, until):
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(sql, {"since": since, "until": until})
+        return [old.Group(r["day"], r["provider"], r["model"], bool(r["batch"]), int(r["calls"]), int(r["input_tokens"]),
+                          int(r["output_tokens"]), int(r["cached_tokens"]), int(r["write_5m"]), int(r["write_1h"]),
+                          Decimal(r["cost"])) for r in cur.fetchall()]
+
+
+def new_calls(sql, since, until):
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(sql, {"since": since, "until": until})
+        return [new.Call(r["at"], r["provider"], r["model"], bool(r["batch"]), int(r["input_tokens"]), int(r["output_tokens"]),
+                         int(r["cached_tokens"]), int(r["write_5m"]), int(r["write_1h"]), Decimal(r["cost"])) for r in cur.fetchall()]
+
+
+def per_model(items, key):
+    out = defaultdict(list)
+    for x in items:
+        out[key(x)].append(x)
+    return out
+
+
+def show(label, s):
+    return f"{label}: cache {s.cache_usd} batch {s.batch_usd} total {s.total_usd} calls {s.calls} batch_calls {s.batch_calls}"
+
+
+# 1. the window of IA-034 (28-oct 00:00 to 11-nov 00:00 UTC): old and new, by model and Batch, and totals
+t = time.perf_counter()
+calls = new.calls_of(conn, *W)
+groups = old.groups_of(conn, *W)
+print(f"W rows {len(calls)} groups {len(groups)} fetched in {time.perf_counter() - t:.2f}s")
+nc, og = per_model(calls, lambda c: (c.model, c.batch)), per_model(groups, lambda g: (g.model, g.batch))
+for k in sorted(set(nc) | set(og)):
+    o, n = old.savings(og.get(k, [])), new.savings(nc.get(k, []))
+    print(f"W {k[0]} batch={k[1]} | OLD cache {o.cache_usd} batch {o.batch_usd} | NEW cache {n.cache_usd} batch {n.batch_usd} | calls {n.calls}")
+for m in sorted({k[0] for k in nc}):
+    o = old.savings([g for g in groups if g.model == m])
+    n = new.savings([c for c in calls if c.model == m])
+    print(f"W model {m} | OLD cache {o.cache_usd} batch {o.batch_usd} total {o.total_usd} | NEW cache {n.cache_usd} batch {n.batch_usd} total {n.total_usd}")
+print("W", show("OLD", old.savings(groups)))
+print("W", show("NEW", new.savings(calls)))
+print("W json NEW", new.savings_json(new.savings(calls)))
+print("W json OLD", old.savings_json(old.savings(groups)))
+
+# 2. the ledger's billing against the price table, call by call (a cost that is not the table's would leak into the saving)
+drift = defaultdict(lambda: [0, 0, Decimal(0)])
+for c in calls:
+    billed = token_cost(c.provider, c.model, input_tokens=c.input_tokens, output_tokens=c.output_tokens, cached_tokens=c.cached_tokens,
+                        cache_write_5m_tokens=c.write_5m, cache_write_1h_tokens=c.write_1h, batch=c.batch, at=c.at)
+    d = drift[c.model]
+    d[0] += 1
+    d[1] += billed != c.cost
+    d[2] += abs(billed - c.cost)
+for m, (n, bad, amount) in sorted(drift.items()):
+    print(f"drift {m}: calls {n} cost_usd!=table {bad} abs_diff {amount}")
+
+# 3. an oracle in SQL, independent of the Python price code: the prices typed here, each call alone, nothing rounded
+ORACLE = """
+WITH c AS (
+  SELECT model, batch_id IS NOT NULL AS b, input_tokens i, output_tokens o, cached_tokens r,
+         COALESCE(cache_write_tokens, 0) - COALESCE(cache_write_1h_tokens, 0) w5, COALESCE(cache_write_1h_tokens, 0) w1, cost_usd cost,
+         CASE WHEN model = 'claude-haiku-5-5' THEN CASE WHEN input_tokens > 100000 THEN 0.50 ELSE 0.10 END
+              WHEN model = 'claude-sonnet-5-5' THEN 2 WHEN model = 'claude-opus-5-5' THEN 4 END AS pin,
+         CASE WHEN model = 'claude-haiku-5-5' THEN CASE WHEN input_tokens > 100000 THEN 2.50 ELSE 0.50 END
+              WHEN model = 'claude-sonnet-5-5' THEN 10 WHEN model = 'claude-opus-5-5' THEN 20 END AS pout,
+         CASE WHEN model = 'claude-haiku-5-5' THEN CASE WHEN input_tokens > 100000 THEN 0.05 ELSE 0.01 END
+              WHEN model = 'claude-sonnet-5-5' THEN 0.10 WHEN model = 'claude-opus-5-5' THEN 0.20 END AS pread
+    FROM ai.usage_scoped
+   WHERE scope <> 'exa' AND (input_tokens > 0 OR output_tokens > 0) AND at >= %(since)s AND at < %(until)s)
+SELECT model, b, count(*), count(*) FILTER (WHERE pin IS NULL),
+       COALESCE(sum((pin * i + pout * o) / 1e6 * CASE WHEN b THEN 0.5 ELSE 1 END - cost), 0) AS fresh_less_billed,
+       COALESCE(sum(CASE WHEN b THEN 0.5 ELSE 1 END * ((pin - pread) * r - 0.25 * pin * w5 - 1.0 * pin * w1) / 1e6), 0) AS by_formula,
+       COALESCE(sum(CASE WHEN b THEN 0.5 * (pin * i + pout * o) / 1e6 ELSE 0 END), 0) AS batch_saving
+  FROM c GROUP BY 1, 2 ORDER BY 1, 2
+"""
+tot = [Decimal(0), Decimal(0), Decimal(0)]
+for r in conn.execute(ORACLE, {"since": W[0], "until": W[1]}).fetchall():
+    print(f"oracle {r[0]} batch={r[1]} calls {r[2]} unpriced {r[3]} cache(fresh-billed) {r[4]:.6f} cache(formula) {r[5]:.6f} batch {r[6]:.6f}")
+    tot = [tot[0] + r[4], tot[1] + r[5], tot[2] + r[6]]
+print(f"oracle total cache(fresh-billed) {tot[0]:.6f} cache(formula) {tot[1]:.6f} batch {tot[2]:.6f}")
+exact = sum((token_cost(c.provider, c.model, input_tokens=c.input_tokens, output_tokens=c.output_tokens, batch=c.batch, at=c.at) - c.cost
+             for c in calls), Decimal(0))
+print(f"NEW cache unrounded {exact:.6f} vs oracle {tot[0]:.6f}: diff {exact - tot[0]:.6f}")
+
+# 4. the brief (brief-v8): IA-034's 1.59 (call by call) and 51.73 (its first run, priced like the panel, window W0)
+for label, (since, until) in (("W", W), ("W0", W0)):
+    bc = new_calls(new.CALLS_SQL.replace("WHERE scope <> 'exa'", "WHERE scope <> 'exa' AND " + BRIEF), since, until)
+    bg = old_groups(old.TOKENS_SQL.replace("WHERE scope <> 'exa'", "WHERE scope <> 'exa' AND " + BRIEF), since, until)
+    cost = sum((c.cost for c in bc), Decimal(0))
+    o, n = old.savings(bg), new.savings(bc)
+    print(f"brief {label}: calls {len(bc)} cost {cost:.6f} input {sum(c.input_tokens for c in bc)} max_input {max((c.input_tokens for c in bc), default=0)} "
+          f"groups {len(bg)} min_group_input {min((g.input_tokens for g in bg), default=0)} | OLD cache {o.cache_usd} | NEW cache {n.cache_usd} "
+          f"| 4C+5S {4 * cost + 5 * n.cache_usd:.4f}")
+
+# 5. the month the panel shows today (Bogotá's November up to now), old and new, and what the new one costs to build
+now = conn.execute("SELECT now()").fetchone()[0]
+since = datetime(2026, 11, 1, 5, 0, tzinfo=UTC)
+t = time.perf_counter()
+mc = new.calls_of(conn, since, now)
+ms = new.savings(mc)
+dt = time.perf_counter() - t
+mg = old.groups_of(conn, since, now)
+mo = old.savings(mg)
+print(f"month to {now.isoformat()}: rows {len(mc)} groups {len(mg)} | new read+priced in {dt:.2f}s")
+print("month", show("OLD", mo))
+print("month", show("NEW", ms))
+for m in sorted({c.model for c in mc}):
+    o = old.savings([g for g in mg if g.model == m])
+    n = new.savings([c for c in mc if c.model == m])
+    print(f"month model {m} | OLD cache {o.cache_usd} batch {o.batch_usd} | NEW cache {n.cache_usd} batch {n.batch_usd}")
+conn.rollback()
+conn.close()
+print("done, read only")

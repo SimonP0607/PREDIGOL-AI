@@ -24,16 +24,17 @@ from fbi.api.services import ai_layer, ai_v2
 from .test_budget_v3 import NOW, SONNET, limit_hit, month, settings, spend
 
 D = Decimal
+HAIKU = "claude-haiku-5-5"
 
 
 def tokens(db: psycopg.Connection[Any], *, usage: LlmUsage, batch_id: int | None = None, custom_id: str | None = None,
-           workspace: str = "PREDIGOL") -> int:
+           workspace: str = "PREDIGOL", model: str = SONNET.model) -> int:
     """One priced call with its tokens, the way the ledger writes it: the cost is the verified price of exactly these tokens."""
-    cost = token_cost("anthropic", SONNET.model, input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
+    cost = token_cost("anthropic", model, input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
                       cached_tokens=usage.cached_tokens, cache_write_5m_tokens=usage.cache_write_5m_tokens,
                       cache_write_1h_tokens=usage.cache_write_1h_tokens, batch=batch_id is not None, at=NOW)
     return UsageLedger(shared(db)).record(
-        at=NOW - timedelta(hours=1), purpose="pick_review", tier="analysis", provider="anthropic", model=SONNET.model,
+        at=NOW - timedelta(hours=1), purpose="pick_review", tier="analysis", provider="anthropic", model=model,
         usage=usage, cost=cost, status="ok", workspace=workspace, batch_id=batch_id, custom_id=custom_id)
 
 
@@ -86,6 +87,21 @@ def test_the_cache_writes_are_split_the_way_the_ledger_stores_them(db: psycopg.C
     assert saved["write_tokens"] == 5_000
     # 2,000 x 1.25 + 3,000 x 2 + 5,000 fresh = 13,500 token-prices against 10,000: US$0.0070 over the fresh price
     assert saved["cache_usd"] == "-0.0070"
+
+
+def test_haikus_calls_are_priced_one_by_one_never_as_a_days_sum_ia051(db: psycopg.Connection[Any]) -> None:
+    # twelve briefs in real time of 20,000 input tokens (5,000 read from the cache) and 1,000 output: 240,000 in the day, above Haiku's 100k
+    # limit that no brief reached. Each read token saved 0.09 per million: 12 x 5,000 x 0.09 / 1e6 = US$0.0054. Priced as ONE call, the
+    # day's sum said 5 x (0.0246 billed + 0.0054) - 0.0246 = US$0.1254.
+    brief = LlmUsage(input_tokens=20_000, output_tokens=1_000, cached_tokens=5_000)
+    for _ in range(12):
+        tokens(db, usage=brief, model=HAIKU)
+    assert panel(db)["savings"]["month"]["cache_usd"] == "0.0054"
+    # and one in a batch: half of everything - the cache saved 0.000225 and the half price 0.00125
+    tokens(db, usage=brief, model=HAIKU, batch_id=8, custom_id="h1")
+    saved = panel(db)["savings"]["month"]
+    assert (saved["cache_usd"], saved["batch_usd"]) == ("0.0056", "0.0013")
+    assert (saved["calls"], saved["batch_calls"], saved["input_tokens"], saved["cached_tokens"]) == (13, 1, 260_000, 65_000)
 
 
 def test_the_open_batches_are_reserved_and_counted(db: psycopg.Connection[Any]) -> None:
