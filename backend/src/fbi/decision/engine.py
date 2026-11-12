@@ -11,6 +11,8 @@ THE STAGES (numbered as decision-v1's ten filters, whose thresholds are IMPORTED
                     older than the family's ``forecast_max_age``                                                      -> REJECTED
      2 model        the market's model gave a probability (with an interval where the family requires one)        -> REJECTED
      3 market       a price from >= MIN_BOOKS books, not an outlier (MAX_PRICE_EDGE), not older than MAX_PRICE_AGE   -> REJECTED / WATCH
+                    (the price the candidate carries: decision-v1's consensus of a capture, or the book's answer in force at the
+                    moment - ``PRICE_SOURCES``, ``fbi.decision.book_price`` - with its age either way)
      4 calibration  a CHAMPION calibrator for (market, model); the best fit is shown, never approves                   -> ABSTAIN
      5 value        calibrated EV >= EV_MIN and edge >= EDGE_MIN at the best price; no calibrated EV with a price      -> REJECTED / ABSTAIN
      6 context      hard rules (an unplayable or quarantined match; a key absence on the chosen side, confirmed by the
@@ -59,6 +61,13 @@ from fbi.intel.decision import Key
 from fbi.intel.state_v2 import DIRECT, INVESTIGATION_RULES, REASON_EFFECT, StateV2
 
 VERSION: Final = "decision-v2"
+
+CONSENSUS: Final = "consensus"
+BOOK: Final = "book"
+PRICE_SOURCES: Final = (CONSENSUS, BOOK)
+"""Where the price of a selection comes from (``Price.source``). ``consensus``: decision-v1's own, the newest Shin consensus of a capture
+(the default, and the evidence of P1). ``book``: the answer in force in the odds book at the moment - a capture's or a book refresh's -
+priced the same way (``fbi.decision.book_price``, plan INT-A06). The stages read either alike: only the price and its age can differ."""
 
 STAGES: Final = ("data", "model", "market", "calibration", "value", "context", "risk", "correlation", "price", "final")
 NUMBER: Final[Mapping[str, int]] = {s: i + 1 for i, s in enumerate(STAGES)}
@@ -197,7 +206,43 @@ class Price:
     p_market: float | None
     n_bookmakers: int | None
     price_at: datetime | None
+    """When the price was last confirmed: the capture of the consensus, or the ask whose answer the book has in force."""
     age_minutes: float | None
+    source: str = CONSENSUS
+    """``PRICE_SOURCES``: which reading of the market the candidate was priced with."""
+    confirmed_by: str | None = None
+    """``capture`` or ``refresh``: the kind of ask that confirmed the price; None without a price."""
+    provider_update_at: datetime | None = None
+    """The provider's own stamp of the answer (when it last moved its prices), where the source reads it (``book``)."""
+    missing: str | None = None
+    """Why there is no price, where the source says it (``book``: the answer was withdrawn, never asked, unreadable, or does not quote the
+    selection); None with a price."""
+
+
+@dataclass(frozen=True, slots=True)
+class Close:
+    """The last price the book held of a selection before kick-off: what the closing-line value of a decision is measured against
+    (``fbi.market.closing_value.clv``), with how near kick-off it was confirmed and how near kick-off the provider last moved it. Built by
+    ``fbi.decision.book_price``. A MEASUREMENT carried along, in shadow: it did not exist at the moment of the decision and no stage reads it.
+    For a match not played yet it is the newest answer so far, and its distance says so."""
+
+    odds: float
+    p_fair: float
+    n_bookmakers: int
+    checked_at: datetime
+    """The ask whose answer was in force at kick-off."""
+    minutes_to_kickoff: float
+    confirmed_by: str
+    provider_update_at: datetime | None
+    provider_minutes_to_kickoff: float | None
+    """How long before kick-off the provider last moved the prices of that answer (its own stamp), None without a stamp."""
+    version: str
+
+    def as_json(self) -> dict[str, Any]:
+        return {"odds": self.odds, "p_fair": self.p_fair, "n_bookmakers": self.n_bookmakers, "checked_at": self.checked_at.isoformat(),
+                "minutes_to_kickoff": self.minutes_to_kickoff, "confirmed_by": self.confirmed_by,
+                "provider_update_at": None if self.provider_update_at is None else self.provider_update_at.isoformat(),
+                "provider_minutes_to_kickoff": self.provider_minutes_to_kickoff, "version": self.version}
 
 
 @dataclass(frozen=True, slots=True)
@@ -234,6 +279,8 @@ class Decision2:
     version: str = VERSION
     common: CommonView | None = None
     """The common probability view of the selection (a measurement in shadow; see ``CommonView``), None when none was given."""
+    close: Close | None = None
+    """The last price the book held of the selection before kick-off (a measurement in shadow; see ``Close``), None when none was given."""
 
     @property
     def ident(self) -> tuple[str, Key, str | None]:
@@ -251,12 +298,16 @@ class Decision2:
             "prediction": {"p_model": p.p_model, "p_push": p.p_push, "interval": None if p.interval is None else list(p.interval),
                            "p_cal": p.p_cal, "calibrator_id": p.calibrator_id, "calibrator_role": p.calibrator_role},
             "price": {"odds": pr.odds, "p_market": pr.p_market, "n_bookmakers": pr.n_bookmakers,
-                      "price_at": None if pr.price_at is None else pr.price_at.isoformat(), "age_minutes": pr.age_minutes},
+                      "price_at": None if pr.price_at is None else pr.price_at.isoformat(), "age_minutes": pr.age_minutes,
+                      "source": pr.source, "confirmed_by": pr.confirmed_by,
+                      "provider_update_at": None if pr.provider_update_at is None else pr.provider_update_at.isoformat(),
+                      "missing": pr.missing},
             "value": {"ev_raw": va.ev_raw, "edge_raw": va.edge_raw, "ev_cal": va.ev_cal, "edge_cal": va.edge_cal},
             "context": {"status": self.context_status, "adjustment": self.adjustment},
             "market": None if self.market is None else {"status": self.market.status, "side": self.market.side, "steam": self.market.steam,
                                                         "movement_points": self.market.movement_points, "stale": self.market.stale},
             "common": None if self.common is None else self.common.as_json(),
+            "close": None if self.close is None else self.close.as_json(),
             "stages": [v.as_json() for v in self.verdicts]}
 
 
@@ -356,8 +407,11 @@ def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAd
     n_books = None if r.get("n_bookmakers") is None else int(r["n_bookmakers"])
     price_age = None if price_at is None else at - price_at
     price_edge = None if odds is None or p_mkt is None else odds * p_mkt - 1
+    source = str(r.get("price_source") or CONSENSUS)
+    missing = None if odds is not None and p_mkt is not None else r.get("price_missing")
     if odds is None or p_mkt is None:
-        out.append(_v("market", False, "sin precio de mercado observado", _e("no_price")))
+        out.append(_v("market", False, "sin precio de mercado observado" if missing is None else f"sin precio vigente en el libro ({missing})",
+                      _e("no_price")))
     elif (n_books or 0) < decision.MIN_BOOKS:
         out.append(_v("market", False, f"solo {n_books} casas", _e("thin_market"), n_bookmakers=n_books))
     elif price_edge is not None and price_edge > decision.MAX_PRICE_EDGE:
@@ -474,7 +528,9 @@ def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAd
                     Prediction(model, r.get("model_version_id"), p_model, p_push,
                                (float(r["p_low"]), float(r["p_high"])) if has_interval else None, p_cal,
                                None if calibrator is None else calibrator.id, None if calibrator is None else calibrator.role),
-                    Price(odds, p_mkt, n_books, price_at, None if price_age is None else round(price_age.total_seconds() / 60, 2)),
+                    Price(odds, p_mkt, n_books, price_at, None if price_age is None else round(price_age.total_seconds() / 60, 2), source,
+                          None if price_at is None else (r.get("price_confirmed_by") or "capture"), r.get("provider_update_at"),
+                          None if missing is None else str(missing)),
                     Value(ev_raw, edge_raw, ev_cal, edge_cal), ctx.status, adj_verdict, market, sc)
 
 
@@ -537,11 +593,12 @@ Ident = tuple[str, Key, str | None]
 
 
 def decide_all(world: decision.World, candidates: Sequence[Candidate], *, adjustments: Mapping[Key, ContextAdjustment] | None = None,
-               markets: Mapping[Ident, MarketRisk] | None = None, views: Mapping[Key, CommonView] | None = None) -> list[Decision2]:
+               markets: Mapping[Ident, MarketRisk] | None = None, views: Mapping[Key, CommonView] | None = None,
+               closes: Mapping[Key, Close] | None = None) -> list[Decision2]:
     """The candidates of one moment: each through the stages, then correlation (8) - among the selections of a match that compete
     (``Assessed.competes``), the best score stays and the others are CAUTION. Ties break on (market, selection, line, family, model), never on the order
     of the rows, and the verdicts say so (``tie``): decision-v1 breaks them on the order the database returns its candidates in, which no
-    query fixes, so a tie is where the two may disagree with neither being wrong. Returned in the order of ``candidates``. ``views`` (selection -> its common view) is only carried onto the decisions, as a measurement."""
+    query fixes, so a tie is where the two may disagree with neither being wrong. Returned in the order of ``candidates``. ``views`` (selection -> its common view) and ``closes`` (selection -> the book's last price before kick-off) are only carried onto the decisions, as measurements."""
     assessed = [assess(world, c, adjustment=(adjustments or {}).get(c.key), market=(markets or {}).get(c.ident)) for c in candidates]
     by_fixture: dict[int, list[int]] = defaultdict(list)
     for i, a in enumerate(assessed):
@@ -562,7 +619,8 @@ def decide_all(world: decision.World, candidates: Sequence[Candidate], *, adjust
                              + (" (empate de score: decide la selección)" if i in tied else ""),
                              _e("correlated_same_match"), best=[best.key[1], best.key[2], str(best.key[3])], tie=i in tied)
     decided = [finish(a, verdicts.get(i) or alone(a)) for i, a in enumerate(assessed)]
-    if not views:
+    if not views and not closes:
         return decided
-    return [replace(d, common=views.get(d.key)) for d in decided]  # a measurement carried along: nothing above read it
+    # measurements carried along: nothing above read them
+    return [replace(d, common=(views or {}).get(d.key), close=(closes or {}).get(d.key)) for d in decided]
 

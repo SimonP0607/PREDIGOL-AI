@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# IA-037 · 02 · De dónde sale el precio de decision-v1 y qué edad tenía el libro en el mismo momento (capturas y refrescos).
+# Solo lectura. Necesita la función psq: psql en el contenedor de PostgreSQL con
+#   PGOPTIONS="-c default_transaction_read_only=on -c statement_timeout=95000" (una sentencia a la vez, salida separada por |).
+# Las fechas son las de la medición del 11-nov-2026 (ventana de 30 días UTC); cámbialas para otra ventana.
+Q="with d as (select d.id, d.known_at, d.price_at, d.kickoff_at, d.checkpoint, f.provider_fixture_id pid from intel.decisions d join core.fixtures f on f.id = d.fixture_id where d.decision_version='decision-v1' and d.known_at >= '2026-10-12T00:00Z' and d.known_at < '2026-11-11T14:00Z' and d.checkpoint <> 'selection' and d.price_at is not null),
+x as (select d.*, ca.asked_at cap_at, ca.results cap_res, cn.asked_at capne_at, ba.asked_at book_at, ba.results book_res, bn.asked_at bookne_at
+ from d
+ left join lateral (select asked_at, results from market.odds_asks a where a.provider_fixture_id=d.pid and a.asked_at <= d.known_at and a.asked_at < d.kickoff_at order by asked_at desc limit 1) ca on true
+ left join lateral (select asked_at from market.odds_asks a where a.provider_fixture_id=d.pid and a.asked_at <= d.known_at and a.asked_at < d.kickoff_at and a.results > 0 order by asked_at desc limit 1) cn on true
+ left join lateral (select asked_at, results from market.book_asks b where b.provider_fixture_id=d.pid and b.asked_at <= d.known_at and b.asked_at < d.kickoff_at order by asked_at desc limit 1) ba on true
+ left join lateral (select asked_at from market.book_asks b where b.provider_fixture_id=d.pid and b.asked_at <= d.known_at and b.asked_at < d.kickoff_at and b.results > 0 order by asked_at desc limit 1) bn on true),
+y as (select x.*, extract(epoch from known_at-price_at)/60 dec_age, extract(epoch from known_at-greatest(capne_at, coalesce(bookne_at, capne_at)))/60 book_age, extract(epoch from capne_at-price_at)/60 lag, extract(epoch from kickoff_at-known_at)/3600 h, (known_at >= '2026-11-09T23:08Z') refresh_era from x)"
+echo "---A total, sin captura previa, precio=ultima captura no vacia (+-2 min), precio anterior a la ultima captura, ultima consulta vacia, era refrescos"
+psq -tc "$Q select count(*), count(*) filter (where capne_at is null), count(*) filter (where abs(lag) <= 2), count(*) filter (where lag > 2), count(*) filter (where lag < -2), count(*) filter (where cap_res = 0 and (book_res is null or book_at < cap_at)), count(*) filter (where refresh_era) from y"
+echo "---B retraso cuando el precio es anterior a la ultima captura no vacia: n, p50, p90, max min"
+psq -tc "$Q select count(*), round(percentile_cont(0.5) within group (order by lag)::numeric,1), round(percentile_cont(0.9) within group (order by lag)::numeric,1), round(max(lag)::numeric,1) from y where lag > 2"
+echo "---C por franja: n, edad decision p50/p90, edad libro p50/p90, filas con libro mas fresco >15min"
+psq -tc "$Q select case when h<1 then 'a 0-1h' when h<3 then 'b 1-3h' when h<6 then 'c 3-6h' when h<12 then 'd 6-12h' when h<24 then 'e 12-24h' else 'f 24-36h' end b, count(*), round(percentile_cont(0.5) within group (order by dec_age)::numeric,1), round(percentile_cont(0.9) within group (order by dec_age)::numeric,1), round(percentile_cont(0.5) within group (order by book_age)::numeric,1), round(percentile_cont(0.9) within group (order by book_age)::numeric,1), count(*) filter (where dec_age - book_age > 15) from y where capne_at is not null group by 1 order by 1"
+echo "---D era de refrescos: por franja n, edad decision p50/p90, edad libro p50/p90, con refresco vigente, libro mas fresco >15min"
+psq -tc "$Q select case when h<1 then 'a 0-1h' when h<3 then 'b 1-3h' when h<6 then 'c 3-6h' when h<12 then 'd 6-12h' when h<24 then 'e 12-24h' else 'f 24-36h' end b, count(*), round(percentile_cont(0.5) within group (order by dec_age)::numeric,1), round(percentile_cont(0.9) within group (order by dec_age)::numeric,1), round(percentile_cont(0.5) within group (order by book_age)::numeric,1), round(percentile_cont(0.9) within group (order by book_age)::numeric,1), count(*) filter (where bookne_at > capne_at), count(*) filter (where dec_age - book_age > 15) from y where refresh_era and capne_at is not null group by 1 order by 1"
+echo "---E era de refrescos total: n, fixtures, n con refresco vigente, p50 edad decision, p50 edad libro"
+psq -tc "$Q select count(*), count(distinct pid), count(*) filter (where bookne_at > capne_at), round(percentile_cont(0.5) within group (order by dec_age)::numeric,1), round(percentile_cont(0.5) within group (order by book_age)::numeric,1) from y where refresh_era"

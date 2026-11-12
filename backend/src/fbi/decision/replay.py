@@ -11,7 +11,11 @@ For every row decision-v1 or decision-fam-v1 wrote during the day (Bogotá, ``fb
                      all of a match's, because correlation compares them;
     decision-v2      ``engine.decide_all`` over them; optionally with the Council's typed adjustment (``council``: ``ma-v1`` or
                      ``ma-v1-h``, ctx-adj-v1) and the market's signals (``signals``), each a separate measurement: without them the
-                     replay is the equivalence of the engine.
+                     replay is the equivalence of the engine;
+    the price        the core candidates' price as decision-v1 read it (``price="consensus"``, the default: the newest consensus of a
+                     capture) or as the odds book held it at the moment (``price="book"``, ``fbi.decision.book_price``: the answer in
+                     force of a capture or of a book refresh, priced the same way, with its age and, as a measurement, the book's last
+                     price before kick-off for the CLV). The book is a separate measurement too: the evidence of P1 is the default.
 
 Then each row is compared with the decision of the same selection: decision-v1's state read through state-v2 (``state_v2.classify``)
 against decision-v2's. The report: the agreement per family (and per market), the confusion table, the labels and checkpoints that
@@ -34,12 +38,13 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.ai.calendar import day_bounds
-from fbi.decision import engine, market_inputs
+from fbi.decision import book_price, engine, market_inputs
 from fbi.decision import view as common_view
-from fbi.decision.families import FAMILIES, INFO_CODES, Candidate, MarketFamily, family_of
+from fbi.decision.families import CORE, FAMILIES, INFO_CODES, Candidate, MarketFamily, family_of
 from fbi.intel import context_adjustment as ctx_adj
 from fbi.intel import decision, state_v2
 from fbi.intel.decision import Key
+from fbi.storage.payload_store import PayloadStore
 
 VERSION: Final = "decision-v2-replay-v1"
 SELECTION: Final = "selection"
@@ -49,7 +54,8 @@ NOT_FOUND: Final = "candidate"
 
 DAY_SQL: Final = """
 SELECT d.id, d.decision_version, d.known_at, d.checkpoint, d.fixture_id, d.market_key, d.selection, d.line, d.model_name, d.state,
-       d.reasons, d.filters, d.context_status, d.p_cal::float8 AS p_cal
+       d.reasons, d.filters, d.context_status, d.p_cal::float8 AS p_cal, d.odds::float8 AS odds, d.p_market::float8 AS p_market,
+       d.price_at
   FROM intel.decisions d
  WHERE d.decision_version = ANY(%(versions)s) AND d.known_at >= %(start)s AND d.known_at < %(end)s
  ORDER BY d.known_at, d.id
@@ -273,6 +279,57 @@ def common_summary(items: Sequence[tuple[Mapping[str, Any], engine.CommonView | 
             "view_calibration": dict(calibration.most_common()), "causes": causes}
 
 
+# -- the price and its age ------------------------------------------------------------------------------------------------------------
+
+def _spread(xs: Sequence[float]) -> dict[str, float | None]:
+    s = sorted(xs)
+    return {"n": len(s), "p50": _percentile(s, 0.5), "p75": _percentile(s, 0.75), "p90": _percentile(s, 0.9), "p95": _percentile(s, 0.95),
+            "max": _percentile(s, 1.0)}
+
+
+def _minutes(later: datetime, earlier: datetime) -> float:
+    return (later - earlier).total_seconds() / 60
+
+
+def price_summary(pairs: Sequence[Pair], *, source: str) -> dict[str, Any]:
+    """The price decision-v2 judged each row with, and its age (G-PRECIO, plan INT-A06): how many decisions carry a price, how many of those
+    carry no age (the gate asks for none), the age by checkpoint; with the book's price, also which ask confirmed it, why a selection had
+    none, how far it is from decision-v1's own price on the same row (``PRICE_MOVE`` is decision-v1's 3 %), and the book's last price before
+    kick-off (``engine.Close``). A measurement: nothing here changes a state. Pure."""
+    decided = [(r, d) for r, _, d in pairs if d is not None]
+    with_price = [(r, d) for r, d in decided if d.price.odds is not None]
+    ages = [d.price.age_minutes for _, d in with_price if d.price.age_minutes is not None]
+    by_checkpoint: dict[str, list[float]] = defaultdict(list)
+    for _, d in with_price:
+        if d.price.age_minutes is not None:
+            by_checkpoint[d.checkpoint].append(d.price.age_minutes)
+    out: dict[str, Any] = {"source": source, "decisions": len(decided), "with_price": len(with_price),
+                           "without_age": sum(1 for _, d in with_price if d.price.age_minutes is None), "age_minutes": _spread(ages),
+                           "by_checkpoint": {cp: _spread(v) for cp, v in sorted(by_checkpoint.items())}}
+    if source != engine.BOOK:
+        return out
+    core = [(r, d) for r, f, d in pairs if d is not None and f == CORE.name]  # only the core is priced by the book: a family keeps its own
+    core_priced = [(r, d) for r, d in core if d.price.odds is not None]
+    v1_ages = [_minutes(r["known_at"], r["price_at"]) for r, _ in core if r.get("price_at") is not None and r.get("known_at") is not None]
+    odds_gap: list[float] = []
+    p_gap: list[float] = []
+    for r, d in core_priced:
+        if r.get("odds") and r.get("p_market") is not None and d.price.p_market is not None and d.price.odds is not None:
+            odds_gap.append(abs(d.price.odds / float(r["odds"]) - 1) * 100)
+            p_gap.append(abs(d.price.p_market - float(r["p_market"])) * 100)
+    closes = [d.close for _, d in core if d.close is not None]
+    out |= {"core_decisions": len(core), "confirmed_by": dict(sorted(Counter(str(d.price.confirmed_by) for _, d in core_priced).items())),
+            "missing": dict(sorted(Counter(str(d.price.missing) for _, d in core if d.price.odds is None).items())),
+            "v1_age_minutes": _spread(v1_ages),
+            "against_v1": {"rows": len(odds_gap), "odds_gap_pct": _spread(odds_gap), "p_gap_pp": _spread(p_gap),
+                           "odds_moved": sum(1 for g in odds_gap if g > decision.PRICE_MOVE * 100), "move_pct": decision.PRICE_MOVE * 100},
+            "close": {"decisions": len(closes), "minutes_to_kickoff": _spread([c.minutes_to_kickoff for c in closes]),
+                      "provider_minutes_to_kickoff": _spread([c.provider_minutes_to_kickoff for c in closes
+                                                              if c.provider_minutes_to_kickoff is not None]),
+                      "confirmed_by": dict(sorted(Counter(c.confirmed_by for c in closes).items()))}}
+    return out
+
+
 # -- the replay -----------------------------------------------------------------------------------------------------------------------
 
 def _primary_p(world: decision.World, c: Candidate) -> float | None:
@@ -283,10 +340,16 @@ def _primary_p(world: decision.World, c: Candidate) -> float | None:
 
 
 def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[MarketFamily] = FAMILIES, council: str | None = None,
-               signals: bool = False, view: bool = False) -> dict[str, Any]:
-    """decision-v2 over every row decision-v1 and decision-fam-v1 wrote during ``day``, compared. Read-only."""
+               signals: bool = False, view: bool = False, price: str = engine.CONSENSUS, store: PayloadStore | None = None) -> dict[str, Any]:
+    """decision-v2 over every row decision-v1 and decision-fam-v1 wrote during ``day``, compared. ``price``: the core candidates' price as
+    decision-v1 read it (``consensus``, the default) or as the odds book held it at each moment (``book``, which reads the bodies from the
+    RAW ``store``). Read-only."""
     if council is not None and council not in ctx_adj.ENGINES:
         raise ValueError(f"council must be one of {ctx_adj.ENGINES}")
+    if price not in engine.PRICE_SOURCES:
+        raise ValueError(f"price must be one of {engine.PRICE_SOURCES}")
+    if price == engine.BOOK and store is None:
+        raise ValueError("the book's price is read from the RAW store: give the store")
     versions = sorted({f.params.decision_version for f in families})
     rows = read_rows(conn, day=day, versions=versions)
     skipped_selection = sum(1 for r in rows if r["checkpoint"] == SELECTION)
@@ -302,11 +365,19 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
         groups[(r["known_at"], fam.params.decision_version)].append((r, fam))
     pairs: list[Pair] = []
     measured: list[tuple[Mapping[str, Any], engine.CommonView | None, float | None]] = []
+    book: book_price.BookReader | None = None
+    closes: dict[Key, engine.Close] = {}
+    if price == engine.BOOK:
+        core_fixtures = sorted({int(r["fixture_id"]) for items in groups.values() for r, f in items if f.name == CORE.name})
+        book = book_price.read(conn, store, core_fixtures)
+        closes = book_price.closes(book, core_fixtures)
     for (at, _), items in sorted(groups.items()):
         fams = [f for f in families if any(f is g for _, g in items)]
         fixtures = sorted({int(r["fixture_id"]) for r, _ in items})
         world = world_at(conn, fams[0], fixtures, at=at, rows=[r for r, _ in items])
         cands = candidates_as_of([c for f in fams for c in f.candidates(conn, at=at, fixtures=fixtures)], at)
+        if book is not None and any(f.name == CORE.name for f in fams):
+            cands = book_price.priced(cands, book.answers_at(fixtures, at), family=CORE.name)
         adjustments: dict[Key, ctx_adj.ContextAdjustment] = {}
         if council is not None:
             seen = ctx_adj.adjustments_for(conn, at=at, fixture_ids=fixtures, engines=(council,))
@@ -318,7 +389,7 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
                 if found is not None:
                     markets[c.ident] = found
         views = common_view.read(conn, fixtures, at=at, cal=world.cal) if view else {}
-        index = {d.ident: d for d in engine.decide_all(world, cands, adjustments=adjustments, markets=markets, views=views)}
+        index = {d.ident: d for d in engine.decide_all(world, cands, adjustments=adjustments, markets=markets, views=views, closes=closes)}
         for r, fam in items:
             k = key_of(r)
             d = index.get((fam.name, k, str(r.get("model_name")))) or index.get((fam.name, k, None))
@@ -326,7 +397,12 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
             # the view of the row's selection counts whether or not decision-v2 rebuilt its candidate: it is a measurement of the view
             measured.append((r, views.get(k), None if d is None else d.prediction.p_cal))
     out = compare(pairs, families=[f.name for f in families])
+    prices = price_summary(pairs, source=price)
+    if book is not None:
+        prices |= {"reader": {"version": book_price.VERSION, "matches": len(book.fixtures), "bodies_read": len(book.bodies),
+                              "unreadable": sum(1 for v in book.bodies.values() if v is None), "problems": book.problems[:5]}}
     return {"version": engine.VERSION, "replay": VERSION, "day": day.isoformat(), "versions": versions,
-            "inputs": {"council": council, "signals": signals, "view": view, "previous": "strictly before known_at", "ai_mode": "as the rows recorded it"},
+            "inputs": {"council": council, "signals": signals, "view": view, "price": price, "previous": "strictly before known_at",
+                       "ai_mode": "as the rows recorded it"},
             "rows": len(rows), "moments": len(groups), "skipped": {"selection_copies": skipped_selection, "unclaimed": len(unclaimed)},
-            "unclaimed_rows": unclaimed} | out | ({"common_view": common_summary(measured)} if view else {})
+            "unclaimed_rows": unclaimed} | out | ({"common_view": common_summary(measured)} if view else {}) | {"price": prices}
