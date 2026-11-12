@@ -36,6 +36,17 @@ export function OddsPill({
   );
 }
 
+/** The neutral tag of a figure (the system's sheet 4): 24 px, a pill, the secondary text. */
+export const TAG =
+  "numeric inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-full bg-foreground/7 px-[0.5625rem] text-xs font-semibold leading-none text-foreground-soft";
+
+/**
+ * The two questions under a pick («¿Por qué este pick?», «Explícame»), as the card's small secondary buttons: they
+ * share the row and each takes a whole line on a narrow phone. Only the look of the trigger; what opens is not touched.
+ */
+export const ASK_BUTTON =
+  "h-10 min-h-0 flex-1 basis-auto justify-center whitespace-nowrap rounded-field bg-elevated/60 px-3.5 text-[0.8125rem]";
+
 /**
  * Expected value per unit, signed, coloured by sign. Its definition shows to a mouse and to a finger, even inside a
  * card's link (hintProps); `hint={false}` where a Hint around it already says it.
@@ -60,8 +71,8 @@ export function EvBadge({
     <span
       {...(hint ? hintProps(termShort("expectedValue")) : {})}
       className={cn(
-        "numeric inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-micro font-semibold",
-        n > 0 ? "bg-positive-soft text-positive" : "bg-negative-soft text-negative",
+        "numeric inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-full px-[0.5625rem] text-xs font-semibold leading-none",
+        n > 0 ? "bg-primary-soft text-primary" : "bg-negative-soft text-negative",
         className,
       )}
     >

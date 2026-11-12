@@ -44,10 +44,7 @@ function CompactLeg({ leg }: { leg: ParlayRecordLeg }) {
         <LegNumber n={leg.leg_no} />
         <div className="min-w-0 flex-1">
           {/* The selection and the match whole, on two lines if need be (mobile UX audit). */}
-          <div
-            className="break-words text-sm font-semibold leading-snug"
-            data-testid="parlay-leg-selection"
-          >
+          <div className="break-words text-title" data-testid="parlay-leg-selection">
             {legLabel(view)}
           </div>
           <div className="mt-0.5 flex min-w-0 items-start gap-1.5 text-caption text-muted-foreground">
@@ -91,14 +88,15 @@ function Summary({ parlay }: { parlay: ParlayRecord }) {
   ].filter((x): x is string => x !== null);
   return (
     <div
-      className="border-t border-gold/20 bg-gold-soft/30 px-4 py-4 sm:px-5"
+      // the combined price as a tile set into the card (the system's sheet 4), not a band across it
+      className="mx-4 mb-4 mt-1 rounded-field border border-gold/30 bg-black/20 px-3.5 py-3.5 sm:mx-5"
       data-testid="parlay-summary"
     >
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
         <div className="col-span-2 sm:col-span-1">
           <dt className={STAT_LABEL}>{t("parlays.combinedOdds")}</dt>
           <dd
-            className="numeric mt-1.5 text-[2rem] font-semibold leading-none tracking-tight text-gold-strong"
+            className="numeric mt-1.5 text-[2.5rem] font-extrabold leading-none tracking-tight text-gold-strong"
             data-testid="parlay-combined-odds"
           >
             {formatOdds(parlay.combined_odds)}
@@ -231,10 +229,11 @@ export function ParlayRecordCard({
       data-guide="parlays-official"
       data-status={parlay?.status ?? "NONE"}
       className={cn(
-        "@container flex flex-col overflow-hidden rounded-xl border",
+        // «Noche de partido» (plan maestro UX/UI 2026, PR-13): a parlay PrediGol built, on the gold card
+        "@container flex flex-col overflow-hidden rounded-feature",
         built
-          ? "gold-ring bg-gradient-to-b from-gold-soft via-card to-card"
-          : "border-gold/25 bg-gradient-to-b from-gold-soft/50 to-card",
+          ? "surface-gold hairline-gold"
+          : "border border-gold/25 bg-gradient-to-b from-gold-soft/50 to-card",
         className,
       )}
     >
@@ -260,7 +259,7 @@ export function ParlayRecordCard({
         <>
           <ol
             aria-label={t("parlays.legsList")}
-            className="mt-3 flex-1 divide-y divide-border/60 border-t border-border/60"
+            className="mt-3 flex-1 divide-y divide-gold/20 border-t border-gold/20"
           >
             {(kind === "multiday"
               ? groupByDay(parlay.legs)

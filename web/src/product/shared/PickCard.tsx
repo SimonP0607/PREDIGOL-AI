@@ -15,9 +15,19 @@ import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { track } from "@/lib/track";
 import { ExplainButton } from "@/product/explain/ExplainSheet";
 import { WhyPickButton } from "@/product/picks/WhyPick";
-import { EvBadge, Freshness, Kickoff, OddsPill, ProbCompare, ShadowBadge } from "./Bits";
+import {
+  ASK_BUTTON,
+  EvBadge,
+  Freshness,
+  Kickoff,
+  OddsPill,
+  ProbCompare,
+  ShadowBadge,
+  TAG,
+} from "./Bits";
 import { gateReason, marketName, selectionLabel } from "./markets";
 import { PickWhyLine } from "./PickWhy";
+import { onGoldCard } from "./userStatus";
 import { UserStatusBadge } from "./UserStatusBadge";
 
 export function PickCard({
@@ -51,13 +61,17 @@ export function PickCard({
     home: pick.home.name,
     away: pick.away.name,
   });
+  // «Noche de partido» (the system's sheet 4, plan maestro UX/UI 2026, PR-13): what PrediGol recommends is drawn on the
+  // gold card, its seal first. The rule is the one the seal already follows; the card adds no state of its own.
+  const recommended = onGoldCard(pick);
   return (
     <div
       data-testid="pick-card"
+      data-recommended={recommended || undefined}
       className={cn(
-        "group flex flex-col rounded-xl border bg-card transition-colors hover:border-border-strong",
-        pick.value_now ? "border-border" : "border-border/60 opacity-80",
-        rank === 1 && pick.value_now && "gold-ring",
+        "group flex flex-col rounded-feature transition-colors",
+        recommended ? "surface-gold hairline-gold" : "card-surface hover:border-border-strong",
+        !pick.value_now && "opacity-80",
         className,
       )}
     >
@@ -65,78 +79,64 @@ export function PickCard({
         to="/matches/$fixtureId"
         params={{ fixtureId: String(pick.fixture_id) }}
         onClick={() => track("pick_opened", { pick_id: pick.pick_id })}
-        className="block flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="block flex-1 rounded-feature focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
-        {/* The league keeps a readable width; the time and the badge drop below it when they do not fit
-            (plan PICKS, U1: the name broke letter by letter beside «SHADOW»). */}
-        <div
-          className={cn(
-            "flex flex-wrap items-center gap-x-2 gap-y-1 px-4",
-            compact ? "pt-3" : "pt-3.5",
-          )}
-        >
-          <CompetitionTag
-            name={pick.competition.name}
-            logo={pick.competition.logo_url}
-            flag={pick.competition.flag_url}
-            country={pick.competition.country}
-            className="min-w-[9rem] flex-1"
-          />
-          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        {/* The seal and the hour share the first line; the hour drops below when a narrow card cannot hold both. */}
+        <div className="flex flex-wrap items-start gap-x-2 gap-y-1.5 px-4 pt-4">
+          <div className="flex min-w-0 items-start gap-2">
+            {rank ? (
+              <span
+                aria-label={`#${rank}`}
+                className="numeric flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gold text-xs font-extrabold leading-none text-gold-foreground"
+              >
+                {rank}
+              </span>
+            ) : null}
+            {/* Plan UX, B3: the state a reader is shown, in words (the one table). */}
+            <UserStatusBadge state={pick} />
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 pt-0.5">
             {shadow ? <ShadowBadge compact /> : null}
             <Kickoff at={pick.kickoff_at} />
           </div>
         </div>
 
-        <div className="flex items-start gap-2.5 px-4 pt-2.5">
-          {rank ? (
-            <span
-              aria-label={`#${rank}`}
-              className={cn(
-                "numeric mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                rank === 1 ? "bg-gold text-gold-foreground" : "bg-elevated text-muted-foreground",
-              )}
-            >
-              {rank}
-            </span>
-          ) : null}
+        <div className="px-4 pt-2.5">
+          {/* The league whole, on its own line (plan PICKS, U1: the name broke letter by letter beside «SHADOW»). */}
+          <CompetitionTag
+            name={pick.competition.name}
+            logo={pick.competition.logo_url}
+            flag={pick.competition.flag_url}
+            country={pick.competition.country}
+          />
           {/* Home above away, every name whole (mobile UX audit). */}
           <Matchup
             home={{ name: pick.home.name, logo: pick.home.logo_url }}
             away={{ name: pick.away.name, logo: pick.away.logo_url }}
-            className="flex-1"
+            className="mt-2"
           />
         </div>
         {why ? <div className="flex min-w-0 px-4 pt-1.5">{why}</div> : null}
 
-        <div
-          className={cn(
-            "mt-3 border-t border-border/70 px-4",
-            compact ? "pb-2 pt-3" : "pb-2.5 pt-3.5",
-          )}
-        >
-          <div className="flex items-start justify-between gap-3">
+        <div className={cn("px-4", compact ? "pb-2 pt-3" : "pb-2.5 pt-3.5")}>
+          <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-caption uppercase tracking-wider text-subtle-foreground">
+              <div className="text-overline text-muted-foreground">
                 {marketName(pick.market_key)}
               </div>
               <div
-                className="mt-0.5 break-words font-display text-[0.95rem] font-semibold leading-snug"
+                className={cn("mt-1 break-words", compact ? "text-subheading" : "text-heading")}
                 data-testid="pick-selection"
               >
                 {label}
               </div>
-              {/* Plan UX, B3: the state a reader is shown, in words (the one table). */}
-              <UserStatusBadge state={pick} className="mt-1.5" />
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              <OddsPill odds={pick.best_odds} best={pick.value_now} size={compact ? "md" : "lg"} />
-              {/* Reference odds: no bookmaker for a reader (plan PICKS, D6); the owner finds it in the audit. */}
-            </div>
+            {/* Reference odds: no bookmaker for a reader (plan PICKS, D6); the owner finds it in the audit. */}
+            <OddsPill odds={pick.best_odds} best={pick.value_now} size={compact ? "md" : "lg"} />
           </div>
 
           {!compact ? (
-            <ProbCompare model={pick.p_model} market={pick.p_market} className="mt-3" />
+            <ProbCompare model={pick.p_model} market={pick.p_market} className="mt-3.5" />
           ) : (
             <PickWhyLine model={pick.p_model} market={pick.p_market} className="mt-2.5" />
           )}
@@ -148,14 +148,14 @@ export function PickCard({
       {/* The figures with their help, beside the card's link and not inside it (plan UX, A1, defect F16): a tap, a
           hover or the keyboard opens each definition without opening the match. */}
       <div
-        className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pb-2"
+        className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-4 pb-2.5"
         data-testid="pick-card-figures"
       >
         <GlossaryTerm term="expectedValue" className="no-underline">
           <EvBadge ev={pick.ev} hint={false} />
         </GlossaryTerm>
         {pick.edge !== null ? (
-          <GlossaryTerm term="edge" className="numeric text-caption text-muted-foreground">
+          <GlossaryTerm term="edge" className={cn(TAG, "no-underline")}>
             {t("common.edge")} {fmtSignedPp(pick.edge)}
           </GlossaryTerm>
         ) : null}
@@ -164,8 +164,13 @@ export function PickCard({
         </Hint>
       </div>
       <div className={cn("flex flex-wrap gap-2 px-4", compact ? "pb-3" : "pb-3.5")}>
-        <WhyPickButton pickId={pick.pick_id} autoOpen={autoOpenWhy} />
-        <ExplainButton entity="pick" itemId={pick.pick_id} testId="explain-pick" />
+        <WhyPickButton pickId={pick.pick_id} autoOpen={autoOpenWhy} className={ASK_BUTTON} />
+        <ExplainButton
+          entity="pick"
+          itemId={pick.pick_id}
+          testId="explain-pick"
+          className={ASK_BUTTON}
+        />
       </div>
       {actions ? <div className="border-t border-border/70 px-4 py-2.5">{actions}</div> : null}
     </div>

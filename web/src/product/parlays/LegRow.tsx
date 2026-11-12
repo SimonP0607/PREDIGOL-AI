@@ -19,7 +19,7 @@ export function LegNumber({ n }: { n: number }) {
   return (
     <span
       aria-hidden
-      className="numeric flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft text-micro font-semibold text-gold-strong"
+      className="numeric flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gold text-xs font-extrabold leading-none text-gold-foreground"
     >
       {n}
     </span>
@@ -77,13 +77,8 @@ export function LegRow({
       </Link>
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2">
         <div className="min-w-0">
-          <div className="text-caption uppercase tracking-wider text-subtle-foreground">
-            {marketName(leg.market_key)}
-          </div>
-          <div
-            className="mt-0.5 font-display text-[0.95rem] font-semibold leading-snug"
-            data-testid="parlay-leg-selection"
-          >
+          <div className="text-overline text-muted-foreground">{marketName(leg.market_key)}</div>
+          <div className="mt-1 text-title" data-testid="parlay-leg-selection">
             {legLabel(leg)}
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
