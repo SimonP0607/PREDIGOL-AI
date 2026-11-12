@@ -64,7 +64,6 @@ describe("TeamName and CompetitionTag", () => {
 
 describe("a team without a crest («Noche de partido», the system's sheet 4)", () => {
   const fallback = (html: string) => /<span[^>]*data-logo-fallback[^>]*>/.exec(html)?.[0] ?? "";
-  const text = (html: string) => html.replace(/<[^>]+>/g, "");
 
   test("is a shield with its initials - square shoulders, a round base - in the box a crest would take", () => {
     const html = renderToStaticMarkup(<TeamLogo src={null} name="Atlético Cordillera" size={28} />);
@@ -89,7 +88,8 @@ describe("a team without a crest («Noche de partido», the system's sheet 4)", 
       renderToStaticMarkup(<TeamLogo src={null} name="Atlético Cordillera" />),
       renderToStaticMarkup(<PlayerPhoto src={null} name="Juan Pérez" />),
     ]) {
-      expect(text(html)).toBe("");
+      // the badge is an empty element: no text node inside it
+      expect(html.endsWith("></span>")).toBe(true);
       expect(fallback(html)).toContain("before:content-[attr(data-initials)]");
       expect(fallback(html)).toContain('aria-hidden="true"');
     }
@@ -99,7 +99,9 @@ describe("a team without a crest («Noche de partido», the system's sheet 4)", 
         <span>Liga Andina</span>
       </button>,
     );
-    expect(text(row)).toBe("Liga Andina");
+    expect(row).toContain('data-initials="LA"');
+    expect(row).not.toContain(">LA<");
+    expect(row).toContain("></span><span>Liga Andina</span></button>");
   });
 
   test("a player without a photo stays a circle", () => {
