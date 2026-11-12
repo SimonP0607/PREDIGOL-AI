@@ -11,5 +11,7 @@ risk and never to probability, and the state (``fbi.intel.state_v2``) is decided
 SHADOW. This package computes and reports. Nothing that decides, publishes, stakes or serves users imports it
 (``tests/unit/test_decision_v2_isolation.py``): its only reader is its own command, ``python -m scripts.ia_decision_v2``,
 whose ``replay`` recomputes a day's decisions and compares them with decision-v1 and decision-fam-v1 (``replay``) - the
-evidence of the P1 gate. It writes nothing.
+evidence of the P1 gate. It writes nothing. The core's price is decision-v1's consensus of a capture by default; the replay
+can price it instead as the odds book held it at each moment, with its age and the book's last price before kick-off
+(``book_price``, plan INT-A06).
 """
