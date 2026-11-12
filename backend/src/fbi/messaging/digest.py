@@ -138,7 +138,7 @@ SELECT count(*) FILTER (WHERE status IN ('WIN', 'HALF_WIN')) AS won,
   FROM picks.user_picks
  WHERE user_id = %s AND settled_at >= %s AND settled_at < %s
 """
-TEAMS_SQL = "SELECT team_id FROM customer.favorites WHERE user_id = %s AND kind = 'team'"
+TEAMS_SQL = "SELECT team_id FROM customer.favorites WHERE user_id = %s AND kind = 'team' AND notify"
 MATCHES_SQL = """
 SELECT count(*) FROM core.fixtures f
  WHERE f.status_group = 'scheduled' AND f.kickoff_at > %s AND f.kickoff_at <= %s

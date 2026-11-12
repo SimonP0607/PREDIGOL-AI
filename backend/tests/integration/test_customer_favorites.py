@@ -289,6 +289,44 @@ def test_each_reader_sees_and_changes_only_their_own(fresh: Football) -> None:
     assert cross_site.put("/api/v1/me/favorites", json={"leagues": [], "teams": []}).status_code == 403
 
 
+# ── decision 8: how the reader wants PrediGol shown, and a bell per followed team (BE-039) ─────────────────────────
+
+
+def test_the_settings_of_presentation_start_as_today_and_change_only_what_is_asked(fresh: Football) -> None:
+    reader = client(READER)
+    assert reader.get("/api/v1/auth/me").json()["display"] == {
+        "time_format": "24h", "odds_format": "decimal", "reduce_motion": False, "home_default": None}
+    me = reader.patch("/api/v1/auth/me/preferences", json={"odds_format": "american"}).json()
+    assert me["display"] == {"time_format": "24h", "odds_format": "american", "reduce_motion": False,
+                             "home_default": None}, "one setting changed, the others as they were"
+    me = reader.patch("/api/v1/auth/me/preferences",
+                      json={"time_format": "12h", "reduce_motion": True, "home_default": "all"}).json()
+    assert me["display"] == {"time_format": "12h", "odds_format": "american", "reduce_motion": True,
+                             "home_default": "all"}
+    assert reader.patch("/api/v1/auth/me/preferences", json={"home_default": "auto"}).json()["display"][
+        "home_default"] is None, "auto: back to the rule"
+    assert reader.patch("/api/v1/auth/me/preferences", json={"odds_format": "hongkong"}).status_code == 422
+    assert reader.patch("/api/v1/auth/me/preferences", json={"time_format": "am"}).status_code == 422
+    assert client(OTHER).get("/api/v1/auth/me").json()["display"]["odds_format"] == "decimal", "each reader their own"
+
+
+def test_a_followed_teams_bell_is_the_readers_and_only_of_a_team_they_follow(fresh: Football, database: str) -> None:
+    f, reader = fresh.ids, client(READER)
+    reader.put("/api/v1/me/favorites", json={"leagues": [f["uno"]], "teams": [f["nacional"], f["santafe"]]})
+    assert reader.get("/api/v1/me/favorites").json()["muted_teams"] == []
+    off = reader.put("/api/v1/me/favorites/team-bell", json={"team_id": f["santafe"], "notify": False})
+    assert off.status_code == 200 and off.json()["muted_teams"] == [f["santafe"]]
+    assert names(off.json()["teams"]) == ["Atlético Nacional", "Santa Fe"], "still followed: only its bell is off"
+    # saving the favourites again keeps the bell as it was
+    again = reader.put("/api/v1/me/favorites", json={"leagues": [f["uno"]], "teams": [f["nacional"], f["santafe"]]})
+    assert again.json()["muted_teams"] == [f["santafe"]]
+    on = reader.put("/api/v1/me/favorites/team-bell", json={"team_id": f["santafe"], "notify": True})
+    assert on.json()["muted_teams"] == []
+    missing = reader.put("/api/v1/me/favorites/team-bell", json={"team_id": 999999, "notify": False})
+    assert missing.status_code == 404 and code(missing) == "not_followed"
+    assert client(OTHER).get("/api/v1/me/favorites").json()["muted_teams"] == []
+
+
 def test_the_options_every_followed_league_and_the_teams_by_name_without_accents(fresh: Football) -> None:
     reader = client(READER)
     options = reader.get("/api/v1/me/favorites/options").json()

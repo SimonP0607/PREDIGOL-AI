@@ -33,6 +33,8 @@ class FavoritesView(Contract):
     catalog_markets: list[str] = Field(default_factory=list, description="The markets of a match's catalogue the reader "
                                        "follows (``corners_over_under.FT.match``: code, period, subject), in the order "
                                        "chosen (CUOTAS, BE-025). Apart from ``markets``, the five classic ones.")
+    muted_teams: list[int] = Field(default_factory=list, description="The followed teams whose bell is off (decision 8): "
+                                   "no line-up notice and out of the day's summary.")
     suggested: bool = Field(description="True while the reader has chosen none: these are the ones suggested for Colombia, "
                                         "labelled as suggested.")
     max_leagues: int
@@ -79,3 +81,10 @@ class HintIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     hint: Hint
+
+
+class TeamNotifyIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    team_id: int = Field(ge=1, le=2**31)
+    notify: bool

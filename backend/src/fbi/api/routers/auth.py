@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Path, Query, Request, Response
 
 from fbi.api.contracts.auth import (
     AccessEvent,
+    DisplayPrefs,
     IdentityIn,
     LoginIn,
     Me,
@@ -43,7 +44,7 @@ from fbi.auth.roles import Role
 from fbi.auth.service import Principal
 from fbi.auth.settings import session_settings
 from fbi.core.clock import now
-from fbi.customer import consents, favorites, guides, membership, support
+from fbi.customer import consents, display, favorites, guides, membership, support
 
 public_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
 session_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
@@ -91,6 +92,10 @@ def with_consents(who: Me, principal: Principal, conn: psycopg.Connection[Any]) 
                         for g in guides.progress(conn, principal.user_id)]
     update["guides_on"] = guides.guides_on()
     update["guides_auto"] = guides.auto(conn, principal.user_id)
+    # how the reader wants PrediGol shown (decision 8): presentation only
+    shown = display.read(conn, principal.user_id)
+    update["display"] = DisplayPrefs(time_format=shown.time_format, odds_format=shown.odds_format,
+                                     reduce_motion=shown.reduce_motion, home_default=shown.home_default)
     if favorites.welcome_due(conn, principal.user_id, reader=principal.role == Role.USER):
         update["welcome_due"] = True
         update["welcome_steps"] = list(favorites.welcome_steps(conn, principal.user_id))
@@ -175,6 +180,13 @@ def update_preferences(body: PreferencesIn, principal: App, conn: Db) -> Me:
     if body.guides_auto is not None:
         guides.set_auto(principal.user_id, body.guides_auto, at=now())
         conn.rollback()  # the connection's snapshot is older than this write: Me reads it again
+    shown: dict[str, Any] = {name: getattr(body, name) for name in ("time_format", "odds_format", "reduce_motion")
+                             if getattr(body, name) is not None}
+    if body.home_default is not None:
+        shown["home_default"] = None if body.home_default == "auto" else body.home_default
+    if shown:
+        display.write(principal.user_id, shown, at=now())
+        conn.rollback()
     return with_consents(me_of(principal, row), principal, conn)
 
 
