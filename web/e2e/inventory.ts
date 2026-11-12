@@ -16,6 +16,7 @@ export const READER_PAGES = [
   "/my-picks",
   "/parlays",
   "/odds",
+  "/odds/status",
   "/profile",
   "/transparency",
   "/updates",

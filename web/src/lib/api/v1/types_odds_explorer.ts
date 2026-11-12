@@ -256,3 +256,32 @@ export interface OddsMovementQuery {
   /** A line (an Asian handicap's: the home line); none: the market's main line. */
   line?: string | undefined;
 }
+
+/** «Estado de los precios» (GET /odds/status, behind FBI_ODDS_STATUS): what a reader may know of the prices they see. */
+export interface OddsStatusHorizon {
+  horizon: "0-6h" | "6-24h" | "24-72h";
+  /** Followed matches with odds kicking off in the horizon. */
+  fixtures: number;
+  with_price: number;
+  /** Those whose price missed a scheduled capture. */
+  stale: number;
+}
+
+export interface OddsStatusMatch {
+  fixture_id: number;
+  kickoff_at: string;
+  home: string;
+  away: string;
+  competition: string;
+}
+
+export interface OddsStatus {
+  last_read_at: string | null;
+  by_horizon: OddsStatusHorizon[];
+  /** Followed matches of the next 24 h without a price in force, soonest first (at most 20). */
+  without_price: OddsStatusMatch[];
+  without_price_total: number;
+  /** Minutes before kick-off at which a price is read again. */
+  schedule_minutes: number[];
+  tolerance_minutes: number;
+}
