@@ -15,6 +15,7 @@ import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { track } from "@/lib/track";
 import { ExplainButton } from "@/product/explain/ExplainSheet";
 import { WhyPickButton } from "@/product/picks/WhyPick";
+import { PickDetailLink } from "@/product/picks/PickDetailLink";
 import {
   ASK_BUTTON,
   EvBadge,
@@ -171,6 +172,7 @@ export function PickCard({
           testId="explain-pick"
           className={ASK_BUTTON}
         />
+        <PickDetailLink pickId={pick.pick_id} />
       </div>
       {actions ? <div className="border-t border-border/70 px-4 py-2.5">{actions}</div> : null}
     </div>

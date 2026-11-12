@@ -18,7 +18,6 @@ import { Route as LiveRouteImport } from './routes/live'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyPicksRouteImport } from './routes/my-picks'
 import { Route as ParlaysRouteImport } from './routes/parlays'
-import { Route as PicksRouteImport } from './routes/picks'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -67,6 +66,8 @@ import { Route as MatchesIndexRouteImport } from './routes/matches.index'
 import { Route as MatchesFixtureIdRouteImport } from './routes/matches.$fixtureId'
 import { Route as OddsIndexRouteImport } from './routes/odds.index'
 import { Route as OddsStatusRouteImport } from './routes/odds.status'
+import { Route as PicksIndexRouteImport } from './routes/picks.index'
+import { Route as PicksPickIdRouteImport } from './routes/picks.$pickId'
 import { Route as AdminCustomersIndexRouteImport } from './routes/admin.customers.index'
 import { Route as AdminCustomersUserIdRouteImport } from './routes/admin.customers.$userId'
 import { Route as AdminPlayersIndexRouteImport } from './routes/admin.players.index'
@@ -118,11 +119,6 @@ const MyPicksRoute = MyPicksRouteImport.update({
 const ParlaysRoute = ParlaysRouteImport.update({
   id: '/parlays',
   path: '/parlays',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PicksRoute = PicksRouteImport.update({
-  id: '/picks',
-  path: '/picks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -365,6 +361,16 @@ const OddsStatusRoute = OddsStatusRouteImport.update({
   path: '/odds/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PicksIndexRoute = PicksIndexRouteImport.update({
+  id: '/picks/',
+  path: '/picks/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PicksPickIdRoute = PicksPickIdRouteImport.update({
+  id: '/picks/$pickId',
+  path: '/picks/$pickId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCustomersIndexRoute = AdminCustomersIndexRouteImport.update({
   id: '/customers/',
   path: '/customers/',
@@ -411,7 +417,6 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/my-picks': typeof MyPicksRoute
   '/parlays': typeof ParlaysRoute
-  '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -456,10 +461,12 @@ export interface FileRoutesByFullPath {
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/odds/status': typeof OddsStatusRoute
+  '/picks/$pickId': typeof PicksPickIdRoute
   '/admin/': typeof AdminIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/odds/': typeof OddsIndexRoute
+  '/picks/': typeof PicksIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
@@ -477,7 +484,6 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/my-picks': typeof MyPicksRoute
   '/parlays': typeof ParlaysRoute
-  '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -522,10 +528,12 @@ export interface FileRoutesByTo {
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/odds/status': typeof OddsStatusRoute
+  '/picks/$pickId': typeof PicksPickIdRoute
   '/admin': typeof AdminIndexRoute
   '/help': typeof HelpIndexRoute
   '/matches': typeof MatchesIndexRoute
   '/odds': typeof OddsIndexRoute
+  '/picks': typeof PicksIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
@@ -545,7 +553,6 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/my-picks': typeof MyPicksRoute
   '/parlays': typeof ParlaysRoute
-  '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -590,10 +597,12 @@ export interface FileRoutesById {
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/odds/status': typeof OddsStatusRoute
+  '/picks/$pickId': typeof PicksPickIdRoute
   '/admin/': typeof AdminIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/odds/': typeof OddsIndexRoute
+  '/picks/': typeof PicksIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
@@ -614,7 +623,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/my-picks'
     | '/parlays'
-    | '/picks'
     | '/profile'
     | '/register'
     | '/reset-password'
@@ -659,10 +667,12 @@ export interface FileRouteTypes {
     | '/legal/$doc'
     | '/matches/$fixtureId'
     | '/odds/status'
+    | '/picks/$pickId'
     | '/admin/'
     | '/help/'
     | '/matches/'
     | '/odds/'
+    | '/picks/'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
@@ -680,7 +690,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/my-picks'
     | '/parlays'
-    | '/picks'
     | '/profile'
     | '/register'
     | '/reset-password'
@@ -725,10 +734,12 @@ export interface FileRouteTypes {
     | '/legal/$doc'
     | '/matches/$fixtureId'
     | '/odds/status'
+    | '/picks/$pickId'
     | '/admin'
     | '/help'
     | '/matches'
     | '/odds'
+    | '/picks'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
@@ -747,7 +758,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/my-picks'
     | '/parlays'
-    | '/picks'
     | '/profile'
     | '/register'
     | '/reset-password'
@@ -792,10 +802,12 @@ export interface FileRouteTypes {
     | '/legal/$doc'
     | '/matches/$fixtureId'
     | '/odds/status'
+    | '/picks/$pickId'
     | '/admin/'
     | '/help/'
     | '/matches/'
     | '/odds/'
+    | '/picks/'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
@@ -815,7 +827,6 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MyPicksRoute: typeof MyPicksRoute
   ParlaysRoute: typeof ParlaysRoute
-  PicksRoute: typeof PicksRoute
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -830,9 +841,11 @@ export interface RootRouteChildren {
   LegalDocRoute: typeof LegalDocRoute
   MatchesFixtureIdRoute: typeof MatchesFixtureIdRoute
   OddsStatusRoute: typeof OddsStatusRoute
+  PicksPickIdRoute: typeof PicksPickIdRoute
   HelpIndexRoute: typeof HelpIndexRoute
   MatchesIndexRoute: typeof MatchesIndexRoute
   OddsIndexRoute: typeof OddsIndexRoute
+  PicksIndexRoute: typeof PicksIndexRoute
   HelpMessagesTicketIdRoute: typeof HelpMessagesTicketIdRoute
 }
 
@@ -899,13 +912,6 @@ declare module '@tanstack/react-router' {
       path: '/parlays'
       fullPath: '/parlays'
       preLoaderRoute: typeof ParlaysRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/picks': {
-      id: '/picks'
-      path: '/picks'
-      fullPath: '/picks'
-      preLoaderRoute: typeof PicksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -1244,6 +1250,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OddsStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/picks/': {
+      id: '/picks/'
+      path: '/picks'
+      fullPath: '/picks/'
+      preLoaderRoute: typeof PicksIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/picks/$pickId': {
+      id: '/picks/$pickId'
+      path: '/picks/$pickId'
+      fullPath: '/picks/$pickId'
+      preLoaderRoute: typeof PicksPickIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/customers/': {
       id: '/admin/customers/'
       path: '/customers'
@@ -1388,7 +1408,6 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MyPicksRoute: MyPicksRoute,
   ParlaysRoute: ParlaysRoute,
-  PicksRoute: PicksRoute,
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
@@ -1403,9 +1422,11 @@ const rootRouteChildren: RootRouteChildren = {
   LegalDocRoute: LegalDocRoute,
   MatchesFixtureIdRoute: MatchesFixtureIdRoute,
   OddsStatusRoute: OddsStatusRoute,
+  PicksPickIdRoute: PicksPickIdRoute,
   HelpIndexRoute: HelpIndexRoute,
   MatchesIndexRoute: MatchesIndexRoute,
   OddsIndexRoute: OddsIndexRoute,
+  PicksIndexRoute: PicksIndexRoute,
   HelpMessagesTicketIdRoute: HelpMessagesTicketIdRoute,
 }
 export const routeTree = rootRouteImport

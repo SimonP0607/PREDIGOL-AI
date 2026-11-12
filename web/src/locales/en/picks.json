@@ -133,5 +133,21 @@
       "evaluation": "Its model has not beaten the market yet: it does not pass the first step, so it is never recommended.",
       "more": "How PrediGol is doing"
     }
+  },
+  "detail": {
+    "title": "Pick detail",
+    "open": "See detail",
+    "phrase": "In one sentence",
+    "value": "Why it has value",
+    "risks": "What can go wrong",
+    "how": "How we decided",
+    "sheet": "Pick sheet",
+    "market": "Market",
+    "publishedOdds": "Published odds",
+    "publishedAt": "Published",
+    "daySet": "In the day",
+    "openMatch": "Open match",
+    "missing": "We could not find this pick",
+    "missingBody": "The link may be incomplete or the pick may no longer be available."
   }
 }
