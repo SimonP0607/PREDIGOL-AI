@@ -359,7 +359,8 @@ def _settle_shadow(r: Resolved) -> dict[str, Any]:
 def settle_lab(conn: psycopg.Connection[Any], r: Resolved) -> None:
     """What an answer of the LAB becomes: a summary kept in its item (``context.result``). A probe's says whether the answer fits its
     schema; an equivalence input's is the verdict the CHECKED review would have had - the same ``answer_review`` as production's; a
-    battery ask's is the outcome the rule of ``fbi.ai.battery`` reads; a shadow task's is the raw answer, for the orchestrator's next stage.
+    battery ask's is the outcome the rule of ``fbi.ai.battery`` reads; a shadow task's is the raw answer, for the orchestrator's next stage;
+    a replay of the bank's (IA-047) is the raw answer too, for the bank's own collection (``fbi.ai.replay.harness.collect``).
     Nothing else is written: a LAB answer is never a review, a pick or a state."""
     ctx = r.item["context"] or {}
     kind = ctx.get("lab")
@@ -375,6 +376,12 @@ def settle_lab(conn: psycopg.Connection[Any], r: Resolved) -> None:
         )
 
         summary = summarise(r, ctx)
+    elif kind == "replay":
+        from fbi.ai.replay.harness import (
+            settle as replay,  # IA-047: the replay bank keeps the raw answer, read when collected
+        )
+
+        summary = replay(r)
     else:
         raise ValueError("an item of purpose 'other' that is not a probe or an experiment")
     with conn.cursor(row_factory=tuple_row) as cur:
