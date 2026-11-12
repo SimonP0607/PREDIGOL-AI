@@ -14,7 +14,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { BarChart3, BookOpen, ChevronRight, Compass, Loader2, Sparkles } from "lucide-react";
+import { BarChart3, BookOpen, ChevronRight, Compass, Loader2 } from "lucide-react";
 import { BrandLogo } from "@/components/brand/Brand";
 import { Disclaimer } from "@/components/system/Disclaimer";
 import { LanguageSwitch } from "@/components/layout/HeaderControls";
@@ -23,8 +23,10 @@ import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { WelcomeStep } from "@/lib/api/v1/types_favorites";
 import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { track } from "@/lib/track";
-import { Card, ErrorState } from "@/product/shared/States";
+import { buttonVariants } from "@/components/ui/button";
+import { ErrorState } from "@/product/shared/States";
 import { trackChanges } from "@/product/favorites/analytics";
 import { FavoritesPicker } from "@/product/favorites/FavoritesPicker";
 import {
@@ -40,27 +42,27 @@ import { HOW_PATH } from "@/product/help/howItWorks";
 import { useGuides } from "@/product/guides/context";
 import { afterWelcome, welcomeExit } from "./next";
 
-const PRIMARY =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50";
-const SECONDARY =
-  "inline-flex min-h-11 items-center justify-center rounded-md border border-border-strong px-4 py-2 text-sm font-medium hover:bg-elevated disabled:opacity-50";
+const PRIMARY = buttonVariants({ variant: "primary", size: "lg" });
+const SECONDARY = buttonVariants({ variant: "secondary", size: "lg" });
 
 function Football({
   last,
   older,
   onDone,
-  onSkip,
+  onBusy,
 }: {
   last: boolean;
   older: boolean;
   onDone: () => void;
-  onSkip: () => void;
+  /** Saving: «Saltar», at the top of the page, waits with it. */
+  onBusy: (busy: boolean) => void;
 }) {
   const qc = useQueryClient();
   const favorites = useQuery(live.favorites);
   const [choice, setChoice] = useState<Choice | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState(false);
+  useEffect(() => onBusy(busy), [busy, onBusy]);
   useEffect(() => {
     if (favorites.data && choice === null) setChoice(choiceOf(favorites.data));
   }, [favorites.data, choice]);
@@ -86,11 +88,8 @@ function Football({
 
   return (
     <>
-      <h1 className="flex items-center gap-2 font-display text-xl font-semibold">
-        <Sparkles aria-hidden className="h-5 w-5 text-primary" />
-        {t("onboarding.welcome.football.title")}
-      </h1>
-      <p className="text-sm leading-relaxed text-muted-foreground">
+      <h1 className="text-display text-balance">{t("onboarding.welcome.football.title")}</h1>
+      <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">
         {t(older ? "onboarding.welcome.football.introOlder" : "onboarding.welcome.football.intro")}
       </p>
       {favorites.isError ? (
@@ -108,7 +107,8 @@ function Football({
           {t("onboarding.welcome.failed")}
         </p>
       ) : null}
-      <div className="sticky bottom-0 -mx-5 -mb-5 flex flex-col gap-2 rounded-b-xl border-t border-border bg-card/95 px-5 py-3 backdrop-blur sm:static sm:mx-0 sm:mb-0 sm:flex-row sm:items-center sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+      {/* the sheet's foot (A09): the one action stays in reach on a phone while the lists scroll under it */}
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-2 border-t border-border bg-background/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:static sm:mx-0 sm:flex-row sm:items-center sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
         <button
           type="button"
           onClick={() => void save()}
@@ -118,15 +118,6 @@ function Football({
         >
           {busy ? <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> : null}
           {t(last ? "onboarding.welcome.football.saveLast" : "onboarding.welcome.football.save")}
-        </button>
-        <button
-          type="button"
-          onClick={onSkip}
-          disabled={busy}
-          data-testid="welcome-skip"
-          className={SECONDARY}
-        >
-          {t("onboarding.welcome.football.skip")}
         </button>
       </div>
       <p className="text-caption text-muted-foreground">
@@ -154,10 +145,7 @@ function About({
 }) {
   return (
     <>
-      <h1 className="flex items-center gap-2 font-display text-xl font-semibold">
-        <Sparkles aria-hidden className="h-5 w-5 text-primary" />
-        {t("onboarding.welcome.about.title")}
-      </h1>
+      <h1 className="text-display text-balance">{t("onboarding.welcome.about.title")}</h1>
       <p className="text-[0.9375rem] leading-relaxed" data-testid="welcome-what">
         {t("common.what")}
       </p>
@@ -217,7 +205,7 @@ function About({
             data-testid="welcome-tour"
             className={SECONDARY}
           >
-            <Compass aria-hidden className="mr-2 h-4 w-4 text-gold" />
+            <Compass aria-hidden className="text-gold" />
             {t("onboarding.welcome.about.tour")}
           </button>
         ) : null}
@@ -226,7 +214,7 @@ function About({
           onClick={() => onEnter(true)}
           disabled={busy}
           data-testid="welcome-about-skip"
-          className="inline-flex min-h-11 items-center justify-center px-3 text-sm text-muted-foreground underline-offset-2 hover:underline"
+          className={buttonVariants({ variant: "text", size: "lg" })}
         >
           {t("onboarding.welcome.about.skip")}
         </button>
@@ -244,6 +232,7 @@ export function WelcomePage() {
   const steps = welcomeSteps(auth.user);
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<unknown>(null);
   // where to go once the account itself says the welcome is done (UX-081): not at the API's answer, a moment before the gate knows
   const [leaving, setLeaving] = useState<string | null>(null);
@@ -268,6 +257,7 @@ export function WelcomePage() {
   }, [exit, navigate]);
 
   const step: WelcomeStep = steps[index] ?? "football";
+  const name = (auth.user?.display_name ?? "").trim().split(/\s+/)[0] ?? "";
   const last = index >= steps.length - 1;
 
   async function finish(then: "next" | "tour" | "transparency" | "how") {
@@ -306,21 +296,44 @@ export function WelcomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background" data-testid="welcome" data-step={step}>
+    <div
+      className="pitch-glow relative min-h-screen bg-background"
+      data-testid="welcome"
+      data-step={step}
+    >
       <header className="safe-top border-b border-border">
         <div className="px-safe mx-auto flex h-14 max-w-3xl items-center gap-3">
           <BrandLogo size={30} tagline={t("common.tagline")} />
           <LanguageSwitch className="ml-auto" />
+          {step === "football" ? (
+            <button
+              type="button"
+              onClick={() => skip("football")}
+              disabled={saving || busy}
+              data-testid="welcome-skip"
+              className={buttonVariants({ variant: "text", size: "sm" })}
+            >
+              {t("onboarding.welcome.football.skip")}
+            </button>
+          ) : null}
         </div>
       </header>
       <main className="px-safe mx-auto w-full max-w-3xl py-6">
-        <Card className="space-y-4 p-5">
-          {steps.length > 1 ? (
-            <p
-              className="text-caption font-medium uppercase tracking-[0.06em] text-muted-foreground"
-              data-testid="welcome-progress"
-            >
-              {t("onboarding.welcome.step", { n: index + 1, total: steps.length })}
+        <div
+          className={cn(
+            "space-y-4",
+            step === "about" && "card-surface rounded-feature p-5 shadow-xl",
+          )}
+        >
+          {name || steps.length > 1 ? (
+            <p className="truncate text-overline text-gold" data-testid="welcome-overline">
+              {name ? t("onboarding.welcome.greeting", { name }) : null}
+              {name && steps.length > 1 ? " · " : null}
+              {steps.length > 1 ? (
+                <span data-testid="welcome-progress">
+                  {t("onboarding.welcome.step", { n: index + 1, total: steps.length })}
+                </span>
+              ) : null}
             </p>
           ) : null}
           {step === "football" ? (
@@ -328,7 +341,7 @@ export function WelcomePage() {
               last={last}
               older={!steps.includes("about")}
               onDone={advance}
-              onSkip={() => skip("football")}
+              onBusy={setSaving}
             />
           ) : (
             <About
@@ -351,7 +364,7 @@ export function WelcomePage() {
             />
           )}
           {failure ? <ErrorState error={failure} onRetry={() => void finish("next")} /> : null}
-        </Card>
+        </div>
       </main>
       <footer className="px-safe mx-auto max-w-3xl pb-[calc(2rem+env(safe-area-inset-bottom))] text-center text-caption text-subtle-foreground">
         <Disclaimer />

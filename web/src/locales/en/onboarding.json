@@ -2,6 +2,7 @@
   "welcome": {
     "pageTitle": "Welcome",
     "step": "Step {n} of {total}",
+    "greeting": "Hi, {name}",
     "football": {
       "title": "Your football",
       "intro": "Pick the leagues and teams you follow: Home will show their matches first. We have ticked the most followed in Colombia.",

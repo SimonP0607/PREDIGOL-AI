@@ -2,6 +2,7 @@
   "welcome": {
     "pageTitle": "Bienvenida",
     "step": "Paso {n} de {total}",
+    "greeting": "Hola, {name}",
     "football": {
       "title": "Tu fútbol",
       "intro": "Elige las ligas y los equipos que sigues: Inicio te mostrará primero sus partidos. Ya marcamos los que más se siguen en Colombia.",

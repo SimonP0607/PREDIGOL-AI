@@ -17,13 +17,13 @@ import { findAnchor, placeCard, type Box } from "./anchors";
 import { useGuides } from "./context";
 import { cardsOf, numbered } from "./navigation";
 import { ProfileBody, ProfileTitle } from "./ProfileBody";
+import { buttonVariants } from "@/components/ui/button";
 import { GUIDES } from "./registry";
 
-const BUTTON =
-  "inline-flex min-h-11 items-center justify-center rounded-md px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-const PRIMARY = cn(BUTTON, "bg-primary text-primary-foreground");
-const QUIET = cn(BUTTON, "border border-border bg-card text-foreground hover:bg-elevated");
-const TEXT = cn(BUTTON, "px-3 text-muted-foreground hover:text-foreground");
+// the system's buttons, small (sheet A10): one green action, a quiet «Atrás» and «Saltar guía» as text
+const PRIMARY = buttonVariants({ variant: "primary", size: "sm" });
+const QUIET = buttonVariants({ variant: "secondary", size: "sm" });
+const TEXT = cn(buttonVariants({ variant: "text", size: "sm" }), "-ml-2");
 
 function box(el: HTMLElement): Box {
   const r = el.getBoundingClientRect();
@@ -192,16 +192,19 @@ export function GuideLayer() {
         <div
           aria-hidden
           data-testid="guide-ring"
-          className="pointer-events-none fixed z-[60] rounded-lg ring-2 ring-gold shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"
+          className="pointer-events-none fixed z-[60] rounded-[1.125rem] shadow-[0_0_0_2px_var(--color-gold),0_0_0_9999px_rgb(3_7_5/0.62)]"
           style={{
-            top: target.top - 4,
-            left: target.left - 4,
-            width: target.width + 8,
-            height: target.height + 8,
+            top: target.top - 6,
+            left: target.left - 6,
+            width: target.width + 12,
+            height: target.height + 12,
           }}
         />
       ) : (
-        <div aria-hidden className="pointer-events-none fixed inset-0 z-[60] bg-black/45" />
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 z-[60] bg-[rgb(3_7_5/0.62)]"
+        />
       )}
       <Dialog.Root open modal>
         <Dialog.Portal>
@@ -224,13 +227,13 @@ export function GuideLayer() {
             onInteractOutside={(e) => e.preventDefault()}
             style={docked ?? (dock !== null ? { bottom: dock } : undefined)}
             className={cn(
-              "fixed z-[70] rounded-xl border border-gold/40 bg-card p-4 shadow-lg focus:outline-none short:p-3",
+              "fixed z-[70] rounded-card border border-gold/50 bg-popover p-3.5 shadow-[0_24px_60px_-18px_rgb(0_0_0/0.95)] focus:outline-none short:p-3",
               "inset-x-3 mx-auto max-w-md bottom-[calc(8.5rem+env(safe-area-inset-bottom))] short:bottom-[calc(7rem+env(safe-area-inset-bottom))] short:max-h-[calc(100dvh-8rem)] short:overflow-y-auto",
               "lg:inset-x-auto lg:bottom-auto lg:mx-0 lg:w-[26rem] lg:max-w-[calc(100vw-1.5rem)]",
               !docked && "lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2",
             )}
           >
-            <p className="text-caption font-medium uppercase tracking-[0.06em] text-muted-foreground">
+            <p className="text-overline text-gold">
               {resuming
                 ? t("guides.region")
                 : welcome
@@ -240,7 +243,7 @@ export function GuideLayer() {
             <Dialog.Title
               ref={title}
               tabIndex={-1}
-              className="mt-0.5 font-display text-base font-semibold focus:outline-none"
+              className="mt-1.5 text-title focus:outline-none"
             >
               {heading}
             </Dialog.Title>
@@ -357,6 +360,23 @@ export function GuideLayer() {
                 </>
               )}
             </div>
+            {!resuming && !welcome && shown.length > 1 ? (
+              <div
+                aria-hidden
+                className="mt-2 flex justify-center gap-1.5 short:hidden"
+                data-testid="guide-dots"
+              >
+                {shown.map((at, i) => (
+                  <i
+                    key={at}
+                    className={cn(
+                      "h-1.5 rounded-full",
+                      i + 1 === position ? "w-[1.125rem] bg-primary" : "w-1.5 bg-border-strong",
+                    )}
+                  />
+                ))}
+              </div>
+            ) : null}
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>

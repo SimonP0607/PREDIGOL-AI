@@ -7,7 +7,7 @@
  */
 import { useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Mail, UserPlus } from "lucide-react";
+import { ArrowUpRight, CircleCheck, Loader2, Mail, UserPlus } from "lucide-react";
 import { LiveApiError, v1 } from "@/lib/api/v1/client";
 import type { Language } from "@/lib/api/v1/types_auth";
 import type { ConsentKind } from "@/lib/api/v1/types_customer";
@@ -16,7 +16,9 @@ import { t, useI18n } from "@/lib/i18n";
 import { detectTimeZone } from "@/lib/time";
 import { legalPath } from "@/product/legal/links";
 import { SkeletonCards } from "@/product/shared/States";
-import { AccountShell, Notice, SideLink, accountButton, accountInput } from "./AccountShell";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { AccountShell, FormSection, Notice, SideLink, accountInput } from "./AccountShell";
 import { NewPassword } from "./NewPassword";
 import { stepError } from "./stepError";
 
@@ -47,7 +49,10 @@ export function RegisterPage() {
   const [resent, setResent] = useState<"idle" | "busy" | "sent" | "failed">("idle");
   const zone = useMemo(detectTimeZone, []);
 
-  const everyBox = purposes.length > 0 && purposes.every((p) => ticked.has(p.kind));
+  const missing = purposes.filter((p) => !ticked.has(p.kind)).length;
+  const everyBox = purposes.length > 0 && missing === 0;
+  // only what the field itself says (the browser's own rule for an address): a tick, never a promise that it exists
+  const emailLooksRight = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
   const ready =
     firstName.trim() !== "" &&
     lastName.trim() !== "" &&
@@ -137,7 +142,7 @@ export function RegisterPage() {
             type="button"
             onClick={() => void resend()}
             disabled={resent === "busy"}
-            className="tap-y relative flex w-full items-center justify-center gap-2 rounded-md border border-border-strong px-3 py-2 text-sm font-medium hover:bg-elevated"
+            className={buttonVariants({ variant: "secondary", block: true })}
             data-testid="signup-resend"
           >
             {resent === "busy" ? (
@@ -159,143 +164,172 @@ export function RegisterPage() {
       title={t("auth.signup.title")}
       subtitle={t("auth.signup.subtitle")}
       testId="register-page"
+      sections
     >
       {boxes.isPending ? (
         <SkeletonCards count={1} />
       ) : (
         <form
           onSubmit={(e) => void submit(e)}
-          className="space-y-4"
+          className="space-y-3.5"
           noValidate
           data-testid="register-form"
         >
-          <div className="grid gap-4 min-[420px]:grid-cols-2">
+          <FormSection n={1} title={t("auth.signup.groupData")}>
+            <div className="grid gap-3.5 min-[420px]:grid-cols-2">
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t("auth.signup.firstName")}
+                </span>
+                <input
+                  type="text"
+                  name="given-name"
+                  autoComplete="given-name"
+                  required
+                  maxLength={60}
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className={accountInput}
+                  data-testid="signup-first-name"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t("auth.signup.lastName")}
+                </span>
+                <input
+                  type="text"
+                  name="family-name"
+                  autoComplete="family-name"
+                  required
+                  maxLength={60}
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className={accountInput}
+                  data-testid="signup-last-name"
+                />
+              </label>
+            </div>
             <label className="block">
               <span className="text-xs font-medium text-muted-foreground">
-                {t("auth.signup.firstName")}
+                {t("auth.signup.email")}
               </span>
-              <input
-                type="text"
-                name="given-name"
-                autoComplete="given-name"
-                required
-                maxLength={60}
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className={accountInput}
-                data-testid="signup-first-name"
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">
-                {t("auth.signup.lastName")}
-              </span>
-              <input
-                type="text"
-                name="family-name"
-                autoComplete="family-name"
-                required
-                maxLength={60}
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className={accountInput}
-                data-testid="signup-last-name"
-              />
-            </label>
-          </div>
-          <label className="block">
-            <span className="text-xs font-medium text-muted-foreground">
-              {t("auth.signup.email")}
-            </span>
-            <input
-              type="email"
-              name="email"
-              autoComplete="username"
-              inputMode="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={accountInput}
-              data-testid="signup-email"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs font-medium text-muted-foreground">
-              {t("auth.signup.phone")}
-            </span>
-            <input
-              type="tel"
-              name="tel"
-              autoComplete="tel"
-              inputMode="tel"
-              required
-              maxLength={40}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              aria-describedby="signup-phone-hint"
-              className={accountInput}
-              data-testid="signup-phone"
-            />
-            <span id="signup-phone-hint" className="mt-1 block text-xs text-muted-foreground">
-              {t("auth.signup.phoneHint")}
-            </span>
-          </label>
-          <label className="block">
-            <span className="text-xs font-medium text-muted-foreground">
-              {t("auth.signup.nickname")}
-            </span>
-            <input
-              type="text"
-              name="nickname"
-              autoComplete="nickname"
-              required
-              maxLength={24}
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              aria-describedby="signup-nickname-hint"
-              className={accountInput}
-              data-testid="signup-nickname"
-            />
-            <span id="signup-nickname-hint" className="mt-1 block text-xs text-muted-foreground">
-              {t("auth.signup.nicknameHint")}
-            </span>
-          </label>
-          <NewPassword
-            hideEmail
-            email={email.trim()}
-            name={nickname.trim()}
-            value={password}
-            onChange={setPassword}
-            repeat={repeat}
-            onRepeat={setRepeat}
-          />
-          <fieldset className="space-y-3" data-testid="signup-consents">
-            <legend className="text-sm font-semibold">{t("auth.signup.consentsTitle")}</legend>
-            <p className="text-xs text-muted-foreground">{t("auth.signup.consentsIntro")}</p>
-            {purposes.map((p) => (
-              <div key={p.kind} className="rounded-md border border-border p-3">
-                <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-relaxed">
-                  <input
-                    type="checkbox"
-                    name={p.kind}
-                    data-testid={`signup-consent-${p.kind}`}
-                    checked={ticked.has(p.kind)}
-                    onChange={(e) => toggle(p.kind, e.currentTarget.checked)}
-                    className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
+              <span className="relative block">
+                <input
+                  type="email"
+                  name="email"
+                  autoComplete="username"
+                  inputMode="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={cn(accountInput, emailLooksRight && "pr-10")}
+                  data-testid="signup-email"
+                />
+                {emailLooksRight ? (
+                  <CircleCheck
+                    aria-hidden
+                    className="pointer-events-none absolute right-3 top-1/2 mt-0.5 h-[1.125rem] w-[1.125rem] -translate-y-1/2 text-positive"
+                    data-testid="signup-email-ok"
                   />
-                  <span>{p.statement}</span>
-                </label>
-                <a
-                  href={legalPath(p.document)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="tap-y relative ml-8 inline-block text-xs text-primary underline-offset-2 hover:underline"
+                ) : null}
+              </span>
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-muted-foreground">
+                {t("auth.signup.phone")}
+              </span>
+              <input
+                type="tel"
+                name="tel"
+                autoComplete="tel"
+                inputMode="tel"
+                required
+                maxLength={40}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                aria-describedby="signup-phone-hint"
+                className={accountInput}
+                data-testid="signup-phone"
+              />
+              <span id="signup-phone-hint" className="mt-1 block text-xs text-muted-foreground">
+                {t("auth.signup.phoneHint")}
+              </span>
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-muted-foreground">
+                {t("auth.signup.nickname")}
+              </span>
+              <input
+                type="text"
+                name="nickname"
+                autoComplete="nickname"
+                required
+                maxLength={24}
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                aria-describedby="signup-nickname-hint"
+                className={accountInput}
+                data-testid="signup-nickname"
+              />
+              <span id="signup-nickname-hint" className="mt-1 block text-xs text-muted-foreground">
+                {t("auth.signup.nicknameHint")}
+              </span>
+            </label>
+          </FormSection>
+          <FormSection n={2} title={t("auth.signup.groupAccess")}>
+            <NewPassword
+              hideEmail
+              email={email.trim()}
+              name={nickname.trim()}
+              value={password}
+              onChange={setPassword}
+              repeat={repeat}
+              onRepeat={setRepeat}
+            />
+          </FormSection>
+          <section className="card-surface rounded-feature p-4">
+            <fieldset data-testid="signup-consents">
+              <legend className="flex items-center gap-2.5 text-title">
+                <span
+                  aria-hidden
+                  className="numeric inline-flex h-[1.625rem] w-[1.625rem] shrink-0 items-center justify-center rounded-full bg-primary-soft font-display text-[0.8125rem] font-extrabold text-primary"
                 >
-                  {t("auth.signup.read", { document: t(`legal.doc.${p.document}`) })}
-                </a>
+                  3
+                </span>
+                {t("auth.signup.consentsTitle")}
+              </legend>
+              <p className="mt-2 text-[0.8125rem] leading-snug text-muted-foreground">
+                {t("auth.signup.consentsIntro")}
+              </p>
+              <div className="mt-1 divide-y divide-border">
+                {purposes.map((p) => (
+                  <div key={p.kind} className="py-3.5 last:pb-0">
+                    <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-relaxed">
+                      <input
+                        type="checkbox"
+                        name={p.kind}
+                        data-testid={`signup-consent-${p.kind}`}
+                        checked={ticked.has(p.kind)}
+                        onChange={(e) => toggle(p.kind, e.currentTarget.checked)}
+                        className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
+                      />
+                      <span>{p.statement}</span>
+                    </label>
+                    <a
+                      href={legalPath(p.document)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="tap-y relative ml-8 inline-flex items-center gap-1 text-[0.8125rem] font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      {t("auth.signup.read", { document: t(`legal.doc.${p.document}`) })}
+                      <ArrowUpRight aria-hidden className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                ))}
               </div>
-            ))}
-          </fieldset>
+            </fieldset>
+          </section>
           {failure ? (
             <Notice tone="error" testId="signup-error">
               {failure}
@@ -304,12 +338,20 @@ export function RegisterPage() {
           <button
             type="submit"
             disabled={!ready || busy}
-            className={accountButton}
+            className={buttonVariants({ variant: "primary", size: "lg", block: true })}
             data-testid="signup-submit"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
             {busy ? t("auth.signup.submitting") : t("auth.signup.submit")}
           </button>
+          {purposes.length > 0 && missing > 0 ? (
+            <p
+              className="text-center text-[0.8125rem] text-muted-foreground"
+              data-testid="signup-missing"
+            >
+              {t("auth.signup.missingBoxes", { count: missing })}
+            </p>
+          ) : null}
         </form>
       )}
       <SideLink href="/login">{t("auth.signup.haveAccount")}</SideLink>

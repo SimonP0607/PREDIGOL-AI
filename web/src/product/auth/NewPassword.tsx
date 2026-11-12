@@ -5,7 +5,7 @@
  * is welcome; there are no composition rules.
  */
 import { useId, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Check, CircleCheck, Eye, EyeOff } from "lucide-react";
 import { checkPassword } from "@/lib/auth/passwordRule";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,7 @@ export function NewPassword({
   const [show, setShow] = useState(false);
   const check = checkPassword(value, { email, name, hasMfa });
   const mismatch = repeat.length > 0 && repeat !== value;
+  const match = repeat.length > 0 && repeat === value;
   const level = check.strength;
   return (
     <div className="space-y-4">
@@ -102,7 +103,13 @@ export function NewPassword({
             />
           ))}
         </div>
-        <p className="text-xs text-muted-foreground" aria-live="polite">
+        <p
+          className={cn(
+            "text-xs",
+            level >= 3 ? "font-semibold text-positive" : "text-muted-foreground",
+          )}
+          aria-live="polite"
+        >
           {level === 0
             ? t("auth.account.rule", { min: check.minLength })
             : t(`auth.account.strength.${level}`)}
@@ -122,16 +129,34 @@ export function NewPassword({
         <span className="text-xs font-medium text-muted-foreground">
           {t("auth.steps.repeatPassword")}
         </span>
-        <input
-          type={show ? "text" : "password"}
-          name="new-password-repeat"
-          autoComplete="new-password"
-          value={repeat}
-          onChange={(e) => onRepeat(e.target.value)}
-          className={accountInput}
-          data-testid="new-password-repeat"
-        />
+        <span className="relative block">
+          <input
+            type={show ? "text" : "password"}
+            name="new-password-repeat"
+            autoComplete="new-password"
+            value={repeat}
+            onChange={(e) => onRepeat(e.target.value)}
+            className={cn(accountInput, match && "pr-10")}
+            data-testid="new-password-repeat"
+          />
+          {match ? (
+            <CircleCheck
+              aria-hidden
+              className="pointer-events-none absolute right-3 top-1/2 mt-0.5 h-[1.125rem] w-[1.125rem] -translate-y-1/2 text-positive"
+            />
+          ) : null}
+        </span>
       </label>
+      {match ? (
+        <p
+          role="status"
+          className="flex items-start gap-1.5 text-[0.8125rem] leading-snug text-positive"
+          data-testid="password-match"
+        >
+          <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+          {t("auth.steps.passwordMatch")}
+        </p>
+      ) : null}
       {mismatch ? (
         <p role="alert" className="text-xs text-negative">
           {t("auth.steps.passwordMismatch")}
