@@ -328,6 +328,48 @@ def test_the_health_panel_is_the_owners(world: World) -> None:
     assert client(world.db, "USER").get("/api/v1/admin/odds/health").status_code == 403
 
 
+# ── /odds/status ────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+def test_the_readers_status_is_off_until_its_switch_and_agrees_with_the_owners_health(
+        world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    c = client(world.db, "USER")
+    monkeypatch.delenv("FBI_ODDS_STATUS", raising=False)
+    assert c.get("/api/v1/odds/status").status_code == 404, "off while the line is absent"
+    monkeypatch.setenv("FBI_ODDS_STATUS", "1")
+    data = get(c, "/api/v1/odds/status")["data"]
+    health = get(client(world.db, "SUPER_ADMIN"), "/api/v1/admin/odds/health")["data"]
+    assert [h["horizon"] for h in data["by_horizon"]] == [h["horizon"] for h in health["by_horizon"]]
+    for mine, owners in zip(data["by_horizon"], health["by_horizon"], strict=True):
+        assert (mine["fixtures"], mine["with_price"], mine["stale"]) == \
+            (owners["fixtures"], owners["with_book"], owners["stale"]), "the same judgement as the owner's panel"
+    assert sum(h["with_price"] for h in data["by_horizon"]) == 3 and data["last_read_at"] is not None
+    assert data["without_price"] == [] and data["without_price_total"] == 0
+    assert data["schedule_minutes"] == sorted(data["schedule_minutes"], reverse=True) and data["schedule_minutes"]
+    assert data["tolerance_minutes"] > 0
+    assert set(data) == {"last_read_at", "by_horizon", "without_price", "without_price_total", "schedule_minutes",
+                         "tolerance_minutes"}, "nothing of the machinery: no quota, no sizes"
+
+
+def test_the_readers_status_names_a_followed_match_without_a_price(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FBI_ODDS_STATUS", "1")
+    world.db.execute("DELETE FROM market.book_current WHERE fixture_id = %s", (world.fixtures["A"],))
+    data = get(client(world.db, "USER"), "/api/v1/odds/status")["data"]
+    assert data["without_price_total"] == 1
+    assert [m["fixture_id"] for m in data["without_price"]] == [world.fixtures["A"]]
+    assert data["without_price"][0]["home"] == TEAMS["A"][0] and data["without_price"][0]["competition"] == LEAGUES["A"][1]
+
+
+def test_auth_me_says_whether_the_status_is_open(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    from tests.integration.test_pick_states import client as session_client
+
+    monkeypatch.delenv("FBI_ODDS_STATUS", raising=False)
+    c = session_client(world.db)
+    assert c.get("/api/v1/auth/me").json()["odds_status"] is False
+    monkeypatch.setenv("FBI_ODDS_STATUS", "1")
+    assert c.get("/api/v1/auth/me").json()["odds_status"] is True
+
+
 def test_auth_me_says_whether_the_page_shows_the_explorer(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
     from tests.integration.test_pick_states import client as session_client
 
