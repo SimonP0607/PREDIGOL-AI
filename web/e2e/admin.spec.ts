@@ -100,20 +100,23 @@ test("accounts: list, deactivate and reactivate, change a role - all audited", a
   const row = page.locator("tr", { hasText: target });
   await expect(row).toBeVisible();
   const id = (await row.getAttribute("data-testid"))?.replace("user-row-", "") ?? "";
+  // one button a row (sheet AD8): the account's actions open under it
+  await row.getByTestId(`user-actions-${id}`).click();
+  const panel = page.getByTestId(`user-panel-${id}`);
   // deactivate (two-step confirm), then reactivate
-  await row.getByTestId(`status-${id}`).click();
-  await row.getByTestId(`confirm-status-${id}`).click();
+  await panel.getByTestId(`status-${id}`).click();
+  await panel.getByTestId(`confirm-status-${id}`).click();
   await expect(row).toContainText(t.admin.users.disabled);
-  await row.getByTestId(`status-${id}`).click();
-  await row.getByTestId(`confirm-status-${id}`).click();
+  await panel.getByTestId(`status-${id}`).click();
+  await panel.getByTestId(`confirm-status-${id}`).click();
   await expect(row).toContainText(t.admin.users.active);
   // USER -> SUPER_ADMIN -> USER
-  await row.getByTestId(`role-${id}`).click();
-  await row.getByTestId(`confirm-role-${id}`).click();
+  await panel.getByTestId(`role-${id}`).click();
+  await panel.getByTestId(`confirm-role-${id}`).click();
   const role = row.locator("td").nth(1);
   await expect(role).toHaveText("SUPER_ADMIN");
-  await row.getByTestId(`role-${id}`).click();
-  await row.getByTestId(`confirm-role-${id}`).click();
+  await panel.getByTestId(`role-${id}`).click();
+  await panel.getByTestId(`confirm-role-${id}`).click();
   await expect(role).toHaveText("USER");
   await assertClean(page, w);
   await go(page, w, "/admin/audit");

@@ -120,14 +120,16 @@ test("a new account: authenticator from the QR's key, recovery codes, its own pa
     ).newPage();
     await ownerPage.goto("/admin/users");
     const row = ownerPage.getByTestId(`user-row-${id}`);
+    await row.getByTestId(`user-actions-${id}`).click();
+    const panel = ownerPage.getByTestId(`user-panel-${id}`);
     await expect(row.getByTestId(`security-${id}`)).toContainText("2FA");
-    await row.getByTestId(`mfa-${id}`).click();
-    await row.getByTestId(`confirm-mfa-${id}`).click();
+    await panel.getByTestId(`mfa-${id}`).click();
+    await panel.getByTestId(`confirm-mfa-${id}`).click();
     await expect(row.getByTestId(`security-${id}`)).toContainText(L.en.admin.users.mfaPending);
     // a temporary password, shown once, and the account must replace it
-    await row.getByTestId(`password-${id}`).click();
-    await row.getByTestId(`confirm-password-${id}`).click();
-    await expect(row.getByTestId(`temporary-password-${id}`)).toBeVisible();
+    await panel.getByTestId(`password-${id}`).click();
+    await panel.getByTestId(`confirm-password-${id}`).click();
+    await expect(panel.getByTestId(`temporary-password-${id}`)).toBeVisible();
     await expect(row.getByTestId(`security-${id}`)).toContainText(L.en.admin.users.mustChange);
     await ownerPage.context().close();
     // the reader's session ended with the reset

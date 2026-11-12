@@ -467,7 +467,8 @@ test.describe("self-service on, with the QA messenger", () => {
       const w = watch(ownerPage);
       await ownerPage.goto("/admin/users");
       const row = ownerPage.getByTestId(`user-row-${id}`);
-      await row.getByTestId(`anonymise-${id}`).click();
+      await row.getByTestId(`user-actions-${id}`).click();
+      await ownerPage.getByTestId(`user-panel-${id}`).getByTestId(`anonymise-${id}`).click();
       const dialog = ownerPage.getByTestId(`anonymise-dialog-${id}`);
       await expect(dialog).toContainText(L.en.admin.users.anonymiseIrreversible);
       const ok = dialog.getByTestId(`anonymise-ok-${id}`);
