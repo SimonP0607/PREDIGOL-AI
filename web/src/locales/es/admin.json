@@ -2,7 +2,8 @@
   "consoleTitle": "Admin Console",
   "consoleSubtitle": "Investigación, modelos y sistema",
   "groups": {
-    "operations": "Operaciones",
+    "customers": "Clientes y pagos",
+    "market": "Picks y mercado",
     "intelligence": "Inteligencia",
     "football": "Fútbol",
     "system": "Sistema"

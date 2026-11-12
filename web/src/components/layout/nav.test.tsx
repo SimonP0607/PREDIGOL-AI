@@ -20,6 +20,10 @@ import { setLocale, t } from "@/lib/i18n";
 import { BottomBar, TopNav } from "./Bars";
 import { InstallSteps, MoreList } from "./MoreSheet";
 import {
+  adminDestinations,
+  adminGroupOf,
+  adminHome,
+  adminNav,
   currentMore,
   destinationOf,
   holds,
@@ -27,6 +31,8 @@ import {
   moreNav,
   UPDATES_PATH,
   userNav,
+  readFoldedAdminGroups,
+  writeFoldedAdminGroups,
 } from "./nav";
 
 afterAll(() => setLocale("es"));
@@ -312,5 +318,95 @@ describe("«Más»", () => {
     const closed = await html(<InstallSteps platform="android" />);
     expect(closed).not.toContain("data-platform");
     expect(tag(closed, "more-install-toggle")).toContain('aria-expanded="false"');
+  });
+});
+
+describe("the console's menu in five groups (plan maestro UX/UI 2026, decision 12)", () => {
+  // the 28 destinations the menu had before the regrouping: none may be lost, none added
+  const BEFORE = [
+    "overview",
+    "picks",
+    "performance",
+    "odds",
+    "customers",
+    "support",
+    "models",
+    "backtesting",
+    "analytics",
+    "operation",
+    "learning",
+    "competitions",
+    "teams",
+    "players",
+    "referees",
+    "rankings",
+    "data-truth",
+    "data-quality",
+    "system",
+    "storage",
+    "migration",
+    "users",
+    "messages",
+    "announcements",
+    "payments",
+    "product",
+    "audit",
+    "settings",
+  ].map((slug) => `/admin/${slug}`);
+
+  test("the same 28 destinations, each exactly once, «Resumen» first", () => {
+    const now = adminDestinations.map((item) => item.to);
+    expect(now).toHaveLength(28);
+    expect(new Set(now).size).toBe(28);
+    expect([...now].sort()).toEqual([...BEFORE].sort());
+    expect(now[0]).toBe("/admin/overview");
+    expect(adminHome.to).toBe("/admin/overview");
+  });
+
+  test("five groups with the sizes of the decision: 7, 3, 5, 5 and 7", () => {
+    expect(adminNav.map((g) => [g.key, g.items.length])).toEqual([
+      ["customers", 7],
+      ["market", 3],
+      ["intelligence", 5],
+      ["football", 5],
+      ["system", 7],
+    ]);
+  });
+
+  test("a path finds its group; «Resumen» and a page outside the menu belong to none", () => {
+    expect(adminGroupOf("/admin/payments")).toBe("customers");
+    expect(adminGroupOf("/admin/odds")).toBe("market");
+    expect(adminGroupOf("/admin/operation")).toBe("intelligence");
+    expect(adminGroupOf("/admin/teams")).toBe("football");
+    expect(adminGroupOf("/admin/audit")).toBe("system");
+    expect(adminGroupOf("/admin/overview")).toBeNull();
+    expect(adminGroupOf("/admin/ai-layer")).toBeNull();
+  });
+
+  test("what the browser folded is remembered, and nothing it stores can break the menu", () => {
+    const kept = new Map<string, string>();
+    const store = {
+      getItem: (k: string) => kept.get(k) ?? null,
+      setItem: (k: string, v: string) => void kept.set(k, v),
+    };
+    expect([...readFoldedAdminGroups(store)]).toEqual([]);
+    writeFoldedAdminGroups(store, new Set(["football", "intelligence"]));
+    expect([...readFoldedAdminGroups(store)].sort()).toEqual(["football", "intelligence"]);
+    for (const junk of ["{", '"football"', '["nope", 7, "system"]', "null"]) {
+      kept.set([...kept.keys()][0] ?? "k", junk);
+      const read = [...readFoldedAdminGroups(store)];
+      expect(read.every((k) => k === "system")).toBe(true);
+    }
+    expect([...readFoldedAdminGroups(null)]).toEqual([]);
+    const refuses = {
+      getItem: () => {
+        throw new Error("blocked");
+      },
+      setItem: () => {
+        throw new Error("blocked");
+      },
+    };
+    expect([...readFoldedAdminGroups(refuses)]).toEqual([]);
+    expect(() => writeFoldedAdminGroups(refuses, new Set(["system"]))).not.toThrow();
   });
 });

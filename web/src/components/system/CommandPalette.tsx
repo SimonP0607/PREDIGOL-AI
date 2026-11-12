@@ -9,7 +9,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { adminNav } from "@/components/layout/nav";
+import { adminHome, adminNav } from "@/components/layout/nav";
 import { t } from "@/lib/i18n";
 import { DATA_MODE } from "@/lib/api/mode";
 import { v1 } from "@/lib/api/v1/client";
@@ -142,6 +142,11 @@ export function CommandPalette({
             ))}
           </CommandGroup>
         ))}
+        <CommandGroup heading={t("admin.consoleTitle")}>
+          <CommandItem value={t(adminHome.label)} onSelect={() => go(adminHome.to as Destination)}>
+            {t(adminHome.label)}
+          </CommandItem>
+        </CommandGroup>
         {adminNav.map((group) => (
           <CommandGroup key={group.label} heading={t(group.label)}>
             {group.items.map((item) => (
