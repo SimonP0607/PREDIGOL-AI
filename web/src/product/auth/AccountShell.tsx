@@ -39,11 +39,14 @@ export function AccountShell({
   subtitle,
   children,
   testId,
+  sections = false,
 }: {
   title: string;
   subtitle?: string | undefined;
   children: ReactNode;
   testId: string;
+  /** The page draws its own cards, one per group of fields (sheet A03, «Crea tu cuenta»): no card around them. */
+  sections?: boolean;
 }) {
   return (
     <div
@@ -54,15 +57,19 @@ export function AccountShell({
         <LanguageSwitch />
       </AccountTopBar>
       <main className="flex flex-1 items-center justify-center px-4 pb-16">
-        <div className="w-full max-w-sm">
+        <div className={cn("w-full", sections ? "max-w-md" : "max-w-sm")}>
           <div className="flex flex-col items-center text-center">
             <BrandCrest size={96} />
             <h1 className="mt-4 text-display text-balance">{title}</h1>
             {subtitle ? <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p> : null}
           </div>
-          <div className="card-surface mt-6 space-y-4 rounded-feature p-5 shadow-xl">
-            {children}
-          </div>
+          {sections ? (
+            <div className="mt-6 space-y-3.5">{children}</div>
+          ) : (
+            <div className="card-surface mt-6 space-y-4 rounded-feature p-5 shadow-xl">
+              {children}
+            </div>
+          )}
           <Disclaimer className="mt-6 text-center text-caption text-subtle-foreground" />
         </div>
       </main>
@@ -115,5 +122,36 @@ export function SideLink({
     >
       {children}
     </a>
+  );
+}
+
+/**
+ * A group of fields of a long form (sheet A03): a card with its number and its name. The number is the order on the
+ * page, nothing to press - the form is one page and one button.
+ */
+export function FormSection({
+  n,
+  title,
+  children,
+  testId,
+}: {
+  n: number;
+  title: string;
+  children: ReactNode;
+  testId?: string;
+}) {
+  return (
+    <section className="card-surface space-y-3.5 rounded-feature p-4" data-testid={testId}>
+      <h2 className="flex items-center gap-2.5 text-title">
+        <span
+          aria-hidden
+          className="numeric inline-flex h-[1.625rem] w-[1.625rem] shrink-0 items-center justify-center rounded-full bg-primary-soft font-display text-[0.8125rem] font-extrabold text-primary"
+        >
+          {n}
+        </span>
+        {title}
+      </h2>
+      {children}
+    </section>
   );
 }

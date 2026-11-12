@@ -23,6 +23,7 @@ import { live } from "@/lib/api/v1/queries";
 import type { PlayerBadge } from "@/lib/api/v1/types_favorites";
 import type { CompetitionBadge, TeamBadge } from "@/lib/api/v1/types_product";
 import { t } from "@/lib/i18n";
+import { fieldVariants } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
 import { marketName } from "@/product/shared/markets";
 import { ErrorState } from "@/product/shared/States";
@@ -60,8 +61,10 @@ function useDebounced<T>(value: T, ms: number): T {
 /** The leagues a search lists at most (a country's name matches all of its leagues). */
 const LEAGUE_RESULTS = 30;
 
+/** The system's chip («Noche de partido», sheet 3) at the height a finger needs: a pill on surface 2, green when it is on. */
 const TOGGLE =
-  "inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45";
+  "inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45";
+const CHOSEN = "border-primary/40 bg-primary-soft text-foreground";
 
 function Toggle({
   on,
@@ -86,8 +89,8 @@ function Toggle({
       className={cn(
         TOGGLE,
         on
-          ? "border-primary bg-primary/10 font-medium text-primary"
-          : "border-border-strong bg-card text-foreground hover:bg-elevated",
+          ? "border-primary/40 bg-primary-soft text-primary"
+          : "border-transparent bg-elevated text-foreground-soft hover:text-foreground",
       )}
     >
       {on ? (
@@ -145,14 +148,14 @@ interface Props {
 /** The reader's choice: chips that remove with a tap, the counts against the limits. */
 function Chosen({ choice, limits, onChange }: Props) {
   const noneYet = choice.leagues.length + choice.teams.length === 0;
-  const any = noneYet
-    ? choice.players.length + choice.markets.length + choice.catalog.length > 0
-    : true;
+  const any =
+    choice.leagues.length + choice.players.length + choice.markets.length + choice.catalog.length >
+    0;
   const at = full(choice, limits);
   return (
     <section aria-labelledby="fav-chosen" data-testid="fav-chosen">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h3 id="fav-chosen" className="text-sm font-semibold">
+        <h3 id="fav-chosen" className="text-title">
           {t("onboarding.picker.chosen")}
         </h3>
         <p className="numeric text-caption text-muted-foreground" data-testid="fav-counts">
@@ -188,25 +191,9 @@ function Chosen({ choice, limits, onChange }: Props) {
                 data-testid="fav-chip"
                 data-kind="league"
                 data-id={l.id}
-                className={cn(TOGGLE, "border-primary/40 bg-primary/10 text-foreground")}
+                className={cn(TOGGLE, CHOSEN)}
               >
                 <LeagueName league={l} />
-                <X aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </button>
-            </li>
-          ))}
-          {choice.teams.map((tm) => (
-            <li key={`t${tm.id}`} className="max-w-full">
-              <button
-                type="button"
-                aria-label={t("onboarding.picker.remove", { name: tm.name })}
-                onClick={() => onChange(toggleTeam(choice, tm, limits))}
-                data-testid="fav-chip"
-                data-kind="team"
-                data-id={tm.id}
-                className={cn(TOGGLE, "border-primary/40 bg-primary/10 text-foreground")}
-              >
-                <TeamName team={tm} />
                 <X aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
               </button>
             </li>
@@ -220,7 +207,7 @@ function Chosen({ choice, limits, onChange }: Props) {
                 data-testid="fav-chip"
                 data-kind="player"
                 data-id={p.id}
-                className={cn(TOGGLE, "border-primary/40 bg-primary/10 text-foreground")}
+                className={cn(TOGGLE, CHOSEN)}
               >
                 <span className="min-w-0 truncate">{p.name}</span>
                 <X aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -236,7 +223,7 @@ function Chosen({ choice, limits, onChange }: Props) {
                 data-testid="fav-chip"
                 data-kind="catalog"
                 data-id={k}
-                className={cn(TOGGLE, "border-primary/40 bg-primary/10 text-foreground")}
+                className={cn(TOGGLE, CHOSEN)}
               >
                 <span className="min-w-0 truncate">{catalogKeyName(k)}</span>
                 <X aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -252,10 +239,42 @@ function Chosen({ choice, limits, onChange }: Props) {
                 data-testid="fav-chip"
                 data-kind="market"
                 data-id={m}
-                className={cn(TOGGLE, "border-primary/40 bg-primary/10 text-foreground")}
+                className={cn(TOGGLE, CHOSEN)}
               >
                 <span className="min-w-0 truncate">{marketName(m)}</span>
                 <X aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {choice.teams.length > 0 ? (
+        // the teams as the sheet draws them (A09): a tile with the crest, its name and the tick; a tap takes it away
+        <ul
+          className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6"
+          data-testid="fav-teams"
+        >
+          {choice.teams.map((tm) => (
+            <li key={`t${tm.id}`} className="min-w-0">
+              <button
+                type="button"
+                aria-label={t("onboarding.picker.remove", { name: tm.name })}
+                onClick={() => onChange(toggleTeam(choice, tm, limits))}
+                data-testid="fav-chip"
+                data-kind="team"
+                data-id={tm.id}
+                className="relative flex h-full min-h-[5.5rem] w-full flex-col items-center gap-2 rounded-control border border-primary bg-primary/[0.06] px-1.5 pb-3 pt-3.5 text-center text-xs font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span
+                  aria-hidden
+                  className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                </span>
+                <span aria-hidden className="contents">
+                  <TeamLogo src={tm.logo_url} name={tm.name} size={36} />
+                </span>
+                <span className="line-clamp-2 max-w-full break-words">{tm.name}</span>
               </button>
             </li>
           ))}
@@ -285,7 +304,7 @@ function MarketToggles({ choice, limits, onChange }: Props) {
   const atLimit = full(choice, limits).markets;
   return (
     <section aria-labelledby="fav-markets" data-testid="fav-markets">
-      <h3 id="fav-markets" className="text-sm font-semibold">
+      <h3 id="fav-markets" className="text-title">
         {t("onboarding.picker.markets")}
       </h3>
       <p className="mt-0.5 text-caption text-muted-foreground">
@@ -383,7 +402,7 @@ function Results({
       </p>
       {matching.length > 0 ? (
         <section aria-label={t("onboarding.picker.leagues")} data-testid="fav-league-results">
-          <h3 className="mb-1.5 text-sm font-semibold">{t("onboarding.picker.leagues")}</h3>
+          <h3 className="mb-1.5 text-title">{t("onboarding.picker.leagues")}</h3>
           <LeagueToggles leagues={matching} choice={choice} limits={limits} onChange={onChange} />
         </section>
       ) : null}
@@ -392,7 +411,7 @@ function Results({
       ) : null}
       {teams.length > 0 ? (
         <section aria-label={t("onboarding.picker.teams")} data-testid="fav-team-results">
-          <h3 className="mb-1.5 text-sm font-semibold">{t("onboarding.picker.teams")}</h3>
+          <h3 className="mb-1.5 text-title">{t("onboarding.picker.teams")}</h3>
           <ul className="flex flex-wrap gap-2">
             {teams.map((tm) => {
               const on = hasTeam(choice, tm.id);
@@ -414,7 +433,7 @@ function Results({
       ) : null}
       {players.length > 0 ? (
         <section aria-label={t("onboarding.picker.players")} data-testid="fav-player-results">
-          <h3 className="mb-1.5 text-sm font-semibold">{t("onboarding.picker.players")}</h3>
+          <h3 className="mb-1.5 text-title">{t("onboarding.picker.players")}</h3>
           <ul className="flex flex-wrap gap-2">
             {players.map((p) => {
               const on = hasPlayer(choice, p.id);
@@ -447,10 +466,10 @@ function Browse({
 }: Props & { leagues: readonly CompetitionBadge[] }) {
   return (
     <section aria-labelledby="fav-browse" data-testid="fav-leagues">
-      <h3 id="fav-browse" className="text-sm font-semibold">
+      <h3 id="fav-browse" className="text-title">
         {t("onboarding.picker.byCountry")}
       </h3>
-      <div className="mt-2 divide-y divide-border rounded-xl border border-border">
+      <div className="card-surface mt-2 divide-y divide-border overflow-hidden rounded-card">
         {byCountry(leagues).map((group) => {
           const name = group.country ?? t("onboarding.picker.international");
           const picked = chosenIn(choice, group.leagues);
@@ -509,7 +528,7 @@ export function FavoritesPicker({ choice, limits, onChange }: Props) {
     <div className="space-y-5" data-testid="favorites-picker">
       <Chosen choice={choice} limits={limits} onChange={onChange} />
       <div>
-        <label htmlFor={`${id}-q`} className="block text-sm font-semibold">
+        <label htmlFor={`${id}-q`} className="block text-title">
           {t("onboarding.picker.searchLabel")}
         </label>
         <div className="relative mt-1.5">
@@ -528,7 +547,7 @@ export function FavoritesPicker({ choice, limits, onChange }: Props) {
             onChange={(e) => setText(e.currentTarget.value)}
             placeholder={t("onboarding.picker.searchPlaceholder")}
             data-testid="fav-search"
-            className="h-11 w-full rounded-md border border-border-strong bg-background pl-9 pr-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className={cn(fieldVariants(), "pl-9")}
           />
         </div>
       </div>
