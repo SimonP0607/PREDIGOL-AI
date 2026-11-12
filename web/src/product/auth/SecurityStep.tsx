@@ -25,10 +25,14 @@ import { t } from "@/lib/i18n";
 import { stepError } from "./stepError";
 import { cn } from "@/lib/utils";
 import { fieldVariants } from "@/components/ui/field";
+import { buttonVariants } from "@/components/ui/button";
 
 const field = cn(fieldVariants(), "mt-1");
-const primary =
-  "flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60";
+// the system's primary button (sheet 3): 52 px, the action's green
+const primary = cn(
+  buttonVariants({ variant: "primary", size: "lg", block: true }),
+  "disabled:cursor-not-allowed disabled:opacity-60",
+);
 
 function Shell({
   title,
@@ -49,10 +53,10 @@ function Shell({
         <div className="w-full max-w-md">
           <div className="flex flex-col items-center text-center">
             <BrandCrest size={96} />
-            <h1 className="mt-4 font-display text-2xl font-bold tracking-tight">{title}</h1>
+            <h1 className="mt-4 text-display text-balance">{title}</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>
           </div>
-          <div className="mt-6 space-y-4 rounded-xl border border-border bg-card/90 p-5 shadow-xl backdrop-blur">
+          <div className="card-surface mt-6 space-y-4 rounded-feature p-5 shadow-xl">
             {children}
           </div>
           <button
