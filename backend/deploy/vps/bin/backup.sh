@@ -108,7 +108,9 @@ fi
 # BACKUP_KEEP_DAILY days and of each of the last BACKUP_KEEP_WEEKLY ISO weeks. With an off-server copy configured, a
 # dump whose copy was never checked is KEPT - until a newer dump has been copied, and for the newest BACKUP_KEEP_UNVERIFIED
 # (6) only: it may be the only one, but the disk is not unlimited.
-rotated="$("$KIT/bin/rotate-dumps.sh" "$DB_BACKUPS" "${BACKUP_KEEP_DAILY:-3}" "${BACKUP_KEEP_WEEKLY:-2}" "$offsite" "${BACKUP_KEEP_UNVERIFIED:-6}")"
+# The dump the last restore test passed on stays whatever else rotates (OPS-005): never a proved dump out for an unproved one.
+proved="$(jq -r 'select(.passed == true and ((.failures // []) | length == 0)) | .dump // empty' "$STATE/restore-test.json" 2> /dev/null || true)"
+rotated="$("$KIT/bin/rotate-dumps.sh" "$DB_BACKUPS" "${BACKUP_KEEP_DAILY:-3}" "${BACKUP_KEEP_WEEKLY:-2}" "$offsite" "${BACKUP_KEEP_UNVERIFIED:-6}" "$proved")"
 while IFS= read -r line; do [[ -n "$line" ]] && log "$line"; done <<< "$rotated"
 
 # Off the server there is no retention loop any more: the bucket's lifecycle rules age the copies out (daily 15 days,
