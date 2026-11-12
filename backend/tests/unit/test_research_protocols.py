@@ -13,6 +13,8 @@ PINNED = {
     "INT-A02": "2a1cdb3ec31a6b5075010a989e6205bf60bc699c54891a62ac861ad0fd69ae6d",
     "INT-A09": "400778f85de7acdfc59b1d9e265d7f4c4d5fe42abc4abf71cb5785b33604bd36",
     "INT-B09": "2b8e49fb115f5cecbcb5e61f52d9ac11d8c8464ce7b3da97af62b3f9382e9232",
+    "INT-A08": "a37fdb4265f407c892e11f793ce86a083667ec491f0251fdd4d1f1d3603a1c43",
+    "INT-C02": "f954582c9594c509dfc93f4abd9a847292a023d74dc5495daf0eead00bd0cc63",
 }
 """A registered protocol is frozen: changing one is a new version with its own PR, never an edit of these lines to make a test pass."""
 
@@ -36,6 +38,14 @@ def test_a_protocol_fixes_everything_before_the_data() -> None:
 def test_the_plan_lab_experiments_of_wave_one_have_a_protocol() -> None:
     for key in ("INT-A02", "INT-A09", "INT-B09"):
         assert proto.require(key).key == key
+
+
+def test_e6_and_the_replay_bank_are_registered_before_their_first_run() -> None:
+    """INT-A08 (E6, IA-052) and INT-C02 (the replay bank, IA-047): registered on their own, before any of their data is read."""
+    for key, version in (("INT-A08", "proto-int-a08-v1"), ("INT-C02", "proto-int-c02-v1")):
+        p = proto.require(key)
+        assert p.version == version and p.seed == 20261111
+        assert proto.stamp(key)["fingerprint"] == PINNED[key]
 
 
 def test_an_experiment_without_a_protocol_does_not_run() -> None:
