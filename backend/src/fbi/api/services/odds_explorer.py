@@ -42,6 +42,9 @@ from fbi.api.contracts.odds_explorer import (
     OddsMovementPoint,
     OddsMovementSeries,
     OddsSelectionPrice,
+    OddsStatus,
+    OddsStatusHorizon,
+    OddsStatusMatch,
     Period,
     Sort,
     Subject,
@@ -549,3 +552,35 @@ def health(conn: Conn, *, at: datetime | None = None) -> Envelope[OddsHealth]:
         default_partition_rows=repo.default_partition_rows(conn, cap=DEFAULT_PARTITION_CAP),
         odds_quotes_gb=round(table_bytes(conn) / 1e9, 3), odds_quotes_brake_gb=_brake_gb())
     return ok(body)
+
+
+# ── /odds/status ──────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+WITHOUT_PRICE_HOURS = 24
+WITHOUT_PRICE_SHOWN = 20
+
+
+@shared(CACHE_SECONDS)
+def status(conn: Conn, *, at: datetime | None = None) -> Envelope[OddsStatus]:
+    """The reader's «Estado de los precios» (plan maestro UX/UI 2026, decision 4): the judgement of ``health`` - the same
+    matches, the same rule of freshness - with what a reader is shown and nothing of the machinery. Database only."""
+    moment = at or clock_now()
+    points, tol = schedule_points(), tolerance()
+    fixtures = repo.status_fixtures(conn, since=moment, until=moment + timedelta(hours=72))
+    horizons: list[OddsStatusHorizon] = []
+    for name, low, high in HORIZONS:
+        held = [f for f in fixtures if moment + timedelta(hours=low) <= f["kickoff_at"] < moment + timedelta(hours=high)]
+        booked = [f for f in held if f["checked_at"] is not None]
+        stale = sum(1 for f in booked if freshness.price_state(checked_at=f["checked_at"], kickoff_at=f["kickoff_at"],
+                                                               now=moment, points=points, tolerance=tol) == "stale")
+        horizons.append(OddsStatusHorizon(horizon=cast(Any, name), fixtures=len(held), with_price=len(booked), stale=stale))
+    bare = [f for f in fixtures
+            if f["checked_at"] is None and f["kickoff_at"] < moment + timedelta(hours=WITHOUT_PRICE_HOURS)]
+    read = [f["checked_at"] for f in fixtures if f["checked_at"] is not None]
+    body = OddsStatus(
+        last_read_at=max(read) if read else None, by_horizon=horizons,
+        without_price=[OddsStatusMatch(fixture_id=int(f["id"]), kickoff_at=f["kickoff_at"], home=f["home"], away=f["away"],
+                                       competition=f["competition"]) for f in bare[:WITHOUT_PRICE_SHOWN]],
+        without_price_total=len(bare), schedule_minutes=sorted(points, reverse=True), tolerance_minutes=tol)
+    return ok(body, data_as_of=max(read) if read else None)

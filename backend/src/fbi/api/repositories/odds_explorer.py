@@ -178,6 +178,24 @@ SELECT f.id, f.kickoff_at,
 """The matches the capture follows (the WHERE of ``scripts.capture_odds.UPCOMING_SQL``) in the next 72 h, and the ask behind each
 one's book."""
 
+STATUS_FIXTURES_SQL = """
+SELECT f.id, f.kickoff_at, th.name AS home, ta.name AS away, c.name AS competition,
+       (SELECT min(b.checked_at) FROM market.book_current b WHERE b.fixture_id = f.id) AS checked_at
+  FROM core.fixtures f
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+  JOIN core.teams th ON th.id = f.home_team_id
+  JOIN core.teams ta ON ta.id = f.away_team_id
+  LEFT JOIN raw.league_coverage lc ON lc.provider_league_id = c.provider_league_id AND lc.season = cs.season
+ WHERE c.is_tracked
+   AND f.kickoff_at BETWEEN %(from)s AND %(until)s
+   AND f.status_group = 'scheduled'
+   AND (lc.odds IS NOT FALSE
+        OR EXISTS (SELECT 1 FROM market.odds_mapping_seen m WHERE m.provider_fixture_id = f.provider_fixture_id))
+ ORDER BY f.kickoff_at, f.id
+"""
+"""``HEALTH_FIXTURES_SQL`` with the names a reader is shown (the same matches, the same ask behind each book)."""
+
 EXTRACTION_LAG_SQL = """
 SELECT min(p.fetched_at) AS oldest FROM raw.ingestion_payloads p
   LEFT JOIN market.odds_extractions x ON x.payload_hash = p.hash
@@ -257,6 +275,10 @@ def main_line(conn: Conn, fixture_id: int, definitions: list[int]) -> Any:
 
 def health_fixtures(conn: Conn, *, since: datetime, until: datetime) -> list[Row]:
     return fetch_all(conn, HEALTH_FIXTURES_SQL, {"from": since, "until": until})
+
+
+def status_fixtures(conn: Conn, *, since: datetime, until: datetime) -> list[Row]:
+    return fetch_all(conn, STATUS_FIXTURES_SQL, {"from": since, "until": until})
 
 
 def extraction_oldest(conn: Conn, *, since: datetime, skipped: str) -> datetime | None:

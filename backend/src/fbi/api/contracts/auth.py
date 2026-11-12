@@ -77,6 +77,9 @@ class Me(Contract):
     odds_explorer: bool = Field(default=False, description="The new Cuotas explorer (plan Cuotas, BE-011/UX-068; "
                                                            "FBI_ODDS_EXPLORER, off until the owner verified it): the page "
                                                            "shows it only then, and the current Cuotas page otherwise.")
+    odds_status: bool = Field(default=False, description="«Estado de los precios» is open to readers (plan maestro UX/UI "
+                                                         "2026, decision 4; FBI_ODDS_STATUS, off by default): the page "
+                                                         "links to it only then.")
 
 
 class PreferencesIn(BaseModel):

@@ -190,3 +190,36 @@ class OddsHealth(Contract):
     default_partition_rows: int = Field(description="Rows in the DEFAULT partitions of the odds series (should be 0).")
     odds_quotes_gb: float
     odds_quotes_brake_gb: float = Field(description="FBI_QUOTES_MAX_TABLE_GB: the extractor stops past it.")
+
+
+# ── /odds/status: the reader's «Estado de los precios» (plan maestro UX/UI 2026, decision 4) ──────────────────────────
+
+
+class OddsStatusHorizon(Contract):
+    horizon: Horizon
+    fixtures: int = Field(description="Followed matches with odds kicking off in the horizon.")
+    with_price: int = Field(description="Those with a price in force.")
+    stale: int = Field(description="Those whose price missed a scheduled capture (shown with a clock and its hour).")
+
+
+class OddsStatusMatch(Contract):
+    fixture_id: int
+    kickoff_at: datetime
+    home: str
+    away: str
+    competition: str
+
+
+class OddsStatus(Contract):
+    """What a reader may know of the prices they see: when they were last read, how many matches have one and how many are
+    late - the same judgement as the owner's /admin/odds/health, without its machinery (quota, sizes, partitions)."""
+
+    last_read_at: datetime | None = Field(description="The latest ask that confirmed a price of a followed match of the "
+                                                      "next 72 h; null without any.")
+    by_horizon: list[OddsStatusHorizon]
+    without_price: list[OddsStatusMatch] = Field(description="Followed matches of the next 24 h without a price in force, "
+                                                             "soonest first (at most 20).")
+    without_price_total: int = Field(description="How many there are in the next 24 h.")
+    schedule_minutes: list[int] = Field(description="The rule in force: the minutes before kick-off at which a price is "
+                                                    "read again. A price that missed its last closed point is late.")
+    tolerance_minutes: int = Field(description="The margin of each point.")

@@ -17,12 +17,14 @@ from fbi.api.contracts.odds_explorer import (
     OddsFamilies,
     OddsHealth,
     OddsMovement,
+    OddsStatus,
     Sort,
 )
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.errors import ApiError
 from fbi.api.services import odds_explorer
+from fbi.api.switches import odds_status_on
 
 router = APIRouter(tags=["odds explorer"])
 admin_router = APIRouter(tags=["admin: odds"])
@@ -111,6 +113,15 @@ def get_odds_movement(conn: Db, fixture_id: Fixture, market: MarketKey, period: 
     """The best price of each selection of one line over the stored history, outliers left out: the capture's series for the
     five classic markets, the price clock's for the 55 extracted types; ``available`` false for the others."""
     return odds_explorer.movement(conn, fixture_id, market_key=market, period=period, line=_line(line))
+
+
+@router.get("/odds/status", response_model=Envelope[OddsStatus])
+def get_odds_status(conn: Db) -> Envelope[OddsStatus]:
+    """«Estado de los precios» (plan maestro UX/UI 2026, decision 4): when the prices were last read, how many matches have one
+    and how many are late, by the rule of freshness in force. Read only; behind ``FBI_ODDS_STATUS`` (404 while it is off)."""
+    if not odds_status_on():
+        raise ApiError(404, "not_found", "not found")
+    return odds_explorer.status(conn)
 
 
 @admin_router.get("/odds/health", response_model=Envelope[OddsHealth])

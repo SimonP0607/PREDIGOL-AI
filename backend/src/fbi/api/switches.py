@@ -33,6 +33,12 @@ deployed off and switched on once it is verified in production (decision 8 of th
 current Cuotas page (the API recreated). The explorer's endpoints answer either way: the switch decides what the page shows."""
 
 
+ODDS_STATUS: Final = "FBI_ODDS_STATUS"
+"""«Estado de los precios» (plan maestro UX/UI 2026, decision 4; BE-038): OFF while the line is absent - ``GET /odds/status``
+does not exist (404) and the page shows no way to it - and ``=1`` opens it to every signed-in reader (the API recreated). It
+reads what the capture already stored: it asks the provider nothing and changes no price."""
+
+
 def user_switch(name: str, *, default: bool) -> bool:
     """Whether the switch ``name`` is on: ``default`` while the line is absent or empty, off for a value it cannot read."""
     raw = environment().get(name)
@@ -54,3 +60,8 @@ def explain_on() -> bool:
 def odds_explorer_on() -> bool:
     """Whether the page shows the new Cuotas explorer (``FBI_ODDS_EXPLORER``, off by default)."""
     return user_switch(ODDS_EXPLORER, default=False)
+
+
+def odds_status_on() -> bool:
+    """Whether readers get «Estado de los precios» (``FBI_ODDS_STATUS``, off by default)."""
+    return user_switch(ODDS_STATUS, default=False)
