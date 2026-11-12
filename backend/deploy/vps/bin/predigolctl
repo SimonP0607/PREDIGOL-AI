@@ -71,7 +71,18 @@ cmd_deploy() {
     compose build postgres api web
   fi
   if [[ "$(docker inspect -f '{{.State.Status}}' predigol-postgres 2> /dev/null || true)" == running ]]; then
-    "$BIN/backup.sh" --label "pre-deploy-$new_be"
+    # OPS-005: the release chain has just made a dump and proved it restores. When that dump is the same file, minutes
+    # old, of the same schema, and this release brings no migration, it IS the pre-deploy backup - a second dump of the
+    # same data, never restore-tested, only made the deploy 18 to 87 minutes longer. Anything else: a dump of its own.
+    local current head reused
+    current="$(psql_q "SELECT version_num FROM public.alembic_version" 2> /dev/null || true)"
+    head="$(ops alembic heads 2> /dev/null | awk 'NF {n++; h=$1} END {if (n == 1) print h}' || true)"
+    if reused="$("$BIN/reuse-dump.sh" "$DB_BACKUPS" "$STATE/restore-test.json" "$current" "$head" "${PREDEPLOY_REUSE_MAX_MIN:-120}")"; then
+      log "pre-deploy backup: reusing $reused (restore-tested, revision $current, no migration pending)"
+    else
+      log "pre-deploy backup: a dump of its own ($reused)"
+      "$BIN/backup.sh" --label "pre-deploy-$new_be"
+    fi
   fi
   compose up -d postgres
   wait_healthy postgres 300

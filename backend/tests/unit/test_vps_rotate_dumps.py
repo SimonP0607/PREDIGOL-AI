@@ -82,3 +82,36 @@ def test_the_dumps_in_doubt_are_capped_so_that_a_bucket_down_for_weeks_cannot_fi
 def test_without_an_off_server_copy_the_rules_alone_decide(tmp_path: Path) -> None:
     _dumps(tmp_path, [f"202610{d:02d}T041939Z" for d in range(1, 15)])
     assert _rotate(tmp_path, offsite=0, unverified=99) == {f"202610{d:02d}T041939Z" for d in (14, 13, 12, 11)}
+
+
+def _rotate_protecting(folder: Path, protect: str, daily: int = 3, weekly: int = 2) -> tuple[set[str], str]:
+    out = subprocess.run(["bash", str(SCRIPT), str(folder), str(daily), str(weekly), "0", "6", protect], check=True,
+                         capture_output=True, text=True)
+    return {p.name.removeprefix("predigol-").removesuffix(".dump") for p in folder.glob("predigol-*.dump")}, out.stdout
+
+
+def test_the_dump_that_passed_its_restore_test_never_leaves_for_untested_ones(tmp_path: Path) -> None:
+    """OPS-005 (11 Nov 2026): four deploys in a day - each untested pre-deploy dump pushed the chain's restore-tested
+    dump off the disk. The proved one stays, whatever its rank."""
+    _dumps(tmp_path, ["20261111T124958Z-auto-10d637d", "20261111T150110Z-auto-de1e29d", "20261111T152000Z-pre-deploy-a",
+                      "20261111T163354Z-auto-fa598f6", "20261111T173919Z-pre-deploy-b", "20261111T180000Z-pre-deploy-c",
+                      "20261111T190000Z-pre-deploy-d"])
+    kept, said = _rotate_protecting(tmp_path, "predigol-20261111T150110Z-auto-de1e29d")
+    assert "20261111T150110Z-auto-de1e29d" in kept, "the proved dump stays"
+    assert "the last dump that passed its restore test" in said
+    assert (tmp_path / "predigol-20261111T150110Z-auto-de1e29d.json").exists(), "with its description"
+    assert {"20261111T190000Z-pre-deploy-d", "20261111T180000Z-pre-deploy-c", "20261111T173919Z-pre-deploy-b"} <= kept
+    assert "20261111T124958Z-auto-10d637d" not in kept and "20261111T152000Z-pre-deploy-a" not in kept
+
+
+def test_protecting_nothing_or_a_dump_that_is_gone_rotates_as_before(tmp_path: Path) -> None:
+    names = ["20261011T164349Z-pre-deploy-a", "20261012T042026Z", "20261012T110007Z-pre-deploy-b", "20261013T041939Z",
+             "20261013T065428Z-pre-deploy-c", "20261013T071704Z-pre-deploy-d", "20261013T081932Z-pre-deploy-e"]
+    _dumps(tmp_path, names)
+    plain = _rotate(tmp_path)
+    for protect in ("", "predigol-20260101T000000Z-gone"):
+        other = tmp_path / f"again{len(protect)}"
+        other.mkdir()
+        _dumps(other, names)
+        kept, _ = _rotate_protecting(other, protect)
+        assert kept == plain
