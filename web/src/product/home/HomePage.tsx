@@ -29,6 +29,7 @@ import { useEffect, useState } from "react";
 import { ChevronRight, Layers, Radio } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
 import { live } from "@/lib/api/v1/queries";
 import { shiftDay, todayKey } from "@/lib/time";
 import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
@@ -49,7 +50,7 @@ import { SuggestionCard } from "@/product/favorites/SuggestionCard";
 import { ContextBlock, TodayBlock } from "./TodayBlocks";
 import { AtStakeBlock, RelevantNowBlock } from "./HomeStakes";
 import { ResultsBlock } from "./ResultsBlock";
-import { holdsLayers, LAYERS_HOLD_MS, layersOf } from "./layers";
+import { holdsLayers, LAYERS_HOLD_MS, layersOf, shownLayers, type HomeView } from "./layers";
 import { wantsYesterday } from "./yesterday";
 import { mineByRank } from "./related";
 import { EditFavorites } from "./EditFavorites";
@@ -212,6 +213,10 @@ export function HomePage() {
   // Two layers (closing plan 3.2): «Para ti» only once the reader chose something; PrediGol is the same for everyone. The
   // leagues and the team suggested until they choose are PrediGol's, labelled as suggested - never «tuyas».
   const layers = layersOf(me.data, today.data?.data);
+  // «Para ti / Todo» (plan maestro UX/UI 2026, PR-14). It opens on «Todo», Inicio as it always was; opening on «Para ti»
+  // is the reader's own setting and arrives with it (decision 8).
+  const [view, setView] = useState<HomeView>("all");
+  const shown = shownLayers(view, layers);
   // A reader's layers go on top of PrediGol, so they are painted together with it, not after it (they would push it down), and
   // the day's picks and the board change height when they arrive: the page waits for /me/today, /today, /home and /daily - at
   // most LAYERS_HOLD_MS - and shows one block meanwhile. The owner is never held.
@@ -251,7 +256,22 @@ export function HomePage() {
     <div className="space-y-9 sm:space-y-10" data-testid="home-page">
       <HomeHeader freshness={home.data?.data?.data_freshness ?? null} loading={home.isPending} />
       <OfflineNote />
-      {layers.forYou ? (
+      {shown.selector ? (
+        <Segmented
+          value={view}
+          onChange={setView}
+          label={t("home.view.label")}
+          size="lg"
+          full
+          testId="home-view"
+          className="sm:max-w-sm"
+          options={[
+            { value: "mine", label: t("home.layers.forYou") },
+            { value: "all", label: t("home.view.all") },
+          ]}
+        />
+      ) : null}
+      {shown.forYou ? (
         <Layer
           id="for-you"
           title={t("home.layers.forYou")}
@@ -269,33 +289,39 @@ export function HomePage() {
           <ForYouPart part="notices" query={me} board={board} teams={teams} now={now} />
         </Layer>
       ) : null}
-      <Layer
-        id="predigol"
-        title={t("home.layers.predigol")}
-        hint={t("home.layers.predigolHint")}
-        tone="gold"
-      >
-        {layers.prompt && reader ? <ChoosePrompt /> : null}
-        {openYesterday ? (
+      {shown.predigol ? (
+        <Layer
+          id="predigol"
+          title={t("home.layers.predigol")}
+          hint={t("home.layers.predigolHint")}
+          tone="gold"
+        >
+          {layers.prompt && reader ? <ChoosePrompt /> : null}
+          {openYesterday ? (
+            <DailySetBlock
+              query={yesterday}
+              variant="home"
+              title={t("records.daily.yesterdayOpen")}
+            />
+          ) : null}
           <DailySetBlock
-            query={yesterday}
+            query={board}
             variant="home"
-            title={t("records.daily.yesterdayOpen")}
+            noPick={noPickLoad(today, (d) => d.no_pick.data)}
+            mine={layers.forYou ? mineByRank(me.data?.picks) : undefined}
           />
-        ) : null}
-        <DailySetBlock
-          query={board}
-          variant="home"
-          noPick={noPickLoad(today, (d) => d.no_pick.data)}
-          mine={layers.forYou ? mineByRank(me.data?.picks) : undefined}
-        />
-        <HomeParlays board={board} />
-        <RelevantNowBlock query={home} />
-        <AtStakeBlock query={home} now={now} />
-        <NewsBlock query={layers.mine ? general : news} now={now} />
-        <LiveNow query={home} />
-        <ResultsBlock query={home} now={now} />
-      </Layer>
+          <HomeParlays board={board} />
+          <RelevantNowBlock query={home} />
+          <AtStakeBlock query={home} now={now} />
+          <NewsBlock query={layers.mine ? general : news} now={now} />
+          <LiveNow query={home} />
+          <ResultsBlock query={home} now={now} />
+        </Layer>
+      ) : (
+        <p className="text-caption text-muted-foreground" data-testid="home-view-note">
+          {t("home.view.mineNote")}
+        </p>
+      )}
     </div>
   );
 }

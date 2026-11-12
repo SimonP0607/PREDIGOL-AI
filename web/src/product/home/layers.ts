@@ -61,3 +61,19 @@ export function holdsLayers(state: {
     (state.mePending || state.todayPending || state.homePending || state.boardPending)
   );
 }
+
+/** What Inicio shows («Noche de partido», plan maestro UX/UI 2026, PR-14): everything, or only the reader's own layer. */
+export type HomeView = "all" | "mine";
+
+/**
+ * Which layers the selector «Para ti / Todo» leaves on the page. «Todo» is Inicio as it always was - the reader's layer on
+ * top of PrediGol's - so nothing is ever lost behind the selector; «Para ti» keeps only what they follow. Without a layer of
+ * their own there is nothing to choose between: no selector, and PrediGol's layer always shows.
+ */
+export function shownLayers(
+  view: HomeView,
+  layers: Layers,
+): { selector: boolean; forYou: boolean; predigol: boolean } {
+  if (!layers.forYou) return { selector: false, forYou: false, predigol: true };
+  return { selector: true, forYou: true, predigol: view === "all" };
+}

@@ -87,6 +87,11 @@
     "failed": "No se pudo guardar. Inténtalo de nuevo.",
     "added": "{name} ya está entre tus favoritos."
   },
+  "view": {
+    "label": "Qué ver en Inicio",
+    "all": "Todo",
+    "mineNote": "Los picks son los mismos para todos. En «Todo» están los picks del día, los parlays y lo que pasa ahora."
+  },
   "layers": {
     "forYou": "Para ti",
     "forYouHint": "Lo que elegiste seguir",
