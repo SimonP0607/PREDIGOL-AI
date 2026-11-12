@@ -305,12 +305,13 @@ function InPlay({ ctx }: { ctx: MatchCtx }) {
   );
 }
 
-function AfterMatch({ ctx }: { ctx: MatchCtx }) {
+function AfterMatch({ ctx, underPostmatch }: { ctx: MatchCtx; underPostmatch: boolean }) {
   return (
     <div className="space-y-4">
       <div className={TWO_COLUMNS}>
         <div className="min-w-0 space-y-4">
-          <ResultBlock ctx={ctx} />
+          {/* the Postpartido, on top of this Resumen since decision 11, already opens with the result */}
+          {underPostmatch ? null : <ResultBlock ctx={ctx} />}
           <EventsBlock ctx={ctx} />
           <AnalysisBlock ctx={ctx} variant="reference" />
         </div>
@@ -343,7 +344,14 @@ function NotPlayed({ ctx }: { ctx: MatchCtx }) {
   );
 }
 
-export function SummaryTab({ ctx }: { ctx: MatchCtx }) {
+export function SummaryTab({
+  ctx,
+  underPostmatch = false,
+}: {
+  ctx: MatchCtx;
+  /** The page shows the Postpartido above (a match that is over): what it already says is not said twice. */
+  underPostmatch?: boolean;
+}) {
   switch (ctx.phase) {
     case "scheduled":
       return <BeforeKickoff ctx={ctx} />;
@@ -355,6 +363,6 @@ export function SummaryTab({ ctx }: { ctx: MatchCtx }) {
     case "not_played":
       return <NotPlayed ctx={ctx} />;
     default:
-      return <AfterMatch ctx={ctx} />;
+      return <AfterMatch ctx={ctx} underPostmatch={underPostmatch} />;
   }
 }

@@ -213,7 +213,9 @@ test("the Match Center has the Advanced / Audit tab for the owner", async ({ pag
   const id = body.data[0]?.id;
   test.skip(!id, "no fixture with prices to open");
   await go(page, w, `/matches/${id}`);
-  await page.getByRole("tab", { name: t.match.tabs.advanced }).click();
+  // the owner's research view is a button of the page (decision 11), with six tabs as for every reader
+  await expect(page.getByRole("tab")).toHaveCount(6);
+  await page.getByTestId("match-advanced").click();
   await settle(page);
   await assertClean(page, w);
 });

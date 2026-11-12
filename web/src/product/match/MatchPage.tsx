@@ -15,6 +15,7 @@ import { LiveApiError } from "@/lib/api/v1/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useScrollCue } from "@/lib/scrollCue";
 import { Card, EmptyState, ErrorState, SkeletonBlock } from "@/product/shared/States";
+import { buttonVariants } from "@/components/ui/button";
 import { AdvancedTab } from "./AdvancedTab";
 import type { MatchCtx, TabKey } from "./context";
 import { LineupsTab } from "./LineupsTab";
@@ -27,7 +28,7 @@ import { NewsTab } from "@/product/news/NewsTab";
 import { liveSnapshot, matchPhase, shownScore } from "./model";
 import { StatsTab } from "./StatsTab";
 import { SummaryTab } from "./SummaryTab";
-import { tabsFor, useMatchTab } from "./useMatchTab";
+import { sectionsFor, tabsFor, useMatchTab } from "./useMatchTab";
 import { originOf, track } from "@/lib/track";
 import { openedFromList } from "@/product/matches/backToList";
 import { GuideButton } from "@/product/guides/GuideButton";
@@ -180,16 +181,14 @@ function TabBar({
               role="tab"
               aria-selected={selected}
               aria-controls={`match-panel-${key}`}
-              tabIndex={selected ? 0 : -1}
+              // the owner's research view is no tab: while it is open none is chosen and the first takes the keyboard
+              tabIndex={selected || (!tabs.includes(active) && key === tabs[0]) ? 0 : -1}
               onClick={() => onSelect(key)}
               className={cn(
                 "relative flex min-h-11 flex-1 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-2 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring sm:flex-none sm:px-3 sm:text-sm",
                 selected ? "text-foreground" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {key === "advanced" ? (
-                <ShieldCheck aria-hidden className="h-3.5 w-3.5 text-info" />
-              ) : null}
               {t(`match.tabs.${key}`)}
               {key === "summary" && isLive ? (
                 <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-primary" />
@@ -231,12 +230,14 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
     },
   });
   const knownPhase = view.data ? matchPhase(view.data.data.match) : null;
-  const tabs = tabsFor(knownPhase, auth.showAdmin);
-  const [tab, setTab] = useMatchTab(fixtureId, tabs, knownPhase);
+  const tabs = tabsFor();
+  const [tab, setTab] = useMatchTab(fixtureId, sectionsFor(auth.showAdmin), knownPhase);
   // Plan UX, A6: which matches readers open, from where, and which sections they read.
   useEffect(() => {
     if (valid) track("match_opened", { match_id: Number(fixtureId), origin: originOf() });
   }, [fixtureId, valid]);
+  // the names of the sections are the ones the figures always had (decision 11): «postmatch» is still counted when a
+  // link or a button asks for it, though it now opens on top of the Resumen
   const openSection = (key: TabKey) => {
     if (valid && key !== tab)
       track("match_section_opened", { section: key, match_id: Number(fixtureId) });
@@ -290,9 +291,6 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
     case "analysis":
       panel = <ReadingBlock ctx={ctx} />;
       break;
-    case "postmatch":
-      panel = <PostmatchTab ctx={ctx} />;
-      break;
     case "stats":
       panel = <StatsTab ctx={ctx} />;
       break;
@@ -309,23 +307,52 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
       panel = auth.showAdmin ? <AdvancedTab fixtureId={fixtureId} /> : null;
       break;
     default:
-      panel = <SummaryTab ctx={ctx} />;
+      // once the match is over, how it went opens on top of its Resumen (decision 11; it was a seventh tab)
+      panel =
+        phase === "finished" || phase === "awaiting" ? (
+          <div className="space-y-4">
+            <PostmatchTab ctx={ctx} />
+            <SummaryTab ctx={ctx} underPostmatch />
+          </div>
+        ) : (
+          <SummaryTab ctx={ctx} />
+        );
   }
+  const advanced = tab === "advanced";
 
   return (
     <div className="space-y-4" data-testid="match-center" data-phase={phase}>
       {/* The «?» of the match (UX-070): the guide of the match again, at the top right as on every screen with one. */}
       <div className="flex items-center justify-between gap-3">
         <BackLink />
-        <GuideButton guide="match" />
+        <div className="flex items-center gap-2">
+          {/* the owner's research view (decision 11): a button of the page, no longer a tab; the same permission */}
+          {auth.showAdmin ? (
+            <button
+              type="button"
+              aria-pressed={advanced}
+              onClick={() => openSection(advanced ? "summary" : "advanced")}
+              data-testid="match-advanced"
+              className={buttonVariants({
+                variant: advanced ? "primary" : "secondary",
+                size: "xs",
+              })}
+            >
+              <ShieldCheck aria-hidden />
+              {t("match.tabs.advanced")}
+            </button>
+          ) : null}
+          <GuideButton guide="match" />
+        </div>
       </div>
       <MatchHeader ctx={ctx} />
       <div id="match-tabs-anchor" aria-hidden className="mb-0" />
       <TabBar tabs={tabs} active={tab} onSelect={openSection} live={phase === "live"} />
       <div
-        role="tabpanel"
+        {...(advanced
+          ? { role: "region", "aria-label": t("match.tabs.advanced") }
+          : { role: "tabpanel", "aria-labelledby": `match-tab-${tab}` })}
         id={`match-panel-${tab}`}
-        aria-labelledby={`match-tab-${tab}`}
         tabIndex={0}
         className="rounded-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >

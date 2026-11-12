@@ -135,9 +135,12 @@ test("a finished match explains what the reader saved and why each published pic
     await signIn(page, email);
     await page.goto(`/matches/${fixture}`);
     await settle(page);
+    // six tabs, always (decision 11): the Postpartido is no tab - it opens on top of the Resumen of a finished match
+    await expect(page.locator("#match-tab-postmatch")).toHaveCount(0);
+    await expect(page.getByRole("tab")).toHaveCount(6);
     await expect(
-      page.locator("#match-tab-postmatch"),
-      "a finished match opens on its Postpartido",
+      page.locator("#match-tab-summary"),
+      "a finished match opens on its Resumen, the Postpartido on top",
     ).toHaveAttribute("aria-selected", "true");
     const tab = page.getByTestId("postmatch");
 
@@ -212,7 +215,8 @@ test("a finished match explains what the reader saved and why each published pic
       const to = page.getByTestId("reading-to-postmatch").first();
       await expect(to).toHaveText(t.match.postmatch.fromReading);
       await to.click();
-      await expect(page.locator("#match-tab-postmatch")).toHaveAttribute("aria-selected", "true");
+      await expect(page.locator("#match-tab-summary")).toHaveAttribute("aria-selected", "true");
+      await expect(page.getByTestId("postmatch")).toBeVisible();
     }
 
     // A settled pick in Mis picks opens its match on the Postpartido.
@@ -221,7 +225,7 @@ test("a finished match explains what the reader saved and why each published pic
     const link = page.getByTestId("my-pick-match").filter({ hasText: "QA Bambú" }).first();
     await expect(link).toHaveAttribute("href", new RegExp(`/matches/${fixture}#postmatch$`));
     await link.click();
-    await expect(page.locator("#match-tab-postmatch")).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator("#match-tab-summary")).toHaveAttribute("aria-selected", "true");
     await expect(page.getByTestId("postmatch-saved")).toBeVisible();
   } finally {
     await remove(admin, id, email);

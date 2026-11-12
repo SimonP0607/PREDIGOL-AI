@@ -420,7 +420,7 @@ test("the real test's sixteen steps on one invited account, on a 390 px phone: f
       await expect(results.first().or(page.getByTestId("results-empty"))).toBeVisible();
       if ((await results.count()) > 0) {
         await results.first().click();
-        await expect(page.getByRole("tab", { name: t.match.tabs.postmatch })).toHaveAttribute(
+        await expect(page.getByRole("tab", { name: t.match.tabs.summary })).toHaveAttribute(
           "aria-selected",
           "true",
         );
