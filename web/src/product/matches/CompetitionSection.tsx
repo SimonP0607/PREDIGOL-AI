@@ -34,17 +34,13 @@ export function CompetitionSection({
   const headingId = `competition-${group.id}`;
   const listId = `competition-${group.id}-matches`;
   return (
-    <section
-      aria-labelledby={headingId}
-      className="rounded-xl border border-border bg-card"
-      data-testid="competition-group"
-    >
+    <section aria-labelledby={headingId} className="card-surface" data-testid="competition-group">
       <h2
         id={headingId}
         className={cn(
           // Under the app bar and under the list's own sticky bar of days and states (its height: --matches-bar-h).
-          "sticky top-[calc(var(--app-sticky-top)+var(--matches-bar-h,0px))] z-10 rounded-t-xl bg-card font-sans",
-          collapsed ? "rounded-b-xl" : "border-b border-border/70",
+          "sticky top-[calc(var(--app-sticky-top)+var(--matches-bar-h,0px))] z-10 rounded-t-card bg-card font-sans",
+          collapsed ? "rounded-b-card" : "border-b border-border/70",
         )}
       >
         <button
@@ -54,13 +50,13 @@ export function CompetitionSection({
           aria-controls={listId}
           className={cn(
             "flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-elevated/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
-            "rounded-t-xl",
-            collapsed && "rounded-b-xl",
+            "rounded-t-card",
+            collapsed && "rounded-b-card",
           )}
         >
           <CompetitionLogo src={c.logo_url} name={c.name} size={18} />
           <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className="min-w-0 break-words text-sm font-semibold leading-tight">
+            <span className="min-w-0 break-words font-display text-[0.8125rem] font-bold leading-tight text-foreground-soft">
               {c.name}
             </span>
             {why ? <WhyChip why={why} testId="competition-why" className="text-micro" /> : null}
@@ -96,7 +92,7 @@ export function CompetitionSection({
         </button>
       </h2>
       {collapsed ? null : (
-        <ul id={listId} className="divide-y divide-border/60 [&>li:last-child>div]:rounded-b-xl">
+        <ul id={listId} className="divide-y divide-border/60 [&>li:last-child>div]:rounded-b-card">
           {group.items.map((item) => (
             <li key={item.match.id}>
               <MatchRow item={item} why={rowWhy ? rowWhy(item) : null} />
