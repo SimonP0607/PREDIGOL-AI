@@ -996,9 +996,10 @@ def admin_user_sessions(conn: psycopg.Connection[Any], user_id: int) -> list[dic
 
 
 def audit_events(conn: psycopg.Connection[Any], *, limit: int, offset: int, action: str | None,
-                 target_user_id: int | None = None) -> tuple[list[dict[str, Any]], int]:
-    return (store.list_events(conn, limit=limit, offset=offset, action=action, target_user_id=target_user_id),
-            store.count_events(conn, action=action, target_user_id=target_user_id))
+                 target_user_id: int | None = None, family: str | None = None) -> tuple[list[dict[str, Any]], int]:
+    return (store.list_events(conn, limit=limit, offset=offset, action=action, target_user_id=target_user_id,
+                              family=family),
+            store.count_events(conn, action=action, target_user_id=target_user_id, family=family))
 
 
 def record_admin_write(actor_user_id: int, *, method: str, path: str, status: int, ip: str | None,

@@ -1,6 +1,6 @@
 /** TanStack Query option factories for the live API. */
 import { infiniteQueryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { filterParams, v1, type BestOddsQuery, type MatchQuery } from "./client";
+import { filterParams, v1, type AuditFamily, type BestOddsQuery, type MatchQuery } from "./client";
 import type { MyPicksFilter } from "./types_mypicks";
 import type { FeedbackSubject } from "./types_feedback";
 import type { ExplainIntent, SlipLegBody } from "./types_explain";
@@ -696,17 +696,26 @@ export const live = {
     refetchInterval: MINUTE,
   }),
   /** The trail by pages of AUDIT_PAGE events, newest first, as far back as the owner reads (plan UX, B10). */
-  authAuditPages: (action?: string) => ({
-    queryKey: ["v1", "admin", "audit", "pages", action ?? "all"],
+  authAuditPages: (action?: string, family?: AuditFamily) => ({
+    queryKey: ["v1", "admin", "audit", "pages", action ?? "all", family ?? "all"],
     queryFn: ({ pageParam }: { pageParam: number }) =>
-      v1.authAudit({ action, limit: AUDIT_PAGE, offset: pageParam }),
+      v1.authAudit({ action, family, limit: AUDIT_PAGE, offset: pageParam }),
     initialPageParam: 0,
     getNextPageParam: (last: Awaited<ReturnType<typeof v1.authAudit>>) => {
       const next = (last.meta.offset ?? 0) + (last.meta.count ?? 0);
       return next < (last.meta.total ?? 0) ? next : undefined;
     },
   }),
-  authAuditActions: { queryKey: ["v1", "admin", "audit", "actions"], queryFn: v1.authAuditActions },
+  authAuditActions: {
+    queryKey: ["v1", "admin", "audit", "actions"],
+    queryFn: () => v1.authAuditActions(),
+  },
+  /** What the trail recorded from an instant on, by action: «Hoy en cifras» (decision 12). */
+  authAuditSince: (since: string) => ({
+    queryKey: ["v1", "admin", "audit", "actions", since],
+    queryFn: () => v1.authAuditActions(since),
+    refetchInterval: MINUTE,
+  }),
 
   // ── data truth ────────────────────────────────────────────────────────────
   truthLatest: { queryKey: ["v1", "truth", "latest"], queryFn: v1.truthLatest },

@@ -369,8 +369,23 @@ def record_event(conn: Conn, action: str, *, actor_user_id: int | None = None, t
     )
 
 
+# The families the console's audit filters by (plan maestro UX/UI 2026, decision 12): a reading of the trail by the first
+# word of each action. Nothing is recorded differently; an action outside every family still shows under «all».
+AUDIT_FAMILIES: dict[str, tuple[str, ...]] = {
+    "access": ("login.%", "logout", "mfa.%", "password.%", "session.%", "signup.%"),
+    "accounts": ("user.%", "account.%", "preferences.%", "privacy.%"),
+    "membership": ("membership.%",),
+    "console": ("admin.%", "customer.%"),
+}
+
+
+def _family_patterns(family: str | None) -> list[str] | None:
+    return list(AUDIT_FAMILIES[family]) if family else None
+
+
 def list_events(conn: Conn, *, limit: int, offset: int, action: str | None = None,
-                target_user_id: int | None = None) -> list[Row]:
+                target_user_id: int | None = None, family: str | None = None) -> list[Row]:
+    patterns = _family_patterns(family)
     return _all(conn, """
         SELECT e.id, e.at, e.action, e.email, e.ip, e.detail,
                a.email AS actor_email, t.email AS target_email
@@ -378,14 +393,18 @@ def list_events(conn: Conn, *, limit: int, offset: int, action: str | None = Non
         LEFT JOIN auth.users a ON a.id = e.actor_user_id
         LEFT JOIN auth.users t ON t.id = e.target_user_id
         WHERE (%s::text IS NULL OR e.action = %s) AND (%s::bigint IS NULL OR e.target_user_id = %s)
+          AND (%s::text[] IS NULL OR e.action LIKE ANY(%s::text[]))
         ORDER BY e.at DESC, e.id DESC LIMIT %s OFFSET %s
-    """, (action, action, target_user_id, target_user_id, limit, offset))
+    """, (action, action, target_user_id, target_user_id, patterns, patterns, limit, offset))
 
 
-def count_events(conn: Conn, *, action: str | None = None, target_user_id: int | None = None) -> int:
+def count_events(conn: Conn, *, action: str | None = None, target_user_id: int | None = None,
+                 family: str | None = None) -> int:
+    patterns = _family_patterns(family)
     row = _one(conn, "SELECT count(*)::int AS n FROM auth.audit_events WHERE (%s::text IS NULL OR action = %s) "
-                     "AND (%s::bigint IS NULL OR target_user_id = %s)",
-               (action, action, target_user_id, target_user_id))
+                     "AND (%s::bigint IS NULL OR target_user_id = %s) "
+                     "AND (%s::text[] IS NULL OR action LIKE ANY(%s::text[]))",
+               (action, action, target_user_id, target_user_id, patterns, patterns))
     return int(row["n"]) if row else 0
 
 
