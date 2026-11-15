@@ -94,6 +94,9 @@ class Me(Contract):
     news_feed: bool = Field(default=False, description="The Noticias section is open to readers (plan maestro UX/UI "
                                                        "2026, decision 2; FBI_NEWS_FEED, off by default, and the "
                                                        "news shown to users): the page links to it only then.")
+    inbox: bool = Field(default=False, description="«Avisos», the reader's inbox, is open (plan maestro UX/UI 2026, "
+                                                   "decision 1; FBI_INBOX, off by default): the page shows its bell "
+                                                   "only then.")
     display: DisplayPrefs = Field(default_factory=DisplayPrefs, description="The reader's settings of presentation "
                                                                             "(decision 8): clock, price format, "
                                                                             "motion and Inicio's view.")
