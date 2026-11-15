@@ -44,7 +44,9 @@
       "nothing": "Messages from PrediGol are paused and no other channel is published yet. Please try again later.",
       "hours": "Hours: {hours}",
       "stillFailing": "Still failing? Write to us",
-      "stillFailingText": "Hello, something keeps failing in PrediGol:"
+      "stillFailingText": "Hello, something keeps failing in PrediGol:",
+      "telegram": "Telegram channel",
+      "telegramNote": "Announcements only"
     },
     "tickets": {
       "title": "Your messages",
@@ -577,5 +579,25 @@
   },
   "whatsapp": {
     "code": "Reference: {code}"
+  },
+  "assistant": {
+    "title": "Help assistant",
+    "intro": "Write your question and I show you the answer of the help that explains it.",
+    "label": "Your question",
+    "placeholder": "For example: how do I renew my membership",
+    "ask": "Find an answer",
+    "from": {
+      "faq": "Frequent questions",
+      "glossary": "Glossary",
+      "how": "How PrediGol works"
+    },
+    "open": "See it in the help",
+    "still": "Still stuck?",
+    "person": "Talk to a person",
+    "none": "I found no answer for «{q}» in the help. Tell a person: what you wrote goes in the message.",
+    "blocked": "I give no forecasts or betting advice. PrediGol publishes its picks of the day in Picks, the same for everyone, and only when it finds value.",
+    "toPicks": "Go to Picks",
+    "toResponsible": "Responsible gaming",
+    "note": "The assistant is not a person and generates no text: it searches the answers of this help and tells you where each one comes from."
   }
 }

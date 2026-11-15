@@ -75,7 +75,10 @@ class SupportContact(Contract):
     whatsapp: str | None = Field(description="The WhatsApp Business number, digits with the country code "
                                              "(FBI_SUPPORT_WHATSAPP, P7 of the plan); null until the owner gives it.")
     email: str | None = Field(description="The address a reader's e-mail reaches (FBI_EMAIL_REPLY_TO); null if none.")
-    channels: list[Literal["whatsapp", "tickets", "email"]] = Field(
+    telegram_url: str | None = Field(default=None, description="PrediGol's official Telegram channel, announcements only "
+                                                               "(FBI_TELEGRAM_CHANNEL_URL, https://t.me/...); null "
+                                                               "until the owner gives it.")
+    channels: list[Literal["whatsapp", "tickets", "email", "telegram"]] = Field(
         description="The ways to reach PrediGol the reader is offered, in the order the owner chose "
                     "(FBI_SUPPORT_CHANNELS); only those that are available now.")
     hours: str | None = Field(description="The hours someone answers, in the owner's words (FBI_SUPPORT_HOURS); null if none.")
@@ -85,6 +88,8 @@ class SupportState(Contract):
     enabled: bool = Field(description="FBI_SUPPORT: false - no new ticket or message; the help centre, the contact and "
                                       "the privacy requests stay, and the tickets already written can be read.")
     contact: SupportContact
+    assistant: bool = Field(default=False, description="FBI_HELP_ASSISTANT: the help centre shows its guided search "
+                                                       "(the reader's browser over the help's own texts; no AI).")
     categories: list[SupportCategoryInfo] = Field(description="In the order the reader is offered them.")
     tickets: list[SupportTicket] = Field(description="The reader's own, open first, newest first.")
     max_text: int

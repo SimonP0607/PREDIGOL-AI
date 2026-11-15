@@ -59,3 +59,32 @@ def test_the_hours_are_plain_words_or_nothing(monkeypatch: pytest.MonkeyPatch, r
 
 def test_the_hours_are_absent_by_default() -> None:
     assert support.contact_hours() is None
+
+
+# ── Telegram, announcements only (plan maestro UX/UI 2026, decision 6) and the help's assistant (decision 5) ─────────
+
+
+def test_telegram_shows_only_when_the_owner_names_it_and_gave_a_real_link(monkeypatch: pytest.MonkeyPatch) -> None:
+    link = "https://t.me/predigol_oficial"
+    monkeypatch.delenv(support.TELEGRAM_ENV, raising=False)
+    assert support.telegram_url() is None
+    assert "telegram" not in support.contact_channels(whatsapp=WHATSAPP, email=EMAIL, telegram=link), \
+        "never by default: only when FBI_SUPPORT_CHANNELS names it"
+    monkeypatch.setenv(support.CHANNELS_ENV, "tickets,telegram")
+    assert support.contact_channels(whatsapp=WHATSAPP, email=EMAIL, telegram=None) == ["tickets"], "named, no link"
+    assert support.contact_channels(whatsapp=WHATSAPP, email=EMAIL, telegram=link) == ["tickets", "telegram"]
+    for bad in ("http://t.me/predigol", "https://t.me/", "https://telegram.me/predigol", "https://t.me/pre digol",
+                "https://evil.example/https://t.me/predigol", "javascript:alert(1)", "https://t.me/x?start=1"):
+        monkeypatch.setenv(support.TELEGRAM_ENV, bad)
+        assert support.telegram_url() is None, bad
+    monkeypatch.setenv(support.TELEGRAM_ENV, f"  {link} ")
+    assert support.telegram_url() == link
+
+
+def test_the_assistant_is_off_until_its_switch(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(support.ASSISTANT_ENV, raising=False)
+    assert support.assistant_on() is False
+    monkeypatch.setenv(support.ASSISTANT_ENV, "1")
+    assert support.assistant_on() is True
+    monkeypatch.setenv(support.ASSISTANT_ENV, "maybe")
+    assert support.assistant_on() is False
