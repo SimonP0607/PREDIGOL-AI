@@ -631,6 +631,9 @@ export const v1 = {
   myFavorites: () => getJson<FavoritesView>("/me/favorites"),
   /** They become exactly these: 422 too_many_leagues / too_many_teams / unknown_league / unknown_team otherwise. */
   saveFavorites: (body: FavoritesIn) => putJson<FavoritesView>("/me/favorites", body),
+  /** A followed team's bell (decision 8): off, no line-up notice of it and out of the day's summary. */
+  setTeamBell: (teamId: number, notify: boolean) =>
+    putJson<FavoritesView>("/me/favorites/team-bell", { team_id: teamId, notify }),
   /** Every league PrediGol follows, and the teams of those leagues whose name matches `q` (two letters or more). */
   favoriteOptions: (q = "") => getJson<FavoriteOptions>("/me/favorites/options", { q }),
   myOnboarding: () => getJson<OnboardingState>("/me/onboarding"),

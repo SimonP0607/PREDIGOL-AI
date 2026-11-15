@@ -3,6 +3,7 @@
  * and nothing moves for a reader who asked their system for reduced motion.
  */
 import { useEffect, useRef, useState } from "react";
+import { getDisplay } from "@/lib/display";
 
 /** The three durations of the product (closing plan 5.1), in ms: the same as --motion-fast / -base / -slow in styles.css. */
 export const MOTION = { fast: 120, base: 200, slow: 300 } as const;
@@ -10,6 +11,8 @@ export const MOTION = { fast: 120, base: 200, slow: 300 } as const;
 const QUERY = "(prefers-reduced-motion: reduce)";
 
 export function prefersReducedMotion(): boolean {
+  // the reader's own setting (decision 8) counts as the device's
+  if (getDisplay().reduce_motion) return true;
   try {
     return typeof window !== "undefined" && !!window.matchMedia?.(QUERY).matches;
   } catch {
@@ -22,7 +25,7 @@ export function useReducedMotion(): boolean {
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
     const mq = window.matchMedia(QUERY);
-    const update = () => setReduced(mq.matches);
+    const update = () => setReduced(prefersReducedMotion());
     mq.addEventListener?.("change", update);
     return () => mq.removeEventListener?.("change", update);
   }, []);

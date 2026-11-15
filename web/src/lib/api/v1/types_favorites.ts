@@ -16,6 +16,8 @@ export interface PlayerBadge {
 }
 
 export interface FavoritesView {
+  /** The followed teams whose bell is off (decision 8): no line-up notice, out of the day's summary. Absent from an older API. */
+  muted_teams?: number[];
   /** The leagues the reader follows, in the order chosen. */
   leagues: CompetitionBadge[];
   teams: TeamBadge[];
