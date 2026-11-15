@@ -30,7 +30,8 @@
     "help": "Common questions, your messages and contact",
     "profile": "Account, membership, notices and privacy",
     "glossary": "What every word means",
-    "updates": "What changed in PrediGol"
+    "updates": "What changed in PrediGol",
+    "news": "What the sources say about the coming matches"
   },
   "install": {
     "label": "Install PrediGol",
@@ -45,5 +46,6 @@
   "whatsapp": {
     "label": "Write to us on WhatsApp",
     "hint": "A person answers; with a code of where you were"
-  }
+  },
+  "news": "News"
 }

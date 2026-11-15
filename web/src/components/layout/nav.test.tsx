@@ -89,6 +89,7 @@ describe("five destinations", () => {
       "/parlays",
       "/odds",
       "/transparency",
+      "/news",
       "/help",
       "/profile",
       "/help/glossary",
@@ -97,6 +98,9 @@ describe("five destinations", () => {
     expect(UPDATES_PATH).toBe("/updates");
     expect(moreItems(false).map((i) => i.to)).not.toContain("/transparency");
     expect(moreItems(true).map((i) => i.to)).toContain("/transparency");
+    // Noticias (decision 2) only while its section is open (FBI_NEWS_FEED)
+    expect(moreItems(true).map((i) => i.to)).not.toContain("/news");
+    expect(moreItems(true, true).map((i) => i.to)).toContain("/news");
   });
 
   test("the row of «Más» a page belongs to is the longest address that holds it", () => {
