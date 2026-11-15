@@ -71,6 +71,11 @@ USER_LAYER = (
     "FBI_SYNTHETIC_PASSWORD",
     "FBI_TELEGRAM_BOT_TOKEN",
     "FBI_TELEGRAM_CHAT_ID",
+    "FBI_ODDS_STATUS",
+    "FBI_HELP_ASSISTANT",
+    "FBI_TELEGRAM_CHANNEL_URL",
+    "FBI_NEWS_FEED",
+    "FBI_INBOX",
 )
 
 # Set by the compose file or by the settings class (prefix + field name), not read as a literal in the code; the map names them anyway.
