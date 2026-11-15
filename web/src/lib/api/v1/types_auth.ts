@@ -62,6 +62,8 @@ export interface Me {
   odds_explorer?: boolean;
   /** «Estado de los precios» is open to readers (FBI_ODDS_STATUS, off by default): the page links to it only then. */
   odds_status?: boolean;
+  /** The Noticias section is open to readers (FBI_NEWS_FEED, off by default): the page links to it only then. */
+  news_feed?: boolean;
 }
 
 export interface MfaEnrollment {

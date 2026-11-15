@@ -42,6 +42,7 @@ import {
   Users,
   Workflow,
   HardDrive,
+  Newspaper,
   type LucideIcon,
 } from "lucide-react";
 
@@ -80,6 +81,8 @@ export interface MoreItem extends NavItem {
   testId: string;
   /** Shown only while «Cómo le va a PrediGol» is open to readers (the owner reviews it first; plan UX, A12). */
   transparency?: boolean;
+  /** Shown only while the Noticias section is open to readers (FBI_NEWS_FEED; plan maestro UX/UI 2026, decision 2). */
+  news?: boolean;
 }
 
 /** What «Más» holds, in the plan's order (section 36): Novedades, since B6, after Glosario. */
@@ -105,6 +108,14 @@ export const moreNav: MoreItem[] = [
     icon: BarChart3,
     testId: "more-transparency",
     transparency: true,
+  },
+  {
+    to: "/news",
+    label: "nav.news",
+    hint: "nav.moreHint.news",
+    icon: Newspaper,
+    testId: "more-news",
+    news: true,
   },
   {
     to: "/help",
@@ -140,8 +151,10 @@ export const moreNav: MoreItem[] = [
 export const UPDATES_PATH = "/updates";
 
 /** The items of «Más» this reader sees. */
-export function moreItems(showTransparency: boolean): MoreItem[] {
-  return moreNav.filter((item) => !item.transparency || showTransparency);
+export function moreItems(showTransparency: boolean, showNews = false): MoreItem[] {
+  return moreNav.filter(
+    (item) => (!item.transparency || showTransparency) && (!item.news || showNews),
+  );
 }
 
 export const profileNav: NavItem = { to: "/profile", label: "nav.profile", icon: UserRound };

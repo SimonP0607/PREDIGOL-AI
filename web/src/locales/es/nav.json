@@ -30,7 +30,8 @@
     "help": "Preguntas frecuentes, tus mensajes y contacto",
     "profile": "Cuenta, membresía, avisos y privacidad",
     "glossary": "Qué significa cada palabra",
-    "updates": "Lo que cambió en PrediGol"
+    "updates": "Lo que cambió en PrediGol",
+    "news": "Lo que dicen las fuentes de los próximos partidos"
   },
   "install": {
     "label": "Instalar PrediGol",
@@ -45,5 +46,6 @@
   "whatsapp": {
     "label": "Escríbenos por WhatsApp",
     "hint": "Una persona te responde; con el código de dónde estabas"
-  }
+  },
+  "news": "Noticias"
 }

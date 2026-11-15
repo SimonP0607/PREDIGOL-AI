@@ -1541,5 +1541,26 @@
       "htft": "{ht} / {ft}",
       "other": "Opción {n}"
     }
+  },
+  "newsFeed": {
+    "title": "Noticias",
+    "subtitle": "Lo que dicen las fuentes sobre los próximos partidos: bajas, dudas, regresos y alineaciones, cada una con su fuente y su grado de certeza.",
+    "filterLabel": "Qué noticias ver",
+    "filter": {
+      "all": "Todas",
+      "CONFIRMED": "Confirmadas",
+      "PROBABLE": "Probables",
+      "CONTRADICTORY": "Contradictorias",
+      "RUMOR": "Rumores"
+    },
+    "mine": "Solo lo que sigo",
+    "mineSuggested": "Todavía no sigues equipos ni ligas: te mostramos las sugeridas para Colombia.",
+    "more": "Ver más noticias",
+    "empty": "No hay noticias de los próximos partidos por ahora.",
+    "emptyFilter": "Ninguna noticia con este filtro.",
+    "emptyBody": "PrediGol lee la prensa de cada partido el día en que se juega. Si no hay nada confirmado, no rellenamos.",
+    "closed": "Esta sección todavía no está disponible.",
+    "count_one": "{count} noticia",
+    "count_other": "{count} noticias"
   }
 }

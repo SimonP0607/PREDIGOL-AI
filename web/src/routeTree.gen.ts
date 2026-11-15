@@ -17,6 +17,7 @@ import { Route as HomeRouteImport } from './routes/home'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyPicksRouteImport } from './routes/my-picks'
+import { Route as NewsRouteImport } from './routes/news'
 import { Route as ParlaysRouteImport } from './routes/parlays'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RegisterRouteImport } from './routes/register'
@@ -114,6 +115,11 @@ const LoginRoute = LoginRouteImport.update({
 const MyPicksRoute = MyPicksRouteImport.update({
   id: '/my-picks',
   path: '/my-picks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsRoute = NewsRouteImport.update({
+  id: '/news',
+  path: '/news',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ParlaysRoute = ParlaysRouteImport.update({
@@ -416,6 +422,7 @@ export interface FileRoutesByFullPath {
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
   '/my-picks': typeof MyPicksRoute
+  '/news': typeof NewsRoute
   '/parlays': typeof ParlaysRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
@@ -483,6 +490,7 @@ export interface FileRoutesByTo {
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
   '/my-picks': typeof MyPicksRoute
+  '/news': typeof NewsRoute
   '/parlays': typeof ParlaysRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
@@ -552,6 +560,7 @@ export interface FileRoutesById {
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
   '/my-picks': typeof MyPicksRoute
+  '/news': typeof NewsRoute
   '/parlays': typeof ParlaysRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
@@ -622,6 +631,7 @@ export interface FileRouteTypes {
     | '/live'
     | '/login'
     | '/my-picks'
+    | '/news'
     | '/parlays'
     | '/profile'
     | '/register'
@@ -689,6 +699,7 @@ export interface FileRouteTypes {
     | '/live'
     | '/login'
     | '/my-picks'
+    | '/news'
     | '/parlays'
     | '/profile'
     | '/register'
@@ -757,6 +768,7 @@ export interface FileRouteTypes {
     | '/live'
     | '/login'
     | '/my-picks'
+    | '/news'
     | '/parlays'
     | '/profile'
     | '/register'
@@ -826,6 +838,7 @@ export interface RootRouteChildren {
   LiveRoute: typeof LiveRoute
   LoginRoute: typeof LoginRoute
   MyPicksRoute: typeof MyPicksRoute
+  NewsRoute: typeof NewsRoute
   ParlaysRoute: typeof ParlaysRoute
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
@@ -905,6 +918,13 @@ declare module '@tanstack/react-router' {
       path: '/my-picks'
       fullPath: '/my-picks'
       preLoaderRoute: typeof MyPicksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/news': {
+      id: '/news'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof NewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/parlays': {
@@ -1407,6 +1427,7 @@ const rootRouteChildren: RootRouteChildren = {
   LiveRoute: LiveRoute,
   LoginRoute: LoginRoute,
   MyPicksRoute: MyPicksRoute,
+  NewsRoute: NewsRoute,
   ParlaysRoute: ParlaysRoute,
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,

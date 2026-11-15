@@ -5,5 +5,8 @@ import { moreItems, type MoreItem } from "./nav";
 /** Transparencia once the owner opened it to readers (or to the owner himself, who reviews it first). */
 export function useMoreItems(): MoreItem[] {
   const auth = useAuth();
-  return moreItems(Boolean(auth.user?.transparency) || auth.showAdmin);
+  return moreItems(
+    Boolean(auth.user?.transparency) || auth.showAdmin,
+    auth.user?.news_feed === true,
+  );
 }

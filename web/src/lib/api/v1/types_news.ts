@@ -122,6 +122,27 @@ export interface TodayNews {
   suggested?: boolean;
 }
 
+/** The statuses the Noticias section lists: an outdated item is never one of them. */
+export type FeedStatus = Exclude<NewsStatus, "OUTDATED">;
+
+/** GET /news (plan maestro UX/UI 2026, decision 2; behind FBI_NEWS_FEED): the items the matches' news already show. */
+export interface NewsFeed {
+  items: TodayNewsItem[];
+  /** How many items the filters leave. */
+  total: number;
+  /** How many of each status before the status filter: the figures on the filters. */
+  counts: Record<FeedStatus, number>;
+  next_offset: number | null;
+  /** With `mine`: the matches are the suggested ones for Colombia. */
+  suggested?: boolean;
+}
+
+export interface NewsFeedQuery {
+  mine?: boolean;
+  status?: FeedStatus | null;
+  offset?: number;
+}
+
 // ── the owner's diagnosis of a match's news (IA-019; SUPER_ADMIN only) ───────────────────────────────────────────────
 
 export type DiagnosisPassKind = "first" | "pre" | "final";
