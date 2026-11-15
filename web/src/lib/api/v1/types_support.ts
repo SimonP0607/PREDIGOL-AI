@@ -69,14 +69,18 @@ export interface SupportContact {
   channels: ContactChannel[];
   /** The hours someone answers, plain text; null while the owner has not published them. */
   hours: string | null;
+  /** PrediGol's official Telegram channel, announcements only (https://t.me/...); null or absent until the owner gives it. */
+  telegram_url?: string | null;
 }
 
-export type ContactChannel = "whatsapp" | "tickets" | "email";
+export type ContactChannel = "whatsapp" | "tickets" | "email" | "telegram";
 
 export interface SupportState {
   /** FBI_SUPPORT: false - no new ticket or message (Ayuda, the contact and the privacy requests stay). */
   enabled: boolean;
   contact: SupportContact;
+  /** FBI_HELP_ASSISTANT: the help centre shows its guided search. Absent from an older API: off. */
+  assistant?: boolean;
   categories: SupportCategoryInfo[];
   /** The reader's own, open first, newest first. */
   tickets: SupportTicket[];
