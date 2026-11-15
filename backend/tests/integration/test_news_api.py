@@ -251,3 +251,53 @@ def test_the_news_are_read_and_nothing_of_predigol_intelligence_changes(
     after = changes(db)
     altered = {t: after[t] - before.get(t, 0) for t in after if after[t] != before.get(t, 0)}
     assert altered == {}, f"the news wrote to {altered}"
+
+
+# ── /news: the Noticias section (plan maestro UX/UI 2026, decision 2; BE-040) ────────────────────────────────────────
+
+
+def test_the_section_is_off_until_its_switch_and_lists_only_what_the_matches_already_show(
+        db: psycopg.Connection[Any], seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:
+    db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
+    home, away = seed.home_team_id, seed.away_team_id
+    soon = fixture(db, seed, NOW + timedelta(hours=4))
+    evidence(db, soon, home, status="CONFIRMED", player="Official", tier="official", source="premierleague.com",
+             url="https://www.premierleague.com/news/1", published=NOW - timedelta(hours=2),
+             claim="Según el club, Official es baja por lesión para este partido.")
+    evidence(db, soon, away, status="RUMOR", player="Rumoured", tier="aggregator", source="besoccer.com",
+             url="https://besoccer.com/1", published=NOW - timedelta(hours=1),
+             claim="Según un agregador, Rumoured sería baja por lesión.")
+    evidence(db, soon, home, status="OUTDATED", player="Old", claim="Según Sport, Old es baja por lesión para este partido.")
+    evidence(db, soon, home, status="CONFIRMED", player="Note", origin="owner",
+             claim="Nota del dueño que nunca es una noticia de la web.")
+    played = fixture(db, seed, NOW - timedelta(hours=2), status="finished")
+    evidence(db, played, home, status="CONFIRMED", player="Played", claim="Según Sport, Played es baja por lesión hoy.")
+    far = fixture(db, seed, NOW + timedelta(hours=80))
+    evidence(db, far, home, status="CONFIRMED", player="Far", claim="Según Sport, Far es baja por lesión ese día.")
+
+    c = client(db, monkeypatch)
+    monkeypatch.delenv("FBI_NEWS_FEED", raising=False)
+    assert c.get("/api/v1/news").status_code == 404, "off while the line is absent"
+    monkeypatch.setenv("FBI_NEWS_FEED", "1")
+    body = c.get("/api/v1/news").json()
+    assert body["status"] == "ok"
+    data = body["data"]
+    assert [(i["match"]["fixture_id"], i["item"]["player"], i["item"]["status"]) for i in data["items"]] == [
+        (soon, "Rumoured", "RUMOR"), (soon, "Official", "CONFIRMED")], (
+        "newest first; never an outdated item, the owner's note, a match that is over or one beyond 72 hours")
+    assert data["total"] == 2 and data["next_offset"] is None
+    assert data["counts"] == {"CONFIRMED": 1, "PROBABLE": 0, "CONTRADICTORY": 0, "RUMOR": 1}
+    assert ARTICLE not in c.get("/api/v1/news").text
+
+    rumours = c.get("/api/v1/news", params={"status": "RUMOR"}).json()["data"]
+    assert [i["item"]["player"] for i in rumours["items"]] == ["Rumoured"] and rumours["total"] == 1
+    assert rumours["counts"]["CONFIRMED"] == 1, "the figures on the filters are those before the status filter"
+    assert c.get("/api/v1/news", params={"team": 999_999_999}).json()["status"] == "empty"
+    assert c.get("/api/v1/news", params={"team": home}).json()["data"]["total"] == 2
+    paged = c.get("/api/v1/news", params={"limit": 1}).json()["data"]
+    assert len(paged["items"]) == 1 and paged["next_offset"] == 1 and paged["total"] == 2
+    assert c.get("/api/v1/news", params={"status": "OUTDATED"}).status_code == 422
+    assert c.get("/api/v1/news", params={"limit": 500}).status_code == 422
+
+    off = client(db, monkeypatch, on=False)
+    assert off.get("/api/v1/news").json()["status"] == "not_available", "the owner keeps the news from readers"

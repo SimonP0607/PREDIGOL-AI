@@ -91,6 +91,9 @@ class Me(Contract):
     odds_status: bool = Field(default=False, description="«Estado de los precios» is open to readers (plan maestro UX/UI "
                                                          "2026, decision 4; FBI_ODDS_STATUS, off by default): the page "
                                                          "links to it only then.")
+    news_feed: bool = Field(default=False, description="The Noticias section is open to readers (plan maestro UX/UI "
+                                                       "2026, decision 2; FBI_NEWS_FEED, off by default, and the "
+                                                       "news shown to users): the page links to it only then.")
     display: DisplayPrefs = Field(default_factory=DisplayPrefs, description="The reader's settings of presentation "
                                                                             "(decision 8): clock, price format, "
                                                                             "motion and Inicio's view.")
