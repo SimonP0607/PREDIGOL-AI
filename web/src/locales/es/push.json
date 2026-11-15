@@ -106,5 +106,37 @@
       "linux": "Linux",
       "other": "otro sistema"
     }
+  },
+  "inbox": {
+    "title": "Avisos",
+    "subtitle": "Lo que PrediGol te avisó en los últimos 30 días, lo recibiera tu dispositivo o no.",
+    "bell": "Avisos",
+    "bellUnread_one": "Avisos: {count} sin leer",
+    "bellUnread_other": "Avisos: {count} sin leer",
+    "filterLabel": "Qué avisos ver",
+    "filter": {
+      "all": "Todos",
+      "picks": "Picks",
+      "matches": "Partidos",
+      "account": "Cuenta"
+    },
+    "readAll": "Marcar leídos",
+    "unreadMark": "sin leer",
+    "more": "Ver más avisos",
+    "empty": "Todavía no tienes avisos",
+    "emptyFilter": "Ningún aviso de este tipo",
+    "emptyBody": "Aquí aparecen los resultados de lo que guardas, las alineaciones de tus equipos, el resumen del día y los avisos de tu cuenta, según lo que tengas encendido.",
+    "closed": "Esta sección todavía no está disponible.",
+    "note": "Un aviso aparece aquí solo si su tipo está encendido en tus notificaciones.",
+    "toSettings": "Cambiar qué te avisamos",
+    "row": "Bandeja de Avisos",
+    "rowHelp": "Todo lo que te avisamos en los últimos 30 días, también si tu dispositivo no recibe notificaciones.",
+    "category": {
+      "result": "Resultado de lo que guardas",
+      "lineup": "Alineaciones de tus equipos",
+      "digest": "Resumen del día",
+      "reminder": "Recordatorio de partido",
+      "account": "Tu cuenta"
+    }
   }
 }

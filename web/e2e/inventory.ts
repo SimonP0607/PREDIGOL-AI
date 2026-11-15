@@ -20,6 +20,7 @@ export const READER_PAGES = [
   "/profile",
   "/transparency",
   "/updates",
+  "/inbox",
   "/help",
   "/help/glossary",
   "/help/how-it-works",

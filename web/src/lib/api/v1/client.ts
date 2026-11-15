@@ -171,6 +171,7 @@ import type {
 import type { MatchReading } from "./types_reading";
 import type { ExplainIntent, Explanation, SlipLegBody } from "./types_explain";
 import type { PickExplanation } from "./types_explanation";
+import type { Inbox, InboxFilter, InboxUnread } from "./types_inbox";
 import type { MatchNews, NewsDiagnosis, TodayNews } from "./types_news";
 import type { NoPick, Today } from "./types_today";
 import type { MeToday } from "./types_me_today";
@@ -847,6 +848,15 @@ export const v1 = {
   meToday: () => getJson<MeToday>("/me/today"),
   /** The day's picks state and its reason alone, for the Picks page (the same as /today's no_pick). */
   noPick: () => getJson<Envelope<NoPick>>("/today/no-pick"),
+  /** «Avisos» (decision 1): the notices decided for the reader in the last 30 days, newest first. */
+  inbox: (filter: InboxFilter = "all", offset = 0) =>
+    getJson<Inbox>("/me/inbox", {
+      ...(filter === "all" ? {} : { filter }),
+      ...(offset ? { offset: String(offset) } : {}),
+    }),
+  inboxUnread: () => getJson<InboxUnread>("/me/inbox/unread"),
+  /** Mark notices read - these, or all of them - and learn what is left unread. */
+  markInboxRead: (ids?: number[]) => postJson<InboxUnread>("/me/inbox/read", ids ? { ids } : {}),
   /** NOTICIAS (plan UX, A10): the match's verified news, confirmed first, rumours and the outdated last. */
   matchNews: (id: string) => getJson<Envelope<MatchNews | null>>(`/matches/${id}/news`),
   /**

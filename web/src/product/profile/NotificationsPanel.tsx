@@ -5,9 +5,11 @@
  * Then the weekly summary by e-mail, asked for apart (plan UX, B8: DigestSection), while it can reach the reader; below,
  * the notices on their devices (plan UX, B7: PushSection), once the owner made them available.
  */
+import { Link } from "@tanstack/react-router";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Loader2, Mail } from "lucide-react";
+import { AlertTriangle, Bell, ChevronRight, Loader2, Mail } from "lucide-react";
 import { v1 } from "@/lib/api/v1/client";
 import type {
   EmailCategory,
@@ -147,6 +149,26 @@ export function NotificationsView({
   );
 }
 
+/** The way to «Avisos» from Notificaciones (decision 1; sheet U04): only while the inbox is open (FBI_INBOX). */
+function InboxRow() {
+  const open = useAuth().user?.inbox === true;
+  if (!open) return null;
+  return (
+    <Link
+      to="/inbox"
+      data-testid="notifications-inbox"
+      className="flex min-h-14 items-center gap-3 rounded-control border border-border px-3.5 py-2.5 transition-colors hover:bg-elevated/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Bell aria-hidden className="h-5 w-5 shrink-0 text-primary" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{t("push.inbox.row")}</span>
+        <span className="block text-xs text-muted-foreground">{t("push.inbox.rowHelp")}</span>
+      </span>
+      <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
+    </Link>
+  );
+}
+
 export function NotificationsPanel() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: PREFERENCES_KEY, queryFn: v1.myNotificationPreferences });
@@ -182,6 +204,7 @@ export function NotificationsPanel() {
       />
       <DigestSection />
       <PushSection />
+      <InboxRow />
     </div>
   );
 }

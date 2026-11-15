@@ -106,5 +106,37 @@
       "linux": "Linux",
       "other": "another system"
     }
+  },
+  "inbox": {
+    "title": "Notices",
+    "subtitle": "What PrediGol told you in the last 30 days, whether your device received it or not.",
+    "bell": "Notices",
+    "bellUnread_one": "Notices: {count} unread",
+    "bellUnread_other": "Notices: {count} unread",
+    "filterLabel": "Which notices to see",
+    "filter": {
+      "all": "All",
+      "picks": "Picks",
+      "matches": "Matches",
+      "account": "Account"
+    },
+    "readAll": "Mark as read",
+    "unreadMark": "unread",
+    "more": "See more notices",
+    "empty": "You have no notices yet",
+    "emptyFilter": "No notices of this kind",
+    "emptyBody": "The results of what you save, your teams' line-ups, the day's summary and the notices of your account show here, according to what you keep on.",
+    "closed": "This section is not available yet.",
+    "note": "A notice shows here only if its kind is on in your notifications.",
+    "toSettings": "Change what we tell you",
+    "row": "Inbox of notices",
+    "rowHelp": "Everything we told you in the last 30 days, even if your device receives no notifications.",
+    "category": {
+      "result": "Result of what you save",
+      "lineup": "Your teams' line-ups",
+      "digest": "The day's summary",
+      "reminder": "Match reminder",
+      "account": "Your account"
+    }
   }
 }
