@@ -40,6 +40,7 @@ import { FootballPanel } from "@/product/favorites/FootballPanel";
 import { AccountPanel } from "./AccountPanel";
 import { useGuideScreen } from "@/product/guides/context";
 import { BlockRow, SectionScreen } from "./Block";
+import { DisplaySettings } from "./DisplaySettings";
 import { HelpPanel } from "./HelpPanel";
 import { blockOfHash, blockSummary, type BlockKey } from "./centre";
 import { buttonVariants } from "@/components/ui/button";
@@ -272,6 +273,9 @@ function RegionPanel() {
       <Subsection title={t("profile.timezone")}>
         <p className="text-xs text-muted-foreground">{t("profile.timezoneHelp")}</p>
         <TimeZonePicker />
+      </Subsection>
+      <Subsection title={t("profile.display.title")}>
+        <DisplaySettings />
       </Subsection>
     </div>
   );

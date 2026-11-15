@@ -1,4 +1,5 @@
 /** Numbers in the reader's language: decimal odds, percentages, signed values. */
+import { getDisplay, type OddsFormat } from "@/lib/display";
 import { getLocale, intlTag } from "./index";
 
 export const DASH = "—";
@@ -21,23 +22,47 @@ function num(value: number | string | null | undefined): number | null {
 }
 
 /**
- * How a price is written. Decimal odds are the one format today; the formats a reader may choose arrive with their
- * setting (plan maestro UX/UI 2026, decision 8) - here, and nowhere else: a format changes how a price is written,
- * never the price, its probability or anything computed from it.
+ * How a price is written: the reader's setting (plan maestro UX/UI 2026, decision 8), decimal unless they chose another.
+ * Here, and nowhere else: a format changes how a price is written, never the price, its probability or anything
+ * computed from it - every calculation and everything sent to the API stays in decimal.
  */
-export type OddsFormat = "decimal";
+export type { OddsFormat } from "@/lib/display";
+
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+/** 2.05 -> «+105», 1.50 -> «−200»: what 100 wins, or what wins 100. */
+function american(decimal: number): string {
+  if (decimal <= 1) return DASH;
+  const value = decimal >= 2 ? Math.round((decimal - 1) * 100) : -Math.round(100 / (decimal - 1));
+  return `${value < 0 ? "−" : "+"}${Math.abs(value)}`;
+}
+
+/** 2.05 -> «21/20», 3.50 -> «5/2»: the profit over the stake, from the price to two places. */
+function fractional(decimal: number): string {
+  if (decimal <= 1) return DASH;
+  const cents = Math.round((decimal - 1) * 100);
+  const d = gcd(cents, 100);
+  return `${cents / d}/${100 / d}`;
+}
 
 /**
  * The one formatter of a price (plan maestro UX/UI 2026, PR-09): every price on a screen, of the product or of the
- * console, is written by it. Decimal odds, two places: 2,10 in Spanish, 2.10 in English; «—» for no price.
+ * console, is written by it, in the reader's format. Decimal, two places: 2,10 in Spanish, 2.10 in English; American:
+ * +110; fractional: 11/10; «—» for no price.
  */
 export function formatOdds(
   value: number | string | null | undefined,
-  format: OddsFormat = "decimal",
+  format: OddsFormat = getDisplay().odds_format,
 ): string {
   const n = num(value);
   if (n === null) return DASH;
   switch (format) {
+    case "american":
+      return american(n);
+    case "fractional":
+      return fractional(n);
     case "decimal":
       return nf({ minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
   }

@@ -1,3 +1,4 @@
+import { DEFAULT_DISPLAY, displayKey } from "@/lib/display";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -364,6 +365,13 @@ function Gate() {
     !onProfile;
   // Plan UX, A6: where the reader comes from (match_opened's origin) and the session's start, once per tab.
   useEffect(() => noteLocation(path), [path]);
+  // «Reducir animaciones» (decision 8): the reader's setting does what the device's does (styles.css, data-motion)
+  const reduceMotion = auth.user?.display?.reduce_motion === true;
+  useEffect(() => {
+    const el = document.documentElement;
+    if (reduceMotion) el.setAttribute("data-motion", "reduce");
+    else el.removeAttribute("data-motion");
+  }, [reduceMotion]);
   const measured = auth.status === "signed-in" && (auth.user?.consents_due ?? []).length === 0;
   // Closing plan 3.3: the kind of screen (a group of a closed list: never the address, a search or an id), once per change.
   useEffect(() => {
@@ -453,7 +461,8 @@ function Gate() {
   if (onLogin) return <Splash />;
 
   // A remount on a language or time-zone change re-renders every formatted string.
-  const key = `${auth.locale}|${auth.timeZone}`;
+  // the pages are drawn again when the language, the zone or the way of writing prices and hours changes (decision 8)
+  const key = `${auth.locale}|${auth.timeZone}|${displayKey(auth.user?.display ? { ...DEFAULT_DISPLAY, ...auth.user.display } : DEFAULT_DISPLAY)}`;
   // The current consents are owed (plan UX, A4; the server refuses the product with 403 consent_required): the
   // boxes, whatever the address - except the texts themselves and the profile, where the reader can still take a
   // copy of their data or ask for its deletion without accepting.

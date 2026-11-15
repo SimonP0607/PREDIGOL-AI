@@ -4,7 +4,7 @@
  * on its own QA account, which it puts back as it found it.
  */
 import { expect, test } from "@playwright/test";
-import { L, getJson, settle, watch, assertClean } from "./support";
+import { L, getJson, sendJson, settle, watch, assertClean } from "./support";
 
 test.describe.configure({ mode: "serial" });
 
@@ -76,4 +76,53 @@ test("changing the time zone moves every kick-off, DST included", async ({ page 
     }
   }
   await assertClean(page, w);
+});
+
+test("the settings of presentation (decision 8): the clock, the price format and the animations change what is written, and are kept", async ({
+  page,
+}) => {
+  const w = watch(page);
+  const reset = {
+    time_format: "24h",
+    odds_format: "decimal",
+    reduce_motion: false,
+    home_default: "auto",
+  };
+  try {
+    await page.goto("/profile/region");
+    await settle(page);
+    const settings = page.getByTestId("display-settings");
+    await expect(settings.getByTestId("display-odds-decimal")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    await expect(settings.getByTestId("display-time-24h")).toHaveAttribute("aria-checked", "true");
+    await expect(page.locator("html")).not.toHaveAttribute("data-motion", "reduce");
+    // the price format: the same price, written another way - and kept by the account
+    await page.getByTestId("display-odds-american").click();
+    await expect(page.getByTestId("display-odds-american")).toHaveAttribute("aria-checked", "true");
+    await page.getByTestId("display-time-12h").click();
+    await expect(page.getByTestId("display-time-12h")).toHaveAttribute("aria-checked", "true");
+    await page.getByTestId("display-motion").click();
+    await expect(page.locator("html")).toHaveAttribute("data-motion", "reduce");
+    const me = await getJson<{ display: Record<string, unknown> }>(page.request, "/api/v1/auth/me");
+    expect(me.body.display).toEqual({
+      time_format: "12h",
+      odds_format: "american",
+      reduce_motion: true,
+      home_default: null,
+    });
+    await page.goto("/odds");
+    await settle(page);
+    const prices = await page.locator("main").innerText();
+    expect(prices, "prices are written the American way").toMatch(/[+−]\d{3}/);
+    expect(prices, "no decimal price is left on the page").not.toMatch(/\b\d,\d{2}\b/);
+    expect(prices, "hours are written with the 12-hour clock").toMatch(/\d{1,2}:\d{2}\s(am|pm)/);
+    await page.reload();
+    await settle(page);
+    await expect(page.locator("html")).toHaveAttribute("data-motion", "reduce");
+    await assertClean(page, w);
+  } finally {
+    await sendJson(page.request, "PATCH", "/api/v1/auth/me/preferences", reset);
+  }
 });
