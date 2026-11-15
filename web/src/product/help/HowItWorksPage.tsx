@@ -8,6 +8,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { GLOSSARY_PATH, termAnchor, termName, termShort, type TermKey } from "@/lib/glossary";
+import { MethodologyLink } from "@/product/transparency/MethodologyLink";
 import { PageTitle } from "@/product/shared/States";
 import { ExplainLayers } from "@/product/shared/ExplainLayers";
 import { HOW_CARDS, cardAnchor, type HowCard } from "./howItWorks";
@@ -95,7 +96,12 @@ function Card({ card }: { card: HowCard }) {
   );
 }
 
-export function HowItWorksPage() {
+export function HowItWorksPage({
+  transparency = false,
+}: {
+  /** «Cómo le va a PrediGol» is open to this account: the page links to Metodología (decision 10). */
+  transparency?: boolean;
+}) {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5" data-testid="how-page">
       <PageTitle
@@ -106,6 +112,8 @@ export function HowItWorksPage() {
         {t("support.howItWorks.intro")}
       </p>
       <ExplainLayers />
+      {/* Metodología (decision 10): shown under the rule of «Cómo le va a PrediGol» */}
+      {transparency ? <MethodologyLink /> : null}
       <nav aria-label={t("support.howItWorks.jump")} data-testid="how-index">
         <ul className="flex flex-wrap gap-2">
           {HOW_CARDS.map((card) => (

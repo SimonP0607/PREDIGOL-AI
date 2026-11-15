@@ -4,6 +4,7 @@
     {
       "id": "2026-11-06-inicio-para-ti",
       "key": "forYou",
+      "kind": "improvement",
       "title": {
         "es": "Inicio, primero lo tuyo",
         "en": "Home, yours first"
@@ -12,6 +13,7 @@
     {
       "id": "2026-11-06-resumen-para-entender",
       "key": "summary",
+      "kind": "improvement",
       "title": {
         "es": "El Resumen del partido, primero para entender",
         "en": "The match Summary, first to understand"
@@ -20,6 +22,7 @@
     {
       "id": "2026-11-06-picks-en-una-linea",
       "key": "compactWhy",
+      "kind": "improvement",
       "title": {
         "es": "El porqué de cada pick, en una línea",
         "en": "Each pick's why, in one line"
@@ -28,6 +31,7 @@
     {
       "id": "2026-11-06-mas-competiciones",
       "key": "competitions",
+      "kind": "improvement",
       "title": {
         "es": "Más competiciones",
         "en": "More competitions"
@@ -36,6 +40,7 @@
     {
       "id": "2026-11-05-seguir-jugadores-y-mercados",
       "key": "followMore",
+      "kind": "new",
       "title": {
         "es": "Sigue también jugadores y mercados",
         "en": "Follow players and markets too"
@@ -44,6 +49,7 @@
     {
       "id": "2026-11-05-puntos-clave",
       "key": "keyPoints",
+      "kind": "new",
       "title": {
         "es": "Puntos clave y «Por qué hay valor»",
         "en": "Key points and «Why there is value»"
@@ -52,6 +58,7 @@
     {
       "id": "2026-11-05-como-funciona",
       "key": "howItWorks",
+      "kind": "new",
       "title": {
         "es": "Cómo funciona PrediGol",
         "en": "How PrediGol works"
@@ -60,6 +67,7 @@
     {
       "id": "2026-11-04-explicame",
       "key": "explain",
+      "kind": "new",
       "title": {
         "es": "Explícame, la respuesta a tu duda",
         "en": "Explain, the answer to your question"
@@ -68,6 +76,7 @@
     {
       "id": "2026-10-27-tu-opinion",
       "key": "feedback",
+      "kind": "new",
       "title": {
         "es": "Tu opinión, una vez al mes",
         "en": "Your opinion, once a month"
@@ -76,6 +85,7 @@
     {
       "id": "2026-10-27-mis-picks",
       "key": "myPicks",
+      "kind": "improvement",
       "title": {
         "es": "Mis picks, completo",
         "en": "My picks, complete"
@@ -84,6 +94,7 @@
     {
       "id": "2026-10-27-postpartido",
       "key": "postmatch",
+      "kind": "new",
       "title": {
         "es": "Postpartido",
         "en": "After the match"
@@ -92,6 +103,7 @@
     {
       "id": "2026-10-27-por-que-este-pick",
       "key": "whyPick",
+      "kind": "new",
       "title": {
         "es": "¿Por qué este pick?",
         "en": "Why this pick?"
@@ -100,6 +112,7 @@
     {
       "id": "2026-10-27-tu-futbol",
       "key": "football",
+      "kind": "new",
       "title": {
         "es": "Tu fútbol primero",
         "en": "Your football first"
@@ -108,6 +121,7 @@
     {
       "id": "2026-10-27-centro-de-partido",
       "key": "matchCentre",
+      "kind": "improvement",
       "title": {
         "es": "Centro de partido y Análisis PrediGol",
         "en": "Match centre and PrediGol Analysis"
@@ -116,6 +130,7 @@
     {
       "id": "2026-10-27-ayuda-y-app",
       "key": "help",
+      "kind": "new",
       "title": {
         "es": "Ayuda, perfil y la app en tu teléfono",
         "en": "Help, profile and the app on your phone"

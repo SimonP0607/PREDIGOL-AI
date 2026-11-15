@@ -254,5 +254,10 @@
     "definitionLine": "{name}: versión {version}",
     "more": "Ver todo el historial ({count})",
     "toUpdates": "Ver todas las Novedades"
+  },
+  "methodology": {
+    "title": "Metodología",
+    "subtitle": "Cómo se decide un pick, cómo se leen sus números y qué definiciones están vigentes.",
+    "link": "Ver la metodología"
   }
 }

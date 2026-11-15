@@ -21,7 +21,6 @@ import { Route as NewsRouteImport } from './routes/news'
 import { Route as ParlaysRouteImport } from './routes/parlays'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as TransparencyRouteImport } from './routes/transparency'
 import { Route as UnlockRouteImport } from './routes/unlock'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as UpdatesRouteImport } from './routes/updates'
@@ -70,6 +69,8 @@ import { Route as PicksIndexRouteImport } from './routes/picks.index'
 import { Route as PicksPickIdRouteImport } from './routes/picks.$pickId'
 import { Route as ProfileIndexRouteImport } from './routes/profile.index'
 import { Route as ProfileSectionRouteImport } from './routes/profile.$section'
+import { Route as TransparencyIndexRouteImport } from './routes/transparency.index'
+import { Route as TransparencyMethodologyRouteImport } from './routes/transparency.methodology'
 import { Route as AdminCustomersIndexRouteImport } from './routes/admin.customers.index'
 import { Route as AdminCustomersUserIdRouteImport } from './routes/admin.customers.$userId'
 import { Route as AdminPlayersIndexRouteImport } from './routes/admin.players.index'
@@ -136,11 +137,6 @@ const RegisterRoute = RegisterRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TransparencyRoute = TransparencyRouteImport.update({
-  id: '/transparency',
-  path: '/transparency',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UnlockRoute = UnlockRouteImport.update({
@@ -383,6 +379,16 @@ const ProfileSectionRoute = ProfileSectionRouteImport.update({
   path: '/profile/$section',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TransparencyIndexRoute = TransparencyIndexRouteImport.update({
+  id: '/transparency/',
+  path: '/transparency/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransparencyMethodologyRoute = TransparencyMethodologyRouteImport.update({
+  id: '/transparency/methodology',
+  path: '/transparency/methodology',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCustomersIndexRoute = AdminCustomersIndexRouteImport.update({
   id: '/customers/',
   path: '/customers/',
@@ -432,7 +438,6 @@ export interface FileRoutesByFullPath {
   '/parlays': typeof ParlaysRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/updates': typeof UpdatesRoute
@@ -475,12 +480,14 @@ export interface FileRoutesByFullPath {
   '/odds/status': typeof OddsStatusRoute
   '/picks/$pickId': typeof PicksPickIdRoute
   '/profile/$section': typeof ProfileSectionRoute
+  '/transparency/methodology': typeof TransparencyMethodologyRoute
   '/admin/': typeof AdminIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/odds/': typeof OddsIndexRoute
   '/picks/': typeof PicksIndexRoute
   '/profile/': typeof ProfileIndexRoute
+  '/transparency/': typeof TransparencyIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
@@ -501,7 +508,6 @@ export interface FileRoutesByTo {
   '/parlays': typeof ParlaysRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/updates': typeof UpdatesRoute
@@ -544,12 +550,14 @@ export interface FileRoutesByTo {
   '/odds/status': typeof OddsStatusRoute
   '/picks/$pickId': typeof PicksPickIdRoute
   '/profile/$section': typeof ProfileSectionRoute
+  '/transparency/methodology': typeof TransparencyMethodologyRoute
   '/admin': typeof AdminIndexRoute
   '/help': typeof HelpIndexRoute
   '/matches': typeof MatchesIndexRoute
   '/odds': typeof OddsIndexRoute
   '/picks': typeof PicksIndexRoute
   '/profile': typeof ProfileIndexRoute
+  '/transparency': typeof TransparencyIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
@@ -572,7 +580,6 @@ export interface FileRoutesById {
   '/parlays': typeof ParlaysRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/updates': typeof UpdatesRoute
@@ -615,12 +622,14 @@ export interface FileRoutesById {
   '/odds/status': typeof OddsStatusRoute
   '/picks/$pickId': typeof PicksPickIdRoute
   '/profile/$section': typeof ProfileSectionRoute
+  '/transparency/methodology': typeof TransparencyMethodologyRoute
   '/admin/': typeof AdminIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/odds/': typeof OddsIndexRoute
   '/picks/': typeof PicksIndexRoute
   '/profile/': typeof ProfileIndexRoute
+  '/transparency/': typeof TransparencyIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
@@ -644,7 +653,6 @@ export interface FileRouteTypes {
     | '/parlays'
     | '/register'
     | '/reset-password'
-    | '/transparency'
     | '/unlock'
     | '/unsubscribe'
     | '/updates'
@@ -687,12 +695,14 @@ export interface FileRouteTypes {
     | '/odds/status'
     | '/picks/$pickId'
     | '/profile/$section'
+    | '/transparency/methodology'
     | '/admin/'
     | '/help/'
     | '/matches/'
     | '/odds/'
     | '/picks/'
     | '/profile/'
+    | '/transparency/'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
@@ -713,7 +723,6 @@ export interface FileRouteTypes {
     | '/parlays'
     | '/register'
     | '/reset-password'
-    | '/transparency'
     | '/unlock'
     | '/unsubscribe'
     | '/updates'
@@ -756,12 +765,14 @@ export interface FileRouteTypes {
     | '/odds/status'
     | '/picks/$pickId'
     | '/profile/$section'
+    | '/transparency/methodology'
     | '/admin'
     | '/help'
     | '/matches'
     | '/odds'
     | '/picks'
     | '/profile'
+    | '/transparency'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
@@ -783,7 +794,6 @@ export interface FileRouteTypes {
     | '/parlays'
     | '/register'
     | '/reset-password'
-    | '/transparency'
     | '/unlock'
     | '/unsubscribe'
     | '/updates'
@@ -826,12 +836,14 @@ export interface FileRouteTypes {
     | '/odds/status'
     | '/picks/$pickId'
     | '/profile/$section'
+    | '/transparency/methodology'
     | '/admin/'
     | '/help/'
     | '/matches/'
     | '/odds/'
     | '/picks/'
     | '/profile/'
+    | '/transparency/'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
@@ -854,7 +866,6 @@ export interface RootRouteChildren {
   ParlaysRoute: typeof ParlaysRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  TransparencyRoute: typeof TransparencyRoute
   UnlockRoute: typeof UnlockRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   UpdatesRoute: typeof UpdatesRoute
@@ -867,11 +878,13 @@ export interface RootRouteChildren {
   OddsStatusRoute: typeof OddsStatusRoute
   PicksPickIdRoute: typeof PicksPickIdRoute
   ProfileSectionRoute: typeof ProfileSectionRoute
+  TransparencyMethodologyRoute: typeof TransparencyMethodologyRoute
   HelpIndexRoute: typeof HelpIndexRoute
   MatchesIndexRoute: typeof MatchesIndexRoute
   OddsIndexRoute: typeof OddsIndexRoute
   PicksIndexRoute: typeof PicksIndexRoute
   ProfileIndexRoute: typeof ProfileIndexRoute
+  TransparencyIndexRoute: typeof TransparencyIndexRoute
   HelpMessagesTicketIdRoute: typeof HelpMessagesTicketIdRoute
 }
 
@@ -959,13 +972,6 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/transparency': {
-      id: '/transparency'
-      path: '/transparency'
-      fullPath: '/transparency'
-      preLoaderRoute: typeof TransparencyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/unlock': {
@@ -1304,6 +1310,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileSectionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/transparency/': {
+      id: '/transparency/'
+      path: '/transparency'
+      fullPath: '/transparency/'
+      preLoaderRoute: typeof TransparencyIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transparency/methodology': {
+      id: '/transparency/methodology'
+      path: '/transparency/methodology'
+      fullPath: '/transparency/methodology'
+      preLoaderRoute: typeof TransparencyMethodologyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/customers/': {
       id: '/admin/customers/'
       path: '/customers'
@@ -1451,7 +1471,6 @@ const rootRouteChildren: RootRouteChildren = {
   ParlaysRoute: ParlaysRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  TransparencyRoute: TransparencyRoute,
   UnlockRoute: UnlockRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   UpdatesRoute: UpdatesRoute,
@@ -1464,11 +1483,13 @@ const rootRouteChildren: RootRouteChildren = {
   OddsStatusRoute: OddsStatusRoute,
   PicksPickIdRoute: PicksPickIdRoute,
   ProfileSectionRoute: ProfileSectionRoute,
+  TransparencyMethodologyRoute: TransparencyMethodologyRoute,
   HelpIndexRoute: HelpIndexRoute,
   MatchesIndexRoute: MatchesIndexRoute,
   OddsIndexRoute: OddsIndexRoute,
   PicksIndexRoute: PicksIndexRoute,
   ProfileIndexRoute: ProfileIndexRoute,
+  TransparencyIndexRoute: TransparencyIndexRoute,
   HelpMessagesTicketIdRoute: HelpMessagesTicketIdRoute,
 }
 export const routeTree = rootRouteImport
