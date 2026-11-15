@@ -63,6 +63,8 @@ export interface Me {
   odds_explorer?: boolean;
   /** «Estado de los precios» is open to readers (FBI_ODDS_STATUS, off by default): the page links to it only then. */
   odds_status?: boolean;
+  /** «Avisos», the reader's inbox, is open (FBI_INBOX, off by default): the page shows its bell only then. */
+  inbox?: boolean;
   /** The Noticias section is open to readers (FBI_NEWS_FEED, off by default): the page links to it only then. */
   news_feed?: boolean;
   /** The reader's settings of presentation (decision 8); absent from an API older than BE-039: today's defaults. */
