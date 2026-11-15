@@ -38,7 +38,14 @@ from fbi.api.security import (
     same_site_only,
     set_session_cookie,
 )
-from fbi.api.switches import explain_on, odds_explorer_on, odds_status_on, transparency_open
+from fbi.api.services import news as news_service
+from fbi.api.switches import (
+    explain_on,
+    news_feed_on,
+    odds_explorer_on,
+    odds_status_on,
+    transparency_open,
+)
 from fbi.auth import crypto, service
 from fbi.auth.roles import Role
 from fbi.auth.service import Principal
@@ -68,6 +75,7 @@ def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
         recovery_codes_left=p.recovery_codes_left, observability_id=crypto.observability_id(p.user_id),
         transparency=transparency_open(), support=support.support_on(), explain=explain_on(),
         odds_explorer=odds_explorer_on(), odds_status=odds_status_on(),
+        news_feed=news_feed_on() and news_service.users_may_see(),
     )
 
 

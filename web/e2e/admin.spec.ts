@@ -149,7 +149,7 @@ test("the owner's account says Administrator, never an internal role name, and i
 }) => {
   // Plan UX, A1 (F07): the profile and the account menu showed the raw role ("SUPER_ADMIN", "USER").
   const w = watch(page);
-  await go(page, w, "/profile");
+  await go(page, w, "/profile/account");
   await expect(page.getByTestId("profile-role")).toHaveText(t.common.roleAdmin);
   await expect(page.locator("main")).not.toContainText("SUPER_ADMIN");
   await expect(page.getByTestId("profile-session")).toContainText("8 hours");

@@ -147,3 +147,25 @@ describe("formatOdds", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("the reader's price format (decision 8): how it is written, never what it is", () => {
+  test("decimal is the default and what every caller gets without asking", () => {
+    setLocale("es");
+    expect(formatOdds(2.05)).toBe("2,05");
+    expect(formatOdds("2.05", "decimal")).toBe("2,05");
+  });
+  test("American: what 100 wins, or what wins 100", () => {
+    expect(formatOdds(2.05, "american")).toBe("+105");
+    expect(formatOdds(2, "american")).toBe("+100");
+    expect(formatOdds(1.5, "american")).toBe("−200");
+    expect(formatOdds(3.6, "american")).toBe("+260");
+    expect(formatOdds(1, "american")).toBe("—");
+  });
+  test("fractional: the profit over the stake, reduced", () => {
+    expect(formatOdds(2.05, "fractional")).toBe("21/20");
+    expect(formatOdds(3.5, "fractional")).toBe("5/2");
+    expect(formatOdds(2, "fractional")).toBe("1/1");
+    expect(formatOdds(1.8, "fractional")).toBe("4/5");
+    expect(formatOdds(null, "fractional")).toBe("—");
+  });
+});

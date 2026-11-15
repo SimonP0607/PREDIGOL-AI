@@ -283,7 +283,7 @@
   },
   "centre": {
     "subtitle": "Your account, your football, your notifications, your privacy and your security, in one place.",
-    "region": "Language and time zone",
+    "region": "Language, zone and preferences",
     "password": "Password",
     "stateLabel": "Status",
     "sinceLabel": "Account created",
@@ -346,5 +346,23 @@
       "answered_other": "{n} messages answered",
       "helpNone": "No open message"
     }
+  },
+  "display": {
+    "title": "Preferences",
+    "time": "Time format",
+    "time24": "24-hour",
+    "time12": "12-hour",
+    "odds": "Odds format",
+    "oddsDecimal": "Decimal",
+    "oddsAmerican": "American",
+    "oddsFractional": "Fractional",
+    "oddsExample": "The same price: {decimal} · {american} · {fractional}",
+    "oddsHelp": "It only changes how you read it. Calculations, expected value and what you save stay in decimal.",
+    "home": "Home opens on",
+    "homeAuto": "Automatic",
+    "homeHelp": "Automatic: «For you» if you follow a team or a league.",
+    "motion": "Reduce animations",
+    "motionHelp": "Less motion across the app, even if your device does not ask for it.",
+    "failed": "We could not save the change. Try again."
   }
 }

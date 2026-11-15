@@ -24,12 +24,21 @@ from typing import Annotated, Any, Literal
 import psycopg
 from fastapi import APIRouter, Depends, Path, Query
 
-from fbi.api.contracts.news import MatchNews, NewsDiagnosis, TodayNews
+from fbi.api.contracts.news import (
+    FeedStatus,
+    MatchNews,
+    NewsDiagnosis,
+    NewsFeed,
+    NewsKind,
+    TodayNews,
+)
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
+from fbi.api.problem import ApiError
 from fbi.api.routers.today import follows_of, general_follows
 from fbi.api.security import App
 from fbi.api.services import news, news_diagnosis
+from fbi.api.switches import news_feed_on
 
 router = APIRouter(tags=["news"])
 admin_router = APIRouter(tags=["admin: news"])
@@ -55,6 +64,26 @@ def get_today_news(
     none or FBI_PERSONALIZATION=0). ``scope=general``: the suggested matches, three at most, the same for everyone."""
     follows = general_follows(conn) if scope == "general" else follows_of(conn, principal.user_id)
     return news.news_for(conn, follows)
+
+
+@router.get("/news", response_model=Envelope[NewsFeed | None])
+def get_news_feed(
+    conn: Db, principal: App,
+    mine: Annotated[bool, Query(description="Only the reader's leagues and teams (the suggested ones while they chose none).")] = False,
+    status: Annotated[FeedStatus | None, Query(description="One status: CONFIRMED, PROBABLE, CONTRADICTORY or RUMOR.")] = None,
+    kind: Annotated[NewsKind | None, Query(description="One kind of news.")] = None,
+    team: Annotated[int | None, Query(ge=1, le=2**62, description="A team id: the items of its matches.")] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    offset: Annotated[int, Query(ge=0, le=5000)] = 0,
+) -> Envelope[NewsFeed | None]:
+    """NOTICIAS as a section (plan maestro UX/UI 2026, decision 2): the items the matches' news already show, of the matches
+    not yet over (three hours ago to 72 hours ahead), newest first, paged, with their sources and their status - a single
+    outlet's «confirmed» reads as probable, an outdated item is never listed. Read only. Behind ``FBI_NEWS_FEED`` (404 while
+    it is off); ``not_available`` while the owner keeps the news from readers."""
+    if not news_feed_on():
+        raise ApiError(404, "not_found", "not found")
+    return news.feed(conn, follows_of(conn, principal.user_id), mine=mine, status=status, kind=kind, team=team,
+                     limit=limit, offset=offset)
 
 
 @admin_router.get("/matches/{fixture_id}/news/diagnostics", response_model=Envelope[NewsDiagnosis])

@@ -5,11 +5,9 @@
  * closing by finger and keyboard, and every block's content, are checked in the browser (e2e/profile.spec.ts).
  */
 import { describe, expect, test } from "bun:test";
-import { renderToStaticMarkup } from "react-dom/server";
 import { setLocale } from "@/lib/i18n";
 import type { AccountSummary } from "@/lib/api/v1/types_account";
 import type { MembershipSummary } from "@/lib/api/v1/types_membership";
-import { Block } from "./Block";
 import {
   ALIAS_MAX,
   BLOCKS,
@@ -181,39 +179,7 @@ describe("the addresses that lead to a block", () => {
   });
 });
 
-describe("a block that folds", () => {
-  const render = (open: boolean, line: string | null = "Una línea") =>
-    renderToStaticMarkup(
-      <Block
-        id="privacy"
-        icon={null}
-        title="Privacidad y datos"
-        summary={line}
-        open={open}
-        onToggle={() => undefined}
-      >
-        <p data-testid="inside">dentro</p>
-      </Block>,
-    );
-
-  test("folded: its line under the title, the header a button that says it is closed, nothing inside mounted", () => {
-    const html = render(false);
-    expect(html).toContain('aria-expanded="false"');
-    expect(html).toContain("Una línea");
-    expect(html).not.toContain("dentro");
-    expect(html).toMatch(/role="region"[^>]*hidden=""/);
-    expect(html).toContain('data-open="false"');
-    expect(html).toContain('id="privacy"');
-  });
-
-  test("open: the content, no line (the content says it), the header says it is open", () => {
-    const html = render(true);
-    expect(html).toContain('aria-expanded="true"');
-    expect(html).toContain("dentro");
-    expect(html).not.toContain("Una línea");
-    expect(html).not.toMatch(/role="region"[^>]*hidden=""/);
-  });
-
+describe("the screen a profile is read on", () => {
   test("open at a desk, folded under 1024 px, folded without a screen to ask", () => {
     const at = (desk: boolean) => ({ matchMedia: () => ({ matches: desk }) as MediaQueryList });
     expect(startsOpen(at(true))).toBe(true);

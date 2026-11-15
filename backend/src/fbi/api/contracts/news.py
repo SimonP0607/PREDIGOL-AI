@@ -125,6 +125,22 @@ class TodayNews(Contract):
                                                       "none, or FBI_PERSONALIZATION=0): labelled so.")
 
 
+FeedStatus = Literal["CONFIRMED", "PROBABLE", "CONTRADICTORY", "RUMOR"]
+
+
+class NewsFeed(Contract):
+    """The Noticias section (plan maestro UX/UI 2026, decision 2): the items the matches' news already show, of the matches not
+    yet over, newest first - read only. An outdated item is never listed."""
+
+    items: list[TodayNewsItem] = Field(description="A page of the list, each item with its match.")
+    total: int = Field(description="How many items the filters leave.")
+    counts: dict[FeedStatus, int] = Field(description="How many items of each status BEFORE the status filter: the figures "
+                                                      "on the filters themselves.")
+    next_offset: int | None = Field(description="The offset of the next page; null on the last one.")
+    suggested: bool = Field(default=True, description="With ``mine``: the matches are the suggested ones for Colombia (the "
+                                                      "reader chose none), labelled so.")
+
+
 # ── the owner's diagnosis of a match's news (IA-019) ─────────────────────────────────────────────────────────────────
 
 PassKind = Literal["first", "pre", "final"]

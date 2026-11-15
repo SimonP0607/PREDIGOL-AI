@@ -1,4 +1,5 @@
 /** Types for /api/v1/auth/* and /api/v1/admin/{users,audit}. Mirrors fbi.api.contracts.auth. */
+import type { Display } from "@/lib/display";
 import type { Iso } from "./types";
 import type { GuideState } from "./types_guides";
 import type { MembershipSummary } from "./types_membership";
@@ -64,6 +65,8 @@ export interface Me {
   odds_status?: boolean;
   /** The Noticias section is open to readers (FBI_NEWS_FEED, off by default): the page links to it only then. */
   news_feed?: boolean;
+  /** The reader's settings of presentation (decision 8); absent from an API older than BE-039: today's defaults. */
+  display?: Display;
 }
 
 export interface MfaEnrollment {
@@ -108,6 +111,11 @@ export interface PreferencesIn {
   display_name?: string;
   /** Show the guide of each screen on the first visit (UX-032). */
   guides_auto?: boolean;
+  /** How PrediGol is shown (decision 8): presentation only. `auto` puts Inicio back on its rule. */
+  time_format?: Display["time_format"];
+  odds_format?: Display["odds_format"];
+  reduce_motion?: boolean;
+  home_default?: "mine" | "all" | "auto";
 }
 
 /**

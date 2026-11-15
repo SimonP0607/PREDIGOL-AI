@@ -62,9 +62,9 @@ def _refused(exc: CustomerError) -> ApiError:
 
 
 def _contact() -> SupportContact:
-    whatsapp, email = membership.whatsapp(), membership.reply_address()
-    return SupportContact(whatsapp=whatsapp, email=email, hours=support.contact_hours(),
-                          channels=support.contact_channels(whatsapp=whatsapp, email=email))
+    whatsapp, email, telegram = membership.whatsapp(), membership.reply_address(), support.telegram_url()
+    return SupportContact(whatsapp=whatsapp, email=email, hours=support.contact_hours(), telegram_url=telegram,
+                          channels=support.contact_channels(whatsapp=whatsapp, email=email, telegram=telegram))
 
 
 def _messages(t: support.Ticket) -> list[SupportMessage]:
@@ -99,7 +99,8 @@ def contact() -> SupportContact:
 
 @router.get("", response_model=SupportState)
 def my_support(conn: Db, principal: App) -> SupportState:
-    return SupportState(enabled=support.support_on(), contact=_contact(), categories=_categories(),
+    return SupportState(enabled=support.support_on(), contact=_contact(), assistant=support.assistant_on(),
+                        categories=_categories(),
                         tickets=[_ticket(t) for t in support.tickets_of(conn, principal.user_id)],
                         max_text=support.MAX_TEXT, max_open=support.MAX_OPEN)
 
