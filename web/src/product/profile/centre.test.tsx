@@ -8,15 +8,7 @@ import { describe, expect, test } from "bun:test";
 import { setLocale } from "@/lib/i18n";
 import type { AccountSummary } from "@/lib/api/v1/types_account";
 import type { MembershipSummary } from "@/lib/api/v1/types_membership";
-import {
-  ALIAS_MAX,
-  BLOCKS,
-  accountState,
-  aliasProblem,
-  blockOfHash,
-  blockSummary,
-  startsOpen,
-} from "./centre";
+import { ALIAS_MAX, BLOCKS, accountState, aliasProblem, blockOfHash, blockSummary } from "./centre";
 
 function membership(over: Partial<MembershipSummary> = {}): MembershipSummary {
   return {
@@ -176,22 +168,6 @@ describe("the addresses that lead to a block", () => {
     expect(blockOfHash("#sessions")).toBe("security");
     expect(blockOfHash("")).toBeNull();
     expect(blockOfHash("#nothing")).toBeNull();
-  });
-});
-
-describe("the screen a profile is read on", () => {
-  test("open at a desk, folded under 1024 px, folded without a screen to ask", () => {
-    const at = (desk: boolean) => ({ matchMedia: () => ({ matches: desk }) as MediaQueryList });
-    expect(startsOpen(at(true))).toBe(true);
-    expect(startsOpen(at(false))).toBe(false);
-    expect(startsOpen(undefined)).toBe(false);
-    expect(
-      startsOpen({
-        matchMedia: () => {
-          throw new Error("no screen");
-        },
-      }),
-    ).toBe(false);
   });
 });
 
