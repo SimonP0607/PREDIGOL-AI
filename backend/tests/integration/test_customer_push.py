@@ -456,6 +456,66 @@ def queue(dsn: str, user: int, category: str, key: str, at: datetime, *, expires
     return got
 
 
+# ── «Avisos»: the reader's inbox (plan maestro UX/UI 2026, decision 1; BE-041) ───────────────────────────────────────
+
+
+def test_the_inbox_is_off_until_its_switch_and_then_keeps_what_was_decided_even_without_a_device(
+        fresh: str, world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    reader, other = client(READER), client(OTHER)
+    me, them = uid(fresh, READER), uid(fresh, OTHER)
+    at = datetime.now(UTC)
+    played = world.match("nacional", "millonarios", at - timedelta(hours=3), "finished")
+    won = save(fresh, me, played, "WIN", at - timedelta(minutes=30))
+    save(fresh, them, played, "LOSS", at - timedelta(minutes=30))
+
+    monkeypatch.delenv("FBI_INBOX", raising=False)
+    assert reader.get("/api/v1/me/inbox").status_code == 404, "off while the line is absent"
+    assert reader.get("/api/v1/me/inbox/unread").status_code == 404
+    assert reader.get("/api/v1/auth/me").json()["inbox"] is False
+    assert run_jobs(fresh, at).results == 0, "inbox off, no device: nothing written, as always"
+
+    monkeypatch.setenv("FBI_INBOX", "1")
+    assert reader.get("/api/v1/auth/me").json()["inbox"] is True
+    # the reader switched the results off before anything was decided: theirs is never written
+    other.put("/api/v1/me/push/categories", json={"result": False})
+    report = run_jobs(fresh, at)
+    assert report.results == 1 and report.errors == [], "no device, the category on: decided for the inbox"
+    assert notices(fresh, them) == [], "a category switched off leaves nothing"
+    assert reader.get("/api/v1/me/inbox").json()["items"] == [], "not due until the dispatch looked at it"
+    dispatch(fresh, at + timedelta(seconds=1))
+    mine = notices(fresh, me)
+    assert mine and {(n["status"], n["dropped"]) for n in mine} == {("dropped", "no_device")}, (
+        "no device can receive them: closed as such, and kept for «Avisos»")
+
+    box = reader.get("/api/v1/me/inbox").json()
+    assert box["total"] == len(mine) and box["unread"] == len(mine) and box["next_offset"] is None
+    item = next(i for i in box["items"] if i["category"] == "result")
+    assert (item["title"], item["url"], item["read"]) == (
+        "Ganado: tu pick de Atlético Nacional\u2013Millonarios", f"/matches/{played}#postmatch", False)
+    assert set(item) == {"id", "category", "title", "body", "url", "at", "read"}, "nothing else is kept of a notice"
+    assert reader.get("/api/v1/me/inbox/unread").json() == {"unread": len(mine)}
+    assert reader.get("/api/v1/me/inbox", params={"filter": "matches"}).json()["total"] == 0
+    assert reader.get("/api/v1/me/inbox", params={"filter": "picks"}).json()["total"] >= 1
+    assert reader.get("/api/v1/me/inbox", params={"filter": "everything"}).status_code == 422
+    assert reader.get("/api/v1/me/inbox", params={"limit": 1}).json()["next_offset"] == (1 if len(mine) > 1 else None)
+
+    # each reader their own: another reader neither sees it nor can mark it read
+    assert other.get("/api/v1/me/inbox").json()["total"] == 0
+    assert other.post("/api/v1/me/inbox/read", json={"ids": [item["id"]]}).json() == {"unread": 0}
+    assert reader.get("/api/v1/me/inbox/unread").json() == {"unread": len(mine)}, "still unread for its reader"
+    assert reader.post("/api/v1/me/inbox/read", json={}).json() == {"unread": 0}
+    again = reader.get("/api/v1/me/inbox").json()
+    assert again["unread"] == 0 and all(i["read"] for i in again["items"])
+    assert won > 0
+
+    # older than 30 days: out of the inbox (the row keeps its own 90-day retention)
+    with psycopg.connect(fresh, autocommit=True) as conn:
+        conn.execute("UPDATE customer.push_notices SET created_at = created_at - interval '31 days', "
+                     "not_before = not_before - interval '31 days', expires_at = expires_at - interval '30 days' "
+                     "WHERE user_id = %s", (me,))
+    assert reader.get("/api/v1/me/inbox").json()["total"] == 0
+
+
 def test_a_notice_reaches_every_live_device_encrypted_for_each(fresh: str) -> None:
     reader = client(READER)
     me = uid(fresh, READER)

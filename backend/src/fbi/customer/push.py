@@ -20,7 +20,7 @@ any of this; the words of a notice come from what the reader saved or follows an
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any, Final, Literal
@@ -69,6 +69,15 @@ def enabled() -> bool:
     if raw is None or not raw.strip():
         return True
     return raw.strip().lower() in _ON
+
+
+INBOX_SWITCH: Final = "FBI_INBOX"
+
+
+def inbox_on() -> bool:
+    """``FBI_INBOX`` (off by default): the reader's «Avisos» (plan maestro UX/UI 2026, decision 1). On, a notice is decided
+    for every reader with its category on - with or without a device - and the reader can read the last 30 days of them."""
+    return (environment().get(INBOX_SWITCH) or "").strip().lower() in _ON
 
 
 def available() -> bool:
@@ -387,7 +396,7 @@ def export_rows(conn: psycopg.Connection[Any], user_id: int) -> dict[str, list[d
         bells = cur.execute("SELECT fixture_id, minutes_before, created_at FROM customer.match_alerts WHERE user_id = %s "
                             "ORDER BY created_at DESC", (user_id,)).fetchall()
         notices = cur.execute("""
-            SELECT category, title, body, url, created_at, status, sent_at, devices, dropped
+            SELECT category, title, body, url, created_at, status, sent_at, devices, dropped, read_at
               FROM customer.push_notices WHERE user_id = %s ORDER BY created_at DESC, id DESC
         """, (user_id,)).fetchall()
     return {"push_devices": list(devices), "match_alerts": list(bells), "push_notices": list(notices)}
@@ -421,3 +430,54 @@ def purge(conn: psycopg.Connection[Any], *, at: datetime, mode: Literal["off", "
     n_del = conn.execute(f"DELETE {notices_sql}", (at - RETENTION,)).rowcount
     d_del = conn.execute(f"DELETE {devices_sql}", (at - REVOKED_RETENTION,)).rowcount
     return PurgeReport("on", max(n_del, 0), max(d_del, 0))
+
+
+# ── the reader's «Avisos»: the notices already decided, read back (plan maestro UX/UI 2026, decision 1) ──────────────
+
+INBOX_DAYS: Final = 30
+INBOX_FILTERS: Final[dict[str, tuple[str, ...]]] = {
+    "all": ("result", "digest", "lineup", "reminder", "account"),
+    "picks": ("result", "digest"),
+    "matches": ("lineup", "reminder"),
+    "account": ("account",),
+}
+"""What each filter of the page lists. A reader's own test is never one of them."""
+
+_INBOX_WHERE = """
+ WHERE user_id = %(u)s AND category = ANY(%(categories)s) AND not_before <= %(at)s AND created_at > %(since)s
+   AND (status = 'sent' OR (status = 'dropped' AND dropped <> 'category_off'))
+"""
+"""A notice is in the inbox once its moment came (never a reminder still to ring), if it was sent or could not be (no
+device, the day's ceiling, expired, a failure) - never one whose category the reader had switched off."""
+
+
+def inbox(conn: psycopg.Connection[Any], user_id: int, *, at: datetime, kind: str = "all", limit: int = 30,
+          offset: int = 0) -> dict[str, Any]:
+    """The reader's notices of the last 30 days, newest first: a page of them, how many the filter leaves and how many are
+    unread in all. Category, title, body, link and dates - nothing else is kept of a notice."""
+    params = {"u": user_id, "categories": list(INBOX_FILTERS[kind]), "at": at, "since": at - timedelta(days=INBOX_DAYS)}
+    with conn.cursor(row_factory=dict_row) as cur:
+        rows = cur.execute(f"""
+            SELECT id, category, title, body, url, not_before AS at, read_at
+              FROM customer.push_notices {_INBOX_WHERE}
+             ORDER BY not_before DESC, id DESC LIMIT %(limit)s OFFSET %(offset)s
+        """, {**params, "limit": limit, "offset": offset}).fetchall()
+        total = cur.execute(f"SELECT count(*) AS n FROM customer.push_notices {_INBOX_WHERE}", params).fetchone()
+    return {"items": list(rows), "total": int(total["n"]) if total else 0, "unread": inbox_unread(conn, user_id, at=at)}
+
+
+def inbox_unread(conn: psycopg.Connection[Any], user_id: int, *, at: datetime) -> int:
+    params = {"u": user_id, "categories": list(INBOX_FILTERS["all"]), "at": at, "since": at - timedelta(days=INBOX_DAYS)}
+    row = conn.execute(f"SELECT count(*) FROM customer.push_notices {_INBOX_WHERE} AND read_at IS NULL",
+                       params).fetchone()
+    return int(row[0]) if row else 0
+
+
+def inbox_read(user_id: int, *, at: datetime, ids: Sequence[int] | None = None) -> int:
+    """Mark the reader's notices read - these ones, or all of them: how many changed. Only their own, only once."""
+    with write_connection() as conn:
+        done = conn.execute(
+            "UPDATE customer.push_notices SET read_at = %s WHERE user_id = %s AND read_at IS NULL AND not_before <= %s "
+            "AND (%s::bigint[] IS NULL OR id = ANY(%s::bigint[]))",
+            (at, user_id, at, list(ids) if ids is not None else None, list(ids) if ids is not None else None))
+        return max(done.rowcount, 0)

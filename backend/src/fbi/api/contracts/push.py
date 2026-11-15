@@ -115,3 +115,35 @@ class PushOverview(BaseModel):
     devices: list[PushFamilyCount]
     notices: list[PushCategoryCount]
     gone: int = Field(description="Devices their push service dropped in the last 7 days (404/410).")
+
+
+# ── «Avisos»: the reader's inbox (plan maestro UX/UI 2026, decision 1) ───────────────────────────────────────────────
+
+InboxFilter = Literal["all", "picks", "matches", "account"]
+
+
+class InboxItem(BaseModel):
+    id: int
+    category: Literal["result", "lineup", "digest", "reminder", "account"]
+    title: str
+    body: str
+    url: str = Field(description="The page of PrediGol it opens: a path, never another site.")
+    at: datetime = Field(description="When it was due to reach the reader.")
+    read: bool
+
+
+class Inbox(BaseModel):
+    items: list[InboxItem] = Field(description="A page, newest first: the last 30 days.")
+    total: int = Field(description="How many the filter leaves.")
+    unread: int = Field(description="Unread ones in all, whatever the filter: the bell's figure.")
+    next_offset: int | None
+
+
+class InboxUnread(BaseModel):
+    unread: int
+
+
+class InboxReadIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ids: list[int] | None = Field(default=None, max_length=200, description="These notices; left out: all of them.")
