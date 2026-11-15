@@ -49,7 +49,10 @@ CATEGORY_ON = ("NOT EXISTS (SELECT 1 FROM customer.preferences p WHERE p.user_id
 
 
 def _for(u: str) -> str:
-    return f"{LIVE_DEVICE.format(u=u)} AND {CATEGORY_ON.format(u=u)}"
+    """Whom a notice is decided for: a reader with the category on and a live device - or, while the inbox is on
+    (``%(inbox)s``, FBI_INBOX), with the category on alone: the notice is then kept for their «Avisos» even though no device
+    can receive it (the dispatch drops it as ``no_device``; plan maestro UX/UI 2026, decision 1)."""
+    return f"({LIVE_DEVICE.format(u=u)} OR %(inbox)s) AND {CATEGORY_ON.format(u=u)}"
 
 
 @dataclass
@@ -93,7 +96,7 @@ SELECT p.id, p.user_id, p.status, p.settled_at, p.name, a.language, a.timezone
 
 def pick_result_alerts(conn: psycopg.Connection[Any], *, at: datetime) -> int:
     done = 0
-    params = {"since": at - RESULT_WINDOW, "at": at, "category": "result"}
+    params = {"since": at - RESULT_WINDOW, "at": at, "category": "result", "inbox": rules.inbox_on()}
     with conn.cursor(row_factory=dict_row) as cur:
         picks = cur.execute(RESULTS_SQL, params).fetchall()
         parlays = cur.execute(PARLAYS_SQL, params).fetchall()
@@ -130,7 +133,7 @@ SELECT DISTINCT v.user_id, f.id AS fixture_id, f.kickoff_at, th.name AS home, ta
 def lineup_alerts(conn: psycopg.Connection[Any], *, at: datetime) -> int:
     done = 0
     with conn.cursor(row_factory=dict_row) as cur:
-        rows = cur.execute(LINEUPS_SQL, {"at": at, "until": at + LINEUP_AHEAD, "category": "lineup"}).fetchall()
+        rows = cur.execute(LINEUPS_SQL, {"at": at, "until": at + LINEUP_AHEAD, "category": "lineup", "inbox": rules.inbox_on()}).fetchall()
     for r in rows:
         w = texts.lineups(r["home"], r["away"], r["kickoff_at"], r["timezone"], texts.locale_of(r["language"]))
         if rules.queue(conn, user_id=int(r["user_id"]), category="lineup", key=f"lineup:{r['fixture_id']}", title=w.title,
@@ -195,7 +198,7 @@ def digest(conn: psycopg.Connection[Any], *, at: datetime) -> int:
     """The day's summary: from 09:00 to 12:00 in the reader's zone, once a day, when their teams or leagues play."""
     done = 0
     with conn.cursor(row_factory=dict_row) as cur:
-        readers = cur.execute(DIGEST_READERS_SQL, {"category": "digest"}).fetchall()
+        readers = cur.execute(DIGEST_READERS_SQL, {"category": "digest", "inbox": rules.inbox_on()}).fetchall()
     for r in readers:
         zone = r["timezone"]
         local = at.astimezone(rules.zone_of(zone))
@@ -232,7 +235,7 @@ SELECT a.id, a.email, a.role, a.language, a.timezone FROM auth.users a
 def membership_tomorrow(conn: psycopg.Connection[Any], *, at: datetime) -> int:
     """The cover ends within a day: one notice per period (the e-mails of A8 go on regardless)."""
     with conn.cursor(row_factory=dict_row) as cur:
-        users = cur.execute(MEMBERSHIP_SQL, {"at": at, "until": at + timedelta(days=1), "category": "account"}).fetchall()
+        users = cur.execute(MEMBERSHIP_SQL, {"at": at, "until": at + timedelta(days=1), "category": "account", "inbox": rules.inbox_on()}).fetchall()
     if not users:
         return 0
     by_id = {int(u["id"]): u for u in users}
@@ -257,7 +260,7 @@ def collect(conn: psycopg.Connection[Any], *, at: datetime) -> JobsReport:
     """Every job once (the start of a messenger cycle). Each one's failure is recorded and the others go on; nothing is
     written while push is not available."""
     report = JobsReport()
-    if not rules.available():
+    if not (rules.available() or rules.inbox_on()):
         return report
     for name, job in JOBS:
         try:
@@ -356,6 +359,15 @@ def dispatch(conn: psycopg.Connection[Any], *, at: datetime, client: httpx.Clien
     """What is due, notice by notice (each committed on its own). Nothing while push is not available."""
     report = DispatchReport()
     if not rules.available():
+        # no device can be reached at all (no key, or FBI_PUSH=0): while the inbox is on, what was decided is kept for
+        # «Avisos» and closed as it would be for a reader without a device
+        if rules.inbox_on():
+            closed = conn.execute(
+                "UPDATE customer.push_notices SET status = 'dropped', dropped = 'no_device' "
+                "WHERE status = 'queued' AND not_before <= %s", (at,)).rowcount
+            for _ in range(max(closed, 0)):
+                report.drop("no_device")
+            conn.commit()
         return report
     key = vapid or protocol.vapid_from_env()
     if key is None:

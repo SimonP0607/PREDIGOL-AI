@@ -52,6 +52,7 @@ from fbi.auth.service import Principal
 from fbi.auth.settings import session_settings
 from fbi.core.clock import now
 from fbi.customer import consents, display, favorites, guides, membership, support
+from fbi.customer import push as push_rules
 
 public_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
 session_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
@@ -76,6 +77,7 @@ def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
         transparency=transparency_open(), support=support.support_on(), explain=explain_on(),
         odds_explorer=odds_explorer_on(), odds_status=odds_status_on(),
         news_feed=news_feed_on() and news_service.users_may_see(),
+        inbox=push_rules.inbox_on(),
     )
 
 

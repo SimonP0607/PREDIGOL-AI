@@ -19,9 +19,14 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 import psycopg
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 
 from fbi.api.contracts.push import (
+    Inbox,
+    InboxFilter,
+    InboxItem,
+    InboxReadIn,
+    InboxUnread,
     MatchAlert,
     MatchAlertIn,
     PushCategories,
@@ -45,6 +50,7 @@ from fbi.messaging import push_texts
 
 router = APIRouter(prefix="/me/push", tags=["push"], dependencies=[Depends(same_site_only)])
 alerts_router = APIRouter(prefix="/me/match-alerts", tags=["push"], dependencies=[Depends(same_site_only)])
+inbox_router = APIRouter(prefix="/me/inbox", tags=["inbox"], dependencies=[Depends(same_site_only)])
 admin_router = APIRouter(prefix="/product", tags=["push"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 
@@ -156,3 +162,41 @@ def get_overview(conn: Db) -> PushOverview:
         devices=[PushFamilyCount(family=f, system=s, devices=int(n)) for f, s, n in families],
         notices=[PushCategoryCount(category=c, sent=int(s), dropped=int(d)) for c, s, d in notices],
         gone=int(gone[0]) if gone else 0)
+
+
+# ── «Avisos»: the reader's inbox (plan maestro UX/UI 2026, decision 1; BE-041) ───────────────────────────────────────
+
+
+def _inbox_open() -> None:
+    if not push.inbox_on():
+        raise ApiError(404, "not_found", "not found")
+
+
+@inbox_router.get("", response_model=Inbox)
+def get_inbox(conn: Db, principal: App, kind: Annotated[InboxFilter, Query(alias="filter")] = "all",
+              limit: Annotated[int, Query(ge=1, le=50)] = 30,
+              offset: Annotated[int, Query(ge=0, le=2000)] = 0) -> Inbox:
+    """AVISOS: the notices PrediGol decided for this reader in the last 30 days - sent to a device or not -, newest first,
+    never one of a category they had switched off. Behind ``FBI_INBOX`` (404 while it is off)."""
+    _inbox_open()
+    found = push.inbox(conn, principal.user_id, at=now(), kind=kind, limit=limit, offset=offset)
+    items = [InboxItem(id=r["id"], category=r["category"], title=r["title"], body=r["body"], url=r["url"], at=r["at"],
+                       read=r["read_at"] is not None) for r in found["items"]]
+    more = offset + limit < found["total"]
+    return Inbox(items=items, total=found["total"], unread=found["unread"], next_offset=offset + limit if more else None)
+
+
+@inbox_router.get("/unread", response_model=InboxUnread)
+def get_inbox_unread(conn: Db, principal: App) -> InboxUnread:
+    """The bell's figure: how many notices of the last 30 days the reader has not read."""
+    _inbox_open()
+    return InboxUnread(unread=push.inbox_unread(conn, principal.user_id, at=now()))
+
+
+@inbox_router.post("/read", response_model=InboxUnread)
+def read_inbox(body: InboxReadIn, conn: Db, principal: App) -> InboxUnread:
+    """Mark notices read - the ones named, or all - and answer what is left unread. Only the reader's own."""
+    _inbox_open()
+    push.inbox_read(principal.user_id, at=now(), ids=body.ids)
+    conn.rollback()  # a fresh snapshot: written by another connection
+    return InboxUnread(unread=push.inbox_unread(conn, principal.user_id, at=now()))
