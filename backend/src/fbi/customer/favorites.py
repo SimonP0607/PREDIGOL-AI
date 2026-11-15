@@ -367,3 +367,22 @@ def dismiss(user_id: int, hint: str, *, at: datetime) -> tuple[str, ...]:
 def fold(text: str) -> str:
     """Lower case without accents: «Atlético» and «atletico» are the same search."""
     return text.lower().translate(str.maketrans(*ACCENTS))
+
+
+# ── a followed team's bell (plan maestro UX/UI 2026, decision 8) ─────────────────────────────────────────────────────
+
+
+def muted_teams(conn: psycopg.Connection[Any], user_id: int) -> tuple[int, ...]:
+    """The followed teams whose bell is off: no line-up notice, out of the day's summary."""
+    rows = conn.execute("SELECT ref_id FROM customer.favorites WHERE user_id = %s AND kind = 'team' AND NOT notify "
+                        "ORDER BY created_at, ref_id", (user_id,)).fetchall()
+    return tuple(int(r[0]) for r in rows)
+
+
+def set_team_notify(user_id: int, team_id: int, notify: bool) -> None:
+    """Turn a followed team's bell on or off; 404 ``not_followed`` for a team the reader does not follow."""
+    with write_connection() as conn:
+        done = conn.execute("UPDATE customer.favorites SET notify = %s WHERE user_id = %s AND kind = 'team' "
+                            "AND ref_id = %s", (notify, user_id, team_id))
+        if done.rowcount == 0:
+            raise CustomerError(404, "not_followed", "the reader does not follow this team")

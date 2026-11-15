@@ -133,5 +133,21 @@
       "evaluation": "Su modelo todavía no ha superado al mercado: no pasa el primer paso, así que nunca se recomienda.",
       "more": "Cómo le va a PrediGol"
     }
+  },
+  "detail": {
+    "title": "Detalle del pick",
+    "open": "Ver detalle",
+    "phrase": "En una frase",
+    "value": "Por qué tiene valor",
+    "risks": "Qué puede salir mal",
+    "how": "Cómo lo decidimos",
+    "sheet": "Ficha del pick",
+    "market": "Mercado",
+    "publishedOdds": "Cuota publicada",
+    "publishedAt": "Publicado",
+    "daySet": "En el día",
+    "openMatch": "Abrir partido",
+    "missing": "No encontramos este pick",
+    "missingBody": "Puede que el enlace esté incompleto o que el pick ya no esté disponible."
   }
 }

@@ -21,6 +21,7 @@ import { MatchStateBadge, ResultBadge, Units } from "@/product/records/Badges";
 import { isLivePhase, matchPhaseOf } from "@/product/matches/status";
 import { ASK_BUTTON, EvBadge, Kickoff, OddsPill, ProbCompare, ShadowBadge, TAG } from "./Bits";
 import { WhyPickButton } from "@/product/picks/WhyPick";
+import { PickDetailLink } from "@/product/picks/PickDetailLink";
 import { startedScore } from "@/product/picks/started";
 import { marketName, selectionLabel } from "./markets";
 
@@ -161,6 +162,7 @@ export function StartedPickCard({
           autoOpen={autoOpenWhy}
           className={cn(ASK_BUTTON, "flex-none")}
         />
+        <PickDetailLink pickId={pick.pick_id} className="flex-none" />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 px-4 py-2.5">

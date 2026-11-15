@@ -28,6 +28,7 @@ from fbi.api.contracts.favorites import (
     HintIn,
     OnboardingState,
     PlayerBadge,
+    TeamNotifyIn,
 )
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
 from fbi.api.deps import get_db
@@ -135,6 +136,7 @@ def favorites_view(conn: psycopg.Connection[Any], user_id: int) -> FavoritesView
     return FavoritesView(leagues=_leagues(conn, shown.leagues), teams=_teams(conn, shown.teams),
                          players=_players(conn, more.players), markets=list(more.markets),  # type: ignore[arg-type]
                          catalog_markets=list(more.catalog),
+                         muted_teams=list(favorites.muted_teams(conn, user_id)) if mine is not None else [],
                          suggested=mine is None, max_leagues=favorites.MAX_LEAGUES, max_teams=favorites.MAX_TEAMS,
                          max_players=favorites.MAX_PLAYERS, max_markets=favorites.MAX_MARKETS,
                          max_catalog_markets=favorites.MAX_CATALOG,
@@ -167,6 +169,18 @@ def put_favorites(body: FavoritesIn, conn: Db, principal: App) -> FavoritesView:
     try:
         favorites.replace(principal.user_id, body.leagues, body.teams, at=now(), players=body.players,
                           markets=body.markets, catalog=body.catalog_markets, catalog_valid=catalog_key_ok)
+    except CustomerError as exc:
+        raise _refused(exc) from exc
+    conn.rollback()  # a fresh snapshot: written by another connection
+    return favorites_view(conn, principal.user_id)
+
+
+@router.put("/favorites/team-bell", response_model=FavoritesView)
+def put_team_notify(body: TeamNotifyIn, conn: Db, principal: App) -> FavoritesView:
+    """A followed team's bell (decision 8): off, the reader gets no line-up notice of it and its matches stay out of the
+    day's summary. 404 ``not_followed`` for a team the reader does not follow. Nothing else of the favourites changes."""
+    try:
+        favorites.set_team_notify(principal.user_id, body.team_id, body.notify)
     except CustomerError as exc:
         raise _refused(exc) from exc
     conn.rollback()  # a fresh snapshot: written by another connection
