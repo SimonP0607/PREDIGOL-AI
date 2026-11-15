@@ -48,7 +48,7 @@ test("changing the time zone moves every kick-off, DST included", async ({ page 
   test.skip(!fixture, "no scheduled fixture to check");
   if (!fixture) return;
   for (const zone of ["Europe/Madrid", "America/Bogota"]) {
-    await page.goto("/profile");
+    await page.goto("/profile/region");
     await settle(page);
     await page.getByTestId("timezone-search").fill(zone.split("/")[1] ?? zone);
     await page.getByTestId(`tz-${zone}`).click();

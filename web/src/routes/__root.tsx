@@ -351,6 +351,8 @@ function Gate() {
   // The account's welcome (plan UX, A13): once, after the consents - its own page, whatever the address asked for.
   const onWelcome = path === "/welcome";
   const consentsDone = (auth.user?.consents_due ?? []).length === 0;
+  // the profile and each of its sections, a screen each since decision 7 of the plan maestro UX/UI 2026
+  const onProfile = path === "/profile" || path.startsWith("/profile/");
   const welcomeOwed =
     auth.status === "signed-in" &&
     consentsDone &&
@@ -359,7 +361,7 @@ function Gate() {
     !onLegal &&
     !onAccount &&
     !onAdmin &&
-    path !== "/profile";
+    !onProfile;
   // Plan UX, A6: where the reader comes from (match_opened's origin) and the session's start, once per tab.
   useEffect(() => noteLocation(path), [path]);
   const measured = auth.status === "signed-in" && (auth.user?.consents_due ?? []).length === 0;
@@ -456,7 +458,7 @@ function Gate() {
   // boxes, whatever the address - except the texts themselves and the profile, where the reader can still take a
   // copy of their data or ask for its deletion without accepting.
   const due = auth.user?.consents_due ?? [];
-  if (due.length > 0 && !onLegal && path !== "/profile") {
+  if (due.length > 0 && !onLegal && !onProfile) {
     return <ConsentGate key={key} due={due} />;
   }
   // The welcome (plan UX, A13): its own frame, like the consents'; the page sends the reader on when nothing is owed.

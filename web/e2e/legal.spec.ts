@@ -222,7 +222,7 @@ test("the consent gate: four separate boxes before the product, a withdrawal bri
     );
 
     // 2. the profile: what was accepted and when; withdrawing the authorisation closes the product again
-    await page.goto("/profile");
+    await page.goto("/profile/privacy");
     // the usage statistics have a switch of their own: off, on, off again - each a decision stored with its text
     const statistics = page.getByTestId("analytics-switch");
     await expect(statistics).toHaveAttribute("aria-checked", "false");
@@ -254,7 +254,7 @@ test("the consent gate: four separate boxes before the product, a withdrawal bri
     await expect(page.getByTestId("account-menu")).toBeVisible();
 
     // 3. a copy of the data: the password first, then a file with the reader's own data
-    await page.goto("/profile");
+    await page.goto("/profile/privacy");
     const exportBlock = page.getByTestId("privacy-export");
     await exportBlock.getByTestId("privacy-export-start").click();
     await exportBlock.getByTestId("privacy-password").fill(PASSWORD);

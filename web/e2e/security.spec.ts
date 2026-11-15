@@ -83,7 +83,7 @@ test("a new account: authenticator from the QR's key, recovery codes, its own pa
     await assertClean(page, w);
 
     // 4. the profile shows it
-    await page.goto("/profile");
+    await page.goto("/profile/security");
     await expect(page.getByTestId("two-factor-panel")).toContainText(t.profile.securityPanel.mfaOn);
     await expect(page.getByTestId("sessions-panel")).toContainText(
       t.profile.securityPanel.thisDevice,
