@@ -23,6 +23,7 @@
  *   and /daily answer (at most 1.5 s) it shows one block, so «Para ti», the line and the day's picks never push down what is
  *   already painted. Nothing here calls the AI.
  */
+import { getDisplay } from "@/lib/display";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -213,9 +214,11 @@ export function HomePage() {
   // Two layers (closing plan 3.2): «Para ti» only once the reader chose something; PrediGol is the same for everyone. The
   // leagues and the team suggested until they choose are PrediGol's, labelled as suggested - never «tuyas».
   const layers = layersOf(me.data, today.data?.data);
-  // «Para ti / Todo» (plan maestro UX/UI 2026, PR-14). It opens on «Todo», Inicio as it always was; opening on «Para ti»
-  // is the reader's own setting and arrives with it (decision 8).
-  const [view, setView] = useState<HomeView>("all");
+  // «Para ti / Todo» (plan maestro UX/UI 2026, PR-14). Where it opens is the reader's setting (decision 8): «Para ti» or
+  // «Todo» as they chose in their profile and, until they choose, «Para ti» for a reader who follows something (the
+  // selector only exists for them: without a layer of their own, Inicio is PrediGol's, as always).
+  const [chosenView, setView] = useState<HomeView | null>(null);
+  const view: HomeView = chosenView ?? getDisplay().home_default ?? "mine";
   const shown = shownLayers(view, layers);
   // A reader's layers go on top of PrediGol, so they are painted together with it, not after it (they would push it down), and
   // the day's picks and the board change height when they arrive: the page waits for /me/today, /today, /home and /daily - at

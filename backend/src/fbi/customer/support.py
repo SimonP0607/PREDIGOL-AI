@@ -111,8 +111,14 @@ LOCK_SQL = "SELECT pg_advisory_xact_lock(hashtext('customer.support'), %s)"
 
 # ── how a reader reaches PrediGol (closing plan 4.2) ──────────────────────────────────────
 
-ContactChannel = Literal["whatsapp", "tickets", "email"]
-CONTACT_CHANNELS: Final[tuple[ContactChannel, ...]] = ("whatsapp", "tickets", "email")
+ContactChannel = Literal["whatsapp", "tickets", "email", "telegram"]
+CONTACT_CHANNELS: Final[tuple[ContactChannel, ...]] = ("whatsapp", "tickets", "email", "telegram")
+DEFAULT_CHANNELS: Final[tuple[ContactChannel, ...]] = ("whatsapp", "tickets", "email")
+"""Offered while FBI_SUPPORT_CHANNELS names none. Telegram is never one of them: it shows only when the owner names it
+and gave its link (plan maestro UX/UI 2026, decision 6)."""
+TELEGRAM_ENV: Final = "FBI_TELEGRAM_CHANNEL_URL"
+_TELEGRAM_OK = re.compile(r"https://t\.me/[A-Za-z0-9_+][A-Za-z0-9_+/-]{2,63}")
+ASSISTANT_ENV: Final = "FBI_HELP_ASSISTANT"
 """The ways to reach PrediGol the app knows. A new one (Telegram, say) is a name here and a button in the app; which of
 them are offered and in what order is the server's setting, so that passing from one to another touches no code."""
 CHANNELS_ENV: Final = "FBI_SUPPORT_CHANNELS"
@@ -121,18 +127,35 @@ HOURS_MAX: Final = 80
 _HOURS_OK = re.compile(r"[^\x00-\x1f\x7f<>]{1,80}")
 
 
-def contact_channels(*, whatsapp: str | None, email: str | None) -> list[ContactChannel]:
+def telegram_url() -> str | None:
+    """``FBI_TELEGRAM_CHANNEL_URL``: the public link of PrediGol's official Telegram channel, announcements only. It must
+    begin with ``https://t.me/`` and be a plain channel path; anything else is as if it were absent."""
+    raw = (environment().get(TELEGRAM_ENV) or "").strip()
+    return raw if _TELEGRAM_OK.fullmatch(raw) else None
+
+
+def assistant_on() -> bool:
+    """``FBI_HELP_ASSISTANT`` (off by default): the help centre's guided search over its own texts (decision 5). It runs
+    in the reader's browser, answers only with the help's existing answers and calls no AI."""
+    return (environment().get(ASSISTANT_ENV) or "").strip().lower() in ("1", "true", "on", "yes")
+
+
+def contact_channels(*, whatsapp: str | None, email: str | None,
+                     telegram: str | None = None) -> list[ContactChannel]:
     """The channels a reader is offered, in the owner's order: ``FBI_SUPPORT_CHANNELS`` is a comma list of
-    ``whatsapp``, ``tickets`` and ``email`` (the three, in that order, while it is absent or has no name the app knows);
+    ``whatsapp``, ``tickets``, ``email`` and ``telegram`` (the first three, in that order, while it is absent or has no name
+    the app knows - Telegram only when it is named);
     a channel that is named but not available - no number, no reply address, the tickets switched off - is left out."""
     named: list[ContactChannel] = []
     for raw in (environment().get(CHANNELS_ENV) or "").split(","):
         name = raw.strip().lower()
+        if name == "telegram" and telegram is None:
+            continue  # without its link Telegram is a name the app does not know yet
         if name in CONTACT_CHANNELS and name not in named:
             named.append(name)
     available: dict[ContactChannel, bool] = {"whatsapp": whatsapp is not None, "tickets": support_on(),
-                                             "email": email is not None}
-    return [c for c in (named or list(CONTACT_CHANNELS)) if available[c]]
+                                             "email": email is not None, "telegram": telegram is not None}
+    return [c for c in (named or list(DEFAULT_CHANNELS)) if available[c]]
 
 
 def contact_hours() -> str | None:

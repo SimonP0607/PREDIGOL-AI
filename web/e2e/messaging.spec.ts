@@ -76,7 +76,7 @@ test("the reader chooses the optional e-mails; a privacy request's receipt waits
     await acceptAll(page);
 
     // 1. the Notifications block: two switches, four that always arrive, and a choice that holds
-    await page.goto("/profile");
+    await page.goto("/profile/notifications");
     const block = page.getByTestId("notifications");
     await expect(block).toBeVisible();
     await expect(block.getByRole("switch")).toHaveCount(2);

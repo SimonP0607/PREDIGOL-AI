@@ -5,6 +5,7 @@
  * reader's IANA zone (their account preference, else what the browser reports) only
  * decides how an instant is SHOWN and which instants make up "today".
  */
+import { getDisplay } from "@/lib/display";
 import { getLocale, intlTag, translate } from "@/lib/i18n";
 
 let zone = "UTC";
@@ -69,16 +70,15 @@ function guard(value: string | number | Date | null | undefined): Date | null {
 }
 
 /**
- * How the clock is written. 24 hours («18:00») is the one way today; the reader's choice arrives with its setting
- * (plan maestro UX/UI 2026, decision 8) - here, and nowhere else: it changes how an hour is written, never the hour, its
- * zone or what is computed from it (offsetMinutes below keeps its own 24-hour clock: it calculates, it does not write).
+ * How the clock is written: 24 hours («18:00») unless the reader chose 12 («6:00 p. m.») in their profile (plan maestro
+ * UX/UI 2026, decision 8) - here, and nowhere else: it changes how an hour is written, never the hour, its zone or what
+ * is computed from it (offsetMinutes below keeps its own 24-hour clock: it calculates, it does not write).
  */
-export type HourCycle = "h23";
-const HOUR_CYCLE: HourCycle = "h23";
+export type HourCycle = "h23" | "h12";
 
 /** The clock every hour on a screen is written with. */
 export function hourCycle(): HourCycle {
-  return HOUR_CYCLE;
+  return getDisplay().time_format === "12h" ? "h12" : "h23";
 }
 
 /**
@@ -90,9 +90,18 @@ export function formatTime(
   tz: string = zone,
 ): string {
   const d = guard(value);
-  return d
-    ? dtf({ hour: "2-digit", minute: "2-digit", hourCycle: hourCycle() }, tz).format(d)
-    : DASH;
+  if (!d) return DASH;
+  if (hourCycle() === "h23")
+    return dtf({ hour: "2-digit", minute: "2-digit", hourCycle: "h23" }, tz).format(d);
+  // 12 hours, short and in one piece: «2:31 pm» in either language (Spanish would write «2:31 p. m.», which breaks in
+  // two lines wherever an hour has a narrow column), the hour and its half never apart
+  const parts = dtf(
+    { hour: "numeric", minute: "2-digit", hourCycle: "h12" },
+    tz,
+    "en-US",
+  ).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("hour")}:${get("minute")}\u00a0${get("dayPeriod").toLowerCase()}`;
 }
 
 /** sáb 4 oct / Sat 4 Oct */

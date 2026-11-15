@@ -6,12 +6,13 @@
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Pencil } from "lucide-react";
+import { Bell, BellOff, Loader2, Pencil } from "lucide-react";
 import { CompetitionTag, TeamLogo } from "@/components/football/Logos";
 import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { FavoritesView } from "@/lib/api/v1/types_favorites";
 import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { ErrorState, SkeletonCards } from "@/product/shared/States";
 import { FavoritesPicker } from "./FavoritesPicker";
 import { trackChanges } from "./analytics";
@@ -51,6 +52,75 @@ function Current({ view }: { view: FavoritesView }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+/** A bell per followed team (decision 8; sheet U02): the reader's own teams only, never the suggested ones. */
+function TeamBells({ view }: { view: FavoritesView }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState<number | null>(null);
+  const [failed, setFailed] = useState(false);
+  if (view.suggested || view.teams.length === 0 || view.muted_teams === undefined) return null;
+  const muted = new Set(view.muted_teams);
+  async function toggle(teamId: number, notify: boolean) {
+    setBusy(teamId);
+    setFailed(false);
+    try {
+      qc.setQueryData(live.favorites.queryKey, await v1.setTeamBell(teamId, notify));
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(null);
+    }
+  }
+  return (
+    <section aria-labelledby="team-bells" className="space-y-2" data-testid="team-bells">
+      <h3 id="team-bells" className="text-sm font-semibold">
+        {t("onboarding.panel.bellsTitle")}
+      </h3>
+      <p className="text-xs text-muted-foreground">{t("onboarding.panel.bellsHelp")}</p>
+      <ul className="divide-y divide-border rounded-control border border-border">
+        {view.teams.map((tm) => {
+          const on = !muted.has(tm.id);
+          return (
+            <li key={tm.id} className="flex min-h-12 items-center gap-2.5 px-3 py-1.5">
+              <span aria-hidden className="contents">
+                <TeamLogo src={tm.logo_url} name={tm.name} size={20} />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm">{tm.name}</span>
+              <button
+                type="button"
+                aria-pressed={on}
+                aria-label={t(on ? "onboarding.panel.bellOn" : "onboarding.panel.bellOff", {
+                  name: tm.name,
+                })}
+                disabled={busy === tm.id}
+                onClick={() => void toggle(tm.id, !on)}
+                data-testid="team-bell"
+                data-team={tm.id}
+                className={cn(
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-field border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+                  on
+                    ? "border-primary/40 bg-primary-soft text-primary"
+                    : "border-border-strong bg-elevated text-muted-foreground",
+                )}
+              >
+                {on ? (
+                  <Bell aria-hidden className="h-[1.125rem] w-[1.125rem]" />
+                ) : (
+                  <BellOff aria-hidden className="h-[1.125rem] w-[1.125rem]" />
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {failed ? (
+        <p role="alert" className="text-sm text-negative">
+          {t("onboarding.panel.bellFailed")}
+        </p>
+      ) : null}
+    </section>
   );
 }
 
@@ -126,6 +196,7 @@ export function FootballPanel() {
       ) : (
         <div className="space-y-3">
           <Current view={view} />
+          <TeamBells view={view} />
           {saved ? (
             <p role="status" className="text-sm text-positive" data-testid="football-saved">
               {t("onboarding.panel.saved")}
