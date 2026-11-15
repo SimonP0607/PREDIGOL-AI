@@ -14,6 +14,8 @@ export function isLimitedPath(path: string): boolean {
   const p = path.replace(/\/+$/, "") || "/";
   return (
     p === "/profile" ||
+    // each section of the profile is its own screen (plan maestro UX/UI 2026, decision 7)
+    p.startsWith("/profile/") ||
     p === "/my-picks" ||
     p === "/help" ||
     p.startsWith("/help/") ||

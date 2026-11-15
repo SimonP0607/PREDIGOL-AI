@@ -416,7 +416,7 @@ test.describe("self-service on, with the QA messenger", () => {
         await gate.getByTestId(`consent-${kind}`).check();
       await gate.getByTestId("consent-submit").click();
       await expect(gate).toHaveCount(0);
-      await page.goto("/profile");
+      await page.goto("/profile/security");
       const panel = page.getByTestId("sessions-panel");
       await expect(panel.locator("li")).toHaveCount(2);
       await panel.getByTestId("sessions-end-others").click();
