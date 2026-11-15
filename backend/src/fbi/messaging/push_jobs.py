@@ -118,7 +118,8 @@ SELECT DISTINCT v.user_id, f.id AS fixture_id, f.kickoff_at, th.name AS home, ta
   JOIN auth.users a ON a.id = v.user_id AND a.status = 'active'
   JOIN core.teams th ON th.id = f.home_team_id
   JOIN core.teams ta ON ta.id = f.away_team_id
- WHERE v.kind = 'team' AND f.status_group = 'scheduled' AND f.kickoff_at > %(at)s AND f.kickoff_at <= %(until)s
+ WHERE v.kind = 'team' AND v.notify AND f.status_group = 'scheduled' AND f.kickoff_at > %(at)s
+   AND f.kickoff_at <= %(until)s
    AND (SELECT count(DISTINCT l.team_side) FROM core.fixture_lineups l WHERE l.fixture_id = f.id) = 2
    AND {_for('v.user_id')}
    AND NOT EXISTS (SELECT 1 FROM customer.push_notices n WHERE n.user_id = v.user_id AND n.dedup_key = 'lineup:' || f.id)
@@ -181,7 +182,7 @@ SELECT f.id, f.kickoff_at, th.name AS home, ta.name AS away
   JOIN core.teams th ON th.id = f.home_team_id
   JOIN core.teams ta ON ta.id = f.away_team_id
  WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND f.kickoff_at > %(at)s AND f.status_group = 'scheduled'
-   AND (EXISTS (SELECT 1 FROM customer.favorites v WHERE v.user_id = %(u)s AND v.kind = 'team'
+   AND (EXISTS (SELECT 1 FROM customer.favorites v WHERE v.user_id = %(u)s AND v.kind = 'team' AND v.notify
                  AND v.team_id IN (f.home_team_id, f.away_team_id))
         OR EXISTS (SELECT 1 FROM customer.favorites v WHERE v.user_id = %(u)s AND v.kind = 'league'
                     AND v.league_id = cs.competition_id))
