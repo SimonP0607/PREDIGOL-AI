@@ -4,17 +4,9 @@
  * line it says from GET /me/account; open at a desk). An e-mail's button or a page leads to a block by its address:
  * /profile#privacy, #notifications, #membership, #football. Preferences are stored on the account.
  */
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type Dispatch,
-  type FormEvent,
-  type SetStateAction,
-} from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import {
   Bell,
   CalendarClock,
@@ -47,9 +39,11 @@ import { PrivacyPanel } from "./PrivacyPanel";
 import { FootballPanel } from "@/product/favorites/FootballPanel";
 import { AccountPanel } from "./AccountPanel";
 import { useGuideScreen } from "@/product/guides/context";
-import { Block } from "./Block";
+import { BlockRow, SectionScreen } from "./Block";
 import { HelpPanel } from "./HelpPanel";
-import { BLOCKS, blockOfHash, blockSummary, startsOpen, type BlockKey } from "./centre";
+import { blockOfHash, blockSummary, type BlockKey } from "./centre";
+import { buttonVariants } from "@/components/ui/button";
+import type { AccountSummary } from "@/lib/api/v1/types_account";
 import { fieldVariants } from "@/components/ui/field";
 
 function TimeZonePicker() {
@@ -302,59 +296,117 @@ function SecurityPanel({ user }: { user: Me }) {
   );
 }
 
-type OpenState = Record<BlockKey, boolean>;
-
-/** Which blocks start open: all of them at a desk, none under 1024 px - and always the one the address names. */
-function initialOpen(): OpenState {
-  const open = startsOpen();
-  const named = typeof window === "undefined" ? null : blockOfHash(window.location.hash);
-  return Object.fromEntries(BLOCKS.map((key) => [key, open || key === named])) as OpenState;
+/** What each section is called and drawn with, on the index and on its own screen. */
+function sectionsOf(user: Me, data: AccountSummary | undefined) {
+  const all: Array<{ key: BlockKey; icon: ReactNode; title: string; body: () => ReactNode }> = [
+    {
+      key: "account",
+      icon: <UserRound className="h-5 w-5" />,
+      title: t("profile.account"),
+      body: () => <AccountPanel user={user} summary={data} />,
+    },
+    {
+      key: "football",
+      icon: <Star className="h-5 w-5" />,
+      title: t("onboarding.panel.title"),
+      body: () => <FootballPanel />,
+    },
+    {
+      key: "region",
+      icon: <Languages className="h-5 w-5" />,
+      title: t("profile.centre.region"),
+      body: () => <RegionPanel />,
+    },
+    {
+      key: "notifications",
+      icon: <Bell className="h-5 w-5" />,
+      title: t("profile.notifications.title"),
+      body: () => <NotificationsPanel />,
+    },
+    {
+      key: "privacy",
+      icon: <Lock className="h-5 w-5" />,
+      title: t("legal.privacy.title"),
+      body: () => <PrivacyPanel />,
+    },
+    {
+      key: "security",
+      icon: <ShieldCheck className="h-5 w-5" />,
+      title: t("profile.security"),
+      body: () => <SecurityPanel user={user} />,
+    },
+    {
+      key: "membership",
+      icon: <CalendarClock className="h-5 w-5" />,
+      title: t("profile.membership.title"),
+      body: () => <MembershipCard />,
+    },
+    {
+      key: "help",
+      icon: <LifeBuoy className="h-5 w-5" />,
+      title: t("profile.centre.help.title"),
+      body: () => <HelpPanel summary={data} />,
+    },
+  ];
+  // the membership's section exists only for an account with one (the owner's has none)
+  return all.filter((s) => s.key !== "membership" || Boolean(user.membership));
 }
 
-/** The block an address names (#privacy) opens and comes into view, on arrival and when the address changes. */
-function useNamedBlock(ready: boolean, setOpen: Dispatch<SetStateAction<OpenState>>): void {
+/**
+ * The old addresses of the profile (decision 7): /profile#privacy, #language, #sessions - in e-mails, guides and links -
+ * are sent to the section's screen, on arrival and when a link inside a section names another one. The hash is kept
+ * when it is a place inside the section (#sessions in Seguridad), so the page can still bring it into view.
+ */
+function useOldAddress(current: BlockKey | null): void {
+  const navigate = useNavigate();
   useEffect(() => {
-    if (!ready || typeof window === "undefined") return;
+    if (typeof window === "undefined") return;
     const go = () => {
-      const key = blockOfHash(window.location.hash);
-      if (!key) return;
-      setOpen((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
-      window.requestAnimationFrame(() =>
-        document.getElementById(key)?.scrollIntoView({ block: "start" }),
-      );
+      const raw = window.location.hash.replace(/^#/, "");
+      const key = blockOfHash(raw);
+      if (!key || key === current) return;
+      void navigate({
+        to: "/profile/$section",
+        params: { section: key },
+        ...(raw === key ? {} : { hash: raw }),
+        replace: true,
+      });
     };
     go();
     window.addEventListener("hashchange", go);
     return () => window.removeEventListener("hashchange", go);
-  }, [ready, setOpen]);
+  }, [current, navigate]);
 }
 
-export function ProfilePage() {
+/** /profile: the index (sheet U01) - who the account is, the eight sections and the way out. */
+export function ProfileIndexPage() {
   const auth = useAuth();
   const navigate = useNavigate();
-  const qc = useQueryClient();
   const user = auth.user;
   const summary = useQuery({ ...live.account, enabled: Boolean(user) });
-  const [open, setOpen] = useState<OpenState>(initialOpen);
-  useNamedBlock(Boolean(user), setOpen);
+  useOldAddress(null);
   useGuideScreen("profile", { ready: Boolean(user) });
-  const toggle = useCallback(
-    (key: BlockKey) => {
-      setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
-      // folding a block after a change in it: its line says the new state
-      if (open[key]) void qc.invalidateQueries({ queryKey: ["me", "account"] });
-    },
-    [open, qc],
-  );
-  const data = summary.data;
-  const line = useMemo(() => (key: BlockKey) => (data ? blockSummary(key, data) : null), [data]);
   if (!user) return null;
-  const block = (key: BlockKey) => ({
-    id: key,
-    summary: line(key),
-    open: open[key],
-    onToggle: () => toggle(key),
-  });
+  return (
+    <ProfileIndex
+      user={user}
+      summary={summary}
+      onSignOut={() => void auth.signOut().then(() => navigate({ to: "/login" }))}
+    />
+  );
+}
+
+function ProfileIndex({
+  user,
+  summary,
+  onSignOut,
+}: {
+  user: Me;
+  summary: UseQueryResult<AccountSummary>;
+  onSignOut: () => void;
+}) {
+  const data = summary.data;
+  const sections = sectionsOf(user, data);
   return (
     <div className="mx-auto max-w-3xl space-y-3" data-testid="account-centre">
       <PageTitle
@@ -365,87 +417,82 @@ export function ProfilePage() {
       {summary.isError ? (
         <div
           role="alert"
-          className="flex flex-wrap items-center gap-2 rounded-md border border-border px-4 py-3 text-xs text-muted-foreground"
+          className="flex flex-wrap items-center gap-2 rounded-control border border-border px-4 py-3 text-xs text-muted-foreground"
           data-testid="account-summary-error"
         >
           {t("profile.centre.summaryError")}
           <button
             type="button"
             onClick={() => void summary.refetch()}
-            className="inline-flex min-h-11 items-center rounded-md border border-border-strong px-3 text-xs font-medium hover:bg-elevated"
+            className={buttonVariants({ variant: "secondary", size: "xs" })}
           >
             {t("common.retry")}
           </button>
         </div>
       ) : null}
-
-      <Block
-        {...block("account")}
-        icon={<UserRound className="h-5 w-5" />}
-        title={t("profile.account")}
-      >
-        <AccountPanel user={user} summary={data} />
-      </Block>
-      <Block
-        {...block("football")}
-        icon={<Star className="h-5 w-5" />}
-        title={t("onboarding.panel.title")}
-      >
-        <FootballPanel />
-      </Block>
-      <Block
-        {...block("region")}
-        icon={<Languages className="h-5 w-5" />}
-        title={t("profile.centre.region")}
-      >
-        <RegionPanel />
-      </Block>
-      <Block
-        {...block("notifications")}
-        icon={<Bell className="h-5 w-5" />}
-        title={t("profile.notifications.title")}
-      >
-        <NotificationsPanel />
-      </Block>
-      <Block
-        {...block("privacy")}
-        icon={<Lock className="h-5 w-5" />}
-        title={t("legal.privacy.title")}
-      >
-        <PrivacyPanel />
-      </Block>
-      <Block
-        {...block("security")}
-        icon={<ShieldCheck className="h-5 w-5" />}
-        title={t("profile.security")}
-      >
-        <SecurityPanel user={user} />
-      </Block>
-      {user.membership ? (
-        <Block
-          {...block("membership")}
-          icon={<CalendarClock className="h-5 w-5" />}
-          title={t("profile.membership.title")}
-        >
-          <MembershipCard />
-        </Block>
-      ) : null}
-      <Block
-        {...block("help")}
-        icon={<LifeBuoy className="h-5 w-5" />}
-        title={t("profile.centre.help.title")}
-      >
-        <HelpPanel summary={data} />
-      </Block>
-
+      {sections.map((s) => (
+        <BlockRow
+          key={s.key}
+          id={s.key}
+          icon={s.icon}
+          title={s.title}
+          summary={data ? blockSummary(s.key, data) : null}
+        />
+      ))}
       <button
         type="button"
-        onClick={() => void auth.signOut().then(() => navigate({ to: "/login" }))}
-        className="mt-2 inline-flex items-center gap-2 rounded-md border border-negative/40 px-4 py-2 text-sm font-medium text-negative hover:bg-negative-soft pointer-coarse:min-h-11"
+        onClick={onSignOut}
+        className={cn(buttonVariants({ variant: "danger", size: "sm" }), "mt-2")}
       >
-        <LogOut aria-hidden className="h-4 w-4" />
+        <LogOut aria-hidden />
         {t("profile.signOut")}
       </button>
     </div>
+  );
+}
+
+/** /profile/<section>: one section on its own screen (sheets U02-U07). An address that names none goes to the index. */
+export function ProfileSectionPage({ section }: { section: string }) {
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const user = auth.user;
+  const key = blockOfHash(section);
+  const summary = useQuery({ ...live.account, enabled: Boolean(user) });
+  useOldAddress(key);
+  const known = key !== null && (key !== "membership" || Boolean(user?.membership));
+  useEffect(() => {
+    if (user && !known) void navigate({ to: "/profile", replace: true });
+    // an alias in the path (/profile/language): the section's own address
+    else if (user && key && key !== section)
+      void navigate({ to: "/profile/$section", params: { section: key }, replace: true });
+  }, [user, known, key, section, navigate]);
+  // a place inside the section named by the address (#sessions): into view once the section is drawn
+  useEffect(() => {
+    if (!user || !known || typeof window === "undefined") return;
+    const id = window.location.hash.replace(/^#/, "");
+    if (!id || id === key) return;
+    window.requestAnimationFrame(() =>
+      document.getElementById(id)?.scrollIntoView({ block: "start" }),
+    );
+  }, [user, known, key]);
+  if (!user || !known || !key) return null;
+  return <ProfileSection user={user} data={summary.data} section={key} />;
+}
+
+function ProfileSection({
+  user,
+  data,
+  section,
+}: {
+  user: Me;
+  data: AccountSummary | undefined;
+  section: BlockKey;
+}) {
+  const s = sectionsOf(user, data).find((x) => x.key === section);
+  if (!s) return null;
+  return (
+    <SectionScreen id={s.key} icon={s.icon} title={s.title}>
+      {s.body()}
+    </SectionScreen>
   );
 }

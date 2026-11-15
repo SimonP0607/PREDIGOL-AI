@@ -538,14 +538,22 @@ test("the real test's sixteen steps on one invited account, on a 390 px phone: f
       await expect(page.getByTestId("profile-summary-membership")).toContainText(
         "En prueba hasta el",
       );
-      for (const key of ["region", "security", "membership", "privacy"])
+      // decision 7: each section opens on its own screen, and the index is one tap back
+      const section = async (key: string) => {
+        if (!/\/profile$/.test(page.url())) await page.getByTestId("profile-back").click();
         await page.getByTestId(`profile-toggle-${key}`).click();
+        await expect(page).toHaveURL(new RegExp(`/profile/${key}$`));
+      };
+      await section("region");
       await expect(page.getByTestId("profile-lang-es")).toHaveAttribute("aria-checked", "true");
       await expect(page.getByTestId("current-timezone")).toContainText("America/Bogota");
+      await section("security");
       await expect(page.getByTestId("sessions-panel")).toBeVisible();
+      await section("membership");
       const membership = page.getByTestId("membership-card");
       await expect(membership).toHaveAttribute("data-state", "trial");
       await expect(membership.getByTestId("membership-line")).toContainText("En prueba hasta el");
+      await section("privacy");
       const block = page.getByTestId("privacy-export");
       await block.getByTestId("privacy-export-start").click();
       await block.getByTestId("privacy-password").fill(CHOSEN);
