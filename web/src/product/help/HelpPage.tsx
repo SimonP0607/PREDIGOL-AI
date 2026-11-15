@@ -19,8 +19,11 @@ import {
   Mail,
   MessageCircle,
   Search,
+  Send,
   ShieldCheck,
 } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { fieldVariants } from "@/components/ui/field";
 import { live } from "@/lib/api/v1/queries";
 import type { ContactChannel, SupportContact, SupportTicket } from "@/lib/api/v1/types_support";
 import { t } from "@/lib/i18n";
@@ -31,6 +34,7 @@ import { Card, PageTitle } from "@/product/shared/States";
 import { usePush } from "@/product/push/usePush";
 import { useReportProblem } from "@/product/support/report";
 import { GuidesPanel } from "@/product/guides/GuidesPanel";
+import { Assistant } from "./HelpAssistant";
 import { HOW_PATH } from "./howItWorks";
 import {
   FAQ_GROUPS,
@@ -44,8 +48,8 @@ import {
   type FaqId,
 } from "./faq";
 
-const linkClass =
-  "tap-y relative inline-flex min-h-11 items-center gap-2 rounded-md border border-border-strong px-3 text-sm font-medium hover:bg-elevated";
+// the system's secondary button («Noche de partido», sheet 3) for the ways to reach PrediGol
+const linkClass = buttonVariants({ variant: "secondary", size: "sm" });
 
 /** A link inside the app, its path and its anchor apart (the router wants them so). */
 function AppLink({
@@ -73,10 +77,7 @@ export function ReportButton({ className }: { className?: string }) {
       type="button"
       onClick={() => report.open()}
       data-testid="help-report"
-      className={cn(
-        "inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground",
-        className,
-      )}
+      className={cn(buttonVariants({ variant: "primary", size: "sm" }), className)}
     >
       <LifeBuoy aria-hidden className="h-4 w-4" />
       {t("support.help.contact.report")}
@@ -122,7 +123,7 @@ export function HelpPage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("support.help.searchPlaceholder")}
             data-testid="help-search"
-            className="h-11 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm"
+            className={cn(fieldVariants(), "pl-9")}
           />
         </label>
         <p className="mt-1.5 text-caption text-subtle-foreground" aria-live="polite">
@@ -135,7 +136,7 @@ export function HelpPage() {
       </div>
       {groups.map(([group, items]) => (
         <section key={group} aria-labelledby={`help-${group}`} className="flex flex-col gap-2">
-          <h2 id={`help-${group}`} className="font-display text-lg font-semibold tracking-tight">
+          <h2 id={`help-${group}`} className="text-subheading">
             {t(`support.help.groups.${group}`)}
           </h2>
           <div className="flex flex-col gap-2">
@@ -149,6 +150,9 @@ export function HelpPage() {
           </div>
         </section>
       ))}
+      {state.data?.assistant ? (
+        <Assistant faqShown={FAQ_IDS.filter((id) => pushOn || !FAQ_NEEDS_PUSH.has(id))} />
+      ) : null}
       <MoreHelp />
       <Contact contact={state.data?.contact ?? null} enabled={enabled} />
     </div>
@@ -163,7 +167,7 @@ function Question({ id, open }: { id: FaqId; open: boolean }) {
       open={open || undefined}
       data-testid="help-question"
       data-faq={id}
-      className="group scroll-mt-[calc(var(--app-sticky-top,4rem)+5.5rem)] rounded-xl border border-border bg-card"
+      className="card-surface group scroll-mt-[calc(var(--app-sticky-top,4rem)+5.5rem)] rounded-card"
     >
       <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
         <span>{faqQuestion(id)}</span>
@@ -316,6 +320,12 @@ function Contact({ contact, enabled }: { contact: SupportContact | null; enabled
   const whatsapp = contact?.whatsapp ?? null;
   const email = contact?.email ?? null;
   const hours = contact?.hours ?? null;
+  // the official channel, announcements only (decision 6): the server gives the link only if it is a t.me address, and
+  // the page checks it again before making it a link
+  const telegram =
+    contact?.telegram_url && contact.telegram_url.startsWith("https://t.me/")
+      ? contact.telegram_url
+      : null;
   // The owner's order (FBI_SUPPORT_CHANNELS); an older answer without it keeps the old one: report, WhatsApp, e-mail.
   const order = contact?.channels?.length ? contact.channels : DEFAULT_ORDER;
   const channels: Record<ContactChannel, ReactNode> = {
@@ -338,6 +348,22 @@ function Contact({ contact, enabled }: { contact: SupportContact | null; enabled
         {t("support.help.contact.email")}
       </a>
     ) : null,
+    telegram: telegram ? (
+      <a
+        key="telegram"
+        href={telegram}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={linkClass}
+        data-testid="help-telegram"
+      >
+        <Send aria-hidden className="h-4 w-4" />
+        {t("support.help.contact.telegram")}
+        <span className="rounded-full bg-elevated px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+          {t("support.help.contact.telegramNote")}
+        </span>
+      </a>
+    ) : null,
   };
   return (
     <Card className="p-4" id="contact">
@@ -346,7 +372,7 @@ function Contact({ contact, enabled }: { contact: SupportContact | null; enabled
         className="flex flex-col gap-3"
         data-testid="help-contact"
       >
-        <h2 id="help-contact" className="font-display text-base font-semibold">
+        <h2 id="help-contact" className="text-title">
           {t("support.help.contact.title")}
         </h2>
         <p className="text-sm text-muted-foreground">

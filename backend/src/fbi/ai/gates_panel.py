@@ -357,11 +357,13 @@ SPECS: Final[tuple[Spec, ...]] = (
          "del calibrador coherente no peor que el actual (límite superior del IC95 de la diferencia pareada por jornada ≤ 0); ECE por clase "
          "no peor; diferencias de decisión explicadas",
          "Falla el log loss o la calibración: queda la reescalada como cifra coherente y se sigue en el LAB",
-         depends_on=("INT-A03 (cifra única en sombra)", "INT-A04 (informe y fila del gate)"), source="plan, sección 8; LAB INT-A02 (IA-036)"),
+         depends_on=("Picks con la cifra única (diseño de INT-A03 para UX, IA-053)", "INT-A04 (informe y fila del gate)"),
+         source="plan, sección 8; LAB INT-A02 (IA-036); paridad de INT-A03 (IA-053)"),
     Spec("g_precio", "G-PRECIO", "INT-A06", "dependencias",
          "Ninguna decisión sin edad de precio; umbral de edad fijado con la distribución medida",
          "El libro no cubre los candidatos: se informa a Cuotas y sigue la captura actual", code="IA-037",
-         depends_on=("INT-A06 (IA-037, abierto): la decisión en sombra aún no guarda la edad del precio",), source="plan, sección 8"),
+         depends_on=("el umbral de edad fijado por el dueño con la medida de INT-A06 (IA-037: 0 decisiones con precio sin edad el 11-nov; "
+                     "propuesta 45/75/195 min, sin aplicar) y la fila del gate",), source="plan, sección 8; IA-037"),
     Spec("g_fuentes_1", "G-FUENTES 1", "INT-B01", "dependencias", "Los ítems de dominios sin nivel bajan del 20 %", code="IA-040",
          depends_on=("filas del registro de INT-B01 en la sombra: IA-040 las clasificó; entran tras el Gate B y la revisión a mano de las "
                      "filas oficiales",), source="plan, sección 8; medida: IA-040, antes del registro nuevo"),
@@ -632,10 +634,11 @@ def lab_entry(spec: Spec, record: LabRecord) -> Json:
 
 def coh_entry(record: LabRecord = LAB_A02) -> Json:
     spec = SPEC["g_coh"]
-    why = ["INT-A03 e INT-A04 aún no existen en el código: no hay cifra única en sombra ni paridad de 72 h que medir",
+    why = ["INT-A03 (IA-053) está en sombra: el 12-nov lo que guarda el Match Center y lo que lee la decisión coinciden en 2.528 de 2.528 filas "
+           "(24 h) y 2.955 de 2.955 (72 h); falta Picks (con UX) e INT-A04, el informe y la fila del gate",
            f"su experimento del LAB, {record.key} ({record.code}), {record.verdict} en los tres mercados: según la regla de rechazo, queda la "
            "reescalada como cifra coherente y se sigue en el LAB"]
-    return entry(spec, PENDING_DEPENDENCIES, why, figures=record.figures(), when="cuando existan INT-A03 e INT-A04 y 72 h de producción",
+    return entry(spec, PENDING_DEPENDENCIES, why, figures=record.figures(), when="cuando Picks lea la cifra única y exista INT-A04",
                  lab=record.as_json(), sources=_sources(("experimento del LAB", record.result), ("informe", record.doc)))
 
 
