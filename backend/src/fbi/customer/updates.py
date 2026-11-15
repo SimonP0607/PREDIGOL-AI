@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Literal
 
 Locale = Literal["es", "en"]
+Kind = Literal["new", "improvement", "fix", "notice"]
+"""What an entry is (plan maestro UX/UI 2026, decision 9): the page filters by it."""
 CATALOG = Path(__file__).resolve().parent / "updates.json"
 
 
@@ -22,6 +24,7 @@ class Update:
     key: str
     title_es: str
     title_en: str
+    kind: Kind = "new"
 
     @property
     def day(self) -> date:
@@ -35,7 +38,8 @@ class Update:
 def catalog() -> tuple[Update, ...]:
     """Newest first, as the page lists them."""
     raw = json.loads(CATALOG.read_text(encoding="utf-8"))
-    return tuple(Update(id=e["id"], key=e["key"], title_es=e["title"]["es"], title_en=e["title"]["en"])
+    return tuple(Update(id=e["id"], key=e["key"], title_es=e["title"]["es"], title_en=e["title"]["en"],
+                        kind=e.get("kind", "new"))
                  for e in raw["entries"])
 
 

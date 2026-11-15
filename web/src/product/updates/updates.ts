@@ -11,11 +11,20 @@
  * week's entries from it (plan UX, B8). An entry is added in both in the same change; a test checks they are the same.
  */
 
+/** What an entry is (plan maestro UX/UI 2026, decision 9): the page filters by it. A communiqué of the owner is a notice. */
+export const UPDATE_KINDS = ["new", "improvement", "fix", "notice"] as const;
+export type UpdateKind = (typeof UPDATE_KINDS)[number];
+
+/** The filters of the page, in the sheet's order (T04): everything, then by kind. */
+export const UPDATE_FILTERS = ["all", "new", "improvement", "fix"] as const;
+export type UpdateFilter = (typeof UPDATE_FILTERS)[number];
+
 export interface UpdateEntry {
   /** YYYY-MM-DD-slug: the day readers could see it, and a name. */
   id: string;
   /** The catalogue key of its words. */
   key: string;
+  kind: UpdateKind;
   /** Where to see it, with the label key of support.updates.go. */
   to?: string;
   go?: string;
@@ -25,26 +34,69 @@ export interface UpdateEntry {
 
 /** Newest first. */
 export const UPDATES: readonly UpdateEntry[] = [
-  { id: "2026-11-06-inicio-para-ti", key: "forYou", to: "/home", go: "home" },
-  { id: "2026-11-06-resumen-para-entender", key: "summary", to: "/matches", go: "matches" },
-  { id: "2026-11-06-picks-en-una-linea", key: "compactWhy", to: "/picks", go: "picks" },
-  { id: "2026-11-06-mas-competiciones", key: "competitions", to: "/matches", go: "matches" },
+  { id: "2026-11-06-inicio-para-ti", key: "forYou", kind: "improvement", to: "/home", go: "home" },
+  {
+    id: "2026-11-06-resumen-para-entender",
+    key: "summary",
+    kind: "improvement",
+    to: "/matches",
+    go: "matches",
+  },
+  {
+    id: "2026-11-06-picks-en-una-linea",
+    key: "compactWhy",
+    kind: "improvement",
+    to: "/picks",
+    go: "picks",
+  },
+  {
+    id: "2026-11-06-mas-competiciones",
+    key: "competitions",
+    kind: "improvement",
+    to: "/matches",
+    go: "matches",
+  },
   {
     id: "2026-11-05-seguir-jugadores-y-mercados",
     key: "followMore",
+    kind: "new",
     to: "/profile#football",
     go: "profile",
   },
-  { id: "2026-11-05-puntos-clave", key: "keyPoints", to: "/matches", go: "matches" },
-  { id: "2026-11-05-como-funciona", key: "howItWorks", to: "/help/how-it-works", go: "howItWorks" },
-  { id: "2026-11-04-explicame", key: "explain", to: "/matches", go: "matches" },
-  { id: "2026-10-27-tu-opinion", key: "feedback" },
-  { id: "2026-10-27-mis-picks", key: "myPicks", to: "/my-picks", go: "myPicks" },
-  { id: "2026-10-27-postpartido", key: "postmatch", to: "/matches", go: "matches" },
-  { id: "2026-10-27-por-que-este-pick", key: "whyPick", to: "/picks", go: "picks" },
-  { id: "2026-10-27-tu-futbol", key: "football", to: "/profile#football", go: "profile" },
-  { id: "2026-10-27-centro-de-partido", key: "matchCentre", to: "/matches", go: "matches" },
-  { id: "2026-10-27-ayuda-y-app", key: "help", to: "/help", go: "help" },
+  { id: "2026-11-05-puntos-clave", key: "keyPoints", kind: "new", to: "/matches", go: "matches" },
+  {
+    id: "2026-11-05-como-funciona",
+    key: "howItWorks",
+    kind: "new",
+    to: "/help/how-it-works",
+    go: "howItWorks",
+  },
+  { id: "2026-11-04-explicame", key: "explain", kind: "new", to: "/matches", go: "matches" },
+  { id: "2026-10-27-tu-opinion", key: "feedback", kind: "new" },
+  {
+    id: "2026-10-27-mis-picks",
+    key: "myPicks",
+    kind: "improvement",
+    to: "/my-picks",
+    go: "myPicks",
+  },
+  { id: "2026-10-27-postpartido", key: "postmatch", kind: "new", to: "/matches", go: "matches" },
+  { id: "2026-10-27-por-que-este-pick", key: "whyPick", kind: "new", to: "/picks", go: "picks" },
+  {
+    id: "2026-10-27-tu-futbol",
+    key: "football",
+    kind: "new",
+    to: "/profile#football",
+    go: "profile",
+  },
+  {
+    id: "2026-10-27-centro-de-partido",
+    key: "matchCentre",
+    kind: "improvement",
+    to: "/matches",
+    go: "matches",
+  },
+  { id: "2026-10-27-ayuda-y-app", key: "help", kind: "new", to: "/help", go: "help" },
 ];
 
 /** fbi.customer.feedback.UPDATE_ID. */
@@ -64,4 +116,21 @@ export function hasUnread(
 ): boolean {
   if (!latest) return false;
   return lastSeen !== latest;
+}
+
+/** How many entries each filter shows: the figures on the filters themselves. */
+export function countByFilter(
+  entries: readonly { kind: UpdateKind }[],
+): Record<UpdateFilter, number> {
+  const count = (kind: UpdateKind) => entries.filter((e) => e.kind === kind).length;
+  return {
+    all: entries.length,
+    new: count("new"),
+    improvement: count("improvement"),
+    fix: count("fix"),
+  };
+}
+
+export function matchesFilter(kind: UpdateKind, filter: UpdateFilter): boolean {
+  return filter === "all" || kind === filter;
 }

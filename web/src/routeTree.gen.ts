@@ -21,7 +21,6 @@ import { Route as ParlaysRouteImport } from './routes/parlays'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as TransparencyRouteImport } from './routes/transparency'
 import { Route as UnlockRouteImport } from './routes/unlock'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as UpdatesRouteImport } from './routes/updates'
@@ -68,6 +67,8 @@ import { Route as OddsIndexRouteImport } from './routes/odds.index'
 import { Route as OddsStatusRouteImport } from './routes/odds.status'
 import { Route as PicksIndexRouteImport } from './routes/picks.index'
 import { Route as PicksPickIdRouteImport } from './routes/picks.$pickId'
+import { Route as TransparencyIndexRouteImport } from './routes/transparency.index'
+import { Route as TransparencyMethodologyRouteImport } from './routes/transparency.methodology'
 import { Route as AdminCustomersIndexRouteImport } from './routes/admin.customers.index'
 import { Route as AdminCustomersUserIdRouteImport } from './routes/admin.customers.$userId'
 import { Route as AdminPlayersIndexRouteImport } from './routes/admin.players.index'
@@ -134,11 +135,6 @@ const RegisterRoute = RegisterRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TransparencyRoute = TransparencyRouteImport.update({
-  id: '/transparency',
-  path: '/transparency',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UnlockRoute = UnlockRouteImport.update({
@@ -371,6 +367,16 @@ const PicksPickIdRoute = PicksPickIdRouteImport.update({
   path: '/picks/$pickId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TransparencyIndexRoute = TransparencyIndexRouteImport.update({
+  id: '/transparency/',
+  path: '/transparency/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransparencyMethodologyRoute = TransparencyMethodologyRouteImport.update({
+  id: '/transparency/methodology',
+  path: '/transparency/methodology',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCustomersIndexRoute = AdminCustomersIndexRouteImport.update({
   id: '/customers/',
   path: '/customers/',
@@ -420,7 +426,6 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/updates': typeof UpdatesRoute
@@ -462,11 +467,13 @@ export interface FileRoutesByFullPath {
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/odds/status': typeof OddsStatusRoute
   '/picks/$pickId': typeof PicksPickIdRoute
+  '/transparency/methodology': typeof TransparencyMethodologyRoute
   '/admin/': typeof AdminIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/odds/': typeof OddsIndexRoute
   '/picks/': typeof PicksIndexRoute
+  '/transparency/': typeof TransparencyIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
@@ -487,7 +494,6 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/updates': typeof UpdatesRoute
@@ -529,11 +535,13 @@ export interface FileRoutesByTo {
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/odds/status': typeof OddsStatusRoute
   '/picks/$pickId': typeof PicksPickIdRoute
+  '/transparency/methodology': typeof TransparencyMethodologyRoute
   '/admin': typeof AdminIndexRoute
   '/help': typeof HelpIndexRoute
   '/matches': typeof MatchesIndexRoute
   '/odds': typeof OddsIndexRoute
   '/picks': typeof PicksIndexRoute
+  '/transparency': typeof TransparencyIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
@@ -556,7 +564,6 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/transparency': typeof TransparencyRoute
   '/unlock': typeof UnlockRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/updates': typeof UpdatesRoute
@@ -598,11 +605,13 @@ export interface FileRoutesById {
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/odds/status': typeof OddsStatusRoute
   '/picks/$pickId': typeof PicksPickIdRoute
+  '/transparency/methodology': typeof TransparencyMethodologyRoute
   '/admin/': typeof AdminIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/odds/': typeof OddsIndexRoute
   '/picks/': typeof PicksIndexRoute
+  '/transparency/': typeof TransparencyIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
@@ -626,7 +635,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/reset-password'
-    | '/transparency'
     | '/unlock'
     | '/unsubscribe'
     | '/updates'
@@ -668,11 +676,13 @@ export interface FileRouteTypes {
     | '/matches/$fixtureId'
     | '/odds/status'
     | '/picks/$pickId'
+    | '/transparency/methodology'
     | '/admin/'
     | '/help/'
     | '/matches/'
     | '/odds/'
     | '/picks/'
+    | '/transparency/'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
@@ -693,7 +703,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/reset-password'
-    | '/transparency'
     | '/unlock'
     | '/unsubscribe'
     | '/updates'
@@ -735,11 +744,13 @@ export interface FileRouteTypes {
     | '/matches/$fixtureId'
     | '/odds/status'
     | '/picks/$pickId'
+    | '/transparency/methodology'
     | '/admin'
     | '/help'
     | '/matches'
     | '/odds'
     | '/picks'
+    | '/transparency'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
@@ -761,7 +772,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/reset-password'
-    | '/transparency'
     | '/unlock'
     | '/unsubscribe'
     | '/updates'
@@ -803,11 +813,13 @@ export interface FileRouteTypes {
     | '/matches/$fixtureId'
     | '/odds/status'
     | '/picks/$pickId'
+    | '/transparency/methodology'
     | '/admin/'
     | '/help/'
     | '/matches/'
     | '/odds/'
     | '/picks/'
+    | '/transparency/'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
@@ -830,7 +842,6 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  TransparencyRoute: typeof TransparencyRoute
   UnlockRoute: typeof UnlockRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   UpdatesRoute: typeof UpdatesRoute
@@ -842,10 +853,12 @@ export interface RootRouteChildren {
   MatchesFixtureIdRoute: typeof MatchesFixtureIdRoute
   OddsStatusRoute: typeof OddsStatusRoute
   PicksPickIdRoute: typeof PicksPickIdRoute
+  TransparencyMethodologyRoute: typeof TransparencyMethodologyRoute
   HelpIndexRoute: typeof HelpIndexRoute
   MatchesIndexRoute: typeof MatchesIndexRoute
   OddsIndexRoute: typeof OddsIndexRoute
   PicksIndexRoute: typeof PicksIndexRoute
+  TransparencyIndexRoute: typeof TransparencyIndexRoute
   HelpMessagesTicketIdRoute: typeof HelpMessagesTicketIdRoute
 }
 
@@ -933,13 +946,6 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/transparency': {
-      id: '/transparency'
-      path: '/transparency'
-      fullPath: '/transparency'
-      preLoaderRoute: typeof TransparencyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/unlock': {
@@ -1264,6 +1270,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PicksPickIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/transparency/': {
+      id: '/transparency/'
+      path: '/transparency'
+      fullPath: '/transparency/'
+      preLoaderRoute: typeof TransparencyIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transparency/methodology': {
+      id: '/transparency/methodology'
+      path: '/transparency/methodology'
+      fullPath: '/transparency/methodology'
+      preLoaderRoute: typeof TransparencyMethodologyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/customers/': {
       id: '/admin/customers/'
       path: '/customers'
@@ -1411,7 +1431,6 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  TransparencyRoute: TransparencyRoute,
   UnlockRoute: UnlockRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   UpdatesRoute: UpdatesRoute,
@@ -1423,10 +1442,12 @@ const rootRouteChildren: RootRouteChildren = {
   MatchesFixtureIdRoute: MatchesFixtureIdRoute,
   OddsStatusRoute: OddsStatusRoute,
   PicksPickIdRoute: PicksPickIdRoute,
+  TransparencyMethodologyRoute: TransparencyMethodologyRoute,
   HelpIndexRoute: HelpIndexRoute,
   MatchesIndexRoute: MatchesIndexRoute,
   OddsIndexRoute: OddsIndexRoute,
   PicksIndexRoute: PicksIndexRoute,
+  TransparencyIndexRoute: TransparencyIndexRoute,
   HelpMessagesTicketIdRoute: HelpMessagesTicketIdRoute,
 }
 export const routeTree = rootRouteImport

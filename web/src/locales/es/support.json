@@ -488,7 +488,21 @@
       "title": "¿Qué te gustaría que cambiara?",
       "body": "Cuéntanoslo: leemos cada sugerencia, y lo que cambie gracias a ellas aparecerá aquí.",
       "action": "Enviar una sugerencia"
-    }
+    },
+    "filterLabel": "Qué novedades ver",
+    "filter": {
+      "all": "Todo",
+      "new": "Nuevo",
+      "improvement": "Mejoras",
+      "fix": "Correcciones"
+    },
+    "kind": {
+      "new": "Nuevo",
+      "improvement": "Mejora",
+      "fix": "Corrección",
+      "notice": "Aviso"
+    },
+    "emptyFilter": "Todavía no hay novedades de este tipo."
   },
   "howItWorks": {
     "pageTitle": "Cómo funciona PrediGol",

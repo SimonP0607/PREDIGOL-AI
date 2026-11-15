@@ -97,9 +97,11 @@ describe("the server's copy (plan UX, B8: the weekly summary by e-mail names the
       "updates.json",
     );
     const backend = JSON.parse(readFileSync(file, "utf8")) as {
-      entries: { id: string; key: string; title: { es: string; en: string } }[];
+      entries: { id: string; key: string; kind: string; title: { es: string; en: string } }[];
     };
-    expect(backend.entries.map((e) => [e.id, e.key])).toEqual(UPDATES.map((e) => [e.id, e.key]));
+    expect(backend.entries.map((e) => [e.id, e.key, e.kind])).toEqual(
+      UPDATES.map((e) => [e.id, e.key, e.kind]),
+    );
     for (const lang of ["es", "en"] as const) {
       setLocale(lang);
       for (const e of backend.entries) {
@@ -145,13 +147,33 @@ describe("the page", () => {
 
   test("an entry says it came from the readers' comments only when it did", async () => {
     setLocale("es");
-    const plain = await html(<UpdatesView entries={[{ id: "2026-11-02-x", key: "feedback" }]} />);
+    const plain = await html(
+      <UpdatesView entries={[{ id: "2026-11-02-x", key: "feedback", kind: "new" }]} />,
+    );
     expect(plain).not.toContain('data-testid="update-from-readers"');
     const theirs = await html(
-      <UpdatesView entries={[{ id: "2026-11-02-x", key: "feedback", fromReaders: true }]} />,
+      <UpdatesView
+        entries={[{ id: "2026-11-02-x", key: "feedback", kind: "new", fromReaders: true }]}
+      />,
     );
     expect(theirs).toContain('data-testid="update-from-readers"');
     expect(theirs).toContain(t("support.updates.fromReaders"));
     expect(renderToStaticMarkup(<p>{t("support.updates.intro")}</p>)).toContain("lo decimos");
+  });
+});
+
+describe("the kinds and the filters (decision 9)", () => {
+  test("every entry has a kind, and the filters count what they show", async () => {
+    const { UPDATE_KINDS, countByFilter, matchesFilter } = await import("./updates");
+    for (const e of UPDATES) expect(UPDATE_KINDS as readonly string[], e.id).toContain(e.kind);
+    const counts = countByFilter(UPDATES);
+    expect(counts.all).toBe(UPDATES.length);
+    expect(counts.new + counts.improvement + counts.fix).toBe(
+      UPDATES.filter((e) => e.kind !== "notice").length,
+    );
+    for (const f of ["new", "improvement", "fix"] as const)
+      expect(UPDATES.filter((e) => matchesFilter(e.kind, f)).length, f).toBe(counts[f]);
+    expect(matchesFilter("notice", "all")).toBe(true);
+    expect(matchesFilter("notice", "new")).toBe(false);
   });
 });

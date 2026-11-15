@@ -19,6 +19,7 @@ export const READER_PAGES = [
   "/odds/status",
   "/profile",
   "/transparency",
+  "/transparency/methodology",
   "/updates",
   "/help",
   "/help/glossary",

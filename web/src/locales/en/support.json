@@ -488,7 +488,21 @@
       "title": "What would you like to change?",
       "body": "Tell us: we read every suggestion, and whatever changes thanks to them will show up here.",
       "action": "Send a suggestion"
-    }
+    },
+    "filterLabel": "Which updates to see",
+    "filter": {
+      "all": "All",
+      "new": "New",
+      "improvement": "Improvements",
+      "fix": "Fixes"
+    },
+    "kind": {
+      "new": "New",
+      "improvement": "Improvement",
+      "fix": "Fix",
+      "notice": "Notice"
+    },
+    "emptyFilter": "No updates of this kind yet."
   },
   "howItWorks": {
     "pageTitle": "How PrediGol works",
