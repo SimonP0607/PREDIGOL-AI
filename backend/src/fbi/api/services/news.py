@@ -600,7 +600,8 @@ SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, th.name AS home_name,
   JOIN core.competitions c ON c.id = cs.competition_id
  WHERE c.is_tracked AND f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s
    AND f.status_group IN ('scheduled', 'live')
-   AND EXISTS (SELECT 1 FROM ai.evidence e WHERE e.fixture_id = f.id AND e.origin = 'web')
+   AND EXISTS (SELECT 1 FROM ai.evidence e WHERE e.fixture_id = f.id AND e.origin = 'web'
+                  AND (e.subject_type IS NULL OR %(typed)s))
  ORDER BY f.kickoff_at, f.id
  LIMIT %(limit)s
 """
@@ -611,7 +612,7 @@ SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, th.name AS home_name,
 def _feed_items(conn: Conn, *, at: datetime) -> list[tuple[Mapping[str, Any], NewsItem]]:
     """Every listed item with its match's row, newest first. The same for every reader; kept two minutes."""
     fixtures = fetch_all(conn, FEED_MATCHES_SQL, {"since": at - FEED_BEFORE, "until": at + FEED_AFTER,
-                                                  "limit": FEED_MATCHES})
+                                                  "limit": FEED_MATCHES, "typed": typed_visible(conn)})
     rows = _read(conn, [int(f["id"]) for f in fixtures], at)
     found: list[tuple[Mapping[str, Any], NewsItem]] = []
     for f in fixtures:
