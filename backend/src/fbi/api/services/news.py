@@ -53,8 +53,10 @@ from fbi.ai.gates import typed_visible
 from fbi.api.cache import shared
 from fbi.api.contracts.news import (
     Assertion,
+    FeedStatus,
     MatchNews,
     NewsClaim,
+    NewsFeed,
     NewsItem,
     NewsKind,
     NewsSearch,
@@ -579,3 +581,78 @@ def news_for(conn: Conn, follows: Follows, *, at: datetime | None = None) -> Env
         return unavailable(body, "No confirmed or probable news of the reader's matches.", status=DataStatus.EMPTY,
                            count=0)
     return ok(body, count=len(body.items), data_as_of=max(i.item.seen_at for i in body.items))
+
+
+# ── /news: the Noticias section (plan maestro UX/UI 2026, decision 2; BE-040) ────────────────────────────────────────
+
+FEED_BEFORE: Final = timedelta(hours=3)
+FEED_AFTER: Final = timedelta(hours=72)
+FEED_MATCHES: Final = 300
+FEED_STATUSES: Final[tuple[FeedStatus, ...]] = ("CONFIRMED", "PROBABLE", "CONTRADICTORY", "RUMOR")
+
+FEED_MATCHES_SQL = """
+SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, th.name AS home_name, f.away_team_id, ta.name AS away_name,
+       c.id AS competition_id, c.name AS competition
+  FROM core.fixtures f
+  JOIN core.teams th ON th.id = f.home_team_id
+  JOIN core.teams ta ON ta.id = f.away_team_id
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+ WHERE c.is_tracked AND f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s
+   AND f.status_group IN ('scheduled', 'live')
+   AND EXISTS (SELECT 1 FROM ai.evidence e WHERE e.fixture_id = f.id AND e.origin = 'web'
+                  AND (e.subject_type IS NULL OR %(typed)s))
+ ORDER BY f.kickoff_at, f.id
+ LIMIT %(limit)s
+"""
+"""The followed competitions' matches not yet over that have any item of the web, from three hours ago to 72 hours ahead."""
+
+
+@shared(120)
+def _feed_items(conn: Conn, *, at: datetime) -> list[tuple[Mapping[str, Any], NewsItem]]:
+    """Every listed item with its match's row, newest first. The same for every reader; kept two minutes."""
+    fixtures = fetch_all(conn, FEED_MATCHES_SQL, {"since": at - FEED_BEFORE, "until": at + FEED_AFTER,
+                                                  "limit": FEED_MATCHES, "typed": typed_visible(conn)})
+    rows = _read(conn, [int(f["id"]) for f in fixtures], at)
+    found: list[tuple[Mapping[str, Any], NewsItem]] = []
+    for f in fixtures:
+        for card in cards(rows.get(int(f["id"]), []), _teams(f)):
+            if card.status in FEED_STATUSES:
+                # a single outlet's «confirmed» reads as probable, as on Inicio (one rule of what «confirmed» means)
+                found.append((f, for_home(card)))
+    found.sort(key=lambda pair: (-(pair[1].published_at or pair[1].seen_at).timestamp(), pair[1].id))
+    return found
+
+
+def feed(conn: Conn, follows: Follows, *, mine: bool = False, status: FeedStatus | None = None, kind: str | None = None,
+         team: int | None = None, limit: int = 20, offset: int = 0, at: datetime | None = None) -> Envelope[NewsFeed | None]:
+    """The Noticias section: the items of the matches not yet over, newest first, with the filters of the page - the reader's
+    own matches (``mine``), a status, a kind, a team. Read only: nothing is searched and nothing of PrediGol Intelligence
+    changes. ``not_available`` while the owner keeps the news from readers (FBI_NEWS_USERS=0)."""
+    if not users_may_see():
+        return unavailable(None, "The news are not shown to users at the moment.")
+    moment = at or now()
+    listed: list[tuple[TodayNewsMatch, NewsItem]] = []
+    for f, card in _feed_items(conn, at=moment.replace(second=0, microsecond=0)):
+        reason = follow_reason((int(f["home_team_id"]), str(f["home_name"])), (int(f["away_team_id"]), str(f["away_name"])),
+                               (int(f["competition_id"]), str(f["competition"])), follows)
+        if mine and reason is None:
+            continue
+        if kind is not None and card.kind != kind:
+            continue
+        if team is not None and team not in (int(f["home_team_id"]), int(f["away_team_id"])):
+            continue
+        listed.append((TodayNewsMatch(fixture_id=int(f["id"]), kickoff_at=f["kickoff_at"],
+                                      status_group=str(f["status_group"]), home=f["home_name"], away=f["away_name"],
+                                      competition=f["competition"], followed=reason), card))
+    by_status: dict[FeedStatus, int] = dict.fromkeys(FEED_STATUSES, 0)
+    for _, card in listed:
+        by_status[cast(FeedStatus, card.status)] += 1
+    shown = [pair for pair in listed if status is None or pair[1].status == status]
+    page = shown[offset:offset + limit]
+    body = NewsFeed(items=[TodayNewsItem(match=m, item=c) for m, c in page], total=len(shown), counts=by_status,
+                    next_offset=offset + limit if offset + limit < len(shown) else None,
+                    suggested=follows.suggested if mine else False)
+    if not shown:
+        return unavailable(body, "No news of the matches not yet over.", status=DataStatus.EMPTY, count=0)
+    return ok(body, count=len(page), data_as_of=max((c.seen_at for _, c in page), default=None))

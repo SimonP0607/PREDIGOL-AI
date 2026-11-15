@@ -69,7 +69,12 @@
     "save": "Save",
     "cancel": "Cancel",
     "saved": "Your leagues and teams are saved.",
-    "failed": "We could not save your leagues and teams. Try again."
+    "failed": "We could not save your leagues and teams. Try again.",
+    "bellOn": "Notices of {name}: on",
+    "bellOff": "Notices of {name}: off",
+    "bellsTitle": "Notices per team",
+    "bellsHelp": "With the bell off we do not tell you about its line-ups and it stays out of your day's summary. Nothing else changes.",
+    "bellFailed": "We could not change the notice. Try again."
   },
   "follow": {
     "add": "Follow {team}",

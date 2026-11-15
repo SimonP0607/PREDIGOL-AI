@@ -1541,5 +1541,26 @@
       "htft": "{ht} / {ft}",
       "other": "Option {n}"
     }
+  },
+  "newsFeed": {
+    "title": "News",
+    "subtitle": "What the sources say about the coming matches: absences, doubts, returns and line-ups, each with its source and how certain it is.",
+    "filterLabel": "Which news to see",
+    "filter": {
+      "all": "All",
+      "CONFIRMED": "Confirmed",
+      "PROBABLE": "Probable",
+      "CONTRADICTORY": "Contradictory",
+      "RUMOR": "Rumours"
+    },
+    "mine": "Only what I follow",
+    "mineSuggested": "You follow no teams or leagues yet: these are the ones suggested for Colombia.",
+    "more": "See more news",
+    "empty": "No news of the coming matches for now.",
+    "emptyFilter": "No news with this filter.",
+    "emptyBody": "PrediGol reads each match's press on the day it is played. With nothing confirmed, we fill nothing in.",
+    "closed": "This section is not available yet.",
+    "count_one": "{count} news item",
+    "count_other": "{count} news items"
   }
 }

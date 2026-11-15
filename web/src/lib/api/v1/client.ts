@@ -172,7 +172,7 @@ import type { MatchReading } from "./types_reading";
 import type { ExplainIntent, Explanation, SlipLegBody } from "./types_explain";
 import type { PickExplanation } from "./types_explanation";
 import type { Inbox, InboxFilter, InboxUnread } from "./types_inbox";
-import type { MatchNews, NewsDiagnosis, TodayNews } from "./types_news";
+import type { MatchNews, NewsDiagnosis, NewsFeed, NewsFeedQuery, TodayNews } from "./types_news";
 import type { NoPick, Today } from "./types_today";
 import type { MeToday } from "./types_me_today";
 import type {
@@ -632,6 +632,9 @@ export const v1 = {
   myFavorites: () => getJson<FavoritesView>("/me/favorites"),
   /** They become exactly these: 422 too_many_leagues / too_many_teams / unknown_league / unknown_team otherwise. */
   saveFavorites: (body: FavoritesIn) => putJson<FavoritesView>("/me/favorites", body),
+  /** A followed team's bell (decision 8): off, no line-up notice of it and out of the day's summary. */
+  setTeamBell: (teamId: number, notify: boolean) =>
+    putJson<FavoritesView>("/me/favorites/team-bell", { team_id: teamId, notify }),
   /** Every league PrediGol follows, and the teams of those leagues whose name matches `q` (two letters or more). */
   favoriteOptions: (q = "") => getJson<FavoriteOptions>("/me/favorites/options", { q }),
   myOnboarding: () => getJson<OnboardingState>("/me/onboarding"),
@@ -863,6 +866,13 @@ export const v1 = {
    * Home's «Noticias» as a summary (plan de Inicio, 3.3): the reader's own - two at most - or, with `general`, the suggested
    * matches' - three at most, the same for everyone.
    */
+  /** The Noticias section (decision 2): a page of the matches' news, newest first, with the page's filters. */
+  newsFeed: (q: NewsFeedQuery = {}) =>
+    getJson<Envelope<NewsFeed | null>>("/news", {
+      ...(q.mine ? { mine: "true" } : {}),
+      ...(q.status ? { status: q.status } : {}),
+      ...(q.offset ? { offset: String(q.offset) } : {}),
+    }),
   todayNews: (scope: "mine" | "general" = "mine") =>
     getJson<Envelope<TodayNews | null>>(
       scope === "general" ? "/today/news?scope=general" : "/today/news",

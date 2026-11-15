@@ -105,7 +105,7 @@ async function fits(page: Page, where: string): Promise<void> {
   expect(over, `${where}: nothing sideways`).toBeLessThanOrEqual(1);
 }
 
-test("on a 320 px phone: the eight blocks folded with their line, two taps from «Más», each opens with a tap and folds again", async ({
+test("on a 320 px phone: the index lists the eight sections with their line, two taps from «Más», and each opens on its own screen", async ({
   page,
 }) => {
   test.setTimeout(180_000);
@@ -123,11 +123,11 @@ test("on a 320 px phone: the eight blocks folded with their line, two taps from 
     expect(summary.status).toBe(200);
     for (const key of BLOCKS) {
       const block = page.getByTestId(`profile-block-${key}`);
-      await expect(block, `${key}: folded on a phone`).toHaveAttribute("data-open", "false");
+      await expect(block, `${key}: a row of the index`).toHaveAttribute("data-open", "false");
       await expect(page.getByTestId(`profile-summary-${key}`)).not.toHaveText("");
       await expect(
         page.getByTestId(CONTENT[key]),
-        `${key}: nothing mounted while folded`,
+        `${key}: nothing of it mounted on the index`,
       ).toHaveCount(0);
       const head = page.getByTestId(`profile-toggle-${key}`);
       expect(
@@ -143,14 +143,15 @@ test("on a 320 px phone: the eight blocks folded with their line, two taps from 
     await expect(page.getByTestId("profile-summary-region")).toContainText("Español");
     await fits(page, "the folded centre");
     for (const key of BLOCKS) {
-      const head = page.getByTestId(`profile-toggle-${key}`);
-      await head.click();
-      await expect(head).toHaveAttribute("aria-expanded", "true");
+      // decision 7: a section is a screen of its own, with its address and the way back to the index
+      await page.getByTestId(`profile-toggle-${key}`).click();
+      await expect(page).toHaveURL(new RegExp(`/profile/${key}$`));
+      await expect(page.getByTestId(`profile-block-${key}`)).toHaveAttribute("data-open", "true");
       await expect(page.getByTestId(CONTENT[key]).first(), `${key}: its content`).toBeVisible();
       await settle(page);
       await fits(page, `${key} open`);
-      await head.click();
-      await expect(head).toHaveAttribute("aria-expanded", "false");
+      await page.getByTestId("profile-back").click();
+      await expect(page).toHaveURL(/\/profile$/);
       await expect(page.getByTestId(CONTENT[key])).toHaveCount(0);
     }
     await assertClean(page, w);
@@ -160,7 +161,9 @@ test("on a 320 px phone: the eight blocks folded with their line, two taps from 
   }
 });
 
-test("by keyboard: Tab reaches each header, Enter and Space open and fold it", async ({ page }) => {
+test("by keyboard: Tab reaches each row, Enter opens its screen and the way back", async ({
+  page,
+}) => {
   test.setTimeout(120_000);
   const admin = await owner();
   const { id, email } = await account(admin, "keys");
@@ -171,20 +174,20 @@ test("by keyboard: Tab reaches each header, Enter and Space open and fold it", a
     await page.goto("/profile");
     const first = page.getByTestId("profile-toggle-account");
     await first.focus();
-    await page.keyboard.press("Enter");
-    await expect(first).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByTestId("alias-input")).toBeVisible();
-    await page.keyboard.press("Space");
-    await expect(first, "the focus stays on the header").toHaveAttribute("aria-expanded", "false");
-    await expect(first).toBeFocused();
-    // folded, the next stop is the next block's header
+    // the next stop is the next section's row
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("profile-toggle-football")).toBeFocused();
-    await page.keyboard.press("Space");
-    await expect(page.getByTestId("profile-toggle-football")).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
+    await page.keyboard.press("Shift+Tab");
+    await expect(first).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/profile\/account$/);
+    await expect(page.getByTestId("alias-input")).toBeVisible();
+    // and back to the index by keyboard
+    await page.getByTestId("profile-back").focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/profile$/);
+    await page.getByTestId("profile-toggle-football").focus();
+    await page.keyboard.press("Enter");
     await expect(page.getByTestId("football-panel")).toBeVisible();
     await assertClean(page, w);
   } finally {
@@ -193,7 +196,7 @@ test("by keyboard: Tab reaches each header, Enter and Space open and fold it", a
   }
 });
 
-test("an address opens its block: an e-mail's /profile#privacy, #membership and the old #language", async ({
+test("an old address opens its section's screen: an e-mail's /profile#privacy, #membership and the old #language", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -215,11 +218,9 @@ test("an address opens its block: an e-mail's /profile#privacy, #membership and 
       await expect(block, `#${hash} opens ${key}`).toHaveAttribute("data-open", "true");
       await expect(page.getByTestId(CONTENT[key]).first()).toBeVisible();
       await expect(block).toBeInViewport();
-      for (const other of BLOCKS.filter((k) => k !== key))
-        await expect(page.getByTestId(`profile-block-${other}`)).toHaveAttribute(
-          "data-open",
-          "false",
-        );
+      await expect(page, `#${hash} is sent to the section's own address`).toHaveURL(
+        new RegExp(`/profile/${key}(#${hash})?$`),
+      );
     }
     await assertClean(page, w);
   } finally {
@@ -228,7 +229,7 @@ test("an address opens its block: an e-mail's /profile#privacy, #membership and 
   }
 });
 
-test("at a desk: the eight open with their content, the alias changes and the state is said in words, never an internal word", async ({
+test("at a desk: each section on its screen with its content, the alias changes and the state is said in words, never an internal word", async ({
   page,
 }) => {
   test.setTimeout(150_000);
@@ -238,14 +239,15 @@ test("at a desk: the eight open with their content, the alias changes and the st
     await page.setViewportSize(DESK);
     const w = watch(page, { expect401: true, expectStatus: [403] });
     await signIn(page, email);
-    await page.goto("/profile");
     for (const key of BLOCKS) {
+      await page.goto(`/profile/${key}`);
       await expect(page.getByTestId(`profile-block-${key}`)).toHaveAttribute("data-open", "true");
       await expect(page.getByTestId(CONTENT[key]).first()).toBeVisible();
+      await settle(page);
+      const text = await page.locator("main").innerText();
+      expect(text, `${key}: no internal word`).not.toMatch(INTERNAL);
     }
-    await settle(page);
-    const text = await page.locator("main").innerText();
-    expect(text, "no internal word with every block open").not.toMatch(INTERNAL);
+    await page.goto("/profile/account");
     await expect(page.getByTestId("account-state")).toContainText("En prueba hasta el");
     await expect(page.getByTestId("account-since")).toContainText("En PrediGol desde el");
     // the alias: never empty, saved, kept
@@ -260,8 +262,8 @@ test("at a desk: the eight open with their content, the alias changes and the st
     await expect(page.getByTestId("alias-input")).toHaveValue("Hincha de prueba");
     const after = await getJson<Summary>(page.request, "/api/v1/me/account");
     expect(after.body.account.display_name).toBe("Hincha de prueba");
-    // folding one shows its line
-    await page.getByTestId("profile-toggle-account").click();
+    // the index says it in the section's line
+    await page.getByTestId("profile-back").click();
     await expect(page.getByTestId("profile-summary-account")).toContainText("Hincha de prueba");
     await assertClean(page, w);
   } finally {

@@ -69,7 +69,12 @@
     "save": "Guardar",
     "cancel": "Cancelar",
     "saved": "Guardamos tus ligas y equipos.",
-    "failed": "No pudimos guardar tus ligas y equipos. Inténtalo de nuevo."
+    "failed": "No pudimos guardar tus ligas y equipos. Inténtalo de nuevo.",
+    "bellOn": "Avisos de {name}: encendidos",
+    "bellOff": "Avisos de {name}: apagados",
+    "bellsTitle": "Avisos por equipo",
+    "bellsHelp": "Con la campana apagada no te avisamos de sus alineaciones ni entra en tu resumen del día. Lo demás no cambia.",
+    "bellFailed": "No pudimos cambiar el aviso. Inténtalo de nuevo."
   },
   "follow": {
     "add": "Seguir a {team}",

@@ -503,8 +503,8 @@ describe("the history of changes", () => {
         { key: "line_value", version: "clv-v1", since: "2026-10-27" },
       ],
       [
-        { id: "2026-11-04-explicame", key: "explain" },
-        { id: "2026-10-27-tu-opinion", key: "feedback" },
+        { id: "2026-11-04-explicame", key: "explain", kind: "new" },
+        { id: "2026-10-27-tu-opinion", key: "feedback", kind: "new" },
       ],
     );
     expect(out.map((c) => `${c.day}:${c.kind}:${c.key}`)).toEqual([

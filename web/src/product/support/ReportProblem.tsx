@@ -90,7 +90,7 @@ function ReportForm({ options, onClose }: { options: ReportOptions; onClose: () 
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [category, setCategory] = useState<SupportCategory | null>(options.category ?? null);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(() => (options.text ?? "").slice(0, MAX_TEXT));
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<{ message: string; full: boolean } | null>(null);
   const [done, setDone] = useState<SupportTicket | null>(null);

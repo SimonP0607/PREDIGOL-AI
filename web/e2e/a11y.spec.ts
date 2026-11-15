@@ -95,14 +95,24 @@ test.describe("the product, signed in", () => {
 // Plan UX, B1: the account centre on a phone - folded (the eight headers and their lines) and with every block open.
 test.describe("the account centre on a phone", () => {
   test.use({ storageState: statePath("user") });
-  test("axe on the profile's eight blocks open at 390 px", async ({ page }, info) => {
+  test("axe on each of the profile's sections, on its own screen, at 390 px", async ({
+    page,
+  }, info) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/profile");
-    await settle(page);
-    for (const toggle of await page.locator('[data-testid^="profile-toggle-"]').all())
-      await toggle.click();
-    await settle(page);
-    await measure(page, info, "/profile+open", 390);
+    // decision 7: a section is a screen (the index is measured with the reader's pages)
+    for (const section of [
+      "account",
+      "football",
+      "region",
+      "notifications",
+      "privacy",
+      "security",
+      "help",
+    ]) {
+      await page.goto(`/profile/${section}`);
+      await settle(page);
+      await measure(page, info, `/profile/${section}`, 390);
+    }
   });
 });
 

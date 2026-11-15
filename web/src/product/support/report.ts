@@ -22,6 +22,8 @@ export interface ReportOptions {
   matchId?: number | undefined;
   /** The error the reader is looking at, when the sheet opens from it. */
   requestId?: string | null | undefined;
+  /** What the reader already wrote elsewhere (the help's assistant): the message starts with it (WCAG 3.3.7). */
+  text?: string | undefined;
 }
 
 export interface ReportValue {

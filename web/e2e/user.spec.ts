@@ -1221,6 +1221,8 @@ test("Profile shows the account's language and time zone", async ({ page }) => {
   const t = L[lang()];
   await open(page, w, "/profile");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(t.profile.title);
+  // decision 7: each section on its own screen
+  await open(page, w, "/profile/region");
   const tz = lang() === "es" ? "America/Bogota" : "Europe/Madrid";
   await expect(page.getByTestId("current-timezone")).toContainText(tz);
   await expect(page.getByTestId(`profile-lang-${lang()}`)).toHaveAttribute("aria-checked", "true");
@@ -1230,6 +1232,7 @@ test("Profile shows the account's language and time zone", async ({ page }) => {
   await expect(zones.getByRole("option").first()).toBeVisible();
   await expect(zones.locator("> li:not([role='presentation'])")).toHaveCount(0);
   // Plan UX, A1 (F07): no internal role on screen - not in the profile, not in the account menu.
+  await open(page, w, "/profile/account");
   await expect(page.getByTestId("profile-role")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText("USER");
   // The session slides with use (F05): the profile says it closes sooner if it goes unused.
@@ -1254,7 +1257,7 @@ test("Profile security: a failure to read the sessions or the activity says so, 
   });
   await page.route("**/api/v1/auth/me/sessions", (route) => route.fulfill(fault("e2e-sessions-1")));
   await page.route("**/api/v1/auth/me/access*", (route) => route.fulfill(fault("e2e-access-1")));
-  await page.goto("/profile");
+  await page.goto("/profile/security");
   const sessions = page.getByTestId("sessions-error");
   // The error shows after the two retries of a 5xx (1 s and 2 s apart) - and, on the QA dev server under load, after
   // up to 12 s of hydration (A2's run 3: the first request left 12.6 s after the page loaded).

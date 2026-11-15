@@ -39,6 +39,12 @@ does not exist (404) and the page shows no way to it - and ``=1`` opens it to ev
 reads what the capture already stored: it asks the provider nothing and changes no price."""
 
 
+NEWS_FEED: Final = "FBI_NEWS_FEED"
+"""The Noticias section (plan maestro UX/UI 2026, decision 2; BE-040): OFF while the line is absent - ``GET /news`` does not
+exist (404) and the page shows no way to it - and ``=1`` opens it to every signed-in reader (the API recreated). It lists the
+items the matches' news already show (``FBI_NEWS_USERS`` still decides whether readers see news at all); it searches nothing."""
+
+
 def user_switch(name: str, *, default: bool) -> bool:
     """Whether the switch ``name`` is on: ``default`` while the line is absent or empty, off for a value it cannot read."""
     raw = environment().get(name)
@@ -65,3 +71,8 @@ def odds_explorer_on() -> bool:
 def odds_status_on() -> bool:
     """Whether readers get «Estado de los precios» (``FBI_ODDS_STATUS``, off by default)."""
     return user_switch(ODDS_STATUS, default=False)
+
+
+def news_feed_on() -> bool:
+    """Whether readers get the Noticias section (``FBI_NEWS_FEED``, off by default)."""
+    return user_switch(NEWS_FEED, default=False)

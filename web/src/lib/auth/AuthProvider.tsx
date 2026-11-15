@@ -5,6 +5,7 @@
  * asks the API who it is (/auth/me). Permissions here decide what is PRESENTED; the
  * API enforces them independently on every request.
  */
+import { setDisplay } from "@/lib/display";
 import {
   createContext,
   useCallback,
@@ -180,6 +181,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isSuperAdmin = permissions.has("admin");
     const locale: Locale = user && isLocale(user.language) ? user.language : anonLocale;
     const timeZone = user && isValidTimeZone(user.timezone) ? user.timezone : detectTimeZone();
+    // how the reader wants PrediGol shown (decision 8): set before anything below is drawn, as the language is
+    setDisplay(user?.display);
     return {
       status,
       user,

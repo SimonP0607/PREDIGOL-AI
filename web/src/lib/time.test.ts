@@ -194,3 +194,19 @@ describe("the hour on a screen", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("the reader's clock (decision 8): how an hour is written, never the hour", () => {
+  test("24 hours unless they chose 12; 12 is short and never breaks in two", async () => {
+    const { setDisplay } = await import("@/lib/display");
+    const at = "2026-11-15T19:31:00Z";
+    expect(formatTime(at, "America/Bogota")).toBe("14:31");
+    setDisplay({ time_format: "12h" });
+    try {
+      expect(formatTime(at, "America/Bogota")).toBe("2:31 pm");
+      expect(formatTime("2026-11-15T05:05:00Z", "America/Bogota")).toBe("12:05 am");
+    } finally {
+      setDisplay(null);
+    }
+    expect(formatTime(at, "America/Bogota")).toBe("14:31");
+  });
+});

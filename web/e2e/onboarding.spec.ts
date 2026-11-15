@@ -513,11 +513,8 @@ test("the markets a reader reads are chosen in their profile, kept by a save tha
     await signIn(page, email);
     await skipWelcome(page.request);
     await consents(page);
-    await page.goto("/profile");
-    // the blocks are open at a desk and folded on a phone: open it only when it is folded
-    const head = page.getByTestId("profile-toggle-football");
-    await expect(head).toHaveAttribute("aria-expanded", /true|false/);
-    if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
+    // decision 7: «Tu fútbol» is a screen of the profile
+    await page.goto("/profile/football");
     await page.getByTestId("football-edit").click();
     const market = page.getByTestId("fav-market").filter({ hasText: t.markets.name.BTTS });
     await expect(market).toHaveAttribute("aria-pressed", "false");

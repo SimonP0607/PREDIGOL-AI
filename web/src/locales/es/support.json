@@ -44,7 +44,9 @@
       "nothing": "Los mensajes desde PrediGol están pausados y todavía no hay otro canal publicado. Vuelve a intentarlo más tarde.",
       "hours": "Atención: {hours}",
       "stillFailing": "¿Sigue fallando? Escríbenos",
-      "stillFailingText": "Hola, algo sigue fallando en PrediGol:"
+      "stillFailingText": "Hola, algo sigue fallando en PrediGol:",
+      "telegram": "Canal de Telegram",
+      "telegramNote": "Solo avisos"
     },
     "tickets": {
       "title": "Tus mensajes",
@@ -488,7 +490,21 @@
       "title": "¿Qué te gustaría que cambiara?",
       "body": "Cuéntanoslo: leemos cada sugerencia, y lo que cambie gracias a ellas aparecerá aquí.",
       "action": "Enviar una sugerencia"
-    }
+    },
+    "filterLabel": "Qué novedades ver",
+    "filter": {
+      "all": "Todo",
+      "new": "Nuevo",
+      "improvement": "Mejoras",
+      "fix": "Correcciones"
+    },
+    "kind": {
+      "new": "Nuevo",
+      "improvement": "Mejora",
+      "fix": "Corrección",
+      "notice": "Aviso"
+    },
+    "emptyFilter": "Todavía no hay novedades de este tipo."
   },
   "howItWorks": {
     "pageTitle": "Cómo funciona PrediGol",
@@ -577,5 +593,25 @@
   },
   "whatsapp": {
     "code": "Código de consulta: {code}"
+  },
+  "assistant": {
+    "title": "Asistente de ayuda",
+    "intro": "Escribe tu duda y te muestro la respuesta de la ayuda que la explica.",
+    "label": "Tu pregunta",
+    "placeholder": "Por ejemplo: cómo renuevo mi membresía",
+    "ask": "Buscar respuesta",
+    "from": {
+      "faq": "Preguntas frecuentes",
+      "glossary": "Glosario",
+      "how": "Cómo funciona PrediGol"
+    },
+    "open": "Ver en la ayuda",
+    "still": "¿Sigues igual?",
+    "person": "Hablar con una persona",
+    "none": "No encontré una respuesta para «{q}» en la ayuda. Cuéntaselo a una persona: lo que escribiste va en el mensaje.",
+    "blocked": "No doy pronósticos ni consejos de apuesta. PrediGol publica sus picks del día en Picks, iguales para todos, y solo cuando encuentra valor.",
+    "toPicks": "Ir a Picks",
+    "toResponsible": "Juego responsable",
+    "note": "El asistente no es una persona ni genera texto: busca en las respuestas de esta ayuda y te dice de dónde sale cada una."
   }
 }

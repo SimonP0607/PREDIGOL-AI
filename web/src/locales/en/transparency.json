@@ -254,5 +254,10 @@
     "definitionLine": "{name}: version {version}",
     "more": "See the whole history ({count})",
     "toUpdates": "See what's new"
+  },
+  "methodology": {
+    "title": "Methodology",
+    "subtitle": "How a pick is decided, how its numbers are read and which definitions are in force.",
+    "link": "See the methodology"
   }
 }

@@ -7,11 +7,14 @@
  * picks one by one, what a pick is, how to read probabilities and odds and the history of changes - and, with nothing
  * published yet, the plain statement of it.
  */
+import { MethodologyLink } from "./MethodologyLink";
+import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
   CalendarX2,
+  ChevronRight,
   FlaskConical,
   Gauge,
   Layers,
@@ -492,7 +495,7 @@ function EvaluationBlock({ data }: { data: Transparency }) {
 
 const STEPS = ["model", "value", "risk", "context", "one"] as const;
 
-function HowBlock() {
+export function HowBlock() {
   return (
     <Block
       id="how"
@@ -506,11 +509,12 @@ function HowBlock() {
         ))}
       </ul>
       <ExplainLayers compact />
+      <MethodologyLink />
     </Block>
   );
 }
 
-function DefinitionsBlock({ data }: { data: Transparency }) {
+export function DefinitionsBlock({ data }: { data: Transparency }) {
   return (
     <Block
       id="definitions"
