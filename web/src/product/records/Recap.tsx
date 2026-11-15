@@ -29,7 +29,7 @@ import { getTimeZone, zonedInstant } from "@/lib/time";
 import { live } from "@/lib/api/v1/queries";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { Card, ErrorState, SectionHeader, SkeletonBlock } from "@/product/shared/States";
-import { useCountUp, useReducedMotion } from "@/product/shared/motion";
+import { useReducedMotion } from "@/product/shared/motion";
 import { ChipGroup } from "@/product/picks/Controls";
 import { fromParlays, fromPicks, recap, within, type Recap as RecapData } from "./recapData";
 import { fmtUnits } from "./units";
@@ -100,8 +100,7 @@ function Kpi({
 }
 
 function Counted({ value, format }: { value: number | null; format: (n: number) => string }) {
-  const shown = useCountUp(value);
-  return <>{shown === null ? DASH : format(shown)}</>;
+  return <>{value === null ? DASH : format(value)}</>;
 }
 
 function ChartCard({

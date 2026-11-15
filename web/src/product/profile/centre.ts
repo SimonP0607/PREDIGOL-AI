@@ -137,20 +137,6 @@ export function blockSummary(key: BlockKey, a: AccountSummary): string {
   }
 }
 
-/** From 1024 px (the desk's top bar, plan UX A15) the blocks start open; under it, folded. */
-export const DESK_QUERY = "(min-width: 64rem)";
-
-/** Whether the blocks start open on this screen. Read on the client: the profile renders only once signed in. */
-export function startsOpen(
-  win: Pick<Window, "matchMedia"> | undefined = globalThis.window,
-): boolean {
-  try {
-    return Boolean(win?.matchMedia(DESK_QUERY).matches);
-  } catch {
-    return false;
-  }
-}
-
 export const ALIAS_MAX = 80;
 
 /** The alias as the server will keep it, or the reason it cannot be: never empty, never longer than 80. */
