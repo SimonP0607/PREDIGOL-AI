@@ -275,5 +275,39 @@
     "hitSample_other": "sobre {count} picks decididos",
     "units": "Unidades",
     "roi": "ROI"
+  },
+  "units": {
+    "title": "Unidades acumuladas",
+    "subtitle": "Todo el histórico: lo que sumó una unidad por pick liquidado, día a día.",
+    "axis": "{value} u",
+    "summary": "Unidades acumuladas del {from} al {to}: van {last}; el punto más bajo fue {low}, el {lowDay}.",
+    "small": "La gráfica aparece desde {min} picks liquidados; van {count}.",
+    "now": "Van",
+    "lowest": "Punto más bajo: {value}, el {day}",
+    "same": "Los días malos se muestran igual que los buenos.",
+    "asTable": "Ver como tabla",
+    "day": "Día",
+    "settled": "Liquidados",
+    "total": "Acumulado"
+  },
+  "estimate": {
+    "title": "¿Estima bien?",
+    "subtitle": "Si PrediGol dice 55 %, debería acertar cerca de 55 de cada 100. Así va con los picks publicados.",
+    "said": "Cuando dijo",
+    "picks_one": "{count} pick",
+    "picks_other": "{count} picks",
+    "hit": "acertó",
+    "legend": "Barra: lo que estimó al publicar. Marca blanca: lo que pasó. Con pocos picks por tramo, unos puntos de diferencia son normales. Solo cuentan los ganados y los perdidos.",
+    "small": "Lo mostramos desde {min} picks ganados o perdidos; van {count}.",
+    "noRange": "Aún no hay un tramo con {min} picks o más."
+  },
+  "marketsTable": {
+    "market": "Mercado",
+    "picks": "Picks",
+    "wonLost": "G – P",
+    "units": "Unidades",
+    "roi": "Retorno",
+    "pending_one": "{count} pendiente",
+    "pending_other": "{count} pendientes"
   }
 }

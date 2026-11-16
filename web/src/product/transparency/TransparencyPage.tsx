@@ -38,6 +38,7 @@ import type {
   TransparencyPeriodTally,
 } from "@/lib/api/v1/types_transparency";
 import { PickListSection } from "./PickList";
+import { EstimateBlock, MarketsTable, UnitsBlock } from "./Insights";
 import { TransparencySummary } from "./Summary";
 import { Block, Figure, Note } from "./parts";
 import { ChangesBlock, HowToReadBlock, WhatIsPickBlock, ZeroNotice } from "./Reading";
@@ -303,18 +304,7 @@ function MarketsBlock({ data }: { data: Transparency }) {
       {data.markets.length === 0 ? (
         <Note testId="transparency-markets-none">{t("transparency.markets.none")}</Note>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {data.markets.map((m) => (
-            <div
-              key={m.market}
-              className="rounded-lg bg-elevated/60 p-3"
-              data-testid={`transparency-market-${m.market}`}
-            >
-              <h3 className="mb-1.5 font-display text-sm font-semibold">{marketName(m.market)}</h3>
-              <TallyBody tally={m} data={data} testId={`transparency-market-tally-${m.market}`} />
-            </div>
-          ))}
-        </div>
+        <MarketsTable data={data} name={marketName} />
       )}
     </Block>
   );
@@ -550,12 +540,27 @@ export function TransparencyBody({
   return (
     <div className="flex flex-col gap-4" data-testid="transparency-body">
       {nothingYet ? <ZeroNotice data={data} /> : <TransparencySummary data={data} />}
-      <PublishedBlock data={data} />
-      <ParlaysBlock data={data} />
-      {list}
-      <DaysBlock data={data} />
-      <MarketsBlock data={data} />
-      <LineValueBlock data={data} />
+      {/* sheet T07 on a desk: the running units and the picks one by one on the left; «¿Estima bien?» and «Por mercado»
+      at the side. On a phone (T01) the same order reads top to bottom: chart, estimate, markets, then the rest. */}
+      <div
+        className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:items-start lg:gap-5"
+        data-testid="transparency-columns"
+      >
+        <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-1">
+          <UnitsBlock data={data} />
+        </div>
+        <div className="flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <EstimateBlock data={data} />
+          <MarketsBlock data={data} />
+          <ParlaysBlock data={data} />
+          <LineValueBlock data={data} />
+        </div>
+        <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-2">
+          {list}
+          <PublishedBlock data={data} />
+          <DaysBlock data={data} />
+        </div>
+      </div>
       <ForecastBlock data={data} />
       <EvaluationBlock data={data} />
       <HowBlock />
@@ -591,7 +596,10 @@ export function TransparencyPage() {
     );
   else body = <TransparencyBody data={q.data.data} list={<PickListSection preview={preview} />} />;
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5" data-testid="transparency-page">
+    <div
+      className="mx-auto flex w-full max-w-3xl flex-col gap-5 lg:max-w-6xl"
+      data-testid="transparency-page"
+    >
       <PageTitle title={t("transparency.page.title")} subtitle={t("transparency.page.subtitle")} />
       {preview && !auth.user?.transparency ? (
         <p

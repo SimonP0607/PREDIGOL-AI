@@ -24,6 +24,7 @@ import type {
   TransparencyTally,
 } from "@/lib/api/v1/types_transparency";
 import { PickListView } from "./PickList";
+import { geometry, unitTicks } from "./Insights";
 import { TransparencyBody } from "./TransparencyPage";
 import { changesOf, dayText, reasonsOf, resultTone, sampleNote, scoreText, topStop } from "./model";
 
@@ -569,5 +570,77 @@ describe("the page's words", () => {
         100,
       ),
     ).toBeNull();
+  });
+});
+
+describe("sheets T01 and T07: running units, «¿Estima bien?», by market (UX-144, BE-044)", () => {
+  const SERIES = [
+    { day: "2026-10-11", settled: 10, units: "1.20" },
+    { day: "2026-10-18", settled: 18, units: "-1.10" },
+    { day: "2026-11-09", settled: 42, units: "3.10" },
+  ];
+  const FULL: Transparency = {
+    ...TODAY,
+    periods: [period("7d"), period("30d"), period("all", { published: 42, settled: 42, won: 22 })],
+    series: SERIES,
+    picks_calibration: {
+      n: 40,
+      bins: [{ low: "0.5", high: "0.6", predicted: "0.55", observed: "0.54", n: 31 }],
+      omitted: 9,
+    },
+    markets: [
+      {
+        ...ZERO,
+        market: "1X2",
+        published: 18,
+        won: 10,
+        lost: 8,
+        settled: 18,
+        units: "1.90",
+        roi: "0.105",
+      },
+    ],
+  };
+
+  test("the axis keeps the zero and whole units; the points spread by date, the lowest one found", () => {
+    expect(unitTicks(-1.1, 3.1)).toEqual([-2, 0, 2, 4]);
+    expect(unitTicks(0.2, 0.8)).toEqual([0, 1]);
+    const g = geometry(SERIES)!;
+    expect(g.lowest).toBe(1);
+    expect(g.points[0]!.x).toBeLessThan(g.points[1]!.x);
+    // a week then three: the second gap is wider than the first
+    expect(g.points[2]!.x - g.points[1]!.x).toBeGreaterThan(g.points[1]!.x - g.points[0]!.x);
+    expect(geometry([])).toBeNull();
+  });
+
+  test("with the sample: the chart with its words and its table, the bars with their sample, the market table", async () => {
+    const html = await render(<TransparencyBody data={FULL} />);
+    expect(html).toContain('data-testid="transparency-units-chart"');
+    expect(html).toContain('data-testid="transparency-units-table"');
+    expect(text(html)).toContain("+3,10 u");
+    expect(text(html)).toContain("Punto más bajo: −1,10 u");
+    expect(html).toContain('data-testid="transparency-estimate-bins"');
+    expect(text(html)).toContain("31 picks");
+    expect(html).toContain('data-testid="transparency-markets-table"');
+    expect(text(html)).toContain("10 – 8");
+    expect(html).toContain('data-testid="transparency-columns"');
+  });
+
+  test("below the sample: the sentence that says why, never a chart or a bar", async () => {
+    const html = await render(
+      <TransparencyBody
+        data={{ ...TODAY, series: [], picks_calibration: { n: 3, bins: [], omitted: 0 } }}
+      />,
+    );
+    expect(html).toContain('data-testid="transparency-units-small"');
+    expect(html).not.toContain('data-testid="transparency-units-chart"');
+    expect(html).toContain('data-testid="transparency-estimate-small"');
+    expect(html).not.toContain('data-testid="transparency-estimate-bins"');
+  });
+
+  test("an older API without the new fields: the blocks are simply not drawn", async () => {
+    const html = await render(<TransparencyBody data={TODAY} />);
+    expect(html).not.toContain('data-testid="transparency-units"');
+    expect(html).not.toContain('data-testid="transparency-estimate"');
   });
 });
