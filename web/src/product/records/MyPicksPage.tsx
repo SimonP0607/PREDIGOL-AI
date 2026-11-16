@@ -4,6 +4,7 @@
  * user saved, and the parlays they built. Profit is in units of one stake: PrediGol handles no
  * money.
  */
+import { PicksTabs } from "@/product/picks/PicksTabs";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
@@ -884,6 +885,7 @@ export function MyPicksPage() {
         title={t("records.mine.title")}
         subtitle={t("records.mine.subtitle")}
       />
+      <PicksTabs current="mine" />
       {readOnly ? (
         <p className="text-xs text-muted-foreground" data-testid="my-picks-read-only">
           {t("profile.membership.limited.readOnly")}

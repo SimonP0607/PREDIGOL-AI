@@ -9,6 +9,7 @@
  * the next 24 hours and comes in pages of 15 (point 13); "Ya empezaron hoy" has its own
  * filters and pages (point 14); a price is chosen the Cuotas way (point 18).
  */
+import { PicksTabs } from "./PicksTabs";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import { keepPreviousData, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { ChevronDown, Clock, History, ListFilter, RotateCcw } from "lucide-react";
@@ -100,6 +101,7 @@ export function PicksPage() {
         }
         right={auth.showAdmin ? <ShadowToggle /> : undefined}
       />
+      <PicksTabs current="picks" />
       {/* At a desk (sheet K08) the picks are the main column and the parlay of the day a side column of 380 px; the
           cards lay out by the column's room. Under 1024 px, one column as always. */}
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_23.75rem] lg:items-start lg:gap-6">

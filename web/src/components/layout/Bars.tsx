@@ -17,24 +17,44 @@ import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n";
 import { MoreMenu } from "./MoreSheet";
-import { DESK_BAR, destinationOf, holds, NAV_PILL, userNav, type MoreItem } from "./nav";
+import {
+  barNav,
+  DESK_SHOW,
+  deskExtras,
+  destinationOf,
+  holds,
+  NAV_PILL,
+  NAV_V1,
+  type MoreItem,
+  type NavFlags,
+} from "./nav";
 
 export function TopNav({
   pathname,
   items,
   unread,
   language,
+  flags = NAV_V1,
+  owner = [],
 }: {
   pathname: string;
   items: readonly MoreItem[];
+  /** The unified plan's bars (FBI_NAV_V2) and the sections they hold. */
+  flags?: NavFlags;
+  /** The owner's private rows of «Más» (UX-152). */
+  owner?: readonly MoreItem[];
   /** The rows of «Más» with something not seen yet (Novedades, B6). */
   unread?: readonly string[] | undefined;
   /** The language, chosen in «Más» since it left the bar (plan maestro UX/UI 2026, wave 3). */
   language?: { locale: Locale; onChange: (next: Locale) => void } | undefined;
 }) {
+  // The bar of always shows a pill only for what «Más» holds for this reader (Noticias only while it is open).
+  const extras = deskExtras(flags).filter(
+    (x) => (flags.v2 && flags.news) || items.some((i) => i.to === x.item.to),
+  );
   return (
     <nav aria-label={t("nav.mainNavigation")} className="hidden flex-1 items-center gap-1 lg:flex">
-      {userNav.map((item) => {
+      {barNav(flags).map((item) => {
         const active = holds(item, pathname);
         const Icon = item.icon;
         return (
@@ -56,36 +76,36 @@ export function TopNav({
           </Link>
         );
       })}
-      {/* from 1280 px the bar has room for Parlays, Cuotas and Noticias (sheet S5); under it they stay in «Más» */}
-      {items
-        .filter((item) => DESK_BAR.includes(item.to))
-        .map((item) => {
-          const active = holds(item, pathname);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              data-testid={`nav-${item.to.slice(1)}`}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                NAV_PILL,
-                "hidden xl:inline-flex",
-                active
-                  ? "bg-primary-soft text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon aria-hidden className="h-[1.125rem] w-[1.125rem] shrink-0" />
-              {t(item.label)}
-            </Link>
-          );
-        })}
+      {/* the pills that fit at this width (sheet S5; decisions D-01 and D-02); under it they stay in «Más» */}
+      {extras.map(({ item, from }) => {
+        const active = holds(item, pathname);
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.to}
+            to={item.to}
+            data-testid={`nav-${item.to.slice(1)}`}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              NAV_PILL,
+              DESK_SHOW[from],
+              active
+                ? "bg-primary-soft text-primary"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Icon aria-hidden className="h-[1.125rem] w-[1.125rem] shrink-0" />
+            {t(item.label)}
+          </Link>
+        );
+      })}
       <MoreMenu
         items={items}
         pathname={pathname}
-        active={destinationOf(pathname) === "more"}
-        inBar={DESK_BAR.some((to) => holds({ to }, pathname))}
+        active={destinationOf(pathname, flags) === "more"}
+        inBar={extras.some((x) => holds(x.item, pathname))}
+        flags={flags}
+        owner={owner}
         unread={unread}
         language={language}
       />
@@ -117,8 +137,11 @@ export function BottomBar({
   onMore,
   moreRef,
   moreUnread = false,
+  flags = NAV_V1,
 }: {
   pathname: string;
+  /** The unified plan's bars (FBI_NAV_V2). */
+  flags?: NavFlags;
   moreOpen: boolean;
   onMore: () => void;
   /** «Más»: where the sheet gives the focus back when it closes. */
@@ -126,14 +149,14 @@ export function BottomBar({
   /** «Más» holds something the reader has not seen yet (Novedades, B6): a dot on its icon. */
   moreUnread?: boolean;
 }) {
-  const inMore = destinationOf(pathname) === "more";
+  const inMore = destinationOf(pathname, flags) === "more";
   return (
     <nav
       aria-label={t("nav.mainNavigation")}
       className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-foreground/[0.07] bg-background-deep/90 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] backdrop-blur-lg lg:hidden"
     >
       <ul className="mx-auto grid max-w-lg grid-cols-5 short:max-w-3xl">
-        {userNav.map((item) => {
+        {barNav(flags).map((item) => {
           const active = holds(item, pathname);
           const Icon = item.icon;
           return (

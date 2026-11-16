@@ -149,5 +149,10 @@
     "openMatch": "Open match",
     "missing": "We could not find this pick",
     "missingBody": "The link may be incomplete or the pick may no longer be available."
+  },
+  "tabs": {
+    "label": "Picks and My picks",
+    "picks": "Today's picks",
+    "mine": "My picks"
   }
 }

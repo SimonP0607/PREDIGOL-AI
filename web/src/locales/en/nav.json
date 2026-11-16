@@ -31,7 +31,9 @@
     "profile": "Account, membership, notices and privacy",
     "glossary": "What every word means",
     "updates": "What changed in PrediGol",
-    "news": "What the sources say about the coming matches"
+    "news": "What the sources say about the coming matches",
+    "myPicks": "What you saved and how it went",
+    "teams": "Clubs, national teams and players"
   },
   "install": {
     "label": "Install PrediGol",
@@ -47,5 +49,11 @@
     "label": "Write to us on WhatsApp",
     "hint": "A person answers; with a code of where you were"
   },
-  "news": "News"
+  "news": "News",
+  "teams": "Teams",
+  "private": {
+    "title": "Private evaluation · not visible to users",
+    "console": "Intelligence console",
+    "consoleHint": "Capabilities, shadow, costs and alerts"
+  }
 }

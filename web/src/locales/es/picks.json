@@ -149,5 +149,10 @@
     "openMatch": "Abrir partido",
     "missing": "No encontramos este pick",
     "missingBody": "Puede que el enlace esté incompleto o que el pick ya no esté disponible."
+  },
+  "tabs": {
+    "label": "Picks y Mis picks",
+    "picks": "Picks del día",
+    "mine": "Mis picks"
   }
 }
