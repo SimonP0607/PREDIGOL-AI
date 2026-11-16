@@ -16,7 +16,7 @@ import { t } from "@/lib/i18n";
 import { live } from "@/lib/api/v1/queries";
 import { PostmortemCard } from "@/live/PostmortemsPanel";
 import { ApiErrorNotice } from "@/components/system/LiveState";
-import { ShadowBadge } from "@/product/shared/Bits";
+import { PICK_GRID, PICK_GRID_HOST, ShadowBadge } from "@/product/shared/Bits";
 import { Pager } from "@/product/shared/Pager";
 import { usePaged } from "@/product/shared/paging";
 import { PickCard } from "@/product/shared/PickCard";
@@ -89,7 +89,7 @@ export function UpcomingPicksView({
       aria-label={shadow ? t("match.intelligence.picksShadow") : t("match.intelligence.picks")}
       data-testid="match-picks"
       data-shadow={shadow ? "true" : "false"}
-      className={cn("space-y-3 rounded-lg", shadow && "border border-info/40 p-3")}
+      className={cn(PICK_GRID_HOST, "space-y-3 rounded-lg", shadow && "border border-info/40 p-3")}
     >
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-caption font-semibold uppercase tracking-[0.08em] text-muted-foreground">
@@ -106,7 +106,7 @@ export function UpcomingPicksView({
       <p className="text-caption text-muted-foreground" data-testid="match-picks-origin">
         {t("match.intelligence.picksOrigin")}
       </p>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className={PICK_GRID}>
         {paged.items.map((p) => (
           <PickAnchor key={p.pick_id} pickId={p.pick_id} focused={focused === p.pick_id}>
             {renderPick(p, rankOf.get(p.pick_id), shadow, focused === p.pick_id)}
@@ -173,12 +173,16 @@ function Taken({ ctx, why }: { ctx: MatchCtx; why?: ((pickId: number) => ReactNo
       ) : picks.length === 0 ? (
         <SectionNote>{t("match.picks.noneStarted")}</SectionNote>
       ) : (
-        <div className="space-y-3" data-testid="prematch-picks">
+        <div className={cn(PICK_GRID_HOST, "space-y-3")} data-testid="prematch-picks">
           <p className="text-caption text-muted-foreground">{t("match.picks.prematchHelp")}</p>
+          {/* the same note as before kick-off: a pick's probability and the forecast's are not the same figure */}
+          <p className="text-caption text-muted-foreground" data-testid="prematch-picks-origin">
+            {t("match.intelligence.picksOrigin")}
+          </p>
           <p className="numeric text-xs font-medium" data-testid="picks-outcome">
             {t("match.picksTab.outcome", { won: c.won, lost: c.lost, open: c.open, void: c.void })}
           </p>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className={PICK_GRID}>
             {paged.items.map((p) => (
               <PickAnchor key={p.pick_id} pickId={p.pick_id} focused={focused === p.pick_id}>
                 <StartedPickCard
@@ -186,6 +190,8 @@ function Taken({ ctx, why }: { ctx: MatchCtx; why?: ((pickId: number) => ReactNo
                   shadow={shadow}
                   autoOpenWhy={focused === p.pick_id}
                   footer={why?.(p.pick_id)}
+                  hideMatch
+                  className="h-full"
                 />
               </PickAnchor>
             ))}
