@@ -259,3 +259,20 @@ def test_the_audit_trail_records_who_did_what_and_never_a_secret(app_client: Tes
             "user.status_changed", "password.changed"} <= actions
     for secret in (ADMIN_PW, USER_PW, "N3w-pass-2026-long"):
         assert secret not in body.text
+
+
+def test_the_registry_of_capabilities_answers_the_owner_in_the_shape_of_its_example(app_client: TestClient) -> None:
+    """IA-056: ``GET /admin/intelligence/capabilities`` answers a super admin (a user is refused above, like every admin route) with the
+    fields of the contract's example (``tests/fixtures/contracts/intelligence/admin_capabilities.json``)."""
+    import json
+    from pathlib import Path
+
+    example = json.loads((Path(__file__).resolve().parents[1] / "fixtures" / "contracts" / "intelligence"
+                          / "admin_capabilities.json").read_text(encoding="utf-8"))
+    login(app_client, ADMIN_EMAIL, ADMIN_PW)
+    r = app_client.get("/api/v1/admin/intelligence/capabilities")
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert set(data) == set(example["data"])
+    assert [set(c) for c in data["capabilities"]] == [set(c) for c in example["data"]["capabilities"]]
+    assert all(c["state"] == "en_sombra" for c in data["capabilities"]) and data["decides"] is False

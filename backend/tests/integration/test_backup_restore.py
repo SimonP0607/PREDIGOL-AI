@@ -42,7 +42,9 @@ def test_backup_restores_to_an_identical_database(migrated_database: str, seed: 
 
         report = restore_test(rep.folder, ADMIN_URL)
         by = {c.name.split(":")[0]: c for c in report.checks}
-        for name in ("FILES", "RESTORE", "TABLES", "SCHEMA", "RAW"):
+        assert "intel.capability_transitions:capability_transitions_append_only" in manifest["append_only"]  # AD-A07
+        assert {"ai", "intel", "raw"} <= set(manifest["schemas"])
+        for name in ("FILES", "RESTORE", "TABLES", "SCHEMA", "RAW", "SCHEMAS", "APPEND-ONLY"):
             assert by[name].passed, f"{name}: {by[name].detail}"
         lineage = by["LINEAGE"]
         assert not lineage.passed and "not in this raw store" in lineage.detail, \
@@ -164,3 +166,35 @@ def test_a_database_the_guard_cannot_read_does_not_block_it_either(
     """The guard refusing to speak must not become the guard refusing the work:
     without a readable heartbeat it returns None and the test proceeds."""
     assert live_worker("postgresql://127.0.0.1:1/nowhere") is None
+
+
+def test_a_new_schema_with_an_append_only_table_comes_back_append_only(migrated_database: str, tmp_path: Path) -> None:
+    """AD-A07: a schema the plan adds (here a stand-in for ``news``) is in the backup with no list to update, and its restore test proves
+    the schema and its append-only trigger came back - and that the restored table still refuses an UPDATE."""
+    with psycopg.connect(migrated_database, autocommit=True) as conn:
+        conn.execute("CREATE SCHEMA ad_a07_probe; CREATE TABLE ad_a07_probe.items (id int PRIMARY KEY); "
+                     "INSERT INTO ad_a07_probe.items VALUES (1); "
+                     "CREATE TRIGGER items_append_only BEFORE UPDATE OR DELETE ON ad_a07_probe.items "
+                     "FOR EACH ROW EXECUTE FUNCTION intel.refuse_change()")
+    scratch = None
+    try:
+        rep = create_backup(migrated_database, tmp_path / "raw", tmp_path / "backups", label="a07")
+        assert "ad_a07_probe" in rep.manifest["schemas"]
+        assert "ad_a07_probe.items:items_append_only" in rep.manifest["append_only"]
+        report = restore_test(rep.folder, ADMIN_URL, keep=True)
+        scratch = report.scratch_db
+        by = {c.name.split(":")[0]: c for c in report.checks}
+        assert by["SCHEMAS"].passed and by["APPEND-ONLY"].passed, (by["SCHEMAS"].detail, by["APPEND-ONLY"].detail)
+        head, _, _ = ADMIN_URL.rpartition("/")
+        with psycopg.connect(f"{head}/{report.scratch_db}") as restored:
+            try:
+                restored.execute("UPDATE ad_a07_probe.items SET id = 2")
+                raise AssertionError("the restored table took an UPDATE")
+            except psycopg.errors.CheckViolation:
+                restored.rollback()
+    finally:
+        with psycopg.connect(migrated_database, autocommit=True) as conn:
+            conn.execute("DROP SCHEMA IF EXISTS ad_a07_probe CASCADE")
+        if scratch:
+            with psycopg.connect(ADMIN_URL, autocommit=True) as admin:
+                admin.execute(f'DROP DATABASE IF EXISTS "{scratch}"')
