@@ -387,7 +387,17 @@
   },
   "deepen": {
     "title": "Profundizar",
-    "subtitle": "Forma, tabla, cara a cara, calendario, bajas y alineaciones"
+    "subtitle": "Forma, tabla, cara a cara, calendario, bajas y alineaciones",
+    "rows": {
+      "context": "Forma, tabla y cara a cara",
+      "lineups": "Alineaciones y bajas",
+      "news": "Noticias del partido"
+    },
+    "confirmed": "Confirmadas",
+    "pending": "Por confirmar",
+    "lineupsPending": "Aún sin alineación oficial: suele publicarse una hora antes.",
+    "noNews": "Todavía no hay noticias de este partido.",
+    "seeNews": "Ver noticias"
   },
   "notPlayed": {
     "postponed": "Partido aplazado",

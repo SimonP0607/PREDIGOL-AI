@@ -9,6 +9,7 @@
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { setLocale } from "@/lib/i18n";
 import type { MatchCtx } from "./context";
 import { readFileSync } from "node:fs";
@@ -33,25 +34,34 @@ const ctx = {
     competition: { id: 177, name: "Premier League" },
   },
   goTo: () => {},
+  center: { data: null, loading: false, error: null, status: null, retry: () => {} },
 } as unknown as MatchCtx;
 
-describe("«Profundizar»", () => {
-  test("closed on arrival: a 44 px button that says what is inside, and none of it drawn", () => {
-    const html = renderToStaticMarkup(<DeepenSection ctx={ctx} />);
+function withQuery(node: React.ReactNode): string {
+  const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
+  return renderToStaticMarkup(<QueryClientProvider client={client}>{node}</QueryClientProvider>);
+}
+
+describe("«Profundizar» (sheet P03: three rows)", () => {
+  test("closed on arrival: the first row is the fold, the other two open their tabs, and nothing of the match drawn", () => {
+    const html = withQuery(<DeepenSection ctx={ctx} />);
     expect(html).toContain('data-testid="match-deepen"');
     expect(html).toContain("Profundizar");
-    expect(html).toContain("Forma, tabla, cara a cara, calendario, bajas y alineaciones");
+    expect(html).toContain("Forma, tabla y cara a cara");
+    expect(html).toContain("Alineaciones y bajas");
+    expect(html).toContain("Por confirmar");
+    expect(html).toContain("Noticias del partido");
     expect(html).toContain('aria-expanded="false"');
-    expect(html).toContain("min-h-11");
+    expect(html).toContain("min-h-14");
     expect(html).not.toContain("aria-controls");
     expect(html).not.toContain("Zorya Luhansk");
   });
 
   test("in English", () => {
     setLocale("en");
-    const html = renderToStaticMarkup(<DeepenSection ctx={ctx} />);
+    const html = withQuery(<DeepenSection ctx={ctx} />);
     expect(html).toContain("Go deeper");
-    expect(html).toContain("Form, table, head to head, calendar, absences and line-ups");
+    expect(html).toContain("Form, table and head to head");
     expect(html).not.toContain("Profundizar");
   });
 });
@@ -129,15 +139,17 @@ describe("the Resumen before kick-off (plan Partidos y Match Center, R1; plan ma
     forecast: stub("forecast"),
     picks: stub("picks"),
     intelligence: stub("intelligence"),
+    previews: stub("previews"),
   };
 
-  test("on a phone, one column in this order: Intelligence, the picks, the forecast, Profundizar, the best prices", () => {
+  test("on a phone, one column in this order (sheet P03): the pick, Intelligence, the forecast, the best prices, Profundizar", () => {
     expect([...BEFORE_KICKOFF_ORDER]).toEqual([
-      "intelligence",
       "picks",
+      "intelligence",
       "forecast",
-      "deepen",
       "prices",
+      "deepen",
+      "previews",
     ]);
     const html = renderToStaticMarkup(<BeforeKickoffLayout blocks={blocks} />);
     // each block says its place in the column: the order a phone reads, whatever column a desk puts it in
@@ -150,7 +162,7 @@ describe("the Resumen before kick-off (plan Partidos y Match Center, R1; plan ma
 
   test("at a desk, two columns: the picks and the prices in the side column (sheet P11), nothing narrowed under it", () => {
     const html = renderToStaticMarkup(<BeforeKickoffLayout blocks={blocks} />);
-    expect([...BEFORE_KICKOFF_SIDE]).toEqual(["picks", "prices"]);
+    expect([...BEFORE_KICKOFF_SIDE]).toEqual(["picks", "prices", "previews"]);
     expect(html).toContain("lg:grid-cols-[minmax(0,1fr)_25rem]");
     // under 1024 px the columns are not boxes: the blocks are the page's own
     expect(html).not.toMatch(/\bgrid-cols-(?!\[)/);

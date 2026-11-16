@@ -13,10 +13,20 @@
  * not played     - what happened (postponed, cancelled, abandoned, awarded) and the picks.
  */
 import { Fragment, useId, useState, type ReactNode } from "react";
-import { BarChart3, CalendarX2, ChevronDown, Flag } from "lucide-react";
+import {
+  BarChart3,
+  CalendarX2,
+  ChevronDown,
+  ChevronRight,
+  Flag,
+  Newspaper,
+  Shirt,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { Card, EmptyState } from "@/product/shared/States";
+import { useNews } from "@/product/news/useNews";
+import { headline } from "@/product/news/news";
 import { AnalysisBlock } from "./AnalysisBlock";
 import { CalendarBlock } from "./CalendarBlock";
 import type { MatchCtx } from "./context";
@@ -225,28 +235,143 @@ export function DeepenLayout({ blocks }: { blocks: DeepenBlocks }) {
 }
 
 /**
- * «Profundizar», before kick-off (plan de cierre UX, 2.2): everything that is read to go deeper once the match is
- * understood - form, table and head to head, then rest and calendar, absences and the line-ups - folded, closed until the
- * reader opens it. The line-ups and the prices keep their link to the tab that shows them in full.
+ * «Profundizar», before kick-off (plan de cierre UX, 2.2; plan maestro unificado, sheet P03): a card of three rows - form,
+ * table and head to head, which opens here with rest, calendar, absences and the line-ups; the line-ups and absences, with
+ * whether they are confirmed, and the match's news with how many there are, each opening its own tab. Closed until the
+ * reader opens it; the first row is the fold's own button.
  */
 export function DeepenSection({ ctx }: { ctx: MatchCtx }) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const news = useNews(ctx.fixtureId);
+  const newsCount =
+    news.status === "success" && news.envelope.status === "ok"
+      ? (news.envelope.data?.items.length ?? 0)
+      : null;
+  const lineups = ctx.center.data?.lineups;
+  const confirmed = lineups?.status === "ok" && lineups.data.length > 0;
+  const row =
+    "flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-elevated/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring";
   return (
-    <Fold
-      title={t("match.deepen.title")}
-      subtitle={t("match.deepen.subtitle")}
-      testId="match-deepen"
-    >
-      <DeepenLayout
-        blocks={{
-          form: <FormBlock ctx={ctx} />,
-          table: <StandingsBlock ctx={ctx} />,
-          h2h: <H2HBlock ctx={ctx} />,
-          calendar: <CalendarBlock ctx={ctx} />,
-          absences: <AbsencesBlock ctx={ctx} />,
-          lineups: <LineupsTeaser ctx={ctx} />,
-        }}
-      />
-    </Fold>
+    <section data-testid="match-deepen" aria-labelledby={`${panelId}-title`} className="space-y-3">
+      <h2 id={`${panelId}-title`} className="font-display text-lg font-semibold tracking-tight">
+        {t("match.deepen.title")}
+      </h2>
+      <Card as="div" className="divide-y divide-border overflow-hidden p-0">
+        <div>
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={open ? panelId : undefined}
+            onClick={() => setOpen((v) => !v)}
+            className={row}
+          >
+            <BarChart3 aria-hidden className="h-4 w-4 shrink-0 text-primary" />
+            <span className="min-w-0 flex-1 text-sm font-semibold">
+              {t("match.deepen.rows.context")}
+            </span>
+            <ChevronDown
+              aria-hidden
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                open && "rotate-180",
+              )}
+            />
+          </button>
+          {open ? (
+            <div id={panelId} className="border-t border-border p-4">
+              <DeepenLayout
+                blocks={{
+                  form: <FormBlock ctx={ctx} />,
+                  table: <StandingsBlock ctx={ctx} />,
+                  h2h: <H2HBlock ctx={ctx} />,
+                  calendar: <CalendarBlock ctx={ctx} />,
+                  absences: <AbsencesBlock ctx={ctx} />,
+                  lineups: <LineupsTeaser ctx={ctx} />,
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => ctx.goTo("lineups")}
+          className={row}
+          data-testid="deepen-lineups"
+        >
+          <Shirt aria-hidden className="h-4 w-4 shrink-0 text-primary" />
+          <span className="min-w-0 flex-1 text-sm font-semibold">
+            {t("match.deepen.rows.lineups")}
+          </span>
+          <span
+            className={cn(
+              "shrink-0 rounded-full px-2 py-0.5 text-micro font-semibold",
+              confirmed
+                ? "bg-positive-soft text-positive"
+                : "bg-foreground/[0.07] text-muted-foreground",
+            )}
+          >
+            {confirmed ? t("match.deepen.confirmed") : t("match.deepen.pending")}
+          </span>
+          <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </button>
+        <button
+          type="button"
+          onClick={() => ctx.goTo("news")}
+          className={row}
+          data-testid="deepen-news"
+        >
+          <Newspaper aria-hidden className="h-4 w-4 shrink-0 text-primary" />
+          <span className="min-w-0 flex-1 text-sm font-semibold">
+            {t("match.deepen.rows.news")}
+          </span>
+          {newsCount !== null && newsCount > 0 ? (
+            <span className="numeric flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-elevated px-1.5 text-xs font-semibold">
+              {newsCount}
+            </span>
+          ) : null}
+          <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </button>
+      </Card>
+    </section>
+  );
+}
+
+/**
+ * At a desk, the side column's foot (sheet P11): the line-ups and the news one glance away - whether the line-ups are
+ * confirmed and the latest headlines, each opening its tab. A phone reads them in «Profundizar».
+ */
+export function SidePreviews({ ctx }: { ctx: MatchCtx }) {
+  const news = useNews(ctx.fixtureId);
+  const items =
+    news.status === "success" && news.envelope.status === "ok"
+      ? (news.envelope.data?.items ?? []).slice(0, 2)
+      : [];
+  const lineups = ctx.center.data?.lineups;
+  const confirmed = lineups?.status === "ok" && lineups.data.length > 0;
+  return (
+    <div className="hidden space-y-4 lg:block" data-testid="summary-previews">
+      <Block title={t("match.lineups.title")} icon={<Shirt />}>
+        <p className="text-sm text-muted-foreground">
+          {confirmed ? t("match.lineups.confirmed") : t("match.deepen.lineupsPending")}
+        </p>
+        <MoreButton onClick={() => ctx.goTo("lineups")}>{t("match.lineups.view")}</MoreButton>
+      </Block>
+      <Block title={t("match.deepen.rows.news")} icon={<Newspaper />}>
+        {items.length > 0 ? (
+          <ul className="space-y-2">
+            {items.map((i) => (
+              <li key={i.id} className="text-sm leading-snug">
+                {headline(i)}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">{t("match.deepen.noNews")}</p>
+        )}
+        <MoreButton onClick={() => ctx.goTo("news")}>{t("match.deepen.seeNews")}</MoreButton>
+      </Block>
+    </div>
   );
 }
 
@@ -259,23 +384,25 @@ const TWO_COLUMNS = "grid items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax
  * 2026, sheets P03 and P11): the reading, the published picks, the forecast, «Profundizar» and the best prices.
  */
 export const BEFORE_KICKOFF_ORDER = [
-  "intelligence",
   "picks",
+  "intelligence",
   "forecast",
-  "deepen",
   "prices",
+  "deepen",
+  "previews",
 ] as const;
 export type BeforeKickoffBlock = (typeof BEFORE_KICKOFF_ORDER)[number];
 
 /** At a desk the picks and the prices are the side column (sheet P11); the rest is the main one. */
-export const BEFORE_KICKOFF_SIDE: readonly BeforeKickoffBlock[] = ["picks", "prices"];
+export const BEFORE_KICKOFF_SIDE: readonly BeforeKickoffBlock[] = ["picks", "prices", "previews"];
 
 const ORDER: Record<BeforeKickoffBlock, string> = {
-  intelligence: "order-1",
-  picks: "order-2",
+  picks: "order-1",
+  intelligence: "order-2",
   forecast: "order-3",
-  deepen: "order-4",
-  prices: "order-5",
+  prices: "order-4",
+  deepen: "order-5",
+  previews: "order-6",
 };
 
 const BEFORE_COLUMN =
@@ -318,6 +445,7 @@ function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
         forecast: <ForecastBlock ctx={ctx} />,
         deepen: <DeepenSection ctx={ctx} />,
         prices: <QuickPricesBlock ctx={ctx} />,
+        previews: <SidePreviews ctx={ctx} />,
       }}
     />
   );
