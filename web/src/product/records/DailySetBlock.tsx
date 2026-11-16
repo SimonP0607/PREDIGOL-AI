@@ -59,7 +59,7 @@ function Skeleton({ count, home = false }: { count: number; home?: boolean }) {
       className={
         home
           ? "-mx-4 flex gap-3 overflow-hidden px-4 md:mx-0 md:grid md:grid-cols-2 md:gap-4 md:px-0 @5xl:grid-cols-3"
-          : "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+          : "grid grid-cols-1 gap-3 sm:grid-cols-2 @5xl:grid-cols-3"
       }
     >
       {Array.from({ length: count }, (_, i) => (
@@ -159,7 +159,7 @@ export function DailySetBlock({
     body = (
       <>
         <div
-          className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2 @5xl:grid-cols-3"
           data-testid="daily-list"
         >
           {items.map((item) => (

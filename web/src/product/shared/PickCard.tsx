@@ -40,6 +40,7 @@ export function PickCard({
   actions,
   why,
   autoOpenWhy = false,
+  hideMatch = false,
 }: {
   pick: PickCardData;
   /** 1-5 for the Top 5. */
@@ -54,6 +55,8 @@ export function PickCard({
   why?: ReactNode;
   /** The explanation opens by itself: the reader came from «Más sobre este pick» (plan de Inicio, 2.3). */
   autoOpenWhy?: boolean;
+  /** Inside the match's own page the league and the teams are the page's header: not said again (sheet P11). */
+  hideMatch?: boolean;
 }) {
   const label = selectionLabel({
     market_key: pick.market_key,
@@ -96,27 +99,29 @@ export function PickCard({
             {/* Plan UX, B3: the state a reader is shown, in words (the one table). */}
             <UserStatusBadge state={pick} />
           </div>
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 pt-0.5">
+          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5 pt-0.5">
             {shadow ? <ShadowBadge compact /> : null}
             <Kickoff at={pick.kickoff_at} />
           </div>
         </div>
 
-        <div className="px-4 pt-2.5">
-          {/* The league whole, on its own line (plan PICKS, U1: the name broke letter by letter beside «SHADOW»). */}
-          <CompetitionTag
-            name={pick.competition.name}
-            logo={pick.competition.logo_url}
-            flag={pick.competition.flag_url}
-            country={pick.competition.country}
-          />
-          {/* Home above away, every name whole (mobile UX audit). */}
-          <Matchup
-            home={{ name: pick.home.name, logo: pick.home.logo_url }}
-            away={{ name: pick.away.name, logo: pick.away.logo_url }}
-            className="mt-2"
-          />
-        </div>
+        {hideMatch ? null : (
+          <div className="px-4 pt-2.5">
+            {/* The league whole, on its own line (plan PICKS, U1: the name broke letter by letter beside «SHADOW»). */}
+            <CompetitionTag
+              name={pick.competition.name}
+              logo={pick.competition.logo_url}
+              flag={pick.competition.flag_url}
+              country={pick.competition.country}
+            />
+            {/* Home above away, every name whole (mobile UX audit). */}
+            <Matchup
+              home={{ name: pick.home.name, logo: pick.home.logo_url }}
+              away={{ name: pick.away.name, logo: pick.away.logo_url }}
+              className="mt-2"
+            />
+          </div>
+        )}
         {why ? <div className="flex min-w-0 px-4 pt-1.5">{why}</div> : null}
 
         <div className={cn("px-4", compact ? "pb-2 pt-3" : "pb-2.5 pt-3.5")}>
