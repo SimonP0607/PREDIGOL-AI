@@ -43,6 +43,7 @@ from fbi.api.contracts.odds_explorer import (
     OddsMovementSeries,
     OddsSelectionPrice,
     OddsStatus,
+    OddsStatusBook,
     OddsStatusHorizon,
     OddsStatusMatch,
     Period,
@@ -562,6 +563,34 @@ WITHOUT_PRICE_SHOWN = 20
 
 
 @shared(CACHE_SECONDS)
+def status_books(conn: Conn, fixtures: Sequence[Row], moment: datetime, points: Sequence[int],
+                 tol: int) -> list[OddsStatusBook] | None:
+    """«Por casa» (BE-043, sheet C05; decision D-06): for each bookmaker, the matches of the window whose result price it gives
+    in the book in force, how many of them are late and their latest reading - the match's hour, the only one the book keeps.
+    Read only, from ``market.book_current``: nothing new is captured or stored for it."""
+    market = index().find("result.1x2", "FT")
+    if market is None:
+        return None
+    definitions = _definitions(conn)
+    defs = [definitions[s.bet_id] for s in market.specs_of("FT") if s.bet_id in definitions]
+    if not defs:
+        return None
+    booked = {int(f["id"]): f for f in fixtures if f["checked_at"] is not None}
+    pairs = repo.status_books(conn, fixtures=sorted(booked), definitions=defs)
+    by: dict[int, list[Row]] = defaultdict(list)
+    for p in pairs:
+        f = booked.get(int(p["fixture_id"]))
+        if f is not None:
+            by[int(p["bookmaker"])].append(f)
+    names = {int(r["id"]): str(r["name"]) for r in repo.bookmakers(conn, list(by))}
+    out = [OddsStatusBook(
+        id=b, name=names.get(b, str(b)), matches=len(held),
+        stale=sum(1 for f in held if freshness.price_state(checked_at=f["checked_at"], kickoff_at=f["kickoff_at"],
+                                                          now=moment, points=points, tolerance=tol) == "stale"),
+        last_read_at=max(f["checked_at"] for f in held)) for b, held in by.items()]
+    return sorted(out, key=lambda b: (-b.matches, b.name))
+
+
 def status(conn: Conn, *, at: datetime | None = None) -> Envelope[OddsStatus]:
     """The reader's «Estado de los precios» (plan maestro UX/UI 2026, decision 4): the judgement of ``health`` - the same
     matches, the same rule of freshness - with what a reader is shown and nothing of the machinery. Database only."""
@@ -578,7 +607,7 @@ def status(conn: Conn, *, at: datetime | None = None) -> Envelope[OddsStatus]:
     bare = [f for f in fixtures
             if f["checked_at"] is None and f["kickoff_at"] < moment + timedelta(hours=WITHOUT_PRICE_HOURS)]
     read = [f["checked_at"] for f in fixtures if f["checked_at"] is not None]
-    body = OddsStatus(
+    body = OddsStatus(by_book=status_books(conn, fixtures, moment, points, tol),
         last_read_at=max(read) if read else None, by_horizon=horizons,
         without_price=[OddsStatusMatch(fixture_id=int(f["id"]), kickoff_at=f["kickoff_at"], home=f["home"], away=f["away"],
                                        competition=f["competition"]) for f in bare[:WITHOUT_PRICE_SHOWN]],

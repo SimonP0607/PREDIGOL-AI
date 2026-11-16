@@ -4,8 +4,10 @@
  * a price and what PrediGol does with an old price. It reads GET /odds/status, the same judgement as the owner's «Salud
  * de cuotas»; the page exists only while FBI_ODDS_STATUS is on (the API says so in /auth/me).
  *
- * The sheet also draws a row per bookmaker and a strip of the last 24 hours: the book keeps one reading time per match,
- * not per bookmaker, and no history of late spells, so neither is shown (noted in the plan's state).
+ * «Por casa» (BE-043, UX-143; decision D-06): a row per bookmaker with the matches it prices and their latest reading. The
+ * book keeps one reading hour per match, not per bookmaker, so the hour is the matches' own and the page says so. The
+ * sheet's strip of the last 24 hours is retired with its reason: nothing keeps a history of late spells by bookmaker, and
+ * keeping one would change the odds' capture (outside this plan).
  */
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -46,6 +48,63 @@ function Tag({ late }: { late: boolean }) {
     >
       {t(late ? "odds.status.lateTag" : "odds.status.ok")}
     </span>
+  );
+}
+
+export function ByBook({ data, total }: { data: OddsStatus; total: number }) {
+  const books = data.by_book ?? [];
+  return (
+    <section aria-labelledby="os-books" data-testid="odds-status-books">
+      <h2 id="os-books" className="text-title">
+        {t("odds.status.byBook")}
+      </h2>
+      <ul className="card-surface mt-2 divide-y divide-border rounded-card">
+        {books.map((b) => {
+          const late = b.stale > 0;
+          const share = total > 0 ? Math.min(1, b.matches / total) : 0;
+          return (
+            <li
+              key={b.id}
+              className="flex items-start gap-3 px-4 py-3"
+              data-testid="odds-status-book"
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full",
+                  late ? "bg-warning" : "bg-positive",
+                )}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-sm font-semibold">{b.name}</span>
+                  <Tag late={late} />
+                </div>
+                <div className="numeric mt-0.5 text-[0.8125rem] text-muted-foreground">
+                  {[
+                    b.last_read_at ? formatRelative(b.last_read_at) : null,
+                    t("odds.status.row", { priced: b.matches, total }),
+                    ...(late ? [t("odds.status.rowLate", { count: b.stale })] : []),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+                <div aria-hidden className="mt-2 h-1.5 overflow-hidden rounded-full bg-elevated">
+                  <span
+                    className={cn(
+                      "block h-full rounded-full",
+                      late ? "bg-muted-foreground/60" : "bg-positive",
+                    )}
+                    style={{ width: `${share * 100}%` }}
+                  />
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-2 text-[0.8125rem] text-muted-foreground">{t("odds.status.byBookNote")}</p>
+    </section>
   );
 }
 
@@ -128,6 +187,8 @@ function Body({ data }: { data: OddsStatus }) {
           ))}
         </ul>
       </section>
+
+      {data.by_book && data.by_book.length > 0 ? <ByBook data={data} total={sum.priced} /> : null}
 
       <section aria-labelledby="os-bare" data-testid="odds-status-bare">
         <div className="flex items-baseline justify-between gap-3">

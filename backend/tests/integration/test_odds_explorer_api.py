@@ -348,7 +348,22 @@ def test_the_readers_status_is_off_until_its_switch_and_agrees_with_the_owners_h
     assert data["schedule_minutes"] == sorted(data["schedule_minutes"], reverse=True) and data["schedule_minutes"]
     assert data["tolerance_minutes"] > 0
     assert set(data) == {"last_read_at", "by_horizon", "without_price", "without_price_total", "schedule_minutes",
-                         "tolerance_minutes"}, "nothing of the machinery: no quota, no sizes"
+                         "tolerance_minutes", "by_book"}, "nothing of the machinery: no quota, no sizes"
+
+
+def test_the_readers_status_by_bookmaker_agrees_with_the_board(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    """BE-043 (sheet C05, D-06): «Por casa» counts, for each bookmaker, the matches whose result price it gives in the book in
+    force - the same answer as the board filtered by that bookmaker - with the matches' own reading hour."""
+    monkeypatch.setenv("FBI_ODDS_STATUS", "1")
+    c = client(world.db, "USER")
+    data = get(c, "/api/v1/odds/status")["data"]
+    books = data["by_book"]
+    assert books, "the seeded books name their bookmakers"
+    assert [b["matches"] for b in books] == sorted((b["matches"] for b in books), reverse=True)
+    for b in books:
+        assert b["matches"] == len(board(c, bookmaker=b["id"], hours=72)["rows"]), b["name"]
+        assert b["name"] and b["last_read_at"] is not None and 0 <= b["stale"] <= b["matches"]
+    assert {b["id"]: b["matches"] for b in books}[8] == 1
 
 
 def test_the_readers_status_names_a_followed_match_without_a_price(world: World, monkeypatch: pytest.MonkeyPatch) -> None:

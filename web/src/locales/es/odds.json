@@ -115,7 +115,9 @@
     "minutes": "{n} min",
     "hours": "{n} h",
     "disclaimer": "PrediGol no es una casa de apuestas: muestra precios de terceros y puede haber diferencias con lo que veas en tu casa.",
-    "closed": "Esta página todavía no está disponible."
+    "closed": "Esta página todavía no está disponible.",
+    "byBook": "Por casa",
+    "byBookNote": "Las casas no publican su propia hora: la hora es la de la última lectura de PrediGol de esos partidos."
   },
   "byMatch": {
     "subtitle": "La mejor cuota de cada selección, entre {count} casas.",

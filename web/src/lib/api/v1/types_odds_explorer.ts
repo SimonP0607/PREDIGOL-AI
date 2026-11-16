@@ -275,6 +275,17 @@ export interface OddsStatusMatch {
   competition: string;
 }
 
+/** A bookmaker in «Estado de los precios» (BE-043): the matches of the next 72 h with its result price. */
+export interface OddsStatusBook {
+  id: number;
+  name: string;
+  matches: number;
+  /** Of them, late by the rule of freshness in force. */
+  stale: number;
+  /** The latest reading of those matches (the book keeps one hour per match, not per bookmaker). */
+  last_read_at: string | null;
+}
+
 export interface OddsStatus {
   last_read_at: string | null;
   by_horizon: OddsStatusHorizon[];
@@ -284,4 +295,6 @@ export interface OddsStatus {
   /** Minutes before kick-off at which a price is read again. */
   schedule_minutes: number[];
   tolerance_minutes: number;
+  /** By bookmaker, the most matches first (BE-043); absent from an older API, null without the result market. */
+  by_book?: OddsStatusBook[] | null;
 }

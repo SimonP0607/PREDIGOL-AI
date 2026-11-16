@@ -210,6 +210,17 @@ class OddsStatusMatch(Contract):
     competition: str
 
 
+class OddsStatusBook(Contract):
+    """A bookmaker in «Estado de los precios» (BE-043, sheet C05): the matches of the next 72 h whose result price it gives in
+    the book in force. The book keeps one reading hour per match, not per bookmaker: the hour is the matches' own."""
+
+    id: int = Field(description="The bookmaker (the provider's id, as on the boards).")
+    name: str
+    matches: int = Field(description="Matches of the next 72 h with a result price of this bookmaker.")
+    stale: int = Field(description="Of them, how many are late by the rule of freshness in force.")
+    last_read_at: datetime | None = Field(description="The latest reading of those matches; null without any.")
+
+
 class OddsStatus(Contract):
     """What a reader may know of the prices they see: when they were last read, how many matches have one and how many are
     late - the same judgement as the owner's /admin/odds/health, without its machinery (quota, sizes, partitions)."""
@@ -223,3 +234,5 @@ class OddsStatus(Contract):
     schedule_minutes: list[int] = Field(description="The rule in force: the minutes before kick-off at which a price is "
                                                     "read again. A price that missed its last closed point is late.")
     tolerance_minutes: int = Field(description="The margin of each point.")
+    by_book: list[OddsStatusBook] | None = Field(default=None, description=(
+        "By bookmaker, the most matches first (BE-043); null when the result market is not in the book's catalogue."))
