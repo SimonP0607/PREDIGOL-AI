@@ -66,7 +66,10 @@
     "previous": "Día anterior",
     "next": "Siguiente",
     "today": "Hoy",
-    "yesterdayOpen": "Ayer · aún por terminar"
+    "yesterdayOpen": "Ayer · aún por terminar",
+    "order": "Ordenar los picks",
+    "byTime": "Por hora",
+    "byValue": "Por valor"
   },
   "parlay": {
     "pAllLow": "Probabilidad de acertar todas",
@@ -241,7 +244,13 @@
       "hitRate": "Acierto",
       "roi": "Rentabilidad (ROI)",
       "empty": "Nada en este periodo.",
-      "note": "Por el día de inicio del partido en tu zona horaria: {zone}. Beneficio en unidades de una apuesta, a la cuota registrada. PrediGol no maneja dinero ni acepta apuestas."
+      "note": "Por el día de inicio del partido en tu zona horaria: {zone}. Beneficio en unidades de una apuesta, a la cuota registrada. PrediGol no maneja dinero ni acepta apuestas.",
+      "roiShort": "ROI",
+      "pendingCount_one": "{count} pendiente",
+      "pendingCount_other": "{count} pendientes",
+      "nonePending": "Sin pendientes",
+      "totalWord_one": "pick",
+      "totalWord_other": "picks"
     },
     "picks": {
       "title": "Picks guardados",
@@ -498,7 +507,8 @@
       "context": "PrediGol Intelligence (pasada del día y noticias)",
       "selection": "Selección (máx. 5)"
     },
-    "help": "Cada paso es un filtro: si no hay picks que los pasen todos, el día se queda con menos o sin ninguno. Los picks del día se eligen cuando PrediGol Intelligence ya leyó el día: su pasada de cada partido, con búsqueda de noticias."
+    "help": "Cada paso es un filtro: si no hay picks que los pasen todos, el día se queda con menos o sin ninguno. Los picks del día se eligen cuando PrediGol Intelligence ya leyó el día: su pasada de cada partido, con búsqueda de noticias.",
+    "method": "Ver la metodología"
   },
   "roiSample_one": "sobre {n} liquidado",
   "roiSample_other": "sobre {n} liquidados",

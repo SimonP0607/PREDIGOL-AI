@@ -94,52 +94,65 @@ function GroupCard({
 }) {
   const roi = group.roi;
   const n = Number(group.staked_units);
+  const ours = name.startsWith("predigol");
   return (
-    <Card className="p-4" as="article">
-      <h3 className="font-display text-sm font-semibold" data-testid={`history-group-title`}>
+    // Compact, two by two on a phone (sheet K06): the record large, the hit rate and the return on one line, the pending
+    // ones under it; the sample's words stay, smaller.
+    <Card className={cn("flex min-w-0 flex-col p-3.5", ours && "border-gold/45")} as="article">
+      <h3
+        className={cn(
+          "font-display text-sm font-semibold leading-snug",
+          ours ? "text-gold-strong" : "text-foreground",
+        )}
+        data-testid={`history-group-title`}
+      >
         {t(`records.mine.results.group.${name}`)}
       </h3>
-      <div className="mt-2 flex items-baseline justify-between gap-2">
-        <span className="numeric text-2xl font-semibold" data-testid={`history-${name}-total`}>
-          {fmtInt(group.total)}
-        </span>
-        <span data-testid={`history-${name}-profit`}>
-          {group.profit_units === null ? (
-            <span className="numeric text-sm text-subtle-foreground">{DASH}</span>
-          ) : (
-            <Units value={group.profit_units} className="text-sm" />
+      <p
+        className="numeric mt-1.5 font-display text-xl font-bold"
+        data-testid={`history-${name}-record`}
+      >
+        {t("records.mine.results.record", { won: group.won, lost: group.lost })}
+      </p>
+      <p className="mt-1 text-caption text-muted-foreground">
+        {t("records.mine.results.hitRate")} {fmtPct(group.hit_rate, 0)} ·{" "}
+        <GlossaryTerm term="roi">{t("records.mine.results.roiShort")}</GlossaryTerm>{" "}
+        <span
+          data-testid={`history-${name}-roi`}
+          className={cn(
+            "numeric font-semibold",
+            roi === null || roi === 0 ? undefined : roi > 0 ? "text-positive" : "text-negative",
           )}
+        >
+          {roi === null ? DASH : fmtPct(roi, 1)}
         </span>
-      </div>
-      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5">
-        <Stat
-          label={t("records.labels.result")}
-          value={t("records.mine.results.record", { won: group.won, lost: group.lost })}
-        />
-        <Stat label={t("records.mine.results.pending")} value={fmtInt(group.pending)} />
-        <Stat label={t("records.mine.results.hitRate")} value={fmtPct(group.hit_rate, 0)} />
-        <Stat
-          label={<GlossaryTerm term="roi">{t("records.mine.results.roi")}</GlossaryTerm>}
-          value={
-            <>
-              <span data-testid={`history-${name}-roi`}>
-                {roi === null ? DASH : fmtPct(roi, 1)}
-              </span>
-              {n > 0 ? (
-                <span
-                  className="block text-caption font-normal text-subtle-foreground"
-                  data-testid={`history-${name}-roi-sample`}
-                >
-                  <GlossaryTerm term="sample">
-                    {sampleLine({ n, margin: group.margin ?? null, min, conclusive })}
-                  </GlossaryTerm>
-                </span>
-              ) : null}
-            </>
-          }
-          tone={roi === null || roi === 0 ? undefined : roi > 0 ? "text-positive" : "text-negative"}
-        />
-      </dl>
+      </p>
+      <p className="mt-0.5 text-caption text-muted-foreground">
+        <span data-testid={`history-${name}-total`} className="numeric">
+          {fmtInt(group.total)}
+        </span>{" "}
+        {t("records.mine.results.totalWord", { count: group.total })}
+        {" · "}
+        {group.pending > 0
+          ? t("records.mine.results.pendingCount", { count: group.pending })
+          : t("records.mine.results.nonePending")}
+        {group.profit_units === null ? null : (
+          <span data-testid={`history-${name}-profit`}>
+            {" · "}
+            <Units value={group.profit_units} className="text-caption" />
+          </span>
+        )}
+      </p>
+      {n > 0 ? (
+        <p
+          className="mt-auto pt-2 text-micro leading-4 text-subtle-foreground"
+          data-testid={`history-${name}-roi-sample`}
+        >
+          <GlossaryTerm term="sample">
+            {sampleLine({ n, margin: group.margin ?? null, min, conclusive })}
+          </GlossaryTerm>
+        </p>
+      ) : null}
     </Card>
   );
 }
@@ -167,9 +180,9 @@ function Results() {
       </div>
       {history?.evaluation_mode ? <EvaluationBadge /> : null}
       {q.isPending ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {HISTORY_GROUPS.map((g) => (
-            <SkeletonBlock key={g} className="h-40" />
+            <SkeletonBlock key={g} className="h-32" />
           ))}
         </div>
       ) : q.isError ? (
@@ -179,10 +192,7 @@ function Results() {
       ) : history ? (
         <>
           <div
-            className={cn(
-              "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4",
-              q.isFetching && "opacity-70",
-            )}
+            className={cn("grid grid-cols-2 gap-3 xl:grid-cols-4", q.isFetching && "opacity-70")}
           >
             {HISTORY_GROUPS.map((g) => (
               <GroupCard
