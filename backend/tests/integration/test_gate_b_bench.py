@@ -11,6 +11,7 @@ anything. The real gate runs on the real shadow, over fourteen complete real day
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -356,6 +357,50 @@ def test_set_lab_plan_is_the_owners_and_gate_b_reads_it(db: psycopg.Connection[A
     assert db.execute("SELECT decided_by FROM ai.feature_gates WHERE id = %s", (doc["recorded_row"],)).fetchone() == ("owner",)
     c = by_id(evaluate(db))["lab_envelope"]
     assert c.detail["planned_excluded_days"] == 2 and c.verdict == gate_b.PASS
+
+
+# ── the owner's closure: NO EVALUADO (AD-001, IA-055) ───────────────────────────────────────────────────────────
+
+CLOSE_REASON = "No evaluado: ventana interrumpida por decisión del dueño (Arquitectura definitiva 2026, 16-nov-2026); corte informativo adjunto"
+
+
+def all_rows(db: psycopg.Connection[Any]) -> list[tuple[Any, ...]]:
+    return db.execute("SELECT id, gate, at, passed, evidence_hash, decided_by FROM ai.feature_gates ORDER BY id").fetchall()
+
+
+def test_close_writes_one_row_of_the_owner_with_the_cut_and_never_a_second(db: psycopg.Connection[Any], seed: Seed, monkeypatch: Any) -> None:
+    from fbi.ai import gates_panel, gates_panel_readers
+
+    build(db, seed)
+    conn: Any = Savepoints(db)
+    settings = AiSettings(lab_monthly_budget=D(55))
+    before = all_rows(db)
+    audit = db.execute("SELECT id, n_checked, n_violations FROM intel.audit_checks ORDER BY id").fetchall()
+    kw: dict[str, Any] = {"not_evaluated": True, "reason": CLOSE_REASON, "dry_run": False, "at": NOW}
+    doc, code = ia_gate_b.close(conn, settings, confirm_owner=False, **kw)
+    assert code == ia_gate_b.PENDING and doc["preview"] is True and gate_b_rows(db) == [] and all_rows(db) == before
+    printed, _ = ia_gate_b.run(conn, settings, at=NOW)  # evaluate --json at the same instant
+    printed.pop("lines")
+    assert all_rows(db) == before, "evaluate still writes nothing"
+    doc, code = ia_gate_b.close(conn, settings, confirm_owner=True, version="test", **kw)
+    assert code == ia_gate_b.OK and isinstance(doc["recorded_row"], int) and doc["already_closed"] is False
+    [(passed, decided_by, evidence, digest, version)] = gate_b_rows(db)
+    assert passed is False and decided_by == "owner" and version == "test" and digest == gates.evidence_hash(evidence)
+    assert evidence["kind"] == gate_b.CLOSURE_KIND and evidence["verdict"] == gate_b.NOT_EVALUATED and evidence["reason"] == CLOSE_REASON
+    assert evidence["informative_cut"] == json.loads(json.dumps(printed, default=str)), "the cut is evaluate --json of the same instant"
+    assert all_rows(db)[:len(before)] == before and len(all_rows(db)) == len(before) + 1, "one row appended, the earlier ones untouched"
+    assert db.execute("SELECT id, n_checked, n_violations FROM intel.audit_checks ORDER BY id").fetchall() == audit
+    doc, code = ia_gate_b.close(conn, settings, confirm_owner=True, **kw | {"reason": "otra vez", "at": NOW + timedelta(minutes=5)})
+    assert code == ia_gate_b.OK and doc["already_closed"] is True and doc["recorded_row"] is None and len(gate_b_rows(db)) == 1
+    monkeypatch.setattr(gate_b, "MIN_RUNS_PER_AGENT", 50)
+    plan(db, 0)
+    doc, code = ia_gate_b.run(conn, settings, at=NOW, record=True)  # a complete PASA, after the closure
+    assert code == ia_gate_b.OK and doc["recorded_row"] is None and "NO EVALUADO" in doc["recorded_note"]
+    assert len(gate_b_rows(db)) == 1, "nothing more of gate-b-v1 is recorded"
+    panel = gates_panel.panel(gates_panel_readers.read(db, settings, at=NOW))
+    entry = next(e for e in panel["gates"] if e["id"] == "gate_b")
+    assert entry["status"] == gates_panel.NOT_EVALUATED and entry["approved"] is False and panel["violations"] == []
+    assert entry["recorded"]["reason"] == CLOSE_REASON and entry["when"].startswith(gate_b.NOT_EVALUATED_ES)
 
 
 # ── the bench ────────────────────────────────────────────────────────────────────────────────────────────────────

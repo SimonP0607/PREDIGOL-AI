@@ -35,7 +35,7 @@ PASA solo sale donde hay un **pase registrado** (`on_file_pass`):
 
 En un gate vivo manda la fila; si su evaluador dice hoy otra cosa, se escribe al lado. Sin fila, un PASA del evaluador sale **PENDIENTE POR ACCIONES MANUALES** —sin la fila el sistema no lo da por aprobado— y cualquier otro veredicto sale tal cual, marcado «sin registrar». `violations` comprueba la regla sobre el panel entero (estado desconocido, `approved` distinto de `status == "PASA"`, PASA sin pase registrado, PASA en P1 o en un gate de dependencias) y el script sale con 1 si alguna vez falla.
 
-Las palabras son las de los gates: PASA, NO PASA, PENDIENTE POR TIEMPO REAL y PENDIENTE POR ACCIONES MANUALES (`fbi.ai.gate_b`); las del LAB, RECHAZA y PENDIENTE POR MUESTRA (`fbi.research.protocol`); y PENDIENTE POR DEPENDENCIAS para un gate cuyas piezas aún no existen.
+Las palabras son las de los gates: PASA, NO PASA, PENDIENTE POR TIEMPO REAL y PENDIENTE POR ACCIONES MANUALES (`fbi.ai.gate_b`); las del LAB, RECHAZA y PENDIENTE POR MUESTRA (`fbi.research.protocol`); PENDIENTE POR DEPENDENCIAS para un gate cuyas piezas aún no existen; y, desde IA-055 (AD-001), **NO EVALUADO** para Gate B cuando su fila más nueva es tu cierre (`gate-b-closure-v1`, `decided_by='owner'`): se lee «NO EVALUADO — ventana interrumpida por decisión del dueño», nunca NO PASA ni PASA, nunca aprobado, y el corte de hoy de su evaluador queda al lado como información. Un NO EVALUADO sin tu fila de cierre es una violación de la regla.
 
 Lo vigila `tests/unit/test_gates_panel.py`: en 324 combinaciones de filas y veredictos (Gate B, Research v2 y `ai-gate-v2`) ningún pendiente sale aprobado; el comprobador caza los paneles rotos; los veredictos del panel son los de los evaluadores sobre datos falsos hechos con las piezas de los propios evaluadores; las cifras del LAB son las de sus ficheros de resultado y las de G-FUENTES 1, las de la tabla de IA-040; y ni el panel ni sus lecturas escriben.
 
@@ -110,7 +110,7 @@ Si no hay PASA, el panel dice por qué: «no demostrado» (su `ai-gate-v2` da NO
   "version": "gates-panel-v1", "decides": false,
   "at": "<instante UTC de la foto>", "day": "<día de Bogotá>",
   "rule": "<la regla, en una frase>",
-  "summary": {"PASA": n, "NO PASA": n, "RECHAZA": n, "PENDIENTE POR ACCIONES MANUALES": n,
+  "summary": {"PASA": n, "NO PASA": n, "NO EVALUADO": n, "RECHAZA": n, "PENDIENTE POR ACCIONES MANUALES": n,
               "PENDIENTE POR TIEMPO REAL": n, "PENDIENTE POR MUESTRA": n, "PENDIENTE POR DEPENDENCIAS": n},
   "gates": [<gate>, …],            // 16, en el orden del plan
   "evidence_rows": [<fila>, …],    // la fila más nueva de cada gate de ai.feature_gates
@@ -122,7 +122,7 @@ Si no hay PASA, el panel dice por qué: «no demostrado» (su `ai-gate-v2` da NO
 <gate> = {
   "id", "name", "piece", "code",
   "kind": "vivo" | "registrado" | "lab" | "muestra" | "dependencias",
-  "status": una de las siete palabras, "approved": status == "PASA",
+  "status": una de las ocho palabras, "approved": status == "PASA",
   "why": [frases], "threshold", "rejects_if",
   "evaluable_on": "AAAA-MM-DD" | null, "evaluated_on": "AAAA-MM-DD" | null, "when": "<frase>",
   "figures": [<cifra>], "checks": [<comprobación>], "failing_now": [ids de comprobación],
