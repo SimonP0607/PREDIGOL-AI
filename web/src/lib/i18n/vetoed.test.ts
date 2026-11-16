@@ -59,6 +59,7 @@ const OWNER_ONLY: Readonly<Record<string, string>> = {
   "records.evaluation.": "the label and note of the owner's evaluation records",
   "markets.reason.no_shadow_picks": "the reason of an empty evaluation preview",
   "errors.code.last_super_admin": "refused when the owner manages accounts in the console",
+  "nav.private.": "the owner's private group of «Más» (UX-152), never drawn for a reader",
 };
 
 function entries(node: Catalog, prefix: string): Array<[string, string]> {

@@ -43,6 +43,7 @@ import {
   Workflow,
   HardDrive,
   Newspaper,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 
@@ -81,6 +82,75 @@ export const userNav: NavItem[] = [
  * that width there is no room for them and they stay in «Más», as on the phone. Noticias only while its section is open.
  */
 export const DESK_BAR: readonly string[] = ["/parlays", "/odds", "/news"];
+
+/** The switches that shape the bars (GET /auth/me): the unified plan's bars, and the sections they hold. */
+export interface NavFlags {
+  /** FBI_NAV_V2 (UX-152, decisions D-01 and D-02). */
+  v2: boolean;
+  /** The Noticias section is open (FBI_NEWS_FEED). */
+  news: boolean;
+  /** The pages of clubs, national teams and players are open (FBI_PROFILES): «Equipos». */
+  profiles: boolean;
+}
+
+export const NAV_V1: NavFlags = { v2: false, news: false, profiles: false };
+
+/**
+ * The bar's addresses before «Más» (plan maestro unificado, decision D-01): Inicio · Partidos · Noticias · Picks on the
+ * phone's bar and at the start of the desk's - «Mis picks» moves to «Más» and to a tab of Picks. Without the switch, or
+ * while Noticias is closed, the bar of always.
+ */
+export function barNav(f: NavFlags = NAV_V1): NavItem[] {
+  if (!f.v2 || !f.news) return userNav;
+  return [
+    { to: "/home", label: "nav.home", icon: House },
+    { to: "/matches", label: "nav.matches", icon: CalendarDays, also: ["/live"] },
+    { to: "/news", label: "nav.news", icon: Newspaper },
+    { to: "/picks", label: "nav.picks", icon: Target },
+  ];
+}
+
+/** Where a desk pill starts to fit: from 1024 px (lg), 1280 px (xl) or 1600 px (a wide screen, decision D-02). */
+export type DeskFrom = "lg" | "xl" | "wide";
+
+export interface DeskExtra {
+  item: NavItem;
+  from: DeskFrom;
+}
+
+/** The pill's own classes for where it fits; under that width it stays in «Más». */
+export const DESK_SHOW: Record<DeskFrom, string> = {
+  lg: "inline-flex",
+  xl: "hidden xl:inline-flex",
+  wide: "hidden min-[1600px]:inline-flex",
+};
+
+/** And the row of «Más» that the pill replaces, hidden where the pill is shown. */
+export const MORE_HIDE: Record<DeskFrom, string> = {
+  lg: "lg:hidden",
+  xl: "xl:hidden",
+  wide: "min-[1600px]:hidden",
+};
+
+/**
+ * The desk's pills after the bar's four (decision D-02): Equipos from 1024 px while the profiles are open, Mis picks and
+ * Parlays from 1280 px, Cuotas from 1600 px; «Más» after them. Without the switch, the bar of always (Parlays, Cuotas and
+ * Noticias from 1280 px).
+ */
+export function deskExtras(f: NavFlags = NAV_V1): DeskExtra[] {
+  if (!f.v2 || !f.news)
+    return DESK_BAR.map((to) => ({
+      item: moreNav.find((m) => m.to === to)!,
+      from: "xl" as const,
+    })).filter((x) => x.item !== undefined);
+  const out: DeskExtra[] = [];
+  if (f.profiles)
+    out.push({ item: { to: "/teams", label: "nav.teams", icon: Shield }, from: "lg" });
+  out.push({ item: { to: "/my-picks", label: "nav.myPicks", icon: Bookmark }, from: "xl" });
+  out.push({ item: moreNav.find((m) => m.to === "/parlays")!, from: "xl" });
+  out.push({ item: moreNav.find((m) => m.to === "/odds")!, from: "wide" });
+  return out;
+}
 
 export interface MoreItem extends NavItem {
   /** i18n key of the one line under the label. */
@@ -157,11 +227,62 @@ export const moreNav: MoreItem[] = [
 /** Novedades: «Más» carries a dot while it holds an entry the reader has not seen (plan UX, B6). */
 export const UPDATES_PATH = "/updates";
 
+/** «Mis picks» and «Equipos» as rows of «Más» once the unified plan's bars are on (they left the phone's bar). */
+const MY_PICKS_MORE: MoreItem = {
+  to: "/my-picks",
+  label: "nav.myPicks",
+  hint: "nav.moreHint.myPicks",
+  icon: Bookmark,
+  testId: "more-my-picks",
+};
+const TEAMS_MORE: MoreItem = {
+  to: "/teams",
+  label: "nav.teams",
+  hint: "nav.moreHint.teams",
+  icon: Shield,
+  testId: "more-teams",
+};
+
 /** The items of «Más» this reader sees. */
-export function moreItems(showTransparency: boolean, showNews = false): MoreItem[] {
-  return moreNav.filter(
+export function moreItems(
+  showTransparency: boolean,
+  showNews = false,
+  f: NavFlags = NAV_V1,
+): MoreItem[] {
+  const base = moreNav.filter(
     (item) => (!item.transparency || showTransparency) && (!item.news || showNews),
   );
+  if (!f.v2 || !f.news) return base;
+  // Noticias is in the bar now; Mis picks (and Equipos, while the profiles are open) come into «Más».
+  return [
+    MY_PICKS_MORE,
+    ...(f.profiles ? [TEAMS_MORE] : []),
+    ...base.filter((item) => item.to !== "/news"),
+  ];
+}
+
+/**
+ * «Evaluación privada · no visible para usuarios» (kit of the maquetas): the owner's own rows at the foot of «Más» - only
+ * with the console's role, while the unified plan's bars are on. Each address is a console route the API keeps for the
+ * owner alone. The tracking and line-up alert views join it as they are built (UX-167, UX-169).
+ */
+export function privateItems(admin: boolean, f: NavFlags = NAV_V1): MoreItem[] {
+  if (!admin || !f.v2) return [];
+  return [
+    {
+      to: "/admin/intelligence",
+      label: "nav.private.console",
+      hint: "nav.private.consoleHint",
+      icon: BrainCircuit,
+      testId: "more-private-console",
+    },
+  ];
+}
+
+/** The class that hides a row of «Más» where the desk's bar shows it as a pill (none: always a row). */
+export function moreHide(to: string, f: NavFlags = NAV_V1): string | undefined {
+  const extra = deskExtras(f).find((x) => x.item.to === to);
+  return extra ? MORE_HIDE[extra.from] : undefined;
 }
 
 export const profileNav: NavItem = { to: "/profile", label: "nav.profile", icon: UserRound };
@@ -303,8 +424,8 @@ export function currentMore(
 }
 
 /** Which of the five destinations holds this page: one of the bar's four addresses, «Más», or none (a legal text). */
-export function destinationOf(pathname: string): string | "more" | null {
-  const item = userNav.find((i) => holds(i, pathname));
+export function destinationOf(pathname: string, f: NavFlags = NAV_V1): string | "more" | null {
+  const item = barNav(f).find((i) => holds(i, pathname));
   if (item) return item.to;
-  return currentMore(pathname) ? "more" : null;
+  return currentMore(pathname, moreItems(true, true, f)) ? "more" : null;
 }

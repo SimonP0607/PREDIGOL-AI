@@ -29,6 +29,8 @@ import { AccountMenu, PreviewBanner } from "./HeaderControls";
 import { MoreSheet } from "./MoreSheet";
 import { UPDATES_PATH } from "./nav";
 import { useMoreItems } from "./useMoreItems";
+import { useNavFlags } from "./useNavFlags";
+import { privateItems } from "./nav";
 import { useUpdatesUnread } from "./useUpdatesUnread";
 
 function ShadowPreviewStrip() {
@@ -59,6 +61,9 @@ export function UserShell({ children }: { children: ReactNode }) {
   // A phone shows one notice at a time: three stacked "added to your parlay" cover the top of the screen.
   const phone = useMediaQuery("(max-width: 639px)");
   const items = useMoreItems();
+  const flags = useNavFlags();
+  const owner = privateItems(auth.showAdmin, flags);
+  const wide = flags.v2 && flags.news;
   // Novedades holds an entry this reader has not seen (plan UX, B6): a dot on «Más» and on its row
   const unread = useUpdatesUnread();
   const [more, setMore] = useState(false);
@@ -79,14 +84,29 @@ export function UserShell({ children }: { children: ReactNode }) {
               <ShadowPreviewStrip />
               {/* Sideways on a phone the bar scrolls away with the page: 56 px of a 390 px screen is too much. */}
               <header className="sticky top-[env(safe-area-inset-top)] z-30 border-b border-foreground/[0.06] bg-background-deep/90 backdrop-blur-lg short:static">
-                <div className="px-safe mx-auto flex h-[var(--app-bar-h)] max-w-6xl items-center gap-3 sm:gap-4 lg:gap-5">
-                  {/* min-w-0: on a 320 px phone the brand gives way to the controls instead of pushing them off. */}
-                  <Link to="/home" className="tap-y relative min-w-0">
+                <div
+                  className={cn(
+                    "px-safe mx-auto flex h-[var(--app-bar-h)] max-w-6xl items-center gap-3 sm:gap-4 lg:gap-5",
+                    // the unified plan's desk bar (D-02): Cuotas joins it from 1600 px, where the bar takes more room
+                    wide && "min-[1600px]:max-w-7xl",
+                  )}
+                >
+                  {/* min-w-0: on a 320 px phone the brand gives way to the controls instead of pushing them off. With the
+                  unified plan's bar the tagline leaves the desk (maquetas): the pills need the room. */}
+                  <Link
+                    to="/home"
+                    className={cn(
+                      "tap-y relative min-w-0",
+                      wide && "lg:[&_[data-brand-tagline]]:hidden",
+                    )}
+                  >
                     <BrandLogo size={34} tagline={t("common.tagline")} />
                   </Link>
                   <TopNav
                     pathname={pathname}
                     items={items}
+                    flags={flags}
+                    owner={owner}
                     unread={unread ? [UPDATES_PATH] : []}
                     language={{ locale, onChange: (next) => void auth.setLocale(next) }}
                   />
@@ -113,6 +133,7 @@ export function UserShell({ children }: { children: ReactNode }) {
 
               <BottomBar
                 pathname={pathname}
+                flags={flags}
                 moreUnread={unread}
                 moreOpen={more}
                 onMore={() => {

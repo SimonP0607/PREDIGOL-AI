@@ -52,7 +52,17 @@ import {
 import { WhatsappLink } from "@/product/support/WhatsappLink";
 import { useInstallPrompt } from "@/product/push/useInstallPrompt";
 import { LanguageRadios, LanguageSwitch } from "./HeaderControls";
-import { currentMore, DESK_BAR, NAV_PILL, UPDATES_PATH, type MoreItem } from "./nav";
+import {
+  currentMore,
+  moreHide,
+  NAV_PILL,
+  NAV_V1,
+  privateItems,
+  UPDATES_PATH,
+  type MoreItem,
+  type NavFlags,
+} from "./nav";
+import { useNavFlags } from "./useNavFlags";
 import { useMoreItems } from "./useMoreItems";
 import { useUpdatesUnread } from "./useUpdatesUnread";
 
@@ -147,8 +157,11 @@ export function MoreList({
   unread = [],
   whatsapp = null,
   language,
+  owner = [],
 }: {
   items: readonly MoreItem[];
+  /** The owner's private rows (UX-152): under their own heading, never a reader's. */
+  owner?: readonly MoreItem[];
   pathname: string;
   /** The language's control, since it left the top bar (plan maestro UX/UI 2026, wave 3): a row of its own. */
   language?: ReactNode;
@@ -203,6 +216,39 @@ export function MoreList({
           })}
         </ul>
       </nav>
+      {owner.length > 0 ? (
+        <nav
+          aria-label={t("nav.private.title")}
+          className="mt-3 border-t border-border pt-3"
+          data-testid="more-private"
+        >
+          <p className="px-3 text-caption font-semibold text-warning">{t("nav.private.title")}</p>
+          <ul className="mt-1 grid gap-1 sm:grid-cols-2">
+            {owner.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.to}>
+                  <Link
+                    to={item.to}
+                    onClick={onPick}
+                    data-testid={item.testId}
+                    className="flex min-h-14 items-center gap-3 rounded-lg px-3 py-2 hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Icon aria-hidden className="h-5 w-5 shrink-0 text-warning" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium">{t(item.label)}</span>
+                      <span className="block text-caption text-muted-foreground">
+                        {t(item.hint)}
+                      </span>
+                    </span>
+                    <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-subtle-foreground" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      ) : null}
       <div className="mt-3 space-y-2 border-t border-border pt-3">
         <WhatsappLink
           digits={whatsapp}
@@ -260,6 +306,8 @@ export function MoreSheet({
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const items = useMoreItems();
+  const flags = useNavFlags();
+  const owner = privateItems(auth.showAdmin, flags);
   const unread = useUpdatesUnread();
   const contact = useQuery({ ...live.supportContact, enabled: open });
   // closed by one of its rows: the reader went on to that page, so the focus does not jump back to the bar
@@ -287,6 +335,7 @@ export function MoreSheet({
         </SheetHeader>
         <MoreList
           items={items}
+          owner={owner}
           pathname={pathname}
           standalone={isStandalone()}
           platform={installPlatform()}
@@ -318,8 +367,14 @@ export function MoreMenu({
   inBar = false,
   unread = [],
   language,
+  flags = NAV_V1,
+  owner = [],
 }: {
   items: readonly MoreItem[];
+  /** The unified plan's bars: which rows the desk's pills replace. */
+  flags?: NavFlags;
+  /** The owner's private rows (UX-152). */
+  owner?: readonly MoreItem[];
   pathname: string;
   active: boolean;
   /** The reader is on a destination that the wide desk's bar shows as its own pill: «Más» is not where they are there. */
@@ -361,7 +416,7 @@ export function MoreMenu({
                   "flex items-start gap-2.5 py-2 pointer-coarse:min-h-11",
                   here && "bg-accent",
                   // a pill of the bar from 1280 px: not twice
-                  DESK_BAR.includes(item.to) && "xl:hidden",
+                  moreHide(item.to, flags),
                 )}
               >
                 <Icon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -376,6 +431,37 @@ export function MoreMenu({
             </DropdownMenuItem>
           );
         })}
+        {owner.length > 0 ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel
+              className="text-caption font-semibold text-warning"
+              data-testid="nav-more-private"
+            >
+              {t("nav.private.title")}
+            </DropdownMenuLabel>
+            {owner.map((item) => {
+              const Icon = item.icon;
+              return (
+                <DropdownMenuItem key={item.to} asChild>
+                  <Link
+                    to={item.to}
+                    data-testid={`nav-${item.testId}`}
+                    className="flex items-start gap-2.5 py-2 pointer-coarse:min-h-11"
+                  >
+                    <Icon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                    <span className="min-w-0">
+                      <span className="block font-medium">{t(item.label)}</span>
+                      <span className="block text-caption text-muted-foreground">
+                        {t(item.hint)}
+                      </span>
+                    </span>
+                  </Link>
+                </DropdownMenuItem>
+              );
+            })}
+          </>
+        ) : null}
         {language ? (
           <>
             <DropdownMenuSeparator />

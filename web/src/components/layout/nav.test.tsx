@@ -428,3 +428,48 @@ describe("the console's menu in five groups (plan maestro UX/UI 2026, decision 1
     expect(() => writeFoldedAdminGroups(refuses, new Set(["system"]))).not.toThrow();
   });
 });
+
+describe("the unified plan's bars (FBI_NAV_V2; decisions D-01 and D-02)", () => {
+  const v2 = { v2: true, news: true, profiles: false };
+
+  test("the phone's bar: Inicio, Partidos, Noticias, Picks and «Más»; without Noticias open, the bar of always", async () => {
+    const { barNav } = await import("./nav");
+    expect(barNav(v2).map((i) => i.to)).toEqual(["/home", "/matches", "/news", "/picks"]);
+    expect(barNav({ ...v2, news: false }).map((i) => i.to)).toEqual(userNav.map((i) => i.to));
+    expect(barNav().map((i) => i.to)).toEqual(userNav.map((i) => i.to));
+    const out = await html(
+      <BottomBar pathname="/news" moreOpen={false} onMore={() => {}} flags={v2} />,
+    );
+    expect(out).toContain('data-testid="tab-news"');
+    expect(out).not.toContain('data-testid="tab-my-picks"');
+  });
+
+  test("«Mis picks» moves to «Más», Noticias leaves it, Equipos joins it with the profiles", async () => {
+    const { moreItems, destinationOf } = await import("./nav");
+    const rows = moreItems(true, true, v2).map((i) => i.to);
+    expect(rows[0]).toBe("/my-picks");
+    expect(rows).not.toContain("/news");
+    expect(rows).not.toContain("/teams");
+    expect(moreItems(true, true, { ...v2, profiles: true }).map((i) => i.to)).toContain("/teams");
+    expect(destinationOf("/my-picks", v2)).toBe("more");
+    expect(destinationOf("/news", v2)).toBe("/news");
+  });
+
+  test("the desk: Mis picks and Parlays from 1280 px, Cuotas only from 1600 px, Equipos from 1024 px with the profiles", async () => {
+    const { deskExtras, moreHide } = await import("./nav");
+    const extras = deskExtras({ ...v2, profiles: true }).map((x) => `${x.item.to}@${x.from}`);
+    expect(extras).toEqual(["/teams@lg", "/my-picks@xl", "/parlays@xl", "/odds@wide"]);
+    expect(moreHide("/odds", v2)).toBe("min-[1600px]:hidden");
+    expect(moreHide("/help", v2)).toBeUndefined();
+    const out = await html(<TopNav pathname="/home" items={moreItems(true, true)} flags={v2} />);
+    expect(tag(out, "nav-odds")).toContain("min-[1600px]:inline-flex");
+    expect(tag(out, "nav-my-picks")).toContain("xl:inline-flex");
+  });
+
+  test("the private section is the owner's alone, and only with the switch", async () => {
+    const { privateItems } = await import("./nav");
+    expect(privateItems(false, v2)).toEqual([]);
+    expect(privateItems(true, { ...v2, v2: false })).toEqual([]);
+    expect(privateItems(true, v2).map((i) => i.to)).toEqual(["/admin/intelligence"]);
+  });
+});
