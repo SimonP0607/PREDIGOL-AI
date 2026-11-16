@@ -66,7 +66,10 @@
     "previous": "Previous day",
     "next": "Next",
     "today": "Today",
-    "yesterdayOpen": "Yesterday · still to finish"
+    "yesterdayOpen": "Yesterday · still to finish",
+    "order": "Order the picks",
+    "byTime": "By time",
+    "byValue": "By value"
   },
   "parlay": {
     "pAllLow": "Chance all legs win",
@@ -241,7 +244,13 @@
       "hitRate": "Hit rate",
       "roi": "Return (ROI)",
       "empty": "Nothing in this period.",
-      "note": "By the day the match kicks off in your time zone: {zone}. Profit in units of one stake, at the recorded price. PrediGol handles no money and takes no bets."
+      "note": "By the day the match kicks off in your time zone: {zone}. Profit in units of one stake, at the recorded price. PrediGol handles no money and takes no bets.",
+      "roiShort": "ROI",
+      "pendingCount_one": "{count} pending",
+      "pendingCount_other": "{count} pending",
+      "nonePending": "Nothing pending",
+      "totalWord_one": "pick",
+      "totalWord_other": "picks"
     },
     "picks": {
       "title": "Saved picks",
@@ -498,7 +507,8 @@
       "context": "PrediGol Intelligence (day's pass and news)",
       "selection": "Selection (max 5)"
     },
-    "help": "Each step is a filter: if no pick passes them all, the day has fewer or none. The picks of the day are chosen once PrediGol Intelligence has read the day: its pass of each match, with a news search."
+    "help": "Each step is a filter: if no pick passes them all, the day has fewer or none. The picks of the day are chosen once PrediGol Intelligence has read the day: its pass of each match, with a news search.",
+    "method": "See the methodology"
   },
   "roiSample_one": "over {n} settled",
   "roiSample_other": "over {n} settled",

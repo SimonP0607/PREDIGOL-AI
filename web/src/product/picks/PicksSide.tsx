@@ -11,6 +11,7 @@ import type { Envelope } from "@/lib/api/v1/types";
 import type { DailyBoard } from "@/lib/api/v1/types_records";
 import { PARLAY_ICON, parlayTitle } from "@/product/parlays/parlayText";
 import { ParlayRecordCard } from "@/product/records/ParlayRecordCard";
+import { SlipCard } from "@/product/records/SlipCard";
 import { SectionHeader, SkeletonBlock } from "@/product/shared/States";
 
 export function PicksSide({ board }: { board: UseQueryResult<Envelope<DailyBoard>> }) {
@@ -23,6 +24,8 @@ export function PicksSide({ board }: { board: UseQueryResult<Envelope<DailyBoard
       data-testid="picks-side"
       aria-label={parlayTitle("daily")}
     >
+      {/* «Mi parlay» first, then the parlay of the day (sheet K08). */}
+      <SlipCard />
       <SectionHeader
         title={parlayTitle("daily")}
         icon={<Icon aria-hidden className="h-4 w-4 shrink-0 text-gold" />}

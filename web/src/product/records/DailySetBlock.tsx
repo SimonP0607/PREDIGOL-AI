@@ -4,7 +4,9 @@
  * Never padded: a day with two picks shows two, a day with none says so - and, for today, why
  * (plan UX, A9: the honest sentence and the reason from the published set's own funnel).
  */
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { Segmented } from "@/components/ui/segmented";
+import { toNumber } from "@/lib/i18n/format";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ArrowRight, Target, Trophy } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -95,7 +97,18 @@ export function DailySetBlock({
   mine?: ReadonlyMap<number, RelatedPick> | undefined;
 }) {
   const board = query.data?.data;
-  const items = board?.set?.items ?? [];
+  const [order, setOrder] = useState<"time" | "value">("time");
+  const raw = board?.set?.items ?? [];
+  // «Por hora / Por valor» (sheet K08): the same picks in another order; the rank on each card stays PrediGol's.
+  const items =
+    variant === "page" && order === "value"
+      ? [...raw].sort((a, b) => (toNumber(b.ev) ?? -Infinity) - (toNumber(a.ev) ?? -Infinity))
+      : variant === "page"
+        ? [...raw].sort(
+            (a, b) =>
+              Date.parse(a.match.kickoff_at) - Date.parse(b.match.kickoff_at) || a.rank - b.rank,
+          )
+        : raw;
   const evaluation = board?.evaluation_mode ?? false;
   const reason = board?.reason ?? (evaluation ? "no_shadow_picks" : "no_qualified_picks");
 
@@ -204,6 +217,18 @@ export function DailySetBlock({
           action={variant === "home" ? { label: t("home.picks.seeAll"), to: "/picks" } : undefined}
         />
         <div className="flex items-center gap-2">
+          {variant === "page" && items.length > 1 ? (
+            <Segmented
+              label={t("records.daily.order")}
+              value={order}
+              onChange={setOrder}
+              testId="daily-order"
+              options={[
+                { value: "time", label: t("records.daily.byTime") },
+                { value: "value", label: t("records.daily.byValue") },
+              ]}
+            />
+          ) : null}
           {items.length > 0 ? (
             <span
               className="numeric mb-0.5 text-caption text-muted-foreground"

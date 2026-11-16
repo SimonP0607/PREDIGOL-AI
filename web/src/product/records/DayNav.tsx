@@ -10,7 +10,7 @@ import { useScrollCue } from "@/lib/scrollCue";
 import { t } from "@/lib/i18n";
 import { fmtSignedPct, localFixed } from "@/lib/i18n/format";
 import {
-  formatDate,
+  currentLocaleTag,
   formatDateLong,
   getTimeZone,
   offsetMinutes,
@@ -30,6 +30,13 @@ function at(day: string): string {
  * «5 picks · 2 ganados · 2 perdidos · 1 nulo · 0 por jugar (1 a medias)»: every pick counts once, so the parts add up to
  * the total (plan PICKS, D3); voids and half results are said only when there are some.
  */
+
+/** «vie», «Sat»: the weekday of a picks' day, in Bogotá. */
+function weekday(day: string): string {
+  return new Intl.DateTimeFormat(currentLocaleTag(), { weekday: "short", timeZone: ZONE })
+    .format(new Date(at(day)))
+    .replace(".", "");
+}
 
 function word(day: string, today: string): string | null {
   if (day === today) return t("records.dayNav.today");
@@ -54,13 +61,12 @@ export function DayNav({
   useScrollCue(strip);
   const arrow =
     "tap relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border-strong transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-30";
+  // The last seven days as tiles, oldest first and today at the end (sheets K01 and K08): the word or the weekday over the
+  // day's number. The whole date stays on each tile's name and under the row, never cut.
+  const days = recentDays(today).slice().reverse();
   return (
-    <nav
-      aria-label={t("records.dayNav.label")}
-      className="rounded-xl border border-border bg-card p-3 sm:p-4"
-      data-testid="daily-nav"
-    >
-      <div className="flex items-center gap-3">
+    <nav aria-label={t("records.dayNav.label")} className="space-y-2" data-testid="daily-nav">
+      <div className="flex items-center gap-1.5">
         <button
           type="button"
           className={arrow}
@@ -70,19 +76,44 @@ export function DayNav({
         >
           <ChevronLeft aria-hidden className="h-5 w-5" />
         </button>
-        <div className="min-w-0 flex-1 text-center" aria-live="polite">
-          <p className="text-label text-primary">{relative ?? formatDate(at(day), ZONE)}</p>
-          {/* The whole date, on two lines on a narrow phone - never "Domingo, 11 de o…". */}
-          <p className="break-words font-display text-lg font-semibold leading-tight first-letter:uppercase sm:text-xl">
-            {formatDateLong(at(day), ZONE)}
-          </p>
-          {/* The picks' day is Bogotá's (plan UX, A1, F09): said so to a reader whose clock is not on its time. */}
-          {offsetMinutes(Date.now(), getTimeZone()) !== offsetMinutes(Date.now(), ZONE) ? (
-            <p className="mt-0.5 text-caption text-muted-foreground" data-testid="daily-zone">
-              {t("records.dayNav.zone", { zone: zoneName(ZONE) })}
-            </p>
-          ) : null}
-        </div>
+        <ul
+          ref={strip}
+          aria-label={t("records.dayNav.jump")}
+          className="scroll-strip flex min-w-0 flex-1 gap-1.5 px-0.5 py-1"
+        >
+          {days.map((d) => {
+            const selected = d === day;
+            return (
+              <li key={d} className="min-w-[3.75rem] flex-1">
+                <button
+                  type="button"
+                  aria-pressed={selected}
+                  aria-label={formatDateLong(at(d), ZONE)}
+                  onClick={() => onDay(d)}
+                  data-testid="daily-day"
+                  className={cn(
+                    "tap-y relative flex w-full flex-col items-center rounded-card border px-2 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    selected
+                      ? "border-primary/60 bg-primary/12 text-primary"
+                      : "border-border bg-card text-foreground hover:border-border-strong",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "text-micro font-semibold first-letter:uppercase",
+                      selected ? "text-primary" : "text-muted-foreground",
+                    )}
+                  >
+                    {word(d, today) ?? weekday(d)}
+                  </span>
+                  <span className="numeric font-display text-lg font-bold leading-tight">
+                    {Number(d.slice(8, 10))}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
         <button
           type="button"
           className={arrow}
@@ -94,35 +125,21 @@ export function DayNav({
           <ChevronRight aria-hidden className="h-5 w-5" />
         </button>
       </div>
-      <ul
-        ref={strip}
-        aria-label={t("records.dayNav.jump")}
-        className="scroll-strip -mx-1 mt-2 flex gap-1.5 px-1 py-1"
-      >
-        {recentDays(today).map((d) => {
-          const selected = d === day;
-          return (
-            <li key={d} className="shrink-0">
-              <button
-                type="button"
-                aria-pressed={selected}
-                onClick={() => onDay(d)}
-                className={cn(
-                  "tap-y relative min-h-9 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  selected
-                    ? "border-primary/60 bg-primary/12 text-primary"
-                    : "border-border text-muted-foreground hover:border-border-strong hover:text-foreground",
-                )}
-              >
-                {word(d, today) ?? formatDate(at(d), ZONE)}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <p className="text-center text-caption text-muted-foreground" aria-live="polite">
+        <span className="font-semibold text-foreground first-letter:uppercase">
+          {relative ? `${relative} · ` : ""}
+          {formatDateLong(at(day), ZONE)}
+        </span>
+        {/* The picks' day is Bogotá's (plan UX, A1, F09): said so to a reader whose clock is not on its time. */}
+        {offsetMinutes(Date.now(), getTimeZone()) !== offsetMinutes(Date.now(), ZONE) ? (
+          <span className="block" data-testid="daily-zone">
+            {t("records.dayNav.zone", { zone: zoneName(ZONE) })}
+          </span>
+        ) : null}
+      </p>
       {sum.count > 0 ? (
         <p
-          className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs tabular-nums text-muted-foreground"
+          className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs tabular-nums text-muted-foreground"
           data-testid="daily-summary"
         >
           <span>{summaryText(sum)}</span>
