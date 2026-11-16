@@ -88,7 +88,6 @@ export function DayNav({
                 <button
                   type="button"
                   aria-pressed={selected}
-                  aria-label={formatDateLong(at(d), ZONE)}
                   onClick={() => onDay(d)}
                   data-testid="daily-day"
                   className={cn(
@@ -109,6 +108,7 @@ export function DayNav({
                   <span className="numeric font-display text-lg font-bold leading-tight">
                     {Number(d.slice(8, 10))}
                   </span>
+                  <span className="sr-only">, {formatDateLong(at(d), ZONE)}</span>
                 </button>
               </li>
             );
