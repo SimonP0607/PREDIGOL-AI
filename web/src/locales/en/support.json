@@ -68,6 +68,14 @@
       "notifications": "Choose your notices",
       "privacy": "Go to Privacy and data",
       "responsible": "Read “Responsible gambling”"
+    },
+    "actions": {
+      "label": "What do you want to do",
+      "assistant": "Assistant",
+      "new": "New",
+      "person": "Talk to a person",
+      "answered_one": "{count} with a new answer",
+      "answered_other": "{count} with a new answer"
     }
   },
   "faq": {
@@ -504,7 +512,14 @@
       "fix": "Fix",
       "notice": "Notice"
     },
-    "emptyFilter": "No updates of this kind yet."
+    "emptyFilter": "No updates of this kind yet.",
+    "notify": {
+      "title": "Tell me what's new",
+      "on": "On: they come in your weekly summary by e-mail.",
+      "off": "The weekly summary by e-mail tells you what's new. It is off today.",
+      "change": "Change",
+      "turnOn": "Turn on"
+    }
   },
   "howItWorks": {
     "pageTitle": "How PrediGol works",

@@ -68,6 +68,14 @@
       "notifications": "Elegir tus avisos",
       "privacy": "Ir a Privacidad y datos",
       "responsible": "Leer «Juego responsable»"
+    },
+    "actions": {
+      "label": "Qué quieres hacer",
+      "assistant": "Asistente",
+      "new": "Nuevo",
+      "person": "Hablar con una persona",
+      "answered_one": "{count} con respuesta nueva",
+      "answered_other": "{count} con respuesta nueva"
     }
   },
   "faq": {
@@ -504,7 +512,14 @@
       "fix": "Corrección",
       "notice": "Aviso"
     },
-    "emptyFilter": "Todavía no hay novedades de este tipo."
+    "emptyFilter": "Todavía no hay novedades de este tipo.",
+    "notify": {
+      "title": "Avisarme de novedades",
+      "on": "Activado: llegan en tu resumen semanal por correo.",
+      "off": "El resumen semanal por correo te cuenta lo nuevo. Hoy lo tienes apagado.",
+      "change": "Cambiar",
+      "turnOn": "Activar"
+    }
   },
   "howItWorks": {
     "pageTitle": "Cómo funciona PrediGol",

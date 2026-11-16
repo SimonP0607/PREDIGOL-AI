@@ -8,6 +8,9 @@ import { GuideButton } from "@/product/guides/GuideButton";
 import { SkeletonBlock } from "@/product/shared/States";
 import { ShadowToggle } from "@/product/shared/ShadowToggle";
 
+/** A first name longer than this is not used in the greeting: the page says the day instead. */
+export const GREETING_MAX = 18;
+
 export function HomeHeader({
   freshness,
   loading,
@@ -22,7 +25,9 @@ export function HomeHeader({
   /** «Para ti / Todo», beside the greeting at a desk and under it on a phone (sheets I02 and I06). */
   selector?: ReactNode;
 }) {
-  const first = name?.trim().split(/\s+/)[0] ?? "";
+  // the name's first word; a long one without spaces is an address or a handle, not how anybody is greeted
+  const word = name?.trim().split(/\s+/)[0] ?? "";
+  const first = word.length <= GREETING_MAX ? word : "";
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
       <div className="min-w-0">
@@ -35,7 +40,7 @@ export function HomeHeader({
             </span>
           </span>{" "}
           <span
-            className="mt-1 block text-2xl font-bold leading-tight tracking-tight sm:text-[1.75rem]"
+            className="mt-1 block text-2xl font-bold leading-tight tracking-tight [overflow-wrap:anywhere] sm:text-[1.75rem]"
             data-testid="home-hello"
           >
             {first ? t("home.hello", { name: first }) : t("common.day.today")}

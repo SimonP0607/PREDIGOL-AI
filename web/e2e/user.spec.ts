@@ -58,13 +58,24 @@ test("navigation is the product's five destinations, in the account's language",
   for (const key of ["home", "matches", "picks", "myPicks"] as const) {
     await expect(nav.getByRole("link", { name: t.nav[key], exact: true })).toBeVisible();
   }
-  for (const key of ["live", "parlays", "odds"] as const) {
-    await expect(nav.getByRole("link", { name: t.nav[key], exact: true })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: t.nav.live, exact: true })).toHaveCount(0);
+  // Plan maestro UX/UI 2026, sheet S5: from 1280 px Parlays and Cuotas are pills of the bar too, and leave the menu there;
+  // under it they are rows of «Más», as on the phone
+  const wide = (page.viewportSize()?.width ?? 0) >= 1280;
+  for (const key of ["parlays", "odds"] as const) {
+    const pill = nav.getByRole("link", { name: t.nav[key], exact: true });
+    if (wide) await expect(pill).toBeVisible();
+    else await expect(pill).toBeHidden();
   }
   await nav.getByTestId("nav-more").click();
   const menu = page.getByTestId("nav-more-menu");
-  for (const key of ["parlays", "odds", "help", "profile", "glossary"] as const) {
+  for (const key of ["help", "profile", "glossary"] as const) {
     await expect(menu.getByRole("menuitem", { name: new RegExp(`^${t.nav[key]}`) })).toBeVisible();
+  }
+  for (const key of ["parlays", "odds"] as const) {
+    const row = menu.getByRole("menuitem", { name: new RegExp(`^${t.nav[key]}`) });
+    if (wide) await expect(row).toBeHidden();
+    else await expect(row).toBeVisible();
   }
   await page.keyboard.press("Escape");
   await expect(menu).toHaveCount(0);
@@ -238,7 +249,8 @@ test("Home: today in the suggested leagues, the day's picks or why there are non
     (els) => els.map((e) => e.getAttribute("data-testid") ?? ""),
   );
   const seen = order.filter((x, i) => order.indexOf(x) === i);
-  const SECTION_24 = ["daily-set", "home-relevant", "home-news", "home-at-stake", "home-results"];
+  // at a desk the page is two columns (sheet I06): the main one, then the side one with the news and the results
+  const SECTION_24 = ["daily-set", "home-relevant", "home-at-stake", "home-news", "home-results"];
   expect(seen).toEqual(SECTION_24.filter((x) => seen.includes(x)));
   expect(seen).toEqual(expect.arrayContaining(["daily-set", "home-results"]));
   await assertClean(page, w);
