@@ -36,6 +36,7 @@ import {
 import { useUsefulMoment } from "@/product/feedback/moments";
 import { KnowledgeBlock } from "./KnowledgeBlock";
 import { PicksTab } from "./PicksTab";
+import { useWidePicks } from "./picks";
 import { ResultBlock } from "./SummaryTab";
 import { Block, SectionNote } from "./ui";
 
@@ -278,29 +279,31 @@ export function PostmatchTab({ ctx }: { ctx: MatchCtx }) {
         return pick ? <PublishedWhy pick={pick} sides={sides} /> : null;
       }
     : undefined;
+  // one or two picks sit in the side column; more take the page's width, below what happened
+  const wide = useWidePicks(ctx);
   return (
-    <div
-      className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]"
-      data-testid="postmatch"
-    >
-      <div className="min-w-0 space-y-4">
-        <ResultBlock ctx={ctx} />
-        {q.isPending ? (
-          <SkeletonBlock className="h-24" />
-        ) : q.isError ? (
-          <ErrorState error={q.error} onRetry={() => void q.refetch()} className="py-4" />
-        ) : data ? (
-          <SavedBlock saved={data.saved} sides={sides} />
-        ) : null}
-        <ForecastVsResult ctx={ctx} />
-        {/* What happened, put together once the provider stopped changing it (plan F7). */}
-        <KnowledgeBlock ctx={ctx} />
+    <div className="space-y-4" data-testid="postmatch">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-4">
+          <ResultBlock ctx={ctx} />
+          {q.isPending ? (
+            <SkeletonBlock className="h-24" />
+          ) : q.isError ? (
+            <ErrorState error={q.error} onRetry={() => void q.refetch()} className="py-4" />
+          ) : data ? (
+            <SavedBlock saved={data.saved} sides={sides} />
+          ) : null}
+          <ForecastVsResult ctx={ctx} />
+          {/* What happened, put together once the provider stopped changing it (plan F7). */}
+          <KnowledgeBlock ctx={ctx} />
+        </div>
+        <div className="min-w-0 space-y-4">
+          {wide ? null : <PicksTab ctx={ctx} why={why} />}
+          <NewsAfter ctx={ctx} />
+          <MyPicksLink />
+        </div>
       </div>
-      <div className="min-w-0 space-y-4">
-        <PicksTab ctx={ctx} why={why} />
-        <NewsAfter ctx={ctx} />
-        <MyPicksLink />
-      </div>
+      {wide ? <PicksTab ctx={ctx} why={why} /> : null}
     </div>
   );
 }

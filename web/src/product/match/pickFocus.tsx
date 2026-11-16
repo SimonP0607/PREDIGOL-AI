@@ -40,7 +40,7 @@ export function PickAnchor({
       id={`pick-${pickId}`}
       data-focused={focused ? "true" : undefined}
       className={cn(
-        "min-w-0 scroll-mt-24 rounded-xl",
+        "h-full min-w-0 scroll-mt-24 rounded-xl",
         focused && "ring-2 ring-primary ring-offset-2 ring-offset-background",
       )}
     >

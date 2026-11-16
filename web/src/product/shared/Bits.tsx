@@ -316,3 +316,11 @@ export function LiveDot({ className }: { className?: string | undefined }) {
     </span>
   );
 }
+
+/**
+ * A grid of pick cards by the room its CONTAINER gives, not the screen's width (a panel in a side column of a wide screen
+ * is still narrow): one card per row under 40rem, two from there, three from 64rem. A card is never narrower than its
+ * content needs. Wrap it in `PICK_GRID_HOST`.
+ */
+export const PICK_GRID_HOST = "@container";
+export const PICK_GRID = "grid grid-cols-1 gap-3 @[40rem]:grid-cols-2 @[64rem]:grid-cols-3";

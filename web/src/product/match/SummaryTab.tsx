@@ -26,6 +26,7 @@ import { ForecastBlock } from "./ForecastBlock";
 import { IntelligenceBlock } from "./IntelligenceBlock";
 import { KEY_STATS, statRows } from "./model";
 import { PicksTab } from "./PicksTab";
+import { useWidePicks } from "./picks";
 import { LiveOddsBlock, QuickPricesBlock } from "./prices";
 import { Block, CenterSection, MoreButton, StatBars, TeamsLegend } from "./ui";
 
@@ -287,6 +288,8 @@ function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
 }
 
 function InPlay({ ctx }: { ctx: MatchCtx }) {
+  // one or two picks sit in the side column; more take the page's width
+  const wide = useWidePicks(ctx);
   return (
     <div className="space-y-4">
       <div className={TWO_COLUMNS}>
@@ -295,11 +298,12 @@ function InPlay({ ctx }: { ctx: MatchCtx }) {
           <AnalysisBlock ctx={ctx} variant="reference" />
         </div>
         <div className="min-w-0 space-y-4">
-          <PicksTab ctx={ctx} />
+          {wide ? null : <PicksTab ctx={ctx} />}
           <KeyStatsBlock ctx={ctx} />
           <LiveOddsBlock ctx={ctx} />
         </div>
       </div>
+      {wide ? <PicksTab ctx={ctx} /> : null}
       <ContextSection ctx={ctx} />
     </div>
   );
