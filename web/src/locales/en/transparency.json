@@ -275,5 +275,39 @@
     "hitSample_other": "of {count} decided picks",
     "units": "Units",
     "roi": "ROI"
+  },
+  "units": {
+    "title": "Running units",
+    "subtitle": "The whole history: what one unit per settled pick added up to, day by day.",
+    "axis": "{value} u",
+    "summary": "Running units from {from} to {to}: now {last}; the lowest point was {low}, on {lowDay}.",
+    "small": "The chart appears from {min} settled picks; {count} so far.",
+    "now": "Now",
+    "lowest": "Lowest point: {value}, on {day}",
+    "same": "Bad days are shown just like good ones.",
+    "asTable": "See as a table",
+    "day": "Day",
+    "settled": "Settled",
+    "total": "Running total"
+  },
+  "estimate": {
+    "title": "Does it estimate well?",
+    "subtitle": "If PrediGol says 55%, it should be right about 55 times in 100. This is how the published picks are doing.",
+    "said": "When it said",
+    "picks_one": "{count} pick",
+    "picks_other": "{count} picks",
+    "hit": "right",
+    "legend": "Bar: what it estimated when publishing. White mark: what happened. With few picks per range, a few points of difference are normal. Only won and lost picks count.",
+    "small": "Shown from {min} won or lost picks; {count} so far.",
+    "noRange": "No range has {min} picks or more yet."
+  },
+  "marketsTable": {
+    "market": "Market",
+    "picks": "Picks",
+    "wonLost": "W – L",
+    "units": "Units",
+    "roi": "Return",
+    "pending_one": "{count} pending",
+    "pending_other": "{count} pending"
   }
 }

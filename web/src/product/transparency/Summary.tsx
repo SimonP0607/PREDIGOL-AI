@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { t } from "@/lib/i18n";
 import { Segmented } from "@/components/ui/segmented";
+import { cn } from "@/lib/utils";
 import type { Transparency, TransparencyPeriod } from "@/lib/api/v1/types_transparency";
 import { fmtUnits } from "@/product/records/units";
 import { DASH } from "@/lib/i18n/format";
@@ -87,7 +88,7 @@ export function TransparencySummary({ data }: { data: Transparency }) {
           </dd>
         </div>
         <div className={tile}>
-          <dt className="text-overline text-muted-foreground">{t("transparency.published.roi")}</dt>
+          <dt className={cn(label, "break-words")}>{t("transparency.published.roi")}</dt>
           <dd className="numeric mt-1 font-display text-xl font-bold">{roiText(tally)}</dd>
         </div>
       </dl>
