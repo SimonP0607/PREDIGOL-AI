@@ -48,6 +48,14 @@ import { CorrectionNote } from "./CorrectionNote";
 import { useRefreshMine } from "./hooks";
 import { HISTORY_GROUPS, hasStarted } from "./model";
 import { useSlip } from "./slipContext";
+import {
+  LegProgress,
+  LostNote,
+  ParlaysMonth,
+  parlaysByDay,
+  filterParlays,
+  type ParlayFilter,
+} from "./parlayHistory";
 import { Recap } from "./Recap";
 import { CONCLUSIVE, MIN_SAMPLE, sampleLine } from "./sample";
 import { NO_FILTER, activeCount, toApiFilter, type PicksFilterState } from "./myPicksFilter";
@@ -766,6 +774,7 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
             </span>
             {settled ? <Units value={parlay.profit_units} className="text-sm" /> : null}
           </div>
+          {!settled && parlay.legs.length > 0 ? <LegProgress parlay={parlay} /> : null}
           {removable && !readOnly ? (
             <ConfirmAction
               testId="remove-parlay"
@@ -787,6 +796,11 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
             />
           ) : null}
         </footer>
+        {parlay.status === "LOST" ? (
+          <div className="border-t border-border/60 px-4 py-2.5 sm:px-5">
+            <LostNote parlay={parlay} />
+          </div>
+        ) : null}
       </div>
     </Card>
   );
@@ -797,6 +811,14 @@ function MyParlays() {
   const slip = useSlip();
   const parlays = q.data?.pages.flatMap((p) => p.data) ?? [];
   const total = q.data?.pages[0]?.meta.total ?? parlays.length;
+  const preview = usePreviewParam();
+  const month = useQuery(live.history("30d", preview)).data?.data?.groups.my_parlays;
+  const [filter, setFilter] = useState<ParlayFilter>("all");
+  const shown = filterParlays(parlays, filter);
+  // counts on the chips only when every parlay is loaded: a count of one page would be a wrong number
+  const all = !q.hasNextPage && total <= parlays.length;
+  const counted = (f: ParlayFilter, label: string) =>
+    all ? `${label} · ${filterParlays(parlays, f).length}` : label;
   const build = (
     <button
       type="button"
@@ -853,11 +875,40 @@ function MyParlays() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {parlays.map((p) => (
-              <UserParlayCard key={p.id} parlay={p} />
-            ))}
-          </div>
+          <ParlaysMonth group={month} />
+          <ChipGroup
+            label={t("records.mine.parlays.filter")}
+            value={filter}
+            onChange={setFilter}
+            testId="my-parlays-filter"
+            options={[
+              { value: "all", label: counted("all", t("records.mine.parlays.filters.all")) },
+              {
+                value: "pending",
+                label: counted("pending", t("records.mine.parlays.filters.pending")),
+              },
+              {
+                value: "settled",
+                label: counted("settled", t("records.mine.parlays.filters.settled")),
+              },
+            ]}
+          />
+          {shown.length === 0 ? (
+            <p className="text-sm text-muted-foreground" data-testid="my-parlays-none">
+              {t(`records.mine.parlays.none.${filter}`)}
+            </p>
+          ) : (
+            parlaysByDay(shown).map((g) => (
+              <div key={g.day} className="space-y-2" data-testid="my-parlays-day">
+                <h3 className="text-overline text-subtle-foreground">{dayHeading(g.day, g.at)}</h3>
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {g.parlays.map((p) => (
+                    <UserParlayCard key={p.id} parlay={p} />
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
           {q.hasNextPage || total > parlays.length ? (
             <MoreButton
               shown={parlays.length}

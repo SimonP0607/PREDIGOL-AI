@@ -301,7 +301,28 @@
         "body": "It disappears from your list and this cannot be undone.",
         "ok": "Delete"
       },
-      "export": "Download CSV"
+      "export": "Download CSV",
+      "progress": "{won} of {total}",
+      "lostNote": "It got {won} of {total} right. In a parlay, a single lost selection loses it all.",
+      "month": "Last 30 days",
+      "settledWord_one": "settled",
+      "settledWord_other": "settled",
+      "wonOf": "{won} of {total}",
+      "wonWord": "won",
+      "result": "result",
+      "noTrend_one": "With {count} parlay there is no trend yet: losing several in a row is normal.",
+      "noTrend_other": "With {count} parlays there is no trend yet: losing several in a row is normal.",
+      "filter": "Which parlays to see",
+      "filters": {
+        "all": "All",
+        "pending": "Pending",
+        "settled": "Settled"
+      },
+      "none": {
+        "all": "No parlays.",
+        "pending": "No pending parlay.",
+        "settled": "No settled parlays yet."
+      }
     },
     "filters": {
       "title": "Filter your picks",
