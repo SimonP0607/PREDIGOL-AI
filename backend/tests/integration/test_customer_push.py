@@ -322,7 +322,9 @@ def test_a_settled_pick_and_parlay_are_told_once_to_a_reader_with_a_device_and_t
                                                                                               world: World) -> None:
     reader = client(READER)
     me, them = uid(fresh, READER), uid(fresh, OTHER)
-    at = datetime.now(UTC)
+    # yesterday at noon in Bogotá: inside the inbox's 30 days whenever this runs, and outside the quiet hours (22:00-08:00),
+    # in which a notice waits for the morning instead of being closed - with «now» this test failed every night in Colombia
+    at = (datetime.now(UTC) - timedelta(days=1)).replace(hour=17, minute=0, second=0, microsecond=0)
     played = world.match("nacional", "millonarios", at - timedelta(hours=3), "finished")
     won = save(fresh, me, played, "WIN", at - timedelta(minutes=30))
     save(fresh, me, played, "PENDING", None, line=1)
@@ -463,7 +465,9 @@ def test_the_inbox_is_off_until_its_switch_and_then_keeps_what_was_decided_even_
         fresh: str, world: World, monkeypatch: pytest.MonkeyPatch) -> None:
     reader, other = client(READER), client(OTHER)
     me, them = uid(fresh, READER), uid(fresh, OTHER)
-    at = datetime.now(UTC)
+    # yesterday at noon in Bogotá: inside the inbox's 30 days whenever this runs, and outside the quiet hours (22:00-08:00),
+    # in which a notice waits for the morning instead of being closed - with «now» this test failed every night in Colombia
+    at = (datetime.now(UTC) - timedelta(days=1)).replace(hour=17, minute=0, second=0, microsecond=0)
     played = world.match("nacional", "millonarios", at - timedelta(hours=3), "finished")
     won = save(fresh, me, played, "WIN", at - timedelta(minutes=30))
     save(fresh, them, played, "LOSS", at - timedelta(minutes=30))
