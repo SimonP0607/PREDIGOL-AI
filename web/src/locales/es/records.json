@@ -301,7 +301,28 @@
         "body": "Deja de verse en tu lista y no se puede deshacer.",
         "ok": "Borrar"
       },
-      "export": "Descargar CSV"
+      "export": "Descargar CSV",
+      "progress": "{won} de {total}",
+      "lostNote": "Acertó {won} de {total}. En un parlay, una sola selección perdida lo pierde completo.",
+      "month": "Últimos 30 días",
+      "settledWord_one": "liquidado",
+      "settledWord_other": "liquidados",
+      "wonOf": "{won} de {total}",
+      "wonWord": "ganados",
+      "result": "resultado",
+      "noTrend_one": "Con {count} parlay todavía no hay tendencia: es normal perder varios seguidos.",
+      "noTrend_other": "Con {count} parlays todavía no hay tendencia: es normal perder varios seguidos.",
+      "filter": "Qué parlays ver",
+      "filters": {
+        "all": "Todos",
+        "pending": "Pendientes",
+        "settled": "Liquidados"
+      },
+      "none": {
+        "all": "Sin parlays.",
+        "pending": "Ningún parlay pendiente.",
+        "settled": "Todavía no hay parlays liquidados."
+      }
     },
     "filters": {
       "title": "Filtrar tus picks",
