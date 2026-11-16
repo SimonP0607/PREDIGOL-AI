@@ -1,0 +1,39 @@
+"""The six switches of the unified plan UX/UI e Intelligence 2026 (BE-045): all off until the owner's line turns them on,
+and /auth/me says each one to the page."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+
+import pytest
+
+from fbi.api import switches
+from fbi.api.contracts.auth import Me
+
+CASES: list[tuple[str, Callable[[], bool], str]] = [
+    (switches.ODDS_BY_MATCH, switches.odds_by_match_on, "odds_by_match"),
+    (switches.NAV_V2, switches.nav_v2_on, "nav_v2"),
+    (switches.SEARCH, switches.search_on, "search"),
+    (switches.PROFILES, switches.profiles_on, "profiles"),
+    (switches.NEWS_V2, switches.news_v2_on, "news_v2"),
+    (switches.MATCH_INTELLIGENCE, switches.match_intelligence_on, "match_intelligence"),
+]
+
+
+@pytest.mark.parametrize(("name", "on", "field"), CASES)
+@pytest.mark.parametrize(("value", "expected"), [(None, False), ("", False), ("1", True), ("on", True), ("0", False),
+                                                 ("maybe", False)])
+def test_each_switch_is_off_until_its_line_turns_it_on(name: str, on: Callable[[], bool], field: str,
+                                                       value: str | None, expected: bool,
+                                                       monkeypatch: pytest.MonkeyPatch) -> None:
+    if value is None:
+        monkeypatch.delenv(name, raising=False)
+    else:
+        monkeypatch.setenv(name, value)
+    assert on() is expected
+
+
+@pytest.mark.parametrize(("name", "on", "field"), CASES)
+def test_the_page_is_told_each_switch_and_it_is_off_by_default(name: str, on: Callable[[], bool], field: str) -> None:
+    assert name.startswith("FBI_")
+    assert Me.model_fields[field].default is False
