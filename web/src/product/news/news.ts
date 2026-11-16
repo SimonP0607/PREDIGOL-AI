@@ -224,3 +224,22 @@ export function homeNews<T extends TodayNewsItem>(items: T[], limit: number = HO
     )
     .slice(0, limit);
 }
+
+/**
+ * The match's news by team (maqueta 15, UX-161): the home side, the away side and the rest, each in the order it was known
+ * - the oldest first, so the story reads forwards. Rumours and outdated items stay out of a timeline of what happened
+ * (decision D-04): they keep their place, labelled, in «Por certeza».
+ */
+export function byTeam(
+  items: readonly NewsItem[],
+): Array<{ side: "home" | "away" | "general"; team: string | null; items: NewsItem[] }> {
+  const when = (i: NewsItem) => Date.parse(i.published_at ?? i.seen_at) || 0;
+  const live = items.filter((i) => i.status !== "OUTDATED" && i.status !== "RUMOR");
+  const sides = (["home", "away", "general"] as const).map((side) => {
+    const mine = live
+      .filter((i) => (side === "general" ? !i.team : i.team?.side === side))
+      .sort((a, b) => when(a) - when(b));
+    return { side, team: mine.find((i) => i.team)?.team?.name ?? null, items: mine };
+  });
+  return sides.filter((s) => s.items.length > 0);
+}

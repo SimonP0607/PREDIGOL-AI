@@ -6,14 +6,17 @@
  * From IA-016 the header says when the match was last searched and how many pages were read, and an empty list tells «not searched yet»
  * from «searched, nothing found».
  */
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Segmented } from "@/components/ui/segmented";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import type { NewsItem } from "@/lib/api/v1/types_news";
 import { ChevronRight, Newspaper } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { track } from "@/lib/track";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "@/product/match/context";
 import { NewsCard } from "./NewsCard";
-import { emptyText, groups, searchLine } from "./news";
+import { byTeam, emptyText, groups, searchLine } from "./news";
 import { useNews, type NewsLoad } from "./useNews";
 
 function Frame({
@@ -60,7 +63,46 @@ function Frame({
 }
 
 /** The section from an answer of the API (apart from the query, so a test can render it from a fixture). */
-export function NewsView({ load, now }: { load: NewsLoad; now?: number | undefined }) {
+/** The timeline by team (maqueta 15, UX-161): each side's news in the order it was known, with when. */
+function ByTeam({ items, now }: { items: NewsItem[]; now?: number | undefined }) {
+  return (
+    <div className="space-y-5" data-testid="news-by-team">
+      {byTeam(items).map((g) => (
+        <section key={g.side} className="space-y-2.5" data-testid={`news-team-${g.side}`}>
+          <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {g.side === "general"
+              ? t("match.news.byTeam.general")
+              : (g.team ?? t(`match.news.byTeam.${g.side}`))}
+            <span className="numeric ml-1.5 text-subtle-foreground">{g.items.length}</span>
+          </h3>
+          <ol className="relative space-y-2.5 border-l border-border pl-4">
+            {g.items.map((item) => (
+              <li key={item.id} className="relative">
+                <span
+                  aria-hidden
+                  className="absolute -left-[1.3rem] top-4 h-2 w-2 rounded-full bg-primary"
+                />
+                <NewsCard item={item} now={now} />
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+export function NewsView({
+  load,
+  now,
+  v2 = false,
+}: {
+  load: NewsLoad;
+  now?: number | undefined;
+  /** The unified plan's news (FBI_NEWS_V2): «Por certeza | Por equipo». */
+  v2?: boolean;
+}) {
+  const [view, setView] = useState<"certainty" | "team">("certainty");
   if (load.status === "pending") {
     return (
       <Frame>
@@ -114,61 +156,77 @@ export function NewsView({ load, now }: { load: NewsLoad; now?: number | undefin
   const folded = items.some((i) => i.status !== "RUMOR" && i.status !== "OUTDATED");
   return (
     <Frame count={items.length} search={searched}>
-      {groups(items).map(({ group, items: shown }, i) => {
-        const cards = (
-          <>
-            {group === "rumor" ? (
-              <p
-                className="text-caption leading-snug text-subtle-foreground"
-                data-testid="news-rumor-note"
+      {v2 ? (
+        <Segmented<"certainty" | "team">
+          value={view}
+          onChange={setView}
+          label={t("match.news.byTeam.label")}
+          testId="news-view"
+          options={[
+            { value: "certainty", label: t("match.news.byTeam.certainty") },
+            { value: "team", label: t("match.news.byTeam.team") },
+          ]}
+        />
+      ) : null}
+      {v2 && view === "team" ? (
+        <ByTeam items={items} now={now} />
+      ) : (
+        groups(items).map(({ group, items: shown }, i) => {
+          const cards = (
+            <>
+              {group === "rumor" ? (
+                <p
+                  className="text-caption leading-snug text-subtle-foreground"
+                  data-testid="news-rumor-note"
+                >
+                  {t("match.news.rumorNote")}
+                </p>
+              ) : null}
+              <div className="space-y-2.5">
+                {shown.map((item) => (
+                  <NewsCard key={item.id} item={item} now={now} />
+                ))}
+              </div>
+            </>
+          );
+          const title = (
+            <>
+              {t(`match.news.group.${group}`)}
+              <span className="numeric ml-1.5 text-subtle-foreground">{shown.length}</span>
+            </>
+          );
+          if (folded && (group === "rumor" || group === "outdated")) {
+            return (
+              <details
+                key={`${group}-${i}`}
+                className="group space-y-2.5"
+                data-testid={`news-group-${group}`}
               >
-                {t("match.news.rumorNote")}
-              </p>
-            ) : null}
-            <div className="space-y-2.5">
-              {shown.map((item) => (
-                <NewsCard key={item.id} item={item} now={now} />
-              ))}
-            </div>
-          </>
-        );
-        const title = (
-          <>
-            {t(`match.news.group.${group}`)}
-            <span className="numeric ml-1.5 text-subtle-foreground">{shown.length}</span>
-          </>
-        );
-        if (folded && (group === "rumor" || group === "outdated")) {
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground [&::-webkit-details-marker]:hidden">
+                  <ChevronRight
+                    aria-hidden
+                    className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-90"
+                  />
+                  {title}
+                </summary>
+                <div className="space-y-2.5 pt-1">{cards}</div>
+              </details>
+            );
+          }
           return (
-            <details
+            <section
               key={`${group}-${i}`}
-              className="group space-y-2.5"
+              className="space-y-2.5"
               data-testid={`news-group-${group}`}
             >
-              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground [&::-webkit-details-marker]:hidden">
-                <ChevronRight
-                  aria-hidden
-                  className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-90"
-                />
+              <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 {title}
-              </summary>
-              <div className="space-y-2.5 pt-1">{cards}</div>
-            </details>
+              </h3>
+              {cards}
+            </section>
           );
-        }
-        return (
-          <section
-            key={`${group}-${i}`}
-            className="space-y-2.5"
-            data-testid={`news-group-${group}`}
-          >
-            <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              {title}
-            </h3>
-            {cards}
-          </section>
-        );
-      })}
+        })
+      )}
     </Frame>
   );
 }
@@ -183,5 +241,6 @@ export function NewsTab({ ctx }: { ctx: MatchCtx }) {
       track("news_opened", { match_id: Number(ctx.fixtureId) });
     }
   }, [load.status, ctx.fixtureId]);
-  return <NewsView load={load} />;
+  const v2 = useAuth().user?.news_v2 === true;
+  return <NewsView load={load} v2={v2} />;
 }

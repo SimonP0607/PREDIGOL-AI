@@ -1458,6 +1458,14 @@
       "title": "Absences in the press",
       "note": "What the outlets say about who will not play or is in doubt, with its status; the details and the link are in News.",
       "more": "See in News"
+    },
+    "byTeam": {
+      "label": "How to order the news",
+      "certainty": "By certainty",
+      "team": "By team",
+      "home": "Home",
+      "away": "Away",
+      "general": "About the match"
     }
   },
   "catalog": {
@@ -1572,6 +1580,12 @@
     "emptyBody": "PrediGol reads each match's press on the day it is played. With nothing confirmed, we fill nothing in.",
     "closed": "This section is not available yet.",
     "count_one": "{count} news item",
-    "count_other": "{count} news items"
+    "count_other": "{count} news items",
+    "v2": {
+      "lead": "Top story",
+      "breaking": "Breaking",
+      "mine": "Your teams",
+      "recent": "Latest"
+    }
   }
 }

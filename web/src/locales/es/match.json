@@ -1458,6 +1458,14 @@
       "title": "Bajas en la prensa",
       "note": "Lo que dicen los medios sobre quién no juega o está en duda, con su estado; los detalles y el enlace, en Noticias.",
       "more": "Ver en Noticias"
+    },
+    "byTeam": {
+      "label": "Cómo ordenar las noticias",
+      "certainty": "Por certeza",
+      "team": "Por equipo",
+      "home": "Local",
+      "away": "Visitante",
+      "general": "Del partido"
     }
   },
   "catalog": {
@@ -1572,6 +1580,12 @@
     "emptyBody": "PrediGol lee la prensa de cada partido el día en que se juega. Si no hay nada confirmado, no rellenamos.",
     "closed": "Esta sección todavía no está disponible.",
     "count_one": "{count} noticia",
-    "count_other": "{count} noticias"
+    "count_other": "{count} noticias",
+    "v2": {
+      "lead": "Principal",
+      "breaking": "Última hora",
+      "mine": "Tus equipos",
+      "recent": "Más recientes"
+    }
   }
 }
