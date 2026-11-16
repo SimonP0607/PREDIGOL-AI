@@ -611,3 +611,80 @@ describe("Home's news are the reader's (plan UX, B2)", () => {
     }
   });
 });
+
+describe("the front of Noticias (UX-158, maqueta 08)", () => {
+  const entry = (
+    id: string,
+    relevance: "high" | "low",
+    status: "CONFIRMED" | "PROBABLE",
+    at: string,
+  ) =>
+    ({
+      match: { fixture_id: 1, home: "A", away: "B", competition: "L", kickoff_at: at },
+      item: {
+        id,
+        relevance,
+        status,
+        published_at: at,
+        seen_at: at,
+        claims: [],
+        kind: "injury",
+        team: null,
+        player: null,
+        published_day_only: false,
+      },
+    }) as unknown as import("@/lib/api/v1/types_news").TodayNewsItem;
+
+  test("the lead is the high-relevance confirmed item, the next four by time are «Última hora», the rest follows", async () => {
+    const { frontOf } = await import("./NewsFeedPage");
+    const items = [
+      entry("a", "low", "PROBABLE", "2026-11-16T10:00:00Z"),
+      entry("b", "high", "CONFIRMED", "2026-11-16T08:00:00Z"),
+      entry("c", "low", "CONFIRMED", "2026-11-16T12:00:00Z"),
+      entry("d", "low", "PROBABLE", "2026-11-16T07:00:00Z"),
+      entry("e", "low", "PROBABLE", "2026-11-16T06:00:00Z"),
+      entry("f", "low", "PROBABLE", "2026-11-16T05:00:00Z"),
+    ];
+    const front = frontOf(items);
+    expect(front.lead?.item.id).toBe("b");
+    expect(front.breaking.map((e) => e.item.id)).toEqual(["c", "a", "d", "e"]);
+    expect(front.rest.map((e) => e.item.id)).toEqual(["f"]);
+    expect(frontOf([])).toEqual({ lead: null, breaking: [], rest: [] });
+    // a rumour is never up front
+    const rumour = {
+      ...items[2]!,
+      item: { ...items[2]!.item, id: "r", status: "RUMOR" },
+    } as (typeof items)[number];
+    const withRumour = frontOf([rumour, ...items]);
+    expect(withRumour.lead?.item.id).toBe("b");
+    expect(withRumour.breaking.map((e) => e.item.id)).not.toContain("r");
+    expect(withRumour.rest.map((e) => e.item.id)).toContain("r");
+  });
+});
+
+describe("the match's news by team (UX-161, maqueta 15)", () => {
+  test("home, away and the rest, each in the order it was known; the outdated stay out", async () => {
+    const { byTeam } = await import("./news");
+    const it = (id: string, side: "home" | "away" | null, at: string, status = "CONFIRMED") =>
+      ({
+        id,
+        status,
+        team: side
+          ? { id: side === "home" ? 1 : 2, name: side === "home" ? "Local FC" : "Visita FC", side }
+          : null,
+        published_at: at,
+        seen_at: at,
+      }) as unknown as import("@/lib/api/v1/types_news").NewsItem;
+    const g = byTeam([
+      it("b", "home", "2026-11-16T10:00:00Z"),
+      it("a", "home", "2026-11-16T08:00:00Z"),
+      it("c", null, "2026-11-16T09:00:00Z"),
+      it("d", "away", "2026-11-16T09:00:00Z", "OUTDATED"),
+      it("e", "home", "2026-11-16T11:00:00Z", "RUMOR"),
+    ]);
+    expect(g.map((x) => [x.side, x.team, x.items.map((i) => i.id)])).toEqual([
+      ["home", "Local FC", ["a", "b"]],
+      ["general", null, ["c"]],
+    ]);
+  });
+});
