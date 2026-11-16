@@ -1004,7 +1004,8 @@
     "thisMatch": "In this match",
     "open": "See {name}'s summary",
     "rating": "Provider's rating: {value}",
-    "fullPage": "See the full page"
+    "fullPage": "See the full page",
+    "profile": "See his profile"
   },
   "readingBlock": {
     "title": "PrediGol analysis",
