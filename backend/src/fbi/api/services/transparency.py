@@ -63,8 +63,10 @@ from fbi.api.contracts.transparency import (
     ParlayTally,
     Period,
     PeriodTally,
+    PicksCalibration,
     StopKey,
     Transparency,
+    UnitsPoint,
 )
 from fbi.api.repositories import Conn, fetch_all
 from fbi.api.services.forecast import VERSION as FORECAST_VERSION
@@ -115,7 +117,7 @@ DEFINITIONS: Final = (
 first verdict. A changed definition gets a new version and date here, and the page recomputes the history with it."""
 
 PUBLISHED_SQL = """
-SELECT i.status, i.profit_units AS profit, i.market_key, i.settled_at, f.kickoff_at
+SELECT i.status, i.profit_units AS profit, i.market_key, i.settled_at, f.kickoff_at, s.day, i.p_model
   FROM picks.daily_set_items i
   JOIN picks.daily_sets s ON s.id = i.set_id
   JOIN core.fixtures f ON f.id = i.fixture_id
@@ -310,6 +312,36 @@ def markets(rows: list[dict[str, Any]]) -> list[MarketTally]:
     return out
 
 
+def series(rows: list[dict[str, Any]]) -> list[UnitsPoint]:
+    """The units won or lost, added up product day by product day over the settled published picks (BE-044, sheet T01): one
+    point per day with a settlement, in day order. Empty below MIN_SAMPLE settled picks - the same rule as the units."""
+    by: dict[date, list[dict[str, Any]]] = defaultdict(list)
+    for r in rows:
+        if r["profit"] is not None and r["status"] != "VOID":
+            by[r["day"]].append(r)
+    if sum(len(g) for g in by.values()) < MIN_SAMPLE:
+        return []
+    out: list[UnitsPoint] = []
+    staked, units = 0, Decimal(0)
+    for day in sorted(by):
+        staked += len(by[day])
+        units += sum((Decimal(r["profit"]) for r in by[day]), Decimal(0))
+        out.append(UnitsPoint(day=day, settled=staked, units=units.quantize(Decimal("0.01"))))
+    return out
+
+
+def picks_calibration(rows: list[dict[str, Any]]) -> PicksCalibration:
+    """«¿Estima bien?» of the published picks (BE-044, sheets T01/T07): the probability PrediGol said when it published each
+    pick - stored, never recomputed - against whether it won. Only won or lost picks count (a half, a push or a void is not
+    a yes or a no); the ranges come from ``bins_of``. No ranges below MIN_SAMPLE such picks."""
+    points = [(Decimal(r["p_model"]), r["status"] == "WIN") for r in rows
+              if r["status"] in ("WIN", "LOSS") and r["p_model"] is not None]
+    if len(points) < MIN_SAMPLE:
+        return PicksCalibration(n=len(points), bins=[], omitted=0)
+    bins, omitted = bins_of(points)
+    return PicksCalibration(n=len(points), bins=bins, omitted=omitted)
+
+
 def parlays(rows: list[dict[str, Any]]) -> list[ParlayTally]:
     """PrediGol's parlays by kind, whole history: counted like a pick (one unit per settled parlay, the profit stored on the
     record), the ones that paid as wins, with how many of them paid with a leg void, pushed or half."""
@@ -501,7 +533,8 @@ def assemble(conn: Conn, *, tz: str, at: datetime, base: Common) -> Transparency
         timezone=tz, min_sample=MIN_SAMPLE, conclusive=CONCLUSIVE, min_calibration=MIN_CALIBRATION, min_bin=MIN_BIN,
         calibration_days=CALIBRATION_DAYS, periods=periods(published, at=at, tz=tz),
         parlays=parlays(fetch_all(conn, PARLAYS_SQL, {"until": until})), days=base.days,
-        markets=markets(published), line_value=base.line_value, forecasts=base.forecasts, evaluation=base.evaluation,
+        markets=markets(published), series=series(published), picks_calibration=picks_calibration(published),
+        line_value=base.line_value, forecasts=base.forecasts, evaluation=base.evaluation,
         definitions=base.definitions, data_as_of=max(settled, default=None))
 
 

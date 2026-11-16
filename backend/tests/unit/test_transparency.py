@@ -152,3 +152,35 @@ def test_the_evaluation_set_is_never_named(name: str) -> None:
     for sql in re.findall(r'"""(.*?)"""', text, re.DOTALL):
         if "daily_sets" in sql or "picks.parlays" in sql:
             assert "source = 'qualified'" in sql, f"a query of the sets or the parlays without the qualified filter:\n{sql}"
+
+
+def day_rows(*items: tuple[str, str, str | None, str | None]) -> list[dict[str, object]]:
+    """(day, status, profit, p_model) rows of the published picks."""
+    return [{"day": date.fromisoformat(d), "status": s, "profit": None if p is None else Decimal(p),
+             "p_model": None if m is None else Decimal(m)} for d, s, p, m in items]
+
+
+def test_the_running_units_add_up_day_by_day_and_only_from_25_settled() -> None:
+    """BE-044: the series of sheet T01 is the same flat stake as the tally, added up per product day; below the sample, none."""
+    few = day_rows(*[("2026-11-01", "WIN", "1", "0.6")] * 24)
+    assert service.series(few) == []
+    many = day_rows(*[("2026-11-02", "LOSS", "-1", "0.5")] * 10, *[("2026-11-01", "WIN", "0.9", "0.6")] * 15,
+                    ("2026-11-03", "VOID", "0", "0.5"), ("2026-11-03", "PENDING", None, "0.5"))
+    points = service.series(many)
+    assert [(p.day.isoformat(), p.settled, p.units) for p in points] == [
+        ("2026-11-01", 15, Decimal("13.50")), ("2026-11-02", 25, Decimal("3.50"))], "a void and a pending add nothing"
+    assert points[-1].units == service.count(many).profit, "the last point is the tally's units"
+
+
+def test_the_picks_calibration_reads_the_stored_probability_of_won_or_lost_picks() -> None:
+    """BE-044: said against happened for the published picks - the stored p_model, never recomputed; halves, pushes and voids
+    are not a yes or a no; no ranges below the sample."""
+    small = service.picks_calibration(day_rows(*[("2026-11-01", "WIN", "1", "0.65")] * 24))
+    assert (small.n, small.bins) == (24, [])
+    rows_ = day_rows(*[("2026-11-01", "WIN", "1", "0.65")] * 20, *[("2026-11-01", "LOSS", "-1", "0.62")] * 10,
+                     *[("2026-11-01", "HALF_WIN", "0.4", "0.6")] * 5, ("2026-11-01", "PUSH", "0", "0.6"),
+                     *[("2026-11-01", "WIN", "1", "0.85")] * 3)
+    cal = service.picks_calibration(rows_)
+    assert cal.n == 33, "halves and pushes are left out"
+    assert [(str(b.low), str(b.high), b.n) for b in cal.bins] == [("0.6", "0.7", 30)]
+    assert cal.bins[0].observed == Decimal("0.667") and cal.omitted == 3, "the 0.8 range is too small"
