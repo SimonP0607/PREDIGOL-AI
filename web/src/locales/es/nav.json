@@ -55,5 +55,31 @@
     "title": "Evaluación privada · no visible para usuarios",
     "console": "Consola de Intelligence",
     "consoleHint": "Capacidades, sombra, costes y alertas"
+  },
+  "search": {
+    "title": "Buscar",
+    "open": "Buscar",
+    "openHint": "Buscar ( / o Ctrl K )",
+    "placeholder": "Equipos, competiciones o partidos",
+    "recent": "Recientes en este aparato",
+    "forget": "Borrar los recientes",
+    "goTo": "Ir a",
+    "go": {
+      "matches": "Partidos de hoy",
+      "picks": "Picks del día",
+      "odds": "Cuotas",
+      "news": "Noticias"
+    },
+    "loading": "Buscando…",
+    "error": "No pudimos buscar ahora.",
+    "none": "Sin resultados para «{q}»",
+    "noneHint": "Prueba con el nombre corto del equipo o de la competición.",
+    "groups": {
+      "team": "Equipos",
+      "competition": "Competiciones",
+      "fixture": "Partidos"
+    },
+    "scope": "Por ahora busca equipos, competiciones y partidos.",
+    "keys": "↑ ↓ para moverte · Intro para abrir · Esc para cerrar"
   }
 }

@@ -504,6 +504,25 @@ test("One figure: over 30 days and over everything, the recap's profit and retur
   await assertClean(page, w);
 });
 
+test("the global search: the magnifier only while FBI_SEARCH is on; «/» opens it, Esc closes it", async ({
+  page,
+}) => {
+  const w = watch(page);
+  const { body: me } = await getJson<{ search?: boolean }>(page.request, "/api/v1/auth/me");
+  await open(page, w, "/home");
+  if (me?.search !== true) {
+    await expect(page.getByTestId("search-open")).toHaveCount(0);
+    return;
+  }
+  await page.keyboard.press("/");
+  await expect(page.getByTestId("reader-search")).toBeVisible();
+  await page.getByTestId("reader-search-input").fill("zz-no-team-zz");
+  await expect(page.getByTestId("search-empty")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("reader-search")).toHaveCount(0);
+  await assertClean(page, w);
+});
+
 test("Odds: the best-odds board per market, or the explorer by families once it is on", async ({
   page,
 }) => {

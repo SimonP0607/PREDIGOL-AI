@@ -55,5 +55,31 @@
     "title": "Private evaluation · not visible to users",
     "console": "Intelligence console",
     "consoleHint": "Capabilities, shadow, costs and alerts"
+  },
+  "search": {
+    "title": "Search",
+    "open": "Search",
+    "openHint": "Search ( / or Ctrl K )",
+    "placeholder": "Teams, competitions or matches",
+    "recent": "Recent on this device",
+    "forget": "Clear recent searches",
+    "goTo": "Go to",
+    "go": {
+      "matches": "Today's matches",
+      "picks": "Today's picks",
+      "odds": "Odds",
+      "news": "News"
+    },
+    "loading": "Searching…",
+    "error": "We couldn't search right now.",
+    "none": "No results for “{q}”",
+    "noneHint": "Try the short name of the team or the competition.",
+    "groups": {
+      "team": "Teams",
+      "competition": "Competitions",
+      "fixture": "Matches"
+    },
+    "scope": "For now it finds teams, competitions and matches.",
+    "keys": "↑ ↓ to move · Enter to open · Esc to close"
   }
 }
