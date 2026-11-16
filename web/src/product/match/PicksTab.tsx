@@ -144,6 +144,8 @@ export function UpcomingPicks({ ctx }: { ctx: MatchCtx }) {
           rank={rank}
           shadow={shadow}
           autoOpenWhy={isFocused}
+          hideMatch
+          className="h-full"
           actions={<SelectablePriceRow sel={pickableOfCard(p)} />}
         />
       )}

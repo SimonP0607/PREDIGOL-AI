@@ -75,6 +75,13 @@ export const userNav: NavItem[] = [
   { to: "/my-picks", label: "nav.myPicks", icon: Bookmark },
 ];
 
+/**
+ * At a wide desk (1280 px and up) these destinations of «Más» are pills of the top bar too (plan maestro UX/UI 2026, sheet
+ * S5 and the desk sheets I06, P11, K08: Inicio, Partidos, Picks, Mis picks, Parlays, Cuotas, Noticias and «Más»). Under
+ * that width there is no room for them and they stay in «Más», as on the phone. Noticias only while its section is open.
+ */
+export const DESK_BAR: readonly string[] = ["/parlays", "/odds", "/news"];
+
 export interface MoreItem extends NavItem {
   /** i18n key of the one line under the label. */
   hint: string;
@@ -279,7 +286,7 @@ export function isActive(pathname: string, to: string, exact = false): boolean {
 }
 
 /** Whether a destination of the bar holds this page (its own address or one it holds, like Partidos' /live). */
-export function holds(item: NavItem, pathname: string): boolean {
+export function holds(item: Pick<NavItem, "to" | "also" | "exact">, pathname: string): boolean {
   return [item.to, ...(item.also ?? [])].some((to) => isActive(pathname, to, item.exact));
 }
 

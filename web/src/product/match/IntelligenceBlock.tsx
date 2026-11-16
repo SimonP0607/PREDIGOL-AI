@@ -64,11 +64,18 @@ export function IntelligenceView({
   );
 }
 
-export function IntelligenceBlock({ ctx }: { ctx: MatchCtx }) {
+export function IntelligenceBlock({
+  ctx,
+  picks = true,
+}: {
+  ctx: MatchCtx;
+  /** False where the page shows the match's picks beside the reading instead of inside it (the Resumen before kick-off). */
+  picks?: boolean;
+}) {
   return (
     <IntelligenceView
       reading={useReading(ctx)}
-      picks={<UpcomingPicks ctx={ctx} />}
+      picks={picks ? <UpcomingPicks ctx={ctx} /> : undefined}
       onMore={() => ctx.goTo("analysis")}
     />
   );

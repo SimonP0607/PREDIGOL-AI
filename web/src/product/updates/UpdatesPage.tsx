@@ -7,7 +7,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ChevronRight, Megaphone, MessageSquarePlus } from "lucide-react";
+import { BellRing, ChevronRight, Megaphone, MessageSquarePlus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { buttonVariants } from "@/components/ui/button";
 import { v1 } from "@/lib/api/v1/client";
@@ -17,6 +17,7 @@ import type { PublicUpdate } from "@/lib/api/v1/types_announcements";
 import { t, useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { formatDateYear } from "@/lib/time";
+import { digestOf } from "@/product/profile/consents";
 import { useReportProblem } from "@/product/support/report";
 import {
   LATEST_UPDATE,
@@ -141,11 +142,14 @@ export function UpdatesView({
   entries,
   owner = [],
   onSuggest,
+  notify,
 }: {
   entries: readonly UpdateEntry[];
   /** What the owner published as updates, newest first: they lead the list. */
   owner?: readonly PublicUpdate[];
   onSuggest?: (() => void) | undefined;
+  /** «Avisarme de novedades» (sheet T04): whether the reader's weekly summary, which names them, is on; absent when it is not offered. */
+  notify?: { on: boolean } | undefined;
 }) {
   // the filters of decision 9: everything, or one kind. The owner's communiqués are notices: they show under «Todo».
   const [filter, setFilter] = useState<UpdateFilter>("all");
@@ -160,6 +164,29 @@ export function UpdatesView({
         description={t("support.updates.intro")}
         actions={<Megaphone aria-hidden className="h-5 w-5 text-gold" />}
       />
+      {/* «Avisarme de novedades» (sheet T04) with the preference that already exists: the weekly summary by e-mail names
+          the week's Novedades. The page says whether it is on and leads to where the reader decides it (their
+          notifications, with its own words); it changes no consent from here. */}
+      {notify ? (
+        <Link
+          to="/profile/$section"
+          params={{ section: "notifications" }}
+          data-testid="updates-notify"
+          data-on={notify.on ? "true" : "false"}
+          className="tap-y card-surface relative flex min-h-14 items-center gap-3 rounded-card px-4 py-3 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          <BellRing aria-hidden className="h-5 w-5 shrink-0 text-primary" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">{t("support.updates.notify.title")}</span>
+            <span className="block text-caption text-muted-foreground">
+              {t(notify.on ? "support.updates.notify.on" : "support.updates.notify.off")}
+            </span>
+          </span>
+          <span className="shrink-0 text-sm font-semibold text-primary">
+            {t(notify.on ? "support.updates.notify.change" : "support.updates.notify.turnOn")}
+          </span>
+        </Link>
+      ) : null}
       <div
         role="radiogroup"
         aria-label={t("support.updates.filterLabel")}
@@ -257,11 +284,20 @@ export function UpdatesPage() {
       .then((saved) => qc.setQueryData(live.updatesSeen.queryKey, saved))
       .catch(() => undefined);
   }, [signedIn, seen.isSuccess, last, qc]);
+  // the weekly summary by e-mail is what tells a reader about new entries (plan UX, B8): only while it is offered
+  const { locale } = useI18n();
+  const consents = useQuery({
+    queryKey: ["me", "consents", locale],
+    queryFn: () => v1.myConsents(locale),
+    enabled: signedIn,
+  });
+  const digest = digestOf(consents.data);
   return (
     <UpdatesView
       entries={UPDATES}
       owner={notices.data?.updates ?? []}
       onSuggest={report.available ? () => report.open({ category: "suggestion" }) : undefined}
+      notify={digest ? { on: digest.latest?.granted === true } : undefined}
     />
   );
 }

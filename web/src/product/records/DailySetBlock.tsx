@@ -58,8 +58,8 @@ function Skeleton({ count, home = false }: { count: number; home?: boolean }) {
       aria-label={t("common.loading")}
       className={
         home
-          ? "-mx-4 flex gap-3 overflow-hidden px-4 md:mx-0 md:grid md:grid-cols-2 md:gap-4 md:px-0 xl:grid-cols-3"
-          : "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+          ? "-mx-4 flex gap-3 overflow-hidden px-4 md:mx-0 md:grid md:grid-cols-2 md:gap-4 md:px-0 @5xl:grid-cols-3"
+          : "grid grid-cols-1 gap-3 sm:grid-cols-2 @5xl:grid-cols-3"
       }
     >
       {Array.from({ length: count }, (_, i) => (
@@ -125,7 +125,7 @@ export function DailySetBlock({
       <ul
         aria-label={t("records.daily.list")}
         data-testid="daily-list"
-        className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:mx-0 md:grid md:grid-cols-2 md:gap-4 md:overflow-visible md:px-0 md:pb-0 xl:grid-cols-3 [&::-webkit-scrollbar]:hidden"
+        className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:mx-0 md:grid md:grid-cols-2 md:gap-4 md:overflow-visible md:px-0 md:pb-0 @5xl:grid-cols-3 [&::-webkit-scrollbar]:hidden"
       >
         {items.map((item) => {
           const own = mine?.get(item.rank);
@@ -159,7 +159,7 @@ export function DailySetBlock({
     body = (
       <>
         <div
-          className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2 @5xl:grid-cols-3"
           data-testid="daily-list"
         >
           {items.map((item) => (

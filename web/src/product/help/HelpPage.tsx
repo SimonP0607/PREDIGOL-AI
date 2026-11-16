@@ -15,12 +15,15 @@ import {
   ChevronRight,
   Compass,
   HeartHandshake,
+  Inbox,
   LifeBuoy,
   Mail,
   MessageCircle,
+  MessagesSquare,
   Search,
   Send,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { fieldVariants } from "@/components/ui/field";
@@ -109,6 +112,18 @@ export function HelpPage() {
         subtitle={t("support.help.subtitle")}
         right={enabled ? <ReportButton /> : null}
       />
+      {/* What a reader came to do, first (sheet H01): ask the assistant, talk to a person, report, their messages. */}
+      <HelpActions
+        assistant={Boolean(state.data?.assistant)}
+        canReport={enabled}
+        tickets={tickets.length}
+        answered={tickets.filter((ticket) => ticket.status === "answered").length}
+      />
+      {state.data?.assistant ? (
+        <div id="assistant" className="scroll-mt-[calc(var(--app-sticky-top,4rem)+1rem)]">
+          <Assistant faqShown={FAQ_IDS.filter((id) => pushOn || !FAQ_NEEDS_PUSH.has(id))} />
+        </div>
+      ) : null}
       {tickets.length > 0 ? <MyTickets tickets={tickets} readOnly={!enabled} /> : null}
       <div className="sticky top-sticky z-10 -mx-1 bg-background/95 px-1 py-2 backdrop-blur">
         <label className="relative block">
@@ -150,12 +165,87 @@ export function HelpPage() {
           </div>
         </section>
       ))}
-      {state.data?.assistant ? (
-        <Assistant faqShown={FAQ_IDS.filter((id) => pushOn || !FAQ_NEEDS_PUSH.has(id))} />
-      ) : null}
       <MoreHelp />
       <Contact contact={state.data?.contact ?? null} enabled={enabled} />
     </div>
+  );
+}
+
+const ACTION_TILE =
+  "tap-y motion-press card-surface relative flex min-h-[4.5rem] items-center gap-3 rounded-card px-3.5 py-3 text-left text-sm font-semibold hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
+/**
+ * The four things a reader comes to Ayuda for, as tiles above everything else (plan maestro UX/UI 2026, sheet H01): the
+ * assistant (only while it is on), a person, a report (only while messages are on) and their own messages (only when
+ * they have some). Each one leads to its place on this page or opens the sheet that already existed.
+ */
+function HelpActions({
+  assistant,
+  canReport,
+  tickets,
+  answered,
+}: {
+  assistant: boolean;
+  canReport: boolean;
+  tickets: number;
+  answered: number;
+}) {
+  const report = useReportProblem();
+  const icon = "flex h-9 w-9 shrink-0 items-center justify-center rounded-field bg-elevated";
+  return (
+    <nav
+      aria-label={t("support.help.actions.label")}
+      data-testid="help-actions"
+      className="grid grid-cols-2 gap-2 md:grid-cols-4"
+    >
+      {assistant ? (
+        <a href="#assistant" className={ACTION_TILE} data-testid="help-action-assistant">
+          <span className={icon}>
+            <Sparkles aria-hidden className="h-[1.125rem] w-[1.125rem] text-primary" />
+          </span>
+          <span className="min-w-0">
+            {t("support.help.actions.assistant")}
+            <span className="ml-1.5 rounded-full bg-primary-soft px-1.5 py-0.5 text-micro font-bold uppercase tracking-wide text-primary">
+              {t("support.help.actions.new")}
+            </span>
+          </span>
+        </a>
+      ) : null}
+      <a href="#contact" className={ACTION_TILE} data-testid="help-action-person">
+        <span className={icon}>
+          <MessagesSquare aria-hidden className="h-[1.125rem] w-[1.125rem] text-primary" />
+        </span>
+        <span className="min-w-0">{t("support.help.actions.person")}</span>
+      </a>
+      {canReport && report.available ? (
+        <button
+          type="button"
+          onClick={() => report.open()}
+          className={ACTION_TILE}
+          data-testid="help-action-report"
+        >
+          <span className={icon}>
+            <LifeBuoy aria-hidden className="h-[1.125rem] w-[1.125rem] text-gold" />
+          </span>
+          <span className="min-w-0">{t("support.help.contact.report")}</span>
+        </button>
+      ) : null}
+      {tickets > 0 ? (
+        <a href="#tickets" className={ACTION_TILE} data-testid="help-action-tickets">
+          <span className={icon}>
+            <Inbox aria-hidden className="h-[1.125rem] w-[1.125rem] text-primary" />
+          </span>
+          <span className="min-w-0">
+            {t("support.help.tickets.title")}
+            {answered > 0 ? (
+              <span className="block text-caption font-medium text-primary">
+                {t("support.help.actions.answered", { count: answered })}
+              </span>
+            ) : null}
+          </span>
+        </a>
+      ) : null}
+    </nav>
   );
 }
 

@@ -90,7 +90,7 @@
   "view": {
     "label": "What to see on Home",
     "all": "Everything",
-    "mineNote": "The picks are the same for everyone. «Everything» has the day\u2019s picks, the parlays and what is on now."
+    "mineNote": "The picks are the same for everyone. «Everything» has the day’s picks, the parlays and what is on now."
   },
   "layers": {
     "forYou": "For you",
@@ -193,5 +193,23 @@
   "fold": {
     "more": "Show {count} more"
   },
-  "offline": "No connection: showing what loaded last. It updates by itself when you are back."
+  "offline": "No connection: showing what loaded last. It updates by itself when you are back.",
+  "hello": "Hi, {name}",
+  "sideLabel": "Parlays, news and results",
+  "hero": {
+    "overline": "The day at PrediGol",
+    "picks_one": "recommended pick",
+    "picks_other": "recommended picks",
+    "evaluation_one": "pick in evaluation",
+    "evaluation_other": "picks in evaluation",
+    "none": "No pick today",
+    "noneBody": "No match passed every rule. We would rather publish nothing than publish for the sake of it.",
+    "parlay": "1 parlay of the day",
+    "matches_one": "{count} match today",
+    "matches_other": "{count} matches today",
+    "live": "{count} live",
+    "seePicks": "See the picks",
+    "why": "See why",
+    "matchesToday": "Today's matches"
+  }
 }

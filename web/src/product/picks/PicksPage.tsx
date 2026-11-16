@@ -35,6 +35,7 @@ import {
 } from "@/product/shared/States";
 import { MARKETS, emptyReason, marketShort } from "@/product/shared/markets";
 import { DailySetBlock } from "@/product/records/DailySetBlock";
+import { PicksSide } from "./PicksSide";
 import { noPickLoad } from "@/product/records/noPick";
 import { pickableOfCard, type Pickable } from "@/product/records/pickable";
 import { SelectablePriceRow } from "@/product/odds/SelectablePrice";
@@ -99,20 +100,27 @@ export function PicksPage() {
         }
         right={auth.showAdmin ? <ShadowToggle /> : undefined}
       />
-      <DailySetBlock
-        query={daily}
-        nav={{ day, today, onDay: setDay }}
-        noPick={day === today ? noPickLoad(reason, (n) => n) : undefined}
-      />
-      <AllPicks
-        query={list}
-        filters={filters}
-        onChange={setFilters}
-        follow={follow}
-        scope={follow ? (scope ?? (follow.suggested ? "all" : "mine")) : "all"}
-        onScope={setScope}
-      />
-      <StartedPicks />
+      {/* At a desk (sheet K08) the picks are the main column and the parlay of the day a side column of 380 px; the
+          cards lay out by the column's room. Under 1024 px, one column as always. */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_23.75rem] lg:items-start lg:gap-6">
+        <div className="@container min-w-0 space-y-8" data-testid="picks-main">
+          <DailySetBlock
+            query={daily}
+            nav={{ day, today, onDay: setDay }}
+            noPick={day === today ? noPickLoad(reason, (n) => n) : undefined}
+          />
+          <AllPicks
+            query={list}
+            filters={filters}
+            onChange={setFilters}
+            follow={follow}
+            scope={follow ? (scope ?? (follow.suggested ? "all" : "mine")) : "all"}
+            onScope={setScope}
+          />
+          <StartedPicks />
+        </div>
+        <PicksSide board={daily} />
+      </div>
     </div>
   );
 }
@@ -313,7 +321,7 @@ function CardsSkeleton({ count, tall = false }: { count: number; tall?: boolean 
     <div
       aria-busy="true"
       aria-label={t("common.loading")}
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 @5xl:grid-cols-3"
     >
       {Array.from({ length: count }, (_, i) => (
         <SkeletonBlock key={i} className={tall ? "h-64" : "h-44"} />
@@ -451,7 +459,7 @@ function AllPicks({
           data-testid="picks-list"
           data-guide="picks-list"
           className={cn(
-            "grid grid-cols-1 gap-3 transition-opacity sm:grid-cols-2 xl:grid-cols-3",
+            "grid grid-cols-1 gap-3 transition-opacity sm:grid-cols-2 @5xl:grid-cols-3",
             refreshing && "opacity-60",
           )}
         >

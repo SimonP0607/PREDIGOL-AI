@@ -120,7 +120,7 @@ export function ResultsBlock({ query, now }: { query: HomeQuery; now: number }) 
       <>
         <Card className="mt-3 overflow-hidden">
           <ul
-            className="grid grid-cols-1 gap-px bg-border/70 lg:grid-cols-2"
+            className="grid grid-cols-1 gap-px bg-border/70 @3xl:grid-cols-2"
             data-testid="results-list"
           >
             {rows.map((r, i) => (
@@ -128,7 +128,9 @@ export function ResultsBlock({ query, now }: { query: HomeQuery; now: number }) 
                 <ResultRow r={r} now={now} />
               </li>
             ))}
-            {rows.length % 2 === 1 ? <li aria-hidden className="hidden bg-card lg:block" /> : null}
+            {rows.length % 2 === 1 ? (
+              <li aria-hidden className="hidden bg-card @3xl:block" />
+            ) : null}
           </ul>
         </Card>
         {fold.more}
