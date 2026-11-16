@@ -26,6 +26,7 @@ import { useMediaQuery } from "@/lib/useMediaQuery";
 import { BottomBar, TopNav } from "./Bars";
 import { InboxBell } from "@/product/push/InboxBell";
 import { AccountMenu, PreviewBanner } from "./HeaderControls";
+import { SearchButton } from "@/components/system/search/SearchButton";
 import { MoreSheet } from "./MoreSheet";
 import { UPDATES_PATH } from "./nav";
 import { useMoreItems } from "./useMoreItems";
@@ -113,6 +114,8 @@ export function UserShell({ children }: { children: ReactNode }) {
                   {/* The language left the bar (plan maestro UX/UI 2026, wave 3): it is in «Más» and in Perfil. The
                   bell of Avisos takes this place when the inbox exists; nothing is drawn while it does not. */}
                   <div className="ml-auto flex items-center gap-2">
+                    {/* the readers' search (UX-153; FBI_SEARCH): the magnifier, «/» and Ctrl/⌘ K */}
+                    {auth.user?.search === true ? <SearchButton news={flags.news} /> : null}
                     <InboxBell />
                     <AccountMenu />
                   </div>

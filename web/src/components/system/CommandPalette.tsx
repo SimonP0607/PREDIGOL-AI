@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate, type LinkProps } from "@tanstack/react-router";
 import {
   CommandDialog,
@@ -12,7 +11,7 @@ import {
 import { adminHome, adminNav } from "@/components/layout/nav";
 import { t } from "@/lib/i18n";
 import { DATA_MODE } from "@/lib/api/mode";
-import { v1 } from "@/lib/api/v1/client";
+import { useSearchHits } from "@/components/system/search/useSearchHits";
 import { searchIndex } from "@/mock/research";
 import type { SearchHit, SearchHitType } from "@/types/domain";
 
@@ -40,24 +39,18 @@ export function searchEmpty(): string {
  * fixture can never be offered - or opened - as if it were stored.
  */
 export function useEntitySearch(term: string, limit = 8): SearchHit[] {
-  const q = term.trim();
   const live = DATA_MODE !== "mock";
-  const res = useQuery({
-    queryKey: ["v1", "search", q],
-    queryFn: () => v1.search(q),
-    enabled: live && q.length >= 2,
-    staleTime: 60_000,
-  });
+  const { hits } = useSearchHits(term, live);
   return useMemo(() => {
     if (!live) return searchEntities(term, limit);
-    return (res.data?.data ?? []).slice(0, limit).map((h) => ({
+    return (hits ?? []).slice(0, limit).map((h) => ({
       id: `${h.type}-${h.id}`,
       type: h.type,
       label: h.label,
       sublabel: h.sublabel,
       fixtureId: h.type === "fixture" ? String(h.id) : null,
     }));
-  }, [live, term, limit, res.data]);
+  }, [live, term, limit, hits]);
 }
 
 /** Demo-mode entity search over the demo index. */
