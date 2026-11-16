@@ -156,7 +156,7 @@ export function BusinessSummary() {
             <Link
               key={v}
               to="/admin/customers"
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border px-3 text-sm hover:bg-elevated"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border px-3 text-sm hover:bg-elevated"
             >
               {t(`admin.summary.views.${v}`)}
               <span className="numeric font-semibold">{views.get(v) ?? 0}</span>
@@ -194,7 +194,7 @@ export function BusinessSummary() {
           ) : null}
           <Link
             to="/admin/announcements"
-            className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-primary"
+            className="mt-1 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary"
           >
             {t("admin.summary.open")} <ChevronRight aria-hidden className="h-3.5 w-3.5" />
           </Link>
@@ -216,7 +216,7 @@ export function BusinessSummary() {
           </ul>
           <Link
             to="/admin/audit"
-            className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-primary"
+            className="mt-1 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary"
           >
             {t("admin.summary.open")} <ChevronRight aria-hidden className="h-3.5 w-3.5" />
           </Link>

@@ -9,7 +9,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { MatchOddsSheet } from "./MatchOdds";
 import { Link } from "@tanstack/react-router";
-import { ChevronRight, Clock, SearchX, TrendingUp } from "lucide-react";
+import { Check, ChevronRight, Clock, SearchX, TrendingUp } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { formatOdds } from "@/lib/i18n/format";
 import { formatKickoff, formatRelative, formatTime } from "@/lib/time";
@@ -143,7 +143,7 @@ export function ByMatchView({
               h === 24 ? t("explorer.filters.today") : t("explorer.filters.hours", { count: h }),
           }))}
         />
-        <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+        <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto py-1 [scrollbar-width:none]">
           {chips.slice(0, 6).map((c) => (
             <button
               key={c.id}
@@ -164,14 +164,21 @@ export function ByMatchView({
           ))}
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {/* The box is drawn; the native checkbox lies invisibly over the whole label, so a finger finds 44 px. */}
           <label className="tap-y relative inline-flex h-9 cursor-pointer items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={valueOnly}
               onChange={(e) => setValueOnly(e.target.checked)}
               data-testid="by-match-value-only"
-              className="h-4 w-4 accent-[var(--color-primary)]"
+              className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
             />
+            <span
+              aria-hidden
+              className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border border-border-strong text-primary-foreground peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring"
+            >
+              {valueOnly ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
+            </span>
             {t("odds.byMatch.valueOnly", { count: valued })}
           </label>
           <Segmented
@@ -188,7 +195,7 @@ export function ByMatchView({
 
       {/* A phone and a tablet show one market per card: chosen here (C01). */}
       <div className="@container" data-testid="by-match-market-chips">
-        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] @[46rem]:hidden">
+        <div className="flex gap-2 overflow-x-auto py-1 [scrollbar-width:none] @[46rem]:hidden">
           {BY_MATCH_MARKETS.map((m) => (
             <button
               key={m.key}

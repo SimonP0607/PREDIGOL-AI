@@ -70,7 +70,7 @@ export function TodayMatchesBlock({ matches }: { matches: readonly TodayMatch[] 
                       to="/matches/$fixtureId"
                       params={{ fixtureId: String(m.fixture_id) }}
                       data-testid="home-today-match"
-                      className="grid grid-cols-[3rem_minmax(0,1fr)_auto] gap-x-2 rounded-md hover:bg-elevated/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="grid min-h-11 grid-cols-[3rem_minmax(0,1fr)_auto] content-center gap-x-2 rounded-md hover:bg-elevated/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
                       <span
                         className={`numeric pt-0.5 text-caption font-semibold ${w.live ? "text-positive" : "text-muted-foreground"}`}

@@ -15,6 +15,24 @@ import { statePath } from "./accounts";
 import { assertClean, getJson, L, note, sendJson, settle, smallTargets, watch } from "./support";
 import { ellipsized, lengthenNames, splitWords } from "./textfit";
 
+/**
+ * The switches that change the bars and Cuotas (GET /auth/me): the unified plan's bars (FBI_NAV_V2, with Noticias open)
+ * Cuotas «Por partido» (FBI_ODDS_BY_MATCH) and the explorer by families (FBI_ODDS_EXPLORER). Off on the CI's database; a QA run with them on checks the new shape.
+ */
+async function barFlags(page: Page): Promise<{ v2: boolean; byMatch: boolean; explorer: boolean }> {
+  const { body } = await getJson<{
+    nav_v2?: boolean;
+    news_feed?: boolean;
+    odds_by_match?: boolean;
+    odds_explorer?: boolean;
+  }>(page.request, "/api/v1/auth/me");
+  return {
+    v2: body.nav_v2 === true && body.news_feed === true,
+    byMatch: body.odds_by_match === true,
+    explorer: body.odds_explorer === true,
+  };
+}
+
 const PAGES = [
   "/home",
   "/matches",
@@ -124,12 +142,18 @@ for (const width of PHONES) {
       await settle(page);
       await expect(page.getByTestId("tab-home"), `the tab bar at ${width} px`).toBeVisible();
       expect(await cutLabels(page), `tab bar labels cut at ${width} px on ${path}`).toEqual([]);
-      // Plan UX, A15: five cells - Inicio, Partidos, Picks, Mis picks and «Más» -, every label 12 px or more.
+      // Plan UX, A15: five cells - Inicio, Partidos, Picks, Mis picks and «Más» -, every label 12 px or more; with the
+      // unified plan's bars (D-01), Inicio, Partidos, Noticias, Picks and «Más».
       const labels = await tabLabels(page);
+      const { v2 } = await barFlags(page);
       expect(
         labels.map((l) => l.text),
         `the five destinations at ${width} px on ${path}`,
-      ).toEqual([L.es.nav.home, L.es.nav.matches, L.es.nav.picks, L.es.nav.myPicks, L.es.nav.more]);
+      ).toEqual(
+        v2
+          ? [L.es.nav.home, L.es.nav.matches, L.es.nav.news, L.es.nav.picks, L.es.nav.more]
+          : [L.es.nav.home, L.es.nav.matches, L.es.nav.picks, L.es.nav.myPicks, L.es.nav.more],
+      );
       expect(
         labels.filter((l) => l.size < 11.95),
         `tab labels under 12 px at ${width} px`,
@@ -864,12 +888,13 @@ test("the bar's cells name themselves and the page's own says so; En vivo is Par
 }) => {
   const w = watch(page);
   await page.setViewportSize({ width: 390, height: 844 });
+  const { v2 } = await barFlags(page);
   for (const [path, cell] of [
     ["/home", "tab-home"],
     ["/matches", "tab-matches"],
     ["/live", "tab-matches"],
     ["/picks", "tab-picks"],
-    ["/my-picks", "tab-my-picks"],
+    v2 ? ["/news", "tab-news"] : ["/my-picks", "tab-my-picks"],
   ] as const) {
     await page.goto(path);
     await settle(page);
@@ -877,7 +902,10 @@ test("the bar's cells name themselves and the page's own says so; En vivo is Par
       "aria-current",
       "page",
     );
-    await expect(page.locator('nav [aria-current="page"]:visible')).toHaveCount(1);
+    // the bar's own (Picks' tabs, with the unified bars, name their page in their own nav)
+    await expect(
+      page.locator('nav:not([data-testid="picks-tabs"]) [aria-current="page"]:visible'),
+    ).toHaveCount(1);
   }
   // the board is at its address, with the way back to Partidos; the bar has no «En vivo» of its own
   await page.goto("/live");
@@ -915,9 +943,16 @@ test("the filters come up from the bottom on a 320 px phone: «Filtros» says ho
   test.setTimeout(150_000);
   const w = watch(page);
   await page.setViewportSize({ width: 320, height: 640 });
+  // Cuotas' own filters are the screen of always: with the explorer by families on (FBI_ODDS_EXPLORER, and «Por
+  // mercado» under FBI_ODDS_BY_MATCH) the explorer has its own sheet and its own tests (OddsExplorer.test.tsx).
+  const { explorer } = await barFlags(page);
+  if (explorer)
+    note(test.info(), "the odds explorer is on: only Partidos' filters are walked here");
   for (const [path, base, field, show] of [
     ["/matches", "matches-filters", "match-search", L.es.matches.filters.show_other],
-    ["/odds", "odds-filters", "odds-search", L.es.odds.filters.show_other],
+    ...(explorer
+      ? []
+      : ([["/odds", "odds-filters", "odds-search", L.es.odds.filters.show_other]] as const)),
   ] as const) {
     await page.goto(path);
     await settle(page);
@@ -973,7 +1008,10 @@ test("from 1024 px the desk's top bar has the same groups and the filters sit in
   await page.goto("/matches");
   await settle(page);
   const top = page.getByRole("navigation", { name: L.es.nav.mainNavigation }).first();
-  for (const id of ["nav-home", "nav-matches", "nav-picks", "nav-my-picks", "nav-more"]) {
+  const { v2 } = await barFlags(page);
+  for (const id of v2
+    ? ["nav-home", "nav-matches", "nav-news", "nav-picks", "nav-more"]
+    : ["nav-home", "nav-matches", "nav-picks", "nav-my-picks", "nav-more"]) {
     await expect(top.getByTestId(id)).toBeVisible();
   }
   await expect(page.getByTestId("tab-home")).toBeHidden();
@@ -988,7 +1026,14 @@ test("from 1024 px the desk's top bar has the same groups and the filters sit in
   await page.setViewportSize({ width: 768, height: 1024 });
   await expect(page.getByTestId("tab-more")).toBeVisible();
   await expect(page.getByTestId("tab-more")).toHaveAttribute("data-active", "");
-  await expect(page.getByTestId("odds-filters-open")).toBeVisible();
+  // Cuotas opens «Por partido» with FBI_ODDS_BY_MATCH (the explorer one tap further); the explorer by families has its
+  // own filters button
+  const odds = await barFlags(page);
+  await expect(
+    page.getByTestId(
+      odds.byMatch ? "odds-view" : odds.explorer ? "explorer-filters-open" : "odds-filters-open",
+    ),
+  ).toBeVisible();
   await assertClean(page, w);
 });
 
