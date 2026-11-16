@@ -38,6 +38,7 @@ import type {
   TransparencyPeriodTally,
 } from "@/lib/api/v1/types_transparency";
 import { PickListSection } from "./PickList";
+import { TransparencySummary } from "./Summary";
 import { Block, Figure, Note } from "./parts";
 import { ChangesBlock, HowToReadBlock, WhatIsPickBlock, ZeroNotice } from "./Reading";
 import {
@@ -548,7 +549,7 @@ export function TransparencyBody({
   const nothingYet = data.periods.find((p) => p.period === "all")?.published === 0;
   return (
     <div className="flex flex-col gap-4" data-testid="transparency-body">
-      {nothingYet ? <ZeroNotice data={data} /> : null}
+      {nothingYet ? <ZeroNotice data={data} /> : <TransparencySummary data={data} />}
       <PublishedBlock data={data} />
       <ParlaysBlock data={data} />
       {list}

@@ -259,5 +259,19 @@
     "title": "Metodología",
     "subtitle": "Cómo se decide un pick, cómo se leen sus números y qué definiciones están vigentes.",
     "link": "Ver la metodología"
+  },
+  "summary": {
+    "label": "Resumen del periodo",
+    "published": "Picks publicados",
+    "period": "Periodo",
+    "periods": {
+      "7d": "7 días",
+      "30d": "30 días",
+      "all": "Histórico"
+    },
+    "breakdown": "{won} ganados · {lost} perdidos · {other} devueltos o anulados · {pending} pendientes",
+    "hit": "Acierto",
+    "hitSample_one": "sobre {count} pick decidido",
+    "hitSample_other": "sobre {count} picks decididos"
   }
 }
