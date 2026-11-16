@@ -383,6 +383,23 @@ function useOldAddress(current: BlockKey | null): void {
 }
 
 /** /profile: the index (sheet U01) - who the account is, the eight sections and the way out. */
+/** The first letters of the name's first two words, as the account's badge (the same two the bar shows). */
+export function identityInitials(name: string): string {
+  const words = name
+    .trim()
+    .split(/[\s._-]+/)
+    .filter(Boolean);
+  const two = words.length > 1 ? words[0]![0]! + words[1]![0]! : (words[0] ?? "?").slice(0, 2);
+  return two.toUpperCase();
+}
+
+/** An address as a screen shows it over someone's shoulder: its first letter, dots and its domain. */
+export function maskedEmail(email: string): string {
+  const at = email.lastIndexOf("@");
+  if (at < 1) return email;
+  return `${email[0]}•••••${email.slice(at)}`;
+}
+
 export function ProfileIndexPage() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -418,6 +435,26 @@ function ProfileIndex({
         title={t("profile.title")}
         subtitle={t("profile.centre.subtitle")}
       />
+      {/* who the account is, before its sections (sheet U01): the initials, the name and the address, part of it hidden */}
+      <div
+        className="card-surface flex items-center gap-3.5 rounded-feature px-4 py-3.5"
+        data-testid="profile-identity"
+      >
+        <span
+          aria-hidden
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-card border border-gold/45 bg-gold-soft font-display text-lg font-bold text-gold-strong"
+        >
+          {identityInitials(user.display_name)}
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate font-display text-lg font-bold leading-tight">
+            {user.display_name}
+          </span>
+          <span className="block truncate text-caption text-muted-foreground">
+            {maskedEmail(user.email)}
+          </span>
+        </span>
+      </div>
       {summary.isError ? (
         <div
           role="alert"
