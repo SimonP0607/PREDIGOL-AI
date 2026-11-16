@@ -92,8 +92,12 @@ describe("the URL of Cuotas", () => {
     expect(validateOddsSearch({ q: "x".repeat(500), h: Number.NaN })).toEqual({});
   });
 
-  test("every key the explorer writes is one the route keeps", () => {
-    expect(Object.keys(serializeExplorerState(FULL)).sort()).toEqual([...ODDS_SEARCH_KEYS].sort());
+  test("every key the explorer writes is one the route keeps, and the view key is the route's own", () => {
+    // `v` is not the explorer's: «Por partido | Por mercado» (UX-141) writes it, the explorer keeps it.
+    expect(Object.keys(serializeExplorerState(FULL)).sort()).toEqual(
+      ODDS_SEARCH_KEYS.filter((k) => k !== "v").sort(),
+    );
+    expect(validateOddsSearch({ v: "mercado" })).toEqual({ v: "mercado" });
   });
 
   test("the route's helper stays out of the explorer's code (it runs in the app's first bundle)", () => {

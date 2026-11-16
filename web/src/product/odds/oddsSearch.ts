@@ -21,6 +21,8 @@ export const ODDS_SEARCH_KEYS = [
   "fair",
   "mine",
   "sort",
+  // «Por partido | Por mercado» (plan maestro unificado, UX-141): "mercado" opens the explorer while the view by match is on.
+  "v",
 ] as const;
 
 export type OddsSearchKey = (typeof ODDS_SEARCH_KEYS)[number];

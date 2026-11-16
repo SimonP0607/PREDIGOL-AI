@@ -8,7 +8,7 @@
  * hands the state in and writes back what `onStateChange` gives (`serializeExplorerState`); the data comes through
  * `ExplorerData`, one hook per endpoint (`apiData.ts` on the API, `fake.ts` in the tests).
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { t } from "@/lib/i18n";
 import { useGuideScreen } from "@/product/guides/context";
 import { Card, EmptyState, ErrorState, PageTitle, StaleNote } from "@/product/shared/States";
@@ -64,6 +64,8 @@ export interface OddsExplorerProps {
   guide?: boolean;
   /** A fixed clock (tests); the real one otherwise. */
   now?: number;
+  /** «Por partido | Por mercado» under the title, while Cuotas has its view by match (UX-141). */
+  modeSwitch?: ReactNode;
 }
 
 const PANEL_ID = "explorer-panel";
@@ -74,6 +76,7 @@ export function OddsExplorer({
   onStateChange,
   guide,
   now: fixedNow,
+  modeSwitch,
 }: OddsExplorerProps) {
   const now = fixedNow ?? Date.now();
   const [paused, setPaused] = useState(false);
@@ -295,6 +298,7 @@ export function OddsExplorer({
           />
         }
       />
+      {modeSwitch}
       <div className="flex items-start gap-2">
         <ExplorerSearch value={state.q} tabs={tabs} onQuery={onQuery} onJump={jump} />
         <FiltersSheet

@@ -116,5 +116,64 @@
     "hours": "{n} h",
     "disclaimer": "PrediGol is not a bookmaker: it shows third-party prices, which may differ from what you see at yours.",
     "closed": "This page is not available yet."
+  },
+  "byMatch": {
+    "subtitle": "The best price of each selection, across {count} bookmakers.",
+    "mode": {
+      "label": "View the odds",
+      "byMatch": "By match",
+      "byMarket": "By market"
+    },
+    "window": "Kicking off in",
+    "sort": "Sort",
+    "byTime": "Time",
+    "byValue": "Value",
+    "valueOnly": "Value only ({count})",
+    "markets": {
+      "result_1x2": "1X2",
+      "goals_total": "Over / under 2.5",
+      "goals_btts": "Both teams score"
+    },
+    "columns": {
+      "result_1x2": {
+        "0": "1",
+        "1": "X",
+        "2": "2"
+      },
+      "goals_total": {
+        "0": "Over 2.5",
+        "1": "Under 2.5"
+      },
+      "goals_btts": {
+        "0": "BTTS yes",
+        "1": "BTTS no"
+      }
+    },
+    "time": "Time",
+    "match": "Match",
+    "all": "Every match",
+    "summary": "{count} of {total} matches with prices",
+    "emptyTitle": "No prices in this window yet",
+    "emptyBody": "Try 48 or 72 hours, or come back later: the book updates itself.",
+    "noneTitle": "No match meets these filters",
+    "noneBody": "Remove «Value only» or the chosen competition.",
+    "more": "More matches",
+    "loadingMore": "Loading…",
+    "noPrice": "No price",
+    "noMarket": "No bookmaker prices this market for this match yet.",
+    "oneBook": "Only 1 bookmaker prices this match",
+    "books": "{count} bookmakers price this match",
+    "seeMarkets": "See markets",
+    "legend": {
+      "value": "Value according to PrediGol",
+      "inSlip": "In My parlay",
+      "stale": "Delayed price",
+      "btts": "BTTS: both teams score"
+    },
+    "slipEmpty": "Tap a price to start your parlay. One selection per match.",
+    "combined": "Combined odds",
+    "estimated": "Estimated probability",
+    "save": "Save parlay",
+    "noAi": "Instant calculation · no AI"
   }
 }
