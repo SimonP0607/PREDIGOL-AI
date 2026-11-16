@@ -25,7 +25,7 @@ import { EventsBlock } from "./EventsTimeline";
 import { ForecastBlock } from "./ForecastBlock";
 import { IntelligenceBlock } from "./IntelligenceBlock";
 import { KEY_STATS, statRows } from "./model";
-import { PicksTab } from "./PicksTab";
+import { PicksTab, UpcomingPicks } from "./PicksTab";
 import { LiveOddsBlock, QuickPricesBlock } from "./prices";
 import { Block, CenterSection, MoreButton, StatBars, TeamsLegend } from "./ui";
 
@@ -253,22 +253,57 @@ export function DeepenSection({ ctx }: { ctx: MatchCtx }) {
 
 const TWO_COLUMNS = "grid items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]";
 
-/** The Resumen before kick-off, in the order it is read (plan Partidos y Match Center, R1). */
-export const BEFORE_KICKOFF_ORDER = ["intelligence", "forecast", "deepen", "prices"] as const;
+/**
+ * The Resumen before kick-off, in the order it is read on a phone (plan Partidos y Match Center, R1; plan maestro UX/UI
+ * 2026, sheets P03 and P11): the reading, the published picks, the forecast, «Profundizar» and the best prices.
+ */
+export const BEFORE_KICKOFF_ORDER = [
+  "intelligence",
+  "picks",
+  "forecast",
+  "deepen",
+  "prices",
+] as const;
 export type BeforeKickoffBlock = (typeof BEFORE_KICKOFF_ORDER)[number];
 
+/** At a desk the picks and the prices are the side column (sheet P11); the rest is the main one. */
+export const BEFORE_KICKOFF_SIDE: readonly BeforeKickoffBlock[] = ["picks", "prices"];
+
+const ORDER: Record<BeforeKickoffBlock, string> = {
+  intelligence: "order-1",
+  picks: "order-2",
+  forecast: "order-3",
+  deepen: "order-4",
+  prices: "order-5",
+};
+
+const BEFORE_COLUMN =
+  "contents lg:@container lg:flex lg:min-w-0 lg:flex-col lg:gap-4 lg:*:order-none";
+
 /**
- * Before kick-off, four blocks, each full width and none empty (plan Partidos y Match Center, R1-R3): PrediGol Intelligence
- * (one reading, the published picks only when there are some, the way to Análisis), PrediGol's forecast, «Profundizar»
- * folded, and the best current prices last. The analysed markets' cards are the owner's, in Avanzado. Apart from the
- * blocks so that a test can check the order.
+ * Before kick-off, no block empty (plan Partidos y Match Center, R1-R3): PrediGol Intelligence (one reading and the way to
+ * Análisis), the published picks only when there are some, PrediGol's forecast, «Profundizar» folded, and the best
+ * current prices. One column on a phone and a tablet, in `BEFORE_KICKOFF_ORDER`; at a desk two (sheet P11), the picks and
+ * the prices in a side column of 400 px. The analysed markets' cards are the owner's, in Avanzado. Apart from the blocks
+ * so that a test can check the order.
  */
 export function BeforeKickoffLayout({ blocks }: { blocks: Record<BeforeKickoffBlock, ReactNode> }) {
+  const cell = (key: BeforeKickoffBlock) => (
+    <div key={key} data-block={key} className={cn("min-w-0 empty:hidden", ORDER[key])}>
+      {blocks[key]}
+    </div>
+  );
   return (
-    <div className="space-y-4" data-testid="summary-before">
-      {BEFORE_KICKOFF_ORDER.map((key) => (
-        <Fragment key={key}>{blocks[key]}</Fragment>
-      ))}
+    <div
+      className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_25rem] lg:items-start"
+      data-testid="summary-before"
+    >
+      <div className={BEFORE_COLUMN} data-testid="summary-main">
+        {BEFORE_KICKOFF_ORDER.filter((k) => !BEFORE_KICKOFF_SIDE.includes(k)).map(cell)}
+      </div>
+      <aside className={BEFORE_COLUMN} data-testid="summary-side">
+        {BEFORE_KICKOFF_SIDE.map(cell)}
+      </aside>
     </div>
   );
 }
@@ -277,7 +312,8 @@ function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
   return (
     <BeforeKickoffLayout
       blocks={{
-        intelligence: <IntelligenceBlock ctx={ctx} />,
+        intelligence: <IntelligenceBlock ctx={ctx} picks={false} />,
+        picks: <UpcomingPicks ctx={ctx} />,
         forecast: <ForecastBlock ctx={ctx} />,
         deepen: <DeepenSection ctx={ctx} />,
         prices: <QuickPricesBlock ctx={ctx} />,

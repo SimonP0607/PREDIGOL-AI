@@ -14,6 +14,7 @@ import type { MatchCtx } from "./context";
 import { readFileSync } from "node:fs";
 import {
   BEFORE_KICKOFF_ORDER,
+  BEFORE_KICKOFF_SIDE,
   BeforeKickoffLayout,
   DeepenLayout,
   DeepenSection,
@@ -120,37 +121,55 @@ describe("«Profundizar» opened: three rows with no gaps (plan Partidos y Match
   });
 });
 
-describe("the Resumen before kick-off (plan Partidos y Match Center, R1)", () => {
+describe("the Resumen before kick-off (plan Partidos y Match Center, R1; plan maestro UX/UI 2026, P03 and P11)", () => {
   const stub = (id: string) => <section data-testid={`stub-${id}`} />;
   const blocks = {
     prices: stub("prices"),
     deepen: stub("deepen"),
     forecast: stub("forecast"),
+    picks: stub("picks"),
     intelligence: stub("intelligence"),
   };
 
-  test("four blocks, in this order: Intelligence, the forecast, Profundizar, the best prices", () => {
-    expect([...BEFORE_KICKOFF_ORDER]).toEqual(["intelligence", "forecast", "deepen", "prices"]);
+  test("on a phone, one column in this order: Intelligence, the picks, the forecast, Profundizar, the best prices", () => {
+    expect([...BEFORE_KICKOFF_ORDER]).toEqual([
+      "intelligence",
+      "picks",
+      "forecast",
+      "deepen",
+      "prices",
+    ]);
     const html = renderToStaticMarkup(<BeforeKickoffLayout blocks={blocks} />);
-    const at = BEFORE_KICKOFF_ORDER.map((k) => html.indexOf(`data-testid="stub-${k}"`));
-    expect(at.every((i) => i >= 0)).toBe(true);
-    expect([...at].sort((a, b) => a - b)).toEqual(at);
+    // each block says its place in the column: the order a phone reads, whatever column a desk puts it in
+    BEFORE_KICKOFF_ORDER.forEach((k, i) => {
+      expect(html).toMatch(new RegExp(`data-block="${k}" class="[^"]*\\border-${i + 1}\\b`));
+      expect(html).toContain(`data-testid="stub-${k}"`);
+    });
+    expect(html).toMatch(/data-testid="summary-before"[^>]*|class="flex flex-col/);
   });
 
-  test("full width: no two columns, no narrowed block", () => {
+  test("at a desk, two columns: the picks and the prices in the side column (sheet P11), nothing narrowed under it", () => {
     const html = renderToStaticMarkup(<BeforeKickoffLayout blocks={blocks} />);
-    expect(html).not.toContain("grid-cols");
+    expect([...BEFORE_KICKOFF_SIDE]).toEqual(["picks", "prices"]);
+    expect(html).toContain("lg:grid-cols-[minmax(0,1fr)_25rem]");
+    // under 1024 px the columns are not boxes: the blocks are the page's own
+    expect(html).not.toMatch(/\bgrid-cols-(?!\[)/);
     expect(html).not.toContain("max-w-");
+    const side = html.slice(html.indexOf('data-testid="summary-side"'));
+    expect(side).toContain('data-testid="stub-picks"');
+    expect(side).toContain('data-testid="stub-prices"');
+    expect(side).not.toContain('data-testid="stub-forecast"');
   });
 
-  test("before kick-off it draws Intelligence, never the analysed markets' cards nor a picks block of its own", () => {
+  test("before kick-off it draws Intelligence and the published picks beside it, never the analysed markets' cards", () => {
     // the source of the phase's layout: the blocks it hands to the layout, and nothing else
     const source = readFileSync(new URL("./SummaryTab.tsx", import.meta.url), "utf8");
     const before = source.slice(
       source.indexOf("function BeforeKickoff("),
       source.indexOf("function InPlay("),
     );
-    expect(before).toContain("<IntelligenceBlock ctx={ctx} />");
+    expect(before).toContain("<IntelligenceBlock ctx={ctx} picks={false} />");
+    expect(before).toContain("<UpcomingPicks ctx={ctx} />");
     expect(before).toContain("<ForecastBlock ctx={ctx} />");
     expect(before).toContain("<DeepenSection ctx={ctx} />");
     expect(before).toContain("<QuickPricesBlock ctx={ctx} />");
