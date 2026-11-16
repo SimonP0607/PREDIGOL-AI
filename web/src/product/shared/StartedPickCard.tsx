@@ -82,7 +82,7 @@ export function StartedPickCard({
       <Link
         to="/matches/$fixtureId"
         params={{ fixtureId: String(pick.fixture_id) }}
-        className="block flex-1 rounded-t-feature focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="block rounded-t-feature focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         {hideMatch ? null : (
           <>
@@ -94,7 +94,7 @@ export function StartedPickCard({
                 country={pick.competition.country}
                 className="min-w-[9rem] flex-1"
               />
-              <div className="ml-auto flex shrink-0 items-center gap-1.5">
+              <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
                 {shadow ? <ShadowBadge compact /> : null}
                 <Kickoff at={pick.kickoff_at} />
               </div>
@@ -165,13 +165,13 @@ export function StartedPickCard({
         <PickDetailLink pickId={pick.pick_id} className="flex-none" />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 px-4 py-2.5">
-        <div className="flex items-center gap-2">
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-border/70 px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-caption text-subtle-foreground">{t("match.picks.stateNow")}</span>
           {result ? (
             <>
               <ResultBadge status={result} />
-              <Units value={pick.profit_units} className="text-xs" />
+              <Units value={pick.profit_units} className="whitespace-nowrap text-xs" />
             </>
           ) : quiet ? (
             <span

@@ -10,7 +10,7 @@ import { t } from "@/lib/i18n";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { isLivePhase } from "@/product/matches/status";
 import { startedScore, type StartedMatchGroup } from "@/product/picks/started";
-import { Kickoff, ShadowBadge } from "./Bits";
+import { Kickoff, PICK_GRID, PICK_GRID_HOST, ShadowBadge } from "./Bits";
 import { StartedPickCard } from "./StartedPickCard";
 
 export function StartedMatchGroupCard({
@@ -44,7 +44,7 @@ export function StartedMatchGroupCard({
             country={head.competition.country}
             className="min-w-[9rem] flex-1"
           />
-          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
             {shadow ? <ShadowBadge compact /> : null}
             <Kickoff at={head.kickoff_at} />
           </div>
@@ -63,10 +63,18 @@ export function StartedMatchGroupCard({
           {t("picks.started.inMatch", { count: picks.length })}
         </p>
       </Link>
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
-        {picks.map((p) => (
-          <StartedPickCard key={p.pick_id} pick={p} shadow={shadow} hideMatch />
-        ))}
+      <div className={PICK_GRID_HOST}>
+        <div className={PICK_GRID}>
+          {picks.map((p) => (
+            <StartedPickCard
+              key={p.pick_id}
+              pick={p}
+              shadow={shadow}
+              hideMatch
+              className="h-full"
+            />
+          ))}
+        </div>
       </div>
     </section>
   );

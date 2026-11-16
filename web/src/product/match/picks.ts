@@ -38,3 +38,17 @@ export function useMatchPicks(ctx: MatchCtx) {
   const preview = usePreviewParam();
   return useQuery(live.productPicks({ hours: 168, fixture_id: Number(ctx.fixtureId) }, preview));
 }
+
+/** From this many pre-match picks on, their panel takes the page's width instead of the side column. */
+export const WIDE_PICKS_FROM = 3;
+
+/**
+ * Whether the match's pre-match picks need the page's whole width (plan maestro UX/UI 2026, P10-P11): the side column holds
+ * one or two cards well; with more it becomes a long ribbon beside an empty column. Same query as the panel (cached).
+ */
+export function useWidePicks(ctx: MatchCtx): boolean {
+  const q = useMatchPicks(ctx);
+  const fixture = Number(ctx.fixtureId);
+  const taken = (q.data?.data?.started ?? []).filter((p) => p.fixture_id === fixture).length;
+  return taken >= WIDE_PICKS_FROM;
+}
