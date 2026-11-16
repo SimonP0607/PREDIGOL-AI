@@ -30,7 +30,10 @@
       "privacy": "Privacidad y datos",
       "privacyBody": "Descarga tus datos o pide corregirlos o borrarlos.",
       "howItWorks": "Cómo funciona PrediGol",
-      "howItWorksBody": "Cada parte de la app en una tarjeta, con un ejemplo."
+      "howItWorksBody": "Cada parte de la app en una tarjeta, con un ejemplo.",
+      "howItWorksShort": "Cada parte, con un ejemplo",
+      "glossaryCount_one": "{count} término explicado",
+      "glossaryCount_other": "{count} términos explicados"
     },
     "contact": {
       "title": "Escríbenos",
@@ -75,7 +78,46 @@
       "new": "Nuevo",
       "person": "Hablar con una persona",
       "answered_one": "{count} con respuesta nueva",
-      "answered_other": "{count} con respuesta nueva"
+      "answered_other": "{count} con respuesta nueva",
+      "tickets_one": "{count} mensaje",
+      "tickets_other": "{count} mensajes"
+    },
+    "heading": "¿En qué te ayudamos?",
+    "faqTitle": "Preguntas frecuentes",
+    "quick": {
+      "mail": {
+        "label": "No me llega el correo",
+        "q": "correo"
+      },
+      "renew": {
+        "label": "Renovar la membresía",
+        "q": "renovar"
+      },
+      "ev": {
+        "label": "Qué es el valor esperado",
+        "q": "valor"
+      }
+    },
+    "channels": {
+      "title": "Hablar con una persona",
+      "subtitle": "Elige el canal que te quede más cómodo. Responde el equipo de PrediGol.",
+      "app": "Mensaje en la app",
+      "appBody": "Queda guardado en «Tus mensajes»",
+      "appNote": "Si no puedes entrar, hoy mismo; lo demás, en 24 a 48 horas.",
+      "whatsappBody": "Lo más rápido para pagos y membresía",
+      "whatsappNote": "Tu mensaje lleva un código de consulta para ubicar tu caso.",
+      "whatsappOpen": "Abrir WhatsApp",
+      "emailNote": "Para cuando no puedes abrir PrediGol.",
+      "emailOpen": "Escribir un correo",
+      "telegramBody": "Mantenimientos, incidencias y novedades",
+      "telegramNote": "Solo avisos. Para conversar, usa WhatsApp o un mensaje.",
+      "telegramOpen": "Abrir el canal",
+      "quickTitle": "Para que sea rápido",
+      "quick1": "Ten a mano el correo de tu cuenta.",
+      "quick2": "Si es un pago: fecha, valor y comprobante.",
+      "quick3": "Si algo se ve mal: una captura de pantalla.",
+      "neverStrong": "PrediGol nunca te pedirá tu contraseña ni tus códigos.",
+      "never": "Tampoco te escribe para ofrecerte apuestas ni «picks seguros»."
     }
   },
   "faq": {
@@ -627,6 +669,19 @@
     "blocked": "No doy pronósticos ni consejos de apuesta. PrediGol publica sus picks del día en Picks, iguales para todos, y solo cuando encuentra valor.",
     "toPicks": "Ir a Picks",
     "toResponsible": "Juego responsable",
-    "note": "El asistente no es una persona ni genera texto: busca en las respuestas de esta ayuda y te dice de dónde sale cada una."
+    "note": "El asistente no es una persona ni genera texto: busca en las respuestas de esta ayuda y te dice de dónde sale cada una.",
+    "byline": "Automático · responde con la Ayuda",
+    "scope": "Resuelve dudas de la cuenta, la membresía y cómo se lee la app. No da pronósticos ni consejos de apuesta.",
+    "write": "Escribe tu duda",
+    "privacy": "No escribas contraseñas, códigos ni datos de tu banco.",
+    "foundIntro_one": "Esto dice la ayuda:",
+    "foundIntro_other": "Esto dice la ayuda, en {count} respuestas:",
+    "fromHelp": "De la ayuda:",
+    "solved": "Se resolvió",
+    "stillSame": "Sigo igual",
+    "solvedReply": "¡Qué bien! Si necesitas algo más, escríbelo aquí.",
+    "personReply": "Entonces lo mejor es que lo vea una persona. Puedo abrir un mensaje con lo que ya me contaste para que no tengas que repetirlo.",
+    "sendPerson": "Enviar a una persona",
+    "whatsapp": "Prefiero WhatsApp"
   }
 }
