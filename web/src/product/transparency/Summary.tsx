@@ -24,7 +24,9 @@ export function TransparencySummary({ data }: { data: Transparency }) {
   const decided = won + lost;
   const bar = won + lost + other;
   const note = sampleNote(tally, data.min_sample, data.conclusive);
-  const tile = "rounded-field bg-background/40 px-3 py-2.5";
+  const tile = "min-w-0 rounded-field bg-background/40 px-3 py-2.5";
+  // whole at 320 px: three short words, never cut
+  const label = "text-caption font-semibold text-muted-foreground";
   return (
     <section
       aria-label={t("transparency.summary.label")}
@@ -70,7 +72,7 @@ export function TransparencySummary({ data }: { data: Transparency }) {
       ) : null}
       <dl className="mt-4 grid grid-cols-3 gap-2">
         <div className={tile}>
-          <dt className="text-overline text-muted-foreground">{t("transparency.summary.hit")}</dt>
+          <dt className={label}>{t("transparency.summary.hit")}</dt>
           <dd className="numeric mt-1 font-display text-xl font-bold">
             {decided > 0 ? pctText(won / decided) : DASH}
           </dd>
@@ -79,9 +81,7 @@ export function TransparencySummary({ data }: { data: Transparency }) {
           </dd>
         </div>
         <div className={tile}>
-          <dt className="text-overline text-muted-foreground">
-            {t("transparency.published.units")}
-          </dt>
+          <dt className={label}>{t("transparency.summary.units")}</dt>
           <dd className="numeric mt-1 font-display text-xl font-bold">
             {tally.units === null ? DASH : fmtUnits(tally.units)}
           </dd>

@@ -272,6 +272,8 @@
     "breakdown": "{won} won · {lost} lost · {other} pushed or void · {pending} pending",
     "hit": "Hit rate",
     "hitSample_one": "of {count} decided pick",
-    "hitSample_other": "of {count} decided picks"
+    "hitSample_other": "of {count} decided picks",
+    "units": "Units",
+    "roi": "ROI"
   }
 }

@@ -272,6 +272,8 @@
     "breakdown": "{won} ganados · {lost} perdidos · {other} devueltos o anulados · {pending} pendientes",
     "hit": "Acierto",
     "hitSample_one": "sobre {count} pick decidido",
-    "hitSample_other": "sobre {count} picks decididos"
+    "hitSample_other": "sobre {count} picks decididos",
+    "units": "Unidades",
+    "roi": "ROI"
   }
 }
