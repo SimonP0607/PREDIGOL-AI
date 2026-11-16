@@ -27,6 +27,23 @@ recorre lo que ya existía, y agregó nueve pantallas aprobadas.
 | Navegación | `web/src/components/layout/*` | Barra inferior de cinco destinos y hoja «Más» en móvil; barra superior desde 1024 px; campana de Avisos; idioma en acceso, Perfil y «Más» |
 | Consola | `web/src/admin/*` | Menú en cinco grupos, primitivas de lista y detalle, Auditoría por familias |
 
+## 2 bis. Piezas de Intelligence (plan maestro unificado, UX-140)
+
+Las ocho piezas que necesitan las 18 maquetas de PrediGol Intelligence viven en `web/src/product/shared/intelligence/`
+(`Pieces.tsx`, `model.ts`) y extienden primitivas existentes. Ninguna calcula: pintan lo que trae el contrato del backend, con
+sus palabras (namespace de textos `intelligence`).
+
+| Pieza | Extiende | Regla |
+| --- | --- | --- |
+| `LifecycleChip` | `StatusBadge` | Diez estados del ciclo; palabra e icono, nunca solo color. El lector solo ve «En juego» y «Liquidada» (`PUBLIC_LIFECYCLE`) |
+| `ConfirmationLevel` | `StatusBadge` | Oficial, Confirmada por dos orígenes, Declaración, Un solo medio, Contradictoria, No confirmada (decisión D-04: sin pestaña «Rumores») |
+| `ProbabilityLine` | barra de probabilidad | La cifra del contrato con su sello «Calibrada / Sin calibrar», hora y confianza. No recalcula ni elige |
+| `EvaluationSteps` | fichas de `ExplainSteps` | E1 primera lectura, E2 por novedad, E3 alineación oficial, E4 cierre |
+| `VersionHistory` | línea de tiempo | Cada evaluación añade versión, la más nueva arriba; nada se reescribe |
+| `SourceLevelList` | fuentes de datos | Hechos agrupados por nivel, con fuente, hora y enlace al original |
+| `PrivateBand` | `Banner` | «Evaluación privada · no visible para usuarios» encima de toda vista privada. Marca, no protege: protege el servidor |
+| `EntityHeader` | escudo del partido | Cabecera de club, selección y jugador; el jugador nunca lleva foto, solo iniciales |
+
 ## 3. Pantallas
 
 | Área | Rutas | Qué cambió |

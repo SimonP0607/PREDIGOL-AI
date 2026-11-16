@@ -1,0 +1,53 @@
+{
+  "lifecycle": {
+    "detected": "Detectada",
+    "researching": "En investigación",
+    "evaluating": "En evaluación",
+    "awaiting_lineups": "Pendiente de alineaciones",
+    "shadow_confirmed": "Confirmada en sombra",
+    "withdrawn": "Retirada",
+    "discarded": "Descartada",
+    "in_play": "En juego",
+    "settled": "Liquidada",
+    "evaluated": "Evaluada"
+  },
+  "confirmation": {
+    "official": "Oficial",
+    "confirmed": "Confirmada por dos orígenes",
+    "statement": "Declaración",
+    "single_source": "Un solo medio",
+    "contradictory": "Contradictoria",
+    "unconfirmed": "No confirmada"
+  },
+  "calibration": {
+    "calibrated": "Calibrada",
+    "uncalibrated": "Sin calibrar"
+  },
+  "confidence": {
+    "high": "Confianza alta",
+    "medium": "Confianza media",
+    "low": "Confianza baja"
+  },
+  "evaluations": {
+    "title": "Evaluaciones del partido",
+    "E1": "Primera lectura",
+    "E2": "Por novedad",
+    "E3": "Alineación oficial",
+    "E4": "Cierre",
+    "state": {
+      "done": "Hecha",
+      "current": "La vigente",
+      "pending": "Pendiente",
+      "skipped": "No hizo falta"
+    }
+  },
+  "private": {
+    "title": "Evaluación privada · no visible para usuarios",
+    "body": "Esto solo lo ves tú. Nada de lo que sigue es una recomendación publicada."
+  },
+  "entity": {
+    "club": "Club",
+    "nation": "Selección nacional",
+    "player": "Jugador"
+  }
+}

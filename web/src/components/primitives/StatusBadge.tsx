@@ -37,7 +37,7 @@ export function StatusBadge({
   children: React.ReactNode;
   tone?: BadgeTone;
   dot?: boolean;
-  className?: string;
+  className?: string | undefined;
 }) {
   return (
     <span className={cn(badge({ tone }), className)}>
