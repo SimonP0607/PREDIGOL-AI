@@ -57,7 +57,7 @@ const CLAIM_GROUPS = [
   "contradictions",
 ] as const;
 const SELECT =
-  "h-8 rounded-md border border-border bg-card px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "h-8 min-w-0 max-w-full rounded-md border border-border bg-card px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 /** The comparison grid: the arm, then nine figures. */
 const COMPARE_GRID = "grid grid-cols-[minmax(8.5rem,1.5fr)_repeat(9,minmax(4.25rem,1fr))]";
 

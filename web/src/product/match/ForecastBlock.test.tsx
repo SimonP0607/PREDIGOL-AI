@@ -182,7 +182,7 @@ describe("what a user sees once the owner lets users see the forecast", () => {
     expect(out).toContain("Pronóstico PrediGol");
     expect(out).toContain("no una recomendación ni una cuota para apostar");
     // forecast ≠ value ≠ pick (plan UX, A3): the three questions under the forecast, each word opening its definition
-    expect(out).toContain('data-testid="explain-layers"');
+    expect(out).toContain('data-testid="explain-steps"');
     expect(out).toContain("¿Está bien pagado?");
     expect(out).toContain('data-glossary="calibrated"');
   });

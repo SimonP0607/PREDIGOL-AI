@@ -259,5 +259,21 @@
     "title": "Methodology",
     "subtitle": "How a pick is decided, how its numbers are read and which definitions are in force.",
     "link": "See the methodology"
+  },
+  "summary": {
+    "label": "The period at a glance",
+    "published": "Published picks",
+    "period": "Period",
+    "periods": {
+      "7d": "7 days",
+      "30d": "30 days",
+      "all": "All time"
+    },
+    "breakdown": "{won} won · {lost} lost · {other} pushed or void · {pending} pending",
+    "hit": "Hit rate",
+    "hitSample_one": "of {count} decided pick",
+    "hitSample_other": "of {count} decided picks",
+    "units": "Units",
+    "roi": "ROI"
   }
 }

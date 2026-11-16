@@ -34,7 +34,7 @@ import type {
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { familyName, marketText, ruleKeyText } from "@/live/familiesText";
 import { ShadowBadge } from "@/product/shared/Bits";
-import { ExplainLayers } from "@/product/shared/ExplainLayers";
+import { ExplainSteps } from "@/product/shared/ExplainLayers";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import {
@@ -516,8 +516,9 @@ export function ForecastView({
                 />
               ))}
             </div>
-            {/* forecast ≠ value ≠ pick (plan UX, A3): where the three answers are told apart */}
-            <ExplainLayers compact />
+            {/* forecast ≠ value ≠ pick (plan UX, A3): the three answers told apart, as three numbered tiles (plan
+                maestro UX/UI 2026, sheets P03 and P11); each word opens its definition */}
+            <ExplainSteps className="mt-1" />
           </>
         ) : null}
         {preview && data ? <AdminDetails data={data} sides={sides} /> : null}
