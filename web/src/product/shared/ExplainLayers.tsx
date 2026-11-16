@@ -23,39 +23,42 @@ const LAYERS: ReadonlyArray<readonly ["forecast" | "value" | "pick", TermKey]> =
  */
 export function ExplainSteps({ className }: { className?: string | undefined }) {
   return (
-    <ol
-      aria-label={t("glossary.layers.title")}
-      data-testid="explain-steps"
-      className={cn("grid grid-cols-3 gap-2 sm:gap-3", className)}
-    >
-      {LAYERS.map(([layer, term], i) => (
-        <li
-          key={layer}
-          className={cn(
-            "card-surface flex min-w-0 flex-col gap-2 rounded-card p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-3.5",
-            layer === "pick" && "border-gold/45",
-          )}
-        >
-          <span
-            aria-hidden
+    // by the room of its container: one tile per row when three would break a word, three in a row from 26rem
+    <div className={cn("@container", className)}>
+      <ol
+        aria-label={t("glossary.layers.title")}
+        data-testid="explain-steps"
+        className="grid grid-cols-1 gap-2 @[26rem]:grid-cols-3 @[40rem]:gap-3"
+      >
+        {LAYERS.map(([layer, term], i) => (
+          <li
+            key={layer}
             className={cn(
-              "numeric flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-              layer === "pick" ? "bg-gold-soft text-gold-strong" : "bg-primary-soft text-primary",
+              "card-surface flex min-w-0 flex-row items-center gap-3 rounded-card p-3 @[26rem]:flex-col @[26rem]:items-start @[26rem]:gap-2 @[40rem]:flex-row @[40rem]:items-center @[40rem]:gap-3 @[40rem]:p-3.5",
+              layer === "pick" && "border-gold/45",
             )}
           >
-            {i + 1}
-          </span>
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold">
-              <GlossaryTerm term={term}>{t(`glossary.layers.${layer}.title`)}</GlossaryTerm>
+            <span
+              aria-hidden
+              className={cn(
+                "numeric flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                layer === "pick" ? "bg-gold-soft text-gold-strong" : "bg-primary-soft text-primary",
+              )}
+            >
+              {i + 1}
             </span>
-            <span className="block text-caption text-muted-foreground [overflow-wrap:anywhere]">
-              {t(`glossary.layers.${layer}.question`)}
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">
+                <GlossaryTerm term={term}>{t(`glossary.layers.${layer}.title`)}</GlossaryTerm>
+              </span>
+              <span className="block text-caption text-muted-foreground">
+                {t(`glossary.layers.${layer}.question`)}
+              </span>
             </span>
-          </span>
-        </li>
-      ))}
-    </ol>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
