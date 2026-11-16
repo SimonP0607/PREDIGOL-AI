@@ -97,6 +97,18 @@ class Me(Contract):
     inbox: bool = Field(default=False, description="«Avisos», the reader's inbox, is open (plan maestro UX/UI 2026, "
                                                    "decision 1; FBI_INBOX, off by default): the page shows its bell "
                                                    "only then.")
+    odds_by_match: bool = Field(default=False, description="Cuotas opens on the view by match (plan maestro unificado, "
+                                                           "UX-141; FBI_ODDS_BY_MATCH, off by default).")
+    nav_v2: bool = Field(default=False, description="The bars of the unified plan (UX-152, decisions D-01 and D-02; "
+                                                    "FBI_NAV_V2, off by default).")
+    search: bool = Field(default=False, description="The readers' global search in the top bar (UX-153; FBI_SEARCH, off "
+                                                    "by default).")
+    profiles: bool = Field(default=False, description="The pages of a club, a national team and a player, and «Equipos» "
+                                                      "(UX-154 to UX-157; FBI_PROFILES, off by default).")
+    news_v2: bool = Field(default=False, description="Noticias as maquetas 08-10 draw it (UX-158 to UX-160; FBI_NEWS_V2, "
+                                                     "off by default, and only with the Noticias section open).")
+    match_intelligence: bool = Field(default=False, description="A match's «Intelligence» tab for readers (UX-162 to "
+                                                                "UX-166; FBI_MATCH_INTELLIGENCE, off by default).")
     display: DisplayPrefs = Field(default_factory=DisplayPrefs, description="The reader's settings of presentation "
                                                                             "(decision 8): clock, price format, "
                                                                             "motion and Inicio's view.")

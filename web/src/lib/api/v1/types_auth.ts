@@ -67,6 +67,18 @@ export interface Me {
   inbox?: boolean;
   /** The Noticias section is open to readers (FBI_NEWS_FEED, off by default): the page links to it only then. */
   news_feed?: boolean;
+  /** Cuotas opens on the view by match (plan maestro unificado, UX-141; FBI_ODDS_BY_MATCH, off by default). */
+  odds_by_match?: boolean;
+  /** The bars of the unified plan (UX-152, decisions D-01 and D-02; FBI_NAV_V2, off by default). */
+  nav_v2?: boolean;
+  /** The readers' global search in the top bar (UX-153; FBI_SEARCH, off by default). */
+  search?: boolean;
+  /** The pages of a club, a national team and a player, and «Equipos» (UX-154 to UX-157; FBI_PROFILES, off by default). */
+  profiles?: boolean;
+  /** Noticias as maquetas 08-10 draw it (UX-158 to UX-160; FBI_NEWS_V2, off by default). */
+  news_v2?: boolean;
+  /** A match's «Intelligence» tab for readers (UX-162 to UX-166; FBI_MATCH_INTELLIGENCE, off by default). */
+  match_intelligence?: boolean;
   /** The reader's settings of presentation (decision 8); absent from an API older than BE-039: today's defaults. */
   display?: Display;
 }
