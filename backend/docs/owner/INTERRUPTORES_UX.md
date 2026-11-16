@@ -79,3 +79,12 @@ Los secretos (claves de Resend, de Sentry, VAPID, tokens) se escriben en el serv
 
 En `app.env` no hay ninguna línea de esta capa: todo corre con el valor por defecto. Es decir, los de «nacen apagados» siguen apagados y
 los de «nacen encendidos» siguen encendidos. Comprobado leyendo solo los nombres de las variables, nunca sus valores.
+
+## Estado en producción (16-nov-2026)
+
+El dueño aprobó encender las funciones del plan maestro UX/UI 2026. Desde el 16-nov-2026 a las 00:58 UTC `app.env` lleva
+`FBI_ODDS_STATUS`, `FBI_HELP_ASSISTANT`, `FBI_NEWS_FEED` y `FBI_INBOX` encendidos (copia fechada
+`app.env.before-ux-flags-20261116T005809Z`; se recrearon la API y el mensajero, no el worker; referencia de configuración
+tomada al final). Comprobado dentro de los contenedores y, con la sesión del dueño, en `/auth/me` y en cada pantalla.
+`FBI_TELEGRAM_CHANNEL_URL` sigue sin línea: falta el enlace oficial del canal. `FBI_PICKS_SOURCE` sigue sin línea (apagado).
+Para volver atrás: quitar la línea (o `=0`) y recrear la API y el mensajero.
