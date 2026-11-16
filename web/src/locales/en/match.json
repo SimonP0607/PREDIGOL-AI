@@ -387,7 +387,17 @@
   },
   "deepen": {
     "title": "Go deeper",
-    "subtitle": "Form, table, head to head, calendar, absences and line-ups"
+    "subtitle": "Form, table, head to head, calendar, absences and line-ups",
+    "rows": {
+      "context": "Form, table and head to head",
+      "lineups": "Line-ups and absences",
+      "news": "Match news"
+    },
+    "confirmed": "Confirmed",
+    "pending": "To be confirmed",
+    "lineupsPending": "No official line-up yet: it usually comes an hour before.",
+    "noNews": "No news for this match yet.",
+    "seeNews": "See the news"
   },
   "notPlayed": {
     "postponed": "Match postponed",
