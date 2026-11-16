@@ -17,6 +17,7 @@ import { t } from "@/lib/i18n";
 import { formatDate, formatTime, relativeDay } from "@/lib/time";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { Home, HomeAtStake, HomeReason, HomeRelevant } from "@/lib/api/v1/types_product";
+import type { TodayForecast } from "@/lib/api/v1/types_today";
 import { countryLabel } from "@/product/matches/country";
 import { MatchClock } from "@/product/live/LiveCard";
 import { Card, SectionHeader } from "@/product/shared/States";
@@ -186,25 +187,115 @@ function AtStakeRow({ x, now }: { x: HomeAtStake; now: number }) {
   );
 }
 
-/** Qué se juega: the matches of the next 36 hours with something at stake; out of the page when there are none. */
-export function AtStakeBlock({ query, now }: { query: HomeQuery; now: number }) {
+/** The forecast of a match as Inicio has it (GET /today): the likeliest outcome, its figure and its seal. */
+export type StakeForecast = TodayForecast;
+
+function forecastLabel(x: HomeAtStake, f: StakeForecast): string {
+  if (f.outcome === "draw") return t("home.atStake.draw");
+  return t("home.atStake.wins", { team: f.outcome === "home" ? x.home.name : x.away.name });
+}
+
+/**
+ * Qué se juega: the matches of the next 36 hours with something at stake; out of the page when there are none. From a
+ * 48 rem column it is the sheet's table (I06): time, match, PrediGol's forecast with its seal (the figure as /today gives
+ * it, never computed here) and what is at stake.
+ */
+export function AtStakeBlock({
+  query,
+  now,
+  forecasts,
+}: {
+  query: HomeQuery;
+  now: number;
+  forecasts?: ReadonlyMap<number, StakeForecast> | undefined;
+}) {
   const rows = query.data?.data?.at_stake?.data ?? [];
   const fold = useFold(rows.length, KEEP);
   if (rows.length === 0) return null;
   return (
-    <section data-testid="home-at-stake">
+    <section data-testid="home-at-stake" className="@container">
       <SectionHeader
         title={t("home.atStake.title")}
         subtitle={t("home.atStake.subtitle")}
         icon={<Scale aria-hidden className="h-4 w-4 shrink-0 text-primary" />}
+        action={{ label: t("home.atStake.all"), to: "/matches" }}
       />
-      <Rows count={rows.length} testId="at-stake-list" more={fold.more}>
-        {rows.map((x, i) => (
-          <li key={x.fixture_id} className={cn("bg-card", fold.row(i))}>
-            <AtStakeRow x={x} now={now} />
-          </li>
-        ))}
-      </Rows>
+      <div className="@2xl:hidden">
+        <Rows count={rows.length} testId="at-stake-list" more={fold.more}>
+          {rows.map((x, i) => (
+            <li key={x.fixture_id} className={cn("bg-card", fold.row(i))}>
+              <AtStakeRow x={x} now={now} />
+            </li>
+          ))}
+        </Rows>
+      </div>
+      <Card className="mt-3 hidden overflow-hidden @2xl:block" data-testid="at-stake-table">
+        <div
+          role="row"
+          className="grid grid-cols-[4.5rem_minmax(10rem,1.2fr)_minmax(9rem,1fr)_minmax(10rem,1.3fr)] gap-x-4 border-b border-border px-4 py-2.5 text-label text-subtle-foreground"
+        >
+          <span role="columnheader">{t("home.atStake.time")}</span>
+          <span role="columnheader">{t("home.atStake.match")}</span>
+          <span role="columnheader">{t("home.atStake.forecast")}</span>
+          <span role="columnheader">{t("home.atStake.stakes")}</span>
+        </div>
+        <ul className="divide-y divide-border/70">
+          {rows.map((x) => {
+            const f = forecasts?.get(x.fixture_id) ?? null;
+            const share = f ? Math.min(1, Math.max(0, Number(f.probability))) : null;
+            return (
+              <li key={x.fixture_id}>
+                <Link
+                  to="/matches/$fixtureId"
+                  params={{ fixtureId: String(x.fixture_id) }}
+                  data-testid="at-stake-table-row"
+                  className="grid grid-cols-[4.5rem_minmax(10rem,1.2fr)_minmax(9rem,1fr)_minmax(10rem,1.3fr)] items-center gap-x-4 px-4 py-3 transition-colors hover:bg-elevated/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
+                >
+                  <span className="numeric text-sm font-semibold">
+                    {kickoffAt(x.kickoff_at, now)}
+                  </span>
+                  <Matchup
+                    home={{ name: x.home.name, logo: x.home.logo_url }}
+                    away={{ name: x.away.name, logo: x.away.logo_url }}
+                    score={null}
+                    size={18}
+                    strong={false}
+                    className="font-medium"
+                  />
+                  {f && share !== null ? (
+                    <span className="min-w-0 space-y-1">
+                      <span className="block h-1.5 overflow-hidden rounded-full bg-muted">
+                        <span
+                          className="block h-full rounded-full bg-primary"
+                          style={{ width: `${share * 100}%` }}
+                        />
+                      </span>
+                      <span className="block text-caption">
+                        <span className="numeric font-semibold text-primary">
+                          {Math.round(share * 100)} %
+                        </span>{" "}
+                        <span className="text-muted-foreground">{forecastLabel(x, f)}</span>
+                        {f.calibrated ? null : (
+                          <span className="ml-1 font-semibold text-warning">
+                            · {t("intelligence.calibration.uncalibrated")}
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-caption text-subtle-foreground">
+                      {t("home.atStake.noForecast")}
+                    </span>
+                  )}
+                  <span className="min-w-0 text-small text-muted-foreground">
+                    <Reasons reasons={[x.reason]} />
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
     </section>
   );
 }

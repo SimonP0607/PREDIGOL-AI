@@ -15,8 +15,8 @@ import { formatTime } from "@/lib/time";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { TodayNews } from "@/lib/api/v1/types_news";
 import { WhyChip } from "@/product/favorites/WhyChip";
-import { NewsCard } from "@/product/news/NewsCard";
-import { homeNews } from "@/product/news/news";
+import { NewsCard, StatusChip } from "@/product/news/NewsCard";
+import { headline, homeNews } from "@/product/news/news";
 import { SectionHeader } from "@/product/shared/States";
 
 export type TodayNewsQuery = UseQueryResult<Envelope<TodayNews | null>>;
@@ -25,9 +25,12 @@ export function NewsBlock({
   query,
   now,
   mine = false,
+  compact = false,
 }: {
   query: TodayNewsQuery;
   now: number;
+  /** At a desk's side column (sheet I06, maqueta 01): each item as its status, its headline and its match, no card. */
+  compact?: boolean;
   /** «Para ti»: the reader's own news (two). Otherwise the general layer's (three). */
   mine?: boolean;
 }) {
@@ -49,7 +52,15 @@ export function NewsBlock({
           {t("home.today.updated", { time: formatTime(query.dataUpdatedAt) })}
         </p>
       ) : null}
-      <ul className="mt-3 grid grid-cols-1 gap-2.5 @3xl:grid-cols-2" data-testid="home-news-list">
+      <ul
+        className={cn(
+          "mt-3 grid grid-cols-1 gap-2.5",
+          compact
+            ? "divide-y divide-border/70 rounded-card border border-border bg-card px-4 [&>li]:py-3"
+            : "@3xl:grid-cols-2",
+        )}
+        data-testid="home-news-list"
+      >
         {shown.map(({ match, item }, i) => (
           <li
             key={`${match.fixture_id}-${item.id}`}
@@ -81,7 +92,14 @@ export function NewsBlock({
                 />
               ) : null}
             </div>
-            <NewsCard item={item} now={now} />
+            {compact ? (
+              <div className="space-y-1" data-testid="home-news-compact">
+                <StatusChip status={item.status} />
+                <p className="text-sm font-semibold leading-snug">{headline(item)}</p>
+              </div>
+            ) : (
+              <NewsCard item={item} now={now} />
+            )}
           </li>
         ))}
       </ul>

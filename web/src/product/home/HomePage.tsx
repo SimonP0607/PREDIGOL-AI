@@ -50,6 +50,8 @@ import { OfflineNote } from "./offline";
 import { NewsBlock } from "./NewsBlock";
 import { SuggestionCard } from "@/product/favorites/SuggestionCard";
 import { ContextBlock, TodayBlock } from "./TodayBlocks";
+import { TodayMatchesBlock } from "./TodayMatches";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { AtStakeBlock, RelevantNowBlock } from "./HomeStakes";
 import { ResultsBlock } from "./ResultsBlock";
 import { holdsLayers, LAYERS_HOLD_MS, layersOf, shownLayers, type HomeView } from "./layers";
@@ -222,6 +224,13 @@ export function HomePage() {
   // Two layers (closing plan 3.2): «Para ti» only once the reader chose something; PrediGol is the same for everyone. The
   // leagues and the team suggested until they choose are PrediGol's, labelled as suggested - never «tuyas».
   const layers = layersOf(me.data, today.data?.data);
+  // «Partidos de hoy» and the forecasts of «Qué se juega» (maqueta 01, sheet I06): what GET /today already says.
+  const todayMatches = today.data?.data?.matches.data ?? [];
+  const forecasts = new Map(
+    todayMatches.flatMap((m) => (m.forecast ? [[m.fixture_id, m.forecast] as const] : [])),
+  );
+  // At a desk the news are the side column's compact list; a phone and a tablet keep their cards.
+  const desk = useMediaQuery("(min-width: 1024px)");
   // «Para ti / Todo» (plan maestro UX/UI 2026, PR-14). Where it opens is the reader's setting (decision 8): «Para ti» or
   // «Todo» as they chose in their profile and, until they choose, «Para ti» for a reader who follows something (the
   // selector only exists for them: without a layer of their own, Inicio is PrediGol's, as always).
@@ -356,7 +365,7 @@ export function HomePage() {
                 <RelevantNowBlock query={home} />
               </div>
               <div className="order-5 min-w-0 empty:hidden">
-                <AtStakeBlock query={home} now={now} />
+                <AtStakeBlock query={home} now={now} forecasts={forecasts} />
               </div>
               <div className="order-7 min-w-0">
                 <LiveNow query={home} />
@@ -367,7 +376,10 @@ export function HomePage() {
                 <HomeParlays board={board} />
               </div>
               <div className="order-6 min-w-0 empty:hidden">
-                <NewsBlock query={layers.mine ? general : news} now={now} />
+                <NewsBlock query={layers.mine ? general : news} now={now} compact={desk} />
+              </div>
+              <div className="order-7 min-w-0 empty:hidden">
+                <TodayMatchesBlock matches={todayMatches} />
               </div>
               <div className="order-8 min-w-0">
                 <ResultsBlock query={home} now={now} />
