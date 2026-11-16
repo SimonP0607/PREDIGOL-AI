@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { getTimeZone, zoneAbbrev } from "@/lib/time";
 import { t, translateOr } from "@/lib/i18n";
+import { BusinessSummary } from "@/admin/BusinessSummary";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, MetricCard, Panel, WarningBanner } from "@/components/primitives/Panel";
 import { TableShell, THead, TH, TRow, TD, TableSkeleton } from "@/components/primitives/DataTable";
@@ -50,6 +51,9 @@ export function OverviewLive() {
         description={t("admin.pages.overview.description")}
         actions={<StatusBadge tone="brand">{t("ops.overview.shadowMode")}</StatusBadge>}
       />
+
+      {/* sheet AD1 (UX-151): what waits for the owner first; the technical overview below, as before */}
+      <BusinessSummary />
 
       <dl className="surface-panel grid grid-cols-2 divide-border sm:grid-cols-4 sm:divide-x">
         <Cell

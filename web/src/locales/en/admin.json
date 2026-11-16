@@ -1035,7 +1035,11 @@
         "account_invited": "the invitation was not activated",
         "account_activated": "account activated"
       }
-    }
+    },
+    "peek": "Show at the side",
+    "peekTitle": "Customer summary",
+    "peekNone": "Choose «Show at the side» on a customer to see their summary here.",
+    "openCard": "Open the full card"
   },
   "coupons": {
     "title": "Coupons",
@@ -1134,5 +1138,30 @@
       "reason": "Reason for the annulment",
       "confirm": "Annul approval"
     }
+  },
+  "summary": {
+    "title": "What waits for your decision",
+    "payments": "Payment notices to review",
+    "messages": "Messages waiting for an answer",
+    "messagesNote": "{late} overdue · {urgent} urgent",
+    "books": "Bookmakers with late prices",
+    "expiring": "Customers about to expire",
+    "expiringNote": "{risk} at risk · {errors} with errors",
+    "views": {
+      "expiring": "Expiring",
+      "at_risk": "At risk",
+      "tickets": "With messages",
+      "errors": "With errors"
+    },
+    "announcements": "Announcements",
+    "state": {
+      "draft": "Draft",
+      "published": "Published",
+      "retracted": "Retracted"
+    },
+    "today": "Published today: {n} of {max}",
+    "activity": "Recent activity",
+    "open": "Open",
+    "readOnly": "Read-only view: nothing is approved, changed or deleted from here."
   }
 }

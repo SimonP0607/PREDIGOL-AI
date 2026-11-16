@@ -1035,7 +1035,11 @@
         "account_invited": "la invitación no se ha activado",
         "account_activated": "cuenta activada"
       }
-    }
+    },
+    "peek": "Ver al lado",
+    "peekTitle": "Ficha del cliente",
+    "peekNone": "Elige «Ver al lado» en un cliente para ver su ficha aquí.",
+    "openCard": "Abrir la ficha completa"
   },
   "coupons": {
     "title": "Cupones",
@@ -1134,5 +1138,30 @@
       "reason": "Motivo de la anulación",
       "confirm": "Anular aprobación"
     }
+  },
+  "summary": {
+    "title": "Lo que espera una decisión tuya",
+    "payments": "Avisos de pago por revisar",
+    "messages": "Mensajes que esperan respuesta",
+    "messagesNote": "{late} fuera de plazo · {urgent} urgentes",
+    "books": "Casas con cuotas atrasadas",
+    "expiring": "Clientes por vencer",
+    "expiringNote": "{risk} en riesgo · {errors} con errores",
+    "views": {
+      "expiring": "Por vencer",
+      "at_risk": "En riesgo",
+      "tickets": "Con mensajes",
+      "errors": "Con errores"
+    },
+    "announcements": "Comunicados",
+    "state": {
+      "draft": "Borrador",
+      "published": "Publicado",
+      "retracted": "Retirado"
+    },
+    "today": "Publicados hoy: {n} de {max}",
+    "activity": "Actividad reciente",
+    "open": "Abrir",
+    "readOnly": "Vista de lectura: desde aquí no se aprueba, cambia ni borra nada."
   }
 }
