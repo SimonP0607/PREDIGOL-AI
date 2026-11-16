@@ -116,7 +116,9 @@ test.describe("the owner previewing the product", () => {
   test("«Viendo como usuario» and its button stay below the status bar", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/admin/overview");
-    await page.getByTestId("preview-as-user").click();
+    // under 640 px the console's bar has no room for «Ver como usuario»: it is in the account menu
+    await page.getByTestId("account-menu").click();
+    await page.getByTestId("toggle-preview").click();
     await expect(page).toHaveURL(/\/home$/);
     await load(page, "/home", IPHONE_PORTRAIT);
     await expect(page.getByTestId("preview-banner")).toBeVisible();

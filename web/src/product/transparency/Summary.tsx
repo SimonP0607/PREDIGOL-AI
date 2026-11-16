@@ -40,7 +40,7 @@ export function TransparencySummary({ data }: { data: Transparency }) {
           value={period}
           onChange={setPeriod}
           label={t("transparency.summary.period")}
-          testId="transparency-period"
+          testId="transparency-summary-period"
           options={PERIODS.map((p) => ({
             value: p,
             label: t(`transparency.summary.periods.${p}`),

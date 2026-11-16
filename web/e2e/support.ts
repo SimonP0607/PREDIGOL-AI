@@ -257,6 +257,12 @@ export async function smallTargets(page: Page, scope = "body"): Promise<string[]
         getComputedStyle(control).opacity === "0" && control.parentElement
           ? control.parentElement
           : control;
+      // A control at the visible edge of a scrolling panel (a sheet) is measured where a finger meets it: in view.
+      const scroller = el.parentElement?.closest<HTMLElement>(
+        '[class*="overflow-y-auto"], [class*="overflow-auto"]',
+      );
+      if (scroller && scroller !== document.scrollingElement)
+        el.scrollIntoView({ block: "center" });
       const r = el.getBoundingClientRect();
       const s = getComputedStyle(el);
       if (!r.width || !r.height || s.visibility === "hidden" || s.display === "none") continue;

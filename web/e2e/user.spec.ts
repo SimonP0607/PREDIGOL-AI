@@ -798,7 +798,9 @@ test("A match's Análisis PrediGol: six sections of facts with their references,
     return;
   }
   const reading = api.body.data;
-  for (const section of reading.sections) {
+  // the derived sections (UX-011: key_points, value, factors) repeat the six and are read in the Resumen, not here
+  const DERIVED = new Set(["key_points", "value", "factors"]);
+  for (const section of reading.sections.filter((s) => !DERIVED.has(s.key))) {
     const shown = block.getByTestId(`reading-section-${section.key}`);
     await expect(shown).toBeVisible();
     await expect(shown.getByRole("heading", { level: 3 })).toHaveText(
@@ -1022,7 +1024,18 @@ test("A match's Noticias: cards with their seven elements in the order of sectio
   if (without !== null) {
     await open(page, w, `/matches/${without}?s=noticias`);
     await expect(tab).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByTestId("news-empty")).toHaveText(t.match.news.empty);
+    // the empty sentence says whether the press was searched (plan maestro UX/UI 2026): never searched, searched on a
+    // date with nothing found, or the plain sentence when the API does not say
+    const empty = page.getByTestId("news-empty");
+    const searched = await empty.getAttribute("data-searched");
+    if (searched === "no") await expect(empty).toHaveText(t.match.news.emptyNotSearched);
+    else if (searched === "yes")
+      await expect(empty).toHaveText(
+        new RegExp(
+          `^${t.match.news.emptySearched.split("{date}")[0]!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+        ),
+      );
+    else await expect(empty).toHaveText(t.match.news.empty);
   } else {
     note(test.info(), "every match of the window has news");
   }

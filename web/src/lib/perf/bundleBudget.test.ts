@@ -45,11 +45,29 @@ describe("the bundle budget", () => {
     expect(checkBudget([], budget).ok).toBe(false);
   });
 
+  test("the first visit's JS has its own cap: a new screen is its own chunk, never the start's (UX-139)", () => {
+    const assets = [
+      { name: "index-a.js", gzip: 600 * 1024 },
+      { name: "screen-b.js", gzip: 90 * 1024 },
+    ];
+    const capped = {
+      ...budget,
+      maxTotalJsGzip: 10_000 * 1024,
+      maxChunkJsGzip: 1000 * 1024,
+      maxInitialJsGzip: 640 * 1024,
+    };
+    expect(checkBudget(assets, capped, ["index-a.js"]).ok).toBe(true);
+    const over = checkBudget(assets, capped, ["index-a.js", "screen-b.js"]);
+    expect(over.ok).toBe(false);
+    expect(over.initialJs).toBe(690 * 1024);
+    expect(over.problems.join(" ")).toContain("arranque");
+  });
+
   test("the budget file has the three limits, as positive numbers", () => {
     const file = JSON.parse(
       readFileSync(new URL("../../../bundle-budget.json", import.meta.url), "utf8"),
     ) as Record<string, unknown>;
-    for (const key of ["maxChunkJsGzip", "maxTotalJsGzip", "maxTotalCssGzip"]) {
+    for (const key of ["maxChunkJsGzip", "maxTotalJsGzip", "maxTotalCssGzip", "maxInitialJsGzip"]) {
       expect(typeof file[key]).toBe("number");
       expect(file[key] as number).toBeGreaterThan(0);
     }
