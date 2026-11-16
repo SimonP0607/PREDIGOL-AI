@@ -406,4 +406,3 @@ export function MarketsTable({
     </div>
   );
 }
-
