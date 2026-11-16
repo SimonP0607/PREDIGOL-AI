@@ -64,12 +64,16 @@ import { Route as HelpHowItWorksRouteImport } from './routes/help.how-it-works'
 import { Route as LegalDocRouteImport } from './routes/legal.$doc'
 import { Route as MatchesIndexRouteImport } from './routes/matches.index'
 import { Route as MatchesFixtureIdRouteImport } from './routes/matches.$fixtureId'
+import { Route as NationsTeamIdRouteImport } from './routes/nations.$teamId'
 import { Route as OddsIndexRouteImport } from './routes/odds.index'
 import { Route as OddsStatusRouteImport } from './routes/odds.status'
 import { Route as PicksIndexRouteImport } from './routes/picks.index'
 import { Route as PicksPickIdRouteImport } from './routes/picks.$pickId'
+import { Route as PlayersPlayerIdRouteImport } from './routes/players.$playerId'
 import { Route as ProfileIndexRouteImport } from './routes/profile.index'
 import { Route as ProfileSectionRouteImport } from './routes/profile.$section'
+import { Route as TeamsIndexRouteImport } from './routes/teams.index'
+import { Route as TeamsTeamIdRouteImport } from './routes/teams.$teamId'
 import { Route as TransparencyIndexRouteImport } from './routes/transparency.index'
 import { Route as TransparencyMethodologyRouteImport } from './routes/transparency.methodology'
 import { Route as AdminCustomersIndexRouteImport } from './routes/admin.customers.index'
@@ -355,6 +359,11 @@ const MatchesFixtureIdRoute = MatchesFixtureIdRouteImport.update({
   path: '/matches/$fixtureId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NationsTeamIdRoute = NationsTeamIdRouteImport.update({
+  id: '/nations/$teamId',
+  path: '/nations/$teamId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OddsIndexRoute = OddsIndexRouteImport.update({
   id: '/odds/',
   path: '/odds/',
@@ -375,6 +384,11 @@ const PicksPickIdRoute = PicksPickIdRouteImport.update({
   path: '/picks/$pickId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlayersPlayerIdRoute = PlayersPlayerIdRouteImport.update({
+  id: '/players/$playerId',
+  path: '/players/$playerId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileIndexRoute = ProfileIndexRouteImport.update({
   id: '/profile/',
   path: '/profile/',
@@ -383,6 +397,16 @@ const ProfileIndexRoute = ProfileIndexRouteImport.update({
 const ProfileSectionRoute = ProfileSectionRouteImport.update({
   id: '/profile/$section',
   path: '/profile/$section',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamsIndexRoute = TeamsIndexRouteImport.update({
+  id: '/teams/',
+  path: '/teams/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamsTeamIdRoute = TeamsTeamIdRouteImport.update({
+  id: '/teams/$teamId',
+  path: '/teams/$teamId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TransparencyIndexRoute = TransparencyIndexRouteImport.update({
@@ -484,9 +508,12 @@ export interface FileRoutesByFullPath {
   '/help/how-it-works': typeof HelpHowItWorksRoute
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
+  '/nations/$teamId': typeof NationsTeamIdRoute
   '/odds/status': typeof OddsStatusRoute
   '/picks/$pickId': typeof PicksPickIdRoute
+  '/players/$playerId': typeof PlayersPlayerIdRoute
   '/profile/$section': typeof ProfileSectionRoute
+  '/teams/$teamId': typeof TeamsTeamIdRoute
   '/transparency/methodology': typeof TransparencyMethodologyRoute
   '/admin/': typeof AdminIndexRoute
   '/help/': typeof HelpIndexRoute
@@ -494,6 +521,7 @@ export interface FileRoutesByFullPath {
   '/odds/': typeof OddsIndexRoute
   '/picks/': typeof PicksIndexRoute
   '/profile/': typeof ProfileIndexRoute
+  '/teams/': typeof TeamsIndexRoute
   '/transparency/': typeof TransparencyIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
@@ -555,9 +583,12 @@ export interface FileRoutesByTo {
   '/help/how-it-works': typeof HelpHowItWorksRoute
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
+  '/nations/$teamId': typeof NationsTeamIdRoute
   '/odds/status': typeof OddsStatusRoute
   '/picks/$pickId': typeof PicksPickIdRoute
+  '/players/$playerId': typeof PlayersPlayerIdRoute
   '/profile/$section': typeof ProfileSectionRoute
+  '/teams/$teamId': typeof TeamsTeamIdRoute
   '/transparency/methodology': typeof TransparencyMethodologyRoute
   '/admin': typeof AdminIndexRoute
   '/help': typeof HelpIndexRoute
@@ -565,6 +596,7 @@ export interface FileRoutesByTo {
   '/odds': typeof OddsIndexRoute
   '/picks': typeof PicksIndexRoute
   '/profile': typeof ProfileIndexRoute
+  '/teams': typeof TeamsIndexRoute
   '/transparency': typeof TransparencyIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
@@ -628,9 +660,12 @@ export interface FileRoutesById {
   '/help/how-it-works': typeof HelpHowItWorksRoute
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
+  '/nations/$teamId': typeof NationsTeamIdRoute
   '/odds/status': typeof OddsStatusRoute
   '/picks/$pickId': typeof PicksPickIdRoute
+  '/players/$playerId': typeof PlayersPlayerIdRoute
   '/profile/$section': typeof ProfileSectionRoute
+  '/teams/$teamId': typeof TeamsTeamIdRoute
   '/transparency/methodology': typeof TransparencyMethodologyRoute
   '/admin/': typeof AdminIndexRoute
   '/help/': typeof HelpIndexRoute
@@ -638,6 +673,7 @@ export interface FileRoutesById {
   '/odds/': typeof OddsIndexRoute
   '/picks/': typeof PicksIndexRoute
   '/profile/': typeof ProfileIndexRoute
+  '/teams/': typeof TeamsIndexRoute
   '/transparency/': typeof TransparencyIndexRoute
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
@@ -702,9 +738,12 @@ export interface FileRouteTypes {
     | '/help/how-it-works'
     | '/legal/$doc'
     | '/matches/$fixtureId'
+    | '/nations/$teamId'
     | '/odds/status'
     | '/picks/$pickId'
+    | '/players/$playerId'
     | '/profile/$section'
+    | '/teams/$teamId'
     | '/transparency/methodology'
     | '/admin/'
     | '/help/'
@@ -712,6 +751,7 @@ export interface FileRouteTypes {
     | '/odds/'
     | '/picks/'
     | '/profile/'
+    | '/teams/'
     | '/transparency/'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
@@ -773,9 +813,12 @@ export interface FileRouteTypes {
     | '/help/how-it-works'
     | '/legal/$doc'
     | '/matches/$fixtureId'
+    | '/nations/$teamId'
     | '/odds/status'
     | '/picks/$pickId'
+    | '/players/$playerId'
     | '/profile/$section'
+    | '/teams/$teamId'
     | '/transparency/methodology'
     | '/admin'
     | '/help'
@@ -783,6 +826,7 @@ export interface FileRouteTypes {
     | '/odds'
     | '/picks'
     | '/profile'
+    | '/teams'
     | '/transparency'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
@@ -845,9 +889,12 @@ export interface FileRouteTypes {
     | '/help/how-it-works'
     | '/legal/$doc'
     | '/matches/$fixtureId'
+    | '/nations/$teamId'
     | '/odds/status'
     | '/picks/$pickId'
+    | '/players/$playerId'
     | '/profile/$section'
+    | '/teams/$teamId'
     | '/transparency/methodology'
     | '/admin/'
     | '/help/'
@@ -855,6 +902,7 @@ export interface FileRouteTypes {
     | '/odds/'
     | '/picks/'
     | '/profile/'
+    | '/teams/'
     | '/transparency/'
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
@@ -888,15 +936,19 @@ export interface RootRouteChildren {
   HelpHowItWorksRoute: typeof HelpHowItWorksRoute
   LegalDocRoute: typeof LegalDocRoute
   MatchesFixtureIdRoute: typeof MatchesFixtureIdRoute
+  NationsTeamIdRoute: typeof NationsTeamIdRoute
   OddsStatusRoute: typeof OddsStatusRoute
   PicksPickIdRoute: typeof PicksPickIdRoute
+  PlayersPlayerIdRoute: typeof PlayersPlayerIdRoute
   ProfileSectionRoute: typeof ProfileSectionRoute
+  TeamsTeamIdRoute: typeof TeamsTeamIdRoute
   TransparencyMethodologyRoute: typeof TransparencyMethodologyRoute
   HelpIndexRoute: typeof HelpIndexRoute
   MatchesIndexRoute: typeof MatchesIndexRoute
   OddsIndexRoute: typeof OddsIndexRoute
   PicksIndexRoute: typeof PicksIndexRoute
   ProfileIndexRoute: typeof ProfileIndexRoute
+  TeamsIndexRoute: typeof TeamsIndexRoute
   TransparencyIndexRoute: typeof TransparencyIndexRoute
   HelpMessagesTicketIdRoute: typeof HelpMessagesTicketIdRoute
 }
@@ -1288,6 +1340,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MatchesFixtureIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/nations/$teamId': {
+      id: '/nations/$teamId'
+      path: '/nations/$teamId'
+      fullPath: '/nations/$teamId'
+      preLoaderRoute: typeof NationsTeamIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/odds/': {
       id: '/odds/'
       path: '/odds'
@@ -1316,6 +1375,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PicksPickIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/players/$playerId': {
+      id: '/players/$playerId'
+      path: '/players/$playerId'
+      fullPath: '/players/$playerId'
+      preLoaderRoute: typeof PlayersPlayerIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile/': {
       id: '/profile/'
       path: '/profile'
@@ -1328,6 +1394,20 @@ declare module '@tanstack/react-router' {
       path: '/profile/$section'
       fullPath: '/profile/$section'
       preLoaderRoute: typeof ProfileSectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/teams/': {
+      id: '/teams/'
+      path: '/teams'
+      fullPath: '/teams/'
+      preLoaderRoute: typeof TeamsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/teams/$teamId': {
+      id: '/teams/$teamId'
+      path: '/teams/$teamId'
+      fullPath: '/teams/$teamId'
+      preLoaderRoute: typeof TeamsTeamIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/transparency/': {
@@ -1501,15 +1581,19 @@ const rootRouteChildren: RootRouteChildren = {
   HelpHowItWorksRoute: HelpHowItWorksRoute,
   LegalDocRoute: LegalDocRoute,
   MatchesFixtureIdRoute: MatchesFixtureIdRoute,
+  NationsTeamIdRoute: NationsTeamIdRoute,
   OddsStatusRoute: OddsStatusRoute,
   PicksPickIdRoute: PicksPickIdRoute,
+  PlayersPlayerIdRoute: PlayersPlayerIdRoute,
   ProfileSectionRoute: ProfileSectionRoute,
+  TeamsTeamIdRoute: TeamsTeamIdRoute,
   TransparencyMethodologyRoute: TransparencyMethodologyRoute,
   HelpIndexRoute: HelpIndexRoute,
   MatchesIndexRoute: MatchesIndexRoute,
   OddsIndexRoute: OddsIndexRoute,
   PicksIndexRoute: PicksIndexRoute,
   ProfileIndexRoute: ProfileIndexRoute,
+  TeamsIndexRoute: TeamsIndexRoute,
   TransparencyIndexRoute: TransparencyIndexRoute,
   HelpMessagesTicketIdRoute: HelpMessagesTicketIdRoute,
 }

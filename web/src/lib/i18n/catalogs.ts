@@ -39,6 +39,7 @@ import esPush from "@/locales/es/push.json";
 import esExplain from "@/locales/es/explain.json";
 import esFamilies from "@/locales/es/families.json";
 import esIntelligence from "@/locales/es/intelligence.json";
+import esProfiles from "@/locales/es/profiles.json";
 import esStorage from "@/locales/es/storage.json";
 import esNotices from "@/locales/es/notices.json";
 import esExplorer from "@/locales/es/explorer.json";
@@ -78,6 +79,7 @@ import enPush from "@/locales/en/push.json";
 import enExplain from "@/locales/en/explain.json";
 import enFamilies from "@/locales/en/families.json";
 import enIntelligence from "@/locales/en/intelligence.json";
+import enProfiles from "@/locales/en/profiles.json";
 import enStorage from "@/locales/en/storage.json";
 import enNotices from "@/locales/en/notices.json";
 import enExplorer from "@/locales/en/explorer.json";
@@ -129,6 +131,7 @@ export const CATALOGS: Record<Locale, Catalog> = {
     notices: esNotices,
     explorer: esExplorer,
     intelligence: esIntelligence,
+    profiles: esProfiles,
   },
   en: {
     admin: enAdmin,
@@ -170,5 +173,6 @@ export const CATALOGS: Record<Locale, Catalog> = {
     notices: enNotices,
     explorer: enExplorer,
     intelligence: enIntelligence,
+    profiles: enProfiles,
   },
 };

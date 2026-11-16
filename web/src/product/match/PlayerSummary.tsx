@@ -5,6 +5,7 @@
  */
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { useProfilesOpen } from "@/lib/auth/AuthProvider";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t, translateOr } from "@/lib/i18n";
@@ -65,6 +66,8 @@ export function PlayerSummary({
   className?: string | undefined;
   children: ReactNode;
 }) {
+  // the reader's profile of the player (UX-156) while FBI_PROFILES is on; otherwise the console's page, for the admin
+  const profiles = useProfilesOpen();
   const label = name ?? t("match.events.unknownPlayer");
   const pos = position ? translateOr(`match.lineups.position.${position}`, position) : null;
   return (
@@ -151,7 +154,17 @@ export function PlayerSummary({
             ) : null}
           </div>
         ) : null}
-        {admin && playerId !== null ? (
+        {profiles && playerId !== null ? (
+          <Link
+            to="/players/$playerId"
+            params={{ playerId: String(playerId) }}
+            className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
+            data-testid="player-profile-link"
+          >
+            {t("match.playerCard.profile")}
+            <ChevronRight aria-hidden className="h-3.5 w-3.5" />
+          </Link>
+        ) : admin && playerId !== null ? (
           <Link
             to="/admin/players/$playerId"
             params={{ playerId: String(playerId) }}

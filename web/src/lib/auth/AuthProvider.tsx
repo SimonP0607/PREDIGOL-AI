@@ -232,6 +232,14 @@ export function useAuth(): AuthValue {
   return ctx;
 }
 
+/**
+ * Whether the profiles of clubs, national teams and players are open (FBI_PROFILES, UX-154 to UX-157). Safe outside the
+ * provider (a component drawn alone in a test): no session, no profiles.
+ */
+export function useProfilesOpen(): boolean {
+  return useContext(AuthContext)?.user?.profiles === true;
+}
+
 /** The `preview` value for product queries: "shadow" only while a SUPER_ADMIN has the shadow preview on. */
 export function usePreviewParam(): "shadow" | undefined {
   return useAuth().shadowPreview ? "shadow" : undefined;

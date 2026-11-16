@@ -56,6 +56,8 @@ describe("the answer", () => {
     expect(hitLink(hits[0]!)).toEqual({ to: "/matches/$fixtureId", params: { fixtureId: "9" } });
     expect(hitLink(hits[1]!)).toEqual({ to: "/matches", search: { competition: 3 } });
     expect(hitLink(hits[2]!)).toEqual({ to: "/matches", search: { q: "Millonarios" } });
+    // with the profiles open (UX-154), a team opens its profile
+    expect(hitLink(hits[2]!, true)).toEqual({ to: "/teams/$teamId", params: { teamId: "7" } });
   });
 
   test("the query: spaces folded, at most 60 characters", () => {

@@ -1004,7 +1004,8 @@
     "thisMatch": "En este partido",
     "open": "Ver resumen de {name}",
     "rating": "Valoración del proveedor: {value}",
-    "fullPage": "Ver ficha completa"
+    "fullPage": "Ver ficha completa",
+    "profile": "Ver su perfil"
   },
   "readingBlock": {
     "title": "Análisis PrediGol",

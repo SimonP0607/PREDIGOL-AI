@@ -23,6 +23,7 @@ import {
 import { Command as CommandPrimitive } from "cmdk";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { t } from "@/lib/i18n";
+import { useProfilesOpen } from "@/lib/auth/AuthProvider";
 import { formatKickoff } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import type { SearchHit } from "@/lib/api/v1/types";
@@ -106,6 +107,7 @@ export default function ReaderSearch({
   news?: boolean;
 }) {
   const navigate = useNavigate();
+  const profiles = useProfilesOpen();
   const [raw, setRaw] = useState("");
   const [recent, setRecent] = useState<RecentHit[]>(() => readRecent(deviceStore()));
   const term = cleanQuery(raw);
@@ -123,8 +125,9 @@ export default function ReaderSearch({
     setRecent(next);
     writeRecent(deviceStore(), next);
     close();
-    const link = hitLink(hit);
+    const link = hitLink(hit, profiles);
     if (link.to === "/matches/$fixtureId") void navigate({ to: link.to, params: link.params });
+    else if (link.to === "/teams/$teamId") void navigate({ to: link.to, params: link.params });
     else void navigate({ to: link.to, search: link.search });
   }
 

@@ -1,6 +1,7 @@
 /** Small building blocks of the Match Center: blocks, honest notes, bars, chips and icons. */
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { useProfilesOpen } from "@/lib/auth/AuthProvider";
 import { ChevronDown, ChevronRight, Clock3 } from "lucide-react";
 import type { DataStatus, Section } from "@/lib/api/v1/types";
 import type { MatchCenter } from "@/lib/api/v1/types_center";
@@ -133,6 +134,19 @@ export function PlayerName({
   className?: string | undefined;
 }) {
   const label = name ?? t("match.events.unknownPlayer");
+  // the reader's profile of the player (UX-156) while FBI_PROFILES is on
+  const profiles = useProfilesOpen();
+  if (profiles && id !== null && hasPlayerPage(id, name)) {
+    return (
+      <Link
+        to="/players/$playerId"
+        params={{ playerId: String(id) }}
+        className={cn("hover:text-primary hover:underline", className)}
+      >
+        {label}
+      </Link>
+    );
+  }
   if (admin && id !== null && hasPlayerPage(id, name)) {
     return (
       <Link

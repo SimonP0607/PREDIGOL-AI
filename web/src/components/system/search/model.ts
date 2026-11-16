@@ -35,14 +35,20 @@ export function hitKickoff(sublabel: string): string | null {
   return m ? `${m[1]}T${m[2]}:00Z` : null;
 }
 
-/** Where a hit leads a reader. Profiles (UX-154) are not open yet: a team opens its matches, a competition its day. */
+/**
+ * Where a hit leads a reader. With the profiles open (FBI_PROFILES, UX-154) a team opens its profile; without them, its
+ * matches. A competition opens its day.
+ */
 export type HitLink =
   | { to: "/matches/$fixtureId"; params: { fixtureId: string } }
+  | { to: "/teams/$teamId"; params: { teamId: string } }
   | { to: "/matches"; search: { q?: string; competition?: number } };
 
-export function hitLink(hit: Pick<SearchHit, "type" | "id" | "label">): HitLink {
+export function hitLink(hit: Pick<SearchHit, "type" | "id" | "label">, profiles = false): HitLink {
   if (hit.type === "fixture")
     return { to: "/matches/$fixtureId", params: { fixtureId: String(hit.id) } };
+  if (hit.type === "team" && profiles)
+    return { to: "/teams/$teamId", params: { teamId: String(hit.id) } };
   if (hit.type === "competition") return { to: "/matches", search: { competition: hit.id } };
   return { to: "/matches", search: { q: hit.label.slice(0, MAX_QUERY) } };
 }
