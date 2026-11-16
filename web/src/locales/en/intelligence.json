@@ -1,0 +1,53 @@
+{
+  "lifecycle": {
+    "detected": "Detected",
+    "researching": "Being researched",
+    "evaluating": "Being evaluated",
+    "awaiting_lineups": "Waiting for line-ups",
+    "shadow_confirmed": "Confirmed in shadow",
+    "withdrawn": "Withdrawn",
+    "discarded": "Discarded",
+    "in_play": "In play",
+    "settled": "Settled",
+    "evaluated": "Evaluated"
+  },
+  "confirmation": {
+    "official": "Official",
+    "confirmed": "Confirmed by two sources",
+    "statement": "Statement",
+    "single_source": "Single outlet",
+    "contradictory": "Contradictory",
+    "unconfirmed": "Unconfirmed"
+  },
+  "calibration": {
+    "calibrated": "Calibrated",
+    "uncalibrated": "Not calibrated"
+  },
+  "confidence": {
+    "high": "High confidence",
+    "medium": "Medium confidence",
+    "low": "Low confidence"
+  },
+  "evaluations": {
+    "title": "The match's evaluations",
+    "E1": "First reading",
+    "E2": "On news",
+    "E3": "Official line-up",
+    "E4": "Close",
+    "state": {
+      "done": "Done",
+      "current": "Current",
+      "pending": "Pending",
+      "skipped": "Not needed"
+    }
+  },
+  "private": {
+    "title": "Private evaluation · not visible to users",
+    "body": "Only you can see this. Nothing below is a published recommendation."
+  },
+  "entity": {
+    "club": "Club",
+    "nation": "National team",
+    "player": "Player"
+  }
+}
