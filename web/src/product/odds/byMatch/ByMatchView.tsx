@@ -7,6 +7,7 @@
  * one tap away («Por mercado»): nothing of it is removed.
  */
 import { useMemo, useState, type ReactNode } from "react";
+import { MatchOddsSheet } from "./MatchOdds";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Clock, SearchX, TrendingUp } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -83,6 +84,8 @@ export function ByMatchView({
   const [market, setMarket] = useState<ByMatchMarket>("result.1x2");
   const [paused, setPaused] = useState(false);
   const live = { paused, enabled: true };
+  // one match's markets and movement (C03, C04), in a sheet over the board
+  const [opened, setOpened] = useState<MatchLine | null>(null);
 
   // Three boards, always in the same order (each member of ExplorerData is a hook).
   const result = data.useBoard(
@@ -230,7 +233,7 @@ export function ByMatchView({
               />
             </Card>
           ) : (
-            <Board groups={groups} market={market} board={board} now={now} />
+            <Board groups={groups} market={market} board={board} now={now} onOpen={setOpened} />
           )}
           {more ? (
             <div className="flex justify-center">
@@ -254,6 +257,16 @@ export function ByMatchView({
           <SlipCard />
         </aside>
       </div>
+      {opened ? (
+        <MatchOddsSheet
+          open
+          onOpenChange={(o) => (o ? null : setOpened(null))}
+          fixtureId={opened.fixture_id}
+          sides={{ home: opened.home.name, away: opened.away.name }}
+          competition={board.competitions.get(opened.competition_id)?.name ?? null}
+          kickoffAt={opened.kickoff_at}
+        />
+      ) : null}
     </div>
   );
 }
@@ -286,11 +299,13 @@ function Board({
   market,
   board,
   now,
+  onOpen,
 }: {
   groups: ReturnType<typeof groupLines>;
   market: ByMatchMarket;
   board: ReturnType<typeof joinBoards>;
   now: number;
+  onOpen: (line: MatchLine) => void;
 }) {
   return (
     <div className="@container">
@@ -334,6 +349,7 @@ function Board({
                   board={board}
                   now={now}
                   withDay={g.competition === null}
+                  onOpen={onOpen}
                 />
               ))}
             </ul>
@@ -353,7 +369,14 @@ function Board({
               <h3 className="px-1 text-sm font-semibold">{g.competition.name}</h3>
             ) : null}
             {g.lines.map((l) => (
-              <MatchCard key={l.fixture_id} line={l} market={market} board={board} now={now} />
+              <MatchCard
+                key={l.fixture_id}
+                line={l}
+                market={market}
+                board={board}
+                now={now}
+                onOpen={onOpen}
+              />
             ))}
           </section>
         ))}
@@ -387,11 +410,13 @@ function TableRow({
   board,
   now,
   withDay,
+  onOpen,
 }: {
   line: MatchLine;
   board: ReturnType<typeof joinBoards>;
   now: number;
   withDay: boolean;
+  onOpen: (line: MatchLine) => void;
 }) {
   return (
     <li
@@ -412,6 +437,14 @@ function TableRow({
           <span className="block font-normal text-muted-foreground">{line.away.name}</span>
         </Link>
         <StaleChip line={line} now={now} />
+        <button
+          type="button"
+          onClick={() => onOpen(line)}
+          data-testid="by-match-markets"
+          className="tap-y relative text-caption font-semibold text-primary hover:underline"
+        >
+          {t("odds.byMatch.sheet.open")}
+        </button>
       </div>
       {BY_MATCH_MARKETS.flatMap((m) => {
         const cell = line.cells[m.key];
@@ -435,11 +468,13 @@ function MatchCard({
   market,
   board,
   now,
+  onOpen,
 }: {
   line: MatchLine;
   market: ByMatchMarket;
   board: ReturnType<typeof joinBoards>;
   now: number;
+  onOpen: (line: MatchLine) => void;
 }) {
   const spec = BY_MATCH_MARKETS.find((m) => m.key === market) ?? BY_MATCH_MARKETS[0];
   const cell = line.cells[spec.key];
@@ -491,17 +526,16 @@ function MatchCard({
             ? t("odds.byMatch.oneBook")
             : t("odds.byMatch.books", { count: books })}
         </span>
-        <Link
-          to="/matches/$fixtureId"
-          params={{ fixtureId: String(line.fixture_id) }}
-          hash="markets"
+        <button
+          type="button"
+          onClick={() => onOpen(line)}
           data-testid="by-match-compare"
           aria-label={t("explorer.compare.toggleLabel", { match: matchName(line) })}
           className="tap-y relative inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {books <= 1 ? t("odds.byMatch.seeMarkets") : t("explorer.compare.toggle")}
           <ChevronRight aria-hidden className="h-3.5 w-3.5" />
-        </Link>
+        </button>
       </footer>
     </Card>
   );
