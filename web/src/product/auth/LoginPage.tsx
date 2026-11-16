@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Eye, EyeOff, Loader2, LogIn, Mail } from "lucide-react";
 import { BrandCrest } from "@/components/brand/Brand";
 import { LanguageSwitch } from "@/components/layout/HeaderControls";
+import { LoginScene } from "./LoginScene";
 import { AccountTopBar } from "@/product/auth/AccountShell";
 import { Disclaimer } from "@/components/system/Disclaimer";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -87,179 +88,193 @@ export function LoginPage({ expired }: { expired: boolean }) {
   }
 
   return (
-    <div className="pitch-glow relative flex min-h-screen flex-col bg-background">
-      <AccountTopBar>
-        <LanguageSwitch />
-      </AccountTopBar>
-      <AnnouncementBanner />
-      <main className="flex flex-1 items-center justify-center px-4 pb-16">
-        <div className="w-full max-w-sm">
-          <div className="flex flex-col items-center text-center">
-            <BrandCrest size={152} />
-            <h1 className="mt-4 text-display text-balance">{t("auth.title")}</h1>
-            <p className="mt-1.5 text-sm text-muted-foreground">{t("auth.subtitle")}</p>
-          </div>
+    // At a desk (sheet A02) the page is two halves: the pitch with what PrediGol is on the left, the form on the right.
+    // Under 1024 px, one column with the crest above the form, as always.
+    <div className="pitch-glow relative flex min-h-screen bg-background">
+      <LoginScene />
+      <div className="relative flex min-h-screen min-w-0 flex-1 flex-col">
+        <AccountTopBar>
+          <LanguageSwitch />
+        </AccountTopBar>
+        <AnnouncementBanner />
+        <main className="flex flex-1 items-center justify-center px-4 pb-16">
+          <div className="w-full max-w-sm">
+            <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+              <span className="lg:hidden">
+                <BrandCrest size={152} />
+              </span>
+              <h1 className="mt-4 text-display text-balance lg:mt-0">{t("auth.title")}</h1>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                <span className="lg:hidden">{t("auth.subtitle")}</span>
+                <span className="hidden lg:inline">{t("auth.scene.formHint")}</span>
+              </p>
+            </div>
 
-          <form
-            onSubmit={(e) => void submit(e)}
-            className="card-surface mt-6 space-y-4 rounded-feature p-5 shadow-xl"
-            noValidate
-          >
-            {expired && !error ? (
-              <p
-                role="status"
-                className="rounded-control border border-warning/40 bg-warning-soft px-3.5 py-2.5 text-[0.8125rem] leading-snug text-warning"
-              >
-                {t("auth.sessionExpired")}
-              </p>
-            ) : null}
-            {error ? (
-              <p
-                role="alert"
-                data-testid="login-error"
-                className="rounded-control border border-negative/40 bg-negative-soft px-3.5 py-2.5 text-[0.8125rem] leading-snug text-negative"
-              >
-                {error}
-              </p>
-            ) : null}
-            {unconfirmed && email.trim() ? (
-              confirmation === "sent" ? (
+            <form
+              onSubmit={(e) => void submit(e)}
+              className="card-surface mt-6 space-y-4 rounded-feature p-5 shadow-xl"
+              noValidate
+            >
+              {expired && !error ? (
                 <p
                   role="status"
-                  data-testid="confirmation-sent"
-                  className="rounded-control border border-positive/40 bg-positive-soft px-3.5 py-2.5 text-[0.8125rem] leading-snug"
+                  className="rounded-control border border-warning/40 bg-warning-soft px-3.5 py-2.5 text-[0.8125rem] leading-snug text-warning"
                 >
-                  {t("auth.resendConfirmationSent")}
+                  {t("auth.sessionExpired")}
                 </p>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => void askConfirmation()}
-                  disabled={confirmation === "busy"}
-                  data-testid="ask-confirmation"
-                  className="tap-y relative flex w-full items-center justify-center gap-2 rounded-md border border-border-strong px-3 py-2 text-xs font-medium hover:bg-elevated"
-                >
-                  {confirmation === "busy" ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Mail className="h-3.5 w-3.5" />
-                  )}
-                  {t("auth.resendConfirmation")}
-                </button>
-              )
-            ) : null}
-            {confirmation === "failed" ? (
-              <p role="alert" data-testid="confirmation-failed" className="text-xs text-negative">
-                {t("errors.generic")}
-              </p>
-            ) : null}
-            {locked && selfService && email.trim() ? (
-              unlock === "sent" ? (
+              ) : null}
+              {error ? (
                 <p
-                  role="status"
-                  data-testid="unlock-sent"
-                  className="rounded-control border border-positive/40 bg-positive-soft px-3.5 py-2.5 text-[0.8125rem] leading-snug"
+                  role="alert"
+                  data-testid="login-error"
+                  className="rounded-control border border-negative/40 bg-negative-soft px-3.5 py-2.5 text-[0.8125rem] leading-snug text-negative"
                 >
-                  {t("auth.account.unlockSent")}
+                  {error}
                 </p>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => void askUnlock()}
-                  disabled={unlock === "busy"}
-                  data-testid="ask-unlock"
-                  className="tap-y relative flex w-full items-center justify-center gap-2 rounded-md border border-border-strong px-3 py-2 text-xs font-medium hover:bg-elevated"
-                >
-                  {unlock === "busy" ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Mail className="h-3.5 w-3.5" />
-                  )}
-                  {t("auth.account.askUnlock")}
-                </button>
-              )
-            ) : null}
-            {unlock === "failed" ? (
-              <p role="alert" data-testid="unlock-failed" className="text-xs text-negative">
-                {t("errors.generic")}
-              </p>
-            ) : null}
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">{t("auth.email")}</span>
-              <input
-                type="email"
-                name="email"
-                autoComplete="username"
-                inputMode="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={cn(fieldVariants(), "mt-1")}
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">
-                {t("auth.password")}
-              </span>
-              <span className="relative mt-1 block">
+              ) : null}
+              {unconfirmed && email.trim() ? (
+                confirmation === "sent" ? (
+                  <p
+                    role="status"
+                    data-testid="confirmation-sent"
+                    className="rounded-control border border-positive/40 bg-positive-soft px-3.5 py-2.5 text-[0.8125rem] leading-snug"
+                  >
+                    {t("auth.resendConfirmationSent")}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void askConfirmation()}
+                    disabled={confirmation === "busy"}
+                    data-testid="ask-confirmation"
+                    className="tap-y relative flex w-full items-center justify-center gap-2 rounded-md border border-border-strong px-3 py-2 text-xs font-medium hover:bg-elevated"
+                  >
+                    {confirmation === "busy" ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Mail className="h-3.5 w-3.5" />
+                    )}
+                    {t("auth.resendConfirmation")}
+                  </button>
+                )
+              ) : null}
+              {confirmation === "failed" ? (
+                <p role="alert" data-testid="confirmation-failed" className="text-xs text-negative">
+                  {t("errors.generic")}
+                </p>
+              ) : null}
+              {locked && selfService && email.trim() ? (
+                unlock === "sent" ? (
+                  <p
+                    role="status"
+                    data-testid="unlock-sent"
+                    className="rounded-control border border-positive/40 bg-positive-soft px-3.5 py-2.5 text-[0.8125rem] leading-snug"
+                  >
+                    {t("auth.account.unlockSent")}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void askUnlock()}
+                    disabled={unlock === "busy"}
+                    data-testid="ask-unlock"
+                    className="tap-y relative flex w-full items-center justify-center gap-2 rounded-md border border-border-strong px-3 py-2 text-xs font-medium hover:bg-elevated"
+                  >
+                    {unlock === "busy" ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Mail className="h-3.5 w-3.5" />
+                    )}
+                    {t("auth.account.askUnlock")}
+                  </button>
+                )
+              ) : null}
+              {unlock === "failed" ? (
+                <p role="alert" data-testid="unlock-failed" className="text-xs text-negative">
+                  {t("errors.generic")}
+                </p>
+              ) : null}
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">{t("auth.email")}</span>
                 <input
-                  type={show ? "text" : "password"}
-                  name="password"
-                  autoComplete="current-password"
+                  type="email"
+                  name="email"
+                  autoComplete="username"
+                  inputMode="email"
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={cn(fieldVariants(), "pr-10 pointer-coarse:pr-12")}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={cn(fieldVariants(), "mt-1")}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShow((v) => !v)}
-                  aria-label={show ? t("auth.hidePassword") : t("auth.showPassword")}
-                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground pointer-coarse:w-11"
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t("auth.password")}
+                </span>
+                <span className="relative mt-1 block">
+                  <input
+                    type={show ? "text" : "password"}
+                    name="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={cn(fieldVariants(), "pr-10 pointer-coarse:pr-12")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShow((v) => !v)}
+                    aria-label={show ? t("auth.hidePassword") : t("auth.showPassword")}
+                    className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground pointer-coarse:w-11"
+                  >
+                    {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </span>
+              </label>
+              {selfService ? (
+                <a
+                  href="/forgot-password"
+                  data-testid="forgot-link"
+                  className="tap-y relative block text-right text-xs text-primary underline-offset-2 hover:underline"
                 >
-                  {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </span>
-            </label>
-            {selfService ? (
-              <a
-                href="/forgot-password"
-                data-testid="forgot-link"
-                className="tap-y relative block text-right text-xs text-primary underline-offset-2 hover:underline"
+                  {t("auth.account.forgotLink")}
+                </a>
+              ) : null}
+              <button
+                type="submit"
+                disabled={busy || !email || !password}
+                data-testid="login-submit"
+                className={cn(
+                  buttonVariants({ variant: "primary", size: "lg", block: true }),
+                  (busy || !email || !password) && "cursor-not-allowed opacity-60",
+                )}
               >
-                {t("auth.account.forgotLink")}
+                {busy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <LogIn className="h-4 w-4" />
+                )}
+                {busy ? t("auth.submitting") : t("auth.submit")}
+              </button>
+            </form>
+            {signup ? (
+              <a
+                href="/register"
+                data-testid="signup-link"
+                className="tap-y relative mt-4 block text-center text-sm font-medium text-primary underline-offset-2 hover:underline"
+              >
+                {t("auth.createLink")}
               </a>
-            ) : null}
-            <button
-              type="submit"
-              disabled={busy || !email || !password}
-              data-testid="login-submit"
-              className={cn(
-                buttonVariants({ variant: "primary", size: "lg", block: true }),
-                (busy || !email || !password) && "cursor-not-allowed opacity-60",
-              )}
-            >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
-              {busy ? t("auth.submitting") : t("auth.submit")}
-            </button>
-          </form>
-          {signup ? (
-            <a
-              href="/register"
-              data-testid="signup-link"
-              className="tap-y relative mt-4 block text-center text-sm font-medium text-primary underline-offset-2 hover:underline"
-            >
-              {t("auth.createLink")}
-            </a>
-          ) : (
-            <p className="mt-4 text-center text-caption text-subtle-foreground">
-              {t("auth.privateNote")}
-            </p>
-          )}
-          <LoginContact />
-          <Disclaimer className="mt-6 text-center text-caption text-subtle-foreground" />
-        </div>
-      </main>
+            ) : (
+              <p className="mt-4 text-center text-caption text-subtle-foreground">
+                {t("auth.privateNote")}
+              </p>
+            )}
+            <LoginContact />
+            <Disclaimer className="mt-6 text-center text-caption text-subtle-foreground" />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
