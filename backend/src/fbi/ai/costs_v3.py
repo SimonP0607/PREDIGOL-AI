@@ -15,24 +15,38 @@ Call by call, never over a sum of calls (IA-051, ``docs/owner/IA_051_AHORRO_CACH
 prompt - Claude Haiku 5.5 pays five times more above 100,000 input tokens - applied to a day's sum of prompts lands on the long price that
 no call paid, and the difference shows up as a saving that does not exist. Until 11 Nov 2026 this panel priced a day's sum.
 
+THE ENVELOPES OF DECISION 12 (IA-058, ``docs/owner/IA_058_PRESUPUESTO_POR_CAPACIDAD.md``). Production's figure is Intelligence's Claude
+(``ai.usage``) AND the readers' chronicle (its own ledger, read by ``fbi.ai.envelopes_readers``), both shown and added up per day and for the month; the budget's own state and
+projection still count Intelligence's alone, as ``fbi.ai.budget_v3`` does. Beside them: each envelope's warning at 80 / 95 %, each new
+capability against its cap (``fbi.ai.capability_budget``; the readers' ledger is read by ``fbi.ai.envelopes_readers``, which the
+cycle never loads, and each warning is written to this process's log once a month), the joint ceiling of 190 that still applies (pending the owner's confirmation)
+and Exa's price as the code charges it against the one Exa publishes, unverified until an invoice.
+
 Reading only: nothing here writes, and no key is read."""
 
 from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.ai import budget_v3, gates
+from fbi.ai import budget_v3, capability_budget, envelopes_readers, gates
 from fbi.ai.batch import open_counts
 from fbi.ai.calendar import day_start, days_left_in_month, local_day, month_start
 from fbi.ai.config import AiSettings
-from fbi.ai.pricing import BATCH_FACTOR, price_of, token_cost
+from fbi.ai.pricing import (
+    BATCH_FACTOR,
+    EXA_PRICE_VERIFIED_BY_INVOICE,
+    EXA_PUBLISHED_PER_K,
+    SEARCH_PRICES,
+    price_of,
+    token_cost,
+)
 from fbi.ai.usage import _money, reserved_by_day
 from fbi.ai.usage import budget as budget_of
 
@@ -154,6 +168,47 @@ def savings_json(s: Savings) -> dict[str, Any]:
             "cached_tokens": s.cached_tokens, "write_tokens": s.write_tokens, "read_share": s.read_share}
 
 
+JOINT_CEILING_NOTE = "techo conjunto 190 vigente; pendiente de confirmación del dueño"
+EXA_PRICE_NOTE = "sin verificar hasta la factura"
+
+
+def joint_ceiling_json(*, settings: AiSettings, lab: budget_v3.LabDay, projected_at_dawn: Decimal) -> dict[str, Any]:
+    """The joint ceiling the code applies to production + LAB, said in so many words, and what the LAB would get with the envelopes of
+    decision 12 independent (``FBI_AI_ENVELOPES_INDEPENDENT``, the prepared change)."""
+    independent = settings.envelopes_independent
+    joint = budget_v3.lab_allocation(envelope=settings.lab_monthly_budget, joint_ceiling=settings.joint_ceiling,
+                                     projected_production=projected_at_dawn)
+    alone = budget_v3.lab_allocation(envelope=settings.lab_monthly_budget, joint_ceiling=settings.joint_ceiling,
+                                     projected_production=projected_at_dawn, independent=True)
+    return {"usd": str(settings.joint_ceiling), "applies": not independent,
+            "pending_owner": budget_v3.JOINT_CEILING_PENDING,
+            "note": JOINT_CEILING_NOTE if not independent else "sobres independientes: el techo conjunto no recorta el LAB",
+            "switch": "FBI_AI_ENVELOPES_INDEPENDENT", "independent": independent,
+            "lab_allocation_usd": str(_money(lab.allocation)), "lab_allocation_joint_usd": str(_money(joint)),
+            "lab_allocation_independent_usd": str(_money(alone)),
+            "envelopes_sum_usd": str(settings.monthly_budget + settings.lab_monthly_budget)}
+
+
+def exa_price_json(searches: int, spent: Decimal) -> dict[str, Any]:
+    """Exa's price as the ledger charges it against the one Exa publishes: the month at each, and the difference - unverified."""
+    code = SEARCH_PRICES["exa"] / 1000
+    published = EXA_PUBLISHED_PER_K / 1000
+    at_published = published * searches
+    return {"code_usd_per_search": str(code), "published_usd_per_search": str(published),
+            "verified_by_invoice": EXA_PRICE_VERIFIED_BY_INVOICE,
+            "status": "verificado con factura" if EXA_PRICE_VERIFIED_BY_INVOICE else EXA_PRICE_NOTE,
+            "month_at_code_usd": str(_money(spent)), "month_at_published_usd": str(_money(at_published)),
+            "difference_usd": str(_money(spent - at_published)),
+            "source": "exa.ai/docs/changelog, consultada el 16-nov-2026: $7 por 1.000 búsquedas, texto de 10 resultados incluido"}
+
+
+def alerts_json(figures: list[budget_v3.EnvelopeFigure], capabilities: list[dict[str, Any]]) -> dict[str, Any]:
+    """The warnings at 80 / 95 % of each envelope and of each capability's cap, as the panel shows them (and logs them once a month)."""
+    return {"thresholds": list(budget_v3.ENVELOPE_ALERTS), "envelopes": [f.as_json() for f in figures],
+            "capabilities": [{"key": c["key"], "alert": c["alert"]} for c in capabilities if c["alert"] is not None],
+            "notifies_readers": False}
+
+
 def envelopes(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings) -> dict[str, Any]:
     """The panel: the envelopes, the joint ceiling, the savings, what is reserved for the open batches, the switches."""
     day = local_day(at)
@@ -162,12 +217,22 @@ def envelopes(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettin
     series_from = min(month_from, day_start(day - timedelta(days=SERIES_DAYS - 1)))
 
     costs = {scope: budget_v3.costs_by_day(conn, scope, series_from, until) for scope in ("production", "lab", "exa")}
+    costs["readers"] = envelopes_readers.readers_by_day(conn, series_from, until)
 
     def spent(scope: str) -> Decimal:
         return sum((c for d, c in costs[scope].items() if d >= month_first), Decimal(0))
 
     prod_spent, lab_spent, exa_spent = spent("production"), spent("lab"), spent("exa")
-    forecast = budget_v3.forecast(conn, at=at)
+    readers_spent = spent("readers")
+    envelope_spent = prod_spent + readers_spent  # decision 12: the readers' chronicle is paid from production's envelope
+    figures = budget_v3.figures_of(intelligence=prod_spent, readers=readers_spent, lab=lab_spent, exa=exa_spent, settings=settings)
+    capabilities = capability_budget.report(envelopes_readers.month_rows(conn, month_from, until))
+    envelopes_readers.log_warnings(budget_v3.warnings_of(month_first, figures, capabilities))
+
+    def production_of(d: date) -> Decimal:
+        return costs["production"].get(d, Decimal(0)) + costs["readers"].get(d, Decimal(0))
+
+    forecast =budget_v3.forecast(conn, at=at)
     lab = budget_v3.lab_day(conn, at=at, settings=settings)
     exa = budget_v3.exa_budget(conn, at=at, settings=settings)
     budget = budget_of(conn, at=at, settings=settings)
@@ -192,9 +257,11 @@ def envelopes(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettin
     return {
         "month": month_first.isoformat(), "days_left": days_left_in_month(day), "budget_version": budget.version,
         "production": {
-            "spent_usd": str(_money(prod_spent)), "budget_usd": str(settings.monthly_budget),
-            "spent_today_usd": str(_money(costs["production"].get(day, Decimal(0)))),
-            "share": share(prod_spent, settings.monthly_budget), "projected_usd": str(_money(forecast.projected)),
+            "spent_usd": str(_money(envelope_spent)), "budget_usd": str(settings.monthly_budget),
+            "intelligence_spent_usd": str(_money(prod_spent)), "readers_spent_usd": str(_money(readers_spent)),
+            "control_counts": "intelligence",
+            "spent_today_usd": str(_money(production_of(day))),
+            "share": share(envelope_spent, settings.monthly_budget), "projected_usd": str(_money(forecast.projected)),
             "projection_share": share(forecast.projected, settings.monthly_budget), "state": budget.state,
             "reserved_for_batches_usd": str(_money(held_prod)), "reserve_usd": str(settings.reserve),
             "reserve_locked_usd": str(_money(budget.reserve_locked)),
@@ -214,10 +281,14 @@ def envelopes(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettin
             "spent_usd": str(_money(exa_spent)), "budget_usd": str(settings.exa_monthly_budget),
             "spent_today_usd": str(_money(costs["exa"].get(day, Decimal(0)))),
             "share": share(exa_spent, settings.exa_monthly_budget), "allowed": exa.allowed, "reason": exa.reason,
-            "searches": searches},
+            "searches": searches, "price": exa_price_json(searches, exa_spent)},
         "claude": {"spent_usd": str(_money(claude)), "ceiling_usd": str(ceiling), "share": share(claude, ceiling),
                    "projected_usd": str(_money(forecast.projected + lab_spent)),
-                   "projection_share": share(forecast.projected + lab_spent, ceiling)},
+                   "projection_share": share(forecast.projected + lab_spent, ceiling), "includes_readers": False},
+        "joint_ceiling": joint_ceiling_json(settings=settings, lab=lab, projected_at_dawn=forecast.projected_at_dawn),
+        "decision_12": {k: str(v) for k, v in capability_budget.DECISION_12.items()},
+        "alerts": alerts_json(figures, capabilities),
+        "capabilities": {"version": capability_budget.VERSION, "items": capabilities, "declared": capability_budget.declared()},
         "savings": {"month": savings_json(savings(month_calls))},
         "reuse": {"briefs_paid": int(reuse.get("briefs_paid") or 0), "briefs_reused": int(reuse.get("briefs_reused") or 0),
                   "briefs_reused_material": int(reuse.get("briefs_reused_material") or 0),
@@ -227,11 +298,14 @@ def envelopes(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettin
                   "ended_batches": int(batches.get("ended") or 0), "lost_batches": int(batches.get("lost") or 0),
                   "items_ended": int(batches.get("items_ended") or 0)},
         "switches": gates.describe(conn, settings),
-        "days": [{"day": d.isoformat(), "production_usd": str(_money(costs["production"].get(d, Decimal(0)))),
+        "days": [{"day": d.isoformat(), "production_usd": str(_money(production_of(d))),
+                  "intelligence_usd": str(_money(costs["production"].get(d, Decimal(0)))),
+                  "readers_usd": str(_money(costs["readers"].get(d, Decimal(0)))),
                   "lab_usd": str(_money(costs["lab"].get(d, Decimal(0)))), "exa_usd": str(_money(costs["exa"].get(d, Decimal(0))))}
                  for d in recent],
         "factors": {"batch": str(BATCH_FACTOR)},
     }
 
 
-__all__ = ["Call", "Savings", "calls_of", "envelopes", "savings", "savings_json", "share"]
+__all__ = ["EXA_PRICE_NOTE", "JOINT_CEILING_NOTE", "Call", "Savings", "alerts_json", "calls_of", "envelopes", "exa_price_json",
+           "joint_ceiling_json", "savings", "savings_json", "share"]
