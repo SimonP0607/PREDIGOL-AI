@@ -147,7 +147,7 @@ export function LiveTiles({
         // side squeezed the competition into a column of letters at 320 px - and a grid from the tablet up.
         <ul
           data-testid="live-tiles"
-          className="-mx-4 mt-3 flex snap-x snap-mandatory scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 [&::-webkit-scrollbar]:hidden"
+          className="-mx-4 mt-3 flex snap-x snap-mandatory scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 @5xl:grid-cols-3 [&::-webkit-scrollbar]:hidden"
         >
           {matches.map((m) => (
             <li

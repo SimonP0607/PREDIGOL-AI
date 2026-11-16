@@ -44,6 +44,7 @@ import { DailySetBlock } from "@/product/records/DailySetBlock";
 import { noPickLoad } from "@/product/records/noPick";
 import { ParlayRecordCard } from "@/product/records/ParlayRecordCard";
 import { HomeHeader } from "./HomeHeader";
+import { heroFacts, HomeHero } from "./HomeHero";
 import { LiveTiles } from "./LiveTiles";
 import { OfflineNote } from "./offline";
 import { NewsBlock } from "./NewsBlock";
@@ -133,7 +134,7 @@ function HomeParlays({ board }: { board: BoardQuery }) {
     );
   }
   return (
-    <div className="grid grid-cols-1 items-start gap-9 sm:gap-10 lg:grid-cols-2 lg:gap-6">
+    <div className="grid grid-cols-1 items-start gap-9 sm:gap-10 @3xl:grid-cols-2 @3xl:gap-6">
       <KindSwitch active={active} onChange={setActive} className="-mb-5" />
       <ParlayBlock kind="daily" board={board} active={active} />
       <ParlayBlock kind="multiday" board={board} active={active} />
@@ -169,7 +170,7 @@ function LiveNow({ query }: { query: HomeQuery }) {
         <div
           aria-busy="true"
           aria-label={t("common.loading")}
-          className="-mx-4 mt-3 flex gap-2.5 overflow-hidden px-4 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-3 sm:px-0 lg:grid-cols-3"
+          className="-mx-4 mt-3 flex gap-2.5 overflow-hidden px-4 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-3 sm:px-0 @5xl:grid-cols-3"
         >
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <SkeletonBlock
@@ -192,9 +193,16 @@ function LiveNow({ query }: { query: HomeQuery }) {
  */
 const ON_RETURN = { refetchOnWindowFocus: true } as const;
 
+/**
+ * A column of Inicio at a desk; on a phone and a tablet its blocks are the page's own (`contents`), in the order each one
+ * says. A container, so that a block lays its rows out by the column's room and not by the screen's.
+ */
+const COLUMN = "contents lg:@container lg:flex lg:min-w-0 lg:flex-col lg:gap-6 lg:*:order-none";
+
 export function HomePage() {
   const preview = usePreviewParam();
-  const reader = useAuth().user?.role === "USER";
+  const { user } = useAuth();
+  const reader = user?.role === "USER";
   const home = useQuery({ ...live.home(preview), ...ON_RETURN });
   const today = useQuery({ ...live.today, ...ON_RETURN });
   const news = useQuery({ ...live.todayNews, ...ON_RETURN });
@@ -237,6 +245,14 @@ export function HomePage() {
     const timer = window.setTimeout(() => setHoldExpired(true), LAYERS_HOLD_MS);
     return () => window.clearTimeout(timer);
   }, [hold]);
+  // «El día en PrediGol»: counted from what the page already has (sheets I01, I03, I06)
+  const hero = heroFacts(
+    board.data?.data,
+    today.data?.data ? (today.data.data.matches.data?.length ?? 0) : null,
+    home.data?.data
+      ? (home.data.data.live.data?.length ?? 0) + (home.data.data.relevant?.data?.length ?? 0)
+      : null,
+  );
   const teams = layers.mine && (today.data?.data?.following?.teams.length ?? 0) > 0;
   const common = { query: today, now } as const;
   // The general layer's news are the suggested matches' whatever the reader follows: with favourites they are a second
@@ -249,7 +265,11 @@ export function HomePage() {
   if (hold) {
     return (
       <div className="space-y-9 sm:space-y-10" data-testid="home-page">
-        <HomeHeader freshness={home.data?.data?.data_freshness ?? null} loading={home.isPending} />
+        <HomeHeader
+          freshness={home.data?.data?.data_freshness ?? null}
+          loading={home.isPending}
+          name={user?.display_name}
+        />
         <OfflineNote />
         <LayersHold />
       </div>
@@ -257,23 +277,29 @@ export function HomePage() {
   }
   return (
     <div className="space-y-9 sm:space-y-10" data-testid="home-page">
-      <HomeHeader freshness={home.data?.data?.data_freshness ?? null} loading={home.isPending} />
+      <HomeHeader
+        freshness={home.data?.data?.data_freshness ?? null}
+        loading={home.isPending}
+        name={user?.display_name}
+        selector={
+          shown.selector ? (
+            <Segmented
+              value={view}
+              onChange={setView}
+              label={t("home.view.label")}
+              size="lg"
+              testId="home-view"
+              className="max-sm:order-last max-sm:w-full"
+              full
+              options={[
+                { value: "mine", label: t("home.layers.forYou") },
+                { value: "all", label: t("home.view.all") },
+              ]}
+            />
+          ) : null
+        }
+      />
       <OfflineNote />
-      {shown.selector ? (
-        <Segmented
-          value={view}
-          onChange={setView}
-          label={t("home.view.label")}
-          size="lg"
-          full
-          testId="home-view"
-          className="sm:max-w-sm"
-          options={[
-            { value: "mine", label: t("home.layers.forYou") },
-            { value: "all", label: t("home.view.all") },
-          ]}
-        />
-      ) : null}
       {shown.forYou ? (
         <Layer
           id="for-you"
@@ -300,25 +326,54 @@ export function HomePage() {
           tone="gold"
         >
           {layers.prompt && reader ? <ChoosePrompt /> : null}
-          {openYesterday ? (
-            <DailySetBlock
-              query={yesterday}
-              variant="home"
-              title={t("records.daily.yesterdayOpen")}
-            />
-          ) : null}
-          <DailySetBlock
-            query={board}
-            variant="home"
-            noPick={noPickLoad(today, (d) => d.no_pick.data)}
-            mine={layers.forYou ? mineByRank(me.data?.picks) : undefined}
-          />
-          <HomeParlays board={board} />
-          <RelevantNowBlock query={home} />
-          <AtStakeBlock query={home} now={now} />
-          <NewsBlock query={layers.mine ? general : news} now={now} />
-          <LiveNow query={home} />
-          <ResultsBlock query={home} now={now} />
+          {/* At a desk (sheet I06) the day reads in two columns: what PrediGol recommends and what is played on the
+              left, the parlays, the news and the results in a side column of 380 px. On a phone and a tablet the blocks
+              keep the one column and the order they always had (`order-*`; the columns are not boxes there). */}
+          <div
+            className="flex flex-col gap-9 sm:gap-10 lg:grid lg:grid-cols-[minmax(0,1fr)_23.75rem] lg:items-start lg:gap-6"
+            data-testid="home-columns"
+          >
+            <div className={COLUMN} data-testid="home-main">
+              {hero ? <HomeHero facts={hero} className="order-0" /> : null}
+              {openYesterday ? (
+                <div className="order-1 min-w-0">
+                  <DailySetBlock
+                    query={yesterday}
+                    variant="home"
+                    title={t("records.daily.yesterdayOpen")}
+                  />
+                </div>
+              ) : null}
+              <div className="order-2 min-w-0">
+                <DailySetBlock
+                  query={board}
+                  variant="home"
+                  noPick={noPickLoad(today, (d) => d.no_pick.data)}
+                  mine={layers.forYou ? mineByRank(me.data?.picks) : undefined}
+                />
+              </div>
+              <div className="order-4 min-w-0 empty:hidden">
+                <RelevantNowBlock query={home} />
+              </div>
+              <div className="order-5 min-w-0 empty:hidden">
+                <AtStakeBlock query={home} now={now} />
+              </div>
+              <div className="order-7 min-w-0">
+                <LiveNow query={home} />
+              </div>
+            </div>
+            <aside className={COLUMN} data-testid="home-side" aria-label={t("home.sideLabel")}>
+              <div className="order-3 min-w-0">
+                <HomeParlays board={board} />
+              </div>
+              <div className="order-6 min-w-0 empty:hidden">
+                <NewsBlock query={layers.mine ? general : news} now={now} />
+              </div>
+              <div className="order-8 min-w-0">
+                <ResultsBlock query={home} now={now} />
+              </div>
+            </aside>
+          </div>
         </Layer>
       ) : (
         <p className="text-caption text-muted-foreground" data-testid="home-view-note">

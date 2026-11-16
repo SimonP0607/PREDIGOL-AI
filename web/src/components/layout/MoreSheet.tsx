@@ -52,7 +52,7 @@ import {
 import { WhatsappLink } from "@/product/support/WhatsappLink";
 import { useInstallPrompt } from "@/product/push/useInstallPrompt";
 import { LanguageRadios, LanguageSwitch } from "./HeaderControls";
-import { currentMore, NAV_PILL, UPDATES_PATH, type MoreItem } from "./nav";
+import { currentMore, DESK_BAR, NAV_PILL, UPDATES_PATH, type MoreItem } from "./nav";
 import { useMoreItems } from "./useMoreItems";
 import { useUpdatesUnread } from "./useUpdatesUnread";
 
@@ -315,12 +315,15 @@ export function MoreMenu({
   items,
   pathname,
   active,
+  inBar = false,
   unread = [],
   language,
 }: {
   items: readonly MoreItem[];
   pathname: string;
   active: boolean;
+  /** The reader is on a destination that the wide desk's bar shows as its own pill: «Más» is not where they are there. */
+  inBar?: boolean;
   /** The rows with something the reader has not seen yet (Novedades, B6): a dot on them and on «Más». */
   unread?: readonly string[] | undefined;
   language?: { locale: Locale; onChange: (next: Locale) => void } | undefined;
@@ -336,6 +339,7 @@ export function MoreMenu({
         className={cn(
           NAV_PILL,
           active ? "bg-primary-soft text-primary" : "text-muted-foreground hover:text-foreground",
+          active && inBar && "xl:bg-transparent xl:text-muted-foreground xl:hover:text-foreground",
         )}
       >
         <MoreHorizontal aria-hidden className="h-[1.125rem] w-[1.125rem] shrink-0" />
@@ -356,6 +360,8 @@ export function MoreMenu({
                 className={cn(
                   "flex items-start gap-2.5 py-2 pointer-coarse:min-h-11",
                   here && "bg-accent",
+                  // a pill of the bar from 1280 px: not twice
+                  DESK_BAR.includes(item.to) && "xl:hidden",
                 )}
               >
                 <Icon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />

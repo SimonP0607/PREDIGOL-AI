@@ -193,5 +193,23 @@
   "fold": {
     "more": "Ver {count} más"
   },
-  "offline": "Sin conexión: te enseñamos lo último que se cargó. Se actualiza solo al volver."
+  "offline": "Sin conexión: te enseñamos lo último que se cargó. Se actualiza solo al volver.",
+  "hello": "Hola, {name}",
+  "sideLabel": "Parlays, noticias y resultados",
+  "hero": {
+    "overline": "El día en PrediGol",
+    "picks_one": "pick recomendado",
+    "picks_other": "picks recomendados",
+    "evaluation_one": "pick en evaluación",
+    "evaluation_other": "picks en evaluación",
+    "none": "Hoy no hay pick",
+    "noneBody": "Ningún partido pasó todas las reglas. Preferimos no publicar a publicar por publicar.",
+    "parlay": "1 parlay del día",
+    "matches_one": "{count} partido hoy",
+    "matches_other": "{count} partidos hoy",
+    "live": "{count} en vivo",
+    "seePicks": "Ver los picks",
+    "why": "Ver por qué",
+    "matchesToday": "Partidos de hoy"
+  }
 }

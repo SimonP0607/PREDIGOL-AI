@@ -49,7 +49,7 @@ export function NewsBlock({
           {t("home.today.updated", { time: formatTime(query.dataUpdatedAt) })}
         </p>
       ) : null}
-      <ul className="mt-3 grid grid-cols-1 gap-2.5 lg:grid-cols-2" data-testid="home-news-list">
+      <ul className="mt-3 grid grid-cols-1 gap-2.5 @3xl:grid-cols-2" data-testid="home-news-list">
         {shown.map(({ match, item }, i) => (
           <li
             key={`${match.fixture_id}-${item.id}`}

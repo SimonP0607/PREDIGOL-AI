@@ -54,7 +54,7 @@ export function Layer({
     <section
       aria-labelledby={`layer-${id}`}
       data-testid={`layer-${id}`}
-      className="space-y-9 sm:space-y-10"
+      className="@container space-y-9 sm:space-y-10"
     >
       <div
         className="flex items-end justify-between gap-3 border-b border-border pb-2"
@@ -241,13 +241,15 @@ export function PlayersBlock({ players, now }: { players: WatchedPlayer[]; now: 
         icon={<User aria-hidden className="h-4 w-4 shrink-0 text-primary" />}
       />
       <Card className="mt-3 overflow-hidden">
-        <ul className="grid grid-cols-1 gap-px bg-border/70 lg:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-px bg-border/70 @3xl:grid-cols-2">
           {players.map((p, i) => (
             <li key={p.id} className={cn("bg-card", fold.row(i))}>
               <PlayerRow p={p} now={now} />
             </li>
           ))}
-          {players.length % 2 === 1 ? <li aria-hidden className="hidden bg-card lg:block" /> : null}
+          {players.length % 2 === 1 ? (
+            <li aria-hidden className="hidden bg-card @3xl:block" />
+          ) : null}
         </ul>
       </Card>
       {fold.more}

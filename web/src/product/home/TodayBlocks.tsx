@@ -59,9 +59,9 @@ function Updated({ query, zone = false }: { query: TodayQuery; zone?: boolean })
 function Rows({ children, count, testId }: { children: ReactNode; count: number; testId: string }) {
   return (
     <Card className="mt-3 overflow-hidden">
-      <ul className="grid grid-cols-1 gap-px bg-border/70 lg:grid-cols-2" data-testid={testId}>
+      <ul className="grid grid-cols-1 gap-px bg-border/70 @3xl:grid-cols-2" data-testid={testId}>
         {children}
-        {count % 2 === 1 ? <li aria-hidden className="hidden bg-card lg:block" /> : null}
+        {count % 2 === 1 ? <li aria-hidden className="hidden bg-card @3xl:block" /> : null}
       </ul>
     </Card>
   );

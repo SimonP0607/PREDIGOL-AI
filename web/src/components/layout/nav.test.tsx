@@ -180,17 +180,31 @@ describe("the phone's bar", () => {
 });
 
 describe("the desk's top bar", () => {
-  test("the same groups: four links and «Más»", async () => {
+  test("the same groups: four links and «Más»; from 1280 px Parlays, Cuotas and Noticias are pills too (sheet S5)", async () => {
     setLocale("es");
-    const out = await html(<TopNav pathname="/parlays" items={moreItems(true)} />);
+    const out = await html(<TopNav pathname="/parlays" items={moreItems(true, true)} />);
     for (const id of ["nav-home", "nav-matches", "nav-picks", "nav-my-picks", "nav-more"]) {
       expect(tag(out, id)).not.toBe("");
     }
     expect(out).not.toContain("nav-live");
-    expect(out).not.toContain('data-testid="nav-parlays"');
-    // Parlays is a page of «Más»: the menu's trigger carries the mark
+    // the wide desk's pills: there, hidden under 1280 px, the one the reader is on marked
+    for (const id of ["nav-parlays", "nav-odds", "nav-news"]) {
+      expect(tag(out, id)).toContain("hidden xl:inline-flex");
+    }
+    expect(tag(out, "nav-parlays")).toContain('aria-current="page"');
+    expect(tag(out, "nav-odds")).not.toContain("aria-current");
+    // under 1280 px Parlays is a page of «Más»: the trigger carries the mark, and gives it up where the pill shows
     expect(tag(out, "nav-more")).toContain("data-active");
     expect(tag(out, "nav-more")).toContain("bg-primary-soft");
+    expect(tag(out, "nav-more")).toContain("xl:bg-transparent");
+  });
+
+  test("without the Noticias section there is no pill for it, and «Más» keeps its mark on its own pages", async () => {
+    setLocale("es");
+    const out = await html(<TopNav pathname="/help" items={moreItems(true)} />);
+    expect(out).not.toContain('data-testid="nav-news"');
+    expect(tag(out, "nav-more")).toContain("bg-primary-soft");
+    expect(tag(out, "nav-more")).not.toContain("xl:bg-transparent");
   });
 });
 

@@ -17,7 +17,7 @@ import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n";
 import { MoreMenu } from "./MoreSheet";
-import { destinationOf, holds, NAV_PILL, userNav, type MoreItem } from "./nav";
+import { DESK_BAR, destinationOf, holds, NAV_PILL, userNav, type MoreItem } from "./nav";
 
 export function TopNav({
   pathname,
@@ -56,10 +56,36 @@ export function TopNav({
           </Link>
         );
       })}
+      {/* from 1280 px the bar has room for Parlays, Cuotas and Noticias (sheet S5); under it they stay in «Más» */}
+      {items
+        .filter((item) => DESK_BAR.includes(item.to))
+        .map((item) => {
+          const active = holds(item, pathname);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              data-testid={`nav-${item.to.slice(1)}`}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                NAV_PILL,
+                "hidden xl:inline-flex",
+                active
+                  ? "bg-primary-soft text-primary"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon aria-hidden className="h-[1.125rem] w-[1.125rem] shrink-0" />
+              {t(item.label)}
+            </Link>
+          );
+        })}
       <MoreMenu
         items={items}
         pathname={pathname}
         active={destinationOf(pathname) === "more"}
+        inBar={DESK_BAR.some((to) => holds({ to }, pathname))}
         unread={unread}
         language={language}
       />
