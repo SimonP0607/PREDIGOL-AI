@@ -75,11 +75,11 @@ test("the reader chooses the optional e-mails; a privacy request's receipt waits
     await signIn(page, email);
     await acceptAll(page);
 
-    // 1. the Notifications block: two switches, four that always arrive, and a choice that holds
+    // 1. the Notifications block: its three switches (as the unit test counts them), four that always arrive, and a choice that holds
     await page.goto("/profile/notifications");
     const block = page.getByTestId("notifications");
     await expect(block).toBeVisible();
-    await expect(block.getByRole("switch")).toHaveCount(2);
+    await expect(block.getByRole("switch")).toHaveCount(3);
     for (const c of ["account", "security", "privacy", "legal"])
       await expect(block.getByTestId(`notify-${c}`)).toContainText(t.profile.notifications.always);
     const membership = block.getByTestId("notify-membership").getByRole("switch");
@@ -98,7 +98,8 @@ test("the reader chooses the optional e-mails; a privacy request's receipt waits
     );
     expect(prefs.body.email.find((e) => e.category === "membership")?.on).toBe(false);
 
-    // 2. a privacy query from the profile queues its receipt
+    // 2. a privacy query from the profile queues its receipt (each section of the profile is its own screen: «Privacidad»)
+    await page.goto("/profile/privacy");
     const requests = page.getByTestId("privacy-requests");
     await requests.getByTestId("privacy-kind").selectOption("privacy_query");
     await requests.getByTestId("privacy-message").fill(WORDS);

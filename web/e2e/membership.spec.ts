@@ -112,7 +112,10 @@ test("from the trial to the renewal: the profile says it, the notice comes befor
     const card = page.getByTestId("membership-card");
     await expect(card).toHaveAttribute("data-state", "trial");
     await expect(card.getByTestId("membership-line")).toContainText("En prueba hasta el");
-    await expect(card.getByTestId("membership-days-left")).toContainText("14");
+    // the trial lasts FBI_TRIAL_DAYS, 20 by default (fbi.customer.membership.TRIAL_DAYS_DEFAULT; it was 14)
+    await expect(card.getByTestId("membership-days-left")).toContainText(
+      process.env["E2E_TRIAL_DAYS"] ?? "20",
+    );
     await page.goto("/home");
     await settle(page);
     await expect(

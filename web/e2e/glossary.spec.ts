@@ -158,10 +158,13 @@ test("the glossary lists every term with its one definition, and a search narrow
     await expect(entry).toContainText(G.terms[key].short);
     await expect(entry).toContainText(G.terms[key].long);
   }
-  // «handicap» without its accent finds «hándicap», which only the line's definition says
+  // «handicap» without its accent finds «hándicap»: the line's definition and the Asian handicap's own term
   await page.getByTestId("glossary-search").fill("handicap");
-  await expect(entries).toHaveCount(1);
-  await expect(entries.first()).toHaveAttribute("data-term", "line");
+  await expect(entries).toHaveCount(2);
+  await expect(page.locator('[data-testid="glossary-entry"][data-term="line"]')).toHaveCount(1);
+  await expect(
+    page.locator('[data-testid="glossary-entry"][data-term="asianHandicap"]'),
+  ).toHaveCount(1);
   await page.getByTestId("glossary-search").fill("zzzz");
   await expect(entries).toHaveCount(0);
   await expect(page.getByText(G.page.noResults.replace("{query}", "zzzz"))).toBeVisible();

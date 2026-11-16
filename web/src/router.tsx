@@ -13,7 +13,29 @@ function retry(failures: number, error: unknown): boolean {
   return failures < 2;
 }
 
+/**
+ * A screen's cross-fade that a quicker navigation replaces is skipped by the browser, which rejects that transition's
+ * promises («Transition was skipped»). Nothing waits on them here, so the rejection is expected, not an error: each
+ * transition's promises are given a handler once, at the source (UX-139: the console's tabs, changed fast, logged it).
+ */
+function quietSkippedTransitions(): void {
+  if (typeof document === "undefined" || typeof document.startViewTransition !== "function") return;
+  const doc = document as Document & { __quietTransitions?: boolean };
+  if (doc.__quietTransitions) return;
+  doc.__quietTransitions = true;
+  const start = document.startViewTransition.bind(document);
+  document.startViewTransition = ((...args: Parameters<typeof start>) => {
+    const transition = start(...args);
+    const swallow = () => undefined;
+    transition.ready.catch(swallow);
+    transition.finished.catch(swallow);
+    transition.updateCallbackDone.catch(swallow);
+    return transition;
+  }) as typeof document.startViewTransition;
+}
+
 export const getRouter = () => {
+  quietSkippedTransitions();
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry, staleTime: 15_000, refetchOnWindowFocus: false } },
   });

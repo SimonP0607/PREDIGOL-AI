@@ -148,7 +148,7 @@ export function ChangesBlock({ data }: { data: Transparency }) {
     >
       <ul
         className="divide-y divide-border rounded-lg border border-border"
-        data-testid="transparency-changes"
+        data-testid="transparency-changes-list"
       >
         {first.map((c) => (
           <ChangeLine key={c.id} change={c} />

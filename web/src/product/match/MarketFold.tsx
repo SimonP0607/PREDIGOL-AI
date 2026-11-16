@@ -4,7 +4,7 @@
  * its bookmaker and how old it is. A price of the five settled markets is chosen the Cuotas way (parlay, bookmark); a
  * market of the catalogue that is never settled is shown only.
  */
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { ArrowDownRight, ArrowUpRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
@@ -254,6 +254,11 @@ export function MarketFold({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  // A market that becomes the first one (the reader switched to «sus mercados primero» or back) opens as the first one
+  // does on arrival; one the reader opened stays open (UX-139: the first market of the new order was folded shut).
+  useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
   const [allLines, setAllLines] = useState(false);
   const [books, setBooks] = useState(false);
   const bodyId = useId();

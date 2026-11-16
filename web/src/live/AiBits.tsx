@@ -77,7 +77,12 @@ export function ShadowBanner() {
   const q = useLiveQuery(live.aiOverview);
   const o = q.data?.data ?? null;
   if (!o) return null;
-  if (o.enforcement.enforced) return <WarningBanner>{t("ai.v2.enforcedLine")}</WarningBanner>;
+  if (o.enforcement.enforced)
+    return (
+      <div data-testid="ai-enforced-line">
+        <WarningBanner>{t("ai.v2.enforcedLine")}</WarningBanner>
+      </div>
+    );
   return (
     <div
       className="flex flex-wrap items-center gap-2 rounded-md border border-primary/25 bg-primary/8 px-3 py-2 text-xs"

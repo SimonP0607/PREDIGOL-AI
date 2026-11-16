@@ -244,9 +244,13 @@ function escapeRe(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Everything the AI decides is in shadow, and the page says so once - not once per tab. */
+/**
+ * The page says once - not once per tab - how the AI's decisions stand: in shadow, or enforced (FBI_AI_MODE=enforce, as in
+ * production since the plan de IA). One line either way.
+ */
 async function oneShadowLine(page: Page): Promise<void> {
-  await expect(page.getByTestId("ai-shadow-line")).toHaveCount(1);
+  const either = page.locator('[data-testid="ai-shadow-line"], [data-testid="ai-enforced-line"]');
+  await expect(either).toHaveCount(1);
 }
 
 test("Operation: the day, the decisions, the match, the AI's work with its five views, the costs and the runs - one page, one shadow line, no key", async ({

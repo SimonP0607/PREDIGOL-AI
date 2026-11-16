@@ -185,7 +185,8 @@ test("Ayuda in two taps, a ticket with its context answered in Soporte, read, cl
     await expect(found).toHaveAttribute("open", "");
     await expect(found).toContainText(s.faq.cant_sign_in.a.slice(0, 40));
     await page.getByTestId("help-search").fill("");
-    await expect(page.getByTestId("help-question")).toHaveCount(23);
+    // every question of Ayuda, as many as its texts have (25 since the plan maestro 2026 added two)
+    await expect(page.getByTestId("help-question")).toHaveCount(Object.keys(s.faq).length);
     await settle(page);
     await assertClean(page, w);
 
@@ -271,8 +272,10 @@ test("from an error the sheet carries its reference; from a match, the match", a
   const { id, email } = await account(admin, "error");
   try {
     await signIn(page, email);
-    // Home's board fails once, on purpose, with a request id the server would have logged
-    await page.route(/\/api\/v1\/today(\?.*)?$/, (route) =>
+    // Home's picks of the day fail once, on purpose, with a request id the server would have logged (since the plan maestro
+    // UX/UI 2026 a failed /today only says «No pudimos cargar el motivo» inside the day's card; the picks' block keeps the
+    // full error with its report link)
+    await page.route(/\/api\/v1\/daily(\?.*)?$/, (route) =>
       route.fulfill({
         status: 500,
         headers: { "content-type": "application/json", "x-request-id": "e2e500abc123" },
@@ -290,7 +293,7 @@ test("from an error the sheet carries its reference; from a match, the match", a
     await expect(sheet.getByTestId("report-category-technical").locator("input")).toBeChecked();
     await expect(sheet.getByTestId("report-context")).toContainText("e2e500abc123");
     const fromError = await sendReport(page, "Inicio dice que no pudo cargar");
-    await page.unroute(/\/api\/v1\/today(\?.*)?$/);
+    await page.unroute(/\/api\/v1\/daily(\?.*)?$/);
     expect((await inboxTicket(admin, fromError)).context).toMatchObject({
       route: "/home",
       request_id: "e2e500abc123",
