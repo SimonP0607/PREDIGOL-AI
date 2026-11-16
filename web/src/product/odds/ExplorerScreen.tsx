@@ -4,7 +4,7 @@
  * replacing its history entry instead of adding one per pause.
  */
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 import { API_EXPLORER_DATA } from "./explorer/apiData";
 import {
   OddsExplorer,
@@ -23,12 +23,15 @@ export function ExplorerScreen({
   data = API_EXPLORER_DATA,
   guide = true,
   now,
+  modeSwitch,
 }: {
   data?: ExplorerData;
   /** The screen's guide; off in the tests, which have no guides or session. */
   guide?: boolean;
   /** A fixed clock (tests). */
   now?: number;
+  /** «Por partido | Por mercado» while the view by match is on: the explorer keeps `v=mercado` in its URL. */
+  modeSwitch?: ReactNode;
 }) {
   const search = useSearch({ strict: false }) as Record<string, unknown>;
   const navigate = useNavigate();
@@ -37,12 +40,15 @@ export function ExplorerScreen({
     (next: ExplorerState, how?: StateChange) => {
       void navigate({
         to: "/odds",
-        search: validateOddsSearch(serializeExplorerState(next)),
+        search: {
+          ...validateOddsSearch(serializeExplorerState(next)),
+          ...(modeSwitch ? { v: "mercado" } : {}),
+        },
         replace: how?.replace === true,
         ...IN_PLACE,
       });
     },
-    [navigate],
+    [navigate, modeSwitch],
   );
   return (
     <OddsExplorer
@@ -50,6 +56,7 @@ export function ExplorerScreen({
       state={state}
       onStateChange={onStateChange}
       guide={guide}
+      modeSwitch={modeSwitch}
       {...(now !== undefined ? { now } : {})}
     />
   );

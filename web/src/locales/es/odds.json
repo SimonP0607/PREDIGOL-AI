@@ -116,5 +116,64 @@
     "hours": "{n} h",
     "disclaimer": "PrediGol no es una casa de apuestas: muestra precios de terceros y puede haber diferencias con lo que veas en tu casa.",
     "closed": "Esta página todavía no está disponible."
+  },
+  "byMatch": {
+    "subtitle": "La mejor cuota de cada selección, entre {count} casas.",
+    "mode": {
+      "label": "Ver las cuotas",
+      "byMatch": "Por partido",
+      "byMarket": "Por mercado"
+    },
+    "window": "Empiezan en",
+    "sort": "Ordenar",
+    "byTime": "Hora",
+    "byValue": "Valor",
+    "valueOnly": "Solo con valor ({count})",
+    "markets": {
+      "result_1x2": "1X2",
+      "goals_total": "Más / menos 2,5",
+      "goals_btts": "Ambos marcan"
+    },
+    "columns": {
+      "result_1x2": {
+        "0": "1",
+        "1": "X",
+        "2": "2"
+      },
+      "goals_total": {
+        "0": "Más 2,5",
+        "1": "Menos 2,5"
+      },
+      "goals_btts": {
+        "0": "AM sí",
+        "1": "AM no"
+      }
+    },
+    "time": "Hora",
+    "match": "Partido",
+    "all": "Todos los partidos",
+    "summary": "{count} de {total} partidos con precio",
+    "emptyTitle": "Todavía no hay precios en esta ventana",
+    "emptyBody": "Prueba con 48 o 72 horas, o vuelve más tarde: el libro se actualiza solo.",
+    "noneTitle": "Ningún partido cumple estos filtros",
+    "noneBody": "Quita «Solo con valor» o la competición elegida.",
+    "more": "Ver más partidos",
+    "loadingMore": "Cargando…",
+    "noPrice": "Sin precio",
+    "noMarket": "Ninguna casa cotiza aún este mercado en este partido.",
+    "oneBook": "Solo 1 casa cotiza este partido",
+    "books": "{count} casas cotizan este partido",
+    "seeMarkets": "Ver mercados",
+    "legend": {
+      "value": "Valor según PrediGol",
+      "inSlip": "En Mi parlay",
+      "stale": "Precio con retraso",
+      "btts": "AM: ambos marcan"
+    },
+    "slipEmpty": "Toca una cuota para empezar tu parlay. Una selección por partido.",
+    "combined": "Cuota combinada",
+    "estimated": "Probabilidad estimada",
+    "save": "Guardar parlay",
+    "noAi": "Cálculo instantáneo · sin IA"
   }
 }
