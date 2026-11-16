@@ -196,6 +196,17 @@ SELECT f.id, f.kickoff_at, th.name AS home, ta.name AS away, c.name AS competiti
 """
 """``HEALTH_FIXTURES_SQL`` with the names a reader is shown (the same matches, the same ask behind each book)."""
 
+STATUS_BOOKS_SQL = """
+SELECT DISTINCT k.key::int AS bookmaker, b.fixture_id
+  FROM market.book_current b
+  CROSS JOIN LATERAL jsonb_array_elements(b.summary->'lines') AS l(line)
+  CROSS JOIN LATERAL jsonb_array_elements(l.line->'sels') AS s(sel)
+  CROSS JOIN LATERAL jsonb_object_keys(s.sel->'odds') AS k(key)
+ WHERE b.fixture_id = ANY(%(ids)s::bigint[]) AND b.definition_id = ANY(%(defs)s::int[])
+"""
+"""Which bookmakers quote each match's main market in the book in force (BE-043): the book keeps one reading hour per match,
+not one per bookmaker, so «Por casa» says how many matches each one prices and the matches' own hour."""
+
 EXTRACTION_LAG_SQL = """
 SELECT min(p.fetched_at) AS oldest FROM raw.ingestion_payloads p
   LEFT JOIN market.odds_extractions x ON x.payload_hash = p.hash
@@ -279,6 +290,12 @@ def health_fixtures(conn: Conn, *, since: datetime, until: datetime) -> list[Row
 
 def status_fixtures(conn: Conn, *, since: datetime, until: datetime) -> list[Row]:
     return fetch_all(conn, STATUS_FIXTURES_SQL, {"from": since, "until": until})
+
+
+def status_books(conn: Conn, *, fixtures: list[int], definitions: list[int]) -> list[Row]:
+    if not fixtures or not definitions:
+        return []
+    return fetch_all(conn, STATUS_BOOKS_SQL, {"ids": fixtures, "defs": definitions})
 
 
 def extraction_oldest(conn: Conn, *, since: datetime, skipped: str) -> datetime | None:

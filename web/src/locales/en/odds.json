@@ -115,7 +115,9 @@
     "minutes": "{n} min",
     "hours": "{n} h",
     "disclaimer": "PrediGol is not a bookmaker: it shows third-party prices, which may differ from what you see at yours.",
-    "closed": "This page is not available yet."
+    "closed": "This page is not available yet.",
+    "byBook": "By bookmaker",
+    "byBookNote": "Bookmakers do not publish their own time: the time is PrediGol's latest reading of those matches."
   },
   "byMatch": {
     "subtitle": "The best price of each selection, across {count} bookmakers.",
