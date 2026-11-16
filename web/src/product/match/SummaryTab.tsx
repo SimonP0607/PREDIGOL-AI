@@ -436,6 +436,58 @@ export function BeforeKickoffLayout({ blocks }: { blocks: Record<BeforeKickoffBl
   );
 }
 
+export interface OrderedBlock {
+  key: string;
+  node: ReactNode;
+  /** Its place on a phone, where both columns read as one. */
+  order: number;
+}
+
+const ORDER_CLASS = [
+  "order-1",
+  "order-2",
+  "order-3",
+  "order-4",
+  "order-5",
+  "order-6",
+  "order-7",
+  "order-8",
+  "order-9",
+];
+
+/**
+ * Two columns at a desk and one on a phone in the sheet's order (sheets P09 and P10, UX-145): the same trick as before
+ * kick-off - the columns are `contents` on a phone, so each block takes its own place, and flex columns at a desk.
+ */
+export function OrderedColumns({
+  main,
+  side,
+  testId,
+}: {
+  main: readonly OrderedBlock[];
+  side: readonly OrderedBlock[];
+  testId: string;
+}) {
+  const cell = (b: OrderedBlock) => (
+    <div
+      key={b.key}
+      data-block={b.key}
+      className={cn("min-w-0 empty:hidden", ORDER_CLASS[b.order - 1])}
+    >
+      {b.node}
+    </div>
+  );
+  return (
+    <div
+      className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start"
+      data-testid={testId}
+    >
+      <div className={BEFORE_COLUMN}>{main.map(cell)}</div>
+      <aside className={BEFORE_COLUMN}>{side.map(cell)}</aside>
+    </div>
+  );
+}
+
 function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
   return (
     <BeforeKickoffLayout
@@ -451,23 +503,29 @@ function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
   );
 }
 
+/**
+ * In play (sheet P09): on a phone the pick first - as it was taken, with what the match is doing -, then minute by minute,
+ * the live figures, the pre-match reading as a reference and the in-play prices. At a desk the events and the reading on
+ * the left, the picks, figures and prices at the side (three picks or more take the main column's top).
+ */
 function InPlay({ ctx }: { ctx: MatchCtx }) {
-  // one or two picks sit in the side column; more take the page's width
   const wide = useWidePicks(ctx);
+  const picks: OrderedBlock = { key: "picks", node: <PicksTab ctx={ctx} />, order: 1 };
   return (
     <div className="space-y-4">
-      <div className={TWO_COLUMNS}>
-        <div className="min-w-0 space-y-4">
-          <EventsBlock ctx={ctx} />
-          <AnalysisBlock ctx={ctx} variant="reference" />
-        </div>
-        <div className="min-w-0 space-y-4">
-          {wide ? null : <PicksTab ctx={ctx} />}
-          <KeyStatsBlock ctx={ctx} />
-          <LiveOddsBlock ctx={ctx} />
-        </div>
-      </div>
-      {wide ? <PicksTab ctx={ctx} /> : null}
+      <OrderedColumns
+        testId="summary-live"
+        main={[
+          ...(wide ? [picks] : []),
+          { key: "events", node: <EventsBlock ctx={ctx} />, order: 2 },
+          { key: "analysis", node: <AnalysisBlock ctx={ctx} variant="reference" />, order: 4 },
+        ]}
+        side={[
+          ...(wide ? [] : [picks]),
+          { key: "stats", node: <KeyStatsBlock ctx={ctx} />, order: 3 },
+          { key: "odds", node: <LiveOddsBlock ctx={ctx} />, order: 5 },
+        ]}
+      />
       <ContextSection ctx={ctx} />
     </div>
   );
