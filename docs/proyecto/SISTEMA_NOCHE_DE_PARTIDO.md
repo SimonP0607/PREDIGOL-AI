@@ -57,6 +57,19 @@ Todos nacen apagados y se encienden en `app.env` sin desplegar; el mapa completo
 | `FBI_NEWS_FEED` | La sección Noticias y su entrada en «Más» |
 | `FBI_INBOX` | La bandeja de Avisos y la campana |
 
+## 4 bis. Composición por tamaño de pantalla (auditoría visual del 16-nov-2026)
+
+La auditoría frente a las 89 láminas encontró que las composiciones de escritorio no seguían las láminas (una columna a
+todo el ancho). Desde UX-134 a UX-137:
+
+| Regla | Dónde |
+| --- | --- |
+| Una rejilla de tarjetas se reparte por el ancho de su **contenedor**, nunca por el de la pantalla | `PICK_GRID` y `PICK_GRID_HOST` en `web/src/product/shared/Bits.tsx`; los bloques de Inicio usan `@3xl:` y `@5xl:` |
+| Escritorio en dos columnas: la principal y una lateral de 380 a 400 px | Inicio (`home-columns`), Resumen del partido antes del inicio (`summary-before`), Picks (`picks-side`) |
+| En teléfono y tableta, una columna en el orden de lectura; las columnas de escritorio no son cajas ahí (`contents`) | Los mismos |
+| La barra superior muestra Parlays, Cuotas y Noticias desde 1280 px; bajo ese ancho están en «Más» | `DESK_BAR` en `web/src/components/layout/nav.ts` |
+| Con tres picks o más, el panel de picks de un partido ocupa el ancho de la página | `useWidePicks` en `web/src/product/match/picks.ts` |
+
 ## 5. Reglas que se mantienen
 
 - Accesibilidad: axe sin violaciones en las páginas del inventario (`web/e2e/inventory.ts`), foco visible y no tapado, objetivos
