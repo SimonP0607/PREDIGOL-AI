@@ -1282,7 +1282,9 @@
       "title": "After kick-off",
       "intro": "What was published once the match had started."
     },
-    "fromReading": "What happened in the match: see the post-match"
+    "fromReading": "What happened in the match: see the post-match",
+    "afterKickoff": "No picks published after kick-off: PrediGol only publishes before the match starts.",
+    "trackBody": "Published picks count in the public track record."
   },
   "news": {
     "title": "News",

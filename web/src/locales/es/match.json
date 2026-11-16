@@ -1282,7 +1282,9 @@
       "title": "Después del inicio",
       "intro": "Lo que se publicó una vez empezado el partido."
     },
-    "fromReading": "Qué pasó en el partido: ver el Postpartido"
+    "fromReading": "Qué pasó en el partido: ver el Postpartido",
+    "afterKickoff": "Sin picks publicados después del inicio: PrediGol solo publica antes de que empiece el partido.",
+    "trackBody": "Los picks publicados cuentan en el historial público."
   },
   "news": {
     "title": "Noticias",

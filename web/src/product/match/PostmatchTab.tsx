@@ -7,7 +7,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { BookmarkCheck, ChevronRight, Newspaper, Scale } from "lucide-react";
+import { BookmarkCheck, ChevronRight, Clock3, Newspaper, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { formatOdds } from "@/lib/i18n/format";
@@ -37,7 +37,8 @@ import { useUsefulMoment } from "@/product/feedback/moments";
 import { KnowledgeBlock } from "./KnowledgeBlock";
 import { PicksTab } from "./PicksTab";
 import { useWidePicks } from "./picks";
-import { ResultBlock } from "./SummaryTab";
+import { OrderedColumns, ResultBlock, type OrderedBlock } from "./SummaryTab";
+import { useTransparencyOpen } from "@/product/transparency/useTransparencyOpen";
 import { Block, SectionNote } from "./ui";
 
 function sidesOf(ctx: MatchCtx): Sides {
@@ -244,6 +245,40 @@ function NewsAfter({ ctx }: { ctx: MatchCtx }) {
   );
 }
 
+/** «Después del inicio» (sheet P10): PrediGol publishes only before kick-off - said, so no one waits for a later pick. */
+function AfterKickoffNote() {
+  return (
+    <p
+      className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground"
+      data-testid="postmatch-after-kickoff"
+    >
+      <Clock3 aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-subtle-foreground" />
+      {t("match.postmatch.afterKickoff")}
+    </p>
+  );
+}
+
+/** The way to «Cómo le va a PrediGol» (sheet P10): only while that page is open to this reader. */
+function TrackRecordLink() {
+  const open = useTransparencyOpen();
+  if (!open) return null;
+  return (
+    <Link
+      to="/transparency"
+      data-testid="postmatch-track"
+      className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-2 transition-colors hover:bg-elevated/60"
+    >
+      <span>
+        <span className="block text-sm font-semibold">{t("transparency.page.title")}</span>
+        <span className="block text-caption text-muted-foreground">
+          {t("match.postmatch.trackBody")}
+        </span>
+      </span>
+      <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-subtle-foreground" />
+    </Link>
+  );
+}
+
 function MyPicksLink() {
   return (
     <Link
@@ -281,29 +316,38 @@ export function PostmatchTab({ ctx }: { ctx: MatchCtx }) {
     : undefined;
   // one or two picks sit in the side column; more take the page's width, below what happened
   const wide = useWidePicks(ctx);
+  const picks: OrderedBlock = { key: "picks", node: <PicksTab ctx={ctx} why={why} />, order: 2 };
+  // sheet P10: the result, the pick as it was taken and how it ended, the forecast against the result, then the rest
   return (
-    <div className="space-y-4" data-testid="postmatch">
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="min-w-0 space-y-4">
-          <ResultBlock ctx={ctx} />
-          {q.isPending ? (
-            <SkeletonBlock className="h-24" />
-          ) : q.isError ? (
-            <ErrorState error={q.error} onRetry={() => void q.refetch()} className="py-4" />
-          ) : data ? (
-            <SavedBlock saved={data.saved} sides={sides} />
-          ) : null}
-          <ForecastVsResult ctx={ctx} />
-          {/* What happened, put together once the provider stopped changing it (plan F7). */}
-          <KnowledgeBlock ctx={ctx} />
-        </div>
-        <div className="min-w-0 space-y-4">
-          {wide ? null : <PicksTab ctx={ctx} why={why} />}
-          <NewsAfter ctx={ctx} />
-          <MyPicksLink />
-        </div>
-      </div>
-      {wide ? <PicksTab ctx={ctx} why={why} /> : null}
+    <div data-testid="postmatch">
+      <OrderedColumns
+        testId="postmatch-columns"
+        main={[
+          { key: "result", node: <ResultBlock ctx={ctx} />, order: 1 },
+          ...(wide ? [picks] : []),
+          { key: "forecast", node: <ForecastVsResult ctx={ctx} />, order: 3 },
+          {
+            key: "saved",
+            node: q.isPending ? (
+              <SkeletonBlock className="h-24" />
+            ) : q.isError ? (
+              <ErrorState error={q.error} onRetry={() => void q.refetch()} className="py-4" />
+            ) : data ? (
+              <SavedBlock saved={data.saved} sides={sides} />
+            ) : null,
+            order: 4,
+          },
+          // what happened, put together once the provider stopped changing it (plan F7)
+          { key: "knowledge", node: <KnowledgeBlock ctx={ctx} />, order: 5 },
+        ]}
+        side={[
+          ...(wide ? [] : [picks]),
+          { key: "news", node: <NewsAfter ctx={ctx} />, order: 6 },
+          { key: "after", node: <AfterKickoffNote />, order: 7 },
+          { key: "track", node: <TrackRecordLink />, order: 8 },
+          { key: "mine", node: <MyPicksLink />, order: 9 },
+        ]}
+      />
     </div>
   );
 }
