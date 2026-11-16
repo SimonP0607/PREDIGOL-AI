@@ -35,10 +35,10 @@ Los secretos (claves de Resend, de Sentry, VAPID, tokens) se escriben en el serv
 | `FBI_TELEGRAM_CHANNEL_URL` | Plan maestro 2026, ola 11 (UX-128) | API | El canal oficial de Telegram en el contacto de Ayuda. Solo aparece con el enlace público (`https://t.me/…`) **y** con `telegram` en `FBI_SUPPORT_CHANNELS` | El dueño tiene el enlace oficial del canal (es público: no es un secreto) |
 | `FBI_NEWS_FEED` | Plan maestro 2026, ola 13 (BE-040, UX-130) | API | La sección Noticias (`/news`) y su entrada en «Más» | Hay noticias reales leyéndose (`FBI_NEWS_USERS` encendido) y el dueño la revisó |
 | `FBI_INBOX` | Plan maestro 2026, ola 14 (BE-041, UX-131) | API y mensajero | La bandeja de Avisos (`/inbox`) y la campana: lo que ya se envió al lector, con leído y sin leer | La migración 0137 ya está desplegada y el dueño la revisó |
-| `FBI_ODDS_BY_MATCH` | Plan maestro unificado (BE-045, UX-141) | API | Cuotas abre en la vista «Por partido» (láminas C01, C02, C06) con «Mi parlay» al lado; el explorador por familias sigue a un toque («Por mercado») | La sesión UX lo enciende tras verificarlo (cubierto por la aprobación del plan del 16-nov-2026) |
-| `FBI_NAV_V2` | Plan maestro unificado (BE-045, UX-152) | API | Barra del teléfono Inicio · Partidos · Noticias · Picks · Más y la barra de escritorio nueva (D-01, D-02) | Aprobado (D-01, D-02); se enciende tras verificarlo |
-| `FBI_SEARCH` | Plan maestro unificado (BE-045, UX-153) | API | El buscador global del lector en la barra superior (maqueta 14) | Se enciende tras verificarlo |
-| `FBI_PROFILES` | Plan maestro unificado (BE-045, UX-154 a UX-157) | API | Las páginas de club, selección y jugador, y «Equipos» (maquetas 11–13, D-03) | Se enciende tras verificarlo con datos reales |
+| `FBI_ODDS_BY_MATCH` | Plan maestro unificado (BE-045, UX-141) | API | Cuotas abre en la vista «Por partido» (láminas C01, C02, C06) con «Mi parlay» al lado; el explorador por familias sigue a un toque («Por mercado») | La sesión UX lo enciende tras verificarlo (cubierto por la aprobación del plan del 16-nov-2026). **Encendido el 16-nov-2026, 22:41 UTC** |
+| `FBI_NAV_V2` | Plan maestro unificado (BE-045, UX-152) | API | Barra del teléfono Inicio · Partidos · Noticias · Picks · Más y la barra de escritorio nueva (D-01, D-02) | Aprobado (D-01, D-02); se enciende tras verificarlo. **Encendido el 16-nov-2026, 22:41 UTC** |
+| `FBI_SEARCH` | Plan maestro unificado (BE-045, UX-153) | API | El buscador global del lector en la barra superior (maqueta 14) | Se enciende tras verificarlo. **Encendido el 16-nov-2026, 22:41 UTC** |
+| `FBI_PROFILES` | Plan maestro unificado (BE-045, UX-154 a UX-157) | API | Las páginas de club, selección y jugador, y «Equipos» (maquetas 11–13, D-03) | Se enciende tras verificarlo con datos reales. **Encendido el 16-nov-2026, 22:41 UTC** |
 | `FBI_NEWS_V2` | Plan maestro unificado (BE-045, UX-158 a UX-161) | API | Noticias como la dibujan las maquetas 08–10; solo con `FBI_NEWS_FEED` | Datos, derechos y pruebas listos |
 | `FBI_MATCH_INTELLIGENCE` | Plan maestro unificado (BE-045, UX-162 a UX-166) | API | La pestaña «Intelligence» del partido para lectores (proyección pública del contrato C-01) | **El dueño**, con la autorización de publicación de Intelligence |
 | `FBI_DIGEST`, `FBI_DIGEST_FROM` | B8 | API y mensajero | El resumen semanal para quien lo pide | Correo encendido y un remitente en otro dominio (P3) |
@@ -94,3 +94,12 @@ El dueño aprobó encender las funciones del plan maestro UX/UI 2026. Desde el 1
 tomada al final). Comprobado dentro de los contenedores y, con la sesión del dueño, en `/auth/me` y en cada pantalla.
 `FBI_TELEGRAM_CHANNEL_URL` sigue sin línea: falta el enlace oficial del canal. `FBI_PICKS_SOURCE` sigue sin línea (apagado).
 Para volver atrás: quitar la línea (o `=0`) y recrear la API y el mensajero.
+
+Desde el 16-nov-2026 a las 22:41 UTC, con la aprobación del plan maestro unificado (decisiones D-01 a D-03), `app.env` lleva
+además `FBI_ODDS_BY_MATCH`, `FBI_NAV_V2`, `FBI_SEARCH` y `FBI_PROFILES` encendidos (copia fechada
+`app.env.before-ux-unified-20261116T224053Z`; bajo el candado de despliegue; se recrearon la API y el mensajero, no el worker;
+referencia de configuración tomada al final). Comprobado dentro del contenedor (`fbi.api.switches`) y, con la sesión del dueño,
+en `/auth/me`, Inicio, Cuotas «Por partido», Equipos, el buscador y un perfil de club y de jugador con datos reales.
+Siguen sin línea (apagados): `FBI_NEWS_V2` (abogado, datos y derechos), `FBI_MATCH_INTELLIGENCE` (decisión del dueño),
+`FBI_TRANSPARENCY` (D-05) y `FBI_PICKS_SOURCE`. Para volver atrás, lo mismo: quitar la línea (o `=0`) y recrear la API y el
+mensajero; con `FBI_NAV_V2` apagado vuelve la barra de siempre y con `FBI_ODDS_BY_MATCH` apagado, el explorador de Cuotas.

@@ -73,6 +73,8 @@ Todos nacen apagados y se encienden en `app.env` sin desplegar; el mapa completo
 | `FBI_TELEGRAM_CHANNEL_URL` y `telegram` en `FBI_SUPPORT_CHANNELS` | El canal de Telegram en el contacto de Ayuda |
 | `FBI_NEWS_FEED` | La sección Noticias y su entrada en «Más» |
 | `FBI_INBOX` | La bandeja de Avisos y la campana |
+| `FBI_ODDS_BY_MATCH`, `FBI_NAV_V2`, `FBI_SEARCH`, `FBI_PROFILES` | Plan maestro unificado (BE-045): Cuotas «Por partido», las barras nuevas, el buscador y los perfiles |
+| `FBI_NEWS_V2`, `FBI_MATCH_INTELLIGENCE` | Plan maestro unificado: Noticias de las maquetas 08 a 10 (abogado y datos) y la pestaña «Intelligence» (el dueño) |
 
 ## 4 bis. Composición por tamaño de pantalla (auditoría visual del 16-nov-2026)
 
@@ -86,6 +88,23 @@ todo el ancho). Desde UX-134 a UX-137:
 | En teléfono y tableta, una columna en el orden de lectura; las columnas de escritorio no son cajas ahí (`contents`) | Los mismos |
 | La barra superior muestra Parlays, Cuotas y Noticias desde 1280 px; bajo ese ancho están en «Más» | `DESK_BAR` en `web/src/components/layout/nav.ts` |
 | Con tres picks o más, el panel de picks de un partido ocupa el ancho de la página | `useWidePicks` en `web/src/product/match/picks.ts` |
+
+## 4 ter. Piezas del plan maestro unificado (UX-139 a UX-158, 16-nov-2026)
+
+Sin sistema de diseño nuevo: cada pieza extiende las que ya había.
+
+| Pieza | Dónde | Regla |
+| --- | --- | --- |
+| Barras unificadas | `barNav`, `deskExtras` y `moreItems` con `NavFlags` en `web/src/components/layout/nav.ts`; `Bars.tsx`, `MoreSheet.tsx` | Teléfono: Inicio · Partidos · Noticias · Picks · Más (D-01); Cuotas en «Más» y en la barra de escritorio desde 1600 px, sin desborde (D-02). Solo con `FBI_NAV_V2` |
+| `SearchButton` y `ReaderSearch` | `web/src/components/system/search/` | Botón de 44 px, «/» fuera de un campo y Ctrl/⌘ K; resultados por grupo (equipos, competiciones, partidos); recientes solo en el dispositivo (`predigol.search.recent`). Solo con `FBI_SEARCH` |
+| Páginas de perfil | `web/src/product/teams/` (`TeamPage`, `PlayerPage`, `TeamsPage`, `model.ts`) | Club, selección y jugador con `EntityHeader`; el jugador nunca lleva foto ni dato médico; un perfil que no existe es «no encontrado», no un error. Solo con `FBI_PROFILES` |
+| `OrderedColumns` y `OrderedBlock` | `web/src/product/match/SummaryTab.tsx` | Dos columnas en escritorio; en teléfono una sola en el orden de la lámina (`contents` + `order-N`), sin duplicar bloques |
+| `MatchOddsSheet` | `web/src/product/odds/byMatch/MatchOdds.tsx` | Mercados principales, comparación por casa y movimiento ya guardado de un partido; no calcula probabilidades |
+| `Insights` | `web/src/product/transparency/Insights.tsx` | Unidades acumuladas con su tabla, «¿Estima bien?» en barras y tabla de mercados; nada bajo la muestra mínima |
+| `RadioCards` | `web/src/product/profile/RadioCards.tsx` | Radix RadioGroup como tarjetas con ejemplo; objetivo táctil completo |
+| `BusinessSummary` | `web/src/admin/BusinessSummary.tsx` | La consola abre con lo que espera una decisión; solo lectura |
+
+El JS de arranque tiene un presupuesto de 640 KB (UX-139), que vigila la prueba de tamaño.
 
 ## 5. Reglas que se mantienen
 
