@@ -16,6 +16,49 @@ const LAYERS: ReadonlyArray<readonly ["forecast" | "value" | "pick", TermKey]> =
   ["pick", "pick"],
 ];
 
+/**
+ * The three questions as three tiles in a row, each with its number (plan maestro UX/UI 2026, sheets P03 and P11): what is
+ * likely, whether it is well paid, whether PrediGol recommends it - the last one in the pick's gold. A word opens its
+ * definition, as everywhere.
+ */
+export function ExplainSteps({ className }: { className?: string | undefined }) {
+  return (
+    <ol
+      aria-label={t("glossary.layers.title")}
+      data-testid="explain-steps"
+      className={cn("grid grid-cols-3 gap-2 sm:gap-3", className)}
+    >
+      {LAYERS.map(([layer, term], i) => (
+        <li
+          key={layer}
+          className={cn(
+            "card-surface flex min-w-0 flex-col gap-2 rounded-card p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-3.5",
+            layer === "pick" && "border-gold/45",
+          )}
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "numeric flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+              layer === "pick" ? "bg-gold-soft text-gold-strong" : "bg-primary-soft text-primary",
+            )}
+          >
+            {i + 1}
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold">
+              <GlossaryTerm term={term}>{t(`glossary.layers.${layer}.title`)}</GlossaryTerm>
+            </span>
+            <span className="block text-caption text-muted-foreground [overflow-wrap:anywhere]">
+              {t(`glossary.layers.${layer}.question`)}
+            </span>
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export function ExplainLayers({
   compact = false,
   className,
