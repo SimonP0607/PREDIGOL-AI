@@ -176,6 +176,35 @@
     "combined": "Combined odds",
     "estimated": "Estimated probability",
     "save": "Save parlay",
-    "noAi": "Instant calculation · no AI"
+    "noAi": "Instant calculation · no AI",
+    "sheet": {
+      "open": "Markets and movement",
+      "selection": "Selection",
+      "best": "Best",
+      "book": "Bookmaker",
+      "noBook": "This match has no prices in force now.",
+      "search": "Search a market: corners, handicap…",
+      "markets_one": "{count} market",
+      "markets_other": "{count} markets",
+      "noMatch": "No market with “{q}”.",
+      "legend": "The best price of each selection among the bookmakers in force. A green edge marks value according to PrediGol.",
+      "draw": "Draw",
+      "which": "Which selection to see",
+      "bestNow": "Best price now",
+      "since": "{change} since the first reading",
+      "facts": {
+        "open": "Opening",
+        "high": "Highest",
+        "low": "Lowest",
+        "now": "Now"
+      },
+      "read1": "If the price drops, the market sees that selection as more likely.",
+      "read2": "The line is the best price of each reading; outlier prices are left out.",
+      "info": "Movement is information, not a signal to bet more.",
+      "openMatch": "Open match",
+      "movement": "Movement",
+      "marketsView": "Markets"
+    },
+    "valueWord": "with value"
   }
 }

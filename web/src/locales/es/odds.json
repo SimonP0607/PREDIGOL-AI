@@ -176,6 +176,35 @@
     "combined": "Cuota combinada",
     "estimated": "Probabilidad estimada",
     "save": "Guardar parlay",
-    "noAi": "Cálculo instantáneo · sin IA"
+    "noAi": "Cálculo instantáneo · sin IA",
+    "sheet": {
+      "open": "Mercados y movimiento",
+      "selection": "Selección",
+      "best": "Mejor",
+      "book": "Casa",
+      "noBook": "Este partido no tiene precios en vigor ahora.",
+      "search": "Buscar mercado: córners, hándicap…",
+      "markets_one": "{count} mercado",
+      "markets_other": "{count} mercados",
+      "noMatch": "Ningún mercado con «{q}».",
+      "legend": "La mejor cuota de cada selección entre las casas en vigor. El borde verde marca valor según PrediGol.",
+      "draw": "Empate",
+      "which": "Qué selección ver",
+      "bestNow": "Mejor cuota ahora",
+      "since": "{change} desde la primera lectura",
+      "facts": {
+        "open": "Apertura",
+        "high": "Máxima",
+        "low": "Mínima",
+        "now": "Ahora"
+      },
+      "read1": "Si la cuota baja, el mercado ve más probable esa selección.",
+      "read2": "La línea es la mejor cuota de cada lectura; las cuotas atípicas quedan fuera.",
+      "info": "El movimiento es información, no una señal para apostar más.",
+      "openMatch": "Abrir partido",
+      "movement": "Movimiento",
+      "marketsView": "Mercados"
+    },
+    "valueWord": "con valor"
   }
 }
