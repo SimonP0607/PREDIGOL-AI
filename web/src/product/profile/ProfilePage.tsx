@@ -26,7 +26,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { Me } from "@/lib/api/v1/types_auth";
-import { LOCALES, t, useI18n } from "@/lib/i18n";
+import { LOCALES, t, useI18n, type Locale } from "@/lib/i18n";
 import { LOCALE_NAMES } from "@/lib/i18n/catalogs";
 import { detectTimeZone, formatTime, listTimeZones, zoneAbbrev, zoneName } from "@/lib/time";
 import { PageTitle, errorMessage } from "@/product/shared/States";
@@ -41,6 +41,13 @@ import { AccountPanel } from "./AccountPanel";
 import { useGuideScreen } from "@/product/guides/context";
 import { BlockRow, SectionScreen } from "./Block";
 import { DisplaySettings } from "./DisplaySettings";
+import { RadioCards } from "./RadioCards";
+
+/** What a language changes, said in that language (sheet U03). */
+const LOCALE_HINTS: Record<Locale, string> = {
+  es: "Textos, fechas y números con coma decimal",
+  en: "Texts, dates and numbers with a decimal point",
+};
 import { HelpPanel } from "./HelpPanel";
 import { blockOfHash, blockSummary, type BlockKey } from "./centre";
 import { buttonVariants } from "@/components/ui/button";
@@ -248,27 +255,19 @@ function RegionPanel() {
     <div className="space-y-4" data-testid="region-panel">
       <Subsection title={t("profile.language")}>
         <p className="text-xs text-muted-foreground">{t("profile.languageHelp")}</p>
-        <div className="flex gap-2" role="radiogroup" aria-label={t("profile.language")}>
-          {LOCALES.map((l) => (
-            <button
-              key={l}
-              type="button"
-              role="radio"
-              aria-checked={locale === l}
-              lang={l}
-              data-testid={`profile-lang-${l}`}
-              onClick={() => void auth.setLocale(l)}
-              className={cn(
-                "rounded-md border px-4 py-2 text-sm font-semibold pointer-coarse:min-h-11",
-                locale === l
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border-strong hover:bg-elevated",
-              )}
-            >
-              {LOCALE_NAMES[l]}
-            </button>
-          ))}
-        </div>
+        {/* sheet U03: each language as a card that says what changes with it, in its own language */}
+        <RadioCards<Locale>
+          value={locale}
+          onChange={(l) => void auth.setLocale(l)}
+          label={t("profile.language")}
+          testId="profile-lang"
+          options={LOCALES.map((l) => ({
+            value: l,
+            lang: l,
+            title: LOCALE_NAMES[l],
+            body: LOCALE_HINTS[l],
+          }))}
+        />
       </Subsection>
       <Subsection title={t("profile.timezone")}>
         <p className="text-xs text-muted-foreground">{t("profile.timezoneHelp")}</p>

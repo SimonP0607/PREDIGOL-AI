@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { DEFAULT_DISPLAY, type Display } from "@/lib/display";
 import { t } from "@/lib/i18n";
 import { formatOdds } from "@/lib/i18n/format";
+import { RadioCards } from "./RadioCards";
 
 type HomeChoice = "auto" | "mine" | "all";
 
@@ -43,31 +44,25 @@ export function DisplaySettings() {
           label={t("profile.display.time")}
           testId="display-time"
           options={[
-            { value: "24h", label: t("profile.display.time24") },
-            { value: "12h", label: t("profile.display.time12") },
+            { value: "24h", label: `${t("profile.display.time24")} · 18:30` },
+            { value: "12h", label: `${t("profile.display.time12")} · 6:30 p. m.` },
           ]}
         />
       </div>
       <div className="space-y-2">
         <p className="text-sm font-medium">{t("profile.display.odds")}</p>
-        <Segmented<Display["odds_format"]>
+        {/* sheet U03: a card per way of writing a price, the same price beside each */}
+        <RadioCards<Display["odds_format"]>
           value={shown.odds_format}
           onChange={(v) => void save({ odds_format: v })}
           label={t("profile.display.odds")}
           testId="display-odds"
-          options={[
-            { value: "decimal", label: t("profile.display.oddsDecimal") },
-            { value: "american", label: t("profile.display.oddsAmerican") },
-            { value: "fractional", label: t("profile.display.oddsFractional") },
-          ]}
+          options={(["decimal", "american", "fractional"] as const).map((f) => ({
+            value: f,
+            title: t(`profile.display.odds${f[0]!.toUpperCase()}${f.slice(1)}`),
+            aside: <span data-testid={`display-odds-example-${f}`}>{formatOdds(2.05, f)}</span>,
+          }))}
         />
-        <p className="numeric text-xs text-muted-foreground" data-testid="display-odds-example">
-          {t("profile.display.oddsExample", {
-            decimal: formatOdds(2.05, "decimal"),
-            american: formatOdds(2.05, "american"),
-            fractional: formatOdds(2.05, "fractional"),
-          })}
-        </p>
         <p className="text-xs text-muted-foreground">{t("profile.display.oddsHelp")}</p>
       </div>
       <div className="space-y-2">
