@@ -156,6 +156,23 @@ class Evaluation(Contract):
                                        "can be a pick - in the window of the days without picks.")
 
 
+class UnitsPoint(Contract):
+    """A day of the published picks' running total (BE-044): what a flat stake of one unit per settled pick added up to."""
+
+    day: date = Field(description="The product day (America/Bogota) of the picks settled into this point.")
+    settled: int = Field(description="Settled picks with a stake counted so far, this day included.")
+    units: Decimal = Field(description="The units won or lost so far, this day included.")
+
+
+class PicksCalibration(Contract):
+    """«¿Estima bien?» of the published picks: the probability said when each was published (stored, never recomputed)
+    against whether it won. Only won or lost picks count."""
+
+    n: int = Field(description="Published picks won or lost, the sample of the ranges.")
+    bins: list[CalibrationBin] = Field(description="Ten-point ranges with min_bin picks or more; empty below min_sample.")
+    omitted: int = Field(description="Picks in ranges left out for being too small.")
+
+
 class Definition(Contract):
     key: Literal["roi", "sample", "no_pick_day", "line_value", "calibration", "evaluation"]
     version: str
@@ -173,6 +190,11 @@ class Transparency(Contract):
     parlays: list[ParlayTally] = Field(description="PrediGol's daily and multi-day parlays, whole history, in that order.")
     days: NoPickDays
     markets: list[MarketTally] = Field(description="The whole history by kind of bet, most settled first; `other` last.")
+    series: list[UnitsPoint] = Field(default_factory=list, description=(
+        "The running units of the published picks, a point per product day with a settlement (sheet T01); empty below "
+        "min_sample settled picks."))
+    picks_calibration: PicksCalibration | None = Field(default=None, description=(
+        "Said against happened for the published picks (sheets T01/T07)."))
     line_value: LineValue
     forecasts: list[ForecastCalibration] = Field(description="1X2, total goals at 2.5 and both teams to score.")
     evaluation: Evaluation

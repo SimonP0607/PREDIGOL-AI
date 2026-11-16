@@ -163,6 +163,22 @@ export interface TransparencyDefinition {
   since: string;
 }
 
+/** A product day of the published picks' running total (BE-044). */
+export interface UnitsPoint {
+  day: string;
+  /** Settled picks with a stake so far, this day included. */
+  settled: number;
+  /** Units won or lost so far (a decimal string). */
+  units: Dec;
+}
+
+/** «¿Estima bien?» of the published picks: the stored probability against whether it won (BE-044). */
+export interface PicksCalibration {
+  n: number;
+  bins: CalibrationBin[];
+  omitted: number;
+}
+
 export interface Transparency {
   timezone: string;
   min_sample: number;
@@ -175,6 +191,10 @@ export interface Transparency {
   parlays: TransparencyParlayTally[];
   days: NoPickDays;
   markets: TransparencyMarketTally[];
+  /** The running units, a point per day with a settlement; empty below min_sample (BE-044). Absent from an older API. */
+  series?: UnitsPoint[];
+  /** Said against happened for the published picks (BE-044). Absent from an older API. */
+  picks_calibration?: PicksCalibration | null;
   line_value: LineValue;
   forecasts: ForecastCalibration[];
   evaluation: TransparencyEvaluation;
