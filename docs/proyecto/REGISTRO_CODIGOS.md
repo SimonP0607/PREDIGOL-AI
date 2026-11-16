@@ -273,6 +273,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | BE-039 | Plan maestro UX/UI 2026, ola 10, decisión 8: las preferencias de presentación del lector (formato de hora y de cuotas, reducir animaciones, Inicio por defecto) y la campana por equipo seguido. **Migración 0136** (cuatro columnas en las preferencias y `notify` en los favoritos, con valores por defecto que dejan todo como estaba); `/auth/me.display`, `PATCH /auth/me/preferences`, `PUT /me/favorites/team-bell`; los avisos y el resumen respetan la campana; entra en la exportación de datos del lector | desplegado (en producción el 15-nov-2026 a las 17:06 UTC con la cadena `20261115T1554Z-auto-2d6b883`, backend `d77aadbe0461`, sola y con copia propia antes de migrar; humo 0 y verificación con 0 líneas NOT OK) | #294 | UX-118 |
 | BE-040 | Plan maestro UX/UI 2026, ola 13, decisión 2: `GET /news`, de solo lectura, detrás de `FBI_NEWS_FEED` (apagado): las noticias ya leídas de los partidos por jugar, de la más reciente a la más antigua, con filtros por estado, tipo, equipo y «mis partidos»; `/auth/me.news_feed`. Lee `ai.evidence` con el mismo filtro de datos tipados que el resto de lectores (lo exige `test_typed_evidence_guard`); no busca nada ni cambia nada de Intelligence | desplegado, apagado (en producción el 15-nov-2026 a las 19:00 UTC con la cadena `20261115T1817Z-auto-63d53ec`, backend `0a6282188a7c`, sin migración; humo 0 y verificación con 0 líneas NOT OK) | #300 | — |
 | BE-041 | Plan maestro UX/UI 2026, ola 14, decisión 1: la bandeja de Avisos del lector detrás de `FBI_INBOX` (apagado). **Migración 0137** (`push_notices.read_at` y su índice); `GET /me/inbox`, `GET /me/inbox/unread`, `POST /me/inbox/read`; `/auth/me.inbox`. Lee lo que ya se envió (30 días, dentro de la retención de 90 que ya existía); no crea avisos nuevos | desplegado, apagado (en producción el 15-nov-2026 a las 21:36 UTC con la cadena `20261115T2006Z-auto-f57f5be`, backend `95ed6d82edd2`, sola y con copia propia antes de migrar (0136 → 0137); humo 0 y verificación con 0 líneas NOT OK; `health` en «ok») | #302 | UX-023 |
+| BE-042 | Una prueba de BE-041 (la bandeja de Avisos) usaba «ahora» como momento del aviso y fallaba entre las 22:00 y las 08:00 de Bogotá, cuando un aviso espera a la mañana (horas de silencio) en vez de cerrarse; lo detectó el CI de #311 a las 07:25 UTC. La prueba usa ayer a mediodía de Bogotá. Solo cambia la prueba | solo una prueba | #312 | BE-041 |
 
 ## Otras áreas
 
@@ -280,7 +281,7 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-139 · BE-042 · FE-002 · OPS-006 · DOC-001
+CI-020 · SEG-003 · UX-139 · BE-043 · FE-002 · OPS-006 · DOC-001
 
 IA-055
 
