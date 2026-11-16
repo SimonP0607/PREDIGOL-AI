@@ -146,7 +146,15 @@
   },
   "atStake": {
     "title": "Qué se juega",
-    "subtitle": "Los próximos partidos con algo en juego, en las próximas 36 horas"
+    "subtitle": "Los próximos partidos con algo en juego, en las próximas 36 horas",
+    "all": "Ver todos los partidos",
+    "time": "Hora",
+    "match": "Partido",
+    "forecast": "Pronóstico",
+    "stakes": "Qué se juega",
+    "wins": "gana {team}",
+    "draw": "empate",
+    "noForecast": "Sin pronóstico todavía"
   },
   "reason": {
     "final": "Es una final.",
@@ -211,5 +219,12 @@
     "seePicks": "Ver los picks",
     "why": "Ver por qué",
     "matchesToday": "Partidos de hoy"
+  },
+  "todayMatches": {
+    "title": "Partidos de hoy",
+    "all": "Todos ({count})",
+    "live": "En vivo",
+    "final": "Final",
+    "withReading": "Con análisis"
   }
 }

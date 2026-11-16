@@ -146,7 +146,15 @@
   },
   "atStake": {
     "title": "What is at stake",
-    "subtitle": "The next matches with something on the line, in the next 36 hours"
+    "subtitle": "The next matches with something on the line, in the next 36 hours",
+    "all": "See every match",
+    "time": "Time",
+    "match": "Match",
+    "forecast": "Forecast",
+    "stakes": "What is at stake",
+    "wins": "{team} win",
+    "draw": "draw",
+    "noForecast": "No forecast yet"
   },
   "reason": {
     "final": "It is a final.",
@@ -211,5 +219,12 @@
     "seePicks": "See the picks",
     "why": "See why",
     "matchesToday": "Today's matches"
+  },
+  "todayMatches": {
+    "title": "Today's matches",
+    "all": "All ({count})",
+    "live": "Live",
+    "final": "Full time",
+    "withReading": "With analysis"
   }
 }
