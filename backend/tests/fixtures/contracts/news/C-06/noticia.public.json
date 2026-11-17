@@ -1,0 +1,59 @@
+{
+  "contract": "C-06",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "id": "st-38ee20fe3c0347d59cb00a7c",
+  "category": "selecciones",
+  "level": "oficial",
+  "headline_es": "Club Ejemplo Norte cita a sus dos atacantes titulares",
+  "essentials_es": "La convocatoria oficial incluye a J. Ejemplo y A. Ejemplo. El club no informó bajas nuevas.",
+  "sources": [
+    {
+      "name": "Diario Reservado Ejemplo",
+      "author": null,
+      "published_at": null,
+      "known_at": "2026-11-21T18:46:00Z",
+      "url": "https://reservado.ejemplo.invalid/futbol/convocatoria-club-norte"
+    },
+    {
+      "name": "Radio Ejemplo",
+      "author": "R. Ejemplo",
+      "published_at": "2026-11-21T18:35:00Z",
+      "known_at": "2026-11-21T18:40:00Z",
+      "url": "https://radio.ejemplo.invalid/deportes/club-norte-atacantes"
+    },
+    {
+      "name": "Club Ejemplo Norte (oficial)",
+      "author": null,
+      "published_at": "2026-11-21T18:20:00Z",
+      "known_at": "2026-11-21T18:26:00Z",
+      "url": "https://oficial.ejemplo.invalid/noticias/convocatoria"
+    }
+  ],
+  "entities": [
+    {
+      "type": "team",
+      "id": 770001,
+      "name": "Club Ejemplo Norte",
+      "role": "protagonista",
+      "method": "proveedor",
+      "confidence": 1.0
+    },
+    {
+      "type": "player",
+      "id": 880009,
+      "name": "J. Ejemplo",
+      "role": "protagonista",
+      "method": "alias",
+      "confidence": 0.98
+    },
+    {
+      "type": "player",
+      "id": 880010,
+      "name": "A. Ejemplo",
+      "role": "protagonista",
+      "method": "alias",
+      "confidence": 0.95
+    }
+  ]
+}
