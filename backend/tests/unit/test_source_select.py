@@ -113,7 +113,7 @@ def test_el_colombiano_counts_with_the_stricter_reading_of_the_contradiction(pol
     every = everything_authorised(policy)
     p = pick(ss.select(BUC_NAC, "lesiones", at=AT, policy=every), "elcolombiano.com")
     assert (p.via, p.would_via, p.reason, p.may_extract) == ("link", "link", "stricter_reading", False)
-    assert "elcolombiano.com" in ss.STRICTER_READINGS
+    assert {"elcolombiano.com"} <= set(ss.STRICTER_READINGS)
 
 
 def test_today_nothing_of_that_match_can_be_read_or_extracted(policy: sp.SourcePolicy) -> None:
@@ -230,7 +230,7 @@ def test_national_teams_get_their_federations_the_confederation_and_their_press(
     assert not domains(f, role="confederacion")
     us = match(("USA", "USA", None), ("Haiti", "Haiti", None), "CONCACAF Nations League", "World", national=True)
     u = ss.select(us, "convocatorias", at=AT, policy=policy)
-    assert "concacaf.com" in domains(u) and "justwomenssports.com" not in domains(u), "a women's medium is not a source of a men's match"
+    assert {"concacaf.com"} <= set(domains(u)) and not {"justwomenssports.com"} & set(domains(u)), "a women's medium is not a source of a men's match"
 
 
 # ── properties ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
