@@ -9,6 +9,8 @@
     the figures       the single figure ``forecast-v2`` as of ``at`` (``fbi.api.services.match_intelligence.read_figures``: the private
                       C-01's reader; a match the models do not cover has none)
     the previous plan the keys of the newest plan stored for the match (``ai.chronicles``): what it did not have is new
+    the corpus        the recent chronicles of other matches and each team's previous one (``ai.chronicles``), for the rule of stock
+                      phrases and repetitions (``fbi.chronicle.repetition``, IA-117)
 
 ``claims_for`` joins, for the writer only, PrediGol's own claim of each planned news item (``ai.evidence.claim``, by id AND content hash: an
 item rewritten since is not told).
@@ -31,6 +33,7 @@ from fbi.ai.gates import typed_visible
 from fbi.api.services import reading as reading_service
 from fbi.api.services import story as story_service
 from fbi.chronicle import plan as cp
+from fbi.chronicle import repetition
 
 log = structlog.get_logger(__name__)
 
@@ -142,6 +145,38 @@ def plan_input(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, 
     return replace(first, previous=previous_keys(conn, fixture_id, at, cp.keys(cp.build(first))))
 
 
+RECENT_SQL: Final = """
+SELECT DISTINCT ON (c.fixture_id) c.id, c.metrics
+  FROM ai.chronicles c
+ WHERE c.created_at > %(since)s AND c.created_at <= %(at)s AND c.fixture_id <> %(f)s AND c.status IN ('ok', 'partial')
+   AND c.route <> 'none'
+ ORDER BY c.fixture_id, c.id DESC
+ LIMIT %(limit)s
+"""
+"""The newest chronicle of each OTHER match of the window (``ai_chronicles_created``; a line-up update, ``route = 'none'``, is no new text)."""
+TEAM_SQL: Final = """
+SELECT c.id, c.metrics
+  FROM ai.chronicles c
+ WHERE c.created_at > %(since)s AND c.created_at <= %(at)s AND c.fixture_id <> %(f)s AND c.status IN ('ok', 'partial')
+   AND c.route <> 'none' AND (c.plan->'match'->>'home' = %(team)s OR c.plan->'match'->>'away' = %(team)s)
+ ORDER BY c.created_at DESC, c.id DESC
+ LIMIT 1
+"""
+"""The previous chronicle of one team (by the name its plan carries), in another match."""
+
+
+def repetition_corpus(conn: psycopg.Connection[Any], plan: cp.ContentPlan, *, at: datetime) -> repetition.Corpus:
+    """What ``fbi.chronicle.repetition`` compares a chronicle with: the recent chronicles of other matches and each team's previous one."""
+    since = at - timedelta(days=repetition.WINDOW_DAYS)
+    recent = _rows(conn, RECENT_SQL, {"since": since, "at": at, "f": plan.fixture_id, "limit": repetition.CORPUS_LIMIT})
+    previous: dict[str, Mapping[str, Any]] = {}
+    for side, team in (("home", plan.home), ("away", plan.away)):
+        found = _rows(conn, TEAM_SQL, {"since": since, "at": at, "f": plan.fixture_id, "team": team})
+        if found:
+            previous[side] = found[0]
+    return repetition.corpus_of(recent, previous)
+
+
 def claims_for(conn: psycopg.Connection[Any], plan: cp.ContentPlan) -> dict[str, str]:
     """The claim of each planned news item, by fact id - only when its row still has the content hash the plan saw."""
     news = {int(f.params["evidence_id"]): f for f in plan.planned if f.kind.startswith("news.") and "evidence_id" in f.params}
@@ -155,4 +190,4 @@ def claims_for(conn: psycopg.Connection[Any], plan: cp.ContentPlan) -> dict[str,
     return out
 
 
-__all__ = ["SCENARIOS_MAX_AGE", "claims_for", "figures_of", "news_of", "plan_input", "previous_keys", "scenarios_of"]
+__all__ = ["SCENARIOS_MAX_AGE", "claims_for", "figures_of", "news_of", "plan_input", "previous_keys", "repetition_corpus", "scenarios_of"]

@@ -33,6 +33,8 @@ CONTEXT_MODULES: dict[str, dict[str, str]] = {
         "scripts/ia_scenarios.py": "the command (IA-082): read, compare with stakes-v5, replay (read-only) and the shadow step",
         "chronicle/plan.py": "the single chronicle's plan (IA-103) reads only the name of the fact that a team has no proved objective "
                              "left (FACT_NO_OBJECTIVE), to authorise that class of sentence; it runs nothing of the engine",
+        "chronicle/review_v2.py": "the factual review of the single chronicle (IA-118) reads the same name (FACT_NO_OBJECTIVE) to check "
+                                  "«nothing at stake» against the engine's reading after the match; it runs nothing of the engine",
     },
     "fbi.intel.scenarios": {
         "ai/packet.py": "the packet: what the match alone does to its table and to its tie, as of its moment",

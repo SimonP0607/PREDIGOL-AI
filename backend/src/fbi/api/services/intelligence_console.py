@@ -150,6 +150,12 @@ def _names(values: Iterable[str]) -> str:
     return joined or "ninguno"
 
 
+def _repeat_word(raw: str | None) -> str:
+    """``FBI_CHRONICLE_REPEAT`` as ``fbi.chronicle.repetition.mode`` reads it: shadow by default, on or off only when written."""
+    word = (raw or "shadow").strip().lower()
+    return word if word in ("on", "off") else "shadow"
+
+
 def switch_words(settings: AiSettings, env: Mapping[str, str]) -> dict[str, str]:
     """What each switch of the console reads as, with the code's own parsers. Words only."""
     family = (env.get("FBI_FAMILY_DECISIONS") or "off").strip().lower()
@@ -164,6 +170,9 @@ def switch_words(settings: AiSettings, env: Mapping[str, str]) -> dict[str, str]
         "FBI_AI_LEARNING_ANALYST": _yes(settings.learning_analyst),
         "FBI_AI_ENVELOPES_INDEPENDENT": _yes(settings.envelopes_independent),
         "FBI_CHRONICLE_V4": "shadow" if (env.get("FBI_CHRONICLE_V4") or "").strip().lower() == "shadow" else "off",
+        "FBI_CHRONICLE_LINEUP": "shadow" if (env.get("FBI_CHRONICLE_LINEUP") or "").strip().lower() == "shadow" else "off",
+        "FBI_CHRONICLE_REPEAT": _repeat_word(env.get("FBI_CHRONICLE_REPEAT")),
+        "FBI_CHRONICLE_REVIEW_V2": "shadow" if (env.get("FBI_CHRONICLE_REVIEW_V2") or "").strip().lower() == "shadow" else "off",
         reader_switches.MATCH_INTELLIGENCE: _yes(reader_switches.user_switch(reader_switches.MATCH_INTELLIGENCE, default=False)),
         reader_switches.NEWS_V2: _yes(reader_switches.user_switch(reader_switches.NEWS_V2, default=False)),
         reader_switches.SEARCH: _yes(reader_switches.user_switch(reader_switches.SEARCH, default=False)),
@@ -191,6 +200,12 @@ SPECS: Final[tuple[Spec, ...]] = (
          "conjunto de 190."),
     Spec("FBI_CHRONICLE_V4", "intelligence", "off", "La crónica única (AD-F01/F02): shadow planifica los hechos por código y escribe una "
          "crónica verificada frase por frase en ai.chronicles, tope de US$ 1 al día; ningún lector la ve."),
+    Spec("FBI_CHRONICLE_LINEUP", "intelligence", "off", "La crónica tras la alineación (AD-F03): shadow añade, en cada E3, una versión nueva "
+         "con el párrafo de la alineación y el porqué de cada selección, por plantilla y sin modelo; ningún lector la ve."),
+    Spec("FBI_CHRONICLE_REPEAT", "intelligence", "shadow", "Coletillas y repeticiones (AD-F04): shadow las mide en cada crónica sin quitar "
+         "nada; on las quita como frases sin apoyo (umbral sin firmar); off no mide."),
+    Spec("FBI_CHRONICLE_REVIEW_V2", "intelligence", "off", "La evaluación factual de la crónica única (AD-F06): shadow la juzga tras el "
+         "partido sobre los hechos que cita, en ai.chronicle_reviews; sin modelo ni coste."),
     Spec(reader_switches.MATCH_INTELLIGENCE, "lector", "off", "La pestaña «Intelligence» del partido para lectores (solo lo publicado)."),
     Spec(reader_switches.NEWS_V2, "lector", "off", "Noticias como las maquetas 08-10."),
     Spec(reader_switches.SEARCH, "lector", "off", "La búsqueda global de los lectores."),

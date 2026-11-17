@@ -12,7 +12,7 @@ from typing import Any
 import psycopg
 import structlog
 
-from fbi.chronicle import review
+from fbi.chronicle import review, review_v2
 
 log = structlog.get_logger(__name__)
 
@@ -42,6 +42,36 @@ def run_job(conn: psycopg.Connection[Any], *, at: datetime, commit: bool = True)
                                                      "firm": report.firm, "contradicted": report.contradicted,
                                                      "failed": report.failed, "failures": report.failures[:3],
                                                      "version": review.VERSION})[:NOTES_LIMIT])
+    if commit:
+        conn.commit()
+    return report
+
+
+JOB_V2 = review_v2.JOB
+"""``chronicle-review-v2`` (IA-118): the single chronicle judged on its cited facts, only while ``FBI_CHRONICLE_REVIEW_V2=shadow``."""
+
+
+def run_v2_job(conn: psycopg.Connection[Any], *, at: datetime, commit: bool = True) -> review_v2.RunReport:
+    """One pass of ``chronicle-review-v2``, with its ledger row only when it wrote or failed. Off: nothing is read."""
+    if review_v2.mode() == "off":
+        return review_v2.RunReport()
+    from fbi.ingestion.ledger import RunCounters, RunLedger
+
+    report = review_v2.run(conn, at=at)
+    if commit:
+        conn.commit()
+    if not report.written and not report.failed:
+        return report
+    ledger = RunLedger(conn)
+    run_id = ledger.open(JOB_V2, params={"version": review_v2.VERSION, "metrics": review_v2.METRICS_VERSION, "limit": review_v2.LIMIT})
+    counters = RunCounters()
+    counters.rows_inserted = report.written
+    counters.errors = report.failures[:5]
+    counters.rows_normalized = report.due
+    ledger.close(run_id, counters, notes=json.dumps({"due": report.due, "written": report.written, "waiting": report.waiting,
+                                                     "unsupported": report.unsupported, "firm": report.firm,
+                                                     "contradicted": report.contradicted, "failed": report.failed,
+                                                     "version": review_v2.VERSION})[:NOTES_LIMIT])
     if commit:
         conn.commit()
     return report

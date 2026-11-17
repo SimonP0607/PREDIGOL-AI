@@ -488,6 +488,157 @@
      "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
      "no validada (PENDIENTE POR DEPENDENCIAS)"
     ]
+   },
+   {
+    "key": "chronicle_update",
+    "piece": "AD-F03",
+    "title": "Crónica tras la alineación y porqué de cada selección",
+    "description": "Cuando llega la alineación oficial (E3), una versión nueva de la crónica con un párrafo por plantilla y el porqué de cada selección desde decision-v2 y las frases de la crónica; sin modelo ni coste, nadie la lee.",
+    "switch": "FBI_CHRONICLE_LINEUP",
+    "components": [
+     "lineup-update-v1",
+     "selection-why-v1"
+    ],
+    "catalog_version": 1,
+    "registered_at": "2026-11-17T00:00:00+00:00",
+    "state": "construida",
+    "since": "2026-11-17T00:00:00+00:00",
+    "decided_by": "system",
+    "signed_by_owner": false,
+    "reason": "Registro de una capacidad nueva al desplegarse su código: construida, sin veredictos todavía.",
+    "observed": {},
+    "safety": {
+     "verdict": "PENDIENTE POR ACCIONES MANUALES",
+     "evidence": {}
+    },
+    "validation": {
+     "verdict": "PENDIENTE POR DEPENDENCIAS",
+     "sample": null,
+     "evidence": {}
+    },
+    "transitions": 1,
+    "live": {
+     "safety_gates": [],
+     "validation_gates": [],
+     "agent_runs_7d": {}
+    },
+    "warnings": [
+     "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+     "no validada (PENDIENTE POR DEPENDENCIAS)"
+    ]
+   },
+   {
+    "key": "chronicle_repetition",
+    "piece": "AD-F04",
+    "title": "Coletillas y repeticiones de la crónica (repeat-check-v1)",
+    "description": "Mide en cada crónica las frases de plantilla y las repetidas respecto de la crónica anterior del mismo equipo; en sombra solo mide, con on las elimina como frases sin apoyo. Sin modelo.",
+    "switch": "FBI_CHRONICLE_REPEAT",
+    "components": [
+     "repeat-check-v1"
+    ],
+    "catalog_version": 1,
+    "registered_at": "2026-11-17T00:00:00+00:00",
+    "state": "construida",
+    "since": "2026-11-17T00:00:00+00:00",
+    "decided_by": "system",
+    "signed_by_owner": false,
+    "reason": "Registro de una capacidad nueva al desplegarse su código: construida, sin veredictos todavía.",
+    "observed": {},
+    "safety": {
+     "verdict": "PENDIENTE POR ACCIONES MANUALES",
+     "evidence": {}
+    },
+    "validation": {
+     "verdict": "PENDIENTE POR DEPENDENCIAS",
+     "sample": null,
+     "evidence": {}
+    },
+    "transitions": 1,
+    "live": {
+     "safety_gates": [],
+     "validation_gates": [],
+     "agent_runs_7d": {}
+    },
+    "warnings": [
+     "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+     "no validada (PENDIENTE POR DEPENDENCIAS)"
+    ]
+   },
+   {
+    "key": "chronicle_factcheck",
+    "piece": "AD-F06",
+    "title": "Evaluación factual de la crónica única (chronicle-review-v2)",
+    "description": "Juzga cada crónica única tras el partido sobre los hechos que cita, con sus métricas (chronicle-metrics-v1), el banco de partidos trampa en CI y el protocolo de muestreo humano (sin firmar).",
+    "switch": "FBI_CHRONICLE_REVIEW_V2",
+    "components": [
+     "chronicle-review-v2",
+     "chronicle-metrics-v1",
+     "chronicle-protocol-v1"
+    ],
+    "catalog_version": 1,
+    "registered_at": "2026-11-17T00:00:00+00:00",
+    "state": "construida",
+    "since": "2026-11-17T00:00:00+00:00",
+    "decided_by": "system",
+    "signed_by_owner": false,
+    "reason": "Registro de una capacidad nueva al desplegarse su código: construida, sin veredictos todavía.",
+    "observed": {},
+    "safety": {
+     "verdict": "PENDIENTE POR ACCIONES MANUALES",
+     "evidence": {}
+    },
+    "validation": {
+     "verdict": "PENDIENTE POR DEPENDENCIAS",
+     "sample": null,
+     "evidence": {}
+    },
+    "transitions": 1,
+    "live": {
+     "safety_gates": [],
+     "validation_gates": [],
+     "agent_runs_7d": {}
+    },
+    "warnings": [
+     "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+     "no validada (PENDIENTE POR DEPENDENCIAS)"
+    ]
+   },
+   {
+    "key": "chronicle_retirement",
+    "piece": "AD-F05",
+    "title": "Retirada segura de los textos duplicados (retire-compare-v1)",
+    "description": "Comparación preregistrada de la crónica única con user-narrative-v3, brief-v8 y las tarjetas de análisis; no apaga nada: cada retirada es un interruptor que cambia y firma el dueño.",
+    "switch": null,
+    "components": [
+     "retire-compare-v1"
+    ],
+    "catalog_version": 1,
+    "registered_at": "2026-11-17T00:00:00+00:00",
+    "state": "construida",
+    "since": "2026-11-17T00:00:00+00:00",
+    "decided_by": "system",
+    "signed_by_owner": false,
+    "reason": "Registro de una capacidad nueva al desplegarse su código: construida, sin veredictos todavía.",
+    "observed": {},
+    "safety": {
+     "verdict": "PENDIENTE POR ACCIONES MANUALES",
+     "evidence": {}
+    },
+    "validation": {
+     "verdict": "PENDIENTE POR DEPENDENCIAS",
+     "sample": null,
+     "evidence": {}
+    },
+    "transitions": 1,
+    "live": {
+     "safety_gates": [],
+     "validation_gates": [],
+     "agent_runs_7d": {}
+    },
+    "warnings": [
+     "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+     "no validada (PENDIENTE POR DEPENDENCIAS)"
+    ]
    }
   ],
   "note": "El registro anota y no decide: ningún interruptor, gate, agente, pick ni lector lo lee. «autorizada» es la firma del dueño; encender algo para lectores sigue siendo su cambio de interruptor."
@@ -496,7 +647,7 @@
  "meta": {
   "generated_at": "2026-11-16T21:00:00Z",
   "api_version": "v1",
-  "count": 8,
+  "count": 12,
   "total": null,
   "limit": null,
   "offset": null,
