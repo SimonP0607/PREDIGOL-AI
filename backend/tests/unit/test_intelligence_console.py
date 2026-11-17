@@ -167,8 +167,9 @@ def test_costs_are_the_envelopes_of_decision_12_and_the_caps() -> None:
     replay = next(c for c in costs.capabilities if c.key == "replay_regression")
     assert replay.alert == "95" and replay.spent_usd == "2.85"
     assert all(d.fits for d in costs.declared)
-    assert costs.joint_ceiling.usd == "190.00" and costs.joint_ceiling.applies and costs.joint_ceiling.pending_owner
-    assert not svc.costs_of(costs_v3.Month(date(2026, 11, 1), figures, []), settings(envelopes_independent=True)).joint_ceiling.applies
+    assert costs.joint_ceiling.usd == "190.00" and not costs.joint_ceiling.applies and not costs.joint_ceiling.pending_owner, (
+        "IA-141: the envelopes replace the joint ceiling")
+    assert svc.costs_of(costs_v3.Month(date(2026, 11, 1), figures, []), settings(envelopes_independent=False)).joint_ceiling.applies
 
 
 def test_the_gates_are_the_panels_with_their_real_verdict() -> None:

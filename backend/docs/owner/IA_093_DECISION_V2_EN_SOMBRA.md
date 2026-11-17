@@ -16,6 +16,8 @@ Un trabajo del worker, `decision_v2_shadow`, que **nace apagado** (`FBI_DECISION
 
 **Nota sobre E4.** La ficha dice T-5. Pero por debajo de 10 minutos la etapa de datos rechaza todo («menos de 10 min al saque»): es el umbral de `decision-v1` (`MIN_MINUTES`), que el motor importa y **no se baja**. Una fila a T-5 solo diría eso. Por eso E4 se guarda en el último momento en que el motor todavía juzga: de T-20 a T-10. Si se quiere E4 a T-5 hay que decidir antes qué hacer con esa regla.
 
+**Actualización 17-nov-2026 (IA-142, decisión del dueño).** El E4 del ciclo de evaluaciones pasa a T-5, pero **no decide**: juzga con la última decisión guardada de `decision-v2` (la de este disparador E4, de T-20 a T-10) y con el precio leído otra vez. La ventana de este disparador **no cambia** y la regla de 10 min tampoco. El espejo de `decision-v1` no tiene nada que copiar a T-5 (`decision-v1` no decide por debajo de su umbral) y el E4 del ciclo nunca adopta un momento guardado por debajo de él. Ver `IA_140_DECISIONES_DUENO_20261117.md`.
+
 **Cómo decide.** Con la **misma función** que la repetición (`replay.decide_at`), así que una decisión guardada **es** la decisión de la repetición de ese momento. Configuración única por ahora (`decision-v2.1|book|common|forecast-v2|core`):
 
 - **cifra única** `forecast-v2` (IA-083): la probabilidad de cada mercado de goles con su sello (calibrada o «sin calibrar» con su motivo);

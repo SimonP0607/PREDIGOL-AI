@@ -242,16 +242,19 @@ def test_the_analysts_cap_counts_production_only_under_v3(db: psycopg.Connection
     assert analyst_budget.spent_this_month(db, at=NOW) == D(72) + 62
 
 
-def test_the_lab_runs_a_day_whole_within_what_production_leaves_it(db: psycopg.Connection[Any]) -> None:
+def test_the_lab_runs_a_day_whole_within_its_own_envelope(db: psycopg.Connection[Any]) -> None:
     month(db, unit="0.50")
     lab = budget_v3.lab_day(db, at=NOW, settings=settings())
-    # production projects 155 at dawn; the joint ceiling 190 leaves 35 of the LAB's 55
-    assert lab.allocation == D(35) and lab.allowed and lab.can_spend and lab.reason == "ok" and lab.remaining == D(35)
+    # IA-141: production projects 155 at dawn and the LAB keeps its whole 55 (the envelopes replace the joint ceiling)
+    assert lab.allocation == D(55) and lab.allowed and lab.can_spend and lab.reason == "ok" and lab.remaining == D(55)
+    back = budget_v3.lab_day(db, at=NOW, settings=settings(envelopes_independent=False))
+    assert back.allocation == D(35), "switched back, the joint ceiling 190 leaves 35 of the LAB's 55, as before"
+    assert budget_v3.lab_day(db, at=NOW, settings=settings(lab_monthly_budget=D(90))).allocation == D(55), "never above the owner's 55"
     spend(db, NOW - timedelta(days=2), "3.00", workspace="PREDIGOL-LAB")
-    spend(db, NOW - timedelta(days=1), "30.00", workspace="PREDIGOL-LAB")
+    spend(db, NOW - timedelta(days=1), "50.00", workspace="PREDIGOL-LAB")
     typical = budget_v3.lab_day(db, at=NOW, settings=settings())
-    assert typical.typical_day == D("16.5") and not typical.allowed and typical.reason == "allocation_spent", \
-        "2 left of the allocation cannot cover a typical day of 16.50: the LAB does not start a day it cannot finish"
+    assert typical.typical_day == D("26.5") and not typical.allowed and typical.reason == "allocation_spent", \
+        "2 left of the envelope cannot cover a typical day of 26.50: the LAB does not start a day it cannot finish"
     assert typical.remaining == D(2) and not typical.can_spend
 
 
@@ -260,13 +263,15 @@ def test_the_labs_verdict_holds_the_whole_day_even_as_production_spends(db: psyc
     morning = budget_v3.lab_day(db, at=NOW - timedelta(hours=11), settings=settings())
     spend(db, NOW - timedelta(hours=2), "4.00")
     evening = budget_v3.lab_day(db, at=NOW + timedelta(hours=6), settings=settings())
-    assert (morning.allowed, morning.allocation) == (evening.allowed, evening.allocation) == (True, D(35))
+    assert (morning.allowed, morning.allocation) == (evening.allowed, evening.allocation) == (True, D(55))
 
 
-def test_the_lab_yields_to_production_in_a_heavy_month_and_never_changes_its_model(db: psycopg.Connection[Any]) -> None:
+def test_the_lab_no_longer_yields_to_production_in_a_heavy_month_unless_switched_back(db: psycopg.Connection[Any]) -> None:
     month(db, unit="1.00", spent_today="4.00")
     lab = budget_v3.lab_day(db, at=NOW, settings=settings())
-    assert lab.allocation == 0 and not lab.allowed and lab.reason == "yields_to_production"
+    assert lab.allocation == D(55) and lab.allowed and lab.reason == "ok", "IA-141: the LAB is governed by its own envelope"
+    back = budget_v3.lab_day(db, at=NOW, settings=settings(envelopes_independent=False))
+    assert back.allocation == 0 and not back.allowed and back.reason == "yields_to_production"
 
 
 def test_a_lab_without_an_envelope_or_with_a_spent_limit_does_not_run(db: psycopg.Connection[Any]) -> None:

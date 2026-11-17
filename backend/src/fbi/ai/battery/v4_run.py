@@ -1,6 +1,6 @@
 """``battery-v4`` in the LAB (IA-065, plan piece AD-A03): the owner's signature of the protocol, the asks, their collection and the row of the gate.
 
-    sign     THE OWNER'S ACTION: the protocol ``AD-A03`` with the ceiling of invalid answers the owner chooses (0 % by default, at most 3 %) as a row
+    sign     THE OWNER'S ACTION: the protocol ``AD-A03`` with the ceiling of invalid answers the owner decided (0 %, IA-140, 17-nov-2026) as a row
              of ``ai.feature_gates`` (``battery``, ``decided_by = 'owner'``, ``passed = false``, ``kind = 'protocol-signature'``). Without
              ``confirm_owner``: a preview, nothing written. Nobody else signs: no code path writes it but this one, and only when asked so.
     plan     what a measurement would ask and cost (by the prices measured on 15-nov-2026 and by the queue's own estimate), and whether the LAB can pay
@@ -78,6 +78,9 @@ class Signature:
     def problems(self) -> list[str]:
         """Why this signature does not cover the battery in force - or nothing."""
         out = []
+        if self.params.invalid_max != v4.OWNER_INVALID_MAX:
+            out.append(f"the signature allows {self.params.invalid_max:.1%} of invalid answers; the owner decided "
+                       f"{v4.OWNER_INVALID_MAX:.0%} on {v4.OWNER_INVALID_MAX_DECISION['decided_on']} (IA-140)")
         if self.protocol_fingerprint != protocol.fingerprint(protocol.require(v4.PROTOCOL_KEY)):
             out.append("the protocol AD-A03 is not the one that was signed")
         if self.corpus_hash != v4.corpus_hash():
@@ -92,6 +95,7 @@ class Signature:
 def signature_evidence(params: v4.Params, *, reason: str) -> dict[str, Any]:
     return {"kind": SIGNATURE_KIND, "battery": v4.VERSION, "protocol": protocol.stamp(v4.PROTOCOL_KEY), "params": params.as_json(),
             "params_fingerprint": params.fingerprint(), "corpus_hash": v4.corpus_hash(), "reason": reason.strip()[:500],
+            "owner_decision": dict(v4.OWNER_INVALID_MAX_DECISION),
             "note": "firma del dueño del protocolo de battery-v4: no es una medición; la fila 18 (battery-v3) no cambia"}
 
 
@@ -111,6 +115,9 @@ def sign(conn: psycopg.Connection[Any], *, invalid_max: float, reason: str | Non
         params = v4.Params(invalid_max=invalid_max)
     except ValueError as exc:
         return {"error": f"{exc} (nothing was written)"}
+    if params.invalid_max != v4.OWNER_INVALID_MAX:
+        return {"error": f"invalid_max {params.invalid_max} is not the owner's decision: {v4.OWNER_INVALID_MAX:.0%} of invalid answers "
+                         f"(IA-140, {v4.OWNER_INVALID_MAX_DECISION['decided_on']}); sign with --invalid-max 0 (nothing was written)"}
     if not reason or not reason.strip():
         return {"error": "sign needs --reason \"...\" (nothing was written)"}
     evidence = signature_evidence(params, reason=reason)

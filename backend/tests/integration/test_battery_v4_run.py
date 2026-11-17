@@ -48,14 +48,31 @@ def test_the_signature_is_the_owners_and_nothing_is_written_without_it(db: psyco
     assert v4_run.sign(conn, invalid_max=0.05, reason="x", confirm_owner=True, at=AT)["error"].startswith("invalid_max must be")
     assert v4_run.sign(conn, invalid_max=0.0, reason=" ", confirm_owner=True, at=AT)["error"].startswith("sign needs --reason")
     assert battery_rows(db) == before and v4_run.signature(conn) is None
-    signed = v4_run.sign(conn, invalid_max=0.03, reason="el dueño firma el 3 %", confirm_owner=True, at=AT)
+    refused = v4_run.sign(conn, invalid_max=0.03, reason="el 3 %", confirm_owner=True, at=AT)["error"]
+    assert "not the owner's decision" in refused and "IA-140" in refused, "the owner decided 0 % on 17-nov-2026: 3 % is not signed"
+    assert battery_rows(db) == before
+    signed = v4_run.sign(conn, invalid_max=0.0, reason="el dueño firma el 0 % (IA-140)", confirm_owner=True, at=AT)
     rows = battery_rows(db)
     assert rows[:-1] == before, "the rows of battery-v3 are as they were"
     row_id, passed, decided_by, evidence = rows[-1]
     assert row_id == signed["written"] and passed is False and decided_by == "owner"
-    assert evidence["kind"] == "protocol-signature" and evidence["params"]["invalid_max"] == 0.03
+    assert evidence["kind"] == "protocol-signature" and evidence["params"]["invalid_max"] == 0.0
+    assert evidence["owner_decision"] == {"code": "IA-140", "piece": "AD-A03", "decided_on": "2026-11-17", "by": "owner",
+                                          "invalid_max": 0.0, "version": "invalid-max-v1"}
     sig = v4_run.signature(conn)
-    assert sig is not None and sig.params.invalid_max == 0.03 and sig.problems() == []
+    assert sig is not None and sig.params.invalid_max == 0.0 and sig.problems() == []
+
+
+def test_a_signature_with_another_ceiling_does_not_cover_the_battery(db: psycopg.Connection[Any], conn: Any) -> None:
+    """A row signed with 3 % before the owner's decision (none exists: the protocol was never signed) would stop every round."""
+    evidence = v4_run.signature_evidence(v4.Params(invalid_max=0.03), reason="antes de IA-140")
+    gates.record_gate(db, gate="battery", passed=False, evidence=evidence, at=AT, decided_by="owner")
+    sig = v4_run.signature(conn)
+    assert sig is not None
+    assert any("the owner decided 0%" in p and "IA-140" in p for p in sig.problems()), sig.problems()
+    out = v4_run.submit(conn, cfg(), at=AT, targets=["deep"], ledger=UsageLedger(shared(db)), client=FakeBatches(faithful, name="anthropic"))
+    assert out["submitted"] == 0 and any("IA-140" in b for b in out["blockers"])
+    assert v4_run.collect(conn, cfg(), at=AT)["state"] == "unsigned"
 
 
 def test_a_round_is_refused_without_a_signature_and_above_the_ceiling(db: psycopg.Connection[Any], conn: Any) -> None:

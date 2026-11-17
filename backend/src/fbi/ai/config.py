@@ -17,10 +17,12 @@ from a request, never sent to a client.
     FBI_AI_LAB_MONTHLY_BUDGET_USD   default 0 (no LAB call is made) - the LAB workspace's internal envelope:
                                 15 in phases 0-2, 55 in phases 3-8, 15 from phase 9
     FBI_AI_EXA_MONTHLY_BUDGET_USD   default 35 - Exa's own envelope, outside Claude's
-    FBI_AI_JOINT_CEILING_USD    default 190 - production + LAB never plan to spend more than this together
-    FBI_AI_ENVELOPES_INDEPENDENT    off (default) | on - IA-058, prepared and NOT in use: on, the LAB gets its own envelope whole
-                                and the joint ceiling no longer cuts it. The owner has not confirmed that the envelopes of
-                                decision 12 (185 / 35 / 55) replace the joint ceiling: until then it stays off
+    FBI_AI_JOINT_CEILING_USD    default 190 - production + LAB together, applied ONLY with FBI_AI_ENVELOPES_INDEPENDENT=off (the
+                                owner replaced it with the envelopes on 17-nov-2026, IA-141)
+    FBI_AI_ENVELOPES_INDEPENDENT    on (default since IA-141) | off - on, the envelopes of decision 12 (185 / 35 / 55) replace
+                                the joint ceiling and the LAB gets its own envelope whole (never above 55); off is the way back:
+                                the LAB yields again to the joint ceiling after production's projection. Only ``0``, ``off``,
+                                ``false`` or ``no`` turn it off
     FBI_AI_RESERVE_USD          default 10 - kept for production only; released in the last 5 days of the month
     FBI_AI_KEY_ANTHROPIC_LAB    the LAB workspace's key (``worker-lab``); the production key stays FBI_AI_KEY_ANTHROPIC
     FBI_AI_WORKSPACE / FBI_AI_WORKSPACE_LAB / FBI_AI_KEY_LABEL / FBI_AI_KEY_LABEL_LAB
@@ -253,6 +255,12 @@ def _on(raw: str | None) -> bool:
     return (raw or "").strip().lower() in ("1", "on", "true", "yes")
 
 
+def _not_off(raw: str | None) -> bool:
+    """A word that is off only when it says so (``0``, ``off``, ``false``, ``no``): for a switch whose default is the owner's decision
+    (``FBI_AI_ENVELOPES_INDEPENDENT``, IA-141), so that only a deliberate word brings the old behaviour back."""
+    return (raw or "").strip().lower() not in ("0", "off", "false", "no")
+
+
 def _switch(raw: str | None) -> Switch:
     value = (raw or "").strip().lower()
     if value in ("0", "off", "false", "no"):
@@ -344,9 +352,9 @@ class AiSettings:
     exa_monthly_budget: Decimal = Decimal("35")
     joint_ceiling: Decimal = Decimal("190")
     """Production + LAB, never planned above it."""
-    envelopes_independent: bool = False
-    """IA-058: the LAB's envelope no longer yields to the joint ceiling (``FBI_AI_ENVELOPES_INDEPENDENT``). Off until the owner
-    confirms that the envelopes of decision 12 replace the joint ceiling: off, nothing changes."""
+    envelopes_independent: bool = True
+    """IA-141 (the owner, 17-nov-2026): the envelopes of decision 12 replace the joint ceiling, so the LAB's envelope no longer yields to
+    it (``FBI_AI_ENVELOPES_INDEPENDENT``, on by default). Off is the way back to the joint ceiling (IA-058's behaviour)."""
     reserve: Decimal = Decimal("10")
     """Kept for production only (released in the last five days of the month)."""
     batch_min_lead_minutes: int = 240
@@ -434,7 +442,7 @@ class AiSettings:
             lab_monthly_budget=_decimal("FBI_AI_LAB_MONTHLY_BUDGET_USD", "0", env),
             exa_monthly_budget=_decimal("FBI_AI_EXA_MONTHLY_BUDGET_USD", "35", env),
             joint_ceiling=_decimal("FBI_AI_JOINT_CEILING_USD", "190", env),
-            envelopes_independent=_on(env.get("FBI_AI_ENVELOPES_INDEPENDENT")),
+            envelopes_independent=_not_off(env.get("FBI_AI_ENVELOPES_INDEPENDENT")),
             reserve=_decimal("FBI_AI_RESERVE_USD", "10", env),
             batch_min_lead_minutes=max(30, _int("FBI_AI_BATCH_MIN_LEAD_MINUTES", 240, env)),
             package=(env.get("FBI_AI_PACKAGE") or "1").strip().lower() not in ("0", "off", "false", "no"),

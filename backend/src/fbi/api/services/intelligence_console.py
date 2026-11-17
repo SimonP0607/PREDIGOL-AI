@@ -196,8 +196,8 @@ SPECS: Final[tuple[Spec, ...]] = (
     Spec("FBI_AI_PM_REVIEWER", "intelligence", "off", "La revisión mecánica de los post-mortems y la atribución (attr-v1).", "pm_reviewer"),
     Spec("FBI_AI_LEARNING_ANALYST", "intelligence", "off", "El analista de aprendizaje semanal: propone, nunca aplica.",
          "learning_analyst"),
-    Spec("FBI_AI_ENVELOPES_INDEPENDENT", "intelligence", "off", "Preparado y sin usar (IA-058): encendido, el LAB deja de ceder ante el techo "
-         "conjunto de 190."),
+    Spec("FBI_AI_ENVELOPES_INDEPENDENT", "intelligence", "on", "Decisión del dueño del 17-nov-2026 (IA-141): los sobres 185 / 55 / 35 "
+         "sustituyen al techo conjunto de 190 y el LAB no cede ante producción; off es la vuelta atrás al techo conjunto."),
     Spec("FBI_CHRONICLE_V4", "intelligence", "off", "La crónica única (AD-F01/F02): shadow planifica los hechos por código y escribe una "
          "crónica verificada frase por frase en ai.chronicles, tope de US$ 1 al día; ningún lector la ve."),
     Spec("FBI_CHRONICLE_LINEUP", "intelligence", "off", "La crónica tras la alineación (AD-F03): shadow añade, en cada E3, una versión nueva "

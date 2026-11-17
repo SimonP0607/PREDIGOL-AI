@@ -34,7 +34,8 @@ def finding(code: str, *, candidates: tuple[str, ...] = ("c1",), **kw: Any) -> C
 # -- the moment -------------------------------------------------------------------------------------------------------------------------
 
 def test_the_windows_are_the_cycles_own() -> None:
-    assert (readers.E1_FROM, readers.E1_UNTIL, readers.E4_FROM) == (clock.E1_FROM, clock.E1_UNTIL, clock.E4_FROM)
+    assert (readers.E1_FROM, readers.E1_UNTIL, readers.E4_FROM) == (clock.E1_FROM, clock.E1_UNTIL, clock.DECIDE_FROM), (
+        "the readers stop at the opening of decision-v2's last decision (T-20), where E4 opened before IA-142")
     assert readers.VERSION == "readers-v1" and readers.READERS == ("match", "stats", "player")
     assert readers.CONTRACTS == {"match": "aa-v1", "stats": "aa-v1", "player": "pa-v1"}
     assert (match.VERSION, stats.VERSION, player.VERSION) == ("match-v6", "stats-v5", "player-v2")

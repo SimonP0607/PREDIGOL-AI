@@ -108,8 +108,9 @@ NO_SENTENCE: Final = "SIN_FRASES_VERIFICADAS"
 
 E1_FROM: Final = timedelta(hours=24)
 E1_UNTIL: Final = timedelta(hours=12)
-E4_FROM: Final = timedelta(minutes=20)
-"""The windows of the evaluation cycle (``fbi.evalcycle.clock``; a test holds them equal - the API does not import the cycle)."""
+E4_FROM: Final = timedelta(minutes=5)
+"""The windows of the evaluation cycle (``fbi.evalcycle.clock``; a test holds them equal - the API does not import the cycle). E4 at T-5
+since the owner's decision of 17-nov-2026 (IA-142)."""
 
 NO_DATA: Final = mi.NO_DATA
 KEPT: Final = mi.KEPT_FROM_READERS

@@ -25,9 +25,11 @@ Fecha: 16 nov 2026. Pieza AD-A06 del plan de la arquitectura definitiva 2026. Ca
 
 Los topes de producción suman 46,90 de 185; los del LAB, 12,93 de 55 (con `news_text_shadow`, IA-101); los de Exa, 9 de 35. Una prueba comprueba que siempre caben en su sobre. Una llamada solo cuenta para una capacidad de su propio sobre: una `battery-v4` pagada con la clave de producción no carga la batería del LAB.
 
+> **Actualización 17-nov-2026 (IA-141, decisión del dueño).** Los sobres 185 / 55 / 35 **sustituyen al techo conjunto de 190**, que deja de aplicarse: el LAB ya no cede ante la proyección de producción y se rige por su sobre de 55; ningún sobre aplicado sube de su cifra. Lo que dicen los apartados 2, 4 y 6 sobre el techo conjunto es el estado hasta esa fecha. Ver `IA_140_DECISIONES_DUENO_20261117.md`.
+
 ## 2. Qué no cambia
 
-* **El techo conjunto de US$ 190 sigue vigente.** El LAB sigue cediendo lo que pase de 190 menos la proyección de producción, como antes. El panel lo dice con todas las letras: «techo conjunto 190 vigente; pendiente de confirmación del dueño», con lo que recibe hoy el LAB y lo que recibiría con sobres independientes.
+* **El techo conjunto de US$ 190 sigue vigente** (hasta el 17-nov-2026; desde IA-141 ya no). El LAB sigue cediendo lo que pase de 190 menos la proyección de producción, como antes. El panel lo dice con todas las letras: «techo conjunto 190 vigente; pendiente de confirmación del dueño», con lo que recibe hoy el LAB y lo que recibiría con sobres independientes.
 * **El control del gasto se queda como estaba.** El estado del presupuesto (NORMAL, AJUSTE…), la proyección, el reparto por día y los cortes siguen contando solo `ai.usage`, como hasta ahora. La crónica de lectores tiene su propio tope (`FBI_AI_USER_MONTHLY_BUDGET_USD`) y lo conserva. El panel lo indica con `control_counts: intelligence`.
 * **El precio de Exa no cambia.** El código cobra US$ 0,015 por búsqueda (`fbi.ai.pricing`: 7 por la búsqueda más 1 por cada 1.000 páginas, contando el texto de 8 resultados). La página de Exa (exa.ai/docs/changelog, consultada el 16-nov-2026) dice US$ 7 por 1.000 búsquedas, con el texto de 10 resultados incluido, es decir, 0,007. El panel enseña las dos cifras, el mes a cada precio y la diferencia, marcada **«sin verificar hasta la factura»**. Solo una factura de Exa decide cuál vale; el código no lee facturas.
 * Agentes, prompts, motores, modelos, umbrales, picks, `decision-v1` y la web quedan igual. No hay tablas nuevas ni se escribe nada nuevo en la base de datos.
@@ -44,7 +46,7 @@ Los topes de producción suman 46,90 de 185; los del LAB, 12,93 de 55 (con `news
 * Exa a 0,007 habría costado 6,58 en el mes, 7,52 menos que lo anotado. Esto sigue sin verificar.
 * De las capacidades nuevas, solo `replay_regression` tiene gasto: 2,93 de 2,93 (la pasada del banco del 15-nov). En cuanto se despliegue saldrán sus avisos del 80 % y del 95 %. Es lo esperado: la pasada del mes ya está hecha.
 
-## 4. Cómo se pasa a sobres independientes (cuando el dueño lo confirme)
+## 4. Cómo se pasa a sobres independientes (hecho en el código con IA-141, 17-nov-2026)
 
 1. En `/etc/predigol/app.env`, `FBI_AI_ENVELOPES_INDEPENDENT=on`, y reiniciar el trabajador. Con eso, el LAB recibe su sobre entero sin depender de lo que proyecte producción.
 2. Cambiar `JOINT_CEILING_PENDING` a `False` en `fbi.ai.budget_v3` (un PR) para que el panel deje de decir «pendiente».
@@ -59,7 +61,7 @@ Los topes de producción suman 46,90 de 185; los del LAB, 12,93 de 55 (con `news
 ## 6. Lo que queda pendiente
 
 * **Factura de Exa** (dueño): con ella, confirmar 0,015 o 0,007 y, si toca, cambiar `SEARCH_PRICES['exa']` y `EXA_PRICE_VERIFIED_BY_INVOICE` en un PR.
-* **Confirmar si los sobres sustituyen al techo de 190** (dueño).
+* ~~**Confirmar si los sobres sustituyen al techo de 190** (dueño).~~ Confirmado el 17-nov-2026 (IA-141).
 * **Avisos del 80 % fuera del panel** (opcional). Hoy solo aparecen al abrir el panel, porque las tablas de avisos solo admiten 50, 70, 85, 95 y 100 y el ciclo no puede leer el libro de los lectores. Avisar sin abrir el panel pediría dos cosas:
   - una migración que amplíe esa lista en `ai.envelope_alerts` y añada el tipo `capability` (no está hecha);
   - una tarea fuera del ciclo de Intelligence que la escriba, o una excepción explícita a la regla A11.

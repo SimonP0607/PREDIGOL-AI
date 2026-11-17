@@ -1,4 +1,6 @@
-"""The cost alerts of the AI layer (``cost-alerts-v1``, Plan Maestro IA, P3: the observability rail).
+"""The cost alerts of the AI layer (``cost-alerts-v2``, Plan Maestro IA, P3: the observability rail). v2 (IA-141, 17-nov-2026): the
+production + LAB projection against the joint ceiling is watched only while the joint ceiling applies (``FBI_AI_ENVELOPES_INDEPENDENT=off``);
+the owner replaced it with the envelopes. v1 watched it always; nothing else changed.
 
 REPORT ONLY. This module reads the ledger the AI already writes and says OK / WATCH / ALERT with its evidence. It writes nothing - not even
 ``ai.budget_alerts`` or ``ai.envelope_alerts``, which ``fbi.ai.budget_v3.check_alerts`` owns - and nothing it says degrades, stops or
@@ -24,7 +26,8 @@ PRODUCTION AS A WHOLE:
                               nothing and breaks the streak
     envelope_projection       production's month projected by ``budget_v3.forecast`` (as of the day's end) against
                               ``FBI_AI_MONTHLY_BUDGET_USD``; the LAB's month (spent + its typical day, ``budget_v3.lab_day``, for each day
-                              left) against its allocation; both together against the joint ceiling. ``PROJECTION_WATCH`` % -> WATCH,
+                              left) against its allocation; both together against the joint ceiling only while it applies (v2).
+                              ``PROJECTION_WATCH`` % -> WATCH,
                               ``PROJECTION_ALERT`` % -> ALERT (the thresholds of ``budget_v3.PROJECTION_ALERTS``)
 
 MINIMUMS (engineering choices of this module, not the plan's): a baseline needs ``MIN_BASELINE_DAYS`` days with matches, and a day
@@ -47,7 +50,7 @@ from fbi.ai import budget_v3, eval_bench, gate_a
 from fbi.ai.calendar import day_start, days_left_in_month
 from fbi.ai.config import AiSettings
 
-VERSION: Final = "cost-alerts-v1"
+VERSION: Final = "cost-alerts-v2"
 
 OK: Final = "OK"
 WATCH: Final = "WATCH"
@@ -242,7 +245,7 @@ class CostReport:
 
 
 def report(conn: psycopg.Connection[Any], *, day: date, at: datetime, settings: AiSettings) -> CostReport:
-    """cost-alerts-v1 for the Bogotá day ``day`` as of ``at`` (the day's end, or now if the day is not over). Reads only."""
+    """cost-alerts-v2 for the Bogotá day ``day`` as of ``at`` (the day's end, or now if the day is not over). Reads only."""
     first = day - timedelta(days=BASELINE_DAYS)
     since, until = day_start(first), min(day_start(day + timedelta(days=1)), at)
     bench = eval_bench.report(conn, first=first, last=day, at=at)
@@ -273,7 +276,8 @@ def report(conn: psycopg.Connection[Any], *, day: date, at: datetime, settings: 
     lab_projected = lab_projection(spent_month=lab.spent_month, typical_day=lab.typical_day, day=day)
     findings.append(envelope("LAB month", projected=lab_projected, cap=lab.allocation,
                              evidence={"lab": lab.as_json(), "envelope_usd": _usd(settings.lab_monthly_budget)}))
-    findings.append(envelope("production + LAB month (joint ceiling)", projected=prod.projected + lab_projected,
-                             cap=settings.joint_ceiling, evidence={"production_projected_usd": _usd(prod.projected),
-                                                                   "lab_projected_usd": _usd(lab_projected)}))
+    if not settings.envelopes_independent:  # IA-141: the envelopes replace the joint ceiling; it is watched only when switched back
+        findings.append(envelope("production + LAB month (joint ceiling)", projected=prod.projected + lab_projected,
+                                 cap=settings.joint_ceiling, evidence={"production_projected_usd": _usd(prod.projected),
+                                                                       "lab_projected_usd": _usd(lab_projected)}))
     return CostReport(day, at, tuple(findings), tuple(adays))

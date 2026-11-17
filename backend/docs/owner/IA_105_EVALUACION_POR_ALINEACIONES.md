@@ -20,11 +20,16 @@ Hoy el pase `final` espera la alineación solo hasta 50 minutos antes del saque:
 | Evaluación | Cuándo | Qué hace |
 | --- | --- | --- |
 | **E1** | una vez, de 24 a 12 h antes del saque | `decision-v2` decide; se lee la titularidad estimada (IA-094) y se calcula la **dependencia** de cada selección (IA-108). Una selección que depende de la alineación queda **«Pendiente de alineaciones»**, nunca confirmada a ciegas |
-| **E2** | por cada hecho nuevo del partido (`ai.evidence`), entre E1 y la apertura de E4 | si el hecho toca una variable del modelo (bajas, dudas, sanciones, alineación) o nombra a un jugador del que depende una selección, se **recalcula**; si no, solo se **anota**. Un mismo hecho nunca dispara dos E2 (una clave única en la base) |
+| **E2** | por cada hecho nuevo del partido (`ai.evidence`), entre E1 y la apertura de E4 (T-5) | si el hecho toca una variable del modelo (bajas, dudas, sanciones, alineación) o nombra a un jugador del que depende una selección, se **recalcula**; si no, solo se **anota**. Un mismo hecho nunca dispara dos E2 (una clave única en la base) |
 | **E3** | al llegar la alineación oficial (llegadas de IA-069, o la hoja guardada), solo código, en menos de 2 min | §3 |
-| **E4** | una vez, de **T-20 a T-10** | se **relee el partido** (hora, estado y sede, con la relectura de IA-061) y se juzga cada selección con la última decisión y la alineación que haya |
+| **Última decisión** | de **T-20 a T-10** | `decision-v2` decide por última vez antes de su umbral (o se adopta la que ya guardó su propio pase, disparador E4 de IA-093). Se guarda solo en las tablas de `decision-v2`; no es una evaluación del ciclo |
+| **E4** | una vez, a **T-5** (de T-5 al saque) | se **relee el partido** (hora, estado y sede, con la relectura de IA-061) y se juzga cada selección con la **última decisión guardada** de `decision-v2` y el **precio leído otra vez** a T-5, y la alineación que haya. **No decide** |
 
-**Nota sobre E4 (decisión pendiente del dueño).** La ficha dice T-5. Por debajo de 10 minutos `decision-v1` rechaza todo por regla («menos de 10 min al saque», `MIN_MINUTES`), y `decision-v2` hereda esa regla. **No se baja.** Por eso E4 va de T-20 a T-10, igual que hizo IA-093. Una alineación que llegue después de E4 (en la medición, 49 de 873 partidos entre T-10 y el saque) **sí** tiene su E3: sin decisión nueva, con la última decisión y el **precio leído otra vez**.
+**Nota sobre E4 (decidido por el dueño el 17-nov-2026, IA-142).** E4 va a **T-5**, como dice la ficha. Por debajo de 10 minutos `decision-v1` rechaza todo por regla («menos de 10 min al saque», `MIN_MINUTES`), y `decision-v2` hereda esa regla. **No se baja y `decision-v1` no se toca.** Por eso a T-5 no decide nadie: E4 juzga con la última decisión de `decision-v2` (la de T-20 a T-10, en sombra) y el precio releído. Hasta el 17-nov E4 iba de T-20 a T-10 (reloj `eval-clock-v1`); desde IA-142 el reloj es `eval-clock-v2` y cada E4 lo dice en su resumen (`summary.clock`, `summary.decision` con el momento adoptado, `decided = false`).
+
+**El espejo de `decision-v1` en esa ventana.** El espejo (IA-093) copia cada momento en que `decision-v1` decidió. A T-5 `decision-v1` no decide (su último punto es T-15m; un pase suyo por debajo de 10 min solo rechaza, y el espejo dice lo mismo). E4 **nunca** adopta un momento guardado por debajo del umbral, así que esa copia de rechazos nunca pasa a ser la decisión de E4. La comparación con `decision-v1` termina en su último momento; a T-5 no hay contraparte de `decision-v1`.
+
+Una alineación que llegue entre T-10 y el saque (en la medición, 49 de 873 partidos) **sí** tiene su E3: sin decisión nueva, con la última decisión y el **precio leído otra vez**.
 
 **Entre evaluaciones**, cada pasada relee el partido: un saque adelantado o retrasado, un aplazamiento, una suspensión o un cambio de sede después de E1 es una alerta en minutos, no un hallazgo de auditoría días después (el incidente del 12-nov).
 
@@ -108,14 +113,14 @@ Las sirve **solo** el contrato **C-05** en `GET /api/v1/admin/intelligence/alert
 
 ## 8. Pruebas
 
-- **Unitarias** (`tests/unit/test_eval_cycle.py`, `test_eval_cycle_isolation.py`): ventanas iguales a las de IA-093 e IA-094 y E4 parado en el umbral de 10 min; **reloj simulado** (saque adelantado, sin alineación, alineación a T-75 con corrección a T-30: cada evaluación una vez y E3 dentro de 2 min); un hecho no dispara dos E2; el ejemplo del Doc 1; los tres grupos; consulta frente a recálculo dentro de 1 punto; casos fijos de E3 (titular clave fuera, alineación como la estimada, precio antiguo, sin alineación); la cadena de estados legal y cerrada; aislamiento (E3 y la dependencia sin cliente de modelos; nada de avisos, mensajes, clientes, API pública, picks ni decisión importa el ciclo; solo escribe sus cinco tablas con INSERT; el worker solo lo programa en `shadow`).
+- **Unitarias** (`tests/unit/test_eval_cycle.py`, `test_eval_cycle_isolation.py`): E1 y la última decisión con las ventanas de IA-093 e IA-094, la última decisión parada en el umbral de 10 min y E4 a T-5 sin decidir; **reloj simulado** (saque adelantado, sin alineación, alineación a T-75 con corrección a T-30: cada evaluación una vez y E3 dentro de 2 min); un hecho no dispara dos E2; el ejemplo del Doc 1; los tres grupos; consulta frente a recálculo dentro de 1 punto; casos fijos de E3 (titular clave fuera, alineación como la estimada, precio antiguo, sin alineación); la cadena de estados legal y cerrada; aislamiento (E3 y la dependencia sin cliente de modelos; nada de avisos, mensajes, clientes, API pública, picks ni decisión importa el ciclo; solo escribe sus cinco tablas con INSERT; el worker solo lo programa en `shadow`).
 - **Integración** en PostgreSQL 16 local (`test_eval_cycle_shadow.py`, `test_migration_0156_eval_cycle.py`): **un partido entero E1 → E2 → E3 → E4** con cambio de alineación que **retira** la selección y genera la **alerta privada**, latencia de E3 menor de 2 min, la cadena `eval-cycle-v1` legal y cerrada, `intel.decisions` sin mover; la alineación con el delantero **confirma**; sin alineación, alerta en E4 y cierre «sin alineación a tiempo»; saque adelantado, una alerta y nada después del saque; E3 leyendo la llegada del sondeo desde su respuesta RAW; la migración sube, rechaza lo que debe y baja limpia.
 
 ## 9. Cómo se activa en sombra (tras desplegar)
 
 1. La migración 0156 la aplica el despliegue.
-2. En el worker: `FBI_EVAL_CYCLE=shadow` (por defecto `off`; cualquier otra palabra es `off`). Cadencias: `FBI_EVAL_CYCLE_MINUTES` (5 por defecto, 1–10) y `FBI_EVAL_CYCLE_E3_SECONDS` (60 por defecto, 30–120). Reiniciar el worker.
-3. Recomendado a la vez: `FBI_LINEUP_ESTIMATE=shadow` no hace falta (E1 lee la titularidad por su cuenta con la misma función), pero sí **`FBI_LINEUP_WATCH=shadow`** (IA-069) para ver la alineación cada 3 minutos en lugar de cada 10. Si `FBI_DECISION_V2=shadow` también está encendido, basta con `FBI_DECISION_V2_TRIGGERS=mirror`: E1 y E4 del ciclo adoptan el momento que ya guardó ese pase, así que nada se decide dos veces de ninguna manera.
+2. En el worker: `FBI_EVAL_CYCLE=shadow` (por defecto `off`; cualquier otra palabra es `off`). Cadencias: `FBI_EVAL_CYCLE_MINUTES` (5 por defecto, 1–5 desde IA-142: la ventana de E4 mide 5 minutos) y `FBI_EVAL_CYCLE_E3_SECONDS` (60 por defecto, 30–120). Reiniciar el worker.
+3. Recomendado a la vez: `FBI_LINEUP_ESTIMATE=shadow` no hace falta (E1 lee la titularidad por su cuenta con la misma función), pero sí **`FBI_LINEUP_WATCH=shadow`** (IA-069) para ver la alineación cada 3 minutos en lugar de cada 10. Si `FBI_DECISION_V2=shadow` también está encendido, basta con `FBI_DECISION_V2_TRIGGERS=mirror`: E1 y la última decisión (T-20 a T-10) del ciclo adoptan el momento que ya guardó ese pase, así que nada se decide dos veces de ninguna manera; E4 a T-5 no decide.
 4. Comprobar: `intel.eval_runs` (por evaluación, `status`, `latency_ms` de E3), `intel.private_alerts` (o la ruta C-05) y las cadenas `writer = 'eval-cycle-v1'` de `intel.selection_lifecycle`.
 
 ## 10. Cómo se apaga y se revierte
@@ -124,7 +129,7 @@ Las sirve **solo** el contrato **C-05** en `GET /api/v1/admin/intelligence/alert
 
 ## 11. Lo pendiente
 
-- **E4 a T-5** frente a la regla de 10 min de `decision-v1` (decisión del dueño).
+- ~~**E4 a T-5** frente a la regla de 10 min de `decision-v1` (decisión del dueño).~~ Decidido el 17-nov-2026: E4 a T-5 con la última decisión y el precio releído (IA-142).
 - Medir en sombra el **p95 de latencia de E3** con el precio del libro y el **100 %** de partidos con E1 y E4 (criterio de AD-D06).
 - La dependencia v1 no mide defensas ni porteros, ni tarjetas; los mercados de jugador (`siempre`) aún no son candidatos de `decision-v2` (llegarán con AD-E04).
 - La retirada de los pases `first`/`pre`/`final` la firma el dueño; esta pieza no la hace.

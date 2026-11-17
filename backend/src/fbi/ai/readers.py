@@ -41,8 +41,10 @@ Evaluation = Literal["E1", "E2", "E3", "E4", "none"]
 E1_FROM: Final = timedelta(hours=24)
 E1_UNTIL: Final = timedelta(hours=12)
 E4_FROM: Final = timedelta(minutes=20)
-"""The windows of the cycle of evaluations (``fbi.evalcycle.clock``: E1 from 24 h to 12 h, E4 from 20 min). Copied, because ``fbi.ai`` may
-not import the cycle (the cycle imports ``fbi.ai``); ``tests/unit/test_readers.py`` holds them equal."""
+"""The windows of the cycle of evaluations (``fbi.evalcycle.clock``: E1 from 24 h to 12 h; the readers' last stretch from 20 min, the
+opening of decision-v2's last decision, ``clock.DECIDE_FROM``). Since IA-142 the cycle's E4 verdict is at T-5, but no reading can reach
+the last decision after T-20, so the readers stop where they stopped. Copied, because ``fbi.ai`` may not import the cycle (the cycle
+imports ``fbi.ai``); ``tests/unit/test_readers.py`` holds them equal."""
 
 MATERIAL_CODES: Final = frozenset({"C01", "C02", "C03", "C06", "C07"})
 """The rules of ``contra-v1`` whose finding is MATERIAL for a second reading (preregistered here, before any E2 is measured): a key player

@@ -6,7 +6,8 @@
     python -m scripts.ia_battery_v4 plan      # what a measurement would ask and cost, and what would stop it (no calls)
     python -m scripts.ia_battery_v4 sign --invalid-max 0 --reason "..." [--confirm-owner]
                                               # THE OWNER'S ACTION: the protocol AD-A03 signed with the ceiling of invalid answers the owner
-                                              # chooses (0 by default, at most 0.03). Without --confirm-owner: a preview, nothing written
+                                              # decided: 0 (IA-140, 17-nov-2026; any other figure is refused). Without --confirm-owner: a
+                                              # preview, nothing written
     python -m scripts.ia_battery_v4 submit [--targets ...] [--max-usd 3]
                                               # ONE batch of the LAB: refused without the signature, above the ceiling of one execution or
                                               # above what the LAB may still spend (send fewer targets at a time)
@@ -57,8 +58,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="ia_battery_v4", description=__doc__.split("\n\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=COMMANDS)
     ap.add_argument("--targets", nargs="+", choices=v4.TARGETS, default=list(v4.TARGETS), help="the targets of this execution (default: all)")
-    ap.add_argument("--invalid-max", type=float, default=0.0,
-                    help=f"sign: the share of invalid answers the owner allows (0 to {v4.INVALID_MAX_CEILING}; default 0)")
+    ap.add_argument("--invalid-max", type=float, default=v4.OWNER_INVALID_MAX,
+                    help=f"sign: the share of invalid answers; only the owner's decision is accepted ({v4.OWNER_INVALID_MAX}, IA-140)")
     ap.add_argument("--reason", help="sign: why the owner signs (kept in the row)")
     ap.add_argument("--confirm-owner", action="store_true", help="sign: THE OWNER signs; without it nothing is written")
     ap.add_argument("--max-usd", default=str(v4_run.MAX_USD), help="submit: the ceiling of one execution in US$ (default 3)")

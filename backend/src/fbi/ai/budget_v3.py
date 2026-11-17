@@ -5,10 +5,13 @@ THREE ENVELOPES, never one number:
 
     production  Claude of the production workspace (``ai.usage_scoped`` scope 'production' and the analyst's ``analytics.ai_runs``)
                 against ``FBI_AI_MONTHLY_BUDGET_USD`` (US$185; the Console's limit for the workspace is 190)
-    lab         Claude of the LAB workspace against ``FBI_AI_LAB_MONTHLY_BUDGET_USD`` (15 / 55 / 15 by phase) - and never more
-                than the joint ceiling (190) leaves after production's projection: the LAB yields FIRST, by whole days, and
-                never by changing its model (an arm that changes judge is another experiment)
+    lab         Claude of the LAB workspace against ``FBI_AI_LAB_MONTHLY_BUDGET_USD`` (US$55), its own envelope whole since IA-141:
+                when the LAB's month is spent it stops by whole days, and never by changing its model (an arm that changes judge
+                is another experiment)
     exa         every search against ``FBI_AI_EXA_MONTHLY_BUDGET_USD`` (US$35): web search is Exa's money, not Claude's
+
+Each envelope the code applies is the environment's figure, never above the owner's figure in force (``capability_budget.envelope_cap``:
+185 / 55 / 35, ``envelopes-v2``).
 
 PRODUCTION'S MONTH is projected, not only counted:
 
@@ -44,9 +47,10 @@ each and of each new capability's cap (``warnings_of``, ``fbi.ai.capability_budg
 ledger (plan UX A11) - the owner's panel does, through ``fbi.ai.envelopes_readers``, which nothing of the cycle loads.
 A warning warns: nothing is cut by it, and no reader is told.
 
-THE JOINT CEILING STAYS. The LAB still yields to ``FBI_AI_JOINT_CEILING_USD`` (190) after production's projection: the owner has not
-confirmed that the envelopes of decision 12 replace it. ``FBI_AI_ENVELOPES_INDEPENDENT`` (off by default) is the prepared change -
-on, the LAB gets its envelope whole (``lab_allocation(independent=True)``).
+THE JOINT CEILING NO LONGER APPLIES (IA-141, the owner's decision of 17-nov-2026, ``envelopes-v2``): the three envelopes REPLACE the
+joint ceiling of 190. The LAB gets its own envelope whole (``lab_allocation(independent=True)``), capped at 55, and no longer yields to
+production's projection. ``FBI_AI_ENVELOPES_INDEPENDENT`` is on by default; ``off`` is the way back - the LAB yields again to
+``FBI_AI_JOINT_CEILING_USD`` after production's projection (stricter: the joint ceiling can only lower the LAB, never raise it).
 
 Everything here is a function of the ledger and of ``at``: no clock, no network, nothing written but the alerts."""
 
@@ -105,8 +109,11 @@ EXA_SEARCH_USD = Decimal("0.015")
 unverified until an invoice says which one is right, and this figure is not changed before."""
 ENVELOPE_ALERTS = capability_budget.ALERT_AT
 """IA-058: the internal warnings at 80 and 95 % of each envelope of decision 12 (and of each new capability's cap)."""
-JOINT_CEILING_PENDING = True
-"""The owner has not confirmed whether the envelopes of decision 12 replace the joint ceiling of 190: the panel says so while True."""
+JOINT_CEILING_PENDING = False
+"""Whether the owner still has to say if the envelopes replace the joint ceiling of 190. True until 17-nov-2026; False since IA-141: they
+replace it (``capability_budget.ENVELOPES_IN_FORCE``, ``envelopes-v2``)."""
+JOINT_CEILING_REPLACED_BY = capability_budget.ENVELOPES_IN_FORCE.version
+"""The decision that replaced the joint ceiling (``envelopes-v2``), said by the panel."""
 MIN_LAB_DAY = Decimal("0.01")
 
 COSTS_SQL = """
@@ -207,9 +214,9 @@ def state_of(*, monthly: Decimal, spent_month: Decimal, spent_today: Decimal, da
 
 def lab_allocation(*, envelope: Decimal, joint_ceiling: Decimal, projected_production: Decimal,
                    independent: bool = False) -> Decimal:
-    """What the LAB may spend this month: its envelope, or what the joint ceiling leaves after production's projection -
-    whichever is less. Production goes first. ``independent`` (``FBI_AI_ENVELOPES_INDEPENDENT``, off until the owner confirms
-    it) is the prepared change of decision 12: the LAB's envelope whole, whatever production projects."""
+    """What the LAB may spend this month. ``independent`` (``FBI_AI_ENVELOPES_INDEPENDENT``, on since IA-141: the owner's decision of
+    17-nov-2026): its envelope whole, whatever production projects. Off (the way back): its envelope or what the joint ceiling leaves after
+    production's projection, whichever is less - production first."""
     if independent:
         return max(Decimal(0), envelope)
     return max(Decimal(0), min(envelope, joint_ceiling - projected_production))
@@ -396,7 +403,7 @@ def budget(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings)
     day = local_day(at)
     days_left = days_left_in_month(day)
     fc = forecast(conn, at=at)
-    monthly = settings.monthly_budget
+    monthly = capability_budget.envelope_cap("production", settings.monthly_budget)
     before, today = fc.spent_before, fc.spent_today
     remaining = max(Decimal(0), monthly - before)
     locked = locked_reserve(remaining=remaining, reserve=settings.reserve, days_left=days_left)
@@ -424,7 +431,8 @@ class LabDay:
     allowed: bool
     """Whether the LAB runs today at all - decided from what was known at the day's start, so it holds the whole day."""
     allocation: Decimal
-    """What the LAB may spend this month: its envelope, or what the joint ceiling leaves after production's projection."""
+    """What the LAB may spend this month: its envelope (never above 55, IA-141), or, with the joint ceiling back on, what it leaves after
+    production's projection."""
     spent_month: Decimal
     remaining: Decimal
     """The month's allocation less what the LAB has spent: the hard stop inside the day."""
@@ -442,11 +450,12 @@ class LabDay:
 
 
 def lab_day(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings) -> LabDay:
-    """May the LAB spend today? Its allocation is the envelope or what is left under the joint ceiling after production's
-    projection (production first). It runs a day only if what is left of the allocation before today covers a typical LAB day,
-    so a day is run whole or not at all - the LAB yields by whole days and never by changing its model."""
+    """May the LAB spend today? Its allocation is its own envelope (IA-141), capped at the owner's figure - or, with the joint ceiling
+    back on (``FBI_AI_ENVELOPES_INDEPENDENT=off``), what is left under it after production's projection. It runs a day only if what is
+    left of the allocation before today covers a typical LAB day, so a day is run whole or not at all - the LAB stops by whole days and
+    never by changing its model."""
     day = local_day(at)
-    envelope = settings.lab_monthly_budget
+    envelope = capability_budget.envelope_cap("lab", settings.lab_monthly_budget)
     prod = forecast(conn, at=at)
     allocation = lab_allocation(envelope=envelope, joint_ceiling=settings.joint_ceiling,
                                 projected_production=prod.projected_at_dawn,
@@ -497,7 +506,7 @@ def exa_budget(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSetti
     costs = costs_by_day(conn, "exa", day_start(month_first), at + timedelta(seconds=1))
     before = sum((c for d, c in costs.items() if d < day), Decimal(0))
     today = costs.get(day, Decimal(0))
-    envelope = settings.exa_monthly_budget
+    envelope = capability_budget.envelope_cap("exa", settings.exa_monthly_budget)
     remaining = max(Decimal(0), envelope - before)
     daily = remaining / days_left_in_month(day)
     cap = min(remaining, daily * EXA_HARD_FACTOR)
