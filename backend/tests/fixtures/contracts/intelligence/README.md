@@ -19,5 +19,8 @@ Las reglas: `backend/docs/owner/IA_057_CONTRATO_INTELLIGENCE.md`. Las pruebas: `
 | --- | --- | --- |
 | C-00 (muestra, sin ruta) | `publicada` | Una selección autorizada sale en la pública como `publicada`; la que sigue `en_evaluacion` solo en la privada. 59 % `calibrada` en las dos; 78,5 % `sin_calibrar` solo en la privada |
 | C-00 | `sin_publicar` | Nada autorizado: la pública trae `{"items": [], "missing_reason": "sin_publicados"}` |
+| C-01 Partido (entrega 1) | `antes_del_partido` | Caso Arsenal W – London City: 59 % `calibrada` en la pública, 78,5 % `sin_calibrar` solo en la privada; nada publicado (`sin_publicados`); alineación `aun_no_disponible`; escenarios, crónica única, E1–E4 y el resto `no_entregado` con su pieza |
+| C-01 | `con_alineacion_oficial` | Alineación oficial; una selección publicada (`publicada`) con la misma cifra que su salida |
+| C-01 | `terminado` | Partido terminado; la selección `liquidada`; la crónica apagada para lectores (`pendiente_derechos`) y visible solo en la privada |
 
 Al añadir un contrato: su carpeta con al menos un caso, una fila aquí y su línea en la coordinación entre sesiones.

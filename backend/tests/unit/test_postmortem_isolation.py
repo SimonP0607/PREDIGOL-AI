@@ -68,6 +68,8 @@ NAMES_IT: dict[str, str] = {
     "ai/daily_review.py": "the close of the day (a report): the day's post-mortems, memory events and notes; it changes no pick, probability or rule",
     "ai/pick_postmortem.py": "pm-v2, FROZEN: writes ai.pick_postmortems only behind FBI_AI_LEGACY_POSTMORTEMS, after the one post-mortem",
     "ai/postmortem.py": "pm-v1.1, FROZEN: writes ai.postmortems only behind FBI_AI_LEGACY_POSTMORTEMS, after the one post-mortem",
+    "lifecycle/derive.py": "the cycle of states of a selection (IA-068, in shadow): reads the post-mortem to mark a settled selection «Evaluada»",
+    "lifecycle/store.py": "the cycle of states (IA-068, in shadow): the query that gathers the post-mortems of the window it derives from; it writes only intel.selection_lifecycle",
     "knowledge/layers.py": "Match Knowledge (plan F7), layer c9: the pure layer that turns the post-mortems of a finished match into facts",
     "knowledge/reader.py": "Match Knowledge (plan F7): reads the post-mortems of the finished matches it puts together (layer c9)",
     "api/services/intelligence.py": "the Admin Console's PrediGol Intelligence: the post-mortem of a decision and the memory (GET /admin/intelligence/memory)",
@@ -565,4 +567,7 @@ def test_the_routes_that_read_it_are_the_admin_console_and_one_card() -> None:
         assert tagged.get(tag), f"{tag}: no route found, the test would prove nothing"
         outside = [r for r in tagged[tag] if not r[1].startswith("/api/v1/admin/")]
         assert not outside, f"{tag}: routes outside the Admin Console: {outside}"
-    assert tagged["predigol analysis"] == [("GET", "/api/v1/matches/{fixture_id}/analysis")], tagged["predigol analysis"]
+    # IA-066: the match's contract C-01 (public projection) lives in the same router; its module
+    # (``api/services/match_intelligence.py``) names none of these objects - it is not on ``NAMES_IT``, which the scan above holds.
+    assert sorted(tagged["predigol analysis"]) == [("GET", "/api/v1/matches/{fixture_id}/analysis"),
+                                                   ("GET", "/api/v1/matches/{fixture_id}/intelligence")], tagged["predigol analysis"]
