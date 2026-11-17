@@ -90,6 +90,10 @@ at worst, and a duplicated tick costs nothing at all.
     sitemaps of the directory v2 (``fbi.news.signals``, IA-085) - only of sources the policy lets be read (authorised and signed by the
     owner), robots.txt first, conditional requests; titles, dates and links into ``news.items``, and for the pending sources only what
     it would have read (``news.feed_reads``, ``ai.source_policy_log``). No model, no Exa search, nothing a reader sees.
+  * ``news_stories``  every 30 min (``FBI_NEWS_STORIES_MINUTES``), only while ``FBI_NEWS_STORIES=shadow`` (off by default): the news
+    pipeline in shadow (``fbi.news.pipeline``, IA-099 to IA-102) - who each new article names, its story, the story's category, language,
+    country and level, the rules of moderation; and, only with ``FBI_NEWS_TEXT=shadow`` (off by default), PrediGol's own text of the
+    stories whose sources allow it, paid by the LAB (at most US$ 2 a month). Nothing a reader sees.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
     trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
@@ -1142,6 +1146,27 @@ async def _signals_ingest() -> None:
     await asyncio.to_thread(_signals_now)
 
 
+def _news_stories_now() -> None:
+    """The news pipeline (IA-099 to IA-102): one pass in shadow. Never raises - it must never stop the worker - and writes only the
+    append-only tables of ``news`` (entities, stories, links, texts, the register of moderation)."""
+    from fbi.news import pipeline
+
+    if pipeline.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = pipeline.run_pass(conn, at=now())
+            conn.commit()
+        log.info("news_stories.pass", **{k: v for k, v in r.as_json().items() if k not in ("errors", "at")}, errors=r.errors[:3])
+    except Exception as exc:
+        log.error("news_stories.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _news_stories() -> None:
+    new_run_id()
+    await asyncio.to_thread(_news_stories_now)
+
+
 async def _lifecycle_shadow() -> None:
     new_run_id()
     await asyncio.to_thread(_lifecycle_shadow_now)
@@ -1709,6 +1734,7 @@ WORKER_JOB_TYPES = frozenset({
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
     "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest", "decision_v2_shadow", "lineup_estimate_shadow",
+    "news_stories",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -2082,6 +2108,15 @@ async def main() -> None:
                           misfire_grace_time=signals.EVERY_MINUTES * 60, next_run_time=moment + timedelta(minutes=27))
     else:
         log.info("worker.signals_off", hint="FBI_SIGNALS is not shadow: no feed of the directory is read")
+    from fbi.news import pipeline as news_pipeline
+
+    if news_pipeline.mode() == "shadow":
+        # IA-099..102: stories, classification and moderation of news.items in shadow (FBI_NEWS_TEXT apart, off by default).
+        scheduler.add_job(_deadline("news_stories", "news_stories", _news_stories), "interval",
+                          minutes=news_pipeline.EVERY_MINUTES, id="news_stories", max_instances=1, coalesce=True,
+                          misfire_grace_time=news_pipeline.EVERY_MINUTES * 60, next_run_time=moment + timedelta(minutes=33))
+    else:
+        log.info("worker.news_stories_off", hint="FBI_NEWS_STORIES is not shadow: news.items are not grouped into stories")
     if CHRONICLE_REVIEW_ENABLED:
         scheduler.add_job(_deadline("chronicle_review", "chronicle_review", _chronicle_review), "interval",
                           minutes=CHRONICLE_REVIEW_MINUTES, id="chronicle_review", max_instances=1, coalesce=True,

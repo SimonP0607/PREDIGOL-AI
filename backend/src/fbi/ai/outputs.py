@@ -341,6 +341,8 @@ def _claims(*groups: str) -> dict[str, Coverage]:
     return out
 
 
+_NEWS_TEXT: Final[dict[str, Coverage]] = {"headline.text": "facts", "headline.facts[]": "id", "summary[].text": "facts",
+                                           "summary[].facts[]": "id"}
 _NARRATIVE_SECTIONS: Final = ("como_llega_local", "como_llega_visitante", "que_esta_en_juego", "claves_tacticas", "jugadores_importantes",
                               "riesgos", "mercados_interesantes", "conclusion")
 
@@ -408,6 +410,11 @@ SURFACES: Final[tuple[Surface, ...]] = (
             _attr("fbi.narrator.prompt", "SCHEMA"), True, "the narrator's report (FBI_NARRATOR)",
             {f"{lang}.{part}[].{k}": v for lang in ("es", "en") for part in ("why", "risks")
              for k, v in _FACTS_TEXT.items()}),
+    Surface("news-text-v1", ("news-text-v1",), ("fbi.news.writer:request", "fbi.news.pipeline:lab_caller.call"),
+            _attr("fbi.news.writer", "SCHEMA"), False, "news.story_texts and, when accepted, a version of news.stories (IA-101, shadow: "
+            "nothing reads them before AD-G07 and FBI_NEWS_V2)",
+            {f"{lang}.{part}": v for lang in ("es", "en") for part, v in _NEWS_TEXT.items()},
+            note="every sentence checked against the facts it cites, the health filter and the anti-copy verifier (fbi.news.writer)"),
     Surface("lab-probe", ("probe-cache-v1", "probe-schema-v1"),
             ("fbi.ai.lab:probe_request", "fbi.ai.lab:probe_cache", "fbi.ai.lab:probe_schema", "fbi.ai.lab:probe_batch_tasks"),
             _attr("fbi.ai.lab", "PROBE_SCHEMA"), False, "feature_gates (the probe's verdict only)", {}, repeat="experiment"),

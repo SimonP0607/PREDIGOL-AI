@@ -74,6 +74,7 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "scenarios_shadow": timedelta(minutes=30),
     # The ingestion of signals in shadow (IA-085): at most 40 requests of ten seconds a pass, no model.
     "signals_ingest": timedelta(minutes=20),
+    "news_stories": timedelta(minutes=25),
     "player_history": timedelta(hours=3),
     "historical_validation": timedelta(hours=2),
     "historical_backfill": timedelta(hours=3),

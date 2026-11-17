@@ -43,6 +43,7 @@ from fbi.api.routers import (
     messaging,
     monitoring,
     news,
+    news_moderation,
     odds_explorer,
     payment_requests,
     personal,
@@ -249,7 +250,7 @@ def create_app() -> FastAPI:
               evolution.router, ai_layer.admin_router, intelligence.router, referees.router,
               monitoring.admin_router, announcements.admin_router, admin_customers.router, admin_customers.audit_router, customer.admin_router, messaging.admin_router, events.admin_router,
               membership.admin_router, membership.coupons_router, payment_requests.admin_router, support.admin_router, feedback.admin_router, push.admin_router,
-              news.admin_router, odds_explorer.admin_router):
+              news.admin_router, odds_explorer.admin_router, news_moderation.router):
         app.include_router(r, prefix="/api/v1/admin", dependencies=admin_tier)
     # The original unversioned health endpoint stays where monitors expect it.
     app.add_api_route("/health", system.get_health, methods=["GET"], include_in_schema=False)
