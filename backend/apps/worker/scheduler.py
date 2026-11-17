@@ -69,6 +69,14 @@ at worst, and a duplicated tick costs nothing at all.
     T-6 h, hourly to T-1 h, T-30 and T-10 min; ``fbi.odds.book_refresh``, plan Cuotas BE-011), then the book of those matches built.
     Its own daily budget (``FBI_ODDS_BOOK_DAILY_BUDGET``, 8,000) inside the shared quota, cut before any other job; its asks go
     to ``market.book_asks`` and RAW only - the extractor skips them, so the models, the picks and the parlay see nothing of it.
+  * ``lineup_watch``  every 3 min (``FBI_LINEUP_WATCH_MINUTES``), only while ``FBI_LINEUP_WATCH=shadow`` (off by default):
+    the tracked matches of the next 90 minutes asked for their line-ups, 20 per request (``fbi.ingestion.lineup_watch``, IA-069),
+    each side's line-up recorded in ``core.fixture_lineup_arrivals`` and NOTHING else - no fixture, detail or line-up row the
+    product reads. Its own daily budget (``FBI_LINEUP_WATCH_DAILY_BUDGET``, 1,200) inside the shared quota, cut first.
+  * ``lifecycle_shadow``  every 30 min (``FBI_LIFECYCLE_MINUTES``), only while ``FBI_LIFECYCLE`` is ``shadow`` (off by default): the one
+    cycle of states of each selection (``fbi.lifecycle``, IA-068), read off the decisions, the shadow picks, the reviews, the settlements
+    and the post-mortems of the matches of the last 7 days and the next 48 hours, appended to ``intel.selection_lifecycle``. Database
+    only; it writes nothing else and nothing reads it but the owner's views.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
     trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
@@ -485,6 +493,16 @@ async def _live_match_tick() -> None:
             await provider.aclose()
     if report is not None and report.ended:
         _request_settlement(report.ended, "live_follow")
+
+
+async def _lineup_watch() -> None:
+    """The pre-match line-up watch (IA-069): in shadow, the line-ups of the next 90 minutes recorded as arrivals only. On a
+    loop of its own (OWN_LOOP_JOBS) so its provider calls never hold the live jobs; it re-reads its switch every pass."""
+    from fbi.ingestion.lineup_watch import run_watch_job
+
+    new_run_id()
+    with _connect() as conn:
+        await run_watch_job(conn)
 
 
 async def _context_refresh() -> None:
@@ -1055,6 +1073,27 @@ CHRONICLE_REVIEW_ENABLED = os.environ.get("FBI_CHRONICLE_REVIEW", "1").strip().l
 showed and appends a row to ``ai.chronicle_reviews``. ``FBI_CHRONICLE_REVIEW=0`` switches it off without a deploy (the rows stay)."""
 
 
+def _lifecycle_shadow_now() -> None:
+    """The shadow writer of the cycle of states (IA-068): one pass. Never raises: it must never stop the worker, and it changes no
+    decision, review, pick or settlement - it only appends to ``intel.selection_lifecycle``."""
+    from fbi.lifecycle import store as lifecycle
+
+    if lifecycle.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = lifecycle.run_pass(conn, now=now())
+        log.info("lifecycle_shadow.run", fixtures=r.fixtures, selections=r.selections, appended=r.appended, divergent=r.divergent,
+                 illegal=r.illegal, errors=len(r.errors))
+    except Exception as exc:
+        log.error("lifecycle_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _lifecycle_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_lifecycle_shadow_now)
+
+
 def _user_narrative_now() -> None:
     """The readers' narrative (plan UX, A11): one pass with its ledger row. Never raises: the readers' AI must never stop the
     worker."""
@@ -1576,6 +1615,7 @@ WORKER_JOB_TYPES = frozenset({
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
+    "lineup_watch", "lifecycle_shadow",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1596,7 +1636,7 @@ async def _run_watchdog() -> None:
 
 OWN_LOOP_JOBS = frozenset({"fixtures_sync", "results_sync", "historical_backfill", "reference_refresh",
                            "catalogue_refresh", "final_prematch", "context_refresh", "context_due", "results_repair",
-                           "odds_book_refresh", "live_match_capture"})
+                           "odds_book_refresh", "live_match_capture", "lineup_watch"})
 """Jobs run on an event loop of their own, in a thread (fbi.core.deadline.run_in_own_loop): their blocking database
 work - a season of 8,327 club friendlies, a page of 40,000 transfers - must not hold the loop the in-play odds capture
 and the pre-match tick run on, which stay on the scheduler's loop.
@@ -1829,6 +1869,16 @@ async def main() -> None:
                     hint="FBI_ODDS_BOOK_REFRESH is on but FBI_ODDS_BOOK is off: no refresh is asked without a book to build")
     else:
         log.info("worker.odds_book_refresh_off", hint="FBI_ODDS_BOOK_REFRESH off: the book is refreshed at the model windows only")
+    from fbi.ingestion.lineup_watch import watch_settings
+
+    lineup_watch = watch_settings()
+    if lineup_watch.enabled:
+        # In shadow only (IA-069): arrivals of the next 90 minutes' line-ups, on a loop of its own (OWN_LOOP_JOBS).
+        scheduler.add_job(_deadline("lineup_watch", "lineup_watch", _lineup_watch), "interval",
+                          minutes=lineup_watch.every_minutes, id="lineup_watch", max_instances=1, coalesce=True,
+                          misfire_grace_time=lineup_watch.every_minutes * 60, next_run_time=moment + timedelta(minutes=4))
+    else:
+        log.info("worker.lineup_watch_off", hint="FBI_LINEUP_WATCH off: line-up arrivals come from the detail writers only")
     if STRUCTURE_ENABLED:
         # The first pass waits for the quotes clock's, and a person's historical build (python -m scripts.competition_stages)
         # may have gone first: whatever it built is left as it is.
@@ -1897,6 +1947,14 @@ async def main() -> None:
     else:
         log.info("worker.user_narrative_off",
                  hint="FBI_USER_NARRATIVE unset or off: the readers keep the structured reading, nothing is spent")
+    from fbi.lifecycle import store as lifecycle
+
+    if lifecycle.mode() == "shadow":
+        scheduler.add_job(_deadline("lifecycle_shadow", "lifecycle_shadow", _lifecycle_shadow), "interval",
+                          minutes=lifecycle.EVERY, id="lifecycle_shadow", max_instances=1, coalesce=True,
+                          misfire_grace_time=lifecycle.EVERY * 60, next_run_time=moment + timedelta(minutes=23))
+    else:
+        log.info("worker.lifecycle_shadow_off", hint="FBI_LIFECYCLE is not shadow: the cycle of states is not being written")
     if CHRONICLE_REVIEW_ENABLED:
         scheduler.add_job(_deadline("chronicle_review", "chronicle_review", _chronicle_review), "interval",
                           minutes=CHRONICLE_REVIEW_MINUTES, id="chronicle_review", max_instances=1, coalesce=True,

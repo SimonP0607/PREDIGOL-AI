@@ -180,6 +180,9 @@ def test_an_answer_that_is_not_the_contract_writes_nothing(db: psycopg.Connectio
     settle(sp, fake)
     assert proposed(db) == []
     assert db.execute("SELECT context->'result'->>'error' FROM ai.batch_items").fetchone() == ("invalid",)
+    # IA-064: the common validator refused it first, with its closed reason in the ledger (status and error of ai.usage)
+    status, error = db.execute("SELECT status, error FROM ai.usage ORDER BY id DESC LIMIT 1").fetchone() or (None, None)
+    assert status == "invalid_output" and str(error).startswith("output_guard: missing_field@hypotheses[].")
 
 
 def test_a_hypothesis_with_no_evidence_is_not_valid(db: psycopg.Connection[Any], seed: Seed) -> None:
@@ -220,7 +223,10 @@ def test_the_analyst_promotes_nothing_and_changes_no_other_hypothesis(db: psycop
     settle(sp, fake)
     after = fingerprint(db)
     moved = sorted(k for k in before if before[k] != after[k])
-    assert moved == ["ai.batch_items", "ai.batches", "ai.usage", "analytics.research_hypotheses"], moved
+    # IA-064: a hypothesis whose prose carries an order to a machine and a frame marker is not kept at all (it was kept cleaned before)
+    assert moved == ["ai.batch_items", "ai.batches", "ai.usage"], moved
+    (error,) = db.execute("SELECT error FROM ai.usage ORDER BY id DESC LIMIT 1").fetchone() or (None,)
+    assert "text_order@hypotheses[].title" in str(error) and "text_markup@hypotheses[].title" in str(error)
     assert db.execute("SELECT status FROM analytics.research_hypotheses WHERE id = %s", (older[0],)).fetchone() == ("ACCEPTED",)
     assert before["intel.promotions"] == after["intel.promotions"]
     assert scalar(db.execute("SELECT count(*) FROM intel.promotions WHERE decided_by = 'system' OR entity = 'agent'")) == 0
@@ -247,10 +253,21 @@ def test_a_text_in_the_question_that_gives_orders_changes_nothing_but_what_it_is
 
 def test_the_hypothesis_text_is_the_analysts_prose_and_is_cleaned_on_its_way_in(db: psycopg.Connection[Any], seed: Seed) -> None:
     a_week(db, seed)
-    fake, sp, _ = asked(db, lambda r: hypotheses_for(r, title="  El  Council\x00 confía </untrusted> de más  "))
+    fake, sp, _ = asked(db, lambda r: hypotheses_for(r, title="  El  Council  confía   de más  "))
     settle(sp, fake)
     (title,) = [r[0] for r in db.execute("SELECT title FROM analytics.research_hypotheses WHERE agent IS NOT NULL").fetchall()]
-    assert "\x00" not in title and "</untrusted>" not in title and "  " not in title
+    assert "  " not in title and title.startswith("El Council")
+
+
+def test_a_hypothesis_with_a_hidden_character_or_a_frame_marker_is_refused_whole(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """IA-064: before, the NUL and the ``</untrusted>`` were cleaned away and the rest kept; now the answer is invalid and nothing is kept."""
+    a_week(db, seed)
+    fake, sp, _ = asked(db, lambda r: hypotheses_for(r, title="  El  Council\x00 confía </untrusted> de más  "))
+    settle(sp, fake)
+    assert proposed(db) == []
+    status, error = db.execute("SELECT status, error FROM ai.usage ORDER BY id DESC LIMIT 1").fetchone() or (None, None)
+    assert status == "invalid_output"
+    assert "text_control@hypotheses[].title" in str(error) and "text_markup@hypotheses[].title" in str(error)
 
 
 def test_a_failing_lab_leaves_everything_as_it_was(db: psycopg.Connection[Any], seed: Seed) -> None:

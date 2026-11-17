@@ -220,7 +220,8 @@ def settle(conn: psycopg.Connection[Any], r: Resolved) -> None:
     summary: dict[str, Any] = {"la": 1, "usage_id": r.usage_id, "late": r.late}
     parsed = parse(LEARNING, r.result.data) if r.result is not None else None
     if parsed is None or not parsed.ok or not isinstance(parsed.value, LearningOut):
-        summary |= {"ok": False, "error": "no_answer" if r.result is None else "invalid", "problems": [] if parsed is None else list(parsed.problems)}
+        summary |= {"ok": False, "error": "no_answer" if r.result is None and not r.rejected else "invalid",
+                    "problems": list(r.rejected) if parsed is None else list(parsed.problems)}
     else:
         wanted = {(h.agent, h.agent_version): sorted(h.attribution_ids) for h in parsed.value.hypotheses}
         cited: dict[tuple[str, str], set[int]] = {}

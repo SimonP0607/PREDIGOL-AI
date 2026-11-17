@@ -605,7 +605,8 @@ def make_brief(conn: psycopg.Connection[Any], settings: AiSettings, packet: Pack
             b.id = _store(conn, b, at=at, pass_kind=pass_kind, packet_id=packet_id, h=llm_h, provider=call.provider,
                           model=call.model, error=None, snapshot=snapshot)
             return b
-        if call is not None and call.result is not None:  # answered twice, never valid: not asked again for this input
+        if call is not None and (call.result is not None or call.rejected):  # answered, never valid (IA-064: or refused by the common
+            # validator): not asked again for this input
             failed = Brief(None, packet.fixture_id, "llm", "invalid_output", bool(reasons), reasons,
                            {"summary": "respuesta inválida del modelo"}, cost, usage)
             failed.id = _store(conn, failed, at=at, pass_kind=pass_kind, packet_id=packet_id, h=llm_h,

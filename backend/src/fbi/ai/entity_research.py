@@ -531,6 +531,7 @@ def _extract(conn: psycopg.Connection[Any], settings: AiSettings, match: Match, 
     out.pages += len(pages)
     out.pages_flagged += sum(1 for p in pages if p.instruction_like)
     if call.result is None:  # the provider could not read the answer or the model refused: the ledger has it; the pages are not asked again
+        out.invalid += int(bool(call.rejected))  # IA-064: an answer that came back and the common validator refused is an invalid answer
         return True
     reading = extract_v2.read(call.result.data, subjects=subjects, pages=pages)
     if not reading.ok:

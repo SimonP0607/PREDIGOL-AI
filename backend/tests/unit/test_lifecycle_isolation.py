@@ -1,0 +1,88 @@
+"""IA-068 (AD-D02): the cycle of states lives beside the layers it reads and changes none of them.
+
+* every statement of ``fbi.lifecycle`` that writes, writes ``intel.selection_lifecycle`` - an INSERT, never an UPDATE or a DELETE;
+* the package does not import decision-v2 (``fbi.decision``) nor anything that decides, stakes, publishes or serves a reader;
+* outside the package only the worker's job and its own command import it: no decision layer, pick, parlay or public page reads it;
+* the worker schedules it only while ``FBI_LIFECYCLE`` says ``shadow``, with a deadline the watchdog knows.
+"""
+
+from __future__ import annotations
+
+import ast
+import re
+from pathlib import Path
+
+from apps.worker import scheduler
+
+from fbi.lifecycle import store
+from fbi.ops.run_watchdog import timeout_for
+
+ROOT = Path(__file__).resolve().parents[2]
+SRC = ROOT / "src" / "fbi"
+PACKAGE = SRC / "lifecycle"
+WRITE = re.compile(r"\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE|ALTER\s+TABLE|DROP\s+TABLE|CREATE\s+TABLE)\s+([a-z_]+\.[a-z_]+)?",
+                   re.IGNORECASE)
+
+
+def _strings(path: Path) -> list[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    docs = {id(n.value) for n in ast.walk(tree) if isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant)}
+    return [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs]
+
+
+def _imports(path: Path) -> set[str]:
+    out: set[str] = set()
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Import):
+            out.update(a.name for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            out.add(node.module)
+    return out
+
+
+def test_the_package_writes_its_own_table_and_nothing_else() -> None:
+    writes = [(p.name, m.group(1).upper().split()[0], (m.group(2) or "").lower())
+              for p in PACKAGE.glob("*.py") for s in _strings(p) for m in WRITE.finditer(s)]
+    assert writes == [("store.py", "INSERT", "intel.selection_lifecycle")], writes
+
+
+def test_the_package_reaches_neither_decision_v2_nor_what_serves_a_reader() -> None:
+    forbidden = ("fbi.decision", "fbi.picks", "fbi.parlays", "fbi.api", "fbi.notify", "fbi.messaging", "fbi.customer",
+                 "fbi.narrative", "fbi.familydecisions", "fbi.intel.stake")
+    found = {p.name: sorted(n for n in _imports(p) if n.startswith(forbidden) and not n.startswith("fbi.decision_"))
+             for p in PACKAGE.glob("*.py")}
+    assert all(not v for v in found.values()), found
+
+
+def test_only_its_job_and_its_command_import_it() -> None:
+    importers = set()
+    for root in (SRC, ROOT / "apps", ROOT / "scripts"):
+        for p in root.rglob("*.py"):
+            if PACKAGE in p.parents or "__pycache__" in p.parts:
+                continue
+            if any(n == "fbi.lifecycle" or n.startswith("fbi.lifecycle.") for n in _imports(p)):
+                importers.add(p.relative_to(ROOT).as_posix())
+    assert importers == {"apps/worker/scheduler.py", "scripts/ia_lifecycle.py"}, importers
+
+
+def test_the_worker_schedules_it_only_in_the_shadow_with_a_deadline() -> None:
+    tree = ast.parse(Path(scheduler.__file__).read_text())
+    found = [(str(n.args[0].value), str(n.args[1].value)) for n in ast.walk(tree)
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "_deadline"
+             and isinstance(n.args[0], ast.Constant) and isinstance(n.args[1], ast.Constant)]
+    assert ("lifecycle_shadow", "lifecycle_shadow") in found
+    assert timeout_for("lifecycle_shadow").total_seconds() == 15 * 60
+    guarded = False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If) and isinstance(node.test, ast.Compare) and isinstance(node.test.left, ast.Call) \
+                and isinstance(node.test.left.func, ast.Attribute) and node.test.left.func.attr == "mode":
+            body = ast.Module(body=node.body, type_ignores=[])
+            guarded = guarded or any(isinstance(n, ast.Constant) and n.value == "lifecycle_shadow" for n in ast.walk(body))
+    assert guarded, "the job is registered only while FBI_LIFECYCLE is shadow"
+    assert store.EVERY == 30
+
+
+def test_the_job_does_nothing_while_off(monkeypatch) -> None:
+    monkeypatch.delenv(store.SWITCH, raising=False)
+    monkeypatch.setattr(scheduler, "_connect", lambda: (_ for _ in ()).throw(AssertionError("no connection while off")))
+    scheduler._lifecycle_shadow_now()

@@ -46,8 +46,11 @@ PLAYER_ASSESSMENT: Final = "pa-v1"
 """IA-017: what the Player Agent writes (``fbi.ai.contracts.player``). ``aa-v1`` cannot carry it unchanged - its ``agent`` enum has no
 ``player`` and its signals carry a ``strength`` - and ``aa-v1`` is never edited in place (the Match and the Statistics Agents answer in it, byte
 for byte, and the registry holds its schema's hash); so the Player Agent has its own, the smallest that can say what it must."""
+CLAIM_V2: Final = "claim-v2"
+"""IA-060 (plan piece AD-A01): what the quarantined extractor writes about ONE page (``fbi.ai.contracts.claim_v2``) - references of the call's own
+list, closed types and a quote the server finds again in the window it sent. ``claim-v1`` stays as it is: research v2 answers in it."""
 
-OUTPUTS: Final = (CLAIM, ASSESSMENT, COUNCIL, POST_MATCH, LEARNING, PLAYER_ASSESSMENT)
+OUTPUTS: Final = (CLAIM, ASSESSMENT, COUNCIL, POST_MATCH, LEARNING, PLAYER_ASSESSMENT, CLAIM_V2)
 """The contracts a model writes (the sixth, ``mcp-v1``, is what the model reads)."""
 
 # ── the closed values ────────────────────────────────────────────────────────────────────────────────────────────────

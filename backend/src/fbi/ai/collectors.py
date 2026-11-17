@@ -98,6 +98,9 @@ class Collected:
     """Pages the extraction read for the match in this pass - new ones only: a page already read for it is never read again (IA-016)."""
     press: bool = False
     """The press-conference search of a priority competition was asked (``press_query``, IA-016)."""
+    quarantine: dict[str, int] = field(default_factory=dict)
+    """IA-060: what the quarantined extractor did with the pages of this pass (``fbi.ai.quarantine``, the ``xq_*`` counts), when
+    ``FBI_AI_EXTRACTOR`` is ``shadow`` or ``quarantine``; empty with ``v1``."""
 
 
 def collect_provider(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime) -> Collected:
@@ -500,6 +503,12 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
     if not fresh:
         return out
     out.read = len(fresh)
+    if settings.extractor != "v1":
+        _quarantine(conn, settings, fixture_id, fresh, out, at=at, bucket=bucket, ledger=ledger, provider=provider, transport=transport)
+        if settings.extractor == "quarantine":  # v1 is not called: what stood of the quarantined extractor's answers is what the web gave
+            for page in fresh:
+                cache.put(conn, "url", f"{fixture_id}:{page.url}", {"seen": True}, at=at, ttl=EXTRACT_TTL)
+            return out
     numbered = {f"R{i}": r for i, r in enumerate(fresh, start=1)}
     user = extract_user({"home": f["home_name"], "away": f["away_name"], "kickoff_at": f["kickoff_at"].isoformat(),
                          "competition": f["competition"]}, numbered)
@@ -539,3 +548,28 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
     for r in fresh:
         cache.put(conn, "url", f"{fixture_id}:{r.url}", {"seen": True}, at=at, ttl=EXTRACT_TTL)
     return out
+
+
+def _quarantine(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id: int, fresh: list[SearchResult], out: Collected, *,
+                at: datetime, bucket: str, ledger: UsageLedger, provider: tuple[LlmProvider, str] | None,
+                transport: httpx.BaseTransport | None) -> None:
+    """The quarantined extractor on the pages v1 reads (IA-060, ``FBI_AI_EXTRACTOR``). In ``shadow`` it stores nothing and costs the LAB;
+    in ``quarantine`` what stands is this pass's web evidence. A failure of it never stops the pass: v1 (in shadow) goes on, and in
+    quarantine the pass has no web evidence, which is what ``FBI_AI_SEARCH=none`` gives too."""
+    from fbi.ai import quarantine
+
+    mode: quarantine.Mode = "quarantine" if settings.extractor == "quarantine" else "shadow"
+    try:
+        with conn.transaction():  # a savepoint: whatever goes wrong in it is undone, and the pass goes on
+            got = quarantine.collect(conn, settings, fixture_id, fresh, mode=mode, at=at, bucket=bucket, ledger=ledger, provider=provider,
+                                     transport=transport)
+    except Exception as exc:  # never a reason to lose the pass: counted, with its class only
+        out.quarantine = {"xq_error": 1, f"xq_error_{type(exc).__name__}"[:60]: 1}
+        return
+    out.quarantine = dict(got.counts)
+    if got.stopped:
+        out.quarantine[f"xq_stopped_{got.stopped.replace(' ', '_')}"] = 1
+    if mode == "quarantine":
+        out.cost_usd += got.cost_usd
+        out.extracted += got.counts["xq_stored"]
+        out.created += got.counts["xq_new"]

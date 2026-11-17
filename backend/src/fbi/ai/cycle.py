@@ -747,6 +747,9 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
             counts["web_read"] += got.read
             if got.press:
                 counts["web_press"] = 1
+            for name, n in got.quarantine.items():  # IA-060: the quarantined extractor's own counts (shadow or quarantine)
+                counts[name] += n
+                report.counts[name] += n
             cost += Decimal(str(got.cost_usd))
             report.counts["web_searches"] += got.searches
             report.counts["web_items"] += got.extracted

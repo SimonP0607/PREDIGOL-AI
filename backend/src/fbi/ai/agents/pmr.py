@@ -249,7 +249,8 @@ def settle(conn: psycopg.Connection[Any], r: Resolved) -> None:
     summary: dict[str, Any] = {"pmr": 1, "usage_id": r.usage_id, "late": r.late, "task": ctx.get("task")}
     parsed = parse(POST_MATCH, r.result.data) if r.result is not None else None
     if parsed is None or not parsed.ok or not isinstance(parsed.value, PostMatchOut):
-        summary |= {"ok": False, "error": "no_answer" if r.result is None else "invalid", "problems": [] if parsed is None else list(parsed.problems)}
+        summary |= {"ok": False, "error": "no_answer" if r.result is None and not r.rejected else "invalid",
+                    "problems": list(r.rejected) if parsed is None else list(parsed.problems)}
     else:
         rows = tuple(CaseRow(ref=x["ref"], candidate=x["candidate"], engine="", agent=x["agent"], agent_version=x["version"], signal=x["signal"],
                              stance=x["stance"], outcome=x["outcome"], error_class=x["error_class"], row_id=int(x["row"]),

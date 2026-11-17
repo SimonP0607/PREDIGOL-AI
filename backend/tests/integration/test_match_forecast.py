@@ -142,8 +142,16 @@ class World:
             return {(r["market_key"], r["selection"]): (r["p"], r["calibration"]) for r in cur.fetchall()}
 
 
+@pytest.fixture(autouse=True)
+def only_forecast_v1(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests are about ``forecast-v1`` and count its rows: the stable seal's shadow version (AD-B03), which the pipeline also writes
+    by default, has its own tests (``tests/integration/test_forecast_seal_shadow.py``)."""
+    monkeypatch.setenv("FBI_FORECAST_SEAL", "off")
+
+
 @pytest.fixture()
-def world(db: psycopg.Connection[Any], seed: Seed) -> World:
+def world(db: psycopg.Connection[Any], seed: Seed, monkeypatch: pytest.MonkeyPatch) -> World:
+    monkeypatch.setenv("FBI_FORECAST_SEAL", "off")  # also for the modules that borrow this world (the command's tests)
     return World(db, seed)
 
 

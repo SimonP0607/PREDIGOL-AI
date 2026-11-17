@@ -1,0 +1,57 @@
+# Ligue 1 (provider league 61), season 2025/26. LFP Règlement des Compétitions 2025/2026, articles 518 bis, 518 ter and 519.
+schema: competition-rules/1
+league_id: 61
+competition: Ligue 1
+country: France
+version: 1
+seasons: [2025]
+points: {win: 3, draw: 1, loss: 0}
+sources:
+  - publisher: Ligue de Football Professionnel
+    title: Règlement des Compétitions LFP 2025/2026
+    url: https://www.lfp.fr/assets/25_26_Reglement_Competitions_29_07_2024_5055b664e4.pdf
+    checked_at: 2026-11-16
+    applies_to: season 2025/26
+    articles: arts. 518 bis, 518 ter, 519
+tournaments:
+  - key: season
+    name: Ligue 1
+    phases:
+      - key: league
+        name: League
+        format: league
+        rounds: ["Regular Season - *"]
+        teams: 18
+        schedule: double_round_robin
+        matches_per_team: 34
+        ranking:
+          tiebreakers:
+            - goal_difference
+            - h2h_points
+            - h2h_goal_difference
+            - goals_for
+            - wins
+            - away_wins
+            - {criterion: disciplinary_points, note: "yellow card 1 point, red card 3 points"}
+            - lots
+          h2h: {mode: once, requires_all_played: true}
+          note: "Rules 2 and 3 (between them) apply only once both matches between the clubs are played; until then 4 to 7 apply in that order."
+        zones:
+          - {kind: champion, from: 1, to: 1}
+          - {kind: relegation_playoff, from: 16, to: 16, target: two-legged barrage against the winner of the Ligue 2 play-offs}
+          - {kind: relegation, from: 17, to: 18, target: Ligue 2}
+      - key: barrage
+        name: Barrage d'accession-relégation
+        format: knockout
+        rounds: ["Final"]
+        schedule: ties
+        knockout:
+          legs: 2
+          level: [aggregate]
+          seeding: "16th of Ligue 1 v winner of the Ligue 2 play-offs (3rd-5th), art. 519"
+        note: "The provider labels these matches 'Final'. What decides a level aggregate is in art. 519 ter, not read: only the aggregate is coded."
+gaps:
+  - topic: continental
+    reason: "UEFA places depend on the access list and the Coupe de France; not coded."
+  - topic: playoff
+    reason: "How a level aggregate in the barrage is decided (art. 519 ter) was not read."
