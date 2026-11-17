@@ -189,6 +189,11 @@ def render(doc: dict[str, Any]) -> str:
                      f"{u['line']}: not rebuilt")
     if "price" in doc:
         lines += render_price(doc["price"])
+    if "value_v2" in doc:
+        v = doc["value_v2"]
+        lines.append(f"  {v['version']}: {v['with_interval']}/{v['priced']} priced decisions with an interval of their EV; verdicts "
+                     f"{v['by_verdict']}; single book {v['single_book']}, confirmed {v['confirmed']} "
+                     f"(with a single book: {v['confirmed_single_book']})")
     if "probability" in doc:
         lines += render_probability(doc["probability"])
     for name, v in doc.get("versus", {}).items():

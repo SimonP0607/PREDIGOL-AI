@@ -55,6 +55,7 @@ from fbi.intel import context_adjustment as ctx_adj
 from fbi.intel import decision, state_v2
 from fbi.intel.decision import Key
 from fbi.storage.payload_store import PayloadStore
+from fbi.valuation import value as valuation
 
 VERSION: Final = "decision-v2-replay-v1"
 SELECTION: Final = "selection"
@@ -361,6 +362,31 @@ def price_states(decided: Sequence[tuple[Mapping[str, Any], engine.Decision2]]) 
     return out
 
 
+def value_summary(pairs: Sequence[Pair]) -> dict[str, Any]:
+    """``value-v2`` over the replayed decisions (AD-E02, IA-097), a measurement: how many carry an expected value with its interval, fair
+    price, price age and books; the verdicts; «una sola casa»; and where the expected value the stages judged (``Value.ev_cal``) differs
+    from value-v2's on the same probability and price (a line that can push judged with the common view's unconditional number). The
+    criterion of AD-E02: every decision with a price carries the interval, and none is confirmed with a single book. Pure."""
+    decided = [d for _, _, d in pairs if d is not None]
+    readings = [d.value_v2 for d in decided if d.value_v2 is not None]
+    priced = [v for v in readings if v.odds is not None and v.verdict != valuation.FUTURE_PRICE]
+    with_interval = [v for v in priced if v.ev_low is not None and v.ev_high is not None]
+    gaps = [abs(d.value.ev_cal - d.value_v2.ev) for d in decided
+            if d.value_v2 is not None and d.value.ev_cal is not None and d.value_v2.ev is not None and d.value_v2.calibrated]
+    recommended = Counter(d.value_v2.verdict for d in decided if d.state == "RECOMMENDED" and d.value_v2 is not None)
+    return {"version": valuation.VERSION, "method": valuation.METHOD, "decisions": len(decided), "with_reading": len(readings),
+            "priced": len(priced), "with_interval": len(with_interval), "interval_rate": _rate(len(with_interval), len(priced)),
+            "by_verdict": dict(sorted(Counter(v.verdict for v in readings).items())),
+            "single_book": sum(1 for v in priced if v.single_book),
+            "confirmed": sum(1 for v in readings if v.confirms),
+            "confirmed_single_book": sum(1 for v in readings if v.confirms and v.single_book),
+            "future_price": sum(1 for v in readings if v.verdict == valuation.FUTURE_PRICE),
+            "price_age_min": _spread([v.price_age_min for v in priced if v.price_age_min is not None]),
+            "interval_width": _spread([v.ev_high - v.ev_low for v in with_interval if v.ev_high is not None and v.ev_low is not None]),
+            "recommended_by_verdict": dict(sorted(recommended.items())),
+            "ev_gap_vs_stages": {"compared": len(gaps), "over_1e-6": sum(1 for g in gaps if g > 1e-6), "max": max(gaps, default=None)}}
+
+
 # -- one ruleset against another -------------------------------------------------------------------------------------------------------
 
 Variant = tuple[str, str]
@@ -609,7 +635,7 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
                        "against": [variant_name(o) for o in others],
                        "previous": "strictly before known_at", "ai_mode": "as the rows recorded it"},
             "rows": len(rows), "moments": len(groups), "skipped": {"selection_copies": skipped_selection, "unclaimed": len(unclaimed)},
-            "unclaimed_rows": unclaimed} | out | ({"common_view": common_summary(measured)} if view else {}) | {"price": prices} | (
+            "unclaimed_rows": unclaimed} | out | {"value_v2": value_summary(pairs)} | ({"common_view": common_summary(measured)} if view else {}) | {"price": prices} | (
                 {"probability": probability_summary(against_own)} if probability == engine.COMMON else {}) | (
                 {"versus": {name: versus_summary(items, main=main, other=named[name]) for name, items in versus.items()}}
                 if others else {})

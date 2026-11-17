@@ -67,6 +67,7 @@ from fbi.intel.context_adjustment import EFFECT as ADJ_EFFECT_V1
 from fbi.intel.context_adjustment import AdjVerdict, ContextAdjustment
 from fbi.intel.decision import Key
 from fbi.intel.state_v2 import DIRECT, INVESTIGATION_RULES, REASON_EFFECT, StateV2
+from fbi.valuation import value as valuation
 
 VERSION: Final = "decision-v2"
 
@@ -391,6 +392,9 @@ class Decision2:
     """The last price the book held of the selection before kick-off (a measurement in shadow; see ``Close``), None when none was given."""
     rules: str = RULES_V20
     """The ruleset it was decided under (``RULESETS``)."""
+    value_v2: valuation.ValueReading | None = None
+    """The value with its interval, fair price, price age and books (``value-v2``, AD-E02, IA-097): a MEASUREMENT in shadow, made from
+    the same prediction and price the stages judged; no stage reads it (``value_reading``)."""
 
     @property
     def ident(self) -> tuple[str, Key, str | None]:
@@ -420,6 +424,7 @@ class Decision2:
                                                         "movement_points": self.market.movement_points, "stale": self.market.stale},
             "common": None if self.common is None else self.common.as_json(),
             "close": None if self.close is None else self.close.as_json(),
+            "value_v2": None if self.value_v2 is None else self.value_v2.as_json(),
             "stages": [v.as_json() for v in self.verdicts]}
 
 
@@ -463,6 +468,31 @@ class Assessed:
     market: MarketRisk | None
     score: float | None
     rules: str = RULES_V20
+    value_v2: valuation.ValueReading | None = None
+
+
+def value_reading(at: datetime, prediction: Prediction, price: Price) -> valuation.ValueReading:
+    """``value-v2`` of a decision's own prediction and price as of its moment (AD-E02, IA-097), in shadow: the number the stages judged
+    (the calibrated probability, or the model's own, flagged uncalibrated, when there is none) and its interval. The pick's own
+    probability is CONDITIONAL on the bet settling and its interval is the model's, carried to the calibrated number by width
+    (``value.transported``); the common view's number is UNCONDITIONAL (``fbi.forecasting.single_figure``: a set's wins add up to one
+    minus its push) and its interval is its own. Pure."""
+    calibrated = prediction.p_cal is not None
+    judged = prediction.p_cal if prediction.p_cal is not None else prediction.p_model
+    low, high = prediction.interval if prediction.interval is not None else (None, None)
+    chance: valuation.Chance | None
+    try:
+        if prediction.source == COMMON:
+            chance = valuation.Chance(judged, min(prediction.p_push, 1.0 - judged), low, high, calibrated,
+                                     "own" if low is not None and high is not None else "none")
+        else:
+            moved = calibrated and judged != prediction.p_model
+            lo, hi = valuation.transported(judged, prediction.p_model, low, high) if moved else (low, high)
+            chance = valuation.Chance.conditional(judged, prediction.p_push, lo, hi, calibrated=calibrated,
+                                                 interval_basis="transported" if moved else "own")
+    except ValueError:
+        chance = None
+    return valuation.assess(chance, valuation.Quote(price.odds, price.n_bookmakers, price.price_at, price.source), at=at)
 
 
 def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAdjustment | None = None,
@@ -668,16 +698,16 @@ def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAd
     out.append(_v("final", not final_effects, f"{state}" + (f" ({label})" if label else ""), *final_effects,
                   edge_validated=gate.edge_validated, promoted=params.promoted))
     out.sort(key=lambda v: v.n)
-    return Assessed(candidate, cp, tuple(out), state, competes, label,
-                    Prediction(model, number.model_version_id, p_model, p_push,
+    prediction = Prediction(model, number.model_version_id, p_model, p_push,
                                (number.low, number.high) if number.low is not None and number.high is not None else None, p_cal,
                                calibrator_id, calibrator_role, number.source, number.calibration, number.basis, number.version,
-                               None if number.missing is None else str(number.missing)),
-                    Price(odds, p_mkt, n_books, price_at, None if price_age is None else round(price_age.total_seconds() / 60, 2), source,
-                          None if price_at is None else (r.get("price_confirmed_by") or "capture"), r.get("provider_update_at"),
-                          None if missing is None else str(missing), check.state, check.reason, check.max_age_minutes, check.band,
-                          check.rule),
-                    Value(ev_raw, edge_raw, ev_cal, edge_cal), ctx.status, adj_verdict, market, sc, rules.label)
+                               None if number.missing is None else str(number.missing))
+    price = Price(odds, p_mkt, n_books, price_at, None if price_age is None else round(price_age.total_seconds() / 60, 2), source,
+                  None if price_at is None else (r.get("price_confirmed_by") or "capture"), r.get("provider_update_at"),
+                  None if missing is None else str(missing), check.state, check.reason, check.max_age_minutes, check.band, check.rule)
+    return Assessed(candidate, cp, tuple(out), state, competes, label, prediction, price,
+                    Value(ev_raw, edge_raw, ev_cal, edge_cal), ctx.status, adj_verdict, market, sc, rules.label,
+                    value_reading(at, prediction, price))
 
 
 
@@ -719,7 +749,7 @@ def finish(a: Assessed, correlation: Verdict) -> Decision2:
     reason = "approved" if state == "RECOMMENDED" else next(c for v in verdicts for c, s in v.effects if s == state)
     c = a.candidate
     return Decision2(c.family.name, c.key, c.model_hint, a.checkpoint, state, reason, codes, verdicts, label, a.prediction, a.price, a.value,
-                     a.context_status, a.adjustment, a.market, a.score, rules=a.rules)
+                     a.context_status, a.adjustment, a.market, a.score, rules=a.rules, value_v2=a.value_v2)
 
 
 def alone(a: Assessed) -> Verdict:
