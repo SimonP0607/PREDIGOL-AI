@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Synthetic (IA-085): the shape of an Atom feed. Not downloaded. -->
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Ejemplo Atom</title>
+  <updated>2026-11-16T10:00:00Z</updated>
+  <entry>
+    <title>Entrada Atom de ejemplo</title>
+    <link rel="alternate" href="https://atom.ejemplo.invalid/entrada-1"/>
+    <link rel="enclosure" href="https://atom.ejemplo.invalid/foto.jpg"/>
+    <author><name>Autora Ejemplo</name></author>
+    <published>2026-11-16T09:00:00+01:00</published>
+    <summary>No se guarda.</summary>
+  </entry>
+</feed>

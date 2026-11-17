@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic (IA-085): the shape of a Google News sitemap. Not downloaded. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://www.elespectador.com/deportes/futbol-colombiano/ejemplo-uno/</loc>
+    <news:news>
+      <news:publication><news:name>El Espectador</news:name><news:language>es</news:language></news:publication>
+      <news:publication_date>2026-11-16T12:30:00-05:00</news:publication_date>
+      <news:title>Atlético Nacional viaja a Bucaramanga con dos bajas (ejemplo)</news:title>
+    </news:news>
+    <image:image><image:loc>https://www.elespectador.com/foto.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://www.elespectador.com/deportes/ejemplo-dos/</loc>
+    <lastmod>2026-11-16T09:00:00Z</lastmod>
+  </url>
+</urlset>
