@@ -86,6 +86,7 @@ def versions() -> dict[str, str]:
         decision,
         discovery,
         leakage,
+        leakage_v10,
         memory,
         outcomes,
         postmortem,
@@ -98,7 +99,7 @@ def versions() -> dict[str, str]:
             "calibration": calibration.VERSION, "calib_gate": calibration.GATE_VERSION,
             "edge_gate": calibration.EDGE_GATE_VERSION, "outcome": outcomes.VERSION, "postmortem": postmortem.VERSION,
             "memory": memory.VERSION, "report": report.VERSION, "discovery": discovery.VERSION,
-            "leakage": leakage.VERSION, "selection": decision.RULE_DAY, "day_priority": day_priority.VERSION,
+            "leakage": leakage.VERSION, "leakage_v10": leakage_v10.VERSION, "selection": decision.RULE_DAY, "day_priority": day_priority.VERSION,
             "decision_families": DECISION_FAMILIES, "outcome_families": OUTCOME_FAMILIES,
             "postmortem_families": POSTMORTEM_FAMILIES, "memory_families": MEMORY_FAMILIES}
 
@@ -244,6 +245,7 @@ def postmortems_step(conn: psycopg.Connection[Any], *, at: datetime) -> dict[str
 def run_nightly(conn: psycopg.Connection[Any], *, at: datetime, after: Extra | None = None) -> RunReport:
     from fbi.intel.calibration import run_calibration
     from fbi.intel.leakage import audit_day
+    from fbi.intel.leakage_v10 import audit_day as audit_day_v10
     from fbi.intel.outcomes import settle_decisions
     from fbi.intel.report import days_to_report, write_report
 
@@ -260,6 +262,11 @@ def run_nightly(conn: psycopg.Connection[Any], *, at: datetime, after: Extra | N
         out = audit_day(conn, day=today - timedelta(days=1), at=at)
         return {k: v["violations"] for k, v in out.items()} | {"checked": sum(v["checked"] for v in out.values())}
 
+    def _audit_v10() -> dict[str, Any]:
+        # IA-061: the rules v9 did not have, in their own version and their own step - a failure here never costs v9's rows, which Gate B reads
+        out = audit_day_v10(conn, day=today - timedelta(days=1), at=at)
+        return {k: v["violations"] for k, v in out.items()} | {"checked": sum(v["checked"] for v in out.values())}
+
     def _report() -> dict[str, Any]:
         return {d.isoformat(): write_report(conn, day=d, at=at) for d in days_to_report(at)}
 
@@ -272,6 +279,7 @@ def run_nightly(conn: psycopg.Connection[Any], *, at: datetime, after: Extra | N
         ("memory", lambda: memory_step(conn, at=at)),
         ("calibration", _calibration),
         ("leakage_audit", _audit),
+        ("leakage_audit_v10", _audit_v10),
         ("hypotheses", _hypotheses),
         ("report", _report),
     ], after))
