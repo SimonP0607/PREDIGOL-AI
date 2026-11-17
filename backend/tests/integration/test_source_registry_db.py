@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import timedelta
 from typing import Any
+from urllib.parse import urlsplit
 
 import psycopg
 import pytest
@@ -137,9 +138,9 @@ def test_no_excluded_domain_reaches_the_evidence_and_shadow_reads_the_rest(loade
     sent = model.requests[0].user
     for absent in ("mediapronos", "exa.ai", "espn.com", "misez"):
         assert absent not in sent, absent
-    assert "futbolred.com" in sent
+    assert "Extremo Dos es duda para el partido." in sent
     urls = [r[0] for r in loaded.db.execute("SELECT source_url FROM ai.evidence WHERE origin = 'web'").fetchall()]
-    assert urls and all("futbolred.com" in u for u in urls), urls
+    assert urls and all(urlsplit(u).hostname == "www.futbolred.com" for u in urls), urls
     assert got.created >= 1
     rows = log_rows(loaded.db)
     assert sorted((r[1], r[3]) for r in rows) == sorted([
