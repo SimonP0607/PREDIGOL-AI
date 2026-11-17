@@ -22,7 +22,7 @@ BATCH2 = {29: "World Cup - Qualification Africa", 33: "World Cup - Qualification
 
 def test_batch_2_holds_exactly_the_three_competitions_the_owner_asked_for() -> None:
     batches = {int(b["batch"]): b for b in expansion_batches(EXPANSION_FILE)}
-    assert sorted(batches) == [1, 2]
+    assert sorted(batches) == [1, 2, 3, 4], "IA-077 added batches 3 and 4 (tests/unit/test_expansion_batches_ia077.py)"
     b2 = batches[2]
     assert b2["tier"] == 6 and b2["leagues"] == [29, 33, 7]
     assert b2["names"] == BATCH2

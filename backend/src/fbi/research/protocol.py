@@ -549,7 +549,84 @@ A03: Final = Protocol(
 )
 
 
-PROTOCOLS: Final[dict[str, Protocol]] = {p.key: p for p in (A02, A09, B09, A08, C02, A03)}
+B03: Final = Protocol(
+    key="AD-B03",
+    version="proto-ad-b03-v1",
+    title="Sello estable: el calibrador campeón con un precio de más de 6 horas",
+    question=(
+        "Con el sello estable (seal-v1), una cifra se calibra con el consenso sin margen más reciente de los últimos 4 días "
+        "en lugar de exigir uno de 6 horas o menos. ¿La cifra calibrada con ese precio de más de 6 horas sigue pronosticando "
+        "mejor que el modelo sin calibrar, y casi tan bien como la calibrada con un precio fresco?"
+    ),
+    null=(
+        "En algún tramo de edad del precio (6-24 h o 24-96 h) la cifra calibrada con ese precio no baja el log loss del "
+        "modelo sin calibrar, o empeora más de 0,005 frente a la calibrada con precio fresco."
+    ),
+    alternative=(
+        "En los dos tramos de edad la cifra calibrada baja el log loss del modelo sin calibrar y no empeora más de 0,005 frente "
+        "a la calibrada con precio fresco."
+    ),
+    unit=(
+        "Un partido, un mercado completo de la vista (1X2, más/menos 2,5 y ambos marcan) y su modelo: la última lectura antes "
+        "del saque de forecast-v1-seal, con la edad del precio que usó (known_at menos market_as_of), y el resultado."
+    ),
+    data=(
+        "Lecturas de forecast-v1-seal (escritas en sombra desde el despliegue de IA-073) de partidos terminados con resultado "
+        "liquidado; para cada una, la misma cifra sin calibrar (p_model) y la calibrada con el consenso fresco cuando lo hubo en "
+        "ese mismo momento (la lectura de forecast-v1 del mismo instante). Calibrador: el campeón en vigor en ese momento; "
+        "nada se reajusta en este protocolo."
+    ),
+    split=(
+        "Sin ajuste: los campeones ya se ajustaron con partidos liquidados antes de su known_at (cal-logit2-v1). Se puntúan "
+        "solo partidos que empezaron después del known_at del campeón usado: fuera de muestra por construcción."
+    ),
+    primary_metric=(
+        "Por tramo de edad y mercado, la diferencia pareada del log loss multiclase medio (calibrada con el precio envejecido "
+        "menos sin calibrar) por día de Bogotá, con su intervalo del 95 % por bootstrap de días (2.000 remuestreos)."
+    ),
+    pass_rule=(
+        "En cada mercado y en los dos tramos con la muestra mínima: el límite superior del intervalo es < 0, el ECE de cada "
+        "resultado es ≤ 0,03 y, en las lecturas que tuvieron también precio fresco, la diferencia media frente a la calibrada "
+        "con precio fresco es ≤ 0,005. Con eso el dueño puede firmar que el sello estable pase a la cifra única (AD-B05)."
+    ),
+    reject_rule=(
+        "Falla en algún mercado o tramo: ese mercado y tramo vuelven a sin_calibrar (needs_price) en la cifra única, con su "
+        "motivo, y la ventana se acorta en un protocolo v2 registrado antes de mirar. Ningún calibrador cambia de rol."
+    ),
+    secondary=(
+        "El mismo análisis por modelo (elo_ologit, poisson, dixon_coles) y por liga prioritaria frente al resto.",
+        "Cuántos cambios de sello sin cambio de motivo hay en las pasadas de forecast-v1-seal (se exige 0) frente a forecast-v1.",
+        "Plan de las cifras que siguen sin calibrar: (a) sin ningún precio todavía (needs_price): un retador platt sin mercado "
+        "ajustado y validado con calib-gate-v1 por walk-forward, solo como CHALLENGER; (b) la doble oportunidad: derivada de "
+        "la 1X2 calibrada (1X = L + E, X2 = E + V, 12 = L + V), sin calibrador propio, comparada con el retador logit2 que hoy "
+        "no llega a la muestra (n_oos); (c) hándicap asiático y las demás líneas de goles: el campeón logit2 de su mercado "
+        "aplicado sobre la matriz de AD-B04, evaluado con este mismo protocolo cuando la vista las cubra (AD-B05).",
+    ),
+    min_sample=(
+        "Al menos 1.500 partidos-mercado fuera de muestra en al menos 5 días por mercado y tramo (el mínimo de "
+        "calib-gate-v1). Con menos, el tramo es «pendiente por muestra» y no se interpreta."
+    ),
+    power_note=(
+        "Con n días y desviación típica s de la diferencia diaria, la diferencia mínima detectable es 2,80·s/√n (alfa 0,05 "
+        "bilateral, potencia 0,80). El informe da s medida y la diferencia mínima detectable alcanzada por tramo."
+    ),
+    exclusions=(
+        "Partidos sin resultado liquidado, aplazados, suspendidos o anulados.",
+        "Lecturas sin calibrar (sin campeón o sin ningún precio en la ventana): no tienen cifra calibrada que evaluar.",
+        "Lecturas cuyo modelo o campeón cambió después de la lectura y antes del saque: cuenta la última lectura.",
+    ),
+    stopping=(
+        "Una sola evaluación: el primer día en que la ejecución en seco cuente la muestra mínima en los dos tramos de los tres "
+        "mercados, o el 31-ene-2027 si antes no ocurre. Ningún cambio de tramos, mercados o umbrales sin un protocolo v2 "
+        "registrado antes de mirar. Nada se promociona solo: el veredicto lo firma el dueño (AD-K07)."
+    ),
+    segments=("Tramo de edad del precio: 6-24 h y 24-96 h.", "Mercado: 1X2, más/menos 2,5 y ambos marcan.", "Modelo."),
+    registered_on="2026-11-16",
+    seed=20261116,
+)
+
+
+PROTOCOLS: Final[dict[str, Protocol]] = {p.key: p for p in (A02, A09, B09, A08, C02, A03, B03)}
 
 
 def require(key: str) -> Protocol:

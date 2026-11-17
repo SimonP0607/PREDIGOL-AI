@@ -2,6 +2,7 @@
 
     python -m scripts.expand_leagues --batch 1            # what tracking the batch would change; nothing written
     python -m scripts.expand_leagues --batch 1 --apply    # track it
+    python -m scripts.expand_leagues --batch 1 --untrack --apply   # stop following it again (nothing is deleted)
 
 The competitions and every season the provider lists come from raw.league_coverage - the /leagues answer already on
 disk - through the same catalogue builder as the selection (fbi.catalog.from_raw.build_catalogue): it sets
@@ -14,6 +15,9 @@ name and country there (newest season) must be the ones config/expansion.yaml gi
 tracked as some other competition.
 
 One run in the ledger (``league_expansion``) records what was tracked and when.
+
+``--untrack`` is the way back: the same checks, then ``is_tracked`` false for the batch's leagues only. Fixtures,
+odds, tables and history already stored stay; the worker simply stops asking the provider about them.
 """
 
 from __future__ import annotations
@@ -78,13 +82,15 @@ def identity_mismatches(batch: dict[str, Any], state: list[dict[str, Any]]) -> l
     return out
 
 
-def expand(conn: psycopg.Connection[Any], batch: dict[str, Any], *, apply: bool) -> dict[str, Any]:
+def expand(conn: psycopg.Connection[Any], batch: dict[str, Any], *, apply: bool,
+           untrack: bool = False) -> dict[str, Any]:
     leagues = [int(x) for x in batch["leagues"]]
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(STATE_SQL, {"ids": leagues})
         state = cur.fetchall()
     missing = [r["provider_league_id"] for r in state if not r["seasons_listed"]]
-    out: dict[str, Any] = {"batch": batch["batch"], "tier": batch["tier"], "leagues": state, "missing": missing}
+    out: dict[str, Any] = {"batch": batch["batch"], "tier": batch["tier"], "leagues": state, "missing": missing,
+                           "untrack": untrack}
     if missing:
         out["refused"] = f"not in raw.league_coverage: {missing}; read /leagues first"
         return out
@@ -97,15 +103,17 @@ def expand(conn: psycopg.Connection[Any], batch: dict[str, Any], *, apply: bool)
         return out
     ledger = RunLedger(conn)
     run_id = ledger.open("league_expansion", params={"batch": batch["batch"], "tier": batch["tier"],
-                                                      "leagues": leagues}, scheduled_for=now())
+                                                      "leagues": leagues, "untrack": untrack}, scheduled_for=now())
     counters = RunCounters()
+    verb = "untracked" if untrack else "tracked"
     try:
-        report = build_catalogue(conn, tiers={lid: int(batch["tier"]) for lid in leagues})
+        report = build_catalogue(conn, tiers={lid: int(batch["tier"]) for lid in leagues},
+                                 tracked=set() if untrack else None)
         counters.rows_inserted = report.competitions_inserted + report.seasons_inserted
         counters.rows_updated = report.competitions_updated + report.seasons_updated
         out["catalogue"] = report.as_dict()
     finally:
-        ledger.close(run_id, counters, notes=f"expansion batch {batch['batch']}: {len(leagues)} league(s) tracked")
+        ledger.close(run_id, counters, notes=f"expansion batch {batch['batch']}: {len(leagues)} league(s) {verb}")
         conn.commit()
     out["run_id"] = run_id
     return out
@@ -117,10 +125,11 @@ def main(argv: list[str] | None = None) -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--batch", type=int, required=True)
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--untrack", action="store_true", help="stop following the batch (with --apply); deletes nothing")
     args = ap.parse_args(argv)
     batch = batch_of(args.batch)
     with psycopg.connect(settings.database.psycopg_url) as conn:
-        out = expand(conn, batch, apply=args.apply)
+        out = expand(conn, batch, apply=args.apply, untrack=args.untrack)
     print(f"batch {out['batch']} (tier {out['tier']}):")
     for r in out["leagues"]:
         print(f"  {r['provider_league_id']:>5}  name {batch['names'].get(r['provider_league_id'], '?')[:34]:34} "
@@ -130,10 +139,11 @@ def main(argv: list[str] | None = None) -> int:
     if out.get("refused"):
         print("REFUSED: " + out["refused"])
         return 1
+    verb = "untracked" if args.untrack else "tracked"
     if "catalogue" in out:
-        print(f"tracked in run {out['run_id']}: {out['catalogue']}")
+        print(f"{verb} in run {out['run_id']}: {out['catalogue']}")
     else:
-        print("dry run: re-run with --apply")
+        print(f"dry run ({'untrack' if args.untrack else 'track'}): re-run with --apply")
     return 0
 
 
