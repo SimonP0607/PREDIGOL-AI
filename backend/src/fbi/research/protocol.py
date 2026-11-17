@@ -961,7 +961,150 @@ C09: Final = Protocol(
     seed=20261117,
 )
 
-PROTOCOLS: Final[dict[str, Protocol]] = {p.key: p for p in (A02, A09, B09, A08, C02, A03, B03, B07, K02, C08, C09)}
+K03: Final = Protocol(
+    key="AD-K03",
+    version="proto-ad-k03-v1",
+    title="Rendimiento de lectores y fuentes frente a las reglas (perf-v1)",
+    question=(
+        "Para cada lector de la sombra (Partido y Estadísticas en su versión, y cada brazo del Council), sobre las MISMAS "
+        "selecciones liquidadas que la revisión por reglas (rules-review-v1) juzgó antes del saque: ¿cambia el valor frente al "
+        "cierre de lo que se deja pasar si a las reglas se les añade el veto de ese lector? Y para cada fuente y tipo de hecho "
+        "citado por una decisión: ¿qué parte de lo que afirmó resultó sostenido después del partido?"
+    ),
+    null="Añadir el veto del lector a las reglas no cambia el CLV medio por selección examinada.",
+    alternative=(
+        "El CLV medio por selección examinada cambia: sube (el lector APORTA) o baja (RESTA). Es información para el dueño: "
+        "ningún peso, umbral ni versión cambia por ella sin el aprendizaje controlado (AD-K07)."
+    ),
+    unit=(
+        "Lectores: una selección liquidada y un lector (agente y versión; el Council, por brazo), con la postura del lector "
+        "(attr-v1, fila VERDICT, la de antes del saque), la palabra más reciente de rules-review-v1 antes del saque y su CLV "
+        "(el del post-mortem pm-v6 que guardó la atribución). Fuentes: un hecho citado por una decisión evaluada (eval-sel-v1), "
+        "contado una vez por hecho, con su fuente (dominio registrado o nombre) y su tipo (out, starts, available)."
+    ),
+    data=(
+        "intel.agent_attributions (attr-v1, classified_by code), ai.pick_reviews (engine rules, status ok, antes del saque), "
+        "core.fixtures; intel.selection_evaluations (eval-sel-v1) y las fuentes de sus hechos por identificador con la pregunta "
+        "de gates.typed_visible. Solo lectura. Periodo: los partidos con saque en la ventana que se pide (días de Bogotá)."
+    ),
+    split=(
+        "Sin ajuste: nada se entrena ni se elige con estas cifras. El intervalo remuestrea días de Bogotá enteros (las "
+        "selecciones de un día no son independientes)."
+    ),
+    primary_metric=(
+        "Por lector, la diferencia pareada por selección examinada: clv x (se queda con reglas y veto - se queda con reglas), "
+        "donde se queda con reglas si la palabra de las reglas no es DOWNGRADE ni REJECT (el filtro 6 de decision-v1) y el veto "
+        "es una postura en contra (CONCERN, REJECT_SIGNAL, DOWNGRADE, REJECT). Media con su intervalo por bootstrap de días "
+        "(2.000 remuestreos, semilla del protocolo) al nivel corregido de Bonferroni 1 - 0,05/m, con m los lectores que alcanzan "
+        "la muestra en esa ejecución."
+    ),
+    pass_rule=(
+        "Con la muestra: APORTA si el extremo inferior del intervalo corregido es > 0; RESTA si el superior es < 0; SIN_DIFERENCIA "
+        "si el intervalo cubre 0. Fuentes: la parte sostenida (sostenidos / (sostenidos + contradichos)) con su intervalo de "
+        "Wilson del 95 %, medida con al menos 30 hechos resueltos por fuente y tipo. Un veredicto no activa nada."
+    ),
+    reject_rule=(
+        "INSUFICIENTE con menos de 1.327 selecciones examinadas, menos de 14 días o menos de 30 selecciones en que el veto cambia "
+        "algo (las reglas la dejan pasar y el lector está en contra), o una fuente y tipo con menos de 30 hechos resueltos: se "
+        "enseña la muestra y cuánto falta, sin conclusión. El lector Jugador no tiene atribución (attr-v1 no lo lee): INSUFICIENTE."
+    ),
+    secondary=(
+        "Atribución con intervalos por lector: aciertos / (aciertos + fallos) y postura hacia el cierre, con Wilson del 95 %; la "
+        "parte de posturas sin lado (ABSTAIN, NEUTRAL).",
+        "CLV medio de las selecciones vetadas y de las no vetadas, cada uno con su intervalo por días; la desviación típica medida "
+        "de la diferencia y la diferencia mínima detectable con la muestra alcanzada.",
+        "Fuentes: el CLV medio de las selecciones que las citan, con su intervalo por días (descriptivo: no es un efecto causal) y "
+        "los hechos no evaluables.",
+    ),
+    min_sample=(
+        "1.327 selecciones examinadas por lector en al menos 14 días de Bogotá y 30 selecciones en que el veto cambia algo; 30 "
+        "hechos resueltos por fuente y tipo (el mínimo de AD-C08)."
+    ),
+    power_note=(
+        "n = (z(0,975) + z(0,80))² · s² / d² con d = 0,01 (un punto de CLV por selección examinada) y s = 0,13, la desviación "
+        "típica del CLV de IA-054 (+5,77 % [5,28; 6,24] en 2.705 selecciones: semiancho 0,48 puntos, s ≈ 0,127, redondeada hacia "
+        "arriba): 7,849 · 0,0169 / 0,0001 = 1.326,5, es decir 1.327. El informe da s medida y la diferencia mínima detectable."
+    ),
+    exclusions=(
+        "Selecciones sin revisión por reglas antes del saque, sin postura del lector o sin CLV.",
+        "Posturas de una revisión de la sombra escrita después del saque (attr-v1 ya las excluye).",
+        "Hechos sin fuente conocida o de research v2 mientras gates.typed_visible no lo deje ver.",
+    ),
+    stopping=(
+        "Se recalcula sobre la ventana que se pide y no guarda veredictos. Un veredicto cuenta para AD-K07 y para la retirada de "
+        "review-v2 (AD-D11) solo con este protocolo firmado por el dueño y sobre una ventana fijada antes de mirarla. Ningún "
+        "umbral, veto, mínimo o corrección cambia sin un protocolo v2 registrado antes de mirar. Nada se promociona solo."
+    ),
+    segments=(
+        "Lector: match y stats por versión; council por brazo (ma-v1, ma-v1-h, cs-v1).",
+        "Fuente: dominio registrado o nombre; tipo de hecho: out, starts, available.",
+    ),
+    registered_on="2026-11-17",
+    seed=20261117,
+)
+
+K04: Final = Protocol(
+    key="AD-K04",
+    version="proto-ad-k04-v1",
+    title="Banco de repetición como prueba de regresión con tolerancia (replay-regression-v1)",
+    question=(
+        "Ante cada cambio de versión de un lector o del juez del Council: ¿la versión en vigor, preguntada otra vez con la misma "
+        "petición por el banco de repetición (INT-C02), reproduce lo que guardó la sombra dentro de una tolerancia fijada antes de "
+        "mirar? Y si no, ¿por qué (vía Batch frente a tiempo real, modelo del proveedor distinto, o sin explicar)?"
+    ),
+    null=(
+        "La repetición cambia lo guardado más que repetir la misma llamada en más de la tolerancia: el extremo superior del IC95 "
+        "de la diferencia supera 5 puntos."
+    ),
+    alternative="El extremo superior del IC95 de la diferencia es ≤ 5 puntos: la versión reproduce la sombra dentro de tolerancia.",
+    unit="La de INT-C02: una palabra de una respuesta guardada con su lectura guardada (S) y sus dos repeticiones (R1, R2).",
+    data=(
+        "Lo que el banco ya recogió (ai.replay_bank_items, ai.replay_results) de una ejecución con gasto de INT-C02, por ámbito, "
+        "con la vía de la ejecución guardada (stored_in_batch) y el modelo que respondió cada repetición. Solo lectura; no pregunta "
+        "nada a ningún modelo."
+    ),
+    split="Sin ajuste de modelo.",
+    primary_metric=(
+        "Por ámbito, sobre las unidades con sus tres lecturas: la diferencia por unidad cambios(S frente a R1) menos cambios(R2 "
+        "frente a R1) con su intervalo del 95 % por bootstrap de partidos (2.000 remuestreos, semilla de INT-C02, el mismo "
+        "intervalo que ya se informa)."
+    ),
+    pass_rule=(
+        "PASA si el extremo superior del IC95 es ≤ 0,05 (5 puntos, tolerancia PROPUESTA: la firma el dueño), las repeticiones que "
+        "no se sostienen cumplen la regla de INT-C02 (≤ 3 % y ≤ 1 punto sobre las guardadas), no queda ninguna pregunta en camino "
+        "y hay al menos 200 unidades completas de 30 partidos. Con la tolerancia, el Council ma-v1 del 15-nov (+2,96 [0,2; 5,7]) "
+        "tampoco pasaría."
+    ),
+    reject_rule=(
+        "NO PASA si el extremo superior supera la tolerancia o las inválidas su límite, siempre con su causa escrita (diag-v1): "
+        "via_tiempo_real si las guardadas en tiempo real no pasan y las guardadas por Batch sí; modelo_distinto si las respuestas "
+        "de un modelo distinto del guardado no pasan y las del mismo sí; validez si fallan las inválidas; no_explicada si ninguna "
+        "partición lo explica; muestra_insuficiente_para_explicar si las particiones no llegan al mínimo. INSUFICIENTE con menos "
+        "muestra: no se interpreta."
+    ),
+    secondary=(
+        "La diferencia y su intervalo en cada partición (vía de la guardada; mismo modelo o distinto).",
+        "Qué ámbitos tocan: la versión en vigor de su agente frente a la medida (un cambio de lector o de juez exige otra medida).",
+    ),
+    min_sample="200 unidades completas de al menos 30 partidos por ámbito (INT-C02); 200 de 30 en cada partición que explique.",
+    power_note=(
+        "Con q = 0,065 (cambio al repetir del Council ma-v1 el 15-nov) y n = 541, el error típico de la diferencia es del orden de "
+        "√(2q/n) ≈ 1,6 puntos, más por la agrupación en 126 partidos: un ámbito que reproduce perfectamente queda con el extremo "
+        "superior cerca de 3 a 4 puntos, por debajo de 5."
+    ),
+    exclusions=("Las de INT-C02.",),
+    stopping=(
+        "Una sola medida de regresión por conjunto de ejecuciones guardadas: no se repite sobre las mismas ejecuciones para cambiar "
+        "un veredicto (el código lo rechaza); una medida nueva usa ejecuciones guardadas que no estaban en ninguna anterior, "
+        "decididas antes de mirar, y se informan todas. Se corre ante cada cambio de versión de un lector o del juez (AD-D10). "
+        "Ninguna tolerancia ni partición cambia sin un protocolo v2."
+    ),
+    segments=("Por ámbito de INT-C02; partición por vía de la guardada y por modelo de la repetición.",),
+    registered_on="2026-11-17",
+    seed=20261111,
+)
+
+PROTOCOLS: Final[dict[str, Protocol]] = {p.key: p for p in (A02, A09, B09, A08, C02, A03, B03, B07, K02, C08, C09, K03, K04)}
 
 
 def require(key: str) -> Protocol:

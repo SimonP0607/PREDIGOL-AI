@@ -23,6 +23,7 @@ ALLOWED = {
     "src/fbi/observability/trace.py",  # the end-to-end trace (trace-v1, P0): reading only, for observability, never on a decision path
     "src/fbi/council/weights.py",  # the Council v2 protocol (IA-012) weighs the specialists by their record: reading only, in shadow, decides nothing
     "src/fbi/budgeting/replay.py",  # voi-v1 (IA-018) prices a useful signal by depth in its replay: reading only, in shadow, nothing imports it
+    "src/fbi/evalpass/performance_reads.py",  # perf-v1 (IA-135, AD-K03): each reader against the rules, reading only, for the owner's command
 }
 
 
