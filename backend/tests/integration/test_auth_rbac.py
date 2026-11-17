@@ -267,6 +267,8 @@ def test_the_registry_of_capabilities_answers_the_owner_in_the_shape_of_its_exam
     import json
     from pathlib import Path
 
+    from fbi.intel.capabilities import CATALOG
+
     example = json.loads((Path(__file__).resolve().parents[1] / "fixtures" / "contracts" / "intelligence"
                           / "admin_capabilities.json").read_text(encoding="utf-8"))
     login(app_client, ADMIN_EMAIL, ADMIN_PW)
@@ -275,4 +277,6 @@ def test_the_registry_of_capabilities_answers_the_owner_in_the_shape_of_its_exam
     data = r.json()["data"]
     assert set(data) == set(example["data"])
     assert [set(c) for c in data["capabilities"]] == [set(c) for c in example["data"]["capabilities"]]
-    assert all(c["state"] == "en_sombra" for c in data["capabilities"]) and data["decides"] is False
+    seeded = {cap.key for cap in CATALOG[:7]}  # revision 0138's seed; a later capability enters through sync, at construida
+    assert all(c["state"] == "en_sombra" for c in data["capabilities"] if c["key"] in seeded) and data["decides"] is False
+    assert all(c["state"] in (None, "construida") for c in data["capabilities"] if c["key"] not in seeded)

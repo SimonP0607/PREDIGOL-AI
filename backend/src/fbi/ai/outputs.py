@@ -415,6 +415,14 @@ SURFACES: Final[tuple[Surface, ...]] = (
             "nothing reads them before AD-G07 and FBI_NEWS_V2)",
             {f"{lang}.{part}": v for lang in ("es", "en") for part, v in _NEWS_TEXT.items()},
             note="every sentence checked against the facts it cites, the health filter and the anti-copy verifier (fbi.news.writer)"),
+    Surface("chronicle-v4", ("chronicle-v4",),
+            ("fbi.chronicle.writer:request", "fbi.chronicle.v4_job:caller.call", "fbi.chronicle.v4_job:task_of"),
+            _attr("fbi.chronicle.writer", "SCHEMA"), False, "ai.chronicles (IA-103/IA-104, shadow: FBI_CHRONICLE_V4; no reader reads it before "
+            "C-01's second delivery and FBI_MATCH_INTELLIGENCE)",
+            {f"{lang}.{sec}[].{k}": v for lang in ("es", "en") for sec in ("que_se_juega", "como_llega", "que_puede_definir", "estadisticas",
+                                                                           "jugadores", "novedades", "riesgos", "que_falta")
+             for k, v in _FACTS_TEXT.items()},
+            note="every sentence checked against the content plan it cites (fbi.chronicle.verify): an unsupported one is dropped"),
     Surface("lab-probe", ("probe-cache-v1", "probe-schema-v1"),
             ("fbi.ai.lab:probe_request", "fbi.ai.lab:probe_cache", "fbi.ai.lab:probe_schema", "fbi.ai.lab:probe_batch_tasks"),
             _attr("fbi.ai.lab", "PROBE_SCHEMA"), False, "feature_gates (the probe's verdict only)", {}, repeat="experiment"),

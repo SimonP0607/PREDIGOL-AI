@@ -132,7 +132,7 @@ REPLAY_SRC = (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")
 
 WORDS = {"un": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10,
          "once": 11, "doce": 12, "trece": 13, "catorce": 14, "quince": 15, "dieciséis": 16, "diecisiete": 17, "dieciocho": 18,
-         "diecinueve": 19, "veinte": 20, "veintiún": 21, "veintiuno": 21, "veintidós": 22, "veintitrés": 23, "veinticuatro": 24, "veinticinco": 25, "veintiséis": 26, "veintisiete": 27}
+         "diecinueve": 19, "veinte": 20, "veintiún": 21, "veintiuno": 21, "veintidós": 22, "veintitrés": 23, "veinticuatro": 24, "veinticinco": 25, "veintiséis": 26, "veintisiete": 27, "veintiocho": 28}
 """The numbers the guide writes in words."""
 
 
@@ -1188,17 +1188,18 @@ def test_who_reads_the_evidence_table_is_what_the_guide_counts_and_the_structura
                       flags=re.S)
     assert words
     counted = tuple(WORDS[w.lower()] for w in words.groups())
-    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (27, 8, 19, 7), "IA-030: the labelled bank reads both kinds on purpose; IA-061: the moments of the facts, by id; IA-071: the player key; IA-087: the unified road and its readers compare v1 and v2 on purpose; IA-099: the news in shadow filters"
+    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (28, 8, 20, 7), "IA-030: the labelled bank reads both kinds on purpose; IA-061: the moments of the facts, by id; IA-071: the player key; IA-087: the unified road and its readers compare v1 and v2 on purpose; IA-099: the news in shadow filters; IA-103: the single chronicle's plan filters"
     assert set(all_ticked(readers.split("Los otros")[0].split("Ocho la leen a propósito")[1])) == own
     assert others == {"ai/packet.py", "picks/daily.py", "intel/decision.py", "intel/match_review.py", "intel/report.py", "ai/learning.py",
                       "intel/leakage.py", "api/services/ai_layer.py", "api/services/ai_v2.py", "api/services/intelligence.py",
                       "api/services/news.py", "narrative/job.py", "observability/trace.py", "chronicle/review.py", "ai/known_at.py",
                       "news/evidence_reads.py", "decision/shadow.py", "shadowjobs/lineup_estimate.py",
-                      "scripts/ia_players.py"}
+                      "scripts/ia_players.py", "chronicle/inputs.py"}
     # the IA's ten, the readers' news and narrative of the UX plan (A10, A11) and the end-to-end trace of P0 (read-only, for observability)
-    assert "y otros quince (sección 5)" in section(1) and len(others) - 4 == 15, "the trace, the chronicle's review, known_at, the news in shadow"
+    assert "y otros quince (sección 5)" in section(1) and len(others) - 5 == 15, \
+        "the trace, the chronicle's review, known_at, the news in shadow, the single chronicle's plan"
     assert "`observability/trace.py`" in readers and "nunca en el camino de una decisión" in readers
-    assert "veintisiete módulos, diecinueve de ellos ajenos a v2" in section(11) and "el paquete, los picks del día, la decisión, la revisión del partido" in section(11)
+    assert "veintiocho módulos, veinte de ellos ajenos a v2" in section(11) and "el paquete, los picks del día, la decisión, la revisión del partido" in section(11)
     assert "(`subject_type IS NULL OR` lo que diga `gates.typed_visible`: v2 en `on` **y** la fila más nueva del gate en `PASA`)" in readers
     assert "ai_replay.py" in readers
     assert "PacketBuilder(conn, typed_evidence=typed_visible(conn))" in (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")

@@ -31,6 +31,8 @@ CONTEXT_MODULES: dict[str, dict[str, str]] = {
                                           "distributions, and the append-only record of the readings",
         "competitions/scenario_replay.py": "the closing test (IA-082): a closed season replayed day by day against its final table",
         "scripts/ia_scenarios.py": "the command (IA-082): read, compare with stakes-v5, replay (read-only) and the shadow step",
+        "chronicle/plan.py": "the single chronicle's plan (IA-103) reads only the name of the fact that a team has no proved objective "
+                             "left (FACT_NO_OBJECTIVE), to authorise that class of sentence; it runs nothing of the engine",
     },
     "fbi.intel.scenarios": {
         "ai/packet.py": "the packet: what the match alone does to its table and to its tie, as of its moment",

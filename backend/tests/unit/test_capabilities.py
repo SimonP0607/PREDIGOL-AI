@@ -136,7 +136,7 @@ def test_the_warnings_never_read_better_than_the_verdicts() -> None:
 def test_the_seed_of_0138_is_the_code_catalog() -> None:
     m = migration()
     assert [{k: e[k] for k in ("key", "piece", "title", "description", "switch", "components")} for e in m.SEED] == [
-        c.entry() for c in reg.CATALOG]
+        c.entry() for c in reg.CATALOG[: len(m.SEED)]], "the seed is the head of the catalog; later pieces are added by sync --write"
     assert m.STATES == reg.STATES and m.SAFETY == reg.SAFETY and m.VALIDATION == reg.VALIDATION and set(m.MEASURED) == reg.MEASURED
 
 

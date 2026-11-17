@@ -86,6 +86,10 @@ at worst, and a duplicated tick costs nothing at all.
     default): the estimated starters of the tracked matches at E1 and E4 (``fbi.shadowjobs.lineup_estimate``, IA-094,
     ``lineup-estimate-v1``), one row per player in ``intel.lineup_estimates``, sealed ``sin_calibrar``. Database only; no provider, no
     model; nothing a reader, a pick or a decision reads.
+  * ``chronicle_v4``  every 30 min (``FBI_CHRONICLE_V4_MINUTES``), only while ``FBI_CHRONICLE_V4=shadow`` (off by default): the content plan
+    (``content-plan-v1``) and the single chronicle (``chronicle-v4``, the small model, by batch when the gate allows) of the analysed matches
+    of the next day, checked sentence by sentence (``fbi.chronicle.v4_job``, IA-103/IA-104), into ``ai.chronicles``. At most US$ 1 a day;
+    nothing a reader, a pick or a decision reads.
   * ``signals_ingest``  every 15 min (``FBI_SIGNALS_MINUTES``), only while ``FBI_SIGNALS=shadow`` (off by default): the RSS feeds and
     sitemaps of the directory v2 (``fbi.news.signals``, IA-085) - only of sources the policy lets be read (authorised and signed by the
     owner), robots.txt first, conditional requests; titles, dates and links into ``news.items``, and for the pending sources only what
@@ -1193,6 +1197,26 @@ async def _decision_v2_shadow() -> None:
     await asyncio.to_thread(_decision_v2_shadow_now)
 
 
+def _chronicle_v4_now() -> None:
+    """The single chronicle in shadow (IA-103/IA-104): one pass. Never raises; writes ``ai.chronicles`` (and, for its calls, the ledger and
+    the batch queue). Spends at most US$ 1 a day (``fbi.chronicle.v4_job.DAY_CAP_USD``); no reader sees what it writes."""
+    from fbi.chronicle import v4_job
+
+    if v4_job.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = v4_job.run_job(conn, at=now(), code_version=code_version())
+        log.info("chronicle_v4.run", **r.as_json())
+    except Exception as exc:
+        log.error("chronicle_v4.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _chronicle_v4() -> None:
+    new_run_id()
+    await asyncio.to_thread(_chronicle_v4_now)
+
+
 def _lineup_estimate_shadow_now() -> None:
     """The estimated starters (IA-094): one pass. Never raises; writes only ``intel.lineup_estimates``."""
     from fbi.shadowjobs import lineup_estimate as les
@@ -1734,7 +1758,7 @@ WORKER_JOB_TYPES = frozenset({
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
     "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest", "decision_v2_shadow", "lineup_estimate_shadow",
-    "news_stories",
+    "news_stories", "chronicle_v4",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -2108,6 +2132,15 @@ async def main() -> None:
                           misfire_grace_time=signals.EVERY_MINUTES * 60, next_run_time=moment + timedelta(minutes=27))
     else:
         log.info("worker.signals_off", hint="FBI_SIGNALS is not shadow: no feed of the directory is read")
+    from fbi.chronicle import v4_job
+
+    if v4_job.mode() == "shadow":
+        # IA-103/IA-104: the content plan and the single chronicle in shadow, at most US$ 1 a day; nothing reaches a reader.
+        scheduler.add_job(_deadline("chronicle_v4", "chronicle_v4", _chronicle_v4), "interval", minutes=v4_job.every_minutes(),
+                          id="chronicle_v4", max_instances=1, coalesce=True, misfire_grace_time=v4_job.every_minutes() * 60,
+                          next_run_time=moment + timedelta(minutes=21))
+    else:
+        log.info("worker.chronicle_v4_off", hint="FBI_CHRONICLE_V4 is not shadow: no content plan and no single chronicle are written")
     from fbi.news import pipeline as news_pipeline
 
     if news_pipeline.mode() == "shadow":

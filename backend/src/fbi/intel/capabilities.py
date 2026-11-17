@@ -117,6 +117,11 @@ CATALOG: Final[tuple[Capability, ...]] = (
                "Contrasta la crónica de cada partido terminado con lo que pasó; solo base de datos, sin modelo ni coste; nadie la lee "
                "para decidir.",
                None, ("chronicle-review-v1",)),
+    Capability("chronicle_v4", "AD-F02", "Crónica única: plan de contenido y chronicle-v4",
+               "El código planifica los hechos de cada partido (content-plan-v1, con la tabla de clases de afirmación) y el modelo "
+               "pequeño escribe una sola crónica verificada frase por frase (chronicle-verify-v1); en sombra, tope de US$ 1 al día, "
+               "nadie la lee.",
+               "FBI_CHRONICLE_V4", ("content-plan-v1", "claim-classes-v1", "chronicle-v4", "chronicle-verify-v1")),
 )
 """Every capability of the plan the registry knows. The first seven are the ones that already ran in shadow on 16 Nov 2026 (seeded by
 revision 0138 at ``en_sombra``); a piece that builds a new one adds it here, and ``scripts/ia_capabilities.py sync --write`` registers it
