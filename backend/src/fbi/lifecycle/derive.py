@@ -103,6 +103,9 @@ class Decision:
     context_status: str
     kickoff_at: datetime | None = None
     """The kick-off the decision was taken for (``intel.decisions.kickoff_at``)."""
+    evaluation: str | None = None
+    """The evaluation (E1-E4) the decision was taken in, where its layer records one (decision-v2's shadow, IA-093); None otherwise."""
+    evaluation_version: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,18 +216,19 @@ class _Chain:
         last = self.at
         self.rows.append(Row(step, at if last is None or at >= last else last, source, source_id, self.layer))
 
-    def code(self, state: str, reason: str, at: datetime, source: str, source_id: int | None) -> None:
-        """A move the code makes from what a layer says, folded into the cycle."""
+    def code(self, state: str, reason: str, at: datetime, source: str, source_id: int | None, *, evaluation: str | None = None,
+             evaluation_version: int | None = None) -> None:
+        """A move the code makes from what a layer says, folded into the cycle (with the evaluation it was made in, when there is one)."""
         current = self.state
         if current == state and reason == self.reason:
             return
         if current == "retirada" and state in ("en_evaluacion", "en_investigacion"):
             return  # withdrawn it stays, until it comes back or closes
         if current in ("pendiente_alineaciones", "confirmada_sombra") and state in ("en_evaluacion", "en_investigacion"):
-            self.emit(Step("retirada", reason if reason in machine.REASONS["retirada"] else "sin_motivo_conocido"), at, source,
-                      source_id)
+            self.emit(Step("retirada", reason if reason in machine.REASONS["retirada"] else "sin_motivo_conocido",
+                           evaluation=evaluation, evaluation_version=evaluation_version), at, source, source_id)
             return
-        self.emit(Step(state, reason), at, source, source_id)
+        self.emit(Step(state, reason, evaluation=evaluation, evaluation_version=evaluation_version), at, source, source_id)
 
 
 def _played(f: Fixture, now: datetime) -> bool:
@@ -236,8 +240,14 @@ def _not_played(f: Fixture, now: datetime) -> bool:
     return status in NOT_PLAYED or (status in DEFERRED and now >= f.kickoff_at + DEFERRED_GRACE)
 
 
-def derive(h: History, fixture: Fixture, *, now: datetime) -> list[Row]:
-    """The chain of one selection as of ``now``: every step the layers support, each checked by the machine."""
+DECISIONS: Final = "intel.decisions"
+"""Where the decisions of today's layers are read from (``source`` of their rows)."""
+
+
+def derive(h: History, fixture: Fixture, *, now: datetime, source: str = DECISIONS) -> list[Row]:
+    """The chain of one selection as of ``now``: every step the layers support, each checked by the machine. ``source``: the table the
+    decisions of ``h`` were read from (``intel.decisions`` for decision-v1 and decision-fam-v1; ``intel.decisions_v2`` for decision-v2's
+    shadow, IA-093)."""
     before = [d for d in h.decisions if d.known_at < fixture.kickoff_at - LAST_WORD
               and (d.kickoff_at is None or d.known_at < d.kickoff_at - LAST_WORD)]
     by_moment: dict[datetime, Decision] = {}
@@ -254,7 +264,7 @@ def derive(h: History, fixture: Fixture, *, now: datetime) -> list[Row]:
     if h.detected_at is not None and h.detected_at == start:
         chain.emit(Step("detectado", "candidato_nuevo"), start, "picks.picks", h.detected_pick)
     else:
-        chain.emit(Step("detectado", "candidato_nuevo"), start, "intel.decisions", seen[0].id)
+        chain.emit(Step("detectado", "candidato_nuevo"), start, source, seen[0].id)
 
     events: list[tuple[datetime, int, int, Decision | Review]] = [(d.known_at, 0, d.id, d) for d in decisions]
     events += [(r.reviewed_at, 1, r.id, r) for r in h.reviews
@@ -262,7 +272,7 @@ def derive(h: History, fixture: Fixture, *, now: datetime) -> list[Row]:
     for at, _, _, ev in sorted(events, key=lambda e: (e[0], e[1], e[2])):
         if isinstance(ev, Decision):
             state, reason = map_decision(ev)
-            chain.code(state, reason, at, "intel.decisions", ev.id)
+            chain.code(state, reason, at, source, ev.id, evaluation=ev.evaluation, evaluation_version=ev.evaluation_version)
         elif chain.state in ("pendiente_alineaciones", "confirmada_sombra"):
             chain.emit(Step("retirada", "revision_en_contra", actor="model"), at, "ai.pick_reviews", ev.id)
 

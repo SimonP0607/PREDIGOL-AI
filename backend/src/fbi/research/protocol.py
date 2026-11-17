@@ -626,7 +626,103 @@ B03: Final = Protocol(
 )
 
 
-PROTOCOLS: Final[dict[str, Protocol]] = {p.key: p for p in (A02, A09, B09, A08, C02, A03, B03)}
+B07: Final = Protocol(
+    key="AD-B07",
+    version="proto-ad-b07-v1",
+    title="Córners y tarjetas: calibrador de conteos por familia (count-cal-v1)",
+    question=(
+        "¿Un calibrador de la escalera de líneas (count-cal-v1: una transformación logística de la probabilidad de «más de L» "
+        "de la binomial negativa de family-v1, la misma para todas las líneas de un conteo) da, fuera de muestra, "
+        "probabilidades de más/menos de córners y de tarjetas que no son peores que las de family-v1 sin calibrar, que están "
+        "calibradas línea por línea y que saben más que la media de la liga? Un veredicto por familia: córners totales, "
+        "córners por equipo, tarjetas totales y tarjetas por equipo."
+    ),
+    null=(
+        "En la familia, el calibrador empeora el log loss de la escalera frente a family-v1 sin calibrar en más de 0,001, o "
+        "alguna línea queda con ECE > 0,03, o no baja el log loss de la media de la liga."
+    ),
+    alternative=(
+        "El calibrador no empeora el log loss de la escalera en más de 0,001, todas las líneas con muestra quedan con ECE ≤ "
+        "0,03 y baja el log loss de la media de la liga."
+    ),
+    unit=(
+        "Un partido terminado y un conteo (córners totales, córners de cada equipo, tarjetas totales, tarjetas de cada "
+        "equipo): la distribución del conteo que el modelo daba antes del partido y el conteo que ocurrió."
+    ),
+    data=(
+        "market.fixture_outcomes de las competiciones seguidas, leído por fbi.families.history (la misma puerta que "
+        "family-v1): córners con la regla corners_ft@v1 y tarjetas con cards_lines_ft@v1 (amarilla 1 y roja 1, de las "
+        "estadísticas del equipo; partidos con prórroga fuera). Historia desde el 1-nov-2023; partidos evaluados con saque en "
+        "[10-nov-2025, 10-nov-2026). Árbitro: core.fixture_referees con la identidad de F3 y de IA-071 (un árbitro fusionado "
+        "cuenta como su destino); su designación cuenta solo si se vio por primera vez 3 h o más antes del saque. Mercado: el "
+        "último precio de cada casa antes del saque en market.odds_quotes (CORNERS_OU, CORNERS_OU_HOME, CORNERS_OU_AWAY, "
+        "CARDS_OU, CARDS_OU_HOME, CARDS_OU_AWAY), solo casas completas (las dos opciones a esa línea, margen en (1; 1,25]), "
+        "margen quitado en proporción, media de las casas, con 3 casas o más y solo medias líneas. Exportado en solo lectura."
+    ),
+    split=(
+        "Walk-forward por competición en bloques de 28 días desde el 10-nov-2025 (tres bloques previos de calentamiento, desde "
+        "el 18-ago-2025, solo alimentan la dispersión y el calibrador). En cada bloque, family-v1 tal cual (fit_family, xi = "
+        "0,0019, penalización 32; árbitro con previa gamma de media 1, KAPPA = 150 tarjetas y 5 partidos como mínimo) se "
+        "ajusta con los partidos conocidos al empezar el bloque (saque + 6 h). La dispersión NB2 del bloque y el calibrador del "
+        "bloque se ajustan solo con predicciones fuera de muestra de bloques anteriores cuyo resultado se conocía al empezar el "
+        "bloque, de los últimos 365 días, con al menos 500 partidos; un bloque sin calibrador no se puntúa en ningún brazo."
+    ),
+    primary_metric=(
+        "Por familia, la diferencia pareada del log loss medio de la escalera (la media, sobre las líneas preregistradas, del "
+        "log loss binario de «más de L») calibrada menos family-v1 sin calibrar, agregada por día de Bogotá, con su intervalo "
+        "del 95 % por bootstrap de días (2.000 remuestreos, semilla del protocolo). Escaleras: córners totales 7,5 a 13,5; "
+        "córners por equipo 2,5 a 7,5; tarjetas totales 2,5 a 6,5; tarjetas por equipo 0,5 a 3,5."
+    ),
+    pass_rule=(
+        "VALIDADO con la muestra mínima si se cumplen las tres: (1) el límite superior del intervalo de la métrica primaria es "
+        "≤ 0,001; (2) el ECE de la probabilidad calibrada es ≤ 0,03 en cada línea de la escalera con 200 partidos o más; (3) el "
+        "límite superior del intervalo de la diferencia pareada calibrada menos la media de la liga es < 0. Con eso el dueño "
+        "puede firmar el calibrador de esa familia (count-cal-v1) y sus selecciones pueden entrar en la evaluación privada."
+    ),
+    reject_rule=(
+        "NO VALIDADO con la muestra mínima si falla alguna de las tres: el calibrador no se aplica, la familia sigue «sin "
+        "calibrar» y ninguna de sus selecciones entra en la evaluación privada. INSUFICIENTE con menos de la muestra mínima: "
+        "igual que NO VALIDADO a efectos prácticos y se dice cuánto falta."
+    ),
+    secondary=(
+        "RPS de la distribución del conteo (calibrada, sin calibrar y media de la liga).",
+        "Frente al mercado sin margen (3 casas o más, en las líneas del mercado): log loss calibrado menos mercado con su "
+        "intervalo por días; se interpreta solo con 300 partidos o más. Es la vara del valor (AD-E02), no del calibrador.",
+        "Árbitro: ganancia pareada del log loss de las tarjetas con y sin el multiplicador; cobertura de la designación conocida "
+        "antes del saque; con 10 partidos conocidos o menos, el multiplicador queda a 0,25 o menos de 1 en el 100 % de los "
+        "árbitros.",
+        "Convención de tarjetas: porcentaje de partidos con precio en que cards_lines_ft@v1 y yellow_ft@v1 liquidan distinto "
+        "en la línea del mercado.",
+        "Córners sin conteo: porcentaje de partidos con precio que terminan sin córners (se liquidan como None, nunca pérdida).",
+        "Parámetros del calibrador (pendiente y desplazamiento) de cada bloque.",
+    ),
+    min_sample=(
+        "Por familia, al menos 1.500 partidos puntuados en al menos 60 días distintos. Con menos, INSUFICIENTE."
+    ),
+    power_note=(
+        "Con n días y desviación típica s de la diferencia diaria, la diferencia mínima detectable es 2,80·s/√n (alfa 0,05 "
+        "bilateral, potencia 0,80). El informe da s medida y la diferencia mínima detectable alcanzada por familia."
+    ),
+    exclusions=(
+        "Partidos sin el conteo de la regla (córners nulos, tarjetas incompletas, prórroga): no se puntúan.",
+        "Competiciones con más de 250 equipos en la ventana y equipos con menos de 8 partidos (family-v1 no los predice).",
+        "En el mercado: líneas enteras o de cuarto, casas incompletas y consensos de menos de 3 casas.",
+    ),
+    stopping=(
+        "Una sola evaluación con los datos disponibles al ejecutarla (desde el 17-nov-2026); el resultado se guarda con la "
+        "huella de este protocolo. No se repite cambiando ventanas, escaleras, bloques ni umbrales: un cambio es un protocolo "
+        "v2 registrado antes de mirar. Nada se promociona solo: el veredicto lo firma el dueño (AD-K07)."
+    ),
+    segments=(
+        "Familia: córners totales, córners por equipo, tarjetas totales, tarjetas por equipo.",
+        "Tarjetas con y sin el multiplicador del árbitro.",
+    ),
+    registered_on="2026-11-17",
+    seed=20261117,
+)
+
+
+PROTOCOLS: Final[dict[str, Protocol]] = {p.key: p for p in (A02, A09, B09, A08, C02, A03, B03, B07)}
 
 
 def require(key: str) -> Protocol:

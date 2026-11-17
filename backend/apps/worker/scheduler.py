@@ -77,10 +77,23 @@ at worst, and a duplicated tick costs nothing at all.
     cycle of states of each selection (``fbi.lifecycle``, IA-068), read off the decisions, the shadow picks, the reviews, the settlements
     and the post-mortems of the matches of the last 7 days and the next 48 hours, appended to ``intel.selection_lifecycle``. Database
     only; it writes nothing else and nothing reads it but the owner's views.
+  * ``decision_v2_shadow``  every 5 min (``FBI_DECISION_V2_MINUTES``), only while ``FBI_DECISION_V2`` is ``shadow`` (off by default):
+    decision-v2 decides by itself at E1 (T-24 to T-12 h), at E4 (the last moment before kick-off it still judges) and at every moment
+    decision-v1 decided (the mirror), and each decision is kept in ``intel.decisions_v2`` with its moment in ``intel.decision_v2_moments``
+    (``fbi.shadowjobs.decision_v2``, IA-093); its chains go to the cycle of states through the cycle's API. Database and RAW only; nothing
+    a reader, a pick or decision-v1 sees.
+  * ``lineup_estimate_shadow``  every 5 min (``FBI_LINEUP_ESTIMATE_MINUTES``), only while ``FBI_LINEUP_ESTIMATE`` is ``shadow`` (off by
+    default): the estimated starters of the tracked matches at E1 and E4 (``fbi.shadowjobs.lineup_estimate``, IA-094,
+    ``lineup-estimate-v1``), one row per player in ``intel.lineup_estimates``, sealed ``sin_calibrar``. Database only; no provider, no
+    model; nothing a reader, a pick or a decision reads.
   * ``signals_ingest``  every 15 min (``FBI_SIGNALS_MINUTES``), only while ``FBI_SIGNALS=shadow`` (off by default): the RSS feeds and
     sitemaps of the directory v2 (``fbi.news.signals``, IA-085) - only of sources the policy lets be read (authorised and signed by the
     owner), robots.txt first, conditional requests; titles, dates and links into ``news.items``, and for the pending sources only what
     it would have read (``news.feed_reads``, ``ai.source_policy_log``). No model, no Exa search, nothing a reader sees.
+  * ``news_stories``  every 30 min (``FBI_NEWS_STORIES_MINUTES``), only while ``FBI_NEWS_STORIES=shadow`` (off by default): the news
+    pipeline in shadow (``fbi.news.pipeline``, IA-099 to IA-102) - who each new article names, its story, the story's category, language,
+    country and level, the rules of moderation; and, only with ``FBI_NEWS_TEXT=shadow`` (off by default), PrediGol's own text of the
+    stories whose sources allow it, paid by the LAB (at most US$ 2 a month). Nothing a reader sees.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
     trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
@@ -1133,9 +1146,70 @@ async def _signals_ingest() -> None:
     await asyncio.to_thread(_signals_now)
 
 
+def _news_stories_now() -> None:
+    """The news pipeline (IA-099 to IA-102): one pass in shadow. Never raises - it must never stop the worker - and writes only the
+    append-only tables of ``news`` (entities, stories, links, texts, the register of moderation)."""
+    from fbi.news import pipeline
+
+    if pipeline.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = pipeline.run_pass(conn, at=now())
+            conn.commit()
+        log.info("news_stories.pass", **{k: v for k, v in r.as_json().items() if k not in ("errors", "at")}, errors=r.errors[:3])
+    except Exception as exc:
+        log.error("news_stories.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _news_stories() -> None:
+    new_run_id()
+    await asyncio.to_thread(_news_stories_now)
+
+
 async def _lifecycle_shadow() -> None:
     new_run_id()
     await asyncio.to_thread(_lifecycle_shadow_now)
+
+
+def _decision_v2_shadow_now() -> None:
+    """decision-v2's kept shadow (IA-093): one pass. Never raises - it must never stop the worker - and writes only its own two tables
+    and, through the cycle's API, its chains in ``intel.selection_lifecycle``."""
+    from fbi.shadowjobs import decision_v2 as dv2
+
+    if dv2.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = dv2.run(conn, now=now(), raw_root=settings.runtime.raw_store_dir, code_version=code_version())
+        log.info("decision_v2_shadow.run", moments=r["moments"], decisions=r["decisions"], mirror=r["mirror"], leaks=r["leaks"],
+                 errors=r["errors"][:3])
+    except Exception as exc:
+        log.error("decision_v2_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _decision_v2_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_decision_v2_shadow_now)
+
+
+def _lineup_estimate_shadow_now() -> None:
+    """The estimated starters (IA-094): one pass. Never raises; writes only ``intel.lineup_estimates``."""
+    from fbi.shadowjobs import lineup_estimate as les
+
+    if les.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = les.run_pass(conn, now=now(), code_version=code_version())
+        log.info("lineup_estimate_shadow.run", **{k: v for k, v in r.as_json().items() if k != "errors"}, errors=r.errors[:3])
+    except Exception as exc:
+        log.error("lineup_estimate_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _lineup_estimate_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_lineup_estimate_shadow_now)
 
 
 def _user_narrative_now() -> None:
@@ -1659,7 +1733,8 @@ WORKER_JOB_TYPES = frozenset({
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
-    "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest",
+    "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest", "decision_v2_shadow", "lineup_estimate_shadow",
+    "news_stories",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -2008,6 +2083,22 @@ async def main() -> None:
                           misfire_grace_time=lifecycle.EVERY * 60, next_run_time=moment + timedelta(minutes=23))
     else:
         log.info("worker.lifecycle_shadow_off", hint="FBI_LIFECYCLE is not shadow: the cycle of states is not being written")
+    from fbi.shadowjobs import decision_v2 as dv2
+
+    if dv2.mode() == "shadow":
+        scheduler.add_job(_deadline("decision_v2_shadow", "decision_v2_shadow", _decision_v2_shadow), "interval",
+                          minutes=dv2.every_minutes(), id="decision_v2_shadow", max_instances=1, coalesce=True,
+                          misfire_grace_time=dv2.every_minutes() * 60, next_run_time=moment + timedelta(minutes=3))
+    else:
+        log.info("worker.decision_v2_shadow_off", hint="FBI_DECISION_V2 is not shadow: decision-v2 keeps no decision (IA-093)")
+    from fbi.shadowjobs import lineup_estimate as les
+
+    if les.mode() == "shadow":
+        scheduler.add_job(_deadline("lineup_estimate_shadow", "lineup_estimate_shadow", _lineup_estimate_shadow), "interval",
+                          minutes=les.every_minutes(), id="lineup_estimate_shadow", max_instances=1, coalesce=True,
+                          misfire_grace_time=les.every_minutes() * 60, next_run_time=moment + timedelta(minutes=4))
+    else:
+        log.info("worker.lineup_estimate_shadow_off", hint="FBI_LINEUP_ESTIMATE is not shadow: no estimated starters are kept (IA-094)")
     from fbi.news import signals
 
     if signals.mode() == "shadow":
@@ -2017,6 +2108,15 @@ async def main() -> None:
                           misfire_grace_time=signals.EVERY_MINUTES * 60, next_run_time=moment + timedelta(minutes=27))
     else:
         log.info("worker.signals_off", hint="FBI_SIGNALS is not shadow: no feed of the directory is read")
+    from fbi.news import pipeline as news_pipeline
+
+    if news_pipeline.mode() == "shadow":
+        # IA-099..102: stories, classification and moderation of news.items in shadow (FBI_NEWS_TEXT apart, off by default).
+        scheduler.add_job(_deadline("news_stories", "news_stories", _news_stories), "interval",
+                          minutes=news_pipeline.EVERY_MINUTES, id="news_stories", max_instances=1, coalesce=True,
+                          misfire_grace_time=news_pipeline.EVERY_MINUTES * 60, next_run_time=moment + timedelta(minutes=33))
+    else:
+        log.info("worker.news_stories_off", hint="FBI_NEWS_STORIES is not shadow: news.items are not grouped into stories")
     if CHRONICLE_REVIEW_ENABLED:
         scheduler.add_job(_deadline("chronicle_review", "chronicle_review", _chronicle_review), "interval",
                           minutes=CHRONICLE_REVIEW_MINUTES, id="chronicle_review", max_instances=1, coalesce=True,

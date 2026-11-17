@@ -12,6 +12,9 @@
     python -m scripts.ia_decision_v2 replay --day 2026-11-14 --rules decision-v2.1 --against decision-v2.0 --against decision-v2.0:book
                                     # the book's price with the age rule by horizon (AD-B06), against today's rules and the old rule alone
 
+    python -m scripts.ia_decision_v2 verify --hours 24             # the kept shadow (IA-093, AD-D01): coverage and equivalence
+    python -m scripts.ia_decision_v2 dry-run                       # what one pass of the kept shadow would decide now (writes nothing)
+
 The agreement per family, the confusion table (decision-v1's state read through state-v2 against decision-v2's), every disagreement with
 the stage that caused it (``fbi.decision.replay``), and the price each decision was judged with and its age (G-PRECIO). Without ``--council``,
 ``--signals``, ``--price book`` and ``--probability common`` it is the equivalence of the engine: the evidence of the P1 gate. ``--price book``
@@ -20,7 +23,10 @@ every selection (for the CLV). ``--probability common`` judges the core with the
 with its seal «Sin calibrar» where there is no fresh price) and says what that changes against the pick's own probability (plan INT-A03).
 ``--rules`` picks the ruleset (``decision-v2.0`` by default; ``decision-v2.1``: the book's price and the age rule 195/75/45 min by horizon,
 plan 2026 AD-B06) and ``--against`` decides the same candidates under another (``label`` or ``label:price``) and says what changed. The
-connection is read-only: nothing is written. Exit status: 0 a report, 2 it cannot run (a bad day or option).
+connection is read-only: nothing is written. ``verify`` measures the kept shadow (``fbi.decision.shadow``, IA-093) over the last
+``--hours``: the share of decision-v1's rows with a kept decision of the same selection at the same moment (AD-D01: at least 99 %) and,
+for up to ``--limit`` match-moments, every kept decision decided again from the same database (0 differences). ``dry-run`` plans and
+decides one pass as of now and writes nothing. Exit status: 0 a report, 2 it cannot run (a bad day or option).
 """
 
 from __future__ import annotations
@@ -48,7 +54,7 @@ from fbi.decision.view import VERSIONS as VIEW_VERSIONS
 from fbi.intel.context_adjustment import ENGINES
 from fbi.storage.payload_store import PayloadStore
 
-COMMANDS = ("replay",)
+COMMANDS = ("replay", "verify", "dry-run")
 OK, CANNOT = 0, 2
 READ_ONLY = "-c TimeZone=UTC -c default_transaction_read_only=on"
 BOOK_TIMEOUT = "-c statement_timeout=95000"
@@ -66,7 +72,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="ia_decision_v2", description=(__doc__ or "").split("\n\n")[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=COMMANDS)
-    ap.add_argument("--day", required=True, help="the day (Bogotá) whose decisions are replayed")
+    ap.add_argument("--day", help="replay: the day (Bogotá) whose decisions are replayed")
+    ap.add_argument("--hours", type=int, default=24, help="verify: the window of kept moments, back from now (default 24)")
+    ap.add_argument("--limit", type=int, default=200, help="verify: the match-moments decided again (default 200)")
     ap.add_argument("--json", action="store_true", dest="as_json", help="print the report as JSON")
     ap.add_argument("--council", choices=ENGINES, help="give the context stage the Council's typed adjustment of this engine")
     ap.add_argument("--signals", action="store_true", help="give the risk stage the market's signals")
@@ -181,6 +189,11 @@ def render(doc: dict[str, Any]) -> str:
                      f"{u['line']}: not rebuilt")
     if "price" in doc:
         lines += render_price(doc["price"])
+    if "value_v2" in doc:
+        v = doc["value_v2"]
+        lines.append(f"  {v['version']}: {v['with_interval']}/{v['priced']} priced decisions with an interval of their EV; verdicts "
+                     f"{v['by_verdict']}; single book {v['single_book']}, confirmed {v['confirmed']} "
+                     f"(with a single book: {v['confirmed_single_book']})")
     if "probability" in doc:
         lines += render_probability(doc["probability"])
     for name, v in doc.get("versus", {}).items():
@@ -188,9 +201,32 @@ def render(doc: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def shadow_command(args: argparse.Namespace) -> int:
+    """``verify`` and ``dry-run`` of the kept shadow, read-only."""
+    from datetime import timedelta
+
+    from fbi.core.clock import now
+    from fbi.core.config import settings as platform
+    from fbi.decision import shadow
+
+    store = PayloadStore(args.raw or platform.runtime.raw_store_dir)
+    moment = now()
+    with psycopg.connect(args.dsn or platform.database.psycopg_url, options=f"{READ_ONLY} {BOOK_TIMEOUT}") as conn:
+        if args.command == "verify":
+            doc = shadow.verify(conn, start=moment - timedelta(hours=max(1, args.hours)), end=moment, store=store, limit=max(1, args.limit))
+        else:
+            doc = shadow.run_pass(conn, now=moment, store=store, dry_run=True, link=False).as_json()
+    sys.stdout.write(json.dumps(doc, indent=1, default=str, ensure_ascii=False, sort_keys=True) + "\n")
+    return OK
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     ap = build_parser()
     args = ap.parse_args(argv)
+    if args.command != "replay":
+        return shadow_command(args)
+    if not args.day:
+        ap.error("replay needs --day")
     try:
         day = parse_day(args.day)
     except ValueError as exc:

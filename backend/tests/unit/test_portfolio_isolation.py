@@ -12,7 +12,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src" / "fbi"
 PACKAGE = "fbi.portfolio"
-ALLOWED = {"scripts/ia_portfolio.py": "the command that prints the shadow portfolio (read-only)"}
+ALLOWED = {"scripts/ia_portfolio.py": "the command that prints the shadow portfolio (read-only)",
+           "scripts/ia_value_correlation.py": "the read-only measurement of the three calculations of correlation against corr-v2 (IA-098)"}
 SERVING = ("intel/", "picks/", "familydecisions/", "api/", "parlays/", "customer/", "notify/", "messaging/", "narrative/", "knowledge/",
            "decision/", "apps/")
 """What decides (``intel``, ``picks``, ``familydecisions``, ``decision``), stakes and combines (``parlays``), publishes or serves users."""

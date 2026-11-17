@@ -15,7 +15,9 @@ ALLOWED = {"scripts/ia_decision_v2.py": "the command that prints the replay (rea
            "scripts/ia_price_rule.py": "the command that prints the price rule's report, a yardstick never a pick (read-only, INT-A10)",
            "plugins/family.py": "the plug-in families (IA-018, shadow) compose the MarketFamily protocol",
            "plugins/registry.py": "the registry of plug-in families hands decision-v2 its families (shadow)",
-           "plugins/_template/family.py": "the example plug-in's decision-v2 adapter (shadow, never active, not installed)"}
+           "plugins/_template/family.py": "the example plug-in's decision-v2 adapter (shadow, never active, not installed)",
+           "shadowjobs/decision_v2.py": "the worker's door to the kept shadow (IA-093, AD-D01): its switch and one pass, which writes only "
+                                        "decision-v2's own tables; only the scheduler imports it"}
 SERVING = ("intel/", "picks/", "familydecisions/", "api/", "parlays/", "customer/", "notify/", "messaging/", "narrative/", "knowledge/",
            "apps/")
 """What decides (``intel``, ``picks``, ``familydecisions``), stakes and combines (``parlays``), publishes or serves users."""
@@ -86,8 +88,8 @@ def test_the_package_reaches_the_odds_book_through_one_module_and_never_its_writ
     own = {rel(p): imported(p) for p in files(SRC / "decision")}
     roots = ("fbi.odds", "fbi.storage", "fbi.providers")
     reaching = {f for f, names in own.items() if any(n == r or n.startswith(r + ".") for n in names for r in roots)}
-    assert reaching == {"decision/book_price.py", "decision/replay.py", "decision/price_rule.py"}, reaching
-    for f in ("decision/replay.py", "decision/price_rule.py"):
+    assert reaching == {"decision/book_price.py", "decision/replay.py", "decision/price_rule.py", "decision/shadow.py"}, reaching
+    for f in ("decision/replay.py", "decision/price_rule.py", "decision/shadow.py"):
         assert {n for n in own[f] if n.startswith(roots)} == {"fbi.storage.payload_store", "fbi.storage.payload_store.PayloadStore"}, \
             f"{f} only names the RAW store it hands the book's reader"
     reached = {n for n in own["decision/book_price.py"] if n.startswith(roots)}
@@ -115,3 +117,18 @@ def test_the_age_rule_is_pure_data_that_reads_only_decision_v1s_thresholds() -> 
     thresholds (``fbi.intel.decision``) and nothing else - no database, no odds book, no clock - so the contracts can carry it as it is."""
     names = {n for n in imported(SRC / "decision" / "price_age.py") if n.startswith("fbi.")}
     assert names == {"fbi.intel", "fbi.intel.decision"}, names
+
+
+def test_the_door_of_the_kept_shadow_is_opened_by_the_worker_alone_and_only_in_a_job() -> None:
+    """IA-093: ``fbi.shadowjobs.decision_v2`` is the one new importer of decision-v2. Nothing imports it but the worker's scheduler, which
+    does so only inside the job and the block that schedules it (never at import time), and it imports decision-v2 only inside its pass."""
+    door = "fbi.shadowjobs.decision_v2"
+    importers = {rel(p) for p in files(SRC, ROOT / "scripts", ROOT / "apps")
+                 if any(n == door or n.startswith(door + ".") for n in imported(p))}
+    assert importers == {"apps/worker/scheduler.py"}, importers
+    tree = ast.parse((ROOT / "apps" / "worker" / "scheduler.py").read_text(encoding="utf-8"))
+    top = [n for n in tree.body if isinstance(n, (ast.Import, ast.ImportFrom))]
+    assert not [n for n in top if isinstance(n, ast.ImportFrom) and (n.module or "").startswith(("fbi.decision", door))]
+    module = ast.parse((SRC / "shadowjobs" / "decision_v2.py").read_text(encoding="utf-8"))
+    assert not [n for n in module.body if isinstance(n, ast.ImportFrom) and (n.module or "").startswith("fbi.decision")], \
+        "decision-v2 is imported inside the pass, not when the worker reads the switch"

@@ -55,7 +55,7 @@ from psycopg.rows import dict_row, tuple_row
 
 from fbi.ai import source_policy, untrusted
 from fbi.ai import source_select as ss
-from fbi.news import canonical, feeds, store, vocab
+from fbi.news import canonical, feeds, grouping, store, vocab
 from fbi.people.identity.names import alias_key
 
 VERSION: Final = "signals-v1"
@@ -506,7 +506,8 @@ def read_feed(conn: psycopg.Connection[Any], target: FeedTarget, state: FeedStat
         article = store.Article(url=e.url, source_name=target.name, fingerprint_text=shown or e.url, seen_at=at, found_via=target.found_via,
                                 written_by=VERSION, source_title=shown, author=e.author, lang=e.lang or target.lang, published_at=published,
                                 published_day_only=published is not None and e.day_only,
-                                published_structured=published is not None and e.structured, feed_id=feed_id)
+                                published_structured=published is not None and e.structured, feed_id=feed_id,
+                                simhash=grouping.simhash(shown))
         written = store.write_item(conn, article, policy)
         report.add(report.items, written.outcome)
         if written.outcome == "created":

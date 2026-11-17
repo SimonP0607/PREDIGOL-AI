@@ -152,7 +152,11 @@ BEGIN
     -- the owner's decisions in the referee queue: merge, undo, split, reject, reopen, rename (fbi.people.referees). A person
     -- moves aliases between referees and decides pairs; the rules' own pass (the worker) is the only one that makes aliases.
     'core.referees:INSERT, UPDATE', 'core.referee_aliases:UPDATE', 'core.referee_candidates:INSERT, UPDATE, DELETE',
-    'core.referee_events:INSERT, UPDATE'
+    'core.referee_events:INSERT, UPDATE',
+    -- the owner's moderation of the news from the console (fbi.news.moderation, IA-102): a withdrawal, a putting back, an approval
+    -- or a request recorded is a new version of the story and a line of the register; both tables are append-only (their trigger
+    -- refuses UPDATE and DELETE)
+    'news.stories:INSERT', 'news.moderation_log:INSERT'
   ]
   LOOP
     IF to_regclass(split_part(t, ':', 1)) IS NULL THEN

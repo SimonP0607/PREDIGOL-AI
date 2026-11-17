@@ -21,8 +21,9 @@ Fecha: 16 nov 2026. Pieza AD-A06 del plan de la arquitectura definitiva 2026. Ca
 | `quarantine_tests` | AD-A01 | LAB | 3,00 | ficha: pruebas A1–A6 por debajo de 3 | aún sin construir |
 | `label_bank_arms` | AD-C09 | LAB | 2,00 | ficha: menos de 2 | aún sin construir |
 | `replay_regression` | AD-K04 | LAB | 2,93 | ficha: 2,93 por pasada, una al mes | prompt `replay-bank-` |
+| `news_text_shadow` | AD-G04 | LAB | 2,00 | encargo IA-101: tope de las pruebas en sombra del texto propio de noticias | prompt `news-text-v1` |
 
-Los topes de producción suman 46,90 de 185; los del LAB, 10,93 de 55; los de Exa, 9 de 35. Una prueba comprueba que siempre caben en su sobre. Una llamada solo cuenta para una capacidad de su propio sobre: una `battery-v4` pagada con la clave de producción no carga la batería del LAB.
+Los topes de producción suman 46,90 de 185; los del LAB, 12,93 de 55 (con `news_text_shadow`, IA-101); los de Exa, 9 de 35. Una prueba comprueba que siempre caben en su sobre. Una llamada solo cuenta para una capacidad de su propio sobre: una `battery-v4` pagada con la clave de producción no carga la batería del LAB.
 
 ## 2. Qué no cambia
 

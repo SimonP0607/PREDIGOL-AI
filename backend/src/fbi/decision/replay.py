@@ -55,6 +55,7 @@ from fbi.intel import context_adjustment as ctx_adj
 from fbi.intel import decision, state_v2
 from fbi.intel.decision import Key
 from fbi.storage.payload_store import PayloadStore
+from fbi.valuation import value as valuation
 
 VERSION: Final = "decision-v2-replay-v1"
 SELECTION: Final = "selection"
@@ -361,6 +362,31 @@ def price_states(decided: Sequence[tuple[Mapping[str, Any], engine.Decision2]]) 
     return out
 
 
+def value_summary(pairs: Sequence[Pair]) -> dict[str, Any]:
+    """``value-v2`` over the replayed decisions (AD-E02, IA-097), a measurement: how many carry an expected value with its interval, fair
+    price, price age and books; the verdicts; «una sola casa»; and where the expected value the stages judged (``Value.ev_cal``) differs
+    from value-v2's on the same probability and price (a line that can push judged with the common view's unconditional number). The
+    criterion of AD-E02: every decision with a price carries the interval, and none is confirmed with a single book. Pure."""
+    decided = [d for _, _, d in pairs if d is not None]
+    readings = [d.value_v2 for d in decided if d.value_v2 is not None]
+    priced = [v for v in readings if v.odds is not None and v.verdict != valuation.FUTURE_PRICE]
+    with_interval = [v for v in priced if v.ev_low is not None and v.ev_high is not None]
+    gaps = [abs(d.value.ev_cal - d.value_v2.ev) for d in decided
+            if d.value_v2 is not None and d.value.ev_cal is not None and d.value_v2.ev is not None and d.value_v2.calibrated]
+    recommended = Counter(d.value_v2.verdict for d in decided if d.state == "RECOMMENDED" and d.value_v2 is not None)
+    return {"version": valuation.VERSION, "method": valuation.METHOD, "decisions": len(decided), "with_reading": len(readings),
+            "priced": len(priced), "with_interval": len(with_interval), "interval_rate": _rate(len(with_interval), len(priced)),
+            "by_verdict": dict(sorted(Counter(v.verdict for v in readings).items())),
+            "single_book": sum(1 for v in priced if v.single_book),
+            "confirmed": sum(1 for v in readings if v.confirms),
+            "confirmed_single_book": sum(1 for v in readings if v.confirms and v.single_book),
+            "future_price": sum(1 for v in readings if v.verdict == valuation.FUTURE_PRICE),
+            "price_age_min": _spread([v.price_age_min for v in priced if v.price_age_min is not None]),
+            "interval_width": _spread([v.ev_high - v.ev_low for v in with_interval if v.ev_high is not None and v.ev_low is not None]),
+            "recommended_by_verdict": dict(sorted(recommended.items())),
+            "ev_gap_vs_stages": {"compared": len(gaps), "over_1e-6": sum(1 for g in gaps if g > 1e-6), "max": max(gaps, default=None)}}
+
+
 # -- one ruleset against another -------------------------------------------------------------------------------------------------------
 
 Variant = tuple[str, str]
@@ -471,6 +497,70 @@ def _primary_p(world: decision.World, c: Candidate) -> float | None:
     return None if p is None else float(p)
 
 
+@dataclasses.dataclass(frozen=True)
+class Moment:
+    """decision-v2 at one moment, over every candidate of some matches: what ``replay_day`` compares and what the shadow keeps
+    (``fbi.decision.shadow``, IA-093) - the same function, so that a stored decision IS the replay's decision of its moment."""
+
+    at: datetime
+    world: decision.World
+    candidates: tuple[Candidate, ...]
+    """The candidates judged (with the view's number and the book's price when asked)."""
+    decisions: tuple[engine.Decision2, ...]
+    views: Mapping[Key, engine.CommonView]
+    index: Mapping[engine.Ident, engine.Decision2]
+    own: Mapping[engine.Ident, engine.Decision2]
+    """With the common view: the same candidates judged with their own probability (empty otherwise)."""
+    alt: Mapping[str, Mapping[engine.Ident, engine.Decision2]]
+    """The same candidates under each other ruleset (``others``)."""
+
+
+def decide_at(conn: psycopg.Connection[Any], *, at: datetime, families: Sequence[MarketFamily], fixtures: Sequence[int],
+              rows: Sequence[Mapping[str, Any]] | None, price: str, rules: str, probability: str = engine.OWN,
+              view_version: str = common_view.VERSIONS[0], view: bool = False, council: str | None = None, signals: bool = False,
+              book: book_price.BookReader | None = None, closes: Mapping[Key, engine.Close] | None = None,
+              others: Sequence[Variant] = ()) -> Moment:
+    """decision-v2 over every candidate of ``families`` for ``fixtures`` as of ``at``. ``rows``: the rows decision-v1 or decision-fam-v1 wrote
+    at that moment, whose recorded AI mode the world takes (``world_at``); None for a moment no layer wrote (decision-v2's own evaluations):
+    the world then keeps the mode in force. ``book``: the odds book read for these matches (needed when ``price`` or an ``others`` price is
+    ``book``). Read-only."""
+    fams = list(families)
+    world = (world_at(conn, fams[0], fixtures, at=at, rows=rows) if rows is not None else dataclasses.replace(
+        decision.read_world(conn, list(fixtures), at=at, version=fams[0].params.decision_version),
+        previous=previous_before(conn, fixtures, at=at, version=fams[0].params.decision_version)))
+    read = candidates_as_of([c for f in fams for c in f.candidates(conn, at=at, fixtures=list(fixtures))], at)
+    by_price: dict[str, list[Candidate]] = {engine.CONSENSUS: read}
+    if book is not None:
+        by_price[engine.BOOK] = (book_price.priced(read, book.answers_at(list(fixtures), at), family=CORE.name)
+                                 if any(f.name == CORE.name for f in fams) else read)
+    if price not in by_price or any(p not in by_price for _, p in others):
+        raise ValueError("the book's price needs the book: read it for these matches (book_price.read)")
+    cands = by_price[price]
+    ruleset = engine.RULESETS[rules]
+    adjustments: dict[Key, ctx_adj.ContextAdjustment] = {}
+    if council is not None:
+        seen = ctx_adj.adjustments_for(conn, at=at, fixture_ids=list(fixtures), engines=(council,))
+        adjustments = {k: a for (k, _), a in seen.adjustments.items()}
+    markets: dict[engine.Ident, engine.MarketRisk] = {}
+    if signals:
+        for c in cands:
+            found = market_inputs.read(conn, c.key, at=at, p_model=_primary_p(world, c))
+            if found is not None:
+                markets[c.ident] = found
+    common = probability == engine.COMMON
+    views = common_view.read(conn, fixtures, at=at, cal=world.cal, version=view_version) if view or common else {}
+    judged = common_view.judged(cands, views, family=CORE.name, version=view_version) if common else cands
+    decided = engine.decide_all(world, judged, adjustments=adjustments, markets=markets, views=views if view else None,
+                                closes=closes, rules=ruleset)
+    index = {d.ident: d for d in decided}
+    own = ({d.ident: d for d in engine.decide_all(world, cands, adjustments=adjustments, markets=markets, closes=closes, rules=ruleset)}
+           if common else {})
+    alt = {variant_name(o): {d.ident: d for d in engine.decide_all(
+        world, common_view.judged(by_price[o[1]], views, family=CORE.name, version=view_version) if common else by_price[o[1]],
+        adjustments=adjustments, markets=markets, closes=closes, rules=engine.RULESETS[o[0]])} for o in others}
+    return Moment(at, world, tuple(judged), tuple(decided), views, index, own, alt)
+
+
 def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[MarketFamily] = FAMILIES, council: str | None = None,
                signals: bool = False, view: bool = False, price: str | None = None, store: PayloadStore | None = None,
                probability: str = engine.OWN, rules: str = engine.RULES_V20, against: Sequence[str] = (),
@@ -518,35 +608,11 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
     for (at, _), items in sorted(groups.items()):
         fams = [f for f in families if any(f is g for _, g in items)]
         fixtures = sorted({int(r["fixture_id"]) for r, _ in items})
-        world = world_at(conn, fams[0], fixtures, at=at, rows=[r for r, _ in items])
-        read = candidates_as_of([c for f in fams for c in f.candidates(conn, at=at, fixtures=fixtures)], at)
-        by_price = {engine.CONSENSUS: read}
-        if book is not None:
-            by_price[engine.BOOK] = (book_price.priced(read, book.answers_at(fixtures, at), family=CORE.name)
-                                     if any(f.name == CORE.name for f in fams) else read)
-        cands = by_price[price]
-        ruleset = engine.RULESETS[rules]
-        adjustments: dict[Key, ctx_adj.ContextAdjustment] = {}
-        if council is not None:
-            seen = ctx_adj.adjustments_for(conn, at=at, fixture_ids=fixtures, engines=(council,))
-            adjustments = {k: a for (k, _), a in seen.adjustments.items()}
-        markets: dict[engine.Ident, engine.MarketRisk] = {}
-        if signals:
-            for c in cands:
-                found = market_inputs.read(conn, c.key, at=at, p_model=_primary_p(world, c))
-                if found is not None:
-                    markets[c.ident] = found
+        moment = decide_at(conn, at=at, families=fams, fixtures=fixtures, rows=[r for r, _ in items], price=price, rules=rules,
+                           probability=probability, view_version=view_version, view=view, council=council, signals=signals,
+                           book=book, closes=closes, others=others)
+        index, own, alt, views = moment.index, moment.own, moment.alt, moment.views
         common = probability == engine.COMMON
-        views = common_view.read(conn, fixtures, at=at, cal=world.cal, version=view_version) if view or common else {}
-        judged = common_view.judged(cands, views, family=CORE.name, version=view_version) if common else cands
-        index = {d.ident: d for d in engine.decide_all(world, judged, adjustments=adjustments, markets=markets, views=views if view else None,
-                                                       closes=closes, rules=ruleset)}
-        own = ({d.ident: d for d in engine.decide_all(world, cands, adjustments=adjustments, markets=markets, closes=closes, rules=ruleset)}
-               if common else {})
-        alt = {variant_name(o): {d.ident: d for d in engine.decide_all(
-            world, common_view.judged(by_price[o[1]], views, family=CORE.name, version=view_version) if common else by_price[o[1]],
-            adjustments=adjustments,
-            markets=markets, closes=closes, rules=engine.RULESETS[o[0]])} for o in others}
         for r, fam in items:
             k = key_of(r)
             d = index.get((fam.name, k, str(r.get("model_name")))) or index.get((fam.name, k, None))
@@ -569,7 +635,7 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
                        "against": [variant_name(o) for o in others],
                        "previous": "strictly before known_at", "ai_mode": "as the rows recorded it"},
             "rows": len(rows), "moments": len(groups), "skipped": {"selection_copies": skipped_selection, "unclaimed": len(unclaimed)},
-            "unclaimed_rows": unclaimed} | out | ({"common_view": common_summary(measured)} if view else {}) | {"price": prices} | (
+            "unclaimed_rows": unclaimed} | out | {"value_v2": value_summary(pairs)} | ({"common_view": common_summary(measured)} if view else {}) | {"price": prices} | (
                 {"probability": probability_summary(against_own)} if probability == engine.COMMON else {}) | (
                 {"versus": {name: versus_summary(items, main=main, other=named[name]) for name, items in versus.items()}}
                 if others else {})

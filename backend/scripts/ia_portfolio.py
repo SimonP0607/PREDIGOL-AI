@@ -4,6 +4,7 @@ Read-only.
     python -m scripts.ia_portfolio day --day 2026-11-07                     # as of now
     python -m scripts.ia_portfolio day --day 2026-11-07 --at 2026-11-07T15:00:00+00:00 --json
     python -m scripts.ia_portfolio day --day 2026-11-07 --what-if-caution  # CAUTION too, HYPOTHETICAL
+    python -m scripts.ia_portfolio day --day 2026-11-07 --correlation-v2   # corr-v2 beside portfolio-corr-v1 (AD-E07)
 
 Correlations with their source, stakes (stake-v1, scaled for a shared budget, held by the exposure limits, with the limit
 that binds), the day set and the pick of the day (comp-priority-v1, select_day's caps) and the parlays of RECOMMENDED legs
@@ -55,14 +56,17 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--at", help="the moment the portfolio is built as of (default: now)")
     ap.add_argument("--what-if-caution", action="store_true", dest="what_if",
                     help="also treat CAUTION as eligible, for measurement only (HYPOTHETICAL)")
+    ap.add_argument("--correlation-v2", action="store_true", dest="corr_v2",
+                    help="also read the pairs with corr-v2 (AD-E07), beside portfolio-corr-v1, which still stakes")
     ap.add_argument("--json", action="store_true", dest="as_json", help="print the report as JSON")
     ap.add_argument("--dsn", help="the database (default: the worker's own)")
     return ap
 
 
-def run(conn: psycopg.Connection[Any], *, day: date, at: datetime, what_if: bool = False) -> tuple[dict[str, Any], int]:
+def run(conn: psycopg.Connection[Any], *, day: date, at: datetime, what_if: bool = False, corr_v2: bool = False
+        ) -> tuple[dict[str, Any], int]:
     """The report (JSON-ready) and the exit status. The connection is the caller's; nothing is written."""
-    return build.build_day(conn, day, at=at, what_if=what_if), OK
+    return build.build_day(conn, day, at=at, what_if=what_if, corr_v2=corr_v2), OK
 
 
 def render(doc: dict[str, Any]) -> str:
@@ -80,6 +84,10 @@ def render(doc: dict[str, Any]) -> str:
                      f"-> {st['final_units']} u" + (f" (limit {st['binding_limit']})" if st["binding_limit"] else ""))
     for x in doc["correlations"]:
         lines.append(f"    corr #{x['a']}~#{x['b']} rho {x['rho']} {x['source']}" + (" (shared budget)" if x["shares_budget"] else ""))
+    v2 = doc.get("correlation_v2")
+    if v2 is not None:
+        lines.append(f"  {v2['version']}: {len(v2['pairs'])} pair(s) {v2['by_source']}, {len(v2['budget_differs_from_v1'])} budget(s) "
+                     f"differ from portfolio-corr-v1 (which stakes), {v2['matrices']} score matrices")
     lines.append(f"  day set: {[d['decision_id'] for d in doc['day_set']]}")
     pod = doc["pick_of_the_day"]
     lines.append(f"  pick of the day: {'none' if pod is None else '#' + str(pod['decision_id'])}")
@@ -103,7 +111,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     with psycopg.connect(args.dsn or platform.database.psycopg_url,
                          options="-c TimeZone=UTC -c default_transaction_read_only=on") as conn:
-        doc, code = run(conn, day=day, at=at, what_if=args.what_if)
+        doc, code = run(conn, day=day, at=at, what_if=args.what_if, corr_v2=args.corr_v2)
     sys.stdout.write(json.dumps(doc, indent=1, default=str, ensure_ascii=False) + "\n" if args.as_json else render(doc))
     return code
 

@@ -62,7 +62,12 @@ def test_only_its_job_and_its_command_import_it() -> None:
                 continue
             if any(n == "fbi.lifecycle" or n.startswith("fbi.lifecycle.") for n in _imports(p)):
                 importers.add(p.relative_to(ROOT).as_posix())
-    assert importers == {"apps/worker/scheduler.py", "scripts/ia_lifecycle.py"}, importers
+    # decision-v2's kept shadow (IA-093) hands its own decisions to the cycle through ``store.extend``: the cycle's API, not its table.
+    # IA-096 (AD-E03): the private evaluation of corners and cards appends the chains of the selections it admits with the cycle's own
+    # derivation and statement, under its own writer (count-eval-v1); it is itself imported only by its command
+    # (tests/unit/test_count_private_evaluation.py)
+    assert importers == {"apps/worker/scheduler.py", "scripts/ia_lifecycle.py", "src/fbi/decision/shadow.py",
+                         "src/fbi/countcal/private.py"}, importers
 
 
 def test_the_worker_schedules_it_only_in_the_shadow_with_a_deadline() -> None:

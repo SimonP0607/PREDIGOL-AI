@@ -50,6 +50,7 @@ from fbi.parlays.engine import Candidate, GateConfig, Leg, Reject, assess
 from fbi.picks.daily import Ranked, single_elg
 from fbi.portfolio import VERSION, correlation, exposure, stakes
 from fbi.portfolio.selection import Selection
+from fbi.valuation import dependence
 
 MODE_RECOMMENDED: Final = "recommended"
 MODE_WHAT_IF: Final = "what_if_caution"
@@ -197,12 +198,63 @@ def parlays(recommended: Sequence[Selection], *, at: datetime, measured: Mapping
             "built": built, "reason": reason}
 
 
+# -- corr-v2 beside portfolio-corr-v1 (AD-E07, IA-098), a measurement ------------------------------------------------
+
+def leg_of(s: Selection) -> dependence.Leg:
+    """A selection as corr-v2 reads it (its decision id is its identity)."""
+    return dependence.Leg(s.decision_id, s.fixture_id, s.competition_id, s.kickoff_at, s.teams, s.market_key, s.selection, s.line)
+
+
+def _groups(ids: Sequence[int], edges: Sequence[tuple[int, int]]) -> list[list[int]]:
+    parent = {i: i for i in ids}
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for a, b in edges:
+        if a in parent and b in parent:
+            parent[find(a)] = find(b)
+    out: dict[int, list[int]] = {}
+    for i in ids:
+        out.setdefault(find(i), []).append(i)
+    return [g for g in out.values() if len(g) > 1]
+
+
+def correlation_v2(eligible: Sequence[Selection], v1: Sequence[correlation.Correlation], *,
+                   measured: Mapping[str, icc.Estimate] | None,
+                   matrices: Mapping[int, Any] | None = None, matrix_basis: Mapping[int, str] | None = None) -> dict[str, Any]:
+    """The pairs of the eligible selections under corr-v2, the budget groups they would make, and where they differ from
+    portfolio-corr-v1 (whose numbers stake the portfolio: this block changes no stake). Pure."""
+    m2 = {k: dependence.Measured.of(e) for k, e in (measured or {}).items()}
+    deps = dependence.pairs([leg_of(s) for s in eligible], matrices=matrices, measured=m2, matrix_basis=matrix_basis)
+    old = {(c.a, c.b): c for c in v1}
+    new = {(d.a, d.b): d for d in deps}
+    differ = []
+    for k in sorted(set(old) | set(new)):
+        o, n = old.get(k), new.get(k)
+        o_budget = 0.0 if o is None else o.budget_rho
+        n_budget = 0.0 if n is None else n.budget_rho
+        if abs(o_budget - n_budget) > 1e-9:
+            differ.append({"a": k[0], "b": k[1], "v1": None if o is None else {"rho": round(o.rho, 6), "source": o.source,
+                                                                                    "budget_rho": round(o_budget, 6)},
+                           "v2": None if n is None else n.as_json()})
+    return {"version": dependence.VERSION, "pairs": [d.as_json() for d in deps],
+            "budget_groups": _groups([s.decision_id for s in eligible], [(d.a, d.b) for d in deps if d.budget_rho > 0]),
+            "by_source": dict(sorted(Counter(d.source for d in deps).items())),
+            "budget_differs_from_v1": differ, "matrices": len(matrices or {})}
+
+
 # -- the day ---------------------------------------------------------------------------------------------------------
 
 def assemble(selections: Sequence[Selection], *, day: date, at: datetime, what_if: bool = False,
              joint: correlation.JointProvider | None = None,
-             measured: Mapping[str, icc.Estimate] | None = None) -> dict[str, Any]:
-    """The shadow portfolio of the selections. Pure."""
+             measured: Mapping[str, icc.Estimate] | None = None, corr_v2: bool = False,
+             matrices: Mapping[int, Any] | None = None, matrix_basis: Mapping[int, str] | None = None) -> dict[str, Any]:
+    """The shadow portfolio of the selections. Pure. ``corr_v2``: add corr-v2's reading of the same pairs (``correlation_v2``), a
+    measurement beside portfolio-corr-v1, which still stakes; ``matrices`` (match -> score matrix) are read by corr-v2 only."""
     by_state = Counter(s.state_v2 for s in selections)
     recommended = ordered([s for s in selections if s.state_v2 == "RECOMMENDED"])
     hypothetical = ordered([s for s in selections if what_if and s.state_v2 in stakes.HYPOTHETICAL_STATES])
@@ -263,11 +315,15 @@ def assemble(selections: Sequence[Selection], *, day: date, at: datetime, what_i
         "day_set": [day_entry(s) for s in chosen],
         "pick_of_the_day": day_entry(chosen[0]) if chosen else None,
         "parlays": combos,
-    }
+    } | ({"correlation_v2": correlation_v2(eligible, corrs, measured=measured, matrices=matrices, matrix_basis=matrix_basis)}
+         if corr_v2 else {})
 
 
 def build_day(conn: psycopg.Connection[Any], day: date, *, at: datetime, what_if: bool = False,
-              joint: correlation.JointProvider | None = None) -> dict[str, Any]:
-    """The shadow portfolio of ``day`` as of ``at``. Read-only."""
+              joint: correlation.JointProvider | None = None, corr_v2: bool = False) -> dict[str, Any]:
+    """The shadow portfolio of ``day`` as of ``at``. Read-only. ``corr_v2``: also corr-v2's reading of its pairs, with the score matrix
+    of each match as of ``at`` (``dependence.read_matrices``)."""
     selections = [Selection.of(r) for r in read_rows(conn, day=day, at=at)]
-    return assemble(selections, day=day, at=at, what_if=what_if, joint=joint, measured=icc.latest(conn))
+    matrices, basis = dependence.read_matrices(conn, [s.fixture_id for s in selections], at=at) if corr_v2 else ({}, {})
+    return assemble(selections, day=day, at=at, what_if=what_if, joint=joint, measured=icc.latest(conn), corr_v2=corr_v2,
+                    matrices=matrices, matrix_basis=basis)

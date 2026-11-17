@@ -68,6 +68,9 @@ CAPABILITIES: Final[tuple[Capability, ...]] = (
                "ficha AD-A01: pruebas A1-A6 por debajo de 3, una vez"),
     Capability("label_bank_arms", "AD-C09", "lab", Decimal("2.00"),
                "ficha AD-C09: menos de 2 para los cuatro brazos"),
+    Capability("news_text_shadow", "AD-G04", "lab", Decimal("2.00"),
+               "encargo IA-101: tope de 2 del LAB para el texto propio de las noticias en sombra (fbi.news.writer.PIECE_MONTHLY_USD)",
+               prompts=("news-text-v1",)),
     Capability("replay_regression", "AD-K04", "lab", Decimal("2.93"),
                "ficha AD-K04: 2,93 por pasada completa medida (15-nov); una pasada al mes", prompts=("replay-bank-",)),
 )

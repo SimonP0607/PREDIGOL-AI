@@ -41,6 +41,10 @@ DEFAULT_TIMEOUT = timedelta(hours=6)
 
 JOB_TIMEOUTS: dict[str, timedelta] = {
     "lifecycle_shadow": timedelta(minutes=15),
+    # decision-v2's kept shadow (IA-093): no provider, no model; at most 24 moments and 60 matches a pass.
+    "decision_v2_shadow": timedelta(minutes=10),
+    # the estimated starters (IA-094): no provider, no model; a walk of the teams' last 180 days per match due.
+    "lineup_estimate_shadow": timedelta(minutes=20),
     "live_odds_capture": timedelta(minutes=10),
     "live_match_capture": timedelta(minutes=10),
     "prematch_lineups": timedelta(minutes=10),
@@ -70,6 +74,7 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "scenarios_shadow": timedelta(minutes=30),
     # The ingestion of signals in shadow (IA-085): at most 40 requests of ten seconds a pass, no model.
     "signals_ingest": timedelta(minutes=20),
+    "news_stories": timedelta(minutes=25),
     "player_history": timedelta(hours=3),
     "historical_validation": timedelta(hours=2),
     "historical_backfill": timedelta(hours=3),

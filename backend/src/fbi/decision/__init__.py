@@ -11,7 +11,9 @@ risk and never to probability, and the state (``fbi.intel.state_v2``) is decided
 SHADOW. This package computes and reports. Nothing that decides, publishes, stakes or serves users imports it
 (``tests/unit/test_decision_v2_isolation.py``): its only reader is its own command, ``python -m scripts.ia_decision_v2``,
 whose ``replay`` recomputes a day's decisions and compares them with decision-v1 and decision-fam-v1 (``replay``) - the
-evidence of the P1 gate. It writes nothing. The core's price is decision-v1's consensus of a capture by default; the replay
+evidence of the P1 gate. The replay writes nothing; the kept shadow (``shadow``, IA-093, AD-D01) - off by default, opened only by
+the worker's door ``fbi.shadowjobs.decision_v2`` - decides at E1, E4 and every moment of decision-v1 with the replay's own function and
+writes only its own two tables (``intel.decision_v2_moments``, ``intel.decisions_v2``). The core's price is decision-v1's consensus of a capture by default; the replay
 can price it instead as the odds book held it at each moment, with its age and the book's last price before kick-off
 (``book_price``, plan INT-A06). Its rules are versioned (``engine.RULESETS``): ``decision-v2.0``, the default, judges the price's age
 by decision-v1's rule; ``decision-v2.1`` takes the book's price by default and judges its age by horizon, 195/75/45 min with each
