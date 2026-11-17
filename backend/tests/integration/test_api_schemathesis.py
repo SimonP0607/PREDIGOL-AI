@@ -33,7 +33,10 @@ def _app_without_the_address_limit() -> Any:
 
 
 APP = _app_without_the_address_limit()
-schema = schemathesis.openapi.from_asgi("/openapi.json", APP)
+# The schema is read once, when the file is collected, by each of the four CI workers at the same time: building /openapi.json for every
+# route takes longer than schemathesis' default 10 s on a busy runner (17-nov-2026: a worker timed out, collected nothing and xdist
+# stopped with "Different tests were collected"). Reading it is not what is under test; 120 s leaves room without hiding a real hang.
+schema = schemathesis.openapi.from_asgi("/openapi.json", APP, timeout=120)
 
 
 @pytest.fixture(autouse=True)

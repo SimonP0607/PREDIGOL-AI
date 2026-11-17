@@ -73,7 +73,7 @@ at worst, and a duplicated tick costs nothing at all.
     the tracked matches of the next 90 minutes asked for their line-ups, 20 per request (``fbi.ingestion.lineup_watch``, IA-069),
     each side's line-up recorded in ``core.fixture_lineup_arrivals`` and NOTHING else - no fixture, detail or line-up row the
     product reads. Its own daily budget (``FBI_LINEUP_WATCH_DAILY_BUDGET``, 1,200) inside the shared quota, cut first.
-  * ``lifecycle_shadow``  every 30 min (``FBI_LIFECYCLE_MINUTES``), only while ``FBI_LIFECYCLE`` is ``shadow`` (off by default): the one
+  * ``lifecycle_shadow``  every 30 min (``FBI_SELECTION_LIFECYCLE_MINUTES``), only while ``FBI_SELECTION_LIFECYCLE`` is ``shadow`` (off by default): the one
     cycle of states of each selection (``fbi.lifecycle``, IA-068), read off the decisions, the shadow picks, the reviews, the settlements
     and the post-mortems of the matches of the last 7 days and the next 48 hours, appended to ``intel.selection_lifecycle``. Database
     only; it writes nothing else and nothing reads it but the owner's views.
@@ -2334,7 +2334,7 @@ async def main() -> None:
                           minutes=lifecycle.EVERY, id="lifecycle_shadow", max_instances=1, coalesce=True,
                           misfire_grace_time=lifecycle.EVERY * 60, next_run_time=moment + timedelta(minutes=23))
     else:
-        log.info("worker.lifecycle_shadow_off", hint="FBI_LIFECYCLE is not shadow: the cycle of states is not being written")
+        log.info("worker.lifecycle_shadow_off", hint="FBI_SELECTION_LIFECYCLE is not shadow: the cycle of states is not being written")
     from fbi.shadowjobs import decision_v2 as dv2
 
     if dv2.mode() == "shadow":

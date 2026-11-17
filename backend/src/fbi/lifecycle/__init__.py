@@ -8,7 +8,7 @@ set); this package reads them and writes ONE chain per selection beside them, wi
 
 * ``machine`` - the states, the closed reasons, the legal transitions and who may make each (pure).
 * ``derive`` - the map from the current layers to the cycle, ``lifecycle-map-v1`` (pure).
-* ``store`` - the shadow pass: read the layers, append what is missing (switch ``FBI_LIFECYCLE``, ``off`` by default).
+* ``store`` - the shadow pass: read the layers, append what is missing (switch ``FBI_SELECTION_LIFECYCLE``, ``off`` by default).
 * ``reader`` - the private reading for C-03 (counts by state and the selections with their state).
 
 Nothing here is imported by the decision layer, the picks, the parlays or a page a reader can open, and nothing here imports

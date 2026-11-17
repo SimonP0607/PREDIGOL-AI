@@ -1,11 +1,14 @@
 """The factual evaluation of the single chronicle and the comparison for the retirement of the duplicated texts (IA-118, IA-119).
 
-    python -m scripts.ia_chronicle_eval protocol                    # the preregistered protocol and whether it is signed (no database)
+    python -m scripts.ia_chronicle_eval protocol                    # the preregistered protocol and whether it is signed (read-only)
     python -m scripts.ia_chronicle_eval sample --out sheet.csv      # the deterministic sample of chronicle-review-v2 (read-only)
-    python -m scripts.ia_chronicle_eval score sheet.csv             # the filled sheet against the protocol (no database)
+    python -m scripts.ia_chronicle_eval score sheet.csv             # the filled sheet against the protocol (read-only)
     python -m scripts.ia_chronicle_eval compare --days 14           # retire-compare-v1 on the same matches (read-only)
 
-Everything here reads or computes: nothing is written, switched or signed. Exit 0 when it ran, 2 when it cannot run.
+Everything here reads or computes: nothing is written, switched or signed. «signed» is the owner's signature of AD-F06 (or, for ``compare``,
+of AD-F05) in its fingerprint of now, read from ``ai.protocol_signatures`` (IA-143; signed with ``scripts/ia_protocols.py``); where the
+database cannot be reached ``protocol`` and ``score`` still answer, with «signed» false and ``signature_read`` false. Exit 0 when it ran, 2
+when it cannot run.
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ from psycopg.rows import dict_row
 from fbi.chronicle import plan as cp
 from fbi.chronicle import protocol, retire, review_v2
 from fbi.core.clock import now
+from fbi.protosign import store as signatures
 
 OK, CANNOT = 0, 2
 COLUMNS = ("review_id", "chronicle_id", "fixture_id", "part", "section", "index", "text", "cited", "double", "label", "label_second", "note")
@@ -82,16 +86,32 @@ def read_sheet(path: Path) -> list[dict[str, Any]]:
         return [{**r, "review_id": int(r["review_id"])} for r in csv.DictReader(fh)]
 
 
+def signature_of(dsn: str | None, key: str) -> tuple[dict[str, Any] | None, bool]:
+    """The owner's signature of ``key`` in force, and whether it could be read at all (a database that cannot be reached: None, False)."""
+    try:
+        with _connect(dsn) as conn:
+            found = signatures.in_force(conn, key)
+            conn.rollback()
+    except psycopg.Error:
+        return None, False
+    return found, True
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "protocol":
-        sys.stdout.write(json.dumps(protocol.status(), indent=1, ensure_ascii=False) + "\n")
+        found, read = signature_of(args.dsn, protocol.KEY)
+        doc = {**protocol.status(found), "signature_read": read}
+        sys.stdout.write(json.dumps(doc, indent=1, ensure_ascii=False, default=str) + "\n")
         return OK
     if args.command == "score":
         if not args.sheet:
             sys.stderr.write("score needs the filled sheet\n")
             return CANNOT
-        sys.stdout.write(json.dumps(protocol.score(read_sheet(Path(args.sheet))), indent=1, ensure_ascii=False) + "\n")
+        rows = read_sheet(Path(args.sheet))
+        found, read = signature_of(args.dsn, protocol.KEY)
+        doc = {**protocol.score(rows, signed=found is not None), "signature_read": read}
+        sys.stdout.write(json.dumps(doc, indent=1, ensure_ascii=False) + "\n")
         return OK
     if args.command == "sample" and not args.out:
         sys.stderr.write("sample needs --out\n")
@@ -99,15 +119,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     with _connect(args.dsn) as conn:
         if args.command == "sample":
             rows = sample_rows(conn, days=args.days)
+            signed = signatures.is_signed(conn, protocol.KEY)
             conn.rollback()
             write_sheet(rows, Path(args.out))
-            sys.stdout.write(json.dumps({"sentences": len(rows), "out": args.out, "signed": protocol.SIGNED}) + "\n")
+            sys.stdout.write(json.dumps({"sentences": len(rows), "out": args.out, "signed": signed}) + "\n")
             return OK
         until = now()
         since = until - timedelta(days=args.days)
         matches, found = retire.rows_for(conn, since=since, until=until)
+        signed = signatures.is_signed(conn, retire.KEY)
         conn.rollback()
-    sys.stdout.write(json.dumps(retire.report(matches, found, since=since, until=until), indent=1, default=str, ensure_ascii=False) + "\n")
+    doc = retire.report(matches, found, since=since, until=until, signed=signed)
+    sys.stdout.write(json.dumps(doc, indent=1, default=str, ensure_ascii=False) + "\n")
     return OK
 
 

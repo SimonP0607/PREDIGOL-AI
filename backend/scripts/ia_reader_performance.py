@@ -7,7 +7,8 @@ Each reader of the shadow against the rules on the same settled selections (the 
 added, with its interval by Bogotá days and the Bonferroni correction; the attribution with Wilson intervals) and each source by type of
 fact (the share held of the facts the decisions cited). ``--dry-run`` computes the evaluations after the match of the window without
 writing them (``fbi.evalpass.store.dry_run``) when ``intel.selection_evaluations`` has no rows yet. The connection is read-only and each
-statement is held to 95 s. Exit status: 0 a report, 2 it cannot run (a bad day or option).
+statement is held to 95 s. ``signed_by_owner`` is the owner's signature of AD-K03 in its fingerprint of now (``ai.protocol_signatures``,
+IA-143): it changes nothing in the report. Exit status: 0 a report, 2 it cannot run (a bad day or option).
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ import psycopg
 from fbi.ai.calendar import day_bounds
 from fbi.core.clock import now
 from fbi.evalpass import performance, performance_reads, store
+from fbi.protosign import store as signatures
 
 READ_ONLY: Final = "-c TimeZone=UTC -c default_transaction_read_only=on -c statement_timeout=95000"
 OK, CANNOT = 0, 2
@@ -54,7 +56,8 @@ def run(conn: psycopg.Connection[Any], *, start: datetime, end: datetime, dry_ru
     else:
         cited = performance_reads.cited(conn, start=start, end=end)
     return performance.report(judged, cited, period={"start": start.isoformat(), "end": end.isoformat(),
-                                                     "evaluations": "dry_run" if dry_run else "intel.selection_evaluations"})
+                                                     "evaluations": "dry_run" if dry_run else "intel.selection_evaluations"},
+                              signed=signatures.is_signed(conn, performance.PROTOCOL))
 
 
 def main(argv: Sequence[str] | None = None) -> int:

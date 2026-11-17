@@ -40,7 +40,7 @@ su celda, y la **evaluación posterior** (AD-K01). La dependencia de la alineaci
 
 Si la base aún no tiene la tabla del ciclo o la de evaluaciones (una base detrás del código), ese bloque dice `sin_datos` y el resto
 responde. Hoy en producción ninguna de las dos existe todavía (la base va por la 0141): tras desplegar, C-03 mostrará los ceros hasta que
-`FBI_LIFECYCLE=shadow` y `FBI_SELECTION_EVAL=shadow` escriban.
+`FBI_SELECTION_LIFECYCLE=shadow` y `FBI_SELECTION_EVAL=shadow` escriban.
 
 ## 3. Ejemplos y pruebas
 

@@ -89,13 +89,13 @@ No hay ningún modelo, búsqueda ni petición a API-Football. Ningún lector ve 
 
 ## 6. Cómo se enciende, se apaga y se revierte
 
-- **Encender en sombra:** `FBI_LIFECYCLE=shadow` en el entorno del worker y reiniciarlo. El trabajo `lifecycle_shadow` corre cada 30
-  minutos (`FBI_LIFECYCLE_MINUTES`), sigue los partidos de los últimos 7 días y las próximas 48 horas, y tiene un plazo de 15 minutos.
+- **Encender en sombra:** `FBI_SELECTION_LIFECYCLE=shadow` en el entorno del worker y reiniciarlo. El trabajo `lifecycle_shadow` corre cada 30
+  minutos (`FBI_SELECTION_LIFECYCLE_MINUTES`), sigue los partidos de los últimos 7 días y las próximas 48 horas, y tiene un plazo de 15 minutos.
   La primera pasada rellena esos 9 días (unas 40.000 filas).
 - **Ver qué haría sin escribir:** `python -m scripts.ia_lifecycle run --dry-run`. **Medir:** `python -m scripts.ia_lifecycle measure
   --from 2026-11-02 --to 2026-11-15`. **Leer** (lo que usará C-03): `python -m scripts.ia_lifecycle tracking --from … --to …
   [--state …] [--family corners]`.
-- **Apagar:** `FBI_LIFECYCLE=off` (o quitar la variable). Las filas se conservan.
+- **Apagar:** `FBI_SELECTION_LIFECYCLE=off` (o quitar la variable). Las filas se conservan.
 - **Revertir del todo:** la migración `0142` tiene `downgrade`, que borra la tabla con sus filas. Las capas actuales siguen funcionando
   igual con o sin ella.
 
@@ -106,3 +106,8 @@ No hay ningún modelo, búsqueda ni petición a API-Football. Ningún lector ve 
 - AD-D03: la dependencia de la alineación por selección (hoy `pendiente_alineaciones` solo sale de una baja clave anunciada).
 - AD-J03 y AD-J04: los contratos C-02 y C-03 con su ejemplo y sus rutas privadas; `fbi.lifecycle.reader.tracking` ya da los
   contadores por estado y las selecciones con su estado para C-03.
+
+
+## Cambio de nombre del interruptor (IA-144, 17-nov-2026)
+
+El interruptor del ciclo de una selección se llama ahora `FBI_SELECTION_LIFECYCLE` (y su cadencia `FBI_SELECTION_LIFECYCLE_MINUTES`). Antes compartía `FBI_LIFECYCLE` con el ciclo de los clientes de la capa de lectores (plan UX, B11, encendido por omisión): apagar uno apagaba el otro, y encender la sombra con `shadow` habría dejado encendido el de clientes aunque estuviera en `0`. El ciclo de una selección ya no lee `FBI_LIFECYCLE`; el de clientes no cambia.

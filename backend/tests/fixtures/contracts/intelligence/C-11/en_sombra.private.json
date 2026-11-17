@@ -1,6 +1,6 @@
 {
   "contract": "C-11",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "private",
   "freshness": {
     "generated_at": "2026-11-21T16:42:00Z",
@@ -941,6 +941,266 @@
       "up_to_date": true,
       "missing_relations": []
     }
+  },
+  "protocols": {
+    "register_version": "protocol-signatures-v1",
+    "signed": 1,
+    "pending": 15,
+    "items": [
+      {
+        "key": "INT-A02",
+        "version": "proto-int-a02-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Calibración coherente multiclase",
+        "registered_on": "2026-11-11",
+        "fingerprint": "2a1cdb3ec31a6b5075010a989e6205bf60bc699c54891a62ac861ad0fd69ae6d",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "INT-A09",
+        "version": "proto-int-a09-v1",
+        "framework": "lab-protocol-v1",
+        "title": "E4: tiros y xG en los ratings",
+        "registered_on": "2026-11-11",
+        "fingerprint": "400778f85de7acdfc59b1d9e265d7f4c4d5fe42abc4abf71cb5785b33604bd36",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "INT-B09",
+        "version": "proto-int-b09-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Estudio de eventos: noticia → precio",
+        "registered_on": "2026-11-11",
+        "fingerprint": "2b8e49fb115f5cecbcb5e61f52d9ac11d8c8464ce7b3da97af62b3f9382e9232",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "INT-A08",
+        "version": "proto-int-a08-v1",
+        "framework": "lab-protocol-v1",
+        "title": "E6: quién juega, en el modelo",
+        "registered_on": "2026-11-11",
+        "fingerprint": "a37fdb4265f407c892e11f793ce86a083667ec491f0251fdd4d1f1d3603a1c43",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "INT-C02",
+        "version": "proto-int-c02-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Banco de repetición: la variante actual reproduce la sombra",
+        "registered_on": "2026-11-11",
+        "fingerprint": "f954582c9594c509dfc93f4abd9a847292a023d74dc5495daf0eead00bd0cc63",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-A03",
+        "version": "proto-ad-a03-v1",
+        "framework": "lab-protocol-v1",
+        "title": "battery-v4: batería adversaria que separa ataque de variabilidad",
+        "registered_on": "2026-11-16",
+        "fingerprint": "205e671347e7c9ab21a4fb0ab03d1b6c66a2c4d9e44494f937e3e23707653bae",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-B03",
+        "version": "proto-ad-b03-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Sello estable: el calibrador campeón con un precio de más de 6 horas",
+        "registered_on": "2026-11-16",
+        "fingerprint": "989b82a53fe35ae6712f39ce71d75588a1f868e38b9a2832ba2e393162364bd5",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-B07",
+        "version": "proto-ad-b07-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Córners y tarjetas: calibrador de conteos por familia (count-cal-v1)",
+        "registered_on": "2026-11-17",
+        "fingerprint": "aac10f7f5cc48dfbf136283f0c76d1c6043556536b137e7df2bd4cbe05299128",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-K02",
+        "version": "proto-ad-k02-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Tablero de validación por mercado y familia (board-v1)",
+        "registered_on": "2026-11-17",
+        "fingerprint": "6eff7d3066cbeed274d457c2694f478e339fc8232610be74f4c56f54e570def1",
+        "signed_by_owner": true,
+        "signed_at": "2026-11-21T09:05:00Z",
+        "signature_row": 1,
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-C08",
+        "version": "proto-ad-c08-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Credibilidad de fuentes por tipo de hecho (credibility-v2)",
+        "registered_on": "2026-11-17",
+        "fingerprint": "7ae65569c4f330956c9437c99a1224f36448d94fdba90d371d7ec6eb144943a4",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-C09",
+        "version": "proto-ad-c09-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Medición de la extracción frente a etiquetas humanas de páginas enteras (extract-protocol-v1)",
+        "registered_on": "2026-11-17",
+        "fingerprint": "f0bd0d90c7747bcab6e48dde47676c64b784d2d18fe9e78635c21efbc2106ed8",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-K03",
+        "version": "proto-ad-k03-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Rendimiento de lectores y fuentes frente a las reglas (perf-v1)",
+        "registered_on": "2026-11-17",
+        "fingerprint": "c5638110bd730e99a7d841caace34731bafb73cfac2c93d3c9bef89e49c719d3",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-K04",
+        "version": "proto-ad-k04-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Banco de repetición como prueba de regresión con tolerancia (replay-regression-v1)",
+        "registered_on": "2026-11-17",
+        "fingerprint": "9d37ca84b4dba0aa37e0b40cd9add0be4ea96951bac59e6c53802763482a9d14",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-F04",
+        "version": "repeat-check-v1",
+        "framework": "own-record-v1",
+        "title": "Coletillas y repeticiones de la crónica única: umbrales",
+        "registered_on": "2026-11-17",
+        "fingerprint": "17c942303fbc2cd0f39f90a1184f8cf0a699e1c3bffa5c783967952fb32d3608",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-F05",
+        "version": "retire-compare-v1",
+        "framework": "own-record-v1",
+        "title": "Retirada de los textos duplicados: la comparación preregistrada",
+        "registered_on": "2026-11-17",
+        "fingerprint": "1fbeadbddd163eb4eae3b15e952e340c11226544aa304a5551988060f07a7b6a",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-F06",
+        "version": "chronicle-protocol-v1",
+        "framework": "own-record-v1",
+        "title": "Evaluación factual de la crónica única: revisión humana por muestreo",
+        "registered_on": "2026-11-17",
+        "fingerprint": "33b296c7c3852187e5cb59b223bc752b9f36f997fdf9320b5f8beb4fbee8b47b",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      }
+    ],
+    "notice_es": "Una firma no activa nada: deja constancia de que el protocolo es el que el dueño aprobó antes de mirar los datos. Ningún veredicto enciende, promociona ni cambia un umbral por estar firmado (AD-K07)."
   },
   "news_engine": {
     "missing_reason": "no_entregado",

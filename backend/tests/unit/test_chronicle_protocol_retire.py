@@ -10,6 +10,8 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
+import pytest
+
 from fbi.api.services import reading
 from fbi.chronicle import plan as cp
 from fbi.chronicle import protocol, repetition, retire, verify
@@ -32,7 +34,10 @@ def test_fifty_chronicles_without_a_failure_say_below_six_percent_and_no_more() 
 
 def test_the_protocol_is_preregistered_and_unsigned() -> None:
     s = protocol.status()
-    assert s["signed"] is False and s["signature"] is None and protocol.SIGNED is False
+    assert s["signed"] is False and s["signature"] is None and s["key"] == protocol.KEY == "AD-F06"
+    assert not hasattr(protocol, "SIGNED"), "the code never signs: the signature is the owner's row of ai.protocol_signatures (IA-143)"
+    signed = protocol.status({"id": 3, "fingerprint": "a" * 64, "signed_at": "2026-11-18T10:00:00+00:00", "reason": "Firmo el protocolo"})
+    assert signed["signed"] is True and signed["signature"]["id"] == 3 and signed["thresholds"] == s["thresholds"]
     assert s["thresholds"]["sample"] == 50 and s["thresholds"]["unsupported_sentences_max"] == 0
     assert s["thresholds"]["stock_share_max"] == repetition.SHARE_MAX
 
@@ -114,7 +119,9 @@ def test_the_comparison_needs_enough_of_the_same_matches() -> None:
     m, r = world(40, v3_ok=0.37)
     out = retire.report(m, r, since=KICKOFF - timedelta(days=14), until=KICKOFF)
     assert all(a["verdict"] == "INSUFICIENTE" for a in out["against"].values())
-    assert out["deleted_rows"] == 0 and out["decides"] is False and out["rule"]["signed"] is False
+    assert out["deleted_rows"] == 0 and out["decides"] is False and out["rule"]["signed"] is False and out["rule"]["key"] == "AD-F05"
+    signed = retire.report(m, r, since=KICKOFF - timedelta(days=14), until=KICKOFF, signed=True)
+    assert signed["rule"]["signed"] is True and signed["against"] == out["against"], "a signature changes no verdict"
 
 
 def test_a_better_single_chronicle_meets_the_rule_and_is_only_ready_for_the_owners_signature() -> None:
@@ -144,12 +151,20 @@ def test_a_text_written_after_kick_off_is_not_counted() -> None:
     assert t["user-narrative-v3"].attempts == 0 and t["user-narrative-v3"].covered == 0
 
 
-def test_the_command_line_reads_the_protocol_and_scores_a_sheet_without_a_database(tmp_path: Any, capsys: Any) -> None:
+def test_the_command_line_reads_the_protocol_and_scores_a_sheet_without_a_database(tmp_path: Any, capsys: Any,
+                                                                                      monkeypatch: pytest.MonkeyPatch) -> None:
     from pathlib import Path
 
+    import psycopg
     from scripts import ia_chronicle_eval as cli
 
-    assert cli.main(["protocol"]) == 0 and '"signed": false' in capsys.readouterr().out
+    def unreachable(dsn: str | None) -> Any:
+        raise psycopg.OperationalError("no database here")
+
+    monkeypatch.setattr(cli, "_connect", unreachable)
+    assert cli.main(["protocol"]) == 0
+    out = capsys.readouterr().out
+    assert '"signed": false' in out and '"signature_read": false' in out
     rows = protocol.sheet([{"id": 4, "chronicle_id": 1, "fixture_id": 2, "facts": {},
                             "items": [{"part": "chronicle", "section": "como_llega", "index": 0, "text": "x", "facts": []}]}], double=[4])
     sheet = Path(tmp_path) / "hoja.csv"

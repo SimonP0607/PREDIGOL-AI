@@ -25,6 +25,7 @@ from fbi.ai.calendar import day_bounds
 from fbi.core.clock import now
 from fbi.evalpass import store
 from fbi.evaluation import board, views
+from fbi.protosign import store as signatures
 
 READ_ONLY: Final = "-c TimeZone=UTC -c default_transaction_read_only=on -c statement_timeout=95000"
 OK: Final = 0
@@ -72,7 +73,8 @@ def summary(evs: Sequence[Any], report: store.Report) -> dict[str, Any]:
 def run(conn: psycopg.Connection[Any], command: str, *, start: datetime, end: datetime) -> tuple[dict[str, Any], int]:
     if command == "dry-run":
         evs, rep = store.dry_run(conn, start=start, end=end)
-        doc = {"evaluations": summary(evs, rep), "board": board.build(board.scored_of(ev.row) for ev in evs)}
+        doc = {"evaluations": summary(evs, rep), "board": board.build((board.scored_of(ev.row) for ev in evs),
+                                                                      signed=signatures.is_signed(conn, board.PROTOCOL))}
         return doc, OK
     kept = views.board(conn, start=start, end=end)
     return {"board": kept if kept is not None else {"read_failed": True, "error": "UndefinedTable"}}, OK

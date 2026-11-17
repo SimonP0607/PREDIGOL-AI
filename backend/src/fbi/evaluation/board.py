@@ -190,9 +190,10 @@ def group(items: Sequence[Scored], *, level: float, seed: int, needed: int = NEE
     }
 
 
-def build(items: Iterable[Scored], *, needed: int = NEEDED, seed: int | None = None) -> dict[str, Any]:
+def build(items: Iterable[Scored], *, needed: int = NEEDED, seed: int | None = None, signed: bool = False) -> dict[str, Any]:
     """The board: one entry per (layer, family, market) and per (layer, family, ``*``), each with its verdict. ``m`` (Bonferroni) is
-    counted before any interval is computed: the groups that reach the needed sample."""
+    counted before any interval is computed: the groups that reach the needed sample. ``signed``: whether the owner's signature of AD-K02
+    in its fingerprint of now is on file (``fbi.protosign.store.is_signed``, read by the caller); it is reported and changes no verdict."""
     p = protocol.require(PROTOCOL)
     s = p.seed if seed is None else seed
     cells: dict[tuple[str, str, str], list[Scored]] = defaultdict(list)
@@ -211,7 +212,7 @@ def build(items: Iterable[Scored], *, needed: int = NEEDED, seed: int | None = N
         g = group(xs, level=level, seed=s, needed=needed)
         out.append({"layer": layer, "family": family, "market": market, "candidates": candidates[(layer, family, market)], **g})
     counts = {v: sum(1 for c in out if c["verdict"] == v) for v in VERDICTS}
-    return {"version": VERSION, "protocol": protocol.stamp(PROTOCOL), "signed_by_owner": False,
+    return {"version": VERSION, "protocol": protocol.stamp(PROTOCOL), "signed_by_owner": bool(signed),
             "bonferroni": {"m": m, "alpha": ALPHA, "level": round(level, 6)}, "needed": needed, "cells": out, "counts": counts,
             "notice_es": "Un veredicto no activa nada; un acierto no valida el mercado."}
 

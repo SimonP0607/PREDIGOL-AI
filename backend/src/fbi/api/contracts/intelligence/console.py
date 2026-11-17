@@ -11,6 +11,8 @@
 * ``costs`` - each envelope of decision 12 and each new capability's cap against what it spent this month, and the joint ceiling (AD-A06, IA-058).
 * ``security`` - the newest battery row, the newest leakage audit, the panel of the gates with their real verdict (IA-050; Gate B NO EVALUADO only
   with the owner's closure on file, AD-001) and whether the database's schema is the code's.
+* ``protocols`` (1.1.0, IA-143) - every preregistered protocol that can be signed (the LAB ones and the chronicle's own), with its fingerprint
+  of now and whether the owner's signature of THAT fingerprint is on file (``ai.protocol_signatures``). A signature turns nothing on.
 * ``news_engine`` and ``alert_queue`` - absent with their reason until AD-G01 and AD-D08 exist.
 
 A block the server could not read this time is a ``ReadFailure`` (the error's class, never its message): one table that is missing does not
@@ -294,13 +296,38 @@ class Security(IntelligenceModel):
     schema_check: Schema | ReadFailure
 
 
+# ── protocols ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+class ConsoleProtocol(IntelligenceModel):
+    """One preregistered protocol as the code has it now, and the owner's signature of that fingerprint (IA-143)."""
+
+    key: str = Field(pattern=r"^(INT|AD)-[A-Z][0-9]{2}$")
+    version: str
+    framework: Literal["lab-protocol-v1", "own-record-v1"]
+    title: str
+    registered_on: date
+    fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$", description="The fingerprint in force: the one a signature must name.")
+    signed_by_owner: bool = Field(description="A signature of the owner of this very fingerprint is on file. It turns nothing on.")
+    signed_at: UtcDatetime | Missing
+    signature_row: int | Missing
+    other_fingerprints: int = Field(ge=0, description="Signatures of earlier fingerprints of the same protocol: kept, and they do not count.")
+
+
+class ConsoleProtocols(IntelligenceModel):
+    register_version: str
+    signed: int = Field(ge=0)
+    pending: int = Field(ge=0)
+    items: list[ConsoleProtocol]
+    notice_es: str
+
+
 # ── the contract ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 class ConsoleContract(IntelligenceContract):
     """C-11, private only."""
 
     CONTRACT_ID: ClassVar[str] = "C-11"
-    CONTRACT_VERSION: ClassVar[str] = "1.0.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.1.0"
     PRIVATE_ONLY: ClassVar[bool] = True
 
     decides: Literal[False] = Field(default=False, description="Nothing here decides, records or switches anything.")
@@ -308,5 +335,7 @@ class ConsoleContract(IntelligenceContract):
     capabilities: Capabilities | ReadFailure
     costs: Costs | ReadFailure
     security: Security
+    protocols: ConsoleProtocols | Missing | ReadFailure = Field(
+        description="The preregistered protocols and the owner's signatures (1.1.0); sin_datos before revision 0166.")
     news_engine: Missing = Field(description="The news engine (AD-G01): no_entregado until it exists.")
     alert_queue: Missing = Field(description="The private alerts' queue (AD-D08): no_entregado until it exists.")

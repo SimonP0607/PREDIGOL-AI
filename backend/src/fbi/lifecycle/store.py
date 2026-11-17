@@ -1,6 +1,6 @@
 """The shadow writer of the cycle (IA-068, AD-D02): read the layers, append to ``intel.selection_lifecycle`` what is missing.
 
-One pass (``run_pass``), every ``EVERY`` minutes from the worker while ``FBI_LIFECYCLE=shadow`` (``off`` by default: the job is
+One pass (``run_pass``), every ``EVERY`` minutes from the worker while ``FBI_SELECTION_LIFECYCLE=shadow`` (``off`` by default: the job is
 not even scheduled):
 
 1. the matches with a decision or a shadow pick whose kick-off is in ``[now - BACK, now + AHEAD)``, minus the ones already
@@ -32,14 +32,16 @@ from fbi.core.decision_versions import DECISION_CORE, DECISION_FAMILIES
 from fbi.lifecycle import derive, machine
 from fbi.lifecycle.derive import Decision, Evaluation, Fixture, History, Key, Outcome, Review, Row
 
-SWITCH: Final = "FBI_LIFECYCLE"
+SWITCH: Final = "FBI_SELECTION_LIFECYCLE"
+"""IA-144: its own name. ``FBI_LIFECYCLE`` is the switch of the readers' customer cycle (plan UX, B11, on by default): sharing it meant
+that switching one off switched both. The cycle of a selection never reads that word."""
 WRITER: Final = "lifecycle-shadow-v1"
 """The writer of the chains read off today's layers. The evaluations of AD-D06 will write chains of their own (``eval-cycle-v1``)."""
 LAYERS: Final[tuple[str, ...]] = (DECISION_CORE, DECISION_FAMILIES)
 """The decision layers whose rows drive a chain: the candidates decision-v2's replay re-decides (``fbi.decision.replay``) are these
 same rows. decision-v2's shadow (AD-D01, IA-093) keeps its own decisions in ``intel.decisions_v2`` and appends its chains through
 ``extend``, under a writer of its own."""
-EVERY: Final = int(os.environ.get("FBI_LIFECYCLE_MINUTES", "30"))
+EVERY: Final = int(os.environ.get("FBI_SELECTION_LIFECYCLE_MINUTES", "30"))
 BACK: Final = timedelta(days=7)
 """How far back a match is still followed: its settlement (p90 48 h after kick-off) and its post-mortem."""
 AHEAD: Final = timedelta(hours=48)
