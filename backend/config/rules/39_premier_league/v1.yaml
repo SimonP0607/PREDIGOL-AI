@@ -1,0 +1,46 @@
+# Premier League (provider league 39). Parameters read from the official Handbook, Section C; the text is not reproduced.
+schema: competition-rules/1
+league_id: 39
+competition: Premier League
+country: England
+version: 1
+seasons: [2025, 2026]
+points: {win: 3, draw: 1, loss: 0}
+sources:
+  - publisher: The Football Association Premier League Limited
+    title: Premier League Handbook 2025/26, Section C (The League Competition)
+    url: https://resources.premierleague.pulselive.com/premierleague/document/2025/10/22/c03ebde8-8b59-4822-9f3b-bd42ed587f92/PL_Handbook_25-26_07.10.pdf
+    checked_at: 2026-11-16
+    applies_to: season 2025/26
+    articles: C.1, C.2, C.5, C.6, C.7, C.11, C.14, C.17
+  - publisher: The Football Association Premier League Limited
+    title: Premier League Handbook 2026/27, Section C (The League Competition)
+    url: https://resources.premierleague.pulselive.com/premierleague/document/2026/10/22/24902579-d9e8-44b3-a9e4-777c7b3d7134/TM2040_PL-Handbook-and-Collateral-2026-27_Digital_21.10.pdf
+    checked_at: 2026-11-16
+    applies_to: season 2026/27
+    articles: C.1, C.2, C.5, C.6, C.7, C.11, C.14, C.17
+tournaments:
+  - key: season
+    name: Premier League
+    phases:
+      - key: league
+        name: League
+        format: league
+        rounds: ["Regular Season - *"]
+        teams: 20
+        schedule: double_round_robin
+        matches_per_team: 38
+        ranking:
+          tiebreakers:
+            - goal_difference
+            - goals_for
+            - {criterion: h2h_points, when: decisive, note: "C.17.1, only when the title, relegation or qualification for other competitions depends on it"}
+            - {criterion: h2h_away_goals_for, when: decisive, note: "C.17.2"}
+            - {criterion: playoff, when: decisive, note: "C.17.3, two clubs still level: play-off on neutral ground"}
+          note: "C.7: clubs level on points, goal difference and goals scored otherwise share the position."
+        zones:
+          - {kind: champion, from: 1, to: 1}
+          - {kind: relegation, from: 18, to: 20, target: EFL Championship, note: "C.14 (the bottom three)"}
+gaps:
+  - topic: continental
+    reason: "European places depend on the UEFA access list and on the domestic cup winners; Section C does not fix them and they are not coded."
