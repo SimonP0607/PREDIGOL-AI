@@ -16,6 +16,11 @@ For every row decision-v1 or decision-fam-v1 wrote during the day (Bogotá, ``fb
                      capture) or as the odds book held it at the moment (``price="book"``, ``fbi.decision.book_price``: the answer in
                      force of a capture or of a book refresh, priced the same way, with its age and, as a measurement, the book's last
                      price before kick-off for the CLV). The book is a separate measurement too: the evidence of P1 is the default;
+    the rules        the ruleset decision-v2 decides under (``rules``, ``engine.RULESETS``): ``decision-v2.0`` (the default: decision-v1's
+                     price and age rule) or ``decision-v2.1`` (the book's price by default, with the age rule by horizon 195/75/45 min,
+                     ``fbi.decision.price_age``, plan 2026 AD-B06). ``against`` decides the same candidates under other rulesets (each
+                     with its own price, or ``label:price``) and the report says what changed, from which state to which and at which
+                     stage (``versus``): a measurement, as the others;
     the probability  the core candidates' probability as decision-v1 judges it (``probability="own"``, the default: the pick's, calibrated
                      by stage 4) or the common probability view's (``probability="common"``, ``fbi.decision.view.judged``: the number
                      the Match Center states, with its seal and its version, plan INT-A03). With the view, the same candidates are also
@@ -43,6 +48,7 @@ from psycopg.rows import dict_row
 
 from fbi.ai.calendar import day_bounds
 from fbi.decision import book_price, engine, market_inputs
+from fbi.decision import price_age as ages
 from fbi.decision import view as common_view
 from fbi.decision.families import CORE, FAMILIES, INFO_CODES, Candidate, MarketFamily, family_of
 from fbi.intel import context_adjustment as ctx_adj
@@ -309,7 +315,8 @@ def price_summary(pairs: Sequence[Pair], *, source: str) -> dict[str, Any]:
             by_checkpoint[d.checkpoint].append(d.price.age_minutes)
     out: dict[str, Any] = {"source": source, "decisions": len(decided), "with_price": len(with_price),
                            "without_age": sum(1 for _, d in with_price if d.price.age_minutes is None), "age_minutes": _spread(ages),
-                           "by_checkpoint": {cp: _spread(v) for cp, v in sorted(by_checkpoint.items())}}
+                           "by_checkpoint": {cp: _spread(v) for cp, v in sorted(by_checkpoint.items())},
+                           "states": price_states(decided)}
     if source != engine.BOOK:
         return out
     core = [(r, d) for r, f, d in pairs if d is not None and f == CORE.name]  # only the core is priced by the book: a family keeps its own
@@ -332,6 +339,84 @@ def price_summary(pairs: Sequence[Pair], *, source: str) -> dict[str, Any]:
                                                               if c.provider_minutes_to_kickoff is not None]),
                       "confirmed_by": dict(sorted(Counter(c.confirmed_by for c in closes).items()))}}
     return out
+
+
+def price_states(decided: Sequence[tuple[Mapping[str, Any], engine.Decision2]]) -> dict[str, Any]:
+    """The state of each decision's price under its age rule (``price_age.PRICE_STATES``), overall and by band, with why, and the share of
+    the priced decisions past their limit (the criterion of AD-B06: at most 1 % of the book's), and the same by price source when there are
+    several. Pure."""
+    states: Counter[str] = Counter(str(d.price.state) for _, d in decided)
+    reasons: Counter[str] = Counter(f"{d.price.state}:{d.price.state_reason}" for _, d in decided if d.price.state_reason is not None)
+    bands: dict[str, Counter[str]] = defaultdict(Counter)
+    for _, d in decided:
+        bands[str(d.price.band)][str(d.price.state)] += 1
+    priced = [d for _, d in decided if d.price.odds is not None and d.price.p_market is not None]
+    old = sum(1 for d in priced if d.price.state == ages.ANTIGUO)
+    out: dict[str, Any] = {"rules": sorted({str(d.price.age_rule) for _, d in decided}), "by_state": dict(sorted(states.items())),
+                           "reasons": dict(sorted(reasons.items())), "by_band": {b: dict(sorted(c.items())) for b, c in sorted(bands.items())},
+                           "priced": len(priced), "old": old, "old_rate": _rate(old, len(priced))}
+    sources = sorted({d.price.source for _, d in decided})
+    if len(sources) > 1:  # the core priced by the book, the families by their own quotes: each with its own rule, apart
+        out["by_source"] = {s: price_states([(r, d) for r, d in decided if d.price.source == s]) for s in sources}
+    return out
+
+
+# -- one ruleset against another -------------------------------------------------------------------------------------------------------
+
+Variant = tuple[str, str]
+"""A ruleset and the core's price it is run with: (``engine.RULESETS`` label, ``engine.PRICE_SOURCES``)."""
+
+
+def price_of(rules: str, price: str | None) -> str:
+    """The core's price of a run: the one asked, or the ruleset's own."""
+    if rules not in engine.RULESETS:
+        raise ValueError(f"rules must be one of {tuple(engine.RULESETS)}")
+    out = engine.RULESETS[rules].price if price is None else price
+    if out not in engine.PRICE_SOURCES:
+        raise ValueError(f"price must be one of {engine.PRICE_SOURCES}")
+    return out
+
+
+def variant(text: str) -> Variant:
+    """``label`` or ``label:price`` (``decision-v2.0:book``: decision-v2.0's age rule over the book's price)."""
+    rules, _, price = text.partition(":")
+    return rules, price_of(rules, price or None)
+
+
+def variant_name(v: Variant) -> str:
+    return f"{v[0]}:{v[1]}"
+
+
+Versus = tuple[Mapping[str, Any], str, engine.Decision2 | None, engine.Decision2 | None]
+"""A row, its family, decision-v2's decision of it under the run's ruleset, and the same selection under the other ruleset."""
+
+
+def versus_summary(items: Sequence[Versus], *, main: Variant, other: Variant) -> dict[str, Any]:
+    """What the run's ruleset changed against another on the same candidates and moments: how many states changed, from which to which,
+    at which stage (the first, in stage order, of the stages of the codes only one of them gave), how many went up and how many reached
+    RECOMMENDED, how many prices changed state, and the states of the other ruleset's prices. A measurement: nothing here changes a state. Pure; ordered by (known_at, id)."""
+    both = [(r, f, d, o) for r, f, d, o in sorted(items, key=lambda x: (x[0]["known_at"], int(x[0]["id"]))) if d is not None and o is not None]
+    changed = [(r, f, d, o) for r, f, d, o in both if d.state != o.state]
+    up = [(r, d, o) for r, _, d, o in changed if engine.RANK[d.state] > engine.RANK[o.state]]
+    price_moves = Counter(f"{o.price.state} -> {d.price.state}" for _, _, d, o in both if d.price.state != o.price.state)
+    by_stage_dir: Counter[str] = Counter(f"{changed_at(o, d)}:{'sube' if engine.RANK[d.state] > engine.RANK[o.state] else 'baja'}"
+                                         for _, _, d, o in changed)
+    examples = [{"decision_id": int(r["id"]), "known_at": r["known_at"].isoformat(), "checkpoint": d.checkpoint, "fixture_id": int(r["fixture_id"]),
+                 "market_key": r["market_key"], "selection": r["selection"], "line": str(key_of(r)[3]), "family": f,
+                 "other": o.state, "other_reason": o.reason, "main": d.state, "main_reason": d.reason, "stage": (stage := changed_at(o, d)),
+                 "why": d.verdict(stage).why if d.verdict(stage).effects else o.verdict(stage).why,
+                 "age_main": d.price.age_minutes, "age_other": o.price.age_minutes, "max_age_main": d.price.max_age_minutes,
+                 "max_age_other": o.price.max_age_minutes}
+                for r, f, d, o in changed[:EXAMPLES]]
+    return {"main": variant_name(main), "other": variant_name(other), "rows": len(both), "same_state": len(both) - len(changed),
+            "changed": len(changed), "up": len(up), "down": len(changed) - len(up),
+            "to_recommended": sum(1 for _, d, _ in up if d.state == "RECOMMENDED"),
+            "transitions": dict(sorted(Counter(f"{o.state} -> {d.state}" for _, _, d, o in changed).items())),
+            "by_stage": dict(sorted(Counter(changed_at(o, d) for _, _, d, o in changed).items(), key=lambda kv: engine.NUMBER.get(kv[0], 99))),
+            "by_stage_direction": dict(sorted(by_stage_dir.items())),
+            "families": dict(sorted(Counter(f for _, f, _, _ in changed).items())),
+            "price_state_changes": dict(sorted(price_moves.items())),
+            "other_price_states": price_states([(r, o) for r, _, _, o in both]), "examples": examples}
 
 
 # -- the probability the stages judged -------------------------------------------------------------------------------------------------
@@ -387,19 +472,21 @@ def _primary_p(world: decision.World, c: Candidate) -> float | None:
 
 
 def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[MarketFamily] = FAMILIES, council: str | None = None,
-               signals: bool = False, view: bool = False, price: str = engine.CONSENSUS, store: PayloadStore | None = None,
-               probability: str = engine.OWN) -> dict[str, Any]:
+               signals: bool = False, view: bool = False, price: str | None = None, store: PayloadStore | None = None,
+               probability: str = engine.OWN, rules: str = engine.RULES_V20, against: Sequence[str] = ()) -> dict[str, Any]:
     """decision-v2 over every row decision-v1 and decision-fam-v1 wrote during ``day``, compared. ``price``: the core candidates' price as
     decision-v1 read it (``consensus``, the default) or as the odds book held it at each moment (``book``, which reads the bodies from the
     RAW ``store``). ``probability``: the core candidates' probability as decision-v1 judges it (``own``, the default) or the common view's
-    (``common``). Read-only."""
+    (``common``). ``rules``: the ruleset (``engine.RULESETS``; its own price when ``price`` is None) and ``against``: other rulesets run on
+    the same candidates (``label`` or ``label:price``), compared in ``versus``. Read-only."""
     if council is not None and council not in ctx_adj.ENGINES:
         raise ValueError(f"council must be one of {ctx_adj.ENGINES}")
-    if price not in engine.PRICE_SOURCES:
-        raise ValueError(f"price must be one of {engine.PRICE_SOURCES}")
+    price = price_of(rules, price)
+    main: Variant = (rules, price)
+    others = [variant(a) for a in against]
     if probability not in engine.PROBABILITY_SOURCES:
         raise ValueError(f"probability must be one of {engine.PROBABILITY_SOURCES}")
-    if price == engine.BOOK and store is None:
+    if any(p == engine.BOOK for _, p in (main, *others)) and store is None:
         raise ValueError("the book's price is read from the RAW store: give the store")
     versions = sorted({f.params.decision_version for f in families})
     rows = read_rows(conn, day=day, versions=versions)
@@ -415,11 +502,13 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
             continue
         groups[(r["known_at"], fam.params.decision_version)].append((r, fam))
     pairs: list[Pair] = []
-    against: list[Against] = []
+    against_own: list[Against] = []
     measured: list[tuple[Mapping[str, Any], engine.CommonView | None, float | None]] = []
+    named = {variant_name(o): o for o in others}
+    versus: dict[str, list[Versus]] = {name: [] for name in named}
     book: book_price.BookReader | None = None
     closes: dict[Key, engine.Close] = {}
-    if price == engine.BOOK:
+    if any(p == engine.BOOK for _, p in (main, *others)):
         core_fixtures = sorted({int(r["fixture_id"]) for items in groups.values() for r, f in items if f.name == CORE.name})
         book = book_price.read(conn, store, core_fixtures)
         closes = book_price.closes(book, core_fixtures)
@@ -427,9 +516,13 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
         fams = [f for f in families if any(f is g for _, g in items)]
         fixtures = sorted({int(r["fixture_id"]) for r, _ in items})
         world = world_at(conn, fams[0], fixtures, at=at, rows=[r for r, _ in items])
-        cands = candidates_as_of([c for f in fams for c in f.candidates(conn, at=at, fixtures=fixtures)], at)
-        if book is not None and any(f.name == CORE.name for f in fams):
-            cands = book_price.priced(cands, book.answers_at(fixtures, at), family=CORE.name)
+        read = candidates_as_of([c for f in fams for c in f.candidates(conn, at=at, fixtures=fixtures)], at)
+        by_price = {engine.CONSENSUS: read}
+        if book is not None:
+            by_price[engine.BOOK] = (book_price.priced(read, book.answers_at(fixtures, at), family=CORE.name)
+                                     if any(f.name == CORE.name for f in fams) else read)
+        cands = by_price[price]
+        ruleset = engine.RULESETS[rules]
         adjustments: dict[Key, ctx_adj.ContextAdjustment] = {}
         if council is not None:
             seen = ctx_adj.adjustments_for(conn, at=at, fixture_ids=fixtures, engines=(council,))
@@ -444,14 +537,20 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
         views = common_view.read(conn, fixtures, at=at, cal=world.cal) if view or common else {}
         judged = common_view.judged(cands, views, family=CORE.name) if common else cands
         index = {d.ident: d for d in engine.decide_all(world, judged, adjustments=adjustments, markets=markets, views=views if view else None,
-                                                       closes=closes)}
-        own = {d.ident: d for d in engine.decide_all(world, cands, adjustments=adjustments, markets=markets, closes=closes)} if common else {}
+                                                       closes=closes, rules=ruleset)}
+        own = ({d.ident: d for d in engine.decide_all(world, cands, adjustments=adjustments, markets=markets, closes=closes, rules=ruleset)}
+               if common else {})
+        alt = {variant_name(o): {d.ident: d for d in engine.decide_all(
+            world, common_view.judged(by_price[o[1]], views, family=CORE.name) if common else by_price[o[1]], adjustments=adjustments,
+            markets=markets, closes=closes, rules=engine.RULESETS[o[0]])} for o in others}
         for r, fam in items:
             k = key_of(r)
             d = index.get((fam.name, k, str(r.get("model_name")))) or index.get((fam.name, k, None))
             pairs.append((r, fam.name, d))
             if common:
-                against.append((r, fam.name, d, own.get((fam.name, k, str(r.get("model_name")))) or own.get((fam.name, k, None))))
+                against_own.append((r, fam.name, d, own.get((fam.name, k, str(r.get("model_name")))) or own.get((fam.name, k, None))))
+            for name, other in alt.items():
+                versus[name].append((r, fam.name, d, other.get((fam.name, k, str(r.get("model_name")))) or other.get((fam.name, k, None))))
             # the view of the row's selection counts whether or not decision-v2 rebuilt its candidate: it is a measurement of the view
             measured.append((r, views.get(k), None if d is None else d.prediction.p_cal))
     out = compare(pairs, families=[f.name for f in families])
@@ -460,8 +559,12 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
         prices |= {"reader": {"version": book_price.VERSION, "matches": len(book.fixtures), "bodies_read": len(book.bodies),
                               "unreadable": sum(1 for v in book.bodies.values() if v is None), "problems": book.problems[:5]}}
     return {"version": engine.VERSION, "replay": VERSION, "day": day.isoformat(), "versions": versions,
-            "inputs": {"council": council, "signals": signals, "view": view, "price": price, "probability": probability,
+            "rules": engine.RULESETS[rules].as_json(),
+            "inputs": {"council": council, "signals": signals, "view": view, "price": price, "probability": probability, "rules": rules,
+                       "against": [variant_name(o) for o in others],
                        "previous": "strictly before known_at", "ai_mode": "as the rows recorded it"},
             "rows": len(rows), "moments": len(groups), "skipped": {"selection_copies": skipped_selection, "unclaimed": len(unclaimed)},
             "unclaimed_rows": unclaimed} | out | ({"common_view": common_summary(measured)} if view else {}) | {"price": prices} | (
-                {"probability": probability_summary(against)} if probability == engine.COMMON else {})
+                {"probability": probability_summary(against_own)} if probability == engine.COMMON else {}) | (
+                {"versus": {name: versus_summary(items, main=main, other=named[name]) for name, items in versus.items()}}
+                if others else {})
