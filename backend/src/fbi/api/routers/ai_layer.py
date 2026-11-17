@@ -3,6 +3,8 @@
 * ``GET /matches/{fixture_id}/analysis`` (product) - the match's PrediGol analysis, at most three cards,
   computed once by the worker and read by every user (200 readers are not 200 model calls). ``preview=shadow``
   shows the evaluation cards, SUPER_ADMIN only.
+* ``GET /matches/{fixture_id}/intelligence`` (product) - contract C-01's public projection (AD-J02), behind
+  ``FBI_MATCH_INTELLIGENCE``; its private projection is ``/admin/intelligence/matches/{fixture_id}/intelligence``.
 * ``/admin/ai/...`` (Admin Console) - overview, reviews with their full audit trail, packets, evidence,
   costs and the simulation, the AI's shadow report, its memory, and run requests.
 
@@ -40,6 +42,7 @@ from fbi.api.contracts.ai_layer import (
 )
 from fbi.api.contracts.ai_research import ResearchOverview
 from fbi.api.contracts.ai_shadow import AgentRuns, Contradictions, ShadowArms, ShadowFile
+from fbi.api.contracts.intelligence.match import MatchIntelligence
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
@@ -52,6 +55,7 @@ from fbi.api.services import (
     ai_shadow,
     ai_v2,
     daily_review,
+    match_intelligence,
     match_memory,
 )
 from fbi.api.services.match_memory import MatchMemory, MemoryFilters
@@ -95,6 +99,16 @@ def get_match_analysis(conn: Db, principal: App, fixture_id: FixtureId,
     probabilities, fair and minimum odds, edge, the review's verdict, confidence, main reason and risks). Without
     an observed price the card says so and never calls it value."""
     return ai_layer.match_analysis(conn, fixture_id, evaluation=_evaluation(preview, principal))
+
+
+@router.get("/matches/{fixture_id}/intelligence", response_model=Envelope[MatchIntelligence])
+def get_match_intelligence(conn: Db, fixture_id: FixtureId) -> Envelope[MatchIntelligence]:
+    """INTELLIGENCE DEL PARTIDO (contract C-01, public projection; AD-J02, IA-066): the match, one sealed figure per outcome,
+    what each side plays for, how they arrive, the official line-up, the chronicle a reader is shown today, the published
+    selections and the cited facts with their dates - and every block not computed yet as absent with its reason. Only
+    what a reader is already shown elsewhere, under the same switches; nothing experimental travels. 404 while
+    ``FBI_MATCH_INTELLIGENCE`` is off (the owner's switch)."""
+    return match_intelligence.public(conn, fixture_id)
 
 
 @admin_router.get("/ai/overview", response_model=Envelope[AiOverview])

@@ -1,0 +1,101 @@
+# Liga BBVA MX (provider league 262), season 2025 = Torneo Apertura 2025 and Torneo Clausura 2026.
+# FMF / LIGA MX Reglamento de Competencia, Temporada 2025-2026. The Apertura has a play-in (7th-10th), the Clausura does not.
+schema: competition-rules/1
+league_id: 262
+competition: Liga MX
+country: Mexico
+version: 1
+seasons: [2025]
+points: {win: 3, draw: 1, loss: 0}
+sources:
+  - publisher: Federación Mexicana de Fútbol Asociación / LIGA MX
+    title: Reglamento de Competencia LIGA BBVA MX, Temporada 2025-2026
+    url: https://fmf.mx/docs/reglamentos/458.pdf
+    checked_at: 2026-11-16
+    applies_to: Torneo Apertura 2025 and Torneo Clausura 2026
+    articles: arts. 11-24
+tournaments:
+  - key: apertura
+    name: Torneo Apertura 2025
+    phases:
+      - key: calificacion
+        name: Fase de calificación
+        format: league
+        rounds: ["Apertura - [0-9]*"]
+        teams: 18
+        schedule: single_round_robin
+        matches_per_team: 17
+        ranking: &calificacion
+          tiebreakers:
+            - goal_difference
+            - goals_for
+            - away_goals_for
+            - {criterion: official_decision, note: "criterion 4, 'marcadores particulares entre los Clubes empatados', does not say how the results between them are counted; from here (then Tabla de Cociente, Fair Play, lots) the tie is left open"}
+        zones:
+          - {kind: next_phase, from: 1, to: 6, target: cuartos de final}
+          - {kind: playoff_place, from: 7, to: 10, target: Play In}
+      - key: play_in
+        name: Play In
+        format: knockout
+        rounds: ["Apertura - Play-In *"]
+        schedule: ties
+        knockout:
+          legs: 1
+          level: [penalties]
+          seeding: "7th v 8th (winner 7th seed), 9th v 10th; the loser of 7-8 v the winner of 9-10 (winner 8th seed), at the better placed club (art. 18)"
+      - key: liguilla
+        name: Cuartos de final y semifinales
+        format: knockout
+        rounds: ["Apertura - Quarter-finals", "Apertura - Semi-finals"]
+        schedule: ties
+        knockout: {legs: 2, level: [aggregate, better_league_position], seeding: "1v8, 2v7, 3v6, 4v5 by the Tabla de Posición de Fase Final; semi-finals re-seeded"}
+      - key: final
+        name: Final
+        format: knockout
+        rounds: ["Apertura - Final"]
+        schedule: ties
+        knockout: {legs: 2, level: [aggregate, extra_time, penalties]}
+  - key: clausura
+    name: Torneo Clausura 2026
+    phases:
+      - key: calificacion
+        name: Fase de calificación
+        format: league
+        rounds: ["Clausura - [0-9]*"]
+        teams: 18
+        schedule: single_round_robin
+        matches_per_team: 17
+        ranking: *calificacion
+        zones:
+          - {kind: next_phase, from: 1, to: 8, target: cuartos de final}
+      - key: liguilla
+        name: Cuartos de final y semifinales
+        format: knockout
+        rounds: ["Clausura - Quarter-finals", "Clausura - Semi-finals"]
+        schedule: ties
+        knockout: {legs: 2, level: [aggregate, better_league_position], seeding: "1v8, 2v7, 3v6, 4v5; semi-finals re-seeded"}
+      - key: final
+        name: Final
+        format: knockout
+        rounds: ["Clausura - Final"]
+        schedule: ties
+        knockout: {legs: 2, level: [aggregate, extra_time, penalties]}
+tables:
+  - key: cociente
+    name: Tabla de Cociente
+    kind: average
+    counts: ["apertura.*", "clausura.*"]
+    seasons: 3
+    metric: points_per_match
+    ranking:
+      tiebreakers:
+        - goal_difference
+        - goals_for
+        - away_goals_for
+        - {criterion: official_decision, note: "'marcadores particulares' (criterion 4) is not defined; then Fair Play and lots"}
+    exceptions:
+      - "A club that finished last of the Tabla de Cociente in an earlier season counts only from the season after."
+      - "Ties are broken over the number of uninterrupted seasons of the club with the shortest count."
+    note: "Sum of Apertura 2023 to Clausura 2026, points divided by matches, four decimals (art. 23). No relegation at the end of 2025-2026 (art. 24): the last three of this table pay into the clubs' stabilisation fund, and the last one cannot play the Clausura 2026 final phase."
+notes:
+  - "No relegation to the Expansión MX at the end of the 2025-2026 season (art. 24)."

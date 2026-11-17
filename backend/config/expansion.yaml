@@ -64,6 +64,11 @@ candidates:
   - {rank: 53, league_id: 29, name: World Cup - Qualification Africa, country: World, note: "owner's decision (BE-002)"}
   - {rank: 54, league_id: 33, name: World Cup - Qualification Oceania, country: World, note: "owner's decision (BE-002)"}
   - {rank: 55, league_id: 7, name: Asian Cup, country: World, note: "owner's decision (BE-002)"}
+  # Owner's decision no. 10 (IA-077, plan 2026): Uruguay's Primera (#2 above) and three South American competitions
+  # that are not candidates of the capacity report. Names and countries as raw.league_coverage gives them (17 Nov 2026).
+  - {rank: 56, league_id: 299, name: Primera División, country: Venezuela, note: "owner's decision no. 10 (IA-077)"}
+  - {rank: 57, league_id: 240, name: Primera B, country: Colombia, note: "owner's decision no. 10 (IA-077)"}
+  - {rank: 58, league_id: 241, name: Copa Colombia, country: Colombia, note: "owner's decision no. 10 (IA-077)"}
 
 # Batches, each decided on a probe (scripts.probe_leagues) and tracked with scripts.expand_leagues. Each is migrated
 # as its own tier after the selector's tiers 1-4 (fbi.migration.config merges them), so the migration planner prices
@@ -94,3 +99,70 @@ batches:
       National-team competitions. The catalogue classifies the two qualifiers (League, World) as national-team
       football at once; the Asian Cup (Cup, World) is catalogued as continental until scripts.sync_teams
       --scopes-only reads its teams, exactly as the World Cup, Euro and Africa Cup of Nations were.
+
+  # IA-077 (owner's decision no. 10: follow Uruguay, Venezuela, Copa Colombia and Primera B if the provider has the
+  # data and it fits the budget). Measured on 17 Nov 2026, 03:26 UTC, with the code's own client inside the worker:
+  # 8 requests (per league, /fixtures?league&season=2026 and /fixtures?ids= of its 20 latest finished matches),
+  # nothing stored in RAW, judged with fbi.catalog.league_probe.judge_detail - the probe's own checks. Coverage
+  # flags from raw.league_coverage as refreshed at 00:28 UTC: no league lists a 2027 season yet. Split in two
+  # batches on the line-up bar of batch 1, so each can be tracked (or left) on its own. Neither is tracked by this
+  # file: `python -m scripts.expand_leagues --batch 3|4 --apply`, after the deployment, is the owner's step.
+  # `measured` keeps the shares of the 20 sampled matches (0-1) and the provider's coverage flags for 2026.
+  - batch: 3
+    tier: 7
+    decided: "2026-11-17"
+    probe: >-
+      IA-077 read-only probe, 17 Nov 2026 03:26 UTC (8 requests for batches 3 and 4, not stored); guide
+      docs/owner/IA_077_COBERTURA_CUATRO_LIGAS.md
+    rule: >-
+      owner's decision no. 10, with the data part of batch 1's rule: club league; on the 20 latest finished matches
+      events present, both line-ups with eleven starters in at least 80 %, goal events adding up to the score in at
+      least 95 %, no unresolved result. The calendar part (25 fixtures ahead or a season into 2027) fails today for
+      both: their value starts with the 2027 season, which the provider has not listed yet
+    leagues: [299, 240]
+    measured:
+      299: {season: 2026, fixtures: 231, finished: 227, ahead: 3, unresolved: 0, sampled: 20, events: 1.0,
+            lineups: 1.0, team_stats: 0.0, player_stats: 0.0, goals_match_events: 1.0,
+            flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false,
+                    standings: true, injuries: false, odds: true},
+            bookmakers: null}
+      240: {season: 2026, fixtures: 290, finished: 286, ahead: 0, unresolved: 0, sampled: 20, events: 1.0,
+            lineups: 0.95, team_stats: 0.0, player_stats: 0.0, goals_match_events: 1.0,
+            flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false,
+                    standings: true, injuries: false, odds: true},
+            bookmakers: null}
+    notes: >-
+      Results, events and line-ups only: no team or player statistics, so they feed the result models (Elo,
+      Poisson) and the market, never a player market (decision no. 7). bookmakers null = not measured (the odds
+      flag is the provider's declaration). Venezuela has 3 fixtures left (21-22 Nov); Primera B's 2026 has none
+      (4 postponed). Cost at the rates measured on 10-16 Nov 2026 (6.1 requests per league and 24.8 per fixture a
+      day): about 55 a day in season (1.75 fixtures a day), 90 at most if live capture grew with fixtures; history
+      (2018-2026) about 300 requests once.
+  - batch: 4
+    tier: 8
+    decided: "2026-11-17"
+    probe: >-
+      IA-077 read-only probe, 17 Nov 2026 03:26 UTC (the same 8 requests as batch 3)
+    rule: >-
+      owner's decision no. 10 only: both are BELOW batch 1's line-up bar (0.70 and 0.65 of the 20 latest matches
+      with both line-ups of eleven starters) and Copa Colombia is a cup, not a club league. Tracked for what they
+      add, not because they pass: Uruguay is the only one of the four with team statistics (1.0); Copa Colombia is
+      the cup of the tracked Primera A's clubs (their fixture congestion and rotations)
+    leagues: [268, 241]
+    measured:
+      268: {season: 2026, fixtures: 289, finished: 289, ahead: 0, unresolved: 0, sampled: 20, events: 1.0,
+            lineups: 0.7, team_stats: 1.0, player_stats: 0.0, goals_match_events: 1.0,
+            flags: {events: true, lineups: true, statistics_fixtures: true, statistics_players: false,
+                    standings: true, injuries: false, odds: true},
+            bookmakers: 8.8}
+      241: {season: 2026, fixtures: 72, finished: 70, ahead: 2, unresolved: 0, sampled: 20, events: 1.0,
+            lineups: 0.65, team_stats: 0.0, player_stats: 0.0, goals_match_events: 0.938,
+            flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false,
+                    standings: true, injuries: false, odds: true},
+            bookmakers: null}
+    notes: >-
+      268's bookmakers (8.8 on average, 10 fixtures) are the capacity report's of 5 Oct 2026 (API_CAPACITY.md), not
+      a new measurement. Uruguay's 2026 is over (289 of 289 played); Copa Colombia has 2 fixtures left (17-18 Nov).
+      Copa Colombia: 15 of 16 regular-time finishes add up (one 1-2 with a single goal event). No player
+      statistics in either: no player market (decision no. 7). Cost at the same rates: about 47 a day in season
+      (1.39 fixtures a day), 72 at most; history (2018-2026, Copa from 2019) about 220 requests once.

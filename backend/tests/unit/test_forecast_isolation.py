@@ -25,6 +25,7 @@ TABLE = re.compile(r"\bmodels\.match_forecasts\b|\bFROM\s+match_forecasts\b|\bJO
 
 NAMES_THE_TABLE = {
     "forecasting/match_forecast.py": "the writer: the only module that inserts, and the one that reads back its own rows",
+    "api/services/market_status.py": "AD-E01 (IA-070): the catalogue of market states asks whether a market has a model writing its forecast in the last 14 days (`models.match_forecasts`, counted, never its values); a state served to the contracts, never an input of a pick or a decision",
     "api/services/forecast.py": "the page of a match: the product's forecast (`forecast-v1`) and the Admin Console's preview, which also reads `family-v1` for a section of its own",
     "ai/packet.py": "the packet's `forecast` block: context a review or a brief may cite, never an input of a computation",
     "ai/package.py": "the `families` block of the `mcp-v1` package (IA phase 1): the forecasts of the counts (`family-v1`), read as of the pass's moment, that the Statistics Agent may cite in shadow - context, never an input of a computation",
@@ -35,6 +36,8 @@ NAMES_THE_TABLE = {
     "research/trace.py": "the trace of the model code's promotions (F12): counts the stored forecasts per model version to say which code production used; read-only, never an input",
     "api/services/transparency.py": "«Cómo le va a PrediGol» (plan UX, A12): the forecast's calibration after the matches - the last forecast before kick-off against the result; read-only, never an input",
     "scripts/transparency_check.py": "the contrast of that page (A12): the same calibration counted by an independent query at each deploy; read-only",
+    "scripts/ia_score_matrix.py": "AD-B04 (IA-074): the score matrix of each match beside what the page states (`forecast-v1`), over a READ ONLY "
+                                  "connection; a measure of coherence printed for a person - never an input of a pick or a decision",
     "scripts/compare_probabilities.py": "PICKS F3 (BE-021): puts the page's forecast beside the board's and Intelligence's probability, selection by selection, over a READ ONLY connection; "
                                         "a measure of whether the two agree, printed for a person - never an input of a pick or a decision",
 }

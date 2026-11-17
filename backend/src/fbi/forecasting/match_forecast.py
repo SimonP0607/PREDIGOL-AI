@@ -31,6 +31,12 @@ WHEN A ROW IS WRITTEN. When the market is new, when its model, version or calibr
 least ``MATERIAL_CHANGE`` (half a point): the table is a record of what PrediGol said and when, not a heartbeat. All outcomes
 of a market are written together, so the newest ``known_at`` of a market is always a coherent set.
 
+THE STABLE SEAL, IN SHADOW (AD-B03, ``fbi.forecasting.seal``). With ``FBI_FORECAST_SEAL`` at ``shadow`` (the default in code) every
+pass also writes the same markets under ``forecast-v1-seal``: the same function and the same model numbers, with the champion's market
+price taken within the forecast's horizon instead of six hours, so that a number does not go from calibrated to uncalibrated and back
+because a price grew seven hours old. No reader selects that version; ``off`` stops writing it. It runs in a savepoint of its own after
+``forecast-v1`` is written, and a defect there is recorded on the report, never on ``forecast-v1``.
+
 NOT FIT FOR A FORECAST. A match whose competition's data is not fit for models (``PRODUCT_ONLY``, ``INSUFFICIENT``) or that is
 quarantined gets none - the same gate the decision layer applies before it looks at a model.
 
@@ -52,6 +58,8 @@ from typing import Any, Final
 import psycopg
 from psycopg.rows import dict_row
 
+from fbi.core.env import environment
+from fbi.forecasting import seal
 from fbi.forecasting.market_reader import read_consensus, read_sources
 from fbi.forecasting.market_view import (
     BASIS_CHAMPION,
@@ -71,7 +79,7 @@ from fbi.forecasting.market_view import (
     forecast_market,
     most_likely,
 )
-from fbi.intel.calibration import calibration_state
+from fbi.intel.calibration import CalibrationState, calibration_state
 from fbi.predictions.forecast import HORIZON, upcoming
 
 __all__ = [  # the view's names stay reachable from here: the writer and its readers use them
@@ -170,18 +178,29 @@ class MatchForecastReport:
     unchanged: int = 0
     calibrated: int = 0
     uncalibrated: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    shadow: MatchForecastReport | None = None
+    """The stable seal's shadow version (``fbi.forecasting.seal``), when its switch is ``shadow``."""
+    shadow_error: str | None = None
 
     def summary(self) -> str:
         un = ", ".join(f"{k} {v}" for k, v in sorted(self.uncalibrated.items())) or "none"
-        return (f"match forecasts {self.markets_written} markets written ({self.rows_written} rows)/{self.unchanged} unchanged "
+        text = (f"match forecasts {self.markets_written} markets written ({self.rows_written} rows)/{self.unchanged} unchanged "
                 f"for {self.with_model} of {self.targets} fixtures ({self.not_fit} not fit); calibrated {self.calibrated}, "
                 f"uncalibrated: {un}")
+        if self.shadow is not None:
+            sun = ", ".join(f"{k} {v}" for k, v in sorted(self.shadow.uncalibrated.items())) or "none"
+            text += (f"; shadow {seal.SHADOW_VERSION} {self.shadow.markets_written} written/{self.shadow.unchanged} unchanged, "
+                     f"calibrated {self.shadow.calibrated}, uncalibrated: {sun}")
+        if self.shadow_error is not None:
+            text += f"; shadow {seal.SHADOW_VERSION} failed: {self.shadow_error}"
+        return text
 
 
-def _read_stored(conn: psycopg.Connection[Any], ids: list[int], at: datetime) -> dict[tuple[int, str, Decimal], Stored]:
+def _read_stored(conn: psycopg.Connection[Any], ids: list[int], at: datetime, *, version: str = VERSION
+                 ) -> dict[tuple[int, str, Decimal], Stored]:
     rows: dict[tuple[int, str, Decimal], list[dict[str, Any]]] = defaultdict(list)
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(STORED_SQL, {"ids": ids, "at": at, "version": VERSION})
+        cur.execute(STORED_SQL, {"ids": ids, "at": at, "version": version})
         for r in cur.fetchall():
             rows[(int(r["fixture_id"]), str(r["market_key"]), Decimal(r["line"]))].append(r)
     return {k: Stored(str(v[0]["model_name"]), int(v[0]["model_version_id"]), str(v[0]["calibration"]),
@@ -245,18 +264,41 @@ def write_match_forecasts(conn: psycopg.Connection[Any], *, at: datetime, code_v
     cal = calibration_state(conn, at=at)
     sources = read_sources(conn, ids, at)
     consensus = read_consensus(conn, ids, at)
-    stored = _read_stored(conn, ids, at)
+    _write_version(conn, report, ids, at=at, code_version=code_version, cal=cal, sources=sources, consensus=consensus,
+                   version=VERSION)
+    if seal.mode(environment()) == "shadow":
+        # The stable seal (AD-B03), beside forecast-v1 and read by no reader. In a savepoint of its own: a defect here is
+        # recorded on the report and costs forecast-v1 nothing.
+        shadow = MatchForecastReport(at=at, targets=report.targets, not_fit=report.not_fit)
+        try:
+            with conn.transaction():
+                stable = read_consensus(conn, ids, at, max_age=seal.STABLE_MARKET_AGE)
+                _write_version(conn, shadow, ids, at=at, code_version=code_version, cal=cal, sources=sources,
+                               consensus=stable, version=seal.SHADOW_VERSION)
+            report.shadow = shadow
+        except Exception as exc:  # recorded and logged; forecast-v1 is already written in the enclosing transaction
+            report.shadow_error = f"{type(exc).__name__}: {exc}"[:300]
+    return report
+
+
+def _write_version(conn: psycopg.Connection[Any], report: MatchForecastReport, ids: list[int], *, at: datetime,
+                   code_version: str, cal: CalibrationState,
+                   sources: dict[tuple[int, str, Decimal], dict[str, list[Row]]],
+                   consensus: dict[tuple[int, str, Decimal], dict[str, tuple[float, datetime]]], version: str) -> None:
+    """Forecast every market of ``sources`` under ``version`` with ``consensus`` and write what is new for that version."""
+    stored = _read_stored(conn, ids, at, version=version)
     covered: set[int] = set()
     for key in sorted(sources):
         fixture_id, market_key, line = key
-        forecast = forecast_market(fixture_id, market_key, line, sources[key], cal, consensus.get(key, {}))
+        forecast = forecast_market(fixture_id, market_key, line, sources[key], cal, consensus.get(key, {}),
+                                   version=version)
         if forecast is None:
             continue
         covered.add(fixture_id)
         if not says_something_new(stored.get(key), forecast):
             report.unchanged += 1
             continue
-        written = store(conn, forecast, at=at, code_version=code_version)
+        written = store(conn, forecast, at=at, code_version=code_version, version=version)
         if written == 0:  # the instant already holds this market (the same ``at`` run again): nothing to add
             report.unchanged += 1
             continue
@@ -267,4 +309,3 @@ def write_match_forecasts(conn: psycopg.Connection[Any], *, at: datetime, code_v
         else:
             report.uncalibrated[forecast.basis] += 1
     report.with_model = len(covered)
-    return report

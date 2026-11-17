@@ -1,0 +1,795 @@
+{
+  "contract": "C-01",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T22:45:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "match": {
+    "id": 990100,
+    "home": {
+      "id": 990001,
+      "name": "Club Ejemplo Norte"
+    },
+    "away": {
+      "id": 990002,
+      "name": "Club Ejemplo Sur"
+    },
+    "competition": {
+      "id": 990200,
+      "name": "Liga Ejemplo",
+      "country": "Ejemplolandia"
+    },
+    "kickoff_at": "2026-11-21T23:00:00Z",
+    "round": "Fase final - Grupo A - 6",
+    "venue": "Estadio Ejemplo",
+    "status": "NS",
+    "phase": "previo"
+  },
+  "probabilities": {
+    "items": [
+      {
+        "market": "1X2",
+        "line": 0.0,
+        "outcome": "home",
+        "probability": {
+          "value": 0.5878,
+          "pct": 59,
+          "interval_pct": {
+            "low": 52,
+            "high": 66
+          },
+          "calibration": "calibrada",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "price": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-B06"
+        },
+        "raw_probability": {
+          "value": 0.7847,
+          "pct": 78.5,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "model": "elo_ologit",
+        "basis": "champion",
+        "fair_odds": 1.7,
+        "readers_see": true
+      },
+      {
+        "market": "1X2",
+        "line": 0.0,
+        "outcome": "draw",
+        "probability": {
+          "value": 0.2167,
+          "pct": 22,
+          "interval_pct": {
+            "low": 17,
+            "high": 27
+          },
+          "calibration": "calibrada",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "price": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-B06"
+        },
+        "raw_probability": {
+          "value": 0.1387,
+          "pct": 13.9,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "model": "elo_ologit",
+        "basis": "champion",
+        "fair_odds": 4.61,
+        "readers_see": true
+      },
+      {
+        "market": "1X2",
+        "line": 0.0,
+        "outcome": "away",
+        "probability": {
+          "value": 0.1955,
+          "pct": 20,
+          "interval_pct": {
+            "low": 15,
+            "high": 24
+          },
+          "calibration": "calibrada",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "price": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-B06"
+        },
+        "raw_probability": {
+          "value": 0.0767,
+          "pct": 7.7,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "model": "elo_ologit",
+        "basis": "champion",
+        "fair_odds": 5.12,
+        "readers_see": true
+      },
+      {
+        "market": "OU",
+        "line": 2.5,
+        "outcome": "over",
+        "probability": {
+          "value": 0.61,
+          "pct": 61,
+          "interval_pct": {
+            "low": 55,
+            "high": 67
+          },
+          "calibration": "calibrada",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "price": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-B06"
+        },
+        "raw_probability": {
+          "value": 0.64,
+          "pct": 64.0,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "model": "dixon_coles",
+        "basis": "champion",
+        "fair_odds": 1.64,
+        "readers_see": true
+      },
+      {
+        "market": "OU",
+        "line": 2.5,
+        "outcome": "under",
+        "probability": {
+          "value": 0.39,
+          "pct": 39,
+          "interval_pct": {
+            "low": 33,
+            "high": 45
+          },
+          "calibration": "calibrada",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "price": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-B06"
+        },
+        "raw_probability": {
+          "value": 0.36,
+          "pct": 36.0,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "model": "dixon_coles",
+        "basis": "champion",
+        "fair_odds": 2.56,
+        "readers_see": true
+      },
+      {
+        "market": "BTTS",
+        "line": 0.0,
+        "outcome": "yes",
+        "probability": {
+          "value": 0.56,
+          "pct": 56,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "price": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-B06"
+        },
+        "raw_probability": {
+          "value": 0.56,
+          "pct": 56.0,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "model": "dixon_coles",
+        "basis": "needs_price",
+        "fair_odds": 1.79,
+        "readers_see": true
+      },
+      {
+        "market": "BTTS",
+        "line": 0.0,
+        "outcome": "no",
+        "probability": {
+          "value": 0.44,
+          "pct": 44,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "price": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-B06"
+        },
+        "raw_probability": {
+          "value": 0.44,
+          "pct": 44.0,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "model": "dixon_coles",
+        "basis": "needs_price",
+        "fair_odds": 2.27,
+        "readers_see": true
+      }
+    ]
+  },
+  "context": {
+    "items": [
+      {
+        "side": "home",
+        "team": {
+          "id": 990001,
+          "name": "Club Ejemplo Norte"
+        },
+        "rank": 1,
+        "zone": "title",
+        "pressure": "title",
+        "above": {
+          "missing_reason": "sin_datos"
+        },
+        "below": {
+          "zone": "europe",
+          "points": 3
+        },
+        "remaining": 1,
+        "settled": false,
+        "rule": "stakes-v5",
+        "known_at": "2026-11-21T22:37:00Z"
+      },
+      {
+        "side": "away",
+        "team": {
+          "id": 990002,
+          "name": "Club Ejemplo Sur"
+        },
+        "rank": 3,
+        "zone": "none",
+        "pressure": "europe",
+        "above": {
+          "zone": "europe",
+          "points": 2
+        },
+        "below": {
+          "zone": "relegation",
+          "points": 6
+        },
+        "remaining": 1,
+        "settled": false,
+        "rule": "stakes-v5",
+        "known_at": "2026-11-21T22:37:00Z"
+      }
+    ]
+  },
+  "form": {
+    "items": [
+      {
+        "side": "home",
+        "team": {
+          "id": 990001,
+          "name": "Club Ejemplo Norte"
+        },
+        "matches": 6,
+        "sequence": "WWDWWL",
+        "points_per_game": 2.33,
+        "goals_for_per_game": 2.1,
+        "goals_against_per_game": 0.8,
+        "known_at": "2026-11-21T22:37:00Z"
+      },
+      {
+        "side": "away",
+        "team": {
+          "id": 990002,
+          "name": "Club Ejemplo Sur"
+        },
+        "matches": 6,
+        "sequence": "DWLWDW",
+        "points_per_game": 1.83,
+        "goals_for_per_game": 1.5,
+        "goals_against_per_game": 1.1,
+        "known_at": "2026-11-21T22:37:00Z"
+      }
+    ]
+  },
+  "official_lineup": {
+    "home": {
+      "formation": "4-3-3",
+      "coach": "A. Ejemplo"
+    },
+    "away": {
+      "formation": "4-2-3-1",
+      "coach": "B. Ejemplo"
+    },
+    "known_at": "2026-11-21T22:39:00Z"
+  },
+  "reader_chronicle": {
+    "version": "user-narrative-v3",
+    "written_at": "2026-11-21T15:45:00Z",
+    "data_at": "2026-11-21T15:35:00Z",
+    "es": [
+      {
+        "key": "summary",
+        "sentences": [
+          "El líder del grupo recibe al tercero con la final en juego."
+        ]
+      }
+    ],
+    "en": [
+      {
+        "key": "summary",
+        "sentences": [
+          "The group leader hosts the third side with the final at stake."
+        ]
+      }
+    ],
+    "sources": [
+      "club-ejemplo-norte.invalid"
+    ]
+  },
+  "selections": {
+    "items": [
+      {
+        "market": "1X2",
+        "selection": "Home",
+        "line": 0.0,
+        "public_state": "publicada",
+        "probability": {
+          "value": 0.5878,
+          "pct": 59,
+          "interval_pct": {
+            "low": 52,
+            "high": 66
+          },
+          "calibration": "calibrada",
+          "as_of": "2026-11-21T10:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v1"
+        },
+        "published": true,
+        "in_evaluation_set": true,
+        "lifecycle_state": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-D02"
+        },
+        "decision_state": "RECHAZADO",
+        "decision_probability": {
+          "value": 0.5879,
+          "pct": 59,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "calibrada",
+          "as_of": "2026-11-21T16:15:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "decision-v1"
+        },
+        "decision_raw_probability": {
+          "value": 0.7847,
+          "pct": 78.5,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:15:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "decision-v1"
+        },
+        "odds": 1.62,
+        "expected_value": -0.04,
+        "decided_at": "2026-11-21T16:15:00Z",
+        "reasons": [
+          "ev_below_min"
+        ]
+      },
+      {
+        "market": "AH",
+        "selection": "Home",
+        "line": -0.5,
+        "public_state": null,
+        "probability": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-B05"
+        },
+        "published": false,
+        "in_evaluation_set": false,
+        "lifecycle_state": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-D02"
+        },
+        "decision_state": "CAUTELA",
+        "decision_probability": {
+          "value": 0.5478,
+          "pct": 55,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:15:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "decision-v1"
+        },
+        "decision_raw_probability": {
+          "value": 0.6086,
+          "pct": 60.9,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:15:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "decision-v1"
+        },
+        "odds": 1.95,
+        "expected_value": -0.04,
+        "decided_at": "2026-11-21T16:15:00Z",
+        "reasons": [
+          "ev_below_min"
+        ]
+      }
+    ]
+  },
+  "citations": {
+    "items": [
+      {
+        "published_at": "2026-11-21T00:00:00Z",
+        "published_day_only": true,
+        "known_at": "2026-11-21T13:44:00Z",
+        "fact_at": {
+          "missing_reason": "sin_datos"
+        },
+        "fact_day_only": false,
+        "valid_until": {
+          "missing_reason": "sin_datos"
+        },
+        "n": 1,
+        "kind": "injury",
+        "text": "El club confirmó la baja del portero para el partido del sábado.",
+        "confirmation": "oficial",
+        "warnings": [],
+        "relation": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-G08"
+        },
+        "source": {
+          "name": "club-ejemplo-norte.invalid",
+          "url": "https://club-ejemplo-norte.invalid/nota-1"
+        }
+      },
+      {
+        "published_at": "2026-11-21T11:45:00Z",
+        "published_day_only": false,
+        "known_at": "2026-11-21T13:43:00Z",
+        "fact_at": {
+          "missing_reason": "sin_datos"
+        },
+        "fact_day_only": false,
+        "valid_until": {
+          "missing_reason": "sin_datos"
+        },
+        "n": 2,
+        "kind": "doubtful",
+        "text": "Según la prensa local, el delantero estará en duda para el partido.",
+        "confirmation": "un_medio",
+        "warnings": [],
+        "relation": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-G08"
+        },
+        "source": {
+          "name": "diario-ejemplo.invalid",
+          "url": "https://diario-ejemplo.invalid/nota-2"
+        }
+      }
+    ]
+  },
+  "scenarios": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-B02"
+  },
+  "chronicle": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-F02"
+  },
+  "evaluations": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-D06"
+  },
+  "new_since_yesterday": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-C07"
+  },
+  "pending_unknowns": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-D05"
+  },
+  "keys": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-F01"
+  },
+  "risks": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-F01"
+  },
+  "players_to_watch": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-H07"
+  },
+  "packet": {
+    "id": 7001,
+    "version": "packet-v9",
+    "as_of": "2026-11-21T22:37:00Z",
+    "missing": [
+      "lineups"
+    ]
+  },
+  "brief": {
+    "created_at": "2026-11-21T15:45:00Z",
+    "pass_name": "day",
+    "version": "brief-v4",
+    "engine": "llm",
+    "model": "modelo-ejemplo",
+    "status": "ok",
+    "summary": "Texto propio del modelo, sin verificar: solo lo ve el dueño.",
+    "escalate": false,
+    "reasons": [
+      "lineup_pending"
+    ],
+    "uncertainty": "medium",
+    "data_quality": "good"
+  },
+  "chronicle_preview": {
+    "version": "user-narrative-v3",
+    "written_at": "2026-11-21T15:45:00Z",
+    "data_at": "2026-11-21T15:35:00Z",
+    "es": [
+      {
+        "key": "summary",
+        "sentences": [
+          "El líder del grupo recibe al tercero con la final en juego."
+        ]
+      }
+    ],
+    "en": [
+      {
+        "key": "summary",
+        "sentences": [
+          "The group leader hosts the third side with the final at stake."
+        ]
+      }
+    ],
+    "sources": [
+      "club-ejemplo-norte.invalid"
+    ]
+  },
+  "evidence": {
+    "items": [
+      {
+        "id": 1,
+        "kind": "injury",
+        "status": "CONFIRMED",
+        "story_key": "s1",
+        "claim": "El club confirmó la baja del portero para el partido del sábado.",
+        "source_name": "club-ejemplo-norte.invalid",
+        "source_tier": "club",
+        "source_url": "https://club-ejemplo-norte.invalid/nota-1",
+        "published_at": "2026-11-21T00:00:00Z",
+        "known_at": "2026-11-21T13:44:00Z",
+        "last_seen_at": "2026-11-21T16:35:00Z"
+      },
+      {
+        "id": 2,
+        "kind": "doubtful",
+        "status": "PROBABLE",
+        "story_key": "s2",
+        "claim": "Según la prensa local, el delantero estará en duda para el partido.",
+        "source_name": "diario-ejemplo.invalid",
+        "source_tier": "media",
+        "source_url": "https://diario-ejemplo.invalid/nota-2",
+        "published_at": "2026-11-21T11:45:00Z",
+        "known_at": "2026-11-21T13:43:00Z",
+        "last_seen_at": "2026-11-21T16:35:00Z"
+      }
+    ]
+  }
+}

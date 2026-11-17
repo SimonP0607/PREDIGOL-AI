@@ -1,0 +1,95 @@
+# IA-078 / IA-081 · LAB: banco de consultas etiquetadas y latencia de la búsqueda v2 (C-10) frente a /search.
+#
+# Cómo se corrió (17-nov-2026): una copia de SOLO las columnas de nombres de producción (competitions, competition_seasons,
+# venues, teams, fixtures, players, squad_members, coaches, coach_careers, referees, referee_aliases, fixture_officials,
+# team_aliases; exportadas en solo lectura con \copy) se cargó en un PostgreSQL 16 local migrado hasta 0141, se aplicó la
+# 0145 y se llenó el índice (REFRESH). Luego:
+#     PYTHONPATH=src python medir_busqueda.py postgresql://.../copia 0.6
+# La copia se borró al terminar. No se guarda ningún dato aquí: solo el banco y el método.
+# Se guarda como .py.txt porque no es código del producto (ruff/mypy recorren backend/).
+"""IA-078 lab: recall in the first 8 of the expected group and latency of the search v2 over a copy of the names."""
+import statistics, sys, time, psycopg
+from fbi.api.repositories import search_v2 as r
+
+# (query, group, expected label or matched name contains..., labelled category)
+BANK = [
+    ("atlético madrid", "team", "Atletico Madrid", "tilde"), ("atletico", "team", "Atletico Madrid", "tilde"),
+    ("atlético nacional", "team", "Atletico Nacional", "tilde"), ("bayern munchen", "team", "Bayern", "tilde"),
+    ("munchen", "team", "Bayern", "tilde"), ("sao paulo", "team", "Sao Paulo", "tilde"),
+    ("america de cali", "team", "America de Cali", "tilde"), ("deportivo cali", "team", "Deportivo Cali", "exacta"),
+    ("man united", "team", "Manchester United", "palabras"), ("real madrid", "team", "Real Madrid", "exacta"),
+    ("santa fe", "team", "Santa Fe", "palabras"), ("millonarios", "team", "Millonarios", "exacta"),
+    ("barcelna", "team", "Barcelona", "errata"), ("liverpol", "team", "Liverpool", "errata"),
+    ("juventus", "team", "Juventus", "exacta"), ("colombia", "national_team", "Colombia", "exacta"),
+    ("argentina", "national_team", "Argentina", "exacta"), ("espana", "national_team", "Spain", "idioma"),
+    ("brasil", "national_team", "Brazil", "idioma"), ("alemania", "national_team", "Germany", "idioma"),
+    ("jam rod", "player", "Rodr", "palabras"), ("james rodriguez", "player", "Rodr", "tilde"),
+    ("messi", "player", "L. Messi", "exacta"), ("mesi", "player", "L. Messi", "errata"), ("mbappe", "player", "Mbapp", "tilde"),
+    ("mbape", "player", "Mbapp", "errata"), ("haaland", "player", "Haaland", "exacta"), ("halland", "player", "Haaland", "errata"),
+    ("luis diaz", "player", "Luis D", "tilde"), ("vinicius", "player", "Vin", "tilde"), ("lewandoski", "player", "Lewandowski", "errata"),
+    ("cr7", "player", "Ronaldo", "apodo"), ("la pulga", "player", "L. Messi", "apodo"),
+    ("premier league", "competition", "Premier League", "exacta"), ("champions", "competition", "Champions League", "palabras"),
+    ("libertadores", "competition", "Libertadores", "palabras"), ("liga betplay", "competition", "Primera A", "apodo"),
+    ("serie a", "competition", "Serie A", "exacta"), ("bundesliga", "competition", "Bundesliga", "exacta"),
+    ("ancelotti", "coach", "Carlo Ancelotti", "exacta"), ("guardiola", "coach", "Guardiola", "exacta"), ("klop", "coach", "Klopp", "errata"),
+    ("bernabeu", "venue", "Bernab", "tilde"), ("maracana", "venue", "Maracan", "tilde"), ("el campin", "venue", "Camp", "tilde"),
+    ("anfield", "venue", "Anfield", "exacta"), ("wilmar roldan", "referee", "Rold", "tilde"), ("roldan", "referee", "Rold", "tilde"),
+    ("ac", "team", "AC Milan", "dos_letras"), ("ps", "team", "PSV", "dos_letras"), ("ro", "team", "Roma", "dos_letras"),
+    ("спартак", "team", "Spartak", "cirilico"), ("spartak", "team", "Spartak", "cirilico_transliterado"),
+]
+
+def main(dsn: str, rounds: int = 5, threshold: float = 0.6) -> None:
+    conn = psycopg.connect(dsn)
+    hits, rows_out, times = 0, [], []
+    for q, group, expect, cat in BANK:
+        per = []
+        for _ in range(rounds):
+            t0 = time.perf_counter()
+            key = r.search_key(conn, q) or ""
+            found = r.entities(conn, key, 8, threshold) if key else []
+            teams = [x["entity_id"] for x in found if x["kind"] in ("team", "national_team")][:8]
+            r.fixtures(conn, teams, 8)
+            if not found and key:
+                r.suggestions(conn, key)
+            per.append((time.perf_counter() - t0) * 1000)
+            conn.rollback()
+        ms = statistics.median(per)
+        times.append(ms)
+        mine = [x for x in found if x["kind"] == group]
+        pos = next((i + 1 for i, x in enumerate(mine) if expect.lower() in (x["label"] + " " + x["matched_name"]).lower()), None)
+        hits += pos is not None
+        rows_out.append((q, group, cat, pos, round(ms, 1), mine[0]["label"] if mine else "-"))
+    for row in rows_out:
+        print("|".join(str(c) for c in row))
+    by_cat: dict[str, list[int]] = {}
+    for q, g, cat, pos, ms, top in rows_out:
+        by_cat.setdefault(cat, []).append(pos is not None)
+    print("recall@8", hits, "/", len(BANK), round(hits / len(BANK), 3))
+    for cat, v in sorted(by_cat.items()):
+        print("  ", cat, sum(v), "/", len(v))
+    times.sort()
+    print("latency ms: median", round(statistics.median(times), 1), "p90", round(times[int(0.9 * len(times)) - 1], 1),
+          "max", round(max(times), 1), "n", len(times), "rounds", rounds)
+
+if __name__ == "__main__":
+    main(sys.argv[1], threshold=float(sys.argv[2]) if len(sys.argv) > 2 else 0.6)
+
+# ---- /search de hoy (v1) sobre la misma copia ----
+# import statistics, sys, time, psycopg
+# from fbi.api.repositories import search as v1
+# sys.path.insert(0, sys.argv[2])
+# from bench import BANK
+# conn = psycopg.connect(sys.argv[1])
+# times = []
+# found = 0
+# for q, group, expect, cat in BANK:
+#     per = []
+#     for _ in range(5):
+#         t0 = time.perf_counter(); rows = v1.search(conn, q, 8); per.append((time.perf_counter() - t0) * 1000); conn.rollback()
+#     times.append(statistics.median(per))
+#     if group in ("team", "competition", "national_team"):
+#         t = "team" if group == "national_team" else group
+#         found += any(expect.lower() in r["label"].lower() for r in rows if r["type"] == t)
+# times.sort()
+# print("v1 median", round(statistics.median(times), 1), "p90", round(times[int(0.9 * len(times)) - 1], 1), "max", round(max(times), 1),
+#       "found (team/competition rows only)", found, "/", sum(g in ("team", "competition", "national_team") for _, g, _, _ in BANK))

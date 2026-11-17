@@ -173,3 +173,75 @@ def test_a_batch_is_merged_as_the_tier_after_the_selection(tmp_path: Path) -> No
     expansion.write_text("batches:\n  - {batch: 1, tier: 2, leagues: [9955]}\n", encoding="utf-8")
     with pytest.raises(ConfigError, match="already a tier"):
         load_migration_config(MIGRATION_FILE, expansion=expansion)
+
+
+# IA-077: as production had them on 17 Nov 2026 - known to the catalogue, not tracked, older tiers and one older name.
+IA077 = {299: ("Primera División", "League", "Venezuela", "Primera División", 8, "domestic_league", 1.00),
+         240: ("Primera B", "League", "Colombia", "Primera B", 5, "domestic_league", 1.00),
+         268: ("Primera División", "League", "Uruguay", "Primera División - Apertura", 7, "domestic_league", 1.00),
+         241: ("Copa Colombia", "Cup", "Colombia", "Copa Colombia", 5, "domestic_cup", 0.40)}
+
+
+def test_batches_3_and_4_track_and_untrack_the_four_competitions_and_nothing_else(
+        migrated_database: str, seed: Seed) -> None:
+    """IA-077: the real batches 3 and 4, dry run, --apply, then --untrack --apply - only their own rows move."""
+    from scripts.expand_leagues import batch_of, expand
+
+    leagues = sorted(IA077)
+    with psycopg.connect(migrated_database) as conn:
+        try:
+            for lid, (name, kind, country, ours, tier, comp_type, elo) in IA077.items():
+                provider_coverage(conn, seed, lid, name, kind, 2025, False, country=country)
+                provider_coverage(conn, seed, lid, name, kind, 2026, True, country=country)
+                conn.execute("INSERT INTO core.competitions (provider_league_id, name, country, type, entity_scope, "
+                             "competition_type, elo_weight, is_tracked, tier) VALUES (%s, %s, %s, %s, 'club', %s, %s, "
+                             "false, %s)", (lid, ours, country, kind.lower(), comp_type, elo, tier))
+            for lid, tracked in zip(OTHERS, (True, False), strict=True):
+                conn.execute("INSERT INTO core.competitions (provider_league_id, name, type, entity_scope, "
+                             "competition_type, is_tracked, tier) VALUES (%s, 'Other', 'league', 'club', "
+                             "'domestic_league', %s, 2)", (lid, tracked))
+            conn.commit()
+            others = "SELECT provider_league_id, is_tracked, tier FROM core.competitions " \
+                     "WHERE NOT (provider_league_id = ANY(%s)) ORDER BY 1"
+            before = conn.execute(others, (leagues,)).fetchall()
+            mine = ("SELECT provider_league_id, name, is_tracked, tier, competition_type, elo_weight::text "
+                    "FROM core.competitions WHERE provider_league_id = ANY(%s) ORDER BY 1")
+            untouched = conn.execute(mine, (leagues,)).fetchall()
+
+            for number in (3, 4):
+                dry = expand(conn, batch_of(number), apply=False)
+                assert "refused" not in dry and "catalogue" not in dry, dry
+                assert all(r["known"] and not r["tracked"] for r in dry["leagues"])
+            assert conn.execute(mine, (leagues,)).fetchall() == untouched, "a dry run writes nothing"
+
+            done3 = expand(conn, batch_of(3), apply=True)
+            assert done3["catalogue"]["competitions_updated"] == 2 and done3["catalogue"]["competitions_inserted"] == 0
+            after3 = conn.execute(mine, (leagues,)).fetchall()
+            assert [(r[0], r[2], r[3]) for r in after3] == [(240, True, 7), (241, False, 5), (268, False, 7),
+                                                            (299, True, 7)], "batch 3 alone: batch 4 waits"
+            expand(conn, batch_of(4), apply=True)
+            assert conn.execute(mine, (leagues,)).fetchall() == [
+                (240, "Primera B", True, 7, "domestic_league", "1.00"),
+                (241, "Copa Colombia", True, 8, "domestic_cup", "0.40"),
+                # The provider's name replaces the older one; the Elo weight is not rewritten.
+                (268, "Primera División", True, 8, "domestic_league", "1.00"),
+                (299, "Primera División", True, 7, "domestic_league", "1.00"),
+            ]
+            assert conn.execute(others, (leagues,)).fetchall() == before, "no other competition changed"
+
+            seasons = ("SELECT count(*) FROM core.competition_seasons cs JOIN core.competitions c "
+                       "ON c.id = cs.competition_id WHERE c.provider_league_id = ANY(%s)")
+            assert conn.execute(seasons, (leagues,)).fetchone() == (8,)
+            back = expand(conn, batch_of(4), apply=True, untrack=True)
+            assert back["untrack"] is True and "catalogue" in back
+            assert [(r[0], r[2], r[3]) for r in conn.execute(mine, (leagues,)).fetchall()] == [
+                (240, True, 7), (241, False, 8), (268, False, 8), (299, True, 7)], "only batch 4 stops"
+            assert conn.execute(seasons, (leagues,)).fetchone() == (8,), "untracking deletes nothing"
+            assert conn.execute(others, (leagues,)).fetchall() == before
+            runs = conn.execute("SELECT params->>'batch', params->>'untrack', status, api_calls, notes "
+                                "FROM raw.ingestion_runs WHERE job_type = 'league_expansion' ORDER BY id").fetchall()
+            assert runs == [("3", "false", "completed", 0, "expansion batch 3: 2 league(s) tracked"),
+                            ("4", "false", "completed", 0, "expansion batch 4: 2 league(s) tracked"),
+                            ("4", "true", "completed", 0, "expansion batch 4: 2 league(s) untracked")]
+        finally:
+            _clean(conn, [*leagues, *OTHERS])

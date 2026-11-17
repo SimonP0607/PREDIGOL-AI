@@ -1,0 +1,48 @@
+# Campeonato Brasileiro Série A (provider league 71), season 2026. CBF Regulamento Específico da Competição (REC) 2026.
+schema: competition-rules/1
+league_id: 71
+competition: Serie A
+country: Brazil
+version: 1
+seasons: [2026]
+points: {win: 3, draw: 1, loss: 0}
+sources:
+  - publisher: Confederação Brasileira de Futebol
+    title: Regulamento Específico da Competição - Brasileirão Série A 2026 (v. 15/12/2025)
+    url: https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/REC_Brasileiro_SA_rie_A_2026_v15_12_2025_final_02692c1077.pdf
+    published: 2025-12-15
+    checked_at: 2026-11-16
+    applies_to: season 2026
+    articles: arts. 6, 7, 8, 14, 15
+tournaments:
+  - key: season
+    name: Brasileirão Série A
+    phases:
+      - key: league
+        name: League
+        format: league
+        rounds: ["Regular Season - *"]
+        teams: 20
+        schedule: double_round_robin
+        matches_per_team: 38
+        ranking:
+          tiebreakers:
+            - wins
+            - goal_difference
+            - goals_for
+            - {criterion: h2h_points, note: "art. 15 §1: points of the two matches added"}
+            - {criterion: h2h_goal_difference, note: "art. 15 §1: then the goal difference of both matches"}
+            - red_cards_fewer
+            - yellow_cards_fewer
+            - lots
+          h2h: {mode: once, max_teams: 2}
+          note: "art. 15 §2: with more than two clubs level the head-to-head criterion is not used."
+        zones:
+          - {kind: champion, from: 1, to: 1}
+          - {kind: continental, from: 1, to: 4, target: CONMEBOL Libertadores 2027 group stage, note: "art. 6 a)-d)"}
+          - {kind: continental, from: 5, to: 5, target: CONMEBOL Libertadores 2027 preliminary phase, note: "art. 6 e)"}
+          - {kind: continental, from: 6, to: 11, conditional: true, target: CONMEBOL Sudamericana 2027, note: "art. 7: the six best placed not qualified for the Libertadores; places pass down by arts. 6 §2-§5"}
+          - {kind: relegation, last: 4, target: Série B 2027, note: "art. 8"}
+gaps:
+  - topic: tiebreak
+    reason: "Art. 15 speaks of the end of the championship; the in-season order is not fixed by the REC."

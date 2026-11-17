@@ -1,0 +1,54 @@
+# UEFA Champions League (provider league 2), season 2026/27: the league phase. Regulations 2024-27 cycle, 2026/27 season.
+schema: competition-rules/1
+league_id: 2
+competition: UEFA Champions League
+country: World
+version: 1
+seasons: [2026]
+points: {win: 3, draw: 1, loss: 0}
+sources:
+  - publisher: Union des Associations Européennes de Football
+    title: Regulations of the UEFA Champions League 2026/27, Article 18 (Equality of points - league phase)
+    url: https://documents.uefa.com/r/Regulations-of-the-UEFA-Champions-League-2026/27/Article-18-Equality-of-points-league-phase-Online
+    checked_at: 2026-11-16
+    applies_to: season 2026/27
+    articles: 17.01, 17.03, 17.04, 18.01
+  - publisher: Union des Associations Européennes de Football
+    title: "Champions League league phase standings: How teams level on points are separated"
+    url: https://uefa.com/uefachampionsleague/news/0291-1bd88ae04870-e1e038c319e3-1000--champions-league-league-phase-standings-how-teams-level-on-
+    published: 2026-11-04
+    checked_at: 2026-11-16
+    applies_to: season 2026/27, order during matchdays 1-7
+tournaments:
+  - key: season
+    name: UEFA Champions League
+    phases:
+      - key: league_phase
+        name: League phase
+        format: league_phase
+        rounds: ["League Stage - *"]
+        teams: 36
+        schedule: swiss
+        matches_per_team: 8
+        ranking:
+          tiebreakers:
+            - goal_difference
+            - goals_for
+            - away_goals_for
+            - wins
+            - away_wins
+            - opponents_points
+            - opponents_goal_difference
+            - opponents_goals_for
+            - {criterion: disciplinary_points, note: "red card 3, yellow card 1, expulsion for two yellow cards in one match 3"}
+            - {criterion: club_coefficient, note: "Annex D"}
+          in_progress: [goal_difference, goals_for, away_goals_for, wins, away_wins]
+          in_progress_fallback: alphabetical
+          note: "Matchdays 1 to 7: criteria a) to e) only, then alphabetical order of the abbreviated name."
+        zones:
+          - {kind: next_phase, from: 1, to: 8, target: round of 16}
+          - {kind: playoff_place, from: 9, to: 24, target: knockout phase play-offs}
+          - {kind: eliminated, from: 25, to: 36}
+gaps:
+  - topic: format
+    reason: "Only the league phase is coded: the qualifying rounds, the knockout play-offs and the knockout phase (Articles 15, 19 and following) were not read for their tie rules."

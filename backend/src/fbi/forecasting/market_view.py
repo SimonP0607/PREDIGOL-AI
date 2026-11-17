@@ -152,11 +152,14 @@ def _calibrate(champion: Calibrator, outcomes: Sequence[Outcome]) -> tuple[list[
 
 
 def forecast_market(fixture_id: int, market_key: str, line: Decimal, models: dict[str, list[Row]],
-                         cal: CalibrationState, market: dict[str, tuple[float, datetime]]) -> MarketForecast | None:
+                         cal: CalibrationState, market: dict[str, tuple[float, datetime]], *,
+                         version: str = VERSION) -> MarketForecast | None:
     """The forecast of one market, or None when no model priced every outcome of it.
 
     ``models``: model -> its rows for this market (every outcome, one cut-off); ``market``: outcome -> the newest de-vigged
-    consensus probability and when it was captured, used only by a champion that takes the market as an input.
+    consensus probability and when it was captured, used only by a champion that takes the market as an input. How old that
+    consensus may be is the reader's rule, not this function's: ``forecast-v1`` reads it no older than ``MAX_MARKET_AGE``, the
+    stable seal's shadow version (``fbi.forecasting.seal``) within its own window. ``version`` only enters the fingerprint.
     """
     selections = MARKETS[(market_key, line)]
     complete: dict[str, list[Row]] = {}
@@ -191,7 +194,7 @@ def forecast_market(fixture_id: int, market_key: str, line: Decimal, models: dic
     if calibration == UNCALIBRATED:
         # the market's probability is not part of an uncalibrated forecast: it is not stated, so it is not kept
         outcomes = tuple(Outcome(o.selection, o.p_model, o.p_model, o.lo, o.hi, o.push) for o in raw)
-    digest = _hash([VERSION, fixture_id, market_key, str(line), name, first.model_version_id, first.data_cutoff_ts,
+    digest = _hash([version, fixture_id, market_key, str(line), name, first.model_version_id, first.data_cutoff_ts,
                     sorted((s, by_sel[s].feature_set_hash) for s in selections), calibrator_id, basis,
                     sorted((o.selection, None if o.p_market is None else round(o.p_market, 6)) for o in outcomes)])
     return MarketForecast(fixture_id, market_key, line, name, first.model_version_id, first.data_cutoff_ts, outcomes,

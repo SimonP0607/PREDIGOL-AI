@@ -16,6 +16,7 @@ PINNED = {
     "INT-A08": "a37fdb4265f407c892e11f793ce86a083667ec491f0251fdd4d1f1d3603a1c43",
     "INT-C02": "f954582c9594c509dfc93f4abd9a847292a023d74dc5495daf0eead00bd0cc63",
     "AD-A03": "205e671347e7c9ab21a4fb0ab03d1b6c66a2c4d9e44494f937e3e23707653bae",
+    "AD-B03": "989b82a53fe35ae6712f39ce71d75588a1f868e38b9a2832ba2e393162364bd5",
 }
 """A registered protocol is frozen: changing one is a new version with its own PR, never an edit of these lines to make a test pass."""
 
@@ -109,3 +110,10 @@ def test_battery_v4_is_registered_before_its_first_run() -> None:
     assert p.version == "proto-ad-a03-v1" and p.seed == 20261116
     assert "0 % por defecto" in p.pass_rule and "3 %" in p.pass_rule
     assert proto.stamp("AD-A03")["fingerprint"] == PINNED["AD-A03"]
+
+
+def test_the_stable_seal_is_registered_before_its_first_reading() -> None:
+    """AD-B03 (IA-073): the shadow version forecast-v1-seal starts writing with its deploy; the protocol that will judge it is older."""
+    p = proto.require("AD-B03")
+    assert p.version == "proto-ad-b03-v1" and p.seed == 20261116
+    assert proto.stamp("AD-B03")["fingerprint"] == PINNED["AD-B03"]
