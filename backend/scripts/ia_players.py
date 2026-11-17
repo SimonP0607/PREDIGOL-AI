@@ -11,6 +11,13 @@ naive baseline, every sample size stated, and the verdict MODELABLE / NOT_MODELA
 with an official line-up: each side estimated 90 minutes before kick-off, against the official starters, Brier score and reliability
 against «the same XI as the previous match», by competition with its sample (``fbi.players.lineup_estimate.measure``).
 
+``evaluate-v2`` walks the same matches with ``player-engine-v2`` (IA-129): every candidate 90 minutes before kick-off with the start
+probability of ``lineup-estimate-v1``, the unconditional probability of each prop against the naive baseline made unconditional, per
+family and line, with the verdict MEJORA / NO_MEJORA / INSUFICIENTE and every sample size (JSON).
+
+``e6`` is the dry run of the registered protocol E6 (``proto-int-a08-v1``): the upper bound of the matches of each primary cell, no
+score read, and its stopping decision (``fbi.players.e6``; JSON). It never evaluates.
+
 ``show`` forecasts one match as of ``--at`` (default: now; never later than the kick-off): each side's candidates (the confirmed
 line-up when it was fetched by then), their P(start), expected minutes, rates and props, and the verdict of each family on the 180 days
 before the moment. ``--team-xg`` conditions the goal shares on the team's expected goals (home,away).
@@ -34,7 +41,7 @@ from fbi.players import VERSION
 from fbi.players import backtest as bt
 from fbi.players import history as hist
 
-COMMANDS = ("evaluate", "show", "lineups")
+COMMANDS = ("evaluate", "show", "lineups", "evaluate-v2", "e6")
 OK, CANNOT = 0, 2
 CALIBRATION = timedelta(days=180)
 """``show``: the window before the moment whose matches the verdicts are measured on."""
@@ -174,6 +181,30 @@ def lineups(conn: psycopg.Connection[Any], start: datetime, end: datetime) -> tu
     return doc, OK
 
 
+def evaluate_v2(conn: psycopg.Connection[Any], start: datetime, end: datetime, competitions: Sequence[int] | None = None
+                ) -> tuple[dict[str, Any], int]:
+    from fbi.players import v2
+
+    if end <= start:
+        return {"error": "--to must be after --from"}, CANNOT
+    matches = hist.load_matches(conn, start - bt.WARMUP, end, competitions=competitions, prefer_sheet=True)
+    trained = [m.fixture_id for m in matches if m.kickoff >= start - bt.TRAIN_LEAD]
+    doc = v2.evaluate(matches, hist.absence_history(conn, trained), start=start, end=end)
+    doc["competitions"] = list(competitions) if competitions else "all"
+    return doc, OK
+
+
+def e6_dry_run(conn: psycopg.Connection[Any], today: date) -> tuple[dict[str, Any], int]:
+    from fbi.players import e6
+    from fbi.research import protocol
+
+    stamp = protocol.stamp(e6.KEY)
+    with conn.cursor() as cur:
+        cur.execute(e6.DRY_RUN_SQL, e6.params(today))
+        counts = {str(seg): int(n) for seg, n in cur.fetchall()}
+    return {"stamp": stamp, "day": today.isoformat()} | e6.decide(counts, today).as_json(), OK
+
+
 def _f(x: Any, fmt: str = ".3f") -> str:
     return "-" if x is None else format(x, fmt)
 
@@ -227,7 +258,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = ap.parse_args(argv)
     now = datetime.now(UTC)
     try:
-        if args.command in ("evaluate", "lineups"):
+        if args.command == "e6":
+            pass
+        elif args.command in ("evaluate", "lineups", "evaluate-v2"):
             if not args.start or not args.end:
                 ap.error(f"{args.command} needs --from and --to")
             start, end = parse_day(args.start), parse_day(args.end)
@@ -246,9 +279,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             doc, code = evaluate(conn, start, end, args.competition)
         elif args.command == "lineups":
             doc, code = lineups(conn, start, end)
+        elif args.command == "evaluate-v2":
+            doc, code = evaluate_v2(conn, start, end, args.competition)
+        elif args.command == "e6":
+            doc, code = e6_dry_run(conn, now.date())
         else:
             doc, code = show(conn, args.fixture, at=at, team_xg=xg)
-    as_json = args.as_json or args.command == "lineups"
+    as_json = args.as_json or args.command in ("lineups", "evaluate-v2", "e6")
     out = json.dumps(doc, indent=1, default=str, ensure_ascii=False) if as_json else render(args.command, doc)
     sys.stdout.write(out + "\n")
     if code == CANNOT and "error" in doc:

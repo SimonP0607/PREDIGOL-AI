@@ -157,12 +157,17 @@ def run_pass(conn: psycopg.Connection[Any], *, now: datetime, code_version: str 
     return rep
 
 
-def estimate_fixture(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, typed: bool) -> dict[str, Any] | None:
+def estimate_fixture(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, typed: bool,
+                     dispersion: bool = False) -> dict[str, Any] | None:
     """Every side of one match as of ``at``: the estimates and what they were made from (``history``: the player engine's view of the
-    teams as of ``at``, which the evaluation cycle reads the goal rates from, IA-108). Read-only."""
+    teams as of ``at``, which the evaluation cycle reads the goal rates from, IA-108). Read-only.
+
+    ``dispersion`` (``player-engine-v2``, IA-129): walk with v1's full engine, which also fits the NB2 dispersion of each count on what
+    was known (``doc["dispersion"]``); its start model is fitted on the same samples, so the estimates are the same."""
     from fbi.ai import absences as provider_absences
     from fbi.ai import evidence as ai_evidence
     from fbi.people import availability as people
+    from fbi.players import backtest as bt
     from fbi.players import history as hist
     from fbi.players import lineup_estimate as le
 
@@ -171,7 +176,8 @@ def estimate_fixture(conn: psycopg.Connection[Any], fixture_id: int, *, at: date
         return None
     matches = [m for m in hist.load_matches(conn, at - le.HISTORY, at, competitions=[fx.competition_id],
                                             teams=[fx.home_team_id, fx.away_team_id], prefer_sheet=True) if m.fixture_id != fixture_id]
-    engine = le.EstimateEngine(matches, hist.absence_history(conn, [m.fixture_id for m in matches if m.kickoff >= at - le.TRAIN]))
+    observed = hist.absence_history(conn, [m.fixture_id for m in matches if m.kickoff >= at - le.TRAIN])
+    engine = bt.Engine(matches, observed) if dispersion else le.EstimateEngine(matches, observed)
     engine.walk(at, record_from=at, train_from=at - le.TRAIN)
     engine.prepare(at)
     sheets = hist.confirmed_lineup(conn, fixture_id, at)
@@ -190,7 +196,8 @@ def estimate_fixture(conn: psycopg.Connection[Any], fixture_id: int, *, at: date
                        "estimates": le.estimate_side(engine.h, engine.model, fixture_id=fixture_id, team_id=team,
                                                      competition_id=fx.competition_id, states=states, facts=facts,
                                                      sheet=sheets.get(side))}
-    return {"fixture": fx, "sides": sides, "history_matches": engine.h.matches, "start_model": engine.model, "history": engine.h}
+    return {"fixture": fx, "sides": sides, "history_matches": engine.h.matches, "start_model": engine.model, "history": engine.h,
+            "dispersion": dict(engine.phi)}
 
 
 def _one(conn: psycopg.Connection[Any], fixture_id: int, kickoff: datetime, evaluation: str, *, now: datetime, typed: bool,
