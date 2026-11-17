@@ -75,8 +75,9 @@ def test_only_its_job_and_its_command_import_it() -> None:
     # IA-112..IA-115 (AD-K01, AD-J03, AD-J04): the evaluation after the match reads the cycle's map of a decision and its family (pure
     # functions); the owner's C-02 and C-03 read the cycle through its reader (``reader.tracking``) and its machine (``public_state``):
     # read only: from its writer they import only the name of the writer (``WRITER``), never a pass
+    # IA-131 (AD-J02 delivery 2): C-01 2.0.0 reads each selection's newest state of that writer's chains, as C-02 does: only ``WRITER``
     assert importers == {"apps/worker/scheduler.py", "scripts/ia_lifecycle.py", "src/fbi/api/routers/intelligence.py",
-                         "src/fbi/api/services/selection_intelligence.py", "src/fbi/api/services/tracking.py",
+                         "src/fbi/api/services/match_intelligence_v2.py", "src/fbi/api/services/selection_intelligence.py", "src/fbi/api/services/tracking.py",
                          "src/fbi/countcal/private.py", "src/fbi/decision/shadow.py", "src/fbi/evalcycle/chain.py",
                          "src/fbi/evalcycle/reevaluate.py", "src/fbi/evalcycle/run.py", "src/fbi/evaluation/selection.py",
                          "src/fbi/tracking/selections.py"}, importers

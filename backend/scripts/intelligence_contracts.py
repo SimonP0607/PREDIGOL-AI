@@ -36,7 +36,7 @@ def current() -> dict[str, dict[str, Any]]:
     found: dict[str, dict[str, Any]] = {}
     for spec in CONTRACTS:
         public = spec.public
-        found[spec.id] = {
+        found[spec.key] = {  # a superseded major version keeps its own frozen entry (``C-01@1``)
             "version": spec.version,
             "public": sorted(schema_facts(public.model_json_schema(mode="serialization"))) if public else None,
             "private": sorted(schema_facts(spec.private.model_json_schema(mode="serialization"))),

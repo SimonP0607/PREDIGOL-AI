@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, Path, Query
 from fbi.api.contracts.intelligence.alerts import AlertsContract
 from fbi.api.contracts.intelligence.console import ConsoleContract
 from fbi.api.contracts.intelligence.match import MatchIntelligencePrivate
+from fbi.api.contracts.intelligence.match_v2 import MatchIntelligenceV2Private
 from fbi.api.contracts.intelligence.parlays import ParlaySetStatePrivate
 from fbi.api.contracts.intelligence.post_evaluation import PostMatchEvaluation
 from fbi.api.contracts.intelligence.tracking import Tracking
@@ -23,7 +24,7 @@ from fbi.api.services import families as families_svc
 from fbi.api.services import intelligence as svc
 from fbi.api.services import intelligence_alerts as alerts_svc
 from fbi.api.services import intelligence_console as console_svc
-from fbi.api.services import match_intelligence
+from fbi.api.services import match_intelligence, match_intelligence_v2
 from fbi.api.services import parlay_states as parlay_states_svc
 from fbi.api.services import post_evaluation as post_evaluation_svc
 from fbi.api.services import product as product_svc
@@ -89,6 +90,16 @@ def get_match_intelligence(conn: Db, fixture_id: Annotated[int, Path(ge=1, le=2*
     selection with the decision layer's shadow state and numbers, the model's own figure (sin_calibrar), the AI's brief,
     the chronicle whatever its switch and every stored item of evidence. The untyped dossier above stays as it is."""
     return match_intelligence.private(conn, fixture_id)
+
+
+@router.get("/intelligence/matches/{fixture_id}/intelligence/v2", response_model=Envelope[MatchIntelligenceV2Private])
+def get_match_intelligence_v2(conn: Db, fixture_id: Annotated[int, Path(ge=1, le=2**62)]
+                              ) -> Envelope[MatchIntelligenceV2Private]:
+    """C-01 2.0.0, PRIVATE projection (AD-J02 delivery 2, IA-131): the public one and the shadow of every block - the scenarios
+    (scenarios-v2), the one chronicle and its update after the line-up (chronicle-v4), E1-E4 with their verdicts, the C-07 sources
+    embedded, the C-05 alerts of the match, each selection's state in the cycle (C-02) and the players' forecasts
+    (player-engine-v2). The 1.x route above keeps its shape."""
+    return match_intelligence_v2.private(conn, fixture_id)
 
 
 @router.get("/intelligence/factors", response_model=Envelope[dict[str, Any]])

@@ -54,18 +54,18 @@ AT = datetime(2026, 11, 21, 16, 42, tzinfo=UTC)
 
 
 def cases(spec: ContractSpec) -> list[str]:
-    return sorted({p.name.split(".")[0] for p in (EXAMPLES / spec.id).glob("*.json")})
+    return sorted({p.name.split(".")[0] for p in (EXAMPLES / spec.examples_dir).glob("*.json")})
 
 
 def load(spec: ContractSpec, case: str, projection: str) -> dict[str, Any]:
-    data: dict[str, Any] = json.loads((EXAMPLES / spec.id / f"{case}.{projection}.json").read_text(encoding="utf-8"))
+    data: dict[str, Any] = json.loads((EXAMPLES / spec.examples_dir / f"{case}.{projection}.json").read_text(encoding="utf-8"))
     return data
 
 
 def example_ids() -> Iterator[Any]:
     for spec in CONTRACTS:
         for case in cases(spec):
-            yield pytest.param(spec, case, id=f"{spec.id}/{case}")
+            yield pytest.param(spec, case, id=f"{spec.key}/{case}")
 
 
 def dumped(model: IntelligenceContract) -> dict[str, Any]:
@@ -75,7 +75,7 @@ def dumped(model: IntelligenceContract) -> dict[str, Any]:
 
 # ── the conventions in the models ────────────────────────────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("spec", CONTRACTS, ids=lambda s: s.id)
+@pytest.mark.parametrize("spec", CONTRACTS, ids=lambda s: s.key)
 def test_each_contract_follows_the_conventions(spec: ContractSpec) -> None:
     assert spec_problems(spec) == []
 
@@ -91,8 +91,10 @@ def test_every_contract_class_is_registered_once() -> None:
     ours = {c for c in found if c.__module__.startswith("fbi.")}
     registered = {spec.private for spec in CONTRACTS} | {spec.public for spec in CONTRACTS if spec.public}
     assert ours == registered, f"not registered: {sorted(c.__name__ for c in ours - registered)}"
-    ids = [spec.id for spec in CONTRACTS]
-    assert len(ids) == len(set(ids)) and set(ids) <= set(CATALOGUE)
+    keys = [spec.key for spec in CONTRACTS]
+    assert len(keys) == len(set(keys)) and {spec.id for spec in CONTRACTS} <= set(CATALOGUE)
+    current = [spec.id for spec in CONTRACTS if not spec.superseded]
+    assert len(current) == len(set(current)), "one current version per contract; an earlier major one is superseded"
 
 
 def test_the_catalogue_keeps_private_routes_under_admin() -> None:
@@ -104,11 +106,11 @@ def test_the_catalogue_keeps_private_routes_under_admin() -> None:
 
 # ── the examples ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("spec", CONTRACTS, ids=lambda s: s.id)
+@pytest.mark.parametrize("spec", CONTRACTS, ids=lambda s: s.key)
 def test_each_contract_has_examples_of_both_projections(spec: ContractSpec) -> None:
-    assert cases(spec), f"{spec.id} has no example in {EXAMPLES / spec.id}"
+    assert cases(spec), f"{spec.key} has no example in {EXAMPLES / spec.examples_dir}"
     for case in cases(spec):
-        names = {p.name for p in (EXAMPLES / spec.id).glob(f"{case}.*.json")}
+        names = {p.name for p in (EXAMPLES / spec.examples_dir).glob(f"{case}.*.json")}
         expected = {f"{case}.private.json"} | ({f"{case}.public.json"} if spec.public else set())
         assert names == expected, f"{spec.id}/{case}: {sorted(names)}"
 

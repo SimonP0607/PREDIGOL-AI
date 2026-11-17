@@ -579,5 +579,7 @@ def test_the_routes_that_read_it_are_the_admin_console_and_one_card() -> None:
         assert not outside, f"{tag}: routes outside the Admin Console: {outside}"
     # IA-066: the match's contract C-01 (public projection) lives in the same router; its module
     # (``api/services/match_intelligence.py``) names none of these objects - it is not on ``NAMES_IT``, which the scan above holds.
+    # IA-131: C-01 2.0.0 (``api/services/match_intelligence_v2.py``) beside it, likewise off ``NAMES_IT``.
     assert sorted(tagged["predigol analysis"]) == [("GET", "/api/v1/matches/{fixture_id}/analysis"),
-                                                   ("GET", "/api/v1/matches/{fixture_id}/intelligence")], tagged["predigol analysis"]
+                                                   ("GET", "/api/v1/matches/{fixture_id}/intelligence"),
+                                                   ("GET", "/api/v1/matches/{fixture_id}/intelligence/v2")], tagged["predigol analysis"]
