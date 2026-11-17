@@ -37,7 +37,8 @@ WRITER: Final = "lifecycle-shadow-v1"
 """The writer of the chains read off today's layers. The evaluations of AD-D06 will write chains of their own (``eval-cycle-v1``)."""
 LAYERS: Final[tuple[str, ...]] = (DECISION_CORE, DECISION_FAMILIES)
 """The decision layers whose rows drive a chain: the candidates decision-v2's replay re-decides (``fbi.decision.replay``) are these
-same rows. decision-v2 writes nothing yet (AD-D01): its table joins here the day it exists."""
+same rows. decision-v2's shadow (AD-D01, IA-093) keeps its own decisions in ``intel.decisions_v2`` and appends its chains through
+``extend``, under a writer of its own."""
 EVERY: Final = int(os.environ.get("FBI_LIFECYCLE_MINUTES", "30"))
 BACK: Final = timedelta(days=7)
 """How far back a match is still followed: its settlement (p90 48 h after kick-off) and its post-mortem."""
@@ -287,10 +288,17 @@ def _one_chunk(conn: psycopg.Connection[Any], ids: list[int], fixtures: Mapping[
     rep.skipped_closed += len(ids) - len(live)
     if not live:
         return
-    for key, hist in sorted(histories(conn, live, layers=layers).items(), key=lambda kv: (kv[0].fixture_id, kv[0].market_key,
-                                                                                         kv[0].selection, kv[0].line)):
+    _extend(conn, histories(conn, live, layers=layers), fixtures, stored, now=now, dry_run=dry_run, writer=writer,
+            source=derive.DECISIONS, rep=rep)
+
+
+def _extend(conn: psycopg.Connection[Any], found: Mapping[Key, History], fixtures: Mapping[int, Fixture],
+            stored: Mapping[str, list[dict[str, Any]]], *, now: datetime, dry_run: bool, writer: str, source: str,
+            rep: PassReport) -> None:
+    """Derive the chain of every selection of ``found`` and append to ``writer``'s what is missing (nothing is rewritten)."""
+    for key, hist in sorted(found.items(), key=lambda kv: (kv[0].fixture_id, kv[0].market_key, kv[0].selection, kv[0].line)):
         try:
-            chain = derive.derive(hist, fixtures[key.fixture_id], now=now)
+            chain = derive.derive(hist, fixtures[key.fixture_id], now=now, source=source)
         except machine.IllegalTransitionError as exc:
             rep.illegal += 1
             rep.errors.append(f"{chain_key(writer, key)}: {exc}"[:300])
@@ -320,6 +328,27 @@ def _one_chunk(conn: psycopg.Connection[Any], ids: list[int], fixtures: Mapping[
             if not dry_run:
                 previous_id = _insert(conn, writer=writer, key=key, row=r, previous_id=previous_id, from_state=from_state)
             from_state = r.step.state
+
+
+def extend(conn: psycopg.Connection[Any], found: Mapping[Key, History], fixtures: Mapping[int, Fixture], *, now: datetime,
+           writer: str, source: str, dry_run: bool = False) -> PassReport:
+    """The cycle's API for a layer that keeps its own decisions (decision-v2's shadow, IA-093, AD-D01): given what that layer holds about
+    its selections (``found``, read by the layer from its own table, ``source``) and their matches, append to the chains of ``writer``
+    what is missing - the same derivation, the same machine, the same check of a stored prefix as ``run_pass`` (a chain that disagrees
+    with what is stored is ``divergent`` and left as it is). The caller commits; nothing is written while ``dry_run`` or without the
+    table (revision 0142), and the report says so."""
+    rep = PassReport()
+    if not _table_exists(conn):
+        rep.errors.append("intel.selection_lifecycle does not exist: apply revision 0142 first")
+        return rep
+    if writer == WRITER:
+        raise ValueError(f"{WRITER} is the writer of the chains read off intel.decisions: a layer of its own writes under another name")
+    ids = sorted({k.fixture_id for k in found} & set(fixtures))
+    stored = _stored(conn, ids, writer) if ids else {}
+    _extend(conn, {k: h for k, h in found.items() if k.fixture_id in fixtures}, fixtures, stored, now=now, dry_run=dry_run,
+            writer=writer, source=source, rep=rep)
+    rep.fixtures = len(ids)
+    return rep
 
 
 def measure(conn: psycopg.Connection[Any], *, start: datetime, end: datetime, now: datetime,

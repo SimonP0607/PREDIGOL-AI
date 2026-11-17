@@ -15,13 +15,16 @@ from tests.unit.test_model_code_version import RUNNING_MODEL_CODE
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src" / "fbi"
 PACKAGE = "fbi.players"
-ALLOWED = {"scripts/ia_players.py": "the command that prints the evaluation and a match's forecast (read-only)"}
+ALLOWED = {"scripts/ia_players.py": "the command that prints the evaluation and a match's forecast (read-only)",
+           "shadowjobs/lineup_estimate.py": "the worker's job of the estimated starters (IA-094, shadow): writes intel.lineup_estimates only; "
+                                            "only the scheduler imports it"}
 SERVING = ("intel/", "picks/", "familydecisions/", "decision/", "api/", "parlays/", "customer/", "notify/", "messaging/", "narrative/",
            "knowledge/", "ai/", "council/", "forecasting/", "apps/")
 """What decides (``intel``, ``picks``, ``familydecisions``, ``decision``, ``council``, ``ai``), stakes and combines (``parlays``),
 publishes or serves users."""
-MAY_IMPORT = ("fbi.players", "fbi.families.counts", "fbi.core", "fbi.people.identity.names")
-"""The package's own reach: itself, the NB2 count engine it reuses, the platform's core and the pure name key of IA-071 (positions)."""
+MAY_IMPORT = ("fbi.players", "fbi.families.counts", "fbi.core", "fbi.people.identity.names", "fbi.people.availability")
+"""The package's own reach: itself, the NB2 count engine it reuses, the platform's core, the pure name key of IA-071 (positions) and
+IA-091's pure rule of a player's availability (``lineup_estimate``: one of four words with its basis, never a health detail)."""
 
 
 def imported(path: Path) -> set[str]:

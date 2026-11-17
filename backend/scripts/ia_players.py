@@ -7,6 +7,10 @@
 calibration of the start probability (Brier, log-loss) and, per prop family and line, the log-loss and Brier of the model against a
 naive baseline, every sample size stated, and the verdict MODELABLE / NOT_MODELABLE with its reasons.
 
+``lineups`` measures the estimated starters (``lineup-estimate-v1``, IA-094) over the played matches that kicked off in ``[--from, --to)``
+with an official line-up: each side estimated 90 minutes before kick-off, against the official starters, Brier score and reliability
+against «the same XI as the previous match», by competition with its sample (``fbi.players.lineup_estimate.measure``).
+
 ``show`` forecasts one match as of ``--at`` (default: now; never later than the kick-off): each side's candidates (the confirmed
 line-up when it was fetched by then), their P(start), expected minutes, rates and props, and the verdict of each family on the 180 days
 before the moment. ``--team-xg`` conditions the goal shares on the team's expected goals (home,away).
@@ -30,7 +34,7 @@ from fbi.players import VERSION
 from fbi.players import backtest as bt
 from fbi.players import history as hist
 
-COMMANDS = ("evaluate", "show")
+COMMANDS = ("evaluate", "show", "lineups")
 OK, CANNOT = 0, 2
 CALIBRATION = timedelta(days=180)
 """``show``: the window before the moment whose matches the verdicts are measured on."""
@@ -115,6 +119,61 @@ def show(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, team_x
             "sides": sides}, OK
 
 
+OFFICIAL_SQL = """
+SELECT lp.fixture_id, lp.team_side, lp.provider_player_id
+  FROM core.fixture_lineup_players lp JOIN core.fixtures f ON f.id = lp.fixture_id
+ WHERE lp.is_starter AND lp.provider_player_id > 0 AND lp.source = 'api-football' AND f.status_group = 'finished'
+   AND f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s
+"""
+LINEUP_FACTS_SQL = """
+SELECT e.id, e.fixture_id, COALESCE(e.provider_player_id, p.provider_player_id) AS provider_player_id, e.attributes->>'assertion' AS assertion,
+       e.claim_type, e.origin, e.status, e.source_tier, e.subject_type, e.retrieved_at, e.published_at
+  FROM ai.evidence e JOIN core.fixtures f ON f.id = e.fixture_id
+  LEFT JOIN core.players p ON e.subject_type = 'PLAYER' AND p.id = e.subject_id
+ WHERE e.kind = 'lineup' AND f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND (e.subject_type IS NULL OR %(typed)s)
+"""
+ABSENCE_FACTS_SQL = """
+SELECT e.fixture_id, e.provider_player_id, e.kind, e.attributes->>'assertion' AS assertion, e.status, e.source_tier,
+       e.source_domain AS source_name, e.retrieved_at AS known_at
+  FROM ai.evidence e JOIN core.fixtures f ON f.id = e.fixture_id
+ WHERE e.kind IN ('injury', 'suspension', 'doubtful') AND (e.subject_type IS NULL OR %(typed)s) AND e.status <> 'OUTDATED'
+   AND e.provider_player_id IS NOT NULL AND f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s
+"""
+"""What ``lineups`` reads besides the matches: the official starters, the facts «titular» (research v2's claims only when the system reads
+them, ``typed_visible``) and the facts about who is out (the same) - never the text of a claim."""
+
+
+def lineups(conn: psycopg.Connection[Any], start: datetime, end: datetime) -> tuple[dict[str, Any], int]:
+    from collections import defaultdict
+
+    from psycopg.rows import dict_row
+
+    from fbi.ai.gates import typed_visible
+    from fbi.players import lineup_estimate as le
+
+    if end <= start:
+        return {"error": "--to must be after --from"}, CANNOT
+    matches = hist.load_matches(conn, start - le.HISTORY, end, prefer_sheet=True)
+    official: dict[tuple[int, str], set[int]] = defaultdict(set)
+    facts: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    press: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    params = {"start": start, "end": end, "typed": typed_visible(conn)}
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(OFFICIAL_SQL, params)
+        for r in cur.fetchall():
+            official[(int(r["fixture_id"]), str(r["team_side"]))].add(int(r["provider_player_id"]))
+        cur.execute(LINEUP_FACTS_SQL, params)
+        for r in cur.fetchall():
+            facts[int(r["fixture_id"])].append(dict(r))
+        cur.execute(ABSENCE_FACTS_SQL, params)
+        for r in cur.fetchall():
+            press[int(r["fixture_id"])].append(dict(r) | {"player_name": None})
+    trained = [m.fixture_id for m in matches if m.kickoff >= start - le.TRAIN]
+    doc = le.measure(matches, hist.absence_history(conn, trained), start=start, end=end,
+                     official={k: frozenset(v) for k, v in official.items()}, facts=facts, press=press)
+    return doc, OK
+
+
 def _f(x: Any, fmt: str = ".3f") -> str:
     return "-" if x is None else format(x, fmt)
 
@@ -168,9 +227,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = ap.parse_args(argv)
     now = datetime.now(UTC)
     try:
-        if args.command == "evaluate":
+        if args.command in ("evaluate", "lineups"):
             if not args.start or not args.end:
-                ap.error("evaluate needs --from and --to")
+                ap.error(f"{args.command} needs --from and --to")
             start, end = parse_day(args.start), parse_day(args.end)
         else:
             if args.fixture is None:
@@ -185,9 +244,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                          options="-c TimeZone=UTC -c default_transaction_read_only=on") as conn:
         if args.command == "evaluate":
             doc, code = evaluate(conn, start, end, args.competition)
+        elif args.command == "lineups":
+            doc, code = lineups(conn, start, end)
         else:
             doc, code = show(conn, args.fixture, at=at, team_xg=xg)
-    out = json.dumps(doc, indent=1, default=str, ensure_ascii=False) if args.as_json else render(args.command, doc)
+    as_json = args.as_json or args.command == "lineups"
+    out = json.dumps(doc, indent=1, default=str, ensure_ascii=False) if as_json else render(args.command, doc)
     sys.stdout.write(out + "\n")
     if code == CANNOT and "error" in doc:
         sys.stderr.write(f"{doc['error']}\n")

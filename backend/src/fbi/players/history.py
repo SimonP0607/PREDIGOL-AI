@@ -266,31 +266,46 @@ def _count(v: Any) -> int | None:
 
 
 def load_matches(conn: psycopg.Connection[Any], start: datetime, end: datetime, *, competitions: Sequence[int] | None = None,
-                 teams: Sequence[int] | None = None) -> list[Match]:
+                 teams: Sequence[int] | None = None, prefer_sheet: bool = False) -> list[Match]:
     """The played matches that kicked off in ``[start, end)`` with player statistics, in kick-off order. ``competitions`` limits them;
-    with ``teams`` too, every match of those teams is read as well (their cups, their other league)."""
+    with ``teams`` too, every match of those teams is read as well (their cups, their other league). ``prefer_sheet``: who started is
+    read from the squad sheet when it says (``rows_to_matches``)."""
     scope = "all" if not competitions else ("around" if teams else "competitions")
     params: dict[str, Any] = {"start": start, "end": end, "competitions": list(competitions or ()), "teams": list(teams or ())}
+    with conn.cursor() as cur:
+        cur.execute(ROWS_SQL.format(scope=SCOPES[scope]), params)
+        return rows_to_matches(cur, prefer_sheet=prefer_sheet)
+
+
+def rows_to_matches(rows: Iterable[Sequence[Any]], *, prefer_sheet: bool = False) -> list[Match]:
+    """``ROWS_SQL``'s rows (in its order: kick-off, then match) as played matches. Pure: the same rows read from a file give the same
+    matches (the lab's measurement of IA-094 reads them from an export).
+
+    WHO STARTED. ``player-engine-v1`` reads it from the statistics (``is_substitute``) and falls back to the squad sheet. Measured on
+    17 Nov 2026 (production, 4.574 sides of 30 days, IA-094): the statistics say 14,3 men started per side, the official sheets 10,8 -
+    ``is_substitute`` is false for men who came on. ``prefer_sheet`` (the estimated starters, ``lineup-estimate-v1``) reads the sheet's
+    ``is_starter`` first and the statistics only without a sheet; the default keeps ``player-engine-v1`` exactly as it was."""
     out: list[Match] = []
     current: list[Any] | None = None
     lines: list[PlayerMatch] = []
     fetched: datetime | None = None
-    with conn.cursor() as cur:
-        cur.execute(ROWS_SQL.format(scope=SCOPES[scope]), params)
-        for r in cur:
-            if current is None or current[0] != r[0]:
-                if current is not None and fetched is not None:
-                    out.append(_match(current, lines, fetched))
-                current, lines, fetched = list(r[:5]), [], None
-            (_pid, side, minutes, is_sub, is_starter, sheet_pos, profile_pos, goals, assists, shots, shots_on, fouls, yellow, red,
-             saves, fetched_at) = r[5:]
+    for r in rows:
+        if current is None or current[0] != r[0]:
+            if current is not None and fetched is not None:
+                out.append(_match(current, lines, fetched))
+            current, lines, fetched = list(r[:5]), [], None
+        (_pid, side, minutes, is_sub, is_starter, sheet_pos, profile_pos, goals, assists, shots, shots_on, fouls, yellow, red,
+         saves, fetched_at) = r[5:]
+        if prefer_sheet and is_starter is not None:
+            started = bool(is_starter)
+        else:
             started = (not bool(is_sub)) if is_sub is not None else bool(is_starter)
-            mins = int(minutes or 0)
-            cards = None if yellow is None and red is None else int(yellow or 0) + int(red or 0)
-            stats = {"goals": _count(goals), "assists": _count(assists), "shots": _count(shots), "shots_on": _count(shots_on),
-                     "fouls": _count(fouls), "cards": cards, "saves": _count(saves)}
-            lines.append(PlayerMatch.make(int(r[5]), str(side), started and mins > 0, mins, position_of(sheet_pos, profile_pos), stats))
-            fetched = fetched_at if fetched is None else max(fetched, fetched_at)
+        mins = int(minutes or 0)
+        cards = None if yellow is None and red is None else int(yellow or 0) + int(red or 0)
+        stats = {"goals": _count(goals), "assists": _count(assists), "shots": _count(shots), "shots_on": _count(shots_on),
+                 "fouls": _count(fouls), "cards": cards, "saves": _count(saves)}
+        lines.append(PlayerMatch.make(int(r[5]), str(side), started and mins > 0, mins, position_of(sheet_pos, profile_pos), stats))
+        fetched = fetched_at if fetched is None else max(fetched, fetched_at)
     if current is not None and fetched is not None:
         out.append(_match(current, lines, fetched))
     return out

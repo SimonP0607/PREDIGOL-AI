@@ -12,7 +12,7 @@ import re
 from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 from scripts import ia_decision_v2 as cli
 
@@ -123,8 +123,12 @@ def test_the_key_of_a_row_is_the_layers_key() -> None:
 WRITES = re.compile(r"\b(INSERT\s+INTO|UPDATE\s+\w+\.\w+\s+SET|DELETE\s+FROM|TRUNCATE|CREATE\s+TABLE|ALTER\s+TABLE|DROP\s+TABLE)\b", re.IGNORECASE)
 
 
+KEPT: Final = "shadow.py"
+"""decision-v2's kept shadow (IA-093, AD-D01): the one module of the package that writes - its own two tables, by INSERT only."""
+
+
 def test_nothing_in_the_package_or_its_command_writes_or_commits() -> None:
-    for path in [*sorted(PACKAGE.glob("*.py")), Path(cli.__file__)]:
+    for path in [*sorted(p for p in PACKAGE.glob("*.py") if p.name != KEPT), Path(cli.__file__)]:
         text = path.read_text(encoding="utf-8")
         tree = ast.parse(text)
         literals = [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)]
@@ -132,6 +136,17 @@ def test_nothing_in_the_package_or_its_command_writes_or_commits() -> None:
         calls = {n.func.attr for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
         assert not calls & {"commit", "store", "select_day", "decide_families", "run_step", "stake_for"}, f"{path.name}: {calls}"
     assert "default_transaction_read_only=on" in Path(cli.__file__).read_text(encoding="utf-8"), "the command opens a read-only connection"
+
+
+def test_the_kept_shadow_writes_its_own_two_tables_by_insert_and_nothing_else() -> None:
+    tree = ast.parse((PACKAGE / KEPT).read_text(encoding="utf-8"))
+    literals = [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)]
+    written = {m.group(0).split()[-1] for s in literals for m in re.finditer(r"\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE)\s+[a-z_]+\.[a-z0-9_]+",
+                                                                             s, re.IGNORECASE)}
+    assert written == {"intel.decision_v2_moments", "intel.decisions_v2"}, written
+    assert not [s for s in literals if re.search(r"\b(UPDATE|DELETE\s+FROM|TRUNCATE|DROP|ALTER)\s+[a-z_]+\.", s, re.IGNORECASE)]
+    calls = {n.func.attr for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
+    assert not calls & {"store", "select_day", "decide_families", "run_step", "stake_for"}, calls
 
 
 def test_the_sql_of_the_replay_names_the_layer_it_reads() -> None:
