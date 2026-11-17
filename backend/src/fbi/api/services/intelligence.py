@@ -211,7 +211,20 @@ def decision_detail(conn: Conn, decision_id: int) -> Envelope[dict[str, Any]]:
                      {"f": d["fixture_id"], "m": d["market_key"], "s": d["selection"], "l": d["line"],
                       "k": d["known_at"]})
     return ok(j({"decision": d, "pick": pick, "calibrator": calibrator, "review": review, "evidence": evidence,
-                 "outcome": outcome, "postmortem": pm, "history": history, "cost": cost}))
+                 "outcome": outcome, "postmortem": pm, "history": history, "cost": cost,
+                 "intelligence": _selection_contract(conn, decision_id)}))
+
+
+def _selection_contract(conn: Conn, decision_id: int) -> dict[str, Any]:
+    """C-02's private projection of the same decision (AD-J03, IA-114), added beside the keys the page already reads. A failure to build
+    it says so in its own block (the error's class, never its message) and leaves the rest of the page as it was."""
+    from fbi.api.services import selection_intelligence
+
+    try:
+        data: dict[str, Any] = selection_intelligence.private(conn, decision_id).model_dump(mode="json")
+    except Exception as exc:  # the old page must keep answering whatever C-02 does
+        return {"read_failed": True, "error": type(exc).__name__}
+    return data
 
 
 PICKER_COLUMNS = """

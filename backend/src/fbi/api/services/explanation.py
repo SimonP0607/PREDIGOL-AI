@@ -36,7 +36,7 @@ from fbi.api.envelope import Envelope, ok
 from fbi.api.problem import ApiError
 from fbi.api.repositories import Conn, Row, fetch_one
 from fbi.api.repositories import product as repo
-from fbi.api.services import pick_status
+from fbi.api.services import pick_status, selection_intelligence
 from fbi.api.services import reading as reading_service
 from fbi.api.services.product import CONSENSUS_LOOKBACK, candidate_of
 from fbi.api.services.records import CLAIM_GROUPS, MATCH_COLS, MATCH_JOINS, item_state, match_of
@@ -187,6 +187,7 @@ def pick_explanation(conn: Conn, pick_id: int, *, preview: bool, at: datetime | 
         selection=r["selection"], line=line, started=started, user_status=state.status, status_reason=state.reason,
         context_pending=state.context_pending, day=day, reading_shown=shown, reading_complete=complete,
         reading_at=reading_at, context=context, narrative=narrative, market=market, risks=risks,
-        review=_review(conn, r, at=review_at) if applied.enforced else None)
+        review=_review(conn, r, at=review_at) if applied.enforced else None,
+        intelligence=selection_intelligence.public_for_pick(conn, int(r["pick_id"]), at=moment))
     newest = max((t for t in (reading_at, price_at) if t is not None), default=None)
     return ok(body, data_as_of=newest)

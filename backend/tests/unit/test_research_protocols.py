@@ -18,6 +18,7 @@ PINNED = {
     "AD-A03": "205e671347e7c9ab21a4fb0ab03d1b6c66a2c4d9e44494f937e3e23707653bae",
     "AD-B03": "989b82a53fe35ae6712f39ce71d75588a1f868e38b9a2832ba2e393162364bd5",
     "AD-B07": "aac10f7f5cc48dfbf136283f0c76d1c6043556536b137e7df2bd4cbe05299128",
+    "AD-K02": "6eff7d3066cbeed274d457c2694f478e339fc8232610be74f4c56f54e570def1",
 }
 """A registered protocol is frozen: changing one is a new version with its own PR, never an edit of these lines to make a test pass."""
 
@@ -128,3 +129,11 @@ def test_the_count_calibrator_is_registered_before_its_lab_run() -> None:
     assert "VALIDADO" in p.pass_rule and "NO VALIDADO" in p.reject_rule and "INSUFICIENTE" in p.reject_rule
     assert "1.500 partidos" in p.min_sample and "60 días" in p.min_sample
     assert proto.stamp("AD-B07")["fingerprint"] == PINNED["AD-B07"]
+
+
+def test_the_validation_board_is_registered_before_it_reads_any_outcome() -> None:
+    """AD-K02 (IA-113): the board's thresholds, its yardstick and its correction, fixed before the board looks at a result."""
+    p = proto.require("AD-K02")
+    assert p.version == "proto-ad-k02-v1" and p.seed == 20261117
+    assert "Bonferroni" in p.primary_metric and "+6,24 %" in p.pass_rule and "ECE" in p.pass_rule
+    assert proto.stamp("AD-K02")["fingerprint"] == PINNED["AD-K02"]

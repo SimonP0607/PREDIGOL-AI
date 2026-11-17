@@ -1,41 +1,34 @@
 """The AI layer's calendar: its day and its month are Bogotá's (America/Bogota, the product's day), never UTC.
 
 A day of work starts at 00:05 Bogotá (``fbi.ai.day``); the budget's day and month are cut at Bogotá midnight
-(``fbi.ai.usage``); the learning reads the finished Bogotá day."""
+(``fbi.ai.usage``); the learning reads the finished Bogotá day. The functions live in ``fbi.core.calendar`` (a leaf, so the
+cycle's readers outside the AI layer can use them without importing it); this module keeps the AI layer's name for them."""
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
+from fbi.core.calendar import (
+    DAY_TZ as DAY_TZ,
+)
+from fbi.core.calendar import (
+    day_bounds as day_bounds,
+)
+from fbi.core.calendar import (
+    day_start as day_start,
+)
+from fbi.core.calendar import (
+    days_in_month as days_in_month,
+)
+from fbi.core.calendar import (
+    days_left_in_month as days_left_in_month,
+)
+from fbi.core.calendar import (
+    local_day as local_day,
+)
+from fbi.core.calendar import (
+    month_start as month_start,
+)
+from fbi.core.calendar import (
+    next_month as next_month,
+)
 
-DAY_TZ = ZoneInfo("America/Bogota")
-
-
-def local_day(at: datetime) -> date:
-    return at.astimezone(DAY_TZ).date()
-
-
-def day_start(day: date) -> datetime:
-    return datetime.combine(day, time(0), tzinfo=DAY_TZ)
-
-
-def day_bounds(day: date) -> tuple[datetime, datetime]:
-    return day_start(day), day_start(day + timedelta(days=1))
-
-
-def month_start(day: date) -> date:
-    return day.replace(day=1)
-
-
-def next_month(day: date) -> date:
-    first = day.replace(day=1)
-    return (first + timedelta(days=32)).replace(day=1)
-
-
-def days_left_in_month(day: date) -> int:
-    """Days from ``day`` to the end of its month, ``day`` included (at least 1)."""
-    return max(1, (next_month(day) - day).days)
-
-
-def days_in_month(day: date) -> int:
-    return (next_month(day) - month_start(day)).days
+__all__ = ["DAY_TZ", "day_bounds", "day_start", "days_in_month", "days_left_in_month", "local_day", "month_start", "next_month"]

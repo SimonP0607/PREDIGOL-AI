@@ -21,7 +21,7 @@ from typing import Any, Final
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.ai.calendar import day_bounds
+from fbi.core.calendar import day_bounds
 from fbi.lifecycle import machine
 from fbi.lifecycle.machine import Step
 from fbi.lifecycle.store import WRITER

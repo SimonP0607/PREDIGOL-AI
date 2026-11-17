@@ -25,6 +25,11 @@ from fbi.api.contracts.intelligence.projection import (
 )
 from fbi.api.contracts.intelligence.reference import ConventionsSample, ConventionsSamplePrivate
 from fbi.api.contracts.intelligence.search import SearchV2, SearchV2Private
+from fbi.api.contracts.intelligence.selection import (
+    SelectionIntelligence,
+    SelectionIntelligencePrivate,
+)
+from fbi.api.contracts.intelligence.tracking import Tracking
 
 PROFILE_PUBLIC_ROUTES: Final = ("/api/v1/teams/{team_id}/profile", "/api/v1/players/{player_id}/profile",
                                  "/api/v1/competitions/{competition_id}/profile")
@@ -94,6 +99,10 @@ CONTRACTS: Final[tuple[ContractSpec, ...]] = (
     ContractSpec(private=MatchIntelligencePrivate, public=MatchIntelligence,
                  public_routes=("/api/v1/matches/{fixture_id}/intelligence",),
                  private_routes=("/api/v1/admin/intelligence/matches/{fixture_id}/intelligence",)),
+    ContractSpec(private=SelectionIntelligencePrivate, public=SelectionIntelligence,
+                 public_routes=("/api/v1/picks/{pick_id}/explanation",),
+                 private_routes=("/api/v1/admin/intelligence/decisions/{decision_id}",)),
+    ContractSpec(private=Tracking, public=None, private_routes=("/api/v1/admin/intelligence/tracking",)),
     ContractSpec(private=ConsoleContract, public=None, private_routes=("/api/v1/admin/intelligence/console",)),
     ContractSpec(private=AlertsContract, public=None, private_routes=("/api/v1/admin/intelligence/alerts",)),
     ContractSpec(private=SearchV2Private, public=SearchV2, public_routes=("/api/v1/search/v2",),

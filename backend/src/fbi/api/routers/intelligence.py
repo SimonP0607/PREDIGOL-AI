@@ -13,14 +13,17 @@ from fastapi import APIRouter, Depends, Path, Query
 from fbi.api.contracts.intelligence.alerts import AlertsContract
 from fbi.api.contracts.intelligence.console import ConsoleContract
 from fbi.api.contracts.intelligence.match import MatchIntelligencePrivate
+from fbi.api.contracts.intelligence.tracking import Tracking
 from fbi.api.deps import get_db
-from fbi.api.envelope import Envelope
+from fbi.api.envelope import Envelope, ok
 from fbi.api.services import capabilities as capabilities_svc
 from fbi.api.services import families as families_svc
 from fbi.api.services import intelligence as svc
 from fbi.api.services import intelligence_alerts as alerts_svc
 from fbi.api.services import intelligence_console as console_svc
 from fbi.api.services import match_intelligence
+from fbi.api.services import tracking as tracking_svc
+from fbi.lifecycle.machine import State as LifecycleState
 
 router = APIRouter(tags=["admin: predigol intelligence"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
@@ -51,7 +54,9 @@ def get_decisions(conn: Db, day: Day = None, state: State | None = None, market:
 def get_decision(conn: Db, decision_id: Annotated[int, Path(ge=1, le=2**62)]) -> Envelope[dict[str, Any]]:
     """One decision whole: the model and its version, the calibrator, the market, price and bookmaker, the ten
     filters, the score and the stake with their components, the AI's review and the evidence, the outcome, the
-    post-mortem and the selection's history."""
+    post-mortem and the selection's history - and, under ``intelligence``, contract C-02 «Selección» in its private
+    projection (AD-J03, IA-114: why, against, what it depends on, how it settles, versions, sources, the market's
+    validation, the cycle's state and the price with its age). Every key it had before is unchanged."""
     return svc.decision_detail(conn, decision_id)
 
 
@@ -182,3 +187,20 @@ def get_console(conn: Db) -> Envelope[ConsoleContract]:
     ceiling, the safety controls (the newest battery, the leakage audit, the gates with their real verdict, the schema) and the news engine and
     the private alerts' queue as absent with their reason. Reading only: it shows every switch and changes none."""
     return console_svc.console(conn)
+
+
+TrackingFamily = Literal["core", "corners", "cards", "goals_halves"]
+
+
+@router.get("/intelligence/tracking", response_model=Envelope[Tracking])
+def get_tracking(conn: Db, state: LifecycleState | None = None, family: TrackingFamily | None = None,
+                 competition: Annotated[int | None, Query(ge=1, le=2**62)] = None,
+                 date_from: Annotated[date | None, Query(alias="from", description="First Bogotá day of kick-off.")] = None,
+                 date_to: Annotated[date | None, Query(alias="to", description="Last Bogotá day of kick-off (31 days at most).")] = None,
+                 cursor: Annotated[int | None, Query(ge=1, le=2**62)] = None,
+                 limit: Annotated[int, Query(ge=1, le=200)] = 50) -> Envelope[Tracking]:
+    """C-03 «Seguimiento privado» (AD-J04, IA-115): the selections in the shadow by state of the cycle (the ten states, zero included),
+    the sample each family accumulates against the sample the validation board needs (AD-K02), and the selections themselves with their
+    figure, price, evaluation step, result and CLV, filtered and paged by the server. Reading only."""
+    return ok(tracking_svc.tracking(conn, date_from=date_from, date_to=date_to, state=state, family=family,
+                                    competition_id=competition, cursor=cursor, limit=limit))
