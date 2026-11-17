@@ -17,7 +17,7 @@ import psycopg
 import pytest
 from scripts import ia_decision_v2 as cli
 
-from fbi.decision import book_price, engine, replay
+from fbi.decision import book_price, engine, price_age, replay
 from fbi.decision.book_price import CAPTURE, REFRESH, Answer, BookReader, Indexed, Quoted, TaggedAsk
 from fbi.decision.families import CORE, FORECAST_FAMILIES, Candidate
 from fbi.domain.market_probability import DevigMethod
@@ -284,7 +284,9 @@ def test_the_replay_refuses_an_unknown_price_and_the_book_without_its_store() ->
 def test_the_command_takes_the_price_source_and_prints_it() -> None:
     args = cli.build_parser().parse_args(["replay", "--day", "2026-11-10", "--price", "book", "--raw", "/data/raw"])
     assert (args.price, args.raw) == ("book", "/data/raw")
-    assert cli.build_parser().parse_args(["replay", "--day", "2026-11-10"]).price == engine.CONSENSUS, "the default is decision-v1's price"
+    plain_args = cli.build_parser().parse_args(["replay", "--day", "2026-11-10"])
+    assert (plain_args.price, plain_args.rules) == (None, engine.RULES_V20)
+    assert replay.price_of(plain_args.rules, plain_args.price) == engine.CONSENSUS, "the default is decision-v1's price"
     w = world()
     [d] = engine.decide_all(w, book_price.priced([Candidate(CORE, KEY, {MODEL: pick()})], {FIXTURE: answer()}, family=CORE.name),
                             closes={KEY: engine.Close(2.1, 0.5, 6, AT, 9.0, REFRESH, None, None, book_price.VERSION)})
@@ -294,10 +296,200 @@ def test_the_command_takes_the_price_source_and_prints_it() -> None:
     assert "price: book, 1/1 decisions with a price, 0 without its age" in text and "confirmed by {'refresh': 1}" in text
     assert "close: 1 decisions, minutes to kick-off p50 9.0" in text and "book read: 1 matches, 2 bodies" in text
     plain = cli.render_price(replay.price_summary(pairs_of([engine.decide(w, Candidate(CORE, KEY, {MODEL: pick()}))]), source=engine.CONSENSUS))
-    assert len(plain) == 1 and plain[0].startswith("  price: consensus")
+    assert len(plain) == 2 and plain[0].startswith("  price: consensus")
+    assert plain[1] == "    price states {'vigente': 1} under price-age-v1: 0/1 priced past their limit (0.00%)"
 
 
 def test_the_command_reads_with_a_timeout_only_with_the_book() -> None:
     text = Path(cli.__file__).read_text(encoding="utf-8")
     assert "statement_timeout=95000" in cli.BOOK_TIMEOUT and "default_transaction_read_only=on" in cli.READ_ONLY
     assert "BOOK_TIMEOUT}\" if book else READ_ONLY" in text
+
+
+# -- decision-v2.1: the book's price and the age rule by horizon (plan 2026, AD-B06, IA-067) -------------------------------------------------
+
+V2 = price_age.V2
+
+
+def limit_at(minutes_to_kickoff: float) -> float:
+    return V2.limit(minutes_to_kickoff, decision.checkpoint_of(minutes_to_kickoff, important=False, lineups=False)).market.total_seconds() / 60
+
+
+@pytest.mark.parametrize(("minutes", "limit"), [(44, 45), (45, 75), (46, 75), (344, 75), (345, 195), (346, 195), (10, 45), (2160, 195)])
+def test_each_band_starts_15_minutes_before_the_ask_that_opens_it(minutes: float, limit: float) -> None:
+    assert limit_at(minutes) == limit
+
+
+@pytest.mark.parametrize("minutes", [44, 45, 46, 344, 345, 346])
+def test_a_price_as_old_as_its_limit_is_in_force_and_a_second_older_is_not(minutes: float) -> None:
+    cp = decision.checkpoint_of(minutes, important=False, lineups=False)
+    lim = V2.limit(minutes, cp).market
+    at_limit = V2.check(priced=True, age=lim, minutes_to_kickoff=minutes, checkpoint=cp)
+    over = V2.check(priced=True, age=lim + timedelta(seconds=1), minutes_to_kickoff=minutes, checkpoint=cp)
+    assert (at_limit.state, at_limit.reason, at_limit.max_age_minutes) == (price_age.VIGENTE, None, limit_at(minutes))
+    assert (over.state, over.reason, over.rule) == (price_age.ANTIGUO, price_age.OVER_LIMIT, "price-age-v2")
+
+
+def test_the_rule_travels_as_data_with_its_version_bands_lead_and_states() -> None:
+    js = V2.as_json()
+    assert js["version"] == "price-age-v2" and js["lead_minutes"] == 15.0 and js["require_age"] is True
+    assert [(b["name"], b["from_minutes"], b["to_minutes"], b["max_age_minutes"], b["nominal_from_minutes"]) for b in js["bands"]] == [
+        ("far", 345.0, None, 195.0, 360.0), ("near", 45.0, 345.0, 75.0, 60.0), ("last", 0.0, 45.0, 45.0, 0.0)]
+    assert js["states"] == ["vigente", "antiguo", "sin_precio"] and js["final_rule"] == "band"
+    assert json.loads(json.dumps(js)) == js, "plain JSON, for the contracts"
+    rs = engine.RULESETS[engine.RULES_V21].as_json()
+    assert (rs["label"], rs["price"], rs["age"]["version"]) == ("decision-v2.1", "book", "price-age-v2")
+
+
+def test_decision_v2_0_keeps_decision_v1s_limits_imported_not_copied() -> None:
+    v1 = price_age.V1
+    assert v1.bands[0].max_age is decision.MAX_PRICE_AGE and v1.final_max_age is decision.FINAL_FRESH and not v1.require_age
+    assert engine.DEFAULT_RULES is engine.RULESETS[engine.RULES_V20] and engine.DEFAULT_RULES.price == engine.CONSENSUS
+    assert engine.DEFAULT_RULES.age is v1 and v1.flat
+    assert v1.limit(59, "T-60m").final == decision.FINAL_FRESH and v1.limit(300, "T-6h").final is None
+
+
+def booked(**kw: Any) -> dict[str, Any]:
+    """A core candidate's row priced by the book (its price and age as ``pick`` gives them)."""
+    return pick(**kw) | {"price_source": engine.BOOK, "price_confirmed_by": REFRESH, "price_missing": None}
+
+
+def decide_at(minutes: float, age: timedelta | None, rules: engine.Ruleset = engine.DEFAULT_RULES) -> engine.Decision2:
+    row = booked(kickoff=timedelta(minutes=minutes), price_age=age or timedelta(0))
+    if age is None:
+        row["price_at"] = None
+    return engine.decide(world(), Candidate(CORE, KEY, {MODEL: row}), rules=rules)
+
+
+V21 = engine.RULESETS[engine.RULES_V21]
+
+
+def test_the_default_ruleset_decides_as_before_and_says_so() -> None:
+    for minutes, age in ((300, 20), (300, 190), (59, 40), (2000, 150)):
+        plain = engine.decide(world(), Candidate(CORE, KEY, {MODEL: booked(kickoff=timedelta(minutes=minutes), price_age=timedelta(minutes=age))}))
+        assert plain == decide_at(minutes, timedelta(minutes=age)), "decision-v2.0 is the default"
+        assert plain.rules == engine.RULES_V20 and plain.price.age_rule == "price-age-v1"
+    assert decide_at(300, timedelta(minutes=190)).verdict("market").why == "precio de hace 3.2 h", "decision-v1's words, as before"
+    assert decide_at(59, timedelta(minutes=40)).reason == "price_not_fresh"
+
+
+def test_far_from_kick_off_195_minutes_pass_where_decision_v1_stops_at_3_hours() -> None:
+    old, new = decide_at(346, timedelta(minutes=190)), decide_at(346, timedelta(minutes=190), V21)
+    assert "price_stale" in old.codes and old.price.state == price_age.ANTIGUO
+    assert "price_stale" not in new.codes and new.verdict("market").ok is True
+    assert (new.rules, new.price.state, new.price.band, new.price.max_age_minutes) == ("decision-v2.1", "vigente", "far", 195.0)
+
+
+def test_between_345_and_45_minutes_a_price_older_than_75_minutes_is_old() -> None:
+    d = decide_at(344, timedelta(minutes=100), V21)
+    assert d.state == "WATCH" and d.reason == "price_stale" and d.price.state == price_age.ANTIGUO
+    assert d.verdict("market").why == "precio de hace 100 min: máximo 75 min a 344 min del saque (price-age-v2)"
+    assert d.verdict("market").data["band"] == "near"
+    assert "price_stale" not in decide_at(344, timedelta(minutes=100)).codes, "decision-v1 accepted it (3 h)"
+
+
+def test_at_the_t60_checkpoint_a_late_refresh_does_not_age_the_price_and_stage_9_holds_the_band() -> None:
+    # a decision at 59 min reads the refresh of T-120 (about 65 min old) while the one of T-60 is late: decision-v1's 30 min refuse it
+    old, new = decide_at(59, timedelta(minutes=65)), decide_at(59, timedelta(minutes=65), V21)
+    assert old.checkpoint == new.checkpoint == "T-60m" and old.reason == "price_not_fresh"
+    assert "price_not_fresh" not in new.codes and new.verdict("price").ok is True and new.price.max_age_minutes == 75.0
+    late = decide_at(30, timedelta(minutes=50), V21)
+    assert {"price_stale", "price_not_fresh"} <= set(late.codes) and late.state == "WATCH"
+    assert late.verdict("price").why == "precio de hace 50 min en T-60m (máximo 45 min, price-age-v2)"
+
+
+def test_a_price_without_its_age_is_old_under_the_new_rule_and_says_why() -> None:
+    d = decide_at(300, None, V21)
+    assert d.reason == "price_stale" and (d.price.state, d.price.state_reason) == (price_age.ANTIGUO, price_age.NO_AGE)
+    assert d.verdict("market").why == "precio sin edad: no se puede comprobar (price-age-v2)"
+    assert "price_stale" not in decide_at(300, None).codes, "decision-v1's rule never asked for an age"
+
+
+def test_without_a_price_the_state_is_sin_precio_with_the_books_own_reason() -> None:
+    [c] = book_price.priced([Candidate(CORE, KEY, {MODEL: pick()})], {FIXTURE: answer(state="withdrawn", prices={})}, family=CORE.name)
+    d = engine.decide(world(), c, rules=V21)
+    assert (d.state, d.reason, d.price.state, d.price.state_reason) == ("REJECTED", "no_price", price_age.SIN_PRECIO, "withdrawn")
+    plain = engine.decide(world(), Candidate(CORE, KEY, {MODEL: booked(odds=None)}), rules=V21)
+    assert (plain.price.state, plain.price.state_reason, plain.price.age_rule) == (price_age.SIN_PRECIO, price_age.NO_PRICE, "price-age-v2")
+    js = d.as_json()
+    assert js["rules"] == "decision-v2.1" and (js["price"]["state"], js["price"]["age_rule"]) == ("sin_precio", "price-age-v2")
+
+
+def test_the_new_ruleset_judges_the_book_price_with_its_age() -> None:
+    [c] = book_price.priced([Candidate(CORE, KEY, {MODEL: pick()})], {FIXTURE: answer(checked_at=AT - timedelta(minutes=190))}, family=CORE.name)
+    assert "price_stale" in engine.decide(world(), c).codes, "decision-v1's 3 h"
+    d = engine.decide(world(), c, rules=V21)
+    assert d.price.source == engine.BOOK and d.price.state == price_age.ANTIGUO and d.price.max_age_minutes == 75.0, "5 h: the near band"
+
+
+# -- the replay: the ruleset, the other rulesets, the states -------------------------------------------------------------------------------
+
+def test_a_ruleset_brings_its_price_and_a_variant_names_another() -> None:
+    assert replay.price_of(engine.RULES_V21, None) == engine.BOOK and replay.price_of(engine.RULES_V21, engine.CONSENSUS) == engine.CONSENSUS
+    assert replay.variant("decision-v2.0") == ("decision-v2.0", "consensus") and replay.variant("decision-v2.0:book") == ("decision-v2.0", "book")
+    with pytest.raises(ValueError, match="rules must be one of"):
+        replay.variant("decision-v9")
+    with pytest.raises(ValueError, match="price must be one of"):
+        replay.variant("decision-v2.0:mercado")
+    nothing = cast(psycopg.Connection[Any], None)
+    with pytest.raises(ValueError, match="RAW store"):
+        replay.replay_day(nothing, day=AT.date(), rules=engine.RULES_V21)
+    with pytest.raises(ValueError, match="RAW store"):
+        replay.replay_day(nothing, day=AT.date(), against=["decision-v2.0:book"])
+
+
+def test_versus_counts_the_changes_by_stage_and_direction_and_none_to_recommended() -> None:
+    w = world()
+    rows = [(346, 190), (344, 100), (59, 65), (300, 20)]
+    items: list[replay.Versus] = []
+    for i, (minutes, age) in enumerate(rows, 1):
+        c = Candidate(CORE, KEY, {MODEL: booked(kickoff=timedelta(minutes=minutes), price_age=timedelta(minutes=age))})
+        items.append(({"id": i, "known_at": AT, "fixture_id": FIXTURE, "market_key": "1X2", "selection": "Home", "line": 0}, "core",
+                      engine.decide(w, c, rules=V21), engine.decide(w, c)))
+    items.append(({"id": 9, "known_at": AT, "fixture_id": FIXTURE, "market_key": "1X2", "selection": "Home", "line": 0}, "core", None, None))
+    v = replay.versus_summary(items, main=("decision-v2.1", "book"), other=("decision-v2.0", "consensus"))
+    assert (v["main"], v["other"], v["rows"], v["changed"]) == ("decision-v2.1:book", "decision-v2.0:consensus", 4, 3)
+    assert v["transitions"] == {"WATCH -> RECOMMENDED": 1, "RECOMMENDED -> WATCH": 1, "CAUTION -> RECOMMENDED": 1}
+    assert v["by_stage"] == {"market": 2, "price": 1} and v["by_stage_direction"] == {"market:baja": 1, "market:sube": 1, "price:sube": 1}
+    assert (v["up"], v["down"], v["to_recommended"]) == (2, 1, 2), "a toy world approves everything else; production's edge gate does not"
+    assert v["price_state_changes"] == {"antiguo -> vigente": 2, "vigente -> antiguo": 1}
+    assert v["other_price_states"]["rules"] == ["price-age-v1"] and v["other_price_states"]["old"] == 2
+    assert v["examples"][1]["why"] == "precio de hace 100 min: máximo 75 min a 344 min del saque (price-age-v2)"
+
+
+def test_the_price_section_counts_the_states_by_band_and_the_share_past_the_limit() -> None:
+    w = world()
+    decided = [engine.decide(w, Candidate(CORE, KEY, {MODEL: booked(kickoff=timedelta(minutes=m), price_age=timedelta(minutes=a))}), rules=V21)
+               for m, a in ((400, 20), (400, 200), (100, 30), (30, 10))]
+    decided.append(engine.decide(w, Candidate(CORE, KEY, {MODEL: booked(odds=None)}), rules=V21))
+    s = replay.price_summary(pairs_of(decided), source=engine.BOOK)["states"]
+    assert s["rules"] == ["price-age-v2"] and s["by_state"] == {"antiguo": 1, "sin_precio": 1, "vigente": 3}
+    assert s["by_band"] == {"far": {"antiguo": 1, "vigente": 1}, "last": {"vigente": 1}, "near": {"sin_precio": 1, "vigente": 1}}
+    assert (s["priced"], s["old"], s["old_rate"]) == (4, 1, 0.25) and s["reasons"] == {"antiguo:over_limit": 1, "sin_precio:no_price": 1}
+    assert "by_source" not in s, "one source: no breakdown"
+    family = engine.decide(w, Candidate(CORE, KEY, {MODEL: pick(price_age=timedelta(minutes=200))}), rules=V21)
+    mixed = replay.price_summary(pairs_of([*decided, family]), source=engine.BOOK)["states"]
+    assert mixed["rules"] == ["price-age-v1", "price-age-v2"] and set(mixed["by_source"]) == {"book", "consensus"}
+    assert mixed["by_source"]["book"]["old_rate"] == 0.25 and mixed["by_source"]["consensus"]["by_band"] == {"any": {"antiguo": 1}}
+
+
+def test_the_rule_by_horizon_judges_only_the_books_prices_the_others_keep_decision_v1s() -> None:
+    assert V21.age_for(engine.BOOK) is price_age.V2 and V21.age_for(engine.CONSENSUS) is price_age.V1
+    assert engine.DEFAULT_RULES.age_for(engine.BOOK) is price_age.V1, "decision-v2.0 judges every price by decision-v1's rule"
+    own = Candidate(CORE, KEY, {MODEL: pick(kickoff=timedelta(minutes=344), price_age=timedelta(minutes=100))})
+    d = engine.decide(world(), own, rules=V21)
+    assert d.price.age_rule == "price-age-v1" and "price_stale" not in d.codes and d.rules == "decision-v2.1"
+    assert engine.decide(world(), own) == replace(d, rules=engine.RULES_V20), "a price not from the book: the same decision"
+    js = V21.as_json()
+    assert (js["age_sources"], js["other_sources_age"]) == (["book"], "price-age-v1")
+
+
+def test_the_command_takes_the_ruleset_and_the_rulesets_against_and_reads_the_book_only_when_one_needs_it() -> None:
+    args = cli.build_parser().parse_args(["replay", "--day", "2026-11-14", "--rules", "decision-v2.1", "--against", "decision-v2.0",
+                                          "--against", "decision-v2.0:book"])
+    assert (args.rules, args.price, args.against) == ("decision-v2.1", None, ["decision-v2.0", "decision-v2.0:book"])
+    assert cli.needs_book(None, "decision-v2.1", []) and cli.needs_book(None, "decision-v2.0", ["decision-v2.0:book"])
+    assert not cli.needs_book(None, "decision-v2.0", ["decision-v2.0"]) and not cli.needs_book("consensus", "decision-v2.1", [])
+    v = {"changed": 1, "rows": 4, "up": 0, "down": 1, "to_recommended": 0, "transitions": {"CAUTION -> WATCH": 1}, "by_stage": {"market": 1},
+         "price_state_changes": {}, "examples": []}
+    assert cli.render_versus("decision-v2.0:consensus", v)[0].startswith("  versus decision-v2.0:consensus: 1/4 changed state (0 up, 1 down")

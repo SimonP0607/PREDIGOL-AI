@@ -13,5 +13,7 @@ SHADOW. This package computes and reports. Nothing that decides, publishes, stak
 whose ``replay`` recomputes a day's decisions and compares them with decision-v1 and decision-fam-v1 (``replay``) - the
 evidence of the P1 gate. It writes nothing. The core's price is decision-v1's consensus of a capture by default; the replay
 can price it instead as the odds book held it at each moment, with its age and the book's last price before kick-off
-(``book_price``, plan INT-A06).
+(``book_price``, plan INT-A06). Its rules are versioned (``engine.RULESETS``): ``decision-v2.0``, the default, judges the price's age
+by decision-v1's rule; ``decision-v2.1`` takes the book's price by default and judges its age by horizon, 195/75/45 min with each
+band's edge 15 min early (``price_age``, plan 2026 AD-B06), in shadow.
 """
