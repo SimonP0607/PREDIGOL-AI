@@ -8,13 +8,14 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.audit import MatchAudit
 from fbi.api.contracts.catalog import CompetitionDetail, CompetitionSummary, TeamDetail, TeamSummary
+from fbi.api.contracts.intelligence.search import SearchV2, SearchV2Private
 from fbi.api.contracts.matches import MatchDetail, MatchSummary, MatchView
 from fbi.api.contracts.rankings import Rankings
 from fbi.api.contracts.search import SearchHit
 from fbi.api.deps import get_db
-from fbi.api.envelope import Envelope
+from fbi.api.envelope import Envelope, ok
 from fbi.api.repositories.fixtures import FixtureFilter
-from fbi.api.services import audit, catalog, matches
+from fbi.api.services import audit, catalog, matches, search_v2
 from fbi.api.services import rankings as rankings_service
 from fbi.api.services import search as search_service
 
@@ -104,6 +105,23 @@ def get_search(
     limit: Annotated[int, Query(ge=1, le=20)] = 8,
 ) -> Envelope[list[SearchHit]]:
     return search_service.search(conn, q, limit)
+
+
+SearchQuery = Annotated[str, Query(min_length=2, max_length=60)]
+
+
+@router.get("/search/v2", response_model=Envelope[SearchV2])
+def get_search_v2(conn: Db, q: SearchQuery) -> Envelope[SearchV2]:
+    """C-10 (AD-I02): the search in groups - teams, national teams, players, competitions, coaches, referees, stadiums,
+    matches and news - in three passes (prefix, words, trigrams), up to 8 per group, with the aliases in force. Additive:
+    /search keeps its list."""
+    return ok(search_v2.public_answer(conn, q))
+
+
+@admin_router.get("/search/v2", response_model=Envelope[SearchV2Private])
+def get_search_v2_private(conn: Db, q: SearchQuery) -> Envelope[SearchV2Private]:
+    """C-10, private projection: each hit's score, popularity and rank, and the state of the index (for calibrating)."""
+    return ok(search_v2.private_answer(conn, q))
 
 
 @admin_router.get("/rankings", response_model=Envelope[Rankings | None])
