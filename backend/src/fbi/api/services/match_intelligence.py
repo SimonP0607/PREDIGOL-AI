@@ -19,6 +19,12 @@ What the PUBLIC fields carry is, by construction, what a reader is already shown
 The PRIVATE fields add the decision layer's shadow (``decision-v1``, read, never called: ``fbi.intel.decision`` is not
 imported), the model's own numbers, the AI's latest brief, the chronicle whatever the switch, and every web item of the match
 whatever its status or language. No model is called, no probability is computed - a percentage is only rounded, once, by ``Probability.of``.
+
+The private projection also carries ``single_figure`` (AD-B05, IA-083): the single figure of every goals market (``forecast-v2``), as
+``fbi.forecasting.market_reader.figures_at`` makes it as of the answer's moment - the same function decision-v2 judges with
+``--view-version forecast-v2`` and the new texts cite. It is read only for the private answer (``private``), never for the public one, and
+a failure to read it is said in the block (``sin_datos``), never in the rest of the answer. It computes no new arithmetic: it is the
+function's figure, rounded once by ``Probability.of``.
 """
 
 from __future__ import annotations
@@ -30,6 +36,8 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final, cast, get_args
 
+import structlog
+
 from fbi.api.contracts.intelligence.base import (
     Freshness,
     ItemList,
@@ -40,6 +48,7 @@ from fbi.api.contracts.intelligence.base import (
 )
 from fbi.api.contracts.intelligence.match import (
     DECISION_ORIGIN,
+    FIGURE_ORIGIN,
     FORECAST_ORIGIN,
     Brief,
     ChronicleSection,
@@ -62,6 +71,7 @@ from fbi.api.contracts.intelligence.match import (
     SideForm,
     SideLineup,
     SideStakes,
+    SingleFigure,
     TeamRef,
     Zone,
     ZoneGap,
@@ -78,6 +88,11 @@ from fbi.api.services import reading as reading_service
 from fbi.api.switches import match_intelligence_on
 from fbi.core.clock import now
 from fbi.core.decision_versions import DECISION_CORE
+from fbi.forecasting.market_reader import figures_at
+from fbi.forecasting.single_figure import FigureSet
+from fbi.intel.calibration import calibration_state
+
+log = structlog.get_logger(__name__)
 
 SIDES: Final = ("home", "away")
 PHASES: Final[dict[str, MatchPhase]] = {"scheduled": "previo", "live": "en_juego", "finished": "terminado",
@@ -249,6 +264,26 @@ def figures(rows: Sequence[Mapping[str, Any]], *, readers_see: bool) -> list[Out
             readers_see=readers_see))
     order = {"1X2": 0, "OU": 1, "BTTS": 2}
     return sorted(out, key=lambda f: (order[f.market], f.line))
+
+
+def single_figures(fs: FigureSet | None, *, at: datetime) -> list[SingleFigure]:
+    """Every single figure of the match (``forecast-v2``), in the order of the menu, each rounded once by ``Probability.of``
+    (0 decimals, its interval in points). Pure."""
+    if fs is None:
+        return []
+    order = {m: i for i, m in enumerate(("1X2", "DC", "DNB", "BTTS", "OU", "AH", "OU_HOME", "OU_AWAY", "EH"))}
+    out: list[SingleFigure] = []
+    for f in sorted(fs.figures.values(), key=lambda f: (order.get(f.market_key, 99), f.line, f.selection)):
+        p = round(f.p, 6)
+        out.append(SingleFigure(
+            market=f.market_key, selection=f.selection, line=float(f.line),
+            probability=Probability.of(
+                p, calibration="calibrada" if f.calibration == "CALIBRATED" else "sin_calibrar", as_of=at, origin=FIGURE_ORIGIN,
+                evaluation=NO_EVALUATION, evaluation_version=NO_EVALUATION, interval=_pct_band(p, f.lo, f.hi)),
+            push=round(f.push, 6), model=f.model,
+            basis=cast(ForecastBasis, f.basis if f.basis in get_args(ForecastBasis) else "not_applicable"),
+            source=cast(Any, f.source), price_as_of=NO_DATA if f.price_as_of is None else f.price_as_of, reading_id=f.reading_id))
+    return out
 
 
 def _why_no_figure(fixture: Mapping[str, Any] | None) -> Missing:
@@ -494,14 +529,35 @@ class Inputs:
     lineups: Sequence[Mapping[str, Any]] = ()
     brief: Mapping[str, Any] | None = None
     forecast_shown: bool = True
+    figures: FigureSet | None = None
+    """The single figure (``forecast-v2``), read for the private answer only."""
+    figures_missing: Missing = field(default_factory=lambda: NO_DATA)
+    """Why there is no single figure: ``sin_cobertura`` for a match the models do not forecast, ``sin_datos`` otherwise."""
     reading_shown: bool = True
     narrative_shown: bool = False
     news_shown: bool = True
 
 
-def read(conn: Conn, fixture_id: int, *, at: datetime | None = None) -> Inputs:
+def read_figures(conn: Conn, fixture_id: int, *, at: datetime) -> tuple[FigureSet | None, Missing]:
+    """The single figure of the match as of ``at`` and, without one, why. A match whose competition's data is not fit for a model or
+    that is quarantined gets none (the gate of every forecast); a defect reading it is said, never raised. Reading only."""
+    fit = fetch_one(conn, forecast_service.FIXTURE_SQL, {"f": fixture_id})
+    if fit is not None and (fit.get("data_class") in forecast_service.NOT_FIT or fit.get("quarantined")):
+        return None, Missing(missing_reason="sin_cobertura")
+    try:
+        with conn.transaction():
+            found = figures_at(conn, [fixture_id], at=at, cal=calibration_state(conn, at=at)).get(fixture_id)
+    except Exception:  # the private answer is still served; the block says it has nothing
+        log.warning("match_intelligence.single_figure_failed", fixture_id=fixture_id, exc_info=True)
+        return None, NO_DATA
+    if found is None or not found.figures:
+        return None, NO_DATA
+    return found, NO_DATA
+
+
+def read(conn: Conn, fixture_id: int, *, at: datetime | None = None, shadow: bool = False) -> Inputs:
     """What one match's answer is made of as of ``at`` (now by default), and the switches that decide what a reader is
-    shown; 404 for an unknown match. Reading only."""
+    shown; 404 for an unknown match. ``shadow``: also the single figure (the private answer only). Reading only."""
     fx = fetch_one(conn, FIXTURE_SQL, {"f": fixture_id})
     if fx is None:
         raise ApiError(404, "not_found", "no such fixture")
@@ -509,6 +565,7 @@ def read(conn: Conn, fixture_id: int, *, at: datetime | None = None) -> Inputs:
     rows = fetch_all(conn, forecast_service.FORECAST_SQL,
                      {"f": fixture_id, "version": forecast_service.VERSION, "at": moment})
     basis = reading_service.reading_basis(conn, fixture_id, at=moment, fixture=fx)
+    figures, figures_missing = read_figures(conn, fixture_id, at=moment) if shadow else (None, NO_DATA)
     return Inputs(
         at=moment, fixture=fx, forecast_rows=rows,
         forecast_fixture=None if rows else fetch_one(conn, forecast_service.FIXTURE_SQL, {"f": fixture_id}),
@@ -520,6 +577,7 @@ def read(conn: Conn, fixture_id: int, *, at: datetime | None = None) -> Inputs:
         lineups=fetch_all(conn, LINEUPS_SQL, {"f": fixture_id}),
         brief=fetch_one(conn, BRIEF_SQL, {"f": fixture_id, "at": moment}),
         forecast_shown=forecast_service.users_may_see(), reading_shown=reading_service.users_may_see(),
+        figures=figures, figures_missing=figures_missing,
         narrative_shown=reading_service.narrative_mode() == "on", news_shown=news_service.users_may_see())
 
 
@@ -561,12 +619,13 @@ def assemble(x: Inputs) -> MatchIntelligencePrivate:
         brief=brief_of(x.brief),
         chronicle_preview=chronicle_of(x.narrative),
         evidence=_list(evidence(x.news_rows), NO_DATA),
+        single_figure=_list(single_figures(x.figures, at=x.at), x.figures_missing),
     )
 
 
-def build(conn: Conn, fixture_id: int, *, at: datetime | None = None) -> MatchIntelligencePrivate:
-    """The private answer of C-01 for one match as of ``at``."""
-    return assemble(read(conn, fixture_id, at=at))
+def build(conn: Conn, fixture_id: int, *, at: datetime | None = None, shadow: bool = False) -> MatchIntelligencePrivate:
+    """The private answer of C-01 for one match as of ``at`` (with the single figure when ``shadow``)."""
+    return assemble(read(conn, fixture_id, at=at, shadow=shadow))
 
 
 def _as_of(answer: MatchIntelligence) -> datetime | None:
@@ -584,6 +643,6 @@ def public(conn: Conn, fixture_id: int, *, at: datetime | None = None) -> Envelo
 
 
 def private(conn: Conn, fixture_id: int, *, at: datetime | None = None) -> Envelope[MatchIntelligencePrivate]:
-    """The private projection, for the Admin Console (``require_admin``): no switch."""
-    answer = build(conn, fixture_id, at=at)
+    """The private projection, for the Admin Console (``require_admin``): no switch. It carries the single figure."""
+    answer = build(conn, fixture_id, at=at, shadow=True)
     return ok(answer, data_as_of=_as_of(answer))

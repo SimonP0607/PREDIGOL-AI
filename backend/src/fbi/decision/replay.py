@@ -473,7 +473,8 @@ def _primary_p(world: decision.World, c: Candidate) -> float | None:
 
 def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[MarketFamily] = FAMILIES, council: str | None = None,
                signals: bool = False, view: bool = False, price: str | None = None, store: PayloadStore | None = None,
-               probability: str = engine.OWN, rules: str = engine.RULES_V20, against: Sequence[str] = ()) -> dict[str, Any]:
+               probability: str = engine.OWN, rules: str = engine.RULES_V20, against: Sequence[str] = (),
+               view_version: str = common_view.VERSIONS[0]) -> dict[str, Any]:
     """decision-v2 over every row decision-v1 and decision-fam-v1 wrote during ``day``, compared. ``price``: the core candidates' price as
     decision-v1 read it (``consensus``, the default) or as the odds book held it at each moment (``book``, which reads the bodies from the
     RAW ``store``). ``probability``: the core candidates' probability as decision-v1 judges it (``own``, the default) or the common view's
@@ -484,6 +485,8 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
     price = price_of(rules, price)
     main: Variant = (rules, price)
     others = [variant(a) for a in against]
+    if view_version not in common_view.VERSIONS:
+        raise ValueError(f"view_version must be one of {common_view.VERSIONS}")
     if probability not in engine.PROBABILITY_SOURCES:
         raise ValueError(f"probability must be one of {engine.PROBABILITY_SOURCES}")
     if any(p == engine.BOOK for _, p in (main, *others)) and store is None:
@@ -534,14 +537,15 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
                 if found is not None:
                     markets[c.ident] = found
         common = probability == engine.COMMON
-        views = common_view.read(conn, fixtures, at=at, cal=world.cal) if view or common else {}
-        judged = common_view.judged(cands, views, family=CORE.name) if common else cands
+        views = common_view.read(conn, fixtures, at=at, cal=world.cal, version=view_version) if view or common else {}
+        judged = common_view.judged(cands, views, family=CORE.name, version=view_version) if common else cands
         index = {d.ident: d for d in engine.decide_all(world, judged, adjustments=adjustments, markets=markets, views=views if view else None,
                                                        closes=closes, rules=ruleset)}
         own = ({d.ident: d for d in engine.decide_all(world, cands, adjustments=adjustments, markets=markets, closes=closes, rules=ruleset)}
                if common else {})
         alt = {variant_name(o): {d.ident: d for d in engine.decide_all(
-            world, common_view.judged(by_price[o[1]], views, family=CORE.name) if common else by_price[o[1]], adjustments=adjustments,
+            world, common_view.judged(by_price[o[1]], views, family=CORE.name, version=view_version) if common else by_price[o[1]],
+            adjustments=adjustments,
             markets=markets, closes=closes, rules=engine.RULESETS[o[0]])} for o in others}
         for r, fam in items:
             k = key_of(r)
@@ -561,6 +565,7 @@ def replay_day(conn: psycopg.Connection[Any], *, day: date, families: Sequence[M
     return {"version": engine.VERSION, "replay": VERSION, "day": day.isoformat(), "versions": versions,
             "rules": engine.RULESETS[rules].as_json(),
             "inputs": {"council": council, "signals": signals, "view": view, "price": price, "probability": probability, "rules": rules,
+                       "view_version": view_version,
                        "against": [variant_name(o) for o in others],
                        "previous": "strictly before known_at", "ai_mode": "as the rows recorded it"},
             "rows": len(rows), "moments": len(groups), "skipped": {"selection_copies": skipped_selection, "unclaimed": len(unclaimed)},

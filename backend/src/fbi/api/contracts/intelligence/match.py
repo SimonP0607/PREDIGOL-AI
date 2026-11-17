@@ -21,6 +21,10 @@ Absent with their reason (``no_entregado``): scenarios (AD-B02), the one chronic
 watch (AD-H07), and each outcome's price with its age (AD-B06). A figure's evaluation step is absent until AD-D06.
 The example of every case is in ``tests/fixtures/contracts/intelligence/C-01``; the owner's guide is
 ``docs/owner/IA_066_CONTRATO_PARTIDO.md``.
+
+1.1.0 (AD-B05, IA-083): the PRIVATE projection adds ``single_figure`` - the single figure (``forecast-v2``) of every goals
+market of the match, in the shadow, each with its seal, model, source and the id a text cites. The public projection does
+not change: a reader still sees ``forecast-v1`` until the owner signs the change (``docs/owner/IA_083_CIFRA_UNICA.md``).
 """
 
 from __future__ import annotations
@@ -49,6 +53,8 @@ from fbi.api.contracts.intelligence.vocab import (
 )
 
 FORECAST_ORIGIN: Final = "forecast-v1"
+FIGURE_ORIGIN: Final = "forecast-v2"
+"""The single figure (``fbi.forecasting.single_figure.VERSION``; a test holds the two equal)."""
 DECISION_ORIGIN: Final = "decision-v1"
 
 MatchPhase = Literal["previo", "en_juego", "terminado", "aplazado", "cancelado", "otro"]
@@ -61,6 +67,9 @@ OutcomeCode = Literal["home", "draw", "away", "over", "under", "yes", "no"]
 ForecastBasis = Literal["champion", "no_champion", "needs_price", "not_applicable"]
 """Why a figure is or is not calibrated (``market_view.BASIS_*``): a champion applied, no champion for the market, a
 champion that needs a fresh price and had none, or nothing to apply."""
+
+FigureSource = Literal["stored", "matrix", "result"]
+"""Where a single figure comes from: the model's stored row, its score matrix, or the 1X2 figure added up (an event of the result)."""
 
 Zone = Literal["title", "europe", "relegation", "promotion", "playoff", "other", "none"]
 """A zone of the table (``fbi.ai.context.zone_kind``, ``stakes-v5``); ``none``: the side sits in no zone."""
@@ -125,6 +134,22 @@ class OutcomeFigurePrivate(OutcomeFigure):
 
     def shown_in_public(self) -> bool:
         return self.readers_see
+
+
+class SingleFigure(IntelligenceModel):
+    """One selection's single figure (AD-B05, ``forecast-v2``): the probability that it wins with its seal, what returns the stake,
+    which model and source it comes from and the id a text cites. Private and in the shadow: no reader is shown it."""
+
+    market: str = Field(pattern=r"^[A-Z0-9_]{1,12}$")
+    selection: str = Field(min_length=1)
+    line: float = Field(description="The selection's own line (an Asian line is the side's).")
+    probability: Probability
+    push: float = Field(ge=0, le=1, description="The probability that it returns the stake (whole and quarter lines).")
+    model: str
+    basis: ForecastBasis
+    source: FigureSource
+    price_as_of: UtcDatetime | Missing = Field(description="When the price that calibrated it was captured.")
+    reading_id: str = Field(pattern=r"^[0-9a-f]{12}$", description="What a text cites: [cifra forecast-v2 <id>].")
 
 
 # ── context and form («Cómo llegan») ─────────────────────────────────────────────────────────────────────────────────
@@ -298,7 +323,7 @@ class MatchIntelligence(IntelligenceContract):
     """C-01, public projection (``GET /api/v1/matches/{fixture_id}/intelligence``, behind ``FBI_MATCH_INTELLIGENCE``)."""
 
     CONTRACT_ID: ClassVar[str] = "C-01"
-    CONTRACT_VERSION: ClassVar[str] = "1.0.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.1.0"
 
     match: MatchInfo
     probabilities: ItemList[OutcomeFigure] = Field(description="One figure per outcome: the one the decision reads.")
@@ -340,3 +365,6 @@ class MatchIntelligencePrivate(MatchIntelligence):
     chronicle_preview: ReaderChronicle | Missing = private(
         description="The chronicle of this story whether or not readers are shown it (FBI_USER_NARRATIVE).")
     evidence: ItemList[EvidenceRecord] = private(description="The web items of the match, newest first (60 at most).")
+    single_figure: ItemList[SingleFigure] = private(
+        description="The single figure of every goals market (forecast-v2, AD-B05), in the shadow: what decision-v2 and the new texts "
+                    "read. The public figures stay forecast-v1.")

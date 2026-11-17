@@ -36,6 +36,10 @@ from fbi.api.contracts.reading import (
 from fbi.api.services import match_intelligence as mi
 from fbi.api.services import news as news_service
 from fbi.api.switches import MATCH_INTELLIGENCE
+from fbi.forecasting import single_figure as sf
+from fbi.forecasting.market_view import Source
+from fbi.intel.calibration import CalibrationState
+from fbi.models.scoring import MARKET_ROWS, dc_tau, from_matrix, poisson_matrix
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "fixtures" / "contracts" / "intelligence" / "C-01"
 KO = datetime(2026, 11, 21, 23, 0, tzinfo=UTC)
@@ -139,19 +143,29 @@ LINEUPS = [{"team_side": "home", "formation": "4-3-3", "coach_name": "A. Ejemplo
            {"team_side": "away", "formation": "4-2-3-1", "coach_name": "B. Ejemplo", "fetched_at": KO - timedelta(minutes=21)}]
 
 
+def single_figures() -> sf.FigureSet:
+    """The single figure (forecast-v2) of the fictitious match: a Dixon-Coles at 1.6-1.0 goals and no champion, so every figure is
+    sin_calibrar (only the goals of each side at 1.5 and no European handicap, to keep the example short)."""
+    m = dc_tau(poisson_matrix(1.6, 1.0), 1.6, 1.0, -0.06)
+    rows = {sf.key_of(mk, s, line): Source("dixon_coles", 41, AT - timedelta(hours=6), "fh-ejemplo", round(p, 6), None, None, 0.0)
+            for (mk, s, line), p in zip(MARKET_ROWS, from_matrix(m, 1.6, 1.0).as_rows(), strict=True)}
+    return sf.figure_set(990100, {"dixon_coles": rows}, CalibrationState({}, {}, {}, {}), {}, team_lines=(Decimal("1.5"),),
+                         eh_lines=())
+
+
 def inputs(case: str) -> mi.Inputs:
     before = mi.Inputs(at=AT, fixture=fixture(), forecast_rows=FORECAST, packet=PACKET, content=CONTENT,
                        narrative=NARRATIVE, decisions=DECISIONS, set_items=[set_item("evaluation")], news_rows=NEWS,
-                       brief=BRIEF, narrative_shown=True)
+                       brief=BRIEF, narrative_shown=True, figures=single_figures())
     if case == "antes_del_partido":
         return before
     lineup_at = KO - timedelta(minutes=15)
     if case == "con_alineacion_oficial":
-        return replace(before, at=lineup_at, lineups=LINEUPS, packet=PACKET | {"as_of": lineup_at - timedelta(minutes=8)},
+        return replace(before, at=lineup_at, lineups=LINEUPS, figures=None, packet=PACKET | {"as_of": lineup_at - timedelta(minutes=8)},
                        set_items=[set_item("evaluation"), set_item("qualified")])
     if case == "terminado":
         over = KO + timedelta(hours=3)
-        return replace(before, at=over, fixture=fixture("FT", "finished"), lineups=LINEUPS, narrative_shown=False,
+        return replace(before, at=over, fixture=fixture("FT", "finished"), lineups=LINEUPS, narrative_shown=False, figures=None,
                        set_items=[set_item("evaluation", settled=over - timedelta(minutes=30)),
                                   set_item("qualified", settled=over - timedelta(minutes=30))])
     raise ValueError(case)
@@ -398,7 +412,13 @@ def reader_app(monkeypatch: pytest.MonkeyPatch, *, role: str = "USER") -> TestCl
     app = create_app()
     app.dependency_overrides[current_principal] = lambda: principal
     app.dependency_overrides[get_db] = lambda: None
-    monkeypatch.setattr(mi, "read", lambda conn, fixture_id, at=None: inputs("con_alineacion_oficial"))
+    asked: list[bool] = []
+    def read(conn: Any, fixture_id: int, at: datetime | None = None, shadow: bool = False) -> mi.Inputs:
+        asked.append(shadow)
+        return inputs("con_alineacion_oficial")
+
+    monkeypatch.setattr(mi, "read", read)
+    app.state.shadow_asked = asked
     return TestClient(app, raise_server_exceptions=False, headers={"sec-fetch-site": "same-origin"})
 
 
@@ -420,6 +440,7 @@ def test_with_the_switch_on_a_reader_gets_the_public_projection_only(monkeypatch
     assert answer.status_code == 200, answer.text
     data = answer.json()["data"]
     assert data == json.loads((EXAMPLES / "con_alineacion_oficial.public.json").read_text(encoding="utf-8"))
+    assert client.app.state.shadow_asked == [False], "the public answer never reads the single figure"  # type: ignore[attr-defined]
     assert client.get("/api/v1/admin/intelligence/matches/990100/intelligence").status_code == 403
 
 
@@ -431,3 +452,21 @@ def test_the_owner_gets_the_private_projection_without_any_switch(monkeypatch: p
     data = answer.json()["data"]
     assert data["projection"] == "private"
     assert data == json.loads((EXAMPLES / "con_alineacion_oficial.private.json").read_text(encoding="utf-8"))
+    assert client.app.state.shadow_asked == [True], "the private answer reads the single figure"  # type: ignore[attr-defined]
+
+
+# ── the single figure in the shadow (AD-B05, IA-083) ─────────────────────────────────────────────────────────────────
+
+def test_the_single_figure_travels_only_in_the_private_projection_and_says_its_version() -> None:
+    private, public = answers("antes_del_partido")
+    items = private.single_figure.items
+    assert items and {i.probability.origin for i in items} == {"forecast-v2"}
+    assert "single_figure" not in dumped(public) and "forecast-v2" not in json.dumps(dumped(public))
+    assert {f.probability.origin for f in public.probabilities.items} == {"forecast-v1"}, "a reader still sees forecast-v1"
+    figures = single_figures()
+    for i in items:
+        f = figures.get(i.market, i.selection, i.line)
+        assert f is not None and i.reading_id == f.reading_id and i.probability.value == round(f.p, 6)
+        assert i.probability.calibration == ("calibrada" if f.calibration == "CALIBRATED" else "sin_calibrar")
+    without, _ = answers("terminado")
+    assert not without.single_figure.items and without.single_figure.missing_reason == "sin_datos"
