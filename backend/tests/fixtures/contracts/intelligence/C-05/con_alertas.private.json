@@ -1,0 +1,161 @@
+{
+  "contract": "C-05",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "decides": false,
+  "window_hours": 48,
+  "alerts": {
+    "items": [
+      {
+        "alert_id": 41,
+        "kind": "retirada",
+        "fixture_id": 90001,
+        "selection": {
+          "market_key": "OU",
+          "selection": "Over",
+          "line": "2.50"
+        },
+        "cause": "alineacion_en_contra",
+        "before": {
+          "shape": "seleccion",
+          "state": "pendiente_alineaciones",
+          "reason": "depende_de_alineacion",
+          "probability": 0.6,
+          "odds": 2.05,
+          "price_state": null,
+          "players_out": []
+        },
+        "now": {
+          "shape": "seleccion",
+          "state": "retirada",
+          "reason": "alineacion_en_contra",
+          "probability": 0.5262,
+          "odds": 2.0,
+          "price_state": "vigente",
+          "players_out": [
+            7000109
+          ]
+        },
+        "price": {
+          "odds": 2.0,
+          "state": "vigente",
+          "at": "2026-11-21T19:30:00Z",
+          "age_minutes": 11.0
+        },
+        "decision": {
+          "decision_id": 5512,
+          "version": "decision-v2"
+        },
+        "evaluation": "E3",
+        "evaluation_version": 1,
+        "known_at": "2026-11-21T19:41:00Z",
+        "kickoff_at": "2026-11-21T20:00:00Z",
+        "notifies_reader": false
+      },
+      {
+        "alert_id": 40,
+        "kind": "sin_alineacion",
+        "fixture_id": 90002,
+        "selection": {
+          "market_key": "1X2",
+          "selection": "Home",
+          "line": "0.00"
+        },
+        "cause": "sin_alineacion_a_tiempo",
+        "before": {
+          "shape": "alineacion",
+          "state": "pendiente_alineaciones",
+          "line_up": "esperada",
+          "sides_missing": [],
+          "minutes_to_kickoff": null
+        },
+        "now": {
+          "shape": "alineacion",
+          "state": "pendiente_alineaciones",
+          "line_up": "sin_alineacion_oficial",
+          "sides_missing": [
+            "away",
+            "home"
+          ],
+          "minutes_to_kickoff": 14.0
+        },
+        "price": {
+          "missing_reason": "sin_datos"
+        },
+        "decision": {
+          "missing_reason": "sin_datos"
+        },
+        "evaluation": "E4",
+        "evaluation_version": 1,
+        "known_at": "2026-11-21T17:46:00Z",
+        "kickoff_at": "2026-11-21T18:00:00Z",
+        "notifies_reader": false
+      },
+      {
+        "alert_id": 39,
+        "kind": "cambio_horario",
+        "fixture_id": 90003,
+        "selection": {
+          "missing_reason": "sin_datos"
+        },
+        "cause": "saque_adelantado",
+        "before": {
+          "shape": "saque",
+          "kickoff_at": "2026-11-21T23:00:00Z"
+        },
+        "now": {
+          "shape": "saque",
+          "kickoff_at": "2026-11-21T22:00:00Z"
+        },
+        "price": {
+          "missing_reason": "sin_datos"
+        },
+        "decision": {
+          "missing_reason": "sin_datos"
+        },
+        "evaluation": "E1",
+        "evaluation_version": 1,
+        "known_at": "2026-11-21T16:40:00Z",
+        "kickoff_at": "2026-11-21T22:00:00Z",
+        "notifies_reader": false
+      },
+      {
+        "alert_id": 38,
+        "kind": "cambio_condiciones",
+        "fixture_id": 90004,
+        "selection": {
+          "missing_reason": "sin_datos"
+        },
+        "cause": "aplazado",
+        "before": {
+          "shape": "condiciones",
+          "status": "NS",
+          "venue_id": null,
+          "in_play_at": null
+        },
+        "now": {
+          "shape": "condiciones",
+          "status": "PST",
+          "venue_id": null,
+          "in_play_at": null
+        },
+        "price": {
+          "missing_reason": "sin_datos"
+        },
+        "decision": {
+          "missing_reason": "sin_datos"
+        },
+        "evaluation": "E2",
+        "evaluation_version": 2,
+        "known_at": "2026-11-21T15:05:00Z",
+        "kickoff_at": "2026-11-21T21:00:00Z",
+        "notifies_reader": false
+      }
+    ]
+  }
+}

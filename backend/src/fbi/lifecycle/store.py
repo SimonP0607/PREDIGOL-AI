@@ -305,29 +305,35 @@ def _extend(conn: psycopg.Connection[Any], found: Mapping[Key, History], fixture
             continue
         if not chain:
             continue
-        rep.selections += 1
-        rep.by_state[chain[-1].step.state] += 1
-        rep.by_reason[f"{chain[-1].step.state}:{chain[-1].step.reason}"] += 1
-        rep.unknown_reason += sum(1 for r in chain if r.step.reason == "sin_motivo_conocido")
-        have = [Stored(int(s["id"]), str(s["state"]), str(s["reason"]), str(s["source"]),
-                       None if s["source_id"] is None else int(s["source_id"])) for s in stored.get(chain_key(writer, key), [])]
-        verdict, rest = plan(have, chain)
-        if verdict == "divergent":
-            rep.divergent += 1
-            continue
-        if verdict == "unchanged":
-            rep.unchanged += 1
-            continue
-        rep.new_chains += int(verdict == "new")
-        rep.extended += int(verdict == "extended")
-        previous_id = have[-1].id if have else None
-        from_state = have[-1].state if have else None
-        for r in rest:
-            rep.rows_by_state[r.step.state] += 1
-            rep.appended += 1
-            if not dry_run:
-                previous_id = _insert(conn, writer=writer, key=key, row=r, previous_id=previous_id, from_state=from_state)
-            from_state = r.step.state
+        _append(conn, key, chain, stored, writer=writer, dry_run=dry_run, rep=rep)
+
+
+def _append(conn: psycopg.Connection[Any], key: Key, chain: list[Row], stored: Mapping[str, list[dict[str, Any]]], *, writer: str,
+            dry_run: bool, rep: PassReport) -> None:
+    """Append to ``writer``'s stored chain of ``key`` what ``chain`` has beyond it (a prefix check; nothing is rewritten)."""
+    rep.selections += 1
+    rep.by_state[chain[-1].step.state] += 1
+    rep.by_reason[f"{chain[-1].step.state}:{chain[-1].step.reason}"] += 1
+    rep.unknown_reason += sum(1 for r in chain if r.step.reason == "sin_motivo_conocido")
+    have = [Stored(int(s["id"]), str(s["state"]), str(s["reason"]), str(s["source"]),
+                   None if s["source_id"] is None else int(s["source_id"])) for s in stored.get(chain_key(writer, key), [])]
+    verdict, rest = plan(have, chain)
+    if verdict == "divergent":
+        rep.divergent += 1
+        return
+    if verdict == "unchanged":
+        rep.unchanged += 1
+        return
+    rep.new_chains += int(verdict == "new")
+    rep.extended += int(verdict == "extended")
+    previous_id = have[-1].id if have else None
+    from_state = have[-1].state if have else None
+    for r in rest:
+        rep.rows_by_state[r.step.state] += 1
+        rep.appended += 1
+        if not dry_run:
+            previous_id = _insert(conn, writer=writer, key=key, row=r, previous_id=previous_id, from_state=from_state)
+        from_state = r.step.state
 
 
 def extend(conn: psycopg.Connection[Any], found: Mapping[Key, History], fixtures: Mapping[int, Fixture], *, now: datetime,
@@ -348,6 +354,33 @@ def extend(conn: psycopg.Connection[Any], found: Mapping[Key, History], fixtures
     _extend(conn, {k: h for k, h in found.items() if k.fixture_id in fixtures}, fixtures, stored, now=now, dry_run=dry_run,
             writer=writer, source=source, rep=rep)
     rep.fixtures = len(ids)
+    return rep
+
+
+def extend_rows(conn: psycopg.Connection[Any], chains: Mapping[Key, Sequence[Row]], *, writer: str, dry_run: bool = False) -> PassReport:
+    """The cycle's API for a writer that builds its chains itself from its own rows (the evaluation cycle, IA-105, AD-D06: its verdicts
+    in ``intel.eval_verdicts``): every chain is checked whole by the machine, then appended to what ``writer`` stored for it with the same
+    check of a stored prefix as ``run_pass`` (a chain that disagrees with what is stored is ``divergent`` and left as it is; nothing is
+    ever rewritten). The caller commits; nothing is written while ``dry_run`` or without the table (revision 0142)."""
+    rep = PassReport()
+    if not _table_exists(conn):
+        rep.errors.append("intel.selection_lifecycle does not exist: apply revision 0142 first")
+        return rep
+    if writer == WRITER:
+        raise ValueError(f"{WRITER} is the writer of the chains read off intel.decisions: a layer of its own writes under another name")
+    ids = sorted({k.fixture_id for k in chains})
+    stored = _stored(conn, ids, writer) if ids else {}
+    rep.fixtures = len(ids)
+    for key, chain in sorted(chains.items(), key=lambda kv: (kv[0].fixture_id, kv[0].market_key, kv[0].selection, kv[0].line)):
+        if not chain:
+            continue
+        try:
+            machine.check_chain(derive.steps_of(chain))
+        except machine.IllegalTransitionError as exc:
+            rep.illegal += 1
+            rep.errors.append(f"{chain_key(writer, key)}: {exc}"[:300])
+            continue
+        _append(conn, key, list(chain), stored, writer=writer, dry_run=dry_run, rep=rep)
     return rep
 
 

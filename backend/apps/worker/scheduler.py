@@ -90,6 +90,12 @@ at worst, and a duplicated tick costs nothing at all.
     (``content-plan-v1``) and the single chronicle (``chronicle-v4``, the small model, by batch when the gate allows) of the analysed matches
     of the next day, checked sentence by sentence (``fbi.chronicle.v4_job``, IA-103/IA-104), into ``ai.chronicles``. At most US$ 1 a day;
     nothing a reader, a pick or a decision reads.
+  * ``eval_cycle_shadow``  every 5 min (``FBI_EVAL_CYCLE_MINUTES``) and ``eval_cycle_e3`` every 60 s (``FBI_EVAL_CYCLE_E3_SECONDS``),
+    only while ``FBI_EVAL_CYCLE`` is ``shadow`` (off by default): the evaluations E1-E4 of the tracked matches (``fbi.shadowjobs.eval_cycle``,
+    IA-105..IA-108, ``eval-cycle-v1``) - E1 with each selection's line-up dependencies, E2 per new fact, E3 when the official line-up
+    arrives (code only), E4 from T-20 to T-10 with the match read again - kept in ``intel.eval_runs`` and its tables, decision-v2's
+    versions in ``intel.decisions_v2``, the owner's private alerts in ``intel.private_alerts`` and the chains through the cycle's API.
+    Database and RAW only; the passes first/pre/final, decision-v1 and every reader are untouched.
   * ``signals_ingest``  every 15 min (``FBI_SIGNALS_MINUTES``), only while ``FBI_SIGNALS=shadow`` (off by default): the RSS feeds and
     sitemaps of the directory v2 (``fbi.news.signals``, IA-085) - only of sources the policy lets be read (authorised and signed by the
     owner), robots.txt first, conditional requests; titles, dates and links into ``news.items``, and for the pending sources only what
@@ -1236,6 +1242,48 @@ async def _lineup_estimate_shadow() -> None:
     await asyncio.to_thread(_lineup_estimate_shadow_now)
 
 
+def _eval_cycle_shadow_now() -> None:
+    """The evaluation cycle's main pass (IA-105): the match read again, E1, E2, E4 and the chains. Never raises; writes only the cycle's
+    tables, decision-v2's through its own function and the cycle of states through its API."""
+    from fbi.shadowjobs import eval_cycle as ec
+
+    if ec.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = ec.run(conn, now=now(), raw_root=settings.runtime.raw_store_dir, code_version=code_version())
+        log.info("eval_cycle_shadow.run", runs=r["runs"], failed=r["failed"], verdicts=r["verdicts"], alerts=r["alerts"],
+                 errors=r["errors"][:3])
+    except Exception as exc:
+        log.error("eval_cycle_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _eval_cycle_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_eval_cycle_shadow_now)
+
+
+def _eval_cycle_e3_now() -> None:
+    """E3 of the evaluation cycle (IA-106): the official line-ups that arrived, judged by code. Never raises."""
+    from fbi.shadowjobs import eval_cycle as ec
+
+    if ec.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = ec.run_e3(conn, now=now(), raw_root=settings.runtime.raw_store_dir, code_version=code_version())
+        if r["runs"] or r["failed"]:
+            log.info("eval_cycle_e3.run", runs=r["runs"], failed=r["failed"], latency=r["e3_latency_ms"], alerts=r["alerts"],
+                     errors=r["errors"][:3])
+    except Exception as exc:
+        log.error("eval_cycle_e3.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _eval_cycle_e3() -> None:
+    new_run_id()
+    await asyncio.to_thread(_eval_cycle_e3_now)
+
+
 def _user_narrative_now() -> None:
     """The readers' narrative (plan UX, A11): one pass with its ledger row. Never raises: the readers' AI must never stop the
     worker."""
@@ -1758,7 +1806,7 @@ WORKER_JOB_TYPES = frozenset({
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
     "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest", "decision_v2_shadow", "lineup_estimate_shadow",
-    "news_stories", "chronicle_v4",
+    "news_stories", "chronicle_v4", "eval_cycle_shadow", "eval_cycle_e3",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -2123,6 +2171,17 @@ async def main() -> None:
                           misfire_grace_time=les.every_minutes() * 60, next_run_time=moment + timedelta(minutes=4))
     else:
         log.info("worker.lineup_estimate_shadow_off", hint="FBI_LINEUP_ESTIMATE is not shadow: no estimated starters are kept (IA-094)")
+    from fbi.shadowjobs import eval_cycle as ec
+
+    if ec.mode() == "shadow":
+        scheduler.add_job(_deadline("eval_cycle_shadow", "eval_cycle_shadow", _eval_cycle_shadow), "interval",
+                          minutes=ec.every_minutes(), id="eval_cycle_shadow", max_instances=1, coalesce=True,
+                          misfire_grace_time=ec.every_minutes() * 60, next_run_time=moment + timedelta(minutes=5))
+        scheduler.add_job(_deadline("eval_cycle_e3", "eval_cycle_e3", _eval_cycle_e3), "interval",
+                          seconds=ec.e3_every_seconds(), id="eval_cycle_e3", max_instances=1, coalesce=True,
+                          misfire_grace_time=ec.e3_every_seconds(), next_run_time=moment + timedelta(minutes=2))
+    else:
+        log.info("worker.eval_cycle_off", hint="FBI_EVAL_CYCLE is not shadow: no evaluation E1-E4 is kept (IA-105)")
     from fbi.news import signals
 
     if signals.mode() == "shadow":

@@ -139,6 +139,8 @@ class Planned:
     fixtures: tuple[int, ...]
     kickoffs: Mapping[int, datetime]
     rows: tuple[Mapping[str, Any], ...] | None = None
+    versions: Mapping[int, int] = field(default_factory=dict)
+    """The version of the evaluation of each match (1 when absent): E2 and E3 can run more than once (``decide_evaluation``)."""
 
     @property
     def evaluation(self) -> str | None:
@@ -376,6 +378,8 @@ class PassReport:
     """Decisions not written because an input was later than the moment."""
     lifecycle: dict[str, Any] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
+    kept: dict[int, int] = field(default_factory=dict)
+    """fixture -> the id of the moment kept for it in this pass (one group per pass: ``decide_evaluation``)."""
 
     def as_json(self) -> dict[str, Any]:
         return {"planned": dict(sorted(self.planned.items())), "moments": dict(sorted(self.moments.items())), "already": self.already,
@@ -444,6 +448,40 @@ def run_pass(conn: psycopg.Connection[Any], *, now: datetime, store: PayloadStor
                 conn.rollback()
             conn.execute("SELECT pg_advisory_unlock(%s)", (LOCK,))
             end()
+    return rep
+
+
+EVALUATIONS: Final = ("E1", "E2", "E3", "E4")
+"""The evaluations of the cycle (AD-D06, ``fbi.evalcycle``) that keep their decision here: E1 and E4 are also this pass's own triggers;
+E2 and E3 exist only through ``decide_evaluation`` (revision 0156 widened the tables' triggers to them)."""
+
+
+def decide_evaluation(conn: psycopg.Connection[Any], *, evaluation: str, at: datetime, kickoffs: Mapping[int, datetime],
+                      versions: Mapping[int, int] | None = None, store: PayloadStore | None, config: Config = CONFIG,
+                      book: book_price.BookReader | None = None, code_version: str | None = None) -> PassReport:
+    """decision-v2 at one evaluation of the cycle (IA-105, AD-D06): the matches of ``kickoffs`` decided as of ``at`` with the replay's own
+    function, kept as a moment of trigger ``evaluation`` (its version per match in ``versions``) - the same rows, inputs and checks as
+    this pass's E1 and E4. Inside the caller's transaction (one savepoint); the caller commits. ``book``: the odds book already read for
+    these matches, else it is read here when the configuration prices with it. Never closer to kick-off than decision-v1's floor: a match
+    under it is left out (its moment would only say «menos de 10 min al saque»)."""
+    if evaluation not in EVALUATIONS:
+        raise ValueError(f"unknown evaluation {evaluation!r}")
+    rep = PassReport()
+    fixtures = {f: k for f, k in kickoffs.items() if at < k - E4_UNTIL}
+    if not fixtures:
+        return rep
+    if not _tables_exist(conn):
+        raise RuntimeError("intel.decisions_v2 does not exist: apply revision 0150 first")
+    if config.price == engine.BOOK and book is None:
+        if store is None:
+            raise ValueError("the book's price is read from the RAW store: give the store")
+        book = book_price.read(conn, store, sorted(fixtures))
+    ids = sorted(fixtures)
+    previous = {str(r["chain_key"]): int(r["id"]) for r in _fetch(conn, PREVIOUS_SQL, {"fixtures": ids, "config": config.key})}
+    g = Planned(evaluation, at, tuple(ids), dict(fixtures), versions=dict(versions or {}))
+    with conn.transaction():
+        _decide_group(conn, g, book=book, typed=typed_visible(conn), previous=previous, config=config, code_version=code_version,
+                      dry_run=False, rep=rep)
     return rep
 
 
@@ -526,8 +564,9 @@ def _decide_group(conn: psycopg.Connection[Any], g: Planned, *, book: book_price
             rep.decisions += len(rows)
             rep.by_state.update(r["state"] for r in rows)
             continue
+        version = None if g.evaluation is None else int(g.versions.get(fid, 1))
         got = conn.execute(MOMENT_SQL, {
-            "fixture_id": fid, "trigger": g.trigger, "evaluation": g.evaluation, "evaluation_version": None if g.evaluation is None else 1,
+            "fixture_id": fid, "trigger": g.trigger, "evaluation": g.evaluation, "evaluation_version": version,
             "known_at": g.at, "kickoff_at": g.kickoffs[fid], "mirrored_version": DECISION_CORE if g.trigger == "mirror" else None,
             "config_key": config.key, "config": Jsonb(config.as_json()), "candidates": len(mine), "decided": len(rows),
             "evidence": Jsonb(cited), "world_hash": sha256({"at": g.at, "config": config.key, "fixture": fid, "world": world_parts}),
@@ -537,11 +576,12 @@ def _decide_group(conn: psycopg.Connection[Any], g: Planned, *, book: book_price
             continue
         rep.moments[g.trigger] += 1
         moment_id = int(got[0])
+        rep.kept[fid] = moment_id
         for r in rows:
             out = conn.execute(DECISION_SQL, {
                 **r, "moment_id": moment_id, "previous_id": previous.get(r["chain_key"]), "fixture_id": fid, "known_at": g.at,
                 "kickoff_at": g.kickoffs[fid], "trigger": g.trigger, "evaluation": g.evaluation,
-                "evaluation_version": None if g.evaluation is None else 1, "config_key": config.key, "inputs": Jsonb(_plain(r["inputs"])),
+                "evaluation_version": version, "config_key": config.key, "inputs": Jsonb(_plain(r["inputs"])),
                 "evidence": Jsonb(_plain(r["evidence"])), "decision": Jsonb(_plain(r["decision"]))}).fetchone()
             assert out is not None
             previous[r["chain_key"]] = int(out[0])
