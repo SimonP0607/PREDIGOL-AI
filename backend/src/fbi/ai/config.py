@@ -65,6 +65,15 @@ Phase 2 of the plan - the research of an entity (``fbi.ai.entity_research``):
                                 (``fbi.ai.gates.research_mode``); until then ``on`` behaves as ``shadow``. Any other word is ``off``. To go
                                 back: set it to ``off`` (or ``shadow``) and restart the worker (about a minute).
 
+IA-060 (plan piece AD-A01) - the quarantined extractor of the web (``fbi.ai.quarantine``, ``extract-v4``):
+
+    FBI_AI_EXTRACTOR            v1 (default) | shadow | quarantine. v1: extract-v1 reads the pages the web search found, as ever. shadow: v1 as
+                                ever and, beside it, the quarantined extractor on the same pages - one page per call, behind the door, in the
+                                LAB and storing nothing (the pass counts it: xq_*). quarantine: the quarantined extractor INSTEAD of v1 (v1 is
+                                not called; what stands is stored as v1's items were). Any other word is v1. To go back: v1 (or shadow) and
+                                restart the worker; FBI_AI_SEARCH=none stops reading the web altogether.
+    FBI_AI_EXTRACTOR_SHADOW_MAX_PER_DAY   default 150 - the quarantined extractor's calls a day in shadow.
+
 Phase 3 of the plan - the multi-agent engines in SHADOW (``fbi.ai.arms``): they run in the LAB workspace only, write rows no user and no decision
 reads, and are rolled back by the same three words. Nothing runs until ALL THREE say so (``AiSettings.orchestrate``):
 
@@ -111,6 +120,7 @@ Tier = Literal["bulk", "analysis", "final"]
 TIERS: tuple[Tier, ...] = ("bulk", "analysis", "final")
 Switch = Literal["off", "on", "auto"]
 ResearchMode = Literal["off", "shadow", "on"]
+ExtractorMode = Literal["v1", "shadow", "quarantine"]
 SWITCH_ENV: dict[str, str] = {"cache": "FBI_AI_CACHE", "batch": "FBI_AI_BATCH", "native_schema": "FBI_AI_NATIVE_SCHEMA",
                               "brief_material": "FBI_AI_BRIEF_MATERIAL", "budget_v3": "FBI_AI_BUDGET_V3"}
 """The five optimisations of Phase 0 and the variable that rolls each one back."""
@@ -228,6 +238,13 @@ def _research_mode(raw: str | None) -> ResearchMode:
     return "shadow" if value == "shadow" else "on" if value == "on" else "off"
 
 
+def _extractor_mode(raw: str | None) -> ExtractorMode:
+    """``FBI_AI_EXTRACTOR``: only the words ``shadow`` and ``quarantine`` move the extractor of the web off ``extract-v1`` - anything else, a typo
+    included, is ``v1``, so nothing changes what the packet reads by accident (IA-060)."""
+    value = (raw or "").strip().lower()
+    return "shadow" if value == "shadow" else "quarantine" if value == "quarantine" else "v1"
+
+
 def _all_auto() -> dict[str, Switch]:
     return dict.fromkeys(SWITCH_ENV, "auto")
 
@@ -289,6 +306,14 @@ class AiSettings:
     """Plan IA, phase 3: the share (0 to 1) of the matches with candidates the shadow runs on (``FBI_AI_SHADOW_SAMPLE``). Zero: no match is assigned."""
     agents: tuple[str, ...] = ()
     """Plan IA, phase 3: the agents that may run (``FBI_AI_AGENTS``), in the canonical order of ``AGENTS``."""
+    extractor: ExtractorMode = "v1"
+    """IA-060 (plan piece AD-A01): which extractor reads the pages the cycle's web search found (``FBI_AI_EXTRACTOR``). ``v1`` (default):
+    ``extract-v1``, as ever. ``shadow``: v1 as ever and, beside it, the quarantined extractor (``fbi.ai.quarantine``, ``extract-v4``) on the
+    same pages, paid by the LAB and storing nothing (the pass counts it, ``xq_*``). ``quarantine``: the quarantined extractor in place of v1 -
+    v1 is not called and what stands of its answers is stored as v1's items were."""
+    extractor_shadow_max_per_day: int = 150
+    """IA-060: the quarantined extractor's calls a day in ``shadow`` (``FBI_AI_EXTRACTOR_SHADOW_MAX_PER_DAY``): the pages past it are counted
+    (``xq_capped``) and not read."""
     pm_reviewer: bool = False
     """Plan IA, phase 5: the attribution of the shadow and the Post-Match Reviewer (``FBI_AI_PM_REVIEWER``). Off unless the word says ``on``."""
     learning_analyst: bool = False
@@ -347,6 +372,8 @@ class AiSettings:
             engines=_engines(env.get("FBI_AI_ENGINES")),
             shadow_sample=_share(env.get("FBI_AI_SHADOW_SAMPLE")),
             agents=_agents(env.get("FBI_AI_AGENTS")),
+            extractor=_extractor_mode(env.get("FBI_AI_EXTRACTOR")),
+            extractor_shadow_max_per_day=max(0, _int("FBI_AI_EXTRACTOR_SHADOW_MAX_PER_DAY", 150, env)),
             pm_reviewer=_on(env.get("FBI_AI_PM_REVIEWER")),
             learning_analyst=_on(env.get("FBI_AI_LEARNING_ANALYST")),
         )
@@ -428,6 +455,7 @@ class AiSettings:
             "batch_min_lead_minutes": self.batch_min_lead_minutes,
             "package": self.package,
             "research_v2": self.research_v2,
+            "extractor": self.extractor,
             "engines": list(self.engines),
             "shadow_engines": list(self.shadow_engines),
             "shadow_sample": format(self.shadow_sample.normalize(), "f"),

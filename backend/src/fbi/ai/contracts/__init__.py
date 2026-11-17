@@ -1,7 +1,7 @@
-"""The six contracts of PrediGol Intelligence and the one door through which an answer of a model comes in (``parse``).
+"""The contracts of PrediGol Intelligence and the one door through which an answer of a model comes in (``parse``).
 
 ``base`` holds the closed values and the machinery (the wire schema, the typed references); ``claim``, ``assessment``, ``council``,
-``postmatch``, ``learning`` and (IA-017) ``player`` are the six outputs; ``mcp`` is the package a model reads. See ``base`` for what an output can never carry.
+``postmatch``, ``learning``, (IA-017) ``player`` and (IA-060) ``claim_v2`` are the outputs; ``mcp`` is the package a model reads. See ``base`` for what an output can never carry.
 
 A model's answer is DATA until ``parse`` says otherwise: JSON that is not JSON, a contract name nobody accepts, a field that is not in
 the schema, a value that is not in the list - every one is a ``problem``, none raises, and none echoes the text that caused it (the answer
@@ -21,6 +21,7 @@ from fbi.ai.contracts.assessment import AssessmentOut
 from fbi.ai.contracts.base import (
     ASSESSMENT,
     CLAIM,
+    CLAIM_V2,
     COUNCIL,
     LEARNING,
     MCP,
@@ -31,6 +32,7 @@ from fbi.ai.contracts.base import (
     wire_schema,
 )
 from fbi.ai.contracts.claim import ClaimsOut
+from fbi.ai.contracts.claim_v2 import QuarantineOut
 from fbi.ai.contracts.council import CouncilOut
 from fbi.ai.contracts.learning import LearningOut
 from fbi.ai.contracts.player import PlayerAssessmentOut
@@ -38,12 +40,12 @@ from fbi.ai.contracts.postmatch import PostMatchOut
 
 CONTRACTS: Final[dict[str, type[Contract]]] = {
     CLAIM: ClaimsOut, ASSESSMENT: AssessmentOut, COUNCIL: CouncilOut, POST_MATCH: PostMatchOut, LEARNING: LearningOut,
-    PLAYER_ASSESSMENT: PlayerAssessmentOut}
+    PLAYER_ASSESSMENT: PlayerAssessmentOut, CLAIM_V2: QuarantineOut}
 """Every output contract by its name (the ``contract`` field of an answer)."""
 
 WRITERS: Final[dict[str, str]] = {
     CLAIM: "extractor", ASSESSMENT: "match, stats", COUNCIL: "council", POST_MATCH: "post-match reviewer", LEARNING: "learning analyst",
-    PLAYER_ASSESSMENT: "player"}
+    PLAYER_ASSESSMENT: "player", CLAIM_V2: "quarantined extractor"}
 
 ACCEPTS: Final[dict[str, tuple[str, ...]]] = {name: (name,) for name in OUTPUTS}
 """The versions a reader takes for each contract. An incompatible change is a NEW name (``aa-v2``) and both are listed here until the old
