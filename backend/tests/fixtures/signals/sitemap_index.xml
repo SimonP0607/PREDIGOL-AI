@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic (IA-085): the shape of a sitemap index. Not downloaded. -->
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap><loc>https://dimayor.com.co/post-sitemap1.xml</loc><lastmod>2026-10-01T00:00:00Z</lastmod></sitemap>
+  <sitemap><loc>https://dimayor.com.co/post-sitemap2.xml</loc><lastmod>2026-11-16T10:00:00Z</lastmod></sitemap>
+  <sitemap><loc>https://otro-sitio.ejemplo.invalid/sitemap.xml</loc><lastmod>2026-11-16T11:00:00Z</lastmod></sitemap>
+</sitemapindex>

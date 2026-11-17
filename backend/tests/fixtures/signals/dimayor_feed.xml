@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic (IA-085): built by hand in the shape of a WordPress RSS 2.0 feed. Not downloaded; every title is invented. -->
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Dimayor</title>
+  <atom:link href="https://dimayor.com.co/feed/" rel="self" type="application/rss+xml" />
+  <link>https://dimayor.com.co</link>
+  <description>Ejemplo</description>
+  <lastBuildDate>Sun, 15 Nov 2026 22:10:00 +0000</lastBuildDate>
+  <language>es</language>
+  <item>
+    <title>Comunicado oficial: programación de la fecha 19 (ejemplo)</title>
+    <link>https://dimayor.com.co/comunicado-programacion-fecha-19-ejemplo/</link>
+    <dc:creator><![CDATA[Prensa Ejemplo]]></dc:creator>
+    <pubDate>Sun, 15 Nov 2026 22:10:00 +0000</pubDate>
+    <category><![CDATA[Comunicados]]></category>
+    <description><![CDATA[Texto del comunicado que el lector NO guarda.]]></description>
+    <content:encoded><![CDATA[<p>Cuerpo completo que el lector NO guarda.</p><img src="https://dimayor.com.co/foto.jpg"/>]]></content:encoded>
+  </item>
+  <item>
+    <title>Resolución de la Comisión Disciplinaria: sancionados de la fecha 18 (ejemplo)</title>
+    <link>https://dimayor.com.co/resolucion-disciplinaria-fecha-18-ejemplo/?utm_source=rss&amp;utm_medium=rss</link>
+    <dc:creator><![CDATA[Prensa Ejemplo]]></dc:creator>
+    <pubDate>Sat, 14 Nov 2026 18:00:00 +0000</pubDate>
+  </item>
+  <item>
+    <title>Designación arbitral: Bucaramanga - Nacional (ejemplo)</title>
+    <link>https://dimayor.com.co/designacion-arbitral-bucaramanga-nacional-ejemplo/</link>
+    <pubDate>Fri, 13 Nov 2026 15:30:00 +0000</pubDate>
+  </item>
+  <item>
+    <title>Enlace a otro sitio que no es de la fuente (ejemplo)</title>
+    <link>https://otro-sitio.ejemplo.invalid/nota</link>
+    <pubDate>Fri, 13 Nov 2026 12:00:00 +0000</pubDate>
+  </item>
+</channel>
+</rss>

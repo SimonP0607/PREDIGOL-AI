@@ -77,6 +77,10 @@ at worst, and a duplicated tick costs nothing at all.
     cycle of states of each selection (``fbi.lifecycle``, IA-068), read off the decisions, the shadow picks, the reviews, the settlements
     and the post-mortems of the matches of the last 7 days and the next 48 hours, appended to ``intel.selection_lifecycle``. Database
     only; it writes nothing else and nothing reads it but the owner's views.
+  * ``signals_ingest``  every 15 min (``FBI_SIGNALS_MINUTES``), only while ``FBI_SIGNALS=shadow`` (off by default): the RSS feeds and
+    sitemaps of the directory v2 (``fbi.news.signals``, IA-085) - only of sources the policy lets be read (authorised and signed by the
+    owner), robots.txt first, conditional requests; titles, dates and links into ``news.items``, and for the pending sources only what
+    it would have read (``news.feed_reads``, ``ai.source_policy_log``). No model, no Exa search, nothing a reader sees.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
     trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
@@ -1106,6 +1110,29 @@ def _lifecycle_shadow_now() -> None:
         log.error("lifecycle_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
 
 
+def _signals_now() -> None:
+    """The ingestion of signals (IA-085): one pass in shadow. Never raises - it must never stop the worker - and writes only ``news.feeds``,
+    ``news.items``, ``news.feed_reads`` and ``ai.source_policy_log``."""
+    import httpx
+
+    from fbi.news import signals
+
+    if signals.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn, httpx.Client() as client:
+            r = signals.run_pass(conn, at=now(), fetch=signals.http_fetcher(client))
+            conn.commit()
+        log.info("signals.pass", **{k: v for k, v in r.as_json().items() if k not in ("errors", "at")}, errors=r.errors[:3])
+    except Exception as exc:
+        log.error("signals.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _signals_ingest() -> None:
+    new_run_id()
+    await asyncio.to_thread(_signals_now)
+
+
 async def _lifecycle_shadow() -> None:
     new_run_id()
     await asyncio.to_thread(_lifecycle_shadow_now)
@@ -1632,7 +1659,7 @@ WORKER_JOB_TYPES = frozenset({
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
-    "lineup_watch", "lifecycle_shadow", "scenarios_shadow",
+    "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1981,6 +2008,15 @@ async def main() -> None:
                           misfire_grace_time=lifecycle.EVERY * 60, next_run_time=moment + timedelta(minutes=23))
     else:
         log.info("worker.lifecycle_shadow_off", hint="FBI_LIFECYCLE is not shadow: the cycle of states is not being written")
+    from fbi.news import signals
+
+    if signals.mode() == "shadow":
+        # IA-085: the feeds of the directory in shadow; a thread of its own (asyncio.to_thread) so its requests never hold the live jobs.
+        scheduler.add_job(_deadline("signals_ingest", "signals_ingest", _signals_ingest), "interval",
+                          minutes=signals.EVERY_MINUTES, id="signals_ingest", max_instances=1, coalesce=True,
+                          misfire_grace_time=signals.EVERY_MINUTES * 60, next_run_time=moment + timedelta(minutes=27))
+    else:
+        log.info("worker.signals_off", hint="FBI_SIGNALS is not shadow: no feed of the directory is read")
     if CHRONICLE_REVIEW_ENABLED:
         scheduler.add_job(_deadline("chronicle_review", "chronicle_review", _chronicle_review), "interval",
                           minutes=CHRONICLE_REVIEW_MINUTES, id="chronicle_review", max_instances=1, coalesce=True,
