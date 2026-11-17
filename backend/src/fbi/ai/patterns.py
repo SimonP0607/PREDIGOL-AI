@@ -33,6 +33,7 @@ import psycopg
 from psycopg.rows import dict_row
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from fbi import memoryread
 from fbi.ai.config import AiSettings
 from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.text import TIER_ES
@@ -69,10 +70,7 @@ LOSS_HYPOTHESES: dict[str, tuple[str, str, str]] = {
                    "datos."),
 }
 
-MEMORY_SQL = """
-SELECT id, kind, entity_type, entity_id, fixture_id, evidence, result, created_at
-  FROM ai.memory_events WHERE created_at >= %(since)s AND created_at <= %(until)s
-"""
+MEMORY_SQL = memoryread.AI_WINDOW_EVENTS
 
 LEAGUE_SQL = """
 SELECT c.id AS competition_id, c.name, (pm.findings->'model_vs_market'->>'logloss_diff')::float AS diff

@@ -20,6 +20,7 @@ from typing import Any, Final, cast
 
 import structlog
 
+from fbi import memoryread
 from fbi.api.contracts.knowledge import (
     AfterMatch,
     Ahead,
@@ -77,20 +78,10 @@ SELECT f.id, f.kickoff_at, f.status_group, c.is_tracked
  WHERE f.id = %(f)s
 """
 
-ROW_SQL = """
-SELECT id, supersedes, built_at, known_at, inputs_hash, content_hash, completeness, layers, quality
-  FROM intel.match_knowledge
- WHERE fixture_id = %(f)s AND version = %(version)s AND built_at <= %(at)s
- ORDER BY id DESC LIMIT 1
-"""
+ROW_SQL = memoryread.KNOWLEDGE_ROW
 """The newest build made by ``at``: the rows of a match are a chain, the newest one is what the match is today."""
 
-CHAIN_SQL = """
-SELECT id, supersedes, built_at, known_at, completeness, content_hash
-  FROM intel.match_knowledge
- WHERE fixture_id = %(f)s AND version = %(version)s AND built_at <= %(at)s
- ORDER BY id LIMIT %(limit)s
-"""
+CHAIN_SQL = memoryread.KNOWLEDGE_CHAIN
 
 STATUSES: Final = frozenset(layers.STATUSES)
 

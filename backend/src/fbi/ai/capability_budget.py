@@ -12,9 +12,12 @@ capability may spend; the cost panel (``fbi.ai.costs_v3``) shows every one of th
                  readers' chronicle); a piece not built yet has none and spends 0 until it declares them
     purposes     the same by the ledger's ``purpose`` (a search has no prompt)
 
-A CAP WARNS, IT DOES NOT CUT. Reaching 80 % or 95 % of a cap is shown in the owner's panel and written to the log of the process that built
-it (``fbi.ai.envelopes_readers.log_warnings``); no call is refused because of it - what stops money is still ``fbi.ai.budget_v3`` and its envelopes. Changing that is another
-version, decided by the owner.
+A CAP WARNS AT 80 % AND CUTS A PIECE AT 95 % (the cut is ``piece-cut-v1``, IA-137, AD-K05 of the plan; the register is still v1). Reaching 80 % or 95 % of a cap is
+shown in the owner's panel and written to the log of the process that built it (``fbi.ai.envelopes_readers.log_warnings``). A NEW piece that
+calls a model on its own (the news text in shadow, the single chronicle in shadow) asks ``piece_allows`` before each call: from 95 % of its
+cap - counting the call about to be made - it stops asking, and it stops too when its month could not be read or it is not in the register
+(FAILS CLOSED: it stops reading, it never goes on). That cut never lowers anything else: ``fbi.ai.budget_v3`` and its envelopes still decide
+every call, and the caps, the warnings, the envelopes and the joint ceiling are what they were.
 
 Pure: the month's rows are read by ``fbi.ai.envelopes_readers`` (the owner's panel), never by the cycle."""
 
@@ -123,6 +126,38 @@ def level(spent: Decimal, cap: Decimal, thresholds: tuple[int, ...] = ALERT_AT) 
     return max(reached) if reached else None
 
 
+CUT_VERSION: Final = "piece-cut-v1"
+CUT_AT: Final = 95
+"""The percent of its own monthly cap at which a new piece stops calling (AD-K05: "presupuesto por pieza nueva que corta al 95 %")."""
+
+
+@dataclass(frozen=True, slots=True)
+class Allowance:
+    """Whether a piece may make its next call, and why (``reason``: ``dentro_del_tope``, ``tope_95``, ``gasto_no_leido``,
+    ``capacidad_desconocida``, ``sin_tope``)."""
+
+    key: str
+    allowed: bool
+    reason: str
+    spent: Decimal | None
+    cap: Decimal | None
+
+
+def piece_allows(key: str, spent: Decimal | None, next_cost: Decimal = Decimal(0)) -> Allowance:
+    """May the piece ``key`` spend ``next_cost`` more this month, having spent ``spent``? No from 95 % of its cap (the call counted), and
+    no whenever it cannot be known: an unknown capability, a cap of 0 or a month that was not read (``spent`` None) all stop it."""
+    c = get(key)
+    if c is None:
+        return Allowance(key, False, "capacidad_desconocida", spent, None)
+    if c.monthly_usd <= 0:
+        return Allowance(key, False, "sin_tope", spent, c.monthly_usd)
+    if spent is None:
+        return Allowance(key, False, "gasto_no_leido", None, c.monthly_usd)
+    if (spent + max(next_cost, Decimal(0))) * 100 >= c.monthly_usd * CUT_AT:
+        return Allowance(key, False, "tope_95", spent, c.monthly_usd)
+    return Allowance(key, True, "dentro_del_tope", spent, c.monthly_usd)
+
+
 def _usd(x: Decimal) -> str:
     return str(x.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
@@ -145,5 +180,5 @@ def declared(envelopes: Mapping[str, Decimal] = DECISION_12) -> dict[str, dict[s
     return out
 
 
-__all__ = ["ALERT_AT", "CAPABILITIES", "DECISION_12", "ENVELOPES", "VERSION", "Capability", "Row", "capability_of", "declared", "get",
-           "level", "report", "spend"]
+__all__ = ["ALERT_AT", "CAPABILITIES", "CUT_AT", "CUT_VERSION", "DECISION_12", "ENVELOPES", "VERSION", "Allowance", "Capability", "Row", "capability_of",
+           "declared", "get", "level", "piece_allows", "report", "spend"]

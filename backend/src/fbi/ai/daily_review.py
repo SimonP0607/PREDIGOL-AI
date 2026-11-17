@@ -26,6 +26,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from fbi import memoryread
 from fbi.ai.calendar import day_bounds, local_day
 from fbi.core import match_state
 from fbi.intel.pm_facts import AI_ROLES
@@ -117,13 +118,7 @@ SELECT pm.review_verdict AS verdict, pm.loss_class AS classification, pm.settled
 
 NOTES_SQL = "SELECT kind, title, n FROM ai.learning_notes WHERE day = %(day)s ORDER BY id"
 
-PATTERNS_SQL = """
-SELECT kind, entity_type, hypothesis FROM ai.memory_events
- WHERE created_at >= %(start)s AND created_at < %(end)s
-   AND kind IN ('league_pattern', 'team_pattern', 'player_pattern', 'market_signal', 'model_failure',
-                'model_success', 'context_error')
- ORDER BY id DESC LIMIT 40
-"""
+PATTERNS_SQL = memoryread.AI_DAY_PATTERNS
 
 HYPOTHESES_SQL = """
 SELECT id, title, status, created_at, decided_at, outcome, stage_history FROM analytics.research_hypotheses

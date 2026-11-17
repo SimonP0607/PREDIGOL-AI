@@ -20,7 +20,8 @@ THE ENVELOPES OF DECISION 12 (IA-058, ``docs/owner/IA_058_PRESUPUESTO_POR_CAPACI
 projection still count Intelligence's alone, as ``fbi.ai.budget_v3`` does. Beside them: each envelope's warning at 80 / 95 %, each new
 capability against its cap (``fbi.ai.capability_budget``; the readers' ledger is read by ``fbi.ai.envelopes_readers``, which the
 cycle never loads, and each warning is written to this process's log once a month), the joint ceiling of 190 that still applies (pending the owner's confirmation)
-and Exa's price as the code charges it against the one Exa publishes, unverified until an invoice.
+and Exa's price as the code charges it against the one Exa publishes, unverified until an invoice. And (IA-137, AD-K05) every dollar of the
+month given to one capability, with its batches, its cache and the inputs paid twice (``attribution``, ``fbi.ai.capability_costs``).
 
 Reading only: nothing here writes, and no key is read."""
 
@@ -35,7 +36,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.ai import budget_v3, capability_budget, envelopes_readers, gates
+from fbi.ai import budget_v3, capability_budget, capability_costs, envelopes_readers, gates
 from fbi.ai.batch import open_counts
 from fbi.ai.calendar import day_start, days_left_in_month, local_day, month_start
 from fbi.ai.config import AiSettings
@@ -289,6 +290,7 @@ def envelopes(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettin
         "decision_12": {k: str(v) for k, v in capability_budget.DECISION_12.items()},
         "alerts": alerts_json(figures, capabilities),
         "capabilities": {"version": capability_budget.VERSION, "items": capabilities, "declared": capability_budget.declared()},
+        "attribution": attribution(conn, month_from, until),
         "savings": {"month": savings_json(savings(month_calls))},
         "reuse": {"briefs_paid": int(reuse.get("briefs_paid") or 0), "briefs_reused": int(reuse.get("briefs_reused") or 0),
                   "briefs_reused_material": int(reuse.get("briefs_reused_material") or 0),
@@ -305,6 +307,17 @@ def envelopes(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettin
                  for d in recent],
         "factors": {"batch": str(BATCH_FACTOR)},
     }
+
+
+def attribution(conn: psycopg.Connection[Any], since: datetime, until: datetime) -> dict[str, Any]:
+    """Every dollar of the month given to one capability (IA-137, AD-K05; ``fbi.ai.capability_costs``). In a savepoint of its own: a
+    statement that fails says so here (``read_failed``) and leaves the rest of the panel as it was."""
+    try:
+        with conn.transaction():
+            rows, totals = envelopes_readers.attribution_inputs(conn, since, until)
+    except psycopg.Error as exc:
+        return {"version": capability_costs.VERSION, "read_failed": True, "error": type(exc).__name__}
+    return capability_costs.report(rows, totals)
 
 
 @dataclass(frozen=True)
@@ -328,5 +341,5 @@ def month_of(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSetting
     return Month(month_first, figures, capability_budget.report(envelopes_readers.month_rows(conn, since, until)))
 
 
-__all__ = ["EXA_PRICE_NOTE", "JOINT_CEILING_NOTE", "Call", "Month", "Savings", "alerts_json", "calls_of", "envelopes", "exa_price_json",
+__all__ = ["EXA_PRICE_NOTE", "JOINT_CEILING_NOTE", "Call", "Month", "Savings", "alerts_json", "attribution", "calls_of", "envelopes", "exa_price_json",
            "joint_ceiling_json", "month_of", "savings", "savings_json", "share"]

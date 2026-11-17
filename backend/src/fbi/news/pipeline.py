@@ -8,7 +8,7 @@ THE SWITCHES (both born ``off``; any word but ``shadow`` is ``off``):
   ``news.stories``, ``news.item_story`` and ``news.moderation_log`` (all append-only). No model, no web, no key.
 * ``FBI_NEWS_TEXT`` (``fbi.news.writer``) - ``shadow``: the same pass also asks the small model for the own text of the stories with at
   least one ELIGIBLE article (authorised and signed, not reserved, ``facts``/``summary``) and facts of it, paid by the LAB, at most
-  ``writer.MAX_PER_PASS`` a pass and ``writer.PIECE_MONTHLY_USD`` a month. Writes ``news.story_texts``.
+  ``writer.MAX_PER_PASS`` a pass and up to 95 % of ``writer.PIECE_MONTHLY_USD`` a month (``capability_budget.piece_allows``). Writes ``news.story_texts``.
 
 WHAT IT NEVER DOES: read an article's text (there is none in the store), send an outlet's title to a model, show anything (``FBI_NEWS_V2``
 is off and the public C-06 is AD-G07's), change the current news page (``FBI_NEWS_FEED`` reads ``ai.evidence`` as before), a probability,
@@ -32,7 +32,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from fbi.ai import source_policy
+from fbi.ai import capability_budget, source_policy
 from fbi.ai import source_select as ss
 from fbi.ai.providers.base import JsonRequest
 from fbi.ai.usage import CallOutcome
@@ -78,6 +78,8 @@ WORLD_SQL: Final = ss.CONTEXT_SELECT + """
 """
 TEAMS_SQL: Final = "SELECT id, name, country, is_national FROM core.teams WHERE id = ANY(%(ids)s)"
 SPENT_SQL: Final = "SELECT coalesce(sum(cost_usd), 0) FROM news.story_texts WHERE at >= %(since)s"
+CAPABILITY: Final = "news_text_shadow"
+"""Its key in ``fbi.ai.capability_budget``: the piece stops at 95 % of that cap (``piece_allows``, IA-137)."""
 SEEN_INPUT_SQL: Final = ("SELECT 1 FROM news.story_texts WHERE story_key = %(key)s AND input_hash = %(hash)s AND prompt_version = %(v)s "
                          "AND outcome IN ('accepted', 'rejected', 'invalid_output') LIMIT 1")
 INSERT_TEXT: Final = """
@@ -245,7 +247,7 @@ def _text_for(conn: psycopg.Connection[Any], key: str, *, at: datetime, policy: 
     if budget_left[0] <= 0:
         report.text["pass_cap"] += 1
         return
-    if spent_this_month(conn, at) >= writer.PIECE_MONTHLY_USD:
+    if not capability_budget.piece_allows(CAPABILITY, spent_this_month(conn, at)).allowed:  # 95 % of its cap (IA-137); fails closed
         report.text["piece_cap"] += 1
         return
     budget_left[0] -= 1
@@ -367,5 +369,5 @@ def run_pass(conn: psycopg.Connection[Any], *, at: datetime, env: Mapping[str, s
     return report
 
 
-__all__ = ["EVERY_MINUTES", "SWITCH", "VERSION", "Report", "claim_types", "lab_caller", "mode", "record_text", "run_pass", "spent_this_month",
+__all__ = ["CAPABILITY", "EVERY_MINUTES", "SWITCH", "VERSION", "Report", "claim_types", "lab_caller", "mode", "record_text", "run_pass", "spent_this_month",
            "team_facts", "world"]
