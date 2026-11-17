@@ -28,6 +28,7 @@ from psycopg.rows import tuple_row
 
 from fbi.ingestion.fixture_facts import apply_player_extras
 from fbi.ingestion.identity import IdentityReport, apply_people, link_lineup_coaches
+from fbi.ingestion.lineup_arrivals import record_arrival
 from fbi.providers.api_football.details import (
     COVERAGE_FLAGS,
     AbsenceRef,
@@ -92,6 +93,8 @@ class DetailReport:
     """Payload older than what is stored for that fixture: nothing written."""
     stale_lineups: int = 0
     """Line-ups (one side of one fixture) not written because a newer one is stored."""
+    lineup_arrivals: int = 0
+    """Rows added to core.fixture_lineup_arrivals (IA-069): observations whose content differs from the previous one."""
     unknown_stat_types: set[str] = field(default_factory=set)
     issues: list[QualityIssue] = field(default_factory=list)
     """What the provider sent that we could not store as sent. Recorded in
@@ -302,6 +305,11 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                     side = _side(lu.provider_team_id, home, away)
                     if side is None:
                         continue
+                    # IA-069: the observation itself, change-only, before the newest-wins upsert (an older payload's
+                    # line-up is still what was known at its instant). first_seen_at is the database's (migration 0140).
+                    report.lineup_arrivals += record_arrival(
+                        cur, fixture_id=fixture_id, side=side, lineup=lu, observed_at=fetched_at,
+                        payload_hash=payload_hash, channel="detail_writer", run_id=run_id)
                     cur.execute(
                         "INSERT INTO core.fixture_lineups (fixture_id, team_side, source, formation, "
                         "provider_coach_id, coach_name, payload_hash, fetched_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "

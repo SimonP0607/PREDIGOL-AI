@@ -15,6 +15,7 @@ PINNED = {
     "INT-B09": "2b8e49fb115f5cecbcb5e61f52d9ac11d8c8464ce7b3da97af62b3f9382e9232",
     "INT-A08": "a37fdb4265f407c892e11f793ce86a083667ec491f0251fdd4d1f1d3603a1c43",
     "INT-C02": "f954582c9594c509dfc93f4abd9a847292a023d74dc5495daf0eead00bd0cc63",
+    "AD-A03": "205e671347e7c9ab21a4fb0ab03d1b6c66a2c4d9e44494f937e3e23707653bae",
 }
 """A registered protocol is frozen: changing one is a new version with its own PR, never an edit of these lines to make a test pass."""
 
@@ -30,9 +31,10 @@ def test_a_protocol_fixes_everything_before_the_data() -> None:
         for f in dataclasses.fields(p):
             value = getattr(p, f.name)
             assert value not in ("", (), None), (p.key, f.name)
-        assert p.key.startswith("INT-") and p.version.startswith("proto-")
+        assert p.key.startswith(("INT-", "AD-")) and p.version.startswith("proto-")
         assert p.version.endswith("-v1")
-        assert p.registered_on == "2026-11-11"
+        # the protocols of the Intelligence plan were registered on 11-nov; those of the plan of the definitive architecture (AD-...) after it
+        assert p.registered_on == ("2026-11-11" if p.key.startswith("INT-") else "2026-11-16")
 
 
 def test_the_plan_lab_experiments_of_wave_one_have_a_protocol() -> None:
@@ -99,3 +101,11 @@ def test_power_inputs_are_checked() -> None:
         proto.n_for_two_proportions(0.5, 0.5)
     with pytest.raises(ValueError):
         proto.mde_for_mean(1.0, 0)
+
+
+def test_battery_v4_is_registered_before_its_first_run() -> None:
+    """AD-A03 (IA-065): the protocol of battery-v4, registered before any of its answers exists; the owner signs it (v4-sign --confirm-owner)."""
+    p = proto.require("AD-A03")
+    assert p.version == "proto-ad-a03-v1" and p.seed == 20261116
+    assert "0 % por defecto" in p.pass_rule and "3 %" in p.pass_rule
+    assert proto.stamp("AD-A03")["fingerprint"] == PINNED["AD-A03"]

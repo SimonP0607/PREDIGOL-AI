@@ -163,15 +163,16 @@ def test_an_agent_built_after_the_baseline_is_born_a_challenger_with_a_reason_an
     the same way; neither replaces an agent of the registry. Phase 4 builds the Statistics Agent, born a challenger too. Phase 5 builds the Post-Match
     Reviewer (``pmr``) and the Learning Analyst (``la``) beside the two of today (``post_match_reviewer``, ``learning_analyst``): the registry holds one
     version of an agent - the one the code has - and the code still has pick-postmortem-v4 and learning-v2 until the owner signs, so the new versions
-    are agents of their own that REPLACE the old ones."""
+    are agents of their own that REPLACE the old ones. IA-060 builds the quarantined extractor beside extract-v1 the same way: an agent of its own
+    that replaces ``extractor`` only by the owner's word (``FBI_AI_EXTRACTOR``)."""
     built = {s.agent for s in AGENTS} - set(BASELINE_AGENTS)
-    assert built == {"claim_extractor", "match", "council", "stats", "pmr", "la", "player"}
+    assert built == {"claim_extractor", "match", "council", "stats", "pmr", "la", "player", "quarantine_extractor"}
     for agent in built:
         entry = REGISTRY.history(agent)[0]
         assert not entry.baseline and entry.born_as == "CHALLENGER" and entry.decided_by in rg.DECIDERS
         assert len(entry.reason) >= rg.MIN_REASON
         assert entry.phase == {"claim_extractor": "IA-2", "match": "IA-3", "council": "IA-3", "stats": "IA-4", "pmr": "IA-5", "la": "IA-5",
-                               "player": "IA-017"}[agent]
+                               "player": "IA-017", "quarantine_extractor": "IA-060"}[agent]
         for later in REGISTRY.history(agent)[1:]:  # a later version is born the same way: a challenger, never promoted by the code
             assert not later.baseline and later.born_as == "CHALLENGER" and len(later.reason) >= rg.MIN_REASON
     assert {a: [r.version for r in REGISTRY.history(a)] for a in built if len(REGISTRY.history(a)) > 1} == {
@@ -181,7 +182,7 @@ def test_an_agent_built_after_the_baseline_is_born_a_challenger_with_a_reason_an
         "Statistics Agent's v3 with the closed checklist and the Match Agent's CONTEXT prompt v4; IA-021: the Claim Extractor's v3 names the player in his quote; IA-028: "
         "the Match Agent's v5 and the Statistics Agent's v4 ask with structured outputs")
     assert {s.agent: s.replaces for s in AGENTS if s.replaces} == {
-        "claim_extractor": "extractor", "pmr": "post_match_reviewer", "la": "learning_analyst"}
+        "claim_extractor": "extractor", "pmr": "post_match_reviewer", "la": "learning_analyst", "quarantine_extractor": "extractor"}
     assert (REGISTRY.in_force("pmr").version, REGISTRY.in_force("la").version) == ("pmr-v1", "la-v1")
     assert (REGISTRY.in_force("post_match_reviewer").version, REGISTRY.in_force("learning_analyst").version) == ("pick-postmortem-v4", "learning-v2")
     assert REGISTRY.spec("claim_extractor").contract == "claim-v1"
