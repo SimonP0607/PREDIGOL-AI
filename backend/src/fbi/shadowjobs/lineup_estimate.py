@@ -158,7 +158,8 @@ def run_pass(conn: psycopg.Connection[Any], *, now: datetime, code_version: str 
 
 
 def estimate_fixture(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, typed: bool) -> dict[str, Any] | None:
-    """Every side of one match as of ``at``: the estimates and what they were made from. Read-only."""
+    """Every side of one match as of ``at``: the estimates and what they were made from (``history``: the player engine's view of the
+    teams as of ``at``, which the evaluation cycle reads the goal rates from, IA-108). Read-only."""
     from fbi.ai import absences as provider_absences
     from fbi.ai import evidence as ai_evidence
     from fbi.people import availability as people
@@ -189,7 +190,7 @@ def estimate_fixture(conn: psycopg.Connection[Any], fixture_id: int, *, at: date
                        "estimates": le.estimate_side(engine.h, engine.model, fixture_id=fixture_id, team_id=team,
                                                      competition_id=fx.competition_id, states=states, facts=facts,
                                                      sheet=sheets.get(side))}
-    return {"fixture": fx, "sides": sides, "history_matches": engine.h.matches, "start_model": engine.model}
+    return {"fixture": fx, "sides": sides, "history_matches": engine.h.matches, "start_model": engine.model, "history": engine.h}
 
 
 def _one(conn: psycopg.Connection[Any], fixture_id: int, kickoff: datetime, evaluation: str, *, now: datetime, typed: bool,

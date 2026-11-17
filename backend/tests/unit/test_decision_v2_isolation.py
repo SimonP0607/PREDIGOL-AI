@@ -17,7 +17,10 @@ ALLOWED = {"scripts/ia_decision_v2.py": "the command that prints the replay (rea
            "plugins/registry.py": "the registry of plug-in families hands decision-v2 its families (shadow)",
            "plugins/_template/family.py": "the example plug-in's decision-v2 adapter (shadow, never active, not installed)",
            "shadowjobs/decision_v2.py": "the worker's door to the kept shadow (IA-093, AD-D01): its switch and one pass, which writes only "
-                                        "decision-v2's own tables; only the scheduler imports it"}
+                                        "decision-v2's own tables; only the scheduler imports it",
+           "evalcycle/run.py": "the evaluation cycle's passes (IA-105, AD-D06, shadow): its E1-E4 keep their decision as a version of "
+                               "decision-v2 through shadow.decide_evaluation and read the book's price again; it writes only the cycle's "
+                               "tables and serves nobody (only fbi.shadowjobs.eval_cycle imports it)"}
 SERVING = ("intel/", "picks/", "familydecisions/", "api/", "parlays/", "customer/", "notify/", "messaging/", "narrative/", "knowledge/",
            "apps/")
 """What decides (``intel``, ``picks``, ``familydecisions``), stakes and combines (``parlays``), publishes or serves users."""

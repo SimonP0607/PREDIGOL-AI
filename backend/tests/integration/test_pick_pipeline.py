@@ -677,3 +677,41 @@ def test_a_whole_line_pick_keeps_its_interval_on_its_own_footing(
     assert lo == pytest.approx(float(pred[2]) / settled, abs=2e-6)
     assert hi == pytest.approx(min(1.0, float(pred[3]) / settled), abs=2e-6)
     assert p == pytest.approx(float(pred[0]) / settled, abs=2e-6)
+
+
+def test_the_windowed_scan_writes_the_same_rows_as_the_full_one(db: psycopg.Connection, league: dict[str, object]) -> None:
+    """IA-111 (AD-E08): the scan from a window (``since``) with the evidence read once per pass writes the candidates and shadow picks the
+    full scan would: a full scan after it finds nothing left, and a window that starts after the only instant reads nothing."""
+    target = int(league["target"])  # type: ignore[call-overload]
+    books: list[int] = league["books"]  # type: ignore[assignment]
+    forecast_upcoming(db, at=AT, code_version="pipetest")
+    db.commit()
+    with db.cursor() as cur:
+        cur.execute("SELECT p.p_calibrated FROM models.predictions p JOIN models.model_versions v ON v.id = p.model_version_id "
+                    "JOIN models.model_registry m ON m.id = v.model_id WHERE p.fixture_id = %s AND m.name = 'poisson' "
+                    "AND p.market_key = '1X2' AND p.selection = 'Home'", (target,))
+        p_home = float(scalar(cur))
+        home = (Decimal("1.15") / Decimal(str(p_home))).quantize(Decimal("0.01"))
+        for book in books:
+            rest = Decimal("1.07") - 1 / home
+            _snapshot(cur, target, book, "Home", home)
+            _snapshot(cur, target, book, "Draw", (1 / (rest * Decimal("0.45"))).quantize(Decimal("0.01")))
+            _snapshot(cur, target, book, "Away", (1 / (rest * Decimal("0.55"))).quantize(Decimal("0.01")))
+    recompute_from_snapshots(db, fixture_ids=[target])
+    db.commit()
+    run_id = RunLedger(db).open("shadow_picks")
+    late = evaluate_captures(db, run_id=run_id, code_version="pipetest", since=CAPTURED + timedelta(minutes=1), cache_evidence=True)
+    assert (late.instants, late.candidates) == (0, 0), "a window after the only instant reads nothing"
+    window = evaluate_captures(db, run_id=run_id, code_version="pipetest", since=CAPTURED - timedelta(hours=24), cache_evidence=True)
+    db.commit()
+    assert window.instants == 1 and window.candidates >= 3 and window.selected >= 1
+    full = evaluate_captures(db, run_id=run_id, code_version="pipetest", watch_since=CAPTURED - timedelta(hours=24))
+    db.commit()
+    assert full.candidates == 0 and full.already_evaluated == window.candidates, "nothing left for the full scan"
+    assert full.from_old_instants == 0
+    with db.cursor() as cur:
+        cur.execute("SELECT count(*), count(DISTINCT (prediction_id, market_key, selection, line, odds_captured_at)) "
+                    "FROM picks.pick_candidates WHERE fixture_id = %s", (target,))
+        n, distinct = cur.fetchone() or (0, 0)
+        cur.execute("SELECT count(*) FROM picks.picks WHERE fixture_id = %s", (target,))
+        assert n == distinct == window.candidates and scalar(cur) == window.selected

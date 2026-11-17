@@ -10,6 +10,7 @@ from typing import Annotated, Any, Literal
 import psycopg
 from fastapi import APIRouter, Depends, Path, Query
 
+from fbi.api.contracts.intelligence.alerts import AlertsContract
 from fbi.api.contracts.intelligence.console import ConsoleContract
 from fbi.api.contracts.intelligence.match import MatchIntelligencePrivate
 from fbi.api.deps import get_db
@@ -17,6 +18,7 @@ from fbi.api.envelope import Envelope
 from fbi.api.services import capabilities as capabilities_svc
 from fbi.api.services import families as families_svc
 from fbi.api.services import intelligence as svc
+from fbi.api.services import intelligence_alerts as alerts_svc
 from fbi.api.services import intelligence_console as console_svc
 from fbi.api.services import match_intelligence
 
@@ -161,6 +163,16 @@ def get_capabilities(conn: Db) -> Envelope[dict[str, Any]]:
     lista_para_revision, autorizada), its safety and validation verdicts with evidence and sample, the newest rows of the gates it
     answers to and its agents' runs of the last seven days. Reading only: the registry switches nothing."""
     return capabilities_svc.overview(conn)
+
+
+@router.get("/intelligence/alerts", response_model=Envelope[AlertsContract])
+def get_alerts(conn: Db, hours: Annotated[int, Query(ge=1, le=720)] = 48,
+               fixture_id: Annotated[int | None, Query(ge=1, le=2**62)] = None,
+               kind: Literal["retirada", "sin_alineacion", "cambio_horario", "cambio_condiciones"] | None = None) -> Envelope[AlertsContract]:
+    """THE OWNER'S PRIVATE ALERTS, contract C-05 (IA-107, AD-D08): what the evaluation cycle (eval-cycle-v1, in the shadow) withdrew, the
+    line-ups that did not arrive in time and the changes of kick-off or conditions, each «antes -> ahora», newest first. Reading only: it
+    notifies nobody, and nothing a reader sees comes from here."""
+    return alerts_svc.alerts(conn, hours=hours, fixture_id=fixture_id, kind=kind)
 
 
 @router.get("/intelligence/console", response_model=Envelope[ConsoleContract])

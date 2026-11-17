@@ -1,0 +1,152 @@
+"""IA-110 lab: what parlay-v6 would have built over 14 product days (3-16 nov 2026) from the selections production confirmed in the
+shadow, against parlay-v5. Offline: reads the CSV exported read-only from production (q11.sh) and runs the repo's own code
+(fbi.lifecycle.derive for the chains, fbi.parlays.v6 for the parlays, fbi.picks.settlement for the legs).
+
+The only chains production holds today are decision-v1's (lifecycle-map-v1): decision-v2's kept shadow (IA-093) is not deployed. So
+"confirmed in the shadow" here is decision-v1's mapping (APROBADO, or INVESTIGACION parked only by edge_not_validated)."""
+
+from __future__ import annotations
+
+import csv
+import json
+import sys
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta
+from decimal import Decimal
+from pathlib import Path
+
+from fbi.ai.calendar import local_day
+from fbi.lifecycle import derive
+from fbi.tracking import parlay_v6 as v6
+from fbi.picks import settlement
+
+D = Path(sys.argv[1])
+
+
+def ts(x: str) -> datetime:
+    return datetime.fromisoformat(x)
+
+
+def num(x: str) -> float | None:
+    return None if x == "" else float(x)
+
+
+fx = {int(r["id"]): r for r in csv.DictReader(open(D / "fx.csv"))}
+dec = list(csv.DictReader(open(D / "dec.csv")))
+rev = list(csv.DictReader(open(D / "rev.csv")))
+by_id = {int(r["id"]): r for r in dec}
+hist: dict[derive.Key, derive.History] = {}
+for r in dec:
+    k = derive.Key.of(r["fixture_id"], r["market_key"], r["selection"], r["line"])
+    h = hist.setdefault(k, derive.History(k))
+    h.decisions.append(derive.Decision(int(r["id"]), r["decision_version"], ts(r["known_at"]), r["checkpoint"], r["state"],
+                                       tuple(c for c in r["reasons"].split(";") if c), r["context_status"], ts(r["kickoff_at"])))
+for r in rev:
+    k = derive.Key.of(r["fixture_id"], r["market_key"], r["selection"], r["line"])
+    if k in hist:
+        hist[k].reviews.append(derive.Review(int(r["id"]), ts(r["reviewed_at"]), r["decision"]))
+fixtures = {i: derive.Fixture(i, ts(r["kickoff_at"]), r["status_short"], r["status_group"]) for i, r in fx.items()}
+start, end = datetime.fromisoformat("2026-11-03 05:00+00:00"), datetime.fromisoformat("2026-11-17 05:00+00:00")
+moments = sorted({ts(r["known_at"]) for r in dec if start - timedelta(hours=24) <= ts(r["known_at"]) < end})
+# also every 15 minutes (the pass's cadence), so that a chain confirmed earlier is seen the moment a day starts
+t = start
+while t < end:
+    moments.append(t)
+    t += timedelta(minutes=15)
+moments = sorted(set(moments))
+
+
+def tips_at(at: datetime) -> list[v6.Candidate]:
+    out = []
+    for k, h in hist.items():
+        f = fixtures.get(k.fixture_id)
+        if f is None or f.kickoff_at <= at:
+            continue
+        rows = derive.derive(derive.as_of(h, at), f, now=at)
+        if not rows or rows[-1].step.state != "confirmada_sombra":
+            continue
+        tip = rows[-1]
+        d = by_id.get(tip.source_id or -1)
+        if d is None:
+            continue
+        fr = fx[k.fixture_id]
+        p_model, p_cal, p_low = num(d["p_model"]), num(d["p_cal"]), num(d["p_low"])
+        p = p_cal if p_cal is not None else p_model
+        low = None if p is None or p_low is None or p_model is None else min(p, p - max(0.0, p_model - p_low))
+        out.append(v6.Candidate(f"lifecycle-shadow-v1|{k.fixture_id}|{k.market_key}|{k.selection}|{k.line}", "confirmada_sombra",
+                                int(d["id"]), tip.known_at, k.fixture_id, int(fr["competition_id"]), f.kickoff_at,
+                                frozenset({int(fr["home_team_id"]), int(fr["away_team_id"])}), k.market_key, k.selection, k.line,
+                                num(d["odds"]), p, low, num(d["p_market"]), None if d["n_bookmakers"] == "" else int(d["n_bookmakers"]),
+                                "intel.decisions", int(d["id"])))
+    return out
+
+
+def leg_result(c: v6.Candidate) -> str | None:
+    r = fx[c.fixture_id]
+    gi = (lambda x: None if r[x] == "" else int(r[x]))
+    m = settlement.MatchState(r["status_short"], gi("reg_goals_home"), gi("reg_goals_away"), gi("et_goals_home"), gi("et_goals_away"),
+                              gi("ft_goals_home"), gi("ft_goals_away"), c.kickoff_at)
+    s = settlement.settle(c.market_key, c.selection, c.line, Decimal(str(c.odds)), Decimal(1), m, at=end + timedelta(days=4))
+    return s.status.value if s.is_final else None
+
+
+built: dict[tuple[str, object], v6.Built] = {}
+last_none: dict[tuple[str, object], v6.NoParlay] = {}
+seen_valid: dict[tuple[str, object], set[str]] = defaultdict(set)
+refused_all: Counter[str] = Counter()
+same_match_pairs = 0
+for at in moments:
+    day = local_day(at)
+    if not (datetime(2026, 11, 3).date() <= day <= datetime(2026, 11, 16).date()):
+        continue
+    pool = tips_at(at)
+    fids = Counter(c.fixture_id for c in pool if v6.refusal(c, at=at) is None)
+    same_match_pairs += sum(1 for n in fids.values() if n > 1)
+    for kind in v6.SPECS:
+        if (kind, day) in built:
+            continue
+        frm, to = v6.window(kind, at)
+        inwin = [c for c in pool if frm <= c.kickoff_at < to]
+        for c in inwin:
+            why = v6.refusal(c, at=at)
+            if why is None:
+                seen_valid[(kind, day)].add(c.chain_key)
+        res = v6.choose(inwin, kind=kind, at=at, measured={})
+        if isinstance(res, v6.Built):
+            built[(kind, day)] = res
+        else:
+            last_none[(kind, day)] = res
+            for k2, n in res.refused.items():
+                refused_all[k2] += n
+
+days = [datetime(2026, 11, 3).date() + timedelta(days=i) for i in range(14)]
+rows = []
+summary: dict[str, Counter[str]] = {k: Counter() for k in v6.SPECS}
+calib = []
+for kind in v6.SPECS:
+    for day in days:
+        b = built.get((kind, day))
+        if b is None:
+            n = len(seen_valid[(kind, day)])
+            reason = "sin_candidatos" if n == 0 else "un_solo_candidato" if n == 1 else "ninguna_combinacion_cumple"
+            summary[kind][f"none:{reason}"] += 1
+            rows.append({"kind": kind, "day": str(day), "outcome": "none", "reason": reason, "valid_candidates_seen": n})
+            continue
+        results = [leg_result(c) for c in b.legs]
+        status, factor = v6.outcome(results, [float(c.odds or 0) for c in b.legs])
+        summary[kind]["built"] += 1
+        summary[kind][status] += 1
+        summary[kind][f"legs_{len(b.legs)}"] += 1
+        calib.append((b.joint.p, b.joint.p_low, status))
+        rows.append({"kind": kind, "day": str(day), "outcome": "built", "legs": len(b.legs), "odds": round(b.combined_odds, 3),
+                     "p_joint": round(b.joint.p, 4), "p_joint_low": round(b.joint.p_low, 4), "p_product": round(b.joint.product, 4),
+                     "margin": None if b.accumulated_margin is None else round(b.accumulated_margin, 4),
+                     "ev": round(b.expected_value, 4), "status": status, "payout": factor,
+                     "legs_detail": [f"{c.market_key} {c.selection} {c.line} @{c.odds} p={c.p:.3f} -> {r}" for c, r in
+                                     zip(b.legs, results, strict=True)]})
+done = [c for c in calib if c[2] in ("WON", "LOST")]
+print(json.dumps({"moments": len(moments), "chains": len(hist), "same_match_valid_pairs_seen": same_match_pairs,
+                  "summary": {k: dict(v) for k, v in summary.items()}, "refused_at_moments": dict(refused_all.most_common()),
+                  "calibration": {"settled": len(done), "won": sum(1 for c in done if c[2] == "WON"),
+                                  "expected": round(sum(c[0] for c in done), 3), "expected_low": round(sum(c[1] for c in done), 3)},
+                  "rows": rows}, indent=1, default=str))

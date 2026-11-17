@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final
 
+from fbi.api.contracts.intelligence.alerts import AlertsContract
 from fbi.api.contracts.intelligence.base import IntelligenceContract
 from fbi.api.contracts.intelligence.console import ConsoleContract
 from fbi.api.contracts.intelligence.match import MatchIntelligence, MatchIntelligencePrivate
@@ -94,6 +95,7 @@ CONTRACTS: Final[tuple[ContractSpec, ...]] = (
                  public_routes=("/api/v1/matches/{fixture_id}/intelligence",),
                  private_routes=("/api/v1/admin/intelligence/matches/{fixture_id}/intelligence",)),
     ContractSpec(private=ConsoleContract, public=None, private_routes=("/api/v1/admin/intelligence/console",)),
+    ContractSpec(private=AlertsContract, public=None, private_routes=("/api/v1/admin/intelligence/alerts",)),
     ContractSpec(private=SearchV2Private, public=SearchV2, public_routes=("/api/v1/search/v2",),
                  private_routes=("/api/v1/admin/search/v2",)),
     ContractSpec(private=ProfilePrivate, public=Profile, public_routes=PROFILE_PUBLIC_ROUTES,

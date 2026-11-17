@@ -77,6 +77,10 @@ at worst, and a duplicated tick costs nothing at all.
     cycle of states of each selection (``fbi.lifecycle``, IA-068), read off the decisions, the shadow picks, the reviews, the settlements
     and the post-mortems of the matches of the last 7 days and the next 48 hours, appended to ``intel.selection_lifecycle``. Database
     only; it writes nothing else and nothing reads it but the owner's views.
+  * ``selection_settle_shadow``  every 15 min, only while ``FBI_SELECTION_SETTLE`` is ``shadow`` (off by default): the chains of
+    decision-v2's kept shadow settled on settle-v4 - En juego -> Liquidada -> Evaluada - in ``intel.selection_settlements`` (IA-109).
+  * ``parlay_v6_shadow``  every 15 min, only while ``FBI_PARLAY_V6`` is ``shadow`` (off by default): ``parlay-v6`` built from the chains
+    confirmed in the shadow, at most 3 legs, none if nothing meets, kept in ``intel.parlays_v6`` (IA-110). ``parlay-v5`` is untouched.
   * ``decision_v2_shadow``  every 5 min (``FBI_DECISION_V2_MINUTES``), only while ``FBI_DECISION_V2`` is ``shadow`` (off by default):
     decision-v2 decides by itself at E1 (T-24 to T-12 h), at E4 (the last moment before kick-off it still judges) and at every moment
     decision-v1 decided (the mirror), and each decision is kept in ``intel.decisions_v2`` with its moment in ``intel.decision_v2_moments``
@@ -90,6 +94,12 @@ at worst, and a duplicated tick costs nothing at all.
     (``content-plan-v1``) and the single chronicle (``chronicle-v4``, the small model, by batch when the gate allows) of the analysed matches
     of the next day, checked sentence by sentence (``fbi.chronicle.v4_job``, IA-103/IA-104), into ``ai.chronicles``. At most US$ 1 a day;
     nothing a reader, a pick or a decision reads.
+  * ``eval_cycle_shadow``  every 5 min (``FBI_EVAL_CYCLE_MINUTES``) and ``eval_cycle_e3`` every 60 s (``FBI_EVAL_CYCLE_E3_SECONDS``),
+    only while ``FBI_EVAL_CYCLE`` is ``shadow`` (off by default): the evaluations E1-E4 of the tracked matches (``fbi.shadowjobs.eval_cycle``,
+    IA-105..IA-108, ``eval-cycle-v1``) - E1 with each selection's line-up dependencies, E2 per new fact, E3 when the official line-up
+    arrives (code only), E4 from T-20 to T-10 with the match read again - kept in ``intel.eval_runs`` and its tables, decision-v2's
+    versions in ``intel.decisions_v2``, the owner's private alerts in ``intel.private_alerts`` and the chains through the cycle's API.
+    Database and RAW only; the passes first/pre/final, decision-v1 and every reader are untouched.
   * ``signals_ingest``  every 15 min (``FBI_SIGNALS_MINUTES``), only while ``FBI_SIGNALS=shadow`` (off by default): the RSS feeds and
     sitemaps of the directory v2 (``fbi.news.signals``, IA-085) - only of sources the policy lets be read (authorised and signed by the
     owner), robots.txt first, conditional requests; titles, dates and links into ``news.items``, and for the pending sources only what
@@ -1217,6 +1227,47 @@ async def _chronicle_v4() -> None:
     await asyncio.to_thread(_chronicle_v4_now)
 
 
+def _selection_settle_shadow_now() -> None:
+    """The tracking of loose selections (IA-109): one pass. Never raises; writes only ``intel.selection_settlements`` and, through the
+    cycle's API, the chains' moves after kick-off in ``intel.selection_lifecycle``."""
+    from fbi.shadowjobs import selection_settle as ss
+
+    if ss.settle_mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = ss.settle(conn, now=now())
+        log.info("selection_settle_shadow.run", chains=r["chains"], settled=r["settled"], corrected=r["corrected"], firm=r["firm"],
+                 appended=r["appended"], errors=r["errors"][:3])
+    except Exception as exc:
+        log.error("selection_settle_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _selection_settle_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_selection_settle_shadow_now)
+
+
+def _parlay_v6_shadow_now() -> None:
+    """``parlay-v6`` in the shadow (IA-110): one pass. Never raises; writes only ``intel.parlays_v6`` and ``intel.parlay_v6_legs``."""
+    from fbi.shadowjobs import selection_settle as ss
+
+    if ss.parlay_mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = ss.parlays(conn, now=now(), code_version=code_version())
+        log.info("parlay_v6_shadow.run", built=r["built"], looked=r["looked"], days_without=r["days_without"], by_kind=r["by_kind"],
+                 errors=r["errors"][:3])
+    except Exception as exc:
+        log.error("parlay_v6_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _parlay_v6_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_parlay_v6_shadow_now)
+
+
 def _lineup_estimate_shadow_now() -> None:
     """The estimated starters (IA-094): one pass. Never raises; writes only ``intel.lineup_estimates``."""
     from fbi.shadowjobs import lineup_estimate as les
@@ -1234,6 +1285,48 @@ def _lineup_estimate_shadow_now() -> None:
 async def _lineup_estimate_shadow() -> None:
     new_run_id()
     await asyncio.to_thread(_lineup_estimate_shadow_now)
+
+
+def _eval_cycle_shadow_now() -> None:
+    """The evaluation cycle's main pass (IA-105): the match read again, E1, E2, E4 and the chains. Never raises; writes only the cycle's
+    tables, decision-v2's through its own function and the cycle of states through its API."""
+    from fbi.shadowjobs import eval_cycle as ec
+
+    if ec.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = ec.run(conn, now=now(), raw_root=settings.runtime.raw_store_dir, code_version=code_version())
+        log.info("eval_cycle_shadow.run", runs=r["runs"], failed=r["failed"], verdicts=r["verdicts"], alerts=r["alerts"],
+                 errors=r["errors"][:3])
+    except Exception as exc:
+        log.error("eval_cycle_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _eval_cycle_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_eval_cycle_shadow_now)
+
+
+def _eval_cycle_e3_now() -> None:
+    """E3 of the evaluation cycle (IA-106): the official line-ups that arrived, judged by code. Never raises."""
+    from fbi.shadowjobs import eval_cycle as ec
+
+    if ec.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = ec.run_e3(conn, now=now(), raw_root=settings.runtime.raw_store_dir, code_version=code_version())
+        if r["runs"] or r["failed"]:
+            log.info("eval_cycle_e3.run", runs=r["runs"], failed=r["failed"], latency=r["e3_latency_ms"], alerts=r["alerts"],
+                     errors=r["errors"][:3])
+    except Exception as exc:
+        log.error("eval_cycle_e3.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _eval_cycle_e3() -> None:
+    new_run_id()
+    await asyncio.to_thread(_eval_cycle_e3_now)
 
 
 def _user_narrative_now() -> None:
@@ -1758,7 +1851,7 @@ WORKER_JOB_TYPES = frozenset({
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
     "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest", "decision_v2_shadow", "lineup_estimate_shadow",
-    "news_stories", "chronicle_v4",
+    "news_stories", "chronicle_v4", "eval_cycle_shadow", "eval_cycle_e3", "selection_settle_shadow", "parlay_v6_shadow",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -2115,6 +2208,21 @@ async def main() -> None:
                           misfire_grace_time=dv2.every_minutes() * 60, next_run_time=moment + timedelta(minutes=3))
     else:
         log.info("worker.decision_v2_shadow_off", hint="FBI_DECISION_V2 is not shadow: decision-v2 keeps no decision (IA-093)")
+    from fbi.shadowjobs import selection_settle as ss
+
+    if ss.settle_mode() == "shadow":
+        scheduler.add_job(_deadline("selection_settle_shadow", "selection_settle_shadow", _selection_settle_shadow), "interval",
+                          minutes=15, id="selection_settle_shadow", max_instances=1, coalesce=True, misfire_grace_time=15 * 60,
+                          next_run_time=moment + timedelta(minutes=8))
+    else:
+        log.info("worker.selection_settle_shadow_off",
+                 hint="FBI_SELECTION_SETTLE is not shadow: the loose selections of the shadow are not settled (IA-109)")
+    if ss.parlay_mode() == "shadow":
+        scheduler.add_job(_deadline("parlay_v6_shadow", "parlay_v6_shadow", _parlay_v6_shadow), "interval",
+                          minutes=15, id="parlay_v6_shadow", max_instances=1, coalesce=True, misfire_grace_time=15 * 60,
+                          next_run_time=moment + timedelta(minutes=9))
+    else:
+        log.info("worker.parlay_v6_shadow_off", hint="FBI_PARLAY_V6 is not shadow: parlay-v6 is not built (IA-110)")
     from fbi.shadowjobs import lineup_estimate as les
 
     if les.mode() == "shadow":
@@ -2123,6 +2231,17 @@ async def main() -> None:
                           misfire_grace_time=les.every_minutes() * 60, next_run_time=moment + timedelta(minutes=4))
     else:
         log.info("worker.lineup_estimate_shadow_off", hint="FBI_LINEUP_ESTIMATE is not shadow: no estimated starters are kept (IA-094)")
+    from fbi.shadowjobs import eval_cycle as ec
+
+    if ec.mode() == "shadow":
+        scheduler.add_job(_deadline("eval_cycle_shadow", "eval_cycle_shadow", _eval_cycle_shadow), "interval",
+                          minutes=ec.every_minutes(), id="eval_cycle_shadow", max_instances=1, coalesce=True,
+                          misfire_grace_time=ec.every_minutes() * 60, next_run_time=moment + timedelta(minutes=5))
+        scheduler.add_job(_deadline("eval_cycle_e3", "eval_cycle_e3", _eval_cycle_e3), "interval",
+                          seconds=ec.e3_every_seconds(), id="eval_cycle_e3", max_instances=1, coalesce=True,
+                          misfire_grace_time=ec.e3_every_seconds(), next_run_time=moment + timedelta(minutes=2))
+    else:
+        log.info("worker.eval_cycle_off", hint="FBI_EVAL_CYCLE is not shadow: no evaluation E1-E4 is kept (IA-105)")
     from fbi.news import signals
 
     if signals.mode() == "shadow":

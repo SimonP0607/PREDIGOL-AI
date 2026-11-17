@@ -1,6 +1,6 @@
 """value-v2 and corr-v2 (``fbi.valuation``) are in SHADOW: nothing that decides for production, publishes, stakes or serves users imports
 them - not decision-v1 (``fbi.intel``, protected), not the picks, not ``parlay-v5``, not the API. Their readers are listed; a new one fails
-here until someone decides it may read (``parlay-v6``, AD-E06, will add ``parlays/``). The package itself writes nothing and reaches no
+here until someone decides it may read (``parlay-v6``, AD-E06, reads it from the leaf package ``tracking/``, in the shadow). The package itself writes nothing and reaches no
 serving layer."""
 
 from __future__ import annotations
@@ -15,6 +15,8 @@ ALLOWED = {
     "decision/replay.py": "the replay of decision-v2 (read-only) reports value-v2",
     "portfolio/build.py": "the shadow portfolio reads corr-v2 beside portfolio-corr-v1 behind --correlation-v2 (read-only)",
     "scripts/ia_value_correlation.py": "the read-only measurement of value-v2 and of the three calculations of correlation",
+    "tracking/parlay_v6.py": "parlay-v6 (AD-E06, IA-110, shadow): the joint of its legs by simulation with corr-v2's dependence",
+    "tracking/parlay_v6_shadow.py": "parlay-v6's shadow pass reads the score matrices and the measured correlations for the builder",
 }
 SERVING = ("intel/", "picks/", "familydecisions/", "api/", "parlays/", "customer/", "notify/", "messaging/", "narrative/", "knowledge/",
            "apps/")

@@ -1,0 +1,66 @@
+"""IA-109 lab: the selections confirmed in the shadow at kick-off (decision-v1's chains, the only ones production holds), settled by the
+tracking's rule (settle-v4 on the match as stored) against settle-v4's stored results of the shadow picks of the same selection."""
+from __future__ import annotations
+
+import csv
+import json
+import sys
+from collections import Counter
+from datetime import datetime, timedelta
+from decimal import Decimal
+from pathlib import Path
+
+from fbi.lifecycle import derive
+from fbi.picks import settlement
+from fbi.tracking import selections as tracking
+
+D = Path(sys.argv[1])
+ts = datetime.fromisoformat
+fx = {int(r["id"]): r for r in csv.DictReader(open(D / "fx.csv"))}
+hist: dict[derive.Key, derive.History] = {}
+for r in csv.DictReader(open(D / "dec.csv")):
+    k = derive.Key.of(r["fixture_id"], r["market_key"], r["selection"], r["line"])
+    hist.setdefault(k, derive.History(k)).decisions.append(derive.Decision(
+        int(r["id"]), r["decision_version"], ts(r["known_at"]), r["checkpoint"], r["state"], tuple(c for c in r["reasons"].split(";") if c),
+        r["context_status"], ts(r["kickoff_at"])))
+for r in csv.DictReader(open(D / "rev.csv")):
+    k = derive.Key.of(r["fixture_id"], r["market_key"], r["selection"], r["line"])
+    if k in hist:
+        hist[k].reviews.append(derive.Review(int(r["id"]), ts(r["reviewed_at"]), r["decision"]))
+stored: dict[derive.Key, set[str]] = {}
+for r in csv.DictReader(open(D / "pk.csv")):
+    if r["result_status"] != "pending":
+        stored.setdefault(derive.Key.of(r["fixture_id"], r["market_key"], r["selection"], r["line"]), set()).add(r["result_status"])
+now = ts("2026-11-17 07:00+00:00")
+out = Counter()
+results = Counter()
+examples = []
+for k, h in hist.items():
+    r = fx[k.fixture_id]
+    f = derive.Fixture(k.fixture_id, ts(r["kickoff_at"]), r["status_short"], r["status_group"])
+    if f.kickoff_at >= now:
+        continue
+    chain = derive.derive(h, f, now=now)
+    states = [x.step.state for x in chain]
+    if "en_juego" not in states:
+        out["not_in_play:" + states[-1] + ":" + chain[-1].step.reason + " <- " + (chain[-2].step.state + ":" + chain[-2].step.reason if len(chain) > 1 else "")] += 1
+        if "--all" not in sys.argv:
+            continue
+    gi = (lambda x: None if r[x] == "" else int(r[x]))
+    m = settlement.MatchState(r["status_short"], gi("reg_goals_home"), gi("reg_goals_away"), gi("et_goals_home"), gi("et_goals_away"),
+                              gi("ft_goals_home"), gi("ft_goals_away"), f.kickoff_at)
+    v = settlement.settle(k.market_key, k.selection, k.line, Decimal(2), Decimal(1), m, at=now)
+    plan = tracking.plan([], v, now=now, kickoff_at=f.kickoff_at)
+    if not plan:
+        out["pending"] += 1
+        continue
+    results[plan[0].result] += 1
+    theirs = stored.get(k, set())
+    if not theirs:
+        out["no_settled_pick"] += 1
+    elif theirs == {plan[0].result}:
+        out["same"] += 1
+    else:
+        out["different"] += 1
+        examples.append((str(k), plan[0].result, sorted(theirs)))
+print(json.dumps({"chains": len(hist), "outcome": dict(out), "results": dict(results), "examples": examples}, indent=1))

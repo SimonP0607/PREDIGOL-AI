@@ -1,0 +1,16 @@
+{
+  "contract": "C-05",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "decides": false,
+  "window_hours": 48,
+  "alerts": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  }
+}

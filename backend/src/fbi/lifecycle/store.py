@@ -305,29 +305,81 @@ def _extend(conn: psycopg.Connection[Any], found: Mapping[Key, History], fixture
             continue
         if not chain:
             continue
-        rep.selections += 1
-        rep.by_state[chain[-1].step.state] += 1
-        rep.by_reason[f"{chain[-1].step.state}:{chain[-1].step.reason}"] += 1
-        rep.unknown_reason += sum(1 for r in chain if r.step.reason == "sin_motivo_conocido")
-        have = [Stored(int(s["id"]), str(s["state"]), str(s["reason"]), str(s["source"]),
-                       None if s["source_id"] is None else int(s["source_id"])) for s in stored.get(chain_key(writer, key), [])]
-        verdict, rest = plan(have, chain)
-        if verdict == "divergent":
-            rep.divergent += 1
-            continue
-        if verdict == "unchanged":
-            rep.unchanged += 1
-            continue
-        rep.new_chains += int(verdict == "new")
-        rep.extended += int(verdict == "extended")
-        previous_id = have[-1].id if have else None
-        from_state = have[-1].state if have else None
-        for r in rest:
-            rep.rows_by_state[r.step.state] += 1
-            rep.appended += 1
-            if not dry_run:
-                previous_id = _insert(conn, writer=writer, key=key, row=r, previous_id=previous_id, from_state=from_state)
-            from_state = r.step.state
+        _append(conn, key, chain, stored, writer=writer, dry_run=dry_run, rep=rep)
+
+
+def _append(conn: psycopg.Connection[Any], key: Key, chain: list[Row], stored: Mapping[str, list[dict[str, Any]]], *, writer: str,
+            dry_run: bool, rep: PassReport) -> None:
+    """Append to ``writer``'s stored chain of ``key`` what ``chain`` has beyond it (a prefix check; nothing is rewritten)."""
+    rep.selections += 1
+    rep.by_state[chain[-1].step.state] += 1
+    rep.by_reason[f"{chain[-1].step.state}:{chain[-1].step.reason}"] += 1
+    rep.unknown_reason += sum(1 for r in chain if r.step.reason == "sin_motivo_conocido")
+    have = [Stored(int(s["id"]), str(s["state"]), str(s["reason"]), str(s["source"]),
+                   None if s["source_id"] is None else int(s["source_id"])) for s in stored.get(chain_key(writer, key), [])]
+    verdict, rest = plan(have, chain)
+    if verdict == "divergent":
+        rep.divergent += 1
+        return
+    if verdict == "unchanged":
+        rep.unchanged += 1
+        return
+    rep.new_chains += int(verdict == "new")
+    rep.extended += int(verdict == "extended")
+    previous_id = have[-1].id if have else None
+    from_state = have[-1].state if have else None
+    for r in rest:
+        rep.rows_by_state[r.step.state] += 1
+        rep.appended += 1
+        if not dry_run:
+            previous_id = _insert(conn, writer=writer, key=key, row=r, previous_id=previous_id, from_state=from_state)
+        from_state = r.step.state
+
+
+SETTLEMENTS_SQL: Final = """
+SELECT id, chain_key, kind, known_at, result
+  FROM intel.selection_settlements
+ WHERE chain_key = ANY(%(keys)s)
+ ORDER BY chain_key, known_at, id
+"""
+"""The tracking's settlements of a writer's chains (IA-109, AD-E05; revision 0157): read only, so that the derivation of a layer that keeps
+its own decisions settles its chains as the tracking does and never finds them ``divergent``."""
+
+
+def attach_settlements(conn: psycopg.Connection[Any], found: Mapping[Key, History], *, writer: str) -> int:
+    """Give every history of ``found`` the tracking's settlements of its chain under ``writer`` (``History.settlements``). Read-only;
+    nothing happens before revision 0157. Returns how many histories got any."""
+    row = conn.execute("SELECT to_regclass('intel.selection_settlements') IS NOT NULL").fetchone()
+    if not (row and row[0]) or not found:
+        return 0
+    by_key = {chain_key(writer, k): h for k, h in found.items()}
+    got: dict[str, list[derive.Settled]] = {}
+    for r in _fetch(conn, SETTLEMENTS_SQL, {"keys": sorted(by_key)}):
+        got.setdefault(str(r["chain_key"]), []).append(derive.Settled(int(r["id"]), str(r["kind"]), r["known_at"], str(r["result"])))
+    for key, rows in got.items():
+        by_key[key].settlements = rows
+    return len(got)
+
+
+def append(conn: psycopg.Connection[Any], *, writer: str, key: Key, rows: Sequence[Row], previous_id: int, from_state: str,
+           dry_run: bool = False) -> int:
+    """Append ``rows`` to the stored chain of ``key`` under ``writer`` whose newest row is ``previous_id`` in ``from_state``: the API of the
+    tracking of loose selections (IA-109), which takes a chain past kick-off (``derive.after_kickoff``). Every row is checked by the machine
+    first; the database refuses a second successor of the same row (two passes at once: the second fails and is rolled back by its
+    caller). Returns the rows written (none while ``dry_run``)."""
+    if writer == WRITER:
+        raise ValueError(f"{WRITER} settles its chains off intel.decision_outcomes: the tracking does not write them")
+    state: str | None = from_state
+    for r in rows:
+        machine.check(state, r.step)
+        state = r.step.state
+    if dry_run:
+        return 0
+    prev, frm = previous_id, from_state
+    for r in rows:
+        prev = _insert(conn, writer=writer, key=key, row=r, previous_id=prev, from_state=frm)
+        frm = r.step.state
+    return len(rows)
 
 
 def extend(conn: psycopg.Connection[Any], found: Mapping[Key, History], fixtures: Mapping[int, Fixture], *, now: datetime,
@@ -335,7 +387,8 @@ def extend(conn: psycopg.Connection[Any], found: Mapping[Key, History], fixtures
     """The cycle's API for a layer that keeps its own decisions (decision-v2's shadow, IA-093, AD-D01): given what that layer holds about
     its selections (``found``, read by the layer from its own table, ``source``) and their matches, append to the chains of ``writer``
     what is missing - the same derivation, the same machine, the same check of a stored prefix as ``run_pass`` (a chain that disagrees
-    with what is stored is ``divergent`` and left as it is). The caller commits; nothing is written while ``dry_run`` or without the
+    with what is stored is ``divergent`` and left as it is). The tracking's settlements of the writer's chains (IA-109) are read first
+    (``attach_settlements``), so a chain it has taken past kick-off is derived the same way here. The caller commits; nothing is written while ``dry_run`` or without the
     table (revision 0142), and the report says so."""
     rep = PassReport()
     if not _table_exists(conn):
@@ -344,10 +397,38 @@ def extend(conn: psycopg.Connection[Any], found: Mapping[Key, History], fixtures
     if writer == WRITER:
         raise ValueError(f"{WRITER} is the writer of the chains read off intel.decisions: a layer of its own writes under another name")
     ids = sorted({k.fixture_id for k in found} & set(fixtures))
+    attach_settlements(conn, {k: h for k, h in found.items() if k.fixture_id in fixtures}, writer=writer)
     stored = _stored(conn, ids, writer) if ids else {}
     _extend(conn, {k: h for k, h in found.items() if k.fixture_id in fixtures}, fixtures, stored, now=now, dry_run=dry_run,
             writer=writer, source=source, rep=rep)
     rep.fixtures = len(ids)
+    return rep
+
+
+def extend_rows(conn: psycopg.Connection[Any], chains: Mapping[Key, Sequence[Row]], *, writer: str, dry_run: bool = False) -> PassReport:
+    """The cycle's API for a writer that builds its chains itself from its own rows (the evaluation cycle, IA-105, AD-D06: its verdicts
+    in ``intel.eval_verdicts``): every chain is checked whole by the machine, then appended to what ``writer`` stored for it with the same
+    check of a stored prefix as ``run_pass`` (a chain that disagrees with what is stored is ``divergent`` and left as it is; nothing is
+    ever rewritten). The caller commits; nothing is written while ``dry_run`` or without the table (revision 0142)."""
+    rep = PassReport()
+    if not _table_exists(conn):
+        rep.errors.append("intel.selection_lifecycle does not exist: apply revision 0142 first")
+        return rep
+    if writer == WRITER:
+        raise ValueError(f"{WRITER} is the writer of the chains read off intel.decisions: a layer of its own writes under another name")
+    ids = sorted({k.fixture_id for k in chains})
+    stored = _stored(conn, ids, writer) if ids else {}
+    rep.fixtures = len(ids)
+    for key, chain in sorted(chains.items(), key=lambda kv: (kv[0].fixture_id, kv[0].market_key, kv[0].selection, kv[0].line)):
+        if not chain:
+            continue
+        try:
+            machine.check_chain(derive.steps_of(chain))
+        except machine.IllegalTransitionError as exc:
+            rep.illegal += 1
+            rep.errors.append(f"{chain_key(writer, key)}: {exc}"[:300])
+            continue
+        _append(conn, key, list(chain), stored, writer=writer, dry_run=dry_run, rep=rep)
     return rep
 
 

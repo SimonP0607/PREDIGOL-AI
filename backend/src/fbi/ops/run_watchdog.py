@@ -47,6 +47,13 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "lineup_estimate_shadow": timedelta(minutes=20),
     # the single chronicle in shadow (IA-103/IA-104): at most ten calls of the small model a pass, or a batch sent.
     "chronicle_v4": timedelta(minutes=20),
+    # the evaluation cycle (IA-105): no provider, no model; at most 12 E1 a pass (the estimated starters), the rest database reads.
+    "eval_cycle_shadow": timedelta(minutes=20),
+    # its E3 (IA-106): one pass a minute over the line-ups that arrived; it must end well within two minutes.
+    "eval_cycle_e3": timedelta(minutes=3),
+    # the tracking of loose selections (IA-109) and parlay-v6 (IA-110): database only, a few hundred chains a pass.
+    "selection_settle_shadow": timedelta(minutes=10),
+    "parlay_v6_shadow": timedelta(minutes=10),
     "live_odds_capture": timedelta(minutes=10),
     "live_match_capture": timedelta(minutes=10),
     "prematch_lineups": timedelta(minutes=10),

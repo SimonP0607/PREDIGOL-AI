@@ -66,8 +66,15 @@ def test_only_its_job_and_its_command_import_it() -> None:
     # IA-096 (AD-E03): the private evaluation of corners and cards appends the chains of the selections it admits with the cycle's own
     # derivation and statement, under its own writer (count-eval-v1); it is itself imported only by its command
     # (tests/unit/test_count_private_evaluation.py)
-    assert importers == {"apps/worker/scheduler.py", "scripts/ia_lifecycle.py", "src/fbi/decision/shadow.py",
-                         "src/fbi/countcal/private.py"}, importers
+    # IA-105 (AD-D06): the evaluation cycle builds the chains of its own verdicts with the cycle's machine and derivation (``chain.py``,
+    # and ``reevaluate.py`` for the closed reasons) and appends them through ``store.extend_rows`` (``run.py``), under its own writer
+    # (eval-cycle-v1); only fbi.shadowjobs.eval_cycle imports it (tests/unit/test_eval_cycle_isolation.py)
+    # IA-109 (AD-E05): the tracking of loose selections takes the chains of decision-v2's shadow past kick-off on settle-v4 through the
+    # cycle's API (``store.append``, ``derive.after_kickoff``); it is itself imported only by its worker door and its command
+    # (tests/unit/test_tracking_ia109.py)
+    assert importers == {"apps/worker/scheduler.py", "scripts/ia_lifecycle.py", "src/fbi/countcal/private.py",
+                         "src/fbi/decision/shadow.py", "src/fbi/evalcycle/chain.py", "src/fbi/evalcycle/reevaluate.py",
+                         "src/fbi/evalcycle/run.py", "src/fbi/tracking/selections.py"}, importers
 
 
 def test_the_worker_schedules_it_only_in_the_shadow_with_a_deadline() -> None:

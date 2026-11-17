@@ -61,6 +61,10 @@ class PickReport:
     rejected: int = 0
     qualified: int = 0
     reasons: dict[str, int] = field(default_factory=dict)
+    since: datetime | None = None
+    """The oldest price instant the pass read (None: all of them, as every pass did before IA-111)."""
+    from_old_instants: int = 0
+    """Candidates written from an instant older than ``watch_since`` (IA-111's measurement: what a window would have missed)."""
 
 
 def _q6(x: Decimal | float) -> Decimal:
@@ -209,8 +213,13 @@ def _evaluated(conn: psycopg.Connection, prediction_ids: list[int], rule_version
 
 
 def evaluate_captures(conn: psycopg.Connection, *, run_id: int, code_version: str,
-                      since: datetime | None = None, rule: DecisionRule = CURRENT_RULE) -> PickReport:
-    report = PickReport()
+                      since: datetime | None = None, rule: DecisionRule = CURRENT_RULE,
+                      watch_since: datetime | None = None, cache_evidence: bool = False) -> PickReport:
+    """Every price instant (or those from ``since``) against the forecasts made before it. ``watch_since`` only COUNTS the candidates
+    written from an instant older than it (``from_old_instants``); ``cache_evidence`` reads the backtest evidence of a (model version,
+    market, line) once per pass instead of once per pick - the same rows (IA-111, AD-E08)."""
+    report = PickReport(since=since)
+    evidence_cache: dict[tuple[int, str, Decimal], VersionEvidence] = {}
     for inst in _instants(conn, since):
         fixture_id, as_of = int(inst["fixture_id"]), inst["as_of"]
         report.instants += 1
@@ -295,13 +304,20 @@ def evaluate_captures(conn: psycopg.Connection, *, run_id: int, code_version: st
                 report.already_evaluated += 1
                 continue
             report.candidates += 1
+            if watch_since is not None and as_of < watch_since:
+                report.from_old_instants += 1
             if reason is not None:
                 report.rejected += 1
                 bucket = reason_kind(reason)
                 report.reasons[bucket] = report.reasons.get(bucket, 0) + 1
                 continue
             report.selected += 1
-            evidence = _evidence(conn, int(f["model_version_id"]), f["market_key"], Decimal(f["line"]))
+            ekey = (int(f["model_version_id"]), str(f["market_key"]), Decimal(f["line"]))
+            if cache_evidence and ekey in evidence_cache:
+                evidence = evidence_cache[ekey]
+            else:
+                evidence = _evidence(conn, *ekey)
+                evidence_cache[ekey] = evidence
             q = qualify(evidence)
             status = "qualified" if q.qualified else "shadow"
             report.qualified += int(q.qualified)
