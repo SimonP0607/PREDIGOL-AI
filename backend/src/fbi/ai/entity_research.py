@@ -41,6 +41,10 @@ the transport is retried, never one of the content):
 
 A page that reads like an order to a model is read in a call of its own (``extract_v2.groups``): the model that reads the others never sees it
 (independent review of phase 2, 27 Oct 2026, finding H1).
+
+The sources (IA-063): the pages pass through ``fbi.ai.source_policy`` before the extractor reads them, exactly as v1's do - a source that
+reserves its text from AI is never read, a domain of the exclusion list is not read while ``FBI_SOURCE_EXCLUSION`` enforces, and what the
+strict policy would block is recorded (``ai.source_policy_log``, path ``v2``). A page kept away is not marked as read.
 """
 
 from __future__ import annotations
@@ -56,7 +60,7 @@ import httpx
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.ai import cache, extract_v2, gates, research
+from fbi.ai import cache, extract_v2, gates, research, source_policy
 from fbi.ai.absences import absences_as_of
 from fbi.ai.budget_v3 import exa_budget
 from fbi.ai.collectors import (
@@ -384,6 +388,7 @@ def _research(conn: psycopg.Connection[Any], settings: AiSettings, match: Match,
         out.skipped = "model_not_configured"
         return []
     exa_envelope = gates.enabled(conn, settings, "budget_v3")
+    policy = source_policy.load(conn)
     late = match.kickoff_at - at <= LATE_WINDOW
     bucket = "late" if late else "early"
     found: list[Found] = []
@@ -428,7 +433,7 @@ def _research(conn: psycopg.Connection[Any], settings: AiSettings, match: Match,
                 ledger.record(at=at, purpose="web_search", tier="search", provider=engine, model=engine, usage=None, cost=cost, status="ok",
                               fixture_id=match.fixture_id, input_hash=LEDGER_PREFIX + key)
                 record_source_results(conn, results, at=at, cost=cost)
-                payload = {"query": query, "level": level, "results": [r.as_json() for r in results]}
+                payload = {"query": query, "level": level, "results": [r.as_json() for r in source_policy.for_storage(policy, results)]}
                 cache.put(conn, "search", key, payload, at=at, ttl=LATE_TTL if late else EARLY_TTL)
             else:
                 out.shared += 1
@@ -445,13 +450,14 @@ def _research(conn: psycopg.Connection[Any], settings: AiSettings, match: Match,
             known = known or standing
         if known:
             break  # the first level with a source of known standing is enough (v1's rule)
-    if found and not _read(conn, settings, match, found, out, at=at, ledger=ledger, provider=provider, transport=transport):
+    if found and not _read(conn, settings, match, found, out, at=at, ledger=ledger, provider=provider, transport=transport, policy=policy):
         return []  # nothing was read: nothing is remembered, the next pass reads the pages again (the search is cached)
     return answers
 
 
 def _read(conn: psycopg.Connection[Any], settings: AiSettings, match: Match, found: list[Found], out: CollectedV2, *, at: datetime,
-          ledger: UsageLedger, provider: tuple[LlmProvider, str] | None, transport: httpx.BaseTransport | None) -> bool:
+          ledger: UsageLedger, provider: tuple[LlmProvider, str] | None, transport: httpx.BaseTransport | None,
+          policy: source_policy.SourcePolicy | None = None) -> bool:
     """Read the pages that are new for the subjects they were found for, ask the extractor (once for the pages that do not read like an order,
     once for the ones that do), store what stands. True when the pages were read or discarded (or there was nothing to read); False when a
     call could not be made or answered. A group of pages is marked as read as soon as its call is over, so a failure of a later call never
@@ -477,9 +483,15 @@ def _read(conn: psycopg.Connection[Any], settings: AiSettings, match: Match, fou
             unread.append((key, f))
     if not unread:
         return True
+    screened = source_policy.screen(policy if policy is not None else source_policy.load(conn), [f.result for _, f in unread])
+    allowed = {r.url for r in screened.kept}
+    unread = [(key, f) for key, f in unread if f.result.url in allowed]  # IA-063: what a model may read; the rest is not marked as read
     unread.sort(key=lambda kf: _rank(conn, kf[1].result.url))  # the most authoritative first
     out.pages_unread += max(0, len(unread) - MAX_READ)
     chosen = unread[:MAX_READ]
+    source_policy.record(conn, screened.read(f.result.url for _, f in chosen), at=at, path="v2", fixture_id=match.fixture_id)
+    if not chosen:
+        return True
     pages = extract_v2.pages_from([f.result for _, f in chosen])
     teams = sorted({int(t.split(":", 1)[1]) for _, f in chosen for t in f.tokens if t.startswith("TEAM:")})
     read_for = {token("TEAM", t) for t in teams} | {token("MATCH", match.fixture_id)}
@@ -519,6 +531,7 @@ def _extract(conn: psycopg.Connection[Any], settings: AiSettings, match: Match, 
     out.pages += len(pages)
     out.pages_flagged += sum(1 for p in pages if p.instruction_like)
     if call.result is None:  # the provider could not read the answer or the model refused: the ledger has it; the pages are not asked again
+        out.invalid += int(bool(call.rejected))  # IA-064: an answer that came back and the common validator refused is an invalid answer
         return True
     reading = extract_v2.read(call.result.data, subjects=subjects, pages=pages)
     if not reading.ok:

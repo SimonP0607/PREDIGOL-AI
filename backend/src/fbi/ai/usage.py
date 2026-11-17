@@ -49,7 +49,7 @@ import httpx
 import psycopg
 from psycopg.rows import tuple_row
 
-from fbi.ai import gates
+from fbi.ai import gates, outputs
 from fbi.ai.calendar import day_start, days_left_in_month, local_day, month_start
 from fbi.ai.config import AiSettings, Tier
 from fbi.ai.pricing import token_cost
@@ -410,6 +410,8 @@ class CallOutcome:
     cost: Decimal
     error: str | None = None
     """A stable code: not_configured, over_budget, timeout, unavailable, rate_limited, refused, invalid_output."""
+    rejected: tuple[str, ...] = ()
+    """IA-064: why ``fbi.ai.outputs`` refused the answer (``reason@path``, closed reasons) when ``error`` is ``invalid_output`` because of it."""
 
 
 TIER_EFFORT: dict[str, str] = {"bulk": "low", "analysis": "medium", "final": "medium"}
@@ -473,6 +475,14 @@ def call_json(conn: psycopg.Connection[Any], settings: AiSettings, *, tier: Tier
         return CallOutcome(None, None, None, None, None, Decimal(0), code)
     impl, model = chosen
     request = with_switches(conn, settings, with_effort(request, used), model)
+    repeat: str | None = None
+    if not request.pinned and outputs.repeat_policy(request.schema) == "ledger" and outputs.asked_invalid_before(
+            conn, at=at, prompt_version=prompt_version, input_hash=input_hash, model=model, workspace=workspace):
+        # IA-064, rule 5: this input already got an invalid answer from this model - it is not paid for again
+        mode = outputs.mode_of(settings.output_guard, outputs.surface_of(request.schema), pinned=False)
+        if mode == "enforce":
+            return CallOutcome(None, None, used, impl.name, model, Decimal(0), "invalid_output", rejected=("repeat_after_invalid@answer",))
+        repeat = "repeat_after_invalid@answer"
     try:
         result = impl.complete_json(model, request)
     except ProviderError as exc:
@@ -504,9 +514,16 @@ def call_json(conn: psycopg.Connection[Any], settings: AiSettings, *, tier: Tier
     cost = token_cost(result.provider, model, input_tokens=u.input_tokens, output_tokens=u.output_tokens,
                       cached_tokens=u.cached_tokens, cache_write_5m_tokens=u.cache_write_5m_tokens,
                       cache_write_1h_tokens=u.cache_write_1h_tokens, at=at)
+    # IA-064: the common validator of every answer (fbi.ai.outputs) - refused (fail closed) or only marked, by the surface's mode
+    verdict = outputs.guard(request.schema, result.data, switch=settings.output_guard, pinned=request.pinned)
+    if repeat is not None:
+        verdict = outputs.Verdict(verdict.mode, verdict.surface, (*verdict.problems, repeat))
+    refused = verdict.refuses  # a repeat reaches here only in shadow: it is marked, never refused
     uid = ledger.record(at=at, purpose=purpose, tier=used or tier, provider=result.provider, model=model,
-                        usage=u, cost=cost, status="ok", prompt_version=prompt_version,
+                        usage=u, cost=cost, status="invalid_output" if refused else "ok", prompt_version=prompt_version,
                         fixture_id=fixture_id, latency_ms=result.latency_ms, input_hash=input_hash,
                         request_id=result.request_id, workspace=workspace, key_label=key_label, run_id=run_id,
-                        agent=agent)
+                        agent=agent, error=verdict.error())
+    if refused:
+        return CallOutcome(None, uid, used, result.provider, model, cost, "invalid_output", rejected=verdict.problems)
     return CallOutcome(result, uid, used, result.provider, model, cost)

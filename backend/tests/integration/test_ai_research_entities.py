@@ -102,7 +102,9 @@ def page(url: str, title: str, text: str, *, published: datetime = AT - timedelt
     return SearchResult(url, title, host, published.isoformat(), AT.isoformat(), text)
 
 
-ALFA_OUT = page("https://www.eltiempo.com/futbol/alfa-baja", "Alfa FC: baja en el ataque",
+# IA-063: the pages of a source that reserves its text from AI (El Tiempo, robots.txt) never reach the extractor, so the honest
+# source of these tests is another Colombian outlet of the same tier (El Espectador, pending: read in shadow).
+ALFA_OUT = page("https://www.elespectador.com/futbol/alfa-baja", "Alfa FC: baja en el ataque",
                 "Delantero Uno no jugará ante Beta FC por lesión muscular. El técnico de Alfa FC confirmó la baja.")
 BETA_DOUBT = page("https://www.futbolred.com/beta-duda", "Beta FC: duda en la banda", "Extremo Dos es duda para el partido. Beta FC viaja sin descanso.")
 GAMA_NEWS = page("https://www.marca.com/gama-medio", "Gama FC: el medio vuelve", "Medio Tres vuelve a entrenar con el grupo de Gama FC.")
@@ -328,7 +330,7 @@ def test_the_pages_most_authoritative_first_and_never_more_than_six(world: World
     got = run(world, Web([*many, ALFA_OUT]), model)
     sent = json.loads(model.requests[0].user)["pages"]
     assert len(sent) == 6 and got.pages == 6 and got.pages_unread == 2
-    assert sent[0]["origin"] == "eltiempo.com", "the most authoritative source is read first"
+    assert sent[0]["origin"] == "elespectador.com", "the most authoritative source is read first"
     marked = [cache.get(world.db, "url", cache.url_key(r.url), at=AT) is not None for r in [ALFA_OUT, *many]]
     assert marked == [True] * 6 + [False] * 2, "a page that was not shown to the extractor is not marked as read"
 
@@ -377,7 +379,8 @@ def test_an_answer_that_is_not_claim_v1_is_recorded_once_and_its_pages_are_not_r
     got = run(far, web, broken)
     assert got.skipped is None and got.invalid == 1 and got.created == 0 and typed_rows(far.db) == []
     assert got.counts()["v2_invalid"] == 1 and not [k for k in got.counts() if k.startswith("v2_skipped")]
-    assert [r[1] for r in ledger_rows(far.db, purpose="evidence_extraction")] == ["ok"], "the provider answered: that is what the ledger says"
+    # IA-064: the common validator (fbi.ai.outputs) refuses the answer where it comes back, and the ledger says so with its closed reason
+    assert [r[1] for r in ledger_rows(far.db, purpose="evidence_extraction")] == ["invalid_output"], "the validator refused it: the ledger says so"
     assert cache.fresh(far.db, "TEAM", far.alfa, "availability", at=AT, nearest_kickoff=far.kickoff_a) is not None, "the search was paid and answered"
     assert [cache.get(far.db, "url", cache.url_key(p.url), at=AT) is not None for p in (ALFA_OUT, BETA_DOUBT, GAMA_NEWS)] == [True] * 3
     fine = reader()
@@ -413,7 +416,7 @@ def test_a_failure_of_the_transport_leaves_the_pages_unread_and_the_next_pass_re
 
 def test_one_claim_over_a_limit_costs_that_claim_and_not_the_pass(world: World) -> None:
     sentence = "Delantero Uno no jugará ante Beta FC por lesión muscular."
-    long_page = page("https://www.eltiempo.com/futbol/alfa-larga", "Alfa FC: baja en el ataque", " ".join([sentence] * 8))
+    long_page = page("https://www.elespectador.com/futbol/alfa-larga", "Alfa FC: baja en el ataque", " ".join([sentence] * 8))
     honest = {"subject_kind": "PLAYER", "subject_id": STRIKER, "claim_type": "OUT", "applies_to": "THIS_MATCH", "page_id": "R1", "published_on": "",
               "quote": sentence.rstrip(".")}
     long_one = honest | {"quote": " ".join([sentence] * 7)}
@@ -431,7 +434,7 @@ def test_a_page_that_reads_like_an_order_is_read_in_a_call_of_its_own(world: Wor
     got = run(world, web, model)
     assert len(model.requests) == 2 and got.pages == 3 and got.pages_flagged == 1 and got.invalid == 0
     clean, flagged = json.loads(model.requests[0].user), json.loads(model.requests[1].user)
-    assert [p["origin"] for p in clean["pages"]] == ["eltiempo.com", "futbolred.com"] and [p["id"] for p in clean["pages"]] == ["R1", "R2"]
+    assert [p["origin"] for p in clean["pages"]] == ["elespectador.com", "futbolred.com"] and [p["id"] for p in clean["pages"]] == ["R1", "R2"]
     assert [p["origin"] for p in flagged["pages"]] == ["fan-blog.example.org"] and flagged["pages"][0]["id"] == "R1", "each call numbers its own pages"
     assert "IGNORE ALL PREVIOUS" not in model.requests[0].user.upper(), "the model that reads the honest pages never sees the order"
     assert got.dropped == {"subject_not_listed": 1, "quote_not_in_page": 1}, "what the obeying model wrote in the call of the page that gives orders"
@@ -486,7 +489,7 @@ def test_a_failure_of_a_later_call_leaves_every_page_of_the_earlier_one_read(wor
 def test_a_page_is_marked_as_read_once_in_a_pass_and_so_is_one_with_nothing_to_read(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
     """The marker of a page is written when its call is over; the pass that goes on to the next call, or ends, does not write it again - and a
     result with no title and no text, which no call reads, is marked too, or it would take a place among the six of every pass."""
-    empty = page("https://www.eltiempo.com/futbol/vacia", "", "")
+    empty = page("https://www.elespectador.com/futbol/vacia", "", "")
     puts: list[str] = []
     real = cache.put
 
