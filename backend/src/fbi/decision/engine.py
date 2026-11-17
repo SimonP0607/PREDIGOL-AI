@@ -14,7 +14,9 @@ THE STAGES (numbered as decision-v1's ten filters, whose thresholds are IMPORTED
                     of the selection, ``PROBABILITY_SOURCES``, ``fbi.decision.view.judged``)
      3 market       a price from >= MIN_BOOKS books, not an outlier (MAX_PRICE_EDGE), not older than MAX_PRICE_AGE   -> REJECTED / WATCH
                     (the price the candidate carries: decision-v1's consensus of a capture, or the book's answer in force at the
-                    moment - ``PRICE_SOURCES``, ``fbi.decision.book_price`` - with its age either way)
+                    moment - ``PRICE_SOURCES``, ``fbi.decision.book_price`` - with its age either way; the age limit is the
+                    ruleset's age rule, ``RULESETS``: decision-v1's MAX_PRICE_AGE in ``decision-v2.0``, 195/75/45 min by horizon
+                    in ``decision-v2.1``, ``fbi.decision.price_age``)
      4 calibration  a CHAMPION calibrator for (market, model); the best fit is shown, never approves                   -> ABSTAIN
                     (with the common view: the view's own seal - calibrated by a champion with a fresh price, or «Sin
                     calibrar» with its reason, and then no calibrated probability to judge the value with)
@@ -27,7 +29,8 @@ THE STAGES (numbered as decision-v1's ten filters, whose thresholds are IMPORTED
                     market's signals when given (market-signals-v1: steam against the model -> CAUTION); a signal is an
                     input to risk, never to a probability                                                             -> CAUTION
      8 correlation  one RECOMMENDED per match among the families that correlate: the best score stays             -> CAUTION
-     9 price        at a final checkpoint (FINAL_CHECKPOINTS) the price at most FINAL_FRESH old                       -> CAUTION
+     9 price        at a final checkpoint (FINAL_CHECKPOINTS) the price at most FINAL_FRESH old (``decision-v2.0``) or
+                    at most its band's limit (``decision-v2.1``)                                                      -> CAUTION
     10 final        RECOMMENDED only with the market's edge validated out of sample (edge-gate-v1) -> ABSTAIN; a family
                     not promoted is held at ABSTAIN (``families.CAP_CODE``). The labels (PICK_PREMIUM, CANDIDATO_PARLAY)
                     stay labels on RECOMMENDED.
@@ -56,6 +59,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Any, Final
 
+from fbi.decision import price_age as ages
 from fbi.decision.families import CAP_CODE, Candidate, FamilyParams, GateStatus
 from fbi.intel import decision
 from fbi.intel import score as scoring
@@ -72,6 +76,42 @@ PRICE_SOURCES: Final = (CONSENSUS, BOOK)
 """Where the price of a selection comes from (``Price.source``). ``consensus``: decision-v1's own, the newest Shin consensus of a capture
 (the default, and the evidence of P1). ``book``: the answer in force in the odds book at the moment - a capture's or a book refresh's -
 priced the same way (``fbi.decision.book_price``, plan INT-A06). The stages read either alike: only the price and its age can differ."""
+
+
+
+@dataclass(frozen=True, slots=True)
+class Ruleset:
+    """A version of decision-v2's rules (as ``decision.RULES`` labels decision-v1's): the price its core is judged with by default and the
+    rule of that price's age. ``VERSION`` stays ``decision-v2``, the layer; the ruleset tells its versions apart and travels with every
+    decision (``Decision2.rules``)."""
+
+    label: str
+    price: str
+    """The core's price source by default (``PRICE_SOURCES``)."""
+    age: ages.PriceAgeRule
+    """The age rule of the prices of ``age_sources``."""
+    age_sources: frozenset[str] = frozenset(PRICE_SOURCES)
+    """The price sources ``age`` judges; any other price is judged by decision-v1's rule (``ages.V1``)."""
+
+    def age_for(self, source: str) -> ages.PriceAgeRule:
+        """The age rule of a price from ``source``."""
+        return self.age if source in self.age_sources else ages.V1
+
+    def as_json(self) -> dict[str, Any]:
+        return {"label": self.label, "price": self.price, "age": self.age.as_json(), "age_sources": sorted(self.age_sources),
+                "other_sources_age": ages.V1.version}
+
+
+RULES_V20: Final = "decision-v2.0"
+RULES_V21: Final = "decision-v2.1"
+RULESETS: Final[Mapping[str, Ruleset]] = {
+    RULES_V20: Ruleset(RULES_V20, CONSENSUS, ages.V1),
+    RULES_V21: Ruleset(RULES_V21, BOOK, ages.V2, frozenset({BOOK}))}
+"""``decision-v2.0``: decision-v1's price and decision-v1's age rule - the evidence of P1, and the default everywhere. ``decision-v2.1``
+(plan 2026, AD-B06, IA-067; decision n.º 11): the odds book's price in force with the age rule by horizon (``ages.V2``), in shadow. The
+rule by horizon is the book's cadence, so it judges the book's prices only: a price that does not come from the book (a family's quotes in
+force, or the core priced with ``consensus``) keeps decision-v1's rule."""
+DEFAULT_RULES: Final = RULESETS[RULES_V20]
 
 OWN: Final = "own"
 COMMON: Final = "common"
@@ -275,6 +315,16 @@ class Price:
     missing: str | None = None
     """Why there is no price, where the source says it (``book``: the answer was withdrawn, never asked, unreadable, or does not quote the
     selection); None with a price."""
+    state: str | None = None
+    """``ages.PRICE_STATES``: ``vigente``, ``antiguo`` or ``sin_precio`` under ``age_rule`` (a word for the reader; the stages decide)."""
+    state_reason: str | None = None
+    """Why the price is ``antiguo`` (``ages.NO_AGE``, ``OVER_LIMIT``, ``OVER_FINAL``) or ``sin_precio`` (``missing`` or ``no_price``)."""
+    max_age_minutes: float | None = None
+    """The limit of the age that held for this price at its moment."""
+    band: str | None = None
+    """The band of time before kick-off the limit came from."""
+    age_rule: str | None = None
+    """The version of the age rule (``ages.RULES``)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -339,6 +389,8 @@ class Decision2:
     """The common probability view of the selection (a measurement in shadow; see ``CommonView``), None when none was given."""
     close: Close | None = None
     """The last price the book held of the selection before kick-off (a measurement in shadow; see ``Close``), None when none was given."""
+    rules: str = RULES_V20
+    """The ruleset it was decided under (``RULESETS``)."""
 
     @property
     def ident(self) -> tuple[str, Key, str | None]:
@@ -350,7 +402,7 @@ class Decision2:
     def as_json(self) -> dict[str, Any]:
         p, pr, va = self.prediction, self.price, self.value
         return {
-            "version": self.version, "family": self.family, "fixture_id": self.key[0], "market_key": self.key[1], "selection": self.key[2],
+            "version": self.version, "rules": self.rules, "family": self.family, "fixture_id": self.key[0], "market_key": self.key[1], "selection": self.key[2],
             "line": str(self.key[3]), "model": p.model, "checkpoint": self.checkpoint, "state": self.state, "reason": self.reason,
             "codes": list(self.codes), "label": self.label, "score": self.score,
             "prediction": {"p_model": p.p_model, "p_push": p.p_push, "interval": None if p.interval is None else list(p.interval),
@@ -360,7 +412,8 @@ class Decision2:
                       "price_at": None if pr.price_at is None else pr.price_at.isoformat(), "age_minutes": pr.age_minutes,
                       "source": pr.source, "confirmed_by": pr.confirmed_by,
                       "provider_update_at": None if pr.provider_update_at is None else pr.provider_update_at.isoformat(),
-                      "missing": pr.missing},
+                      "missing": pr.missing, "state": pr.state, "state_reason": pr.state_reason,
+                      "max_age_minutes": pr.max_age_minutes, "band": pr.band, "age_rule": pr.age_rule},
             "value": {"ev_raw": va.ev_raw, "edge_raw": va.edge_raw, "ev_cal": va.ev_cal, "edge_cal": va.edge_cal},
             "context": {"status": self.context_status, "adjustment": self.adjustment},
             "market": None if self.market is None else {"status": self.market.status, "side": self.market.side, "steam": self.market.steam,
@@ -409,11 +462,14 @@ class Assessed:
     adjustment: str | None
     market: MarketRisk | None
     score: float | None
+    rules: str = RULES_V20
 
 
 def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAdjustment | None = None,
-           market: MarketRisk | None = None) -> Assessed:
-    """Every stage of one candidate but correlation (8). Pure: it reads ``world`` and the candidate, nothing else."""
+           market: MarketRisk | None = None, rules: Ruleset = DEFAULT_RULES) -> Assessed:
+    """Every stage of one candidate but correlation (8). Pure: it reads ``world`` and the candidate, nothing else. ``rules``: the ruleset
+    whose age rule judges the price at stages 3 and 9 (``RULESETS``; the price itself is the one the candidate carries, and the rule is the
+    one the ruleset gives its source, ``Ruleset.age_for``)."""
     at = world.at
     params: FamilyParams = candidate.family.params
     key, models = candidate.key, candidate.models
@@ -472,6 +528,11 @@ def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAd
     price_edge = None if odds is None or p_mkt is None else odds * p_mkt - 1
     source = str(r.get("price_source") or CONSENSUS)
     missing = None if odds is not None and p_mkt is not None else r.get("price_missing")
+    age_rule = rules.age_for(source)
+    limit = age_rule.limit(minutes, cp)
+    check = age_rule.check(priced=odds is not None and p_mkt is not None, age=price_age, minutes_to_kickoff=minutes,
+                           checkpoint=cp, missing=None if missing is None else str(missing))
+    no_age = price_age is None and age_rule.require_age
     if odds is None or p_mkt is None:
         out.append(_v("market", False, "sin precio de mercado observado" if missing is None else f"sin precio vigente en el libro ({missing})",
                       _e("no_price")))
@@ -479,8 +540,14 @@ def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAd
         out.append(_v("market", False, f"solo {n_books} casas", _e("thin_market"), n_bookmakers=n_books))
     elif price_edge is not None and price_edge > decision.MAX_PRICE_EDGE:
         out.append(_v("market", False, f"precio atípico ({price_edge:+.0%} sobre el consenso)", _e("price_outlier")))
-    elif price_age is not None and price_age > decision.MAX_PRICE_AGE:
+    elif age_rule.flat and price_age is not None and price_age > limit.market:
         out.append(_v("market", False, f"precio de hace {price_age.total_seconds() / 3600:.1f} h", _e("price_stale")))
+    elif no_age:
+        out.append(_v("market", False, f"precio sin edad: no se puede comprobar ({age_rule.version})", _e("price_stale"), age_rule=age_rule.version))
+    elif not age_rule.flat and price_age is not None and price_age > limit.market:
+        out.append(_v("market", False, f"precio de hace {price_age.total_seconds() / 60:.0f} min: máximo {limit.band.max_age_minutes:.0f} min a "
+                      f"{minutes:.0f} min del saque ({age_rule.version})", _e("price_stale"), age_rule=age_rule.version, band=limit.band.name,
+                      max_age_minutes=limit.band.max_age_minutes))
     else:
         out.append(_v("market", True, f"{n_books} casas, cuota {odds:.2f}", odds=odds, p_market=p_mkt, n_bookmakers=n_books))
 
@@ -568,8 +635,9 @@ def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAd
                   market=None if market is None else {"side": market.side, "steam": market.steam, "movement_points": market.movement_points}))
 
     # 9 price freshness at the end
-    if cp in decision.FINAL_CHECKPOINTS and price_age is not None and price_age > decision.FINAL_FRESH:
-        out.append(_v("price", False, f"precio de hace {price_age.total_seconds() / 60:.0f} min en {cp}", _e("price_not_fresh")))
+    if limit.final is not None and price_age is not None and price_age > limit.final:
+        out.append(_v("price", False, f"precio de hace {price_age.total_seconds() / 60:.0f} min en {cp}" + ("" if age_rule.flat else
+                      f" (máximo {limit.final.total_seconds() / 60:.0f} min, {age_rule.version})"), _e("price_not_fresh")))
     else:
         out.append(_v("price", True if odds is not None else None, "mejor precio vigente" if odds is not None else "sin precio"))
 
@@ -607,8 +675,10 @@ def assess(world: decision.World, candidate: Candidate, *, adjustment: ContextAd
                                None if number.missing is None else str(number.missing)),
                     Price(odds, p_mkt, n_books, price_at, None if price_age is None else round(price_age.total_seconds() / 60, 2), source,
                           None if price_at is None else (r.get("price_confirmed_by") or "capture"), r.get("provider_update_at"),
-                          None if missing is None else str(missing)),
-                    Value(ev_raw, edge_raw, ev_cal, edge_cal), ctx.status, adj_verdict, market, sc)
+                          None if missing is None else str(missing), check.state, check.reason, check.max_age_minutes, check.band,
+                          check.rule),
+                    Value(ev_raw, edge_raw, ev_cal, edge_cal), ctx.status, adj_verdict, market, sc, rules.label)
+
 
 
 def _score(world: decision.World, key: Key, models: Mapping[str, Mapping[str, Any]], model: str, mkt: str, p_mkt: float | None,
@@ -649,7 +719,7 @@ def finish(a: Assessed, correlation: Verdict) -> Decision2:
     reason = "approved" if state == "RECOMMENDED" else next(c for v in verdicts for c, s in v.effects if s == state)
     c = a.candidate
     return Decision2(c.family.name, c.key, c.model_hint, a.checkpoint, state, reason, codes, verdicts, label, a.prediction, a.price, a.value,
-                     a.context_status, a.adjustment, a.market, a.score)
+                     a.context_status, a.adjustment, a.market, a.score, rules=a.rules)
 
 
 def alone(a: Assessed) -> Verdict:
@@ -660,9 +730,9 @@ def alone(a: Assessed) -> Verdict:
 
 
 def decide(world: decision.World, candidate: Candidate, *, adjustment: ContextAdjustment | None = None,
-           market: MarketRisk | None = None) -> Decision2:
+           market: MarketRisk | None = None, rules: Ruleset = DEFAULT_RULES) -> Decision2:
     """ONE candidate through the shared stages (correlation judged alone). Pure and deterministic."""
-    a = assess(world, candidate, adjustment=adjustment, market=market)
+    a = assess(world, candidate, adjustment=adjustment, market=market, rules=rules)
     return finish(a, alone(a))
 
 
@@ -671,12 +741,13 @@ Ident = tuple[str, Key, str | None]
 
 def decide_all(world: decision.World, candidates: Sequence[Candidate], *, adjustments: Mapping[Key, ContextAdjustment] | None = None,
                markets: Mapping[Ident, MarketRisk] | None = None, views: Mapping[Key, CommonView] | None = None,
-               closes: Mapping[Key, Close] | None = None) -> list[Decision2]:
+               closes: Mapping[Key, Close] | None = None, rules: Ruleset = DEFAULT_RULES) -> list[Decision2]:
     """The candidates of one moment: each through the stages, then correlation (8) - among the selections of a match that compete
     (``Assessed.competes``), the best score stays and the others are CAUTION. Ties break on (market, selection, line, family, model), never on the order
     of the rows, and the verdicts say so (``tie``): decision-v1 breaks them on the order the database returns its candidates in, which no
     query fixes, so a tie is where the two may disagree with neither being wrong. Returned in the order of ``candidates``. ``views`` (selection -> its common view) and ``closes`` (selection -> the book's last price before kick-off) are only carried onto the decisions, as measurements."""
-    assessed = [assess(world, c, adjustment=(adjustments or {}).get(c.key), market=(markets or {}).get(c.ident)) for c in candidates]
+    assessed = [assess(world, c, adjustment=(adjustments or {}).get(c.key), market=(markets or {}).get(c.ident), rules=rules)
+                for c in candidates]
     by_fixture: dict[int, list[int]] = defaultdict(list)
     for i, a in enumerate(assessed):
         if a.competes:

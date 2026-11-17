@@ -70,7 +70,7 @@ def test_both_jobs_accept_the_steps_and_the_names_the_worker_uses_are_steps_of_t
     cycle.run_decide(Conn(), at=at)  # type: ignore[arg-type]
     cycle.run_nightly(Conn(), at=at)  # type: ignore[arg-type]
     assert names(ran["decide"]) == ["decide", "select"]
-    assert names(ran["nightly"]) == ["outcomes", "postmortems", "memory", "calibration", "leakage_audit", "hypotheses", "report"]
+    assert names(ran["nightly"]) == ["outcomes", "postmortems", "memory", "calibration", "leakage_audit", "leakage_audit_v10", "hypotheses", "report"]
 
     ran.clear()
     cycle.run_decide(Conn(), at=at, after={"select": [_step("families")]})  # type: ignore[arg-type]
@@ -117,10 +117,10 @@ def test_in_shadow_the_decision_follows_the_picks_of_the_day_and_the_settlement_
         "outcomes": ["family_outcomes"], "postmortems": ["family_postmortems"], "memory": ["family_memory"]}
     # and the job accepts exactly those names
     assert names(with_extra([_step("decide"), _step("select")], decide)) == ["decide", "select", "families"]
-    core = [_step(n) for n in ("outcomes", "postmortems", "memory", "calibration", "leakage_audit", "hypotheses", "report")]
+    core = [_step(n) for n in ("outcomes", "postmortems", "memory", "calibration", "leakage_audit", "leakage_audit_v10", "hypotheses", "report")]
     assert names(with_extra(core, nightly)) == [
-        "outcomes", "family_outcomes", "postmortems", "family_postmortems", "memory", "family_memory", "calibration", "leakage_audit", "hypotheses",
-        "report"], "a family settles before its post-mortem reads the settlement and the memory sums the post-mortems, and none moves a step of the core layer"
+        "outcomes", "family_outcomes", "postmortems", "family_postmortems", "memory", "family_memory", "calibration", "leakage_audit",
+        "leakage_audit_v10", "hypotheses", "report"], "a family settles before its post-mortem reads the settlement and the memory sums the post-mortems, and none moves a step of the core layer"
 
 
 def test_the_steps_call_the_families_with_the_connection_and_the_moment_of_the_run(monkeypatch: pytest.MonkeyPatch) -> None:
