@@ -2091,7 +2091,7 @@ def test_the_class_of_a_source_is_the_one_the_guide_gives_and_changes_no_status(
     assert {mcp.source_class(tier, None) for tier in ("unknown", "", None, "something new")} == {
         "UNKNOWN"
     }
-    assert "marca.com" in REPUTABLE_DOMAINS and "diario-local.example" not in REPUTABLE_DOMAINS
+    assert {"marca.com"} <= REPUTABLE_DOMAINS and not {"diario-local.example"} & REPUTABLE_DOMAINS
     assert (
         mcp.source_class("media", "es.marca.com")
         == mcp.source_class("media", "WWW.MARCA.COM")
