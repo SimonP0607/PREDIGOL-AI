@@ -10,6 +10,9 @@ configures a search API and a model to read it).
   the cheapest configured model, which may only EXTRACT dated items with the result they came from
   (``fbi.ai.prompts.EXTRACT_SYSTEM``). The server resolves each item's URL from that result id - a
   model never writes a URL - and decides its status (``fbi.ai.evidence``).
+* Sources (IA-063): before the model reads a page, ``fbi.ai.source_policy`` decides whether it may - a source that reserves its text
+  from AI never, a domain of the exclusion list not while ``FBI_SOURCE_EXCLUSION`` enforces, the rest recorded in shadow - and what of a
+  search is kept in the cache.
 """
 
 from __future__ import annotations
@@ -27,7 +30,7 @@ import psycopg
 from psycopg.rows import dict_row
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from fbi.ai import cache, gates
+from fbi.ai import cache, gates, source_policy
 from fbi.ai.absences import absences_as_of, checked_at_as_of
 from fbi.ai.budget_v3 import exa_budget
 from fbi.ai.config import AiSettings
@@ -418,6 +421,7 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
         out.skipped = "no such fixture"
         return out
     ledger = ledger or UsageLedger()
+    policy = source_policy.load(conn)
     exa_envelope = priority or gates.enabled(conn, settings, "budget_v3")
     late = f["kickoff_at"] - at <= LATE_WINDOW
     bucket = "late" if late else "early"
@@ -460,7 +464,7 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
                           cost=cost, status="ok", fixture_id=fixture_id, input_hash=key)
             record_source_results(conn, found, at=at, cost=cost)
             level_payload: dict[str, Any] = {"query": query, "level": level,
-                                             "results": [r.as_json() for r in found]}
+                                             "results": [r.as_json() for r in source_policy.for_storage(policy, found)]}
             cache.put(conn, "search", key, level_payload, at=at, ttl=LATE_TTL if late else EARLY_TTL)
         else:
             level_payload = cached
@@ -488,8 +492,13 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
     fresh = [r for r in results if cache.get(conn, "url", f"{fixture_id}:{r.url}", at=at) is None]
     if not fresh:
         return out
+    screened = source_policy.screen(policy, fresh)  # what a model may read (IA-063): never a source that reserves it from AI
+    fresh = screened.kept
     fresh.sort(key=lambda r: TIER_RANK.get(tier_of(conn, domain_of(r.url)), 8))  # the most authoritative first
     fresh = fresh[:MAX_READ]
+    source_policy.record(conn, screened.read(r.url for r in fresh), at=at, path="v1", fixture_id=fixture_id)
+    if not fresh:
+        return out
     out.read = len(fresh)
     numbered = {f"R{i}": r for i, r in enumerate(fresh, start=1)}
     user = extract_user({"home": f["home_name"], "away": f["away_name"], "kickoff_at": f["kickoff_at"].isoformat(),

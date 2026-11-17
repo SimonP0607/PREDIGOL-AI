@@ -118,3 +118,39 @@ def test_the_replay_priced_by_the_book_reads_the_answer_in_force_and_writes_noth
     assert p["reader"]["matches"] == 2 and p["reader"]["bodies_read"] == 1 and p["reader"]["unreadable"] == 0
     stages = {d["stage"] for d in out["disagreements"] if d["fixture_id"] == a}
     assert stages <= {"market"}, "without a book price match a is rejected at the market stage, and the replay says where"
+
+
+def test_decision_v2_1_decides_with_the_book_and_the_age_by_horizon_and_compares_with_the_current_rules(db: psycopg.Connection[Any], seed: Seed,
+                                                                                                        tmp_path: Path) -> None:
+    """Plan 2026, AD-B06 (IA-067): the ruleset ``decision-v2.1`` brings the book's price by default and judges its age by horizon; ``against``
+    decides the same candidates under today's rules and says what changed. Read-only, deterministic, and the default untouched."""
+    _, a, b = core_scene(db, seed)
+    decision.decide(db, at=AT)
+    pid_b, kickoff_b = db.execute("SELECT provider_fixture_id, kickoff_at FROM core.fixtures WHERE id = %s", (b,)).fetchone()  # type: ignore[misc]
+    asked = AT - timedelta(minutes=30)
+    hb = add_payload(db, seed, PayloadStore(tmp_path), real_body(int(pid_b), kickoff_b), fixture=int(pid_b), fetched_at=asked)
+    ask(db, int(pid_b), asked, hb, kickoff=kickoff_b)
+    store = PayloadStore(tmp_path)
+
+    before = writes(db)
+    out = replay.replay_day(db, day=local_day(AT), rules=engine.RULES_V21, store=store, against=["decision-v2.0", "decision-v2.0:book"])
+    again = replay.replay_day(db, day=local_day(AT), rules=engine.RULES_V21, store=store, against=["decision-v2.0", "decision-v2.0:book"])
+    assert writes(db) == before, "the replay wrote nothing"
+    assert json.dumps(out, default=str, sort_keys=True) == json.dumps(again, default=str, sort_keys=True), "and it is deterministic"
+
+    assert (out["inputs"]["rules"], out["inputs"]["price"]) == ("decision-v2.1", engine.BOOK), "the ruleset brings the book as its price"
+    assert out["rules"]["age"]["version"] == "price-age-v2" and [b_["max_age_minutes"] for b_ in out["rules"]["age"]["bands"]] == [195, 75, 45]
+    s = out["price"]["states"]
+    assert s["rules"] == ["price-age-v2"] and out["price"]["without_age"] == 0
+    rows_a = int(scalar(db.execute("SELECT count(*) FROM intel.decisions WHERE fixture_id = %s AND checkpoint <> 'selection'", (a,))))
+    assert s["reasons"].get("sin_precio:never_asked") == rows_a, "match a was never asked: sin_precio, with the book's word"
+    assert set(out["versus"]) == {"decision-v2.0:consensus", "decision-v2.0:book"}
+    for v in out["versus"].values():
+        assert v["main"] == "decision-v2.1:book" and v["rows"] == out["agreement"]["n"] - out["agreement"]["unmatched"]
+        assert v["changed"] == sum(v["transitions"].values()) == sum(v["by_stage"].values())
+    alone = out["versus"]["decision-v2.0:book"]
+    assert set(alone["by_stage"]) <= {"market", "price", "correlation", "final"}, "the same price: only the age rule can change a state"
+
+    plain = replay.replay_day(db, day=local_day(AT))
+    assert (plain["inputs"]["rules"], plain["inputs"]["price"]) == ("decision-v2.0", engine.CONSENSUS) and "versus" not in plain
+    assert plain["agreement"]["rate"] == 1.0, "the default is the evidence of P1, as it was"

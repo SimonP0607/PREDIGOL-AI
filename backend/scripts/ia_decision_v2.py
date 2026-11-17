@@ -7,13 +7,17 @@
     python -m scripts.ia_decision_v2 replay --day 2026-11-05 --view             # plus how far each probability is from the common view
     python -m scripts.ia_decision_v2 replay --day 2026-11-10 --price book       # the core priced as the odds book held it at each moment
     python -m scripts.ia_decision_v2 replay --day 2026-11-10 --probability common   # the core judged with the common probability view
+    python -m scripts.ia_decision_v2 replay --day 2026-11-14 --rules decision-v2.1 --against decision-v2.0 --against decision-v2.0:book
+                                    # the book's price with the age rule by horizon (AD-B06), against today's rules and the old rule alone
 
 The agreement per family, the confusion table (decision-v1's state read through state-v2 against decision-v2's), every disagreement with
 the stage that caused it (``fbi.decision.replay``), and the price each decision was judged with and its age (G-PRECIO). Without ``--council``,
 ``--signals``, ``--price book`` and ``--probability common`` it is the equivalence of the engine: the evidence of the P1 gate. ``--price book``
 reads the bodies of the answers from the RAW store (``--raw``, by default the worker's own) and adds the book's last price before kick-off of
 every selection (for the CLV). ``--probability common`` judges the core with the number the Match Center states (the common probability view,
-with its seal «Sin calibrar» where there is no fresh price) and says what that changes against the pick's own probability (plan INT-A03). The
+with its seal «Sin calibrar» where there is no fresh price) and says what that changes against the pick's own probability (plan INT-A03).
+``--rules`` picks the ruleset (``decision-v2.0`` by default; ``decision-v2.1``: the book's price and the age rule 195/75/45 min by horizon,
+plan 2026 AD-B06) and ``--against`` decides the same candidates under another (``label`` or ``label:price``) and says what changed. The
 connection is read-only: nothing is written. Exit status: 0 a report, 2 it cannot run (a bad day or option).
 """
 
@@ -29,7 +33,15 @@ from typing import Any
 import psycopg
 
 from fbi.decision import replay
-from fbi.decision.engine import CONSENSUS, OWN, PRICE_SOURCES, PROBABILITY_SOURCES
+from fbi.decision.engine import (
+    BOOK,
+    CONSENSUS,
+    OWN,
+    PRICE_SOURCES,
+    PROBABILITY_SOURCES,
+    RULES_V20,
+    RULESETS,
+)
 from fbi.intel.context_adjustment import ENGINES
 from fbi.storage.payload_store import PayloadStore
 
@@ -56,8 +68,13 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--council", choices=ENGINES, help="give the context stage the Council's typed adjustment of this engine")
     ap.add_argument("--signals", action="store_true", help="give the risk stage the market's signals")
     ap.add_argument("--view", action="store_true", help="measure each probability against the common probability view (shadow)")
-    ap.add_argument("--price", choices=PRICE_SOURCES, default=CONSENSUS,
-                    help="the core's price: decision-v1's consensus of a capture (default) or the odds book's answer in force (shadow)")
+    ap.add_argument("--price", choices=PRICE_SOURCES, default=None,
+                    help="the core's price: decision-v1's consensus of a capture or the odds book's answer in force (shadow); by default "
+                         "the ruleset's own (decision-v2.0: consensus)")
+    ap.add_argument("--rules", choices=tuple(RULESETS), default=RULES_V20,
+                    help="the ruleset: decision-v2.0 (default) or decision-v2.1 (the book's price, the age rule by horizon; shadow)")
+    ap.add_argument("--against", action="append", default=[], metavar="RULES[:PRICE]",
+                    help="also decide under this ruleset (and price) and report what changed; repeatable")
     ap.add_argument("--raw", help="the RAW store the book's answers are read from (default: the worker's own)")
     ap.add_argument("--probability", choices=PROBABILITY_SOURCES, default=OWN,
                     help="the core's probability: the pick's own (default) or the common probability view's (shadow)")
@@ -66,10 +83,26 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run(conn: psycopg.Connection[Any], *, day: date, council: str | None = None, signals: bool = False, view: bool = False,
-        price: str = CONSENSUS, store: PayloadStore | None = None, probability: str = OWN) -> tuple[dict[str, Any], int]:
+        price: str | None = None, store: PayloadStore | None = None, probability: str = OWN, rules: str = RULES_V20,
+        against: Sequence[str] = ()) -> tuple[dict[str, Any], int]:
     """The report (JSON-ready) and the exit status. The connection is the caller's; nothing is written."""
     return replay.replay_day(conn, day=day, council=council, signals=signals, view=view, price=price, store=store,
-                             probability=probability), OK
+                             probability=probability, rules=rules, against=against), OK
+
+
+def needs_book(price: str | None, rules: str, against: Sequence[str]) -> bool:
+    """Whether the run reads the odds book (then the RAW store and the 95 s statement timeout)."""
+    return replay.price_of(rules, price) == BOOK or any(replay.variant(a)[1] == BOOK for a in against)
+
+
+def render_versus(name: str, v: dict[str, Any]) -> list[str]:
+    """The lines of one ruleset against another on the same candidates."""
+    lines = [f"  versus {name}: {v['changed']}/{v['rows']} changed state ({v['up']} up, {v['down']} down, {v['to_recommended']} to RECOMMENDED) "
+             f"{v['transitions']}; by stage {v['by_stage']}; price states {v['price_state_changes']}"]
+    for e in v["examples"][:5]:
+        lines.append(f"    #{e['decision_id']} {e['known_at']} {e['checkpoint']} fixture {e['fixture_id']} {e['market_key']} {e['selection']} "
+                     f"{e['line']}: {e['other']} -> {e['main']} - stage {e['stage']}: {e['why']}")
+    return lines
 
 
 def render_probability(p: dict[str, Any]) -> list[str]:
@@ -99,6 +132,10 @@ def render_price(p: dict[str, Any]) -> list[str]:
                   f"p gap (pp) p90 {a['p_gap_pp']['p90']}; {a['odds_moved']} moved more than {a['move_pct']:g} %",
                   f"    close: {c['decisions']} decisions, minutes to kick-off p50 {c['minutes_to_kickoff']['p50']}, provider's stamp p50 "
                   f"{c['provider_minutes_to_kickoff']['p50']}"]
+    if "states" in p:
+        s = p["states"]
+        rate = "-" if s["old_rate"] is None else f"{s['old_rate']:.2%}"
+        lines.append(f"    price states {s['by_state']} under {', '.join(s['rules'])}: {s['old']}/{s['priced']} priced past their limit ({rate})")
     if "reader" in p:
         r = p["reader"]
         lines.append(f"    book read: {r['matches']} matches, {r['bodies_read']} bodies ({r['unreadable']} unreadable)")
@@ -111,7 +148,8 @@ def render(doc: dict[str, Any]) -> str:
     lines = [f"{doc['version']} replayed against {', '.join(doc['versions'])}, {doc['day']}: {doc['rows']} rows in {doc['moments']} moments "
              f"(skipped: {doc['skipped']['selection_copies']} copies of the day's picks, {doc['skipped']['unclaimed']} unclaimed)",
              f"  inputs: council {doc['inputs']['council'] or 'none'}, signals {'yes' if doc['inputs']['signals'] else 'no'}, "
-             f"price {doc['inputs'].get('price', CONSENSUS)}, probability {doc['inputs'].get('probability', OWN)}",
+             f"price {doc['inputs'].get('price', CONSENSUS)}, probability {doc['inputs'].get('probability', OWN)}, "
+             f"rules {doc['inputs'].get('rules', RULES_V20)}",
              f"  agreement: {a['agree']}/{a['n']} ({overall}), {a['unmatched']} not rebuilt"]
     for name, f in doc["families"].items():
         rate = "-" if f["rate"] is None else f"{f['rate']:.2%}"
@@ -139,6 +177,8 @@ def render(doc: dict[str, Any]) -> str:
         lines += render_price(doc["price"])
     if "probability" in doc:
         lines += render_probability(doc["probability"])
+    for name, v in doc.get("versus", {}).items():
+        lines += render_versus(name, v)
     return "\n".join(lines) + "\n"
 
 
@@ -151,11 +191,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         ap.error(str(exc))
     from fbi.core.config import settings as platform
 
-    book = args.price != CONSENSUS
+    try:
+        book = needs_book(args.price, args.rules, args.against)
+    except ValueError as exc:
+        ap.error(str(exc))
     store = PayloadStore(args.raw or platform.runtime.raw_store_dir) if book else None
     with psycopg.connect(args.dsn or platform.database.psycopg_url, options=f"{READ_ONLY} {BOOK_TIMEOUT}" if book else READ_ONLY) as conn:
         doc, code = run(conn, day=day, council=args.council, signals=args.signals, view=args.view, price=args.price, store=store,
-                        probability=args.probability)
+                        probability=args.probability, rules=args.rules, against=args.against)
     sys.stdout.write(json.dumps(doc, indent=1, default=str, ensure_ascii=False, sort_keys=True) + "\n" if args.as_json else render(doc))
     return code
 
