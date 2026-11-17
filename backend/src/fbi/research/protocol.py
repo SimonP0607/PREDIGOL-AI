@@ -810,7 +810,158 @@ K02: Final = Protocol(
     seed=20261117,
 )
 
-PROTOCOLS: Final[dict[str, Protocol]] = {p.key: p for p in (A02, A09, B09, A08, C02, A03, B03, B07, K02)}
+C08: Final = Protocol(
+    key="AD-C08",
+    version="proto-ad-c08-v1",
+    title="Credibilidad de fuentes por tipo de hecho (credibility-v2)",
+    question=(
+        "Para cada fuente (dominio registrado o el proveedor) y cada tipo de hecho sobre disponibilidad (baja, sanción, titularidad, "
+        "disponible): ¿con qué frecuencia lo que dijo de un jugador identificado resultó cierto según lo que resolvió después el "
+        "partido (la alineación oficial del proveedor, su parte de bajas o una fuente de nivel superior), y con qué intervalo?"
+    ),
+    null=(
+        "La credibilidad de una fuente para un tipo de hecho no se distingue de la de su nivel (A-D): su intervalo del 95 % contiene "
+        "el previo del nivel."
+    ),
+    alternative=(
+        "El intervalo del 95 % de la tasa de aciertos de la fuente en ese tipo queda entero por encima o por debajo del previo de su "
+        "nivel. Es información para el dueño: nunca sube ni baja un estado, un peldaño ni el nivel de un dominio."
+    ),
+    unit=(
+        "Una afirmación pasada de disponibilidad (baja, sanción, titularidad o disponible) sobre un jugador identificado por el "
+        "proveedor, de otro partido que el que se lee, cuya verdad se conocía en el momento de la lectura. Una duda no se juzga."
+    ),
+    data=(
+        "ai.evidence (las afirmaciones de v1 y, solo si gates.typed_visible lo dice, las de research v2) de los últimos 180 días "
+        "hasta el momento de la lectura; core.fixture_lineups y sus jugadores y core.player_availability_obs cortados en ese "
+        "momento; solo lectura."
+    ),
+    split=(
+        "A fecha estricta: nada recuperado, observado ni descargado después del momento de la lectura existe para ella; una "
+        "afirmación nunca avala a su fuente en su propio partido. No se ajusta nada: la tasa se cuenta."
+    ),
+    primary_metric=(
+        "Por fuente y tipo: aciertos / resueltas con su intervalo de Wilson del 95 %, y el valor encogido hacia el previo del nivel "
+        "(K = 10 afirmaciones, la misma regla de credibility-v1)."
+    ),
+    pass_rule=(
+        "Se muestra como «aprendida» la credibilidad de un tipo con al menos 30 afirmaciones resueltas de esa fuente; el intervalo "
+        "de Wilson debe cubrir al menos el 90 % en cada celda de la simulación registrada (proporciones 0,3, 0,6 y 0,9; 30 y 200 casos; 2.000 "
+        "repeticiones, semilla del protocolo). Ningún estado de ladder-v1 ni peldaño de ladder-v2 cambia por la credibilidad."
+    ),
+    reject_rule=(
+        "Con menos de 30 resueltas el tipo es «insuficiente»: se enseña la muestra y el intervalo, el número no se interpreta. "
+        "Si alguna celda de la simulación cubre menos del 90 %, el intervalo no se publica en la consola hasta un protocolo v2."
+    ),
+    secondary=(
+        "Repetición frente a credibility-v1 con las mismas entradas: fuentes en que v1 juzgó dudas, tipos a más de 0,05 del número "
+        "único de v1 y fuentes que v1 daba por aprendidas sin ningún tipo suficiente.",
+        "Cobertura: cuántas fuentes y cuántos pares fuente-tipo llegan al mínimo.",
+    ),
+    min_sample="30 afirmaciones resueltas por fuente y tipo de hecho.",
+    power_note=(
+        "Con 30 resueltas y una tasa de 0,8, el semiancho del intervalo de Wilson es de unos 14 puntos; con 100, de unos 8. Por "
+        "debajo de 30 el intervalo es demasiado ancho para distinguir una fuente de su nivel."
+    ),
+    exclusions=(
+        "Afirmaciones sin jugador identificado por el proveedor (por nombre no se comprueban).",
+        "Dudas, afirmaciones fuera de la disponibilidad y afirmaciones que nada pudo comprobar.",
+        "La afirmación sobre el partido que se está leyendo.",
+    ),
+    stopping=(
+        "Se recalcula en cada lectura y una vez al día en sombra (ai.source_credibility, solo añadido). Ningún mínimo, previo, "
+        "ventana ni regla de resolución cambia sin un protocolo v2 registrado antes de mirar. Nada se promociona solo."
+    ),
+    segments=(
+        "Tipo de hecho: baja, sanción, titularidad, disponible.",
+        "Nivel de la fuente (tiers-v1): A, B, C, D.",
+    ),
+    registered_on="2026-11-17",
+    seed=20261117,
+)
+
+C09: Final = Protocol(
+    key="AD-C09",
+    version="proto-ad-c09-v1",
+    title="Medición de la extracción frente a etiquetas humanas de páginas enteras (extract-protocol-v1)",
+    question=(
+        "Para cada uno de los cuatro brazos de la extracción (extract-v3 con corte de 700 caracteres, extract-v3 con el texto "
+        "completo, extract-v4 y ventanas elegidas por código), sobre las mismas páginas guardadas: ¿qué parte de lo que extrae es "
+        "cierto (precisión) y qué parte de lo que la página afirma de verdad extrae (recuperación), contra lo que una persona "
+        "etiquetó en la página entera, nunca contra research v1?"
+    ),
+    null="El brazo no alcanza la precisión de la revisión manual o su recuperación queda por debajo del umbral.",
+    alternative=(
+        "Al menos 47 de las 50 primeras afirmaciones del brazo son ciertas y el extremo inferior del intervalo corregido de su "
+        "recuperación es ≥ 0,60."
+    ),
+    unit=(
+        "Una página guardada (un resultado de búsqueda con texto en ai.research_cache, tal como lo vio la investigación) con "
+        "TODAS sus afirmaciones verificables etiquetadas a mano: sujeto (jugador, equipo o entrenador del partido), tipo (los de "
+        "claim-v2: OUT, DOUBT, AVAILABLE, STARTER, SUSPENSION, COACH, SCHEDULE, VENUE, OTHER) y cita. Una página sin ninguna "
+        "afirmación verificable se etiqueta NONE y cuenta, con cero afirmaciones."
+    ),
+    data=(
+        "Banco de páginas page-bank-v1: muestra estratificada y determinista de las páginas con texto de los partidos con saque en "
+        "la ventana pedida, copiadas a la hoja del banco antes de su purga (el texto solo cuando la política de fuentes deja "
+        "guardarlo; datos no confiables, nunca se publican). Las salidas de los brazos se leen de su fichero del LAB."
+    ),
+    split=(
+        "Sin ajuste: ningún brazo se entrena ni se elige con estas etiquetas; las etiquetas no entrenan nada. La hoja se fija y se "
+        "etiqueta antes de mirar ninguna salida de los brazos."
+    ),
+    primary_metric=(
+        "Por brazo: (1) de sus 50 primeras afirmaciones en el orden de la semilla, cuántas casan con una afirmación de referencia; "
+        "(2) recuperación = afirmaciones de referencia casadas / afirmaciones de referencia, con su intervalo de Wilson al nivel "
+        "corregido de Bonferroni para los cuatro brazos (1 - 0,05/4). Casar: misma página, mismo tipo (una lista se cuenta como una "
+        "afirmación por jugador), sujeto compatible (mismo identificador del proveedor si ambos lo tienen; si no, nombres "
+        "compatibles, people.identity.names), uno a uno."
+    ),
+    pass_rule=(
+        "PASA el brazo si (1) al menos 47 de sus 50 primeras afirmaciones son ciertas y (2) el extremo inferior corregido de su "
+        "recuperación es ≥ 0,60, con el acuerdo entre etiquetadores (afirmaciones casadas entre A y B / su media) ≥ 0,80. El "
+        "veredicto se registra como fila nueva del gate extract_protocol, solo con este protocolo firmado por el dueño; la fila 17 "
+        "(research_v2, NO PASA) se conserva como histórica, sin cambios. La fila dice passed = true solo si PASA el brazo «ventanas» "
+        "(el camino unificado de AD-C05, el que sustituiría a v1). Un PASA no activa nada."
+    ),
+    reject_rule=(
+        "NO PASA si falla (1) o (2). INSUFICIENTE con menos de 150 páginas etiquetadas, menos de un cuarto con doble etiqueta o "
+        "menos de 50 afirmaciones del brazo. NO EVALUABLE si el acuerdo entre etiquetadores es < 0,80: las etiquetas no son una "
+        "referencia firme."
+    ),
+    secondary=(
+        "Precisión total del brazo con su intervalo corregido; precisión y recuperación por estrato y por tipo, con sus intervalos.",
+        "Desacuerdos entre etiquetadores, aparte: una afirmación que solo uno marcó no cuenta ni a favor ni en contra.",
+        "Citas del brazo fuera del texto de la página y coste por afirmación casada.",
+    ),
+    min_sample=(
+        "150 páginas etiquetadas, un cuarto de cada estrato (redondeado hacia arriba) con segundo etiquetador ciego, y 50 "
+        "afirmaciones por brazo para la revisión manual."
+    ),
+    power_note=(
+        "Con unas 300 afirmaciones de referencia (unas dos por página) y una recuperación de 0,75, el semiancho del intervalo "
+        "corregido (z = 2,50) es de unos 6 puntos: distingue 0,75 de 0,60. 47 de 50 es una precisión observada de 0,94."
+    ),
+    exclusions=(
+        "Páginas sin etiqueta (ninguna fila del etiquetador): fuera, nunca se adivina.",
+        "Páginas cuyo texto no se pudo guardar (fuente reservada o excluida) ni abrir.",
+        "Afirmaciones en disputa entre los dos etiquetadores.",
+    ),
+    stopping=(
+        "Una medición por banco. Ni la hoja, ni las etiquetas, ni la regla de casar, ni los umbrales cambian después de ver una "
+        "salida: eso sería mover la portería y exige un protocolo v2 registrado antes de mirar. Un veredicto se anula con otra fila "
+        "firmada; ninguna fila se borra."
+    ),
+    segments=(
+        "Ámbito: clubes, selecciones.",
+        "Idioma de la búsqueda: es, en, pt, otro.",
+        "Tipo de búsqueda (nivel): disponibilidad, confirmación, previa; y, en el informe, el tipo de hecho de la etiqueta.",
+    ),
+    registered_on="2026-11-17",
+    seed=20261117,
+)
+
+PROTOCOLS: Final[dict[str, Protocol]] = {p.key: p for p in (A02, A09, B09, A08, C02, A03, B03, B07, K02, C08, C09)}
 
 
 def require(key: str) -> Protocol:
