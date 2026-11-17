@@ -1034,6 +1034,23 @@ def _family_forecasts_now() -> None:
         run_job(conn, now=now(), code_version=code_version())
 
 
+def _scenarios_shadow_now() -> None:
+    from fbi.competitions.scenario_store import run_shadow
+
+    with _connect() as conn:
+        report = run_shadow(conn, at=now(), code_version=code_version())
+        conn.commit()
+    log.info("scenarios.shadow", **{k: v for k, v in report.items() if k != "errors"}, errors=report.get("errors", [])[:3])
+
+
+async def _scenarios_shadow() -> None:
+    """The scenarios engine (IA-082, scenarios-v2) in shadow: one reading per live coded competition season, appended to
+    intel.scenario_readings when something changed. Database only; nothing a reader sees. In a thread so the live jobs keep their
+    cadence."""
+    new_run_id()
+    await asyncio.to_thread(_scenarios_shadow_now)
+
+
 async def _family_forecasts() -> None:
     """The forecast of the counts (plan F10) of the upcoming matches. Reads what is stored and writes the forecast table under ``family-v1``;
     a pass that writes nothing leaves no row in the ledger. In a thread so the live jobs keep their cadence."""
@@ -1615,7 +1632,7 @@ WORKER_JOB_TYPES = frozenset({
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
-    "lineup_watch", "lifecycle_shadow",
+    "lineup_watch", "lifecycle_shadow", "scenarios_shadow",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1921,6 +1938,15 @@ async def main() -> None:
     else:
         log.warning("worker.match_knowledge_off",
                     hint="FBI_MATCH_KNOWLEDGE=0: the finished matches are not being put together (Match Knowledge)")
+    from fbi.competitions.scenario_store import EVERY_MINUTES as SCENARIOS_MINUTES
+    from fbi.competitions.scenario_store import mode as scenarios_mode
+
+    if scenarios_mode() == "shadow":
+        scheduler.add_job(_deadline("scenarios_shadow", "scenarios_shadow", _scenarios_shadow), "interval",
+                          minutes=SCENARIOS_MINUTES, id="scenarios_shadow", max_instances=1, coalesce=True,
+                          misfire_grace_time=SCENARIOS_MINUTES * 60, next_run_time=moment + timedelta(minutes=41))
+    else:
+        log.info("worker.scenarios_off", hint="FBI_SCENARIOS unset or off: the scenarios engine (IA-082) writes nothing")
     if FAMILY_ENABLED:
         scheduler.add_job(_deadline("family_forecasts", "family_forecasts", _family_forecasts), "interval",
                           minutes=FAMILY_MINUTES, id="family_forecasts", max_instances=1, coalesce=True,

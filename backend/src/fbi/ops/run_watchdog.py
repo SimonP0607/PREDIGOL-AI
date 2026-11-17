@@ -66,6 +66,8 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "referee_identity": timedelta(minutes=30),
     "match_knowledge": timedelta(minutes=20),
     "family_forecasts": timedelta(minutes=30),
+    # The scenarios engine in shadow (IA-082): no provider, no model call; a fit and 2,000 simulated seasons per coded competition.
+    "scenarios_shadow": timedelta(minutes=30),
     "player_history": timedelta(hours=3),
     "historical_validation": timedelta(hours=2),
     "historical_backfill": timedelta(hours=3),
