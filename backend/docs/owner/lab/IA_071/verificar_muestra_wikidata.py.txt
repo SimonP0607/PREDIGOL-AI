@@ -1,0 +1,95 @@
+# Lab IA-071: verifies the sample of 300 accepted player links against Wikidata (public, CC0), low volume.
+import json, re, sys, time, unicodedata, urllib.parse, urllib.request
+from datetime import date
+UA = "predigol-lab/1.0 (identity check of a 300-row sample; low volume)"
+def key(s):
+    s = unicodedata.normalize("NFKD", s or "")
+    s = "".join(c for c in s if not unicodedata.combining(c)).casefold()
+    s = s.replace("&apos;", "").replace("'", "")
+    return " ".join(re.sub(r"[\W_]+", " ", s).split())
+def sparql(q):
+    time.sleep(65)  # the public endpoint asks for one request a minute (16-nov-2026)
+    body = urllib.parse.urlencode({"query": q, "format": "json"}).encode()
+    req = urllib.request.Request("https://query.wikidata.org/sparql", data=body, headers={
+        "User-Agent": UA, "Accept": "application/sparql-results+json",
+        "Content-Type": "application/x-www-form-urlencoded"})
+    with urllib.request.urlopen(req, timeout=120) as r:
+        return json.load(r)["results"]["bindings"]
+rows = []
+for line in open(sys.argv[1], encoding="utf-8"):
+    if line.startswith("P|"):
+        _, eid, names, dob, qid, tm = line.rstrip("\n").split("|")
+        rows.append({"eid": eid, "names": names.split(" / "), "dob": dob, "qid": qid, "tm": tm})
+print("sample", len(rows))
+info = {}
+qids = [r["qid"] for r in rows if r["qid"]]
+for i in range(0, len(qids), 150):
+    vals = " ".join("wd:" + q for q in qids[i:i+150])
+    q = ("SELECT ?item ?dob ?prec ?tm ?label WHERE { VALUES ?item {%s} "
+         "OPTIONAL { ?item p:P569/psv:P569 [wikibase:timeValue ?dob; wikibase:timePrecision ?prec] } "
+         "OPTIONAL { ?item wdt:P2446 ?tm } OPTIONAL { ?item rdfs:label|skos:altLabel ?label . "
+         "FILTER(LANG(?label) IN ('en','es','pt','fr','de','it','nl','pl','tr','cs','sv','no','da','fi','hr','sr','ro','hu','sk','sl','is','et','lv','lt','ca','eu','gl','sq','id','ms','vi','mul')) } }") % vals
+    for b in sparql(q):
+        it = b["item"]["value"].rsplit("/", 1)[1]
+        d = info.setdefault(it, {"dob": set(), "tm": set(), "labels": set()})
+        if "dob" in b: d["dob"].add((b["dob"]["value"][:10], int(b["prec"]["value"])))
+        if "tm" in b: d["tm"].add(b["tm"]["value"])
+        if "label" in b: d["labels"].add(b["label"]["value"])
+# rows without QID: is there an item with that Transfermarkt id?
+tms = [r["tm"] for r in rows if not r["qid"] and r["tm"]]
+bytm = {}
+for i in range(0, len(tms), 150):
+    vals = " ".join('"%s"' % t for t in tms[i:i+150])
+    q = ("SELECT ?item ?tm ?dob ?prec ?label WHERE { VALUES ?tm {%s} ?item wdt:P2446 ?tm . "
+         "OPTIONAL { ?item p:P569/psv:P569 [wikibase:timeValue ?dob; wikibase:timePrecision ?prec] } "
+         "OPTIONAL { ?item rdfs:label ?label . FILTER(LANG(?label) IN ('en','es','pt','fr','de','it','mul')) } }") % vals
+    for b in sparql(q):
+        it = b["item"]["value"].rsplit("/", 1)[1]
+        bytm[b["tm"]["value"]] = it
+        d = info.setdefault(it, {"dob": set(), "tm": set(), "labels": set()})
+        d["tm"].add(b["tm"]["value"])
+        if "dob" in b: d["dob"].add((b["dob"]["value"][:10], int(b["prec"]["value"])))
+        if "label" in b: d["labels"].add(b["label"]["value"])
+def surnames(names):
+    out = set()
+    for n in names:
+        p = [t for t in key(n.replace(".", ". ")).split() if len(t) >= 2]
+        out.update(p[1:] if len(p) > 1 else p)
+    return out
+counts = {}
+for r in rows:
+    item = r["qid"] or bytm.get(r["tm"], "")
+    d = info.get(item)
+    verdict, why = None, ""
+    if not item or d is None:
+        verdict = "unverifiable"
+    else:
+        labels = set()
+        for l in d["labels"]: labels.update(key(l).split())
+        name_ok = bool(surnames(r["names"]) & labels) or any(key(n) in {key(l) for l in d["labels"]} for n in r["names"])
+        tm_ok = (r["tm"] in d["tm"]) if r["tm"] and d["tm"] else None
+        dob_ok = None; gap = None
+        if r["dob"] and d["dob"]:
+            ours = date.fromisoformat(r["dob"])
+            best = None
+            for v, prec in d["dob"]:
+                try:
+                    y, m, dd = int(v[:4]), int(v[5:7]) or 1, int(v[8:10]) or 1
+                    w = date(y, m, dd)
+                except ValueError:
+                    continue
+                g = abs((ours - w).days) if prec >= 11 else (0 if y == ours.year else 9999)
+                best = g if best is None else min(best, g)
+            gap = best
+            dob_ok = best is not None and best <= 5
+        if name_ok and (dob_ok or (dob_ok is None and tm_ok)) :
+            verdict = "correct"
+        elif (dob_ok is False and gap is not None and gap > 366) or (not name_ok and dob_ok is False):
+            verdict = "wrong"
+        else:
+            verdict = "doubtful"
+        why = "name=%s dob=%s gap=%s tm=%s item=%s labels=%s" % (name_ok, dob_ok, gap, tm_ok, item, sorted(d["labels"])[:4])
+    counts[verdict] = counts.get(verdict, 0) + 1
+    if verdict != "correct":
+        print(verdict.upper(), "|", " / ".join(r["names"]), "|", r["dob"], "|", r["qid"], r["tm"], "|", why)
+print("verdicts", counts)
