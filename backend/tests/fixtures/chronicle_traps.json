@@ -1,0 +1,58 @@
+{
+ "version": "chronicle-traps-v1",
+ "about": "IA-118 (AD-F06): the fixed bank of trap matches of the single chronicle. Each trap is a match built on the bank's base match (tests/unit/test_chronicle_plan.py: Getafe - Osasuna) with what makes it a trap, and the sentences a model could write about it: what the facts authorise must stand, what they do not must be dropped. A new trap is a new entry; an entry is never edited to make a test pass.",
+ "traps": [
+  {
+   "id": "clasificacion_por_diferencia_de_goles",
+   "what": "Un equipo que aún puede salvarse por diferencia de goles: el motor no demuestra nada (el objetivo sigue abierto o su «descartado» no está probado). Ni «nada en juego», ni «ya no puede», ni «descendido».",
+   "home_objectives": [{"objetivo": "evitar_descenso", "estado": "abierto", "proved": false}],
+   "away_objectives": [{"objetivo": "clasificacion", "estado": "descartado", "proved": false}],
+   "plan_must_exclude": {"S:away.general.clasificacion": "no_demostrado"},
+   "plan_must_not_allow": ["SIN_OBJETIVO_DEMOSTRADO", "OBJETIVO_DESCARTADO", "OBJETIVO_CONSEGUIDO"],
+   "sentences": [
+    {"section": "que_se_juega", "facts": ["S:home.general.evitar_descenso"], "must": "stand",
+     "es": "El Getafe aún pelea por la permanencia y depende de sí mismo.",
+     "en": "Getafe are still fighting for survival and depend on themselves."},
+    {"section": "que_se_juega", "facts": ["S:home.general.evitar_descenso"], "must": "drop", "why": "OBJETIVO_DESCARTADO",
+     "es": "El Getafe ya no puede salvarse.", "en": "Getafe can no longer avoid relegation."},
+    {"section": "que_se_juega", "facts": ["P:stakes.home"], "must": "drop", "why": "SIN_OBJETIVO_DEMOSTRADO",
+     "es": "Al Getafe ya no le queda nada en juego.", "en": "Getafe have nothing left to play for."},
+    {"section": "que_se_juega", "facts": ["P:stakes.home"], "must": "drop", "why": "OBJETIVO_DESCARTADO",
+     "es": "El Getafe está eliminado de la pelea por la permanencia.", "en": "Getafe are eliminated from the fight for survival."}
+   ]
+  },
+  {
+   "id": "lesionado_que_acaba_titular",
+   "what": "El proveedor da a un jugador clave como baja y la alineación oficial lo trae de titular: la crónica lo dijo antes con su fuente; la actualización lo corrige a su hora sin reescribirla, la explicación de la selección no repite la baja y la revisión posterior lo marca como contradicho.",
+   "lineup": {"home": {"Mauro Arambarri": true, "David Soria": true}, "away": {"Sergio Herrera": true, "Ante Budimir": false}},
+   "played": {"home": {"Mauro Arambarri": 90, "David Soria": 90}, "away": {"Sergio Herrera": 90, "Ante Budimir": 20}},
+   "sentences": [
+    {"section": "jugadores", "facts": ["P:absences.home.1"], "must": "stand",
+     "es": "Mauro Arambarri es baja en el Getafe, según el proveedor de datos.",
+     "en": "Mauro Arambarri is out for Getafe, according to the data provider."},
+    {"section": "jugadores", "facts": ["P:absences.home.1"], "must": "drop", "why": "health",
+     "es": "Mauro Arambarri es baja por una rotura de ligamento de la rodilla.",
+     "en": "Mauro Arambarri is out with a knee ligament tear."},
+    {"section": "riesgos", "facts": ["P:absences.away.1"], "must": "drop", "why": "a doubt told as a certainty",
+     "es": "Ante Budimir no jugará con el Osasuna.", "en": "Ante Budimir will not play for Osasuna."}
+   ],
+   "expect": {"update_kind": "absence.out:titular", "superseded": ["jugadores", 0], "review": "contradicted"}
+  },
+  {
+   "id": "rumor_de_una_sola_fuente",
+   "what": "Un rumor de una sola fuente: solo entra como riesgo y llamado rumor; nunca como novedad ni como hecho confirmado.",
+   "news": [{"id": 103, "status": "RUMOR"}],
+   "sentences": [
+    {"section": "riesgos", "facts": ["E:103"], "must": "stand",
+     "es": "Circula un rumor sin confirmar, publicado por Marca, sobre un cambio de portero en el Getafe.",
+     "en": "There is an unconfirmed rumour, published by Marca, about a change of goalkeeper at Getafe."},
+    {"section": "novedades", "facts": ["E:103"], "must": "drop", "why": "a rumour outside the risks",
+     "es": "Marca publica que el Getafe cambiará de portero.", "en": "Marca reports that Getafe will change their goalkeeper."},
+    {"section": "riesgos", "facts": ["E:103"], "must": "drop", "why": "a rumour or a contradiction not called one",
+     "es": "Marca publica que el Getafe cambiará de portero.", "en": "Marca reports that Getafe will change their goalkeeper."},
+    {"section": "riesgos", "facts": ["E:103"], "must": "drop", "why": "not called one",
+     "es": "El Getafe confirmó que cambiará de portero, según Marca.", "en": "Getafe confirmed they will change their goalkeeper, according to Marca."}
+   ]
+  }
+ ]
+}

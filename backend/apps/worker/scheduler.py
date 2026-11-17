@@ -94,6 +94,12 @@ at worst, and a duplicated tick costs nothing at all.
     (``content-plan-v1``) and the single chronicle (``chronicle-v4``, the small model, by batch when the gate allows) of the analysed matches
     of the next day, checked sentence by sentence (``fbi.chronicle.v4_job``, IA-103/IA-104), into ``ai.chronicles``. At most US$ 1 a day;
     nothing a reader, a pick or a decision reads.
+  * ``chronicle_update``  every 2 min, only while ``FBI_CHRONICLE_LINEUP=shadow`` (off by default): for each E3 of the evaluation cycle of a
+    match with a chronicle, one new version of it in ``ai.chronicles`` with the paragraph of the official line-up and the why of each
+    selection, by template (``fbi.chronicle.update_job``, IA-116). No model, no cost; nothing a reader, a pick or a decision reads.
+  * ``chronicle_review_v2``  every 60 min, only while ``FBI_CHRONICLE_REVIEW_V2=shadow`` (off by default): the single chronicle of each
+    finished match judged on its cited facts (``chronicle-review-v2``, ``fbi.chronicle.review_v2``, IA-118) into ``ai.chronicle_reviews``.
+    No model, no cost.
   * ``eval_cycle_shadow``  every 5 min (``FBI_EVAL_CYCLE_MINUTES``) and ``eval_cycle_e3`` every 60 s (``FBI_EVAL_CYCLE_E3_SECONDS``),
     only while ``FBI_EVAL_CYCLE`` is ``shadow`` (off by default): the evaluations E1-E4 of the tracked matches (``fbi.shadowjobs.eval_cycle``,
     IA-105..IA-108, ``eval-cycle-v1``) - E1 with each selection's line-up dependencies, E2 per new fact, E3 when the official line-up
@@ -1230,6 +1236,47 @@ async def _chronicle_v4() -> None:
     await asyncio.to_thread(_chronicle_v4_now)
 
 
+def _chronicle_update_now() -> None:
+    """The chronicle after the official line-up (IA-116): one pass. Never raises; writes only ``ai.chronicles`` (route none, cost 0)."""
+    from fbi.chronicle import update_job
+
+    if update_job.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = update_job.run_job(conn, at=now(), code_version=code_version())
+        if r.written or r.counts["errors"]:
+            log.info("chronicle_update.run", **r.as_json())
+    except Exception as exc:
+        log.error("chronicle_update.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _chronicle_update() -> None:
+    new_run_id()
+    await asyncio.to_thread(_chronicle_update_now)
+
+
+def _chronicle_review_v2_now() -> None:
+    """The factual review of the single chronicle (IA-118): one pass with its ledger row when it wrote. Never raises."""
+    from fbi.chronicle import review_v2
+    from fbi.chronicle.job import run_v2_job
+
+    if review_v2.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = run_v2_job(conn, at=now())
+        log.info("chronicle_review_v2.run", due=r.due, written=r.written, waiting=r.waiting, unsupported=r.unsupported,
+                 contradicted=r.contradicted)
+    except Exception as exc:
+        log.error("chronicle_review_v2.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _chronicle_review_v2() -> None:
+    new_run_id()
+    await asyncio.to_thread(_chronicle_review_v2_now)
+
+
 def _selection_settle_shadow_now() -> None:
     """The tracking of loose selections (IA-109): one pass. Never raises; writes only ``intel.selection_settlements`` and, through the
     cycle's API, the chains' moves after kick-off in ``intel.selection_lifecycle``."""
@@ -1872,6 +1919,7 @@ WORKER_JOB_TYPES = frozenset({
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
     "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest", "decision_v2_shadow", "lineup_estimate_shadow",
     "news_stories", "chronicle_v4", "eval_cycle_shadow", "eval_cycle_e3", "selection_settle_shadow", "parlay_v6_shadow", "selection_eval_shadow",
+    "chronicle_update", "chronicle_review_v2",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -2288,6 +2336,23 @@ async def main() -> None:
                           next_run_time=moment + timedelta(minutes=21))
     else:
         log.info("worker.chronicle_v4_off", hint="FBI_CHRONICLE_V4 is not shadow: no content plan and no single chronicle are written")
+    from fbi.chronicle import review_v2 as chronicle_review_v2
+    from fbi.chronicle import update_job as chronicle_update
+
+    if chronicle_update.mode() == "shadow":
+        # IA-116: the paragraph of the official line-up and the why of each selection, by template; no model, no cost.
+        scheduler.add_job(_deadline("chronicle_update", "chronicle_update", _chronicle_update), "interval",
+                          minutes=chronicle_update.EVERY_MINUTES, id="chronicle_update", max_instances=1, coalesce=True,
+                          misfire_grace_time=chronicle_update.EVERY_MINUTES * 60, next_run_time=moment + timedelta(minutes=3))
+    else:
+        log.info("worker.chronicle_update_off", hint="FBI_CHRONICLE_LINEUP is not shadow: no chronicle is updated after the line-up")
+    if chronicle_review_v2.mode() == "shadow":
+        # IA-118: the single chronicle judged on its cited facts after the match; no model, no cost.
+        scheduler.add_job(_deadline("chronicle_review_v2", "chronicle_review_v2", _chronicle_review_v2), "interval",
+                          minutes=60, id="chronicle_review_v2", max_instances=1, coalesce=True, misfire_grace_time=3600,
+                          next_run_time=moment + timedelta(minutes=41))
+    else:
+        log.info("worker.chronicle_review_v2_off", hint="FBI_CHRONICLE_REVIEW_V2 is not shadow: the single chronicle is not reviewed")
     from fbi.news import pipeline as news_pipeline
 
     if news_pipeline.mode() == "shadow":

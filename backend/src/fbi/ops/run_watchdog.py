@@ -47,6 +47,10 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "lineup_estimate_shadow": timedelta(minutes=20),
     # the single chronicle in shadow (IA-103/IA-104): at most ten calls of the small model a pass, or a batch sent.
     "chronicle_v4": timedelta(minutes=20),
+    # the chronicle after the line-up (IA-116): no model, at most 50 E3 a pass, a few small reads each.
+    "chronicle_update": timedelta(minutes=5),
+    # the factual review of the single chronicle (IA-118): no model, at most 200 chronicles a run.
+    "chronicle_review_v2": timedelta(minutes=20),
     # the evaluation cycle (IA-105): no provider, no model; at most 12 E1 a pass (the estimated starters), the rest database reads.
     "eval_cycle_shadow": timedelta(minutes=20),
     # its E3 (IA-106): one pass a minute over the line-ups that arrived; it must end well within two minutes.

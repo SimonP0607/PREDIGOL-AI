@@ -46,7 +46,7 @@ from fbi.ai.calendar import day_start, local_day
 from fbi.ai.config import AiSettings, Tier
 from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.usage import CallOutcome, UsageLedger, call_json, with_effort
-from fbi.chronicle import inputs, verify
+from fbi.chronicle import inputs, repetition, verify
 from fbi.chronicle import plan as cp
 from fbi.chronicle.writer import PROMPT_VERSION, VERSION, WriterInput, Written, read, request, write
 
@@ -130,14 +130,15 @@ SELECT (SELECT coalesce(sum(cost_usd), 0) FROM ai.usage WHERE prompt_version = %
 def store(conn: psycopg.Connection[Any], plan: cp.ContentPlan, *, at: datetime, status: str, route: str,
           input_hash: str | None = None, verdict: verify.Verdict | None = None, provider: str | None = None, model: str | None = None,
           usage_id: int | None = None, custom_id: str | None = None, cost: Decimal = Decimal(0), error: str | None = None,
-          code_version: str | None = None) -> int | None:
-    """One row. ``status`` ok / partial carry the content; rejected carries ``VERIFICACION_VACIA``; abstained, the plan's code."""
+          code_version: str | None = None, verify_version: str | None = None) -> int | None:
+    """One row. ``status`` ok / partial carry the content; rejected carries ``VERIFICACION_VACIA``; abstained, the plan's code.
+    ``verify_version``: the verifier's version when it is not v1 (``chronicle-verify-v2`` while the rule of repetitions drops, IA-117)."""
     content = verdict.content if verdict is not None and status in ("ok", "partial") else None
     abstention = plan.abstention if status == "abstained" else cp.EMPTY_VERIFICATION if status == "rejected" else None
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(INSERT_SQL, {
             "fixture": plan.fixture_id, "at": at, "plan_at": plan.at, "version": VERSION, "plan_version": plan.version,
-            "classes_version": plan.classes_version, "verify_version": verify.VERSION, "figure_version": plan.figure_version,
+            "classes_version": plan.classes_version, "verify_version": verify_version or verify.VERSION, "figure_version": plan.figure_version,
             "packet": plan.packet_id, "plan_hash": plan.hash, "input_hash": input_hash, "plan": Jsonb(plan.as_json()), "status": status,
             "abstention": abstention, "content": None if content is None else Jsonb(content),
             "dropped": Jsonb([d.as_json() for d in (verdict.dropped if verdict is not None else [])][:60]),
@@ -328,10 +329,18 @@ def _newest(conn: psycopg.Connection[Any], fixture_id: int) -> tuple[str, str | 
 
 def _keep(conn: psycopg.Connection[Any], plan: cp.ContentPlan, written: Written, *, at: datetime, route: str,
           custom_id: str | None = None, code_version: str | None = None) -> int | None:
+    """The answer kept, after the rule of stock phrases and repetitions (IA-117, ``FBI_CHRONICLE_REPEAT``: ``shadow`` by default measures
+    and drops nothing; ``on`` drops; ``off`` skips it)."""
     status = written.status if written.status in ANSWERED else "failed"
-    return store(conn, plan, at=at, status=status, route=route, input_hash=written.input_hash, verdict=written.verdict,
+    verdict, verify_version = written.verdict, None
+    word = repetition.mode()
+    if verdict is not None and verdict.content is not None and word != "off":
+        verdict, verify_version = repetition.apply(verdict, plan, inputs.repetition_corpus(conn, plan, at=at), mode_word=word)
+        if status in ("ok", "partial"):
+            status = verdict.status
+    return store(conn, plan, at=at, status=status, route=route, input_hash=written.input_hash, verdict=verdict,
                  provider=written.provider, model=written.model, usage_id=written.usage_id, custom_id=custom_id, cost=written.cost,
-                 error=written.error, code_version=code_version)
+                 error=written.error, code_version=code_version, verify_version=verify_version)
 
 
 # ── the answer of a batch ───────────────────────────────────────────────────────────────────────────────────────────────────

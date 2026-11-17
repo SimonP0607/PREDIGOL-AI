@@ -122,6 +122,22 @@ CATALOG: Final[tuple[Capability, ...]] = (
                "pequeño escribe una sola crónica verificada frase por frase (chronicle-verify-v1); en sombra, tope de US$ 1 al día, "
                "nadie la lee.",
                "FBI_CHRONICLE_V4", ("content-plan-v1", "claim-classes-v1", "chronicle-v4", "chronicle-verify-v1")),
+    Capability("chronicle_update", "AD-F03", "Crónica tras la alineación y porqué de cada selección",
+               "Cuando llega la alineación oficial (E3), una versión nueva de la crónica con un párrafo por plantilla y el porqué de cada "
+               "selección desde decision-v2 y las frases de la crónica; sin modelo ni coste, nadie la lee.",
+               "FBI_CHRONICLE_LINEUP", ("lineup-update-v1", "selection-why-v1")),
+    Capability("chronicle_repetition", "AD-F04", "Coletillas y repeticiones de la crónica (repeat-check-v1)",
+               "Mide en cada crónica las frases de plantilla y las repetidas respecto de la crónica anterior del mismo equipo; en sombra "
+               "solo mide, con on las elimina como frases sin apoyo. Sin modelo.",
+               "FBI_CHRONICLE_REPEAT", ("repeat-check-v1",)),
+    Capability("chronicle_factcheck", "AD-F06", "Evaluación factual de la crónica única (chronicle-review-v2)",
+               "Juzga cada crónica única tras el partido sobre los hechos que cita, con sus métricas (chronicle-metrics-v1), el banco de "
+               "partidos trampa en CI y el protocolo de muestreo humano (sin firmar).",
+               "FBI_CHRONICLE_REVIEW_V2", ("chronicle-review-v2", "chronicle-metrics-v1", "chronicle-protocol-v1")),
+    Capability("chronicle_retirement", "AD-F05", "Retirada segura de los textos duplicados (retire-compare-v1)",
+               "Comparación preregistrada de la crónica única con user-narrative-v3, brief-v8 y las tarjetas de análisis; no apaga nada: "
+               "cada retirada es un interruptor que cambia y firma el dueño.",
+               None, ("retire-compare-v1",)),
 )
 """Every capability of the plan the registry knows. The first seven are the ones that already ran in shadow on 16 Nov 2026 (seeded by
 revision 0138 at ``en_sombra``); a piece that builds a new one adds it here, and ``scripts/ia_capabilities.py sync --write`` registers it
