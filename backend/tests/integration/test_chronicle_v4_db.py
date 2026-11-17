@@ -20,6 +20,7 @@ from fbi.ai.providers.base import LlmResult, LlmUsage
 from fbi.ai.usage import UsageLedger, shared
 from fbi.chronicle import inputs, v4_job
 from fbi.chronicle import plan as cp
+from fbi.chronicle.writer import PROMPT_VERSION as CHRONICLE_PROMPT
 from fbi.chronicle.writer import WriterInput
 from tests.integration.conftest import Seed
 from tests.integration.helpers import scalar
@@ -178,3 +179,15 @@ def test_the_table_refuses_a_text_without_its_status(db: psycopg.Connection[Any]
     with pytest.raises(psycopg.errors.CheckViolation), db.transaction():
         db.execute(sql, (fid, RUN_AT, RUN_AT + timedelta(minutes=1), plan.hash, Jsonb(plan.as_json()), "abstained", "SIN_PLAN", None))
     assert scalar(db.execute("SELECT count(*) FROM ai.chronicles WHERE fixture_id = %s", (fid,))) == 0
+
+
+def test_nothing_is_called_past_95_percent_of_the_capabilitys_month(db: psycopg.Connection[Any], world: World, seed: Seed,  # noqa: F811
+                                                                      frozen: None) -> None:  # noqa: F811
+    """IA-137 (AD-K05): the chronicle's month (US$ 14, ``chronicle_v4``) stops the job at 95 %, the next call counted, whatever the day."""
+    fid, _packet, _ids = match(db, world, seed)
+    UsageLedger(shared(db)).record(at=RUN_AT - timedelta(minutes=1), purpose="match_brief", tier="bulk", provider="anthropic", model=MODEL,
+                                   usage=None, cost=Decimal("13.30"), status="ok", prompt_version=CHRONICLE_PROMPT)
+    assert v4_job.spent_this_month(db, RUN_AT) == Decimal("13.30")
+    model = Model()
+    report = run(db, model, cap=Decimal("100"))
+    assert report.counts["piece_month_cap"] == 1 and model.asked == [] and rows(db, fid) == []

@@ -38,6 +38,7 @@ from pathlib import Path
 
 import pytest
 
+from fbi import memoryread
 from fbi.core.version import MODEL_PACKAGES
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -65,6 +66,10 @@ NAMES_IT: dict[str, str] = {
     "ai/learning.py": "the learning cycle: reads the day's post-mortems and writes the notes (ai.learning_notes); the frozen tables are named "
                       "for the history before plan F8",
     "ai/patterns.py": "the patterns over the memory events and the post-mortems of the matches: hypotheses for the owner, never a rule",
+    "memoryread/__init__.py": "the one read layer of the memories (IA-138, AD-K06): every statement that reads a memory, moved byte for byte from "
+                              "the module that runs it; strings only, it reads and writes nothing itself",
+    "proposals/drafts.py": "the retirements of AD-K06 as proposals for the owner (IA-138/IA-139): names the notes and the memory events it "
+                           "keeps; it reads and writes nothing",
     "ai/daily_review.py": "the close of the day (a report): the day's post-mortems, memory events and notes; it changes no pick, probability or rule",
     "ai/pick_postmortem.py": "pm-v2, FROZEN: writes ai.pick_postmortems only behind FBI_AI_LEGACY_POSTMORTEMS, after the one post-mortem",
     "ai/postmortem.py": "pm-v1.1, FROZEN: writes ai.postmortems only behind FBI_AI_LEGACY_POSTMORTEMS, after the one post-mortem",
@@ -367,6 +372,9 @@ def reach(path: Path, function: str) -> list[str]:
             elif isinstance(inner, ast.Name) and inner.id not in seen and (inner.id in constants or inner.id in functions):
                 seen.add(inner.id)
                 visit(constants.get(inner.id) or functions[inner.id])
+            elif (isinstance(inner, ast.Attribute) and isinstance(inner.value, ast.Name) and inner.value.id == "memoryread"
+                  and isinstance(getattr(memoryread, inner.attr, None), str)):
+                found.append(getattr(memoryread, inner.attr))  # the one read layer of the memories (IA-138): its statements count here
 
     seen.add(function)
     visit(functions[function])

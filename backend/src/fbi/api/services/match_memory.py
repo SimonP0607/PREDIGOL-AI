@@ -21,6 +21,7 @@ from typing import Any
 
 from pydantic import Field
 
+from fbi import memoryread
 from fbi.api.contracts.common import Contract
 from fbi.api.envelope import Envelope, listing
 from fbi.api.repositories import Conn, fetch_all
@@ -136,10 +137,10 @@ SELECT b.*,
             SELECT pm.answers->'win_quality'->'data'->>'win_quality' AS q, count(*) AS n FROM intel.selection_postmortems pm
              WHERE pm.fixture_id = b.id AND pm.answers->'win_quality'->'data'->>'win_quality' IS NOT NULL
              GROUP BY 1) w) AS wins,
-       (SELECT count(*) FROM ai.memory_events e WHERE e.fixture_id = b.id) AS events
+       __MEMORY_EVENTS__ AS events
   FROM base b
  ORDER BY b.kickoff_at DESC
-"""
+""".replace("__MEMORY_EVENTS__", memoryread.AI_EVENTS_OF_BASE_FIXTURE)
 
 
 def _like(text: str | None) -> str | None:

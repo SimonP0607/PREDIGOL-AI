@@ -24,6 +24,8 @@ ALLOWED = {
     "api/services/post_evaluation.py": "C-08: the owner's evaluation after the match reads the evaluations of one match and the board "
                                        "(private only, require_admin)",
     "scripts/ia_selection_eval.py": "the owner's read-only command (dry run and board)",
+    "scripts/ia_proposals.py": "IA-139: the owner's register reads the board (board-v1) to draft the promotions it supports; it writes no "
+                               "evaluation",
 }
 DECIDES = ("intel/", "picks/", "familydecisions/", "parlays/", "decision/", "council/", "models/", "features/", "predictions/",
            "forecasting/", "customer/", "notify/", "messaging/", "narrative/", "knowledge/")

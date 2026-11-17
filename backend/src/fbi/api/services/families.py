@@ -23,6 +23,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime, timedelta
 from typing import Any, Final
 
+from fbi import memoryread
 from fbi.api.envelope import Envelope, ok
 from fbi.api.repositories import Conn, fetch_all
 from fbi.api.services.family_rules import FAMILIES, MEASURES, measure_of, rule_of
@@ -127,22 +128,7 @@ SELECT s.*, th.name AS home, ta.name AS away, c.name AS competition, c.country
 """
 """The last words matching the filters, the newest match first, with the names the console shows."""
 
-MEMORY_SQL: Final = """
-WITH newest AS (
-    SELECT DISTINCT ON (m.entity_type, m.entity_key) m.*
-      FROM intel.family_memory m
-     WHERE m.version = %(version)s
-     ORDER BY m.entity_type, m.entity_key, m.as_of_day DESC, m.id DESC
-), ranked AS (
-    SELECT n.*, row_number() OVER (PARTITION BY n.entity_type ORDER BY (n.stats #>> '{all,n}')::int DESC NULLS LAST, n.entity_key) AS rn
-      FROM newest n
-)
-SELECT entity_type, entity_key, entity_name, version, as_of_day, built_at, confidence::float8 AS confidence, stats, delta, evidence_ref
-  FROM ranked
- WHERE entity_type IN ('family', 'market') OR rn <= %(top)s
- ORDER BY CASE entity_type WHEN 'family' THEN 0 WHEN 'market' THEN 1 WHEN 'competition' THEN 2 ELSE 3 END,
-          (stats #>> '{all,n}')::int DESC NULLS LAST, entity_key
-"""
+MEMORY_SQL: Final = memoryread.FAMILY_CONSOLE_NEWEST
 """What the families remember: the newest snapshot of ``memory-fam-v1`` of each family, market, competition and referee - every family and market, and
 the competitions and referees with the most post-mortems behind them."""
 

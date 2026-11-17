@@ -23,6 +23,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from fbi import memoryread
 from fbi.ai.calendar import day_bounds
 from fbi.ai.gates import typed_visible
 from fbi.ai.team_claims import team_claims
@@ -119,12 +120,9 @@ def build_report(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> d
         cur.execute("SELECT entity, market_key, model_name, to_role, reason, at FROM intel.promotions "
                     "WHERE at >= %s AND at < %s + interval '1 day' ORDER BY at", (start, end))
         promotions = [dict(r) | {"at": r["at"].isoformat()} for r in cur.fetchall()]
-        cur.execute("SELECT entity_type, entity_name, aspect, stats FROM intel.entity_memory_latest WHERE as_of_day = %s "
-                    "AND entity_type IN ('team', 'competition') AND (stats->>'decisions')::int >= 5 "
-                    "ORDER BY (stats->>'clv_mean')::float8 NULLS LAST LIMIT 12", (day,))
+        cur.execute(memoryread.ENTITY_REPORT_TEAMS, (day,))
         memory = [dict(r) for r in cur.fetchall()]
-        cur.execute("SELECT entity_name, stats FROM intel.entity_memory_latest WHERE as_of_day = %s AND entity_type = 'player' "
-                    "AND (delta->>'started_anyway')::int > 0 LIMIT 15", (day,))
+        cur.execute(memoryread.ENTITY_REPORT_PLAYERS, (day,))
         players = [dict(r) for r in cur.fetchall()]
         cur.execute("SELECT r.id FROM intel.runs r WHERE r.job = 'weekly' AND r.status IN ('ok', 'partial') "
                     "AND r.started_at <= %s ORDER BY r.started_at DESC LIMIT 1", (at,))

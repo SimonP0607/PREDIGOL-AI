@@ -56,6 +56,8 @@ NAMES_IT = {
     "scripts/match_knowledge.py": "the owner's command: build (a dry run until --apply), coverage, audit and show",
     # read-only knowledge store, never on a decision path
     "knowledge/store.py": "the Knowledge Store (ks-v1, shadow): reads the newest build made by a moment, as of it, and writes nothing",
+    "memoryread/__init__.py": "the one read layer of the memories (IA-138, AD-K06): holds the page's two statements (KNOWLEDGE_ROW, KNOWLEDGE_CHAIN), "
+                              "byte for byte; only the page runs them (tests/unit/test_memory_read_layer.py) and it writes nothing",
 }
 """Every file under ``src/fbi``, ``scripts`` and ``apps`` that names the objects, with why."""
 
@@ -312,5 +314,5 @@ def test_the_page_of_a_match_reads_and_builds_nothing() -> None:
     for name in ("api/services/knowledge.py", "api/routers/knowledge.py", "api/contracts/knowledge.py"):
         path = SRC / name
         assert not writes_of(path), f"{name} writes to {sorted(writes_of(path))}"
-        stray = strays(path, "fbi.api", "fbi.core", "fbi.auth", "fbi.knowledge.layers")
+        stray = strays(path, "fbi.api", "fbi.core", "fbi.auth", "fbi.knowledge.layers", "fbi.memoryread")  # the layer is strings (IA-138)
         assert not stray, f"{name} imports {stray}: the page may read the pure layers and nothing that builds"

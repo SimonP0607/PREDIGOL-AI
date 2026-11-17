@@ -13,7 +13,8 @@ item is the queue's (``ai.batch_items``). Nothing of PrediGol Intelligence: no p
 MONEY. US$ 1 a day at most (the owner's decision for the chronicle in shadow; ``DAY_CAP_USD``; ``FBI_CHRONICLE_V4_DAY_USD`` may only LOWER it):
 what the ledger spent today (Bogotá) under ``chronicle-v4`` plus what open batch items of it reserve, plus the estimate of the next call, must
 fit. Then Intelligence's own budget still decides every call (``call_json``, ``BatchQueue``). The capability's month is ``chronicle_v4`` of
-``fbi.ai.capability_budget`` (US$ 14, production envelope): it warns, it does not cut.
+``fbi.ai.capability_budget`` (US$ 14, production envelope): it warns at 80 % and, since IA-137 (AD-K05), the job stops asking at 95 % of it,
+the next call counted (``piece_allows``; a month that cannot be read stops it too: ``piece_month_cap``).
 
 ROUTE. The Message Batches API (half the price) while the ``batch`` gate covers the bulk model; real time otherwise. The system block is marked
 for the prompt cache either way. One attempt per input (the same plan and claims are never paid twice: ``already_answered``; a batch item still
@@ -40,9 +41,9 @@ import structlog
 from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
-from fbi.ai import gates
+from fbi.ai import capability_budget, gates
 from fbi.ai.batch import BatchQueue, Resolved, Task, estimate_cost, register
-from fbi.ai.calendar import day_start, local_day
+from fbi.ai.calendar import day_start, local_day, month_start
 from fbi.ai.config import AiSettings, Tier
 from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.usage import CallOutcome, UsageLedger, call_json, with_effort
@@ -56,6 +57,8 @@ JOB: Final = "chronicle_v4"
 SWITCH: Final = "FBI_CHRONICLE_V4"
 MINUTES_SWITCH: Final = "FBI_CHRONICLE_V4_MINUTES"
 DAY_SWITCH: Final = "FBI_CHRONICLE_V4_DAY_USD"
+CAPABILITY: Final = "chronicle_v4"
+"""Its key in ``fbi.ai.capability_budget``: the month's cap the job stops at 95 % of (IA-137)."""
 EVERY_MINUTES: Final = 30
 DAY_CAP_USD: Final = Decimal("1.00")
 """The owner's decision: the chronicle in shadow spends at most one dollar a day."""
@@ -150,8 +153,17 @@ def store(conn: psycopg.Connection[Any], plan: cp.ContentPlan, *, at: datetime, 
 
 
 def spent_today(conn: psycopg.Connection[Any], at: datetime) -> Decimal:
+    return _spent_since(conn, day_start(local_day(at)), at)
+
+
+def spent_this_month(conn: psycopg.Connection[Any], at: datetime) -> Decimal:
+    """What the chronicle spent this Bogotá month and what its open batch items reserve (IA-137: its piece's cut at 95 %)."""
+    return _spent_since(conn, day_start(month_start(local_day(at))), at)
+
+
+def _spent_since(conn: psycopg.Connection[Any], since: datetime, at: datetime) -> Decimal:
     with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute(SPENT_SQL, {"v": PROMPT_VERSION, "since": day_start(local_day(at)), "at": at})
+        cur.execute(SPENT_SQL, {"v": PROMPT_VERSION, "since": since, "at": at})
         row = cur.fetchone()
     return Decimal(str(row[0])) if row is not None and row[0] is not None else Decimal(0)
 
@@ -256,7 +268,7 @@ def run(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetime, mo
         report.counts[outcome] += 1
         if outcome in ("ok", "partial", "rejected", "invalid_output", "failed", "queued"):
             asked += 1
-        if outcome in ("piece_day_cap", "over_budget", "not_configured"):
+        if outcome in ("piece_day_cap", "piece_month_cap", "over_budget", "not_configured"):
             stop = outcome
     if q is not None:
         flushed = q.flush()
@@ -300,6 +312,8 @@ def _one(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id: int, k
     guess = estimate_cost(tm.model, with_effort(req, TIER), typical_output=TYPICAL_OUTPUT, at=at) * (1 if queue is not None else 2)
     if spent_today(conn, at) + guess > cap:
         return "piece_day_cap"
+    if not capability_budget.piece_allows(CAPABILITY, spent_this_month(conn, at), guess).allowed:
+        return "piece_month_cap"
     if queue is not None:
         admitted = queue.add(task_of(inp, deadline=kickoff))
         if admitted.status == "queued":
@@ -394,5 +408,5 @@ def run_job(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings
     return report
 
 
-__all__ = ["DAY_CAP_USD", "JOB", "PURPOSE", "SWITCH", "TIER", "RunReport", "caller", "day_cap", "every_minutes", "mode", "run", "run_job",
-           "settle", "spent_today", "store", "task_of"]
+__all__ = ["CAPABILITY", "DAY_CAP_USD", "JOB", "PURPOSE", "SWITCH", "TIER", "RunReport", "caller", "day_cap", "every_minutes", "mode", "run", "run_job",
+           "settle", "spent_this_month", "spent_today", "store", "task_of"]

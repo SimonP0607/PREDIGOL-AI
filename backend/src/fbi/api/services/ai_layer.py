@@ -14,6 +14,7 @@ from typing import Any
 
 from psycopg.rows import tuple_row
 
+from fbi import memoryread
 from fbi.ai import costs as ai_costs
 from fbi.ai import shadow as ai_shadow
 from fbi.ai import user_budget
@@ -349,11 +350,7 @@ def shadow_reports(conn: Conn) -> Envelope[list[dict[str, Any]]]:
     return listing([_shadow_row(r) for r in ai_shadow.latest(conn)], empty_reason="no_shadow_report_yet")
 
 
-MEMORY_SQL = """
-SELECT id, created_at, kind, entity_type, entity_id, fixture_id, hypothesis, evidence, result, confidence, version
-  FROM ai.memory_events WHERE (%(kind)s::text IS NULL OR kind = %(kind)s)
- ORDER BY created_at DESC, id DESC LIMIT %(limit)s
-"""
+MEMORY_SQL = memoryread.AI_CONSOLE_EVENTS
 
 
 def memory(conn: Conn, *, kind: str | None, limit: int) -> Envelope[list[MemoryEvent]]:
@@ -442,14 +439,7 @@ def finding_text(r: dict[str, Any]) -> str | None:
     return owner_text(text)
 
 
-FINDINGS_SQL = """
-SELECT id, created_at, kind, entity_type, entity_id, fixture_id, hypothesis, evidence, result, confidence, version
-  FROM ai.memory_events
- WHERE created_at >= %(since)s AND created_at < %(until)s
-   AND kind IN ('context_error', 'model_failure', 'model_success', 'league_pattern', 'team_pattern', 'player_pattern',
-                'market_signal', 'news_signal')
- ORDER BY created_at DESC, id DESC LIMIT 30
-"""
+FINDINGS_SQL = memoryread.AI_CONSOLE_FINDINGS
 
 ERRORS_SQL = f"""
 SELECT pm.fixture_id, th.name || ' - ' || ta.name AS match, f.kickoff_at, pm.evidence->>'result' AS score, pm.market_key AS market,
