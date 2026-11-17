@@ -1,0 +1,35 @@
+# IA-067 · 02 · La repetición del 16-nov-2026, ANTES de desplegar: el mismo informe que la orden 01, con los módulos nuevos de la rama
+# (price_age, engine, replay) cargados EN MEMORIA dentro de una ejecución de python leída por stdin en el worker (docker exec -i ... python -).
+# No escribe nada en el contenedor ni en la base. Delante de este texto iban SRC_AGE, SRC_ENGINE y SRC_REPLAY: el código de esos tres
+# ficheros en base64. Guardado como .txt porque no es código del paquete (ruff y mypy recorren docs/).
+# AD-B06 / IA-067: decision-v2.1 (precio del libro + edad por horizonte 195/75/45) frente a decision-v2.0 (consenso + regla de v1) y frente a
+# decision-v2.0 con el precio del libro (solo cambia la regla de edad). SOLO LECTURA: conexión read-only con statement_timeout 95 s.
+# Los módulos nuevos (price_age, engine, replay de la rama wip/IA-067) se cargan EN MEMORIA desde el código fuente que llega por stdin;
+# no se escribe nada en el contenedor ni en la base de datos.
+import base64, json, sys, time, types
+from datetime import date
+import fbi.decision as pkg
+def inject(name, b64):
+    mod = types.ModuleType(name); mod.__file__ = f"<lab {name}>"; sys.modules[name] = mod
+    exec(compile(base64.b64decode(b64).decode(), mod.__file__, "exec"), mod.__dict__)
+    setattr(pkg, name.rsplit(".", 1)[1], mod); return mod
+inject("fbi.decision.price_age", SRC_AGE)
+engine = inject("fbi.decision.engine", SRC_ENGINE)
+import fbi.decision.book_price  # noqa: E402  (deployed, unchanged: imports the injected engine)
+replay = inject("fbi.decision.replay", SRC_REPLAY)
+import psycopg  # noqa: E402
+from fbi.core.config import settings as platform  # noqa: E402
+from fbi.storage.payload_store import PayloadStore  # noqa: E402
+day = date.fromisoformat(sys.argv[1])
+OPT = "-c TimeZone=UTC -c default_transaction_read_only=on -c statement_timeout=95000"
+t0 = time.time()
+with psycopg.connect(platform.database.psycopg_url, options=OPT) as conn:
+    guard = conn.execute("SHOW default_transaction_read_only").fetchone()[0]
+    doc = replay.replay_day(conn, day=day, rules=engine.RULES_V21, store=PayloadStore(platform.runtime.raw_store_dir),
+                            against=["decision-v2.0", "decision-v2.0:book"])
+    conn.rollback()
+out = {"day": day.isoformat(), "secs": round(time.time() - t0, 1), "guard": guard, "rows": doc["rows"], "moments": doc["moments"],
+       "skipped": doc["skipped"], "inputs": doc["inputs"], "agreement_v1": doc["agreement"],
+       "price": {k: v for k, v in doc["price"].items() if k not in ("by_checkpoint",)},
+       "versus": {n: v | {"examples": v["examples"][:6]} for n, v in doc["versus"].items()}}
+print("RESULT " + json.dumps(out, default=str, ensure_ascii=False))

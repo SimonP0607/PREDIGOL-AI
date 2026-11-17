@@ -27,6 +27,7 @@ from fastapi import HTTPException
 from psycopg.rows import dict_row
 from pydantic import BaseModel
 
+from fbi.ai import source_policy
 from fbi.analyst import search as web
 from fbi.analyst.provenance import SourceRegistry
 from fbi.api.envelope import Envelope
@@ -306,6 +307,11 @@ def _web_research(ctx: ToolContext, args: dict[str, Any]) -> dict[str, Any]:
         raise ToolError(str(exc)) from exc
     except RuntimeError as exc:
         raise ToolError(str(exc)) from exc
+    # IA-063: the analyst is a model too - a source that reserves its text from AI never reaches it, nor (while the exclusion enforces)
+    # a domain of the exclusion list; what the strict policy would block is recorded when the connection may write it.
+    screened = source_policy.screen(source_policy.load(ctx.conn), results)
+    results = screened.kept
+    source_policy.record(ctx.conn, screened.read(r.url for r in results), at=ctx.at, path="analyst")
     pages = [{"source_id": ctx.registry.add(r), **r.as_json()} for r in results]
     return {"status": "ok" if pages else "empty", "reason": None if pages else "Nothing published in the window.",
             "meta": {"generated_at": ctx.at.isoformat(), "data_as_of": ctx.at.isoformat()},
