@@ -16,6 +16,8 @@ from pydantic import Field
 
 from fbi.api.contracts.center import LiveMatch
 from fbi.api.contracts.common import Contract, MatchPhase, StatusReason, UserStatus
+from fbi.api.contracts.intelligence.featured import FeaturedAnalyses
+from fbi.api.contracts.intelligence.parlays import ParlaySetState
 from fbi.api.envelope import Section
 
 Source = Literal["qualified", "shadow_preview"]
@@ -219,6 +221,11 @@ class Parlay(Contract):
     prices_as_of: datetime | None = Field(description="The oldest price among the legs.")
     rejections: dict[str, int] = Field(description="Selections left out, by the rule they failed.")
     generated_at: datetime
+    state: ParlaySetState | None = Field(
+        default=None, exclude_if=lambda v: v is None,
+        description="Contract C-04 «Parlays con estado», public projection (AD-J05, IA-132): the state of the set, how it is built and "
+                    "its result - only while FBI_MATCH_INTELLIGENCE is on and only for what a reader is shown (never the owner's "
+                    "preview). Absent otherwise - it never travels as null.")
 
 
 class BestPrice(Contract):
@@ -335,3 +342,8 @@ class Home(Contract):
         "What else is in play: the matches of ``relevant`` are not repeated here; six at most."))
     results: Section[list[HomeResult]] = Field(description=(
         "The matches that ended in the last 24 hours, the most recent first, six at most (``home_board.results``)."))
+    featured_analyses: FeaturedAnalyses | None = Field(
+        default=None, exclude_if=lambda v: v is None,
+        description="Contract C-12 «Inicio», public projection (AD-J09, IA-134): the published analyses Home features, each the summary "
+                    "of its match's public C-01, with why it is there; empty with its reason while nothing is published. Only while "
+                    "FBI_MATCH_INTELLIGENCE is on - absent otherwise, never null.")

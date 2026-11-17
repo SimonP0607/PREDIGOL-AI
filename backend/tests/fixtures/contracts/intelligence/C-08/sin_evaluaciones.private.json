@@ -1,0 +1,44 @@
+{
+  "contract": "C-08",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-22T12:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "match": {
+    "id": 990001,
+    "home": {
+      "id": 9101,
+      "name": "Atlético Ejemplo"
+    },
+    "away": {
+      "id": 9102,
+      "name": "Deportivo Muestra"
+    },
+    "competition": {
+      "id": 39,
+      "name": "Liga Ejemplo",
+      "country": "Ejemplia"
+    },
+    "kickoff_at": "2026-11-21T20:00:00Z",
+    "round": "Regular Season - 12",
+    "venue": "Estadio Ejemplo",
+    "status": "FT",
+    "phase": "terminado"
+  },
+  "version": "eval-sel-v1",
+  "selections": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  },
+  "calibration": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  },
+  "board": {
+    "missing_reason": "sin_datos"
+  },
+  "notice_es": "Un acierto no valida el mercado."
+}

@@ -1,0 +1,236 @@
+{
+  "contract": "C-04",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "parlays": {
+    "items": [
+      {
+        "kind": "daily",
+        "status": "ninguno",
+        "result": {
+          "missing_reason": "sin_datos"
+        },
+        "none_reason": "NINGUNO_CUMPLE",
+        "rule": {
+          "version": "parlay-v5",
+          "min_legs": 5,
+          "max_legs": 5,
+          "max_per_match": 1,
+          "joint": "producto",
+          "none_when_nothing_meets": true
+        },
+        "window_from": "2026-11-21T16:42:00Z",
+        "window_to": "2026-11-22T16:42:00Z",
+        "built_at": "2026-11-21T16:42:00Z",
+        "legs": {
+          "items": [],
+          "missing_reason": "sin_datos"
+        },
+        "combined_odds": {
+          "missing_reason": "sin_datos"
+        },
+        "joint": {
+          "missing_reason": "sin_datos"
+        },
+        "fair_odds": {
+          "missing_reason": "sin_datos"
+        },
+        "accumulated_margin_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "expected_value_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "published": true,
+        "source": "en_vivo",
+        "stored_id": {
+          "missing_reason": "sin_datos"
+        },
+        "day": "2026-11-21",
+        "candidates": 1,
+        "none_detail": {
+          "missing_reason": "sin_datos"
+        },
+        "refused": [
+          {
+            "code": "few_bookmakers",
+            "count": 3
+          },
+          {
+            "code": "not_qualified",
+            "count": 41
+          }
+        ],
+        "joint_low": {
+          "missing_reason": "sin_datos"
+        },
+        "joint_se": {
+          "missing_reason": "sin_datos"
+        },
+        "product_of_legs": {
+          "missing_reason": "sin_datos"
+        },
+        "market_joint_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "expected_value_low_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "payout_factor": {
+          "missing_reason": "sin_datos"
+        }
+      },
+      {
+        "kind": "daily",
+        "status": "armado",
+        "result": "pendiente",
+        "none_reason": null,
+        "rule": {
+          "version": "parlay-v6",
+          "min_legs": 2,
+          "max_legs": 3,
+          "max_per_match": 2,
+          "joint": "simulacion_copula",
+          "none_when_nothing_meets": true
+        },
+        "window_from": "2026-11-21T05:00:00Z",
+        "window_to": "2026-11-22T05:00:00Z",
+        "built_at": "2026-11-21T14:42:00Z",
+        "legs": {
+          "items": [
+            {
+              "fixture_id": 991421,
+              "kickoff_at": "2026-11-21T20:00:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "pending",
+              "ref": "decision-v2-shadow-v1|994201|1X2|Home|0.00",
+              "probability_pct": 58.0,
+              "probability_low_pct": 54.0,
+              "market_pct": 53.0
+            },
+            {
+              "fixture_id": 991422,
+              "kickoff_at": "2026-11-21T20:00:00Z",
+              "market": "OU",
+              "selection": "Over",
+              "line": 2.5,
+              "odds": 1.9,
+              "result": "pending",
+              "ref": "decision-v2-shadow-v1|994202|1X2|Home|0.00",
+              "probability_pct": 58.0,
+              "probability_low_pct": 54.0,
+              "market_pct": 53.0
+            }
+          ]
+        },
+        "combined_odds": 3.42,
+        "joint": {
+          "value": 0.3061,
+          "pct": 30.6,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T14:42:00Z",
+          "evaluation": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluation_version": {
+            "missing_reason": "sin_datos"
+          },
+          "origin": "parlay-v6"
+        },
+        "fair_odds": 3.27,
+        "accumulated_margin_pct": 5.81,
+        "expected_value_pct": 4.7,
+        "published": false,
+        "source": "intel.parlays_v6",
+        "stored_id": 42,
+        "day": "2026-11-21",
+        "candidates": 3,
+        "none_detail": {
+          "missing_reason": "sin_datos"
+        },
+        "refused": [],
+        "joint_low": {
+          "value": 0.2712,
+          "pct": 27.1,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T14:42:00Z",
+          "evaluation": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluation_version": {
+            "missing_reason": "sin_datos"
+          },
+          "origin": "parlay-v6"
+        },
+        "joint_se": 0.0015,
+        "product_of_legs": 0.3192,
+        "market_joint_pct": 27.5,
+        "expected_value_low_pct": -7.2,
+        "payout_factor": {
+          "missing_reason": "sin_datos"
+        }
+      }
+    ]
+  },
+  "period": {
+    "date_from": "2026-11-15",
+    "date_to": "2026-11-21",
+    "kind": null
+  },
+  "calibration": {
+    "settled": 0,
+    "won": 0,
+    "expected_wins": {
+      "missing_reason": "sin_datos"
+    },
+    "expected_wins_low": {
+      "missing_reason": "sin_datos"
+    },
+    "brier": {
+      "missing_reason": "sin_datos"
+    },
+    "needed": 100
+  },
+  "v5_history": {
+    "items": [
+      {
+        "kind": "daily",
+        "source": "evaluation",
+        "status": "LOST",
+        "parlays": 14
+      },
+      {
+        "kind": "daily",
+        "source": "evaluation",
+        "status": "WON",
+        "parlays": 1
+      },
+      {
+        "kind": "multiday",
+        "source": "evaluation",
+        "status": "LOST",
+        "parlays": 10
+      },
+      {
+        "kind": "multiday",
+        "source": "evaluation",
+        "status": "VOID",
+        "parlays": 2
+      }
+    ]
+  }
+}

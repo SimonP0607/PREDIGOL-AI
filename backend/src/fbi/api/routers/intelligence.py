@@ -13,6 +13,8 @@ from fastapi import APIRouter, Depends, Path, Query
 from fbi.api.contracts.intelligence.alerts import AlertsContract
 from fbi.api.contracts.intelligence.console import ConsoleContract
 from fbi.api.contracts.intelligence.match import MatchIntelligencePrivate
+from fbi.api.contracts.intelligence.parlays import ParlaySetStatePrivate
+from fbi.api.contracts.intelligence.post_evaluation import PostMatchEvaluation
 from fbi.api.contracts.intelligence.tracking import Tracking
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
@@ -22,6 +24,9 @@ from fbi.api.services import intelligence as svc
 from fbi.api.services import intelligence_alerts as alerts_svc
 from fbi.api.services import intelligence_console as console_svc
 from fbi.api.services import match_intelligence
+from fbi.api.services import parlay_states as parlay_states_svc
+from fbi.api.services import post_evaluation as post_evaluation_svc
+from fbi.api.services import product as product_svc
 from fbi.api.services import tracking as tracking_svc
 from fbi.lifecycle.machine import State as LifecycleState
 
@@ -204,3 +209,29 @@ def get_tracking(conn: Db, state: LifecycleState | None = None, family: Tracking
     figure, price, evaluation step, result and CLV, filtered and paged by the server. Reading only."""
     return ok(tracking_svc.tracking(conn, date_from=date_from, date_to=date_to, state=state, family=family,
                                     competition_id=competition, cursor=cursor, limit=limit))
+
+
+ParlayKind = Literal["daily", "multiday"]
+
+
+@router.get("/intelligence/parlays", response_model=Envelope[ParlaySetStatePrivate])
+def get_parlays(conn: Db, kind: ParlayKind | None = None,
+                date_from: Annotated[date | None, Query(alias="from", description="First product day (Bogotá).")] = None,
+                date_to: Annotated[date | None, Query(alias="to", description="Last product day (31 days at most).")] = None,
+                ) -> Envelope[ParlaySetStatePrivate]:
+    """C-04 «Parlays con estado», private projection (AD-J05, IA-132): the parlays of parlay-v6 kept in the shadow over the period (the
+    last seven product days by default) with the state of each set, its legs and their results, the joint and its pessimistic end, the
+    margin accumulated and why a day had none; beside them the product's parlays of now (parlay-v5, what a reader is shown) and
+    parlay-v5's kept history by state. Reading only."""
+    kinds: tuple[ParlayKind, ...] = (kind,) if kind else ("daily", "multiday")
+    live = [product_svc.parlay_board(conn, k, include_shadow=False).data for k in kinds]
+    return ok(parlay_states_svc.private(conn, live=live, kind=kind, date_from=date_from, date_to=date_to))
+
+
+@router.get("/intelligence/evaluations/{fixture_id}", response_model=Envelope[PostMatchEvaluation])
+def get_post_evaluation(conn: Db, fixture_id: Annotated[int, Path(ge=1, le=2**62)]) -> Envelope[PostMatchEvaluation]:
+    """C-08 «Evaluación posterior» (AD-J07, IA-133): per settled selection of the match, what we anticipated, what happened, whether it
+    was a good price, which evidence held or failed, whether the line-up changed anything and whether the scenario came true (absent until
+    AD-B02), with the accumulated calibration of its market on the validation board and the notice «Un acierto no valida el mercado».
+    Reading only."""
+    return ok(post_evaluation_svc.evaluation(conn, fixture_id))

@@ -21,7 +21,7 @@ from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.errors import ApiError
 from fbi.api.security import App
-from fbi.api.services import deprecated, explanation, product
+from fbi.api.services import deprecated, explanation, featured, parlay_states, product
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
 from fbi.parlays import builder
@@ -46,8 +46,13 @@ def _shadow(preview: str | None, principal: Principal) -> bool:
 @router.get("/home", response_model=Envelope[Home])
 def get_home(conn: Db, principal: App, preview: Preview = None) -> Envelope[Home]:
     """Top picks with value now, the parlay of the day and the multi-day parlay, live matches with the most
-    data, best prices against the market, and the next relevant fixtures."""
-    return product.home(conn, include_shadow=_shadow(preview, principal))
+    data, best prices against the market, and the next relevant fixtures. ``featured_analyses`` (contract C-12, AD-J09) only while
+    FBI_MATCH_INTELLIGENCE is on: the published analyses Home features - never one in the shadow, the owner's preview included."""
+    answer = product.home(conn, include_shadow=_shadow(preview, principal))
+    shown = featured.for_home(conn, user_id=principal.user_id)
+    if shown is None:
+        return answer
+    return answer.model_copy(update={"data": answer.data.model_copy(update={"featured_analyses": shown})})
 
 
 @router.get("/picks", response_model=Envelope[PicksBoard])
@@ -120,8 +125,13 @@ def build_parlay(
 @router.get("/parlays/{kind}", response_model=Envelope[Parlay])
 def get_parlay(conn: Db, principal: App, kind: Literal["daily", "multiday"], preview: Preview = None) -> Envelope[Parlay]:
     """Daily: five legs in the next 24 hours. Multi-day: six or seven legs in the next 48 hours. Every leg must
-    pass the value gate; when not enough do, the answer is ``no_valid_parlay`` - never a padded parlay."""
-    return product.parlay_board(conn, kind, include_shadow=_shadow(preview, principal))
+    pass the value gate; when not enough do, the answer is ``no_valid_parlay`` - never a padded parlay. ``state`` (contract C-04,
+    AD-J05) only while FBI_MATCH_INTELLIGENCE is on and only for what a reader is shown: the state of the set and how it is built."""
+    answer = product.parlay_board(conn, kind, include_shadow=_shadow(preview, principal))
+    state = parlay_states.public_state(answer.data)
+    if state is None:
+        return answer
+    return answer.model_copy(update={"data": answer.data.model_copy(update={"state": state})})
 
 
 @router.get("/odds/best", response_model=Envelope[BestOddsBoard])

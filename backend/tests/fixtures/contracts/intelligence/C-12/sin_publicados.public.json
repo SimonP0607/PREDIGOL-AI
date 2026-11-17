@@ -1,0 +1,25 @@
+{
+  "contract": "C-12",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "rule": {
+    "version": "featured-v1",
+    "window_hours": 48,
+    "max_items": 4,
+    "order": [
+      "equipo_favorito",
+      "competicion_seguida",
+      "partido_proximo"
+    ]
+  },
+  "personalised": false,
+  "items": {
+    "items": [],
+    "missing_reason": "sin_publicados"
+  }
+}

@@ -1,0 +1,185 @@
+{
+  "contract": "C-04",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "parlays": {
+    "items": [
+      {
+        "kind": "daily",
+        "status": "ninguno",
+        "result": {
+          "missing_reason": "sin_datos"
+        },
+        "none_reason": "NINGUNO_CUMPLE",
+        "rule": {
+          "version": "parlay-v5",
+          "min_legs": 5,
+          "max_legs": 5,
+          "max_per_match": 1,
+          "joint": "producto",
+          "none_when_nothing_meets": true
+        },
+        "window_from": "2026-11-21T16:42:00Z",
+        "window_to": "2026-11-22T16:42:00Z",
+        "built_at": "2026-11-21T16:42:00Z",
+        "legs": {
+          "items": [],
+          "missing_reason": "sin_datos"
+        },
+        "combined_odds": {
+          "missing_reason": "sin_datos"
+        },
+        "joint": {
+          "missing_reason": "sin_datos"
+        },
+        "fair_odds": {
+          "missing_reason": "sin_datos"
+        },
+        "accumulated_margin_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "expected_value_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "published": true,
+        "source": "en_vivo",
+        "stored_id": {
+          "missing_reason": "sin_datos"
+        },
+        "day": "2026-11-21",
+        "candidates": 1,
+        "none_detail": {
+          "missing_reason": "sin_datos"
+        },
+        "refused": [
+          {
+            "code": "few_bookmakers",
+            "count": 3
+          },
+          {
+            "code": "not_qualified",
+            "count": 41
+          }
+        ],
+        "joint_low": {
+          "missing_reason": "sin_datos"
+        },
+        "joint_se": {
+          "missing_reason": "sin_datos"
+        },
+        "product_of_legs": {
+          "missing_reason": "sin_datos"
+        },
+        "market_joint_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "expected_value_low_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "payout_factor": {
+          "missing_reason": "sin_datos"
+        }
+      },
+      {
+        "kind": "daily",
+        "status": "ninguno",
+        "result": {
+          "missing_reason": "sin_datos"
+        },
+        "none_reason": "NINGUNO_CUMPLE",
+        "rule": {
+          "version": "parlay-v6",
+          "min_legs": 2,
+          "max_legs": 3,
+          "max_per_match": 2,
+          "joint": "simulacion_copula",
+          "none_when_nothing_meets": true
+        },
+        "window_from": "2026-11-21T05:00:00Z",
+        "window_to": "2026-11-22T05:00:00Z",
+        "built_at": "2026-11-21T14:42:00Z",
+        "legs": {
+          "items": [],
+          "missing_reason": "sin_datos"
+        },
+        "combined_odds": {
+          "missing_reason": "sin_datos"
+        },
+        "joint": {
+          "missing_reason": "sin_datos"
+        },
+        "fair_odds": {
+          "missing_reason": "sin_datos"
+        },
+        "accumulated_margin_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "expected_value_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "published": false,
+        "source": "intel.parlays_v6",
+        "stored_id": 41,
+        "day": "2026-11-21",
+        "candidates": 0,
+        "none_detail": "sin_candidatos",
+        "refused": [
+          {
+            "code": "no_confirmada",
+            "count": 37
+          },
+          {
+            "code": "una_sola_casa",
+            "count": 2
+          }
+        ],
+        "joint_low": {
+          "missing_reason": "sin_datos"
+        },
+        "joint_se": {
+          "missing_reason": "sin_datos"
+        },
+        "product_of_legs": {
+          "missing_reason": "sin_datos"
+        },
+        "market_joint_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "expected_value_low_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "payout_factor": {
+          "missing_reason": "sin_datos"
+        }
+      }
+    ]
+  },
+  "period": {
+    "date_from": "2026-11-15",
+    "date_to": "2026-11-21",
+    "kind": "daily"
+  },
+  "calibration": {
+    "settled": 0,
+    "won": 0,
+    "expected_wins": {
+      "missing_reason": "sin_datos"
+    },
+    "expected_wins_low": {
+      "missing_reason": "sin_datos"
+    },
+    "brier": {
+      "missing_reason": "sin_datos"
+    },
+    "needed": 100
+  },
+  "v5_history": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "contract": "C-04",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "parlays": {
+    "items": [
+      {
+        "kind": "daily",
+        "status": "ninguno",
+        "result": {
+          "missing_reason": "sin_datos"
+        },
+        "none_reason": "NINGUNO_CUMPLE",
+        "rule": {
+          "version": "parlay-v5",
+          "min_legs": 5,
+          "max_legs": 5,
+          "max_per_match": 1,
+          "joint": "producto",
+          "none_when_nothing_meets": true
+        },
+        "window_from": "2026-11-21T16:42:00Z",
+        "window_to": "2026-11-22T16:42:00Z",
+        "built_at": "2026-11-21T16:42:00Z",
+        "legs": {
+          "items": [],
+          "missing_reason": "sin_datos"
+        },
+        "combined_odds": {
+          "missing_reason": "sin_datos"
+        },
+        "joint": {
+          "missing_reason": "sin_datos"
+        },
+        "fair_odds": {
+          "missing_reason": "sin_datos"
+        },
+        "accumulated_margin_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "expected_value_pct": {
+          "missing_reason": "sin_datos"
+        }
+      }
+    ]
+  }
+}

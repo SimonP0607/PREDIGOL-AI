@@ -1,0 +1,330 @@
+{
+  "contract": "C-04",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "parlays": {
+    "items": [
+      {
+        "kind": "multiday",
+        "status": "armado",
+        "result": "pendiente",
+        "none_reason": null,
+        "rule": {
+          "version": "parlay-v5",
+          "min_legs": 6,
+          "max_legs": 7,
+          "max_per_match": 1,
+          "joint": "producto",
+          "none_when_nothing_meets": true
+        },
+        "window_from": "2026-11-21T16:42:00Z",
+        "window_to": "2026-11-23T16:42:00Z",
+        "built_at": "2026-11-21T16:42:00Z",
+        "legs": {
+          "items": [
+            {
+              "fixture_id": 990001,
+              "kickoff_at": "2026-11-21T21:00:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "pending",
+              "ref": "pick:660001",
+              "probability_pct": 61.0,
+              "probability_low_pct": {
+                "missing_reason": "sin_datos"
+              },
+              "market_pct": 54.0
+            },
+            {
+              "fixture_id": 990002,
+              "kickoff_at": "2026-11-21T22:00:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "pending",
+              "ref": "pick:660002",
+              "probability_pct": 61.0,
+              "probability_low_pct": {
+                "missing_reason": "sin_datos"
+              },
+              "market_pct": 54.0
+            },
+            {
+              "fixture_id": 990003,
+              "kickoff_at": "2026-11-21T23:00:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "pending",
+              "ref": "pick:660003",
+              "probability_pct": 61.0,
+              "probability_low_pct": {
+                "missing_reason": "sin_datos"
+              },
+              "market_pct": 54.0
+            },
+            {
+              "fixture_id": 990004,
+              "kickoff_at": "2026-11-22T00:00:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "pending",
+              "ref": "pick:660004",
+              "probability_pct": 61.0,
+              "probability_low_pct": {
+                "missing_reason": "sin_datos"
+              },
+              "market_pct": 54.0
+            },
+            {
+              "fixture_id": 990005,
+              "kickoff_at": "2026-11-22T01:00:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "pending",
+              "ref": "pick:660005",
+              "probability_pct": 61.0,
+              "probability_low_pct": {
+                "missing_reason": "sin_datos"
+              },
+              "market_pct": 54.0
+            },
+            {
+              "fixture_id": 990006,
+              "kickoff_at": "2026-11-22T02:00:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "pending",
+              "ref": "pick:660006",
+              "probability_pct": 61.0,
+              "probability_low_pct": {
+                "missing_reason": "sin_datos"
+              },
+              "market_pct": 54.0
+            }
+          ]
+        },
+        "combined_odds": 34.012,
+        "joint": {
+          "value": 0.05152,
+          "pct": 5.2,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:42:00Z",
+          "evaluation": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluation_version": {
+            "missing_reason": "sin_datos"
+          },
+          "origin": "parlay-v5"
+        },
+        "fair_odds": 19.41,
+        "accumulated_margin_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "expected_value_pct": 75.2,
+        "published": true,
+        "source": "en_vivo",
+        "stored_id": {
+          "missing_reason": "sin_datos"
+        },
+        "day": "2026-11-21",
+        "candidates": 8,
+        "none_detail": {
+          "missing_reason": "sin_datos"
+        },
+        "refused": [
+          {
+            "code": "not_qualified",
+            "count": 12
+          }
+        ],
+        "joint_low": {
+          "missing_reason": "sin_datos"
+        },
+        "joint_se": {
+          "missing_reason": "sin_datos"
+        },
+        "product_of_legs": 0.05152,
+        "market_joint_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "expected_value_low_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "payout_factor": {
+          "missing_reason": "sin_datos"
+        }
+      },
+      {
+        "kind": "multiday",
+        "status": "liquidado",
+        "result": "perdido",
+        "none_reason": null,
+        "rule": {
+          "version": "parlay-v6",
+          "min_legs": 2,
+          "max_legs": 3,
+          "max_per_match": 2,
+          "joint": "simulacion_copula",
+          "none_when_nothing_meets": true
+        },
+        "window_from": "2026-11-21T05:00:00Z",
+        "window_to": "2026-11-25T05:00:00Z",
+        "built_at": "2026-11-21T14:42:00Z",
+        "legs": {
+          "items": [
+            {
+              "fixture_id": 991431,
+              "kickoff_at": "2026-11-20T16:42:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.85,
+              "result": "win",
+              "ref": "decision-v2-shadow-v1|994301|1X2|Home|0.00",
+              "probability_pct": 58.0,
+              "probability_low_pct": 54.0,
+              "market_pct": 53.0
+            },
+            {
+              "fixture_id": 991432,
+              "kickoff_at": "2026-11-20T16:42:00Z",
+              "market": "OU",
+              "selection": "Over",
+              "line": 2.5,
+              "odds": 1.9,
+              "result": "loss",
+              "ref": "decision-v2-shadow-v1|994302|1X2|Home|0.00",
+              "probability_pct": 58.0,
+              "probability_low_pct": 54.0,
+              "market_pct": 53.0
+            },
+            {
+              "fixture_id": 991433,
+              "kickoff_at": "2026-11-20T18:42:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "win",
+              "ref": "decision-v2-shadow-v1|994303|1X2|Home|0.00",
+              "probability_pct": 58.0,
+              "probability_low_pct": 54.0,
+              "market_pct": 53.0
+            }
+          ]
+        },
+        "combined_odds": 6.3175,
+        "joint": {
+          "value": 0.1683,
+          "pct": 16.8,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T14:42:00Z",
+          "evaluation": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluation_version": {
+            "missing_reason": "sin_datos"
+          },
+          "origin": "parlay-v6"
+        },
+        "fair_odds": 5.94,
+        "accumulated_margin_pct": 5.87,
+        "expected_value_pct": 6.3,
+        "published": false,
+        "source": "intel.parlays_v6",
+        "stored_id": 43,
+        "day": "2026-11-21",
+        "candidates": 4,
+        "none_detail": {
+          "missing_reason": "sin_datos"
+        },
+        "refused": [],
+        "joint_low": {
+          "value": 0.1397,
+          "pct": 14.0,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T14:42:00Z",
+          "evaluation": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluation_version": {
+            "missing_reason": "sin_datos"
+          },
+          "origin": "parlay-v6"
+        },
+        "joint_se": 0.0012,
+        "product_of_legs": 0.1771,
+        "market_joint_pct": 14.9,
+        "expected_value_low_pct": -11.8,
+        "payout_factor": 0.0
+      }
+    ]
+  },
+  "period": {
+    "date_from": "2026-11-15",
+    "date_to": "2026-11-21",
+    "kind": null
+  },
+  "calibration": {
+    "settled": 1,
+    "won": 0,
+    "expected_wins": 0.1683,
+    "expected_wins_low": 0.1397,
+    "brier": 0.028325,
+    "needed": 100
+  },
+  "v5_history": {
+    "items": [
+      {
+        "kind": "daily",
+        "source": "evaluation",
+        "status": "LOST",
+        "parlays": 14
+      },
+      {
+        "kind": "daily",
+        "source": "evaluation",
+        "status": "WON",
+        "parlays": 1
+      },
+      {
+        "kind": "multiday",
+        "source": "evaluation",
+        "status": "LOST",
+        "parlays": 10
+      },
+      {
+        "kind": "multiday",
+        "source": "evaluation",
+        "status": "VOID",
+        "parlays": 2
+      }
+    ]
+  }
+}

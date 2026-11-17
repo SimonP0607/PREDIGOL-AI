@@ -15,7 +15,10 @@ from typing import Final
 from fbi.api.contracts.intelligence.alerts import AlertsContract
 from fbi.api.contracts.intelligence.base import IntelligenceContract
 from fbi.api.contracts.intelligence.console import ConsoleContract
+from fbi.api.contracts.intelligence.featured import FeaturedAnalyses, FeaturedAnalysesPrivate
 from fbi.api.contracts.intelligence.match import MatchIntelligence, MatchIntelligencePrivate
+from fbi.api.contracts.intelligence.parlays import ParlaySetState, ParlaySetStatePrivate
+from fbi.api.contracts.intelligence.post_evaluation import PostMatchEvaluation
 from fbi.api.contracts.intelligence.profiles import Profile, ProfilePrivate
 from fbi.api.contracts.intelligence.projection import (
     ProjectionError,
@@ -121,6 +124,11 @@ CONTRACTS: Final[tuple[ContractSpec, ...]] = (
     ContractSpec(private=NewsPrivate, public=News, public_routes=NEWS_PUBLIC_ROUTES, private_routes=NEWS_PRIVATE_ROUTES),
     ContractSpec(private=AnalysisSourcesPrivate, public=AnalysisSources, public_routes=SOURCES_PUBLIC_ROUTES,
                  private_routes=SOURCES_PRIVATE_ROUTES),
+    ContractSpec(private=ParlaySetStatePrivate, public=ParlaySetState, public_routes=("/api/v1/parlays/{kind}",),
+                 private_routes=("/api/v1/admin/intelligence/parlays",)),
+    ContractSpec(private=PostMatchEvaluation, public=None,
+                 private_routes=("/api/v1/admin/intelligence/evaluations/{fixture_id}",)),
+    ContractSpec(private=FeaturedAnalysesPrivate, public=FeaturedAnalyses, public_routes=("/api/v1/home",)),
 )
 """Every Intelligence contract. A new one is added here in the PR that merges its models."""
 
