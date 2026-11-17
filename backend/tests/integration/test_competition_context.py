@@ -254,6 +254,9 @@ READERS_OF_STRUCTURE: dict[str, str] = {
                                    "its stage (one column, a word of the round label: group, knockout...) to compare the groups of "
                                    "decisions after the matches were played: read only, and what it finds is a hypothesis for the owner, "
                                    "never a model, a price or a pick",
+    "fbi.api.repositories.profiles": "the team's profile (C-09, IA-090) counts a league title only for a season that has ENDED and was "
+                                     "played as one table with no stage but the league (the role of its stages, nothing of a tie): "
+                                     "post-match by nature, never read before a match",
 }
 """The modules that name ``core.ties`` or ``core.competition_stages`` in SQL, and why each may. A new reader is added HERE, by a
 person, with the reason: a pre-match reader (a feature, a model, a pick, the AI packet, the dossier) belongs behind

@@ -12,14 +12,18 @@ AD-G02 adds the near-duplicate fingerprint (``simhash``)."""
 
 from __future__ import annotations
 
-import hashlib
 import re
-import unicodedata
 from typing import Final
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
+# ``fp-v1`` lives, unchanged, in ``fbi.core.fingerprint`` (a leaf: ``fbi.ai`` reads it there without importing ``fbi.news``,
+# ``tests/unit/test_architecture.py``). Re-exported here under the same names.
+from fbi.core.fingerprint import FINGERPRINT_VERSION as FINGERPRINT_VERSION
+from fbi.core.fingerprint import fingerprint as fingerprint
+from fbi.core.fingerprint import folded as folded
+from fbi.core.fingerprint import sha256_hex as sha256_hex
+
 CANON_VERSION: Final = "canon-v1"
-FINGERPRINT_VERSION: Final = "fp-v1"
 
 MOBILE_PREFIXES: Final = ("www.", "m.", "amp.", "mobile.")
 TRACKING: Final = frozenset({
@@ -30,7 +34,6 @@ AMP_SWITCHES: Final = frozenset({"outputtype", "output", "format"})
 """Parameters that ask for the AMP version when their value is ``amp`` (any other value is kept)."""
 TRACKING_PREFIXES: Final = ("utm_", "ns_", "pk_", "mtm_", "hsa_")
 _SLASHES = re.compile(r"/{2,}")
-_NOT_WORD = re.compile(r"[^0-9a-z]+")
 
 
 class NotAnArticleUrlError(ValueError):
@@ -70,29 +73,9 @@ def canonical_url(url: str) -> str:
     return urlunsplit(("https", netloc, path, urlencode(query), ""))
 
 
-def sha256_hex(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
 def url_sha256(url: str) -> str:
     """The identity of an item: the sha256 of its canonical URL (what migration 0146 checks)."""
     return sha256_hex(canonical_url(url))
-
-
-def folded(text: str) -> str:
-    """The text as the fingerprint reads it: NFKC, lower case, accents removed, only letters and digits, single spaces."""
-    decomposed = unicodedata.normalize("NFKD", unicodedata.normalize("NFKC", text or "").casefold())
-    bare = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
-    return _NOT_WORD.sub(" ", bare).strip()
-
-
-def fingerprint(text: str) -> str:
-    """The content fingerprint (``fp-v1``). The text is what the caller read (the body of a source that allows extraction, or else the
-    title and date); only the hash is stored."""
-    words = folded(text)
-    if not words:
-        raise ValueError("nothing to fingerprint")
-    return sha256_hex(words)
 
 
 __all__ = ["CANON_VERSION", "FINGERPRINT_VERSION", "NotAnArticleUrlError", "canonical_url", "fingerprint", "folded", "sha256_hex",

@@ -17,11 +17,12 @@ from fbi.api.contracts.center import (
     PlayerSummary,
     ProviderPredictionView,
 )
+from fbi.api.contracts.intelligence.profiles import Profile, ProfilePrivate
 from fbi.api.contracts.market_catalog import CatalogCategory, MarketCatalog
 from fbi.api.contracts.profile import MatchMarkets, MatchProfile
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
-from fbi.api.services import center, market_catalog, profile
+from fbi.api.services import center, market_catalog, profile, profiles
 
 router = APIRouter(tags=["match center, live, players"])
 admin_router = APIRouter(tags=["admin: system"])
@@ -82,6 +83,22 @@ def get_players(
 @router.get("/players/{player_id}", response_model=Envelope[PlayerDetail | None])
 def get_player(conn: Db, player_id: Annotated[int, Path(ge=1)]) -> Envelope[PlayerDetail | None]:
     return center.player(conn, player_id)
+
+
+@router.get("/players/{player_id}/profile", response_model=Envelope[Profile])
+def get_player_profile(conn: Db, player_id: Annotated[int, Path(ge=1, le=2**62)]) -> Envelope[Profile]:
+    """C-09 (AD-H07, IA-090), public projection: the profile of a player - header with a monogram (never the provider's photo),
+    availability (state, basis, source and date only), next match WITHOUT any start probability, last ten appearances, season
+    lines, observed rates per 90 with their sample and interval, career, caps and the provider's trophies. Never a forecast of
+    the player engine. Additive: /players/{id} keeps its shape. 404 while ``FBI_PROFILES`` is off."""
+    return profiles.public_player(conn, player_id)
+
+
+@admin_router.get("/intelligence/players/{player_id}/profile", response_model=Envelope[ProfilePrivate])
+def get_player_profile_private(conn: Db, player_id: Annotated[int, Path(ge=1, le=2**62)]) -> Envelope[ProfilePrivate]:
+    """C-09, private projection (``require_admin``): plus the external ids and what the player engine will add (each with its
+    piece)."""
+    return profiles.private_player(conn, player_id)
 
 
 @admin_router.get("/system", response_model=Envelope[AdminOverview])

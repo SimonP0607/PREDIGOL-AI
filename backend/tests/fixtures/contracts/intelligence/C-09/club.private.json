@@ -1,0 +1,343 @@
+{
+  "contract": "C-09",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "kind": "club",
+  "team": {
+    "header": {
+      "id": 29,
+      "name": "Club Ejemplo Norte",
+      "short_name": "CEN",
+      "country": "País Ejemplo",
+      "kind": "club",
+      "senior": true,
+      "founded": 1920,
+      "crest": {
+        "allowed": true,
+        "url": "https://crest.invalid/99301.png",
+        "use": "junto_al_nombre"
+      },
+      "venue": {
+        "id": 8,
+        "name": "Estadio Ejemplo",
+        "city": "Ciudad Ejemplo",
+        "capacity": 30000,
+        "altitude_m": {
+          "missing_reason": "sin_datos"
+        }
+      },
+      "coach": {
+        "name": "G. Ejemplo",
+        "coach_id": {
+          "missing_reason": "sin_datos"
+        },
+        "basis": "ultima_alineacion",
+        "as_of": "2026-11-14T00:00:00Z",
+        "as_of_day_only": true,
+        "fixture_id": 59
+      }
+    },
+    "next_match": {
+      "fixture_id": 60,
+      "kickoff_at": "2026-11-22T16:42:00Z",
+      "competition": {
+        "id": 16,
+        "name": "Liga Ejemplo"
+      },
+      "opponent": {
+        "id": 30,
+        "name": "Club Ejemplo Este"
+      },
+      "home": true
+    },
+    "form": {
+      "items": [
+        {
+          "fixture_id": 59,
+          "kickoff_at": "2026-11-14T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "opponent": {
+            "id": 30,
+            "name": "Club Ejemplo Este"
+          },
+          "home": false,
+          "goals_for": 0,
+          "goals_against": 1,
+          "score": "0-1",
+          "result": "L"
+        },
+        {
+          "fixture_id": 58,
+          "kickoff_at": "2026-11-07T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "opponent": {
+            "id": 30,
+            "name": "Club Ejemplo Este"
+          },
+          "home": true,
+          "goals_for": 2,
+          "goals_against": 2,
+          "score": "2-2",
+          "result": "D"
+        },
+        {
+          "fixture_id": 57,
+          "kickoff_at": "2026-10-31T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "opponent": {
+            "id": 30,
+            "name": "Club Ejemplo Este"
+          },
+          "home": false,
+          "goals_for": 2,
+          "goals_against": 3,
+          "score": "2-3",
+          "result": "L"
+        },
+        {
+          "fixture_id": 56,
+          "kickoff_at": "2026-10-24T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "opponent": {
+            "id": 30,
+            "name": "Club Ejemplo Este"
+          },
+          "home": true,
+          "goals_for": 0,
+          "goals_against": 1,
+          "score": "0-1",
+          "result": "L"
+        },
+        {
+          "fixture_id": 55,
+          "kickoff_at": "2026-10-17T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "opponent": {
+            "id": 30,
+            "name": "Club Ejemplo Este"
+          },
+          "home": false,
+          "goals_for": 1,
+          "goals_against": 1,
+          "score": "1-1",
+          "result": "D"
+        }
+      ]
+    },
+    "season_stats": {
+      "competition": {
+        "id": 16,
+        "name": "Liga Ejemplo"
+      },
+      "season": 2026,
+      "record": {
+        "matches": 6,
+        "won": 1,
+        "drawn": 2,
+        "lost": 3,
+        "goals_for": 7,
+        "goals_against": 8
+      },
+      "home": {
+        "matches": 3,
+        "won": 1,
+        "drawn": 1,
+        "lost": 1,
+        "goals_for": 4,
+        "goals_against": 3
+      },
+      "away": {
+        "matches": 3,
+        "won": 0,
+        "drawn": 1,
+        "lost": 2,
+        "goals_for": 3,
+        "goals_against": 5
+      },
+      "xg_for": {
+        "per_match": 1.4,
+        "matches_with_data": 3
+      },
+      "xg_against": {
+        "per_match": {
+          "missing_reason": "sin_datos"
+        },
+        "matches_with_data": 0
+      },
+      "shots_for": {
+        "per_match": 12.0,
+        "matches_with_data": 3
+      },
+      "shots_on_target_for": {
+        "per_match": 5.0,
+        "matches_with_data": 3
+      },
+      "corners_for": {
+        "per_match": 6.0,
+        "matches_with_data": 3
+      },
+      "yellow_cards_for": {
+        "per_match": 2.0,
+        "matches_with_data": 3
+      }
+    },
+    "availability": {
+      "fixture_id": 60,
+      "report_checked_at": "2026-11-21T13:42:00Z",
+      "unavailable": {
+        "items": [
+          {
+            "player_id": 16,
+            "name": "B. Ejemplo",
+            "status": "sancionado",
+            "basis": "proveedor",
+            "source": "API-Football (parte de bajas)",
+            "known_at": "2026-11-21T12:42:00Z",
+            "fixture_id": 60
+          }
+        ]
+      }
+    },
+    "squad": {
+      "source": "plantilla_proveedor",
+      "seen_at": "2026-11-19T16:42:00Z",
+      "players": {
+        "items": [
+          {
+            "player_id": 16,
+            "name": "B. Ejemplo",
+            "position": "defender",
+            "shirt_number": 4,
+            "age": 20
+          },
+          {
+            "player_id": 15,
+            "name": "J. Ejemplo",
+            "position": "forward",
+            "shirt_number": 9,
+            "age": 20
+          }
+        ]
+      }
+    },
+    "upcoming": {
+      "items": [
+        {
+          "fixture_id": 60,
+          "kickoff_at": "2026-11-22T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "opponent": {
+            "id": 30,
+            "name": "Club Ejemplo Este"
+          },
+          "home": true
+        }
+      ]
+    },
+    "competitions": {
+      "items": [
+        {
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "season": 2026,
+          "record": {
+            "matches": 6,
+            "won": 1,
+            "drawn": 2,
+            "lost": 3,
+            "goals_for": 7,
+            "goals_against": 8
+          },
+          "rank": 2,
+          "points": 28
+        }
+      ]
+    },
+    "honours": {
+      "computed": {
+        "items": [
+          {
+            "competition": {
+              "id": 16,
+              "name": "Liga Ejemplo"
+            },
+            "season": 2025,
+            "basis": "tabla_final_guardada"
+          }
+        ]
+      },
+      "since_season": 2025
+    },
+    "intelligence": {
+      "items": [
+        {
+          "fixture_id": 60,
+          "market_key": "1X2",
+          "selection": "home",
+          "line": 0.0,
+          "state": "detectado",
+          "evaluation": {
+            "missing_reason": "sin_datos"
+          },
+          "known_at": "2026-11-21T11:42:00Z"
+        }
+      ]
+    },
+    "identity": {
+      "ids": {
+        "items": [],
+        "missing_reason": "sin_datos"
+      },
+      "open_reviews": 0
+    }
+  },
+  "not_yet": [
+    {
+      "block": "stakes",
+      "missing": {
+        "missing_reason": "no_entregado",
+        "expected_piece": "AD-B02"
+      }
+    },
+    {
+      "block": "news",
+      "missing": {
+        "missing_reason": "no_entregado",
+        "expected_piece": "AD-G07"
+      }
+    },
+    {
+      "block": "honours_external",
+      "missing": {
+        "missing_reason": "no_entregado",
+        "expected_piece": "AD-H01"
+      }
+    }
+  ],
+  "not_yet_private": []
+}

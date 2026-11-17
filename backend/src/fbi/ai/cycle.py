@@ -680,6 +680,30 @@ def _research_v2(conn: psycopg.Connection[Any], settings: AiSettings, report: Cy
     return Decimal(str(got.cost_usd)), True
 
 
+def _research_unified(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleReport, counts: dict[str, int], fid: int, *,
+                      at: datetime, ledger: UsageLedger, provider: tuple[LlmProvider, str] | None, transport: httpx.BaseTransport | None,
+                      levels: int | Sequence[int]) -> None:
+    """IA-087: the unified deep research of the match, in shadow (``fbi.ai.unified_research``), on the pages the pass already has. Its
+    numbers are the ``xu_*`` counts and nothing else: not ``web_*``, not the pass's cost (the LAB pays), not a status, not a packet. It fails
+    open: an exception is rolled back, counted (``xu_failed``) and the pass goes on."""
+    from fbi.ai import unified_research
+
+    try:
+        got = unified_research.collect(conn, settings, fid, at=at, levels=levels, ledger=ledger, provider=provider, transport=transport)
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        counts["xu_failed"] += 1
+        report.counts["xu_failed"] += 1
+        log.warning("ai.research_unified.failed", fixture=fid, error=f"{type(exc).__name__}: {exc}"[:200])
+        return
+    for key, n in got.counts.items():
+        counts[key] += n
+        report.counts[key] += n
+    if got.skipped:
+        counts[f"xu_skipped_{got.skipped}"] += 1
+
+
 def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleReport, due: Due, options: list[Ranked],
           builder: PacketBuilder, *, at: datetime, ledger: UsageLedger, search: SearchFn | None,
           provider: tuple[LlmProvider, str] | None, transport: httpx.BaseTransport | None, allow: Allowance,
@@ -762,6 +786,9 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
             cost += spent
             if not ran and research_mode == "on":
                 barrier = "research_failed"  # v1 did not run either: nobody read the web for this match
+        if settings.research_unified == "shadow":
+            _research_unified(conn, settings, report, counts, fid, at=at, ledger=ledger, provider=provider, transport=transport,
+                              levels=levels)
     if asks:
         counts["research_asked"] = len(asks)
         report.counts["research_asked"] += len(asks)

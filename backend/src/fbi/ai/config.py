@@ -74,6 +74,16 @@ IA-060 (plan piece AD-A01) - the quarantined extractor of the web (``fbi.ai.quar
                                 restart the worker; FBI_AI_SEARCH=none stops reading the web altogether.
     FBI_AI_EXTRACTOR_SHADOW_MAX_PER_DAY   default 150 - the quarantined extractor's calls a day in shadow.
 
+IA-087 (plan pieces AD-C05, AD-C06, AD-C07) - the unified deep research (``fbi.ai.unified_research``), in shadow:
+
+    FBI_AI_RESEARCH_UNIFIED     off (default) | shadow. off: the cycle does not know it - production as it is. shadow: after the research of
+                                each pass, the unified road reads the pages that pass already has (it never searches), chooses windows by
+                                code, links mentions against the whole squad and its aliases, and - only for a source the directory lists as
+                                verificada_autorizada AND the owner signed - asks extract-v4 once per page fingerprint, in the LAB. It writes
+                                its counts (xu_*) in the pass and the pages it extracted in the research cache; never ai.evidence, never a
+                                packet. Any other word is off. To go back: off and restart the worker.
+    FBI_AI_RESEARCH_UNIFIED_MAX_PER_DAY   default 60 - the unified road's calls a day (LAB).
+
 IA-064 (plan piece AD-A02) - the validator of every model's answer (``fbi.ai.outputs``, ``output-guard-v1``):
 
     FBI_AI_OUTPUT_GUARD         default (default) | shadow | enforce. default: each surface in its own mode - the answers of the agents of the
@@ -130,6 +140,7 @@ TIERS: tuple[Tier, ...] = ("bulk", "analysis", "final")
 Switch = Literal["off", "on", "auto"]
 ResearchMode = Literal["off", "shadow", "on"]
 ExtractorMode = Literal["v1", "shadow", "quarantine"]
+UnifiedMode = Literal["off", "shadow"]
 SWITCH_ENV: dict[str, str] = {"cache": "FBI_AI_CACHE", "batch": "FBI_AI_BATCH", "native_schema": "FBI_AI_NATIVE_SCHEMA",
                               "brief_material": "FBI_AI_BRIEF_MATERIAL", "budget_v3": "FBI_AI_BUDGET_V3"}
 """The five optimisations of Phase 0 and the variable that rolls each one back."""
@@ -254,6 +265,11 @@ def _extractor_mode(raw: str | None) -> ExtractorMode:
     return "shadow" if value == "shadow" else "quarantine" if value == "quarantine" else "v1"
 
 
+def _unified_mode(raw: str | None) -> UnifiedMode:
+    """``FBI_AI_RESEARCH_UNIFIED`` (IA-087): only the word ``shadow`` switches the unified road on - anything else, a typo included, is ``off``."""
+    return "shadow" if (raw or "").strip().lower() == "shadow" else "off"
+
+
 def _output_guard(raw: str | None) -> str:
     """``FBI_AI_OUTPUT_GUARD`` (IA-064): ``shadow`` and ``enforce`` move it; anything else is ``default``."""
     from fbi.ai.outputs import switch_of
@@ -330,6 +346,11 @@ class AiSettings:
     extractor_shadow_max_per_day: int = 150
     """IA-060: the quarantined extractor's calls a day in ``shadow`` (``FBI_AI_EXTRACTOR_SHADOW_MAX_PER_DAY``): the pages past it are counted
     (``xq_capped``) and not read."""
+    research_unified: UnifiedMode = "off"
+    """IA-087 (plan pieces AD-C05/C06/C07): the unified deep research (``FBI_AI_RESEARCH_UNIFIED``). ``off`` (default): the cycle does not know
+    it. ``shadow``: it runs after the research of each pass, in the LAB, and writes nothing a packet, a gate or a reader looks at."""
+    unified_max_per_day: int = 60
+    """IA-087: the unified road's calls a day (``FBI_AI_RESEARCH_UNIFIED_MAX_PER_DAY``); the pages past it are counted (``xu_page_capped``)."""
     output_guard: str = "default"
     """IA-064 (plan piece AD-A02): the mode of the validator of every answer (``FBI_AI_OUTPUT_GUARD``, ``fbi.ai.outputs.switch_of``):
     ``default`` (each surface its own), ``shadow`` (nothing refused, every finding marked in the ledger) or ``enforce`` (every surface refuses)."""
@@ -393,6 +414,8 @@ class AiSettings:
             agents=_agents(env.get("FBI_AI_AGENTS")),
             extractor=_extractor_mode(env.get("FBI_AI_EXTRACTOR")),
             extractor_shadow_max_per_day=max(0, _int("FBI_AI_EXTRACTOR_SHADOW_MAX_PER_DAY", 150, env)),
+            research_unified=_unified_mode(env.get("FBI_AI_RESEARCH_UNIFIED")),
+            unified_max_per_day=max(0, _int("FBI_AI_RESEARCH_UNIFIED_MAX_PER_DAY", 60, env)),
             output_guard=_output_guard(env.get("FBI_AI_OUTPUT_GUARD")),
             pm_reviewer=_on(env.get("FBI_AI_PM_REVIEWER")),
             learning_analyst=_on(env.get("FBI_AI_LEARNING_ANALYST")),

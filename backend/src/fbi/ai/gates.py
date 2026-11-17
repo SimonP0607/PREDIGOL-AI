@@ -170,6 +170,12 @@ def output_guard_words(settings: AiSettings) -> dict[str, str]:
     return {} if settings.output_guard == "default" else {"output_guard": settings.output_guard}
 
 
+def unified_words(settings: AiSettings) -> dict[str, str]:
+    """IA-087: the owner's word for the unified deep research (``FBI_AI_RESEARCH_UNIFIED``) - only once moved from ``off``, for the reason
+    ``shadow_words`` gives: putting the code in place is not a change of the owner's words."""
+    return {} if settings.research_unified == "off" else {"research_unified": settings.research_unified}
+
+
 def switch_words(settings: AiSettings) -> dict[str, Any]:
     """The owner's words that decide what the layer does, exactly as the running process holds them: the mode, the five switches, the package
     job, research v2, the model of each tier and the three monthly envelopes - and, once the owner has moved them, the words of the shadow of
@@ -186,6 +192,7 @@ def switch_words(settings: AiSettings) -> dict[str, Any]:
         **phase5_words(settings),
         **extractor_words(settings),
         **output_guard_words(settings),
+        **unified_words(settings),
     }
 
 

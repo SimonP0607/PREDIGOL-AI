@@ -1,0 +1,106 @@
+{
+  "contract": "C-09",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "kind": "competition",
+  "competition": {
+    "header": {
+      "id": 16,
+      "name": "Liga Ejemplo",
+      "country": "País Ejemplo",
+      "type": "league",
+      "gender": "men",
+      "age_group": "senior",
+      "tracked": true,
+      "logo": {
+        "allowed": true,
+        "url": "https://logo.invalid/99101.png",
+        "use": "junto_al_nombre"
+      },
+      "rules_coded": false
+    },
+    "season": {
+      "season": 2026,
+      "start": "2026-01-20T00:00:00Z",
+      "end": "2026-12-15T00:00:00Z",
+      "current": true
+    },
+    "standings": {
+      "items": [
+        {
+          "rank": 1,
+          "team": {
+            "id": 30,
+            "name": "Club Ejemplo Este"
+          },
+          "group": {
+            "missing_reason": "sin_datos"
+          },
+          "played": 20,
+          "points": 30,
+          "goals_for": 25,
+          "goals_against": 20
+        },
+        {
+          "rank": 2,
+          "team": {
+            "id": 29,
+            "name": "Club Ejemplo Norte"
+          },
+          "group": {
+            "missing_reason": "sin_datos"
+          },
+          "played": 20,
+          "points": 28,
+          "goals_for": 25,
+          "goals_against": 20
+        }
+      ]
+    },
+    "standings_at": "2026-11-20T16:42:00Z",
+    "upcoming": {
+      "items": [
+        {
+          "fixture_id": 60,
+          "kickoff_at": "2026-11-22T16:42:00Z",
+          "home": {
+            "id": 29,
+            "name": "Club Ejemplo Norte"
+          },
+          "away": {
+            "id": 30,
+            "name": "Club Ejemplo Este"
+          }
+        }
+      ]
+    },
+    "scorers": {
+      "items": [
+        {
+          "player_id": 15,
+          "name": "J. Ejemplo",
+          "value": 2
+        }
+      ]
+    },
+    "coverage": {
+      "finished_matches": 6,
+      "with_player_stats": 6,
+      "with_team_stats": 3
+    }
+  },
+  "not_yet": [
+    {
+      "block": "news",
+      "missing": {
+        "missing_reason": "no_entregado",
+        "expected_piece": "AD-G07"
+      }
+    }
+  ]
+}

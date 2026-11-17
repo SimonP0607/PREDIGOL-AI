@@ -1,0 +1,241 @@
+{
+  "contract": "C-09",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "kind": "national_team",
+  "team": {
+    "header": {
+      "id": 31,
+      "name": "Selección Ejemplo",
+      "short_name": {
+        "missing_reason": "sin_datos"
+      },
+      "country": "Selección Ejemplo",
+      "kind": "national_team",
+      "senior": true,
+      "founded": {
+        "missing_reason": "sin_datos"
+      },
+      "crest": {
+        "allowed": false,
+        "url": {
+          "missing_reason": "sin_datos"
+        },
+        "use": "junto_al_nombre"
+      },
+      "venue": {
+        "missing_reason": "sin_datos"
+      },
+      "coach": {
+        "missing_reason": "sin_datos"
+      }
+    },
+    "next_match": {
+      "missing_reason": "sin_datos"
+    },
+    "form": {
+      "items": [
+        {
+          "fixture_id": 61,
+          "kickoff_at": "2026-11-17T16:42:00Z",
+          "competition": {
+            "id": 17,
+            "name": "Amistosos Ejemplo"
+          },
+          "opponent": {
+            "id": 32,
+            "name": "Selección Muestra"
+          },
+          "home": true,
+          "goals_for": 1,
+          "goals_against": 0,
+          "score": "1-0",
+          "result": "W"
+        }
+      ]
+    },
+    "season_stats": {
+      "competition": {
+        "id": 17,
+        "name": "Amistosos Ejemplo"
+      },
+      "season": 2026,
+      "record": {
+        "matches": 1,
+        "won": 1,
+        "drawn": 0,
+        "lost": 0,
+        "goals_for": 1,
+        "goals_against": 0
+      },
+      "home": {
+        "matches": 1,
+        "won": 1,
+        "drawn": 0,
+        "lost": 0,
+        "goals_for": 1,
+        "goals_against": 0
+      },
+      "away": {
+        "matches": 0,
+        "won": 0,
+        "drawn": 0,
+        "lost": 0,
+        "goals_for": 0,
+        "goals_against": 0
+      },
+      "xg_for": {
+        "per_match": {
+          "missing_reason": "sin_datos"
+        },
+        "matches_with_data": 0
+      },
+      "xg_against": {
+        "per_match": {
+          "missing_reason": "sin_datos"
+        },
+        "matches_with_data": 0
+      },
+      "shots_for": {
+        "per_match": {
+          "missing_reason": "sin_datos"
+        },
+        "matches_with_data": 0
+      },
+      "shots_on_target_for": {
+        "per_match": {
+          "missing_reason": "sin_datos"
+        },
+        "matches_with_data": 0
+      },
+      "corners_for": {
+        "per_match": {
+          "missing_reason": "sin_datos"
+        },
+        "matches_with_data": 0
+      },
+      "yellow_cards_for": {
+        "per_match": {
+          "missing_reason": "sin_datos"
+        },
+        "matches_with_data": 0
+      }
+    },
+    "availability": {
+      "missing_reason": "sin_datos"
+    },
+    "squad": {
+      "missing_reason": "sin_datos"
+    },
+    "upcoming": {
+      "items": [],
+      "missing_reason": "sin_datos"
+    },
+    "competitions": {
+      "items": [
+        {
+          "competition": {
+            "id": 17,
+            "name": "Amistosos Ejemplo"
+          },
+          "season": 2026,
+          "record": {
+            "matches": 1,
+            "won": 1,
+            "drawn": 0,
+            "lost": 0,
+            "goals_for": 1,
+            "goals_against": 0
+          },
+          "rank": {
+            "missing_reason": "sin_datos"
+          },
+          "points": {
+            "missing_reason": "sin_datos"
+          }
+        }
+      ]
+    },
+    "honours": {
+      "computed": {
+        "items": [],
+        "missing_reason": "sin_datos"
+      },
+      "since_season": 2026
+    },
+    "national": {
+      "call_up": {
+        "level": "proveedor",
+        "basis": "convocados_ultimo_partido",
+        "source": "API-Football (convocados del último partido)",
+        "published_at": {
+          "missing_reason": "sin_datos"
+        },
+        "known_at": "2026-11-17T16:42:00Z",
+        "fixture_id": 61,
+        "official_state": "ninguna_fuente_oficial_autorizada",
+        "permitted_official_sources": 0,
+        "players": {
+          "items": [
+            {
+              "player_id": 15,
+              "name": "J. Ejemplo",
+              "club": {
+                "id": 29,
+                "name": "Club Ejemplo Norte"
+              },
+              "position": "forward"
+            }
+          ]
+        }
+      },
+      "caps_leaders": {
+        "items": [
+          {
+            "player_id": 15,
+            "name": "J. Ejemplo",
+            "value": 1
+          }
+        ]
+      },
+      "scorers": {
+        "items": [
+          {
+            "player_id": 15,
+            "name": "J. Ejemplo",
+            "value": 1
+          }
+        ]
+      },
+      "window_days": 1460
+    }
+  },
+  "not_yet": [
+    {
+      "block": "stakes",
+      "missing": {
+        "missing_reason": "no_entregado",
+        "expected_piece": "AD-B02"
+      }
+    },
+    {
+      "block": "news",
+      "missing": {
+        "missing_reason": "no_entregado",
+        "expected_piece": "AD-G07"
+      }
+    },
+    {
+      "block": "honours_external",
+      "missing": {
+        "missing_reason": "no_entregado",
+        "expected_piece": "AD-H01"
+      }
+    }
+  ]
+}
