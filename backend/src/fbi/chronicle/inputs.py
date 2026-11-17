@@ -34,6 +34,7 @@ from fbi.api.services import reading as reading_service
 from fbi.api.services import story as story_service
 from fbi.chronicle import plan as cp
 from fbi.chronicle import repetition
+from fbi.protosign import store as signatures
 
 log = structlog.get_logger(__name__)
 
@@ -174,7 +175,7 @@ def repetition_corpus(conn: psycopg.Connection[Any], plan: cp.ContentPlan, *, at
         found = _rows(conn, TEAM_SQL, {"since": since, "at": at, "f": plan.fixture_id, "team": team})
         if found:
             previous[side] = found[0]
-    return repetition.corpus_of(recent, previous)
+    return replace(repetition.corpus_of(recent, previous), signed=signatures.is_signed(conn, repetition.KEY))
 
 
 def claims_for(conn: psycopg.Connection[Any], plan: cp.ContentPlan) -> dict[str, str]:

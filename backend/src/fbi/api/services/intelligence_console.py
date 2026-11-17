@@ -4,7 +4,8 @@ says what does not exist yet (the news engine, the queue of private alerts) with
 
 It READS and decides nothing: it writes no row, changes no switch and records no gate (the panel's evaluators run the way their scripts run
 them without ``--record``). Each block is read in its own savepoint: a block that fails is a ``ReadFailure`` with the class of its error, and
-the rest of the console is still served - a database that lacks a table says so here instead of answering 500.
+the rest of the console is still served - a database that lacks a table says so here instead of answering 500. The protocols block (IA-143)
+reads the register of the owner's signatures of protocols: whether each one is signed in its fingerprint of now; it signs nothing.
 
 Switches are read with the code's own parsers (a typo reads as the default) and shown as the word they read as, never as their raw value:
 no key, URL or label can travel. The panel of the gates (about five seconds on production's data, 16 Nov 2026) is kept five minutes per
@@ -38,6 +39,8 @@ from fbi.api.contracts.intelligence.console import (
     CapabilityCap,
     CapabilityView,
     ConsoleContract,
+    ConsoleProtocol,
+    ConsoleProtocols,
     CostPart,
     Costs,
     Declared,
@@ -65,6 +68,9 @@ from fbi.core.clock import now
 from fbi.core.config.picks import INTELLIGENCE, PicksSourceSettings
 from fbi.core.env import environment
 from fbi.intel import capabilities as registry
+from fbi.protosign import NOTICE as PROTOCOLS_NOTICE
+from fbi.protosign import VERSION as PROTOCOLS_VERSION
+from fbi.protosign import store as protocol_signatures
 
 log = structlog.get_logger(__name__)
 
@@ -443,6 +449,29 @@ def security(conn: Conn, settings: AiSettings, at: datetime) -> Security:
                     gates=attempt(conn, lambda: gates_block(conn, settings, at)), schema_check=attempt(conn, lambda: schema_of(conn)))
 
 
+# ── protocols ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def protocols_of(items: Iterable[Mapping[str, Any]]) -> ConsoleProtocols:
+    """The register of the owner's signatures (``fbi.protosign.store.overview``) in the contract's words. Pure."""
+    out = []
+    for i in items:
+        sig = i.get("signature")
+        out.append(ConsoleProtocol(
+            key=str(i["key"]), version=str(i["version"]), framework=i["framework"], title=str(i["title"]),
+            registered_on=date.fromisoformat(str(i["registered_on"])), fingerprint=str(i["fingerprint"]),
+            signed_by_owner=bool(i["signed_by_owner"]), signed_at=NO_DATA if sig is None else sig["signed_at"],
+            signature_row=NO_DATA if sig is None else int(sig["id"]), other_fingerprints=int(i["other_fingerprints"])))
+    signed = sum(1 for p in out if p.signed_by_owner)
+    return ConsoleProtocols(register_version=PROTOCOLS_VERSION, signed=signed, pending=len(out) - signed, items=out,
+                            notice_es=PROTOCOLS_NOTICE)
+
+
+def protocols(conn: Conn) -> ConsoleProtocols | Missing:
+    if not protocol_signatures.exists(conn):
+        return NO_DATA
+    return protocols_of(protocol_signatures.overview(conn))
+
+
 # ── the console ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def build(conn: Conn, *, at: datetime, settings: AiSettings | None = None) -> ConsoleContract:
@@ -454,6 +483,7 @@ def build(conn: Conn, *, at: datetime, settings: AiSettings | None = None) -> Co
         capabilities=attempt(conn, lambda: capabilities_of(registry.overview(conn, at=at))),
         costs=attempt(conn, lambda: costs_of(costs_v3.month_of(conn, at=at, settings=settings), settings)),
         security=security(conn, settings, at),
+        protocols=attempt(conn, lambda: protocols(conn)),
         news_engine=NEWS_ENGINE, alert_queue=ALERT_QUEUE)
 
 
@@ -462,4 +492,5 @@ def console(conn: Conn) -> Envelope[ConsoleContract]:
 
 
 __all__ = ["ALERT_QUEUE", "CONSOLE_RELATIONS", "FAMILY_MODES", "NEWS_ENGINE", "SPECS", "STATE_WORDS", "attempt", "build", "capabilities_of",
-           "clear_cache", "code_head", "console", "costs_of", "gates_of", "leak_audit_of", "schema_of", "switch_words", "worker_word"]
+           "clear_cache", "code_head", "console", "costs_of", "gates_of", "leak_audit_of", "protocols", "protocols_of", "schema_of", "switch_words",
+           "worker_word"]

@@ -5,7 +5,8 @@ text it would replace - the readers' chronicle (``user-narrative-v3``), the narr
 (``match-analysis-v1``) - and, text by text, which EXISTING switch retires it and how it comes back. Each retirement is the owner's act and
 signature; none is signed here (``SIGNATURES`` is empty), and no row of any table is deleted: a retired text's table stays, read-only.
 
-THE COMPARISON (written before it is run; the margins are PROPOSALS for the owner to sign):
+THE COMPARISON (written before it is run; the margins are PROPOSALS for the owner to sign as ``AD-F05``, IA-143 - signing the comparison
+retires nothing):
 
     population   the matches PrediGol Intelligence analysed in the window for which the single chronicle was attempted (``ai.chronicles``):
                  every text is measured on those same matches
@@ -40,6 +41,8 @@ from fbi.chronicle import plan as cp
 from fbi.narrative.job import fold
 
 VERSION: Final = "retire-compare-v1"
+KEY: Final = "AD-F05"
+"""The comparison's key in the register of the owner's signatures (``fbi.protosign``): the margins below are PROPOSED until that row exists."""
 CHRONICLE: Final = "chronicle-v4"
 TEXTS: Final[tuple[str, ...]] = ("user-narrative-v3", "brief-v8", "match-analysis-v1")
 MIN_MATCHES: Final = 100
@@ -270,7 +273,9 @@ def verdict_of(v4: Tally, other: Tally, compared: Mapping[str, Mapping[str, Any]
 
 
 def report(matches: Mapping[int, datetime], rows: Mapping[str, Sequence[Mapping[str, Any]]], *, since: datetime,
-           until: datetime) -> dict[str, Any]:
+           until: datetime, signed: bool = False) -> dict[str, Any]:
+    """The comparison of every text with the single chronicle. ``signed``: whether the owner signed this comparison (AD-F05) as it is now
+    (``fbi.protosign.store.is_signed``, read by the caller); it changes no verdict and retires nothing."""
     tallies = tally(matches, rows)
     v4 = tallies[CHRONICLE]
     against: dict[str, Any] = {}
@@ -282,7 +287,8 @@ def report(matches: Mapping[int, datetime], rows: Mapping[str, Sequence[Mapping[
                                                                           "state": step_state(step, verdict), "back": step.back,
                                                                           "note": step.note, "table": step.table}}
     return {"version": VERSION, "since": since.isoformat(), "until": until.isoformat(), "matches": len(matches),
-            "rule": {"min_matches": MIN_MATCHES, "margin": MARGIN, "cost_margin": str(COST_MARGIN), "signed": False},
+            "rule": {"min_matches": MIN_MATCHES, "margin": MARGIN, "cost_margin": str(COST_MARGIN), "signed": bool(signed),
+                     "key": KEY},
             "texts": {k: t.as_json() for k, t in tallies.items()}, "against": against,
             "deleted_rows": 0, "decides": False,
             "note": "compara y no apaga nada; cada retirada es un cambio de interruptor que hace y firma el dueño"}

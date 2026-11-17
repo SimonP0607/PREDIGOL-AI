@@ -18,8 +18,11 @@ rule WOULD drop - it drops nothing; ``on`` drops them like a sentence without su
 reader either way.
 
 A sentence that cites a MANDATORY fact of the plan is never dropped for repetition (a decided objective, a key absence, a confirmed news item
-must be told even when it was told yesterday): it is counted as ``exempt``. The thresholds are PROPOSED, not signed: the owner signs them in the
-protocol of AD-F06 (``fbi.chronicle.protocol``); until then ``on`` would use the proposal, and nobody turns it on.
+must be told even when it was told yesterday): it is counted as ``exempt``. The thresholds are PROPOSED until the owner signs them as the
+protocol ``AD-F04`` of the register of signatures (IA-143, ``fbi.protosign.records.F04``, held equal to the constants below by a test; the
+protocol of AD-F06, ``fbi.chronicle.protocol``, holds the chronicle to the same figures). ``thresholds.signed`` in every report says whether
+that signature is on file for the fingerprint of now (``Corpus.signed``, read with the corpus); a signature turns nothing on - ``on`` is
+still the owner's change of the switch.
 
 Pure: no database, no clock, no model (the corpus is read by ``fbi.chronicle.inputs.repetition_corpus``)."""
 
@@ -39,6 +42,8 @@ from fbi.forecasting import figure_text
 from fbi.narrative.job import NUMBER, fold
 
 VERSION: Final = "repeat-check-v1"
+KEY: Final = "AD-F04"
+"""Its key in the register of the owner's signatures (``fbi.protosign``)."""
 VERIFY_WITH_RULE: Final = "chronicle-verify-v2"
 """The verifier's version when the rule drops (``on``): ``chronicle-verify-v1`` plus ``repeat-check-v1``."""
 SWITCH: Final = "FBI_CHRONICLE_REPEAT"
@@ -139,6 +144,8 @@ class Corpus:
     """By side (``home``, ``away``): the ``exact`` keys of that team's previous chronicle."""
     previous_ids: Mapping[str, int] = field(default_factory=dict)
     """By side: the ``ai.chronicles`` row of that previous chronicle."""
+    signed: bool = False
+    """Whether the owner signed AD-F04 in its fingerprint of now (``fbi.chronicle.inputs.repetition_corpus`` reads it). Reported only."""
 
     def share(self, template_key: str) -> float | None:
         if self.size < MIN_CORPUS:
@@ -241,7 +248,8 @@ def apply(verdict: Verdict, plan: ContentPlan, corpus: Corpus, *, mode_word: Mod
     drop = [j for j in judged if j.would_drop]
     report: dict[str, Any] = {
         "version": VERSION, "mode": mode_word, "corpus": corpus.size, "min_corpus": MIN_CORPUS,
-        "thresholds": {"share_max": SHARE_MAX, "generic_rate_max": GENERIC_RATE_MAX, "repeat_rate_max": REPEAT_RATE_MAX, "signed": False},
+        "thresholds": {"share_max": SHARE_MAX, "generic_rate_max": GENERIC_RATE_MAX, "repeat_rate_max": REPEAT_RATE_MAX,
+                       "signed": corpus.signed},
         "sentences": n, "generic": sum(1 for j in judged if j.generic), "repeated": sum(1 for j in judged if j.repeated_of is not None),
         "exempt": sum(1 for j in judged if j.exempt and (j.repeated_of is not None or (j.share or 0) >= SHARE_MAX)),
         "generic_rate": _rate(sum(1 for j in judged if j.generic), n), "repeat_rate": _rate(sum(1 for j in judged if j.repeated_of), n),

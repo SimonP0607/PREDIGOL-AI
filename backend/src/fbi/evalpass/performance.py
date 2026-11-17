@@ -272,9 +272,10 @@ def sources(cited: Iterable[Cited]) -> dict[str, Any]:
             "measured": sum(1 for c in out if c["status"] == "medida")}
 
 
-def report(judged: Iterable[Judged], cited: Iterable[Cited], *, period: Mapping[str, str]) -> dict[str, Any]:
-    """The whole report under the protocol: readers and sources. It keeps nothing and decides nothing."""
-    return {"version": VERSION, "protocol": protocol.stamp(PROTOCOL), "signed_by_owner": False, "period": dict(period),
+def report(judged: Iterable[Judged], cited: Iterable[Cited], *, period: Mapping[str, str], signed: bool = False) -> dict[str, Any]:
+    """The whole report under the protocol: readers and sources. It keeps nothing and decides nothing. ``signed``: whether the owner's
+    signature of AD-K03 in its fingerprint of now is on file (``fbi.protosign.store.is_signed``, read by the caller); it changes nothing."""
+    return {"version": VERSION, "protocol": protocol.stamp(PROTOCOL), "signed_by_owner": bool(signed), "period": dict(period),
             "needed": {"examined": NEEDED, "days": MIN_DAYS, "discordant": MIN_DISCORDANT, "facts": MIN_FACTS},
             **readers(judged), "sources": sources(cited), "decides": False,
             "notice_es": "Informa, no decide: ningún peso, umbral ni versión cambia sin el aprendizaje controlado (AD-K07)."}

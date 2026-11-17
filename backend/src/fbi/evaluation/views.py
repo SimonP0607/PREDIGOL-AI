@@ -1,6 +1,7 @@
 """The owner's readings of the evaluations after the match (IA-112/113): the board over a period and one selection's evaluation.
 
-Read only, under a statement timeout: ``intel.selection_evaluations`` (revision 0158) and nothing else. Where the table does not exist yet
+Read only, under a statement timeout: ``intel.selection_evaluations`` (revision 0158) and, for whether the owner signed the board's
+protocol AD-K02 as it is now, ``ai.protocol_signatures`` (revision 0166, IA-143). Where the table does not exist yet
 (a database behind the code) every reading answers None, never an error: the private screens say «sin datos» for that block alone.
 """
 
@@ -14,6 +15,7 @@ from psycopg.rows import dict_row
 
 from fbi.evaluation import board as board_module
 from fbi.evaluation.selection import VERSION
+from fbi.protosign import store as signatures
 
 TIMEOUT_MS: Final = 30_000
 EXISTS_SQL: Final = "SELECT to_regclass('intel.selection_evaluations') IS NOT NULL"
@@ -45,7 +47,7 @@ def board(conn: psycopg.Connection[Any], *, start: datetime, end: datetime) -> d
         cur.execute(f"SET LOCAL statement_timeout = {TIMEOUT_MS}")
         cur.execute(BOARD_SQL, {"version": VERSION, "start": start, "end": end})
         rows = cur.fetchall()
-    return board_module.build(board_module.from_rows(rows))
+    return board_module.build(board_module.from_rows(rows), signed=signatures.is_signed(conn, board_module.PROTOCOL))
 
 
 def evaluation_of(conn: psycopg.Connection[Any], source: str, decision_id: int) -> dict[str, Any] | None:

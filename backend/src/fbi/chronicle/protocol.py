@@ -1,8 +1,10 @@
-"""The protocol of the factual evaluation of the single chronicle (IA-118, plan piece AD-F06): ``chronicle-protocol-v1``. PREREGISTERED, UNSIGNED.
+"""The protocol of the factual evaluation of the single chronicle (IA-118, plan piece AD-F06): ``chronicle-protocol-v1``. PREREGISTERED.
 
 What a person reviews, how many, how two reviewers are compared, and which thresholds the chronicle is held to - written BEFORE any of it is
-measured, so that no figure is chosen after seeing the data. The owner signs it (``SIGNED`` stays False in the code until a commit records the
-owner's words in ``SIGNATURE``); until then every threshold below is a PROPOSAL, and nothing reads it to switch, publish or promote anything.
+measured, so that no figure is chosen after seeing the data. The owner signs it as the protocol ``AD-F06`` of the register of signatures
+(IA-143: ``python -m scripts.ia_protocols sign --key AD-F06 ...``, a row of ``ai.protocol_signatures`` for the fingerprint of its record,
+``fbi.protosign.records.F06``, which a test holds equal to the constants below); the code never signs. Until that row exists every threshold
+below is a PROPOSAL, and with it nothing reads it to switch, publish or promote anything either.
 
     the sample       ``SAMPLE`` chronicles reviewed by ``chronicle-review-v2`` (``ai.chronicle_reviews``), drawn by a hash of ``SEED`` and
                      their id (deterministic: the same rows give the same sample); ``DOUBLE`` of them read blind by a second person
@@ -28,9 +30,8 @@ from fbi.ai.label_bank import SUPPORT_LABELS, UNDECIDED
 from fbi.chronicle import repetition
 
 VERSION: Final = "chronicle-protocol-v1"
-SIGNED: Final = False
-SIGNATURE: Final[str | None] = None
-"""The owner's words when they sign (a commit that records them). None: the protocol is a proposal."""
+KEY: Final = "AD-F06"
+"""Its key in the register of the owner's signatures (``fbi.protosign``)."""
 SEED: Final = "chronicle-protocol-v1"
 SAMPLE: Final = 50
 DOUBLE: Final = 10
@@ -46,10 +47,16 @@ THRESHOLDS: Final[dict[str, Any]] = {
 }
 
 
-def status() -> dict[str, Any]:
-    """What the protocol is, for the owner's guide and the script: its version, whether it is signed, its thresholds."""
-    return {"version": VERSION, "signed": SIGNED, "signature": SIGNATURE, "thresholds": dict(THRESHOLDS),
-            "note": "propuesto y preregistrado; sin firma del dueño ningún umbral es definitivo y nada lo lee para encender algo"}
+def status(signature: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """What the protocol is, for the owner's guide and the script: its version, its thresholds and whether it is signed - ``signature`` is
+    the owner's row of ``ai.protocol_signatures`` for AD-F06 in its fingerprint of now (``fbi.protosign.store.in_force``), read by the
+    caller; None: not signed."""
+    signed = signature is not None
+    return {"version": VERSION, "key": KEY, "signed": signed,
+            "signature": None if signature is None else {k: signature.get(k) for k in ("id", "fingerprint", "signed_at", "reason")},
+            "thresholds": dict(THRESHOLDS),
+            "note": ("firmado por el dueño; la firma no enciende nada" if signed else
+                     "propuesto y preregistrado; sin firma del dueño ningún umbral es definitivo y nada lo lee para encender algo")}
 
 
 def upper_bound(failures: int, n: int, confidence: float = CONFIDENCE) -> float | None:
@@ -94,8 +101,9 @@ def sheet(reviews: Sequence[Mapping[str, Any]], *, double: Iterable[int]) -> lis
     return out
 
 
-def score(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """The filled sheet read back: unsupported sentences against the criterion, the upper bound, the agreement of the double reading."""
+def score(rows: Sequence[Mapping[str, Any]], *, signed: bool = False) -> dict[str, Any]:
+    """The filled sheet read back: unsupported sentences against the criterion, the upper bound, the agreement of the double reading.
+    ``signed``: whether the owner signed AD-F06 as it is now (read by the caller); it changes no figure and no verdict."""
     labels = list(SUPPORT_LABELS)
     unknown = [r for r in rows if r.get("label") and r["label"] not in labels]
     judged = [r for r in rows if r.get("label") in labels and r["label"] not in UNDECIDED]
@@ -107,7 +115,7 @@ def score(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     agreement = None if not twice else round(agree / len(twice), 4)
     bound = upper_bound(len(failures), len(judged))
     return {
-        "version": VERSION, "signed": SIGNED, "chronicles": len(chronicles), "sentences": len(rows), "judged": len(judged),
+        "version": VERSION, "signed": bool(signed), "chronicles": len(chronicles), "sentences": len(rows), "judged": len(judged),
         "undecided": sum(1 for r in rows if r.get("label") in UNDECIDED), "unlabelled": sum(1 for r in rows if not r.get("label")),
         "unknown_labels": len(unknown), "by_label": dict(sorted(Counter(str(r["label"]) for r in judged).items())),
         "unsupported": len(failures), "upper_bound_95": None if bound is None else round(bound, 4),
@@ -120,5 +128,4 @@ def score(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
-__all__ = ["AGREEMENT_MIN", "DOUBLE", "SAMPLE", "SEED", "SIGNATURE", "SIGNED", "THRESHOLDS", "VERSION", "sample", "score", "sheet", "status",
-           "upper_bound"]
+__all__ = ["AGREEMENT_MIN", "DOUBLE", "KEY", "SAMPLE", "SEED", "THRESHOLDS", "VERSION", "sample", "score", "sheet", "status", "upper_bound"]
