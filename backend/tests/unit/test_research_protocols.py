@@ -17,6 +17,7 @@ PINNED = {
     "INT-C02": "f954582c9594c509dfc93f4abd9a847292a023d74dc5495daf0eead00bd0cc63",
     "AD-A03": "205e671347e7c9ab21a4fb0ab03d1b6c66a2c4d9e44494f937e3e23707653bae",
     "AD-B03": "989b82a53fe35ae6712f39ce71d75588a1f868e38b9a2832ba2e393162364bd5",
+    "AD-B07": "aac10f7f5cc48dfbf136283f0c76d1c6043556536b137e7df2bd4cbe05299128",
 }
 """A registered protocol is frozen: changing one is a new version with its own PR, never an edit of these lines to make a test pass."""
 
@@ -34,8 +35,9 @@ def test_a_protocol_fixes_everything_before_the_data() -> None:
             assert value not in ("", (), None), (p.key, f.name)
         assert p.key.startswith(("INT-", "AD-")) and p.version.startswith("proto-")
         assert p.version.endswith("-v1")
-        # the protocols of the Intelligence plan were registered on 11-nov; those of the plan of the definitive architecture (AD-...) after it
-        assert p.registered_on == ("2026-11-11" if p.key.startswith("INT-") else "2026-11-16")
+        # the protocols of the Intelligence plan were registered on 11-nov; those of the plan of the definitive architecture (AD-...) from
+        # its approval on 16-nov (AD-B07, 17-nov, the day it was written: before its LAB run)
+        assert p.registered_on == "2026-11-11" if p.key.startswith("INT-") else p.registered_on in ("2026-11-16", "2026-11-17")
 
 
 def test_the_plan_lab_experiments_of_wave_one_have_a_protocol() -> None:
@@ -117,3 +119,12 @@ def test_the_stable_seal_is_registered_before_its_first_reading() -> None:
     p = proto.require("AD-B03")
     assert p.version == "proto-ad-b03-v1" and p.seed == 20261116
     assert proto.stamp("AD-B03")["fingerprint"] == PINNED["AD-B03"]
+
+
+def test_the_count_calibrator_is_registered_before_its_lab_run() -> None:
+    """AD-B07 (IA-095): count-cal-v1 for corners and cards, one verdict per family; registered before the walk-forward reads any data."""
+    p = proto.require("AD-B07")
+    assert p.version == "proto-ad-b07-v1" and p.seed == 20261117 and p.registered_on == "2026-11-17"
+    assert "VALIDADO" in p.pass_rule and "NO VALIDADO" in p.reject_rule and "INSUFICIENTE" in p.reject_rule
+    assert "1.500 partidos" in p.min_sample and "60 días" in p.min_sample
+    assert proto.stamp("AD-B07")["fingerprint"] == PINNED["AD-B07"]
