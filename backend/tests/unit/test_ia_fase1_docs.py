@@ -240,7 +240,7 @@ def test_every_variable_the_guide_names_is_read_by_the_code() -> None:
 # ── 2. the six contracts ──────────────────────────────────────────────────────────────────────────────────────────
 
 WRITERS = {"claim_extractor": "extractor", "match": "Match Agent", "stats": "Statistics Agent", "council": "Council",
-           "pmr": "Post-Match Reviewer", "la": "Learning Analyst", "player": "Player Agent"}
+           "pmr": "Post-Match Reviewer", "la": "Learning Analyst", "player": "Player Agent", "quarantine_extractor": "lector en cuarentena"}
 """The agents that write each contract, by the id the registry gives them: the Post-Match Reviewer and the Learning Analyst were planned as
 ``post_match_reviewer`` and ``learning_analyst`` and are built (phase 5) as ``pmr`` and ``la``, which replace them."""
 
@@ -514,9 +514,9 @@ def test_the_fields_of_the_key_are_the_fields_in_the_order_the_code_hashes() -> 
 
 # ── 7. the registry ───────────────────────────────────────────────────────────────────────────────────────────────
 
-BUILT_AFTER_THE_GUIDE = ("council", "stats", "pmr", "la", "player")
+BUILT_AFTER_THE_GUIDE = ("council", "stats", "pmr", "la", "player", "quarantine_extractor")
 """The agents the plan built after this guide was written (phase 3: the Council; phase 4: the Statistics Agent; phase 5: ``pmr`` and ``la``; IA-017: the
-Player Agent, which the guide lists as postponed and says was built): the
+Player Agent, which the guide lists as postponed and says was built; IA-060: the quarantined extractor, whose contract the guide lists): the
 registry holds them and the guide still lists them as planned (the Statistics Agent as ``statistics``). What they are is said by the guide of their phase."""
 NAME_IN_THE_GUIDE = {"statistics": "stats"}
 REPLACED_AFTER_THE_GUIDE = ("post_match_reviewer", "learning_analyst")
