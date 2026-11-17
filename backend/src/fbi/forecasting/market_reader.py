@@ -9,7 +9,7 @@ states and what decision-v2 (shadow) judges.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -79,11 +79,12 @@ def read_sources(conn: psycopg.Connection[Any], ids: list[int], at: datetime
     return out
 
 
-def read_consensus(conn: psycopg.Connection[Any], ids: list[int], at: datetime
+def read_consensus(conn: psycopg.Connection[Any], ids: list[int], at: datetime, *, max_age: timedelta = MAX_MARKET_AGE
                     ) -> dict[tuple[int, str, Decimal], dict[str, tuple[float, datetime]]]:
+    """The newest de-vigged consensus of each outcome of the core markets captured in ``(at - max_age, at]``."""
     out: dict[tuple[int, str, Decimal], dict[str, tuple[float, datetime]]] = defaultdict(dict)
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(CONSENSUS_SQL, {"ids": ids, "at": at, "since": at - MAX_MARKET_AGE, **_core()})
+        cur.execute(CONSENSUS_SQL, {"ids": ids, "at": at, "since": at - max_age, **_core()})
         for r in cur.fetchall():
             out[(int(r["fixture_id"]), str(r["market_key"]), Decimal(r["line"]))][str(r["selection"])] = (
                 float(r["p_fair"]), r["as_of"])

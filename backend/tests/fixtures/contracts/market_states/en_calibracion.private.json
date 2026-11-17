@@ -1,0 +1,12 @@
+{
+ "market_key": "CORNERS_OU",
+ "state": "en_calibracion",
+ "reason": "sin_calibrador_validado",
+ "catalog_version": "market-states-v1",
+ "measured_at": "2034-05-02T19:00:00Z",
+ "books_median": 5.0,
+ "priced_fixtures": 120,
+ "settleable_pct": 85.0,
+ "validated_calibrator": false,
+ "rule_key": "corners_ft@v1"
+}

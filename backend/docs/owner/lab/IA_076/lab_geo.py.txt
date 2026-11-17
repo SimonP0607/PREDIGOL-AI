@@ -1,0 +1,94 @@
+"""IA-076 LAB (production, read-only exports): Reep team -> QID, the Wikidata snapshot (few batched queries, 1/min), the
+venue-geo-v1 rules, the GLO-90 altitude, and the venue-link-v1 rules over the matches without a provider id."""
+import csv, gzip, io, json, random, sys, time, collections
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+sys.path.insert(0, "/lab")
+import wikidata as wd, rules as R, elevation as E
+
+L = Path("/lab")
+def rows(n):
+    with gzip.open(L / "reep" / f"{n}.csv.gz", "rb") as r, io.TextIOWrapper(r, encoding="utf-8", newline="") as t:
+        yield from csv.DictReader(t)
+red = {r["from_id"]: r["to_id"] for r in rows("redirects") if r["from_id"] and r["to_id"]}
+def res(x):
+    seen = set()
+    while x in red and x not in seen: seen.add(x); x = red[x]
+    return x
+teams = {int(r["provider_team_id"]): int(r["venue_id"]) for r in csv.DictReader(open(L / "tused.csv"))}
+br = collections.defaultdict(set)
+for r in rows("bridges"):
+    if r["provider"] == "api_football" and r["namespace"] == "team" and r["external_id"].isdigit() and int(r["external_id"]) in teams:
+        br[int(r["external_id"])].add(res(r["reep_id"]))
+want = {x for s in br.values() for x in s}
+qid = collections.defaultdict(set)
+for r in rows("overlay_links"):
+    x = res(r["reep_id"])
+    if x in want and r["qid"].startswith("Q"): qid[x].add(r["qid"])
+team_q = {t: sorted({q for x in br[t] for q in qid.get(x, ())}) for t in br}
+team_q = {t: q for t, q in team_q.items() if len(q) == 1}  # one item per club, as AD-H01 accepts
+venues = {int(r["id"]): r for r in csv.DictReader(open(L / "vused.csv"))}
+by_venue = collections.defaultdict(set)
+for t, v in teams.items():
+    for q in team_q.get(t, ()): by_venue[v].add(q)
+ours = [R.OurVenue(v, venues[v]["name"], venues[v]["city"] or None, venues[v]["country"] or None, tuple(sorted(q, key=lambda s: int(s[1:]))))
+        for v, q in by_venue.items() if v in venues]
+print("venues_used", len(venues), "with_capacity", sum(int(v["cap"]) for v in venues.values()))
+print("teams_of_used_venues", len(teams), "with_one_qid", len(team_q), "venues_reachable", len(ours))
+snap_path = L / "wd_venues_20261117.json"
+qids = sorted({q for o in ours for q in o.team_qids}, key=lambda s: int(s[1:]))
+if not snap_path.exists():
+    t0 = time.time()
+    digest = wd.fetch_snapshot(qids, snap_path)
+    print("snapshot", len(qids), "clubs", round(time.time() - t0), "s")
+digest = wd.sha256_of(snap_path)
+snap = wd.read_snapshot(snap_path, digest)
+print("snapshot_sha256", digest, "bytes", snap_path.stat().st_size, "clubs_with_home", len(snap.homes), "venues", len(snap.venues))
+matches, questions = R.match_all(ours, snap)
+print("matched", len(matches), "by_method", dict(collections.Counter(m.method for m in matches)),
+      "with_coords", sum(1 for m in matches if m.coords), "questions", dict(collections.Counter(q.reason for q in questions)))
+reader = E.DemReader(E.http_range_reader(), keep=6)
+t0 = time.time()
+pts = [(m.venue_id, m.coords[0], m.coords[1]) for m in matches if m.coords]
+alts = {vid: reader.altitude(la, lo) for vid, la, lo in E.by_tile(pts)}
+print("dem_tiles", reader.tiles_read, "dem_MB", round(reader.bytes_read / 1e6), "s", round(time.time() - t0),
+      "status", dict(collections.Counter(a.status for a in alts.values())))
+checks = collections.Counter()
+for m in matches:
+    a = alts.get(m.venue_id)
+    checks[R.elevation_check(a.meters if a else None, m.elevation_wd)] += 1
+print("elevation_checks", dict(checks))
+vals = sorted(a.meters for a in alts.values() if a.meters is not None)
+if vals: print("alt_min", vals[0], "alt_p50", vals[len(vals)//2], "alt_max", vals[-1], "over_2000m", sum(1 for v in vals if v > 2000))
+dis = [(venues[m.venue_id]["name"], alts[m.venue_id].meters, m.elevation_wd) for m in matches if m.venue_id in alts and R.elevation_check(alts[m.venue_id].meters, m.elevation_wd) == "disagrees"]
+print("disagree_examples", dis[:8])
+random.seed(76)
+for m in random.sample(matches, min(40, len(matches))):
+    v = venues[m.venue_id]; a = alts.get(m.venue_id)
+    print(f"G {v['name']} | {v['city']} | {v['country']} -> {m.qid} {m.method} {list(m.evidence.get('wikidata_names', []))[:2]} {list(m.evidence.get('wikidata_places', []))[:2]} {m.coords} alt={a.meters if a else None} wd_alt={m.elevation_wd}")
+high = [(venues[m.venue_id]["name"], venues[m.venue_id]["city"], alts[m.venue_id].meters) for m in matches if m.venue_id in alts and (alts[m.venue_id].meters or 0) > 2000]
+print("HIGH", high[:25])
+for q in random.sample(questions, min(10, len(questions))):
+    v = venues[q.subject_id]; print("Q", q.reason, v["name"], "|", v["city"], q.candidates[:3], [sorted(snap.venues[c].names)[:1] for c in q.candidates[:3] if c in snap.venues])
+json.dump({"sha256": digest, "matched": len(matches)}, open(L / "geo_summary.json", "w"))
+
+# ---- links (venue-link-v1) over the exports ----
+vrows = list(csv.DictReader(open(L / "venues.csv")))
+grounds = [R.Ground(int(r["id"]), r["name"], r["city"] or None) for r in vrows if r["provider_venue_id"] and int(r["provider_venue_id"]) > 0]
+gname = {g.id: g for g in grounds}
+tall = {int(r["id"]): (int(r["venue_id"]) if r["venue_id"] else None) for r in csv.DictReader(open(L / "teams_v.csv"))}
+homes = {t: v for t, v in tall.items() if v}
+hist = [(int(r["home_team_id"]), r["venue_name"], r["venue_city"] or None, int(r["venue_id"]), int(r["n"])) for r in csv.DictReader(open(L / "history.csv"))]
+ix = R.LinkIndex.build(grounds, homes, hist)
+un = list(csv.DictReader(open(L / "unlinked.csv")))
+for label, sel in (("next14", lambda r: r["future"] == "t"), ("last365+next14", lambda r: True)):
+    us = [R.Unlinked(int(r["id"]), int(r["home_team_id"]), r["venue_name"] or None, r["venue_city"] or None, r["is_neutral"] == "t") for r in un if sel(r)]
+    links, qs, nothing = R.link_all(us, ix)
+    other_city = sum(1 for k in links if not R.cities_compatible(R.split_place(k.evidence["venue_name"], k.evidence["venue_city"])[1], gname[k.venue_id].city if k.venue_id in gname else None))
+    print("LINKS", label, "unlinked", len(us), "with_name", sum(1 for u in us if u.venue_name), "linked", len(links),
+          dict(collections.Counter(k.method for k in links)), "questions", dict(collections.Counter(q.reason for q in qs)), "nothing", nothing, "other_city", other_city)
+    if label == "next14":
+        random.seed(761)
+        for k in random.sample(links, min(40, len(links))):
+            g = gname.get(k.venue_id)
+            print(f"L {k.method} | {k.evidence['venue_name']} / {k.evidence['venue_city']} -> {g.name if g else k.venue_id} / {g.city if g else ''}")
