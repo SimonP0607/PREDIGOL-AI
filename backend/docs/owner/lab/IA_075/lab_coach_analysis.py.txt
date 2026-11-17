@@ -1,0 +1,58 @@
+"""IA-075 LAB: the rule coach-current-v1 over the production exports (no database, no network)."""
+import csv, json, random, sys
+from datetime import datetime, date, timezone
+sys.path.insert(0, "/lab")
+import current_coach as cc
+
+def dt(s): return datetime.fromisoformat(s.replace(" ", "T")) if "+" in s or s.endswith("Z") else datetime.fromisoformat(s + "+00:00")
+now = dt(open("/lab/now.txt").read().strip())
+sheets, opens, profiles, prov, names, teamname = [], [], {}, {}, {}, {}
+for r in csv.DictReader(open("/lab/sheets.csv")):
+    pc = int(r["provider_coach_id"]) if r["provider_coach_id"] not in ("", "0") else None
+    sheets.append((int(r["team_id"]), cc.Sheet(int(r["fixture_id"]), dt(r["kickoff_at"]), pc, None, r["coach_name"] or None)))
+    if pc: names[pc] = r["coach_name"]
+for r in csv.DictReader(open("/lab/opens.csv")):
+    opens.append((int(r["team_id"]), cc.OpenCareer(int(r["provider_coach_id"]), dt(r["observed_at"]), int(r["ordinal"]),
+                  date.fromisoformat(r["start_date"]) if r["start_date"] else None)))
+allnames, births = {}, {}
+for t, sh in sheets:
+    if sh.provider_coach_id and sh.coach_name: allnames.setdefault(sh.provider_coach_id, set()).add(sh.coach_name)
+for r in csv.DictReader(open("/lab/profiles2.csv")):
+    k = int(r["provider_coach_id"])
+    profiles[k] = int(r["provider_team_id"]) if r["provider_team_id"] else None
+    names.setdefault(k, r["name"])
+    allnames.setdefault(k, set()).update(x for x in (r["name"], r["full"]) if x)
+    if r["birth_date"]: births[k] = date.fromisoformat(r["birth_date"])
+same = cc.same_person_by_names({k: tuple(sorted(v)) for k, v in allnames.items()}, births)
+for r in csv.DictReader(open("/lab/teams.csv")):
+    prov[int(r["id"])] = int(r["provider_team_id"]); teamname[int(r["id"])] = r["name"]
+tracked = {int(r["team_id"]) for r in csv.DictReader(open("/lab/tracked90.csv"))}
+open_before = {}
+for t, c in opens: open_before.setdefault(t, set()).add(c.provider_coach_id)
+ob = {t: len(s) for t, s in open_before.items()}
+d = cc.decide_all(sheets, opens, now=now, profile_teams=profiles, team_provider_ids=prov, same_person=same)
+s = cc.summary(d, open_before=ob)
+print("rows", len(sheets), len(opens), len(profiles))
+print(json.dumps(s, indent=1))
+# tracked domestic-league teams that played in 90 days
+tr = [d[t] for t in tracked if t in d]
+print("tracked90", len(tracked), "with_decision", len(tr), "lineup", sum(x.current.source == "lineup" for x in tr),
+      "lineup_fresh", sum(x.current.source == "lineup" and x.current.fresh for x in tr),
+      "provider_career", sum(x.current.source == "provider_career" for x in tr))
+# after closures: teams with >1 open among tracked
+gt = sum(1 for t in tracked if t in d and d[t].current.open_after > 1)
+print("tracked90 open>1 before", sum(1 for t in tracked if ob.get(t, 0) > 1), "after", gt)
+# teams with two 'current' coaches by the reader: impossible by construction, count anyway
+print("two_current", sum(1 for x in d.values() if x.current.source and x.current.provider_coach_id is None))
+streaks = [x.current.streak for x in d.values() if x.current.source == "lineup"]
+print("streak1", sum(1 for v in streaks if v == 1), "streak>=2", sum(1 for v in streaks if v >= 2))
+print("weak_contradicted_not_closed", sum(x.current.contradicted - len(x.closures) for x in d.values()))
+random.seed(75)
+pick = random.sample(sorted(t for t in tracked if t in d and d[t].closures), 30)
+print("tracked_with_closures", sum(1 for t in tracked if t in d and d[t].closures), "closures_tracked", sum(len(d[t].closures) for t in tracked if t in d))
+print("left>1 examples", [(teamname[t], d[t].current.open_after) for t in sorted(tracked) if t in d and d[t].current.open_after > 1][:12])
+for t in pick:
+    x = d[t]; c = x.current
+    print(f"T {teamname[t]} | now: {names.get(c.provider_coach_id)} since {c.since} last {c.as_of} streak {c.streak} known {c.career_known} prof {c.profile_team_agrees} alias {[names.get(i) for i in c.same_person_ids]} left {c.open_after}")
+    for k in x.closures:
+        print(f"   close {names.get(k.provider_coach_id)} end {k.end_date} {k.basis}")
