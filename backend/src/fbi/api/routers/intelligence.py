@@ -10,11 +10,13 @@ from typing import Annotated, Any, Literal
 import psycopg
 from fastapi import APIRouter, Depends, Path, Query
 
+from fbi.api.contracts.intelligence.match import MatchIntelligencePrivate
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.services import capabilities as capabilities_svc
 from fbi.api.services import families as families_svc
 from fbi.api.services import intelligence as svc
+from fbi.api.services import match_intelligence
 
 router = APIRouter(tags=["admin: predigol intelligence"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
@@ -64,6 +66,15 @@ def get_dossier(conn: Db, fixture_id: Annotated[int, Path(ge=1, le=2**62)]) -> E
     factors the AI saw, its narrative, its latest brief (what it asked the server to look into and every claim the server refused),
     the passes that ran and its decisions."""
     return svc.dossier(conn, fixture_id)
+
+
+@router.get("/intelligence/matches/{fixture_id}/intelligence", response_model=Envelope[MatchIntelligencePrivate])
+def get_match_intelligence(conn: Db, fixture_id: Annotated[int, Path(ge=1, le=2**62)]
+                           ) -> Envelope[MatchIntelligencePrivate]:
+    """C-01, the match's contract, PRIVATE projection (AD-J02, IA-066): the public one and what only the owner sees - every
+    selection with the decision layer's shadow state and numbers, the model's own figure (sin_calibrar), the AI's brief,
+    the chronicle whatever its switch and every stored item of evidence. The untyped dossier above stays as it is."""
+    return match_intelligence.private(conn, fixture_id)
 
 
 @router.get("/intelligence/factors", response_model=Envelope[dict[str, Any]])
