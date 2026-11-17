@@ -43,6 +43,7 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "live_odds_capture": timedelta(minutes=10),
     "live_match_capture": timedelta(minutes=10),
     "prematch_lineups": timedelta(minutes=10),
+    "lineup_watch": timedelta(minutes=10),
     "odds_capture": timedelta(minutes=45),
     "final_prematch": timedelta(minutes=45),
     "context_due": timedelta(minutes=45),
