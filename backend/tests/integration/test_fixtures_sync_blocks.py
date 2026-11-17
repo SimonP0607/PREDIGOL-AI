@@ -22,7 +22,6 @@ from typing import Any
 import httpx
 import psycopg
 import pytest
-from structlog.testing import capture_logs
 
 from fbi.core.clock import FrozenClock, SystemClock, set_clock
 from fbi.core.config.providers import ApiFootballSettings
@@ -295,10 +294,20 @@ async def test_a_block_that_meets_a_held_row_is_retried_and_applied(
     holder = threading.Thread(target=_hold_lock, args=(migrated_database, FID0 + 4, 0.8, held))
     holder.start()
     assert held.wait(10)
-    with capture_logs() as logs:
-        counters = await sync_fixtures(friendlies, provider, strategy=SyncStrategy.LEAGUE)
+    seen: list[dict[str, Any]] = []
+
+    class _Recorder:
+        """The module's own logger, recorded directly: ``capture_logs`` misses a logger cached before it (CI, 4 workers)."""
+
+        def __getattr__(self, level: str) -> Any:
+            def emit(event: str, **kw: Any) -> None:
+                seen.append({"event": event, **kw})
+            return emit
+
+    monkeypatch.setattr(fx, "log", _Recorder())
+    counters = await sync_fixtures(friendlies, provider, strategy=SyncStrategy.LEAGUE)
     holder.join(10)
-    waits = [e for e in logs if e["event"] == "fixtures.block_lock_wait"]
+    waits = [e for e in seen if e["event"] == "fixtures.block_lock_wait"]
     assert waits and {e["block"] for e in waits} == {f"league {LEAGUE} block 2/3"}, "the held block waited, and only it"
     assert counters.status == "completed" and counters.errors == []
     assert {r[7] for r in content(friendlies)} == {"Moved round"}, "every block, the waiting one too, was applied"
