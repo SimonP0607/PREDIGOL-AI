@@ -30,7 +30,7 @@ V1_ONLY = re.compile(r"\bsubject_type\s+IS\s+NULL\b(?!\s+OR)", re.IGNORECASE)
 TYPED_ONLY = re.compile(r"\bsubject_type\s+IS\s+NOT\s+NULL\b", re.IGNORECASE)
 
 OWN_READERS = {"src/fbi/ai/evidence.py", "src/fbi/ai/gate_research.py", "src/fbi/api/services/ai_research.py",
-               "src/fbi/evidence/engine.py", "src/fbi/ai/label_bank_readers.py"}
+               "src/fbi/evidence/engine.py", "src/fbi/ai/label_bank_readers.py", "src/fbi/people/identity/store.py"}
 """The modules that read one kind on purpose. ``fbi.ai.evidence`` decides the statuses of v1's items (``LOAD_SQL``: untyped only) and those of
 research v2's claims (``TYPED_SQL``: typed only) apart from each other; ``fbi.ai.gate_research`` is the measure of the week in which both ran side by
 side: it counts what v1 found (untyped) against what research v2 found (typed) and what reviews and decisions cite of the second. It writes only its own
@@ -40,7 +40,9 @@ nothing and what it shows goes nowhere but to that page. ``fbi.evidence.engine``
 research v2's claims, each kind by its own statement, to compute tiers, statuses, confidence and validity; it writes nothing and nothing that decides,
 publishes or serves a user imports it (``tests/unit/test_evidence_engine_isolation.py``). ``fbi.ai.label_bank_readers`` is the labelled bank of
 IA-030: it reads v1's items and research v2's claims, each kind by its own statement, so that a person can label each extractor against the page it
-cites; it writes nothing, and what it reads goes to a sheet, never to a packet, a decision or a pick."""
+cites; it writes nothing, and what it reads goes to a sheet, never to a packet, a decision or a pick. ``fbi.people.identity.store`` (IA-071, AD-H09)
+fills the one key of a player (``player_id``) on every row, v1's items and research v2's claims alike, from its provider id: it reads no claim's content,
+writes only that key (the content guard of the table does not look at it) and nothing it touches reaches a packet, a decision or a pick."""
 
 BY_ID = (
     ("src/fbi/api/services/intelligence.py", "FROM ai.evidence WHERE id = ANY(%(ids)s)", r"\bid\s*=\s*ANY\(",
@@ -52,6 +54,9 @@ BY_ID = (
     ("src/fbi/intel/leakage.py", "FROM ai.evidence ev WHERE ev.id = ANY(%(ids)s)", r"\bev\.id\s*=\s*ANY\(",
      "the audit of the evidence an agent run or a review of the shadow CITED (``agent_known``, ``shadow_review_known``), by id - it measures what "
      "was cited, whatever it was"),
+    ("src/fbi/ai/known_at.py", "FROM ai.evidence WHERE id = ANY(%(ids)s)", r"\bid\s*=\s*ANY\(",
+     "the facts a package CITES (its evidence index), by id, read back to check their moments of knowledge (IA-061, ``known-at-v1``, and the "
+     "nightly ``news_known`` of ``leak-audit-v10``): it measures what was cited, whatever it was, and shows nothing to anybody"),
     ("src/fbi/chronicle/review.py", "FROM ai.evidence WHERE id = ANY(%(ids)s)", r"\bid\s*=\s*ANY\(",
      "after the match, the news items a chronicle a reader was shown CITED, by id (IA-022): it measures what the chronicle said against who played, "
      "whatever it was"),

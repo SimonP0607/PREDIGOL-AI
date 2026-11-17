@@ -1,0 +1,96 @@
+import csv, sys, time, random, json, collections, resource
+from datetime import date
+from pathlib import Path
+sys.path.insert(0, "/lab/code")
+from fbi.people.identity import reep, rules
+from fbi.people.identity.rules import Ours
+from fbi.people.identity import names as nm
+t0 = time.time()
+L = Path("/lab")
+TODAY = date(2026, 11, 16)
+def d(s):
+    return date.fromisoformat(s) if s else None
+ents = []
+for etype, f in (("player","players.csv"),("coach","coaches.csv"),("team","teams.csv"),("competition","competitions.csv"),("venue","venues.csv")):
+    with open(L/f, newline="", encoding="utf-8") as fh:
+        for r in csv.DictReader(fh):
+            names = [r["name"]] if r["name"] else []
+            first = r.get("firstname") or None
+            last = r.get("lastname") or None
+            if etype in ("player","coach") and first and last:
+                names.append(f"{first} {last}")
+            if etype == "team" and r.get("short_name"):
+                names.append(r["short_name"])
+            pid = int(r["pid"]) if r["pid"] else None
+            ents.append(Ours(etype, int(r["id"]), pid, tuple(names), d(r.get("birth_date") or ""), first if etype in ("player","coach") else None))
+print("entities", collections.Counter(e.entity_type for e in ents))
+ours = collections.defaultdict(set)
+for e in ents:
+    if e.provider_id is not None: ours[e.entity_type].add(e.provider_id)
+print("verify", reep.verify(L/"reep", "2026-10-19.1") is not None)
+data = reep.read(L/"reep", ours)
+print("read", round(time.time()-t0), "s", data.rows_read, "bridged keys", len(data.bridges))
+plan = rules.plan_links(ents, data, as_of=TODAY)
+plan2 = rules.plan_links(list(reversed(ents)), data, as_of=TODAY)
+print("deterministic", [r.row_key for r in plan.ids] == [r.row_key for r in plan2.ids], len(plan.ids))
+del plan2
+st = plan.stats
+for k in sorted(st): print("stat", k, st[k])
+print("queue", collections.Counter(q.kind+":"+q.entity_type for q in plan.queue))
+print("aliases", len(plan.aliases), collections.Counter((a.source, a.alias_type) for a in plan.aliases).most_common())
+print("alias scripts", collections.Counter(a.script for a in plan.aliases).most_common())
+# coverage by entity type: accepted reep, qid, tm
+acc = collections.defaultdict(set)
+for r in plan.ids:
+    acc[(r.entity_type, r.system, r.review)].add(r.entity_id)
+for k in sorted(acc): print("cov", k, len(acc[k]))
+# api id -> two reep entities, and accepted reep id shared by two entities
+by_reep = collections.defaultdict(set)
+for r in plan.ids:
+    if r.system == "reep" and r.review == "accepted": by_reep[(r.entity_type, r.external_id)].add(r.entity_id)
+print("accepted reep shared by >1 entity:", sum(1 for v in by_reep.values() if len(v) > 1))
+# current squads universe
+cur = set()
+with open(L/"current_squads.csv", newline="") as fh:
+    for r in csv.DictReader(fh): cur.add(int(r["provider_player_id"]))
+pid_of = {e.entity_id: e.provider_id for e in ents if e.entity_type == "player"}
+dob_of = {e.entity_id: e.birth_date for e in ents if e.entity_type == "player"}
+acc_p = {pid_of[i] for i in acc[("player","reep","accepted")]}
+acc_q = {pid_of[i] for i in acc[("player","wikidata","accepted")]}
+acc_t = {pid_of[i] for i in acc[("player","transfermarkt","accepted")]}
+withdob = {e.provider_id for e in ents if e.entity_type=="player" and e.birth_date}
+print("current squads", len(cur), "reep", len(cur & acc_p), "qid", len(cur & acc_q), "tm", len(cur & acc_t),
+      "with dob", len(cur & withdob), "reep among dob", len(cur & withdob & acc_p))
+# homonyms
+players = [e for e in ents if e.entity_type == "player"]
+hq, hs = rules.plan_homonyms(players)
+print("homonyms", hs, collections.Counter(q.kind for q in hq))
+# own alias rows estimate
+own = 0
+for e in ents:
+    if not e.names: continue
+    own += 1 + sum(1 for o in e.names[1:] if nm.alias_key(o) != nm.alias_key(e.names[0]))
+print("own alias rows (without referees/legacy)", own)
+# sample of 300 accepted player links with a QID (seed 71), and 40 teams
+rng = random.Random(71)
+qid_of = {}; tm_of = {}
+for r in plan.ids:
+    if r.entity_type in ("player","team") and r.review == "accepted":
+        if r.system == "wikidata": qid_of[(r.entity_type, r.entity_id)] = r.external_id
+        if r.system == "transfermarkt" and r.namespace in ("spieler","player","verein"): tm_of.setdefault((r.entity_type, r.entity_id), r.external_id)
+name_of = {(e.entity_type, e.entity_id): e.names for e in ents}
+pl = sorted(i for i in acc[("player","reep","accepted")])
+sample = rng.sample(pl, 450)
+print("SAMPLE_P_BEGIN")
+for i in sample:
+    print("P|%d|%s|%s|%s|%s" % (i, " / ".join(name_of[("player", i)]), dob_of[i] or "", qid_of.get(("player", i), ""), tm_of.get(("player", i), "")))
+print("SAMPLE_P_END")
+tl = sorted(i for i in acc[("team","reep","accepted")])
+for i in rng.sample(tl, 40):
+    print("T|%d|%s|%s|%s" % (i, " / ".join(name_of[("team", i)]), qid_of.get(("team", i), ""), tm_of.get(("team", i), "")))
+mm = [q for q in plan.queue if q.kind == "name_mismatch"]
+for q in rng.sample(mm, min(25, len(mm))):
+    print("M|%s|%d|%s|%s" % (q.entity_type, q.entity_a, " / ".join(q.evidence.get("ours", [])), q.evidence.get("reep_name")))
+for q in [q for q in plan.queue if q.kind in ("bridge_conflict","shared_external")][:15]:
+    print("C|%s|%s|%d|%s|%s|%s" % (q.kind, q.entity_type, q.entity_a, q.entity_b, q.external_id, " / ".join(name_of.get((q.entity_type, q.entity_a), ()))))
+print("maxrss_mb", resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024, "seconds", round(time.time()-t0))
