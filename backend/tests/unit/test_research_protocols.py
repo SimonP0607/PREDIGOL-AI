@@ -21,6 +21,8 @@ PINNED = {
     "AD-K02": "6eff7d3066cbeed274d457c2694f478e339fc8232610be74f4c56f54e570def1",
     "AD-C08": "7ae65569c4f330956c9437c99a1224f36448d94fdba90d371d7ec6eb144943a4",
     "AD-C09": "f0bd0d90c7747bcab6e48dde47676c64b784d2d18fe9e78635c21efbc2106ed8",
+    "AD-K03": "c5638110bd730e99a7d841caace34731bafb73cfac2c93d3c9bef89e49c719d3",
+    "AD-K04": "9d37ca84b4dba0aa37e0b40cd9add0be4ea96951bac59e6c53802763482a9d14",
 }
 """A registered protocol is frozen: changing one is a new version with its own PR, never an edit of these lines to make a test pass."""
 
@@ -157,3 +159,22 @@ def test_the_extraction_protocol_is_registered_unsigned_before_the_bank_is_label
     assert "47 de sus 50" in p.pass_rule and "Bonferroni" in p.primary_metric and "fila 17" in p.pass_rule
     assert "nunca contra research v1" in p.question and "las etiquetas no entrenan nada" in p.split
     assert proto.stamp("AD-C09")["fingerprint"] == PINNED["AD-C09"]
+
+
+def test_the_readers_and_sources_performance_is_registered_unsigned_with_its_power_before_any_report() -> None:
+    """AD-K03 (IA-135): perf-v1 - each reader against the rules on the same selections, each source by type of fact - with the sample its
+    power calculation asks (1.327 selections examined) fixed before the first report; the owner signs it, never the code."""
+    p = proto.require("AD-K03")
+    assert p.version == "proto-ad-k03-v1" and p.seed == 20261117 and p.registered_on == "2026-11-17"
+    assert proto.n_for_mean(0.13, 0.01) == 1327 and "1.327" in p.min_sample and "Bonferroni" in p.primary_metric
+    assert "ningún peso, umbral ni versión cambia" in p.alternative and "INSUFICIENTE" in p.reject_rule
+    assert proto.stamp("AD-K03")["fingerprint"] == PINNED["AD-K03"]
+
+
+def test_the_regression_of_the_replay_bank_is_registered_with_its_proposed_tolerance() -> None:
+    """AD-K04 (IA-136): replay-regression-v1 - the upper end of the IC95 within 5 points, PROPOSED (the owner signs it), its causes
+    and the rule that a verdict is never measured again over the same stored runs."""
+    p = proto.require("AD-K04")
+    assert p.version == "proto-ad-k04-v1" and p.seed == 20261111 and p.registered_on == "2026-11-17"
+    assert "≤ 0,05" in p.pass_rule and "PROPUESTA" in p.pass_rule and "no se repite sobre las mismas ejecuciones" in p.stopping
+    assert proto.stamp("AD-K04")["fingerprint"] == PINNED["AD-K04"]

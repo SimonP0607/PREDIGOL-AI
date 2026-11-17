@@ -16,6 +16,7 @@ PASS = "fbi.evalpass"
 PASS_ALLOWED = {
     "shadowjobs/selection_eval.py": "the worker's door: its switch and one pass",
     "scripts/ia_selection_eval.py": "the owner's read-only command (dry run and board)",
+    "scripts/ia_reader_performance.py": "the owner's read-only command of the readers' and sources' performance (IA-135, AD-K03)",
 }
 ALLOWED = {
     "api/services/selection_intelligence.py": "C-02: the selection's contract reads its evaluation and its market's verdict (owner's "
