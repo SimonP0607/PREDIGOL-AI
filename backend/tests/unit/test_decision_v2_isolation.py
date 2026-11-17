@@ -105,3 +105,10 @@ def test_the_scan_sees_every_way_of_importing_it(tmp_path: Path) -> None:
     probe = tmp_path / "probe.py"
     probe.write_text("from fbi.intel import decision", encoding="utf-8")
     assert not imports_package(probe)
+
+
+def test_the_age_rule_is_pure_data_that_reads_only_decision_v1s_thresholds() -> None:
+    """The age rule of the price (``decision/price_age.py``, plan 2026 AD-B06) is versioned data and a pure check: it reads decision-v1's
+    thresholds (``fbi.intel.decision``) and nothing else - no database, no odds book, no clock - so the contracts can carry it as it is."""
+    names = {n for n in imported(SRC / "decision" / "price_age.py") if n.startswith("fbi.")}
+    assert names == {"fbi.intel", "fbi.intel.decision"}, names

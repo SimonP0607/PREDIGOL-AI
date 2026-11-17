@@ -55,6 +55,15 @@ THE REPORT. ``Report.to_json()`` has counts and codes only.
     waiting             the passes of the Batch calendar that wait for an item still open at the end of this run
     settled             the tasks of the Batch calendar whose answer was read when their pass was written
     abandoned           of those, the tasks given up for time (``batch_too_late``)
+    reread_aborted      the final passes the last reading of the match stopped (IA-061, ``final_reread``: it started, moved, was postponed,
+                        suspended or ended since the packet): nothing was written for them
+    reread              the closed reason of each of those (``final_reread.REASONS``)
+
+IA-061 (plan AD-A04). Before a ``final`` pass is given to an agent the match is read again (``final_reread.reread``) and the pass stops - with nothing
+written - unless it is still to be played at the packet's kick-off and that kick-off is ahead; and before ANY pass is given to an agent, every fact
+of its package is read back from its row (``known_at.check``): one with no row, one retrieved or published after the package's moment, one whose
+times the packet copied wrong or one of another match makes the pass NOT RUN (``known_at:<codes>``). Both verdicts are kept in the state of the pass
+(``ai.match_runs.data_status``: ``reread``, ``known_at``), which the nightly ``leak-audit-v10`` reads.
 
 Idempotent: the second run over the same passes finds a shadow row for each and selects nothing.
 
@@ -92,7 +101,17 @@ from typing import Any, Final, cast
 
 import psycopg
 
-from fbi.ai import arms, contra, gates, router, runtime, stats_factors, usage
+from fbi.ai import (
+    arms,
+    contra,
+    final_reread,
+    gates,
+    known_at,
+    router,
+    runtime,
+    stats_factors,
+    usage,
+)
 from fbi.ai import package as mcp_package
 from fbi.ai import prompts as prompt_labels
 from fbi.ai.agents import council, match, player, stats
@@ -238,6 +257,9 @@ STATUS_FAILED: Final = "failed"
 STATUS_OVER_BUDGET: Final = "over_budget"
 
 _failed: set[tuple[int, str, int]] = set()
+_aborted: set[tuple[int, str, int]] = set()
+"""The passes the last reading stopped (IA-061, ``final_reread``): not read again by this process - the match has started, moved or ended, and
+a pass of the AI layer runs once per match and day."""
 _slots: runtime.Slots | None = None
 _circuit: runtime.Circuit | None = None
 _guard = threading.Lock()
@@ -288,6 +310,8 @@ class Report:
     waiting: int = 0
     settled: int = 0
     abandoned: int = 0
+    reread_aborted: int = 0
+    reread: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
         """Counts and codes only: no prompt, no evidence text, no key, no address."""
@@ -312,6 +336,8 @@ class Report:
             "waiting": self.waiting,
             "settled": self.settled,
             "abandoned": self.abandoned,
+            "reread_aborted": self.reread_aborted,
+            "reread": list(self.reread),
         }
 
 
@@ -336,6 +362,8 @@ class _Tally:
     waiting: int = 0
     settled: int = 0
     abandoned: int = 0
+    reread_aborted: int = 0
+    reread: list[str] = field(default_factory=list)
 
     def report(self) -> Report:
         return Report(
@@ -358,6 +386,8 @@ class _Tally:
             waiting=self.waiting,
             settled=self.settled,
             abandoned=self.abandoned,
+            reread_aborted=self.reread_aborted,
+            reread=list(self.reread),
         )
 
 
@@ -647,6 +677,9 @@ class _Pass:
     """The candidates the Player Agent was asked about in this pass (empty when it was not asked)."""
     slice_set: str = DEFAULT_SLICE_SET
     """The set of slices the state of the match records (``contracts.mcp.SLICE_SETS``): ``slices-v2`` only with the Player Agent on."""
+    data_status: dict[str, Any] = field(default_factory=dict)
+    """``ai.match_runs.data_status`` (IA-061): the check of the moments of the facts (``known_at``) and, for a final pass, the last reading of the match
+    (``reread``)."""
 
     @property
     def at(self) -> datetime:
@@ -794,7 +827,7 @@ class _Runner:
                 continue
             engines = arms.runnable(assignment, self.settings.shadow_engines)
             memo = (w.fixture_id, w.pass_kind, w.packet_id)
-            if not engines or memo in _failed:
+            if not engines or memo in _failed or memo in _aborted:
                 continue
             self.item(w, engines, memo)
 
@@ -829,6 +862,18 @@ class _Runner:
             self.tally.too_late += 1
             log.info("orchestrator.too_late", extra={"fixture": w.fixture_id, "pass": w.pass_kind})
             return
+        packet = load_packet(self.conn, w.packet_id)
+        if packet is None:
+            raise LookupError(f"the packet {w.packet_id} is not there")
+        reread: dict[str, Any] | None = None
+        if w.pass_kind in final_reread.PASSES:
+            # IA-061: the match is read again right before the last pass is given to an agent; a match that started, moved or ended stops here, and
+            # nothing is written for it (a state written now would be a state of a match already under way)
+            seen = final_reread.reread(self.conn, w.fixture_id, packet.content, at=self.clock())
+            if not seen.ok:
+                self.reread_stop(w, seen)
+                return
+            reread = seen.record()
         package = mcp_package.derive(
             self.conn, w.packet_id, pass_kind=w.pass_kind, model_code=model_code_version()
         )
@@ -838,9 +883,7 @@ class _Runner:
         slice_set = SLICES_V2 if player_on else DEFAULT_SLICE_SET
         slices = mcp_package.slices_of(package) if slice_set == DEFAULT_SLICE_SET else mcp_package.slices_of(package, SLICE_SETS[slice_set])
         slice_ = slices["match"]
-        packet = load_packet(self.conn, w.packet_id)
-        if packet is None:
-            raise LookupError(f"the packet {w.packet_id} is not there")
+        facts = known_at.check(self.conn, fixture_id=w.fixture_id, cutoff=package.known_at, document=package.document, content=packet.content)
         rev = reviewed(self.conn, w)
         stats_on = self.stats_wanted(stored)
         # IA-014: production reviews no corner and no card, so the Statistics Agent's candidates are the families' decisions known by the moment of the
@@ -866,10 +909,13 @@ class _Runner:
             player_on=player_on,
             player_slice=slices.get("player") if player_on else None,
             slice_set=slice_set,
+            data_status={"known_at": facts.record()} | ({"reread": reread} if reread is not None else {}),
         )
 
         reason: str | None = None
-        if package.blocking:
+        if not facts.ok:
+            reason = "known_at:" + ",".join(facts.codes)  # IA-061: a fact with no moment, or one later than the cut-off, is never read by an agent
+        elif package.blocking:
             reason = "blocked:" + ",".join(sorted(package.blocking))
         elif not naming.named:
             reason = "no_candidate_to_name"
@@ -2230,6 +2276,7 @@ class _Runner:
             contradictions=[c.to_json() for c in contra1],
             candidates=self.candidate_rows(p),
             final=self.final_row(p, paused),
+            data_status=dict(p.data_status),
         )
         if write_state(self.conn, state) is None:
             raise _AlreadyShadowedError(w.where())
@@ -2246,6 +2293,16 @@ class _Runner:
             for row in self.review_rows(p, arm, contra1, costs.get(arm.engine, (Decimal(0), ()))):
                 write_review(self.conn, row, packet=p.packet, packet_id=w.packet_id, at=now)
         self.conn.commit()
+
+    def reread_stop(self, w: Work, seen: final_reread.Verdict) -> None:
+        """A final pass the last reading stopped (IA-061): nothing is written - no task, no run, no state, no review - and the process does not read
+        it again. The run's report counts it (``reread_aborted``) with its closed reason (``reread``)."""
+        self.tally.reread_aborted += 1
+        self.tally.reread.append(str(seen.reason))
+        if len(_aborted) >= FAILED_MEMORY:
+            _aborted.clear()
+        _aborted.add((w.fixture_id, w.pass_kind, w.packet_id))
+        log.info("orchestrator.reread_stop", extra={"fixture": w.fixture_id, "pass": w.pass_kind, "code": seen.reason})
 
     def not_run(
         self, p: _Pass, reason: str, *, paused: Mapping[str, Sequence[str]] | None = None
@@ -2277,6 +2334,7 @@ class _Runner:
             contradictions=[],
             candidates=self.candidate_rows(p),
             final=self.final_row(p, paused or {}, not_run=reason),
+            data_status=dict(p.data_status),
         )
         if write_state(self.conn, state) is None:
             raise _AlreadyShadowedError(w.where())
