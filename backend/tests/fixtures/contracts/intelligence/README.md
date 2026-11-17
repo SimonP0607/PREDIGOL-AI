@@ -27,5 +27,11 @@ Las reglas: `backend/docs/owner/IA_057_CONTRATO_INTELLIGENCE.md`. Las pruebas: `
 | C-10 (búsqueda v2) | `encontrado` | «atletico» encuentra por prefijo dos equipos (uno por su alias), un jugador y un estadio por palabras, y el partido de sus equipos; Noticias dice `no_entregado` (`AD-G01`). La privada añade `score`, `popularity`, `rank` y `index` |
 | C-10 | `sin_resultados` | Ningún grupo con resultados: cada uno `sin_resultados` y «¿Quisiste decir…?» (`did_you_mean`) con un nombre cercano |
 | C-10 | `sin_indice` | El índice aún no se ha construido: cada grupo `no_entregado` (`AD-I01`) y `freshness.stale` con `indice_sin_construir` |
+| C-09 (perfiles) | `club` | Club con plantilla: entrenador de la última alineación, forma, cifras de temporada con su muestra (xG en 3 de 6 partidos), un sancionado del parte del proveedor (solo estado, base, fuente y fecha), palmarés calculado (liga 2025) y, en la privada, una selección en sombra (`detectado`) |
+| C-09 | `club_sin_plantilla` | Club sin plantilla ni estadísticas y fuera de la cobertura del parte: `squad` `sin_datos`, `availability` `sin_cobertura`, cifras `sin_datos` con `matches_with_data: 0` |
+| C-09 | `seleccion` | Selección: lista del proveedor (`convocados_ultimo_partido`, nivel `proveedor`) con `official_state: ninguna_fuente_oficial_autorizada` y 0 fuentes oficiales permitidas; líderes de partidos y goles |
+| C-09 | `jugador` | Jugador con 630 minutos: tasas por 90 con partidos, minutos e intervalo; los remates cuentan solo los 5 partidos que los registran; foto como monograma; en la privada, lo que añadirá el motor (`not_yet_private`) |
+| C-09 | `jugador_poca_muestra` | Jugador con 180 minutos: `muestra_insuficiente` (450 mínimos) y `sin_datos` donde la planilla no registra la acción; `sancionado` por el parte del proveedor |
+| C-09 | `competicion` | Liga: temporada, tabla, próximos partidos, goleadores y cobertura de estadísticas |
 
 Al añadir un contrato: su carpeta con al menos un caso, una fila aquí y su línea en la coordinación entre sesiones.

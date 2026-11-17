@@ -1,0 +1,253 @@
+{
+  "contract": "C-09",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "kind": "player",
+  "player": {
+    "header": {
+      "id": 16,
+      "name": "B. Ejemplo",
+      "age": 19,
+      "nationality": "País Ejemplo",
+      "position": "defender",
+      "club": {
+        "id": 29,
+        "name": "Club Ejemplo Norte"
+      },
+      "national_team": {
+        "missing_reason": "sin_datos"
+      },
+      "shirt_number": 4,
+      "photo": {
+        "kind": "monograma"
+      }
+    },
+    "availability": {
+      "status": "sancionado",
+      "basis": "proveedor",
+      "source": "API-Football (parte de bajas)",
+      "known_at": "2026-11-21T12:42:00Z",
+      "fixture_id": 60
+    },
+    "next_match": {
+      "fixture_id": 60,
+      "kickoff_at": "2026-11-22T16:42:00Z",
+      "competition": {
+        "id": 16,
+        "name": "Liga Ejemplo"
+      },
+      "opponent": {
+        "id": 30,
+        "name": "Club Ejemplo Este"
+      },
+      "home": true
+    },
+    "form_last10": {
+      "items": [
+        {
+          "fixture_id": 59,
+          "kickoff_at": "2026-11-14T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "team": {
+            "id": 29,
+            "name": "Club Ejemplo Norte"
+          },
+          "opponent": {
+            "id": 30,
+            "name": "Club Ejemplo Este"
+          },
+          "minutes": 90,
+          "started": true,
+          "goals": 0,
+          "assists": {
+            "missing_reason": "sin_datos"
+          },
+          "shots": 0,
+          "shots_on_target": {
+            "missing_reason": "sin_datos"
+          },
+          "yellow_cards": {
+            "missing_reason": "sin_datos"
+          },
+          "red_cards": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "fixture_id": 58,
+          "kickoff_at": "2026-11-07T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "team": {
+            "id": 29,
+            "name": "Club Ejemplo Norte"
+          },
+          "opponent": {
+            "id": 30,
+            "name": "Club Ejemplo Este"
+          },
+          "minutes": 90,
+          "started": true,
+          "goals": 0,
+          "assists": {
+            "missing_reason": "sin_datos"
+          },
+          "shots": 0,
+          "shots_on_target": {
+            "missing_reason": "sin_datos"
+          },
+          "yellow_cards": {
+            "missing_reason": "sin_datos"
+          },
+          "red_cards": {
+            "missing_reason": "sin_datos"
+          }
+        }
+      ]
+    },
+    "season": {
+      "items": [
+        {
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "season": 2026,
+          "team": {
+            "id": 29,
+            "name": "Club Ejemplo Norte"
+          },
+          "matches": 2,
+          "starts": 2,
+          "minutes": 180,
+          "goals": 0,
+          "assists": {
+            "missing_reason": "sin_datos"
+          }
+        }
+      ]
+    },
+    "per90": {
+      "min_minutes": 450,
+      "window_days": 365,
+      "items": [
+        {
+          "metric": "goals",
+          "value": {
+            "missing_reason": "muestra_insuficiente",
+            "sample": 180,
+            "min_sample": 450
+          },
+          "interval": {
+            "missing_reason": "muestra_insuficiente",
+            "sample": 180,
+            "min_sample": 450
+          },
+          "count": 0,
+          "matches": 2,
+          "minutes_sample": 180,
+          "sample_ok": false
+        },
+        {
+          "metric": "assists",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "interval": {
+            "missing_reason": "sin_datos"
+          },
+          "count": 0,
+          "matches": 0,
+          "minutes_sample": 0,
+          "sample_ok": false
+        },
+        {
+          "metric": "shots",
+          "value": {
+            "missing_reason": "muestra_insuficiente",
+            "sample": 180,
+            "min_sample": 450
+          },
+          "interval": {
+            "missing_reason": "muestra_insuficiente",
+            "sample": 180,
+            "min_sample": 450
+          },
+          "count": 0,
+          "matches": 2,
+          "minutes_sample": 180,
+          "sample_ok": false
+        },
+        {
+          "metric": "shots_on_target",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "interval": {
+            "missing_reason": "sin_datos"
+          },
+          "count": 0,
+          "matches": 0,
+          "minutes_sample": 0,
+          "sample_ok": false
+        },
+        {
+          "metric": "fouls_committed",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "interval": {
+            "missing_reason": "sin_datos"
+          },
+          "count": 0,
+          "matches": 0,
+          "minutes_sample": 0,
+          "sample_ok": false
+        },
+        {
+          "metric": "yellow_cards",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "interval": {
+            "missing_reason": "sin_datos"
+          },
+          "count": 0,
+          "matches": 0,
+          "minutes_sample": 0,
+          "sample_ok": false
+        }
+      ]
+    },
+    "career": {
+      "items": [],
+      "missing_reason": "sin_datos"
+    },
+    "caps": {
+      "missing_reason": "sin_datos"
+    },
+    "trophies": {
+      "items": [],
+      "missing_reason": "sin_datos"
+    }
+  },
+  "not_yet": [
+    {
+      "block": "news",
+      "missing": {
+        "missing_reason": "no_entregado",
+        "expected_piece": "AD-G07"
+      }
+    }
+  ]
+}

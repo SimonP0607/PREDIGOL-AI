@@ -132,7 +132,7 @@ REPLAY_SRC = (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")
 
 WORDS = {"un": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10,
          "once": 11, "doce": 12, "trece": 13, "catorce": 14, "quince": 15, "dieciséis": 16, "diecisiete": 17, "dieciocho": 18,
-         "diecinueve": 19, "veinte": 20, "veintiún": 21, "veintiuno": 21}
+         "diecinueve": 19, "veinte": 20, "veintiún": 21, "veintiuno": 21, "veintidós": 22, "veintitrés": 23}
 """The numbers the guide writes in words."""
 
 
@@ -1188,15 +1188,15 @@ def test_who_reads_the_evidence_table_is_what_the_guide_counts_and_the_structura
                       flags=re.S)
     assert words
     counted = tuple(WORDS[w.lower()] for w in words.groups())
-    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (21, 6, 15, 7), "IA-030: the labelled bank reads both kinds on purpose; IA-061: the moments of the facts, by id; IA-071: the player key"
-    assert set(all_ticked(readers.split("Los otros")[0].split("Seis la leen a propósito")[1])) == own
+    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (23, 8, 15, 7), "IA-030: the labelled bank reads both kinds on purpose; IA-061: the moments of the facts, by id; IA-071: the player key; IA-087: the unified road and its readers compare v1 and v2 on purpose"
+    assert set(all_ticked(readers.split("Los otros")[0].split("Ocho la leen a propósito")[1])) == own
     assert others == {"ai/packet.py", "picks/daily.py", "intel/decision.py", "intel/match_review.py", "intel/report.py", "ai/learning.py",
                       "intel/leakage.py", "api/services/ai_layer.py", "api/services/ai_v2.py", "api/services/intelligence.py",
                       "api/services/news.py", "narrative/job.py", "observability/trace.py", "chronicle/review.py", "ai/known_at.py"}
     # the IA's ten, the readers' news and narrative of the UX plan (A10, A11) and the end-to-end trace of P0 (read-only, for observability)
     assert "y otros doce (sección 5)" in section(1) and len(others) - 3 == 12
     assert "`observability/trace.py`" in readers and "nunca en el camino de una decisión" in readers
-    assert "veintiún módulos, quince de ellos ajenos a v2" in section(11) and "el paquete, los picks del día, la decisión, la revisión del partido" in section(11)
+    assert "veintitrés módulos, quince de ellos ajenos a v2" in section(11) and "el paquete, los picks del día, la decisión, la revisión del partido" in section(11)
     assert "(`subject_type IS NULL OR` lo que diga `gates.typed_visible`: v2 en `on` **y** la fila más nueva del gate en `PASA`)" in readers
     assert "ai_replay.py" in readers
     assert "PacketBuilder(conn, typed_evidence=typed_visible(conn))" in (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")
@@ -2400,7 +2400,9 @@ def test_the_words_of_the_switch_say_who_runs_when_and_what_the_packet_reads() -
     # shadow: v2 runs AFTER the research of v1, in the same pass (the same barrier, the same allotment of searches); v1 decides and v2 only counts
     run = CYCLE_SRC.split("levels = research.levels_for(asks, candidates=bool(options))")[1].split("    if asks:")[0]
     assert run.index("collect_web(") < run.index("_research_v2("), "v2 runs after v1"
-    assert run.count("levels=levels") == 2, "one allotment of searches for the two researches"
+    assert run.count("search=search") == 2 and run.count("levels=levels") == 3, \
+        "one allotment of searches for the two researches; the unified road of IA-087 (shadow) reads the pages of the same levels and never searches"
+    assert "search=" not in run.split("_research_unified(")[1].split(")")[0], "the unified road is given no search"
     assert CYCLE_SRC.count("barrier: str | None = None") == 1, "one barrier for the two researches"
     assert shadow[1].startswith("v2 corre después de la investigación de v1, en la misma pasada (misma barrera, misma asignación de búsquedas); ")
     assert shadow[1].endswith("v1 decide y v2 solo cuenta; lo que escribe no lo lee nadie")

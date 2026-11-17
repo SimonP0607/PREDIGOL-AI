@@ -22,9 +22,16 @@ from typing import Any, Final
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.ai import assertions, deep_pages, mentions, quarantine, source_policy, unified_research
+from fbi.ai import (
+    assertions,
+    deep_pages,
+    evidence_tiers,
+    mentions,
+    quarantine,
+    source_policy,
+    unified_research,
+)
 from fbi.ai.entity_research import load_match
-from fbi.evidence import rules
 
 V2_CUT: Final = 700
 
@@ -47,7 +54,7 @@ SELECT e.fixture_id, e.attributes->>'player_name' AS player_name, e.provider_pla
 """
 V2_CLAIMS_SQL: Final = """
 SELECT e.subject_id, e.claim, e.fixture_id, e.team_id FROM ai.evidence e
- WHERE e.subject_type = 'PLAYER' AND e.origin = 'web' AND e.retrieved_at >= %(since)s AND e.retrieved_at < %(until)s
+ WHERE e.subject_type IS NOT NULL AND e.subject_type = 'PLAYER' AND e.origin = 'web' AND e.retrieved_at >= %(since)s AND e.retrieved_at < %(until)s
    AND e.fixture_id IS NOT NULL ORDER BY e.fixture_id LIMIT %(limit)s
 """
 PAGES_OF_SQL: Final = """
@@ -56,11 +63,20 @@ SELECT DISTINCT ON (x->>'url') x->>'url' AS url, COALESCE(x->>'title', '') AS ti
  WHERE rc.scope = 'search' AND x->>'url' = ANY(%(urls)s) ORDER BY x->>'url', rc.fetched_at DESC
 """
 EVIDENCE_SQL: Final = """
+SELECT * FROM (
 SELECT fixture_id, team_id, provider_player_id, attributes->>'player_name' AS player_name, kind, attributes->>'assertion' AS assertion,
        source_domain, claim, retrieved_at
-  FROM ai.evidence WHERE origin = 'web' AND retrieved_at >= %(since)s AND retrieved_at < %(until)s
-   AND kind IN ('injury', 'doubtful', 'suspension', 'lineup') LIMIT %(limit)s
+  FROM ai.evidence WHERE subject_type IS NULL AND origin = 'web' AND retrieved_at >= %(since)s AND retrieved_at < %(until)s
+   AND kind IN ('injury', 'doubtful', 'suspension', 'lineup')
+UNION ALL
+SELECT fixture_id, team_id, provider_player_id, attributes->>'player_name' AS player_name, kind, attributes->>'assertion' AS assertion,
+       source_domain, claim, retrieved_at
+  FROM ai.evidence WHERE subject_type IS NOT NULL AND origin = 'web' AND retrieved_at >= %(since)s AND retrieved_at < %(until)s
+   AND kind IN ('injury', 'doubtful', 'suspension', 'lineup')
+) both_kinds LIMIT %(limit)s
 """
+"""The web evidence the replay reads: v1's items and research v2's claims alike, each kind by its own branch (the typed guard), in one
+statement with one limit - the same rows as one read of the table without a word about ``subject_type``."""
 TYPE_OF: Final = {"injury": "OUT", "doubtful": "DOUBT", "suspension": "SUSPENSION", "lineup": "STARTER"}
 
 
@@ -189,12 +205,12 @@ def replay(conn: psycopg.Connection[Any], *, since: datetime, until: datetime, p
         for r in items:
             src = assertions.source_facts(policy, r["source_domain"])
             tier = src.tier or "D"
-            outlets[src.domain] = min(outlets.get(src.domain, tier), tier, key=lambda t: rules.TIER_RANK[t])
+            outlets[src.domain] = min(outlets.get(src.domain, tier), tier, key=lambda t: evidence_tiers.TIER_RANK[t])
             level, why = assertions.authority_for(src, r["type"], quote=str(r["claim"] or ""))
             made.append(assertions.Assertion("PLAYER", 0, None, r["type"], str(r["source_domain"]), src, level, why, r["retrieved_at"],
                                              attributed_to=assertions.speaker_of(str(r["claim"] or ""), team_id=r["team_id"]),
                                              text_hash=deep_pages.simhash(str(r["claim"] or "")), quote=str(r["claim"] or "")))
-        old, _ = rules.status_of(outlets)
+        old, _ = evidence_tiers.status_of(outlets)
         new, _ = assertions.rung(made)
         moves[f"{old}->{new}"] += 1
         if old == "CONFIRMADO" and assertions.rung([replace(a, authority="informa", source=replace(a.source, tier="C")) for a in made])[0] \

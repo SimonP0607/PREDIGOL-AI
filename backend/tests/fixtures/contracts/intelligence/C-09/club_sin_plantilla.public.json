@@ -1,0 +1,280 @@
+{
+  "contract": "C-09",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "kind": "club",
+  "team": {
+    "header": {
+      "id": 30,
+      "name": "Club Ejemplo Este",
+      "short_name": {
+        "missing_reason": "sin_datos"
+      },
+      "country": "País Ejemplo",
+      "kind": "club",
+      "senior": true,
+      "founded": {
+        "missing_reason": "sin_datos"
+      },
+      "crest": {
+        "allowed": false,
+        "url": {
+          "missing_reason": "sin_datos"
+        },
+        "use": "junto_al_nombre"
+      },
+      "venue": {
+        "missing_reason": "sin_datos"
+      },
+      "coach": {
+        "missing_reason": "sin_datos"
+      }
+    },
+    "next_match": {
+      "fixture_id": 60,
+      "kickoff_at": "2026-11-22T16:42:00Z",
+      "competition": {
+        "id": 16,
+        "name": "Liga Ejemplo"
+      },
+      "opponent": {
+        "id": 29,
+        "name": "Club Ejemplo Norte"
+      },
+      "home": false
+    },
+    "form": {
+      "items": [
+        {
+          "fixture_id": 59,
+          "kickoff_at": "2026-11-14T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "opponent": {
+            "id": 29,
+            "name": "Club Ejemplo Norte"
+          },
+          "home": true,
+          "goals_for": 1,
+          "goals_against": 0,
+          "score": "1-0",
+          "result": "W"
+        },
+        {
+          "fixture_id": 58,
+          "kickoff_at": "2026-11-07T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "opponent": {
+            "id": 29,
+            "name": "Club Ejemplo Norte"
+          },
+          "home": false,
+          "goals_for": 2,
+          "goals_against": 2,
+          "score": "2-2",
+          "result": "D"
+        },
+        {
+          "fixture_id": 57,
+          "kickoff_at": "2026-10-31T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "opponent": {
+            "id": 29,
+            "name": "Club Ejemplo Norte"
+          },
+          "home": true,
+          "goals_for": 3,
+          "goals_against": 2,
+          "score": "3-2",
+          "result": "W"
+        },
+        {
+          "fixture_id": 56,
+          "kickoff_at": "2026-10-24T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "opponent": {
+            "id": 29,
+            "name": "Club Ejemplo Norte"
+          },
+          "home": false,
+          "goals_for": 1,
+          "goals_against": 0,
+          "score": "1-0",
+          "result": "W"
+        },
+        {
+          "fixture_id": 55,
+          "kickoff_at": "2026-10-17T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "opponent": {
+            "id": 29,
+            "name": "Club Ejemplo Norte"
+          },
+          "home": true,
+          "goals_for": 1,
+          "goals_against": 1,
+          "score": "1-1",
+          "result": "D"
+        }
+      ]
+    },
+    "season_stats": {
+      "competition": {
+        "id": 16,
+        "name": "Liga Ejemplo"
+      },
+      "season": 2026,
+      "record": {
+        "matches": 6,
+        "won": 3,
+        "drawn": 2,
+        "lost": 1,
+        "goals_for": 8,
+        "goals_against": 7
+      },
+      "home": {
+        "matches": 3,
+        "won": 2,
+        "drawn": 1,
+        "lost": 0,
+        "goals_for": 5,
+        "goals_against": 3
+      },
+      "away": {
+        "matches": 3,
+        "won": 1,
+        "drawn": 1,
+        "lost": 1,
+        "goals_for": 3,
+        "goals_against": 4
+      },
+      "xg_for": {
+        "per_match": {
+          "missing_reason": "sin_datos"
+        },
+        "matches_with_data": 0
+      },
+      "xg_against": {
+        "per_match": 1.4,
+        "matches_with_data": 3
+      },
+      "shots_for": {
+        "per_match": {
+          "missing_reason": "sin_datos"
+        },
+        "matches_with_data": 0
+      },
+      "shots_on_target_for": {
+        "per_match": {
+          "missing_reason": "sin_datos"
+        },
+        "matches_with_data": 0
+      },
+      "corners_for": {
+        "per_match": {
+          "missing_reason": "sin_datos"
+        },
+        "matches_with_data": 0
+      },
+      "yellow_cards_for": {
+        "per_match": {
+          "missing_reason": "sin_datos"
+        },
+        "matches_with_data": 0
+      }
+    },
+    "availability": {
+      "missing_reason": "sin_cobertura"
+    },
+    "squad": {
+      "missing_reason": "sin_datos"
+    },
+    "upcoming": {
+      "items": [
+        {
+          "fixture_id": 60,
+          "kickoff_at": "2026-11-22T16:42:00Z",
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "opponent": {
+            "id": 29,
+            "name": "Club Ejemplo Norte"
+          },
+          "home": false
+        }
+      ]
+    },
+    "competitions": {
+      "items": [
+        {
+          "competition": {
+            "id": 16,
+            "name": "Liga Ejemplo"
+          },
+          "season": 2026,
+          "record": {
+            "matches": 6,
+            "won": 3,
+            "drawn": 2,
+            "lost": 1,
+            "goals_for": 8,
+            "goals_against": 7
+          },
+          "rank": 1,
+          "points": 30
+        }
+      ]
+    },
+    "honours": {
+      "computed": {
+        "items": [],
+        "missing_reason": "sin_datos"
+      },
+      "since_season": 2025
+    }
+  },
+  "not_yet": [
+    {
+      "block": "stakes",
+      "missing": {
+        "missing_reason": "no_entregado",
+        "expected_piece": "AD-B02"
+      }
+    },
+    {
+      "block": "news",
+      "missing": {
+        "missing_reason": "no_entregado",
+        "expected_piece": "AD-G07"
+      }
+    },
+    {
+      "block": "honours_external",
+      "missing": {
+        "missing_reason": "no_entregado",
+        "expected_piece": "AD-H01"
+      }
+    }
+  ]
+}

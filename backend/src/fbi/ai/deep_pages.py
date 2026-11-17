@@ -12,7 +12,7 @@ the code half of the answer - nothing here calls a model:
   at most ``MAX_WINDOWS`` (4) a page, around the paragraphs that NAME a candidate of the match (``fbi.ai.mentions``, aliases included: the
   prefilter) - most mentions and most words of a type of fact first, then in the order of the page. A paragraph that names nobody is never
   sent: a claim from it could not stand.
-* ``fingerprint`` (``fp-v1`` of ``fbi.news.canonical``, the same the news store deduplicates on) of the clean text: one page is extracted once
+* ``fingerprint`` (``fp-v1`` of ``fbi.core.fingerprint``, the same the news store deduplicates on) of the clean text: one page is extracted once
   per fingerprint, whatever match or address asks (``fbi.ai.unified_research``). ``simhash`` and ``near_duplicate``: two pages that are the
   same wire story with a different first line are one origin for the ladder (``fbi.ai.assertions``).
 
@@ -30,7 +30,7 @@ from typing import Final
 
 from fbi.ai import quarantine
 from fbi.ai.mentions import Catalogue, Mention, mentions_in, words
-from fbi.news import canonical
+from fbi.core import fingerprint as fp_v1
 
 VERSION: Final = "windows-v1"
 PAGE_CHARS: Final = 12_000
@@ -193,7 +193,7 @@ def choose(text: str, catalogue: Catalogue, *, max_windows: int = MAX_WINDOWS) -
 def fingerprint(text: str) -> str | None:
     """The fingerprint of a clean text (``fp-v1``), or None for a text with nothing in it."""
     try:
-        return canonical.fingerprint(text)
+        return fp_v1.fingerprint(text)
     except ValueError:
         return None
 

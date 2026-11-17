@@ -470,7 +470,7 @@ SELECT DISTINCT provider_player_id, attributes->>'player_name' AS player_name, t
 V2_SQL: Final = """
 SELECT DISTINCT subject_id AS provider_player_id, attributes->>'player_name' AS player_name, team_id, attributes->>'assertion' AS assertion, kind
   FROM ai.evidence
- WHERE subject_type = 'PLAYER' AND origin = 'web' AND (fixture_id = %(fixture)s OR (fixture_id IS NULL AND team_id = ANY(%(teams)s)))
+ WHERE subject_type IS NOT NULL AND subject_type = 'PLAYER' AND origin = 'web' AND (fixture_id = %(fixture)s OR (fixture_id IS NULL AND team_id = ANY(%(teams)s)))
    AND retrieved_at <= %(at)s AND retrieved_at > %(since)s
 """
 CALLS_TODAY_SQL: Final = "SELECT count(*) FROM ai.usage WHERE agent = %(agent)s AND input_hash LIKE %(like)s AND at >= %(since)s"

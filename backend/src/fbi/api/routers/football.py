@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.audit import MatchAudit
 from fbi.api.contracts.catalog import CompetitionDetail, CompetitionSummary, TeamDetail, TeamSummary
+from fbi.api.contracts.intelligence.profiles import Profile, ProfilePrivate
 from fbi.api.contracts.intelligence.search import SearchV2, SearchV2Private
 from fbi.api.contracts.matches import MatchDetail, MatchSummary, MatchView
 from fbi.api.contracts.rankings import Rankings
@@ -15,7 +16,7 @@ from fbi.api.contracts.search import SearchHit
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.repositories.fixtures import FixtureFilter
-from fbi.api.services import audit, catalog, matches, search_v2
+from fbi.api.services import audit, catalog, matches, profiles, search_v2
 from fbi.api.services import rankings as rankings_service
 from fbi.api.services import search as search_service
 
@@ -96,6 +97,35 @@ def get_teams(
 @router.get("/teams/{team_id}", response_model=Envelope[TeamDetail])
 def get_team(conn: Db, team_id: Id) -> Envelope[TeamDetail]:
     return catalog.team_detail(conn, team_id)
+
+
+@router.get("/teams/{team_id}/profile", response_model=Envelope[Profile])
+def get_team_profile(conn: Db, team_id: Id) -> Envelope[Profile]:
+    """C-09 (AD-H07, IA-090), public projection: the profile of a club or a national team (``kind`` says which) - header with
+    crest, stadium and current coach, form, season figures each with its sample, availability (state, basis, source and date
+    only), squad, campaign, computed honours and, for a national team, its latest list and leaders. Additive: /teams/{id}
+    keeps its shape. 404 while ``FBI_PROFILES`` is off."""
+    return profiles.public_team(conn, team_id)
+
+
+@router.get("/competitions/{competition_id}/profile", response_model=Envelope[Profile])
+def get_competition_profile(conn: Db, competition_id: Id) -> Envelope[Profile]:
+    """C-09, public projection: a competition - its season, table, next matches, scorers and the coverage of its statistics.
+    404 while ``FBI_PROFILES`` is off."""
+    return profiles.public_competition(conn, competition_id)
+
+
+@admin_router.get("/intelligence/teams/{team_id}/profile", response_model=Envelope[ProfilePrivate])
+def get_team_profile_private(conn: Db, team_id: Id) -> Envelope[ProfilePrivate]:
+    """C-09, private projection (``require_admin``): the public profile plus the section «Intelligence» - the selections in
+    shadow of the team's matches with their state, and its external ids."""
+    return profiles.private_team(conn, team_id)
+
+
+@admin_router.get("/intelligence/competitions/{competition_id}/profile", response_model=Envelope[ProfilePrivate])
+def get_competition_profile_private(conn: Db, competition_id: Id) -> Envelope[ProfilePrivate]:
+    """C-09, private projection of a competition: plus its external ids."""
+    return profiles.private_competition(conn, competition_id)
 
 
 @router.get("/search", response_model=Envelope[list[SearchHit]])

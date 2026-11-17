@@ -78,16 +78,21 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Final, Literal
 
-from fbi.ai.evidence import (
-    AGGREGATORS,
-    FEDERATIONS,
-    JOURNALISTS,
-    LEAGUES,
-    MEDIA,
-    SOCIAL,
-    SOURCES_V2,
-)
-from fbi.analyst.provenance import OFFICIAL_DOMAINS, REPUTABLE_DOMAINS
+# The tables the shadow unified research shares (tiers-v1's domains, validity-v1's windows, ladder-v1, the incompatible assertions) live,
+# unchanged, in ``fbi.ai.evidence_tiers``: ``fbi.ai`` reads them there without importing the engine. Re-exported here under the same names.
+from fbi.ai.evidence_tiers import DOMAIN_TIERS as DOMAIN_TIERS
+from fbi.ai.evidence_tiers import INCOMPATIBLE as INCOMPATIBLE
+from fbi.ai.evidence_tiers import LADDER as LADDER
+from fbi.ai.evidence_tiers import STATUSES as STATUSES
+from fbi.ai.evidence_tiers import TIER_RANK as TIER_RANK
+from fbi.ai.evidence_tiers import TIERS as TIERS
+from fbi.ai.evidence_tiers import VALIDITY as VALIDITY
+from fbi.ai.evidence_tiers import Status as Status
+from fbi.ai.evidence_tiers import Tier as Tier
+from fbi.ai.evidence_tiers import at_least as at_least
+from fbi.ai.evidence_tiers import domain_tier as domain_tier
+from fbi.ai.evidence_tiers import status_of as status_of
+from fbi.ai.evidence_tiers import valid_until as valid_until
 
 TIERS_VERSION: Final = "tiers-v1"
 CREDIBILITY_VERSION: Final = "credibility-v1"
@@ -96,30 +101,12 @@ CONFIDENCE_VERSION: Final = "confidence-v1"
 VALIDITY_VERSION: Final = "validity-v1"
 CONTRA_VERSION: Final = "contra-evidence-v1"
 
-Tier = Literal["A", "B", "C", "D"]
-TIERS: Final[tuple[Tier, ...]] = ("A", "B", "C", "D")
-TIER_RANK: Final[dict[str, int]] = {"A": 0, "B": 1, "C": 2, "D": 3}
-Status = Literal["RUMOR", "REPORTADO", "CONFIRMADO", "OFICIAL"]
-STATUSES: Final[tuple[Status, ...]] = ("RUMOR", "REPORTADO", "CONFIRMADO", "OFICIAL")
-"""The ladder, lowest first."""
 Topic = Literal["injury", "suspension", "lineup", "coach_change", "press_conference", "other"]
 TOPICS: Final[tuple[Topic, ...]] = ("injury", "suspension", "lineup", "coach_change", "press_conference", "other")
 AVAILABILITY_TOPICS: Final = frozenset({"injury", "suspension", "lineup"})
 
 # ── tiers ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-def _v2(*tiers: str) -> frozenset[str]:
-    return frozenset(d for d, t in SOURCES_V2.items() if t in tiers)
-
-
-_A: Final = FEDERATIONS | LEAGUES | OFFICIAL_DOMAINS | _v2("official", "competition", "club")
-_B: Final = (REPUTABLE_DOMAINS | JOURNALISTS) - _A
-_D: Final = (AGGREGATORS | SOCIAL | _v2("aggregator")) - _A - _B
-_C: Final = (MEDIA | _v2("media")) - _A - _B - _D
-DOMAIN_TIERS: Final[dict[str, Tier]] = {**dict.fromkeys(_D, "D"), **dict.fromkeys(_C, "C"), **dict.fromkeys(_B, "B"), **dict.fromkeys(_A, "A")}
-"""``tiers-v1``: the domain lists, from the registries the code base already keeps (``fbi.ai.evidence``'s federations, leagues, media,
-aggregators, social networks and sources-v2; ``fbi.analyst.provenance``'s official and reputable domains). A domain in two lists takes the
-better tier. The lists are pinned by ``DOMAINS_DIGEST``: a change to any of them fails a test until the version is bumped."""
 DOMAINS_DIGEST: Final = "7ed11932d969"
 """The first 12 hex of the SHA-256 of ``DOMAIN_TIERS`` in canonical form (``domains_digest``). Pinned so that the lists are versioned."""
 
@@ -130,19 +117,6 @@ REGISTRY_TIERS: Final[dict[str, Tier]] = {"official": "A", "competition": "A", "
 
 def domains_digest() -> str:
     return hashlib.sha256(json.dumps(sorted(DOMAIN_TIERS.items()), separators=(",", ":")).encode()).hexdigest()[:12]
-
-
-def _suffixes(domain: str) -> list[str]:
-    parts = domain.split(".")
-    return [".".join(parts[i:]) for i in range(len(parts) - 1)]
-
-
-def domain_tier(domain: str | None) -> Tier | None:
-    """The tier of the most specific listed suffix of a domain, or None when no list has it."""
-    if not domain:
-        return None
-    host = domain.strip().lower().removeprefix("www.")
-    return next((DOMAIN_TIERS[s] for s in _suffixes(host) if s in DOMAIN_TIERS), None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -259,12 +233,6 @@ def resolve(assertion: str, *, sheet: SquadSheet | None, listing: Listing | None
 
 # ── validity ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-VALIDITY: Final[dict[str, timedelta]] = {
-    "injury": timedelta(days=10), "suspension": timedelta(days=14), "lineup": timedelta(days=2), "coach_change": timedelta(days=90),
-    "press_conference": timedelta(days=3), "other": timedelta(days=7)}
-"""``validity-v1``: how long an item of each topic stands from its own date. ``injury`` is the packet's ``STALE_AFTER`` (one number, not
-two); a suspension outlives a knock; a line-up is about one match; a change of coach lasts; what was said in a press conference is about the
-next match; anything else a week."""
 HALF_LIFE_SHARE: Final = 0.5
 """The freshness of an item halves every half of its topic's window: 1 when new, 0.25 at the edge, 0 past it."""
 LOOKBACK: Final = max(VALIDITY.values())
@@ -286,10 +254,6 @@ def topic_of(kind: str, text: str = "") -> Topic:
     return "press_conference" if PRESS_CONFERENCE.search(text or "") else "other"
 
 
-def valid_until(topic: str, when: datetime) -> datetime:
-    return when + VALIDITY[topic]
-
-
 def expired(topic: str, when: datetime, at: datetime) -> bool:
     return at > valid_until(topic, when)
 
@@ -303,30 +267,10 @@ def freshness(topic: str, when: datetime, at: datetime) -> float:
 
 # ── the ladder and the confidence ───────────────────────────────────────────────────────────────────────────────────
 
-LADDER: Final[tuple[tuple[Status, tuple[tuple[Tier, int], ...]], ...]] = (
-    ("OFICIAL", (("A", 1),)),
-    ("CONFIRMADO", (("B", 1), ("C", 2))),
-    ("CONFIRMADO", (("C", 3),)),
-    ("REPORTADO", (("C", 1),)),
-)
-"""``ladder-v1``: ``(T, n)`` = at least n independent live outlets of tier T or better. The first rule that holds wins; none -> RUMOR."""
 STATUS_CAP: Final[dict[str, float]] = {"RUMOR": 0.35, "REPORTADO": 0.70, "CONFIRMADO": 0.90, "OFICIAL": 1.0}
 """The most a claim of each status can be believed (``confidence-v1``): a rumour stays below 0.35 whatever its sources' record."""
 D_COUNTED: Final = 1
 """How many D-tier outlets count in the support: one, the best (aggregators copy each other)."""
-
-
-def at_least(tiers: Iterable[str], tier: str) -> int:
-    return sum(1 for t in tiers if TIER_RANK[t] <= TIER_RANK[tier])
-
-
-def status_of(outlet_tiers: Mapping[str, str]) -> tuple[Status, str]:
-    """The status a set of independent outlets (outlet -> its tier) supports, and the rule that gave it."""
-    tiers = list(outlet_tiers.values())
-    for status, needs in LADDER:
-        if all(at_least(tiers, t) >= n for t, n in needs):
-            return status, " and ".join(f">= {n} independent {t}-or-better" for t, n in needs)
-    return "RUMOR", "only D sources" if tiers else "no live source"
 
 
 def support(outlets: Mapping[str, tuple[str, float]]) -> float:
@@ -343,8 +287,6 @@ def confidence(status: str, outlets: Mapping[str, tuple[str, float]], fresh: flo
 
 # ── contradictions ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-INCOMPATIBLE: Final = frozenset({frozenset({"out", "available"}), frozenset({"out", "starts"})})
-"""The assertions about one person's availability that cannot both be true. A doubt is compatible with anything: it is a doubt."""
 ContraRule = Literal["CC1", "CP1", "CP2", "CP3"]
 CONTRA_RULES: Final[dict[str, str]] = {
     "CC1": "claim vs claim: the same person, an availability topic, incompatible assertions, both live",

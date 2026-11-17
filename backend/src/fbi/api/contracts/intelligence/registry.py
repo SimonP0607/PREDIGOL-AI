@@ -15,6 +15,7 @@ from typing import Final
 from fbi.api.contracts.intelligence.base import IntelligenceContract
 from fbi.api.contracts.intelligence.console import ConsoleContract
 from fbi.api.contracts.intelligence.match import MatchIntelligence, MatchIntelligencePrivate
+from fbi.api.contracts.intelligence.profiles import Profile, ProfilePrivate
 from fbi.api.contracts.intelligence.projection import (
     ProjectionError,
     has_private,
@@ -23,6 +24,14 @@ from fbi.api.contracts.intelligence.projection import (
 )
 from fbi.api.contracts.intelligence.reference import ConventionsSample, ConventionsSamplePrivate
 from fbi.api.contracts.intelligence.search import SearchV2, SearchV2Private
+
+PROFILE_PUBLIC_ROUTES: Final = ("/api/v1/teams/{team_id}/profile", "/api/v1/players/{player_id}/profile",
+                                 "/api/v1/competitions/{competition_id}/profile")
+"""C-09 (AD-H07, IA-090): additive routes beside /teams/{id}, /players/{id} and /competitions/{id}, which keep their shape. A
+national team is a team: one resource, ``kind`` says which."""
+PROFILE_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/teams/{team_id}/profile",
+                                 "/api/v1/admin/intelligence/players/{player_id}/profile",
+                                 "/api/v1/admin/intelligence/competitions/{competition_id}/profile")
 
 
 @dataclass(frozen=True)
@@ -48,8 +57,7 @@ CATALOGUE: Final[dict[str, Planned]] = {
     "C-07": Planned("Fuentes del análisis", "AD-G08", ("/api/v1/matches/{fixture_id}/sources",), ()),
     "C-08": Planned("Evaluación posterior", "AD-J07", (),
                     ("/api/v1/admin/intelligence/evaluations/{fixture_id}",)),
-    "C-09": Planned("Perfiles", "AD-H07", ("/api/v1/teams/{team_id}", "/api/v1/players/{player_id}",
-                                           "/api/v1/competitions/{competition_id}"), ()),
+    "C-09": Planned("Perfiles", "AD-H07", PROFILE_PUBLIC_ROUTES, PROFILE_PRIVATE_ROUTES),
     "C-10": Planned("Búsqueda v2", "AD-I02", ("/api/v1/search/v2",), ("/api/v1/admin/search/v2",)),
     "C-11": Planned("Consola", "AD-J08", (), ("/api/v1/admin/intelligence/console",)),
     "C-12": Planned("Inicio", "AD-J09", ("/api/v1/home",), ()),
@@ -88,6 +96,8 @@ CONTRACTS: Final[tuple[ContractSpec, ...]] = (
     ContractSpec(private=ConsoleContract, public=None, private_routes=("/api/v1/admin/intelligence/console",)),
     ContractSpec(private=SearchV2Private, public=SearchV2, public_routes=("/api/v1/search/v2",),
                  private_routes=("/api/v1/admin/search/v2",)),
+    ContractSpec(private=ProfilePrivate, public=Profile, public_routes=PROFILE_PUBLIC_ROUTES,
+                 private_routes=PROFILE_PRIVATE_ROUTES),
 )
 """Every Intelligence contract. A new one is added here in the PR that merges its models."""
 

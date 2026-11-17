@@ -1,6 +1,6 @@
 """Typed assertions with authority per type of claim, a ladder of confirmation by ORIGIN and four dates (IA-089, plan piece AD-C07).
 
-WHY. ``ladder-v1`` (``fbi.evidence.rules``) counts OUTLETS: three pages of one wire story reprinted by three papers of one group are three
+WHY. ``ladder-v1`` (``fbi.ai.evidence_tiers``) counts OUTLETS: three pages of one wire story reprinted by three papers of one group are three
 outlets and lift a rumour to CONFIRMADO. And the standing of a source is one tier for everything it says: a club's site is A for its line-up
 and also for a transfer rumour about another club. Measured on 16 Nov 2026 (production, 30 days, n = 8.075 web evidences): 61,4 % come from
 domains nobody classified and 68,1 % stay as rumours. This module is the rule written as code; it reads nothing and writes nothing.
@@ -21,7 +21,7 @@ domains nobody classified and 68,1 % stay as rumours. This module is the rule wr
   assertion never lowers a rung (a property test holds it), and three copies of one wire are one origin.
 * **Four dates.** ``published_at`` (with where it came from: the page's own date, or none - never today's), ``seen_at`` (the first time the
   server saw the page; never rewritten), ``fact_at`` (the match it is about, or the date of the page) and ``valid_until`` (the window of its
-  topic, ``fbi.evidence.rules.valid_until``). ``as_of`` drops what was seen after the moment of a decision: a fact seen later does not exist
+  topic, ``fbi.ai.evidence_tiers.valid_until``). ``as_of`` drops what was seen after the moment of a decision: a fact seen later does not exist
   for it.
 * **Contradictions** (``contradictions``): incompatible claims about who plays (``CC1``, as ``contra-evidence-v1``), two incompatible
   statements of the SAME speaker (``CS1``), an official time (``CO1``) or ground (``CO2``) that differs from the provider's. They raise an
@@ -40,9 +40,8 @@ from datetime import datetime, timedelta
 from itertools import combinations
 from typing import Final, Literal
 
-from fbi.ai import deep_pages
+from fbi.ai import deep_pages, evidence_tiers
 from fbi.ai.source_policy import CLAIM_TYPE_OF, SourcePolicy, host_of, suffixes
-from fbi.evidence import rules
 from fbi.people.identity.names import alias_key, names_compatible
 
 VERSION: Final = "assertions-v1"
@@ -87,7 +86,7 @@ class SourceFacts:
     network: str = ""
     clubs: tuple[str, ...] = ()
     tier: str | None = None
-    """``tiers-v1``'s tier of the domain (``fbi.evidence.rules.domain_tier``): D never lifts."""
+    """``tiers-v1``'s tier of the domain (``fbi.ai.evidence_tiers.domain_tier``): D never lifts."""
 
 
 def _group_key(raw: object) -> str:
@@ -102,7 +101,7 @@ def _group_key(raw: object) -> str:
 def source_facts(policy: SourcePolicy | None, url_or_domain: str | None) -> SourceFacts:
     """The directory's record of the most specific registered domain of a page (the same suffix rule as ``fbi.ai.source_policy``)."""
     host = host_of(url_or_domain) or ""
-    tier = rules.domain_tier(host) if host else None
+    tier = evidence_tiers.domain_tier(host) if host else None
     if policy is None or not host:
         return SourceFacts(host, tier=tier)
     for candidate in suffixes(host):
@@ -203,7 +202,7 @@ def four_dates(*, published_at: datetime | None, seen_at: datetime, kickoff_at: 
     origin = "page" if published is not None else "none"
     base = published or seen_at
     fact = kickoff_at if applies_to == "THIS_MATCH" and kickoff_at is not None else base
-    until = rules.valid_until(TOPIC_OF.get(claim_type, "other"), base)
+    until = evidence_tiers.valid_until(TOPIC_OF.get(claim_type, "other"), base)
     return published, origin, seen_at, fact, until
 
 
@@ -277,7 +276,7 @@ def as_of(items: Iterable[Assertion], known_at: datetime) -> list[Assertion]:
 
 # ── contradictions: alerts, never corrections ─────────────────────────────────────────────────────────────────────
 
-INCOMPATIBLE: Final = rules.INCOMPATIBLE
+INCOMPATIBLE: Final = evidence_tiers.INCOMPATIBLE
 _TIME: Final = re.compile(r"\b([01]?\d|2[0-3])[:.h]([0-5]\d)\b")
 
 
