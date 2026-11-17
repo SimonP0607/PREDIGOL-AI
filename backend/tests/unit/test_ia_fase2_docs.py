@@ -1889,8 +1889,8 @@ def test_the_typed_claims_are_decided_by_person_beside_what_the_match_says_over_
     )
     conn = Script()
     evidence.refresh_typed_statuses(
-        conn, FIXTURE, [11, 12], at=NOW, kickoff=KICKOFF, lineup_starters={}
-    )  # type: ignore[arg-type]
+        conn, FIXTURE, [11, 12], at=NOW, kickoff=KICKOFF, lineup_starters={}  # type: ignore[arg-type, unused-ignore]
+    )
     sql, args = conn.asked[0]
     assert sql == evidence.TYPED_SQL and args == {
         "fixture": FIXTURE,
@@ -1974,8 +1974,8 @@ def test_what_the_provider_and_v1_say_of_the_match_is_read_beside_the_typed_clai
     )
     conn = Script({evidence.TYPED_SQL: [web], evidence.CONTEXT_SQL: [provider]})
     counts = evidence.refresh_typed_statuses(
-        conn, FIXTURE, [11, 12], at=NOW, kickoff=KICKOFF, lineup_starters={}
-    )  # type: ignore[arg-type]
+        conn, FIXTURE, [11, 12], at=NOW, kickoff=KICKOFF, lineup_starters={}  # type: ignore[arg-type, unused-ignore]
+    )
     written = [
         params[3] for sql, params in conn.asked if sql.lstrip().startswith("UPDATE ai.evidence")
     ]
@@ -4342,9 +4342,9 @@ def test_once_on_the_window_of_the_gate_cannot_be_completed_and_only_a_failing_r
         and "with research v2 instead of v1" in window.anchored_by
     )
     beside = Script({gate_research.DAYS_SQL: [(d, 5, 5, 0) for d in days]})
-    assert gate_research.window_of(beside, at=at, through=through).complete, (
+    assert gate_research.window_of(beside, at=at, through=through).complete, (  # type: ignore[arg-type, unused-ignore]
         "the same days in shadow do complete it"
-    )  # type: ignore[arg-type]
+    )
 
     class State:
         passed = True
