@@ -336,12 +336,59 @@ def _append(conn: psycopg.Connection[Any], key: Key, chain: list[Row], stored: M
         from_state = r.step.state
 
 
+SETTLEMENTS_SQL: Final = """
+SELECT id, chain_key, kind, known_at, result
+  FROM intel.selection_settlements
+ WHERE chain_key = ANY(%(keys)s)
+ ORDER BY chain_key, known_at, id
+"""
+"""The tracking's settlements of a writer's chains (IA-109, AD-E05; revision 0157): read only, so that the derivation of a layer that keeps
+its own decisions settles its chains as the tracking does and never finds them ``divergent``."""
+
+
+def attach_settlements(conn: psycopg.Connection[Any], found: Mapping[Key, History], *, writer: str) -> int:
+    """Give every history of ``found`` the tracking's settlements of its chain under ``writer`` (``History.settlements``). Read-only;
+    nothing happens before revision 0157. Returns how many histories got any."""
+    row = conn.execute("SELECT to_regclass('intel.selection_settlements') IS NOT NULL").fetchone()
+    if not (row and row[0]) or not found:
+        return 0
+    by_key = {chain_key(writer, k): h for k, h in found.items()}
+    got: dict[str, list[derive.Settled]] = {}
+    for r in _fetch(conn, SETTLEMENTS_SQL, {"keys": sorted(by_key)}):
+        got.setdefault(str(r["chain_key"]), []).append(derive.Settled(int(r["id"]), str(r["kind"]), r["known_at"], str(r["result"])))
+    for key, rows in got.items():
+        by_key[key].settlements = rows
+    return len(got)
+
+
+def append(conn: psycopg.Connection[Any], *, writer: str, key: Key, rows: Sequence[Row], previous_id: int, from_state: str,
+           dry_run: bool = False) -> int:
+    """Append ``rows`` to the stored chain of ``key`` under ``writer`` whose newest row is ``previous_id`` in ``from_state``: the API of the
+    tracking of loose selections (IA-109), which takes a chain past kick-off (``derive.after_kickoff``). Every row is checked by the machine
+    first; the database refuses a second successor of the same row (two passes at once: the second fails and is rolled back by its
+    caller). Returns the rows written (none while ``dry_run``)."""
+    if writer == WRITER:
+        raise ValueError(f"{WRITER} settles its chains off intel.decision_outcomes: the tracking does not write them")
+    state: str | None = from_state
+    for r in rows:
+        machine.check(state, r.step)
+        state = r.step.state
+    if dry_run:
+        return 0
+    prev, frm = previous_id, from_state
+    for r in rows:
+        prev = _insert(conn, writer=writer, key=key, row=r, previous_id=prev, from_state=frm)
+        frm = r.step.state
+    return len(rows)
+
+
 def extend(conn: psycopg.Connection[Any], found: Mapping[Key, History], fixtures: Mapping[int, Fixture], *, now: datetime,
            writer: str, source: str, dry_run: bool = False) -> PassReport:
     """The cycle's API for a layer that keeps its own decisions (decision-v2's shadow, IA-093, AD-D01): given what that layer holds about
     its selections (``found``, read by the layer from its own table, ``source``) and their matches, append to the chains of ``writer``
     what is missing - the same derivation, the same machine, the same check of a stored prefix as ``run_pass`` (a chain that disagrees
-    with what is stored is ``divergent`` and left as it is). The caller commits; nothing is written while ``dry_run`` or without the
+    with what is stored is ``divergent`` and left as it is). The tracking's settlements of the writer's chains (IA-109) are read first
+    (``attach_settlements``), so a chain it has taken past kick-off is derived the same way here. The caller commits; nothing is written while ``dry_run`` or without the
     table (revision 0142), and the report says so."""
     rep = PassReport()
     if not _table_exists(conn):
@@ -350,6 +397,7 @@ def extend(conn: psycopg.Connection[Any], found: Mapping[Key, History], fixtures
     if writer == WRITER:
         raise ValueError(f"{WRITER} is the writer of the chains read off intel.decisions: a layer of its own writes under another name")
     ids = sorted({k.fixture_id for k in found} & set(fixtures))
+    attach_settlements(conn, {k: h for k, h in found.items() if k.fixture_id in fixtures}, writer=writer)
     stored = _stored(conn, ids, writer) if ids else {}
     _extend(conn, {k: h for k, h in found.items() if k.fixture_id in fixtures}, fixtures, stored, now=now, dry_run=dry_run,
             writer=writer, source=source, rep=rep)

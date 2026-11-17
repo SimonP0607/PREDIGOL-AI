@@ -22,6 +22,14 @@ becomes a step of the cycle, in the order it was known:
     intel.decision_outcomes                         the settlement of the decision that stood   -> liquidada  resultado
     intel.postmortems / intel.family_postmortems    its post-mortem                             -> evaluada  evaluacion_posterior
 
+A layer with no settlement of its own (decision-v2's shadow, IA-093) is settled by the tracking of loose selections (IA-109, AD-E05,
+``fbi.tracking.selections``) on ``settle-v4``, in ``intel.selection_settlements``: when a history carries those rows (``History.settlements``)
+they, and only they, take the chain after kick-off (``after_kickoff``):
+
+    intel.selection_settlements  the first settlement of the selection (``primera``)            -> liquidada  resultado
+                                 its firm evaluation, after the window of corrections (``firme``) -> evaluada  evaluacion_posterior
+                                 a correction of the result (``correccion``): a row of its own, the chain is not rewritten
+
 The decisions are read up to ten minutes before kick-off (``LAST_WORD``): inside that window decision-v1 rejects everything because
 the match is about to start, which says nothing about the selection.
 
@@ -138,6 +146,40 @@ class Evaluation:
     source_id: int
 
 
+@dataclass(frozen=True, slots=True)
+class Settled:
+    """One row of ``intel.selection_settlements`` (IA-109, AD-E05): the first settlement of a selection on ``settle-v4``, a correction
+    of it, or its firm evaluation once no correction is expected."""
+
+    id: int
+    kind: str
+    """``primera``, ``correccion`` or ``firme`` (``fbi.tracking.selections.KINDS``)."""
+    known_at: datetime
+    result: str
+
+
+SETTLEMENTS: Final = "intel.selection_settlements"
+"""Where the settlements of the tracking of loose selections are read from (``source`` of their rows of the cycle)."""
+
+
+def after_kickoff(state: str | None, settlements: Sequence[Settled], *, now: datetime) -> list[tuple[Step, datetime, str, int]]:
+    """The moves the tracking's settlements give a chain whose newest state is ``state``: ``en_juego`` -> ``liquidada`` on the first
+    settlement, ``liquidada`` -> ``evaluada`` on the firm evaluation; each with (step, moment, source, row). A correction moves nothing
+    (the settlement is a new row with its trail; the cycle has no move from ``liquidada`` to itself). Pure; nothing known after
+    ``now`` is used."""
+    seen = sorted((s for s in settlements if s.known_at <= now), key=lambda s: (s.known_at, s.id))
+    out: list[tuple[Step, datetime, str, int]] = []
+    first = next((s for s in seen if s.kind == "primera"), None)
+    if state == "en_juego" and first is not None:
+        out.append((Step("liquidada", "resultado", settlement_result=first.result), first.known_at, SETTLEMENTS, first.id))
+        state = "liquidada"
+    if state == "liquidada":
+        firm = next((s for s in seen if s.kind == "firme"), None)
+        if firm is not None:
+            out.append((Step("evaluada", "evaluacion_posterior"), firm.known_at, SETTLEMENTS, firm.id))
+    return out
+
+
 @dataclass(slots=True)
 class History:
     """Everything the layers hold about one selection."""
@@ -149,6 +191,8 @@ class History:
     reviews: list[Review] = field(default_factory=list)
     outcomes: dict[int, Outcome] = field(default_factory=dict)
     evaluations: dict[int, Evaluation] = field(default_factory=dict)
+    settlements: list[Settled] = field(default_factory=list)
+    """The tracking's settlements of the selection (IA-109): when there are any they, not ``outcomes``, settle the chain."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -288,6 +332,10 @@ def derive(h: History, fixture: Fixture, *, now: datetime, source: str = DECISIO
         else:
             chain.emit(Step("descartada", closing_reason(str(current), str(chain.reason))), fixture.kickoff_at, "core.fixtures",
                        fixture.id)
+    if h.settlements:
+        for step, at, src, sid in after_kickoff(chain.state, h.settlements, now=now):
+            chain.emit(step, at, src, sid)
+        return chain.rows
     if chain.state == "en_juego" and standing is not None:
         out = _newest(h.outcomes, h.decisions, standing.id)
         if out is not None and out.result_status in machine.SETTLED_RESULTS and out.settled_at <= now:
@@ -323,4 +371,5 @@ def as_of(h: History, now: datetime) -> History:
     return History(h.key, h.detected_at if picked else None, h.detected_pick if picked else None,
                    [d for d in h.decisions if d.known_at <= now], [r for r in h.reviews if r.reviewed_at <= now],
                    {i: o for i, o in h.outcomes.items() if o.settled_at <= now},
-                   {i: e for i, e in h.evaluations.items() if e.created_at <= now})
+                   {i: e for i, e in h.evaluations.items() if e.created_at <= now},
+                   [s for s in h.settlements if s.known_at <= now])

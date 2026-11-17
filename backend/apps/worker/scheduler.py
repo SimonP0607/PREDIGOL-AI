@@ -77,6 +77,10 @@ at worst, and a duplicated tick costs nothing at all.
     cycle of states of each selection (``fbi.lifecycle``, IA-068), read off the decisions, the shadow picks, the reviews, the settlements
     and the post-mortems of the matches of the last 7 days and the next 48 hours, appended to ``intel.selection_lifecycle``. Database
     only; it writes nothing else and nothing reads it but the owner's views.
+  * ``selection_settle_shadow``  every 15 min, only while ``FBI_SELECTION_SETTLE`` is ``shadow`` (off by default): the chains of
+    decision-v2's kept shadow settled on settle-v4 - En juego -> Liquidada -> Evaluada - in ``intel.selection_settlements`` (IA-109).
+  * ``parlay_v6_shadow``  every 15 min, only while ``FBI_PARLAY_V6`` is ``shadow`` (off by default): ``parlay-v6`` built from the chains
+    confirmed in the shadow, at most 3 legs, none if nothing meets, kept in ``intel.parlays_v6`` (IA-110). ``parlay-v5`` is untouched.
   * ``decision_v2_shadow``  every 5 min (``FBI_DECISION_V2_MINUTES``), only while ``FBI_DECISION_V2`` is ``shadow`` (off by default):
     decision-v2 decides by itself at E1 (T-24 to T-12 h), at E4 (the last moment before kick-off it still judges) and at every moment
     decision-v1 decided (the mirror), and each decision is kept in ``intel.decisions_v2`` with its moment in ``intel.decision_v2_moments``
@@ -1223,6 +1227,47 @@ async def _chronicle_v4() -> None:
     await asyncio.to_thread(_chronicle_v4_now)
 
 
+def _selection_settle_shadow_now() -> None:
+    """The tracking of loose selections (IA-109): one pass. Never raises; writes only ``intel.selection_settlements`` and, through the
+    cycle's API, the chains' moves after kick-off in ``intel.selection_lifecycle``."""
+    from fbi.shadowjobs import selection_settle as ss
+
+    if ss.settle_mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = ss.settle(conn, now=now())
+        log.info("selection_settle_shadow.run", chains=r["chains"], settled=r["settled"], corrected=r["corrected"], firm=r["firm"],
+                 appended=r["appended"], errors=r["errors"][:3])
+    except Exception as exc:
+        log.error("selection_settle_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _selection_settle_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_selection_settle_shadow_now)
+
+
+def _parlay_v6_shadow_now() -> None:
+    """``parlay-v6`` in the shadow (IA-110): one pass. Never raises; writes only ``intel.parlays_v6`` and ``intel.parlay_v6_legs``."""
+    from fbi.shadowjobs import selection_settle as ss
+
+    if ss.parlay_mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = ss.parlays(conn, now=now(), code_version=code_version())
+        log.info("parlay_v6_shadow.run", built=r["built"], looked=r["looked"], days_without=r["days_without"], by_kind=r["by_kind"],
+                 errors=r["errors"][:3])
+    except Exception as exc:
+        log.error("parlay_v6_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _parlay_v6_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_parlay_v6_shadow_now)
+
+
 def _lineup_estimate_shadow_now() -> None:
     """The estimated starters (IA-094): one pass. Never raises; writes only ``intel.lineup_estimates``."""
     from fbi.shadowjobs import lineup_estimate as les
@@ -1806,7 +1851,7 @@ WORKER_JOB_TYPES = frozenset({
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
     "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest", "decision_v2_shadow", "lineup_estimate_shadow",
-    "news_stories", "chronicle_v4", "eval_cycle_shadow", "eval_cycle_e3",
+    "news_stories", "chronicle_v4", "eval_cycle_shadow", "eval_cycle_e3", "selection_settle_shadow", "parlay_v6_shadow",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -2163,6 +2208,21 @@ async def main() -> None:
                           misfire_grace_time=dv2.every_minutes() * 60, next_run_time=moment + timedelta(minutes=3))
     else:
         log.info("worker.decision_v2_shadow_off", hint="FBI_DECISION_V2 is not shadow: decision-v2 keeps no decision (IA-093)")
+    from fbi.shadowjobs import selection_settle as ss
+
+    if ss.settle_mode() == "shadow":
+        scheduler.add_job(_deadline("selection_settle_shadow", "selection_settle_shadow", _selection_settle_shadow), "interval",
+                          minutes=15, id="selection_settle_shadow", max_instances=1, coalesce=True, misfire_grace_time=15 * 60,
+                          next_run_time=moment + timedelta(minutes=8))
+    else:
+        log.info("worker.selection_settle_shadow_off",
+                 hint="FBI_SELECTION_SETTLE is not shadow: the loose selections of the shadow are not settled (IA-109)")
+    if ss.parlay_mode() == "shadow":
+        scheduler.add_job(_deadline("parlay_v6_shadow", "parlay_v6_shadow", _parlay_v6_shadow), "interval",
+                          minutes=15, id="parlay_v6_shadow", max_instances=1, coalesce=True, misfire_grace_time=15 * 60,
+                          next_run_time=moment + timedelta(minutes=9))
+    else:
+        log.info("worker.parlay_v6_shadow_off", hint="FBI_PARLAY_V6 is not shadow: parlay-v6 is not built (IA-110)")
     from fbi.shadowjobs import lineup_estimate as les
 
     if les.mode() == "shadow":

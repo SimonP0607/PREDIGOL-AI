@@ -51,6 +51,9 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "eval_cycle_shadow": timedelta(minutes=20),
     # its E3 (IA-106): one pass a minute over the line-ups that arrived; it must end well within two minutes.
     "eval_cycle_e3": timedelta(minutes=3),
+    # the tracking of loose selections (IA-109) and parlay-v6 (IA-110): database only, a few hundred chains a pass.
+    "selection_settle_shadow": timedelta(minutes=10),
+    "parlay_v6_shadow": timedelta(minutes=10),
     "live_odds_capture": timedelta(minutes=10),
     "live_match_capture": timedelta(minutes=10),
     "prematch_lineups": timedelta(minutes=10),

@@ -37,6 +37,10 @@ COMPARES = re.compile(r"\bdecision_version\s*(?:=|<>|!=|\bIN\b)", re.IGNORECASE)
 BY_ID = "reads one decision (or its outcome) by its id: an id belongs to one layer, and the page or the step that holds it knows which"
 
 READS_BY_ID: dict[tuple[str, str], str] = {
+    ("tracking/parlay_v6_shadow.py", "LEFT JOIN intel.decisions d1 ON t.source = 'intel.decisions' AND d1.id = t.source_id"):
+        "parlay-v6 (IA-110) reads the price of a chain's confirmation by the id the cycle recorded with its source; the chain knows its layer",
+    ("tracking/selections.py", "SELECT id, odds, p_market FROM intel.decisions WHERE id = ANY(%(ids)s)"):
+        "the tracking (IA-109) reads the price a confirmed selection was taken at by the ids its chain recorded; the chain knows its layer",
     ("api/services/intelligence.py", "FROM intel.decisions d JOIN core.fixtures f ON f.id = d.fixture_id"):
         "the detail of one decision, asked for by id from the day's list or (F10.17) from the list of the families; its history below is held to its layer",
     ("api/services/intelligence.py", "SELECT * FROM intel.decision_outcomes WHERE decision_id"): BY_ID,

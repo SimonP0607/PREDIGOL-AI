@@ -13,7 +13,7 @@ defect 5).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import psycopg
 import structlog
@@ -49,6 +49,42 @@ a restart to read it). What was written stays, and the page shows the newest set
 
 def match_forecast_enabled() -> bool:
     return environment().get(FORECAST_SWITCH, "1").strip().lower() not in {"0", "off", "false", "no"}
+
+
+SCAN_SWITCH = "FBI_PICKS_SCAN"
+"""IA-111 (AD-E08): which price instants the candidates are evaluated from.
+
+    off ...... (the default) every instant ever captured, as every pass did before (23,860 instants on 17-nov-2026, 98.5 % of them older
+               than 48 hours: their candidates were all written by earlier passes, so the scan writes nothing for them)
+    shadow ... the same full scan, and the pass COUNTS the candidates it wrote from an instant older than the window below (the note of
+               the run says ``scan ... from old instants N``): the evidence, pass after pass, that the window loses nothing
+    window ... only the instants from ``SCAN_LOOKBACK`` before the start of the last pass that committed (never fewer than
+               ``SCAN_LOOKBACK`` before this one), and the backtest evidence read once per (model version, market, line) per pass
+
+The candidates, the shadow picks, their line value and everything decision-v1 reads of them are the same rows in the three modes: only
+the instants that can no longer produce one are skipped. Anything not understood is ``off``; the worker reads it at start."""
+SCAN_LOOKBACK = timedelta(hours=24)
+"""In 14 days of production (3-17 nov 2026) 0 of 500,119 candidates were written more than 2 hours after their price instant (p99 24 min):
+the window keeps twelve times the longest delay seen."""
+LAST_PASS_SQL = """
+SELECT max(started_at) FROM raw.ingestion_runs
+ WHERE job_name = 'pick_pipeline' AND status IN ('completed', 'partial') AND started_at < %s
+"""
+
+
+def scan_mode() -> str:
+    value = environment().get(SCAN_SWITCH, "off").strip().lower()
+    return value if value in ("shadow", "window") else "off"
+
+
+def scan_since(conn: psycopg.Connection, *, at: datetime) -> datetime:
+    """The oldest instant a windowed scan reads: ``SCAN_LOOKBACK`` before the start of the last pass that committed, or before ``at``
+    when that is earlier (a worker that was down for days reads every instant since its last pass)."""
+    with conn.cursor() as cur:
+        cur.execute(LAST_PASS_SQL, (at,))
+        row = cur.fetchone()
+    last = row[0] if row and row[0] is not None else None
+    return min(at, last if last is not None else at) - SCAN_LOOKBACK
 
 
 @dataclass
@@ -112,7 +148,12 @@ def run_pipeline(conn: psycopg.Connection, *, at: datetime, code_version: str, a
                 temp_run = int(row[0])
         else:
             temp_run = run_id
-        report.picks = evaluate_captures(conn, run_id=temp_run, code_version=code_version)
+        scanning = scan_mode()
+        window = scan_since(conn, at=at) if scanning != "off" else None
+        report.picks = evaluate_captures(conn, run_id=temp_run, code_version=code_version,
+                                         since=window if scanning == "window" else None,
+                                         watch_since=window if scanning == "shadow" else None,
+                                         cache_evidence=scanning == "window")
         report.settlement = settle_open_picks(conn, run_id=temp_run, at=at)
         # What the provider corrected since: the records settled on the old result are settled again, with a trail.
         # In its own savepoint, before the product records (an un-settled parlay is decided again in this same pass):
@@ -167,9 +208,14 @@ def run_pipeline(conn: psycopg.Connection, *, at: datetime, code_version: str, a
         mfr = report.match_forecasts
         assert mfr is not None
         shown = mfr.summary() if forecasting else f"match forecasts OFF ({FORECAST_SWITCH}=0)"
+        scan = ""
+        if scanning == "window":
+            scan = f"; scan window from {p.since.isoformat() if p.since else '-'} ({p.instants} instants)"
+        elif scanning == "shadow":
+            scan = f"; scan shadow: {p.instants} instants, from old instants {p.from_old_instants}"
         ledger.close(run_id, counters, notes=(
             f"forecasts {f.written} written/{f.unchanged} unchanged for {f.targets} fixtures; {shown}; "
-            f"candidates {p.candidates} (selected {p.selected}, qualified {p.qualified}); "
+            f"candidates {p.candidates} (selected {p.selected}, qualified {p.qualified}){scan}; "
             f"settled {s.settled}, pending {s.still_pending} ({s.needs_review} need review){again}; "
             f"daily items +{d.items_added} {d.by_source}; parlays built {pl.built}; product settled "
             f"items {ps.items}, parlays {ps.parlays}, user picks {ps.user_picks}, user parlays {ps.user_parlays}; "
