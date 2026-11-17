@@ -307,5 +307,26 @@ def envelopes(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettin
     }
 
 
-__all__ = ["EXA_PRICE_NOTE", "JOINT_CEILING_NOTE", "Call", "Savings", "alerts_json", "calls_of", "envelopes", "exa_price_json",
-           "joint_ceiling_json", "savings", "savings_json", "share"]
+@dataclass(frozen=True)
+class Month:
+    """The month of the envelopes of decision 12, without the rest of the panel (IA-079: the Intelligence console, C-11)."""
+
+    month: date
+    figures: list[budget_v3.EnvelopeFigure]
+    capabilities: list[dict[str, Any]]
+
+
+def month_of(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings) -> Month:
+    """What each envelope and each capability of the register spent this month, as ``envelopes`` adds it up (the readers' chronicle inside
+    production's envelope), in four light statements and nothing else: no forecast, no batch, no warning logged - the console reads, the
+    panel warns. Reading only."""
+    month_first = month_start(local_day(at))
+    since, until = day_start(month_first), at + timedelta(seconds=1)
+    spent = {scope: sum(budget_v3.costs_by_day(conn, scope, since, until).values(), Decimal(0)) for scope in ("production", "lab", "exa")}
+    readers = sum(envelopes_readers.readers_by_day(conn, since, until).values(), Decimal(0))
+    figures = budget_v3.figures_of(intelligence=spent["production"], readers=readers, lab=spent["lab"], exa=spent["exa"], settings=settings)
+    return Month(month_first, figures, capability_budget.report(envelopes_readers.month_rows(conn, since, until)))
+
+
+__all__ = ["EXA_PRICE_NOTE", "JOINT_CEILING_NOTE", "Call", "Month", "Savings", "alerts_json", "calls_of", "envelopes", "exa_price_json",
+           "joint_ceiling_json", "month_of", "savings", "savings_json", "share"]
