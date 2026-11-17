@@ -1,0 +1,92 @@
+# Liga BBVA MX (provider league 262), season 2026 = Torneo Apertura 2026 and Torneo Clausura 2027.
+# FMF / LIGA MX Reglamento de Competencia, Temporada 2026-2027: no play-in, the first eight go to the quarter-finals.
+schema: competition-rules/1
+league_id: 262
+competition: Liga MX
+country: Mexico
+version: 2
+seasons: [2026]
+points: {win: 3, draw: 1, loss: 0}
+sources:
+  - publisher: Federación Mexicana de Fútbol Asociación / LIGA MX
+    title: Reglamento de Competencia LIGA BBVA MX, Temporada 2026-2027
+    url: https://fmf.mx/docs/reglamentos/507.pdf
+    checked_at: 2026-11-16
+    applies_to: Torneo Apertura 2026 and Torneo Clausura 2027
+    articles: arts. 22-34
+tournaments:
+  - key: apertura
+    name: Torneo Apertura 2026
+    phases:
+      - key: calificacion
+        name: Fase de calificación
+        format: league
+        rounds: ["Apertura - [0-9]*"]
+        teams: 18
+        schedule: single_round_robin
+        matches_per_team: 17
+        ranking: &calificacion
+          tiebreakers:
+            - goal_difference
+            - goals_for
+            - {criterion: away_goals_for, note: "considering the same number of away matchdays played (art. 25, note 1)"}
+            - {criterion: fair_play, note: "fewest points in the Tabla Fair Play: first yellow 1, second yellow 3, direct red 3, yellow and direct red 4"}
+            - {criterion: coefficient_table, note: "better placed in the Tabla de Cociente"}
+            - lots
+        zones:
+          - {kind: next_phase, from: 1, to: 8, target: cuartos de final}
+      - key: liguilla
+        name: Cuartos de final y semifinales
+        format: knockout
+        rounds: ["Apertura - Quarter-finals", "Apertura - Semi-finals"]
+        schedule: ties
+        knockout: {legs: 2, level: [aggregate, better_league_position], seeding: "1v8, 2v7, 3v6, 4v5 by the Tabla General; semi-finals re-seeded (arts. 30-31)"}
+      - key: final
+        name: Final
+        format: knockout
+        rounds: ["Apertura - Final"]
+        schedule: ties
+        knockout: {legs: 2, level: [aggregate, extra_time, penalties], seeding: "art. 32"}
+  - key: clausura
+    name: Torneo Clausura 2027
+    phases:
+      - key: calificacion
+        name: Fase de calificación
+        format: league
+        rounds: ["Clausura - [0-9]*"]
+        teams: 18
+        schedule: single_round_robin
+        matches_per_team: 17
+        ranking: *calificacion
+        zones:
+          - {kind: next_phase, from: 1, to: 8, target: cuartos de final}
+      - key: liguilla
+        name: Cuartos de final y semifinales
+        format: knockout
+        rounds: ["Clausura - Quarter-finals", "Clausura - Semi-finals"]
+        schedule: ties
+        knockout: {legs: 2, level: [aggregate, better_league_position]}
+      - key: final
+        name: Final
+        format: knockout
+        rounds: ["Clausura - Final"]
+        schedule: ties
+        knockout: {legs: 2, level: [aggregate, extra_time, penalties]}
+tables:
+  - key: cociente
+    name: Tabla de Cociente
+    kind: average
+    counts: ["apertura.*", "clausura.*"]
+    seasons: 3
+    metric: points_per_match
+    ranking:
+      tiebreakers:
+        - goal_difference
+        - goals_for
+        - away_goals_for
+        - {criterion: official_decision, note: "'marcadores particulares' (criterion 4) is not defined; then Fair Play and lots"}
+    exceptions:
+      - "A club that finished last of the Tabla de Cociente in an earlier season counts only from the season after."
+    note: "For statistics and as the 5th tie-breaker of the Tabla General (art. 34): Apertura 2024 to Clausura 2027, points divided by matches, four decimals."
+notes:
+  - "The 2026-2027 regulation provides no relegation; the Tabla de Cociente is kept for statistics and as a tie-breaker (art. 34)."
