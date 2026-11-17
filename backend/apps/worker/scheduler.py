@@ -73,6 +73,10 @@ at worst, and a duplicated tick costs nothing at all.
     the tracked matches of the next 90 minutes asked for their line-ups, 20 per request (``fbi.ingestion.lineup_watch``, IA-069),
     each side's line-up recorded in ``core.fixture_lineup_arrivals`` and NOTHING else - no fixture, detail or line-up row the
     product reads. Its own daily budget (``FBI_LINEUP_WATCH_DAILY_BUDGET``, 1,200) inside the shared quota, cut first.
+  * ``lifecycle_shadow``  every 30 min (``FBI_LIFECYCLE_MINUTES``), only while ``FBI_LIFECYCLE`` is ``shadow`` (off by default): the one
+    cycle of states of each selection (``fbi.lifecycle``, IA-068), read off the decisions, the shadow picks, the reviews, the settlements
+    and the post-mortems of the matches of the last 7 days and the next 48 hours, appended to ``intel.selection_lifecycle``. Database
+    only; it writes nothing else and nothing reads it but the owner's views.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
     trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
@@ -1069,6 +1073,27 @@ CHRONICLE_REVIEW_ENABLED = os.environ.get("FBI_CHRONICLE_REVIEW", "1").strip().l
 showed and appends a row to ``ai.chronicle_reviews``. ``FBI_CHRONICLE_REVIEW=0`` switches it off without a deploy (the rows stay)."""
 
 
+def _lifecycle_shadow_now() -> None:
+    """The shadow writer of the cycle of states (IA-068): one pass. Never raises: it must never stop the worker, and it changes no
+    decision, review, pick or settlement - it only appends to ``intel.selection_lifecycle``."""
+    from fbi.lifecycle import store as lifecycle
+
+    if lifecycle.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = lifecycle.run_pass(conn, now=now())
+        log.info("lifecycle_shadow.run", fixtures=r.fixtures, selections=r.selections, appended=r.appended, divergent=r.divergent,
+                 illegal=r.illegal, errors=len(r.errors))
+    except Exception as exc:
+        log.error("lifecycle_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _lifecycle_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_lifecycle_shadow_now)
+
+
 def _user_narrative_now() -> None:
     """The readers' narrative (plan UX, A11): one pass with its ledger row. Never raises: the readers' AI must never stop the
     worker."""
@@ -1590,7 +1615,7 @@ WORKER_JOB_TYPES = frozenset({
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
-    "lineup_watch",
+    "lineup_watch", "lifecycle_shadow",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1922,6 +1947,14 @@ async def main() -> None:
     else:
         log.info("worker.user_narrative_off",
                  hint="FBI_USER_NARRATIVE unset or off: the readers keep the structured reading, nothing is spent")
+    from fbi.lifecycle import store as lifecycle
+
+    if lifecycle.mode() == "shadow":
+        scheduler.add_job(_deadline("lifecycle_shadow", "lifecycle_shadow", _lifecycle_shadow), "interval",
+                          minutes=lifecycle.EVERY, id="lifecycle_shadow", max_instances=1, coalesce=True,
+                          misfire_grace_time=lifecycle.EVERY * 60, next_run_time=moment + timedelta(minutes=23))
+    else:
+        log.info("worker.lifecycle_shadow_off", hint="FBI_LIFECYCLE is not shadow: the cycle of states is not being written")
     if CHRONICLE_REVIEW_ENABLED:
         scheduler.add_job(_deadline("chronicle_review", "chronicle_review", _chronicle_review), "interval",
                           minutes=CHRONICLE_REVIEW_MINUTES, id="chronicle_review", max_instances=1, coalesce=True,

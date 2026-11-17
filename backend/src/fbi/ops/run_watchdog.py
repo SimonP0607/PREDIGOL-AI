@@ -40,6 +40,7 @@ LEGACY_MAX_AGE = timedelta(hours=12)
 DEFAULT_TIMEOUT = timedelta(hours=6)
 
 JOB_TIMEOUTS: dict[str, timedelta] = {
+    "lifecycle_shadow": timedelta(minutes=15),
     "live_odds_capture": timedelta(minutes=10),
     "live_match_capture": timedelta(minutes=10),
     "prematch_lineups": timedelta(minutes=10),

@@ -1,0 +1,79 @@
+# Laboratorio IA-068 (AD-D02). Se ejecuta dentro del contenedor del worker con `docker exec -i predigol-worker python - <desde> <hasta>`,
+# anteponiendo SRC_MACHINE, SRC_DERIVE y SRC_STORE (el código de fbi/lifecycle en base64). Conexión de solo lectura; no escribe nada.
+# AD-D02 / IA-068: medición en producción, SOLO LECTURA (default_transaction_read_only, statement_timeout 95 s).
+# Los módulos fbi.lifecycle (machine, derive, store) de la rama wip/IA-068 se cargan EN MEMORIA; no se escribe nada.
+import base64, json, sys, time, types
+from collections import Counter
+from datetime import date, datetime, timedelta, UTC
+import dataclasses
+pkg = types.ModuleType("fbi.lifecycle"); pkg.__path__ = []; sys.modules["fbi.lifecycle"] = pkg
+def inject(name, b64):
+    mod = types.ModuleType(name); mod.__file__ = f"<lab {name}>"; sys.modules[name] = mod
+    exec(compile(base64.b64decode(b64).decode(), mod.__file__, "exec"), mod.__dict__)
+    setattr(pkg, name.rsplit(".", 1)[1], mod); return mod
+machine = inject("fbi.lifecycle.machine", SRC_MACHINE)
+derive = inject("fbi.lifecycle.derive", SRC_DERIVE)
+store = inject("fbi.lifecycle.store", SRC_STORE)
+import psycopg
+from fbi.core.config import settings as platform
+from fbi.ai.calendar import day_bounds
+OPT = "-c TimeZone=UTC -c default_transaction_read_only=on -c statement_timeout=95000"
+NOW = datetime.now(UTC)
+first, last = date.fromisoformat(sys.argv[1]), date.fromisoformat(sys.argv[2])
+out = []
+with psycopg.connect(platform.database.psycopg_url, options=OPT) as conn:
+    guard = conn.execute("SHOW default_transaction_read_only").fetchone()[0]
+    d = first
+    while d <= last:
+        t0 = time.time()
+        start, end = day_bounds(d)
+        fx = {int(r[0]): derive.Fixture(int(r[0]), r[1], r[2], r[3]) for r in conn.execute(store.FIXTURES_SQL, {"start": start, "end": end, "layers": list(store.LAYERS)}).fetchall()}
+        ids = sorted(fx)
+        hs = {}
+        for i in range(0, len(ids), 100):
+            hs.update(store.histories(conn, ids[i:i+100]))
+            conn.rollback()
+        sel = Counter(); rows_state = Counter(); final = Counter(); reasons = Counter(); layers = Counter(); moves = Counter()
+        illegal = 0; unknown = 0; nonprefix = 0; checked = 0; nrows = 0; nodecision = 0; confirmed_ever = 0; retired = 0; by_actor = Counter()
+        examples = []; retire_reason = Counter()
+        for k, h in hs.items():
+            f = fx[k.fixture_id]
+            try:
+                chain = derive.derive(h, f, now=NOW)
+            except machine.IllegalTransitionError as e:
+                illegal += 1; examples.append(str(e)[:200]); continue
+            if not chain: continue
+            sel[chain[0].layer] += 1; nrows += len(chain)
+            if not h.decisions: nodecision += 1
+            for r in chain:
+                rows_state[r.step.state] += 1; by_actor[r.step.actor] += 1
+                if r.step.reason == "sin_motivo_conocido": unknown += 1
+            prev = None
+            for r in chain:
+                moves[f"{prev}>{r.step.state}"] += 1; prev = r.step.state
+            if any(r.step.state == "confirmada_sombra" for r in chain): confirmed_ever += 1
+            if any(r.step.state == "retirada" for r in chain): retired += 1
+            for r in chain:
+                if r.step.state == "retirada": retire_reason[f"{r.step.reason}:{r.step.actor}"] += 1
+            final[chain[-1].step.state] += 1
+            reasons[f"{chain[-1].step.state}:{chain[-1].step.reason}"] += 1
+            # prefix property: a chain derived at an earlier moment, from what was known then, is a prefix of the final one
+            for dt in (-timedelta(hours=24), -timedelta(hours=3), -timedelta(minutes=30), timedelta(hours=2), timedelta(hours=50)):
+                t = f.kickoff_at + dt
+                if t >= NOW: continue
+                ff = f if t >= f.kickoff_at else dataclasses.replace(f, status_short="NS", status_group="scheduled")
+                early = derive.derive(derive.as_of(h, t), ff, now=t)
+                checked += 1
+                a = [(r.step.state, r.step.reason, r.source, r.source_id) for r in early]
+                b = [(r.step.state, r.step.reason, r.source, r.source_id) for r in chain]
+                if b[:len(a)] != a:
+                    nonprefix += 1
+                    if len(examples) < 6: examples.append({"key": str(k), "at": t.isoformat(), "early": a[-3:], "final": b[:len(a)][-3:]})
+        out.append({"day": d.isoformat(), "secs": round(time.time() - t0, 1), "fixtures": len(fx), "selections": sum(sel.values()),
+                    "by_layer": dict(sel), "rows": nrows, "rows_by_state": dict(rows_state), "final_state": dict(final),
+                    "final_reason": dict(reasons.most_common(30)), "illegal": illegal, "unknown_reason_rows": unknown,
+                    "prefix_checked": checked, "not_prefix": nonprefix, "picks_only": nodecision, "confirmed_ever": confirmed_ever,
+                    "retired_ever": retired, "retire_reason": dict(retire_reason), "by_actor": dict(by_actor), "moves": dict(moves.most_common(40)), "examples": examples})
+        d += timedelta(days=1)
+    conn.rollback()
+print("RESULT " + json.dumps({"guard": guard, "now": NOW.isoformat(), "days": out}, default=str, ensure_ascii=False))

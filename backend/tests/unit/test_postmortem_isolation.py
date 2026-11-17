@@ -68,6 +68,8 @@ NAMES_IT: dict[str, str] = {
     "ai/daily_review.py": "the close of the day (a report): the day's post-mortems, memory events and notes; it changes no pick, probability or rule",
     "ai/pick_postmortem.py": "pm-v2, FROZEN: writes ai.pick_postmortems only behind FBI_AI_LEGACY_POSTMORTEMS, after the one post-mortem",
     "ai/postmortem.py": "pm-v1.1, FROZEN: writes ai.postmortems only behind FBI_AI_LEGACY_POSTMORTEMS, after the one post-mortem",
+    "lifecycle/derive.py": "the cycle of states of a selection (IA-068, in shadow): reads the post-mortem to mark a settled selection «Evaluada»",
+    "lifecycle/store.py": "the cycle of states (IA-068, in shadow): the query that gathers the post-mortems of the window it derives from; it writes only intel.selection_lifecycle",
     "knowledge/layers.py": "Match Knowledge (plan F7), layer c9: the pure layer that turns the post-mortems of a finished match into facts",
     "knowledge/reader.py": "Match Knowledge (plan F7): reads the post-mortems of the finished matches it puts together (layer c9)",
     "api/services/intelligence.py": "the Admin Console's PrediGol Intelligence: the post-mortem of a decision and the memory (GET /admin/intelligence/memory)",
