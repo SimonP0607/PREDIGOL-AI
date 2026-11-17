@@ -38,6 +38,8 @@ NAMES_THE_TABLE = {
     "scripts/transparency_check.py": "the contrast of that page (A12): the same calibration counted by an independent query at each deploy; read-only",
     "scripts/ia_score_matrix.py": "AD-B04 (IA-074): the score matrix of each match beside what the page states (`forecast-v1`), over a READ ONLY "
                                   "connection; a measure of coherence printed for a person - never an input of a pick or a decision",
+    "scripts/ia_single_figure.py": "AD-B05/AD-B09 (IA-083/IA-084): the page's stored sets (`forecast-v1`, `forecast-v1-seal`) beside the single "
+                                   "figure, over a READ ONLY connection; a measure of parity printed for a person - never an input of a pick or a decision",
     "scripts/compare_probabilities.py": "PICKS F3 (BE-021): puts the page's forecast beside the board's and Intelligence's probability, selection by selection, over a READ ONLY connection; "
                                         "a measure of whether the two agree, printed for a person - never an input of a pick or a decision",
 }
@@ -104,11 +106,13 @@ def test_the_decision_layer_and_the_pick_engine_do_not_read_it() -> None:
 def test_the_probability_view_is_pure_and_reads_neither_the_forecast_nor_the_writer() -> None:
     """``market_view`` (the computation the forecast is written from, and decision-v2 measures against) takes rows and reads nothing; ``market_reader``
     reads the models' numbers and the market's consensus, never the stored forecast. Neither imports the writer (that would let a decision reach it)."""
-    for name in ("market_view", "market_reader"):
+    for name in ("market_view", "market_reader", "single_figure", "figure_text"):
         path = SRC / "forecasting" / f"{name}.py"
         text = path.read_text(encoding="utf-8")
         assert not TABLE.search(text), f"{name} must not name the forecast table"
         assert not [i for i in imports_of(path) if "match_forecast" in i], f"{name} must not import the writer"
-    pure = imports_of(SRC / "forecasting" / "market_view.py")
-    assert not [i for i in pure if i.startswith(("psycopg", "fbi.api", "fbi.picks", "fbi.db"))], "the view takes rows: it opens no connection"
-    assert "execute" not in (SRC / "forecasting" / "market_view.py").read_text(encoding="utf-8")
+    for name in ("market_view", "single_figure", "figure_text"):  # the single figure (AD-B05) and its text check (AD-B09) take rows too
+        pure = imports_of(SRC / "forecasting" / f"{name}.py")
+        assert not [i for i in pure if i.startswith(("psycopg", "fbi.api", "fbi.picks", "fbi.db"))], f"{name} takes rows: it opens no connection"
+        assert "execute" not in (SRC / "forecasting" / f"{name}.py").read_text(encoding="utf-8")
+    assert not [i for i in imports_of(SRC / "forecasting" / "figure_text.py") if i.startswith("fbi")], "the text check depends on nothing"

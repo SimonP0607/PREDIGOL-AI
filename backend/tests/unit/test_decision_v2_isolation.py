@@ -72,7 +72,10 @@ def test_the_package_reaches_the_probability_view_through_one_module_and_never_t
     forecasting = {f for f, names in own.items() if any(n == "fbi.forecasting" or n.startswith("fbi.forecasting.") for n in names)}
     assert forecasting == {"decision/view.py"}, forecasting
     reached = {n for n in own["decision/view.py"] if n.startswith("fbi.forecasting")}
-    assert all(n.startswith(("fbi.forecasting.market_reader", "fbi.forecasting.market_view")) for n in reached), reached
+    # ``single_figure`` (AD-B05, IA-083): the single figure of every goals market (``forecast-v2``), pure like ``market_view`` and read
+    # through ``market_reader.figures_at``; never the writer nor the stored forecast
+    assert all(n.startswith(("fbi.forecasting.market_reader", "fbi.forecasting.market_view", "fbi.forecasting.single_figure"))
+               for n in reached), reached
     assert not [f for f, names in own.items() if any("match_forecast" in n for n in names)]
 
 

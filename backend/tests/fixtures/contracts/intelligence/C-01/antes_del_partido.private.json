@@ -1,6 +1,6 @@
 {
   "contract": "C-01",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "private",
   "freshness": {
     "generated_at": "2026-11-21T16:45:00Z",
@@ -782,6 +782,816 @@
         "published_at": "2026-11-21T11:45:00Z",
         "known_at": "2026-11-21T13:43:00Z",
         "last_seen_at": "2026-11-21T16:35:00Z"
+      }
+    ]
+  },
+  "single_figure": {
+    "items": [
+      {
+        "market": "1X2",
+        "selection": "Away",
+        "line": 0.0,
+        "probability": {
+          "value": 0.229434,
+          "pct": 23,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "stored",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "5eebd69b006f"
+      },
+      {
+        "market": "1X2",
+        "selection": "Draw",
+        "line": 0.0,
+        "probability": {
+          "value": 0.26426,
+          "pct": 26,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "stored",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "07cb19a55c8a"
+      },
+      {
+        "market": "1X2",
+        "selection": "Home",
+        "line": 0.0,
+        "probability": {
+          "value": 0.506307,
+          "pct": 51,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "stored",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "aa1bbe1f173b"
+      },
+      {
+        "market": "DC",
+        "selection": "12",
+        "line": 0.0,
+        "probability": {
+          "value": 0.735741,
+          "pct": 74,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "a1b316c5b6e2"
+      },
+      {
+        "market": "DC",
+        "selection": "1X",
+        "line": 0.0,
+        "probability": {
+          "value": 0.770567,
+          "pct": 77,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "d22a54b8c6e5"
+      },
+      {
+        "market": "DC",
+        "selection": "X2",
+        "line": 0.0,
+        "probability": {
+          "value": 0.493694,
+          "pct": 49,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "7bee51ec9d1c"
+      },
+      {
+        "market": "DNB",
+        "selection": "Away",
+        "line": 0.0,
+        "probability": {
+          "value": 0.229434,
+          "pct": 23,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.26426,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "73710320c0d5"
+      },
+      {
+        "market": "DNB",
+        "selection": "Home",
+        "line": 0.0,
+        "probability": {
+          "value": 0.506307,
+          "pct": 51,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.26426,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "68d62ae84de2"
+      },
+      {
+        "market": "BTTS",
+        "selection": "No",
+        "line": 0.0,
+        "probability": {
+          "value": 0.488372,
+          "pct": 49,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "stored",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "eab6c2b5a7ad"
+      },
+      {
+        "market": "BTTS",
+        "selection": "Yes",
+        "line": 0.0,
+        "probability": {
+          "value": 0.511628,
+          "pct": 51,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "stored",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "f8c0f3ce5be8"
+      },
+      {
+        "market": "OU",
+        "selection": "Over",
+        "line": 2.5,
+        "probability": {
+          "value": 0.48157,
+          "pct": 48,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "stored",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "3ea2f4d97f8a"
+      },
+      {
+        "market": "OU",
+        "selection": "Under",
+        "line": 2.5,
+        "probability": {
+          "value": 0.51843,
+          "pct": 52,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "stored",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "c990ea50fffe"
+      },
+      {
+        "market": "AH",
+        "selection": "Away",
+        "line": -0.5,
+        "probability": {
+          "value": 0.229434,
+          "pct": 23,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "f9404bb1244e"
+      },
+      {
+        "market": "AH",
+        "selection": "Home",
+        "line": -0.5,
+        "probability": {
+          "value": 0.506307,
+          "pct": 51,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "9878f40fa012"
+      },
+      {
+        "market": "AH",
+        "selection": "Away",
+        "line": -0.25,
+        "probability": {
+          "value": 0.229434,
+          "pct": 23,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.13213,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "48581943d53b"
+      },
+      {
+        "market": "AH",
+        "selection": "Home",
+        "line": -0.25,
+        "probability": {
+          "value": 0.506307,
+          "pct": 51,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.13213,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "1d24d1c5c694"
+      },
+      {
+        "market": "AH",
+        "selection": "Away",
+        "line": 0.0,
+        "probability": {
+          "value": 0.229434,
+          "pct": 23,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.26426,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "122a0871c452"
+      },
+      {
+        "market": "AH",
+        "selection": "Home",
+        "line": 0.0,
+        "probability": {
+          "value": 0.506307,
+          "pct": 51,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.26426,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "5acf3c3c4b70"
+      },
+      {
+        "market": "AH",
+        "selection": "Away",
+        "line": 0.25,
+        "probability": {
+          "value": 0.361564,
+          "pct": 36,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.13213,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "34fdb8638c65"
+      },
+      {
+        "market": "AH",
+        "selection": "Home",
+        "line": 0.25,
+        "probability": {
+          "value": 0.638437,
+          "pct": 64,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.13213,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "a6f47593e694"
+      },
+      {
+        "market": "AH",
+        "selection": "Away",
+        "line": 0.5,
+        "probability": {
+          "value": 0.493694,
+          "pct": 49,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "0b11716b15be"
+      },
+      {
+        "market": "AH",
+        "selection": "Home",
+        "line": 0.5,
+        "probability": {
+          "value": 0.770567,
+          "pct": 77,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "result",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "39e8816a4505"
+      },
+      {
+        "market": "OU_HOME",
+        "selection": "Over",
+        "line": 1.5,
+        "probability": {
+          "value": 0.475069,
+          "pct": 48,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "matrix",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "fbd6044ca19c"
+      },
+      {
+        "market": "OU_HOME",
+        "selection": "Under",
+        "line": 1.5,
+        "probability": {
+          "value": 0.524931,
+          "pct": 52,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "matrix",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "25d7f7621849"
+      },
+      {
+        "market": "OU_AWAY",
+        "selection": "Over",
+        "line": 1.5,
+        "probability": {
+          "value": 0.264241,
+          "pct": 26,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "matrix",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "0d22956b9821"
+      },
+      {
+        "market": "OU_AWAY",
+        "selection": "Under",
+        "line": 1.5,
+        "probability": {
+          "value": 0.735759,
+          "pct": 74,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:45:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "forecast-v2"
+        },
+        "push": 0.0,
+        "model": "dixon_coles",
+        "basis": "no_champion",
+        "source": "matrix",
+        "price_as_of": {
+          "missing_reason": "sin_datos"
+        },
+        "reading_id": "214f92013636"
       }
     ]
   }

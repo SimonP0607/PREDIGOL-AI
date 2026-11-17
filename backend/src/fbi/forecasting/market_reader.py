@@ -9,6 +9,7 @@ states and what decision-v2 (shadow) judges.
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Mapping
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -23,6 +24,14 @@ from fbi.forecasting.market_view import (
     Row,
     Source,
     forecast_market,
+)
+from fbi.forecasting.single_figure import (
+    MARKET_AGE,
+    FigureSet,
+    Numbers,
+    PriceKey,
+    figure_set,
+    key_of,
 )
 from fbi.intel.calibration import CalibrationState
 
@@ -106,3 +115,77 @@ def view_at(conn: psycopg.Connection[Any], fixture_ids: list[int], *, at: dateti
         if found is not None:
             out[key] = found
     return out
+
+
+# -- the single figure (AD-B05, ``forecast-v2``, shadow) ------------------------------------------------------------------------------------
+
+FIGURE_MARKETS = ("1X2", "OU", "BTTS", "AH", "DC")
+"""What the models store (``fbi.models.scoring.MARKET_ROWS`` and ``fbi.models.quoted.PRICED_MARKETS``) and the consensus is kept for."""
+
+ALL_SOURCES_SQL = """
+WITH newest AS (
+    SELECT DISTINCT ON (p.fixture_id, r.name) p.fixture_id, r.name AS model, p.model_version_id, p.data_cutoff_ts
+      FROM models.predictions p JOIN models.model_versions v ON v.id = p.model_version_id
+      JOIN models.model_registry r ON r.id = v.model_id
+     WHERE p.fixture_id = ANY(%(ids)s) AND p.backtest_session_id IS NULL AND p.data_cutoff_ts <= %(at)s
+     ORDER BY p.fixture_id, r.name, p.data_cutoff_ts DESC, p.model_version_id DESC
+)
+SELECT n.model, p.fixture_id, p.model_version_id, p.data_cutoff_ts, p.market_key, p.selection, p.line,
+       p.p_raw::float8 AS p, p.p_lo::float8 AS lo, p.p_hi::float8 AS hi, COALESCE(p.p_push, 0)::float8 AS push,
+       p.feature_set_hash
+  FROM models.predictions p JOIN newest n ON n.fixture_id = p.fixture_id AND n.model_version_id = p.model_version_id
+       AND n.data_cutoff_ts = p.data_cutoff_ts
+ WHERE p.fixture_id = ANY(%(ids)s) AND p.backtest_session_id IS NULL AND p.market_key = ANY(%(markets)s)
+"""
+"""The same newest real-time forecast of each model as ``SOURCES_SQL`` (so the three markets of the page read the same rows), with every
+line it stored."""
+
+ALL_CONSENSUS_SQL = """
+SELECT DISTINCT ON (m.fixture_id, m.market_key, m.selection, m.line)
+       m.fixture_id, m.market_key, m.selection, m.line, m.p_fair::float8 AS p_fair, m.as_of
+  FROM market.market_consensus m
+ WHERE m.fixture_id = ANY(%(ids)s) AND m.devig_method = 'shin' AND m.as_of <= %(at)s AND m.as_of >= %(since)s
+   AND m.p_fair > 0 AND m.p_fair < 1 AND m.market_key = ANY(%(markets)s)
+ ORDER BY m.fixture_id, m.market_key, m.selection, m.line, m.as_of DESC
+"""
+
+
+def read_numbers(conn: psycopg.Connection[Any], ids: list[int], at: datetime) -> dict[int, dict[str, dict[PriceKey, Source]]]:
+    """fixture -> model -> its newest stored rows of every market it stores, as of ``at``."""
+    out: dict[int, dict[str, dict[PriceKey, Source]]] = defaultdict(lambda: defaultdict(dict))
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(ALL_SOURCES_SQL, {"ids": ids, "at": at, "markets": list(FIGURE_MARKETS)})
+        for r in cur.fetchall():
+            out[int(r["fixture_id"])][str(r["model"])][key_of(str(r["market_key"]), str(r["selection"]), r["line"])] = Source(
+                str(r["model"]), int(r["model_version_id"]), r["data_cutoff_ts"], str(r["feature_set_hash"]), float(r["p"]),
+                None if r["lo"] is None else float(r["lo"]), None if r["hi"] is None else float(r["hi"]), float(r["push"]))
+    return out
+
+
+def read_prices(conn: psycopg.Connection[Any], ids: list[int], at: datetime, *, max_age: timedelta = MARKET_AGE
+                ) -> dict[int, dict[PriceKey, tuple[float, datetime]]]:
+    """fixture -> the newest de-vigged consensus of every outcome of the markets the models store, captured in ``(at - max_age, at]``."""
+    out: dict[int, dict[PriceKey, tuple[float, datetime]]] = defaultdict(dict)
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(ALL_CONSENSUS_SQL, {"ids": ids, "at": at, "since": at - max_age, "markets": list(FIGURE_MARKETS)})
+        for r in cur.fetchall():
+            out[int(r["fixture_id"])][key_of(str(r["market_key"]), str(r["selection"]), r["line"])] = (float(r["p_fair"]), r["as_of"])
+    return out
+
+
+def figures_at(conn: psycopg.Connection[Any], fixture_ids: list[int], *, at: datetime, cal: CalibrationState,
+               max_age: timedelta = MARKET_AGE, extra: Mapping[int, list[PriceKey]] | None = None) -> dict[int, FigureSet]:
+    """The single figure of every goals market of these matches as of ``at`` (``single_figure.figure_set``). Read-only; the matches' own
+    fitness (data class, quarantine) is the caller's to apply, as with ``view_at``. ``max_age`` is ``forecast-v2``'s window
+    (``single_figure.MARKET_AGE``); ``MAX_MARKET_AGE`` gives ``forecast-v1``'s numbers on its three markets."""
+    if not fixture_ids:
+        return {}
+    ids = sorted(set(fixture_ids))
+    numbers = read_numbers(conn, ids, at)
+    prices = read_prices(conn, ids, at, max_age=max_age)
+    out: dict[int, FigureSet] = {}
+    for fid in ids:
+        rows: Numbers = numbers.get(fid, {})
+        out[fid] = figure_set(fid, rows, cal, prices.get(fid, {}), extra=(extra or {}).get(fid, ()))
+    return out
+

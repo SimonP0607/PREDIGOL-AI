@@ -9,6 +9,8 @@ pick carries the probability its own selection was calibrated to, so two markets
 
 WHAT IS HERE. Pure functions, no database and no clock:
 
+    invert(rows, model) ...... the (lambda_home, lambda_away[, rho]) a goal model's seven stored rows were computed from (AD-B05): the
+                               model's own arithmetic solved on its own numbers, nothing fitted to anything else
     build(Params) ............ the matrix of (lambda_home, lambda_away[, rho]): the model's own arithmetic (``fbi.models.scoring``), the same
                                10-10 truncation, the mass beyond renormalised and REPORTED; a rho outside the region where every
                                Dixon-Coles factor is positive is refused (``InvalidCorrectionError``), never clipped - clipping is another model
@@ -44,15 +46,17 @@ import math
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
+from functools import lru_cache
 from itertools import pairwise
 from typing import Final
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.optimize import least_squares
 
 from fbi.models.goals import InvalidCorrectionError, dc_valid
 from fbi.models.lines import LineOutcome, asian_handicap, double_chance, over_under
-from fbi.models.scoring import MARKET_ROWS, MAX_GOALS, dc_tau, poisson_matrix
+from fbi.models.scoring import MARKET_ROWS, MAX_GOALS, dc_tau, from_matrix, poisson_matrix
 
 VERSION: Final = "matrix-v1"
 
@@ -128,6 +132,72 @@ def from_array(m: NDArray[np.float64], *, params: Params | None = None) -> Score
     if not math.isfinite(total) or total <= 0 or bool(np.any(arr < -1e-12)):
         raise ValueError("a score matrix is a distribution: finite, non-negative, with positive mass")
     return ScoreMatrix(np.clip(arr, 0.0, None) / total, params, max(0.0, 1.0 - total))
+
+
+# -- the parameters back from the stored rows (AD-B05) ----------------------------------------------------------------------------------
+
+INVERSION_TOLERANCE: Final = 1e-4
+"""The largest difference on the seven rows at which the recovered parameters are taken as the model's own (the simulator's
+``fbi.simulator.consistency.INVERSION_TOLERANCE``; measured in production on 17-nov-2026: at most 1e-6 over 89 matrices)."""
+
+_STARTS: Final = ((1.4, 1.1), (1.0, 1.0), (2.2, 0.8), (0.8, 2.2))
+
+
+@dataclass(frozen=True, slots=True)
+class Inversion:
+    params: Params
+    residual: float
+    """Largest absolute difference on the seven fixed rows between the stored numbers and the model at ``params``."""
+
+
+def _seven(lh: float, la: float, rho: float | None) -> NDArray[np.float64]:
+    m = poisson_matrix(lh, la)
+    if rho is not None:
+        m = dc_tau(m, lh, la, rho)
+    return np.array(from_matrix(m, lh, la).as_rows())
+
+
+@lru_cache(maxsize=4096)
+def _solve(target: tuple[float, ...], dc: bool) -> tuple[float, float, float | None, float]:
+    y = np.array(target)
+
+    def resid(theta: NDArray[np.float64]) -> NDArray[np.float64]:
+        lh, la = math.exp(theta[0]), math.exp(theta[1])
+        rho = float(theta[2]) if dc else None
+        if rho is not None and not dc_valid(lh, la, rho):
+            return np.full(len(y), 10.0)
+        return np.asarray(_seven(lh, la, rho) - y, dtype=np.float64)
+
+    best: object = None
+    best_cost = math.inf
+    for start in _STARTS:
+        x0 = [math.log(start[0]), math.log(start[1])] + ([0.0] if dc else [])
+        fit = least_squares(resid, np.array(x0), xtol=1e-14, ftol=1e-14, gtol=1e-14, max_nfev=2000)
+        if float(fit.cost) < best_cost:
+            best, best_cost = fit, float(fit.cost)
+    theta = best.x  # type: ignore[attr-defined]
+    lh, la = math.exp(float(theta[0])), math.exp(float(theta[1]))
+    rho = float(theta[2]) if dc else None
+    return lh, la, rho, float(np.abs(resid(theta)).max())
+
+
+def invert(rows: Mapping[tuple[str, str, Decimal], float], model: str, *, model_version_id: int | None = None) -> Inversion | None:
+    """The parameters at which ``model``'s own arithmetic gives its seven stored fixed rows (``MARKET_ROWS``), or None: not a goal model,
+    a row missing, or no parameters reproduce the rows within ``INVERSION_TOLERANCE``. The same solution as the simulator's
+    (``fbi.simulator.consistency.invert``, which ``fbi.forecasting`` may not import; a test holds the two equal). Deterministic: the same
+    rows give the same parameters, so a matrix rebuilt later from the same append-only rows is the same matrix."""
+    if model not in GOAL_MODELS:
+        return None
+    target: list[float] = []
+    for m, s, line in MARKET_ROWS:
+        v = rows.get((m, s, Decimal(str(line))))
+        if v is None:
+            return None
+        target.append(float(v))
+    lh, la, rho, residual = _solve(tuple(target), model == "dixon_coles")
+    if residual > INVERSION_TOLERANCE:
+        return None
+    return Inversion(Params(lh, la, rho, model, model_version_id), residual)
 
 
 # -- the markets -----------------------------------------------------------------------------------------------------------------------------

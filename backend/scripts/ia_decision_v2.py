@@ -7,6 +7,8 @@
     python -m scripts.ia_decision_v2 replay --day 2026-11-05 --view             # plus how far each probability is from the common view
     python -m scripts.ia_decision_v2 replay --day 2026-11-10 --price book       # the core priced as the odds book held it at each moment
     python -m scripts.ia_decision_v2 replay --day 2026-11-10 --probability common   # the core judged with the common probability view
+    python -m scripts.ia_decision_v2 replay --day 2026-11-16 --probability common --view-version forecast-v2
+                                    # the core judged with the single figure of every goals market (AD-B05, IA-083)
     python -m scripts.ia_decision_v2 replay --day 2026-11-14 --rules decision-v2.1 --against decision-v2.0 --against decision-v2.0:book
                                     # the book's price with the age rule by horizon (AD-B06), against today's rules and the old rule alone
 
@@ -42,6 +44,7 @@ from fbi.decision.engine import (
     RULES_V20,
     RULESETS,
 )
+from fbi.decision.view import VERSIONS as VIEW_VERSIONS
 from fbi.intel.context_adjustment import ENGINES
 from fbi.storage.payload_store import PayloadStore
 
@@ -78,16 +81,19 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--raw", help="the RAW store the book's answers are read from (default: the worker's own)")
     ap.add_argument("--probability", choices=PROBABILITY_SOURCES, default=OWN,
                     help="the core's probability: the pick's own (default) or the common probability view's (shadow)")
+    ap.add_argument("--view-version", choices=VIEW_VERSIONS, default=VIEW_VERSIONS[0], dest="view_version",
+                    help="the common view's version: forecast-v1 (default, the Match Center's three markets) or forecast-v2 (the single "
+                         "figure of every goals market, AD-B05; shadow)")
     ap.add_argument("--dsn", help="the database (default: the worker's own)")
     return ap
 
 
 def run(conn: psycopg.Connection[Any], *, day: date, council: str | None = None, signals: bool = False, view: bool = False,
         price: str | None = None, store: PayloadStore | None = None, probability: str = OWN, rules: str = RULES_V20,
-        against: Sequence[str] = ()) -> tuple[dict[str, Any], int]:
+        against: Sequence[str] = (), view_version: str = VIEW_VERSIONS[0]) -> tuple[dict[str, Any], int]:
     """The report (JSON-ready) and the exit status. The connection is the caller's; nothing is written."""
     return replay.replay_day(conn, day=day, council=council, signals=signals, view=view, price=price, store=store,
-                             probability=probability, rules=rules, against=against), OK
+                             probability=probability, rules=rules, against=against, view_version=view_version), OK
 
 
 def needs_book(price: str | None, rules: str, against: Sequence[str]) -> bool:
@@ -198,7 +204,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     store = PayloadStore(args.raw or platform.runtime.raw_store_dir) if book else None
     with psycopg.connect(args.dsn or platform.database.psycopg_url, options=f"{READ_ONLY} {BOOK_TIMEOUT}" if book else READ_ONLY) as conn:
         doc, code = run(conn, day=day, council=args.council, signals=args.signals, view=args.view, price=args.price, store=store,
-                        probability=args.probability, rules=args.rules, against=args.against)
+                        probability=args.probability, rules=args.rules, against=args.against,
+                        view_version=args.view_version)
     sys.stdout.write(json.dumps(doc, indent=1, default=str, ensure_ascii=False, sort_keys=True) + "\n" if args.as_json else render(doc))
     return code
 
