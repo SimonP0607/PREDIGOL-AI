@@ -28,7 +28,7 @@ from datetime import datetime
 import psycopg
 import structlog
 
-from fbi.catalog.neutral_store import classify_provider_fixtures
+from fbi.catalog.neutral_store import Reference, classify_provider_fixtures
 from fbi.core import match_state
 from fbi.ingestion.fixture_facts import apply_fixture_facts
 from fbi.ingestion.fixtures import FixtureRepository, PayloadLineage, team_names
@@ -57,6 +57,12 @@ class PayloadOutcome:
     """Fixtures we hold that the payload lists under a competition we do not track (flagged, not moved)."""
     venue_verdicts_written: int = 0
     """Neutral-venue verdicts written or changed for the fixtures of the payload (``fbi.catalog.neutral``)."""
+    fixtures_unchanged: int = 0
+    """Of the updated fixtures, those the payload confirmed without changing anything: only their lineage moved
+    (``FixtureRepository.upsert_fixtures``, OPS-006)."""
+    ours_ids: tuple[int, ...] = ()
+    """Provider ids of the fixtures of a tracked competition-season in the payload, as applied (in payload order):
+    what a caller that classifies the venues itself (``classify=False``) passes on."""
     premature_ids: frozenset[int] = frozenset()
     """Provider ids of the fixtures the payload called finished sooner after kick-off than a match can last: nothing of
     them was stored from this payload, and a caller that writes more from the same payload (the live follow's states and
@@ -76,6 +82,7 @@ def apply_fixtures_payload(
     fetched_at: datetime,
     season_ids: Mapping[tuple[int, int], int],
     skip_ids: Collection[int] = (),
+    classify: bool = True,
 ) -> PayloadOutcome:
     """Apply one /fixtures response. The caller owns the transaction.
 
@@ -109,7 +116,8 @@ def apply_fixtures_payload(
         [x for x in results if x.provider_fixture_id not in left_out], lineage=lineage)
     facts = apply_fixture_facts(conn, (f for f in iter_fixture_facts(body) if f.provider_fixture_id not in left_out),
                                 payload_hash=payload_hash, observed_at=fetched_at)
-    verdicts = _classify_venues(conn, [r.provider_fixture_id for r in ours], payload_hash=payload_hash)
+    verdicts = (_classify_venues(conn, [r.provider_fixture_id for r in ours], payload_hash=payload_hash)
+                if classify else 0)
     return PayloadOutcome(
         seen=len(refs),
         ours=len(ours),
@@ -120,20 +128,29 @@ def apply_fixtures_payload(
         facts_written=facts,
         left_tracked=left,
         venue_verdicts_written=verdicts,
+        fixtures_unchanged=repo.unchanged,
+        ours_ids=tuple(r.provider_fixture_id for r in ours),
         premature_ids=frozenset(premature),
     )
 
 
-def _classify_venues(conn: psycopg.Connection, provider_fixture_ids: list[int], *, payload_hash: str) -> int:
+def _classify_venues(conn: psycopg.Connection, provider_fixture_ids: list[int], *, payload_hash: str,
+                     ref: Reference | None = None, reraise: tuple[type[BaseException], ...] = ()) -> int:
     """Decide whether the fixtures just written are at a neutral venue (``fbi.catalog.neutral``, rule neutral-v1) and
     keep the verdict. It is derived data and must never cost a payload its fixtures, so it runs in a savepoint: if it
     fails the failure is logged as an error - not swallowed, not turned into a number - and the payload's own writes
-    stand; ``python -m scripts.neutral_rule classify`` fills in what is missing."""
+    stand; ``python -m scripts.neutral_rule classify`` fills in what is missing.
+
+    ``ref``: the reference of the rule, when the caller classifies a payload in several calls (one load for all).
+    ``reraise``: errors the caller handles itself - the fixtures sync retries a block that waited too long for a lock
+    (``psycopg.errors.LockNotAvailable``) instead of losing its verdicts."""
     if not provider_fixture_ids:
         return 0
     try:
         with conn.transaction():
-            return classify_provider_fixtures(conn, provider_fixture_ids).written
+            return classify_provider_fixtures(conn, provider_fixture_ids, ref=ref).written
+    except reraise:
+        raise
     except Exception:
         log.exception("neutral.classify_failed", fixtures=len(provider_fixture_ids), payload_hash=payload_hash)
         return 0

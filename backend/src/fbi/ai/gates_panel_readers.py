@@ -32,7 +32,8 @@ from fbi.ai.gates_panel import P1Counts, PanelInputs, Row, row_of
 
 NEWEST_ROWS_SQL: Final = """
 SELECT DISTINCT ON (gate) id, gate, at, passed, decided_by, evidence_hash, evidence ->> 'verdict' AS verdict,
-       evidence -> 'window' AS evidence_window, evidence -> 'models' AS models, evidence ->> 'kind' AS kind
+       evidence -> 'window' AS evidence_window, evidence -> 'models' AS models, evidence ->> 'kind' AS kind,
+       evidence ->> 'reason' AS reason
   FROM ai.feature_gates
  ORDER BY gate, at DESC, id DESC
 """

@@ -6,13 +6,17 @@ A backup folder (data/backups/<UTC stamp>/) holds:
   raw.tar        the raw payload store (already gzipped files; tar, no recompression)
   manifest.json  sha256 and size of both files; per table the row count and an
                  order-independent content fingerprint; per raw file its sha256;
-                 the Alembic revision, server and tool versions
+                 the Alembic revision, server and tool versions; every schema and
+                 every append-only trigger (AD-A07)
 
 ``restore_test`` restores the dump into a scratch database created for the
 purpose, recomputes every table's fingerprint and compares; extracts the raw
 archive to a temporary directory, re-hashes every file, and checks that every
 raw.ingestion_payloads row of the RESTORED database points at a file that
-exists and whose body still hashes to the recorded hash. Only then is the
+exists and whose body still hashes to the recorded hash, and that every schema
+and every append-only trigger the manifest names came back (AD-A07: a new
+schema of the plan, ``news`` say, is in the dump because the dump has no list
+of schemas; this proves it, and proves its tables are still append-only). Only then is the
 backup called good. The scratch database and directory are removed unless
 ``keep`` is set; nothing else is touched.
 
@@ -236,6 +240,44 @@ def fingerprints(conn: psycopg.Connection) -> dict[str, dict[str, Any]]:
     return out
 
 
+APPEND_ONLY_SQL = (
+    "SELECT n.nspname || '.' || c.relname || ':' || t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid "
+    "JOIN pg_namespace n ON n.oid = c.relnamespace WHERE NOT t.tgisinternal AND t.tgname LIKE '%append_only%' ORDER BY 1")
+SCHEMAS_SQL = (
+    "SELECT nspname FROM pg_namespace WHERE nspname NOT IN ('pg_catalog', 'information_schema') AND nspname NOT LIKE 'pg_toast%' "
+    "AND nspname NOT LIKE 'pg_temp%' ORDER BY 1")
+
+
+def schemas(conn: psycopg.Connection) -> list[str]:
+    """Every schema outside the system ones (AD-A07: a backup names them, and its restore test proves each came back)."""
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(SCHEMAS_SQL)
+        return [str(r[0]) for r in cur.fetchall()]
+
+
+def append_only_triggers(conn: psycopg.Connection) -> list[str]:
+    """``schema.table:trigger`` of every trigger that keeps a table append-only (``*_append_only``, the convention of every audit table
+    since revision 0072). A restore that lost one would give back a table that can be rewritten: the evidence would no longer be evidence."""
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(APPEND_ONLY_SQL)
+        return [str(r[0]) for r in cur.fetchall()]
+
+
+def _compare_catalog(manifest: dict[str, Any], restored_schemas: list[str], restored_triggers: list[str]) -> list[Check]:
+    """AD-A07: every schema and every append-only trigger the backup named came back. A manifest written before these keys existed
+    has nothing to compare: no check is added for it (it is not a failure of that backup)."""
+    out: list[Check] = []
+    if "schemas" in manifest:
+        lost = sorted(set(manifest["schemas"]) - set(restored_schemas))
+        out.append(Check("SCHEMAS: every schema of the database came back", not lost,
+                         f"{len(restored_schemas)} schemas" + (f"; MISSING: {', '.join(lost)}" if lost else "")))
+    if "append_only" in manifest:
+        lost = sorted(set(manifest["append_only"]) - set(restored_triggers))
+        out.append(Check("APPEND-ONLY: every append-only trigger came back", not lost,
+                         f"{len(restored_triggers)} triggers" + (f"; MISSING: {', '.join(lost[:8])}" if lost else "")))
+    return out
+
+
 def _alembic_revision(conn: psycopg.Connection) -> str | None:
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute("SELECT to_regclass('public.alembic_version')")
@@ -277,6 +319,7 @@ def create_backup(db_url: str, raw_root: Path, out_root: Path, *, label: str = "
     with psycopg.connect(db_url) as conn:
         before = fingerprints(conn)
         revision = _alembic_revision(conn)
+        catalog = {"schemas": schemas(conn), "append_only": append_only_triggers(conn)}
         server = str(conn.info.parameter_status("server_version"))
         # a consistent snapshot: the dump runs in its own transaction; comparing the
         # fingerprints taken before and after tells whether anything wrote meanwhile
@@ -302,6 +345,8 @@ def create_backup(db_url: str, raw_root: Path, out_root: Path, *, label: str = "
         "files": {DUMP: {"sha256": sha256_file(folder / DUMP), "bytes": (folder / DUMP).stat().st_size},
                   RAW: {"sha256": sha256_file(folder / RAW), "bytes": (folder / RAW).stat().st_size}},
         "tables": after,
+        "schemas": catalog["schemas"],
+        "append_only": catalog["append_only"],
         "rows_total": sum(v["rows"] for v in after.values()),
         "changed_during_dump": changed,
         "raw_store": {"root": str(raw_root), "files": len(files),
@@ -468,10 +513,12 @@ def restore_test(folder: Path, admin_url: str, *, keep: bool = False,
         with psycopg.connect(scratch_url) as conn:
             restored = fingerprints(conn)
             revision = _alembic_revision(conn)
+            restored_schemas, restored_triggers = schemas(conn), append_only_triggers(conn)
             with conn.cursor(row_factory=tuple_row) as cur:
                 cur.execute("SELECT hash, file_path FROM raw.ingestion_payloads")
                 index = [(str(h), str(p)) for h, p in cur.fetchall()]
         c.append(_compare_tables(manifest, restored))
+        c.extend(_compare_catalog(manifest, restored_schemas, restored_triggers))
         c.append(Check("SCHEMA: the Alembic revision came back", revision == manifest["alembic_revision"],
                        f"{revision}"))
         raw_dir = work / "raw"

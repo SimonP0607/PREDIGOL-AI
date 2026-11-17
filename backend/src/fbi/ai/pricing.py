@@ -97,6 +97,14 @@ SEARCH_PRICES: dict[str, Decimal] = {
     "tavily": Decimal("8"),
 }
 
+EXA_PUBLISHED_PER_K = Decimal("7")
+"""IA-058: what Exa's own pages said on 16 Nov 2026 a search costs, per 1,000: US$7, with the text of up to 10 results included
+(exa.ai/docs/changelog, «Search with contents: $7 per 1k requests (10 results, text + highlights included)»). The table above
+keeps its 15 - the figure the ledger has billed every search at - until an Exa INVOICE says which one is right: nothing here
+changes a price, a budget or a stop on the strength of a web page."""
+EXA_PRICE_VERIFIED_BY_INVOICE = False
+"""Whether an Exa invoice has confirmed ``SEARCH_PRICES['exa']``. The owner reads the invoice; the code never does."""
+
 CACHE_WRITE_FACTOR: dict[str, tuple[Decimal, Decimal]] = {"anthropic": (Decimal("1.25"), Decimal("2"))}
 """Times the input price a cache WRITE costs, for the (5 minutes, 1 hour) entry. Providers without an entry charge a write as
 plain input (they bill the cache by reading it, not by writing it)."""

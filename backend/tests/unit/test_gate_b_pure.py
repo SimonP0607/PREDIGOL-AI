@@ -353,4 +353,5 @@ def test_the_owners_guide_names_both_commands_and_the_migration() -> None:
     text = (Path(__file__).resolve().parents[2] / "docs" / "owner" / "IA_010_P0.md").read_text(encoding="utf-8")
     assert "python -m scripts.ia_gate_b evaluate --record" in text and "`0127`" in text
     assert 'python -m scripts.ia_gate_b set-lab-plan --days N --reason "..." --confirm-owner' in text and "acción del dueño" in text
-    assert set(ia_gate_b.COMMANDS) == {"evaluate", "set-lab-plan"}
+    assert set(ia_gate_b.COMMANDS) == {"evaluate", "set-lab-plan", "close"}
+    assert "AD-001" in text and "IA_055_CIERRE_GATE_B.md" in text, "the guide says set-lab-plan is no longer needed after the closure"

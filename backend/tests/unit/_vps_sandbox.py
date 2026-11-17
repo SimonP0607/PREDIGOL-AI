@@ -219,6 +219,8 @@ if args[:1] == ["compose"]:
             print("0093")
         elif "json_build_object" in query:
             print(json.dumps({"core.fixtures": 10, "auth.users": 2}))
+        elif "jsonb_build_object" in query and "catalog" in state:
+            print(json.dumps(state["catalog"]))
         else:
             print("")
     elif prog == "pg_dump" and "--version" in rest:

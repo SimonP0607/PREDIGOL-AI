@@ -1,0 +1,466 @@
+{
+ "_example": {
+  "what": "GET /api/v1/admin/intelligence/capabilities (IA-056, AD-003), Admin Console only (require_admin)",
+  "built_from": "a database migrated to 0138 (the seed) with two rows of ai.feature_gates shaped like production's battery and research_v2 rows of 15 and 12 Nov 2026 (NO PASA); row ids are the local ones",
+  "contract_version": "capabilities-v1"
+ },
+ "status": "ok",
+ "data": {
+  "version": "capabilities-v1",
+  "at": "2026-11-16T21:00:00+00:00",
+  "decides": false,
+  "states": [
+   "construida",
+   "en_sombra",
+   "lista_para_revision",
+   "autorizada"
+  ],
+  "safety_words": [
+   "PASA",
+   "NO PASA",
+   "PENDIENTE POR ACCIONES MANUALES",
+   "PENDIENTE POR DEPENDENCIAS"
+  ],
+  "validation_words": [
+   "VALIDADO",
+   "NO VALIDADO",
+   "INSUFICIENTE",
+   "PENDIENTE POR ACCIONES MANUALES",
+   "PENDIENTE POR DEPENDENCIAS"
+  ],
+  "by_state": {
+   "construida": 0,
+   "en_sombra": 7,
+   "lista_para_revision": 0,
+   "autorizada": 0
+  },
+  "unregistered": [],
+  "not_in_code": [],
+  "capabilities": [
+   {
+    "key": "research_v2",
+    "piece": "AD-C05",
+    "title": "Research v2: investigación por entidad y tema",
+    "description": "Busca y extrae afirmaciones tipadas por entidad y tema (extract-v3, claim-v1) detrás de la puerta untrusted-v3, al lado de la investigación v1; lo que escribe no mueve ningún estado, paquete ni pick de v1.",
+    "switch": "FBI_AI_RESEARCH_V2",
+    "components": [
+     "extract-v3",
+     "claim-v1"
+    ],
+    "catalog_version": 1,
+    "registered_at": "2026-11-17T00:00:00+00:00",
+    "state": "en_sombra",
+    "since": "2026-11-17T00:00:00+00:00",
+    "decided_by": "system",
+    "signed_by_owner": false,
+    "reason": "Registro de partida (IA-056): ya corre en sombra en producción (observado el 16-nov-2026, solo lectura, últimos 7 días); el registro aún no ha juzgado su seguridad ni su validación.",
+    "observed": {
+     "at": "2026-11-16T20:45:00Z",
+     "rows": 854,
+     "table": "ai.evidence",
+     "filter": "subject_type IS NOT NULL",
+     "fixtures": 182,
+     "switch_word": "shadow",
+     "window_days": 7,
+     "switch_word_source": "ai.feature_gates fila 13 (switches)"
+    },
+    "safety": {
+     "verdict": "PENDIENTE POR ACCIONES MANUALES",
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "sin juzgar por el registro"
+     }
+    },
+    "validation": {
+     "verdict": "PENDIENTE POR DEPENDENCIAS",
+     "sample": null,
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "el tablero de validación por mercado (AD-K02) no existe aún"
+     }
+    },
+    "transitions": 1,
+    "live": {
+     "safety_gates": [
+      {
+       "gate": "battery",
+       "row": 1,
+       "at": "2026-11-15T17:12:20+00:00",
+       "verdict": "NO PASA"
+      }
+     ],
+     "validation_gates": [
+      {
+       "gate": "research_v2",
+       "row": 2,
+       "at": "2026-11-12T13:38:48+00:00",
+       "verdict": "NO PASA"
+      }
+     ],
+     "agent_runs_7d": {}
+    },
+    "warnings": [
+     "seguridad: la última fila de battery (ai.feature_gates, fila 1) dice NO PASA; no puede avanzar",
+     "validación: la última fila de research_v2 (ai.feature_gates, fila 2) dice NO PASA",
+     "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+     "no validada (PENDIENTE POR DEPENDENCIAS)"
+    ]
+   },
+   {
+    "key": "readers",
+    "piece": "AD-D09",
+    "title": "Lectores especialistas: Partido y Estadísticas",
+    "description": "Los agentes de Partido y de Estadísticas leen el paquete del partido y alimentan al Council solo dentro de la sombra.",
+    "switch": "FBI_AI_AGENTS",
+    "components": [
+     "match-v5",
+     "stats-v4"
+    ],
+    "catalog_version": 1,
+    "registered_at": "2026-11-17T00:00:00+00:00",
+    "state": "en_sombra",
+    "since": "2026-11-17T00:00:00+00:00",
+    "decided_by": "system",
+    "signed_by_owner": false,
+    "reason": "Registro de partida (IA-056): ya corre en sombra en producción (observado el 16-nov-2026, solo lectura, últimos 7 días); el registro aún no ha juzgado su seguridad ni su validación.",
+    "observed": {
+     "at": "2026-11-16T20:45:00Z",
+     "rows": {
+      "match-v4": 10,
+      "match-v5": 142,
+      "stats-v3": 3,
+      "stats-v4": 26
+     },
+     "table": "ai.agent_runs",
+     "switch_word": "match,council,stats",
+     "window_days": 7,
+     "switch_word_source": "ai.feature_gates fila 13 (switches)"
+    },
+    "safety": {
+     "verdict": "PENDIENTE POR ACCIONES MANUALES",
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "sin juzgar por el registro"
+     }
+    },
+    "validation": {
+     "verdict": "PENDIENTE POR DEPENDENCIAS",
+     "sample": null,
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "el tablero de validación por mercado (AD-K02) no existe aún"
+     }
+    },
+    "transitions": 1,
+    "live": {
+     "safety_gates": [
+      {
+       "gate": "battery",
+       "row": 1,
+       "at": "2026-11-15T17:12:20+00:00",
+       "verdict": "NO PASA"
+      }
+     ],
+     "validation_gates": [],
+     "agent_runs_7d": {
+      "match": [],
+      "stats": []
+     }
+    },
+    "warnings": [
+     "seguridad: la última fila de battery (ai.feature_gates, fila 1) dice NO PASA; no puede avanzar",
+     "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+     "no validada (PENDIENTE POR DEPENDENCIAS)"
+    ]
+   },
+   {
+    "key": "council",
+    "piece": "AD-D10",
+    "title": "Council: juez council-v1 sobre council-protocol-v1",
+    "description": "El juez del Council y su protocolo por reglas deciden la revisión del motor de sombra ma-v1 (FBI_AI_ENGINES); nunca suben un estado ni tocan números.",
+    "switch": "FBI_AI_AGENTS",
+    "components": [
+     "council-v1",
+     "council-protocol-v1",
+     "ma-v1"
+    ],
+    "catalog_version": 1,
+    "registered_at": "2026-11-17T00:00:00+00:00",
+    "state": "en_sombra",
+    "since": "2026-11-17T00:00:00+00:00",
+    "decided_by": "system",
+    "signed_by_owner": false,
+    "reason": "Registro de partida (IA-056): ya corre en sombra en producción (observado el 16-nov-2026, solo lectura, últimos 7 días); el registro aún no ha juzgado su seguridad ni su validación.",
+    "observed": {
+     "at": "2026-11-16T20:45:00Z",
+     "rows": {
+      "council-v1": 178,
+      "ma-v1 (mode shadow)": 375
+     },
+     "table": "ai.agent_runs + ai.pick_reviews",
+     "switch_word": "match,council,stats",
+     "window_days": 7,
+     "switch_word_source": "ai.feature_gates fila 13 (switches)"
+    },
+    "safety": {
+     "verdict": "PENDIENTE POR ACCIONES MANUALES",
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "sin juzgar por el registro"
+     }
+    },
+    "validation": {
+     "verdict": "PENDIENTE POR DEPENDENCIAS",
+     "sample": null,
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "el tablero de validación por mercado (AD-K02) no existe aún"
+     }
+    },
+    "transitions": 1,
+    "live": {
+     "safety_gates": [
+      {
+       "gate": "battery",
+       "row": 1,
+       "at": "2026-11-15T17:12:20+00:00",
+       "verdict": "NO PASA"
+      }
+     ],
+     "validation_gates": [],
+     "agent_runs_7d": {
+      "council": []
+     }
+    },
+    "warnings": [
+     "seguridad: la última fila de battery (ai.feature_gates, fila 1) dice NO PASA; no puede avanzar",
+     "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+     "no validada (PENDIENTE POR DEPENDENCIAS)"
+    ]
+   },
+   {
+    "key": "haiku_arm",
+    "piece": "AD-D10",
+    "title": "Brazo Haiku del Council (ma-v1-h)",
+    "description": "El mismo camino del Council con el modelo pequeño, como brazo de comparación; se retira cuando cumpla su criterio.",
+    "switch": "FBI_AI_ENGINES",
+    "components": [
+     "ma-v1-h"
+    ],
+    "catalog_version": 1,
+    "registered_at": "2026-11-17T00:00:00+00:00",
+    "state": "en_sombra",
+    "since": "2026-11-17T00:00:00+00:00",
+    "decided_by": "system",
+    "signed_by_owner": false,
+    "reason": "Registro de partida (IA-056): ya corre en sombra en producción (observado el 16-nov-2026, solo lectura, últimos 7 días); el registro aún no ha juzgado su seguridad ni su validación.",
+    "observed": {
+     "at": "2026-11-16T20:45:00Z",
+     "rows": {
+      "ma-v1-h (mode shadow)": 375
+     },
+     "table": "ai.pick_reviews",
+     "switch_word": "rules,llm,ma-v1,ma-v1-h",
+     "window_days": 7,
+     "switch_word_source": "ai.feature_gates fila 13 (switches)"
+    },
+    "safety": {
+     "verdict": "PENDIENTE POR ACCIONES MANUALES",
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "sin juzgar por el registro"
+     }
+    },
+    "validation": {
+     "verdict": "PENDIENTE POR DEPENDENCIAS",
+     "sample": null,
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "el tablero de validación por mercado (AD-K02) no existe aún"
+     }
+    },
+    "transitions": 1,
+    "live": {
+     "safety_gates": [
+      {
+       "gate": "battery",
+       "row": 1,
+       "at": "2026-11-15T17:12:20+00:00",
+       "verdict": "NO PASA"
+      }
+     ],
+     "validation_gates": [],
+     "agent_runs_7d": {}
+    },
+    "warnings": [
+     "seguridad: la última fila de battery (ai.feature_gates, fila 1) dice NO PASA; no puede avanzar",
+     "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+     "no validada (PENDIENTE POR DEPENDENCIAS)"
+    ]
+   },
+   {
+    "key": "family_decisions",
+    "piece": "AD-B07",
+    "title": "Familias de conteos: córners, tarjetas y goles por mitad",
+    "description": "Las familias deciden en sombra con versiones propias (decision-fam-v1) que ningún pick, filtro ni lector usa.",
+    "switch": "FBI_FAMILY_DECISIONS",
+    "components": [
+     "decision-fam-v1"
+    ],
+    "catalog_version": 1,
+    "registered_at": "2026-11-17T00:00:00+00:00",
+    "state": "en_sombra",
+    "since": "2026-11-17T00:00:00+00:00",
+    "decided_by": "system",
+    "signed_by_owner": false,
+    "reason": "Registro de partida (IA-056): ya corre en sombra en producción (observado el 16-nov-2026, solo lectura, últimos 7 días); el registro aún no ha juzgado su seguridad ni su validación.",
+    "observed": {
+     "at": "2026-11-16T20:45:00Z",
+     "rows": 11125,
+     "table": "intel.decisions",
+     "filter": "decision_version = 'decision-fam-v1'",
+     "switch_word": "shadow (la única palabra que las enciende)",
+     "window_days": 7
+    },
+    "safety": {
+     "verdict": "PENDIENTE POR ACCIONES MANUALES",
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "sin juzgar por el registro"
+     }
+    },
+    "validation": {
+     "verdict": "PENDIENTE POR DEPENDENCIAS",
+     "sample": null,
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "el tablero de validación por mercado (AD-K02) no existe aún"
+     }
+    },
+    "transitions": 1,
+    "live": {
+     "safety_gates": [],
+     "validation_gates": [],
+     "agent_runs_7d": {}
+    },
+    "warnings": [
+     "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+     "no validada (PENDIENTE POR DEPENDENCIAS)"
+    ]
+   },
+   {
+    "key": "attribution",
+    "piece": "AD-K03",
+    "title": "Atribución de la sombra (attr-v1)",
+    "description": "Clasifica por código qué agente y versión acertó o falló en los partidos terminados; no cambia nada de lo que decide.",
+    "switch": "FBI_AI_PM_REVIEWER",
+    "components": [
+     "attr-v1"
+    ],
+    "catalog_version": 1,
+    "registered_at": "2026-11-17T00:00:00+00:00",
+    "state": "en_sombra",
+    "since": "2026-11-17T00:00:00+00:00",
+    "decided_by": "system",
+    "signed_by_owner": false,
+    "reason": "Registro de partida (IA-056): ya corre en sombra en producción (observado el 16-nov-2026, solo lectura, últimos 7 días); el registro aún no ha juzgado su seguridad ni su validación.",
+    "observed": {
+     "at": "2026-11-16T20:45:00Z",
+     "rows": 1423,
+     "table": "intel.agent_attributions",
+     "switch_word": "on",
+     "window_days": 7,
+     "switch_word_source": "ai.feature_gates fila 13 (switches: pm_reviewer)"
+    },
+    "safety": {
+     "verdict": "PENDIENTE POR ACCIONES MANUALES",
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "sin juzgar por el registro"
+     }
+    },
+    "validation": {
+     "verdict": "PENDIENTE POR DEPENDENCIAS",
+     "sample": null,
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "el tablero de validación por mercado (AD-K02) no existe aún"
+     }
+    },
+    "transitions": 1,
+    "live": {
+     "safety_gates": [],
+     "validation_gates": [],
+     "agent_runs_7d": {}
+    },
+    "warnings": [
+     "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+     "no validada (PENDIENTE POR DEPENDENCIAS)"
+    ]
+   },
+   {
+    "key": "chronicle_review",
+    "piece": "AD-F06",
+    "title": "Revisión posterior de la crónica (chronicle-review-v1)",
+    "description": "Contrasta la crónica de cada partido terminado con lo que pasó; solo base de datos, sin modelo ni coste; nadie la lee para decidir.",
+    "switch": null,
+    "components": [
+     "chronicle-review-v1"
+    ],
+    "catalog_version": 1,
+    "registered_at": "2026-11-17T00:00:00+00:00",
+    "state": "en_sombra",
+    "since": "2026-11-17T00:00:00+00:00",
+    "decided_by": "system",
+    "signed_by_owner": false,
+    "reason": "Registro de partida (IA-056): ya corre en sombra en producción (observado el 16-nov-2026, solo lectura, últimos 7 días); el registro aún no ha juzgado su seguridad ni su validación.",
+    "observed": {
+     "at": "2026-11-16T20:45:00Z",
+     "note": "sin interruptor: trabajo horario del worker",
+     "table": "ai.chronicle_reviews",
+     "newest": "2026-11-16T20:03Z",
+     "rows_total": 290,
+     "switch_word": null,
+     "window_days": 7
+    },
+    "safety": {
+     "verdict": "PENDIENTE POR ACCIONES MANUALES",
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "sin juzgar por el registro"
+     }
+    },
+    "validation": {
+     "verdict": "PENDIENTE POR DEPENDENCIAS",
+     "sample": null,
+     "evidence": {
+      "kind": "capability-seed-v1",
+      "note": "el tablero de validación por mercado (AD-K02) no existe aún"
+     }
+    },
+    "transitions": 1,
+    "live": {
+     "safety_gates": [],
+     "validation_gates": [],
+     "agent_runs_7d": {}
+    },
+    "warnings": [
+     "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+     "no validada (PENDIENTE POR DEPENDENCIAS)"
+    ]
+   }
+  ],
+  "note": "El registro anota y no decide: ningún interruptor, gate, agente, pick ni lector lo lee. «autorizada» es la firma del dueño; encender algo para lectores sigue siendo su cambio de interruptor."
+ },
+ "reason": null,
+ "meta": {
+  "generated_at": "2026-11-16T21:00:00Z",
+  "api_version": "v1",
+  "count": 7,
+  "total": null,
+  "limit": null,
+  "offset": null,
+  "data_as_of": null,
+  "next_cursor": null
+ }
+}

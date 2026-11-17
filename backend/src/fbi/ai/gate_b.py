@@ -10,7 +10,10 @@ RECORDED, PASA OR NO PASA ONLY. Migration 0127 widened the CHECK that names the 
 with ``gate_b`` and ``lab_plan``. ``record`` appends the verdict of the window that ended yesterday (``scripts/ia_gate_b.py evaluate --record``,
 ``decided_by = 'script'``, the evidence is the whole report with its hash as ``gates.record_gate`` writes it); a pending verdict is not evidence
 and writes nothing. ``record_lab_plan`` appends the OWNER's plan of the LAB (``set-lab-plan ... --confirm-owner``, ``decided_by = 'owner'``):
-the code never calls it on its own. Nothing here switches, publishes or changes what production decides.
+the code never calls it on its own. ``record_closure`` appends the OWNER's closure (``close --not-evaluated --reason ... --confirm-owner``,
+AD-001 / IA-055): ``gate-b-v1`` is NO EVALUADO, its window interrupted by the owner's decision, with the informative cut ``evaluate`` gives at
+that moment; once on file nothing more of ``gate-b-v1`` is recorded, and the owner's ``lab_plan`` is no longer needed. Nothing here switches,
+publishes or changes what production decides.
 
 THE WINDOW. The fourteen Bogotá days that ended yesterday (or ``through``), all after the ANCHOR: the day after the latest of (a) the first day
 the Orchestrator wrote a run of the shadow (``ai.agent_runs``, ``run_kind = 'shadow'``), (b) a change of an optimisation gate
@@ -57,7 +60,7 @@ THE CHECKS (each with its figures, its threshold and its own verdict):
     research_v2         the newest ``research_v2`` gate row says PASA (the 95 % of v1's evidences is that gate's own check,
                         ``fbi.ai.gate_research``); never evaluated is PENDIENTE POR TIEMPO REAL
 
-Everything here reads, except ``record`` and ``record_lab_plan`` (the caller commits)."""
+Everything here reads, except ``record``, ``record_lab_plan`` and ``record_closure`` (the caller commits)."""
 
 from __future__ import annotations
 
@@ -804,8 +807,111 @@ def evaluate(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetim
 
 def record(conn: psycopg.Connection[Any], report: GateReport, *, code_version: str | None = None) -> int | None:
     """Append the gate's row - ``PASA`` or ``NO PASA`` only, ``decided_by = 'script'``, the whole report as evidence with its hash; a pending
-    report is not evidence and writes nothing. The caller commits. Returns the row's id, None when nothing was written."""
-    if not report.recordable:
+    report is not evidence and writes nothing, and once the owner closed ``gate-b-v1`` as NO EVALUADO (``closure``) nothing more of it is
+    recorded. The caller commits. Returns the row's id, None when nothing was written."""
+    if not report.recordable or closure(conn) is not None:
         return None
     return gates.record_gate(conn, gate=GATE, passed=report.verdict == PASS, evidence=report.as_json(), at=report.at, decided_by="script",
                              code_version=code_version)
+
+
+# ── the owner's closure: NO EVALUADO (AD-001, IA-055) ──────────────────────────────────────────────────────────────
+#
+# The owner interrupted the window of ``gate-b-v1`` (Arquitectura definitiva 2026, decision 3, 16-nov-2026): Gate B is neither passed nor
+# failed, it was NOT EVALUATED. ``record_closure`` appends ONE row of ``gate_b`` that says so (``passed = false`` because nothing passed;
+# ``decided_by = 'owner'``; evidence ``gate-b-closure-v1``) with the informative cut that ``evaluate`` - the same evaluator, which only
+# reads - gives at that moment. It alters no measurement: no earlier row of ``ai.feature_gates`` or ``intel.audit_checks`` is touched (both
+# are append-only), the battery and research rows the cut cites keep saying what they said. Only the owner writes it (``scripts/ia_gate_b.py
+# close --not-evaluated --reason "..." --confirm-owner``), and only once: a second call finds the first and writes nothing.
+
+CLOSURE_KIND: Final = "gate-b-closure-v1"
+NOT_EVALUATED: Final = "NO EVALUADO"
+NOT_EVALUATED_ES: Final = "NO EVALUADO — ventana interrumpida por decisión del dueño"
+"""How the closure reads, for a person: never «NO PASA» and never «PASA»."""
+UNTOUCHED: Final = ("the closure alters no measurement: it is one appended row; no earlier row of ai.feature_gates or intel.audit_checks is "
+                    "changed (both tables are append-only) and every figure of the informative cut is the evaluator's own, as it read them")
+CLOSURE_SQL: Final = """
+SELECT id, at, decided_by, evidence, evidence_hash FROM ai.feature_gates
+ WHERE gate = 'gate_b' AND evidence ->> 'kind' = %(kind)s ORDER BY at, id LIMIT 1
+"""
+CLOSURE_LOCK_SQL: Final = "SELECT pg_advisory_xact_lock(hashtext('ai.feature_gates:gate-b-closure-v1'))"
+"""Two owners' commands at the same instant: the second waits for the first and then finds its row (READ COMMITTED)."""
+
+
+@dataclass(frozen=True)
+class Closure:
+    """The owner's closure of ``gate-b-v1`` as it is on file: the first ``gate-b-closure-v1`` row of ``gate_b``."""
+
+    row: int
+    at: datetime
+    decided_by: str
+    reason: str
+    evidence_hash: str
+    cut_verdict: str | None
+    """What the informative cut said at the closure (information, not the gate's verdict)."""
+
+    def as_json(self) -> dict[str, Any]:
+        return {"table": "ai.feature_gates", "gate": GATE, "row": self.row, "at": self.at.isoformat(), "kind": CLOSURE_KIND,
+                "verdict": NOT_EVALUATED, "verdict_es": NOT_EVALUATED_ES, "decided_by": self.decided_by, "reason": self.reason,
+                "evidence_hash": self.evidence_hash, "informative_cut_verdict": self.cut_verdict}
+
+
+def closure_of(r: Mapping[str, Any]) -> Closure:
+    evidence: Mapping[str, Any] = r["evidence"] if isinstance(r["evidence"], Mapping) else {}
+    raw = evidence.get("informative_cut")
+    cut: Mapping[str, Any] = raw if isinstance(raw, Mapping) else {}
+    return Closure(int(r["id"]), r["at"], str(r["decided_by"]), str(evidence.get("reason") or ""), str(r["evidence_hash"]),
+                   None if cut.get("verdict") is None else str(cut["verdict"]))
+
+
+def closure(conn: psycopg.Connection[Any]) -> Closure | None:
+    """The owner's closure of ``gate-b-v1`` when there is one (reads only)."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(CLOSURE_SQL, {"kind": CLOSURE_KIND})
+        r = cur.fetchone()
+    return None if r is None else closure_of(r)
+
+
+def _cited_row(report: GateReport, check_id: str) -> int | None:
+    for c in report.checks:
+        row = c.detail.get("row") if c.id == check_id else None
+        if isinstance(row, Mapping) and isinstance(row.get("id"), int):
+            return int(row["id"])
+    return None
+
+
+def closure_evidence(report: GateReport, *, reason: str) -> dict[str, Any]:
+    """What the closure row holds: the word NO EVALUADO, the owner's reason and the WHOLE report of ``evaluate`` at that moment, untouched,
+    with its own hash. Refuses a closure without its reason."""
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("the closure needs its reason (--reason \"...\")")
+    cut = report.as_json()
+    return {"kind": CLOSURE_KIND, "gate": GATE, "closes": METHOD, "verdict": NOT_EVALUATED, "verdict_es": NOT_EVALUATED_ES,
+            "reason": reason, "decided_by": "owner", "closed_at": report.at.isoformat(),
+            "not_a_verdict": "neither PASA nor NO PASA: the window was interrupted by the owner's decision before it could be judged",
+            "informative_cut": cut, "informative_cut_hash": gates.evidence_hash(cut),
+            "informative_cut_note": "the report of gate-b-v1 (evaluate, read-only) at the instant of the closure: information, not evidence",
+            "measurements_untouched": UNTOUCHED,
+            "rows_cited": {"battery": _cited_row(report, "battery"), "research_v2": _cited_row(report, "research_v2")}}
+
+
+def record_closure(conn: psycopg.Connection[Any], settings: AiSettings, *, reason: str, at: datetime, confirmed_by_owner: bool,
+                   code_version: str | None = None) -> tuple[Closure, bool]:
+    """THE OWNER'S ACTION: close ``gate-b-v1`` as NO EVALUADO - one row of ``gate_b``, ``passed = false``, ``decided_by = 'owner'``, evidence
+    ``gate-b-closure-v1`` with the informative cut that ``evaluate`` (read-only) gives at ``at``. The caller commits. Idempotent: when a
+    closure is already on file it writes nothing and returns that one, ``(closure, False)``; ``(closure, True)`` when this call wrote it.
+    Without the owner's explicit confirmation it refuses before touching the connection; only ``scripts/ia_gate_b.py close`` calls it."""
+    if not confirmed_by_owner:
+        raise PermissionError("closing Gate B is the owner's action: it needs the owner's explicit confirmation (--confirm-owner)")
+    if not (reason or "").strip():
+        raise ValueError("the closure needs its reason (--reason \"...\")")
+    with conn.cursor() as cur:
+        cur.execute(CLOSURE_LOCK_SQL)
+    existing = closure(conn)
+    if existing is not None:
+        return existing, False
+    report = evaluate(conn, settings, at=at)
+    evidence = closure_evidence(report, reason=reason)
+    row = gates.record_gate(conn, gate=GATE, passed=False, evidence=evidence, at=at, decided_by="owner", code_version=code_version)
+    return Closure(row, at, "owner", evidence["reason"], gates.evidence_hash(evidence), report.verdict), True

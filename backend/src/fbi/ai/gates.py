@@ -34,7 +34,9 @@ once the owner moves them from their default (``shadow_words``): the day they ar
 code that knows them is deployed is not.
 
 The gate ``gate_b`` (migration 0127) is the verdict of Gate B (``fbi.ai.gate_b``), ``PASA`` or ``NO PASA`` only, written by
-``scripts/ia_gate_b.py evaluate --record``. ``lab_plan`` (0127) is not a gate either: it is the owner's plan of the LAB - how many days the shadow
+``scripts/ia_gate_b.py evaluate --record`` - and, once, the OWNER's closure ``NO EVALUADO`` (``gate-b-closure-v1``, ``decided_by = 'owner'``,
+``passed = false``: ``scripts/ia_gate_b.py close --not-evaluated ... --confirm-owner``, AD-001), after which nothing more of ``gate-b-v1`` is
+recorded. Nothing switches on a ``gate_b`` row: only the panel of the gates reads them. ``lab_plan`` (0127) is not a gate either: it is the owner's plan of the LAB - how many days the shadow
 may exclude - written only by the owner (``scripts/ia_gate_b.py set-lab-plan ... --confirm-owner``, ``decided_by = 'owner'``) and read by Gate B.
 
 Nothing here reads a key and nothing changes a probability, a threshold or a pick."""

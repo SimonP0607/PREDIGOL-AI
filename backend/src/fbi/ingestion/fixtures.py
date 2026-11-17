@@ -26,13 +26,15 @@ job ledger whether it succeeded or not.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+import asyncio
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import psycopg
+import psycopg.errors
 import structlog
 from psycopg.rows import tuple_row
 
@@ -181,9 +183,96 @@ from: the provider files two grounds under one id (143 is the Linz arena and the
 of every refresh points at the wrong one. Any other venue the provider sends - a real change - is taken as before."""
 
 
+UPSERT_SQL = """
+    INSERT INTO core.fixtures
+      (provider_fixture_id, competition_season_id, home_team_id, away_team_id,
+       kickoff_at, status_short, status_group, round, venue_id, venue_name, venue_city,
+       source_payload_hash, source_fetched_at)
+    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    ON CONFLICT (provider_fixture_id) DO UPDATE SET
+      competition_season_id = EXCLUDED.competition_season_id,
+      home_team_id = EXCLUDED.home_team_id, away_team_id = EXCLUDED.away_team_id,
+      kickoff_at = EXCLUDED.kickoff_at, status_short = EXCLUDED.status_short,
+      status_group = EXCLUDED.status_group,
+      round = COALESCE(EXCLUDED.round, core.fixtures.round),
+      venue_id = CASE WHEN EXISTS (""" + KEEP_REASSIGNED_VENUE_SQL + """) THEN core.fixtures.venue_id
+                      ELSE COALESCE(EXCLUDED.venue_id, core.fixtures.venue_id) END,
+      venue_name = COALESCE(EXCLUDED.venue_name, core.fixtures.venue_name),
+      venue_city = CASE WHEN EXISTS (""" + KEEP_REPAIRED_CITY_SQL + """) THEN core.fixtures.venue_city
+                        ELSE COALESCE(EXCLUDED.venue_city, core.fixtures.venue_city) END,
+      source_payload_hash = EXCLUDED.source_payload_hash,
+      source_fetched_at = EXCLUDED.source_fetched_at,
+      updated_at = now()
+    WHERE """ + MONOTONIC_SQL.format(t="core.fixtures") + """
+    RETURNING (xmax = 0) AS inserted
+"""
+"""One fixture, inserted or brought up to date (monotonic on the fetch time, ``MONOTONIC_SQL``)."""
+
+
+LINEAGE_ONLY_SQL = """
+    UPDATE core.fixtures f
+       SET source_payload_hash = %(h)s, source_fetched_at = %(at)s, updated_at = now()
+      FROM unnest(%(ids)s::bigint[], %(versions)s::text[]) AS u(id, version)
+     WHERE f.id = u.id AND f.xmin::text = u.version
+       AND ((%(at)s::timestamptz IS NULL AND f.source_fetched_at IS NULL)
+            OR (%(at)s::timestamptz IS NOT NULL
+                AND (f.source_fetched_at IS NULL OR %(at)s::timestamptz >= f.source_fetched_at)))
+    RETURNING f.id
+"""
+"""The fixtures a payload confirmed without changing anything (OPS-006): the same final row the upsert leaves - its
+content already equal, its lineage and ``updated_at`` moved - in one statement. ``xmin`` is the row version read
+before deciding "equal": a row another session wrote in between is not touched here and goes through ``UPSERT_SQL``.
+The same monotonic rule as ``MONOTONIC_SQL``: an older payload changes nothing."""
+
+
+@dataclass(frozen=True, slots=True)
+class HeldFixture:
+    """A fixture row as read before a payload is applied to it."""
+
+    id: int
+    home_team_id: int
+    away_team_id: int
+    kickoff_at: datetime
+    competition_season_id: int
+    status_short: str
+    status_group: str
+    round: str | None
+    venue_id: int | None
+    venue_name: str | None
+    venue_city: str | None
+    version: str
+    """``xmin``: which version of the row this is."""
+
+    def same_as(self, r: FixtureRef, season_id: int, team_ids: Mapping[int, int], venue_id: int | None) -> bool:
+        """Would ``UPSERT_SQL`` leave every column of the row as it is, lineage apart? Only a sure yes counts: a
+        value the upsert keeps (an absent round, venue or city: ``COALESCE``) is equal; anything else that differs,
+        even a venue or a city a repair keeps (``KEEP_*_SQL``), is left to the upsert, which knows those rules."""
+        return (self.competition_season_id == season_id
+                and self.home_team_id == team_ids[r.provider_home_team_id]
+                and self.away_team_id == team_ids[r.provider_away_team_id]
+                and self.kickoff_at == r.kickoff_at
+                and self.status_short == r.status_short
+                and self.status_group == status_group(r.status_short)
+                and (r.round is None or r.round == self.round)
+                and (venue_id is None or venue_id == self.venue_id)
+                and (r.venue_name is None or r.venue_name == self.venue_name)
+                and (r.venue_city is None or r.venue_city == self.venue_city))
+
+
+def _repeated(ids: Iterable[int]) -> set[int]:
+    """Ids that appear more than once (a payload that lists a fixture twice is applied in order, row by row)."""
+    seen: set[int] = set()
+    twice: set[int] = set()
+    for i in ids:
+        (twice if i in seen else seen).add(i)
+    return twice
+
+
 class FixtureRepository:
     def __init__(self, conn: psycopg.Connection) -> None:
         self._conn = conn
+        self.unchanged = 0
+        """Fixtures whose payload said exactly what the row held: only their lineage moved (OPS-006)."""
 
     def ensure_teams(self, refs: Sequence[FixtureRef], names: dict[int, str]) -> dict[int, int]:
         ids = sorted({r.provider_home_team_id for r in refs} | {r.provider_away_team_id for r in refs})
@@ -266,96 +355,130 @@ class FixtureRepository:
 
         A ref older than what the row already holds is skipped too, and counted
         in neither total - see ``PayloadLineage``.
+
+        A ref that says exactly what the row already holds (OPS-006) is not
+        written again field by field: only its lineage moves forward - which
+        payload last confirmed the row and when (``source_payload_hash``,
+        ``source_fetched_at``, ``updated_at``), the values every reader of "when
+        did the provider last say this" reads - in one statement for all of them
+        (``LINEAGE_ONLY_SQL``). The final rows are the ones the upsert would have
+        left; what goes is the per-row statement, its two audit subqueries and its
+        rewrite of every column. On the server, 16 Nov 2026, the 15:41 sync applied
+        the club friendlies' payload of 10:17 a second time - the same body, byte
+        for byte - and rewrote all 8,397 of its fixtures. A row that changed
+        between the read here and the write (another session wrote it) goes
+        through the full upsert, as every changed row does.
         """
         inserted = updated = 0
         venue_ids = venue_ids or {}
         with self._conn.cursor(row_factory=tuple_row) as cur:
             known = {r.provider_fixture_id for r in refs}
             cur.execute("SELECT provider_fixture_id, id, home_team_id, away_team_id, kickoff_at, "
-                        "competition_season_id FROM core.fixtures WHERE provider_fixture_id = ANY(%s)",
+                        "competition_season_id, status_short, status_group, round, venue_id, venue_name, venue_city, "
+                        "xmin::text FROM core.fixtures WHERE provider_fixture_id = ANY(%s)",
                         (sorted(known),))
-            existing = cur.fetchall()
-            sides = {int(a): (int(b), int(c), int(d)) for a, b, c, d, _, _ in existing}
-            kickoffs = {int(a): e for a, _, _, _, e, _ in existing}
-            held_in = {int(a): int(s) for a, _, _, _, _, s in existing}
+            held = {int(x[0]): HeldFixture(*x[1:]) for x in cur.fetchall()}
+            seen_twice = _repeated(r.provider_fixture_id for r in refs)
+            full: list[tuple[FixtureRef, int]] = []
+            same: dict[int, tuple[FixtureRef, int, str]] = {}
             for r in refs:
                 season_id = season_ids.get((r.provider_league_id, r.season))
                 if season_id is None:
                     continue
-                cur.execute(
-                    """
-                    INSERT INTO core.fixtures
-                      (provider_fixture_id, competition_season_id, home_team_id, away_team_id,
-                       kickoff_at, status_short, status_group, round, venue_id, venue_name, venue_city,
-                       source_payload_hash, source_fetched_at)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                    ON CONFLICT (provider_fixture_id) DO UPDATE SET
-                      competition_season_id = EXCLUDED.competition_season_id,
-                      home_team_id = EXCLUDED.home_team_id, away_team_id = EXCLUDED.away_team_id,
-                      kickoff_at = EXCLUDED.kickoff_at, status_short = EXCLUDED.status_short,
-                      status_group = EXCLUDED.status_group,
-                      round = COALESCE(EXCLUDED.round, core.fixtures.round),
-                      venue_id = CASE WHEN EXISTS (""" + KEEP_REASSIGNED_VENUE_SQL + """) THEN core.fixtures.venue_id
-                                      ELSE COALESCE(EXCLUDED.venue_id, core.fixtures.venue_id) END,
-                      venue_name = COALESCE(EXCLUDED.venue_name, core.fixtures.venue_name),
-                      venue_city = CASE WHEN EXISTS (""" + KEEP_REPAIRED_CITY_SQL + """) THEN core.fixtures.venue_city
-                                        ELSE COALESCE(EXCLUDED.venue_city, core.fixtures.venue_city) END,
-                      source_payload_hash = EXCLUDED.source_payload_hash,
-                      source_fetched_at = EXCLUDED.source_fetched_at,
-                      updated_at = now()
-                    WHERE """ + MONOTONIC_SQL.format(t="core.fixtures") + """
-                    RETURNING (xmax = 0) AS inserted
-                    """,
-                    (
-                        r.provider_fixture_id, season_id, team_ids[r.provider_home_team_id],
-                        team_ids[r.provider_away_team_id], r.kickoff_at, r.status_short,
-                        status_group(r.status_short), r.round,
-                        venue_ids.get(r.provider_venue_id) if r.provider_venue_id is not None else None,
-                        r.venue_name, r.venue_city,
-                        lineage.payload_hash if lineage else None,
-                        lineage.fetched_at if lineage else None,
-                    ),
-                )
-                row = cur.fetchone()
-                if row is None:
-                    continue  # an older payload than the one already applied
-                if row[0]:
-                    inserted += 1
+                h = held.get(r.provider_fixture_id)
+                vid = venue_ids.get(r.provider_venue_id) if r.provider_venue_id is not None else None
+                if (h is not None and r.provider_fixture_id not in seen_twice
+                        and h.same_as(r, season_id, team_ids, vid)):
+                    same[h.id] = (r, season_id, h.version)
                 else:
-                    updated += 1
-                    moved_from = kickoffs.get(r.provider_fixture_id)
-                    if moved_from is not None and moved_from != r.kickoff_at:
-                        # Kept so a capture planned on the old time can be explained later.
-                        cur.execute(
-                            "INSERT INTO core.fixture_kickoff_changes (fixture_id, observed_at, before_kickoff, "
-                            "after_kickoff, payload_hash) VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
-                            (sides[r.provider_fixture_id][0], lineage.fetched_at if lineage else now(), moved_from,
-                             r.kickoff_at, lineage.payload_hash if lineage else None),
-                        )
-                    was_in = held_in.get(r.provider_fixture_id)
-                    if was_in is not None and was_in != season_id:
-                        # The provider moved the fixture to another competition season we track.
-                        cur.execute(
-                            "INSERT INTO audit.data_repairs (rule, entity, entity_id, provider_ref, field, "
-                            "before_value, after_value, reason, evidence) VALUES ('fixture_competition', "
-                            "'core.fixtures', %s, %s, 'competition_season_id', %s, %s, %s, %s)",
-                            (sides[r.provider_fixture_id][0], r.provider_fixture_id, str(was_in), str(season_id),
-                             f"the provider moved this fixture to league {r.provider_league_id} season {r.season}",
-                             lineage.payload_hash if lineage else None),
-                        )
-                    before = sides.get(r.provider_fixture_id)
-                    after = (team_ids[r.provider_home_team_id], team_ids[r.provider_away_team_id])
-                    if before is not None and before[1:] != after:
-                        # The provider corrected who plays whom. The row follows it - the
-                        # provider's fixture id is the identity - and the change is kept.
-                        cur.execute(
-                            "INSERT INTO audit.data_repairs (rule, entity, entity_id, provider_ref, field, "
-                            "before_value, after_value, reason, evidence) VALUES ('fixture_sides', 'core.fixtures', "
-                            "%s, %s, 'home_team_id/away_team_id', %s, %s, %s, %s)",
-                            (before[0], r.provider_fixture_id, f"{before[1]} v {before[2]}", f"{after[0]} v {after[1]}",
-                             "the provider changed the sides of this fixture", lineage.payload_hash if lineage else None),
-                        )
+                    full.append((r, season_id))
+            for r, season_id in full:
+                outcome = self._upsert_one(cur, r, season_id, team_ids, held, lineage=lineage, venue_ids=venue_ids)
+                inserted += outcome == "inserted"
+                updated += outcome == "updated"
+            if same:
+                ids = sorted(same)
+                cur.execute(LINEAGE_ONLY_SQL, {"ids": ids, "versions": [same[i][2] for i in ids],
+                                               "h": lineage.payload_hash if lineage else None,
+                                               "at": lineage.fetched_at if lineage else None})
+                refreshed = {int(x[0]) for x in cur.fetchall()}
+                updated += len(refreshed)
+                # Not refreshed: an older payload than the row's (skipped, as the upsert would), or a row another
+                # session wrote since it was read - that one gets the full upsert, which decides as it always did.
+                for fid in ids:
+                    if fid in refreshed:
+                        continue
+                    r, season_id, _ = same[fid]
+                    outcome = self._upsert_one(cur, r, season_id, team_ids, held, lineage=lineage,
+                                               venue_ids=venue_ids)
+                    inserted += outcome == "inserted"
+                    updated += outcome == "updated"
+            self.unchanged += len(same)
         return inserted, updated
+
+    def _upsert_one(
+        self,
+        cur: psycopg.Cursor[tuple[Any, ...]],
+        r: FixtureRef,
+        season_id: int,
+        team_ids: dict[int, int],
+        held: Mapping[int, HeldFixture],
+        *,
+        lineage: PayloadLineage | None,
+        venue_ids: Mapping[int, int],
+    ) -> str | None:
+        """The upsert of one fixture and the trail of what it changed. Returns "inserted", "updated" or None (an
+        older payload than the one already applied)."""
+        cur.execute(
+            UPSERT_SQL,
+            (
+                r.provider_fixture_id, season_id, team_ids[r.provider_home_team_id],
+                team_ids[r.provider_away_team_id], r.kickoff_at, r.status_short,
+                status_group(r.status_short), r.round,
+                venue_ids.get(r.provider_venue_id) if r.provider_venue_id is not None else None,
+                r.venue_name, r.venue_city,
+                lineage.payload_hash if lineage else None,
+                lineage.fetched_at if lineage else None,
+            ),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None  # an older payload than the one already applied
+        if row[0]:
+            return "inserted"
+        h = held.get(r.provider_fixture_id)
+        moved_from = h.kickoff_at if h is not None else None
+        if moved_from is not None and moved_from != r.kickoff_at:
+            # Kept so a capture planned on the old time can be explained later.
+            cur.execute(
+                "INSERT INTO core.fixture_kickoff_changes (fixture_id, observed_at, before_kickoff, "
+                "after_kickoff, payload_hash) VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
+                (h.id if h is not None else None, lineage.fetched_at if lineage else now(), moved_from,
+                 r.kickoff_at, lineage.payload_hash if lineage else None),
+            )
+        was_in = h.competition_season_id if h is not None else None
+        if h is not None and was_in is not None and was_in != season_id:
+            # The provider moved the fixture to another competition season we track.
+            cur.execute(
+                "INSERT INTO audit.data_repairs (rule, entity, entity_id, provider_ref, field, "
+                "before_value, after_value, reason, evidence) VALUES ('fixture_competition', "
+                "'core.fixtures', %s, %s, 'competition_season_id', %s, %s, %s, %s)",
+                (h.id, r.provider_fixture_id, str(was_in), str(season_id),
+                 f"the provider moved this fixture to league {r.provider_league_id} season {r.season}",
+                 lineage.payload_hash if lineage else None),
+            )
+        after = (team_ids[r.provider_home_team_id], team_ids[r.provider_away_team_id])
+        if h is not None and (h.home_team_id, h.away_team_id) != after:
+            # The provider corrected who plays whom. The row follows it - the
+            # provider's fixture id is the identity - and the change is kept.
+            cur.execute(
+                "INSERT INTO audit.data_repairs (rule, entity, entity_id, provider_ref, field, "
+                "before_value, after_value, reason, evidence) VALUES ('fixture_sides', 'core.fixtures', "
+                "%s, %s, 'home_team_id/away_team_id', %s, %s, %s, %s)",
+                (h.id, r.provider_fixture_id, f"{h.home_team_id} v {h.away_team_id}", f"{after[0]} v {after[1]}",
+                 "the provider changed the sides of this fixture", lineage.payload_hash if lineage else None),
+            )
+        return "updated"
 
     def note_left_tracked(self, refs: Sequence[FixtureRef], season_ids: Mapping[tuple[int, int], int], *,
                           payload_hash: str | None = None) -> int:
@@ -471,12 +594,11 @@ async def _sync_by_league(
             continue
         counters.api_calls += 1
         counters.payloads_stored += ledger.record_payloads(run_id, [raw])
-        outcome = _apply(conn, provider, raw, season_ids, counters)
-        conn.commit()
+        outcome = await _apply(conn, provider, raw, season_ids, counters, what=f"league {s.provider_league_id}")
         log.info("fixtures.synced", strategy="league", league=s.provider_league_id,
                  name=s.name, seen=len(refs), inserted=outcome.fixtures_inserted,
-                 updated=outcome.fixtures_updated, results_written=outcome.results_written,
-                 left_tracked=outcome.left_tracked)
+                 updated=outcome.fixtures_updated, unchanged=outcome.fixtures_unchanged,
+                 results_written=outcome.results_written, left_tracked=outcome.left_tracked)
     return plan_refused
 
 
@@ -505,33 +627,112 @@ async def _sync_by_date(
             continue
         counters.api_calls += 1
         counters.payloads_stored += ledger.record_payloads(run_id, [raw])
-        outcome = _apply(conn, provider, raw, season_ids, counters)
-        conn.commit()
+        outcome = await _apply(conn, provider, raw, season_ids, counters, what=f"date {on.isoformat()}")
         log.info("fixtures.synced", strategy="date", date=on.isoformat(),
                  seen_all_leagues=outcome.seen, seen_ours=outcome.ours,
                  inserted=outcome.fixtures_inserted, updated=outcome.fixtures_updated,
-                 results_written=outcome.results_written,
+                 unchanged=outcome.fixtures_unchanged, results_written=outcome.results_written,
                  left_tracked=outcome.left_tracked)
 
 
-def _apply(
+FIXTURE_BLOCK = 250
+"""Fixtures of one payload applied and committed together (OPS-006). A season used to be one transaction: the club
+friendlies' 8,400 fixtures stayed locked for about 30 minutes (server, 16 Nov 2026, 16:13-16:44 UTC), and the in-play
+capture of any of them waited that long. A block holds its rows for seconds."""
+
+CLASSIFY_BLOCK = 500
+"""Fixtures whose neutral-venue verdicts are written per transaction, once every block of the payload is in."""
+
+LOCK_TIMEOUT = "5s"
+"""How long a statement of the sync waits for a row another session holds (the in-play capture, a repair) before its
+block is rolled back and tried again. The server's default is 0: wait for ever."""
+
+LOCK_RETRY_PAUSES_S: tuple[float, ...] = (2.0, 5.0, 15.0)
+"""Pauses before each new attempt of a block that waited too long; after the last one the block is given up (an error
+of the run: the next sync applies the same fixtures, and the payload stays in the RAW store)."""
+
+_LOCK_ERRORS: tuple[type[BaseException], ...] = (psycopg.errors.LockNotAvailable, psycopg.errors.DeadlockDetected)
+
+
+async def _in_block[T](conn: psycopg.Connection, what: str, step: Callable[[], T], counters: RunCounters) -> T | None:
+    """Run ``step`` as one transaction with ``LOCK_TIMEOUT`` and commit it. A lock wait past the timeout (or a deadlock)
+    rolls the block back and tries it again after a pause; the block's writes are monotonic, so a retry writes what the
+    first attempt would have. Returns None when the block is given up."""
+    for attempt, pause in enumerate((*LOCK_RETRY_PAUSES_S, None), start=1):
+        try:
+            conn.execute("SELECT set_config('lock_timeout', %s, true)", (LOCK_TIMEOUT,))
+            out = step()
+            conn.commit()
+            return out
+        except _LOCK_ERRORS as exc:
+            conn.rollback()
+            if pause is None:
+                counters.errors.append(f"{what}: gave up after {attempt} lock waits ({type(exc).__name__})")
+                log.warning("fixtures.block_gave_up", block=what, attempts=attempt, error=type(exc).__name__)
+                return None
+            log.info("fixtures.block_lock_wait", block=what, attempt=attempt, retry_in_s=pause,
+                     error=type(exc).__name__)
+            await asyncio.sleep(pause)
+    return None
+
+
+async def _apply(
     conn: psycopg.Connection,
     provider: FootballDataProvider,
     raw: RawResponse,
     season_ids: Mapping[tuple[int, int], int],
     counters: RunCounters,
+    *,
+    what: str,
 ) -> PayloadOutcome:
-    """Apply a just-fetched payload and account for it in the run's counters.
+    """Apply a just-fetched payload in blocks and account for it in the run's counters.
+
+    The payload is the provider's list of fixtures; ``apply_fixtures_payload`` reads every entry on its own, so a
+    block of ``FIXTURE_BLOCK`` entries is applied exactly as the whole list was - fixture, score and facts of a match
+    in the same transaction - and committed (OPS-006). The neutral-venue verdicts follow once every block is in, as
+    ``apply_fixtures_payload`` does at its end, in blocks of ``CLASSIFY_BLOCK``. Every block runs with
+    ``LOCK_TIMEOUT`` and is retried on a lock wait (``_in_block``).
 
     A score is recorded as an update: it changes the state of a fixture we
     already hold, it does not create a new one.
     """
     # Imported here, not at module level: apply imports this module.
-    from fbi.ingestion.apply import apply_fixtures_payload
+    from fbi.catalog.neutral_store import Reference, reference_for
+    from fbi.ingestion.apply import PayloadOutcome, _classify_venues, apply_fixtures_payload
 
-    outcome = apply_fixtures_payload(
-        conn, provider, raw.body,
-        payload_hash=raw.payload_hash, fetched_at=raw.fetched_at, season_ids=season_ids,
+    conn.commit()  # the payload's index row stands on its own, whatever a block does
+    body = raw.body
+    entries = body.get("response")
+    blocks: list[dict[str, object]] = (
+        [{**body, "response": entries[i:i + FIXTURE_BLOCK]} for i in range(0, len(entries), FIXTURE_BLOCK)]
+        if isinstance(entries, list) and len(entries) > FIXTURE_BLOCK else [body])
+    parts: list[PayloadOutcome] = []
+    for n, block in enumerate(blocks, start=1):
+        def step(block: dict[str, object] = block) -> PayloadOutcome:
+            return apply_fixtures_payload(conn, provider, block, payload_hash=raw.payload_hash,
+                                          fetched_at=raw.fetched_at, season_ids=season_ids, classify=False)
+        out = await _in_block(conn, f"{what} block {n}/{len(blocks)}", step, counters)
+        if out is not None:
+            parts.append(out)
+    ours = [i for p in parts for i in p.ours_ids]
+    ref: list[Reference | None] = []
+    verdicts = 0
+    for start in range(0, len(ours), CLASSIFY_BLOCK):
+        ids = ours[start:start + CLASSIFY_BLOCK]
+
+        def classify(ids: list[int] = ids) -> int:
+            if not ref:
+                ref.append(reference_for(conn, ours))  # once per payload, and not at all for league matches alone
+            return _classify_venues(conn, ids, payload_hash=raw.payload_hash, ref=ref[0], reraise=_LOCK_ERRORS)
+        verdicts += await _in_block(conn, f"{what} verdicts {start // CLASSIFY_BLOCK + 1}", classify, counters) or 0
+    outcome = PayloadOutcome(
+        seen=sum(p.seen for p in parts), ours=sum(p.ours for p in parts),
+        fixtures_inserted=sum(p.fixtures_inserted for p in parts),
+        fixtures_updated=sum(p.fixtures_updated for p in parts),
+        finished_seen=sum(p.finished_seen for p in parts), results_written=sum(p.results_written for p in parts),
+        facts_written=sum(p.facts_written for p in parts), left_tracked=sum(p.left_tracked for p in parts),
+        venue_verdicts_written=verdicts, fixtures_unchanged=sum(p.fixtures_unchanged for p in parts),
+        ours_ids=tuple(ours), premature_ids=frozenset(i for p in parts for i in p.premature_ids),
     )
     counters.rows_normalized += outcome.ours
     counters.rows_inserted += outcome.fixtures_inserted

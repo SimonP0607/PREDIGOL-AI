@@ -531,7 +531,7 @@ def classify_fixtures(conn: psycopg.Connection[Any], fixture_ids: Sequence[int],
 
 
 def classify_provider_fixtures(conn: psycopg.Connection[Any], provider_fixture_ids: Sequence[int], *,
-                               at: datetime | None = None) -> Counts:
+                               at: datetime | None = None, ref: Reference | None = None) -> Counts:
     """``classify_fixtures`` for the fixtures a provider payload names (its ids, not ours): what the ingestion calls
     right after it has written them. The caller commits."""
     if not provider_fixture_ids:
@@ -540,7 +540,20 @@ def classify_provider_fixtures(conn: psycopg.Connection[Any], provider_fixture_i
         cur.execute("SELECT id FROM core.fixtures WHERE provider_fixture_id = ANY(%s)",
                     (sorted({int(i) for i in provider_fixture_ids}),))
         ids = [int(r[0]) for r in cur.fetchall()]
-    return classify_fixtures(conn, ids, at=at)
+    return classify_fixtures(conn, ids, at=at, ref=ref)
+
+
+def reference_for(conn: psycopg.Connection[Any], provider_fixture_ids: Sequence[int]) -> Reference | None:
+    """The rule's reference when any of these fixtures (provider ids) gets a verdict - a non-league match - and None
+    when none does: what a caller that classifies one payload in several calls loads once (``classify_fixtures``
+    does not load it either for league matches alone)."""
+    if not provider_fixture_ids:
+        return None
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM core.fixtures WHERE provider_fixture_id = ANY(%s)",
+                    (sorted({int(i) for i in provider_fixture_ids}),))
+        ids = [int(r[0]) for r in cur.fetchall()]
+    return load_reference(conn) if _non_league(conn, ids) else None
 
 
 def unclassified_ids(conn: psycopg.Connection[Any], *, rule_version: str = RULE_VERSION,

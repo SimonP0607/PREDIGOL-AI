@@ -9,7 +9,8 @@
 # /backups): nothing streams through docker. Then:
 #   - pg_restore --list reads the whole table of contents back;
 #   - sha256 and size go into <name>.json, with the schema revision and the row counts of the key tables
-#     taken just before and just after the dump (a restore must land between the two: bin/restore-test.sh);
+#     taken just before and just after the dump (a restore must land between the two: bin/restore-test.sh),
+#     and every schema and append-only trigger of the database (AD-A07: the restore test proves each came back);
 #   - only then is the file renamed from .partial to .dump.
 # Exit 0 good, 1 failed (the partial file is removed, the previous dumps are untouched).
 set -Eeuo pipefail
@@ -29,6 +30,18 @@ KEY_TABLES=(core.fixtures core.fixture_results core.fixture_events core.fixture_
   market.odds_snapshots market.final_prematch_odds market.historical_odds market.market_consensus
   raw.ingestion_payloads picks.picks picks.pick_results auth.users)
 
+# AD-A07: every schema and every append-only trigger, so that the restore test can prove each came back - a new schema of the plan
+# (news, say) is in the dump because pg_dump is given no list of schemas, and this is the proof that it is. One line of JSON; null when
+# the database cannot answer (the manifest then says nothing, and the restore test checks nothing more than before).
+catalog() {
+  psql_q "SELECT jsonb_build_object(
+    'schemas', (SELECT coalesce(jsonb_agg(nspname ORDER BY nspname), '[]'::jsonb) FROM pg_namespace
+                 WHERE nspname NOT IN ('pg_catalog', 'information_schema') AND nspname NOT LIKE 'pg_toast%' AND nspname NOT LIKE 'pg_temp%'),
+    'append_only', (SELECT coalesce(jsonb_agg(n.nspname || '.' || c.relname || ':' || t.tgname ORDER BY 1), '[]'::jsonb)
+                      FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+                     WHERE NOT t.tgisinternal AND t.tgname LIKE '%append_only%'))"
+}
+
 counts() {
   local parts=() t
   for t in "${KEY_TABLES[@]}"; do parts+=("'$t', (SELECT count(*) FROM $t)"); done
@@ -46,6 +59,8 @@ ping_hc "${HC_PING_BACKUP:-}" start
 log "backup $NAME: counting, dumping"
 revision="$(psql_q "SELECT version_num FROM public.alembic_version")"
 before="$(counts)"
+cat_json="$(catalog)"
+jq -e 'type == "object"' <<< "${cat_json:-null}" > /dev/null 2>&1 || cat_json=null
 started=$(date +%s)
 compose exec -T postgres pg_dump -U fbi -d fbi --format=custom --compress=6 --file="/backups/$NAME.dump.partial"
 seconds=$(( $(date +%s) - started ))
@@ -58,7 +73,7 @@ mv "$PARTIAL" "$DB_BACKUPS/$NAME.dump"
 cat > "$DB_BACKUPS/$NAME.json" <<JSON
 {"name": "$NAME", "file": "$NAME.dump", "created_at": "$(date -u +%FT%TZ)", "seconds": $seconds,
  "bytes": $bytes, "sha256": "$sha", "alembic_revision": "$revision", "pg_dump": "$version",
- "counts_before": $before, "counts_after": $after}
+ "counts_before": $before, "counts_after": $after, "catalog": $cat_json}
 JSON
 log "backup $NAME: $bytes bytes in ${seconds}s, sha256 ${sha:0:16}, revision $revision"
 
