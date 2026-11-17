@@ -1,0 +1,55 @@
+# Read-only probe for IA-077: 2 requests per league (calendar + detail of the 20 latest finished), 8 at most in all.
+# persist=False: nothing is written to the RAW store; the shared daily quota counts the requests as usual.
+import asyncio, json, logging
+from collections import Counter
+from fbi.core.clock import now
+from fbi.ingestion.fixtures import status_group
+from fbi.providers.api_football.build import build_client
+from fbi.providers.api_football.normalize import iter_fixtures, iter_fixture_results
+from fbi.providers.api_football.details import iter_fixture_details
+from fbi.catalog.league_probe import LeagueProbe, judge_detail, SAMPLE
+
+logging.disable(logging.WARNING)
+LEAGUES = [268, 299, 241, 240]
+
+async def main():
+    at = now()
+    client = build_client(max_requests=8)
+    out = {"at": at.isoformat()}
+    try:
+        for lg in LEAGUES:
+            p = LeagueProbe(lg, 2026)
+            r = await client.get("/fixtures", {"league": lg, "season": 2026}, persist=False)
+            p.requests += 1
+            refs = list(iter_fixtures(r.body))
+            res = {x.provider_fixture_id: x for x in iter_fixture_results(r.body)}
+            p.fixtures = len(refs)
+            fin = [x for x in refs if status_group(x.status_short) == "finished"]
+            p.finished = len(fin)
+            up = [x for x in refs if status_group(x.status_short) == "scheduled" and x.kickoff_at > at]
+            p.upcoming = len(up)
+            p.unresolved_results = sum(1 for x in fin if x.provider_fixture_id not in res)
+            latest = sorted((x for x in fin if x.provider_fixture_id in res), key=lambda x: x.kickoff_at)[-SAMPLE:]
+            extra = {"statuses": dict(Counter(x.status_short for x in refs)),
+                     "upcoming_kickoffs": sorted(x.kickoff_at.isoformat()[:16] for x in up),
+                     "last_finished": latest[-1].kickoff_at.isoformat()[:10] if latest else None,
+                     "sample_from": latest[0].kickoff_at.isoformat()[:10] if latest else None,
+                     "teams": len({t for x in refs for t in (x.provider_home_team_id, x.provider_away_team_id)}),
+                     "fixtures_by_month": dict(sorted(Counter(x.kickoff_at.strftime("%Y-%m") for x in refs).items()))}
+            if latest:
+                scores = {x.provider_fixture_id: (res[x.provider_fixture_id].status_short, res[x.provider_fixture_id].goals_home,
+                                                   res[x.provider_fixture_id].goals_away) for x in latest}
+                d = await client.get("/fixtures", {"ids": "-".join(str(x.provider_fixture_id) for x in sorted(latest, key=lambda x: x.provider_fixture_id))}, persist=False)
+                p.requests += 1
+                det = list(iter_fixture_details(d.body))
+                judge_detail(p, det, scores)
+                extra["one_lineup_only"] = sum(1 for x in det if len(x.lineups) == 1)
+                extra["lineups_any"] = sum(1 for x in det if x.lineups)
+                extra["team_stats_any"] = sum(1 for x in det if x.stats)
+                extra["players_any"] = sum(1 for x in det if x.players)
+            out[lg] = {**p.as_dict(), **extra}
+    finally:
+        await client.aclose()
+    print(json.dumps(out, default=str))
+
+asyncio.run(main())
