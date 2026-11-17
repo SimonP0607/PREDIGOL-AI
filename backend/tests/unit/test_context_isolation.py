@@ -26,6 +26,12 @@ CONTEXT_MODULES: dict[str, dict[str, str]] = {
         "intel/leakage.py": "the nightly proof: the rule h2h_known (it reads the constant N and nothing else)",
         "api/services/center.py": "the match page: the same head-to-head, asked for now",
     },
+    "fbi.competitions.scenarios": {
+        "competitions/scenario_store.py": "the shadow store (IA-082): a competition season as known at a moment, our goal model's "
+                                          "distributions, and the append-only record of the readings",
+        "competitions/scenario_replay.py": "the closing test (IA-082): a closed season replayed day by day against its final table",
+        "scripts/ia_scenarios.py": "the command (IA-082): read, compare with stakes-v5, replay (read-only) and the shadow step",
+    },
     "fbi.intel.scenarios": {
         "ai/packet.py": "the packet: what the match alone does to its table and to its tie, as of its moment",
         "intel/factors.py": "the registry: the key and the version of the scenarios, which a validation is about",
