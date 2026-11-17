@@ -1,0 +1,12 @@
+{
+ "market_key": "OU",
+ "state": "evaluable",
+ "reason": "completo",
+ "catalog_version": "market-states-v1",
+ "measured_at": "2034-05-02T19:00:00Z",
+ "books_median": 8.0,
+ "priced_fixtures": 150,
+ "settleable_pct": 100.0,
+ "validated_calibrator": true,
+ "rule_key": "goals_ft@v1"
+}
