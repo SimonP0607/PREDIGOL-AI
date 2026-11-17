@@ -21,6 +21,8 @@ ALLOWED = {
     "api/services/selection_intelligence.py": "C-02: the selection's contract reads its evaluation and its market's verdict (owner's "
                                              "projection; the public one exists only for what the owner published)",
     "api/services/tracking.py": "C-03: the owner's tracking reads the families' counters and the evaluations",
+    "api/services/post_evaluation.py": "C-08: the owner's evaluation after the match reads the evaluations of one match and the board "
+                                       "(private only, require_admin)",
     "scripts/ia_selection_eval.py": "the owner's read-only command (dry run and board)",
 }
 DECIDES = ("intel/", "picks/", "familydecisions/", "parlays/", "decision/", "council/", "models/", "features/", "predictions/",

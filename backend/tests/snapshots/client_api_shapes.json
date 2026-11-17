@@ -75,6 +75,10 @@
   {
    "date": "2026-11-09",
    "reason": "BE-024 (plan Cuotas, fase 6): DailyItem gains price_now, the price now beside the price taken (additive, null when it does not apply)"
+  },
+  {
+   "date": "2026-11-17",
+   "reason": "IA-134 (AD-J09): GET /home gana featured_analyses (C-12, opcional, solo con FBI_MATCH_INTELLIGENCE); aditivo"
   }
  ],
  "routes": {
@@ -1660,6 +1664,140 @@
      "title": "Envelope[Home]",
      "type": "object"
     },
+    "FeaturedAnalyses": {
+     "additionalProperties": false,
+     "description": "C-12, public projection.",
+     "properties": {
+      "contract": {
+       "default": "",
+       "description": "The contract's id (C-01 ... C-12).",
+       "title": "Contract",
+       "type": "string"
+      },
+      "contract_version": {
+       "default": "0.0.0",
+       "description": "MAJOR.MINOR.PATCH: an additive change raises the minor, one that breaks raises the major.",
+       "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+       "title": "Contract Version",
+       "type": "string"
+      },
+      "freshness": {
+       "$ref": "#/components/schemas/fbi__api__contracts__intelligence__base__Freshness"
+      },
+      "items": {
+       "$ref": "#/components/schemas/ItemList_FeaturedAnalysis_"
+      },
+      "personalised": {
+       "description": "True when the reader's favourites ordered the list.",
+       "title": "Personalised",
+       "type": "boolean"
+      },
+      "projection": {
+       "default": "public",
+       "description": "public under /api/v1/..., private under /api/v1/admin/... (require_admin).",
+       "enum": [
+        "public",
+        "private"
+       ],
+       "title": "Projection",
+       "type": "string"
+      },
+      "rule": {
+       "$ref": "#/components/schemas/FeaturedRule"
+      }
+     },
+     "required": [
+      "contract",
+      "contract_version",
+      "projection",
+      "freshness",
+      "rule",
+      "personalised",
+      "items"
+     ],
+     "title": "FeaturedAnalyses",
+     "type": "object"
+    },
+    "FeaturedAnalysis": {
+     "additionalProperties": false,
+     "description": "A published analysis: the match and its published selections, as C-01's public projection gives them.",
+     "properties": {
+      "match": {
+       "$ref": "#/components/schemas/MatchInfo"
+      },
+      "reasons": {
+       "items": {
+        "enum": [
+         "equipo_favorito",
+         "competicion_seguida",
+         "partido_proximo"
+        ],
+        "type": "string"
+       },
+       "minItems": 1,
+       "title": "Reasons",
+       "type": "array"
+      },
+      "selections": {
+       "description": "Only what the owner published (C-01's public selections).",
+       "items": {
+        "$ref": "#/components/schemas/Selection"
+       },
+       "minItems": 1,
+       "title": "Selections",
+       "type": "array"
+      }
+     },
+     "required": [
+      "match",
+      "selections",
+      "reasons"
+     ],
+     "title": "FeaturedAnalysis",
+     "type": "object"
+    },
+    "FeaturedRule": {
+     "additionalProperties": false,
+     "description": "The rule that chose the items, as data: the web receives it, it never fixes it.",
+     "properties": {
+      "max_items": {
+       "minimum": 1.0,
+       "title": "Max Items",
+       "type": "integer"
+      },
+      "order": {
+       "description": "The order the reasons rank by, first to last.",
+       "items": {
+        "enum": [
+         "equipo_favorito",
+         "competicion_seguida",
+         "partido_proximo"
+        ],
+        "type": "string"
+       },
+       "title": "Order",
+       "type": "array"
+      },
+      "version": {
+       "pattern": "^featured-v\\d+$",
+       "title": "Version",
+       "type": "string"
+      },
+      "window_hours": {
+       "minimum": 1.0,
+       "title": "Window Hours",
+       "type": "integer"
+      }
+     },
+     "required": [
+      "version",
+      "window_hours",
+      "max_items",
+      "order"
+     ],
+     "title": "FeaturedRule",
+     "type": "object"
+    },
     "Home": {
      "properties": {
       "at_stake": {
@@ -1668,6 +1806,17 @@
       },
       "data_freshness": {
        "$ref": "#/components/schemas/DataFreshness"
+      },
+      "featured_analyses": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/FeaturedAnalyses"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Contract C-12 «Inicio», public projection (AD-J09, IA-134): the published analyses Home features, each the summary of its match's public C-01, with why it is there; empty with its reason while nothing is published. Only while FBI_MATCH_INTELLIGENCE is on - absent otherwise, never null."
       },
       "live": {
        "$ref": "#/components/schemas/Section_list_LiveMatch__",
@@ -1877,6 +2026,96 @@
       "goals_away"
      ],
      "title": "HomeResult",
+     "type": "object"
+    },
+    "ItemList_FeaturedAnalysis_": {
+     "additionalProperties": false,
+     "properties": {
+      "expected_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Expected At"
+      },
+      "expected_piece": {
+       "anyOf": [
+        {
+         "pattern": "^AD-[0-9A-Z]{2,4}$",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Expected Piece"
+      },
+      "items": {
+       "items": {
+        "$ref": "#/components/schemas/FeaturedAnalysis"
+       },
+       "title": "Items",
+       "type": "array"
+      },
+      "min_sample": {
+       "anyOf": [
+        {
+         "minimum": 1.0,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Min Sample"
+      },
+      "missing_reason": {
+       "anyOf": [
+        {
+         "enum": [
+          "no_entregado",
+          "aun_no_disponible",
+          "sin_datos",
+          "sin_cobertura",
+          "reglamento_no_codificado",
+          "muestra_insuficiente",
+          "pendiente_derechos",
+          "retirado_por_derechos",
+          "sin_publicados",
+          "sin_resultados",
+          "sin_favoritos"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Why the list is empty: present exactly when it is.",
+       "title": "Missing Reason"
+      },
+      "sample": {
+       "anyOf": [
+        {
+         "minimum": 0.0,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Sample"
+      }
+     },
+     "required": [
+      "items"
+     ],
+     "title": "ItemList[FeaturedAnalysis]",
      "type": "object"
     },
     "LiveCompleteness": {
@@ -2392,6 +2631,85 @@
      "title": "MatchEvent",
      "type": "object"
     },
+    "MatchInfo": {
+     "additionalProperties": false,
+     "description": "The match as the provider gives it.",
+     "properties": {
+      "away": {
+       "$ref": "#/components/schemas/fbi__api__contracts__intelligence__match__TeamRef"
+      },
+      "competition": {
+       "$ref": "#/components/schemas/fbi__api__contracts__intelligence__match__CompetitionRef"
+      },
+      "home": {
+       "$ref": "#/components/schemas/fbi__api__contracts__intelligence__match__TeamRef"
+      },
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "kickoff_at": {
+       "format": "date-time",
+       "title": "Kickoff At",
+       "type": "string"
+      },
+      "phase": {
+       "enum": [
+        "previo",
+        "en_juego",
+        "terminado",
+        "aplazado",
+        "cancelado",
+        "otro"
+       ],
+       "title": "Phase",
+       "type": "string"
+      },
+      "round": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "$ref": "#/components/schemas/Missing"
+        }
+       ],
+       "description": "The provider's round («Regular Season - 12»), or why there is none.",
+       "title": "Round"
+      },
+      "status": {
+       "description": "The provider's short status (NS, 1H, FT…), as it comes.",
+       "minLength": 1,
+       "title": "Status",
+       "type": "string"
+      },
+      "venue": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "$ref": "#/components/schemas/Missing"
+        }
+       ],
+       "description": "The stadium's name as the provider gives it (AD-H04 will identify it).",
+       "title": "Venue"
+      }
+     },
+     "required": [
+      "id",
+      "home",
+      "away",
+      "competition",
+      "kickoff_at",
+      "round",
+      "venue",
+      "status",
+      "phase"
+     ],
+     "title": "MatchInfo",
+     "type": "object"
+    },
     "Meta": {
      "properties": {
       "api_version": {
@@ -2476,6 +2794,210 @@
       }
      },
      "title": "Meta",
+     "type": "object"
+    },
+    "Missing": {
+     "additionalProperties": false,
+     "description": "A field without value and the reason why. The accompanying fields that do not apply are left out of the JSON.",
+     "properties": {
+      "expected_at": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "When it is expected (with aun_no_disponible; optional with no_entregado).",
+       "title": "Expected At"
+      },
+      "expected_piece": {
+       "anyOf": [
+        {
+         "pattern": "^AD-[0-9A-Z]{2,4}$",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The piece that will compute it (with no_entregado).",
+       "title": "Expected Piece"
+      },
+      "min_sample": {
+       "anyOf": [
+        {
+         "minimum": 1.0,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The sample the contract needs (with muestra_insuficiente).",
+       "title": "Min Sample"
+      },
+      "missing_reason": {
+       "enum": [
+        "no_entregado",
+        "aun_no_disponible",
+        "sin_datos",
+        "sin_cobertura",
+        "reglamento_no_codificado",
+        "muestra_insuficiente",
+        "pendiente_derechos",
+        "retirado_por_derechos",
+        "sin_publicados",
+        "sin_resultados",
+        "sin_favoritos"
+       ],
+       "title": "Missing Reason",
+       "type": "string"
+      },
+      "sample": {
+       "anyOf": [
+        {
+         "minimum": 0.0,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "The sample there is (with muestra_insuficiente).",
+       "title": "Sample"
+      }
+     },
+     "required": [
+      "missing_reason"
+     ],
+     "title": "Missing",
+     "type": "object"
+    },
+    "PctInterval": {
+     "additionalProperties": false,
+     "description": "The range around a probability, in whole percentage points, already rounded by the server.",
+     "properties": {
+      "high": {
+       "maximum": 100.0,
+       "minimum": 0.0,
+       "title": "High",
+       "type": "integer"
+      },
+      "low": {
+       "maximum": 100.0,
+       "minimum": 0.0,
+       "title": "Low",
+       "type": "integer"
+      }
+     },
+     "required": [
+      "low",
+      "high"
+     ],
+     "title": "PctInterval",
+     "type": "object"
+    },
+    "Probability": {
+     "additionalProperties": false,
+     "description": "One probability with its seal. The web draws ``pct`` as it comes: it never recomputes, rounds otherwise,\ncombines or chooses between probabilities.",
+     "properties": {
+      "as_of": {
+       "description": "When this figure was computed.",
+       "format": "date-time",
+       "title": "As Of",
+       "type": "string"
+      },
+      "calibration": {
+       "description": "calibrada: a champion calibrator's output; sin_calibrar: the model's own number, said as such once.",
+       "enum": [
+        "calibrada",
+        "sin_calibrar"
+       ],
+       "title": "Calibration",
+       "type": "string"
+      },
+      "evaluation": {
+       "anyOf": [
+        {
+         "enum": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+         ],
+         "type": "string"
+        },
+        {
+         "$ref": "#/components/schemas/Missing"
+        }
+       ],
+       "description": "The evaluation step (E1-E4) the figure belongs to.",
+       "title": "Evaluation"
+      },
+      "evaluation_version": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "$ref": "#/components/schemas/Missing"
+        }
+       ],
+       "description": "The version of that evaluation: each one adds a version, none is rewritten.",
+       "title": "Evaluation Version"
+      },
+      "interval_pct": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/PctInterval"
+        },
+        {
+         "$ref": "#/components/schemas/Missing"
+        }
+       ],
+       "description": "The range in percentage points, or why there is none.",
+       "title": "Interval Pct"
+      },
+      "origin": {
+       "description": "What computed it: forecast-v1 (the common view today), market_view from AD-B05.",
+       "pattern": "^[a-z][a-z0-9_]*(-v\\d+)?$",
+       "title": "Origin",
+       "type": "string"
+      },
+      "pct": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "number"
+        }
+       ],
+       "description": "The percentage the web paints, rounded half up by the server from value (57, or 78.5 when the contract shows one decimal).",
+       "title": "Pct"
+      },
+      "value": {
+       "description": "The proportion, to draw with (0.57).",
+       "maximum": 1.0,
+       "minimum": 0.0,
+       "title": "Value",
+       "type": "number"
+      }
+     },
+     "required": [
+      "value",
+      "pct",
+      "interval_pct",
+      "calibration",
+      "as_of",
+      "evaluation",
+      "evaluation_version",
+      "origin"
+     ],
+     "title": "Probability",
      "type": "object"
     },
     "Section_list_HomeAtStake__": {
@@ -2644,6 +3166,56 @@
       "data"
      ],
      "title": "Section[list[LiveMatch]]",
+     "type": "object"
+    },
+    "Selection": {
+     "additionalProperties": false,
+     "description": "A selection as a reader sees it: only what PrediGol shows as a pick, with its public state and the match's one\nfigure of that outcome (the same object as in ``probabilities``).",
+     "properties": {
+      "line": {
+       "title": "Line",
+       "type": "number"
+      },
+      "market": {
+       "pattern": "^[A-Z0-9_]{1,12}$",
+       "title": "Market",
+       "type": "string"
+      },
+      "probability": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/Probability"
+        },
+        {
+         "$ref": "#/components/schemas/Missing"
+        }
+       ],
+       "description": "The outcome's one figure, or why there is none (the one figure covers every market from AD-B05).",
+       "title": "Probability"
+      },
+      "public_state": {
+       "enum": [
+        "publicada",
+        "en_juego",
+        "liquidada"
+       ],
+       "title": "Public State",
+       "type": "string"
+      },
+      "selection": {
+       "minLength": 1,
+       "title": "Selection",
+       "type": "string"
+      }
+     },
+     "required": [
+      "market",
+      "selection",
+      "line",
+      "public_state",
+      "probability"
+     ],
+     "title": "Selection",
      "type": "object"
     },
     "TeamBadge": {
@@ -2901,6 +3473,93 @@
       "fetched_at"
      ],
      "title": "TeamStatLine",
+     "type": "object"
+    },
+    "fbi__api__contracts__intelligence__base__Freshness": {
+     "additionalProperties": false,
+     "description": "The server says whether the answer is old; the web only shows its notice.",
+     "properties": {
+      "generated_at": {
+       "format": "date-time",
+       "title": "Generated At",
+       "type": "string"
+      },
+      "stale": {
+       "title": "Stale",
+       "type": "boolean"
+      },
+      "stale_reason": {
+       "anyOf": [
+        {
+         "pattern": "^[a-z][a-z0-9_]*$",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A code, given exactly when stale is true (null otherwise).",
+       "title": "Stale Reason"
+      }
+     },
+     "required": [
+      "generated_at",
+      "stale",
+      "stale_reason"
+     ],
+     "title": "Freshness",
+     "type": "object"
+    },
+    "fbi__api__contracts__intelligence__match__CompetitionRef": {
+     "additionalProperties": false,
+     "properties": {
+      "country": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "$ref": "#/components/schemas/Missing"
+        }
+       ],
+       "title": "Country"
+      },
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "name": {
+       "minLength": 1,
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "name",
+      "country"
+     ],
+     "title": "CompetitionRef",
+     "type": "object"
+    },
+    "fbi__api__contracts__intelligence__match__TeamRef": {
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "title": "Id",
+       "type": "integer"
+      },
+      "name": {
+       "minLength": 1,
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "name"
+     ],
+     "title": "TeamRef",
      "type": "object"
     }
    }

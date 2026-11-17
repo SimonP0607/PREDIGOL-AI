@@ -1,0 +1,111 @@
+{
+  "contract": "C-04",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "parlays": {
+    "items": [
+      {
+        "kind": "multiday",
+        "status": "armado",
+        "result": "pendiente",
+        "none_reason": null,
+        "rule": {
+          "version": "parlay-v5",
+          "min_legs": 6,
+          "max_legs": 7,
+          "max_per_match": 1,
+          "joint": "producto",
+          "none_when_nothing_meets": true
+        },
+        "window_from": "2026-11-21T16:42:00Z",
+        "window_to": "2026-11-23T16:42:00Z",
+        "built_at": "2026-11-21T16:42:00Z",
+        "legs": {
+          "items": [
+            {
+              "fixture_id": 990001,
+              "kickoff_at": "2026-11-21T21:00:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "pending"
+            },
+            {
+              "fixture_id": 990002,
+              "kickoff_at": "2026-11-21T22:00:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "pending"
+            },
+            {
+              "fixture_id": 990003,
+              "kickoff_at": "2026-11-21T23:00:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "pending"
+            },
+            {
+              "fixture_id": 990004,
+              "kickoff_at": "2026-11-22T00:00:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "pending"
+            },
+            {
+              "fixture_id": 990005,
+              "kickoff_at": "2026-11-22T01:00:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "pending"
+            },
+            {
+              "fixture_id": 990006,
+              "kickoff_at": "2026-11-22T02:00:00Z",
+              "market": "1X2",
+              "selection": "Home",
+              "line": 0.0,
+              "odds": 1.8,
+              "result": "pending"
+            }
+          ]
+        },
+        "combined_odds": 34.012,
+        "joint": {
+          "value": 0.05152,
+          "pct": 5.2,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:42:00Z",
+          "evaluation": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluation_version": {
+            "missing_reason": "sin_datos"
+          },
+          "origin": "parlay-v5"
+        },
+        "fair_odds": 19.41,
+        "accumulated_margin_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "expected_value_pct": 75.2
+      }
+    ]
+  }
+}

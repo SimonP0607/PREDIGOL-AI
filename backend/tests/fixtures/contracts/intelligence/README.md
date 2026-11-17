@@ -50,3 +50,12 @@ Al añadir un contrato: su carpeta con al menos un caso, una fila aquí y su lí
 | C-06 | `partido` | Las historias del partido y de sus equipos dentro de su ventana |
 | C-07 Fuentes del análisis | `publicada` | E3 de un análisis publicado: una baja oficial `en_contra` del over (su efecto por selección, solo privado), un contexto y un rumor `no_usada`; la privada añade el hecho rechazado por homónimo y las dos evaluaciones |
 | C-07 | `sin_evaluaciones` | Ninguna evaluación aún: todo `sin_datos` |
+| C-04 Parlays con estado | `ninguno` | Nada cumple la regla: el parlay del producto (`parlay-v5`) y el de la sombra (`parlay-v6`, `sin_candidatos`) llegan con `status: "ninguno"` y `NINGUNO_CUMPLE`, sin tramos; la pública solo trae el del producto |
+| C-04 | `dos_tramos` | `parlay-v6` armado en sombra con 2 tramos (conjunta por simulación `sin_calibrar`, margen acumulado 5,81 %), solo en la privada; la pública, el del producto `ninguno`. La privada añade el histórico de `parlay-v5` por estado |
+| C-04 | `tres_tramos` | `parlay-v6` de 3 tramos liquidado `perdido` (un tramo perdido, pago 0) y su calibración (1 liquidado de los 100 necesarios); la pública, el parlay de varios días del producto armado con 6 tramos (regla `parlay-v5`, máximo 7) |
+| C-08 Evaluación posterior (solo privada) | `ganada_sin_valor` | Ganada con precio malo frente al cierre (CLV −6,4 %): `SUERTE`; las seis preguntas: cifra `calibrada`, resultado puntuado, precio, dos hechos sostenidos y uno no evaluable, la alineación cambió la decisión (de CAUTELA), escenario `no_entregado` (`AD-B02`); validación `INSUFICIENTE` con su muestra y el aviso fijo |
+| C-08 | `perdida_con_valor` | Perdida con buen precio (CLV +9,2 %): `VARIANZA`; cifra `sin_calibrar`; sin hechos citados (`sin_datos`) |
+| C-08 | `anulada` | Anulada: `NULO`, no se puntúa (`scores` `sin_datos`) |
+| C-08 | `sin_evaluaciones` | Una base sin la tabla de evaluaciones: `selections`, `calibration` y `board` `sin_datos` |
+| C-12 Inicio | `sin_publicados` | 0 publicados (lo de hoy): `{"items": [], "missing_reason": "sin_publicados"}` con la regla `featured-v1` |
+| C-12 | `destacados` | Tres candidatos, dos con una selección publicada (resumen de su C-01 público): primero el del equipo favorito, luego el de la competición seguida; el que no tiene nada publicado nunca entra |

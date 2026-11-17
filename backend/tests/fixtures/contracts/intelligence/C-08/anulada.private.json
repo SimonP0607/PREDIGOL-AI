@@ -1,0 +1,178 @@
+{
+  "contract": "C-08",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-22T12:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "match": {
+    "id": 990001,
+    "home": {
+      "id": 9101,
+      "name": "Atlético Ejemplo"
+    },
+    "away": {
+      "id": 9102,
+      "name": "Deportivo Muestra"
+    },
+    "competition": {
+      "id": 39,
+      "name": "Liga Ejemplo",
+      "country": "Ejemplia"
+    },
+    "kickoff_at": "2026-11-21T20:00:00Z",
+    "round": "Regular Season - 12",
+    "venue": "Estadio Ejemplo",
+    "status": "FT",
+    "phase": "terminado"
+  },
+  "version": "eval-sel-v1",
+  "selections": {
+    "items": [
+      {
+        "layer": "decision-v1",
+        "decision_source": "intel.decisions",
+        "decision_id": 770003,
+        "family": "core",
+        "market": "AH",
+        "selection": "Home",
+        "line": -1.0,
+        "anticipated": {
+          "probability": {
+            "value": 0.53,
+            "pct": 53.0,
+            "interval_pct": {
+              "missing_reason": "sin_datos"
+            },
+            "calibration": "calibrada",
+            "as_of": "2026-11-21T19:20:00Z",
+            "evaluation": {
+              "missing_reason": "sin_datos"
+            },
+            "evaluation_version": {
+              "missing_reason": "sin_datos"
+            },
+            "origin": "decision-v1"
+          },
+          "market_pct": 52.0,
+          "odds": 1.95,
+          "expected_value_pct": 3.4,
+          "decision_state": "APROBADO",
+          "checkpoint": "lineups",
+          "decided_at": "2026-11-21T19:20:00Z",
+          "cycle_state": "confirmada_sombra",
+          "cycle_reason": "cumple_todo",
+          "taken": true
+        },
+        "happened": {
+          "result": "void",
+          "settled_by": "intel.decision_outcomes",
+          "settled_at": "2026-11-21T22:00:00Z",
+          "hit": null,
+          "scores": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        "price": {
+          "clv_pct": -2.5,
+          "close_pct": 50.0,
+          "close_minutes_to_ko": 5,
+          "quality": "BAD",
+          "verdict": "NULO"
+        },
+        "evidence": {
+          "rules": "eval-evidence-v1",
+          "held": 0,
+          "contradicted": 0,
+          "unevaluable": 0,
+          "facts": {
+            "items": [],
+            "missing_reason": "sin_datos"
+          }
+        },
+        "lineup": {
+          "rules": "eval-lineup-v1",
+          "changed": {
+            "missing_reason": "sin_datos"
+          },
+          "why": "sin_decision_previa",
+          "official_at": "2026-11-21T19:05:00Z",
+          "probability_change_pp": {
+            "missing_reason": "sin_datos"
+          },
+          "state_before": {
+            "missing_reason": "sin_datos"
+          },
+          "estimate": {
+            "hits": 9,
+            "of": 11,
+            "share_pct": 81.8
+          }
+        },
+        "scenario": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-B02"
+        },
+        "validation": {
+          "verdict": "INSUFICIENTE",
+          "sample": 0,
+          "needed": 300
+        },
+        "validation_cell": "decision-v1|core|AH",
+        "parity": "igual",
+        "evaluated_at": "2026-11-22T12:00:00Z",
+        "input_hash": "4d287c4afc685216e041fc33ab95ea36f556c93750abdea166f3cce8e502e9c7",
+        "notice_es": "Un acierto no valida el mercado."
+      }
+    ]
+  },
+  "calibration": {
+    "items": [
+      {
+        "cell": "decision-v1|core|AH",
+        "sample": 0,
+        "needed": 300,
+        "ece": {
+          "missing_reason": "sin_datos"
+        },
+        "ece_max": 0.03,
+        "bins": [],
+        "clv_mean_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "verdict": "INSUFICIENTE"
+      },
+      {
+        "cell": "decision-v1|core|*",
+        "sample": 2,
+        "needed": 300,
+        "ece": 0.52,
+        "ece_max": 0.03,
+        "bins": [
+          {
+            "pred_pct": 57.0,
+            "observed_pct": 100.0,
+            "n": 1
+          },
+          {
+            "pred_pct": 61.0,
+            "observed_pct": 0.0,
+            "n": 1
+          }
+        ],
+        "clv_mean_pct": 1.4,
+        "verdict": "INSUFICIENTE"
+      }
+    ]
+  },
+  "board": {
+    "version": "board-v1",
+    "protocol": "AD-K02",
+    "fingerprint": "6eff7d3066cbeed274d457c2694f478e339fc8232610be74f4c56f54e570def1",
+    "signed_by_owner": false,
+    "bonferroni_m": 0
+  },
+  "notice_es": "Un acierto no valida el mercado."
+}
