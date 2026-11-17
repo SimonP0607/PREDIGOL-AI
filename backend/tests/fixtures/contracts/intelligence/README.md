@@ -24,5 +24,8 @@ Las reglas: `backend/docs/owner/IA_057_CONTRATO_INTELLIGENCE.md`. Las pruebas: `
 | C-01 | `terminado` | Partido terminado; la selección `liquidada`; la crónica apagada para lectores (`pendiente_derechos`) y visible solo en la privada |
 | C-11 Consola (solo privada) | `en_sombra` | «Nada sale de la sombra» se cumple con `FBI_AI_MODE=enforce` porque el veto no está en vigor (el informe de combined no dice pass); batería NO PASA, Gate B NO EVALUADO con el cierre del dueño, un sobre al 80 % y un tope al 95 %; motor de noticias y cola de alertas `no_entregado` |
 | C-11 | `esquema_atrasado` | Una base detrás del código: el registro y los costes llegan como `{"read_failed": true, "error": "UndefinedTable"}`, la sombra `sin_comprobar` y `schema_check` dice qué tablas faltan |
+| C-10 (búsqueda v2) | `encontrado` | «atletico» encuentra por prefijo dos equipos (uno por su alias), un jugador y un estadio por palabras, y el partido de sus equipos; Noticias dice `no_entregado` (`AD-G01`). La privada añade `score`, `popularity`, `rank` y `index` |
+| C-10 | `sin_resultados` | Ningún grupo con resultados: cada uno `sin_resultados` y «¿Quisiste decir…?» (`did_you_mean`) con un nombre cercano |
+| C-10 | `sin_indice` | El índice aún no se ha construido: cada grupo `no_entregado` (`AD-I01`) y `freshness.stale` con `indice_sin_construir` |
 
 Al añadir un contrato: su carpeta con al menos un caso, una fila aquí y su línea en la coordinación entre sesiones.

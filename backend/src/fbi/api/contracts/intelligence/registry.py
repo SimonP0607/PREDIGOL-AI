@@ -22,6 +22,7 @@ from fbi.api.contracts.intelligence.projection import (
     structure_problems,
 )
 from fbi.api.contracts.intelligence.reference import ConventionsSample, ConventionsSamplePrivate
+from fbi.api.contracts.intelligence.search import SearchV2, SearchV2Private
 
 
 @dataclass(frozen=True)
@@ -49,7 +50,7 @@ CATALOGUE: Final[dict[str, Planned]] = {
                     ("/api/v1/admin/intelligence/evaluations/{fixture_id}",)),
     "C-09": Planned("Perfiles", "AD-H07", ("/api/v1/teams/{team_id}", "/api/v1/players/{player_id}",
                                            "/api/v1/competitions/{competition_id}"), ()),
-    "C-10": Planned("Búsqueda v2", "AD-I02", ("/api/v1/search",), ()),
+    "C-10": Planned("Búsqueda v2", "AD-I02", ("/api/v1/search/v2",), ("/api/v1/admin/search/v2",)),
     "C-11": Planned("Consola", "AD-J08", (), ("/api/v1/admin/intelligence/console",)),
     "C-12": Planned("Inicio", "AD-J09", ("/api/v1/home",), ()),
 }
@@ -85,6 +86,8 @@ CONTRACTS: Final[tuple[ContractSpec, ...]] = (
                  public_routes=("/api/v1/matches/{fixture_id}/intelligence",),
                  private_routes=("/api/v1/admin/intelligence/matches/{fixture_id}/intelligence",)),
     ContractSpec(private=ConsoleContract, public=None, private_routes=("/api/v1/admin/intelligence/console",)),
+    ContractSpec(private=SearchV2Private, public=SearchV2, public_routes=("/api/v1/search/v2",),
+                 private_routes=("/api/v1/admin/search/v2",)),
 )
 """Every Intelligence contract. A new one is added here in the PR that merges its models."""
 
