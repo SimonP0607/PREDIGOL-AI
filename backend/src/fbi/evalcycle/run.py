@@ -45,6 +45,7 @@ from fbi.evalcycle import VERSION, alerts, chain, clock, conditions, dependency,
 from fbi.evalcycle import players as player_inputs
 from fbi.evalcycle.dependency import Dependency, Matrix, PlayerDependency
 from fbi.evalcycle.reevaluate import Decided, Outcome, Priced, Standing
+from fbi.factlinks import store as factlinks
 from fbi.forecasting import market_reader
 from fbi.forecasting import score_matrix as sm
 from fbi.lifecycle import derive
@@ -283,6 +284,7 @@ class Report:
     alerts: Counter[str] = field(default_factory=Counter)
     dependencies: Counter[str] = field(default_factory=Counter)
     facts: Counter[str] = field(default_factory=Counter)
+    sources: Counter[str] = field(default_factory=Counter)
     latency_ms: list[int] = field(default_factory=list)
     lifecycle: dict[str, Any] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
@@ -292,6 +294,7 @@ class Report:
         return {"runs": dict(sorted(self.runs.items())), "failed": dict(sorted(self.failed.items())),
                 "verdicts": dict(sorted(self.verdicts.items())), "alerts": dict(sorted(self.alerts.items())),
                 "dependencies": dict(sorted(self.dependencies.items())), "facts": dict(sorted(self.facts.items())),
+                "sources": dict(sorted(self.sources.items())),
                 "e3_latency_ms": {"n": len(lat), "max": lat[-1] if lat else None,
                                   "p95": lat[min(len(lat) - 1, int(0.95 * len(lat)))] if lat else None},
                 "lifecycle": self.lifecycle, "errors": self.errors[:20]}
@@ -534,6 +537,19 @@ def _write_alert(ctx: Context, m: Match, a: alerts.Alert, *, run_id: int, verdic
         ctx.rep.alerts[a.kind] += 1
 
 
+def _write_sources(ctx: Context, m: Match, run_id: int, *, evaluation: str, version: int) -> None:
+    """The facts this evaluation looked at, linked or refused by ``link-v1`` (AD-G08, C-07), written now - in the evaluation's own
+    transaction, after its verdicts: the database refuses them at any other moment (revision 0160)."""
+    got = factlinks.record(ctx.conn, run_id=run_id, fixture_id=m.id, evaluation=evaluation, evaluation_version=version,
+                           known_at=ctx.now, typed=typed_visible(ctx.conn))
+    if got is None:
+        ctx.rep.sources["sin_tabla"] += 1
+        return
+    ctx.rep.sources["lists"] += 1
+    ctx.rep.sources["linked"] += got.linked
+    ctx.rep.sources["refused"] += got.candidates - got.linked
+
+
 def standings_of(conn: psycopg.Connection[Any], fixture_id: int) -> dict[Key, tuple[int, Standing]]:
     return {key_of(r): (int(r["id"]), Standing(str(r["state"]), str(r["reason"]), _f(r["p_after"]), _f(r["odds_after"]), int(r["id"])))
             for r in _fetch(conn, VERDICTS_SQL, {"fixture": fixture_id})}
@@ -580,6 +596,7 @@ def e1(ctx: Context, m: Match) -> None:
         _write_verdict(ctx, m, run_id, k, evaluation="E1", version=1, previous_id=previous.get(k, (None,))[0], verdict="lectura",
                        state=rd.state, reason=rd.reason, cause=rd.cause, decision_id=d.id, dependency_id=dep_id, o=None, p=d.p,
                        odds=d.odds, price_state=d.price_state, detail={"decision_state": d.state, "decision_reason": d.reason})
+    _write_sources(ctx, m, run_id, evaluation="E1", version=1)
 
 
 def _write_dependency(ctx: Context, m: Match, run_id: int, decision_id: int, dep: Dependency, inputs: Sequence[dependency.PlayerInput]
@@ -628,6 +645,7 @@ def e2(ctx: Context, m: Match, runs: Sequence[Run], calls: Sequence[clock.FactCa
             a = alerts.withdrawn(m.id, k, st, o, decision_id=d.id, price_at=d.price_at, age_minutes=d.price_age_minutes)
             if a is not None:
                 _write_alert(ctx, m, a, run_id=run_id, verdict_id=vid, evaluation="E2", version=version)
+    _write_sources(ctx, m, run_id, evaluation="E2", version=version)
 
 
 # -- E3 and E4 --------------------------------------------------------------------------------------------------------------------------
@@ -679,6 +697,7 @@ def e3(ctx: Context, m: Match, runs: Sequence[Run], due: clock.LineUpDue) -> Non
                             started_ms=started, decided=moment is not None, moment_id=moment, conditions_doc=snapshot(m), lineup=lineup,
                             summary={"decisions": len(kept), "sides": sorted(starters)})
         _judge_all(ctx, m, run_id, evaluation="E3", version=version, kept=kept, starters=starters)
+        _write_sources(ctx, m, run_id, evaluation="E3", version=version)
     ctx.rep.runs["E3"] += 1
 
 
@@ -706,6 +725,7 @@ def e4(ctx: Context, m: Match, runs: Sequence[Run], check: conditions.Check) -> 
                              verdict_id=vid, evaluation="E4", version=1)
     for c in check.changes:
         _write_alert(ctx, m, alerts.changed(m.id, c), run_id=run_id, verdict_id=None, evaluation="E4", version=1)
+    _write_sources(ctx, m, run_id, evaluation="E4", version=1)
 
 
 # -- the passes -------------------------------------------------------------------------------------------------------------------------

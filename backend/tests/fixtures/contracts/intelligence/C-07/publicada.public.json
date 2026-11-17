@@ -1,0 +1,138 @@
+{
+  "contract": "C-07",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-22T14:30:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "fixture_id": 990001,
+  "evaluation": "E3",
+  "evaluation_version": 1,
+  "evaluated_at": "2026-11-22T14:05:00Z",
+  "summary": {
+    "facts": 3,
+    "sources": 3,
+    "by_level": [
+      {
+        "level": "oficial",
+        "n": 1
+      },
+      {
+        "level": "dos_origenes",
+        "n": 1
+      },
+      {
+        "level": "rumor",
+        "n": 1
+      }
+    ],
+    "unused_rumours": 1
+  },
+  "facts": {
+    "items": [
+      {
+        "published_at": "2026-11-22T08:05:00Z",
+        "published_day_only": false,
+        "known_at": "2026-11-22T08:15:00Z",
+        "fact_at": {
+          "missing_reason": "sin_datos"
+        },
+        "fact_day_only": false,
+        "valid_until": {
+          "missing_reason": "sin_datos"
+        },
+        "n": 1,
+        "fact_es": "J. Ejemplo: baja",
+        "entity": {
+          "type": "player",
+          "id": 880009,
+          "name": "J. Ejemplo"
+        },
+        "team": "Club Ejemplo Norte",
+        "level": "oficial",
+        "warnings": [],
+        "relation": "en_contra",
+        "contributed_es": "Mueve en contra una selección del análisis (dos puntos o más).",
+        "evaluation": "E3",
+        "source": {
+          "name": "Club Ejemplo Norte (oficial)",
+          "type": "oficial",
+          "url": "https://oficial.ejemplo.invalid/noticias/parte"
+        },
+        "quote": {
+          "missing_reason": "pendiente_derechos"
+        }
+      },
+      {
+        "published_at": "2026-11-22T08:05:00Z",
+        "published_day_only": false,
+        "known_at": "2026-11-22T08:15:00Z",
+        "fact_at": {
+          "missing_reason": "sin_datos"
+        },
+        "fact_day_only": false,
+        "valid_until": {
+          "missing_reason": "sin_datos"
+        },
+        "n": 2,
+        "fact_es": "Club Ejemplo Sur: novedad del cuerpo técnico",
+        "entity": {
+          "type": "team",
+          "id": 770002,
+          "name": "Club Ejemplo Sur"
+        },
+        "team": "Club Ejemplo Sur",
+        "level": "dos_origenes",
+        "warnings": [],
+        "relation": "contexto",
+        "contributed_es": "Se tuvo en cuenta como contexto: no movió ninguna selección.",
+        "evaluation": "E3",
+        "source": {
+          "name": "Radio Ejemplo",
+          "type": "prensa",
+          "url": "https://radio.ejemplo.invalid/deportes/tecnico-sur"
+        },
+        "quote": {
+          "missing_reason": "pendiente_derechos"
+        }
+      },
+      {
+        "published_at": "2026-11-22T08:05:00Z",
+        "published_day_only": false,
+        "known_at": "2026-11-22T08:15:00Z",
+        "fact_at": {
+          "missing_reason": "sin_datos"
+        },
+        "fact_day_only": false,
+        "valid_until": {
+          "missing_reason": "sin_datos"
+        },
+        "n": 3,
+        "fact_es": "L. Ejemplo: en duda",
+        "entity": {
+          "type": "player",
+          "id": 880020,
+          "name": "L. Ejemplo"
+        },
+        "team": "Club Ejemplo Sur",
+        "level": "rumor",
+        "warnings": [],
+        "relation": "no_usada",
+        "contributed_es": "No se usó: es un rumor.",
+        "evaluation": "E3",
+        "source": {
+          "name": "Portal Ejemplo",
+          "type": "prensa",
+          "url": "https://portal.ejemplo.invalid/l-ejemplo-duda"
+        },
+        "quote": {
+          "missing_reason": "pendiente_derechos"
+        }
+      }
+    ]
+  },
+  "level_rule_es": "Oficial: lo dice la fuente oficial (club, liga o federación). Dos orígenes: lo cuentan dos fuentes independientes. Un medio: lo cuenta una sola fuente. Rumor: nadie lo confirma; se lista, pero el análisis no lo usa.",
+  "relation_rule_es": "A favor o en contra: el hecho cambia en dos puntos o más la probabilidad de una selección del análisis (un jugador del que depende). Contexto: se tuvo en cuenta sin mover nada. No usada: un rumor."
+}

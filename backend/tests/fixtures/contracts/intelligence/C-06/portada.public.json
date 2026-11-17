@@ -1,0 +1,385 @@
+{
+  "contract": "C-06",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T19:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "view": "portada",
+  "front": {
+    "lead_story": {
+      "id": "st-ej-convocatoria-norte",
+      "headline_es": "Club Ejemplo Norte cita a sus dos atacantes titulares",
+      "summary_es": "La convocatoria oficial incluye a J. Ejemplo y A. Ejemplo. El club no informó bajas nuevas.",
+      "category": "selecciones",
+      "level": "oficial",
+      "warnings": [],
+      "sources_count": 3,
+      "latest_at": "2026-11-21T18:46:00Z",
+      "sources": [
+        {
+          "name": "Club Ejemplo Norte (oficial)",
+          "author": {
+            "missing_reason": "pendiente_derechos"
+          },
+          "published_at": "2026-11-21T18:20:00Z",
+          "published_day_only": false,
+          "known_at": "2026-11-21T18:26:00Z",
+          "url": "https://oficial.ejemplo.invalid/noticias/convocatoria"
+        },
+        {
+          "name": "Radio Ejemplo",
+          "author": {
+            "missing_reason": "pendiente_derechos"
+          },
+          "published_at": "2026-11-21T18:35:00Z",
+          "published_day_only": false,
+          "known_at": "2026-11-21T18:40:00Z",
+          "url": "https://radio.ejemplo.invalid/deportes/club-norte-atacantes"
+        },
+        {
+          "name": "Diario Reservado Ejemplo",
+          "author": {
+            "missing_reason": "pendiente_derechos"
+          },
+          "published_at": {
+            "missing_reason": "sin_datos"
+          },
+          "published_day_only": false,
+          "known_at": "2026-11-21T18:46:00Z",
+          "url": "https://reservado.ejemplo.invalid/futbol/convocatoria-club-norte"
+        }
+      ],
+      "entities": [
+        {
+          "type": "team",
+          "id": 770001,
+          "name": "Club Ejemplo Norte",
+          "role": "protagonista",
+          "method": "proveedor",
+          "confidence": 1.0
+        },
+        {
+          "type": "player",
+          "id": 880009,
+          "name": "J. Ejemplo",
+          "role": "protagonista",
+          "method": "alias",
+          "confidence": 0.98
+        },
+        {
+          "type": "player",
+          "id": 880010,
+          "name": "A. Ejemplo",
+          "role": "protagonista",
+          "method": "alias",
+          "confidence": 0.95
+        }
+      ],
+      "image": {
+        "kind": "monograma"
+      }
+    },
+    "breaking": {
+      "items": [
+        {
+          "id": "st-ej-convocatoria-norte",
+          "headline_es": "Club Ejemplo Norte cita a sus dos atacantes titulares",
+          "summary_es": "La convocatoria oficial incluye a J. Ejemplo y A. Ejemplo. El club no informó bajas nuevas.",
+          "category": "selecciones",
+          "level": "oficial",
+          "warnings": [],
+          "sources_count": 3,
+          "latest_at": "2026-11-21T18:46:00Z",
+          "sources": [
+            {
+              "name": "Club Ejemplo Norte (oficial)",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": "2026-11-21T18:20:00Z",
+              "published_day_only": false,
+              "known_at": "2026-11-21T18:26:00Z",
+              "url": "https://oficial.ejemplo.invalid/noticias/convocatoria"
+            },
+            {
+              "name": "Radio Ejemplo",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": "2026-11-21T18:35:00Z",
+              "published_day_only": false,
+              "known_at": "2026-11-21T18:40:00Z",
+              "url": "https://radio.ejemplo.invalid/deportes/club-norte-atacantes"
+            },
+            {
+              "name": "Diario Reservado Ejemplo",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": {
+                "missing_reason": "sin_datos"
+              },
+              "published_day_only": false,
+              "known_at": "2026-11-21T18:46:00Z",
+              "url": "https://reservado.ejemplo.invalid/futbol/convocatoria-club-norte"
+            }
+          ],
+          "entities": [
+            {
+              "type": "team",
+              "id": 770001,
+              "name": "Club Ejemplo Norte",
+              "role": "protagonista",
+              "method": "proveedor",
+              "confidence": 1.0
+            },
+            {
+              "type": "player",
+              "id": 880009,
+              "name": "J. Ejemplo",
+              "role": "protagonista",
+              "method": "alias",
+              "confidence": 0.98
+            },
+            {
+              "type": "player",
+              "id": 880010,
+              "name": "A. Ejemplo",
+              "role": "protagonista",
+              "method": "alias",
+              "confidence": 0.95
+            }
+          ],
+          "image": {
+            "kind": "monograma"
+          }
+        },
+        {
+          "id": "st-ej-rumor-fichaje",
+          "headline_es": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_es": {
+            "missing_reason": "sin_datos"
+          },
+          "category": "fichajes",
+          "level": "rumor",
+          "warnings": [],
+          "sources_count": 1,
+          "latest_at": "2026-11-21T09:55:00Z",
+          "sources": [
+            {
+              "name": "Portal Ejemplo",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": "2026-11-21T09:55:00Z",
+              "published_day_only": false,
+              "known_at": "2026-11-21T10:00:00Z",
+              "url": "https://portal.ejemplo.invalid/rumor-fichaje"
+            }
+          ],
+          "entities": [
+            {
+              "type": "team",
+              "id": 770002,
+              "name": "Club Ejemplo Sur",
+              "role": "mencionado",
+              "method": "alias",
+              "confidence": 0.7
+            }
+          ],
+          "image": {
+            "kind": "monograma"
+          }
+        }
+      ]
+    },
+    "mine": {
+      "items": [
+        {
+          "id": "st-ej-convocatoria-norte",
+          "headline_es": "Club Ejemplo Norte cita a sus dos atacantes titulares",
+          "summary_es": "La convocatoria oficial incluye a J. Ejemplo y A. Ejemplo. El club no informó bajas nuevas.",
+          "category": "selecciones",
+          "level": "oficial",
+          "warnings": [],
+          "sources_count": 3,
+          "latest_at": "2026-11-21T18:46:00Z",
+          "sources": [
+            {
+              "name": "Club Ejemplo Norte (oficial)",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": "2026-11-21T18:20:00Z",
+              "published_day_only": false,
+              "known_at": "2026-11-21T18:26:00Z",
+              "url": "https://oficial.ejemplo.invalid/noticias/convocatoria"
+            },
+            {
+              "name": "Radio Ejemplo",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": "2026-11-21T18:35:00Z",
+              "published_day_only": false,
+              "known_at": "2026-11-21T18:40:00Z",
+              "url": "https://radio.ejemplo.invalid/deportes/club-norte-atacantes"
+            },
+            {
+              "name": "Diario Reservado Ejemplo",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": {
+                "missing_reason": "sin_datos"
+              },
+              "published_day_only": false,
+              "known_at": "2026-11-21T18:46:00Z",
+              "url": "https://reservado.ejemplo.invalid/futbol/convocatoria-club-norte"
+            }
+          ],
+          "entities": [
+            {
+              "type": "team",
+              "id": 770001,
+              "name": "Club Ejemplo Norte",
+              "role": "protagonista",
+              "method": "proveedor",
+              "confidence": 1.0
+            },
+            {
+              "type": "player",
+              "id": 880009,
+              "name": "J. Ejemplo",
+              "role": "protagonista",
+              "method": "alias",
+              "confidence": 0.98
+            },
+            {
+              "type": "player",
+              "id": 880010,
+              "name": "A. Ejemplo",
+              "role": "protagonista",
+              "method": "alias",
+              "confidence": 0.95
+            }
+          ],
+          "image": {
+            "kind": "monograma"
+          }
+        }
+      ]
+    },
+    "featured": {
+      "items": [
+        {
+          "id": "st-ej-sancion-sur",
+          "headline_es": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_es": {
+            "missing_reason": "sin_datos"
+          },
+          "category": "bajas_y_sanciones",
+          "level": "un_medio",
+          "warnings": [],
+          "sources_count": 1,
+          "latest_at": "2026-11-21T13:50:00Z",
+          "sources": [
+            {
+              "name": "Radio Ejemplo",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": "2026-11-21T13:50:00Z",
+              "published_day_only": false,
+              "known_at": "2026-11-21T14:00:00Z",
+              "url": "https://radio.ejemplo.invalid/deportes/lateral-sur"
+            }
+          ],
+          "entities": [
+            {
+              "type": "team",
+              "id": 770002,
+              "name": "Club Ejemplo Sur",
+              "role": "protagonista",
+              "method": "proveedor",
+              "confidence": 1.0
+            },
+            {
+              "type": "player",
+              "id": 880020,
+              "name": "L. Ejemplo",
+              "role": "protagonista",
+              "method": "alias",
+              "confidence": 0.92
+            }
+          ],
+          "image": {
+            "kind": "monograma"
+          }
+        },
+        {
+          "id": "st-ej-rumor-fichaje",
+          "headline_es": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_es": {
+            "missing_reason": "sin_datos"
+          },
+          "category": "fichajes",
+          "level": "rumor",
+          "warnings": [],
+          "sources_count": 1,
+          "latest_at": "2026-11-21T09:55:00Z",
+          "sources": [
+            {
+              "name": "Portal Ejemplo",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": "2026-11-21T09:55:00Z",
+              "published_day_only": false,
+              "known_at": "2026-11-21T10:00:00Z",
+              "url": "https://portal.ejemplo.invalid/rumor-fichaje"
+            }
+          ],
+          "entities": [
+            {
+              "type": "team",
+              "id": 770002,
+              "name": "Club Ejemplo Sur",
+              "role": "mencionado",
+              "method": "alias",
+              "confidence": 0.7
+            }
+          ],
+          "image": {
+            "kind": "monograma"
+          }
+        }
+      ]
+    },
+    "counts": [
+      {
+        "category": "fichajes",
+        "n": 1
+      },
+      {
+        "category": "bajas_y_sanciones",
+        "n": 1
+      },
+      {
+        "category": "selecciones",
+        "n": 1
+      }
+    ],
+    "window_hours": 72,
+    "order_version": "front-v1"
+  }
+}

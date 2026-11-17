@@ -17,7 +17,9 @@ Four evaluations of every tracked match, tied to the football clock instead of t
 Each evaluation keeps what it did (``intel.eval_runs``, ``intel.eval_verdicts``, revision 0156), its decision as a new version of
 decision-v2 (``intel.decisions_v2``, IA-093) and its moves in the cycle of states under the writer ``eval-cycle-v1``
 (``intel.selection_lifecycle``, through the cycle's API); a withdrawal, a line-up that did not arrive in time and a change of kick-off
-or conditions become a private alert «antes -> ahora» for the owner (``alerts``, AD-D08), never a notice to a reader.
+or conditions become a private alert «antes -> ahora» for the owner (``alerts``, AD-D08), never a notice to a reader. And each evaluation
+writes, in its own transaction, the list of the facts it looked at with their relation to the analysis (``fbi.factlinks``, ``link-v1``,
+AD-G08, revision 0160): contract C-07 is read from that list, never rebuilt afterwards.
 
 The pure modules (``clock``, ``dependency``, ``reevaluate``, ``alerts``, ``chain``) read no database and no clock; ``run`` reads and
 writes. No model of language computes, raises or lowers anything here. Off by default: the worker schedules it only while
