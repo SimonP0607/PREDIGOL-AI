@@ -122,6 +122,7 @@ from fbi.odds.partitions import ensure_partitions
 from fbi.odds.schedule import NEAR_CLOSE_TOLERANCE_MINUTES
 from fbi.ops.heartbeat import (
     HeartbeatWriter,
+    LivenessPulse,
     TickOutcome,
     default_worker_id,
     last_success,
@@ -790,11 +791,32 @@ _settle_now = OnePass(_settle_once, "pick_settlement")
 
 
 def _request_settlement(fixture_ids: list[int], path: str) -> None:
-    """Settle these matches beside the live follow, without making it wait."""
+    """Settle these matches beside the live follow, without making it wait.
+
+    The pass is started on the scheduler's loop even when the follow runs on a loop of its own (OWN_LOOP_JOBS): that
+    loop ends with the follow, and a pass started on it would hold the follow until the pass ended."""
     _queue_settlement(fixture_ids, path)
+    _on_main_loop(_start_settlement)
+
+
+def _start_settlement() -> None:
     task = asyncio.get_running_loop().create_task(asyncio.to_thread(_settle_now))
     _background.add(task)
     task.add_done_callback(_background.discard)
+
+
+def _on_main_loop(fn: Callable[[], None]) -> None:
+    """Run ``fn`` on the scheduler's loop: now when called from it (or before the worker set it), else as soon as that
+    loop gets to it."""
+    main_loop = _main_loop
+    try:
+        running: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
+    except RuntimeError:
+        running = None
+    if main_loop is None or main_loop is running or main_loop.is_closed():
+        fn()
+    else:
+        main_loop.call_soon_threadsafe(fn)
 
 _background: set[asyncio.Task[Any]] = set()
 """Passes started beside a job, kept here until they end (an unreferenced task can be collected mid-run)."""
@@ -1540,6 +1562,8 @@ def _last_intel_run(conn: psycopg.Connection[Any], job: str) -> datetime | None:
 _scheduler: AsyncIOScheduler | None = None
 _lock: WorkerLock | None = None
 _stop: asyncio.Event | None = None
+_main_loop: asyncio.AbstractEventLoop | None = None
+"""The scheduler's event loop, for what a job on a loop of its own starts beside itself (``_on_main_loop``)."""
 
 EXIT_ANOTHER_WORKER = 75
 """EX_TEMPFAIL: not an error in this worker, and worth trying again later."""
@@ -1572,10 +1596,16 @@ async def _run_watchdog() -> None:
 
 OWN_LOOP_JOBS = frozenset({"fixtures_sync", "results_sync", "historical_backfill", "reference_refresh",
                            "catalogue_refresh", "final_prematch", "context_refresh", "context_due", "results_repair",
-                           "odds_book_refresh"})
+                           "odds_book_refresh", "live_match_capture"})
 """Jobs run on an event loop of their own, in a thread (fbi.core.deadline.run_in_own_loop): their blocking database
-work - a season of 8,327 club friendlies, a page of 40,000 transfers - must not hold the loop the in-play capture
-runs on. The live jobs and the pre-match tick stay on the scheduler's loop."""
+work - a season of 8,327 club friendlies, a page of 40,000 transfers - must not hold the loop the in-play odds capture
+and the pre-match tick run on, which stay on the scheduler's loop.
+
+The in-play follow (``live_match_capture``) runs here too since OPS-006. It writes core.fixtures with blocking psycopg,
+and a row the fixtures sync held made it wait on the scheduler's loop: from 13 to 15 Nov 2026 the server's check
+restarted the worker seven times, each time inside a fixtures sync, because the wait stopped the loop and the beat with
+it; the 21 follows of more than two minutes all fell inside one. On its own loop a wait costs that follow its minute,
+not the loop."""
 
 
 def _deadline(job_id: str, job_type: str, fn: Any) -> Any:
@@ -1657,7 +1687,7 @@ def _on_error(event: JobEvent) -> None:
 
 
 async def main() -> None:
-    global _scheduler, _lock, _stop
+    global _scheduler, _lock, _stop, _main_loop
     configure_logging(settings.runtime.log_level)
     # One worker per database, host or container: the second one leaves at once.
     _lock = WorkerLock.acquire(settings.database.psycopg_url)
@@ -1940,10 +1970,16 @@ async def main() -> None:
                       next_run_time=moment + timedelta(minutes=WATCHDOG_MINUTES))
     scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
     scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
+    _main_loop = asyncio.get_running_loop()
     scheduler.start()
 
     with _connect() as conn:
         _writer(conn).started(jobs=_jobs())
+    # The heartbeat on a thread of its own (OPS-006): a job that holds the loop for a while no longer reads as a dead
+    # worker; a loop that runs nothing for ten minutes still does (fbi.ops.heartbeat.LivenessPulse).
+    pulse = LivenessPulse(_connect, worker_id=default_worker_id(), loop=_main_loop,
+                          healthy=lambda: _scheduler is not None and _scheduler.running)
+    pulse.start()
     log.info(
         "worker.started",
         tick_minutes=TICK_MINUTES,
@@ -1961,6 +1997,7 @@ async def main() -> None:
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, stop.set)
     await stop.wait()
+    pulse.stop()  # before the stop is written: no pulse may follow it
     scheduler.shutdown(wait=True)
     try:
         with _connect() as conn:
