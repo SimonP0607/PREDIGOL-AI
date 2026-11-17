@@ -11,6 +11,7 @@ from typing import Literal
 from pydantic import Field
 
 from fbi.api.contracts.common import Contract, StatusReason, UserStatus
+from fbi.api.contracts.intelligence.selection import SelectionIntelligence
 from fbi.api.contracts.reading import ReadingFact, ReadingNarrative
 from fbi.api.contracts.records import MatchRef
 
@@ -86,3 +87,7 @@ class PickExplanation(Contract):
                                                  "while the reading is shown).")
     review: ExplanationReview | None = Field(description="Only while the AI's review is applied: its decision and claims on "
                                                          "this selection.")
+    intelligence: SelectionIntelligence | None = Field(
+        default=None, exclude_if=lambda v: v is None,
+        description="Contract C-02 «Selección», public projection (AD-J03, IA-114): only while FBI_MATCH_INTELLIGENCE is on and "
+                    "only for a selection the owner published (or in play, or settled). Absent otherwise - it never travels as null.")

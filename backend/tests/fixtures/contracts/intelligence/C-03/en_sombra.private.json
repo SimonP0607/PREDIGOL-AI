@@ -1,0 +1,121 @@
+{
+  "contract": "C-03",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "machine_version": "lifecycle-v1",
+  "writer": "lifecycle-shadow-v1",
+  "filters": {
+    "state": null,
+    "family": null,
+    "competition": null,
+    "limit": 50
+  },
+  "counts_by_state": {
+    "detectado": 4,
+    "en_investigacion": 0,
+    "en_evaluacion": 9,
+    "pendiente_alineaciones": 2,
+    "confirmada_sombra": 6,
+    "retirada": 1,
+    "descartada": 31,
+    "en_juego": 3,
+    "liquidada": 12,
+    "evaluada": 5
+  },
+  "families": {
+    "items": [
+      {
+        "layer": "decision-fam-v1",
+        "family": "corners",
+        "candidates": 1626,
+        "sample": 212,
+        "needed": 300,
+        "verdict": "INSUFICIENTE",
+        "clv_pct": 0.6
+      },
+      {
+        "layer": "decision-v1",
+        "family": "core",
+        "candidates": 31593,
+        "sample": 0,
+        "needed": 300,
+        "verdict": "INSUFICIENTE",
+        "clv_pct": {
+          "missing_reason": "sin_datos"
+        }
+      }
+    ]
+  },
+  "board": {
+    "version": "board-v1",
+    "protocol": "AD-K02",
+    "fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+    "signed_by_owner": false,
+    "bonferroni_m": 0
+  },
+  "items": {
+    "items": [
+      {
+        "fixture": {
+          "id": 990001,
+          "kickoff_at": "2026-11-21T20:00:00Z",
+          "competition_id": 39
+        },
+        "selection": {
+          "market": "CORNERS_OU",
+          "selection": "Over",
+          "line": 9.5,
+          "family": "corners",
+          "layer": "decision-fam-v1"
+        },
+        "state": "confirmada_sombra",
+        "reason": "cumple_salvo_validacion",
+        "known_at": "2026-11-21T16:42:00Z",
+        "detected_at": "2026-11-20T20:42:00Z",
+        "moves": 3,
+        "public_state": null,
+        "probability": {
+          "value": 0.57,
+          "pct": 57,
+          "interval_pct": {
+            "missing_reason": "sin_datos"
+          },
+          "calibration": "sin_calibrar",
+          "as_of": "2026-11-21T16:42:00Z",
+          "evaluation": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "evaluation_version": {
+            "missing_reason": "no_entregado",
+            "expected_piece": "AD-D06"
+          },
+          "origin": "decision-v1"
+        },
+        "price_taken": 1.93,
+        "evaluation": {
+          "missing_reason": "no_entregado",
+          "expected_piece": "AD-D06"
+        },
+        "outcome": "pending",
+        "clv_pct": {
+          "missing_reason": "sin_datos"
+        },
+        "verdict": {
+          "missing_reason": "sin_datos"
+        }
+      }
+    ]
+  },
+  "period": {
+    "date_from": "2026-11-15",
+    "date_to": "2026-11-22",
+    "total": 1
+  },
+  "next_cursor": null
+}

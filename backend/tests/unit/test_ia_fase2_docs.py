@@ -134,7 +134,7 @@ REPLAY_SRC = (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")
 
 # ── reading the documents ─────────────────────────────────────────────────────────────────────────────────────────
 
-WORDS = {"un": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10, "once": 11, "doce": 12, "trece": 13, "catorce": 14, "quince": 15, "dieciséis": 16, "diecisiete": 17, "dieciocho": 18, "diecinueve": 19, "veinte": 20, "veintiún": 21, "veintidós": 22, "veintitrés": 23, "veinticuatro": 24, "veinticinco": 25, "veintiséis": 26, "veintisiete": 27, "veintiocho": 28, "veintinueve": 29, "treinta": 30, "veintiuno": 21}
+WORDS = {"treinta y un": 31, "treinta y uno": 31, "treinta y dos": 32, "treinta y tres": 33, "un": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10, "once": 11, "doce": 12, "trece": 13, "catorce": 14, "quince": 15, "dieciséis": 16, "diecisiete": 17, "dieciocho": 18, "diecinueve": 19, "veinte": 20, "veintiún": 21, "veintidós": 22, "veintitrés": 23, "veinticuatro": 24, "veinticinco": 25, "veintiséis": 26, "veintisiete": 27, "veintiocho": 28, "veintinueve": 29, "treinta": 30, "veintiuno": 21}
 """The numbers the guide writes in words."""
 
 
@@ -397,7 +397,7 @@ def test_the_pieces_of_the_guide_are_files_scripts_and_migrations_that_exist() -
     readers = next(r for r in rows if r[0] == "Lectores")
     assert (
         all_ticked(readers[2]) == ["ai/packet.py", "picks/daily.py", "intel/decision.py"]
-        and "y otros dieciséis (sección 5)" in readers[2]
+        and "y otros dieciocho (sección 5)" in readers[2]
     )
     assert {r[0]: all_ticked(r[2]) for r in rows} == {
         "Caché por entidad y tema": ["ai/cache.py"],
@@ -2118,25 +2118,25 @@ def test_who_reads_the_evidence_table_is_what_the_guide_counts_and_the_structura
     own = {f.removeprefix("src/fbi/") for f in guard.OWN_READERS}
     others = {f.removeprefix("src/fbi/") for f in files} - own
     words = re.search(
-        r"la leen (\w+) módulos del código\. (\w+) la leen a propósito.*?Los otros (\w+) filtran.*?salvo en (\w+) consultas",
+        r"la leen (\w+(?: y \w+)?) módulos del código\. (\w+) la leen a propósito.*?Los otros (\w+) filtran.*?salvo en (\w+) consultas",
         readers,
         flags=re.S,
     )
     assert words
     counted = tuple(WORDS[w.lower()] for w in words.groups())
-    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (29, 8, 21, 7), (
+    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (31, 8, 23, 7), (
         "IA-030: the labelled bank reads both kinds on purpose; IA-061: the moments of the facts, by id; IA-071: the player key; IA-087: the unified road and its readers compare v1 and v2 on purpose; IA-099: the news in shadow filters; IA-103: the single chronicle's plan filters"
     )
     assert (
         set(all_ticked(readers.split("Los otros")[0].split("Ocho la leen a propósito")[1])) == own
     )
-    assert others == {"ai/known_at.py", "ai/learning.py", "ai/packet.py", "api/services/ai_layer.py", "api/services/ai_v2.py", "api/services/intelligence.py", "api/services/news.py", "chronicle/inputs.py", "chronicle/review.py", "decision/shadow.py", "evalcycle/run.py", "intel/decision.py", "intel/leakage.py", "intel/match_review.py", "intel/report.py", "narrative/job.py", "news/evidence_reads.py", "observability/trace.py", "picks/daily.py", "scripts/ia_players.py", "shadowjobs/lineup_estimate.py"}
+    assert others == {"ai/known_at.py", "ai/learning.py", "ai/packet.py", "api/services/ai_layer.py", "api/services/ai_v2.py", "api/services/intelligence.py", "api/services/news.py", "chronicle/inputs.py", "chronicle/review.py", "decision/shadow.py", "evalcycle/run.py", "evalpass/reads.py", "evaluation/sources.py", "intel/decision.py", "intel/leakage.py", "intel/match_review.py", "intel/report.py", "narrative/job.py", "news/evidence_reads.py", "observability/trace.py", "picks/daily.py", "scripts/ia_players.py", "shadowjobs/lineup_estimate.py"}
     # the IA's ten, the readers' news and narrative of the UX plan (A10, A11) and the end-to-end trace of P0 (read-only, for observability)
-    assert "y otros dieciséis (sección 5)" in section(1) and len(others) - 5 == 16, (
+    assert "y otros dieciocho (sección 5)" in section(1) and len(others) - 5 == 18, (
         "the trace, the chronicle's review, known_at, the news in shadow, the single chronicle's plan"
     )
     assert "`observability/trace.py`" in readers and "nunca en el camino de una decisión" in readers
-    assert "veintinueve módulos, veintiún de ellos ajenos a v2" in section(
+    assert "treinta y un módulos, veintitrés de ellos ajenos a v2" in section(
         11
     ) and "el paquete, los picks del día, la decisión, la revisión del partido" in section(11)
     assert (

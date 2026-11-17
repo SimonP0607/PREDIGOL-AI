@@ -722,7 +722,95 @@ B07: Final = Protocol(
 )
 
 
-PROTOCOLS: Final[dict[str, Protocol]] = {p.key: p for p in (A02, A09, B09, A08, C02, A03, B03, B07)}
+
+K02: Final = Protocol(
+    key="AD-K02",
+    version="proto-ad-k02-v1",
+    title="Tablero de validación por mercado y familia (board-v1)",
+    question=(
+        "Para cada capa de decisión en sombra (decision-v1, decision-fam-v1 y, cuando la haya, decision-v2), cada familia "
+        "(núcleo, córners, tarjetas, goles por mitad) y cada mercado de la familia: ¿las selecciones que dejó en pie antes del saque "
+        "tienen una probabilidad calibrada, pronostican mejor que el mercado sin margen del mismo momento y consiguen un CLV que "
+        "supera la vara de la regla de precio (INT-A10)? Un veredicto VALIDADO, NO VALIDADO o INSUFICIENTE por celda y por familia."
+    ),
+    null=(
+        "En la celda, la probabilidad juzgada no pronostica mejor que el mercado (log loss medio igual o peor), o su calibración "
+        "tiene ECE > 0,03, o su CLV medio no supera la vara de la regla de precio."
+    ),
+    alternative=(
+        "En la celda, el log loss medio de la probabilidad juzgada es menor que el del mercado, el ECE es ≤ 0,03 y el CLV medio "
+        "supera la vara de la regla de precio, cada intervalo corregido por comparaciones múltiples."
+    ),
+    unit=(
+        "Una selección liquidada que la capa tomaría: su decisión en pie (la última al menos 10 minutos antes del saque) la dejó "
+        "confirmada en sombra (lifecycle-map-v1: aprobada, o aparcada solo por la validación de su mercado; en decision-v2, "
+        "RECOMMENDED), con su evaluación posterior eval-sel-v1 (AD-K01): probabilidad juzgada (p_cal si la hubo, si no la del "
+        "modelo, con su sello), probabilidad sin margen del mercado en el mismo momento (p_market), resultado de settle-v4 y CLV "
+        "clv-v1. Las demás candidatas se cuentan, no se juzgan: un mercado se valida por lo que publicaría."
+    ),
+    data=(
+        "intel.selection_evaluations (eval-sel-v1) de la versión vigente, o la misma evaluación calculada en seco desde "
+        "intel.decisions, intel.decision_outcomes y core.fixtures cuando la tabla aún no tiene filas; solo lectura. Periodo: "
+        "los partidos con saque en la ventana que se pide (días de Bogotá)."
+    ),
+    split=(
+        "Sin ajuste: el tablero no entrena nada; cada selección se juzga con lo que la decisión sabía antes del saque y con el "
+        "resultado y el cierre posteriores. El intervalo remuestrea días de Bogotá enteros (las selecciones de un día no son "
+        "independientes)."
+    ),
+    primary_metric=(
+        "Por celda, la diferencia pareada del log loss medio (probabilidad juzgada menos mercado) sobre las selecciones con "
+        "resultado completo (ganada o perdida), agregada por día de Bogotá, con su intervalo por bootstrap de días (2.000 "
+        "remuestreos, semilla del protocolo) al nivel corregido de Bonferroni: 1 - 0,05/m, con m el número de celdas y familias "
+        "que alcanzan la muestra necesaria en esa ejecución del tablero."
+    ),
+    pass_rule=(
+        "VALIDADO con la muestra necesaria si se cumplen las tres: (1) el extremo superior del intervalo corregido de la métrica "
+        "primaria es < 0; (2) el ECE (10 tramos de igual ancho de la probabilidad juzgada) es ≤ 0,03; (3) el extremo inferior "
+        "del intervalo corregido del CLV medio (bootstrap de días) supera el extremo superior de la vara de la regla de precio "
+        "INT-A10, +6,24 % (su CLV fue +5,77 % [5,28; 6,24] en 2.705 selecciones, capturas del 12-oct al 10-nov-2026, IA-054). "
+        "Un VALIDADO no activa nada: lo lee el dueño y solo él firma un cambio (AD-K07)."
+    ),
+    reject_rule=(
+        "NO VALIDADO con la muestra necesaria si falla alguna de las tres; el tablero dice cuáles. INSUFICIENTE con menos de la "
+        "muestra necesaria: no se interpreta y se dice cuánto falta. Un acierto no valida un mercado."
+    ),
+    secondary=(
+        "Brier (el RPS de una selección binaria) de la probabilidad juzgada y del mercado, y su diferencia pareada con el mismo "
+        "intervalo; no decide el veredicto.",
+        "Tramos de la calibración (probabilidad media, frecuencia observada y n por tramo) y la parte de la muestra con sello "
+        "calibrada.",
+        "CLV medio menos la vara (+5,77 %) y la diferencia mínima detectable del CLV con la muestra alcanzada.",
+        "Las selecciones con media ganada, media perdida, devuelta o nula: se cuentan, no se puntúan.",
+    ),
+    min_sample=(
+        "300 selecciones por celda o familia con resultado completo, probabilidad del mercado y CLV (el mínimo de la vara "
+        "INT-A10). Con menos, INSUFICIENTE."
+    ),
+    power_note=(
+        "Con n selecciones y desviación típica s del CLV, la diferencia mínima detectable es 2,80·s/√n (alfa 0,05 bilateral, "
+        "potencia 0,80; más con la corrección de Bonferroni). El tablero da s medida y la diferencia mínima detectable por celda."
+    ),
+    exclusions=(
+        "Selecciones sin decisión al menos 10 minutos antes del saque, sin liquidar o sin cuota.",
+        "Para la métrica primaria y el ECE: resultados que no son completos (media ganada, media perdida, devuelta, nula) y "
+        "selecciones sin probabilidad del mercado; para la regla (3): selecciones sin cierre.",
+    ),
+    stopping=(
+        "El tablero se recalcula sobre la ventana que se pide y no guarda veredictos por sí mismo. Un veredicto cuenta para el "
+        "aprendizaje controlado (AD-K07) solo con este protocolo firmado por el dueño y sobre una ventana fijada antes de mirarla. "
+        "Ningún umbral, tramo, vara o corrección cambia sin un protocolo v2 registrado antes de mirar. Nada se promociona solo."
+    ),
+    segments=(
+        "Capa: decision-v1, decision-fam-v1, decision-v2.",
+        "Familia: núcleo, córners, tarjetas, goles por mitad (fbi.lifecycle.reader.family_of).",
+        "Mercado dentro de la familia (market_key).",
+    ),
+    registered_on="2026-11-17",
+    seed=20261117,
+)
+
+PROTOCOLS: Final[dict[str, Protocol]] = {p.key: p for p in (A02, A09, B09, A08, C02, A03, B03, B07, K02)}
 
 
 def require(key: str) -> Protocol:

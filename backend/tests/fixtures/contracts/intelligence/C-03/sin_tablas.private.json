@@ -1,0 +1,38 @@
+{
+  "contract": "C-03",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "machine_version": "lifecycle-v1",
+  "writer": "lifecycle-shadow-v1",
+  "filters": {
+    "state": null,
+    "family": null,
+    "competition": null,
+    "limit": 50
+  },
+  "counts_by_state": {
+    "missing_reason": "sin_datos"
+  },
+  "families": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  },
+  "board": {
+    "missing_reason": "sin_datos"
+  },
+  "items": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  },
+  "period": {
+    "date_from": "2026-11-15",
+    "date_to": "2026-11-22",
+    "total": 0
+  },
+  "next_cursor": null
+}

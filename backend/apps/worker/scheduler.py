@@ -100,6 +100,9 @@ at worst, and a duplicated tick costs nothing at all.
     arrives (code only), E4 from T-20 to T-10 with the match read again - kept in ``intel.eval_runs`` and its tables, decision-v2's
     versions in ``intel.decisions_v2``, the owner's private alerts in ``intel.private_alerts`` and the chains through the cycle's API.
     Database and RAW only; the passes first/pre/final, decision-v1 and every reader are untouched.
+  * ``selection_eval_shadow``  every 60 min (``FBI_SELECTION_EVAL_MINUTES``), only while ``FBI_SELECTION_EVAL`` is ``shadow`` (off by
+    default): the one evaluation after the match of every selection settled in the last seven days (``fbi.shadowjobs.selection_eval``,
+    IA-112, ``eval-sel-v1``), appended to ``intel.selection_evaluations``. Database only; nothing a reader, a pick or a decision reads.
   * ``signals_ingest``  every 15 min (``FBI_SIGNALS_MINUTES``), only while ``FBI_SIGNALS=shadow`` (off by default): the RSS feeds and
     sitemaps of the directory v2 (``fbi.news.signals``, IA-085) - only of sources the policy lets be read (authorised and signed by the
     owner), robots.txt first, conditional requests; titles, dates and links into ``news.items``, and for the pending sources only what
@@ -1327,6 +1330,23 @@ def _eval_cycle_e3_now() -> None:
 async def _eval_cycle_e3() -> None:
     new_run_id()
     await asyncio.to_thread(_eval_cycle_e3_now)
+def _selection_eval_shadow_now() -> None:
+    """The evaluation after the match (IA-112): one pass. Never raises; writes only ``intel.selection_evaluations``."""
+    from fbi.shadowjobs import selection_eval as sev
+
+    if sev.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = sev.run(conn, now=now(), code_version=code_version())
+        log.info("selection_eval_shadow.run", **{k: v for k, v in r.items() if k != "errors"}, errors=r["errors"][:3])
+    except Exception as exc:
+        log.error("selection_eval_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _selection_eval_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_selection_eval_shadow_now)
 
 
 def _user_narrative_now() -> None:
@@ -1851,7 +1871,7 @@ WORKER_JOB_TYPES = frozenset({
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
     "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest", "decision_v2_shadow", "lineup_estimate_shadow",
-    "news_stories", "chronicle_v4", "eval_cycle_shadow", "eval_cycle_e3", "selection_settle_shadow", "parlay_v6_shadow",
+    "news_stories", "chronicle_v4", "eval_cycle_shadow", "eval_cycle_e3", "selection_settle_shadow", "parlay_v6_shadow", "selection_eval_shadow",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -2242,6 +2262,14 @@ async def main() -> None:
                           misfire_grace_time=ec.e3_every_seconds(), next_run_time=moment + timedelta(minutes=2))
     else:
         log.info("worker.eval_cycle_off", hint="FBI_EVAL_CYCLE is not shadow: no evaluation E1-E4 is kept (IA-105)")
+    from fbi.shadowjobs import selection_eval as sev
+
+    if sev.mode() == "shadow":
+        scheduler.add_job(_deadline("selection_eval_shadow", "selection_eval_shadow", _selection_eval_shadow), "interval",
+                          minutes=sev.every_minutes(), id="selection_eval_shadow", max_instances=1, coalesce=True,
+                          misfire_grace_time=sev.every_minutes() * 60, next_run_time=moment + timedelta(minutes=37))
+    else:
+        log.info("worker.selection_eval_shadow_off", hint="FBI_SELECTION_EVAL is not shadow: no evaluation after the match is kept (IA-112)")
     from fbi.news import signals
 
     if signals.mode() == "shadow":

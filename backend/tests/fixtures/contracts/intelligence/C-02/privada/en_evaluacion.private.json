@@ -1,0 +1,151 @@
+{
+  "contract": "C-02",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "selection": {
+    "fixture_id": 990001,
+    "market": "OU",
+    "selection": "Over",
+    "line": 2.5,
+    "family": "core",
+    "label_es": "Más de 2,5 goles"
+  },
+  "public_state": null,
+  "probability": {
+    "value": 0.57,
+    "pct": 57,
+    "interval_pct": {
+      "missing_reason": "sin_datos"
+    },
+    "calibration": "calibrada",
+    "as_of": "2026-11-21T16:42:00Z",
+    "evaluation": {
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-D06"
+    },
+    "evaluation_version": {
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-D06"
+    },
+    "origin": "decision-v1"
+  },
+  "fair_odds": 1.75,
+  "expected_value": {
+    "pct": 8.9,
+    "interval_pct": {
+      "missing_reason": "sin_datos"
+    }
+  },
+  "price": {
+    "best_odds": 1.91,
+    "books": 5,
+    "seen_at": "2026-11-21T16:30:00Z",
+    "age_minutes": 12.0,
+    "price_state": "vigente",
+    "price_rule": "price-age-v1",
+    "thresholds_min": [
+      30,
+      180
+    ]
+  },
+  "reasons_for": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  },
+  "reasons_against": {
+    "items": [
+      {
+        "code": "ev_cal_below",
+        "text_es": "El valor esperado no supera el mínimo.",
+        "cites": []
+      }
+    ]
+  },
+  "depends_on": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  },
+  "settlement_rule": {
+    "rule": "settle-v4",
+    "text_es": "Se liquida con el marcador de los 90 minutos y el añadido; la prórroga y los penaltis no cuentan. Las líneas de cuarto son dos medias apuestas."
+  },
+  "versions": {
+    "items": [
+      {
+        "at": "2026-11-21T04:42:00Z",
+        "checkpoint": "T-12h",
+        "state": "CAUTELA",
+        "probability_pct": 55.0,
+        "best_odds": 1.95,
+        "change_es": "Primera decisión."
+      },
+      {
+        "at": "2026-11-21T16:42:00Z",
+        "checkpoint": "T-3h",
+        "state": "APROBADO",
+        "probability_pct": 57.0,
+        "best_odds": 1.91,
+        "change_es": "Pasa de CAUTELA a APROBADO."
+      }
+    ]
+  },
+  "sources": {
+    "items": [
+      {
+        "id": 880001,
+        "kind": "injury",
+        "source": {
+          "name": "Diario Ejemplo",
+          "url": "https://diario.ejemplo.invalid/nota"
+        },
+        "known_at": "2026-11-21T11:42:00Z"
+      }
+    ]
+  },
+  "market_status": {
+    "market_key": "OU",
+    "state": "en_calibracion",
+    "reason": "sin_calibrador_validado"
+  },
+  "decision_id": 770001,
+  "layer": "decision-v1",
+  "decision_state": "CAUTELA",
+  "lifecycle_state": "en_evaluacion",
+  "lifecycle_reason": "valor_insuficiente",
+  "raw_probability": {
+    "value": 0.785,
+    "pct": 79,
+    "interval_pct": {
+      "missing_reason": "sin_datos"
+    },
+    "calibration": "sin_calibrar",
+    "as_of": "2026-11-21T16:42:00Z",
+    "evaluation": {
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-D06"
+    },
+    "evaluation_version": {
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-D06"
+    },
+    "origin": "decision-v1"
+  },
+  "lineup_dependency": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-D03"
+  },
+  "validation": {
+    "verdict": "INSUFICIENTE",
+    "sample": 0,
+    "needed": 300
+  },
+  "validation_cell": "decision-v1|core|OU",
+  "evaluation": {
+    "missing_reason": "sin_datos"
+  }
+}
