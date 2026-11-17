@@ -1,0 +1,112 @@
+{
+  "contract": "C-00",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T16:45:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "fixture_id": 900001,
+  "home": "Atlético Ficticio",
+  "away": "Deportivo Ejemplo",
+  "kickoff_at": "2026-11-21T20:00:00Z",
+  "outcomes": [
+    {
+      "outcome": "home",
+      "probability": {
+        "value": 0.59,
+        "pct": 59,
+        "interval_pct": {
+          "low": 52,
+          "high": 66
+        },
+        "calibration": "calibrada",
+        "as_of": "2026-11-21T16:42:00Z",
+        "evaluation": "E2",
+        "evaluation_version": 2,
+        "origin": "forecast-v1"
+      }
+    },
+    {
+      "outcome": "draw",
+      "probability": {
+        "value": 0.24,
+        "pct": 24,
+        "interval_pct": {
+          "low": 19,
+          "high": 29
+        },
+        "calibration": "calibrada",
+        "as_of": "2026-11-21T16:42:00Z",
+        "evaluation": "E2",
+        "evaluation_version": 2,
+        "origin": "forecast-v1"
+      }
+    },
+    {
+      "outcome": "away",
+      "probability": {
+        "value": 0.17,
+        "pct": 17,
+        "interval_pct": {
+          "low": 13,
+          "high": 22
+        },
+        "calibration": "calibrada",
+        "as_of": "2026-11-21T16:42:00Z",
+        "evaluation": "E2",
+        "evaluation_version": 2,
+        "origin": "forecast-v1"
+      }
+    }
+  ],
+  "selections": {
+    "items": [],
+    "missing_reason": "sin_publicados"
+  },
+  "facts": {
+    "items": [
+      {
+        "published_at": "2026-11-21T09:30:00Z",
+        "published_day_only": false,
+        "known_at": "2026-11-21T09:41:00Z",
+        "fact_at": "2026-11-21T00:00:00Z",
+        "fact_day_only": true,
+        "valid_until": {
+          "missing_reason": "sin_datos"
+        },
+        "text": "El club ficticio confirmó que su portero titular vuelve a la convocatoria.",
+        "confirmation": "oficial",
+        "relation": "a_favor",
+        "source": {
+          "name": "Club Atlético Ficticio (web oficial)",
+          "url": "https://atletico-ficticio.invalid/noticias/1"
+        }
+      }
+    ]
+  },
+  "absences": {
+    "items": [],
+    "missing_reason": "sin_cobertura"
+  },
+  "chronicle": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-F02"
+  },
+  "official_lineup": {
+    "missing_reason": "aun_no_disponible",
+    "expected_at": "2026-11-21T19:00:00Z"
+  },
+  "home_goals_per_90": {
+    "missing_reason": "muestra_insuficiente",
+    "sample": 3,
+    "min_sample": 5
+  },
+  "market_state": "en_calibracion",
+  "market_validation": {
+    "verdict": "INSUFICIENTE",
+    "sample": 37,
+    "needed": 400
+  }
+}
