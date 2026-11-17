@@ -40,6 +40,18 @@ def get(conn: psycopg.Connection[Any], scope: str, key: str, *, at: datetime, ma
     return None if row is None else dict(row[0])
 
 
+def peek(conn: psycopg.Connection[Any], scope: str, key: str, *, at: datetime) -> dict[str, Any] | None:
+    """The answer in the cache if it has not expired, WITHOUT counting a reuse (IA-087): the unified research in shadow reads what v1 and
+    research v2 searched, and must not move the counts their comparison reads (``hits``)."""
+    if scope not in SCOPES:
+        raise ValueError(f"unknown cache scope {scope!r}")
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute("SELECT payload FROM ai.research_cache WHERE scope = %(scope)s AND key = %(key)s AND expires_at > %(at)s",
+                    {"at": at, "scope": scope, "key": key[:500]})
+        row = cur.fetchone()
+    return None if row is None else dict(row[0])
+
+
 def put(conn: psycopg.Connection[Any], scope: str, key: str, payload: dict[str, Any], *, at: datetime,
         ttl: timedelta) -> None:
     if scope not in SCOPES:

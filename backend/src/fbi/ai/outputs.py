@@ -352,8 +352,9 @@ SURFACES: Final[tuple[Surface, ...]] = (
     Surface("claim-v1", ("extract-v3",), ("fbi.ai.extract_v2:request", "fbi.ai.entity_research:_extract"),
             _contract("claim-v1"), False, "evidence (research v2, shadow)",
             {"claims[].quote": "quote", "claims[].page_id": "id", "claims[].published_on": "date"}),
-    Surface("claim-v2", ("extract-v4",), ("fbi.ai.quarantine:request", "fbi.ai.quarantine:collect.ask"),
-            _contract("claim-v2"), False, "evidence only under FBI_AI_EXTRACTOR=quarantine; counts in fixture_passes",
+    Surface("claim-v2", ("extract-v4",), ("fbi.ai.quarantine:request", "fbi.ai.quarantine:collect.ask", "fbi.ai.unified_research:collect.ask"),
+            _contract("claim-v2"), False, "evidence only under FBI_AI_EXTRACTOR=quarantine; counts in fixture_passes; the unified research "
+            "(IA-087, shadow): the page cache rk-u1:page and counts xu_*",
             {"call": "id", "claims[].quote": "quote"}),
     Surface("aa-v1", ("match-context-v4", "match-assess-v3", "stats-assess-v3"),
             ("fbi.ai.agents.match:_request", "fbi.ai.agents.stats:evaluation_request"),
