@@ -1,11 +1,11 @@
 """The cycle of states of a selection (IA-068, AD-D02): measure it, run one pass of the shadow writer, read it.
 
     python -m scripts.ia_lifecycle measure --from 2026-11-02 --to 2026-11-15 [--json]   # read-only: what the cycle would hold
-    python -m scripts.ia_lifecycle run [--dry-run]                                     # one pass (needs FBI_LIFECYCLE=shadow)
+    python -m scripts.ia_lifecycle run [--dry-run]                                     # one pass (needs FBI_SELECTION_LIFECYCLE=shadow)
     python -m scripts.ia_lifecycle tracking --from 2026-11-14 --to 2026-11-16 [--state descartada] [--json]
 
 ``measure`` and ``tracking`` open a read-only connection; ``run --dry-run`` too. ``run`` writes ``intel.selection_lifecycle`` and
-nothing else, and only while ``FBI_LIFECYCLE`` is ``shadow``. Days are Bogotá days. Exit status: 0 done, 2 it cannot run.
+nothing else, and only while ``FBI_SELECTION_LIFECYCLE`` is ``shadow``. Days are Bogotá days. Exit status: 0 done, 2 it cannot run.
 """
 
 from __future__ import annotations

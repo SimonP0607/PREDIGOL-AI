@@ -3,7 +3,7 @@
 * every statement of ``fbi.lifecycle`` that writes, writes ``intel.selection_lifecycle`` - an INSERT, never an UPDATE or a DELETE;
 * the package does not import decision-v2 (``fbi.decision``) nor anything that decides, stakes, publishes or serves a reader;
 * outside the package only the worker's job and its own command import it: no decision layer, pick, parlay or public page reads it;
-* the worker schedules it only while ``FBI_LIFECYCLE`` says ``shadow``, with a deadline the watchdog knows.
+* the worker schedules it only while ``FBI_SELECTION_LIFECYCLE`` says ``shadow``, with a deadline the watchdog knows.
 """
 
 from __future__ import annotations
@@ -96,7 +96,7 @@ def test_the_worker_schedules_it_only_in_the_shadow_with_a_deadline() -> None:
                 and isinstance(node.test.left.func, ast.Attribute) and node.test.left.func.attr == "mode":
             body = ast.Module(body=node.body, type_ignores=[])
             guarded = guarded or any(isinstance(n, ast.Constant) and n.value == "lifecycle_shadow" for n in ast.walk(body))
-    assert guarded, "the job is registered only while FBI_LIFECYCLE is shadow"
+    assert guarded, "the job is registered only while FBI_SELECTION_LIFECYCLE is shadow"
     assert store.EVERY == 30
 
 
