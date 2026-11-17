@@ -16,7 +16,10 @@ APPS = ROOT / "apps"
 PACKAGE = "fbi.evidence"
 FORBIDDEN = ("intel/", "picks/", "familydecisions/", "api/", "notify/", "narrative/", "customer/", "messaging/", "ai/", "parlays/",
              "predictions/", "forecasting/")
-ALLOWED = {"scripts/ia_evidence.py": "the command that prints the evidence of a match or a day (read-only)"}
+ALLOWED = {"scripts/ia_evidence.py": "the command that prints the evidence of a match or a day (read-only)",
+           "scripts/ia_credibility.py": "IA-126: the command that prints credibility-v2 by source and type (read-only unless --record)",
+           "shadowjobs/source_credibility.py": "IA-126: the shadow job that appends credibility-v2 to ai.source_credibility (off by default); "
+                                               "nothing that decides reads that table"}
 
 
 def imports_engine(path: Path) -> bool:

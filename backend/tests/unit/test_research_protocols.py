@@ -19,6 +19,8 @@ PINNED = {
     "AD-B03": "989b82a53fe35ae6712f39ce71d75588a1f868e38b9a2832ba2e393162364bd5",
     "AD-B07": "aac10f7f5cc48dfbf136283f0c76d1c6043556536b137e7df2bd4cbe05299128",
     "AD-K02": "6eff7d3066cbeed274d457c2694f478e339fc8232610be74f4c56f54e570def1",
+    "AD-C08": "7ae65569c4f330956c9437c99a1224f36448d94fdba90d371d7ec6eb144943a4",
+    "AD-C09": "f0bd0d90c7747bcab6e48dde47676c64b784d2d18fe9e78635c21efbc2106ed8",
 }
 """A registered protocol is frozen: changing one is a new version with its own PR, never an edit of these lines to make a test pass."""
 
@@ -137,3 +139,21 @@ def test_the_validation_board_is_registered_before_it_reads_any_outcome() -> Non
     assert p.version == "proto-ad-k02-v1" and p.seed == 20261117
     assert "Bonferroni" in p.primary_metric and "+6,24 %" in p.pass_rule and "ECE" in p.pass_rule
     assert proto.stamp("AD-K02")["fingerprint"] == PINNED["AD-K02"]
+
+
+def test_the_credibility_by_type_is_registered_before_its_first_snapshot() -> None:
+    """AD-C08 (IA-126): the minimum of resolved claims and the coverage of the interval, fixed before any credibility-v2 is read."""
+    p = proto.require("AD-C08")
+    assert p.version == "proto-ad-c08-v1" and p.seed == 20261117 and p.registered_on == "2026-11-17"
+    assert "30 afirmaciones resueltas" in p.min_sample and "nunca sube ni baja un estado" in p.alternative
+    assert proto.stamp("AD-C08")["fingerprint"] == PINNED["AD-C08"]
+
+
+def test_the_extraction_protocol_is_registered_unsigned_before_the_bank_is_labelled() -> None:
+    """AD-C09 (IA-127): extract-protocol-v1 - precision 47 of 50, corrected recall, labellers' agreement - registered before any page is
+    labelled; it is the owner who signs it (scripts/ia_page_bank.py sign --confirm-owner), never the code, and row 17 stays as it is."""
+    p = proto.require("AD-C09")
+    assert p.version == "proto-ad-c09-v1" and p.seed == 20261117 and p.registered_on == "2026-11-17"
+    assert "47 de sus 50" in p.pass_rule and "Bonferroni" in p.primary_metric and "fila 17" in p.pass_rule
+    assert "nunca contra research v1" in p.question and "las etiquetas no entrenan nada" in p.split
+    assert proto.stamp("AD-C09")["fingerprint"] == PINNED["AD-C09"]

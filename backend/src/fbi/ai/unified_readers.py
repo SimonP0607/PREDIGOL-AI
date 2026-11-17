@@ -9,6 +9,8 @@ already stored. ``scripts/ia_research_unified.py`` prints them. No model, no sea
               in the text, in the first 700 characters (what research v2 shows) and in the windows this road would send.
 * ``replay``  AD-C07: ``ladder-v1`` against ``ladder-v2`` on the stored web evidence, fact by fact, and the facts ``ladder-v1`` confirms with copies
               of one origin only.
+* ``provider_replay`` AD-C10 (IA-128): the statuses of the provider's own evidence (``origin = 'provider'``, v1's items: the provider never
+              writes a typed claim) against the rungs of its assertions (``fbi.ai.provider_facts``) at the moment each status was decided.
 """
 
 from __future__ import annotations
@@ -219,4 +221,26 @@ def replay(conn: psycopg.Connection[Any], *, since: datetime, until: datetime, p
     return {"facts": len(groups), "moves": dict(moves.most_common()), "confirmed_by_copies_only": copies_only}
 
 
-__all__ = ["linking", "replay", "report", "windows"]
+PROVIDER_EVIDENCE_SQL: Final = """
+SELECT e.id, e.fixture_id, e.team_id, e.provider_player_id, e.kind, e.status, e.status_changed_at, e.retrieved_at
+  FROM ai.evidence e JOIN core.fixtures f ON f.id = e.fixture_id
+ WHERE e.subject_type IS NULL AND e.origin = 'provider' AND f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s
+   AND e.kind IN ('injury', 'doubtful', 'suspension', 'lineup')
+ ORDER BY e.fixture_id, e.id LIMIT %(limit)s
+"""
+"""The provider's items of the matches of a window, with their status and when it was decided: v1's items only, on purpose (the provider is
+written by v1's collector, never as a typed claim)."""
+
+
+def provider_replay(conn: psycopg.Connection[Any], *, since: datetime, until: datetime, limit: int = 50000) -> dict[str, Any]:
+    """AD-C10: today's statuses of the provider's evidence against its assertions, for the matches that kick off in ``[since, until)``."""
+    from fbi.ai import provider_facts, provider_facts_reads
+
+    evidence = _rows(conn, PROVIDER_EVIDENCE_SQL, {"since": since, "until": until, "limit": limit})
+    fixtures = sorted({int(r["fixture_id"]) for r in evidence})
+    made, coverage = provider_facts_reads.facts_for(conn, fixtures)
+    out = provider_facts.replay(evidence, made.facts)
+    return out | {"matches": len(fixtures), "made": made.counts(), "coverage": provider_facts_reads.coverage_by_competition(coverage)}
+
+
+__all__ = ["linking", "provider_replay", "replay", "report", "windows"]

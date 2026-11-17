@@ -113,6 +113,9 @@ at worst, and a duplicated tick costs nothing at all.
     default): the reduced Council of every pass of the shadow (``fbi.shadowjobs.council_reduced``, IA-124, ``council-reduced-v1``) - the
     rules by default, the judge only where a material contradiction with value and time is recorded - appended to ``ai.council_reduced``.
     Database only, no model; nothing a reader, a pick or a decision reads.
+  * ``source_credibility_shadow``  every 24 h (``FBI_SOURCE_CREDIBILITY_HOURS``), only while ``FBI_SOURCE_CREDIBILITY`` is ``shadow`` (off
+    by default): the credibility of every source by type of fact with its interval (``fbi.shadowjobs.source_credibility``, IA-126,
+    ``credibility-v2``), appended to ``ai.source_credibility``. Database only; it changes no status, tier or anything a reader reads.
   * ``signals_ingest``  every 15 min (``FBI_SIGNALS_MINUTES``), only while ``FBI_SIGNALS=shadow`` (off by default): the RSS feeds and
     sitemaps of the directory v2 (``fbi.news.signals``, IA-085) - only of sources the policy lets be read (authorised and signed by the
     owner), robots.txt first, conditional requests; titles, dates and links into ``news.items``, and for the pending sources only what
@@ -1417,6 +1420,23 @@ def _council_reduced_shadow_now() -> None:
 async def _council_reduced_shadow() -> None:
     new_run_id()
     await asyncio.to_thread(_council_reduced_shadow_now)
+def _source_credibility_shadow_now() -> None:
+    """credibility-v2 (IA-126): one snapshot. Never raises; writes only ``ai.source_credibility``."""
+    from fbi.shadowjobs import source_credibility as scr
+
+    if scr.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = scr.run(conn, now=now(), code_version=code_version())
+        log.info("source_credibility_shadow.run", **r)
+    except Exception as exc:
+        log.error("source_credibility_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _source_credibility_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_source_credibility_shadow_now)
 
 
 def _user_narrative_now() -> None:
@@ -1942,7 +1962,7 @@ WORKER_JOB_TYPES = frozenset({
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
     "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest", "decision_v2_shadow", "lineup_estimate_shadow",
     "news_stories", "chronicle_v4", "eval_cycle_shadow", "eval_cycle_e3", "selection_settle_shadow", "parlay_v6_shadow", "selection_eval_shadow",
-    "chronicle_update", "chronicle_review_v2", "council_reduced_shadow",
+    "chronicle_update", "chronicle_review_v2", "council_reduced_shadow", "source_credibility_shadow",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -2349,6 +2369,14 @@ async def main() -> None:
                           misfire_grace_time=crd.every_minutes() * 60, next_run_time=moment + timedelta(minutes=23))
     else:
         log.info("worker.council_reduced_shadow_off", hint="FBI_COUNCIL_REDUCED is not shadow: no reduced Council is kept (IA-124)")
+    from fbi.shadowjobs import source_credibility as scr
+
+    if scr.mode() == "shadow":
+        scheduler.add_job(_deadline("source_credibility_shadow", "source_credibility_shadow", _source_credibility_shadow), "interval",
+                          hours=scr.every_hours(), id="source_credibility_shadow", max_instances=1, coalesce=True,
+                          misfire_grace_time=scr.every_hours() * 3600, next_run_time=moment + timedelta(minutes=53))
+    else:
+        log.info("worker.source_credibility_shadow_off", hint="FBI_SOURCE_CREDIBILITY is not shadow: no credibility by type is kept (IA-126)")
     from fbi.news import signals
 
     if signals.mode() == "shadow":

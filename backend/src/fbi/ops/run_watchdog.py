@@ -62,6 +62,8 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "selection_eval_shadow": timedelta(minutes=15),
     # the reduced Council (IA-124): no provider, no model; at most 60 passes of the shadow deliberated a pass.
     "council_reduced_shadow": timedelta(minutes=15),
+    # credibility-v2 (IA-126): no provider, no model; 180 days of availability claims and their matches' line-ups, once a day.
+    "source_credibility_shadow": timedelta(minutes=15),
     "live_odds_capture": timedelta(minutes=10),
     "live_match_capture": timedelta(minutes=10),
     "prematch_lineups": timedelta(minutes=10),
