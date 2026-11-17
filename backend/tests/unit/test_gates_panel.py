@@ -146,7 +146,8 @@ def test_the_words_are_the_gates_own() -> None:
     e4 = json.loads((DOCS / "lab" / "IA_039" / "resultado_e4.json").read_text(encoding="utf-8"))
     assert set(e4["veredicto"]["por_celda"].values()) == {gp.REJECTS, gp.PENDING_SAMPLE}
     assert frozenset(gates.NOT_GATES) == gp.NOT_GATES
-    assert frozenset(gp.STATUSES) - {gp.PASS, gp.FAIL, gp.REJECTS} == gp.PENDING
+    assert frozenset(gp.STATUSES) - {gp.PASS, gp.FAIL, gp.REJECTS, gp.NOT_EVALUATED} == gp.PENDING
+    assert (gp.NOT_EVALUATED, gp.NOT_EVALUATED_ES, gp.CLOSURE_KIND) == (gate_b.NOT_EVALUATED, gate_b.NOT_EVALUATED_ES, gate_b.CLOSURE_KIND)
 
 
 # ── the rule: no pending gate is shown as approved ──────────────────────────────────────────────────────────────
@@ -266,6 +267,74 @@ def test_an_evaluator_that_could_not_run_is_pending_by_manual_action_and_says_wh
     e = by_id(doc)
     assert e["gate_b"]["status"] == e["research_v2"]["status"] == gp.PENDING_ACTIONS
     assert "timeout" in e["gate_b"]["why"][0] and doc["rule_holds"]
+
+
+# ── Gate B closed by the owner (AD-001, IA-055) ─────────────────────────────────────────────────────────────────
+
+REASON = "No evaluado: ventana interrumpida por decisión del dueño (Arquitectura definitiva 2026, 16-nov-2026); corte informativo adjunto"
+
+
+def closure_row(*, decided_by: str = "owner", kind: str = gp.CLOSURE_KIND, gate: str = "gate_b") -> gp.Row:
+    """The row ``gate_b.record_closure`` writes, as ``NEWEST_ROWS_SQL`` reads it."""
+    return gp.row_of({"id": 19, "gate": gate, "at": NOW - timedelta(hours=3), "passed": False, "decided_by": decided_by,
+                      "evidence_hash": "cd" * 32, "verdict": gate_b.NOT_EVALUATED, "evidence_window": None, "models": None, "kind": kind,
+                      "reason": REASON})
+
+
+@pytest.mark.parametrize("situation", [None, "incomplete", "fails", "passes", "manual", "error"])
+def test_the_owners_closure_reads_no_evaluado_never_no_pasa_nor_pasa(situation: str | None) -> None:
+    report = None if situation in (None, "error") else b_case(situation)
+    doc = gp.panel(inputs(rows={"gate_b": closure_row()}, gate_b=report, gate_b_error="OperationalError: timeout" if situation == "error" else None))
+    e = by_id(doc)["gate_b"]
+    assert e["status"] == gp.NOT_EVALUATED == "NO EVALUADO" and e["approved"] is False
+    assert e["status"] not in (gp.FAIL, gp.PASS, *gp.PENDING)
+    assert e["why"][0].startswith("No evaluado (cerrado por el dueño): NO EVALUADO — ventana interrumpida por decisión del dueño")
+    assert "fila 19" in e["why"][0] and e["why"][1] == f"motivo del dueño: {REASON}"
+    assert e["when"].startswith(gp.NOT_EVALUATED_ES) and e["evaluable_on"] is None and e["failing_now"] == []
+    assert e["recorded"]["kind"] == gp.CLOSURE_KIND and e["recorded"]["decided_by"] == "owner" and e["recorded"]["reason"] == REASON
+    assert gp.owners_closure(e) and not gp.on_file_pass(e) and doc["violations"] == [] and doc["rule_holds"]
+    assert set(e) == ENTRY_KEYS and doc["summary"][gp.NOT_EVALUATED] == 1
+    if report is not None:
+        assert [c["verdict"] for c in e["checks"]] == [c["verdict"] for c in report["checks"]], "the cut stays, as information"
+        assert e["evaluator"]["informative"] is True and e["evaluator"]["verdict"] == report["verdict"]
+        assert any(f"hoy su evaluador dice {report['verdict']}: corte informativo" in w for w in e["why"])
+    rows = {r["gate"]: r for r in doc["evidence_rows"]}
+    assert rows["gate_b"]["reads_as"] == "No evaluado (cerrado por el dueño)"
+    text = "\n".join(gp.lines(doc))
+    assert f"[NO EVALUADO] Gate B (Plan Maestro IA, sección 24 (gate-b-v1)) · {gp.NOT_EVALUATED_ES}" in text
+    assert "[NO PASA] Gate B" not in text and "[PASA] Gate B" not in text and "gate_b: No evaluado (cerrado por el dueño) (fila 19" in text
+
+
+@pytest.mark.parametrize(("passed", "want"), [(True, gp.PASS), (False, gp.FAIL)])
+def test_a_normal_gate_b_v1_row_reads_as_it_always_did(passed: bool, want: str) -> None:
+    normal = row("gate_b", passed, verdict=want)
+    e = gp.gate_b_entry(b_case("fails"), normal)
+    assert e["status"] == want and not gp.owners_closure(e)
+    assert by_id(gp.panel(inputs(rows={"gate_b": normal}, gate_b=b_case("fails"))))["gate_b"]["status"] == want
+
+
+def test_only_the_owners_closure_row_of_gate_b_is_no_evaluado() -> None:
+    assert gp.gate_b_entry(b_case("incomplete"), closure_row(decided_by="script"))["status"] == gp.FAIL, "a closure is the owner's or none"
+    assert gp.gate_b_entry(b_case("incomplete"), closure_row(kind="gate-b-v1"))["status"] == gp.FAIL
+    assert not closure_row(gate="research_v2").closes_gate_b
+    assert gp.research_entry(r_case("passes"), closure_row(gate="research_v2"))["status"] == gp.FAIL
+
+
+def test_a_no_evaluado_without_the_owners_closure_breaks_the_rule() -> None:
+    doc = gp.panel(inputs(gate_b=b_case("incomplete")))
+    for gate in ("gate_b", "research_v2", "p1"):
+        broken = json.loads(json.dumps(doc, default=str))
+        by_id(broken)[gate]["status"] = gp.NOT_EVALUATED
+        assert any(f"{gate}: NO EVALUADO without the owner's closure on file" in v for v in gp.violations(broken)), gate
+    closed = gp.panel(inputs(rows={"gate_b": closure_row()}, gate_b=b_case("incomplete")))
+    broken = json.loads(json.dumps(closed, default=str))
+    by_id(broken)["gate_b"]["approved"] = True
+    assert any("approved=True" in v for v in gp.violations(broken)), "a closed gate is never approved"
+
+
+def test_the_reader_brings_the_reason_of_a_closure() -> None:
+    assert "evidence ->> 'reason' AS reason" in readers.NEWEST_ROWS_SQL and "evidence ->> 'kind' AS kind" in readers.NEWEST_ROWS_SQL
+    assert closure_row().reason == REASON and closure_row().closes_gate_b
 
 
 def test_gate_a_is_its_recorded_verdict_and_the_ai_layer_gate_is_combineds_report() -> None:
@@ -482,7 +551,7 @@ def test_the_panel_and_its_readers_never_write() -> None:
     src = BACKEND / "src" / "fbi" / "ai"
     for path in (src / "gates_panel.py", src / "gates_panel_readers.py", BACKEND / "scripts" / "ia_gates_panel.py"):
         called = _calls(path)
-        assert not called & {"record", "record_gate", "record_switches", "record_lab_plan", "commit"}, path.name
+        assert not called & {"record", "record_gate", "record_switches", "record_lab_plan", "record_closure", "commit"}, path.name
     script = (BACKEND / "scripts" / "ia_gates_panel.py").read_text(encoding="utf-8")
     assert "default_transaction_read_only=on" in script and "statement_timeout=95000" in script and "conn.read_only = True" in script
     assert "REPEATABLE_READ" in script

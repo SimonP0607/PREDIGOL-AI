@@ -15,8 +15,10 @@ A gate whose code does not exist yet is PENDIENTE POR DEPENDENCIAS, and P1 has n
 ``violations`` checks the rule over a whole panel and ``scripts/ia_gates_panel.py`` exits non-zero if it ever fails.
 
 THE WORDS are the gates' own: PASA, NO PASA, PENDIENTE POR TIEMPO REAL and PENDIENTE POR ACCIONES MANUALES (``fbi.ai.gate_b``); the LAB's
-RECHAZA and PENDIENTE POR MUESTRA (the protocols of ``fbi.research.protocol``); and PENDIENTE POR DEPENDENCIAS for a gate whose pieces are not
-built.
+RECHAZA and PENDIENTE POR MUESTRA (the protocols of ``fbi.research.protocol``); PENDIENTE POR DEPENDENCIAS for a gate whose pieces are not
+built; and NO EVALUADO for Gate B once the OWNER closed it (``gate_b.record_closure``, AD-001 / IA-055: a ``gate-b-closure-v1`` row of
+``gate_b`` with ``decided_by = 'owner'``) - «NO EVALUADO — ventana interrumpida por decisión del dueño», never NO PASA nor PASA, and never
+approved; today's report of its evaluator stays beside it as information.
 
 THE VALUE PER DOLLAR. The cost of each component is ``fbi.ai.cost_paths`` (``cost-paths-v1``) over the window the caller read, the ledger's to the
 cent. Its benefit is taken only from a report that measures one: the AI's own prospective test (``fbi.ai.shadow``, ``ai-gate-v2``) says, per
@@ -56,7 +58,13 @@ PENDING_ACTIONS: Final = "PENDIENTE POR ACCIONES MANUALES"
 REJECTS: Final = "RECHAZA"
 PENDING_SAMPLE: Final = "PENDIENTE POR MUESTRA"
 PENDING_DEPENDENCIES: Final = "PENDIENTE POR DEPENDENCIAS"
-STATUSES: Final[tuple[str, ...]] = (PASS, FAIL, REJECTS, PENDING_ACTIONS, PENDING_TIME, PENDING_SAMPLE, PENDING_DEPENDENCIES)
+NOT_EVALUATED: Final = "NO EVALUADO"
+"""Gate B closed by the owner (``fbi.ai.gate_b.NOT_EVALUATED``): neither a pass nor a failure, and not pending either - it is closed."""
+NOT_EVALUATED_ES: Final = "NO EVALUADO — ventana interrumpida por decisión del dueño"
+NOT_EVALUATED_SHORT: Final = "No evaluado (cerrado por el dueño)"
+CLOSURE_KIND: Final = "gate-b-closure-v1"
+"""The kind of the evidence of the owner's closure (``fbi.ai.gate_b.CLOSURE_KIND``)."""
+STATUSES: Final[tuple[str, ...]] = (PASS, FAIL, NOT_EVALUATED, REJECTS, PENDING_ACTIONS, PENDING_TIME, PENDING_SAMPLE, PENDING_DEPENDENCIES)
 """Every status an entry can show. Only PASA reads as approved."""
 PENDING: Final = frozenset({PENDING_TIME, PENDING_ACTIONS, PENDING_SAMPLE, PENDING_DEPENDENCIES})
 
@@ -163,11 +171,19 @@ class Row:
     window: Mapping[str, Any] | None = None
     models: tuple[str, ...] | None = None
     kind: str | None = None
+    reason: str | None = None
+    """``evidence.reason``: the owner's reason of a closure."""
+
+    @property
+    def closes_gate_b(self) -> bool:
+        """The owner's closure of Gate B: a ``gate-b-closure-v1`` row of ``gate_b`` the OWNER wrote. Any other row reads as it always did."""
+        return self.gate == "gate_b" and self.kind == CLOSURE_KIND and self.decided_by == "owner"
 
     def as_json(self) -> Json:
         return {"table": "ai.feature_gates", "gate": self.gate, "id": self.id, "at": self.at.isoformat(), "passed": self.passed,
                 "decided_by": self.decided_by, "evidence_hash": self.evidence_hash, "verdict": self.verdict,
-                "window": None if self.window is None else dict(self.window), "models": None if self.models is None else list(self.models)}
+                "window": None if self.window is None else dict(self.window), "models": None if self.models is None else list(self.models),
+                "kind": self.kind, "reason": self.reason}
 
 
 def row_of(r: Mapping[str, Any]) -> Row:
@@ -175,7 +191,7 @@ def row_of(r: Mapping[str, Any]) -> Row:
     window = r.get("evidence_window")
     return Row(int(r["id"]), str(r["gate"]), r["at"], bool(r["passed"]), r.get("decided_by"), r.get("evidence_hash"), r.get("verdict"),
                window if isinstance(window, Mapping) else None,
-               tuple(str(m) for m in models) if isinstance(models, list) and models else None, r.get("kind"))
+               tuple(str(m) for m in models) if isinstance(models, list) and models else None, r.get("kind"), r.get("reason"))
 
 
 # ── the frozen verdicts of the LAB ─────────────────────────────────────────────────────────────────────────────
@@ -418,6 +434,16 @@ def live_status(verdict: str | None, recorded: Row | None, *, error: str | None 
     """The status of a live gate from its evaluator's verdict now and its newest recorded row. The recorded row wins (it is what the system
     acts on); without one, an evaluator's PASA is PENDIENTE POR ACCIONES MANUALES - a pass nobody recorded is not a pass on file."""
     why: list[str] = []
+    if recorded is not None and recorded.closes_gate_b:
+        why.append(f"{NOT_EVALUATED_SHORT}: {NOT_EVALUATED_ES} — registrado el {recorded.at.isoformat()} (ai.feature_gates, fila {recorded.id}, "
+                   f"{CLOSURE_KIND})")
+        if recorded.reason:
+            why.append(f"motivo del dueño: {recorded.reason}")
+        if verdict is not None:
+            why.append(f"hoy su evaluador dice {verdict}: corte informativo, no es evidencia (gate-b-v1 está cerrado y no se juzga)")
+        if error is not None:
+            why.append(f"el corte informativo de hoy no se pudo calcular: {error}")
+        return NOT_EVALUATED, why
     if recorded is not None:
         status = PASS if recorded.passed else FAIL
         why.append(f"registrado el {recorded.at.isoformat()} (ai.feature_gates, fila {recorded.id}): {status}")
@@ -522,6 +548,8 @@ def gate_b_entry(report: Mapping[str, Any] | None, row: Row | None, *, error: st
     spec = SPEC["gate_b"]
     verdict = None if report is None else str(report.get("verdict"))
     status, why = live_status(verdict, row, error=error)
+    if row is not None and row.closes_gate_b:
+        return closed_gate_b_entry(spec, why, report, row)
     if report is None:
         return entry(spec, status, why, recorded=None if row is None else row.as_json())
     w = _m(report, "window")
@@ -542,6 +570,23 @@ def gate_b_entry(report: Mapping[str, Any] | None, row: Row | None, *, error: st
                  failing_now=[str(x) for x in report.get("failing_now") or []], evaluator=evaluator,
                  recorded=None if row is None else row.as_json(),
                  sources=_sources(("cómo se repite", "python -m scripts.ia_gate_b evaluate --json")))
+
+
+def closed_gate_b_entry(spec: Spec, why: list[str], report: Mapping[str, Any] | None, row: Row) -> Json:
+    """Gate B after the owner's closure: NO EVALUADO, no longer evaluable, nothing «failing». Today's checks stay as information, each with its
+    own word, under a note that says they judge nothing."""
+    when = f"{NOT_EVALUATED_ES} (cerrado por el dueño el {local_day(row.at).isoformat()}, fila {row.id})"
+    evaluator: Json | None = None
+    checks: list[Json] = []
+    if report is not None:
+        why.append("las comprobaciones de abajo son el corte informativo de hoy: información, no evidencia; no reabren el gate")
+        checks = gate_b_checks(report)
+        evaluator = {"module": "fbi.ai.gate_b", "method": report.get("method"), "verdict": report.get("verdict"), "at": report.get("at"),
+                     "preview": True, "informative": True, "window": dict(_m(report, "window")),
+                     "recorded_only_if": "closed by the owner: nothing more of gate-b-v1 is recorded"}
+    return entry(spec, NOT_EVALUATED, why, checks=checks, when=when, evaluator=evaluator, recorded=row.as_json(),
+                 sources=_sources(("cierre del dueño", f"ai.feature_gates, gate gate_b, fila {row.id} ({CLOSURE_KIND})"),
+                                  ("cómo se repite el corte", "python -m scripts.ia_gate_b evaluate --json")))
 
 
 def research_entry(report: Mapping[str, Any] | None, row: Row | None, *, error: str | None = None) -> Json:
@@ -906,6 +951,8 @@ def evidence_rows(rows: Mapping[str, Row]) -> list[Json]:
             reads = "registro (no es un gate)" if r is not None else "sin fila (registro, no es un gate)"
         elif r is None:
             reads = "sin fila: no pasa (sin evidencia)"
+        elif r.closes_gate_b:
+            reads = NOT_EVALUATED_SHORT
         else:
             reads = PASS if r.passed else FAIL
         out.append({"gate": g, "is_gate": g not in NOT_GATES, "reads_as": reads, "row": None if r is None else r.as_json()})
@@ -952,9 +999,16 @@ def on_file_pass(e: Mapping[str, Any]) -> bool:
                                                                         and e.get("kind") == "lab")
 
 
+def owners_closure(e: Mapping[str, Any]) -> bool:
+    """NO EVALUADO is on file: Gate B's recorded row is the owner's closure (``gate-b-closure-v1``, ``decided_by = 'owner'``, not passed)."""
+    rec = e.get("recorded")
+    return (e.get("id") == "gate_b" and isinstance(rec, Mapping) and rec.get("kind") == CLOSURE_KIND and rec.get("decided_by") == "owner"
+            and rec.get("passed") is False)
+
+
 def violations(doc: Mapping[str, Any]) -> list[str]:
-    """Every way a panel breaks its rule: an unknown status, ``approved`` that is not ``status == PASA``, a PASA without a pass on file, or
-    a PASA on a gate that can only be pending (P1, a gate whose pieces do not exist)."""
+    """Every way a panel breaks its rule: an unknown status, ``approved`` that is not ``status == PASA``, a PASA without a pass on file, a
+    PASA on a gate that can only be pending (P1, a gate whose pieces do not exist), or a NO EVALUADO without the owner's closure on file."""
     out: list[str] = []
     for e in doc.get("gates") or []:
         status = e.get("status")
@@ -966,6 +1020,8 @@ def violations(doc: Mapping[str, Any]) -> list[str]:
             out.append(f"{e.get('id')}: PASA without a pass on file")
         if status == PASS and e.get("kind") in ("muestra", "dependencias"):
             out.append(f"{e.get('id')}: a {e.get('kind')} gate cannot be PASA")
+        if status == NOT_EVALUATED and not owners_closure(e):
+            out.append(f"{e.get('id')}: NO EVALUADO without the owner's closure on file")
     return out
 
 
@@ -1056,7 +1112,8 @@ def lines(doc: Mapping[str, Any], *, figures: int = 6) -> list[str]:
     return out
 
 
-__all__ = ["COMPONENTS", "FAIL", "LAB", "LAB_A02", "LAB_A09", "LAB_B09", "PASS", "PENDING", "PENDING_ACTIONS", "PENDING_DEPENDENCIES",
-           "PENDING_SAMPLE", "PENDING_TIME", "REJECTS", "SPECS", "STATUSES", "VERSION", "Component", "LabRecord", "LabRow", "P1Counts",
-           "PanelInputs", "Row", "Spec", "entry", "figure", "interval_figure", "lines", "live_status", "on_file_pass", "panel", "row_of",
+__all__ = ["CLOSURE_KIND", "COMPONENTS", "FAIL", "LAB", "LAB_A02", "LAB_A09", "LAB_B09", "NOT_EVALUATED", "NOT_EVALUATED_ES", "PASS",
+           "PENDING", "PENDING_ACTIONS", "PENDING_DEPENDENCIES", "PENDING_SAMPLE", "PENDING_TIME", "REJECTS", "SPECS", "STATUSES", "VERSION",
+           "Component", "LabRecord", "LabRow", "P1Counts", "PanelInputs", "Row", "Spec", "entry", "figure", "interval_figure", "lines",
+           "live_status", "on_file_pass", "owners_closure", "panel", "row_of",
            "value_per_usd", "value_section", "violations"]
