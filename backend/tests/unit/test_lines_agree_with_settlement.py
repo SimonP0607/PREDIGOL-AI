@@ -140,3 +140,55 @@ def test_the_fair_price_is_the_one_that_breaks_even_when_settled(line: str) -> N
             status = market_outcome("AH", "Home", Decimal(line), home, away)
             expected += p * profit(status, odds, Decimal(1))
     assert abs(expected) < Decimal("0.0005"), f"{line}: {expected}"
+
+
+# -- AD-B04 (IA-074): the markets the score matrix adds settle as fbi.picks settles them -------------------------------------------------
+
+def _settled_by(outcome_of: object) -> tuple[float, float]:
+    """(win share, push share) over the whole matrix, each score decided by ``outcome_of(home, away)``."""
+    m = MATRIX / MATRIX.sum()
+    win = push = 0.0
+    for home in range(m.shape[0]):
+        for away in range(m.shape[1]):
+            status = outcome_of(home, away)  # type: ignore[operator]
+            win += float(m[home, away]) * WIN_SHARE[status]
+            push += float(m[home, away]) * PUSH_SHARE[status]
+    return win, push
+
+
+TEAM_LINES = ["0.5", "0.75", "1", "1.25", "1.5", "1.75", "2", "2.5", "3.25"]
+
+
+@pytest.mark.parametrize("side", ["home", "away"])
+@pytest.mark.parametrize("selection", ["Over", "Under"])
+@pytest.mark.parametrize("line", TEAM_LINES)
+def test_the_goals_of_one_side_settle_as_the_count_settlement(side: str, selection: str, line: str) -> None:
+    from fbi.forecasting import score_matrix as sm
+    from fbi.picks.count_settlement import count_outcome
+
+    got = sm.derive(sm.from_array(MATRIX), team_lines=[Decimal(line)])[(f"OU_{side.upper()}", selection, Decimal(line))]
+    want_win, want_push = _settled_by(lambda h, a: count_outcome("over_under", side, selection, Decimal(line), h, a))
+    assert got.win == pytest.approx(want_win, abs=1e-12) and got.push == pytest.approx(want_push, abs=1e-12)
+
+
+@pytest.mark.parametrize("selection", ["Home", "Away"])
+def test_draw_no_bet_settles_as_the_count_settlement(selection: str) -> None:
+    from fbi.forecasting import score_matrix as sm
+    from fbi.picks.count_settlement import count_outcome
+
+    got = sm.derive(sm.from_array(MATRIX))[("DNB", selection, Decimal(0))]
+    want_win, want_push = _settled_by(lambda h, a: count_outcome("draw_no_bet", "match", selection, Decimal(0), h, a))
+    assert got.win == pytest.approx(want_win, abs=1e-12) and got.push == pytest.approx(want_push, abs=1e-12)
+
+
+@pytest.mark.parametrize("selection", ["Home", "Draw", "Away"])
+@pytest.mark.parametrize("line", ["-3", "-2", "-1", "1", "2", "3"])
+def test_the_european_handicap_is_the_result_with_the_goals_given(selection: str, line: str) -> None:
+    """``fbi.picks`` has no European handicap: it is the 1X2 settled on (home + line, away), which ``market_outcome`` does settle."""
+    from fbi.forecasting import score_matrix as sm
+
+    shift = int(line)
+    got = sm.derive(sm.from_array(MATRIX), eh_lines=[Decimal(line)])[("EH", selection, Decimal(line))]
+    want_win, want_push = _settled_by(
+        lambda h, a: market_outcome("1X2", selection, Decimal(0), h + max(shift, 0), a + max(-shift, 0)))
+    assert got.win == pytest.approx(want_win, abs=1e-12) and got.push == want_push == 0.0
