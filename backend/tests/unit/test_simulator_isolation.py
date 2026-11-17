@@ -20,6 +20,8 @@ APPS = ROOT / "apps"
 
 MODULE = "fbi.simulator"
 ALLOWED = {"scripts/ia_simulator.py": "the command that prints the check against the models in force (read-only)",
+           "scripts/ia_score_matrix.py": "AD-B04 (IA-074): recovers each goal model's expected goals from its own rows (``invert``) to set the score "
+                                         "matrix beside what each market states; read-only, printed for a person",
            "plugins/_template/family.py": "the example plug-in family (IA-018): team totals summed over the joint (shadow, not installed)"}
 DECIDES = ("intel/", "picks/", "familydecisions/", "decision/", "api/", "parlays/", "predictions/", "forecasting/", "families/",
            "ai/", "narrative/", "messaging/", "notify/", "customer/", "models/", "features/", "backtesting/", "domain/")
