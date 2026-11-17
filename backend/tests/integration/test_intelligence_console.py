@@ -82,7 +82,9 @@ def test_the_console_answers_c11_and_writes_nothing(db: psycopg.Connection[Any],
 
     caps = console.capabilities
     assert not hasattr(caps, "read_failed")
-    assert {i.state for i in caps.items.items} == {"en_sombra"}  # revision 0138 seeds the seven
+    seeded = {"research_v2", "readers", "council", "haiku_arm", "family_decisions", "attribution", "chronicle_review"}
+    assert {i.state for i in caps.items.items if i.key in seeded} == {"en_sombra"}  # revision 0138 seeds the seven
+    assert all(i.key in seeded or not isinstance(i.state, str) for i in caps.items.items), "a later piece waits for sync --write"
     research = next(i for i in caps.items.items if i.key == "research_v2")
     assert research.safety_gates[0].verdict == "NO PASA" and research.safety_gates[0].row == battery
     assert any("dice NO PASA" in w for w in research.warnings)

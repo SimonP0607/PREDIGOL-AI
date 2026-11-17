@@ -29,7 +29,7 @@
    "PENDIENTE POR DEPENDENCIAS"
   ],
   "by_state": {
-   "construida": 0,
+   "construida": 1,
    "en_sombra": 7,
    "lista_para_revision": 0,
    "autorizada": 0
@@ -448,6 +448,46 @@
      "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
      "no validada (PENDIENTE POR DEPENDENCIAS)"
     ]
+   },
+   {
+    "key": "chronicle_v4",
+    "piece": "AD-F02",
+    "title": "Crónica única: plan de contenido y chronicle-v4",
+    "description": "El código planifica los hechos de cada partido (content-plan-v1, con la tabla de clases de afirmación) y el modelo pequeño escribe una sola crónica verificada frase por frase (chronicle-verify-v1); en sombra, tope de US$ 1 al día, nadie la lee.",
+    "switch": "FBI_CHRONICLE_V4",
+    "components": [
+     "content-plan-v1",
+     "claim-classes-v1",
+     "chronicle-v4",
+     "chronicle-verify-v1"
+    ],
+    "catalog_version": 1,
+    "registered_at": "2026-11-17T00:00:00+00:00",
+    "state": "construida",
+    "since": "2026-11-17T00:00:00+00:00",
+    "decided_by": "system",
+    "signed_by_owner": false,
+    "reason": "Registro de una capacidad nueva al desplegarse su código: construida, sin veredictos todavía.",
+    "observed": {},
+    "safety": {
+     "verdict": "PENDIENTE POR ACCIONES MANUALES",
+     "evidence": {}
+    },
+    "validation": {
+     "verdict": "PENDIENTE POR DEPENDENCIAS",
+     "sample": null,
+     "evidence": {}
+    },
+    "transitions": 1,
+    "live": {
+     "safety_gates": [],
+     "validation_gates": [],
+     "agent_runs_7d": {}
+    },
+    "warnings": [
+     "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+     "no validada (PENDIENTE POR DEPENDENCIAS)"
+    ]
    }
   ],
   "note": "El registro anota y no decide: ningún interruptor, gate, agente, pick ni lector lo lee. «autorizada» es la firma del dueño; encender algo para lectores sigue siendo su cambio de interruptor."
@@ -456,7 +496,7 @@
  "meta": {
   "generated_at": "2026-11-16T21:00:00Z",
   "api_version": "v1",
-  "count": 7,
+  "count": 8,
   "total": null,
   "limit": null,
   "offset": null,

@@ -21,6 +21,8 @@ from tests.integration.test_migration_0111 import _cfg
 pytestmark = pytest.mark.integration
 
 SCRATCH = f"{TEST_DB}_m0138"
+SEEDED = 7
+"""The capabilities revision 0138 seeded (the first seven of the catalog); a later piece adds its own through ``sync``."""
 TABLES = {"capabilities", "capability_transitions"}
 AT = datetime(2026, 11, 20, 12, 0, tzinfo=UTC)
 SIGNATURE = "Autorizo esta capacidad, el dueño, 2026-11-20"
@@ -110,7 +112,7 @@ def test_0138_adds_two_append_only_tables_seeds_them_and_goes_down_and_up_again(
                                  f"AND tgname = '{table}_append_only'").fetchone() == (1,)
             seeded = c.execute("SELECT c.key, t.to_state, t.safety, t.validation, t.decided_by, t.previous_id FROM intel.capabilities c "
                                "JOIN intel.capability_transitions t ON t.capability_id = c.id ORDER BY c.id").fetchall()
-            assert [r[0] for r in seeded] == [cap.key for cap in reg.CATALOG]
+            assert [r[0] for r in seeded] == [cap.key for cap in reg.CATALOG[:SEEDED]]
             assert {r[1:] for r in seeded} == {("en_sombra", reg.PENDING_ACTIONS, reg.PENDING_DEPENDENCIES, "system", None)}
             hashes = c.execute("SELECT evidence_hash, safety, safety_evidence, validation, validation_evidence, validation_sample, "
                                "reason, observed FROM intel.capability_transitions").fetchall()
@@ -166,7 +168,9 @@ def test_the_database_refuses_what_the_rules_forbid_and_every_change_of_a_row() 
 
 def test_the_code_records_reads_and_syncs_through_the_rules() -> None:
     with scratch_at("0138") as dsn, psycopg.connect(dsn) as c:
-        assert reg.sync_plan(reg.catalog_rows(c)) == [], "the seed is the code catalog"
+        plan = [(cap.key, supersedes, version) for cap, supersedes, version in reg.sync_plan(reg.catalog_rows(c))]
+        assert plan == [(cap.key, None, 1) for cap in reg.CATALOG[SEEDED:]], (
+            "the seed is the code catalog of 16 Nov; what a later piece adds enters through sync, at version 1")
         with pytest.raises(PermissionError):
             reg.record(c, reg.Proposal("council", reg.AUTHORISED, reg.PASS, reg.VALIDATED, "r", {"g": 1}, {"p": 1}, 300), at=AT)
         with pytest.raises(ValueError, match="no state is skipped"):

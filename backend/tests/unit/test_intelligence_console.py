@@ -148,7 +148,8 @@ def test_capabilities_carry_one_of_four_states_and_their_verdicts() -> None:
     assert first.state == "en_sombra" and second.state == "lista_revision" and third.state == Missing(missing_reason="sin_datos")
     assert first.validation == "INSUFICIENTE" and first.validation_sample == 12
     assert first.safety_gates[0].verdict == "NO PASA" and "dice NO PASA" in first.warnings[0]
-    assert [(c.state, c.count) for c in view.by_state] == [("construida", 4), ("en_sombra", 1), ("lista_revision", 1), ("autorizada", 0)]
+    assert [(c.state, c.count) for c in view.by_state] == [("construida", len(registry.CATALOG) - 3), ("en_sombra", 1), ("lista_revision", 1),
+                                                         ("autorizada", 0)]
     chronicle = next(i for i in view.items.items if i.key == "chronicle_review")
     assert chronicle.switch == Missing(missing_reason="sin_datos"), "a job of the worker without a switch says so"
     empty = svc.capabilities_of({"version": registry.VERSION, "capabilities": [], "by_state": {}, "unregistered": [], "not_in_code": []})

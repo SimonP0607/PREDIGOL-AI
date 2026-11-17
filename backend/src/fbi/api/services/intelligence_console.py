@@ -163,6 +163,7 @@ def switch_words(settings: AiSettings, env: Mapping[str, str]) -> dict[str, str]
         "FBI_AI_PM_REVIEWER": _yes(settings.pm_reviewer),
         "FBI_AI_LEARNING_ANALYST": _yes(settings.learning_analyst),
         "FBI_AI_ENVELOPES_INDEPENDENT": _yes(settings.envelopes_independent),
+        "FBI_CHRONICLE_V4": "shadow" if (env.get("FBI_CHRONICLE_V4") or "").strip().lower() == "shadow" else "off",
         reader_switches.MATCH_INTELLIGENCE: _yes(reader_switches.user_switch(reader_switches.MATCH_INTELLIGENCE, default=False)),
         reader_switches.NEWS_V2: _yes(reader_switches.user_switch(reader_switches.NEWS_V2, default=False)),
         reader_switches.SEARCH: _yes(reader_switches.user_switch(reader_switches.SEARCH, default=False)),
@@ -188,6 +189,8 @@ SPECS: Final[tuple[Spec, ...]] = (
          "learning_analyst"),
     Spec("FBI_AI_ENVELOPES_INDEPENDENT", "intelligence", "off", "Preparado y sin usar (IA-058): encendido, el LAB deja de ceder ante el techo "
          "conjunto de 190."),
+    Spec("FBI_CHRONICLE_V4", "intelligence", "off", "La crónica única (AD-F01/F02): shadow planifica los hechos por código y escribe una "
+         "crónica verificada frase por frase en ai.chronicles, tope de US$ 1 al día; ningún lector la ve."),
     Spec(reader_switches.MATCH_INTELLIGENCE, "lector", "off", "La pestaña «Intelligence» del partido para lectores (solo lo publicado)."),
     Spec(reader_switches.NEWS_V2, "lector", "off", "Noticias como las maquetas 08-10."),
     Spec(reader_switches.SEARCH, "lector", "off", "La búsqueda global de los lectores."),

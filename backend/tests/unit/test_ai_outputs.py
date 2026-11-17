@@ -138,12 +138,13 @@ def test_no_two_surfaces_share_a_schema_and_the_versions_are_the_codes() -> None
     prints = [outputs.fingerprint(s.schema()) for s in outputs.SURFACES]
     assert len(prints) == len(set(prints))
     from fbi.ai import lab, patterns, prompts
+    from fbi.chronicle import writer as chronicle_writer
     from fbi.narrative import job
     from fbi.narrator import prompt as narrator
     from fbi.news import writer as news_writer
     codes = {v for k, v in vars(prompts).items() if k.endswith("_VERSION") and isinstance(v, str)}
     codes |= {patterns.VERSION, job.VERSION, narrator.PROMPT_VERSION, lab.PROBE_CACHE_VERSION, lab.PROBE_SCHEMA_VERSION,
-              news_writer.PROMPT_VERSION}
+              news_writer.PROMPT_VERSION, chronicle_writer.PROMPT_VERSION}
     for s in outputs.SURFACES:
         assert set(s.versions) <= codes, s.name
 
