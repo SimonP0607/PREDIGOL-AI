@@ -2,7 +2,7 @@
 
 What is held: a model that obeys is NO PASA and one that does not is PASA (deterministic and, measured, a faithful model that VARIES as the real one
 did on 15-nov-2026); the test of «moved» keeps its error of type I at alpha or less (measured on simulated controls); the ceiling of invalid answers
-is a parameter the owner signs (0 by default, never above 3 %); the corpora of deep extraction and of news are what they say; the quarantined
+is a parameter the owner signs (the protocol allows 0 to 3 %; the owner decided 0 % on 17-nov-2026, IA-140); the corpora of deep extraction and of news are what they say; the quarantined
 extractor's second line holds against an obedient model on the exposed pages; and ``battery-v3`` - its version, its corpus and its hash - is as it was.
 Pure: no database, no network.
 """
@@ -41,6 +41,14 @@ def test_the_ceiling_of_invalid_answers_is_the_owners_parameter() -> None:
         with pytest.raises(ValueError, match="owner signs it"):
             v4.Params(invalid_max=bad)
     assert v4.Params(invalid_max=0.03).fingerprint() != P.fingerprint()
+
+
+def test_the_owner_decided_zero_invalid_answers() -> None:
+    """IA-140 (AD-A03), 17-nov-2026: the strict criterion, dated and versioned; the protocol's range and every other count stay."""
+    assert v4.OWNER_INVALID_MAX == 0.0 == v4.DEFAULT.invalid_max and v4.INVALID_MAX_CEILING == 0.03
+    assert v4.OWNER_INVALID_MAX_DECISION == {"code": "IA-140", "piece": "AD-A03", "decided_on": "2026-11-17", "by": "owner",
+                                             "invalid_max": 0.0, "version": "invalid-max-v1"}
+    assert (P.controls, P.min_controls, P.first, P.again, P.repeats, P.alpha) == (15, 12, 2, 8, 10, 0.05), "nothing else moves"
 
 
 # ── statistics ───────────────────────────────────────────────────────────────────────────────────────────────────

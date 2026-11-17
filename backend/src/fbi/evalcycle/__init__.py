@@ -10,9 +10,10 @@ Four evaluations of every tracked match, tied to the football clock instead of t
     E3  when the official line-up arrives (``core.fixture_lineup_arrivals``, IA-069), code only, under two minutes: the official
         starters against the estimated, the dependencies applied, the price read again; confirmed, unchanged, withdrawn
         (``reevaluate``, AD-D07)
-    E4  20 to 10 minutes before kick-off: the match read again (kick-off, state, venue: ``fbi.ai.final_reread``, IA-061) and the
-        last decision. decision-v1's floor (``fbi.intel.decision.MIN_MINUTES``: under 10 minutes it rejects every selection) is never
-        lowered, so E4 is kept between T-20 and T-10, as decision-v2's kept shadow does (IA-093) - not at T-5.
+    E4  at T-5 (the owner's decision of 17-nov-2026, IA-142): the match read again (kick-off, state, venue: ``fbi.ai.final_reread``,
+        IA-061) and every selection judged with decision-v2's last kept decision and the price read again. decision-v1's floor
+        (``fbi.intel.decision.MIN_MINUTES``: under 10 minutes it rejects every selection) is never lowered, so nothing decides at T-5:
+        decision-v2 decides for the last time from T-20 to T-10, as its kept shadow does (IA-093), and E4 adopts that moment.
 
 Each evaluation keeps what it did (``intel.eval_runs``, ``intel.eval_verdicts``, revision 0156), its decision as a new version of
 decision-v2 (``intel.decisions_v2``, IA-093) and its moves in the cycle of states under the writer ``eval-cycle-v1``

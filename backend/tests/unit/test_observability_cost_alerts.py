@@ -1,4 +1,4 @@
-"""The cost alerts (``fbi.observability.cost_alerts``, cost-alerts-v1) without a database, and ``scripts.ia_alerts``' exit status: each rule
+"""The cost alerts (``fbi.observability.cost_alerts``, cost-alerts-v2) without a database, and ``scripts.ia_alerts``' exit status: each rule
 on crafted data, the minimums, and no alert on healthy data."""
 
 from __future__ import annotations
@@ -125,7 +125,7 @@ def test_the_report_lists_only_alerts_worst_first() -> None:
     fs = (ca.Finding("a", "x", ca.OK, ""), ca.Finding("b", "y", ca.WATCH, ""), ca.Finding("c", "z", ca.ALERT, ""),
           ca.Finding("d", "w", ca.INSUFFICIENT, ""))
     rep = ca.CostReport(DAY, datetime(2026, 11, 7, 5, tzinfo=UTC), fs, ())
-    assert [a["rule"] for a in rep.alerts()] == ["c", "b"] and rep.alerts()[0]["version"] == "cost-alerts-v1"
+    assert [a["rule"] for a in rep.alerts()] == ["c", "b"] and rep.alerts()[0]["version"] == "cost-alerts-v2"
 
 
 # ── the script ──────────────────────────────────────────────────────────────────────────────────────────────────────

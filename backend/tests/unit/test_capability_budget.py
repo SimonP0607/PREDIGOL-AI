@@ -152,36 +152,55 @@ def test_each_warning_is_logged_once_per_process_and_month(monkeypatch: pytest.M
     assert len(envelopes_readers.log_warnings(september)) == 1, "a new month warns again"
 
 
-# ── the joint ceiling, kept ────────────────────────────────────────────────────────────────────────────────────
+# ── the joint ceiling, replaced by the envelopes (IA-141) ────────────────────────────────────────────────────────
 
 
-def test_the_joint_ceiling_still_cuts_the_lab_unless_the_prepared_switch_says_independent() -> None:
-    assert budget_v3.lab_allocation(envelope=D(55), joint_ceiling=D(190), projected_production=D(173)) == 17, "as today"
+def test_the_envelopes_replace_the_joint_ceiling_and_the_old_rule_is_the_way_back() -> None:
+    assert budget_v3.lab_allocation(envelope=D(55), joint_ceiling=D(190), projected_production=D(173)) == 17, "switched back: as before"
     assert budget_v3.lab_allocation(envelope=D(55), joint_ceiling=D(190), projected_production=D(173), independent=True) == 55
     assert budget_v3.lab_allocation(envelope=D(55), joint_ceiling=D(190), projected_production=D(200), independent=True) == 55
     assert budget_v3.lab_allocation(envelope=D(0), joint_ceiling=D(190), projected_production=D(0), independent=True) == 0
-    assert budget_v3.JOINT_CEILING_PENDING is True
+    assert budget_v3.JOINT_CEILING_PENDING is False and budget_v3.JOINT_CEILING_REPLACED_BY == "envelopes-v2"
 
 
-def test_the_switch_is_off_by_default_and_only_a_clear_word_turns_it_on(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_owners_envelopes_are_versioned_and_none_rises_above_its_figure() -> None:
+    v1, v2 = capability_budget.ENVELOPE_DECISIONS
+    assert (v1.version, v1.decided_on, v1.joint_ceiling_applies, dict(v1.envelopes)) == (
+        "envelopes-v1", "2026-11-16", True, capability_budget.DECISION_12), "the history is kept as it was"
+    assert (v2.version, v2.decided_on, v2.joint_ceiling_applies) == ("envelopes-v2", "2026-11-17", False)
+    assert dict(v2.envelopes) == {"production": D(185), "exa": D(35), "lab": D(55)} and capability_budget.ENVELOPES_IN_FORCE is v2
+    cap = capability_budget.envelope_cap
+    assert (cap("production", D(185)), cap("lab", D(55)), cap("exa", D(35))) == (D(185), D(55), D(35))
+    assert (cap("production", D(250)), cap("lab", D(200)), cap("exa", D(90))) == (D(185), D(55), D(35)), "never above the decision"
+    assert (cap("lab", D(15)), cap("lab", D(0)), cap("lab", D(-3)), cap("other", D(10))) == (D(15), D(0), D(0), D(0)), "lower stays lower"
+    for e, d in capability_budget.declared(v2.envelopes).items():
+        assert D(d["declared_usd"]) <= D(d["envelope_usd"]), e
+
+
+def test_the_switch_is_on_by_default_and_only_a_clear_word_brings_the_joint_ceiling_back(monkeypatch: pytest.MonkeyPatch) -> None:
     def env_of(**env: str) -> AiSettings:
         monkeypatch.setattr("fbi.ai.config.environment", lambda: env)
         return AiSettings.from_env()
 
-    assert AiSettings().envelopes_independent is False and env_of().envelopes_independent is False
-    assert env_of(FBI_AI_ENVELOPES_INDEPENDENT="on").envelopes_independent is True
-    assert env_of(FBI_AI_ENVELOPES_INDEPENDENT="yes please").envelopes_independent is False
-    assert env_of().joint_ceiling == D(190), "the ceiling itself is not changed"
-    assert env_of().public()["envelopes_independent"] is False
+    assert AiSettings().envelopes_independent is True and env_of().envelopes_independent is True
+    for word in ("off", " OFF ", "0", "false", "no"):
+        assert env_of(FBI_AI_ENVELOPES_INDEPENDENT=word).envelopes_independent is False, word
+    assert env_of(FBI_AI_ENVELOPES_INDEPENDENT="yes please").envelopes_independent is True, "only a clear word goes back"
+    assert env_of().joint_ceiling == D(190), "the ceiling's figure is kept, for the way back"
+    assert env_of().public()["envelopes_independent"] is True
 
 
-def test_the_panel_says_the_joint_ceiling_applies_pending_the_owner() -> None:
-    lab = budget_v3.LabDay(True, D(17), D(5), D(12), D("0.5"), "ok")
+def test_the_panel_says_the_joint_ceiling_was_replaced_and_what_the_way_back_would_give() -> None:
+    lab = budget_v3.LabDay(True, D(55), D(5), D(50), D("0.5"), "ok")
     out = costs_v3.joint_ceiling_json(settings=settings(), lab=lab, projected_at_dawn=D(173))
-    assert out == {"usd": "190", "applies": True, "pending_owner": True,
-                   "note": "techo conjunto 190 vigente; pendiente de confirmación del dueño", "switch": "FBI_AI_ENVELOPES_INDEPENDENT",
-                   "independent": False, "lab_allocation_usd": "17.0000", "lab_allocation_joint_usd": "17.0000",
+    assert out == {"usd": "190", "applies": False, "pending_owner": False, "replaced_by": "envelopes-v2",
+                   "note": costs_v3.JOINT_CEILING_REPLACED_NOTE, "switch": "FBI_AI_ENVELOPES_INDEPENDENT",
+                   "independent": True, "lab_allocation_usd": "55.0000", "lab_allocation_joint_usd": "17.0000",
                    "lab_allocation_independent_usd": "55.0000", "envelopes_sum_usd": "240"}
+    back = costs_v3.joint_ceiling_json(settings=settings(envelopes_independent=False), lab=lab, projected_at_dawn=D(173))
+    assert back["applies"] is True and back["note"] == costs_v3.JOINT_CEILING_NOTE and "IA-141" in back["note"]
+    big = costs_v3.joint_ceiling_json(settings=settings(lab_monthly_budget=D(90)), lab=lab, projected_at_dawn=D(0))
+    assert big["lab_allocation_independent_usd"] == "55.0000", "the LAB never gets more than its 55"
 
 
 # ── Exa's price ────────────────────────────────────────────────────────────────────────────────────────────────

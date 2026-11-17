@@ -3,14 +3,16 @@
 ``FBI_EVAL_CYCLE`` = ``off`` (the default; anything not understood is ``off``) or ``shadow``. Off, the worker schedules neither job and
 nothing of ``fbi.evalcycle`` is imported. In the shadow:
 
-* ``eval_cycle_shadow`` every ``FBI_EVAL_CYCLE_MINUTES`` (5 by default: E4's window is 10 minutes wide): the match read again, E1, E2,
-  E4 and the chains of the cycle of states (``fbi.evalcycle.run.run_pass``);
+* ``eval_cycle_shadow`` every ``FBI_EVAL_CYCLE_MINUTES`` (5 by default and at most 5: E4's window, from T-5 to kick-off since IA-142,
+  is 5 minutes wide): the match read again, E1, E2, decision-v2's last decision (T-20 to T-10), E4 and the chains of the cycle of states
+  (``fbi.evalcycle.run.run_pass``);
 * ``eval_cycle_e3`` every ``FBI_EVAL_CYCLE_E3_SECONDS`` (60 by default, 30 to 120): E3 for the official line-ups that arrived
   (``run_line_ups``), so that E3 ends within two minutes of the line-up's first sighting.
 
 The passes ``first``, ``pre`` and ``final`` (``fbi.ai.day``) keep running as they are: the cycle is a shadow beside them until the owner
 signs their retirement. With the cycle on, decision-v2's own pass can keep only its mirror (``FBI_DECISION_V2_TRIGGERS=mirror``): E1 and
-E4 adopt the moment that pass kept when there is one, so nothing is decided twice either way.
+decision-v2's last decision before its floor (trigger ``E4``, T-20 to T-10) adopt the moment that pass kept when there is one, so nothing
+is decided twice either way; E4 at T-5 decides nothing and judges with that last decision and the price read again.
 
 Only the worker's scheduler imports this module; nothing it writes is read by a decision, a pick or a page.
 """
@@ -46,8 +48,9 @@ def _number(env: Mapping[str, str] | None, name: str, default: int, low: int, hi
 
 
 def every_minutes(env: Mapping[str, str] | None = None) -> int:
-    """The main pass's cadence: 1 to 10 minutes (E4's window is 10 minutes wide), 5 by default."""
-    return _number(env, "FBI_EVAL_CYCLE_MINUTES", 5, 1, 10)
+    """The main pass's cadence: 1 to 5 minutes (E4's window, T-5 to kick-off, is 5 minutes wide: IA-142), 5 by default; a word outside
+    it is the default."""
+    return _number(env, "FBI_EVAL_CYCLE_MINUTES", 5, 1, 5)
 
 
 def e3_every_seconds(env: Mapping[str, str] | None = None) -> int:

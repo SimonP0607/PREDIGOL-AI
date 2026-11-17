@@ -2,7 +2,8 @@
 
 ``FBI_LINEUP_ESTIMATE`` = ``off`` (the default; anything not understood is ``off``) or ``shadow``. Off, the worker does not even schedule
 the job. In the shadow, every ``FBI_LINEUP_ESTIMATE_MINUTES`` (5 by default) one pass estimates every side of the tracked matches due at
-E1 (24 to 12 hours before kick-off) or at E4 (20 to 10 minutes before: the same windows as decision-v2's kept shadow, IA-093) and not yet
+E1 (24 to 12 hours before kick-off) or at E4 (20 to 10 minutes before: the same windows as decision-v2's kept shadow, IA-093 - its last
+decision before decision-v1's floor; the cycle's E4 verdict moved to T-5 with IA-142 and reads no estimate, so this window stays) and not yet
 estimated in that evaluation, at most ``MAX_FIXTURES`` matches a pass, nearest kick-off first, and appends one row per player to
 ``intel.lineup_estimates`` (revision 0151).
 

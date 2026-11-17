@@ -17,7 +17,12 @@ shown in the owner's panel and written to the log of the process that built it (
 calls a model on its own (the news text in shadow, the single chronicle in shadow) asks ``piece_allows`` before each call: from 95 % of its
 cap - counting the call about to be made - it stops asking, and it stops too when its month could not be read or it is not in the register
 (FAILS CLOSED: it stops reading, it never goes on). That cut never lowers anything else: ``fbi.ai.budget_v3`` and its envelopes still decide
-every call, and the caps, the warnings, the envelopes and the joint ceiling are what they were.
+every call, and the caps and the warnings are what they were.
+
+THE ENVELOPES IN FORCE (``ENVELOPE_DECISIONS``, versioned, the history kept): ``envelopes-v1`` is decision 12 (16-nov-2026: 185 / 35 / 55,
+the joint ceiling of 190 still applying while the owner had not confirmed); ``envelopes-v2`` is the owner's decision of 17-nov-2026 (IA-141,
+AD-A06): the same three figures REPLACE the joint ceiling, which no longer applies. ``envelope_cap`` is the most the code applies of each,
+whatever the environment says: an envelope never rises above the owner's figure (a lower one in the environment stays lower).
 
 Pure: the month's rows are read by ``fbi.ai.envelopes_readers`` (the owner's panel), never by the cycle."""
 
@@ -33,7 +38,45 @@ ENVELOPES: Final[tuple[str, ...]] = ("production", "exa", "lab")
 DECISION_12: Final[dict[str, Decimal]] = {"production": Decimal(185), "exa": Decimal(35), "lab": Decimal(55)}
 """The owner's monthly envelopes (decision 12 of the plan, approved 16 Nov 2026): Claude in production (the readers' chronicle included), Exa,
 the LAB. What the code applies comes from the environment (``FBI_AI_MONTHLY_BUDGET_USD``, ``FBI_AI_EXA_MONTHLY_BUDGET_USD``,
-``FBI_AI_LAB_MONTHLY_BUDGET_USD``): the panel shows both and says when they differ."""
+``FBI_AI_LAB_MONTHLY_BUDGET_USD``), never above the figures in force (``envelope_cap``, IA-141): the panel shows both and says when they
+differ. Kept as it was: it is ``envelopes-v1`` of ``ENVELOPE_DECISIONS``."""
+
+
+@dataclass(frozen=True, slots=True)
+class EnvelopeDecision:
+    """One decision of the owner about the three envelopes: a new one is a new version, never an edit of the one before."""
+
+    version: str
+    decided_on: str
+    by: str
+    envelopes: Mapping[str, Decimal]
+    joint_ceiling_applies: bool
+    note: str
+
+    def as_json(self) -> dict[str, Any]:
+        return {"version": self.version, "decided_on": self.decided_on, "by": self.by,
+                "envelopes_usd": {k: str(v) for k, v in self.envelopes.items()}, "joint_ceiling_applies": self.joint_ceiling_applies,
+                "note": self.note}
+
+
+ENVELOPE_DECISIONS: Final[tuple[EnvelopeDecision, ...]] = (
+    EnvelopeDecision("envelopes-v1", "2026-11-16", "decisión 12 del plan (IA-058, AD-A06)", DECISION_12, True,
+                     "sobres 185 / 35 / 55; el techo conjunto de 190 sigue, pendiente de confirmación del dueño"),
+    EnvelopeDecision("envelopes-v2", "2026-11-17", "el dueño (IA-141, AD-A06)",
+                     {"production": Decimal(185), "exa": Decimal(35), "lab": Decimal(55)}, False,
+                     "los sobres sustituyen al techo conjunto de 190, que deja de aplicarse; ninguno sube de su cifra"),
+)
+"""Every decision about the envelopes, oldest first. The last one is in force."""
+ENVELOPES_IN_FORCE: Final = ENVELOPE_DECISIONS[-1]
+
+
+def envelope_cap(scope: str, configured: Decimal) -> Decimal:
+    """What the code applies of an envelope: the environment's figure, never above the owner's figure in force (``ENVELOPES_IN_FORCE``). An
+    envelope the decision does not name is 0 (fails closed)."""
+    decided = ENVELOPES_IN_FORCE.envelopes.get(scope, Decimal(0))
+    return max(Decimal(0), min(configured, decided))
+
+
 ALERT_AT: Final[tuple[int, ...]] = (80, 95)
 """The internal warnings of AD-A06, percent of an envelope or of a capability's cap."""
 
@@ -180,5 +223,6 @@ def declared(envelopes: Mapping[str, Decimal] = DECISION_12) -> dict[str, dict[s
     return out
 
 
-__all__ = ["ALERT_AT", "CAPABILITIES", "CUT_AT", "CUT_VERSION", "DECISION_12", "ENVELOPES", "VERSION", "Allowance", "Capability", "Row", "capability_of",
-           "declared", "get", "level", "piece_allows", "report", "spend"]
+__all__ = ["ALERT_AT", "CAPABILITIES", "CUT_AT", "CUT_VERSION", "DECISION_12", "ENVELOPES", "ENVELOPES_IN_FORCE", "ENVELOPE_DECISIONS", "VERSION",
+           "Allowance", "Capability", "EnvelopeDecision", "Row", "capability_of", "declared", "envelope_cap", "get", "level", "piece_allows",
+           "report", "spend"]

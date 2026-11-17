@@ -265,8 +265,9 @@ def lab_spent_month(conn: psycopg.Connection[Any], at: datetime) -> Decimal:
 
 
 def lab_may_spend(conn: psycopg.Connection[Any], settings: AiSettings, at: datetime) -> bool:
-    """Whether an experiment of the LAB workspace may spend now. Budget v3: the LAB runs a day whole or not at all and yields to
-    production first (``fbi.ai.budget_v3.lab_day``); rolled back, it is the LAB's envelope alone."""
+    """Whether an experiment of the LAB workspace may spend now. Budget v3: the LAB runs a day whole or not at all, within its own
+    envelope (``fbi.ai.budget_v3.lab_day``; it yields to production only with the joint ceiling switched back, IA-141); rolled back, it
+    is the LAB's envelope alone."""
     if gates.enabled(conn, settings, "budget_v3"):
         from fbi.ai import budget_v3
 

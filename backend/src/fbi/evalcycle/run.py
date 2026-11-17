@@ -9,8 +9,11 @@ Two passes, each under its own advisory lock, scheduled by the worker only while
       already kept, IA-093), the estimated starters and the goal model's matrix give each selection its dependency (AD-D03), and each
       selection is read (``reevaluate.reading``);
     * E2 for the new facts of the match (``ai.evidence``), each looked at once (``intel.eval_facts``);
-    * E4 in its window: the match read again (``fbi.ai.final_reread``) and every selection judged with the last decision and the line-up
-      known by then; a selection still waiting for its line-up raises «sin alineación»;
+    * decision-v2's LAST decision from T-20 to T-10 (``clock.last_decision``): the moment decision-v2's own pass kept as ``E4`` (IA-093),
+      or decided now - kept in decision-v2's tables only, no evaluation of the cycle;
+    * E4 at T-5 (IA-142, the owner's decision of 17-nov-2026): the match read again (``fbi.ai.final_reread``) and every selection judged
+      with decision-v2's last kept decision before its floor and the price READ AGAIN at T-5, and the line-up known by then; nothing
+      decides there (decision-v1's floor, 10 min, is never lowered); a selection still waiting for its line-up raises «sin alineación»;
     * the chains of the cycle of states, under the writer ``eval-cycle-v1`` (``fbi.lifecycle.store.extend_rows``).
 
 ``run_line_ups`` (every minute): E3 for every match whose official line-up arrived (``core.fixture_lineup_arrivals``, IA-069; the stored
@@ -29,7 +32,7 @@ import functools
 import time
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final
@@ -99,6 +102,13 @@ SELECT id FROM intel.decision_v2_moments
  WHERE fixture_id = %(fixture)s AND trigger = %(trigger)s AND config_key = %(config)s AND known_at <= %(at)s
  ORDER BY known_at DESC, id DESC LIMIT 1
 """
+LAST_MOMENT_SQL: Final = """
+SELECT id, trigger, known_at FROM intel.decision_v2_moments
+ WHERE fixture_id = %(fixture)s AND config_key = %(config)s AND known_at <= %(at)s AND known_at < %(floor)s
+ ORDER BY known_at DESC, id DESC LIMIT 1
+"""
+"""decision-v2's newest kept moment of a match BEFORE its floor (any trigger: its last decision at T-20..T-10, an E3, a mirror...): what
+E4 judges with at T-5. A moment written under the floor (a mirror of a run of decision-v1 that only rejected) is never adopted."""
 DECISIONS_SQL: Final = """
 SELECT d.id, d.market_key, d.selection, d.line, d.state, d.reason, d.codes, d.context_status, d.checkpoint, d.known_at, d.kickoff_at,
        d.p_model, d.p_cal, d.odds, d.p_market, d.price_state, d.price_at, d.price_age_minutes,
@@ -288,6 +298,8 @@ class Report:
     latency_ms: list[int] = field(default_factory=list)
     lifecycle: dict[str, Any] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
+    last_decisions: int = 0
+    """decision-v2's last decisions before its floor decided in this pass (one adopted from its own pass is not counted)."""
 
     def as_json(self) -> dict[str, Any]:
         lat = sorted(self.latency_ms)
@@ -297,7 +309,7 @@ class Report:
                 "sources": dict(sorted(self.sources.items())),
                 "e3_latency_ms": {"n": len(lat), "max": lat[-1] if lat else None,
                                   "p95": lat[min(len(lat) - 1, int(0.95 * len(lat)))] if lat else None},
-                "lifecycle": self.lifecycle, "errors": self.errors[:20]}
+                "last_decisions": self.last_decisions, "lifecycle": self.lifecycle, "errors": self.errors[:20]}
 
 
 @dataclass
@@ -354,23 +366,38 @@ def decisions_of(conn: psycopg.Connection[Any], moment_id: int | None) -> dict[K
     return out
 
 
+def _kept_in_window(ctx: Context, m: Match, evaluation: str) -> int | None:
+    """The moment decision-v2's own pass already kept for ``E1`` or ``E4`` (its last decision) in that window (IA-093), or None."""
+    since = m.kickoff_at - (clock.E1_FROM if evaluation == "E1" else clock.DECIDE_FROM)
+    got = _fetch(ctx.conn, MOMENT_SQL, {"fixture": m.id, "trigger": evaluation, "config": ctx.config.key, "at": ctx.now})
+    if got:
+        mid = int(got[0]["id"])
+        row = ctx.conn.execute("SELECT known_at FROM intel.decision_v2_moments WHERE id = %s", (mid,)).fetchone()
+        if row is not None and row[0] >= since:
+            return mid
+    return None
+
+
 def _moment(ctx: Context, m: Match, evaluation: str, version: int) -> int | None:
-    """decision-v2 at this evaluation: E1 and E4 adopt the moment decision-v2's own pass already kept in the window (IA-093), the rest
-    decide now. None when it can no longer decide (under decision-v1's floor)."""
+    """decision-v2 at this evaluation: E1 and the last decision (trigger ``E4``) adopt the moment decision-v2's own pass already kept in
+    the window (IA-093), the rest decide now. None when it can no longer decide (under decision-v1's floor)."""
     if not clock.decides(m.kickoff_at, ctx.now):
         return None
     if evaluation in ("E1", "E4"):
-        since = m.kickoff_at - (clock.E1_FROM if evaluation == "E1" else clock.E4_FROM)
-        got = _fetch(ctx.conn, MOMENT_SQL, {"fixture": m.id, "trigger": evaluation, "config": ctx.config.key, "at": ctx.now})
-        if got:
-            mid = int(got[0]["id"])
-            row = ctx.conn.execute("SELECT known_at FROM intel.decision_v2_moments WHERE id = %s", (mid,)).fetchone()
-            if row is not None and row[0] >= since:
-                return mid
+        kept = _kept_in_window(ctx, m, evaluation)
+        if kept is not None:
+            return kept
     rep = shadow.decide_evaluation(ctx.conn, evaluation=evaluation, at=ctx.now, kickoffs={m.id: m.kickoff_at}, versions={m.id: version},
                                    store=ctx.store, config=ctx.config, code_version=ctx.code_version)
     ctx.rep.errors.extend(f"{m.id}/{evaluation}: {e}"[:300] for e in rep.errors)  # a decision with a later input is not written
     return rep.kept.get(m.id)
+
+
+def last_kept(ctx: Context, m: Match) -> Mapping[str, Any] | None:
+    """decision-v2's newest kept moment of the match before its floor (``LAST_MOMENT_SQL``): what E4 at T-5 judges with."""
+    got = _fetch(ctx.conn, LAST_MOMENT_SQL, {"fixture": m.id, "config": ctx.config.key, "at": ctx.now,
+                                             "floor": m.kickoff_at - clock.DECISION_FLOOR})
+    return got[0] if got else None
 
 
 def reread_price(ctx: Context, m: Match, key: Key) -> Priced:
@@ -651,8 +678,10 @@ def e2(ctx: Context, m: Match, runs: Sequence[Run], calls: Sequence[clock.FactCa
 # -- E3 and E4 --------------------------------------------------------------------------------------------------------------------------
 
 def _judge_all(ctx: Context, m: Match, run_id: int, *, evaluation: str, version: int, kept: Mapping[Key, Kept],
-               starters: Mapping[str, frozenset[int]], stops: str | None = None) -> list[tuple[Key, Standing, Outcome, int]]:
-    """Every selection the cycle holds (and every one decided now) judged: the verdicts written, the withdrawals alerted."""
+               starters: Mapping[str, frozenset[int]], stops: str | None = None, reprice: bool = False
+               ) -> list[tuple[Key, Standing, Outcome, int]]:
+    """Every selection the cycle holds (and every one decided now) judged: the verdicts written, the withdrawals alerted. ``reprice``
+    (E4 at T-5): a kept decision is judged at the price READ AGAIN now, not at the price it was decided at."""
     standing = standings_of(ctx.conn, m.id)
     deps = dependencies_now(ctx.conn, m.id)
     out: list[tuple[Key, Standing, Outcome, int]] = []
@@ -660,16 +689,22 @@ def _judge_all(ctx: Context, m: Match, run_id: int, *, evaluation: str, version:
         prev_id, st = standing.get(k, (None, Standing("detectado", "candidato_nuevo", None, None)))
         dep_id, dep = deps.get(k, (None, None))
         d = kept.get(k)
+        price_at = None if d is None else d.price_at
+        age = None if d is None else d.price_age_minutes
         if stops is not None:
             o = _stopped(st, stops)
         else:
-            priced = None if d is not None else reread_price(ctx, m, k)
-            o = reevaluate.reassess(st, dep, starters, None if d is None else d.decided(), priced)
+            priced = None if d is not None and not reprice else reread_price(ctx, m, k)
+            decided = None if d is None else d.decided()
+            if decided is not None and priced is not None:
+                decided = replace(decided, odds=priced.odds, p_market=priced.p_market, price_state=priced.state)
+                age = priced.age_minutes
+                price_at = None if age is None else ctx.now - timedelta(minutes=age)
+            o = reevaluate.reassess(st, dep, starters, decided, None if decided is not None else priced)
         vid = _write_verdict(ctx, m, run_id, k, evaluation=evaluation, version=version, previous_id=prev_id, verdict=o.verdict,
                              state=o.state, reason=o.reason, cause=o.cause, decision_id=None if d is None else d.id,
                              dependency_id=dep_id, o=o)
-        a = alerts.withdrawn(m.id, k, st, o, decision_id=None if d is None else d.id, price_at=None if d is None else d.price_at,
-                             age_minutes=None if d is None else d.price_age_minutes)
+        a = alerts.withdrawn(m.id, k, st, o, decision_id=None if d is None else d.id, price_at=price_at, age_minutes=age)
         if a is not None:
             _write_alert(ctx, m, a, run_id=run_id, verdict_id=vid, evaluation=evaluation, version=version)
         out.append((k, st, o, vid))
@@ -701,21 +736,41 @@ def e3(ctx: Context, m: Match, runs: Sequence[Run], due: clock.LineUpDue) -> Non
     ctx.rep.runs["E3"] += 1
 
 
+def last_decision(ctx: Context, m: Match) -> None:
+    """decision-v2's last decision before its floor (T-20 to T-10): adopted when its own pass kept one (trigger ``E4``), else decided now
+    and kept in its tables. No evaluation of the cycle is written: E4 judges with it at T-5. A failure is reported, never raised."""
+    try:
+        with ctx.conn.transaction():
+            if _kept_in_window(ctx, m, "E4") is not None:
+                return
+            if _moment(ctx, m, "E4", 1) is not None:
+                ctx.rep.last_decisions += 1
+    except (psycopg.Error, ValueError, KeyError, LookupError, RuntimeError, ArithmeticError) as exc:
+        ctx.rep.errors.append(f"{m.id}/last decision: {type(exc).__name__}: {exc}"[:300])
+
+
 def e4(ctx: Context, m: Match, runs: Sequence[Run], check: conditions.Check) -> None:
+    """E4 at T-5 (IA-142): nothing decides (decision-v1's floor is never lowered). Every selection is judged with decision-v2's last kept
+    decision before its floor and the price read again now; a selection without one, with the price read again alone."""
     started = ctx.clock_ms()
     stops = conditions.CAUSE_OF.get(check.verdict.reason or "") if check.stops else None
-    moment = None if stops is not None else _moment(ctx, m, "E4", 1)
+    last = None if stops is not None else last_kept(ctx, m)
+    moment = None if last is None else int(last["id"])
     kept = decisions_of(ctx.conn, moment)
     arrivals = arrivals_of(ctx.conn, [m.id], ctx.now).get(m.id, {})
     due = clock.plan_line_up(arrivals, (), now=ctx.now, kickoff_at=m.kickoff_at)
     starters: dict[str, frozenset[int]] = {}
     if due is not None:
         starters, _ = starters_of(ctx, m, due)
+    decision_doc = None if last is None else {"moment": moment, "trigger": str(last["trigger"]), "known_at": last["known_at"].isoformat(),
+                                              "decided_here": False}
     run_id = _write_run(ctx, m, evaluation="E4", version=1, cause="ventana", cause_key="ventana", trigger_at=None, started_ms=started,
-                        decided=moment is not None, moment_id=moment, conditions_doc={**snapshot(m), "reread": check.record()},
-                        lineup={"sides": sorted(starters)}, summary={"decisions": len(kept), "stops": stops})
+                        decided=False, moment_id=moment, conditions_doc={**snapshot(m), "reread": check.record()},
+                        lineup={"sides": sorted(starters)},
+                        summary={"decisions": len(kept), "stops": stops, "clock": clock.VERSION, "decision": decision_doc,
+                                 "price": "releido"})
     ctx.rep.runs["E4"] += 1
-    judged = _judge_all(ctx, m, run_id, evaluation="E4", version=1, kept=kept, starters=starters, stops=stops)
+    judged = _judge_all(ctx, m, run_id, evaluation="E4", version=1, kept=kept, starters=starters, stops=stops, reprice=True)
     minutes = (m.kickoff_at - ctx.now).total_seconds() / 60
     for k, _st, o, vid in judged:
         if o.verdict == "pendiente" or (o.state == reevaluate.PENDING and stops is None):
@@ -784,6 +839,8 @@ def run_pass(conn: psycopg.Connection[Any], *, now: datetime, store: PayloadStor
                 _guarded(ctx, m, "E1", functools.partial(e1, ctx, m), version=1, cause="ventana", cause_key="ventana")
             elif "E1" in has:
                 _facts(ctx, m, mine)
+            if clock.last_decision(m.kickoff_at, now) and "E4" not in has:
+                last_decision(ctx, m)
             if due == "E4" and "E4" not in has:
                 _e4_due(ctx, m, mine)
             if commit:

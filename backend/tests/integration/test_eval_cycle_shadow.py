@@ -3,9 +3,11 @@ teams, a striker who scores in half of them) with decision-v2's candidates on th
 
 * the whole match E1 -> E2 -> E3 -> E4: E1 decides, lists the striker as the player the over depends on (in doubt: the selection waits for
   the line-up, it is not confirmed blind); a fact about him triggers ONE E2; the official line-up without him withdraws the selection at
-  E3 by code, within two minutes of its first sighting, with a private alert «antes -> ahora»; E4 reads the match again; after kick-off the
-  chain under ``eval-cycle-v1`` is legal and closes; decision-v1's table does not move and nothing reaches a reader;
-* the line-up with the striker confirms; no line-up at all raises «sin alineación» at E4 and closes as «sin alineación a tiempo»;
+  E3 by code, within two minutes of its first sighting, with a private alert «antes -> ahora»; decision-v2 decides for the last time at
+  T-15 (before decision-v1's floor) and E4 at T-4 (IA-142) reads the match again and judges with that decision, deciding nothing; after
+  kick-off the chain under ``eval-cycle-v1`` is legal and closes; decision-v1's table does not move and nothing reaches a reader;
+* the line-up with the striker confirms; no line-up at all raises «sin alineación» at E4 and closes as «sin alineación a tiempo», with
+  the price read again at T-4;
 * a kick-off brought forward after E1 is an alert, once; nothing is evaluated after kick-off; the five tables refuse UPDATE and DELETE.
 
 Every pass runs inside the test's transaction (``commit=False``), so nothing outlives the test."""
@@ -180,11 +182,24 @@ def test_a_whole_match_e1_to_e4_where_the_line_up_withdraws_the_selection(scene:
                     scene.fid)
     assert [(r["trigger"], r["evaluation"]) for r in v2] == [("E1", "E1"), ("E2", "E2"), ("E3", "E3")], "a version per evaluation"
 
-    # E4, T-15: the match read again; the selection stays withdrawn; no alert repeated
+    # T-15: decision-v2's last decision before decision-v1's floor - kept in its tables, no evaluation of the cycle yet
     rep = scene.main(k - timedelta(minutes=15))
-    assert rep.runs == {"E4": 1} and not rep.alerts, rep.as_json()
+    assert rep.runs == {} and rep.last_decisions == 1, rep.as_json()
+    assert scene.main(k - timedelta(minutes=12)).last_decisions == 0, "the last decision is kept once"
+    (last,) = scene.rows("SELECT id, known_at FROM intel.decision_v2_moments WHERE fixture_id = %s AND trigger = 'E4'", scene.fid)
+    assert last["known_at"] == k - timedelta(minutes=15)
+
+    # E4, T-4 (IA-142): the match read again; nothing decides; judged with the last decision; the selection stays withdrawn
+    moments = scalar(db, "SELECT count(*) FROM intel.decision_v2_moments WHERE fixture_id = %s", scene.fid)
+    assert scene.main(k - timedelta(minutes=8)).runs == {}, "no E4 before T-5"
+    rep = scene.main(k - timedelta(minutes=4))
+    assert rep.runs == {"E4": 1} and not rep.alerts and rep.last_decisions == 0, rep.as_json()
     (e4_run,) = scene.rows("SELECT * FROM intel.eval_runs WHERE fixture_id = %s AND evaluation = 'E4'", scene.fid)
-    assert e4_run["conditions"]["reread"]["ok"] is True and e4_run["known_at"] < k
+    assert e4_run["conditions"]["reread"]["ok"] is True and e4_run["known_at"] == k - timedelta(minutes=4)
+    assert not e4_run["decided"] and e4_run["decision_moment_id"] == last["id"], "E4 decides nothing: it adopts the last decision"
+    assert e4_run["summary"]["decision"]["trigger"] == "E4" and e4_run["summary"]["clock"] == "eval-clock-v2"
+    assert e4_run["summary"]["price"] == "releido"
+    assert scalar(db, "SELECT count(*) FROM intel.decision_v2_moments WHERE fixture_id = %s", scene.fid) == moments, "nothing at T-5"
     assert scene.verdicts()[-1]["state"] == "retirada"
 
     # after kick-off: nothing evaluated; the chain closes, legal, under its own writer
@@ -227,10 +242,19 @@ def test_no_line_up_raises_sin_alineacion_at_e4_and_closes_without_it(scene: Sce
     scene.price(k - timedelta(minutes=25))
     assert scene.e3(k - timedelta(minutes=16)).runs == {}, "no line-up, no E3"
     rep = scene.main(k - timedelta(minutes=15))
+    assert rep.runs == {} and rep.last_decisions == 1, rep.as_json()
+    scene.price(k - timedelta(minutes=6), odds=2.30)
+    rep = scene.main(k - timedelta(minutes=4))
     assert rep.runs == {"E4": 1} and rep.alerts == {"sin_alineacion": 1}, rep.as_json()
     (alert,) = scene.rows("SELECT * FROM intel.private_alerts WHERE fixture_id = %s", scene.fid)
     assert alert["after"]["line_up"] == "sin_alineacion_oficial" and alert["after"]["sides_missing"] == ["away", "home"]
-    assert scene.verdicts()[-1]["verdict"] == "pendiente", "never confirmed blind"
+    assert alert["after"]["minutes_to_kickoff"] == 4.0
+    verdict = scene.verdicts()[-1]
+    assert verdict["verdict"] == "pendiente", "never confirmed blind"
+    (kept,) = scene.rows("SELECT d.id FROM intel.decisions_v2 d JOIN intel.decision_v2_moments m ON m.id = d.moment_id "
+                         "WHERE m.fixture_id = %s AND m.trigger = 'E4' AND d.market_key = 'OU' AND d.selection = 'Over'", scene.fid)
+    assert verdict["decision_id"] == kept["id"], "judged with decision-v2's last decision"
+    assert float(verdict["odds_after"]) == 2.30, "at the price read again at T-4, not the one it was decided at"
     scene.db.execute("UPDATE core.fixtures SET status_short = 'FT', status_group = 'finished' WHERE id = %s", (scene.fid,))
     scene.main(k + timedelta(hours=2))
     last = scene.rows("SELECT state, reason FROM intel.selection_lifecycle WHERE writer = %s AND fixture_id = %s ORDER BY id DESC LIMIT 1",

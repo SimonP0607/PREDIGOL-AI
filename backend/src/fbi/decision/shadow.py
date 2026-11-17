@@ -8,11 +8,15 @@ WHEN IT DECIDES (``TRIGGERS``), for the tracked matches (``core.competitions.is_
 
     E1       once per match, between 24 and 12 hours before kick-off (the first evaluation of AD-D06);
     E4       once per match, at the last moment the engine still judges: between ``E4_FROM`` (20 min) and decision-v1's floor of
-             ``decision.MIN_MINUTES`` (10 min) before kick-off. The plan's E4 is at T-5, but under 10 minutes the data stage - decision-v1's
-             threshold, imported and never lowered - rejects every selection («menos de 10 min al saque»): a row at T-5 would say only that;
+             ``decision.MIN_MINUTES`` (10 min) before kick-off. Under 10 minutes the data stage - decision-v1's threshold, imported and
+             never lowered - rejects every selection («menos de 10 min al saque»), so this is decision-v2's LAST decision. Since the
+             owner's decision of 17-nov-2026 (IA-142) the cycle's E4 runs at T-5 (``fbi.evalcycle.clock``): it decides nothing and judges
+             with this last kept decision and the price read again; this trigger's window does not move;
     mirror   at every moment decision-v1 decided (``intel.decisions`` of ``decision-v1``, the checkpoints T-36h ... T-15m and ``lineups``),
              as of that same moment and with that moment's rows as the replay reads them: the evidence that the kept shadow covers every
-             candidate of decision-v1 (AD-D01's criterion: 99 %) and is the replay (0 differences).
+             candidate of decision-v1 (AD-D01's criterion: 99 %) and is the replay (0 differences). At T-5 there is nothing to mirror:
+             decision-v1 does not decide under its floor (a run there only rejects, and its mirror says the same); the cycle's E4 never
+             adopts a moment under the floor (IA-142).
 
 HOW IT DECIDES: with ``replay.decide_at`` - the replay's own function, so a kept decision IS the replay's decision of its moment - under
 ``CONFIG``: the ruleset ``decision-v2.1`` (the odds book's price in force with its age by horizon, 195/75/45 min, AD-B06), the common

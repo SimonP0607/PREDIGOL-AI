@@ -1,7 +1,7 @@
 """The evaluation cycle E1-E4 (IA-105..IA-108, plan pieces AD-D06, AD-D07, AD-D08, AD-D03), its pure parts:
 
-* the clock: the windows are decision-v2's kept shadow's and the estimated starters' (E4 from T-20 to decision-v1's floor of 10 min, never
-  T-5); a simulated clock over three matches (one whose kick-off is brought forward, one whose line-up never comes, one with the line-up
+* the clock: E1 is decision-v2's kept shadow's and the estimated starters'; decision-v2's last decision is their E4 (T-20 to decision-v1's
+  floor of 10 min, never lowered) and E4 runs at T-5 since the owner's decision of 17-nov-2026 (IA-142), deciding nothing; a simulated clock over three matches (one whose kick-off is brought forward, one whose line-up never comes, one with the line-up
   at T-75) fires each evaluation when it should and never twice; a fact never triggers two E2;
 * the dependencies: the example of Doc 1 (1.0 shot on target per 90: 63 % playing the whole match, 53.7 % with 85 % of starts), the three
   groups, the shift of a striker and its sign, consulting the table against recomputing it from scratch within the preregistered tolerance;
@@ -34,15 +34,24 @@ STRIKER = 9
 
 # ── the clock ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_windows_are_the_kept_shadows_and_e4_stops_at_decision_v1s_floor() -> None:
-    assert (clock.E1_FROM, clock.E1_UNTIL, clock.E4_FROM) == (shadow.E1_FROM, shadow.E1_UNTIL, shadow.E4_FROM)
+def test_e4_is_at_t5_and_the_last_decision_stops_at_decision_v1s_floor() -> None:
+    from fbi.shadowjobs import eval_cycle
+
+    assert (clock.E1_FROM, clock.E1_UNTIL, clock.DECIDE_FROM) == (shadow.E1_FROM, shadow.E1_UNTIL, shadow.E4_FROM)
     assert (lineup_estimate.E1_FROM, lineup_estimate.E1_UNTIL, lineup_estimate.E4_FROM, lineup_estimate.E4_UNTIL) == (
-        clock.E1_FROM, clock.E1_UNTIL, clock.E4_FROM, clock.E4_UNTIL)
-    assert clock.E4_UNTIL == shadow.E4_UNTIL == timedelta(minutes=decision.MIN_MINUTES) == timedelta(minutes=10), (
-        "E4 at T-5 would only say «menos de 10 min al saque»: decision-v1's floor is never lowered")
+        clock.E1_FROM, clock.E1_UNTIL, clock.DECIDE_FROM, clock.DECISION_FLOOR), "the estimated starters keep decision-v2's windows"
+    assert clock.DECISION_FLOOR == shadow.E4_UNTIL == timedelta(minutes=decision.MIN_MINUTES) == timedelta(minutes=10), (
+        "decision-v1's floor is imported and never lowered")
+    assert timedelta(minutes=5) == clock.E4_FROM and timedelta(0) == clock.E4_UNTIL and clock.VERSION == "eval-clock-v2", "the owner's T-5"
     assert clock.window(K, K - timedelta(hours=13)) == "E1" and clock.window(K, K - timedelta(hours=11)) is None
-    assert clock.window(K, K - timedelta(minutes=15)) == "E4" and clock.window(K, K - timedelta(minutes=5)) is None
+    assert clock.window(K, K - timedelta(minutes=15)) is None and clock.window(K, K - timedelta(minutes=5)) == "E4"
+    assert clock.window(K, K - timedelta(minutes=1)) == "E4" and clock.window(K, K) is None, "E4 is due until kick-off, never after"
+    assert clock.last_decision(K, K - timedelta(minutes=20)) and clock.last_decision(K, K - timedelta(minutes=11))
+    assert not clock.last_decision(K, K - timedelta(minutes=10)) and not clock.last_decision(K, K - timedelta(minutes=21))
     assert clock.decides(K, K - timedelta(minutes=11)) and not clock.decides(K, K - timedelta(minutes=9))
+    assert not clock.decides(K, K - clock.E4_FROM), "nothing decides at T-5: E4 judges with the last decision"
+    assert timedelta(minutes=eval_cycle.every_minutes({})) <= clock.E4_FROM - clock.E4_UNTIL, "a pass falls inside E4's window"
+    assert eval_cycle.every_minutes({"FBI_EVAL_CYCLE_MINUTES": "10"}) == 5, "a cadence wider than E4's window is refused"
     assert timedelta(minutes=2) == clock.E3_DEADLINE
 
 
@@ -81,7 +90,7 @@ def test_a_simulated_clock_fires_each_evaluation_once_and_e3_within_two_minutes(
     # 1) the kick-off is brought forward by an hour, 3 hours before the first one: E4 follows the new kick-off
     early = K - timedelta(hours=1)
     fired = simulate({start: K, K - timedelta(hours=3): early}, {}, start=start, end=K)
-    assert [(e, t) for t, e, _ in fired] == [("E1", K - timedelta(hours=24)), ("E4", early - timedelta(minutes=20))]
+    assert [(e, t) for t, e, _ in fired] == [("E1", K - timedelta(hours=24)), ("E4", early - timedelta(minutes=5))]
     # 2) no line-up ever: no E3, E1 and E4 once each
     fired = simulate({start: K}, {}, start=start, end=K)
     assert [e for _, e, _ in fired] == ["E1", "E4"]
@@ -118,7 +127,8 @@ def test_a_fact_is_looked_at_once_and_recalculates_only_what_touches_the_model()
     assert clock.plan_facts(facts, [1, 2, 3], frozenset({STRIKER}), e1_at=e1, now=now, kickoff_at=K) == [], "a fact never triggers two E2"
     assert clock.facts_key(calls) == clock.facts_key(list(reversed(calls)))
     assert clock.plan_facts(facts, [], frozenset(), e1_at=None, now=now, kickoff_at=K) == [], "no E2 before E1"
-    assert clock.plan_facts(facts, [], frozenset(), e1_at=e1, now=K - timedelta(minutes=15), kickoff_at=K) == [], "a late fact is E4's"
+    assert clock.plan_facts(facts, [], frozenset(), e1_at=e1, now=K - timedelta(minutes=5), kickoff_at=K) == [], "a late fact is E4's"
+    assert clock.plan_facts(facts, [], frozenset(), e1_at=e1, now=K - timedelta(minutes=15), kickoff_at=K), "E2 runs until E4 opens (T-5)"
 
 
 # ── the dependencies ─────────────────────────────────────────────────────────────────────────────────────────────────────────────

@@ -214,16 +214,16 @@ def test_production_adds_the_readers_chronicle_and_squares_with_both_ledgers(db:
     assert envelope["parts_usd"] == {"intelligence": "72.0000", "readers": "1.0000"} and envelope["spent_usd"] == "73.0000"
 
 
-def test_the_joint_ceiling_still_applies_and_says_it_is_pending_the_owner(db: psycopg.Connection[Any]) -> None:
-    month(db, unit="0.70")  # production projects over 135: the joint ceiling cuts the LAB below its 55
+def test_the_envelopes_replace_the_joint_ceiling_and_the_panel_says_so(db: psycopg.Connection[Any]) -> None:
+    month(db, unit="0.70")  # production projects over 135: the joint ceiling would cut the LAB below its 55
     joint = panel(db)["joint_ceiling"]
-    assert joint["applies"] is True and joint["pending_owner"] is True and joint["independent"] is False
-    assert joint["note"] == "techo conjunto 190 vigente; pendiente de confirmación del dueño"
+    assert joint["applies"] is False and joint["pending_owner"] is False and joint["independent"] is True
+    assert joint["note"] == costs_v3.JOINT_CEILING_REPLACED_NOTE and joint["replaced_by"] == "envelopes-v2"
     assert (joint["usd"], joint["switch"], joint["envelopes_sum_usd"]) == ("190", "FBI_AI_ENVELOPES_INDEPENDENT", "240")
-    assert D(joint["lab_allocation_usd"]) == D(joint["lab_allocation_joint_usd"]) < 55
-    assert joint["lab_allocation_independent_usd"] == "55.0000"
-    alone = panel(db, envelopes_independent=True)["joint_ceiling"]
-    assert alone["applies"] is False and alone["lab_allocation_usd"] == "55.0000", "the prepared change, off by default"
+    assert joint["lab_allocation_usd"] == joint["lab_allocation_independent_usd"] == "55.0000", "IA-141: the LAB keeps its 55"
+    assert D(joint["lab_allocation_joint_usd"]) < 55, "what the joint ceiling would leave, were it switched back"
+    back = panel(db, envelopes_independent=False)["joint_ceiling"]
+    assert back["applies"] is True and D(back["lab_allocation_usd"]) == D(back["lab_allocation_joint_usd"]) < 55, "the way back"
 
 
 def test_new_capabilities_are_measured_against_their_cap_in_their_own_envelope(db: psycopg.Connection[Any]) -> None:

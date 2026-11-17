@@ -1,7 +1,8 @@
 """The cost panel of the Plan Maestro IA (sections 26, 28 and 29): the THREE envelopes and what the optimisations of Phase 0 saved.
 
 Claude of the production workspace, Claude of the LAB workspace and Exa are never one number: each is shown against its own envelope
-(US$185 / 15-55-15 / 35), with the joint ceiling Claude may not pass (US$190) and the reserve production keeps. Next to them, what the
+(US$185 / 55 / 35; since IA-141 they replace the joint ceiling of US$190, which applies only when switched back) and the reserve
+production keeps. Next to them, what the
 prompt cache and the Message Batches saved this month, how many briefs and reviews were reused instead of paid again, what the batches
 still open have reserved, and what each switch is doing and why (``fbi.ai.gates.describe``).
 
@@ -19,7 +20,8 @@ THE ENVELOPES OF DECISION 12 (IA-058, ``docs/owner/IA_058_PRESUPUESTO_POR_CAPACI
 (``ai.usage``) AND the readers' chronicle (its own ledger, read by ``fbi.ai.envelopes_readers``), both shown and added up per day and for the month; the budget's own state and
 projection still count Intelligence's alone, as ``fbi.ai.budget_v3`` does. Beside them: each envelope's warning at 80 / 95 %, each new
 capability against its cap (``fbi.ai.capability_budget``; the readers' ledger is read by ``fbi.ai.envelopes_readers``, which the
-cycle never loads, and each warning is written to this process's log once a month), the joint ceiling of 190 that still applies (pending the owner's confirmation)
+cycle never loads, and each warning is written to this process's log once a month), the joint ceiling of 190 - replaced by the envelopes on
+17-nov-2026 (IA-141, ``envelopes-v2``), said in so many words with what the LAB would get were it switched back -
 and Exa's price as the code charges it against the one Exa publishes, unverified until an invoice. And (IA-137, AD-K05) every dollar of the
 month given to one capability, with its batches, its cache and the inputs paid twice (``attribution``, ``fbi.ai.capability_costs``).
 
@@ -169,21 +171,25 @@ def savings_json(s: Savings) -> dict[str, Any]:
             "cached_tokens": s.cached_tokens, "write_tokens": s.write_tokens, "read_share": s.read_share}
 
 
-JOINT_CEILING_NOTE = "techo conjunto 190 vigente; pendiente de confirmación del dueño"
+JOINT_CEILING_NOTE = "techo conjunto 190 vigente: FBI_AI_ENVELOPES_INDEPENDENT=off (vuelta atrás de IA-141)"
+"""What the panel says when the joint ceiling was switched back on. Until 17-nov-2026 it said «techo conjunto 190 vigente; pendiente de
+confirmación del dueño»."""
+JOINT_CEILING_REPLACED_NOTE = ("techo conjunto 190 sustituido por los sobres 185 / 55 / 35 (decisión del dueño del 17-nov-2026, IA-141): "
+                               "el LAB no cede ante producción")
 EXA_PRICE_NOTE = "sin verificar hasta la factura"
 
 
 def joint_ceiling_json(*, settings: AiSettings, lab: budget_v3.LabDay, projected_at_dawn: Decimal) -> dict[str, Any]:
-    """The joint ceiling the code applies to production + LAB, said in so many words, and what the LAB would get with the envelopes of
-    decision 12 independent (``FBI_AI_ENVELOPES_INDEPENDENT``, the prepared change)."""
+    """The joint ceiling, said in so many words: replaced by the envelopes since IA-141 (``FBI_AI_ENVELOPES_INDEPENDENT`` on, the default),
+    applied only when switched back - and what the LAB gets either way (its envelope never above the owner's 55)."""
     independent = settings.envelopes_independent
-    joint = budget_v3.lab_allocation(envelope=settings.lab_monthly_budget, joint_ceiling=settings.joint_ceiling,
-                                     projected_production=projected_at_dawn)
-    alone = budget_v3.lab_allocation(envelope=settings.lab_monthly_budget, joint_ceiling=settings.joint_ceiling,
-                                     projected_production=projected_at_dawn, independent=True)
+    envelope = capability_budget.envelope_cap("lab", settings.lab_monthly_budget)
+    joint = budget_v3.lab_allocation(envelope=envelope, joint_ceiling=settings.joint_ceiling, projected_production=projected_at_dawn)
+    alone = budget_v3.lab_allocation(envelope=envelope, joint_ceiling=settings.joint_ceiling, projected_production=projected_at_dawn,
+                                     independent=True)
     return {"usd": str(settings.joint_ceiling), "applies": not independent,
-            "pending_owner": budget_v3.JOINT_CEILING_PENDING,
-            "note": JOINT_CEILING_NOTE if not independent else "sobres independientes: el techo conjunto no recorta el LAB",
+            "pending_owner": budget_v3.JOINT_CEILING_PENDING, "replaced_by": budget_v3.JOINT_CEILING_REPLACED_BY,
+            "note": JOINT_CEILING_NOTE if not independent else JOINT_CEILING_REPLACED_NOTE,
             "switch": "FBI_AI_ENVELOPES_INDEPENDENT", "independent": independent,
             "lab_allocation_usd": str(_money(lab.allocation)), "lab_allocation_joint_usd": str(_money(joint)),
             "lab_allocation_independent_usd": str(_money(alone)),
@@ -341,5 +347,5 @@ def month_of(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSetting
     return Month(month_first, figures, capability_budget.report(envelopes_readers.month_rows(conn, since, until)))
 
 
-__all__ = ["EXA_PRICE_NOTE", "JOINT_CEILING_NOTE", "Call", "Month", "Savings", "alerts_json", "attribution", "calls_of", "envelopes", "exa_price_json",
+__all__ = ["EXA_PRICE_NOTE", "JOINT_CEILING_NOTE", "JOINT_CEILING_REPLACED_NOTE", "Call", "Month", "Savings", "alerts_json", "attribution", "calls_of", "envelopes", "exa_price_json",
            "joint_ceiling_json", "month_of", "savings", "savings_json", "share"]
