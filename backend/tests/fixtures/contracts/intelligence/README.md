@@ -42,3 +42,11 @@ Al añadir un contrato: su carpeta con al menos un caso, una fila aquí y su lí
 | C-02 (solo privada, `privada/`) | `en_evaluacion`, `retirada` | Selecciones sin estado público: no tienen proyección pública y el servidor no las sirve al lector |
 | C-03 Seguimiento privado (solo privada) | `en_sombra` | Los diez estados con sus recuentos, dos familias `INSUFICIENTE` con su muestra frente a 300 y una selección confirmada en sombra sin estado público |
 | C-03 | `sin_tablas` | Una base sin las tablas del ciclo ni de evaluaciones: cada bloque `sin_datos` |
+| C-06 Noticia | `portada` | La portada de `front-v1`: la principal (oficial), «Última hora» (solo fechas estructuradas; un rumor entra con su nivel), «Tus equipos» de un lector que sigue al Club Ejemplo Norte y las destacadas; el autor siempre `pendiente_derechos`, imagen monograma. La privada añade la cola (una historia `en_moderacion`), las fuentes retenidas y el texto propio fuera de derechos |
+| C-06 | `portada_vacia` | Solo un medio y un rumor: sin principal (`sin_datos`), «Tus equipos» `sin_favoritos` |
+| C-06 | `noticia` | Una historia con tres fuentes (oficial con resumen, radio y medio reservado solo con enlace), «Cómo se fue sabiendo», una relacionada y `match_impact` `sin_datos` porque el análisis que la usó no está publicado; la privada lista esa evaluación (AD-G08) |
+| C-06 | `noticia_retirada` | Retirada a petición: `retirado_por_derechos` y nada de su contenido en las dos proyecciones |
+| C-06 | `busqueda` | «Ejémplo Sur» con la categoría `bajas_y_sanciones`: facetas contadas antes del filtro, un resultado |
+| C-06 | `partido` | Las historias del partido y de sus equipos dentro de su ventana |
+| C-07 Fuentes del análisis | `publicada` | E3 de un análisis publicado: una baja oficial `en_contra` del over (su efecto por selección, solo privado), un contexto y un rumor `no_usada`; la privada añade el hecho rechazado por homónimo y las dos evaluaciones |
+| C-07 | `sin_evaluaciones` | Ninguna evaluación aún: todo `sin_datos` |

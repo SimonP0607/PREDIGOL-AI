@@ -4,5 +4,5 @@
 las lecturas de `fbi.news.readers` sobre `news.items` + `news.item_entities` (y su historia). Lo comprueba
 `tests/integration/test_news_store_db.py::test_c06_is_served_from_news_items_and_news_item_entities`.
 
-Datos ficticios, direcciones en `.invalid`. No es todavía el contrato registrado de Intelligence: el modelo de C-06, con su versión y
-su prueba de no fuga, lo entrega AD-G07 en `tests/fixtures/contracts/intelligence/C-06/`.
+Datos ficticios, direcciones en `.invalid`. No es el contrato registrado de Intelligence: el modelo de C-06, con su versión y su prueba de no fuga, lo entregó AD-G07
+(IA-121) en `tests/fixtures/contracts/intelligence/C-06/`.

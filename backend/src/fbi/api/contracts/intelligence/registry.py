@@ -29,12 +29,22 @@ from fbi.api.contracts.intelligence.selection import (
     SelectionIntelligence,
     SelectionIntelligencePrivate,
 )
+from fbi.api.contracts.intelligence.sources import AnalysisSources, AnalysisSourcesPrivate
+from fbi.api.contracts.intelligence.stories import News, NewsPrivate
 from fbi.api.contracts.intelligence.tracking import Tracking
 
 PROFILE_PUBLIC_ROUTES: Final = ("/api/v1/teams/{team_id}/profile", "/api/v1/players/{player_id}/profile",
                                  "/api/v1/competitions/{competition_id}/profile")
 """C-09 (AD-H07, IA-090): additive routes beside /teams/{id}, /players/{id} and /competitions/{id}, which keep their shape. A
 national team is a team: one resource, ``kind`` says which."""
+NEWS_PUBLIC_ROUTES: Final = ("/api/v1/news/v2", "/api/v1/news/{item_id}", "/api/v1/matches/{fixture_id}/news/v2")
+"""C-06 (AD-G07, IA-121): additive routes beside GET /news, /today/news and /matches/{id}/news of BE-040, which keep their shape and
+what they read (``ai.evidence``); ``item_id`` is a story's key. 404 unless FBI_NEWS_FEED and FBI_NEWS_V2 are both on."""
+NEWS_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/news", "/api/v1/admin/intelligence/news/{item_id}",
+                              "/api/v1/admin/intelligence/matches/{fixture_id}/news")
+SOURCES_PUBLIC_ROUTES: Final = ("/api/v1/matches/{fixture_id}/sources",)
+"""C-07 (AD-G08, IA-122): 404 while FBI_MATCH_INTELLIGENCE is off or the match's analysis is not published."""
+SOURCES_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/matches/{fixture_id}/sources",)
 PROFILE_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/teams/{team_id}/profile",
                                  "/api/v1/admin/intelligence/players/{player_id}/profile",
                                  "/api/v1/admin/intelligence/competitions/{competition_id}/profile")
@@ -58,9 +68,8 @@ CATALOGUE: Final[dict[str, Planned]] = {
     "C-04": Planned("Parlays con estado", "AD-J05", ("/api/v1/parlays/{kind}",),
                     ("/api/v1/admin/intelligence/parlays",)),
     "C-05": Planned("Alertas por alineación", "AD-J06", (), ("/api/v1/admin/intelligence/alerts",)),
-    "C-06": Planned("Noticia", "AD-G07", ("/api/v1/news", "/api/v1/news/{item_id}", "/api/v1/matches/{fixture_id}/news",
-                                          "/api/v1/today/news"), ()),
-    "C-07": Planned("Fuentes del análisis", "AD-G08", ("/api/v1/matches/{fixture_id}/sources",), ()),
+    "C-06": Planned("Noticia", "AD-G07", NEWS_PUBLIC_ROUTES, NEWS_PRIVATE_ROUTES),
+    "C-07": Planned("Fuentes del análisis", "AD-G08", SOURCES_PUBLIC_ROUTES, SOURCES_PRIVATE_ROUTES),
     "C-08": Planned("Evaluación posterior", "AD-J07", (),
                     ("/api/v1/admin/intelligence/evaluations/{fixture_id}",)),
     "C-09": Planned("Perfiles", "AD-H07", PROFILE_PUBLIC_ROUTES, PROFILE_PRIVATE_ROUTES),
@@ -109,6 +118,9 @@ CONTRACTS: Final[tuple[ContractSpec, ...]] = (
                  private_routes=("/api/v1/admin/search/v2",)),
     ContractSpec(private=ProfilePrivate, public=Profile, public_routes=PROFILE_PUBLIC_ROUTES,
                  private_routes=PROFILE_PRIVATE_ROUTES),
+    ContractSpec(private=NewsPrivate, public=News, public_routes=NEWS_PUBLIC_ROUTES, private_routes=NEWS_PRIVATE_ROUTES),
+    ContractSpec(private=AnalysisSourcesPrivate, public=AnalysisSources, public_routes=SOURCES_PUBLIC_ROUTES,
+                 private_routes=SOURCES_PRIVATE_ROUTES),
 )
 """Every Intelligence contract. A new one is added here in the PR that merges its models."""
 
