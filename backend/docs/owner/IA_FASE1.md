@@ -37,6 +37,7 @@ Un **contrato** es el esquema cerrado de lo que entra en un modelo o de lo que p
 | `pmr-v1` | Post-Match Reviewer | qué señal de qué agente acertó, la clase del error y una narrativa |
 | `la-v1` | Learning Analyst | hasta cinco hipótesis a la semana, cada una con su evidencia |
 | `pa-v1` | Player Agent | una postura por candidato de goles y resultado según quién juega, en códigos: una dirección y nunca una magnitud (IA-017) |
+| `claim-v2` | el lector en cuarentena (Haiku, IA-060) | lo que dice UNA página: referencias de la lista de esa llamada, un tipo cerrado y una cita que el servidor vuelve a encontrar en el texto que envió, con la palabra clave de la llamada (`docs/owner/IA_060_EXTRACTOR_CUARENTENA.md`) |
 
 **Lo que una salida nunca puede llevar** lo impone la construcción, no una instrucción: ningún campo de ninguna salida puede llamarse probabilidad, precio, cuota, stake, edge, URL, consulta ni SQL (una prueba lee el nombre de cada campo). Las señales (14) y los riesgos (12) son códigos de una lista cerrada, no frases: cuanto menos texto libre puede escribir un agente, menos puede decir por él una página envenenada. Las dos salidas que sí llevan prosa, la narrativa del Post-Match Reviewer y las hipótesis del Learning Analyst, son texto no fiable: se muestran al dueño, nunca son una orden y nunca se miden. Las referencias son tipadas: `E:<n>` una evidencia, `P:<ruta>` una ruta del paquete y `A:<id>` una evaluación de otro agente.
 

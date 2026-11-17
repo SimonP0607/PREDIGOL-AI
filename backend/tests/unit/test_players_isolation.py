@@ -20,8 +20,8 @@ SERVING = ("intel/", "picks/", "familydecisions/", "decision/", "api/", "parlays
            "knowledge/", "ai/", "council/", "forecasting/", "apps/")
 """What decides (``intel``, ``picks``, ``familydecisions``, ``decision``, ``council``, ``ai``), stakes and combines (``parlays``),
 publishes or serves users."""
-MAY_IMPORT = ("fbi.players", "fbi.families.counts", "fbi.core")
-"""The package's own reach: itself, the NB2 count engine it reuses, and the platform's core."""
+MAY_IMPORT = ("fbi.players", "fbi.families.counts", "fbi.core", "fbi.people.identity.names")
+"""The package's own reach: itself, the NB2 count engine it reuses, the platform's core and the pure name key of IA-071 (positions)."""
 
 
 def imported(path: Path) -> set[str]:

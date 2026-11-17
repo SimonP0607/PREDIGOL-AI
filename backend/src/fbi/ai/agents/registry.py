@@ -43,6 +43,7 @@ from fbi.ai.contracts import CONTRACTS, schema_of
 from fbi.ai.contracts.base import (
     ASSESSMENT,
     CLAIM,
+    CLAIM_V2,
     COUNCIL,
     LEARNING,
     OUTPUTS,
@@ -280,6 +281,10 @@ def _extract_v2() -> Definition:
     return Definition(prompts.EXTRACT_V2_VERSION, prompts.EXTRACT_V2_SYSTEM, CLAIM, schema_of(CLAIM))
 
 
+def _extract_v4() -> Definition:
+    return Definition(prompts.EXTRACT_V4_VERSION, prompts.EXTRACT_V4_SYSTEM, CLAIM_V2, schema_of(CLAIM_V2))
+
+
 def _native(agent: str) -> bool:
     """How the agent's own module asks (``NATIVE``), read when the definition is: the agents import the router and the prompts, not the registry."""
     from fbi.ai.agents import match, stats
@@ -344,6 +349,11 @@ AGENTS: Final[tuple[AgentSpec, ...]] = (
               "returned for an entity and a topic. It runs beside the extractor of today for a week of comparison (FBI_AI_RESEARCH_V2) and replaces it "
               "only by the owner's signature.",
               (BuiltTask("extraction", "low", _extract_v2, tier="bulk"),), contract=CLAIM, replaces="extractor"),
+    AgentSpec("quarantine_extractor", "The quarantined extractor (IA-060, plan piece AD-A01): one page per call behind the door untrusted-v3, no tool, "
+              "claim-v2 - references of the call's own list, closed types and a quote the server finds again in the window it sent - and a code "
+              "word per call. A page that carries an order is never sent. It runs beside extract-v1 in shadow (FBI_AI_EXTRACTOR=shadow, LAB, "
+              "nothing stored) and takes its place only by the owner's word (quarantine).",
+              (BuiltTask("extraction", "low", _extract_v4, tier="bulk"),), contract=CLAIM_V2, replaces="extractor"),
     AgentSpec("postmortem", "The post-mortem narrative of a finished match, for the owner.",
               (BuiltTask("narrative", "low", _postmortem, tier="bulk"),)),
     AgentSpec("post_match_reviewer", "The post-mortem narrative of one selection after its match, for the owner; the Post-Match Reviewer of phase 5 "
@@ -440,6 +450,15 @@ LEDGER: Final[tuple[Registration, ...]] = (
                         "of extract-v2; it reaches a decision only by a row the owner signs in intel.promotions. The owner authorised it on 9 Nov 2026.",
                  fingerprint="ag9ba4a4e447",
                  parts={"extraction": Part("extract-v3", "24b9c3044a0d", "claim-v1", "732492401844")}),
+    Registration(agent="quarantine_extractor", version="extract-v4", registered_at=datetime(2026, 11, 16, 18, 0, tzinfo=UTC), decided_by="owner",
+                 phase="IA-060",
+                 reason="IA-060 (plan piece AD-A01, approved by the owner on 16 Nov 2026): extract-v1 obeyed an order a page gave it in battery-v3 "
+                        "(extract.ignore.2, 2 of 4 asks, LAB, 15 Nov 2026) and reads up to six pages a call with no door. The quarantined extractor "
+                        "reads one page a call behind untrusted-v3, never reads a page that carries an order, answers in claim-v2 with a code word per "
+                        "call, and keeps only quotes the server finds in the window it sent. It is born CHALLENGER, in shadow, and replaces extract-v1 "
+                        "only by the owner's word (FBI_AI_EXTRACTOR=quarantine).",
+                 fingerprint="agdbdc3c5897",
+                 parts={"extraction": Part("extract-v4", "f6d51ef4fb04", "claim-v2", "84ad238458ab")}),
     Registration(agent="match", version="match-v1", registered_at=datetime(2026, 11, 3, 12, 0, tzinfo=UTC), decided_by="owner", phase="IA-3",
                  reason="Built under the Plan Maestro IA the owner approved in full (phase 3, section 9): the Match Agent reads the match slice of mcp-v1 "
                         "and answers in aa-v1, a context mode and an evaluation per candidate, both on Haiku 5.5. It is born CHALLENGER: it runs in "
