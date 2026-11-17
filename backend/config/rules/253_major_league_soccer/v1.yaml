@@ -1,0 +1,81 @@
+# Major League Soccer (provider league 253), season 2026. Official league pages (mlssoccer.com).
+schema: competition-rules/1
+league_id: 253
+competition: Major League Soccer
+country: USA
+version: 1
+seasons: [2026]
+points: {win: 3, draw: 1, loss: 0}
+sources:
+  - publisher: Major League Soccer
+    title: Tiebreakers for 2026 MLS regular season standings
+    url: https://www.mlssoccer.com/news/tiebreakers-for-2026-mls-regular-season-standings
+    checked_at: 2026-11-16
+    applies_to: season 2026 (conference seeding, play-off qualification, Supporters' Shield)
+  - publisher: Major League Soccer
+    title: "Audi 2026 MLS Cup Playoffs: Format & how it works"
+    url: https://www.mlssoccer.com/news/audi-2026-mls-cup-playoffs-format-how-it-works
+    checked_at: 2026-11-16
+    applies_to: season 2026 play-offs
+tournaments:
+  - key: season
+    name: MLS 2026
+    phases:
+      - key: regular
+        name: Regular season
+        format: groups
+        rounds: ["Regular Season - *"]
+        teams: 30
+        groups: 2
+        group_size: 15
+        schedule: other
+        matches_per_team: 34
+        ranking:
+          tiebreakers:
+            - wins
+            - goal_difference
+            - goals_for
+            - {criterion: disciplinary_points, note: "fewest per match: foul 1, technical staff warning 2, yellow 3, second yellow 7, straight red 7 (at most 7 per incident)"}
+            - away_goal_difference
+            - away_goals_for
+            - home_goal_difference
+            - home_goals_for
+            - {criterion: lots, note: "coin toss (two clubs) or drawing of lots (three or more)"}
+          note: "One list for conference seeding, play-off qualification and the Supporters' Shield. Ties of three or more go through the procedure in rounds until final."
+        zones:
+          - {kind: next_phase, from: 1, to: 7, per_group: true, target: Round One best-of-3 series}
+          - {kind: playoff_place, from: 8, to: 9, per_group: true, target: "Wild Card match (8 v 9, hosted by the 8th)"}
+      - key: wild_card
+        name: Wild Card
+        format: knockout
+        rounds: ["Round of 32"]
+        schedule: ties
+        knockout: {legs: 1, level: [], seeding: "8th v 9th of each conference, hosted by the higher seed"}
+        note: "The provider's 'Round of 32' holds the two Wild Card matches (two fixtures). The format page does not state the tie procedure of this match explicitly; see gaps."
+      - key: round_one
+        name: Round One
+        format: knockout
+        rounds: ["Round of 16"]
+        schedule: ties
+        knockout: {legs: 3, level: [penalties], seeding: "best-of-3 series; every game has a winner, no extra time, penalties after a draw in regulation"}
+      - key: later_rounds
+        name: Conference semifinals, conference finals, MLS Cup
+        format: knockout
+        rounds: ["Quarter-finals", "Semi-finals", "Final"]
+        schedule: ties
+        knockout: {legs: 1, level: [extra_time, penalties], seeding: "single match hosted by the higher seed"}
+        note: "The provider's labels of these rounds were not yet seen in production (16-nov-2026); the patterns are to be confirmed when they appear."
+tables:
+  - key: supporters_shield
+    name: Supporters' Shield (overall table)
+    kind: annual
+    counts: ["season.regular"]
+    ranking:
+      tiebreakers: [wins, goal_difference, goals_for, disciplinary_points, away_goal_difference, away_goals_for, home_goal_difference, home_goals_for, lots]
+    zones:
+      - {kind: champion, from: 1, to: 1, target: Supporters' Shield}
+gaps:
+  - topic: playoff
+    reason: "The tie procedure of the Wild Card match is not stated on the format page read (only Round One and later rounds are); nothing is coded for it."
+  - topic: continental
+    reason: "CONCACAF Champions Cup berths are not stated in the pages read."

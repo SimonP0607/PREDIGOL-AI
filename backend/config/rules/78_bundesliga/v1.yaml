@@ -1,0 +1,59 @@
+# Bundesliga (provider league 78). DFL Spielordnung (SpOL), Stand 06.03.2026, §§ 2 and 3.
+schema: competition-rules/1
+league_id: 78
+competition: Bundesliga
+country: Germany
+version: 1
+seasons: [2025, 2026]
+points: {win: 3, draw: 1, loss: 0}
+sources:
+  - publisher: DFL Deutsche Fußball Liga e.V.
+    title: Spielordnung (SpOL), Stand 06.03.2026
+    url: https://media.dfl.de/sites/2/2026/03/Spielordnung-SpOL-2026-03-06-Stand.pdf
+    checked_at: 2026-11-16
+    applies_to: seasons 2025/26 (from 06.03.2026) and 2026/27
+    articles: § 2 Nr. 3 a)-c), § 3 Nr. 2
+tournaments:
+  - key: season
+    name: Bundesliga
+    phases:
+      - key: league
+        name: League
+        format: league
+        rounds: ["Regular Season - *"]
+        teams: 18
+        schedule: double_round_robin
+        matches_per_team: 34
+        ranking:
+          tiebreakers:
+            - goal_difference
+            - goals_for
+            - {criterion: h2h_goal_difference, note: "the aggregate result of the two matches between them (Gesamtergebnis im direkten Vergleich)"}
+            - h2h_away_goals_for
+            - away_goals_for
+            - {criterion: playoff, when: complete, note: "decider on neutral ground; never applied during the season"}
+          in_progress:
+            - goal_difference
+            - goals_for
+            - h2h_goal_difference
+            - h2h_away_goals_for
+            - away_goals_for
+          h2h: {mode: once, requires_all_played: true}
+          note: "During the season, while the two matches between level teams are not both played, only the first two criteria apply and the teams share the place. The SpOL does not say how the direct comparison works for three or more teams; it is computed here among the tied teams."
+        zones:
+          - {kind: champion, from: 1, to: 1}
+          - {kind: relegation_playoff, from: 16, to: 16, target: two-legged Relegation against the 3rd of the 2. Bundesliga}
+          - {kind: relegation, from: 17, to: 18, target: 2. Bundesliga}
+      - key: relegation_playoff
+        name: Relegation
+        format: knockout
+        rounds: ["Final"]
+        schedule: ties
+        knockout:
+          legs: 2
+          level: [aggregate, extra_time, penalties]
+          seeding: "16th of the Bundesliga v 3rd of the 2. Bundesliga, played under the UEFA club competition rules for knockout ties (§ 3 Nr. 2)"
+        note: "The provider labels these two matches 'Final'. The UEFA knockout rules are referred to, not reproduced: aggregate, then extra time and penalties as in the current UEFA rules."
+gaps:
+  - topic: continental
+    reason: "UEFA places depend on the access list and the DFB-Pokal; not coded."

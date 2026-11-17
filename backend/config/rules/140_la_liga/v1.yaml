@@ -1,0 +1,57 @@
+# LaLiga EA Sports, Primera División (provider league 140). RFEF competition norms, articles 7, 8 and 10.
+schema: competition-rules/1
+league_id: 140
+competition: La Liga
+country: Spain
+version: 1
+seasons: [2025, 2026]
+points: {win: 3, draw: 1, loss: 0}
+sources:
+  - publisher: Real Federación Española de Fútbol
+    title: Normas reguladoras y bases de competición de los Campeonatos Nacionales de Liga de Primera y Segunda División, temporada 2025-2026
+    url: https://rfef.es/sites/default/files/2025-06/1._CNL_Primera_y_Segunda_Division.pdf
+    checked_at: 2026-11-16
+    applies_to: season 2025/26
+    articles: arts. 7, 8, 10
+  - publisher: Real Federación Española de Fútbol
+    title: Normas reguladoras y bases de competición de los Campeonatos Nacionales de Liga de Primera y Segunda División, temporada 2026-2027
+    url: https://rfef.es/sites/default/files/2026-06/1._CNL_Primera_y_Segunda_Division.pdf
+    checked_at: 2026-11-16
+    applies_to: season 2026/27
+    articles: arts. 7, 8, 10
+tournaments:
+  - key: season
+    name: Primera División
+    phases:
+      - key: league
+        name: League
+        format: league
+        rounds: ["Regular Season - *"]
+        teams: 20
+        schedule: double_round_robin
+        matches_per_team: 38
+        ranking:
+          tiebreakers:
+            - {criterion: h2h_points, note: "art. 10, more than two clubs: a table of the matches between them only"}
+            - h2h_goal_difference
+            - goal_difference
+            - goals_for
+            - fair_play
+            - {criterion: playoff, note: "match on neutral ground designated by the RFEF"}
+          tiebreakers_if_two:
+            - {criterion: h2h_goal_difference, note: "art. 10, two clubs"}
+            - goal_difference
+            - goals_for
+            - fair_play
+            - playoff
+          h2h: {mode: once}
+          note: "art. 10 speaks of the final classification; how the table is ordered while the season is played is not fixed there."
+        zones:
+          - {kind: champion, from: 1, to: 1}
+          - {kind: continental, from: 1, to: 4, conditional: true, target: UEFA Champions League, note: "art. 8.2: the number of places the UEFA rules give; not fixed in the norms"}
+          - {kind: relegation, from: 18, to: 20, target: Segunda División, note: "art. 8.7"}
+gaps:
+  - topic: continental
+    reason: "The number of UEFA places (Champions, Europa, Conference) is the one UEFA assigns each season (art. 8.2-8.4); the zone above is marked conditional and is never certified from the table."
+  - topic: tiebreak
+    reason: "The norms give the tie-breakers of the final classification only; the in-season order (with head-to-head incomplete) is not fixed by them."
