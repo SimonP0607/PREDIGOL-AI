@@ -17,6 +17,7 @@ from fbi.api.contracts.intelligence.base import IntelligenceContract
 from fbi.api.contracts.intelligence.console import ConsoleContract
 from fbi.api.contracts.intelligence.featured import FeaturedAnalyses, FeaturedAnalysesPrivate
 from fbi.api.contracts.intelligence.match import MatchIntelligence, MatchIntelligencePrivate
+from fbi.api.contracts.intelligence.match_v2 import MatchIntelligenceV2, MatchIntelligenceV2Private
 from fbi.api.contracts.intelligence.parlays import ParlaySetState, ParlaySetStatePrivate
 from fbi.api.contracts.intelligence.post_evaluation import PostMatchEvaluation
 from fbi.api.contracts.intelligence.profiles import Profile, ProfilePrivate
@@ -35,6 +36,7 @@ from fbi.api.contracts.intelligence.selection import (
 from fbi.api.contracts.intelligence.sources import AnalysisSources, AnalysisSourcesPrivate
 from fbi.api.contracts.intelligence.stories import News, NewsPrivate
 from fbi.api.contracts.intelligence.tracking import Tracking
+from fbi.api.contracts.intelligence.versioning import parse
 
 PROFILE_PUBLIC_ROUTES: Final = ("/api/v1/teams/{team_id}/profile", "/api/v1/players/{player_id}/profile",
                                  "/api/v1/competitions/{competition_id}/profile")
@@ -48,6 +50,12 @@ NEWS_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/news", "/api/v1/admin/
 SOURCES_PUBLIC_ROUTES: Final = ("/api/v1/matches/{fixture_id}/sources",)
 """C-07 (AD-G08, IA-122): 404 while FBI_MATCH_INTELLIGENCE is off or the match's analysis is not published."""
 SOURCES_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/matches/{fixture_id}/sources",)
+MATCH_V1_ROUTES: Final = ("/api/v1/matches/{fixture_id}/intelligence",)
+MATCH_V1_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/matches/{fixture_id}/intelligence",)
+MATCH_PUBLIC_ROUTES: Final = ("/api/v1/matches/{fixture_id}/intelligence/v2",)
+"""C-01 2.0.0 (AD-J02 delivery 2, IA-131): additive routes beside the 1.x ones, which keep their shape. 404 while
+FBI_MATCH_INTELLIGENCE is off."""
+MATCH_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/matches/{fixture_id}/intelligence/v2",)
 PROFILE_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/teams/{team_id}/profile",
                                  "/api/v1/admin/intelligence/players/{player_id}/profile",
                                  "/api/v1/admin/intelligence/competitions/{competition_id}/profile")
@@ -63,8 +71,7 @@ class Planned:
 
 CATALOGUE: Final[dict[str, Planned]] = {
     "C-00": Planned("Muestra de convenciones (sin ruta)", "AD-J01", (), ()),
-    "C-01": Planned("Partido", "AD-J02", ("/api/v1/matches/{fixture_id}/intelligence",),
-                    ("/api/v1/admin/intelligence/matches/{fixture_id}/intelligence",)),
+    "C-01": Planned("Partido", "AD-J02", MATCH_PUBLIC_ROUTES + MATCH_V1_ROUTES, MATCH_PRIVATE_ROUTES + MATCH_V1_PRIVATE_ROUTES),
     "C-02": Planned("Selección", "AD-J03", ("/api/v1/picks/{pick_id}/explanation",),
                     ("/api/v1/admin/intelligence/decisions/{decision_id}",)),
     "C-03": Planned("Seguimiento privado", "AD-J04", (), ("/api/v1/admin/intelligence/tracking",)),
@@ -86,12 +93,18 @@ CATALOGUE: Final[dict[str, Planned]] = {
 @dataclass(frozen=True)
 class ContractSpec:
     """One registered contract: its private model (always), its public model (None for a private-only contract) and the
-    routes that serve each projection (empty until the endpoint is merged)."""
+    routes that serve each projection (empty until the endpoint is merged).
+
+    ``superseded``: an earlier MAJOR version that keeps serving its own routes beside the current one (AD-J01: versions, not
+    rewrites; C-01 1.x beside 2.0.0). Its shape stays frozen in the snapshot under ``<id>@<major>`` (``key``); the current version
+    of the contract is the one entry of its id that is not superseded. The examples of a major version N >= 2 live in
+    ``<id>/vN/`` (``examples_dir``), those of 1.x in ``<id>/``."""
 
     private: type[IntelligenceContract]
     public: type[IntelligenceContract] | None
     public_routes: tuple[str, ...] = ()
     private_routes: tuple[str, ...] = ()
+    superseded: bool = False
 
     @property
     def id(self) -> str:
@@ -102,15 +115,30 @@ class ContractSpec:
         return self.private.CONTRACT_VERSION
 
     @property
+    def major(self) -> int:
+        return parse(self.version)[0]
+
+    @property
+    def key(self) -> str:
+        """The contract's key in the snapshot: its id, or ``<id>@<major>`` for a superseded major version."""
+        return f"{self.id}@{self.major}" if self.superseded else self.id
+
+    @property
+    def examples_dir(self) -> str:
+        """Where its examples are, relative to ``tests/fixtures/contracts/intelligence``."""
+        return self.id if self.major == 1 else f"{self.id}/v{self.major}"
+
+    @property
     def piece(self) -> str:
         return CATALOGUE[self.id].piece if self.id in CATALOGUE else "?"
 
 
 CONTRACTS: Final[tuple[ContractSpec, ...]] = (
     ContractSpec(private=ConventionsSamplePrivate, public=ConventionsSample),
-    ContractSpec(private=MatchIntelligencePrivate, public=MatchIntelligence,
-                 public_routes=("/api/v1/matches/{fixture_id}/intelligence",),
-                 private_routes=("/api/v1/admin/intelligence/matches/{fixture_id}/intelligence",)),
+    ContractSpec(private=MatchIntelligenceV2Private, public=MatchIntelligenceV2, public_routes=MATCH_PUBLIC_ROUTES,
+                 private_routes=MATCH_PRIVATE_ROUTES),
+    ContractSpec(private=MatchIntelligencePrivate, public=MatchIntelligence, public_routes=MATCH_V1_ROUTES,
+                 private_routes=MATCH_V1_PRIVATE_ROUTES, superseded=True),
     ContractSpec(private=SelectionIntelligencePrivate, public=SelectionIntelligence,
                  public_routes=("/api/v1/picks/{pick_id}/explanation",),
                  private_routes=("/api/v1/admin/intelligence/decisions/{decision_id}",)),
@@ -134,12 +162,19 @@ CONTRACTS: Final[tuple[ContractSpec, ...]] = (
 
 
 def by_id() -> dict[str, ContractSpec]:
-    return {spec.id: spec for spec in CONTRACTS}
+    """The current version of every contract by its id (a superseded major version is reached by ``by_key``)."""
+    return {spec.id: spec for spec in CONTRACTS if not spec.superseded}
+
+
+def by_key() -> dict[str, ContractSpec]:
+    return {spec.key: spec for spec in CONTRACTS}
 
 
 def spec_problems(spec: ContractSpec) -> list[str]:
     """What breaks the conventions in one registered contract (empty: nothing)."""
     problems: list[str] = []
+    if spec.superseded and not any(s.id == spec.id and not s.superseded and s.major > spec.major for s in CONTRACTS):
+        problems.append(f"{spec.key} is superseded but no newer major version of {spec.id} is registered")
     if spec.id not in CATALOGUE:
         problems.append(f"{spec.id} is not a contract of the plan's catalogue")
     if spec.public is None:

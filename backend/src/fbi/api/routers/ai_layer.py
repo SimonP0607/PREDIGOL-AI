@@ -4,7 +4,8 @@
   computed once by the worker and read by every user (200 readers are not 200 model calls). ``preview=shadow``
   shows the evaluation cards, SUPER_ADMIN only.
 * ``GET /matches/{fixture_id}/intelligence`` (product) - contract C-01's public projection (AD-J02), behind
-  ``FBI_MATCH_INTELLIGENCE``; its private projection is ``/admin/intelligence/matches/{fixture_id}/intelligence``.
+  ``FBI_MATCH_INTELLIGENCE``; its private projection is ``/admin/intelligence/matches/{fixture_id}/intelligence``. C-01 2.0.0
+  (IA-131) is served beside it at ``…/intelligence/v2`` (both projections).
 * ``/admin/ai/...`` (Admin Console) - overview, reviews with their full audit trail, packets, evidence,
   costs and the simulation, the AI's shadow report, its memory, and run requests.
 
@@ -43,6 +44,7 @@ from fbi.api.contracts.ai_layer import (
 from fbi.api.contracts.ai_research import ResearchOverview
 from fbi.api.contracts.ai_shadow import AgentRuns, Contradictions, ShadowArms, ShadowFile
 from fbi.api.contracts.intelligence.match import MatchIntelligence
+from fbi.api.contracts.intelligence.match_v2 import MatchIntelligenceV2
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
@@ -56,6 +58,7 @@ from fbi.api.services import (
     ai_v2,
     daily_review,
     match_intelligence,
+    match_intelligence_v2,
     match_memory,
 )
 from fbi.api.services.match_memory import MatchMemory, MemoryFilters
@@ -109,6 +112,15 @@ def get_match_intelligence(conn: Db, fixture_id: FixtureId) -> Envelope[MatchInt
     what a reader is already shown elsewhere, under the same switches; nothing experimental travels. 404 while
     ``FBI_MATCH_INTELLIGENCE`` is off (the owner's switch)."""
     return match_intelligence.public(conn, fixture_id)
+
+
+@router.get("/matches/{fixture_id}/intelligence/v2", response_model=Envelope[MatchIntelligenceV2])
+def get_match_intelligence_v2(conn: Db, fixture_id: FixtureId) -> Envelope[MatchIntelligenceV2]:
+    """INTELLIGENCE DEL PARTIDO 2.0.0 (contract C-01, public projection; AD-J02 delivery 2, IA-131): 1.x's blocks and the market
+    states, who may miss the match, what is new since yesterday and what is still to be known - and the scenarios, the one chronicle
+    and E1-E4 only once the owner publishes them (``pendiente_derechos`` until then). The 1.x route above keeps its shape. 404 while
+    ``FBI_MATCH_INTELLIGENCE`` is off (the owner's switch)."""
+    return match_intelligence_v2.public(conn, fixture_id)
 
 
 @admin_router.get("/ai/overview", response_model=Envelope[AiOverview])
