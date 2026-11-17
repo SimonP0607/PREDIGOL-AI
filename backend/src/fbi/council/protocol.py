@@ -81,6 +81,14 @@ SELECT id, fixture_id, pass_kind, known_at, created_at, package_hash, packet_id,
 """
 """The newest pass of the shadow over the match that existed at ``at``."""
 
+PASS_BY_ID_SQL: Final = """
+SELECT id, fixture_id, pass_kind, known_at, created_at, package_hash, packet_id, agents, contradictions, candidates
+  FROM ai.match_runs
+ WHERE id = %(run)s AND fixture_id = %(fixture)s AND run_kind = 'shadow' AND known_at <= %(at)s AND created_at <= %(at)s
+"""
+"""One given pass of the shadow over the match, when it existed at ``at`` (IA-124: the reduced Council deliberates every pass, not only the
+newest one)."""
+
 KICKOFF_SQL: Final = "SELECT kickoff_at FROM core.fixtures WHERE id = %(fixture)s"
 
 RUNS_SQL: Final = """
@@ -364,8 +372,10 @@ def _market(conn: psycopg.Connection[Any], fixture_id: int, sel: contra.Selectio
     return contra.Market.unknown() if got is None else contra.Market.of(got)
 
 
-def deliberate(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, book: w.Book | None = None) -> Deliberation:
-    """The deterministic deliberation of one match as of ``at``. Read-only; ``book`` may be passed to reuse one read of the weights."""
+def deliberate(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, book: w.Book | None = None,
+               match_run_id: int | None = None) -> Deliberation:
+    """The deterministic deliberation of one match as of ``at``. Read-only; ``book`` may be passed to reuse one read of the weights.
+    ``match_run_id`` names the pass to deliberate (it must have existed at ``at``) instead of the newest one."""
     if at.tzinfo is None:
         raise ValueError("a deliberation is made at a moment with its time zone")
     with conn.cursor(row_factory=dict_row) as cur:
@@ -374,7 +384,10 @@ def deliberate(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, 
         if ko is None:
             return Deliberation(fixture_id, at, "unknown_fixture")
         kickoff: datetime = ko["kickoff_at"]
-        cur.execute(PASS_SQL, {"fixture": fixture_id, "at": at})
+        if match_run_id is None:
+            cur.execute(PASS_SQL, {"fixture": fixture_id, "at": at})
+        else:
+            cur.execute(PASS_BY_ID_SQL, {"run": match_run_id, "fixture": fixture_id, "at": at})
         p = cur.fetchone()
         if p is None:
             return Deliberation(fixture_id, at, "no_shadow_pass", kickoff_at=kickoff)

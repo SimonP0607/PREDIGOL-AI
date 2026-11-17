@@ -138,7 +138,7 @@ def finding(code: Any = "C01", subject: str = "team:home", candidates: tuple[str
 # -- who the agent is, and who chooses its model -------------------------------------------------------------------------------------------
 
 def test_the_agent_is_the_match_agent_at_the_version_the_registry_holds() -> None:
-    assert (match.AGENT, match.VERSION, match.NATIVE) == ("match", "match-v5", True), "IA-028: the answer is asked with structured outputs"
+    assert (match.AGENT, match.VERSION, match.NATIVE) == ("match", "match-v6", True), "IA-028: the answer is asked with structured outputs"
     assert rg.REGISTRY.in_force("match").version == match.VERSION
     assert re.fullmatch(r"[A-Za-z0-9_-]{1,64}", match.SCHEMA_NAME), "a name the API takes for a tool"
 
@@ -340,8 +340,11 @@ def test_the_findings_of_the_detector_are_codes_without_what_they_oblige_in_one_
 
 def test_a_finding_cites_only_what_the_slice_has_and_names_only_the_candidates_asked() -> None:
     long = finding("C07", "match", ("c1", "c8"), ("E:1", "E:999", "P:shared.absences", "P:nowhere", "P:shared.absences.home.players"))
-    (item,) = lines(match.evaluation_request(SLICE, BOTH, at=AT, contradictions=[long]))[1]["contradictions"]
-    assert item["refs"] == ["E:1", "P:shared.absences"] and item["candidates"] == ["c1"], "a reference the slice lacks could not be cited"
+    assert "contradictions" not in lines(match.evaluation_request(SLICE, BOTH, at=AT, contradictions=[long]))[1], (
+        "porcion-v1 (IA-123): a finding that rests on a reference the slice lacks is not handed at all")
+    held = finding("C07", "match", ("c1", "c8"), ("E:1", "P:shared.absences"))
+    (item,) = lines(match.evaluation_request(SLICE, BOTH, at=AT, contradictions=[held]))[1]["contradictions"]
+    assert item["refs"] == ["E:1", "P:shared.absences"] and item["candidates"] == ["c1"], "one the slice has is handed, to its candidates only"
     about_counts = finding("C05", "referee", ("c8",), ())
     assert "contradictions" not in lines(match.evaluation_request(SLICE, BOTH, at=AT, contradictions=[about_counts]))[1]
     about_the_match = finding("C07", "match", (), ("E:1",))
@@ -818,7 +821,7 @@ def test_the_match_agent_is_a_built_agent_born_a_challenger_in_phase_3() -> None
     spec = rg.REGISTRY.spec("match")
     assert (spec.contract, spec.reads, spec.replaces, spec.retire_phase) == ("aa-v1", "match", None, None)
     assert [(t.task, t.effort, t.model) for t in spec.tasks] == [("context", "low", "claude-haiku-5-5"), ("evaluation", "medium", "claude-haiku-5-5")]
-    born, second, third, fourth, entry = rg.REGISTRY.history("match")
+    born, second, third, fourth, entry, sixth = rg.REGISTRY.history("match")
     assert (born.version, born.born_as, born.baseline, born.decided_by, born.phase) == ("match-v1", "CHALLENGER", False, "owner", "IA-3")
     assert (second.version, second.born_as, second.phase) == ("match-v2", "CHALLENGER", "IA-009")
     assert (third.version, third.born_as, third.phase) == ("match-v3", "CHALLENGER", "IA-014")
@@ -828,7 +831,9 @@ def test_the_match_agent_is_a_built_agent_born_a_challenger_in_phase_3() -> None
         "a new way of asking (structured outputs) with the same prompts")
     assert {t: (p.prompt_version, p.prompt_sha, p.native) for t, p in entry.parts.items()} == {
         t: (p.prompt_version, p.prompt_sha, True) for t, p in fourth.parts.items()}, "v5 is v4's prompts, asked natively"
-    assert entry is rg.REGISTRY.in_force("match") and born.registered_at < second.registered_at < entry.registered_at
+    assert sixth is rg.REGISTRY.in_force("match") and born.registered_at < second.registered_at < entry.registered_at < sixth.registered_at
+    assert (sixth.version, sixth.phase, sixth.born_as, sixth.parts, sixth.fingerprint) == (
+        "match-v6", "IA-123", "CHALLENGER", entry.parts, entry.fingerprint), "IA-123: v5's prompts and fingerprint, findings under porcion-v1"
     for e in (born, second, entry):
         assert "shadow" in e.reason and len(e.reason) >= rg.MIN_REASON
     assert rg.live_fingerprint(spec) == entry.fingerprint != born.fingerprint and not [p for p in rg.REGISTRY.problems() if "match" in p.subject]
@@ -845,6 +850,6 @@ def test_the_identity_of_a_task_is_made_from_the_registry_and_the_hash_of_what_i
     two = rg.REGISTRY.identity_for("match", "evaluation", workspace="lab", input_version=pk.VERSION, input_hash=match.input_hash(evaluation_request),
                                    pass_kind="pre", fixture_id=FIXTURE, candidates=match.asked_keys(BOTH))
     assert (one.agent, one.agent_version, one.prompt_version, one.schema_version, one.model, one.effort) == (
-        "match", "match-v5", "match-context-v4", "aa-v1", "claude-haiku-5-5", "low")
+        "match", "match-v6", "match-context-v4", "aa-v1", "claude-haiku-5-5", "low")
     assert (two.prompt_version, two.effort, two.candidates) == ("match-assess-v3", "medium", tuple(sorted(KEYS)))
     assert one.input_hash != two.input_hash

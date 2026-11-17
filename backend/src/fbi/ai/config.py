@@ -93,6 +93,17 @@ IA-064 (plan piece AD-A02) - the validator of every model's answer (``fbi.ai.out
                                 (``output_guard(shadow): ...``). shadow: every surface only marked - the way back. enforce: every surface
                                 refuses. Any other word is default. Restart the worker (about a minute).
 
+IA-123 (plan pieces AD-D09 and AD-D11) - when the specialist readers speak, and the steps of the retirement of ``review-v2``:
+
+    FBI_AI_READERS              default passes | e1. passes: the readers of the shadow (Match, Statistics, Player) speak in every pass the
+                                orchestrator runs, as before. e1: only in E1 (24 h to 12 h before the kick-off) and in a later pass with a
+                                material finding of contra-v1 (``fbi.ai.readers``, ``readers-v1``). Any other word is passes.
+    FBI_REVIEW_V2               default on | no_opus | sample | off - the steps of the conditioned retirement of the production review
+                                (``fbi.ai.review_retirement``, ``review-retire-v1``). on: today's path. no_opus: the review never escalates to
+                                the strong model. sample: the model reviews only a fixed random share of the selections (the control). off:
+                                the rules alone. Every step after on is the OWNER's, signed, once the preregistered criterion is met; any
+                                other word is on, and on restores today's path.
+
 Phase 3 of the plan - the multi-agent engines in SHADOW (``fbi.ai.arms``): they run in the LAB workspace only, write rows no user and no decision
 reads, and are rolled back by the same three words. Nothing runs until ALL THREE say so (``AiSettings.orchestrate``):
 
@@ -277,6 +288,20 @@ def _output_guard(raw: str | None) -> str:
     return switch_of(raw)
 
 
+def _readers(raw: str | None) -> str:
+    """``FBI_AI_READERS`` (IA-123): ``e1`` moves it; anything else is ``passes``."""
+    from fbi.ai.readers import schedule_of
+
+    return schedule_of(raw)
+
+
+def _review_v2(raw: str | None) -> str:
+    """``FBI_REVIEW_V2`` (IA-123, AD-D11): ``no_opus``, ``sample`` and ``off`` move it; anything else is ``on``."""
+    from fbi.ai.review_retirement import step_of
+
+    return step_of(raw)
+
+
 def _all_auto() -> dict[str, Switch]:
     return dict.fromkeys(SWITCH_ENV, "auto")
 
@@ -354,6 +379,11 @@ class AiSettings:
     output_guard: str = "default"
     """IA-064 (plan piece AD-A02): the mode of the validator of every answer (``FBI_AI_OUTPUT_GUARD``, ``fbi.ai.outputs.switch_of``):
     ``default`` (each surface its own), ``shadow`` (nothing refused, every finding marked in the ledger) or ``enforce`` (every surface refuses)."""
+    readers: str = "passes"
+    """IA-123 (AD-D09): when the specialist readers speak (``FBI_AI_READERS``, ``fbi.ai.readers.schedule_of``): ``passes`` or ``e1``."""
+    review_v2: str = "on"
+    """IA-123 (AD-D11): the step of the retirement of ``review-v2`` (``FBI_REVIEW_V2``, ``fbi.ai.review_retirement.step_of``): ``on`` (today),
+    ``no_opus``, ``sample`` or ``off``."""
     pm_reviewer: bool = False
     """Plan IA, phase 5: the attribution of the shadow and the Post-Match Reviewer (``FBI_AI_PM_REVIEWER``). Off unless the word says ``on``."""
     learning_analyst: bool = False
@@ -417,6 +447,8 @@ class AiSettings:
             research_unified=_unified_mode(env.get("FBI_AI_RESEARCH_UNIFIED")),
             unified_max_per_day=max(0, _int("FBI_AI_RESEARCH_UNIFIED_MAX_PER_DAY", 60, env)),
             output_guard=_output_guard(env.get("FBI_AI_OUTPUT_GUARD")),
+            readers=_readers(env.get("FBI_AI_READERS")),
+            review_v2=_review_v2(env.get("FBI_REVIEW_V2")),
             pm_reviewer=_on(env.get("FBI_AI_PM_REVIEWER")),
             learning_analyst=_on(env.get("FBI_AI_LEARNING_ANALYST")),
         )
@@ -500,6 +532,8 @@ class AiSettings:
             "research_v2": self.research_v2,
             "extractor": self.extractor,
             "output_guard": self.output_guard,
+            "readers": self.readers,
+            "review_v2": self.review_v2,
             "engines": list(self.engines),
             "shadow_engines": list(self.shadow_engines),
             "shadow_sample": format(self.shadow_sample.normalize(), "f"),

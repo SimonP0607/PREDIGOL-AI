@@ -255,8 +255,8 @@ def test_each_change_is_a_new_version_born_a_challenger_and_nothing_is_promoted(
 
 
 def test_the_parts_and_versions_are_the_ones_the_code_has_and_the_battery_asks() -> None:
-    assert (stats.VERSION, prompts.STATS_ASSESS_VERSION) == ("stats-v4", "stats-assess-v3"), "IA-028: v3's prompt, asked natively"
-    assert (match.VERSION, prompts.MATCH_CONTEXT_VERSION, prompts.MATCH_ASSESS_VERSION) == ("match-v5", "match-context-v4", "match-assess-v3")
+    assert (stats.VERSION, prompts.STATS_ASSESS_VERSION) == ("stats-v5", "stats-assess-v3"), "IA-028: v3's prompt, asked natively"
+    assert (match.VERSION, prompts.MATCH_CONTEXT_VERSION, prompts.MATCH_ASSESS_VERSION) == ("match-v6", "match-context-v4", "match-assess-v3")
     assert corpus.target("stats").agent == stats.VERSION and corpus.target("stats").prompts == (prompts.STATS_ASSESS_VERSION,)
     assert corpus.target("match").agent == match.VERSION and corpus.target("match").prompts == (prompts.MATCH_CONTEXT_VERSION, prompts.MATCH_ASSESS_VERSION)
     assert corpus.request_for("stats", "s_high").system == prompts.STATS_ASSESS_SYSTEM

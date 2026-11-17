@@ -568,6 +568,30 @@ LEDGER: Final[tuple[Registration, ...]] = (
                         "row the owner signs in intel.promotions.",
                  fingerprint="age708d2144e",
                  parts={"evaluation": Part("stats-assess-v3", "fa146d716144", "aa-v1", "ab5f098304ef", native=True)}),
+    Registration(agent="match", version="match-v6", registered_at=datetime(2026, 11, 17, 22, 0, tzinfo=UTC), decided_by="owner", phase="IA-123",
+                 reason="IA-123 (AD-D09 of the plan of the definitive architecture 2026, approved by the owner on 16 Nov 2026): the Match Agent is handed "
+                        "the findings of contra-v1 under porcion-v1 - a finding reaches it only when every block and evidence it rests on is in its "
+                        "slice, instead of being handed with those references cut. Prompts (match-context-v4, match-assess-v3), contract, reader, "
+                        "model, effort and structured outputs do not change, so the fingerprint is v5's; what it reads does, so it is a new version. "
+                        "It is born CHALLENGER, runs in shadow in place of match-v5 and reaches a decision only by a row the owner signs.",
+                 fingerprint="age7a60bb9db",
+                 parts={"context": Part("match-context-v4", "bc0f3bdc2158", "aa-v1", "ab5f098304ef", native=True),
+                        "evaluation": Part("match-assess-v3", "6eb32492e520", "aa-v1", "ab5f098304ef", native=True)}),
+    Registration(agent="stats", version="stats-v5", registered_at=datetime(2026, 11, 17, 22, 1, tzinfo=UTC), decided_by="owner", phase="IA-123",
+                 reason="IA-123 (AD-D09, approved by the owner on 16 Nov 2026): the Statistics Agent is handed the findings of contra-v1 under "
+                        "porcion-v1, so a C07 over evidence of transfers - a kind its slice leaves out - no longer reaches it (V3 of the contract of "
+                        "the deliberation, IA-046). Prompt (stats-assess-v3), contract, reader, model, effort and structured outputs are v4's, and "
+                        "so is the fingerprint. It is born CHALLENGER, runs in shadow in place of stats-v4 and reaches a decision only by a row the "
+                        "owner signs.",
+                 fingerprint="age708d2144e",
+                 parts={"evaluation": Part("stats-assess-v3", "fa146d716144", "aa-v1", "ab5f098304ef", native=True)}),
+    Registration(agent="player", version="player-v2", registered_at=datetime(2026, 11, 17, 22, 2, tzinfo=UTC), decided_by="owner", phase="IA-123",
+                 reason="IA-123 (AD-D09, approved by the owner on 16 Nov 2026): the Player Agent is handed the findings of contra-v1 under porcion-v1 "
+                        "with no number of a candidate: no C06 with the model's and the market's probability (V1 of IA-046) and no finding that rests "
+                        "on the calendar, the stakes or evidence its slice does not read (V2). Prompt (player-assess-v1), contract, reader, model "
+                        "and effort are v1's, and so is the fingerprint. It is born CHALLENGER, OFF unless FBI_AI_AGENTS names player, in shadow.",
+                 fingerprint="ag83d95ed106",
+                 parts={"evaluation": Part("player-assess-v1", "38b01626cd10", "pa-v1", "a38c75eb4ee0")}),
 )
 """Oldest first, by agent; the last entry of an agent is its version in force. To change an agent - a prompt, a schema, a model, an effort - change
 it, add the entry below the last one of the agent and bump the label of the prompt that changed, in the same commit."""

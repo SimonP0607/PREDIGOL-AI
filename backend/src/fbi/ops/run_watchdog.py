@@ -60,6 +60,8 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "parlay_v6_shadow": timedelta(minutes=10),
     # the evaluation after the match (IA-112): no provider, no model; seven days of settled selections, read in batches of 100 matches.
     "selection_eval_shadow": timedelta(minutes=15),
+    # the reduced Council (IA-124): no provider, no model; at most 60 passes of the shadow deliberated a pass.
+    "council_reduced_shadow": timedelta(minutes=15),
     "live_odds_capture": timedelta(minutes=10),
     "live_match_capture": timedelta(minutes=10),
     "prematch_lineups": timedelta(minutes=10),

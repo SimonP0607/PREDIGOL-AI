@@ -1,4 +1,4 @@
-"""The Match Agent (``match-v5``; Plan Maestro IA, phase 3, section 9): what it is asked and what the server makes of what it answers.
+"""The Match Agent (``match-v6``; Plan Maestro IA, phase 3, section 9): what it is asked and what the server makes of what it answers.
 
 One agent, one contract (``aa-v1``, ``fbi.ai.contracts.assessment``), two tasks that share a base prompt (``fbi.ai.prompts.MATCH_RULES``):
 
@@ -21,7 +21,9 @@ candidate's own. v4 (IA-018) changes only the CONTEXT prompt (``match-context-v4
 the message and the EVALUATION prompt (``match-assess-v3``) are those of v3. v5 (IA-028) changes neither a prompt nor the contract: it asks
 for the answer with structured outputs (``NATIVE``; the API holds the model to the schema ``fbi.ai.providers.structured.accepted`` writes from ``aa-v1``)
 instead of the forced tool call, because battery-v3 with the real model (10 Nov 2026) refused 6 of 55 answers asked through the tool and none
-of 55 asked natively. The reader is the same: the contract and ``check`` still judge the whole answer.
+of 55 asked natively. The reader is the same: the contract and ``check`` still judge the whole answer. v6 (IA-123, AD-D09) changes neither a
+prompt nor the contract nor the reader: it is handed the findings of the detector under ``porcion-v1`` (a finding whose references fall outside
+the slice is not handed at all, instead of being handed with those references cut).
 
 What the server makes of the answer (``read``). The contract refuses what is not ``aa-v1`` (``extra="forbid"``: a probability, a price, a
 URL or a sentence has no field to go in); ``contracts.assessment.check`` turns into NEUTRAL a stance that rests on nothing and refuses as a
@@ -95,7 +97,7 @@ from fbi.ai.packet import canonical
 from fbi.ai.providers.base import JsonRequest
 
 AGENT: Final = "match"
-VERSION: Final = "match-v5"
+VERSION: Final = "match-v6"
 SCHEMA_NAME: Final = "submit_assessment"
 """The name of the tool (or of the structured output) the answer is asked through."""
 NATIVE: Final = True
@@ -214,10 +216,28 @@ def _asked(slice_: Slice, naming: Naming) -> tuple[Named, ...]:
     return named
 
 
-def _findings(slice_: Slice, naming: Naming, asked: Sequence[Named], contradictions: Sequence[Contradiction]) -> list[dict[str, Any]]:
-    """The findings of the detector as the model reads them: only the ones about candidates it is asked about (or about none), with the
-    names of the candidates it is asked about and the references the slice has. A finding that names a candidate the match does not have
-    is a defect of the one who wrote it, and it is said (ValueError) instead of guessed at."""
+PORCION: Final = "porcion-v1"
+"""How a reader is handed the findings of the detector (IA-123, AD-D09; the contract of the deliberation, IA-046, V1-V3). A finding reaches a
+reader only when EVERYTHING it rests on is in the reader's own slice: every reference ``contra-v1`` wrote for it - the blocks it read (``P:``)
+and the evidence that fired it (``E:``) - is one the slice can cite. Until ``match-v5``/``stats-v4``/``player-v1`` the references the slice
+lacked were cut and the finding kept, so the Player Agent read the gap between the model and the market (C06 rests on ``P:market`` and
+``P:models``), the calendar (C03) and the stakes (C04), and the Statistics Agent a C07 over evidence of transfers: what its slice denies it.
+One exception, because the reader is handed it another way: ``P:market`` and ``P:models`` (what C06 rests on) are the numbers of the
+candidates, and a reader that reads those numbers in its candidates (the Match and the Statistics agents: ``CANDIDATE_NUMBERS``) reads what
+the finding rests on even when its slice has no such block; a reader that reads no number (the Player Agent) is never handed such a finding.
+A change to this rule is a new version of every reader that reads findings."""
+NUMBER_REFS: Final = frozenset({"P:market", "P:models"})
+"""The references of a finding that the numbers of the candidates stand for (``contra-v1`` cites them for C06)."""
+
+
+def _findings(slice_: Slice, naming: Naming, asked: Sequence[Named], contradictions: Sequence[Contradiction], *,
+              numbers: bool = True) -> list[dict[str, Any]]:
+    """The findings of the detector as the model reads them (``PORCION``): only the ones about candidates it is asked about (or about none),
+    with the names of the candidates it is asked about, and only those whose every reference the reader's slice has - a finding that rests on
+    a block or an evidence outside the reader's porción is not handed to it at all. ``numbers`` says whether the reader is handed the numbers of
+    its candidates (then ``NUMBER_REFS`` stand: they are cut from the finding when the slice cannot cite them, as the numbers are in the
+    candidates). A finding that names a candidate the match does not have is a defect of the one who wrote it, and it is said (ValueError)
+    instead of guessed at."""
     every = {n.key for n in naming.named}
     mine = {n.key for n in asked}
     ids, paths = known_refs(slice_.document)
@@ -228,11 +248,13 @@ def _findings(slice_: Slice, naming: Naming, asked: Sequence[Named], contradicti
             raise ValueError(f"the contradiction {c.code} names candidates this match does not have: {', '.join(sorted(unknown))}")
         if c.candidates and not set(c.candidates) & mine:
             continue
+        bad = set(check_refs(c.refs, evidence_ids=ids, paths=paths))
+        if bad - (NUMBER_REFS if numbers else frozenset()):
+            continue  # it rests on something outside this reader's porción: the reader never sees it (porcion-v1)
         item = c.to_json()
         item.pop("requires", None)  # what a finding obliges is the Council's business, not the Match Agent's
         item["candidates"] = [k for k in c.candidates if k in mine]
-        bad = set(check_refs(c.refs, evidence_ids=ids, paths=paths))
-        item["refs"] = [r for r in c.refs if r not in bad]  # a reference the (trimmed) slice lacks cannot be cited
+        item["refs"] = [r for r in c.refs if r not in bad]  # only a number of the candidates is left uncited: the reader has it there
         found[canonical(item)] = item
     return [found[k] for k in sorted(found)]
 

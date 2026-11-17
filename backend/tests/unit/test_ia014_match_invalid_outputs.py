@@ -119,8 +119,8 @@ def test_the_checklist_of_ia009_is_still_what_the_builder_makes_without_citable(
     assert "citable" not in plain and "One signal per pair" not in plain and plain != prompts.STATS_ASSESS_CHECKLIST
     v2 = next(e for e in rg.REGISTRY.history("stats") if e.version == "stats-v2")
     assert v2.fingerprint == "aga044ea3270" and v2.parts["evaluation"].prompt_version == "stats-assess-v2", "the ledger keeps what v2 was"
-    assert stats.VERSION == "stats-v4" and prompts.STATS_ASSESS_VERSION == "stats-assess-v3", (
-        "IA-018 gave the Statistics Agent the closed checklist of v3 (test_ia018_stats_validity.py); IA-028 asks it natively as stats-v4")
+    assert stats.VERSION == "stats-v5" and prompts.STATS_ASSESS_VERSION == "stats-assess-v3", (
+        "IA-018 gave the Statistics Agent the closed checklist of v3 (test_ia018_stats_validity.py); IA-028 asks it natively as stats-v4; IA-123 hands it the findings under porcion-v1 as stats-v5")
 
 
 def test_the_second_object_keys_are_the_ones_the_requests_write() -> None:

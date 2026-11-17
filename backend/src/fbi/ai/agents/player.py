@@ -1,4 +1,4 @@
-"""The Player Intelligence Agent (``player-v1``; IA-017): what it is asked and what the server makes of what it answers. Born OFF and in SHADOW.
+"""The Player Intelligence Agent (``player-v2``; IA-017): what it is asked and what the server makes of what it answers. Born OFF and in SHADOW.
 
 One agent, one contract (``pa-v1``, ``fbi.ai.contracts.player``: ``aa-v1`` narrowed - a direction and never a strength, no research), ONE task:
 ``evaluation``, mode EVALUATION, Haiku 5.5 at effort medium (the router's task of that name, ``router-v1``, as the Statistics Agent's; never this
@@ -63,7 +63,9 @@ from fbi.ai.packet import canonical
 from fbi.ai.providers.base import JsonRequest
 
 AGENT: Final = "player"
-VERSION: Final = "player-v1"
+VERSION: Final = "player-v2"
+"""v2 (IA-123, AD-D09): the prompt, the contract and the reader of v1; the findings it is handed follow ``match.PORCION`` with no number of a
+candidate (no C06 and no finding resting on the calendar, the stakes or evidence its slice does not read: V1 and V2 of the contract)."""
 TASK: Final = "evaluation"
 """The task of the router (and of the registry) this agent runs: its only one."""
 MODE: Final[Mode] = "EVALUATION"
@@ -146,7 +148,7 @@ def evaluation_request(slice_: Slice, naming: Naming, *, at: datetime, contradic
     _readable(slice_)
     asked = _asked(slice_, naming)
     ask: dict[str, Any] = {"mode": MODE, "now": when.isoformat(), **match._timing(slice_, when), "candidates": [_candidate_json(n) for n in asked]}
-    findings = match._findings(slice_, naming, asked, contradictions)
+    findings = match._findings(slice_, naming, asked, contradictions, numbers=False)  # it reads no number of a candidate
     if findings:
         ask["contradictions"] = findings
     ask[prompts.CITABLE_KEY] = list(citable_refs(slice_.document))

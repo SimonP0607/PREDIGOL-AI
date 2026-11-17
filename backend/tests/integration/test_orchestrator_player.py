@@ -109,7 +109,7 @@ def test_on_it_is_asked_about_goals_and_result_under_the_same_names_and_only_sha
 
     [t] = tasks(db, w.fixture, "player")
     assert (t["agent_version"], t["task_kind"], t["model"], t["prompt_version"], t["schema_version"], t["effort"]) == (
-        "player-v1", "evaluation", HAIKU, "player-assess-v1", "pa-v1", "medium")
+        "player-v2", "evaluation", HAIKU, "player-assess-v1", "pa-v1", "medium")
     assert t["candidates"] == ["c1", "c2", "c3"] and t["workspace"] == "lab" and t["run_status"] == "ok"
     package = mcp_package.derive(db, w.packet, pass_kind="pre", model_code=model_code_version())
     assert package is not None
@@ -119,7 +119,7 @@ def test_on_it_is_asked_about_goals_and_result_under_the_same_names_and_only_sha
     state = state_of(db, w.fixture)
     assert [s["name"] for s in state["slices"]] == ["match", "stats", "player"] and state["model_status"]["slices"] == "slices-v2"
     assert state["package_version"] == "package-v3", "package-v3 (IA-020) and slices-v2 (IA-017) together: the Player Agent on"
-    assert state["model_status"]["player"] == {"version": "player-v1", "asked": ["c1", "c2", "c3"], "note": None}
+    assert state["model_status"]["player"] == {"version": "player-v2", "asked": ["c1", "c2", "c3"], "note": None}
     assert names(state) == NAMES, "the names of goals and result do not move"
 
     views = [json.loads(r.user)["view"] for r in pv.requests if r.schema_name == council.TOOL]
@@ -127,7 +127,7 @@ def test_on_it_is_asked_about_goals_and_result_under_the_same_names_and_only_sha
     assert len(views) == 3
     assert any("player_evaluation" in labels for labels in labelled) and any(labels == [] for labels in labelled), "cs-v1 reads no assessment"
     for r in reviews_of(db, w.fixture):
-        assert ("+player-v1" in r["engine_version"]) is (r["engine"] in ("ma-v1", "ma-v1-h"))
+        assert ("+player-v2" in r["engine_version"]) is (r["engine"] in ("ma-v1", "ma-v1-h"))
         assert r["mode"] == "shadow"
     assert audit(db)[1:] == (0, []), "the new row verifies with its player slice"
 

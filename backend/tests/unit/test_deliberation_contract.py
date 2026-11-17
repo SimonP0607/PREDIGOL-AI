@@ -14,9 +14,10 @@
     una búsqueda  at most ONE targeted search: the contracts, the deterministic round of ``council-protocol-v1`` and the router.
     la guía       the versions, the blocks of each voice, the thresholds and the violations the guide declares are the code's.
 
-What the code violates TODAY is marked ``xfail(strict=True)`` with the id of the violation (``VIOLATIONS``) and nothing is changed: no agent, prompt
-or request moves before Gate B. Each mark fails for one reason only. The guide lists the same ids (its section 10): a violation that is fixed
-XPASSes, the strict mark fails, and the mark and the guide's line go away together. No database, no model, no clock.
+What the code violates is marked ``xfail(strict=True)`` with the id of the violation (``VIOLATIONS``). Each mark fails for one reason only. The
+guide lists the same ids (its section 10): a violation that is fixed XPASSes, the strict mark fails, and the mark and the guide's line go away
+together. V1-V3 were fixed by IA-123 (AD-D09: ``porcion-v1`` in ``match._findings``, the readers ``match-v6``, ``stats-v5`` and ``player-v2``):
+today no violation is marked and every test of the porción is obligatory. No database, no model, no clock.
 """
 
 from __future__ import annotations
@@ -104,14 +105,10 @@ CODE = "mc9a7bec97ca"
 
 # -- the violations of today ------------------------------------------------------------------------------------------------------------------
 
-VIOLATIONS: Final[dict[str, str]] = {
-    "V1": "IA-046/V1: the Player Agent is handed the model's and the market's probability - a C06 finding reaches it with its gap and its "
-          "detail p_model/p_market (fbi.ai.agents.match._findings keeps both) - and its slice and pa-v1 deny it every probability, price and value",
-    "V2": "IA-046/V2: the Player Agent is handed findings that rest on blocks its slice does not read - C03 (the calendar), C04 (what a side "
-          "plays for), C07 over evidence of a kind it does not read (the weather): _findings drops the references, not the finding",
-    "V3": "IA-046/V3: the Statistics Agent is handed a C07 over evidence of transfers, a kind its slice leaves out (STATS_EXCLUDED_KINDS)",
-}
-"""What the code does today against the contract. The guide declares the same ids (section 10)."""
+VIOLATIONS: Final[dict[str, str]] = {}
+"""What the code does today against the contract. The guide declares the same ids (section 10). Empty since IA-123: V1 (the Player Agent was
+handed the model's and the market's probability in a C06), V2 (findings resting on the calendar, the stakes and evidence outside its slice) and
+V3 (the Statistics Agent was handed a C07 over evidence of transfers) are fixed and their tests below are obligatory."""
 MARKED: set[str] = set()
 
 
@@ -324,7 +321,6 @@ def test_the_slice_and_the_candidates_of_the_player_agent_carry_no_probability_p
     assert not keys_in([first, rest]) & MODEL_AND_PRICE_KEYS, sorted(keys_in([first, rest]) & MODEL_AND_PRICE_KEYS)
 
 
-@violation("V1")
 def test_no_finding_hands_the_player_agent_a_probability_price_or_value() -> None:
     _, second = message(REQUESTS["player"])
     found = sorted(keys_in(second.get("contradictions", [])) & MODEL_AND_PRICE_KEYS)
@@ -334,8 +330,8 @@ def test_no_finding_hands_the_player_agent_a_probability_price_or_value() -> Non
 ORIGINAL: Final[dict[tuple[str, str, tuple[tuple[str, str], ...]], Contradiction]] = {(c.code, c.subject, c.detail): c for c in CONTRA0}
 RULES_WITH_INPUT: Final = ("C01", "C02", "C03", "C04", "C06", "C07")
 EVALUATION_OF: Final = {"match": "match_evaluation", "stats": "stats", "player": "player"}
-KNOWN: Final[dict[tuple[str, str], str]] = {("player", "C03"): "V2", ("player", "C04"): "V2", ("player", "C06"): "V1", ("player", "C07"): "V2",
-                                            ("stats", "C07"): "V3"}
+KNOWN: Final[dict[tuple[str, str], str]] = {}
+"""The (agent, rule) pairs a violation of today is marked on: none since IA-123."""
 
 
 def resting_outside(agent: str, code: str) -> list[str]:
@@ -363,6 +359,28 @@ def resting_outside(agent: str, code: str) -> list[str]:
 def test_a_finding_reaches_an_agent_only_if_what_it_rests_on_is_in_its_porcion(agent: str, code: str) -> None:
     outside = resting_outside(agent, code)
     assert not outside, outside
+
+
+HANDED: Final[dict[str, set[tuple[str, str]]]] = {
+    "match": {("C01", "player:10"), ("C02", "team:away"), ("C03", "team:home"), ("C04", "team:home"), ("C06", "pair:c1+c1"), ("C07", "match"),
+              ("C07", "player:12"), ("C07", "team:home")},
+    "stats": {("C06", "pair:c8+c8"), ("C07", "match"), ("C07", "player:12")},
+    "player": {("C01", "player:10"), ("C02", "team:away"), ("C07", "player:12"), ("C07", "team:home")},
+}
+"""What ``porcion-v1`` hands each reader of the hostile match: the Match Agent reads the whole index; the Statistics Agent its C06 on the corners
+(it reads the numbers of its candidates) and the conflicts on the evidence it reads, never the one on transfers; the Player Agent who is out and
+the conflicts on players and transfers, never the gap, the calendar, the stakes or the weather."""
+
+
+def test_porcion_cuts_what_rests_outside_a_reader_and_hands_it_everything_of_its_own() -> None:
+    assert match.PORCION == "porcion-v1"
+    for agent, task in EVALUATION_OF.items():
+        _, second = message(REQUESTS[task])
+        got = {(f["code"], f["subject"]) for f in second.get("contradictions", [])}
+        assert got == HANDED[agent], (agent, sorted(got ^ HANDED[agent]))
+        ids, paths = common.known_refs(message(REQUESTS[task])[0])
+        for f in second.get("contradictions", []):
+            assert not check_refs(f["refs"], evidence_ids=ids, paths=paths), (agent, f["code"], f["subject"])
 
 
 def test_every_voice_reads_one_package_as_of_one_moment() -> None:

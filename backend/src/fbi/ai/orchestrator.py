@@ -107,6 +107,7 @@ from fbi.ai import (
     final_reread,
     gates,
     known_at,
+    readers,
     router,
     runtime,
     stats_factors,
@@ -161,10 +162,17 @@ from fbi.ai.orchestrator_store import (
 )
 from fbi.ai.packet import Packet, content_hash, load_packet
 from fbi.ai.providers.base import JsonRequest, LlmProvider
+from fbi.ai.readers import Turn as ReadersTurn
 from fbi.ai.review import Candidate, fair_and_minimum
 from fbi.core.version import model_code_version
 
 log = logging.getLogger("fbi.ai.orchestrator")
+
+E1_SEEN_SQL: Final = """
+SELECT EXISTS (SELECT 1 FROM ai.match_runs
+                WHERE fixture_id = %(fixture)s AND run_kind = 'shadow' AND known_at >= %(start)s AND known_at <= %(end)s AND known_at < %(at)s)
+"""
+"""IA-123: whether a pass of the shadow over the match already fell in E1's window before this one (then this one is an E2)."""
 
 VERSION: Final = "orch-v1"
 """The orchestrator's own name in the rows it writes (``output.version``). A change to how a verdict is stored is a new one, never an edit."""
@@ -680,6 +688,13 @@ class _Pass:
     data_status: dict[str, Any] = field(default_factory=dict)
     """``ai.match_runs.data_status`` (IA-061): the check of the moments of the facts (``known_at``) and, for a final pass, the last reading of the match
     (``reread``)."""
+    turn: ReadersTurn | None = None
+    """IA-123 (``readers-v1``): whether the specialist readers speak in this pass, with ``FBI_AI_READERS=e1`` (None with ``passes``, the default:
+    they speak in every pass, as before, and the row of the pass says nothing new)."""
+
+    @property
+    def readers_speak(self) -> bool:
+        return self.turn is None or self.turn.speak
 
     @property
     def at(self) -> datetime:
@@ -928,6 +943,7 @@ class _Runner:
             return
 
         contra0 = contra.detect(package.document, naming=naming, assessments=(), at=p.at)
+        p.turn = self.readers_turn(p, contra0)
         if stored:
             self.resume(p, stored, contra0)
             return
@@ -954,7 +970,7 @@ class _Runner:
         prod = usage.budget(self.conn, at=now, settings=self.settings)
         p.tiers_ok = {t: prod.allows(t) for t in ("bulk", "analysis", "final")}
         contra1 = tuple(contra0)
-        if any(e in WITH_MATCH for e in active):
+        if any(e in WITH_MATCH for e in active) and p.readers_speak:
             contra1 = self.match_round(p, contra0)
         self.councils(p, active, contra0, contra1, room)
         self.escalate(p, contra1, room)
@@ -964,6 +980,21 @@ class _Runner:
             "orchestrator.pass",
             extra={"fixture": w.fixture_id, "pass": w.pass_kind, "engines": list(active)},
         )
+
+    def readers_turn(self, p: _Pass, contra0: Sequence[Contradiction]) -> ReadersTurn | None:
+        """IA-123 (``readers-v1``): with ``FBI_AI_READERS=e1``, whether the readers speak in this pass - E1, or an E2 with a material finding -
+        judged at the moment of the pass (the package's, so a pass of the Batch calendar is judged the same in every run); None with ``passes``."""
+        if self.settings.readers != "e1":
+            return None
+        kickoff = p.work.kickoff_at
+        e1_seen = False
+        if p.at > kickoff - readers.E1_UNTIL:
+            with self.conn.cursor() as cur:
+                cur.execute(E1_SEEN_SQL, {"fixture": p.work.fixture_id, "start": kickoff - readers.E1_FROM, "end": kickoff - readers.E1_UNTIL,
+                                          "at": p.at})
+                row = cur.fetchone()
+            e1_seen = bool(row and row[0])
+        return readers.when("e1", readers.evaluation_of(p.at, kickoff, e1_seen=e1_seen), contra0)
 
     def stats_wanted(self, stored: Sequence[StoredTask]) -> bool:
         """Whether the Statistics Agent is on for this pass (phase 4). A pass that is new follows ``FBI_AI_AGENTS``; a pass of the Batch calendar keeps
@@ -1048,7 +1079,7 @@ class _Runner:
         active = list(b.active)
         contra1 = tuple(contra0)
         match_waits = False
-        if any(e in WITH_MATCH for e in active):
+        if any(e in WITH_MATCH for e in active) and p.readers_speak:
             self.match_task(p, "CONTEXT", match.context_request(p.slice_, at=p.at))
             if not self.exhausted:
                 self.match_task(
@@ -1116,7 +1147,7 @@ class _Runner:
         """The estimate of the pass: every call it plans, at the full price (the Batch's half), with the Council's view as it will be without the
         assessments. A pass of the Batch calendar is checked against the LAB's day as a WHOLE before anything is queued."""
         total = Decimal(0)
-        if any(e in WITH_MATCH for e in p.engines):
+        if any(e in WITH_MATCH for e in p.engines) and p.readers_speak:
             total += self.estimate(
                 match.model_of("CONTEXT"), match.context_request(p.slice_, at=p.at), batch=batch
             )
@@ -2368,6 +2399,8 @@ class _Runner:
             out["slices"] = p.slice_set  # the set the audit derives again (``slice_known``); a row that names none is ``slices-v1``
         if p.player_on:
             out["player"] = {"version": player.VERSION, "asked": list(p.player_asked), "note": p.player_note}
+        if p.turn is not None:
+            out["readers"] = p.turn.as_json()
         if p.stats_on:
             asked = stats.asked_keys(p.naming)
             out["stats"] = {
