@@ -1,0 +1,51 @@
+# Serie A (provider league 135), season 2025/26: FIGC Comunicato Ufficiale 331/A (derogation to art. 51 NOIF) and NOIF art. 49.
+schema: competition-rules/1
+league_id: 135
+competition: Serie A
+country: Italy
+version: 1
+seasons: [2025]
+points: {win: 3, draw: 1, loss: 0}
+sources:
+  - publisher: Federazione Italiana Giuoco Calcio
+    title: Comunicato Ufficiale N. 331/A - Deroga art. 51 NOIF, determinazione classifica Campionato Serie A s.s. 2025/2026
+    url: https://figc.it/media/274515/331-deroga-art-51-noif-determinazione-classifica-campionato-serie-a-ss-2025-2026.pdf
+    published: 2025-06-19
+    checked_at: 2026-11-16
+    applies_to: season 2025/26
+  - publisher: Federazione Italiana Giuoco Calcio
+    title: Norme Organizzative Interne della FIGC, Titolo III (aggiornato al C.U. 209/A del 06-05-2026), art. 49
+    url: https://files.figc.it/view/acePublic/alias/contentid/1qzg5l96u12qfpnd689/0/tit3_noif_art_da47a70_------------aggiornato-al_CU209A_del_06-05-2026.pdf
+    checked_at: 2026-11-16
+    applies_to: format and relegation (20 clubs, 18th-20th relegated)
+    articles: art. 49 c. 1 a)
+tournaments:
+  - key: season
+    name: Serie A
+    phases:
+      - key: league
+        name: League
+        format: league
+        rounds: ["Regular Season - *"]
+        teams: 20
+        schedule: double_round_robin
+        matches_per_team: 38
+        ranking:
+          tiebreakers:
+            - {criterion: h2h_points, note: "classifica avulsa: points in the matches among all the tied clubs"}
+            - h2h_goal_difference
+            - goal_difference
+            - goals_for
+            - lots
+          h2h: {mode: once}
+          note: "Two clubs level on points for 1st: single-match play-off at the home of the better ranked by the classifica avulsa. Two clubs level for 17th and 18th: two-legged play-off. More than two: the classifica avulsa names the two that play it and orders all other places."
+        zones:
+          - {kind: champion, from: 1, to: 1}
+          - {kind: title_playoff, from: 1, to: 2, conditional: true, note: "only when exactly two clubs are level on points for 1st"}
+          - {kind: relegation_playoff, from: 17, to: 18, conditional: true, note: "only when the 17th and 18th are level on points"}
+          - {kind: relegation, from: 18, to: 20, target: Serie B, note: "NOIF art. 49"}
+gaps:
+  - topic: continental
+    reason: "UEFA places depend on the access list and the Coppa Italia; not coded."
+  - topic: tiebreak
+    reason: "The derogation fixes the final classification; the in-season order is not fixed in it."
