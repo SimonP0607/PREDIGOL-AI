@@ -6,7 +6,7 @@
 #
 # Checks: the file's sha256 is the one recorded at backup time; pg_restore succeeds; the schema revision comes
 # back; every key table holds at least what it held when the dump started and at most what it held when the
-# dump ended. The result goes to $PREDIGOL_DATA/state/restore-test.json. Exit 0 passed, 1 failed.
+# dump ended; every schema and every append-only trigger the backup named came back (AD-A07). The result goes to $PREDIGOL_DATA/state/restore-test.json. Exit 0 passed, 1 failed.
 set -Eeuo pipefail
 # shellcheck source=bin/lib.sh
 . "$(dirname "$0")/lib.sh"
@@ -74,6 +74,21 @@ if [[ ${#failures[@]} -eq 0 ]]; then
     if (( n < lo || n > hi )); then fail "$table: $n rows, expected between $lo and $hi"; else log "  $table: $n rows"; fi
   done < <(jq -r '.counts_before | to_entries[] | [.key, .value] | @tsv' "$MANIFEST" |
            while IFS=$'\t' read -r t lo; do printf '%s\t%s\t%s\n' "$t" "$lo" "$(jq -r --arg t "$t" '.counts_after[$t]' "$MANIFEST")"; done)
+  # AD-A07: every schema and every append-only trigger the backup named came back. A manifest written before this check existed has
+  # no "catalog": nothing more is checked for it.
+  if jq -e '.catalog | type == "object"' "$MANIFEST" > /dev/null 2>&1; then
+    got_schemas="$(q "SELECT nspname FROM pg_namespace ORDER BY 1")"
+    got_triggers="$(q "SELECT n.nspname || '.' || c.relname || ':' || t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+                       JOIN pg_namespace n ON n.oid = c.relnamespace WHERE NOT t.tgisinternal AND t.tgname LIKE '%append_only%' ORDER BY 1")"
+    lost_schemas="$(comm -23 <(jq -r '.catalog.schemas[]' "$MANIFEST" | sort -u) <(printf '%s\n' "$got_schemas" | sort -u) | paste -sd, -)"
+    lost_triggers="$(comm -23 <(jq -r '.catalog.append_only[]' "$MANIFEST" | sort -u) <(printf '%s\n' "$got_triggers" | sort -u) | paste -sd, -)"
+    if [[ -n "$lost_schemas" ]]; then fail "schemas missing after the restore: $lost_schemas"
+    else log "  schemas: $(jq -r '.catalog.schemas | length' "$MANIFEST") back"; fi
+    if [[ -n "$lost_triggers" ]]; then fail "append-only triggers missing after the restore: ${lost_triggers:0:300}"
+    else log "  append-only triggers: $(jq -r '.catalog.append_only | length' "$MANIFEST") back"; fi
+  else
+    log "  (the manifest names no schemas: a backup from before AD-A07)"
+  fi
 fi
 seconds=$(( $(date +%s) - started ))
 passed=$([[ ${#failures[@]} -eq 0 ]] && echo true || echo false)

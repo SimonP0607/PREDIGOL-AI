@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
+from fbi.api.services import capabilities as capabilities_svc
 from fbi.api.services import families as families_svc
 from fbi.api.services import intelligence as svc
 
@@ -139,3 +140,11 @@ def get_runs(conn: Db, limit: Annotated[int, Query(ge=1, le=500)] = 60) -> Envel
 def get_costs(conn: Db) -> Envelope[dict[str, Any]]:
     """Cost per match, candidate, pick, research and post-mortem, per day, and the month against the budget."""
     return svc.costs(conn)
+
+
+@router.get("/intelligence/capabilities", response_model=Envelope[dict[str, Any]])
+def get_capabilities(conn: Db) -> Envelope[dict[str, Any]]:
+    """THE REGISTRY OF CAPABILITIES (IA-056, AD-003): every capability of the plan with its state (construida, en_sombra,
+    lista_para_revision, autorizada), its safety and validation verdicts with evidence and sample, the newest rows of the gates it
+    answers to and its agents' runs of the last seven days. Reading only: the registry switches nothing."""
+    return capabilities_svc.overview(conn)
