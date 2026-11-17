@@ -165,6 +165,11 @@ def extractor_words(settings: AiSettings) -> dict[str, str]:
     return {} if settings.extractor == "v1" else {"extractor": settings.extractor}
 
 
+def output_guard_words(settings: AiSettings) -> dict[str, str]:
+    """IA-064: the owner's word for the validator of answers (``FBI_AI_OUTPUT_GUARD``) - only once moved from ``default``."""
+    return {} if settings.output_guard == "default" else {"output_guard": settings.output_guard}
+
+
 def switch_words(settings: AiSettings) -> dict[str, Any]:
     """The owner's words that decide what the layer does, exactly as the running process holds them: the mode, the five switches, the package
     job, research v2, the model of each tier and the three monthly envelopes - and, once the owner has moved them, the words of the shadow of
@@ -180,6 +185,7 @@ def switch_words(settings: AiSettings) -> dict[str, Any]:
         **shadow_words(settings),
         **phase5_words(settings),
         **extractor_words(settings),
+        **output_guard_words(settings),
     }
 
 

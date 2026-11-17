@@ -74,6 +74,15 @@ IA-060 (plan piece AD-A01) - the quarantined extractor of the web (``fbi.ai.quar
                                 restart the worker; FBI_AI_SEARCH=none stops reading the web altogether.
     FBI_AI_EXTRACTOR_SHADOW_MAX_PER_DAY   default 150 - the quarantined extractor's calls a day in shadow.
 
+IA-064 (plan piece AD-A02) - the validator of every model's answer (``fbi.ai.outputs``, ``output-guard-v1``):
+
+    FBI_AI_OUTPUT_GUARD         default (default) | shadow | enforce. default: each surface in its own mode - the answers of the agents of the
+                                shadow, of research v2, of the quarantined extractor and of the LAB are REFUSED when they are outside their
+                                closed schema or carry a link, markup, an order or a hidden character in their prose; those whose output a
+                                person sees (brief, review, narratives, post-mortems, extract-v1) are only marked in the ledger
+                                (``output_guard(shadow): ...``). shadow: every surface only marked - the way back. enforce: every surface
+                                refuses. Any other word is default. Restart the worker (about a minute).
+
 Phase 3 of the plan - the multi-agent engines in SHADOW (``fbi.ai.arms``): they run in the LAB workspace only, write rows no user and no decision
 reads, and are rolled back by the same three words. Nothing runs until ALL THREE say so (``AiSettings.orchestrate``):
 
@@ -245,6 +254,13 @@ def _extractor_mode(raw: str | None) -> ExtractorMode:
     return "shadow" if value == "shadow" else "quarantine" if value == "quarantine" else "v1"
 
 
+def _output_guard(raw: str | None) -> str:
+    """``FBI_AI_OUTPUT_GUARD`` (IA-064): ``shadow`` and ``enforce`` move it; anything else is ``default``."""
+    from fbi.ai.outputs import switch_of
+
+    return switch_of(raw)
+
+
 def _all_auto() -> dict[str, Switch]:
     return dict.fromkeys(SWITCH_ENV, "auto")
 
@@ -314,6 +330,9 @@ class AiSettings:
     extractor_shadow_max_per_day: int = 150
     """IA-060: the quarantined extractor's calls a day in ``shadow`` (``FBI_AI_EXTRACTOR_SHADOW_MAX_PER_DAY``): the pages past it are counted
     (``xq_capped``) and not read."""
+    output_guard: str = "default"
+    """IA-064 (plan piece AD-A02): the mode of the validator of every answer (``FBI_AI_OUTPUT_GUARD``, ``fbi.ai.outputs.switch_of``):
+    ``default`` (each surface its own), ``shadow`` (nothing refused, every finding marked in the ledger) or ``enforce`` (every surface refuses)."""
     pm_reviewer: bool = False
     """Plan IA, phase 5: the attribution of the shadow and the Post-Match Reviewer (``FBI_AI_PM_REVIEWER``). Off unless the word says ``on``."""
     learning_analyst: bool = False
@@ -374,6 +393,7 @@ class AiSettings:
             agents=_agents(env.get("FBI_AI_AGENTS")),
             extractor=_extractor_mode(env.get("FBI_AI_EXTRACTOR")),
             extractor_shadow_max_per_day=max(0, _int("FBI_AI_EXTRACTOR_SHADOW_MAX_PER_DAY", 150, env)),
+            output_guard=_output_guard(env.get("FBI_AI_OUTPUT_GUARD")),
             pm_reviewer=_on(env.get("FBI_AI_PM_REVIEWER")),
             learning_analyst=_on(env.get("FBI_AI_LEARNING_ANALYST")),
         )
@@ -456,6 +476,7 @@ class AiSettings:
             "package": self.package,
             "research_v2": self.research_v2,
             "extractor": self.extractor,
+            "output_guard": self.output_guard,
             "engines": list(self.engines),
             "shadow_engines": list(self.shadow_engines),
             "shadow_sample": format(self.shadow_sample.normalize(), "f"),

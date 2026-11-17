@@ -376,6 +376,12 @@ def settle_lab(conn: psycopg.Connection[Any], r: Resolved) -> None:
         )
 
         summary = summarise(r, ctx)
+    elif kind == "battery-v4":
+        from fbi.ai.battery.v4_run import (
+            summarise as summarise_v4,  # IA-065: battery-v4, beside battery-v3
+        )
+
+        summary = summarise_v4(r, ctx)
     elif kind == "replay":
         from fbi.ai.replay.harness import (
             settle as replay,  # IA-047: the replay bank keeps the raw answer, read when collected

@@ -379,7 +379,8 @@ def test_an_answer_that_is_not_claim_v1_is_recorded_once_and_its_pages_are_not_r
     got = run(far, web, broken)
     assert got.skipped is None and got.invalid == 1 and got.created == 0 and typed_rows(far.db) == []
     assert got.counts()["v2_invalid"] == 1 and not [k for k in got.counts() if k.startswith("v2_skipped")]
-    assert [r[1] for r in ledger_rows(far.db, purpose="evidence_extraction")] == ["ok"], "the provider answered: that is what the ledger says"
+    # IA-064: the common validator (fbi.ai.outputs) refuses the answer where it comes back, and the ledger says so with its closed reason
+    assert [r[1] for r in ledger_rows(far.db, purpose="evidence_extraction")] == ["invalid_output"], "the validator refused it: the ledger says so"
     assert cache.fresh(far.db, "TEAM", far.alfa, "availability", at=AT, nearest_kickoff=far.kickoff_a) is not None, "the search was paid and answered"
     assert [cache.get(far.db, "url", cache.url_key(p.url), at=AT) is not None for p in (ALFA_OUT, BETA_DOUBT, GAMA_NEWS)] == [True] * 3
     fine = reader()

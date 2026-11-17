@@ -50,7 +50,7 @@ from psycopg.errors import UniqueViolation
 from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
-from fbi.ai import gates
+from fbi.ai import gates, outputs
 from fbi.ai.config import AiSettings, Tier
 from fbi.ai.packet import canonical
 from fbi.ai.pricing import approx_tokens, token_cost
@@ -197,6 +197,9 @@ class Resolved:
     at: datetime
     late: bool
     batch_id: int
+    rejected: tuple[str, ...] = ()
+    """IA-064: why the validator of answers (``fbi.ai.outputs``) refused the answer - ``reason@path`` - when it did (``result`` is then None and
+    ``error`` is ``invalid_output``): an answer that came back and is invalid, not one that never came."""
 
 
 def register(purpose: str, handler: Handler) -> None:
@@ -235,6 +238,28 @@ def decode_flags(params: dict[str, Any], schema_name: str) -> dict[str, Any]:
     long_ttl = isinstance(system, list) and any(
         isinstance(b, dict) and (b.get("cache_control") or {}).get("ttl") == "1h" for b in system)
     return {"schema_name": schema_name, "native": native, "long_ttl": long_ttl}
+
+
+def guard_flags(request: JsonRequest) -> dict[str, Any]:
+    """IA-064: what the validator of answers (``fbi.ai.outputs``) needs to read the answer when it comes back: the surface of the schema - or,
+    for a schema nobody declared, the schema itself (it is then enforced: fail closed) - and whether the request is an experiment's (pinned)."""
+    surface = outputs.surface_of(request.schema)
+    flags: dict[str, Any] = {"surface": None if surface is None else surface.name, "pinned": request.pinned}
+    if surface is None and not request.pinned:
+        flags["schema"] = request.schema
+    return flags
+
+
+def guarded(decode: dict[str, Any], answer: LlmResult, *, switch: str) -> outputs.Verdict | None:
+    """The guard's verdict of a batch answer, or None for an item sent before IA-064 (its flags do not name a surface): it is read by its
+    handler as it was."""
+    if "surface" not in decode:
+        return None
+    surface = outputs.BY_NAME.get(str(decode.get("surface") or ""))
+    schema = surface.schema() if surface is not None else decode.get("schema")
+    if not isinstance(schema, dict):
+        schema = {"type": "object", "properties": {}}  # nothing known of it: every key is extra (fail closed)
+    return outputs.guard(schema, answer.data, switch=switch, pinned=bool(decode.get("pinned")))
 
 
 def estimate_cost(model: str, request: JsonRequest, *, typical_output: int | None, at: datetime) -> Decimal:
@@ -426,7 +451,7 @@ class BatchQueue:
             _task, model, request = self._pending[str(r["custom_id"])]
             body = client.item(str(r["custom_id"]), model, request)
             bodies.append(body)
-            flags[int(r["id"])] = decode_flags(body["params"], request.schema_name)
+            flags[int(r["id"])] = decode_flags(body["params"], request.schema_name) | guard_flags(request)
         try:
             made = client.create(bodies)
         except ProviderError as exc:
@@ -542,7 +567,7 @@ def poll(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetime, l
             conn.rollback()
             continue
         try:
-            _poll_one(conn, b, api, report, at=at, ledger=ledger)
+            _poll_one(conn, b, api, report, at=at, ledger=ledger, switch=settings.output_guard)
         except Exception as exc:  # one batch must not stop the others
             conn.rollback()
             report.errors.append(f"batch {b['id']}: {type(exc).__name__}: {exc}"[:200])
@@ -552,7 +577,7 @@ def poll(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetime, l
 
 
 def _poll_one(conn: psycopg.Connection[Any], b: dict[str, Any], api: BatchClient, report: PollReport, *, at: datetime,
-              ledger: UsageLedger) -> None:
+              ledger: UsageLedger, switch: str = "default") -> None:
     ref = str(b["batch_ref"])
     with conn.cursor(row_factory=tuple_row) as cur:
         try:
@@ -583,7 +608,7 @@ def _poll_one(conn: psycopg.Connection[Any], b: dict[str, Any], api: BatchClient
     counts: dict[str, int] = {}
     cost = Decimal(0)
     for item in items:
-        outcome, spent = _resolve(conn, b, item, by_id.get(str(item["custom_id"])), at=at, ledger=ledger)
+        outcome, spent = _resolve(conn, b, item, by_id.get(str(item["custom_id"])), at=at, ledger=ledger, switch=switch)
         counts[outcome] = counts.get(outcome, 0) + 1
         cost += spent
         report.bump(outcome)
@@ -621,7 +646,7 @@ def _record(conn: psycopg.Connection[Any], ledger: UsageLedger, b: dict[str, Any
 
 
 def _resolve(conn: psycopg.Connection[Any], b: dict[str, Any], item: dict[str, Any], result: BatchResult | None, *,
-             at: datetime, ledger: UsageLedger) -> tuple[str, Decimal]:
+             at: datetime, ledger: UsageLedger, switch: str = "default") -> tuple[str, Decimal]:
     """One result: priced, recorded, handed to its purpose's handler, and the item closed. Returns (outcome, cost)."""
     item_id = int(item["id"])
     deadline = item["deadline_at"]
@@ -656,17 +681,25 @@ def _resolve(conn: psycopg.Connection[Any], b: dict[str, Any], item: dict[str, A
         "anthropic", str(item["model"]), input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
         cached_tokens=usage.cached_tokens, cache_write_5m_tokens=usage.cache_write_5m_tokens,
         cache_write_1h_tokens=usage.cache_write_1h_tokens, batch=True, at=at)
+    guard_error: str | None = None
+    rejected: tuple[str, ...] = ()
+    if answer is not None:  # IA-064: the common validator of every answer, before its handler sees it
+        verdict = guarded(decode, answer, switch=switch)
+        guard_error = None if verdict is None else verdict.error()
+        if verdict is not None and verdict.refuses:
+            problem, answer, rejected = ProviderError("invalid_output", "; ".join(verdict.problems), usage=usage), None, verdict.problems
     status = "ok" if problem is None else "invalid_output" if problem.code == "invalid_output" \
         else "refused" if problem.code == "refused" else "failed"
+    error_text = guard_error if problem is None or guard_error is not None else f"{problem.code}: {problem}"
     uid = _record(conn, ledger, b, item, at=at, usage=usage, cost=cost, status=status,
-                  error=None if problem is None else f"{problem.code}: {problem}", request_id=str(result.message.get("id") or "") or None)
+                  error=error_text, request_id=str(result.message.get("id") or "") or None)
     outcome = "invalid" if problem is not None else "late" if late else "succeeded"
     error: str | None = None if problem is None else problem.code
     handler = handler_for(str(item["purpose"]))
     if handler is None:
         outcome, error = "invalid", f"no_handler: {item['purpose']}"
     else:
-        resolved = Resolved(item, answer, problem, uid, cost, at, late, int(b["id"]))
+        resolved = Resolved(item, answer, problem, uid, cost, at, late, int(b["id"]), rejected)
         try:
             with conn.transaction():
                 handler(conn, resolved)
