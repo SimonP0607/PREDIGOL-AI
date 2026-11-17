@@ -45,6 +45,8 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "decision_v2_shadow": timedelta(minutes=10),
     # the estimated starters (IA-094): no provider, no model; a walk of the teams' last 180 days per match due.
     "lineup_estimate_shadow": timedelta(minutes=20),
+    # player-engine-v2 (IA-129): the same walk with the dispersions, and the forecasts of every player market; at most 8 matches a pass.
+    "player_forecast_shadow": timedelta(minutes=20),
     # the single chronicle in shadow (IA-103/IA-104): at most ten calls of the small model a pass, or a batch sent.
     "chronicle_v4": timedelta(minutes=20),
     # the chronicle after the line-up (IA-116): no model, at most 50 E3 a pass, a few small reads each.

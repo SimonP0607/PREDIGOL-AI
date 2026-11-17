@@ -18,6 +18,8 @@ PACKAGE = "fbi.players"
 ALLOWED = {"scripts/ia_players.py": "the command that prints the evaluation and a match's forecast (read-only)",
            "shadowjobs/lineup_estimate.py": "the worker's job of the estimated starters (IA-094, shadow): writes intel.lineup_estimates only; "
                                             "only the scheduler imports it",
+           "shadowjobs/player_forecast.py": "the worker's job of player-engine-v2 (IA-129, shadow): writes intel.player_forecasts only; "
+                                            "only the scheduler imports it",
            "evalcycle/players.py": "the evaluation cycle's one door to the engine (IA-108, AD-D03, shadow): goal rates of the estimated "
                                    "starters for the line-up dependencies, and a player's prop; pure, it writes nothing"}
 SERVING = ("intel/", "picks/", "familydecisions/", "decision/", "api/", "parlays/", "customer/", "notify/", "messaging/", "narrative/",
