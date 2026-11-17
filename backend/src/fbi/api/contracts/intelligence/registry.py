@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from fbi.api.contracts.intelligence.base import IntelligenceContract
+from fbi.api.contracts.intelligence.console import ConsoleContract
 from fbi.api.contracts.intelligence.match import MatchIntelligence, MatchIntelligencePrivate
 from fbi.api.contracts.intelligence.projection import (
     ProjectionError,
@@ -83,6 +84,7 @@ CONTRACTS: Final[tuple[ContractSpec, ...]] = (
     ContractSpec(private=MatchIntelligencePrivate, public=MatchIntelligence,
                  public_routes=("/api/v1/matches/{fixture_id}/intelligence",),
                  private_routes=("/api/v1/admin/intelligence/matches/{fixture_id}/intelligence",)),
+    ContractSpec(private=ConsoleContract, public=None, private_routes=("/api/v1/admin/intelligence/console",)),
 )
 """Every Intelligence contract. A new one is added here in the PR that merges its models."""
 

@@ -10,12 +10,14 @@ from typing import Annotated, Any, Literal
 import psycopg
 from fastapi import APIRouter, Depends, Path, Query
 
+from fbi.api.contracts.intelligence.console import ConsoleContract
 from fbi.api.contracts.intelligence.match import MatchIntelligencePrivate
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.services import capabilities as capabilities_svc
 from fbi.api.services import families as families_svc
 from fbi.api.services import intelligence as svc
+from fbi.api.services import intelligence_console as console_svc
 from fbi.api.services import match_intelligence
 
 router = APIRouter(tags=["admin: predigol intelligence"])
@@ -159,3 +161,12 @@ def get_capabilities(conn: Db) -> Envelope[dict[str, Any]]:
     lista_para_revision, autorizada), its safety and validation verdicts with evidence and sample, the newest rows of the gates it
     answers to and its agents' runs of the last seven days. Reading only: the registry switches nothing."""
     return capabilities_svc.overview(conn)
+
+
+@router.get("/intelligence/console", response_model=Envelope[ConsoleContract])
+def get_console(conn: Db) -> Envelope[ConsoleContract]:
+    """THE INTELLIGENCE CONSOLE, contract C-11 (IA-079, AD-J08): «nada sale de la sombra» (FBI_PICKS_SOURCE, FBI_AI_MODE and the switches of
+    Intelligence, as they read), the registry of capabilities with their state and verdicts, the costs against their envelopes and the joint
+    ceiling, the safety controls (the newest battery, the leakage audit, the gates with their real verdict, the schema) and the news engine and
+    the private alerts' queue as absent with their reason. Reading only: it shows every switch and changes none."""
+    return console_svc.console(conn)

@@ -22,5 +22,7 @@ Las reglas: `backend/docs/owner/IA_057_CONTRATO_INTELLIGENCE.md`. Las pruebas: `
 | C-01 Partido (entrega 1) | `antes_del_partido` | Caso Arsenal W – London City: 59 % `calibrada` en la pública, 78,5 % `sin_calibrar` solo en la privada; nada publicado (`sin_publicados`); alineación `aun_no_disponible`; escenarios, crónica única, E1–E4 y el resto `no_entregado` con su pieza |
 | C-01 | `con_alineacion_oficial` | Alineación oficial; una selección publicada (`publicada`) con la misma cifra que su salida |
 | C-01 | `terminado` | Partido terminado; la selección `liquidada`; la crónica apagada para lectores (`pendiente_derechos`) y visible solo en la privada |
+| C-11 Consola (solo privada) | `en_sombra` | «Nada sale de la sombra» se cumple con `FBI_AI_MODE=enforce` porque el veto no está en vigor (el informe de combined no dice pass); batería NO PASA, Gate B NO EVALUADO con el cierre del dueño, un sobre al 80 % y un tope al 95 %; motor de noticias y cola de alertas `no_entregado` |
+| C-11 | `esquema_atrasado` | Una base detrás del código: el registro y los costes llegan como `{"read_failed": true, "error": "UndefinedTable"}`, la sombra `sin_comprobar` y `schema_check` dice qué tablas faltan |
 
 Al añadir un contrato: su carpeta con al menos un caso, una fila aquí y su línea en la coordinación entre sesiones.

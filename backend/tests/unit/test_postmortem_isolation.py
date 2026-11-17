@@ -80,6 +80,8 @@ NAMES_IT: dict[str, str] = {
     "api/services/ai_attribution.py": "the Admin Console's Atribución tab (GET /admin/ai/attribution): the post-mortems of the shadow with what each agent did and "
                                       "the reviewer's narrative; reading only",
     "api/services/families.py": "the Admin Console's page of the families in shadow (GET /admin/intelligence/families): their post-mortems and their memory, read",
+    "api/services/intelligence_console.py": "the Intelligence console's schema check (IA-079, GET /admin/intelligence/console) asks whether "
+                                            "the families' tables exist (to_regclass); it reads nothing of them",
     "api/services/ai_v2.py": "the Admin Console's post-mortems, learning and sources: the selections of a day with their narratives and notes",
     "api/services/ai_layer.py": "the Admin Console's AI pages: the dashboard of errors, the day's counts and the log of memory events (the card a "
                                 "user is shown, match_analysis, reaches none of it: held below)",
