@@ -215,6 +215,7 @@ MAY_NAME_USER_AI = {
     "fbi.api.services.ai_layer": "the Admin Console's view of the readers' AI beside Intelligence's",
     "fbi.chronicle.review": "after the match, judges the chronicle a reader was shown against who played (IA-022); nothing of Intelligence reads it",
     "fbi.ai.cost_paths_readers": "the owner's read-only report of the cost by path (IA-034) shows the readers' spend beside Intelligence's and never in its total; it decides nothing and nothing of Intelligence imports it",
+    "fbi.ai.envelopes_readers": "the owner's cost panel (IA-058) adds the readers' spend to production's envelope of decision 12; read-only, it decides nothing and only the panel imports it (test_the_cycle_never_loads_the_envelopes_reader)",
 }
 """The only modules that may name those tables, each with its reason."""
 
@@ -236,6 +237,17 @@ def test_nothing_of_intelligence_reads_the_readers_ai() -> None:
     from fbi.ai import usage
 
     assert "ai.usage" in usage.SPENT_SQL and not USER_AI_TABLES.search(usage.SPENT_SQL)
+
+
+def test_the_cycle_never_loads_the_envelopes_reader() -> None:
+    """IA-058: the cost panel reads the readers' ledger to add it to production's envelope; the cycle, the budget, the
+    orchestrator, the packet and the decision never load what reads it - only the panel (``fbi.ai.costs_v3``) does."""
+    reach = closure(["fbi.ai.cycle", "fbi.ai.usage", "fbi.ai.budget_v3", "fbi.ai.orchestrator", "fbi.ai.packet", "fbi.intel.decision",
+                     "fbi.ai.capability_budget"])
+    assert "fbi.ai.budget_v3" in reach and "fbi.ai.capability_budget" in reach, "the imports were not followed"
+    assert "fbi.ai.envelopes_readers" not in reach and "fbi.ai.costs_v3" not in reach
+    importers = sorted(name for name in modules() if "fbi.ai.envelopes_readers" in fbi_imports(name))
+    assert importers == ["fbi.ai.costs_v3"], importers
 
 
 SQL_CLIENT_TABLES = re.compile(r"(?<![\w.])(?:auth\.[a-z_]+|customer\.[a-z_]+|picks\.user_[a-z_]+)\b")

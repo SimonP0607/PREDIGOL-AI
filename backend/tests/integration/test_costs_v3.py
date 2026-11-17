@@ -151,7 +151,8 @@ def test_the_daily_series_has_one_line_per_day_of_the_last_two_weeks(db: psycopg
     spend(db, NOW - timedelta(hours=1), "1.25", workspace="PREDIGOL-LAB")
     days = panel(db)["days"]
     assert len(days) == costs_v3.SERIES_DAYS and days[-1]["day"] == "2032-08-15" and days[0]["day"] == "2032-08-02"
-    assert days[-1] == {"day": "2032-08-15", "production_usd": "2.0000", "lab_usd": "1.2500", "exa_usd": "0.0000"}
+    assert days[-1] == {"day": "2032-08-15", "production_usd": "2.0000", "intelligence_usd": "2.0000", "readers_usd": "0.0000",
+                        "lab_usd": "1.2500", "exa_usd": "0.0000"}
     assert days[-2]["production_usd"] == "5.0000"
 
 
@@ -172,3 +173,105 @@ def test_a_panel_that_fails_leaves_the_rest_of_the_overview_standing(db: psycopg
     assert db.execute("SELECT 1").fetchone() == (1,), "the connection is still usable"
     out = ai_layer.overview(db, at=NOW)
     assert out.data.envelopes == {} and out.data.budget["state"] in {"NORMAL", "AJUSTE", "REDUCED", "CHEAP_ONLY", "EXHAUSTED"}
+
+
+# ── IA-058: the envelopes of decision 12 ─────────────────────────────────────────────────────────────────────
+
+
+def reader(db: psycopg.Connection[Any], at: Any, usd: str, *, prompt: str = "user-narrative-v3") -> None:
+    """One call of the readers' chronicle in its own ledger (``ai.user_usage``)."""
+    db.execute("INSERT INTO ai.user_usage (at, purpose, tier, provider, model, prompt_version, cost_usd, status) "
+               "VALUES (%s, 'user_narrative', 'bulk', 'anthropic', %s, %s, %s, 'ok')", (at, HAIKU, prompt, D(usd)))
+
+
+def tagged(db: psycopg.Connection[Any], at: Any, usd: str, prompt: str, *, workspace: str = "PREDIGOL") -> None:
+    UsageLedger(shared(db)).record(at=at, purpose="pick_review", tier="analysis", provider="anthropic", model=SONNET.model,
+                                   usage=None, cost=D(usd), status="ok", prompt_version=prompt, workspace=workspace)
+
+
+def test_production_adds_the_readers_chronicle_and_squares_with_both_ledgers(db: psycopg.Connection[Any]) -> None:
+    month(db, unit="0.50")
+    before = panel(db)
+    reader(db, NOW - timedelta(hours=1), "0.40")
+    reader(db, NOW - timedelta(days=1), "0.60")
+    reader(db, NOW - timedelta(days=40), "1.00")  # July: not this month
+    p = panel(db)
+    prod = p["production"]
+    assert (prod["spent_usd"], prod["intelligence_spent_usd"], prod["readers_spent_usd"]) == ("73.0000", "72.0000", "1.0000")
+    assert prod["share"] == round(73 / 185, 4) and prod["spent_today_usd"] == "2.4000"
+    # the budget's control still counts Intelligence's alone: its projection and state do not move
+    assert prod["control_counts"] == "intelligence"
+    assert (prod["projected_usd"], prod["state"]) == (before["production"]["projected_usd"], before["production"]["state"])
+    day, yesterday = p["days"][-1], p["days"][-2]
+    assert (day["production_usd"], day["intelligence_usd"], day["readers_usd"]) == ("2.4000", "2.0000", "0.4000")
+    assert (yesterday["production_usd"], yesterday["readers_usd"]) == ("5.6000", "0.6000")
+    # the square: the panel's figure is the two ledgers' own sums of the month, read apart
+    month_from = "2032-08-01 05:00+00"
+    usage = db.execute("SELECT sum(cost_usd) FROM ai.usage_scoped WHERE scope = 'production' AND at >= %s", (month_from,)).fetchone()
+    users = db.execute("SELECT sum(cost_usd) FROM ai.user_usage WHERE at >= %s", (month_from,)).fetchone()
+    assert usage is not None and users is not None and D(prod["spent_usd"]) == usage[0] + users[0]
+    envelope = {e["scope"]: e for e in p["alerts"]["envelopes"]}["production"]
+    assert envelope["parts_usd"] == {"intelligence": "72.0000", "readers": "1.0000"} and envelope["spent_usd"] == "73.0000"
+
+
+def test_the_joint_ceiling_still_applies_and_says_it_is_pending_the_owner(db: psycopg.Connection[Any]) -> None:
+    month(db, unit="0.70")  # production projects over 135: the joint ceiling cuts the LAB below its 55
+    joint = panel(db)["joint_ceiling"]
+    assert joint["applies"] is True and joint["pending_owner"] is True and joint["independent"] is False
+    assert joint["note"] == "techo conjunto 190 vigente; pendiente de confirmación del dueño"
+    assert (joint["usd"], joint["switch"], joint["envelopes_sum_usd"]) == ("190", "FBI_AI_ENVELOPES_INDEPENDENT", "240")
+    assert D(joint["lab_allocation_usd"]) == D(joint["lab_allocation_joint_usd"]) < 55
+    assert joint["lab_allocation_independent_usd"] == "55.0000"
+    alone = panel(db, envelopes_independent=True)["joint_ceiling"]
+    assert alone["applies"] is False and alone["lab_allocation_usd"] == "55.0000", "the prepared change, off by default"
+
+
+def test_new_capabilities_are_measured_against_their_cap_in_their_own_envelope(db: psycopg.Connection[Any]) -> None:
+    month(db, unit="0.50")
+    tagged(db, NOW - timedelta(hours=2), "2.50", "replay-bank-v1", workspace="PREDIGOL-LAB")  # 85 % of AD-K04's 2.93
+    tagged(db, NOW - timedelta(hours=2), "9.00", "battery-v4", workspace="PREDIGOL")  # production's money: not the LAB's battery
+    tagged(db, NOW - timedelta(hours=2), "1.00", "battery-v3", workspace="PREDIGOL-LAB")  # the old battery: no new capability
+    reader(db, NOW - timedelta(hours=1), "0.70", prompt="chronicle-v4-es")  # 5 % of AD-F02's 14
+    p = panel(db)
+    items = {c["key"]: c for c in p["capabilities"]["items"]}
+    assert (items["replay_regression"]["spent_usd"], items["replay_regression"]["alert"]) == ("2.50", 80)
+    assert (items["battery_v4"]["spent_usd"], items["battery_v4"]["alert"]) == ("0.00", None)
+    assert (items["chronicle_v4"]["spent_usd"], items["chronicle_v4"]["alert"]) == ("0.70", None)
+    assert p["alerts"]["capabilities"] == [{"key": "replay_regression", "alert": 80}] and p["alerts"]["notifies_readers"] is False
+
+
+def test_exas_price_is_the_codes_and_the_published_one_is_shown_unverified(db: psycopg.Connection[Any]) -> None:
+    for _ in range(4):
+        spend(db, NOW - timedelta(hours=1), "0.015", search=True)
+    price = panel(db)["exa"]["price"]
+    assert (price["code_usd_per_search"], price["published_usd_per_search"]) == ("0.015", "0.007")
+    assert (price["month_at_code_usd"], price["month_at_published_usd"], price["difference_usd"]) == ("0.0600", "0.0280", "0.0320")
+    assert price["verified_by_invoice"] is False and price["status"] == "sin verificar hasta la factura"
+
+
+def test_the_warnings_at_80_and_95_are_shown_logged_once_and_write_nothing(db: psycopg.Connection[Any], monkeypatch: pytest.MonkeyPatch,
+                                                                           caplog: pytest.LogCaptureFixture) -> None:
+    from fbi.ai import envelopes_readers
+    from fbi.ai.usage import check_alerts
+
+    monkeypatch.setattr(envelopes_readers, "_LOGGED", set())
+    monkeypatch.setattr(envelopes_readers.log, "disabled", False)  # alembic's fileConfig, run by the fixture, disables the loggers it found
+    month(db, unit="0.50")
+    spend(db, NOW - timedelta(hours=1), "33.30", search=True)  # Exa at 95.1 % of 35
+    spend(db, NOW - timedelta(hours=1), "45.00", workspace="PREDIGOL-LAB")  # the LAB at 81.8 % of 55
+    tables = ("ai.budget_alerts", "ai.envelope_alerts", "audit.notifications")
+    before = {t: db.execute(f"SELECT count(*) FROM {t}").fetchone() for t in tables}
+    caplog.set_level("WARNING", logger="fbi.ai.envelopes")
+    check_alerts(db, at=NOW, settings=settings())  # the cycle's alerts: they never read the readers' ledger nor log these
+    assert [r for r in caplog.records if r.name == "fbi.ai.envelopes"] == []
+    after_cycle = {t: db.execute(f"SELECT count(*) FROM {t}").fetchone() for t in tables}
+    alerts = {e["scope"]: e["alert"] for e in panel(db)["alerts"]["envelopes"]}
+    assert alerts == {"production": None, "exa": 95, "lab": 80}, "production is at 39 %"
+    logged = [r.getMessage() for r in caplog.records if r.name == "fbi.ai.envelopes"]
+    assert [m.split(" of its")[0] for m in logged] == ["IA-058 envelope exa reached 80 %", "IA-058 envelope exa reached 95 %",
+                                                       "IA-058 envelope lab reached 80 %"]
+    caplog.clear()
+    panel(db)
+    assert [r for r in caplog.records if r.name == "fbi.ai.envelopes"] == [], "once per process and month"
+    assert {t: db.execute(f"SELECT count(*) FROM {t}").fetchone() for t in tables} == after_cycle
+    assert before["audit.notifications"] == after_cycle["audit.notifications"]

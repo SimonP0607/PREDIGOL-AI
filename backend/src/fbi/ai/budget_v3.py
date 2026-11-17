@@ -38,6 +38,16 @@ crossing 95 and 100 %. Production's month alert is written to ``ai.budget_alerts
 one key, shared by both generations of code, so a rollback never meets a schema it cannot use); the LAB's, Exa's and the
 projection's go to ``ai.envelope_alerts`` (scope and kind). ``ai.budget_alerts_all`` reads both.
 
+THE ENVELOPES OF DECISION 12 (IA-058, AD-A06 of the plan of the definitive architecture): production US$185 - Claude of Intelligence
+AND the readers' chronicle -, Exa US$35 and the LAB US$55, each against its own figure (``figures_of``), with the warnings at 80 and 95 % of
+each and of each new capability's cap (``warnings_of``, ``fbi.ai.capability_budget``). Pure arithmetic: this module never reads the readers'
+ledger (plan UX A11) - the owner's panel does, through ``fbi.ai.envelopes_readers``, which nothing of the cycle loads.
+A warning warns: nothing is cut by it, and no reader is told.
+
+THE JOINT CEILING STAYS. The LAB still yields to ``FBI_AI_JOINT_CEILING_USD`` (190) after production's projection: the owner has not
+confirmed that the envelopes of decision 12 replace it. ``FBI_AI_ENVELOPES_INDEPENDENT`` (off by default) is the prepared change -
+on, the LAB gets its envelope whole (``lab_allocation(independent=True)``).
+
 Everything here is a function of the ledger and of ``at``: no clock, no network, nothing written but the alerts."""
 
 from __future__ import annotations
@@ -52,6 +62,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row, tuple_row
 
+from fbi.ai import capability_budget
 from fbi.ai.calendar import (
     day_bounds,
     day_start,
@@ -90,6 +101,12 @@ LIMIT_COOLDOWN_MAX = timedelta(hours=6)
 PROJECTION_ALERTS = (95, 100)
 EXA_HARD_FACTOR = Decimal("2")
 EXA_SEARCH_USD = Decimal("0.015")
+"""What the code charges a search (``fbi.ai.pricing.SEARCH_PRICES['exa']`` / 1,000). Exa's page says 0.007 (``pricing.EXA_PUBLISHED_PER_K``):
+unverified until an invoice says which one is right, and this figure is not changed before."""
+ENVELOPE_ALERTS = capability_budget.ALERT_AT
+"""IA-058: the internal warnings at 80 and 95 % of each envelope of decision 12 (and of each new capability's cap)."""
+JOINT_CEILING_PENDING = True
+"""The owner has not confirmed whether the envelopes of decision 12 replace the joint ceiling of 190: the panel says so while True."""
 MIN_LAB_DAY = Decimal("0.01")
 
 COSTS_SQL = """
@@ -188,9 +205,13 @@ def state_of(*, monthly: Decimal, spent_month: Decimal, spent_today: Decimal, da
     return "NORMAL", ()
 
 
-def lab_allocation(*, envelope: Decimal, joint_ceiling: Decimal, projected_production: Decimal) -> Decimal:
+def lab_allocation(*, envelope: Decimal, joint_ceiling: Decimal, projected_production: Decimal,
+                   independent: bool = False) -> Decimal:
     """What the LAB may spend this month: its envelope, or what the joint ceiling leaves after production's projection -
-    whichever is less. Production goes first."""
+    whichever is less. Production goes first. ``independent`` (``FBI_AI_ENVELOPES_INDEPENDENT``, off until the owner confirms
+    it) is the prepared change of decision 12: the LAB's envelope whole, whatever production projects."""
+    if independent:
+        return max(Decimal(0), envelope)
     return max(Decimal(0), min(envelope, joint_ceiling - projected_production))
 
 
@@ -428,7 +449,8 @@ def lab_day(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings
     envelope = settings.lab_monthly_budget
     prod = forecast(conn, at=at)
     allocation = lab_allocation(envelope=envelope, joint_ceiling=settings.joint_ceiling,
-                                projected_production=prod.projected_at_dawn)
+                                projected_production=prod.projected_at_dawn,
+                                independent=settings.envelopes_independent)
     month_first = month_start(day)
     since = min(day_start(month_first), day_start(day - timedelta(days=14)))
     costs = costs_by_day(conn, "lab", since, at + timedelta(seconds=1))
@@ -523,3 +545,63 @@ def check_alerts(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSet
             spent = sum(costs_by_day(conn, scope, since, until).values(), Decimal(0))
             record(scope, "month", crossed(spent, envelope), spent, envelope)
     return new
+
+
+# ── the envelopes of decision 12 (IA-058) ──────────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class EnvelopeFigure:
+    """One envelope's month: what it spent against what the code gives it and what decision 12 gives it."""
+
+    scope: str
+    spent: Decimal
+    budget: Decimal
+    decided: Decimal
+    parts: dict[str, Decimal] = field(default_factory=dict)
+
+    @property
+    def alert(self) -> int | None:
+        return capability_budget.level(self.spent, self.budget, ENVELOPE_ALERTS)
+
+    def as_json(self) -> dict[str, Any]:
+        return {"scope": self.scope, "spent_usd": str(_money(self.spent)), "budget_usd": str(self.budget),
+                "decided_usd": str(self.decided), "matches_decision": self.budget == self.decided,
+                "share": round(float(self.spent / self.budget), 4) if self.budget > 0 else None, "alert": self.alert,
+                "parts_usd": {k: str(_money(v)) for k, v in self.parts.items()}}
+
+
+def figures_of(*, intelligence: Decimal, readers: Decimal, lab: Decimal, exa: Decimal,
+               settings: AiSettings) -> list[EnvelopeFigure]:
+    """The three envelopes of decision 12 from the month's spends: production is Intelligence's Claude AND the readers'."""
+    decided = capability_budget.DECISION_12
+    return [EnvelopeFigure("production", intelligence + readers, settings.monthly_budget, decided["production"],
+                           {"intelligence": intelligence, "readers": readers}),
+            EnvelopeFigure("exa", exa, settings.exa_monthly_budget, decided["exa"]),
+            EnvelopeFigure("lab", lab, settings.lab_monthly_budget, decided["lab"])]
+
+
+@dataclass(frozen=True)
+class EnvelopeWarning:
+    """An internal warning: an envelope or a capability that reached 80 or 95 % of its figure this month."""
+
+    month: date
+    kind: str
+    """``envelope`` or ``capability``."""
+    name: str
+    threshold: int
+    spent: Decimal
+    budget: Decimal
+
+
+def warnings_of(month: date, figures: list[EnvelopeFigure], capabilities: list[dict[str, Any]]) -> list[EnvelopeWarning]:
+    """Every threshold (80, 95) reached this month, by the envelopes and by the capabilities of the register."""
+    out: list[EnvelopeWarning] = []
+    for f in figures:
+        for t in crossed(f.spent, f.budget, ENVELOPE_ALERTS):
+            out.append(EnvelopeWarning(month, "envelope", f.scope, t, f.spent, f.budget))
+    for c in capabilities:
+        spent, cap = Decimal(c["spent_usd"]), Decimal(c["monthly_usd"])
+        for t in crossed(spent, cap, ENVELOPE_ALERTS):
+            out.append(EnvelopeWarning(month, "capability", str(c["key"]), t, spent, cap))
+    return out
