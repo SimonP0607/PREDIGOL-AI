@@ -63,14 +63,14 @@ def test_the_prompts_of_aa_v1_are_new_versions_and_so_are_their_agents() -> None
     # IA-009 wrote it
     assert (prompts.MATCH_CONTEXT_VERSION, prompts.MATCH_ASSESS_VERSION, prompts.STATS_ASSESS_VERSION) == (
         "match-context-v4", "match-assess-v3", "stats-assess-v3")
-    assert (match.VERSION, stats.VERSION) == ("match-v5", "stats-v4")
+    assert (match.VERSION, stats.VERSION) == ("match-v6", "stats-v5")
     assert rg.REGISTRY.in_force("match").version == match.VERSION and rg.REGISTRY.in_force("stats").version == stats.VERSION
-    assert [r.version for r in rg.REGISTRY.history("match")] == ["match-v1", "match-v2", "match-v3", "match-v4", "match-v5"]
-    assert [r.version for r in rg.REGISTRY.history("stats")] == ["stats-v1", "stats-v2", "stats-v3", "stats-v4"]
+    assert [r.version for r in rg.REGISTRY.history("match")] == ["match-v1", "match-v2", "match-v3", "match-v4", "match-v5", "match-v6"]
+    assert [r.version for r in rg.REGISTRY.history("stats")] == ["stats-v1", "stats-v2", "stats-v3", "stats-v4", "stats-v5"]
     assert rg.REGISTRY.history("match")[1].phase == "IA-009" and rg.REGISTRY.history("stats")[1].phase == "IA-009"
     for agent in ("match", "stats"):
         entry = rg.REGISTRY.in_force(agent)
-        assert entry.born_as == "CHALLENGER" and not entry.baseline and entry.phase == "IA-028", "the code never promotes: only the owner does"
+        assert entry.born_as == "CHALLENGER" and not entry.baseline and entry.phase == "IA-123", "the code never promotes: only the owner does"
         assert rg.live_fingerprint(rg.REGISTRY.spec(agent)) == entry.fingerprint
     assert not rg.REGISTRY.problems(), "every label names one text, and the ledger holds the code"
 
@@ -170,7 +170,7 @@ def test_a_question_of_v2_never_shares_a_key_with_one_of_v1() -> None:
         now = rg.REGISTRY.identity_for(agent, task, workspace="lab", input_version="mcp-v1", input_hash=hash_, pass_kind="pre", fixture_id=7)
         born = rg.REGISTRY.history(agent)[0]
         then = replace(now, agent_version=born.version, prompt_version=born.parts[task].prompt_version)
-        assert now.agent_version.endswith(("-v2", "-v3", "-v4", "-v5")) and now.prompt_version.endswith(("-v2", "-v3", "-v4"))
+        assert now.agent_version.endswith(("-v2", "-v3", "-v4", "-v5", "-v6")) and now.prompt_version.endswith(("-v2", "-v3", "-v4"))
         assert then.agent_version.endswith("-v1") and then.prompt_version.endswith("-v1")
         assert now.key != then.key, (agent, task)
 

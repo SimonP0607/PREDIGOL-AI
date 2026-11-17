@@ -109,6 +109,10 @@ at worst, and a duplicated tick costs nothing at all.
   * ``selection_eval_shadow``  every 60 min (``FBI_SELECTION_EVAL_MINUTES``), only while ``FBI_SELECTION_EVAL`` is ``shadow`` (off by
     default): the one evaluation after the match of every selection settled in the last seven days (``fbi.shadowjobs.selection_eval``,
     IA-112, ``eval-sel-v1``), appended to ``intel.selection_evaluations``. Database only; nothing a reader, a pick or a decision reads.
+  * ``council_reduced_shadow``  every 30 min (``FBI_COUNCIL_REDUCED_MINUTES``), only while ``FBI_COUNCIL_REDUCED`` is ``shadow`` (off by
+    default): the reduced Council of every pass of the shadow (``fbi.shadowjobs.council_reduced``, IA-124, ``council-reduced-v1``) - the
+    rules by default, the judge only where a material contradiction with value and time is recorded - appended to ``ai.council_reduced``.
+    Database only, no model; nothing a reader, a pick or a decision reads.
   * ``signals_ingest``  every 15 min (``FBI_SIGNALS_MINUTES``), only while ``FBI_SIGNALS=shadow`` (off by default): the RSS feeds and
     sitemaps of the directory v2 (``fbi.news.signals``, IA-085) - only of sources the policy lets be read (authorised and signed by the
     owner), robots.txt first, conditional requests; titles, dates and links into ``news.items``, and for the pending sources only what
@@ -1396,6 +1400,25 @@ async def _selection_eval_shadow() -> None:
     await asyncio.to_thread(_selection_eval_shadow_now)
 
 
+def _council_reduced_shadow_now() -> None:
+    """The reduced Council (IA-124): one pass. Never raises; writes only ``ai.council_reduced``."""
+    from fbi.shadowjobs import council_reduced as crd
+
+    if crd.mode() != "shadow":
+        return
+    try:
+        with _connect() as conn:
+            r = crd.run(conn, now=now(), code_version=code_version())
+        log.info("council_reduced_shadow.run", **{k: v for k, v in r.items() if k != "errors"}, errors=r["errors"][:3])
+    except Exception as exc:
+        log.error("council_reduced_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _council_reduced_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_council_reduced_shadow_now)
+
+
 def _user_narrative_now() -> None:
     """The readers' narrative (plan UX, A11): one pass with its ledger row. Never raises: the readers' AI must never stop the
     worker."""
@@ -1919,7 +1942,7 @@ WORKER_JOB_TYPES = frozenset({
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
     "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest", "decision_v2_shadow", "lineup_estimate_shadow",
     "news_stories", "chronicle_v4", "eval_cycle_shadow", "eval_cycle_e3", "selection_settle_shadow", "parlay_v6_shadow", "selection_eval_shadow",
-    "chronicle_update", "chronicle_review_v2",
+    "chronicle_update", "chronicle_review_v2", "council_reduced_shadow",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -2318,6 +2341,14 @@ async def main() -> None:
                           misfire_grace_time=sev.every_minutes() * 60, next_run_time=moment + timedelta(minutes=37))
     else:
         log.info("worker.selection_eval_shadow_off", hint="FBI_SELECTION_EVAL is not shadow: no evaluation after the match is kept (IA-112)")
+    from fbi.shadowjobs import council_reduced as crd
+
+    if crd.mode() == "shadow":
+        scheduler.add_job(_deadline("council_reduced_shadow", "council_reduced_shadow", _council_reduced_shadow), "interval",
+                          minutes=crd.every_minutes(), id="council_reduced_shadow", max_instances=1, coalesce=True,
+                          misfire_grace_time=crd.every_minutes() * 60, next_run_time=moment + timedelta(minutes=23))
+    else:
+        log.info("worker.council_reduced_shadow_off", hint="FBI_COUNCIL_REDUCED is not shadow: no reduced Council is kept (IA-124)")
     from fbi.news import signals
 
     if signals.mode() == "shadow":

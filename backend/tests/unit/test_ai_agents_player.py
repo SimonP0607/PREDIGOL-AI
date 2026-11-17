@@ -178,8 +178,10 @@ def test_the_player_agent_is_built_challenger_with_its_ledger_entry_and_nothing_
     assert spec.contract == PLAYER_ASSESSMENT and spec.reads == "player"
     assert [(t.task, t.model, t.effort) for t in spec.tasks] == [
         ("evaluation", router.MODELS[router.SPECS["evaluation"].level], router.SPECS["evaluation"].effort)]
-    entry = rg.REGISTRY.in_force("player")
-    assert (entry.version, entry.born_as, entry.baseline, entry.phase) == ("player-v1", "CHALLENGER", False, "IA-017")
+    born, entry = rg.REGISTRY.history("player")
+    assert (born.version, born.born_as, born.baseline, born.phase) == ("player-v1", "CHALLENGER", False, "IA-017")
+    assert (entry.version, entry.born_as, entry.baseline, entry.phase) == ("player-v2", "CHALLENGER", False, "IA-123")
+    assert entry is rg.REGISTRY.in_force("player") and entry.fingerprint == born.fingerprint and entry.parts == born.parts
     assert rg.live_fingerprint(spec) == entry.fingerprint
     assert entry.parts["evaluation"].prompt_version == prompts.PLAYER_ASSESS_VERSION == "player-assess-v1"
     assert rg.POSTPONED == () and not rg.REGISTRY.problems()
@@ -199,7 +201,7 @@ def test_the_switch_names_player_last_and_it_is_off_unless_named(monkeypatch: py
 def test_the_engine_versions_are_those_of_before_with_the_player_off() -> None:
     for engine in ENGINE_VERSION:
         assert engine_version(engine, with_stats=False) == ENGINE_VERSION[engine]
-    assert engine_version("ma-v1", with_stats=True, with_player=True).startswith("ma-v1+match-v5+stats-v4+player-v1+council-v1")
+    assert engine_version("ma-v1", with_stats=True, with_player=True).startswith("ma-v1+match-v6+stats-v5+player-v2+council-v1")
     assert engine_version("cs-v1", with_stats=True, with_player=True) == ENGINE_VERSION["cs-v1"]
 
 

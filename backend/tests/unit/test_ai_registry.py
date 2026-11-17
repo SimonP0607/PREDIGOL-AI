@@ -176,11 +176,13 @@ def test_an_agent_built_after_the_baseline_is_born_a_challenger_with_a_reason_an
         for later in REGISTRY.history(agent)[1:]:  # a later version is born the same way: a challenger, never promoted by the code
             assert not later.baseline and later.born_as == "CHALLENGER" and len(later.reason) >= rg.MIN_REASON
     assert {a: [r.version for r in REGISTRY.history(a)] for a in built if len(REGISTRY.history(a)) > 1} == {
-        "match": ["match-v1", "match-v2", "match-v3", "match-v4", "match-v5"], "stats": ["stats-v1", "stats-v2", "stats-v3", "stats-v4"],
+        "match": ["match-v1", "match-v2", "match-v3", "match-v4", "match-v5", "match-v6"],
+        "stats": ["stats-v1", "stats-v2", "stats-v3", "stats-v4", "stats-v5"], "player": ["player-v1", "player-v2"],
         "claim_extractor": ["extract-v2", "extract-v3"]}, (
         "IA-009: the prompts of aa-v1 with their output checklist; IA-014: the Match Agent's v3 with the references of the package; IA-018: the "
         "Statistics Agent's v3 with the closed checklist and the Match Agent's CONTEXT prompt v4; IA-021: the Claim Extractor's v3 names the player in his quote; IA-028: "
-        "the Match Agent's v5 and the Statistics Agent's v4 ask with structured outputs")
+        "the Match Agent's v5 and the Statistics Agent's v4 ask with structured outputs; IA-123: v6, v5 and the Player Agent's v2 are handed "
+        "the findings under porcion-v1")
     assert {s.agent: s.replaces for s in AGENTS if s.replaces} == {
         "claim_extractor": "extractor", "pmr": "post_match_reviewer", "la": "learning_analyst", "quarantine_extractor": "extractor"}
     assert (REGISTRY.in_force("pmr").version, REGISTRY.in_force("la").version) == ("pmr-v1", "la-v1")
@@ -278,7 +280,7 @@ def test_a_task_asked_with_the_forced_tool_call_hashes_as_before_ia028() -> None
     assert rg.fingerprint_body(native, rg.live_parts(native))["tasks"]["t"]["native"] is True
     assert ', native=True),' in rg.stub(native, "x-v2") and "native" not in rg.stub(forced, "x-v2")
     assert {a: [p.native for e in REGISTRY.history(a) for p in e.parts.values()] for a in ("match", "stats")} == {
-        "match": [False] * 8 + [True, True], "stats": [False, False, False, True]}
+        "match": [False] * 8 + [True] * 4, "stats": [False, False, False, True, True]}
     assert not [e for s in AGENTS if s.agent not in ("match", "stats") for e in REGISTRY.history(s.agent) if any(p.native for p in e.parts.values())]
 
 

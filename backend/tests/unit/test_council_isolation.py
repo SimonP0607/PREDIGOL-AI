@@ -16,7 +16,8 @@ SCRIPTS = ROOT / "scripts"
 APPS = ROOT / "apps"
 
 MODULE = "fbi.council"
-ALLOWED = {"scripts/ia_council_v2.py": "the command that prints the deliberation (read-only)"}
+ALLOWED = {"scripts/ia_council_v2.py": "the command that prints the deliberation (read-only)",
+           "councilpass/store.py": "IA-124: the shadow writer of the reduced Council (ai.council_reduced only, no model; FBI_COUNCIL_REDUCED)"}
 DECIDES = ("intel/decision.py", "intel/state_v2.py", "intel/stake.py", "picks/", "familydecisions/", "api/", "parlays/", "ai/orchestrator.py",
            "ai/orchestrator_store.py", "ai/agents/", "ai/router.py", "narrative/", "messaging/", "notify/", "customer/", "predictions/")
 """What decides a state, a pick or a stake, what serves or tells a user, and what runs the agents: none of it may import the protocol."""

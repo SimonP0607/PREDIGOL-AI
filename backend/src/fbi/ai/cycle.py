@@ -40,7 +40,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Final
+from typing import Any, Final, cast
 
 import httpx
 import psycopg
@@ -49,6 +49,7 @@ from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai import entity_research, gates, research
+from fbi.ai import review_retirement as retire
 from fbi.ai.analysis import ValueOption, build_cards, store_analysis
 from fbi.ai.batch import CYCLE_LOCK, BatchClient, BatchQueue, abandon_unsent, open_counts
 from fbi.ai.brief import Brief, make_brief
@@ -610,7 +611,7 @@ def _free(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
             cand = candidate_of(x, packet.content.get("models") or {})
             key = (cand.market_key, cand.selection, cand.line)
             reviewed = review_candidate(conn, settings, cand, packet, packet_id, at=at, use_llm=False,
-                                        prior_llm=_carried(last_llm.get(key), at=at))
+                                        prior_llm=_carried(last_llm.get(key), at=at) if retire.carries(settings.review_v2) else None)
             reviews[key] = reviewed
             report.counts["reviews"] += 1
             report.counts[f"decision_{reviewed.decision.lower()}"] += 1
@@ -841,24 +842,28 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
         key = (cand.market_key, cand.selection, cand.line)
         sel_key = x.leg.candidate.selection_key
         strong = sel_key in l3 or (bool(material) and sel_key == best_key)
-        tier: Tier = "final" if strong and allow.deep > 0 else "analysis"
+        # IA-125 (AD-D11): the step of the retirement of review-v2 (FBI_REVIEW_V2; ``on``, the default, is today's path byte for byte)
+        step = settings.review_v2
+        tier: Tier = cast(Tier, retire.tier_for(step, "final" if strong and allow.deep > 0 else "analysis"))
         role = "pick" if sel_key in l3 else "candidate"
         last = last_llm.get(key)
         b = budget_of(conn, at=at, settings=settings)
         use_llm = (llm_ready and allow.llm > 0 and b.pass_allows(kind) and b.allows("bulk")
-                   and needs_llm(last, cand, evidence_ids=evidence_ids, lineups_confirmed=confirmed))
+                   and needs_llm(last, cand, evidence_ids=evidence_ids, lineups_confirmed=confirmed)
+                   and retire.model_reviews(step, cand.fixture_id, cand.market_key, cand.selection, cand.line))
         # a review that can wait goes to a Message Batch: the plan's table (first pass; pre pass with the match four hours away or
         # more), the owner's switch and the evidence of the gate decide (``BatchQueue.routes``)
         deferral = Deferral(queue, packet_id, settings.mode, kind) if use_llm and queue is not None and queue.routes(
             tier=tier, pass_kind=kind, kickoff_at=cand.kickoff_at, role=role) else None
         reviewed = review_candidate(conn, settings, cand, packet, packet_id, at=at, use_llm=use_llm, tier=tier,
                                     ledger=ledger, transport=transport, provider=provider,
-                                    prior_llm=None if use_llm else _carried(last, at=at), role=role, deferral=deferral)
+                                    prior_llm=None if use_llm or not retire.carries(step) else _carried(last, at=at), role=role,
+                                    deferral=deferral)
         if reviewed.pending is not None:
             _count_batched(report, counts, reviewed, allow, tier)
         if use_llm and reviewed.llm is not None and reviewed.llm.status == "ok" and tier == "analysis" \
                 and {reviewed.rules.decision, reviewed.llm.decision} == {"APPROVE", "REJECT"} and allow.deep > 0 \
-                and budget_of(conn, at=at, settings=settings).pass_allows(kind):
+                and retire.escalates(step) and budget_of(conn, at=at, settings=settings).pass_allows(kind):
             # the rules and the intermediate model contradict each other outright: the strong model decides
             _count_llm(report, counts, reviewed, allow, "analysis")
             cost += reviewed.llm.cost
@@ -867,7 +872,7 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
             reviewed = review_candidate(conn, settings, cand, packet, packet_id, at=at, use_llm=True, tier=tier,
                                         ledger=ledger, transport=transport, provider=provider, role="contradiction")
         elif _arbitrable(reviewed, use_llm=use_llm) and llm_ready and allow.llm > 0 and allow.deep > 0 \
-                and budget_of(conn, at=at, settings=settings).pass_allows(kind):
+                and retire.escalates(step) and budget_of(conn, at=at, settings=settings).pass_allows(kind):
             # the same contradiction, with the intermediate review having come from a Message Batch: it arrived after the pass that asked it,
             # so the strong model decides now, in real time, at the first pass that can (once: its answer is the newest review)
             tier = "final"
@@ -890,7 +895,8 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
         watch = watch_candidate(packet)
         if watch is not None and b.pass_allows(kind):
             key = (watch.market_key, watch.selection, watch.line)
-            if needs_llm(last_llm.get(key), watch, evidence_ids=evidence_ids, lineups_confirmed=confirmed):
+            if needs_llm(last_llm.get(key), watch, evidence_ids=evidence_ids, lineups_confirmed=confirmed) and retire.model_reviews(
+                    settings.review_v2, watch.fixture_id, watch.market_key, watch.selection, watch.line):
                 reviewed = review_candidate(conn, settings, watch, packet, packet_id, at=at, use_llm=True,
                                             tier="analysis", ledger=ledger, transport=transport, provider=provider,
                                             role="watch")

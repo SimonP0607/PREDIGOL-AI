@@ -26,7 +26,7 @@ def requests() -> dict[str, JsonRequest]:
 
 
 def test_the_two_agents_ask_natively_and_the_council_does_not() -> None:
-    assert (match.VERSION, match.NATIVE, stats.VERSION, stats.NATIVE) == ("match-v5", True, "stats-v4", True)
+    assert (match.VERSION, match.NATIVE, stats.VERSION, stats.NATIVE) == ("match-v6", True, "stats-v5", True)
     for mode, base in (("CONTEXT", "m_context"), ("EVALUATION", "m_reject")):
         own = agentworld.request_of(agentworld.build("match", base))
         assert own.native_schema is True and own.system == match.SYSTEM[mode], mode
@@ -49,7 +49,8 @@ def test_the_body_puts_the_schema_in_the_output_format_and_offers_no_tool() -> N
 def test_the_registry_holds_v5_and_v4_as_new_challengers_with_the_prompts_of_before() -> None:
     assert not rg.REGISTRY.problems()
     for agent, version, previous in (("match", "match-v5", "match-v4"), ("stats", "stats-v4", "stats-v3")):
-        entry, before = rg.REGISTRY.in_force(agent), next(e for e in rg.REGISTRY.history(agent) if e.version == previous)
+        entry = next(e for e in rg.REGISTRY.history(agent) if e.version == version)  # IA-123 put v6 and v5 in force after them, same fingerprint
+        before = next(e for e in rg.REGISTRY.history(agent) if e.version == previous)
         assert (entry.version, entry.phase, entry.born_as, entry.baseline, entry.decided_by) == (version, "IA-028", "CHALLENGER", False, "owner")
         assert entry.registered_at > before.registered_at and entry.fingerprint != before.fingerprint
         assert rg.live_fingerprint(rg.REGISTRY.spec(agent)) == entry.fingerprint
@@ -58,8 +59,8 @@ def test_the_registry_holds_v5_and_v4_as_new_challengers_with_the_prompts_of_bef
         assert "battery-v3" in entry.reason and "CHALLENGER" in entry.reason and "intel.promotions" in entry.reason
         for task in entry.parts:
             now = rg.REGISTRY.identity_for(agent, task, workspace="lab", input_version="mcp-v1", input_hash="a" * 64, pass_kind="pre", fixture_id=7)
-            then = replace(now, agent_version=previous)
-            assert now.agent_version == version and now.key != then.key, "a question of v5 never reuses an answer of v4"
+            mine, then = replace(now, agent_version=version), replace(now, agent_version=previous)
+            assert now.agent_version == rg.REGISTRY.in_force(agent).version and mine.key != then.key, "a question of v5 never reuses an answer of v4"
     assert rg.REGISTRY.in_force("council").version == council.VERSION == "council-v1"
 
 

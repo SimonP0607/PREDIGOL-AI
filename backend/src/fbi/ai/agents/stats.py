@@ -1,4 +1,4 @@
-"""The Statistics Agent (``stats-v4``; Plan Maestro IA, phase 4, section 10): what it is asked and what the server makes of what it answers.
+"""The Statistics Agent (``stats-v5``; Plan Maestro IA, phase 4, section 10): what it is asked and what the server makes of what it answers.
 
 One agent, one contract (``aa-v1``, ``fbi.ai.contracts.assessment``), ONE task: ``evaluation``, mode EVALUATION, Haiku 5.5 at effort medium (the router's
 task of that name, ``router-v1``; never this module's choice). It assesses the selections of CORNERS and CARDS the server names (``c4``, ``c5``... after
@@ -77,7 +77,9 @@ from fbi.ai.providers.base import JsonRequest
 from fbi.ai.stats_factors import RELATIONS, descriptive_blocks, under
 
 AGENT: Final = "stats"
-VERSION: Final = "stats-v4"
+VERSION: Final = "stats-v5"
+"""v5 (IA-123, AD-D09): the prompt, the contract and the reader of v4; the findings it is handed follow ``match.PORCION`` (a C07 over evidence of
+transfers, a kind its slice leaves out, no longer reaches it: V3 of the contract of the deliberation)."""
 NATIVE: Final = True
 """The answer is asked with structured outputs (IA-028), never the forced tool call: part of the agent's identity (the registry reads it)."""
 TASK: Final = "evaluation"

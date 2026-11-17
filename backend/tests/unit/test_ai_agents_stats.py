@@ -149,8 +149,8 @@ def test_the_model_and_the_effort_are_the_routers() -> None:
     assert stats.effort_of() == router.SPECS["evaluation"].effort == "medium"
     spec = rg.REGISTRY.spec("stats")
     assert [(t.task, t.model, t.effort, t.definition().prompt_version) for t in spec.tasks] == [("evaluation", "claude-haiku-5-5", "medium", "stats-assess-v3")]
-    assert spec.reads == "stats" and spec.contract == "aa-v1" and rg.REGISTRY.in_force("stats").version == "stats-v4" == stats.VERSION
-    born, second, third, entry = rg.REGISTRY.history("stats")
+    assert spec.reads == "stats" and spec.contract == "aa-v1" and rg.REGISTRY.in_force("stats").version == "stats-v5" == stats.VERSION
+    born, second, third, entry, fifth = rg.REGISTRY.history("stats")
     assert born.version == "stats-v1" and born.born_as == "CHALLENGER" and not born.baseline and born.phase == "IA-4"
     assert second.version == "stats-v2" and second.born_as == "CHALLENGER" and not second.baseline and second.phase == "IA-009"
     assert third.version == "stats-v3" and third.born_as == "CHALLENGER" and not third.baseline and third.phase == "IA-018"
@@ -158,6 +158,8 @@ def test_the_model_and_the_effort_are_the_routers() -> None:
     assert [e.parts["evaluation"].prompt_version for e in (born, second, third, entry)] == [
         "stats-assess-v1", "stats-assess-v2", "stats-assess-v3", "stats-assess-v3"], "IA-028: v4 is v3's prompt, asked with structured outputs"
     assert [e.parts["evaluation"].native for e in (born, second, third, entry)] == [False, False, False, True] and stats.NATIVE is True
+    assert (fifth.version, fifth.phase, fifth.born_as, fifth.parts, fifth.fingerprint) == (
+        "stats-v5", "IA-123", "CHALLENGER", entry.parts, entry.fingerprint), "IA-123: v4's prompt and fingerprint, handed findings under porcion-v1"
 
 
 @pytest.mark.parametrize(("what", "naming", "slice_", "match_text"), [
