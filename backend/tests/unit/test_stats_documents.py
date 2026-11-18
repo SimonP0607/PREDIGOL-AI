@@ -61,7 +61,8 @@ def test_the_pulse_band_is_reproducible_and_contains_the_index() -> None:
     a = fx.pulse(counts, league, seed=7)
     b = fx.pulse(counts, league, seed=7)
     assert a[1] == b[1] and a[2] == b[2] and a[3] == b[3]
-    inside = sum(1 for i, lo, hi in zip(a[1], a[2], a[3], strict=True) if lo <= i <= hi)
+    inside = sum(1 for i, lo, hi in zip(a[1], a[2], a[3], strict=True)
+                 if i is not None and lo is not None and hi is not None and lo <= i <= hi)
     assert inside >= 16
 
 
@@ -253,8 +254,8 @@ def test_every_player_document_validates_against_c13() -> None:
 
 def test_scored_first_is_read_from_the_goal_events() -> None:
     docs, _, _ = st.season_documents(league())
-    home = {t.key: t for t in _doc(docs, 100, "season", "home").trends.items}  # type: ignore[union-attr]
-    away = {t.key: t for t in _doc(docs, 100, "season", "away").trends.items}  # type: ignore[union-attr]
+    home = {t.key: t for t in _doc(docs, 100, "season", "home").trends.items}
+    away = {t.key: t for t in _doc(docs, 100, "season", "away").trends.items}
     assert home["scores_first"].pct == 100 and away["scores_first"].pct == 0
     assert isinstance(home["scores_first"].rule_key, Missing)
 

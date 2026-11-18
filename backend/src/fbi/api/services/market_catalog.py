@@ -32,7 +32,7 @@ from fbi.api.contracts.market_catalog import (
 from fbi.api.envelope import DataStatus, Envelope, ok, unavailable
 from fbi.api.repositories import Conn
 from fbi.core.config import settings
-from fbi.market.in_force import unify
+from fbi.market.in_force import unify as unify
 from fbi.odds.book_catalog import read_book_in_force
 from fbi.odds.quote_current import (
     CATALOG_FAMILIES,
