@@ -297,7 +297,9 @@ SINGLES: tuple[Kind, ...] = (
         SELECT l.user_parlay_id AS k1, l.leg_no AS k2, l.fixture_id, l.market_key, l.selection, l.line,
                l.odds AS price, 1 AS stake, l.status, NULL::numeric AS profit, l.settled_at, NULL AS basis,
                """ + _FIXTURE + """,
-               """ + TAKEN_KICKOFF.format(since="up.created_at") + """ AS taken_kickoff
+               """ + TAKEN_KICKOFF.format(since="up.created_at") + """ AS taken_kickoff,
+               CASE WHEN l.market_key IN ('1X2', 'OU', 'BTTS', 'AH', 'DC') THEN NULL ELSE
+                    (SELECT to_jsonb(o.*) FROM market.fixture_outcomes o WHERE o.fixture_id = l.fixture_id) END AS outcome
           FROM picks.user_parlay_legs l JOIN picks.user_parlays up ON up.id = l.user_parlay_id
           JOIN core.fixtures f ON f.id = l.fixture_id
           LEFT JOIN core.fixture_results r ON r.fixture_id = l.fixture_id

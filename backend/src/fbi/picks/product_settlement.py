@@ -30,7 +30,7 @@ import math
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Final
 
 import psycopg
 from psycopg.rows import dict_row
@@ -41,10 +41,19 @@ from fbi.picks.engine import TAKEN_KICKOFF
 ONE = Decimal(1)
 
 
+CORE: Final = frozenset({"1X2", "OU", "BTTS", "AH", "DC"})
+
+
 def settle_single(r: dict[str, Any], odds: Decimal | None, *, at: datetime | None = None) -> settlement.Settlement:
     state = settlement.MatchState(r["status_short"], r["reg_goals_home"], r["reg_goals_away"],
                                   r.get("et_goals_home"), r.get("et_goals_away"),
                                   r.get("ft_goals_home"), r.get("ft_goals_away"), r.get("taken_kickoff"))
+    if r["market_key"] not in CORE:
+        # a leg of Mi parlay on another market of the catalogue (plan EA, EA-502): settled by its IA-070 rule
+        from fbi.picks.rule_settlement import settle_by_rule
+
+        return settle_by_rule(r["market_key"], r["selection"], Decimal(r["line"]), odds or Decimal("2"), ONE, state,
+                              r.get("outcome"), at=at)
     return settlement.settle(r["market_key"], r["selection"], Decimal(r["line"]), odds or Decimal("2"), ONE, state,
                              at=at)
 
@@ -156,7 +165,9 @@ SINGLES: dict[str, tuple[str, str, str]] = {
         SELECT l.user_parlay_id AS k1, l.leg_no AS k2, l.fixture_id, l.market_key, l.selection, l.line,
                l.odds AS price, f.status_short, r.reg_goals_home, r.reg_goals_away, r.et_goals_home,
                r.et_goals_away, r.ft_goals_home, r.ft_goals_away,
-               """ + TAKEN_KICKOFF.format(since="up.created_at") + """ AS taken_kickoff
+               """ + TAKEN_KICKOFF.format(since="up.created_at") + """ AS taken_kickoff,
+               CASE WHEN l.market_key IN ('1X2', 'OU', 'BTTS', 'AH', 'DC') THEN NULL ELSE
+                    (SELECT to_jsonb(o.*) FROM market.fixture_outcomes o WHERE o.fixture_id = l.fixture_id) END AS outcome
           FROM picks.user_parlay_legs l JOIN picks.user_parlays up ON up.id = l.user_parlay_id
           JOIN core.fixtures f ON f.id = l.fixture_id
           LEFT JOIN core.fixture_results r ON r.fixture_id = l.fixture_id
