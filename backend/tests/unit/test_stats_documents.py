@@ -270,3 +270,41 @@ def test_the_matrix_has_a_column_per_context_and_only_in_the_all_document() -> N
     cols = {c.context: c for c in body.matrix}
     assert cols["all"].matches == 18 and cols["home"].matches == 9 and cols["favorite"].matches == 9
     assert isinstance(_doc(docs, 100, "season", "home").matrix, Missing)
+
+
+def test_the_pass_commits_each_season_on_its_own(monkeypatch: pytest.MonkeyPatch) -> None:
+    """BE-048: the reads open the connection's transaction, so each season is committed by the pass itself; a failing season is
+    rolled back alone and never takes the ones already written with it."""
+    from datetime import UTC, datetime
+    from types import SimpleNamespace
+    from typing import Any
+
+    from fbi.stats import data as sd
+    from fbi.stats import job
+
+    log: list[str] = []
+
+    class Conn:
+        def execute(self, sql: str, params: object = None) -> Any:
+            return SimpleNamespace(fetchone=lambda: (True,) if "lock" in sql else (7,))
+
+        def commit(self) -> None:
+            log.append("commit")
+
+        def rollback(self) -> None:
+            log.append("rollback")
+
+    seasons = [SimpleNamespace(id=i) for i in (1, 2, 3)]
+    monkeypatch.setattr(sd, "seasons", lambda conn, min_matches: seasons)
+    monkeypatch.setattr(sd, "load_season", lambda conn, s: s)
+
+    def write(conn: Any, data: Any, run_id: Any, at: Any) -> int:
+        if data.id == 2:
+            raise RuntimeError("boom")
+        log.append(f"write {data.id}")
+        return 10
+
+    monkeypatch.setattr(job, "write_season", write)
+    r = job.run_pass(Conn(), now=datetime(2034, 1, 1, tzinfo=UTC))  # type: ignore[arg-type]
+    assert r.seasons == 2 and r.documents == 20 and len(r.errors) == 1
+    assert log[:6] == ["commit", "write 1", "commit", "rollback", "write 3", "commit"]
