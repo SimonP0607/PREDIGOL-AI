@@ -16,6 +16,7 @@ from fbi.api.contracts.intelligence.alerts import AlertsContract
 from fbi.api.contracts.intelligence.base import IntelligenceContract
 from fbi.api.contracts.intelligence.console import ConsoleContract
 from fbi.api.contracts.intelligence.featured import FeaturedAnalyses, FeaturedAnalysesPrivate
+from fbi.api.contracts.intelligence.market_probs import MarketProbs, MarketProbsPrivate
 from fbi.api.contracts.intelligence.match import MatchIntelligence, MatchIntelligencePrivate
 from fbi.api.contracts.intelligence.match_v2 import MatchIntelligenceV2, MatchIntelligenceV2Private
 from fbi.api.contracts.intelligence.parlays import ParlaySetState, ParlaySetStatePrivate
@@ -34,6 +35,7 @@ from fbi.api.contracts.intelligence.selection import (
     SelectionIntelligencePrivate,
 )
 from fbi.api.contracts.intelligence.sources import AnalysisSources, AnalysisSourcesPrivate
+from fbi.api.contracts.intelligence.stats_profile import StatsProfile, StatsProfilePrivate
 from fbi.api.contracts.intelligence.stories import News, NewsPrivate
 from fbi.api.contracts.intelligence.tracking import Tracking
 from fbi.api.contracts.intelligence.versioning import parse
@@ -56,6 +58,13 @@ MATCH_PUBLIC_ROUTES: Final = ("/api/v1/matches/{fixture_id}/intelligence/v2",)
 """C-01 2.0.0 (AD-J02 delivery 2, IA-131): additive routes beside the 1.x ones, which keep their shape. 404 while
 FBI_MATCH_INTELLIGENCE is off."""
 MATCH_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/matches/{fixture_id}/intelligence/v2",)
+STATS_PUBLIC_ROUTES: Final = ("/api/v1/teams/{team_id}/stats", "/api/v1/players/{player_id}/stats", "/api/v1/stats/compare/teams",
+                               "/api/v1/stats/compare/players", "/api/v1/matches/{fixture_id}/stats-preview")
+"""C-13 (plan EA, EA-001/EA-007): 404 while FBI_STATS_V2 is off. Additive: no route of C-09 changes."""
+STATS_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/teams/{team_id}/stats", "/api/v1/admin/intelligence/players/{player_id}/stats")
+PROBS_PUBLIC_ROUTES: Final = ("/api/v1/matches/{fixture_id}/market-probs",)
+"""C-14 (plan EA, EA-002/EA-201): 404 while FBI_MARKET_PROBS is off."""
+PROBS_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/matches/{fixture_id}/market-probs",)
 PROFILE_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/teams/{team_id}/profile",
                                  "/api/v1/admin/intelligence/players/{player_id}/profile",
                                  "/api/v1/admin/intelligence/competitions/{competition_id}/profile")
@@ -86,6 +95,8 @@ CATALOGUE: Final[dict[str, Planned]] = {
     "C-10": Planned("Búsqueda v2", "AD-I02", ("/api/v1/search/v2",), ("/api/v1/admin/search/v2",)),
     "C-11": Planned("Consola", "AD-J08", (), ("/api/v1/admin/intelligence/console",)),
     "C-12": Planned("Inicio", "AD-J09", ("/api/v1/home",), ()),
+    "C-13": Planned("Perfil estadístico", "EA-001", STATS_PUBLIC_ROUTES, STATS_PRIVATE_ROUTES),
+    "C-14": Planned("Probabilidades por mercado", "EA-002", PROBS_PUBLIC_ROUTES, PROBS_PRIVATE_ROUTES),
 }
 """The twelve contracts of the plan and the reference one. A private route is always under ``/api/v1/admin/``."""
 
@@ -157,6 +168,10 @@ CONTRACTS: Final[tuple[ContractSpec, ...]] = (
     ContractSpec(private=PostMatchEvaluation, public=None,
                  private_routes=("/api/v1/admin/intelligence/evaluations/{fixture_id}",)),
     ContractSpec(private=FeaturedAnalysesPrivate, public=FeaturedAnalyses, public_routes=("/api/v1/home",)),
+    ContractSpec(private=StatsProfilePrivate, public=StatsProfile, public_routes=STATS_PUBLIC_ROUTES,
+                 private_routes=STATS_PRIVATE_ROUTES),
+    ContractSpec(private=MarketProbsPrivate, public=MarketProbs, public_routes=PROBS_PUBLIC_ROUTES,
+                 private_routes=PROBS_PRIVATE_ROUTES),
 )
 """Every Intelligence contract. A new one is added here in the PR that merges its models."""
 

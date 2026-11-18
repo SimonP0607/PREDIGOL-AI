@@ -33,6 +33,7 @@ from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
 from fbi.api.security import App
 from fbi.api.services import mypicks, records
+from fbi.api.services.market_probs import parlay_policy
 from fbi.api.services.pick_filter import FilterError, PickFilter
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
@@ -187,7 +188,7 @@ def _legs(body: ParlayIn) -> list[userdata.LegIn]:
 @router.post("/me/parlays/validate", response_model=Envelope[ParlayValidation])
 def validate_my_parlay(body: ParlayIn, conn: Db, principal: App) -> Envelope[ParlayValidation]:
     """Check a parlay against the rules without storing it."""
-    v = userdata.validate_parlay(conn, _legs(body), at=now())
+    v = userdata.validate_parlay(conn, _legs(body), at=now(), policy=parlay_policy())
     return ok(ParlayValidation(ok=v.ok, errors=v.errors, warnings=v.warnings, legs=v.legs,
                                combined_odds=v.combined_odds, fair_probability=v.fair_probability,
                                model_probability=v.model_probability, expected_value=v.expected_value,
@@ -199,7 +200,8 @@ def validate_my_parlay(body: ParlayIn, conn: Db, principal: App) -> Envelope[Par
 def build_my_parlay(body: ParlayIn, principal: App) -> Envelope[dict[str, Any]]:
     try:
         with write_connection() as conn:
-            built = userdata.create_parlay(conn, user_id=principal.user_id, name=body.name, legs=_legs(body), at=now())
+            built = userdata.create_parlay(conn, user_id=principal.user_id, name=body.name, legs=_legs(body), at=now(),
+                                           policy=parlay_policy())
     except userdata.RecordError as exc:
         raise _refused(exc) from exc
     return ok(built)

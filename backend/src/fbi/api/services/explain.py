@@ -270,7 +270,9 @@ SELECT f.id, th.name AS home, ta.name AS away
 def explain_slip(conn: Conn, legs: list[LegIn], *, at: datetime | None = None) -> Envelope[Explanation]:
     """«¿Por qué baja la probabilidad de mi parlay?» for the legs the slip holds, checked as the slip checks them."""
     terms = ("parlay", "probability", "dependency")
-    v = userdata.validate_parlay(conn, legs, at=at or now())
+    from fbi.api.services.market_probs import parlay_policy
+
+    v = userdata.validate_parlay(conn, legs, at=at or now(), policy=parlay_policy())
     broken = [e for e in v.errors if e.get("code") != "leg_count"]
     if broken:
         lines = [_say("parlay_invalid")]

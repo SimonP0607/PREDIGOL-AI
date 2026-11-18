@@ -77,6 +77,29 @@ MATCH_INTELLIGENCE: Final = "FBI_MATCH_INTELLIGENCE"
 experimental reaches a reader either way, the server never sends it."""
 
 
+STATS_V2: Final = "FBI_STATS_V2"
+"""The advanced statistics (plan EA: profiles, comparisons, the Match Center's statistics; contract C-13): OFF while the line is
+absent and ``=1`` opens them to every signed-in reader. They read the documents the nightly pass wrote (``FBI_STATS_AGG``): history,
+measured; nothing private, nothing forecast."""
+
+
+MARKET_PROBS: Final = "FBI_MARKET_PROBS"
+"""The probabilities by market of a match (plan EA, EA-201/EA-202; contract C-14): OFF while the line is absent and ``=1`` shows the
+three marks - model, implied, history - on the Mercados tab. A reader sees a model's figure only for a market the catalogue holds
+EVALUABLE; the rest stays the owner's (decision D-EA-2)."""
+
+
+PARLAY_MARKETS_V2: Final = "FBI_PARLAY_MARKETS_V2"
+"""Mi parlay accepts the markets the catalogue can settle (plan EA, EA-501 to EA-503): OFF while the line is absent - the five
+markets of today - and ``=1`` admits every selection with a settlement rule, a price in force and a consensus of three houses. The
+module, its rules and its look do not change."""
+
+
+PLAYER_MARKETS: Final = "FBI_PLAYER_MARKETS"
+"""The players' markets of a match (plan EA, EA-306/EA-401; contract C-15): OFF while the line is absent and ``=1`` shows the
+prices and the history of each line. The player engine's figure stays the owner's until the catalogue holds the market evaluable."""
+
+
 def user_switch(name: str, *, default: bool) -> bool:
     """Whether the switch ``name`` is on: ``default`` while the line is absent or empty, off for a value it cannot read."""
     raw = environment().get(name)
@@ -138,3 +161,23 @@ def news_v2_on() -> bool:
 def match_intelligence_on() -> bool:
     """Whether readers get a match's «Intelligence» tab (``FBI_MATCH_INTELLIGENCE``, off by default)."""
     return user_switch(MATCH_INTELLIGENCE, default=False)
+
+
+def stats_v2_on() -> bool:
+    """Whether readers get the advanced statistics (``FBI_STATS_V2``, off by default)."""
+    return user_switch(STATS_V2, default=False)
+
+
+def market_probs_on() -> bool:
+    """Whether readers get the probabilities by market (``FBI_MARKET_PROBS``, off by default)."""
+    return user_switch(MARKET_PROBS, default=False)
+
+
+def parlay_markets_v2_on() -> bool:
+    """Whether Mi parlay accepts the markets the catalogue settles (``FBI_PARLAY_MARKETS_V2``, off by default)."""
+    return user_switch(PARLAY_MARKETS_V2, default=False)
+
+
+def player_markets_on() -> bool:
+    """Whether readers get the players' markets of a match (``FBI_PLAYER_MARKETS``, off by default)."""
+    return user_switch(PLAYER_MARKETS, default=False)

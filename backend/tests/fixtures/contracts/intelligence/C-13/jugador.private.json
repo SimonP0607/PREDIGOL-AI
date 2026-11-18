@@ -1,0 +1,455 @@
+{
+  "contract": "C-13",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2034-03-01T12:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "entities": [
+    {
+      "role": "perfil",
+      "subject": "jugador",
+      "competition": {
+        "competition_season_id": 1,
+        "competition": {
+          "id": 1,
+          "name": "Liga de Ejemplo"
+        },
+        "season": 2034,
+        "country": "Colombia"
+      },
+      "scope": "season",
+      "context": "all",
+      "matches": 6,
+      "calc_version": "player-agg-v1",
+      "computed_at": "2034-03-01T12:00:00Z",
+      "available_scopes": [
+        "season"
+      ],
+      "available_competitions": [
+        {
+          "competition_season_id": 1,
+          "competition": {
+            "id": 1,
+            "name": "Liga de Ejemplo"
+          },
+          "season": 2034,
+          "country": "Colombia"
+        }
+      ],
+      "team": {
+        "missing_reason": "sin_datos"
+      },
+      "player": {
+        "player": {
+          "id": 502,
+          "name": "Jugador 2"
+        },
+        "team": {
+          "id": 101,
+          "name": "Equipo 1"
+        },
+        "position": "delantero",
+        "appearances": 6,
+        "starts": 6,
+        "minutes": 540,
+        "nineties": 6.0,
+        "min_nineties": 5.0,
+        "figures": [
+          {
+            "key": "goals",
+            "unit": "por_90",
+            "better": "mas",
+            "value": 2.0,
+            "matches_with_data": 6,
+            "percentile": 83,
+            "league_value": 1.0,
+            "distribution": {
+              "p10": 0.0,
+              "p25": 0.0,
+              "p50": 1.0,
+              "p75": 2.0,
+              "p90": 2.0,
+              "entities": 12
+            }
+          },
+          {
+            "key": "assists",
+            "unit": "por_90",
+            "better": "mas",
+            "value": 0.0,
+            "matches_with_data": 6,
+            "percentile": 50,
+            "league_value": 0.0,
+            "distribution": {
+              "p10": 0.0,
+              "p25": 0.0,
+              "p50": 0.0,
+              "p75": 0.0,
+              "p90": 0.0,
+              "entities": 12
+            }
+          },
+          {
+            "key": "shots",
+            "unit": "por_90",
+            "better": "mas",
+            "value": 2.0,
+            "matches_with_data": 6,
+            "percentile": 50,
+            "league_value": 2.0,
+            "distribution": {
+              "p10": 2.0,
+              "p25": 2.0,
+              "p50": 2.0,
+              "p75": 2.0,
+              "p90": 2.0,
+              "entities": 12
+            }
+          },
+          {
+            "key": "shots_on_target",
+            "unit": "por_90",
+            "better": "mas",
+            "value": 1.0,
+            "matches_with_data": 6,
+            "percentile": 50,
+            "league_value": 1.0,
+            "distribution": {
+              "p10": 1.0,
+              "p25": 1.0,
+              "p50": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "entities": 12
+            }
+          },
+          {
+            "key": "key_passes",
+            "unit": "por_90",
+            "better": "mas",
+            "value": 1.0,
+            "matches_with_data": 6,
+            "percentile": 50,
+            "league_value": 1.0,
+            "distribution": {
+              "p10": 1.0,
+              "p25": 1.0,
+              "p50": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "entities": 12
+            }
+          },
+          {
+            "key": "dribbles",
+            "unit": "por_90",
+            "better": "mas",
+            "value": 1.0,
+            "matches_with_data": 6,
+            "percentile": 50,
+            "league_value": 1.0,
+            "distribution": {
+              "p10": 1.0,
+              "p25": 1.0,
+              "p50": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "entities": 12
+            }
+          },
+          {
+            "key": "fouls_drawn",
+            "unit": "por_90",
+            "better": "mas",
+            "value": 1.0,
+            "matches_with_data": 6,
+            "percentile": 50,
+            "league_value": 1.0,
+            "distribution": {
+              "p10": 1.0,
+              "p25": 1.0,
+              "p50": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "entities": 12
+            }
+          },
+          {
+            "key": "duels_won_pct",
+            "unit": "porcentaje",
+            "better": "mas",
+            "value": 50.0,
+            "matches_with_data": 6,
+            "percentile": 50,
+            "league_value": 50.0,
+            "distribution": {
+              "p10": 50.0,
+              "p25": 50.0,
+              "p50": 50.0,
+              "p75": 50.0,
+              "p90": 50.0,
+              "entities": 12
+            }
+          }
+        ],
+        "last5": [
+          {
+            "fixture_id": 2,
+            "kickoff_at": "2034-01-03T18:00:00Z",
+            "opponent": {
+              "id": 102,
+              "name": "Equipo 2"
+            },
+            "minutes": 90,
+            "starter": true,
+            "values": [
+              {
+                "key": "goals",
+                "value": 2
+              },
+              {
+                "key": "assists",
+                "value": 0
+              },
+              {
+                "key": "shots",
+                "value": 2
+              },
+              {
+                "key": "shots_on_target",
+                "value": 1
+              },
+              {
+                "key": "key_passes",
+                "value": 1
+              },
+              {
+                "key": "dribbles",
+                "value": 1
+              },
+              {
+                "key": "fouls_drawn",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "fixture_id": 3,
+            "kickoff_at": "2034-01-04T18:00:00Z",
+            "opponent": {
+              "id": 103,
+              "name": "Equipo 3"
+            },
+            "minutes": 90,
+            "starter": true,
+            "values": [
+              {
+                "key": "goals",
+                "value": 2
+              },
+              {
+                "key": "assists",
+                "value": 0
+              },
+              {
+                "key": "shots",
+                "value": 2
+              },
+              {
+                "key": "shots_on_target",
+                "value": 1
+              },
+              {
+                "key": "key_passes",
+                "value": 1
+              },
+              {
+                "key": "dribbles",
+                "value": 1
+              },
+              {
+                "key": "fouls_drawn",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "fixture_id": 4,
+            "kickoff_at": "2034-01-05T18:00:00Z",
+            "opponent": {
+              "id": 100,
+              "name": "Equipo 0"
+            },
+            "minutes": 90,
+            "starter": true,
+            "values": [
+              {
+                "key": "goals",
+                "value": 2
+              },
+              {
+                "key": "assists",
+                "value": 0
+              },
+              {
+                "key": "shots",
+                "value": 2
+              },
+              {
+                "key": "shots_on_target",
+                "value": 1
+              },
+              {
+                "key": "key_passes",
+                "value": 1
+              },
+              {
+                "key": "dribbles",
+                "value": 1
+              },
+              {
+                "key": "fouls_drawn",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "fixture_id": 5,
+            "kickoff_at": "2034-01-06T18:00:00Z",
+            "opponent": {
+              "id": 102,
+              "name": "Equipo 2"
+            },
+            "minutes": 90,
+            "starter": true,
+            "values": [
+              {
+                "key": "goals",
+                "value": 2
+              },
+              {
+                "key": "assists",
+                "value": 0
+              },
+              {
+                "key": "shots",
+                "value": 2
+              },
+              {
+                "key": "shots_on_target",
+                "value": 1
+              },
+              {
+                "key": "key_passes",
+                "value": 1
+              },
+              {
+                "key": "dribbles",
+                "value": 1
+              },
+              {
+                "key": "fouls_drawn",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "fixture_id": 6,
+            "kickoff_at": "2034-01-07T18:00:00Z",
+            "opponent": {
+              "id": 103,
+              "name": "Equipo 3"
+            },
+            "minutes": 90,
+            "starter": true,
+            "values": [
+              {
+                "key": "goals",
+                "value": 2
+              },
+              {
+                "key": "assists",
+                "value": 0
+              },
+              {
+                "key": "shots",
+                "value": 2
+              },
+              {
+                "key": "shots_on_target",
+                "value": 1
+              },
+              {
+                "key": "key_passes",
+                "value": 1
+              },
+              {
+                "key": "dribbles",
+                "value": 1
+              },
+              {
+                "key": "fouls_drawn",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "recent_minutes": [
+          {
+            "fixture_id": 1,
+            "minutes": 90,
+            "starter": true
+          },
+          {
+            "fixture_id": 2,
+            "minutes": 90,
+            "starter": true
+          },
+          {
+            "fixture_id": 3,
+            "minutes": 90,
+            "starter": true
+          },
+          {
+            "fixture_id": 4,
+            "minutes": 90,
+            "starter": true
+          },
+          {
+            "fixture_id": 5,
+            "minutes": 90,
+            "starter": true
+          },
+          {
+            "fixture_id": 6,
+            "minutes": 90,
+            "starter": true
+          }
+        ]
+      },
+      "scatter": {
+        "missing_reason": "sin_datos"
+      },
+      "audit": {
+        "run_id": 41,
+        "calc_version": "stats-docs-v1",
+        "threshold": 0.8,
+        "coverage": [
+          {
+            "key": "xg_for",
+            "share": 1.0,
+            "publishable": true
+          },
+          {
+            "key": "fouls",
+            "share": 0.0,
+            "publishable": false
+          }
+        ]
+      }
+    }
+  ]
+}
