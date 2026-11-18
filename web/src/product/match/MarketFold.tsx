@@ -2,7 +2,8 @@
  * One market of «Mercados» before kick-off, folded (plan Partidos y Match Center, F4b: M1-M4): its name, period and
  * bookmakers in a row that opens it; inside, the main line, «Ver N líneas más» and «Ver todas las casas». Every price says
  * its bookmaker and how old it is. A price of the five settled markets is chosen the Cuotas way (parlay, bookmark); a
- * market of the catalogue that is never settled is shown only.
+ * catalogue market the server takes in Mi parlay (plan EA, EA-503) is chosen the same way, saying what it settles with; any
+ * other market of the catalogue is shown only.
  */
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { ArrowDownRight, ArrowUpRight, ChevronDown } from "lucide-react";
@@ -262,7 +263,7 @@ export function MarketFold({
   const [allLines, setAllLines] = useState(false);
   const [books, setBooks] = useState(false);
   const bodyId = useId();
-  const pick = view.parlay ? choose : undefined;
+  const pick = view.parlay || view.catalogParlay ? choose : undefined;
   const more = hiddenLines(view);
   const main = view.rows[view.main];
   const rows = allLines ? view.rows : main ? [main] : [];
@@ -271,6 +272,11 @@ export function MarketFold({
   if (open) {
     body = (
       <div id={bodyId} className="px-4 pb-4 pt-1">
+        {view.catalogParlay ? (
+          <p className="mb-2 text-micro text-subtle-foreground" data-testid="market-settles">
+            {t(`stats.settlesWith.${view.catalogParlay}`)}
+          </p>
+        ) : null}
         {view.lines === null ? (
           <Tiles view={view} choose={pick} />
         ) : (

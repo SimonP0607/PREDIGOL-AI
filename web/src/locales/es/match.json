@@ -1485,6 +1485,7 @@
     "error": "No pudimos cargar los mercados de esta categoría.",
     "empty": "No hay cuotas vigentes en esta categoría.",
     "shownOnly": "Solo los cinco mercados de siempre (1X2, goles, ambos marcan, hándicap asiático y doble oportunidad) se pueden añadir al parlay; los demás son para consultar.",
+    "shownOnlyRule": "Los mercados que dicen con qué se liquidan también van a Mi parlay; los demás son para consultar.",
     "moreLines_one": "Ver {count} línea más",
     "moreLines_other": "Ver {count} líneas más",
     "mainLineOnly": "Ver solo la línea principal",

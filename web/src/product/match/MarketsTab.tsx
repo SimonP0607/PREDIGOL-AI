@@ -8,7 +8,7 @@
  * 60-second poll; one fold per market, the first one open. The five settled markets are chosen the Cuotas way (REVIEW
  * PREDIGOL, point 6: a tap in or out of "Mi parlay", the bookmark saves it); the catalogue's other markets are shown only.
  */
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -20,7 +20,8 @@ import { v1 } from "@/lib/api/v1/client";
 import { live as queries } from "@/lib/api/v1/queries";
 import type { MarketOrder } from "@/lib/api/v1/types_personal";
 import type { CatalogCategory } from "@/lib/api/v1/types_market_catalog";
-import { useAuth } from "@/lib/auth/AuthProvider";
+import { ProbabilitiesPanel } from "./stats/ProbabilitiesPanel";
+import { useAuth, useStatsSwitches } from "@/lib/auth/AuthProvider";
 import { hintProps } from "@/components/system/tapHint";
 import { track } from "@/lib/track";
 import { formatDateTime } from "@/lib/time";
@@ -56,6 +57,12 @@ import {
   type MarketView,
 } from "./marketCatalog";
 import { MarketFold } from "./MarketFold";
+import {
+  catalogChooser,
+  catalogParlayOf,
+  NO_CATALOG_PARLAY,
+  withCatalogParlay,
+} from "./catalogParlay";
 import { Block, CenterSection, FreshnessLabel, MoreButton, SectionNote } from "./ui";
 import { FollowCatalogMarket, FollowMarket } from "@/product/favorites/FollowExtras";
 import { useFollowedCatalog } from "@/product/favorites/useFollowedCatalog";
@@ -483,6 +490,7 @@ function ScrollIntoView() {
 function FoldList({
   views,
   choose,
+  chooseOf,
   onConsult,
   follow,
   testId,
@@ -490,6 +498,8 @@ function FoldList({
 }: {
   views: MarketView[];
   choose?: Choose | undefined;
+  /** A view's own way of choosing (a catalogue market the server takes in Mi parlay); `choose` otherwise. */
+  chooseOf?: ((view: MarketView, choose: Choose | undefined) => Choose | undefined) | undefined;
   onConsult?: ((market: string) => void) | undefined;
   follow: Follow;
   testId: string;
@@ -520,7 +530,7 @@ function FoldList({
         >
           <MarketFold
             view={v}
-            choose={choose}
+            choose={chooseOf ? chooseOf(v, choose) : choose}
             defaultOpen={named ? v.key === target : i === 0}
             follow={v.parlay ? follow(v.parlay) : v.key ? follow(v.key, "catalog") : null}
           />
@@ -554,6 +564,15 @@ export function CategoryPanel({
   followed?: readonly string[];
 }) {
   const q = useQuery(queries.matchMarketCatalog(ctx.fixtureId, category));
+  const switches = useStatsSwitches();
+  const marks = useQuery({
+    ...queries.matchMarketProbs(ctx.fixtureId, switches.owner),
+    enabled: choose !== undefined && switches.probs && switches.parlayMarkets,
+  });
+  const cp = useMemo(
+    () => (switches.parlayMarkets ? catalogParlayOf(marks.data?.data) : NO_CATALOG_PARLAY),
+    [marks.data, switches.parlayMarkets],
+  );
   if (q.isPending) {
     return (
       <div className="space-y-3" aria-busy="true" aria-label={t("match.catalog.loading")}>
@@ -570,23 +589,28 @@ export function CategoryPanel({
       </div>
     );
   }
-  const views = followedFirst(
-    (q.data?.data?.markets ?? []).map((m) => catalogView(m, sides)),
-    followed,
+  const views = withCatalogParlay(
+    followedFirst(
+      (q.data?.data?.markets ?? []).map((m) => catalogView(m, sides)),
+      followed,
+    ),
+    cp,
   );
   if (views.length === 0)
     return <SectionNote status="empty">{t("match.catalog.empty")}</SectionNote>;
-  const shownOnly = views.some((v) => v.parlay === null);
+  const shownOnly = views.some((v) => v.parlay === null && !v.catalogParlay);
+  const someTaken = views.some((v) => v.catalogParlay);
   return (
     <>
       {shownOnly ? (
         <p className="mb-3 text-xs text-muted-foreground" data-testid="markets-shown-only">
-          {t("match.catalog.shownOnly")}
+          {someTaken ? t("match.catalog.shownOnlyRule") : t("match.catalog.shownOnly")}
         </p>
       ) : null}
       <FoldList
         views={views}
         choose={choose}
+        chooseOf={(v, c) => catalogChooser(c, v, cp)}
         onConsult={onConsult}
         follow={follow}
         testId="markets-category"
@@ -618,6 +642,7 @@ export function PrematchMarkets({
   followed?: readonly string[];
 }) {
   const { markets, phase, match: m } = ctx;
+  const { probs } = useStatsSwitches();
   const sides = { home: m.home.name, away: m.away.name };
   const quotes = markets.status === "ok" ? markets.data : [];
   const before = phase === "scheduled";
@@ -693,6 +718,9 @@ export function PrematchMarkets({
                 v === "featured" ? t("match.catalog.featured") : t(`match.catalog.category.${v}`),
             }))}
           />
+          {before && probs ? (
+            <ProbabilitiesPanel fixtureId={ctx.fixtureId} category={view} sides={sides} />
+          ) : null}
           {view === "featured" ? (
             <>
               {/* Plan UX, A9: every bookmaker's prices failing to load is said, with its reference and a retry - the

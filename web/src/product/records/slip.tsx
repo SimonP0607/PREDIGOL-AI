@@ -22,6 +22,7 @@ import {
 } from "./model";
 import { SlipContext, type SlipValue } from "./slipContext";
 import { track } from "@/lib/track";
+import { isParlayMarket } from "@/product/odds/parlay";
 
 const KEY = "predigol.slip";
 
@@ -111,7 +112,9 @@ export function SlipProvider({ children }: { children: ReactNode }) {
       if (change.effect === "added" && !quiet)
         track("slip_leg_added", {
           legs: change.legs.length,
-          ...(action.type === "toggle" ? { market: action.leg.market_key } : {}),
+          ...(action.type === "toggle" && isParlayMarket(action.leg.market_key)
+            ? { market: action.leg.market_key }
+            : {}),
         });
       if (quiet || shown.current) return;
       if (change.effect === "added") toast.success(t("records.toast.added"));

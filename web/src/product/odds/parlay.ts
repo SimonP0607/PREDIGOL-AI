@@ -11,13 +11,13 @@ import type { BestHighlight, BestMarket, BestOddsFixture } from "@/lib/api/v1/ty
 import { toNumber } from "@/lib/i18n/format";
 import { hasStarted, isQuarterLine, normLine, type SlipLeg } from "@/product/records/model";
 import type { Pickable } from "@/product/records/pickable";
-import { MARKETS, type MarketKey } from "@/product/shared/markets";
+import { isCatalogueKey, MARKETS, type MarketKey } from "@/product/shared/markets";
 import { selectionLine, type PriceSlot } from "./board";
 
 /** A leg as it is handed to the slip (the slip gives it its key). */
 export type NewLeg = Omit<SlipLeg, "key">;
 
-/** Why a selection cannot be added now: an unknown market, no price, an outlier price, a quarter line, kicked off. */
+/** Why a selection cannot be added now: an unknown market (or a catalogue one the server does not mark parlayable), no price, an outlier price, a quarter line, kicked off. */
 export type ParlayBlock = "market" | "no_price" | "outlier" | "quarter" | "started";
 
 export interface ParlayCandidate {
@@ -28,6 +28,8 @@ export interface ParlayCandidate {
   status_group?: string | null | undefined;
   /** The price is flagged an outlier (`BestPrice.outlier`): shown, never added. */
   outlier?: boolean | null | undefined;
+  /** A catalogue market's selection: the server marks it parlayable now (C-14). Without it, a catalogue market is never added. */
+  parlay_allowed?: boolean | null | undefined;
 }
 
 export function isParlayMarket(market: string): market is MarketKey {
@@ -36,7 +38,8 @@ export function isParlayMarket(market: string): market is MarketKey {
 
 /** Null when the selection can be added to the parlay now; otherwise why not. */
 export function parlayBlock(sel: ParlayCandidate, now: number = Date.now()): ParlayBlock | null {
-  if (!isParlayMarket(sel.market_key)) return "market";
+  const catalogue = isCatalogueKey(sel.market_key) && sel.parlay_allowed === true;
+  if (!isParlayMarket(sel.market_key) && !catalogue) return "market";
   const odds = toNumber(sel.odds);
   if (odds === null || odds <= 1) return "no_price";
   if (sel.outlier) return "outlier";
@@ -102,5 +105,7 @@ export function pickableLeg(sel: Pickable): NewLeg | null {
     odds: sel.odds,
     bookmaker: sel.bookmaker,
     p_model: sel.p_model ?? null,
+    ...(sel.label ? { label: sel.label } : {}),
+    ...(sel.market_label ? { market_label: sel.market_label } : {}),
   };
 }

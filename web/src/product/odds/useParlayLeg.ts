@@ -41,19 +41,25 @@ export function blockedText(state: ParlayLegState | null): string | null {
 
 /**
  * Null without a leg, or outside the slip's provider (a page with no parlay): nothing to toggle there,
- * where useSlip() would throw. `price.outlier`: the price shown is flagged an outlier, so it is never added.
+ * where useSlip() would throw. `price.outlier`: the price shown is flagged an outlier, so it is never added. `price.allowed`:
+ * a catalogue market's selection the server marks parlayable (C-14); the five markets do not need it.
  */
 export function useParlayLeg(
   leg: NewLeg | null,
   statusGroup?: string | null | undefined,
-  price: { outlier?: boolean | null | undefined } = {},
+  price: { outlier?: boolean | null | undefined; allowed?: boolean | null | undefined } = {},
 ): ParlayLegState | null {
   const slip = useContext(SlipContext);
   if (!slip || !leg) return null;
   const inSlip = slip.has(selectionKey(leg));
   return {
     inSlip,
-    block: parlayBlock({ ...leg, status_group: statusGroup, outlier: price.outlier }),
+    block: parlayBlock({
+      ...leg,
+      status_group: statusGroup,
+      outlier: price.outlier,
+      parlay_allowed: price.allowed,
+    }),
     replaces: !inSlip && slip.legs.some((l) => l.fixture_id === leg.fixture_id),
     toggle: () => slip.toggle(leg),
   };

@@ -5,12 +5,14 @@
  */
 import type {
   HistoryGroupKey,
+  LegMarketKey,
   MarketKey,
   ParlayProgress,
   ParlayStatus,
   ParlayValidation,
   ResultStatus,
 } from "@/lib/api/v1/types_records";
+import { isCatalogueKey } from "@/product/shared/markets";
 
 export const MAX_SLIP_LEGS = 10;
 export const MIN_SLIP_LEGS = 2;
@@ -119,12 +121,15 @@ export function hasStarted(
 export interface SlipLeg {
   key: string;
   fixture_id: number;
-  market_key: MarketKey;
+  market_key: LegMarketKey;
   selection: string;
   line: string;
   home: string;
   away: string;
   kickoff_at: string;
+  /** A catalogue market's own words, as its page showed them (plan EA, EA-503): the five name theirs from the key. */
+  label?: string | undefined;
+  market_label?: string | undefined;
   /** The best price we showed when it was added (null: none known). */
   odds: string | null;
   bookmaker: string | null;
@@ -211,7 +216,7 @@ export function parseSlip(raw: string | null): SlipLeg[] {
       x === null ||
       typeof x["fixture_id"] !== "number" ||
       typeof x["market_key"] !== "string" ||
-      !MARKETS.includes(x["market_key"]) ||
+      !(MARKETS.includes(x["market_key"]) || isCatalogueKey(x["market_key"])) ||
       typeof x["selection"] !== "string" ||
       typeof x["kickoff_at"] !== "string"
     ) {
@@ -219,7 +224,7 @@ export function parseSlip(raw: string | null): SlipLeg[] {
     }
     const leg = {
       fixture_id: x["fixture_id"],
-      market_key: x["market_key"] as MarketKey,
+      market_key: x["market_key"] as LegMarketKey,
       selection: x["selection"],
       line: normLine(x["line"] as string | number | undefined),
       home: typeof x["home"] === "string" ? x["home"] : "",
@@ -228,6 +233,8 @@ export function parseSlip(raw: string | null): SlipLeg[] {
       odds: typeof x["odds"] === "string" ? x["odds"] : null,
       bookmaker: typeof x["bookmaker"] === "string" ? x["bookmaker"] : null,
       p_model: typeof x["p_model"] === "string" ? x["p_model"] : null,
+      ...(typeof x["label"] === "string" ? { label: x["label"] } : {}),
+      ...(typeof x["market_label"] === "string" ? { market_label: x["market_label"] } : {}),
     };
     out.push({ ...leg, key: selectionKey(leg) });
   }

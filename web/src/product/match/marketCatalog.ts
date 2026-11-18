@@ -79,6 +79,11 @@ export interface MarketView {
   period: string | null;
   /** One of the five settled markets: its prices go to the parlay and can be saved. Null: shown, never settled. */
   parlay: string | null;
+  /**
+   * A catalogue market the server takes in Mi parlay now (plan EA, EA-503; FBI_PARLAY_MARKETS_V2), and what it settles with.
+   * Its prices are chosen like the five's; never saved to «Mis picks». Absent: shown only.
+   */
+  catalogParlay?: "score" | "stats" | "player" | undefined;
   /** How the rows read: "ou" a total per row, "ah" a handicap per row, null a single row of selections. */
   lines: "ou" | "ah" | null;
   columns: ViewColumn[];

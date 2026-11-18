@@ -12,8 +12,8 @@ import { useSavedPicks } from "@/product/records/hooks";
 import { hasStarted, normLine, selectionKey } from "@/product/records/model";
 import type { Pickable } from "@/product/records/pickable";
 import { ConfirmAction } from "@/product/shared/Confirm";
-import { selectionLabel } from "@/product/shared/markets";
-import { pickableLeg } from "./parlay";
+import { isCatalogueKey, selectionLabel } from "@/product/shared/markets";
+import { isParlayMarket, pickableLeg } from "./parlay";
 import { ParlayToggle, PricePill } from "./ParlayPrice";
 import { blockedText, isToggleable, useParlayLeg } from "./useParlayLeg";
 
@@ -32,14 +32,17 @@ export function SelectablePrice({
   save?: boolean;
   className?: string | undefined;
 }) {
-  const parlay = useParlayLeg(pickableLeg(sel), sel.status_group);
-  const label = selectionLabel({
-    market_key: sel.market_key,
-    selection: sel.selection,
-    line: sel.line,
-    home: sel.home,
-    away: sel.away,
-  });
+  const parlay = useParlayLeg(pickableLeg(sel), sel.status_group, { allowed: sel.parlay_allowed });
+  const catalogue = isCatalogueKey(sel.market_key);
+  const label =
+    sel.label ??
+    selectionLabel({
+      market_key: sel.market_key,
+      selection: sel.selection,
+      line: sel.line,
+      home: sel.home,
+      away: sel.away,
+    });
   const description = `${label} · ${t("records.actions.priceAt", {
     odds: formatOdds(sel.odds),
     bookmaker: sel.bookmaker ?? "—",
@@ -74,7 +77,7 @@ export function SelectablePrice({
           <span aria-hidden>{pill}</span>
         </span>
       )}
-      {save ? <SaveToggle sel={sel} label={label} /> : null}
+      {save && !catalogue ? <SaveToggle sel={sel} label={label} /> : null}
     </span>
   );
 }
@@ -98,13 +101,16 @@ function SaveToggle({ sel, label }: { sel: Pickable; label: string }) {
   const { saved, save, remove } = useSavedPicks();
   const mine = saved.get(selectionKey(sel));
   const started = hasStarted(sel);
+  const market = sel.market_key;
+  // «Mis picks» keeps the five markets only; a catalogue market's price goes to the parlay alone.
+  if (!isParlayMarket(market)) return null;
   if (started && !mine) return null;
   const busy = save.isPending || remove.isPending;
   const locked = !!mine && (started || mine.status !== "PENDING");
   const onSave = () =>
     save.mutate({
       fixture_id: sel.fixture_id,
-      market_key: sel.market_key,
+      market_key: market,
       selection: sel.selection,
       line: normLine(sel.line),
       pick_id: sel.pick_id ?? null,

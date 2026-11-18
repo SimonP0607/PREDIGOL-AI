@@ -1,10 +1,10 @@
 /** What a selection needs to be saved or added to a parlay, from wherever it is shown. */
 import type { PickCard } from "@/lib/api/v1/types_product";
-import type { DailyItem, MarketKey } from "@/lib/api/v1/types_records";
+import type { DailyItem, LegMarketKey, MarketKey } from "@/lib/api/v1/types_records";
 
 export interface Pickable {
   fixture_id: number;
-  market_key: MarketKey;
+  market_key: LegMarketKey;
   selection: string;
   line: string | number;
   kickoff_at: string;
@@ -18,6 +18,13 @@ export interface Pickable {
   pick_id?: number | null | undefined;
   /** PrediGol's probability for it, when the source has one: shown in "Mi parlay", never sent to a model. */
   p_model?: string | null | undefined;
+  /**
+   * A catalogue market's price (plan EA, EA-503): whether the server marks it parlayable now (C-14's `parlay.allowed`), and
+   * its words as the page shows them. Absent on the five markets, which keep their own rules.
+   */
+  parlay_allowed?: boolean | undefined;
+  label?: string | undefined;
+  market_label?: string | undefined;
 }
 
 export function pickableOfItem(item: DailyItem): Pickable {

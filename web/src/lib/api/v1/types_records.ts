@@ -211,6 +211,13 @@ export interface DailyBoard {
 
 export type MarketKey = "1X2" | "OU" | "BTTS" | "AH" | "DC";
 
+/**
+ * A market of the catalogue of prices by its stable key (`code.period.subject`, «corners_over_under.FT.match»): a leg of
+ * Mi parlay can name one while FBI_PARLAY_MARKETS_V2 is on and the server marks the selection parlayable (plan EA, EA-501).
+ */
+export type CatalogueMarketKey = `${string}.${"FT" | "1H" | "2H"}.${"match" | "home" | "away"}`;
+export type LegMarketKey = MarketKey | CatalogueMarketKey;
+
 export interface SavePickIn {
   fixture_id: number;
   market_key: MarketKey;
@@ -273,7 +280,7 @@ export interface UserPick {
 
 export interface LegIn {
   fixture_id: number;
-  market_key: MarketKey;
+  market_key: LegMarketKey;
   selection: string;
   line?: string | number;
   odds?: string | number | null;
