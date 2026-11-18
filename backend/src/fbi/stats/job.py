@@ -144,6 +144,9 @@ def run_pass(conn: psycopg.Connection[Any], *, now: datetime, code_version: str 
             try:
                 data = sd.load_season(conn, season)
                 report.documents += write_season(conn, data, run_id, now)
+                # The reads above open the connection's transaction, so write_season's block is a savepoint: commit here, one season
+                # at a time, so that a pass never holds one long write transaction (and a failure keeps the seasons already done).
+                conn.commit()
                 report.seasons += 1
             except Exception as exc:  # one season's failure never stops the others
                 conn.rollback()
