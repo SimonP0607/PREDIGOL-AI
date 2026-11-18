@@ -11,6 +11,7 @@ import preview from "./fixtures/c13_preview.json";
 import player from "./fixtures/c13_player.json";
 import probs from "./fixtures/c14_match.json";
 import probsPrivate from "./fixtures/c14_match_private.json";
+import { lineWindow } from "@/product/match/stats/lines";
 import { PercentileBars } from "./PercentileBars";
 import { PulseChart } from "./PulseChart";
 import { MirrorBins } from "./MirrorBins";
@@ -121,5 +122,16 @@ describe("C-14 drawn", () => {
     expect(renderToStaticMarkup(<TriMark s={corners.selections[0]!} owner={true} />)).toContain(
       "bg-warning",
     );
+  });
+});
+
+describe("the lines of a total (FE-003)", () => {
+  test("the chip of the line shown is always among the eight", () => {
+    const lines = [4.5, 5.5, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12.5];
+    expect(lineWindow(lines, 11)).toContain(11);
+    expect(lineWindow(lines, 11)).toHaveLength(8);
+    expect(lineWindow(lines, 4.5)[0]).toBe(4.5);
+    expect(lineWindow(lines, 12.5).at(-1)).toBe(12.5);
+    expect(lineWindow([1, 2, 3], 2)).toEqual([1, 2, 3]);
   });
 });
