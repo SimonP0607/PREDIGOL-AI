@@ -337,6 +337,8 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-158 | Plan maestro unificado, ola 6 (maquetas 08 a 10): portada de Noticias con filtros nuevos y noticias del partido «Por certeza» o «Por equipo», sin rumores como hechos (D-04). Detrás de `FBI_NEWS_V2` (apagado: datos, derechos y abogado). UX-159 a UX-171 esperan los contratos C-01 a C-12 de la sesión de IA | desplegado (en producción el 16-nov-2026 a las 22:16 UTC con la cadena `20261116T2133Z-auto-78f5896`, sin migración; humo 0 y verificación con 0 líneas NOT OK) | #333 | BE-040 |
 | UX-172 | Plan maestro unificado, cierre: auditoría con los seis interruptores encendidos en QA (axe 87/87 sin violaciones; pasada de teléfono de 320 a 430 px) y cinco correcciones de 44 px y de nombre accesible en Inicio, Picks, Cuotas «Por partido» y la consola, con las pruebas de la barra siguiendo a los interruptores (#337); este registro, el mapa de interruptores y el documento del sistema (este PR). El plan sigue abierto en lo que espera los contratos C-01 a C-12, el abogado (Noticias v2), D-05 (Transparencia), WebKit, regresión visual, rendimiento, equipos reales y PWA | #337: fusionado, se despliega con la cadena `303980d`; este PR, solo documentación | #337, este PR | UX-139 a UX-158 |
 | FE-001 | Recharts 2.15 → 3.10 (el informe de herramientas gratuitas): los gráficos de analítica, del explorador de cuotas, de Resumen y de modelos, y el `chart.tsx` de shadcn. Cambios de tipos (en Recharts 3 `payload` y `label` ya no están en `TooltipProps`, `formatter` recibe `ValueType | undefined`, `dataKey` puede ser una función) sin cambiar lo que se dibuja: se comparó una página con los seis gráficos de analítica y el gráfico de movimiento del explorador (con su tooltip) renderizados con 2.15 y con 3.10, en Chromium, y salen iguales | en curso | este PR | — |
+| FE-002 | Sin usar: la sesión de Intelligence tomó FE-003 sin pedir el siguiente libre (18-nov-2026). No se reutiliza | sin usar | — | — |
+| FE-003 | Plan de estadísticas avanzadas (EA-202): en «Mercados → Probabilidades», la línea que se muestra de un total siempre tiene su botón entre las ocho visibles (visto en producción con los córners de Flamengo–Athletico) | desplegado (en producción el 18-nov-2026 con la cadena `20261118T2213Z-auto-f9739d4`, sin migración) | #390 | BE-047 |
 
 ## BE — backend
 
@@ -386,14 +388,21 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | BE-043 | Plan maestro unificado, ola 2 (C08): «Por casa» en `GET /odds/status` (`by_book`: partidos, al día y atrasados por casa), de solo lectura y con prueba de integración que lo cuadra con el tablero; no calcula ni cambia ningún precio | desplegado (en producción el 16-nov-2026 a las 21:32 UTC con la cadena `20261116T2048Z-auto-390b5b4`, sin migración; humo 0 y verificación con 0 líneas NOT OK) | #327 | BE-038 |
 | BE-044 | Plan maestro unificado, ola 6 (T03, T07): la serie diaria de unidades y la calibración de los picks publicados en `GET /transparency` (`series`, `picks_calibration`), vacías bajo la muestra mínima; solo picks ganados y perdidos ya liquidados | desplegado (en producción el 16-nov-2026 a las 21:32 UTC con la cadena `20261116T2048Z-auto-390b5b4`, sin migración; humo 0 y verificación con 0 líneas NOT OK) | #326 | UX-136 |
 | BE-045 | Plan maestro unificado: seis interruptores apagados por defecto (`FBI_ODDS_BY_MATCH`, `FBI_NAV_V2`, `FBI_SEARCH`, `FBI_PROFILES`, `FBI_NEWS_V2`, `FBI_MATCH_INTELLIGENCE`) y su lectura en `/auth/me`; en la plantilla del servidor y en la prueba que los vigila | desplegado (en producción el 16-nov-2026 a las 19:54 UTC con la cadena `20261116T1912Z-auto-5120fc4`, sin migración; humo 0 y verificación con 0 líneas NOT OK) | #318 | BE-041 |
+| BE-046 | Sin usar: la sesión de Intelligence tomó BE-047 sin pedir el siguiente libre (18-nov-2026). No se reutiliza | sin usar | — | — |
+| BE-047 | Plan de estadísticas avanzadas, perfiles y probabilidades por mercado (EA-001 a EA-008, EA-101 a EA-107, EA-201 a EA-203, EA-307, EA-501 a EA-503, EA-602). **Migración 0167** (`analytics.stat_documents`, `analytics.stat_runs`); pasada nocturna `FBI_STATS_AGG` (07:20 UTC); contratos C-13 1.0.0 y C-14 1.0.0; perfiles de equipo y jugador, comparaciones, previa del partido y probabilidades por mercado (`FBI_STATS_V2`, `FBI_MARKET_PROBS`); Mi parlay con los mercados del catálogo que tienen regla IA-070, ≥ 3 casas y línea no de cuarto, liquidados por su regla (`FBI_PARLAY_MARKETS_V2`); tarjeta de método en «Cómo funciona». `FBI_PLAYER_MARKETS` (C-15) bloqueado por datos | desplegado y encendido (en producción el 18-nov-2026 a las 19:10 UTC con la cadena `20261118T1807Z-auto-589a50e`, copia propia antes de migrar (0166 → 0167); humo 0 y verificación con 0 líneas NOT OK; encendidos con el kit `ia-switch-ea`: `FBI_STATS_AGG` 20:24, `FBI_STATS_V2` 21:13, `FBI_MARKET_PROBS` 21:24, `FBI_PARLAY_MARKETS_V2` 21:31 UTC) | #388 | — |
+| BE-048 | La pasada de estadísticas confirma cada temporada por separado (las lecturas abrían la transacción y todo quedaba en una sola hasta el final) e informe EA-008 de cobertura medido en producción (`src/fbi/stats/stats_coverage.json`, 125 temporadas) | desplegado (en producción el 18-nov-2026 con la cadena `20261118T2213Z-auto-f9739d4`, sin migración) | #389 | BE-047 |
 
 ## Otras áreas
+
+| Código | Qué es | Estado | PR | Fase o nombre anterior |
+| --- | --- | --- | --- | --- |
+| DOC-001 | BE-046 a BE-048, FE-002 y FE-003 en el registro de códigos | solo documentación | este PR | — |
 
 Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identifica por su fase: F11 (familias), S1 a S4 (seguridad), UX A1 y siguientes.
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-173 · BE-046 · FE-002 · OPS-007 · DOC-001
+CI-020 · SEG-003 · UX-173 · BE-049 · FE-004 · OPS-007 · DOC-002
 
 IA-145
 
