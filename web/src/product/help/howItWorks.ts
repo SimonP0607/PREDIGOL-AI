@@ -1,5 +1,5 @@
 /**
- * «Cómo funciona PrediGol» (plan de cierre UX, 1.6): the eleven cards that explain the app - what each part is, how it is
+ * «Cómo funciona PrediGol» (plan de cierre UX, 1.6): the twelve cards that explain the app - what each part is, how it is
  * read, an example and where to see it. The words live in the catalogue (support.howItWorks.cards.<id>); this file says which
  * cards there are, in what order, where each one leads and which glossary terms it shows under it, so that the welcome, the
  * tour, the help and the empty states can all point to one place instead of repeating the explanation.
@@ -18,6 +18,7 @@ export const HOW_CARD_IDS = [
   "favorites",
   "analysis",
   "probabilities",
+  "stats",
   "markets",
   "states",
 ] as const;
@@ -46,6 +47,8 @@ export const HOW_CARDS: readonly HowCard[] = [
   { id: "favorites", to: "/profile", hash: "football", term: "forecast" },
   { id: "analysis", to: "/matches", term: "forecast" },
   { id: "probabilities", to: "/matches", term: "probability" },
+  // Plan EA, EA-602: how the advanced statistics are computed (percentiles, pulse, Wilson, the three marks).
+  { id: "stats", to: "/matches", term: "probability" },
   {
     id: "markets",
     to: "/matches",
