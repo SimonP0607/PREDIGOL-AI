@@ -39,6 +39,20 @@ regexes = [
 ]
 
 [[allowlists]]
+description = "Claves públicas de mercados del catálogo (`result_1x2.FT.match`) en los ejemplos de contrato C-14 (plan EA, BE-047): identificadores del catálogo, no credenciales. Independiente del commit, para que el squash a main no las vuelva a marcar"
+# AND: solo en esos ficheros de ejemplo Y en una línea que es exactamente «"key": "<código>.<período>.<sujeto>"». Cualquier otro valor sigue marcándose.
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = [
+  '''(^|/)tests/fixtures/contracts/intelligence/C-14/[a-z_]+\.(public|private)\.json$''',
+  '''(^|/)src/components/analytics/stats/fixtures/c14_[a-z_]+\.json$''',
+]
+regexTarget = "line"
+regexes = [
+  '''^\s*"key":\s*"[a-z0-9_]{3,48}\.(FT|1H|2H)\.(match|home|away)",?\s*$''',
+]
+
+[[allowlists]]
 description = "Plantilla de variables de entorno sin valores: con una asignación vacía la regla genérica lee la línea siguiente. Las reglas por nombre siguen vivas en este fichero"
 targetRules = ["generic-api-key"]
 paths = ['''(^|/)deploy/env_example\.txt$''']

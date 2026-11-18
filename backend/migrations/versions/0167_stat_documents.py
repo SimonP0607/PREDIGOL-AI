@@ -57,7 +57,7 @@ def upgrade() -> None:
           'settlement reads it.';
 
         CREATE TABLE analytics.stat_runs (
-            id               BIGSERIAL    PRIMARY KEY,
+            id               BIGINT       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
             started_at       TIMESTAMPTZ  NOT NULL DEFAULT now(),
             finished_at      TIMESTAMPTZ,
             calc_version     TEXT         NOT NULL,
