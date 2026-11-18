@@ -17,6 +17,7 @@ import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ChartCard, ChipChoice } from "@/components/analytics/stats/ChartCard";
 import { catalogSelection, catalogTitle, periodLabel } from "../marketCatalog";
+import { lineWindow } from "./lines";
 
 type Sides = { home: string; away: string };
 const FEATURED_UNITS = new Set(["1X2", "OU", "BTTS"]);
@@ -166,9 +167,10 @@ function MarketCard({ m, sides, owner }: { m: MarketMarks; sides: Sides; owner: 
           value={String(line)}
           onChange={(v) => setLine(Number(v))}
           label={t("stats.lineLabel")}
-          options={lines
-            .slice(0, 8)
-            .map((l) => ({ value: String(l), label: fmtLine(l, m.kind === "asian_handicap") }))}
+          options={lineWindow(lines, line).map((l) => ({
+            value: String(l),
+            label: fmtLine(l, m.kind === "asian_handicap"),
+          }))}
         />
       ) : null}
       <ul className="space-y-3">
