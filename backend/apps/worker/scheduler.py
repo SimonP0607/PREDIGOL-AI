@@ -94,6 +94,9 @@ at worst, and a duplicated tick costs nothing at all.
     default): ``player-engine-v2`` (``fbi.shadowjobs.player_forecast``, IA-129) forecasts every player market of the tracked matches at
     E1 and E4 - expected minutes x rate per 90 x the start probability of ``lineup-estimate-v1`` - one row per player, family and line
     in ``intel.player_forecasts``. Database only; no provider, no model; nothing a reader, a pick or a decision reads.
+  * ``stats_documents``  once a night at 07:20 UTC (and 12 minutes after the worker starts), only while ``FBI_STATS_AGG`` is ``on`` (off
+    by default): the statistics documents of plan EA (``fbi.stats.job``: percentiles, pulse, goals by interval, survival of 0-0, game
+    states, trends) into ``analytics.stat_documents``. Database only; no provider, no model; nothing a model, a pick or a decision reads.
   * ``chronicle_v4``  every 30 min (``FBI_CHRONICLE_V4_MINUTES``), only while ``FBI_CHRONICLE_V4=shadow`` (off by default): the content plan
     (``content-plan-v1``) and the single chronicle (``chronicle-v4``, the small model, by batch when the gate allows) of the analysed matches
     of the next day, checked sentence by sentence (``fbi.chronicle.v4_job``, IA-103/IA-104), into ``ai.chronicles``. At most US$ 1 a day;
@@ -1367,6 +1370,25 @@ async def _player_forecast_shadow() -> None:
     await asyncio.to_thread(_player_forecast_shadow_now)
 
 
+def _stats_documents_now() -> None:
+    """The statistics documents of plan EA (EA-003 to EA-006): one pass. Never raises; writes only ``analytics.stat_documents``."""
+    from fbi.stats import job as stats_job
+
+    if stats_job.mode() != "on":
+        return
+    try:
+        with _connect() as conn:
+            r = stats_job.run_pass(conn, now=now(), code_version=code_version())
+        log.info("stats_documents.run", **{k: v for k, v in r.as_json().items() if k != "errors"}, errors=r.errors[:3])
+    except Exception as exc:
+        log.error("stats_documents.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _stats_documents() -> None:
+    new_run_id()
+    await asyncio.to_thread(_stats_documents_now)
+
+
 def _eval_cycle_shadow_now() -> None:
     """The evaluation cycle's main pass (IA-105): the match read again, E1, E2, E4 and the chains. Never raises; writes only the cycle's
     tables, decision-v2's through its own function and the cycle of states through its API."""
@@ -1984,7 +2006,7 @@ WORKER_JOB_TYPES = frozenset({
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
     "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest", "decision_v2_shadow", "lineup_estimate_shadow",
-    "player_forecast_shadow",
+    "player_forecast_shadow", "stats_documents",
     "news_stories", "chronicle_v4", "eval_cycle_shadow", "eval_cycle_e3", "selection_settle_shadow", "parlay_v6_shadow", "selection_eval_shadow",
     "chronicle_update", "chronicle_review_v2", "council_reduced_shadow", "source_credibility_shadow",
 })
@@ -2374,6 +2396,16 @@ async def main() -> None:
                           misfire_grace_time=pfs.every_minutes() * 60, next_run_time=moment + timedelta(minutes=6))
     else:
         log.info("worker.player_forecast_shadow_off", hint="FBI_PLAYER_ENGINE_V2 is not shadow: no player forecasts are kept (IA-129)")
+    from fbi.stats import job as stats_job
+
+    if stats_job.mode() == "on":
+        scheduler.add_job(_deadline("stats_documents", "stats_documents", _stats_documents), "cron", hour=stats_job.HOUR,
+                          minute=stats_job.MINUTE, timezone="UTC", id="stats_documents", max_instances=1, coalesce=True,
+                          misfire_grace_time=3 * 3600)
+        scheduler.add_job(_deadline("stats_documents", "stats_documents", _stats_documents), "date",
+                          run_date=moment + timedelta(minutes=12), id="stats_documents_catch_up", max_instances=1)
+    else:
+        log.info("worker.stats_documents_off", hint="FBI_STATS_AGG is not on: no statistics documents are computed (plan EA)")
     from fbi.shadowjobs import eval_cycle as ec
 
     if ec.mode() == "shadow":
