@@ -9,10 +9,10 @@ import pytest
 
 from fbi.api.contracts.intelligence.base import Missing
 from fbi.api.services.market_probs import history
+from fbi.market.eligibility import verdict
 from fbi.market.in_force import implied
 from fbi.odds.quote_current import CurrentQuote
 from fbi.odds.quote_taxonomy import spec_for
-from fbi.userdata.eligibility import verdict
 
 AT = datetime(2034, 3, 1, 12, tzinfo=UTC)
 

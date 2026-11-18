@@ -15,10 +15,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Final
 
+from fbi.market.eligibility import spec_for_key
 from fbi.market.rules import rule_for
 from fbi.picks import settlement
 from fbi.picks.count_settlement import settle_numbers
-from fbi.userdata.eligibility import spec_for_key
 
 NO_DATA_BASIS: Final = "sin_datos_para_liquidar"
 RULE_BASIS: Final = "regla_ia070"

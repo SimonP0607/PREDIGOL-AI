@@ -13,7 +13,7 @@ código, cómo se enciende y qué queda bloqueado.
 | EA-002 / C-14 1.0.0 | `contracts/intelligence/market_probs.py` | Probabilidades por mercado: tres marcas (modelo ▮, implícita │, histórico ●) y si Mi parlay la toma |
 | EA-102 a EA-107, EA-203 | web `product/teams/stats`, `product/match/stats` | Pestaña Estadísticas de equipo y jugador, `/compare/teams`, `/compare/players`, previa del partido (V2·1 a V2·7, V2·11) |
 | EA-201, EA-202 | `services/market_probs.py`, `ProbabilitiesPanel` | Panel de probabilidades en «Mercados» antes del partido (V2·8) |
-| EA-501 a EA-503 | `userdata/eligibility.py`, `picks/rule_settlement.py`, web `match/catalogParlay.ts` | Mi parlay acepta mercados del catálogo con regla IA-070, precio vigente de ≥ 3 casas y línea no de cuarto; se liquidan por su regla; sin datos tras 72 h, nula. El módulo no se rediseñó |
+| EA-501 a EA-503 | `market/eligibility.py`, `picks/rule_settlement.py`, web `match/catalogParlay.ts` | Mi parlay acepta mercados del catálogo con regla IA-070, precio vigente de ≥ 3 casas y línea no de cuarto; se liquidan por su regla; sin datos tras 72 h, nula. El módulo no se rediseñó |
 
 ## Métodos
 

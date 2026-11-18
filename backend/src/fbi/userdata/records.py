@@ -241,10 +241,10 @@ def _catalogue_leg(conn: psycopg.Connection[Any], leg: LegIn, f: dict[str, Any],
                    policy: MarketPolicy | None) -> tuple[str | None, dict[str, Any] | None]:
     """A leg on a market of the catalogue: the reason it is refused (or None) and its price now - best price, house, time, the
     houses that price it and its implied probability - from the prices in force (the Mercados tab's own reading)."""
+    from fbi.market.eligibility import spec_for_key, verdict
     from fbi.market.in_force import book, implied, key_of, unify
     from fbi.market.rules import rule_for
     from fbi.picks.count_settlement import settle_numbers
-    from fbi.userdata.eligibility import spec_for_key, verdict
 
     spec = spec_for_key(leg.market_key)
     if spec is None or rule_for(spec) is None:

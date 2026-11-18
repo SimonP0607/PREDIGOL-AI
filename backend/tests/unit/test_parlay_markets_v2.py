@@ -11,12 +11,12 @@ from typing import Any
 
 import pytest
 
+from fbi.market.eligibility import spec_for_key
 from fbi.odds.quote_current import CurrentQuote
 from fbi.picks import settlement
 from fbi.picks.product_settlement import settle_single
 from fbi.picks.rule_settlement import NO_DATA_BASIS, settle_by_rule
 from fbi.userdata import records
-from fbi.userdata.eligibility import spec_for_key
 
 KO = datetime(2034, 5, 1, 20, tzinfo=UTC)
 AT = KO - timedelta(hours=5)

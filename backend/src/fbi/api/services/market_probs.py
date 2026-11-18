@@ -39,6 +39,7 @@ from fbi.api.services.forecast import FAMILY_VERSION, VERSION, users_may_see
 from fbi.api.services.market_status import MarketCatalogue, load_catalogue
 from fbi.api.switches import market_probs_on, parlay_markets_v2_on
 from fbi.core.clock import now
+from fbi.market.eligibility import verdict
 from fbi.market.in_force import book as book_in_force
 from fbi.market.in_force import group_key, implied, unify
 from fbi.market.rules import rule_for
@@ -47,7 +48,6 @@ from fbi.odds.quote_taxonomy import spec_for
 from fbi.picks.count_settlement import settle_numbers
 from fbi.picks.settlement import Status
 from fbi.statmath import formulas as fx
-from fbi.userdata.eligibility import verdict
 from fbi.userdata.records import MarketPolicy
 
 HISTORY: Final = 10
