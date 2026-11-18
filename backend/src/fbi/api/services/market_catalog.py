@@ -13,7 +13,7 @@ Loaded when a category is opened, never in the match's 60-second poll; kept 60 s
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
 from typing import cast
@@ -32,6 +32,7 @@ from fbi.api.contracts.market_catalog import (
 from fbi.api.envelope import DataStatus, Envelope, ok, unavailable
 from fbi.api.repositories import Conn
 from fbi.core.config import settings
+from fbi.market.in_force import unify as unify
 from fbi.odds.book_catalog import read_book_in_force
 from fbi.odds.quote_current import (
     CATALOG_FAMILIES,
@@ -58,18 +59,6 @@ _REASONS = {
 
 def _key(q: CurrentQuote) -> str:
     return market_key(q.bet_id, q.period, q.subject)
-
-
-def unify(quotes: Iterable[CurrentQuote]) -> list[CurrentQuote]:
-    """One price per bookmaker, market, selection and line: where two provider ids price the same market (307 and 339), the
-    lower id's price; within one id, the newest body's."""
-    best: dict[tuple[int, str, str, Decimal], CurrentQuote] = {}
-    for q in quotes:
-        k = (q.bookmaker_id, _key(q), q.selection, q.line)
-        held = best.get(k)
-        if held is None or (q.bet_id, -q.captured_at.timestamp()) < (held.bet_id, -held.captured_at.timestamp()):
-            best[k] = q
-    return list(best.values())
 
 
 def _pair_line(q: CurrentQuote) -> Decimal:

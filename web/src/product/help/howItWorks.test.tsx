@@ -41,7 +41,7 @@ const PAGES = [
 ];
 
 describe("the cards", () => {
-  test("the eleven of the plan, in its order, none repeated", () => {
+  test("the eleven of the plan and the statistics card (plan EA, EA-602), in order, none repeated", () => {
     expect([...HOW_CARD_IDS]).toEqual([
       "home",
       "matches",
@@ -52,11 +52,12 @@ describe("the cards", () => {
       "favorites",
       "analysis",
       "probabilities",
+      "stats",
       "markets",
       "states",
     ]);
     expect(HOW_CARDS.map((c) => c.id)).toEqual([...HOW_CARD_IDS]);
-    expect(new Set(HOW_CARDS.map((c) => cardAnchor(c.id))).size).toBe(11);
+    expect(new Set(HOW_CARDS.map((c) => cardAnchor(c.id))).size).toBe(12);
   });
 
   test("each card has its title and its three texts in both languages, none empty", () => {
@@ -113,8 +114,8 @@ describe("the page", () => {
       expect(page).toContain(`id="${cardAnchor(card.id)}"`);
       expect(page).toContain(`href="#${cardAnchor(card.id)}"`);
     }
-    expect((page.match(/data-testid="how-card"/g) ?? []).length).toBe(11);
-    expect((page.match(/data-testid="how-go"/g) ?? []).length).toBe(11);
+    expect((page.match(/data-testid="how-card"/g) ?? []).length).toBe(12);
+    expect((page.match(/data-testid="how-go"/g) ?? []).length).toBe(12);
     expect(page).toContain("Verlo en la app");
     expect(page).toContain("están inventados para explicar");
     expect(page).toContain("No es una casa de apuestas");

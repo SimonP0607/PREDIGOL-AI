@@ -1,0 +1,42 @@
+# Estadísticas avanzadas (plan EA, 2026)
+
+Plan aprobado el 18-nov-2026: `claude/PLAN_MAESTRO_ESTADISTICAS_AVANZADAS_2026.md` (proyecto). Este documento dice qué hay en el
+código, cómo se enciende y qué queda bloqueado.
+
+## Qué hay
+
+| Pieza | Dónde | Qué hace |
+|---|---|---|
+| EA-003 a EA-006 | `fbi.stats`, `fbi.statmath`, migración 0167 | El cálculo nocturno (07:20 UTC, `FBI_STATS_AGG`) escribe en `analytics.stat_documents` un documento por equipo, jugador y liga, por temporada en curso (≥ 10 partidos terminados), alcance u5/u10/u20/temporada y contexto todo/local/visitante. Cada pasada queda en `analytics.stat_runs`. Solo base de datos: no pregunta al proveedor ni usa IA |
+| EA-008 | `scripts/stats_coverage.py` | Informe de cobertura por métrica y temporada (umbral 80 %): una métrica por debajo no se publica, se dice «cobertura insuficiente» |
+| EA-001 / C-13 1.0.0 | `contracts/intelligence/stats_profile.py` | Perfil estadístico: equipo, jugador, comparación y previa del partido |
+| EA-002 / C-14 1.0.0 | `contracts/intelligence/market_probs.py` | Probabilidades por mercado: tres marcas (modelo ▮, implícita │, histórico ●) y si Mi parlay la toma |
+| EA-102 a EA-107, EA-203 | web `product/teams/stats`, `product/match/stats` | Pestaña Estadísticas de equipo y jugador, `/compare/teams`, `/compare/players`, previa del partido (V2·1 a V2·7, V2·11) |
+| EA-201, EA-202 | `services/market_probs.py`, `ProbabilitiesPanel` | Panel de probabilidades en «Mercados» antes del partido (V2·8) |
+| EA-501 a EA-503 | `market/eligibility.py`, `picks/rule_settlement.py`, web `match/catalogParlay.ts` | Mi parlay acepta mercados del catálogo con regla IA-070, precio vigente de ≥ 3 casas y línea no de cuarto; se liquidan por su regla; sin datos tras 72 h, nula. El módulo no se rediseñó |
+
+## Métodos
+
+- Percentiles por rango medio contra la liga (mínimo 8 equipos y 3 partidos; jugadores por posición, mínimo 5 noventas y 10 jugadores).
+- Pulso de goles `pulso-v1`: suavizado gaussiano σ = 7,5' en tramos de 5', 45+ y 90+ aparte, índice = 100 · equipo / liga, banda por bootstrap (B = 1000, percentiles 10–90, semilla fija).
+- Supervivencia del 0-0 por Kaplan–Meier; estados de partido sobre el reloj de 90'.
+- Tendencias con intervalo de Wilson (z = 1,96), contadas con las reglas de liquidación IA-070.
+- Probabilidad implícita: consenso sin margen de las casas vigentes. Histórico: últimos 10 de local del local y 10 de visitante del visitante.
+- La cifra del modelo solo aparece en mercados que el catálogo tiene `evaluable`; las cifras en calibración (incluido forecast-v2) solo las ve el dueño (D-EA-2). Ningún LLM toca una probabilidad.
+
+## Interruptores (orden D-EA-3)
+
+Ver `INTERRUPTORES_UX.md`: `FBI_STATS_AGG` → `FBI_STATS_V2` → `FBI_MARKET_PROBS` → `FBI_PARLAY_MARKETS_V2` → `FBI_PLAYER_MARKETS`.
+Todos apagados por defecto; se encienden con el kit auditado. `FBI_PICKS_SOURCE` no cambia.
+
+## Bloqueado por datos (sonda EA-303 en producción, 18-nov)
+
+Sobre 400 respuestas de cuotas recientes (2 657 partidos): los mercados de jugador solo los ofrece una casa (Bet365) y en ≤ 88
+partidos (3 %); faltan varias apuestas de jugador y las etiquetas son ambiguas; las faltas y entradas por equipo casi no existen.
+Con la condición del plan (≥ 3 casas) quedan bloqueadas EA-301, 302, 304, 305, 306, 308 y EA-401, y `FBI_PLAYER_MARKETS` sigue
+apagado. No se contrata otro proveedor (regla vigente).
+
+## Desviaciones del plan
+
+- La matriz de tendencias viaja en C-13 (no en C-14); C-04 2.0 no hizo falta; comparación y previa son composiciones de C-13.
+- EA-307 (cifra forecast-v2 por mercado) se entrega como `model_shadow` privado de C-14, sin guardar una familia nueva.

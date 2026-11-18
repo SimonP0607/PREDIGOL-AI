@@ -8,6 +8,8 @@ import { PlayerPhoto, TeamLogo } from "@/components/football/Logos";
 import type { MatchCtx } from "./context";
 import { ageLevel, notPlayed, ratedPlayers, seasonRows, statRows } from "./model";
 import { ProfileBlock } from "./ProfileBlock";
+import { PreviewStats } from "./stats/PreviewStats";
+import { useStatsSwitches } from "@/lib/auth/AuthProvider";
 import {
   Block,
   CenterSection,
@@ -101,9 +103,11 @@ function TopPlayersBlock({ ctx }: { ctx: MatchCtx }) {
  */
 function PreMatchStats({ ctx }: { ctx: MatchCtx }) {
   const { home, away } = ctx.match;
+  const { stats: statsV2 } = useStatsSwitches();
   return (
     <div className="space-y-4">
       <SectionNote>{t("match.stats.notStarted")}</SectionNote>
+      {statsV2 ? <PreviewStats fixtureId={ctx.fixtureId} /> : null}
       <ProfileBlock ctx={ctx} />
       <Block title={t("match.stats.season")} icon={<Trophy />}>
         <CenterSection center={ctx.center} pick={(c) => c.standings}>

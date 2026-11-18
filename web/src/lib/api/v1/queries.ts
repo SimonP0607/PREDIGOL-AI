@@ -1,6 +1,7 @@
 /** TanStack Query option factories for the live API. */
 import { infiniteQueryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { filterParams, v1, type AuditFamily, type BestOddsQuery, type MatchQuery } from "./client";
+import type { StatsContext, StatsScope } from "./types_stats";
 import type { MyPicksFilter } from "./types_mypicks";
 import type { FeedbackSubject } from "./types_feedback";
 import type { ExplainIntent, SlipLegBody } from "./types_explain";
@@ -398,6 +399,39 @@ export const live = {
     queryFn: () => v1.teams(undefined, q),
   }),
   team: (id: string) => ({ queryKey: ["v1", "team", id], queryFn: () => v1.team(id) }),
+  teamStats: (
+    id: string,
+    q: { season?: number; scope?: StatsScope; context?: StatsContext } = {},
+  ) => ({
+    queryKey: ["v1", "team-stats", id, q.season ?? 0, q.scope ?? "season", q.context ?? "all"],
+    queryFn: () => v1.teamStats(id, q),
+    staleTime: 10 * MINUTE,
+  }),
+  playerStats: (id: string, season?: number) => ({
+    queryKey: ["v1", "player-stats", id, season ?? 0],
+    queryFn: () => v1.playerStats(id, season),
+    staleTime: 10 * MINUTE,
+  }),
+  compareTeams: (a: number, b: number, q: { scope?: StatsScope; context?: StatsContext } = {}) => ({
+    queryKey: ["v1", "compare-teams", a, b, q.scope ?? "season", q.context ?? "all"],
+    queryFn: () => v1.compareTeams(a, b, q),
+    staleTime: 10 * MINUTE,
+  }),
+  comparePlayers: (a: number, b: number) => ({
+    queryKey: ["v1", "compare-players", a, b],
+    queryFn: () => v1.comparePlayers(a, b),
+    staleTime: 10 * MINUTE,
+  }),
+  matchStatsPreview: (id: string, scope?: StatsScope) => ({
+    queryKey: ["v1", "match-stats-preview", id, scope ?? "season"],
+    queryFn: () => v1.matchStatsPreview(id, scope),
+    staleTime: 10 * MINUTE,
+  }),
+  matchMarketProbs: (id: string, owner = false) => ({
+    queryKey: ["v1", "match-market-probs", id, owner],
+    queryFn: () => v1.matchMarketProbs(id, owner),
+    staleTime: MINUTE,
+  }),
   odds: { queryKey: ["v1", "odds"], queryFn: v1.odds },
   fixtureOdds: (id: string, market?: string) => ({
     queryKey: ["v1", "fixture-odds", id, market ?? "all"],

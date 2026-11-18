@@ -1,0 +1,2020 @@
+{
+  "contract": "C-13",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2034-03-01T12:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "entities": [
+    {
+      "role": "perfil",
+      "subject": "equipo",
+      "competition": {
+        "competition_season_id": 1,
+        "competition": {
+          "id": 1,
+          "name": "Liga de Ejemplo"
+        },
+        "season": 2034,
+        "country": "Colombia"
+      },
+      "scope": "u5",
+      "context": "home",
+      "matches": 5,
+      "calc_version": "team-agg-v1",
+      "computed_at": "2034-03-01T12:00:00Z",
+      "available_scopes": [
+        "u5",
+        "season"
+      ],
+      "available_competitions": [
+        {
+          "competition_season_id": 1,
+          "competition": {
+            "id": 1,
+            "name": "Liga de Ejemplo"
+          },
+          "season": 2034,
+          "country": "Colombia"
+        }
+      ],
+      "team": {
+        "team": {
+          "id": 100,
+          "name": "Equipo 0"
+        },
+        "record": {
+          "matches": 5,
+          "wins": 5,
+          "draws": 0,
+          "losses": 0,
+          "goals_for": 10,
+          "goals_against": 5,
+          "points": 15
+        },
+        "figures": [
+          {
+            "key": "points",
+            "unit": "por_partido",
+            "better": "mas",
+            "value": 3.0,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 3.0,
+            "distribution": {
+              "p10": 3.0,
+              "p25": 3.0,
+              "p50": 3.0,
+              "p75": 3.0,
+              "p90": 3.0,
+              "entities": 10
+            }
+          },
+          {
+            "key": "goals_for",
+            "unit": "por_partido",
+            "better": "mas",
+            "value": 2.0,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 2.0,
+            "distribution": {
+              "p10": 2.0,
+              "p25": 2.0,
+              "p50": 2.0,
+              "p75": 2.0,
+              "p90": 2.0,
+              "entities": 10
+            }
+          },
+          {
+            "key": "goals_against",
+            "unit": "por_partido",
+            "better": "menos",
+            "value": 1.0,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 1.0,
+            "distribution": {
+              "p10": 1.0,
+              "p25": 1.0,
+              "p50": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "entities": 10
+            }
+          },
+          {
+            "key": "xg_for",
+            "unit": "por_partido",
+            "better": "mas",
+            "value": 1.5,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 1.5,
+            "distribution": {
+              "p10": 1.5,
+              "p25": 1.5,
+              "p50": 1.5,
+              "p75": 1.5,
+              "p90": 1.5,
+              "entities": 10
+            }
+          },
+          {
+            "key": "xg_against",
+            "unit": "por_partido",
+            "better": "menos",
+            "value": 0.9,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 0.9,
+            "distribution": {
+              "p10": 0.9,
+              "p25": 0.9,
+              "p50": 0.9,
+              "p75": 0.9,
+              "p90": 0.9,
+              "entities": 10
+            }
+          },
+          {
+            "key": "finishing",
+            "unit": "por_partido",
+            "better": "mas",
+            "value": 0.5,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 0.5,
+            "distribution": {
+              "p10": 0.5,
+              "p25": 0.5,
+              "p50": 0.5,
+              "p75": 0.5,
+              "p90": 0.5,
+              "entities": 10
+            }
+          },
+          {
+            "key": "shots_for",
+            "unit": "por_partido",
+            "better": "mas",
+            "value": 10.0,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 10.0,
+            "distribution": {
+              "p10": 10.0,
+              "p25": 10.0,
+              "p50": 10.0,
+              "p75": 10.0,
+              "p90": 10.0,
+              "entities": 10
+            }
+          },
+          {
+            "key": "shots_against",
+            "unit": "por_partido",
+            "better": "menos",
+            "value": 8.0,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 8.0,
+            "distribution": {
+              "p10": 8.0,
+              "p25": 8.0,
+              "p50": 8.0,
+              "p75": 8.0,
+              "p90": 8.0,
+              "entities": 10
+            }
+          },
+          {
+            "key": "shots_on_target_for",
+            "unit": "por_partido",
+            "better": "mas",
+            "value": {
+              "missing_reason": "sin_datos"
+            },
+            "matches_with_data": 0,
+            "percentile": {
+              "missing_reason": "sin_datos"
+            },
+            "league_value": {
+              "missing_reason": "sin_datos"
+            },
+            "distribution": {
+              "missing_reason": "muestra_insuficiente",
+              "sample": 0,
+              "min_sample": 8
+            }
+          },
+          {
+            "key": "shots_on_target_against",
+            "unit": "por_partido",
+            "better": "menos",
+            "value": {
+              "missing_reason": "sin_datos"
+            },
+            "matches_with_data": 0,
+            "percentile": {
+              "missing_reason": "sin_datos"
+            },
+            "league_value": {
+              "missing_reason": "sin_datos"
+            },
+            "distribution": {
+              "missing_reason": "muestra_insuficiente",
+              "sample": 0,
+              "min_sample": 8
+            }
+          },
+          {
+            "key": "corners_for",
+            "unit": "por_partido",
+            "better": "mas",
+            "value": 5.0,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 5.0,
+            "distribution": {
+              "p10": 5.0,
+              "p25": 5.0,
+              "p50": 5.0,
+              "p75": 5.0,
+              "p90": 5.0,
+              "entities": 10
+            }
+          },
+          {
+            "key": "corners_against",
+            "unit": "por_partido",
+            "better": "menos",
+            "value": 4.0,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 4.0,
+            "distribution": {
+              "p10": 4.0,
+              "p25": 4.0,
+              "p50": 4.0,
+              "p75": 4.0,
+              "p90": 4.0,
+              "entities": 10
+            }
+          },
+          {
+            "key": "corner_balance",
+            "unit": "por_partido",
+            "better": "mas",
+            "value": 1.0,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 1.0,
+            "distribution": {
+              "p10": 1.0,
+              "p25": 1.0,
+              "p50": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "entities": 10
+            }
+          },
+          {
+            "key": "possession",
+            "unit": "porcentaje",
+            "better": "neutral",
+            "value": 55.0,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 55.0,
+            "distribution": {
+              "p10": 55.0,
+              "p25": 55.0,
+              "p50": 55.0,
+              "p75": 55.0,
+              "p90": 55.0,
+              "entities": 10
+            }
+          },
+          {
+            "key": "pass_accuracy",
+            "unit": "porcentaje",
+            "better": "mas",
+            "value": 80.0,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 80.0,
+            "distribution": {
+              "p10": 80.0,
+              "p25": 80.0,
+              "p50": 80.0,
+              "p75": 80.0,
+              "p90": 80.0,
+              "entities": 10
+            }
+          },
+          {
+            "key": "fouls",
+            "unit": "por_partido",
+            "better": "neutral",
+            "value": {
+              "missing_reason": "sin_datos"
+            },
+            "matches_with_data": 0,
+            "percentile": {
+              "missing_reason": "sin_datos"
+            },
+            "league_value": {
+              "missing_reason": "sin_datos"
+            },
+            "distribution": {
+              "missing_reason": "muestra_insuficiente",
+              "sample": 0,
+              "min_sample": 8
+            }
+          },
+          {
+            "key": "cards",
+            "unit": "por_partido",
+            "better": "menos",
+            "value": 2.0,
+            "matches_with_data": 5,
+            "percentile": 50,
+            "league_value": 2.0,
+            "distribution": {
+              "p10": 2.0,
+              "p25": 2.0,
+              "p50": 2.0,
+              "p75": 2.0,
+              "p90": 2.0,
+              "entities": 10
+            }
+          },
+          {
+            "key": "saves",
+            "unit": "por_partido",
+            "better": "neutral",
+            "value": {
+              "missing_reason": "sin_datos"
+            },
+            "matches_with_data": 0,
+            "percentile": {
+              "missing_reason": "sin_datos"
+            },
+            "league_value": {
+              "missing_reason": "sin_datos"
+            },
+            "distribution": {
+              "missing_reason": "muestra_insuficiente",
+              "sample": 0,
+              "min_sample": 8
+            }
+          }
+        ],
+        "radar": [
+          {
+            "key": "ataque",
+            "percentile": 50,
+            "value": 1.5
+          },
+          {
+            "key": "pegada",
+            "percentile": 50,
+            "value": 0.5
+          },
+          {
+            "key": "volumen",
+            "percentile": 50,
+            "value": 10.0
+          },
+          {
+            "key": "presencia",
+            "percentile": 50,
+            "value": 1.0
+          },
+          {
+            "key": "defensa",
+            "percentile": 50,
+            "value": 0.9
+          },
+          {
+            "key": "disciplina",
+            "percentile": 50,
+            "value": 2.0
+          }
+        ],
+        "series": [
+          {
+            "fixture_id": 5,
+            "kickoff_at": "2034-01-06T18:00:00Z",
+            "opponent": {
+              "id": 105,
+              "name": "Equipo 5"
+            },
+            "home": true,
+            "goals_for": 2,
+            "goals_against": 1,
+            "xg_for": 1.5,
+            "xg_against": 0.9,
+            "xg_for_avg5": 1.5,
+            "xg_against_avg5": 0.9
+          },
+          {
+            "fixture_id": 6,
+            "kickoff_at": "2034-01-07T18:00:00Z",
+            "opponent": {
+              "id": 106,
+              "name": "Equipo 6"
+            },
+            "home": true,
+            "goals_for": 2,
+            "goals_against": 1,
+            "xg_for": 1.5,
+            "xg_against": 0.9,
+            "xg_for_avg5": 1.5,
+            "xg_against_avg5": 0.9
+          },
+          {
+            "fixture_id": 7,
+            "kickoff_at": "2034-01-08T18:00:00Z",
+            "opponent": {
+              "id": 107,
+              "name": "Equipo 7"
+            },
+            "home": true,
+            "goals_for": 2,
+            "goals_against": 1,
+            "xg_for": 1.5,
+            "xg_against": 0.9,
+            "xg_for_avg5": 1.5,
+            "xg_against_avg5": 0.9
+          },
+          {
+            "fixture_id": 8,
+            "kickoff_at": "2034-01-09T18:00:00Z",
+            "opponent": {
+              "id": 108,
+              "name": "Equipo 8"
+            },
+            "home": true,
+            "goals_for": 2,
+            "goals_against": 1,
+            "xg_for": 1.5,
+            "xg_against": 0.9,
+            "xg_for_avg5": 1.5,
+            "xg_against_avg5": 0.9
+          },
+          {
+            "fixture_id": 9,
+            "kickoff_at": "2034-01-10T18:00:00Z",
+            "opponent": {
+              "id": 109,
+              "name": "Equipo 9"
+            },
+            "home": true,
+            "goals_for": 2,
+            "goals_against": 1,
+            "xg_for": 1.5,
+            "xg_against": 0.9,
+            "xg_for_avg5": 1.5,
+            "xg_against_avg5": 0.9
+          }
+        ],
+        "halves": {
+          "goals_for_1h": 1.0,
+          "goals_against_1h": 0.0,
+          "goals_for_2h": 1.0,
+          "goals_against_2h": 1.0,
+          "matches_with_data": 5
+        },
+        "states": {
+          "minutes_leading": 40.0,
+          "minutes_level": 50.0,
+          "minutes_trailing": 0.0,
+          "matches_led": 5,
+          "points_ceded": 0,
+          "matches_trailed": 0,
+          "points_rescued": 0,
+          "matches_with_data": 5
+        },
+        "pulse_for": {
+          "subject": "goles_a_favor",
+          "sigma_minutes": 7.5,
+          "bootstrap": 1000,
+          "matches": 5,
+          "bins": [
+            {
+              "label": "0-5",
+              "start": 0,
+              "rate": 0.2517,
+              "league_rate": 0.2517,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "5-10",
+              "start": 5,
+              "rate": 0.3144,
+              "league_rate": 0.3144,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "10-15",
+              "start": 10,
+              "rate": 0.2517,
+              "league_rate": 0.2517,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "15-20",
+              "start": 15,
+              "rate": 0.1293,
+              "league_rate": 0.1293,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "20-25",
+              "start": 20,
+              "rate": 0.0425,
+              "league_rate": 0.0425,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "25-30",
+              "start": 25,
+              "rate": 0.009,
+              "league_rate": 0.009,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "30-35",
+              "start": 30,
+              "rate": 0.0012,
+              "league_rate": 0.0012,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "35-40",
+              "start": 35,
+              "rate": 0.0001,
+              "league_rate": 0.0001,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "40-45",
+              "start": 40,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "45+",
+              "start": 45,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "45-50",
+              "start": 45,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "50-55",
+              "start": 50,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "55-60",
+              "start": 55,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "60-65",
+              "start": 60,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "65-70",
+              "start": 65,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "70-75",
+              "start": 70,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "75-80",
+              "start": 75,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "80-85",
+              "start": 80,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "85-90",
+              "start": 85,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "90+",
+              "start": 90,
+              "rate": 1.0,
+              "league_rate": 1.0,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            }
+          ]
+        },
+        "pulse_against": {
+          "subject": "goles_en_contra",
+          "sigma_minutes": 7.5,
+          "bootstrap": 1000,
+          "matches": 5,
+          "bins": [
+            {
+              "label": "0-5",
+              "start": 0,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "5-10",
+              "start": 5,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "10-15",
+              "start": 10,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "15-20",
+              "start": 15,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "20-25",
+              "start": 20,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "25-30",
+              "start": 25,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "30-35",
+              "start": 30,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "35-40",
+              "start": 35,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "40-45",
+              "start": 40,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "45+",
+              "start": 45,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "45-50",
+              "start": 45,
+              "rate": 0.4202,
+              "league_rate": 0.4202,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "50-55",
+              "start": 50,
+              "rate": 0.3364,
+              "league_rate": 0.3364,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "55-60",
+              "start": 55,
+              "rate": 0.1727,
+              "league_rate": 0.1727,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "60-65",
+              "start": 60,
+              "rate": 0.0569,
+              "league_rate": 0.0569,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "65-70",
+              "start": 65,
+              "rate": 0.012,
+              "league_rate": 0.012,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "70-75",
+              "start": 70,
+              "rate": 0.0016,
+              "league_rate": 0.0016,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "75-80",
+              "start": 75,
+              "rate": 0.0001,
+              "league_rate": 0.0001,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "80-85",
+              "start": 80,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "85-90",
+              "start": 85,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": 100.0,
+              "low": 100.0,
+              "high": 100.0
+            },
+            {
+              "label": "90+",
+              "start": 90,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            }
+          ]
+        },
+        "pulse_cards": {
+          "subject": "tarjetas",
+          "sigma_minutes": 7.5,
+          "bootstrap": 1000,
+          "matches": 5,
+          "bins": [
+            {
+              "label": "0-5",
+              "start": 0,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "5-10",
+              "start": 5,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "10-15",
+              "start": 10,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "15-20",
+              "start": 15,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "20-25",
+              "start": 20,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "25-30",
+              "start": 25,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "30-35",
+              "start": 30,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "35-40",
+              "start": 35,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "40-45",
+              "start": 40,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "45+",
+              "start": 45,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "45-50",
+              "start": 45,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "50-55",
+              "start": 50,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "55-60",
+              "start": 55,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "60-65",
+              "start": 60,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "65-70",
+              "start": 65,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "70-75",
+              "start": 70,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "75-80",
+              "start": 75,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "80-85",
+              "start": 80,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "85-90",
+              "start": 85,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            },
+            {
+              "label": "90+",
+              "start": 90,
+              "rate": 0.0,
+              "league_rate": 0.0,
+              "index": {
+                "missing_reason": "sin_datos"
+              },
+              "low": {
+                "missing_reason": "sin_datos"
+              },
+              "high": {
+                "missing_reason": "sin_datos"
+              }
+            }
+          ]
+        },
+        "intervals": {
+          "matches": 5,
+          "bins": [
+            {
+              "label": "1-15",
+              "goals_for": 5,
+              "goals_against": 0,
+              "league_for": 1.0,
+              "league_against": 0.0,
+              "goals_for_list": [
+                {
+                  "fixture_id": 5,
+                  "minute": 10,
+                  "extra_minute": null
+                },
+                {
+                  "fixture_id": 6,
+                  "minute": 10,
+                  "extra_minute": null
+                },
+                {
+                  "fixture_id": 7,
+                  "minute": 10,
+                  "extra_minute": null
+                },
+                {
+                  "fixture_id": 8,
+                  "minute": 10,
+                  "extra_minute": null
+                },
+                {
+                  "fixture_id": 9,
+                  "minute": 10,
+                  "extra_minute": null
+                }
+              ],
+              "goals_against_list": []
+            },
+            {
+              "label": "16-30",
+              "goals_for": 0,
+              "goals_against": 0,
+              "league_for": 0.0,
+              "league_against": 0.0,
+              "goals_for_list": [],
+              "goals_against_list": []
+            },
+            {
+              "label": "31-45",
+              "goals_for": 0,
+              "goals_against": 0,
+              "league_for": 0.0,
+              "league_against": 0.0,
+              "goals_for_list": [],
+              "goals_against_list": []
+            },
+            {
+              "label": "45+",
+              "goals_for": 0,
+              "goals_against": 0,
+              "league_for": 0.0,
+              "league_against": 0.0,
+              "goals_for_list": [],
+              "goals_against_list": []
+            },
+            {
+              "label": "46-60",
+              "goals_for": 0,
+              "goals_against": 5,
+              "league_for": 0.0,
+              "league_against": 1.0,
+              "goals_for_list": [],
+              "goals_against_list": [
+                {
+                  "fixture_id": 5,
+                  "minute": 50,
+                  "extra_minute": null
+                },
+                {
+                  "fixture_id": 6,
+                  "minute": 50,
+                  "extra_minute": null
+                },
+                {
+                  "fixture_id": 7,
+                  "minute": 50,
+                  "extra_minute": null
+                },
+                {
+                  "fixture_id": 8,
+                  "minute": 50,
+                  "extra_minute": null
+                },
+                {
+                  "fixture_id": 9,
+                  "minute": 50,
+                  "extra_minute": null
+                }
+              ]
+            },
+            {
+              "label": "61-75",
+              "goals_for": 0,
+              "goals_against": 0,
+              "league_for": 0.0,
+              "league_against": 0.0,
+              "goals_for_list": [],
+              "goals_against_list": []
+            },
+            {
+              "label": "76-90",
+              "goals_for": 0,
+              "goals_against": 0,
+              "league_for": 0.0,
+              "league_against": 0.0,
+              "goals_for_list": [],
+              "goals_against_list": []
+            },
+            {
+              "label": "90+",
+              "goals_for": 5,
+              "goals_against": 0,
+              "league_for": 1.0,
+              "league_against": 0.0,
+              "goals_for_list": [
+                {
+                  "fixture_id": 5,
+                  "minute": 90,
+                  "extra_minute": 2
+                },
+                {
+                  "fixture_id": 6,
+                  "minute": 90,
+                  "extra_minute": 2
+                },
+                {
+                  "fixture_id": 7,
+                  "minute": 90,
+                  "extra_minute": 2
+                },
+                {
+                  "fixture_id": 8,
+                  "minute": 90,
+                  "extra_minute": 2
+                },
+                {
+                  "fixture_id": 9,
+                  "minute": 90,
+                  "extra_minute": 2
+                }
+              ],
+              "goals_against_list": []
+            }
+          ]
+        },
+        "survival": {
+          "matches": 5,
+          "points": [
+            {
+              "label": "0",
+              "minute": 0,
+              "survival": 1.0
+            },
+            {
+              "label": "5",
+              "minute": 5,
+              "survival": 1.0
+            },
+            {
+              "label": "10",
+              "minute": 10,
+              "survival": 0.0
+            },
+            {
+              "label": "15",
+              "minute": 15,
+              "survival": 0.0
+            },
+            {
+              "label": "20",
+              "minute": 20,
+              "survival": 0.0
+            },
+            {
+              "label": "25",
+              "minute": 25,
+              "survival": 0.0
+            },
+            {
+              "label": "30",
+              "minute": 30,
+              "survival": 0.0
+            },
+            {
+              "label": "35",
+              "minute": 35,
+              "survival": 0.0
+            },
+            {
+              "label": "40",
+              "minute": 40,
+              "survival": 0.0
+            },
+            {
+              "label": "45",
+              "minute": 45,
+              "survival": 0.0
+            },
+            {
+              "label": "45+",
+              "minute": 45,
+              "survival": 0.0
+            },
+            {
+              "label": "50",
+              "minute": 50,
+              "survival": 0.0
+            },
+            {
+              "label": "55",
+              "minute": 55,
+              "survival": 0.0
+            },
+            {
+              "label": "60",
+              "minute": 60,
+              "survival": 0.0
+            },
+            {
+              "label": "65",
+              "minute": 65,
+              "survival": 0.0
+            },
+            {
+              "label": "70",
+              "minute": 70,
+              "survival": 0.0
+            },
+            {
+              "label": "75",
+              "minute": 75,
+              "survival": 0.0
+            },
+            {
+              "label": "80",
+              "minute": 80,
+              "survival": 0.0
+            },
+            {
+              "label": "85",
+              "minute": 85,
+              "survival": 0.0
+            },
+            {
+              "label": "90",
+              "minute": 90,
+              "survival": 0.0
+            },
+            {
+              "label": "90+",
+              "minute": 90,
+              "survival": 0.0
+            }
+          ],
+          "median_first_goal": "10",
+          "level_at_half": 0.0,
+          "league_points": [
+            {
+              "label": "0",
+              "minute": 0,
+              "survival": 1.0
+            },
+            {
+              "label": "5",
+              "minute": 5,
+              "survival": 1.0
+            },
+            {
+              "label": "10",
+              "minute": 10,
+              "survival": 0.0
+            },
+            {
+              "label": "15",
+              "minute": 15,
+              "survival": 0.0
+            },
+            {
+              "label": "20",
+              "minute": 20,
+              "survival": 0.0
+            },
+            {
+              "label": "25",
+              "minute": 25,
+              "survival": 0.0
+            },
+            {
+              "label": "30",
+              "minute": 30,
+              "survival": 0.0
+            },
+            {
+              "label": "35",
+              "minute": 35,
+              "survival": 0.0
+            },
+            {
+              "label": "40",
+              "minute": 40,
+              "survival": 0.0
+            },
+            {
+              "label": "45",
+              "minute": 45,
+              "survival": 0.0
+            },
+            {
+              "label": "45+",
+              "minute": 45,
+              "survival": 0.0
+            },
+            {
+              "label": "50",
+              "minute": 50,
+              "survival": 0.0
+            },
+            {
+              "label": "55",
+              "minute": 55,
+              "survival": 0.0
+            },
+            {
+              "label": "60",
+              "minute": 60,
+              "survival": 0.0
+            },
+            {
+              "label": "65",
+              "minute": 65,
+              "survival": 0.0
+            },
+            {
+              "label": "70",
+              "minute": 70,
+              "survival": 0.0
+            },
+            {
+              "label": "75",
+              "minute": 75,
+              "survival": 0.0
+            },
+            {
+              "label": "80",
+              "minute": 80,
+              "survival": 0.0
+            },
+            {
+              "label": "85",
+              "minute": 85,
+              "survival": 0.0
+            },
+            {
+              "label": "90",
+              "minute": 90,
+              "survival": 0.0
+            },
+            {
+              "label": "90+",
+              "minute": 90,
+              "survival": 0.0
+            }
+          ]
+        },
+        "trends": {
+          "items": [
+            {
+              "key": "win",
+              "family": "resultado",
+              "rule_key": "goals_ft@v1",
+              "line": null,
+              "hits": 5,
+              "n": 5,
+              "pct": 100,
+              "wilson_low": 57,
+              "wilson_high": 100,
+              "league_pct": 100,
+              "deviation_pts": 0,
+              "fixture_ids": [
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            {
+              "key": "draw",
+              "family": "resultado",
+              "rule_key": "goals_ft@v1",
+              "line": null,
+              "hits": 0,
+              "n": 5,
+              "pct": 0,
+              "wilson_low": 0,
+              "wilson_high": 43,
+              "league_pct": 0,
+              "deviation_pts": 0,
+              "fixture_ids": []
+            },
+            {
+              "key": "loss",
+              "family": "resultado",
+              "rule_key": "goals_ft@v1",
+              "line": null,
+              "hits": 0,
+              "n": 5,
+              "pct": 0,
+              "wilson_low": 0,
+              "wilson_high": 43,
+              "league_pct": 0,
+              "deviation_pts": 0,
+              "fixture_ids": []
+            },
+            {
+              "key": "over_1_5",
+              "family": "goles",
+              "rule_key": "goals_ft@v1",
+              "line": 1.5,
+              "hits": 5,
+              "n": 5,
+              "pct": 100,
+              "wilson_low": 57,
+              "wilson_high": 100,
+              "league_pct": 100,
+              "deviation_pts": 0,
+              "fixture_ids": [
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            {
+              "key": "over_2_5",
+              "family": "goles",
+              "rule_key": "goals_ft@v1",
+              "line": 2.5,
+              "hits": 5,
+              "n": 5,
+              "pct": 100,
+              "wilson_low": 57,
+              "wilson_high": 100,
+              "league_pct": 100,
+              "deviation_pts": 0,
+              "fixture_ids": [
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            {
+              "key": "over_3_5",
+              "family": "goles",
+              "rule_key": "goals_ft@v1",
+              "line": 3.5,
+              "hits": 0,
+              "n": 5,
+              "pct": 0,
+              "wilson_low": 0,
+              "wilson_high": 43,
+              "league_pct": 0,
+              "deviation_pts": 0,
+              "fixture_ids": []
+            },
+            {
+              "key": "btts",
+              "family": "goles",
+              "rule_key": "goals_ft@v1",
+              "line": null,
+              "hits": 5,
+              "n": 5,
+              "pct": 100,
+              "wilson_low": 57,
+              "wilson_high": 100,
+              "league_pct": 100,
+              "deviation_pts": 0,
+              "fixture_ids": [
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            {
+              "key": "scores",
+              "family": "goles",
+              "rule_key": "goals_ft@v1",
+              "line": 0.5,
+              "hits": 5,
+              "n": 5,
+              "pct": 100,
+              "wilson_low": 57,
+              "wilson_high": 100,
+              "league_pct": 100,
+              "deviation_pts": 0,
+              "fixture_ids": [
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            {
+              "key": "scores_first",
+              "family": "goles",
+              "rule_key": {
+                "missing_reason": "sin_datos"
+              },
+              "line": null,
+              "hits": 5,
+              "n": 5,
+              "pct": 100,
+              "wilson_low": 57,
+              "wilson_high": 100,
+              "league_pct": 100,
+              "deviation_pts": 0,
+              "fixture_ids": [
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            {
+              "key": "clean_sheet",
+              "family": "goles",
+              "rule_key": "goals_ft@v1",
+              "line": 0.5,
+              "hits": 0,
+              "n": 5,
+              "pct": 0,
+              "wilson_low": 0,
+              "wilson_high": 43,
+              "league_pct": 0,
+              "deviation_pts": 0,
+              "fixture_ids": []
+            },
+            {
+              "key": "ht_over_0_5",
+              "family": "goles_1t",
+              "rule_key": "goals_1h@v1",
+              "line": 0.5,
+              "hits": 5,
+              "n": 5,
+              "pct": 100,
+              "wilson_low": 57,
+              "wilson_high": 100,
+              "league_pct": 100,
+              "deviation_pts": 0,
+              "fixture_ids": [
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            {
+              "key": "ht_over_1_5",
+              "family": "goles_1t",
+              "rule_key": "goals_1h@v1",
+              "line": 1.5,
+              "hits": 0,
+              "n": 5,
+              "pct": 0,
+              "wilson_low": 0,
+              "wilson_high": 43,
+              "league_pct": 0,
+              "deviation_pts": 0,
+              "fixture_ids": []
+            },
+            {
+              "key": "corners_over_8_5",
+              "family": "corners",
+              "rule_key": "corners_ft@v1",
+              "line": 8.5,
+              "hits": 5,
+              "n": 5,
+              "pct": 100,
+              "wilson_low": 57,
+              "wilson_high": 100,
+              "league_pct": 100,
+              "deviation_pts": 0,
+              "fixture_ids": [
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            {
+              "key": "corners_over_9_5",
+              "family": "corners",
+              "rule_key": "corners_ft@v1",
+              "line": 9.5,
+              "hits": 0,
+              "n": 5,
+              "pct": 0,
+              "wilson_low": 0,
+              "wilson_high": 43,
+              "league_pct": 0,
+              "deviation_pts": 0,
+              "fixture_ids": []
+            },
+            {
+              "key": "corners_over_10_5",
+              "family": "corners",
+              "rule_key": "corners_ft@v1",
+              "line": 10.5,
+              "hits": 0,
+              "n": 5,
+              "pct": 0,
+              "wilson_low": 0,
+              "wilson_high": 43,
+              "league_pct": 0,
+              "deviation_pts": 0,
+              "fixture_ids": []
+            },
+            {
+              "key": "cards_over_3_5",
+              "family": "tarjetas",
+              "rule_key": "cards_lines_ft@v1",
+              "line": 3.5,
+              "hits": 5,
+              "n": 5,
+              "pct": 100,
+              "wilson_low": 57,
+              "wilson_high": 100,
+              "league_pct": 100,
+              "deviation_pts": 0,
+              "fixture_ids": [
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            {
+              "key": "cards_over_4_5",
+              "family": "tarjetas",
+              "rule_key": "cards_lines_ft@v1",
+              "line": 4.5,
+              "hits": 5,
+              "n": 5,
+              "pct": 100,
+              "wilson_low": 57,
+              "wilson_high": 100,
+              "league_pct": 100,
+              "deviation_pts": 0,
+              "fixture_ids": [
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            }
+          ]
+        },
+        "matrix": {
+          "missing_reason": "sin_datos"
+        }
+      },
+      "player": {
+        "missing_reason": "sin_datos"
+      },
+      "scatter": {
+        "missing_reason": "sin_datos"
+      },
+      "audit": {
+        "run_id": 41,
+        "calc_version": "stats-docs-v1",
+        "threshold": 0.8,
+        "coverage": [
+          {
+            "key": "xg_for",
+            "share": 1.0,
+            "publishable": true
+          },
+          {
+            "key": "fouls",
+            "share": 0.0,
+            "publishable": false
+          }
+        ]
+      }
+    }
+  ]
+}

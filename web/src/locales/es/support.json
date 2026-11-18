@@ -645,6 +645,12 @@
         "what": "Un pick tiene dos clases de estado. El visible: el lector solo ve los picks «Recomendado», los que cumplen todas las reglas; los que PrediGol no recomienda no se muestran y la app dice cuántos quedaron fuera. Y el del resultado: pendiente, en juego y, al terminar el partido, ganado, perdido, devuelto, medio ganado, medio perdido o anulado.",
         "read": "«En evaluación» es una etiqueta interna: una selección cuyo modelo aún no supera al mercado se mide, pero nunca se recomienda ni se muestra. Que un pick sea «Recomendado» no garantiza que gane.",
         "example": "Un pick «Recomendado» a 2,10 que acierta queda «Ganado» y suma 1,10 unidades; uno que cae justo en la línea queda «Devuelto»; uno cuyo partido se cancela queda «Anulado» y no suma ni resta."
+      },
+      "stats": {
+        "title": "Estadísticas avanzadas",
+        "what": "El perfil de cada equipo y jugador y la previa de cada partido se calculan cada noche con los partidos terminados de la temporada: nada se inventa ni lo escribe una IA.",
+        "read": "Percentil: el puesto frente a la liga (el 90 es mejor que nueve de cada diez). Pulso de goles: cuándo marca y recibe un equipo, minuto a minuto, contra la media de la liga (100); la banda es su margen de error. Tendencias: «7/10» con su intervalo de Wilson. En «Mercados», tres marcas: la probabilidad del modelo (solo en mercados validados), la implícita de las casas sin su margen y el histórico de los dos equipos. Una métrica con menos del 80 % de datos en la liga no se publica.",
+        "example": "«Más de 2,5 goles: 7/10 (40–89 %)» quiere decir que pasó en 7 de los 10 últimos partidos, y que con tan pocos partidos lo esperable está entre el 40 y el 89 %."
       }
     }
   },

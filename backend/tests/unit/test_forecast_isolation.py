@@ -25,6 +25,7 @@ TABLE = re.compile(r"\bmodels\.match_forecasts\b|\bFROM\s+match_forecasts\b|\bJO
 
 NAMES_THE_TABLE = {
     "forecasting/match_forecast.py": "the writer: the only module that inserts, and the one that reads back its own rows",
+    "api/services/market_probs.py": "C-14 (plan EA, EA-201): the published forecast's figure of an EVALUABLE market for the reader, and the figure of a model still in calibration for the owner only (decision D-EA-2); it reads, never writes, and nothing it serves feeds a pick or a decision",
     "api/services/market_status.py": "AD-E01 (IA-070): the catalogue of market states asks whether a market has a model writing its forecast in the last 14 days (`models.match_forecasts`, counted, never its values); a state served to the contracts, never an input of a pick or a decision",
     "api/services/forecast.py": "the page of a match: the product's forecast (`forecast-v1`) and the Admin Console's preview, which also reads `family-v1` for a section of its own",
     "ai/packet.py": "the packet's `forecast` block: context a review or a brief may cite, never an input of a computation",

@@ -98,7 +98,7 @@ def test_every_contract_class_is_registered_once() -> None:
 
 
 def test_the_catalogue_keeps_private_routes_under_admin() -> None:
-    assert len(CATALOGUE) == 13  # C-00 and the twelve of the plan
+    assert len(CATALOGUE) == 15  # C-00, the twelve of the plan, C-13 and C-14 of plan EA
     for contract, planned in CATALOGUE.items():
         assert all(r.startswith("/api/v1/admin/") for r in planned.private), contract
         assert all(r.startswith("/api/v1/") and not r.startswith("/api/v1/admin/") for r in planned.public), contract
@@ -137,7 +137,8 @@ def test_the_public_example_is_the_servers_projection_and_leaks_nothing(spec: Co
     assert found == []
 
 
-EMAIL = re.compile(r"[\w.+-]+@([\w.-]+)")
+EMAIL = re.compile(r"[\w.+-]+@([\w-]+\.[\w.-]+)")
+"""An address has a dotted domain: a settlement rule's key (``goals_ft@v1``) is not one."""
 PHONE = re.compile(r"\+\d[\d ]{6,}\d")
 URL = re.compile(r"https?://([^/\"\s]+)")
 

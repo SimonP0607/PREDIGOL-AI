@@ -16,6 +16,7 @@ import type {
   OddsMovementQuery,
 } from "./types_odds_explorer";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
+import type { MarketProbs, StatsContext, StatsProfile, StatsScope } from "./types_stats";
 import type { SelectionFunnel } from "./types_funnel";
 import type { AgentsOverview, MatchState } from "./types_ai_agents";
 import type { AttributionOverview } from "./types_ai_attribution";
@@ -791,6 +792,24 @@ export const v1 = {
   teams: (competitionId?: number, q?: string) =>
     getJson<Envelope<TeamSummary[]>>("/teams", { competition_id: competitionId, q, limit: 200 }),
   team: (id: number | string) => getJson<Envelope<TeamDetail>>(`/teams/${id}`),
+  /** C-13 (plan EA): a team's statistics in one competition season, scope and context. 404 while FBI_STATS_V2 is off. */
+  teamStats: (
+    id: number | string,
+    q: { season?: number; scope?: StatsScope; context?: StatsContext } = {},
+  ) => getJson<Envelope<StatsProfile>>(`/teams/${id}/stats`, q),
+  playerStats: (id: number | string, season?: number) =>
+    getJson<Envelope<StatsProfile>>(`/players/${id}/stats`, { season }),
+  compareTeams: (a: number, b: number, q: { scope?: StatsScope; context?: StatsContext } = {}) =>
+    getJson<Envelope<StatsProfile>>("/stats/compare/teams", { a, b, ...q }),
+  comparePlayers: (a: number, b: number) =>
+    getJson<Envelope<StatsProfile>>("/stats/compare/players", { a, b }),
+  matchStatsPreview: (id: number | string, scope?: StatsScope) =>
+    getJson<Envelope<StatsProfile>>(`/matches/${id}/stats-preview`, { scope }),
+  /** C-14: the three marks of every price in force; the owner reads the private projection (models in calibration). */
+  matchMarketProbs: (id: number | string, owner = false) =>
+    getJson<Envelope<MarketProbs>>(
+      owner ? `/admin/intelligence/matches/${id}/market-probs` : `/matches/${id}/market-probs`,
+    ),
   odds: () => getJson<Envelope<MatchSummary[]>>("/odds"),
   fixtureOdds: (id: number | string, market?: string) =>
     getJson<Envelope<FixtureOdds>>(`/odds/fixtures/${id}`, { market }),

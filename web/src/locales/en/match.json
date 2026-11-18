@@ -1485,6 +1485,7 @@
     "error": "We could not load the markets in this category.",
     "empty": "No odds in force in this category.",
     "shownOnly": "Only the usual five markets (1X2, goals, both teams to score, Asian handicap and double chance) can go in a parlay; the others are for reference.",
+    "shownOnlyRule": "The markets that say what they settle with can also go in a parlay; the others are for reference.",
     "moreLines_one": "See {count} more line",
     "moreLines_other": "See {count} more lines",
     "mainLineOnly": "Main line only",

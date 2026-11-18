@@ -7,12 +7,13 @@
  * Shown only while FBI_PROFILES is on (`/auth/me`).
  */
 import { useQuery } from "@tanstack/react-query";
+import { PlayerStatsHub } from "./stats/PlayerStatsHub";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
 import { LiveApiError } from "@/lib/api/v1/client";
 import type { PlayerDetail } from "@/lib/api/v1/types_center";
-import { useAuth } from "@/lib/auth/AuthProvider";
+import { useAuth, useStatsSwitches } from "@/lib/auth/AuthProvider";
 import { t } from "@/lib/i18n";
 import { formatDate, formatKickoff } from "@/lib/time";
 import { EntityHeader } from "@/product/shared/intelligence/Pieces";
@@ -164,6 +165,7 @@ function Career({ d }: { d: PlayerDetail }) {
 
 export function PlayerPage({ playerId }: { playerId: string }) {
   const open = useAuth().user?.profiles === true;
+  const { stats: statsV2 } = useStatsSwitches();
   const q = useQuery({ ...live.player(playerId), enabled: open });
   if (!open)
     return (
@@ -204,6 +206,7 @@ export function PlayerPage({ playerId }: { playerId: string }) {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-5" data-testid="player-page">
       <EntityHeader kind="player" name={p.name} subtitle={p.team ?? null} facts={facts} />
+      {statsV2 ? <PlayerStatsHub playerId={playerId} /> : null}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:items-start">
         <div className="flex min-w-0 flex-col gap-4">
           <Block title={t("profiles.player.season")}>

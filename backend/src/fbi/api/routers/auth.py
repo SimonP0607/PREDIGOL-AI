@@ -41,6 +41,7 @@ from fbi.api.security import (
 from fbi.api.services import news as news_service
 from fbi.api.switches import (
     explain_on,
+    market_probs_on,
     match_intelligence_on,
     nav_v2_on,
     news_feed_on,
@@ -48,8 +49,11 @@ from fbi.api.switches import (
     odds_by_match_on,
     odds_explorer_on,
     odds_status_on,
+    parlay_markets_v2_on,
+    player_markets_on,
     profiles_on,
     search_on,
+    stats_v2_on,
     transparency_open,
 )
 from fbi.auth import crypto, service
@@ -87,6 +91,8 @@ def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
         odds_by_match=odds_by_match_on(), nav_v2=nav_v2_on(), search=search_on(), profiles=profiles_on(),
         news_v2=news_v2_on() and news_feed_on() and news_service.users_may_see(),
         match_intelligence=match_intelligence_on(),
+        stats_v2=stats_v2_on(), market_probs=market_probs_on(), parlay_markets_v2=parlay_markets_v2_on(),
+        player_markets=player_markets_on(),
     )
 
 

@@ -184,3 +184,39 @@ def test_writes_need_the_same_site_header_and_touch_only_the_users_own(world: di
     other = client_for(999999)
     assert other.delete(f"/api/v1/me/picks/{saved.json()['data']['id']}").status_code == 422
     assert other.get("/api/v1/me/picks").json()["data"] == []
+
+
+def _corner_book(quotes_at: datetime) -> Any:
+    from decimal import Decimal
+    from types import SimpleNamespace
+
+    from fbi.odds.quote_current import CurrentQuote
+
+    def q(book: int, sel: str) -> CurrentQuote:
+        return CurrentQuote(bookmaker_id=book, bookmaker=f"Casa {book}", bet_id=45, family="corners", period="FT",
+                            subject="match", kind="over_under", has_line=True, market_key=None,
+                            provider_name="Corners Over Under", selection=sel, line=Decimal("9.5"),
+                            odds=Decimal("1.90"), captured_at=quotes_at, since=quotes_at)
+
+    return SimpleNamespace(quotes=[q(b, s) for b in (1, 2, 3) for s in ("Over", "Under")])
+
+
+def test_a_catalogue_market_goes_in_a_parlay_only_with_its_switch(world: dict[str, Any],
+                                                                  monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan EA, EA-501: a corners leg is refused while FBI_PARLAY_MARKETS_V2 is off and taken, with its rule, once on."""
+    f1, f2 = world["fixtures"]
+    monkeypatch.setattr("fbi.market.in_force.book", lambda conn, fid: _corner_book(NOW - timedelta(minutes=10)))
+    legs = [{"fixture_id": f1, "market_key": "1X2", "selection": "Home"},
+            {"fixture_id": f2, "market_key": "corners_over_under.FT.match", "selection": "Over", "line": "9.5"}]
+    c = client_for(world["user"])
+    off = c.post("/api/v1/me/parlays/validate", json={"legs": legs}).json()["data"]
+    assert off["ok"] is False and off["errors"][0]["code"] == "invalid_selection"
+    monkeypatch.setenv("FBI_PARLAY_MARKETS_V2", "on")
+    reset_cache()
+    on = c.post("/api/v1/me/parlays/validate", json={"legs": legs}).json()["data"]
+    assert on["ok"] is True, on
+    built = c.post("/api/v1/me/parlays", json={"name": "Córners", "legs": legs})
+    assert built.status_code == 201, built.text
+    assert built.json()["data"]["combined_odds"] == "4.180"
+    assert c.post("/api/v1/me/parlays/validate", json={"legs": [
+        legs[0], {**legs[1], "line": "9.25"}]}).json()["data"]["ok"] is False

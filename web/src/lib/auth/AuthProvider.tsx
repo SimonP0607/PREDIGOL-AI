@@ -240,6 +240,28 @@ export function useProfilesOpen(): boolean {
   return useContext(AuthContext)?.user?.profiles === true;
 }
 
+/**
+ * The switches of plan EA (advanced statistics, probabilities by market, Mi parlay's markets, players' markets) and whether the
+ * reader is the owner, safe outside the provider (a component drawn alone in a test): no session, everything off.
+ */
+export function useStatsSwitches(): {
+  stats: boolean;
+  probs: boolean;
+  parlayMarkets: boolean;
+  playerMarkets: boolean;
+  owner: boolean;
+} {
+  const ctx = useContext(AuthContext);
+  const u = ctx?.user;
+  return {
+    stats: u?.stats_v2 === true,
+    probs: u?.market_probs === true,
+    parlayMarkets: u?.parlay_markets_v2 === true,
+    playerMarkets: u?.player_markets === true,
+    owner: ctx?.showAdmin === true,
+  };
+}
+
 /** The `preview` value for product queries: "shadow" only while a SUPER_ADMIN has the shadow preview on. */
 export function usePreviewParam(): "shadow" | undefined {
   return useAuth().shadowPreview ? "shadow" : undefined;

@@ -13,7 +13,7 @@ import { CalendarDays, ChevronRight, ListOrdered, Newspaper, Users } from "lucid
 import { live } from "@/lib/api/v1/queries";
 import { LiveApiError } from "@/lib/api/v1/client";
 import type { MatchSummary, TeamDetail, TeamRecord } from "@/lib/api/v1/types";
-import { useAuth } from "@/lib/auth/AuthProvider";
+import { useAuth, useStatsSwitches } from "@/lib/auth/AuthProvider";
 import { t } from "@/lib/i18n";
 import { formatKickoff } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { TeamName } from "@/components/football/Logos";
 import { FollowStar } from "@/product/favorites/FollowStar";
 import { EntityHeader } from "@/product/shared/intelligence/Pieces";
+import { TeamStatsHub } from "./stats/TeamStatsHub";
 import { Card, EmptyState, ErrorState, SkeletonCards } from "@/product/shared/States";
 import {
   excerpt,
@@ -274,6 +275,7 @@ function Body({
   tab: ProfileTab;
   kind: "club" | "nation";
 }) {
+  const { stats: statsV2 } = useStatsSwitches();
   const id = detail.team.id;
   const next = detail.upcoming[0];
   const form = formOf(detail.recent, id);
@@ -315,7 +317,9 @@ function Body({
       </Block>
     );
   if (tab === "stats")
-    return (
+    return statsV2 ? (
+      <TeamStatsHub teamId={String(id)} />
+    ) : (
       <Block title={t("profiles.stats")} icon={<ListOrdered className="h-4 w-4" />}>
         <Stats detail={detail} />
       </Block>

@@ -645,6 +645,12 @@
         "what": "A pick has two kinds of state. The visible one: a reader only sees “Recommended” picks, the ones that pass every rule; picks PrediGol does not recommend are not shown and the app says how many were left out. And the result one: pending, in play and, when the match ends, won, lost, refunded, half won, half lost or void.",
         "read": "“Under evaluation” is an internal label: a selection whose model does not yet beat the market is measured, but never recommended or shown. A pick being “Recommended” does not guarantee it wins.",
         "example": "A “Recommended” pick at 2.10 that wins is “Won” and adds 1.10 units; one that lands exactly on the line is “Refunded”; one whose match is cancelled is “Void” and adds or subtracts nothing."
+      },
+      "stats": {
+        "title": "Advanced statistics",
+        "what": "Each team's and player's profile and each match preview are computed every night from the season's finished matches: nothing is made up or written by an AI.",
+        "read": "Percentile: the standing against the league (90 beats nine in ten). Goal pulse: when a team scores and concedes, minute by minute, against the league average (100); the band is its margin of error. Trends: «7/10» with its Wilson interval. In «Markets», three marks: the model's probability (only on validated markets), the bookmakers' implied probability without their margin and the two teams' history. A metric with under 80 % of the league's data is not published.",
+        "example": "«Over 2.5 goals: 7/10 (40–89 %)» means it happened in 7 of the last 10 matches, and with so few matches the expected rate lies between 40 and 89 %."
       }
     }
   },

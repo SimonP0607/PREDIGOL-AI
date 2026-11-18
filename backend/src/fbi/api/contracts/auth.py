@@ -109,6 +109,14 @@ class Me(Contract):
                                                      "off by default, and only with the Noticias section open).")
     match_intelligence: bool = Field(default=False, description="A match's «Intelligence» tab for readers (UX-162 to "
                                                                 "UX-166; FBI_MATCH_INTELLIGENCE, off by default).")
+    stats_v2: bool = Field(default=False, description="The advanced statistics: profiles, comparisons and the Match Center's "
+                                                      "statistics (plan EA, C-13; FBI_STATS_V2, off by default).")
+    market_probs: bool = Field(default=False, description="The probabilities by market of a match (plan EA, C-14; "
+                                                          "FBI_MARKET_PROBS, off by default).")
+    parlay_markets_v2: bool = Field(default=False, description="Mi parlay accepts every market the catalogue settles (plan EA, "
+                                                               "EA-501; FBI_PARLAY_MARKETS_V2, off by default).")
+    player_markets: bool = Field(default=False, description="The players' markets of a match (plan EA, C-15; "
+                                                            "FBI_PLAYER_MARKETS, off by default).")
     display: DisplayPrefs = Field(default_factory=DisplayPrefs, description="The reader's settings of presentation "
                                                                             "(decision 8): clock, price format, "
                                                                             "motion and Inicio's view.")

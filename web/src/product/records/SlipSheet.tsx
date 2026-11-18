@@ -134,13 +134,15 @@ function LegRow({
   onRemove: () => void;
   onLeave: () => void;
 }) {
-  const selection = selectionLabel({
-    market_key: leg.market_key,
-    selection: leg.selection,
-    line: leg.line,
-    home: leg.home,
-    away: leg.away,
-  });
+  const selection =
+    leg.label ??
+    selectionLabel({
+      market_key: leg.market_key,
+      selection: leg.selection,
+      line: leg.line,
+      home: leg.home,
+      away: leg.away,
+    });
   const match = `${leg.home} – ${leg.away}`;
   const params = { fixtureId: String(leg.fixture_id) };
   return (
@@ -182,7 +184,9 @@ function LegRow({
       </div>
       <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 pl-8">
         <p className="break-words text-sm leading-snug" data-testid="slip-leg-selection">
-          <span className="text-muted-foreground">{marketName(leg.market_key)}</span>
+          <span className="text-muted-foreground">
+            {leg.market_label ?? marketName(leg.market_key)}
+          </span>
           <span className="text-subtle-foreground"> · </span>
           <span className="font-semibold">{selection}</span>
         </p>

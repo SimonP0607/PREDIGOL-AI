@@ -258,9 +258,14 @@ class UserPick(Contract):
         "p_close, odds x p_close - 1, a share. Null without a price or a closing reference."))
 
 
+LEG_MARKET_PATTERN = r"^(1X2|OU|BTTS|AH|DC|[a-z0-9_]{3,48}\.(FT|1H|2H)\.(match|home|away))$"
+"""One of the five, or the stable key of a market of the catalogue of prices (``corners_over_under.FT.match``): plan EA, EA-501.
+Whether that market is taken is the server's to say (``FBI_PARLAY_MARKETS_V2``, its settlement rule, its prices in force)."""
+
+
 class LegInBody(BaseModel):
     fixture_id: int = Field(ge=1)
-    market_key: Literal["1X2", "OU", "BTTS", "AH", "DC"]
+    market_key: str = Field(pattern=LEG_MARKET_PATTERN, max_length=60)
     selection: str = Field(min_length=1, max_length=12)
     line: Decimal = Field(default=Decimal(0), ge=-20, le=20)
     odds: Decimal | None = Field(default=None, gt=1, lt=1000)

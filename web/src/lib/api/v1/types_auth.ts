@@ -79,6 +79,14 @@ export interface Me {
   news_v2?: boolean;
   /** A match's «Intelligence» tab for readers (UX-162 to UX-166; FBI_MATCH_INTELLIGENCE, off by default). */
   match_intelligence?: boolean;
+  /** The advanced statistics: profiles, comparisons and the Match Center's statistics (plan EA, C-13; FBI_STATS_V2). */
+  stats_v2?: boolean;
+  /** The probabilities by market of a match (plan EA, C-14; FBI_MARKET_PROBS). */
+  market_probs?: boolean;
+  /** Mi parlay accepts every market the catalogue settles (plan EA, EA-501; FBI_PARLAY_MARKETS_V2). */
+  parlay_markets_v2?: boolean;
+  /** The players' markets of a match (plan EA, C-15; FBI_PLAYER_MARKETS). */
+  player_markets?: boolean;
   /** The reader's settings of presentation (decision 8); absent from an API older than BE-039: today's defaults. */
   display?: Display;
 }

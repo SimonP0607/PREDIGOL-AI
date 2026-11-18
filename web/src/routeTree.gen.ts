@@ -58,6 +58,8 @@ import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminSystemRouteImport } from './routes/admin.system'
 import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as ComparePlayersRouteImport } from './routes/compare.players'
+import { Route as CompareTeamsRouteImport } from './routes/compare.teams'
 import { Route as HelpIndexRouteImport } from './routes/help.index'
 import { Route as HelpGlossaryRouteImport } from './routes/help.glossary'
 import { Route as HelpHowItWorksRouteImport } from './routes/help.how-it-works'
@@ -329,6 +331,16 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const ComparePlayersRoute = ComparePlayersRouteImport.update({
+  id: '/compare/players',
+  path: '/compare/players',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareTeamsRoute = CompareTeamsRouteImport.update({
+  id: '/compare/teams',
+  path: '/compare/teams',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HelpIndexRoute = HelpIndexRouteImport.update({
   id: '/help/',
   path: '/help/',
@@ -504,6 +516,8 @@ export interface FileRoutesByFullPath {
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/compare/players': typeof ComparePlayersRoute
+  '/compare/teams': typeof CompareTeamsRoute
   '/help/glossary': typeof HelpGlossaryRoute
   '/help/how-it-works': typeof HelpHowItWorksRoute
   '/legal/$doc': typeof LegalDocRoute
@@ -579,6 +593,8 @@ export interface FileRoutesByTo {
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/compare/players': typeof ComparePlayersRoute
+  '/compare/teams': typeof CompareTeamsRoute
   '/help/glossary': typeof HelpGlossaryRoute
   '/help/how-it-works': typeof HelpHowItWorksRoute
   '/legal/$doc': typeof LegalDocRoute
@@ -656,6 +672,8 @@ export interface FileRoutesById {
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/compare/players': typeof ComparePlayersRoute
+  '/compare/teams': typeof CompareTeamsRoute
   '/help/glossary': typeof HelpGlossaryRoute
   '/help/how-it-works': typeof HelpHowItWorksRoute
   '/legal/$doc': typeof LegalDocRoute
@@ -734,6 +752,8 @@ export interface FileRouteTypes {
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
+    | '/compare/players'
+    | '/compare/teams'
     | '/help/glossary'
     | '/help/how-it-works'
     | '/legal/$doc'
@@ -809,6 +829,8 @@ export interface FileRouteTypes {
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
+    | '/compare/players'
+    | '/compare/teams'
     | '/help/glossary'
     | '/help/how-it-works'
     | '/legal/$doc'
@@ -885,6 +907,8 @@ export interface FileRouteTypes {
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
+    | '/compare/players'
+    | '/compare/teams'
     | '/help/glossary'
     | '/help/how-it-works'
     | '/legal/$doc'
@@ -932,6 +956,8 @@ export interface RootRouteChildren {
   UpdatesRoute: typeof UpdatesRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   WelcomeRoute: typeof WelcomeRoute
+  ComparePlayersRoute: typeof ComparePlayersRoute
+  CompareTeamsRoute: typeof CompareTeamsRoute
   HelpGlossaryRoute: typeof HelpGlossaryRoute
   HelpHowItWorksRoute: typeof HelpHowItWorksRoute
   LegalDocRoute: typeof LegalDocRoute
@@ -1298,6 +1324,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/compare/players': {
+      id: '/compare/players'
+      path: '/compare/players'
+      fullPath: '/compare/players'
+      preLoaderRoute: typeof ComparePlayersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare/teams': {
+      id: '/compare/teams'
+      path: '/compare/teams'
+      fullPath: '/compare/teams'
+      preLoaderRoute: typeof CompareTeamsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/help/': {
       id: '/help/'
       path: '/help'
@@ -1577,6 +1617,8 @@ const rootRouteChildren: RootRouteChildren = {
   UpdatesRoute: UpdatesRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   WelcomeRoute: WelcomeRoute,
+  ComparePlayersRoute: ComparePlayersRoute,
+  CompareTeamsRoute: CompareTeamsRoute,
   HelpGlossaryRoute: HelpGlossaryRoute,
   HelpHowItWorksRoute: HelpHowItWorksRoute,
   LegalDocRoute: LegalDocRoute,

@@ -23,6 +23,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -37,6 +38,8 @@ from fbi.parlays.engine import GateConfig
 from fbi.picks.settlement import market_outcome
 
 MIN_LEGS, MAX_LEGS = 2, 10
+CORE_MARKETS = frozenset({"1X2", "OU", "BTTS", "AH", "DC"})
+"""The five markets settled on the score; any other market key is a market of the catalogue (``MarketPolicy``)."""
 SNAPSHOT_LOOKBACK = timedelta(hours=36)
 OUTLIER_EDGE = GateConfig().max_price_edge
 """A best price more than this above its fair price (best_odds x p_fair - 1) is an outlier: one book's stale or mistaken quote.
@@ -224,7 +227,52 @@ class Validation:
     """low / medium / high and why: legs sharing a team, legs of the same competition and day, measured dependence."""
 
 
-def validate_parlay(conn: psycopg.Connection[Any], legs: list[LegIn], *, at: datetime) -> Validation:
+@dataclass(frozen=True)
+class MarketPolicy:
+    """Whether Mi parlay takes the markets of the catalogue beyond the five (plan EA, EA-501; ``FBI_PARLAY_MARKETS_V2``) and the
+    catalogue's state of a provider bet (IA-070). Built by the API layer, which reads the switch and the catalogue; without one,
+    only the five are taken - as before."""
+
+    enabled: bool = False
+    state_of: Callable[[int], str] | None = None
+
+
+def _catalogue_leg(conn: psycopg.Connection[Any], leg: LegIn, f: dict[str, Any], at: datetime,
+                   policy: MarketPolicy | None) -> tuple[str | None, dict[str, Any] | None]:
+    """A leg on a market of the catalogue: the reason it is refused (or None) and its price now - best price, house, time, the
+    houses that price it and its implied probability - from the prices in force (the Mercados tab's own reading)."""
+    from fbi.market.eligibility import spec_for_key, verdict
+    from fbi.market.in_force import book, implied, key_of, unify
+    from fbi.market.rules import rule_for
+    from fbi.picks.count_settlement import settle_numbers
+
+    spec = spec_for_key(leg.market_key)
+    if spec is None or rule_for(spec) is None:
+        return "invalid_selection", None
+    rule = rule_for(spec)
+    assert rule is not None
+    try:
+        settle_numbers(rule, spec.kind, spec.subject, leg.selection, leg.line, dict.fromkeys(rule.columns, 0))
+    except ValueError:
+        return "invalid_selection", None
+    current = book(conn, leg.fixture_id)
+    quotes = [q for q in unify(current.quotes if current else []) if key_of(q) == leg.market_key]
+    mine = [q for q in quotes if q.selection == leg.selection and q.line == leg.line]
+    state = policy.state_of(spec.bet_id) if policy and policy.state_of else "en_calibracion"
+    v = verdict(spec, line=leg.line, books=len({q.bookmaker_id for q in mine}), state=state,
+                started=f["kickoff_at"] <= at, switch_on=bool(policy and policy.enabled))
+    if not v.allowed:
+        return ("invalid_selection" if v.reason in ("interruptor_apagado", "sin_regla", "no_ofrecer")
+                else "quarter_line" if v.reason == "linea_de_cuarto" else "market_not_priced"), None
+    top = max(mine, key=lambda q: (q.odds, -q.bookmaker_id))
+    fair = implied(quotes).get((leg.selection, leg.line))
+    return None, {"best_odds": top.odds, "bookmaker": top.bookmaker, "as_of": top.since,
+                  "p_fair": None if fair is None else Decimal(str(round(fair[0], 6))), "n_bookmakers": len(mine),
+                  "rule_key": rule.key, "settles_with": "estadisticas" if rule.family not in ("goals", "goals_half") else "marcador"}
+
+
+def validate_parlay(conn: psycopg.Connection[Any], legs: list[LegIn], *, at: datetime,
+                    policy: MarketPolicy | None = None) -> Validation:
     v = Validation(ok=True)
     if not MIN_LEGS <= len(legs) <= MAX_LEGS:
         v.errors.append({"code": "leg_count", "min": MIN_LEGS, "max": MAX_LEGS, "got": len(legs)})
@@ -235,7 +283,8 @@ def validate_parlay(conn: psycopg.Connection[Any], legs: list[LegIn], *, at: dat
     for n, leg in enumerate(legs, start=1):
         entry: dict[str, Any] = {"leg": n, "fixture_id": leg.fixture_id, "market_key": leg.market_key,
                                  "selection": leg.selection, "line": str(leg.line)}
-        if not valid_selection(leg.market_key, leg.selection, leg.line):
+        core = leg.market_key in CORE_MARKETS
+        if core and not valid_selection(leg.market_key, leg.selection, leg.line):
             v.errors.append({"code": "invalid_selection", "leg": n})
         if quarter_line(leg.line):
             v.errors.append({"code": "quarter_line", "leg": n})
@@ -245,6 +294,13 @@ def validate_parlay(conn: psycopg.Connection[Any], legs: list[LegIn], *, at: dat
             v.errors.append({"code": exc.code, "leg": n})
             v.legs.append(entry)
             continue
+        catalogue_price: dict[str, Any] | None = None
+        if not core:
+            refused, catalogue_price = _catalogue_leg(conn, leg, f, at, policy)
+            if refused is not None and refused != "quarter_line":
+                v.errors.append({"code": refused, "leg": n})
+            if catalogue_price is not None:
+                entry.update({"rule_key": catalogue_price["rule_key"], "settles_with": catalogue_price["settles_with"]})
         if leg.fixture_id in fixtures:
             v.errors.append({"code": "same_fixture", "leg": n, "with": fixtures[leg.fixture_id]})
         fixtures.setdefault(leg.fixture_id, n)
@@ -252,8 +308,8 @@ def validate_parlay(conn: psycopg.Connection[Any], legs: list[LegIn], *, at: dat
             if team in teams and teams[team] != n:
                 v.warnings.append({"code": "shared_team", "leg": n, "with": teams[team]})
             teams.setdefault(team, n)
-        price = _snapshot(conn, fixture_id=leg.fixture_id, market_key=leg.market_key, selection=leg.selection,
-                          line=leg.line, at=at)
+        price = (_snapshot(conn, fixture_id=leg.fixture_id, market_key=leg.market_key, selection=leg.selection,
+                           line=leg.line, at=at) if core else catalogue_price)
         if price is not None and outlier_price(price):
             # Judged on the newest consensus (the price we would show now), whatever odds the request brings.
             v.errors.append({"code": "outlier_price", "leg": n})
@@ -281,10 +337,12 @@ def validate_parlay(conn: psycopg.Connection[Any], legs: list[LegIn], *, at: dat
         else:
             odds_product *= odds
         entry["p_fair"] = None if price is None or price.get("p_fair") is None else str(price["p_fair"])
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(MODEL_SQL, {"fixture": leg.fixture_id, "market": leg.market_key, "selection": leg.selection,
-                                    "line": leg.line, "at": at})
-            model = cur.fetchone()
+        model = None
+        if core:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(MODEL_SQL, {"fixture": leg.fixture_id, "market": leg.market_key, "selection": leg.selection,
+                                        "line": leg.line, "at": at})
+                model = cur.fetchone()
         entry["p_model"] = None if model is None else str(model["p_calibrated"])
         entry["competition_id"] = f.get("competition_id")
         v.legs.append(entry)
@@ -366,8 +424,8 @@ def _measure(conn: psycopg.Connection[Any], v: Validation) -> None:
 
 
 def create_parlay(conn: psycopg.Connection[Any], *, user_id: int, name: str | None, legs: list[LegIn],
-                  at: datetime) -> dict[str, Any]:
-    v = validate_parlay(conn, legs, at=at)
+                  at: datetime, policy: MarketPolicy | None = None) -> dict[str, Any]:
+    v = validate_parlay(conn, legs, at=at, policy=policy)
     if not v.ok:
         raise RecordError("invalid_parlay", "the parlay breaks a rule: " + ", ".join(e["code"] for e in v.errors))
     with conn.cursor(row_factory=dict_row) as cur:
