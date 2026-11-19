@@ -9,6 +9,7 @@ so it is issued once per run and the answer is kept as operational metadata
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from fbi.core.errors import ProviderError, ProviderPayloadError
@@ -39,9 +40,13 @@ class ProviderStatus:
         }
 
 
-async def fetch_status(client: ApiFootballClient) -> ProviderStatus:
-    response = await client.get("/status", {})
-    body = response.body.get("response")
+def parse_status(payload: dict[str, Any]) -> ProviderStatus:
+    """The answer of ``GET /status``, read as it is: an inactive subscription is a value here, not an error.
+
+    The alarm of the subscription's end (PM-01-01, ``scripts.provider_subscription``) needs to SEE an inactive or
+    expired plan to tell the owner; every other caller wants an active one and goes through :func:`fetch_status`.
+    """
+    body = payload.get("response")
     if not isinstance(body, dict):
         raise ProviderPayloadError("/status: unexpected shape")
     account = body.get("account") or {}
@@ -49,8 +54,6 @@ async def fetch_status(client: ApiFootballClient) -> ProviderStatus:
     req = body.get("requests") or {}
     if not isinstance(account, dict) or not isinstance(sub, dict) or not isinstance(req, dict):
         raise ProviderPayloadError("/status: unexpected shape")
-    if not sub.get("active", False):
-        raise ProviderError("/status: the subscription is not active")
     return ProviderStatus(
         plan=str(sub.get("plan", "unknown")).lower(),
         requests_today=int(req.get("current", 0)),
@@ -59,3 +62,37 @@ async def fetch_status(client: ApiFootballClient) -> ProviderStatus:
         subscription_end=(str(sub["end"]) if sub.get("end") else None),
         account_label=str(account.get("firstname", "")),
     )
+
+
+async def fetch_status(client: ApiFootballClient) -> ProviderStatus:
+    response = await client.get("/status", {})
+    status = parse_status(response.body)
+    if not status.subscription_active:
+        raise ProviderError("/status: the subscription is not active")
+    return status
+
+
+def subscription_end_at(status: ProviderStatus) -> datetime | None:
+    """``subscription.end`` as an aware UTC datetime; None when the provider gives none or one that is not a date."""
+    if not status.subscription_end:
+        return None
+    try:
+        end = datetime.fromisoformat(status.subscription_end)
+    except ValueError:
+        return None
+    if end.tzinfo is None:  # the provider writes "+00:00"; a bare date-time is read as UTC
+        end = end.replace(tzinfo=UTC)
+    return end.astimezone(UTC)
+
+
+def subscription_snapshot(status: ProviderStatus, now: datetime) -> dict[str, Any]:
+    """What the server's alarm keeps of ``/status`` (``state/provider-subscription.json``): plan, active, end and the
+    seconds left. Never the account (name, email) and never a key."""
+    end = subscription_end_at(status)
+    return {
+        "checked_at": now.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "plan": status.plan,
+        "active": status.subscription_active,
+        "end": end.strftime("%Y-%m-%dT%H:%M:%SZ") if end else None,
+        "seconds_left": int((end - now).total_seconds()) if end else None,
+    }

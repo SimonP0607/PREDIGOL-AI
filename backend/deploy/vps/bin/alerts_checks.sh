@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # alerts_checks.sh - security plan S3: the checks that healthcheck.sh did not have. Sourced by healthcheck.sh AFTER lib.sh and alerts_lib.sh,
 # between alerts_begin and alerts_end. Each function only calls alert_set (and writes its own state files): it never sends, never exits.
-# Needs: STATE, log, alert_set, alerts_hold, alert_unless_deploy (healthcheck.sh), psql_q (lib.sh) for the two database checks, and for
-# check_auth_me the CURL array and DOMAIN of healthcheck.sh.
+# Needs: STATE, log, alert_set, alerts_hold, alert_unless_deploy (healthcheck.sh), psql_q (lib.sh) for the two database checks, for
+# check_auth_me the CURL array and DOMAIN of healthcheck.sh, and for check_provider_subscription compose (lib.sh) and DEPLOYING (healthcheck.sh).
 #
 #   check_restart_loops   svc.<name>.loop  SEV1  a container restarted 3 times or more within 15 minutes (Docker's RestartCount)
 #   check_auth_me         api.login        SEV1  /api/v1/auth/me WITHOUT a session must answer 401 (a 2xx means sign-in is not being enforced)
@@ -11,6 +11,8 @@
 #   check_picks_unsettled picks.unsettled  SEV2  picks of matches that finished more than 3 h ago are still not settled (the settlement job is not running)
 #                         picks.review     SEV3  ... or they wait with a recorded reason (a result that is missing or cannot be derived)
 #   check_db_hold         -                the database did not answer: the alerts that come from it stay as they are (alerts_hold), they do not close
+#   check_provider_subscription provider.subscription SEV2  the API-Football subscription ends in less than PROVIDER_SUB_WARN_DAYS (10) days (PM-01-01)
+#                         provider.subscription SEV1  ... it is not active, it is the free plan, or its end has passed (the ingestion falls to 100 requests a day)
 #   svc_state_es          -                (helper) the state of a container in Spanish for the svc.<name> alert text: "missing" -> "no existe"
 #   after_deploy [secs]   -                (helper) true while the newest line of state/deploys.log (a deploy or a rollback) is younger than that (360 s by default)
 #
@@ -169,5 +171,66 @@ check_config_drift() {
   )
   if (( ${#changed[@]} )); then
     alert_set config.drift SEV2 "cambió la configuración respecto a la línea base: $(printf '%s, ' "${changed[@]}" | sed 's/, $//')"
+  fi
+}
+
+# --- the API-Football subscription: when does it end? (PM-01-01) -----------------------------------------------------------------------------
+# The plan is prepaid and does not renew by itself: when it ends the account falls to the free plan (100 requests a day) and the ingestion stops (29 Oct 2026).
+# GET /status says when it ends. It does not count against the provider's quota, but it is a request: the worker asks it (scripts/provider_subscription.py) at most
+# every PROVIDER_SUB_REFRESH_SECS (6 h) and the line it prints - plan, active, end, seconds left; never the account, never a key - is kept in
+# state/provider-subscription.json. Every pass judges that line against the clock, so the days left go down between two reads without asking again.
+#   less than PROVIDER_SUB_WARN_DAYS (10) days left  SEV2: ONE message (alerts_lib.sh sends a SEV2 once; the days in the text change without a new message)
+#   not active, the free plan, or the end has passed SEV1: the ingestion is down to 100 requests a day (reminded every hour while it lasts)
+# The renewal moves the end: the next read (at most 6 h later; at once with `rm state/provider-subscription.json`) closes it with one "recuperado".
+# No answer from the worker (a deploy, the provider down): the line of the last read keeps being judged; with no line, or one older than PROVIDER_SUB_STALE_SECS
+# (2 days), nothing can be judged and an open alert stays as it is (alerts_hold) - it does not close by itself.
+# The switch: PREDIGOL_PROVIDER_SUB_ALERT=0 in predigol.env turns the check off (an alert that was open closes on that pass with its "recuperado" message).
+PROVIDER_SUB_WARN_DAYS=${PROVIDER_SUB_WARN_DAYS:-10}
+PROVIDER_SUB_REFRESH_SECS=${PROVIDER_SUB_REFRESH_SECS:-21600}
+PROVIDER_SUB_STALE_SECS=${PROVIDER_SUB_STALE_SECS:-172800}
+_provider_sub_valid() {  # the line has the shape the alarm reads: a JSON object with active (true/false) and plan
+  jq -e 'type == "object" and (.active | type) == "boolean" and (.plan | type) == "string"' > /dev/null 2>&1 <<< "$1"
+}
+_provider_sub_refresh() {  # asks the worker when the cached line is missing or older than the refresh period; never during a deploy
+  local file="$STATE/provider-subscription.json" now=$1 at out
+  if [[ -r "$file" ]]; then
+    at="$(jq -r '.checked_at // empty' "$file" 2> /dev/null)"
+    if [[ -n "$at" ]]; then at="$(date -u -d "$at" +%s 2> /dev/null || echo 0)"; else at=0; fi
+    (( now - at < PROVIDER_SUB_REFRESH_SECS )) && return 0
+  fi
+  (( ${DEPLOYING:-0} )) && return 0
+  out="$(compose exec -T worker python -m scripts.provider_subscription < /dev/null 2> /dev/null | tail -n 1)" || out=""
+  if _provider_sub_valid "$out"; then
+    printf '%s\n' "$out" > "$file.tmp" && mv -f "$file.tmp" "$file"
+  else
+    log "provider subscription: the worker gave no answer from /status (the last read, if any, is judged)"
+  fi
+}
+check_provider_subscription() {
+  [[ "${PREDIGOL_PROVIDER_SUB_ALERT:-1}" != 0 ]] || return 0
+  [[ "$PROVIDER_SUB_WARN_DAYS" =~ ^[0-9]+$ && "$PROVIDER_SUB_REFRESH_SECS" =~ ^[0-9]+$ && "$PROVIDER_SUB_STALE_SECS" =~ ^[0-9]+$ ]] || return 0
+  local file="$STATE/provider-subscription.json" now=${CHECKS_NOW:-$(date +%s)} line at active plan end end_t left end_txt
+  _provider_sub_refresh "$now"
+  line="$(cat "$file" 2> /dev/null)" || line=""
+  if ! _provider_sub_valid "$line"; then alerts_hold provider.subscription; return 0; fi
+  at="$(jq -r '.checked_at // empty' <<< "$line")"
+  if [[ -n "$at" ]]; then at="$(date -u -d "$at" +%s 2> /dev/null || echo 0)"; else at=0; fi
+  if (( now - at > PROVIDER_SUB_STALE_SECS )); then
+    alerts_hold provider.subscription
+    if declare -F warning > /dev/null; then warning "the API-Football subscription was last read $(( (now - at) / 3600 )) h ago (/status does not answer)"; fi
+    return 0
+  fi
+  active="$(jq -r '.active' <<< "$line")"; plan="$(jq -r '.plan' <<< "$line")"; end="$(jq -r '.end // empty' <<< "$line")"
+  end_t=""; if [[ -n "$end" ]]; then end_t="$(date -u -d "$end" +%s 2> /dev/null || echo "")"; fi   # `date -d ""` is today at midnight, not "no date"
+  end_txt="$( [[ -n "$end_t" ]] && date -u -d "@$end_t" '+%Y-%m-%d %H:%M' || echo "?")"
+  if [[ "$active" != true || "$plan" == free ]] || { [[ -n "$end_t" ]] && (( end_t <= now )); }; then
+    alert_set provider.subscription SEV1 "la suscripción de API-Football no está activa o ya venció (plan $plan, fin $end_txt UTC): la ingesta cae a 100 peticiones al día; renueva el plan en el panel del proveedor"
+    return 0
+  fi
+  [[ -n "$end_t" ]] || return 0   # active and no end given: nothing to count
+  left=$(( end_t - now ))
+  if (( left < PROVIDER_SUB_WARN_DAYS * 86400 )); then
+    alert_set provider.subscription SEV2 "la suscripción de API-Football vence en $(( left / 86400 )) días y $(( left % 86400 / 3600 )) h (fin $end_txt UTC): renueva el plan en el panel del proveedor"
+    if declare -F warning > /dev/null; then warning "the API-Football subscription ends in $(( left / 86400 )) days ($end_txt UTC)"; fi
   fi
 }

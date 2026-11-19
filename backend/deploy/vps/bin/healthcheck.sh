@@ -275,6 +275,7 @@ check_restart_loops
 check_auth_me
 check_config_drift
 check_picks_unsettled
+check_provider_subscription   # PM-01-01: the API-Football subscription ends in less than 10 days (it does not renew by itself)
 check_db_hold   # last: a database that did not answer keeps the alerts that come from it as they are
 
 verdict="ok"

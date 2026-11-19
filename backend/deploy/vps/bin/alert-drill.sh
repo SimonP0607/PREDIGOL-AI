@@ -58,6 +58,8 @@ pitr.backup|SEV2|la copia base PITR tiene más de 26 h
 pitr.test|SEV2|falló la última verificación del repositorio PITR
 pitr.wal|SEV1|el archivado de WAL hacia el repositorio PITR está fallando
 provider.quota|SEV2|el presupuesto diario de API-Football va por el 93 %
+provider.subscription|SEV1|la suscripción de API-Football no está activa o ya venció (plan free, fin 2026-11-29 21:45 UTC): la ingesta cae a 100 peticiones al día; renueva el plan en el panel del proveedor
+provider.subscription|SEV2|la suscripción de API-Football vence en 9 días y 23 h (fin 2026-11-29 21:45 UTC): renueva el plan en el panel del proveedor
 raw.full|SEV2|la última pasada completa del RAW fue hace 6 días
 raw.sync|SEV2|el almacén RAW se copió fuera del servidor por última vez hace 14 h
 restore.test|SEV2|el último ensayo de restauración falló
@@ -81,7 +83,7 @@ RECORD=(
   admin.denied:SEV2 api.login:SEV1 auth.bruteforce:SEV2 auth.locked:SEV3 auth.newdevice:SEV2 auth.privileged:SEV1 auth.privileged:SEV2
   backup.local:SEV2 backup.locks:SEV1 backup.offsite:SEV2 config.drift:SEV2 db.connections:SEV2 disk.forecast:SEV2 disk.usage:SEV1 disk.usage:SEV2
   host.resources:SEV2 incidents.dump:SEV3 ingest.live:SEV2 ingest.runs:SEV2 picks.review:SEV3 picks.unsettled:SEV2 pitr.backup:SEV2 pitr.test:SEV2
-  pitr.wal:SEV1 provider.quota:SEV2 raw.full:SEV2 raw.sync:SEV2 restore.test:SEV2 svc.api:SEV1 svc.api.loop:SEV1 tls.origin:SEV2
+  pitr.wal:SEV1 provider.quota:SEV2 provider.subscription:SEV2 raw.full:SEV2 raw.sync:SEV2 restore.test:SEV2 svc.api:SEV1 svc.api.loop:SEV1 tls.origin:SEV2
   web.degraded:SEV2 web.errors5xx:SEV2 web.health:SEV1 web.login:SEV1 worker.heartbeat:SEV1
 )
 
