@@ -23,6 +23,8 @@ export interface Pickable {
    * its words as the page shows them. Absent on the five markets, which keep their own rules.
    */
   parlay_allowed?: boolean | undefined;
+  /** Why the server does not take it (C-14's `parlay.reason`), said to the reader beside the price. */
+  parlay_reason?: string | undefined;
   label?: string | undefined;
   market_label?: string | undefined;
 }

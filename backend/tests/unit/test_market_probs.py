@@ -86,3 +86,34 @@ def test_a_market_without_a_settlement_rule_is_never_taken() -> None:
 
 def test_nothing_is_taken_once_the_match_started() -> None:
     assert verdict(spec_for(1), line=Decimal(0), books=9, state="evaluable", started=True, switch_on=True).reason == "empezado"
+
+
+def test_the_service_shows_a_refundable_pair_without_its_refund() -> None:
+    """BE-049: a whole goal line's model figures are put on the terms of the implied probability; a quarter line shows none."""
+    from fbi.api.contracts.intelligence.base import Probability
+    from fbi.api.contracts.intelligence.market_probs import ParlayFlag, SelectionMarksPrivate
+    from fbi.api.services.market_probs import _coherent
+
+    def sel(name: str, line: float, p: float | None) -> SelectionMarksPrivate:
+        prob = Missing.model_validate({"missing_reason": "sin_datos"}) if p is None else Probability.of(
+            p, calibration="sin_calibrar", as_of=AT, origin="forecast-v2", evaluation=Missing.model_validate({"missing_reason": "sin_datos"}),
+            evaluation_version=Missing.model_validate({"missing_reason": "sin_datos"}), interval=(max(0, int(p * 100) - 5), min(100, int(p * 100) + 5)))
+        return SelectionMarksPrivate(selection=name, line=line, best_odds=1.9, bookmaker="Casa", model=Missing.model_validate(
+            {"missing_reason": "sin_datos"}), implied=Missing.model_validate({"missing_reason": "sin_datos"}),
+            history=Missing.model_validate({"missing_reason": "sin_datos"}), parlay=ParlayFlag(allowed=False, reason="sin_regla"),
+            model_shadow=prob)
+
+    out = _coherent("over_under", [sel("Over", 1.0, 0.792), sel("Under", 1.0, 0.039), sel("Over", 2.25, 0.6), sel("Under", 2.25, 0.3)])
+    over = out[0].model_shadow
+    assert not isinstance(over, Missing) and over.pct == 95
+    assert isinstance(out[2].model_shadow, Missing) and isinstance(out[3].model_shadow, Missing)
+
+
+def test_a_double_chance_of_a_family_is_read_from_its_outcomes() -> None:
+    from fbi.api.services.market_probs import _one_x_two_unit
+    from fbi.api.services.market_status import load_catalogue
+
+    cat = load_catalogue()
+    corners_dc = cat.for_bet(spec_for(307).bet_id).entry
+    unit = _one_x_two_unit(cat, corners_dc.family, corners_dc.period, corners_dc.subject)
+    assert unit is not None and cat.status(unit).entry.kind == "one_x_two" and cat.status(unit).entry.family == "corners"

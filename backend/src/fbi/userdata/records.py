@@ -244,6 +244,7 @@ def _catalogue_leg(conn: psycopg.Connection[Any], leg: LegIn, f: dict[str, Any],
     from fbi.market.eligibility import spec_for_key, verdict
     from fbi.market.in_force import book, implied, key_of, unify
     from fbi.market.rules import rule_for
+    from fbi.market.settle_coverage import SeasonCoverage
     from fbi.picks.count_settlement import settle_numbers
 
     spec = spec_for_key(leg.market_key)
@@ -260,9 +261,10 @@ def _catalogue_leg(conn: psycopg.Connection[Any], leg: LegIn, f: dict[str, Any],
     mine = [q for q in quotes if q.selection == leg.selection and q.line == leg.line]
     state = policy.state_of(spec.bet_id) if policy and policy.state_of else "en_calibracion"
     v = verdict(spec, line=leg.line, books=len({q.bookmaker_id for q in mine}), state=state,
-                started=f["kickoff_at"] <= at, switch_on=bool(policy and policy.enabled))
+                started=f["kickoff_at"] <= at, switch_on=bool(policy and policy.enabled),
+                covered=SeasonCoverage.of_fixture(conn, leg.fixture_id).covered)
     if not v.allowed:
-        return ("invalid_selection" if v.reason in ("interruptor_apagado", "sin_regla", "no_ofrecer")
+        return ("invalid_selection" if v.reason in ("interruptor_apagado", "sin_regla", "no_ofrecer", "sin_cobertura")
                 else "quarter_line" if v.reason == "linea_de_cuarto" else "market_not_priced"), None
     top = max(mine, key=lambda q: (q.odds, -q.bookmaker_id))
     fair = implied(quotes).get((leg.selection, leg.line))

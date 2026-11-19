@@ -35,7 +35,7 @@ from fbi.api.contracts.intelligence.stats_profile import Ref
 from fbi.api.contracts.intelligence.vocab import MarketState
 
 ParlayReason = Literal["ok", "interruptor_apagado", "sin_regla", "no_ofrecer", "menos_de_3_casas", "linea_de_cuarto",
-                       "empezado"]
+                       "empezado", "sin_cobertura"]
 """Why Mi parlay would not take a selection; ``ok`` when it would."""
 HistoryWindow = Literal["u10_contexto"]
 
@@ -128,7 +128,7 @@ class MarketMarksPrivate(MarketMarks):
 
 class MarketProbs(IntelligenceContract):
     CONTRACT_ID: ClassVar[str] = "C-14"
-    CONTRACT_VERSION: ClassVar[str] = "1.0.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.1.0"
 
     fixture_id: int
     kickoff_at: UtcDatetime

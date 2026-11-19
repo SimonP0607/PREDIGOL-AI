@@ -12,10 +12,28 @@
   "scopeLabel": "Alcance",
   "contextLabel": "Contexto",
   "competitionLabel": "Competición",
-  "scope": { "u5": "Últimos 5", "u10": "Últimos 10", "u20": "Últimos 20", "season": "Temporada" },
-  "context": { "all": "Todos", "home": "Local", "away": "Visita", "favorite": "Favorito" },
-  "unit": { "por_partido": "por partido", "por_90": "por 90", "porcentaje": "%" },
-  "better": { "mas": "más es mejor", "menos": "menos es mejor", "neutral": "ni mejor ni peor" },
+  "scope": {
+    "u5": "Últimos 5",
+    "u10": "Últimos 10",
+    "u20": "Últimos 20",
+    "season": "Temporada"
+  },
+  "context": {
+    "all": "Todos",
+    "home": "Local",
+    "away": "Visita",
+    "favorite": "Favorito"
+  },
+  "unit": {
+    "por_partido": "por partido",
+    "por_90": "por 90",
+    "porcentaje": "%"
+  },
+  "better": {
+    "mas": "más es mejor",
+    "menos": "menos es mejor",
+    "neutral": "ni mejor ni peor"
+  },
   "missing": {
     "sin_datos": "Sin datos",
     "sin_cobertura": "Su liga no lo registra lo suficiente",
@@ -212,7 +230,7 @@
     "no_ofrecer": "Sin regla de liquidación propia: solo se muestra la cuota"
   },
   "methodTitle": "De dónde sale todo",
-  "methodBody": "Modelo: solo en mercados validados, con su sello y su hora. Implícita: el consenso sin margen de las casas con precio vigente (proporcional por casa, media entre casas). Histórico: la selección liquidada con su regla en los últimos 10 de local del equipo de casa y de visitante del de fuera, con su intervalo de Wilson. Nada de medidores arbitrarios.",
+  "methodBody": "Modelo: solo en mercados validados, con su sello y su hora. Implícita: el consenso sin margen de las casas con precio vigente (proporcional por casa, media entre casas). Histórico: la selección liquidada con su regla en los últimos 10 de local del equipo de casa y de visitante del de fuera, con su intervalo de Wilson. Nada de medidores arbitrarios. En líneas con devolución (una línea entera, apuesta sin empate, hándicap entero) la cifra del modelo es la de ganar si no hay devolución, como la implícita y el histórico; en líneas de cuarto no se muestra.",
   "lineLabel": "Línea",
   "distribution": "Distribución del total según el modelo",
   "overLine": "Más de {line}",
@@ -223,7 +241,8 @@
     "no_ofrecer": "Fuera del catálogo: no va a Mi parlay",
     "menos_de_3_casas": "Menos de 3 casas: no va a Mi parlay",
     "linea_de_cuarto": "Línea de cuarto: no va a Mi parlay",
-    "empezado": "El partido ya empezó"
+    "empezado": "El partido ya empezó",
+    "sin_cobertura": "Esta liga no registra lo que liquida este mercado: no va a Mi parlay"
   },
   "settlesWith": {
     "score": "liquida con el marcador",

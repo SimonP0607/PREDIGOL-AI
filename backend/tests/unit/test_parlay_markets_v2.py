@@ -40,6 +40,13 @@ def _fixture() -> dict[str, Any]:
     return {"kickoff_at": KO, "status_group": "scheduled", "home_team_id": 1, "away_team_id": 2, "competition_id": 3}
 
 
+@pytest.fixture(autouse=True)
+def covered(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The season records what the rule settles on (fbi.market.settle_coverage), unless a test says otherwise."""
+    monkeypatch.setattr("fbi.market.settle_coverage.SeasonCoverage.of_fixture",
+                        classmethod(lambda cls, conn, fid: SimpleNamespace(covered=lambda rule: True)))
+
+
 @pytest.fixture
 def priced(monkeypatch: pytest.MonkeyPatch) -> None:
     quotes = [q for b in (1, 2, 3) for q in (_quote(b, "Over", "1.90"), _quote(b, "Under", "1.90"))]
@@ -115,3 +122,10 @@ def test_the_five_markets_settle_as_they_always_did() -> None:
     leg = {**row, "market_key": "corners_over_under.FT.match", "selection": "Over", "line": Decimal("9.5"),
            "outcome": {"corners_ft_home": 6, "corners_ft_away": 5}}
     assert settle_single(leg, Decimal("1.9"), at=KO + timedelta(hours=3)).status is settlement.Status.WIN
+
+
+def test_a_season_without_the_rules_data_is_refused(priced: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("fbi.market.settle_coverage.SeasonCoverage.of_fixture",
+                        classmethod(lambda cls, conn, fid: SimpleNamespace(covered=lambda rule: rule.family == "goals")))
+    policy = records.MarketPolicy(enabled=True, state_of=lambda bet: "en_calibracion")
+    assert records._catalogue_leg(None, _leg(), _fixture(), AT, policy)[0] == "invalid_selection"  # type: ignore[arg-type]

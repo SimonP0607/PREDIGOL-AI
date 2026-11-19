@@ -6,7 +6,7 @@
  */
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { t } from "@/lib/i18n";
+import { t, translateOr } from "@/lib/i18n";
 import { formatOdds } from "@/lib/i18n/format";
 import { useSavedPicks } from "@/product/records/hooks";
 import { hasStarted, normLine, selectionKey } from "@/product/records/model";
@@ -47,7 +47,12 @@ export function SelectablePrice({
     odds: formatOdds(sel.odds),
     bookmaker: sel.bookmaker ?? "—",
   })}`;
-  const blocked = blockedText(parlay);
+  const blocked =
+    blockedText(parlay) ??
+    (parlay && !parlay.inSlip && parlay.block === "market" && sel.parlay_reason
+      ? translateOr(`stats.parlay.${sel.parlay_reason}`, "")
+      : null) ??
+    null;
   const pill = (
     <PricePill
       odds={sel.odds}

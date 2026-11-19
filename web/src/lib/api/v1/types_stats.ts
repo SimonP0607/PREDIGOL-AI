@@ -242,7 +242,8 @@ export type ParlayReason =
   | "no_ofrecer"
   | "menos_de_3_casas"
   | "linea_de_cuarto"
-  | "empezado";
+  | "empezado"
+  | "sin_cobertura";
 
 export interface Implied {
   value: number;
