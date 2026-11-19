@@ -41,6 +41,8 @@ partidos (3 %); faltan varias apuestas de jugador y las etiquetas son ambiguas; 
 Con la condición del plan (≥ 3 casas) quedan bloqueadas EA-301, 302, 304, 305, 306, 308 y EA-401, y `FBI_PLAYER_MARKETS` sigue
 apagado. No se contrata otro proveedor (regla vigente).
 
+Segunda sonda (19-nov, 30 días, 6 000 respuestas de cuotas, 788 partidos): los mercados de jugador aparecen en 262 partidos y 1 055 pares partido-apuesta, **todos de una sola casa (Bet365)**; ninguno llega a 2 casas, menos aún a 3. La alternativa dentro de los recursos ya existe y no se duplica: las cifras de los jugadores (por 90, percentiles por posición, últimos 5) están en su perfil (EA-005), y el laboratorio privado de mercados de jugador (IA-130) sigue midiendo en sombra. `FBI_PLAYER_MARKETS` queda apagado; el kit no permite encenderlo.
+
 ## Desviaciones del plan
 
 - La matriz de tendencias viaja en C-13 (no en C-14); C-04 2.0 no hizo falta; comparación y previa son composiciones de C-13.
