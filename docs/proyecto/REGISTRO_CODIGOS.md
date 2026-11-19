@@ -404,12 +404,13 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | DOC-002 | BE-049 en el registro de códigos y la segunda sonda de mercados de jugador | solo documentación | #393 | — |
 | DOC-003 | BE-050 en el registro de códigos | solo documentación | #395 | — |
 | DOC-004 | Plan Maestro PM de innovación, cobertura mundial y aprovechamiento de recursos 2026–2027 (PM-00-01, ola 0): el plan aprobado por el dueño el 19-nov-2026 en `docs/proyecto/PLAN_MAESTRO_INNOVACION_COBERTURA_2026.md` y sus anexos ligeros E y G en `docs/proyecto/plan_maestro_pm_2026/`; sin datos de la auditoría de seguridad ni enlaces privados. Las reservas de zona por bloque van en el documento de coordinación del proyecto | solo documentación | #396 | PM-00-01 |
+| DOC-005 | Paquete de firma de `review-retire-v1` y calendario de retiradas de OP-01 (PM-13-01, decisión DM-10): aprobación escrita del dueño del 19-nov-2026 registrada con fecha, huella SHA-256 del protocolo, procedimiento de firma de IA-143 y el paso único que queda (AD-D11 aún no es firmable: lo registra la sesión de Intelligence); no retira nada | solo documentación | este PR | PM-13-01 |
 
 Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identifica por su fase: F11 (familias), S1 a S4 (seguridad), UX A1 y siguientes.
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-173 · BE-051 · FE-004 · OPS-009 · DOC-005
+CI-020 · SEG-003 · UX-173 · BE-051 · FE-004 · OPS-009 · DOC-006
 
 IA-145
 
