@@ -67,8 +67,11 @@ UPSERT_SQL: Final = """
 INSERT INTO analytics.stat_documents (kind, entity_id, competition_season_id, scope, context, calc_version, sample, doc, computed_at)
 VALUES (%(kind)s, %(entity)s, %(cs)s, %(scope)s, %(context)s, %(version)s, %(sample)s, %(doc)s, %(at)s)
 ON CONFLICT (kind, entity_id, competition_season_id, scope, context) DO UPDATE
-   SET calc_version = EXCLUDED.calc_version, sample = EXCLUDED.sample, doc = EXCLUDED.doc, computed_at = EXCLUDED.computed_at
+   SET calc_version = EXCLUDED.calc_version, sample = EXCLUDED.sample, computed_at = EXCLUDED.computed_at,
+       doc = CASE WHEN analytics.stat_documents.doc IS DISTINCT FROM EXCLUDED.doc THEN EXCLUDED.doc ELSE analytics.stat_documents.doc END
 """
+"""BE-050: a document that did not change keeps its stored value (its TOAST pointer), so a night that adds no match to a season
+rewrites only the small row, not the document: the table does not double in size night after night."""
 PRUNE_SQL: Final = "DELETE FROM analytics.stat_documents WHERE competition_season_id = %(cs)s AND computed_at < %(at)s"
 
 
