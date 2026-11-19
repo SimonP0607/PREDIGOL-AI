@@ -39,10 +39,12 @@ from fbi.api.services.forecast import FAMILY_VERSION, VERSION, users_may_see
 from fbi.api.services.market_status import MarketCatalogue, load_catalogue
 from fbi.api.switches import market_probs_on, parlay_markets_v2_on
 from fbi.core.clock import now
+from fbi.market import coherence
 from fbi.market.eligibility import verdict
 from fbi.market.in_force import book as book_in_force
 from fbi.market.in_force import group_key, implied, unify
 from fbi.market.rules import rule_for
+from fbi.market.settle_coverage import SeasonCoverage
 from fbi.odds.quote_current import CurrentQuote, market_key
 from fbi.odds.quote_taxonomy import spec_for
 from fbi.picks.count_settlement import settle_numbers
@@ -148,6 +150,58 @@ def _figure_probability(fig: Any) -> Probability:
                           evaluation_version=_missing("sin_datos"), interval=interval)
 
 
+def _rescaled(p: Probability, value: float) -> Probability:
+    """The same figure on other terms (``fbi.market.coherence``): its value and its band scaled alike, its seal kept."""
+    value = min(1.0, max(0.0, value))
+    pct = int(fx.half_up(value * 100))
+    interval: tuple[int, int] | Missing = _missing("sin_datos")
+    band = p.interval_pct
+    if not isinstance(band, Missing) and p.value > 0:
+        factor = value / p.value
+        lo, hi = int(fx.half_up(float(band.low) * factor)), int(fx.half_up(float(band.high) * factor))
+        interval = (max(0, min(lo, pct)), min(100, max(hi, pct)))
+    return Probability.of(value, calibration=p.calibration, as_of=p.as_of, origin=p.origin, evaluation=p.evaluation,
+                          evaluation_version=p.evaluation_version, interval=interval)
+
+
+def _coherent(kind: str, selections: list[SelectionMarksPrivate]) -> list[SelectionMarksPrivate]:
+    """Each model figure on the terms of the implied probability and the history (``fbi.market.coherence.conditional``)."""
+    if kind not in coherence.PUSH_KINDS:
+        return selections
+    out = selections
+    for field in ("model", "model_shadow"):
+        figures = {(s.selection, Decimal(str(s.line))): getattr(s, field) for s in out
+                   if isinstance(getattr(s, field), Probability)}
+        if not figures:
+            continue
+        fixed = coherence.conditional(kind, {k: p.value for k, p in figures.items()})
+        rebuilt = []
+        for s in out:
+            k = (s.selection, Decimal(str(s.line)))
+            if k in figures:
+                v = fixed.get(k)
+                s = s.model_copy(update={field: _missing("sin_datos") if v is None else _rescaled(figures[k], v)})
+            rebuilt.append(s)
+        out = rebuilt
+    return out
+
+
+def _sum_probability(rows: Sequence[dict[str, Any]], value: float, origin: str) -> Probability:
+    """A figure made of several stored ones of one model (a double chance from its outcomes): their seal, the latest time."""
+    calibrated = all(r.get("calibration") == "CALIBRATED" for r in rows)
+    return Probability.of(value, calibration="calibrada" if calibrated else "sin_calibrar", as_of=max(r["known_at"] for r in rows),
+                          origin=origin, evaluation=_missing("sin_datos"), evaluation_version=_missing("sin_datos"),
+                          interval=_missing("sin_datos"))
+
+
+def _one_x_two_unit(cat: MarketCatalogue, family: str, period: str, subject: str) -> str | None:
+    for st in cat.statuses.values():
+        e = st.entry
+        if e.kind == "one_x_two" and e.family == family and e.period == period and e.subject == subject:
+            return e.key
+    return None
+
+
 def build(conn: Conn, fixture_id: int, *, at: datetime | None = None, catalogue: MarketCatalogue | None = None,
           shadow: bool = False) -> MarketProbsPrivate:
     moment = at or now()
@@ -167,6 +221,7 @@ def build(conn: Conn, fixture_id: int, *, at: datetime | None = None, catalogue:
     figures = _shadow_figures(conn, fixture_id, moment) if shadow else None
     readers_see_forecast = users_may_see()
     switch = parlay_markets_v2_on()
+    coverage = SeasonCoverage.of_fixture(cast(Any, conn), fixture_id)
     by_key: dict[str, list[CurrentQuote]] = defaultdict(list)
     for q in quotes:
         by_key[market_key(q.bet_id, q.period, q.subject)].append(q)
@@ -178,6 +233,12 @@ def build(conn: Conn, fixture_id: int, *, at: datetime | None = None, catalogue:
         unit = status.key
         published_key = lead.market_key if lead.period == "FT" and lead.subject == "match" else None
         evaluable = status.state == "evaluable"
+        family_1x2: dict[str, dict[str, Any]] = {}
+        if lead.kind == "double_chance":
+            u = _one_x_two_unit(cat, status.entry.family, lead.period, lead.subject)
+            if u is not None:
+                family_1x2 = {o: r for o in ("Home", "Draw", "Away")
+                              if (r := forecasts[FAMILY_VERSION].get((u, o, Decimal(0)))) is not None}
         imp = implied(rows)
         by_sel: dict[tuple[str, Decimal], list[CurrentQuote]] = defaultdict(list)
         for q in rows:
@@ -196,6 +257,16 @@ def build(conn: Conn, fixture_id: int, *, at: datetime | None = None, catalogue:
                     model = _probability(published, VERSION)
                 else:
                     shadow_p = _probability(published, VERSION)
+            elif family is not None and lead.kind == "double_chance":
+                # a double chance is two outcomes of three: read from the same model's outcomes, never from a stored figure that
+                # does not add up to 2 (fbi.market.coherence)
+                parts = coherence.DOUBLE_CHANCE.get(sel, ())
+                rows_1x2 = [r for r in (family_1x2.get(o) for o in parts) if r is not None]
+                outcomes = {o: float(r["p"]) for o, r in family_1x2.items()}
+                value = coherence.double_chance(sel, outcomes.get)
+                if value is not None and len(rows_1x2) == 2:
+                    origin = FAMILY_VERSION
+                    shadow_p = _sum_probability(rows_1x2, value, FAMILY_VERSION)
             elif family is not None:
                 origin = FAMILY_VERSION
                 shadow_p = _probability(family, FAMILY_VERSION)
@@ -207,12 +278,13 @@ def build(conn: Conn, fixture_id: int, *, at: datetime | None = None, catalogue:
                         origin = SINGLE_FIGURE
             i = imp.get((sel, line))
             v = verdict(spec, line=line, books=len({q.bookmaker_id for q in qs}), state=status.state, started=started,
-                        switch_on=switch)
+                        switch_on=switch, covered=coverage.covered)
             selections.append(SelectionMarksPrivate(
                 selection=sel, line=float(line), best_odds=float(top.odds), bookmaker=top.bookmaker, model=model,
                 implied=Implied(value=fx.half_up(i[0], 4), pct=fx.pct_int(i[0]), books=i[1], as_of=i[2]) if i else _missing("sin_datos"),
                 history=history(home_rows, away_rows, top), parlay=ParlayFlag(allowed=v.allowed, reason=cast(Any, v.reason)),
                 model_shadow=shadow_p))
+        selections = _coherent(lead.kind, selections)
         markets.append(MarketMarksPrivate(
             key=key, unit=unit, category=lead.family, kind=lead.kind, period=lead.period, subject=lead.subject,
             state=cast(Any, status.state), state_reason=status.reason, rule_key=status.entry.rule_key or _missing("sin_datos"),

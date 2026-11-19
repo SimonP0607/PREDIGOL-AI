@@ -20,6 +20,8 @@ export interface CatalogParlay {
   allowed: ReadonlySet<string>;
   /** What each market (by key) settles with, from its rule (IA-070). */
   settles: ReadonlyMap<string, SettlesWith>;
+  /** Why the server does not take a selection (`key|selection|line`), when it says so. */
+  reasons?: ReadonlyMap<string, string>;
 }
 
 export const NO_CATALOG_PARLAY: CatalogParlay = { allowed: new Set(), settles: new Map() };
@@ -39,18 +41,22 @@ export function catalogParlayOf(data: MarketProbs | null | undefined): CatalogPa
   if (!data) return NO_CATALOG_PARLAY;
   const allowed = new Set<string>();
   const settles = new Map<string, SettlesWith>();
+  const reasons = new Map<string, string>();
   for (const m of data.markets.items) {
     if (!isCatalogueKey(m.key)) continue;
     let any = false;
     for (const s of m.selections) {
-      if (!s.parlay.allowed) continue;
+      if (!s.parlay.allowed) {
+        reasons.set(selectionId(m.key, s.selection, s.line), s.parlay.reason);
+        continue;
+      }
       allowed.add(selectionId(m.key, s.selection, s.line));
       any = true;
     }
     const rule = present(m.rule_key);
     if (any && rule) settles.set(m.key, settlesWith(rule));
   }
-  return { allowed, settles };
+  return { allowed, settles, reasons };
 }
 
 /** The views of a category, a catalogue market the server takes marked so (the five keep theirs). */
@@ -87,6 +93,7 @@ export function catalogChooser(
       ...choose(price),
       market_key: view.key as LegMarketKey,
       parlay_allowed: cp.allowed.has(selectionId(view.key, price.selection, price.line)),
+      parlay_reason: cp.reasons?.get(selectionId(view.key, price.selection, price.line)),
       label: line ? `${column} ${line}` : column,
       market_label: marketLabel,
     };

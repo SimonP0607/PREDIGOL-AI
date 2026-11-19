@@ -52795,7 +52795,7 @@
    ]
   },
   "C-14": {
-   "version": "1.0.0",
+   "version": "1.1.0",
    "public": [
     "$ :: object",
     "$.away",
@@ -53292,6 +53292,7 @@
     "$.markets.items[].selections[].parlay.reason = \"menos_de_3_casas\"",
     "$.markets.items[].selections[].parlay.reason = \"no_ofrecer\"",
     "$.markets.items[].selections[].parlay.reason = \"ok\"",
+    "$.markets.items[].selections[].parlay.reason = \"sin_cobertura\"",
     "$.markets.items[].selections[].parlay.reason = \"sin_regla\"",
     "$.markets.items[].selections[].selection",
     "$.markets.items[].selections[].selection !always",
@@ -54051,6 +54052,7 @@
     "$.markets.items[].selections[].parlay.reason = \"menos_de_3_casas\"",
     "$.markets.items[].selections[].parlay.reason = \"no_ofrecer\"",
     "$.markets.items[].selections[].parlay.reason = \"ok\"",
+    "$.markets.items[].selections[].parlay.reason = \"sin_cobertura\"",
     "$.markets.items[].selections[].parlay.reason = \"sin_regla\"",
     "$.markets.items[].selections[].selection",
     "$.markets.items[].selections[].selection !always",
@@ -54154,6 +54156,10 @@
   {
    "date": "2026-11-18",
    "reason": "EA-001/EA-002: C-13 perfil estadístico 1.0.0 y C-14 probabilidades por mercado 1.0.0 (plan de estadísticas avanzadas)"
+  },
+  {
+   "date": "2026-11-19",
+   "reason": "BE-049: C-14 1.1.0, motivo sin_cobertura (Mi parlay solo con ligas que registran lo que la regla liquida)"
   }
  ]
 }

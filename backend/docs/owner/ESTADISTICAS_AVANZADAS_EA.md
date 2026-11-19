@@ -15,6 +15,11 @@ código, cómo se enciende y qué queda bloqueado.
 | EA-201, EA-202 | `services/market_probs.py`, `ProbabilitiesPanel` | Panel de probabilidades en «Mercados» antes del partido (V2·8) |
 | EA-501 a EA-503 | `market/eligibility.py`, `picks/rule_settlement.py`, web `match/catalogParlay.ts` | Mi parlay acepta mercados del catálogo con regla IA-070, precio vigente de ≥ 3 casas y línea no de cuarto; se liquidan por su regla; sin datos tras 72 h, nula. El módulo no se rediseñó |
 
+## Decisiones del 19-nov-2026 (BE-049)
+
+- Mi parlay toma un mercado del catálogo solo si la temporada del partido registra lo que liquida su regla en al menos el 80 % de sus partidos terminados (mínimo 10): `fbi.market.settle_coverage`, medido sobre `market.fixture_outcomes`. Si no, `sin_cobertura` (C-14 1.1.0) y el precio dice por qué.
+- Las cifras del modelo se comparan en los mismos términos que la implícita y el histórico (`fbi.market.coherence`): en líneas con devolución, la probabilidad de ganar si no hay devolución; en líneas de cuarto, ninguna; la doble oportunidad de una familia se lee de su 1X2 (suma 2).
+
 ## Métodos
 
 - Percentiles por rango medio contra la liga (mínimo 8 equipos y 3 partidos; jugadores por posición, mínimo 5 noventas y 10 jugadores).

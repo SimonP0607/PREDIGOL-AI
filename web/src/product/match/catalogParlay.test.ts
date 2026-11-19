@@ -92,7 +92,10 @@ describe("catalogue markets in Mi parlay", () => {
     const cp = catalogParlayOf(probs(true));
     expect(cp.allowed.has(selectionId(KEY, "Over", 9.5))).toBe(true);
     expect(cp.settles.get(KEY)).toBe("stats");
-    expect(catalogParlayOf(probs(false))).toEqual({ allowed: new Set(), settles: new Map() });
+    const off = catalogParlayOf(probs(false));
+    expect(off.allowed.size).toBe(0);
+    expect(off.settles.size).toBe(0);
+    expect(off.reasons?.get(selectionId(KEY, "Over", 9.5))).toBe("interruptor_apagado");
   });
 
   test("with nothing allowed the views are as they were", () => {

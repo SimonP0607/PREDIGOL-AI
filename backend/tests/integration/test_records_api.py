@@ -213,6 +213,11 @@ def test_a_catalogue_market_goes_in_a_parlay_only_with_its_switch(world: dict[st
     assert off["ok"] is False and off["errors"][0]["code"] == "invalid_selection"
     monkeypatch.setenv("FBI_PARLAY_MARKETS_V2", "on")
     reset_cache()
+    bare = c.post("/api/v1/me/parlays/validate", json={"legs": legs}).json()["data"]
+    assert bare["ok"] is False, "a season without corners recorded never takes a corners leg (decision of 19-nov-2026)"
+    from types import SimpleNamespace
+    monkeypatch.setattr("fbi.market.settle_coverage.SeasonCoverage.of_fixture",
+                        classmethod(lambda cls, conn, fid: SimpleNamespace(covered=lambda rule: True)))
     on = c.post("/api/v1/me/parlays/validate", json={"legs": legs}).json()["data"]
     assert on["ok"] is True, on
     built = c.post("/api/v1/me/parlays", json={"name": "Córners", "legs": legs})

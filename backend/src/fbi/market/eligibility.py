@@ -3,12 +3,14 @@ price as selectable, so that the page never offers what the server would refuse.
 
 The five markets of today (1X2, OU, BTTS, AH, DC of the match, full time) keep exactly their behaviour: settled on the score, no
 quarter line. With ``FBI_PARLAY_MARKETS_V2`` on, a selection of any other market is taken when its market has a settlement rule of
-IA-070 (``fbi.market.rules.rule_for``), the catalogue does not hold it ``no_ofrecer``, at least ``MIN_BOOKS`` houses price it now, and
+IA-070 (``fbi.market.rules.rule_for``), the catalogue does not hold it ``no_ofrecer``, the match's competition season records what
+the rule settles on (``fbi.market.settle_coverage``, 80 % of its finished matches), at least ``MIN_BOOKS`` houses price it now, and
 its line is not a quarter. Nothing here changes Mi parlay's other rules (two to ten legs, one per match, the outlier price).
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
 from functools import cache
@@ -37,8 +39,11 @@ def core_market(spec: BetSpec) -> bool:
     return spec.market_key in CORE and spec.period == "FT" and spec.subject == "match"
 
 
-def verdict(spec: BetSpec, *, line: Decimal, books: int, state: str, started: bool, switch_on: bool) -> Verdict:
-    """Whether Mi parlay takes a selection of ``spec`` at ``line`` priced now by ``books`` houses, its market in catalogue ``state``."""
+def verdict(spec: BetSpec, *, line: Decimal, books: int, state: str, started: bool, switch_on: bool,
+            covered: Callable[[Rule], bool] | None = None) -> Verdict:
+    """Whether Mi parlay takes a selection of ``spec`` at ``line`` priced now by ``books`` houses, its market in catalogue ``state``.
+    ``covered``: whether the match's competition season records what the rule settles on (``fbi.market.settle_coverage``); a
+    market of the catalogue is refused ``sin_cobertura`` where it does not (decision of 19-nov-2026)."""
     if started:
         return Verdict(False, "empezado")
     if core_market(spec):
@@ -50,6 +55,8 @@ def verdict(spec: BetSpec, *, line: Decimal, books: int, state: str, started: bo
         return Verdict(False, "sin_regla")
     if state == "no_ofrecer":
         return Verdict(False, "no_ofrecer", rule)
+    if covered is not None and not covered(rule):
+        return Verdict(False, "sin_cobertura", rule)
     if books < MIN_BOOKS:
         return Verdict(False, "menos_de_3_casas", rule)
     if quarter_line(line):
