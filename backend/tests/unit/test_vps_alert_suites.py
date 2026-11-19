@@ -24,8 +24,9 @@ EXPECTED = {
         75,
     ),
     "test_alerts_checks.sh": (
-        "alerts_checks.sh: restart loops, /auth/me, drift, unsettled picks, a deploy a moment ago",
-        74,
+        "alerts_checks.sh: restart loops, /auth/me, drift, unsettled picks, a deploy a moment ago, "
+        "the API-Football subscription (PM-01-01)",
+        100,
     ),
     "test_config_baseline.sh": (
         "config-baseline.sh: the baseline of the alert 'the configuration changed', who takes it",

@@ -4,7 +4,7 @@
 sheet that closes R03 (the "acta") is filled in from it. Whether the plan of the session is wise no test can hold. What a test can hold is that the document and the code
 do not drift apart: Table A is the table of ``bin/alert-drill.sh`` row by row, its dots are the record ``--all`` sends, and that table is the alerts the scripts raise
 (every key and every severity, and for each row a text the scripts would send); Table B is the Healthchecks checks the scripts ping, with the variables the example file
-defines; the acta is the catalogue's 34 alerts, blank, each one tied to the rows that provoke it; the numbers in the text (36 messages, 3 seconds, 20 seconds, three
+defines; the acta is the catalogue's 34 alerts, blank, each one tied to the rows that provoke it; the numbers in the text (37 messages, 3 seconds, 20 seconds, three
 refusals in a row, a safety timer longer than the check's margin) are the code's; the commands shown exist, and the shell blocks run - in a dry run, through a stub of
 ``predigolctl`` - without sending anything and without printing a secret.
 """
@@ -285,6 +285,7 @@ def test_the_number_of_each_row_is_the_alerts_number_in_the_catalogue() -> None:
         "backup.locks",
         "incidents.dump",
         "pitr.backup",
+        "provider.subscription",
         "web.degraded",
     }
 
@@ -293,7 +294,7 @@ def test_the_dots_are_the_record_that_all_sends() -> None:
     marked = [(key.replace("`", ""), sev) for _, key, sev, _, mark in table_a() if mark == "●"]
     assert all(mark in {"●", ""} for *_, mark in table_a())
     assert sorted(marked) == sorted(record())
-    assert len(marked) == len(set(marked)) == 36
+    assert len(marked) == len(set(marked)) == 37
 
 
 def test_the_rows_without_a_dot_are_other_severities_of_an_alert_that_has_one() -> None:
@@ -625,7 +626,7 @@ def test_the_scripts_and_units_the_text_names_exist() -> None:
 def test_the_numbers_in_the_text_are_the_codes() -> None:
     flat = re.sub(r"\s+", " ", TEXT)
     pause, hold, total = default_seconds("PAUSE"), default_seconds("HOLD"), len(record())
-    # «los 36 de golpe», «sus 36 mensajes», «Los 36 mensajes de apertura»
+    # «los 37 de golpe», «sus 37 mensajes», «Los 37 mensajes de apertura»
     counts = re.findall(r"\b(\d+) (?:de golpe|mensajes)\b", flat)
     assert len(counts) >= 3 and set(counts) == {str(total)}, counts
     # «uno cada 3 segundos (unos 2 minutos)»
@@ -849,10 +850,10 @@ def test_all_in_a_dry_run_shows_the_record_and_the_incident_numbers_the_text_pro
     done = sandbox.drill("--all", "--dry-run")
     assert done.returncode == 0, done.stderr
     sends = would_send(done)
-    assert len(sends) == len(record()) == 36
+    assert len(sends) == len(record()) == 37
     assert all(DRY_MESSAGE.fullmatch(line) for line in sends)
     numbers = [int(re.search(r"INC-\d{4}-(\d+)\)$", line)[1]) for line in sends]  # type: ignore[index]
-    assert numbers == list(range(901, 937))
+    assert numbers == list(range(901, 938))
     shown = []
     for line in sends:
         key, sev = re.search(r"\[(SEV\d)\] (\S+):", line)[2], re.search(r"\[(SEV\d)\]", line)[1]  # type: ignore[index]
