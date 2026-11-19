@@ -128,3 +128,17 @@ def test_c14_answers_a_match_without_prices(db: psycopg.Connection[Any], seed: S
     answer = market_probs.build(db, upcoming, at=T0 + timedelta(days=150))
     assert answer.markets.items == [] and answer.markets.missing_reason == "sin_datos"
     assert to_public(answer, MarketProbs).home.id == ids[0]
+
+
+def test_a_document_that_did_not_change_is_not_rewritten(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """BE-050: the second pass over the same matches keeps each document's stored value and only moves its time."""
+    cs, _ids, _ = _league(db, seed)
+    data = sd.load_season(db, _season(db, cs))
+    job.write_season(db, data, None, T0 + timedelta(days=120))
+    before = db.execute("SELECT count(*), sum(pg_column_size(doc)) FROM analytics.stat_documents WHERE competition_season_id = %s "
+                        "AND kind = 'team'", (cs,)).fetchone()
+    job.write_season(db, data, None, T0 + timedelta(days=121))
+    after = db.execute("SELECT count(*), sum(pg_column_size(doc)), min(computed_at) FROM analytics.stat_documents "
+                       "WHERE competition_season_id = %s AND kind = 'team'", (cs,)).fetchone()
+    assert after is not None and before is not None
+    assert after[:2] == before[:2] and after[2] == T0 + timedelta(days=121)
