@@ -400,13 +400,14 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | --- | --- | --- | --- | --- |
 | DOC-001 | BE-046 a BE-048, FE-002 y FE-003 en el registro de códigos | solo documentación | #391 | — |
 | DOC-002 | BE-049 en el registro de códigos y la segunda sonda de mercados de jugador | solo documentación | #393 | — |
-| DOC-003 | BE-050 en el registro de códigos | solo documentación | este PR | — |
+| DOC-003 | BE-050 en el registro de códigos | solo documentación | #395 | — |
+| DOC-004 | Plan Maestro PM de innovación, cobertura mundial y aprovechamiento de recursos 2026–2027 (PM-00-01, ola 0): el plan aprobado por el dueño el 19-nov-2026 en `docs/proyecto/PLAN_MAESTRO_INNOVACION_COBERTURA_2026.md` y sus anexos ligeros E y G en `docs/proyecto/plan_maestro_pm_2026/`; sin datos de la auditoría de seguridad ni enlaces privados. Las reservas de zona por bloque van en el documento de coordinación del proyecto | solo documentación | este PR | PM-00-01 |
 
 Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identifica por su fase: F11 (familias), S1 a S4 (seguridad), UX A1 y siguientes.
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-173 · BE-051 · FE-004 · OPS-007 · DOC-004
+CI-020 · SEG-003 · UX-173 · BE-051 · FE-004 · OPS-007 · DOC-005
 
 IA-145
 
