@@ -392,19 +392,21 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | BE-047 | Plan de estadísticas avanzadas, perfiles y probabilidades por mercado (EA-001 a EA-008, EA-101 a EA-107, EA-201 a EA-203, EA-307, EA-501 a EA-503, EA-602). **Migración 0167** (`analytics.stat_documents`, `analytics.stat_runs`); pasada nocturna `FBI_STATS_AGG` (07:20 UTC); contratos C-13 1.0.0 y C-14 1.0.0; perfiles de equipo y jugador, comparaciones, previa del partido y probabilidades por mercado (`FBI_STATS_V2`, `FBI_MARKET_PROBS`); Mi parlay con los mercados del catálogo que tienen regla IA-070, ≥ 3 casas y línea no de cuarto, liquidados por su regla (`FBI_PARLAY_MARKETS_V2`); tarjeta de método en «Cómo funciona». `FBI_PLAYER_MARKETS` (C-15) bloqueado por datos | desplegado y encendido (en producción el 18-nov-2026 a las 19:10 UTC con la cadena `20261118T1807Z-auto-589a50e`, copia propia antes de migrar (0166 → 0167); humo 0 y verificación con 0 líneas NOT OK; encendidos con el kit `ia-switch-ea`: `FBI_STATS_AGG` 20:24, `FBI_STATS_V2` 21:13, `FBI_MARKET_PROBS` 21:24, `FBI_PARLAY_MARKETS_V2` 21:31 UTC) | #388 | — |
 | BE-048 | La pasada de estadísticas confirma cada temporada por separado (las lecturas abrían la transacción y todo quedaba en una sola hasta el final) e informe EA-008 de cobertura medido en producción (`src/fbi/stats/stats_coverage.json`, 125 temporadas) | desplegado (en producción el 18-nov-2026 con la cadena `20261118T2213Z-auto-f9739d4`, sin migración) | #389 | BE-047 |
 | BE-049 | Plan de estadísticas avanzadas, decisiones del 19-nov-2026: Mi parlay toma un mercado del catálogo solo si la temporada del partido registra lo que liquida su regla (≥ 80 % de los partidos terminados y ≥ 10; `fbi.market.settle_coverage`, motivo `sin_cobertura`, C-14 1.1.0); las cifras del modelo en «Probabilidades» en los mismos términos que la implícita y el histórico (`fbi.market.coherence`: pares con devolución, líneas de cuarto, doble oportunidad leída del 1X2 de la familia) | desplegado (en producción el 19-nov-2026 a las 05:38 UTC con la cadena `20261119T0415Z-auto-9099566`, sin migración; humo 0 y verificación con 0 líneas NOT OK) | #392 | BE-047 |
+| BE-050 | La pasada de estadísticas conserva el documento guardado cuando no cambió (su puntero TOAST) y solo mueve su hora: la tabla dejaba de caber en 500 MB al reescribir 89 562 documentos cada noche (472 → 537 MB). Tras desplegarlo, una pasada completa no la hace crecer y una compactación única (`VACUUM FULL`, 27 s) la dejó en 317 MB | desplegado (en producción el 19-nov-2026 a las 09:31 UTC con la cadena `20261119T0846Z-auto-2027ea1`, sin migración; humo 0 y verificación con 0 líneas NOT OK) | #394 | BE-048 |
 
 ## Otras áreas
 
 | Código | Qué es | Estado | PR | Fase o nombre anterior |
 | --- | --- | --- | --- | --- |
 | DOC-001 | BE-046 a BE-048, FE-002 y FE-003 en el registro de códigos | solo documentación | #391 | — |
-| DOC-002 | BE-049 en el registro de códigos | solo documentación | este PR | — |
+| DOC-002 | BE-049 en el registro de códigos y la segunda sonda de mercados de jugador | solo documentación | #393 | — |
+| DOC-003 | BE-050 en el registro de códigos | solo documentación | este PR | — |
 
 Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identifica por su fase: F11 (familias), S1 a S4 (seguridad), UX A1 y siguientes.
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-173 · BE-050 · FE-004 · OPS-007 · DOC-003
+CI-020 · SEG-003 · UX-173 · BE-051 · FE-004 · OPS-007 · DOC-004
 
 IA-145
 
