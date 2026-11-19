@@ -169,4 +169,61 @@ printf 'not a date\tnew\tweb\told\tweb\n' > "$dl"; eq "$(after)" no "10 a date t
 printf '\tnew\tweb\told\tweb\n' > "$dl"; eq "$(after)" no "10 an empty date: not a deploy"
 rm -f "$dl"
 
+# 11. the API-Football subscription (PM-01-01): the worker's line of /status, cached, judged against the clock
+SUBF="$STATE/provider-subscription.json"; : > "$T/compose_calls"
+compose() { echo "$*" >> "$T/compose_calls"; if [[ -n "${FAKE_SUB_FAIL:-}" ]]; then return 1; fi; printf '%s\n' "${FAKE_SUB:-}"; }
+compose_calls() { wc -l < "$T/compose_calls" | tr -d ' '; }
+WARN="$T/warnings"; : > "$WARN"; warning() { echo "$1" >> "$WARN"; }
+n0=$(date -u -d 2026-11-19T22:00:00Z +%s)
+sub() { printf '{"active":%s,"checked_at":"%s","end":%s,"plan":"%s","seconds_left":0}' "$1" "$(date -u -d "@$2" +%FT%TZ)" "$3" "$4"; }
+END='"2026-11-29T21:45:57Z"'
+rm -f "$SUBF"; reset
+FAKE_SUB="$(sub true "$n0" "$END" ultra)" CHECKS_NOW=$n0 check_provider_subscription
+eq "$(compose_calls)" 1 "11 no cached line: the worker is asked once"
+grep -q 'exec -T worker python -m scripts.provider_subscription' "$T/compose_calls" && ok "11 through the worker's script" || no "11 command: $(cat "$T/compose_calls")"
+eq "$(cat "$CALLS")" "provider.subscription|SEV2|la suscripción de API-Football vence en 9 días y 23 h (fin 2026-11-29 21:45 UTC): renueva el plan en el panel del proveedor" "11 9 days 23 h left (19 Nov, 22:00 UTC): SEV2 with the end in UTC"
+[[ -s "$SUBF" ]] && ok "11 the line is kept in state/provider-subscription.json" || no "11 no cache"
+eq "$(grep -c 'ends in 9 days' "$WARN")" 1 "11 and a warning for the verdict"
+reset; CHECKS_NOW=$((n0 + 3600)) check_provider_subscription
+eq "$(compose_calls)" 1 "11 an hour later the cached line is judged again, the worker is not asked"
+eq "$(cut -d'|' -f1,2 "$CALLS")" "provider.subscription|SEV2" "11 ... and it is still SEV2 (the text changes, alerts_lib sends a SEV2 once)"
+reset; FAKE_SUB="$(sub true $((n0 + 21600)) "$END" ultra)" CHECKS_NOW=$((n0 + 21600)) check_provider_subscription
+eq "$(compose_calls)" 2 "11 after 6 h the worker is asked again"
+reset; FAKE_SUB="$(sub true $((n0 + 43200)) '"2026-12-29T21:45:57Z"' ultra)" CHECKS_NOW=$((n0 + 43200)) check_provider_subscription
+eq "$(calls)" 0 "11 renewed (the end moved a month): no alert, the open one closes"
+reset; DEPLOYING=1; FAKE_SUB=garbage CHECKS_NOW=$((n0 + 90000)) check_provider_subscription; DEPLOYING=0
+eq "$(compose_calls)" 3 "11 during a deploy the worker is not asked"
+eq "$(calls)" 0 "11 ... and the last line (renewed) is still judged"
+rm -f "$SUBF"; reset; FAKE_SUB_FAIL=1 CHECKS_NOW=$n0 check_provider_subscription
+eq "$(cat "$CALLS")" "HOLD|provider.subscription" "11 no answer and no cached line: held, not closed"
+rm -f "$SUBF"; reset; FAKE_SUB='{"plan":"ultra","account":"x"}' CHECKS_NOW=$n0 check_provider_subscription
+eq "$(cat "$CALLS")" "HOLD|provider.subscription" "11 an answer without 'active' is not kept: held"
+[[ ! -e "$SUBF" ]] && ok "11 ... and nothing is cached" || no "11 cached a bad line"
+printf '%s\n' "$(sub true "$n0" "$END" ultra)" > "$SUBF"; reset; : > "$WARN"
+FAKE_SUB_FAIL=1 CHECKS_NOW=$((n0 + 3 * 86400)) check_provider_subscription
+eq "$(cat "$CALLS")" "HOLD|provider.subscription" "11 a line 3 days old that cannot be refreshed: held"
+grep -q 'last read 72 h ago' "$WARN" && ok "11 ... with a warning that /status does not answer" || no "11 warning: $(cat "$WARN")"
+reset; FAKE_SUB="$(sub true $((n0 + 4 * 86400)) "$END" ultra)" CHECKS_NOW=$((n0 + 4 * 86400)) check_provider_subscription
+eq "$(cat "$CALLS")" "provider.subscription|SEV2|la suscripción de API-Football vence en 5 días y 23 h (fin 2026-11-29 21:45 UTC): renueva el plan en el panel del proveedor" "11 refreshed again: 5 days 23 h"
+endt=$(date -u -d 2026-11-29T21:45:57Z +%s)
+rm -f "$SUBF"; reset; FAKE_SUB="$(sub true $((endt - 7200)) "$END" ultra)" CHECKS_NOW=$((endt - 7200)) check_provider_subscription
+eq "$(cut -d'|' -f2,3 "$CALLS")" "SEV2|la suscripción de API-Football vence en 0 días y 2 h (fin 2026-11-29 21:45 UTC): renueva el plan en el panel del proveedor" "11 two hours left: still SEV2 (no hourly reminders before the end)"
+reset; CHECKS_NOW=$((endt + 60)) check_provider_subscription
+eq "$(cut -d'|' -f1,2 "$CALLS")" "provider.subscription|SEV1" "11 the end has passed (judged on the cached line): SEV1"
+rm -f "$SUBF"; reset; FAKE_SUB="$(sub false "$n0" "$END" ultra)" CHECKS_NOW=$n0 check_provider_subscription
+eq "$(cat "$CALLS")" "provider.subscription|SEV1|la suscripción de API-Football no está activa o ya venció (plan ultra, fin 2026-11-29 21:45 UTC): la ingesta cae a 100 peticiones al día; renueva el plan en el panel del proveedor" "11 not active: SEV1"
+rm -f "$SUBF"; reset; FAKE_SUB="$(sub true "$n0" '"2027-01-01T00:00:00Z"' free)" CHECKS_NOW=$n0 check_provider_subscription
+eq "$(cut -d'|' -f1,2 "$CALLS")" "provider.subscription|SEV1" "11 the free plan: SEV1"
+rm -f "$SUBF"; reset; FAKE_SUB="$(sub true "$n0" null ultra)" CHECKS_NOW=$n0 check_provider_subscription
+eq "$(calls)" 0 "11 active with no end given: nothing to count, no alert"
+rm -f "$SUBF"; reset; FAKE_SUB="$(sub true "$n0" '"2026-12-15T00:00:00Z"' ultra)" CHECKS_NOW=$n0 check_provider_subscription
+eq "$(calls)" 0 "11 25 days left: no alert"
+rm -f "$SUBF"; reset; c=$(compose_calls); PREDIGOL_PROVIDER_SUB_ALERT=0 FAKE_SUB="$(sub false "$n0" "$END" ultra)" CHECKS_NOW=$n0 check_provider_subscription
+eq "$(calls):$(compose_calls)" "0:$c" "11 the switch off (PREDIGOL_PROVIDER_SUB_ALERT=0): no alert and the worker is not asked"
+rm -f "$SUBF"; reset; PROVIDER_SUB_WARN_DAYS=5 FAKE_SUB="$(sub true "$n0" "$END" ultra)" CHECKS_NOW=$n0 check_provider_subscription
+eq "$(calls)" 0 "11 the margin can be given: 9 days is no alert with PROVIDER_SUB_WARN_DAYS=5"
+grep -q 'account\|email' "$SUBF" && no "11 the cache holds account data" || ok "11 the cache holds no account data"
+unset -f compose warning
+rm -f "$SUBF"
+
 echo; echo "RESULT: $PASS ok, $FAIL failed"; exit $(( FAIL > 0 ))

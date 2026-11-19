@@ -56,6 +56,7 @@ hora hasta que se arregle.
 | `config.drift` (SEV2) | Cambió la configuración sin un despliegue | 5 (si fue un cambio tuyo, ver la guía) |
 | `host.resources` (SEV2) | CPU «robada» por el proveedor, o memoria agotada | 1; si es sostenido y no lo explica nada: 5 |
 | `ingest.live`, `ingest.runs`, `provider.quota` (SEV2) | Captura en vivo parada, ejecuciones fallidas, cuota del proveedor | 8 |
+| `provider.subscription` (SEV2; **SEV1** si ya venció o no está activa) | La suscripción de API-Football vence en menos de 10 días (prepago sin renovación automática): renuévala en su panel (`OPS_008_VENCIMIENTO_API_FOOTBALL.md`) | 8 |
 | `picks.unsettled` (SEV2), `picks.review` (SEV3) | Picks de partidos terminados que no se liquidan | 8 |
 | `tls.origin` (SEV2; SEV1 con menos de 7 días) | El certificado del servidor caduca pronto | Anexo H |
 | `incidents.dump` (SEV3) | El registro de incidentes no se pudo copiar a la base de datos (el fichero del servidor lo conserva) | Anexo E |
@@ -499,7 +500,8 @@ probar» · borrar la auditoría o los logs.
 
 **Avisos:** `ingest.live` (SEV2: la captura en vivo lleva más de 10 minutos parada con partidos en juego) · `ingest.runs`
 (SEV2: 20 ejecuciones fallidas o más en una hora) · `provider.quota` (SEV2: gastado el 90 % o más del presupuesto diario de
-API-Football) · `picks.unsettled` (SEV2) y `picks.review` (SEV3): partidos terminados cuyos picks no se liquidan ·
+API-Football) · `provider.subscription` (SEV2: la suscripción de API-Football vence en menos de 10 días; SEV1: venció o no está
+activa, y la ingesta cae a 100 peticiones al día; se resuelve renovando en el panel del proveedor) · `picks.unsettled` (SEV2) y `picks.review` (SEV3): partidos terminados cuyos picks no se liquidan ·
 `worker.heartbeat`, cuando el log del worker habla del proveedor. Vale para API-Football (los datos), Anthropic y Exa (la IA)
 y Telegram (los avisos).
 

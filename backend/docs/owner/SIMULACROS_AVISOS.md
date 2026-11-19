@@ -18,7 +18,7 @@ Casi todo lo hace la sesión. En total son unos 30 minutos, y tú sobre todo mir
 * **Ten el móvil en la mano**, con Telegram abierto en el chat del bot de avisos y el sonido puesto.
 * **No escribas nada en el servidor.** La sesión te dice en el chat qué va a enviar antes de cada paso.
 * **Haz capturas del chat, en orden**, cuando la sesión te lo pida: que se vean el texto y la hora de cada mensaje. No hace
-  falta una por mensaje: los 36 de golpe caben en unas pocas capturas desplazando el chat.
+  falta una por mensaje: los 37 de golpe caben en unas pocas capturas desplazando el chat.
 * **Dos cosas con tus manos:** crear antes, y borrar al final, el monitor temporal de la Tabla C; y mirar tu correo, donde
   llegan los tres avisos que no vienen por el bot de Telegram (el del monitor externo, el de Sentry y el de GitHub).
 
@@ -49,7 +49,7 @@ confirmas lo que solo tú ves:
 1. **El canal.** `predigolctl alert-test` envía un mensaje de prueba y dice con qué bot salió: debe decir
    `the server's alert bot`, el de `PREDIGOL_ALERT_*`. Tú confirmas que llegó.
 2. **El ensayo en seco.** La sesión corre el registro entero y cada check de Healthchecks con `--dry-run`, que no envía ni
-   escribe nada: el registro muestra sus 36 mensajes, y cada check dice si su URL de ping está puesta en `predigol.env`
+   escribe nada: el registro muestra sus 37 mensajes, y cada check dice si su URL de ping está puesta en `predigol.env`
    (sin imprimirla) o qué variable falta.
 
    ```bash
@@ -106,6 +106,8 @@ nombre.
 | 15 | `pitr.test` | SEV2 | falló la última verificación del repositorio PITR | ● |
 | 14 | `pitr.wal` | SEV1 | el archivado de WAL hacia el repositorio PITR está fallando | ● |
 | 18 | `provider.quota` | SEV2 | el presupuesto diario de API-Football va por el 93 % | ● |
+| — | `provider.subscription` | SEV1 | la suscripción de API-Football no está activa o ya venció (plan free, fin 2026-11-29 21:45 UTC): la ingesta cae a 100 peticiones al día; renueva el plan en el panel del proveedor |  |
+| — | `provider.subscription` | SEV2 | la suscripción de API-Football vence en 9 días y 23 h (fin 2026-11-29 21:45 UTC): renueva el plan en el panel del proveedor | ● |
 | 16 | `raw.full` | SEV2 | la última pasada completa del RAW fue hace 6 días | ● |
 | 16 | `raw.sync` | SEV2 | el almacén RAW se copió fuera del servidor por última vez hace 14 h | ● |
 | 15 | `restore.test` | SEV2 | el último ensayo de restauración falló | ● |
@@ -184,7 +186,7 @@ predigolctl alert-test
 predigolctl alert-drill --all --dry-run
 ```
 
-**3. La sesión: el registro entero.** Los 36 mensajes de apertura, uno cada 3 segundos (unos 2 minutos). Si Telegram
+**3. La sesión: el registro entero.** Los 37 mensajes de apertura, uno cada 3 segundos (unos 2 minutos). Si Telegram
 rechaza tres seguidos, se detiene y dice cuáles faltan. Tú haces las capturas.
 
 ```bash
