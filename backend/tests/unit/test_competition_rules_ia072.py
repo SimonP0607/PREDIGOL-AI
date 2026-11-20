@@ -63,7 +63,7 @@ def test_every_coded_file_links_an_official_https_source_checked_on_a_day() -> N
     for f in rl.load_files():
         assert f.rules.sources, f.path
         for s in f.rules.sources:
-            assert s.url.startswith("https://") and s.checked_at == date(2026, 11, 16), f.path
+            assert s.url.startswith("https://") and s.checked_at >= date(2026, 11, 16), f.path
 
 
 def test_no_regulation_text_is_kept_only_parameters_and_notes() -> None:

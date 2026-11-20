@@ -239,6 +239,53 @@ class Tournament(_Model):
         return self
 
 
+class PastSeason(_Model):
+    """An earlier season an average counts (BE-075): the provider's season key and the round labels of the phases that count,
+    as shell patterns - an earlier season has no rules file of its own, so its phases are named here."""
+
+    season: int = Field(ge=1990, le=2100)
+    rounds: tuple[str, ...] = Field(min_length=1)
+    note: str | None = Field(default=None, max_length=300)
+
+
+class Window(_Model):
+    """The seasons a named club's average counts when the regulation says so (BE-075; Colombia art. 32: a promoted club)."""
+
+    team: int = Field(ge=1)
+    """The provider's team id (``core.teams.provider_team_id``)."""
+    name: str = Field(min_length=2, max_length=120)
+    seasons: tuple[int, ...] = Field(min_length=1)
+    note: str | None = Field(default=None, max_length=300)
+
+
+class Slot(_Model):
+    """One place a table gives (BE-075): who takes it, in the regulation's order."""
+
+    slot: str = Field(min_length=2, max_length=60)
+    source: Literal["champion", "cup_winner", "table_rank"]
+    """``champion``: the winner of the last knock-out phase of a tournament of this file (``of``). ``cup_winner``: the winner of
+    another competition (``of`` names it), given by the caller - unknown until it is. ``table_rank``: the best placed team of
+    this table not given an earlier slot (of any competition of ``places``)."""
+    of: str | None = Field(default=None, max_length=120)
+
+    @model_validator(mode="after")
+    def _of(self) -> Slot:
+        if (self.source in ("champion", "cup_winner")) != bool(self.of):
+            raise ValueError(f"slot {self.slot}: 'of' names the tournament or cup of a champion, and only then")
+        return self
+
+
+class Places(_Model):
+    """The places in another competition a table gives (BE-075; Colombia arts. 30-31), allocated in order. A case the
+    regulation settles in a paragraph that is not coded here (the same club twice) is never resolved by the code: the
+    allocation stops and says so."""
+
+    competition: str = Field(min_length=2, max_length=120)
+    article: str = Field(min_length=2, max_length=60)
+    slots: tuple[Slot, ...] = Field(min_length=1)
+    note: str | None = Field(default=None, max_length=400)
+
+
 class Table(_Model):
     key: str = Field(pattern=r"^[a-z0-9_]{2,40}$")
     name: str = Field(min_length=2, max_length=120)
@@ -252,7 +299,26 @@ class Table(_Model):
     zones: tuple[Zone, ...] = ()
     exceptions: tuple[str, ...] = ()
     """Cases the regulation settles by name (a promoted club's average built over fewer seasons): said, not computed."""
+    past: tuple[PastSeason, ...] = ()
+    """BE-075: the earlier seasons an average counts and their phases (``seasons - 1`` of them when given)."""
+    windows: tuple[Window, ...] = ()
+    """BE-075: ``exceptions`` as data - the seasons a named club's average counts."""
+    ties_on: tuple[str, ...] = ()
+    """BE-075: ``tournament.phase`` of THIS season whose matches break a tie in the table's metric (Colombia art. 33: the
+    average's ties on the Fase I of 2026 only). Empty: the table's own matches."""
+    places: tuple[Places, ...] = ()
+    """BE-075: the places this table gives, in the order they are allocated."""
     note: str | None = Field(default=None, max_length=600)
+
+    @model_validator(mode="after")
+    def _past(self) -> Table:
+        if self.past and (self.kind != "average" or len(self.past) != self.seasons - 1):
+            raise ValueError(f"table {self.key}: 'past' lists the {self.seasons - 1} earlier seasons of an average")
+        if len({p.season for p in self.past}) != len(self.past):
+            raise ValueError(f"table {self.key}: a past season is listed twice")
+        if len({w.team for w in self.windows}) != len(self.windows):
+            raise ValueError(f"table {self.key}: a club's window is listed twice")
+        return self
 
 
 class Gap(_Model):
@@ -304,6 +370,15 @@ class CompetitionRules(_Model):
                 tk, _, pk = ref.partition(".")
                 if tk not in keys or (pk != "*" and (tk, pk) not in phases):
                     raise ValueError(f"table {table.key} counts {ref!r}, which is not a phase of this file")
+            for ref in table.ties_on:
+                if tuple(ref.partition(".")[::2]) not in phases:
+                    raise ValueError(f"table {table.key} breaks ties on {ref!r}, which is not a phase of this file")
+            if any(p.season >= min(self.seasons) for p in table.past):
+                raise ValueError(f"table {table.key}: a past season is not earlier than the seasons of this file")
+            for places in table.places:
+                for s in places.slots:
+                    if s.source == "champion" and s.of not in keys:
+                        raise ValueError(f"table {table.key}: slot {s.slot} is the champion of {s.of!r}, not a tournament here")
         return self
 
     def phases(self) -> Iterable[tuple[Tournament, Phase]]:

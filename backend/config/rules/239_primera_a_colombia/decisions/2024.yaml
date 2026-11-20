@@ -1,0 +1,20 @@
+# Results changed off the pitch, Primera A 2024 (provider league 239, season 2024): what a table counts instead of the score
+# the provider keeps in core.fixture_results (BE-075, PM-09-01). Read by fbi.competitions.season_tables only.
+# "verified: false" = the change is seen in the provider's own table and in a published table (evidence), but no DIMAYOR
+# resolution was read: the owner confirms it with the cotejo (DOC-008) before any table is shown.
+schema: competition-decisions/1
+league_id: 239
+season: 2024
+decisions:
+  - fixture: 1234236
+    round: Clausura - 10
+    home: 1137
+    away: 1135
+    kind: awarded
+    result: {home: 0, away: 3}
+    stored: {home: 2, away: 0}
+    evidence: >-
+      The provider's table «Primera A: Clausura» 2024 gives Junior 31 points and 26-16 goals and Atlético Nacional 32 and 27-20:
+      the results give 28 (23-18) and 35 (29-17), exactly this match counted 0-3. The Win Sports relegation table of 20-nov-2026
+      counts the same points (Nacional 208, Junior 189).
+    verified: false

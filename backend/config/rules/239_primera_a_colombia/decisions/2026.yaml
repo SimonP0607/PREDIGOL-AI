@@ -1,0 +1,17 @@
+# Results changed off the pitch, Primera A 2026 (provider league 239, season 2026): see 2024.yaml.
+schema: competition-decisions/1
+league_id: 239
+season: 2026
+decisions:
+  - fixture: 1549689
+    round: Clausura - 1
+    home: 1134
+    away: 1138
+    kind: awarded
+    result: {home: 3, away: 0}
+    stored: {home: 0, away: 2}
+    evidence: >-
+      The provider's tables «Clausura» and «Primera Division: Tabla Anual» 2026 give Internacional de Bogotá 23 points (25-25) and
+      América de Cali 36 (31-15) in the Fase I: the results give 20 (22-27) and 39 (33-12), exactly this match counted 3-0. Win Sports
+      counts Inter Bogotá 130 and América 199 in its relegation table of 20-nov-2026.
+    verified: false
