@@ -52,6 +52,7 @@ asked, the teams playing soonest and the people seen most recently on a pitch or
 from __future__ import annotations
 
 import json
+import os
 import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -64,7 +65,7 @@ from psycopg.rows import tuple_row
 from psycopg.types.json import Jsonb
 
 from fbi.core.clock import now
-from fbi.core.errors import ProviderError, QuotaExhaustedError
+from fbi.core.errors import CircuitOpenError, ProviderError, QuotaExhaustedError
 from fbi.core.logging import get_logger
 from fbi.ingestion.ledger import RunCounters, RunLedger
 
@@ -695,6 +696,22 @@ SELECT cs.id, c.provider_league_id, cs.season, t.id, t.provider_team_id,
 """
 
 PREDICTION_WINDOWS = (timedelta(hours=48), timedelta(hours=24), timedelta(hours=3))
+
+TRIMS_SWITCH = "FBI_REFERENCE_TRIMS"
+"""The sweeps nobody reads, trimmed (plan PM, PM-04-03; BE-062). OFF by default (exactly the behaviour before); 1/on/true/yes:
+
+* ``/predictions`` once a match - when it enters the 48 h window - instead of at 48 h, 24 h and 3 h: the provider's panel keeps
+  its fields from the same moment on (the opinion of the provider; no model reads it);
+* ``/teams/statistics`` weekly for every team of a current season, no longer daily for the teams playing within 24 h: nothing in
+  the product reads ``core.team_season_stats`` (only the contrast audit, ``fbi.api.audits.team_stats``, and the truth register);
+* ``/players`` (the provider's season aggregates) once a month per competition, each on its own day of the month, instead of every
+  week for all at once (``fbi.ingestion.people.seed_player_seasons``), and the weekly squad round spread over the seven days.
+
+Read when the worker calls the feeds: change it in ``app.env`` and ``predigolctl up``."""
+
+
+def trims_on() -> bool:
+    return os.environ.get(TRIMS_SWITCH, "off").strip().lower() in {"1", "on", "true", "yes"}
 NEVER_AGAIN = timedelta(days=3650)
 DAY = timedelta(hours=23)
 """Just under a day, so a daily feed that ran a little late is not pushed a whole day later."""
@@ -702,12 +719,14 @@ WEEK = timedelta(days=7) - timedelta(hours=1)
 
 
 def prediction_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
-    """Each upcoming match once in each window it has entered (48 h, 24 h, 3 h before kick-off)."""
+    """Each upcoming match once in each window it has entered (48 h, 24 h, 3 h before kick-off) - or, with the trims (PM-04-03),
+    once, when it enters the 48 h window (a match first seen later is asked at once, under the same key)."""
+    windows = PREDICTION_WINDOWS[:1] if trims_on() else PREDICTION_WINDOWS
     out = []
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(UPCOMING_SQL, {"at": at})
         for fid, pf, kickoff in cur.fetchall():
-            opened = [w for w in PREDICTION_WINDOWS if at >= kickoff - w]
+            opened = [w for w in windows if at >= kickoff - w]
             if opened:
                 w = min(opened)
                 out.append(Target(f"fixture:{pf}:{int(w.total_seconds() // 3600)}h", {"fixture": int(pf)},
@@ -758,12 +777,14 @@ def team_targets(daily_if_playing: bool, clubs_only: bool = False) -> Callable[[
 
 def team_season_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
     """Each team of each current tracked season: daily while it plays within 24 h, weekly otherwise (documented:
-    1 call a day for teams with a match that day, else 1 a week)."""
+    1 call a day for teams with a match that day, else 1 a week). With the trims (PM-04-03), weekly for all: only the contrast
+    audit reads it."""
+    weekly_only = trims_on()
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(TEAM_SEASONS_SQL, {"at": at})
         rows = cur.fetchall()
     return [Target(f"team:{lg}:{s}:{tp}", {"league": int(lg), "season": int(s), "team": int(tp)},
-                   DAY if soon else WEEK, {"cs_id": int(cs), "team_id": int(tid)})
+                   DAY if soon and not weekly_only else WEEK, {"cs_id": int(cs), "team_id": int(tid)})
             for cs, lg, s, tid, tp, soon in rows]
 
 
@@ -1071,6 +1092,12 @@ async def _ask(conn: psycopg.Connection, provider: Any, ledger: RunLedger, run_i
         except QuotaExhaustedError as exc:
             counters.errors.append(str(exc))
             counters.stopped_early = "quota"
+            return False
+        except CircuitOpenError as exc:
+            # The circuit or the account's pause (PM-04-02) refused before sending: nothing is checked - a check would hold the
+            # target back for its whole cadence (a week for people) for an answer that never came - and the run stops.
+            counters.errors.append(str(exc)[:300])
+            counters.stopped_early = "circuit"
             return False
         except ProviderError as exc:
             counters.api_calls += 1

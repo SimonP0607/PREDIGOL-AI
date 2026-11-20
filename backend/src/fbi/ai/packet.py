@@ -36,6 +36,7 @@ from fbi.competitions import context as phase_context
 from fbi.competitions import team_calendar as tc
 from fbi.competitions.stages import stage_of
 from fbi.competitions.tables import match_tables
+from fbi.core.env import environment
 from fbi.intel import factors, scenarios
 from fbi.intel.h2h import head_to_head
 from fbi.people.officials import referee_as_of
@@ -856,15 +857,92 @@ def build_packet(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime
 NEWEST_PACKET_SQL = ("SELECT id, packet_hash FROM ai.match_packets WHERE fixture_id = %s "
                      "ORDER BY as_of DESC, id DESC LIMIT 1")
 
+STABLE_STORE_SWITCH = "FBI_PACKET_STORE_STABLE"
+"""PM-13-03 (BE-065). A packet is stored again whenever its hash changes, and the hash changed at EVERY build: the ``schedule`` block
+carries ``calendar.home.age_hours`` and ``calendar.away.age_hours`` (hours since each side's calendar was read, to a tenth), against
+this module's own rule that a packet has no age fields. On 20-nov-2026, 695 of the 1,496 newest packets (46.5 %) differed from their
+fixture's previous one in those two numbers alone; a played match had 65 versions in the 7 days before, ~12.9 kB each (2.8 GB in all).
+
+``on``: before inserting, the packet is compared with its fixture's newest stored one leaving out those two age fields
+(``stable_hash``); when they are the same, the stored packet is reused and its id returned, as when the whole hash is the same. Its
+``age_hours`` is then the age at the time it was stored: the age when it is read is ``as_of`` minus ``fetched_at``, which the packet
+carries. Nothing a review, a brief or a model reads is built differently: the builder does not change, and the packet the pass reads is
+the one it built. ``off`` (the default, and anything not listed as on): as before. Nothing stored is changed or deleted (the table is
+append-only). The worker needs a restart to read it."""
+
+AGE_FIELDS: tuple[tuple[str, ...], ...] = (("schedule", "calendar", "home", "age_hours"), ("schedule", "calendar", "away", "age_hours"))
+"""The fields that measure time since a read rather than describe the match: left out of the comparison of ``FBI_PACKET_STORE_STABLE``."""
+
+NEWEST_CONTENT_SQL = "SELECT packet_version, content, missing FROM ai.match_packets WHERE id = %s"
+
+_reused_at: dict[int, datetime] = {}
+"""fixture -> the newest build answered with an already stored packet (``FBI_PACKET_STORE_STABLE``), in this process. The cycle's
+cadence reads the newest stored ``as_of``; a reused packet does not move it, so the cycle asks for this too (``last_built``)."""
+
+
+def stable_store_enabled() -> bool:
+    return environment().get(STABLE_STORE_SWITCH, "off").strip().lower() in {"1", "on", "true", "yes"}
+
+
+def _without_age(content: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = json.loads(canonical(content))
+    for path in AGE_FIELDS:
+        node: Any = out
+        for key in path[:-1]:
+            node = node.get(key) if isinstance(node, dict) else None
+        if isinstance(node, dict):
+            node.pop(path[-1], None)
+    return out
+
+
+def stable_hash(version: str, content: dict[str, Any], missing: list[str]) -> str:
+    """The packet's hash without its age fields (``AGE_FIELDS``): equal for two packets that differ only in how old a read was."""
+    return content_hash({"v": version, "content": _without_age(content), "missing": sorted(missing)})
+
+
+def last_built(fixture_id: int, stored_as_of: datetime | None) -> datetime | None:
+    """When the fixture's packet was last built, for the cycle's cadence: the newest stored ``as_of`` or, with
+    ``FBI_PACKET_STORE_STABLE`` on, a later build of this process answered with that stored packet. Off: ``stored_as_of``."""
+    reused = _reused_at.get(fixture_id) if stable_store_enabled() else None
+    if reused is None or (stored_as_of is not None and stored_as_of >= reused):
+        return stored_as_of
+    return reused
+
+
+REUSE_MEMORY = timedelta(days=2)
+"""How long ``_reused_at`` remembers a build: longer than any cadence of the cycle (3 hours), so pruning never moves one."""
+
+
+def _note_reuse(fixture_id: int, at: datetime) -> None:
+    _reused_at[fixture_id] = at
+    if len(_reused_at) > 5000:
+        for fid in [f for f, seen in _reused_at.items() if at - seen > REUSE_MEMORY]:
+            del _reused_at[fid]
+
+
+def _same_without_age(cur: psycopg.Cursor[Any], packet_id: int, packet: Packet) -> bool:
+    cur.execute(NEWEST_CONTENT_SQL, (packet_id,))
+    row = cur.fetchone()
+    if row is None:
+        return False
+    version, content, missing = row
+    return stable_hash(str(version), dict(content or {}), list(missing or [])) == stable_hash(packet.version, packet.content, packet.missing)
+
 
 def store_packet(conn: psycopg.Connection[Any], packet: Packet, *, built_at: datetime) -> int:
     """The packet's row id: the newest stored one when its content is the same, a new row otherwise (so the
-    newest row is always the current context, even when an earlier content comes back)."""
+    newest row is always the current context, even when an earlier content comes back). With ``FBI_PACKET_STORE_STABLE`` on, "the
+    same" leaves out the age fields (``AGE_FIELDS``)."""
     h = packet.hash
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(NEWEST_PACKET_SQL, (packet.fixture_id,))
         newest = cur.fetchone()
         if newest is not None and newest[1] == h:
+            if stable_store_enabled():
+                _note_reuse(packet.fixture_id, max(built_at, packet.as_of))
+            return int(newest[0])
+        if newest is not None and stable_store_enabled() and _same_without_age(cur, int(newest[0]), packet):
+            _note_reuse(packet.fixture_id, max(built_at, packet.as_of))
             return int(newest[0])
         cur.execute(
             "INSERT INTO ai.match_packets (fixture_id, packet_version, as_of, built_at, packet_hash, content, sources, "

@@ -18,6 +18,15 @@ client was given a reporter (``build_client`` gives the persistent one), kept at
 Every request the daily budget accepts is also counted by endpoint, lane and job when the client was given a usage counter
 (``build_client`` gives the process's one unless ``FBI_PROVIDER_USAGE`` is off): in memory, added to
 ``raw.provider_endpoint_usage`` at most once a minute and on close - plan PM, PM-01-02. No write per request.
+
+Before the daily budget is spent, the lanes of the budget decide when the client was given a guard (plan PM, PM-04-01;
+``build_client`` gives one unless ``FBI_APIFOOTBALL_LANES`` is off): a lane past its ceiling is refused without spending, in
+``enforce`` only - ``measure`` logs what it would have refused.
+
+An error about the ACCOUNT inside an HTTP 200 answer (out of requests for the day, a paid account answered as the free plan, a key
+refused) pauses every request of the process for ``FBI_APIFOOTBALL_ACCOUNT_PAUSE_SECONDS`` when the client was given the pause
+(``build_client`` gives the process's one unless ``FBI_APIFOOTBALL_ACCOUNT_GUARD`` is off) - plan PM, PM-04-02, the correction of
+PM-01-03: on 29 Oct 2026 such answers counted as successes and the budget was spent for 16 hours on refusals.
 """
 
 from __future__ import annotations
@@ -35,8 +44,14 @@ import structlog
 
 from fbi.core.clock import now
 from fbi.core.config.providers import ApiFootballSettings
-from fbi.core.errors import ProviderError, ProviderPayloadError, RateLimitError
-from fbi.providers.quota import EndpointUsageCounter, ReportedQuota, parse_reported
+from fbi.core.errors import (
+    ProviderAccountError,
+    ProviderError,
+    ProviderPayloadError,
+    RateLimitError,
+)
+from fbi.providers.circuit import AccountPause, account_refusal
+from fbi.providers.quota import EndpointUsageCounter, LaneGuard, ReportedQuota, parse_reported
 from fbi.storage.payload_store import PayloadStore, StoredPayload, sanitize
 
 log = structlog.get_logger(__name__)
@@ -86,6 +101,8 @@ class ApiFootballClient:
         quota_reporter: Callable[[ReportedQuota], None] | None = None,
         report_every: float = REPORT_EVERY_SECONDS,
         usage: EndpointUsageCounter | None = None,
+        lanes: LaneGuard | None = None,
+        account_pause: AccountPause | None = None,
     ) -> None:
         from fbi.providers.circuit import CircuitBreaker
         from fbi.providers.ratelimit import DailyQuota, TokenBucket
@@ -99,6 +116,8 @@ class ApiFootballClient:
         self._reported_kept_at: float | None = None
         self._report_pending = False
         self._usage = usage
+        self._lanes = lanes
+        self._account = account_pause
         # A margin below the published limit: being throttled costs more than
         # the handful of calls this leaves on the table.
         self._bucket = rate_limiter or TokenBucket(max(1, int(settings.per_minute_limit * 0.9)))
@@ -203,6 +222,10 @@ class ApiFootballClient:
 
         for attempt in range(self._settings.max_retries + 1):
             self._breaker.before_call()
+            if self._account is not None:
+                self._account.before_call()  # PM-04-02: while the provider refuses the account, nothing goes out or is spent
+            if self._lanes is not None:
+                self._lanes.check(1)  # PM-04-01: a lane past its ceiling is refused here, before the budget is spent
             self._quota.spend(1)
             self._count(endpoint)
             await self._bucket.acquire(1)
@@ -249,6 +272,9 @@ class ApiFootballClient:
                 self._breaker.record_success()
                 try:
                     return self._finalise(endpoint, params, safe_params, response, persist=persist)
+                except ProviderAccountError:
+                    self._breaker.record_failure()
+                    raise
                 except RateLimitError as exc:
                     last_error = exc
                     log.warning("provider.rate_limited", endpoint=endpoint, params=safe_params, attempt=attempt)
@@ -286,6 +312,15 @@ class ApiFootballClient:
             if isinstance(errors, dict) and "rateLimit" in errors:
                 # The per-minute limit, answered with HTTP 200 and an error object: as retryable as a 429.
                 raise RateLimitError(f"{endpoint}: provider reported errors: {errors}")
+            if isinstance(errors, dict) and self._account is not None and self._account.enabled:
+                refused = account_refusal(errors, paid_plan=self._settings.plan != "free")
+                if refused is not None:
+                    # Not the provider's words in the message: «do not have access» would read as a per-season refusal and
+                    # retire backfill units for good (fbi.ingestion.fixtures.PLAN_REFUSAL).
+                    self._account.trip(refused, endpoint=endpoint)
+                    raise ProviderAccountError(
+                        f"{endpoint}: the provider refused the account ({refused}) inside an HTTP 200; every request of this "
+                        f"process waits {self._account.seconds:.0f}s (FBI_APIFOOTBALL_ACCOUNT_GUARD)")
             raise ProviderError(f"{endpoint}: provider reported errors: {errors}")
 
         fetched_at = now()

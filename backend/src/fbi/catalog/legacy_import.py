@@ -25,14 +25,16 @@ import json
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import polars as pl
 import psycopg
 import structlog
 from psycopg.rows import tuple_row
 
 from fbi.domain.market import MarketType
+
+if TYPE_CHECKING:  # polars is not in the production image (PM-13-04, OPS-012): it is imported when the importer runs
+    import polars as pl
 
 log = structlog.get_logger(__name__)
 
@@ -254,6 +256,9 @@ def write(conn: psycopg.Connection, competitions: Sequence[CompetitionRow], book
 
 
 def run(conn: psycopg.Connection | None, legacy_dir: Path, *, dry_run: bool) -> MigrationReport:
+    """Needs the ``lab`` extra (``pip install -e ".[lab]"``): polars reads the legacy parquet files and is not in the image."""
+    import polars as pl
+
     report = MigrationReport(dry_run=dry_run)
     context = pl.read_parquet(legacy_dir / "competition_context.parquet")
     tracked = pl.read_parquet(legacy_dir / "tracked_competitions.parquet")

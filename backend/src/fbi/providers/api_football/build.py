@@ -17,18 +17,24 @@ import os
 import threading
 
 import psycopg
+import structlog
 
 from fbi.core.config import settings
 from fbi.providers.api_football.client import ApiFootballClient
+from fbi.providers.circuit import AccountPause
+from fbi.providers.lanes import LanePolicy
 from fbi.providers.quota import (
     MINUTE_SHARE,
     EndpointUsageCounter,
+    LaneGuard,
     PersistentDailyQuota,
     PersistentMinuteLimiter,
     PersistentReportedQuota,
     RunCappedQuota,
 )
 from fbi.storage.payload_store import PayloadStore
+
+log = structlog.get_logger(__name__)
 
 
 def _connect() -> psycopg.Connection:
@@ -67,6 +73,10 @@ def build_client(max_requests: int | None = None) -> ApiFootballClient:
         quota_reporter=PersistentReportedQuota(connect=_connect),
         # Requests by endpoint, lane and job, in memory and added once a minute (plan PM, PM-01-02).
         usage=build_usage_counter(),
+        # The lanes of the budget (plan PM, PM-04-01): None while FBI_APIFOOTBALL_LANES is off.
+        lanes=build_lane_guard(),
+        # The account's pause (plan PM, PM-04-02): one per process; None while FBI_APIFOOTBALL_ACCOUNT_GUARD is off.
+        account_pause=build_account_pause(),
     )
 
 
@@ -107,3 +117,47 @@ def build_usage_counter() -> EndpointUsageCounter | None:
 def _flush_at_exit(counter: EndpointUsageCounter) -> None:
     # The interpreter is leaving: flush() never raises (a write that fails is logged), so this is all it can cost.
     counter.flush()
+
+
+_lanes_lock = threading.Lock()
+_lane_guard: LaneGuard | None = None
+
+
+def build_lane_guard() -> LaneGuard | None:
+    """The process's one lane guard (plan PM, PM-04-01), shared by every client of the process; None while
+    ``FBI_APIFOOTBALL_LANES`` is off - the behaviour before the lanes, exactly. It reads today's counts from what the usage
+    counter (PM-01-02) writes, so with ``FBI_PROVIDER_USAGE`` off there is nothing to read and it stays off (said once)."""
+    global _lane_guard
+    plan = settings.provider_plan
+    if plan.lanes_mode == "off":
+        return None
+    with _lanes_lock:
+        if _lane_guard is None:
+            counter = build_usage_counter()
+            if counter is None:
+                log.warning("quota.lanes_off", reason="FBI_PROVIDER_USAGE is off: the lanes have no counts to read")
+                return None
+            policy, ignored = LanePolicy.from_settings(plan.lane_ceilings, budget=plan.effective_budget,
+                                                       reserve=plan.emergency_reserve, dynamic=plan.dynamic_limits_on)
+            if ignored:
+                log.warning("quota.lane_ceilings_ignored", entries=ignored[:10])
+            _lane_guard = LaneGuard(policy=policy, mode=plan.lanes_mode, connect=_connect, counter=counter)
+            log.info("quota.lanes", mode=plan.lanes_mode, ceilings=policy.ceilings, dynamic=policy.dynamic,
+                     reserve=policy.reserve if policy.dynamic else None)
+        return _lane_guard
+
+
+_account_pause: AccountPause | None = None
+
+
+def build_account_pause() -> AccountPause | None:
+    """The process's one account pause (plan PM, PM-04-02): every client of the process waits together while the provider refuses
+    the account. None while ``FBI_APIFOOTBALL_ACCOUNT_GUARD`` is off (the behaviour before: such an answer is a plain error)."""
+    global _account_pause
+    cfg = settings.api_football
+    if not cfg.account_guard_on:
+        return None
+    with _lanes_lock:
+        if _account_pause is None:
+            _account_pause = AccountPause(seconds=cfg.account_pause_seconds)
+        return _account_pause

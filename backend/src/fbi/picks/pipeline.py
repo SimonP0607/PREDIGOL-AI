@@ -25,6 +25,7 @@ from fbi.parlays.persist import ParlayReport, build_parlays
 from fbi.picks.daily import DailyReport, build_daily_sets
 from fbi.picks.engine import PickReport, SettlementReport, evaluate_captures, settle_open_picks
 from fbi.picks.fast_settlement import fill_line_value, record_latency
+from fbi.picks.feature_code import forecast_code_version
 from fbi.picks.product_settlement import ProductSettlementReport, settle_products
 from fbi.picks.resettlement import ResettlementReport, resettle
 from fbi.predictions.forecast import ForecastReport, forecast_upcoming
@@ -123,7 +124,9 @@ def run_pipeline(conn: psycopg.Connection, *, at: datetime, code_version: str, a
     report = PipelineReport(run_id)
     counters = RunCounters()
     try:
-        report.forecast = forecast_upcoming(conn, at=at, code_version=code_version)
+        # PM-13-02 (BE-064): with FBI_FEATURE_SETS_BY_MODEL_CODE on, a deploy that leaves the model code as it was does not write
+        # every upcoming fixture's feature set again (fbi.picks.feature_code). Off: the current commit, as before.
+        report.forecast = forecast_upcoming(conn, at=at, code_version=forecast_code_version(conn, code_version))
         # What PrediGol thinks will happen, kept apart from what is worth betting (plan F5): read from the forecasts just
         # made, written to a table nothing below reads. In its own savepoint: a defect here is recorded on the run and
         # must not cost the candidates, the settlement or the product records.

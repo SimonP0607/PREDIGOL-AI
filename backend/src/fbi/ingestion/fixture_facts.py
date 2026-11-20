@@ -18,6 +18,13 @@ from fbi.providers.api_football.details import FixtureFactsRef, PlayerStatsRef
 
 NORMALIZER_VERSION = "fixture-facts-1"
 
+# PM-13-03 (BE-065): FACTS_SQL reads the match's newest row with the primary key, newest first, LIMIT 1 - not through the view
+# core.fixture_facts_latest. The view is DISTINCT ON over the whole table, and joined to the match by ``f.id`` from inside
+# NOT EXISTS the planner could not narrow it to that match: every call sorted all 271,606 rows (483 ms in EXPLAIN ANALYZE on
+# 20-nov-2026; 807,211 calls at 171.9 ms on average since 9-nov, the most expensive statement of the database). Same rows,
+# same answer: the newest observation of the match, unique by the primary key. EXTRAS_SQL keeps its view: its match and
+# player are parameters, which the planner pushes into the DISTINCT ON (an index scan already).
+
 FACTS_SQL = """
 INSERT INTO core.fixture_facts (fixture_id, observed_at, referee, referee_country, home_winner, away_winner,
                                 first_half_at, second_half_at, payload_hash, normalizer_version)
@@ -25,9 +32,12 @@ SELECT f.id, %(at)s, %(referee)s, %(country)s, %(hw)s, %(aw)s, %(h1)s, %(h2)s, %
   FROM core.fixtures f
  WHERE f.provider_fixture_id = %(pf)s
    AND NOT EXISTS (SELECT 1 FROM core.fixture_facts x WHERE x.fixture_id = f.id AND x.observed_at >= %(at)s)
-   AND NOT EXISTS (SELECT 1 FROM core.fixture_facts_latest l WHERE l.fixture_id = f.id
-                     AND (l.referee, l.referee_country, l.home_winner, l.away_winner, l.first_half_at,
-                          l.second_half_at)
+   AND NOT EXISTS (SELECT 1 FROM (SELECT n.referee, n.referee_country, n.home_winner, n.away_winner, n.first_half_at,
+                                         n.second_half_at
+                                    FROM core.fixture_facts n WHERE n.fixture_id = f.id
+                                   ORDER BY n.observed_at DESC LIMIT 1) l
+                     WHERE (l.referee, l.referee_country, l.home_winner, l.away_winner, l.first_half_at,
+                            l.second_half_at)
                          IS NOT DISTINCT FROM (%(referee)s::text, %(country)s::text, %(hw)s::boolean, %(aw)s::boolean,
                                                %(h1)s::timestamptz, %(h2)s::timestamptz))
 ON CONFLICT DO NOTHING

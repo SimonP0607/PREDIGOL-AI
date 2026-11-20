@@ -208,6 +208,38 @@ async def test_a_run_asks_what_is_due_within_its_allowance_and_records_every_che
     assert late.allowance == 0 and late.deferred_reason and "reserve" in late.deferred_reason
 
 
+@pytest.mark.asyncio
+async def test_an_open_circuit_or_the_accounts_pause_stops_the_run_and_checks_nothing(
+        committed: psycopg.Connection, seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:
+    """PM-04-02: a refusal before sending (the circuit, the account's pause) is not an answer. Checking the target would hold it
+    back for its whole cadence - a week for the people of a team - for nothing; the run stops and the next one asks."""
+    from fbi.core.errors import ProviderAccountError
+
+    db = committed
+    import fbi.ingestion.backfill as backfill
+    import fbi.providers.quota as quota
+
+    class Usage:
+        remaining = 1000
+
+    class Paused(FakeProvider):
+        async def fetch_raw(self, endpoint: str, params: dict[str, Any]) -> RawResponse:
+            self.calls.append((endpoint, params))
+            raise ProviderAccountError("the provider refused the account (plan): every request waits 900s")
+
+    monkeypatch.setattr(backfill, "live_reserve", lambda *a, **k: 0)
+    monkeypatch.setattr(quota, "read_usage", lambda *a, **k: Usage())
+    feeds = [ref.Feed("share_a", "/countries", ref.single_target(ref.WEEK), ref.apply_countries, max_per_run=1),
+             ref.Feed("share_b", "/timezone", ref.single_target(ref.WEEK), ref.apply_nothing, max_per_run=1)]
+    provider = Paused(db, seed)
+    report = await ref.refresh_reference(db, provider, daily_budget=60000, feeds=feeds, at=T0)
+    assert len(provider.calls) == 1, "the run stops at the first refusal"
+    assert report.asked == {}
+    assert db.execute("SELECT count(*) FROM core.reference_checks WHERE feed IN ('share_a', 'share_b')").fetchone() == (0,)
+    again = await ref.refresh_reference(db, FakeProvider(db, seed), daily_budget=60000, feeds=feeds, at=T0)
+    assert again.asked == {"share_a": 1, "share_b": 1}, "both still due"
+
+
 def test_prediction_targets_open_one_window_at_a_time(db: psycopg.Connection, seed: Seed) -> None:
     db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
     db.execute("UPDATE core.fixtures SET kickoff_at = %s, status_group = 'scheduled' WHERE id = %s",

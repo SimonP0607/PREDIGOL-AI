@@ -247,6 +247,8 @@ class OddsEvidence:
     """Of those, matches for which some answer carried prices."""
     with_closing: int
     """Matches with a final pre-match price (``market.final_prematch_odds``)."""
+    late: int = 0
+    """Finished matches left out: their row reached the base less than ``ODDS_LEAD_MINUTES`` before kick-off, or after it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -277,6 +279,8 @@ CAUSES = {
     "no_publica": "se pidieron y el proveedor respondió sin cuotas en la mayoría de los partidos",
     "coincide": "la base y la bandera ya no discrepan",
     "sin_evidencia": "sin partidos terminados en la ventana ni respuesta hoy",
+    "entraron_tarde": "los partidos terminados llegaron a la base después del saque o a menos de una hora (competición recién "
+                      "seguida o partido publicado tarde): no había nada que pedir",
 }
 
 
@@ -290,17 +294,18 @@ def classify(flag: bool, db: OddsEvidence, live: OddsLive) -> tuple[str, str]:
                 f"hoy: liga {live.league_results if live.league_results is not None else '-'} resultados, "
                 f"{live.fixtures_with_prices}/{live.fixtures_asked} partidos a < 48 h con cuotas "
                 f"({live.fixtures_with_1x2} con 1X2)")
+    late_txt = f"; {db.late} terminados entraron tarde en la base (no cuentan)" if db.late else ""
     if db.finished == 0:
         if live.publishes is None:
-            return "sin_evidencia", live_txt
+            return ("entraron_tarde" if db.late else "sin_evidencia"), live_txt + late_txt
         if live.publishes:
-            return ("bandera_falsa_publica" if not flag else "coincide"), live_txt
-        return "no_publica", live_txt
+            return ("bandera_falsa_publica" if not flag else "coincide"), live_txt + late_txt
+        return "no_publica", live_txt + late_txt
     covered = db.asked_with_prices / db.finished
     not_asked = (db.finished - db.asked) / db.finished
     not_published = (db.asked - db.asked_with_prices) / db.finished
     base_txt = (f"base {ODDS_DAYS} d: {db.finished} terminados, {db.asked} pedidos, {db.asked_with_prices} con cuotas, "
-                f"{db.with_closing} con cierre")
+                f"{db.with_closing} con cierre{late_txt}")
     why = f"{base_txt}; {live_txt}"
     if covered >= 0.5:
         return ("bandera_falsa_publica" if not flag else "coincide"), why
@@ -358,18 +363,26 @@ NAMES_SQL = "SELECT provider_league_id AS league, name FROM core.competitions WH
 
 ODDS_BASE_SQL = """
 WITH f AS (
-  SELECT c.provider_league_id AS league, f.id, f.provider_fixture_id AS pf
+  SELECT c.provider_league_id AS league, f.id, f.provider_fixture_id AS pf,
+         f.created_at > f.kickoff_at - make_interval(mins => %(lead)s) AS late
     FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
     JOIN core.competitions c ON c.id = cs.competition_id
    WHERE c.provider_league_id = ANY(%(leagues)s) AND f.status_group = 'finished'
      AND f.kickoff_at >= %(at)s - make_interval(days => %(days)s) AND f.kickoff_at < %(at)s)
-SELECT league, count(*) AS finished,
-       count(*) FILTER (WHERE EXISTS (SELECT 1 FROM market.odds_asks a WHERE a.provider_fixture_id = f.pf)) AS asked,
-       count(*) FILTER (WHERE EXISTS (SELECT 1 FROM market.odds_asks a WHERE a.provider_fixture_id = f.pf AND a.results > 0))
-         AS asked_with_prices,
-       count(*) FILTER (WHERE EXISTS (SELECT 1 FROM market.final_prematch_odds o WHERE o.fixture_id = f.id)) AS with_closing
+SELECT league, count(*) FILTER (WHERE NOT late) AS finished,
+       count(*) FILTER (WHERE NOT late AND EXISTS (SELECT 1 FROM market.odds_asks a WHERE a.provider_fixture_id = f.pf)) AS asked,
+       count(*) FILTER (WHERE NOT late AND EXISTS (SELECT 1 FROM market.odds_asks a WHERE a.provider_fixture_id = f.pf
+                                                     AND a.results > 0)) AS asked_with_prices,
+       count(*) FILTER (WHERE NOT late AND EXISTS (SELECT 1 FROM market.final_prematch_odds o WHERE o.fixture_id = f.id))
+         AS with_closing,
+       count(*) FILTER (WHERE late) AS late
   FROM f GROUP BY league
 """
+"""Only the matches the capture COULD ask count (BE-062, PM-04-03): a match whose row reached our base less than ``ODDS_LEAD_MINUTES``
+before its kick-off - or after it - had nothing to ask for. Measured on 20 Nov 2026: the «no se pidió» of 240 and 299 were the matches
+played before the two leagues were tracked (17 Nov 13:52 UTC; their rows were created at 16:12, after those kick-offs), and the 32 of
+667 the club friendlies the provider listed after they were played; every match that was in the base in time was asked."""
+ODDS_LEAD_MINUTES = 60
 
 ODDS_LEAGUES_SQL = """
 SELECT c.provider_league_id AS league, c.name, lc.season, lc.odds
@@ -498,7 +511,7 @@ async def odds_probe(conn: Any, *, leagues: Sequence[int], max_requests: int, at
 
     meta = {int(r["league"]): r for r in _rows(conn, ODDS_LEAGUES_SQL, {"leagues": list(leagues)})}
     base = {int(r["league"]): r for r in _rows(conn, ODDS_BASE_SQL, {"leagues": list(leagues), "at": at,
-                                                                     "days": ODDS_DAYS})}
+                                                                     "days": ODDS_DAYS, "lead": ODDS_LEAD_MINUTES})}
     ahead: dict[int, list[int]] = {}
     for r in _rows(conn, ODDS_AHEAD_SQL, {"leagues": list(leagues), "at": at, "ahead": ODDS_AHEAD,
                                           "per": ODDS_PER_LEAGUE}):
@@ -541,7 +554,7 @@ async def odds_probe(conn: Any, *, leagues: Sequence[int], max_requests: int, at
         for lg in leagues:
             m, s, b = meta.get(lg, {}), seen[lg], base.get(lg, {})
             db = OddsEvidence(int(b.get("finished") or 0), int(b.get("asked") or 0), int(b.get("asked_with_prices") or 0),
-                              int(b.get("with_closing") or 0))
+                              int(b.get("with_closing") or 0), int(b.get("late") or 0))
             live = OddsLive(s["league_results"], s["league_pages"], s["fx_asked"], s["fx_prices"], s["fx_1x2"],
                             tuple(sorted(s["books"])), tuple(s["errors"]))
             flag = bool(m.get("odds"))

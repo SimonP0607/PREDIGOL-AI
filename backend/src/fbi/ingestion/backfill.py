@@ -40,7 +40,7 @@ from psycopg.rows import tuple_row
 from psycopg.types.json import Json
 
 from fbi.core.clock import now
-from fbi.core.errors import ProviderError
+from fbi.core.errors import CircuitOpenError, ProviderError, QuotaExhaustedError
 from fbi.ingestion.apply import apply_fixtures_payload
 from fbi.ingestion.availability import record_answer
 from fbi.ingestion.details import (
@@ -109,6 +109,8 @@ class BackfillReport:
     deferred_reason: str | None = None
     run_id: int | None = None
     notes: list[str] = field(default_factory=list)
+    stopped_early: str | None = None
+    """Why the run stopped before its allowance: the budget, a lane of it or the circuit refused (nothing was sent)."""
 
 
 def seed_tasks(conn: psycopg.Connection, units: Iterable[BackfillUnit]) -> int:
@@ -494,6 +496,15 @@ async def run_backfill(
                 _mark(conn, task.id, "refused", run_id, error=str(exc), retryable=False)
                 report.refused += 1
                 continue
+            except (QuotaExhaustedError, CircuitOpenError) as exc:
+                # The budget, a lane of it (PM-04-01) or the circuit said no before anything was sent: the unit goes back
+                # untouched (no attempt counted - three attempts retire a unit) and the run stops; the next one resumes it.
+                _release(conn, task.id)
+                report.attempted -= 1
+                report.stopped_early = f"{type(exc).__name__}: {exc}"[:300]
+                counters.stopped_early = "quota" if isinstance(exc, QuotaExhaustedError) else "circuit"
+                log.info("backfill.stopped", reason=report.stopped_early)
+                break
             except ProviderError as exc:
                 counters.api_calls += 1
                 message = str(exc)
@@ -527,6 +538,14 @@ async def run_backfill(
     finally:
         ledger.close(run_id, counters, notes=f"{report.done} done, {report.refused} refused, {report.failed} failed")
     return report
+
+
+def _release(conn: psycopg.Connection, task_id: int) -> None:
+    """A unit taken but never sent goes back to the queue as it was asked for: pending, no attempt counted."""
+    with conn.cursor() as cur:
+        cur.execute("UPDATE raw.backfill_tasks SET status = 'pending', started_at = NULL, updated_at = now() "
+                    "WHERE id = %s AND status = 'running'", (task_id,))
+    conn.commit()
 
 
 def _start(conn: psycopg.Connection, task_id: int) -> None:

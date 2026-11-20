@@ -4,6 +4,7 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from fbi.core.config.providers import PLAN_LIMITS
+from fbi.providers.lanes import LaneMode, lane_mode
 
 
 class ProviderPlanSettings(BaseSettings):
@@ -19,6 +20,15 @@ class ProviderPlanSettings(BaseSettings):
 
     plan: str = Field(default="pro")
     daily_budget: int = Field(default=3_000, ge=1)
+    lanes: str = Field(default="off")
+    """``FBI_APIFOOTBALL_LANES`` (plan PM, PM-04-01): off (default: the behaviour before the lanes) | measure | enforce."""
+    lane_ceilings: str = Field(default="")
+    """``FBI_APIFOOTBALL_LANE_CEILINGS``: ``lane=N`` pairs over the table of ``fbi.providers.lanes`` (empty = the table)."""
+    dynamic_limits: str = Field(default="off")
+    """``FBI_APIFOOTBALL_DYNAMIC_LIMITS`` (plan PM, PM-04-02): on adds, over the lanes, the pauses at 60/75/88 % of the budget, the
+    emergency reserve and the quiet window of the fills. Off by default; it acts only while the lanes are measure or enforce."""
+    emergency_reserve: int = Field(default=7_000, ge=0)
+    """``FBI_APIFOOTBALL_EMERGENCY_RESERVE``: the last requests of the day's budget, for the vital lanes only (PM-04-02)."""
 
     @field_validator("plan")
     @classmethod
@@ -26,6 +36,15 @@ class ProviderPlanSettings(BaseSettings):
         if v not in PLAN_LIMITS:
             raise ValueError(f"unknown plan {v!r}; expected one of {sorted(PLAN_LIMITS)}")
         return v
+
+    @property
+    def lanes_mode(self) -> LaneMode:
+        """The lanes switch, read leniently: a word it does not know is ``off``, never a worker that does not start."""
+        return lane_mode(self.lanes)
+
+    @property
+    def dynamic_limits_on(self) -> bool:
+        return self.dynamic_limits.strip().lower() in {"1", "on", "true", "yes"}
 
     @property
     def per_day_limit(self) -> int:
