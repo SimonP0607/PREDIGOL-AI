@@ -101,7 +101,9 @@ at worst, and a duplicated tick costs nothing at all.
     ``FBI_AVAILABILITY_REFRESH`` is on (the default; ``0`` turns it off): ONLY starts the recalculation of the availability matrix
     (``scripts.availability_refresh``, ``fbi.coverage.job``, PM-02-03) in a process of its own with a 512 MiB cap, and only when the
     container has 384 MiB free besides its page cache - the worker sits near its 3 GiB. Incremental each night, full on Sundays; writes
-    only ``analytics.coverage_*``. Database only; nothing a reader sees reads it while ``FBI_AVAILABILITY`` is off.
+    only ``analytics.coverage_*``. Then, in the same process and once a day while ``FBI_AVAILABILITY_SHADOW`` is on (the default), the
+    shadow comparison of PM-02-06 (``fbi.api.services.availability_shadow``: 500 matches, ``analytics.availability_discrepancies``).
+    Database only; nothing a reader sees reads it while ``FBI_AVAILABILITY`` is off.
   * ``chronicle_v4``  every 30 min (``FBI_CHRONICLE_V4_MINUTES``), only while ``FBI_CHRONICLE_V4=shadow`` (off by default): the content plan
     (``content-plan-v1``) and the single chronicle (``chronicle-v4``, the small model, by batch when the gate allows) of the analysed matches
     of the next day, checked sentence by sentence (``fbi.chronicle.v4_job``, IA-103/IA-104), into ``ai.chronicles``. At most US$ 1 a day;
@@ -1433,11 +1435,11 @@ def _availability_refresh_now(*, retry: bool = False) -> None:
             return
         done = subprocess.run([sys.executable, "-m", "scripts.availability_refresh", "--scheduled",
                                "--max-memory-mib", str(cov.CAP_MIB)],
-                              cwd=APP_DIR, capture_output=True, text=True, timeout=cov.MAX_SECONDS + 300, check=False)
+                              cwd=APP_DIR, capture_output=True, text=True, timeout=cov.PROCESS_TIMEOUT, check=False)
         tail = (done.stdout or "").strip().splitlines()[-1:] or (done.stderr or "").strip().splitlines()[-1:]
         log.info("availability_refresh.run", exit=done.returncode, headroom_mib=room, last=(tail[0] if tail else "")[:400])
     except subprocess.TimeoutExpired:
-        log.error("availability_refresh.timeout", seconds=cov.MAX_SECONDS + 300)
+        log.error("availability_refresh.timeout", seconds=cov.PROCESS_TIMEOUT)
     except Exception as exc:
         log.error("availability_refresh.failed", error=f"{type(exc).__name__}: {exc}"[:300])
 
