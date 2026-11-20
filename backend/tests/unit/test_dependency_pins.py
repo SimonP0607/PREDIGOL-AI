@@ -78,7 +78,7 @@ def image_requirements() -> list[Requirement]:
 
 
 LAB_EXTRA = "lab"
-"""PM-13-04 (OPS-012): the libraries that left the image because nothing in it imports them (statsmodels, duckdb, pyarrow and the pandas
+"""PM-13-04 (OPS-012): the libraries that left the image because nothing in it imports them (statsmodels, duckdb and the pandas
 statsmodels brings; polars, which only the legacy importer reads when it runs). Not in the image, still pinned in constraints.txt, so
 that the gate - which installs them through ``dev`` - and anyone who needs them get the versions production used to run."""
 
@@ -199,6 +199,6 @@ def test_the_image_does_not_install_the_libraries_nothing_in_it_imports() -> Non
     no file ever imported. A requirement of the image that brings one back fails here, with its name."""
     image, _ = closure(image_requirements())
     assert LAB_EXTRA not in installed_extras()
-    unwanted = {"duckdb", "pyarrow", "statsmodels", "pandas", "patsy", "polars", "lightgbm"}
+    unwanted = {"duckdb", "statsmodels", "pandas", "patsy", "polars", "lightgbm"}
     assert not sorted(unwanted & set(image)), f"the image would install {sorted(unwanted & set(image))}"
-    assert {"numpy", "scipy"} <= set(image), "numpy and scipy stay: the models import them"
+    assert {"numpy", "scipy", "pyarrow"} <= set(image), "numpy and scipy stay (the models import them), and pyarrow (the LAB export, OPS-013)"

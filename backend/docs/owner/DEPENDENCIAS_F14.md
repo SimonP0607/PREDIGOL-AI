@@ -90,11 +90,13 @@ Mientras no digas nada, se queda (a).
 ## 7. Fuera de la imagen lo que nadie importa (PM-13-04, OPS-012, 20-nov-2026)
 
 * **Comprobado antes** (solo lectura): ningún archivo de `src/fbi`, `apps`, `scripts`, `migrations`, `backend/deploy/**` ni de los
-  flujos de CI importa ni ejecuta `statsmodels`, `duckdb`, `pyarrow`, `pandas` (la traía `statsmodels`) ni `lightgbm`; `polars` solo lo
+  flujos de CI importa ni ejecuta `statsmodels`, `duckdb`, `pyarrow`, `pandas` (la traía `statsmodels`) ni `lightgbm` en `main` del
+  20-nov-2026 (después, PM-12-02 empezó a usar `pyarrow` en el servidor y `duckdb` en el portátil); `polars` solo lo
   usa el importador del catálogo heredado (`manage_competitions import-legacy`). En el servidor, ningún guion de `/opt/predigol` fuera
   del propio repositorio, ninguna unidad ni temporizador de systemd, ningún `cron` ni kit de `/root/kits` los nombra, y ningún proceso
   de `predigol-api`, `predigol-worker` ni `predigol-messenger` tenía cargada ninguna de esas bibliotecas (`/proc/*/maps`).
-* **Qué cambia**: el extra `analytics` (el que instala la imagen) queda en `numpy` y `scipy`; `statsmodels`, `duckdb`, `pyarrow` y `polars`
+* **Qué cambia**: el extra `analytics` (el que instala la imagen) queda en `numpy`, `scipy` y `pyarrow` (este último porque la exportación
+  del LAB, `scripts.lab_export` de PM-12-02/OPS-013, escribe sus Parquet dentro del contenedor del worker); `statsmodels`, `duckdb` y `polars`
   pasan al extra nuevo **`lab`**; `lightgbm` sale del extra `ml` (nadie lo importó nunca). El importador heredado importa `polars` al
   ejecutarse, así que `manage_competitions apply`/`probe` siguen funcionando sin él. `dev` incluye `lab`: la puerta sigue probando el
   importador y el comando de instalación local de la sección 2 no cambia.
@@ -103,7 +105,8 @@ Mientras no digas nada, se queda (a).
   ninguna otra cosa; `test_the_image_does_not_install_the_libraries_nothing_in_it_imports` y `tests/unit/test_unused_libraries_pm1304.py`
   impiden que vuelvan a la imagen o que un módulo de la imagen las importe.
 * **Antes**: imagen `predigol-backend:3338f788cc61` de 1.496 MB; en `site-packages` (920 MB) ocupaban `pyarrow` 167 MB, `pandas` 81,
-  `statsmodels` 64, `polars` 10, `duckdb` 3 y `patsy` 2; la imagen instalaba las 60 bibliotecas del archivo. **Después**: 46 (resolución a
-  seco del comando de la imagen); salen también lo que solo traían ellas (`formulaic`, `narwhals`, `packaging`, `python-dateutil`, `six`…).
+  `statsmodels` 64, `polars` 10, `duckdb` 3 y `patsy` 2; la imagen instalaba las 60 bibliotecas del archivo. **Después**: 47 (resolución a
+  seco del comando de la imagen); salen `statsmodels`, `pandas`, `patsy`, `polars`, `duckdb` y lo que solo traían ellas (`formulaic`,
+  `narwhals`, `packaging`, `python-dateutil`, `six`…), unos 160 MB de `site-packages`; `pyarrow` (167 MB) se queda.
   El tamaño y el tiempo de construcción se miden en el primer despliegue y se anotan en el estado del plan PM.
 * **Vuelta atrás**: `revert` del PR; la capa de `pip` se rehace con las bibliotecas de antes, que siguen fijadas.

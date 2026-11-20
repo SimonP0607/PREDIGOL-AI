@@ -1,10 +1,10 @@
 """PM-13-04 (OPS-012): the libraries that left the production image stay out of the code the image runs.
 
-statsmodels, duckdb, pyarrow and pandas were installed in the image (the ``analytics`` extra) and nothing imported them; lightgbm was
+statsmodels, duckdb and pandas were installed in the image (the ``analytics`` extra) and nothing imported them; lightgbm was
 declared in ``ml`` and nothing imported it; polars was a base dependency that only the legacy catalogue importer reads. They moved to the
 ``lab`` extra (lightgbm was dropped). This walks every module of ``src/fbi``, ``apps``, ``scripts`` and ``migrations``: none imports one of
-them, except polars inside the function of the legacy importer that reads the parquet files (and under ``TYPE_CHECKING`` for its types),
-so the API, the worker, the messenger and every command still import without them."""
+them when it loads; the few that use one (``LAZY_ALLOWED``) import it inside the function that needs it, so the API, the worker, the
+messenger and every command still import without them."""
 
 from __future__ import annotations
 
@@ -15,8 +15,14 @@ from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[2]
 ROOTS = ("src/fbi", "apps", "scripts", "migrations")
-LAB_ONLY = frozenset({"duckdb", "pyarrow", "statsmodels", "pandas", "polars", "lightgbm", "patsy"})
+LAB_ONLY = frozenset({"duckdb", "statsmodels", "pandas", "polars", "lightgbm", "patsy"})
 LEGACY = "src/fbi/catalog/legacy_import.py"
+LAZY_ALLOWED: dict[str, frozenset[str]] = {
+    LEGACY: frozenset({"polars"}),                        # reads the legacy parquet files when it runs (manage_competitions import-legacy)
+    "scripts/lab_reproduce.py": frozenset({"duckdb"}),    # PM-12-02 (OPS-013): runs on the owner's laptop, on an export, never in the image
+}
+"""The only modules that may import a ``lab`` library, and only inside a function (or under ``TYPE_CHECKING``): what runs in the image
+never imports one when it loads."""
 
 
 def imports(path: Path) -> list[tuple[str, bool]]:
@@ -46,9 +52,11 @@ def test_nothing_the_image_runs_imports_a_lab_library() -> None:
             hits = [(name, top) for name, top in imports(path) if name in LAB_ONLY]
             if hits:
                 found[path.relative_to(BACKEND).as_posix()] = hits
-    assert set(found) <= {LEGACY}, f"modules that import a library the image no longer has: {sorted(set(found) - {LEGACY})}"
-    assert found.get(LEGACY) and all(name == "polars" and not top for name, top in found[LEGACY]), (
-        "the legacy importer imports polars only when it runs (and for its types under TYPE_CHECKING)")
+    assert set(found) <= set(LAZY_ALLOWED), f"modules that import a library the image no longer has: {sorted(set(found) - set(LAZY_ALLOWED))}"
+    for module, hits in found.items():
+        assert all(name in LAZY_ALLOWED[module] and not top for name, top in hits), (
+            f"{module} may import only {sorted(LAZY_ALLOWED[module])}, and only when it runs: {hits}")
+    assert found.get(LEGACY), "the legacy importer reads the parquet files with polars"
 
 
 def test_the_competitions_command_and_the_importer_load_without_polars() -> None:

@@ -30,12 +30,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# The image installs `analytics` (backend/Dockerfile): what the API and the worker import. PM-13-04 (OPS-012, 20-nov-2026): statsmodels,
-# duckdb and pyarrow (and pandas, which statsmodels brings) were in it and nothing in the repository, the server's scripts or its timers
-# imports them; polars was a base dependency for one command, the legacy catalogue importer (`manage_competitions import-legacy`), which
-# imports it when it runs. They move to `lab`: not in the image, still pinned in constraints.txt, installed with the gate (`dev`).
-analytics = ["numpy>=2.1", "scipy>=1.14"]
-lab       = ["polars>=1.17", "statsmodels>=0.14", "duckdb>=1.1", "pyarrow>=18"]
+# The image installs `analytics` (backend/Dockerfile): what the API and the worker import. PM-13-04 (OPS-012, 20-nov-2026): statsmodels
+# and duckdb (and pandas, which statsmodels brings) were in it and nothing in the repository, the server's scripts or its timers imports
+# them; polars was a base dependency for one command, the legacy catalogue importer (`manage_competitions import-legacy`), which imports
+# it when it runs. They move to `lab`: not in the image, still pinned in constraints.txt, installed with the gate (`dev`). pyarrow stays:
+# the LAB export (scripts.lab_export, PM-12-02, OPS-013) writes its Parquet files inside the worker's container.
+analytics = ["numpy>=2.1", "scipy>=1.14", "pyarrow>=18"]
+lab       = ["polars>=1.17", "statsmodels>=0.14", "duckdb>=1.1"]
 ml        = ["scikit-learn>=1.5"]
 dev       = ["pytest>=8.3", "pytest-asyncio>=0.24", "pytest-cov>=6.0", "ruff>=0.8", "mypy>=1.13", "pip-audit>=2.7",
              # Type stubs for the runtime deps that do not ship their own.
