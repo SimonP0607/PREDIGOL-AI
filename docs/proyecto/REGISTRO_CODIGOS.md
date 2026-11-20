@@ -183,6 +183,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | IA-142 | Decisión del dueño: E4 a T-5 con la última decisión de decision-v2 de T-20 a T-10 (`eval-clock-v2`), decision-v1 intacto (plan AD-D06, AD-D07) | desplegado (en producción desde su fusión; comprobado el 18-nov-2026 en la cadena `20261117T2254Z-auto-668947e`: backend `50af17809dc1`, migración 0166) | #384 | — |
 | IA-143 | Registro de firmas del dueño de protocolos preregistrados (`fbi/protosign`, `ia_protocols sign`) (plan AD-B07, AD-C08, AD-C09, AD-K02, AD-K03, AD-K04) | desplegado (en producción desde su fusión; comprobado el 18-nov-2026 en la cadena `20261117T2254Z-auto-668947e`: backend `50af17809dc1`, migración 0166) | #386 | — |
 | IA-144 | El ciclo de una selección pasa a `FBI_SELECTION_LIFECYCLE` y deja de compartir `FBI_LIFECYCLE` con el ciclo del cliente (plan AD-D02) | desplegado (en producción desde su fusión; comprobado el 18-nov-2026 en la cadena `20261117T2254Z-auto-668947e`: backend `50af17809dc1`, migración 0166) | #386 | — |
+| IA-145 | `review-retire-v1` (retirada de `review-v2`, IA-125) entra en el catálogo de protocolos firmables como **AD-D11** (`fbi/protosign/records.py`, registro propio con `PROTOCOL` palabra por palabra y el control del paso `sample`; huella fijada en `test_protocol_signatures.py`), para registrar la firma aprobada por el dueño el 19-nov-2026 (PM-13-01b, decisión DM-10). Sin migración; no cambia el protocolo ni ningún interruptor | en curso | este PR | — |
 
 ## UX — experiencia de usuario y diseño de la web
 
@@ -412,6 +413,6 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 CI-020 · SEG-003 · UX-173 · BE-051 · FE-004 · OPS-009 · DOC-006
 
-IA-145
+IA-146
 
 (El número de IA va en su propia línea desde el 10-nov-2026: así un PR de IA, que tarda en pasar el CI del backend, no choca con la línea común cada vez que se fusiona un PR de otra área.)
