@@ -165,7 +165,13 @@ from typing import Any
 
 import psycopg
 import structlog
-from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_MISSED, JobEvent
+from apscheduler.events import (
+    EVENT_JOB_ERROR,
+    EVENT_JOB_EXECUTED,
+    EVENT_JOB_MISSED,
+    EVENT_JOB_SUBMITTED,
+    JobEvent,
+)
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from fbi.core.clock import now
@@ -182,6 +188,7 @@ from fbi.odds.live_cadence import (
 )
 from fbi.odds.partitions import ensure_partitions
 from fbi.odds.schedule import NEAR_CLOSE_TOLERANCE_MINUTES
+from fbi.ops import memwatch
 from fbi.ops.heartbeat import (
     HeartbeatWriter,
     LivenessPulse,
@@ -2119,6 +2126,18 @@ def _on_error(event: JobEvent) -> None:
     log.error("job.failed", job=event.job_id)
 
 
+def _on_submitted(event: JobEvent) -> None:
+    """PM-13-05 (OPS-010): a job's run starts - its memory span opens (``fbi.ops.memwatch``; a no-op when it is off)."""
+    memwatch.WATCH.begin(f"job:{event.job_id}", str(event.job_id))
+
+
+def _on_done(event: JobEvent) -> None:
+    """PM-13-05 (OPS-010): a job's run ended, well or not - one ``job.memory`` line with what it took."""
+    mem = memwatch.WATCH.end(f"job:{event.job_id}")
+    if mem is not None:
+        log.info("job.memory", **mem)
+
+
 async def main() -> None:
     global _scheduler, _lock, _stop, _main_loop
     configure_logging(settings.runtime.log_level)
@@ -2558,6 +2577,10 @@ async def main() -> None:
                       next_run_time=moment + timedelta(minutes=WATCHDOG_MINUTES))
     scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
     scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
+    # PM-13-05 (OPS-010): the memory of each job, by sampling (FBI_WORKER_MEMWATCH=0 turns it off).
+    if memwatch.start():
+        scheduler.add_listener(_on_submitted, EVENT_JOB_SUBMITTED)
+        scheduler.add_listener(_on_done, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR)
     _main_loop = asyncio.get_running_loop()
     scheduler.start()
 
