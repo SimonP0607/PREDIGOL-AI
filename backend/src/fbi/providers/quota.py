@@ -49,7 +49,10 @@ import structlog
 
 from fbi.core.clock import day_start, now
 from fbi.core.errors import QuotaExhaustedError
-from fbi.providers.lanes import LANE_OF_JOB, NO_LANE, LaneDecision, LaneMode, LanePolicy
+from fbi.providers.lanes import LANE_OF_JOB, LaneDecision, LaneMode, LanePolicy
+from fbi.providers.lanes import (
+    NO_LANE as NO_LANE,  # re-exported: the readers of PM-01-02 import it from here
+)
 
 log = structlog.get_logger(__name__)
 
