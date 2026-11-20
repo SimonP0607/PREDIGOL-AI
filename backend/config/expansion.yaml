@@ -6,13 +6,13 @@ source: data/capacity/20261005T063217Z/CAPACITY.md
 candidates:
   - {rank: 1, league_id: 244, name: Veikkausliiga, country: Finland}
   - {rank: 2, league_id: 268, name: Primera División, country: Uruguay}
-  - {rank: 3, league_id: 36, name: Africa Cup of Nations - Qualification, country: World}
+  - {rank: 3, league_id: 36, name: Africa Cup of Nations - Qualification, country: World, planned_batch: 5}
   - {rank: 4, league_id: 252, name: División Profesional - Clausura, country: Paraguay}
   - {rank: 5, league_id: 200, name: Botola Pro, country: Morocco}
   - {rank: 6, league_id: 1247, name: FIFA Asean Cup, country: World}
-  - {rank: 7, league_id: 43, name: National League, country: England}
+  - {rank: 7, league_id: 43, name: National League, country: England, planned_batch: 9}
   - {rank: 8, league_id: 487, name: First Amateur Division, country: Belgium}
-  - {rank: 9, league_id: 129, name: Primera Nacional, country: Argentina}
+  - {rank: 9, league_id: 129, name: Primera Nacional, country: Argentina, planned_batch: 6}
   - {rank: 10, league_id: 236, name: First League, country: Russia}
   - {rank: 11, league_id: 255, name: USL Championship, country: USA}
   - {rank: 12, league_id: 436, name: Primera División RFEF - Group 2, country: Spain}
@@ -21,16 +21,16 @@ candidates:
   - {rank: 15, league_id: 287, name: Prva Liga, country: Serbia}
   - {rank: 16, league_id: 100, name: J3 League, country: Japan}
   - {rank: 17, league_id: 63, name: Ligue 3, country: France}
-  - {rank: 18, league_id: 60, name: Non League Premier - Southern South, country: England}
+  - {rank: 18, league_id: 60, name: Non League Premier - Southern South, country: England, planned_batch: 9}
   - {rank: 19, league_id: 506, name: 2. liga, country: Slovakia}
   - {rank: 20, league_id: 875, name: Segunda División RFEF - Group 1, country: Spain}
   - {rank: 21, league_id: 492, name: Tweede Divisie, country: Netherlands}
   - {rank: 22, league_id: 564, name: Ettan - Södra, country: Sweden}
-  - {rank: 23, league_id: 263, name: Liga de Expansión MX, country: Mexico}
+  - {rank: 23, league_id: 263, name: Liga de Expansión MX, country: Mexico, planned_batch: 6}
   - {rank: 24, league_id: 943, name: Serie C - Girone C, country: Italy}
   - {rank: 25, league_id: 132, name: Primera C, country: Argentina}
   - {rank: 26, league_id: 877, name: Segunda División RFEF - Group 3, country: Spain}
-  - {rank: 27, league_id: 887, name: Second League, country: Egypt}
+  - {rank: 27, league_id: 887, name: Second League, country: Egypt, planned_batch: 8}
   - {rank: 28, league_id: 138, name: Serie C - Girone A, country: Italy}
   - {rank: 29, league_id: 876, name: Segunda División RFEF - Group 2, country: Spain}
   - {rank: 30, league_id: 563, name: Ettan - Norra, country: Sweden}
@@ -38,13 +38,13 @@ candidates:
   - {rank: 32, league_id: 489, name: USL League One, country: USA}
   - {rank: 33, league_id: 358, name: First Division, country: Ireland}
   - {rank: 34, league_id: 134, name: Torneo Federal A, country: Argentina}
-  - {rank: 35, league_id: 59, name: Non League Premier - Northern, country: England}
+  - {rank: 35, league_id: 59, name: Non League Premier - Northern, country: England, planned_batch: 9}
   - {rank: 36, league_id: 473, name: 2. Division - Group 1, country: Norway}
-  - {rank: 37, league_id: 101, name: J-League Cup, country: Japan}
+  - {rank: 37, league_id: 101, name: J-League Cup, country: Japan, planned_batch: 8}
   - {rank: 38, league_id: 104, name: 1. Division, country: Norway}
   - {rank: 39, league_id: 183, name: League One, country: Scotland}
   - {rank: 40, league_id: 474, name: 2. Division - Group 2, country: Norway}
-  - {rank: 41, league_id: 269, name: Segunda División, country: Uruguay}
+  - {rank: 41, league_id: 269, name: Segunda División, country: Uruguay, planned_batch: 6}
   - {rank: 42, league_id: 295, name: K3 League, country: South-Korea}
   - {rank: 43, league_id: 711, name: Segunda División, country: Chile}
   - {rank: 44, league_id: 349, name: 3. liga - MSFL, country: Czech-Republic}
@@ -69,6 +69,62 @@ candidates:
   - {rank: 56, league_id: 299, name: Primera División, country: Venezuela, note: "owner's decision no. 10 (IA-077)"}
   - {rank: 57, league_id: 240, name: Primera B, country: Colombia, note: "owner's decision no. 10 (IA-077)"}
   - {rank: 58, league_id: 241, name: Copa Colombia, country: Colombia, note: "owner's decision no. 10 (IA-077)"}
+  # Plan Maestro PM (PM-03-01, BE-066; decision DM-03 of 19 Nov 2026: batches 5 to 9, levels C and D admitted): the 60
+  # competitions of batches 5-9 of annex A. Nine were already candidates above and only gain `planned_batch`; these 51 are
+  # new, with the name and country raw.league_coverage gives them (read 20 Nov 2026 06:50 UTC, newest season). Listing them
+  # tracks nothing, and `planned_batch` is not a batch: each batch is written under `batches` by its own task (PM-03-02 to
+  # PM-03-06), after the previous one was measured for a day. What the probe saw is under `probes` at the end of this file.
+  - {rank: 59, league_id: 713, name: Superliga, country: Colombia, planned_batch: 5}
+  - {rank: 60, league_id: 712, name: Liga Femenina, country: Colombia, planned_batch: 5}
+  - {rank: 61, league_id: 541, name: CONMEBOL Recopa, country: World, planned_batch: 5}
+  - {rank: 62, league_id: 27, name: OFC Champions League, country: World, planned_batch: 5}
+  - {rank: 63, league_id: 1132, name: AFC Challenge League, country: World, planned_batch: 5}
+  - {rank: 64, league_id: 130, name: Copa Argentina, country: Argentina, planned_batch: 6}
+  - {rank: 65, league_id: 517, name: Trofeo de Campeones de la Superliga, country: Argentina, planned_batch: 6}
+  - {rank: 66, league_id: 810, name: Super Copa, country: Argentina, planned_batch: 6}
+  - {rank: 67, league_id: 1178, name: Super Copa International, country: Argentina, planned_batch: 6}
+  - {rank: 68, league_id: 632, name: Supercopa do Brasil, country: Brazil, planned_batch: 6}
+  - {rank: 69, league_id: 266, name: Primera B, country: Chile, planned_batch: 6}
+  - {rank: 70, league_id: 267, name: Copa Chile, country: Chile, planned_batch: 6}
+  - {rank: 71, league_id: 527, name: Super Cup, country: Chile, planned_batch: 6}
+  - {rank: 72, league_id: 857, name: Campeón de Campeones, country: Mexico, planned_batch: 6}
+  - {rank: 73, league_id: 304, name: Liga Panameña de Fútbol, country: Panama, planned_batch: 6}
+  - {rank: 74, league_id: 257, name: US Open Cup, country: USA, planned_batch: 6}
+  - {rank: 75, league_id: 842, name: Super Copa, country: Uruguay, planned_batch: 6}
+  - {rank: 76, league_id: 930, name: Copa Uruguay, country: Uruguay, planned_batch: 6}
+  - {rank: 77, league_id: 220, name: Cup, country: Austria, planned_batch: 7}
+  - {rank: 78, league_id: 147, name: Cup, country: Belgium, planned_batch: 7}
+  - {rank: 79, league_id: 519, name: Super Cup, country: Belgium, planned_batch: 7}
+  - {rank: 80, league_id: 120, name: "1. Division", country: Denmark, planned_batch: 7}
+  - {rank: 81, league_id: 121, name: DBU Pokalen, country: Denmark, planned_batch: 7}
+  - {rank: 82, league_id: 550, name: Super Cup, country: Portugal, planned_batch: 7}
+  - {rank: 83, league_id: 181, name: FA Cup, country: Scotland, planned_batch: 7}
+  - {rank: 84, league_id: 182, name: Challenge Cup, country: Scotland, planned_batch: 7}
+  - {rank: 85, league_id: 185, name: League Cup, country: Scotland, planned_batch: 7}
+  - {rank: 86, league_id: 874, name: Australia Cup, country: Australia, planned_batch: 8}
+  - {rank: 87, league_id: 1202, name: Australian Championship, country: Australia, planned_batch: 8}
+  - {rank: 88, league_id: 539, name: Super Cup, country: Egypt, planned_batch: 8}
+  - {rank: 89, league_id: 895, name: League Cup, country: Egypt, planned_batch: 8}
+  - {rank: 90, league_id: 324, name: I-League, country: India, planned_batch: 8}
+  - {rank: 91, league_id: 545, name: AIFF Super Cup, country: India, planned_batch: 8}
+  - {rank: 92, league_id: 102, name: Emperor Cup, country: Japan, planned_batch: 8}
+  - {rank: 93, league_id: 306, name: Second Division, country: Qatar, planned_batch: 8}
+  - {rank: 94, league_id: 677, name: QSL Cup, country: Qatar, planned_batch: 8}
+  - {rank: 95, league_id: 824, name: Emir Cup, country: Qatar, planned_batch: 8}
+  - {rank: 96, league_id: 825, name: Qatar Cup, country: Qatar, planned_batch: 8}
+  - {rank: 97, league_id: 308, name: Division 1, country: Saudi-Arabia, planned_batch: 8}
+  - {rank: 98, league_id: 826, name: Super Cup, country: Saudi-Arabia, planned_batch: 8}
+  - {rank: 99, league_id: 293, name: K League 2, country: South-Korea, planned_batch: 8}
+  - {rank: 100, league_id: 294, name: FA Cup, country: South-Korea, planned_batch: 8}
+  - {rank: 101, league_id: 302, name: League Cup, country: United-Arab-Emirates, planned_batch: 8}
+  - {rank: 102, league_id: 303, name: Division 1, country: United-Arab-Emirates, planned_batch: 8}
+  - {rank: 103, league_id: 560, name: Presidents Cup, country: United-Arab-Emirates, planned_batch: 8}
+  - {rank: 104, league_id: 896, name: Super Cup, country: United-Arab-Emirates, planned_batch: 8}
+  - {rank: 105, league_id: 47, name: FA Trophy, country: England, planned_batch: 9}
+  - {rank: 106, league_id: 50, name: National League - North, country: England, planned_batch: 9}
+  - {rank: 107, league_id: 51, name: National League - South, country: England, planned_batch: 9}
+  - {rank: 108, league_id: 58, name: Non League Premier - Isthmian, country: England, planned_batch: 9}
+  - {rank: 109, league_id: 931, name: Non League Premier - Southern Central, country: England, planned_batch: 9}
 
 # Batches, each decided on a probe (scripts.probe_leagues) and tracked with scripts.expand_leagues. Each is migrated
 # as its own tier after the selector's tiers 1-4 (fbi.migration.config merges them), so the migration planner prices
@@ -166,3 +222,211 @@ batches:
       Copa Colombia: 15 of 16 regular-time finishes add up (one 1-2 with a single goal event). No player
       statistics in either: no player market (decision no. 7). Cost at the same rates: about 47 a day in season
       (1.39 fixtures a day), 72 at most; history (2018-2026, Copa from 2019) about 220 requests once.
+
+# Read-only probes of candidates that are not tracked yet, one entry per run. A probe decides nothing and tracks nothing:
+# it is what a batch is later decided on (its `probe` and `measured`). PM-03-01 (BE-066), 20 Nov 2026: the 60 candidates of
+# batches 5-9 with the procedure of scripts.probe_leagues - calendar of the current season of raw.league_coverage and
+# /fixtures?ids= of the 20 latest finished matches judged with fbi.catalog.league_probe.judge_detail - plus one /odds page
+# when matches are due in 14 days; no /standings (the provider's flag is kept instead). Nothing stored in RAW, no run opened;
+# requests counted under job league_probe, lane ampliacion. Orders: docs/owner/lab/PM_03_01/; guide:
+# docs/owner/PM_03_01_SONDA_LOTES_5_9.md.
+# Per league: shares of the `sampled` matches (0-1; null = nothing to sample) for events, both line-ups of eleven, team
+# statistics (corners, yellow cards and total shots for both sides), the provider's xG and player lines (22 or more);
+# `referee` is the share of ALL finished matches with a referee; `bookmakers` the median of houses with a price on the
+# `odds_fixtures` matches of the /odds page (null = not asked: no match within 14 days). `expected` is the level each family
+# of coverage-levels-v1 (fbi.coverage.levels, DM-04) would get on this sample: B is the best a probe can give (A needs 30
+# finished matches) and it is provisional; MI = fewer than 10 matches. The odds families are not graded by a probe (they need
+# the finished matches of the odds window): `MI (techo X)` gives the ceiling their houses allow. `summary` is the directory
+# summary without odds (a star: graded on the match data alone).
+probes:
+  - key: pm-03-01
+    at: "2026-11-20T06:54:36Z"
+    task: PM-03-01 (BE-066)
+    rules: coverage-levels-v1
+    stored_in_raw: false
+    requests: 203
+    note: >-
+      Two runs: the first (06:51 UTC) spent 60 requests and stopped on a bug of the probe script (a season with no finished
+      match), before it printed anything; the second (06:54-06:55 UTC, cap 180) probed the 60 and spent 143. 203 in all,
+      under the card's 240.
+    leagues:
+      713: {batch: 5, season: 2026, fixtures: 2, finished: 2, ahead: 0, unresolved: 0, sampled: 2, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      712: {batch: 5, season: 2026, fixtures: 158, finished: 158, ahead: 0, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.75, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.006, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: C, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      541: {batch: 5, season: 2026, fixtures: 2, finished: 2, ahead: 0, unresolved: 0, sampled: 2, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      27: {batch: 5, season: 2026, fixtures: 21, finished: 21, ahead: 0, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.75, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: C, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      1132: {batch: 5, season: 2026, fixtures: 47, finished: 36, ahead: 8, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.8, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.75, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: C, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: "C*"}}
+      36: {batch: 5, season: 2027, fixtures: 156, finished: 108, ahead: 48, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.1, team_stats: 1.0, xg: 1.0, player_stats: 1.0, referee: 0.75, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: true, statistics_players: true, standings: true, injuries: false, odds: true},
+          expected: {base: D, team_stats: B, xg: B, player_stats: B, referee: C, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      129: {batch: 6, season: 2026, fixtures: 664, finished: 655, ahead: 8, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.008, goals_match_events: 1.0, odds_fixtures: 10, bookmakers: 10.0,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: "C*"}}
+      130: {batch: 6, season: 2026, fixtures: 63, finished: 62, ahead: 1, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.95, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.484, goals_match_events: 1.0, odds_fixtures: 1, bookmakers: 10,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: true},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: "C*"}}
+      517: {batch: 6, season: 2026, fixtures: 1, finished: 1, ahead: 0, unresolved: 0, sampled: 1, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      810: {batch: 6, season: 2026, fixtures: 1, finished: 1, ahead: 0, unresolved: 0, sampled: 1, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 1.0, goals_match_events: null, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: true},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      1178: {batch: 6, season: 2026, fixtures: 1, finished: 1, ahead: 0, unresolved: 0, sampled: 1, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 1.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      632: {batch: 6, season: 2026, fixtures: 1, finished: 1, ahead: 0, unresolved: 0, sampled: 1, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      266: {batch: 6, season: 2026, fixtures: 247, finished: 240, ahead: 7, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.013, goals_match_events: 1.0, odds_fixtures: 10, bookmakers: 10.0,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: "C*"}}
+      267: {batch: 6, season: 2026, fixtures: 120, finished: 119, ahead: 1, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.202, goals_match_events: 1.0, odds_fixtures: 1, bookmakers: 3,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: true},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo B), stat_odds: MI (sin córners en /odds), summary: "C*"}}
+      527: {batch: 6, season: 2026, fixtures: 3, finished: 3, ahead: 0, unresolved: 0, sampled: 3, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.333, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      263: {batch: 6, season: 2026, fixtures: 134, finished: 132, ahead: 2, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.95, team_stats: 0.8, xg: 0.4, player_stats: 0.8, referee: 0.992, goals_match_events: 1.0, odds_fixtures: 3, bookmakers: 9,
+          flags: {events: true, lineups: true, statistics_fixtures: true, statistics_players: true, standings: true, injuries: false, odds: true},
+          expected: {base: B, team_stats: B, xg: D, player_stats: B, referee: A, main_odds: MI (techo A), stat_odds: MI (techo A), summary: "B*"}}
+      857: {batch: 6, season: 2026, fixtures: 1, finished: 1, ahead: 0, unresolved: 0, sampled: 1, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 1.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      304: {batch: 6, season: 2026, fixtures: 201, finished: 201, ahead: 0, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.3, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      257: {batch: 6, season: 2026, fixtures: 79, finished: 78, ahead: 0, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.397, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: "C*"}}
+      269: {batch: 6, season: 2026, fixtures: 229, finished: 229, ahead: 0, unresolved: 0, sampled: 20, events: 0.95, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      842: {batch: 6, season: 2026, fixtures: 1, finished: 1, ahead: 0, unresolved: 0, sampled: 1, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 1.0, goals_match_events: null, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      930: {batch: 6, season: 2026, fixtures: 58, finished: 56, ahead: 0, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: false, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      220: {batch: 7, season: 2026, fixtures: 60, finished: 56, ahead: 4, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.143, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: "C*"}}
+      147: {batch: 7, season: 2026, fixtures: 40, finished: 32, ahead: 8, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.8, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: "C*"}}
+      519: {batch: 7, season: 2026, fixtures: 0, finished: 0, ahead: 0, unresolved: 0, sampled: 0, events: null, lineups: null, team_stats: null, xg: null, player_stats: null, referee: null, goals_match_events: null, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      120: {batch: 7, season: 2026, fixtures: 132, finished: 85, ahead: 47, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.95, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 1.0, goals_match_events: 1.0, odds_fixtures: 6, bookmakers: 10.0,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: A, main_odds: MI (techo A), stat_odds: MI (techo A), summary: "C*"}}
+      121: {batch: 7, season: 2026, fixtures: 104, finished: 96, ahead: 8, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.083, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: "C*"}}
+      550: {batch: 7, season: 2026, fixtures: 1, finished: 1, ahead: 0, unresolved: 0, sampled: 1, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 1.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      181: {batch: 7, season: 2026, fixtures: 70, finished: 50, ahead: 20, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 0.933, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: false, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      182: {batch: 7, season: 2026, fixtures: 144, finished: 136, ahead: 8, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: false, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      185: {batch: 7, season: 2026, fixtures: 95, finished: 94, ahead: 1, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.2, xg: 0.0, player_stats: 0.0, referee: 0.16, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: true, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: "C*"}}
+      874: {batch: 8, season: 2026, fixtures: 31, finished: 31, ahead: 0, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.968, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: A, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: "C*"}}
+      1202: {batch: 8, season: 2026, fixtures: 48, finished: 42, ahead: 6, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 10, bookmakers: 9.0,
+          flags: {events: true, lineups: false, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: D}}
+      539: {batch: 8, season: 2026, fixtures: 4, finished: 4, ahead: 0, unresolved: 0, sampled: 4, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      887: {batch: 8, season: 2026, fixtures: 380, finished: 124, ahead: 255, unresolved: 0, sampled: 20, events: 0.9, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 10, bookmakers: 9.0,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: D}}
+      895: {batch: 8, season: 2026, fixtures: 40, finished: 16, ahead: 24, unresolved: 0, sampled: 16, events: 1.0, lineups: 0.5, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: C, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      324: {batch: 8, season: 2026, fixtures: 55, finished: 18, ahead: 37, unresolved: 0, sampled: 18, events: 1.0, lineups: 0.833, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 1.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: false},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: B, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: "C*"}}
+      545: {batch: 8, season: 2026, fixtures: 27, finished: 27, ahead: 0, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.185, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: "C*"}}
+      101: {batch: 8, season: 2026, fixtures: 64, finished: 60, ahead: 4, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.117, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: true},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: "C*"}}
+      102: {batch: 8, season: 2026, fixtures: 80, finished: 72, ahead: 8, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: "C*"}}
+      306: {batch: 8, season: 2026, fixtures: 72, finished: 36, ahead: 36, unresolved: 0, sampled: 20, events: 0.95, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 1, bookmakers: 6,
+          flags: {events: true, lineups: false, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: D}}
+      677: {batch: 8, season: 2026, fixtures: 36, finished: 18, ahead: 18, unresolved: 0, sampled: 18, events: 1.0, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.167, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: false, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      824: {batch: 8, season: 2026, fixtures: 19, finished: 19, ahead: 0, unresolved: 0, sampled: 19, events: 1.0, lineups: 0.789, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.368, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: C, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      825: {batch: 8, season: 2025, fixtures: 3, finished: 2, ahead: 1, unresolved: 0, sampled: 2, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 1.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      308: {batch: 8, season: 2026, fixtures: 171, finished: 95, ahead: 76, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.95, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.968, goals_match_events: 1.0, odds_fixtures: 1, bookmakers: 8,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: A, main_odds: MI (techo A), stat_odds: MI (techo A), summary: "C*"}}
+      826: {batch: 8, season: 2026, fixtures: 3, finished: 3, ahead: 0, unresolved: 0, sampled: 3, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 1.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      293: {batch: 8, season: 2026, fixtures: 272, finished: 256, ahead: 16, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.996, goals_match_events: 1.0, odds_fixtures: 8, bookmakers: 10.0,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: A, main_odds: MI (techo A), stat_odds: MI (techo A), summary: "C*"}}
+      294: {batch: 8, season: 2026, fixtures: 55, finished: 55, ahead: 0, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.4, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      302: {batch: 8, season: 2026, fixtures: 42, finished: 28, ahead: 14, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.65, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.714, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: true},
+          expected: {base: C, team_stats: D, xg: D, player_stats: D, referee: C, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      303: {batch: 8, season: 2026, fixtures: 112, finished: 63, ahead: 49, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 6, bookmakers: 6.5,
+          flags: {events: true, lineups: false, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: false},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: D}}
+      560: {batch: 8, season: 2026, fixtures: 25, finished: 21, ahead: 4, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.381, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: "C*"}}
+      896: {batch: 8, season: 2026, fixtures: 1, finished: 0, ahead: 1, unresolved: 0, sampled: 0, events: null, lineups: null, team_stats: null, xg: null, player_stats: null, referee: null, goals_match_events: null, odds_fixtures: 0, bookmakers: null,
+          flags: {events: false, lineups: false, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: false},
+          expected: {base: MI, team_stats: MI, xg: MI, player_stats: MI, referee: MI, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: MI}}
+      43: {batch: 9, season: 2026, fixtures: 552, finished: 200, ahead: 349, unresolved: 0, sampled: 20, events: 1.0, lineups: 1.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.41, goals_match_events: 1.0, odds_fixtures: 10, bookmakers: 10.0,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: B, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: "C*"}}
+      47: {batch: 9, season: 2026, fixtures: 288, finished: 256, ahead: 32, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 0, bookmakers: null,
+          flags: {events: true, lineups: false, statistics_fixtures: false, statistics_players: false, standings: false, injuries: false, odds: true},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo sin_medir), stat_odds: MI (sin córners en /odds), summary: D}}
+      50: {batch: 9, season: 2026, fixtures: 552, finished: 187, ahead: 364, unresolved: 0, sampled: 20, events: 0.95, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 10, bookmakers: 8.5,
+          flags: {events: true, lineups: false, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: D}}
+      51: {batch: 9, season: 2026, fixtures: 552, finished: 188, ahead: 363, unresolved: 0, sampled: 20, events: 0.95, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 10, bookmakers: 8.0,
+          flags: {events: true, lineups: false, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: D}}
+      58: {batch: 9, season: 2026, fixtures: 462, finished: 182, ahead: 280, unresolved: 0, sampled: 20, events: 0.9, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 10, bookmakers: 8.0,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: D}}
+      59: {batch: 9, season: 2026, fixtures: 462, finished: 200, ahead: 261, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 10, bookmakers: 9.0,
+          flags: {events: true, lineups: false, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: D}}
+      60: {batch: 9, season: 2026, fixtures: 462, finished: 183, ahead: 263, unresolved: 0, sampled: 20, events: 0.95, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 10, bookmakers: 9.0,
+          flags: {events: true, lineups: true, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: D}}
+      931: {batch: 9, season: 2026, fixtures: 462, finished: 186, ahead: 271, unresolved: 0, sampled: 20, events: 1.0, lineups: 0.0, team_stats: 0.0, xg: 0.0, player_stats: 0.0, referee: 0.0, goals_match_events: 1.0, odds_fixtures: 10, bookmakers: 9.0,
+          flags: {events: true, lineups: false, statistics_fixtures: false, statistics_players: false, standings: true, injuries: false, odds: true},
+          expected: {base: D, team_stats: D, xg: D, player_stats: D, referee: D, main_odds: MI (techo A), stat_odds: MI (techo A), summary: D}}
