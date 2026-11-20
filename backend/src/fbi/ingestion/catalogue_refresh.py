@@ -11,6 +11,11 @@ season the database does not know is a season the worker never fetches.
 Every competition we know gets its seasons rewritten (``refresh_seasons``, the only
 writer of ``is_current``); every league's coverage flags are stored, tracked or not,
 because the catalogue is chosen from them.
+
+With ``FBI_CATALOGUE_WATCH`` on (OFF by default; plan PM, PM-03-08, DOC-010) the refresh then compares what the provider lists with
+the baseline of ``config/catalogue_watch.yaml`` (``fbi.catalog.watch``, by identifier, 0 requests): a new league of a priority
+country, or a new season of a discontinued or cyclical competition, is logged as ``catalogue_watch.finding`` (warning) and goes
+into the run's notes. The watch never fails the refresh.
 """
 
 from __future__ import annotations
@@ -21,6 +26,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import tuple_row
 
+from fbi.catalog import watch
 from fbi.catalog.activation import refresh_seasons
 from fbi.core.clock import now
 from fbi.core.errors import ProviderError
@@ -60,8 +66,24 @@ async def refresh_catalogue(conn: psycopg.Connection, provider: Any, *, at: date
         conn.commit()
         notes = (f"{len(updates)} competitions, {len(seasons)} seasons, {flags} coverage rows; current season changed "
                  f"for {len(changed)}: " + ", ".join(f"{u.name} {u.was_current}->{u.now_current}" for u in changed[:10]))
+        if watch.watch_on():
+            notes += "; " + watch_catalogue(conn)
         log.info("catalogue_refresh.done", competitions=len(updates), seasons=len(seasons), coverage=flags,
                  current_changed=len(changed))
     finally:
         ledger.close(run_id, counters, notes=notes or None)
     return counters
+
+
+def watch_catalogue(conn: psycopg.Connection) -> str:
+    """PM-03-08: the watch over what was just stored, as the ledger's note. A failure is logged and noted, never raised."""
+    try:
+        found = watch.check(conn)
+    except Exception as exc:  # the watch must never cost the day's catalogue
+        conn.rollback()
+        log.warning("catalogue_watch.failed", error=str(exc)[:300])
+        return f"watch failed: {type(exc).__name__}"
+    for f in found:
+        log.warning("catalogue_watch.finding", kind=f.kind, league=f.league_id, name=f.name, country=f.country,
+                    season=f.season, detail=f.detail)
+    return watch.notes(found)
