@@ -12,7 +12,7 @@ import { Clock, Info } from "lucide-react";
 import { Banner } from "@/components/ui/banner";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
-import { t } from "@/lib/i18n";
+import { t } from "./availabilityText";
 import { localFixed, localInt } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { Card } from "./States";

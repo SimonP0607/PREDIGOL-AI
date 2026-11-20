@@ -44,7 +44,6 @@ import esStats from "@/locales/es/stats.json";
 import esStorage from "@/locales/es/storage.json";
 import esNotices from "@/locales/es/notices.json";
 import esExplorer from "@/locales/es/explorer.json";
-import esAvailability from "@/locales/es/availability.json";
 import enAdmin from "@/locales/en/admin.json";
 import enAuth from "@/locales/en/auth.json";
 import enCommon from "@/locales/en/common.json";
@@ -86,7 +85,6 @@ import enStats from "@/locales/en/stats.json";
 import enStorage from "@/locales/en/storage.json";
 import enNotices from "@/locales/en/notices.json";
 import enExplorer from "@/locales/en/explorer.json";
-import enAvailability from "@/locales/en/availability.json";
 
 export type Locale = "es" | "en";
 
@@ -134,7 +132,6 @@ export const CATALOGS: Record<Locale, Catalog> = {
     storage: esStorage,
     notices: esNotices,
     explorer: esExplorer,
-    availability: esAvailability,
     intelligence: esIntelligence,
     profiles: esProfiles,
     stats: esStats,
@@ -178,7 +175,6 @@ export const CATALOGS: Record<Locale, Catalog> = {
     storage: enStorage,
     notices: enNotices,
     explorer: enExplorer,
-    availability: enAvailability,
     intelligence: enIntelligence,
     profiles: enProfiles,
     stats: enStats,

@@ -47,7 +47,8 @@ sus palabras (namespace de textos `intelligence`).
 ## 2 ter. Estados «información no disponible» (plan PM, PM-14-01, lámina I12; UX-173)
 
 Un dato, un bloque o un mercado que no se puede enseñar está en uno de cinco estados, y cada uno tiene su componente en
-`web/src/product/shared/Unavailable.tsx` (modelo puro en `availabilityState.ts`, textos en el namespace `availability`). Ninguna
+`web/src/product/shared/Unavailable.tsx` (modelo puro en `availabilityState.ts`, textos en el namespace `availability`, que
+viaja en el fragmento de la pantalla que lo usa y no en el arranque: `addCatalog` y el `t` de `availabilityText.ts`). Ninguna
 pantalla pinta un hueco propio: ni tarjetas vacías, ni «0» que no son ceros, ni «—» sin explicación, ni el mismo mensaje para todo.
 
 | Estado | Componente | Qué dice | Siete estados de C-16 que lo dan |

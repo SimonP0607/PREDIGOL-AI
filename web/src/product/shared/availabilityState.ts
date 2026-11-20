@@ -22,7 +22,7 @@ import type {
   ModuleReason,
 } from "@/lib/api/v1/types_availability";
 import { isMissing, type Maybe } from "@/lib/api/v1/types_intelligence";
-import { t } from "@/lib/i18n";
+import { t } from "./availabilityText";
 
 /** C-16's seven states, in the order they are evaluated. */
 export const AVAILABILITY_STEPS = [
