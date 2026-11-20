@@ -1,6 +1,7 @@
 """Run the reference feeds by hand, or show what is due (fbi.ingestion.reference).
 
     python -m scripts.reference_refresh --plan                         # due targets per feed, no request
+    python -m scripts.reference_refresh --depths                       # depth of each tracked competition (PM-04-04), no request
     python -m scripts.reference_refresh --feed predictions --feed rounds --max-requests 50
     python -m scripts.reference_refresh --max-requests 300             # what the worker does every 30 min
     python -m scripts.reference_refresh --feed profiles_players --per-feed 2000 --max-requests 2000   # a catch-up
@@ -20,7 +21,8 @@ import psycopg
 
 from fbi.core.clock import now
 from fbi.core.config import settings
-from fbi.ingestion.reference import FEEDS, due_targets, refresh_reference
+from fbi.coverage import depth as reference_depth
+from fbi.ingestion.reference import FEEDS, depth_on, depth_view, due_targets, refresh_reference
 
 
 async def run(args: argparse.Namespace) -> int:
@@ -32,11 +34,19 @@ async def run(args: argparse.Namespace) -> int:
         print(f"unknown feed(s): {', '.join(sorted(unknown))}; known: {', '.join(f.name for f in FEEDS)}")
         return 2
     with psycopg.connect(settings.database.psycopg_url) as conn:
+        if args.depths:
+            m = reference_depth.build(conn)
+            rows = [{"league": lg, "name": m.names[lg], "priority": m.priority[lg], "level": m.level[lg], "depth": d,
+                     "player_seasons": m.player_seasons(lg)} for lg, d in sorted(m.by_league.items())]
+            totals = {d: sum(1 for r in rows if r["depth"] == d) for d in reference_depth.DEPTHS}
+            print(json.dumps({"switch_on": depth_on(), "totals": totals,
+                              "without_row": sum(1 for r in rows if r["level"] is None), "competitions": rows}, indent=1))
+            return 0
         if args.plan:
             at = now()
             plan = {}
             for f in feeds:
-                due = due_targets(conn, f, at)
+                due = due_targets(conn, f, at, depth_view(conn, at, reference_depth.current))
                 plan[f.name] = {"due": len(due), "requests_if_all": -(-len(due) // f.batch),
                                 "first": [t.key for t in due[:3]]}
             print(json.dumps(plan, indent=1))
@@ -48,7 +58,8 @@ async def run(args: argparse.Namespace) -> int:
         try:
             report = await refresh_reference(conn, provider, daily_budget=settings.provider_plan.effective_budget,
                                              max_requests=args.max_requests, feeds=feeds,
-                                             prematch_windows=settings.odds.prematch_windows)
+                                             prematch_windows=settings.odds.prematch_windows,
+                                             depths=reference_depth.current)
         finally:
             await provider.aclose()
     print(json.dumps(report.__dict__, indent=1, default=str))
@@ -58,6 +69,8 @@ async def run(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--plan", action="store_true", help="show the due targets per feed and stop")
+    ap.add_argument("--depths", action="store_true",
+                    help="show the reference depth of each tracked competition (level, priority) and stop")
     ap.add_argument("--feed", action="append", help="only this feed (repeatable)")
     ap.add_argument("--max-requests", type=int, default=100)
     ap.add_argument("--per-feed", type=int, default=0,
