@@ -1,6 +1,6 @@
 {
   "contract": "C-13",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "private",
   "freshness": {
     "generated_at": "2034-03-01T12:00:00Z",
@@ -1990,7 +1990,18 @@
         },
         "matrix": {
           "missing_reason": "sin_datos"
-        }
+        },
+        "provider_extras": [
+          {
+            "key": "offsides",
+            "unit": "por_partido",
+            "better": "menos",
+            "value": 1.833,
+            "matches_with_data": 12,
+            "coverage": 0.9583,
+            "origin": "api_football"
+          }
+        ]
       },
       "player": {
         "missing_reason": "sin_datos"
@@ -3938,7 +3949,18 @@
         },
         "matrix": {
           "missing_reason": "sin_datos"
-        }
+        },
+        "provider_extras": [
+          {
+            "key": "offsides",
+            "unit": "por_partido",
+            "better": "menos",
+            "value": 1.833,
+            "matches_with_data": 12,
+            "coverage": 0.9583,
+            "origin": "api_football"
+          }
+        ]
       },
       "player": {
         "missing_reason": "sin_datos"
