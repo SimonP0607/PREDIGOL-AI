@@ -21,6 +21,7 @@ import structlog
 
 from fbi.core.config import settings
 from fbi.providers.api_football.client import ApiFootballClient
+from fbi.providers.circuit import AccountPause
 from fbi.providers.lanes import LanePolicy
 from fbi.providers.quota import (
     MINUTE_SHARE,
@@ -74,6 +75,8 @@ def build_client(max_requests: int | None = None) -> ApiFootballClient:
         usage=build_usage_counter(),
         # The lanes of the budget (plan PM, PM-04-01): None while FBI_APIFOOTBALL_LANES is off.
         lanes=build_lane_guard(),
+        # The account's pause (plan PM, PM-04-02): one per process; None while FBI_APIFOOTBALL_ACCOUNT_GUARD is off.
+        account_pause=build_account_pause(),
     )
 
 
@@ -134,9 +137,27 @@ def build_lane_guard() -> LaneGuard | None:
             if counter is None:
                 log.warning("quota.lanes_off", reason="FBI_PROVIDER_USAGE is off: the lanes have no counts to read")
                 return None
-            policy, ignored = LanePolicy.from_settings(plan.lane_ceilings)
+            policy, ignored = LanePolicy.from_settings(plan.lane_ceilings, budget=plan.effective_budget,
+                                                       reserve=plan.emergency_reserve, dynamic=plan.dynamic_limits_on)
             if ignored:
                 log.warning("quota.lane_ceilings_ignored", entries=ignored[:10])
             _lane_guard = LaneGuard(policy=policy, mode=plan.lanes_mode, connect=_connect, counter=counter)
-            log.info("quota.lanes", mode=plan.lanes_mode, ceilings=policy.ceilings)
+            log.info("quota.lanes", mode=plan.lanes_mode, ceilings=policy.ceilings, dynamic=policy.dynamic,
+                     reserve=policy.reserve if policy.dynamic else None)
         return _lane_guard
+
+
+_account_pause: AccountPause | None = None
+
+
+def build_account_pause() -> AccountPause | None:
+    """The process's one account pause (plan PM, PM-04-02): every client of the process waits together while the provider refuses
+    the account. None while ``FBI_APIFOOTBALL_ACCOUNT_GUARD`` is off (the behaviour before: such an answer is a plain error)."""
+    global _account_pause
+    cfg = settings.api_football
+    if not cfg.account_guard_on:
+        return None
+    with _lanes_lock:
+        if _account_pause is None:
+            _account_pause = AccountPause(seconds=cfg.account_pause_seconds)
+        return _account_pause

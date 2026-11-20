@@ -654,6 +654,8 @@ _LANES_READ = """
 SELECT lane, sum(requests)::bigint FROM raw.provider_endpoint_usage
  WHERE provider = %(provider)s AND usage_date = %(day)s GROUP BY lane
 """
+_LANES_TOTAL = "SELECT spent FROM raw.provider_quota WHERE provider = %(provider)s AND quota_date = %(day)s"
+"""The day's total as the budget counts it (PM-04-02: the dynamic limits are shares of the budget)."""
 
 LANES_REFRESH_SECONDS = 15.0
 """Today's counts by lane are read again at most this often per process. Between two reads the guard adds what it let through;
@@ -691,15 +693,21 @@ class LaneGuard:
         self._day: date | None = None
         self._read_at: float | None = None
         self._spent: dict[str, int] = {}
+        self._total = 0
         self._logged: dict[tuple[str, str], float] = {}
         self.would_limit: dict[str, int] = {}
         """Requests each lane would have refused since the process started (``measure``) or did refuse (``enforce``)."""
 
-    def _read(self, day: date) -> dict[str, int] | None:
+    def _read(self, day: date) -> tuple[dict[str, int], int] | None:
+        params = {"provider": self._provider, "day": day}
         try:
             with self._connect() as conn, conn.cursor() as cur:
-                cur.execute(_LANES_READ, {"provider": self._provider, "day": day})
+                cur.execute(_LANES_READ, params)
                 rows = cur.fetchall()
+                total_row = None
+                if self.policy.dynamic:
+                    cur.execute(_LANES_TOTAL, params)
+                    total_row = cur.fetchone()
         except Exception as exc:  # the guard's own failure never costs a request
             log.warning("quota.lanes_not_read", error=type(exc).__name__)
             return None
@@ -707,7 +715,9 @@ class LaneGuard:
         if self._counter is not None:
             for lane, n in self._counter.pending_by_lane(day).items():
                 spent[lane] = spent.get(lane, 0) + n
-        return spent
+        # The budget's own count is ahead of the lanes' (it is spent before a request, the lanes are flushed once a minute).
+        total = max(int(total_row[0]) if total_row else 0, sum(spent.values()))
+        return spent, total
 
     def spent_today(self) -> dict[str, int]:
         """Today's requests by lane as the guard sees them now (refreshed when due)."""
@@ -719,16 +729,22 @@ class LaneGuard:
             fresh = self._read(day)
             with self._lock:
                 if fresh is not None or self._day != day:
-                    self._spent = fresh or {}
+                    self._spent, self._total = fresh or ({}, 0)
                     self._day = day
                 self._read_at = moment
         with self._lock:
             return dict(self._spent)
 
+    def total_today(self) -> int:
+        """Today's requests as the budget counts them (when the dynamic limits are on; otherwise the sum of the lanes)."""
+        with self._lock:
+            return self._total
+
     def check(self, calls: int = 1) -> LaneDecision:
         """The lane of the request made now in this task (``current_usage_tags``): let it through, or refuse it in ``enforce``."""
         lane, job = current_usage_tags()
-        decision = self.policy.decide(lane, lane_spent=self.spent_today(), calls=calls)
+        spent = self.spent_today()
+        decision = self.policy.decide(lane, lane_spent=spent, calls=calls, total_spent=self.total_today(), at=now())
         if not decision.allowed:
             with self._lock:
                 self.would_limit[decision.lane] = self.would_limit.get(decision.lane, 0) + calls
@@ -743,8 +759,15 @@ class LaneGuard:
                             refused_since_start=self.would_limit[decision.lane], mode=self.mode)
             if self.mode == "enforce":
                 raise LaneLimitedError(
-                    f"lane {decision.lane!r} reached its daily ceiling ({decision.lane_spent} of {decision.ceiling} today): "
-                    f"{job} stops here; the other lanes go on. It starts again at 00:00 UTC (FBI_APIFOOTBALL_LANES).")
+                    f"lane {decision.lane!r} refused ({_WHY.get(decision.reason, decision.reason)}; {decision.lane_spent} of "
+                    f"{decision.ceiling} today): {job} stops here; the vital lanes go on. It starts again "
+                    f"{'at 05:00 UTC' if decision.reason == 'quiet_hours' else 'at 00:00 UTC'} (FBI_APIFOOTBALL_LANES).")
         with self._lock:
             self._spent[decision.lane] = self._spent.get(decision.lane, 0) + calls
+            self._total += calls
         return decision
+
+
+_WHY = {"lane_ceiling": "its daily ceiling", "quiet_hours": "no fill between 03:50 and 05:00 UTC",
+        "emergency_reserve": "the emergency reserve is for the vital lanes", "paused_60": "60 % of the budget spent",
+        "paused_75": "75 % of the budget spent", "paused_88": "88 % of the budget spent: only the vital lanes go on"}

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
+from datetime import UTC, datetime, time
 from types import MappingProxyType
 from typing import Literal
 
@@ -44,6 +45,21 @@ class Lane:
     """Kept alive to the end of the day: may spend the emergency reserve (PM-04-02)."""
     jobs: tuple[str, ...]
     label: str
+    pause_at: float | None = None
+    """PM-04-02: the share of the day's budget at which the lane pauses until 00:00 UTC (None: never). The lower the lane, the
+    sooner: históricos and ampliación at 60 %, referencia at 75 %, and at 88 % only the vital lanes are left."""
+    quiet: bool = False
+    """PM-04-02: a fill (historical, expansion) that does not run between 03:50 and 05:00 UTC, the window of the server's
+    point-in-time copy and daily backup."""
+
+
+PAUSE_FILLS = 0.60
+PAUSE_REFERENCE = 0.75
+PAUSE_ALL_BUT_VITAL = 0.88
+QUIET_START = time(3, 50)
+QUIET_END = time(5, 0)
+DEFAULT_EMERGENCY_RESERVE = 7_000
+"""The last 7,000 requests of the day's budget (section 6 of the plan): only the vital lanes may spend them."""
 
 
 DEFAULT_LANES: tuple[Lane, ...] = (
@@ -52,16 +68,16 @@ DEFAULT_LANES: tuple[Lane, ...] = (
     Lane("alineaciones", 3, 1_500, True, ("prematch_lineups", "lineup_watch"), "Alineaciones"),
     Lane("resultados", 4, 1_500, True, ("results_sync", "results_repair", "post_match_detail"), "Resultados"),
     Lane("calendario", 5, 1_500, False, ("fixtures_sync", "catalogue_refresh", "seasons_refresh", "teams_sync"),
-         "Calendario y prioritarias"),
+         "Calendario y prioritarias", PAUSE_ALL_BUT_VITAL),
     Lane("estadisticas_contexto", 6, 3_000, False, ("context_refresh", "context_due", "context_refresh_manual"),
-         "Estadísticas y contexto"),
-    Lane("referencia", 7, 15_000, False, ("reference_refresh",), "Jugadores y referencia"),
+         "Estadísticas y contexto", PAUSE_ALL_BUT_VITAL),
+    Lane("referencia", 7, 15_000, False, ("reference_refresh",), "Jugadores y referencia", PAUSE_REFERENCE),
     Lane("historicos", 8, 8_000, False, ("historical_backfill", "historical_odds_import", "raw_backfill_season_stats"),
-         "Históricos"),
+         "Históricos", PAUSE_FILLS, quiet=True),
     Lane("ampliacion", 9, 5_000, False, ("league_probe", "league_expansion", "plan_probe", "window_probe", "capacity_probe",
-                                         "odds_flag_probe", "half_probe"), "Ampliación"),
-    Lane("reparacion", 10, 1_500, False, ("reprocess_fixture_venues",), "Reparación"),
-    Lane(NO_LANE, 11, 2_000, False, (), "Sin carril"),
+                                         "odds_flag_probe", "half_probe"), "Ampliación", PAUSE_FILLS, quiet=True),
+    Lane("reparacion", 10, 1_500, False, ("reprocess_fixture_venues",), "Reparación", PAUSE_FILLS),
+    Lane(NO_LANE, 11, 2_000, False, (), "Sin carril", PAUSE_FILLS),
 )
 """Measured 15 Oct - 19 Nov 2026 (``raw.ingestion_runs.api_calls`` by day and job), the largest day of each lane: directo 5,606 ·
 cuotas 3,217 · alineaciones 788 · resultados 163 · calendario 718 · estadísticas 2,527 (29 Oct; otherwise at most 952) · referencia
@@ -84,6 +100,10 @@ def _check(lanes: Iterable[Lane]) -> tuple[Lane, ...]:
         raise ValueError(f"the table needs the {NO_LANE!r} lane for the jobs nobody listed")
     if any(lane.ceiling < 0 for lane in table):
         raise ValueError("a ceiling cannot be negative")
+    if any(lane.vital and lane.pause_at is not None for lane in table):
+        raise ValueError("a vital lane never pauses")
+    if any(lane.pause_at is not None and not 0 < lane.pause_at <= 1 for lane in table):
+        raise ValueError("a pause is a share of the budget, above 0 and at most 1")
     return table
 
 
@@ -125,25 +145,39 @@ class LaneDecision:
     lane: str
     allowed: bool
     reason: str
-    """``ok`` or why not: ``lane_ceiling``."""
+    """``ok`` or why not: ``lane_ceiling``; with the dynamic limits (PM-04-02) also ``quiet_hours``, ``emergency_reserve`` and
+    ``paused_60`` / ``paused_75`` / ``paused_88``."""
     lane_spent: int
     ceiling: int
 
 
 @dataclass(frozen=True, slots=True)
 class LanePolicy:
-    """The table in force. ``decide`` is the rule for one request; it never waits and never reads anything."""
+    """The table in force. ``decide`` is the rule for one request; it never waits and never reads anything.
+
+    ``dynamic`` (PM-04-02, ``FBI_APIFOOTBALL_DYNAMIC_LIMITS``) adds, over the ceilings, the rules that keep the vital lanes alive
+    to the end of a bad day: the pauses by share of ``budget`` (``Lane.pause_at``), the emergency ``reserve`` that only the vital
+    lanes may spend, and the quiet window of the fills."""
 
     lanes: tuple[Lane, ...] = DEFAULT_LANES
+    budget: int = 0
+    reserve: int = 0
+    dynamic: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "lanes", _check(self.lanes))
+        if self.dynamic and self.budget < 1:
+            raise ValueError("the dynamic limits need the day's budget")
+        if self.reserve < 0 or (self.budget and self.reserve >= self.budget):
+            raise ValueError("the reserve is a part of the budget")
 
     @classmethod
-    def from_settings(cls, ceilings_text: str = "") -> tuple[LanePolicy, list[str]]:
+    def from_settings(cls, ceilings_text: str = "", *, budget: int = 0, reserve: int = 0,
+                      dynamic: bool = False) -> tuple[LanePolicy, list[str]]:
         overrides, ignored = parse_ceilings(ceilings_text)
         lanes = tuple(replace(lane, ceiling=overrides.get(lane.name, lane.ceiling)) for lane in DEFAULT_LANES)
-        return cls(lanes), ignored
+        reserve = min(reserve, max(0, budget - 1)) if budget else 0
+        return cls(lanes, budget=budget, reserve=reserve, dynamic=dynamic), ignored
 
     def lane(self, name: str) -> Lane:
         for lane in self.lanes:
@@ -155,15 +189,27 @@ class LanePolicy:
     def ceilings(self) -> dict[str, int]:
         return {lane.name: lane.ceiling for lane in self.lanes}
 
-    def decide(self, lane_name: str, *, lane_spent: Mapping[str, int], calls: int = 1) -> LaneDecision:
+    def decide(self, lane_name: str, *, lane_spent: Mapping[str, int], calls: int = 1, total_spent: int | None = None,
+               at: datetime | None = None) -> LaneDecision:
         """May ``calls`` more requests of ``lane_name`` go out, given what each lane has spent today?
 
-        Only the lane's own count decides here: a lane is refused when it would pass its ceiling, never because another lane spent
-        - so the matches in play are never held back by a sweep. A lane name the table does not know counts as ``sin_carril``."""
+        The lane's own ceiling first: a lane is never refused because another lane spent - so the matches in play are never held
+        back by a sweep. With the dynamic limits, a lane that is not vital then also yields, lowest priority first, as the day's
+        ``total_spent`` grows (its ``pause_at``), and never spends the emergency reserve; a fill waits out the quiet window. A lane
+        name the table does not know counts as ``sin_carril``."""
         lane = self.lane(lane_name)
         spent = int(lane_spent.get(lane.name, 0))
         if spent + calls > lane.ceiling:
             return LaneDecision(lane.name, False, "lane_ceiling", spent, lane.ceiling)
+        if self.dynamic and not lane.vital:
+            total = int(total_spent if total_spent is not None else sum(lane_spent.values()))
+            moment = (at or datetime.now(UTC)).astimezone(UTC).time()
+            if lane.quiet and QUIET_START <= moment < QUIET_END:
+                return LaneDecision(lane.name, False, "quiet_hours", spent, lane.ceiling)
+            if total + calls > self.budget - self.reserve:
+                return LaneDecision(lane.name, False, "emergency_reserve", spent, lane.ceiling)
+            if lane.pause_at is not None and total >= lane.pause_at * self.budget:
+                return LaneDecision(lane.name, False, f"paused_{round(lane.pause_at * 100)}", spent, lane.ceiling)
         return LaneDecision(lane.name, True, "ok", spent, lane.ceiling)
 
 
@@ -187,24 +233,47 @@ class LaneDay:
         return [name for name, n in self.refused.items() if n > 0]
 
 
-def replay(rows: Iterable[tuple[str, int, str, int]], policy: LanePolicy) -> list[LaneDay]:
+def replay(rows: Iterable[tuple[str, int, str, int]], policy: LanePolicy, *, daily_budget: int | None = None) -> list[LaneDay]:
     """Replay measured requests through the lanes: ``rows`` are (day, hour, job, requests), in any order; each (day, hour) is
     applied in time order, job by job, as if its requests went out one after another. Returns, per day, what each lane asked for
-    and what the lanes would have refused."""
+    and what was refused - by the lanes and, with ``daily_budget``, by the day's budget once it is spent (what happened to every
+    job after 21:32 UTC on 29 Oct 2026)."""
     by_slot: dict[tuple[str, int], list[tuple[str, int]]] = {}
     for day, hour, job, requests in rows:
         if requests > 0:
             by_slot.setdefault((day, int(hour)), []).append((job, int(requests)))
     days: dict[str, LaneDay] = {}
     spent: dict[str, dict[str, int]] = {}
-    for (day, _hour) in sorted(by_slot):
+    for (day, hour) in sorted(by_slot):
         result = days.setdefault(day, LaneDay(day, {}, {}))
         today = spent.setdefault(day, {})
-        for job, requests in sorted(by_slot[(day, _hour)]):
+        at = datetime.fromisoformat(day).replace(hour=hour, minute=30, tzinfo=UTC)
+        for job, requests in sorted(by_slot[(day, hour)]):
             lane = policy.lane(LANE_OF_JOB.get(job, NO_LANE)).name
             result.spent[lane] = result.spent.get(lane, 0) + requests
-            room = max(0, policy.lane(lane).ceiling - today.get(lane, 0))
-            taken = min(room, requests)
+            taken = _taken(policy, lane, requests, today, at)
+            if daily_budget is not None:
+                taken = min(taken, max(0, daily_budget - sum(today.values())))
             today[lane] = today.get(lane, 0) + taken
             result.refused[lane] = result.refused.get(lane, 0) + (requests - taken)
     return [days[d] for d in sorted(days)]
+
+
+def _taken(policy: LanePolicy, lane: str, requests: int, today: Mapping[str, int], at: datetime) -> int:
+    """How many of ``requests`` the lanes let through, one after another: the n-th passes when the rule allows one more after
+    n - 1 (a bisection; the rule is monotonic in the count)."""
+    total = sum(today.values())
+
+    def fits(n: int) -> bool:
+        if n == 0:
+            return True
+        before = {**today, lane: today.get(lane, 0) + n - 1}
+        return policy.decide(lane, lane_spent=before, calls=1, total_spent=total + n - 1, at=at).allowed
+
+    if fits(requests):
+        return requests
+    low, high = 0, requests
+    while high - low > 1:
+        mid = (low + high) // 2
+        low, high = (mid, high) if fits(mid) else (low, mid)
+    return low

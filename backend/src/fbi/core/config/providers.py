@@ -28,6 +28,11 @@ class ApiFootballSettings(BaseSettings):
     max_retries: int = Field(default=3, ge=0, le=8)
     circuit_failure_threshold: int = Field(default=5, ge=1)
     circuit_reset_seconds: float = Field(default=60.0, gt=0)
+    account_guard: str = Field(default="on")
+    """``FBI_APIFOOTBALL_ACCOUNT_GUARD`` (plan PM, PM-04-02, BE-061): an error about the ACCOUNT inside an HTTP 200 answer (out of
+    requests, answering as the free plan, a key refused) pauses every request of the process. ON unless 0/off/false/no."""
+    account_pause_seconds: float = Field(default=900.0, ge=30.0, le=86_400.0)
+    """``FBI_APIFOOTBALL_ACCOUNT_PAUSE_SECONDS``: how long; then one request tries again (and pauses again if refused)."""
 
     @field_validator("plan")
     @classmethod
@@ -39,6 +44,10 @@ class ApiFootballSettings(BaseSettings):
     @property
     def per_minute_limit(self) -> int:
         return PLAN_LIMITS[self.plan][0]
+
+    @property
+    def account_guard_on(self) -> bool:
+        return self.account_guard.strip().lower() not in {"0", "off", "false", "no"}
 
     @property
     def per_day_limit(self) -> int:

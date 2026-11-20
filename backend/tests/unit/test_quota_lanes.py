@@ -336,6 +336,9 @@ def test_build_gives_no_guard_while_off_and_one_per_process_otherwise(monkeypatc
     class Plan:
         lanes_mode = "off"
         lane_ceilings = "referencia=9000"
+        effective_budget = 60_000
+        emergency_reserve = 7_000
+        dynamic_limits_on = False
 
     monkeypatch.setattr(b, "settings", type("S", (), {"provider_plan": Plan()})())
     assert b.build_lane_guard() is None
