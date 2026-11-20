@@ -75,6 +75,12 @@ docker exec -w /app predigol-worker python -m scripts.ia_protocols show --key AD
 docker exec -w /app predigol-worker python -m scripts.ia_protocols sign --key AD-D11 --fingerprint <huella de show> --reason "Aprobado por el dueño por escrito el 19-nov-2026 (Plan Maestro PM, DM-10: «Apruebo las recomendaciones documentadas para cada decisión»): protocolo preregistrado antes de mirar los datos" --confirm-owner
 ```
 
+**IA-145 (20-nov-2026, PM-13-01b): AD-D11 ya es firmable.** Su registro en `fbi/protosign/records.py` lleva `PROTOCOL` palabra por
+palabra (una prueba obliga a que sea igual, y su huella propia de arriba, `0e8938f4…`, no cambió) y el control del paso `sample` del
+apartado 2. Como en AD-F04, AD-F05 y AD-F06, la huella que se firma es la del **registro entero** (clave, versión, título, texto y cifras):
+`0fdd2a7145b57fe9ed0d727cf171de14c496b3b21dc93c588f549daa6251b5c6`, la que da `show --key AD-D11`. Son dos huellas del mismo protocolo:
+la de esta guía, del texto de `PROTOCOL` solo; la de `show`, de su registro firmable.
+
 Antes de firmar, comprobar que el texto de `show` dice las cifras del apartado 2. **La ventana de 4 semanas empieza con la fila de la
 firma** (`signed_at`), no con esta guía: así ninguna selección anterior a la firma cuenta.
 

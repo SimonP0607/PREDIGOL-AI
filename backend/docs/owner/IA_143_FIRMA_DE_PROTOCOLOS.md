@@ -16,10 +16,13 @@ efecto en el lector. Ningún protocolo está firmado hoy: firmar es una acción 
   (falso si no la hay, o si la base aún no tiene la tabla): el tablero `board-v1` (y con él C-03 y C-08), el informe de rendimiento
   `perf-v1`, la crónica (coletillas, comparación de retirada y revisión por muestreo) y la consola C-11, que añade un bloque
   `protocols` (C-11 pasa a 1.1.0) con cada protocolo, su huella y si está firmado.
-* **Qué protocolos se pueden firmar** (16): los 13 de laboratorio de `fbi/research/protocol.py` —sus huellas no cambian— y los tres de la
+* **Qué protocolos se pueden firmar** (17 desde IA-145; eran 16): los 13 de laboratorio de `fbi/research/protocol.py` —sus huellas no cambian— y los tres de la
   crónica de IA-117..IA-119, que eran registros propios de sus módulos y ahora tienen huella propia (`fbi/protosign/records.py`, con una
   prueba que obliga a que cada cifra sea la que la crónica aplica): **AD-F04** (umbrales de coletillas), **AD-F05** (comparación
-  preregistrada para retirar textos duplicados) y **AD-F06** (revisión humana por muestreo).
+  preregistrada para retirar textos duplicados) y **AD-F06** (revisión humana por muestreo). **IA-145** (20-nov-2026) añade del mismo modo
+  **AD-D11** (`review-retire-v1`, la comparación preregistrada para retirar `review-v2`, IA-125): su registro es `PROTOCOL` de
+  `fbi/ai/review_retirement.py` palabra por palabra más el control del paso `sample` (20 %, sal `review-v2-control-v1`), y una prueba
+  obliga a que sean iguales. Su firma no mueve `FBI_REVIEW_V2`: cada paso de la retirada sigue siendo un cambio de interruptor aparte.
 
 ## 2. Qué NO hace
 
@@ -65,6 +68,7 @@ firmado y, si no, su comando de firma). Códigos de salida: 0 hecho, 1 rechazado
 | `AD-F04` | `repeat-check-v1` | Coletillas y repeticiones de la crónica única: umbrales | 2026-11-17 | `17c942303fbc…` | `metrics.repetition.thresholds.signed` de cada crónica nueva (`repeat-check-v1`) |
 | `AD-F05` | `retire-compare-v1` | Retirada de los textos duplicados: la comparación preregistrada | 2026-11-17 | `1fbeadbddd16…` | `ia_chronicle_eval compare` (`rule.signed`) |
 | `AD-F06` | `chronicle-protocol-v1` | Evaluación factual de la crónica única: revisión humana por muestreo | 2026-11-17 | `33b296c7c385…` | `ia_chronicle_eval protocol`, `sample` y `score` |
+| `AD-D11` | `review-retire-v1` | Retirada de review-v2: comparación preregistrada de no inferioridad frente al cierre (IA-145) | 2026-11-17 | `0fdd2a7145b5…` | solo la consola C-11 y este comando |
 
 Comandos de firma (cambie `"..."` por su motivo, de 10 a 600 caracteres; quite `--confirm-owner` para la vista previa):
 
@@ -116,6 +120,9 @@ docker exec -w /app predigol-worker python -m scripts.ia_protocols sign --key AD
 
 # AD-F06 · Evaluación factual de la crónica única: revisión humana por muestreo
 docker exec -w /app predigol-worker python -m scripts.ia_protocols sign --key AD-F06 --fingerprint 33b296c7c3852187e5cb59b223bc752b9f36f997fdf9320b5f8beb4fbee8b47b --reason "..." --confirm-owner
+
+# AD-D11 · Retirada de review-v2: comparación preregistrada de no inferioridad frente al cierre (review-retire-v1, IA-145)
+docker exec -w /app predigol-worker python -m scripts.ia_protocols sign --key AD-D11 --fingerprint 0fdd2a7145b57fe9ed0d727cf171de14c496b3b21dc93c588f549daa6251b5c6 --reason "..." --confirm-owner
 ```
 
 Para AD-A03 y AD-C09, además, la firma propia que exige su medición:

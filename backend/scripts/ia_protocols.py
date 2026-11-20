@@ -5,8 +5,8 @@
     python -m scripts.ia_protocols sign --key AD-K02 --fingerprint <sha256> --reason "..."                   # preview (writes nothing)
     python -m scripts.ia_protocols sign --key AD-K02 --fingerprint <sha256> --reason "..." --confirm-owner   # THE OWNER'S ACTION
 
-The catalog is ``fbi.protosign.catalog``: the LAB protocols of ``fbi.research.protocol`` and the chronicle's own records (AD-F04, AD-F05,
-AD-F06). ``sign`` writes ONE row (``decided_by = 'owner'``) for the fingerprint the code has NOW: a fingerprint that is not the one in force
+The catalog is ``fbi.protosign.catalog``: the LAB protocols of ``fbi.research.protocol`` and the own records (the chronicle's AD-F04,
+AD-F05, AD-F06 and the retirement of ``review-v2``, AD-D11). ``sign`` writes ONE row (``decided_by = 'owner'``) for the fingerprint the code has NOW: a fingerprint that is not the one in force
 is refused (the protocol changed, or it was copied wrong - look again with ``show``), and a fingerprint already signed writes nothing twice
 and says which row signs it. Without ``--confirm-owner`` (or with ``--dry-run``) it is a preview on a read-only connection.
 
