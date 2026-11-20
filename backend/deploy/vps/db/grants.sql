@@ -132,6 +132,21 @@ BEGIN
 END
 $availability$;
 
+-- The market's margin and dispersion by competition, market and day (plan PM, PM-05-07, migration 0170). The loop above already gives the
+-- API SELECT (the console reads it) and the worker everything; here it is narrowed to what the nightly batch does:
+--   market.league_daily_stats   the worker writes and rewrites a day's rows (INSERT, UPDATE: late prices measure a day again); it never deletes one.
+DO $league_daily$
+BEGIN
+  IF to_regclass('market.league_daily_stats') IS NULL THEN
+    RAISE NOTICE 'grants: market.league_daily_stats does not exist (yet) - skipped';
+  ELSE
+    GRANT SELECT, INSERT, UPDATE ON market.league_daily_stats TO predigol_worker;
+    REVOKE DELETE, TRUNCATE ON market.league_daily_stats FROM predigol_worker;
+    REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON market.league_daily_stats FROM predigol_api;
+  END IF;
+END
+$league_daily$;
+
 -- The API's writes.
 GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO predigol_api;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO predigol_api;

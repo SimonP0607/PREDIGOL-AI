@@ -28,7 +28,8 @@
     "rateThin": "{subject}: {k} of {n} matches. Small sample: not a trend.",
     "mean": "{subject}: {value} per match over {n} matches.",
     "meanLeague": "{subject}: {value} per match over {n} matches; in the league, {league}.",
-    "meanThin": "{subject}: {value} per match over only {n} matches. Small sample: not a trend."
+    "meanThin": "{subject}: {value} per match over only {n} matches. Small sample: not a trend.",
+    "match": "{subject}: what happened in this match ({n} match; {source}). A description, not a trend."
   },
   "check": {
     "contraste": "Contrast: text at 4.5:1 and marks at 3:1 on their ground",
