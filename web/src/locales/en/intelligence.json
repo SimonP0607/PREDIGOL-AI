@@ -48,6 +48,7 @@
   "entity": {
     "club": "Club",
     "nation": "National team",
-    "player": "Player"
+    "player": "Player",
+    "competition": "Competition"
   }
 }

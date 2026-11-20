@@ -56,6 +56,7 @@ import type { Category } from "./facets";
 import {
   AppliedFilters,
   CompetitionPicker,
+  DirectoryLink,
   DayNav,
   FacetPicker,
   SearchBox,
@@ -642,6 +643,7 @@ export function MatchesPage() {
 
       {view.status === "live" && view.day === today && counts.live > 0 ? <LiveBoardLink /> : null}
       {body}
+      <DirectoryLink />
     </div>
   );
 }

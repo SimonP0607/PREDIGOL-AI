@@ -2,6 +2,8 @@
   "clubTitle": "Club",
   "nationTitle": "Selección",
   "playerTitle": "Jugador",
+  "competitionTitle": "Competición",
+  "competitionsTitle": "Competiciones",
   "closed": "Los perfiles todavía no están abiertos.",
   "tabsLabel": "Secciones del perfil",
   "tabs": {

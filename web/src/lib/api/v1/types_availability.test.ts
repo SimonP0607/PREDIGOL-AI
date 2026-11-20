@@ -30,11 +30,16 @@ describe("C-16 types", () => {
 
   test("1.1.0: a season carries its phases and a match the phase that graded it (PM-02-07)", () => {
     const comp = competitionExample as unknown as Availability;
-    expect(comp.contract_version).toBe("1.1.0");
+    expect(comp.contract_version).toBe("1.2.0");
     const phases = comp.competitions[0]?.seasons[0]?.phases ?? [];
     expect(phases.map((p) => p.phase)).toEqual(["previa", "liga_o_grupos"]);
     expect(phases[0]?.data.find((c) => c.key === "corners")?.level).toBe("C");
     expect((pub.match as MatchAvailability).phase).toBe("todas");
+  });
+
+  test("1.2.0: each competition carries its editorial priority (PM-09-05)", () => {
+    const comp = competitionExample as unknown as Availability;
+    expect(comp.competitions[0]?.priority).toBe("P1");
   });
 
   test("the private changes route carries the changes and the discrepancies", () => {

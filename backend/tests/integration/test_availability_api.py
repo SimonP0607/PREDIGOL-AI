@@ -81,9 +81,11 @@ def test_on_the_five_routes_answer(graded: tuple[int, int], db: psycopg.Connecti
     directory = reader.get(PUBLIC[0])
     assert directory.status_code == 200, directory.text
     data = directory.json()["data"]
-    assert (data["contract"], data["contract_version"], data["projection"], data["scope"]) == ("C-16", "1.1.0", "public", "directorio")
+    assert (data["contract"], data["contract_version"], data["projection"], data["scope"]) == ("C-16", "1.2.0", "public", "directorio")
     assert [c["competition_id"] for c in data["competitions"]] == [competition]
     assert data["competitions"][0]["seasons"] == []
+    # 1.2.0 (UX-179): the editorial priority of annex A; a league the file does not list says so
+    assert data["competitions"][0]["priority"] == {"missing_reason": "sin_datos"}
     one = reader.get(concrete(PUBLIC[1], competition, fixture)).json()["data"]
     cells = {c["key"]: c for c in one["competitions"][0]["seasons"][0]["data"]}
     assert cells["events"]["level"] == "B" and cells["events"]["n"] == 12 and "measured_level" not in cells["events"]
