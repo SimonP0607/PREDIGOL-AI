@@ -18,9 +18,12 @@ import { DistributionRow } from "@/components/analytics/stats/PositionDistributi
 import { LastFive, MinutesBars } from "@/components/analytics/stats/SmallCharts";
 import { figName } from "@/components/analytics/stats/format";
 import { StatsFooter } from "./TeamStatsHub";
+import { usePmReaderSwitches } from "@/lib/auth/AuthProvider";
+import { PlayerExtras } from "./PlayerExtras";
 
 export function PlayerStatsHub({ playerId }: { playerId: string }) {
   const q = useQuery(live.playerStats(playerId));
+  const { playerExtras } = usePmReaderSwitches();
   const [metric, setMetric] = useState<string | null>(null);
   if (q.isPending) return <SkeletonCards count={2} />;
   if (q.isError)
@@ -96,6 +99,12 @@ export function PlayerStatsHub({ playerId }: { playerId: string }) {
         )}
         <StatsFooter entity={entity} />
       </div>
+      {/* plan PM, PM-08-06 (UX-180): the goalkeeper's and every player's new data, behind FBI_PLAYER_PROFILE_EXTRAS */}
+      {playerExtras ? (
+        <div className="lg:col-span-2">
+          <PlayerExtras entity={entity} body={body} />
+        </div>
+      ) : null}
     </div>
   );
 }
