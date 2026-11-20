@@ -28,6 +28,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from fbi.stats import data as sd
+from fbi.stats import extras as px
 from fbi.stats import player as sp
 from fbi.stats import team as st
 
@@ -102,14 +103,15 @@ def league_doc(data: sd.SeasonData, refs: Mapping[str, st.LeagueRef], run_id: in
     }
 
 
-def season_rows(data: sd.SeasonData, run_id: int | None, at: datetime) -> list[dict[str, Any]]:
-    """Every row one competition season writes."""
-    docs, refs, _ = st.season_documents(data)
+def season_rows(data: sd.SeasonData, run_id: int | None, at: datetime, *, extras: bool = False,
+                goals_prevented: bool = False) -> list[dict[str, Any]]:
+    """Every row one competition season writes. ``extras`` / ``goals_prevented``: ``fbi.stats.extras`` (PM-05-05)."""
+    docs, refs, _ = st.season_documents(data, extras=extras, goals_prevented=goals_prevented)
     rows: list[dict[str, Any]] = []
     for d in docs:
         rows.append({"kind": "team", "entity": d.team_id, "cs": data.season.id, "scope": d.scope, "context": d.context,
                      "version": st.CALC_VERSION, "sample": d.sample, "doc": as_json(d.body), "at": at})
-    for p in sp.season_documents(data):
+    for p in sp.season_documents(data, extras=extras):
         rows.append({"kind": "player", "entity": p.player_id, "cs": data.season.id, "scope": "season", "context": "all",
                      "version": sp.CALC_VERSION, "sample": p.sample, "doc": as_json(p.body), "at": at})
     rows.append({"kind": "league", "entity": data.season.id, "cs": data.season.id, "scope": "season", "context": "all",
@@ -117,8 +119,9 @@ def season_rows(data: sd.SeasonData, run_id: int | None, at: datetime) -> list[d
     return rows
 
 
-def write_season(conn: psycopg.Connection[Any], data: sd.SeasonData, run_id: int | None, at: datetime) -> int:
-    rows = season_rows(data, run_id, at)
+def write_season(conn: psycopg.Connection[Any], data: sd.SeasonData, run_id: int | None, at: datetime, *, extras: bool = False,
+                 goals_prevented: bool = False) -> int:
+    rows = season_rows(data, run_id, at, extras=extras, goals_prevented=goals_prevented)
     with conn.transaction(), conn.cursor() as cur:
         cur.executemany(UPSERT_SQL, rows)
         cur.execute(PRUNE_SQL, {"cs": data.season.id, "at": at})
@@ -138,6 +141,7 @@ def run_pass(conn: psycopg.Connection[Any], *, now: datetime, code_version: str 
                            (CALC_VERSION, code_version)).fetchone()
         run_id = int(row[0]) if row else None
         conn.commit()
+        with_extras, with_gp = px.extras_on(), px.goals_prevented_on()
         for season in sd.seasons(conn, min_matches=MIN_MATCHES):
             if only is not None and season.id not in only:
                 continue
@@ -145,8 +149,12 @@ def run_pass(conn: psycopg.Connection[Any], *, now: datetime, code_version: str 
                 report.stopped = "tiempo_maximo"
                 break
             try:
-                data = sd.load_season(conn, season)
-                report.documents += write_season(conn, data, run_id, now)
+                if with_extras:  # PM-05-05; off, the calls are exactly the ones of before
+                    data = sd.load_season(conn, season, extras=True)
+                    report.documents += write_season(conn, data, run_id, now, extras=True, goals_prevented=with_gp)
+                else:
+                    data = sd.load_season(conn, season)
+                    report.documents += write_season(conn, data, run_id, now)
                 # The reads above open the connection's transaction, so write_season's block is a savepoint: commit here, one season
                 # at a time, so that a pass never holds one long write transaction (and a failure keeps the seasons already done).
                 conn.commit()

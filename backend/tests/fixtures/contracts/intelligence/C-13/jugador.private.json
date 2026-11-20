@@ -1,6 +1,6 @@
 {
   "contract": "C-13",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "private",
   "freshness": {
     "generated_at": "2034-03-01T12:00:00Z",
@@ -427,6 +427,55 @@
             "fixture_id": 6,
             "minutes": 90,
             "starter": true
+          }
+        ],
+        "provider_extras": [
+          {
+            "key": "offsides",
+            "unit": "por_90",
+            "better": "menos",
+            "value": 0.412,
+            "matches_with_data": 11,
+            "coverage": 0.9412,
+            "origin": "api_football"
+          },
+          {
+            "key": "dribbled_past",
+            "unit": "por_90",
+            "better": "menos",
+            "value": 0.9,
+            "matches_with_data": 11,
+            "coverage": 0.9412,
+            "origin": "api_football"
+          },
+          {
+            "key": "penalties_won",
+            "unit": "total",
+            "better": "mas",
+            "value": 1.0,
+            "matches_with_data": 11,
+            "coverage": 0.9412,
+            "origin": "api_football"
+          },
+          {
+            "key": "penalties_committed",
+            "unit": "total",
+            "better": "menos",
+            "value": 0.0,
+            "matches_with_data": 11,
+            "coverage": 0.9412,
+            "origin": "api_football"
+          },
+          {
+            "key": "penalties_saved",
+            "unit": "total",
+            "better": "mas",
+            "value": {
+              "missing_reason": "sin_cobertura"
+            },
+            "matches_with_data": 4,
+            "coverage": 0.3529,
+            "origin": "api_football"
           }
         ]
       },

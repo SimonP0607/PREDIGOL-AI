@@ -1,6 +1,8 @@
 /**
  * C-13 «Perfil estadístico» and C-14 «Probabilidades por mercado» (plan EA; backend `fbi.api.contracts.intelligence.
  * stats_profile` and `market_probs`). Precomputed history and sealed probabilities: the page draws, it never recomputes.
+ * C-13 1.1.0 (plan PM, PM-05-05): `provider_extras` of a team and a player - figures as API-Football measured them («dato de
+ * API-Football»), empty while `FBI_STATS_PROVIDER_EXTRAS` is off. No component reads them yet.
  */
 import type { ContractHead, ItemList, Maybe, MarketState, Probability } from "./types_intelligence";
 
@@ -43,6 +45,18 @@ export interface StatFigure {
   percentile: Maybe<number>;
   league_value: Maybe<number>;
   distribution: Maybe<Quantiles>;
+}
+
+/** C-13 1.1.0: a figure as the provider measured it (no percentile; labelled «dato de API-Football»). */
+export interface ProviderFigure {
+  key: string;
+  unit: "por_90" | "total" | "por_partido";
+  better: Better;
+  value: Maybe<number>;
+  matches_with_data: number;
+  /** Share of the competition season's appearances (team-matches) that report it; under 0.8 the value is «sin_cobertura». */
+  coverage: number;
+  origin: "api_football";
 }
 
 export interface TeamRecord {
@@ -182,6 +196,8 @@ export interface TeamBody {
   survival: Maybe<Survival>;
   trends: ItemList<TrendRow>;
   matrix: Maybe<TrendColumn[]>;
+  /** 1.1.0 (always sent; optional so the documents built before it still type). */
+  provider_extras?: ProviderFigure[];
 }
 
 export interface StripItem {
@@ -205,6 +221,8 @@ export interface PlayerBody {
   figures: StatFigure[];
   last5: StripItem[];
   recent_minutes: { fixture_id: number; minutes: number; starter: boolean }[];
+  /** 1.1.0 (always sent; optional so the documents built before it still type). */
+  provider_extras?: ProviderFigure[];
 }
 
 export interface ScatterPoint {

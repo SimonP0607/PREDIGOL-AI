@@ -29,6 +29,7 @@ from fbi.market.rules import RULES_BY_MEASURE
 from fbi.picks.count_settlement import count_outcome
 from fbi.picks.settlement import Status
 from fbi.statmath import formulas as fx
+from fbi.stats import extras as px
 from fbi.stats.data import Event, Match, SeasonData
 from fbi.stats.doc import (
     Doc,
@@ -626,9 +627,14 @@ def _radar(figures: list[Doc], pcts: dict[str, int]) -> list[Doc]:
     return out
 
 
-def season_documents(data: SeasonData) -> tuple[list[TeamDoc], dict[str, LeagueRef], list[Doc]]:
-    """Every team's body for every available scope and context, and the league's references."""
+def season_documents(data: SeasonData, *, extras: bool = False,
+                     goals_prevented: bool = False) -> tuple[list[TeamDoc], dict[str, LeagueRef], list[Doc]]:
+    """Every team's body for every available scope and context, and the league's references. ``extras`` / ``goals_prevented``
+    (``FBI_STATS_PROVIDER_EXTRAS`` / ``FBI_STATS_GOALS_PREVENTED``, PM-05-05): each body also carries ``provider_extras``."""
     by_team = team_rows(data)
+    every_row = [r for rows in by_team.values() for r in rows]
+    extra_cover = ({e.key: (sum(1 for r in every_row if r.ts(e.column) is not None) / len(every_row)) if every_row else 0.0
+                    for e in px.team_extras(goals_prevented)} if extras else {})
     refs = {c: league_ref([r for rows in by_team.values() for r in in_context(rows, c)]) for c in CONTEXTS}
     surv = league_survival(data)
     every = [r for rows in by_team.values() for r in rows]
@@ -650,8 +656,12 @@ def season_documents(data: SeasonData) -> tuple[list[TeamDoc], dict[str, LeagueR
             for team_id, rows in chosen.items():
                 if not rows:
                     continue
-                docs.append(TeamDoc(team_id, scope, context, team_body(team_id, rows, population, ref, surv, scope, context,
-                                                                       trend_refs), len(rows)))
+                body = team_body(team_id, rows, population, ref, surv, scope, context, trend_refs)
+                if extras:
+                    body["provider_extras"] = px.team_figures({e.column: [r.ts(e.column) for r in rows]
+                                                               for e in px.team_extras(goals_prevented)},
+                                                              extra_cover, with_goals_prevented=goals_prevented)
+                docs.append(TeamDoc(team_id, scope, context, body, len(rows)))
     return docs, refs, surv
 
 
