@@ -1,0 +1,58 @@
+{
+  "contract": "C-16",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T08:04:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "rules_version": "coverage-levels-v1",
+  "scope": "cambios",
+  "competitions": [],
+  "match": {
+    "missing_reason": "sin_datos"
+  },
+  "changes": {
+    "items": [
+      {
+        "competition_season_id": 901,
+        "phase": "todas",
+        "kind": "market",
+        "key": "cards",
+        "old_level": "A",
+        "new_level": "B",
+        "reason": "baja",
+        "n": 46,
+        "changed_at": "2026-11-21T08:04:00Z"
+      },
+      {
+        "competition_season_id": 901,
+        "phase": "todas",
+        "kind": "datum",
+        "key": "xg",
+        "old_level": {
+          "missing_reason": "sin_datos"
+        },
+        "new_level": "D",
+        "reason": "primera_medida",
+        "n": 120,
+        "changed_at": "2026-11-21T08:04:00Z"
+      }
+    ]
+  },
+  "discrepancies": {
+    "items": [
+      {
+        "day": "2026-11-21",
+        "fixture_id": 5000001,
+        "module": "mercados",
+        "key": "total_shotongoal.FT.match",
+        "shown": true,
+        "matrix": false,
+        "reason": "sin_cobertura",
+        "observed_at": "2026-11-21T08:04:00Z"
+      }
+    ]
+  }
+}

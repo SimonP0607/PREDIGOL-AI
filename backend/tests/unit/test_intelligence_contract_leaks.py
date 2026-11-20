@@ -98,7 +98,7 @@ def test_every_contract_class_is_registered_once() -> None:
 
 
 def test_the_catalogue_keeps_private_routes_under_admin() -> None:
-    assert len(CATALOGUE) == 15  # C-00, the twelve of the plan, C-13 and C-14 of plan EA
+    assert len(CATALOGUE) == 16  # C-00, the twelve of the plan, C-13 and C-14 of plan EA, C-16 of plan PM (C-15 reserved by EA)
     for contract, planned in CATALOGUE.items():
         assert all(r.startswith("/api/v1/admin/") for r in planned.private), contract
         assert all(r.startswith("/api/v1/") and not r.startswith("/api/v1/admin/") for r in planned.public), contract

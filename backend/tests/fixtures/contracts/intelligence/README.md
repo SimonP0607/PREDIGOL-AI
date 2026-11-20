@@ -64,3 +64,7 @@ Al añadir un contrato: su carpeta con al menos un caso, una fila aquí y su lí
 | C-08 | `sin_evaluaciones` | Una base sin la tabla de evaluaciones: `selections`, `calibration` y `board` `sin_datos` |
 | C-12 Inicio | `sin_publicados` | 0 publicados (lo de hoy): `{"items": [], "missing_reason": "sin_publicados"}` con la regla `featured-v1` |
 | C-12 | `destacados` | Tres candidatos, dos con una selección publicada (resumen de su C-01 público): primero el del equipo favorito, luego el de la competición seguida; el que no tiene nada publicado nunca entra |
+| C-16 Disponibilidad (plan PM) | `directorio` | Una competición ficticia con su resumen (A) y sus siete familias de la temporada más reciente; sin temporadas en el directorio |
+| C-16 | `competicion` | La misma competición con dos temporadas y cada celda: nivel, muestra, porcentaje, provisional, motivo y fecha; en la privada, lo medido, el primer incumplimiento, las ediciones agregadas y la bandera del proveedor |
+| C-16 | `partido` | Bloques y mercados de un partido con sus siete estados; en la privada, el veredicto de Mi parlay de cada selección (`quarter_line`, `outlier_price`, `invalid_selection`) y el estado del catálogo |
+| C-16 | `cambios` | Solo privada en contenido: dos cambios de nivel (`baja`, `primera_medida`) y una discrepancia de la sombra; la pública lleva solo la cabecera |
