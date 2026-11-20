@@ -83,5 +83,22 @@
     "cardsLegend": "«A» es amarilla y «R», roja.",
     "teamFormation": "{team} · {formation}",
     "method": "Cada titular está en la casilla que declara el acta del partido (la formación), no donde jugó. La capa elegida pone en su marca una cifra de su partido tal como la entrega el proveedor: la valoración (de 1 a 10), los minutos, la tarjeta o los goles y asistencias. Los suplentes no tienen casilla en la formación."
+  },
+  "coverage": {
+    "facts": "Hechos del acta",
+    "factsNote": "Sale de los eventos del partido.",
+    "fact": {
+      "goals": "Goles",
+      "yellow": "Tarjetas amarillas",
+      "red": "Tarjetas rojas",
+      "subs": "Cambios"
+    },
+    "subject": {
+      "lineups": "alineaciones",
+      "team_stats": "estadísticas de partido",
+      "player_stats": "estadísticas por jugador",
+      "events": "minuto de los goles"
+    },
+    "markets": "cuotas principales"
   }
 }

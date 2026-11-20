@@ -108,6 +108,8 @@ export interface Me {
   what_if?: boolean;
   /** The data layers of the line-up pitch (plan PM, PM-10-04, lámina I02; FBI_LINEUP_LAYERS, off by default). */
   lineup_layers?: boolean;
+  /** The Match Center adapted to the coverage of C-16: tabs and blocks by level (plan PM, PM-14-02; FBI_MATCH_COVERAGE, off). */
+  match_coverage?: boolean;
   /** The reader's settings of presentation (decision 8); absent from an API older than BE-039: today's defaults. */
   display?: Display;
 }
