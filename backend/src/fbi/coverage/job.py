@@ -73,6 +73,10 @@ ODDS_WINDOW_START: Final = date(2026, 10, 5)
 """PrediGol captures prices at scale since 4-5 Oct 2026 (plan PM, annex B): before it a missing price says nothing about the market."""
 BATCH: Final = 400
 MAX_SECONDS: Final = 15 * 60
+SHADOW_SECONDS: Final = 12 * 60
+"""The shadow comparison that follows the pass in the same process (PM-02-06, ``fbi.api.services.availability_shadow``)."""
+PROCESS_TIMEOUT: Final = MAX_SECONDS + SHADOW_SECONDS + 5 * 60
+"""How long the scheduler waits for the process before it stops it."""
 STATEMENT_TIMEOUT: Final = "120s"
 
 # ── what is measured ──────────────────────────────────────────────────────────────────────────────────────────────────

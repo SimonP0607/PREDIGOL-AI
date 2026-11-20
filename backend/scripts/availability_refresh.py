@@ -14,6 +14,11 @@ pass (07:20 UTC) and the ``fixtures_sync``. Before anything else the process:
   so a shortage costs this run, never the worker;
 * lowers its priority (``nice`` 10).
 
+After the pass, once a day while ``FBI_AVAILABILITY_SHADOW`` is on (the default), the same process runs the shadow comparison of PM-02-06
+(``fbi.api.services.availability_shadow``: what Mercados, Cuotas, the model's figure and the statistics show today against what the matrix
+would say, 500 matches still to be played, into ``analytics.availability_discrepancies``), with its own ledger row (``availability_shadow``).
+``--no-shadow`` skips it; ``--shadow-only`` runs only it.
+
 It records one row in the job ledger (``raw.ingestion_runs``, ``availability_refresh``) with what it did, how long it took and the peak
 of its memory (``params.memory_peak_mib``: the acceptance asks seven nights with duration and memory). Exit 0 when the pass ran (even
 stopped at its time budget: the next night goes on), 1 when it failed, 2 when the switch is off.
@@ -27,6 +32,8 @@ import os
 import resource
 import time
 from collections.abc import Sequence
+from datetime import datetime
+from typing import Any
 
 MIB = 1024 * 1024
 DEFAULT_CAP_MIB = 512
@@ -53,6 +60,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--only", type=int, action="append", help="a competition season (its competition is recalculated)")
     parser.add_argument("--max-memory-mib", type=int, default=DEFAULT_CAP_MIB)
     parser.add_argument("--scheduled", action="store_true", help="started by the worker's scheduler (recorded in the ledger)")
+    parser.add_argument("--no-shadow", action="store_true", help="skip the shadow comparison (PM-02-06) after the pass")
+    parser.add_argument("--shadow-only", action="store_true", help="only the shadow comparison (PM-02-06)")
     args = parser.parse_args(argv)
     cap_memory(args.max_memory_mib)
 
@@ -64,6 +73,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     from fbi.coverage import job
     from fbi.ingestion.ledger import RunCounters, RunLedger
 
+    if args.shadow_only:
+        with psycopg.connect(settings.database.psycopg_url, connect_timeout=10, application_name="availability_shadow") as conn:
+            shadow_phase(conn, at=now(), started=time.monotonic(), scheduled=args.scheduled)
+        return 0
     if job.mode() != "on":
         print(f"{job.SWITCH} is off: nothing is recalculated")
         return 2
@@ -94,7 +107,54 @@ def main(argv: Sequence[str] | None = None) -> int:
             conn.execute("UPDATE raw.ingestion_runs SET params = params || %s::jsonb WHERE id = %s", (Json(measured), run_id))
             conn.commit()
             print({"run_id": run_id, "status": counters.status, **measured})
+        if not args.no_shadow:
+            shadow_phase(conn, at=at, started=time.monotonic(), scheduled=args.scheduled)
     return 1 if counters.status == "failed" else 0
+
+
+SHADOW_DONE_SQL = ("SELECT 1 FROM raw.ingestion_runs WHERE job_type = %s AND status = 'completed' "
+                   "AND started_at >= date_trunc('day', %s::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' LIMIT 1")
+
+
+def shadow_phase(conn: Any, *, at: datetime, started: float, scheduled: bool) -> None:
+    """PM-02-06: the day's shadow comparison (``fbi.api.services.availability_shadow``), once a day, with its own ledger row."""
+    import psycopg
+    from psycopg.types.json import Json
+
+    from fbi.core.version import code_version
+    from fbi.coverage import shadow
+    from fbi.ingestion.ledger import RunCounters, RunLedger
+
+    if shadow.mode() != "on":
+        return
+    db = conn
+    if db.execute(SHADOW_DONE_SQL, (shadow.JOB, at)).fetchone() is not None:
+        db.commit()
+        return
+    db.commit()
+    from fbi.api.services import availability_shadow
+
+    ledger = RunLedger(db)
+    run_id = ledger.open(shadow.JOB, params={"scheduled": scheduled, "sample": shadow.SAMPLE})
+    counters = RunCounters()
+    report = None
+    try:
+        report = availability_shadow.run(db, at=at, code_version=code_version())
+        counters.rows_inserted = report.written
+        counters.rows_normalized = report.matches
+        if report.stopped:
+            counters.stopped_early = report.stopped
+    except Exception as exc:
+        counters.errors.append(f"{type(exc).__name__}: {exc}"[:300])
+    finally:
+        if db.info.transaction_status != psycopg.pq.TransactionStatus.IDLE:
+            db.rollback()
+        ledger.close(run_id, counters)
+        measured = {"memory_peak_mib": peak_mib(), "seconds": round(time.monotonic() - started, 1),
+                    "report": None if report is None else report.as_json()}
+        db.execute("UPDATE raw.ingestion_runs SET params = params || %s::jsonb WHERE id = %s", (Json(measured), run_id))
+        db.commit()
+        print({"run_id": run_id, "job": shadow.JOB, "status": counters.status, **measured})
 
 
 if __name__ == "__main__":
