@@ -36,6 +36,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | OPS-006 | Worker estable: `fixtures_sync` sin reescribir filas iguales (plan AD-A05) | desplegado (en producción desde su fusión; comprobado el 18-nov-2026 en la cadena `20261117T2254Z-auto-668947e`: backend `50af17809dc1`, migración 0166) | #340 | — |
 | OPS-007 | Foto de producción del 19-nov-2026 (PM-00-02, Plan Maestro PM, ola 0): 138 competiciones seguidas (83 ligas y 55 copas) leídas en solo lectura; `backend/config/rules/coverage.yaml` añade las dos que faltaban (240 Primera B de Colombia y 299 Primera División de Venezuela, lote 3) como no codificadas y fecha la foto; pruebas de cobertura a 83 ligas; guía `backend/docs/owner/PM_00_02_FOTO_COMPETICIONES_E_INTERRUPTORES.md` (también zona horaria del servidor y horas reales de copia). Los valores de los interruptores no se publican | en curso | este PR | PM-00-02 |
 | OPS-008 | Aviso de vencimiento de la suscripción de API-Football (PM-01-01, decisión DM-01): la comprobación de salud abre `provider.subscription` SEV2 cuando faltan menos de 10 días para `subscription.end` de `GET /status` y SEV1 si ya venció o no está activa, por el canal de avisos existente (un mensaje al abrir, sin repetir); el worker lee `/status` como mucho cada 6 h (`scripts/provider_subscription.py`, sin datos de la cuenta). Interruptor `PREDIGOL_PROVIDER_SUB_ALERT=0` en `predigol.env` | en curso | este PR | PM-01-01 |
+| OPS-010 | Memoria del worker por trabajo (Plan Maestro PM, ola 1: PM-13-05) y guías de tres mediciones de solo lectura (PM-07-01, PM-08-01, PM-11-05): `fbi.ops.memwatch` lee cada 5 s la memoria residente del propio worker y, por cada ejecución de un trabajo de APScheduler y de cada ejecución del libro, anota memoria al empezar, al terminar, la mayor, cuánto subió el máximo histórico del proceso y los solapes (línea `job.memory` y `raw.ingestion_runs.params._mem`); sin tabla, sin migración ni permisos nuevos, sin subir límites; `FBI_WORKER_MEMWATCH=0` lo apaga. Guías `PM_13_05_MEMORIA_DEL_WORKER.md` (lectura del día 7 y regla de qué sale a procesos por lotes), `PM_07_01_ESTADIOS_COORDENADAS_ALTITUD.md` (0 de 7.161 estadios con coordenadas: la carga de AD-H04 nunca se ejecutó), `PM_08_01_ARBITRO_COBERTURA_Y_ANTELACION.md` y `PM_11_05_SALIDAS_INVALIDAS_DE_CLAUDE.md` | en curso | este PR | PM-13-05, PM-07-01, PM-08-01, PM-11-05 |
 | SEG-002 | Llave de solo lectura para las auditorías del plan PICKS (F1, F2, F6): orden forzada `predigol-audits` (`backend/deploy/release/templates/gate/`) que solo deja lanzar `audit_picks_module`, `audit_settlement` y `research_picks_calibration` con sus opciones numéricas acotadas, dentro del worker y con su conexión `READ ONLY`; rechaza consola, otros scripts, metacaracteres y opciones ajenas, y registra cada llamada en `/var/log/predigol-audits.log`. Pasos para instalarla y quitarla en `PICKS_LINEA_BASE.md`. Suite `test_audits_gate.sh` (37 comprobaciones). No toca la llave de root ni la del despliegue; sin migración | en curso | este PR | Plan PICKS F1, F2, F6 |
 
 ## IA — capa de inteligencia artificial
@@ -410,8 +411,8 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-173 · BE-051 · FE-004 · OPS-009 · DOC-006
+CI-020 · SEG-003 · UX-173 · BE-055 · FE-004 · OPS-011 · DOC-008
 
-IA-145
+IA-146
 
 (El número de IA va en su propia línea desde el 10-nov-2026: así un PR de IA, que tarda en pasar el CI del backend, no choca con la línea común cada vez que se fusiona un PR de otra área.)
