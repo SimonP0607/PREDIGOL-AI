@@ -93,8 +93,9 @@ export interface SeasonAvailability<
   families: FamilyLevel[];
   data: D[];
   markets: M[];
-  /** 1.1.0: empty for a league, a cup in one phase, or while `FBI_AVAILABILITY_PHASES` is off. */
-  phases: PhaseAvailability<D>[];
+  /** 1.1.0 (always sent; optional so code typed against 1.0.0 still compiles): empty for a league, a cup in one phase, or while
+   * `FBI_AVAILABILITY_PHASES` is off. */
+  phases?: PhaseAvailability<D>[];
 }
 
 export interface CompetitionAvailability<S extends SeasonAvailability = SeasonAvailability> {
@@ -154,8 +155,9 @@ export interface MatchAvailability<M extends MarketAvailability = MarketAvailabi
   fixture_id: number;
   kickoff_at: string;
   competition_season_id: Maybe<number>;
-  /** 1.1.0: the phase whose cells graded the blocks («todas» unless a cup match's phase was measured and the switch is on). */
-  phase: "todas" | CupPhase;
+  /** 1.1.0 (always sent; optional so code typed against 1.0.0 still compiles): the phase whose cells graded the blocks («todas»
+   * unless a cup match's phase was measured and the switch is on). */
+  phase?: "todas" | CupPhase;
   blocks: BlockAvailability[];
   markets: M[];
   notes: "muestra_insuficiente"[];
