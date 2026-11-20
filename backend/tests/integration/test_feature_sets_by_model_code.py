@@ -12,6 +12,7 @@ from datetime import timedelta
 import psycopg
 import pytest
 
+from fbi.core.version import model_code_version
 from fbi.picks import feature_code
 from fbi.predictions.forecast import forecast_upcoming
 from tests.integration.helpers import scalar
@@ -36,7 +37,7 @@ def test_a_new_commit_with_the_same_model_code_writes_no_feature_set_and_the_lin
 
     # the next deploy: another commit, the same model code
     second = feature_code.forecast_code_version(db, "commit-bbbb")
-    assert second == first == feature_code.first_commit_of(db, feature_code.model_code_version()), (
+    assert second == first == feature_code.first_commit_of(db, model_code_version()), (
         "the commit named is the first one that ran the model code in force, whatever commit is deployed"
     )
     again = forecast_upcoming(db, at=AT + timedelta(hours=1), code_version=second)
