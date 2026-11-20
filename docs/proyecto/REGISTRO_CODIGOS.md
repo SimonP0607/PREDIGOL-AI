@@ -405,13 +405,14 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | DOC-003 | BE-050 en el registro de códigos | solo documentación | #395 | — |
 | DOC-004 | Plan Maestro PM de innovación, cobertura mundial y aprovechamiento de recursos 2026–2027 (PM-00-01, ola 0): el plan aprobado por el dueño el 19-nov-2026 en `docs/proyecto/PLAN_MAESTRO_INNOVACION_COBERTURA_2026.md` y sus anexos ligeros E y G en `docs/proyecto/plan_maestro_pm_2026/`; sin datos de la auditoría de seguridad ni enlaces privados. Las reservas de zona por bloque van en el documento de coordinación del proyecto | solo documentación | #396 | PM-00-01 |
 | DOC-005 | Paquete de firma de `review-retire-v1` y calendario de retiradas de OP-01 (PM-13-01, decisión DM-10): aprobación escrita del dueño del 19-nov-2026 registrada con fecha, huella SHA-256 del protocolo, procedimiento de firma de IA-143 y el paso único que queda (AD-D11 aún no es firmable: lo registra la sesión de Intelligence); no retira nada | solo documentación | este PR | PM-13-01 |
+| DOC-006 | Documentos y comentarios que contradecían al código o a lo medido (PM-00-03, Plan Maestro PM, ola 1): la sección 15 del plan PM deja cada contradicción «resuelta con fuente», «decisión del dueño» o «en curso» con su tarea; `backend/config/competitions.yaml` lleva la cabecera «archivado, no aplicar» (138 competiciones seguidas el 19-nov-2026); `backend/config/api_plans.yaml` toma los precios de la página viva del 19-nov-2026 (Free 0, Pro 16, Ultra 26, Mega 36 USD) con su fecha y su fuente y anota la discrepancia abierta con los 29 USD de Ultra (DM-09); el reglamento vigente de la Liga BetPlay es la V0 del 14-ene-2026; las horas de `fixtures_sync` no son fijas y se leen antes de cada despliegue; las mitades (`half=true`) confirmadas en 5 competiciones el 19-nov y medidas por competición en PM-01-05; correcciones al texto del plan EA en `ESTADISTICAS_AVANZADAS_EA.md` y notas fechadas en las guías antiguas. No cambia ningún comportamiento (los precios de `api_plans.yaml` solo los lee el informe de capacidad de `scripts.migration`, cuya recomendación no cambia) | solo documentación y configuración de referencia | este PR | PM-00-03 |
 
 Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identifica por su fase: F11 (familias), S1 a S4 (seguridad), UX A1 y siguientes.
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-173 · BE-051 · FE-004 · OPS-009 · DOC-006
+CI-020 · SEG-003 · UX-173 · BE-055 · FE-004 · OPS-011 · DOC-008
 
-IA-145
+IA-146
 
 (El número de IA va en su propia línea desde el 10-nov-2026: así un PR de IA, que tarda en pasar el CI del backend, no choca con la línea común cada vez que se fusiona un PR de otra área.)

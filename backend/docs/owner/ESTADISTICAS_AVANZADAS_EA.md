@@ -47,3 +47,22 @@ Segunda sonda (19-nov, 30 días, 6 000 respuestas de cuotas, 788 partidos): los 
 
 - La matriz de tendencias viaja en C-13 (no en C-14); C-04 2.0 no hizo falta; comparación y previa son composiciones de C-13.
 - EA-307 (cifra forecast-v2 por mercado) se entrega como `model_shadow` privado de C-14, sin guardar una familia nueva.
+
+## Correcciones al texto del plan EA (20-nov-2026, PM-00-03)
+
+El plan EA vive en el proyecto y no se reescribe; lo que sigue corrige tres afirmaciones suyas que el código o la medición
+contradicen. Manda esto.
+
+- **Mitades.** El plan dice que el proveedor «no da» córners por mitad. No es así: `fixtures/statistics` acepta `half=true` (blog
+  oficial de API-Football y contrato 3.9.3; anotado en `fbi/providers/api_football/integration.py`), y una sonda del 19-nov-2026
+  devolvió córners, tarjetas y tiros por mitad en Champions League, Premier League, Primera A de Colombia, Segunda División de
+  España y Nations League, y nada en Primera B de Colombia, National League e Isthmian League. **Confirmado en 5 competiciones el
+  19-nov; medición por competición en curso (PM-01-05).** Hoy PrediGol no lo pide, así que las reglas `corners_1h` y `corners_2h`
+  siguen sin poder liquidar (`no_period_data`) y su nota dice «never by half»: esa nota es dato servido y se cambia con la regla
+  nueva de PM-05-03 (una convención nueva es una versión nueva de la regla), no a mano.
+- **Tablas.** El plan describía `stats.team_aggregates`, `stats.team_event_series`, `stats.player_aggregates` y
+  `stats.team_trends`. Lo construido es una tabla de documentos, `analytics.stat_documents` (con `analytics.stat_runs`, migración
+  0167), descrita arriba.
+- **`tax-v3`.** El plan reservaba el nombre para la taxonomía de cuotas de jugador (EA-301, bloqueada). Ese nombre ya lo usa el
+  libro vigente (`fbi/odds/book_taxonomy.py`), mientras la historia sigue en `tax-v2` (`fbi/odds/quote_taxonomy.py`): una
+  ampliación de mercados de jugador necesitará otro nombre.

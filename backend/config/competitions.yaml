@@ -1,12 +1,24 @@
-# WARNING (BE-002, 5 Nov 2026): STALE. This is the Free-plan pilot of Sep 2026. Production tracks ~130
-# competitions set by the selection (config/migration.yaml) and the expansion batches (config/expansion.yaml,
-# scripts.expand_leagues). `manage_competitions apply` with this file would switch all of them off but two, so it
-# refuses to switch off more than 5 without --allow-mass-disable. Do not apply it.
+# ARCHIVED - DO NOT APPLY (archivado, no aplicar). PM-00-03, 20 Nov 2026.
 #
-# Which competitions the platform ingests. THE single source of truth for
-# activation. Nothing in the domain, the scheduler or the provider package
+# This is the Free-plan pilot of Sep 2026 (two leagues), kept as a record of how the pilot was sized. It is NOT the list
+# production follows and it is not the source of truth for anything. On 19 Nov 2026 22:07 UTC production tracked 138
+# competitions (83 leagues and 55 cups; 165 loaded), read with
+#   SELECT count(*) FILTER (WHERE is_tracked) FROM core.competitions
+# (PM-00-02, OPS-007 #397; the dated list is config/rules/coverage.yaml). What production tracks is set in the database
+# (core.competitions.is_tracked) by the selection (config/migration.yaml) and the expansion batches (config/expansion.yaml,
+# scripts.expand_leagues). `manage_competitions apply` with this file would switch all of them off but two, so it refuses to
+# switch off more than 5 without --allow-mass-disable (BE-002, 5 Nov 2026). Do not apply it, and do not edit it to "fix" it:
+# a new list is a new batch in config/expansion.yaml.
+#
+# Everything below is the pilot's text as it was (Sep 2026). Its figures (Free plan, 100 requests a day, our cap of 60, a
+# 3-day horizon) describe that pilot, not today's account (Ultra since 29 Sep 2026; internal cap 60,000 a day in production).
+#
+# --- pilot text (Sep 2026) ---
+#
+# Which competitions the platform ingests. In the pilot this file was the single
+# source of truth for activation. Nothing in the domain, the scheduler or the provider package
 # hard-codes a league id; they all read core.competitions.is_tracked, and
-# this file is what sets it:
+# this file is what set it:
 #
 #   python -m scripts.manage_competitions apply
 #

@@ -134,7 +134,8 @@ plantilla vigente de cada equipo ya en la entrada de datos; es más trabajo y lo
 el contenido y confirma (`conn.commit()`) una vez por temporada. La de «Friendlies Clubs» (liga 667, 8.359 partidos) dura unos **27
 minutos** (≈ 0,19 s por partido) y mantiene abierta una transacción de escritura sobre `core.fixtures` y tablas relacionadas, **cuatro
 veces al día** (01:03, 07:03, 13:03 y 19:03 UTC; las transacciones quedan abiertas entre unos 24 y 51 minutos después de empezar, la de
-las 07:03 llegó hasta las 07:54). Hizo fallar el primer intento de migrar F5: la migración pidió un bloqueo y se rindió a los 10 segundos.
+las 07:03 llegó hasta las 07:54; *nota del 20-nov-2026, PM-00-03: horas de octubre, no son fijas y se leen en `raw.ingestion_runs` antes
+de cada despliegue, ver `CHECKLIST_POR_FASE_F14.md`*). Hizo fallar el primer intento de migrar F5: la migración pidió un bloqueo y se rindió a los 10 segundos.
 
 ### Lo que hacemos hoy
 
