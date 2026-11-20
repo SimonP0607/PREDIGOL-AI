@@ -395,6 +395,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | BE-048 | La pasada de estadísticas confirma cada temporada por separado (las lecturas abrían la transacción y todo quedaba en una sola hasta el final) e informe EA-008 de cobertura medido en producción (`src/fbi/stats/stats_coverage.json`, 125 temporadas) | desplegado (en producción el 18-nov-2026 con la cadena `20261118T2213Z-auto-f9739d4`, sin migración) | #389 | BE-047 |
 | BE-049 | Plan de estadísticas avanzadas, decisiones del 19-nov-2026: Mi parlay toma un mercado del catálogo solo si la temporada del partido registra lo que liquida su regla (≥ 80 % de los partidos terminados y ≥ 10; `fbi.market.settle_coverage`, motivo `sin_cobertura`, C-14 1.1.0); las cifras del modelo en «Probabilidades» en los mismos términos que la implícita y el histórico (`fbi.market.coherence`: pares con devolución, líneas de cuarto, doble oportunidad leída del 1X2 de la familia) | desplegado (en producción el 19-nov-2026 a las 05:38 UTC con la cadena `20261119T0415Z-auto-9099566`, sin migración; humo 0 y verificación con 0 líneas NOT OK) | #392 | BE-047 |
 | BE-050 | La pasada de estadísticas conserva el documento guardado cuando no cambió (su puntero TOAST) y solo mueve su hora: la tabla dejaba de caber en 500 MB al reescribir 89 562 documentos cada noche (472 → 537 MB). Tras desplegarlo, una pasada completa no la hace crecer y una compactación única (`VACUUM FULL`, 27 s) la dejó en 317 MB | desplegado (en producción el 19-nov-2026 a las 09:31 UTC con la cadena `20261119T0846Z-auto-2027ea1`, sin migración; humo 0 y verificación con 0 líneas NOT OK) | #394 | BE-048 |
+| BE-053 | Sondas de solo lectura de la cobertura real del proveedor (Plan Maestro PM, ola 1: PM-01-05 y PM-01-04; retoma el parche OPS-009 que no llegó a publicarse): `python -m scripts.coverage_probe half plan|run|report` pide una sola vez `/fixtures/statistics?half=true` de cada partido terminado de 12 competiciones de distinto nivel (saque del 20-oct al 26-nov-2026), con tope de 150 peticiones por ejecución y una ejecución al día del 20 al 26-nov, guarda las respuestas en RAW bajo la ejecución `half_probe` y da la tabla por competición y dato («construir» o «no construir», umbral 90 %); `coverage_probe odds` clasifica las 21 competiciones cuya bandera `odds` discrepa de la base (bandera falsa, no se pidió, no publica) con una página de `/odds` por competición y hasta tres partidos a menos de 48 h, 60 peticiones como mucho, sin guardar esas respuestas en RAW. No toca el worker, la ingesta ni ninguna tabla salvo el índice RAW y el registro de ejecuciones; guía `backend/docs/owner/PM_01_05_SONDA_MITADES_Y_CUOTAS.md` | solo guion y guía (sin trabajo programado ni migración) | este PR | PM-01-05, PM-01-04 |
 
 ## Otras áreas
 
@@ -410,8 +411,8 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-173 · BE-051 · FE-004 · OPS-009 · DOC-006
+CI-020 · SEG-003 · UX-173 · BE-055 · FE-004 · OPS-011 · DOC-008
 
-IA-145
+IA-146
 
 (El número de IA va en su propia línea desde el 10-nov-2026: así un PR de IA, que tarda en pasar el CI del backend, no choca con la línea común cada vez que se fusiona un PR de otra área.)

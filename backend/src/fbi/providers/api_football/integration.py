@@ -130,7 +130,10 @@ USES: dict[str, Use] = {
     "/fixtures/statistics": Use("COVERED", "medium", covered_by="/fixtures?ids= (statistics block, full match)",
                                 gaps=("half=true (first and second half statistics, from the 2024 season) is not "
                                       "requested: one request per match (~200 a day); the contract probe confirmed the "
-                                      "statistics_1h / statistics_2h blocks",)),
+                                      "statistics_1h / statistics_2h blocks",),
+                                notes="Before anything stores the halves (PM-05-01), scripts.coverage_probe half measures "
+                                      "them per competition for one week (PM-01-05): which matches answer both halves "
+                                      "and which types come empty."),
     "/fixtures/events": Use("COVERED", "high", covered_by="/fixtures?ids= (events block)"),
     "/fixtures/lineups": Use("COVERED", "high", covered_by="/fixtures?ids= (lineups block)"),
     "/fixtures/players": Use("COVERED", "medium", covered_by="/fixtures?ids= (players block)"),
