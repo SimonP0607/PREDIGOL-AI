@@ -19,7 +19,7 @@ import {
   THead,
   TRow,
 } from "@/components/primitives/DataTable";
-import { StatusBadge, type BadgeTone } from "@/components/primitives/StatusBadge";
+import { StatusBadge } from "@/components/primitives/StatusBadge";
 import {
   FilterBar,
   SearchFilter,
@@ -45,6 +45,7 @@ import { int } from "@/lib/format";
 import { localFixed } from "@/lib/i18n/format";
 import { utcDate, utcDateTime } from "@/live/format";
 import { PrivateBand } from "@/product/shared/intelligence/Pieces";
+import { LevelBadge } from "@/product/shared/CoverageLevel";
 import { UnavailableNotes } from "@/product/shared/Unavailable";
 import {
   AVAILABILITY_STEPS,
@@ -69,30 +70,8 @@ import {
   type PrivateCompetition,
 } from "./availabilityMatrix";
 
-const LEVEL_TONE: Record<CoverageLevel, BadgeTone> = {
-  A: "positive",
-  B: "brand",
-  C: "warning",
-  D: "negative",
-  MI: "neutral",
-};
-
-/** A level as a tag: its letter always written (the colour never says it alone) and its meaning for a screen reader and a tap. */
-export function LevelBadge({ level }: { level: CoverageLevel }) {
-  return (
-    <span title={t(`availability.level.${level}`)}>
-      <StatusBadge tone={LEVEL_TONE[level]} dot={false} className="numeric min-w-8 justify-center">
-        <span aria-hidden>{level}</span>
-        <span className="sr-only">
-          {t("availability.level.label", {
-            level,
-            meaning: t(`availability.level.${level}`),
-          })}
-        </span>
-      </StatusBadge>
-    </span>
-  );
-}
+/** The level tag lives in `product/shared/CoverageLevel.tsx` (shared with the readers' pages of plan PM); re-exported here. */
+export { LevelBadge };
 
 function StepCell({ result }: { result: StepResult }) {
   if (result === "sin_evaluar")

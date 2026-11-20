@@ -124,7 +124,8 @@
     "B": "enough coverage",
     "C": "partial coverage",
     "D": "scarce coverage",
-    "MI": "sample too small"
+    "MI": "sample too small",
+    "chip": "Coverage {level} · {meaning}"
   },
   "console": {
     "tab": "Availability",

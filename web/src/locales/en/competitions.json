@@ -1,0 +1,147 @@
+{
+  "closed": "Competition pages are not open yet.",
+  "missing": "We could not find this competition.",
+  "world": "International",
+  "season": "Season {season}",
+  "type": {
+    "league": "League",
+    "cup": "Cup",
+    "supercup": "Super cup",
+    "friendly": "Friendlies"
+  },
+  "tabsLabel": "Sections of the competition",
+  "tabs": {
+    "table": "Tables",
+    "calendar": "Matches",
+    "leaders": "Leaders",
+    "coverage": "Coverage"
+  },
+  "notOffered": {
+    "table": "the table",
+    "leaders": "the leaders"
+  },
+  "table": {
+    "title": "Provider's table",
+    "none": "This competition has no stored table (cups and friendlies usually have none).",
+    "stage": "Stage of the season",
+    "other": "Other tables",
+    "source": "Source: the table the data provider sends, by stage."
+  },
+  "tables": {
+    "title": "The tables that decide the year",
+    "choose": "Table",
+    "places": "International places",
+    "team": "Team",
+    "played": "P",
+    "playedLong": "Matches played",
+    "points": "Pts",
+    "pointsLong": "Points",
+    "average": "Avg.",
+    "averageLong": "Average: points divided by matches played",
+    "zoneToday": "Today",
+    "noZone": "No place",
+    "tied": "Level: the regulation decides",
+    "zone": {
+      "continental": "International place",
+      "relegation": "Relegation"
+    },
+    "zoneState": {
+      "definitivo": "final",
+      "provisional": "provisional",
+      "condicional": "depends on the champions",
+      "empate_abierto": "unresolved tie"
+    },
+    "placeByRank": "By the position in the table",
+    "placeOf": {
+      "champion": "The champion of {of}",
+      "cup_winner": "The winner of {of}"
+    },
+    "placeState": {
+      "calculado": "Computed",
+      "provisional": "Provisional",
+      "pendiente": "Pending",
+      "no_calculado": "Not computed"
+    },
+    "complete": "Final table: every one of its matches is decided.",
+    "pending": "Provisional table: {n} matches that count in it are still to be played.",
+    "averageNote": "The average is ranked by the exact quotient; it is shown cut to three decimals, as the published tables show it.",
+    "unverified": "Includes {n} results decided off the pitch, not yet verified by PrediGol.",
+    "source": "Computed by PrediGol from the provider's results and the competition's regulation (version {version} of its rules). Not a forecast."
+  },
+  "calendar": {
+    "upcoming": "Upcoming matches",
+    "results": "Latest results",
+    "current": "Being played now: {rounds}",
+    "upcomingNone": "No matches scheduled.",
+    "resultsNone": "No results yet."
+  },
+  "leaders": {
+    "title": "Leaders",
+    "choose": "Ranking",
+    "none": "The provider sends no leaders for this competition.",
+    "kind": {
+      "topscorers": "Scorers",
+      "topassists": "Assists",
+      "topyellowcards": "Yellow cards",
+      "topredcards": "Red cards"
+    },
+    "source": "Source: the leaders the data provider publishes."
+  },
+  "coverage": {
+    "title": "What data PrediGol has",
+    "intro": "The level measures the data that actually arrived this season, not the quality of the league. Each section is shown by the level of its own data.",
+    "family": {
+      "base": "Events and line-ups",
+      "team_stats": "Team statistics",
+      "player_stats": "Player statistics",
+      "xg": "Expected goals (xG)",
+      "referee": "Referee",
+      "main_odds": "Main odds",
+      "stat_odds": "Corners and cards odds"
+    },
+    "meaning": {
+      "A": "Full coverage",
+      "B": "Sufficient coverage",
+      "C": "Partial coverage",
+      "D": "Scarce coverage",
+      "MI": "Insufficient sample: fewer than 10 matches"
+    },
+    "unmeasured": "Not measured yet",
+    "note": "Recomputed every night with what arrived this season."
+  },
+  "directory": {
+    "closed": "The directory of competitions is not open yet.",
+    "noLevels": "Coverage levels are not published yet.",
+    "title": "Competitions",
+    "subtitle": "{n} competitions followed in {countries} countries. Each one says how much data it offers.",
+    "search": "Search a competition or a country",
+    "levelsLabel": "Filter by coverage level",
+    "all": "All",
+    "thin": "Short sample",
+    "onlyFeatured": "Featured only",
+    "onlyMine": "The ones I follow",
+    "featured": "Featured",
+    "featuredMeaning": "PrediGol's editorial priority. It says where we put more attention, not how much data there is.",
+    "legendTitle": "How to read the two signals",
+    "offers": {
+      "A": "Match and player statistics, line-ups and events.",
+      "B": "Events and line-ups; not every match statistic.",
+      "C": "Goals with their minute; no line-ups nor full statistics.",
+      "D": "Only the final result and the calendar."
+    },
+    "region": {
+      "sudamerica": "South America",
+      "europa": "Europe",
+      "norte": "North, Central America and Caribbean",
+      "asia": "Asia and Oceania",
+      "africa": "Africa",
+      "internacional": "International tournaments",
+      "otras": "Others"
+    },
+    "count": "{n} competitions",
+    "seeAll": "See the {n} of {region}",
+    "none": "No competition matches your search.",
+    "clear": "Clear filters",
+    "note": "The level is measured on what actually arrived this season, not on what the provider announces, and is recomputed every night. It measures the data available, not the quality of the league."
+  }
+}
