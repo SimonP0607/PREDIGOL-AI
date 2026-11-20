@@ -275,6 +275,15 @@ export function useUsageConsoleOn(): boolean {
   return useContext(AuthContext)?.user?.usage_console === true;
 }
 
+/**
+ * The Match Center's new pieces of plan PM, block 10, each behind its own switch (off by default and outside the provider):
+ * the shot funnel and its two zones (PM-10-01; FBI_MATCH_SHOT_FUNNEL).
+ */
+export function useMatchVizSwitches(): { shotFunnel: boolean } {
+  const u = useContext(AuthContext)?.user;
+  return { shotFunnel: u?.match_shot_funnel === true };
+}
+
 /** The `preview` value for product queries: "shadow" only while a SUPER_ADMIN has the shadow preview on. */
 export function usePreviewParam(): "shadow" | undefined {
   return useAuth().shadowPreview ? "shadow" : undefined;
