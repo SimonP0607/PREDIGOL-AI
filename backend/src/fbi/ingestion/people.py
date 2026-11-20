@@ -171,17 +171,38 @@ SELECT c.provider_league_id, cs.season FROM core.competition_seasons cs
 """
 
 
+MONTHLY_SWEEP_GAP_DAYS = 20
+"""With the trims (PM-04-03): days a season's monthly sweep waits after the previous one, across a month boundary too."""
+MONTH_DAYS = 28
+"""Each competition's day of the month for its sweep: ``provider_league_id % 28 + 1`` (days 29-31 add nobody new)."""
+
+
+def _monthly_due(league: int, at: datetime) -> bool:
+    """A competition's monthly sweep is due from its own day of the month on: ~1/28 of them a day, never all on a Monday."""
+    return league % MONTH_DAYS + 1 <= at.day
+
+
 def seed_player_seasons(conn: psycopg.Connection, *, at: datetime) -> int:
     """The week's sweep of the provider's season player statistics (/players?league&season, 20 a page) for every
     current tracked season its coverage says has them: page 1 of each, whose answer adds the other pages.
     ``batch_key`` names the ISO week, so a week is never two sets of units; and a season swept within
-    ``PLAYER_SWEEP_GAP_DAYS`` is not swept again, across a week boundary too."""
+    ``PLAYER_SWEEP_GAP_DAYS`` is not swept again, across a week boundary too.
+
+    With the trims (``FBI_REFERENCE_TRIMS``, PM-04-03): once a MONTH (``batch_key`` names the month), each competition on its own
+    day (``_monthly_due``) and never within ``MONTHLY_SWEEP_GAP_DAYS`` of its previous sweep. The aggregate is the sum of the
+    per-match statistics PrediGol already keeps; the player page shows it «según el proveedor» and keeps every field."""
+    from fbi.ingestion.reference import trims_on
+
+    monthly = trims_on()
     iso = at.isocalendar()
-    generation = f"w{iso.year}{iso.week:02d}"
+    generation = f"m{at.year}{at.month:02d}" if monthly else f"w{iso.year}{iso.week:02d}"
+    gap = MONTHLY_SWEEP_GAP_DAYS if monthly else PLAYER_SWEEP_GAP_DAYS
     added = 0
     with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute(PLAYER_SEASONS_SQL, {"at": at, "gap": PLAYER_SWEEP_GAP_DAYS})
+        cur.execute(PLAYER_SEASONS_SQL, {"at": at, "gap": gap})
         for league, season in cur.fetchall():
+            if monthly and not _monthly_due(int(league), at):
+                continue
             cur.execute(
                 "INSERT INTO raw.backfill_tasks (kind, provider_league_id, season, priority, endpoint, params, page, "
                 "batch_key, tier, created_at) VALUES ('players_season', %s, %s, 70, '/players', %s, 1, %s, 1, %s) "
@@ -198,8 +219,10 @@ def seed_people_refresh(conn: psycopg.Connection, *, at: datetime) -> PeopleSeed
 
     ``season`` carries the generation - 202610 for October's sweep, 202640 for the 40th
     ISO week's squads - so a new month or week is a new set of units while the same one
-    is never added twice.
+    is never added twice. With the trims (``FBI_REFERENCE_TRIMS``, PM-04-03) the squad round is spread over the week.
     """
+    from fbi.ingestion.reference import trims_on
+
     iso = at.isocalendar()
     seed = PeopleSeed(profile_generation=at.year * 100 + at.month, squad_generation=iso.year * 100 + iso.week)
     with conn.cursor(row_factory=tuple_row) as cur:
@@ -207,7 +230,12 @@ def seed_people_refresh(conn: psycopg.Connection, *, at: datetime) -> PeopleSeed
                 params={"page": 1}, page=1):
             seed.profile_units += 1
         cur.execute(SQUAD_TEAMS_SQL)
+        spread = trims_on()
         for (team,) in cur.fetchall():
+            if spread and int(team) % 7 > at.weekday():
+                # PM-04-03: the week's round spread over the seven days - a seventh of the teams on Monday, another each day
+                # after (the same week's units: a day missed is caught up the next).
+                continue
             if _add(cur, kind="team_squad", season=seed.squad_generation, endpoint="/players/squads",
                     params={"team": int(team)}, batch_key=str(int(team)), priority=60):
                 seed.squad_units += 1
