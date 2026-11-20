@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import timedelta
 from decimal import Decimal
@@ -315,12 +316,39 @@ def build(target: str, base: str, case: Case | None = None) -> Input:
     return Input(target, base, scene, slice_, naming, view)
 
 
+MATCH_VIEWS: Final = ("package", "isolated")
+"""How the target ``match`` is asked (IA-148, plan PM PM-11-06): ``package`` - the agent in force, ``match-v6`` over its slice, the default and
+what every measurement before 20-nov-2026 asked - or ``isolated`` - ``match-v7``, the same agent over ``match.isolate`` of the slice, which no
+outside text reaches. The view changes the requests (and so ``requests_hash`` and the run), never the corpus or the protocol: the same
+signature measures both."""
+_match_view: list[str] = ["package"]
+
+
+@contextmanager
+def match_view(view: str) -> Iterator[None]:
+    """Ask the target ``match`` with ``view`` (``MATCH_VIEWS``) inside the block; the default again after it."""
+    if view not in MATCH_VIEWS:
+        raise ValueError(f"the match view is one of {', '.join(MATCH_VIEWS)}, not {view!r}")
+    before = _match_view[0]
+    _match_view[0] = view
+    try:
+        yield
+    finally:
+        _match_view[0] = before
+
+
+def current_match_view() -> str:
+    return _match_view[0]
+
+
 def request_of(world: Input) -> JsonRequest:
-    """The agent's own request for an input, as the orchestrator would send it at the moment of the pass."""
+    """The agent's own request for an input, as the orchestrator would send it at the moment of the pass (or, for the target ``match`` with the
+    view ``isolated``, as ``match-v7`` would)."""
     if world.target == "match":
+        isolated = _match_view[0] == "isolated"
         if world.scene.ask == "CONTEXT":
-            return match.context_request(world.slice_, at=AT)
-        return match.evaluation_request(world.slice_, world.naming, at=AT)
+            return match.context_request(world.slice_, at=AT, isolated=isolated)
+        return match.evaluation_request(world.slice_, world.naming, at=AT, isolated=isolated)
     if world.target == "stats":
         return stats.evaluation_request(world.slice_, world.naming, at=AT)
     if world.target == "player":

@@ -13,6 +13,9 @@
                                               # above what the LAB may still spend (send fewer targets at a time)
     python -m scripts.ia_battery_v4 collect   # the answers; with every ask of every target closed, ONE new row of the gate battery
     python -m scripts.ia_battery_v4 status
+    python -m scripts.ia_battery_v4 plan|submit|collect --targets match --match-view isolated
+                                              # IA-148 (PM-11-06): the Match Agent over its isolated view (match-v7, not in force), under
+                                              # the same signature; only the target match, and collect never writes a row of the gate
 
 Exit status: 0 done (and PASA, for collect), 1 done and not PASA (or a round the provider took in part), 2 could not run (see ``blockers`` or
 ``error``), 3 waiting (asks on their way, repetitions due, or a signature only previewed).
@@ -30,7 +33,9 @@ from typing import Any
 import httpx
 import psycopg
 
+from fbi.ai.agents import match
 from fbi.ai.batch import BatchClient
+from fbi.ai.battery import agentworld as aw
 from fbi.ai.battery import corpus, v4, v4_run
 from fbi.ai.config import AiSettings
 from fbi.ai.usage import UsageLedger
@@ -66,6 +71,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--suffix", default="", help="a new run of the same corpus, on purpose")
     ap.add_argument("--no-record", action="store_true", help="collect: show the verdict, write no row")
     ap.add_argument("--sims", type=int, default=1000, help="null: simulated measurements per target")
+    ap.add_argument("--match-view", choices=aw.MATCH_VIEWS, default="package",
+                    help="the target match asked over its slice (package: the agent in force) or its isolated view (match-v7, IA-148)")
     ap.add_argument("--dsn", help="the database (default: the worker's own)")
     return ap
 
@@ -115,16 +122,24 @@ def execute(command: str, conn: psycopg.Connection[Any], settings: AiSettings, *
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.match_view == "isolated" and (args.command not in ("plan", "submit", "collect", "status") or args.targets != ["match"]):
+        sys.stdout.write(json.dumps({"error": "--match-view isolated measures the target match alone (--targets match) with plan, submit, "
+                                              "collect or status"}) + "\n")
+        return CANNOT
     if args.command == "null":
         report, code = run_null(sims=args.sims)
     else:
         from fbi.core.config import settings as platform
 
         settings = AiSettings.from_env()
-        with psycopg.connect(args.dsn or platform.database.psycopg_url, options="-c TimeZone=UTC") as conn:
+        isolated = args.match_view == "isolated"
+        with psycopg.connect(args.dsn or platform.database.psycopg_url, options="-c TimeZone=UTC") as conn, aw.match_view(args.match_view):
             report, code = execute(args.command, conn, settings, targets=args.targets, at=datetime.now(UTC), suffix=args.suffix,
                                    invalid_max=args.invalid_max, reason=args.reason, confirm_owner=args.confirm_owner, max_usd=args.max_usd,
-                                   record=not args.no_record)
+                                   record=not (args.no_record or isolated))
+        if isolated:
+            report = {"match_view": "isolated", "agent": match.VERSION_ISOLATED, "isolation": match.ISOLATION,
+                      "gate_row": "never written for a view not in force", **report}
     sys.stdout.write(json.dumps(report, indent=1, default=str, ensure_ascii=False) + "\n")
     return code
 

@@ -436,7 +436,8 @@ def assessed(match_stance: str, stats_stance: str, player_stance: str) -> list[A
 
 def test_no_request_of_an_agent_has_a_door_for_what_another_agent_said() -> None:
     for builder in (match.context_request, match.evaluation_request, stats.evaluation_request, player.evaluation_request):
-        assert set(inspect.signature(builder).parameters) <= {"slice_", "naming", "at", "contradictions"}, builder.__qualname__
+        # ``isolated`` (IA-148) is a flag of the server's own view of the slice (match-v7), not a door for another agent's words
+        assert set(inspect.signature(builder).parameters) <= {"slice_", "naming", "at", "contradictions", "isolated"}, builder.__qualname__
     assert "assessments" in inspect.signature(council.council_view).parameters, "the judge is the one reader of the positions"
 
 
