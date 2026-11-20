@@ -124,6 +124,18 @@ class Me(Contract):
                                                           "disponible» and the owner's console of the matrix only then.")
     usage_console: bool = Field(default=False, description="The owner's console of the provider's requests by lane, endpoint and "
                                                            "competition (plan PM, PM-04-05; FBI_USAGE_CONSOLE, off by default).")
+    competition_page: bool = Field(default=False, description="A competition's page: tables, calendar, leaders and coverage "
+                                                              "(plan PM, PM-09-04; FBI_COMPETITION_PAGE, off by default).")
+    competition_tables: bool = Field(default=False, description="The season tables computed from the regulation on a "
+                                                                "competition's page (plan PM, PM-09-01; FBI_COMPETITION_TABLES, "
+                                                                "off until the owner signs DOC-008 and DM-14).")
+    competition_directory: bool = Field(default=False, description="The world directory of competitions with level and priority "
+                                                                   "(plan PM, PM-09-05; FBI_COMPETITION_DIRECTORY, off by default).")
+    player_profile_extras: bool = Field(default=False, description="The player's profile with the new data, the goalkeeper's "
+                                                                   "included (plan PM, PM-08-06; FBI_PLAYER_PROFILE_EXTRAS, off "
+                                                                   "by default).")
+    what_if: bool = Field(default=False, description="The calculator «¿Qué pasa si…?» of a competition's tables (plan PM, "
+                                                     "PM-09-03; FBI_WHAT_IF, off until the owner signs DM-14).")
     display: DisplayPrefs = Field(default_factory=DisplayPrefs, description="The reader's settings of presentation "
                                                                             "(decision 8): clock, price format, "
                                                                             "motion and Inicio's view.")

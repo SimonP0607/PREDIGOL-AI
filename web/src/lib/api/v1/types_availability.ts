@@ -4,6 +4,7 @@
  * Every route answers 404 while `FBI_AVAILABILITY` is off; nothing reads these types yet (the modules adopt them in PM-14-04).
  * 1.1.0 (PM-02-07): a cup season's phases (`phases`) and the phase that graded a match's blocks (`phase`), filled only while
  * `FBI_AVAILABILITY_PHASES` is on (`phases` empty and `phase` «todas» otherwise).
+ * 1.2.0 (PM-09-05): each competition's editorial priority (`priority`), which the directory marks as «Destacada» for P0 and P1.
  */
 import type { ContractHead, ItemList, Maybe, MarketState } from "./types_intelligence";
 
@@ -103,6 +104,8 @@ export interface CompetitionAvailability<S extends SeasonAvailability = SeasonAv
   name: string;
   country: Maybe<string>;
   tier: Maybe<number>;
+  /** 1.2.0 (PM-09-05): annex A's editorial priority, P0 to P4; optional so code typed against 1.1.0 still compiles. */
+  priority?: Maybe<"P0" | "P1" | "P2" | "P3" | "P4">;
   summary: CoverageLevel;
   summary_label: string;
   families: FamilyLevel[];
