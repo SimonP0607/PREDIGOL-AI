@@ -12,6 +12,7 @@ import { hasKey, setLocale, translate } from "./index";
 import "@/product/shared/availabilityText";
 import "@/components/analytics/evidenceText";
 import "@/admin/usageText";
+import "@/product/competitions/text";
 
 function keys(node: Catalog, prefix = ""): string[] {
   return Object.entries(node).flatMap(([k, v]) =>

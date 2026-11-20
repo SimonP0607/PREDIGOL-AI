@@ -92,6 +92,16 @@ export interface Me {
   availability?: boolean;
   /** The owner's console of the provider's requests by lane, endpoint and competition (plan PM, PM-04-05; FBI_USAGE_CONSOLE). */
   usage_console?: boolean;
+  /** A competition's page: tables, calendar, leaders and coverage (plan PM, PM-09-04; FBI_COMPETITION_PAGE). */
+  competition_page?: boolean;
+  /** The season tables computed from the regulation (plan PM, PM-09-01; FBI_COMPETITION_TABLES, off until DOC-008 and DM-14). */
+  competition_tables?: boolean;
+  /** The world directory of competitions with level and priority (plan PM, PM-09-05; FBI_COMPETITION_DIRECTORY). */
+  competition_directory?: boolean;
+  /** The player's profile with the new data, the goalkeeper's included (plan PM, PM-08-06; FBI_PLAYER_PROFILE_EXTRAS). */
+  player_profile_extras?: boolean;
+  /** The calculator «¿Qué pasa si…?» (plan PM, PM-09-03; FBI_WHAT_IF, off until the owner signs DM-14). */
+  what_if?: boolean;
   /** The reader's settings of presentation (decision 8); absent from an API older than BE-039: today's defaults. */
   display?: Display;
 }
