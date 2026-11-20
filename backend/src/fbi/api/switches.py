@@ -83,6 +83,11 @@ absent and ``=1`` opens them to every signed-in reader. They read the documents 
 measured; nothing private, nothing forecast."""
 
 
+MATCH_SHOT_FUNNEL: Final = "FBI_MATCH_SHOT_FUNNEL"
+"""The Match Center's shot funnel and its two shot zones (plan PM, PM-10-01, lámina I01 «M01»; FE-005): OFF while the line is absent -
+Estadísticas is as it was - and ``=1`` draws them at the top of the tab once a match is under way, where the team statistics are of
+level B or better (C-16, when it answers) and the match delivered every figure. It reads the match detail it already reads."""
+
 AVAILABILITY: Final = "FBI_AVAILABILITY"
 """The availability matrix over HTTP (plan PM, PM-02-05; contract C-16): OFF while the line is absent - its five routes answer 404,
 the private ones too - and ``=1`` opens them (the API recreated). It reads the tables of the nightly batch and the match's own data;
@@ -97,6 +102,25 @@ USAGE_CONSOLE: Final = "FBI_USAGE_CONSOLE"
 """The owner's console of the provider's requests by lane, endpoint and competition (plan PM, PM-04-05; BE-076, UX-175): OFF while
 the line is absent - ``GET /admin/monitoring/provider-usage`` answers 404 and the console shows no tab - and ``=1`` opens it (the
 API recreated). It reads what the worker already counts; it asks the provider nothing."""
+
+COMPETITION_PAGE: Final = "FBI_COMPETITION_PAGE"
+"""A competition's page for readers (plan PM, PM-09-04; UX-178): its tables, calendar and results, leaders and coverage level. OFF
+while the line is absent - no route links to it and ``/competitions/{id}`` in the browser says it is not open - and ``=1`` opens it
+(the API recreated). It reads routes readers already have (standings, reference, matches) and C-16 where ``FBI_AVAILABILITY`` is on."""
+
+COMPETITION_DIRECTORY: Final = "FBI_COMPETITION_DIRECTORY"
+"""The world directory of competitions with their level and priority (plan PM, PM-09-05; UX-179, lámina I08): OFF while the line is
+absent and ``=1`` opens it. It reads C-16's directory, so it shows nothing until ``FBI_AVAILABILITY`` is on too."""
+
+PLAYER_PROFILE_EXTRAS: Final = "FBI_PLAYER_PROFILE_EXTRAS"
+"""The player's profile with the new data, the goalkeeper's included (plan PM, PM-08-06; UX-180, lámina I06): OFF while the line is
+absent and ``=1`` draws the blocks. They read C-13's ``provider_extras`` (``FBI_STATS_PROVIDER_EXTRAS``) and the goals prevented only
+when ``FBI_STATS_GOALS_PREVENTED`` let them through."""
+
+WHAT_IF: Final = "FBI_WHAT_IF"
+"""The calculator «¿Qué pasa si…?» of a competition's tables (plan PM, PM-09-03; UX-181, lámina I07): OFF while the line is absent
+and ``=1`` shows it under the season tables (which need ``FBI_COMPETITION_TABLES``). Computed in the browser from the served rules:
+no probability, no forecast. Turned on only with the owner's signature of publication (DM-14)."""
 
 MARKET_PROBS: Final = "FBI_MARKET_PROBS"
 """The probabilities by market of a match (plan EA, EA-201/EA-202; contract C-14): OFF while the line is absent and ``=1`` shows the
@@ -183,6 +207,11 @@ def stats_v2_on() -> bool:
     return user_switch(STATS_V2, default=False)
 
 
+def match_shot_funnel_on() -> bool:
+    """Whether readers get the Match Center's shot funnel and two zones (``FBI_MATCH_SHOT_FUNNEL``, off by default)."""
+    return user_switch(MATCH_SHOT_FUNNEL, default=False)
+
+
 def availability_on() -> bool:
     """Whether the routes of C-16 answer (``FBI_AVAILABILITY``, off by default)."""
     return user_switch(AVAILABILITY, default=False)
@@ -196,6 +225,26 @@ def availability_phases_on() -> bool:
 def usage_console_on() -> bool:
     """Whether the owner's console of the provider's requests answers (``FBI_USAGE_CONSOLE``, off by default)."""
     return user_switch(USAGE_CONSOLE, default=False)
+
+
+def competition_page_on() -> bool:
+    """Whether readers get a competition's page (``FBI_COMPETITION_PAGE``, off by default)."""
+    return user_switch(COMPETITION_PAGE, default=False)
+
+
+def competition_directory_on() -> bool:
+    """Whether readers get the world directory of competitions (``FBI_COMPETITION_DIRECTORY``, off by default)."""
+    return user_switch(COMPETITION_DIRECTORY, default=False)
+
+
+def player_profile_extras_on() -> bool:
+    """Whether the player's profile draws the new data (``FBI_PLAYER_PROFILE_EXTRAS``, off by default)."""
+    return user_switch(PLAYER_PROFILE_EXTRAS, default=False)
+
+
+def what_if_on() -> bool:
+    """Whether readers get the calculator «¿Qué pasa si…?» (``FBI_WHAT_IF``, off by default)."""
+    return user_switch(WHAT_IF, default=False)
 
 
 def market_probs_on() -> bool:

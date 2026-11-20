@@ -60,6 +60,7 @@ import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as ComparePlayersRouteImport } from './routes/compare.players'
 import { Route as CompareTeamsRouteImport } from './routes/compare.teams'
+import { Route as CompetitionsCompetitionIdRouteImport } from './routes/competitions.$competitionId'
 import { Route as HelpIndexRouteImport } from './routes/help.index'
 import { Route as HelpGlossaryRouteImport } from './routes/help.glossary'
 import { Route as HelpHowItWorksRouteImport } from './routes/help.how-it-works'
@@ -341,6 +342,12 @@ const CompareTeamsRoute = CompareTeamsRouteImport.update({
   path: '/compare/teams',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CompetitionsCompetitionIdRoute =
+  CompetitionsCompetitionIdRouteImport.update({
+    id: '/competitions/$competitionId',
+    path: '/competitions/$competitionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const HelpIndexRoute = HelpIndexRouteImport.update({
   id: '/help/',
   path: '/help/',
@@ -518,6 +525,7 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AdminUsersRoute
   '/compare/players': typeof ComparePlayersRoute
   '/compare/teams': typeof CompareTeamsRoute
+  '/competitions/$competitionId': typeof CompetitionsCompetitionIdRoute
   '/help/glossary': typeof HelpGlossaryRoute
   '/help/how-it-works': typeof HelpHowItWorksRoute
   '/legal/$doc': typeof LegalDocRoute
@@ -595,6 +603,7 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AdminUsersRoute
   '/compare/players': typeof ComparePlayersRoute
   '/compare/teams': typeof CompareTeamsRoute
+  '/competitions/$competitionId': typeof CompetitionsCompetitionIdRoute
   '/help/glossary': typeof HelpGlossaryRoute
   '/help/how-it-works': typeof HelpHowItWorksRoute
   '/legal/$doc': typeof LegalDocRoute
@@ -674,6 +683,7 @@ export interface FileRoutesById {
   '/admin/users': typeof AdminUsersRoute
   '/compare/players': typeof ComparePlayersRoute
   '/compare/teams': typeof CompareTeamsRoute
+  '/competitions/$competitionId': typeof CompetitionsCompetitionIdRoute
   '/help/glossary': typeof HelpGlossaryRoute
   '/help/how-it-works': typeof HelpHowItWorksRoute
   '/legal/$doc': typeof LegalDocRoute
@@ -754,6 +764,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/compare/players'
     | '/compare/teams'
+    | '/competitions/$competitionId'
     | '/help/glossary'
     | '/help/how-it-works'
     | '/legal/$doc'
@@ -831,6 +842,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/compare/players'
     | '/compare/teams'
+    | '/competitions/$competitionId'
     | '/help/glossary'
     | '/help/how-it-works'
     | '/legal/$doc'
@@ -909,6 +921,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/compare/players'
     | '/compare/teams'
+    | '/competitions/$competitionId'
     | '/help/glossary'
     | '/help/how-it-works'
     | '/legal/$doc'
@@ -958,6 +971,7 @@ export interface RootRouteChildren {
   WelcomeRoute: typeof WelcomeRoute
   ComparePlayersRoute: typeof ComparePlayersRoute
   CompareTeamsRoute: typeof CompareTeamsRoute
+  CompetitionsCompetitionIdRoute: typeof CompetitionsCompetitionIdRoute
   HelpGlossaryRoute: typeof HelpGlossaryRoute
   HelpHowItWorksRoute: typeof HelpHowItWorksRoute
   LegalDocRoute: typeof LegalDocRoute
@@ -1338,6 +1352,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompareTeamsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/competitions/$competitionId': {
+      id: '/competitions/$competitionId'
+      path: '/competitions/$competitionId'
+      fullPath: '/competitions/$competitionId'
+      preLoaderRoute: typeof CompetitionsCompetitionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/help/': {
       id: '/help/'
       path: '/help'
@@ -1619,6 +1640,7 @@ const rootRouteChildren: RootRouteChildren = {
   WelcomeRoute: WelcomeRoute,
   ComparePlayersRoute: ComparePlayersRoute,
   CompareTeamsRoute: CompareTeamsRoute,
+  CompetitionsCompetitionIdRoute: CompetitionsCompetitionIdRoute,
   HelpGlossaryRoute: HelpGlossaryRoute,
   HelpHowItWorksRoute: HelpHowItWorksRoute,
   LegalDocRoute: LegalDocRoute,

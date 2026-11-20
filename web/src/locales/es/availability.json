@@ -124,7 +124,8 @@
     "B": "cobertura suficiente",
     "C": "cobertura parcial",
     "D": "cobertura escasa",
-    "MI": "muestra insuficiente"
+    "MI": "muestra insuficiente",
+    "chip": "Cobertura {level} · {meaning}"
   },
   "console": {
     "tab": "Disponibilidad",

@@ -13,12 +13,14 @@ from fbi.api.contracts.intelligence.search import SearchV2, SearchV2Private
 from fbi.api.contracts.matches import MatchDetail, MatchSummary, MatchView
 from fbi.api.contracts.rankings import Rankings
 from fbi.api.contracts.search import SearchHit
+from fbi.api.contracts.season_tables import SeasonTables
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.repositories.fixtures import FixtureFilter
 from fbi.api.services import audit, catalog, matches, profiles, search_v2
 from fbi.api.services import rankings as rankings_service
 from fbi.api.services import search as search_service
+from fbi.api.services import season_tables as season_tables_service
 
 router = APIRouter(tags=["football"])
 admin_router = APIRouter(tags=["admin: football"])
@@ -113,6 +115,19 @@ def get_competition_profile(conn: Db, competition_id: Id) -> Envelope[Profile]:
     """C-09, public projection: a competition - its season, table, next matches, scorers and the coverage of its statistics.
     404 while ``FBI_PROFILES`` is off."""
     return profiles.public_competition(conn, competition_id)
+
+
+@router.get("/competitions/{competition_id}/season-tables", response_model=Envelope[SeasonTables | None])
+def get_competition_season_tables(
+    conn: Db,
+    competition_id: Id,
+    season: Annotated[int | None, Query(ge=1900, le=2100)] = None,
+) -> Envelope[SeasonTables | None]:
+    """The season tables the provider does not give - reclasificación, average, places - computed from the results and the
+    competition's rules file (plan PM, PM-09-04; BE-082; BE-075's computation), with the matches still to be decided that each
+    counts (for the calculator, PM-09-03). ``empty`` without a rules file that has them. 404 while ``FBI_COMPETITION_TABLES`` is
+    off."""
+    return season_tables_service.season_tables(conn, competition_id, season)
 
 
 @admin_router.get("/intelligence/teams/{team_id}/profile", response_model=Envelope[ProfilePrivate])
