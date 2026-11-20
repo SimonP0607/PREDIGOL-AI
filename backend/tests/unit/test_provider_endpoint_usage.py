@@ -305,7 +305,7 @@ def test_the_switch_is_on_unless_it_says_off(monkeypatch: pytest.MonkeyPatch, va
 
 def test_one_counter_per_process_and_none_while_off(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(b, "_usage_counter", None)
-    monkeypatch.setattr(b.atexit, "register", lambda *a: None)
+    monkeypatch.setattr("atexit.register", lambda *a: None)
     monkeypatch.setenv(b.USAGE_SWITCH, "off")
     assert b.build_usage_counter() is None
     monkeypatch.setenv(b.USAGE_SWITCH, "on")
