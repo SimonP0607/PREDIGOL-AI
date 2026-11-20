@@ -64,6 +64,25 @@ pantalla con varios huecos usa `UnavailableNotes`, una sola nota por estado (lig
 encendido (`availability` en `/auth/me`, `useAvailabilityOn`). Contraste AA de cada par de tokens medido desde `styles.css` en
 `Unavailable.test.tsx` (`web/src/lib/a11y/contrast.ts`).
 
+Primer consumidor: la consola del dueño de la matriz (PM-02-08, lámina I11; UX-174), pestaña «Disponibilidad» de
+`/admin/competitions` (`web/src/admin/AvailabilityConsole.tsx`): nivel por familia, muestra y fecha de cada competición, cambios de
+la semana, discrepancias de la sombra y los siete estados de un partido con la nota única que vería un lector.
+
+## 2 quater. Gráficas nuevas: evidencia, lectura y accesibilidad (plan PM, PM-10-06; FE-004)
+
+Toda gráfica nueva se dibuja dentro de `EvidenceChart` (`web/src/components/analytics/EvidenceChart.tsx`, sobre la `ChartCard`
+del plan EA), que exige tres cosas sin las que no compila:
+
+| Qué | Dónde | Regla |
+| --- | --- | --- |
+| Etiqueta de evidencia E0–E4 | `EvidenceBadge` (`StatusBadge`) | Los niveles de `DISCIPLINA_CONOCIMIENTO_Y_ALTA_PROVEEDORES.md` §5.3; bajo la muestra mínima se muestra E0 diga lo que diga la pieza |
+| Frase de lectura | `readingSentence` (`evidence.ts`), namespace `evidence` | Dice la cifra con su n, su intervalo y el valor de liga tal como llegan del contrato; bajo la muestra mínima no da tasa. Es también la descripción de la gráfica para el lector de pantalla (`aria-describedby`) |
+| Revisión de accesibilidad | `ChartReview` y `reviewProblems` | Las 14 comprobaciones críticas (tras [Chartability](https://chartability.fizz.studio/)): contraste, alternativa textual, texto mínimo, sin parpadeo, color no único, teclado, foco, instrucciones, título y resumen, incertidumbre, lenguaje llano, tabla equivalente, zoom y espaciado, lector de pantalla. Cada una «ok» o «no_aplica»; ocho siempre aplican |
+
+`chartGuard.test.ts` falla si un archivo nuevo dibuja una gráfica (Recharts, las primitivas de `components/analytics` o
+`components/ui/chart`) fuera de `EvidenceChart`. Las 14 gráficas que existían el 20-nov-2026 quedan en su lista, que solo puede
+encoger. Ninguna pieza del bloque 10 del plan PM se cierra sin las tres.
+
 ## 3. Pantallas
 
 | Área | Rutas | Qué cambió |

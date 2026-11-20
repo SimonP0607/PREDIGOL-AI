@@ -647,6 +647,7 @@ async def _reference_refresh() -> None:
     top lists, coaches, transfers, sidelined, trophies, the odds catalogues and mapping."""
     from scripts.capture_odds import _client
 
+    from fbi.coverage import depth as reference_depth
     from fbi.ingestion.reference import refresh_reference
     from fbi.providers.api_football import ApiFootballProvider
 
@@ -654,9 +655,11 @@ async def _reference_refresh() -> None:
     with _connect() as conn:
         provider = ApiFootballProvider(_client())
         try:
+            # PM-04-04: the depth of each competition, read only while FBI_REFERENCE_DEPTH is on.
             await refresh_reference(conn, provider, daily_budget=settings.provider_plan.effective_budget,
                                     max_requests=REFERENCE_MAX_PER_RUN,
-                                    prematch_windows=settings.odds.prematch_windows)
+                                    prematch_windows=settings.odds.prematch_windows,
+                                    depths=reference_depth.current)
         finally:
             await provider.aclose()
 
@@ -740,6 +743,7 @@ async def _historical_backfill() -> None:
     """
     from scripts.capture_odds import _client
 
+    from fbi.coverage import depth as reference_depth
     from fbi.ingestion.backfill import run_backfill, seed_current_details
     from fbi.ingestion.people import seed_people_refresh, seed_player_seasons
     from fbi.providers.api_football import ApiFootballProvider
@@ -750,7 +754,8 @@ async def _historical_backfill() -> None:
         # queued behind everything else in the same budget-guarded backfill.
         seed_people_refresh(conn, at=now())
         # The provider's season player statistics of current seasons, weekly (core.player_season_stats).
-        seed_player_seasons(conn, at=now())
+        # With FBI_REFERENCE_DEPTH on (PM-04-04): P0 to P2 only, never a «minima» competition.
+        seed_player_seasons(conn, at=now(), depths=reference_depth.current)
         # Played matches of the current seasons whose detail nobody fetched (the live follower missed them).
         seed_current_details(conn)
         provider = ApiFootballProvider(_client())
