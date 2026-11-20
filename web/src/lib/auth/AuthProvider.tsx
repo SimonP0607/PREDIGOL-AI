@@ -278,11 +278,19 @@ export function useUsageConsoleOn(): boolean {
 /**
  * The Match Center's new pieces of plan PM, block 10, each behind its own switch (off by default and outside the provider):
  * the shot funnel and its two zones (PM-10-01; FBI_MATCH_SHOT_FUNNEL), the balance and the strip of the score's state (PM-10-02;
- * FBI_MATCH_BALANCE).
+ * FBI_MATCH_BALANCE), the data layers of the line-up pitch (PM-10-04; FBI_LINEUP_LAYERS).
  */
-export function useMatchVizSwitches(): { shotFunnel: boolean; balance: boolean } {
+export function useMatchVizSwitches(): {
+  shotFunnel: boolean;
+  balance: boolean;
+  lineupLayers: boolean;
+} {
   const u = useContext(AuthContext)?.user;
-  return { shotFunnel: u?.match_shot_funnel === true, balance: u?.match_balance === true };
+  return {
+    shotFunnel: u?.match_shot_funnel === true,
+    balance: u?.match_balance === true,
+    lineupLayers: u?.lineup_layers === true,
+  };
 }
 
 /**

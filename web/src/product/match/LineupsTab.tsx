@@ -17,139 +17,17 @@ import { Card, EmptyState } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import { AbsencesBlock } from "./ContextBlocks";
 import { PressAbsences } from "@/product/news/PressAbsences";
-import {
-  bench,
-  eventKind,
-  fmtDecimal,
-  minuteText,
-  pitchName,
-  pitchSpots,
-  starters,
-  subDirection,
-  type PitchSpot,
-} from "./model";
+import { bench, eventKind, minuteText, pitchSpots, starters, subDirection } from "./model";
+import { useMatchVizSwitches } from "@/lib/auth/AuthProvider";
+import { LineupLayers } from "./LineupLayers";
+import { layerFigures, layersReady } from "./layers";
+import { Pitch } from "./Pitch";
+import { blockAllows, useMatchBlocks } from "./stats/coverage";
 import { PlayerSummary } from "./PlayerSummary";
 import { BallIcon, Block, CardIcon, CenterSection, RatingBadge } from "./ui";
 
 function position(code: string | null): string {
   return code ? translateOr(`match.lineups.position.${code}`, code) : "—";
-}
-
-// ── Pitch ───────────────────────────────────────────────────────────────────
-
-function PitchLines() {
-  return (
-    <svg
-      viewBox="0 0 68 105"
-      preserveAspectRatio="none"
-      aria-hidden
-      className="absolute inset-0 h-full w-full text-primary/25"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={0.35}
-    >
-      <rect x="1" y="1" width="66" height="103" rx="0.5" />
-      <line x1="1" y1="52.5" x2="67" y2="52.5" />
-      <circle cx="34" cy="52.5" r="9.15" />
-      <circle cx="34" cy="52.5" r="0.5" fill="currentColor" />
-      <rect x="13.84" y="1" width="40.32" height="16.5" />
-      <rect x="24.84" y="1" width="18.32" height="5.5" />
-      <rect x="13.84" y="87.5" width="40.32" height="16.5" />
-      <rect x="24.84" y="98.5" width="18.32" height="5.5" />
-      <path d="M26.7 17.5a9.15 9.15 0 0 0 14.6 0" />
-      <path d="M26.7 87.5a9.15 9.15 0 0 1 14.6 0" />
-    </svg>
-  );
-}
-
-function Marker({ spot, side, rating }: { spot: PitchSpot; side: Side; rating: number | null }) {
-  const p = spot.player;
-  const name = pitchName(p.name);
-  return (
-    <div
-      className="absolute flex w-[4.1rem] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 sm:w-20"
-      style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
-      title={`${p.number ?? ""} ${p.name ?? ""} · ${position(p.position)}`.trim()}
-    >
-      <span
-        className={cn(
-          "numeric relative flex h-7 w-7 items-center justify-center rounded-full border-2 text-micro font-bold shadow-sm sm:h-8 sm:w-8 sm:text-xs",
-          side === "home"
-            ? "border-primary/60 bg-primary text-primary-foreground"
-            : "border-info/60 bg-info text-background",
-        )}
-      >
-        {p.number ?? ""}
-        {rating !== null ? (
-          <span className="absolute -right-3.5 -top-2 rounded bg-background/90 px-0.5 text-[0.55rem] font-semibold text-foreground ring-1 ring-border-strong">
-            {fmtDecimal(rating, 1)}
-          </span>
-        ) : null}
-      </span>
-      <span className="max-w-full truncate rounded bg-background/70 px-1 text-[0.62rem] font-medium leading-4 text-foreground sm:text-[0.68rem]">
-        {name}
-      </span>
-    </div>
-  );
-}
-
-function Pitch({
-  home,
-  away,
-  teams,
-  ratings,
-}: {
-  home: TeamLineup;
-  away: TeamLineup;
-  teams: { home: TeamRef; away: TeamRef };
-  ratings: Map<number, number>;
-}) {
-  const homeSpots = pitchSpots(home, "bottom");
-  const awaySpots = pitchSpots(away, "top");
-  if (!homeSpots || !awaySpots) return null;
-  const rate = (p: LineupPlayer) => ratings.get(p.provider_player_id) ?? null;
-  const label = t("match.lineups.pitchLabel", {
-    home: teams.home.name,
-    homeFormation: home.formation ?? "—",
-    away: teams.away.name,
-    awayFormation: away.formation ?? "—",
-  });
-  return (
-    <div
-      role="img"
-      aria-label={label}
-      className="relative mx-auto aspect-[68/105] w-full max-w-[25rem] overflow-hidden rounded-xl border border-primary/25"
-      style={{
-        backgroundColor: "color-mix(in oklch, var(--color-primary) 7%, var(--color-card))",
-        backgroundImage:
-          "repeating-linear-gradient(0deg, color-mix(in oklch, var(--color-primary) 5%, transparent) 0 9.52%, transparent 9.52% 19.04%)",
-      }}
-    >
-      <PitchLines />
-      <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded bg-background/75 px-1.5 py-0.5 text-micro font-semibold text-info">
-        {teams.away.name} · {away.formation ?? "—"}
-      </span>
-      <span className="absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded bg-background/75 px-1.5 py-0.5 text-micro font-semibold text-primary">
-        {teams.home.name} · {home.formation ?? "—"}
-      </span>
-      {awaySpots.map((s) => (
-        <Marker
-          key={`a-${s.player.provider_player_id}`}
-          spot={s}
-          side="away"
-          rating={rate(s.player)}
-        />
-      ))}
-      {homeSpots.map((s) => (
-        <Marker
-          key={`h-${s.player.provider_player_id}`}
-          spot={s}
-          side="home"
-          rating={rate(s.player)}
-        />
-      ))}
-    </div>
-  );
 }
 
 // ── Lists ───────────────────────────────────────────────────────────────────
@@ -398,6 +276,10 @@ export function LineupsTab({ ctx }: { ctx: MatchCtx }) {
   const events = c?.events.status === "ok" ? c.events.data : [];
   const players = c?.players.status === "ok" ? c.players.data : [];
   const hasAbsences = c?.absences.status === "ok" && c.absences.data.length > 0;
+  // plan PM, PM-10-04 (lámina I02): the data layers, behind FBI_LINEUP_LAYERS and player statistics of level B or better
+  const { lineupLayers } = useMatchVizSwitches();
+  const blocks = useMatchBlocks(ctx.fixtureId);
+  const layersAllowed = lineupLayers && blockAllows(blocks, "player_stats") !== false;
 
   return (
     <div className="space-y-4">
@@ -450,12 +332,23 @@ export function LineupsTab({ ctx }: { ctx: MatchCtx }) {
           return (
             <div className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,25rem)_minmax(0,1fr)]">
               <div className="min-w-0 md:col-span-2 lg:order-2 lg:col-span-1">
-                <Pitch
-                  home={home}
-                  away={away}
-                  teams={{ home: m.home, away: m.away }}
-                  ratings={ratings}
-                />
+                {layersAllowed && layersReady(lineups, layerFigures(lineups, players, events)) ? (
+                  <LineupLayers
+                    home={home}
+                    away={away}
+                    teams={{ home: m.home, away: m.away }}
+                    players={players}
+                    events={c?.events.status === "ok" ? events : null}
+                    ratings={ratings}
+                  />
+                ) : (
+                  <Pitch
+                    home={home}
+                    away={away}
+                    teams={{ home: m.home, away: m.away }}
+                    ratings={ratings}
+                  />
+                )}
               </div>
               <div className="min-w-0 lg:order-1">{sheet("home")}</div>
               <div className="min-w-0 lg:order-3">{sheet("away")}</div>

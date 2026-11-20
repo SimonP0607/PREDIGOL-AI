@@ -119,6 +119,7 @@ Todos nacen apagados y se encienden en `app.env` sin desplegar; el mapa completo
 | `FBI_MATCH_BALANCE` | Plan PM (PM-10-02, lámina I01): «Balanza del partido» y «Estado del marcador» en Estadísticas del partido (`match_balance` en `/auth/me`) |
 | `FBI_COMPETITION_PAGE`, `FBI_COMPETITION_DIRECTORY` | Plan PM (PM-09-04, PM-09-05): la página de competición y el directorio mundial (`competition_page`, `competition_directory` en `/auth/me`) |
 | `FBI_PLAYER_PROFILE_EXTRAS`, `FBI_WHAT_IF` | Plan PM (PM-08-06, PM-09-03): el perfil de jugador con los datos nuevos y la calculadora «¿Qué pasa si…?» (firma DM-14) (`player_profile_extras`, `what_if`; `competition_tables` dice si `FBI_COMPETITION_TABLES` está encendido) |
+| `FBI_LINEUP_LAYERS` | Plan PM (PM-10-04, lámina I02): capas de datos en la cancha de Alineaciones (`lineup_layers` en `/auth/me`) |
 | `FBI_NEWS_V2`, `FBI_MATCH_INTELLIGENCE` | Plan maestro unificado: Noticias de las maquetas 08 a 10 (abogado y datos) y la pestaña «Intelligence» (el dueño) |
 
 ## 4 bis. Composición por tamaño de pantalla (auditoría visual del 16-nov-2026)
