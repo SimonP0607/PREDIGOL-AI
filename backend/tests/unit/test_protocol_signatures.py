@@ -1,7 +1,8 @@
 """IA-143 (AD-K07): the owner's signature of a preregistered protocol. Pure: no database.
 
-* The catalog is every LAB protocol (their fingerprints untouched) and the chronicle's three own records, each pinned; every figure of those
-  records is the constant the chronicle applies.
+* The catalog is every LAB protocol (their fingerprints untouched), the chronicle's three own records and the record of the retirement of
+  ``review-v2`` (AD-D11, IA-145), each pinned; every figure of those records is the constant its module applies (AD-D11: ``PROTOCOL`` word
+  for word).
 * A signature counts only for the fingerprint in force: another fingerprint, another version or not the owner does not sign the protocol.
 * The command refuses what is not the owner's signature of the protocol as it is now, previews without ``--confirm-owner`` (exit 3) and
   never writes twice.
@@ -22,6 +23,7 @@ import pytest
 from scripts import ia_protocols as cli
 
 from fbi import protosign
+from fbi.ai import review_retirement
 from fbi.api.services import intelligence_console as console
 from fbi.chronicle import protocol as chronicle_protocol
 from fbi.chronicle import repetition, retire
@@ -40,8 +42,9 @@ OWN_PINNED = {
     "AD-F04": "17c942303fbc2cd0f39f90a1184f8cf0a699e1c3bffa5c783967952fb32d3608",
     "AD-F05": "1fbeadbddd163eb4eae3b15e952e340c11226544aa304a5551988060f07a7b6a",
     "AD-F06": "33b296c7c3852187e5cb59b223bc752b9f36f997fdf9320b5f8beb4fbee8b47b",
+    "AD-D11": "0fdd2a7145b57fe9ed0d727cf171de14c496b3b21dc93c588f549daa6251b5c6",
 }
-"""The chronicle's own protocols are frozen like the LAB ones: a change is a new fingerprint, and the owner signs it again."""
+"""The own protocols are frozen like the LAB ones: a change is a new fingerprint, and the owner signs it again."""
 
 
 def row(s: protosign.Signable, **kw: Any) -> dict[str, Any]:
@@ -52,7 +55,7 @@ def row(s: protosign.Signable, **kw: Any) -> dict[str, Any]:
 
 # ── the catalog ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_catalog_is_every_lab_protocol_untouched_and_the_three_of_the_chronicle() -> None:
+def test_the_catalog_is_every_lab_protocol_untouched_the_three_of_the_chronicle_and_the_retirement_of_review_v2() -> None:
     cat = protosign.catalog()
     assert set(cat) == set(LAB_PINNED) | set(OWN_PINNED)
     for key, fp in LAB_PINNED.items():
@@ -64,6 +67,8 @@ def test_the_catalog_is_every_lab_protocol_untouched_and_the_three_of_the_chroni
     assert (cat["AD-F04"].version, cat["AD-F05"].version, cat["AD-F06"].version) == (repetition.VERSION, retire.VERSION,
                                                                                      chronicle_protocol.VERSION)
     assert (repetition.KEY, retire.KEY, chronicle_protocol.KEY) == ("AD-F04", "AD-F05", "AD-F06")
+    assert cat["AD-D11"].version == review_retirement.VERSION == "review-retire-v1" and review_retirement.KEY == "AD-D11"
+    assert list(cat)[-4:] == ["AD-F04", "AD-F05", "AD-F06", "AD-D11"]
     assert all(protosign.KEY.match(k) for k in cat)
 
 
@@ -87,7 +92,25 @@ def test_the_records_of_the_chronicle_say_exactly_what_the_chronicle_applies() -
 
     assert f06["labels"] == list(SUPPORT_LABELS)
     for r in records.RECORDS:
-        assert r["framework"] == records.FRAMEWORK and r["where"].startswith("fbi/chronicle/") and len(r["says"]) > 200
+        assert r["framework"] == records.FRAMEWORK and len(r["says"]) > 200
+        assert r["where"].startswith("fbi/chronicle/") or r is records.D11, r["key"]
+
+
+def test_the_record_of_the_retirement_of_review_v2_is_its_protocol_word_for_word() -> None:
+    """AD-D11 (IA-145): the record IS ``review_retirement.PROTOCOL`` - not a summary of it - and the control of step ``sample``; a figure
+    changed in the module and not here (or here and not there) fails, and so does the fingerprint the owner signs."""
+    d11 = records.D11
+    assert d11["key"] == review_retirement.KEY and d11["version"] == review_retirement.VERSION and d11["piece"] == "IA-125"
+    assert d11["where"] == "fbi/ai/review_retirement.py" and (SRC / "ai" / "review_retirement.py").is_file()
+    assert d11["rule"]["protocol"] == dict(review_retirement.PROTOCOL)
+    assert d11["rule"]["control"] == {"share": str(review_retirement.SAMPLE_SHARE), "salt": review_retirement.SAMPLE_SALT,
+                                      "buckets": review_retirement.BUCKETS}
+    p = d11["rule"]["protocol"]
+    assert (p["margin"], p["min_selections"], p["min_days"], p["seed"], p["replicates"]) == (
+        str(review_retirement.MARGIN), review_retirement.MIN_SELECTIONS, review_retirement.MIN_DAYS, review_retirement.SEED,
+        review_retirement.REPLICATES)
+    assert "no retira nada" in d11["says"] and "FBI_REVIEW_V2" in d11["says"]
+    assert protosign.current("AD-D11").body["rule"]["protocol"]["window"].startswith("las 4 semanas siguientes a la firma")
 
 
 def test_a_changed_record_is_another_fingerprint() -> None:
@@ -254,6 +277,10 @@ def test_show_gives_the_whole_protocol_and_the_fingerprint_to_sign(monkeypatch: 
     assert doc["signed_by_owner"] is False and LAB_PINNED["AD-K03"] in doc["sign"] and doc["history"] == []
     doc, code = cli.run(FakeConn(), ns("show", key="AD-F05"))  # type: ignore[arg-type]
     assert code == cli.OK and doc["protocol"]["rule"]["min_matches"] == 100
+    doc, code = cli.run(FakeConn(), ns("show", key="AD-D11"))  # type: ignore[arg-type]
+    assert code == cli.OK and doc["fingerprint"] == OWN_PINNED["AD-D11"] and doc["version"] == "review-retire-v1"
+    assert doc["protocol"]["rule"]["protocol"]["min_selections"] == 300 and OWN_PINNED["AD-D11"] in doc["sign"]
+    assert "own_gate_signature" not in doc
     doc, code = cli.run(FakeConn(), ns("show", key="AD-Z99"))  # type: ignore[arg-type]
     assert code == cli.REFUSED and "AD-K02" in doc["error"]
 

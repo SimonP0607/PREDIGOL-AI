@@ -1,0 +1,204 @@
+# PM-03-01 (BE-066): read-only probe of the 60 candidates of batches 5-9 (Plan Maestro PM, DM-03), BEFORE any of them is tracked.
+# The procedure of scripts.probe_leagues (calendar, detail of the 20 latest finished matches, table) judged with
+# fbi.catalog.league_probe.judge_detail, plus one /odds page per competition with matches ahead (the houses), and the expected
+# level of each family with fbi.coverage.levels (coverage-levels-v1). Differences with scripts.probe_leagues, on purpose:
+#   * persist=False: NOTHING is written to the RAW store (an indexed /odds body would become prices; the plan says the probe
+#     leaves no trace); the shared daily quota, the per-minute limiter and the usage counter see every request as usual;
+#   * no run is opened in raw.ingestion_runs; the requests are counted under job league_probe, lane ampliacion (PM-01-02);
+#   * no /standings (the table check of probe_leagues is left out: the provider's flag is reported instead); /odds only
+#     with matches in the next 14 days;
+#   * hard cap CAP requests. The card of PM-03-01 puts the probe at about 240 (4 per competition); a first run on 20 Nov 2026
+#     06:51 UTC spent 60 and stopped on a bug of this script (a season with no finished match), so the second run has
+#     CAP = 180: 240 in all.
+# Run inside the worker:  docker exec -i -w /app predigol-worker python - < sonda_lotes_5_9.py   (prints one JSON document)
+import asyncio, json, logging, statistics, sys
+from collections import Counter
+from datetime import timedelta
+
+import psycopg
+from psycopg.rows import dict_row
+
+from fbi.catalog.league_probe import SAMPLE, LeagueProbe, judge_detail, lineups_complete
+from fbi.core.clock import now
+from fbi.core.config import settings
+from fbi.core.errors import CircuitOpenError, ProviderError, QuotaExhaustedError
+from fbi.coverage import levels as lv
+from fbi.ingestion.fixtures import status_group
+from fbi.market.settle_coverage import Coverage
+from fbi.providers.api_football.build import build_client
+from fbi.providers.api_football.details import iter_fixture_details, iter_fixture_facts
+from fbi.providers.api_football.normalize import iter_fixture_results, iter_fixtures
+from fbi.providers.quota import bind_usage_job, bind_usage_lane
+
+logging.disable(logging.WARNING)
+CAP = 180
+ODDS_AHEAD = timedelta(days=14)
+BATCHES = {
+    5: [713, 712, 541, 27, 1132, 36],
+    6: [129, 130, 517, 810, 1178, 632, 266, 267, 527, 263, 857, 304, 257, 269, 842, 930],
+    7: [220, 147, 519, 120, 121, 550, 181, 182, 185],
+    8: [874, 1202, 539, 887, 895, 324, 545, 101, 102, 306, 677, 824, 825, 308, 826, 293, 294, 302, 303, 560, 896],
+    9: [43, 47, 50, 51, 58, 59, 60, 931],
+}
+FLAGS = ("events", "lineups", "statistics_fixtures", "statistics_players", "standings", "injuries", "odds")
+CURRENT_SQL = """
+SELECT provider_league_id AS league, season, league_name, country, league_type, start_date, end_date,
+       events, lineups, statistics_fixtures, statistics_players, standings, injuries, odds
+  FROM raw.league_coverage WHERE provider_league_id = ANY(%(ids)s) AND is_current
+"""
+STAT = {"corners": "corners", "yellow_cards": "yellow_cards", "shots": "shots", "shots_on_target": "shots_on_target",
+        "fouls": "fouls", "xg": "expected_goals"}
+
+
+def both(detail, column):
+    """A datum counts when both teams carry it (an empty value is not a zero)."""
+    return len(detail.stats) == 2 and all(s.values.get(column) is not None for s in detail.stats)
+
+
+def books_of(body):
+    """/odds?league&season page: per fixture, the houses with any price, and whether corners / cards are priced."""
+    out = []
+    for item in body.get("response") or []:
+        books, corners, cards = set(), False, False
+        for book in item.get("bookmakers") or []:
+            bets = [b for b in (book.get("bets") or []) if isinstance(b, dict)]
+            if bets:
+                books.add(int(book.get("id") or 0))
+            names = " ".join(str(b.get("name") or "").lower() for b in bets)
+            corners = corners or "corner" in names
+            cards = cards or "card" in names
+        out.append((len(books), corners, cards))
+    return out
+
+
+def expected(m):
+    """The expected level of each family (coverage-levels-v1) from what the probe saw. Detail data on the sampled matches
+    (20 at most: A needs 30, so B is the best a probe can say, and it is provisional); the referee on every finished match of
+    the season; the odds families are not graded by a probe (they need the finished matches of the odds window): their
+    ceiling from the median of houses is given instead."""
+    n = m["sampled"]
+    data = {}
+    for d in lv.DATA:
+        if d == "events":
+            k = m["with_events"]
+        elif d == "lineups":
+            k = m["with_lineups"]
+        elif d == "player_stats":
+            k = m["with_player_stats"]
+        elif d == "referee":
+            data[d] = lv.grade_datum(Coverage(m["finished"], m["with_referee"])).level
+            continue
+        else:
+            k = m["with"].get(d, 0)
+        data[d] = lv.grade_datum(Coverage(n, k)).level
+    markets = {k: "MI" for k in lv.MARKETS}
+    fam = lv.family_levels(data, markets)
+    books = m["odds"]["books_median"]
+    ceiling = ("sin_medir" if books is None else "C" if books < lv.MIN_BOOKS else "B" if books < lv.A_BOOKS else "A")
+    fam["main_odds"] = f"MI (techo {ceiling})"
+    fam["stat_odds"] = f"MI (techo {ceiling})" if m["odds"]["with_corners"] else "MI (sin córners en /odds)"
+    return {"data": data, "families": fam, "summary": lv.summary_level(data, markets).label}
+
+
+async def probe_one(client, league, season, meta, at, spent):
+    p = LeagueProbe(league, season)
+    m = {"league": league, "season": season, "type": meta.get("league_type"), "flags": {f: bool(meta.get(f)) for f in FLAGS},
+         "with": Counter(), "with_referee": 0, "standings": None, "odds": {"asked": False, "fixtures": 0,
+         "books_median": None, "with_corners": 0, "with_cards": 0}, "errors": []}
+
+    async def get(endpoint, params):
+        spent[0] += 1
+        p.requests += 1
+        return (await client.get(endpoint, params, persist=False)).body
+
+    body = await get("/fixtures", {"league": league, "season": season})
+    refs = list(iter_fixtures(body))
+    res = {x.provider_fixture_id: x for x in iter_fixture_results(body)}
+    facts = {x.provider_fixture_id: x for x in iter_fixture_facts(body)}
+    p.fixtures = len(refs)
+    fin = [x for x in refs if status_group(x.status_short) == "finished"]
+    p.finished = len(fin)
+    up = [x for x in refs if status_group(x.status_short) == "scheduled" and x.kickoff_at > at]
+    p.upcoming = len(up)
+    p.unresolved_results = sum(1 for x in fin if x.provider_fixture_id not in res)
+    m["with_referee"] = sum(1 for x in fin if (facts.get(x.provider_fixture_id) and facts[x.provider_fixture_id].referee))
+    m["statuses"] = dict(Counter(x.status_short for x in refs))
+    m["next_kickoff"] = min((x.kickoff_at for x in up), default=None)
+    m["last_finished"] = max((x.kickoff_at for x in fin), default=None)
+    m["ahead_14d"] = sum(1 for x in up if x.kickoff_at <= at + ODDS_AHEAD)
+    m["teams"] = len({t for x in refs for t in (x.provider_home_team_id, x.provider_away_team_id)})
+    latest = sorted((x for x in fin if x.provider_fixture_id in res), key=lambda x: x.kickoff_at)[-SAMPLE:]
+    if latest and spent[0] < CAP:
+        scores = {x.provider_fixture_id: (res[x.provider_fixture_id].status_short, res[x.provider_fixture_id].goals_home,
+                                          res[x.provider_fixture_id].goals_away) for x in latest}
+        ids = "-".join(str(x.provider_fixture_id) for x in sorted(latest, key=lambda x: x.provider_fixture_id))
+        try:
+            det = list(iter_fixture_details(await get("/fixtures", {"ids": ids})))
+            judge_detail(p, det, scores)
+            for d in det:
+                for key, col in STAT.items():
+                    m["with"][key] += int(both(d, col))
+            m["sample_from"] = latest[0].kickoff_at
+            m["lineups_any"] = sum(1 for d in det if d.lineups)
+        except ProviderError as exc:
+            m["errors"].append(f"/fixtures?ids: {type(exc).__name__}")
+    if m["ahead_14d"] and spent[0] < CAP:
+        try:
+            per = books_of(await get("/odds", {"league": league, "season": season}))
+            m["odds"].update({"asked": True, "fixtures": len(per),
+                              "books_median": statistics.median(b for b, _, _ in per) if per else None,
+                              "with_corners": sum(1 for _, c, _ in per if c), "with_cards": sum(1 for _, _, k in per if k)})
+        except ProviderError as exc:
+            m["errors"].append(f"/odds: {type(exc).__name__}")
+    m.update({k: v for k, v in p.as_dict().items() if k not in ("errors", "examples")})
+    m["goal_mismatch_examples"] = p.examples
+    m["with"] = dict(m["with"])
+    m["expected"] = expected(m)
+    return m
+
+
+async def main():
+    at = now()
+    bind_usage_job("league_probe")
+    bind_usage_lane("ampliacion")
+    ids = [lid for b in BATCHES.values() for lid in b]
+    conn = psycopg.connect(settings.database.psycopg_url)
+    conn.execute("SET default_transaction_read_only = on")
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(CURRENT_SQL, {"ids": ids})
+        current = {int(r["league"]): r for r in cur.fetchall()}
+    conn.close()
+    client = build_client(max_requests=CAP)
+    spent = [0]
+    out = {"at": at.isoformat(), "cap": CAP, "leagues": [], "skipped": [], "stopped": None}
+    try:
+        for batch, leagues in BATCHES.items():
+            for lid in leagues:
+                meta = current.get(lid)
+                if meta is None:
+                    out["skipped"].append({"league": lid, "batch": batch, "why": "sin temporada actual en raw.league_coverage"})
+                    continue
+                if spent[0] + 1 > CAP:
+                    out["skipped"].append({"league": lid, "batch": batch, "why": f"tope de {CAP} peticiones"})
+                    continue
+                try:
+                    m = await probe_one(client, lid, int(meta["season"]), meta, at, spent)
+                except (QuotaExhaustedError, CircuitOpenError) as exc:
+                    out["stopped"] = f"{lid}: {type(exc).__name__}"
+                    break
+                except ProviderError as exc:
+                    m = {"league": lid, "season": int(meta["season"]), "errors": [f"/fixtures: {type(exc).__name__}"]}
+                except Exception as exc:  # a bug of this script must not lose the leagues already probed
+                    m = {"league": lid, "season": int(meta["season"]), "errors": [f"script: {type(exc).__name__}: {exc}"]}
+                m["batch"] = batch
+                out["leagues"].append(m)
+            if out["stopped"]:
+                break
+    finally:
+        await client.aclose()
+    out["requests"] = spent[0]
+    out["done_at"] = now().isoformat()
+    print("@@RESULT " + json.dumps(out, default=str, ensure_ascii=False), flush=True)
+
+
+asyncio.run(main())
