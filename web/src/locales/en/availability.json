@@ -1,0 +1,66 @@
+{
+  "kind": {
+    "no_existe": "Not offered in this competition",
+    "cobertura_parcial": "Partial coverage",
+    "muestra_insuficiente": "Sample too small",
+    "pendiente": "Not available yet",
+    "en_revision": "Under review"
+  },
+  "step": {
+    "existe": "Exists",
+    "cobertura": "Enough coverage",
+    "cuota": "Price in force",
+    "probabilidad": "Probability computed",
+    "autorizada": "Calibrated and authorised",
+    "liquidable": "Settleable",
+    "reglas": "Meets the rules"
+  },
+  "result": {
+    "si": "Yes",
+    "no": "No",
+    "sin_evaluar": "Not evaluated"
+  },
+  "module": {
+    "mi_parlay": "My parlay",
+    "picks": "Picks",
+    "cuotas": "Odds"
+  },
+  "list": {
+    "sep": ", ",
+    "lastNegative": " or ",
+    "last": " and "
+  },
+  "notOffered": "This competition does not offer {subjects}.",
+  "notSettled": "PrediGol cannot settle {subject} in this competition: it cannot be added to My parlay. The price stays informative.",
+  "partial": {
+    "pct": "Partial coverage of {subjects}: the data arrive for {pct} % of this competition's matches. Figures use only the matches that have them.",
+    "plain": "Partial coverage of {subjects} in this competition. Figures use only the matches that have them."
+  },
+  "thin": {
+    "badge": "Few data",
+    "body": "We show {subject} from {min} matches. With {n}, the figure says nothing.",
+    "bodyCount": "There are {n} matches with {subject}: too few for a figure. The count is shown, not a rate.",
+    "progress": "{n} of {min} matches",
+    "left": "{k} to go",
+    "group": "Few data for {subjects}: the count is shown, not a rate."
+  },
+  "pending": {
+    "title": "{subject}: not available yet",
+    "when": "Usually published {when}.",
+    "existe": "The data will come when the provider publishes them.",
+    "cobertura": "This competition is not measured yet; it is measured every night.",
+    "cuota": "There is no price in force from at least 3 bookmakers yet. It will appear in Odds and My parlay when there is.",
+    "probabilidad": "PrediGol has not computed this probability yet. The market's price still holds.",
+    "reglas": "There is no price this module can use yet. The rest of the match still holds.",
+    "group": "Not available yet: {subjects}. They will come when published."
+  },
+  "review": {
+    "title": "We are reviewing {subject}.",
+    "autorizada": "PrediGol's probability is withdrawn while the model is under evaluation; the market's implied probability still holds.",
+    "reglas": "It is not in {module} while we review it; the price still holds.",
+    "other": "The data exist but are not reliable now. The rest of this screen still holds.",
+    "report": "Report a data issue",
+    "group": "Under review: {subjects}. The rest of this screen still holds."
+  },
+  "notesLabel": "Information not available on this screen"
+}
