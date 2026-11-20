@@ -83,10 +83,12 @@ def test_0143_records_versions_append_only_and_goes_back_clean(migrated_database
             c.commit()
             again = store.load(c, files, at=at, code_version="test")
             c.commit()
-            assert all(x.created for x in first) and len(first) == len(files) == 14  # 13 on 16-nov-2026; Colombia v2 on 20-nov (BE-075)
+            # 13 on 16-nov-2026; Colombia v2 on 20-nov (BE-075); IA-149's two shadow versions are never recorded
+            coded = [f for f in files if f.rules.state != "shadow"]
+            assert len(files) == 16 and all(x.created for x in first) and len(first) == len(coded) == 14
             assert not any(x.created for x in again), "the same content twice writes nothing"
             recorded = store.loaded(c)
-            assert {(r["league_id"], r["version"]) for r in recorded} == {f.key for f in files}
+            assert {(r["league_id"], r["version"]) for r in recorded} == {f.key for f in coded}
             with pytest.raises(psycopg.errors.CheckViolation):
                 c.execute("UPDATE core.competition_rules SET state = 'retired', reason = 'nope'")
             c.rollback()
