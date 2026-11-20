@@ -10,7 +10,7 @@ from pathlib import Path
 from types import ModuleType
 
 ROOT = Path(__file__).resolve().parents[2]
-MIGRATION = ROOT / "migrations" / "versions" / "0170_market_league_daily_stats.py"
+MIGRATION = ROOT / "migrations" / "versions" / "0170_market_league_daily_margin.py"
 GRANTS = ROOT / "deploy" / "vps" / "db" / "grants.sql"
 
 
