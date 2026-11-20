@@ -500,6 +500,7 @@ segunda con `leak-audit-v6` y la primera con material de F4, F6 y F7; y el gasto
    `intel.entity_memory`, 5.624) y crea cuatro objetos nuevos; no tiene claves foráneas hacia `core.fixtures` ni toca nada grande, y si no
    consigue un bloqueo en 10 segundos falla entera sin dejar nada a medias. Aun así se hace fuera de las horas del trabajo de partidos
    (01:03, 07:03, 13:03 y 19:03 UTC, con su transacción de unos 27 minutos) y de los ciclos de las 12:35–13:00 UTC.
+   *(nota del 20-nov-2026, PM-00-03: horas de octubre; no son fijas y se leen en `raw.ingestion_runs` antes de cada despliegue, ver `CHECKLIST_POR_FASE_F14.md`)*
 2. Vigilancia de bloqueos (`lockwatch`) durante el despliegue y las cargas, con su registro.
 3. `predigolctl deploy`: respaldo propio, migración, permisos, reinicio y salud. Con las tablas nuevas vacías todo se comporta como antes, salvo
    que el ciclo de aprendizaje de la IA y el nocturno pasan a escribir `pm-v6` y dejan de escribir `pm-v1.1` y `pm-v2`.
