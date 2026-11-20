@@ -30,7 +30,7 @@ from psycopg.rows import dict_row
 
 from fbi.ai import budget_v3, gates, lab
 from fbi.ai.batch import BatchClient, BatchQueue, Task, estimate_cost, poll
-from fbi.ai.battery import offline, v4
+from fbi.ai.battery import agentworld, offline, v4
 from fbi.ai.battery.evaluate import Outcome
 from fbi.ai.battery.run import CLOSED_WITH_SUMMARY, OPEN, Held, held_from
 from fbi.ai.config import AiSettings
@@ -211,6 +211,14 @@ def summarise(r: Any, ctx: Mapping[str, Any]) -> dict[str, Any]:
     return v3_summarise(r, ctx)
 
 
+def offline_layer(targets: Sequence[str]) -> offline.OfflineReport:
+    """The deterministic layer of v3 (``offline.run``) for ``targets``, ALWAYS over the door production reads: it checks that the server's own
+    cleaning keeps each attack inside its string, so it is asked of the slice the package makes (``agentworld.match_view("package")``) even
+    when the target ``match`` is measured over its isolated view (IA-148), which by construction carries no text of a case at all."""
+    with agentworld.match_view("package"):
+        return offline.run(targets)
+
+
 # ── collect ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def collect(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetime, targets: Sequence[str] = v4.TARGETS, suffix: str = "",
@@ -229,7 +237,7 @@ def collect(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetime
     if any(h.open for h in helds.values()):
         return out | {"state": "waiting"}
     v3_targets = [t for t in targets if t not in v4.QUARANTINE]
-    offline_report = offline.run(v3_targets) if v3_targets else None
+    offline_report = offline_layer(v3_targets) if v3_targets else None
     verdict = v4.overall(assessments.values(), offline_report is None or offline_report.ok)
     out["verdict"] = verdict
     if verdict == "INCOMPLETA":
