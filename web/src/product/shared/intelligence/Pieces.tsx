@@ -369,7 +369,7 @@ export function PrivateBand({ children }: { children?: ReactNode }) {
 /* ------------------------------------------------------------------ EntityHeader */
 
 /**
- * The head of a club, a national team or a player (maquetas 11-13), built from the match header's crest. A player never
+ * The head of a club, a national team, a player (maquetas 11-13) or a competition (lámina I07), built from the match header's crest. A player never
  * gets a photo until the rights are settled: his initials stand in.
  */
 export function EntityHeader({
@@ -380,7 +380,8 @@ export function EntityHeader({
   facts,
   actions,
 }: {
-  kind: "club" | "nation" | "player";
+  /** «competition»: a competition's page (plan PM, PM-09-04), with its emblem like a club's crest. */
+  kind: "club" | "nation" | "player" | "competition";
   name: string;
   logo?: string | null | undefined;
   subtitle?: string | null | undefined;

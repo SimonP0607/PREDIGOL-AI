@@ -1,0 +1,112 @@
+{
+  "closed": "Las páginas de competición aún no están abiertas.",
+  "missing": "No encontramos esta competición.",
+  "world": "Internacional",
+  "season": "Temporada {season}",
+  "type": {
+    "league": "Liga",
+    "cup": "Copa",
+    "supercup": "Supercopa",
+    "friendly": "Amistosos"
+  },
+  "tabsLabel": "Secciones de la competición",
+  "tabs": {
+    "table": "Tablas",
+    "calendar": "Partidos",
+    "leaders": "Líderes",
+    "coverage": "Cobertura"
+  },
+  "notOffered": {
+    "table": "la tabla",
+    "leaders": "los líderes"
+  },
+  "table": {
+    "title": "Tabla del proveedor",
+    "none": "Esta competición no tiene tabla guardada (las copas y los amistosos no suelen tenerla).",
+    "stage": "Fase de la temporada",
+    "other": "Otras tablas",
+    "source": "Fuente: la tabla que entrega el proveedor de datos, por fase."
+  },
+  "tables": {
+    "title": "Las tablas que deciden el año",
+    "choose": "Tabla",
+    "places": "Cupos internacionales",
+    "team": "Equipo",
+    "played": "PJ",
+    "playedLong": "Partidos jugados",
+    "points": "Pts",
+    "pointsLong": "Puntos",
+    "average": "Prom.",
+    "averageLong": "Promedio: puntos entre partidos jugados",
+    "zoneToday": "Hoy",
+    "noZone": "Sin cupo",
+    "tied": "Empatado: lo decide el reglamento",
+    "zone": {
+      "continental": "Cupo internacional",
+      "relegation": "Descenso"
+    },
+    "zoneState": {
+      "definitivo": "definitivo",
+      "provisional": "provisional",
+      "condicional": "depende de los campeones",
+      "empate_abierto": "empate sin resolver"
+    },
+    "placeByRank": "Por la posición en la tabla",
+    "placeOf": {
+      "champion": "El campeón de {of}",
+      "cup_winner": "El campeón de {of}"
+    },
+    "placeState": {
+      "calculado": "Calculado",
+      "provisional": "Provisional",
+      "pendiente": "Pendiente",
+      "no_calculado": "Sin calcular"
+    },
+    "complete": "Tabla definitiva: todos sus partidos están decididos.",
+    "pending": "Tabla provisional: faltan {n} partidos que cuentan en ella.",
+    "averageNote": "El promedio se ordena por el cociente exacto; se muestra cortado a tres decimales, como en las tablas publicadas.",
+    "unverified": "Incluye {n} resultados decididos fuera de la cancha, aún sin verificar por PrediGol.",
+    "source": "Calculada por PrediGol con los resultados del proveedor y el reglamento de la competición (versión {version} de sus reglas). No es un pronóstico."
+  },
+  "calendar": {
+    "upcoming": "Próximos partidos",
+    "results": "Últimos resultados",
+    "current": "Ahora se juega: {rounds}",
+    "upcomingNone": "No hay partidos programados.",
+    "resultsNone": "Aún no hay resultados."
+  },
+  "leaders": {
+    "title": "Líderes",
+    "choose": "Clasificación",
+    "none": "El proveedor no entrega líderes de esta competición.",
+    "kind": {
+      "topscorers": "Goleadores",
+      "topassists": "Asistencias",
+      "topyellowcards": "Amarillas",
+      "topredcards": "Rojas"
+    },
+    "source": "Fuente: los líderes que publica el proveedor de datos."
+  },
+  "coverage": {
+    "title": "Qué datos tiene PrediGol",
+    "intro": "El nivel mide los datos que de verdad llegaron en la temporada, no la calidad de la liga. Cada sección se muestra según el nivel de su propio dato.",
+    "family": {
+      "base": "Eventos y alineaciones",
+      "team_stats": "Estadísticas de equipo",
+      "player_stats": "Estadísticas de jugador",
+      "xg": "Goles esperados (xG)",
+      "referee": "Árbitro",
+      "main_odds": "Cuotas principales",
+      "stat_odds": "Cuotas de córners y tarjetas"
+    },
+    "meaning": {
+      "A": "Cobertura completa",
+      "B": "Cobertura suficiente",
+      "C": "Cobertura parcial",
+      "D": "Cobertura escasa",
+      "MI": "Muestra insuficiente: menos de 10 partidos"
+    },
+    "unmeasured": "Sin medir todavía",
+    "note": "Se recalcula cada noche con lo que llegó en la temporada actual."
+  }
+}
