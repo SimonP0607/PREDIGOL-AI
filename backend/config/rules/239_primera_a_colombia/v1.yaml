@@ -6,6 +6,8 @@ league_id: 239
 competition: Primera A
 country: Colombia
 version: 1
+state: retired
+retired_reason: "Superseded by v2 (BE-075, PM-09-01, 20-nov-2026): the relegation zone cited art. 32 and the relegation of the last two is art. 34 (cotejo DOC-008, section 4 b); sources a, c and d of that section corrected; the tables' data (past seasons, club windows, tie scope, places) added."
 seasons: [2026]
 points: {win: 3, draw: 1, loss: 0}
 sources:
