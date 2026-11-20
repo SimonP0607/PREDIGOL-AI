@@ -24,14 +24,14 @@ def test_hours_before_kickoff_per_channel_and_after_kickoff_counted_apart() -> N
     fig = at.channel_figures(cases, "proveedor_parte")
     assert (fig["absences"], fig["before_kickoff"], fig["after_kickoff"]) == (3, 2, 1)
     assert fig["median_h"] == 55.0 and fig["small_sample"] is True
-    assert at.channel_figures(cases, "prensa_medios")["absences"] == 0
+    assert at.channel_figures(cases, "alineacion")["absences"] == 0
 
 
 def test_the_lead_against_the_provider_report_uses_only_pairs_both_brought_before_kickoff() -> None:
-    cases = [_case(i, proveedor_parte=40, prensa_medios=46) for i in range(30)]  # the press 6 h earlier
-    cases += [_case(100, proveedor_parte=40, prensa_medios=-1),  # the press after kick-off: no pair
-              _case(101, prensa_medios=10)]  # the press alone: counted apart
-    lead = at.against_reference(cases, "prensa_medios")
+    cases = [_case(i, proveedor_parte=40, alineacion=46) for i in range(30)]  # 6 h earlier
+    cases += [_case(100, proveedor_parte=40, alineacion=-1),  # after kick-off: no pair
+              _case(101, alineacion=10)]  # alone: counted apart
+    lead = at.against_reference(cases, "alineacion")
     assert lead["pairs"] == 30 and lead["median_lead_h"] == 6.0 and lead["earlier"] == 30
     assert lead["earlier_share"] == 1.0 and lead["earlier_share_ci95"][0] > 0.85
     assert lead["median_lead_ci95_h"] == [6.0, 6.0] and lead["small_sample"] is False
@@ -84,7 +84,7 @@ def test_the_sample_is_fixed_ids_and_times_only() -> None:
 
 
 def test_the_table_renders_every_channel() -> None:
-    cases = [_case(i, proveedor_parte=50, prensa_medios=60) for i in range(3)]
+    cases = [_case(i, proveedor_parte=50, alineacion=60) for i in range(3)]
     data = {"window": {"since": "2026-10-25T00:00:00+00:00", "until": "2026-11-21T00:00:00+00:00",
                        "measured_at": "2026-11-20T21:40:00+00:00"}, **at.summarise(cases)}
     text = cli.render(data)

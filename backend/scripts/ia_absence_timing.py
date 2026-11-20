@@ -26,7 +26,6 @@ from fbi.ingestion.absence_timing import report
 READ_ONLY = "-c default_transaction_read_only=on -c statement_timeout=90000 -c TimeZone=UTC"
 
 NAMES = {"proveedor_parte": "proveedor · parte de bajas", "proveedor_periodos": "proveedor · periodos de baja",
-         "prensa_oficial": "prensa · liga, federación o club", "prensa_medios": "prensa · medios",
          "alineacion": "alineación oficial (confirma)"}
 
 

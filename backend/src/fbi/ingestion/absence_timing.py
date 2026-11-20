@@ -1,27 +1,25 @@
 """When an absence reaches PrediGol, by each channel already in use (IA-150, plan PM, PM-06-03). Read only.
 
-An ABSENCE here is one player of one match who did not play it for a sporting reason the provider or the press stated: the
-provider's injury report listed him ``Missing Fixture``, or a press fact said he was out (``ai.evidence``, kind ``injury`` or
-``suspension``, assertion ``out``). For each one, the first moment each channel brought it to PrediGol:
+An ABSENCE here is one player of one match the provider's injury report listed ``Missing Fixture`` (a sporting fact: out
+injured, suspended or for another reason). For each one, the first moment each channel brought it to PrediGol:
 
 * ``proveedor_parte``     the provider's injury report (``/injuries``): the first ``LISTED`` row of
                           ``core.player_availability_obs`` (its ``observed_at`` is when WE asked, origin ``answer`` only: the
                           ``snapshot`` rows of 0078 are a copy, not an arrival);
 * ``proveedor_periodos``  the provider's periods out of a player (``/sidelined``): the first ``core.person_sidelined`` row whose
                           period covers the match day;
-* ``prensa_oficial``      a press fact whose source is the league, the federation or the club (tiers ``official``,
-                          ``competition``, ``club``), by when it was retrieved;
-* ``prensa_medios``       the same from any other outlet (``journalist``, ``media``, ``aggregator``, ``unknown``);
 * ``alineacion``          the first arrival of his side's official line-up (``core.fixture_lineup_arrivals``): the latest a
                           baja is confirmed, by omission.
 
-Only channels PrediGol ALREADY reads are measured: nothing here fetches anything, and no new site is used. The press facts are
-those of the sources the research already reads; whether more official sites may be read is the owner's signature (DM-05, the
-levels of IA-147), and X is decision DM-07 - both stay out until signed. A news feed item (``news.items``) names no player
-yet (no player link on 20-nov-2026), so it is not a channel here.
+Only channels PrediGol ALREADY reads are measured: nothing here fetches anything, and no new site is used. Official sites are
+the owner's signature (DM-05, the levels of IA-147) and X is decision DM-07: both stay out until signed. A news feed item
+(``news.items``) names no player yet (no player link on 20-nov-2026). The press facts the research keeps (``ai.evidence``) are
+NOT read here: every reader of that table goes through Intelligence's typed-evidence guard (research v2 in shadow); their arrival
+was measured once, read-only, for the guide (docs/owner/IA_150_TIEMPO_DE_LLEGADA_DE_BAJAS.md), and a reader of them is a
+proposal for the Intelligence session.
 
 What is NEVER read or returned: the provider's reason beyond telling a suspension from an injury (reduced to ``lesion``,
-``sancion`` or ``otro`` in the query, as ``fbi.people.availability`` does), a claim's text, a name. The report is counts and
+``sancion`` or ``otro`` in the query, as ``fbi.people.availability`` does), a name. The report is counts and
 hours.
 
 The figures: per channel, how many absences it brought, how many before kick-off and how many hours before kick-off (median,
@@ -49,9 +47,8 @@ from psycopg.rows import dict_row
 
 VERSION: Final = "absence-timing-v1"
 
-Channel = Literal["proveedor_parte", "proveedor_periodos", "prensa_oficial", "prensa_medios", "alineacion"]
-CHANNELS: Final[tuple[Channel, ...]] = ("proveedor_parte", "proveedor_periodos", "prensa_oficial", "prensa_medios",
-                                        "alineacion")
+Channel = Literal["proveedor_parte", "proveedor_periodos", "alineacion"]
+CHANNELS: Final[tuple[Channel, ...]] = ("proveedor_parte", "proveedor_periodos", "alineacion")
 REFERENCE: Final[Channel] = "proveedor_parte"
 Kind = Literal["lesion", "sancion", "otro"]
 
@@ -63,6 +60,7 @@ PENDING: Final = (
     "Sitios oficiales nuevos (DIMAYOR, FCF, clubes: niveles de IA-147) y su consulta legal: firma del dueño DM-05 y DM-08",
     "X (API de pago): decisión DM-07, que se toma con este informe",
     "Noticias de news.items: aún no enlazan jugadores (sin vínculo de jugador el 20-nov-2026)",
+    "Prensa ya leída por la investigación (ai.evidence): medida una vez en la guía; un lector propio, propuesta a Intelligence",
 )
 
 SUSPENSION_RE: Final = "(red card|yellow cards?|suspend|suspension|banned|sanci|tarjeta)"
@@ -79,29 +77,19 @@ prov AS (SELECT o.fixture_id, o.provider_player_id, min(o.observed_at) AS first_
                      WHEN bool_and(o.reason ~* %(other)s) THEN 'otro' ELSE 'lesion' END AS kind
            FROM core.player_availability_obs o JOIN win ON win.id = o.fixture_id
           WHERE o.origin = 'answer' AND o.status = 'LISTED' AND o.absence_type = 'Missing Fixture' GROUP BY 1, 2),
-press AS (SELECT e.fixture_id, e.provider_player_id,
-                 min(e.retrieved_at) FILTER (WHERE e.source_tier IN ('official', 'competition', 'club')) AS official_at,
-                 min(e.retrieved_at) FILTER (WHERE e.source_tier IN ('journalist', 'media', 'aggregator', 'unknown')) AS media_at,
-                 bool_or(e.kind = 'suspension') AS susp
-            FROM ai.evidence e JOIN win ON win.id = e.fixture_id
-           WHERE e.provider_player_id IS NOT NULL AND e.origin = 'web' AND e.kind IN ('injury', 'suspension')
-             AND e.status IN ('CONFIRMED', 'PROBABLE') AND coalesce(e.attributes->>'assertion', 'out') = 'out'
-           GROUP BY 1, 2),
-keys AS (SELECT fixture_id, provider_player_id FROM prov UNION SELECT fixture_id, provider_player_id FROM press)
+keys AS (SELECT fixture_id, provider_player_id FROM prov)
 SELECT w.provider_fixture_id AS fixture, k.provider_player_id AS player, w.kickoff_at, c.provider_league_id AS league,
-       coalesce(p.kind, CASE WHEN pr.susp THEN 'sancion' ELSE 'lesion' END) AS kind,
+       p.kind,
        p.first_at AS proveedor_parte,
        (SELECT min(s.observed_at) FROM core.person_sidelined s
          WHERE s.person_kind = 'player' AND s.provider_person_id = k.provider_player_id
            AND s.start_date <= w.kickoff_at::date AND (s.end_date IS NULL OR s.end_date >= w.kickoff_at::date)) AS proveedor_periodos,
-       pr.official_at AS prensa_oficial, pr.media_at AS prensa_medios,
        (SELECT min(a.observed_at) FROM core.fixture_lineup_arrivals a JOIN core.fixtures f2 ON f2.id = a.fixture_id
           JOIN core.teams t ON t.id = CASE a.team_side WHEN 'home' THEN f2.home_team_id ELSE f2.away_team_id END
          WHERE a.fixture_id = k.fixture_id AND t.provider_team_id = p.team) AS alineacion
   FROM keys k JOIN win w ON w.id = k.fixture_id
   JOIN core.competition_seasons cs ON cs.id = w.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id
-  LEFT JOIN prov p ON p.fixture_id = k.fixture_id AND p.provider_player_id = k.provider_player_id
-  LEFT JOIN press pr ON pr.fixture_id = k.fixture_id AND pr.provider_player_id = k.provider_player_id
+  JOIN prov p ON p.fixture_id = k.fixture_id AND p.provider_player_id = k.provider_player_id
  ORDER BY w.kickoff_at, k.fixture_id, k.provider_player_id
 """
 
