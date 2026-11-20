@@ -93,6 +93,12 @@ MATCH_BALANCE: Final = "FBI_MATCH_BALANCE"
 the line is absent - Estadísticas is as it was - and ``=1`` draws the balance where the team statistics are of level B or better and
 the strip of a finished match where the events are (C-16, when it answers). It reads the match detail it already reads."""
 
+LINEUP_LAYERS: Final = "FBI_LINEUP_LAYERS"
+"""The data layers of the Match Center's line-up pitch (plan PM, PM-10-04, lámina I02 «M02»; UX-176): OFF while the line is absent -
+Alineaciones is as it was - and ``=1`` lets the reader put each starter's rating, minutes, cards or goals and assists on his marker,
+where the player statistics are of level B or better (C-16, when it answers) and every starter has his line. It reads the match
+detail it already reads."""
+
 AVAILABILITY: Final = "FBI_AVAILABILITY"
 """The availability matrix over HTTP (plan PM, PM-02-05; contract C-16): OFF while the line is absent - its five routes answer 404,
 the private ones too - and ``=1`` opens them (the API recreated). It reads the tables of the nightly batch and the match's own data;
@@ -220,6 +226,11 @@ def match_shot_funnel_on() -> bool:
 def match_balance_on() -> bool:
     """Whether readers get the Match Center's balance and strip of the score's state (``FBI_MATCH_BALANCE``, off by default)."""
     return user_switch(MATCH_BALANCE, default=False)
+
+
+def lineup_layers_on() -> bool:
+    """Whether readers get the data layers of the line-up pitch (``FBI_LINEUP_LAYERS``, off by default)."""
+    return user_switch(LINEUP_LAYERS, default=False)
 
 
 def availability_on() -> bool:

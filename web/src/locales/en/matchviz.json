@@ -56,5 +56,32 @@
     "source": "match events from API-Football",
     "beyond90": "The strip covers the 90 minutes: extra time and penalties are not drawn.",
     "method": "The goals of the match events are put in order and, minute by minute, it is counted who was ahead, who behind or whether they were level. Stoppage time counts as minute 90 (45 in the first half). Drawn only when the goals of the events add up to the final score."
+  },
+  "layers": {
+    "title": "Line-up layers",
+    "subtitle": "Choose which figure of the match each starter carries.",
+    "choose": "Data layer",
+    "team": "Team in the table",
+    "rating": "Rating",
+    "minutes": "Minutes",
+    "cards": "Cards",
+    "goalsAssists": "Goals and assists",
+    "nominal": "Nominal position of the formation, not the real position on the pitch. It is the box the team sheet declares; starters only.",
+    "bestNote": "Gold edge: the team's highest rating. The provider's scale, 1 to 10.",
+    "subject": "Rating, minutes, cards and goals with assists of the starters of {home} and {away}",
+    "source": "player statistics and match events from API-Football",
+    "tableTitle": "The four layers, as a table",
+    "player": "Player",
+    "val": "Rat.",
+    "min": "Min",
+    "cardsShort": "Cards",
+    "ga": "G + A",
+    "yellowShort": "1 Y",
+    "redShort": "R",
+    "yellowLong": "yellow",
+    "redLong": "red",
+    "cardsLegend": "«Y» is yellow and «R», red.",
+    "teamFormation": "{team} · {formation}",
+    "method": "Each starter stands at the box the match's team sheet declares (the formation), not where he played. The chosen layer puts on his marker a figure of his match as the provider delivers it: the rating (1 to 10), the minutes, the card, or the goals and assists. Substitutes have no box in the formation."
   }
 }

@@ -76,3 +76,16 @@ def test_match_balance_is_told_to_the_page_and_off_by_default(value: str | None,
         monkeypatch.setenv(switches.MATCH_BALANCE, value)
     assert Me.model_fields["match_balance"].default is False
     assert switches.match_balance_on() is expected
+
+
+@pytest.mark.parametrize(("value", "expected"), [(None, False), ("", False), ("1", True), ("0", False)])
+def test_lineup_layers_are_told_to_the_page_and_off_by_default(value: str | None, expected: bool,
+                                                                monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan PM, PM-10-04 (UX-176): the data layers of the line-up pitch only with FBI_LINEUP_LAYERS's line on; /auth/me says it
+    as ``lineup_layers``, off by default."""
+    if value is None:
+        monkeypatch.delenv(switches.LINEUP_LAYERS, raising=False)
+    else:
+        monkeypatch.setenv(switches.LINEUP_LAYERS, value)
+    assert Me.model_fields["lineup_layers"].default is False
+    assert switches.lineup_layers_on() is expected

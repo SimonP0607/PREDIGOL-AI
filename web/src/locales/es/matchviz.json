@@ -56,5 +56,32 @@
     "source": "eventos del partido de API-Football",
     "beyond90": "La franja cubre los 90 minutos: la prórroga y los penaltis no se dibujan.",
     "method": "Se ordenan los goles de los eventos del partido y se cuenta, minuto a minuto, quién iba por delante, quién por detrás o si iban empatados. El tiempo añadido cuenta como el minuto 90 (45 en la primera parte). Solo se dibuja cuando los goles de los eventos suman el resultado final."
+  },
+  "layers": {
+    "title": "Capas de la alineación",
+    "subtitle": "Elige qué cifra del partido lleva cada titular.",
+    "choose": "Capa de datos",
+    "team": "Equipo de la tabla",
+    "rating": "Valoración",
+    "minutes": "Minutos",
+    "cards": "Tarjetas",
+    "goalsAssists": "Goles y asistencias",
+    "nominal": "Posición nominal de formación, no posición real en el campo. Es la casilla que declara el acta; solo titulares.",
+    "bestNote": "Borde dorado: valoración más alta del equipo. Escala del proveedor, de 1 a 10.",
+    "subject": "Valoración, minutos, tarjetas y goles con asistencias de los titulares de {home} y {away}",
+    "source": "estadísticas por jugador y eventos del partido de API-Football",
+    "tableTitle": "Las cuatro capas, en tabla",
+    "player": "Jugador",
+    "val": "Val.",
+    "min": "Min",
+    "cardsShort": "Tarj.",
+    "ga": "G + A",
+    "yellowShort": "1 A",
+    "redShort": "R",
+    "yellowLong": "amarilla",
+    "redLong": "roja",
+    "cardsLegend": "«A» es amarilla y «R», roja.",
+    "teamFormation": "{team} · {formation}",
+    "method": "Cada titular está en la casilla que declara el acta del partido (la formación), no donde jugó. La capa elegida pone en su marca una cifra de su partido tal como la entrega el proveedor: la valoración (de 1 a 10), los minutos, la tarjeta o los goles y asistencias. Los suplentes no tienen casilla en la formación."
   }
 }
