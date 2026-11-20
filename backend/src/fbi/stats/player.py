@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Final, cast
 
 from fbi.statmath import formulas as fx
+from fbi.stats import extras as px
 from fbi.stats.data import PlayerLine, SeasonData
 from fbi.stats.doc import (
     Doc,
@@ -177,11 +178,14 @@ class PlayerDoc:
     sample: int
 
 
-def season_documents(data: SeasonData) -> list[PlayerDoc]:
+def season_documents(data: SeasonData, *, extras: bool = False) -> list[PlayerDoc]:
+    """``extras`` (``FBI_STATS_PROVIDER_EXTRAS``, PM-05-05): each body also carries ``provider_extras`` (``fbi.stats.extras``); off,
+    the body is exactly what it was."""
     by_player: dict[int, list[PlayerLine]] = defaultdict(list)
     for line in data.players:
         by_player[line.player_id].append(line)
     cover = coverage(data.players)
+    extra_cover = px.player_coverage(data.players) if extras else {}
     side_team = {}
     for m in data.matches:
         side_team[(m.fixture_id, "home")] = (m.home_id, m.home_name, m.away_id, m.away_name)
@@ -249,6 +253,8 @@ def season_documents(data: SeasonData) -> list[PlayerDoc]:
             starts=sum(1 for line in lines if line.starter), minutes=total, nineties=fx.half_up(total / 90.0, 1),
             min_nineties=MIN_NINETIES, figures=figures, last5=strip,
             recent_minutes=[MinutesItem(fixture_id=line.fixture_id, minutes=line.minutes, starter=line.starter) for line in lines[-10:]])
+        if extras:
+            body["provider_extras"] = px.player_figures(lines, extra_cover)
         docs.append(PlayerDoc(pid, team[0] if team else None, body, len(lines)))
     return docs
 

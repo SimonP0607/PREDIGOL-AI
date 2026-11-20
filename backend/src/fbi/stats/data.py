@@ -48,7 +48,7 @@ SELECT o.fixture_id, o.kickoff_at, f.home_team_id, f.away_team_id, th.name AS ho
 """
 
 TEAM_STATS_SQL: Final = """
-SELECT fixture_id, team_side, expected_goals, possession_pct, passes, passes_accurate
+SELECT fixture_id, team_side, expected_goals, possession_pct, passes, passes_accurate, offsides, goals_prevented
   FROM core.fixture_team_stats
  WHERE fixture_id = ANY(%(fixtures)s) AND source = 'api-football'
 """
@@ -157,14 +157,27 @@ def seasons(conn: psycopg.Connection[Any], *, min_matches: int) -> list[Season]:
                        r["country"], int(r["finished"])) for r in cur.fetchall()]
 
 
+PLAYER_EXTRAS_SQL: Final = """
+SELECT DISTINCT ON (fixture_id, provider_player_id) fixture_id, provider_player_id, offsides, dribbled_past, penalties_won,
+       penalties_committed, penalties_saved
+  FROM core.fixture_player_extras
+ WHERE fixture_id = ANY(%(fixtures)s)
+ ORDER BY fixture_id, provider_player_id, observed_at DESC
+"""
+"""The latest extras of each player and match (plan PM, PM-05-05): read only with ``FBI_STATS_PROVIDER_EXTRAS`` on (``fbi.stats.extras``)."""
+
 PLAYER_COUNTS: Final = (
     "goals", "assists", "shots_total", "shots_on", "passes_total", "passes_key", "passes_accuracy_pct", "tackles", "blocks",
     "interceptions", "duels_total", "duels_won", "dribbles_attempts", "dribbles_success", "fouls_drawn", "fouls_committed",
     "yellow_cards", "red_cards", "saves", "goals_conceded",
 )
+EXTRA_COUNTS: Final = ("offsides", "dribbled_past", "penalties_won", "penalties_committed", "penalties_saved")
+"""``fbi.stats.extras.PLAYER_COLUMNS`` (a test keeps them equal: the data layer does not import the documents')."""
 
 
-def load_season(conn: psycopg.Connection[Any], season: Season) -> SeasonData:
+def load_season(conn: psycopg.Connection[Any], season: Season, *, extras: bool = False) -> SeasonData:
+    """One competition season, read once. ``extras`` (``FBI_STATS_PROVIDER_EXTRAS``, PM-05-05): each player line also carries his
+    extras of the match (``fbi.stats.extras.PLAYER_COLUMNS``; absent when the provider sent none)."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(MATCHES_SQL, {"cs": season.id})
         matches = [Match(int(r["fixture_id"]), r["kickoff_at"], int(r["home_team_id"]), int(r["away_team_id"]), str(r["home_name"]),
@@ -178,7 +191,8 @@ def load_season(conn: psycopg.Connection[Any], season: Season) -> SeasonData:
         for r in cur.fetchall():
             by_id[int(r["fixture_id"])].team_stats[str(r["team_side"])] = {
                 "xg": _num(r["expected_goals"]), "possession": _num(r["possession_pct"]), "passes": _num(r["passes"]),
-                "passes_accurate": _num(r["passes_accurate"])}
+                "passes_accurate": _num(r["passes_accurate"]), "offsides": _num(r["offsides"]),
+                "goals_prevented": _num(r["goals_prevented"])}
         events: dict[int, list[Event]] = defaultdict(list)
         cur.execute(EVENTS_SQL, {"fixtures": fixtures})
         for r in cur.fetchall():
@@ -190,9 +204,15 @@ def load_season(conn: psycopg.Connection[Any], season: Season) -> SeasonData:
         cur.execute(CLOSING_SQL, {"fixtures": fixtures})
         for r in cur.fetchall():
             by_id[int(r["fixture_id"])].closing[str(r["selection"])] = float(r["p_fair"])
+        extra: dict[tuple[int, int], dict[str, float | None]] = {}
+        if extras:
+            cur.execute(PLAYER_EXTRAS_SQL, {"fixtures": fixtures})
+            extra = {(int(r["fixture_id"]), int(r["provider_player_id"])): {c: _num(r[c]) for c in EXTRA_COUNTS}
+                     for r in cur.fetchall()}
         cur.execute(PLAYERS_SQL, {"cs": season.id, "fixtures": fixtures})
         players = [PlayerLine(int(r["fixture_id"]), r["kickoff_at"], int(r["player_id"]), str(r["player_name"]), str(r["team_side"]),
                               int(r["minutes"]), bool(r["is_starter"]) if r["is_starter"] is not None else not bool(r["substitute"]),
                               r["sheet_position"] if r["sheet_position"] in ("G", "D", "M", "F") else None, r["profile_position"],
-                              {c: _num(r[c]) for c in PLAYER_COUNTS}) for r in cur.fetchall()]
+                              {**{c: _num(r[c]) for c in PLAYER_COUNTS},
+                               **extra.get((int(r["fixture_id"]), int(r["provider_player_id"])), {})}) for r in cur.fetchall()]
     return SeasonData(season, matches, players)
