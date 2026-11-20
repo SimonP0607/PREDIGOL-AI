@@ -162,3 +162,47 @@ class ActionResult(Contract):
     referee_id: int = Field(description="The referee the action leaves in front: the one kept, the new one, the one renamed...")
     other_id: int | None
     referee: RefereeSummary
+
+
+# ── The block «Árbitro designado» for readers (plan PM, PM-08-02; ``fbi.people.referee_block``) ─────────────────────────────
+# Version 1.0.0 of the reader's referee contract. BUILT, NOT EXPOSED: no route answers it while ``FBI_REFEREE_BLOCK`` is off and the
+# lawyer has not answered on Ley 1581 (DM-08). Only public professional performance; no crossing of a referee with a team.
+
+REFEREE_BLOCK_VERSION = "1.0.0"
+FigureState = Literal["medido", "muestra_corta", "sin_datos"]
+Visibility = Literal["visible", "sin_cobertura", "sin_medir"]
+
+
+class RefereeLeagueFigure(Contract):
+    n: int = Field(description="Matches of the competition in the same window (every referee) the figure is measured on.")
+    value: float | None
+
+
+class RefereeFigure(Contract):
+    key: Literal["cards_per_match", "red_card_share", "penalty_share"]
+    kind: Literal["rate", "share"] = Field(description="`rate`: per match (Poisson score interval); `share`: of matches (Wilson).")
+    n: int = Field(description="His matches the figure is measured on.")
+    value: float | None
+    interval95: list[float] | None = Field(description="[low, high], 95 %.")
+    league: RefereeLeagueFigure
+    state: FigureState
+
+
+class RefereeRef(Contract):
+    id: int
+    name: str | None
+    country: str | None
+
+
+class RefereeBlockOut(Contract):
+    version: Literal["referee-block-v1"]
+    fixture_id: int
+    as_of: datetime
+    state: Literal["construido", "sin_arbitro", "sin_identidad"]
+    referee: RefereeRef | None
+    matches: int = Field(description="His matches in the window, as the provider had named him at the moment.")
+    figures: list[RefereeFigure]
+    visibility: dict[str, Visibility] = Field(description="Each figure: shown only when the matrix grades its data B or better.")
+    levels: dict[str, str | None]
+    rule: str
+    exposed: Literal[False] = Field(description="Always false until the lawyer's answer (DM-08) and the owner's switch.")
