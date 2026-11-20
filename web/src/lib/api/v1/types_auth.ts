@@ -94,6 +94,8 @@ export interface Me {
   usage_console?: boolean;
   /** The Match Center's shot funnel and its two zones (plan PM, PM-10-01, lámina I01; FBI_MATCH_SHOT_FUNNEL, off by default). */
   match_shot_funnel?: boolean;
+  /** The Match Center's balance and strip of the score's state (plan PM, PM-10-02, lámina I01; FBI_MATCH_BALANCE, off by default). */
+  match_balance?: boolean;
   /** A competition's page: tables, calendar, leaders and coverage (plan PM, PM-09-04; FBI_COMPETITION_PAGE). */
   competition_page?: boolean;
   /** The season tables computed from the regulation (plan PM, PM-09-01; FBI_COMPETITION_TABLES, off until DOC-008 and DM-14). */

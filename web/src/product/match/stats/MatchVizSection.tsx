@@ -1,12 +1,16 @@
 /**
- * The Match Center's new pieces of plan PM, block 10, at the top of Estadísticas once the match is under way (lámina I01): the
- * shot funnel and its two zones (PM-10-01; FE-005). Each piece behind its own switch, read in `/auth/me` and off by default:
- * off, nothing here is drawn and the tab is as it was. A piece is drawn only when C-16 lets its block be (level B or better, when
- * C-16 answers) and the match delivered every figure it needs: never an empty card.
+ * The Match Center's new pieces of plan PM, block 10, at the top of Estadísticas once the match is under way (lámina I01), in the
+ * lámina's order: the shot funnel and its two zones (PM-10-01; FE-005), the balance of the match and the strip of the score's
+ * state (PM-10-02; FE-006). Each piece behind its own switch, read in `/auth/me` and off by default: off, nothing here is drawn and
+ * the tab is as it was. A piece is drawn only when C-16 lets its block be (level B or better, when C-16 answers) and the match
+ * delivered every figure it needs: never an empty card. The strip needs the events (it is what a level C competition shows) and a
+ * finished match: while it is played, who was ahead until the 90th is not known yet.
  */
 import { useMatchVizSwitches } from "@/lib/auth/AuthProvider";
 import type { MatchCtx } from "../context";
+import { balanceRows, scoreState } from "./balance";
 import { blockAllows, useMatchBlocks } from "./coverage";
+import { BalanceCard, ScoreStateCard } from "./MatchBalance";
 import { t } from "./matchvizText";
 import { ShotFunnelCard, ShotZonesCard } from "./ShotFunnel";
 import { shotFunnel, shotZones, statSource } from "./shots";
@@ -14,17 +18,24 @@ import { shotFunnel, shotZones, statSource } from "./shots";
 export function MatchVizSection({ ctx }: { ctx: MatchCtx }) {
   const switches = useMatchVizSwitches();
   const blocks = useMatchBlocks(ctx.fixtureId);
-  if (!switches.shotFunnel) return null;
+  if (!switches.shotFunnel && !switches.balance) return null;
   const data = ctx.center.data;
-  if (!data || data.statistics.status !== "ok") return null;
-  if (blockAllows(blocks, "team_stats") === false) return null;
-  const lines = data.statistics.data;
-  const events = data.events.status === "ok" ? data.events.data : null;
-  const funnel = shotFunnel(lines, events, ctx.score);
-  const zones = shotZones(lines);
-  if (!funnel && !zones) return null;
+  if (!data) return null;
   const teams = { home: ctx.match.home, away: ctx.match.away };
+  const statsOk = data.statistics.status === "ok" && blockAllows(blocks, "team_stats") !== false;
+  const lines = data.statistics.status === "ok" ? data.statistics.data : [];
+  const events = data.events.status === "ok" ? data.events.data : null;
   const source = t(`matchviz.source.${statSource(lines)}`);
+
+  const funnel = switches.shotFunnel && statsOk ? shotFunnel(lines, events, ctx.score) : null;
+  const zones = switches.shotFunnel && statsOk ? shotZones(lines) : null;
+  const balance = switches.balance && statsOk ? balanceRows(lines) : null;
+  const s = ctx.match.score;
+  const state =
+    switches.balance && ctx.phase === "finished" && blockAllows(blocks, "events") !== false
+      ? scoreState(events, ctx.score, s ? s.et_home !== null || s.pen_home !== null : false)
+      : null;
+  if (!funnel && !zones && !balance && !state) return null;
   return (
     <div data-testid="match-viz" className="grid items-start gap-4 lg:grid-cols-2">
       {funnel ? <ShotFunnelCard funnel={funnel} teams={teams} source={source} /> : null}
@@ -36,6 +47,8 @@ export function MatchVizSection({ ctx }: { ctx: MatchCtx }) {
           shots={funnel ? { home: funnel.home.shots, away: funnel.away.shots } : undefined}
         />
       ) : null}
+      {balance ? <BalanceCard rows={balance} teams={teams} source={source} /> : null}
+      {state ? <ScoreStateCard state={state} teams={teams} /> : null}
     </div>
   );
 }

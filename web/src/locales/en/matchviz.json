@@ -36,5 +36,25 @@
     "method": "The provider counts each team's shots inside and outside the box; the percentage is the part of that team's shots in each zone. It does not give where each shot was taken, so there is no map: only these two zones.",
     "aria": "{team}: {inside} shots inside the box ({insidePct} %) and {outside} outside ({outsidePct} %)"
   },
-  "footer": "Source: {source} · {n} match."
+  "footer": "Source: {source} · {n} match.",
+  "balance": {
+    "title": "Match balance",
+    "badge": "Approximate dominance; not field tilt",
+    "subject": "Share of possession, shots and corners between {home} and {away}",
+    "possession": "Possession",
+    "shots": "Shots",
+    "shotsInsideBox": "Shots in the box",
+    "corners": "Corners",
+    "note": "It shares out the match's totals between the two sides. It does not measure where on the pitch the match was played.",
+    "method": "Each bar is each side's part of the match's total of that figure (possession, shots, shots inside the box and corners), as the provider delivers it. It says who had more of each, not where it was played: hence an approximate dominance and not a «field tilt», which would need to know where each action happened.",
+    "aria": "{label}: {home} {homeValue} and {away} {awayValue}"
+  },
+  "scoreState": {
+    "title": "State of the score",
+    "subtitle": "Who was ahead during the 90 minutes.",
+    "subject": "Minutes ahead of {home} and {away}",
+    "source": "match events from API-Football",
+    "beyond90": "The strip covers the 90 minutes: extra time and penalties are not drawn.",
+    "method": "The goals of the match events are put in order and, minute by minute, it is counted who was ahead, who behind or whether they were level. Stoppage time counts as minute 90 (45 in the first half). Drawn only when the goals of the events add up to the final score."
+  }
 }
