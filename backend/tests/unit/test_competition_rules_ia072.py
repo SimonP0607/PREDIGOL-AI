@@ -47,10 +47,11 @@ def test_the_repository_rules_and_coverage_validate() -> None:
     assert rl.validate() == []
 
 
-def test_the_coverage_lists_the_83_tracked_leagues_each_coded_or_with_a_reason() -> None:
+def test_the_coverage_lists_the_84_tracked_leagues_each_coded_or_with_a_reason() -> None:
     lib = rl.Library.read()
     leagues = [c for c in lib.coverage.competitions if c.type == "league"]
-    assert len(leagues) == 83  # 81 on 16-nov-2026, plus Venezuela (299) and Colombia's Primera B (240) on 19-nov (PM-00-02)
+    assert len(leagues) == 84  # 81 on 16-nov-2026, plus Venezuela (299) and Colombia's Primera B (240) on 19-nov (PM-00-02),
+    # plus Uruguay (268) on 20-nov (batch 4, OPS-014; IA-149)
     assert all(c.status == "coded" or (c.reason and c.detail) for c in lib.coverage.competitions)
     coded = {c.league_id for c in lib.coverage.competitions if c.status == "coded"}
     # the five big European leagues, Colombia, Brazil, Argentina, MLS, Liga MX - and the Champions League among the cups
@@ -217,5 +218,5 @@ def test_two_versions_cannot_answer_for_the_same_season_on_the_same_days(tmp_pat
 def test_summary_reports_coverage_and_what_production_tracks_that_is_missing() -> None:
     lib = rl.Library.read()
     s = rl.summary(lib, {39: "Premier League", 777777: "Not listed"})
-    assert s["leagues"] == 83 and s["leagues_coded"] == 10 and s["tracked_missing_from_coverage"] == [777777]
+    assert s["leagues"] == 84 and s["leagues_coded"] == 10 and s["tracked_missing_from_coverage"] == [777777]
     assert s["not_coded_by_reason"]["source_unreachable"] == 1

@@ -8,6 +8,10 @@ Both commands open the database READ-ONLY and write nothing: they read ``core.fi
 with ``fbi.competitions.season_tables``. Nothing is shown to a reader: ``FBI_COMPETITION_TABLES`` stays off until the owner signs
 the cotejo (DOC-008) and DM-14. ``check`` compares every computed table with the provider's table of the same clubs (the Fase I
 tables, the «Tabla Anual») and exits 1 on any difference. Exit 2 when it cannot run.
+
+IA-149 (PM-03-09): a shadow tool, so it also reads a version coded in shadow (``state: shadow``, waiting for the owner's cotejo:
+Primera B 240 and Copa Colombia 241), and says so (``rules_state``); ``rules_for`` keeps answering «reglamento no codificado» to
+every reader.
 """
 
 from __future__ import annotations
@@ -141,7 +145,7 @@ def compare(reading: st.Reading, provider: dict[str, list[dict[str, Any]]]) -> l
 
 
 def run(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
-    answer = rl.rules_for(args.league, args.season)
+    answer = rl.rules_for(args.league, args.season, include_shadow=True)
     if not isinstance(answer, rl.Coded):
         return answer.as_json(), NO
     cups: dict[str, int] = {}
@@ -159,7 +163,7 @@ def run(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
         return {"error": "season not in the database"}, CANNOT
     reading = st.compute(answer.rules, args.season, matches, decisions=decisions, cup_winners=cups)
     head = {"shadow": True, "switch": {"name": st.SWITCH, "on": st.switch_on()},
-            "rules_file": answer.file.path, "rules_sha256": answer.file.sha256}
+            "rules_file": answer.file.path, "rules_sha256": answer.file.sha256, "rules_state": answer.rules.state}
     if args.command == "check":
         comparisons = compare(reading, provider)
         ok = bool(comparisons) and all(not c["differences"] and c["same_order"] for c in comparisons)
