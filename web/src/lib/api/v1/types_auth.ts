@@ -106,6 +106,8 @@ export interface Me {
   player_profile_extras?: boolean;
   /** The calculator «¿Qué pasa si…?» (plan PM, PM-09-03; FBI_WHAT_IF, off until the owner signs DM-14). */
   what_if?: boolean;
+  /** The data layers of the line-up pitch (plan PM, PM-10-04, lámina I02; FBI_LINEUP_LAYERS, off by default). */
+  lineup_layers?: boolean;
   /** The reader's settings of presentation (decision 8); absent from an API older than BE-039: today's defaults. */
   display?: Display;
 }
