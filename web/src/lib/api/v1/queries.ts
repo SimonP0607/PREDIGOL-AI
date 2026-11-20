@@ -432,6 +432,17 @@ export const live = {
     queryFn: () => v1.matchMarketProbs(id, owner),
     staleTime: MINUTE,
   }),
+  matchAvailability: (id: string) => ({
+    queryKey: ["v1", "match-availability", id],
+    queryFn: () => v1.matchAvailability(id),
+    staleTime: MINUTE,
+  }),
+  /** Recomputed once a night (08:00 UTC): ten minutes is as fresh as it gets. */
+  adminAvailability: {
+    queryKey: ["v1", "admin", "availability", "matrix"],
+    queryFn: v1.adminAvailabilityMatrix,
+    staleTime: 10 * MINUTE,
+  },
   odds: { queryKey: ["v1", "odds"], queryFn: v1.odds },
   fixtureOdds: (id: string, market?: string) => ({
     queryKey: ["v1", "fixture-odds", id, market ?? "all"],

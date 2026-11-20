@@ -64,6 +64,10 @@ pantalla con varios huecos usa `UnavailableNotes`, una sola nota por estado (lig
 encendido (`availability` en `/auth/me`, `useAvailabilityOn`). Contraste AA de cada par de tokens medido desde `styles.css` en
 `Unavailable.test.tsx` (`web/src/lib/a11y/contrast.ts`).
 
+Primer consumidor: la consola del dueño de la matriz (PM-02-08, lámina I11; UX-174), pestaña «Disponibilidad» de
+`/admin/competitions` (`web/src/admin/AvailabilityConsole.tsx`): nivel por familia, muestra y fecha de cada competición, cambios de
+la semana, discrepancias de la sombra y los siete estados de un partido con la nota única que vería un lector.
+
 ## 2 quater. Gráficas nuevas: evidencia, lectura y accesibilidad (plan PM, PM-10-06; FE-004)
 
 Toda gráfica nueva se dibuja dentro de `EvidenceChart` (`web/src/components/analytics/EvidenceChart.tsx`, sobre la `ChartCard`
