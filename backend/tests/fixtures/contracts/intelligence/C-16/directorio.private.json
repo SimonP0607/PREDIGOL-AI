@@ -1,0 +1,64 @@
+{
+  "contract": "C-16",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T08:04:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "rules_version": "coverage-levels-v1",
+  "scope": "directorio",
+  "competitions": [
+    {
+      "competition_id": 41,
+      "name": "Liga Ficticia Uno",
+      "country": "Ficticia",
+      "tier": 1,
+      "summary": "A",
+      "summary_label": "A",
+      "families": [
+        {
+          "family": "base",
+          "level": "A"
+        },
+        {
+          "family": "team_stats",
+          "level": "A"
+        },
+        {
+          "family": "xg",
+          "level": "D"
+        },
+        {
+          "family": "player_stats",
+          "level": "B"
+        },
+        {
+          "family": "referee",
+          "level": "A"
+        },
+        {
+          "family": "main_odds",
+          "level": "A"
+        },
+        {
+          "family": "stat_odds",
+          "level": "B"
+        }
+      ],
+      "seasons": []
+    }
+  ],
+  "match": {
+    "missing_reason": "sin_datos"
+  },
+  "changes": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  },
+  "discrepancies": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  }
+}

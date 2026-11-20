@@ -1,0 +1,142 @@
+{
+  "contract": "C-16",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T08:04:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "rules_version": "coverage-levels-v1",
+  "scope": "partido",
+  "competitions": [],
+  "match": {
+    "fixture_id": 5000001,
+    "kickoff_at": "2026-11-22T20:00:00Z",
+    "competition_season_id": 901,
+    "blocks": [
+      {
+        "key": "events",
+        "exists": true,
+        "level": "A",
+        "n": 120,
+        "provisional": false,
+        "reason": "ninguno"
+      },
+      {
+        "key": "team_stats",
+        "exists": true,
+        "level": "A",
+        "n": 120,
+        "provisional": false,
+        "reason": "ninguno"
+      },
+      {
+        "key": "xg",
+        "exists": false,
+        "level": "D",
+        "n": 120,
+        "provisional": false,
+        "reason": "no_entregado"
+      },
+      {
+        "key": "player_stats",
+        "exists": true,
+        "level": "B",
+        "n": 120,
+        "provisional": false,
+        "reason": "ninguno"
+      }
+    ],
+    "markets": [
+      {
+        "key": "1X2",
+        "matrix_market": "1X2",
+        "exists": true,
+        "coverage_ok": true,
+        "level": "A",
+        "price_in_force": true,
+        "prob_computed": true,
+        "prob_authorised": true,
+        "settleable": true,
+        "reason": "ninguno",
+        "modules": [
+          {
+            "module": "mi_parlay",
+            "ok": true,
+            "reason": "ok"
+          },
+          {
+            "module": "picks",
+            "ok": true,
+            "reason": "ok"
+          },
+          {
+            "module": "cuotas",
+            "ok": true,
+            "reason": "ok"
+          }
+        ]
+      },
+      {
+        "key": "corners_over_under.FT.match",
+        "matrix_market": "corners",
+        "exists": true,
+        "coverage_ok": true,
+        "level": "A",
+        "price_in_force": true,
+        "prob_computed": true,
+        "prob_authorised": false,
+        "settleable": true,
+        "reason": "ninguno",
+        "modules": [
+          {
+            "module": "mi_parlay",
+            "ok": true,
+            "reason": "ok"
+          },
+          {
+            "module": "picks",
+            "ok": false,
+            "reason": "MERCADO_NO_EVALUABLE"
+          },
+          {
+            "module": "cuotas",
+            "ok": true,
+            "reason": "ok"
+          }
+        ]
+      },
+      {
+        "key": "total_shotongoal.FT.match",
+        "matrix_market": "shots",
+        "exists": true,
+        "coverage_ok": false,
+        "level": "D",
+        "price_in_force": false,
+        "prob_computed": false,
+        "prob_authorised": false,
+        "settleable": false,
+        "reason": "sin_cobertura",
+        "modules": [
+          {
+            "module": "mi_parlay",
+            "ok": false,
+            "reason": "invalid_selection"
+          },
+          {
+            "module": "picks",
+            "ok": false,
+            "reason": "MERCADO_NO_EVALUABLE"
+          },
+          {
+            "module": "cuotas",
+            "ok": false,
+            "reason": "menos_de_3_casas"
+          }
+        ]
+      }
+    ],
+    "notes": []
+  }
+}

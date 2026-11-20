@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from fbi.api.contracts.intelligence.alerts import AlertsContract
+from fbi.api.contracts.intelligence.availability import Availability, AvailabilityPrivate
 from fbi.api.contracts.intelligence.base import IntelligenceContract
 from fbi.api.contracts.intelligence.console import ConsoleContract
 from fbi.api.contracts.intelligence.featured import FeaturedAnalyses, FeaturedAnalysesPrivate
@@ -65,6 +66,10 @@ STATS_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/teams/{team_id}/stats
 PROBS_PUBLIC_ROUTES: Final = ("/api/v1/matches/{fixture_id}/market-probs",)
 """C-14 (plan EA, EA-002/EA-201): 404 while FBI_MARKET_PROBS is off."""
 PROBS_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/matches/{fixture_id}/market-probs",)
+AVAILABILITY_PUBLIC_ROUTES: Final = ("/api/v1/availability/competitions", "/api/v1/availability/competitions/{competition_id}",
+                                     "/api/v1/matches/{fixture_id}/availability")
+"""C-16 (plan PM, PM-02-05): 404 while FBI_AVAILABILITY is off. Additive: no existing route changes."""
+AVAILABILITY_PRIVATE_ROUTES: Final = ("/api/v1/admin/availability/matrix", "/api/v1/admin/availability/changes")
 PROFILE_PRIVATE_ROUTES: Final = ("/api/v1/admin/intelligence/teams/{team_id}/profile",
                                  "/api/v1/admin/intelligence/players/{player_id}/profile",
                                  "/api/v1/admin/intelligence/competitions/{competition_id}/profile")
@@ -97,8 +102,10 @@ CATALOGUE: Final[dict[str, Planned]] = {
     "C-12": Planned("Inicio", "AD-J09", ("/api/v1/home",), ()),
     "C-13": Planned("Perfil estadístico", "EA-001", STATS_PUBLIC_ROUTES, STATS_PRIVATE_ROUTES),
     "C-14": Planned("Probabilidades por mercado", "EA-002", PROBS_PUBLIC_ROUTES, PROBS_PRIVATE_ROUTES),
+    "C-16": Planned("Disponibilidad", "PM-02-05", AVAILABILITY_PUBLIC_ROUTES, AVAILABILITY_PRIVATE_ROUTES),
 }
-"""The twelve contracts of the plan and the reference one. A private route is always under ``/api/v1/admin/``."""
+"""The twelve contracts of the plan and the reference one, C-13 and C-14 of plan EA and C-16 of plan PM (C-15 is reserved by plan EA).
+A private route is always under ``/api/v1/admin/``."""
 
 
 @dataclass(frozen=True)
@@ -172,6 +179,8 @@ CONTRACTS: Final[tuple[ContractSpec, ...]] = (
                  private_routes=STATS_PRIVATE_ROUTES),
     ContractSpec(private=MarketProbsPrivate, public=MarketProbs, public_routes=PROBS_PUBLIC_ROUTES,
                  private_routes=PROBS_PRIVATE_ROUTES),
+    ContractSpec(private=AvailabilityPrivate, public=Availability, public_routes=AVAILABILITY_PUBLIC_ROUTES,
+                 private_routes=AVAILABILITY_PRIVATE_ROUTES),
 )
 """Every Intelligence contract. A new one is added here in the PR that merges its models."""
 

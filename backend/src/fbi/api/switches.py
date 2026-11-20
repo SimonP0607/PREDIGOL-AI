@@ -83,6 +83,11 @@ absent and ``=1`` opens them to every signed-in reader. They read the documents 
 measured; nothing private, nothing forecast."""
 
 
+AVAILABILITY: Final = "FBI_AVAILABILITY"
+"""The availability matrix over HTTP (plan PM, PM-02-05; contract C-16): OFF while the line is absent - its five routes answer 404,
+the private ones too - and ``=1`` opens them (the API recreated). It reads the tables of the nightly batch and the match's own data;
+it changes nothing a page shows until a module reads it (PM-14-04)."""
+
 MARKET_PROBS: Final = "FBI_MARKET_PROBS"
 """The probabilities by market of a match (plan EA, EA-201/EA-202; contract C-14): OFF while the line is absent and ``=1`` shows the
 three marks - model, implied, history - on the Mercados tab. A reader sees a model's figure only for a market the catalogue holds
@@ -166,6 +171,11 @@ def match_intelligence_on() -> bool:
 def stats_v2_on() -> bool:
     """Whether readers get the advanced statistics (``FBI_STATS_V2``, off by default)."""
     return user_switch(STATS_V2, default=False)
+
+
+def availability_on() -> bool:
+    """Whether the routes of C-16 answer (``FBI_AVAILABILITY``, off by default)."""
+    return user_switch(AVAILABILITY, default=False)
 
 
 def market_probs_on() -> bool:

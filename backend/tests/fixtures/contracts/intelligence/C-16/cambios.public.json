@@ -1,0 +1,16 @@
+{
+  "contract": "C-16",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T08:04:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "rules_version": "coverage-levels-v1",
+  "scope": "cambios",
+  "competitions": [],
+  "match": {
+    "missing_reason": "sin_datos"
+  }
+}
