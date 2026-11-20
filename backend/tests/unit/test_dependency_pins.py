@@ -77,35 +77,24 @@ def image_requirements() -> list[Requirement]:
     return [Requirement(text) for text in texts]
 
 
-def test_constraints_is_a_sorted_list_of_exact_pins_without_repeats() -> None:
-    lines = pin_lines()
-    assert lines, "constraints.txt has no pin"
-    names = [name for name, _ in lines]
-    assert names == sorted(names, key=str.lower), "keep constraints.txt sorted by name, so that a change shows as one line"
-    canonical = [canonicalize_name(name) for name in names]
-    assert len(canonical) == len(set(canonical)), f"a library is pinned twice: {sorted({n for n in canonical if canonical.count(n) > 1})}"
+LAB_EXTRA = "lab"
+"""PM-13-04 (OPS-012): the libraries that left the image because nothing in it imports them (statsmodels, duckdb and the pandas
+statsmodels brings; polars, which only the legacy importer reads when it runs). Not in the image, still pinned in constraints.txt, so
+that the gate - which installs them through ``dev`` - and anyone who needs them get the versions production used to run."""
 
 
-def test_every_library_pyproject_asks_of_the_image_is_pinned_at_a_version_it_accepts() -> None:
-    found = pins()
-    for requirement in image_requirements():
-        name = canonicalize_name(requirement.name)
-        assert name in found, f"pyproject.toml asks for {requirement.name} and constraints.txt does not pin it"
-        assert requirement.specifier.contains(found[name], prereleases=True), (
-            f"constraints.txt pins {requirement.name}=={found[name]}, which pyproject.toml ({requirement.specifier}) does not accept"
-        )
+def lab_requirements() -> list[Requirement]:
+    project = tomllib.loads((BACKEND / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    return [Requirement(text) for text in project["optional-dependencies"][LAB_EXTRA]]
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="the image is Linux: its libraries are the ones Linux installs")
-def test_the_pins_are_the_libraries_the_image_installs_and_this_run_has_those_versions() -> None:
-    """Walk what pip would install for the Dockerfile's command - the requirements of the installed metadata, with their extras and markers - and
-    compare it with the file, library by library and version by version. So the gate really is run on what production runs; a library that a
-    change of pyproject.toml brings in or drops (or that an upgrade of another one does) shows up here, with the line to add or to remove."""
-    found = pins()
+def closure(requirements: list[Requirement]) -> tuple[dict[str, str], set[str]]:
+    """(canonical name -> installed version, names not installed here) of what pip would install for ``requirements``: the requirements of
+    the installed metadata, with their extras and markers."""
     installed: dict[str, str] = {}
     missing: set[str] = set()
     seen: set[tuple[str, frozenset[str]]] = set()
-    todo = [(canonicalize_name(r.name), frozenset(r.extras)) for r in image_requirements()]
+    todo = [(canonicalize_name(r.name), frozenset(r.extras)) for r in requirements]
     while todo:
         item = todo.pop()
         if item in seen:
@@ -123,6 +112,38 @@ def test_the_pins_are_the_libraries_the_image_installs_and_this_run_has_those_ve
             if requirement.marker is not None and not any(requirement.marker.evaluate({"extra": extra}) for extra in ("", *extras)):
                 continue
             todo.append((canonicalize_name(requirement.name), frozenset(requirement.extras)))
+    return installed, missing
+
+
+def test_constraints_is_a_sorted_list_of_exact_pins_without_repeats() -> None:
+    lines = pin_lines()
+    assert lines, "constraints.txt has no pin"
+    names = [name for name, _ in lines]
+    assert names == sorted(names, key=str.lower), "keep constraints.txt sorted by name, so that a change shows as one line"
+    canonical = [canonicalize_name(name) for name in names]
+    assert len(canonical) == len(set(canonical)), f"a library is pinned twice: {sorted({n for n in canonical if canonical.count(n) > 1})}"
+
+
+def test_every_library_pyproject_asks_of_the_image_is_pinned_at_a_version_it_accepts() -> None:
+    found = pins()
+    for requirement in image_requirements() + lab_requirements():
+        name = canonicalize_name(requirement.name)
+        assert name in found, f"pyproject.toml asks for {requirement.name} and constraints.txt does not pin it"
+        assert requirement.specifier.contains(found[name], prereleases=True), (
+            f"constraints.txt pins {requirement.name}=={found[name]}, which pyproject.toml ({requirement.specifier}) does not accept"
+        )
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="the image is Linux: its libraries are the ones Linux installs")
+def test_the_pins_are_the_libraries_the_image_installs_and_this_run_has_those_versions() -> None:
+    """Walk what pip would install for the Dockerfile's command and for the ``lab`` extra - the requirements of the installed metadata, with their
+    extras and markers - and compare it with the file, library by library and version by version. So the gate really is run on what production runs; a library that a
+    change of pyproject.toml brings in or drops (or that an upgrade of another one does) shows up here, with the line to add or to remove."""
+    found = pins()
+    image, image_missing = closure(image_requirements())
+    lab, lab_missing = closure(lab_requirements())
+    installed = image | lab
+    missing = image_missing | lab_missing
     not_pinned = sorted(set(installed) - set(found))
     not_needed = sorted(set(found) - set(installed) - missing)
     other_version = {name: (installed[name], found[name]) for name in sorted(set(installed) & set(found)) if installed[name] != found[name]}
@@ -132,7 +153,7 @@ def test_the_pins_are_the_libraries_the_image_installs_and_this_run_has_those_ve
     if not_pinned:
         problems.append(f"the image would install these and constraints.txt does not pin them: {not_pinned}")
     if not_needed:
-        problems.append(f"constraints.txt pins these and the image would not install them: {not_needed}")
+        problems.append(f"constraints.txt pins these and neither the image nor the lab extra would install them: {not_needed}")
     if other_version:
         problems.append(f"installed here at another version than the file's (installed, pinned): {other_version}")
     assert not problems, "; ".join(problems) + f". To install what the file says: {INSTALL_COMMAND}"
@@ -170,3 +191,14 @@ def test_the_owner_guide_says_what_the_code_does() -> None:
     assert bases, "no FROM line found"
     for base in bases:
         assert f"`{base}`" in doc, f"the guide must name the base image {base}: it is what still floats"
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="the image is Linux: its libraries are the ones Linux installs")
+def test_the_image_does_not_install_the_libraries_nothing_in_it_imports() -> None:
+    """PM-13-04 (OPS-012): what pip installs for the Dockerfile's command has none of the libraries that moved to ``lab``, nor lightgbm, which
+    no file ever imported. A requirement of the image that brings one back fails here, with its name."""
+    image, _ = closure(image_requirements())
+    assert LAB_EXTRA not in installed_extras()
+    unwanted = {"duckdb", "statsmodels", "pandas", "patsy", "polars", "lightgbm"}
+    assert not sorted(unwanted & set(image)), f"the image would install {sorted(unwanted & set(image))}"
+    assert {"numpy", "scipy", "pyarrow"} <= set(image), "numpy and scipy stay (the models import them), and pyarrow (the LAB export, OPS-013)"

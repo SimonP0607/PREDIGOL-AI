@@ -265,6 +265,9 @@ las guías de scikit-learn de [calibración](https://scikit-learn.org/stable/mod
 | Pruebas de datos y de modelo | [Made With ML](https://madewithml.com/) (R-0424) | reutilizable (MIT) | Lecciones; su pila ya está descartada |
 | Predicción conforme | [Angelopoulos y Bates 2021](https://arxiv.org/abs/2107.07511) (R-0436); [MAPIE](https://mapie.readthedocs.io/en/latest/) (R-0438) | licencia del preprint no comprobada; MAPIE BSD | Intervalos de líneas (`fbi/models/line_intervals.py`), solo como lectura |
 
+Los artículos científicos, ordenados por método con la evidencia de partido, los datos de entrenamiento y el módulo que los aplica,
+están en [`BIBLIOTECA_CIENTIFICA_POR_METODO.md`](BIBLIOTECA_CIENTIFICA_POR_METODO.md) (PM-11-08).
+
 Fuera de la página: los libros de pago (Soccermatics en papel, The Expected Goals Philosophy, Football Hackers: R-0415 a
 R-0417), que no aportan método que no esté ya en fuentes gratuitas, y cualquier lectura cuya licencia no se haya leído.
 
