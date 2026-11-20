@@ -97,6 +97,11 @@ at worst, and a duplicated tick costs nothing at all.
   * ``stats_documents``  once a night at 07:20 UTC (and 12 minutes after the worker starts), only while ``FBI_STATS_AGG`` is ``on`` (off
     by default): the statistics documents of plan EA (``fbi.stats.job``: percentiles, pulse, goals by interval, survival of 0-0, game
     states, trends) into ``analytics.stat_documents``. Database only; no provider, no model; nothing a model, a pick or a decision reads.
+  * ``availability_refresh``  once a night at 08:00 UTC (attempts again at 08:40 and 11:20 when the first found no room), only while
+    ``FBI_AVAILABILITY_REFRESH`` is on (the default; ``0`` turns it off): ONLY starts the recalculation of the availability matrix
+    (``scripts.availability_refresh``, ``fbi.coverage.job``, PM-02-03) in a process of its own with a 512 MiB cap, and only when the
+    container has 384 MiB free besides its page cache - the worker sits near its 3 GiB. Incremental each night, full on Sundays; writes
+    only ``analytics.coverage_*``. Database only; nothing a reader sees reads it while ``FBI_AVAILABILITY`` is off.
   * ``chronicle_v4``  every 30 min (``FBI_CHRONICLE_V4_MINUTES``), only while ``FBI_CHRONICLE_V4=shadow`` (off by default): the content plan
     (``content-plan-v1``) and the single chronicle (``chronicle-v4``, the small model, by batch when the gate allows) of the analysed matches
     of the next day, checked sentence by sentence (``fbi.chronicle.v4_job``, IA-103/IA-104), into ``ai.chronicles``. At most US$ 1 a day;
@@ -1396,6 +1401,57 @@ async def _stats_documents() -> None:
     await asyncio.to_thread(_stats_documents_now)
 
 
+APP_DIR = Path(__file__).resolve().parents[2]
+"""Where ``python -m scripts.<name>`` runs (``/app`` in the image)."""
+
+
+def _availability_refresh_now(*, retry: bool = False) -> None:
+    """PM-02-03 (BE-056): START the recalculation of the availability matrix in a process of its own - never compute it here (the worker
+    sits near its 3 GiB). Skipped, with a ledger row, when the container lacks the room for it; a retry does nothing once a pass of the
+    day completed. Never raises."""
+    from fbi.coverage import job as cov
+    from fbi.ingestion.ledger import RunCounters, RunLedger
+
+    if cov.mode() != "on":
+        return
+    try:
+        if retry:
+            with _connect() as conn:
+                row = conn.execute("SELECT 1 FROM raw.ingestion_runs WHERE job_type = %s AND status = 'completed' "
+                                   "AND started_at >= date_trunc('day', %s::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' "
+                                   "LIMIT 1", (cov.JOB, now())).fetchone()
+            if row is not None:
+                return
+        room = cov.headroom_mib()
+        if room is not None and room < cov.HEADROOM_MIB:
+            with _connect() as conn:
+                ledger = RunLedger(conn)
+                run_id = ledger.open(cov.JOB, params={"skipped": "sin_margen_de_memoria", "headroom_mib": room,
+                                                      "needed_mib": cov.HEADROOM_MIB, "retry": retry})
+                ledger.close(run_id, RunCounters(stopped_early="sin_margen_de_memoria"))
+            log.warning("availability_refresh.skipped", reason="sin_margen_de_memoria", headroom_mib=room, needed_mib=cov.HEADROOM_MIB)
+            return
+        done = subprocess.run([sys.executable, "-m", "scripts.availability_refresh", "--scheduled",
+                               "--max-memory-mib", str(cov.CAP_MIB)],
+                              cwd=APP_DIR, capture_output=True, text=True, timeout=cov.MAX_SECONDS + 300, check=False)
+        tail = (done.stdout or "").strip().splitlines()[-1:] or (done.stderr or "").strip().splitlines()[-1:]
+        log.info("availability_refresh.run", exit=done.returncode, headroom_mib=room, last=(tail[0] if tail else "")[:400])
+    except subprocess.TimeoutExpired:
+        log.error("availability_refresh.timeout", seconds=cov.MAX_SECONDS + 300)
+    except Exception as exc:
+        log.error("availability_refresh.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _availability_refresh() -> None:
+    new_run_id()
+    await asyncio.to_thread(_availability_refresh_now)
+
+
+async def _availability_refresh_retry() -> None:
+    new_run_id()
+    await asyncio.to_thread(functools.partial(_availability_refresh_now, retry=True))
+
+
 def _eval_cycle_shadow_now() -> None:
     """The evaluation cycle's main pass (IA-105): the match read again, E1, E2, E4 and the chains. Never raises; writes only the cycle's
     tables, decision-v2's through its own function and the cycle of states through its API."""
@@ -2425,6 +2481,19 @@ async def main() -> None:
                           run_date=moment + timedelta(minutes=12), id="stats_documents_catch_up", max_instances=1)
     else:
         log.info("worker.stats_documents_off", hint="FBI_STATS_AGG is not on: no statistics documents are computed (plan EA)")
+    from fbi.coverage import job as cov_job
+
+    if cov_job.mode() == "on":
+        # PM-02-03 (BE-056): only the start; the pass runs in a process of its own (scripts.availability_refresh).
+        scheduler.add_job(_deadline("availability_refresh", "availability_refresh", _availability_refresh), "cron",
+                          hour=cov_job.HOUR, minute=cov_job.MINUTE, timezone="UTC", id="availability_refresh", max_instances=1,
+                          coalesce=True, misfire_grace_time=30 * 60)
+        for hour, minute in cov_job.RETRY_TIMES:
+            scheduler.add_job(_deadline("availability_refresh", "availability_refresh", _availability_refresh_retry), "cron",
+                              hour=hour, minute=minute, timezone="UTC", id=f"availability_refresh_retry_{hour:02d}{minute:02d}",
+                              max_instances=1, coalesce=True, misfire_grace_time=30 * 60)
+    else:
+        log.info("worker.availability_refresh_off", hint="FBI_AVAILABILITY_REFRESH is off: the availability matrix is not recalculated")
     from fbi.shadowjobs import eval_cycle as ec
 
     if ec.mode() == "shadow":

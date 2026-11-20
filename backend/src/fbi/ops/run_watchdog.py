@@ -49,6 +49,8 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "player_forecast_shadow": timedelta(minutes=20),
     # the statistics documents of plan EA (EA-003 to EA-006): database only, one pass a night; acceptance is under 35 minutes.
     "stats_documents": timedelta(minutes=45),
+    # the recalculation of the availability matrix (PM-02-03): its own process, 15 minutes of budget, opened by that process.
+    "availability_refresh": timedelta(minutes=25),
     # the single chronicle in shadow (IA-103/IA-104): at most ten calls of the small model a pass, or a batch sent.
     "chronicle_v4": timedelta(minutes=20),
     # the chronicle after the line-up (IA-116): no model, at most 50 E3 a pass, a few small reads each.
