@@ -144,3 +144,25 @@ def test_the_odds_requests_put_every_league_page_first_and_take_matches_in_turn(
     every = odds_calls(list(ODDS_LEAGUES), {lg: {"season": 2026} for lg in ODDS_LEAGUES},
                        {lg: [lg * 10 + i for i in range(3)] for lg in ODDS_LEAGUES})
     assert len(every) == 84 and {lg for k, lg, _ in every[:60] if k == "league"} == set(ODDS_LEAGUES)
+
+
+def test_matches_that_reached_the_base_too_late_are_not_counted_as_never_asked() -> None:
+    """BE-062 (PM-04-03): the «no se pidió» of 240, 299 and 667 on 20 Nov 2026 were matches whose rows reached the base after
+    kick-off (the two leagues tracked on 17 Nov; friendlies listed after they were played). They no longer count."""
+    nothing_live = OddsLive()
+    # 299: all 21 finished matches came in late; today a priced match within 48 h -> the base agrees with the flag
+    assert classify(True, OddsEvidence(0, 0, 0, 0, late=21),
+                    OddsLive(league_results=3, fixtures_asked=1, fixtures_with_prices=1))[0] == "coincide"
+    cause, why = classify(True, OddsEvidence(0, 0, 0, 0, late=21), nothing_live)
+    assert cause == "entraron_tarde" and "21 terminados entraron tarde" in why
+    # 240: the 4 matches in the base in time were all asked and priced
+    assert classify(True, OddsEvidence(4, 4, 4, 4, late=28), nothing_live)[0] == "coincide"
+    # 667: 40 in time, 40 asked, 24 priced; the 32 listed after the match are out
+    assert classify(True, OddsEvidence(40, 40, 24, 34, late=32), nothing_live)[0] == "coincide"
+
+
+def test_the_base_query_leaves_out_the_matches_that_reached_it_after_their_kickoff() -> None:
+    from scripts import coverage_probe as cp
+
+    assert "f.created_at > f.kickoff_at - make_interval(mins => %(lead)s) AS late" in cp.ODDS_BASE_SQL
+    assert cp.ODDS_BASE_SQL.count("NOT late") == 4 and cp.ODDS_LEAD_MINUTES == 60
