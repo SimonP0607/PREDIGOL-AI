@@ -83,5 +83,22 @@
     "cardsLegend": "«Y» is yellow and «R», red.",
     "teamFormation": "{team} · {formation}",
     "method": "Each starter stands at the box the match's team sheet declares (the formation), not where he played. The chosen layer puts on his marker a figure of his match as the provider delivers it: the rating (1 to 10), the minutes, the card, or the goals and assists. Substitutes have no box in the formation."
+  },
+  "coverage": {
+    "facts": "Match sheet facts",
+    "factsNote": "From the match events.",
+    "fact": {
+      "goals": "Goals",
+      "yellow": "Yellow cards",
+      "red": "Red cards",
+      "subs": "Substitutions"
+    },
+    "subject": {
+      "lineups": "line-ups",
+      "team_stats": "match statistics",
+      "player_stats": "player statistics",
+      "events": "the minute of the goals"
+    },
+    "markets": "main odds"
   }
 }

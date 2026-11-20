@@ -123,6 +123,9 @@ class Me(Contract):
                                                            "PM-10-02, lámina I01; FBI_MATCH_BALANCE, off by default).")
     lineup_layers: bool = Field(default=False, description="The data layers of the line-up pitch (plan PM, PM-10-04, lámina I02; "
                                                            "FBI_LINEUP_LAYERS, off by default).")
+    match_coverage: bool = Field(default=False, description="The Match Center adapted to the coverage levels of C-16: tabs and "
+                                                            "blocks by level (plan PM, PM-14-02; FBI_MATCH_COVERAGE, off by "
+                                                            "default; it reads C-16, so FBI_AVAILABILITY too).")
     availability: bool = Field(default=False, description="What PrediGol has per competition, datum and market (plan PM, C-16; "
                                                           "FBI_AVAILABILITY, off by default): the states «información no "
                                                           "disponible» and the owner's console of the matrix only then.")

@@ -99,6 +99,13 @@ Alineaciones is as it was - and ``=1`` lets the reader put each starter's rating
 where the player statistics are of level B or better (C-16, when it answers) and every starter has his line. It reads the match
 detail it already reads."""
 
+MATCH_COVERAGE: Final = "FBI_MATCH_COVERAGE"
+"""The Match Center adapted to the coverage levels of C-16 (plan PM, PM-14-02, láminas I01 and I04; UX-177): OFF while the line is
+absent - the six tabs and blocks as always - and ``=1`` leaves out the tabs that would open on nothing in the competition
+(line-ups graded D, no market and no price, no reading of PrediGol where the result market is C or D), shows in Estadísticas what a
+competition without team statistics does deliver, and notes partial odds. It reads C-16, so it needs ``FBI_AVAILABILITY`` on; with
+C-16 off or silent nothing changes. It is turned on only after the shadow comparison (PM-02-06) shows no unexplained discrepancy."""
+
 AVAILABILITY: Final = "FBI_AVAILABILITY"
 """The availability matrix over HTTP (plan PM, PM-02-05; contract C-16): OFF while the line is absent - its five routes answer 404,
 the private ones too - and ``=1`` opens them (the API recreated). It reads the tables of the nightly batch and the match's own data;
@@ -231,6 +238,11 @@ def match_balance_on() -> bool:
 def lineup_layers_on() -> bool:
     """Whether readers get the data layers of the line-up pitch (``FBI_LINEUP_LAYERS``, off by default)."""
     return user_switch(LINEUP_LAYERS, default=False)
+
+
+def match_coverage_on() -> bool:
+    """Whether the Match Center adapts to the coverage levels of C-16 (``FBI_MATCH_COVERAGE``, off by default)."""
+    return user_switch(MATCH_COVERAGE, default=False)
 
 
 def availability_on() -> bool:

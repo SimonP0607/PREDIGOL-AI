@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { live } from "@/lib/api/v1/queries";
 import { LiveApiError } from "@/lib/api/v1/client";
-import { useAuth } from "@/lib/auth/AuthProvider";
+import { useAuth, useMatchVizSwitches } from "@/lib/auth/AuthProvider";
 import { useScrollCue } from "@/lib/scrollCue";
 import { Card, EmptyState, ErrorState, SkeletonBlock } from "@/product/shared/States";
 import { buttonVariants } from "@/components/ui/button";
@@ -28,7 +28,8 @@ import { NewsTab } from "@/product/news/NewsTab";
 import { liveSnapshot, matchPhase, shownScore } from "./model";
 import { StatsTab } from "./StatsTab";
 import { SummaryTab } from "./SummaryTab";
-import { sectionsFor, tabsFor, useMatchTab } from "./useMatchTab";
+import { useMatchAvailability } from "./stats/coverage";
+import { sectionsFor, tabsFor, tabsForCoverage, useMatchTab } from "./useMatchTab";
 import { originOf, track } from "@/lib/track";
 import { openedFromList } from "@/product/matches/backToList";
 import { GuideButton } from "@/product/guides/GuideButton";
@@ -230,8 +231,14 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
     },
   });
   const knownPhase = view.data ? matchPhase(view.data.data.match) : null;
-  const tabs = tabsFor();
-  const [tab, setTab] = useMatchTab(fixtureId, sectionsFor(auth.showAdmin), knownPhase);
+  // plan PM, PM-14-02 (láminas I01 and I04): with FBI_MATCH_COVERAGE on, the tabs C-16 leaves - the same order, none that would
+  // open on nothing; off (or C-16 silent), the six as always
+  const { coverage } = useMatchVizSwitches();
+  const availability = useMatchAvailability(fixtureId);
+  const shownMarkets = view.data?.data.markets;
+  const pricesShown = shownMarkets?.status === "ok" && (shownMarkets.data?.length ?? 0) > 0;
+  const tabs = coverage ? tabsForCoverage(availability, { pricesShown }) : tabsFor();
+  const [tab, setTab] = useMatchTab(fixtureId, sectionsFor(auth.showAdmin, tabs), knownPhase);
   // Plan UX, A6: which matches readers open, from where, and which sections they read.
   useEffect(() => {
     if (valid) track("match_opened", { match_id: Number(fixtureId), origin: originOf() });

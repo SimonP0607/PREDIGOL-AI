@@ -89,3 +89,16 @@ def test_lineup_layers_are_told_to_the_page_and_off_by_default(value: str | None
         monkeypatch.setenv(switches.LINEUP_LAYERS, value)
     assert Me.model_fields["lineup_layers"].default is False
     assert switches.lineup_layers_on() is expected
+
+
+@pytest.mark.parametrize(("value", "expected"), [(None, False), ("", False), ("1", True), ("0", False)])
+def test_match_coverage_is_told_to_the_page_and_off_by_default(value: str | None, expected: bool,
+                                                                monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan PM, PM-14-02 (UX-177): the Match Center adapted to the coverage of C-16 only with FBI_MATCH_COVERAGE's line on;
+    /auth/me says it as ``match_coverage``, off by default."""
+    if value is None:
+        monkeypatch.delenv(switches.MATCH_COVERAGE, raising=False)
+    else:
+        monkeypatch.setenv(switches.MATCH_COVERAGE, value)
+    assert Me.model_fields["match_coverage"].default is False
+    assert switches.match_coverage_on() is expected

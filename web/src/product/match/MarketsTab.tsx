@@ -21,7 +21,11 @@ import { live as queries } from "@/lib/api/v1/queries";
 import type { MarketOrder } from "@/lib/api/v1/types_personal";
 import type { CatalogCategory } from "@/lib/api/v1/types_market_catalog";
 import { ProbabilitiesPanel } from "./stats/ProbabilitiesPanel";
-import { useAuth, useStatsSwitches } from "@/lib/auth/AuthProvider";
+import { useAuth, useMatchVizSwitches, useStatsSwitches } from "@/lib/auth/AuthProvider";
+import { present } from "@/lib/api/v1/types_intelligence";
+import { PartialCoverage } from "@/product/shared/Unavailable";
+import { useMatchAvailability } from "./stats/coverage";
+import { t as tv } from "./stats/matchvizText";
 import { hintProps } from "@/components/system/tapHint";
 import { track } from "@/lib/track";
 import { formatDateTime } from "@/lib/time";
@@ -774,12 +778,27 @@ export function PrematchMarkets({
   );
 }
 
+/**
+ * Plan PM, PM-14-02 (section 5: «cuotas principales, C: con nota»): with FBI_MATCH_COVERAGE on and C-16 answering, a competition
+ * whose match-result market is graded C carries one note of partial coverage at the top; nothing otherwise.
+ */
+function useCoverageMarketsNote(fixtureId: string): ReactNode {
+  const { coverage } = useMatchVizSwitches();
+  const availability = useMatchAvailability(fixtureId);
+  if (!coverage || !availability) return null;
+  const result = availability.markets.find((m) => m.key === "1X2" || m.matrix_market === "1X2");
+  if (!result || present(result.level) !== "C") return null;
+  return <PartialCoverage subjects={[tv("matchviz.coverage.markets")]} />;
+}
+
 export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
   const sides = { home: ctx.match.home.name, away: ctx.match.away.name };
   const { order, first, consult } = useMarketOrder(ctx.fixtureId);
   const followed = useFollowedCatalog();
+  const note = useCoverageMarketsNote(ctx.fixtureId);
   return (
     <div className="space-y-8">
+      {note}
       {ctx.phase === "live" ? (
         <LiveGroup ctx={ctx} sides={sides} first={first} onConsult={consult} />
       ) : null}
