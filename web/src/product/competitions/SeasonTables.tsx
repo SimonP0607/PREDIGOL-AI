@@ -248,7 +248,8 @@ export function SeasonTablesBlock({
   highlight,
 }: {
   data: SeasonTables;
-  children?: ReactNode;
+  /** Under the table: the calculator «¿Qué pasa si…?» (PM-09-03), given the table on screen. */
+  children?: ReactNode | ((table: SeasonTable, places: boolean) => ReactNode);
   /** The view chosen, when the parent keeps it (the calculator redraws the same table). */
   view?: string | undefined;
   onView?: ((key: string) => void) | undefined;
@@ -288,7 +289,7 @@ export function SeasonTablesBlock({
         <Rows table={chosen.table} highlight={highlight} />
       )}
       <Notes data={data} table={chosen.table} />
-      {children}
+      {typeof children === "function" ? children(chosen.table, chosen.places) : children}
     </section>
   );
 }

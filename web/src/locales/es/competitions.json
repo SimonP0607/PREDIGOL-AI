@@ -143,5 +143,25 @@
     "none": "Ninguna competición coincide con lo que buscas.",
     "clear": "Quitar filtros",
     "note": "El nivel se mide sobre lo que de verdad llegó en la temporada actual, no sobre lo que anuncia el proveedor, y se recalcula cada noche. Mide los datos disponibles, no la calidad de la liga."
+  },
+  "whatIf": {
+    "title": "¿Qué pasa si…?",
+    "intro": "Elige el resultado de los partidos que faltan y mira cómo quedaría esta tabla.",
+    "choice": {
+      "home": "Local",
+      "draw": "Empate",
+      "away": "Visitante"
+    },
+    "unchosen": "Sin elegir: el partido se deja fuera del cálculo.",
+    "yourScenario": "Tu escenario",
+    "enters": "{teams} entra en: {zone}.",
+    "leaves": "{teams} sale de: {zone}.",
+    "noShift": "Con estos resultados nadie entra ni sale de una zona.",
+    "tied": "Quedan igualados {teams}: el orden entre ellos lo decide el reglamento (diferencia de gol y los demás criterios), no esta calculadora.",
+    "up": "sube {n}",
+    "down": "baja {n}",
+    "same": "sin cambio",
+    "clear": "Borrar resultados",
+    "disclaimer": "Es un cálculo tuyo sobre el reglamento, no un pronóstico: no usa modelos ni publica probabilidades. Suma los puntos de cada resultado que eliges; nunca inventa marcadores. Fuente: resultados del proveedor y reglamento de la competición."
   }
 }
