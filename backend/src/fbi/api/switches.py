@@ -83,6 +83,11 @@ absent and ``=1`` opens them to every signed-in reader. They read the documents 
 measured; nothing private, nothing forecast."""
 
 
+MATCH_SHOT_FUNNEL: Final = "FBI_MATCH_SHOT_FUNNEL"
+"""The Match Center's shot funnel and its two shot zones (plan PM, PM-10-01, lámina I01 «M01»; FE-005): OFF while the line is absent -
+Estadísticas is as it was - and ``=1`` draws them at the top of the tab once a match is under way, where the team statistics are of
+level B or better (C-16, when it answers) and the match delivered every figure. It reads the match detail it already reads."""
+
 AVAILABILITY: Final = "FBI_AVAILABILITY"
 """The availability matrix over HTTP (plan PM, PM-02-05; contract C-16): OFF while the line is absent - its five routes answer 404,
 the private ones too - and ``=1`` opens them (the API recreated). It reads the tables of the nightly batch and the match's own data;
@@ -181,6 +186,11 @@ def match_intelligence_on() -> bool:
 def stats_v2_on() -> bool:
     """Whether readers get the advanced statistics (``FBI_STATS_V2``, off by default)."""
     return user_switch(STATS_V2, default=False)
+
+
+def match_shot_funnel_on() -> bool:
+    """Whether readers get the Match Center's shot funnel and two zones (``FBI_MATCH_SHOT_FUNNEL``, off by default)."""
+    return user_switch(MATCH_SHOT_FUNNEL, default=False)
 
 
 def availability_on() -> bool:
