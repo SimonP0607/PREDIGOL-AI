@@ -5,6 +5,8 @@
 #
 # Reads only. Writes $PREDIGOL_DATA/state/storage/report.json (the latest measure: the Admin Console's «Almacenamiento»
 # page reads it through a read-only mount) and appends one line a day to $PREDIGOL_DATA/state/storage/history.jsonl.
+# Its one write in the database (plan PM, PM-01-02): the size of the database at each measure, one row of audit.db_size_history
+# (db/db_size_history.sql, as the owner). PREDIGOL_DB_SIZE_HISTORY=0 in predigol.env stops it; a failure never stops the report.
 # It never prints or stores a file's content, a secret or an environment: sizes, counts, names and dates only.
 #
 # Two alarms, each told to the owner (Telegram, if configured) only when it CHANGES:
@@ -67,6 +69,16 @@ top_tables="$(compose exec -T postgres psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qA
       AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg_toast%'
       ORDER BY pg_total_relation_size(c.oid) DESC LIMIT 12) t" < /dev/null 2> /dev/null | tail -n 1 || true)"
 jq -e 'type == "array"' <<< "$top_tables" > /dev/null 2>&1 || top_tables='[]'
+# 4b. The history of the database's size (PM-01-02): one row of audit.db_size_history per measure, written as the owner from the
+#     checkout's file through stdin (like grants.sql). Before migration 0168 the file only says so. Never fatal.
+db_history=off
+if [[ "${PREDIGOL_DB_SIZE_HISTORY:-1}" != 0 ]]; then
+  if compose exec -T postgres psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qAtX -f - < "$KIT/db/db_size_history.sql" > /dev/null 2>&1; then
+    db_history=kept
+  else
+    db_history=failed
+  fi
+fi
 
 # 5. The copies: the newest manifest (size, sha256, off-server copy) and the last restore test.
 latest_manifest="$(ls -t "$DB_BACKUPS"/predigol-*.json 2> /dev/null | head -1 || true)"
@@ -134,7 +146,8 @@ jq -n --arg at "$(date -u +%FT%TZ)" --arg host "$(hostname)" --argjson size "$si
    cleanup: $cleanup, growth: $growth}' > "$REPORT.new"
 chmod 644 "$REPORT.new"
 mv "$REPORT.new" "$REPORT"
-say "storage: disk ${pct}% ($level), db $(( db_bytes / 1048576 )) MiB, raw $(( raw / 1048576 )) MiB, docker $(( (img + vol + cache) / 1048576 )) MiB"
+say "storage: disk ${pct}% ($level), db $(( db_bytes / 1048576 )) MiB (history: $db_history), raw $(( raw / 1048576 )) MiB, docker $(( (img + vol + cache) / 1048576 )) MiB"
+if [[ "$db_history" == failed ]]; then log "storage: the size of the database was not kept in audit.db_size_history (the report goes on)"; fi
 
 # 7. Tell the owner when the level or the anomaly changes (not every run).
 anomaly="$(jq -r .anomaly <<< "$growth")"

@@ -25,6 +25,9 @@ pytestmark = pytest.mark.skipif(shutil.which("jq") is None or shutil.which("bash
 DOCKER = r"""#!/usr/bin/env bash
 echo "docker $*" >> "$CALLS"
 case "$*" in
+  *"psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qAtX -f -")
+    cat > "$CALLS.sql"
+    [[ -z "${FAIL_SIZE_WRITE:-}" ]] || exit 1 ;;
   "system df --format {{json .}}")
     echo '{"Active":"5","Reclaimable":"3.506GB (21%)","Size":"16.02GB","TotalCount":"65","Type":"Images"}'
     echo '{"Active":"6","Reclaimable":"0B (0%)","Size":"167.9kB","TotalCount":"6","Type":"Containers"}'
@@ -73,10 +76,11 @@ def server(tmp_path: Path) -> dict[str, Path]:
     return {"data": data, "env": env, "app_env": app_env, "bin": bin_dir, "calls": tmp_path / "calls.log"}
 
 
-def run(server: dict[str, Path], *, size: int = 200 * GIB, used: int = 120 * GIB) -> subprocess.CompletedProcess[str]:
+def run(server: dict[str, Path], *, size: int = 200 * GIB, used: int = 120 * GIB,
+        extra: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     env = {**os.environ, "PATH": f"{server['bin']}:{os.environ['PATH']}", "PREDIGOL_ENV_FILE": str(server["env"]),
            "PREDIGOL_APP_ENV_FILE": str(server["app_env"]), "CALLS": str(server["calls"]),
-           "DF_SIZE": str(size), "DF_USED": str(used)}
+           "DF_SIZE": str(size), "DF_USED": str(used), **(extra or {})}
     return subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=60, check=False)
 
 
@@ -183,3 +187,40 @@ def test_the_timer_runs_it_idle_and_away_from_the_provider_sync() -> None:
     assert "predigol-storage.timer" in install
     compose = (ROOT / "deploy/vps/docker-compose.yml").read_text()
     assert "/state/storage:/storage:ro" in compose, "the API reads the report through a read-only mount"
+
+
+SIZE_SQL = ROOT / "deploy" / "vps" / "db" / "db_size_history.sql"
+
+
+def test_it_keeps_the_size_of_the_database_as_the_owner_from_the_checkouts_file(server: dict[str, Path]) -> None:
+    """PM-01-02: one row of audit.db_size_history per measure - the report's only write, through stdin, as the owner."""
+    out = run(server)
+    assert out.returncode == 0, out.stderr
+    calls = server["calls"].read_text()
+    assert "exec -T postgres psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qAtX -f -" in calls
+    assert Path(f"{server['calls']}.sql").read_text() == SIZE_SQL.read_text(), "the checkout's file, byte for byte"
+    assert "(history: kept)" in out.stdout
+
+
+def test_the_size_is_not_kept_when_the_owner_switches_it_off(server: dict[str, Path]) -> None:
+    out = run(server, extra={"PREDIGOL_DB_SIZE_HISTORY": "0"})
+    assert out.returncode == 0, out.stderr
+    assert "-f -" not in server["calls"].read_text()
+    assert "(history: off)" in out.stdout
+    assert report(server)["database"]["bytes"] == 23_200_000_000  # type: ignore[index]
+
+
+def test_a_write_that_fails_never_stops_the_report(server: dict[str, Path]) -> None:
+    out = run(server, extra={"FAIL_SIZE_WRITE": "1"})
+    assert out.returncode == 0, out.stderr
+    assert "(history: failed)" in out.stdout and "not kept in audit.db_size_history" in out.stdout
+    assert report(server)["version"] == "storage-report-v1"
+
+
+def test_the_size_file_only_inserts_one_row_and_waits_on_no_lock() -> None:
+    sql = SIZE_SQL.read_text(encoding="utf-8")
+    assert "INSERT INTO audit.db_size_history" in sql and "ON CONFLICT (measured_at) DO NOTHING" in sql
+    assert "to_regclass('audit.db_size_history') IS NULL" in sql, "before migration 0168: a notice, no error"
+    assert "SET lock_timeout = '5s'" in sql and "SET statement_timeout = '60s'" in sql
+    for word in ("DELETE", "UPDATE ", "DROP", "TRUNCATE", "ALTER"):
+        assert word not in sql, word

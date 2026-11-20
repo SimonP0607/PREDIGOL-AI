@@ -88,7 +88,9 @@ los tardíos, después del 75); los resultados cuando marcó primero o recibió 
 resultado al descanso; y los cambios: cuántos, cuándo el primero y con qué marcador.
 
 **Lo que no está.** Posiciones, presión, pases por zona, tiros por periodo: el proveedor no los da (las estadísticas son de todo el partido y los
-eventos no traen coordenadas). La posesión y los tiros de **todo el partido** ya los traía el bloque de forma del dossier. No se deduce ningún
+eventos no traen coordenadas). *(Nota del 20-nov-2026, PM-00-03: los tiros, córners y tarjetas por mitad sí existen con `half=true`,
+que PrediGol no pide; confirmado en 5 competiciones el 19-nov; medición por competición en curso (PM-01-05).)*
+La posesión y los tiros de **todo el partido** ya los traía el bloque de forma del dossier. No se deduce ningún
 «estilo» (presión alta, bloque bajo) de lo que no se mide. Con diez partidos una tasa se mueve por un solo partido: cada bloque lleva su `n` y la
 narrativa debe citarlo.
 
@@ -390,7 +392,10 @@ punto 3.
    pedir bloqueo sobre ellas, pero el procedimiento no cambia). **Se despliega en un momento tranquilo**: el job `fixtures_sync` (01:03, 07:03, 13:03
    y 19:03 UTC) mantiene hasta ~27 minutos una transacción de escritura abierta sobre varias tablas, entre unos 24 y 51 minutos después de cada una
    de esas horas; el paso de despliegue comprueba antes de empezar que ninguna transacción de escritura de más de 20 s esté sobre `core.fixtures` o
-   `raw.ingestion_payloads` y no arranca dentro de esa ventana.
+   `raw.ingestion_payloads` y no arranca dentro de esa ventana. *(Nota del 20-nov-2026, PM-00-03: las 01:03, 07:03, 13:03 y 19:03 eran
+   las horas de octubre. `fixtures_sync` no tiene hora fija: corre cada 6 h contadas desde el arranque de su última pasada correcta
+   (`next_run_after`, `apps/worker/scheduler.py`) y su hora de reloj se mueve cuando una pasada se retrasa o falla. El 19-nov eran
+   03:41, 09:41, 15:41 y 21:41 UTC. Se leen en `raw.ingestion_runs` antes de cada despliegue.)*
 2. `predigolctl deploy`: copia propia del despliegue, migración, permisos, reinicio y salud. Con la tabla vacía todo se comporta como antes.
 3. Prueba de humo (`/health`, `/login`, cabeceras) y verificación de solo lectura: revisión de la base `0088`, la tabla y la vista, los permisos
    (la API solo lee), los tres servicios en la versión nueva, 0 errores en los registros, versiones de modelo que se escriben (deben acabar solo en

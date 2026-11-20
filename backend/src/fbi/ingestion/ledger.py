@@ -21,7 +21,9 @@ from psycopg.types.json import Json
 
 from fbi.core.clock import now
 from fbi.core.logging import bind_run_id
+from fbi.ops import memwatch
 from fbi.providers.base import RawResponse
+from fbi.providers.quota import bind_usage_job
 
 log = structlog.get_logger(__name__)
 
@@ -125,6 +127,9 @@ class RunLedger:
             run_id: int = row[0]
         self._conn.commit()
         bind_run_id(str(run_id))
+        # The requests to the provider that follow in this task count under this job (plan PM, PM-01-02).
+        bind_usage_job(job_type)
+        memwatch.WATCH.begin(f"run:{run_id}", job_type)  # PM-13-05: a no-op outside the worker
         log.info("run.opened", job_type=job_type, attempt=attempt, scheduled_for=scheduled_for)
         return run_id
 
@@ -210,11 +215,14 @@ class RunLedger:
         if self._conn.info.transaction_status == TransactionStatus.INERROR:
             self._conn.rollback()
         last_error = counters.errors[-1] if counters.errors else counters.stopped_early
+        # PM-13-05 (OPS-010): what the run took in memory, kept with the run under params._mem (None outside the worker).
+        mem = memwatch.WATCH.end(f"run:{run_id}")
         with self._conn.cursor() as cur:
             cur.execute(
                 "UPDATE raw.ingestion_runs SET finished_at = %s, status = %s, api_calls = %s, "
                 "payloads_stored = %s, rows_normalized = %s, rows_written = %s, rows_updated = %s, "
                 "errors = %s, notes = %s, heartbeat_at = %s, "
+                "params = CASE WHEN %s::jsonb IS NULL THEN params ELSE params || jsonb_build_object('_mem', %s::jsonb) END, "
                 "last_error = CASE WHEN status IN ('stale', 'interrupted') "
                 "  THEN concat_ws(' | ', last_error, %s::text, "
                 "                 'closed by its job after the watchdog had marked it ' || status) "
@@ -223,7 +231,8 @@ class RunLedger:
                 (
                     now(), counters.status, counters.api_calls, counters.payloads_stored,
                     counters.rows_normalized, counters.rows_inserted, counters.rows_updated,
-                    len(counters.errors), notes, now(), last_error, last_error, run_id,
+                    len(counters.errors), notes, now(), None if mem is None else Json(mem),
+                    None if mem is None else Json(mem), last_error, last_error, run_id,
                 ),
             )
         self._conn.commit()

@@ -14,6 +14,10 @@ What the provider says of our quota in each answer's headers (``x-ratelimit-requ
 day, ``X-RateLimit-*`` for the minute) is read on every answer (``reported_quota``) and, when the
 client was given a reporter (``build_client`` gives the persistent one), kept at most every
 ``REPORT_EVERY_SECONDS`` and once more on close - plan Cuotas, BE-011 (E18: nobody read them).
+
+Every request the daily budget accepts is also counted by endpoint, lane and job when the client was given a usage counter
+(``build_client`` gives the process's one unless ``FBI_PROVIDER_USAGE`` is off): in memory, added to
+``raw.provider_endpoint_usage`` at most once a minute and on close - plan PM, PM-01-02. No write per request.
 """
 
 from __future__ import annotations
@@ -32,7 +36,7 @@ import structlog
 from fbi.core.clock import now
 from fbi.core.config.providers import ApiFootballSettings
 from fbi.core.errors import ProviderError, ProviderPayloadError, RateLimitError
-from fbi.providers.quota import ReportedQuota, parse_reported
+from fbi.providers.quota import EndpointUsageCounter, ReportedQuota, parse_reported
 from fbi.storage.payload_store import PayloadStore, StoredPayload, sanitize
 
 log = structlog.get_logger(__name__)
@@ -81,6 +85,7 @@ class ApiFootballClient:
         sleep: Any = None,
         quota_reporter: Callable[[ReportedQuota], None] | None = None,
         report_every: float = REPORT_EVERY_SECONDS,
+        usage: EndpointUsageCounter | None = None,
     ) -> None:
         from fbi.providers.circuit import CircuitBreaker
         from fbi.providers.ratelimit import DailyQuota, TokenBucket
@@ -93,6 +98,7 @@ class ApiFootballClient:
         self._reported: ReportedQuota | None = None
         self._reported_kept_at: float | None = None
         self._report_pending = False
+        self._usage = usage
         # A margin below the published limit: being throttled costs more than
         # the handful of calls this leaves on the table.
         self._bucket = rate_limiter or TokenBucket(max(1, int(settings.per_minute_limit * 0.9)))
@@ -152,8 +158,26 @@ class ApiFootballClient:
         except Exception as exc:  # a header that could not be kept never costs the request that brought it
             log.warning("provider.quota_report_failed", error=type(exc).__name__)
 
+    def _count(self, endpoint: str) -> None:
+        """One request accepted by the daily budget, counted for its endpoint (PM-01-02). Never costs the request."""
+        if self._usage is None:
+            return
+        try:
+            self._usage.record(endpoint)
+        except Exception as exc:  # a count that could not be kept never costs the request it counts
+            log.warning("provider.usage_count_failed", error=type(exc).__name__)
+
+    def _flush_usage(self) -> None:
+        if self._usage is None:
+            return
+        try:
+            self._usage.flush()
+        except Exception as exc:  # closing never fails because a count could not be written
+            log.warning("provider.usage_flush_failed", error=type(exc).__name__)
+
     async def aclose(self) -> None:
         self._keep_reported(time.monotonic())
+        self._flush_usage()
         await self._client.aclose()
 
     async def __aenter__(self) -> ApiFootballClient:
@@ -180,6 +204,7 @@ class ApiFootballClient:
         for attempt in range(self._settings.max_retries + 1):
             self._breaker.before_call()
             self._quota.spend(1)
+            self._count(endpoint)
             await self._bucket.acquire(1)
 
             try:
