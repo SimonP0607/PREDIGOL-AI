@@ -17,6 +17,7 @@ import type {
 } from "./types_odds_explorer";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { MarketProbs, StatsContext, StatsProfile, StatsScope } from "./types_stats";
+import type { Availability, AvailabilityPrivate } from "./types_availability";
 import type { SelectionFunnel } from "./types_funnel";
 import type { AgentsOverview, MatchState } from "./types_ai_agents";
 import type { AttributionOverview } from "./types_ai_attribution";
@@ -810,6 +811,12 @@ export const v1 = {
     getJson<Envelope<MarketProbs>>(
       owner ? `/admin/intelligence/matches/${id}/market-probs` : `/matches/${id}/market-probs`,
     ),
+  /** C-16 (plan PM): the seven states of a match's blocks and markets. 404 while FBI_AVAILABILITY is off. */
+  matchAvailability: (id: number | string) =>
+    getJson<Envelope<Availability>>(`/matches/${id}/availability`),
+  /** C-16, private: the matrix of every graded competition and the last week of changes and shadow discrepancies. */
+  adminAvailabilityMatrix: () =>
+    getJson<Envelope<AvailabilityPrivate>>("/admin/availability/matrix"),
   odds: () => getJson<Envelope<MatchSummary[]>>("/odds"),
   fixtureOdds: (id: number | string, market?: string) =>
     getJson<Envelope<FixtureOdds>>(`/odds/fixtures/${id}`, { market }),
