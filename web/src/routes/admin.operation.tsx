@@ -2,6 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ModulePlaceholder } from "@/components/layout/ModulePlaceholder";
 import { DATA_MODE } from "@/lib/api/mode";
 import { OperationLive } from "@/live/OperationLive";
+import { SegmentedTabs } from "@/components/system/Filters";
+import { ProviderUsageConsole } from "@/admin/ProviderUsageConsole";
+import { t } from "@/admin/usageText";
+import { useUsageConsoleOn } from "@/lib/auth/AuthProvider";
+import { useUrlTab } from "@/lib/useUrlTab";
 
 const DESCRIPTION =
   "The day of PrediGol Intelligence and of the AI: what was analysed and decided, the dossier of each match, the AI's work, what it costs and what ran.";
@@ -18,8 +23,33 @@ export const Route = createFileRoute("/admin/operation")({
   component: Page,
 });
 
+const AREAS = ["operation", "usage"] as const;
+
+/**
+ * Operation as it was and, with FBI_USAGE_CONSOLE on (plan PM, PM-04-05), the view of the provider's requests by lane, endpoint and
+ * competition. Its own parameter in the address («area»), so Operation's tabs keep theirs. Off: Operation exactly as before.
+ */
+function LiveAreas() {
+  const on = useUsageConsoleOn();
+  const [area, setArea] = useUrlTab(AREAS, "operation", "area");
+  if (!on) return <OperationLive />;
+  return (
+    <div className="space-y-4">
+      <SegmentedTabs
+        label={t("usage.area.label")}
+        tabs={AREAS}
+        value={area}
+        onChange={setArea}
+        format={(a) => t(`usage.area.${a}`)}
+        className="w-auto"
+      />
+      {area === "usage" ? <ProviderUsageConsole /> : <OperationLive />}
+    </div>
+  );
+}
+
 function Page() {
-  if (DATA_MODE !== "mock") return <OperationLive />;
+  if (DATA_MODE !== "mock") return <LiveAreas />;
   return (
     <ModulePlaceholder
       breadcrumb={[{ label: "Intelligence" }, { label: "Operation" }]}

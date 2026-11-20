@@ -88,6 +88,12 @@ AVAILABILITY: Final = "FBI_AVAILABILITY"
 the private ones too - and ``=1`` opens them (the API recreated). It reads the tables of the nightly batch and the match's own data;
 it changes nothing a page shows until a module reads it (PM-14-04)."""
 
+
+USAGE_CONSOLE: Final = "FBI_USAGE_CONSOLE"
+"""The owner's console of the provider's requests by lane, endpoint and competition (plan PM, PM-04-05; BE-076, UX-175): OFF while
+the line is absent - ``GET /admin/monitoring/provider-usage`` answers 404 and the console shows no tab - and ``=1`` opens it (the
+API recreated). It reads what the worker already counts; it asks the provider nothing."""
+
 MARKET_PROBS: Final = "FBI_MARKET_PROBS"
 """The probabilities by market of a match (plan EA, EA-201/EA-202; contract C-14): OFF while the line is absent and ``=1`` shows the
 three marks - model, implied, history - on the Mercados tab. A reader sees a model's figure only for a market the catalogue holds
@@ -176,6 +182,11 @@ def stats_v2_on() -> bool:
 def availability_on() -> bool:
     """Whether the routes of C-16 answer (``FBI_AVAILABILITY``, off by default)."""
     return user_switch(AVAILABILITY, default=False)
+
+
+def usage_console_on() -> bool:
+    """Whether the owner's console of the provider's requests answers (``FBI_USAGE_CONSOLE``, off by default)."""
+    return user_switch(USAGE_CONSOLE, default=False)
 
 
 def market_probs_on() -> bool:

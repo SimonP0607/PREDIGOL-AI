@@ -11,6 +11,7 @@ import { hasKey, setLocale, translate } from "./index";
 // The namespaces added when their screen loads (`addCatalog`): imported here so every check below sees them.
 import "@/product/shared/availabilityText";
 import "@/components/analytics/evidenceText";
+import "@/admin/usageText";
 
 function keys(node: Catalog, prefix = ""): string[] {
   return Object.entries(node).flatMap(([k, v]) =>

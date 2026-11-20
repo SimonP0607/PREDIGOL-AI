@@ -120,6 +120,8 @@ class Me(Contract):
     availability: bool = Field(default=False, description="What PrediGol has per competition, datum and market (plan PM, C-16; "
                                                           "FBI_AVAILABILITY, off by default): the states «información no "
                                                           "disponible» and the owner's console of the matrix only then.")
+    usage_console: bool = Field(default=False, description="The owner's console of the provider's requests by lane, endpoint and "
+                                                           "competition (plan PM, PM-04-05; FBI_USAGE_CONSOLE, off by default).")
     display: DisplayPrefs = Field(default_factory=DisplayPrefs, description="The reader's settings of presentation "
                                                                             "(decision 8): clock, price format, "
                                                                             "motion and Inicio's view.")

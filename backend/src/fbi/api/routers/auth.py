@@ -56,6 +56,7 @@ from fbi.api.switches import (
     search_on,
     stats_v2_on,
     transparency_open,
+    usage_console_on,
 )
 from fbi.auth import crypto, service
 from fbi.auth.roles import Role
@@ -94,6 +95,7 @@ def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
         match_intelligence=match_intelligence_on(),
         stats_v2=stats_v2_on(), market_probs=market_probs_on(), parlay_markets_v2=parlay_markets_v2_on(),
         player_markets=player_markets_on(), availability=availability_on(),
+        usage_console=usage_console_on(),
     )
 
 

@@ -114,6 +114,7 @@ Todos nacen apagados y se encienden en `app.env` sin desplegar; el mapa completo
 | `FBI_INBOX` | La bandeja de Avisos y la campana |
 | `FBI_ODDS_BY_MATCH`, `FBI_NAV_V2`, `FBI_SEARCH`, `FBI_PROFILES` | Plan maestro unificado (BE-045): Cuotas «Por partido», las barras nuevas, el buscador y los perfiles |
 | `FBI_AVAILABILITY` | Plan PM (C-16): los estados «información no disponible» y la consola de la matriz (`availability` en `/auth/me`) |
+| `FBI_USAGE_CONSOLE` | Plan PM (PM-04-05): la vista «Consumo del proveedor» de `/admin/operation` (`usage_console` en `/auth/me`) |
 | `FBI_NEWS_V2`, `FBI_MATCH_INTELLIGENCE` | Plan maestro unificado: Noticias de las maquetas 08 a 10 (abogado y datos) y la pestaña «Intelligence» (el dueño) |
 
 ## 4 bis. Composición por tamaño de pantalla (auditoría visual del 16-nov-2026)
