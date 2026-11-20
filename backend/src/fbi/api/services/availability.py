@@ -42,7 +42,7 @@ from fbi.api.services.forecast import users_may_see
 from fbi.api.services.market_probs import parlay_policy
 from fbi.api.switches import availability_on, availability_phases_on
 from fbi.core.clock import now
-from fbi.coverage import levels
+from fbi.coverage import depth, levels
 from fbi.coverage import resolve as resolver
 from fbi.coverage.job import CUP_PHASES, PHASE_ALL
 
@@ -52,7 +52,7 @@ SEASONS_SHOWN: Final = 2
 _NO_DATA: Final = Missing(missing_reason="sin_datos")
 
 COMPETITIONS_SQL: Final = """
-SELECT c.id, c.name, c.country, c.tier FROM core.competitions c
+SELECT c.id, c.provider_league_id, c.name, c.country, c.tier FROM core.competitions c
  WHERE c.is_tracked AND (%(id)s::bigint IS NULL OR c.id = %(id)s)
    AND EXISTS (SELECT 1 FROM core.competition_seasons s JOIN analytics.coverage_cells x ON x.competition_season_id = s.id
                 WHERE s.competition_id = c.id)
@@ -160,6 +160,7 @@ def _competitions(conn: Conn, competition_id: int | None, *, with_seasons: bool)
         for r in fetch_all(conn, PHASE_CELLS_SQL, {"ids": ids, "phases": list(CUP_PHASES)}):
             phases[r["competition_season_id"]][r["phase_key"]].append(_cell(r))
     out: list[CompetitionAvailabilityPrivate] = []
+    prio = depth.priorities()
     for c in comps:
         graded = [_season(s["id"], s["season"], cells[s["id"]], markets[s["id"]], phases.get(s["id"], {}))
                   for s in per_comp.get(c["id"], [])]
@@ -168,7 +169,9 @@ def _competitions(conn: Conn, competition_id: int | None, *, with_seasons: bool)
         head = next((g for g in graded if g.summary != "MI"), graded[0])  # the latest season with a sample decides the directory
         out.append(CompetitionAvailabilityPrivate(
             competition_id=c["id"], name=c["name"], country=c["country"] or _NO_DATA,
-            tier=_NO_DATA if c["tier"] is None else int(c["tier"]), summary=head.summary, summary_label=head.summary_label,
+            tier=_NO_DATA if c["tier"] is None else int(c["tier"]),
+            priority=prio.get(int(c["provider_league_id"]), _NO_DATA) if c.get("provider_league_id") is not None else _NO_DATA,
+            summary=head.summary, summary_label=head.summary_label,
             families=head.families, seasons=graded if with_seasons else []))
     return out
 

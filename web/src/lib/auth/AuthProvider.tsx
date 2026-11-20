@@ -285,6 +285,27 @@ export function useMatchVizSwitches(): { shotFunnel: boolean; balance: boolean }
   return { shotFunnel: u?.match_shot_funnel === true, balance: u?.match_balance === true };
 }
 
+/**
+ * The readers' pages of plan PM, wave 4 (PM-09-04, PM-09-05, PM-08-06, PM-09-03), each behind its switch: off outside the provider
+ * and while the API says nothing.
+ */
+export function usePmReaderSwitches(): {
+  competitionPage: boolean;
+  competitionTables: boolean;
+  directory: boolean;
+  playerExtras: boolean;
+  whatIf: boolean;
+} {
+  const u = useContext(AuthContext)?.user;
+  return {
+    competitionPage: u?.competition_page === true,
+    competitionTables: u?.competition_tables === true,
+    directory: u?.competition_directory === true,
+    playerExtras: u?.player_profile_extras === true,
+    whatIf: u?.what_if === true,
+  };
+}
+
 /** The `preview` value for product queries: "shadow" only while a SUPER_ADMIN has the shadow preview on. */
 export function usePreviewParam(): "shadow" | undefined {
   return useAuth().shadowPreview ? "shadow" : undefined;

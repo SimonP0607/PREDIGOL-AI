@@ -510,7 +510,8 @@ async function request<T>(
   return parsed as T;
 }
 
-const getJson = <T>(path: string, params?: Params) => request<T>("GET", path, { params });
+/** Exported for the screens that keep their own fetchers in their lazy chunk (plan PM, UX-178: the first visit's JS cannot grow). */
+export const getJson = <T>(path: string, params?: Params) => request<T>("GET", path, { params });
 const postJson = <T>(path: string, body: unknown) => request<T>("POST", path, { body });
 const putJson = <T>(path: string, body: unknown) => request<T>("PUT", path, { body });
 const patchJson = <T>(path: string, body: unknown) => request<T>("PATCH", path, { body });

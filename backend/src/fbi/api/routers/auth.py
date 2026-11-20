@@ -41,6 +41,8 @@ from fbi.api.security import (
 from fbi.api.services import news as news_service
 from fbi.api.switches import (
     availability_on,
+    competition_directory_on,
+    competition_page_on,
     explain_on,
     market_probs_on,
     match_balance_on,
@@ -54,16 +56,19 @@ from fbi.api.switches import (
     odds_status_on,
     parlay_markets_v2_on,
     player_markets_on,
+    player_profile_extras_on,
     profiles_on,
     search_on,
     stats_v2_on,
     transparency_open,
     usage_console_on,
+    what_if_on,
 )
 from fbi.auth import crypto, service
 from fbi.auth.roles import Role
 from fbi.auth.service import Principal
 from fbi.auth.settings import session_settings
+from fbi.competitions.season_tables import switch_on as competition_tables_on
 from fbi.core.clock import now
 from fbi.customer import consents, display, favorites, guides, membership, support
 from fbi.customer import push as push_rules
@@ -98,7 +103,9 @@ def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
         stats_v2=stats_v2_on(), market_probs=market_probs_on(), parlay_markets_v2=parlay_markets_v2_on(),
         match_shot_funnel=match_shot_funnel_on(), match_balance=match_balance_on(),
         player_markets=player_markets_on(), availability=availability_on(),
-        usage_console=usage_console_on(),
+        usage_console=usage_console_on(), competition_page=competition_page_on(),
+        competition_tables=competition_tables_on(), competition_directory=competition_directory_on(),
+        player_profile_extras=player_profile_extras_on(), what_if=what_if_on(),
     )
 
 

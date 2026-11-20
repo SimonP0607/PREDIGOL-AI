@@ -12,7 +12,7 @@ import { fieldVariants } from "@/components/ui/field";
 import { TeamName } from "@/components/football/Logos";
 import { live } from "@/lib/api/v1/queries";
 import type { CompetitionSummary } from "@/lib/api/v1/types";
-import { useAuth } from "@/lib/auth/AuthProvider";
+import { useAuth, usePmReaderSwitches } from "@/lib/auth/AuthProvider";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Card, EmptyState, PageTitle, SkeletonCards } from "@/product/shared/States";
@@ -53,6 +53,8 @@ export function TeamsPage() {
   const auth = useAuth();
   const open = auth.user?.profiles === true;
   const reader = auth.user?.role === "USER";
+  // plan PM, PM-09-04: with the competition's page on, a competition leads to it; off, to its matches as before
+  const { competitionPage } = usePmReaderSwitches();
   const [q, setQ] = useState("");
   const term = useDebounced(q.trim());
   const favorites = useQuery({ ...live.favorites, enabled: open && reader });
@@ -185,8 +187,12 @@ export function TeamsPage() {
                   {g.competitions.map((c) => (
                     <li key={c.id}>
                       <Link
-                        to="/matches"
-                        search={{ competition: c.id }}
+                        {...(competitionPage
+                          ? {
+                              to: "/competitions/$competitionId",
+                              params: { competitionId: String(c.id) },
+                            }
+                          : { to: "/matches", search: { competition: c.id } })}
                         className="flex min-h-11 items-center gap-3 px-6 py-2 text-sm hover:bg-elevated"
                       >
                         <span className="min-w-0 flex-1">{c.name}</span>

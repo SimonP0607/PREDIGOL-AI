@@ -34,7 +34,8 @@
     "teamOrCompetition": "Team or competition",
     "applied": "Filters on",
     "remove": "Remove filter: {name}",
-    "query": "“{query}”"
+    "query": "“{query}”",
+    "directory": "See every competition"
   },
   "group": {
     "live_one": "{count} live",
