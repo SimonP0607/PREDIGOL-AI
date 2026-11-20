@@ -50,8 +50,8 @@ def test_intervals_are_reproducible_and_honest() -> None:
 
 
 def test_the_kind_is_reduced_and_never_a_diagnosis() -> None:
-    row = {"fixture": 1, "player": 2, "kickoff_at": KO, "league": 39, "kind": "Knee Injury",
-           **dict.fromkeys(at.CHANNELS)}
+    row: dict[str, object] = {"fixture": 1, "player": 2, "kickoff_at": KO, "league": 39, "kind": "Knee Injury",
+                              **dict.fromkeys(at.CHANNELS)}
     assert at.case_of(row).kind == "otro"  # anything but the three words is not passed on
     assert re.search(at.SUSPENSION_RE, "yellow cards") and re.search(at.SUSPENSION_RE, "red card")
     assert re.search(at.NOT_HEALTH_RE, "coach's decision") and not re.search(at.NOT_HEALTH_RE, "knee injury")
