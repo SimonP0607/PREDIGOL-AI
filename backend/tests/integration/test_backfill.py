@@ -204,3 +204,37 @@ def test_a_current_seasons_played_match_never_fetched_gets_a_detail_unit(world: 
         cur.execute("SELECT kind, priority, batch_key FROM raw.backfill_tasks WHERE kind = 'fixture_details'")
         assert row(cur) == ("fixture_details", CURRENT_DETAIL_PRIORITY, "1001")
     assert seed_current_details(world) == 0  # the same gap is queued once
+
+
+async def test_a_lane_or_budget_refusal_stops_the_run_and_leaves_the_units_as_they_were(
+    world: psycopg.Connection, tmp_path: Path
+) -> None:
+    """PM-04-01: when a lane of the budget (or the budget, or the circuit) refuses before anything is sent, the unit goes back
+    to the queue without an attempt - three attempts retire a unit - and the run stops instead of marking every unit after it."""
+    from fbi.core.errors import QuotaExhaustedError
+
+    seed_tasks(world, PL)
+    answers = {("39", str(s)): season_payload(s) for s in (2024, 2023, 2022)}
+    calls: list[str] = []
+    p = provider(tmp_path, answers, calls)
+    real = p._client._quota
+
+    class LaneShut:
+        budget = real.budget
+        remaining = real.remaining
+
+        def spend(self, calls: int = 1) -> None:
+            raise QuotaExhaustedError("lane 'historicos' reached its daily ceiling")
+
+    p._client._quota = LaneShut()
+    report = await run_backfill(world, p, max_requests=10, daily_budget=60)
+    assert calls == [] and report.attempted == 0 and report.failed == 0
+    assert report.stopped_early and "historicos" in report.stopped_early
+    with world.cursor() as cur:
+        cur.execute("SELECT status, attempts FROM raw.backfill_tasks ORDER BY season")
+        assert cur.fetchall() == [("pending", 0)] * 3
+        cur.execute("SELECT status FROM raw.ingestion_runs WHERE id = %s", (report.run_id,))
+        assert row(cur) == ("aborted",)
+    p._client._quota = real
+    again = await run_backfill(world, p, max_requests=10, daily_budget=60)
+    assert again.done == 3 and calls == ["39/2024", "39/2023", "39/2022"], "the next run resumes them"
