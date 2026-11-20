@@ -36,5 +36,25 @@
     "method": "El proveedor cuenta los remates de cada equipo dentro y fuera del área; el porcentaje es la parte de los remates de ese equipo en cada zona. No da el punto de cada remate, así que no hay mapa: solo estas dos zonas.",
     "aria": "{team}: {inside} remates dentro del área ({insidePct} %) y {outside} fuera ({outsidePct} %)"
   },
-  "footer": "Fuente: {source} · {n} partido."
+  "footer": "Fuente: {source} · {n} partido.",
+  "balance": {
+    "title": "Balanza del partido",
+    "badge": "Dominio aproximado; no es field tilt",
+    "subject": "Reparto de posesión, remates y córners entre {home} y {away}",
+    "possession": "Posesión",
+    "shots": "Remates",
+    "shotsInsideBox": "Remates en el área",
+    "corners": "Córners",
+    "note": "Reparte entre los dos equipos los totales del partido. No mide en qué zona del campo se jugó.",
+    "method": "Cada barra es la parte de cada equipo en el total del partido de esa cifra (posesión, remates, remates dentro del área y córners), tal como la entrega el proveedor. Dice quién tuvo más de cada cosa, no dónde se jugó: por eso es un dominio aproximado y no un «field tilt», que necesitaría saber en qué zona pasó cada acción.",
+    "aria": "{label}: {home} {homeValue} y {away} {awayValue}"
+  },
+  "scoreState": {
+    "title": "Estado del marcador",
+    "subtitle": "Quién iba por delante durante los 90 minutos.",
+    "subject": "Minutos por delante de {home} y {away}",
+    "source": "eventos del partido de API-Football",
+    "beyond90": "La franja cubre los 90 minutos: la prórroga y los penaltis no se dibujan.",
+    "method": "Se ordenan los goles de los eventos del partido y se cuenta, minuto a minuto, quién iba por delante, quién por detrás o si iban empatados. El tiempo añadido cuenta como el minuto 90 (45 en la primera parte). Solo se dibuja cuando los goles de los eventos suman el resultado final."
+  }
 }

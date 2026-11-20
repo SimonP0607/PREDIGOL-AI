@@ -88,6 +88,11 @@ MATCH_SHOT_FUNNEL: Final = "FBI_MATCH_SHOT_FUNNEL"
 Estadísticas is as it was - and ``=1`` draws them at the top of the tab once a match is under way, where the team statistics are of
 level B or better (C-16, when it answers) and the match delivered every figure. It reads the match detail it already reads."""
 
+MATCH_BALANCE: Final = "FBI_MATCH_BALANCE"
+"""The Match Center's balance of the match and strip of the score's state (plan PM, PM-10-02, lámina I01 «M04»; FE-006): OFF while
+the line is absent - Estadísticas is as it was - and ``=1`` draws the balance where the team statistics are of level B or better and
+the strip of a finished match where the events are (C-16, when it answers). It reads the match detail it already reads."""
+
 AVAILABILITY: Final = "FBI_AVAILABILITY"
 """The availability matrix over HTTP (plan PM, PM-02-05; contract C-16): OFF while the line is absent - its five routes answer 404,
 the private ones too - and ``=1`` opens them (the API recreated). It reads the tables of the nightly batch and the match's own data;
@@ -191,6 +196,11 @@ def stats_v2_on() -> bool:
 def match_shot_funnel_on() -> bool:
     """Whether readers get the Match Center's shot funnel and two zones (``FBI_MATCH_SHOT_FUNNEL``, off by default)."""
     return user_switch(MATCH_SHOT_FUNNEL, default=False)
+
+
+def match_balance_on() -> bool:
+    """Whether readers get the Match Center's balance and strip of the score's state (``FBI_MATCH_BALANCE``, off by default)."""
+    return user_switch(MATCH_BALANCE, default=False)
 
 
 def availability_on() -> bool:

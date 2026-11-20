@@ -94,6 +94,8 @@ export interface Me {
   usage_console?: boolean;
   /** The Match Center's shot funnel and its two zones (plan PM, PM-10-01, lámina I01; FBI_MATCH_SHOT_FUNNEL, off by default). */
   match_shot_funnel?: boolean;
+  /** The Match Center's balance and strip of the score's state (plan PM, PM-10-02, lámina I01; FBI_MATCH_BALANCE, off by default). */
+  match_balance?: boolean;
   /** The reader's settings of presentation (decision 8); absent from an API older than BE-039: today's defaults. */
   display?: Display;
 }
