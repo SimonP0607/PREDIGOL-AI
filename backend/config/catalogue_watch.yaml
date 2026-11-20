@@ -1,0 +1,99 @@
+# PM-03-08 (Plan Maestro PM, DOC-010): the competitions the owner asked for that the provider does not have, the ones it stopped
+# listing and the cyclical ones with no edition open - and the watch that says when that changes. Guide: docs/owner/EXPANSION_P3.md,
+# section 8. Read by fbi.catalog.watch: by `python -m scripts.catalogue_watch` (0 requests, the /leagues already on disk) and, with
+# FBI_CATALOGUE_WATCH on (OFF by default), after each daily catalogue_refresh. Listing or changing anything here tracks nothing.
+#
+# The watch compares by IDENTIFIER, never by name: a competition the provider renames is not new. Two findings:
+#   * nueva: a league id of a priority country (`known`, the country as the provider spells it) that was not listed on the baseline
+#     date - where a missing competition below would show up, if the provider ever adds it;
+#   * edicion: a season newer than `last_season` for a competition of `waiting` - a discontinued one coming back, or the next
+#     edition of a cyclical one (then it is a candidate for a batch of config/expansion.yaml, like any other).
+# A finding repeats every day until this file is updated by a PR (the id added to `known`, or `last_season` moved): that PR is the
+# acknowledgement.
+version: 1
+baseline:
+  at: "2026-11-20T14:27:03Z"
+  source: >-
+    raw.league_coverage in production (the provider's /leagues of the daily catalogue_refresh), read-only, 0 requests: 702 league
+    ids in the 28 countries below; the same 702 as annex A of the plan (provider's catalogue of 19 Nov 2026, 1,253 leagues)
+  task: PM-03-08 (DOC-010)
+
+# Not in the provider's /leagues at all (19 and 20 Nov 2026). No id to follow: the watch reports any NEW id of the country instead.
+missing:
+  - {country: Panama, asked: "Segunda división (Liga Prom)", note: "only the Liga Panameña de Fútbol (304) exists"}
+  - {country: Panama, asked: Copa, note: "only 304 exists"}
+  - {country: Panama, asked: Supercopa, note: "only 304 exists"}
+  - {country: Denmark, asked: Supercopa}
+  - {country: Scotland, asked: Supercopa}
+  - {country: Austria, asked: Supercopa}
+  - {country: USA, asked: Supercopa}
+  - {country: South-Korea, asked: Supercopa}
+  - {country: Australia, asked: Supercopa}
+  - {country: Australia, asked: "Segunda división nacional", note: "there is none: the Australian Championship (1202) and the state leagues exist"}
+  - {country: India, asked: "Durand Cup", note: "only the AIFF Super Cup (545) exists"}
+
+# Listed, but with no season open: discontinued at the provider, or cyclical between editions. `last_season` is the newest season
+# raw.league_coverage lists for each on the baseline date.
+waiting:
+  - {league_id: 264, name: Copa MX, country: Mexico, kind: descontinuada, last_season: 2019}
+  - {league_id: 65, name: Coupe de la Ligue, country: France, kind: descontinuada, last_season: 2019}
+  - {league_id: 1032, name: Copa de la Liga Profesional, country: Argentina, kind: descontinuada, last_season: 2024}
+  - {league_id: 808, name: CONCACAF Nations League - Qualification, country: World, kind: descontinuada, last_season: 2018}
+  - {league_id: 806, name: OFC Nations Cup, country: World, kind: ciclica, last_season: 2024}
+  - {league_id: 35, name: Asian Cup - Qualification, country: World, kind: ciclica, last_season: 2024}
+  - {league_id: 960, name: Euro Championship - Qualification, country: World, kind: ciclica, last_season: 2023}
+  - {league_id: 858, name: CONCACAF Gold Cup - Qualification, country: World, kind: ciclica, last_season: 2025}
+  - {league_id: 548, name: Super Cup, country: Japan, kind: ciclica, last_season: 2025}
+  - {league_id: 1186, name: FIFA Club World Cup - Play-In, country: World, kind: puntual, last_season: 2025}
+
+# The league ids each priority country had at the provider on the baseline date (Colombia, the internationals and the 26 countries
+# of section 3 of the plan), as the provider spells the country.
+known:
+  Colombia: [239, 240, 241, 712, 713]
+  World: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+    30, 31, 32, 33, 34, 35, 36, 37, 38, 480, 490, 493, 524, 525, 531, 532, 533, 534, 535, 536, 537, 538, 540, 541,
+    587, 666, 667, 743, 766, 767, 768, 769, 770, 771, 772, 773, 803, 804, 805, 806, 807, 808, 848, 849, 850, 856,
+    858, 859, 860, 869, 880, 881, 882, 885, 886, 890, 893, 894, 897, 900, 902, 903, 904, 908, 910, 911, 912, 913,
+    914, 916, 918, 919, 920, 921, 922, 926, 927, 928, 934, 937, 940, 941, 945, 949, 950, 951, 952, 953, 960, 963,
+    965, 970, 973, 1001, 1008, 1012, 1013, 1015, 1016, 1024, 1028, 1038, 1039, 1040, 1043, 1045, 1046, 1047, 1057,
+    1060, 1066, 1070, 1072, 1077, 1081, 1083, 1085, 1089, 1101, 1102, 1105, 1122, 1123, 1129, 1132, 1136, 1140, 1153,
+    1159, 1161, 1162, 1163, 1164, 1168, 1169, 1186, 1188, 1189, 1191, 1206, 1207, 1208, 1213, 1214, 1216, 1217, 1222,
+    1236, 1237, 1245, 1246, 1247]
+  Argentina: [128, 129, 130, 131, 132, 133, 134, 483, 517, 810, 906, 1032, 1067, 1178]
+  Brazil: [71, 72, 73, 74, 75, 76, 77, 475, 476, 477, 478, 520, 521, 522, 602, 603, 604, 605, 606, 607, 608, 609,
+    610, 611, 612, 613, 614, 615, 616, 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631,
+    632, 740, 741, 742, 843, 851, 936, 1030, 1035, 1036, 1037, 1059, 1062, 1063, 1069, 1071, 1073, 1076, 1082, 1086,
+    1088, 1096, 1097, 1098, 1100, 1106, 1107, 1108, 1110, 1112, 1114, 1115, 1120, 1124, 1125, 1128, 1133, 1134, 1135,
+    1138, 1139, 1141, 1142, 1143, 1145, 1146, 1147, 1148, 1149, 1150, 1151, 1154, 1155, 1157, 1158, 1165, 1179, 1183,
+    1184, 1203, 1204, 1205, 1223, 1224, 1225]
+  Chile: [265, 266, 267, 527, 711, 1220]
+  Uruguay: [268, 269, 270, 842, 930, 1212]
+  Mexico: [262, 263, 264, 662, 673, 722, 857, 861, 872, 1017, 1200, 1242]
+  USA: [253, 254, 255, 256, 257, 489, 523, 641, 866, 909, 1095, 1116, 1117, 1118, 1119, 1130]
+  Panama: [304]
+  England: [39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 528, 670, 695,
+    696, 697, 698, 699, 702, 703, 871, 931, 932, 933, 984, 985, 986, 987, 993, 994, 995, 996, 1022, 1068, 1156]
+  Scotland: [179, 180, 181, 182, 183, 184, 185, 730, 731, 992, 1074, 1078]
+  Spain: [140, 141, 142, 143, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451,
+    452, 453, 454, 455, 456, 556, 692, 735, 875, 876, 877, 878, 879, 977, 1000, 1006, 1058, 1248]
+  Italy: [135, 136, 137, 138, 139, 426, 427, 428, 429, 430, 431, 432, 433, 434, 547, 704, 705, 706, 817, 891, 892,
+    942, 943, 974, 975, 976, 997, 998, 999, 1171, 1198]
+  Germany: [78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 488, 529, 715, 744, 745, 746, 747, 748, 749, 750, 751, 752, 753,
+    754, 755, 938, 939, 947, 988, 989, 1002, 1003, 1034, 1137]
+  France: [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 461, 462, 463, 464, 465, 466, 467, 468, 469, 470, 471, 472, 526,
+    1029]
+  Portugal: [94, 95, 96, 97, 457, 458, 459, 460, 550, 681, 682, 683, 684, 701, 840, 865, 948, 991, 1041]
+  Belgium: [144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 487, 518, 519,
+    689, 690, 691, 979, 980, 981, 1011]
+  Denmark: [119, 120, 121, 122, 123, 124, 125, 126, 127, 638, 862, 982, 983, 1244]
+  Austria: [218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 484, 687, 688, 1238, 1239]
+  Turkey: [203, 204, 205, 206, 551, 552, 553, 554, 1007, 1027, 1240]
+  Japan: [98, 99, 100, 101, 102, 497, 548, 854, 1235]
+  South-Korea: [292, 293, 294, 295, 660, 1234]
+  India: [323, 324, 325, 545, 717, 1020, 1201]
+  Saudi-Arabia: [307, 308, 309, 504, 826, 827, 1227]
+  Qatar: [305, 306, 677, 824, 825, 841]
+  United-Arab-Emirates: [301, 302, 303, 560, 896, 1218]
+  Egypt: [233, 539, 714, 887, 888, 889, 895, 1014]
+  Australia: [188, 189, 190, 191, 192, 193, 194, 195, 196, 481, 482, 648, 833, 834, 835, 836, 874, 1090, 1091, 1092,
+    1093, 1094, 1202, 1226, 1230]
