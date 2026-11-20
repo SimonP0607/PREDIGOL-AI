@@ -76,6 +76,31 @@ BEGIN
 END
 $incidents$;
 
+-- The use of the provider and the size of the database (plan PM, PM-01-02, migration 0168). The loop above already gives the API SELECT
+-- (the console reads the three) and the worker everything; here it is narrowed to what each one does:
+--   raw.provider_endpoint_usage, raw.provider_minute_daily  the worker adds counts and summaries (INSERT, UPDATE); it never deletes one.
+--   audit.db_size_history                                   written by the owner alone (bin/storage-report.sh); the application only reads.
+DO $provider_usage$
+DECLARE
+  t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['raw.provider_endpoint_usage', 'raw.provider_minute_daily'] LOOP
+    IF to_regclass(t) IS NULL THEN
+      RAISE NOTICE 'grants: % does not exist (yet) - skipped', t;
+      CONTINUE;
+    END IF;
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE ON %s TO predigol_worker', t);
+    EXECUTE format('REVOKE DELETE, TRUNCATE ON %s FROM predigol_worker', t);
+  END LOOP;
+  IF to_regclass('audit.db_size_history') IS NULL THEN
+    RAISE NOTICE 'grants: audit.db_size_history does not exist (yet) - skipped';
+  ELSE
+    REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON audit.db_size_history FROM predigol_api, predigol_worker;
+    GRANT SELECT ON audit.db_size_history TO predigol_api, predigol_worker;
+  END IF;
+END
+$provider_usage$;
+
 -- The API's writes.
 GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO predigol_api;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO predigol_api;
