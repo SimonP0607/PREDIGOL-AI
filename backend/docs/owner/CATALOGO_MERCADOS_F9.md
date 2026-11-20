@@ -142,7 +142,9 @@ el despliegue esperó a que cerrara su transacción larga). Versiones: backend `
 
 Lo que la matriz dice hoy de las familias del plan: los goles por mitad (resultado, total, ambos marcan, descanso/final, hándicap) y los
 córners del partido y por equipo salen **POR INVESTIGAR con prioridad alta** (tienen resultado y precio); los córners por mitad, **NO
-VIABLES** (el proveedor no da córners por tiempo); las tarjetas, POR INVESTIGAR (prioridad media el total, baja el resto, por poco precio).
+VIABLES** (el proveedor no da córners por tiempo; *nota del 20-nov-2026, PM-00-03: sí los da con `half=true`, que PrediGol no pide;
+confirmado en 5 competiciones el 19-nov; medición por competición en curso (PM-01-05)*); las tarjetas, POR INVESTIGAR (prioridad media
+el total, baja el resto, por poco precio).
 Tarjetas: de 31.233 partidos del último año contados desde eventos, 4.801 tienen una expulsión (15,4 %): ahí las convenciones darían una
 cifra distinta; los eventos coinciden con las estadísticas en el 86,7 % de 6.928 comparados. Sigue pendiente tu decisión sobre la
 convención (sección 8).

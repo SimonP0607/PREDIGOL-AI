@@ -2,16 +2,35 @@
 # at purchase time: check the dashboard the day you buy (prices, limits and the
 # Free plan's season window are the provider's to change).
 #
-# Sources, read 2026-09-25 (docs/research/notes/A5_api_football_inventory.md):
+# Prices and daily quotas read on 2026-11-19 from the live pricing page
+# (https://www.api-football.com/pricing, literal text; PM-00-03, 20 Nov 2026):
+#   Free 0 USD / 100 a day, Pro 16 USD / 7,500, Ultra 26 USD / 75,000,
+#   Mega 36 USD / 150,000 - "All prices exclude VAT"; every plan has every
+#   competition and endpoint (Free: limited seasons); a custom plan goes up to
+#   1,500,000 a day. Plans are prepaid "with no auto-renewal": when one expires
+#   the account "automatically returns to the free plan", and once the quota is
+#   reached the API stops answering (no overage is charged).
+# OPEN DISCREPANCY (owner decision DM-09, not resolved): on 2026-09-25 and 29 the
+#   same page showed 19 / 29 / 39 USD (docs/api-football/07_ULTRA_PLAN_LIMITS.md:
+#   Ultra bought at 29 USD), the page's own description still says "Prices
+#   start at $19 per month", and an internal planning document says Ultra 29.
+#   Whether 26 is a new list price or a duration discount only the owner's
+#   dashboard says. Until then the prices below are the ones the page shows.
+# Requests per minute are NOT on the pricing page: they come from the plan
+#   pop-ups of https://api-sports.io/sports/football and the ratelimit post
+#   (https://www.api-football.com/news/post/how-ratelimit-works, 2026-06-12),
+#   read 2026-09-25; not re-read on 2026-11-19.
+#
+# Earlier reading, 2026-09-25 (docs/research/notes/A5_api_football_inventory.md):
 #   https://www.api-football.com/pricing
 #   https://api-sports.io/sports/football
 #   https://www.api-football.com/news/post/how-ratelimit-works (2026-06-12)
 #   https://www.api-football.com/terms ("Mai 21, 2025")
-# The same four prices appear on archived copies of the pricing page from
-# 2020-03-12 to 2026-03-14; no official page with different list prices was
-# found. The quota resets at 00:00 UTC, unused requests are lost, and a
-# dashboard account that reaches its quota is suspended for the rest of the day.
-checked_on: 2026-09-25
+# Then the same four prices (19 / 29 / 39) appeared on archived copies of the
+# pricing page from 2020-03-12 to 2026-03-14. The quota resets at 00:00 UTC,
+# unused requests are lost, and a dashboard account that reaches its quota is
+# suspended for the rest of the day.
+checked_on: 2026-11-19
 currency: USD
 plans:
   - name: Free
@@ -22,15 +41,15 @@ plans:
   - name: Pro
     requests_per_day: 7500
     requests_per_minute: 300
-    price_month: 19
+    price_month: 16
     history: "deeper historical archives (paid plans: all competitions and endpoints)"
   - name: Ultra
     requests_per_day: 75000
     requests_per_minute: 450
-    price_month: 29
+    price_month: 26
     history: "as Pro"
   - name: Mega
     requests_per_day: 150000
     requests_per_minute: 900
-    price_month: 39
+    price_month: 36
     history: "as Pro"

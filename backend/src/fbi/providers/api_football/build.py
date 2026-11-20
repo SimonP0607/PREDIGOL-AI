@@ -12,12 +12,17 @@ enforced in one place and cannot be forgotten by the next script.
 
 from __future__ import annotations
 
+import atexit
+import os
+import threading
+
 import psycopg
 
 from fbi.core.config import settings
 from fbi.providers.api_football.client import ApiFootballClient
 from fbi.providers.quota import (
     MINUTE_SHARE,
+    EndpointUsageCounter,
     PersistentDailyQuota,
     PersistentMinuteLimiter,
     PersistentReportedQuota,
@@ -60,10 +65,45 @@ def build_client(max_requests: int | None = None) -> ApiFootballClient:
         rate_limiter=build_minute_limiter(),
         # What the provider says of our quota (its headers), kept in raw.provider_reported_quota (plan Cuotas, BE-011).
         quota_reporter=PersistentReportedQuota(connect=_connect),
+        # Requests by endpoint, lane and job, in memory and added once a minute (plan PM, PM-01-02).
+        usage=build_usage_counter(),
     )
 
 
 def build_minute_limiter() -> PersistentMinuteLimiter:
-    """The plan's per-minute limit, shared by every process (MINUTE_SHARE of it)."""
+    """The plan's per-minute limit, shared by every process (MINUTE_SHARE of it). While the usage switch is on, its hourly prune
+    also keeps the day's peaks in raw.provider_minute_daily (PM-01-02)."""
     cfg = settings.api_football
-    return PersistentMinuteLimiter(limit=max(1, int(cfg.per_minute_limit * MINUTE_SHARE)), connect=_connect)
+    return PersistentMinuteLimiter(limit=max(1, int(cfg.per_minute_limit * MINUTE_SHARE)), connect=_connect,
+                                   summarize=usage_enabled())
+
+
+USAGE_SWITCH = "FBI_PROVIDER_USAGE"
+"""Counting the requests by endpoint and lane (plan PM, PM-01-02). ON unless it says 0/off/false/no: it measures and changes no
+request, no answer and nothing a reader sees; off, the client counts nothing and the limiter keeps no daily summary. The worker
+reads it when it starts."""
+_OFF_WORDS = frozenset({"0", "off", "false", "no"})
+_usage_lock = threading.Lock()
+_usage_counter: EndpointUsageCounter | None = None
+
+
+def usage_enabled() -> bool:
+    return os.environ.get(USAGE_SWITCH, "on").strip().lower() not in _OFF_WORDS
+
+
+def build_usage_counter() -> EndpointUsageCounter | None:
+    """The process's one usage counter (every client of the process shares it), flushed once more when the process exits; None
+    while the switch is off."""
+    global _usage_counter
+    if not usage_enabled():
+        return None
+    with _usage_lock:
+        if _usage_counter is None:
+            _usage_counter = EndpointUsageCounter(connect=_connect)
+            atexit.register(_flush_at_exit, _usage_counter)
+        return _usage_counter
+
+
+def _flush_at_exit(counter: EndpointUsageCounter) -> None:
+    # The interpreter is leaving: flush() never raises (a write that fails is logged), so this is all it can cost.
+    counter.flush()

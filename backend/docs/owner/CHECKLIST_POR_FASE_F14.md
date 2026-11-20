@@ -91,6 +91,11 @@ Cada fila es un lanzamiento (varias fases salieron juntas). Fechas en UTC.
 * **F5 (23-oct 01:42):** la migración se rindió sola tras cinco intentos de 10 s porque `fixtures_sync` mantenía una transacción de unos
   27 minutos sobre `core.fixtures` (la liga 667, «Friendlies Clubs»). No hubo daño. Desde entonces: comprobación de calma antes de
   desplegar, `lockwatch` durante el despliegue y ventanas de despliegue fuera de las de `fixtures_sync` (01, 07, 13 y 19 UTC más ≈ 24–51 min).
+  *Nota del 20-nov-2026 (PM-00-03):* esas horas eran las de octubre. `fixtures_sync` no tiene hora fija: corre cada 6 h contadas
+  desde el arranque de su última pasada correcta (`next_run_after`, `apps/worker/scheduler.py`), así que su hora de reloj se mueve
+  cuando una pasada se retrasa o falla (por ejemplo, con el worker parado a la hora prevista). El 19-nov eran 03:41, 09:41, 15:41 y
+  21:41 UTC. Antes de cada despliegue con migración se leen: `SELECT started_at FROM raw.ingestion_runs WHERE job_type =
+  'fixtures_sync' ORDER BY started_at DESC LIMIT 4` (o `fixtures_sync_next` en la línea `worker.started` del registro del worker).
 * **F5 (23-oct):** un paso intermedio puso el escritor del pronóstico dentro de los paquetes de los modelos; la huella del código pasó de
   `mc9a7bec97ca` a `mce0abbbb30d` y se reescribieron 92.937 pronósticos bajo versiones nuevas. F4 lo sacó (`fbi.forecasting`). Desde
   entonces: `test_model_code_version` y, con F12, el registro de promociones. **Sigue en uso** (24-oct): 174 partidos conservan su última
