@@ -12,10 +12,11 @@ needs ``A_BOOKS`` or more, fewer than ``MIN_BOOKS`` leaves it at ``C`` at best. 
 (with 80 % of 10 the lower end of Wilson's interval is 0.49); a season below ``MIN_SAMPLE`` takes the level of the season before,
 provisional. A level goes up as soon as it is met and down only after two recalculations in a row miss it (``step``).
 
-The thresholds are the ones the code already decides with, imported and not copied, so that they cannot drift apart:
-``B_SHARE`` and ``MIN_SAMPLE`` settle a market (``fbi.market.settle_coverage``), ``C_SHARE`` and ``A_SAMPLE`` keep a market off the
-catalogue or call its settlement verified (``fbi.api.services.market_status``), ``MIN_BOOKS`` is Mi parlay's (``fbi.market
-.eligibility``). Only ``A_SHARE`` and ``A_BOOKS`` are new (DM-04). Changing any of them is a new rules version, never an edit.
+The thresholds are the ones the code already decides with, so that they cannot drift apart. ``B_SHARE`` and ``MIN_SAMPLE``
+settle a market (``fbi.market.settle_coverage``) and ``MIN_BOOKS`` is Mi parlay's (``fbi.market.eligibility``): imported. ``C_SHARE``
+and ``A_SAMPLE`` keep a market off the catalogue or call its settlement verified (``fbi.api.services.market_status``): the domain
+may not import the layer that serves it (``tests/unit/test_architecture.py``), so they are written here and a test holds them equal
+to those. Only ``A_SHARE`` and ``A_BOOKS`` are new (DM-04). Changing any of them is a new rules version, never an edit.
 
 What a datum counts as present (filled for both teams; an empty value is not a zero), the five editions pooled for one-match
 competitions and the provider's flag (used only when it says «no») belong to the measurement (PM-02-03), not to these rules: it
@@ -28,7 +29,6 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Final, Literal
 
-from fbi.api.services.market_status import MIN_SETTLE_SAMPLE, NO_SETTLEMENT
 from fbi.market.eligibility import MIN_BOOKS as PARLAY_MIN_BOOKS
 from fbi.market.settle_coverage import MIN_MATCHES, MIN_SHARE, Coverage
 
@@ -45,12 +45,13 @@ A_SHARE: Final = 0.95
 """New (DM-04): with 95 % of 30 matches the lower end of Wilson's interval is 0.81, still above ``B_SHARE``."""
 B_SHARE: Final = MIN_SHARE
 """0.80: a statistic is published, a market settled and a league called covered at this share."""
-C_SHARE: Final = NO_SETTLEMENT
-"""0.50: below it a market is not offered."""
+C_SHARE: Final = 0.50
+"""Below it a market is not offered: ``fbi.api.services.market_status.NO_SETTLEMENT`` (a test holds them equal)."""
 MIN_SAMPLE: Final = MIN_MATCHES
 """10 finished matches: fewer is ``MI``."""
-A_SAMPLE: Final = MIN_SETTLE_SAMPLE
-"""30 finished matches: needed for ``A``; a ``B`` below it is provisional."""
+A_SAMPLE: Final = 30
+"""Finished matches needed for ``A``; a ``B`` below it is provisional: ``fbi.api.services.market_status.MIN_SETTLE_SAMPLE`` (a test
+holds them equal)."""
 MIN_BOOKS: Final = PARLAY_MIN_BOOKS
 """3 houses (median): fewer caps a market at ``C``."""
 A_BOOKS: Final = 5

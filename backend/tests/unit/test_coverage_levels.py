@@ -24,10 +24,12 @@ SAMPLE = Path(__file__).resolve().parents[1] / "fixtures" / "coverage_levels_ann
 
 
 def test_the_thresholds_are_the_ones_the_code_already_decides_with() -> None:
+    """A change of one of them upstream fails here: the matrix then needs a new rules version."""
     assert lv.B_SHARE is settle_coverage.MIN_SHARE
     assert lv.MIN_SAMPLE is settle_coverage.MIN_MATCHES
-    assert lv.C_SHARE is market_status.NO_SETTLEMENT
-    assert lv.A_SAMPLE is market_status.MIN_SETTLE_SAMPLE
+    # fbi.coverage may not import fbi.api (test_architecture): these two are written there and held equal here
+    assert lv.C_SHARE == market_status.NO_SETTLEMENT
+    assert lv.A_SAMPLE == market_status.MIN_SETTLE_SAMPLE
     assert lv.MIN_BOOKS is eligibility.MIN_BOOKS
     # the other copies of the same thresholds in the code still agree with them
     assert team.COVERAGE == market_coverage.COVERED_SHARE == lv.B_SHARE
