@@ -22,12 +22,15 @@ section "services"; predigolctl status 2>&1 | tail -n 9
 section "the containers that run and their images"
 docker ps --format '{{.Names}} {{.Image}} {{.Status}}' < /dev/null
 if releases backend; then
-  section "the libraries of the image against constraints.txt (pip freeze of each container, read only; expect no difference)"
-  WANT_LIBS=$(grep -v '^#' /opt/predigol/backend/constraints.txt | grep .)
+  # PM-13-04 (OPS-012): constraints.txt also pins the `lab` extra (statsmodels, duckdb, pyarrow, polars and what they bring), which the
+  # image no longer installs. So: every library of the image must be in the file at that version (0 lines only in pip freeze); the
+  # pins the image does not have are counted, not judged.
+  section "the libraries of the image against constraints.txt (pip freeze of each container, read only; every library of the image pinned at its version)"
+  WANT_LIBS=$(grep -v '^#' /opt/predigol/backend/constraints.txt | grep . | LC_ALL=C sort)
   for c in predigol-worker predigol-api; do
-    HAVE_LIBS=$(docker exec "$c" pip freeze --exclude-editable 2>&1 < /dev/null)
-    DIFF=$(diff <(printf '%s\n' "$HAVE_LIBS") <(printf '%s\n' "$WANT_LIBS") || true)
-    verdict "$(printf '%s' "$DIFF" | grep -c '^[<>]')" "0" "lines that differ between the pip freeze of $c and constraints.txt"
+    HAVE_LIBS=$(docker exec "$c" pip freeze --exclude-editable 2>&1 < /dev/null | LC_ALL=C sort)
+    verdict "$(LC_ALL=C comm -23 <(printf '%s\n' "$HAVE_LIBS") <(printf '%s\n' "$WANT_LIBS") | grep -c .)" "0" "libraries of $c that constraints.txt does not pin at that version"
+    echo "pins of constraints.txt that $c does not install (the lab extra): $(LC_ALL=C comm -13 <(printf '%s\n' "$HAVE_LIBS") <(printf '%s\n' "$WANT_LIBS") | grep -c .)"
   done
 fi
 section "model code (the guard): the checkout and the forecasts written since the deploy"
