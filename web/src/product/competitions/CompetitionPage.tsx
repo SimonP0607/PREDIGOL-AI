@@ -42,6 +42,7 @@ import {
 } from "./model";
 import { competitionApi } from "./api";
 import { SeasonTablesBlock } from "./SeasonTables";
+import { WhatIf } from "./WhatIf";
 import { t } from "./text";
 
 const NO_TEAMS: ReadonlySet<number> = new Set();
@@ -109,7 +110,7 @@ export function ProviderTables({ table }: { table: CompetitionTable }) {
 }
 
 function TableTab({ id, season }: { id: string; season: number | undefined }) {
-  const { competitionTables } = usePmReaderSwitches();
+  const { competitionTables, whatIf } = usePmReaderSwitches();
   const standings = useQuery(live.standings(id));
   const tables = useQuery({
     ...competitionApi.seasonTables(id, season),
@@ -120,7 +121,12 @@ function TableTab({ id, season }: { id: string; season: number | undefined }) {
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
       {computed ? (
         <Card className="p-4 sm:p-5">
-          <SeasonTablesBlock data={computed} />
+          <SeasonTablesBlock data={computed}>
+            {/* plan PM, PM-09-03 (UX-181): the reader's own calculation, behind FBI_WHAT_IF (DM-14) */}
+            {(table, places) =>
+              whatIf && !places ? <WhatIf key={table.key} data={computed} table={table} /> : null
+            }
+          </SeasonTablesBlock>
         </Card>
       ) : null}
       <Block title={t("competitions.table.title")} icon={<ListOrdered className="h-4 w-4" />}>

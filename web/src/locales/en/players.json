@@ -1,0 +1,44 @@
+{
+  "title": "The player's new data",
+  "blocks": {
+    "underPosts": "In goal",
+    "withBall": "On the ball",
+    "discipline": "Penalties and offsides"
+  },
+  "fig": {
+    "saves": "Saves",
+    "save_pct": "Of the shots on target, saved",
+    "goals_conceded": "Goals conceded",
+    "penalties_saved": "Penalties saved",
+    "passes": "Passes",
+    "pass_accuracy": "Pass accuracy",
+    "penalties_won": "Penalties won",
+    "penalties_committed": "Penalties committed",
+    "offsides": "Offsides",
+    "dribbled_past": "Times dribbled past"
+  },
+  "unit": {
+    "por_90": "per 90 minutes",
+    "total": "this season",
+    "por_partido": "per match",
+    "porcentaje": "percentage"
+  },
+  "league": "league {v}",
+  "matches": "{n} matches with the datum",
+  "missing": {
+    "sin_datos": "No data this season",
+    "sin_cobertura": "Too few matches with the datum: not shown",
+    "muestra_insuficiente": "Insufficient sample",
+    "no_entregado": "The provider does not send it",
+    "aun_no_disponible": "Not available yet"
+  },
+  "sample": "Sample: {n} matches and {minutes} minutes in this competition.",
+  "thinSubject": "The player's data in this competition",
+  "partialSubject": "this competition's player data",
+  "goalsPrevented": "Goals prevented",
+  "goalsPreventedWhy": "The provider's figure did not pass its quality check: it is not shown until it does.",
+  "sourceMixed": "Source: player statistics of each match (PrediGol) and penalties saved as API-Football measures them.",
+  "sourcePredigol": "Source: player statistics of each match; the league is this competition's goalkeepers.",
+  "sourceProvider": "API-Football's figure: measured by the provider, not recalculated by PrediGol.",
+  "blockMissing": "Few matches of this competition carry these figures ({matches} at most): they are not shown."
+}

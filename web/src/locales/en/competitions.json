@@ -143,5 +143,25 @@
     "none": "No competition matches your search.",
     "clear": "Clear filters",
     "note": "The level is measured on what actually arrived this season, not on what the provider announces, and is recomputed every night. It measures the data available, not the quality of the league."
+  },
+  "whatIf": {
+    "title": "What if…?",
+    "intro": "Choose the result of the matches still to be played and see how this table would end.",
+    "choice": {
+      "home": "Home",
+      "draw": "Draw",
+      "away": "Away"
+    },
+    "unchosen": "Not chosen: the match is left out of the calculation.",
+    "yourScenario": "Your scenario",
+    "enters": "{teams} enters: {zone}.",
+    "leaves": "{teams} leaves: {zone}.",
+    "noShift": "With these results nobody enters or leaves a zone.",
+    "tied": "{teams} are left level: the regulation's criteria (goal difference and the rest) order them, not this calculator.",
+    "up": "up {n}",
+    "down": "down {n}",
+    "same": "no change",
+    "clear": "Clear results",
+    "disclaimer": "Your own calculation on the regulation, not a forecast: it uses no model and publishes no probability. It adds the points of each result you choose and never invents a score. Source: the provider's results and the competition's regulation."
   }
 }
