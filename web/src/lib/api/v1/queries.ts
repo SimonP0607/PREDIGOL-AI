@@ -443,6 +443,11 @@ export const live = {
     queryFn: v1.adminAvailabilityMatrix,
     staleTime: 10 * MINUTE,
   },
+  adminProviderUsage: (until: string | undefined, days: number) => ({
+    queryKey: ["v1", "admin", "provider-usage", until ?? "today", days],
+    queryFn: () => v1.adminProviderUsage({ until, days }),
+    refetchInterval: MINUTE,
+  }),
   odds: { queryKey: ["v1", "odds"], queryFn: v1.odds },
   fixtureOdds: (id: string, market?: string) => ({
     queryKey: ["v1", "fixture-odds", id, market ?? "all"],

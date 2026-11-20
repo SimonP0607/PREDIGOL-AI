@@ -270,6 +270,11 @@ export function useAvailabilityOn(): boolean {
   return useContext(AuthContext)?.user?.availability === true;
 }
 
+/** Whether the owner's console of the provider's requests is on (plan PM, PM-04-05; FBI_USAGE_CONSOLE). Off outside the provider. */
+export function useUsageConsoleOn(): boolean {
+  return useContext(AuthContext)?.user?.usage_console === true;
+}
+
 /** The `preview` value for product queries: "shadow" only while a SUPER_ADMIN has the shadow preview on. */
 export function usePreviewParam(): "shadow" | undefined {
   return useAuth().shadowPreview ? "shadow" : undefined;
