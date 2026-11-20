@@ -108,5 +108,40 @@
     },
     "unmeasured": "Sin medir todavía",
     "note": "Se recalcula cada noche con lo que llegó en la temporada actual."
+  },
+  "directory": {
+    "closed": "El directorio de competiciones aún no está abierto.",
+    "noLevels": "Los niveles de cobertura todavía no se publican.",
+    "title": "Competiciones",
+    "subtitle": "{n} competiciones seguidas en {countries} países. Cada una dice cuántos datos ofrece.",
+    "search": "Buscar competición o país",
+    "levelsLabel": "Filtrar por nivel de cobertura",
+    "all": "Todas",
+    "thin": "Muestra corta",
+    "onlyFeatured": "Solo destacadas",
+    "onlyMine": "Las que sigo",
+    "featured": "Destacada",
+    "featuredMeaning": "prioridad editorial de PrediGol. Dice dónde ponemos más atención, no cuántos datos hay.",
+    "legendTitle": "Cómo leer las dos señales",
+    "offers": {
+      "A": "Estadísticas de partido y de jugador, alineaciones y eventos.",
+      "B": "Eventos y alineaciones; sin todas las estadísticas de partido.",
+      "C": "Goles con minuto; sin alineaciones ni estadísticas completas.",
+      "D": "Solo resultado final y calendario."
+    },
+    "region": {
+      "sudamerica": "Sudamérica",
+      "europa": "Europa",
+      "norte": "Norte, Centroamérica y Caribe",
+      "asia": "Asia y Oceanía",
+      "africa": "África",
+      "internacional": "Torneos internacionales",
+      "otras": "Otras"
+    },
+    "count": "{n} competiciones",
+    "seeAll": "Ver las {n} de {region}",
+    "none": "Ninguna competición coincide con lo que buscas.",
+    "clear": "Quitar filtros",
+    "note": "El nivel se mide sobre lo que de verdad llegó en la temporada actual, no sobre lo que anuncia el proveedor, y se recalcula cada noche. Mide los datos disponibles, no la calidad de la liga."
   }
 }

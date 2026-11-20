@@ -60,6 +60,7 @@ import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as ComparePlayersRouteImport } from './routes/compare.players'
 import { Route as CompareTeamsRouteImport } from './routes/compare.teams'
+import { Route as CompetitionsIndexRouteImport } from './routes/competitions.index'
 import { Route as CompetitionsCompetitionIdRouteImport } from './routes/competitions.$competitionId'
 import { Route as HelpIndexRouteImport } from './routes/help.index'
 import { Route as HelpGlossaryRouteImport } from './routes/help.glossary'
@@ -342,6 +343,11 @@ const CompareTeamsRoute = CompareTeamsRouteImport.update({
   path: '/compare/teams',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CompetitionsIndexRoute = CompetitionsIndexRouteImport.update({
+  id: '/competitions/',
+  path: '/competitions/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CompetitionsCompetitionIdRoute =
   CompetitionsCompetitionIdRouteImport.update({
     id: '/competitions/$competitionId',
@@ -538,6 +544,7 @@ export interface FileRoutesByFullPath {
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/transparency/methodology': typeof TransparencyMethodologyRoute
   '/admin/': typeof AdminIndexRoute
+  '/competitions/': typeof CompetitionsIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/odds/': typeof OddsIndexRoute
@@ -616,6 +623,7 @@ export interface FileRoutesByTo {
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/transparency/methodology': typeof TransparencyMethodologyRoute
   '/admin': typeof AdminIndexRoute
+  '/competitions': typeof CompetitionsIndexRoute
   '/help': typeof HelpIndexRoute
   '/matches': typeof MatchesIndexRoute
   '/odds': typeof OddsIndexRoute
@@ -696,6 +704,7 @@ export interface FileRoutesById {
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/transparency/methodology': typeof TransparencyMethodologyRoute
   '/admin/': typeof AdminIndexRoute
+  '/competitions/': typeof CompetitionsIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/odds/': typeof OddsIndexRoute
@@ -777,6 +786,7 @@ export interface FileRouteTypes {
     | '/teams/$teamId'
     | '/transparency/methodology'
     | '/admin/'
+    | '/competitions/'
     | '/help/'
     | '/matches/'
     | '/odds/'
@@ -855,6 +865,7 @@ export interface FileRouteTypes {
     | '/teams/$teamId'
     | '/transparency/methodology'
     | '/admin'
+    | '/competitions'
     | '/help'
     | '/matches'
     | '/odds'
@@ -934,6 +945,7 @@ export interface FileRouteTypes {
     | '/teams/$teamId'
     | '/transparency/methodology'
     | '/admin/'
+    | '/competitions/'
     | '/help/'
     | '/matches/'
     | '/odds/'
@@ -983,6 +995,7 @@ export interface RootRouteChildren {
   ProfileSectionRoute: typeof ProfileSectionRoute
   TeamsTeamIdRoute: typeof TeamsTeamIdRoute
   TransparencyMethodologyRoute: typeof TransparencyMethodologyRoute
+  CompetitionsIndexRoute: typeof CompetitionsIndexRoute
   HelpIndexRoute: typeof HelpIndexRoute
   MatchesIndexRoute: typeof MatchesIndexRoute
   OddsIndexRoute: typeof OddsIndexRoute
@@ -1352,6 +1365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompareTeamsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/competitions/': {
+      id: '/competitions/'
+      path: '/competitions'
+      fullPath: '/competitions/'
+      preLoaderRoute: typeof CompetitionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/competitions/$competitionId': {
       id: '/competitions/$competitionId'
       path: '/competitions/$competitionId'
@@ -1652,6 +1672,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileSectionRoute: ProfileSectionRoute,
   TeamsTeamIdRoute: TeamsTeamIdRoute,
   TransparencyMethodologyRoute: TransparencyMethodologyRoute,
+  CompetitionsIndexRoute: CompetitionsIndexRoute,
   HelpIndexRoute: HelpIndexRoute,
   MatchesIndexRoute: MatchesIndexRoute,
   OddsIndexRoute: OddsIndexRoute,

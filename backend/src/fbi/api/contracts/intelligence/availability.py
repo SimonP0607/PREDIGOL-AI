@@ -16,6 +16,10 @@ Every route answers 404 while ``FBI_AVAILABILITY`` is off (the default). The lev
 
 1.1.0 (PM-02-07): a cup season carries the data cells of each of its phases (``phases``) and a match says which phase graded its blocks
 (``phase``), while ``FBI_AVAILABILITY_PHASES`` is on; off, ``phases`` is empty and ``phase`` is ``todas``.
+
+1.2.0 (PM-09-05, UX-179): each competition carries its editorial priority (``priority``, P0 to P4, from
+``config/coverage/prioridad_editorial.yaml``, annex A): where PrediGol puts more attention, not how much data there is. The directory
+(lámina I08) marks P0 and P1 as «Destacada»; no page decides with it.
 """
 
 from __future__ import annotations
@@ -35,6 +39,8 @@ from fbi.api.contracts.intelligence.base import (
 from fbi.api.contracts.intelligence.vocab import MarketState
 
 Level = Literal["A", "B", "C", "D", "MI"]
+EditorialPriority = Literal["P0", "P1", "P2", "P3", "P4"]
+"""Annex A's editorial priority (``fbi.coverage.depth.priorities``)."""
 """``coverage-levels-v1``: A completa, B intermedia, C básica, D limitada, MI muestra insuficiente."""
 CellReason = Literal["ninguno", "heredado", "muestra_insuficiente", "menos_de_3_casas", "menos_de_5_casas", "no_entregado",
                      "sin_ventana", "sin_medir"]
@@ -128,6 +134,9 @@ class CompetitionAvailability(IntelligenceModel):
     name: str = Field(min_length=1)
     country: str | Missing
     tier: int | Missing = Field(description="PrediGol's priority of the competition (core.competitions.tier).")
+    priority: EditorialPriority | Missing = Field(description=(
+        "1.2.0: the editorial priority of annex A (P0 Colombia, P1 international, P2 priority countries, P3 the rest followed, P4 the "
+        "English pyramid 5-7); sin_datos for a competition the file does not list."))
     summary: Level
     summary_label: str = Field(min_length=1)
     families: list[FamilyLevel]
@@ -221,7 +230,7 @@ class Discrepancy(IntelligenceModel):
 
 class Availability(IntelligenceContract):
     CONTRACT_ID: ClassVar[str] = "C-16"
-    CONTRACT_VERSION: ClassVar[str] = "1.1.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.2.0"
 
     rules_version: str = Field(pattern=r"^[a-z][a-z0-9-]{1,40}-v[0-9]+$")
     scope: Scope

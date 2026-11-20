@@ -108,5 +108,40 @@
     },
     "unmeasured": "Not measured yet",
     "note": "Recomputed every night with what arrived this season."
+  },
+  "directory": {
+    "closed": "The directory of competitions is not open yet.",
+    "noLevels": "Coverage levels are not published yet.",
+    "title": "Competitions",
+    "subtitle": "{n} competitions followed in {countries} countries. Each one says how much data it offers.",
+    "search": "Search a competition or a country",
+    "levelsLabel": "Filter by coverage level",
+    "all": "All",
+    "thin": "Short sample",
+    "onlyFeatured": "Featured only",
+    "onlyMine": "The ones I follow",
+    "featured": "Featured",
+    "featuredMeaning": "PrediGol's editorial priority. It says where we put more attention, not how much data there is.",
+    "legendTitle": "How to read the two signals",
+    "offers": {
+      "A": "Match and player statistics, line-ups and events.",
+      "B": "Events and line-ups; not every match statistic.",
+      "C": "Goals with their minute; no line-ups nor full statistics.",
+      "D": "Only the final result and the calendar."
+    },
+    "region": {
+      "sudamerica": "South America",
+      "europa": "Europe",
+      "norte": "North, Central America and Caribbean",
+      "asia": "Asia and Oceania",
+      "africa": "Africa",
+      "internacional": "International tournaments",
+      "otras": "Others"
+    },
+    "count": "{n} competitions",
+    "seeAll": "See the {n} of {region}",
+    "none": "No competition matches your search.",
+    "clear": "Clear filters",
+    "note": "The level is measured on what actually arrived this season, not on what the provider announces, and is recomputed every night. It measures the data available, not the quality of the league."
   }
 }
