@@ -41,6 +41,8 @@ NAMES_THE_TABLE = {
                                   "connection; a measure of coherence printed for a person - never an input of a pick or a decision",
     "scripts/ia_single_figure.py": "AD-B05/AD-B09 (IA-083/IA-084): the page's stored sets (`forecast-v1`, `forecast-v1-seal`) beside the single "
                                    "figure, over a READ ONLY connection; a measure of parity printed for a person - never an input of a pick or a decision",
+    "coverage/resolve.py": "C-16 (plan PM, PM-02-04): state 4 of availability asks only WHETHER a forecast is stored for the match and market "
+                           "(``SELECT DISTINCT market_key``), never its values; nothing it answers feeds a pick or a decision",
     "scripts/compare_probabilities.py": "PICKS F3 (BE-021): puts the page's forecast beside the board's and Intelligence's probability, selection by selection, over a READ ONLY connection; "
                                         "a measure of whether the two agree, printed for a person - never an input of a pick or a decision",
 }
