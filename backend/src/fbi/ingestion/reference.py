@@ -65,7 +65,7 @@ from psycopg.rows import tuple_row
 from psycopg.types.json import Jsonb
 
 from fbi.core.clock import now
-from fbi.core.errors import ProviderError, QuotaExhaustedError
+from fbi.core.errors import CircuitOpenError, ProviderError, QuotaExhaustedError
 from fbi.core.logging import get_logger
 from fbi.ingestion.ledger import RunCounters, RunLedger
 
@@ -1092,6 +1092,12 @@ async def _ask(conn: psycopg.Connection, provider: Any, ledger: RunLedger, run_i
         except QuotaExhaustedError as exc:
             counters.errors.append(str(exc))
             counters.stopped_early = "quota"
+            return False
+        except CircuitOpenError as exc:
+            # The circuit or the account's pause (PM-04-02) refused before sending: nothing is checked - a check would hold the
+            # target back for its whole cadence (a week for people) for an answer that never came - and the run stops.
+            counters.errors.append(str(exc)[:300])
+            counters.stopped_early = "circuit"
             return False
         except ProviderError as exc:
             counters.api_calls += 1
