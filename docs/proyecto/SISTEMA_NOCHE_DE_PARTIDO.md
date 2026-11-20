@@ -44,6 +44,25 @@ sus palabras (namespace de textos `intelligence`).
 | `PrivateBand` | `Banner` | «Evaluación privada · no visible para usuarios» encima de toda vista privada. Marca, no protege: protege el servidor |
 | `EntityHeader` | escudo del partido | Cabecera de club, selección y jugador; el jugador nunca lleva foto, solo iniciales |
 
+## 2 ter. Estados «información no disponible» (plan PM, PM-14-01, lámina I12; UX-173)
+
+Un dato, un bloque o un mercado que no se puede enseñar está en uno de cinco estados, y cada uno tiene su componente en
+`web/src/product/shared/Unavailable.tsx` (modelo puro en `availabilityState.ts`, textos en el namespace `availability`). Ninguna
+pantalla pinta un hueco propio: ni tarjetas vacías, ni «0» que no son ceros, ni «—» sin explicación, ni el mismo mensaje para todo.
+
+| Estado | Componente | Qué dice | Siete estados de C-16 que lo dan |
+| --- | --- | --- | --- |
+| No existe | `NotOffered` (una línea, sin tarjeta); `NotSettled` para el 6 | La competición no ofrece el dato; la sección desaparece | 1 existe (`no_entregado`), 2 `sin_cobertura`, 6 liquidable, 7 reglas (`invalid_selection`, `quarter_line`, `started`) |
+| Cobertura parcial | `PartialCoverage` | Nivel C: se pinta con la nota y su porcentaje | 2 cobertura suficiente (C, D con dato) |
+| Muestra insuficiente | `ThinSample` (recuento, «faltan n», nunca una tasa) | Hay datos, pero pocos | 1 o 2 con `muestra_insuficiente` o nivel MI |
+| Pendiente | `PendingData` (cuándo llega y la acción que ofrezca la pantalla) | Llegará | 1 `sin_medir`, 3 cuota vigente, 4 probabilidad calculada, 7 sin precio |
+| En revisión | `UnderReview` (banda de aviso) | Existe pero ahora no es fiable; qué sigue valiendo | 5 calibrada y autorizada, 7 `MERCADO_NO_EVALUABLE`, precio atípico |
+
+Reglas: los siete estados se evalúan en orden y tras el primer «no» los siguientes quedan «sin evaluar» (`marketSteps`); una
+pantalla con varios huecos usa `UnavailableNotes`, una sola nota por estado (ligas D). Solo se montan con `FBI_AVAILABILITY`
+encendido (`availability` en `/auth/me`, `useAvailabilityOn`). Contraste AA de cada par de tokens medido desde `styles.css` en
+`Unavailable.test.tsx` (`web/src/lib/a11y/contrast.ts`).
+
 ## 3. Pantallas
 
 | Área | Rutas | Qué cambió |
@@ -74,6 +93,7 @@ Todos nacen apagados y se encienden en `app.env` sin desplegar; el mapa completo
 | `FBI_NEWS_FEED` | La sección Noticias y su entrada en «Más» |
 | `FBI_INBOX` | La bandeja de Avisos y la campana |
 | `FBI_ODDS_BY_MATCH`, `FBI_NAV_V2`, `FBI_SEARCH`, `FBI_PROFILES` | Plan maestro unificado (BE-045): Cuotas «Por partido», las barras nuevas, el buscador y los perfiles |
+| `FBI_AVAILABILITY` | Plan PM (C-16): los estados «información no disponible» y la consola de la matriz (`availability` en `/auth/me`) |
 | `FBI_NEWS_V2`, `FBI_MATCH_INTELLIGENCE` | Plan maestro unificado: Noticias de las maquetas 08 a 10 (abogado y datos) y la pestaña «Intelligence» (el dueño) |
 
 ## 4 bis. Composición por tamaño de pantalla (auditoría visual del 16-nov-2026)
