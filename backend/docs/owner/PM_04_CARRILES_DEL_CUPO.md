@@ -5,6 +5,7 @@ Plan Maestro PM, bloque 4 (peticiones e ingesta). Esta guía crece con cada tare
 | Tarea | Código | Qué añade | Interruptor |
 | --- | --- | --- | --- |
 | PM-04-01 | BE-060 | Carriles con techo diario y prioridad | `FBI_APIFOOTBALL_LANES` (`off` por defecto) |
+| PM-04-02 | BE-061 | Límites dinámicos, pausas, reserva de emergencia y pausa de la cuenta | `FBI_APIFOOTBALL_DYNAMIC_LIMITS` (`off`); `FBI_APIFOOTBALL_ACCOUNT_GUARD` (`on`) |
 
 ## 1. Carriles (PM-04-01, BE-060)
 
@@ -84,3 +85,71 @@ días anteriores con el libro de ejecuciones (`api_calls`, que no cuenta los int
 * Catorce días completos (desde el 21-nov) con `report --days 14` en «0 with a vital lane limited». Primer día posible: **5-dic-2026**.
 * Encendido a `measure` y después a `enforce`: con el kit auditado de PM-15-03 (decisión del dueño). Memoria del worker medida antes
   y después (PM-13-05).
+
+## 2. Límites dinámicos, pausas y reserva (PM-04-02, BE-061)
+
+### Sobre los carriles
+
+Con `FBI_APIFOOTBALL_DYNAMIC_LIMITS=on` (y los carriles en `measure` o `enforce`), además del techo de cada carril:
+
+| Gastado del presupuesto del día | Se pausan hasta las 00:00 UTC |
+| --- | --- |
+| 60 % (36.000) | `historicos`, `ampliacion`, `reparacion`, `sin_carril` |
+| 75 % (45.000) | además `referencia` |
+| 88 % (52.800) | además `calendario` y `estadisticas_contexto`: solo quedan `directo`, `cuotas`, `alineaciones`, `resultados` |
+
+* **Reserva de emergencia**: las últimas `FBI_APIFOOTBALL_EMERGENCY_RESERVE` peticiones (7.000) solo las gastan los cuatro carriles
+  vitales. Los vitales nunca se pausan: solo los para su techo o el presupuesto entero.
+* **Sin rellenos de 03:50 a 05:00 UTC** (copia PITR y copia diaria): `historicos` y `ampliacion` esperan a las 05:00.
+* El total es el del propio presupuesto (`raw.provider_quota.spent`), leído con los carriles cada 15 s. Al día siguiente todo
+  vuelve a empezar a las 00:00 UTC.
+* **Picos del lunes**: el carril de históricos sube a ≈ 6.300 los lunes por el barrido semanal de `/players`; PM-04-03 (BE-062) lo
+  pasa a mensual y escalonado. Ningún día medido pasa del 39 % del presupuesto (23.324 el 26-oct), así que hoy ninguna pausa se
+  habría disparado.
+
+### La pausa de la cuenta (corrección de PM-01-03)
+
+El 29-oct-2026 la cuenta pasó al plan gratuito de 04:45 a 21:31 UTC y el proveedor contestó cada petición con **HTTP 200** y un
+objeto `errors` («request limit for the day», «Free plans do not have access…»). El cortacircuitos lo contaba como éxito y se gastaron
+47.000 peticiones del presupuesto en 16 horas (OPS-009). Ahora:
+
+* Un error **de la cuenta** dentro de un 200 —clave `requests` o texto «request limit», clave `token`, `access` o `subscription`,
+  «suspended», y `plan` / «Free plans» **solo si el plan configurado es de pago**— para **todas las peticiones del proceso** durante
+  `FBI_APIFOOTBALL_ACCOUNT_PAUSE_SECONDS` (900 s). No salen ni gastan presupuesto; el trabajo se para como con el cortacircuitos
+  abierto (`ProviderAccountError` es un `CircuitOpenError`). Pasada la pausa, la primera petición vuelve a probar: si la cuenta sigue
+  igual, otra pausa. Un día como el 29-oct gasta 4 peticiones por hora en vez de miles, y en cuanto se renueva la cuenta todo vuelve
+  en 15 minutos como mucho.
+* Un error **de la petición** (`league`, `season`, parámetros) sigue siendo un error normal y no pausa nada. El límite por minuto
+  (`rateLimit`) sigue siendo un reintento. En el plan gratuito, «Free plans do not have access to this season» es la respuesta de esa
+  temporada (el relleno la anota como rechazo) y no pausa.
+* El mensaje del error no copia el texto del proveedor: «do not have access» haría que el relleno retirara unidades para siempre.
+* La referencia y el relleno ya no anotan nada cuando el cortacircuitos o la pausa rechazan antes de enviar: se paran y la siguiente
+  pasada pregunta (antes la referencia marcaba el objetivo como consultado y lo dejaba una semana sin pedir).
+* Registro: `provider.account_paused` (motivo, endpoint, segundos, veces), sin datos de la cuenta.
+* Una pausa por proceso (el worker es un proceso). Un guion suelto que arranque durante la pausa hace su propia primera petición.
+* **Encendida por defecto** (`FBI_APIFOOTBALL_ACCOUNT_GUARD=on`): es una corrección y la suscripción vence el 29-nov-2026.
+  `off` devuelve el comportamiento anterior.
+
+### Simulación del 29-oct (criterio de aceptación)
+
+`tests/unit/test_quota_dynamic_limits.py` repasa el 29-oct hora a hora (`tests/fixtures/quota/pm_04_02_29_octubre_por_hora.csv`:
+60.042 peticiones, el presupuesto entero):
+
+| Escenario | Qué pasa |
+| --- | --- |
+| Como fue (sin carriles) | El presupuesto se acaba a las 21:3x y todo se para, lo vivo incluido |
+| Solo carriles y límites dinámicos | Lo vivo sigue hasta las 23:59 y el presupuesto nunca se acaba, pero los rechazos de la cuenta llenan el techo de cuotas |
+| Con la pausa de la cuenta | **Lo vivo y las cuotas siguen hasta el final del día** sin un solo rechazo; el día gasta menos de 10.000 |
+
+### Comprobar
+
+```
+docker exec predigol-worker python -m scripts.quota_lanes show
+docker logs predigol-worker --since 24h 2>&1 | grep -E "provider.account_paused|quota.lane_(would_)?limit" | tail
+```
+
+### Criterio de aceptación y cierre
+
+* Simulación del 29-oct: cumplida en pruebas (arriba).
+* Encender `FBI_APIFOOTBALL_DYNAMIC_LIMITS` junto con los carriles en `measure`, siete días sin incidentes y memoria del worker antes
+  y después: con el kit auditado (PM-15-03).
