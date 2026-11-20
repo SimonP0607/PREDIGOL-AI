@@ -45,7 +45,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.coverage import levels
-from fbi.coverage.job import PHASE_ALL
+from fbi.coverage.job import PHASE_ALL, cup_phases
 from fbi.market.eligibility import MIN_BOOKS, spec_for_key, verdict
 from fbi.market.in_force import book, implied, key_of, unify
 from fbi.market.rules import Rule, rule_for
@@ -129,6 +129,8 @@ class MatchInputs:
     parlay_on: bool
     forecast_users: bool
     rules: ParlayRules
+    phase: str = PHASE_ALL
+    """The phase whose cells are in ``cells`` (PM-02-07): a cup match's own phase when it was measured and asked for, else ``todas``."""
 
 
 # ── the answer ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -203,9 +205,10 @@ class Availability:
     blocks: Mapping[str, BlockState]
     markets: tuple[MarketState, ...]
     notes: tuple[str, ...] = field(default_factory=tuple)
+    phase: str = PHASE_ALL
 
     def as_json(self) -> dict[str, Any]:
-        return {"fixture_id": self.fixture_id, "rules_version": self.rules_version, "at": self.at.isoformat(),
+        return {"fixture_id": self.fixture_id, "rules_version": self.rules_version, "at": self.at.isoformat(), "phase": self.phase,
                 "blocks": {k: v.as_json() for k, v in self.blocks.items()},
                 "markets": [m.as_json() for m in self.markets], "notes": list(self.notes)}
 
@@ -362,7 +365,7 @@ def resolve(inputs: MatchInputs) -> Availability:
     notes: list[str] = []
     if any(b.level == "MI" for b in blocks.values()):
         notes.append("muestra_insuficiente")
-    return Availability(inputs.fixture_id, levels.RULES_VERSION, inputs.at, blocks, markets, tuple(notes))
+    return Availability(inputs.fixture_id, levels.RULES_VERSION, inputs.at, blocks, markets, tuple(notes), inputs.phase)
 
 
 # ── reading ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -373,6 +376,9 @@ CELLS_SQL: Final = ("SELECT datum, level, n_finished, n_with_data, provisional, 
 MARKETS_SQL: Final = ("SELECT market_key, level, n_window, n_priced, provisional, reason FROM analytics.market_availability "
                       "WHERE competition_season_id = %s")
 FACTS_SQL: Final = "SELECT present FROM analytics.coverage_fixture_facts WHERE fixture_id = %s"
+CUP_SQL: Final = ("SELECT lower(coalesce(c.type, '')) = 'cup' AS cup FROM core.competition_seasons s "
+                  "JOIN core.competitions c ON c.id = s.competition_id WHERE s.id = %s")
+ROUNDS_SQL: Final = "SELECT id, round, kickoff_at FROM core.fixtures WHERE competition_season_id = %s AND kickoff_at IS NOT NULL"
 CONSENSUS_SQL: Final = """
 SELECT m.market_key, m.selection, m.line, m.as_of, m.best_odds, m.p_fair, b.name AS bookmaker, m.n_bookmakers
   FROM market.market_consensus m LEFT JOIN market.bookmakers b ON b.id = m.best_bookmaker_id
@@ -388,20 +394,37 @@ SELECT DISTINCT market_key FROM models.match_forecasts WHERE fixture_id = %(fixt
 
 
 def load(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, rules: ParlayRules, parlay_on: bool = False,
-         state_of: Callable[[int], str] | None = None, forecast_users: bool = False) -> MatchInputs | None:
-    """Everything the states of a match rest on, one read of each table. None for a match that does not exist."""
+         state_of: Callable[[int], str] | None = None, forecast_users: bool = False, by_phase: bool = False) -> MatchInputs | None:
+    """Everything the states of a match rest on, one read of each table. None for a match that does not exist.
+
+    ``by_phase`` (``FBI_AVAILABILITY_PHASES``, PM-02-07): a cup match's blocks are graded by the cells of its own phase
+    (``fbi.coverage.job.cup_phases``), each datum falling back to ``todas`` where the phase has no cell."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(FIXTURE_SQL, (fixture_id,))
         f = cur.fetchone()
         if f is None:
             return None
         cs = f["competition_season_id"]
+        phase = PHASE_ALL
         cells: dict[str, Cell] = {}
         markets: dict[str, Cell] = {}
         if cs is not None:
             cur.execute(CELLS_SQL, (cs, PHASE_ALL))
             cells = {r["datum"]: Cell(r["level"], r["n_finished"], r["n_with_data"], r["provisional"], r["reason"])
                      for r in cur.fetchall()}
+            if by_phase:
+                cur.execute(CUP_SQL, (cs,))
+                cup = cur.fetchone()
+                if cup is not None and cup["cup"]:
+                    cur.execute(ROUNDS_SQL, (cs,))
+                    own = cup_phases((r["id"], r["round"], r["kickoff_at"]) for r in cur.fetchall()).get(fixture_id)
+                    if own is not None:
+                        cur.execute(CELLS_SQL, (cs, own))
+                        found = {r["datum"]: Cell(r["level"], r["n_finished"], r["n_with_data"], r["provisional"], r["reason"])
+                                 for r in cur.fetchall()}
+                        if found:
+                            cells = {**cells, **found}
+                            phase = own
             cur.execute(MARKETS_SQL, (cs,))
             markets = {r["market_key"]: Cell(r["level"], r["n_window"], r["n_priced"], r["provisional"], r["reason"])
                        for r in cur.fetchall()}
@@ -419,11 +442,13 @@ def load(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, rules:
         fixture_id=fixture_id, kickoff_at=f["kickoff_at"], status_group=f["status_group"], competition_season_id=cs, at=at,
         cells=cells, markets=markets, present=None if facts is None else frozenset(facts["present"] or ()), quotes=quotes,
         consensus=consensus, forecasts=forecasts, covered=season.covered, state_of=state_of,
-        parlay_on=parlay_on, forecast_users=forecast_users, rules=rules)
+        parlay_on=parlay_on, forecast_users=forecast_users, rules=rules, phase=phase)
 
 
 def availability(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, rules: ParlayRules, parlay_on: bool = False,
-                 state_of: Callable[[int], str] | None = None, forecast_users: bool = False) -> Availability | None:
-    inputs = load(conn, fixture_id, at=at, rules=rules, parlay_on=parlay_on, state_of=state_of, forecast_users=forecast_users)
+                 state_of: Callable[[int], str] | None = None, forecast_users: bool = False,
+                 by_phase: bool = False) -> Availability | None:
+    inputs = load(conn, fixture_id, at=at, rules=rules, parlay_on=parlay_on, state_of=state_of, forecast_users=forecast_users,
+                  by_phase=by_phase)
     return None if inputs is None else resolve(inputs)
 

@@ -81,7 +81,7 @@ def test_on_the_five_routes_answer(graded: tuple[int, int], db: psycopg.Connecti
     directory = reader.get(PUBLIC[0])
     assert directory.status_code == 200, directory.text
     data = directory.json()["data"]
-    assert (data["contract"], data["contract_version"], data["projection"], data["scope"]) == ("C-16", "1.0.0", "public", "directorio")
+    assert (data["contract"], data["contract_version"], data["projection"], data["scope"]) == ("C-16", "1.1.0", "public", "directorio")
     assert [c["competition_id"] for c in data["competitions"]] == [competition]
     assert data["competitions"][0]["seasons"] == []
     one = reader.get(concrete(PUBLIC[1], competition, fixture)).json()["data"]

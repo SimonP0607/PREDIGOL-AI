@@ -13,6 +13,9 @@ states of every block and market of a match - so that a page paints a block only
   with what each recalculation measured, the changes of level and the shadow comparison's discrepancies (PM-02-06).
 
 Every route answers 404 while ``FBI_AVAILABILITY`` is off (the default). The levels are ``coverage-levels-v1`` (``fbi.coverage.levels``).
+
+1.1.0 (PM-02-07): a cup season carries the data cells of each of its phases (``phases``) and a match says which phase graded its blocks
+(``phase``), while ``FBI_AVAILABILITY_PHASES`` is on; off, ``phases`` is empty and ``phase`` is ``todas``.
 """
 
 from __future__ import annotations
@@ -45,6 +48,10 @@ ModuleReason = Literal["ok", "invalid_selection", "quarter_line", "started", "ma
 """Mi parlay's codes are the ones ``validate_parlay`` answers a leg with; Picks' are abstention codes; Cuotas' say why no price shows."""
 Scope = Literal["directorio", "competicion", "partido", "matriz", "cambios"]
 Family = Literal["base", "team_stats", "xg", "player_stats", "referee", "main_odds", "stat_odds"]
+CupPhase = Literal["previa", "liga_o_grupos", "eliminatoria"]
+"""A cup's phases (PM-02-07): qualifying rounds and the knock-out rounds before the league or group stage; that stage; the knock-out
+rounds after it."""
+MatchPhase = Literal["todas", "previa", "liga_o_grupos", "eliminatoria"]
 
 
 class FamilyLevel(IntelligenceModel):
@@ -85,20 +92,35 @@ class MarketCellPrivate(MarketCell):
     catalogue_state: MarketState | Missing = private(description="The catalogue's state of the market's main bet, as last measured.")
 
 
+class PhaseAvailability(IntelligenceModel):
+    """The data cells of one phase of a cup season (the markets stay on ``todas``)."""
+
+    phase: CupPhase
+    data: list[LevelCell]
+
+
+class PhaseAvailabilityPrivate(PhaseAvailability):
+    data: list[LevelCellPrivate]  # type: ignore[assignment]
+
+
 class SeasonAvailability(IntelligenceModel):
     competition_season_id: int = Field(ge=1)
     season: int
-    phase: str = Field(min_length=1, description="todas until the cups are split by phase (PM-02-07).")
+    phase: str = Field(min_length=1, description="todas: the season whole (its phases, if any, are in ``phases``).")
     summary: Level
     summary_label: str = Field(min_length=1, description="The summary as the directory writes it: B* / C* without odds.")
     families: list[FamilyLevel]
     data: list[LevelCell]
     markets: list[MarketCell]
+    phases: list[PhaseAvailability] = Field(default_factory=list, description=(
+        "A cup season's phases with matches (1.1.0, PM-02-07): empty for a league, a cup in one phase, or while "
+        "FBI_AVAILABILITY_PHASES is off."))
 
 
 class SeasonAvailabilityPrivate(SeasonAvailability):
     data: list[LevelCellPrivate]  # type: ignore[assignment]
     markets: list[MarketCellPrivate]  # type: ignore[assignment]
+    phases: list[PhaseAvailabilityPrivate] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class CompetitionAvailability(IntelligenceModel):
@@ -162,6 +184,9 @@ class MatchAvailability(IntelligenceModel):
     fixture_id: int = Field(ge=1)
     kickoff_at: UtcDatetime
     competition_season_id: int | Missing
+    phase: MatchPhase = Field(default="todas", description=(
+        "The phase whose cells graded the blocks (1.1.0, PM-02-07): the cup match's own phase while FBI_AVAILABILITY_PHASES is on and "
+        "the phase was measured; todas otherwise."))
     blocks: list[BlockAvailability]
     markets: list[MarketAvailability]
     notes: list[Literal["muestra_insuficiente"]]
@@ -196,7 +221,7 @@ class Discrepancy(IntelligenceModel):
 
 class Availability(IntelligenceContract):
     CONTRACT_ID: ClassVar[str] = "C-16"
-    CONTRACT_VERSION: ClassVar[str] = "1.0.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.1.0"
 
     rules_version: str = Field(pattern=r"^[a-z][a-z0-9-]{1,40}-v[0-9]+$")
     scope: Scope

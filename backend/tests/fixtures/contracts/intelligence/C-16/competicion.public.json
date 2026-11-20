@@ -1,6 +1,6 @@
 {
   "contract": "C-16",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "public",
   "freshness": {
     "generated_at": "2026-11-21T08:04:00Z",
@@ -299,6 +299,78 @@
                 "missing_reason": "sin_datos"
               }
             }
+          ],
+          "phases": [
+            {
+              "phase": "previa",
+              "data": [
+                {
+                  "key": "events",
+                  "level": "A",
+                  "n": 40,
+                  "with_data": 40,
+                  "pct": 100.0,
+                  "provisional": false,
+                  "reason": "ninguno",
+                  "measured_at": "2026-11-21T08:04:00Z"
+                },
+                {
+                  "key": "lineups",
+                  "level": "A",
+                  "n": 40,
+                  "with_data": 40,
+                  "pct": 100.0,
+                  "provisional": false,
+                  "reason": "ninguno",
+                  "measured_at": "2026-11-21T08:04:00Z"
+                },
+                {
+                  "key": "corners",
+                  "level": "C",
+                  "n": 40,
+                  "with_data": 22,
+                  "pct": 55.0,
+                  "provisional": false,
+                  "reason": "ninguno",
+                  "measured_at": "2026-11-21T08:04:00Z"
+                }
+              ]
+            },
+            {
+              "phase": "liga_o_grupos",
+              "data": [
+                {
+                  "key": "events",
+                  "level": "A",
+                  "n": 120,
+                  "with_data": 120,
+                  "pct": 100.0,
+                  "provisional": false,
+                  "reason": "ninguno",
+                  "measured_at": "2026-11-21T08:04:00Z"
+                },
+                {
+                  "key": "lineups",
+                  "level": "A",
+                  "n": 120,
+                  "with_data": 119,
+                  "pct": 99.2,
+                  "provisional": false,
+                  "reason": "ninguno",
+                  "measured_at": "2026-11-21T08:04:00Z"
+                },
+                {
+                  "key": "corners",
+                  "level": "A",
+                  "n": 120,
+                  "with_data": 118,
+                  "pct": 98.3,
+                  "provisional": false,
+                  "reason": "ninguno",
+                  "measured_at": "2026-11-21T08:04:00Z"
+                }
+              ]
+            }
           ]
         },
         {
@@ -552,7 +624,8 @@
                 "missing_reason": "sin_datos"
               }
             }
-          ]
+          ],
+          "phases": []
         }
       ]
     }
