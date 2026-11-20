@@ -50,6 +50,22 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_worker", "raw.ingestion_payloads", "DELETE", True),
     ("predigol_worker", "public.alembic_version", "SELECT", True),
     ("predigol_worker", "public.alembic_version", "UPDATE", False),
+    # the use of the provider and the size of the database (PM-01-02, 0168): the worker adds counts and never deletes one; only the
+    # owner (the storage report) writes the size; the API reads the three
+    ("predigol_worker", "raw.provider_endpoint_usage", "INSERT", True),
+    ("predigol_worker", "raw.provider_endpoint_usage", "UPDATE", True),
+    ("predigol_worker", "raw.provider_endpoint_usage", "DELETE", False),
+    ("predigol_worker", "raw.provider_minute_daily", "INSERT", True),
+    ("predigol_worker", "raw.provider_minute_daily", "UPDATE", True),
+    ("predigol_worker", "raw.provider_minute_daily", "DELETE", False),
+    ("predigol_api", "raw.provider_endpoint_usage", "SELECT", True),
+    ("predigol_api", "raw.provider_endpoint_usage", "INSERT", False),
+    ("predigol_api", "raw.provider_minute_daily", "SELECT", True),
+    ("predigol_api", "audit.db_size_history", "SELECT", True),
+    ("predigol_api", "audit.db_size_history", "INSERT", False),
+    ("predigol_worker", "audit.db_size_history", "SELECT", True),
+    ("predigol_worker", "audit.db_size_history", "INSERT", False),
+    ("predigol_worker", "audit.db_size_history", "DELETE", False),
     # the current-price book (BE-010): the worker builds it and purges it, the API reads it
     ("predigol_worker", "market.book_current", "INSERT", True),
     ("predigol_worker", "market.book_current", "UPDATE", True),
